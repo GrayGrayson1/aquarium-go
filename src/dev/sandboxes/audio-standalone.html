@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Audio Lab (standalone)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body style="margin: 0; background: #050b0e">
+    <!-- lane:audio — isolated QA page: mounts the audio lab without App/Scene so other lanes' WIP can't break it.
+         Open http://127.0.0.1:<port>/src/dev/sandboxes/audio-standalone.html -->
+    <div id="root"></div>
+    <script type="module">
+      import '/src/dev/debugHooks.ts';
+      import { mountAudioLab } from '/src/dev/sandboxes/audio-lab.tsx';
+      mountAudioLab(document.getElementById('root'));
+    </script>
+  </body>
+</html>

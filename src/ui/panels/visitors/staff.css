@@ -1,0 +1,104 @@
+/* Visitors › Staff tab + tank-card keeper line. OWNER: lane "staff". Uses the design tokens (src/ui/styles/tokens.css). */
+
+.st-tab { --st-polo: #1f8f86; }
+
+.st-avatar { flex: none; border-radius: 50%; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); }
+
+.st-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.st-list--candidates { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+
+.st-card { display: grid; gap: 10px; padding: 14px 14px 13px; }
+.st-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  border-radius: 18px 0 0 18px;
+  background: var(--st-accent, var(--c-aqua));
+  opacity: 0.75;
+}
+.st-card--aquarist { --st-accent: #3fcfbf; }
+.st-card--stock_manager { --st-accent: var(--c-gold); }
+.st-card--docent { --st-accent: var(--c-violet); }
+.st-card--candidate { background: linear-gradient(170deg, rgba(94, 234, 212, 0.05), rgba(255, 255, 255, 0.015) 55%); }
+.st-card--unpaid { border-color: rgba(248, 113, 113, 0.4); }
+
+.st-card__top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.st-card__who { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.st-card__name { font-family: var(--font-display); font-size: calc(17px * var(--text-scale)); font-weight: 560; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); }
+.st-wage { font-variant-numeric: tabular-nums; color: var(--c-ink-2); font-weight: 600; }
+.st-card__trait { margin: 0; font-size: calc(12.5px * var(--text-scale)); color: var(--c-ink-2); line-height: 1.45; }
+.st-card__trait b { color: var(--c-ink); font-weight: 650; }
+.st-card__blurb { margin: 0; line-height: 1.45; }
+.st-card__why { margin: 0; color: var(--c-watch); }
+
+.st-card__today { display: flex; align-items: flex-start; gap: 7px; font-size: calc(12.5px * var(--text-scale)); color: var(--c-ink-3); padding: 7px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.035); border: 1px solid var(--c-line); line-height: 1.4; }
+.st-card__today svg { flex: none; margin-top: 1px; }
+.st-card__today.has-work { color: var(--c-ink-2); }
+.st-card__today.has-work svg { color: var(--c-good); }
+.st-card__today b { color: var(--c-ink); font-weight: 650; }
+
+.st-card__issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.st-card__issues li { display: flex; align-items: center; gap: 6px; font-size: calc(12px * var(--text-scale)); color: var(--c-watch); }
+.st-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.st-role-tag { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: var(--r-pill); font-size: calc(11px * var(--text-scale)); font-weight: 650; letter-spacing: 0.01em; border: 1px solid var(--c-line); background: rgba(255, 255, 255, 0.04); color: var(--c-ink-2); }
+.st-role-tag--aquarist { color: #7ff0e2; border-color: rgba(94, 234, 212, 0.3); background: rgba(94, 234, 212, 0.07); }
+.st-role-tag--stock_manager { color: var(--c-gold); border-color: rgba(245, 196, 81, 0.32); background: rgba(245, 196, 81, 0.07); }
+.st-role-tag--docent { color: var(--c-violet); border-color: rgba(182, 156, 255, 0.34); background: rgba(182, 156, 255, 0.07); }
+
+.st-stars { letter-spacing: 1px; font-size: calc(12.5px * var(--text-scale)); line-height: 1; white-space: nowrap; }
+.st-stars__on { color: var(--c-gold); text-shadow: 0 0 8px rgba(245, 196, 81, 0.35); }
+.st-stars__off { color: rgba(255, 255, 255, 0.16); }
+
+.st-fire { flex: none; }
+
+.st-assign, .st-budget { display: grid; gap: 7px; }
+.st-assign__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.st-assign__names { display: block; line-height: 1.5; }
+.st-assign__names svg { vertical-align: -2px; color: var(--c-aqua); }
+.st-assign__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-chip { min-height: 32px; padding: 5px 11px; }
+.st-chip svg { color: var(--c-aqua); }
+.st-chip__who { color: var(--c-ink-4); font-weight: 500; }
+.st-budget__v { color: var(--c-gold); font-variant-numeric: tabular-nums; }
+
+.st-xp { display: grid; gap: 5px; }
+.st-xp svg { vertical-align: -1px; color: var(--c-gold); }
+
+.st-issues { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 2px; }
+.st-full { margin-bottom: 12px; }
+.pn-grid.st-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pn-grid.st-tiles--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1500px) { .pn-grid.st-tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.st-pool-clock { display: inline-flex; align-items: center; gap: 5px; }
+.st-foot { margin: 0; line-height: 1.5; }
+.st-foot svg { vertical-align: -2px; }
+
+.st-locked { display: grid; gap: 12px; }
+.st-roles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.st-role { display: grid; gap: 6px; padding: 14px; }
+.st-role p { margin: 0; line-height: 1.45; }
+.st-role__head { display: flex; align-items: center; gap: 8px; }
+.st-role__head b { font-weight: 650; }
+.st-role__head span { margin-left: auto; }
+.st-role--aquarist .st-role__head svg { color: var(--c-aqua); }
+.st-role--stock_manager .st-role__head svg { color: var(--c-gold); }
+.st-role--docent .st-role__head svg { color: var(--c-violet); }
+
+/* Tank card: "Cared for by Maya (Aquarist ★★★)" */
+.st-keeperline { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 5px 10px 5px 5px; border-radius: var(--r-pill); background: rgba(31, 143, 134, 0.14); border: 1px solid rgba(94, 234, 212, 0.22); color: var(--c-ink-2); font-size: calc(12px * var(--text-scale)); cursor: pointer; max-width: 100%; text-align: left; font: inherit; font-size: calc(12px * var(--text-scale)); }
+.st-keeperline:hover { background: rgba(31, 143, 134, 0.22); border-color: rgba(94, 234, 212, 0.38); }
+.st-keeperline:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
+.st-keeperline .st-avatar { box-shadow: none; }
+.st-keeperline__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-keeperline__text b { color: var(--c-ink); font-weight: 650; }
+.st-keeperline .st-stars { font-size: calc(11px * var(--text-scale)); }
+
+@media (max-width: 560px) {
+  .st-list, .st-list--candidates { grid-template-columns: minmax(0, 1fr); }
+  .st-card { padding: 12px; }
+  .st-card__top { gap: 10px; }
+  .st-card__name { font-size: calc(16px * var(--text-scale)); }
+}

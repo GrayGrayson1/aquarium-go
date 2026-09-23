@@ -1,0 +1,92 @@
+/* Design tokens. OWNER: lane "ui-shell". Everything in the UI uses these variables. */
+:root {
+  --font-display: 'Fraunces Display', 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --font-ui: 'Inter Variable', system-ui, -apple-system, sans-serif;
+
+  --c-bg: #03090d;
+  --c-ink: #eaf5f7;
+  --c-ink-2: #b9ccd1;
+  --c-ink-3: #8199a0;
+  --c-ink-4: #5d7379;
+  --c-line: rgba(200, 235, 245, 0.11);
+  --c-line-strong: rgba(200, 235, 245, 0.2);
+  --c-line-bright: rgba(220, 245, 250, 0.32);
+  --c-glass: rgba(9, 22, 30, 0.56);
+  --c-glass-strong: rgba(7, 17, 24, 0.84);
+  --c-glass-soft: rgba(12, 28, 38, 0.38);
+  --c-glass-hover: rgba(30, 58, 72, 0.55);
+  --c-fill: rgba(255, 255, 255, 0.045);
+  --c-fill-2: rgba(255, 255, 255, 0.075);
+  --c-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+  --c-aqua: #5eead4;
+  --c-aqua-2: #2dd4bf;
+  --c-aqua-ink: #04201d;
+  --c-aqua-soft: rgba(94, 234, 212, 0.14);
+  --c-coral: #ff8a65;
+  --c-coral-soft: rgba(255, 138, 101, 0.14);
+  --c-gold: #f5c451;
+  --c-gold-soft: rgba(245, 196, 81, 0.14);
+  --c-violet: #b69cff;
+  --c-blue: #7cc4ff;
+
+  --c-good: #4ade80;
+  --c-watch: #fbbf24;
+  --c-danger: #f87171;
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  --blur: blur(20px) saturate(150%);
+  --blur-strong: blur(28px) saturate(160%);
+  --shadow-1: 0 10px 34px rgba(0, 0, 0, 0.34), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-2: 0 24px 70px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 0 1px rgba(94, 234, 212, 0.35), 0 0 28px rgba(94, 234, 212, 0.22);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --text-scale: 1;
+
+  /* layout */
+  --edge: 16px;
+  --topbar-h: 56px;
+  --dock-h: 72px;
+  --sheet-w: 404px;
+  --z-hud: 20;
+  --z-sheet: 30;
+  --z-panel: 40;
+  --z-toast: 70;
+  --z-modal: 80;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --edge: 10px;
+    --topbar-h: 48px;
+    --dock-h: 64px;
+  }
+}
+
+:root[data-contrast='high'] {
+  --c-glass: rgba(4, 10, 14, 0.93);
+  --c-glass-strong: rgba(2, 6, 9, 0.97);
+  --c-glass-soft: rgba(4, 10, 14, 0.85);
+  --c-line: rgba(220, 245, 250, 0.36);
+  --c-line-strong: rgba(230, 250, 255, 0.5);
+  --c-ink: #ffffff;
+  --c-ink-2: #e2eef1;
+  --c-ink-3: #c3d3d7;
+  --c-ink-4: #a9bcc1;
+}

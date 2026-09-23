@@ -1,0 +1,61 @@
+/* Frags & cuttings UI (lane "frags"): Build → Decor frag actions + frag storage, Market frag picker/review/visuals. */
+
+/* ── swatch ── */
+.fr-swatch { display: block; flex: none; border-radius: 12px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 6px 16px rgba(0, 0, 0, 0.3); }
+
+/* ── take-a-frag pill inside a placed-decor row ── */
+.fr-take { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; padding: 4px 10px 4px 8px; min-height: 30px; border-radius: var(--r-pill); border: 1px solid rgba(94, 234, 212, 0.42); background: rgba(94, 234, 212, 0.1); color: var(--c-aqua); font: 600 calc(12px * var(--text-scale)) / 1.2 var(--font-ui); cursor: pointer; align-self: flex-start; transition: background 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.2s var(--ease); }
+.fr-take:hover { background: rgba(94, 234, 212, 0.18); border-color: rgba(94, 234, 212, 0.7); }
+.fr-take:active { transform: scale(0.97); }
+.fr-take:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
+.fr-wait { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; color: var(--c-ink-3); font-size: calc(11.5px * var(--text-scale)); line-height: 1.35; max-width: 100%; }
+.fr-wait svg { flex: none; }
+.fr-ring { flex: none; transform: rotate(-90deg); }
+.fr-ring__bg { stroke: rgba(255, 255, 255, 0.12); }
+.fr-ring__fg { stroke: var(--c-aqua); transition: stroke-dashoffset 0.6s var(--ease); }
+.fr-how { margin-top: 2px; color: var(--c-ink-3); font-size: calc(11px * var(--text-scale)); line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.fr-fragtag { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; color: var(--c-violet); font-size: calc(11.5px * var(--text-scale)); font-weight: 600; }
+
+/* ── storage ── */
+.fr-store { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 10px; }
+.fr-item { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 16px; background: var(--pn-card); border: 1px solid var(--pn-card-line); min-width: 0; }
+.fr-item__top { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.fr-item__name { font-family: var(--font-display); font-size: calc(15px * var(--text-scale)); color: var(--c-ink); line-height: 1.2; }
+.fr-item__meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.fr-item__how { color: var(--c-ink-3); font-size: calc(11.5px * var(--text-scale)); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.fr-item__acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.fr-item__acts .ag-btn { flex: 1 1 auto; justify-content: center; }
+.fr-intro { margin: 0 0 10px; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; }
+
+/* ── market: picker + visual ── */
+.fr-pick { display: grid; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.fr-pickrow { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; border-radius: 14px; background: var(--pn-card); border: 1px solid var(--pn-card-line); cursor: pointer; min-height: 56px; transition: border-color 0.2s var(--ease), background 0.2s var(--ease); }
+.fr-pickrow:hover { background: var(--pn-card-hover); }
+.fr-pickrow.is-on { border-color: rgba(94, 234, 212, 0.55); background: rgba(94, 234, 212, 0.07); }
+.fr-pickrow:focus-within { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
+.fr-check { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 1.5px solid var(--c-line-bright); display: grid; place-items: center; color: var(--c-aqua-ink); }
+.fr-pickrow.is-on .fr-check { background: var(--c-aqua); border-color: var(--c-aqua); }
+.fr-stack { position: relative; display: inline-block; flex: none; }
+.fr-stack > span { position: absolute; top: 0; }
+.fr-review { display: flex; gap: 14px; align-items: flex-start; }
+.pn-sheet--phone .fr-review { flex-direction: column; }
+
+/* lane:w2-ui — "Ready to propagate" hint (shown until the first cut) */
+.fr-ready { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(94, 234, 212, 0.28); background: rgba(94, 234, 212, 0.06); }
+.fr-ready__icon { flex: none; color: var(--c-aqua); }
+.fr-ready__text { flex: 1; min-width: 0; margin: 0; color: var(--c-ink-2); font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; }
+.fr-ready__text b { color: var(--c-ink); font-weight: 650; }
+.pn-sheet--phone .fr-ready { flex-wrap: wrap; align-items: flex-start; }
+.pn-sheet--phone .fr-ready__text { flex-basis: calc(100% - 30px); }
+.pn-sheet--phone .fr-ready .ag-btn { margin-left: auto; }
+
+/* lane:w2-ui — Build › Decor "In <tank>" rows: a grid item's min-width defaults to its content, and the clamped
+   "how to take a cutting" line (-webkit-box) reports its full unwrapped width, so on phones every row grew wider than
+   the sheet and pushed "Sell" off the right edge. Let the rows and their text column shrink (the text wraps; the
+   buttons keep their size), a little tighter on phones. */
+.pn-placed { grid-template-columns: minmax(0, 1fr); }
+.pn-placed__row { min-width: 0; }
+.pn-placed__row > .pn-grow { min-width: 0; }
+.pn-placed__row .fr-how, .pn-placed__row .fr-wait { max-width: 100%; }
+.pn-sheet--phone .pn-placed__row { gap: 8px; padding-right: 6px; }
+.pn-sheet--phone .pn-placed__row > .ag-btn { padding-inline: 9px; }
