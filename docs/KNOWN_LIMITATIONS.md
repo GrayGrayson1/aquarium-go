@@ -39,6 +39,9 @@ What is simplified, approximated or missing in this build. None of these block p
 - The close camera's line-of-sight check models the substrate and hardscape domes, but not plants or equipment.
 - Room-view GPU cost is dominated by the room point lights on the big lit floors and walls (about 45% of scene GPU in the grand hall). Reducing it would need an art change (a lightmap or fewer lights).
 - Creature visuals still rebuild on a LOD change (about 100 ms of work spread over a room return). Publishing (`share`) still walks the whole state tree every tick (about 0.7–1.4 ms on the big facility). A `?fixture=` boot waits for one extra chunk.
+- Big and high-DPI screens (4K, 150–200% scaling) render the 3D view at a capped internal resolution (≈4.2 MP at High, 3.2 at Medium, 2.1 at Low; Ultra is native up to 4K) and are scaled up. Motion is smooth, but the aquarium can look slightly softer than the crisp UI. Photos still capture at native resolution.
+- The frame-time governor can't see a weak GPU until it has run for a few seconds, so the first 2–5 s on a new device may be uneven. After that the settled level is remembered per device.
+- Budget CPUs on the 1,000 gal facility are limited by three.js draw-call overhead (~18 fps at 4× CPU throttle); resolution can't help there. Building a tank's decor and creatures on a tank switch can still hitch for 100–400 ms on slow CPUs.
 - Very long tanks (500–1,000 gal) are small on portrait phones because they are framed to fit the width; pinch or orbit to get closer. The plaque's species line is legible only at tank-view distance.
 
 ## Care shortcuts

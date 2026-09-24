@@ -25,6 +25,7 @@ import {
 import { bodyFits, takeOff } from './loco';
 import { biteParticle, particleTags } from './food';
 import { spitEnter, spitTick } from './spit'; // lane:brackish
+import { perStep, stepRate } from './stepRate'; // lane:pc-perf — frame-rate independent per-step constants
 
 export interface ActDef {
   prio: number;
@@ -589,7 +590,7 @@ export const ACTS: Record<ActId, ActDef> = {
     },
     tick(a, w) {
       const env = w.env;
-      if (env.pointerActive && env.focused) a.actData.x += (env.pointer.x - a.actData.x) * 0.02;
+      if (env.pointerActive && env.focused) a.actData.x += (env.pointer.x - a.actData.x) * perStep(0.02);
       _a.copy(a.actData);
       if (a.actPhase >= 1) _a.x += Math.sin(w.time * 0.45 + a.noiseOff) * a.L * 0.8;
       go(a, fitInWater(a, w, _a), cruiseBL(a) * 0.9, a.L * 1.5);
@@ -600,7 +601,7 @@ export const ACTS: Record<ActId, ActDef> = {
         _b.set(a.rt.pos.x + Math.sin(w.time * 0.3 + a.noiseOff) * 0.1, a.rt.pos.y + 0.02, env.maxZ + 0.6);
         look(a, env.pointerActive && env.focused ? V[6].set(env.pointer.x, env.pointer.y, env.maxZ + 0.3) : _b);
         // a betta sees its reflection and may flare at it
-        if (a.setId === 'betta' && a.actT > 2 && rnd(a) < 0.004 * (0.5 + a.mods.displayDrive)) return false;
+        if (a.setId === 'betta' && a.actT > 2 && rnd(a) < 0.004 * stepRate.k * (0.5 + a.mods.displayDrive)) return false;
       }
       return true;
     },
@@ -840,13 +841,13 @@ export const ACTS: Record<ActId, ActDef> = {
     },
     tick(a, w) {
       const env = w.env;
-      if (env.pointerActive && env.focused) a.actData.x += (env.pointer.x - a.actData.x) * 0.03;
+      if (env.pointerActive && env.focused) a.actData.x += (env.pointer.x - a.actData.x) * perStep(0.03);
       _a.copy(a.actData);
       _a.y += Math.sin(w.time * 1.1 + a.noiseOff) * a.L * 0.4;
       go(a, fitInWater(a, w, _a), cruiseBL(a), a.L * 1.5);
       a.ctrl.avoid = 0.2;
       look(a, V[6].set(a.rt.pos.x, a.rt.pos.y + 0.05, env.maxZ + 0.5));
-      if (rnd(a) < 0.05) a.mouthPulse = 0.7;
+      if (rnd(a) < 0.05 * stepRate.k) a.mouthPulse = 0.7;
       return true;
     },
   },
@@ -1337,7 +1338,7 @@ export const ACTS: Record<ActId, ActDef> = {
         // spread-eagled, motionless, drifting with the water
         a.ctrl.attach = 0.08;
         a.ctrl.speedBL = 0;
-        a.actData.y -= 0.0012 * (1 / 60);
+        a.actData.y -= 0.0012 * stepRate.dt;
       }
       return true;
     },
@@ -1933,7 +1934,7 @@ function nestTick(a: Agent, w: AIWorld): boolean {
   go(a, fitInWater(a, w, _a), cruiseBL(a), a.L * 0.8);
   look(a, a.actNormal);
   a.ctrl.avoid = 0.2;
-  if (rnd(a) < 0.08) a.mouthPulse = 0.9;
+  if (rnd(a) < 0.08 * stepRate.k) a.mouthPulse = 0.9;
   return true;
 }
 
@@ -1976,8 +1977,8 @@ function guardTick(a: Agent, w: AIWorld): boolean {
   look(a, eggs);
   a.ctrl.avoid = 0.2;
   a.ctrl.sep = 0.3;
-  if (rnd(a) < 0.03) a.mouthPulse = 0.8; // mouthing the eggs / repairing the nest
-  if (a.setId === 'clownfish' && rnd(a) < 0.01) observe(a, w, 'pair_swim');
+  if (rnd(a) < 0.03 * stepRate.k) a.mouthPulse = 0.8; // mouthing the eggs / repairing the nest
+  if (a.setId === 'clownfish' && rnd(a) < 0.01 * stepRate.k) observe(a, w, 'pair_swim');
   // chase intruders away
   const n = neighbors(w, eggs, a.L * 3, a);
   for (let i = 0; i < n; i++) {
@@ -2400,7 +2401,7 @@ function burrowTick(a: Agent, w: AIWorld): boolean {
   a.ctrl.allowFloor = true;
   a.ctrl.pitchBias = 0.15;
   a.pose = 'rest';
-  if (rnd(a) < 0.004) a.mouthPulse = 1; // spits out a mouthful of sand
+  if (rnd(a) < 0.004 * stepRate.k) a.mouthPulse = 1; // spits out a mouthful of sand
   lookAround(a, w, a.rt.pos, 2.5);
   return true;
 }
@@ -2409,7 +2410,8 @@ function burrowTick(a: Agent, w: AIWorld): boolean {
 
 function feedTick(a: Agent, w: AIWorld): boolean {
   let p = findParticle(w, a.foodId);
-  if (!p || (a.actPhase === 0 && w.frame % 20 === 0)) {
+  // lane:pc-perf — re-pick ~3×/s of AI time (was every 20th step: 3×/s at 60 Hz, 7×/s at 144 Hz)
+  if (!p || (a.actPhase === 0 && Math.floor(w.time * 3) !== Math.floor((w.time - stepRate.dt) * 3))) {
     const q = chooseFood(a, w);
     if (!q) return false;
     if (!p || q !== p) {
@@ -2429,7 +2431,7 @@ function feedTick(a: Agent, w: AIWorld): boolean {
     a.ctrl.hasGoal = a.loco !== 'crawl' && a.loco !== 'walk';
     a.ctrl.goal.copy(a.rt.pos);
     a.ctrl.speedBL = 0.2;
-    if (rnd(a) < 0.15) a.mouthPulse = Math.max(a.mouthPulse, 0.4);
+    if (rnd(a) < 0.15 * stepRate.k) a.mouthPulse = Math.max(a.mouthPulse, 0.4);
     if (w.time > a.actTimer) a.actPhase = 0;
     return true;
   }
@@ -2592,7 +2594,7 @@ function huntTick(a: Agent, w: AIWorld): boolean {
         a.ctrl.hasGoal = true;
         a.ctrl.speedBL = 0.1;
       } else a.ctrl.hasGoal = false;
-      if (rnd(a) < 0.2) a.mouthPulse = Math.max(a.mouthPulse, 0.6);
+      if (rnd(a) < 0.2 * stepRate.k) a.mouthPulse = Math.max(a.mouthPulse, 0.6);
       if (w.time > a.actTimer) {
         if (p.amount > 0 && !p.fade) a.actPhase = 0;
         else return false;

@@ -32,7 +32,10 @@ const _intent = new THREE.Vector3();
 const _gn = new THREE.Vector3();
 const _curHit = makeHit();
 const _altHit = makeHit();
-/** Current locomotion step (for rate-limited push-outs inside the constraint passes). */
+/**
+ * Current locomotion step (for rate-limited push-outs inside the constraint passes). lane:pc-perf — per-step contact
+ * damping is written `f ** (_dt * 60)`: identical at 60 Hz, and the same per second at 144 Hz or 30 Hz.
+ */
 let _dt = 1 / 60;
 /** Max speed (m/s) at which a body deep inside decor (e.g. a rock just placed on top of it) is eased out. */
 const EASE_OUT_SPEED = 0.3;
@@ -634,7 +637,7 @@ export function constrainBody(a: Agent, w: AIWorld): void {
     const span = (env.maxZ - env.minZ) - 2 * side * 0.45;
     const need = Math.abs(a.fwd.z) * b.hx * L * 1.92;
     if (need > span && span > 0) {
-      a.fwd.z *= 0.85;
+      a.fwd.z *= Math.pow(0.85, _dt * 60);
       safeNormalize(a.fwd, X1);
     }
   }
@@ -842,7 +845,7 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
         clipPushToGlass(env, pos, side, _n);
         pos.x += _n.x;
         pos.z += _n.z;
-        a.speed *= 0.8;
+        a.speed *= Math.pow(0.8, _dt * 60);
       }
     }
   }
@@ -973,7 +976,7 @@ function constrainCrawlBody(a: Agent, w: AIWorld, mask: number, prevFwd: THREE.V
         // walkers: never shove the body past the glass (see stepCrawl) — a wedged body walks out (resolveWedge)
         if (walk) clipPushToGlass(env, pos, a.set.body.hz * L, _n);
         pos.add(_n);
-        a.speed *= 0.85;
+        a.speed *= Math.pow(0.85, _dt * 60);
         moved = true;
       }
     }
@@ -990,7 +993,7 @@ function constrainCrawlBody(a: Agent, w: AIWorld, mask: number, prevFwd: THREE.V
       const prev = endPenetration(a, env, climbH, prevFwd, hx, r);
       if (prev < now) {
         a.fwd.copy(prevFwd);
-        a.speed *= 0.5;
+        a.speed *= Math.pow(0.5, _dt * 60);
         now = prev;
       }
       // still wedged (tail against a stone, nose against the glass): swing the body toward whichever side frees it
@@ -1008,7 +1011,7 @@ function constrainCrawlBody(a: Agent, w: AIWorld, mask: number, prevFwd: THREE.V
   if (!(mask & SURF_GLASS)) {
     const spanZ = env.maxZ - env.minZ - side;
     if (Math.abs(a.fwd.z) * hx * 1.8 > spanZ) {
-      a.fwd.z *= 0.85;
+      a.fwd.z *= Math.pow(0.85, _dt * 60);
       safeNormalize(a.fwd, X1);
     }
   }
@@ -1297,8 +1300,8 @@ function easeOutOfDecor(a: Agent, env: TankEnv, pos: THREE.Vector3, side: number
       if (d >= depth) continue;
       freeExit(env, c, pos.x, pos.y, pos.z, side, _n);
     }
-    pos.addScaledVector(_n, side * 0.5 + EASE_OUT_SPEED * _dt);
-    a.speed *= 0.6;
+    pos.addScaledVector(_n, side * (1 - Math.pow(0.5, _dt * 60)) + EASE_OUT_SPEED * _dt);
+    a.speed *= Math.pow(0.6, _dt * 60);
     mask |= 1 << Math.min(i, 30);
   }
   return mask;

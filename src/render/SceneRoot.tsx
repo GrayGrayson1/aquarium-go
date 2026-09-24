@@ -9,7 +9,6 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { PerformanceMonitor } from '@react-three/drei';
 import { useGame, getGame } from '@/state/game';
 import { useRenderTank } from './shared/renderSelectors';
 import { ProgramKeeper, ShaderWarmup } from './shared/warmup';
@@ -20,8 +19,8 @@ import { FacilityWorld } from './facility/FacilityWorld';
 import { CameraRig } from './camera/CameraRig';
 import { cameraFX } from './camera/cameraFX';
 import { PostFX } from './post/PostFX';
-import { useRenderPerf } from './shared/quality';
 import { AmbientDepths } from './shared/AmbientDepths';
+import { useRenderQuality } from './shared/quality';
 import { RenderBridge, RoomEnvironment, SceneAmbience } from './shared/environment';
 
 export { RenderBridge, RoomEnvironment, SceneAmbience };
@@ -29,22 +28,6 @@ import type { RenderLod } from './lod';
 
 const NEAR_LOD1 = 4;
 const TANK_VIEW_RADIUS = 7;
-
-function PerfWatch() {
-  const setDegrade = useRenderPerf((s) => s.setDegrade);
-  return (
-    <PerformanceMonitor
-      ms={400}
-      iterations={8}
-      flipflops={4}
-      bounds={(r) => [Math.min(42, r * 0.7), Math.min(57, r * 0.95)]}
-      onDecline={() => {
-        if (document.visibilityState === 'visible') setDegrade(useRenderPerf.getState().degrade - 1);
-      }}
-      onIncline={() => setDegrade(useRenderPerf.getState().degrade + 1)}
-    />
-  );
-}
 
 function sameLods(a: Record<string, RenderLod>, b: Record<string, RenderLod>) {
   const ka = Object.keys(a);
@@ -59,19 +42,22 @@ function sameLods(a: Record<string, RenderLod>, b: Record<string, RenderLod>) {
  */
 function useSettledView(inTankView: boolean): boolean {
   const [settled, setSettled] = useState(inTankView);
-  const since = useRef({ want: inTankView, frames: 0, seq: cameraFX.transitionSeq });
-  useFrame(() => {
+  const since = useRef({ want: inTankView, frames: 0, secs: 0, seq: cameraFX.transitionSeq });
+  useFrame((_, dt) => {
     const s = since.current;
     if (s.want !== inTankView) {
       s.want = inTankView;
       s.frames = 0;
+      s.secs = 0;
       s.seq = cameraFX.transitionSeq;
     }
     if (settled === inTankView) return;
     s.frames++;
-    // give the rig a couple of frames to start its flight, then wait for it to land (or bail out after ~3 s)
+    s.secs += Math.min(dt, 0.1);
+    // give the rig a couple of frames to start its flight, then wait for it to land (or bail out after ~3 s of frame time,
+    // lane:pc-perf — was 200 frames: 1.4 s at 144 Hz)
     const started = cameraFX.transitionSeq !== s.seq;
-    if ((s.frames > 3 && !cameraFX.transitioning && (started || s.frames > 8)) || s.frames > 200) setSettled(inTankView);
+    if ((s.frames > 3 && !cameraFX.transitioning && (started || s.frames > 8)) || s.secs > 3.3) setSettled(inTankView);
   });
   return settled;
 }
@@ -117,7 +103,9 @@ function TankSlot({ id, lod, focused, near }: { id: string; lod: RenderLod; focu
     visible = Math.hypot(p[0] - near[0], p[2] - near[2]) < TANK_VIEW_RADIUS;
   }
   return (
-    <group visible={visible}>
+    // lane:pc-perf — a hidden tank's subtree also skips three's per-frame matrix updates (they ran for every object,
+    // visible or not: ~2,400 of the 3,800 objects in the 1,000 gal view)
+    <group visible={visible} matrixWorldAutoUpdate={visible}>
       <TankInstance tank={tank} lod={lod} focused={focused} />
     </group>
   );
@@ -148,6 +136,9 @@ export function SceneRoot() {
   const heroPos = useMemo(() => (heroPosKey ? (heroPosKey.split(',').map(Number) as [number, number, number]) : null), [heroPosKey]);
   // lane:perf — a newly loaded world (new game, save, fixture) re-runs the shader warm-up
   const worldKey = useGame((s) => (s.game ? `${s.game.saveId}|${s.game.createdRealMs}` : ''));
+  // lane:pc-perf — …and so does a tier change (Settings, or the governor's last-resort drop): its new programs compile
+  // in parallel behind the veil instead of freezing the first frame (seconds on Windows/Direct3D)
+  const renderQuality = useRenderQuality();
 
   return (
     <>
@@ -155,7 +146,7 @@ export function SceneRoot() {
       <RoomEnvironment />
       <SceneAmbience />
       <RenderBridge />
-      <PerfWatch />
+      {/* lane:pc-perf — frame-time adaptation lives in SceneCanvas's ResolutionGovernor (resolution first, features last) */}
       {/* lane:perf — compiled programs survive LOD swaps, so switching tanks/views never recompiles (warmup.tsx) */}
       <ProgramKeeper />
       {hasGame ? (
@@ -172,7 +163,7 @@ export function SceneRoot() {
             return <TankSlot key={id} id={id} lod={lod} focused={isFocus && screen === 'game'} near={near} />;
           })}
           {/* lane:perf — last child of the world: compiles every material in parallel behind a veil (see warmup.tsx) */}
-          <ShaderWarmup key={worldKey} />
+          <ShaderWarmup key={`${worldKey}|${renderQuality}`} />
         </>
       ) : (
         <AmbientDepths />

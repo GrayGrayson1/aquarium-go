@@ -33,6 +33,30 @@ const queue: Job[] = [];
 const queued = new Set<string>();
 let rafId = 0;
 let unavailable = false;
+/** lane:pc-perf — ms the last job took; an expensive job spaces out the next one (see schedule). */
+let lastJobMs = 0;
+let delayId = 0;
+
+/**
+ * lane:pc-perf — one live (off-stage) object per species keeps its shader programs linked. Disposing every portrait
+ * object right after its render released the programs, so the next animal of the same species compiled them again:
+ * opening Livestock on a big facility spent ~3 s of a 15 s session compiling (measured) — seconds more on
+ * Windows/Direct3D. The previous object of a species is disposed only after the new one has rendered (its programs are
+ * then in use again), and at most KEEP_SPECIES species are kept.
+ */
+const KEEP_SPECIES = 16;
+const keepAlive = new Map<string, { dispose(): void }>();
+function keep(key: string, obj: { dispose(): void }) {
+  const prev = keepAlive.get(key);
+  keepAlive.delete(key);
+  keepAlive.set(key, obj);
+  if (prev && prev !== obj) prev.dispose();
+  while (keepAlive.size > KEEP_SPECIES) {
+    const [k, o] = keepAlive.entries().next().value as [string, { dispose(): void }];
+    keepAlive.delete(k);
+    o.dispose();
+  }
+}
 
 let renderer: THREE.WebGLRenderer | null = null;
 let scene: THREE.Scene | null = null;
@@ -88,6 +112,8 @@ function ensureRenderer(): boolean {
 }
 
 function disposeRenderer() {
+  for (const o of keepAlive.values()) o.dispose();
+  keepAlive.clear();
   for (const t of backdrops.values()) t.dispose();
   backdrops.clear();
   renderer?.dispose();
@@ -206,12 +232,14 @@ function renderJob(job: Job): string | null {
       url = renderer.domElement.toDataURL('image/png');
     }
     stage.remove(holder);
+    keep(`${job.species.id}|${job.creature?.lifeStage ?? 'adult'}`, obj);
+    obj = null;
     return url;
   } catch (e) {
     console.warn('[portraits] render failed', job.species.id, e);
     return null;
   } finally {
-    obj.dispose();
+    obj?.dispose();
   }
 }
 
@@ -220,14 +248,26 @@ function pump() {
   const job = queue.shift();
   if (!job) return;
   queued.delete(job.key);
+  const t0 = performance.now();
   const url = renderJob(job);
+  lastJobMs = performance.now() - t0;
   results.set(job.key, url);
   notify(job.key);
   if (queue.length) schedule();
 }
 
 function schedule() {
-  if (rafId || typeof requestAnimationFrame === 'undefined') return;
+  if (rafId || delayId || typeof requestAnimationFrame === 'undefined') return;
+  // lane:pc-perf — a cheap job (programs warm) runs every frame; after an expensive one (a first compile, a big
+  // readback) leave a few frames free so a panel full of new portraits never turns into a run of dropped frames
+  if (lastJobMs > 8) {
+    delayId = window.setTimeout(() => {
+      delayId = 0;
+      schedule();
+    }, Math.min(250, lastJobMs * 3));
+    lastJobMs = 0;
+    return;
+  }
   rafId = requestAnimationFrame(pump);
 }
 

@@ -92,6 +92,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [heldId, setHeldId] = useState<string | null>(null);
   // hitOk: lastX/lastZ hold a real pointer hit for the current tool (a tap never has to wait for React's ghost state)
+  const ghostAt = useRef(0); // lane:pc-perf
   const state = useRef({ rotY: 0, scale: 1, lastX: 0, lastZ: 0, hitOk: false, pointer: new THREE.Vector2(), hasPointer: false, touches: new Map<number, { x: number; y: number }>(), pinch0: 0, twist0: 0, scale0: 1, rot0: 0, grabOffset: [0, 0] as [number, number], downAt: 0 });
   const tankRef = useRef(tank);
   tankRef.current = tank;
@@ -420,7 +421,12 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
 
   // keep the ghost glued to the scape while the camera glides
   useFrame(() => {
-    if (state.current.hasPointer && (tool === 'decor_place' || heldId) && ghost && Math.random() < 0.25) updateGhost();
+    // lane:pc-perf — ~15×/s by time (a per-frame coin flip ran 2.4× as often at 144 Hz)
+    const now = performance.now();
+    if (state.current.hasPointer && (tool === 'decor_place' || heldId) && ghost && now - ghostAt.current > 66) {
+      ghostAt.current = now;
+      updateGhost();
+    }
   });
 
   const hoverInst = tool === 'decor_move' && !heldId && hoverId ? tank.decor.find((d) => d.id === hoverId) : undefined;

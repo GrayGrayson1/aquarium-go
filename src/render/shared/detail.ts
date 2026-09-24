@@ -26,7 +26,7 @@ export const CRITTER_DETAIL: DetailThresholds = { full: 110, mid: 16 };
  * Decor at hero LOD — the lod-0 detail budget by quality. Below this projected size (CSS px of the item's largest
  * dimension) an item draws its lod-1 mesh, the one the facility view uses. Decor lod-1 meshes are simplified in
  * structure (fewer blades, strands and polyps), not just tessellation, so high/ultra never switch (0 = off): the hero
- * look there is exactly the full mesh. Low/medium — and a machine the PerformanceMonitor has degraded to them — trade
+ * look there is exactly the full mesh. Low/medium — and a machine the ResolutionGovernor has stepped down to them as a last resort — trade
  * that detail on small items for frame time. Use as `nextDetailTier(px, tier, { full: T, mid: 0 })`.
  */
 export const DECOR_DETAIL_MID_PX: Record<QualityLevel, number> = { low: 150, medium: 90, high: 0, ultra: 0 };

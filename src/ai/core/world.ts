@@ -13,6 +13,7 @@ import { computeZoneBand, releaseAnchor } from './nav';
 import { initialPlacement, stepAgent } from './brain';
 import { stepFood, type FoodState, makeFoodState } from './food';
 import { stepArcherShot } from './spit'; // lane:brackish
+import { setStepDt } from './stepRate'; // lane:pc-perf
 
 export interface AIHooks {
   /** Visual events (eat, bite, startle, smash, bubble_burst…). */
@@ -211,6 +212,7 @@ export function stepWorld(w: AIWorld, dtIn: number): void {
   if (dt <= 0) return;
   w.time += dt;
   w.frame++;
+  setStepDt(dt); // lane:pc-perf — per-step constants scale with the real step length (stepRate.ts)
   // prune stimuli
   while (w.stimuli.length && w.time - w.stimuli[0].t > 4) w.stimuli.shift();
   if (w.useHash) {

@@ -394,7 +394,7 @@ function Painting({ pos, rotY, w, h, seed, mood, mats }: { pos: [number, number,
 
 function LampLight({ pos }: { pos: [number, number, number] }) {
   const ref = useRef<THREE.PointLight>(null);
-  useFrame(() => {
+  useFrame((_, dt) => {
     const g = getGame();
     const l = ref.current;
     if (!g || !l) return;
@@ -402,7 +402,7 @@ function LampLight({ pos }: { pos: [number, number, number] }) {
     // the lamp is on in the evening and at night, softly during the day
     const eve = h >= 17 || h < 7 ? 1 : 0.7;
     // lane:qa-visual — turned down to a reading glow in the small hours so the moonlit tank carries the room
-    l.intensity += (4.2 * eve * (1 - 0.45 * lateNight(h)) - l.intensity) * 0.05;
+    l.intensity += (4.2 * eve * (1 - 0.45 * lateNight(h)) - l.intensity) * (1 - Math.exp(-3.1 * Math.min(dt, 0.1))); // lane:pc-perf — per second, not per frame
   });
   return <pointLight ref={ref} position={pos} color="#ffbe78" intensity={3} distance={8} decay={1.5} />;
 }
@@ -419,12 +419,12 @@ function lateNight(h: number): number {
 /** Warm ceiling light; dims in the small hours (see lateNight). */
 function CeilingLight({ pos }: { pos: [number, number, number] }) {
   const ref = useRef<THREE.PointLight>(null);
-  useFrame(() => {
+  useFrame((_, dt) => {
     const g = getGame();
     const l = ref.current;
     if (!g || !l) return;
     const target = 2.2 * (1 - 0.75 * lateNight(hourOfDay(g.clock.hour)));
-    l.intensity += (target - l.intensity) * 0.05;
+    l.intensity += (target - l.intensity) * (1 - Math.exp(-3.1 * Math.min(dt, 0.1))); // lane:pc-perf
   });
   return <pointLight ref={ref} position={pos} color="#ffd8a8" intensity={2.2} distance={7} decay={1.4} />;
 }

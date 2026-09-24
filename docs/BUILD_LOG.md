@@ -199,3 +199,17 @@ The user asked for every improvement we could find, more testing, visual bug fix
 - Playwright against the production build: 38/38, including the new `features.spec.ts` for Shows, Staff, Frags and Brackish.
 - Motion scan: raw 0.03%, drawn 0.00%, axolotl 0.
 - QA screenshots regenerated in `screenshots/`.
+
+## PC performance (2026-09-23)
+The game was choppy on a Windows PC with a 4K monitor: the canvas rendered 8.3 MP at High with 4× MSAA and post-processing, and the old performance monitor could only toggle features, which recompiled shaders. Changes:
+- **Rendering load:**
+  - A ResolutionGovernor replaces drei's PerformanceMonitor: a per-tier megapixel budget and an adaptive render scale, with at most one last-resort feature drop per session. The settled level is remembered per device.
+  - Auto graphics default from the GPU class, shown in Settings as "Auto · <tier>".
+  - The composer now follows DPR changes.
+- **Hitches:**
+  - Portrait shader programs are kept alive, which ends the sync-compile storm.
+  - Hidden tanks skip matrix updates and posing.
+  - Autosave runs at idle.
+- **Frame-rate independence:** the AI and room lights behave the same at 144 Hz.
+- **Result:** at 4K on a 2× throttled CPU, 26–50 fps → 45–60 fps, and synchronous shader compile time in a 60 s 4K play session went from 19.2 s to 1.0 s.
+

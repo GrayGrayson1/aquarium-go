@@ -246,6 +246,10 @@
 .ag-quality__opt[aria-checked='true'] { color: #effffc; border-color: rgba(94, 234, 212, 0.6); background: rgba(94, 234, 212, 0.14); box-shadow: 0 0 18px rgba(94, 234, 212, 0.12); }
 .ag-quality__opt[aria-checked='true'] svg { color: var(--c-aqua); }
 .ag-quality__opt:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 1px; }
+/* lane:pc-perf — "Auto · Medium" spans the row above the four fixed levels */
+.ag-quality__opt--auto { grid-column: 1 / -1; flex-direction: row; min-height: 44px; }
+.ag-quality__cur { font-weight: 520; color: var(--c-ink-3, var(--c-ink-2)); }
+.ag-quality__opt[aria-checked='true'] .ag-quality__cur { color: inherit; opacity: 0.85; }
 .ag-volrow { display: flex; align-items: center; gap: 10px; width: 170px; }
 .ag-volrow__val { width: 30px; text-align: right; color: var(--c-ink-2); }
 .ag-about { margin: 0; font-size: calc(13.5px * var(--text-scale)); line-height: 1.55; color: var(--c-ink-2); }

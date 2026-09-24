@@ -159,11 +159,13 @@ export function TankAI({ tank, lod }: { tank: Tank; lod: RenderLod }) {
       planAiSteps(delta, aiFrame.ms > AI_FRAME_BUDGET_MS || aiFrame.lastMs > AI_FRAME_BUDGET_MS, _steps);
       for (let i = 0; i < _steps.n; i++) stepWorld(w, _steps.h);
     } else {
-      // far tanks: cheap, lower-rate update
-      s.accum += dt;
-      if (++s.frame % 4 === 0) {
-        stepWorld(w, Math.min(s.accum, 0.05));
-        s.accum = 0;
+      // far tanks: cheap, lower-rate update. lane:pc-perf — paced by time, not frame count: every 4th frame used to
+      // drop whatever exceeded 50 ms, so far animals swam at 75 % speed at 60 Hz, 37 % at 30 Hz and 100 % at 144 Hz.
+      // Now one 50 ms step whenever 50 ms have accrued (the carry is capped, so a long frame never queues catch-up).
+      s.accum = Math.min(s.accum + dt, 0.1);
+      if (s.accum >= 0.05) {
+        stepWorld(w, 0.05);
+        s.accum -= 0.05;
       }
     }
     const spent = performance.now() - t0;

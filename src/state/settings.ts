@@ -3,11 +3,18 @@
  */
 import { create } from 'zustand';
 import type { QualityLevel } from '@/types';
+import { detectGpu } from '@/render/shared/gpuTier'; // lane:pc-perf
 
 export interface Settings {
   volume: { master: number; music: number; aquarium: number; ui: number };
   muted: boolean;
   quality: QualityLevel;
+  /**
+   * lane:pc-perf — Auto graphics (default): `quality` is picked for this device on every load (GPU class, see
+   * render/shared/gpuTier.ts) and the ResolutionGovernor may drop a step as a last resort. False once the player picks a
+   * level in Settings; that choice is then kept exactly. Optional: absent in settings saved before it existed.
+   */
+  qualityAuto?: boolean;
   reducedMotion: boolean;
   /** Show exact water parameters by default (advanced). */
   advancedWater: boolean;
@@ -45,9 +52,26 @@ function load(): Settings {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY) : null;
     if (!raw) return detectDefaults();
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...parsed, volume: { ...DEFAULT_SETTINGS.volume, ...(parsed.volume ?? {}) } };
+    const s: Settings = { ...DEFAULT_SETTINGS, ...parsed, volume: { ...DEFAULT_SETTINGS.volume, ...(parsed.volume ?? {}) } };
+    // lane:pc-perf — settings saved before Auto existed stored whatever quality was current whenever any setting
+    // changed. The old defaults (high, or medium on small devices) are treated as Auto; low/ultra were deliberate.
+    if (parsed.qualityAuto === undefined) s.qualityAuto = !(parsed.quality === 'low' || parsed.quality === 'ultra');
+    if (s.qualityAuto !== false) s.quality = autoQuality();
+    return s;
   } catch {
     return detectDefaults();
+  }
+}
+
+/** lane:pc-perf — the automatic tier for this device: from the GPU when the browser tells us, else the old rule. */
+export function autoQuality(): QualityLevel {
+  try {
+    const gpu = detectGpu();
+    if (gpu) return gpu.tier;
+    const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+    return coarse || (navigator.hardwareConcurrency ?? 8) <= 4 ? 'medium' : 'high';
+  } catch {
+    return 'high';
   }
 }
 
@@ -56,8 +80,8 @@ function detectDefaults(): Settings {
   try {
     if (typeof window !== 'undefined') {
       if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) s.reducedMotion = true;
-      const coarse = window.matchMedia?.('(pointer: coarse)').matches;
-      if (coarse || (navigator.hardwareConcurrency ?? 8) <= 4) s.quality = 'medium';
+      s.quality = autoQuality();
+      s.qualityAuto = true;
     }
   } catch {
     /* ignore */
@@ -83,6 +107,9 @@ export const useSettings = create<SettingsStore>((set, get) => {
   return {
     ...load(),
     update: (patch) => {
+      // lane:pc-perf — choosing a quality level (without saying Auto) is an explicit choice
+      if (patch.quality !== undefined && patch.qualityAuto === undefined) patch = { ...patch, qualityAuto: false };
+      if (patch.qualityAuto === true && patch.quality === undefined) patch = { ...patch, quality: autoQuality() };
       set(patch);
       persist();
     },
@@ -91,7 +118,7 @@ export const useSettings = create<SettingsStore>((set, get) => {
       persist();
     },
     reset: () => {
-      set({ ...DEFAULT_SETTINGS });
+      set({ ...DEFAULT_SETTINGS, quality: autoQuality(), qualityAuto: true }); // lane:pc-perf
       persist();
     },
   };

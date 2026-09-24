@@ -5,7 +5,9 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import * as THREE from 'three';
-import { QUALITY, useRenderQuality } from './quality';
+import { QUALITY, useRenderPerf, useRenderQuality } from './quality';
+import { budgetDpr } from './resolution';
+import { ResolutionGovernor } from './ResolutionGovernor';
 import { RENDERER_TONE_MAPPING } from '../post/PostFX';
 import { WarmupVeil } from './warmup';
 
@@ -32,7 +34,11 @@ export interface SceneCanvasProps {
 /** Canvas with the project's renderer defaults (tone mapping, colour space, shadows, DPR by quality, context-loss recovery). */
 export function SceneCanvas({ children, className = 'scene-canvas' }: SceneCanvasProps) {
   const quality = useRenderQuality();
-  const dpr = QUALITY[quality].dpr;
+  // lane:pc-perf — one number from the ResolutionGovernor (pixel budget × adaptive scale); before it has run, the same
+  // budget computed from the window size, so the first frame already respects it
+  const governed = useRenderPerf((s) => s.dpr);
+  const B = QUALITY[quality];
+  const dpr = governed > 0 ? governed : budgetDpr(typeof window !== 'undefined' ? window.devicePixelRatio : 1, B.dpr, B.maxMP, typeof window !== 'undefined' ? window.innerWidth : 1280, typeof window !== 'undefined' ? window.innerHeight : 720);
   const [canvasKey, setCanvasKey] = useState(0);
   const [lost, setLost] = useState(false);
   // after a context loss the rebuilt scene compiles every shader again (~1–2 s of plain black canvas): keep the
@@ -100,6 +106,7 @@ export function SceneCanvas({ children, className = 'scene-canvas' }: SceneCanva
           };
         }}
       >
+        <ResolutionGovernor />
         <Suspense fallback={null}>
           {children}
           {restoring && <FirstFrames onReady={onReady} />}

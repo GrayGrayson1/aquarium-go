@@ -235,12 +235,13 @@ function RoomLights({ level, width, depth }: { level: FacilityLevelId; width: nu
   }, [style, width, depth]);
   const area = width * depth;
   const base = style.light.strength * (2.2 + Math.sqrt(area) * 0.45) * (1 + style.light.height * 0.12);
-  useFrame(() => {
+  useFrame((_, dt) => {
     const g = getGame();
     const h = g ? hourOfDay(g.clock.hour) : 12;
     const open = h >= def.openHour - 1 && h < def.closeHour + 1;
     const target = base * (open ? 1 : 0.35);
-    for (const l of refs.current) if (l) l.intensity += (target - l.intensity) * 0.05;
+    const k = (1 - Math.exp(-3.1 * Math.min(dt, 0.1))); // lane:pc-perf — per second, not per frame
+    for (const l of refs.current) if (l) l.intensity += (target - l.intensity) * k;
   });
   return (
     <>

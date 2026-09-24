@@ -164,3 +164,13 @@ Deep links: Visitors accepts `panelTarget` `'tab:staff'` / `'tab:visitors'` (the
 | `research-tab-<research\|unlocks\|quests\|achievements>` | Research & Unlocks panel section tabs (compact, like Build's) |
 
 e2e: `tests/e2e/features.spec.ts` covers Shows (enter → judging → judge's card, ineligible reasons), Staff (lock → unlock toast → hire → assign → `tank-card-keeper`), Frags (`frag-take-*` → `frag-list-*` → `listing-confirm`) and Brackish (`research-start-brackish_estuaries` → `tank-convert` → the `brackish_estuary` render).
+
+## pc-perf (round 2)
+
+| test id | element |
+|---|---|
+| `settings-quality-auto` | Settings › Graphics "Auto" option (radio; checked while quality is picked automatically for this device). The four `settings-quality-<level>` options are explicit choices and uncheck Auto |
+| `settings-quality-auto-current` | The level Auto is running now ("· Medium"), shown inside the Auto option while it is selected |
+| `settings-quality-note` | The line under the quality options (what Auto picked, or the chosen level's note) |
+
+Dev/QA (with `?perf=1` or in dev): `window.__AQ_PERF()` → `{ tier, dpr, scale, degrade, auto }` (effective tier, canvas DPR from the pixel budget × adaptive scale, last-resort feature steps, Auto on/off).

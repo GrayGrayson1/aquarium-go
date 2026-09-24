@@ -78,7 +78,11 @@ export function useAutosave(): void {
       visibleSince = now;
       if (accumulatedVisibleMs >= AUTOSAVE_INTERVAL_MS) {
         accumulatedVisibleMs = 0;
-        void autosaveNow('interval');
+        // lane:pc-perf — the timed save waits for an idle moment between frames (at most 3 s), so its serialize +
+        // checksum never lands in the middle of a camera flight or a busy frame on a slower PC
+        const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+        if (ric) ric(() => void autosaveNow('interval'), { timeout: 3000 });
+        else void autosaveNow('interval');
       }
     }, 5_000);
 

@@ -246,6 +246,9 @@ export function TankCreatures({ tank, lod }: { tank: Tank; lod: RenderLod }) {
   useFrame((state, delta) => {
     const map = entries.current;
     if (!map.size) return;
+    // lane:pc-perf — a tank hidden by the tank-view radius (SceneRoot) draws nothing: skip its animation work too
+    // (on the 1,000 gal view that was ~2,400 hidden objects posed and matrix-updated every frame)
+    for (let p: THREE.Object3D | null = group.current; p; p = p.parent) if (!p.visible) return;
     const g = getGame();
     if (!g) return;
     const dt = Math.min(0.1, delta);

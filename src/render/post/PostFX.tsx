@@ -191,6 +191,13 @@ export function PostFX() {
     }
   });
 
+  // lane:pc-perf — the composer only resizes itself when the CSS size changes; a new render scale (ResolutionGovernor)
+  // must resize its buffers too (scene, bloom mips, DoF all follow the drawing-buffer size)
+  const dprNow = useThree((s) => s.viewport.dpr);
+  useEffect(() => {
+    (composerRef.current as unknown as { setSize(w?: number, h?: number): void } | null)?.setSize();
+  }, [dprNow, dofWanted]);
+
   useEffect(() => {
     registerComposer(q === 'low' ? null : composerRef.current);
     return () => registerComposer(null);

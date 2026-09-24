@@ -61,7 +61,9 @@ export async function capturePhoto(opts: { width?: number; hideUI?: boolean } = 
   const prevPR = gl.getPixelRatio();
   const cssW = canvas.clientWidth || canvas.width / prevPR;
   const cssH = canvas.clientHeight || canvas.height / prevPR;
-  const want = Math.min(4096, Math.max(64, Math.round(opts.width ?? cssW * prevPR)));
+  // lane:pc-perf — photos default to the screen's native sharpness even while the live view renders at a reduced scale
+  const nativePR = Math.max(prevPR, Math.min(2, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1));
+  const want = Math.min(4096, Math.max(64, Math.round(opts.width ?? cssW * nativePR)));
   const pr = want / Math.max(1, cssW);
   captureListeners.forEach((f) => f(true));
   let url: string | null = null;

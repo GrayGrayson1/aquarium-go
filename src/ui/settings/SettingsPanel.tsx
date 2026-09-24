@@ -29,6 +29,7 @@ import {
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { useSettings } from '@/state/settings';
+import { useRenderQuality } from '@/render/shared/quality'; // lane:pc-perf
 import type { QualityLevel } from '@/types';
 import { sfx } from '@/audio/sfx';
 import { Sheet } from '../common/Sheet';
@@ -61,22 +62,47 @@ function VolumeRow({ k, label, icon }: { k: 'master' | 'music' | 'aquarium' | 'u
 function GeneralTab() {
   const s = useSettings();
   const up = s.update;
+  const auto = s.qualityAuto !== false;
+  // lane:pc-perf — Auto shows what it picked (and what it is running now, if it had to step down to stay smooth)
+  const running = useRenderQuality();
   const q = QUALITY.find((x) => x.id === s.quality) ?? QUALITY[2];
+  const runningLabel = QUALITY.find((x) => x.id === running)?.label ?? q.label;
   return (
     <>
       <Section title="Graphics">
         <div className="ag-quality" role="radiogroup" aria-label="Graphics quality">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={auto}
+            className="ag-quality__opt ag-quality__opt--auto"
+            data-testid="settings-quality-auto"
+            onClick={() => {
+              sfx('click');
+              up({ qualityAuto: true });
+            }}
+          >
+            <Gauge size={16} aria-hidden />
+            <span>
+              Auto{auto && (
+                <span className="ag-quality__cur" data-testid="settings-quality-auto-current">
+                  {' '}
+                  · {runningLabel}
+                </span>
+              )}
+            </span>
+          </button>
           {QUALITY.map((it) => (
             <button
               key={it.id}
               type="button"
               role="radio"
-              aria-checked={s.quality === it.id}
+              aria-checked={!auto && s.quality === it.id}
               className="ag-quality__opt"
               data-testid={`settings-quality-${it.id}`}
               onClick={() => {
                 sfx('click');
-                up({ quality: it.id });
+                up({ quality: it.id, qualityAuto: false });
               }}
             >
               <Monitor size={16} aria-hidden />
@@ -84,7 +110,11 @@ function GeneralTab() {
             </button>
           ))}
         </div>
-        <div className="ag-small ag-muted">{q.note}</div>
+        <div className="ag-small ag-muted" data-testid="settings-quality-note">
+          {auto
+            ? `Picked for this device: ${runningLabel}${running !== s.quality ? ` (stepped down from ${q.label} to stay smooth)` : ''}. Resolution adapts to keep motion smooth.`
+            : `${q.note} Resolution still adapts on big or busy screens.`}
+        </div>
       </Section>
       <Section title="Sound">
         <Row label="Mute everything" icon={s.muted ? <VolumeX size={16} /> : <Volume2 size={16} />}>

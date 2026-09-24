@@ -240,7 +240,7 @@ function BubbleNest({ d, fx, lod, waterY }: { d: Desc; fx: TankFXUniforms; lod: 
     m.frustumCulled = false;
     return m;
   }, [sphere, fx, NE]);
-  const last = useRef({ n: -1, e: -1, ax: 0, az: 0 });
+  const last = useRef({ n: -1, e: -1, ax: 0, az: 0, q: -1 });
   useFrame((st) => {
     const g = getGame();
     const bm = bubbles.current;
@@ -259,7 +259,9 @@ function BubbleNest({ d, fx, lod, waterY }: { d: Desc; fx: TankFXUniforms; lod: 
     const n = Math.round(N * clamp(0.08 + prog * 0.92));
     const t = st.clock.elapsedTime;
     const moved = Math.abs(anchor.x - last.current.ax) + Math.abs(anchor.z - last.current.az) > 1e-4;
-    if (n !== last.current.n || moved || (t * 4) % 1 < 0.05) {
+    // lane:pc-perf — 4×/s by elapsed time (the old `(t*4) % 1 < 0.05` window was missed by most frames at 30–60 fps)
+    if (n !== last.current.n || moved || Math.floor(t * 4) !== last.current.q) {
+      last.current.q = Math.floor(t * 4);
       last.current.n = n;
       last.current.ax = anchor.x;
       last.current.az = anchor.z;
