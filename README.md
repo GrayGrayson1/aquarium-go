@@ -6,6 +6,8 @@ Everything you see and hear is generated in code: procedural creatures, plants, 
 
 **Play it online:** https://graygrayson1.github.io/aquarium-go/ (built and deployed by GitHub Actions on every push to `main`).
 
+It can also be hosted on Render as a free Static Site: `render.yaml` in the repo root is a ready-made Blueprint.
+
 ## Run it
 
 Requirements: Node 20+ (tested with Node 22) and a WebGL2-capable browser (Chrome, Edge, Safari 17+ or Firefox).
