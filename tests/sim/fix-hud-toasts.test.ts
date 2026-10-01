@@ -4,9 +4,9 @@
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { pickShown, ttlOf, isExpired } from '@/ui/hud/toastQueue';
+import { pickShown, ttlOf, isExpired, PREEMPT_AFTER_MS } from '@/ui/hud/toastQueue';
 
-type K = 'success' | 'danger' | 'warning' | 'info';
+type K = 'success' | 'danger' | 'warning' | 'info' | 'market' | 'celebrate' | 'death';
 const e = (key: string, kind: K, born: number, text = key) => ({ key, kind, born, texts: [text] });
 
 describe('P7-04: a visible toast is never pre-empted by higher-priority arrivals', () => {
@@ -33,6 +33,41 @@ describe('P7-04: a visible toast is never pre-empted by higher-priority arrivals
     expect(isExpired(t, undefined, 100_000)).toBe(false); // never shown: still queued
     expect(isExpired(t, 1000, 1000 + ttlOf('success', t.texts) - 1)).toBe(false);
     expect(isExpired(t, 1000, 1000 + ttlOf('success', t.texts) + 500)).toBe(true);
+  });
+});
+
+describe('R07-06: danger and death news never wait behind routine toasts', () => {
+  const max = 2; // a phone
+  it('takes the slot of the least important routine toast once it has been readable for a moment', () => {
+    const tip = e('tip', 'info', 0);
+    const sale = e('sale', 'market', 10);
+    const danger = e('danger', 'danger', 2000);
+    const at = new Map([['tip', 100], ['sale', 120]]);
+    const out = { bumped: [] as string[] };
+    const shown = pickShown([tip, sale, danger], new Set(['tip', 'sale']), max, at, 100 + PREEMPT_AFTER_MS + 1, out);
+    expect(shown.map((x) => x.key)).toEqual(['sale', 'danger']);
+    expect(out.bumped).toEqual(['tip']);
+  });
+
+  it('waits while the routine toasts have only just appeared (no flash), and without the timing it never pre-empts', () => {
+    const list = [e('tip', 'info', 0), e('sale', 'market', 10), e('death', 'death', 2000)];
+    const at = new Map([['tip', 100], ['sale', 120]]);
+    const out = { bumped: [] as string[] };
+    expect(pickShown(list, new Set(['tip', 'sale']), max, at, 100 + PREEMPT_AFTER_MS - 1, out).map((x) => x.key)).toEqual(['tip', 'sale']);
+    expect(out.bumped).toEqual([]);
+    expect(pickShown(list, new Set(['tip', 'sale']), max).map((x) => x.key)).toEqual(['tip', 'sale']);
+  });
+
+  it('warnings, celebrations and other urgent news keep their place; two urgent arrivals take two routine slots', () => {
+    const at = new Map([['warn', 0], ['party', 0], ['d0', 0]]);
+    const urgentOnly = pickShown([e('warn', 'warning', 0), e('party', 'celebrate', 1), e('d1', 'danger', 5)], new Set(['warn', 'party']), max, at, 10_000);
+    expect(urgentOnly.map((x) => x.key)).toEqual(['warn', 'party']);
+    const held = pickShown([e('d0', 'danger', 0), e('i', 'info', 1), e('d1', 'danger', 5)], new Set(['d0', 'i']), max, new Map([['d0', 0], ['i', 0]]), 10_000);
+    expect(held.map((x) => x.key)).toEqual(['d0', 'd1']);
+    const out = { bumped: [] as string[] };
+    const both = pickShown([e('a', 'info', 0), e('b', 'success', 1), e('d1', 'danger', 5), e('d2', 'death', 6)], new Set(['a', 'b']), max, new Map([['a', 0], ['b', 0]]), 10_000, out);
+    expect(both.map((x) => x.key)).toEqual(['d1', 'd2']);
+    expect(out.bumped.sort()).toEqual(['a', 'b']);
   });
 });
 

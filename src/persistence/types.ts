@@ -28,6 +28,11 @@ export interface SaveMeta {
    * loadable reference `<slot>.backup`.
    */
   previousOf?: string;
+  /**
+   * lane:fix3-saves (R03-01) — game hour (clock.hour) of the stored state: how far along the copy is, so a tab that
+   * meets another tab's newer write can tell whether that copy is really ahead of its own play.
+   */
+  hour?: number;
 }
 
 export type SaveErrorCode = 'empty' | 'not_json' | 'not_a_save' | 'checksum' | 'too_new' | 'invalid' | 'too_large' | 'storage';

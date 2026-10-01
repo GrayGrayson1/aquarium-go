@@ -9,7 +9,11 @@ import { speciesName } from '../common/format';
 import { Portrait } from '../common/Portrait';
 import { useUI } from '@/state/ui';
 
-export function SaveRow({ s, onLoad, onDelete, busy }: { s: SaveMeta; onLoad?: () => void; onDelete?: () => void; busy?: boolean }) {
+/**
+ * `promotes`: the slot's "Previous …" entry (a different aquarium in its backup). Deleting the slot moves that one into
+ * it, so the delete confirm says so instead of letting the list reshuffle unannounced.
+ */
+export function SaveRow({ s, onLoad, onDelete, busy, promotes }: { s: SaveMeta; onLoad?: () => void; onDelete?: () => void; busy?: boolean; promotes?: SaveMeta }) {
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="ag-saverow">
@@ -26,6 +30,11 @@ export function SaveRow({ s, onLoad, onDelete, busy }: { s: SaveMeta; onLoad?: (
           <span>{formatMoney(s.money)}</span>
           <span className="ag-muted">{timeAgo(s.savedAt)}</span>
         </div>
+        {confirm && promotes && (
+          <div className="ag-saverow__meta" role="note" data-testid="save-delete-promotes" style={{ color: 'var(--c-ink-2)' }}>
+            {promotes.shopName} ({promotes.shopName === s.shopName && `${speciesName(promotes.starterId)} starter, `}{slotLabel(promotes.slot)}) {s.slot === 'auto' ? 'becomes the autosave' : `moves into ${slotLabel(s.slot)}`}.
+          </div>
+        )}
       </div>
       <div className="ag-row" style={{ gap: 6 }}>
         {onDelete &&
@@ -71,6 +80,7 @@ export function LoadDialog({ open, onClose, onChanged }: { open: boolean; onClos
               key={s.slot}
               s={s}
               busy={busy}
+              promotes={s.previousOf ? undefined : saves.find((p) => p.previousOf === s.slot)}
               onLoad={async () => {
                 setBusy(true);
                 const g = await loadIntoGame(s.slot);

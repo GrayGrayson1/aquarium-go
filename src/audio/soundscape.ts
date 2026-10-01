@@ -162,7 +162,8 @@ export function isNight(game: GameState | null, tank: Tank | null | undefined): 
  * Real-time hysteresis for the listener's day/night flag. A game day is four real minutes at 1× (night is
  * 100 s), so raw `isNight` would swap the score's key and tempo every 10–12 s at 10×. The gate only follows a
  * change after it has held for `minHoldMs` and the current value has been in place for `minDwellMs`, and
- * while fast-forwarding (speed ≥ 3) it keeps the current value: the music settles instead of chasing the clock.
+ * while fast-forwarding (speed ≥ 3) it never moves to night: the music settles on the day score instead of
+ * chasing the clock.
  * Pure (no Web Audio) — unit-tested.
  */
 export class NightGate {
@@ -197,8 +198,10 @@ export class NightGate {
       this.candidate = null;
       return this.held;
     }
-    if (speed >= 3) {
-      // fast-forward: hold the mood; the candidate clock restarts once the player slows down
+    if (speed >= 3 && raw) {
+      // fast-forward: a light phase is shorter than any useful dwell, so never swap day for night (the candidate
+      // clock restarts once the player slows down); night still gives way to day, so a session loaded at night
+      // does not keep the night score through lit days
       this.candidate = null;
       return this.held;
     }
@@ -257,4 +260,38 @@ export function chooseMood(i: MoodInputs): MusicMood {
   if (i.panel === 'market' || i.panel === 'visitors') return 'market';
   if (i.night) return 'night';
   return i.view === 'facility' ? 'facility' : 'tank';
+}
+
+/** Quick panel flicks (a glance at the market) must not restart the score. */
+export const MOOD_DEBOUNCE_MS = 1500;
+export const PANEL_MOOD_DEBOUNCE_MS = 3000;
+/** A mood keeps playing at least this long before an automatic change (not a screen/view/panel switch, not party). */
+export const MOOD_MIN_DWELL_MS = 12000;
+
+export interface MoodSwitchInputs {
+  /** The mood the director wants now, and the one playing (null = none applied yet). */
+  want: MusicMood;
+  applied: MusicMood | null;
+  /** A dev/QA mood override is active. */
+  forced: boolean;
+  screenChanged: boolean;
+  view: string;
+  /** The view when `applied` was applied. */
+  appliedView: string;
+  /** How long `want` has been wanted, and how long `applied` has played. */
+  sincePendingMs: number;
+  sinceAppliedMs: number;
+}
+
+/**
+ * Should the director switch the score to `want` now. Screen changes, party mode, a first/'off' score and forced
+ * moods switch at once; otherwise the wish must hold for the debounce (longer for panel moods), and an automatic
+ * change in the same view also waits out the current mood's minimum dwell. Pure — unit-tested.
+ */
+export function moodSwitchDue(i: MoodSwitchInputs): boolean {
+  if (i.want === i.applied) return false;
+  const immediate = i.screenChanged || i.applied === null || i.applied === 'off' || i.want === 'party' || i.applied === 'party' || i.forced;
+  if (immediate) return true;
+  const panelDriven = i.want === 'market' || i.applied === 'market';
+  return i.sincePendingMs > (panelDriven ? PANEL_MOOD_DEBOUNCE_MS : MOOD_DEBOUNCE_MS) && (panelDriven || i.want === 'off' || i.view !== i.appliedView || i.sinceAppliedMs > MOOD_MIN_DWELL_MS);
 }

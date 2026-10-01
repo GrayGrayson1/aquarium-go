@@ -44,6 +44,7 @@ import * as aquascape from '@/sim/aquascape';
 import * as facility from '@/sim/facility';
 import * as lifeActions from '@/sim/life/actions';
 import * as compat from '@/sim/compat';
+import { facilityOverflow } from '@/render/camera/facilityOverflow';
 
 declare global {
   interface Window {
@@ -194,6 +195,8 @@ if (typeof window !== 'undefined') {
     ui: () => useUI.getState(),
     setUI: (p: Parameters<ReturnType<typeof useUI.getState>['set']>[0]) => useUI.getState().set(p),
     settings: () => useSettings.getState(),
+    // room view: does the frame clip the exhibit row (L-8)?
+    facilityOverflow,
     runtime,
     // e2e helpers
     // `ready` is defined below as a getter (lane:perf2)

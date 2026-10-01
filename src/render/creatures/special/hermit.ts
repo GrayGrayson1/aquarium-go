@@ -114,7 +114,10 @@ function buildHermit(lod: RenderLod): HermitTemplate {
       tube(g, { path: resamplePath(pts, hi ? 16 : 8), nv: nvL, radius: (q) => lerp(0.017, 0.007, q), capStart: 0.04, capEnd: 0.03, capRows: 2, skin: () => skin1(crabB), mask: (q) => [5, q, k, side], aux: [lb.x, lb.y, lb.z, 0] });
     }
   }
-  return { geo: g.build(), rig, aperture, eyePos };
+  const geo = g.build();
+  // portraits frame the crab and its shell, not the antennae (part 3) (L-6)
+  geo.userData.frameSkip = [3];
+  return { geo, rig, aperture, eyePos };
 }
 
 const HERMIT_VERTEX = /* glsl */ `

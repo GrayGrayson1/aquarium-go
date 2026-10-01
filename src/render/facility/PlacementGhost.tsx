@@ -165,6 +165,8 @@ export function PlacementGhost() {
   const [ghost, setGhost] = useState<GhostState | null>(null);
   /** Latest evaluation, readable synchronously (React state lags a tap by a render: see confirm). */
   const ghostRef = useRef<GhostState | null>(null);
+  /** The preview when the current floor tap began (touch: what a tap confirms). */
+  const tapPrev = useRef<GhostState | null>(null);
   const last = useRef<{ px: number; pz: number } | null>(null);
   /** Pointer type of the last pointer event over the floor: touch gets tap-to-preview + a Place button. */
   const [touch, setTouch] = useState(false);
@@ -230,6 +232,7 @@ export function PlacementGhost() {
   useEffect(() => {
     if (!active) {
       ghostRef.current = null;
+      tapPrev.current = null;
       setGhost(null);
       last.current = null;
     }
@@ -282,7 +285,9 @@ export function PlacementGhost() {
   const onFloorClick = useCallback(
     (px: number, pz: number, isTouch: boolean) => {
       const dragEnded = wasCameraDrag();
-      const prev = ghostRef.current;
+      // R06-01 — the preview as it was when this tap began: a finger's few px of jitter between down and up already
+      // moved ghostRef onto this tap's own spot, which made every first tap a confirm
+      const prev = isTouch ? tapPrev.current : ghostRef.current;
       const next = dragEnded ? null : evaluate(px, pz);
       if (!next) return;
       const tap = resolveFloorTap(prev, next, { touch: isTouch, dragEnded });
@@ -318,7 +323,10 @@ export function PlacementGhost() {
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.002, 0]}
-        onPointerDown={(e: ThreeEvent<PointerEvent>) => setTouch(e.nativeEvent.pointerType === 'touch')}
+        onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+          setTouch(e.nativeEvent.pointerType === 'touch');
+          tapPrev.current = ghostRef.current;
+        }}
         onPointerMove={(e: ThreeEvent<PointerEvent>) => {
           const t = e.nativeEvent.pointerType === 'touch';
           if (t !== touch) setTouch(t);

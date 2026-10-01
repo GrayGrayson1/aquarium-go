@@ -613,9 +613,12 @@ interface SaleCheck {
  * its water class, a compatible community and light stocking. Never an 'incompatible' mix; a high-risk one only when
  * nothing better exists, and the sale then says so (lane:fix-econ, S03-04).
  */
-function findRelocation(state: GameState, c: Creature, excludeTankId: string, reserved: Map<string, number>): { id: string; risky: boolean } | null {
+function findRelocation(state: GameState, c: Creature, excludeTankId: string, reserved: Map<string, number>, verdicts: Map<string, string>): { id: string; risky: boolean } | null {
   const sp = findSpecies(c.speciesId);
   if (!sp) return null;
+  // Siblings (a minted clutch, a shoal) get the same compatibility verdict: preview each kind of animal once per tank
+  // (round-3 R01-03 — this runs on every market step while a listed tank holds animals that aren't part of the sale).
+  const kind = `${c.speciesId}|${c.sex ?? 'unknown'}|${c.lifeStage}|${Math.round(finite(c.sizeCm, 0) * 4)}`;
   let best: { id: string; score: number; risky: boolean } | null = null;
   for (const id of state.tankOrder) {
     if (id === excludeTankId) continue;
@@ -632,11 +635,15 @@ function findRelocation(state: GameState, c: Creature, excludeTankId: string, re
     // (an axolotl must not land in a 26 °C tropical tank).
     const temp = finite(t.water?.tempC, NaN);
     if (Number.isFinite(temp) && (temp < sp.tempC.min || temp > sp.tempC.max)) continue;
-    let verdict: string = 'excellent';
-    try {
-      verdict = previewAddition(state, id, { speciesId: c.speciesId, creatureIds: [c.id] }).verdict;
-    } catch {
-      verdict = 'excellent';
+    const memoKey = `${id}|${kind}`;
+    let verdict = verdicts.get(memoKey);
+    if (verdict === undefined) {
+      try {
+        verdict = previewAddition(state, id, { speciesId: c.speciesId, creatureIds: [c.id] }).verdict;
+      } catch {
+        verdict = 'excellent';
+      }
+      verdicts.set(memoKey, verdict);
     }
     if (verdict === 'incompatible') continue;
     const compat = verdict === 'high_risk' ? -3 : verdict === 'conditional' ? -1 : 0;
@@ -662,8 +669,9 @@ function validateForSale(state: GameState, l: Listing): SaleCheck {
   const unlisted = creaturesInTank(state, tank.id).filter((c) => !l.creatureIds.includes(c.id));
   const relocations: SaleCheck['relocations'] = [];
   const reserved = new Map<string, number>();
+  const verdicts = new Map<string, string>();
   for (const c of unlisted) {
-    const to = findRelocation(state, c, tank.id, reserved);
+    const to = findRelocation(state, c, tank.id, reserved, verdicts);
     if (!to) return { ...none, ok: false, message: `${c.name} isn't part of this sale and has no other suitable tank to move to. Move ${c.name} first, or withdraw and re-list the tank with ${c.name} included.` };
     relocations.push({ c, toTankId: to.id, risky: to.risky });
   }

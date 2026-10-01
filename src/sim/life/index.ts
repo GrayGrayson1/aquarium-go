@@ -175,7 +175,7 @@ export { rollGenome, inheritGenome, resolvePhenotype, describeGenetics, predictO
 export { PERSONALITY_INFO, allowedTags as allowedPersonalityTags } from './personality';
 export { generateName, suggestNames, nameMoodsFor } from './names';
 export { ageDaysOf, lifeStageFor, sizeAtAge, adultSizeFor, sizePotentialFactor, gallonsNeededNow } from './growth';
-export { appetiteOf, breedingReadinessTarget, pushHistory, killCreature, HUNGER_PER_HUNGER_HOURS, CONDITIONING_TAGS } from './step';
+export { appetiteOf, breedingReadinessTarget, pushHistory, killCreature, HUNGER_PER_HUNGER_HOURS, CONDITIONING_TAGS, STARVING_HUNGER, STARVING_HEALTH, isStarving } from './step';
 export { ILLNESSES, illnessDef } from './illness';
 export { stressFactors, habitatFit, speciesWaterView } from './welfare';
 

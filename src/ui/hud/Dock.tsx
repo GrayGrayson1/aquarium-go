@@ -74,7 +74,7 @@ export function lockedToast(label: string, lock: string, hint: string | undefine
 }
 
 /** While the guide is on a step that needs a particular panel section, open straight to it. */
-function guideTarget(id: PanelId): string | null {
+export function guideTarget(id: PanelId): string | null {
   const g = getGame();
   const t = g?.progress?.tutorial;
   if (!g || g.isShowcase || !t || t.done || t.skipped || id !== 'build') return null;

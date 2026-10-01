@@ -16,6 +16,7 @@ import { initialFacility, stepProgression, tutorialAdvance, tutorialStepId, tuto
 import { exhibitInfo, exhibitReport, momentPhrase } from '@/sim/facility/exhibit';
 import { TUTORIAL_CHAINS, QUEST_BY_ID, tutorialChain } from '@/data/quests';
 import { FIXTURE_DEFS, getFacilityLevel } from '@/data/facilities';
+import { FIXTURES } from '@/dev/fixtures';
 
 type Lvl = Parameters<typeof initialFacility>[0];
 
@@ -194,27 +195,31 @@ describe('G1-01: reputation from births, sales and deaths is capped per day, not
 
 describe('G1-02: critics and wows count per represented visitor', () => {
   it('reputation earned per visitor in a busy hall is the same at 0.025 h and 0.5 h steps', () => {
+    // round-3 R10-02: the big facility's crowd is far past the 16-sample cap per step, which is where per-sample
+    // critic weights went wrong (the original code: ~1.5× the reputation per visitor at 1× steps)
     const per = (dt: number) => {
       let rep = 0;
       let visitors = 0;
-      for (let seed = 1; seed <= 4; seed++) {
-        const g = shop(seed * 13, 4, 'showroom');
+      for (let seed = 1; seed <= 3; seed++) {
+        const g = FIXTURES.big_facility();
+        g.rngState = (seed * 2654435761) >>> 0;
         g.progress.reputation = 400;
-        const r0 = g.progress.reputation;
+        const v0 = g.visitors.totalVisitors;
         runHours(g, 24 * 3, dt);
-        rep += g.progress.reputation - r0;
-        visitors += g.visitors.totalVisitors;
+        rep += g.progress.reputation - 400;
+        visitors += g.visitors.totalVisitors - v0;
       }
       return { rep, visitors };
     };
     const fine = per(0.025);
     const coarse = per(0.5);
-    expect(coarse.visitors).toBeGreaterThan(1000);
+    expect(coarse.visitors).toBeGreaterThan(16 * 72 * 3);
+    expect(coarse.rep).toBeGreaterThan(20);
     expect(fine.visitors / coarse.visitors).toBeGreaterThan(0.9);
     expect(fine.visitors / coarse.visitors).toBeLessThan(1.1);
-    const ratio = fine.rep / coarse.visitors / (coarse.rep / coarse.visitors);
-    expect(ratio).toBeGreaterThan(0.7);
-    expect(ratio).toBeLessThan(1.4);
+    const ratio = fine.rep / fine.visitors / (coarse.rep / coarse.visitors);
+    expect(ratio).toBeGreaterThan(0.85);
+    expect(ratio).toBeLessThan(1.18);
   });
 
   it('a star’s visitor-wow tally stays a whole number and follows the crowd, not the sample count', () => {
@@ -234,8 +239,8 @@ describe('G1-02: critics and wows count per represented visitor', () => {
   });
 
   it('the reaction feed turns over at the same pace per game hour at every speed', () => {
-    const count = (dt: number) => {
-      const g = shop(8, 4, 'showroom');
+    const count = (dt: number, seed: number) => {
+      const g = shop(seed * 8, 4, 'showroom');
       g.progress.reputation = 400;
       let pushed = 0;
       let before = 0;
@@ -257,11 +262,16 @@ describe('G1-02: critics and wows count per represented visitor', () => {
       }
       return before;
     };
-    const fine = count(0.025);
-    const coarse = count(0.25);
-    expect(coarse).toBeGreaterThan(10);
-    expect(fine).toBeLessThan(coarse * 1.5);
-    expect(fine).toBeGreaterThan(coarse * 0.5);
+    // round-3 R10-01: six seeds and a tight band (1× used to refill the budget only on steps with arrivals: ~0.7×)
+    let fine = 0;
+    let coarse = 0;
+    for (let seed = 1; seed <= 6; seed++) {
+      fine += count(0.025, seed);
+      coarse += count(0.25, seed);
+    }
+    expect(coarse).toBeGreaterThan(60);
+    expect(fine / coarse).toBeGreaterThan(0.85);
+    expect(fine / coarse).toBeLessThan(1.18);
   });
 });
 

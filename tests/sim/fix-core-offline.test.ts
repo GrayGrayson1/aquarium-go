@@ -19,6 +19,8 @@ import {
   resetSaveSession,
   useResume,
   catchUpAfterHidden,
+  saveCurrentGame,
+  loadGameDetailed,
   OFFLINE_MIN_REAL_MS,
   OFFLINE_HIDDEN_MIN_MS,
   GRACE_HEALTH_FLOOR,
@@ -30,6 +32,11 @@ import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { communityFw } from '@/dev/fixtures/core-fixtures';
 import { resetFastMutate } from '@/game/fastMutate';
+import { createTank } from '@/sim/tanks';
+import { createCreature, addCreature } from '@/sim/life';
+import { starterAquascape } from '@/sim/aquascape';
+import { installEquipment, setEquipment } from '@/sim/care';
+import { simRng } from '@/sim/rng';
 
 const MIN = 60_000;
 const HOUR = 3600_000;
@@ -62,7 +69,7 @@ describe('P5-02: no free healing on resume', () => {
     for (const c of Object.values(g.creatures)) {
       if (c.status !== 'alive') continue;
       expect(c.stats.health).toBeLessThanOrEqual(4 + 1e-9);
-      expect(c.stats.hunger).toBeGreaterThanOrEqual(97 - 1e-9);
+      expect(c.stats.hunger).toBeLessThanOrEqual(97 + 1e-9); // R03-04: staff feeding during the catch-up counts
     }
     for (const t of Object.values(g.tanks)) {
       expect(t.water.ammonia).toBeGreaterThan(GRACE_MAX_TOXIN_PPM * 2);
@@ -80,7 +87,7 @@ describe('P5-02: no free healing on resume', () => {
       const c = g.creatures[id];
       expect(c.status).toBe('alive');
       expect(c.stats.health).toBeCloseTo(4, 6);
-      expect(c.stats.hunger).toBeCloseTo(97, 6);
+      expect(c.stats.hunger).toBeLessThanOrEqual(97 + 1e-9); // never hungrier than saved; feeding still counts (R03-04)
     }
     for (const t of Object.values(g.tanks)) {
       expect(t.water.ammonia).toBeLessThanOrEqual(3.5 + 1e-9);
@@ -103,6 +110,57 @@ describe('P5-02: no free healing on resume', () => {
     }
     // the water was saved at 6 ppm: held at no worse than that (not cleaned to the 0.5 watch level for free)
     for (const t of Object.values(g.tanks)) expect(t.water.ammonia).toBeLessThanOrEqual(6 + 1e-9);
+  });
+});
+
+describe('R03-04: feeding during the catch-up counts for animals saved outside the grace limits', () => {
+  function feederTank(hunger: number, health: number) {
+    const s = newGame({ starterId: 'betta', starterName: 'T', seed: 5 });
+    for (const id of Object.keys(s.creatures)) delete s.creatures[id];
+    for (const id of [...s.tankOrder]) delete s.tanks[id];
+    s.tankOrder = [];
+    s.isShowcase = false;
+    s.clock.speed = 1;
+    s.inventory.foods = { flake_tropical: 2000 };
+    const tank = createTank(s, 'g10', 'freshwater_tropical', { cycled: true, placement: { x: 0, z: 0, rotY: 0 } });
+    tank.decor = starterAquascape(s, 'generic', tank);
+    installEquipment(s, tank.id, 'autofeeder', { purchased: true });
+    setEquipment(s, tank.id, tank.equipment.find((e) => e.defId === 'autofeeder')!.id, { setting: 2 });
+    const rng = simRng(s);
+    for (let i = 0; i < 6; i++) addCreature(s, createCreature(s, rng, 'neon_tetra', { ageDays: 40 }), tank.id);
+    for (const c of Object.values(s.creatures)) Object.assign(c.stats, { hunger, health });
+    return s;
+  }
+  const alive = (s: ReturnType<typeof feederTank>) => Object.values(s.creatures).filter((c) => c.status === 'alive');
+
+  it('an autofed tank saved hungry comes back fed', () => {
+    const s = feederTank(80, 60);
+    simulateOffline(s, 2 * HOUR);
+    for (const c of alive(s)) expect(c.stats.hunger).toBeLessThan(70);
+  });
+
+  it('a starving, critically ill tank is fed but never healed past what the catch-up earned', () => {
+    const s = feederTank(98, 10);
+    simulateOffline(s, 2 * HOUR);
+    // the same tank saved healthy shows what feeding earns over the catch-up: the sick tank recovers no faster
+    const ref = feederTank(80, 60);
+    simulateOffline(ref, 2 * HOUR);
+    const earned = Math.max(...alive(ref).map((c) => c.stats.health - 60));
+    for (const c of alive(s)) {
+      expect(c.stats.hunger).toBeLessThan(98);
+      expect(c.stats.health).toBeGreaterThanOrEqual(10 - 1e-9);
+      expect(c.stats.health).toBeLessThanOrEqual(10 + earned + 1e-6); // P-3: real recovery counts, the floor never adds
+    }
+  });
+
+  it('an unfed, critically ill tank comes back exactly as it was saved', () => {
+    const s = feederTank(98, 10);
+    for (const t of Object.values(s.tanks)) t.equipment = t.equipment.filter((e) => e.defId !== 'autofeeder');
+    simulateOffline(s, 2 * HOUR);
+    for (const c of alive(s)) {
+      expect(c.stats.hunger).toBeCloseTo(98, 6);
+      expect(c.stats.health).toBeCloseTo(10, 6);
+    }
   });
 });
 
@@ -163,6 +221,26 @@ describe('S06-02: the welcome-back card pauses the clock', () => {
     });
     useResume.getState().clear();
     expect(useGame.getState().game!.clock.speed).toBe(1);
+  });
+});
+
+describe('R03-03: the card’s pause is never saved', () => {
+  it('open the card, leave without dismissing it: the save keeps the speed and the next absence still passes time', async () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Glance', seed: 25 });
+    g.clock.speed = 3;
+    const now = Date.now();
+    g.lastTickRealMs = now - 6 * HOUR;
+    expect((await saveGame(g, 'auto')).ok).toBe(true);
+    await loadAndResume('auto', { now });
+    useUI.setState({ screen: 'game' });
+    expect(useGame.getState().game!.clock.speed).toBe(0); // the card is up
+    expect((await saveCurrentGame('auto', { flush: true })).ok).toBe(true); // phone locked: hidden autosave
+    expect(useGame.getState().game!.clock.speed).toBe(0); // the live game stays paused under the card
+    const stored = await loadGameDetailed('auto');
+    expect(stored.state!.clock.speed).toBe(3);
+    const r2 = await loadAndResume('auto', { now: Date.now() + 12 * HOUR });
+    expect(r2.summary!.hours).toBeGreaterThan(0);
+    expect(useResume.getState().summary?.resumeSpeed).toBe(3);
   });
 });
 

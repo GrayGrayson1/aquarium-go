@@ -27,14 +27,50 @@ export interface QueueEntry {
   born: number;
 }
 
+/** Danger / death news and how long routine news must have been readable before such news may take its place. */
+export const URGENT_PRIO = 6;
+export const PREEMPT_AFTER_MS = 1500;
+
 /**
  * Which eligible entries are on screen: whatever is already up stays up (a burst of danger toasts never pre-empts a
  * visible toast mid-read — it used to unmount it after 0.3 s and bring it back seconds later with a fresh timer),
  * then free slots go to the highest priority, oldest first. The result is in arrival order.
+ *
+ * One exception (pass `shownAt` + `now`): danger / death news does not wait for routine news (market, visitors,
+ * feedback) to time out. It takes the slot of the least important routine toast that has been up for at least
+ * PREEMPT_AFTER_MS. Such a toast is finished, not queued again: its key goes into `out.bumped` for the caller to
+ * dismiss.
  */
-export function pickShown<E extends QueueEntry>(eligible: readonly E[], onScreen: ReadonlySet<string>, max: number): E[] {
-  const keep = eligible.filter((e) => onScreen.has(e.key)).slice(0, max);
+export function pickShown<E extends QueueEntry>(
+  eligible: readonly E[],
+  onScreen: ReadonlySet<string>,
+  max: number,
+  shownAt?: ReadonlyMap<string, number>,
+  now = 0,
+  out?: { bumped: string[] },
+): E[] {
+  let keep = eligible.filter((e) => onScreen.has(e.key)).slice(0, max);
   const rest = eligible.filter((e) => !onScreen.has(e.key)).sort((a, b) => prio(b.kind) - prio(a.kind) || a.born - b.born);
+  if (shownAt) {
+    let free = max - keep.length;
+    for (const u of rest) {
+      if (prio(u.kind) < URGENT_PRIO) break; // (sorted by priority)
+      if (free > 0) {
+        free--;
+        continue;
+      }
+      let victim: E | null = null;
+      for (const k of keep) {
+        const at = shownAt.get(k.key);
+        if (prio(k.kind) > 3 || at === undefined || now - at < PREEMPT_AFTER_MS) continue;
+        if (!victim || prio(k.kind) < prio(victim.kind) || (prio(k.kind) === prio(victim.kind) && at < (shownAt.get(victim.key) ?? 0))) victim = k;
+      }
+      if (!victim) break;
+      const gone = victim;
+      keep = keep.filter((k) => k !== gone);
+      out?.bumped.push(gone.key);
+    }
+  }
   return [...keep, ...rest.slice(0, Math.max(0, max - keep.length))].sort((a, b) => a.born - b.born);
 }
 

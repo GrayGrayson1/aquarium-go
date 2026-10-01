@@ -19,6 +19,7 @@ import {
   ScanEye,
   Focus,
   X,
+  Plus,
   Moon,
   ShoppingCart,
   TriangleAlert,
@@ -41,6 +42,7 @@ import { pushVisualEvent, runtime, nowSeconds } from '@/runtime/tankRuntime';
 import { noteInteraction } from '@/sim/life/actions'; // lane:qa-play
 import { aiFeed } from '@/ai/registry'; // lane:qa-play
 import { CAMERA_USER_EVENT } from '@/render/camera/cameraFX';
+import { clearPlaceAgain, placeAnother, PLACE_AGAIN_MS, usePlaceAgain } from '@/render/decor/placeAgain';
 import { useShell } from '../common/shellStore';
 import { enterCinematic } from './cardDock';
 import { foodName, LIGHT_PRESET_LABEL, lightPresetsFor } from '../common/format';
@@ -543,6 +545,21 @@ export function ToolHint() {
   });
   const placing = useUI((s) => (s.placingDecorDefId ? safe('decorDef', () => getDecorDef(s.placingDecorDefId!) ?? null, null) : null));
   const decorName = placing?.name ?? '';
+  const placingFrag = useUI((s) => !!s.placingFragId);
+  // R05-03 / R11-04 — a paid decor placement ends the tool (one piece per purchase); offer the same piece again
+  const again = usePlaceAgain();
+  const againDef = useUI((s) =>
+    again.defId && s.tool === 'none' && s.view === 'tank' && s.focusedTankId === again.tankId ? safe('decorDef', () => getDecorDef(again.defId!) ?? null, null) : null,
+  );
+  const canBuyAgain = useGame((s) => !!againDef && (s.game?.finance.money ?? 0) >= againDef.price);
+  useEffect(() => {
+    if (tool !== 'none') clearPlaceAgain();
+  }, [tool]);
+  useEffect(() => {
+    if (!again.defId) return;
+    const t = window.setTimeout(clearPlaceAgain, PLACE_AGAIN_MS);
+    return () => window.clearTimeout(t);
+  }, [again.defId, again.tankId]);
   // lane:qa-play — the animal whose card is open, in the tank on screen (Target feed "Offer to …" shortcut)
   const offerTo = useGame((s) => {
     const id = useUI.getState().selectedCreatureId;
@@ -567,14 +584,17 @@ export function ToolHint() {
     const what = decorName ? <strong>{decorName}</strong> : 'it';
     const floating = !!placing && safe('isFloating', () => isFloating(placing), false);
     const epiphyte = !!placing && safe('isEpiphyte', () => isEpiphyte(placing), false);
+    // one piece per click; Shift+click keeps a purchase armed (DecorEditor), touch gets "Place another" afterwards
+    const keys = fine ? (placingFrag ? ' · R rotates' : ' · R rotates · Shift+click places more') : '';
     text = floating ? (
-      <>{Click} in the tank where {what} should float — it rests on the water surface{fine ? ' · R rotates' : ''}</>
+      <>{Click} in the tank where {what} should float — it rests on the water surface{keys}</>
     ) : epiphyte ? (
-      <>{Click} a rock, wood or the floor to attach {what}{fine ? ' · R rotates' : ''}</>
+      <>{Click} a rock, wood or the floor to attach {what}{keys}</>
     ) : (
-      <>{Click} the tank floor to place {what}{fine ? ' · R rotates' : ''}</>
+      <>{Click} the tank floor to place {what}{keys}</>
     );
   }
+  else if (againDef) text = <><strong>{againDef.name}</strong> placed{fine ? ' · Shift+click places several in a row' : ''}</>;
   else if (tool === 'decor_move') text = <>Drag a piece to move it{fine ? ' · R rotates while held' : ''}</>;
   // touch previews on the first tap and buys on the second (PlacementGhost resolveFloorTap); a mouse click places
   else if (tool === 'tank_place') {
@@ -598,7 +618,12 @@ export function ToolHint() {
               <ShoppingCart size={14} aria-hidden /> Buy a pack · {formatMoney(getFoodDef(foodId)?.price ?? 0)}
             </button>
           )}
-          <button type="button" className="ag-toolhint__done" onClick={() => { sfx('close'); selectTool('none'); }}>
+          {againDef && (
+            <button type="button" className="ag-toolhint__done ag-toolhint__offer" data-testid="toolhint-place-another" disabled={!canBuyAgain} style={canBuyAgain ? undefined : { opacity: 0.55, cursor: 'not-allowed' }} title={canBuyAgain ? undefined : `Not enough money — ${againDef.name} costs ${formatMoney(againDef.price)}.`} onClick={() => { sfx('click'); placeAnother(); }}>
+              <Plus size={14} aria-hidden /> Place another · {formatMoney(againDef.price)}
+            </button>
+          )}
+          <button type="button" className="ag-toolhint__done" onClick={() => { sfx('close'); if (againDef) clearPlaceAgain(); else selectTool('none'); }}>
             <X size={14} aria-hidden /> {tool === 'decor_place' || tool === 'tank_place' ? 'Cancel' : 'Done'}
           </button>
         </motion.div>

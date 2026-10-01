@@ -39,3 +39,28 @@ export function lightsOn(onHour: number, offHour: number, hour: number): boolean
   const h = hourOfDay(hour);
   return onHour <= offHour ? h >= onHour && h < offHour : h >= onHour || h < offHour;
 }
+
+/** A new tank's lights come on at 07:00: fully lit by a new game's 08:00 start (the sunrise ramp takes an hour). */
+export const DEFAULT_LIGHTS_ON = 7;
+
+/**
+ * Round-3 (S01-11 / R11-02) — a new tank's lights go off when the room closes, so exhibits stay lit for every open
+ * hour: the facility's closing hour, kept to 19:00–22:00 (a 12–15 h day). Rooms open past midnight get 22:00.
+ */
+export function defaultLightsOff(closeHour: number | undefined): number {
+  if (closeHour === undefined || !Number.isFinite(closeHour)) return 19;
+  if (closeHour <= DEFAULT_LIGHTS_ON) return 22;
+  return Math.max(19, Math.min(22, Math.round(closeHour)));
+}
+
+/** Are the lights still on after the doors close? A long day that only covers the open hours is not wasted light. */
+export function lightsPastClose(lighting: { onHour: number; offHour: number }, closeHour: number | undefined): boolean {
+  if (closeHour === undefined || !Number.isFinite(closeHour)) return false;
+  return lightsOn(lighting.onHour, lighting.offHour, closeHour + 0.5);
+}
+
+/** The photoperiod the lighting advice calls too long: over 15 h, or over 12 h with the lights on after closing. */
+export function photoperiodTooLong(lighting: { onHour: number; offHour: number }, closeHour: number | undefined): boolean {
+  const period = ((lighting.offHour - lighting.onHour + 24) % 24) || 24;
+  return period > 15 || (period > 12 && lightsPastClose(lighting, closeHour));
+}

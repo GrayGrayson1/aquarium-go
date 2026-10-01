@@ -21,7 +21,8 @@ interface ShellState {
   /** Which edge the expanded guide card claims for camera framing (desktop tank view), or null. */
   coachSide: 'left' | 'bottom' | null;
   /** Last captured photo (data URL) shown in the preview modal. */
-  photo: { url: string; creatureId: string | null; tankId: string | null } | null;
+  /** `added`: the shot wrote a new line into the creature's story (one per few game hours). */
+  photo: { url: string; creatureId: string | null; tankId: string | null; added?: boolean } | null;
   set: (p: Partial<Omit<ShellState, 'set' | 'togglePopover'>>) => void;
   togglePopover: (p: Exclude<Popover, null>) => void;
 }

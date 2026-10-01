@@ -7,7 +7,8 @@
  *
  * Contract for sim lanes while `state.offlineGrace` is true (see the field doc in src/types/game.ts):
  *   - lifecycle: never set a creature's status to 'dead'; floor health at GRACE_HEALTH_FLOOR; treat creatures as
- *     receiving minimal rations (hunger ≤ GRACE_MAX_HUNGER) without consuming inventory food.
+ *     receiving minimal rations (hunger ≤ GRACE_MAX_HUNGER) without consuming inventory food. An animal already past
+ *     either limit is held where it is, never moved to the limit (that would heal or feed it for free).
  *   - breeding: may progress, but should not cull adults; clutch losses should be no worse than normal.
  *   - water/care: equipment should not fail.
  * Core ALSO enforces a safety net after every chunk (revives any creature that died in the chunk, floors health,
@@ -33,7 +34,7 @@ import { touchResidents } from '@/sim/residents'; // lane:perf2
 import { GAME_HOURS_PER_REAL_SECOND, OFFLINE_CAP_HOURS, formatDuration } from '@/sim/time';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
-import { loadGameDetailed, latestSaveSlot, isStaleGame } from './slots';
+import { loadGameDetailed, latestSaveSlot, isStaleGame, noteCatchUp } from './slots';
 import { mutateFast } from '@/game/fastMutate';
 import type { LoadResult } from './types';
 
@@ -94,8 +95,11 @@ const GRACE_MIN_LEVEL = 0.9;
 /**
  * lane:fix-core (P5-02) — what the grace period may hold each animal and tank at: the usual floor, or the saved
  * value when that was already worse. Animals below the health floor (or above the hunger cap) at save time are
- * pinned where they were: the catch-up neither kills them nor nurses them back (the lifecycle step floors them at
- * GRACE_HEALTH_FLOOR while it runs; the pin puts them back after each chunk).
+ * pinned where they were: the catch-up never kills them and never nurses them back for free.
+ * lane:fix3-saves (R03-04) — the pin is one-sided: what really happened during a chunk (a feeder or staff feeding
+ * them, recovery) still counts. The lifecycle step holds an animal outside the limits where it is instead of clamping
+ * it to them (hunger never rises past max(GRACE_MAX_HUNGER, its value), health never falls past
+ * min(GRACE_HEALTH_FLOOR, its value)), so any improvement a chunk makes is real and graceFloor only stops worsening.
  */
 interface GraceFloors {
   creatures: Map<string, { health: number; hunger: number }>;
@@ -159,10 +163,8 @@ function graceFloor(state: GameState, floors: GraceFloors): void {
   for (const c of Object.values(state.creatures)) {
     if (c.status !== 'alive' && c.status !== 'listed') continue;
     const f = floors.creatures.get(c.id) ?? DEFAULT_CREATURE_FLOOR;
-    if (f.health < GRACE_HEALTH_FLOOR) c.stats.health = f.health; // pinned: no worse, no better than the save
-    else if (!(c.stats.health >= f.health)) c.stats.health = f.health;
-    if (f.hunger > GRACE_MAX_HUNGER) c.stats.hunger = f.hunger;
-    else if (!(c.stats.hunger <= f.hunger)) c.stats.hunger = f.hunger;
+    if (!(c.stats.health >= f.health)) c.stats.health = f.health; // never sicker than the floor (or the save)
+    if (!(c.stats.hunger <= f.hunger)) c.stats.hunger = f.hunger; // never hungrier than the cap (or the save)
   }
   for (const id of state.tankOrder) {
     const w = state.tanks[id]?.water;
@@ -441,6 +443,8 @@ export function catchUpAfterHidden(hiddenMs: number): OfflineSummary | null {
     if (typeof console !== 'undefined') console.warn('[aquarium-go] catch-up after a hidden spell failed', e);
     return null;
   }
+  // lane:fix3-saves (R03-01) — catch-up is not play: a forgotten tab must not look further along because of it.
+  if (summary) noteCatchUp(g.saveId, (summary as OfflineSummary).hours);
   if (summaryWorthShowing(summary)) publishSummary(summary);
   return summary;
 }

@@ -170,11 +170,25 @@ function tidyCelsius(text: string): string {
   });
 }
 
+/** A temperature *difference* ("by ~2 °C", "1 °C below the chiller", "1–2 °C of cooling", "~2 °C cooler") scales by
+ *  1.8 with no +32 offset. Only "by …" before the value or a comparison word right after "°C" marks one: a bare "~"
+ *  does not ("breeding slows below ~21 °C" is a real temperature). */
+const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*)$/i;
+const TEMP_DELTA_AFTER = /^\s+(?:below|above|cooler|warmer|colder|hotter|lower|higher|of|per)\b/i;
+
+function fDelta(c: number): string {
+  const f = c * 1.8;
+  return Math.abs(f) >= 1 ? String(Math.round(f)) : f.toFixed(1);
+}
+
 /** Replace °C values inside report strings with °F when requested (and tidy "28.0 °C" → "28 °C"). */
 export function convertTempText(text: string | undefined, unit: 'C' | 'F'): string | undefined {
   if (!text) return text;
   if (unit === 'C') return tidyCelsius(text);
-  return text.replace(/(-?\d+(?:\.\d+)?)(\s*[–-]\s*(-?\d+(?:\.\d+)?))?\s*°\s*C/g, (_m, a: string, _r, b: string | undefined) => {
+  return text.replace(/(-?\d+(?:\.\d+)?)(\s*[–-]\s*(-?\d+(?:\.\d+)?))?\s*°\s*C/g, (m: string, a: string, _r, b: string | undefined, at: number) => {
+    if (TEMP_DELTA_BEFORE.test(text.slice(0, at)) || TEMP_DELTA_AFTER.test(text.slice(at + m.length))) {
+      return b != null ? `${fDelta(Number(a))}–${fDelta(Number(b))} °F` : `${fDelta(Number(a))} °F`;
+    }
     const fa = cToF(Number(a));
     const dig = a.includes('.') ? 1 : 0;
     if (b != null) return `${fa.toFixed(dig)}–${cToF(Number(b)).toFixed(dig)} °F`;

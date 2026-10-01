@@ -4,12 +4,14 @@
  * One shared offscreen WebGLRenderer renders a creature through its registered factory (fish + critterart specials)
  * in a flattering 3/4 view with soft studio lighting over a subtle gradient backdrop tinted by the species'
  * environment. Results are cached as image URLs by (creature/species, appearance hash, life stage, sex, size) and
- * rendered asynchronously, one per animation frame, so the UI never stalls; a job whose last subscriber unmounts
- * before it renders is dropped. Returns null while pending or when WebGL is unavailable.
+ * rendered asynchronously, one per animation frame (a new species' shaders first link in parallel), so the UI never
+ * stalls; a job whose last subscriber unmounts before it renders is dropped. Returns null while pending or when WebGL
+ * is unavailable.
  */
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 import type { Creature, CreatureRuntime, CreatureVisualParams, SpeciesDefinition } from '@/types';
+import type { CreatureObject } from '../creatures/types';
 import { findSpecies } from '@/data/species';
 import { getCreatureFactory } from '../creatures/registry';
 import '../creatures';
@@ -189,30 +191,72 @@ function portraitRuntime(species: SpeciesDefinition): CreatureRuntime {
 const _box = new THREE.Box3();
 const _ctr = new THREE.Vector3();
 const _sz = new THREE.Vector3();
+const _v = new THREE.Vector3();
+const _part = new THREE.Box3();
 
-/** Render the job onto the shared canvas. True when the canvas now holds the portrait (read it back with `readback`). */
-function renderJob(job: Job): boolean {
-  if (!ensureRenderer() || !renderer || !scene || !camera || !stage) return false;
+/**
+ * Box3.setFromObject(root, true), except for the vertices of parts a geometry lists in `userData.frameSkip` (by
+ * `aMask` part id): thin appendages such as a shrimp's long antennae would otherwise frame a tiny body in an empty
+ * disc (L-6 / P6-04).
+ */
+function frameBox(root: THREE.Object3D, box: THREE.Box3): THREE.Box3 {
+  box.makeEmpty();
+  root.updateWorldMatrix(false, true);
+  root.traverse((o) => {
+    const geo = (o as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+    const pos = geo?.getAttribute('position');
+    if (!geo || !pos) return;
+    if ((o as THREE.InstancedMesh).isInstancedMesh) {
+      _part.setFromObject(o, false);
+      box.union(_part);
+      return;
+    }
+    const skip = geo.userData.frameSkip as number[] | undefined;
+    const mask = skip ? geo.getAttribute('aMask') : undefined;
+    const mesh = (o as THREE.Mesh).isMesh ? (o as THREE.Mesh) : null;
+    for (let i = 0; i < pos.count; i++) {
+      if (mask && skip!.includes(Math.round(mask.getX(i)))) continue;
+      if (mesh) mesh.getVertexPosition(i, _v);
+      else _v.fromBufferAttribute(pos, i);
+      box.expandByPoint(_v.applyMatrix4(o.matrixWorld));
+    }
+  });
+  return box;
+}
+
+/** A job in flight: its creature is built, then posed on the stage while its shader programs link (see pump). */
+type Staged = { job: Job; obj: CreatureObject; holder: THREE.Group };
+let staged: Staged | null = null;
+
+/** Build the job's creature. Null when it cannot be rendered. */
+function buildJob(job: Job): CreatureObject | null {
+  if (!ensureRenderer()) return null;
   const factory = getCreatureFactory(job.species.id, job.species.behaviorSet);
-  if (!factory) return false;
-  let obj;
+  if (!factory) return null;
   try {
-    obj = factory({ species: job.species, creature: job.creature, appearance: job.appearance, lod: 0, quality: 'high', fx });
+    return factory({ species: job.species, creature: job.creature, appearance: job.appearance, lod: 0, quality: 'high', fx });
   } catch (e) {
     console.warn('[portraits] factory failed', job.species.id, e);
+    return null;
+  }
+}
+
+/** Pose the built creature on the stage and frame the camera on it. False (creature disposed) when it cannot be rendered. */
+function poseJob({ job, obj, holder }: Staged): boolean {
+  if (!scene || !camera || !stage) {
+    obj.dispose(); // the context was lost while it waited
     return false;
   }
   try {
     const rt = portraitRuntime(job.species);
     // settle springs into the portrait pose
     for (let i = 0; i < 40; i++) obj.update(rt, 0.05, 2 + i * 0.05);
-    const holder = new THREE.Group();
     holder.add(obj.root);
     const upright = job.species.behaviorSet === 'seahorse';
     holder.rotation.set(0, upright ? -0.25 : -0.48, upright ? 0 : 0.05, 'YZX');
     stage.add(holder);
     holder.updateMatrixWorld(true);
-    _box.setFromObject(holder, true);
+    frameBox(holder, _box);
     if (_box.isEmpty()) _box.set(new THREE.Vector3(-0.5, -0.3, -0.2), new THREE.Vector3(0.5, 0.3, 0.2));
     _box.getCenter(_ctr);
     _box.getSize(_sz);
@@ -223,22 +267,39 @@ function renderJob(job: Job): boolean {
     camera.position.set(_ctr.x + dist * 0.04, _ctr.y + dist * 0.1, _ctr.z + dist);
     camera.lookAt(_ctr);
     camera.updateMatrixWorld();
+    scene.background = job.transparent ? null : backdrop(job.species.environment ?? 'freshwater');
+    return true;
+  } catch (e) {
+    console.warn('[portraits] render failed', job.species.id, e);
+    stage.remove(holder);
+    obj.dispose();
+    return false;
+  }
+}
+
+/** Render a staged job onto the shared canvas. True when the canvas now holds the portrait (read it back with `readback`). */
+function drawJob({ job, obj, holder }: Staged): boolean {
+  let drop: CreatureObject | null = obj;
+  try {
+    if (!renderer || !scene || !camera || !stage) return false; // the context was lost while it waited
     fx.uCamPos.value.copy(camera.position);
     fx.uTime.value = 3.7;
-    scene.background = job.transparent ? null : backdrop(job.species.environment ?? 'freshwater');
     const px = Math.max(32, Math.min(1024, Math.round(job.size * Math.min(2, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1))));
     renderer.setSize(px, px, false);
     renderer.setClearColor(0x000000, job.transparent ? 0 : 1);
     renderer.render(scene, camera);
     stage.remove(holder);
     keep(`${job.species.id}|${job.creature?.lifeStage ?? 'adult'}`, obj);
-    obj = null;
+    drop = null;
     return true;
   } catch (e) {
     console.warn('[portraits] render failed', job.species.id, e);
     return false;
   } finally {
-    obj?.dispose();
+    if (drop) {
+      stage?.remove(holder);
+      drop.dispose();
+    }
   }
 }
 
@@ -393,17 +454,81 @@ export function flipRows(src: Uint8ClampedArray, w: number, h: number): Uint8Cla
   return out;
 }
 
+/** Longest a staged job waits for its programs to link before it is drawn anyway (a driver that never reports). */
+const LINK_WAIT_MS = 2000;
+/** Main-thread ms a job may spend in one frame; past it, the job's next step waits for the next frame. */
+const STEP_BUDGET_MS = 8;
+
+/**
+ * lane:polish-render (P-9) — a job runs in steps: build the creature; pose and frame it and submit its shader programs
+ * for parallel compilation (KHR_parallel_shader_compile); draw once they have linked. Doing it all at once made the
+ * driver link every new program synchronously inside the render call, and a big creature's build came on top: each
+ * first portrait of a species was a single 65–95 ms frame (the title screen's starters stuttered the idle showcase
+ * tank). Steps share a frame while the job stays under STEP_BUDGET_MS, so a cheap job (a species rendered before) is
+ * still done in one frame.
+ */
 function pump() {
   rafId = 0;
-  if (encoding) return; // resumes from finish()
+  if (encoding || staged) return; // resumes from finish() once the job in flight is done
   const job = queue.shift();
   if (!job) return;
   queued.delete(job.key);
   const t0 = performance.now();
-  const ok = renderJob(job);
+  const obj = buildJob(job);
   lastJobMs = performance.now() - t0;
-  if (!ok) return finish(job, null);
-  readback(job);
+  if (!obj) return finish(job, null);
+  const s: Staged = { job, obj, holder: new THREE.Group() };
+  staged = s;
+  nextStep(lastJobMs, (spent) => compileStaged(s, spent));
+}
+
+/** Run a job's next step in this frame while it is under budget, else in the next one. */
+function nextStep(spent: number, step: (spent: number) => void) {
+  if (spent <= STEP_BUDGET_MS) return step(spent);
+  rafId = requestAnimationFrame(() => {
+    rafId = 0;
+    step(0);
+  });
+}
+
+/** Pose a built job and submit its programs; it is drawn once they have linked. */
+function compileStaged(s: Staged, spent: number) {
+  const t0 = performance.now();
+  if (!poseJob(s)) {
+    staged = null;
+    return finish(s.job, null);
+  }
+  const r = renderer!;
+  const programs = r.info.programs?.length ?? 0;
+  let linked: Promise<unknown> | null = null;
+  try {
+    linked = r.compileAsync(scene!, camera!);
+  } catch {
+    linked = null; // the draw compiles synchronously, as before
+  }
+  const cost = spent + performance.now() - t0;
+  lastJobMs = Math.max(lastJobMs, cost);
+  if (!linked || (r.info.programs?.length ?? 0) === programs) return nextStep(cost, (x) => drawStaged(s, x));
+  let waited = false;
+  const go = () => {
+    if (waited) return;
+    waited = true;
+    window.clearTimeout(guard);
+    nextStep(Infinity, (x) => drawStaged(s, x));
+  };
+  const guard = window.setTimeout(go, LINK_WAIT_MS);
+  linked.then(go, go);
+}
+
+/** Draw a staged job and start reading it back. */
+function drawStaged(s: Staged, spent: number) {
+  staged = null;
+  const t0 = performance.now();
+  const ok = drawJob(s);
+  // the next job is spaced by the dearest frame this one took (see schedule)
+  lastJobMs = Math.max(lastJobMs, spent + performance.now() - t0);
+  if (!ok) return finish(s.job, null);
+  readback(s.job);
 }
 
 /** lane:fix-panels — forget a queued job nobody is waiting for any more (its row unmounted before it rendered). */
@@ -425,7 +550,7 @@ export function releasePortrait(key: string): void {
 }
 
 function schedule() {
-  if (rafId || delayId || encoding || typeof requestAnimationFrame === 'undefined') return;
+  if (rafId || delayId || encoding || staged || typeof requestAnimationFrame === 'undefined') return;
   // lane:pc-perf — a cheap job (programs warm) runs every frame; after an expensive one (a first compile, a big
   // readback) leave a few frames free so a panel full of new portraits never turns into a run of dropped frames
   if (lastJobMs > 8) {

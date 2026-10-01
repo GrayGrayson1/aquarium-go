@@ -120,6 +120,9 @@ export interface Anchor {
   capacity: number;
   /** Virtual anchors are invented when a tank has no suitable decor (e.g. a seahorse in a bare tank). */
   virtual?: boolean;
+  /** Where the decor puts it, before the clamp under the water surface: a level change re-clamps from this, so the
+   * anchors of floating plants come back up when the tank is topped off. */
+  base?: THREE.Vector3;
 }
 
 export interface ClutchInfo {
@@ -338,7 +341,8 @@ export function syncEnvStatic(env: TankEnv, tank: Tank, resolveDecor: DecorResol
     }
     const anchors = decorAnchors(inst, def);
     anchors.forEach((a, i) => {
-      const an: Anchor = { key: `${inst.id}#${i}`, decorId: inst.id, kind: a.kind, pos: new THREE.Vector3(a.pos[0], a.pos[1], a.pos[2]), capacity: Math.max(1, a.capacity) };
+      const base = new THREE.Vector3(a.pos[0], a.pos[1], a.pos[2]);
+      const an: Anchor = { key: `${inst.id}#${i}`, decorId: inst.id, kind: a.kind, pos: base.clone(), capacity: Math.max(1, a.capacity), base };
       clampAnchor(env, an.pos);
       env.anchors.push(an);
       (env.byKind[a.kind] ??= []).push(an);
@@ -386,7 +390,10 @@ function syncWaterLevel(env: TankEnv, tank: Tank, dims: TankDims, extras?: Extra
   for (let i = env.staticAnchors; i < env.anchors.length; i++) removed.add(env.anchors[i]);
   env.anchors.length = Math.min(env.anchors.length, env.staticAnchors);
   if (removed.size) env.byKind.hitch = env.byKind.hitch.filter((an) => !removed.has(an));
-  for (const an of env.anchors) clampAnchor(env, an.pos);
+  for (const an of env.anchors) {
+    if (an.base) an.pos.copy(an.base);
+    clampAnchor(env, an.pos);
+  }
   addExtras(env, tank, extras);
   env.hasHost = env.byKind.host.length > 0;
 }

@@ -82,6 +82,8 @@ export interface Agent {
   laidToRest: boolean;
   /** Body height at the previous step while dead (sink speed). */
   deadY: number;
+  /** When a layout change last woke this body (a rock dropped on it): the settle cap counts from then. */
+  deadWakeT: number;
   /** 0..1 current activity level from time of day + nocturnality + personality. */
   activeness: number;
   /** Individual quirks (fixed per individual). */
@@ -104,9 +106,11 @@ export interface Agent {
   actTarget: string | null;
   foodId: number;
   /** When `foodId` was last set to a different particle (the animal has been after this one since then), and the
-   * particle it let go of last (going back to it counts as the same pursuit). */
+   * particle it let go of last, and when (going straight back to it counts as the same pursuit; coming back to it
+   * a while later is a new one). */
   foodT: number;
   lastFoodId: number;
+  foodDropT: number;
   /** Particles this animal gave up on (could not reach / did not take), a small ring: ignored until `badFoodUntil[i]`. */
   badFoodIds: number[];
   badFoodUntil: number[];
@@ -335,6 +339,7 @@ export function createAgent(c: Creature, sp: SpeciesDefinition, rt: CreatureRunt
     dead: false,
     laidToRest: false,
     deadY: 0,
+    deadWakeT: -1e9,
     activeness: 1,
     speedMul: 1,
     zoneBias: 0,
@@ -354,6 +359,7 @@ export function createAgent(c: Creature, sp: SpeciesDefinition, rt: CreatureRunt
     foodId: -1,
     foodT: -1e9,
     lastFoodId: -1,
+    foodDropT: -1e9,
     badFoodIds: [-1, -1, -1, -1],
     badFoodUntil: [0, 0, 0, 0],
     anchorKey: null,

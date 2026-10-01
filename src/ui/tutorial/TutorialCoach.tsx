@@ -25,7 +25,7 @@ import { useShell } from '../common/shellStore';
 import { safe, SHORT_LANDSCAPE_QUERY, useMedia } from '../common/safe';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { ProgressDots, Button } from '../kit';
-import { openPanel } from '../hud/Dock';
+import { guideTarget, openPanel } from '../hud/Dock';
 import { toggleTankCard } from '../hud/TankBar';
 import { useDockedCard } from '../hud/cardDock';
 import { setCameraMode } from '../hud/ToolRail';
@@ -192,7 +192,12 @@ function showMe(target: string, g: GameState) {
       break;
     }
     default:
-      if (target.startsWith('dock-')) openPanel(target.slice(5) as Parameters<typeof openPanel>[0]);
+      if (target.startsWith('dock-')) {
+        const id = target.slice(5) as Parameters<typeof openPanel>[0];
+        // "show me" never closes the panel it points at (openPanel toggles): an open one is pointed at the step's section
+        if (ui.panel !== id) openPanel(id);
+        else ui.set({ panelTarget: guideTarget(id) });
+      }
   }
 }
 
@@ -202,6 +207,15 @@ function shortName(name: string): string {
   const first = name.split(/\s+/)[0];
   return first.length <= 12 ? first : `${first.slice(0, 11)}…`;
 }
+
+/** What the habitat step asks for, in each starter's own words (its suggestions lead the Build panel's decor list). */
+const HABITAT_PICK: Record<string, string> = {
+  axolotl: 'Pick a cave or a plant',
+  betta: 'Pick a plant',
+  pea_puffer: 'Pick a plant or some wood',
+  ocellaris_clownfish: 'Pick some rock',
+  lined_seahorse: 'Pick a hitching post',
+};
 
 const SHOW_ME_LABEL: Record<string, string> = {
   'tool-feed': 'Open the food',
@@ -356,9 +370,19 @@ export function TutorialCoach() {
   const observing = cur.step.id === 'observe' && target === 'scene';
   const action = observing ? 'follow-starter' : target;
   const starterName = Object.values(game.creatures).find((c) => c.isStarter && c.status === 'alive')?.name;
-  // the CTA follows the state: once the food picker / Build is open it says what to do there instead of "Open …"
-  const opened = (target === 'tool-feed' && popover === 'food') || (target === 'tool-target-feed' && popover === 'target_food') ? 'Pick a food' : target === 'dock-build' && panel === 'build' ? 'Pick a plant or cave' : null;
-  const showLabel = observing ? (starterName ? `Follow ${shortName(starterName)}` : 'Follow') : opened ?? SHOW_ME_LABEL[target] ?? (target.startsWith('dock-') ? `Open ${target.slice(5)}` : '');
+  // the CTA follows the state: once the food picker / Build is open the button gives way to a plain hint saying what
+  // to do there (pressing "Open Build" again used to close Build, and re-opening an open food picker did nothing).
+  // The upgrade step only waits for reputation: with Build open there is nothing more to point at.
+  const starterId = game.progress.tutorial?.starterId || game.starterId;
+  const opened =
+    (target === 'tool-feed' && popover === 'food') || (target === 'tool-target-feed' && popover === 'target_food')
+      ? 'Pick a food'
+      : target === 'dock-build' && panel === 'build'
+        ? cur.step.id === 'habitat'
+          ? (HABITAT_PICK[starterId] ?? 'Pick a decoration')
+          : ''
+        : null;
+  const showLabel = opened != null ? '' : observing ? (starterName ? `Follow ${shortName(starterName)}` : 'Follow') : SHOW_ME_LABEL[target] ?? (target.startsWith('dock-') ? `Open ${target.slice(5)}` : '');
   const canNext = cur.step.objective.type === 'flag' && !!cur.step.objective.fallbackHours;
   const waiting = isWaitingStep(cur.step.objective);
   const progress = waiting ? stepProgress(game, cur.step.objective) : null;
@@ -475,6 +499,11 @@ export function TutorialCoach() {
                       <Button size="sm" variant={waiting && speed > 0 && speed < 3 ? 'ghost' : 'primary'} onClick={() => showMe(action, game)} data-testid={canNext ? undefined : 'tutorial-next'}>
                         <Hand size={14} /> {showLabel}
                       </Button>
+                    )}
+                    {opened && (
+                      <span className="ag-coach__note ag-coach__note--do" data-testid="tutorial-hint">
+                        <Hand size={13} aria-hidden /> {opened}
+                      </span>
                     )}
                     {waiting && speed > 0 && speed < 3 && (
                       <Button size="sm" variant="primary" onClick={speedUpForStep} title="Run time at ×3 until this step is done, then back to normal speed">

@@ -13,11 +13,13 @@ import { describe, it, expect } from 'vitest';
 import { FIXTURES } from '@/dev/fixtures';
 import { makeContext } from '@/sim/context';
 import { stepVisitors } from '@/sim/facility';
-import { stepMarket, createListing } from '@/sim/economy';
+import { stepMarket, createListing, suggestPricing } from '@/sim/economy';
 import { advanceWorld, refreshTankCache } from '@/sim/world';
 import type { GameState } from '@/types';
 
 const DTS = [0.025, 0.25, 0.5];
+/** Buy-now at 1.3× the expected price: about two thirds of the listings sell within the run, at every step size. */
+const BUY_NOW_OF_EXPECTED = 1.3;
 const SEEDS = 4;
 
 function frozen(fixture: keyof typeof FIXTURES): string {
@@ -31,6 +33,11 @@ function withSeed(snap: string, s: number): GameState {
   const g: GameState = JSON.parse(snap);
   g.rngState = (g.rngState + s * 7919) >>> 0;
   return g;
+}
+
+/** Largest over smallest of a set of positive numbers (1 = identical). */
+function ratio(values: number[]): number {
+  return Math.max(...values) / Math.max(1e-9, Math.min(...values));
 }
 
 /** Relative spread of a set of numbers around their mean (0 = identical). */
@@ -85,7 +92,9 @@ describe('step-size invariance', () => {
     const snap = frozen('facility_shop');
     const rows = DTS.map((dt) => ({ dt, ...visitorsAt(snap, dt, 10) }));
     const detail = rows.map((r) => `dt=${r.dt}: visitors ${r.visitors.toFixed(0)} revenue $${r.revenue.toFixed(0)} rep +${r.rep.toFixed(1)}`).join(' | ');
-    expect(spread(rows.map((r) => r.visitors)), `visitors — ${detail}`).toBeLessThan(0.1);
+    // lane:fix3-saves (R10-02) — max/min, not spread around the mean: the original per-step sampling gave 2059 | 1818 |
+    // 1811 (1.137×), which a 10 % spread let through.
+    expect(ratio(rows.map((r) => r.visitors)), `visitors — ${detail}`).toBeLessThanOrEqual(1.08);
     expect(spread(rows.map((r) => r.revenue)), `revenue — ${detail}`).toBeLessThan(0.15);
     expect(spread(rows.map((r) => r.rep)), `reputation — ${detail}`).toBeLessThan(0.25);
   });
@@ -96,11 +105,17 @@ describe('step-size invariance', () => {
     for (const id of base.tankOrder) refreshTankCache(base, base.tanks[id]);
     base.market.listings = [];
     const adults = Object.values(base.creatures).filter((c) => c.status === 'alive' && c.lifeStage === 'adult' && c.tankId).slice(0, 6);
-    for (const c of adults) expect(createListing(base, { kind: 'creature', creatureIds: [c.id], reserve: 0, durationHours: 72 }).ok).toBe(true);
+    // lane:fix3-saves (R10-02) — a buy-now price buyers actually meet, so sales happen (with no buy-now nothing sells
+    // without the player accepting a bid, and the sold check compared zeros at every step size).
+    for (const c of adults) {
+      const price = suggestPricing(base, { kind: 'creature', creatureIds: [c.id] });
+      expect(createListing(base, { kind: 'creature', creatureIds: [c.id], reserve: 0, buyNow: Math.max(1, Math.round(price.expected * BUY_NOW_OF_EXPECTED)), durationHours: 72 }).ok).toBe(true);
+    }
     const snap = JSON.stringify(base);
     const rows = DTS.map((dt) => ({ dt, ...bidsAt(snap, dt, 80) }));
     const detail = rows.map((r) => `dt=${r.dt}: bids ${r.bids.toFixed(1)} sold ${r.sold.toFixed(1)}`).join(' | ');
     expect(spread(rows.map((r) => r.bids)), `bids — ${detail}`).toBeLessThan(0.25);
+    expect(rows.every((r) => r.sold > 0), `sold — ${detail}`).toBe(true);
     expect(spread(rows.map((r) => r.sold)), `sold — ${detail}`).toBeLessThan(0.25);
   });
 

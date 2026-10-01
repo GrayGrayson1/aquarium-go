@@ -14,7 +14,7 @@ import { Music } from './music';
 import { sfx, lastPlayed, type SfxId } from './sfx';
 import { startPartyMode, stopPartyMode } from './party';
 import { CueLimiter, diffLog, type LogCursor } from './cues';
-import { chooseMood, facilitySoundProfile, isNight, NightGate, roomFor, ROOMS, tankSoundProfile, visitorPresence, SILENT_PROFILE } from './soundscape';
+import { chooseMood, facilitySoundProfile, isNight, moodSwitchDue, NightGate, roomFor, ROOMS, tankSoundProfile, visitorPresence, SILENT_PROFILE } from './soundscape';
 import type { MusicMood } from './theory';
 import { getAudioStatus, setAudioStatus } from './store';
 
@@ -55,11 +55,6 @@ export function forceMood(m: MusicMood | null): void {
 const MIX_TANK: MixTargets = { tankLevel: 1, roomLevel: 0.45, distanceHz: 16000, aquariumSend: 0.1, musicSend: 0.38, uiSend: 0.18 };
 const MIX_FACILITY: MixTargets = { tankLevel: 0.5, roomLevel: 1, distanceHz: 2600, aquariumSend: 0.3, musicSend: 0.45, uiSend: 0.22 };
 const MIX_TITLE: MixTargets = { tankLevel: 0.55, roomLevel: 0.5, distanceHz: 5000, aquariumSend: 0.25, musicSend: 0.5, uiSend: 0.2 };
-/** Quick panel flicks (a glance at the market) must not restart the score. */
-const MOOD_DEBOUNCE_MS = 1500;
-const PANEL_MOOD_DEBOUNCE_MS = 3000;
-/** A mood keeps playing at least this long before an automatic change (not a screen/view/panel switch, not party). */
-const MOOD_MIN_DWELL_MS = 12000;
 
 function update(): void {
   try {
@@ -102,10 +97,7 @@ function update(): void {
       pendingMood = want;
       pendingSince = now;
     }
-    const immediate = screenChanged || appliedMood === null || appliedMood === 'off' || want === 'party' || appliedMood === 'party' || forcedMood !== null;
-    const panelDriven = want === 'market' || appliedMood === 'market';
-    const settled = now - pendingSince > (panelDriven ? PANEL_MOOD_DEBOUNCE_MS : MOOD_DEBOUNCE_MS) && (panelDriven || want === 'off' || view !== appliedView || now - appliedAt > MOOD_MIN_DWELL_MS);
-    if (want !== appliedMood && (immediate || settled)) {
+    if (moodSwitchDue({ want, applied: appliedMood, forced: forcedMood !== null, screenChanged, view, appliedView, sincePendingMs: now - pendingSince, sinceAppliedMs: now - appliedAt })) {
       appliedMood = want;
       appliedAt = now;
       appliedView = view;

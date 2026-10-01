@@ -54,7 +54,7 @@ The per-species sections are generated from the species data files, so they alwa
 
 ### Betta — *Betta splendens* (`betta`)
 
-**Key values used:** adult 6.5 cm · min tank 5 gal · 23–30 °C (ideal 24.5–28) · pH 6–8 (ideal 6.5–7.5) · GH 5–19 · KH 2–12 · group solitary (min 1, ideal 1) · breeding `bubble_nest` · classes freshwater_tropical, freshwater_planted · unlock `fw_basic` · conservation: Vulnerable (IUCN, wild populations).
+**Key values used:** adult 6.5 cm · min tank 5 gal · 21–30 °C (ideal 24.5–28) · pH 6–8 (ideal 6.5–7.5) · GH 5–19 · KH 2–12 · group solitary (min 1, ideal 1) · breeding `bubble_nest` · classes freshwater_tropical, freshwater_planted · unlock `fw_basic` · conservation: Vulnerable (IUCN, wild populations).
 
 | Source | Tier | Facts used |
 |---|---|---|
@@ -69,7 +69,7 @@ The per-species sections are generated from the species data files, so they alwa
 - `fancy_guppy` → floor `conditional`, incident risk 0.15/day: Bettas often attack colourful long-finned male guppies as if they were rivals.
 
 **Confidence & conflicts:**
-- Water parameters: FishBase (24–30 °C, pH 6–8, 5–19 dH) and PetMD (76–81 °F) agree well; tolerated minimum of 23 °C is a practical floor.
+- Water parameters: FishBase (24–30 °C, pH 6–8, 5–19 dH) and PetMD (76–81 °F) agree well. The tolerated minimum is 21 °C (it was 23 °C): bettas ride out room temperature (about 22 °C) for weeks, and a 23 °C floor made every heater failure lethal. The ideal range stays 24.5–28 °C.
 - Betta vs dwarf shrimp varies by individual — represented as conditional with a per-day incident risk rather than a guarantee either way.
 - Colour/pattern/fin genetics are a deliberately simplified dominance ladder; real inheritance involves several interacting loci.
 - Compressed time: maturity ~4–5 real months = 14 game-days; bubble-nest eggs hatch in ~1–2 days (14 game-hours); 3–5 year lifespan ≈ 160 game-days.

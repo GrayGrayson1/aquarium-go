@@ -15,8 +15,20 @@ export interface FishGeometry {
   fins: THREE.BufferGeometry;
   /** Highest rest-pose vertex (body or spread fin) above the origin, in body lengths — the real dorsal height. */
   topY: number;
+  /** Lowest rest-pose vertex of the body / of the spread fins (≤ 0, body lengths): how far long fins hang (L-4). */
+  bodyBottomY: number;
+  finsBottomY: number;
   refs: number;
   disposeTimer: ReturnType<typeof setTimeout> | null;
+}
+
+/** Min vertex y of a geometry (0 when it has no vertices). */
+function minY(geo: THREE.BufferGeometry): number {
+  const p = geo.attributes.position?.array as ArrayLike<number> | undefined;
+  if (!p) return 0;
+  let m = Infinity;
+  for (let i = 1; i < p.length; i += 3) if (p[i] < m) m = p[i];
+  return Number.isFinite(m) ? m : 0;
 }
 
 /** Max vertex y of a geometry (0 when it has no vertices). */
@@ -64,13 +76,15 @@ export function acquireFishGeometry(plan: FishPlan, lod: number, quality: string
     // the real top (the shader only ever folds fins down from the spread rest pose stored in `position`) — measured
     // before the generous culling bounds below replace it, so the waterline clamp uses the dorsal height, not the box
     const topY = Math.max(maxY(body), maxY(fins));
+    const bodyBottomY = Math.min(0, minY(body));
+    const finsBottomY = Math.min(0, minY(fins));
     // generous bounds: vertices move in the shader (swim wave, fin flare, puff)
     const sphere = new THREE.Sphere(new THREE.Vector3(-0.05, 0, 0), 0.85);
     body.boundingSphere = sphere.clone();
     fins.boundingSphere = sphere.clone();
     body.boundingBox = new THREE.Box3(new THREE.Vector3(-0.8, -0.6, -0.5), new THREE.Vector3(0.6, 0.6, 0.5));
     fins.boundingBox = body.boundingBox.clone();
-    g = { sampler, body, fins, topY, refs: 0, disposeTimer: null };
+    g = { sampler, body, fins, topY, bodyBottomY, finsBottomY, refs: 0, disposeTimer: null };
     cache.set(key, g);
   }
   if (g.disposeTimer) {

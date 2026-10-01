@@ -26,10 +26,15 @@ let fixtureSaveId: string | null = null;
 let saving = false;
 /** Which autosave call currently owns the `saving` flag (a watchdog-released call must not clear a newer one's). */
 let saveSeq = 0;
-let lastSaveAt = 0;
+/**
+ * performance.now() of the last real save. Never set by a page load: the 4 s gap is between saves, so leaving a
+ * freshly loaded game (a welcome-back catch-up just applied) still saves it, or the next visit replayed the same
+ * catch-up. (Nothing is saved before a hydrated game runs: autosaveAllowed() wants the game screen, which a load
+ * only shows once its catch-up is applied.)
+ */
+let lastSaveAt = -Infinity;
 let failures = 0;
 let warnedFailing = false;
-let warnedStaleFor: string | null = null;
 
 function toastOnce(text: string, kind: 'warning' | 'danger') {
   try {
@@ -96,14 +101,9 @@ export async function autosaveNow(reason = 'manual'): Promise<boolean> {
       }
     } else {
       if (typeof console !== 'undefined') console.warn(`[aquarium-go] autosave (${reason}) failed: ${res.message}`);
-      if (res.code === 'stale') {
-        // lane:fix-core (P5-04) — another tab owns this aquarium now: say so once per game, don't count it as a fault.
-        const id = useGame.getState().game?.saveId ?? null;
-        if (id && warnedStaleFor !== id) {
-          warnedStaleFor = id;
-          toastOnce(res.message, 'warning');
-        }
-      } else if (++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
+      // lane:fix-core (P5-04) — another tab played this aquarium further: not a fault. lane:fix3-saves (R03-01) — the
+      // player is told by a lasting banner with a choice (StaleTabBanner), not by a toast.
+      if (res.code !== 'stale' && ++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
         warnedFailing = true;
         toastOnce('Autosave isn’t landing — export a copy from Settings › Saves to keep your progress safe.', 'danger');
       }
@@ -127,8 +127,12 @@ export function resetAutosaveState(): void {
   saving = false;
   failures = 0;
   warnedFailing = false;
-  warnedStaleFor = null;
-  lastSaveAt = 0;
+  lastSaveAt = -Infinity;
+}
+
+/** Is a save on leaving (tab hidden / page hide) due, i.e. no real save landed in the last few seconds? */
+export function leaveSaveDue(now = performance.now()): boolean {
+  return now - lastSaveAt > MIN_GAP_MS;
 }
 
 export function useAutosave(): void {
@@ -144,7 +148,6 @@ export function useAutosave(): void {
       }
     });
 
-    lastSaveAt = performance.now();
     let visibleSince = performance.now();
     let accumulatedVisibleMs = 0;
     const interval = window.setInterval(() => {
@@ -164,13 +167,13 @@ export function useAutosave(): void {
 
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
-        if (performance.now() - lastSaveAt > MIN_GAP_MS) void autosaveNow('hidden');
+        if (leaveSaveDue()) void autosaveNow('hidden');
       } else {
         visibleSince = performance.now();
       }
     };
     const onPageHide = () => {
-      if (performance.now() - lastSaveAt > MIN_GAP_MS) void autosaveNow('pagehide');
+      if (leaveSaveDue()) void autosaveNow('pagehide');
     };
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('pagehide', onPageHide);

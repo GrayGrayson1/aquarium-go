@@ -46,28 +46,38 @@ describe('fix AI: crawlers, resting and holdfasts', () => {
     expect(onFan, 'snail samples standing on the sea fan body').toBe(0);
   });
 
-  it('P6-03: a long-finned betta resting on a low stone keeps its fins clear of the substrate', () => {
-    const tank = makeTestTank({ id: 't1', decor: [decor('river_stone', 0.05, 0.02, { id: 'stone', scale: 1.1 })] });
-    const c = makeTestCreature('betta', 't1', { id: 'b1', stats: { health: 100, hunger: 10, stress: 5, energy: 30, social: 70, comfort: 90, breedingReadiness: 0, enrichment: 60 } });
-    c.appearance = { ...c.appearance, finType: 'halfmoon', finLength: 1.35 };
-    const w = makeTestWorld(tank, [c], 12);
-    const a = w.agents[0];
-    let lowest = Infinity;
-    let restFrames = 0;
-    for (let round = 0; round < 8; round++) {
-      startAct(a, w, 'rest');
-      for (let i = 0; i < 60 * 20; i++) {
-        stepWorld(w, 1 / 60);
-        if (a.act === 'rest' && a.actPhase >= 1 && a.actTarget === 'stone') {
+  it('P6-03 / R04-04: a long-finned betta never rests with its fins in the substrate, nor hovers over a leaf too low for them', () => {
+    // an almond leaf on the bed is the only rest spot (the original rested on it 0.32 L up, fins in the soil; the
+    // first fix held it ~0.66 L over the leaf, which read as idle hovering)
+    const rest = (finType: string, finLength: number) => {
+      const tank = makeTestTank({ id: 't1', decor: [decor('almond_leaf', 0.05, 0.02, { id: 'leaf' })] });
+      const c = makeTestCreature('betta', 't1', { id: 'b1', stats: { health: 100, hunger: 10, stress: 5, energy: 30, social: 70, comfort: 90, breedingReadiness: 0, enrichment: 60 } });
+      c.sex = 'male';
+      c.appearance = { ...c.appearance, finType, finLength };
+      const w = makeTestWorld(tank, [c], 12);
+      const a = w.agents[0];
+      let lowest = Infinity;
+      let restFrames = 0;
+      let onLeaf = 0;
+      for (let round = 0; round < 8; round++) {
+        startAct(a, w, 'rest');
+        for (let i = 0; i < 60 * 20; i++) {
+          stepWorld(w, 1 / 60);
+          if (a.act !== 'rest' || a.actPhase < 1) continue;
           restFrames++;
+          if (a.actTarget === 'leaf') onLeaf++;
           lowest = Math.min(lowest, a.rt.pos.y - floorAt(w.env, a.rt.pos.x, a.rt.pos.z));
         }
       }
-    }
-    expect(restFrames).toBeGreaterThan(60);
-    // the fins hang ~0.3 L × finLength below the centre: the centre stays above hy + most of that (it used to sit
-    // ~0.35 L up, fins in the soil)
-    expect(lowest).toBeGreaterThan(a.L * (0.17 + 0.3 * 1.35) - a.L * 0.1);
+      return { a, lowest, restFrames, onLeaf };
+    };
+    const hm = rest('halfmoon', 1.35);
+    expect(hm.restFrames).toBeGreaterThan(60);
+    // the fins hang ~0.3 L × finLength below the centre: the centre stays above hy + most of that
+    expect(hm.lowest).toBeGreaterThan(hm.a.L * (0.17 + 0.3 * 1.35) - hm.a.L * 0.1);
+    expect(hm.onLeaf, 'halfmoon frames resting over the low leaf').toBe(0);
+    // a short-finned plakat still rests on it
+    expect(rest('plakat', 0.65).onLeaf, 'plakat frames resting on the leaf').toBeGreaterThan(60);
   });
 
   it('S08-02: a seahorse whose holdfast lies inside a neighbouring stone still hitches (beside it, or elsewhere)', () => {
@@ -92,29 +102,30 @@ describe('fix AI: crawlers, resting and holdfasts', () => {
   });
 
   it('S08-02: virtual holdfasts under a stone are not chosen', () => {
-    // a bare marine tank: the seahorse invents holdfast spots on the sand; a stone dropped on one of them makes it no good
+    // a bare marine tank: the seahorse invents holdfast spots on the sand; a rock dropped on one of them makes it no good
     const tank = makeTestTank({ tierId: 'g29', waterClass: 'marine_fowlr', decor: [] });
     const w = makeTestWorld(tank, [makeTestCreature('lined_seahorse', tank.id, { id: 'sh1' })]);
     step(w, 5);
     const spots = w.virtualAnchors.filter((v) => v.kind === 'hitch');
     expect(spots.length).toBeGreaterThan(0);
     const sh = w.agents[0];
-    // bury every spot but the last under a stone
-    tank.decor = spots.slice(0, -1).map((v, i) => decor('seiryu_stone', v.pos.x, v.pos.z, { id: `s${i}`, scale: 1.4 }));
-    w.virtualAnchors.length = 0;
+    // bury every spot but the one farthest from it (it goes for the nearest free spot) under a rock that offers no
+    // holdfast of its own, so the seahorse keeps to the virtual spots (a stone with hitch anchors would be taken
+    // instead and the check below would never run)
+    const byDist = [...spots].sort((p, q) => p.pos.distanceTo(sh.rt.pos) - q.pos.distanceTo(sh.rt.pos));
+    const free = byDist[byDist.length - 1].key;
+    tank.decor = byDist.slice(0, -1).map((v, i) => decor('test_rock', v.pos.x, v.pos.z, { id: `r${i}`, scale: 0.9 }));
     const creatures = [makeTestCreature('lined_seahorse', tank.id, { id: 'sh1' })];
     // (the world resyncs: the same creature keeps its agent)
     syncWorld(w, { tank, creatures, clutches: [], hour: 12, refreshInfo: true });
     let hitched = 0;
     for (let f = 0; f < 60 * 120; f++) {
       stepWorld(w, 1 / 60);
-      if (sh.act === 'hitch' && sh.actPhase >= 1) hitched++;
+      if (sh.act !== 'hitch' || !sh.anchorKey) continue;
+      expect(sh.anchorKey, 'holdfast').toBe(free);
+      if (sh.actPhase >= 1) hitched++;
     }
-    expect(hitched).toBeGreaterThan(60 * 20);
-    if (sh.anchorKey?.startsWith('virtual:')) {
-      const v = w.virtualAnchors.find((x) => x.key === sh.anchorKey)!;
-      expect(v.key).toBe(spots[spots.length - 1].key);
-    }
+    expect(hitched, 'frames hitched at the free spot').toBeGreaterThan(60 * 20);
   });
 });
 

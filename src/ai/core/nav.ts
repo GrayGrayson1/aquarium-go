@@ -217,7 +217,7 @@ export function releaseAnchor(a: Agent, w: AIWorld): void {
 }
 
 /** Claim the best free anchor among `kinds` (closer + random). Returns the anchor or null. */
-export function claimAnchor(a: Agent, w: AIWorld, kinds: readonly AnchorKind[], opts: { near?: THREE.Vector3; maxDist?: number; avoidKey?: string | null } = {}): Anchor | null {
+export function claimAnchor(a: Agent, w: AIWorld, kinds: readonly AnchorKind[], opts: { near?: THREE.Vector3; maxDist?: number; avoidKey?: string | null; minRise?: number } = {}): Anchor | null {
   let best: Anchor | null = null;
   let bestScore = -Infinity;
   const ref = opts.near ?? a.rt.pos;
@@ -227,6 +227,7 @@ export function claimAnchor(a: Agent, w: AIWorld, kinds: readonly AnchorKind[], 
     for (const an of list) {
       if (an.key !== a.anchorKey && !anchorFree(w, an)) continue;
       if (opts.avoidKey && an.key === opts.avoidKey) continue;
+      if (opts.minRise !== undefined && an.pos.y - floorAt(w.env, an.pos.x, an.pos.z) < opts.minRise) continue;
       const d = an.pos.distanceTo(ref);
       if (opts.maxDist !== undefined && d > opts.maxDist) continue;
       const score = -d * 4 + rnd(a) * 1.2 + (an.key === a.anchorKey ? 0.8 : 0);

@@ -7,7 +7,7 @@
  * 50–65° so the steep pose stays calm under the surface (see ctrl.pitchCap).
  *
  * Shot state lives in src/runtime/archerShots.ts (read by the jet renderer). The fly is cosmetic: it never feeds the
- * sim (a game abstraction). One shot per tank at a time, a 30–80 s cooldown per fish, daylight only, calm fish only.
+ * sim (a game abstraction). One shot per tank at a time, a 15–45 s cooldown per fish, daylight only, calm fish only.
  */
 import * as THREE from 'three';
 import type { Agent } from './agent';
@@ -385,7 +385,7 @@ function fire(a: Agent, w: AIWorld, s: ArcherShot, st: AimState): void {
   st.firedAt = w.time;
   a.actPhase = 2;
   a.mouthPulse = 1;
-  nextShotAt.set(a, w.time + rrange(a, 30, 80));
+  nextShotAt.set(a, w.time + rrange(a, 15, 45));
   w.hooks.event?.('spit', m, a.id, 1);
   if (w.env.focused && w.hooks.observed) w.hooks.observed('spit_shot', a.id);
 }

@@ -252,16 +252,49 @@ export class ScaleController {
 const LATE_MIN_MS = 1.5;
 /** Frame spans remembered for the overlap correction (a probe interval spans at most a couple of frames). */
 const SPAN_RING = 6;
+/**
+ * Lateness floor (R05-02): a low quantile of each ~1 s window's lateness (the minimum alone is too eager: WebKit lets
+ * the odd timer fire on time), and the lowest of the last FLOOR_WINDOWS of them, so seconds of sustained outside work
+ * cannot pass for platform delay while any recent second was quiet. Capped, so that it can never hide much.
+ */
+const FLOOR_WINDOW_MS = 1000;
+const FLOOR_WINDOWS = 10;
+const FLOOR_QUANTILE = 0.25;
+const FLOOR_MIN_SAMPLES = 20;
+const FLOOR_MAX_MS = 6;
+/** Post-frame rendering update (R05-02): its usual length is a low quantile of the last POST_RING frames. */
+const POST_RING = 30;
+const POST_QUANTILE = 0.25;
+/** Ticks waiting for their frames' spans to be final (a hidden or stalled page stops taking them). */
+const PENDING_MAX = 64;
 
 /**
  * Main-thread time spent outside the frame loop, estimated from how late a chain of short timers fires: a timer due at
  * T that runs at T + x was held back x ms by other tasks (React commits, the sim tick, portrait rendering, GC, layout).
  * The frame loop's own spans are reported with `frame()` and subtracted, so nothing is counted twice; GPU-bound
  * frames (the main thread idles while the compositor waits) add nothing. Pure; driven by ResolutionGovernor.
+ *
+ * R05-02 — two kinds of timer delay are the browser's, not the game's, and are left out:
+ *  - the constant delay of every timer (WebKit fires an 8 ms timer ~4 ms late even on an idle page, Firefox ~2 ms):
+ *    a low quantile of recent lateness, measured on ticks clear of the frame loop, is subtracted from each tick;
+ *  - the rendering update that follows the frame loop (style, compositing, the WebGL present: ~6 ms a frame in WebKit
+ *    on a GPU-heavy scene, near 0 in Chromium). It scales with resolution like GPU work, so `frameDone()` extends each
+ *    frame span by it, up to its usual length (an occasional React commit queued behind a frame still counts).
+ * Ticks are evaluated on `take()`, once the spans they may overlap are final.
  */
 export class LatenessProbe {
   private spans: [number, number][] = [];
+  private pending: number[] = [];
   private acc = 0;
+  private winStart = -1;
+  private winLates: number[] = [];
+  private lows: number[] = [];
+  private posts: number[] = [];
+  private postSorted: number[] = [];
+  /** QA / tests: the platform timer delay currently subtracted (ms). */
+  floor = 0;
+  /** QA / tests: the usual post-frame rendering update (ms). */
+  post = 0;
   /** QA: external ms accumulated since construction. */
   total = 0;
 
@@ -272,27 +305,75 @@ export class LatenessProbe {
     if (this.spans.length > SPAN_RING) this.spans.shift();
   }
 
-  /** A probe timer scheduled at `at` for `due` ms later ran at `now`: accumulate the external busy time it saw. */
-  tick(at: number, due: number, now: number): number {
-    let late = now - (at + due);
-    if (late < LATE_MIN_MS) return 0;
-    for (const [t0, t1] of this.spans) late -= Math.max(0, Math.min(t1, now) - Math.max(t0, at));
-    const ext = Math.max(0, late);
-    this.acc += ext;
-    this.total += ext;
-    return ext;
+  /** The first task after the frame that ended at `t1` ran at `t`: the browser's rendering update ran in between. */
+  frameDone(t1: number, t: number): void {
+    const gap = t - t1;
+    if (!(gap >= 0)) return;
+    this.posts.push(gap);
+    if (this.posts.length > POST_RING) this.posts.shift();
+    const sorted = this.postSorted;
+    sorted.length = 0;
+    for (const g of this.posts) sorted.push(g);
+    sorted.sort((a, b) => a - b);
+    this.post = sorted[Math.floor(sorted.length * POST_QUANTILE)];
+    for (const sp of this.spans) if (sp[1] === t1) sp[1] = t1 + Math.min(gap, this.post);
+  }
+
+  /** A probe timer scheduled at `at` for `due` ms later ran at `now` (evaluated on the next `take()`). */
+  tick(at: number, due: number, now: number): void {
+    if (this.pending.length >= PENDING_MAX * 3) this.flush();
+    this.pending.push(at, due, now);
   }
 
   /** External busy time accumulated since the last take (ms). */
   take(): number {
+    this.flush();
     const v = this.acc;
     this.acc = 0;
     return v;
   }
 
   reset(): void {
+    // the platform delay and the rendering update survive: they belong to the browser, not to the discarded window
     this.acc = 0;
     this.spans.length = 0;
+    this.pending.length = 0;
+  }
+
+  private flush(): void {
+    const q = this.pending;
+    for (let i = 0; i < q.length; i += 3) {
+      const at = q[i];
+      const now = q[i + 2];
+      let late = now - (at + q[i + 1]);
+      let overlap = 0;
+      for (const [t0, t1] of this.spans) overlap += Math.max(0, Math.min(t1, now) - Math.max(t0, at));
+      // only ticks clear of the frame loop measure the delay: the overlap correction is coarse (it also removes frame
+      // time spent before the timer was due), so corrected lateness reads low
+      this.observe(now, overlap > 0 ? -1 : Math.max(0, late));
+      late -= overlap + this.floor;
+      if (late < LATE_MIN_MS) continue;
+      this.acc += late;
+      this.total += late;
+    }
+    q.length = 0;
+  }
+
+  /** One tick's lateness (`late` < 0: not a sample) for the platform delay floor. */
+  private observe(now: number, late: number): void {
+    if (this.winStart < 0 || now < this.winStart) this.winStart = now;
+    const w = this.winLates;
+    if (now - this.winStart >= FLOOR_WINDOW_MS) {
+      if (w.length >= FLOOR_MIN_SAMPLES) {
+        w.sort((a, b) => a - b);
+        this.lows.push(w[Math.floor(w.length * FLOOR_QUANTILE)]);
+        if (this.lows.length > FLOOR_WINDOWS) this.lows.shift();
+        this.floor = Math.min(FLOOR_MAX_MS, Math.max(0, Math.min(...this.lows)));
+      }
+      this.winStart = now;
+      w.length = 0;
+    }
+    if (late >= 0) w.push(late);
   }
 }
 

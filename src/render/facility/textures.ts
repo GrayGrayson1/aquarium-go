@@ -30,12 +30,41 @@ function shade(hex: string, k: number, alpha = 1): string {
 /** Cheap value-noise speckle over the whole canvas. */
 function speckle(ctx: Ctx, w: number, h: number, seed: string, count: number, alpha: number, size: [number, number], light = true): void {
   const rng = visualRng(seed);
+  // L-11 — blended straight into the pixels (one read, one write) instead of up to 26k fillStyle + fillRect calls:
+  // ~260 ms of the world build behind the veil on a throttled phone. Same draws, same area coverage as fillRect.
+  const W = Math.round(w);
+  const H = Math.round(h);
+  const img = ctx.getImageData(0, 0, W, H);
+  const px = img.data;
   for (let i = 0; i < count; i++) {
     const s = size[0] + rng.next() * (size[1] - size[0]);
     const l = light ? rng.next() > 0.5 : false;
-    ctx.fillStyle = l ? `rgba(255,255,255,${alpha * rng.next()})` : `rgba(0,0,0,${alpha * rng.next()})`;
-    ctx.fillRect(rng.next() * w, rng.next() * h, s, s);
+    const a = alpha * rng.next();
+    const src = l ? 255 : 0;
+    const x0 = rng.next() * w;
+    const y0 = rng.next() * h;
+    const x1 = Math.min(W, x0 + s);
+    const y1 = Math.min(H, y0 + s);
+    for (let y = Math.floor(y0); y < y1; y++) {
+      const cy = Math.min(y + 1, y1) - Math.max(y, y0);
+      for (let x = Math.floor(x0); x < x1; x++) {
+        const k = a * cy * (Math.min(x + 1, x1) - Math.max(x, x0));
+        if (k <= 0) continue;
+        const o = (y * W + x) * 4;
+        // source-over on straight (unpremultiplied) RGBA
+        const da = px[o + 3] / 255;
+        const oa = k + da * (1 - k);
+        if (oa <= 0) continue;
+        const keep = (da * (1 - k)) / oa;
+        const add = (src * k) / oa;
+        px[o] = px[o] * keep + add;
+        px[o + 1] = px[o + 1] * keep + add;
+        px[o + 2] = px[o + 2] * keep + add;
+        px[o + 3] = oa * 255;
+      }
+    }
   }
+  ctx.putImageData(img, 0, 0);
 }
 
 /** Soft cloudy blotches (plaster, concrete, stone). */

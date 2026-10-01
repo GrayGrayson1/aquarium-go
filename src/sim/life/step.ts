@@ -48,6 +48,13 @@ export const STARTER_GRACE_MAX_HUNGER = 60;
 export const STARTER_GRACE_HOURS = 48;
 /** lane:qa-final — a fasting mouthbrooder's hunger ceiling: "hungry", below the tank status's very hungry (70) and starving. */
 export const BROODING_MAX_HUNGER = 65;
+/**
+ * "Starving and losing condition": the welfare warning (stepTankCreatures) and the game loop's fast-forward guard
+ * (src/game/starvationGuard.ts) share this line.
+ */
+export const STARVING_HUNGER = 97;
+export const STARVING_HEALTH = 85;
+export const isStarving = (stats: { hunger: number; health: number }): boolean => stats.hunger >= STARVING_HUNGER && stats.health < STARVING_HEALTH;
 
 /** Hunger cap for the starter right now (null = no grace: fed already, tutorial skipped/done, or grace expired). */
 export function starterHungerCap(state: GameState, c: Creature, hour: number): number | null {
@@ -175,10 +182,13 @@ interface DeathInfo {
   toast?: boolean;
 }
 
-/** Mark a creature dead with a respectful explanation. Respects the offline grace period. Returns true if it died. */
-export function killCreature(state: GameState, c: Creature, info: DeathInfo, hour: number, emit: SimContext['emit']): boolean {
+/**
+ * Mark a creature dead with a respectful explanation. Respects the offline grace period: the animal survives at
+ * `graceHealth` (pass min(GRACE_HEALTH_FLOOR, its health before the blow) so grace never heals it). Returns true if it died.
+ */
+export function killCreature(state: GameState, c: Creature, info: DeathInfo, hour: number, emit: SimContext['emit'], graceHealth = GRACE_HEALTH_FLOOR): boolean {
   if (state.offlineGrace) {
-    c.stats.health = Math.max(c.stats.health, GRACE_HEALTH_FLOOR);
+    c.stats.health = Math.max(c.stats.health, graceHealth);
     return false;
   }
   if (c.status === 'dead') return false;
@@ -616,6 +626,7 @@ function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: 
   }
   v.stats.stress = clamp(v.stats.stress + stress, 0, 100);
   vm.injury = clamp((vm.injury ?? 0) + injury, 0, 100);
+  const graceHealth = Math.min(GRACE_HEALTH_FLOOR, v.stats.health);
   if (damage > 0) {
     v.stats.health = clamp(v.stats.health - damage, 0, 100);
     if (!vm.damage) vm.damage = {};
@@ -633,8 +644,9 @@ function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: 
       { kind: 'injury', cause: `injuries from ${actorLabel}`, text: `${v.name} has passed away from injuries caused by ${actorLabel}. ${risk.text ?? ''}`.trim() },
       hour,
       ctx.emit,
+      graceHealth,
     );
-    if (!died) v.stats.health = Math.max(v.stats.health, GRACE_HEALTH_FLOOR);
+    if (!died) v.stats.health = Math.max(v.stats.health, graceHealth);
   }
 }
 
@@ -806,7 +818,9 @@ export function stepTankCreaturesImpl(state: GameState, tank: Tank, dt: number, 
       const stageMul = c.lifeStage === 'juvenile' ? 1.25 : c.lifeStage === 'elder' ? 0.85 : 1;
       const before = c.stats.hunger;
       c.stats.hunger = clamp(c.stats.hunger + (h / Math.max(1, sp.hungerHours)) * HUNGER_PER_HUNGER_HOURS * stageMul, 0, 100);
-      if (state.offlineGrace && c.stats.hunger > GRACE_MAX_HUNGER) c.stats.hunger = GRACE_MAX_HUNGER;
+      // Grace rations only stop hunger rising past the cap; an animal already hungrier is held, not fed for free (R03-04).
+      const graceCap = Math.max(GRACE_MAX_HUNGER, before);
+      if (state.offlineGrace && c.stats.hunger > graceCap) c.stats.hunger = graceCap;
       if (c.isStarter) {
         // Metabolism alone never pushes the starter past the cap (hunger set higher by other means is left alone).
         const cap = starterHungerCap(state, c, hour);
@@ -944,12 +958,15 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
       m.damage[k] = (m.damage[k] ?? 0) + amt;
     }
   }
+  const healthBefore = s.health;
   s.health -= total;
   // No regeneration while a breeding partner keeps chasing and biting (bubble-nester female left with the male).
   const recovering = wv.harm < 0.05 && s.hunger < 75 && s.stress < 55 && !c.illness && (m.injury ?? 0) < 20 && (c.repro?.harassment ?? 0) < 0.5;
   if (recovering) s.health += (0.6 + 1.2 * hardy) * (0.4 + (s.comfort / 100) * 0.6) * h;
   s.health = clamp(s.health, 0, 100);
-  if (state.offlineGrace && s.health < GRACE_HEALTH_FLOOR) s.health = GRACE_HEALTH_FLOOR;
+  // Grace stops health falling past the floor; an animal already below it is held there, not healed for free (R03-04).
+  const graceFloor = Math.min(GRACE_HEALTH_FLOOR, healthBefore);
+  if (state.offlineGrace && s.health < graceFloor) s.health = graceFloor;
 
   // ── Illness progression / recovery / onset
   if (c.illness) {
@@ -1025,9 +1042,9 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
     const early = (c.isStarter || groupN <= 3) && throttleGroup(state, ids, 'hungry_toast', hour, toastWindowH);
     ctx.emit({ kind: 'warning', text, tankId: env.tank.id, creatureId: c.id, toast: early });
   }
-  if (s.hunger >= 97 && s.health < 85 && throttleGroup(state, ids, 'starving', hour, 24)) {
+  if (isStarving(s) && throttleGroup(state, ids, 'starving', hour, 24)) {
     // One toast per tank: name every starving group in it, rather than one danger toast per species.
-    const starving = [...env.groups.values()].filter((grp) => grp.ids.some((id) => (state.creatures[id]?.stats.hunger ?? 0) >= 97 && (state.creatures[id]?.stats.health ?? 100) < 85));
+    const starving = [...env.groups.values()].filter((grp) => grp.ids.some((id) => !!state.creatures[id] && isStarving(state.creatures[id].stats)));
     const tankIds = [...env.groups.values()].flatMap((grp) => grp.ids);
     const toast = throttleGroup(state, tankIds, 'starving_toast', hour, toastWindowH);
     const who = plural ? `Your ${pluralName(sp.commonName)} are` : `${c.name} is`;

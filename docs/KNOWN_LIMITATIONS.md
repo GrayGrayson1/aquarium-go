@@ -11,7 +11,9 @@ What is simplified, approximated or missing in this build. None of these block p
 - **Several life-history values are estimates** (kuhli breeding, hillstream incubation, dwarf-frog clutch size, some lifespans, several marine egg/larval timings). They are marked in each species' `confidenceNotes` and in `docs/research/*.md`.
 - **Scavengers don't consume detritus directly.** Detritus is removed by filtration and cleaning.
 - **Heater/chiller running costs** use an estimated duty cycle, not metered energy.
-- **During offline catch-up** (capped, grace period), nothing dies. Fights can still cost health down to the grace floor, while predation becomes only a scare.
+- **During offline catch-up** (capped, grace period), nothing dies. Fights can still cost health down to the grace floor, while predation becomes only a scare. The grace limits never improve on the save: an animal already past the health floor or hunger cap is held where it is, and free plus conditioner-bound ammonia/nitrite is capped at a WATCH level, or at its saved level if that was higher. Absences under 60 s catch up silently, with no welcome-back card.
+- **Conditioner hides what it binds.** For 24 game hours the bound ammonia/nitrite is left off the water report, so the reading drops, unlike a real test kit. It comes back when the dose wears off.
+- **Shrimp colonies are capped** (a game abstraction): about 6 per gallon, at least 20 and at most 80 per tank, with at most 6 berried females at once. The breeding check says when a colony is full.
 - **Nitrifier acclimation** is a game abstraction: one temperature per bacterial colony.
 - **Names never change after birth,** so fry named before they can be sexed keep a neutral name. Board quests that stall rotate off silently.
 - **Mixed soft- and hard-water tanks** settle between their residents' ideal pH. The report reads GOOD with a note while everyone is inside their tolerated range.
@@ -31,7 +33,7 @@ What is simplified, approximated or missing in this build. None of these block p
 - Transparency sorting between fins inside a single fish is approximate.
 - On far (LOD 2) tanks, desk and rack stands collapse into simple blocks.
 - Visitors are deliberately stylised figures, not photoreal people.
-- Loading a world still runs one ~0.3–0.5 s main-thread task (procedural geometry for every rock, plant and animal). Shaders compile in parallel behind a short veil.
+- Building a world is still one synchronous main-thread commit (procedural geometry for every rock, plant and animal: 0.3–1.4 s for the title showcase, longer for a big save on a phone). It now runs under the warm-up veil, so the screen shows the veil instead of freezing, and the tank appears a moment later on boot. Shaders compile in parallel behind the same veil.
 - Small animals in the hero tank draw lower-resolution meshes (same shape and materials) while they are only a few dozen pixels long. Decor keeps full detail at High/Ultra and simplifies small pieces at Low/Medium.
 - The app chunk is ~2.5 MB (≈0.8 MB gzipped) plus ~1.5 MB of cacheable vendor chunks, because every creature, plant and texture is procedural code. Dev tools, photo mode and the management panels load separately.
 - The shop dressing (shelves, starter-tank rack, supply cabinet, plants) is cosmetic. On rare occasions a visitor brushes through a corner piece next to a newly placed tank. The shop counter sits outside the default day-one framing; zoom out to see it.
@@ -51,6 +53,7 @@ What is simplified, approximated or missing in this build. None of these block p
 ## Staff
 - Staff walking is cosmetic and not synced to the exact game hour of each visit. Where tanks stand flush in a row, keepers feed from a front corner or the gap between tanks.
 - Keepers don't feed fry or larvae; raising young stays hands-on.
+- Staff never repair failed equipment; repairs stay the player's call. Keepers switch off a stuck-on heater and flag the failure; their reminders toast at most once a game day across the facility (a stuck-on heater always toasts). The alerts popover lists failed equipment until it is repaired.
 - The sim burns hunger at the same rate day and night (real diurnal fish rest at night), which is why keepers give fast-metabolism fish a 9 PM snack.
 - Staff never move animals, so a tank whose population booms (e.g. a shrimp colony) is flagged but stays overcrowded until the player acts.
 - There is no sales-associate role.
@@ -64,10 +67,15 @@ What is simplified, approximated or missing in this build. None of these block p
 ## Audio
 - The mix was balanced by metering (−27 dBFS ambience, music ≈5 dB under it), not by ear.
 - Microphone input for party mode was verified only through its fallback path, because the test browser has no microphone. The built-in groove always works.
+- The score follows day and night only after a short hold at 1×. While fast-forwarding (3×/10×) it never switches to night (it still settles from night to day), so at speed the music lags the clock on purpose.
+- Passive income chimes at most once every 12 s (30 s at 3×/10×). A bus at volume 0 stops rendering: the ambience is torn down, or the score turns off.
 
 ## Platform
 - Runs in any modern WebGL2 browser. There is no native desktop or mobile package.
-- Saves live in the browser (IndexedDB, falling back to localStorage, then memory). Use Settings → Export to move a save between browsers.
+- Saves live in the browser (IndexedDB, falling back to localStorage, then memory). Use Settings → Export to move a save between browsers. A save that only reached memory is lost on reload; the game warns when that happens.
+- On touch screens, the first tap on the faded (invisible) dock or tool rail only wakes the HUD. The top bar and tank bar act at once, and mouse clicks always act.
+- On a phone held sideways, an open panel or card covers everything but the top bar, so it shows one toast at a time, in its header row beside the close button. The others wait their turn (routine news may expire into the event log), and the "played further in another tab" banner and the update prompt wait until the sheet closes.
+- The iOS focus-zoom (G4-05) and long-press selection (G4-06) fixes are verified by code trace only: Playwright's WebKit emulates neither.
 
 ## Architecture
 - A few small tank-editing mutators (rename, purpose, water-class conversion, backdrop/substrate change) live in `src/ui/panels/common/tankOps.ts` rather than `src/sim`. They are written as plain draft mutators, so they can move without changes.

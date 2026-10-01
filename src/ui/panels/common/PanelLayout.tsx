@@ -40,7 +40,7 @@ export function PanelLayout({ title, icon, subtitle, toolbar, children, footer, 
             {subtitle && <div className="pn-head__sub">{subtitle}</div>}
           </div>
           {headerExtra}
-          <IconButton label={maximised ? 'Restore panel size' : 'Expand panel'} onClick={toggleMax} className="pn-head__btn">
+          <IconButton label={maximised ? 'Restore panel size' : 'Expand panel'} onClick={toggleMax} className="pn-head__btn pn-head__max">
             {maximised ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
           </IconButton>
           <IconButton label="Close panel" onClick={close} className="pn-head__btn" data-testid="panel-close">

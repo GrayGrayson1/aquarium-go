@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { stepWorld, syncWorld, type AIWorld } from '@/ai/core/world';
-import { floorAt } from '@/ai/core/env';
+import { colliderSdf, floorAt } from '@/ai/core/env';
 import { decor, makeTestCreature, makeTestTank, makeTestWorld } from '@/ai/core/testkit';
 import type { Creature, Tank } from '@/types';
 
@@ -48,6 +48,25 @@ describe('fix AI: water level and decor edits', () => {
     expect([...w.claims.entries()]).toEqual([...claims.entries()]);
     // every anchor still lies under the (lower) surface
     for (const an of w.env.anchors) expect(an.pos.y).toBeLessThanOrEqual(w.env.surfaceY - 0.005 + 1e-9);
+  });
+
+  it('R04-02: anchors clamped under a lower surface come back up when the tank is topped off', () => {
+    const tank = makeTestTank({ id: 't1', decor: [decor('floating_plants', -0.05, 0.02, { id: 'fp', y: 0.42 }), decor('test_rock', 0.12, 0.02, { id: 'rock' })] });
+    const creatures = [makeTestCreature('betta', 't1', { id: 'b1' })];
+    const w = makeTestWorld(tank, creatures, 12);
+    const before = new Map(w.env.anchors.map((an) => [an.key, an.pos.clone()]));
+    expect(w.env.anchors.some((an) => an.decorId === 'fp')).toBe(true);
+    tank.water.level = 0.9;
+    sync(w, tank, creatures);
+    // the floating plant's anchors were pushed down under the lower surface…
+    expect(w.env.anchors.some((an) => an.decorId === 'fp' && an.pos.y < before.get(an.key)!.y - 0.002)).toBe(true);
+    tank.water.level = 1;
+    sync(w, tank, creatures);
+    // …and are back where the decor puts them (they used to stay down until the next decor edit)
+    for (const an of w.env.anchors) {
+      const b = before.get(an.key);
+      if (b) expect(an.pos.distanceTo(b), an.key).toBeLessThan(1e-9);
+    }
   });
 
   it('S08-01: a decor edit elsewhere leaves an anchored animal alone; removing its anchor makes it replan', () => {
@@ -104,5 +123,46 @@ describe('fix AI: dead bodies', () => {
     expect(a.actT, "stepped again").not.toBe(actT);
     step(w, 150);
     expect(a.laidToRest).toBe(true);
+  });
+
+  it('R04-03: a body woken by a rock dropped on it is only laid to rest again once it is out of the rock', () => {
+    for (const sp of ['neon_tetra', 'panda_corydoras', 'african_dwarf_frog']) {
+      for (const [dx, dz, scale] of [[0, 0, 1], [0.01, 0.005, 1], [0, 0, 1.6]]) {
+        const tank = makeTestTank({ id: 't1' });
+        const c = makeTestCreature(sp, 't1', { id: 'x' });
+        const w = makeTestWorld(tank, [c], 12);
+        step(w, 5);
+        const a = w.agents[0];
+        c.status = 'dead';
+        sync(w, tank, [c]);
+        step(w, 150);
+        expect(a.laidToRest, `${sp} at rest`).toBe(true);
+        const p = a.rt.pos;
+        tank.decor = [decor('test_rock', p.x + dx, p.z + dz, { id: 'rock', scale })];
+        sync(w, tank, [c]);
+        const sdf = () => Math.min(...w.env.colliders.filter((k) => k.hard).map((k) => colliderSdf(k, p.x, p.y, p.z)));
+        expect(sdf(), `${sp} buried`).toBeLessThan(0);
+        // (an old body's actT is long past the settle cap: it used to be frozen again within a few frames, still inside)
+        for (let i = 0; i < 60 * 30 && !a.laidToRest; i++) stepWorld(w, 1 / 60);
+        expect(a.laidToRest, `${sp} at rest again`).toBe(true);
+        expect(sdf(), `${sp} ${dx},${dz} x${scale} out of the rock`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('R04-03: a cory dying on the bed finishes rolling onto its side before it is laid to rest', () => {
+    for (const seed of [1, 4]) {
+      const tank = makeTestTank({ id: 't1' });
+      const c = makeTestCreature('panda_corydoras', 't1', { id: 'x', temperament: 10 + seed * 15 });
+      const w = makeTestWorld(tank, [c], 12);
+      step(w, 4 + seed * 9);
+      const a = w.agents[0];
+      c.status = 'dead';
+      sync(w, tank, [c]);
+      for (let i = 0; i < 60 * 200 && !a.laidToRest; i++) stepWorld(w, 1 / 60);
+      expect(a.laidToRest).toBe(true);
+      // (it froze at 75° after 3 s, mid-roll)
+      expect(Math.abs(a.rt.roll) * 180 / Math.PI, `seed ${seed} roll`).toBeGreaterThan(85);
+    }
   });
 });

@@ -79,11 +79,16 @@ export function ResolutionGovernor() {
     const a = addEffect(() => {
       work.current.t0 = performance.now();
     });
+    // R05-02 — a message posted at the frame's end runs after the browser's rendering update (compositing, the WebGL
+    // present), which the probe must not take for outside work
+    const channel = new MessageChannel();
+    channel.port1.onmessage = (e: MessageEvent<number>) => probe.current.frameDone(e.data, performance.now());
     const b = addAfterEffect(() => {
       if (work.current.t0) {
         const t1 = performance.now();
         work.current.ms = t1 - work.current.t0;
         probe.current.frame(work.current.t0, t1);
+        channel.port2.postMessage(t1);
       }
     });
     let timer = 0;
@@ -98,6 +103,7 @@ export function ResolutionGovernor() {
     return () => {
       a();
       b();
+      channel.port1.close();
       window.clearTimeout(timer);
     };
   }, []);
@@ -160,7 +166,7 @@ export function ResolutionGovernor() {
     (window as unknown as { __AQ_PERF?: () => unknown }).__AQ_PERF = () => {
       const s = useRenderPerf.getState();
       const w = ctl.current?.lastWindow;
-      return { tier: tierRef.current, dpr: s.dpr, scale: s.scale, degrade: s.degrade, auto: useSettings.getState().qualityAuto !== false, frameMs: w ? Math.round(w.ms * 10) / 10 : 0, busy: w ? Math.round(w.busy * 100) / 100 : 0, extTotal: Math.round(probe.current.total) };
+      return { tier: tierRef.current, dpr: s.dpr, scale: s.scale, degrade: s.degrade, auto: useSettings.getState().qualityAuto !== false, frameMs: w ? Math.round(w.ms * 10) / 10 : 0, busy: w ? Math.round(w.busy * 100) / 100 : 0, extTotal: Math.round(probe.current.total), extFloor: Math.round(probe.current.floor * 10) / 10, extPost: Math.round(probe.current.post * 10) / 10 };
     };
   }, []);
   return null;

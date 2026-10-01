@@ -21,6 +21,7 @@ import type { Tank, DecorDef } from '@/types';
 import type { TankFXUniforms } from '../shared/underwater';
 import { getDecorDef } from '@/data/catalog/decor';
 import { useUI } from '@/state/ui';
+import { offerPlaceAgain } from './placeAgain';
 import { useGame, getGame } from '@/state/game';
 import { checkPlacement, placementLimits, maxScaleFor, placeDecor, moveDecor, removeDecor, SELL_BACK_FRACTION, takeFrag, plantFrag, fragEligibility, fragLabel } from '@/sim/aquascape';
 import { tankDims } from '@/sim/tankSpace';
@@ -277,6 +278,8 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     const moreInStorage = owned && !!getGame()?.inventory.decor.some((d) => d.defId === def.id);
     if (res.ok && !more && !moreInStorage) {
       useUI.getState().set({ tool: 'none', placingDecorDefId: null });
+      // …and the tool hint offers "Place another" for a few seconds (the touch way to plant a group)
+      if (!owned) offerPlaceAgain(def.id, tank.id);
       return;
     }
     requestAnimationFrame(updateGhost);

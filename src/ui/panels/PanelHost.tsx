@@ -21,6 +21,7 @@ import { tutorialAdvance, tutorialWants } from '@/sim/facility';
 import { SheetContext } from './common/PanelLayout';
 import { useIsPhone, useMedia, useReducedMotion } from './common/hooks';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
+import { SHORT_LANDSCAPE_QUERY } from '../common/safe';
 import { edit } from './common/act';
 import { PanelErrorBoundary } from './common/ErrorBoundary';
 import { useSettings } from '@/state/settings';
@@ -63,6 +64,8 @@ export function PanelHost() {
   const hasGame = useGame((s) => !!s.game);
   const phone = useIsPhone();
   const bottom = useMedia(BOTTOM_SHEET_QUERY) || phone;
+  // a phone held sideways always shows the sheet at full height (panels.css), so there is no half size to drop back to
+  const fullHeight = useMedia(SHORT_LANDSCAPE_QUERY) && bottom;
   const reduced = useReducedMotion();
   const [maximised, setMaximised] = useState(false);
   const dragControls = useDragControls();
@@ -121,7 +124,7 @@ export function PanelHost() {
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y < -50 || info.velocity.y < -500) setMaximised(true);
     else if (info.offset.y > 120 || info.velocity.y > 700) {
-      if (maximised) setMaximised(false);
+      if (maximised && !fullHeight) setMaximised(false);
       else close();
     }
   };

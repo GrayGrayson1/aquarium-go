@@ -89,6 +89,7 @@ export function makeMeta(state: GameState, slot: string, savedAt = Date.now(), s
     schemaVersion: state.schemaVersion,
     sizeBytes,
     saveId: typeof state.saveId === 'string' ? state.saveId : undefined,
+    hour: Number.isFinite(state.clock?.hour) ? state.clock.hour : undefined,
   };
 }
 

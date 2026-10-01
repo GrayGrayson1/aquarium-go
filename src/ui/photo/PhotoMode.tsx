@@ -13,11 +13,11 @@ import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { sfx } from '@/audio/sfx';
 import { creaturesInTank } from '@/sim/life';
-import { noteInteraction } from '@/sim/life/actions';
 import { useShell } from '../common/shellStore';
-import { safe } from '../common/safe';
+import { isTextEntry, safe } from '../common/safe';
 import { downloadDataUrl } from '../common/saves';
 import { tutorialFlag } from '../common/actions';
+import { notePhoto } from './story';
 import { Modal, Button, Slider, Chip } from '../kit';
 
 type Store = { getState: () => Record<string, unknown>; setState: (p: Record<string, unknown>) => void; subscribe: (cb: () => void) => () => void };
@@ -67,20 +67,14 @@ export async function takePhoto(): Promise<void> {
     }
     const creatureId = ui.followCreatureId ?? ui.selectedCreatureId;
     const g = useGame.getState().game;
+    let added = false;
     if (creatureId && g && g.creatures[creatureId]) {
       useGame.getState().mutate((d) => {
-        const c = d.creatures[creatureId];
-        if (!c) return;
-        // noteInteraction writes one throttled "photo" story line (6 game hours) — keep that throttle, just give the
-        // line it wrote the tank's name instead of adding a second entry for every shutter press.
-        const before = c.history.length;
-        safe('noteInteraction', () => noteInteraction(d, creatureId, 'photo'), undefined);
-        const last = c.history[c.history.length - 1];
-        if (c.history.length > before && last?.kind === 'photo') last.text = `Posed for a portrait in ${d.tanks[c.tankId ?? '']?.name ?? 'the aquarium'}.`;
+        added = notePhoto(d, creatureId);
       });
     }
     tutorialFlag('photo_taken');
-    useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId } });
+    useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId, added } });
   } finally {
     capturing = false;
   }
@@ -100,8 +94,14 @@ export function PhotoMode() {
     if (!photoMode) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return; // holding Space must not fire a capture per auto-repeat
-      if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      const t = e.target as HTMLElement | null;
+      if (isTextEntry(t)) return;
       if (document.querySelector('.ag-modal-backdrop')) return; // the preview (or any dialog) owns the keys while open
+      // a focused slider keeps Space / Enter, but Escape lets go of it and leaves photo mode in one press
+      if (t?.tagName === 'INPUT') {
+        if (e.key !== 'Escape') return;
+        t.blur();
+      }
       if (e.key === 'Escape') useUI.getState().set({ photoMode: false });
       if ((e.key === ' ' || e.key === 'Enter') && !(e.target as HTMLElement)?.closest?.('button, a, [role="button"], [role="radio"], [role="switch"]')) {
         e.preventDefault();
@@ -190,7 +190,7 @@ function PhotoPreview() {
       open={!!photo}
       onClose={close}
       title={c ? `${c.name}, photographed` : 'Your photo'}
-      subtitle={c ? 'Added to their story.' : 'Saved to this session — download to keep it.'}
+      subtitle={c ? (photo?.added ? 'Added to their story.' : 'Their story already has a portrait from the last few hours.') : 'Saved to this session — download to keep it.'}
       width={760}
       testId="photo-preview"
       actions={

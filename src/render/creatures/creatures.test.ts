@@ -2,13 +2,14 @@
  * Headless smoke test of every creature visual (no GL): builds each species × LOD × stage × sex, runs a few frames of
  * update(), and checks the invariants the tank renderer relies on. OWNER: lane "fishart".
  */
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { getCreatureFactory } from './registry';
 import './index';
 import { ALL_SPECIES } from '@/data/species';
 import { DEFAULT_TANK_FX } from '../shared/underwater';
-import type { Creature, CreatureRuntime } from '@/types';
+import type { Creature, CreatureRuntime, GameState } from '@/types';
+import { useGame } from '@/state/game';
 import type { RenderLod } from '../lod';
 import type { FishObject } from './core/fishObject';
 import { acquireFishGeometry, fishCacheStats, flushFishCache, releaseFishGeometry } from './core/cache';
@@ -196,6 +197,40 @@ describe('dead bodies linger for the renderer window', () => {
     expect(creatureKeysByTank(creatures('dead'), 20).get('t1')).toBeUndefined();
   });
 
+  it('a body leaves on the clock even when the creatures object never changes again (R06-02)', () => {
+    resetDeathMemory();
+    expect(creatureKeysByTank(creatures('alive'), 10).get('t1')).toContain('a=');
+    const dead = creatures('dead'); // the only fish died: the sim never publishes a new creatures object again
+    expect(creatureKeysByTank(dead, 10.5).get('t1')).toContain('a=');
+    expect(creatureKeysByTank(dead, 10.5 + DEAD_LINGER_HOURS - 0.1).get('t1')).toContain('a=');
+    const real = performance.now();
+    const spy = vi.spyOn(performance, 'now').mockReturnValue(real + DEAD_LINGER_MS + 1000);
+    try {
+      expect(creatureKeysByTank(dead, 10.5 + DEAD_LINGER_HOURS + 0.1).get('t1')).toBeUndefined();
+      expect(creatureKeysByTank(dead, 10.5 + DEAD_LINGER_HOURS + 0.2).get('t1')).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('a new game or a loaded save starts a fresh death memory (R06-03)', () => {
+    resetDeathMemory();
+    const g = { saveId: 'save_a', createdRealMs: 1, clock: { hour: 10 }, creatures: creatures('alive') } as unknown as GameState;
+    useGame.getState().setGame(g);
+    expect(creatureKeysByTank(g.creatures, 10).get('t1')).toContain('a=');
+    // another save where the same deterministic id died long ago
+    const other = { saveId: 'save_b', createdRealMs: 2, clock: { hour: 30 }, creatures: creatures('dead') } as unknown as GameState;
+    useGame.getState().setGame(other);
+    expect(creatureKeysByTank(other.creatures, 30).get('t1')).toBeUndefined();
+    // an earlier state of the same game (the clock went back): the same
+    useGame.getState().setGame(g);
+    expect(creatureKeysByTank(g.creatures, 10).get('t1')).toContain('a=');
+    const older = { ...g, clock: { hour: 8 }, creatures: creatures('dead') } as unknown as GameState;
+    useGame.getState().setGame(older);
+    expect(creatureKeysByTank(older.creatures, 8).get('t1')).toBeUndefined();
+    useGame.getState().setGame(null);
+  });
+
   it('a creature already dead when first seen (loaded save) is never drawn', () => {
     resetDeathMemory();
     expect(creatureKeysByTank(creatures('dead'), 10).get('t1')).toBeUndefined();
@@ -222,5 +257,24 @@ describe('pose filter', () => {
     for (let i = 202; i < 260; i++) filterPose(f, 1, 0, 0, -Math.PI + 0.05, 0, 0, 0.05, i * dt, dt);
     expect(Math.abs(f.yaw)).toBeGreaterThan(Math.PI - 0.06);
     expect(Math.abs(f.yaw)).toBeLessThanOrEqual(Math.PI);
+  });
+});
+
+describe('long fins clear the substrate (L-4)', () => {
+  const build = (id: string) => {
+    const sp = ALL_SPECIES.find((s) => s.id === id)!;
+    const f = getCreatureFactory(sp.id, sp.behaviorSet)!;
+    return f({ species: sp, creature: null, appearance: sp.genetics.baseVisual, lod: 0, quality: 'high', fx: DEFAULT_TANK_FX });
+  };
+  it('a betta rests with its hanging fins above the floor; short-finned and bottom fish keep the default', () => {
+    const betta = build('betta');
+    expect(betta.root.userData.groundOffset).toBeGreaterThan(0.2);
+    expect(betta.root.userData.groundOffset).toBeLessThan(0.4);
+    betta.dispose();
+    for (const id of ['neon_tetra', 'panda_corydoras', 'bristlenose_pleco']) {
+      const o = build(id);
+      expect(o.root.userData.groundOffset, id).toBeUndefined();
+      o.dispose();
+    }
   });
 });

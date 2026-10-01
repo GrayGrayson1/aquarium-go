@@ -15,7 +15,8 @@ import { wasCameraDrag } from '../camera/cameraFX';
 import { facilityFocusedTank, focusFacilityTank, resetFacilityView } from '../camera/CameraRig';
 
 const BOX = new THREE.BoxGeometry(1, 1, 1);
-const HIDDEN = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false });
+// R12-02 — never submitted for drawing (three skips invisible materials), still raycast: picking ignores visibility
+const HIDDEN = new THREE.MeshBasicMaterial({ visible: false });
 
 interface PickBox {
   id: string;

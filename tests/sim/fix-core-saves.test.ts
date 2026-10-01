@@ -26,6 +26,9 @@ import {
   resetSaveReconciliation,
   resetSaveSession,
   isStaleGame,
+  keepThisCopy,
+  noteCatchUp,
+  useStaleSaves,
   storageStatus,
   slotLabel,
   repairState,
@@ -147,6 +150,75 @@ describe('P5-04 / S06-04: a stale tab never overwrites a newer save of the same 
   });
 });
 
+describe('R03-01: a duplicate tab that was opened and closed never locks out the tab the player keeps using', () => {
+  const at = (g: GameState, hour: number, money = g.finance.money) => ({ ...g, clock: { ...g.clock, hour }, finance: { ...g.finance, money } }) as GameState;
+  /** "The other tab" writes `g` at game hour `hour` (a newer record plus its own stamp). */
+  async function otherTabWrites(g: GameState, hour: number, lsMap?: Map<string, string>, money = 6300) {
+    await new Promise((r) => setTimeout(r, 3));
+    const rec = encodeRecord(at(g, hour, money), 'auto');
+    const { storage } = await import('@/persistence');
+    await storage.set(SAVE, rec.text);
+    lsMap?.set(STAMP, JSON.stringify({ savedAt: rec.header.savedAt, saveId: g.saveId, tab: 'other-tab', hour }));
+  }
+
+  it('A writes, B loads + writes + closes, A plays on further: A takes the save back and keeps saving', async () => {
+    const lsMap = new Map<string, string>();
+    setSyncStore(fakeSync(lsMap).store);
+    const g = game('Peek', 21, 300);
+    const h0 = g.clock.hour;
+    expect((await saveGame(g, 'auto')).ok).toBe(true);
+    await otherTabWrites(g, h0 + 1.1, lsMap, 350); // B: Continue, a glance, closed (its hide/pagehide save)
+    const res = await saveGame(at(g, h0 + 24, 5376), 'auto');
+    expect(res.ok).toBe(true);
+    expect(isStaleGame(g.saveId)).toBe(false);
+    expect(useStaleSaves.getState().games[g.saveId]).toBeUndefined();
+    expect((await loadGameDetailed('auto')).state!.finance.money).toBe(5376);
+    expect(saveGameSync(at(g, h0 + 25, 5400), 'auto')).toBe(true);
+  });
+
+  it('the header check (no localStorage stamp) compares progress the same way', async () => {
+    const g = game('Peek IDB', 22, 300);
+    const h0 = g.clock.hour;
+    expect((await saveGame(g, 'auto')).ok).toBe(true);
+    await otherTabWrites(g, h0 + 2);
+    expect((await saveGame(at(g, h0 + 1, 10), 'auto')).code).toBe('stale');
+    resetSaveSession();
+    expect((await saveGame(g, 'auto')).ok).toBe(true);
+    await otherTabWrites(g, h0 + 2);
+    expect((await saveGame(at(g, h0 + 6, 20), 'auto')).ok).toBe(true);
+  });
+
+  it('a forgotten tab’s catch-up after a hidden spell is not play: it stays refused, and stays so until the player chooses', async () => {
+    const lsMap = new Map<string, string>();
+    setSyncStore(fakeSync(lsMap).store);
+    const g = game('Forgotten', 23, 100);
+    const h0 = g.clock.hour;
+    expect((await saveGame(g, 'auto')).ok).toBe(true);
+    await otherTabWrites(g, h0 + 10, lsMap); // the player's real tab played 10 h
+    noteCatchUp(g.saveId, 12); // the forgotten tab comes back and catches up 12 h: further along on paper only
+    const res = await saveGame(at(g, h0 + 12, 50), 'auto');
+    expect(res.code).toBe('stale');
+    expect(useStaleSaves.getState().games[g.saveId]).toBe('auto');
+    expect(saveGameSync(at(g, h0 + 12, 50), 'auto')).toBe(false);
+    // Playing on in the refused tab does not silently flip it back to saving.
+    expect((await saveGame(at(g, h0 + 40, 50), 'auto')).code).toBe('stale');
+    expect((await loadGameDetailed('auto')).state!.finance.money).toBe(6300);
+  });
+
+  it('“Keep this one” takes the save back on purpose', async () => {
+    const lsMap = new Map<string, string>();
+    setSyncStore(fakeSync(lsMap).store);
+    const g = game('Keep', 24, 100);
+    expect((await saveGame(g, 'auto')).ok).toBe(true);
+    await otherTabWrites(g, g.clock.hour + 5, lsMap);
+    expect((await saveGame(g, 'auto')).code).toBe('stale');
+    keepThisCopy(g.saveId);
+    expect(useStaleSaves.getState().games[g.saveId]).toBeUndefined();
+    expect((await saveGame(at(g, g.clock.hour, 777), 'auto')).ok).toBe(true);
+    expect((await loadGameDetailed('auto')).state!.finance.money).toBe(777);
+  });
+});
+
 describe('P5-03 / S06-03 / S06-07: a displaced aquarium survives as "Previous …"', () => {
   it('keeps the displaced game in the backup across the new game’s autosaves, lists and loads it', async () => {
     const a = game('Axolotl Abode', 11, 1286);
@@ -191,6 +263,72 @@ describe('P5-03 / S06-03 / S06-07: a displaced aquarium survives as "Previous �
     const prev = (await listSaves()).find((m) => m.previousOf === 'slot1');
     expect(prev?.shopName).toBe('Checkpoint');
     expect(slotLabel(prev!.slot)).toBe('Previous copy of Slot 1');
+  });
+});
+
+describe('R03-02: "Previous autosave" survives the next reload', () => {
+  it('a pagehide mirror of the new aquarium moved into the main store on boot keeps the displaced one', async () => {
+    const idbMap = new Map<string, string>();
+    const lsMap = new Map<string, string>();
+    setSyncStore(fakeSync(lsMap).store);
+    const IDB = named('indexeddb', idbMap);
+    const LS = named('localstorage', lsMap);
+    setStorageBackend(IDB, [LS], [LS]);
+    const y = game('Old Y', 31);
+    expect((await saveGame(y, 'auto')).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 3));
+    const x = game('New X', 32);
+    expect((await saveGame(x, 'auto')).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 3));
+    expect((await saveGame(x, 'auto')).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 3));
+    expect(saveGameSync({ ...x, finance: { ...x.finance, money: 999 } } as GameState, 'auto')).toBe(true); // reload
+    // next boot
+    resetSaveReconciliation();
+    resetSaveSession();
+    setStorageBackend(IDB, [LS], [LS]);
+    const saves = await listSaves();
+    expect(saves.find((m) => m.slot === 'auto')?.money).toBe(999);
+    expect(saves.find((m) => m.previousOf === 'auto')?.shopName).toBe('Old Y');
+    expect((await loadGameDetailed('auto.backup')).state!.saveId).toBe(y.saveId);
+  });
+
+  it('with localStorage as the save store, the sync path rotates a different aquarium into the backup', async () => {
+    const lsMap = new Map<string, string>();
+    setSyncStore(fakeSync(lsMap).store);
+    setStorageBackend(named('localstorage', lsMap));
+    const h = game('Old H', 33);
+    const g2 = game('New G', 34);
+    expect((await saveGame(h, 'auto')).ok).toBe(true);
+    expect(saveGameSync(g2, 'auto')).toBe(true);
+    expect((await saveGame(g2, 'auto')).ok).toBe(true);
+    const prev = (await listSaves()).find((m) => m.previousOf === 'auto');
+    expect(prev?.shopName).toBe('Old H');
+  });
+});
+
+describe('R03-05: deleting a slot keeps the different aquarium listed beneath it', () => {
+  it('promotes the displaced "Previous autosave" to be the autosave', async () => {
+    const y = game('Old Y', 41);
+    expect((await saveGame(y, 'auto')).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 3));
+    const x = game('New X', 42);
+    expect((await saveGame(x, 'auto')).ok).toBe(true);
+    expect((await saveGame(x, 'auto')).ok).toBe(true);
+    await deleteSave('auto');
+    const saves = await listSaves();
+    expect(saves.map((m) => `${m.slot}:${m.shopName}`)).toEqual(['auto:Old Y']);
+    const r = await loadGameDetailed('auto');
+    expect(r.state!.saveId).toBe(y.saveId);
+    expect(r.restoredFromBackup).toBeUndefined();
+  });
+
+  it('a same-aquarium backup is still deleted with its slot', async () => {
+    const a = game('Only', 43);
+    expect((await saveGame(a, 'slot2')).ok).toBe(true);
+    expect((await saveGame(a, 'slot2')).ok).toBe(true);
+    await deleteSave('slot2');
+    expect(await listSaves()).toEqual([]);
   });
 });
 

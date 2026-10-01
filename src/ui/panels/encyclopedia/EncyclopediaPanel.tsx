@@ -14,7 +14,7 @@ import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { speciesPair } from '@/sim/compat';
 import { breedingSystemInfo } from '@/sim/life/breeding';
 import { PanelLayout, SubView } from '../common/PanelLayout';
-import { usePanelGame, safe } from '../common/hooks';
+import { usePanelGame, safe, useTempText } from '../common/hooks';
 import { speciesUnlocked } from '../common/derive';
 import { Button } from '@/ui/kit';
 import { Chip, Seg, EmptyState, SectionHead, Callout } from '../common/parts';
@@ -205,6 +205,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
     return { good, bad };
   }, [sp]);
   const breeding = useMemo(() => (sp ? safe(() => breedingSystemInfo(sp.id), null) : null), [sp]);
+  const { t: tempText } = useTempText();
 
   if (!sp)
     return (
@@ -354,18 +355,22 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
               <span className="pn-small pn-muted">No serious conflicts in this environment.</span>
             ) : (
               <ul className="pn-mates">
-                {pairs.bad.map((p) => (
-                  <li key={p.s.id}>
-                    <button type="button" className="pn-mate" onClick={() => onOpen(p.s.id)} title={p.why}>
-                      <SpeciesPortrait speciesId={p.s.id} size={30} silhouette={!knownSet.has(p.s.id)} />
-                      <span className="pn-grow pn-col" style={{ gap: 1, minWidth: 0 }}>
-                        <span className={clsx('pn-ellipsis', !knownSet.has(p.s.id) && 'pn-muted')}>{mateName(p.s, knownSet)}</span>
-                        {p.why && <span className="pn-tiny pn-muted pn-ellipsis">{p.why}</span>}
-                      </span>
-                      <VerdictBadge verdict={p.v} />
-                    </button>
-                  </li>
-                ))}
+                {pairs.bad.map((p) => {
+                  // the reason usually names the mate ("Pea puffers nip flowing fins."), so an undiscovered one keeps it
+                  const why = knownSet.has(p.s.id) ? tempText(p.why) : p.why && 'Doesn’t mix well — discover it to learn why.';
+                  return (
+                    <li key={p.s.id}>
+                      <button type="button" className="pn-mate" onClick={() => onOpen(p.s.id)} title={knownSet.has(p.s.id) ? why : undefined}>
+                        <SpeciesPortrait speciesId={p.s.id} size={30} silhouette={!knownSet.has(p.s.id)} />
+                        <span className="pn-grow pn-col" style={{ gap: 1, minWidth: 0 }}>
+                          <span className={clsx('pn-ellipsis', !knownSet.has(p.s.id) && 'pn-muted')}>{mateName(p.s, knownSet)}</span>
+                          {why && <span className="pn-tiny pn-muted pn-ellipsis">{why}</span>}
+                        </span>
+                        <VerdictBadge verdict={p.v} />
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

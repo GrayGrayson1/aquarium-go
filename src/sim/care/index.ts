@@ -20,6 +20,7 @@ import { noteBreedingFood } from '../life/breeding';
 import { plural as pluralName, cap } from '../compat/text';
 import { refreshFoodStatus, tankFoodOutlook } from '../tankStatus';
 import { aOrAn } from '../economy/util'; // lane:w2-ui ("an 800-gallon tank")
+import { photoperiodTooLong } from '../time';
 
 export interface ActionResult {
   ok: boolean;
@@ -398,6 +399,16 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
     }
     case 'conditioner': {
       if (!pay('Water conditioner')) return fail(`Conditioner costs ${money(cost)} — not enough money.`);
+      // Round-3 R02-05 — a dose still working already holds its share bound (the water step keeps the split): a top-up
+      // only extends it, so don't quote a drop the next substep would undo.
+      if ((lab.detoxUntilHour ?? -Infinity) > hour) {
+        lab.detoxUntilHour = hour + DETOX_HOURS;
+        const free: string[] = [];
+        if (w.ammonia >= 0.005) free.push(`ammonia at ${w.ammonia.toFixed(2)} ppm`);
+        if (w.nitrite >= 0.005) free.push(`nitrite at ${w.nitrite.toFixed(2)} ppm`);
+        message = `Conditioner topped up — it keeps binding for another day${free.length ? `, with free ${free.join(' and free ')}` : ''}. Only a water change lowers what it holds.`;
+        break;
+      }
       // lane:fix-water — really bind it: the bound share (lab.boundAmmonia/boundNitrite) neither harms animals nor
       // shows on the report until the dose wears off (the water step keeps the split while detoxUntilHour is ahead).
       const nh = w.ammonia * (1 - DETOX_FREE_FRACTION);
@@ -679,7 +690,9 @@ export function setLighting(
   const period = ((L.offHour - L.onHour + 24) % 24) || 24;
   const hh = (h: number) => `${Math.floor(h)}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`;
   const notes = [`Lights ${hh(L.onHour)}–${hh(L.offHour)} (${Math.round(period)} h) at ${Math.round(L.intensity * 100)}%.`];
-  if (period > 12) notes.push('Long photoperiods feed algae — 8–10 hours is plenty.');
+  if (photoperiodTooLong(L, state.facility?.closeHour)) {
+    notes.push(period > 15 ? 'Long photoperiods feed algae — keep the day to the open hours, or 8–10 hours if algae is a problem.' : 'The lights stay on after the doors close — that feeds algae without anyone seeing it.');
+  }
   if (period < 6) notes.push('Plants and corals need at least 6–8 hours of light.');
   return { ok: true, message: notes.join(' ') };
 }

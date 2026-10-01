@@ -241,6 +241,7 @@ function dropFood(a: Agent, w: AIWorld, failed: boolean): void {
     a.badFoodUntil[k] = w.time + 45;
   }
   a.lastFoodId = a.foodId;
+  a.foodDropT = w.time;
   a.foodId = -1;
   a.settleBest = -1;
 }
@@ -1649,11 +1650,13 @@ function pickForageSpot(a: Agent, w: AIWorld, near = false): void {
   randomSwimPoint(a, w, a.actData, { y0: env.floorY + hy, y1: env.floorY + hy + a.L });
 }
 
-/** How far the fins hang below the body centre (long-finned bettas trail a lot; most fish little). */
+/** How far the fins hang below the body centre (long-finned betta males trail a lot; most fish little). */
 function finDrop(a: Agent): number {
   const fl = a.c.appearance?.finLength;
   const k = Number.isFinite(fl) ? clamp(fl as number, 0.6, 1.6) : 1;
-  return a.L * (a.setId === 'betta' ? 0.36 : 0.12) * k;
+  if (a.setId !== 'betta') return a.L * 0.12 * k;
+  // plakats and females carry short fins (render/creatures/fish/betta.ts)
+  return a.c.appearance?.finType === 'plakat' || a.c.sex === 'female' ? a.L * 0.15 : a.L * 0.36 * k;
 }
 
 function chooseRestSpot(a: Agent, w: AIWorld): boolean {
@@ -1679,7 +1682,10 @@ function chooseRestSpot(a: Agent, w: AIWorld): boolean {
   }
   if (style === 'leaf' || style === 'cave' || style === 'host') {
     const kinds: AnchorKind[] = style === 'leaf' ? ['leaf_rest', 'rest', 'perch'] : style === 'host' ? ['host', 'cave', 'hide'] : ['cave', 'hide', 'rest'];
-    const an = claimAnchor(a, w, kinds, { near: a.rt.pos });
+    // (a leaf or stone so low that the fins would reach the bed is passed over: the body would have to hover well
+    // above it, which reads as idling rather than resting — the surface corner below is the betta's other bed)
+    const minRise = style === 'leaf' ? bodyHY(a) * 0.2 + finDrop(a) + a.L * 0.08 - a.L * 0.12 : undefined;
+    const an = claimAnchor(a, w, kinds, { near: a.rt.pos, minRise });
     if (an) {
       a.actData.copy(an.pos);
       if (style === 'leaf') {

@@ -162,28 +162,86 @@ describe('ScaleController', () => {
 describe('LatenessProbe', () => {
   it('counts nothing for timers that fire on time', () => {
     const p = new LatenessProbe();
-    expect(p.tick(100, 8, 108.4)).toBe(0);
+    p.tick(100, 8, 108.4);
     expect(p.take()).toBe(0);
   });
   it('counts the lateness caused by work outside the frame loop', () => {
     const p = new LatenessProbe();
-    expect(p.tick(100, 8, 140)).toBeCloseTo(32);
+    p.tick(100, 8, 140);
     expect(p.take()).toBeCloseTo(32);
     expect(p.take()).toBe(0);
   });
   it('subtracts the frame loop spans it overlapped, so a GPU-heavy frame adds nothing', () => {
     const p = new LatenessProbe();
     p.frame(102, 130); // a 28 ms render submission inside the probe interval
-    expect(p.tick(100, 8, 131)).toBe(0);
+    p.tick(100, 8, 131);
+    expect(p.take()).toBe(0);
     p.frame(140, 150);
     // 10 ms of frame + 15 ms of something else
-    expect(p.tick(135, 8, 168)).toBeCloseTo(15);
+    p.tick(135, 8, 168);
+    expect(p.take()).toBeCloseTo(15);
   });
   it('forgets everything on reset', () => {
     const p = new LatenessProbe();
     p.tick(0, 8, 50);
     p.reset();
     expect(p.take()).toBe(0);
+  });
+  // R05-02 — WebKit fires every 8 ms timer ~4 ms late, Firefox ~2 ms, even on an idle page (and the odd one on time)
+  const idle = (p: LatenessProbe, lateMs: number, fromMs: number, toMs: number) => {
+    let t = fromMs;
+    for (let i = 0; t < toMs; i++) {
+      const late = i % 16 === 0 ? 0 : lateMs;
+      p.tick(t, 8, t + 8 + late);
+      t += 8 + late;
+    }
+    return t;
+  };
+  it('learns a constant platform timer delay and stops counting it', () => {
+    const p = new LatenessProbe();
+    const t = idle(p, 4, 0, 3000);
+    p.take();
+    expect(p.floor).toBeCloseTo(4);
+    idle(p, 4, t, t + 1000);
+    expect(p.take()).toBe(0);
+  });
+  it('still counts a real block on top of the platform delay', () => {
+    const p = new LatenessProbe();
+    const t = idle(p, 4, 0, 3000);
+    p.take();
+    p.tick(t, 8, t + 8 + 4 + 40);
+    expect(p.take()).toBeCloseTo(40);
+  });
+  it('keeps the floor low when any recent window had on-time timers, and caps it', () => {
+    const p = new LatenessProbe();
+    let t = idle(p, 0.2, 0, 1100);
+    t = idle(p, 20, t, 4000); // seconds of sustained outside work must not become "platform delay"
+    p.take();
+    expect(p.floor).toBeLessThan(0.5);
+    const q = new LatenessProbe();
+    idle(q, 20, 0, 4000);
+    q.take();
+    expect(q.floor).toBe(6);
+  });
+  it("leaves the browser's rendering update after each frame out, up to its usual length", () => {
+    const p = new LatenessProbe();
+    // 20 ms frames: 8 ms of frame loop, then 6 ms of compositing / WebGL present before the next task runs
+    let ext = 0;
+    for (let f = 0; f < 40; f++) {
+      const t0 = f * 20;
+      ext += p.take(); // the governor takes once a frame
+      p.frame(t0, t0 + 8);
+      p.frameDone(t0 + 8, t0 + 14);
+      p.tick(t0 + 2, 8, t0 + 14); // due mid-frame, held back by the frame and the rendering update
+    }
+    expect(p.post).toBeCloseTo(6);
+    expect(ext + p.take()).toBe(0);
+    // a 30 ms React commit queued behind a frame is still outside work, beyond the usual 6 ms (most of it: the overlap
+    // correction is coarse)
+    p.frame(1000, 1008);
+    p.frameDone(1008, 1044);
+    p.tick(1002, 8, 1044);
+    expect(p.take()).toBeGreaterThan(20);
   });
 });
 

@@ -17,14 +17,18 @@ const firstTank = (s: GameState) => s.tanks[s.tankOrder[0]];
 
 describe('fix-water S01-04 / P1-08: water-change feedback', () => {
   it('a pH shift in a freshwater tank is called a pH shift, never "salinity jumped by 0.000"', () => {
-    const s = base();
-    const t = firstTank(s);
-    t.water.pH = 6.3; // planted / CO₂ tank vs pH 7.2 source water
-    const r = waterChange(s, t.id, 0.5);
-    expect(r.ok).toBe(true);
-    expect(t.water.shock?.reason).toMatch(/^pH jumped by 0\.[3-5]$/);
-    expect(r.message).not.toMatch(/salinity/);
-    expect(s.log.some((e) => /salinity jumped/.test(e.text))).toBe(false);
+    // planted / CO₂ tanks vs pH 7.2 source water; 6.5 at 50 % and 6.0 at 25 % are the shifts the original misnamed
+    // (round-3 R10-04: 6.3 at 50 % was named right even before the fix)
+    for (const [pH, frac] of [[6.5, 0.5], [6.0, 0.25]] as const) {
+      const s = base();
+      const t = firstTank(s);
+      t.water.pH = pH;
+      const r = waterChange(s, t.id, frac);
+      expect(r.ok).toBe(true);
+      expect(t.water.shock?.reason, `pH ${pH} ${frac}`).toMatch(/^pH jumped by 0\.[2-5]$/);
+      expect(r.message).not.toMatch(/salinity/);
+      expect(s.log.some((e) => /salinity jumped/.test(e.text))).toBe(false);
+    }
   });
 
   it('a temperature shift between 1.4 and 2 °C is named as such', () => {

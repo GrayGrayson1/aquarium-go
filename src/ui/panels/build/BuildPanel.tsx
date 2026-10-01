@@ -39,15 +39,29 @@ import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_
 
 type Tab = 'tanks' | 'decor' | 'equipment' | 'substrate' | 'facility';
 
+/**
+ * The section and decor category Build was last left on, per aquarium: reopening it to pick a different piece used to
+ * start over at Tanks / All. Deep links (the guide, unlock toasts) still choose their own section.
+ */
+let lastBuild: { saveId: string; tab: Tab; cat: DecorCategory | 'all' } | null = null;
+const remembered = () => {
+  const id = getGame()?.saveId;
+  return id && lastBuild?.saveId === id ? lastBuild : null;
+};
+
 export function BuildPanel() {
   const g = usePanelGame(900);
   const phone = useIsPhone(); // lane:w2-ui
   const target = useUI((s) => s.panelTarget);
   const focused = useUI((s) => s.focusedTankId);
-  const [tab, setTab] = useState<Tab>('tanks');
+  const [tab, setTab] = useState<Tab>(() => remembered()?.tab ?? 'tanks');
   const [tankId, setTankId] = useState<string | null>(focused);
-  const [decorCat, setDecorCat] = useState<DecorCategory | 'all'>('all');
+  const [decorCat, setDecorCat] = useState<DecorCategory | 'all'>(() => remembered()?.cat ?? 'all');
   useEffect(() => () => clearOfferReturn(), []); // lane:qa-play — leaving Build forgets a pending "back to the offer"
+  useEffect(() => {
+    const saveId = getGame()?.saveId;
+    if (saveId) lastBuild = { saveId, tab, cat: decorCat };
+  }, [tab, decorCat]);
 
   useEffect(() => {
     if (!target) return;

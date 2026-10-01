@@ -368,19 +368,25 @@ const WATER_CONSEQUENCES = new Set<AnimalIssue | null>(['dying', 'failing', 'bad
  * whole band while every card in the tank was red. The water report lists who it is harming; this folds that into the
  * animals' status ahead of everything but starvation, with the water headline as the explanation.
  */
-function withWaterHarm(tank: Tank, animals: AnimalStatus, water: { headline: string; residents?: WaterResidents[] }): AnimalStatus {
+function withWaterHarm(tank: Tank, animals: AnimalStatus, water: { status?: StatusLevel; headline: string; residents?: WaterResidents[] }): AnimalStatus {
   if (!water.residents?.length || animals.issue === 'starving') return animals;
+  let causeText: string | null = null;
   const hurt = water.residents.filter((r) => {
     const sp = findSpecies(r.speciesId);
-    return sp ? speciesWaterView(sp, tank).harm > ANIMAL_THRESHOLDS.waterHarmHp : false;
+    const view = sp ? speciesWaterView(sp, tank) : null;
+    if (!view || view.harm <= ANIMAL_THRESHOLDS.waterHarmHp) return false;
+    causeText ??= view.causeText;
+    return true;
   });
   if (!hurt.length) return animals;
   const list = hurt.flatMap((h) => h.creatureIds.map((id, i) => ({ id, name: h.names[i] ?? h.speciesId, speciesId: h.speciesId })));
   const { subject, plural } = who(list);
+  // A GOOD headline ("water is healthy") can't explain harm: name the animal's own cause instead.
+  const why = water.status === 'good' && causeText ? causeText : water.headline;
   return {
     status: 'danger',
     issue: 'harmed_by_water',
-    reason: `${subject} ${plural ? 'are' : 'is'} being harmed by the water — ${water.headline.charAt(0).toLowerCase()}${water.headline.slice(1)}.`,
+    reason: `${subject} ${plural ? 'are' : 'is'} being harmed by the water — ${why.charAt(0).toLowerCase()}${why.slice(1)}${/[.!?]$/.test(why) ? '' : '.'}`,
     creatureIds: list.map((x) => x.id),
   };
 }

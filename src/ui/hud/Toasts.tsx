@@ -4,8 +4,10 @@
  * Quiet by design — the aquarium is the hero:
  *  - They live in the free column at the top-left, under the tank switcher (beside the tank card when it is open),
  *    so they never cover a right-hand panel and barely touch the tank.
- *  - At most 3 on screen (2 on phones). The rest wait in a priority queue (danger → warning → celebrations →
- *    market/visitors → routine), and stale routine news is dropped (it is always in the event log).
+ *  - At most 3 on screen (2 on phones; 1 on a phone held sideways while a sheet is open, in the sheet's header). The
+ *    rest wait in a priority queue (danger → warning → celebrations → market/visitors → routine), and stale routine
+ *    news is dropped (it is always in the event log).
+ *  - The lasting prompts (another tab played further, a new version is ready) head the column, above the toasts.
  *  - Bursts merge: several achievements / unlocks / bids / visitor tips inside a few seconds become one
  *    "3 new achievements" toast that opens the event log.
  *  - Routine feedback is short-lived; tutorial "step done" lines are folded into the guide card while it is visible.
@@ -23,13 +25,15 @@ import { sfx } from '@/audio/sfx';
 import { EventIcon, type AnyKind } from './eventIcons';
 import { focusTank } from './AlertsPopover';
 import { useShell } from '../common/shellStore';
-import { MOBILE_QUERY, safe, useMedia } from '../common/safe';
+import { MOBILE_QUERY, SHORT_LANDSCAPE_QUERY, safe, useMedia } from '../common/safe';
 import { tutorialChain } from '@/data/quests';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { useDockedCard } from './cardDock';
 import { UNLOCK_KEYS } from '@/data/unlockKeys'; // lane:w2-ui
 import { convertTempText } from '../common/format';
-import { isExpired, pickShown, prio, ttlOf } from './toastQueue';
+import { isExpired, pickShown, prio, ttlOf, PREEMPT_AFTER_MS, URGENT_PRIO } from './toastQueue';
+import { UpdatePrompt, useNewBuildAvailable } from './UpdatePrompt';
+import { StaleTabBanner, useStaleBanner } from '@/game/StaleTabBanner';
 
 interface Entry {
   key: string;
@@ -183,8 +187,12 @@ function viewOf(e: Entry): View {
   }
 }
 
-/** New log events flagged `toast` (skips the backlog of a loaded save). */
-function useLogToasts(push: (e: GameEvent) => void) {
+/**
+ * New log events flagged `toast` (skips the backlog of a loaded save). When another aquarium takes over (a new game, a
+ * loaded slot, back to the title) `reset` drops the previous one's toasts: "Welcome home, Betta Barn!" used to greet
+ * the axolotl game started right after it.
+ */
+function useLogToasts(push: (e: GameEvent) => void, reset: () => void) {
   const seen = useRef<{ saveId: string; ids: Set<string> } | null>(null);
   useEffect(() => {
     const check = (game: ReturnType<typeof useGame.getState>['game']) => {
@@ -214,9 +222,11 @@ function useLogToasts(push: (e: GameEvent) => void) {
     };
     check(useGame.getState().game);
     return useGame.subscribe((s, p) => {
-      if (s.game !== p.game) check(s.game);
+      if (s.game === p.game) return;
+      if (seen.current && s.game?.saveId !== p.game?.saveId && s.game?.saveId !== seen.current.saveId) reset();
+      check(s.game);
     });
-  }, [push]);
+  }, [push, reset]);
 }
 
 /** A tutorial "step done" line while the guide card is on screen (the card shows it instead). */
@@ -244,15 +254,42 @@ function isGuideDoneLine(text: string): boolean {
  * Phones: a full-height bottom sheet owns its top (header, tabs, filters — P4-06) and its foot (buy bar, panel
  * switcher — X-1), so the stack sits at the bottom of the sheet's scrolling body, over content the player can scroll
  * away from under it. Returns that band's distance from the bottom of the viewport, or null (normal placement).
+ * A phone held sideways has room for nothing else: there every bottom sheet counts, whatever its height (R07-04), and
+ * its scrolling body is only ~155 px tall, so the one toast it allows sits in the sheet's header row instead, just
+ * left of its close button (the free space between the title and the X): `{ top, right }`.
  */
-function useSheetBand(active: boolean): number | null {
-  const [band, setBand] = useState<number | null>(null);
+type SheetBand = { bottom: number } | { top: number; right: number };
+
+/** A compact one-line toast's height on phones (hud.css), to centre it on the header's close button. */
+const COMPACT_TOAST_H = 42;
+
+function useSheetBand(active: boolean, landscape: boolean): SheetBand | null {
+  const [band, setBand] = useState<SheetBand | null>(null);
   useEffect(() => {
     if (!active) {
       setBand(null);
       return;
     }
+    const same = (a: SheetBand | null, b: SheetBand | null) => JSON.stringify(a) === JSON.stringify(b);
     const measure = () => {
+      if (landscape) {
+        const close = document.querySelector<HTMLElement>('.pn-sheet--bottom [data-testid="panel-close"], .ag-sheet--bottom .ag-sheet__close');
+        const sheet = close?.closest<HTMLElement>('.pn-sheet, .ag-sheet');
+        const c = close?.getBoundingClientRect();
+        let next: SheetBand | null = null;
+        if (sheet && c && c.width > 0) {
+          // where the button comes to rest: the sheet may still be sliding up (its transform is not part of its place)
+          let slide = 0;
+          try {
+            slide = new DOMMatrixReadOnly(getComputedStyle(sheet).transform).m42;
+          } catch {
+            /* 'none' or an older engine */
+          }
+          next = { top: Math.max(4, Math.round(c.top - slide + (c.height - COMPACT_TOAST_H) / 2)), right: Math.round(window.innerWidth - c.left + 8) };
+        }
+        setBand((b) => (same(b, next) ? b : next));
+        return;
+      }
       const body = document.querySelector<HTMLElement>('.pn-sheet--bottom.is-max .pn-body, .ag-sheet--bottom.is-expanded .ag-sheet__body');
       const r = body?.getBoundingClientRect();
       let floor = r && r.height > 0 ? r.bottom : null;
@@ -263,14 +300,14 @@ function useSheetBand(active: boolean): number | null {
           if (b.height > 0 && b.top < floor && b.bottom > r!.top + r!.height / 2) floor = b.top;
         }
       }
-      const next = floor != null ? Math.max(0, Math.round(window.innerHeight - floor)) : null;
-      setBand((b) => (b === next ? b : next));
+      const next = floor != null ? { bottom: Math.max(0, Math.round(window.innerHeight - floor)) } : null;
+      setBand((b) => (same(b, next) ? b : next));
     };
     measure();
     // the sheet springs open, swaps its footer (offer detail ↔ list) and follows the keyboard: re-measure while toasts are up
     const id = window.setInterval(measure, 300);
     return () => window.clearInterval(id);
-  }, [active]);
+  }, [active, landscape]);
   return active ? band : null;
 }
 
@@ -280,9 +317,15 @@ export function Toasts() {
   const quiet = useUI((s) => s.hudHidden || s.photoMode);
   // The event log drawer lists everything: opening it clears the toasts (they would only repeat it).
   const drawer = useShell((s) => s.popover === 'alerts');
-  const leftSheet = useDockedCard() === 'tank' && screen === 'game';
+  const docked = useDockedCard();
+  const leftSheet = docked === 'tank' && screen === 'game';
   const bottomSheets = useMedia(BOTTOM_SHEET_QUERY);
   const phone = useMedia(MOBILE_QUERY);
+  const landscape = useMedia(SHORT_LANDSCAPE_QUERY);
+  // a phone held sideways with a sheet open (it covers everything but the top bar): one toast, in the sheet's header
+  const sheetUp = useUI((s) => !!s.panel) || !!docked;
+  const headerOnly = landscape && screen === 'game' && sheetUp;
+  const stale = useStaleBanner();
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const seq = useRef(0);
@@ -290,6 +333,7 @@ export function Toasts() {
   const shownAt = useRef(new Map<string, number>());
   /** Keys on screen after the last commit: they stay up until dismissed, whatever arrives behind them. */
   const onScreen = useRef(new Set<string>());
+  const [, setRecheck] = useState(0);
 
   const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; uiId?: number; source: 'ui' | 'log' }) => {
     const group = groupOf(kind, text, (useGame.getState().game?.tankOrder.length ?? 0) >= 4 /* lane:qa-final */);
@@ -325,7 +369,13 @@ export function Toasts() {
     },
     [add],
   );
-  useLogToasts(pushLog);
+  const resetForGame = useCallback(() => {
+    setEntries((list) => {
+      for (const e of list) for (const id of e.uiIds) useUI.getState().dismissToast(id);
+      return list.length ? [] : list;
+    });
+  }, []);
+  useLogToasts(pushLog, resetForGame);
 
   // UI feedback toasts (ui.toast()).
   useEffect(() => {
@@ -358,26 +408,41 @@ export function Toasts() {
   }, []);
 
   // Choose what is on screen: what is already up stays up, free slots go by priority (see toastQueue.ts).
-  const max = phone ? 2 : 3;
+  // (the stale-tab banner heads the column and takes one toast's place)
+  const max = headerOnly ? 1 : (phone ? 2 : 3) - (stale ? 1 : 0);
   const now = performance.now();
   const eligible = drawer
     ? []
     : entries.filter((e) => (!quiet || e.kind === 'danger' || e.kind === 'death') && !isStale(e, now, shownAt.current) && !(isExpired(e, shownAt.current.get(e.key), now) && !onScreen.current.has(e.key)));
-  const shown = pickShown(eligible, onScreen.current, max);
+  // danger / death news takes the place of routine news that has been up a moment (that toast is then finished)
+  const preempt = { bumped: [] as string[] };
+  const shown = pickShown(eligible, onScreen.current, max, shownAt.current, now, preempt);
   useEffect(() => {
     onScreen.current = new Set(shown.map((e) => e.key));
+    for (const key of preempt.bumped) dismiss(key);
     for (const e of shown) if (!shownAt.current.has(e.key)) shownAt.current.set(e.key, performance.now());
     if (shownAt.current.size > 400) for (const k of shownAt.current.keys()) if (!onScreen.current.has(k) && !entries.some((e) => e.key === k)) shownAt.current.delete(k);
+    // urgent news still waiting for a routine toast to have been readable for a moment: look again once it has
+    if (!eligible.some((e) => prio(e.kind) >= URGENT_PRIO && !shown.includes(e))) return;
+    const at = shown.filter((e) => prio(e.kind) <= 3).map((e) => shownAt.current.get(e.key) ?? performance.now());
+    if (!at.length) return;
+    const t = window.setTimeout(() => setRecheck((n) => n + 1), Math.max(50, Math.min(...at) + PREEMPT_AFTER_MS - performance.now() + 30));
+    return () => window.clearTimeout(t);
   });
 
-  const band = useSheetBand(phone && screen === 'game' && shown.length > 0);
+  const update = useNewBuildAvailable();
+  // the lasting prompts wait for that sheet to close: in its header they would hang over its tabs and list
+  const prompts = !headerOnly && (update || stale);
+  const band = useSheetBand(phone && screen === 'game' && (shown.length > 0 || prompts), landscape);
   return (
     <div
       className={clsx('ag-toasts', screen !== 'game' && 'is-onboarding', leftSheet && !bottomSheets && 'has-left-sheet')}
-      style={band != null ? { top: 'auto', bottom: band + 8, flexDirection: 'column-reverse' } : undefined}
+      style={band == null ? undefined : 'bottom' in band ? { top: 'auto', bottom: band.bottom + 8, flexDirection: 'column-reverse' } : { top: band.top, bottom: 'auto', right: band.right, flexDirection: 'column' }}
       aria-live="polite"
       aria-relevant="additions"
     >
+      {stale && !headerOnly && <StaleTabBanner />}
+      {update && !headerOnly && <UpdatePrompt />}
       <AnimatePresence initial={false}>
         {shown.map((e) => (
           <ToastItem key={e.key} e={e} onDone={() => dismiss(e.key)} />

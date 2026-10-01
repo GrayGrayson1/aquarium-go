@@ -9,7 +9,7 @@ import { getSpecies, findSpecies } from '@/data/species';
 import { getTankTier } from '@/data/catalog/tanks';
 import { speciesWaterComfort } from '../water';
 import { ammoniaToxicityWeight } from '../water/chem'; // lane:w2-sim
-import { TEMP_TOLERANCE_C } from '../water/constants';
+import { TEMP_TOLERANCE_C, isSaltClass } from '../water/constants';
 import { tankHabitat, type TankHabitat } from '../aquascape';
 import { lightsOn } from '../time';
 import { ageDaysOf, gallonsNeededNow } from './growth';
@@ -215,11 +215,15 @@ export function fallbackWater(sp: SpeciesDefinition, tank: Tank): SpeciesWaterVi
     note('ammonia', (ammW - 0.25) * 2.4, `ammonia in the water (${amm.toFixed(2)} ppm)`);
     penalty += Math.min(50, amm * 30);
   } else if (amm > 0.05) penalty += amm * 25;
+  // Salt softens nitrite. Keyed on the TANK's salt, as the water report weighs it (×0.25), so harm starts at the
+  // report's WATCH line in brackish and marine tanks alike (round-3 R02-03).
   const no2 = num(w.nitrite, 0);
-  if (no2 > 0.25) {
-    note('nitrite', (no2 - 0.25) * (sp.environment === 'marine' ? 0.6 : 2), `nitrite in the water (${no2.toFixed(2)} ppm)`);
-    penalty += Math.min(40, no2 * 25);
-  } else if (no2 > 0.05) penalty += no2 * 20;
+  const salt = isSaltClass(tank.waterClass) || tank.environment !== 'freshwater';
+  const no2W = salt ? no2 * 0.25 : no2;
+  if (no2W > 0.25) {
+    note('nitrite', salt ? (no2 - 1) * 0.6 : (no2 - 0.25) * 2, `nitrite in the water (${no2.toFixed(2)} ppm)`);
+    penalty += Math.min(40, no2W * 25);
+  } else if (no2W > 0.05) penalty += no2W * 20;
   const no3 = num(w.nitrate, 0);
   const no3Limit = sp.environment === 'marine' && sp.category !== 'fish' ? 25 : 60;
   if (no3 > no3Limit) {

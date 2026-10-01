@@ -50,16 +50,24 @@ export function noMorphsNote(sp: Pick<SpeciesDefinition, 'visualMorphs'>): strin
 /**
  * Which curated visualMorphs chips the player has seen. A chip matches a discovered morph when all of the chip's
  * words appear in that morph's words (the species' common name counts too, since composed names drop it:
- * "Red-Orange" is a seen "Red-Orange Comet").
+ * "Red-Orange" is a seen "Red-Orange Comet"). A chip that needs the common name's words to match is turned down when
+ * the morph carries a word that marks it as another chip — a word of that chip in neither the common name nor this
+ * chip ("Grey Watchman" is not a Yellow Watchman, "Fire Red" is not a Red Cherry, "High Orange" is not the plain
+ * Coral Beauty). Chips spelled out in the morph's own words always count (a "Yellow Marble Double Tail" betta shows
+ * Yellow, Marble and Double Tail).
  */
 export function seenMorphChips(sp: Pick<SpeciesDefinition, 'id' | 'commonName' | 'visualMorphs'>, discoveredMorphs: readonly string[]): Set<string> {
   const names = discoveredMorphNames(discoveredMorphs, sp.id);
-  const common = tokens(sp.commonName);
-  const sets = names.map((n) => new Set([...tokens(n), ...common]));
+  const common = new Set(tokens(sp.commonName));
+  const own = names.map((n) => new Set(tokens(n)));
+  const sets = own.map((set) => new Set([...set, ...common]));
+  const chips = sp.visualMorphs.map((label) => ({ label, alts: chipAlternatives(label), words: new Set(chipAlternatives(label).flat()) }));
   const seen = new Set<string>();
-  for (const chip of sp.visualMorphs) {
-    const alts = chipAlternatives(chip);
-    if (alts.some((alt) => sets.some((set) => alt.every((w) => set.has(w))))) seen.add(chip);
+  for (const chip of chips) {
+    const marksOther = (i: number) => chips.some((other) => other !== chip && [...other.words].some((w) => !common.has(w) && !chip.words.has(w) && own[i].has(w)));
+    const matches = (i: number) =>
+      chip.alts.some((alt) => alt.every((w) => own[i].has(w)) || (alt.every((w) => sets[i].has(w)) && !marksOther(i)));
+    if (names.some((_n, i) => matches(i))) seen.add(chip.label);
   }
   return seen;
 }

@@ -5,6 +5,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import clsx from 'clsx';
+import { create } from 'zustand';
 import {
   Droplets,
   Droplet,
@@ -74,6 +75,9 @@ import { WaterChip } from '../screens/StarterReveal';
 import { TankKeeperLine } from '../panels/visitors/TankKeeperLine'; // lane:staff
 
 type TabId = 'water' | 'gear' | 'life' | 'value';
+
+/** Deep link into a tab of the tank card: the alerts' "Equipment failed" row opens straight on Equipment. */
+export const useTankCardTab = create<{ want: TabId | null }>(() => ({ want: null }));
 
 const STATUS_ICON = { good: CircleCheck, watch: TriangleAlert, danger: OctagonAlert } as const;
 const STATUS_WORD: Record<StatusLevel, string> = { good: 'Good', watch: 'Watch', danger: 'Danger' };
@@ -586,6 +590,12 @@ export function TankCard() {
   const game = useGameThrottled(500);
   const tank = focused && game ? game.tanks[focused] : null;
   const [tab, setTab] = useState<TabId>('water');
+  const want = useTankCardTab((s) => s.want);
+  useEffect(() => {
+    if (!want || !open) return;
+    setTab(want);
+    useTankCardTab.setState({ want: null });
+  }, [want, open]);
   useEffect(() => {
     if (open && tank && !game?.isShowcase) tutorialFlag('opened_tank_card');
     // the guide's expanded parameter (and its scroll) used to outlive the card: every later open started scrolled

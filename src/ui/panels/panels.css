@@ -956,3 +956,22 @@ a.pn-link { text-decoration: none; }
 /* lane:w2-ui — a segmented control with many tabs (Build: five) that must fit a phone / the 1280 side sheet */
 .pn-seg--tight { gap: 2px; }
 .pn-seg--tight .pn-seg__opt { padding-inline: 9px; gap: 5px; }
+
+/* fix3:UI-B R07-03 — a phone held sideways (844×390): the half sheet (46dvh) left 0–70 px of body under the header
+   and above the switcher (Livestock's list sat entirely off screen). Short landscape opens every panel at full height
+   with a compact header and switcher. L-7: the sheet's content also clears the notch / camera housing at the sides. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .pn-sheet--bottom, .pn-sheet--bottom.is-max { top: max(6px, env(safe-area-inset-top)); }
+  .pn-sheet--bottom .pn-head { padding: 6px max(var(--pn-pad), var(--safe-r)) 6px max(var(--pn-pad), var(--safe-l)); }
+  .pn-sheet--bottom .pn-grab, .pn-sheet--bottom .pn-head__sub, .pn-sheet--bottom .pn-head__max { display: none; }
+  .pn-sheet--bottom .pn-head__icon { width: 32px; height: 32px; border-radius: 10px; }
+  .pn-sheet--bottom .pn-head__title { font-size: calc(19px * var(--text-scale)); }
+  .pn-sheet--bottom .pn-head__toolbar { margin-top: 6px; gap: 6px; }
+  .pn-sheet--bottom .pn-head__toolbar .pn-seg__opt, .pn-sheet--bottom .pn-head__toolbar .pn-chip--btn { min-height: 32px; padding-block: 5px; }
+  .pn-sheet--bottom .pn-head__toolbar .pn-input, .pn-sheet--bottom .pn-head__toolbar .pn-select select { min-height: 36px; padding-block: 6px; }
+  .pn-sheet--bottom .pn-head__toolbar .pn-filters { gap: 6px; }
+  .pn-sheet--bottom .pn-body { padding-top: 12px; padding-left: max(var(--pn-pad), var(--safe-l)); padding-right: max(var(--pn-pad), var(--safe-r)); }
+  .pn-sheet--bottom .pn-foot { padding-left: max(var(--pn-pad), var(--safe-l)); padding-right: max(var(--pn-pad), var(--safe-r)); }
+  .pn-sheet--bottom .pn-switch { padding: 3px max(8px, var(--safe-r)) calc(3px + env(safe-area-inset-bottom)) max(8px, var(--safe-l)); scroll-padding-inline: var(--safe-l) var(--safe-r); }
+  .pn-sheet--bottom .pn-switch__item { flex-direction: row; gap: 6px; height: 38px; padding: 0 12px; }
+}

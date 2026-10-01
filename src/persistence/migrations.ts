@@ -22,6 +22,8 @@ import { SCHEMA_VERSION } from './schema';
 import { SaveError } from './types';
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { DEFAULT_LIGHTS_ON, defaultLightsOff } from '@/sim/time';
+import { renamedMorphs } from '@/sim/life/genetics';
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -220,7 +222,9 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   }
   if (!isObj(t.substrate)) t.substrate = { kind: marine ? 'aragonite' : 'fine_gravel', depthCm: 4, color: marine ? '#efe6d6' : '#8a7c68' };
   t.backdrop ??= marine ? 'deep_blue' : 'black';
-  t.lighting = fillNumbers(t.lighting, { preset: marine ? 'cool' : 'warm', intensity: 1, onHour: 7, offHour: 22, moonlight: true }, `tank ${id}.lighting`, repairs);
+  // the same default photoperiod a new tank gets (createTank): on at 07:00, off when the room closes
+  const closeHour = typeof s.facility?.closeHour === 'number' ? s.facility.closeHour : undefined;
+  t.lighting = fillNumbers(t.lighting, { preset: marine ? 'cool' : 'warm', intensity: 1, onHour: DEFAULT_LIGHTS_ON, offHour: defaultLightsOff(closeHour), moonlight: true }, `tank ${id}.lighting`, repairs);
   const hour = num(s.clock?.hour, 0);
   t.createdHour = num(t.createdHour, 0);
   t.lastMaintenanceHour = num(t.lastMaintenanceHour, hour);
@@ -283,6 +287,33 @@ function repairCreature(s: Json, id: string, c: Json, repairs: string[]): Creatu
  * Idempotent repair pass (runs on every load). Fills missing structure, removes references to unknown species,
  * clamps non-finite numbers. Returns a list of what was repaired (empty for healthy saves).
  */
+/**
+ * Round-3 R02-06 — S16-05 renamed morphs with descriptive overlays ("Red High Grade Cherry" → "High Grade Red
+ * Cherry"). Saves from before it carry the old names on living animals and in the discovered-morphs list, so the next
+ * brood would be a second "first bred" of the same morph: rename them in place and drop the duplicates.
+ */
+function renameLegacyMorphs(s: Json): void {
+  if (isObj(s.creatures)) {
+    for (const c of Object.values(s.creatures) as Json[]) {
+      if (!isObj(c) || typeof c.morphName !== 'string') continue;
+      const sp = findSpecies(c.speciesId);
+      const now = sp ? renamedMorphs(sp).get(c.morphName) : undefined;
+      if (now) c.morphName = now;
+    }
+  }
+  const p = s.progress;
+  if (!isObj(p) || !Array.isArray(p.discoveredMorphs)) return;
+  const out: string[] = [];
+  for (const key of p.discoveredMorphs as string[]) {
+    const i = key.indexOf(':');
+    const sp = i > 0 ? findSpecies(key.slice(0, i)) : undefined;
+    const now = sp ? renamedMorphs(sp).get(key.slice(i + 1)) : undefined;
+    const k = now ? `${key.slice(0, i)}:${now}` : key;
+    if (!out.includes(k)) out.push(k);
+  }
+  p.discoveredMorphs = out;
+}
+
 export function repairState(s: Json): string[] {
   const repairs: string[] = [];
   s.schemaVersion = SCHEMA_VERSION;
@@ -421,6 +452,7 @@ export function repairState(s: Json): string[] {
     }
   }
   delete s.offlineGrace;
+  renameLegacyMorphs(s);
   if (s.isShowcase === undefined) s.isShowcase = false;
   // Keep the id counter ahead of every id we know about so new ids never collide after a repair.
   s.idCounter = Math.max(s.idCounter, maxIdSuffix(s));

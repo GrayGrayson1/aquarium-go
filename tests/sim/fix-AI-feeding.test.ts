@@ -150,4 +150,43 @@ describe('fix AI: starter animals reach their food or give it up', () => {
       expect(r.left, `seed ${seed}: leftovers`).toBe(0);
     }
   });
+
+  it('R04-01: a fish going back to a piece it let go of a while ago pursues it afresh instead of giving it up at once', () => {
+    for (let seed = 0; seed < 3; seed++) {
+      const tank = makeTestTank({ id: 't1' });
+      const stats = { health: 100, hunger: 75, stress: 10, energy: 80, social: 70, comfort: 80, breedingReadiness: 0, enrichment: 60 };
+      const w = makeTestWorld(tank, [makeTestCreature('betta', 't1', { id: 'f1', stats, temperament: 30 + seed * 7 })], 12);
+      const a = w.agents[0];
+      step(w, 2 + seed);
+      a.satiety = 100; // full: it ignores the piece while it sinks
+      const spec = foodSpecById('micro_pellets');
+      const x = a.rt.pos.x + (a.rt.pos.x > 0 ? -1 : 1) * a.L * 3;
+      noteLocalFeeding(w, spec, spawnFood(w, spec, new THREE.Vector3(x, w.env.surfaceY - 0.01, a.rt.pos.z), { count: 1 }), 1);
+      for (let i = 0; i < 60 * 30; i++) {
+        stepWorld(w, 1 / 60);
+        if (i % 15 === 0) syncFoodWithSim(w, spec.nutrition, foodSpecForTags, {});
+      }
+      const p = w.food.find((q) => q.amount > 0)!;
+      expect(p, 'the piece on the sand').toBeTruthy();
+      // it went for this piece half a minute ago and let go of it (startled, full, asleep)
+      a.lastFoodId = p.id;
+      a.foodDropT = w.time - 30;
+      a.foodT = w.time - 30;
+      a.lastFedT = w.time - 30;
+      a.satiety = 0;
+      let eats = 0;
+      w.hooks.event = (k) => {
+        if (k === 'eat') eats++;
+      };
+      const t0 = w.time;
+      for (let i = 0; i < 60 * 8; i++) {
+        stepWorld(w, 1 / 60);
+        if (i % 15 === 0) syncFoodWithSim(w, spec.nutrition, foodSpecForTags, {});
+        const k = a.badFoodIds.indexOf(p.id);
+        // (it used to give it up 0.1-0.4 s in, on a 45 s ban)
+        expect(k >= 0 && a.badFoodUntil[k] > w.time, `seed ${seed}: gave the piece up ${(w.time - t0).toFixed(2)} s in`).toBe(false);
+      }
+      expect(eats, `seed ${seed} bites`).toBeGreaterThan(0);
+    }
+  });
 });

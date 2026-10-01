@@ -169,8 +169,9 @@ export function NumberField({ value, onChange, min = 0, max = 1e9, step = 1, pre
   const clampV = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step));
   const inc = bigStep ?? step;
   // lane:fix-panels — what the player has typed so far, while the field has focus. Clamping every keystroke on a
-  // controlled input turned "95" into $285 (9 → min 71, then "715" → max 285); now an in-range draft is committed as
-  // it is typed, an out-of-range or empty one waits, and blur / Enter clamps whatever is there.
+  // controlled input turned "95" into $285 (9 → min 71, then "715" → max 285); now the typed text stays on screen while
+  // the parent gets the amount that would actually be used (an out-of-range draft clamped, so a "Send $…" button
+  // never shows one amount and sends another), and blur / Enter tidies the field to that amount.
   const [draft, setDraft] = useState<string | null>(null);
   const commit = (raw: string | null) => {
     const n = raw == null || raw.trim() === '' ? value : Number(raw);
@@ -198,7 +199,8 @@ export function NumberField({ value, onChange, min = 0, max = 1e9, step = 1, pre
             const raw = e.target.value;
             setDraft(raw);
             const n = Number(raw);
-            if (raw.trim() !== '' && Number.isFinite(n) && n >= min && n <= max) onChange(n);
+            if (raw.trim() === '' || !Number.isFinite(n)) return;
+            onChange(n >= min && n <= max ? n : clampV(n));
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') commit(draft);

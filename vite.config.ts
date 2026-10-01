@@ -1,9 +1,40 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
+import { execSync } from 'node:child_process';
+
+/** Short commit + build time: every deploy gets a new id, even a rebuild of the same commit. */
+function makeBuildId(): string {
+  let sha = 'nogit';
+  try {
+    sha = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || sha;
+  } catch {
+    /* building from a tarball */
+  }
+  return `${sha}-${Date.now().toString(36)}`;
+}
+
+/**
+ * Stamps each production build with an id: `__BUILD_ID__` in the bundle ('dev' under the dev server) and version.json
+ * (`{ "id": … }`) beside index.html. A tab still running an older cached build polls that file and offers a reload
+ * (src/ui/hud/UpdatePrompt.tsx). It is relative to the output root, so the Pages base path just works.
+ */
+function buildStamp(): Plugin {
+  let id = 'dev';
+  return {
+    name: 'aquarium-go:build-stamp',
+    config(_, { command }) {
+      if (command === 'build') id = makeBuildId();
+      return { define: { __BUILD_ID__: JSON.stringify(id) } };
+    },
+    generateBundle() {
+      if (id !== 'dev') this.emitFile({ type: 'asset', fileName: 'version.json', source: `${JSON.stringify({ id })}\n` });
+    },
+  };
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), buildStamp()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     dedupe: ['react', 'react-dom', 'three', '@react-three/fiber'],

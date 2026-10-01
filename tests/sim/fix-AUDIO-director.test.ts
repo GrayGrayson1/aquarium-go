@@ -38,6 +38,18 @@ describe('fix AUDIO — NightGate (S15-02: no day/night mood flapping while fast
     expect(cycle(g, 3, 400).flips).toBe(0);
   });
 
+  it('settles a fast-forward session loaded at night on the day score once, then holds it (R09-01)', () => {
+    for (const speed of [3, 10]) {
+      const g = new NightGate();
+      const r = cycle(g, speed, 600, 22);
+      expect(r.values[0]).toBe(true);
+      expect(r.flips).toBe(1);
+      expect(r.values[r.values.length - 1]).toBe(false);
+      // the flip waits out the dwell since the load, then the day score stays through every later night
+      expect(r.values.indexOf(false)).toBeGreaterThanOrEqual(45);
+    }
+  });
+
   it('follows the clock at 1× after a short hold, at most once per real day/night', () => {
     const g = new NightGate();
     const r = cycle(g, 1, 480); // two game days

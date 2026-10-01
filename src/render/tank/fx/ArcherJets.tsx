@@ -43,7 +43,7 @@ const MM = 0.001;
 /** A generous greenbottle (~12 mm) so it reads at viewing distance. */
 const FLY_SCALE = 1.3;
 /**
- * lane:tankrender — the fly never draws smaller than this many pixels long (9 mm was a 3–4 px dot from the default
+ * lane:tankrender — the fly never draws smaller than this many CSS pixels long (9 mm was a 3–4 px dot from the default
  * front camera), and never grows past FLY_MAX_SCALE (a close camera sees it at its true size).
  */
 const FLY_MIN_PX = 12;
@@ -656,7 +656,9 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
     let flyS = FLY_SCALE;
     if (groupRef.current) {
       const dist = _P.copy(g.position).applyMatrix4(groupRef.current.matrixWorld).distanceTo(cam.position);
-      flyS = Math.min(FLY_SCALE * FLY_MAX_SCALE, Math.max(FLY_SCALE, (FLY_MIN_PX * dist) / (extra.uPixelScale.value * FLY_BODY_M)));
+      // R05-04 — uPixelScale is in device px (for the shaders); the floor is in CSS px, so it holds on Retina / phones
+      const minPx = FLY_MIN_PX * state.viewport.dpr;
+      flyS = Math.min(FLY_SCALE * FLY_MAX_SCALE, Math.max(FLY_SCALE, (minPx * dist) / (extra.uPixelScale.value * FLY_BODY_M)));
     }
     switch (s.phase) {
       case 'rest':

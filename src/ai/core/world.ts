@@ -168,6 +168,7 @@ export function syncWorld(w: AIWorld, input: SyncInput): void {
       }
       if (a.actTarget && !solidIds.has(a.actTarget) && !w.byId.has(a.actTarget)) disturbed = true;
       if (!disturbed && insideSolid(env, a)) disturbed = true;
+      if (a.laidToRest) a.deadWakeT = w.time;
       a.laidToRest = false; // a body at rest settles again around the new layout
       computeZoneBand(a, w);
       if (disturbed) a.actDur = Math.min(a.actDur, a.actT + 0.1); // replan soon with the new layout
@@ -228,6 +229,8 @@ function removeAgent(w: AIWorld, i: number): void {
 
 // a dead body sinks for up to ~70 s (a large fish from the surface of a tall tank); past this it is left wherever it is
 const DEAD_SETTLE_MAX_S = 150;
+// the roll onto its side takes a few seconds (a cory dying on the bed is still at first, but only part-way over)
+const DEAD_SETTLE_MIN_S = 6;
 
 /**
  * A dead body stops being stepped once it lies still — a swimmer on the floor, a crawler, walker or sessile animal
@@ -239,10 +242,12 @@ function settleDead(a: Agent, w: AIWorld, dt: number): void {
   const p = a.rt.pos;
   const vy = (p.y - a.deadY) / dt;
   a.deadY = p.y;
-  if (a.act !== 'dead' || a.actT < 3) return;
+  if (a.act !== 'dead' || a.actT < DEAD_SETTLE_MIN_S) return;
   const grounded = a.loco === 'crawl' || a.loco === 'walk' || a.loco === 'sessile';
   const still = Math.abs(vy) < 1.5e-4 && (grounded || p.y - floorAt(w.env, p.x, p.z) < bodySide(a) * 1.6 + 0.005);
-  if (still || a.actT > DEAD_SETTLE_MAX_S) a.laidToRest = true;
+  // (a body woken by a rock dropped on it is still while it is being eased out sideways: only once it is out; the cap
+  // counts from the wake, as an old body's actT is long past it)
+  if ((still && !insideSolid(w.env, a)) || Math.min(a.actT, w.time - a.deadWakeT) > DEAD_SETTLE_MAX_S) a.laidToRest = true;
 }
 
 /** Is the body centre inside hard decor it is not deliberately tucked into (a hide it entered)? */

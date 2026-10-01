@@ -149,8 +149,6 @@ export interface PointerState {
   /** Tank-local point on (or just behind) the front glass. */
   local: [number, number, number];
   lastMoveT: number;
-  /** Recent tap timestamps (for spam detection). */
-  taps: number[];
 }
 
 export interface AudioReactiveState {

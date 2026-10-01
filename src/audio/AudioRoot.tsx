@@ -1,10 +1,10 @@
 /**
  * Audio engine mount point (ambience, music, sfx, party-mode analysis). OWNER: lane "audio".
- * Renders nothing. Pre-builds the (suspended) AudioContext at idle time, installs the user-gesture unlock,
+ * Renders nothing. Pre-builds the (silent) AudioContext at idle time, installs the user-gesture unlock,
  * mounts the audio director and exposes `window.__AQ_AUDIO` for scripted QA.
  */
 import { useEffect } from 'react';
-import { prewarmAudio, unlockAudio, isRunning } from './engine';
+import { prewarmAudio, unlockAudio, isRunning, gestureHeard } from './engine';
 import { startDirector } from './director';
 import { installAudioDebug } from './debug';
 
@@ -30,7 +30,7 @@ export function AudioRoot() {
     // A permanent, cheap capture listener: the first gesture resumes the context; any later one brings it back
     // after an OS interruption (iOS: a call, Siri, another app's audio) that leaves it suspended/'interrupted'.
     const onGesture = () => {
-      if (!isRunning()) unlockAudio();
+      if (!gestureHeard() || !isRunning()) unlockAudio();
     };
     for (const g of GESTURES) window.addEventListener(g, onGesture, { capture: true, passive: true });
     return () => {

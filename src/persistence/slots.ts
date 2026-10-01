@@ -11,12 +11,17 @@
  *  - Stale tabs (P5-04/S06-04): a write is refused (`code: 'stale'`) when the same aquarium was saved during this
  *    tab's session by someone else — i.e. the stored record is newer than anything this tab loaded or wrote — so a
  *    forgotten second tab can never roll the player's progress back on hide/close.
+ *    lane:fix3-saves (R03-01) — …unless this tab has played further than that copy (game hours, not counting what a
+ *    catch-up after a hidden spell added): then it takes the save back, so a duplicate tab that was opened and closed
+ *    never locks out the tab the player keeps using. A refused aquarium stays refused until the player chooses
+ *    (`useStaleSaves` drives a banner: load the newer copy, or `keepThisCopy` and save here).
  *  - Sync mirror (P5-01): `saveGameSync` writes the record straight into localStorage from pagehide/hidden handlers,
  *    where an IndexedDB round trip never lands. Boot reads every backend (newest wins) and moves it across.
  *  - Displaced aquariums (P5-03/S06-03/S06-07): when a slot's `.backup` holds a DIFFERENT aquarium than its primary
  *    (a load or overwrite replaced it), same-game writes keep that backup instead of rotating over it, and listings
  *    show it as a loadable "Previous …" entry (`<slot>.backup`) so nothing is lost by one click.
  */
+import { create } from 'zustand';
 import type { GameState } from '@/types';
 import { storage, syncStore, onBackendChange, type KVBackend, type BackendName } from './storage';
 import { encodeRecord, decodeRecord, readHeader, makeMeta, cyrb53, type DecodedSave } from './serialize';
@@ -53,8 +58,19 @@ const TAB_ID = Math.random().toString(36).slice(2, 10);
 const SESSION_START = Date.now();
 /** Newest `savedAt` this tab has loaded or written, per aquarium (saveId). */
 const knownSavedAt = new Map<string, number>();
-/** Aquariums whose write this tab had to refuse (another tab owns them now). */
-const staleGames = new Set<string>();
+/** Aquariums whose write this tab had to refuse (another tab played them further), with the slot it happened in. */
+const staleGames = new Map<string, string>();
+/**
+ * Game hours this tab's catch-ups after a hidden spell added to each aquarium since it last loaded or wrote it: they
+ * are not play, so a forgotten tab's catch-up can never make it look further along than the tab the player used.
+ */
+const caughtUpHours = new Map<string, number>();
+/** Two copies closer than this (game hours) are not "further along" one way or the other. */
+const PROGRESS_EPS_HOURS = 1e-6;
+
+/** UI: aquariums this tab stopped saving (saveId → slot), for the "played further in another tab" banner. */
+export const useStaleSaves = create<{ games: Readonly<Record<string, string>> }>(() => ({ games: {} }));
+const publishStale = () => useStaleSaves.setState({ games: Object.fromEntries(staleGames) });
 /** `saveId` in each slot's `.backup` as far as this session knows (undefined = not read yet, null = none/legacy). */
 const backupIds = new Map<string, string | null>();
 /** Slots this tab mirrored into localStorage (cleaned up by the next regular write). */
@@ -64,6 +80,8 @@ interface WriteStamp {
   savedAt: number;
   saveId?: string;
   tab: string;
+  /** lane:fix3-saves (R03-01) — clock.hour of the written state (absent in stamps from older builds). */
+  hour?: number;
 }
 
 function readStamp(slot: string): WriteStamp | null {
@@ -77,15 +95,34 @@ function readStamp(slot: string): WriteStamp | null {
   }
 }
 
-function noteWritten(slot: string, savedAt: number, saveId: string | undefined): void {
-  if (saveId) knownSavedAt.set(saveId, Math.max(knownSavedAt.get(saveId) ?? 0, savedAt));
-  syncStore.set(stampKey(slot), JSON.stringify({ savedAt, saveId, tab: TAB_ID } satisfies WriteStamp));
+function noteWritten(slot: string, savedAt: number, saveId: string | undefined, hour?: number): void {
+  if (saveId) {
+    knownSavedAt.set(saveId, Math.max(knownSavedAt.get(saveId) ?? 0, savedAt));
+    caughtUpHours.delete(saveId);
+  }
+  syncStore.set(stampKey(slot), JSON.stringify({ savedAt, saveId, tab: TAB_ID, hour } satisfies WriteStamp));
 }
 
 function noteLoaded(saveId: string | undefined, savedAt: number): void {
   if (!saveId) return;
   knownSavedAt.set(saveId, Math.max(knownSavedAt.get(saveId) ?? 0, savedAt));
-  staleGames.delete(saveId);
+  caughtUpHours.delete(saveId);
+  if (staleGames.delete(saveId)) publishStale();
+}
+
+/** lane:fix3-saves (R03-01) — a catch-up after a hidden spell advanced `saveId` by `hours` (not play; see above). */
+export function noteCatchUp(saveId: string, hours: number): void {
+  if (saveId && hours > 0) caughtUpHours.set(saveId, (caughtUpHours.get(saveId) ?? 0) + hours);
+}
+
+/**
+ * lane:fix3-saves (R03-01) — the player chose to keep this tab's copy of a refused aquarium: accept every copy stored
+ * so far as known, so this tab's next write goes through (and wins until another tab plays further again).
+ */
+export function keepThisCopy(saveId: string): void {
+  if (!saveId) return;
+  knownSavedAt.set(saveId, Math.max(knownSavedAt.get(saveId) ?? 0, Date.now()));
+  if (staleGames.delete(saveId)) publishStale();
 }
 
 /**
@@ -101,17 +138,39 @@ function isStaleAgainst(state: GameState, savedAt: number | undefined, saveId: s
   return savedAt! > known && savedAt! > SESSION_START;
 }
 
-/** True once a write for this aquarium was refused because another tab saved it more recently. */
+/**
+ * Must a write of `state` be refused because of a stored copy (`savedAt`, `saveId`, `tab`, game `hour`)? Only when
+ * that copy is another tab's newer write (isStaleAgainst) AND it is at least as far along as this tab's own play (its
+ * hour minus catch-up hours). When this tab is further along it takes the save back instead. Once refused, the
+ * aquarium stays refused until the player loads a copy or keeps this one (no silent flip-flopping later).
+ */
+function refuseStale(state: GameState, slot: string, savedAt: number | undefined, saveId: string | undefined, tab?: string, hour?: number): boolean {
+  if (!isStaleAgainst(state, savedAt, saveId, tab)) return false;
+  if (!staleGames.has(state.saveId)) {
+    const played = state.clock.hour - (caughtUpHours.get(state.saveId) ?? 0);
+    if (Number.isFinite(hour) && Number.isFinite(played) && played > hour! + PROGRESS_EPS_HOURS) {
+      knownSavedAt.set(state.saveId, savedAt!);
+      return false;
+    }
+    staleGames.set(state.saveId, slot);
+    publishStale();
+  }
+  return true;
+}
+
+/** True once a write for this aquarium was refused because another tab played it further. */
 export function isStaleGame(saveId: string): boolean {
   return staleGames.has(saveId);
 }
 
-const STALE_MESSAGE = 'This aquarium was saved more recently in another tab — this tab isn’t saving. Reload to pick up the latest.';
+const STALE_MESSAGE = 'This aquarium was played further in another tab — this tab isn’t saving over it.';
 
 /** Tests: forget what this tab knows about other tabs' writes. */
 export function resetSaveSession(): void {
   knownSavedAt.clear();
   staleGames.clear();
+  caughtUpHours.clear();
+  publishStale();
   backupIds.clear();
   mirrored.clear();
 }
@@ -173,16 +232,14 @@ export async function saveGame(state: GameState, slot = 'auto'): Promise<SaveRes
   checkSlot(slot);
   return enqueue(slot, async () => {
     const stamp = readStamp(slot);
-    if (stamp && isStaleAgainst(state, stamp.savedAt, stamp.saveId, stamp.tab)) {
-      staleGames.add(state.saveId);
+    if (stamp && refuseStale(state, slot, stamp.savedAt, stamp.saveId, stamp.tab, stamp.hour)) {
       return { ok: false, slot, code: 'stale', message: STALE_MESSAGE };
     }
     const { text, header, stats } = encodeRecord(state, slot);
     try {
       const prev = await storage.get(saveKey(slot));
       const ph = readHeader(prev);
-      if (ph && isStaleAgainst(state, ph.savedAt, ph.meta?.saveId)) {
-        staleGames.add(state.saveId);
+      if (ph && refuseStale(state, slot, ph.savedAt, ph.meta?.saveId, undefined, ph.meta?.hour)) {
         return { ok: false, slot, code: 'stale', message: STALE_MESSAGE };
       }
       // Only rotate an intact record into the backup; a damaged one must never overwrite a good backup.
@@ -200,7 +257,7 @@ export async function saveGame(state: GameState, slot = 'auto'): Promise<SaveRes
       }
       await storage.set(saveKey(slot), text);
       await storage.set(metaKey(slot), JSON.stringify(header.meta));
-      noteWritten(slot, header.savedAt, state.saveId);
+      noteWritten(slot, header.savedAt, state.saveId, header.meta.hour);
       const backend = await storage.backendName();
       if (mirrored.has(slot) && !syncStore.isActive()) clearMirror(slot, header.savedAt);
       if (stats.fixedNumbers > 0 && typeof console !== 'undefined') console.warn(`[aquarium-go] save: replaced ${stats.fixedNumbers} invalid number(s) with 0`);
@@ -240,14 +297,18 @@ export function saveGameSync(state: GameState, slot = 'auto'): boolean {
   if (!state || state.isShowcase) return false;
   if (!SLOT_RE.test(slot)) return false;
   const stamp = readStamp(slot);
-  if (stamp && isStaleAgainst(state, stamp.savedAt, stamp.saveId, stamp.tab)) {
-    staleGames.add(state.saveId);
-    return false;
-  }
+  if (stamp && refuseStale(state, slot, stamp.savedAt, stamp.saveId, stamp.tab, stamp.hour)) return false;
   const { text, header } = encodeRecord(state, slot);
+  // lane:fix3-saves (R03-02) — when localStorage IS the save store, this write replaces the primary for good: a
+  // different aquarium there is rotated into the backup first (as saveGame would), so it stays "Previous …".
+  if (syncStore.isActive()) {
+    const prev = syncStore.get(saveKey(slot));
+    const prevId = prev ? (readHeader(prev)?.meta?.saveId ?? null) : null;
+    if (prev && prevId && prevId !== state.saveId && isIntact(prev) && syncStore.set(backupKey(slot), prev)) backupIds.set(slot, prevId);
+  }
   if (!syncStore.set(saveKey(slot), text)) return false;
   syncStore.set(metaKey(slot), JSON.stringify(header.meta));
-  noteWritten(slot, header.savedAt, state.saveId);
+  noteWritten(slot, header.savedAt, state.saveId, header.meta.hour);
   if (!syncStore.isActive()) mirrored.add(slot);
   return true;
 }
@@ -379,19 +440,29 @@ export async function loadGame(slot = 'auto'): Promise<GameState | null> {
 /**
  * Delete a slot everywhere it may live (so an older copy in another backend can't resurface). A `<slot>.backup`
  * reference deletes only that previous copy.
+ *
+ * lane:fix3-saves (R03-05) — deleting a slot whose backup holds a DIFFERENT aquarium (its "Previous …" entry) deletes
+ * only the slot's own aquarium: the displaced one is promoted to be the slot's save (not left as a backup, which
+ * would load with a misleading "restored from backup" notice).
  */
 export async function deleteSave(ref: string): Promise<void> {
   const { slot, backup } = parseSlotRef(ref);
   const keys = backup ? [backupKey(slot)] : [saveKey(slot), backupKey(slot), metaKey(slot), stampKey(slot)];
   await enqueue(slot, async () => {
-    for (const k of keys) await storage.del(k);
-    backupIds.set(slot, null);
+    const promote = backup ? null : await displacedBackup(slot);
     if (!backup) {
+      // Before the writes below: when localStorage is the save store these are the same keys.
       syncStore.del(saveKey(slot));
       syncStore.del(metaKey(slot));
       syncStore.del(stampKey(slot));
       mirrored.delete(slot);
     } else syncStore.del(backupKey(slot));
+    for (const k of keys) await storage.del(k);
+    if (promote) {
+      await storage.set(saveKey(slot), promote.raw);
+      await storage.set(metaKey(slot), JSON.stringify(promote.meta));
+    }
+    backupIds.set(slot, null);
     let sources: KVBackend[] = [];
     try {
       sources = (await storage.sources()).slice(1);
@@ -408,6 +479,19 @@ export async function deleteSave(ref: string): Promise<void> {
       }
     }
   });
+}
+
+/** The slot's backup in the save store when it is intact and holds a different aquarium than its primary. */
+async function displacedBackup(slot: string): Promise<{ raw: string; meta: SaveMeta } | null> {
+  try {
+    const raw = await storage.get(backupKey(slot));
+    const h = readHeader(raw);
+    const primaryId = readHeader(await storage.get(saveKey(slot)))?.meta?.saveId;
+    if (typeof raw !== 'string' || !h?.meta?.saveId || !primaryId || h.meta.saveId === primaryId || !isIntact(raw)) return null;
+    return { raw, meta: { ...h.meta, slot } };
+  } catch {
+    return null;
+  }
 }
 
 /** Saves in one backend (meta index first; falls back to reading record headers for older saves). */
@@ -551,6 +635,12 @@ async function migrateInto(target: KVBackend): Promise<number> {
   return moved;
 }
 
+/** `saveId` of a stored copy (null when it has none, e.g. a legacy record). */
+function copyId(c: SlotCopy | null | undefined): string | null {
+  if (!c) return null;
+  return readHeader(c.raw)?.meta?.saveId ?? c.decoded?.state.saveId ?? null;
+}
+
 async function migrateSlot(slot: string, src: KVBackend, target: KVBackend): Promise<boolean> {
   const srcPrimary = describeCopy(src, 'primary', await src.get(saveKey(slot)));
   const srcBackup = describeCopy(src, 'backup', await src.get(backupKey(slot)));
@@ -563,7 +653,11 @@ async function migrateSlot(slot: string, src: KVBackend, target: KVBackend): Pro
   if (srcBest && (!tgtPrimary?.intact || srcBest.savedAt > tgtPrimary.savedAt)) {
     // Keep the best older copy as the backup: IndexedDB's own intact primary, else the source's backup.
     const olderForBackup = tgtPrimary?.intact ? tgtPrimary : srcBest === srcPrimary && srcBackup?.intact ? srcBackup : null;
-    if (olderForBackup && (!tgtBackup?.intact || olderForBackup.savedAt >= tgtBackup.savedAt)) {
+    // lane:fix3-saves (R03-02) — like saveGame: an older copy of the SAME aquarium never rotates over a backup that
+    // holds a different (displaced) one — that is the "Previous …" save the player was promised.
+    const bestId = copyId(srcBest);
+    const keepsDisplaced = !!tgtBackup?.intact && !!bestId && copyId(olderForBackup) === bestId && !!copyId(tgtBackup) && copyId(tgtBackup) !== bestId;
+    if (olderForBackup && !keepsDisplaced && (!tgtBackup?.intact || olderForBackup.savedAt >= tgtBackup.savedAt)) {
       await storage.set(backupKey(slot), str(olderForBackup.raw));
       backupIds.delete(slot);
     }

@@ -3,11 +3,14 @@
  * of the floor, but that is hard to discover and touch browsers do not always synthesize dblclick). The first time a
  * player opens the room view, a short line beside it says how the view moves: the rows of a big hall run past the
  * frame's edges and nothing on screen said the view pans.
+ * While the row runs past the left or right edge of the frame (useFacilityOverflow), a soft fade with a chevron marks
+ * that edge: there is more of the hall that way. It is only a cue (no pointer events): drags reach the room under it.
  */
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Scan } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Scan } from 'lucide-react';
 import { resetFacilityView } from '@/render/camera/CameraRig';
+import { useFacilityOverflow } from '@/render/camera/facilityOverflow';
 import { sfx } from '@/audio/sfx';
 import { useMedia } from '../common/safe';
 
@@ -36,6 +39,7 @@ export function RoomViewChip() {
   }, [hint]);
   return (
     <div className="ag-roomcam">
+      <RoomEdges />
       <AnimatePresence>
         {hint && (
           <motion.div className="ag-roomcam__hint" role="note" initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
@@ -60,5 +64,29 @@ export function RoomViewChip() {
         </button>
       </div>
     </div>
+  );
+}
+
+function RoomEdges() {
+  const left = useFacilityOverflow((s) => s.left);
+  const right = useFacilityOverflow((s) => s.right);
+  return <RoomEdgeCues left={left} right={right} />;
+}
+
+/** Edge cues for an exhibit row that runs past the frame on that side (see the header). */
+export function RoomEdgeCues({ left, right }: { left: boolean; right: boolean }) {
+  return (
+    <AnimatePresence>
+      {left && (
+        <motion.div key="l" className="ag-roomedge ag-roomedge--left" data-testid="room-edge-left" aria-hidden initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+          <ChevronLeft size={24} />
+        </motion.div>
+      )}
+      {right && (
+        <motion.div key="r" className="ag-roomedge ag-roomedge--right" data-testid="room-edge-right" aria-hidden initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
+          <ChevronRight size={24} />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

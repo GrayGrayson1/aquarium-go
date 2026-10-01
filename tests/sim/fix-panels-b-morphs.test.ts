@@ -32,6 +32,18 @@ describe('encyclopedia morph chips', () => {
     expect(seenMorphChips(comet, ['comet_goldfish:Red-Orange Common (short tail)']).has('Common (short tail)')).toBe(true);
   });
 
+  it('does not let the common name tick a base chip for a different morph (R08-05)', () => {
+    const only = (id: string, name: string) => [...seenMorphChips(getSpecies(id), [`${id}:${name}`])].sort();
+    expect(only('watchman_goby', 'Grey Watchman')).toEqual(['Grey Watchman']);
+    expect(only('watchman_goby', 'Yellow Watchman')).toEqual(['Yellow Watchman']);
+    expect(only('cherry_shrimp', 'Fire Red')).toEqual(['Fire Red']);
+    expect(only('cherry_shrimp', 'Sakura Red')).toEqual(['Sakura Red']);
+    expect(only('cherry_shrimp', 'Red Cherry')).toEqual(['Red Cherry']);
+    expect(only('coral_beauty', 'High Orange')).toEqual(['High Orange']);
+    expect(only('coral_beauty', 'Coral Beauty')).toEqual(['Coral Beauty']);
+    expect(only('comet_goldfish', 'Red-Orange')).toEqual(['Red-Orange Comet']);
+  });
+
   it('lists the player’s finds per species without the id prefix', () => {
     expect(discoveredMorphNames(['betta:Red Halfmoon', 'axolotl:Wild Type', 'betta:Red Halfmoon', 'betta:Turquoise Plakat'], 'betta')).toEqual(['Red Halfmoon', 'Turquoise Plakat']);
   });

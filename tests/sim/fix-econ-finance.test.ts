@@ -5,6 +5,8 @@
 import { describe, it, expect } from 'vitest';
 import { newGame } from '@/sim/newGame';
 import { devStepEconomy, restartNeed, RESTART_AFTER_HOURS, LOAN_AFTER_DEBT_HOURS, earn } from '@/sim/economy';
+import { staffStoreWorld, hireTeam } from '@/dev/fixtures/staff';
+import { STAFF_NOTICE_DAYS } from '@/data/staff';
 
 function brokeWorld(seed = 5, money = 11) {
   const g = newGame({ starterId: 'betta', starterName: 'Broke', seed });
@@ -91,5 +93,28 @@ describe('S05-11 coordination — the debt loan lands at midnight before the bil
     g.finance.money = -50;
     devStepEconomy(g, LOAN_AFTER_DEBT_HOURS + 30, { finance: true, market: false });
     expect(g.finance.ledger.filter((e) => /Emergency loan/.test(e.memo)).length).toBe(1);
+  });
+});
+
+describe('S05-11 ordering (round-3 R10-04) — the loan lands before payday on the same midnight', () => {
+  it('an aquarist on their last unpaid day is paid from the loan and stays', () => {
+    const g = staffStoreWorld();
+    hireTeam(g);
+    const aq = g.staff!.roster.find((m) => m.role === 'aquarist')!;
+    aq.unpaidDays = STAFF_NOTICE_DAYS - 1;
+    g.finance.money = -100;
+    // the debt turns LOAN_AFTER_DEBT_HOURS old exactly on this midnight (not on a step before it)
+    const mid = Math.ceil(g.clock.hour / 24) * 24;
+    g.finance.debtSinceHour = mid - LOAN_AFTER_DEBT_HOURS + 0.005;
+    devStepEconomy(g, toMidnight(g.clock.hour), { finance: true, market: false });
+    expect(g.finance.loan).toBeDefined();
+    expect(g.finance.loan!.takenHour).toBeGreaterThan(mid - 1); // the midnight step's start hour
+    expect(g.staff!.roster.some((m) => m.id === aq.id)).toBe(true);
+    expect(aq.unpaidDays).toBe(0);
+    const memos = g.finance.ledger.filter((e) => e.hour > mid - 1).map((e) => e.memo);
+    const loanAt = memos.findIndex((m) => /Emergency loan/.test(m));
+    const wagesAt = memos.findIndex((m) => /^Wages/.test(m));
+    expect(loanAt).toBeGreaterThanOrEqual(0);
+    expect(wagesAt).toBeGreaterThan(loanAt);
   });
 });

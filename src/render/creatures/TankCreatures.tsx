@@ -82,6 +82,9 @@ export const REBUILD_BUDGET_MS = 3;
 /** Creatures seen alive by this renderer, and the deaths it is still showing (game hour + real time first seen dead). */
 const seenAlive = new Set<string>();
 const recentDeaths = new Map<string, { hour: number; at: number }>();
+/** creatureKeysByTank's caches (they record sightings, so they are part of the memory). */
+let keysCache = new WeakMap<object, CreatureKeys>();
+let merged: { creatures: object; step: string; m: Map<string, string> } | null = null;
 
 /** Is a dead creature still within its linger window (records the death the first time it is seen)? */
 export function deadBodyShown(c: Creature, hour: number, now: number): boolean {
@@ -98,28 +101,69 @@ export function deadBodyShown(c: Creature, hour: number, now: number): boolean {
 export function resetDeathMemory(): void {
   seenAlive.clear();
   recentDeaths.clear();
+  keysCache = new WeakMap();
+  merged = null;
 }
+
+/**
+ * R06-03 — the memory belongs to one game: loading another save (or an earlier state of this one: the game clock only
+ * runs forward) must not treat a fish the previous game saw alive as a fresh death, replaying a long-dead body's sink.
+ */
+let memoryWorld = '';
+let memoryHour = -Infinity;
+useGame.subscribe((s) => {
+  const g = s.game;
+  const world = g ? `${g.saveId}|${g.createdRealMs}` : '';
+  const hour = g?.clock.hour ?? -Infinity;
+  if (world !== memoryWorld || hour < memoryHour) {
+    resetDeathMemory();
+    memoryWorld = world;
+  }
+  memoryHour = hour;
+});
 
 /**
  * Stable key per tank of the creatures living in it (+ what forces a rebuild), for every tank at once.
  * lane:perf — computed in ONE pass per published creatures object (it changes at most once per sim tick) instead of
  * one full scan per mounted tank per store update; same strings as before.
+ * R06-02 — dead bodies leave on the clock, not on a creatures change (with no fish left alive the object never changes
+ * again), so while any linger the per-tank keys are re-merged per store update — cached per game-hour / real-second step.
  */
-const keysCache = new WeakMap<object, Map<string, string>>();
+interface CreatureKeys {
+  living: Map<string, string>;
+  /** Dead creatures (with a tank) in this creatures object that the memory may still show. */
+  dead: Creature[];
+}
+
+const keyPart = (c: Creature) => `${c.id}=${creatureSig(c)};`;
+
 export function creatureKeysByTank(creatures: Record<string, Creature>, hour = 0): Map<string, string> {
-  let m = keysCache.get(creatures);
-  if (m) return m;
-  m = new Map();
   const now = performance.now();
-  for (const id in creatures) {
-    const c = creatures[id];
-    if (!c.tankId) continue;
-    if (c.status === 'alive' || c.status === 'listed') seenAlive.add(c.id);
-    else if (c.status !== 'dead' || !deadBodyShown(c, hour, now)) continue;
-    if (c.lifeStage === 'egg' || c.lifeStage === 'larva') continue;
-    m.set(c.tankId, (m.get(c.tankId) ?? '') + `${id}=${creatureSig(c)};`);
+  let k = keysCache.get(creatures);
+  if (!k) {
+    k = { living: new Map(), dead: [] };
+    for (const id in creatures) {
+      const c = creatures[id];
+      if (!c.tankId) continue;
+      if (c.status === 'alive' || c.status === 'listed') seenAlive.add(c.id);
+      else if (c.status !== 'dead' || !deadBodyShown(c, hour, now)) continue;
+      if (c.lifeStage === 'egg' || c.lifeStage === 'larva') continue;
+      if (c.status === 'dead') k.dead.push(c);
+      else k.living.set(c.tankId, (k.living.get(c.tankId) ?? '') + keyPart(c));
+    }
+    // ids gone from the game (sold, removed) can never die here
+    for (const id of seenAlive) if (!creatures[id]) seenAlive.delete(id);
+    keysCache.set(creatures, k);
   }
-  keysCache.set(creatures, m);
+  if (!k.dead.length) return k.living;
+  const step = `${Math.floor(hour * 20)}|${Math.floor(now / 1000)}|${recentDeaths.size}`;
+  if (merged && merged.creatures === creatures && merged.step === step) return merged.m;
+  // a body that has left is forgotten for good (deadBodyShown dropped it), so the list only shrinks
+  k.dead = k.dead.filter((c) => deadBodyShown(c, hour, now));
+  if (!k.dead.length) return k.living;
+  const m = new Map(k.living);
+  for (const c of k.dead) m.set(c.tankId!, (m.get(c.tankId!) ?? '') + keyPart(c));
+  merged = { creatures, step, m };
   return m;
 }
 

@@ -21,7 +21,7 @@ export const runtime = {
   food: new Map<string, FoodParticle[]>(),
   /** Recent visual events (ring buffer, newest last). */
   events: [] as VisualEvent[],
-  pointer: { active: false, tankId: null, local: [0, 0, 0], lastMoveT: 0, taps: [] } as PointerState,
+  pointer: { active: false, tankId: null, local: [0, 0, 0], lastMoveT: 0 } as PointerState,
   /** Monotonic frame counter written by the AI loop. */
   frame: 0,
 };

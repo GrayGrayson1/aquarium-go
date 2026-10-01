@@ -25,13 +25,16 @@ npm start            # builds, then serves http://127.0.0.1:4173
 
 ## Controls
 
-- **Click or tap the glass:** bold animals come over to look and shy ones hide. Tapping repeatedly stresses them, so be gentle.
-- **Drag:** orbit the tank, or turn the room in the facility view. **Right-drag, Shift-drag or a two-finger drag** pans the room. Scroll or pinch to zoom. In the room view, click or tap a tank to fly to it (again to enter it); double-click or double-tap empty floor to return to the overview.
+- **Click or tap the glass:** bold animals come over to look and shy ones hide. A click that misses every animal is a gentle knock; only a flurry (eight within 3 s, or four Tap-tool knocks) stresses them, so be gentle.
+- **Drag:** orbit the tank, or turn the room in the facility view. **Right-drag, Shift-drag or a two-finger drag** pans the room. Scroll or pinch to zoom. In the room view, click or tap a tank to fly to it (again to enter it); the **Reset view** chip, or a double-click or double-tap on empty floor, returns to the framing the room view opened with. Soft fades with chevrons at the sides mark a row of exhibits that runs past the frame.
 - **Placing a tank:** click a spot to buy it there (**R** or right-click rotates, **Esc** cancels). On touch, tap a spot to preview it, then tap it again or press **Place here**; a **Rotate** button turns the ghost.
+- **Placing decor:** each purchase places one piece; **Shift+click** places several in a row, and pieces from storage keep placing while copies are left. After a paid placement, **Place another** offers the same piece again. **R** or the wheel rotates, **Shift+wheel** sizes; on touch, twist to rotate, pinch to size and tap to place. In Rearrange, **Delete/Backspace** sells the held piece; a hovered piece needs a second press. Build reopens on the section and decor category you last used in this aquarium.
 - **Click a creature:** open its profile card. Double-click it to follow it with the camera.
 - **Feed tool:** pick a food, then click where to drop it (floating foods land at the surface). **Target feed:** click an axolotl or seahorse to feed it directly.
 - **Creature card:** the Feed row target-feeds that animal with a food it eats.
 - **Bottom dock:** Tanks, Livestock, Market, Visitors (and Staff), Shows, Build, Research, Finances, Encyclopedia, Settings.
+- **Speed:** fast-forward drops back to 1× when an animal starts starving (once per animal each time it starts starving, so you can speed up again).
+- **Saves** (Settings › Saves): **Load** asks first and saves the running game to Autosave; **Overwrite** asks before replacing a slot. A replaced game is kept as a **Previous autosave** (or previous copy) row you can load; deleting a slot moves that game into it. If the same aquarium is played further in another tab, this tab stops saving over it and asks whether to load the newer copy or keep this one. When a new version is deployed, a prompt offers to save and reload.
 - **Watch mode** hides the whole HUD. **Photo mode** captures a frame. **Party mode** makes the lighting react to music; it is purely cosmetic.
 
 ## Tests

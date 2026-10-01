@@ -213,3 +213,75 @@ The game was choppy on a Windows PC with a 4K monitor: the canvas rendered 8.3 M
 - **Frame-rate independence:** the AI and room lights behave the same at 144 Hz.
 - **Result:** at 4K on a 2× throttled CPU, 26–50 fps → 45–60 fps, and synchronous shader compile time in a 60 s 4K play session went from 19.2 s to 1.0 s.
 
+
+## Full-game audit and fixes (2026-09-29 to 2026-10-01)
+The user asked for an audit of the whole game: fix every bug, and make it the best, smoothest experience possible.
+
+**Method.**
+- **Audit:** 27 slices (simulation, AI, rendering, UI, audio, data) plus 7 browser playtest personas found 230 issues.
+- **Fix rounds 1–2:** parallel lanes, each owning its own files in one shared tree, fixed about 200 of them (commit c92f981, deployed for testing).
+- **Adversarial review:** 12 reviewers, each checked by a verifier, went looking for what the fixers got wrong. They found 57 problems (54 confirmed).
+- **Fix round 3:** seven lanes fixed the review's findings and the leftover cross-lane requests, then a short polish pass closed the last UI, sim and render requests.
+- **Final playtest:** a regression playtest of the round-3 build against the deployed one found no regressions and six small notes, fixed in a last ship pass (below).
+
+**Headline fixes.**
+- **Saves:**
+  - Leaving or reloading the page no longer loses recent progress (a synchronous localStorage mirror on pagehide; boot takes the newest copy from every backend).
+  - A stale second tab can't roll progress back. The rule is progress-aware: a tab that has played further takes the save back, and a refused tab shows a banner (load the newer copy, or keep this one).
+  - Load and Overwrite ask first, and the displaced game is kept as a loadable "Previous …" entry; deleting the slot promotes it.
+  - A hung storage write no longer turns autosave off, and damaged imports no longer crash.
+  - Offline grace never improves on the save: reloading used to heal a dying tank and feed starving animals for free.
+- **Economy:**
+  - Tank listings are priced on what actually changes hands, which closed a money loop.
+  - Bid lifetimes, counter holds and replies last the same real time at any speed, and buyer arrivals no longer thin out at 10×.
+  - Sales warn about brooding parents, the starter and bonded pairs.
+  - The club's loan lands before a payday that would cost a team member (G2-03), and a broke, empty aquarium gets a restart loan instead of a soft-lock.
+- **Simulation:**
+  - Breeding softlocks fixed: clownfish guarding, the axolotl clutch, the clown goby's sex change.
+  - Visitors, reputation and the offline catch-up no longer depend on game speed.
+  - Conditioner protects the animals, not just the readings; the autofeeder feeds the whole tank; shrimp colonies are capped.
+  - Salt tanks take nitrite harm from the report's WATCH line, the betta's tolerated minimum is 21 °C (a heater failure is no longer lethal), and only bettas harass a female kept with the male.
+  - New tanks stay lit until the room closes.
+  - Fast-forward drops to 1× when an animal starts starving.
+- **Smoothness:**
+  - Shader programs survive tank switches, and quality changes compile in small slices.
+  - New worlds build behind the warm-up veil instead of freezing the title screen.
+  - Creature LOD swaps are time-sliced.
+  - Portraits render in budgeted steps with asynchronous readback, so Livestock and Encyclopedia no longer stutter while they fill.
+  - The frame-time governor no longer mistakes browser timer delay for game work.
+- **Creatures:** no more feeding loops (seahorse, axolotl), stale food claims, snails grazing on invisible coral boxes, or dead bodies left at rest inside decor. Archerfish shoot more often.
+- **UI:**
+  - Toasts show the whole message, and a danger toast replaces a routine one.
+  - Landscape phones get full-height panels and safe areas.
+  - Touch placement acts on the tap you made, and keyboard focus is trapped in dialogs and returned on close.
+  - Price fields can be typed into.
+  - Room view:
+    - tanks are clickable;
+    - a Reset view chip;
+    - edge cues when the exhibit row runs past the frame.
+  - Decor placement is one piece per purchase, with Shift+click and a "Place another" chip.
+  - The alerts popover lists failed equipment.
+  - The calm HUD no longer eats mouse clicks, and only the first, waking touch is swallowed.
+- **Audio:** no doubled cues, no sound before the first gesture, no music mood flapping at 10×, no coin spam.
+- **Deploy:** each build is stamped (`version.json`). Open tabs offer to save and reload when a new version is live, and `render.yaml` stops the page and the stamp from being cached.
+- **Final playtest notes (ship pass):**
+  - On a phone held sideways, an open panel or card shows one compact toast in its header row, beside the close button, instead of over its list.
+  - The "played further in another tab" banner heads the toast column (above the update prompt), so it no longer covers the tank bar or hides toasts.
+  - Closing a clicked-open panel with Escape no longer keeps a mouse player's HUD from fading. A press of Escape alone no longer counts as keyboard use; a click or tap ends keyboard use.
+  - Room view: Reset view returns to the framing the room opened with (the first one could be wider than a recomputed overview).
+  - Leaving a game within 4 s of loading it saves it again: the gap between saves no longer starts at page load, so a welcome-back catch-up is not replayed on the next visit.
+  - The update check also runs when the window regains focus. A return inside the 15 s gap is checked when the gap ends instead of being dropped.
+  - Settings › Saves names the "Previous …" aquarium a delete will promote, as the title screen's Load dialog does.
+
+**Verification.**
+- Vitest went from 76 files / 1,186 tests to 138 files / 1,597 tests, all passing.
+- `tsc` clean. The production build succeeds with the deploy's command (`npm run build -- --base=/aquarium-go/`).
+- Playwright 45/45 against the final production build, including `tests/e2e/hud-layout.spec.ts` (7 real-browser layout and input checks).
+- Motion scan (20 s per species): raw jitter 0.05 % and drawn 0.01 % of windows, both on target.
+
+**Known remaining items.**
+- Building a world is still one synchronous commit. It now runs under the veil rather than as a visible freeze.
+- The iOS focus-zoom and long-press selection fixes are verified by code trace only, because Playwright's WebKit emulates neither.
+- The betta's `confidenceNotes` in `src/data/species/betta.ts` still say "tolerated minimum of 23 °C", although the data uses 21 °C. The same text appears in the generated `docs/RESEARCH_SOURCES.md`.
+- Firefox's timer-delay estimate needs at least 20 frame-clear ticks a second, which very heavy scenes may not provide.
+- The title menu still waits about 0.2–0.3 s for the shader warm-up. Starting it earlier would move those hitches into its entrance.

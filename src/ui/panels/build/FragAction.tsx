@@ -395,7 +395,7 @@ export function FragStorage({ g, tankId }: { g: GameState; tankId: string }) {
 }
 
 /** lane:w2-ui — "Ready to propagate" hint for a player who has never taken a frag or cutting. */
-function FragReadyHint({ g, tank }: { g: GameState; tank: Tank }) {
+export function FragReadyHint({ g, tank }: { g: GameState; tank: Tank }) {
   const ready = tank.decor.filter((inst) => safe(() => fragEligibility(g, tank, inst).ok, false));
   if (!ready.length) return null;
   const names = [...new Set(ready.map((inst) => getDecorDef(inst.defId)?.name).filter(Boolean) as string[])];

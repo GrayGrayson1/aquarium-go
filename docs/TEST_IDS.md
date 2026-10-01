@@ -174,3 +174,27 @@ e2e: `tests/e2e/features.spec.ts` covers Shows (enter → judging → judge's ca
 | `settings-quality-note` | The line under the quality options (what Auto picked, or the chosen level's note) |
 
 Dev/QA (with `?perf=1` or in dev): `window.__AQ_PERF()` → `{ tier, dpr, scale, degrade, auto }` (effective tier, canvas DPR from the pixel budget × adaptive scale, last-resort feature steps, Auto on/off).
+
+## Audit fixes (2026-09-29 to 2026-10-01)
+
+| test id | element |
+|---|---|
+| `load-more` | "Show N more" paged-list button (and scroll sentinel) in Livestock and the listing wizard's picker |
+| `bid-accept-confirm` | Confirm button in the accept-bid dialog |
+| `placement-rotate` / `placement-confirm` | Touch tank placement: the Rotate and Place here (Move here) buttons inside the placement-hint label |
+| `camera-room-reset` | Room view "Reset view" chip (`src/ui/hud/RoomChips.tsx`) |
+| `room-edge-left` / `room-edge-right` | Room view edge fades with a chevron, shown only while the exhibit row runs past that side of the frame (`useFacilityOverflow`); no pointer events |
+| `toolhint-place-another` | Tool hint "Place another · $X" after a paid decor placement (about 8 s; disabled when the player can't afford it) |
+| `alert-equipment` | Failed-equipment row in the alerts popover (opens the tank card's Equipment tab) |
+| `tutorial-hint` | The guide's plain hint ("Pick a food", "Pick a plant"…) shown instead of a button when the popover or panel it points at is already open |
+| `sheet-switch` / `sheet-switch-<panelId>` | Panel switcher strip inside a bottom sheet, and one destination in it |
+| `enc-morph-chips` / `enc-morph-finds` | Encyclopedia › Morphs: the seen/unseen morph chips and the "Your finds" line |
+| `save-here-<slot>` / `save-overwrite-<slot>` | Settings › Saves: "Save here" on an empty manual slot / "Overwrite with current game" on a filled one (asks first) |
+| `overwrite-confirm` / `overwrite-confirm-replace` | The "Replace <slot>?" modal and its Replace button |
+| `load-confirm` / `load-confirm-load` / `load-confirm-park` | The "Load <slot>?" modal, its Load button, and "Save to <free slot> & load" (shown when a manual slot is free) |
+| `save-delete-promotes` | Note in a save's delete confirm (title screen › Load and Settings › Saves) naming the "Previous …" aquarium that takes the slot |
+| `stale-tab-banner` / `stale-tab-load` / `stale-tab-keep` | "Played further in another tab" banner (rendered at the head of the toast column, above the update prompt) and its two actions: load the newer copy, or keep this tab's copy and save it |
+| `update-prompt` / `update-reload` | "A new version is ready" prompt at the head of the toast column, and its Reload button (saves first) |
+| `error-boundary-<name>` | An error boundary's alert, named with spaces as dashes (e.g. `error-boundary-interface`, `error-boundary-aquarium-view`, `error-boundary-hud`) |
+
+e2e: `tests/e2e/hud-layout.spec.ts` checks the alerts popover over a card and a panel, a mouse click on the calm HUD, the calm HUD after Escape closes a clicked-open panel, the phone money delta, the calm-HUD touch wake and retry, and the one toast a sideways phone (844×390, 932×430) shows in an open sheet's header row, off its list, tabs and buttons.

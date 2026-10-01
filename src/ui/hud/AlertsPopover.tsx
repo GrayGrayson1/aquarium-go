@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
-import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart } from 'lucide-react';
+import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart, PowerOff } from 'lucide-react';
 import type { GameEvent, GameState } from '@/types';
 import { useGame, useGameSelector } from '@/state/game';
 import { useUI } from '@/state/ui';
@@ -15,18 +15,33 @@ import { tankStatusReason } from '../common/tankStatus';
 import { agoText, foodName } from '../common/format';
 import { buyFoodPack, openFoodInSupplies, tankFoodAlert, tankFoodLevel, type TankFoodAlert } from '../common/foodStock';
 import { getFoodDef } from '@/data/catalog/foods';
+import { getEquipmentDef } from '@/data/catalog/equipment';
+import { useTankCardTab } from '../cards/TankCard';
 import { EventIcon } from './eventIcons';
 import { Chip, formatMoney } from '../kit';
+
+/**
+ * Failed equipment in a tank, listed under the bell until it is repaired or replaced (its log line scrolls away in a
+ * big facility — G2-06). Gear the tank's status line already names ("The 50 W Heater has failed.") is left out.
+ */
+function failedGear(t: GameState['tanks'][string], reason: string): string[] {
+  return (t.equipment ?? [])
+    .filter((e) => e.failed)
+    .map((e) => getEquipmentDef(e.defId)?.name ?? 'Equipment')
+    .filter((name) => !reason.includes(name));
+}
 
 export function useAlertCount() {
   const key = useGameSelector((g) => {
     let watch = 0;
     let danger = 0;
-    // cache.status is the worst of water, animal welfare and food-out (sim/tankStatus.ts)
+    // cache.status is the worst of water, animal welfare and food-out (sim/tankStatus.ts); failed equipment counts as
+    // watch until it is fixed (its log line scrolls away in a big facility — G2-06)
     for (const id of g.tankOrder) {
-      const s = g.tanks[id]?.cache?.status;
+      const t = g.tanks[id];
+      const s = t?.cache?.status;
       if (s === 'danger') danger++;
-      else if (s === 'watch') watch++;
+      else if (s === 'watch' || (t && t.equipment?.some((e) => e.failed))) watch++;
     }
     return `${watch}:${danger}`;
   }, '0:0');
@@ -56,7 +71,13 @@ function TankAlerts({ game }: { game: GameState }) {
     .map((id) => ({ t: game.tanks[id], a: game.tanks[id] && tankFoodLevel(game, id) !== 'ok' ? safe('tankFoodAlert', () => tankFoodAlert(game, id), null) : null }))
     .filter((x): x is { t: GameState['tanks'][string]; a: TankFoodAlert } => !!x.t && !!x.a)
     .sort((x, y) => (x.a.level === 'out' ? -1 : 1) - (y.a.level === 'out' ? -1 : 1));
-  if (!rows.length && !food.length)
+  const reasons = new Map(rows.map((t) => [t.id, safe('tankStatusReason', () => tankStatusReason(game, t.id, { skipFood: food.some((f) => f.t.id === t.id) }), '')]));
+  const gear = game.tankOrder
+    .map((id) => game.tanks[id])
+    .filter((t) => !!t)
+    .map((t) => ({ t, names: failedGear(t, reasons.get(t.id) ?? '') }))
+    .filter((x) => x.names.length > 0);
+  if (!rows.length && !food.length && !gear.length)
     return (
       <div className="ag-alert-ok">
         <CircleCheck size={16} aria-hidden /> All tanks look healthy.
@@ -106,9 +127,33 @@ function TankAlerts({ game }: { game: GameState }) {
           </div>
         );
       })}
+      {gear.map(({ t, names }) => (
+        <button
+          type="button"
+          key={`gear-${t.id}`}
+          className="ag-alert-row is-watch"
+          data-testid="alert-equipment"
+          title="Open the tank card's equipment"
+          onClick={() => {
+            sfx('open');
+            useTankCardTab.setState({ want: 'gear' });
+            focusTank(t.id);
+            useShell.getState().set({ popover: null });
+          }}
+        >
+          <PowerOff size={16} aria-hidden />
+          <span className="ag-grow">
+            <span className="ag-alert-row__title">{t.name}</span>
+            <span className="ag-alert-row__text">
+              <strong>Equipment failed</strong> — {names.join(', ')}. Repair or replace {names.length > 1 ? 'them' : 'it'}.
+            </span>
+          </span>
+          <ChevronRight size={16} aria-hidden />
+        </button>
+      ))}
       {rows.map((t) => {
         // the restock row above already covers the food reason
-        const reason = safe('tankStatusReason', () => tankStatusReason(game, t.id, { skipFood: food.some((f) => f.t.id === t.id) }), '');
+        const reason = reasons.get(t.id) ?? '';
         if (!reason && t.cache.statusSource === 'food') return null;
         const I = t.cache.status === 'danger' ? OctagonAlert : TriangleAlert;
         return (
@@ -118,6 +163,8 @@ function TankAlerts({ game }: { game: GameState }) {
             className={clsx('ag-alert-row', `is-${t.cache.status}`)}
             onClick={() => {
               sfx('open');
+              // a line about broken gear opens the card on its Equipment tab, where the repair is
+              if (t.equipment?.some((e) => e.failed) && /\bfailed\b|stuck on/.test(reason)) useTankCardTab.setState({ want: 'gear' });
               focusTank(t.id);
               useShell.getState().set({ popover: null });
             }}

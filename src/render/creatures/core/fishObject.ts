@@ -25,6 +25,9 @@ const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
 const X = new THREE.Vector3(1, 0, 0);
 
+/** Fins hanging this far (body lengths) below the body's lowest point count as long, trailing fins. */
+const LONG_FIN_HANG = 0.12;
+
 export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject {
   const { appearance: a, lod, quality, fx } = args;
   const geo = acquireFishGeometry(plan, lod, quality);
@@ -40,6 +43,12 @@ export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject
   // highest point (dorsal fin / back) above the origin, so the tank can keep it under the waterline: the measured
   // rest-pose top (not the generous culling box), stretched by this individual's body depth, plus a little water
   root.userData.topOffset = clamp(geo.topY * Math.max(1, a.bodyDepth ?? 1) + 0.02, 0.06, 0.6);
+  // L-4 — long fins hanging well below the body (betta, fancy guppy, gourami veils) stay out of the substrate: the
+  // floor clamp keeps their tips just above it. Bottom dwellers keep the default (they rest on the sand on purpose).
+  const zones = args.species.activityZone ?? [];
+  if (geo.bodyBottomY - geo.finsBottomY > LONG_FIN_HANG && !zones.includes('bottom') && !zones.includes('substrate')) {
+    root.userData.groundOffset = clamp(-geo.finsBottomY * Math.max(1, a.bodyDepth ?? 1) - 0.02, 0.05, 0.6);
+  }
 
   const body = new THREE.Mesh(geo.body, mats.body);
   body.name = 'body';

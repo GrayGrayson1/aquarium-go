@@ -481,7 +481,10 @@ function buildShrimp(spec: ShrimpSpec, lod: RenderLod): ShrimpTemplate {
     });
   }
 
-  return { geo: g.build(), eggs: eg.build(), rig, eyePos, eyeR, ground };
+  const geo = g.build();
+  // portraits frame the body, not the long antennae sweeping past it (L-6)
+  geo.userData.frameSkip = [P_ANT, P_ANTULE];
+  return { geo, eggs: eg.build(), rig, eyePos, eyeR, ground };
 }
 
 // ───────────────────────────── Shaders ─────────────────────────────

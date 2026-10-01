@@ -101,9 +101,19 @@ const NO_TANKS: string[] = [];
  * the veil and lets it paint, and only then is built — under the veil, which ShaderWarmup lowers once the
  * world's shaders are ready, as one continuous transition. Returns the world key that may be built.
  */
-function useVeiledBuild(hasGame: boolean, worldKey: string): string {
+function useVeiledBuild(hasGame: boolean, worldKey: string, singleTank: boolean): string {
   const [built, setBuilt] = useState('');
-  const pending = hasGame && built !== worldKey;
+  // R05-01 — a world is on screen and the incoming one is a single tank (starter picker cards, the naming screen's
+  // Start): swap it in place, without the veil, as before G4-02. ShaderWarmup still veils if it needs new programs.
+  const swap = hasGame && singleTank && built !== '' && built !== worldKey;
+  const pending = hasGame && built !== worldKey && !swap;
+  useLayoutEffect(() => {
+    if (swap) setBuilt(worldKey);
+  }, [swap, worldKey]);
+  // no world on screen any more: the next one is a cold build again
+  useLayoutEffect(() => {
+    if (!hasGame) setBuilt('');
+  }, [hasGame]);
   useLayoutEffect(() => {
     if (!pending) return;
     useWarmup.getState().set({ warming: true });
@@ -123,7 +133,7 @@ function useVeiledBuild(hasGame: boolean, worldKey: string): string {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [pending, worldKey]);
-  return built;
+  return swap ? worldKey : built;
 }
 
 /**
@@ -175,7 +185,7 @@ export function SceneRoot() {
   // lane:pc-perf — …and so does a tier change (Settings, or the governor's last-resort drop): its new programs compile
   // in parallel behind the veil instead of freezing the first frame (seconds on Windows/Direct3D)
   const renderQuality = useRenderQuality();
-  const builtKey = useVeiledBuild(hasGame, worldKey);
+  const builtKey = useVeiledBuild(hasGame, worldKey, tankOrder.length <= 1);
   const showWorld = hasGame && builtKey === worldKey;
 
   return (

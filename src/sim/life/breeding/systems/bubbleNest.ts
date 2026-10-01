@@ -225,7 +225,7 @@ export const bubbleNestModule: BreedingModule = {
       cc.steps.push('Condition her with bloodworm, brine shrimp or daphnia until she looks plump and shows vertical bars.');
     }
     if (tank && habitatOf(state, tank).cover < 0.25) cc.steps.push('Add plants or floating cover so the female has somewhere to hide from the male.');
-    if (male.tankId && female.tankId === male.tankId && !cc.forStart && female.repro.stage !== 'courting' && female.repro.stage !== 'spawning') {
+    if (male.tankId && female.tankId === male.tankId && !cc.forStart && sp.sameSpeciesRule.mixed === 'breeding_only_temporary' && female.repro.stage !== 'courting' && female.repro.stage !== 'spawning') {
       cc.steps.push(`Don’t leave ${female.name} in with ${male.name} for long outside spawning — he will attack her.`);
     }
     void hour;
@@ -315,10 +315,14 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
 function harassment(state: GameState, tank: Tank, sp: SpeciesDefinition, males: Creature[], females: Creature[], hour: number, dt: number, ctx: SimContext): void {
   const cover = habitatOf(state, tank).cover;
   const aggressor = males.find((m) => m.repro.stage === 'guarding') ?? males[0];
+  // Bettas only share a tank briefly to spawn; gentler bubble-nesters (honey gourami: 'courtship_ok') live as pairs
+  // and only turn on a spent female while the male guards his nest.
+  const alwaysHostile = sp.sameSpeciesRule.mixed === 'breeding_only_temporary';
   for (const f of females) {
     const r = f.repro;
     const courting = r.stage === 'courting' || r.stage === 'spawning';
-    if (!aggressor || courting) {
+    const hostile = alwaysHostile || (r.stage === 'spent' && aggressor?.repro.stage === 'guarding');
+    if (!aggressor || courting || !hostile) {
       r.harassment = Math.max(0, (r.harassment ?? 0) - 0.05 * dt);
       if ((r.harassment ?? 0) < 0.1) r.warnLevel = 0;
       continue;

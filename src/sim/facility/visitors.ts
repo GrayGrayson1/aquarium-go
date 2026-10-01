@@ -393,6 +393,9 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     n += 1;
     live.carry = frac - 1;
   } else live.carry = frac;
+  // The reaction budget refills per game hour on EVERY step, arrivals or not, so the feed turns over at the same pace
+  // at every speed (round-3 R10-01: at 1× most steps admit nobody, and the feed ran ~30 % slow).
+  live.reactionBudget = Math.min(REACTIONS_PER_QUARTER, (live.reactionBudget ?? REACTIONS_PER_QUARTER) + REACTIONS_PER_QUARTER * (dt / 0.25));
   if (n <= 0) {
     settle();
     return;
@@ -511,9 +514,7 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     live.mix[arch.id] = (live.mix[arch.id] ?? 0) * (1 - a) + share * a;
   }
 
-  // reactions: at most two per quarter game hour (a budget refilled per hour, so the feed turns over at the same pace
-  // at every speed), most notable first
-  live.reactionBudget = Math.min(REACTIONS_PER_QUARTER, (live.reactionBudget ?? REACTIONS_PER_QUARTER) + REACTIONS_PER_QUARTER * (dt / 0.25));
+  // reactions: at most two per quarter game hour, most notable first (the budget refills before the arrivals check)
   reactions.sort((p, q) => q.priority - p.priority);
   for (const r of reactions) {
     if (live.reactionBudget < 1) break;

@@ -250,6 +250,68 @@ export function composeMorphName(species: SpeciesDefinition, base: PhenotypeRule
   return out.join(' ') || 'Wild Type';
 }
 
+/** The name composeMorphName gave before S16-05: every overlay spliced in before the species noun. */
+function legacyMorphName(species: SpeciesDefinition, base: PhenotypeRule | null, overlays: PhenotypeRule[]): string {
+  let baseName = base?.name ?? 'Wild Type';
+  const overlayNames: string[] = [];
+  for (const o of overlays) if (!overlayNames.includes(o.name)) overlayNames.push(o.name);
+  if (!overlayNames.length) return baseName;
+  if (!base || base.when.length === 0) {
+    if (/^wild[\s-]?type$/i.test(baseName.trim())) baseName = '';
+    baseName = baseName.replace(/^classic\s+/i, '');
+  }
+  const baseWords = baseName.split(/\s+/).filter(Boolean);
+  const overlayWords = overlayNames.join(' ').split(/\s+/);
+  const words =
+    baseWords.length > 1 && speciesNounWords(species).has(baseWords[baseWords.length - 1].toLowerCase())
+      ? [...baseWords.slice(0, -1), ...overlayWords, baseWords[baseWords.length - 1]]
+      : [...baseWords, ...overlayWords];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const w of words) {
+    const key = w.toLowerCase();
+    if (!w || seen.has(key)) continue;
+    seen.add(key);
+    out.push(w);
+  }
+  return out.join(' ') || 'Wild Type';
+}
+
+const MORPH_RENAMES = new Map<string, ReadonlyMap<string, string>>();
+
+/**
+ * Round-3 R02-06 — old → current name of every morph S16-05 renamed for this species ("Red High Grade Cherry" →
+ * "High Grade Red Cherry"), so saves from before it keep one name (and one discovery) per morph. Empty for species
+ * whose names did not change. Every base (or none) with up to three overlays, in the order resolveMorph finds them.
+ */
+export function renamedMorphs(species: SpeciesDefinition): ReadonlyMap<string, string> {
+  const hit = MORPH_RENAMES.get(species.id);
+  if (hit) return hit;
+  const rules = species.genetics?.phenotypes ?? [];
+  const bases: (PhenotypeRule | null)[] = [null, ...rules.filter((r) => r.layer === 'base')];
+  const overlays = rules.filter((r) => r.layer === 'overlay');
+  const subsets: PhenotypeRule[][] = [[]];
+  for (const o of overlays) for (const sub of [...subsets]) if (sub.length < 3) subsets.push([...sub, o]);
+  const current = new Set<string>();
+  const map = new Map<string, string>();
+  const clash = new Set<string>();
+  for (const b of bases) {
+    for (const sub of subsets) {
+      const now = composeMorphName(species, b, sub);
+      current.add(now);
+      if (!sub.length) continue;
+      const old = legacyMorphName(species, b, sub);
+      if (old === now) continue;
+      if (map.has(old) && map.get(old) !== now) clash.add(old);
+      map.set(old, now);
+    }
+  }
+  // never rename a name that is still current, or one that meant two different morphs
+  for (const old of [...map.keys()]) if (current.has(old) || clash.has(old)) map.delete(old);
+  MORPH_RENAMES.set(species.id, map);
+  return map;
+}
+
 /**
  * Species + morph for listings and cards, without repeated words:
  * "Golden Albino Axolotl", "Orange Ocellaris Clownfish", "Royal Blue Butterfly Halfmoon Betta", "Axolotl" (wild type).

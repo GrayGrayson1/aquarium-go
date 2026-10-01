@@ -14,6 +14,38 @@ import { LoadDialog } from './LoadDialog';
 import { speciesName } from '../common/format';
 import { Modal, Button } from '../kit';
 import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
+import { useWarmup } from '@/render/shared/warmup';
+
+type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+
+/** The wordmark / menu entrance waits at most this long for the showcase world (a slow device still gets its menu). */
+const ENTRANCE_CAP_MS = 1600;
+/** The starter portraits are prepared once the entrance has played (≈1.5 s), and then only in idle time. */
+const PREWARM_AFTER_MS = 1600;
+
+/**
+ * lane:fix3-ui (R12-01) — building the showcase world is one long main-thread commit (0.3 s on a fast PC), done under
+ * the warm-up veil since G4-02, and that now landed in the middle of the wordmark's 1.2 s blur-in: the title froze,
+ * then stuttered. When the title has to build a world, its entrance starts as the veil lifts on the finished tank
+ * (capped, so it is never held back for long); otherwise at once.
+ */
+function useEntranceReady(): boolean {
+  const [ready, setReady] = useState(() => !!useGame.getState().game?.isShowcase);
+  useEffect(() => {
+    if (ready) return;
+    let seen = useWarmup.getState().warming;
+    const cap = window.setTimeout(() => setReady(true), ENTRANCE_CAP_MS);
+    const unsub = useWarmup.subscribe((st) => {
+      if (st.warming) seen = true;
+      else if (seen) setReady(true);
+    });
+    return () => {
+      window.clearTimeout(cap);
+      unsub();
+    };
+  }, [ready]);
+  return ready;
+}
 
 export function Wordmark({ size = 'xl' }: { size?: 'xl' | 'md' }) {
   return (
@@ -57,6 +89,7 @@ export function TitleScreen() {
   const mobile = useIsMobile();
   const sideways = useMedia(SHORT_LANDSCAPE_QUERY); // a phone held sideways: the menu is a left column again
   const [notice, setNotice] = useState(() => storageNotice());
+  const entered = useEntranceReady();
 
   useEffect(() => {
     if (!useGame.getState().game?.isShowcase) loadShowcase(titleStarter);
@@ -79,16 +112,25 @@ export function TitleScreen() {
   }, [titleStarter]);
 
   // the starter reveal's five card portraits render while the player reads the menu, not during the cards' entrance
+  // (G4-03) — and not during the title's own entrance either (R12-01): even split into short steps (P-9), a first
+  // portrait of a species still costs a few frames' worth of work, so they wait until the menu has settled, then take
+  // idle time. Pointing at New Game starts them at once. Leaving the title (Continue,
+  // Load) cancels whatever has not started.
   useEffect(() => {
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (!entered) return;
+    const w = window as IdleWindow;
     const run = () => safe('prepareStarters', prepareStarters, undefined);
-    if (w.requestIdleCallback) {
-      const id = w.requestIdleCallback(run, { timeout: 3000 });
-      return () => w.cancelIdleCallback?.(id);
-    }
-    const t = window.setTimeout(run, 1200);
-    return () => window.clearTimeout(t);
-  }, []);
+    let idle = 0;
+    const t = window.setTimeout(() => {
+      if (w.requestIdleCallback) idle = w.requestIdleCallback(run, { timeout: 2000 });
+      else run();
+    }, PREWARM_AFTER_MS);
+    return () => {
+      window.clearTimeout(t);
+      if (idle) w.cancelIdleCallback?.(idle);
+    };
+  }, [entered]);
+  const prewarmNow = () => safe('prepareStarters', prepareStarters, undefined);
 
   const latest = saves?.[0];
   const keep = useMemo(() => autosaveKeepAdvice(saves ?? []), [saves]);
@@ -119,7 +161,7 @@ export function TitleScreen() {
 
   const item = (i: number) => ({
     initial: { opacity: 0, y: 14 },
-    animate: { opacity: 1, y: 0 },
+    animate: entered ? { opacity: 1, y: 0 } : undefined,
     transition: { delay: 0.55 + i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] as const },
   });
 
@@ -128,10 +170,10 @@ export function TitleScreen() {
       <div className="ag-title__veil" aria-hidden />
       {/* camera framing (render/camera/viewport.ts): the menu column covers the left (phones: the bottom) */}
       <div className="ag-title__col" data-occlude={mobile && !sideways ? 'bottom' : 'left'}>
-        <motion.div initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}>
+        <motion.div initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }} animate={entered ? { opacity: 1, y: 0, filter: 'blur(0px)' } : undefined} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}>
           <Wordmark />
         </motion.div>
-        <motion.p className="ag-title__tagline" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35, duration: 1 }}>
+        <motion.p className="ag-title__tagline" initial={{ opacity: 0 }} animate={entered ? { opacity: 1 } : undefined} transition={{ delay: 0.35, duration: 1 }}>
           Raise remarkable creatures. Build living worlds.
         </motion.p>
 
@@ -149,7 +191,7 @@ export function TitleScreen() {
               <ChevronRight size={18} className="ag-menubtn__chev" aria-hidden />
             </motion.button>
           )}
-          <motion.button {...item(1)} type="button" className={`ag-menubtn ${latest ? '' : 'ag-menubtn--primary'}`} data-testid="title-new-game" onClick={onNew}>
+          <motion.button {...item(1)} type="button" className={`ag-menubtn ${latest ? '' : 'ag-menubtn--primary'}`} data-testid="title-new-game" onClick={onNew} onPointerEnter={prewarmNow} onFocus={prewarmNow}>
             <Sparkles size={18} aria-hidden />
             <span className="ag-menubtn__text">
               <span>New Game</span>
@@ -179,7 +221,7 @@ export function TitleScreen() {
       </div>
 
       {showcaseCreature && sp && (
-        <motion.div className="ag-title__caption" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4, duration: 1 }}>
+        <motion.div className="ag-title__caption" initial={{ opacity: 0 }} animate={entered ? { opacity: 1 } : undefined} transition={{ delay: 1.4, duration: 1 }}>
           <span className="ag-title__caption-over">In the tank</span>
           <span className="ag-title__caption-name">{showcaseCreature.name}</span>
           <span className="ag-muted">

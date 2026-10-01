@@ -9,9 +9,9 @@
  * once it has eaten (hunger below EPISODE_END_HUNGER), died or left the aquarium.
  */
 import type { GameState } from '@/types';
+import { STARVING_HUNGER, STARVING_HEALTH, isStarving } from '@/sim/life/step';
 
-export const STARVING_HUNGER = 97;
-export const STARVING_HEALTH = 85;
+export { STARVING_HUNGER, STARVING_HEALTH };
 const EPISODE_END_HUNGER = 90;
 /** Slowest speed that counts as fast-forward. */
 const FAST_SPEED = 3;
@@ -43,7 +43,7 @@ export function checkStarvation(state: GameState): string[] | null {
       if (!alive || !(c.stats.hunger >= EPISODE_END_HUNGER)) starving.delete(id);
       continue;
     }
-    if (!alive || !(c.stats.hunger >= STARVING_HUNGER && c.stats.health < STARVING_HEALTH)) continue;
+    if (!alive || !isStarving(c.stats)) continue;
     starving.add(id);
     if (fast) (fresh ??= []).push(c.name);
   }

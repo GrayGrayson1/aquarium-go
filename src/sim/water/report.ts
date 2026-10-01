@@ -8,6 +8,7 @@ import { clamp, fmt, ammoniaToxicityWeight, nitrateThresholds, nitrifierTempFact
 import { CLASS_DEFAULTS, ROOM_TEMP_C, TEMP_TOLERANCE_C } from './constants';
 import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC } from './env';
 import { tankDailyCostImpl } from './kits';
+import { lightsPastClose, photoperiodTooLong } from '../time';
 
 const RANK: Record<StatusLevel, number> = { good: 0, watch: 1, danger: 2 };
 const worst = (a: StatusLevel, b: StatusLevel): StatusLevel => (RANK[a] >= RANK[b] ? a : b);
@@ -755,11 +756,11 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
       st = 'watch';
       reason = env.corals > 0 ? 'Corals need stronger light to photosynthesise.' : `${cap(joinNames(brightLovers.map(whoOf)))} prefer bright light.`;
       advice = 'Raise the intensity or install a stronger light.';
-    } else if (photoperiod > 12 && w.algae > 25) {
-      // the same line setLighting draws (care/index.ts): up to 12 h is a normal day, longer feeds algae
+    } else if (w.algae > 25 && photoperiodTooLong(tank.lighting, state.facility?.closeHour)) {
+      // the same line setLighting draws (care/index.ts): a day that covers the open hours is fine; longer feeds algae
       st = 'watch';
-      reason = `Lights are on ${photoperiod} hours a day — long photoperiods feed algae.`;
-      advice = 'Shorten the photoperiod to about 8 hours.';
+      reason = `Lights are on ${photoperiod} hours a day${lightsPastClose(tank.lighting, state.facility?.closeHour) ? ', past closing time' : ''} — long photoperiods feed algae.`;
+      advice = 'Switch the lights off when the doors close, or shorten the day to about 8–10 hours while the algae clears.';
     }
     add(
       {
@@ -887,7 +888,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const cold = species.filter((sp) => sp.tempC.idealMin > ROOM_TEMP_C + 1);
     if (cold.length && w.tempC < Math.max(...cold.map((sp) => sp.tempC.idealMin))) {
       issues.push({
-        status: w.tempC < Math.max(...cold.map((sp) => sp.tempC.min)) ? 'danger' : 'watch',
+        // DANGER only where the temperature row is DANGER too (more than TEMP_TOLERANCE_C below a species' minimum)
+        status: w.tempC < Math.max(...cold.map((sp) => sp.tempC.min)) - TEMP_TOLERANCE_C ? 'danger' : 'watch',
         param: 'temp',
         text: `There is no heater, and the room keeps this tank near ${ROOM_TEMP_C} °C — too cool for ${joinNames(cold.map((sp) => pluralName(sp.commonName)))}.`,
         advice: 'Install a heater set to the middle of their range.',

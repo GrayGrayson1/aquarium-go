@@ -245,6 +245,7 @@ function SavesTab() {
                 <SaveRow
                   s={meta}
                   busy={busy}
+                  promotes={prev ?? undefined}
                   onLoad={game?.saveId && inGame && slot === 'auto' ? undefined : () => askLoad(slot)}
                   onDelete={async () => {
                     await deleteSlot(slot);

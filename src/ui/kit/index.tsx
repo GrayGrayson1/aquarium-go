@@ -7,6 +7,7 @@
  */
 import { useEffect, useId, useRef, useState, type ReactNode, type ButtonHTMLAttributes, type CSSProperties, type InputHTMLAttributes } from 'react';
 import clsx from 'clsx';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { CircleCheck, TriangleAlert, OctagonAlert, X, Minus, Plus, Lock } from 'lucide-react';
 import type { StatusLevel } from '@/types';
@@ -207,7 +208,11 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
       if (opener && opener !== document.body && document.contains(opener)) opener.focus({ preventScroll: true });
     };
   }, [open]);
-  return (
+  // Portalled to the UI root: inside a panel the frosted sheet (backdrop-filter, transform) became the containing
+  // block of the fixed backdrop, so a confirm in a half-height phone sheet ran off the screen with its buttons out of
+  // reach. The UI root (not <body>) keeps the shell's font, colour and touch rules and stays above the 3D canvas.
+  if (typeof document === 'undefined') return null;
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -236,7 +241,8 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.querySelector('.ag-ui') ?? document.body,
   );
 }
 

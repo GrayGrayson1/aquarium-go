@@ -243,19 +243,30 @@ export function starterAquascapeImpl(state: GameState, starterId: string, tank: 
 const round4 = (v: number) => Math.round(v * 10000) / 10000;
 
 /**
- * A piece of the template's kind still sitting within this distance (m) and turn (rad) of its template spot, and no
- * bigger than this ratio of its template size, reads as the gifted layout, not the player's work (the seed jitter
- * is ±1 cm, ±0.25 rad, ±4 %).
+ * A piece of the template's kind still sitting near its template spot (after cancelling any uniform slide of the
+ * whole layout), within this turn (rad) and no bigger than this ratio of its template size, reads as the gifted
+ * layout, not the player's work (the seed jitter is ±1 cm, ±0.25 rad, ±4 %). The match radius grows with the tank:
+ * GIFTED_MATCH_M or GIFTED_MATCH_FRAC of its length, whichever is larger, so nudging pieces a few cm is tidying, not
+ * re-scaping.
  */
-const GIFTED_MATCH_M = 0.025;
+const GIFTED_MATCH_M = 0.03;
+const GIFTED_MATCH_FRAC = 0.04;
 const GIFTED_MATCH_RAD = 0.45;
 const GIFTED_MATCH_SCALE = 1.14;
+
+const median = (v: number[]): number => {
+  if (!v.length) return 0;
+  const s = [...v].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
 
 /**
  * lane:staff (S05-01) — how much of this tank is still the gifted starter layout: the share of its pieces that sit
  * (same kind, within a few cm) where the hand-authored template put them. 0 = every piece is the player's own
  * placement, 1 = the layout the tank came with, pruned or not. Pure over the tank and the save's starter id, so it
- * works for old saves too; the show judge scales composition marks by the scaper's own hand.
+ * works for old saves too; the show judge scales composition marks by the scaper's own hand. Sliding the whole
+ * layout over (every piece the same way) does not make it the player's own: the median offset is cancelled first.
  */
 export function giftedLayoutShare(state: Pick<GameState, 'starterId'>, tank: Tank): number {
   const decor = tank.decor ?? [];
@@ -266,25 +277,54 @@ export function giftedLayoutShare(state: Pick<GameState, 'starterId'>, tank: Tan
   const isSmall = d.L < 0.6;
   const sx = isSmall ? 1 : d.L / ref.L;
   const sz = isSmall ? 1 : d.W / ref.W;
-  const taken = new Set<string>();
-  let matched = 0;
+  const radius = Math.max(GIFTED_MATCH_M, GIFTED_MATCH_FRAC * d.L);
+  // the template spots as tryPlace resolves them (scaled to the tank, then kept off the glass), with the pieces that
+  // could still be them (same kind, not turned or enlarged by the player)
+  const spots: { tx: number; tz: number; cands: DecorInstance[] }[] = [];
   for (const spec of specs) {
     const def = getDecorDef(spec.id);
     if (!def) continue;
     const tr = spec.rot ?? 0;
     const ts = Math.max(def.scaleRange[0], Math.min(def.scaleRange[1], spec.s ?? 1));
-    // the template spot as tryPlace resolves it: scaled to the tank, then kept off the glass
     const lim = placementLimits(tank, def, ts, tr);
     const tx = Math.max(-lim.maxX, Math.min(lim.maxX, spec.x * sx));
     const tz = Math.max(-lim.maxZ, Math.min(lim.maxZ, spec.z * sz));
-    let best: DecorInstance | null = null;
-    let bestD = GIFTED_MATCH_M;
-    for (const inst of decor) {
-      if (inst.defId !== spec.id || taken.has(inst.id)) continue;
+    const cands = decor.filter((inst) => {
+      if (inst.defId !== spec.id) return false;
       const turn = Math.abs(Math.atan2(Math.sin(inst.rotY - tr), Math.cos(inst.rotY - tr)));
       // (smaller is fine: starter pieces are shrunk to fit under the surface; bigger means the player resized it)
-      if (turn > GIFTED_MATCH_RAD || inst.scale > ts * GIFTED_MATCH_SCALE) continue;
-      const dist = Math.hypot(inst.x - tx, inst.z - tz);
+      return turn <= GIFTED_MATCH_RAD && inst.scale <= ts * GIFTED_MATCH_SCALE;
+    });
+    spots.push({ tx, tz, cands });
+  }
+  // a uniform slide of the whole layout: the median displacement from each spot to its nearest candidate
+  const dxs: number[] = [];
+  const dzs: number[] = [];
+  for (const sp of spots) {
+    let near: DecorInstance | null = null;
+    let nd = Infinity;
+    for (const inst of sp.cands) {
+      const dist = Math.hypot(inst.x - sp.tx, inst.z - sp.tz);
+      if (dist < nd) {
+        nd = dist;
+        near = inst;
+      }
+    }
+    if (near) {
+      dxs.push(near.x - sp.tx);
+      dzs.push(near.z - sp.tz);
+    }
+  }
+  const ox = median(dxs);
+  const oz = median(dzs);
+  const taken = new Set<string>();
+  let matched = 0;
+  for (const sp of spots) {
+    let best: DecorInstance | null = null;
+    let bestD = radius;
+    for (const inst of sp.cands) {
+      if (taken.has(inst.id)) continue;
+      const dist = Math.hypot(inst.x - ox - sp.tx, inst.z - oz - sp.tz);
       if (dist <= bestD) {
         bestD = dist;
         best = inst;

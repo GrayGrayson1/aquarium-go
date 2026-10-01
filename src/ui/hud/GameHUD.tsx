@@ -47,9 +47,17 @@ import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
 
 const CALM_AFTER_MS = 6000;
+/** How long after a waking touch its click counts as part of the wake. */
+const SWALLOW_MS = 500;
+/** The parts of a calm HUD that stay drawn (or are the guide): a tap on them acts straight away. */
+const CALM_LIVE = '.ag-hud__coach, .ag-topbar__left, .ag-topbar__right, .ag-tankbar';
 
-/** Nothing needs the HUD right now: the player is simply watching the tank. */
-function canCalm(): boolean {
+/**
+ * Nothing needs the HUD right now: the player is simply watching the tank. `keyboard`: a key other than Escape was
+ * pressed since the last click or tap (closing a clicked-open panel with Escape hands focus back to its dock button as
+ * :focus-visible, which must not pin a mouse player's HUD).
+ */
+function canCalm(keyboard: boolean): boolean {
   const ui = useUI.getState();
   const shell = useShell.getState();
   if (!usePrefs.getState().calmHud || ui.screen !== 'game' || ui.view !== 'tank') return false;
@@ -58,7 +66,7 @@ function canCalm(): boolean {
   if (document.querySelector('.ag-modal-backdrop, [data-pn-modal], .ag-tut-ring, .ag-welcome')) return false;
   // keyboard users keep the HUD while a control has visible focus (a mouse click leaves plain focus behind)
   const a = document.activeElement as HTMLElement | null;
-  if (a && a !== document.body && a.closest?.('.ag-hud, .ag-sheet, .pn-sheet')) {
+  if (keyboard && a && a !== document.body && a.closest?.('.ag-hud, .ag-sheet, .pn-sheet')) {
     let visible = true;
     try {
       visible = a.matches(':focus-visible');
@@ -74,7 +82,8 @@ function canCalm(): boolean {
  * Calm watching: after ~6 s without input in tank view the HUD recedes (opacity only — everything stays in the
  * accessibility tree and focusable, and any pointer move, touch, wheel or key brings it straight back).
  * A touch that wakes it is only a wake: the invisible dock / tool rail used to take that same tap (a panel opened, a
- * tool armed, or the HUD vanished into watch mode), so the click it produces is swallowed.
+ * tool armed, or the HUD vanished into watch mode), so the click it produces is swallowed. Only that one click: the
+ * next tap (the natural retry) always lands, and taps on the still-drawn top bar / tank bar act at once.
  */
 function useCalmHud(): boolean {
   const [calm, setCalm] = useState(false);
@@ -82,28 +91,36 @@ function useCalmHud(): boolean {
     let timer = 0;
     let isCalm = false;
     let swallowUntil = 0;
+    let keyboard = true;
     const arm = (ms: number) => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        if (canCalm()) {
+        if (canCalm(keyboard)) {
           isCalm = true;
           setCalm(true);
         } else arm(1500);
       }, ms);
     };
     const wake = (e?: Event) => {
+      if (e?.type === 'pointerdown' || e?.type === 'touchstart') keyboard = false;
+      else if (e?.type === 'keydown' && (e as KeyboardEvent).key !== 'Escape') keyboard = true;
       if (isCalm) {
         isCalm = false;
         setCalm(false);
         const touch = !!e && (e.type === 'touchstart' || (e.type === 'pointerdown' && (e as PointerEvent).pointerType !== 'mouse'));
-        if (touch) swallowUntil = performance.now() + 800;
+        if (touch) swallowUntil = performance.now() + SWALLOW_MS;
       }
       arm(CALM_AFTER_MS);
     };
     const swallow = (e: MouseEvent) => {
-      if (performance.now() > swallowUntil) return;
+      // the window is spent by the first click after the wake, wherever it lands (the waking tap's own click often
+      // reaches the canvas): a quick retry must never be eaten too
+      if (!swallowUntil) return;
+      const live = performance.now() <= swallowUntil;
+      swallowUntil = 0;
+      if (!live) return;
       const t = e.target as HTMLElement | null;
-      if (t?.closest?.('.ag-hud') && !t.closest('.ag-hud__coach')) {
+      if (t?.closest?.('.ag-hud') && !t.closest(CALM_LIVE)) {
         e.stopPropagation();
         e.preventDefault();
       }

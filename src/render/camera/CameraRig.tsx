@@ -20,6 +20,7 @@ import { getFacilityLevel } from '@/data/facilities';
 import { facilityCameraBounds, facilityExhibitFrame } from '../facility/bounds';
 import { shellGeom } from '../tank/shell/Glass';
 import { tankLocalToWorld, worldToTankLocal } from './space';
+import { updateFacilityOverflow } from './facilityOverflow';
 import { pickSightline } from './sightline'; // lane:w2-visual
 import { tankSlide } from './followFrame';
 import { cameraFX, cameraInput, focusToMetres, noteCameraUserMove, usePhotoSettings, zoomToFov, type RigMode } from './cameraFX';
@@ -94,7 +95,37 @@ const rig = {
   fFocusId: '',
   /** lane:fix-integrate-ui (G2-04) — the room the facility framing was computed for (level and floor size). */
   roomSig: '',
+  /**
+   * The framing the room view opened with, for "Reset view" ("Back to the whole room") to fly back to: recomputing
+   * the overview could frame closer (the first one is measured while the screen it came from still covers part of
+   * the canvas) or from elsewhere (entering pulls back from the tank you were in). Valid for one canvas size.
+   */
+  fHome: { target: V(), yaw: 0, pitch: 0, dist: 0, fov: DEFAULT_FOV, w: 0, h: 0 },
 };
+
+/** Remember the current room framing as the room view's home (see rig.fHome). */
+function saveFacilityHome(w: number, h: number) {
+  const home = rig.fHome;
+  home.target.copy(rig.fTarget);
+  home.yaw = rig.fYaw;
+  home.pitch = rig.fPitch;
+  home.dist = rig.fDist;
+  home.fov = rig.fFov;
+  home.w = w;
+  home.h = h;
+}
+
+/** Fly the room camera back to its home framing; false when there is none for this canvas size. */
+function restoreFacilityHome(w: number, h: number): boolean {
+  const home = rig.fHome;
+  if (!home.dist || home.w !== w || home.h !== h) return false;
+  rig.fTarget.copy(home.target);
+  rig.fYaw = home.yaw;
+  rig.fPitch = home.pitch;
+  rig.fDist = home.dist;
+  rig.fFov = home.fov;
+  return true;
+}
 
 /** Free-viewport tracking (HUD + `[data-occlude]` sheets) and the lens shift that centres the shot in it. */
 const view = {
@@ -629,6 +660,11 @@ export function CameraRig() {
           const want = facilityRequest.focusId ? g.tanks[facilityRequest.focusId] ?? null : null;
           if (want) frameFacilityTank(g, want);
           else frameFacility(g, tank, prevMode, size.width, size.height);
+          // entering the room (not a tank switch inside it): this is where "Reset view" brings the player back to
+          if (prevMode !== 'facility') {
+            if (want) rig.fHome.dist = 0;
+            else saveFacilityHome(size.width, size.height);
+          }
           rig.fFocusId = want ? want.id : '';
           facilityRequest.focusId = '';
           facilityRequest.reset = false;
@@ -668,7 +704,10 @@ export function CameraRig() {
     if (mode === 'facility' && g && (facilityRequest.reset || facilityRequest.focusId)) {
       const want = facilityRequest.focusId ? g.tanks[facilityRequest.focusId] ?? null : null;
       if (want) frameFacilityTank(g, want);
-      else frameFacility(g, null, 'facility', size.width, size.height);
+      else if (roomMove || !restoreFacilityHome(size.width, size.height)) {
+        frameFacility(g, null, 'facility', size.width, size.height);
+        saveFacilityHome(size.width, size.height);
+      }
       rig.fFocusId = want ? want.id : '';
       facilityRequest.reset = false;
       facilityRequest.focusId = '';
@@ -996,6 +1035,7 @@ export function CameraRig() {
     camera.position.copy(rig.pos);
     camera.lookAt(rig.target);
     applyLensShift(camera, size.width, size.height, rig.fov);
+    updateFacilityOverflow(mode === 'facility' ? g : null, camera, dt);
 
     cameraFX.mode = mode;
     cameraFX.transitioning = rig.tActive;

@@ -189,7 +189,9 @@ function think(a: Agent, w: AIWorld): void {
   if (cur < 60 && w.food.length) {
     const p = chooseFood(a, w);
     if (p) {
-      if (p.id !== a.foodId && p.id !== a.lastFoodId) a.foodT = w.time;
+      // (going back to the piece it just let go of — the blocked-detector cut the act — keeps the pursuit clock; one
+      // let go of a while ago (startled, full, asleep) is a fresh pursuit, or it would be given up within a frame)
+      if (p.id !== a.foodId && (p.id !== a.lastFoodId || w.time - a.foodDropT > 3)) a.foodT = w.time;
       a.foodId = p.id;
       if (startAct(a, w, isLivePrey(a, p) ? 'hunt' : 'feed')) {
         a.lastInterrupt = 'food';

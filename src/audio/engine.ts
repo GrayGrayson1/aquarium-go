@@ -52,6 +52,8 @@ export const MAX_VOICES = 150;
 let engine: Engine | null = null;
 let failed = false;
 let unlockedOnce = false;
+/** `unlockAudio` has run (a user gesture): nothing is audible before it, even where the browser allows autoplay. */
+let gestureSeen = false;
 const readyCallbacks = new Set<(e: Engine) => void>();
 const tickers = new Set<Ticker>();
 let timer: ReturnType<typeof setTimeout> | null = null;
@@ -82,7 +84,7 @@ export function audioSupported(): boolean {
   return !!audioCtor();
 }
 
-/** The engine if it exists (created by the first user gesture). */
+/** The engine if it exists (prewarmed at idle time or created by the first user gesture). */
 export function getEngine(): Engine | null {
   if (!engine || engine.ctx.state === 'closed') return null;
   return engine;
@@ -106,7 +108,8 @@ export function onEngineReady(cb: (e: Engine) => void): () => void {
 }
 
 /**
- * Build the AudioContext and bus graph ahead of the first gesture (it stays suspended until `unlockAudio`).
+ * Build the AudioContext and bus graph ahead of the first gesture. It stays silent until `unlockAudio` (master
+ * gain held at 0, and suspended if the browser started it running because autoplay is allowed).
  * Constructing a context is allowed anywhere and, in Chromium, opens the audio device (~100 ms+ on the main
  * thread): doing it at idle time keeps that cost out of the player's first click. Idempotent, never throws.
  */
@@ -123,13 +126,18 @@ export function prewarmAudio(): void {
  */
 export function unlockAudio(): void {
   try {
+    const first = !gestureSeen;
+    gestureSeen = true;
     if (!engine && !failed) createEngine();
     if (!engine) return;
     const ctx = engine.ctx;
     const hidden = typeof document !== 'undefined' && document.hidden;
-    if (ctx.state !== 'running' && ctx.state !== 'closed' && !hidden && !suspendedForMute) {
+    // the first gesture resumes even a 'running' context: the pre-gesture hold may have a suspend() in flight,
+    // and a resume() queued after it wins
+    if ((first || ctx.state !== 'running') && ctx.state !== 'closed' && !hidden && !suspendedForMute) {
       ctx.resume().then(syncState, () => syncState());
     }
+    if (first) applySettings(useSettings.getState()); // fade the master in
     syncState();
   } catch (err) {
     console.warn('[audio] unlock failed', err);
@@ -139,8 +147,18 @@ export function unlockAudio(): void {
 function syncState(): void {
   if (!engine) return;
   const st = engine.ctx.state as AudioContextState | 'interrupted';
-  if (st === 'running') unlockedOnce = true;
+  if (st === 'running' && gestureSeen) unlockedOnce = true;
   setAudioStatus({ contextState: st, unlocked: unlockedOnce });
+}
+
+/** Has a user gesture reached `unlockAudio` yet. */
+export function gestureHeard(): boolean {
+  return gestureSeen;
+}
+
+/** Before the first gesture a context the browser let start (autoplay allowed, background tab) goes back to sleep. */
+function holdUntilGesture(ctx: AudioContext): void {
+  if (!gestureSeen && ctx.state === 'running') ctx.suspend().then(syncState, () => undefined);
 }
 
 function gain(ctx: AudioContext, v = 1): GainNode {
@@ -166,6 +184,7 @@ function createEngine(): void {
     setAudioStatus({ supported: false });
     return;
   }
+  holdUntilGesture(ctx);
 
   const masterIn = gain(ctx);
   const masterVol = gain(ctx, 0);
@@ -253,6 +272,7 @@ function createEngine(): void {
   };
 
   ctx.onstatechange = () => {
+    holdUntilGesture(ctx);
     syncState();
     // a context unlocked (or resumed) while muted should still go to sleep after the fade
     if (ctx.state === 'running') updateMuteSuspend(useSettings.getState());
@@ -283,7 +303,7 @@ let lastVolumes = '';
 export function applySettings(s: Settings, immediate = false): void {
   const e = engine;
   if (!e) return;
-  const key = `${s.muted}|${s.volume.master}|${s.volume.music}|${s.volume.aquarium}|${s.volume.ui}`;
+  const key = `${gestureSeen}|${s.muted}|${s.volume.master}|${s.volume.music}|${s.volume.aquarium}|${s.volume.ui}`;
   if (key === lastVolumes && !immediate) return;
   lastVolumes = key;
   const t = e.ctx.currentTime;
@@ -293,7 +313,7 @@ export function applySettings(s: Settings, immediate = false): void {
     p.setValueAtTime(p.value, t);
     p.setTargetAtTime(v, t, tau);
   };
-  set(e.masterVol.gain, s.muted ? 0 : volumeCurve(s.volume.master));
+  set(e.masterVol.gain, s.muted || !gestureSeen ? 0 : volumeCurve(s.volume.master));
   set(e.musicBus.gain, volumeCurve(s.volume.music));
   set(e.aquariumBus.gain, volumeCurve(s.volume.aquarium));
   set(e.uiBus.gain, volumeCurve(s.volume.ui));
