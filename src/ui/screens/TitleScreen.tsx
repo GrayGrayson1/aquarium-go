@@ -16,6 +16,8 @@ import { Modal, Button } from '../kit';
 import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
 import { useWarmup } from '@/render/shared/warmup';
 import { toastMark, reportLoadFailure } from './loadFeedback'; // lane:guide
+import { useShell } from '../common/shellStore';
+import { buildDetail, versionLabel } from '../common/version';
 
 type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
@@ -235,6 +237,23 @@ export function TitleScreen() {
       <div className="ag-title__foot" aria-hidden>
         Every creature, plant and ripple is generated live.
       </div>
+      <motion.button
+        type="button"
+        className="ag-title__version"
+        data-testid="title-version"
+        title={`${buildDetail()} · open Settings › About`}
+        aria-label={`Aquarium Go ${versionLabel()}. ${buildDetail()}. Open About.`}
+        initial={{ opacity: 0 }}
+        animate={entered ? { opacity: 1 } : undefined}
+        transition={{ delay: 1.6, duration: 1 }}
+        onClick={() => {
+          sfx('open');
+          useShell.getState().set({ settingsTab: 'about' });
+          useUI.getState().set({ panel: 'settings' });
+        }}
+      >
+        {versionLabel()}
+      </motion.button>
 
       <LoadDialog open={loadOpen} onClose={() => setLoadOpen(false)} onChanged={() => listSlots().then(setSaves)} />
       <Modal

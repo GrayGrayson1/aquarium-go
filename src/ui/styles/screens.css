@@ -38,6 +38,9 @@
 .ag-title__caption-name { font-family: var(--font-display); font-style: italic; font-size: calc(24px * var(--text-scale)); font-weight: 460; color: #f3fbfa; font-variation-settings: 'opsz' 72, 'SOFT' 100; }
 .ag-title__caption em { font-style: italic; }
 .ag-title__foot { position: absolute; left: clamp(28px, 6.5vw, 110px); bottom: clamp(18px, 3vh, 30px); font-size: calc(11.5px * var(--text-scale)); color: var(--c-ink-4); letter-spacing: 0.02em; }
+.ag-title__version { position: absolute; right: clamp(20px, 3vw, 44px); top: clamp(16px, 2.6vh, 28px); padding: 4px 10px; border-radius: var(--r-pill); border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(2, 7, 10, 0.32); color: var(--c-ink-2); font: 600 calc(11.5px * var(--text-scale)) / 1.2 var(--font-ui, inherit); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); transition: color .18s, border-color .18s, background .18s; }
+.ag-title__version:hover { color: var(--c-ink); border-color: rgba(255, 255, 255, 0.22); background: rgba(2, 7, 10, 0.5); }
+.ag-title__version:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
 
 /* ───────────────── Starter reveal ───────────────── */
 .ag-reveal { --rail-h: 262px; }
@@ -160,6 +163,7 @@
   .ag-title__caption { top: 16px; bottom: auto; right: 16px; }
   .ag-title__caption-name { font-size: calc(19px * var(--text-scale)); }
   .ag-title__foot { display: none; }
+  .ag-title__version { right: auto; left: 16px; top: 16px; }
 
   .ag-reveal { --rail-h: 176px; }
   .ag-reveal__veil { background: linear-gradient(0deg, rgba(2, 7, 10, 0.96) 0%, rgba(2, 7, 10, 0.86) 52%, rgba(2, 7, 10, 0.2) 72%, rgba(2, 7, 10, 0) 80%), linear-gradient(180deg, rgba(2, 7, 10, 0.72), rgba(2, 7, 10, 0) 22%); }
@@ -211,6 +215,7 @@
 /* fix:HUD — a phone held sideways (844×390): the title column used to run off the top (wordmark cut) and the bottom
    (Settings under the home indicator); it becomes a scrollable left column, and the naming card hugs the right. */
 @media (max-height: 500px) and (orientation: landscape) {
+  .ag-title__version { left: auto; right: 16px; top: 10px; }
   .ag-title__col { left: 20px; right: auto; width: min(400px, 50vw); top: 8px; bottom: 8px; overflow-y: auto; overscroll-behavior: contain; }
   .ag-wordmark--xl { font-size: 44px; }
   .ag-title__tagline { display: none; }

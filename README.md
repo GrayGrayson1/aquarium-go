@@ -6,6 +6,8 @@ Everything you see and hear is generated in code: procedural creatures, plants, 
 
 **Play it online:** https://graygrayson1.github.io/aquarium-go/ (built and deployed by GitHub Actions on every push to `main`).
 
+**Version:** shown in the top corner of the title screen and in Settings › About (with the build's commit and date). Each deploy bumps `version` in `package.json` and adds a [CHANGELOG](CHANGELOG.md) entry.
+
 It can also be hosted on Render as a free Static Site: `render.yaml` in the repo root is a ready-made Blueprint.
 
 ## Run it
@@ -34,7 +36,7 @@ npm start            # builds, then serves http://127.0.0.1:4173
 - **Creature card:** the Feed row target-feeds that animal with a food it eats.
 - **Bottom dock:** Tanks, Livestock, Market, Visitors (and Staff), Shows, Build, Research, Finances, Encyclopedia, Settings.
 - **Speed:** fast-forward drops back to 1× when an animal starts starving (once per animal each time it starts starving, so you can speed up again).
-- **Saves** (Settings › Saves): **Load** asks first and saves the running game to Autosave; **Overwrite** asks before replacing a slot. A replaced game is kept as a **Previous autosave** (or previous copy) row you can load; deleting a slot moves that game into it. If the same aquarium is played further in another tab, this tab stops saving over it and asks whether to load the newer copy or keep this one. When a new version is deployed, a prompt offers to save and reload.
+- **Saves** (Settings › Saves): **Load** asks first and saves the running game to Autosave; **Overwrite** asks before replacing a slot. A replaced game is kept as a **Previous autosave** (or previous copy) row you can load; deleting a slot moves that game into it. If the same aquarium is played further in another tab, this tab stops saving over it and asks whether to load the newer copy or keep this one. When a new version is deployed, a prompt names it and offers to save and reload.
 - **Watch mode** hides the whole HUD. **Photo mode** captures a frame. **Party mode** makes the lighting react to music; it is purely cosmetic.
 
 ## Tests

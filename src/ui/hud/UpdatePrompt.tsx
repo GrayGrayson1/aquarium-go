@@ -11,23 +11,24 @@ import { useUI } from '@/state/ui';
 import { saveCurrentGame } from '@/persistence';
 import { autosaveAllowed } from '@/game/useAutosave';
 import { Button } from '@/ui/kit';
-import { BUILD_ID, CHECK_EVERY_MS, FIRST_CHECK_MS, checkGate, fetchLiveBuildId, isNewBuild } from './updateCheck';
+import { BUILD_ID, CHECK_EVERY_MS, FIRST_CHECK_MS, checkGate, fetchLiveBuild, isNewBuild, type LiveBuild } from './updateCheck';
+import { versionLabel } from '../common/version';
 
 /**
  * Polls version.json: a first look shortly after launch, then every few minutes and whenever the player comes back
  * (the tab shown again, the window focused from another app, back online).
  */
-export function useNewBuildAvailable(): boolean {
-  const [ready, setReady] = useState(false);
+export function useNewBuildAvailable(): LiveBuild | null {
+  const [ready, setReady] = useState<LiveBuild | null>(null);
   useEffect(() => {
     if (BUILD_ID === 'dev') return;
     let stopped = false;
     const gate = checkGate(() => {
       if (stopped || document.visibilityState !== 'visible') return;
-      void fetchLiveBuildId(import.meta.env.BASE_URL).then((live) => {
-        if (!stopped && isNewBuild(BUILD_ID, live)) {
+      void fetchLiveBuild(import.meta.env.BASE_URL).then((live) => {
+        if (!stopped && live && isNewBuild(BUILD_ID, live.id)) {
           stopped = true;
-          setReady(true);
+          setReady(live);
         }
       });
     });
@@ -53,7 +54,7 @@ export function useNewBuildAvailable(): boolean {
 }
 
 /** Rendered by Toasts (at the head of its column, so the two never overlap) once useNewBuildAvailable() says so. */
-export function UpdatePrompt() {
+export function UpdatePrompt({ version = null }: { version?: string | null }) {
   // cinematic modes stay clean: the prompt waits until the player is back
   const quiet = useUI((s) => s.hudHidden || s.photoMode || s.screen === 'boot');
   const [busy, setBusy] = useState(false);
@@ -91,7 +92,7 @@ export function UpdatePrompt() {
       <span className="ag-update__icon" aria-hidden>
         <RefreshCw size={14} />
       </span>
-      <span className="ag-update__text">{saveFailed ? 'Saving didn’t work, so a reload would lose your latest play.' : 'A new version of Aquarium Go is ready.'}</span>
+      <span className="ag-update__text">{saveFailed ? 'Saving didn’t work, so a reload would lose your latest play.' : version ? `Aquarium Go ${versionLabel(version)} is ready.` : 'A new version of Aquarium Go is ready.'}</span>
       <Button size="sm" variant="primary" disabled={busy} onClick={() => void reload()} data-testid="update-reload">
         {saveFailed ? 'Reload anyway' : 'Reload'}
       </Button>

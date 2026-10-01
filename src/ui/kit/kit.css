@@ -109,6 +109,7 @@
 .ag-setrow__icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--c-fill-2); color: var(--c-ink-2); flex: none; }
 .ag-setrow__label { font-size: calc(13.5px * var(--text-scale)); font-weight: 580; color: var(--c-ink); }
 .ag-setrow__desc { font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); margin-top: 1px; }
+.ag-setrow__build { display: block; font-size: calc(12px * var(--text-scale)); font-weight: 400; color: var(--c-ink-3); margin-top: 1px; font-variant-numeric: tabular-nums; }
 .ag-setrow__ctl { display: flex; align-items: center; gap: 8px; flex: none; }
 
 /* ── Modal ── */

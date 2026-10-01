@@ -403,7 +403,7 @@ export function Toasts() {
 
   const update = useNewBuildAvailable();
   // the lasting prompts wait for that sheet to close: in its header they would hang over its tabs and list
-  const prompts = !headerOnly && (update || stale);
+  const prompts = !headerOnly && (!!update || stale);
   const band = useSheetBand(phone && screen === 'game' && (shown.length > 0 || prompts), landscape);
   return (
     <div
@@ -413,7 +413,7 @@ export function Toasts() {
       aria-relevant="additions"
     >
       {stale && !headerOnly && <StaleTabBanner />}
-      {update && !headerOnly && <UpdatePrompt />}
+      {update && !headerOnly && <UpdatePrompt version={update.version} />}
       <AnimatePresence initial={false}>
         {shown.map((e) => (
           <ToastItem key={e.key} e={e} onDone={() => dismiss(e.key)} />

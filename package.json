@@ -1,7 +1,7 @@
 {
   "name": "aquarium-go",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Aquarium Go — a living aquarium tycoon: raise individual creatures, build beautiful ecosystems, breed, sell and exhibit.",
   "scripts": {

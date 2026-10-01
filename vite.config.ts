@@ -2,21 +2,24 @@ import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
-/** Short commit + build time: every deploy gets a new id, even a rebuild of the same commit. */
-function makeBuildId(): string {
-  let sha = 'nogit';
+/** The release version players see (title screen, Settings › About). Bump it in package.json for every deploy. */
+const APP_VERSION: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
+
+function gitSha(): string {
   try {
-    sha = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || sha;
+    return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || 'nogit';
   } catch {
-    /* building from a tarball */
+    return 'nogit'; // building from a tarball
   }
-  return `${sha}-${Date.now().toString(36)}`;
 }
 
 /**
- * Stamps each production build with an id: `__BUILD_ID__` in the bundle ('dev' under the dev server) and version.json
- * (`{ "id": … }`) beside index.html. A tab still running an older cached build polls that file and offers a reload
+ * Stamps each production build: `__BUILD_ID__` (short commit + build time, so every deploy gets a new id, even a
+ * rebuild of the same commit; 'dev' under the dev server), `__APP_VERSION__`, `__BUILD_SHA__` and `__BUILD_TIME__`
+ * in the bundle (src/ui/common/version.ts), and version.json (`{ "id": …, "version": … }`) beside index.html. A tab
+ * still running an older cached build polls that file and offers a reload naming the new version
  * (src/ui/hud/UpdatePrompt.tsx). It is relative to the output root, so the Pages base path just works.
  */
 function buildStamp(): Plugin {
@@ -24,11 +27,25 @@ function buildStamp(): Plugin {
   return {
     name: 'aquarium-go:build-stamp',
     config(_, { command }) {
-      if (command === 'build') id = makeBuildId();
-      return { define: { __BUILD_ID__: JSON.stringify(id) } };
+      let sha = 'dev';
+      let time = '';
+      if (command === 'build') {
+        sha = gitSha();
+        const now = Date.now();
+        id = `${sha}-${now.toString(36)}`;
+        time = new Date(now).toISOString();
+      }
+      return {
+        define: {
+          __BUILD_ID__: JSON.stringify(id),
+          __APP_VERSION__: JSON.stringify(APP_VERSION),
+          __BUILD_SHA__: JSON.stringify(sha),
+          __BUILD_TIME__: JSON.stringify(time),
+        },
+      };
     },
     generateBundle() {
-      if (id !== 'dev') this.emitFile({ type: 'asset', fileName: 'version.json', source: `${JSON.stringify({ id })}\n` });
+      if (id !== 'dev') this.emitFile({ type: 'asset', fileName: 'version.json', source: `${JSON.stringify({ id, version: APP_VERSION })}\n` });
     },
   };
 }

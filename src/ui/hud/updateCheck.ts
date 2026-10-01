@@ -59,19 +59,38 @@ export function parseBuildId(body: unknown): string | null {
   return typeof id === 'string' && /^[\w.-]{1,64}$/.test(id) ? id : null;
 }
 
+/** The deployed release's version ("0.3.2") from a version.json body; null for old builds that did not publish one. */
+export function parseLiveVersion(body: unknown): string | null {
+  const v = body && typeof body === 'object' ? (body as { version?: unknown }).version : null;
+  return typeof v === 'string' && /^\d+\.\d+\.\d+[\w.+-]{0,24}$/.test(v) ? v : null;
+}
+
 /** Is a different build live than the one this tab runs? Never for a dev build or an unreadable answer. */
 export function isNewBuild(current: string, remote: string | null): boolean {
   return current !== 'dev' && remote != null && remote !== current;
 }
 
+/** What version.json says is live: its build id, plus the release version when it publishes one. */
+export interface LiveBuild {
+  id: string;
+  version: string | null;
+}
+
 /** Ask the server which build is live. Null when offline, in dev, or on any failure (we simply try again later). */
-export async function fetchLiveBuildId(base: string): Promise<string | null> {
+export async function fetchLiveBuild(base: string): Promise<LiveBuild | null> {
   if (BUILD_ID === 'dev' || (typeof navigator !== 'undefined' && navigator.onLine === false)) return null;
   try {
     const res = await fetch(versionUrl(base, Date.now()), { cache: 'no-store', credentials: 'same-origin' });
     if (!res.ok) return null;
-    return parseBuildId(await res.json());
+    const body: unknown = await res.json();
+    const id = parseBuildId(body);
+    return id ? { id, version: parseLiveVersion(body) } : null;
   } catch {
     return null;
   }
+}
+
+/** Just the live build id (see fetchLiveBuild). */
+export async function fetchLiveBuildId(base: string): Promise<string | null> {
+  return (await fetchLiveBuild(base))?.id ?? null;
 }

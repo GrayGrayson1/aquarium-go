@@ -23,6 +23,8 @@ interface ShellState {
   /** Last captured photo (data URL) shown in the preview modal. */
   /** `added`: the shot wrote a new line into the creature's story (one per few game hours). */
   photo: { url: string; creatureId: string | null; tankId: string | null; added?: boolean } | null;
+  /** Settings tab to show the next time Settings opens (the title screen's version badge asks for About). */
+  settingsTab: 'about' | null;
   set: (p: Partial<Omit<ShellState, 'set' | 'togglePopover'>>) => void;
   togglePopover: (p: Exclude<Popover, null>) => void;
 }
@@ -36,6 +38,7 @@ export const useShell = create<ShellState>((set, get) => ({
   partyNoteSeen: false,
   coachSide: null,
   photo: null,
+  settingsTab: null,
   set: (p) => set(p),
   togglePopover: (p) => set({ popover: get().popover === p ? null : p }),
 }));

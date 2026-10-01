@@ -25,6 +25,7 @@ import {
   Gauge,
   Heart,
   Eye,
+  Tag,
 } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
@@ -37,6 +38,8 @@ import { Button, Row, Segmented, Slider, Tabs, Toggle, Section, Modal } from '..
 import { usePrefs } from '../common/prefs';
 import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, type SaveMeta } from '../common/saves';
 import { SaveRow } from '../screens/LoadDialog';
+import { useShell } from '../common/shellStore';
+import { buildDetail, versionLabel } from '../common/version';
 
 type Tab = 'general' | 'display' | 'saves' | 'about';
 
@@ -417,6 +420,18 @@ function AboutTab() {
   const dev = useSettings((s) => s.devMode);
   return (
     <>
+      <Section title="Version">
+        {/* the build line is the label's second line, not a Row description: phones hide those, and this one matters */}
+        <Row
+          label={
+            <>
+              <span data-testid="settings-version">Aquarium Go {versionLabel()}</span>
+              <span className="ag-setrow__build" data-testid="settings-build">{buildDetail()}</span>
+            </>
+          }
+          icon={<Tag size={16} />}
+        />
+      </Section>
       <Section title="Aquarium Go">
         <p className="ag-about">
           A living aquarium where every creature is an individual. Every animal, plant, ripple and sound in this game is generated live by code — no stock art, models or recordings.
@@ -474,9 +489,17 @@ export function SettingsPanel() {
   const open = useUI((s) => s.panel === 'settings');
   const inGame = useGame((s) => !!s.game && !s.game.isShowcase);
   const [tab, setTab] = useState<Tab>('general');
+  const wantTab = useShell((s) => s.settingsTab);
+  useEffect(() => {
+    // the title screen's version badge opens Settings straight on About
+    if (open && wantTab) {
+      setTab(wantTab);
+      useShell.getState().set({ settingsTab: null });
+    }
+  }, [open, wantTab]);
   const close = () => useUI.getState().set({ panel: null });
   return (
-    <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle="Saved on this device" footer={inGame ? <SaveNowFooter /> : undefined}>
+    <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={`Saved on this device · ${versionLabel()}`} footer={inGame ? <SaveNowFooter /> : undefined}>
       <div className="ag-tcard__tabs">
         <Tabs<Tab>
           value={tab}
