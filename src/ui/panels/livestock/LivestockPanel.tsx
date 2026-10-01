@@ -21,6 +21,7 @@ import { CreaturePortrait, CreatureGlyph } from '../common/Portrait';
 import { OffspringOdds } from '../common/Offspring';
 import { orderedTanks, ownedCreatures, valueOf, isListed, speciesOf, creatureCondition, conditionWord, ageDaysOf, formatAge, wellbeing, morphName } from '../common/derive';
 import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_LABEL, plural, untilTime, pct, nameList } from '../common/format';
+import { SpeciesCareStrip } from '../encyclopedia/SpeciesGuide'; // lane:guide
 
 type Tab = 'animals' | 'young' | 'past';
 type StatusFilter = 'all' | 'attention' | 'listed' | 'favorites' | 'juveniles';
@@ -45,6 +46,12 @@ export function LivestockPanel() {
     if (target.startsWith('tank:')) setTankF(target.slice(5));
     else if (target === 'young' || target === 'clutches') setTab('young');
     else if (target.startsWith('creature:')) useUI.getState().set({ selectedCreatureId: target.slice(9) });
+    else if (target.startsWith('sell:')) {
+      // lane:guide — "Sell" on a creature card before the marketplace opens: this animal, ready for the shop's quick sale
+      setTab('animals');
+      setPicked(new Set([target.slice(5)]));
+      setConfirmSell(true);
+    }
     useUI.getState().set({ panelTarget: null });
   }, [target]);
 
@@ -205,6 +212,8 @@ export function LivestockPanel() {
         ) : undefined
       }
     >
+      {/* lane:guide — filtering to one species shows how to keep it (diet by food type, autofeeder, temperature, flow) */}
+      {tab === 'animals' && speciesF !== 'all' && speciesOf(speciesF) && <SpeciesCareStrip sp={speciesOf(speciesF)!} />}
       {tab === 'animals' && (
         <AnimalList
           g={g}
@@ -240,6 +249,7 @@ export function LivestockPanel() {
             <Button
               variant="coral"
               silent
+              disabled={pickedList.length === 0}
               onClick={() => {
                 const ids = pickedList.map((c) => c.id);
                 const r = act((d) => quickSell(d, ids), { sound: 'coin' });

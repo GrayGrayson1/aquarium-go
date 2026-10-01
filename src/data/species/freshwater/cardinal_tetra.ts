@@ -86,7 +86,7 @@ export const cardinalTetra: SpeciesDefinition = {
   baseValue: 4,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species.' },
+  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species: keep tanks healthy to reach 70 reputation and 200 husbandry mastery.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Much of the trade is still wild-harvested from the Rio Negro by community fisheries such as Project Piaba ("Buy a Fish, Save a Tree") — a livelihood that gives local people a reason to protect the forest.',
   conservation: {
@@ -143,6 +143,8 @@ export const cardinalTetra: SpeciesDefinition = {
     conservationNote: 'Least Concern. Buying sustainably harvested Rio Negro cardinals supports local communities that protect the forest.',
     funFact: 'Project Piaba’s motto is “Buy a Fish, Save a Tree”: the Rio Negro aquarium fishery gives families income without cutting the forest.',
     inGameBehavior: 'Schools tightly, flashes as one when startled, hovers in the shade of plants, and dims its colours at night.',
+    feedingNote: 'A mid-water feeder with a small mouth. Offer crushed flakes or micro pellets once or twice a day, plus frozen daphnia, brine shrimp or bloodworms a few times a week. An autofeeder with flakes or micro pellets suits it.',
+    keeperTip: 'Only add cardinals to a fully cycled, stable tank, and acclimatise them slowly. Newly imported wild fish are delicate for their first few weeks.',
   },
   sourceReferences: [
     { id: 'seriouslyfish-paracheirodon-axelrodi', title: 'Seriously Fish — Paracheirodon axelrodi', url: 'https://www.seriouslyfish.com/species/paracheirodon-axelrodi/', tier: 2, facts: ['35 mm SL', '23–29 °C, pH 3.5–7.5, GH 1–12', 'breeding pH 5.5–6.5, GH 1–5', 'school of 8–10+', 'hatch 24–36 h; free-swimming 3–4 days later', 'albino forms; golden cardinals parasite-induced', 'mostly wild-caught'] },

@@ -348,7 +348,8 @@ function Assignments({ g, m, editing, setEditing }: { g: GameState; m: StaffMemb
                   aria-pressed={on}
                   data-testid={`staff-assign-${m.id}-${t.id}`}
                   title={aquarist ? `${t.name} · ${units.toFixed(1)} units${other && other.id !== m.id ? ` · now with ${first(other)}` : ''}` : t.name}
-                  onClick={() => act((d) => assignTank(d, m.id, t.id, !on), { sound: 'click', quiet: true })}
+                  // lane:guide — quiet for a plain toggle, but say so when the tank is taken from another aquarist
+                  onClick={() => act((d) => assignTank(d, m.id, t.id, !on), { sound: 'click', quiet: !(!on && other && other.id !== m.id) })}
                 >
                   {on && <CircleCheck size={12} aria-hidden />}
                   {t.name}

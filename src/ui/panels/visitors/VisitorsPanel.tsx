@@ -372,7 +372,7 @@ function Popularity({ g, canSign, sum }: { g: GameState; canSign: boolean; sum: 
               <span className="pn-tiny">{t.signage ? 'Sign' : `Sign · ${formatMoney(SIGN_COST)}`}</span>
               {canSign ? (
                 <span data-testid={`signage-${t.id}`}>
-                  <Toggle checked={t.signage} onChange={() => act((d) => toggleSignage(d, t.id), { sound: 'click', quiet: true })} label={`Educational sign for ${t.name}`} />
+                  <Toggle checked={t.signage} onChange={() => act((d) => toggleSignage(d, t.id), { sound: 'click' }) /* lane:guide — toast the cost / no refund */} label={`Educational sign for ${t.name}`} />
                 </span>
               ) : (
                 <Lock size={13} aria-label="Locked" />

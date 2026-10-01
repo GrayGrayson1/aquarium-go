@@ -55,7 +55,7 @@ export const bandedArcherfish: SpeciesDefinition = {
     kind: 'shoal',
     minGroup: 3,
     idealGroup: 5,
-    note: 'A loose shoal. Aggressive toward their own kind when kept singly or in pairs; groups of four or five settle it (Seriously Fish).',
+    note: 'A loose shoal. Kept singly or in pairs they turn quarrelsome; a group of four or five settles them down.',
   },
   sameSpeciesRule: {
     maleMale: 'tension',
@@ -106,7 +106,7 @@ export const bandedArcherfish: SpeciesDefinition = {
   baseValue: 45,
   rarity: 'rare',
   visitorAppeal: 0.97,
-  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research. Needs a 125-gallon tank.' },
+  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research (after intermediate freshwater). Needs a 125-gallon tank.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'Not bred for the trade: every archerfish sold is wild-collected. Choose settled fish that already take floating foods.',
   conservation: {
@@ -152,13 +152,15 @@ export const bandedArcherfish: SpeciesDefinition = {
   encyclopedia: {
     summary: 'The sharpshooter of the mangroves: an archerfish knocks insects off overhanging leaves with a precise jet of water spat from its mouth.',
     nativeHabitat: 'Mangrove estuaries, tidal creeks and lower rivers from India to northern Australia, cruising just under the surface beneath overhanging branches.',
-    socialStructure: 'A loose shoal. Keep four or five in a big tank; single fish and pairs turn on each other.',
+    socialStructure: 'A loose shoal. Keep four or five in a big tank — kept singly or in pairs, archerfish turn quarrelsome.',
     tankNeeds: 'A 125-gallon tank or bigger with a tall, tight lid (they jump) and an air gap above the water to aim into. Warm (25–29 °C), hard, brackish water (SG about 1.005–1.012), gentle flow, and floating foods, insects and pellets.',
     compatibilityNotes: 'Peaceful toward fish too big to swallow, but anything that fits in its mouth — small gobies, livebearer fry, shrimp — will be eaten. Good with larger, calm brackish fish.',
     breedingOverview: 'Not bred in the hobby. Wild fish are thought to move into sea water to spawn tens of thousands of eggs. Breeding is not part of the game.',
     conservationNote: 'Not threatened, but mangroves are disappearing fast. Every archerfish in the trade is wild-collected, so buy only from careful, reputable sources.',
     funFact: 'An archerfish shapes a tube with its tongue against a groove in the roof of its mouth, corrects for refraction as it aims, and can knock an insect off a leaf more than a metre up. The jet speeds up as it flies, so the water gathers into one heavy drop at the target.',
     inGameBehavior: 'Cruises just under the surface, eyes the air, and now and then tilts up and fires a jet of water at a fly above the tank — then snaps it up as it falls.',
+    feedingNote: 'A surface feeder that grabs floating food: flakes and pellets, plus thawed mysis, bloodworms or brine shrimp and chopped earthworms. It rarely picks food off the bottom. Feed once or twice a day; an autofeeder suits it.',
+    keeperTip: 'Stick a cricket or a scrap of food to the glass or a leaf above the waterline: archerfish learn to shoot it down, which is great exercise and fun to watch.',
   },
   sourceReferences: [
     { id: 'fishbase-toxotes-jaculatrix', title: 'FishBase — Toxotes jaculatrix (banded archerfish)', url: 'https://www.fishbase.se/summary/Toxotes-jaculatrix.html', tier: 1, facts: ['30 cm TL, commonly 20 cm', 'India to the Philippines, New Guinea and northern Australia', 'mainly brackish mangrove estuaries; moves up rivers', '25–30 °C', 'surface feeder on insects; shoots them down (~150 cm)', 'IUCN Least Concern (2011)'] },

@@ -8,10 +8,13 @@ import { useGame } from '@/state/game';
 import { useUI, type Toast } from '@/state/ui';
 import { sfx, type SfxId } from '@/audio/sfx';
 import { markUrgent } from './hooks';
+import { toastCaution } from '@/ui/common/actions'; // lane:qa-r3
 
 export interface ActResult {
   ok: boolean;
   message: string;
+  /** lane:qa-r3 — it worked, but the message is a warning worth seeing even when `quiet` (see ActionResult.caution). */
+  caution?: boolean;
 }
 
 export interface ActOptions {
@@ -21,8 +24,10 @@ export interface ActOptions {
   kind?: Toast['kind'];
   /** Override the success toast text. */
   successText?: string;
-  /** Don't toast on success (still toasts failures). */
+  /** Don't toast on success (still toasts failures, and results with a caution — lane:qa-r3). */
   quiet?: boolean;
+  /** lane:qa-r3 — debounce caution toasts per control (a slider drag ends in one toast; see toastCaution). */
+  cautionKey?: string;
 }
 
 export function act<R extends ActResult>(fn: (d: GameState) => R | void, opts: ActOptions = {}): R | null {
@@ -49,8 +54,13 @@ export function act<R extends ActResult>(fn: (d: GameState) => R | void, opts: A
   const r = out.res;
   if (r.ok) {
     if (opts.sound !== null) sfx(opts.sound ?? 'confirm');
-    const text = opts.successText ?? r.message;
-    if (!opts.quiet && text) ui.toast(text, opts.kind ?? 'success');
+    // lane:qa-r3 — a result with a caution always shows its own message as a warning, even from a quiet control
+    if (r.caution && r.message) toastCaution(r.message, opts.cautionKey);
+    else {
+      if (opts.cautionKey) toastCaution(null, opts.cautionKey);
+      const text = opts.successText ?? r.message;
+      if (!opts.quiet && text) ui.toast(text, opts.kind ?? 'success');
+    }
   } else {
     sfx('error');
     ui.toast(r.message || 'Not possible right now.', 'warning');

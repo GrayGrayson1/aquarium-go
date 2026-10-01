@@ -85,7 +85,7 @@ export const cometGoldfish: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.55,
-  unlock: { requires: ['fw_coldwater'], hint: 'Unlocks with cool-water systems.' },
+  unlock: { requires: ['fw_coldwater'], hint: 'Unlocks with cool-water systems: research Cool-water Systems, or reach 90 reputation and 250 husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (wild species, IUCN 2010); rated High invasion risk by USFWS',
@@ -176,6 +176,8 @@ export const cometGoldfish: SpeciesDefinition = {
     conservationNote: 'Domesticated for over a thousand years. Released goldfish are a major invasive species — never release one; rehome it instead.',
     funFact: 'The comet was developed in the United States in the 1880s by Hugo Mulertt, from goldfish kept in the US Fish Commission ponds in Washington, DC.',
     inGameBehavior: 'Cruises the whole tank in fast laps, sifts sand for food, begs at the glass when you walk up, and nibbles soft plants.',
+    feedingNote: 'A greedy omnivore that forages everywhere. Feed goldfish pellets or flakes once or twice a day, only what is eaten in a couple of minutes, plus blanched greens and frozen daphnia or brine shrimp. An autofeeder suits it.',
+    keeperTip: 'Filter hard: pick a filter that turns the whole tank over at least four times an hour, and test nitrate weekly. Goldfish make waste far faster than most aquarium fish.',
   },
   sourceReferences: [
     { id: 'usgs-nas-goldfish', title: 'USGS Nonindigenous Aquatic Species — Goldfish (Carassius auratus)', url: 'https://nas.er.usgs.gov/queries/FactSheet.aspx?speciesID=508', tier: 1, facts: ['feral fish 12–22 cm SL, up to 41 cm SL', 'native to East Asia; still or slow weedy water', 'survives 0–41 °C', 'recorded in all 50 US states', 'uproots plants, increases turbidity, eats fish eggs and fry', 'usual lifespan 6–7 y, max ~30'] },

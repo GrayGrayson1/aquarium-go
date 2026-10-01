@@ -36,7 +36,8 @@ import { getDecorDef, isEpiphyte, isFloating } from '@/data/catalog/decor';
 import { creaturesInTank } from '@/sim/life';
 import { setLighting, feedTank } from '@/sim/care';
 import { tankDims } from '@/sim/tankSpace';
-import { tutorialWants } from '@/sim/facility/progression';
+import { tutorialWants, counterValue } from '@/sim/facility/progression';
+import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks'; // lane:qa-r3
 import { tutorialChain } from '@/data/quests';
 import { pushVisualEvent, runtime, nowSeconds } from '@/runtime/tankRuntime';
 import { noteInteraction } from '@/sim/life/actions'; // lane:qa-play
@@ -251,12 +252,17 @@ export function feedNow(foodId: string) {
   const ui = useUI.getState();
   const g = useGame.getState().game;
   const tankId = ui.focusedTankId;
-  if (!g || !tankId || !g.tanks[tankId]) return;
+  // lane:qa-r3 — never a silent no-op
+  if (!g || !tankId || !g.tanks[tankId]) {
+    ui.toast('Pick a tank to feed first.', 'info');
+    return;
+  }
   const r = act((d) => feedTank(d, tankId, foodId, { zone: 'surface' }), { flag: 'fed', sound: 'feed', toast: false });
   if (r?.ok) {
     const d = safe('tankDims', () => tankDims(g.tanks[tankId]), null);
     if (d) pushVisualEvent({ kind: 'feed', tankId, pos: [0, d.waterY, d.W * 0.2], t: performance.now() / 1000 });
-    ui.toast(r.message && r.message !== 'Fed' ? r.message : `Dropped ${foodName(foodId).toLowerCase()} at the surface.`, 'success');
+    // lane:qa-r3 — a feed nothing eats (or into an empty tank, or too much) is a warning, not a success
+    ui.toast(r.message && r.message !== 'Fed' ? r.message : `Dropped ${foodName(foodId).toLowerCase()} at the surface.`, r.caution ? 'warning' : 'success');
   }
 }
 
@@ -293,7 +299,7 @@ export function targetFeedNow(foodId: string, creatureId: string): boolean {
     safe('aiFeed', () => aiFeed(tankId, foodId, local, { targetCreatureId: creatureId }), 0);
     pushVisualEvent({ kind: 'feed', tankId, pos: local, creatureId, t: nowSeconds(), strength: 0.3 });
   }
-  ui.toast(r.message && r.message !== 'Done' ? r.message : `Offered ${c.name} ${foodName(foodId).toLowerCase()}.`, 'success');
+  ui.toast(r.message && r.message !== 'Done' ? r.message : `Offered ${c.name} ${foodName(foodId).toLowerCase()}.`, r.caution ? 'warning' : 'success'); // lane:qa-r3
   return true; // lane:w2-ui — the creature card's Feed row animates on success
 }
 
@@ -302,7 +308,8 @@ function LightsPopover() {
   if (!tank) return null;
   const presets = lightPresetsFor(tank.waterClass);
   const L = tank.lighting;
-  const set = (patch: Parameters<typeof setLighting>[2]) => act((d) => setLighting(d, tank.id, patch), { toast: false, sound: 'click', flag: 'changed_lights' });
+  // lane:qa-r3 — quiet, unless the new schedule feeds algae or starves plants (debounced per tank, as on the tank card)
+  const set = (patch: Parameters<typeof setLighting>[2]) => act((d) => setLighting(d, tank.id, patch), { toast: 'caution', cautionKey: `lights:${tank.id}`, sound: 'click', flag: 'changed_lights' });
   return (
     <motion.div className="ag-popover ag-toolpop" role="dialog" aria-label="Lighting" initial={{ opacity: 0, x: 10, scale: 0.98 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, x: 8, scale: 0.98 }} transition={{ duration: 0.18 }}>
       <div className="ag-popover__title">Lighting</div>
@@ -377,6 +384,8 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
   const popover = useShell((s) => s.popover);
   const dev = useSettings((s) => s.devMode);
   const partyUnlocked = useGame((s) => !!s.game && (s.game.progress.unlocked.includes('party_mode') || dev));
+  // lane:qa-r3 — the real route (and progress) instead of "unlocks as your aquarium grows"
+  const partyRoute = useGame((s) => (partyUnlocked || !s.game ? '' : partyHint(s.game)));
   // orbiting / panning / zooming by hand counts for the tutorial's "Have a look around", not only the camera chips
   useEffect(() => {
     const onCamera = () => tutorialFlag('camera_moved');
@@ -439,11 +448,11 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
         testId="tool-party"
         active={party}
         locked={!partyUnlocked}
-        lockHint="Unlocks as your aquarium grows. Just for fun: lights dance to music."
+        lockHint={`${partyRoute || 'Unlocks as your aquarium grows.'} Just for fun: lights dance to music.`}
         onClick={() => {
           if (!partyUnlocked) {
             sfx('error');
-            useUI.getState().toast('Party mode unlocks as your aquarium grows.', 'info');
+            useUI.getState().toast(partyRoute || 'Party mode unlocks as your aquarium grows.', 'info');
             return;
           }
           togglePartyMode(!party);
@@ -463,6 +472,17 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
       />
     </div>
   );
+}
+
+/** lane:qa-r3 — how party mode unlocks (src/data/unlocks.ts), with the player's progress on each route. */
+export function partyHint(g: GameState): string {
+  const conds = (UNLOCK_RULE_BY_KEY.party_mode?.when ?? []).flatMap((c) => (c.type === 'any' ? c.of : [c]));
+  const parts: string[] = [];
+  for (const c of conds) {
+    if (c.type === 'counter' && c.key === 'feeds') parts.push(`after ${c.min} feedings (${Math.min(c.min, safe('counterValue', () => counterValue(g, 'feeds'), 0))} so far)`);
+    else if (c.type === 'reputation') parts.push(`at ${c.min} reputation (you have ${Math.floor(g.progress?.reputation ?? 0)})`);
+  }
+  return parts.length ? `Party mode unlocks ${parts.join(' or ')}.` : 'Party mode unlocks as your aquarium grows.';
 }
 
 /** The audio lane's director follows `ui.partyMode` (and the opt-in microphone setting). */

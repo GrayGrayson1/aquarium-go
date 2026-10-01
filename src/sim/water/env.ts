@@ -182,7 +182,9 @@ export function equipmentSummary(tank: Tank): EquipmentSummary {
         break;
       case 'skimmer':
         if (working && level >= 0.86) {
-          s.skimmerExport += (def.stats.export ?? 0) * clamp(sf, 0.4, 1.1);
+          // lane:fit — a skimmer's foam needs near sea-strength salt water: in low brackish water it barely skims
+          // (it still stirs air into the water).
+          s.skimmerExport += (def.stats.export ?? 0) * clamp(sf, 0.4, 1.1) * skimmerSalinityFactor(tank.water?.salinitySG ?? 1.025);
           s.aeration += (def.stats.aeration ?? 0) * sf;
         }
         break;
@@ -214,6 +216,14 @@ export function equipmentSummary(tank: Tank): EquipmentSummary {
   s.fanCool = Math.min(3, s.fanCool);
   s.conflict = s.heaterSet !== null && s.chillerSet !== null && s.heaterSet > s.chillerSet - 0.3;
   return s;
+}
+
+/**
+ * lane:fit — how well a protein skimmer foams at this salinity: 1 at SG ≥ 1.020 (reef and fish-only marine water), falling
+ * to 0 at SG 1.008 (low brackish). Real skimmers need near sea-strength water for stable foam.
+ */
+export function skimmerSalinityFactor(sg: number): number {
+  return clamp(((Number.isFinite(sg) ? sg : 1.025) - 1.008) / 0.012, 0, 1);
 }
 
 export function safeGallons(tank: Pick<Tank, 'tierId'>): number {

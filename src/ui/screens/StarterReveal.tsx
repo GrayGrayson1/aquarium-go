@@ -5,10 +5,11 @@
 import { useEffect, useMemo, useRef } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Snowflake, Leaf, WavesHorizontal, Sun, GraduationCap, Compass, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Snowflake, Leaf, WavesHorizontal, Sun, GraduationCap, Compass, Sparkles, Utensils } from 'lucide-react';
 import { STARTER_IDS, getSpecies, type StarterId } from '@/data/species';
 import { STARTER_SETUPS } from '@/sim/newGame';
-import type { WaterClass, Creature } from '@/types';
+import type { WaterClass, Creature, SpeciesDefinition } from '@/types';
+import { dietGuide, listWords } from '@/data/species/guide'; // lane:guide
 import { useUI } from '@/state/ui';
 import { sfx } from '@/audio/sfx';
 import { useOnboarding } from './onboarding';
@@ -50,6 +51,15 @@ function DifficultyPips({ id }: { id: StarterId }) {
       <span>{d.label}</span>
     </span>
   );
+}
+
+/** lane:guide — "Frozen and live food only, target-fed by hand — an autofeeder can't feed it." */
+function starterDietLine(sp: SpeciesDefinition): string {
+  const d = dietGuide(sp);
+  const forms = d.groups.map((g) => g.form);
+  const what = forms.length ? `${listWords(forms).replace(/^./, (ch) => ch.toUpperCase())} food` : 'What it finds in the tank';
+  if (d.autofeeder.level === 'no') return `${what} only, ${sp.feedingStyle === 'target_fed' ? 'target-fed' : 'fed'} by hand. An autofeeder can’t feed it.`;
+  return `${what}. An autofeeder can cover its dry meals.`;
 }
 
 function isWild(m: string | undefined) {
@@ -122,6 +132,14 @@ function StarterDetail({ id, preview }: { id: StarterId; preview?: Creature }) {
           <div>
             <div className="ag-sfact__label">Your path</div>
             <div className="ag-sfact__text">{setup.pathNote}</div>
+          </div>
+        </div>
+        {/* lane:guide — how it eats, before the choice: a seahorse means frozen food by hand, never an autofeeder */}
+        <div className="ag-sfact" data-testid="starter-diet">
+          <Utensils size={16} aria-hidden />
+          <div>
+            <div className="ag-sfact__label">How it eats</div>
+            <div className="ag-sfact__text">{starterDietLine(sp)}</div>
           </div>
         </div>
       </div>

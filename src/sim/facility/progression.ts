@@ -979,7 +979,8 @@ export function cancelResearch(state: GameState): ActionResult {
   delete state.progress.counters[RESEARCH_PAID_KEY];
   const refund = Math.round(paid / 2);
   if (refund > 0) earn(state, refund, 'research', `Research refund: ${def.name}`);
-  return { ok: true, message: `${def.name} cancelled — half the cost refunded.` };
+  // lane:guide — name the amount (it said "half the cost refunded" even when nothing had been paid)
+  return { ok: true, message: refund > 0 ? `${def.name} cancelled — $${refund.toLocaleString('en-US')} (half the cost) refunded.` : `${def.name} cancelled. Nothing had been paid yet, so there is no refund.` };
 }
 
 function stepResearch(state: GameState, dt: number): void {

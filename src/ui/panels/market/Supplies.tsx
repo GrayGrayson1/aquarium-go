@@ -16,6 +16,9 @@ import { Chip, SectionHead, EmptyState, Select, Card } from '../common/parts';
 import { orderedTanks, ownedCreatures, speciesOf, gallonsOf, unlocked } from '../common/derive';
 import { titleCase } from '../common/format';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
+import { equipmentFit } from '@/sim/care/fit'; // lane:fit
+import { foodWhoEats } from '@/ui/common/foodStock'; // lane:fit
+import { FitBadge, FitLine, FoodEaters } from '@/ui/common/FitNote'; // lane:fit
 
 /** How many foods show before "Show all" — foods you own (or have owned) and foods made for your animals always show. */
 const FOOD_PREVIEW = 8;
@@ -86,6 +89,9 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
     };
   }, [focusFood]);
 
+  // lane:fit — who you keep that eats each shown food (named by tank when you have several)
+  const fitById = useMemo(() => new Map(shownFoods.map(({ f }) => [f.id, foodWhoEats(g, f.id)])), [shownFoods, g]);
+
   const equipment = useMemo(() => {
     if (!tank) return [];
     const gal = gallonsOf(tank);
@@ -122,17 +128,13 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                     <div className="pn-row pn-gap-2 pn-row--wrap">
                       <b>{f.name}</b>
                       {specific && <Chip tone="aqua">Made for {eaters.length === 1 ? eaters[0].commonName.toLowerCase() : 'your animals'}</Chip>}
-                      {eaters.length > 0 && !specific && (
-                        <Chip tone="good" title={eaters.map((e) => e.commonName).join(', ')}>
-                          For {eaters.slice(0, 2).map((e) => e.commonName.toLowerCase()).join(', ')}
-                          {eaters.length > 2 ? ` +${eaters.length - 2}` : ''}
-                        </Chip>
-                      )}
                       <Chip>{titleCase(f.delivery)}</Chip>
                     </div>
                     <div className="pn-small pn-muted">
                       {f.description} · {f.servingsPerPack} servings per pack
                     </div>
+                    {/* lane:fit — who you keep that eats it, and whether an autofeeder can drop it */}
+                    <FoodEaters fit={fitById.get(f.id)} />
                   </div>
                   <div className="pn-supply__side">
                     <span className={clsx('pn-tiny pn-num-t', have <= 0 && f.id in g.inventory.foods && eaters.length > 0 ? 'pn-tone-watch' : 'pn-muted')}>{have <= 0 && f.id in g.inventory.foods ? 'Out of stock' : `${have} serving${have === 1 ? '' : 's'}`}</span>
@@ -232,8 +234,13 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
 
 export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: EquipmentDef; fits: boolean; installed: boolean; tankId: string }) {
   const locked = !unlocked(g, e.unlock);
+  // lane:fit — will it help the animals in THIS tank? Shown before the purchase, and repeated in the purchase toast.
+  const fit = useMemo(() => safeFit(() => equipmentFit(g, tankId, e.id)), [g, tankId, e.id]);
+  const poor = !!fit && !fit.soft && (fit.level === 'useless' || fit.level === 'harmful'); // lane:qa-r3 — "Already fitted" is no warning
+  // lane:qa-r3 — buyEquipment keeps the install's heads-up after the receipt (a caution result toasts as a warning)
+  const buy = () => act((d) => buyEquipment(d, tankId, e.id), { sound: 'coin' });
   return (
-    <div className="pn-supply">
+    <div className={clsx('pn-supply', poor && 'is-poorfit', fit?.level === 'harmful' && 'is-harmful')} data-testid={`shop-equip-${e.id}`} data-fit={fit?.level}>
       <div className="pn-grow">
         <div className="pn-row pn-gap-2 pn-row--wrap">
           <b>{e.name}</b>
@@ -243,11 +250,13 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
               Installed
             </Chip>
           )}
-          {!fits && <Chip tone="watch">Sized for {e.gallonsRange.min}–{e.gallonsRange.max} gal</Chip>}
+          {!fits && !(fit && /undersized|oversized/i.test(fit.text)) && <Chip tone="watch">Sized for {e.gallonsRange.min}–{e.gallonsRange.max} gal</Chip>}
+          <FitBadge verdict={fit} />
         </div>
         <div className="pn-small pn-muted">
           {e.description} · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
         </div>
+        <FitLine verdict={fit} testId={`shop-equip-fit-${e.id}`} />
       </div>
       <div className="pn-supply__side">
         <Money value={e.price} />
@@ -256,12 +265,28 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
             <Lock size={11} /> {e.unlock ? UNLOCK_KEYS[e.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : 'Locked'}
           </span>
         ) : (
-          <Button size="sm" variant={installed ? 'default' : 'primary'} silent disabled={g.finance.money < e.price} onClick={() => act((d) => buyEquipment(d, tankId, e.id), { sound: 'coin' })}>
-            {installed ? 'Buy another' : 'Buy & install'}
+          <Button
+            size="sm"
+            variant={installed || poor ? 'default' : 'primary'}
+            silent
+            disabled={g.finance.money < e.price || !!fit?.blocked}
+            title={fit?.blocked ? fit.text : poor ? `${fit?.label}: ${fit?.text}` : undefined}
+            onClick={buy}
+          >
+            {fit?.blocked ? fit.label : poor ? 'Buy anyway' : installed ? 'Buy another' : 'Buy & install'}
           </Button>
         )}
       </div>
     </div>
   );
+}
+
+/** A fit hint must never break the shop: no verdict rather than an error. */
+function safeFit<T>(fn: () => T): T | null {
+  try {
+    return fn();
+  } catch {
+    return null;
+  }
 }
 

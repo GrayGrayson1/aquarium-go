@@ -86,7 +86,7 @@ export const bristlenosePleco: SpeciesDefinition = {
   baseValue: 8,
   rarity: 'common',
   visitorAppeal: 0.55,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species.' },
+  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species: keep tanks healthy to reach 70 reputation and 200 husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (A. cirrhosus, IUCN 2020); trade form not assessable',
@@ -154,11 +154,13 @@ export const bristlenosePleco: SpeciesDefinition = {
     nativeHabitat: 'Bristlenoses live in rivers and streams across tropical South America, from still turbid pools to clear flowing water over rocks.',
     socialStructure: 'Mostly solitary; males claim caves and chase off rival males.',
     tankNeeds: '25 gallons or more, a cave for each adult, driftwood and rocks to graze, clean well-oxygenated water (23–26 °C), and a diet of algae wafers, vegetables and some protein — algae alone is not enough.',
-    compatibilityNotes: 'Peaceful with almost any community fish, shrimp and snails; a classic discus and planted-tank companion. Keep only one male per tank unless it is large.',
+    compatibilityNotes: 'Peaceful with almost any community fish, shrimp and snails; a classic discus and planted-tank companion. Keep one male per tank unless there is room for each male to hold his own cave.',
     breedingOverview: 'The male guards eggs in his cave, fanning them until the fry emerge. Babies turn up readily in mature tanks.',
     conservationNote: 'Commercially bred; feral populations exist where people released them. Never release aquarium fish.',
-    funFact: 'Those “bristles” are fleshy tentacles — the bushiest males win the best caves. And despite the legend, “wood-eating” plecos can’t actually digest wood.',
+    funFact: 'Those “bristles” are fleshy tentacles, grown mostly by males — one theory is that they mimic fry, advertising a good father. And despite the legend, “wood-eating” plecos can’t actually digest wood.',
     inGameBehavior: 'Rasps algae off glass and driftwood with its sucker mouth, guards its cave, and roams the tank at night.',
+    feedingNote: 'A night-time grazer of algae and biofilm that needs more than algae. Give an algae wafer or sinking pellets after lights-out, blanched vegetables a few times a week and the odd bloodworm. Autofeeder pellets alone are not enough.',
+    keeperTip: 'Give each adult its own snug cave, such as a clay pleco cave or a pipe just wider than the fish. Males pick tight caves to guard eggs, and spare caves stop rival males fighting.',
   },
   sourceReferences: [
     { id: 'seriouslyfish-ancistrus-cf-cirrhosus', title: 'Seriously Fish — Ancistrus sp. ‘3’ (A. cf. cirrhosus)', url: 'https://www.seriouslyfish.com/species/ancistrus-cf-cirrhosus/', tier: 2, facts: ['125 mm SL', '21–26 °C, pH 5.5–7.5, GH 1–15', 'all hobby fish commercially produced, uncertain origin', 'territorial with conspecifics', 'male broods eggs in a cave', 'albino, long-fin, piebald, xanthic forms'] },
@@ -168,6 +170,7 @@ export const bristlenosePleco: SpeciesDefinition = {
     { id: 'liveaquaria-bushynose', title: 'LiveAquaria — Bushy Nose Pleco', url: 'https://www.liveaquaria.com/product/1039/?pcatid=1039', tier: 2, facts: ['72–79 °F, pH 6.5–7.4', '30 gal', 'caves and driftwood'] },
     { id: 'german-2009-wood-eating-catfish', title: 'German & Bittong 2009 — Digestive enzyme activities of wood-eating catfishes (PMC)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC2762538/', tier: 1, facts: ['“wood-eating” loricariids are detritivores that do not digest wood'] },
     { id: 'gensou-bristlenose-morphs', title: 'Gensou — Bristlenose pleco colour morphs guide', url: 'https://gensou.sg/bristlenose-pleco-colour-morphs-guide/', tier: 3, facts: ['albino, super red, calico, lemon, blue-eye lemon descriptions', 'super red fades in warm water', 'super long-fin carries two copies'] },
+    { id: 'sabaj-1999-ancistrus-larval-mimicry', title: 'Sabaj, Armbruster & Page (1999) Spawning in Ancistrus (Siluriformes: Loricariidae) with comments on the evolution of snout tentacles as a novel reproductive strategy: larval mimicry. Ichthyological Exploration of Freshwaters 10(3)', tier: 1, facts: ['male snout tentacles may mimic larvae (larval-mimicry hypothesis)'] }, // lane:guide — backs the funFact
   ],
   confidenceNotes: [
     'Size: true A. cirrhosus is 9 cm SL (FishBase), but the trade form reaches 12–15 cm; the game uses 12 cm.',
@@ -180,6 +183,6 @@ export const bristlenosePleco: SpeciesDefinition = {
   special: { needsSinkingFood: true, medicationSensitive: true },
   visualLane: 'fish',
   positiveInteractions: [
-    { other: 'discus', text: 'A classic discus companion: the bristlenose keeps glass and wood clean without competing for the discus’s food.' },
+    { other: 'discus', text: 'A classic discus companion: the bristlenose keeps glass and wood clean without competing for the discus’s food. Keep the tank near 28 °C, the cool end for discus and the warm limit for a bristlenose.' },
   ],
 };

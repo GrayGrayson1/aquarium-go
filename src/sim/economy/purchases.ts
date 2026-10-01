@@ -293,7 +293,11 @@ export function buyEquipment(state: GameState, tankId: string, defId: string): A
   if (!res.ok) return res;
   if (!spend(state, def.price, 'equipment', `${def.name} for ${tank.name}`)) return needMoney(state, def.price, def.name);
   bumpCounter(state, 'equipmentBought');
-  return { ok: true, message: `Installed ${def.name} in ${tank.name} (${fmtMoney(def.price)}).` };
+  // lane:qa-r3 — keep the install's own notes (it won't help these animals, a thermostat setting, a heater/chiller
+  // clash) after the receipt: they used to be dropped here
+  const head = `Installed the ${def.name}.`;
+  const notes = res.message.startsWith(head) ? res.message.slice(head.length).trim() : '';
+  return { ok: true, message: `Installed ${def.name} in ${tank.name} (${fmtMoney(def.price)}).${notes ? ` ${notes}` : ''}`, ...(res.caution ? { caution: true } : {}) };
 }
 
 export function buyFood(state: GameState, foodId: string, packs: number): ActionResult {

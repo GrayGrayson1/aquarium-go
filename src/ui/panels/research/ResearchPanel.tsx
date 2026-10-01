@@ -249,7 +249,16 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
           </>
         )}
         {status === 'available' && (
-          <Button size="sm" variant="primary" disabled={busy || !r.affordable} silent data-testid={`research-start-${d.id}`} onClick={() => act((dd) => startResearch(dd, d.id), { sound: 'confirm' })}>
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy || !r.affordable}
+            silent
+            data-testid={`research-start-${d.id}`}
+            // lane:guide — a disabled Start says why
+            title={busy ? 'Only one project runs at a time. Finish or stop the current one first.' : !r.affordable ? `You need ${formatMoney(Math.max(0, cost - g.finance.money))} more to start this.` : undefined}
+            onClick={() => act((dd) => startResearch(dd, d.id), { sound: 'confirm' })}
+          >
             {busy ? 'One at a time' : !r.affordable ? 'Can’t afford' : 'Start'}
           </Button>
         )}

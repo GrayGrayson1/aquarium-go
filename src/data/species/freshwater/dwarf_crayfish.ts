@@ -85,7 +85,7 @@ export const dwarfCrayfish: SpeciesDefinition = {
   baseValue: 15,
   rarity: 'uncommon',
   visitorAppeal: 0.75,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species.' },
+  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species: keep tanks healthy to reach 70 reputation and 200 husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Endangered (IUCN 2010)',
@@ -133,7 +133,7 @@ export const dwarfCrayfish: SpeciesDefinition = {
 
   encyclopedia: {
     summary: 'A thumb-sized, bright orange crayfish from a single Mexican lake — full of claw-waving character but small enough for a nano tank.',
-    nativeHabitat: 'Lake Pátzcuaro, a warm high-altitude lake in Michoacán, Mexico, and a few nearby springs.',
+    nativeHabitat: 'Lake Pátzcuaro, a shallow lake about 2,000 m up in Michoacán, Mexico, and a few nearby springs.',
     socialStructure: 'Semi-social: a male with several females works if every animal has a cave. Squabbles flare up around moults.',
     tankNeeds: 'At least 10 gallons, water around 18–24 °C (never much above 26 °C), GH 6+ so moults harden, many caves and leaf litter, and a tight lid with no gaps — they climb out through tubing holes.',
     compatibilityNotes: 'Opportunistic, not a hunter: moulting dwarf shrimp, shrimplets, fry, small snails and bottom fish resting at night can be caught. Fast mid-water fish are generally safe. Loaches, cichlids and larger fish will eat the crayfish.',
@@ -141,6 +141,8 @@ export const dwarfCrayfish: SpeciesDefinition = {
     conservationNote: 'Endangered in its only home lake, yet one of the most traded crayfish in the world. It can carry crayfish plague — never release it.',
     funFact: 'Nearly every CPO in the hobby descends from an orange line fixed by hobbyists in the late 1990s.',
     inGameBehavior: 'Patrols the bottom picking at everything, raises its claws at intruders, flips backwards to escape, and hides in a cave to moult.',
+    feedingNote: 'A bottom scavenger that picks at everything. Drop a sinking pellet, a piece of algae wafer or blanched vegetable every day or two, with frozen bloodworms or live snails as treats. Autofeeder sinking pellets work.',
+    keeperTip: 'An empty shell in the open is usually a moult, not a death. Leave it for a few days, as the crayfish eats it back for calcium, and keep disturbance low while its new shell hardens.',
   },
   sourceReferences: [
     { id: 'usfws-erss-cambarellus-patzcuarensis', title: 'USFWS Ecological Risk Screening Summary — Mexican Dwarf Crayfish (2017)', url: 'https://www.fws.gov/sites/default/files/documents/Ecological-Risk-Screening-Summary-Mexican-Dwarf-Crayfish.pdf', tier: 1, facts: ['trade animals ~2 cm body length', 'endemic to Lake Pátzcuaro and nearby springs', 'IUCN Endangered B1ab(iii) (2010)', 'tolerates 10–26 °C', 'up to ~60 eggs', 'trade stock tested positive for crayfish plague', 'sold by 97% of sampled online shops'] },

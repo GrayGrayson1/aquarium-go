@@ -46,7 +46,7 @@ export const greenChromis: SpeciesDefinition = {
   aggression: 0.1,
   finNipper: 0.05,
   hasLongFins: false,
-  social: { kind: 'shoal', minGroup: 3, idealGroup: 7, note: 'Shoals over branching coral in the wild. Keep 5–7 or more, in odd numbers, in a long tank to spread the pecking order.' },
+  social: { kind: 'shoal', minGroup: 3, idealGroup: 7, note: 'Shoals over branching coral in the wild. Keep 5–7 or more, added together, in a long tank to spread the pecking order.' },
   sameSpeciesRule: {
     maleMale: 'fight',
     femaleFemale: 'ok',
@@ -96,7 +96,7 @@ export const greenChromis: SpeciesDefinition = {
   baseValue: 12,
   rarity: 'common',
   visitorAppeal: 0.6,
-  unlock: { requires: ['marine_basics'], hint: 'Unlocks with beginner marine fish.' },
+  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'The single most-imported marine aquarium fish, and essentially all wild-caught; captive rearing has only succeeded experimentally (Rising Tide Conservation, 2013; University of Florida).',
   conservation: {
@@ -144,11 +144,13 @@ export const greenChromis: SpeciesDefinition = {
     nativeHabitat: 'Lagoons and sheltered reefs 1–20 m deep, in large aggregations above thickets of branching Acropora that they dive into when threatened.',
     socialStructure: 'Big shoals in the wild. In aquaria a pecking order develops, and subordinate fish can be chased to death.',
     tankNeeds: 'A 30-gallon or larger tank — ideally 4–6 feet long for a real shoal — with open swimming water, rockwork refuges and several small meals a day.',
-    compatibilityNotes: 'Peaceful and reef-safe with other fish. Bickers within its own group; buy 5–7 in odd numbers. Fast feeders that can outcompete seahorses and mandarins.',
+    compatibilityNotes: 'Peaceful and reef-safe with other fish. Bickers within its own group; buy 5–7 or more and add them together. Fast feeders that can outcompete seahorses and mandarins.',
     breedingOverview: 'Males prepare a nest where several females spawn; the male guards the eggs for 2–3 days. The larvae have only been raised in research labs.',
     conservationNote: 'Least Concern (IUCN 2021), but it is the most-imported marine aquarium fish of all and nearly every one is wild-caught.',
     funFact: 'A 2012 study ranked the green chromis as the number-one species collected for the marine aquarium hobby — yet its larvae are so tiny that only a few labs have ever raised one.',
     inGameBehavior: 'Swims as a loose shimmering group in the upper water, darts into rock or coral when startled, and squabbles over its pecking order.',
+    feedingNote: 'An eager mid-water feeder: marine flakes, micro pellets, thawed mysis and brine shrimp, or live copepods. Feed small pinches two or three times a day. An autofeeder suits it well; add frozen food by hand a few times a week.',
+    keeperTip: 'Watch for a fish that hides alone or stops coming up to eat. Move a bullied chromis to another tank early, before it wastes away.',
   },
   sourceReferences: [
     { id: 'fishbase-chromis-viridis', title: 'FishBase — Chromis viridis (Blue green damselfish)', url: 'https://www.fishbase.se/summary/Chromis-viridis.html', tier: 1, facts: ['max 10 cm TL', 'depth 1–20 m', 'aggregations above branching Acropora', 'males nest; females spawn in turn', 'eggs hatch in 2–3 days', 'male guards and fans eggs', 'IUCN Least Concern (2021)'] },

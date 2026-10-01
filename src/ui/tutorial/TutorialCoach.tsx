@@ -175,20 +175,21 @@ function showMe(target: string, g: GameState) {
       break;
     }
     case 'creature-name': {
-      const starter = Object.values(g.creatures).find((c) => c.isStarter && c.status === 'alive');
+      const starter = guideAnimal(g, ui.focusedTankId);
       if (starter) ui.set({ selectedCreatureId: starter.id, view: 'tank', panel: null, focusedTankId: starter.tankId ?? ui.focusedTankId });
+      else ui.toast('There’s no animal to show right now. Bring one home from the Market first.', 'info');
       break;
     }
     case 'scene':
       setCameraMode(ui.cameraMode === 'orbit' ? 'close' : 'orbit');
       break;
     case 'follow-starter': {
-      const starter = Object.values(g.creatures).find((c) => c.isStarter && c.status === 'alive');
+      const starter = guideAnimal(g, ui.focusedTankId);
       if (starter) {
         ui.set({ view: 'tank', panel: null, focusedTankId: starter.tankId ?? ui.focusedTankId, followCreatureId: starter.id });
         setCameraMode('follow');
         guideCamera.followed = true;
-      }
+      } else ui.toast('There’s no animal to follow right now. Bring one home from the Market first.', 'info');
       break;
     }
     default:
@@ -199,6 +200,15 @@ function showMe(target: string, g: GameState) {
         else ui.set({ panelTarget: guideTarget(id) });
       }
   }
+}
+
+/**
+ * lane:guide — the animal "Show me" points at: the starter while it is with you, otherwise another animal (in the
+ * focused tank first). "Show me" used to do nothing at all once the starter had been sold or had died.
+ */
+function guideAnimal(g: GameState, focusedTankId: string | null) {
+  const alive = Object.values(g.creatures).filter((c) => c.status === 'alive' && c.tankId);
+  return alive.find((c) => c.isStarter) ?? alive.find((c) => c.tankId === focusedTankId) ?? alive[0] ?? null;
 }
 
 /** Button-sized name: "Tango the Magnificent" → "Tango" (long names would push the guide's buttons off the card). */

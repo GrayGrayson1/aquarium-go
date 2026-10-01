@@ -97,7 +97,7 @@ export const banggaiCardinalfish: SpeciesDefinition = {
   baseValue: 35,
   rarity: 'uncommon',
   visitorAppeal: 0.8,
-  unlock: { requires: ['marine_basics'], hint: 'Unlocks with beginner marine fish.' },
+  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Endangered (IUCN Red List, 2007); Threatened under the US Endangered Species Act (2016)',
@@ -160,6 +160,8 @@ export const banggaiCardinalfish: SpeciesDefinition = {
     conservationNote: 'Endangered on the IUCN Red List and listed as Threatened under the US Endangered Species Act. Captive-bred fish protect the tiny wild range.',
     funFact: 'Released babies swim straight to the nearest urchin or anemone and hide among its spines or tentacles — they never drift as plankton.',
     inGameBehavior: 'Hangs still in mid-water near decor, pairs up, and — once bred — a male with bulging cheeks holds his brood until a cloud of tiny cardinals appears.',
+    feedingNote: 'A slow mid-water picker: offer thawed mysis and brine shrimp, small marine pellets or live copepods twice a day. Captive-bred fish take pellets, so an autofeeder suits it — but fast tank mates can beat it to the food.',
+    keeperTip: 'For a pair, raise a few captive-bred juveniles together and let two pair off, then rehome the others — once a pair forms, it chases other adults away.',
   },
   sourceReferences: [
     { id: 'fishbase-pterapogon-kauderni', title: 'FishBase — Pterapogon kauderni (Banggai cardinalfish)', url: 'https://www.fishbase.se/summary/Pterapogon-kauderni.html', tier: 1, facts: ['max 8.6 cm TL', 'depth 1–2 m', 'hover over urchins, retreat among spines', 'juveniles use anemones', 'male mouthbrooding, 8 mm young released', 'no planktonic stage', 'IUCN Endangered (2007)'] },

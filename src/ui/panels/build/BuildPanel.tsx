@@ -35,6 +35,8 @@ import { getGame } from '@/state/game'; // lane:qa-play
 import { orderedTanks, gallonsOf, unlocked, livingInTank } from '../common/derive';
 import { setBackdrop, changeSubstrate, substrateCost } from '../common/tankOps';
 import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
+import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
+import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
 
 type Tab = 'tanks' | 'decor' | 'equipment' | 'substrate' | 'facility';
@@ -268,7 +270,9 @@ function TanksTab({ g }: { g: GameState }) {
         </div>
         <p className="pn-tiny pn-muted" style={{ marginTop: 10 }}>
           {/* lane:w2-ui — was "heater/lighting for freshwater water" */}
-          Kits include the tank, a stand, substrate, and a filter, heater and lighting suited to a {WATER_CLASS_LABEL[wc].toLowerCase()} tank. Floor space is your only limit — sell a tank to free its spot.
+          Kits include the tank, a stand, substrate, and a filter, heater and lighting suited to a {WATER_CLASS_LABEL[wc].toLowerCase()} tank. Floor space is your only limit —{' '}
+          {/* lane:qa-r3 — a tank can only leave through a whole-aquarium auction: don't suggest selling one before that opens */}
+          {unlocked(g, 'tank_auctions') ? 'auction a tank as a whole aquarium (Market › My listings) to free its spot, or move to a bigger venue in Build › Facility.' : 'a bigger venue (Build › Facility) adds room. Whole-aquarium auctions, which free a tank’s spot, open later.'}
         </p>
       </section>
     </div>
@@ -639,6 +643,9 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
   const storage = g.inventory.equipment.filter((e) => getEquipmentDef(e.defId)?.environments.includes(tank.environment));
   const shop = EQUIPMENT.filter((e) => e.environments.includes(tank.environment)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: installed.some((x) => x.defId === e.id) }));
   const upkeep = installed.reduce((a, e) => a + (getEquipmentDef(e.defId)?.upkeep ?? 0), 0);
+  // lane:fit — installed gear that isn't helping these animals, and how a stored unit would fit this tank
+  const gearFit = new Map(safe(() => tankGearIssues(g, tankId), []).map((i) => [i.equipmentId, i.verdict]));
+  const storedFit = (defId: string) => safe(() => equipmentFit(g, tankId, defId), null);
   return (
     <div className="pn-stack pn-stack--lg">
       <div className="pn-grid pn-grid--tiles">
@@ -674,8 +681,9 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
                         {def?.stats.flowGph ? ` · ${def.stats.flowGph} gph` : ''}
                         {def?.stats.power ? ` · ${def.stats.power} W` : ''}
                       </div>
+                      <FitLine verdict={gearFit.get(inst.id)} testId={`build-equip-fit-${inst.id}`} />
                     </div>
-                    <Toggle checked={inst.on} onChange={(v) => act((d) => setEquipment(d, tankId, inst.id, { on: v }), { sound: 'click', quiet: true })} label={`${def?.name ?? 'Equipment'} power`} />
+                    <Toggle checked={inst.on} onChange={(v) => act((d) => setEquipment(d, tankId, inst.id, { on: v }), { sound: 'click', quiet: true }) /* lane:qa-r3: a caution (gear that can't help, filter off) still toasts */} label={`${def?.name ?? 'Equipment'} power`} />
                   </div>
                   <div className="pn-equip__row">
                     <div className="pn-metric pn-grow">
@@ -691,7 +699,7 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
                           <span>{meta.label}</span>
                           <span className="pn-metric__val">{meta.fmt(inst.setting, tempUnit)}</span>
                         </div>
-                        <Slider value={inst.setting} min={meta.min} max={meta.max} step={meta.step} onChange={(v) => act((d) => setEquipment(d, tankId, inst.id, { setting: v }), { sound: null, quiet: true })} label={`${def?.name} ${meta.label}`} />
+                        <Slider value={inst.setting} min={meta.min} max={meta.max} step={meta.step} onChange={(v) => act((d) => setEquipment(d, tankId, inst.id, { setting: v }), { sound: null, quiet: true, cautionKey: `equip:${inst.id}` })} label={`${def?.name} ${meta.label}`} />
                       </div>
                     )}
                     {(inst.failed || inst.condition < 0.6) && def && (
@@ -716,14 +724,19 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
           <div className="pn-col pn-gap-2">
             {storage.map((e) => {
               const def = getEquipmentDef(e.defId);
+              const fit = storedFit(e.defId);
               return (
                 <div key={e.id} className="pn-supply">
                   <div className="pn-grow">
-                    <b>{def?.name ?? e.defId}</b>
+                    <div className="pn-row pn-gap-2 pn-row--wrap">
+                      <b>{def?.name ?? e.defId}</b>
+                      <FitBadge verdict={fit} />
+                    </div>
                     <div className="pn-tiny pn-muted">Condition {Math.round(e.condition * 100)}%</div>
+                    <FitLine verdict={fit} />
                   </div>
-                  <Button size="sm" onClick={() => act((d) => installEquipment(d, tankId, e.defId, { instanceId: e.id, fromInventory: true }), { sound: 'place' })}>
-                    <Check size={14} /> Install
+                  <Button size="sm" disabled={!!fit?.blocked} title={fit?.blocked ? fit.text : undefined} onClick={() => act((d) => installEquipment(d, tankId, e.defId, { instanceId: e.id, fromInventory: true }), { sound: 'place', kind: fit && fit.level !== 'ok' && !fit.general && !fit.soft ? 'warning' : undefined })}>
+                    <Check size={14} /> {fit?.blocked ? fit.label : 'Install'}
                   </Button>
                 </div>
               );

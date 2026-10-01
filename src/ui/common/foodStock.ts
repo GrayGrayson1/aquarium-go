@@ -11,6 +11,7 @@ import { currentPhase } from '@/sim/life/breeding/clutch'; // lane:qa-play
 import { buyFood } from '@/sim/economy';
 import { useUI } from '@/state/ui';
 import { safe } from './safe';
+import { foodFit, type FoodFit } from '@/sim/care/fit'; // lane:fit
 import { act } from './actions';
 
 export interface TankFoodAlert {
@@ -136,4 +137,15 @@ export function creatureFoodChoice(g: GameState, creatureId: string): CreatureFo
   const unlocked = new Set(g.progress?.unlocked ?? []);
   const restock = FOODS.filter((f) => Number.isFinite(rank(f.tags)) && (!f.unlock || unlocked.has(f.unlock))).sort((a, b) => wrongKind(a.id) - wrongKind(b.id) || a.price - b.price || rank(a.tags) - rank(b.tags))[0];
   return { inStock, restockId: restock?.id ?? null, restockPrice: restock?.price ?? 0 };
+}
+
+// ───────────── lane:fit: who eats a food ─────────────
+
+/**
+ * Who you keep that eats this food — in `tankId` when given, and in your other tanks — plus whether an autofeeder can
+ * dispense it (dry food only). Thin, never-throwing wrapper over the sim's `foodFit` (src/sim/care/fit.ts) for food
+ * pickers and shop rows; render it with `<FoodEaters fit={…} />` from ./FitNote.
+ */
+export function foodWhoEats(g: GameState, foodId: string, tankId?: string | null): FoodFit | null {
+  return safe('foodFit', () => foodFit(g, foodId, tankId ?? null), null);
 }

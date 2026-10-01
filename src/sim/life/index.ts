@@ -24,6 +24,7 @@ import { ageDaysOf, initialReproRole, lifeStageFor, observableSex, sizeAtAge } f
 import { stepTankCreaturesImpl, lifeMeta } from './step';
 import { buildTankEnv, habitatFit, livingIn, stressFactors, waterProblemText, type StressFactor } from './welfare';
 import { illnessDef } from './illness';
+import { foodsFor, menuFor } from '@/data/species/guide'; // lane:guide
 import { residentsOf, touchResidents } from '../residents'; // lane:perf2
 
 export interface CreateCreatureOptions {
@@ -224,8 +225,10 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   let watch = false;
   const tank = c.tankId ? state.tanks[c.tankId] : undefined;
   let factors: StressFactor[] = [];
+  let outpaced = false; // lane:guide — a slow feeder sharing the tank with clearly faster ones
   if (tank) {
     const env = buildTankEnv(state, tank, livingIn(state, tank.id), state.clock.hour);
+    outpaced = sp.feedingSpeed < 0.3 && [...env.groups.keys()].some((id) => id !== sp.id && (findSpecies(id)?.feedingSpeed ?? 0) > sp.feedingSpeed + 0.2);
     const wv = env.water.get(sp.id);
     const problem = wv && wv.harm > 0.05 ? waterProblemText(wv, c.name) : null;
     if (problem) {
@@ -236,13 +239,16 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
     const fit = habitatFit(env, sp, env.groups.get(sp.id)?.n ?? 1);
     for (const n of fit.notes.slice(0, 2)) notes.push(`Habitat: ${n}.`);
   }
+  // lane:guide — hunger advice that fits this animal: no food it eats in stock → say what to buy; a slow feeder
+  // with faster tank mates → target feeding (the same rule as the sim's hunger warning in ./step.ts)
+  const hungerFix = s.hunger >= 70 ? hungerAdvice(state, sp, outpaced) : '';
   if (s.hunger >= 90) {
-    notes.unshift('Starving — feed right away.');
+    notes.unshift(`Starving — ${hungerFix || 'feed right away.'}`);
     danger = true;
   } else if (s.hunger >= 70) {
     // lane:qa-play — ahead of the habitat notes (after a water danger): hunger is the fix to make right now, and the
     // card's headline is the first note ("Watch · Habitat" read oddly beside a nearly empty hunger bar).
-    notes.splice(danger ? 1 : 0, 0, 'Very hungry — time to feed.');
+    notes.splice(danger ? 1 : 0, 0, `Very hungry — ${hungerFix || 'time to feed.'}`);
     watch = true;
   } else if (s.hunger >= 55) notes.push('Getting peckish.');
   if (c.illness) {
@@ -262,12 +268,58 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   }
   if (s.health < 40) danger = true;
   else if (s.health < 75) watch = true;
+  // lane:guide — low health with nothing else to explain it used to read only "Keep an eye on this one": name what
+  // wore it down (the damage the sim recorded, which fades over about a day) and how it recovers
+  if (s.health < 75 && notes.length === 0) notes.push(recoveryNote(c));
   const status: CreatureWellbeing['status'] = danger ? 'danger' : watch ? 'watch' : 'good';
   let headline: string;
   if (status === 'good') headline = s.stress < 25 && s.enrichment > 55 && s.comfort > 75 ? 'Thriving' : 'Doing well';
   // First clause of the first note; split on sentence ends only, so decimals ("1.35 ppm") survive.
   else headline = (notes[0] ?? (status === 'danger' ? 'Needs help' : 'Keep an eye on this one')).split(/\.(?=\s|$)|[:—]/)[0].trim();
   return { status, headline, notes, stress: factors };
+}
+
+/** lane:guide — what to do about hunger for this species (empty when plain "feed it" is the answer). */
+function hungerAdvice(state: GameState, sp: SpeciesDefinition, outpaced: boolean): string {
+  const stock = state.inventory?.foods ?? {};
+  const inStock = foodsFor(sp).some((f) => (stock[f.id] ?? 0) > 0);
+  if (!inStock) {
+    const unlocked = new Set(state.progress?.unlocked ?? []);
+    const buy = menuFor(sp).filter((f) => !f.unlock || unlocked.has(f.unlock)).sort((a, b) => a.price - b.price)[0];
+    return buy ? `none of its food is in stock. Buy ${buy.name.toLowerCase()} in Market › Supplies.` : 'none of its food is in stock.';
+  }
+  if (outpaced) return 'faster tank mates may be taking the food. Try target feeding.';
+  if (sp.feedingStyle === 'target_fed') return 'it eats slowly and only takes food that drifts close, so target-feed it.';
+  return '';
+}
+
+/** lane:guide — a note for low health with no current cause: the biggest recent harm, and how it heals. */
+function recoveryNote(c: Creature): string {
+  const dmg = c.life?.damage ?? {};
+  let top = '';
+  let best = 0.5;
+  for (const [k, v] of Object.entries(dmg)) {
+    if (k !== 'age' && v > best) {
+      best = v;
+      top = k;
+    }
+  }
+  switch (top) {
+    case 'starvation':
+      return 'Recovering from going hungry — regular meals bring its condition back.';
+    case 'water':
+      return 'Recovering from poor water — keep it clean and stable while it heals.';
+    case 'stress':
+      return 'Worn down by stress — cover, calm tank mates and stable water help it recover.';
+    case 'illness':
+      return 'Weakened by illness — clean water and low stress help it regain strength.';
+    case 'injury':
+    case 'fighting':
+    case 'harassment':
+      return 'Healing from injuries — watch for aggressive or nipping tank mates.';
+    default:
+      return 'Regaining strength — health returns while the water, food and calm stay good.';
+  }
 }
 
 /** Age in game days (UI helper). */

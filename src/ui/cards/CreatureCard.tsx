@@ -32,6 +32,7 @@ import {
   ChevronRight,
   Split,
   ShoppingCart, // lane:w2-ui
+  Wind, // lane:guide
 } from 'lucide-react';
 import type { Creature, GameState, SpeciesDefinition, Potentials, CreatureEvent } from '@/types';
 import { useUI } from '@/state/ui';
@@ -53,6 +54,7 @@ import {
   curiosityWord,
 } from '@/sim/life';
 import { renameCreature, toggleFavorite, noteInteraction, startBreeding } from '@/sim/life/actions';
+import { illnessDef } from '@/sim/life/illness'; // lane:guide
 import { creatureValue } from '@/sim/economy';
 import { speciesWaterComfort } from '@/sim/water';
 import { isUnlocked } from '@/sim/facility';
@@ -75,7 +77,10 @@ import {
   agoText,
   DIFFICULTY_LABEL,
   foodName, // lane:w2-ui
+  convertTempText, // lane:guide
 } from '../common/format';
+import { dietGuide, feedingLine, temperatureGuide, FLOW_GUIDE } from '@/data/species/guide'; // lane:guide
+import { AutofeederVerdict, RealLifeTips, openSpeciesGuide } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Badge, Button, Chip, Meter, Section, StatusBadge, formatMoney, KV, Empty } from '../kit';
 import { setCameraMode } from '../hud/ToolRail';
 import { MoveCreatureModal } from './MoveCreatureModal';
@@ -213,9 +218,12 @@ function tempRange(lo: number, hi: number, unit: 'C' | 'F'): string {
 function CareFacts({ sp, tankGallons, unit }: { sp: SpeciesDefinition; tankGallons: number; unit: 'C' | 'F' }) {
   const t = sp.tempC;
   const diff = DIFFICULTY_LABEL[sp.difficulty];
+  // lane:guide — diet by food TYPE, the autofeeder verdict, flow, and "In real life" tips (src/data/species/guide.ts)
+  const diet = dietGuide(sp);
+  const flow = FLOW_GUIDE[sp.flowPreference];
   return (
     <div className="ag-facts">
-      <KV label={<><Thermometer size={13} aria-hidden /> Temperature</>}>
+      <KV label={<><Thermometer size={13} aria-hidden /> Temperature</>} hint={convertTempText(temperatureGuide(sp).text, unit)}>
         {tempRange(t.idealMin, t.idealMax, unit)}
       </KV>
       <KV label={<><FlaskConical size={13} aria-hidden /> pH</>}>
@@ -226,8 +234,11 @@ function CareFacts({ sp, tankGallons, unit }: { sp: SpeciesDefinition; tankGallo
           {sp.salinitySG.idealMin.toFixed(3)}–{sp.salinitySG.idealMax.toFixed(3)} SG
         </KV>
       )}
-      <KV label={<><Utensils size={13} aria-hidden /> Diet</>} hint={sp.foods.slice(0, 6).map((f) => sentenceCase(f)).join(' · ')}>
-        {sentenceCase(sp.diet)} · {sentenceCase(sp.feedingStyle)} feeder
+      <KV label={<><Utensils size={13} aria-hidden /> Diet</>} hint={convertTempText(feedingLine(sp), unit)}>
+        {diet.groups.length ? diet.groups.map((g) => g.label).join(' · ') : sentenceCase(sp.diet)}
+      </KV>
+      <KV label={<><Wind size={13} aria-hidden /> Flow</>} hint={flow?.text}>
+        {flow?.label ?? sentenceCase(sp.flowPreference)}
       </KV>
       <KV label={<><Users size={13} aria-hidden /> Social</>} hint={sp.social.note}>
         {sentenceCase(sp.social.kind)}
@@ -237,6 +248,13 @@ function CareFacts({ sp, tankGallons, unit }: { sp: SpeciesDefinition; tankGallo
         {sp.recommendedMinTankGallons}+ gal
       </KV>
       <KV label={<><Gauge size={13} aria-hidden /> Care level</>}>{diff?.label ?? titleCase(sp.difficulty)}</KV>
+      <div className="ag-sg-card">
+        <AutofeederVerdict sp={sp} compact />
+        <RealLifeTips sp={sp} max={3} />
+        <button type="button" className="ag-linkbtn" onClick={() => openSpeciesGuide(sp.id)}>
+          Full {sp.commonName} guide
+        </button>
+      </div>
     </div>
   );
 }
@@ -299,10 +317,13 @@ function Lineage({ c, game }: { c: Creature; game: GameState }) {
 
 function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDefinition }) {
   const status = safe('breedingStatus', () => breedingStatus(game, c.id), null);
-  const candidates = useMemo(
-    () => Object.values(game.creatures).filter((o) => o.id !== c.id && o.speciesId === c.speciesId && o.status === 'alive' && o.lifeStage !== 'egg' && o.lifeStage !== 'larva' && o.lifeStage !== 'fry'),
-    [game.creatures, c.id, c.speciesId],
-  );
+  // lane:guide — likeliest partners first (same tank, opposite sex, adults), so the eight chips shown are the useful ones
+  const candidates = useMemo(() => {
+    const rank = (o: Creature) => (o.tankId === c.tankId ? 0 : 4) + (c.sex !== 'unknown' && o.sex !== 'unknown' && o.sex !== c.sex ? 0 : 2) + (o.lifeStage === 'adult' || o.lifeStage === 'elder' ? 0 : 1);
+    return Object.values(game.creatures)
+      .filter((o) => o.id !== c.id && o.speciesId === c.speciesId && o.status === 'alive' && o.lifeStage !== 'egg' && o.lifeStage !== 'larva' && o.lifeStage !== 'fry')
+      .sort((a, b) => rank(a) - rank(b));
+  }, [game.creatures, c.id, c.speciesId, c.tankId, c.sex]);
   const [partner, setPartner] = useState<string | null>(null);
   useEffect(() => {
     if (partner && !candidates.find((x) => x.id === partner)) setPartner(null);
@@ -332,17 +353,22 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
         <div className="ag-small ag-muted">{c.lifeStage === 'adult' || c.lifeStage === 'elder' ? 'Not currently breeding.' : 'Too young to breed yet.'}</div>
       )}
       <Meter label="Breeding readiness" value={c.stats.breedingReadiness} tone="auto" display={levelWord(c.stats.breedingReadiness)} />
+      {/* lane:guide — say why there is nothing to pick instead of showing nothing */}
+      {candidates.length === 0 && sp.breeding.system !== 'not_in_game' && sp.breeding.conditions.needsPartner && (c.lifeStage === 'adult' || c.lifeStage === 'elder') && (
+        <div className="ag-small ag-muted">Breeding needs a partner, and you have no other {sp.commonName.toLowerCase()}. New animals turn up in the Market.</div>
+      )}
       {candidates.length > 0 && sp.breeding.system !== 'not_in_game' && (
         <div className="ag-breeding__pair">
           <div className="ag-section__title">Try a pairing</div>
           <div className="ag-row ag-wrap" style={{ gap: 6 }}>
             {candidates.slice(0, 8).map((o) => (
-              <Chip key={o.id} size="sm" selected={partner === o.id} onClick={() => setPartner(partner === o.id ? null : o.id)}>
+              <Chip key={o.id} size="sm" selected={partner === o.id} onClick={() => setPartner(partner === o.id ? null : o.id)} title={o.tankId && o.tankId !== c.tankId ? `In ${game.tanks[o.tankId]?.name ?? 'another tank'}` : undefined}>
                 {o.name}
                 <span className="ag-muted"> · {o.sex === 'unknown' ? '?' : o.sex === 'male' ? '♂' : '♀'}</span>
               </Chip>
             ))}
           </div>
+          {candidates.length > 8 && <div className="ag-small ag-muted">The 8 likeliest partners are shown ({candidates.length - 8} more). Open another {sp.commonName.toLowerCase()}’s card to pair from there.</div>}
           {check && (
             <div className={clsx('ag-breedcheck', check.ok ? 'is-ok' : 'is-no')}>
               <div className="ag-small">{check.ok ? 'Ready to try.' : 'Not yet:'}</div>
@@ -475,6 +501,9 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
   const morph = sp ? safe('morphDisplayName', () => morphDisplayName(sp, c.morphName), c.morphName) : c.morphName;
   const tankGallons = tank ? safe('tier', () => getTankTier(tank.tierId).gallons, 0) : 0;
   const history = [...c.history].reverse().slice(0, 14);
+  // lane:guide — where Sell leads (see the action row)
+  const canList = safe('isUnlocked', () => isUnlocked(game, 'market_listings'), true);
+  const listingId = c.status === 'listed' ? game.market.listings.find((l) => l.status === 'active' && l.creatureIds.includes(c.id))?.id : undefined;
 
   return (
     <div className="ag-cbody">
@@ -488,8 +517,24 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
         }} />
         <ActionBtn icon={<Camera size={17} />} label="Photo" onClick={() => { sfx('camera'); enterCinematic('photo', { followCreatureId: c.id }); tutorialFlag('opened_photo'); }} />
         <ActionBtn icon={<Star size={17} fill={c.favorite ? 'currentColor' : 'none'} />} label={c.favorite ? 'Favourite' : 'Favourite'} active={!!c.favorite} disabled={readOnly} onClick={() => act((d) => { toggleFavorite(d, c.id); }, { toast: false, sound: 'click' })} />
-        <ActionBtn icon={<ArrowRightLeft size={17} />} label="Move" disabled={readOnly || c.status !== 'alive'} onClick={() => { sfx('open'); useShell.getState().set({ moveCreatureId: c.id }); }} />
-        <ActionBtn icon={<Tag size={17} />} label="Sell" disabled={readOnly || c.status !== 'alive'} onClick={() => { sfx('open'); useUI.getState().set({ panel: 'market', panelTarget: `list:creature:${c.id}` }); }} />
+        <ActionBtn icon={<ArrowRightLeft size={17} />} label="Move" disabled={readOnly || c.status !== 'alive'} title={c.status === 'listed' ? `${c.name} is listed for sale. Withdraw the listing in Market › My listings to move ${c.name}.` : c.status !== 'alive' ? `${c.name} is no longer in your care.` : undefined} onClick={() => { sfx('open'); useShell.getState().set({ moveCreatureId: c.id }); }} />
+        {/* lane:guide — Sell always leads somewhere useful: the listing if already listed, the local shop's quick sale
+            before the marketplace opens (the wizard used to stop there with no way to sell), else the listing wizard */}
+        {c.status === 'listed' && listingId ? (
+          <ActionBtn icon={<Tag size={17} />} label="Listing" title={`See ${c.name}’s listing and bids`} onClick={() => { sfx('open'); useUI.getState().set({ panel: 'market', panelTarget: `listing:${listingId}` }); }} />
+        ) : (
+          <ActionBtn
+            icon={<Tag size={17} />}
+            label="Sell"
+            disabled={readOnly || c.status !== 'alive'}
+            title={c.status !== 'alive' ? `${c.name} is no longer in your care.` : canList ? undefined : 'The marketplace opens the first time you visit the Market. Until then the local fish store buys animals for quick cash.'}
+            onClick={() => {
+              sfx('open');
+              if (canList) useUI.getState().set({ panel: 'market', panelTarget: `list:creature:${c.id}` });
+              else useUI.getState().set({ panel: 'livestock', panelTarget: `sell:${c.id}` });
+            }}
+          />
+        )}
       </div>
 
       {/* lane:w2-ui — feed this animal from its card (on phones the card covers the Target feed prompt) */}
@@ -498,10 +543,21 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
       <BehaviourLine id={c.id} />
 
       {c.illness && (
+        // lane:guide — the illness's own name, symptom and cure for this species (it used to say "check the water and
+        // keep stress low" for everything, even impaction, where the fix is the substrate)
         <div className="ag-callout ag-callout--danger">
           <ShieldAlert size={16} aria-hidden />
           <div>
-            <strong>{titleCase(c.illness.kind)}</strong> — severity {Math.round(c.illness.severity * (c.illness.severity <= 1 ? 100 : 1))}%. Check the water and keep stress low.
+            {(() => {
+              const def = illnessDef(c.illness.kind);
+              const sev = Math.round(c.illness.severity * (c.illness.severity <= 1 ? 100 : 1));
+              if (!def || !sp) return <><strong>{titleCase(c.illness.kind)}</strong> — severity {sev}%. Check the water and keep stress low.</>;
+              return (
+                <>
+                  <strong>{sentenceCase(def.name(sp))}</strong> — severity {sev}%. {convertTempText(def.cure(sp), unit)}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -742,9 +798,9 @@ function SeparateRow({ c, game }: { c: Creature; game: GameState }) {
   );
 }
 
-function ActionBtn({ icon, label, onClick, active, disabled }: { icon: ReactNode; label: string; onClick: () => void; active?: boolean; disabled?: boolean }) {
+function ActionBtn({ icon, label, onClick, active, disabled, title }: { icon: ReactNode; label: string; onClick: () => void; active?: boolean; disabled?: boolean; title?: string }) {
   return (
-    <button type="button" className={clsx('ag-cact', active && 'is-active')} onClick={onClick} disabled={disabled} aria-pressed={active}>
+    <button type="button" className={clsx('ag-cact', active && 'is-active')} onClick={onClick} disabled={disabled} aria-pressed={active} title={title}>
       <span className="ag-cact__icon" aria-hidden>{icon}</span>
       <span className="ag-cact__label">{label}</span>
     </button>

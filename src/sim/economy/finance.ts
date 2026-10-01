@@ -114,9 +114,12 @@ export function cashSuggestions(state: GameState): string[] {
   }
   if (isUnlocked(state, 'visitors') && !state.facility.openToPublic) out.push('Open your doors to visitors for admission and tips.');
   const empty = state.tankOrder.filter((id) => state.tanks[id] && !Object.values(state.creatures).some((c) => c.tankId === id && (c.status === 'alive' || c.status === 'listed')));
-  if (empty.length > 0) out.push(`${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — sell or repurpose ${empty.length === 1 ? 'it' : 'them'}.`);
+  // lane:guide — a tank can only leave through a whole-aquarium auction, so only suggest selling one once that is open
+  const it = empty.length === 1 ? 'it' : 'them';
+  const fix = isUnlocked(state, 'tank_auctions') ? `restock ${it}, or auction ${it} as a whole aquarium` : `restock ${it}, or switch off ${empty.length === 1 ? 'its' : 'their'} gear to cut the bill`;
+  if (empty.length > 0) out.push(`${empty.length === 1 ? 'An empty tank still costs' : `${empty.length} empty tanks still cost`} money to run — ${fix}.`);
   if (state.tankOrder.some((id) => (state.tanks[id]?.equipment.length ?? 0) > 1)) out.push('Trim running costs: a shorter light schedule and switching off gear you do not need lowers the daily bill.');
-  if (!isUnlocked(state, 'market_listings')) out.push('Keep your animals healthy and breeding — the marketplace opens as your reputation grows, and offspring sell well.');
+  if (!isUnlocked(state, 'market_listings')) out.push('Visit the Market once to open listings, where buyers bid — healthy offspring sell well.');
   if (out.length === 0) {
     const starter = Object.values(state.creatures).find((c) => c.status === 'alive' && (c.isStarter || c.favorite));
     const q = starter ? quickSellQuote(state, [starter.id]) : null;

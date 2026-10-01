@@ -90,7 +90,7 @@ export const peaPuffer: SpeciesDefinition = {
   baseValue: 8,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: ['fw_basic'], hint: 'Starter species — otherwise unlocks with beginner freshwater fish.' },
+  unlock: { requires: ['fw_basic'], hint: 'Starter species — otherwise reach 40 reputation or build husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Vulnerable (IUCN)',
@@ -146,6 +146,8 @@ export const peaPuffer: SpeciesDefinition = {
     conservationNote: 'Listed Vulnerable; wild collection hurt native populations. Buy captive-bred.',
     funFact: 'Each eye moves independently, like a chameleon’s, so a pea puffer can track two things at once.',
     inGameBehavior: 'Hovers like a tiny helicopter, swivels its eyes, inspects you through the glass and stalks snails.',
+    feedingNote: 'A hunter that eats only meaty food: thawed bloodworms, brine shrimp, daphnia and mysis, plus live snails to keep its beak worn down. It usually refuses flakes and pellets, so an autofeeder is no use — feed small meals by hand daily.',
+    keeperTip: 'Keep a snail jar: a spare jar or tub of ramshorn or bladder snails, fed on vegetable scraps, breeds a steady, free supply of puffer food.',
   },
   sourceReferences: [
     { id: 'fishbase-carinotetraodon-travancoricus', title: 'FishBase — Carinotetraodon travancoricus (Malabar pufferfish)', url: 'https://www.fishbase.se/summary/Carinotetraodon-travancoricus.html', tier: 1, facts: ['freshwater, demersal', 'max 3.5 cm TL, usually under 2.5 cm', 'pH 7.5–8.3', '22–28 °C', 'endemic to south-western India (Malabar)', 'IUCN Vulnerable (2010)', 'eggs hidden in vegetation'] },

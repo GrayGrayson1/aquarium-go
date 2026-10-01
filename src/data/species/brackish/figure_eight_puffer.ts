@@ -61,7 +61,7 @@ export const figureEightPuffer: SpeciesDefinition = {
     femaleFemale: 'tension',
     mixed: 'harassment',
     juvenile: 'ok',
-    note: 'Aggressive toward their own kind (FishBase). Fish raised together may cohabit with plenty of space and sight breaks; singles live longest.',
+    note: 'Aggressive toward their own kind. Fish raised together may share a big tank with plenty of space and sight breaks, but a single puffer is the safe choice.',
   },
 
   predatorTags: ['snail', 'snail_small', 'shrimp_dwarf', 'shrimp_fry', 'shrimp_large', 'crustacean', 'fry', 'eggs', 'worm', 'copepod', 'long_fins'],
@@ -105,7 +105,7 @@ export const figureEightPuffer: SpeciesDefinition = {
   baseValue: 14,
   rarity: 'uncommon',
   visitorAppeal: 0.88,
-  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research.' },
+  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research (after intermediate freshwater).' },
   captiveBredAvailable: false,
   wildCaughtNote: 'Not bred in captivity, so every figure-eight puffer in the trade is wild-collected. Choose settled fish that are already eating.',
   conservation: {
@@ -162,6 +162,8 @@ export const figureEightPuffer: SpeciesDefinition = {
     conservationNote: 'Data Deficient: nobody knows how wild populations are faring, and every trade fish is wild-caught. Choose settled, feeding fish, keep them for life, and never release one.',
     funFact: 'Its “beak” is four fused teeth that never stop growing. Crunching snail shells keeps them trimmed. The name biocellatus means “two eyespots”, after the dark rings on each side.',
     inGameBehavior: 'Hovers and scans with swivelling eyes, stalks snails, begs at the glass, and follows your finger along the front of the tank.',
+    feedingNote: 'A greedy hunter of meaty food: live snails to wear down its beak, plus thawed bloodworms, mysis, brine shrimp, daphnia and chopped earthworms. It won’t take flakes or pellets, so an autofeeder can’t feed it. Feed small meals daily.',
+    keeperTip: 'Puffers beg at the glass whenever you walk past — don’t be fooled. Overfed puffers grow fat and foul the water; a gently rounded belly after a meal is enough.',
   },
   sourceReferences: [
     { id: 'fishbase-dichotomyctere-ocellatus', title: 'FishBase — Dichotomyctere ocellatus (eyespot pufferfish)', url: 'https://www.fishbase.se/summary/Dichotomyctere-ocellatus.html', tier: 1, facts: ['8 cm TL', 'Indochina, Malaysia and Indonesia', '22–26 °C, pH 6.5–7.5, 5–12 dH (wild)', 'listed as freshwater', 'eats snails and benthic invertebrates', 'aggressive toward its own species', 'IUCN Data Deficient (2019)'] },

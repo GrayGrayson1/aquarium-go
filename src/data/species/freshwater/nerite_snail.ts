@@ -75,7 +75,7 @@ export const neriteSnail: SpeciesDefinition = {
     predationWithoutNursery: 1,
     nurseryRequired: true,
     maxRaisedPerClutch: 1,
-    notes: 'Sexes are separate. Females glue hard white egg capsules — like sesame seeds, each holding dozens of eggs — onto rocks, wood and glass, but the eggs do not hatch or develop in freshwater. In the wild, larvae drift down to brackish estuaries (about SG 1.005–1.015) as planktonic veligers for roughly two months before crawling back upstream. The first build has no brackish nursery, so capsules are cosmetic only and never produce offspring.',
+    notes: 'Sexes are separate. Females glue hard white egg capsules — like sesame seeds, each holding dozens of eggs — onto rocks, wood and glass, but the eggs do not hatch or develop in freshwater. In the wild, larvae drift down to brackish estuaries (about SG 1.005–1.015) as planktonic veligers for roughly two months before crawling back upstream. The game does not model brackish larval rearing, so capsules are cosmetic only and never produce offspring.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',
@@ -86,7 +86,7 @@ export const neriteSnail: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.4,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'Almost all trade nerites are collected from East African estuaries; they are not bred commercially in freshwater.',
   conservation: {
@@ -143,6 +143,8 @@ export const neriteSnail: SpeciesDefinition = {
     conservationNote: 'Near Threatened in the wild and almost entirely wild-collected for the trade. Never release aquarium animals.',
     funFact: 'Those “sesame seed” capsules on your rocks are real eggs — they are simply waiting for an estuary that never comes.',
     inGameBehavior: 'Slowly polishes glass, rocks and leaves, leaves little white egg capsules behind, and rights itself if it tumbles over.',
+    feedingNote: 'Grazes algae and biofilm off glass, rocks and leaves around the clock. Once surfaces look clean, add an algae wafer, gel food or blanched vegetables every few days. An autofeeder with algae wafers can top it up, but algae to graze matters more.',
+    keeperTip: 'If your tap water is soft, add a mineral source such as crushed coral or a calcium supplement. Pitted or cracked shells, especially near the tip, are an early sign the water is too soft.',
   },
   sourceReferences: [
     { id: 'aquarium-coop-nerite', title: 'Aquarium Co-Op — Nerite snail care guide', url: 'https://www.aquariumcoop.com/blogs/aquarium/nerite-snail', tier: 2, facts: ['1.3–3.8 cm', 'pH above 7.0', 'eats algae and biofilm; plant-safe', 'escape artist', 'white egg capsules do not hatch in freshwater', 'larvae need brackish water and months of acclimation', '1–2 year lifespan'] },

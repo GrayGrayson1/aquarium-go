@@ -13,7 +13,7 @@ import { emitEvent } from '../context';
 import { nextId } from '../ids';
 import { addFood, recommendedServings, ensureLab, scaleFood, foodDemandUnits, availableFood } from '../water/food';
 import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, ROOM_TEMP_C, DETOX_FREE_FRACTION, DETOX_HOURS, isSaltClass, isMarineClass } from '../water/constants';
-import { equipmentSummary, safeGallons, inhabitantsOf, safeHabitat } from '../water/env';
+import { equipmentSummary, expectedTempC, safeGallons, inhabitantsOf, safeHabitat } from '../water/env';
 import { tuneTankForSpecies } from '../water/kits';
 import { sanitizeWater } from '../water/step';
 import { noteBreedingFood } from '../life/breeding';
@@ -21,43 +21,31 @@ import { plural as pluralName, cap } from '../compat/text';
 import { refreshFoodStatus, tankFoodOutlook } from '../tankStatus';
 import { aOrAn } from '../economy/util'; // lane:w2-ui ("an 800-gallon tank")
 import { photoperiodTooLong } from '../time';
+import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor } from './tuning'; // lane:fit — shared with the fit verdicts
+import { installedFit, type FitVerdict } from './fit'; // lane:fit
+import { FOOD_TAG_WORDS, groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase)
 
 export interface ActionResult {
   ok: boolean;
   message: string;
+  /**
+   * It worked, but the message carries a warning the player should see even where this action is normally quiet
+   * (a feed nothing eats, a setpoint outside the animals' range, gear that can't help them). The UI toasts it as a
+   * warning; see `toast: 'caution'` in src/ui/common/actions.ts.
+   */
+  caution?: boolean;
 }
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const money = (v: number) => `$${v.toFixed(2).replace(/\.00$/, '')}`;
 const plural = (n: number, s: string) => `${n} ${s}${n === 1 ? '' : 's'}`;
-/** Equipment kinds in running text ("2 auto top-offs", not "2 atos"). */
-const KIND_PLURAL: Partial<Record<string, string>> = { ato: 'auto top-offs', co2: 'CO₂ systems', uv: 'UV sterilisers', lid: 'lids', light: 'lights', refugium: 'refugiums' };
 
 function getTank(state: GameState, tankId: string): Tank | null {
   const t = state.tanks[tankId];
   if (!t) return null;
   sanitizeWater(t);
   return t;
-}
-
-/** Inhabitants' combined ideal band for a parameter (falls back to the water class). */
-function idealBand(state: GameState, tank: Tank, key: 'tempC' | 'salinitySG'): { min: number; max: number; mid: number } {
-  const d = CLASS_DEFAULTS[tank.waterClass];
-  const base = key === 'tempC' ? d.temp : d.sg ?? { idealMin: 1, idealMax: 1, min: 1, max: 1 };
-  let lo = base.idealMin;
-  let hi = base.idealMax;
-  const inh = inhabitantsOf(state, tank.id);
-  const ranges = inh.map((i) => (key === 'tempC' ? i.species.tempC : i.species.salinitySG)).filter((r): r is NonNullable<typeof r> => !!r);
-  if (ranges.length) {
-    const l2 = Math.max(...ranges.map((r) => r.idealMin));
-    const h2 = Math.min(...ranges.map((r) => r.idealMax));
-    if (l2 <= h2) {
-      lo = l2;
-      hi = h2;
-    }
-  }
-  return { min: lo, max: hi, mid: (lo + hi) / 2 };
 }
 
 // ───────────────────────────── feeding ─────────────────────────────
@@ -129,19 +117,35 @@ export function feedTank(
   if (targetId) bumpCounter(state, 'targetFeeds');
   noteBreedingFood(state, tank.id, food.tags);
 
-  const eaters = inhabitantsOf(state, tank.id).filter((i) => food.tags.some((t) => i.species.foods.includes(t)));
+  const residents = inhabitantsOf(state, tank.id);
+  const eaters = residents.filter((i) => food.tags.some((t) => i.species.foods.includes(t)));
   const parts: string[] = [];
+  // lane:qa-r3 — the note is worth seeing even where feeding is normally quiet (a click in the water): see `caution`
+  let caution = false;
   if (targetName) parts.push(`Offered ${targetName} ${food.name.toLowerCase()} with the feeding tongs — it's theirs for the next hour.`);
   else parts.push(`Fed ${plural(servings, 'serving')} of ${food.name.toLowerCase()}.`);
-  if (eaters.length === 0 && inhabitantsOf(state, tank.id).length > 0) {
-    parts.push('Nothing in this tank eats it — it will rot into ammonia.');
+  if (residents.length === 0) {
+    // lane:qa-r3 — feeding an empty tank used to read like an ordinary feed
+    caution = true;
+    parts.push('Nothing lives in this tank yet, so the food will just rot into ammonia. (A pinch a day can feed a new filter’s bacteria while the tank cycles — no more than that.)');
+  } else if (eaters.length === 0) {
+    // lane:fit — and say what they do eat, so the next feed is the right one
+    caution = true;
+    const inh = residents;
+    const sp = inh[0].species;
+    const many = inh.filter((i) => i.species.id === sp.id).length > 1;
+    const words = [...new Set(sp.foods.map((t) => FOOD_TAG_WORDS[t]).filter((w): w is string => !!w))].slice(0, 3);
+    parts.push(`Nothing in this tank eats it — uneaten ${food.name.toLowerCase()} will rot into ammonia.${words.length ? ` ${cap(many ? pluralName(sp) : `your ${sp.commonName.toLowerCase()}`)} ${many ? 'eat' : 'eats'} ${words.slice(0, -1).join(', ')}${words.length > 1 ? ' and ' : ''}${words[words.length - 1]}.` : ''}`);
   } else if (
     demand > 0 &&
     (targetId ? units + ownWaiting > demand * 2.5 + food.nutrition || units + before > tankDemand * 2.5 + food.nutrition : units + before > demand * 2.5 + food.nutrition)
   ) {
     parts.push('That is more than they can eat — leftovers rot into ammonia within hours.');
-    // The action result already says so; the log gets at most one reminder per tank per game day.
+    // The action result already says so; the log gets at most one reminder per tank per game day. That reminder is
+    // toasted, so the result only needs flagging (`caution`) on the feeds in between.
+    caution = true;
     if (!opts.byStaff && (lab.warned?.overfeed ?? -999) < hour - 24) {
+      caution = !!state.isShowcase;
       lab.warned = { ...(lab.warned ?? {}), overfeed: hour };
       if (!state.isShowcase)
         // lane:qa-play — toasted (still at most once per tank per game day): clicks in the tank give no other feedback,
@@ -152,14 +156,16 @@ export function feedTank(
   const left = state.inventory.foods[foodId] ?? 0;
   // The cupboard is shared: say plainly when this feed emptied it or left only a meal or two, then update every
   // tank's food level (and log the low / out warning right away rather than at the next tank step).
-  if (left <= 0) parts.push(`That was the last of your ${food.name.toLowerCase()} — buy more in Market › Supplies.`);
-  else {
+  if (left <= 0) {
+    caution = true;
+    parts.push(`That was the last of your ${food.name.toLowerCase()} — buy more in Market › Supplies.`);
+  } else {
     const outlook = tankFoodOutlook(state, tank.id);
     if (outlook.level !== 'ok' && outlook.foodIds.includes(foodId)) parts.push(`${left} left — about ${Math.max(1, Math.floor(outlook.meals))} meal${Math.floor(outlook.meals) === 1 ? '' : 's'} of food here. Stock up soon.`);
     else parts.push(`${left} left.`);
   }
   refreshFoodStatus(state, { notify: true });
-  return { ok: true, message: parts.join(' ') };
+  return { ok: true, message: parts.join(' '), ...(caution ? { caution } : {}) };
 }
 
 // ───────────────────────────── water changes & top-off ─────────────────────────────
@@ -488,32 +494,6 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
 
 // ───────────────────────────── equipment ─────────────────────────────
 
-const MAX_PER_KIND: Record<string, number> = { lid: 1, ato: 1, autofeeder: 1, co2: 1, filter: 4, heater: 4, chiller: 3, light: 4, skimmer: 2, uv: 2, refugium: 1, fan: 3, airstone: 4, powerhead: 6, wavemaker: 4 };
-
-function defaultSettingFor(state: GameState, tank: Tank, kind: string, fallback: number | undefined): number | undefined {
-  const inh = inhabitantsOf(state, tank.id);
-  const temp = idealBand(state, tank, 'tempC');
-  const cool = tank.waterClass === 'freshwater_cool' || temp.mid < ROOM_TEMP_C - 0.5;
-  switch (kind) {
-    case 'heater':
-      return cool ? Math.max(10, temp.min - 1) : Math.round(temp.mid * 2) / 2;
-    case 'chiller': {
-      if (cool) return Math.round(temp.mid * 2) / 2;
-      const s = equipmentSummary(tank);
-      return Math.max((s.heaterSet ?? temp.mid) + 1.5, temp.max);
-    }
-    case 'powerhead':
-    case 'wavemaker': {
-      const prefs = inh.map((i) => i.species.flowPreference);
-      if (prefs.includes('very_low') || prefs.includes('low')) return 0.1;
-      if (prefs.includes('moderate')) return 0.6;
-      return fallback ?? 1;
-    }
-    default:
-      return fallback;
-  }
-}
-
 /**
  * Install equipment in a tank.
  * - `{ instanceId }` installs that specific unit from `state.inventory.equipment` (preferred for "install from storage").
@@ -540,7 +520,8 @@ export function installEquipment(
   }
   const sameKind = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === def.kind).length;
   const max = MAX_PER_KIND[def.kind] ?? 6;
-  if (sameKind >= max) return fail(def.kind === 'lid' ? 'This tank already has a lid.' : `This tank already has ${sameKind} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that's the most that fit.`);
+  // lane:fit — one-per-tank kinds read "already has an auto top-off", not "already has 1 auto top-offs"
+  if (sameKind >= max) return fail(max === 1 ? `This tank already has ${aOrAn(def.name)} ${def.name.toLowerCase()} — one is all it needs.` : `This tank already has ${sameKind} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that's the most that fit.`);
 
   let inst: EquipmentInstance | undefined;
   let fromStorage = false;
@@ -580,12 +561,31 @@ export function installEquipment(
   tank.equipment.push(inst);
 
   const gallons = safeGallons(tank);
-  if (gallons > def.gallonsRange.max * 1.05) notes.push(`It's undersized for ${aOrAn(gallons)} ${gallons}-gallon tank.`);
-  if (def.kind === 'heater' && tank.waterClass === 'freshwater_cool') notes.push('Heads-up: this is a cool-water tank — the heater is set low as a cold-room safety net.');
+  // lane:fit — say right away when the new unit won't help these animals (seahorses and an autofeeder, a wavemaker
+  // over gentle-flow animals, CO₂ with no plants…). The fit text already covers the size, cool-water-heater and
+  // airstone-vs-CO₂ notes below, so those only appear when it has nothing to say.
+  const fit = poorFit(state, tank, inst.id);
+  if (fit) notes.push(`${fit.level === 'harmful' ? 'Warning' : 'Heads-up'}: ${fit.text}`);
+  if (!fit && gallons > def.gallonsRange.max * 1.05) notes.push(`It's undersized for ${aOrAn(gallons)} ${gallons}-gallon tank.`);
+  if (!fit && def.kind === 'heater' && tank.waterClass === 'freshwater_cool') notes.push('Heads-up: this is a cool-water tank — the heater is set low as a cold-room safety net.');
   if (def.kind === 'heater' || def.kind === 'chiller') notes.push(`Set to ${inst.setting?.toFixed(1)} °C.`);
-  if (equipmentSummary(tank).conflict) notes.push('Warning: the heater is set at or above the chiller — they will fight each other.');
-  if (def.kind === 'airstone' && tank.waterClass === 'freshwater_planted' && equipmentSummary(tank).co2 > 0) notes.push('Bubbles drive off injected CO₂ — consider running it only at night.');
-  return { ok: true, message: [`Installed the ${def.name}${fromStorage ? ' from storage' : ''}.`, ...notes].join(' ') };
+  const conflict = equipmentSummary(tank).conflict;
+  if (conflict) notes.push('Warning: the heater is set at or above the chiller — they will fight each other.');
+  if (!fit && def.kind === 'airstone' && tank.waterClass === 'freshwater_planted' && equipmentSummary(tank).co2 > 0) notes.push('Bubbles drive off injected CO₂ — consider running it only at night.');
+  // lane:qa-r3 — `caution`: the install worked, but the player should read why it won't help (toasted as a warning)
+  return { ok: true, message: [`Installed the ${def.name}${fromStorage ? ' from storage' : ''}.`, ...notes].join(' '), ...(fit || conflict ? { caution: true } : {}) };
+}
+
+/** lane:fit — the unit's fit verdict when it's worth telling the player (not ok, not just general advice). */
+function poorFit(state: GameState, tank: Tank, equipmentId: string): FitVerdict | null {
+  try {
+    const f = installedFit(state, tank, equipmentId);
+    // ok, general advice, or a heater the animals can simply do without: nothing worth interrupting the player for
+    if (!f || f.level === 'ok' || f.general || f.soft) return null;
+    return f;
+  } catch {
+    return null;
+  }
 }
 
 export function removeEquipment(state: GameState, tankId: string, equipmentId: string): ActionResult {
@@ -652,9 +652,56 @@ export function setEquipment(state: GameState, tankId: string, equipmentId: stri
     if (!patch.on && (def.kind === 'heater' || def.kind === 'chiller')) notes.push('The water will drift toward room temperature.');
   }
   const s = equipmentSummary(tank);
-  if (s.conflict) notes.push(`Warning: heater ${s.heaterSet?.toFixed(1)} °C vs chiller ${s.chillerSet?.toFixed(1)} °C — they'll fight each other. Keep the heater at least 1 °C below the chiller.`);
-  return { ok: true, message: notes.join(' ') || 'Updated.' };
+  let caution = false;
+  if (s.conflict) {
+    caution = true;
+    notes.push(`Warning: heater ${s.heaterSet?.toFixed(1)} °C vs chiller ${s.chillerSet?.toFixed(1)} °C — they'll fight each other. Keep the heater at least 1 °C below the chiller.`);
+  }
+  // lane:qa-r3 — a thermostat set outside what these animals need says so, with the setting to aim for
+  if ((def.kind === 'heater' || def.kind === 'chiller') && patch.setting !== undefined && inst.on && !inst.failed) {
+    const note = setpointNote(state, tank, def.kind, inst.setting ?? 0);
+    if (note) {
+      caution = true;
+      notes.push(note);
+    }
+  }
+  if (patch.on === false && def.kind === 'filter') caution = true;
+  // lane:fit — turning on (or turning up) an autofeeder or a pump that can't serve these animals says so.
+  const watched = def.kind === 'autofeeder' || def.kind === 'powerhead' || def.kind === 'wavemaker' || def.kind === 'filter';
+  const engaged = inst.on && !inst.failed && (patch.on === true || (patch.setting !== undefined && (inst.setting ?? 0) > 0));
+  if (watched && engaged) {
+    const fit = poorFit(state, tank, inst.id);
+    if (fit?.attention || fit?.note) {
+      caution = true;
+      notes.push(`${fit.level === 'harmful' ? 'Warning' : 'Heads-up'}: ${fit.text}`);
+    }
+  }
+  return { ok: true, message: notes.join(' ') || 'Updated.', ...(caution ? { caution } : {}) };
 }
+
+/**
+ * lane:qa-r3 — is this heater / chiller setpoint outside the residents' ideal range? A heater set above it (or a chiller
+ * set below it) pushes the water there; a heater set below it only matters when the room won't keep them warm, and a
+ * chiller set above it only when the tank runs warmer than they like. Null when it suits them (or the tank is empty).
+ */
+function setpointNote(state: GameState, tank: Tank, kind: 'heater' | 'chiller', set: number): string | null {
+  const inh = inhabitantsOf(state, tank.id);
+  if (!inh.length) return null;
+  const band = idealBand(state, tank, 'tempC');
+  const groups = groupEaters(inh);
+  const who = groups.length > 2 ? 'your animals' : groups.map(whoPhrase).join(' and ');
+  const plural = groups.length > 1 || groups[0].count > 1;
+  const range = `${fmtC(band.min)}–${fmtC(band.max)} °C`;
+  const aim = `About ${fmtC(Math.round(band.mid * 2) / 2)} °C suits ${plural ? 'them' : groups[0].name ? groups[0].name : 'it'}.`;
+  const t = expectedTempC(tank);
+  if (kind === 'heater' && set > band.max + 0.2) return `Heads-up: ${set.toFixed(1)} °C is warmer than the ${range} ${who} ${plural ? 'need' : 'needs'}. ${aim}`;
+  if (kind === 'chiller' && set < band.min - 0.2) return `Heads-up: ${set.toFixed(1)} °C is colder than the ${range} ${who} ${plural ? 'need' : 'needs'}. ${aim}`;
+  if (kind === 'heater' && set < band.min - 0.2 && t < band.min - 0.2) return `Heads-up: at this setting the water cools to about ${fmtC(t)} °C — below the ${range} ${who} ${plural ? 'need' : 'needs'}. ${aim}`;
+  if (kind === 'chiller' && set > band.max + 0.2 && t > band.max + 0.2) return `Heads-up: at this setting the water stays near ${fmtC(t)} °C — above the ${range} ${who} ${plural ? 'need' : 'needs'}. ${aim}`;
+  return null;
+}
+
+const fmtC = (x: number) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));
 
 /** Repair failed or worn equipment for ~35 % of its price. */
 export function repairEquipment(state: GameState, tankId: string, equipmentId: string): ActionResult {
@@ -694,7 +741,10 @@ export function setLighting(
     notes.push(period > 15 ? 'Long photoperiods feed algae — keep the day to the open hours, or 8–10 hours if algae is a problem.' : 'The lights stay on after the doors close — that feeds algae without anyone seeing it.');
   }
   if (period < 6) notes.push('Plants and corals need at least 6–8 hours of light.');
-  return { ok: true, message: notes.join(' ') };
+  // lane:qa-r3 — a schedule change that leaves one of those problems is worth a toast (intensity drags are not: they
+  // would repeat it on every step of the slider)
+  const caution = notes.length > 1 && (patch.onHour !== undefined || patch.offHour !== undefined);
+  return { ok: true, message: notes.join(' '), ...(caution ? { caution } : {}) };
 }
 
 /** Adjust a new tank's equipment settings for a species (heater setpoint, flow level, light intensity). */
@@ -705,3 +755,7 @@ export function tuneEquipmentForSpecies(state: GameState, tankId: string, specie
   const fresh = inhabitantsOf(state, tankId).length === 0;
   tuneTankForSpecies(tank, sp, fresh);
 }
+
+// lane:fit — equipment & food suitability verdicts (stable path: '@/sim/care/fit').
+export { equipmentFit, installedFit, tankGearIssues, foodFit, canAutofeed, FIT_LABEL, FIT_TONE } from './fit';
+export type { FitVerdict, FitLevel, GearIssue, FoodFit } from './fit';

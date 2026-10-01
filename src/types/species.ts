@@ -345,6 +345,11 @@ export interface Encyclopedia {
   conservationNote: string;
   funFact: string;
   inGameBehavior: string;
+  /** lane:guide — How it eats, for keepers: food TYPES (dry / frozen / live / fresh), feeding style and how often.
+   *  Must agree with `foods` (the sim's food tags). Shown on species pages and creature cards. */
+  feedingNote?: string;
+  /** lane:guide — One practical "In real life" keeping tip, backed by the species' sources. */
+  keeperTip?: string;
 }
 
 /** Explicit pairwise rule layered on top of the data-driven evaluator. */

@@ -103,7 +103,7 @@ export const sailfinMolly: SpeciesDefinition = {
   baseValue: 6,
   rarity: 'common',
   visitorAppeal: 0.72,
-  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research.' },
+  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research (after intermediate freshwater).' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2019)',
@@ -222,6 +222,8 @@ export const sailfinMolly: SpeciesDefinition = {
     conservationNote: 'Least Concern at home, but released mollies are invasive in many warm countries. Never release aquarium fish.',
     funFact: 'Sailfin mollies have been found in water from fresh to more than twice as salty as the sea (about 87 ppt). Their all-female relative, the Amazon molly, needs a sailfin male to trigger its eggs but uses none of his genes.',
     inGameBehavior: 'Males flare their sails at rivals and females, the group grazes along rocks, roots and glass, and females give birth to fry that dash for cover.',
+    feedingNote: 'A grazer that needs plenty of greens: vegetable flakes, algae wafers and blanched vegetables, plus algae it picks off surfaces and the odd frozen treat. Feed a little 2–3 times a day; an autofeeder with flakes or pellets suits it.',
+    keeperTip: 'Keep the water hard. In soft water mollies often get “the shimmies”, a side-to-side wobble on the spot; crushed coral or aragonite in the filter helps hold hardness up.',
   },
   sourceReferences: [
     { id: 'fishbase-poecilia-latipinna', title: 'FishBase — Poecilia latipinna (sailfin molly)', url: 'https://www.fishbase.se/summary/Poecilia-latipinna.html', tier: 1, facts: ['15 cm TL (males)', 'Cape Fear drainage (NC) to Veracruz, Mexico', '20–28 °C', 'gestation ~28 days, 10–100 young', 'algae and plants plus small invertebrates', 'IUCN Least Concern (2019); potential pest'] },

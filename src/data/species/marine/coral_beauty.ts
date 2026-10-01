@@ -94,7 +94,7 @@ export const coralBeauty: SpeciesDefinition = {
   baseValue: 90,
   rarity: 'uncommon',
   visitorAppeal: 0.85,
-  unlock: { requires: ['reef'], hint: 'Unlocks with reef systems — a colourful fish that needs careful coral choices.' },
+  unlock: { requires: ['reef'], hint: 'Research Reef Systems — a colourful fish that needs careful coral choices.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Wild-collected fish (~$60) are still common; captive-bred ORA and Biota coral beauties (~$90) adapt better and eat prepared foods.',
   conservation: {
@@ -158,6 +158,8 @@ export const coralBeauty: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2009). Captive-bred coral beauties are available and adapt well.',
     funFact: 'Dwarf angels are sex-changers: if a harem loses its male, the top female becomes male. In a related species males have even been seen changing back to females.',
     inGameBehavior: 'Flits between caves, pecks constantly at the rockwork, flares its fins at rivals — and may take a curious bite out of a coral.',
+    feedingNote: 'Grazes film and algae off the rock all day. Offer seaweed sheets or algae wafers plus thawed mysis or brine shrimp and marine flakes or pellets, in two or three small meals a day. An autofeeder can cover the flake and pellet meals.',
+    keeperTip: 'Add it last, to a mature tank with plenty of live rock. It settles faster with natural grazing and is less likely to bully fish added after it.',
   },
   sourceReferences: [
     { id: 'fishbase-centropyge-bispinosa', title: 'FishBase — Centropyge bispinosa (Twospined angelfish)', url: 'https://www.fishbase.se/summary/Centropyge-bispinosa.html', tier: 1, facts: ['max 11.5 cm TL', 'depth 0–60 m', 'harems of 3–7', 'feeds on algae', 'secretive', 'IUCN Least Concern (2009)'] },

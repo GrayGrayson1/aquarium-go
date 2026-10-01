@@ -84,7 +84,7 @@ export const firefish: SpeciesDefinition = {
     predationWithoutNursery: 0.99,
     nurseryRequired: true,
     maxRaisedPerClutch: 4,
-    notes: 'Mated pairs are monogamous and share a burrow, where eggs are laid and guarded by the male. The pelagic larvae are very hard to raise: N. magnifica is not commercially bred, though its cousin the purple firefish has been.',
+    notes: 'Mated pairs are monogamous and share a burrow, where eggs are laid and guarded by the male. The pelagic larvae are very hard to raise: N. magnifica is not commercially bred, though its cousin the purple firefish has been spawned in captivity.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'male',
@@ -96,7 +96,7 @@ export const firefish: SpeciesDefinition = {
   baseValue: 38,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: ['marine_basics'], hint: 'Unlocks with beginner marine fish.' },
+  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'Firefish in the trade are wild-collected; captive breeding of this species has not reached commercial scale.',
   conservation: {
@@ -149,6 +149,8 @@ export const firefish: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2023). Every firefish sold is wild-caught, so a secure lid and a calm tank are part of responsible keeping.',
     funFact: 'The firefish constantly flicks its long first dorsal spine — likely a signal to neighbours — and wedges itself into its hole with that same spine raised.',
     inGameBehavior: 'Hovers facing the current, snaps at drifting food, flicks its dorsal filament, and darts into its bolt hole at the first sign of trouble.',
+    feedingNote: 'Hovers by its bolt hole, snapping small food from the water: thawed mysis and brine shrimp, marine flakes, micro pellets or live copepods, two or three times a day. An autofeeder suits it if busier fish don’t eat everything first.',
+    keeperTip: 'Use a mesh screen lid and cover the gaps around pipes and cables: startled firefish leap through surprisingly small openings.',
   },
   sourceReferences: [
     { id: 'fishbase-nemateleotris-magnifica', title: 'FishBase — Nemateleotris magnifica (Fire goby)', url: 'https://www.fishbase.se/summary/Nemateleotris-magnifica.html', tier: 1, facts: ['max 9 cm TL', 'depth typically 6–28 m', '22–28 °C', 'hovers above bottom facing current, eats zooplankton', 'monogamous', 'IUCN Least Concern (2023)'] },

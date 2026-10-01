@@ -20,6 +20,7 @@ import { StaffLayer } from './StaffLayer'; // lane:staff
 import { StaffFeedBridge } from './StaffFeedBridge'; // lane:staff
 import { PlacementGhost } from './PlacementGhost';
 import { RoomTankPick } from './RoomTankPick'; // lane:facrender
+import { RoomTankDots } from './RoomTankDots'; // lane:qa-r3 — attention dots over tanks in the room view
 import { usePropMaterials } from './materials';
 import { TrophyCase } from './Trophies'; // lane:shows
 import { ShopDressing } from './ShopDressing'; // lane:w2-visual
@@ -46,6 +47,7 @@ export function FacilityWorld() {
       <StaffFeedBridge />
       <PlacementGhost />
       <RoomTankPick />
+      <RoomTankDots />
     </group>
   );
 }

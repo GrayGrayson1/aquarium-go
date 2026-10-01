@@ -7,9 +7,11 @@
  * - `waste` = mg of ammonia-nitrogen released if one whole serving rots uneaten (frozen foods leak more,
  *   live foods barely rot because they stay alive).
  * - `enrichment` / `conditioning` 0..1 are read by the life & breeding lanes (hunting live prey, spawning condition).
+ * - `form` (lane:fit): dry / frozen / live / fresh / prepared. Real aquarium autofeeders dispense dry food only, so
+ *   `isAutofeederFood` (form 'dry') is the single rule the water sim's autofeeder and the UI's fit hints both use.
  * No brand names: generic descriptions only.
  */
-import type { FoodDef } from '@/types';
+import type { FoodDef, FoodForm } from '@/types';
 
 export const FOODS: FoodDef[] = [
   {
@@ -19,13 +21,14 @@ export const FOODS: FoodDef[] = [
     price: 6,
     servingsPerPack: 120,
     delivery: 'floating',
+    form: 'dry',
     nutrition: 25,
     waste: 3,
     enrichment: 0.05,
     conditioning: 0.1,
     unlock: null,
     color: '#d98a4e',
-    description: 'Thin multi-ingredient flakes that float, then drift down. Easy staple for surface and mid-water feeders; overfeed and they cloud the water.',
+    description: 'Thin multi-ingredient flakes that float, then drift down. An easy staple for surface and mid-water feeders, and the classic autofeeder food. Overfeed and they cloud the water.',
   },
   {
     id: 'micro_pellets',
@@ -34,13 +37,14 @@ export const FOODS: FoodDef[] = [
     price: 8,
     servingsPerPack: 150,
     delivery: 'slow_sink',
+    form: 'dry',
     nutrition: 25,
     waste: 2.4,
     enrichment: 0.05,
     conditioning: 0.15,
     unlock: null,
     color: '#b0643a',
-    description: 'Tiny, protein-rich pellets that sink slowly — a clean staple for bettas and small community fish. Soak for a moment to avoid bloating.',
+    description: 'Tiny, protein-rich pellets that sink slowly — a clean staple for bettas and small community fish, and dry enough for an autofeeder. Soak them for a moment when hand-feeding to avoid bloating.',
   },
   {
     id: 'sinking_pellets',
@@ -49,6 +53,7 @@ export const FOODS: FoodDef[] = [
     price: 9,
     servingsPerPack: 100,
     delivery: 'fast_sink',
+    form: 'dry',
     nutrition: 30,
     waste: 3,
     enrichment: 0.05,
@@ -64,6 +69,7 @@ export const FOODS: FoodDef[] = [
     price: 14,
     servingsPerPack: 80,
     delivery: 'fast_sink',
+    form: 'dry',
     nutrition: 45,
     waste: 4.2,
     enrichment: 0.05,
@@ -79,6 +85,7 @@ export const FOODS: FoodDef[] = [
     price: 8,
     servingsPerPack: 24,
     delivery: 'fast_sink',
+    form: 'live',
     nutrition: 60,
     waste: 5,
     enrichment: 0.5,
@@ -94,13 +101,14 @@ export const FOODS: FoodDef[] = [
     price: 7,
     servingsPerPack: 60,
     delivery: 'slow_sink',
+    form: 'frozen',
     nutrition: 30,
     waste: 4,
     enrichment: 0.15,
     conditioning: 0.5,
     unlock: null,
     color: '#8e1b2a',
-    description: 'Red midge larvae, thawed before feeding. Irresistible to bettas and puffers and a classic conditioning food — rich, so feed as a treat.',
+    description: 'Red midge larvae, thawed before feeding. Irresistible to bettas, puffers and axolotls and a classic conditioning food — rich, so feed it as a treat. Frozen food is fed by hand; an autofeeder can’t dispense it.',
   },
   {
     id: 'brine_frozen',
@@ -109,13 +117,14 @@ export const FOODS: FoodDef[] = [
     price: 7,
     servingsPerPack: 60,
     delivery: 'slow_sink',
+    form: 'frozen',
     nutrition: 22,
     waste: 3.2,
     enrichment: 0.1,
     conditioning: 0.35,
     unlock: null,
     color: '#e0a385',
-    description: 'Adult brine shrimp. Very palatable but lighter in nutrition than mysis — a good tempting food for picky eaters.',
+    description: 'Adult brine shrimp, thawed before feeding. Very palatable but low in nutrition unless enriched — a tempting treat for picky eaters, not a staple. Seahorses need mysis as their main food.',
   },
   {
     id: 'mysis_frozen',
@@ -124,28 +133,32 @@ export const FOODS: FoodDef[] = [
     price: 10,
     servingsPerPack: 60,
     delivery: 'slow_sink',
+    form: 'frozen',
     nutrition: 35,
     waste: 3.5,
     enrichment: 0.15,
     conditioning: 0.55,
     unlock: null,
     color: '#d9cfbf',
-    description: 'Whole mysid shrimp — the staple for seahorses and most marine carnivores. Target-feed seahorses so faster fish do not steal it.',
+    description: 'Whole mysid shrimp, thawed before feeding — the staple for seahorses and most marine carnivores. Seahorses won’t take flakes or pellets, so feed this by hand and target-feed them so faster fish don’t steal it.',
   },
   {
     id: 'meaty_frozen',
     name: 'Frozen Krill & Silversides',
-    tags: ['pellet_large', 'mysis'],
+    // lane:qa-r3 — no longer tagged 'mysis': krill and silverside chunks are far too big for seahorses, firefish and
+    // other small mysis eaters; only the big mouths that take large pellets eat them
+    tags: ['pellet_large'],
     price: 12,
     servingsPerPack: 40,
     delivery: 'slow_sink',
+    form: 'frozen',
     nutrition: 55,
     waste: 5.5,
     enrichment: 0.3,
     conditioning: 0.5,
     unlock: null,
     color: '#c7a08a',
-    description: 'Chunky frozen krill, silversides and chopped clam for large predators — lionfish, groupers and mantis shrimp. Offer on a feeding stick so the chunks are eaten, not left to rot.',
+    description: 'Chunky frozen krill, silversides and chopped clam for large predators — lionfish, groupers and mantis shrimp. Far too big for seahorses and small fish (give them mysis). Offer on a feeding stick so the chunks are eaten, not left to rot.',
   },
   {
     id: 'daphnia_frozen',
@@ -154,13 +167,14 @@ export const FOODS: FoodDef[] = [
     price: 6,
     servingsPerPack: 60,
     delivery: 'slow_sink',
+    form: 'frozen',
     nutrition: 18,
     waste: 2.4,
     enrichment: 0.1,
     conditioning: 0.25,
     unlock: null,
     color: '#9b6b3b',
-    description: 'Water fleas with a crunchy, fibrous shell that helps digestion. A light meal for small fish and a gentle fix for constipated bettas.',
+    description: 'Frozen water fleas with a crunchy, fibrous shell that helps digestion. A light meal for small fish and a gentle fix for constipated bettas.',
   },
   {
     id: 'live_snails',
@@ -169,13 +183,14 @@ export const FOODS: FoodDef[] = [
     price: 6,
     servingsPerPack: 12,
     delivery: 'live',
+    form: 'live',
     nutrition: 30,
     waste: 0.4,
     enrichment: 0.85,
     conditioning: 0.5,
     unlock: null,
     color: '#8a6e4b',
-    description: 'Small ramshorn and bladder snails bred as puffer food. Crunching shells keeps a pea puffer’s ever-growing beak trimmed — and the hunt is its favourite enrichment.',
+    description: 'Small freshwater ramshorn and bladder snails bred as puffer food. Crunching shells keeps a pea puffer’s ever-growing beak trimmed — and the hunt is its favourite enrichment. In salt water they don’t survive for long, so offer them to marine hunters such as mantis shrimp a few at a time.',
   },
   {
     id: 'algae_wafers',
@@ -184,13 +199,14 @@ export const FOODS: FoodDef[] = [
     price: 7,
     servingsPerPack: 60,
     delivery: 'fast_sink',
+    form: 'dry',
     nutrition: 25,
     waste: 2.8,
     enrichment: 0.05,
     conditioning: 0.05,
     unlock: null,
     color: '#4f6b33',
-    description: 'Plant-based discs that sink and soften slowly for plecos, otocinclus, snails and shrimp.',
+    description: 'Plant-based discs that sink and soften slowly for plecos, otocinclus, corydoras, snails and shrimp. Dry, so an autofeeder can drop them.',
   },
   {
     id: 'nori_sheet',
@@ -199,13 +215,14 @@ export const FOODS: FoodDef[] = [
     price: 5,
     servingsPerPack: 30,
     delivery: 'slow_sink',
+    form: 'dry',
     nutrition: 20,
     waste: 1.8,
     enrichment: 0.25,
     conditioning: 0.05,
     unlock: null,
     color: '#2f4a2a',
-    description: 'Unseasoned dried seaweed on a clip. Tangs, rabbitfish and many marine grazers need it daily.',
+    description: 'Unseasoned dried seaweed. Tangs, rabbitfish and many marine grazers need it daily — offer a piece on a veggie clip, or crumbled into an autofeeder.',
   },
   {
     id: 'marine_pellets',
@@ -214,6 +231,7 @@ export const FOODS: FoodDef[] = [
     price: 10,
     servingsPerPack: 150,
     delivery: 'slow_sink',
+    form: 'dry',
     nutrition: 28,
     waste: 2.6,
     enrichment: 0.05,
@@ -229,13 +247,14 @@ export const FOODS: FoodDef[] = [
     price: 15,
     servingsPerPack: 10,
     delivery: 'live',
+    form: 'live',
     nutrition: 12,
     waste: 0,
     enrichment: 0.7,
     conditioning: 0.3,
     unlock: null,
     color: '#e8dcc0',
-    description: 'A bottle of living copepods. Hunted by seahorses and dragonets; the survivors settle into live rock and keep breeding.',
+    description: 'A bottle of living copepods. Hunted by seahorses and dragonets; the survivors settle into live rock and keep breeding. Live food is added by hand — it can’t sit in an autofeeder.',
   },
   {
     id: 'coral_food',
@@ -244,6 +263,7 @@ export const FOODS: FoodDef[] = [
     price: 18,
     servingsPerPack: 50,
     delivery: 'slow_sink',
+    form: 'prepared',
     nutrition: 15,
     waste: 3,
     enrichment: 0,
@@ -259,6 +279,7 @@ export const FOODS: FoodDef[] = [
     price: 3,
     servingsPerPack: 20,
     delivery: 'fast_sink',
+    form: 'fresh',
     nutrition: 20,
     waste: 4,
     enrichment: 0.15,
@@ -274,6 +295,7 @@ export const FOODS: FoodDef[] = [
     price: 8,
     servingsPerPack: 20,
     delivery: 'live',
+    form: 'live',
     nutrition: 10,
     waste: 0.5,
     enrichment: 0.5,
@@ -289,6 +311,7 @@ export const FOODS: FoodDef[] = [
     price: 5,
     servingsPerPack: 15,
     delivery: 'live',
+    form: 'live',
     nutrition: 6,
     waste: 0.3,
     enrichment: 0.2,
@@ -304,6 +327,7 @@ export const FOODS: FoodDef[] = [
     price: 7,
     servingsPerPack: 120,
     delivery: 'slow_sink',
+    form: 'dry',
     nutrition: 30,
     waste: 3.4,
     enrichment: 0.05,
@@ -319,13 +343,14 @@ export const FOODS: FoodDef[] = [
     price: 12,
     servingsPerPack: 40,
     delivery: 'fast_sink',
+    form: 'prepared',
     nutrition: 30,
     waste: 1.8,
     enrichment: 0.15,
     conditioning: 0.3,
     unlock: null,
     color: '#8a7a3a',
-    description: 'A powder you mix with hot water to set into a firm gel. Holds together for hours, so it barely fouls the water — great for grazers, shrimp and mixed tanks.',
+    description: 'A powder you mix with hot water to set into a firm gel. Holds together for hours, so it barely fouls the water — great for grazers, shrimp and mixed tanks. Fed by hand (a gel won’t pour from an autofeeder).',
   },
 ];
 
@@ -338,4 +363,30 @@ export function getFoodDef(id: string): FoodDef | undefined {
 /** Foods an animal with these accepted tags will eat. */
 export function foodsForTags(tags: readonly string[]): FoodDef[] {
   return FOODS.filter((f) => f.tags.some((t) => tags.includes(t)));
+}
+
+// ───────────── lane:fit — food form & the autofeeder rule ─────────────
+
+/** A food's physical form (catalog `form`; anything unlabelled counts as prepared, never as dry). */
+export function foodForm(food: FoodDef | string | undefined): FoodForm {
+  const f = typeof food === 'string' ? getFoodDef(food) : food;
+  return f?.form ?? 'prepared';
+}
+
+/**
+ * Can an automatic feeder dispense this food? Only dry food (flakes, pellets, wafers, dried seaweed): frozen food has
+ * to be thawed, live food has to stay alive, and gels or fresh vegetables would rot in the hopper. The one source of
+ * truth for the water sim's autofeeder (src/sim/water/step.ts) and every fit hint (src/sim/care/fit.ts).
+ */
+export function isAutofeederFood(food: FoodDef | string | undefined): boolean {
+  return foodForm(food) === 'dry';
+}
+
+/**
+ * lane:qa-r3 — the dry foods an animal with these diet tags eats, in catalog order (empty: no autofeeder can ever feed
+ * it). The single "can an autofeeder feed this species" rule: the water sim and fit hints (src/sim/care/autofeed.ts)
+ * and the keeper's guide (src/data/species/guide.ts) all call it.
+ */
+export function autofeedFoodsForTags(tags: readonly string[]): FoodDef[] {
+  return foodsForTags(tags).filter((f) => isAutofeederFood(f));
 }

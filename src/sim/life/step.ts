@@ -13,6 +13,8 @@ import { addWaste, consumeFood, consumePods, creatureWasteUnits, effectiveBioloa
 import { incidentRisks, huntingDrive, edibleSizeCm, type IncidentRisk } from '../compat';
 import { lightsOn } from '../time';
 import { feedingPersonalityMul } from './personality';
+import { canAutofeed, handFoodPhrase } from '../care/autofeed'; // lane:fit — text only (no RNG)
+import { getEquipmentDef } from '@/data/catalog/equipment'; // lane:fit
 import { ageDaysOf, gallonsNeededNow, lifeStageFor, observableSex, sexVisible, sizeAtAge } from './growth';
 import { ILLNESSES, eligibleIllnesses, illnessDef, type IllnessKind } from './illness';
 import {
@@ -215,7 +217,15 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   switch (top) {
     case 'starvation': {
       const slow = sp.feedingSpeed < 0.3;
-      const hint = slow ? `${pluralName(spName)} feed slowly — target feeding and calm tank mates make sure they get their share` : 'regular feeding (or an autofeeder) keeps everyone in condition';
+      // lane:fit — only suggest an autofeeder to animals that eat dry food (seahorses, puffers… take frozen/live only).
+      const dry = canAutofeed(sp);
+      const hint = slow
+        ? dry
+          ? `${pluralName(spName)} feed slowly — target feeding and calm tank mates make sure they get their share`
+          : `${pluralName(spName)} feed slowly and only eat ${handFoodPhrase(sp)}: target-feed them by hand, away from fast tank mates — an autofeeder can’t feed them`
+        : dry
+          ? 'regular feeding (or an autofeeder) keeps everyone in condition'
+          : `${pluralName(spName)} only eat ${handFoodPhrase(sp)}, so they need regular feeding by hand — an autofeeder can’t feed them`;
       const p = pronoun(c);
       return { kind: 'starvation', cause: 'not enough food', text: `${name} has passed away. ${cap(p.they)} ${p.they === 'they' ? "weren't" : "wasn't"} getting enough to eat — ${hint}.` };
     }
@@ -1037,7 +1047,13 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   if (s.hunger >= 80 && throttleGroup(state, ids, 'hungry', hour, 24)) {
     const slow = sp.feedingSpeed < 0.3 && [...env.groups.keys()].some((id) => id !== sp.id && (findSpecies(id)?.feedingSpeed ?? 0) > sp.feedingSpeed + 0.2);
     const who = plural ? `Your ${pluralName(sp.commonName)} are` : `${c.name} is`;
-    const text = slow ? `${who} very hungry — faster tank mates may be taking the food. Try target feeding.` : `${who} very hungry — time to feed.`;
+    // lane:fit — a running autofeeder can't help an animal that eats no dry food: say so, and what it does eat.
+    const af = !canAutofeed(sp) && env.tank.equipment.some((e) => e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'autofeeder');
+    const pn = pronoun(c);
+    const obj = plural ? 'them' : pn.they === 'she' ? 'her' : pn.they === 'he' ? 'him' : 'it';
+    const subj = plural ? 'they only eat' : `${pn.they === 'they' ? 'it' : pn.they} only eats`;
+    const afNote = af ? ` The autofeeder can’t feed ${obj} — ${subj} ${handFoodPhrase(sp)}.${slow ? '' : ` Feed by hand${sp.feedingSpeed < 0.3 || sp.feedingStyle === 'target_fed' ? ' or target-feed' : ''}.`}` : '';
+    const text = (slow ? `${who} very hungry — faster tank mates may be taking the food. Try target feeding.` : `${who} very hungry — time to feed.`) + afNote;
     // The early cue reaches the screen for the animals a player can lose fastest: the starter and small groups.
     const early = (c.isStarter || groupN <= 3) && throttleGroup(state, ids, 'hungry_toast', hour, toastWindowH);
     ctx.emit({ kind: 'warning', text, tankId: env.tank.id, creatureId: c.id, toast: early });

@@ -138,7 +138,8 @@ export function marketAccess(state: GameState): { listings: boolean; tankAuction
   const listings = isUnlocked(state, 'market_listings');
   const tankAuctions = isUnlocked(state, 'tank_auctions');
   let hint: string | undefined;
-  if (!listings) hint = 'The marketplace opens as your reputation grows. Until then, the local fish store will buy animals for quick cash.';
+  // lane:guide — the real rule (src/data/unlocks.ts market_listings): the first visit to the Market, finishing the guide, or 10 reputation
+  if (!listings) hint = 'Listings open after your first visit to the Market (or at 10 reputation). Until then, the local fish store buys animals for quick cash in Livestock › Quick sell.';
   else if (!tankAuctions) hint = 'Whole-aquarium auctions unlock a little later. You can already list individual animals, pairs and groups.';
   return { listings, tankAuctions, hint };
 }
@@ -1129,7 +1130,8 @@ export function quickSell(state: GameState, creatureIds: string[]): ActionResult
   addMastery(state, 'business', 2);
   if (sick > 0) addReputation(state, -2 * sick, 'Sold unwell animals to the local store');
   emitEvent(state, { kind: 'info', text: `${LOCAL_FISH_STORE} bought ${names} for ${fmtMoney(q.total)}.${sick ? ' They noted the animals were unwell.' : ''}` });
-  return { ok: true, message: `Sold ${names} to ${LOCAL_FISH_STORE} for ${fmtMoney(q.total)}.` };
+  // lane:guide — say what the sale cost in reputation (it used to happen without a word)
+  return { ok: true, message: `Sold ${names} to ${LOCAL_FISH_STORE} for ${fmtMoney(q.total)}.${sick ? ` Selling ${sick === 1 ? 'an unwell animal' : `${sick} unwell animals`} cost ${2 * sick} reputation.` : ''}` };
 }
 
 // ───────────────────────────── simulation ─────────────────────────────

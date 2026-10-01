@@ -89,7 +89,7 @@ export const trochusSnail: SpeciesDefinition = {
   baseValue: 7,
   rarity: 'common',
   visitorAppeal: 0.15,
-  unlock: { requires: ['marine_basics'], hint: 'Unlocks with beginner marine fish and clean-up crew.' },
+  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish and clean-up crew.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Not evaluated (IUCN)',
@@ -150,8 +150,10 @@ export const trochusSnail: SpeciesDefinition = {
     compatibilityNotes: 'Completely reef-safe. At risk from puffers, triggers, mantis shrimp and, occasionally, shell-hunting hermit crabs.',
     breedingOverview: 'Broadcast spawns a milky cloud of eggs and sperm. The larval stage is so short that babies can appear on the glass without any help.',
     conservationNote: 'Not assessed by the IUCN. Captive-bred snails are easy to find — choose them over wild-collected ones.',
-    funFact: 'Unlike Turbo and Tectus snails, a Trochus knocked on its back can twist its foot around and right itself.',
+    funFact: 'Unlike Tectus and Astraea snails, a Trochus knocked on its back can twist its foot around and right itself.',
     inGameBehavior: 'Slides slowly over glass and rock leaving clean trails, rights itself if it tumbles, and sometimes spawns at night.',
+    feedingNote: 'Rasps film algae, diatoms and cyanobacteria off glass and rock. If the tank runs low on algae, add an algae wafer or a scrap of seaweed sheet a few times a week. An autofeeder with wafers is only a top-up.',
+    keeperTip: 'Drip-acclimate new snails over about an hour. They cope with sudden salinity changes far worse than fish, and a rushed transfer is a common cause of early losses.',
   },
   sourceReferences: [
     { id: 'liveaquaria-banded-trochus', title: 'LiveAquaria — Banded Trochus Snail', url: 'https://www.liveaquaria.com/product/564/?pcatid=564', tier: 2, facts: ['eats film algae, cyanobacteria, diatoms', 'rights itself when knocked over (unlike Tectus)', 'breeds easily in aquaria', 'not easily eaten by crabs', 'copper intolerant', '1 per 2–3 gal', '72–78 °F, SG 1.023–1.025'] },

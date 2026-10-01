@@ -95,12 +95,12 @@ export const mandarinDragonet: SpeciesDefinition = {
   baseValue: 55,
   rarity: 'rare',
   visitorAppeal: 0.95,
-  unlock: { requires: ['marine_advanced'], hint: 'Unlocks with advanced marine specialists — it needs a mature, copepod-rich reef.' },
+  unlock: { requires: ['marine_advanced'], hint: 'Research Refugiums & Copepods — it needs a mature, copepod-rich reef.' },
   captiveBredAvailable: true,
-  wildCaughtNote: 'Wild-caught mandarins usually refuse anything but live copepods and often starve; captive-bred ORA/Biota mandarins are trained onto frozen and prepared foods.',
+  wildCaughtNote: 'Wild-caught mandarins usually refuse anything but live copepods and often starve. Many captive-bred ORA/Biota mandarins learn frozen foods, but not all, and copepods stay their staple.',
   conservation: {
     status: 'Least Concern (IUCN Red List, assessed 2018)',
-    note: 'Widespread, but historically many wild-caught mandarins starved in tanks without enough copepods. Captive-bred fish that eat frozen food changed that.',
+    note: 'Widespread, but historically many wild-caught mandarins starved in tanks without enough copepods. Captive-bred fish, which more often learn frozen food, have eased that.',
   },
 
   genetics: {
@@ -160,12 +160,14 @@ export const mandarinDragonet: SpeciesDefinition = {
     summary: 'A psychedelic, hovering bottom fish that spends all day picking copepods off the rock — one of the most colourful fish on Earth.',
     nativeHabitat: 'Silty lagoons and inshore reefs 1–18 m deep, among coral rubble and branching coral in the western Pacific.',
     socialStructure: 'Lives in small, loose groups or pairs. Males display to females at dusk.',
-    tankNeeds: 'A mature reef (six months or more) with plenty of live rock, ideally a refugium, and a steady copepod supply. Captive-bred fish also take frozen foods like baby brine shrimp.',
+    tankNeeds: 'A mature reef or live-rock tank (six months or more) with plenty of live rock, ideally a refugium, and a steady copepod supply. Some captive-bred fish also learn frozen foods; pods stay the staple.',
     compatibilityNotes: 'Peaceful and reef-safe, but a slow, picky eater that starves if fast fish or other copepod-eaters (other dragonets, some wrasses) get the food first. Two males fight. A good companion for seahorses.',
     breedingOverview: 'Pairs rise toward the surface at dusk and release floating eggs that hatch in about 12 hours. Larvae are reared on copepods by commercial farms.',
-    conservationNote: 'Least Concern (IUCN 2018). Choose captive-bred mandarins — they eat prepared foods and live far longer in aquaria.',
+    conservationNote: 'Least Concern (IUCN 2018). Choose captive-bred mandarins — they settle in far better, and some learn to eat frozen food.',
     funFact: 'Mandarins have no scales. Instead a thick, bad-smelling toxic slime coats their skin, and their shocking colours may be a warning to predators.',
     inGameBehavior: 'Hops over rock and sand on its pectoral fins, hovering and pecking at copepods one by one; at dusk, pairs may rise together in a spawning dance.',
+    feedingNote: 'Picks tiny live copepods off rock and sand all day, hundreds of them, so it needs mature live rock or a refugium. Only some captive-bred fish learn baby brine or frozen foods. An autofeeder only helps the rare fish that learns pellets.',
+    keeperTip: 'Buy captive-bred and ask to see it eat frozen food first. Before it comes home, shine a torch on the rock at night: you should see copepods crawling.',
   },
   sourceReferences: [
     { id: 'fishbase-synchiropus-splendidus', title: 'FishBase — Synchiropus splendidus (Mandarinfish)', url: 'https://www.fishbase.se/summary/Synchiropus-splendidus.html', tier: 1, facts: ['max 7 cm TL', 'depth 1–18 m', 'silty lagoons, coral rubble', 'pairs ascend to spawn', 'rare red individuals', 'IUCN Least Concern (2018)', 'reared in captivity'] },

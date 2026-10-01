@@ -147,6 +147,9 @@ export interface SubstrateDef {
   description: string;
 }
 
+/** lane:fit — physical form of a food: dry (flakes, pellets, wafers, dried seaweed), frozen, live, fresh, or prepared (gel, coral food). */
+export type FoodForm = 'dry' | 'frozen' | 'live' | 'fresh' | 'prepared';
+
 export interface FoodDef {
   id: string;
   name: string;
@@ -156,6 +159,8 @@ export interface FoodDef {
   servingsPerPack: number;
   /** How it moves in the water: floats, sinks slowly, sinks fast, live swimmer, target-fed. */
   delivery: 'floating' | 'slow_sink' | 'fast_sink' | 'live' | 'target';
+  /** lane:fit — what the food physically is. Only 'dry' food fits an autofeeder (see isAutofeederFood in foods.ts). */
+  form?: FoodForm;
   /** Nutrition per serving (hunger reduction units). */
   nutrition: number;
   /** Waste added if uneaten per serving. */

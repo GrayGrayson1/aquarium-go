@@ -8,6 +8,7 @@ import { listSlots, loadIntoGame, deleteSlot, timeAgo, slotLabel, watchSaves, ty
 import { speciesName } from '../common/format';
 import { Portrait } from '../common/Portrait';
 import { useUI } from '@/state/ui';
+import { toastMark, reportLoadFailure } from './loadFeedback'; // lane:guide
 
 /**
  * `promotes`: the slot's "Previous …" entry (a different aquarium in its backup). Deleting the slot moves that one into
@@ -66,7 +67,6 @@ export function LoadDialog({ open, onClose, onChanged }: { open: boolean; onClos
     listSlots().then(setSaves);
     return watchSaves(() => listSlots().then(setSaves));
   }, [open]);
-  const refresh = () => listSlots().then((s) => { setSaves(s); onChanged?.(); });
   return (
     <Modal open={open} onClose={onClose} title="Load an aquarium" subtitle="Saves live in this browser." width={620} testId="load-dialog">
       {saves == null ? (
@@ -83,16 +83,21 @@ export function LoadDialog({ open, onClose, onChanged }: { open: boolean; onClos
               promotes={s.previousOf ? undefined : saves.find((p) => p.previousOf === s.slot)}
               onLoad={async () => {
                 setBusy(true);
+                const mark = toastMark(); // lane:guide — one message per failure (see ./loadFeedback)
                 const g = await loadIntoGame(s.slot);
                 setBusy(false);
                 if (g) {
                   useUI.getState().set({ panel: null });
                   onClose();
-                } else useUI.getState().toast('That save could not be opened.', 'danger');
+                } else reportLoadFailure(mark);
               }}
               onDelete={async () => {
                 await deleteSlot(s.slot);
-                refresh();
+                // lane:guide — deleteSlot swallows storage errors; if the same save is still listed, say so
+                const after = await listSlots();
+                setSaves(after);
+                onChanged?.();
+                if (after.some((x) => x.slot === s.slot && x.savedAt === s.savedAt && x.shopName === s.shopName)) useUI.getState().toast('That save couldn’t be deleted — the browser refused the change. Please try again.', 'warning');
               }}
             />
           ))}

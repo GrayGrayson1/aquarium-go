@@ -1,5 +1,9 @@
 /**
  * Bottom dock: the nine management destinations. Locked items show a lock + hint. OWNER: lane "ui-shell".
+ * lane:notify — attention dots (top-right of the icon): Tanks — a tank other than the one in view needs a look
+ * (amber/red, live; the one in view has its dot on the Tank card button); Shows — new
+ * results (opens Shows › Results, which marks them seen); Market — bids waiting for an answer; Research — a project
+ * finished since it was last open; a newly unlocked destination until first opened. Rules: ../common/notify.ts.
  */
 import clsx from 'clsx';
 import { useEffect, useRef, useState, type ComponentType } from 'react';
@@ -14,8 +18,8 @@ import { sfx } from '@/audio/sfx';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { tutorialFlag } from '../common/actions';
 import { Trophy } from 'lucide-react'; // lane:shows
-import { unseenResults } from '@/sim/shows'; // lane:w2-ui — Shows dock badge
 import { withArticle } from '@/sim/economy/util'; // lane:w2-ui
+import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
 
 interface DockItem {
   id: PanelId;
@@ -133,10 +137,8 @@ export function Dock() {
   const unlocked = useGameSelector((g) => g.progress.unlocked.join('|'), '');
   const dev = useSettings((s) => s.devMode);
   const isUnlocked = (key?: string | null) => !key || dev || unlocked.split('|').includes(key);
-  // lane:w2-ui — small count badges on dock buttons (judged show results the player hasn't opened yet)
-  const unseenShows = useGameSelector((g) => (g.isShowcase ? 0 : safe('unseenResults', () => unseenResults(g), 0)), 0);
-  const badges: Partial<Record<PanelId, { n: number; label: string; target: string }>> = {};
-  if (unseenShows > 0) badges.shows = { n: unseenShows, label: `${unseenShows} new show result${unseenShows === 1 ? '' : 's'}`, target: 'tab:results' };
+  // lane:notify — attention dots (lane:w2-ui's show-results count badge became one of them)
+  const badges = useNavDots(DOCK_ITEMS);
   return (
     <nav className={clsx('ag-dock', fades.l && 'has-more-left', fades.r && 'has-more-right')} aria-label="Management">
       <div className="ag-dock__scroll" ref={ref}>
@@ -144,7 +146,7 @@ export function Dock() {
           const open = isUnlocked(it.lock);
           const Icon = it.icon;
           const hint = it.hint ?? (it.lock ? (UNLOCK_KEYS as Record<string, string>)[it.lock] : undefined);
-          const badge = open ? badges[it.id] : undefined; // lane:w2-ui
+          const badge = open && panel !== it.id ? badges[it.id] : undefined; // lane:w2-ui / lane:notify — not on the open panel
           return (
             <button
               key={it.id}
@@ -172,11 +174,7 @@ export function Dock() {
                     <Lock size={10} />
                   </span>
                 )}
-                {badge && (
-                  <span className="ag-dock__badge" data-testid={`dock-badge-${it.id}`} aria-hidden>
-                    {badge.n > 9 ? '9+' : badge.n}
-                  </span>
-                )}
+                {badge && <AttnDot level={badge.level} className="ag-dock__attn" testId={`dock-badge-${it.id}`} />}
               </span>
               <span className="ag-dock__label">{it.label}</span>
             </button>

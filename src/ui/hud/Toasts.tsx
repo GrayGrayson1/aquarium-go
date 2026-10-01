@@ -19,7 +19,7 @@ import { AnimatePresence, motion, useIsPresent } from 'motion/react';
 import { X } from 'lucide-react';
 import type { GameEvent } from '@/types';
 import { useGame } from '@/state/game';
-import { useUI, type PanelId } from '@/state/ui';
+import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { sfx } from '@/audio/sfx';
 import { EventIcon, type AnyKind } from './eventIcons';
@@ -29,7 +29,7 @@ import { MOBILE_QUERY, SHORT_LANDSCAPE_QUERY, safe, useMedia } from '../common/s
 import { tutorialChain } from '@/data/quests';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { useDockedCard } from './cardDock';
-import { UNLOCK_KEYS } from '@/data/unlockKeys'; // lane:w2-ui
+import { SHOW_RESULT_TEXT, UNLOCK_KEY_BY_LABEL, eventLink, unlockLink, type EventLink } from './eventLinks'; // lane:notify
 import { convertTempText } from '../common/format';
 import { isExpired, pickShown, prio, ttlOf, PREEMPT_AFTER_MS, URGENT_PRIO } from './toastQueue';
 import { UpdatePrompt, useNewBuildAvailable } from './UpdatePrompt';
@@ -90,41 +90,9 @@ interface View {
 // ───────────── lane:w2-ui: unlocks say where the new thing lives ─────────────
 // "Unlocked: Shows & championships" alone never told a new player where Shows are. Feature unlocks now carry a short
 // "where" line and open the right panel on click; show results open Shows › Results (the text says the cards are there).
+// lane:notify — the link table lives in ./eventLinks, shared with the alerts drawer and the Log panel.
 
-interface ToastLink {
-  panel: PanelId;
-  target: string | null;
-  /** Short "where" line shown under the title. */
-  where: string;
-}
-
-const UNLOCK_LINKS: Record<string, ToastLink> = {
-  shows: { panel: 'shows', target: 'tab:upcoming', where: 'Enter a healthy adult from Shows in the dock.' },
-  shows_regional: { panel: 'shows', target: 'tab:upcoming', where: 'Regional shows are on the Shows calendar.' },
-  shows_national: { panel: 'shows', target: 'tab:upcoming', where: 'National championships are on the Shows calendar.' },
-  shows_international: { panel: 'shows', target: 'tab:upcoming', where: 'International championships are on the Shows calendar.' },
-  photo_contests: { panel: 'shows', target: 'tab:upcoming', where: 'Aquascape classes open at shows.' },
-  staff: { panel: 'visitors', target: 'tab:staff', where: 'Hire your first keeper in Visitors › Staff.' },
-  visitors: { panel: 'visitors', target: 'tab:visitors', where: 'Open your doors in Visitors.' },
-  brackish: { panel: 'build', target: 'tab:tanks', where: 'Set up a brackish tank in Build › Tanks.' },
-  decor_mangrove: { panel: 'build', target: 'tab:decor', where: 'Find them in Build › Decor.' },
-  market_listings: { panel: 'market', target: 'tab:listings', where: 'List animals in Market › My listings.' },
-  tank_auctions: { panel: 'market', target: 'tab:listings', where: 'List a whole aquarium in Market › My listings.' },
-  nursery: { panel: 'tanks', target: null, where: 'Set a tank’s purpose in Tanks.' },
-};
-
-/** Where an unlock key lives (feature keys above; tanks, gear, livestock and venues by family). */
-function unlockLink(key: string): ToastLink | null {
-  if (UNLOCK_LINKS[key]) return UNLOCK_LINKS[key];
-  if (key.startsWith('tank_')) return { panel: 'build', target: 'tab:tanks', where: 'Buy it in Build › Tanks.' };
-  if (key.startsWith('gear_')) return { panel: 'market', target: 'tab:supplies', where: 'Find it in Market › Supplies.' };
-  if (key.startsWith('facility_')) return { panel: 'build', target: 'tab:facility', where: 'Move in from Build › Facility.' };
-  if (key.startsWith('decor_')) return { panel: 'build', target: 'tab:decor', where: 'Find it in Build › Decor.' };
-  if (/^(fw_|marine_)/.test(key) || key === 'reef' || key === 'predators') return { panel: 'market', target: 'tab:shop', where: 'New species arrive in Market › Shop.' };
-  return null;
-}
-
-const UNLOCK_KEY_BY_LABEL: Record<string, string> = Object.fromEntries(Object.entries(UNLOCK_KEYS).map(([k, label]) => [label, k]));
+type ToastLink = Pick<EventLink, 'panel' | 'target' | 'where'>;
 
 /**
  * lane:qa-final — whole new features, in order of importance. Finishing the guide unlocks Shows together with party
@@ -144,13 +112,16 @@ function parse(text: string): View {
     const headline = key ? HEADLINE_UNLOCKS.indexOf(key) : -1;
     return { label: 'Unlocked', title: m[1], detail: link?.where, link: link ?? undefined, ...(headline >= 0 ? { headline } : {}) };
   }
-  // lane:w2-ui — show results: "The judge’s cards are in Shows." → open Shows › Results
-  if (/The judge’s cards (are in Shows|explain why)\.$/.test(text)) return { title: text, link: { panel: 'shows', target: 'tab:results', where: '' } };
+  // lane:w2-ui — show results: "The judge’s cards are in Shows." → open Shows › Results (lane:notify: and entries the
+  // club sent home — "… The club refunded the fee." — which the Results tab lists too)
+  if (SHOW_RESULT_TEXT.test(text)) return { title: text, link: { panel: 'shows', target: 'tab:results', where: '' } };
   m = /^New arrivals at the shop:\s*(.+?)\.?$/.exec(text);
   if (m) return { label: 'New at the shop', title: m[1] };
   m = /^Market special:\s*(.+)$/.exec(text);
   if (m) return { label: 'Market special', title: m[1] };
-  return { title: text };
+  // lane:notify — anything else with a home (finished research → Research)
+  const link = eventLink({ kind: 'info', text });
+  return link ? { title: text, link } : { title: text };
 }
 
 function viewOf(e: Entry): View {

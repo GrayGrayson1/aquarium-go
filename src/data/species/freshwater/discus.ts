@@ -87,7 +87,7 @@ export const discus: SpeciesDefinition = {
   baseValue: 60,
   rarity: 'uncommon',
   visitorAppeal: 0.95,
-  unlock: { requires: ['fw_advanced'], hint: 'Unlocks with advanced freshwater (discus) husbandry.' },
+  unlock: { requires: ['fw_advanced'], hint: 'Unlocks with advanced freshwater: research Discus Husbandry (opens once intermediate freshwater is unlocked).' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Wild discus are still imported, but the trade is dominated by domestic strains farmed in South-East Asia.',
   conservation: {
@@ -165,6 +165,8 @@ export const discus: SpeciesDefinition = {
     conservationNote: 'Least Concern in the wild; domestic strains are farm-bred. Never release aquarium fish.',
     funFact: 'Discus parents “nurse” their fry: both secrete a nutritious mucus from their skin, which the babies graze — often compared to mammal milk.',
     inGameBehavior: 'Hovers gracefully in a loose group, flashes dark stress bars when nervous, and bonded pairs clean a cone and guard their fry.',
+    feedingNote: 'A slow, deliberate mid-water feeder. Give two or three small meals a day (more for juveniles): discus pellets or flakes plus frozen bloodworms, brine shrimp and mysis. Remove leftovers. An autofeeder can cover the dry meals.',
+    keeperTip: 'Quarantine new discus in a separate tank for a few weeks before they join your group. Imported fish often carry parasites, and disease spreads fast through a warm discus tank.',
   },
   sourceReferences: [
     { id: 'seriouslyfish-symphysodon-aequifasciatus', title: 'Seriously Fish — Symphysodon aequifasciatus', url: 'https://www.seriouslyfish.com/species/symphysodon-aequifasciatus/', tier: 2, facts: ['140 mm SL', 'lowland Amazon floodplain habitats', '120×45×45 cm tank', 'peaceful, shy', 'insect larvae and invertebrate diet'] },

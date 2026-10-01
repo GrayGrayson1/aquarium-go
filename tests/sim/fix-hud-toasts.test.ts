@@ -89,7 +89,8 @@ describe('toast CSS contract', () => {
     const block = desktop.slice(0, desktop.indexOf('\n}'));
     expect(block).toContain('.ag-toast__title { -webkit-line-clamp: 2; }');
     expect(block).not.toMatch(/\.ag-toast__title \{ -webkit-line-clamp: 1; \}/);
-    expect(block).toMatch(/\.ag-toast--warning \.ag-toast__title[^{]*\{ -webkit-line-clamp: 3; \}/);
+    // lane:qa-r3 — four lines (was three): a purchase receipt plus its heads-up kept losing the instruction at the end
+    expect(block).toMatch(/\.ag-toast--warning \.ag-toast__title[^{]*\{ -webkit-line-clamp: 4; \}/);
   });
   it('phones relocate the stack under a full-height bottom sheet (P4-06) and give warnings two lines (S12-03)', () => {
     expect(css).toMatch(/:root:has\(\.pn-sheet--bottom\.is-max, \.ag-sheet--bottom\.is-expanded\) \.ag-toasts[^{]*\{[^}]*top: auto;[^}]*bottom:/);

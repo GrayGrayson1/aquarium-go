@@ -74,7 +74,7 @@ export const whiteCloudMinnow: SpeciesDefinition = {
     predationWithoutNursery: 0.4,
     nurseryRequired: false,
     maxRaisedPerClutch: 10,
-    notes: 'Spawns repeatedly through the warmer months, scattering small clear eggs over fine plants. Eggs hatch in about 2 days at 25–27 °C and the fry need infusoria, then baby brine shrimp. Adults sometimes eat eggs but largely ignore their fry, so fry often appear in well-planted tanks on their own.',
+    notes: 'Spawns repeatedly through the warmer months, scattering small clear eggs over fine plants. Eggs hatch in about 2–2½ days and the fry need infusoria, then baby brine shrimp. Adults sometimes eat eggs but largely ignore their fry, so fry often appear in well-planted tanks on their own.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',
@@ -85,7 +85,7 @@ export const whiteCloudMinnow: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.5,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Data Deficient (IUCN 2010); nationally protected in China',
@@ -141,6 +141,8 @@ export const whiteCloudMinnow: SpeciesDefinition = {
     conservationNote: 'Thought extinct in the wild for decades and rediscovered in 2003; still rare and protected in China. Never release aquarium fish.',
     funFact: 'The genus is named after Tan Kam Fei, the scout leader who collected the first fish on White Cloud Mountain in 1932.',
     inGameBehavior: 'Cruises the upper water in a loose school, males flaring fins at one another, and dashes to the surface at feeding time.',
+    feedingNote: 'Takes almost any small food near the surface: flakes or micro pellets once or twice a day, plus thawed daphnia, brine shrimp or bloodworms. Slow tank mates may miss out. An autofeeder with flakes or micro pellets suits it.',
+    keeperTip: 'Watch summer heat rather than winter cold. They cope with a cool room, but water above about 25 °C stresses them; a small fan blowing across the surface cools the tank.',
   },
   sourceReferences: [
     { id: 'fishbase-tanichthys-albonubes', title: 'FishBase — Tanichthys albonubes', url: 'https://www.fishbase.se/summary/Tanichthys-albonubes.html', tier: 1, facts: ['4.0 cm TL', '18–22 °C nominal, survives to 5 °C', 'pH 6.0–8.0, dH 5–19', 'not recorded in the wild 1980–2001', 'IUCN Data Deficient (2010)', 'groups of 5+'] },

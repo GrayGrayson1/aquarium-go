@@ -87,7 +87,7 @@ export const endlersLivebearer: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'uncommon',
   visitorAppeal: 0.65,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater species: reach 40 reputation or build husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Endangered (IUCN 2021)',
@@ -157,10 +157,12 @@ export const endlersLivebearer: SpeciesDefinition = {
     socialStructure: 'Peaceful and lively in groups; males display to females all day.',
     tankNeeds: 'A planted tank of 10 gallons or more, warm (about 24–27 °C), hard alkaline water and floating plants. Too small for boisterous community tanks.',
     compatibilityNotes: 'Keep only with fish too small or gentle to eat them. Never with guppies — they hybridise and ruin pure lines. Adults may pick off shrimplets.',
-    breedingOverview: 'Livebearers: a brood of up to about 25 fry every three to four weeks; males colour up in under a month.',
+    breedingOverview: 'Livebearers: a brood of up to about 25 fry every three to four weeks; males colour up at three to five weeks old.',
     conservationNote: 'Endangered in the wild. Pure, documented lines are a real contribution — and aquarium fish must never be released.',
     funFact: 'Named after the geneticist Øjvind Winge and made famous by biologist John Endler, who rediscovered them in 1975.',
     inGameBehavior: 'Males zip around displaying their colours, the group picks at algae and the surface, and females drop tiny fry into the plants.',
+    feedingNote: 'Tiny mouths: crushed flakes or micro pellets in small pinches two or three times a day, plus live baby brine shrimp or frozen daphnia, and some plant food. They graze algae too. An autofeeder with flakes suits them.',
+    keeperTip: 'Females store sperm and can have several broods from one mating, so a female from a mixed shop tank may carry hybrid fry. For a pure line, buy from a breeder.',
   },
   sourceReferences: [
     { id: 'seriouslyfish-poecilia-wingei', title: 'Seriously Fish — Poecilia wingei', url: 'https://www.seriouslyfish.com/species/poecilia-wingei/', tier: 2, facts: ['males 25 mm SL', '24–30 °C, pH 7.0–8.5, GH 15–35', 'broods every 23–24 days, 5–25 fry', 'males colour at 3–5 weeks, females breed at ~2 months', 'adults rarely eat young', 'do not house with guppies', 'Laguna de Patos habitat lost'] },

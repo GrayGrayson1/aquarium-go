@@ -44,7 +44,7 @@ export const hillstreamLoach: SpeciesDefinition = {
   aggression: 0.05,
   finNipper: 0,
   hasLongFins: false,
-  social: { kind: 'group', minGroup: 3, idealGroup: 6, note: 'Keep one, or three or more — never exactly two, as one will harass the other. Groups of six spread the harmless sparring.' },
+  social: { kind: 'group', minGroup: 3, idealGroup: 6, note: 'Keep three or more — never exactly two, as the stronger one bullies the weaker. Groups of six or more spread the harmless sparring.' },
   sameSpeciesRule: { maleMale: 'tension', femaleFemale: 'ok', mixed: 'ok', juvenile: 'ok', note: 'Males spar belly-to-belly or circle each other over grazing patches without real injury.' },
 
   predatorTags: ['eggs', 'fry'],
@@ -86,7 +86,7 @@ export const hillstreamLoach: SpeciesDefinition = {
   baseValue: 15,
   rarity: 'uncommon',
   visitorAppeal: 0.7,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species.' },
+  unlock: { requires: ['fw_intermediate'], hint: 'Keep freshwater tanks healthy: reach 70 reputation and 200 husbandry mastery.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Much of the trade is still wild-collected in Vietnam; captive-bred fish are increasingly available.',
   conservation: {
@@ -134,13 +134,15 @@ export const hillstreamLoach: SpeciesDefinition = {
   encyclopedia: {
     summary: 'A tiny freshwater “stingray” lookalike: a flat, gold-and-black netted loach that clings to rocks and glass in fast water.',
     nativeHabitat: 'Clear, shallow, fast and highly oxygenated mountain streams and waterfalls over bedrock and boulders in Vietnam.',
-    socialStructure: 'Mildly territorial grazers; males spar in harmless shoving matches. Keep one or a group, never a pair.',
-    tankNeeds: 'Strong current (10–20× turnover), lots of oxygen, cool water (about 19–23 °C), bright light to grow algae on smooth stones, a mature tank with biofilm, and a tight lid.',
+    socialStructure: 'Mildly territorial grazers; males spar in harmless shoving matches. Keep a group of three or more, never a pair.',
+    tankNeeds: 'Strong current (filters turning the water over about 15–20× an hour), lots of oxygen, cool water (about 19–23 °C), bright light to grow algae on smooth stones, a mature tank with biofilm, and a tight lid.',
     compatibilityNotes: 'Peaceful with white clouds, danios, medaka, shrimp and snails. They grip glass so firmly that goldfish cannot pluck them off. Avoid other flat-bodied hillstream loaches, which compete for the same patches.',
     breedingOverview: 'Scatters a few tiny eggs among stones; fry usually appear by surprise in mature tanks.',
     conservationNote: 'Vulnerable in the wild from collection, dams and habitat loss. Choose captive-bred fish and never release aquarium animals.',
     funFact: 'Its fins and flat body work like a suction cup — it can glide off a raised stone on the current like a tiny ray.',
     inGameBehavior: 'Clings to glass and stones in the current, grazes biofilm, hops between rocks and spars belly-to-belly with rivals.',
+    feedingNote: 'Grazes algae and biofilm off stones and glass all day, but can’t live on algae alone. Add gel food, algae wafers or sinking pellets daily, with thawed bloodworms or daphnia as treats. An autofeeder can drop sinking pellets or wafers as a top-up.',
+    keeperTip: 'Grow algae on spare stones in a brightly lit tub or jar, then swap them into the tank in turn so there is always a fresh grazing patch.',
   },
   sourceReferences: [
     { id: 'fishbase-sewellia-lineolata', title: 'FishBase — Sewellia lineolata', url: 'https://www.fishbase.se/summary/Sewellia-lineolata.html', tier: 1, facts: ['5.7 cm SL', 'fast, rocky streams incl. waterfalls', 'grazes aufwuchs', 'IUCN Vulnerable (2010)'] },

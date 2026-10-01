@@ -98,7 +98,7 @@ export const yellowTang: SpeciesDefinition = {
   baseValue: 300,
   rarity: 'uncommon',
   visitorAppeal: 0.95,
-  unlock: { requires: ['marine_large'], hint: 'Unlocks with large open-water marine fish — needs at least a six-foot tank.' },
+  unlock: { requires: ['marine_large'], hint: 'Research Big-water Marine — it needs at least a six-foot tank.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Hawaiian collection has been largely halted since a 2017 court ruling, so most yellow tangs are now captive-bred (Oceanic Institute/Biota, ~$300) or imported from other Pacific islands (~$120).',
   conservation: {
@@ -151,6 +151,8 @@ export const yellowTang: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2010). Aquarium collection in Hawaiʻi has been mostly halted since 2017 and remains contested; captive-bred yellow tangs are now available.',
     funFact: 'Yellow tangs can live more than 40 years — scientists aged a wild Hawaiian fish at 41 by counting growth rings in its ear bones.',
     inGameBehavior: 'Patrols the length of the tank in laps, grazes the rock, flares its tail spine at rivals, and fades to a dusky night colour when the lights go out.',
+    feedingNote: 'A grazer that picks all day. Clip in seaweed sheets daily, plus herbivore flakes or pellets, algae wafers or blanched greens, and some thawed mysis. An autofeeder can cover the flakes and pellets; the seaweed goes on by hand.',
+    keeperTip: 'Quarantine a new tang for a few weeks before it joins your display. Tangs are among the fish most prone to marine white spot (ich), and one sick fish can infect the whole tank.',
   },
   sourceReferences: [
     { id: 'fishbase-zebrasoma-flavescens', title: 'FishBase — Zebrasoma flavescens (Yellow tang)', url: 'https://www.fishbase.se/summary/Zebrasoma-flavescens.html', tier: 1, facts: ['max 20 cm TL', 'depth 2–46 m', '24–28 °C', 'browses filamentous algae', 'singly or loose groups', 'lunar spawning', 'IUCN Least Concern (2010)', 'top Hawaiian marine export'] },

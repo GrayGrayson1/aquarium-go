@@ -385,7 +385,13 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     const r = sp.tempC;
     if (t > r.max + 0.2 || t < r.min - 0.2) {
       add('warning', 'temperature', `This tank runs at about ${t.toFixed(0)} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max} °C).`, {
-        mitigation: t > r.max ? (sp.special?.coolWater ? 'A chiller set to the middle of their range fixes this.' : 'Lower the heater setting.') : 'Install or raise a heater.',
+        // lane:guide — name the setting to aim for, and that a warm room needs cooling, not a lower heater
+        mitigation:
+          t > r.max
+            ? sp.special?.coolWater
+              ? `A chiller (or fans in a mild room) holding about ${Math.round((r.idealMin + r.idealMax) / 2)} °C fixes this.`
+              : `Set the heater to about ${Math.round((r.idealMin + r.idealMax) / 2)} °C. If the room itself is that warm, a fan or chiller is needed.`
+            : `Install or raise a heater to about ${Math.round((r.idealMin + r.idealMax) / 2)} °C.`,
       });
     } else if (t > r.idealMax + 0.5 || t < r.idealMin - 0.5) {
       add('info', 'temperature', `At about ${t.toFixed(0)} °C this tank is outside the ideal ${r.idealMin}–${r.idealMax} °C for ${name}.`, { mitigation: 'Adjust the heater or chiller setting.' });

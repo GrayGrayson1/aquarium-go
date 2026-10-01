@@ -93,7 +93,7 @@ export const linedSeahorse: SpeciesDefinition = {
   baseValue: 95,
   rarity: 'uncommon',
   visitorAppeal: 1,
-  unlock: { requires: ['marine_seahorse'], hint: 'Starter species — otherwise unlocks with seahorse husbandry.' },
+  unlock: { requires: ['marine_seahorse'], hint: 'Starter species — otherwise research Seahorse Husbandry once marine fish are unlocked.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Vulnerable (IUCN Red List, assessed 2016); CITES Appendix II',
@@ -171,6 +171,8 @@ export const linedSeahorse: SpeciesDefinition = {
     conservationNote: 'Vulnerable on the IUCN Red List and trade-regulated under CITES Appendix II. Captive-bred seahorses are hardier, already eat frozen food and leave wild populations alone.',
     funFact: 'Seahorses have no stomach to speak of — food passes through quickly, so they must eat often. Newborn fry can spend ten hours a day hunting.',
     inGameBehavior: 'Wraps its tail around plants and branches, drifts upright, flutters its tiny dorsal fin, scans with independently swivelling eyes, and snicks up food you place nearby.',
+    feedingNote: 'A slow, deliberate feeder. Thawed frozen mysis is its staple, plus frozen brine shrimp and live copepods. It won’t take flakes or pellets, so an autofeeder can’t feed it — target-feed 2–3 times a day so faster fish don’t steal it.',
+    keeperTip: 'Set a feeding dish by a favourite hitching post. Seahorses learn to wait there, and you can siphon out uneaten mysis after about 15 minutes, before it fouls the water.',
   },
   sourceReferences: [
     { id: 'fishbase-hippocampus-erectus', title: 'FishBase — Hippocampus erectus (Lined seahorse)', url: 'https://www.fishbase.se/summary/Hippocampus-erectus.html', tier: 1, facts: ['max 17.8 cm SL', 'western Atlantic range', 'IUCN Vulnerable (assessed 2016)', 'CITES Appendix II', 'gestation 20–21 days', 'reared in captivity'] },

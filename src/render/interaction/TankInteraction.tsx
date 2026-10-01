@@ -14,7 +14,8 @@ import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { runtime, pushVisualEvent, nowSeconds } from '@/runtime/tankRuntime';
 import { tankDims } from '@/sim/tankSpace';
-import { feedTank } from '@/sim/care';
+import { feedTank, type ActionResult } from '@/sim/care';
+import { toastCaution } from '@/ui/common/actions'; // lane:qa-r3
 import { registerGlassTap, noteInteraction } from '@/sim/life/actions';
 import { findSpecies } from '@/data/species';
 import { getFoodDef } from '@/data/catalog/foods';
@@ -248,7 +249,7 @@ export function TankInteraction({ tank }: { tank: Tank }) {
         }
         const def = getFoodDef(foodId);
         const zone: 'surface' | 'middle' | 'bottom' = !def || def.delivery === 'floating' ? 'surface' : _p.y < d.waterY * 0.35 ? 'bottom' : 'middle';
-        let res = { ok: false, message: 'Could not feed' };
+        let res: ActionResult = { ok: false, message: 'Could not feed' };
         const had = game.inventory.foods[foodId] ?? 0;
         mutate((dr) => {
           res = feedTank(dr, t.id, foodId, { zone });
@@ -257,6 +258,8 @@ export function TankInteraction({ tank }: { tank: Tank }) {
           ui.toast(res.message, 'warning');
           return;
         }
+        // lane:qa-r3 — a feed that worked but nothing eats, overfed or emptied the bag says so (one toast per burst of taps)
+        if (res.caution) toastCaution(res.message, `feed:${t.id}`);
         // food goes in from the top, above where you tapped
         const z = face === 'front' ? d.W / 2 - d.W * 0.28 : _p.z;
         const local: [number, number, number] = [_p.x, d.waterY - 0.002, z];
@@ -283,7 +286,7 @@ export function TankInteraction({ tank }: { tank: Tank }) {
           ui.toast('Choose a food first.', 'info');
           return;
         }
-        let res = { ok: false, message: 'Could not feed' };
+        let res: ActionResult = { ok: false, message: 'Could not feed' };
         mutate((dr) => {
           res = feedTank(dr, t.id, foodId, { targetCreatureId: id });
           if (res.ok) noteInteraction(dr, id, 'target_fed');
@@ -292,6 +295,7 @@ export function TankInteraction({ tank }: { tank: Tank }) {
           ui.toast(res.message, 'warning');
           return;
         }
+        if (res.caution) toastCaution(res.message, `feed:${t.id}`); // lane:qa-r3
         const rt = runtime.creatures.get(id);
         if (rt) {
           // tongs / pipette: just in front of the snout

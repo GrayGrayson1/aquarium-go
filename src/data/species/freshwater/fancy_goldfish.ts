@@ -85,7 +85,7 @@ export const fancyGoldfish: SpeciesDefinition = {
   baseValue: 15,
   rarity: 'common',
   visitorAppeal: 0.8,
-  unlock: { requires: ['fw_coldwater'], hint: 'Unlocks with cool-water systems.' },
+  unlock: { requires: ['fw_coldwater'], hint: 'Unlocks with cool-water systems: research Cool-water Systems, or reach 90 reputation and 250 husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Domestic breeds (wild species Least Concern); invasive where released',
@@ -182,6 +182,8 @@ export const fancyGoldfish: SpeciesDefinition = {
     conservationNote: 'Entirely domestic. Never release goldfish — they become invasive in natural waters.',
     funFact: 'The oranda’s “wen” is a fleshy hood of skin growth that can almost cover its eyes in show fish.',
     inGameBehavior: 'Waddles through the tank with fins swaying, sifts the sand, and crowds to the glass to beg when you appear.',
+    feedingNote: 'A slow bottom forager. Feed sinking goldfish pellets or gel food once or twice a day in small portions, plus blanched greens and frozen daphnia or brine shrimp. Prefer sinking food to flakes. Autofeeder pellets suit it.',
+    keeperTip: 'Test nitrate weekly and change 30–50% of the water once it nears 50 ppm, refilling with dechlorinated water close to tank temperature.',
   },
   sourceReferences: [
     { id: 'fishbase-carassius-auratus', title: 'FishBase — Carassius auratus', url: 'https://www.fishbase.se/summary/Carassius-auratus.html', tier: 1, facts: ['pH 6.0–8.0, dH 5–19', 'omnivore', 'egg scatterer; cold winter conditions egg development', 'IUCN Least Concern (wild species)'] },

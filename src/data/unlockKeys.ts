@@ -21,7 +21,7 @@ export const UNLOCK_KEYS = {
   gear_chiller: 'Chillers',
   gear_skimmer: 'Protein skimmers',
   gear_ato: 'Auto top-off',
-  gear_autofeeder: 'Auto-feeders',
+  gear_autofeeder: 'Autofeeders (dry food)',
   gear_co2: 'CO₂ injection for planted tanks',
   // tanks (see src/data/catalog/tanks.ts)
   tank_40: '40 gal breeder',

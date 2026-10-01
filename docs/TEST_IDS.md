@@ -139,7 +139,7 @@ In Build › Rearrange, **F** takes a frag/cutting from the hovered piece.
 | `creature-feed-offer` | "Feed" button in that row (target-feeds through `feedTank`, same path as Target feed › "Offer to …") |
 | `creature-feed-buy` | "Buy & feed · $X" when nothing the animal eats is in stock (buys one pack of the cheapest suitable food, then offers it) |
 | `creature-feed-food-<foodId>` | Food chip in the Feed row when several suitable foods are in stock |
-| `dock-badge-<panelId>` | Count badge on a dock button (currently `dock-badge-shows`: judged show results not yet opened; the button then opens Shows › Results) |
+| `dock-badge-<panelId>` | Attention dot on a dock button (round 3: a 9 px dot, `data-level="watch\|danger\|new"`, no number — see "notify" below; `dock-badge-shows` still means unseen show results and the button then opens Shows › Results) |
 | `welcome-back` | "While you were away" card root |
 | `welcome-ran` | Line saying how much game time the aquarium actually simulated (and whether the safety cap applied) |
 | `welcome-grace` | The grace-period reassurance (nobody dies while you're away) |
@@ -198,3 +198,43 @@ Dev/QA (with `?perf=1` or in dev): `window.__AQ_PERF()` → `{ tier, dpr, scale,
 | `error-boundary-<name>` | An error boundary's alert, named with spaces as dashes (e.g. `error-boundary-interface`, `error-boundary-aquarium-view`, `error-boundary-hud`) |
 
 e2e: `tests/e2e/hud-layout.spec.ts` checks the alerts popover over a card and a panel, a mouse click on the calm HUD, the calm HUD after Escape closes a clicked-open panel, the phone money delta, the calm-HUD touch wake and retry, and the one toast a sideways phone (844×390, 932×430) shows in an open sheet's header row, off its list, tabs and buttons.
+
+## notify (round 3: attention dots & notification centre)
+
+Rules: `src/ui/common/notify.ts` (tests: `tests/sim/ui-notify-*.test.ts`). Every dot is `.ag-attn` with `data-level="watch|danger|new"` (amber / red / amber), 9 px, top-right of what it marks. Tank dots are live (they clear when the problem is fixed); news dots are "new until viewed".
+
+| test id | element |
+|---|---|
+| `tank-card-attn` | Dot on the tank bar's Tank card button: the focused tank needs a look (status, food low, failed gear, gear that can't help). The button's `data-attention` is `good\|watch\|danger`; its aria-label / title give the reasons |
+| `tank-prev-attn` / `tank-next-attn` | Dot on the switcher arrow that reaches the most urgent OTHER tank soonest (aria-label names it) |
+| `tank-tab-attn-<water\|gear\|life>` | Inline dot on a tank card tab with something to look at |
+| `tank-attention-reason` | Tank card header line for what the status reason doesn't cover (food running low, broken gear, "The Autofeeder can't help these animals — see Equipment.") |
+| `tanks-row-<tankId>` / `tanks-row-attn-<tankId>` / `tanks-row-extra-<tankId>` | Tanks panel row, its dot (on the thumbnail), and its extra reasons line |
+| `dock-badge-<panelId>` / `sheet-switch-dot-<panelId>` | Dock / bottom-sheet switcher dots: `tanks` (a tank other than the one in view needs a look — that one's dot is `tank-card-attn`), `shows` (new results → opens Shows › Results), `market` (bids waiting for an answer → Market › My listings), `research` (a project finished since Research was last open), `visitors` / `shows` (unlocked but never opened). Hidden on the panel that is open |
+| `shows-results-new` | Amber count on the Shows › Results tab (unseen results); opening the tab marks them seen at once — the cards keep their "New" tag for that visit |
+| `hud-alerts` | Bell: `data-attention` = worst tank (`good\|watch\|danger`), aria-label / title "N tanks need attention · M unread events" |
+| `hud-alerts-count` | Bell number: unread news (toasted events and every warning/danger/death not yet read or cleared), coloured by the worst of the tanks and that news (`is-danger\|is-watch\|is-news`) |
+| `hud-alerts-dot` | Bell dot when tanks need a look but nothing is unread |
+| `alerts-mark-read` / `alerts-clear-all` | Drawer: "Mark read" (reads everything) and "Clear all" (reads and hides every event logged so far from the drawer; `notify.logClearedSeq` — nothing is deleted) |
+| `alerts-events` / `alerts-event` / `alerts-events-empty` | Drawer event list, one event, and its empty line ("You're all caught up…" after Clear all) |
+| `alerts-event-link` | Drawer event's "See results" / "Open Research" / "Open the shop" / "View listing" link |
+| `alerts-open-log` | Drawer "Full event log" (opens the Log panel, which keeps everything) |
+| `alert-gear-fit` | Drawer tank row: running gear that can't help that tank's animals (opens the tank card's Equipment tab) |
+| `log-event-link` | Log panel row link to where the news lives (e.g. Shows › Results) |
+| `room-tank-attn-<tankId>` | Room view: dot pinned above a tank that needs a look (`data-level`; `src/render/facility/RoomTankDots.tsx`, hidden with the HUD) |
+
+
+## fit & guide (round 3: will this gear / food help these animals? keeper's guide)
+
+Verdicts: `src/sim/care/fit.ts` (tests: `tests/sim/fit-*.test.ts`); keeper's guide: `src/data/species/guide.ts` (tests: `tests/sim/guide-*.test.ts`). Fit rows carry `data-fit="ok|partial|useless|harmful"`.
+
+| test id | element |
+|---|---|
+| `shop-equip-<defId>` | Market › Supplies equipment row (`data-fit` = its verdict for the chosen tank; "Buy anyway" when it won't help) |
+| `shop-equip-fit-<defId>` | That row's one-line reason ("Won't help. Your 3 lined seahorses only eat frozen or live food…") |
+| `build-equip-fit-<instId>` | Build › Equipment: reason line under installed gear that isn't helping these animals |
+| `tank-equip-fit-<instId>` | Tank card › Equipment: the same note under an installed unit |
+| `food-eaters-<foodId>` | Food row: who you keep that eats it, plus an "Autofeeder OK" / "Hand-feed" chip (`data-autofeeder="yes|no"`) |
+| `guide-strip` / `guide-diet` / `guide-autofeeder` / `guide-needs` / `guide-tips` | Encyclopedia species page: care summary strip, diet by food type (dry / frozen / live), whether an autofeeder can feed it (`data-level="yes|no"`), flow & temperature, "In real life" tips |
+| `tank-handfeed` | Tank card › Life: residents that only take frozen or live food (no autofeeder can feed them) |
+| `starter-diet` | Starter reveal: what the starter eats and whether an autofeeder can feed it |

@@ -9,9 +9,9 @@
  * Internally chemistry is tracked as MASS (mg) and converted back to ppm with the current litres, so evaporation
  * concentrates everything and big tanks change slowly. Robust to any dt (tested up to 6 h chunks); clamps all values.
  */
-import type { GameState, Tank, WaterState, WaterLabState, SpeciesDefinition } from '@/types';
+import type { GameState, Tank, WaterState, WaterLabState } from '@/types';
 import type { SimContext } from '../context';
-import { getFoodDef, FOODS } from '@/data/catalog/foods';
+import { getFoodDef } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { lightsOn } from '../time';
 import {
@@ -41,6 +41,8 @@ import {
 } from './constants';
 import { computeTankEnv, roomTempAt, type TankEnv, type EqEntry } from './env';
 import { ensureLab, scaleFood, addFood, recommendedServings } from './food';
+import { planAutofeed, autofeedMessage, groupEaters, type AutofeedPlan } from '../care/autofeed'; // lane:fit
+import { keeperOf } from '../staff/common'; // lane:fit — a keeper's hand-feeding covers what the autofeeder can't
 
 /** Repair NaN / out-of-range values (old saves, other lanes' writes). */
 export function sanitizeWater(tank: Tank): void {
@@ -135,23 +137,22 @@ function stepEquipmentWear(state: GameState, tank: Tank, dt: number, ctx: SimCon
 }
 
 // ───────────────────────────── Autofeeder ─────────────────────────────
+// lane:fit — what it can drop (dry food only) and which food it picks live in src/sim/care/autofeed.ts, shared with the
+// fit hints, so the game never says "empty" to a player whose seahorses simply can't eat dry food.
 
-const DRY_FOODS = new Set(['flake_tropical', 'micro_pellets', 'sinking_pellets', 'axolotl_pellets', 'algae_wafers', 'marine_pellets', 'goldfish_pellets', 'nori_sheet']);
-
-function pickAutofeedFood(state: GameState, tank: Tank, eaters: SpeciesDefinition[]): string | null {
-  let best: string | null = null;
-  let bestScore = 0;
-  for (const f of FOODS) {
-    if (!DRY_FOODS.has(f.id)) continue;
-    if ((state.inventory.foods[f.id] ?? 0) < 1) continue;
-    let score = 0;
-    for (const sp of eaters) if (f.tags.some((t) => sp.foods.includes(t))) score += 1;
-    if (score > bestScore) {
-      bestScore = score;
-      best = f.id;
-    }
-  }
-  return best;
+/** Log one autofeeder notice (throttled per tank; the first notice of each kind is toasted). */
+function autofeedNotice(state: GameState, tank: Tank, lab: WaterLabState, at: number, plan: AutofeedPlan, inhabitants: TankEnv['inhabitants'], ctx: SimContext): void {
+  if (state.isShowcase) return;
+  // Same cadence as the old "empty" warning for an empty hopper (a real shortage); the standing "can't feed these
+  // animals" notes repeat only every 3 game days (the tank card shows them all the time).
+  const plannedKind: 'useless' | 'misses' | 'empty' = !plan.foodId ? (plan.fed.length || plan.wrongFood.length ? 'empty' : 'useless') : 'misses';
+  const key = plannedKind === 'empty' ? 'autofeeder_empty' : `autofeeder_${plannedKind}`;
+  const first = lab.warned?.[key] === undefined;
+  if (!warnKey(lab, key, at, plannedKind === 'empty' ? 24 : 72)) return;
+  const keeper = keeperOf(state, tank.id);
+  const msg = autofeedMessage(tank.name, plan, groupEaters(inhabitants), { keeperName: keeper?.name });
+  if (!msg) return;
+  ctx.emit({ kind: msg.kind === 'misses' ? 'tip' : 'warning', text: msg.text, tankId: tank.id, toast: first && msg.kind !== 'empty' });
 }
 
 function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, ctx: SimContext): void {
@@ -167,15 +168,16 @@ function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, c
   for (let i = 0; i < perDay; i++) times.push((on + 1 + (i * Math.max(1, span - 2)) / Math.max(1, perDay - 1 || 1)) % 24);
   const start = ctx.hour;
   const end = ctx.hour + dt;
+  const species = env.inhabitants.map((i) => i.species);
   for (let day = Math.floor(start / 24); day <= Math.floor(end / 24); day++) {
     for (const t of times) {
       const at = day * 24 + t;
       if (at < start || at >= end) continue;
       if (lab.lastAutofeedHour !== undefined && at - lab.lastAutofeedHour < 0.5) continue;
-      const foodId = pickAutofeedFood(state, tank, env.inhabitants.map((i) => i.species));
+      const plan = planAutofeed(state.inventory.foods, species);
+      const foodId = plan.foodId;
       if (!foodId) {
-        if (warnKey(lab, 'autofeeder_empty', at, 24) && !state.isShowcase)
-          ctx.emit({ kind: 'warning', text: `The autofeeder on ${tank.name} is empty — it needs a dry food your animals eat (flakes or pellets).`, tankId: tank.id });
+        autofeedNotice(state, tank, lab, at, plan, env.inhabitants, ctx);
         continue;
       }
       const food = getFoodDef(foodId)!;
@@ -186,6 +188,8 @@ function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, c
       state.inventory.foods[foodId] = (state.inventory.foods[foodId] ?? 0) - servings;
       addFood(tank, food, servings, at);
       lab.lastAutofeedHour = at;
+      // It fed someone — but say so (rarely) when it leaves animals out that need other food.
+      if (plan.cannot.length || plan.wrongFood.length) autofeedNotice(state, tank, lab, at, plan, env.inhabitants, ctx);
     }
   }
 }

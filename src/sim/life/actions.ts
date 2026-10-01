@@ -16,7 +16,7 @@ const clamp = (v: number, lo: number, hi: number) => (Number.isFinite(v) ? (v < 
 
 export function renameCreature(state: GameState, creatureId: string, name: string): ActionResult {
   const c = state.creatures[creatureId];
-  if (!c) return { ok: false, message: 'Not found' };
+  if (!c) return { ok: false, message: 'That animal is no longer in your care.' }; // lane:guide — was 'Not found'
   // eslint-disable-next-line no-control-regex
   const clean = String(name ?? '').replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
   if (!clean) return { ok: false, message: 'Please enter a name.' };
@@ -30,7 +30,7 @@ export function renameCreature(state: GameState, creatureId: string, name: strin
 /** Move a creature to another tank (UI shows compat preview first). Environment mismatches are hard-blocked. */
 export function moveCreature(state: GameState, creatureId: string, tankId: string): ActionResult {
   const c = state.creatures[creatureId];
-  if (!c) return { ok: false, message: 'Not found' };
+  if (!c) return { ok: false, message: 'That animal is no longer in your care.' }; // lane:guide — was 'Not found'
   if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can't be moved.` };
   const tank = state.tanks[tankId];
   if (!tank) return { ok: false, message: 'That tank no longer exists.' };
@@ -151,7 +151,7 @@ export function noteVisitorWow(state: GameState, creatureId: string, count = 1):
 /** DEV: age a creature by N game-days (growth/life stage/sex reveal recomputed). */
 export function devAgeCreature(state: GameState, creatureId: string, days: number): ActionResult {
   const c = state.creatures[creatureId];
-  if (!c) return { ok: false, message: 'Not found' };
+  if (!c) return { ok: false, message: 'That animal is no longer in your care.' }; // lane:guide — was 'Not found'
   if (!Number.isFinite(days) || days <= 0) return { ok: false, message: 'Days must be positive' };
   const sp = findSpecies(c.speciesId);
   c.bornHour -= days * 24;

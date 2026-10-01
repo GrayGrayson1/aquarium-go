@@ -96,7 +96,7 @@ export const miniatusGrouper: SpeciesDefinition = {
   baseValue: 150,
   rarity: 'rare',
   visitorAppeal: 0.95,
-  unlock: { requires: ['predators'], hint: 'Unlocks with predator exhibits — it needs a 180-gallon tank and eats small fish.' },
+  unlock: { requires: ['predators'], hint: 'Research Predator Husbandry (needs a public showroom) — it needs a 180-gallon tank and eats small fish.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected only; groupers are not bred for the aquarium trade.',
   conservation: {
@@ -142,13 +142,15 @@ export const miniatusGrouper: SpeciesDefinition = {
   encyclopedia: {
     summary: 'A blazing red, blue-spotted grouper that waits under ledges and explodes upward to snatch passing fish.',
     nativeHabitat: 'Clear-water coastal and offshore coral reefs, 2–150 m deep, often in caves and under ledges on exposed reef faces.',
-    socialStructure: 'Harems of one male and up to 12 females; the male defends a territory of around 475 m² subdivided among the females. All start as females and the largest change into males.',
+    socialStructure: 'Harems of one male and up to 12 females; the male defends a territory of up to 475 m² subdivided among the females. All start as females and the largest change into males.',
     tankNeeds: 'A 180-gallon or larger tank with large caves, powerful filtration and skimming. It grows for years — plan for its adult size, not the juvenile you buy.',
     compatibilityNotes: 'Reef-safe with corals, but eats small fish and crustaceans: only fish too large to swallow are safe. Keep one per tank.',
     breedingOverview: 'Spawns in open water within harems. Not bred in captivity.',
     conservationNote: 'Least Concern (IUCN 2018), though fished commercially and sensitive to fishing and climate stress. All aquarium fish are wild-caught.',
-    funFact: 'In the wild more than 80% of its diet is small fish — mostly sea goldies (anthias) ambushed with a sudden rush up from the reef.',
+    funFact: 'In the wild about 80% of its diet is small fish — mostly sea goldies (anthias) ambushed with a sudden rush up from the reef.',
     inGameBehavior: 'Lurks in a favourite cave, watches the tank with swivelling eyes, rushes out to ambush food, and learns to wait at the front glass at feeding time.',
+    feedingNote: 'An ambush predator. Offer thawed krill, silversides and chopped seafood, or large sinking carnivore pellets, from a feeding stick. Juveniles eat daily; adults need a meal every day or two. An autofeeder can drop pellets, but frozen seafood should be the staple.',
+    keeperTip: 'Skip live goldfish and other freshwater feeder fish: they can carry disease and lack the nutrition a marine predator needs. Training it onto frozen seafood is safer.',
   },
   sourceReferences: [
     { id: 'fishbase-cephalopholis-miniata', title: 'FishBase — Cephalopholis miniata (Coral hind)', url: 'https://www.fishbase.se/summary/Cephalopholis-miniata.html', tier: 1, facts: ['max 50 cm TL', 'depth 2–150 m', '~80% of diet small fish (mainly Pseudanthias), rest crustaceans', 'harems of a male and 2–12 females', 'territories up to 475 m²', 'IUCN Least Concern (2017/2018 assessment)', 'high fishing and climate vulnerability'] },
@@ -166,7 +168,7 @@ export const miniatusGrouper: SpeciesDefinition = {
     { other: 'tag:fish_small', verdictFloor: 'incompatible', reason: 'A miniatus grouper will ambush and eat small fish.', incidentRisk: 0.4 },
     { other: 'tag:fish_medium', verdictFloor: 'high_risk', reason: 'A grown miniatus has a huge mouth: only fish too large to swallow are safe, and most community reef fish are not.', incidentRisk: 0.15, mitigatedBy: ['hides'] },
     { other: 'tag:shrimp_large', verdictFloor: 'high_risk', reason: 'Cleaner and peppermint shrimp are eaten; the grouper cannot be trusted with invertebrates.', incidentRisk: 0.2 },
-    { other: 'tag:crustacean', verdictFloor: 'high_risk', reason: 'Crabs and other crustaceans make up much of its natural diet.', incidentRisk: 0.15 },
+    { other: 'tag:crustacean', verdictFloor: 'high_risk', reason: 'Crustaceans such as crabs and shrimp make up most of the rest of its natural diet.', incidentRisk: 0.15 },
     { other: 'dwarf_lionfish', verdictFloor: 'conditional', reason: 'A full-grown miniatus can try to swallow a dwarf lionfish despite its spines; keep only if the lionfish is large relative to the grouper.', incidentRisk: 0.05, mitigatedBy: ['tank_size'] },
   ],
   special: {

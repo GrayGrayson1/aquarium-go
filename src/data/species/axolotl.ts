@@ -98,7 +98,7 @@ export const axolotl: SpeciesDefinition = {
   baseValue: 60,
   rarity: 'common',
   visitorAppeal: 0.9,
-  unlock: { requires: ['fw_coldwater'], hint: 'Starter species — otherwise unlocks with cool-water systems.' },
+  unlock: { requires: ['fw_coldwater'], hint: 'Starter species — otherwise research Cool-water Systems, or reach 90 reputation with solid husbandry.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Critically Endangered (IUCN)',
@@ -162,6 +162,8 @@ export const axolotl: SpeciesDefinition = {
     conservationNote: 'Critically Endangered in the wild, surviving only in the remnant canals of Xochimilco. Captive pets are genetically distinct and not a substitute for habitat conservation — never release them.',
     funFact: 'Axolotls can regenerate whole limbs, parts of the heart and even the spinal cord — without scarring.',
     inGameBehavior: 'Walks along the bottom, rests with gills fanned, flicks its gills and occasionally darts up for a gulp of air.',
+    feedingNote: 'A slow bottom feeder that sucks in its food. Earthworms make the best staple, with soft sinking pellets and thawed bloodworms or mysis as extras. Feed adults 3–4 times a week; an autofeeder can drop pellets, but worms go in by hand.',
+    keeperTip: 'Watch the gills: fronds curled forward, or a curled tail tip, mean stress — usually water too warm, flow too strong or water quality slipping. Check those first.',
   },
   sourceReferences: [
     { id: 'uky-agsc-husbandry', title: 'University of Kentucky AGSC — Guide to Axolotl Husbandry', url: 'https://ambystoma.uky.edu/education1/guide-to-axolotl-husbandry', tier: 1, facts: ['15–18 °C recommended', 'never above about 22 °C', 'pH 6.5–8.0', 'never extremely soft or distilled water (salts restore hardness, not salinity)', 'rapid circulation is stressful', 'avoid pea-sized gravel', 'maturity about 1 year', 'spermatophores; eggs 12–20 h after mating, laid over 1–2 days', 'hatch in 2–3 weeks at room temperature', 'larvae cannibalistic, sort by size', 'adults fed 3–4 times a week'] },

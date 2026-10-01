@@ -74,7 +74,7 @@ export const mysterySnail: SpeciesDefinition = {
     predationWithoutNursery: 0.35,
     nurseryRequired: false,
     maxRaisedPerClutch: 8,
-    notes: 'Sexes are separate and females store sperm for months. At night the female climbs OUT of the water and lays a raspberry-like pink clutch of 200–600 eggs (young females 50–100) on glass or lids just above the waterline; the eggs need humid air and pale as they age. They hatch in about 2–3 weeks and the 2–3 mm babies drop into the water, where fish often eat them. A lowered lid gap (water within ~4 cm of the rim) prevents laying.',
+    notes: 'Sexes are separate and females store sperm for months. At night the female climbs OUT of the water and lays a raspberry-like pink clutch of 200–600 eggs (young females 50–100) on glass or lids just above the waterline; the eggs need humid air and pale as they age. They hatch in about 2–3 weeks and the 2–3 mm babies drop into the water, where fish often eat them. Keeping the water within about 4 cm of the rim leaves no room to lay, which prevents clutches.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',
@@ -85,7 +85,7 @@ export const mysterySnail: SpeciesDefinition = {
   baseValue: 4,
   rarity: 'common',
   visitorAppeal: 0.55,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Not evaluated; established invasive populations outside its range',
@@ -159,6 +159,8 @@ export const mysterySnail: SpeciesDefinition = {
     conservationNote: 'Established as an invasive species in several warm regions. Never release snails or their eggs.',
     funFact: 'It has both a gill and a lung — it breathes air through an extendable siphon like a snorkel.',
     inGameBehavior: 'Glides along the glass, extends its siphon at the surface, sometimes floats with its foot open, and lays clutches above the waterline at night.',
+    feedingNote: 'A slow scavenger of biofilm, algae and leftovers. Most days, add an algae wafer, gel food or blanched spinach or kale near it so fish don’t get there first. Flakes or sinking pellets from an autofeeder help but aren’t enough alone.',
+    keeperTip: 'A snail lying still or floating for a day is usually resting. If it hasn’t moved in a day or two, lift it out: a dead snail smells unmistakably awful. Remove it quickly before it fouls the water.',
   },
   sourceReferences: [
     { id: 'usgs-nas-pomacea-diffusa', title: 'USGS Nonindigenous Aquatic Species — spike-topped applesnail (Pomacea diffusa)', url: 'https://nas.er.usgs.gov/queries/factsheet.aspx?SpeciesID=2662', tier: 1, facts: ['shell up to ~60 mm', 'native to the Amazon basin', 'separate sexes', 'clutches of 200–600 eggs laid above the waterline', '~2.4 mm hatchlings', 'gill and lung', 'established in Florida'] },

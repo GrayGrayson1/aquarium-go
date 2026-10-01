@@ -95,7 +95,7 @@ export const dwarfLionfish: SpeciesDefinition = {
   baseValue: 85,
   rarity: 'rare',
   visitorAppeal: 0.95,
-  unlock: { requires: ['predators'], hint: 'Unlocks with predator exhibits — venomous, and it eats small fish and shrimp.' },
+  unlock: { requires: ['predators'], hint: 'Research Predator Husbandry (needs a public showroom) — venomous, and it eats small fish and shrimp.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected; captive breeding is rare and not commercial. New fish often need live food before they can be trained onto frozen.',
   conservation: {
@@ -150,7 +150,7 @@ export const dwarfLionfish: SpeciesDefinition = {
   specialBehaviors: ['fin_fan_herd', 'ambush_corner', 'hover_stalk', 'spine_display', 'owner_recognition', 'upside_down_perch'],
 
   encyclopedia: {
-    summary: 'A small, frilly scorpionfish that fans its banded fins to herd prey into a corner — beautiful, personable and venomous.',
+    summary: 'A small, frilly scorpionfish that fans its banded fins to herd prey into a corner — beautiful, personable and venomous. Recent studies place it in the genus Neochirus.',
     nativeHabitat: 'Reef flats, lagoons and weedy rock on sandy bottoms 2–80 m deep across the Indo-West Pacific.',
     socialStructure: 'Usually solitary; pairs court at dusk. Juveniles sometimes gather in small groups on isolated coral heads.',
     tankNeeds: 'A 50-gallon or larger tank with caves and overhangs, gentle flow and dim hiding spots. New fish may need live food at first, then are trained onto frozen meaty foods; feed every other day.',
@@ -159,6 +159,8 @@ export const dwarfLionfish: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2015). It is not the invasive Atlantic lionfish — those are Pterois volitans and P. miles, which spread through the western Atlantic after aquarium releases. Never release aquarium animals.',
     funFact: 'Dwarf lionfish hunt by spreading their huge pectoral fins like a net, slowly herding small fish and shrimp into a corner before a lightning-fast gulp.',
     inGameBehavior: 'Hangs motionless beside rock, stalks food with fins spread, learns to recognise you at feeding time, and flares its spines if disturbed.',
+    feedingNote: 'An ambush hunter that strikes at food drifting past. Feed thawed mysis, krill or silversides from a feeding stick every other day. Only some fish ever learn to take large sinking pellets, so don’t rely on an autofeeder.',
+    keeperTip: 'Keep your hands well clear of its spines and feed with a stick or tongs. If stung, soak the spot in hot (not scalding) water for at least 30 minutes and get medical advice.',
   },
   sourceReferences: [
     { id: 'fishbase-dendrochirus-brachypterus', title: 'FishBase — Dendrochirus brachypterus (Dwarf lionfish)', url: 'https://www.fishbase.se/summary/Dendrochirus-brachypterus.html', tier: 1, facts: ['max 17 cm TL', 'depth 2–80 m', 'nocturnal hunter of small crustaceans', 'juveniles in small aggregations', 'venomous', 'distinct pairing', 'IUCN Least Concern (2015)'] },

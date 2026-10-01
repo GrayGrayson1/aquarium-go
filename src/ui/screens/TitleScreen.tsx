@@ -15,6 +15,7 @@ import { speciesName } from '../common/format';
 import { Modal, Button } from '../kit';
 import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
 import { useWarmup } from '@/render/shared/warmup';
+import { toastMark, reportLoadFailure } from './loadFeedback'; // lane:guide
 
 type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
@@ -154,9 +155,10 @@ export function TitleScreen() {
     unlockAudio();
     setBusy(true);
     sfx('confirm');
+    const mark = toastMark(); // lane:guide — one message per failure (see ./loadFeedback)
     const g = await loadIntoGame(latest.slot);
     setBusy(false);
-    if (!g) useUI.getState().toast('That save could not be opened.', 'danger');
+    if (!g) reportLoadFailure(mark);
   };
 
   const item = (i: number) => ({

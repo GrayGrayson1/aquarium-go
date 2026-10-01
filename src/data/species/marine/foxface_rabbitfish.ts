@@ -96,7 +96,7 @@ export const foxfaceRabbitfish: SpeciesDefinition = {
   baseValue: 105,
   rarity: 'uncommon',
   visitorAppeal: 0.85,
-  unlock: { requires: ['marine_large'], hint: 'Unlocks with large marine fish — it needs a six-foot tank.' },
+  unlock: { requires: ['marine_large'], hint: 'Research Big-water Marine — it needs a six-foot tank.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'All foxface in the trade are wild-collected (mainly Indonesia and the Philippines).',
   conservation: {
@@ -149,6 +149,8 @@ export const foxfaceRabbitfish: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2015). All aquarium foxface are wild-caught, so long-term care matters.',
     funFact: 'Rabbitfish venom has been compared to stonefish venom. When threatened the foxface raises its spines, turns blotchy brown and angles its body to point them at the threat.',
     inGameBehavior: 'Grazes the rock and any seaweed you offer, raises its dorsal spines when startled, and fades to a mottled night pattern while resting head-down among the rocks.',
+    feedingNote: 'A daytime grazer. Clip in seaweed sheets every day, plus algae wafers, blanched vegetables or gel food, with some small pellets and mysis, two or three times a day. An autofeeder can add pellets, but the seaweed goes on by hand.',
+    keeperTip: 'Move it in a container, not a net — its venomous spines snag in mesh — and keep your hands clear of it during tank maintenance.',
   },
   sourceReferences: [
     { id: 'fishbase-siganus-vulpinus', title: 'FishBase — Siganus vulpinus (Foxface)', url: 'https://www.fishbase.se/summary/Siganus-vulpinus.html', tier: 1, facts: ['max 25 cm SL, common 20 cm TL', 'depth 1–30 m', 'coral-rich reefs, often among staghorn coral', 'singly or pairs; juveniles school', 'feeds on algae', 'stout venomous spines', 'IUCN Least Concern (2015)'] },

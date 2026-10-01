@@ -85,7 +85,7 @@ export const amanoShrimp: SpeciesDefinition = {
   baseValue: 4,
   rarity: 'common',
   visitorAppeal: 0.4,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater species: reach 40 reputation or build husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN)',
@@ -139,6 +139,8 @@ export const amanoShrimp: SpeciesDefinition = {
     conservationNote: 'Least Concern. Never release aquarium animals.',
     funFact: 'Every wild amano begins life drifting out to sea, then crawls back upstream as a tiny juvenile.',
     inGameBehavior: 'Picks algae off leaves and hardscape, grabs pellets and runs off with them, and flicks backwards when startled.',
+    feedingNote: 'A grazer that picks algae and biofilm all day. Top up with an algae wafer, sinking pellets or blanched vegetables every day or two, less when algae is plentiful. Autofeeder flakes or sinking pellets work as a top-up.',
+    keeperTip: 'Read medication and snail-treatment labels before dosing: many contain copper, which kills shrimp even at low doses. Move shrimp to another tank if the fish need treating.',
   },
   sourceReferences: [
     { id: 'aquarium-coop-amano', title: 'Aquarium Co-Op — Care Guide for Amano Shrimp', url: 'https://www.aquariumcoop.com/blogs/aquarium/amano-shrimp', tier: 2, facts: ['4–5 cm', 'pH 6–8', 'hair, thread and black beard algae eater', 'expert escaper', 'does not breed in a normal tank (larvae need salt water)', 'avoid goldfish, cichlids, barbs', 'named after Takashi Amano'] },

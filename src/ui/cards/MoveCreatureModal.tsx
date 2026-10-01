@@ -51,9 +51,11 @@ export function MoveCreatureModal() {
   const confirm = () => {
     if (!c || !sel) return;
     const toId = sel.t.id;
+    // lane:guide — show the sim's own message: it names the tank and carries the warnings that matter (an adult
+    // needs a bigger tank, eggs left without a parent, courtship interrupted), which a fixed "moved" text used to hide
     const r = act((d) => (inBreeding ? separateCreature(d, c.id, toId) : moveCreature(d, c.id, toId)), {
-      message: `${c.name} moved to ${sel.t.name}.`,
       flag: 'moved_creature',
+      kindFor: (res) => (/Heads up|fungus|fall from the nest|stay behind|interrupted/i.test(res.message) ? 'warning' : 'success'),
     });
     if (r?.ok) {
       close();

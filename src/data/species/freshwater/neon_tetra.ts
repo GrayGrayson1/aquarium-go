@@ -88,7 +88,7 @@ export const neonTetra: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2021)',
@@ -168,6 +168,8 @@ export const neonTetra: SpeciesDefinition = {
     conservationNote: 'Least Concern; nearly all are farm-raised. Never release aquarium fish.',
     funFact: 'Its stripe works like a light switch: guanine crystals re-angle to fade the colour at night and turn it back on at dawn.',
     inGameBehavior: 'Schools tightly in mid-water, flashes in unison when startled, darts for food, and dims its stripe after lights-out.',
+    feedingNote: 'A mid-water feeder with a tiny mouth: crushed flakes or micro pellets once or twice a day, only what the school eats in two minutes, plus thawed daphnia or brine shrimp. An autofeeder with flakes or micro pellets suits it.',
+    keeperTip: 'Isolate any neon that hides apart from the school or shows pale white patches in its colour. Neon tetra disease is nearly untreatable and spreads when tank mates eat the dead.',
   },
   sourceReferences: [
     { id: 'seriouslyfish-paracheirodon-innesi', title: 'Seriously Fish — Paracheirodon innesi', url: 'https://www.seriouslyfish.com/species/paracheirodon-innesi/', tier: 2, facts: ['max 30 mm SL', '21–25 °C, pH 4.0–7.5, GH 1–12', 'breeding 26.5–29 °C, pH 5.5–6.5, GH 1–5', 'school of 8–10+', 'eggs hatch 24–36 h; fry free-swimming 3–4 days later', 'diamond head, gold, albino and long-fin forms', 'females rounder'] },

@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { BookOpen, Search, Lock, ExternalLink, MapPin, Home, Ruler, Utensils, Shield, Users, Box, Handshake, Egg, Leaf, Sparkles, Eye, FlaskConical, ChevronDown, CircleCheck, OctagonAlert, Info, Palette, Waves } from 'lucide-react';
+import { BookOpen, Search, Lock, ExternalLink, MapPin, Home, Ruler, Utensils, Shield, Users, Box, Handshake, Egg, Leaf, Sparkles, Eye, FlaskConical, ChevronDown, CircleCheck, OctagonAlert, Info, Palette, Waves, Thermometer } from 'lucide-react';
 import type { GameState, SpeciesDefinition, CompatVerdict } from '@/types';
 import { useUI } from '@/state/ui';
 import { ALL_SPECIES, findSpecies } from '@/data/species';
@@ -21,7 +21,8 @@ import { Chip, Seg, EmptyState, SectionHead, Callout } from '../common/parts';
 import { SpeciesPortrait } from '../common/Portrait';
 import { CareChips } from '../common/Profile';
 import { VerdictBadge } from '../common/CompatPreview';
-import { ENV_LABEL, RARITY_LABEL, RARITY_TONE, DIFFICULTY_LABEL, DIFFICULTY_TONE, VERDICT_RANK, FOOD_TAG_LABEL, titleCase } from '../common/format';
+import { ENV_LABEL, RARITY_LABEL, RARITY_TONE, DIFFICULTY_LABEL, DIFFICULTY_TONE, VERDICT_RANK, titleCase } from '../common/format';
+import { DietGuideView, HabitatGuideView, RealLifeTips } from './SpeciesGuide'; // lane:guide
 import { ARTICLES } from './science';
 import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } from './morphs';
 
@@ -273,7 +274,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
             {sp.captiveBredAvailable && <Chip tone="good">Captive-bred available</Chip>}
             {owned > 0 && <Chip tone="aqua">You keep {owned}</Chip>}
           </div>
-          <p className="pn-lead">{e.summary}</p>
+          <p className="pn-lead">{tempText(e.summary)}</p>
         </div>
       </div>
 
@@ -287,42 +288,49 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
           {sp.nativeRegion}
         </FactRow>
         <FactRow icon={<Home size={15} />} label="Habitat">
-          {e.nativeHabitat}
+          {tempText(e.nativeHabitat)}
         </FactRow>
         <FactRow icon={<Ruler size={15} />} label="Adult size">
           About {sp.adultSizeCm} cm · needs {sp.recommendedMinTankGallons}+ gallons ({sp.recommendedFootprint.minLengthIn}″ long or more)
         </FactRow>
-        <FactRow icon={<Utensils size={15} />} label="Diet">
-          {titleCase(sp.diet)} · {titleCase(sp.feedingStyle).toLowerCase()} feeder · eats {sp.foods.slice(0, 6).map((f) => FOOD_TAG_LABEL[f] ?? f.replace(/_/g, ' ')).join(', ')}
+        {/* lane:guide — diet by food TYPE (dry / frozen / live / fresh) + whether an autofeeder can feed it */}
+        <FactRow icon={<Utensils size={15} />} label={`Diet · ${titleCase(sp.diet)}`}>
+          <DietGuideView sp={sp} />
+        </FactRow>
+        <FactRow icon={<Thermometer size={15} />} label="Temperature & flow">
+          <HabitatGuideView sp={sp} />
         </FactRow>
         <FactRow icon={<Shield size={15} />} label="Temperament">
           {titleCase(sp.temperament)}
-          {sp.sameSpeciesRule.note ? ` — ${sp.sameSpeciesRule.note}` : ''}
+          {sp.sameSpeciesRule.note ? ` — ${tempText(sp.sameSpeciesRule.note)}` : ''}
         </FactRow>
         <FactRow icon={<Users size={15} />} label="Social structure">
-          {e.socialStructure}
+          {tempText(e.socialStructure)}
         </FactRow>
         <FactRow icon={<Box size={15} />} label="Tank needs">
-          {e.tankNeeds}
+          {tempText(e.tankNeeds)}
         </FactRow>
         <FactRow icon={<Handshake size={15} />} label="Compatibility">
-          {e.compatibilityNotes}
+          {tempText(e.compatibilityNotes)}
         </FactRow>
         <FactRow icon={<Egg size={15} />} label="Breeding">
-          {e.breedingOverview}
+          {tempText(e.breedingOverview)}
           {breeding && !breeding.breedable && <span className="pn-muted"> (Not bred in this build.)</span>}
         </FactRow>
         <FactRow icon={<Leaf size={15} />} label={`Conservation${sp.conservation?.status ? ` · ${sp.conservation.status}` : ''}`}>
-          {e.conservationNote}
+          {tempText(e.conservationNote)}
           {sp.wildCaughtNote ? ` ${sp.wildCaughtNote}` : ''}
         </FactRow>
         <FactRow icon={<Sparkles size={15} />} label="Fun fact">
-          {e.funFact}
+          {tempText(e.funFact)}
         </FactRow>
         <FactRow icon={<Eye size={15} />} label="What you’ll see in Aquarium Go">
-          {e.inGameBehavior}
+          {tempText(e.inGameBehavior)}
         </FactRow>
       </section>
+
+      {/* lane:guide — practical keeping tips (the species' own tip, then its special needs) */}
+      <RealLifeTips sp={sp} />
 
       <section>
         <SectionHead title="Tank mates" icon={<Handshake size={14} />} />

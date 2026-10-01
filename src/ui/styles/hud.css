@@ -65,10 +65,38 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-alerts-btn.is-danger { color: var(--c-danger); border-color: rgba(248, 113, 113, 0.5); animation: ag-alert-pulse 2.4s ease-in-out infinite; }
 .ag-alerts-btn__count { position: absolute; top: -5px; right: -5px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 99px; background: currentColor; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
 .ag-alerts-btn__count { color: inherit; }
-.ag-alerts-btn__dot { position: absolute; top: 9px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: var(--c-aqua); box-shadow: 0 0 0 2px rgba(7, 17, 24, 0.9), 0 0 10px rgba(94, 234, 212, 0.7); }
 .ag-alerts-btn.is-watch .ag-alerts-btn__count { background: var(--c-watch); color: #2b1d00; }
 .ag-alerts-btn.is-danger .ag-alerts-btn__count { background: var(--c-danger); color: #2b0606; }
 @keyframes ag-alert-pulse { 0%, 100% { box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28); } 50% { box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.18), 0 8px 26px rgba(0, 0, 0, 0.28); } }
+
+/* ───────── Attention dots (lane:notify) ─────────
+   One indicator everywhere: 9 px, top-right of what it marks; amber = watch / new, red = danger (common/notify.ts).
+   A dark ring keeps it crisp over glass, a bright room or a tank thumbnail; it pops in once, then stays still. The
+   control it sits on names the reason (aria-label / title): never colour alone. */
+.ag-attn { position: absolute; top: -2px; right: -2px; z-index: 1; width: 9px; height: 9px; border-radius: 50%; background: var(--c-watch); box-shadow: 0 0 0 2px rgba(6, 15, 21, 0.92), 0 0 8px rgba(251, 191, 36, 0.55); pointer-events: none; animation: ag-attn-in .42s cubic-bezier(.34, 1.56, .64, 1) both; }
+.ag-attn--danger { background: var(--c-danger); box-shadow: 0 0 0 2px rgba(6, 15, 21, 0.92), 0 0 9px rgba(248, 113, 113, 0.65); }
+.ag-attn--inline { position: relative; top: auto; right: auto; display: inline-block; flex: none; vertical-align: 1px; }
+@keyframes ag-attn-in { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+:root[data-reduced-motion='true'] .ag-attn { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ag-attn { animation: none; } }
+.ag-has-attn { position: relative; }
+.ag-hudbtn__attn { top: 7px; right: 7px; }
+.ag-switcher__arrow { position: relative; }
+.ag-switcher__attn { top: 7px; right: 5px; }
+.ag-dock__attn { top: -3px; right: -6px; }
+.ag-tab__attn { margin-left: 7px; }
+/* lane:qa-r3 — room view: a dot pinned above a tank's lid (render/facility/RoomTankDots.tsx); a touch larger, it
+   sits over a busy 3D room rather than a pill */
+.ag-attn--room { position: relative; top: auto; right: auto; display: block; width: 10px; height: 10px; }
+/* the bell: the number is unread news, coloured by the worst of the tanks and that news; a dot when only tanks wait */
+.ag-alerts-btn .ag-alerts-btn__count.is-news { background: var(--c-aqua); color: var(--c-aqua-ink); }
+.ag-alerts-btn .ag-alerts-btn__count.is-watch { background: var(--c-watch); color: #2b1d00; }
+.ag-alerts-btn .ag-alerts-btn__count.is-danger { background: var(--c-danger); color: #2b0606; }
+.ag-alerts-btn__count { box-shadow: 0 0 0 2px rgba(6, 15, 21, 0.92); animation: ag-attn-in .42s cubic-bezier(.34, 1.56, .64, 1) both; }
+:root[data-reduced-motion='true'] .ag-alerts-btn__count { animation: none; }
+.ag-alerts-btn__attn { top: 9px; right: 10px; }
+.ag-alerts-pop__full { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); }
+.ag-alerts-pop__full:hover { color: var(--c-ink); }
 
 /* Alerts popover */
 .ag-alerts-pop { right: 0; top: calc(100% + 10px); width: 390px; max-height: min(72vh, 640px); overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 16px; }
@@ -169,8 +197,6 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-dock__icon { position: relative; display: grid; place-items: center; }
 .ag-dock__lock { position: absolute; right: -8px; bottom: -4px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #0b1a22; border: 1px solid var(--c-line-strong); color: var(--c-ink-2); }
 .ag-dock__label { font-size: calc(11px * var(--text-scale)); font-weight: 620; letter-spacing: 0.01em; white-space: nowrap; }
-/* lane:w2-ui — count badge on a dock button (unseen show results); coral like the panel's "hot" tab count */
-.ag-dock__badge { position: absolute; top: -7px; right: -11px; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 99px; display: grid; place-items: center; background: var(--c-coral); color: #2a0f06; font: 800 10.5px/1 var(--font-ui); font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px rgba(8, 20, 26, 0.92), 0 2px 8px rgba(255, 138, 101, 0.35); pointer-events: none; }
 .ag-dock__item--dev { display: none; color: var(--c-watch); }
 
 /* ───────── Toasts ─────────
@@ -483,7 +509,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-toasts { width: min(360px, calc(100vw - 2 * var(--edge))); gap: 5px; }
   .ag-toast { padding: 6px 4px 6px 7px; }
   .ag-toast__title { -webkit-line-clamp: 2; }
-  .ag-toast--warning .ag-toast__title, .ag-toast--danger .ag-toast__title, .ag-toast--death .ag-toast__title { -webkit-line-clamp: 3; }
+  /* lane:qa-r3 — four: a purchase receipt followed by its heads-up ("…so an autofeeder can't feed it — feed it by hand")
+     lost the instruction at three */
+  .ag-toast--warning .ag-toast__title, .ag-toast--danger .ag-toast__title, .ag-toast--death .ag-toast__title { -webkit-line-clamp: 4; }
   .ag-toast.is-expanded .ag-toast__title { -webkit-line-clamp: 6; }
 }
 /* Phones: one line for routine news, two for warnings; a tap on the text opens the whole message (Toasts.tsx pins it). */

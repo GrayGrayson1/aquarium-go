@@ -13,6 +13,8 @@ import { getSubstrateDef } from '@/data/catalog/substrates';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { usePanelGame, safe, useTempText } from '../common/hooks';
 import { tankStatusReason } from '@/ui/common/tankStatus';
+import { tankAttention, ATTENTION_WORD } from '@/ui/common/notify'; // lane:notify
+import { AttnDot } from '@/ui/hud/AttnDot'; // lane:notify
 import { act } from '../common/act';
 import { Chip, Seg, Select, Card, EmptyState, Tile, Bar, Callout } from '../common/parts';
 import { TankThumb } from '../common/TankThumb';
@@ -103,6 +105,11 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
     .split('\n')
     .map((x) => x.trim())
     .filter(Boolean);
+  // lane:notify — the row's attention dot (live: amber watch / red danger) and what else needs a look beyond the status
+  // line (food running low, broken gear, gear that can't help these animals)
+  const attn = safe(() => tankAttention(g, tank.id), null);
+  const extraWhy = (attn?.items ?? []).filter((i) => !statusWhy.includes(i.text)).map((i) => i.short ?? i.text);
+  const attnLevel = attn?.level ?? 'good';
 
   const focus = () => {
     useUI.getState().set({ view: 'tank', focusedTankId: tank.id, selectedCreatureId: null });
@@ -110,11 +117,12 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
   };
 
   return (
-    <Card className={clsx('pn-tankcard', open && 'is-open')} selected={focused} tone={c.status === 'danger' ? 'danger' : null}>
+    <Card className={clsx('pn-tankcard', open && 'is-open')} selected={focused} tone={c.status === 'danger' ? 'danger' : null} testId={`tanks-row-${tank.id}`}>
       <div className="pn-tankcard__main">
-        <button type="button" className="pn-tankcard__thumb" onClick={focus} aria-label={`View ${tank.name}`}>
+        <button type="button" className="pn-tankcard__thumb" onClick={focus} aria-label={`View ${tank.name}${attnLevel !== 'good' && attn ? ` — ${attn.label}` : ''}`}>
           <TankThumb tank={tank} residents={residentsList} />
           {focused && <span className="pn-tankcard__viewing">Viewing</span>}
+          {attnLevel !== 'good' && <AttnDot level={attnLevel} className="pn-tankcard__attn" testId={`tanks-row-attn-${tank.id}`} />}
         </button>
         <div className="pn-tankcard__info">
           <div className="pn-row pn-gap-2 pn-row--top">
@@ -124,7 +132,7 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
                 {tier?.name ?? tank.tierId} · {WATER_CLASS_LABEL[tank.waterClass]}
               </div>
             </div>
-            <span className="pn-tankcard__status" title={statusWhy.join('\n') || undefined}>
+            <span className="pn-tankcard__status" title={[...statusWhy, ...extraWhy].join('\n') || undefined}>
               <StatusBadge status={c.status} label={c.status === 'good' ? 'Healthy' : c.status === 'watch' ? 'Watch' : 'Act now'} />
             </span>
           </div>
@@ -132,6 +140,14 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
           {c.status !== 'good' && statusWhy.length > 0 && (
             <div className={clsx('pn-tankcard__why', `pn-tone-${c.status}`)} role="note">
               {statusWhy.map((line) => (
+                <span key={line}>{line}</span>
+              ))}
+            </div>
+          )}
+          {/* lane:notify — needs a look though the animals and water are fine (food running low, gear) */}
+          {extraWhy.length > 0 && (
+            <div className="pn-tankcard__why pn-tankcard__why--extra pn-tone-watch" role="note" aria-label={`${ATTENTION_WORD.watch}: ${extraWhy.join(' ')}`} data-testid={`tanks-row-extra-${tank.id}`}>
+              {extraWhy.map((line) => (
                 <span key={line}>{line}</span>
               ))}
             </div>

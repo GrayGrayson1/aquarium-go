@@ -73,9 +73,11 @@ export function EntriesTab({ g, onBrowse }: { g: GameState; onBrowse: () => void
 
 // ───────────────────────────── results ─────────────────────────────
 
-export function ResultsTab({ g, focusId }: { g: GameState; focusId?: string | null }) {
+export function ResultsTab({ g, focusId, newSince }: { g: GameState; focusId?: string | null; newSince?: number | null }) {
   const list = recentResults(g.shows, 30);
-  const seen = g.shows?.resultsSeenHour ?? -Infinity;
+  // lane:notify — the panel marks results seen as soon as this tab opens; `newSince` (the seen-hour before this visit)
+  // keeps their "New" tags for the visit
+  const seen = newSince ?? g.shows?.resultsSeenHour ?? -Infinity;
   const [openId, setOpenId] = useState<string | null>(focusId ?? list.find((e) => e.status === 'judged')?.id ?? null);
   if (!list.length)
     return (

@@ -76,7 +76,7 @@ export const medaka: SpeciesDefinition = {
     predationWithoutNursery: 0.6,
     nurseryRequired: false,
     maxRaisedPerClutch: 10,
-    notes: 'With long days (13+ hours of light) and warm water, a pair spawns almost daily — courting around midnight in the wild. The female carries a cluster of 10–30 sticky eggs at her vent for a few hours, then brushes them onto plants. Eggs hatch in about 9–10 days at 25 °C (keepers use ≈250 “degree-days”); parents may eat eggs and fry, so eggs are moved. Fry take infusoria and powdered food.',
+    notes: 'With long days (13+ hours of light) and warm water, a pair spawns almost daily — courting late at night (about 1–3 am) in the wild. The female carries a cluster of 10–30 sticky eggs at her vent for a few hours, then brushes them onto plants. Eggs hatch in about 9–10 days at 25 °C (keepers use ≈250 “degree-days”); parents may eat eggs and fry, so eggs are moved. Fry take infusoria and powdered food.',
   },
   sexSystem: 'gonochoristic',
   parentalCare: 'none',
@@ -87,7 +87,7 @@ export const medaka: SpeciesDefinition = {
   baseValue: 4,
   rarity: 'common',
   visitorAppeal: 0.6,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2018); Vulnerable on Japan’s national Red List',
@@ -154,6 +154,8 @@ export const medaka: SpeciesDefinition = {
     conservationNote: 'Declining in Japan’s modern farmland and nationally listed as Vulnerable. Never release medaka — domestic lines dilute wild populations.',
     funFact: 'In 1994 medaka became the first vertebrates to mate and lay eggs in space, aboard the Space Shuttle Columbia.',
     inGameBehavior: 'Cruises just under the surface in a loose shoal, females carry glittering egg clusters, and fish pick at anything that lands on the water.',
+    feedingNote: 'Feeds at the surface with an upturned mouth: crushed flakes or micro pellets once or twice a day, plus thawed daphnia, brine shrimp or live baby brine. Feed less in cool water. An autofeeder with flakes or micro pellets suits it.',
+    keeperTip: 'To sex medaka, look at the anal fin: males are slimmer with a broad, parallelogram-shaped anal fin; females are plumper with a shorter, triangular one.',
   },
   sourceReferences: [
     { id: 'fishbase-oryzias-latipes', title: 'FishBase — Oryzias latipes', url: 'https://www.fishbase.se/summary/Oryzias-latipes.html', tier: 1, facts: ['max 4.0 cm SL', '18–24 °C, pH 7.0–8.0, dH 9–19', 'Japan, Korea, China, Vietnam', 'IUCN Least Concern (2018)'] },

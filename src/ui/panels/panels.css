@@ -75,6 +75,8 @@
 .pn-switch__item:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: -2px; }
 .pn-switch__item.is-active { color: #f0fffc; background: linear-gradient(180deg, rgba(94, 234, 212, 0.2), rgba(45, 212, 191, 0.08)); box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.38); }
 .pn-switch__item.is-active svg { color: var(--c-aqua); }
+.pn-switch__icon { position: relative; display: grid; place-items: center; } /* lane:notify — hosts the attention dot */
+.pn-switch__attn { top: -3px; right: -6px; }
 
 .pn-layout { position: relative; display: flex; flex-direction: column; min-height: 0; height: 100%; }
 .pn-head { position: relative; flex: none; padding: 16px var(--pn-pad) 12px; border-bottom: 1px solid var(--c-line); }
@@ -160,6 +162,8 @@
 .pn-seg--sm .pn-seg__opt { padding: 6px 12px; min-height: 32px; font-size: calc(12.5px * var(--text-scale)); }
 .pn-seg__count { font-size: 11px; font-weight: 650; padding: 0 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.1); color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
 .pn-seg__count--hot { background: var(--c-coral); color: #2a0f06; }
+/* lane:notify — "new until viewed" (show results): amber, like the dock's dot */
+.pn-seg__count--new { background: var(--c-watch); color: #2b1d00; box-shadow: 0 0 8px rgba(251, 191, 36, 0.35); }
 
 .pn-select { position: relative; display: inline-flex; min-width: 0; }
 .pn-select select { appearance: none; -webkit-appearance: none; font: inherit; font-size: calc(13px * var(--text-scale)); font-weight: 560; color: var(--c-ink); background: rgba(255, 255, 255, 0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23b5c8cd' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center; border: 1px solid var(--c-line-strong); border-radius: var(--r-pill); padding: 8px 34px 8px 14px; min-height: 38px; max-width: 100%; cursor: pointer; text-overflow: ellipsis; }
@@ -346,6 +350,7 @@ a.pn-link { text-decoration: none; }
 .pn-tankcard__thumb:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 3px; }
 .pn-tankcard__thumb:hover .pn-tankthumb { filter: brightness(1.12); }
 .pn-tankthumb { display: block; border-radius: 8px; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.35)); transition: filter 0.2s; }
+.pn-tankcard__attn { top: 6px; right: 6px; width: 10px; height: 10px; } /* lane:notify */
 .pn-tankcard__viewing { position: absolute; left: 6px; bottom: 6px; font-size: 10px; line-height: 1; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 7px; border-radius: 99px; background: rgba(94, 234, 212, 0.9); color: var(--c-aqua-ink); }
 .pn-tankcard__info { flex: 1; min-width: 0; }
 .pn-tankcard__metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
@@ -437,7 +442,7 @@ a.pn-link { text-decoration: none; }
 .pn-supply { display: flex; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 16px; background: var(--pn-card); border: 1px solid var(--pn-card-line); font-size: calc(13.5px * var(--text-scale)); }
 .pn-supply__swatch { flex: none; width: 36px; height: 36px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15); }
 .pn-supply__swatch--salt { background: radial-gradient(circle at 35% 35%, #fff, #cfe7f0 45%, #7fb2c8); }
-.pn-supply__side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.pn-supply__side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 96px; } /* lane:qa-r3 min-width: rows' text columns (and their fit chips) line up */
 .pn-supply.is-out { border-color: rgba(251, 191, 36, 0.32); }
 /* deep link from the feed picker ("Buy more"): the requested food flashes once */
 .pn-supply.is-flash { border-color: rgba(94, 234, 212, 0.65); animation: pn-supply-flash 2.4s var(--ease) both; }

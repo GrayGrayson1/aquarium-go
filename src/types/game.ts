@@ -856,6 +856,21 @@ export interface GameState {
   staff?: StaffState;
   /** lane:shows — show calendar, entries, results and trophies (src/sim/shows). Absent in old saves; created lazily. */
   shows?: ShowsState;
+  /** lane:notify — notification-centre bookkeeping (src/ui/common/notify.ts). Absent in old saves; written lazily by the UI. */
+  notify?: NotifyState;
+}
+
+/**
+ * lane:notify — what the player has cleared or looked at. UI-only bookkeeping: the sim never reads it, and nothing is
+ * ever deleted from `log` (progression, exhibits and the welcome-back card scan it), so "Clear all" only hides.
+ */
+export interface NotifyState {
+  /** Events whose id sequence (`ev_<base36>`) is at or below this are hidden from the alerts drawer ("Clear all"). */
+  logClearedSeq?: number;
+  /** Game hour of the last "Clear all" (fallback for an event id without a readable sequence). */
+  logClearedHour?: number;
+  /** `progress.research.completed.length` when the Research panel was last open (finished projects after it are "new"). */
+  researchSeen?: number;
 }
 
 // ───────────────────────────────── Staff (lane:staff) ─────────────────────────────────

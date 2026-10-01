@@ -367,7 +367,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
           </div>
           {report && gate.ok && <VerdictBadge verdict={report.verdict} />}
           <Button variant="primary" size="lg" disabled={!canBuy} onClick={buy} data-testid="buy-offer" silent>
-            <ShoppingBag size={17} /> {locked ? 'Locked' : !afford ? 'Not enough money' : !gate.ok ? 'Choose a suitable tank' : risky && !ack ? 'Confirm the risk first' : `Buy for ${formatMoney(price)}`}
+            <ShoppingBag size={17} /> {locked ? 'Locked' : chosen.length === 0 ? 'Pick at least one animal' /* lane:qa-r3 — was "Buy for $0" */ : !afford ? 'Not enough money' : !gate.ok ? 'Choose a suitable tank' : risky && !ack ? 'Confirm the risk first' : `Buy for ${formatMoney(price)}`}
           </Button>
         </div>
         {locked && <span className="pn-tiny pn-muted">{sp.unlock.hint}</span>}

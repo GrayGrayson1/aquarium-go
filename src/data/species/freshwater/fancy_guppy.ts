@@ -88,7 +88,7 @@ export const fancyGuppy: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater species: reach 40 reputation or build husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2020)',
@@ -212,6 +212,8 @@ export const fancyGuppy: SpeciesDefinition = {
     conservationNote: 'Least Concern, but released guppies harm native fish and hybridise with endangered Endler’s. Never release aquarium fish.',
     funFact: 'Guppy colour inheritance has been studied since the 1920s, and many colour genes ride on the male Y chromosome — sons look like their fathers.',
     inGameBehavior: 'Males shimmy and flare their tails at females, the group picks at the surface, and females give birth to fry that dash for the plants.',
+    feedingNote: 'Surface and mid-water feeders with small mouths. Give flakes or micro pellets in small pinches two or three times a day, plus frozen daphnia, brine shrimp or bloodworms, and live baby brine for fry. An autofeeder suits them.',
+    keeperTip: 'Fancy strains are less hardy than wild guppies: quarantine new fish for a few weeks, and avoid buying from tanks with clamped fins or dead fish.',
   },
   sourceReferences: [
     { id: 'seriouslyfish-poecilia-reticulata', title: 'Seriously Fish — Poecilia reticulata', url: 'https://www.seriouslyfish.com/species/poecilia-reticulata/', tier: 2, facts: ['60 mm SL max', '17–28 °C, pH 7.0–8.5, GH 8–30', 'gestation 4–6 weeks; 5–100 fry', 'adults eat fry', 'avoid fin-nippers', 'fancy strains less hardy'] },

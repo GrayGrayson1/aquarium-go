@@ -96,7 +96,7 @@ export const peacockMantisShrimp: SpeciesDefinition = {
   baseValue: 130,
   rarity: 'very_rare',
   visitorAppeal: 1,
-  unlock: { requires: ['predators'], hint: 'Unlocks with predator exhibits — a species-only tank with thick glass or acrylic.' },
+  unlock: { requires: ['predators'], hint: 'Research Predator Husbandry (needs a public showroom) — a species-only tank with thick glass or acrylic.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'All peacock mantis shrimp in the trade are wild-collected; some also arrive by accident as hitchhikers in live rock.',
   conservation: {
@@ -151,7 +151,7 @@ export const peacockMantisShrimp: SpeciesDefinition = {
   specialBehaviors: ['burrow_dig', 'burrow_peek', 'smash_strike', 'eye_track', 'rubble_rearrange', 'glass_tap', 'antennal_scale_flash'],
 
   encyclopedia: {
-    summary: 'A rainbow-armoured crustacean that smashes snail shells with clubs moving as fast as a bullet — and watches you with the strangest eyes on the reef.',
+    summary: 'A rainbow-armoured crustacean whose clubs smash snail shells with the force of a small-calibre bullet — and which watches you with the strangest eyes on the reef.',
     nativeHabitat: 'Rubble and sand around Indo-Pacific coral reefs, where it digs U-shaped burrows under rock.',
     socialStructure: 'Solitary and fiercely territorial; pairs meet only to mate.',
     tankNeeds: 'A species-only tank (40 gallons or more for an adult) with a deep sand-and-rubble bed for burrowing, rock to dig under, and a lid. Use acrylic or thick glass — strikes have cracked aquarium panes.',
@@ -160,6 +160,8 @@ export const peacockMantisShrimp: SpeciesDefinition = {
     conservationNote: 'Not assessed by the IUCN. All are wild-caught (some arrive as live-rock hitchhikers), so give it a proper lifelong home.',
     funFact: 'Its club strike is among the fastest movements in the animal kingdom: it hits hard enough to create collapsing cavitation bubbles, so the prey is struck twice — once by the club and once by the bubble.',
     inGameBehavior: 'Excavates and rearranges its burrow, peeks out with swivelling eyes, tracks your finger on the glass, and cracks open snails with an audible pop.',
+    feedingNote: 'A hunter that smashes live snails and crabs, and takes thawed krill, mysis or sinking pellets from tongs. Feed every day or two and remove leftovers it drags into its burrow. It eats autofed sinking pellets, but hand-fed meaty food should be most of its diet.',
+    keeperTip: 'Keep your fingers out of its reach: a smashing strike can badly bruise or cut a hand. Feed it and move rock with long tongs, and expect it to hit the tongs.',
   },
   sourceReferences: [
     { id: 'mba-peacock-mantis', title: 'Monterey Bay Aquarium — Peacock Mantis Shrimp', url: 'https://www.montereybayaquarium.org/animals/animals-a-to-z/peacock-mantis-shrimp', tier: 1, facts: ['1–7 in', 'Indian and Pacific Oceans', 'territorial and solitary', 'burrows audibly in rock and seabed', 'strikes comparable to a .22 bullet', 'colour discrimination actually low'] },

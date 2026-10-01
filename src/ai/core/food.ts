@@ -283,7 +283,7 @@ export function syncFoodWithSim(w: AIWorld, simFood: number, fallbackSpec: (tags
       if (fs.lastLocalSpawnCount > 0) fs.unitsPerParticle = Math.max(0.2, inc / fs.lastLocalSpawnCount);
       fs.lastLocalSpawnT = -1e9;
     } else {
-      // food arrived from elsewhere (auto-feeder / panel): show it dropping in
+      // food arrived from elsewhere (autofeeder / panel): show it dropping in
       fs.simTracked = true;
       const tags = (byTag ? (Object.keys(byTag) as FoodTag[]) : []).filter((k) => (byTag?.[k] ?? 0) > 0);
       const spec = fallbackSpec(tags) ?? fs.lastSpec;

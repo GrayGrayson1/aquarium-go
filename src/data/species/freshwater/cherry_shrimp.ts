@@ -85,7 +85,7 @@ export const cherryShrimp: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.5,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater species: reach 40 reputation or build husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Not assessed by IUCN; rated High invasion risk by USFWS',
@@ -176,8 +176,10 @@ export const cherryShrimp: SpeciesDefinition = {
     compatibilityNotes: 'Almost any fish will eat shrimplets. Adults are safest with tiny peaceful fish or snails; goldfish, puffers, cichlids and larger fish eat them.',
     breedingOverview: 'Females carry 20–50 eggs under the tail for roughly three weeks. Babies hatch as 1–2 mm miniature adults with no larval stage.',
     conservationNote: 'All aquarium stock is captive-bred. Released cherry shrimp have become invasive in several countries — never release them.',
-    funFact: 'A yellow “saddle” of developing eggs shows through the female’s shell behind her head before she becomes berried — and escaped red cherries have even survived winter under a frozen German pond.',
+    funFact: 'A yellow “saddle” of developing eggs shows through the female’s shell behind her head before she becomes berried — and wild cherry shrimp ride out seasons from about 4 °C in winter to 30 °C in summer.',
     inGameBehavior: 'Picks constantly at surfaces with its tiny claws, fans eggs when berried, swarms dropped food and flicks backwards when startled.',
+    feedingNote: 'Grazes biofilm and algae all day, so a mature tank does much of the feeding. Add a tiny pinch of flakes, sinking pellets, algae wafer or blanched vegetable every day or two. An autofeeder works on its smallest portion.',
+    keeperTip: 'Drip-acclimatise new shrimp slowly, over an hour or more, and keep water changes small and regular, with dechlorinated water at the same temperature. Sudden swings cause failed moults.',
   },
   sourceReferences: [
     { id: 'usgs-nas-neocaridina-davidi', title: 'USGS Nonindigenous Aquatic Species — cherry shrimp (Neocaridina davidi) fact sheet', url: 'https://nas.er.usgs.gov/queries/factsheet.aspx?SpeciesID=2257', tier: 1, facts: ['up to 40 mm', 'native to China, Korea, Taiwan, Vietnam', 'streams, ponds, ditches', 'up to ~60 eggs', 'incubation 16–19 days (warm)', 'maturity ~30 days (warm lab)', 'established in Hawaii and Florida via aquarium release'] },

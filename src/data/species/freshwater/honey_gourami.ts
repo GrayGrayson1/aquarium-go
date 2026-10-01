@@ -87,7 +87,7 @@ export const honeyGourami: SpeciesDefinition = {
   baseValue: 6,
   rarity: 'common',
   visitorAppeal: 0.6,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater fish & invertebrates.' },
+  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2009)',
@@ -155,6 +155,8 @@ export const honeyGourami: SpeciesDefinition = {
     conservationNote: 'Least Concern. Never release aquarium fish.',
     funFact: 'In the wild it is said to spit droplets of water to knock insects off overhanging leaves — like a tiny archerfish.',
     inGameBehavior: 'Hovers near the surface touching things with its feelers, gulps air, and builds a bubble nest in a calm corner when content.',
+    feedingNote: 'A slow surface feeder: small flakes or micro pellets once or twice a day, plus thawed daphnia, brine shrimp or bloodworms a few times a week. Fast tank mates can beat it to food. An autofeeder with flakes or micro pellets suits it.',
+    keeperTip: 'Keep the tank covered and don’t fill it to the brim. Like all gouramis it gulps air from the warm, humid layer above the water, and it may jump.',
   },
   sourceReferences: [
     { id: 'seriouslyfish-trichogaster-chuna', title: 'Seriously Fish — Trichogaster chuna', url: 'https://www.seriouslyfish.com/species/trichogaster-chuna/', tier: 2, facts: ['55 mm SL', '22–27 °C, pH 6.0–7.5, GH 2–15', 'India, Bangladesh, Nepal', 'groups of 4–6', 'avoid fin-nippers and boisterous feeders', 'bubble nest; eggs hatch 24–36 h', 'male/female colours', 'water-spitting'] },

@@ -97,7 +97,7 @@ export const clownGoby: SpeciesDefinition = {
   baseValue: 45,
   rarity: 'uncommon',
   visitorAppeal: 0.65,
-  unlock: { requires: ['reef'], hint: 'Unlocks with reef systems — it lives among branching corals.' },
+  unlock: { requires: ['reef'], hint: 'Research Reef Systems — it lives among branching corals.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Both wild-collected (~$25) and captive-bred (Biota, Proaquatix; ~$60–90) fish are sold.',
   conservation: {
@@ -150,6 +150,8 @@ export const clownGoby: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2018), but its home corals are vulnerable to bleaching. Captive-bred fish are available.',
     funFact: 'Its skin mucus is laced with a toxin: predators that grab a clown goby often spit it out alive.',
     inGameBehavior: 'Perches in coral branches, hops from branch to branch, and darts out to pick passing food before returning to its favourite spot.',
+    feedingNote: 'Darts out from its coral to pick small meaty food: thawed mysis and brine shrimp, small marine pellets, live baby brine and copepods. If yours takes pellets, an autofeeder can cover one meal; frozen and live foods go in by hand.',
+    keeperTip: 'Give it a large, established coral colony rather than a small frag, and feed small meals two or three times a day — hungry gobies on small colonies are the ones that nip polyps.',
   },
   sourceReferences: [
     { id: 'fishbase-gobiodon-okinawae', title: 'FishBase — Gobiodon okinawae (Okinawa goby)', url: 'https://www.fishbase.se/summary/Gobiodon-okinawae.html', tier: 1, facts: ['max 3.5 cm TL', 'depth 2–15 m', 'coral-commensal among staghorn Acropora', 'aggregations of 5–15', 'IUCN Least Concern (2018)'] },

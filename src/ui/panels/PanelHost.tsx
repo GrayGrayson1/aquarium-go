@@ -26,6 +26,8 @@ import { edit } from './common/act';
 import { PanelErrorBoundary } from './common/ErrorBoundary';
 import { useSettings } from '@/state/settings';
 import { DOCK_ITEMS, openPanel } from '../hud/Dock';
+import { AttnDot, useNavDots } from '../hud/AttnDot'; // lane:notify
+import { markResearchSeen, researchSeenStale } from '../common/notify'; // lane:notify
 import { TanksPanel } from './tanks/TanksPanel';
 import { LivestockPanel } from './livestock/LivestockPanel';
 import { MarketPanel } from './market/MarketPanel';
@@ -95,6 +97,17 @@ export function PanelHost() {
     const t = window.setTimeout(() => sheetRef.current?.focus({ preventScroll: true }), 60);
     return () => window.clearTimeout(t);
   }, [open, panel]);
+
+  // lane:notify — while Research is open, every finished project counts as seen (clears its dock dot)
+  const researchStale = useGame((s) => (open && panel === 'research' && !!s.game && !s.game.isShowcase ? researchSeenStale(s.game) : false));
+  useEffect(() => {
+    if (!researchStale) return;
+    try {
+      edit((d) => markResearchSeen(d));
+    } catch {
+      /* bookkeeping only */
+    }
+  }, [researchStale]);
 
   useEffect(() => {
     if (open) return;
@@ -202,25 +215,31 @@ function PanelSwitcher({ active }: { active: ManagedPanelId }) {
     ref.current?.querySelector<HTMLElement>(`[data-testid="sheet-switch-${active}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center' });
   }, [active]);
   const items = DOCK_ITEMS.filter((it) => it.id !== 'settings' && (!it.lock || dev || unlocked.split('|').includes(it.lock)));
+  const dots = useNavDots(DOCK_ITEMS); // lane:notify — the dock's attention dots (the sheet covers the dock)
   return (
     <nav className="pn-switch" ref={ref} aria-label="Switch panel" data-testid="sheet-switch">
       {items.map((it) => {
         const Icon = it.icon;
         const isActive = it.id === active;
+        const dot = isActive ? undefined : dots[it.id];
         return (
           <button
             key={it.id}
             type="button"
             className={`pn-switch__item ${isActive ? 'is-active' : ''}`}
             aria-pressed={isActive}
-            aria-label={it.label}
+            aria-label={dot ? `${it.label} — ${dot.label}` : it.label}
+            title={dot ? `${it.label} — ${dot.label}` : undefined}
             data-testid={`sheet-switch-${it.id}`}
             onClick={() => {
               if (isActive) return;
-              openPanel(it.id);
+              openPanel(it.id, dot?.target ?? null);
             }}
           >
-            <Icon size={18} aria-hidden />
+            <span className="pn-switch__icon">
+              <Icon size={18} aria-hidden />
+              {dot && <AttnDot level={dot.level} className="pn-switch__attn" testId={`sheet-switch-dot-${it.id}`} />}
+            </span>
             <span>{it.label}</span>
           </button>
         );

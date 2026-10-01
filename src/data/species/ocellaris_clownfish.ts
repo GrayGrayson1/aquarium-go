@@ -98,7 +98,7 @@ export const ocellarisClownfish: SpeciesDefinition = {
   baseValue: 30,
   rarity: 'common',
   visitorAppeal: 1,
-  unlock: { requires: ['marine_basics'], hint: 'Starter species — otherwise unlocks with beginner marine fish.' },
+  unlock: { requires: ['marine_basics'], hint: 'Starter species — otherwise research Marine Systems, or reach 150 reputation as a seasoned keeper.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN Red List, assessed 2021)',
@@ -184,6 +184,8 @@ export const ocellarisClownfish: SpeciesDefinition = {
     conservationNote: 'Listed as Least Concern by the IUCN (2021), though collection has thinned some local populations. Captive-bred clownfish take pressure off wild reefs — choose them.',
     funFact: 'All clownfish start life as males. If the female of a group disappears, her mate changes sex to become the new female.',
     inGameBehavior: 'Waddles near its favourite spot, bonds with a partner, nestles into an anemone once you unlock one, and tends a patch of eggs.',
+    feedingNote: 'An easy mid-water omnivore: marine pellets and flakes make the staple, with thawed mysis or brine shrimp and a little seaweed for variety. Feed small amounts once or twice a day; an autofeeder with pellets or flakes suits it.',
+    keeperTip: 'Buy two small juveniles together, or one clearly smaller than the other — the bigger fish becomes the female. Adding a third clownfish to a settled pair usually ends in fighting.',
   },
   sourceReferences: [
     { id: 'fishbase-amphiprion-ocellaris', title: 'FishBase — Amphiprion ocellaris (Clown anemonefish)', url: 'https://www.fishbase.se/summary/Amphiprion-ocellaris.html', tier: 1, facts: ['max 11 cm TL', 'depth 1–15 m', 'protandrous hermaphrodite', 'three natural host anemones', 'males guard and aerate eggs', 'IUCN Least Concern (assessed 2021)', 'reached 12 years in captivity'] },

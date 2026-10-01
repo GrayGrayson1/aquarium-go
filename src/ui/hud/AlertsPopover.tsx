@@ -1,10 +1,13 @@
 /**
- * Alerts + event log drawer: tanks needing attention first, then the recent event log. OWNER: lane "ui-shell".
+ * Alerts + event log drawer (the notification centre): tanks needing attention first, then the recent event log.
+ * Tank rows are live — they leave when the problem is fixed. Events are "new until read": "Mark read" (or closing the
+ * drawer) reads them, "Clear all" also hides them here (the Log panel keeps the full history; rules in
+ * ../common/notify.ts). OWNER: lane "ui-shell" (lane:notify — clear all, links, live attention counts).
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
-import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart, PowerOff } from 'lucide-react';
+import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart, PowerOff, Eraser, ScrollText, Wrench } from 'lucide-react';
 import type { GameEvent, GameState } from '@/types';
 import { useGame, useGameSelector } from '@/state/game';
 import { useUI } from '@/state/ui';
@@ -19,6 +22,8 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { useTankCardTab } from '../cards/TankCard';
 import { EventIcon } from './eventIcons';
 import { Chip, formatMoney } from '../kit';
+import { attentionSummary, clearAllEvents, drawerEvents, gearFitItems, markAllRead } from '../common/notify'; // lane:notify
+import { eventLink } from './eventLinks'; // lane:notify
 
 /**
  * Failed equipment in a tank, listed under the bell until it is repaired or replaced (its log line scrolls away in a
@@ -32,18 +37,11 @@ function failedGear(t: GameState['tanks'][string], reason: string): string[] {
 }
 
 export function useAlertCount() {
+  // lane:notify — one rule for every dot (common/notify.ts): the sim's status (water, animal welfare, out of food), food
+  // running low, failed equipment (its log line scrolls away in a big facility — G2-06) and gear that can't help
   const key = useGameSelector((g) => {
-    let watch = 0;
-    let danger = 0;
-    // cache.status is the worst of water, animal welfare and food-out (sim/tankStatus.ts); failed equipment counts as
-    // watch until it is fixed (its log line scrolls away in a big facility — G2-06)
-    for (const id of g.tankOrder) {
-      const t = g.tanks[id];
-      const s = t?.cache?.status;
-      if (s === 'danger') danger++;
-      else if (s === 'watch' || (t && t.equipment?.some((e) => e.failed))) watch++;
-    }
-    return `${watch}:${danger}`;
+    const a = attentionSummary(g);
+    return `${a.watch}:${a.danger}`;
   }, '0:0');
   const [watch, danger] = key.split(':').map(Number);
   return { watch, danger, total: watch + danger };
@@ -72,12 +70,18 @@ function TankAlerts({ game }: { game: GameState }) {
     .filter((x): x is { t: GameState['tanks'][string]; a: TankFoodAlert } => !!x.t && !!x.a)
     .sort((x, y) => (x.a.level === 'out' ? -1 : 1) - (y.a.level === 'out' ? -1 : 1));
   const reasons = new Map(rows.map((t) => [t.id, safe('tankStatusReason', () => tankStatusReason(game, t.id, { skipFood: food.some((f) => f.t.id === t.id) }), '')]));
+  // lane:notify — installed gear that can't help the animals in that tank (an autofeeder for frozen-food eaters…)
+  const fit = game.tankOrder
+    .map((id) => game.tanks[id])
+    .filter((t) => !!t)
+    .map((t) => ({ t, items: safe('gearFitItems', () => gearFitItems(game, t), []) }))
+    .filter((x) => x.items.length > 0);
   const gear = game.tankOrder
     .map((id) => game.tanks[id])
     .filter((t) => !!t)
     .map((t) => ({ t, names: failedGear(t, reasons.get(t.id) ?? '') }))
     .filter((x) => x.names.length > 0);
-  if (!rows.length && !food.length && !gear.length)
+  if (!rows.length && !food.length && !gear.length && !fit.length)
     return (
       <div className="ag-alert-ok">
         <CircleCheck size={16} aria-hidden /> All tanks look healthy.
@@ -151,6 +155,30 @@ function TankAlerts({ game }: { game: GameState }) {
           <ChevronRight size={16} aria-hidden />
         </button>
       ))}
+      {fit.map(({ t, items }) => (
+        <button
+          type="button"
+          key={`fit-${t.id}`}
+          className={clsx('ag-alert-row', items.some((i) => i.level === 'danger') ? 'is-danger' : 'is-watch')}
+          data-testid="alert-gear-fit"
+          title="Open the tank card's equipment"
+          onClick={() => {
+            sfx('open');
+            useTankCardTab.setState({ want: 'gear' });
+            focusTank(t.id);
+            useShell.getState().set({ popover: null });
+          }}
+        >
+          <Wrench size={16} aria-hidden />
+          <span className="ag-grow">
+            <span className="ag-alert-row__title">{t.name}</span>
+            <span className="ag-alert-row__text">
+              <strong>Gear not helping</strong> — {items.map((i) => i.text).join(' ')}
+            </span>
+          </span>
+          <ChevronRight size={16} aria-hidden />
+        </button>
+      ))}
       {rows.map((t) => {
         // the restock row above already covers the food reason
         const reason = reasons.get(t.id) ?? '';
@@ -191,20 +219,23 @@ export function AlertsPopover() {
   useEffect(
     () => () => {
       const g = useGame.getState().game;
-      if (g && g.log.some((e) => !e.read))
-        useGame.getState().mutate((d) => {
-          for (const e of d.log) e.read = true;
-        });
+      if (g && g.log.some((e) => !e.read)) useGame.getState().mutate((d) => markAllRead(d));
     },
     [],
   );
+  // lane:notify — "Clear all" hides what was logged up to then (notify.logClearedSeq); the Log panel keeps everything
   const events = useMemo(() => {
     if (!game) return [];
-    const f = FILTERS.find((x) => x.id === filter)?.kinds;
-    return [...game.log].reverse().filter((e) => !f || f.includes(e.kind)).slice(0, 40);
-  }, [game?.log, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+    return drawerEvents(game, FILTERS.find((x) => x.id === filter)?.kinds ?? null, 40);
+  }, [game?.log, game?.notify, filter]); // eslint-disable-line react-hooks/exhaustive-deps
+  const anyEvents = useMemo(() => (game ? drawerEvents(game, null, 1).length > 0 : false), [game?.log, game?.notify]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!game) return null;
-  const unread = game.log.filter((e) => !e.read).length;
+  const unread = game.log.reduce((n, e) => n + (e.read ? 0 : 1), 0);
+  const openLog = () => {
+    sfx('open');
+    useShell.getState().set({ popover: null });
+    useUI.getState().set({ panel: 'log', panelTarget: null });
+  };
   return (
     <motion.div
       className="ag-popover ag-alerts-pop"
@@ -223,16 +254,22 @@ export function AlertsPopover() {
         <div className="ag-row" style={{ gap: 8 }}>
           <div className="ag-popover__title ag-grow">Recent events</div>
           {unread > 0 && (
+            <button type="button" className="ag-linkbtn" data-testid="alerts-mark-read" title="Mark every event as read (they stay in this list)" onClick={() => useGame.getState().mutate((d) => markAllRead(d))}>
+              <CheckCheck size={14} aria-hidden /> Mark read
+            </button>
+          )}
+          {anyEvents && (
             <button
               type="button"
               className="ag-linkbtn"
-              onClick={() =>
-                useGame.getState().mutate((d) => {
-                  for (const e of d.log) e.read = true;
-                })
-              }
+              data-testid="alerts-clear-all"
+              title="Clear these events from this list (the full log keeps them). Tank alerts above clear themselves once the problem is fixed."
+              onClick={() => {
+                sfx('click');
+                useGame.getState().mutate((d) => clearAllEvents(d));
+              }}
             >
-              <CheckCheck size={14} aria-hidden /> Mark read
+              <Eraser size={14} aria-hidden /> Clear all
             </button>
           )}
         </div>
@@ -243,25 +280,50 @@ export function AlertsPopover() {
             </Chip>
           ))}
         </div>
-        <ul className="ag-eventlist">
-          {events.length === 0 && <li className="ag-muted ag-small" style={{ padding: '10px 2px' }}>Nothing here yet.</li>}
-          {events.map((e) => (
-            <li key={e.id} className={clsx('ag-event', `ag-event--${e.kind}`, !e.read && 'is-unread')}>
-              <EventIcon kind={e.kind} />
-              <div className="ag-grow">
-                <div className="ag-event__text">{e.text}</div>
-                <div className="ag-event__meta">
-                  {agoText(e.hour, game.clock.hour)}
-                  {e.tankId && game.tanks[e.tankId] && (
-                    <button type="button" className="ag-linkbtn" onClick={() => { focusTank(e.tankId!, false); if (e.creatureId) useUI.getState().set({ selectedCreatureId: e.creatureId }); useShell.getState().set({ popover: null }); }}>
-                      {game.tanks[e.tankId].name}
-                    </button>
-                  )}
-                </div>
-              </div>
+        <ul className="ag-eventlist" data-testid="alerts-events">
+          {events.length === 0 && (
+            <li className="ag-muted ag-small" style={{ padding: '10px 2px' }} data-testid="alerts-events-empty">
+              {anyEvents ? 'Nothing of this kind.' : game.log.length ? 'You’re all caught up. Older events are in the full log.' : 'Nothing here yet.'}
             </li>
-          ))}
+          )}
+          {events.map((e) => {
+            const link = eventLink(e);
+            return (
+              <li key={e.id} className={clsx('ag-event', `ag-event--${e.kind}`, !e.read && 'is-unread')} data-testid="alerts-event">
+                <EventIcon kind={e.kind} />
+                <div className="ag-grow">
+                  <div className="ag-event__text">{e.text}</div>
+                  <div className="ag-event__meta">
+                    {agoText(e.hour, game.clock.hour)}
+                    {e.tankId && game.tanks[e.tankId] && (
+                      <button type="button" className="ag-linkbtn" onClick={() => { focusTank(e.tankId!, false); if (e.creatureId) useUI.getState().set({ selectedCreatureId: e.creatureId }); useShell.getState().set({ popover: null }); }}>
+                        {game.tanks[e.tankId].name}
+                      </button>
+                    )}
+                    {/* lane:notify — news with a home opens it (a show result → Shows › Results, which marks it seen) */}
+                    {link && (
+                      <button
+                        type="button"
+                        className="ag-linkbtn"
+                        data-testid="alerts-event-link"
+                        onClick={() => {
+                          sfx('open');
+                          useShell.getState().set({ popover: null });
+                          useUI.getState().set({ panel: link.panel, panelTarget: link.target });
+                        }}
+                      >
+                        {link.label} <ChevronRight size={11} aria-hidden style={{ verticalAlign: '-1px' }} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
         </ul>
+        <button type="button" className="ag-linkbtn ag-alerts-pop__full" data-testid="alerts-open-log" onClick={openLog}>
+          <ScrollText size={14} aria-hidden /> Full event log
+        </button>
       </div>
     </motion.div>
   );

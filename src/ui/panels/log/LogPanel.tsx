@@ -1,6 +1,7 @@
 /**
  * Log — the event log with kind + tank filters, grouped by day, relative times and quick links to the tank,
  * creature or listing involved. Marks events read on open. OWNER: lane "ui-panels".
+ * lane:notify — the full history: the alerts drawer's "Clear all" only hides events there, never here.
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
@@ -15,6 +16,7 @@ import { markLogRead } from '../common/tankOps';
 import { orderedTanks } from '../common/derive';
 import { LOG_KIND_LABEL, relTime, dayOfHour } from '../common/format';
 import { formatClock } from '@/sim/time';
+import { eventLink } from '@/ui/hud/eventLinks'; // lane:notify
 
 type KindFilter = 'all' | 'alerts' | 'breeding' | 'market' | 'visitor' | 'milestones' | 'info';
 
@@ -122,6 +124,7 @@ export function LogPanel() {
                   const Icon = KIND_ICON[e.kind] ?? Info;
                   const t = e.tankId ? g.tanks[e.tankId] : undefined;
                   const c = e.creatureId ? g.creatures[e.creatureId] : undefined;
+                  const link = e.listingId ? null : eventLink(e); // lane:notify — a show result opens Shows › Results…
                   return (
                     <li key={e.id} className={clsx('pn-logrow', `pn-logrow--${e.kind}`)}>
                       <span className="pn-logrow__icon" title={LOG_KIND_LABEL[e.kind]}>
@@ -147,6 +150,11 @@ export function LogPanel() {
                           {e.listingId && (
                             <button type="button" className="pn-inline-link" onClick={() => useUI.getState().set({ panel: 'market', panelTarget: `listing:${e.listingId}` })}>
                               View listing
+                            </button>
+                          )}
+                          {link && (
+                            <button type="button" className="pn-inline-link" data-testid="log-event-link" onClick={() => useUI.getState().set({ panel: link.panel, panelTarget: link.target })}>
+                              {link.label} <ArrowUpRight size={11} style={{ verticalAlign: '-1px' }} />
                             </button>
                           )}
                         </div>

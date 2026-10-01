@@ -1,6 +1,6 @@
 /**
  * Visible equipment props: light fixture, filters (sponge/HOB/canister/sump), heater, chiller, fan, airstone,
- * powerheads, skimmer, refugium, UV, ATO, auto-feeder, CO₂ diffuser. Tasteful, dark, tucked into back corners.
+ * powerheads, skimmer, refugium, UV, ATO, autofeeder, CO₂ diffuser. Tasteful, dark, tucked into back corners.
  * Positions come from `equipmentLayout` (emitters.ts) so bubbles/flow leave the real props. OWNER: lane "aquascape".
  */
 import { useEffect, useMemo, useRef } from 'react';

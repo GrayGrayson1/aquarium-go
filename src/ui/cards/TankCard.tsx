@@ -50,9 +50,12 @@ import { beautyScore } from '@/sim/aquascape';
 import { exhibitScore, isUnlocked, toggleSignage } from '@/sim/facility';
 import { tankValuation, buySalt, SALT_PRICE_PER_KG } from '@/sim/economy'; // lane:qa-play: buySalt
 import { creaturesInTank } from '@/sim/life';
+import { HandFeedNote } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Sheet } from '../common/Sheet';
 import { useDockedCard } from '../hud/cardDock';
 import { tankStatusReason } from '../common/tankStatus';
+import { tankAttention, type AttentionTab } from '../common/notify'; // lane:notify
+import { AttnDot } from '../hud/AttnDot'; // lane:notify
 import { Portrait } from '../common/Portrait';
 import { CompatView } from '../common/CompatView';
 import { useShell } from '../common/shellStore';
@@ -73,6 +76,8 @@ import {
 import { Badge, Button, Chip, Meter, Section, Segmented, Slider, Stepper, StatusBadge, Tabs, Toggle, formatMoney, KV, Empty } from '../kit';
 import { WaterChip } from '../screens/StarterReveal';
 import { TankKeeperLine } from '../panels/visitors/TankKeeperLine'; // lane:staff
+import { tankGearIssues, type FitVerdict } from '@/sim/care/fit'; // lane:fit
+import { FitLine } from '../common/FitNote'; // lane:fit
 
 type TabId = 'water' | 'gear' | 'life' | 'value';
 
@@ -298,13 +303,16 @@ function flowLevel(v: number | undefined) {
 }
 const FLOW_VALUE = { low: 0.33, med: 0.66, high: 1 } as const;
 
-function EquipmentRow({ tank, e, readOnly }: { tank: Tank; e: EquipmentInstance; readOnly: boolean }) {
+function EquipmentRow({ tank, e, readOnly, fit }: { tank: Tank; e: EquipmentInstance; readOnly: boolean; /** lane:fit — running gear that isn't helping these animals */ fit?: FitVerdict | null }) {
   const unit = useSettings((s) => s.tempUnit);
   const def = getEquipmentDef(e.defId);
   const kind = (def?.kind ?? (e.defId.split('_')[0] as EquipmentKind)) as EquipmentKind;
   const Icon = EQUIP_ICON[kind] ?? Wrench;
   const name = def?.name ?? `${EQUIPMENT_KIND_LABEL[kind] ?? titleCase(e.defId)}`;
-  const set = (patch: { on?: boolean; setting?: number }, msg?: string) => act((d) => setEquipment(d, tank.id, e.id, patch), { toast: !!msg, message: msg, sound: 'click', flag: 'changed_equipment' });
+  // lane:qa-r3 — the power toggle toasts the sim's own message (it carries warnings: filter off, a clash, gear that
+  // can't help these animals); setpoint and flow changes stay quiet unless the final setting needs a warning
+  const set = (patch: { on?: boolean; setting?: number }, toggle = false) =>
+    act((d) => setEquipment(d, tank.id, e.id, patch), toggle ? { sound: 'click', flag: 'changed_equipment' } : { toast: 'caution', cautionKey: `equip:${e.id}`, sound: 'click', flag: 'changed_equipment' });
   const cond = Math.round((e.condition ?? 1) * 100);
   const isTemp = kind === 'heater' || kind === 'chiller';
   const setting = e.setting ?? def?.stats.defaultSetting ?? (isTemp ? tank.water.tempC : 0.66);
@@ -323,6 +331,7 @@ function EquipmentRow({ tank, e, readOnly }: { tank: Tank; e: EquipmentInstance;
           )}
           {def && def.upkeep > 0 && <span> · {formatMoney(def.upkeep, { cents: true })}/day</span>}
         </div>
+        {fit && <FitLine verdict={fit} testId={`tank-equip-fit-${e.id}`} /> /* lane:fit */}
         {!readOnly && e.on && isTemp && (
           <div className="ag-equip__ctl">
             <span className="ag-small ag-muted">{kind === 'heater' ? 'Heat to' : 'Cool to'}</span>
@@ -350,7 +359,7 @@ function EquipmentRow({ tank, e, readOnly }: { tank: Tank; e: EquipmentInstance;
           </div>
         )}
       </div>
-      {!readOnly && <Toggle label={`${name} power`} checked={e.on} onChange={(v) => set({ on: v }, `${name} ${v ? 'on' : 'off'}.`)} />}
+      {!readOnly && <Toggle label={`${name} power`} checked={e.on} onChange={(v) => set({ on: v }, true)} />}
     </div>
   );
 }
@@ -366,7 +375,8 @@ function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
       sound = now - lastClick.current < 300 ? null : 'click';
       if (sound) lastClick.current = now;
     }
-    act((d) => setLighting(d, tank.id, patch), { toast: false, sound, flag: 'changed_lights' });
+    // lane:qa-r3 — quiet, unless the new schedule feeds algae or starves plants (debounced per tank)
+    act((d) => setLighting(d, tank.id, patch), { toast: 'caution', cautionKey: `lights:${tank.id}`, sound, flag: 'changed_lights' });
   };
   return (
     <div className="ag-lighting">
@@ -404,6 +414,8 @@ function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
 
 function GearTab({ game, tank }: { game: GameState; tank: Tank }) {
   const readOnly = false; // dev showcase worlds (?showcase=) are fully interactive in the game screen; they are simply never saved
+  // lane:fit — running gear that can't help these animals (an autofeeder in a seahorse tank, a pump too strong for them)
+  const fits = useMemo(() => new Map(safe('tankGearIssues', () => tankGearIssues(game, tank.id), []).map((i) => [i.equipmentId, i.verdict])), [game, tank]);
   return (
     <>
       <Section title={<><Wrench size={12} aria-hidden /> Equipment</>}>
@@ -412,7 +424,7 @@ function GearTab({ game, tank }: { game: GameState; tank: Tank }) {
         ) : (
           <div className="ag-equiplist">
             {tank.equipment.map((e) => (
-              <EquipmentRow key={e.id} tank={tank} e={e} readOnly={readOnly} />
+              <EquipmentRow key={e.id} tank={tank} e={e} readOnly={readOnly} fit={fits.get(e.id)} />
             ))}
           </div>
         )}
@@ -452,6 +464,8 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
             ))}
           </div>
         )}
+        {/* lane:guide — residents that only take frozen/live food (no autofeeder can feed them) */}
+        <HandFeedNote speciesIds={residents.map((c) => c.speciesId)} />
         <Meter label="Stocking load" value={Math.min(load, 1.3) * 100} max={130} tone={load > 1 ? 'danger' : load > 0.85 ? 'watch' : 'good'} display={`${stockingWord(load)} · ${Math.round(load * 100)}%`} />
       </Section>
       <Section title="Compatibility">
@@ -573,7 +587,7 @@ function ValueTab({ game, tank }: { game: GameState; tank: Tank }) {
         <Section title={<><Signpost size={12} aria-hidden /> Visitors</>}>
           <div className="ag-row">
             <span className="ag-grow ag-small">Educational sign — visitors learn about the animals (and enjoy it more).</span>
-            <Toggle label="Educational sign" checked={tank.signage} onChange={() => act((d) => toggleSignage(d, tank.id), { toast: false, sound: 'place' })} />
+            <Toggle label="Educational sign" checked={tank.signage} onChange={() => act((d) => toggleSignage(d, tank.id), { sound: 'place' }) /* lane:qa-r3 — it costs money: say so */} />
           </div>
         </Section>
       )}
@@ -605,6 +619,17 @@ export function TankCard() {
   const tier = useMemo(() => (tank ? safe('tier', () => getTankTier(tank.tierId), null) : null), [tank?.tierId]); // eslint-disable-line react-hooks/exhaustive-deps
   const visible = open && !!tank && docked === 'tank';
   const close = () => useShell.getState().set({ tankCardOpen: false });
+  // lane:notify — what needs a look: tab dots, plus a line for what the status reason doesn't cover (food running low,
+  // broken gear, gear that can't help these animals)
+  const attn = tank && game ? safe('tankAttention', () => tankAttention(game, tank.id), null) : null;
+  const statusLine = tank && game && tank.cache.status !== 'good' ? safe('tankStatusReason', () => tankStatusReason(game, tank.id), '') : '';
+  const attnExtra = (attn?.items ?? []).filter((i) => !statusLine.split(' · ').includes(i.text)).map((i) => i.short ?? i.text);
+  const tabDot = (t: AttentionTab) => {
+    const l = attn?.tabs[t];
+    if (!l) return null;
+    const why = (attn?.items ?? []).filter((i) => i.tab === t).map((i) => i.short ?? i.text).join(' ');
+    return <AttnDot inline level={l} className="ag-tab__attn" testId={`tank-tab-attn-${t}`} label={`${l === 'danger' ? 'Danger' : 'Watch'}${why ? ` — ${why}` : ' — look here'}`} />;
+  };
   const header: ReactNode = tank ? (
     <div className="ag-thead">
       <div className="ag-overline">{tier ? (/gallon/i.test(tier.name) ? tier.name : `${tier.name} · ${tier.gallons} gal`) : 'Aquarium'}</div>
@@ -618,7 +643,12 @@ export function TankCard() {
       </div>
       {tank.cache.status !== 'good' && game && (
         <div className={clsx('ag-thead__reason', `is-${tank.cache.status}`)} data-testid="tank-status-reason">
-          {safe('tankStatusReason', () => tankStatusReason(game, tank.id), '')}
+          {statusLine}
+        </div>
+      )}
+      {attnExtra.length > 0 && (
+        <div className="ag-thead__reason is-watch" data-testid="tank-attention-reason">
+          {attnExtra.join(' ')}
         </div>
       )}
       {game && <TankKeeperLine game={game} tank={tank} /> /* lane:staff */}
@@ -637,9 +667,9 @@ export function TankCard() {
                 tutorialFlag(`tank_tab_${t}`);
               }}
               items={[
-                { id: 'water', label: 'Water' },
-                { id: 'gear', label: 'Equipment' },
-                { id: 'life', label: 'Life' },
+                { id: 'water', label: <>Water{tabDot('water')}</> }, // lane:notify — tab dots
+                { id: 'gear', label: <>Equipment{tabDot('gear')}</> },
+                { id: 'life', label: <>Life{tabDot('life')}</> },
                 { id: 'value', label: 'Value' },
               ]}
             />

@@ -85,7 +85,7 @@ export const kuhliLoach: SpeciesDefinition = {
   baseValue: 6,
   rarity: 'common',
   visitorAppeal: 0.5,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species.' },
+  unlock: { requires: ['fw_intermediate'], hint: 'Keep freshwater tanks healthy: reach 70 reputation and 200 husbandry mastery.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'Mostly wild-caught in Indonesia and Malaysia; a few farms produce hormone-induced spawns.',
   conservation: {
@@ -137,11 +137,13 @@ export const kuhliLoach: SpeciesDefinition = {
     nativeHabitat: 'Shallow, slow forest streams and peat swamps of South-East Asia, among leaf litter over soft mud and sand.',
     socialStructure: 'Very social: groups of five or more rest in tangled heaps and emerge together, mostly after dark.',
     tankNeeds: 'Soft sand, dim light, leaf litter and caves, soft slightly acidic water (about 24–26 °C), sinking foods at lights-out, and a tight lid with covered filter intakes — they squeeze into the smallest gaps.',
-    compatibilityNotes: 'Peaceful with small, gentle fish. May pick off eggs, fry or shrimplets. Crayfish can grab them at night, and scaleless loaches are sensitive to medications and salt.',
+    compatibilityNotes: 'Peaceful with small, gentle fish. May pick off eggs, fry or shrimplets. Crayfish can grab them at night, and like other loaches they are sensitive to medications and salt.',
     breedingOverview: 'Rarely bred; the occasional success is usually an accident discovered months later.',
     conservationNote: 'Least Concern, but their peat-swamp homes are disappearing. Never release aquarium fish.',
     funFact: 'Named after the German naturalist Heinrich Kuhl — and a whole group can vanish completely beneath the sand.',
     inGameBehavior: 'Hides in sand and caves by day, snakes out in wriggling groups at feeding time and after dark, and sometimes explores the filter intake.',
+    feedingNote: 'A night-time bottom feeder: sinking pellets or thawed bloodworms, brine shrimp or daphnia once a day, best just after lights-out so other fish don’t take it all. Won’t rise for flakes; an autofeeder helps only with sinking pellets.',
+    keeperTip: 'If one goes missing, check inside the filter and under decor before assuming it has died; kuhlis often turn up alive weeks later. A sponge over the filter intake stops it happening.',
   },
   sourceReferences: [
     { id: 'seriouslyfish-pangio-semicincta', title: 'Seriously Fish — Pangio semicincta', url: 'https://www.seriouslyfish.com/species/pangio-semicincta/', tier: 2, facts: ['trade kuhli is almost always P. semicincta', '100 mm SL', '21–26 °C, pH 3.5–7.0, GH 0–8', 'groups of 5–6+', 'soft sand; burrows', 'tight lid, jumps', 'may prey on eggs or fry', 'breeding reports vague'] },

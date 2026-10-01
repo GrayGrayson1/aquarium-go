@@ -27,7 +27,7 @@ export function foodSpecById(foodId: string): FoodSpec {
   return { foodId, delivery: 'slow_sink', color: '#b0643a', tags: [], nutrition: 20 };
 }
 
-/** Best food def for a set of tags (sim food arriving from an auto-feeder / panel button). */
+/** Best food def for a set of tags (sim food arriving from an autofeeder / panel button). */
 export function foodSpecForTags(tags: FoodTag[]): FoodSpec | null {
   if (!tags.length) return null;
   let best: FoodDef | undefined;

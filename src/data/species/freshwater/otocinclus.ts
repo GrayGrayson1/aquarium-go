@@ -85,7 +85,7 @@ export const otocinclus: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'common',
   visitorAppeal: 0.4,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species.' },
+  unlock: { requires: ['fw_intermediate'], hint: 'Keep freshwater tanks healthy: reach 70 reputation and 200 husbandry mastery.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Almost all otos are wild-caught and many die after import from starvation and stress; tank-bred otos are now sold and are much hardier.',
   conservation: {
@@ -140,6 +140,8 @@ export const otocinclus: SpeciesDefinition = {
     conservationNote: 'Least Concern, but most are wild-caught with high import losses — tank-bred fish are the kinder choice.',
     funFact: 'Otos can gulp air and absorb it through a modified oesophagus when water runs low on oxygen.',
     inGameBehavior: 'Clings to leaves and glass rasping biofilm, rests in little groups on broad leaves, and darts up for a gulp of air.',
+    feedingNote: 'Rasps soft algae and biofilm off leaves, glass and wood all day. In a clean tank, add algae wafers, gel food or blanched courgette daily. An autofeeder with algae wafers can help, but otos mainly need algae to graze.',
+    keeperTip: 'Choose otos with round, full bellies that are already grazing in the shop tank. Thin, sunken-bellied fish are starving and often never recover. Buy soon after they arrive.',
   },
   sourceReferences: [
     { id: 'fishbase-otocinclus-vittatus', title: 'FishBase — Otocinclus vittatus', url: 'https://www.fishbase.se/summary/Otocinclus-vittatus.html', tier: 1, facts: ['3.3 cm TL', '20–25 °C, pH 6.0–7.5, dH 2–18', 'Amazon, Orinoco, Paraná/Paraguay basins', 'facultative air-breather', 'IUCN Least Concern (2020)'] },

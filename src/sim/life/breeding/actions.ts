@@ -100,7 +100,7 @@ export function startBreeding(state: GameState, aId: string, bId: string, tankId
 /** Separate a creature from its partner/brood (betta female after spawning, male after fry free-swim...). */
 export function separateCreature(state: GameState, creatureId: string, toTankId: string): ActionResult {
   const c = state.creatures[creatureId];
-  if (!c) return no('Not found');
+  if (!c) return no('That animal is no longer in your care.'); // lane:guide — was 'Not found'
   if (isGone(c)) return no(`${c.name} is no longer in your care.`);
   const tank = state.tanks[toTankId];
   if (!tank) return no('That tank doesn’t exist.');
@@ -156,7 +156,7 @@ export function separateCreature(state: GameState, creatureId: string, toTankId:
 /** Move a clutch (eggs/fry) to a nursery tank. */
 export function moveClutch(state: GameState, clutchId: string, toTankId: string): ActionResult {
   const cl = state.clutches[clutchId];
-  if (!cl) return no('Not found');
+  if (!cl) return no('Those eggs or young are gone — they have hatched and grown on, or were lost.'); // lane:guide — was 'Not found'
   const tank = state.tanks[toTankId];
   if (!tank) return no('That tank doesn’t exist.');
   if (cl.tankId === toTankId) return no(`They’re already in ${tank.name}.`);
@@ -200,7 +200,7 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
 /** DEV: make a creature (and a valid partner if present) ready to breed now and jump to the next stage. */
 export function devForceBreeding(state: GameState, creatureId: string): ActionResult {
   const c = state.creatures[creatureId];
-  if (!c || !isAlive(c)) return no('Not found');
+  if (!c || !isAlive(c)) return no('That animal is no longer in your care.'); // lane:guide — was 'Not found'
   const sp = findSpecies(c.speciesId);
   if (!sp) return no('Unknown species');
   const mod = moduleFor(sp);

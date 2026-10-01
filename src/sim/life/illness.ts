@@ -65,7 +65,8 @@ export const ILLNESSES: Record<IllnessKind, IllnessDef> = {
     kind: 'swim_bladder',
     name: () => 'swim-bladder trouble',
     symptom: 'Struggles to hold its level — floating or sinking awkwardly.',
-    cure: () => 'Feed smaller portions of soaked or sinking food, skip a meal, and keep the water warm, clean and calm.',
+    // lane:guide — "keep the water warm" pushed goldfish (cool-water fish) toward heat; name the species' own range
+    cure: (sp) => `Skip a meal, then feed smaller portions of soaked or sinking food${sp.foods.includes('daphnia') ? ' (thawed daphnia helps)' : ''}, and keep the water clean, calm and steady at ${idealTemp(sp)}.`,
     drainPerHour: 0.15,
     stress: 12,
     worsenPerHour: 0.6,
@@ -74,7 +75,7 @@ export const ILLNESSES: Record<IllnessKind, IllnessDef> = {
   stress_coloration: {
     kind: 'stress_coloration',
     name: (sp) => (sp.category === 'invertebrate' ? 'stress paleness' : 'stress colouring'),
-    symptom: 'Washed-out or darkened colours and clamped fins.',
+    symptom: 'Washed-out or darkened colours, and hiding more than usual.',
     cure: () => 'Find the stressor: add hides and cover, calm or rehome pushy tank mates, keep the water stable and avoid tapping the glass.',
     drainPerHour: 0.05,
     stress: 6,
@@ -85,7 +86,7 @@ export const ILLNESSES: Record<IllnessKind, IllnessDef> = {
     kind: 'impaction',
     name: () => 'impaction',
     symptom: 'Bloated and off its food after swallowing substrate.',
-    cure: () => 'Replace gravel with fine sand or a bare bottom, keep the water cool and clean, and offer small soft meals.',
+    cure: (sp) => `Replace gravel with fine sand or a bare bottom, keep the water clean and at ${idealTemp(sp)}, and offer small soft meals.`,
     drainPerHour: 0.55,
     stress: 12,
     worsenPerHour: 0.7,

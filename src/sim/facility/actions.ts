@@ -192,15 +192,16 @@ export const SIGN_COST = 15;
 export function toggleSignage(state: GameState, tankId: string): ActionResult {
   const t = state.tanks[tankId];
   if (!t) return { ok: false, message: 'That tank no longer exists.' };
+  // lane:guide — say what a sign costs and that removing one doesn't refund it (both used to happen silently)
   if (t.signage) {
     t.signage = false;
-    return { ok: true, message: 'Sign removed.' };
+    return { ok: true, message: `Sign taken down from ${t.name}. Signs aren’t refunded.` };
   }
-  if (!isUnlocked(state, 'signage')) return { ok: false, message: 'Educational signage unlocks with your first shop (or 45 reputation).' };
-  if (!spend(state, SIGN_COST, 'facility', `Sign for ${t.name}`)) return { ok: false, message: `A sign costs $${SIGN_COST}.` };
+  if (!isUnlocked(state, 'signage')) return { ok: false, message: 'Educational signs unlock with your first shop, 45 reputation, or the Public Education research.' };
+  if (!spend(state, SIGN_COST, 'facility', `Sign for ${t.name}`)) return { ok: false, message: `A sign costs $${SIGN_COST}, which is more than you have right now.` };
   t.signage = true;
   bumpCounter(state, 'signs_placed');
-  return { ok: true, message: `Sign added to ${t.name} — visitors will learn about its residents.` };
+  return { ok: true, message: `Sign added to ${t.name} for $${SIGN_COST}. Visitors will learn about its residents.` };
 }
 
 // ───────────────────────────── fixtures ─────────────────────────────
@@ -243,10 +244,12 @@ export function addFixture(state: GameState, kind: FixtureKind, x: number, z: nu
 export function removeFixture(state: GameState, fixtureId: string): ActionResult {
   const fac = state.facility;
   const f = fac.fixtures.find((x) => x.id === fixtureId);
-  if (!f) return { ok: false, message: 'Not found.' };
+  if (!f) return { ok: false, message: 'That piece is already gone.' };
   fac.fixtures = fac.fixtures.filter((x) => x.id !== fixtureId);
   const def = FIXTURE_DEFS[f.kind as FixtureKind];
   // the room's own furniture (fx_*) came free and sells for nothing; bought fixtures fetch half price
-  if (def && !state.isShowcase && !f.id.startsWith('fx_')) earn(state, Math.round(def.price / 2), 'facility', `Sold: ${def.name}`);
-  return { ok: true, message: `${def?.name ?? 'Fixture'} removed.` };
+  const back = def && !state.isShowcase && !f.id.startsWith('fx_') ? Math.round(def.price / 2) : 0;
+  if (def && back > 0) earn(state, back, 'facility', `Sold: ${def.name}`);
+  // lane:guide — say what came back (half price, or nothing for furniture that came with the room)
+  return { ok: true, message: `${def?.name ?? 'Fixture'} removed${back > 0 ? ` — sold back for $${back.toLocaleString('en-US')} (half price)` : f.id.startsWith('fx_') ? '. It came with the room, so there is no refund' : ''}.` };
 }

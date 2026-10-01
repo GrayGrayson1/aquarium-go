@@ -13,7 +13,8 @@
  * - skimmer / refugium / uv  export 0..1 = nutrient export / algae & bacteria-bloom control.
  * - airstone    aeration/agitation only.
  * - ato         keeps the level topped with fresh water (salinity stays stable).
- * - autofeeder  `setting` = dry-food feedings per day.
+ * - autofeeder  `setting` = dry-food feedings per day. It dispenses DRY food only (isAutofeederFood in foods.ts) — one
+ *               food per feeding, the one in stock that the most animals in the tank eat (src/sim/care/autofeed.ts).
  * - co2         `setting` 0..1 = injection rate (planted growth up, pH down).
  * - lid         cuts evaporation and stops jumpers escaping.
  * `upkeep` is the daily running cost at 100 % duty — thermal devices are charged by estimated duty cycle.
@@ -196,7 +197,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 3, max: 75 },
     stats: { power: 1.5, agitation: 0.08, defaultSetting: 1, failureRate: 0.002 },
     visual: 'fan_clip',
-    description: 'Blows across the surface so evaporation carries heat away — about 1–2 °C of cooling. The price: you will be topping off much more often.',
+    description: 'Blows across the surface so evaporation carries heat away — about 1–2 °C of cooling, enough to take the edge off a warm room but not to hold cool-water animals such as axolotls. The price: you will be topping off much more often.',
   },
 
   // ───────────────────────────── Lighting ─────────────────────────────
@@ -284,7 +285,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 10, max: 55 },
     stats: { flowGph: 600, aeration: 0.06, agitation: 0.2, defaultSetting: 1, failureRate: 0.0016 },
     visual: 'powerhead',
-    description: 'A magnetic circulation pump. Moves water through rockwork so detritus stays suspended for the filter. Turn it down for weak swimmers.',
+    description: 'A magnetic circulation pump. Moves water through rockwork so detritus stays suspended for the filter. Turn it right down for weak swimmers such as seahorses, bettas and fancy goldfish.',
   },
   {
     id: 'powerhead_large',
@@ -298,7 +299,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 55, max: 300 },
     stats: { flowGph: 2500, aeration: 0.08, agitation: 0.3, defaultSetting: 1, failureRate: 0.0014 },
     visual: 'powerhead',
-    description: 'Strong, broad flow for large reefs and open-water swimmers such as tangs.',
+    description: 'Strong, broad flow for large reefs and open-water swimmers such as tangs. Far too much current for seahorses and other gentle-flow animals unless turned well down.',
   },
   {
     id: 'wavemaker',
@@ -312,7 +313,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 90, max: 1000 },
     stats: { flowGph: 5000, aeration: 0.1, agitation: 0.35, defaultSetting: 0.8, failureRate: 0.0012 },
     visual: 'wavemaker',
-    description: 'Programmable pulsing flow that mimics surge on a reef crest. Corals open fully and detritus never settles.',
+    description: 'Programmable pulsing flow that mimics surge on a reef crest. Corals open fully and detritus never settles — but it is no place for seahorses, bettas or other gentle-flow animals.',
   },
 
   // ───────────────────────────── Nutrient export & water quality ─────────────────────────────
@@ -328,7 +329,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 10, max: 75 },
     stats: { export: 0.35, aeration: 0.3, defaultSetting: 1, failureRate: 0.0016 },
     visual: 'skimmer',
-    description: 'Whips tank water into fine foam that grabs dissolved organics before they break down into nitrate. Also a great oxygenator. Only works in salt water.',
+    description: 'Whips tank water into fine foam that grabs dissolved organics before they break down into nitrate. Also a great oxygenator. Needs near sea-strength salt water to foam — in low-salinity brackish water it does very little.',
   },
   {
     id: 'skimmer_insump',
@@ -342,7 +343,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 75, max: 1000 },
     stats: { export: 0.6, aeration: 0.4, defaultSetting: 1, failureRate: 0.0012 },
     visual: 'skimmer',
-    description: 'A tall needle-wheel skimmer that sits in the sump and pulls out cups of dark skimmate every week.',
+    description: 'A tall needle-wheel skimmer that sits in the sump and pulls out cups of dark skimmate every week. Like every skimmer, it needs near sea-strength salt water to foam.',
   },
   {
     id: 'refugium',
@@ -384,12 +385,12 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 5, max: 1000 },
     stats: { defaultSetting: 1, failureRate: 0.0015 },
     visual: 'ato_sensor',
-    description: 'An optical sensor tops off evaporation with fresh water from a reservoir. Salt does not evaporate, so this keeps marine salinity rock-steady.',
+    description: 'An optical sensor tops off evaporation with fresh water from a reservoir. Salt does not evaporate, so this keeps marine and brackish salinity rock-steady; in fresh water it simply keeps the level up so filters never run dry.',
   },
   {
     id: 'autofeeder',
     kind: 'autofeeder',
-    name: 'Automatic Feeder',
+    name: 'Autofeeder', // lane:qa-r3 — was 'Automatic Feeder': one name everywhere (toasts, alerts, tank card, shop)
     tier: 2,
     price: 35,
     upkeep: 0.01,
@@ -398,7 +399,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 3, max: 1000 },
     stats: { defaultSetting: 2, failureRate: 0.002 },
     visual: 'autofeeder',
-    description: 'Drops a measured portion of dry food on a schedule, from your food inventory. It cannot target-feed and it will not dispense frozen or live foods.',
+    description: 'Drops a measured portion of one dry food (flakes, pellets, wafers or dried seaweed) on a schedule, from your food stock — handy for flake and pellet eaters on busy days. It can’t dispense frozen or live food and can’t target-feed, so seahorses, puffers, bumblebee gobies and other frozen- or live-food eaters still need feeding by hand.',
   },
   {
     id: 'co2_kit',
@@ -412,7 +413,7 @@ export const EQUIPMENT: EquipmentDef[] = [
     gallonsRange: { min: 5, max: 300 },
     stats: { defaultSetting: 0.5, failureRate: 0.0015 },
     visual: 'co2_kit',
-    description: 'Injects carbon dioxide so plants grow lush and pearl with oxygen under strong light. Too much lowers pH and can suffocate fish — keep the surface moving at night.',
+    description: 'Injects carbon dioxide so live plants grow lush and pearl with oxygen under strong light. Pointless without live plants. Too much lowers pH and can suffocate fish — keep the surface moving at night.',
   },
   {
     id: 'lid_glass',

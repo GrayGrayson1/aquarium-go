@@ -90,7 +90,7 @@ export const betta: SpeciesDefinition = {
   baseValue: 18,
   rarity: 'common',
   visitorAppeal: 0.85,
-  unlock: { requires: ['fw_basic'], hint: 'Starter species — otherwise unlocks with beginner freshwater fish.' },
+  unlock: { requires: ['fw_basic'], hint: 'Starter species — otherwise reach 40 reputation or build husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Vulnerable (IUCN, wild populations)',
@@ -200,6 +200,8 @@ export const betta: SpeciesDefinition = {
     conservationNote: 'Wild populations are threatened; domestic bettas should never be released into waterways.',
     funFact: 'The labyrinth organ lets bettas breathe atmospheric air — they will drown if they cannot reach the surface.',
     inGameBehavior: 'Patrols its territory, flares at rivals (and its own reflection), follows your cursor, and builds bubble nests when content.',
+    feedingNote: 'A surface feeder. Small pellets or flakes make a good staple, with thawed bloodworms, brine shrimp, daphnia or mysis as treats. Feed a few pellets once or twice a day; an autofeeder with pellets or flakes suits it.',
+    keeperTip: 'Long fins tire easily: baffle a strong filter outlet with a sponge, or use a gentle sponge filter, so it can swim and build bubble nests without fighting the current.',
   },
   sourceReferences: [
     { id: 'fishbase-betta-splendens', title: 'FishBase — Betta splendens (Siamese fighting fish)', url: 'https://www.fishbase.se/summary/Betta-splendens.html', tier: 1, facts: ['6.5 cm TL max', 'freshwater, pH 6.0–8.0, 5–19 dH, 24–30 °C', 'Mekong basin; floodplains, canals, rice paddies', 'labyrinth organ; bubble nest guarded by male', 'IUCN Vulnerable (2011)', 'sexes separated except for breeding'] },
@@ -208,7 +210,7 @@ export const betta: SpeciesDefinition = {
     { id: 'wang-2021-betta-fins', title: 'Wang et al. 2021 — Genomic basis of striking fin shapes and colors in the fighting fish (Mol. Biol. Evol.)', url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8321530/', tier: 1, facts: ['double tail caused by a deletion in a conserved zic1/zic4 regulatory element', 'elephant-ear fins linked to kcnh8 expression', 'domestic fin forms and colours have identifiable genetic bases'] },
   ],
   confidenceNotes: [
-    'Water parameters: FishBase (24–30 °C, pH 6–8, 5–19 dH) and PetMD (76–81 °F) agree well; tolerated minimum of 23 °C is a practical floor.',
+    'Water parameters: FishBase (24–30 °C, pH 6–8, 5–19 dH) and PetMD (76–81 °F) agree well. The tolerated minimum is 21 °C (it was 23 °C): bettas ride out room temperature (about 22 °C) for weeks, and a 23 °C floor made every heater failure lethal. The ideal range stays 24.5–28 °C.',
     'Betta vs dwarf shrimp varies by individual — represented as conditional with a per-day incident risk rather than a guarantee either way.',
     'Colour/pattern/fin genetics are a deliberately simplified dominance ladder; real inheritance involves several interacting loci.',
     'Compressed time: maturity ~4–5 real months = 14 game-days; bubble-nest eggs hatch in ~1–2 days (14 game-hours); 3–5 year lifespan ≈ 160 game-days.',

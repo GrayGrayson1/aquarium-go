@@ -53,13 +53,20 @@ export function ShowsPanel() {
     useUI.getState().set({ panelTarget: null });
   }, [target]);
 
-  // Opening Results marks them read (after a beat, so the "New" tags are seen first).
+  // lane:notify — opening Results marks them seen at once, so the dock / sheet dot goes the moment the player looks. The
+  // "New" tags stay for this visit: they compare against the seen-hour from before the visit (`newSince`).
   const unseen = g ? safe(() => unseenResults(g), 0) : 0;
+  const [newSince, setNewSince] = useState<number | null>(null);
   useEffect(() => {
-    if (tab !== 'results' || unseen === 0) return;
-    const t = window.setTimeout(() => edit((d) => markShowResultsSeen(d)), 4000);
-    return () => window.clearTimeout(t);
-  }, [tab, unseen]);
+    if (tab !== 'results') {
+      setNewSince(null);
+      return;
+    }
+    if (unseen === 0) return;
+    const before = g?.shows?.resultsSeenHour ?? -Infinity;
+    setNewSince((cur) => (cur === null ? before : Math.min(cur, before)));
+    edit((d) => markShowResultsSeen(d));
+  }, [tab, unseen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!g) return null;
   const pending = (g.shows?.entries ?? []).filter((e) => e.status === 'entered').length;
@@ -99,7 +106,11 @@ export function ShowsPanel() {
                 label: (
                   <>
                     Results
-                    {unseen > 0 && <span className={clsx('pn-seg__count', 'pn-seg__count--hot')}>{unseen}</span>}
+                    {unseen > 0 && tab !== 'results' && (
+                      <span className={clsx('pn-seg__count', 'pn-seg__count--new')} data-testid="shows-results-new" aria-label={`${unseen} new`}>
+                        {unseen}
+                      </span>
+                    )}
                   </>
                 ),
               },
@@ -126,7 +137,7 @@ export function ShowsPanel() {
       ) : tab === 'entries' ? (
         <EntriesTab g={g} onBrowse={() => setTab('upcoming')} />
       ) : tab === 'results' ? (
-        <ResultsTab key={focusResult ?? 'r'} g={g} focusId={focusResult} />
+        <ResultsTab key={focusResult ?? 'r'} g={g} focusId={focusResult} newSince={newSince} />
       ) : (
         <TrophyCaseTab g={g} />
       )}

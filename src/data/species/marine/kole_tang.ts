@@ -96,7 +96,7 @@ export const koleTang: SpeciesDefinition = {
   baseValue: 95,
   rarity: 'uncommon',
   visitorAppeal: 0.6,
-  unlock: { requires: ['marine_large'], hint: 'Unlocks with large open-water marine fish — needs a four-foot tank or bigger.' },
+  unlock: { requires: ['marine_large'], hint: 'Research Big-water Marine — it needs a four-foot, 90-gallon tank or bigger.' },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected only — and since it lives only around Hawaiʻi, supply has been scarce since Hawaiian aquarium collection was largely halted in 2017.',
   conservation: {
@@ -149,6 +149,8 @@ export const koleTang: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2010). A Hawaiian endemic whose collection has been mostly halted since 2017.',
     funFact: '"Bristletooth" is literal: its flexible, comb-like teeth brush sediment and diatoms off surfaces rather than biting algae.',
     inGameBehavior: 'Works over rock, sand and even the front glass in steady passes, flicking its gold-ringed eyes at you as it cleans.',
+    feedingNote: 'Combs film algae and detritus off rock, sand and glass all day. Clip in seaweed sheets most days, plus algae wafers, small marine pellets and some thawed mysis. An autofeeder can add pellets; the seaweed goes on by hand.',
+    keeperTip: 'Move it in a container, not a net: the scalpel spine at the base of its tail snags in mesh and can cut your hand.',
   },
   sourceReferences: [
     { id: 'fishbase-ctenochaetus-strigosus', title: 'FishBase — Ctenochaetus strigosus', url: 'https://www.fishbase.se/summary/Ctenochaetus-strigosus.html', tier: 1, facts: ['max 15.4 cm SL', 'depth 1–113 m', '21–27 °C', 'endemic to Hawaii and Johnston Island', 'combs detritus with comb-like teeth', 'solitary, spawns in pairs', 'IUCN Least Concern (2010)'] },

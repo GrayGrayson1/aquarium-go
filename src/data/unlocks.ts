@@ -74,7 +74,7 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'fw_intermediate', when: [unlocked('fw_basic'), rep(70), mastery('husbandry', 200)], hint: 'Keep freshwater tanks healthy: 70 reputation and 200 husbandry.' },
   { key: 'fw_advanced', when: [research('discus_husbandry')], hint: 'Research Discus Husbandry.' },
   { key: 'marine_basics', when: [any(research('marine_systems'), { type: 'all', of: [rep(150), mastery('husbandry', 400)] })], hint: 'Research Marine Systems (or reach 150 reputation as a seasoned keeper).' },
-  { key: 'marine_seahorse', when: [any(research('seahorse_husbandry'), mastery('marine', 500))], hint: 'Research Seahorse Husbandry.' },
+  { key: 'marine_seahorse', when: [any(research('seahorse_husbandry'), mastery('marine', 500))], hint: 'Research Seahorse Husbandry (after Marine Systems).' },
   { key: 'reef', when: [research('reef_systems')], hint: 'Research Reef Systems.' },
   { key: 'marine_large', when: [research('large_marine')], hint: 'Research Big-water Marine.' },
   { key: 'marine_advanced', when: [research('refugium_pods')], hint: 'Research Refugiums & Copepods.' },
@@ -83,16 +83,16 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'brackish', when: [any(research('brackish_estuaries'), { type: 'all', of: [unlocked('fw_intermediate'), rep(260), mastery('husbandry', 500)] })], hint: 'Research Brackish Estuaries (needs intermediate freshwater).' },
 
   // ── gear ──
-  { key: 'gear_tier2', when: [any(rep(50), mastery('husbandry', 180), research('life_support_2'))], hint: 'Reach 50 reputation or keep up regular care.' },
+  { key: 'gear_tier2', when: [any(rep(50), mastery('husbandry', 180), research('life_support_2'))], hint: 'Research Better Life Support, reach 50 reputation, or keep up regular care.' },
   { key: 'gear_tier3', when: [research('life_support_3')], hint: 'Research Premium Life Support.' },
-  { key: 'gear_chiller', when: [any(unlocked('fw_coldwater'), rep(120))], hint: 'Comes with cool-water know-how.' },
-  { key: 'gear_skimmer', when: [unlocked('marine_basics'), any(rep(40), mastery('marine', 60))], hint: 'Keep a marine tank a little while.' },
-  { key: 'gear_ato', when: [unlocked('marine_basics'), any(rep(70), mastery('marine', 120))], hint: 'Marine keepers: reach 70 reputation.' },
-  { key: 'gear_autofeeder', when: [any(mastery('husbandry', 220), research('life_support_2'))], hint: 'Build husbandry mastery with regular feeding.' },
+  { key: 'gear_chiller', when: [any(unlocked('fw_coldwater'), rep(120))], hint: 'Comes with Cool-water Systems research, or at 120 reputation.' },
+  { key: 'gear_skimmer', when: [unlocked('marine_basics'), any(rep(40), mastery('marine', 60))], hint: 'Comes with Marine Systems research (or keep a marine tank a little while).' },
+  { key: 'gear_ato', when: [unlocked('marine_basics'), any(rep(70), mastery('marine', 120))], hint: 'Comes with Marine Systems research (or reach 70 reputation as a marine keeper).' },
+  { key: 'gear_autofeeder', when: [any(mastery('husbandry', 220), research('life_support_2'))], hint: 'Research Better Life Support, or build husbandry mastery with regular care.' },
   { key: 'gear_co2', when: [unlocked('gear_tier2'), any(mastery('aquascaping', 200), research('planted_co2'))], hint: 'Research CO₂ & Planted Tanks, or build aquascaping mastery.' },
 
   // ── tanks ──
-  { key: 'tank_40', when: [any(rep(25), counter('births', 1, 'Raise a clutch'))], hint: 'Reach 25 reputation.' },
+  { key: 'tank_40', when: [any(rep(25), counter('births', 1, 'Raise a clutch'))], hint: 'Reach 25 reputation or raise a clutch.' },
   { key: 'tank_55', when: [rep(60)], hint: 'Reach 60 reputation.' },
   { key: 'tank_75', when: [rep(100), fac('specialty_shop')], hint: 'Open a specialty shop and reach 100 reputation.' },
   { key: 'tank_90', when: [rep(150), fac('specialty_shop')], hint: 'Reach 150 reputation in your shop.' },
@@ -109,11 +109,11 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'market_listings', when: [any({ type: 'flag', flag: 'opened_market', label: 'Open the market' }, { type: 'tutorial_done' }, rep(10))], hint: 'Open the market once.' },
   { key: 'tank_auctions', when: [any({ type: 'sales_count', min: 3 }, mastery('business', 150), fac('specialty_shop'))], hint: 'Make three sales, or open a shop.' },
   { key: 'visitors', when: [fac('specialty_shop')], hint: 'Upgrade to a specialty shop to welcome paying visitors.' },
-  { key: 'signage', when: [any(fac('specialty_shop'), rep(45), research('public_education'))], hint: 'Open a shop or reach 45 reputation.' },
+  { key: 'signage', when: [any(fac('specialty_shop'), rep(45), research('public_education'))], hint: 'Open a shop, reach 45 reputation, or research Public Education.' },
   { key: 'nursery', when: [any(counter('births', 1, 'Raise a clutch'), mastery('breeding', 40), rep(70), research('breeding_program'))], hint: 'Research the Breeding Programme, or reach 70 reputation.' },
   { key: 'genetics_lab', when: [research('genetics_lab')], hint: 'Research the Genetics Lab.' },
-  { key: 'photo_contests', when: [any(mastery('aquascaping', 250), { type: 'beauty', min: 85, scaped: SCAPED_EDITS, ownLayout: true }, research('aquascape_awards'))], hint: 'Aquascape a tank yourself to beauty 85.' },
-  { key: 'party_mode', when: [any(rep(15), counter('feeds', 12, 'Feed 12 times'))], hint: 'Keep caring for your tank for a little while.' },
+  { key: 'photo_contests', when: [any(mastery('aquascaping', 250), { type: 'beauty', min: 85, scaped: SCAPED_EDITS, ownLayout: true }, research('aquascape_awards'))], hint: 'Aquascape a tank yourself to beauty 85, or research Aquascape Awards.' },
+  { key: 'party_mode', when: [any(rep(15), counter('feeds', 12, 'Feed 12 times'))], hint: 'Feed your animals 12 times, or reach 15 reputation.' }, // lane:qa-r3 — the real route
   // lane:shows — the show circuit opens after the guide; higher tiers need reputation, then a bigger venue
   { key: 'shows', when: [{ type: 'any', of: [{ type: 'tutorial_done' }, rep(20)], label: 'To finish the guide or reach 20 reputation' }], hint: 'Finish the guide or reach 20 reputation.' },
   { key: 'shows_regional', when: [unlocked('shows'), rep(120)], hint: 'Reach 120 reputation.' },
@@ -128,7 +128,7 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'staff', when: [fac('specialty_shop')], hint: 'Move into a specialty shop to hire your first staff.' },
 
   // ── decor ──
-  { key: 'decor_premium', when: [any(mastery('aquascaping', 150), rep(120), research('aquascape_awards'))], hint: 'Build aquascaping mastery or reach 120 reputation.' },
+  { key: 'decor_premium', when: [any(mastery('aquascaping', 150), rep(120), research('aquascape_awards'))], hint: 'Build aquascaping mastery, reach 120 reputation, or research Aquascape Awards.' },
   { key: 'decor_corals_soft', when: [unlocked('reef')], hint: 'Comes with Reef Systems.' },
   { key: 'decor_corals_lps', when: [unlocked('reef'), any(mastery('marine', 300), research('lps_corals'))], hint: 'Keep a reef healthy, or research LPS Corals.' },
   { key: 'decor_anemones', when: [unlocked('reef'), any(research('anemone_care'), mastery('marine', 500))], hint: 'Research Anemone Care.' },

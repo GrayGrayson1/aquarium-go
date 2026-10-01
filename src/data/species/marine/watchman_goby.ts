@@ -95,7 +95,7 @@ export const watchmanGoby: SpeciesDefinition = {
   baseValue: 45,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: ['marine_basics'], hint: 'Unlocks with beginner marine fish.' },
+  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most are wild-collected, but tank-raised yellow and grey watchman gobies are sold (e.g. Aquatics Unlimited).',
   conservation: {
@@ -157,8 +157,10 @@ export const watchmanGoby: SpeciesDefinition = {
     compatibilityNotes: 'Peaceful and reef-safe, but guards its burrow from other bottom gobies. May eat very small shrimp. Its digging can bury corals placed on the sand.',
     breedingOverview: 'Pairs spawn inside the burrow and guard the eggs. The larvae drift as plankton; tank-raised fish are produced in small numbers.',
     conservationNote: 'Least Concern (IUCN 2020). Tank-raised fish are available and a good choice.',
-    funFact: 'The pistol shrimp keeps one antenna on the goby at all times. When danger approaches, the goby flicks its tail — a touch-signal that sends the shrimp diving back into the burrow.',
+    funFact: 'Outside the burrow, the pistol shrimp keeps one antenna on the goby. When danger approaches, the goby flicks its tail — a touch-signal that sends the shrimp diving back into the burrow.',
     inGameBehavior: 'Perches at its burrow entrance on its pelvic fins, scans the tank with swivelling eyes, pounces on sinking food, and bolts headfirst into its hole when startled.',
+    feedingNote: 'Pounces on food sinking past its burrow: thawed mysis and brine shrimp plus small or sinking pellets, once or twice a day. An autofeeder works if its pellets sink before faster fish grab them all.',
+    keeperTip: 'Set rockwork directly on the glass before adding sand. A burrowing goby, and any pistol shrimp partner, can dig the sand out from under rocks and topple them.',
   },
   sourceReferences: [
     { id: 'fishbase-cryptocentrus-cinctus', title: 'FishBase — Cryptocentrus cinctus (Yellow prawn-goby)', url: 'https://www.fishbase.se/summary/Cryptocentrus-cinctus.html', tier: 1, facts: ['max 10 cm SL', 'sandy lagoons 1–25 m', '22–28 °C', 'yellow or whitish colour phases with 4–5 dusky bars', 'lives in burrows with alpheid shrimps', 'IUCN Least Concern (2020)'] },
@@ -176,7 +178,7 @@ export const watchmanGoby: SpeciesDefinition = {
   special: {
     burrower: true,
     escapeArtist: true,
-    hostNote: 'Optional partner: a pistol shrimp such as the tiger pistol shrimp (Alpheus bellulus or A. randalli) digs and maintains the burrow while the goby stands guard. Not required for good health.',
+    hostNote: 'Optional partner: a pistol shrimp such as the tiger pistol shrimp (Alpheus bellulus) or Randall’s pistol shrimp (A. randalli) digs and maintains the burrow while the goby stands guard. Not required for good health.',
   },
   visualLane: 'fish',
 };

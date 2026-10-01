@@ -86,7 +86,7 @@ export const africanDwarfFrog: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species.' },
+  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species: keep tanks healthy to reach 70 reputation and 200 husbandry mastery.' },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN)',
@@ -142,6 +142,8 @@ export const africanDwarfFrog: SpeciesDefinition = {
     conservationNote: 'Least Concern. Pet frogs can carry chytrid fungus and Salmonella: quarantine, wash hands, and never release them or their water.',
     funFact: 'Hymenochirus means “membrane hand” — unlike the clawed frog, the dwarf frog has webbed fingers. Its pet-trade lineage may even be an undescribed species.',
     inGameBehavior: 'Hangs motionless at the surface in a “zen float”, dashes up for air, snuffles along the bottom for food, and males hum during courtship.',
+    feedingNote: 'A slow, near-sighted bottom feeder that finds food by smell. Target-feed thawed bloodworms, brine shrimp or mysis (or sinking pellets) with a baster every day or two. An autofeeder is a poor fit with fish, which get there first.',
+    keeperTip: 'Shedding is normal: now and then a frog peels off a thin, clear skin and often eats it. Lost appetite, lethargy or skin that keeps flaking are warning signs of chytrid fungus.',
   },
   sourceReferences: [
     { id: 'usgs-nas-hymenochirus', title: 'USGS Nonindigenous Aquatic Species — Hymenochirus boettgeri', url: 'https://nas.er.usgs.gov/queries/FactSheet.aspx?speciesID=66', tier: 1, facts: ['central African range (Nigeria/Cameroon to the Congo)', 'Florida introduction in 1964 failed'] },

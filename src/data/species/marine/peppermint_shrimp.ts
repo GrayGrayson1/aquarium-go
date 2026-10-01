@@ -45,7 +45,7 @@ export const peppermintShrimp: SpeciesDefinition = {
   aggression: 0.02,
   finNipper: 0,
   hasLongFins: false,
-  social: { kind: 'group', minGroup: 1, idealGroup: 3, note: 'Tolerates its own kind well; small groups hunt Aiptasia faster, though each shrimp eats a little less.' },
+  social: { kind: 'group', minGroup: 1, idealGroup: 3, note: 'Tolerates its own kind well; small groups can tackle larger Aiptasia, though each shrimp eats a little less.' },
   sameSpeciesRule: {
     maleMale: 'ok',
     femaleFemale: 'ok',
@@ -95,7 +95,7 @@ export const peppermintShrimp: SpeciesDefinition = {
   baseValue: 18,
   rarity: 'common',
   visitorAppeal: 0.45,
-  unlock: { requires: ['marine_basics'], hint: 'Unlocks with beginner marine fish and clean-up crew.' },
+  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish and clean-up crew.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most sold are wild-collected in Florida and the Gulf; captive-bred L. boggessi are available and are the more reliable Aiptasia eaters.',
   conservation: {
@@ -142,12 +142,14 @@ export const peppermintShrimp: SpeciesDefinition = {
     summary: 'A shy, candy-striped scavenger famous for eating Aiptasia, the pest anemone that plagues reef tanks.',
     nativeHabitat: 'Shallow rocky reefs, rubble and jetty pilings in the tropical western Atlantic, hiding by day and foraging at night.',
     socialStructure: 'Gregarious — often found in groups. Every adult is both male and female.',
-    tankNeeds: 'Live rock with plenty of crevices, stable full-strength seawater and iodine for moulting. Copper medications are lethal.',
+    tankNeeds: 'Live rock with plenty of crevices and stable full-strength seawater; regular water changes replace the iodine it uses to moult. Copper medications are lethal.',
     compatibilityNotes: 'Peaceful with fish and snails. Hungry individuals may steal food from, or pick at, LPS corals such as hammer and frogspawn, and occasionally zoanthids. Eaten by lionfish, groupers, hawkfish and mantis shrimp.',
     breedingOverview: 'Carries eggs under the tail after moulting and releases larvae at night. Commercial farms rear them; in a home tank a few may survive in a refugium.',
     conservationNote: 'Not assessed by the IUCN. Captive-bred peppermints are widely available — and tend to be the best Aiptasia hunters.',
     funFact: '"Peppermint shrimp" is really a cluster of look-alike species. Studies found some kinds eat far more Aiptasia than others, which is why one shop’s peppermints clean up a tank and another’s ignore it.',
     inGameBehavior: 'Hides in the rock by day, then creeps out at night to scavenge — and to pick off any Aiptasia it finds.',
+    feedingNote: 'A night-time scavenger of leftovers and detritus. In a tank with fed fish it finds plenty; otherwise drop sinking pellets or thawed mysis or brine shrimp by its rock a few times a week. Autofeeder pellets that sink reach it too.',
+    keeperTip: 'Want it to clear Aiptasia? Feed the tank lightly for a while, because well-fed peppermints ignore the pest. Captive-bred Lysmata boggessi are the most reliable hunters.',
   },
   sourceReferences: [
     { id: 'liveaquaria-peppermint', title: 'LiveAquaria — Peppermint Shrimp', url: 'https://www.liveaquaria.com/products/peppermint-shrimp', tier: 2, facts: ['manages Aiptasia (individuals vary)', 'scavenger', 'stock is L. boggessi / L. ankeri / L. wurdemanni / L. rafa', 'bred by commercial farms', '72–78 °F, SG 1.020–1.025', 'copper and nitrate intolerant', 'price ~$16'] },

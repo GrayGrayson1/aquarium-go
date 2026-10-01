@@ -96,7 +96,7 @@ export const royalGramma: SpeciesDefinition = {
   baseValue: 60,
   rarity: 'common',
   visitorAppeal: 0.8,
-  unlock: { requires: ['marine_basics'], hint: 'Unlocks with beginner marine fish.' },
+  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most royal grammas sold are still wild-collected in the Caribbean; captive-bred fish (Biota; earlier BCMI batches for public aquariums) are available in smaller numbers at roughly twice the price.',
   conservation: {
@@ -149,6 +149,8 @@ export const royalGramma: SpeciesDefinition = {
     conservationNote: 'Least Concern (IUCN 2011). Most are still wild-caught, so choose aquacultured fish when you can.',
     funFact: 'Royal grammas orient their bellies toward the nearest surface, so under a ledge they swim upside down without a second thought.',
     inGameBehavior: 'Hovers at the mouth of its favourite cave, flips upside down under overhangs, gapes at intruders and darts out to snatch food.',
+    feedingNote: 'Snatches food drifting past its cave: thawed mysis and brine shrimp, small marine pellets, flakes and live copepods. Feed small amounts once or twice a day. An autofeeder with pellets or flakes suits it well.',
+    keeperTip: 'Under bright reef lights, build at least one shaded cave or overhang just for it. A gramma with a dim retreat of its own settles in faster and spends more time in view.',
   },
   sourceReferences: [
     { id: 'fishbase-gramma-loreto', title: 'FishBase — Gramma loreto (Royal gramma)', url: 'https://www.fishbase.se/summary/Gramma-loreto.html', tier: 1, facts: ['max 8 cm TL', 'depth 1–60 m', '22–27 °C', 'caves and ledges, swims belly toward substrate', 'eats ectoparasites and plankton', 'male nest building and care', 'IUCN Least Concern (2011)', 'reared in captivity'] },

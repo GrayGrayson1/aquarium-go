@@ -14,6 +14,8 @@ import { formatMoney, Segmented } from '../kit';
 import { formatRep } from '../common/format';
 import { useShell } from '../common/shellStore';
 import { AlertsPopover, useAlertCount } from './AlertsPopover';
+import { AttnDot } from './AttnDot'; // lane:notify
+import { unreadNews } from '../common/notify'; // lane:notify
 import { DevToggle } from '../dev/DevToggle'; // lane:perf — keeps DevPanel out of the main chunk
 
 export function setSpeed(s: GameSpeed) {
@@ -173,27 +175,42 @@ function ReputationPill() {
 function AlertsButton() {
   const count = useAlertCount();
   const open = useShell((s) => s.popover === 'alerts');
-  // News that was toasted (or merged away) since the drawer was last opened.
-  const fresh = useGameSelector((g) => {
-    let n = 0;
-    for (let i = g.log.length - 1; i >= 0 && i >= g.log.length - 60; i--) if (g.log[i].toast && !g.log[i].read) n++;
-    return n;
-  }, 0);
+  // lane:notify — the number is unread news (toasted events and every warning since the last read / clear); its colour
+  // is the worst of the tanks and that news. Tanks needing a look with nothing unread: a plain amber / red dot. The
+  // bell itself stays tinted by the tanks (live — it clears when they are fixed).
+  const newsKey = useGameSelector((g) => {
+    const n = unreadNews(g);
+    return `${n.count}:${n.worst ?? ''}`;
+  }, '0:');
+  const [nStr, newsWorst] = newsKey.split(':');
+  const news = Number(nStr) || 0;
+  const tone = count.danger > 0 || newsWorst === 'danger' ? 'danger' : count.watch > 0 || newsWorst === 'watch' ? 'watch' : 'news';
+  const tanksText = count.total ? `${count.total} tank${count.total === 1 ? ' needs' : 's need'} attention` : '';
+  const newsText = news ? `${news} unread event${news === 1 ? '' : 's'}` : '';
+  const summary = [tanksText, newsText].filter(Boolean).join(' · ');
   return (
     <div className="ag-popanchor">
       <button
         type="button"
         className={clsx('ag-hudpill ag-alerts-btn', count.danger > 0 && 'is-danger', count.danger === 0 && count.watch > 0 && 'is-watch')}
-        aria-label={`Alerts and events${count.total ? `: ${count.total} need attention` : ''}${fresh ? ` · ${fresh} new` : ''}`}
+        aria-label={`Alerts and events${summary ? `: ${summary}` : ''}`}
+        title={summary || 'Alerts and events'}
         aria-expanded={open}
         data-testid="hud-alerts"
+        data-attention={count.danger > 0 ? 'danger' : count.watch > 0 ? 'watch' : 'good'}
         onClick={() => {
           sfx(open ? 'close' : 'open');
           useShell.getState().togglePopover('alerts');
         }}
       >
         <Bell size={16} aria-hidden />
-        {count.total > 0 ? <span className="ag-alerts-btn__count">{count.total}</span> : fresh > 0 && !open ? <span className="ag-alerts-btn__dot" aria-hidden /> : null}
+        {news > 0 && !open ? (
+          <span className={clsx('ag-alerts-btn__count', `is-${tone}`)} data-testid="hud-alerts-count" aria-hidden>
+            {news > 9 ? '9+' : news}
+          </span>
+        ) : count.total > 0 ? (
+          <AttnDot level={count.danger > 0 ? 'danger' : 'watch'} className="ag-alerts-btn__attn" testId="hud-alerts-dot" />
+        ) : null}
       </button>
       <AnimatePresence>{open && <AlertsPopover />}</AnimatePresence>
     </div>
