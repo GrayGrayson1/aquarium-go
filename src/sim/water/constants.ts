@@ -21,6 +21,20 @@ export const N_TO_NO3 = 62 / 14; // 4.43
 export const LITRES_PER_GALLON = 3.785;
 /** Largest internal substep (game hours). */
 export const MAX_WATER_SUBSTEP_H = 0.25;
+/**
+ * lane:fix-water — while conditioner is active this fraction of the tank's ammonia and nitrite stays free (toxic);
+ * the rest is held bound (`lab.boundAmmonia` / `lab.boundNitrite`) where it neither harms animals nor shows on the
+ * report, and is released when the dose wears off. The filter bacteria still process the whole amount.
+ */
+export const DETOX_FREE_FRACTION = 0.35;
+/** How long one conditioner dose keeps binding (game hours). */
+export const DETOX_HOURS = 24;
+/**
+ * lane:fix-water — °C past a species' tolerated limits that only stress (WATCH, no health damage), like PH_TOLERANCE
+ * for pH: a heater failure that lets a tropical tank drift to room temperature (22 ± 0.8 °C) should not kill a fish
+ * whose floor is 22 °C within a session. Harm ramps up from the far side of this band.
+ */
+export const TEMP_TOLERANCE_C = 1;
 /** dKH consumed per ppm of ammonia-N nitrified (7.14 mg CaCO₃ per mg N; 1 dKH = 17.86 mg/L CaCO₃). */
 export const KH_PER_PPM_N = 0.4;
 /** Marine salt mix needed per litre for SG 1.025 (kg). */

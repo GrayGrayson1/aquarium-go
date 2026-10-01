@@ -217,7 +217,8 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
     }
     case 'illness': {
       const nm = c.illness ? illnessDef(c.illness.kind)?.name(sp) ?? 'an illness' : 'an illness';
-      return { kind: 'illness', cause: `complications of ${nm}`, text: `${name} has passed away after a long fight with ${nm}. Clean, stable water and a quiet quarantine tank give the best chance of recovery.` };
+      const where = sp.social.minGroup > 1 ? 'the company of its own kind' : 'a quiet quarantine tank';
+      return { kind: 'illness', cause: `complications of ${nm}`, text: `${name} has passed away after a long fight with ${nm}. Clean, stable water and ${where} give the best chance of recovery.` };
     }
     case 'stress': {
       const f = stressFactors(state, env, c, sp, hour)[0];
@@ -225,6 +226,12 @@ function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
     }
     case 'injury':
       return { kind: 'injury', cause: 'injuries from tank mates', text: `${name} has passed away from injuries caused by tank mates. Some animals simply can't share a tank.` };
+    case 'harassment': {
+      const p = pronoun(c);
+      return { kind: 'injury', cause: 'harassment by a tank mate', text: `${name} has passed away after being chased and bitten by a tank mate. A female must be moved out of a male's tank as soon as spawning is over, and ${p.they === 'they' ? 'harassed animals need' : 'a harassed animal needs'} a tank of ${p.their} own to recover.` };
+    }
+    case 'fighting':
+      return { kind: 'injury', cause: 'fighting with a rival', text: `${name} has passed away from wounds taken fighting a rival. Two dominant ${pluralName(spName)} can't share a tank — separate rivals as soon as the fighting starts.` };
     case 'age':
       return { kind: 'old_age', cause: 'old age', text: `${name} passed away peacefully of old age. Thank you for giving ${name} such a good life.` };
     default:
@@ -474,7 +481,7 @@ function illnessConditionsGood(env: TankEnv, c: Creature, sp: SpeciesDefinition,
   const wv = env.water.get(sp.id);
   if ((wv?.harm ?? 0) > 0.05) return false;
   if ((wv?.comfort ?? 90) < 62) return false;
-  if (c.stats.stress > 58) return false;
+  if (c.stats.stress > (env.quarantine ? 75 : 58)) return false; // a hospital tank forgives some settling-in stress
   if (kind === 'impaction' && ingestionHazard(env, sp)) return false;
   if (kind === 'fungus' && env.tank.water.tempC > sp.tempC.idealMax + 1.5) return false;
   return true;
@@ -637,7 +644,22 @@ function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: 
  * Recompute life stage, sex reveal and minimum size from age (used every step and by devAgeCreature).
  * Emits milestone events for stage changes and sex reveals.
  */
-export function applyAgeing(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number, emit: SimContext['emit'] | null, opts: { snapSize?: boolean } = {}): void {
+/**
+ * Sex reveals of one sub-step, per species group in a tank, so a brood crossing sexVisibleAtDays together gets one
+ * collective toast instead of one per fish (each fish still gets its own history/log line).
+ */
+export type RevealBatch = Map<string, { sp: SpeciesDefinition; males: Reveal[]; females: Reveal[]; ids: string[]; tankId: string }>;
+export interface Reveal {
+  c: Creature;
+  sex: 'male' | 'female';
+  text: string;
+}
+
+/**
+ * Returns the sex reveal made this call (null when none). With `quietReveal` the reveal is recorded in the
+ * creature's history but not emitted — the caller batches and emits it (flushReveals).
+ */
+export function applyAgeing(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number, emit: SimContext['emit'] | null, opts: { snapSize?: boolean; quietReveal?: boolean } = {}): Reveal | null {
   const age = ageDaysOf(c, hour);
   const stage = lifeStageFor(sp, age);
   const prev = c.lifeStage;
@@ -654,6 +676,7 @@ export function applyAgeing(state: GameState, c: Creature, sp: SpeciesDefinition
     }
   }
   // Sex determination / reveal
+  let revealed: Reveal | null = null;
   if (c.sex === 'unknown' && sexVisible(sp, age)) {
     let role = c.reproRole;
     if (role === 'undifferentiated') {
@@ -675,12 +698,38 @@ export function applyAgeing(state: GameState, c: Creature, sp: SpeciesDefinition
         text = `${c.name} is a ${obs}!${cue ? ` You can tell by ${cue}.` : ''}`;
       }
       pushHistory(c, { hour, kind: 'milestone', text });
-      emit?.({ kind: 'celebrate', text, tankId: c.tankId ?? undefined, creatureId: c.id, toast: true });
+      if (!opts.quietReveal) emit?.({ kind: 'celebrate', text, tankId: c.tankId ?? undefined, creatureId: c.id, toast: true });
+      revealed = { c, sex: obs, text };
     }
   }
   if (opts.snapSize) {
     const target = sizeAtAge(sp, c.genome, age);
     if (c.sizeCm < target) c.sizeCm = target;
+  }
+  return revealed;
+}
+
+/** Toast the sub-step's sex reveals: one line per species group, merged when several fish revealed together. */
+function flushReveals(state: GameState, batch: RevealBatch, hour: number, emit: SimContext['emit']): void {
+  for (const b of batch.values()) {
+    const all = [...b.males, ...b.females];
+    if (!all.length) continue;
+    // Staggered single reveals toast at most once per 6 h per group; the log keeps every one.
+    const toast = throttleGroup(state, b.ids, 'sex_reveal_toast', hour, 6);
+    const single = all.length === 1;
+    for (const r of all) emit({ kind: 'celebrate', text: r.text, tankId: b.tankId, creatureId: r.c.id, toast: toast && single });
+    if (single || !toast) continue;
+    const sp = b.sp;
+    let text: string;
+    const n = all.length;
+    const who = `${n} young ${pluralName(lc(sp.commonName))}`;
+    if (sp.sexSystem === 'protandrous') text = `${who} have matured as males — the dominant one of a pair can later become female.`;
+    else if (sp.sexSystem === 'protogynous') text = `${who} have matured as females — the dominant one of a group can later become male.`;
+    else {
+      const parts = [b.males.length ? `${b.males.length} male${b.males.length === 1 ? '' : 's'}` : '', b.females.length ? `${b.females.length} female${b.females.length === 1 ? '' : 's'}` : ''].filter(Boolean);
+      text = `${who} are showing their sex — ${parts.join(' and ')}.`;
+    }
+    emit({ kind: 'celebrate', text, tankId: b.tankId, creatureId: all[0].c.id, toast: true });
   }
 }
 
@@ -773,7 +822,9 @@ export function stepTankCreaturesImpl(state: GameState, tank: Tank, dt: number, 
     feedTankSubstep(state, env, alive, h, hour);
     forageSubstep(env, alive, h, hour);
     // 3) welfare / health / growth / ageing per creature
-    for (const x of alive) stepCreature(state, env, x.c, x.sp, fits.get(x.sp.id) ?? 1, h, hour, ctx);
+    const reveals: RevealBatch = new Map();
+    for (const x of alive) stepCreature(state, env, x.c, x.sp, fits.get(x.sp.id) ?? 1, h, hour, ctx, reveals);
+    flushReveals(state, reveals, hour + h, ctx.emit);
     // 4) incidents
     for (const risk of risks) {
       if (!(risk.perDay > 0)) continue;
@@ -800,7 +851,7 @@ export function stepTankCreaturesImpl(state: GameState, tank: Tank, dt: number, 
   for (const { c } of list) sanitize(c);
 }
 
-function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDefinition, fit: number, h: number, hour: number, ctx: SimContext): void {
+function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDefinition, fit: number, h: number, hour: number, ctx: SimContext, reveals: RevealBatch): void {
   const s = c.stats;
   const m = lifeMeta(c);
   const wv: SpeciesWaterView = env.water.get(sp.id) ?? { comfort: 90, harm: 0, cause: null, causeText: null, stressors: [] };
@@ -894,7 +945,8 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
     }
   }
   s.health -= total;
-  const recovering = wv.harm < 0.05 && s.hunger < 75 && s.stress < 55 && !c.illness && (m.injury ?? 0) < 20;
+  // No regeneration while a breeding partner keeps chasing and biting (bubble-nester female left with the male).
+  const recovering = wv.harm < 0.05 && s.hunger < 75 && s.stress < 55 && !c.illness && (m.injury ?? 0) < 20 && (c.repro?.harassment ?? 0) < 0.5;
   if (recovering) s.health += (0.6 + 1.2 * hardy) * (0.4 + (s.comfort / 100) * 0.6) * h;
   s.health = clamp(s.health, 0, 100);
   if (state.offlineGrace && s.health < GRACE_HEALTH_FLOOR) s.health = GRACE_HEALTH_FLOOR;
@@ -936,11 +988,16 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
     if (cond > 0) c.sizeCm += (target - c.sizeCm) * (1 - Math.exp(-h * 0.25 * cond));
   }
 
-  // ── Ageing, stage changes, sex reveal
-  applyAgeing(state, c, sp, hour + h, ctx.emit);
+  // ── Ageing, stage changes, sex reveal (reveal toasts are merged per group by flushReveals)
+  const ids = g?.ids ?? [c.id];
+  const revealed = applyAgeing(state, c, sp, hour + h, ctx.emit, { quietReveal: true });
+  if (revealed) {
+    let b = reveals.get(sp.id);
+    if (!b) reveals.set(sp.id, (b = { sp, males: [], females: [], ids, tankId: env.tank.id }));
+    (revealed.sex === 'male' ? b.males : b.females).push(revealed);
+  }
 
   // ── Tank size warnings (a juvenile growing beyond its tank)
-  const ids = g?.ids ?? [c.id];
   const need = gallonsNeededNow(sp, c.sizeCm);
   if (env.gallons < need && throttleGroup(state, ids, 'tank_small', hour, 48)) {
     const adultNeed = sp.recommendedMinTankGallons;
@@ -953,21 +1010,29 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
 
   // ── Welfare warnings (throttled per species group in this tank)
   const plural = groupN > 1;
+  // Standing problems are logged every game day but toasted once per ~4 real minutes: the toast window stretches
+  // with the clock speed (24 h at 1×, 72 h at 3×, 240 h at 10×) so a fast-forwarding player isn't buried in repeats.
+  const toastWindowH = 24 * Math.max(1, state.clock.speed);
   if (wv.harm > 0.3 && throttleGroup(state, ids, 'water_harm', hour, 12)) {
     const text = plural ? waterProblemText(wv, `Your ${pluralName(sp.commonName)}`, 'are') : waterProblemText(wv, c.name);
-    // Logged every 12 h while it lasts, but toasted at most once a game day — a standing problem shouldn't pop up
-    // every couple of real minutes.
-    if (text) ctx.emit({ kind: 'danger', text, tankId: env.tank.id, creatureId: c.id, toast: throttleGroup(state, ids, 'water_harm_toast', hour, 24) });
+    if (text) ctx.emit({ kind: 'danger', text, tankId: env.tank.id, creatureId: c.id, toast: throttleGroup(state, ids, 'water_harm_toast', hour, toastWindowH) });
   }
   if (s.hunger >= 80 && throttleGroup(state, ids, 'hungry', hour, 24)) {
     const slow = sp.feedingSpeed < 0.3 && [...env.groups.keys()].some((id) => id !== sp.id && (findSpecies(id)?.feedingSpeed ?? 0) > sp.feedingSpeed + 0.2);
     const who = plural ? `Your ${pluralName(sp.commonName)} are` : `${c.name} is`;
     const text = slow ? `${who} very hungry — faster tank mates may be taking the food. Try target feeding.` : `${who} very hungry — time to feed.`;
-    ctx.emit({ kind: 'warning', text, tankId: env.tank.id, creatureId: c.id });
+    // The early cue reaches the screen for the animals a player can lose fastest: the starter and small groups.
+    const early = (c.isStarter || groupN <= 3) && throttleGroup(state, ids, 'hungry_toast', hour, toastWindowH);
+    ctx.emit({ kind: 'warning', text, tankId: env.tank.id, creatureId: c.id, toast: early });
   }
   if (s.hunger >= 97 && s.health < 85 && throttleGroup(state, ids, 'starving', hour, 24)) {
+    // One toast per tank: name every starving group in it, rather than one danger toast per species.
+    const starving = [...env.groups.values()].filter((grp) => grp.ids.some((id) => (state.creatures[id]?.stats.hunger ?? 0) >= 97 && (state.creatures[id]?.stats.health ?? 100) < 85));
+    const tankIds = [...env.groups.values()].flatMap((grp) => grp.ids);
+    const toast = throttleGroup(state, tankIds, 'starving_toast', hour, toastWindowH);
     const who = plural ? `Your ${pluralName(sp.commonName)} are` : `${c.name} is`;
-    ctx.emit({ kind: 'danger', text: `${who} starving and losing condition — feed right away.`, tankId: env.tank.id, creatureId: c.id, toast: true });
+    const text = starving.length > 1 ? `${starving.length} groups in ${env.tank.name} are starving and losing condition — feed right away.` : `${who} starving and losing condition — feed right away.`;
+    ctx.emit({ kind: 'danger', text, tankId: env.tank.id, creatureId: c.id, toast });
   }
   if (sp.social.minGroup > 1 && groupN < sp.social.minGroup && throttleGroup(state, ids, 'lonely', hour, 48)) {
     const who = plural ? `Your ${pluralName(sp.commonName)} seem` : `${c.name} seems`;

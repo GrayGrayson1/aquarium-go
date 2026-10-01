@@ -12,7 +12,7 @@ import { bumpCounter } from '../facility';
 import { emitEvent } from '../context';
 import { nextId } from '../ids';
 import { addFood, recommendedServings, ensureLab, scaleFood, foodDemandUnits, availableFood } from '../water/food';
-import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, ROOM_TEMP_C, isSaltClass, isMarineClass } from '../water/constants';
+import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, ROOM_TEMP_C, DETOX_FREE_FRACTION, DETOX_HOURS, isSaltClass, isMarineClass } from '../water/constants';
 import { equipmentSummary, safeGallons, inhabitantsOf, safeHabitat } from '../water/env';
 import { tuneTankForSpecies } from '../water/kits';
 import { sanitizeWater } from '../water/step';
@@ -216,6 +216,9 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
   w.ammonia = w.ammonia * kr;
   w.nitrite = w.nitrite * kr;
   w.nitrate = w.nitrate * kr + src.nitrate * ka;
+  const lab = ensureLab(tank);
+  if (lab.boundAmmonia !== undefined) lab.boundAmmonia *= kr; // lane:fix-water — conditioner-bound share goes out with the old water too
+  if (lab.boundNitrite !== undefined) lab.boundNitrite *= kr;
   w.kh = w.kh * kr + src.kh * ka;
   if (!salty || tank.waterClass === 'brackish') w.gh = w.gh * kr + src.gh * ka;
   w.pH = w.pH * kr + src.pH * ka;
@@ -226,7 +229,6 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
   scaleFood(tank, 1 - f * 0.6);
   w.detritus = clamp(w.detritus * (1 - f * 0.35), 0, 100);
   w.clarity = clamp(w.clarity + f * 0.3, 0, 1);
-  const lab = ensureLab(tank);
   if (salty) lab.reefElements = clamp((lab.reefElements ?? 0.8) * kr + 0.85 * ka, 0, 1);
   lab.co2 = (lab.co2 ?? 1) * kr + (salty ? 0.45 : 0.6) * ka;
   tank.lastMaintenanceHour = hour;
@@ -236,16 +238,26 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
   const dT = Math.abs(w.tempC - before.temp);
   const dPH = Math.abs(w.pH - before.pH);
   const dSG = Math.abs(w.salinitySG - before.sg);
-  const severity = clamp(Math.max((dT - 1) / 4, (dPH - 0.2) / 0.8, (dSG - 0.0015) / 0.006), 0, 1);
+  // lane:fix-water — the reason names whichever shift actually caused the shock (a 1.5 °C or 0.3 pH shift used to
+  // fall through to "salinity jumped by 0.000" in freshwater tanks); salinity only counts in salt water.
+  const shifts = [
+    { v: (dT - 1) / 4, why: `the new water shifted the temperature by ${dT.toFixed(1)} °C` },
+    { v: (dPH - 0.2) / 0.8, why: `pH jumped by ${dPH.toFixed(1)}` },
+    { v: salty ? (dSG - 0.0015) / 0.006 : 0, why: `salinity jumped by ${dSG.toFixed(3)}` },
+  ];
+  const worst = shifts.reduce((a, b) => (b.v > a.v ? b : a));
+  const severity = clamp(worst.v, 0, 1);
   let shockNote = '';
   if (severity > 0.1) {
-    const why = dT >= 2 ? `the new water shifted the temperature by ${dT.toFixed(1)} °C` : dPH >= 0.4 ? `pH jumped by ${dPH.toFixed(1)}` : `salinity jumped by ${dSG.toFixed(3)}`;
+    const why = worst.why;
     w.shock = { hour, untilHour: hour + 4 + severity * 8, severity, reason: why };
     lab.swing = clamp((lab.swing ?? 0) + severity * 0.5, 0, 1);
     shockNote = ` Careful — ${why}; sudden changes stress animals. Match the new water next time.`;
     if (!state.isShowcase) emitEvent(state, { kind: 'warning', text: `${tank.name}: ${why} during the water change — the animals are stressed.`, tankId: tank.id, toast: true });
   }
-  const parts = [`Changed ${Math.round(f * 100)}% of the water. Nitrate ${before.nitrate.toFixed(0)} → ${w.nitrate.toFixed(0)} ppm.`];
+  // lane:fix-water — show a decimal when the rounded values would read as "5 → 5 ppm".
+  const nDigits = before.nitrate.toFixed(0) === w.nitrate.toFixed(0) && Math.abs(before.nitrate - w.nitrate) >= 0.05 ? 1 : 0;
+  const parts = [`Changed ${Math.round(f * 100)}% of the water. Nitrate ${before.nitrate.toFixed(nDigits)} → ${w.nitrate.toFixed(nDigits)} ppm.`];
   if (before.ammonia >= 0.05) parts.push(`Ammonia ${before.ammonia.toFixed(2)} → ${w.ammonia.toFixed(2)} ppm.`);
   if (salty) parts.push(`Used ${saltUsed.toFixed(1)} kg of salt mix (${state.inventory.salt.toFixed(1)} kg left); salinity ${w.salinitySG.toFixed(3)}.`);
   if (saltShort) parts.push('You ran short of salt, so the new water was weaker — salinity dropped. Buy more salt mix.');
@@ -268,9 +280,14 @@ export function topOff(state: GameState, tankId: string): ActionResult {
   w.ammonia *= lvl;
   w.nitrite *= lvl;
   w.nitrate *= lvl;
+  const lab = ensureLab(tank);
+  if (lab.boundAmmonia !== undefined) lab.boundAmmonia *= lvl; // lane:fix-water
+  if (lab.boundNitrite !== undefined) lab.boundNitrite *= lvl;
   w.salinitySG = salty ? 1 + (w.salinitySG - 1) * lvl : 1;
-  if (salty) w.kh *= lvl;
-  else {
+  // lane:fix-water — KH is kept in dKH and evaporation never concentrated it, so topping off must not dilute it
+  // either (it drained ~1.7 dKH a month from reef tanks topped off by hand while ATO tanks lost nothing). Freshwater
+  // top-offs still blend in the tap water's hardness.
+  if (!salty) {
     w.kh = w.kh * lvl + src.kh * added;
     w.gh = w.gh * lvl + src.gh * added;
   }
@@ -381,12 +398,33 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
     }
     case 'conditioner': {
       if (!pay('Water conditioner')) return fail(`Conditioner costs ${money(cost)} — not enough money.`);
-      lab.detoxUntilHour = hour + 24;
-      message = 'Conditioner is binding ammonia and nitrite into a less toxic form for about a day. It buys time, but the cause still needs fixing — change water and feed less.';
+      // lane:fix-water — really bind it: the bound share (lab.boundAmmonia/boundNitrite) neither harms animals nor
+      // shows on the report until the dose wears off (the water step keeps the split while detoxUntilHour is ahead).
+      const nh = w.ammonia * (1 - DETOX_FREE_FRACTION);
+      const no2 = w.nitrite * (1 - DETOX_FREE_FRACTION);
+      w.ammonia -= nh;
+      w.nitrite -= no2;
+      lab.boundAmmonia = (lab.boundAmmonia ?? 0) + nh;
+      lab.boundNitrite = (lab.boundNitrite ?? 0) + no2;
+      lab.detoxUntilHour = hour + DETOX_HOURS;
+      const bound: string[] = [];
+      if (nh >= 0.005) bound.push(`ammonia (${(w.ammonia + nh).toFixed(2)} → ${w.ammonia.toFixed(2)} ppm)`);
+      if (no2 >= 0.005) bound.push(`nitrite (${(w.nitrite + no2).toFixed(2)} → ${w.nitrite.toFixed(2)} ppm)`);
+      message = bound.length
+        ? `Conditioner bound most of the ${bound.join(' and ')} into a less toxic form for about a day. It buys time, but the cause still needs fixing — change water and feed less; when it wears off, what it holds comes back.`
+        : 'Conditioner is binding ammonia and nitrite into a less toxic form for about a day. It buys time, but the cause still needs fixing — change water and feed less.';
       break;
     }
     case 'salt': {
-      if (!salty) return fail('Freshwater tanks don’t need salt — shrimp, snails, scaleless fish and plants are harmed by it.');
+      if (!salty) {
+        // lane:fix-water — when the tank holds brackish animals (mollies, bumblebee gobies) point at the real route.
+        const estuary = inhabitantsOf(state, tank.id).find((i) => i.species.environment === 'brackish');
+        return fail(
+          estuary
+            ? `Salt can’t go into a freshwater tank — shrimp, snails, scaleless fish and plants are harmed by it. ${cap(pluralName(estuary.species.commonName))} would rather have a brackish tank (Research › Brackish Estuaries).`
+            : 'Freshwater tanks don’t need salt — shrimp, snails, scaleless fish and plants are harmed by it.',
+        );
+      }
       const band = CLASS_DEFAULTS[tank.waterClass].sg!;
       const target = Math.min(band.idealMax, idealBand(state, tank, 'salinitySG').max);
       if (w.salinitySG >= target - 0.0002) return fail(`Salinity is already ${w.salinitySG.toFixed(3)} — more salt would push it too high. Top off with fresh water if it creeps up.`);

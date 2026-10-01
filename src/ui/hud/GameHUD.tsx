@@ -2,7 +2,7 @@
  * In-game HUD composition. Everything hugs the edges and collapses away; the aquarium stays the hero.
  * OWNER: lane "ui-shell".
  */
-import { useEffect, useState, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { Eye } from 'lucide-react';
@@ -29,20 +29,21 @@ function LazyPhotoMode() {
     </Suspense>
   ) : null;
 }
-import { useShell } from '../common/shellStore';
-import { useIsMobile, useMedia } from '../common/safe';
+import { useShell, type Popover } from '../common/shellStore';
+import { isTextEntry, useIsMobile, useMedia } from '../common/safe';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { TopBar, setSpeed, togglePause } from './TopBar';
 import { Dock } from './Dock';
 import { TankBar, cycleTank, toggleTankCard, toggleView } from './TankBar';
 import { ToolRail, CameraChips, ToolHint, selectTool } from './ToolRail';
+import { RoomViewChip } from './RoomChips';
 import { CreatureCard } from '../cards/CreatureCard';
 import { TankCard } from '../cards/TankCard';
 import { TutorialCoach } from '../tutorial/TutorialCoach';
 import { PartyBanner } from '../photo/PartyBanner';
 import { WelcomeBack } from './WelcomeBack';
 import { usePrefs } from '../common/prefs';
-import { useCardDockRules, useDockedCard } from './cardDock';
+import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
 
 const CALM_AFTER_MS = 6000;
@@ -72,12 +73,15 @@ function canCalm(): boolean {
 /**
  * Calm watching: after ~6 s without input in tank view the HUD recedes (opacity only — everything stays in the
  * accessibility tree and focusable, and any pointer move, touch, wheel or key brings it straight back).
+ * A touch that wakes it is only a wake: the invisible dock / tool rail used to take that same tap (a panel opened, a
+ * tool armed, or the HUD vanished into watch mode), so the click it produces is swallowed.
  */
 function useCalmHud(): boolean {
   const [calm, setCalm] = useState(false);
   useEffect(() => {
     let timer = 0;
     let isCalm = false;
+    let swallowUntil = 0;
     const arm = (ms: number) => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
@@ -87,16 +91,27 @@ function useCalmHud(): boolean {
         } else arm(1500);
       }, ms);
     };
-    const wake = () => {
+    const wake = (e?: Event) => {
       if (isCalm) {
         isCalm = false;
         setCalm(false);
+        const touch = !!e && (e.type === 'touchstart' || (e.type === 'pointerdown' && (e as PointerEvent).pointerType !== 'mouse'));
+        if (touch) swallowUntil = performance.now() + 800;
       }
       arm(CALM_AFTER_MS);
+    };
+    const swallow = (e: MouseEvent) => {
+      if (performance.now() > swallowUntil) return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('.ag-hud') && !t.closest('.ag-hud__coach')) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
     };
     const opts = { passive: true, capture: true } as const;
     const evs = ['pointermove', 'pointerdown', 'wheel', 'keydown', 'touchstart', 'focusin'] as const;
     for (const e of evs) window.addEventListener(e, wake, opts);
+    window.addEventListener('click', swallow, true);
     // a state change (panel opened by a shortcut, new tool…) also wakes it
     const unsubUI = useUI.subscribe((s, p) => {
       if (s.panel !== p.panel || s.tool !== p.tool || s.selectedCreatureId !== p.selectedCreatureId || s.view !== p.view) wake();
@@ -108,6 +123,7 @@ function useCalmHud(): boolean {
     return () => {
       window.clearTimeout(timer);
       for (const e of evs) window.removeEventListener(e, wake, opts);
+      window.removeEventListener('click', swallow, true);
       unsubUI();
       unsubShell();
     };
@@ -115,9 +131,11 @@ function useCalmHud(): boolean {
   return calm;
 }
 
+/** Letter shortcuts stay out of text fields; a slider or select still takes Escape (it blurs and closes its layer). */
 function isTyping(e: KeyboardEvent) {
+  if (isTextEntry(e.target)) return true;
   const t = e.target as HTMLElement | null;
-  return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+  return e.key !== 'Escape' && !!t && (t.tagName === 'INPUT' || t.tagName === 'SELECT');
 }
 
 /** Space/Enter on a focused control must activate that control, never a global shortcut. */
@@ -179,18 +197,19 @@ function useHudKeys() {
         case 'h':
         case 'H':
           sfx('close');
-          useShell.getState().set({ popover: null });
-          ui.set({ hudHidden: true, tool: 'none' });
+          enterCinematic('watch');
           break;
         case 'p':
         case 'P':
           if (ui.view === 'tank') {
             sfx('camera');
-            ui.set({ photoMode: true, tool: 'none' });
+            enterCinematic('photo');
           }
           break;
         case 'Escape': {
           const shell = useShell.getState();
+          const a = document.activeElement as HTMLElement | null;
+          if (a && a !== document.body && (a.tagName === 'INPUT' || a.tagName === 'SELECT')) a.blur();
           if (shell.popover) shell.set({ popover: null });
           else if (ui.tool !== 'none') selectTool('none');
           else if (ui.panel) ui.set({ panel: null });
@@ -208,6 +227,22 @@ function useHudKeys() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+}
+
+/** Keyboard users: a popover that closes (Escape, a pick) hands focus back to the button that opened it. */
+const POPOVER_TRIGGER: Partial<Record<NonNullable<Popover>, string>> = { food: 'tool-feed', target_food: 'tool-target-feed', lights: 'tool-lights', alerts: 'hud-alerts' };
+function usePopoverFocusReturn() {
+  const popover = useShell((s) => s.popover);
+  const prev = useRef<Popover>(null);
+  useEffect(() => {
+    const was = prev.current;
+    prev.current = popover;
+    if (popover || !was) return;
+    const id = POPOVER_TRIGGER[was];
+    // (the popover is fading out: focus is still inside it, or already fell to <body>)
+    const a = document.activeElement;
+    if (id && (!a || a === document.body || a.closest('.ag-popover'))) document.querySelector<HTMLElement>(`[data-testid="${id}"]`)?.focus({ preventScroll: true });
+  }, [popover]);
 }
 
 /** Close popovers when clicking elsewhere (the 3D scene or other HUD). */
@@ -254,6 +289,7 @@ function WatchRestore() {
 export function GameHUD() {
   useHudKeys();
   usePopoverDismiss();
+  usePopoverFocusReturn();
   useCardDockRules();
   useFocusedTankGuard();
   const calm = useCalmHud();
@@ -284,6 +320,7 @@ export function GameHUD() {
         animate={{ opacity: chromeHidden ? 0 : 1 }}
         transition={{ duration: 0.35 }}
         aria-hidden={chromeHidden}
+        inert={chromeHidden}
       >
         <ErrorBoundary name="topbar">
           <TopBar compact={mobile} />
@@ -296,6 +333,13 @@ export function GameHUD() {
             <ToolRail occlude={(creatureOpen && sideSheets) || (coachOcclude && coachSide === 'left' && !creatureOpen)} />
             <div className="ag-hud__cam">
               <CameraChips />
+            </div>
+          </ErrorBoundary>
+        )}
+        {view === 'facility' && (
+          <ErrorBoundary name="roomcam">
+            <div className="ag-hud__cam ag-hud__cam--room">
+              <RoomViewChip />
             </div>
           </ErrorBoundary>
         )}

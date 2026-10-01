@@ -1,9 +1,10 @@
 /**
  * Small building blocks shared by the management panels (on top of the ui-shell kit). OWNER: lane "ui-panels".
  */
-import { useId, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { Minus, Plus } from 'lucide-react';
+import { Button } from '@/ui/kit';
 import { sfx } from '@/audio/sfx';
 import type { ChipTone } from './format';
 
@@ -167,6 +168,15 @@ export function NumberField({ value, onChange, min = 0, max = 1e9, step = 1, pre
   const id = useId();
   const clampV = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step));
   const inc = bigStep ?? step;
+  // lane:fix-panels — what the player has typed so far, while the field has focus. Clamping every keystroke on a
+  // controlled input turned "95" into $285 (9 → min 71, then "715" → max 285); now an in-range draft is committed as
+  // it is typed, an out-of-range or empty one waits, and blur / Enter clamps whatever is there.
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = (raw: string | null) => {
+    const n = raw == null || raw.trim() === '' ? value : Number(raw);
+    onChange(clampV(Number.isFinite(n) ? n : value));
+    setDraft(null);
+  };
   return (
     <div className="pn-num">
       <button type="button" className="pn-num__btn" aria-label={`Decrease ${label}`} onClick={() => { sfx('click'); onChange(clampV(value - inc)); }} disabled={value <= min}>
@@ -180,15 +190,20 @@ export function NumberField({ value, onChange, min = 0, max = 1e9, step = 1, pre
           type="number"
           inputMode="numeric"
           aria-label={label}
-          value={Number.isFinite(value) ? value : 0}
+          value={draft ?? (Number.isFinite(value) ? value : 0)}
           min={min}
           max={max}
           step={step}
           onChange={(e) => {
-            const n = Number(e.target.value);
-            if (Number.isFinite(n)) onChange(Math.max(min, Math.min(max, n)));
+            const raw = e.target.value;
+            setDraft(raw);
+            const n = Number(raw);
+            if (raw.trim() !== '' && Number.isFinite(n) && n >= min && n <= max) onChange(n);
           }}
-          onBlur={() => onChange(clampV(value))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit(draft);
+          }}
+          onBlur={() => commit(draft)}
         />
       </label>
       <button type="button" className="pn-num__btn" aria-label={`Increase ${label}`} onClick={() => { sfx('click'); onChange(clampV(value + inc)); }} disabled={value >= max}>
@@ -224,12 +239,68 @@ export function Callout({ tone = 'info', icon, title, children, action }: { tone
   );
 }
 
-export function Checkbox({ checked, onChange, label, hideLabel, testId }: { checked: boolean; onChange: (v: boolean) => void; label: string; hideLabel?: boolean; testId?: string }) {
+export function Checkbox({ checked, onChange, label, hideLabel, testId, disabled, title }: { checked: boolean; onChange: (v: boolean) => void; label: string; hideLabel?: boolean; testId?: string; disabled?: boolean; title?: string }) {
   return (
-    <label className="pn-check" onClick={(e) => e.stopPropagation()}>
-      <input type="checkbox" checked={checked} data-testid={testId} onChange={(e) => { sfx('click'); onChange(e.target.checked); }} />
+    <label className={clsx('pn-check', disabled && 'is-disabled')} title={title} onClick={(e) => e.stopPropagation()}>
+      <input type="checkbox" checked={checked} disabled={disabled} data-testid={testId} onChange={(e) => { sfx('click'); onChange(e.target.checked); }} />
       <span className="pn-check__box" aria-hidden />
       <span className={hideLabel ? 'pn-sr' : 'pn-check__label'}>{label}</span>
     </label>
+  );
+}
+
+/** lane:fix-panels — rows a paged list shows at first and adds per step (about six screens of animal rows). */
+export const PAGE_ROWS = 40;
+
+/**
+ * lane:fix-panels — how many rows of a long list to show: starts at PAGE_ROWS, grows as the sentinel scrolls into
+ * view, and starts over whenever `resetKey` changes (a new filter, sort or tab). Long lists (337 animals on a big
+ * facility) used to mount every row at once, and every row asked for a portrait render.
+ */
+export function usePaged(total: number, resetKey: unknown): { shown: number; more: () => void } {
+  const [shown, setShown] = useState(PAGE_ROWS);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) first.current = false;
+    else setShown(PAGE_ROWS);
+  }, [resetKey]);
+  return { shown: Math.min(shown, total), more: () => setShown((n) => Math.min(total, n + PAGE_ROWS)) };
+}
+
+/** Sentinel at the foot of a paged list: asks for more rows as it comes into view, with a button for good measure. */
+export function LoadMore({ remaining, onMore, noun = 'row' }: { remaining: number; onMore: () => void; noun?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const cb = useRef(onMore);
+  cb.current = onMore;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    let timer = 0;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        cb.current();
+        // still in view once the new rows are in (tall window, short page)? observe again so it fires again
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          io.unobserve(el);
+          io.observe(el);
+        }, 150);
+      },
+      { rootMargin: '240px 0px' },
+    );
+    io.observe(el);
+    return () => {
+      window.clearTimeout(timer);
+      io.disconnect();
+    };
+  }, []);
+  if (remaining <= 0) return null;
+  return (
+    <div ref={ref} className="pn-row" style={{ justifyContent: 'center', padding: '6px 0' }} data-testid="load-more">
+      <Button size="sm" variant="ghost" onClick={onMore}>
+        Show {Math.min(remaining, PAGE_ROWS)} more · {remaining} {noun}{remaining === 1 ? '' : 's'} left
+      </Button>
+    </div>
   );
 }

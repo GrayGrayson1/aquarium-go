@@ -180,7 +180,11 @@ export function stepFood(w: AIWorld, dt: number): void {
         // held out by tongs / pipette: barely drifts, then sinks if ignored
         p.pos.y -= 0.0015 * dt;
         p.pos.x += Math.sin(t * 1.3 + seed * 9) * 0.0006 * dt;
-        if (p.age > 25) p.motion = 'sink';
+        if (p.age > 25) {
+          // ignored: it is just food on the bottom now — anyone may take it and the sim sync may fade it
+          p.motion = 'sink';
+          p.targetCreatureId = undefined;
+        }
         break;
       }
       case 'jitter': {
@@ -297,16 +301,22 @@ export function syncFoodWithSim(w: AIWorld, simFood: number, fallbackSpec: (tags
   if (!fs.simTracked) return;
   const live = liveCount(w);
   const target = simFood <= 0.05 ? 0 : Math.ceil(simFood / Math.max(0.2, fs.unitsPerParticle));
-  if (live > target + 1) {
+  // (one particle of slack while the sim still holds food; none once it reports the water clean — a last flake used
+  // to lie on the sand for good)
+  if (live > target + (target > 0 ? 1 : 0)) {
     // the sim has consumed / dissolved food: fade the oldest settled leftovers first, then the oldest free ones
     let excess = live - target;
     for (const pass of [0, 1]) {
       for (const p of w.food) {
         if (excess <= 0) break;
-        if (p.fade || p.amount <= 0 || p.targetCreatureId) continue;
+        if (p.fade || p.amount <= 0) continue;
         if (pass === 0 && !p.settled) continue;
         if (p.age < 4) continue; // let fresh food reach the fish first
-        if (p.claimedBy) continue; // someone is visibly going for it
+        if (p.targetCreatureId && goingFor(w, p.targetCreatureId, p)) continue; // held out to an animal that is coming for it
+        if (p.claimedBy) {
+          if (goingFor(w, p.claimedBy, p)) continue; // someone is visibly going for it
+          p.claimedBy = undefined; // a stale claim (the fish moved on) must never keep a leftover alive
+        }
         if ((p.motion === 'crawl' || p.motion === 'jitter' || p.motion === 'wriggle') && p.age < 40) continue; // live prey keeps moving until caught
         p.fade = 0.001;
         excess--;
@@ -324,6 +334,12 @@ export function syncFoodWithSim(w: AIWorld, simFood: number, fallbackSpec: (tags
       }
     }
   }
+}
+
+/** Is agent `id` in this tank and actually going for particle `p` right now? */
+function goingFor(w: AIWorld, id: string, p: FoodParticle): boolean {
+  const a = w.byId.get(id);
+  return !!a && !a.dead && a.foodId === p.id && (a.act === 'feed' || a.act === 'hunt');
 }
 
 export function liveCount(w: AIWorld): number {

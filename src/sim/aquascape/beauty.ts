@@ -469,3 +469,130 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
   }
   return { score, factors, tips: outTips };
 }
+
+// ───────────────────────────── the show judge's eye ─────────────────────────────
+
+/** One strict criterion of a show judge's critique (0..1), with the everyday factor it sharpens. */
+export interface CritiqueFactor {
+  label: string;
+  value: number;
+}
+
+export interface ScapeCritique {
+  /** Layout craft under contest rules (0..1): thirds, a single dominant focal point, real depth, negative space… */
+  layout: number;
+  /** Quality of the material (0..1): premium hardscape and choice plants/corals against everyday pieces. */
+  material: number;
+  /** Botanical richness (0..1): distinct kinds of living decor against what a winning entry shows. */
+  richness: number;
+  /** The judge's overall composition mark (0..1) — what the show classes score as "composition". */
+  composition: number;
+  factors: CritiqueFactor[];
+}
+
+const CRITIQUE_W = { focal: 10, depth: 9, height: 7, negative: 9, balance: 6, fullness: 5, colour: 5, texture: 5, cohesion: 6 };
+/** Distinct kinds of living decor a winning entry shows (the everyday variety factor saturates well below this). */
+const RICHNESS_TARGET: Record<string, number> = { reef: 8, marine: 4, freshwater: 8 };
+
+/**
+ * The show judge's stricter reading of a layout (lane:staff, S05-01). The everyday beauty score is generous on
+ * purpose — any full, healthy tank scores in the 80s–90s and the gifted starter layouts sit near its ceiling — so
+ * contest composition is marked against a harder standard with headroom above the starters: a dominant focal point
+ * on a third, tall-to-short depth, a real open swimming lane, balanced masses, restrained colour, plus the quality
+ * of the material and the botanical richness. Pure over the tank (no state, no RNG).
+ */
+export function scapeCritique(tank: Tank, report: BeautyReport = beautyScoreImpl(null, tank)): ScapeCritique {
+  const d = tankDims(tank);
+  const col = Math.max(0.05, d.waterY - d.substrateY);
+  const items = collectItems(tank);
+  const bed = items.filter((i) => !i.floating);
+  const factors: CritiqueFactor[] = [];
+  const rep = (label: string) => (report.factors.find((f) => f.label === label)?.value ?? 0) / 100;
+  const add = (label: string, v: number) => {
+    const c = clamp01(v);
+    factors.push({ label, value: Math.round(c * 100) });
+    return c;
+  };
+
+  // one dominant focal point, sitting on a third — a second piece competing for the eye costs marks
+  let focal = 0;
+  if (bed.length) {
+    const prom = (i: Item) => i.def.beauty * i.mass * (i.living && i.def.category === 'plant' ? 0.8 : 1.25);
+    const ranked = [...bed].sort((a, b) => prom(b) - prom(a));
+    const top = ranked[0];
+    const total = bed.reduce((s, i) => s + prom(i), 0);
+    const share = prom(top) / Math.max(1e-9, total);
+    const nearest = top.u < 0.5 ? 0.382 : 0.618;
+    const dev = Math.abs(top.u - nearest);
+    const rival = ranked[1] ? prom(ranked[1]) / Math.max(1e-9, prom(top)) : 0;
+    focal = (1 - clamp01((dev - 0.03) / 0.12)) * clamp01(0.3 + (share - 0.1) * 3.5) * (rival > 0.75 ? 0.7 : rival > 0.55 ? 0.88 : 1);
+  }
+  add('Focal point', focal);
+
+  // depth: the tall pieces sit right at the back, the low ones right at the front
+  const tall = bed.filter((i) => i.h > 0.5 * col);
+  const short = bed.filter((i) => i.h < 0.18 * col);
+  let depth = 0;
+  if (bed.length) {
+    const tallBack = tall.length ? tall.reduce((s, i) => s + i.back * i.mass, 0) / tall.reduce((s, i) => s + i.mass, 0) : 0.4;
+    const shortFront = short.length ? 1 - short.reduce((s, i) => s + i.back * i.mass, 0) / Math.max(1e-9, short.reduce((s, i) => s + i.mass, 0)) : 0.4;
+    depth = clamp01((tallBack - 0.35) / 0.4) * 0.6 + clamp01((shortFront - 0.3) / 0.4) * 0.4;
+  }
+  add('Depth layering', depth);
+
+  // height: a real backdrop and a clear rhythm of heights (three tiers, not two)
+  let height = 0;
+  if (bed.length) {
+    const hs = bed.map((i) => i.h / col);
+    const mean = hs.reduce((a, b) => a + b, 0) / hs.length;
+    const sd = Math.sqrt(hs.reduce((a, b) => a + (b - mean) ** 2, 0) / hs.length);
+    const tiers = new Set(hs.map((h) => (h < 0.18 ? 0 : h < 0.5 ? 1 : 2))).size;
+    height = 0.45 * clamp01((Math.max(...hs) - 0.35) / 0.4) + 0.35 * clamp01(sd / 0.24) + 0.2 * (tiers >= 3 ? 1 : tiers === 2 ? 0.5 : 0);
+  }
+  add('Height & rhythm', height);
+
+  // negative space: judges want a generous open lane, not just "some" open water
+  const ow = openWater(tank, items);
+  const band = ow.free < 0.45 ? ow.free / 0.45 : ow.free <= 0.75 ? 1 : 1 - (ow.free - 0.75) * 2;
+  add('Open water', items.length ? 0.6 * clamp01(band) + 0.4 * clamp01(ow.lane / 0.25) : 0);
+
+  // hardscape ↔ planting: full marks only in the heart of the style's band
+  const hardMass = bed.filter((i) => !i.living).reduce((s, i) => s + i.mass, 0);
+  const liveMass = items.filter((i) => i.living).reduce((s, i) => s + i.mass * (i.floating ? 0.4 : 1), 0);
+  let balance = 0;
+  if (hardMass + liveMass > 0) {
+    const bandB = BALANCE_BAND[tank.waterClass] ?? [0.25, 0.7];
+    const mid = (bandB[0] + bandB[1]) / 2;
+    const half = (bandB[1] - bandB[0]) / 2;
+    const share = hardMass / (hardMass + liveMass);
+    balance = 1 - clamp01((Math.abs(share - mid) - half * 0.5) / (half * 1.5));
+  }
+  add('Hardscape ↔ planting', balance);
+
+  // fullness: well planted, but not wall-to-wall
+  const coverage = items.reduce((s, i) => s + i.area * (i.floating ? 0.3 : 1), 0) / (d.L * d.W);
+  add('Fullness', coverage < 0.55 ? coverage / 0.55 : coverage <= 1.1 ? 1 : Math.max(0.3, 1 - (coverage - 1.1) * 1.2));
+
+  // colour, texture and cohesion as the everyday score reads them (already strict enough)
+  add('Colour harmony', rep('Colour harmony'));
+  add('Texture contrast', rep('Texture contrast'));
+  add('Style cohesion', rep('Style cohesion') * (1 - Math.max(0, -rep('Clutter'))));
+
+  const wsum = Object.values(CRITIQUE_W).reduce((a, b) => a + b, 0);
+  const keys = ['Focal point', 'Depth layering', 'Height & rhythm', 'Open water', 'Hardscape ↔ planting', 'Fullness', 'Colour harmony', 'Texture contrast', 'Style cohesion'];
+  const ws = Object.values(CRITIQUE_W);
+  const layout = bed.length ? keys.reduce((s, k, i) => s + ws[i] * (factors.find((f) => f.label === k)?.value ?? 0) / 100, 0) / wsum : 0;
+
+  // material: what the layout is made of (mass-weighted; ornaments and gadgets drag it down)
+  const matMass = bed.reduce((s, i) => s + i.mass, 0);
+  const material = matMass > 0 ? bed.reduce((s, i) => s + (i.def.beauty / 10) * i.mass, 0) / matMass : 0;
+  add('Material', material);
+
+  // richness: how many kinds of living decor
+  const kinds = new Set(items.filter((i) => i.living).map((i) => i.def.id)).size;
+  const target = RICHNESS_TARGET[tank.waterClass === 'reef' ? 'reef' : tank.environment === 'marine' ? 'marine' : 'freshwater'];
+  const richness = add('Richness', kinds / target);
+
+  const composition = clamp01(0.5 * layout + 0.3 * material + 0.2 * richness);
+  return { layout, material, richness, composition, factors };
+}

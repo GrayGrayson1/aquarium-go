@@ -23,12 +23,13 @@ import { makeContext } from '../context';
 import { MAX_SUBSTEP_HOURS } from '../time';
 
 // ── finance helpers (used by every lane) ──
-export { spend, earn, canAfford, stepFinance, dailyOperatingCost, cashSuggestions, LOAN_AFTER_DEBT_HOURS, LOAN_REPAY_SHARE } from './finance';
+export { spend, earn, canAfford, stepFinance, dailyOperatingCost, cashSuggestions, restartNeed, LOAN_AFTER_DEBT_HOURS, LOAN_REPAY_SHARE, RESTART_AFTER_HOURS } from './finance';
 export type { OperatingCosts } from './finance';
 
 // ── valuation ──
 export { creatureValue, tankValuation, bundleValue, quickSellQuote, morphRarity, lineageSummary, livestockSummary, careDifficultyLabel, tankSignature } from './valuation';
 export type { BundleValue, QuickSellQuote } from './valuation';
+export { saleWarnings, carriesClutch } from './warnings'; // lane:fix-econ
 // lane:frags — frag & cutting valuation
 export { fragValue, fragBundleValue, fragStoreOffer, fragSupplyFactor, fragInTankFactor, FRAG_HEALED_HOURS, FRAG_STORE_RATE } from './valuation';
 export type { FragValue } from './valuation';
@@ -41,8 +42,8 @@ export { templateCount, composeBidMessage } from './messages';
 export type { Aspect } from './messages';
 
 // ── player actions ──
-export { buyOffer, buyTank, buyEquipment, buyFood, buySalt, tankKitPrice, seededMediaPrice, SALT_PRICE_PER_KG } from './purchases';
-export type { BuyTankOptions } from './purchases';
+export { buyOffer, offerPickPrice, buyTank, buyEquipment, buyFood, buySalt, tankKitPrice, kitEquipmentFor, kitSwapNote, seededMediaPrice, SALT_PRICE_PER_KG } from './purchases';
+export type { BuyTankOptions, KitEquipment } from './purchases';
 export {
   createListing,
   withdrawListing,
@@ -50,6 +51,9 @@ export {
   declineBid,
   counterBid,
   holdBidForCounter,
+  suggestCounter, // lane:fix-econ
+  marketTimeScale, // lane:fix-econ
+  MAX_NEGOTIATION_HOLD_HOURS, // lane:fix-econ
   quickSell,
   suggestPricing,
   previewListing,
@@ -68,17 +72,17 @@ export {
   GAME_HOURS_PER_REAL_MINUTE,
   realMinutesAt1x,
 } from './listings';
-export type { ListingSpec, ListingPreview, ListingDurationPreset } from './listings';
+export type { ListingSpec, ListingPreview, ListingDurationPreset, CounterSuggestion } from './listings';
 // lane:frags — frag & cutting sales (listing kind 'frag' uses createListing with `fragIds`)
 export { sellFragsToStore, quickSellFrags, quickSellFragsQuote, storedFragValue, MAX_FRAGS_PER_LISTING } from './listings';
 export { buildFragProfile } from './buyers';
 
 export { devOpenMarket } from './devtools';
+import { MARKET_STEP_HOURS } from './listings';
 
 /** Hour of day the shop restocks. */
 export const SHOP_REFRESH_HOUR = 8;
-/** The market does its work in windows of at least this many game hours. */
-export const MARKET_STEP_HOURS = 0.1;
+export { MARKET_STEP_HOURS } from './listings';
 
 /** Market init at new game: buyers, demand, first stock. */
 export function initMarket(state: GameState): void {

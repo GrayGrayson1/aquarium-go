@@ -26,7 +26,8 @@ npm start            # builds, then serves http://127.0.0.1:4173
 ## Controls
 
 - **Click or tap the glass:** bold animals come over to look and shy ones hide. Tapping repeatedly stresses them, so be gentle.
-- **Drag:** orbit the tank or pan the facility. Scroll or pinch to zoom.
+- **Drag:** orbit the tank, or turn the room in the facility view. **Right-drag, Shift-drag or a two-finger drag** pans the room. Scroll or pinch to zoom. In the room view, click or tap a tank to fly to it (again to enter it); double-click or double-tap empty floor to return to the overview.
+- **Placing a tank:** click a spot to buy it there (**R** or right-click rotates, **Esc** cancels). On touch, tap a spot to preview it, then tap it again or press **Place here**; a **Rotate** button turns the ghost.
 - **Click a creature:** open its profile card. Double-click it to follow it with the camera.
 - **Feed tool:** pick a food, then click where to drop it (floating foods land at the surface). **Target feed:** click an axolotl or seahorse to feed it directly.
 - **Creature card:** the Feed row target-feeds that animal with a food it eats.

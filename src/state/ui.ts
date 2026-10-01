@@ -2,6 +2,7 @@
  * Transient UI state (not saved). OWNER: core; UI lane may ADD fields.
  */
 import { create } from 'zustand';
+import { useGame } from './game';
 
 export type Screen = 'boot' | 'title' | 'starter' | 'naming' | 'game';
 export type ViewMode = 'facility' | 'tank';
@@ -93,3 +94,9 @@ export const useUI = create<UIState>((set, get) => ({
 }));
 
 export const getUI = () => useUI.getState();
+
+// lane:fix-core (P6-08) — toasts belong to the aquarium they were raised in: when another game (or none) takes
+// over, drop the pending ones so a loaded save is not told about creatures it does not have.
+useGame.subscribe((s, prev) => {
+  if (s.game?.saveId !== prev.game?.saveId && useUI.getState().toasts.length) useUI.setState({ toasts: [] });
+});

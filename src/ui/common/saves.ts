@@ -19,6 +19,7 @@ import {
 import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
+import { autosaveAllowed } from '@/game/useAutosave';
 
 export type { SaveMeta };
 export { SAVE_SLOTS };
@@ -48,8 +49,20 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
   }
 }
 
-/** Load a slot (with bounded offline catch-up) and enter the game. */
+/**
+ * Load a slot (with bounded offline catch-up) and enter the game.
+ * lane:fix-core (P7-03/S14-05) — a game that is running is autosaved first, exactly like "Save and return to title",
+ * so browsing saves mid-game can never throw away the last minute of play.
+ */
 export async function loadIntoGame(slot: string): Promise<GameState | null> {
+  try {
+    if (autosaveAllowed()) {
+      const saved = await saveCurrentGame('auto', { flush: true, toast: false });
+      if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
+    }
+  } catch (e) {
+    console.warn('[ui] autosave before load failed', e);
+  }
   try {
     const r = await loadAndResume(slot);
     if (!r.ok || !r.state) {
@@ -61,8 +74,35 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
     return r.state;
   } catch (e) {
     console.warn('[ui] load failed', e);
+    useUI.getState().toast('That save could not be loaded — it may be damaged. Try its previous copy or an exported file.', 'danger');
     return null;
   }
+}
+
+/** Is this listed save a copy of the running game? (exact by saveId; older metas fall back to the name trio) */
+export function isSameGame(m: SaveMeta, g: GameState): boolean {
+  if (m.saveId) return m.saveId === g.saveId;
+  const starter = Object.values(g.creatures).find((c) => c.isStarter);
+  return m.shopName === g.shopName && m.starterId === g.starterId && (m.starterName ?? '') === (starter?.name ?? '');
+}
+
+/**
+ * lane:fix-core (P5-03/S06-03) — what loading another save means for the running game, for the confirm step:
+ * it is autosaved first; if it lives only in the autosave, the loaded game's autosaves will displace it (it stays
+ * loadable as "Previous autosave" until the next switch), so offer to park it in a free slot.
+ */
+export function loadKeepAdvice(saves: SaveMeta[], g: GameState | null): { text: string; freeSlot: string | null; keptIn: string | null } {
+  if (!g || g.isShowcase) return { text: '', freeSlot: null, keptIn: null };
+  const manual = saves.filter((m) => m.slot !== 'auto' && !m.previousOf);
+  const kept = manual.filter((m) => isSameGame(m, g)).sort((a, b) => b.savedAt - a.savedAt)[0] ?? null;
+  const taken = new Set(manual.map((m) => m.slot));
+  const freeSlot = SAVE_SLOTS.find((s) => s !== 'auto' && !taken.has(s)) ?? null;
+  if (kept) return { text: `${g.shopName} is also saved in ${slotLabel(kept.slot)} (${timeAgo(kept.savedAt)}), so you can come back to it any time.`, freeSlot: null, keptIn: kept.slot };
+  return {
+    text: `${g.shopName} is only in the autosave. It stays available as “Previous autosave” after you switch, until you switch again — save it to a slot to keep it for good.`,
+    freeSlot,
+    keptIn: null,
+  };
 }
 
 export async function deleteSlot(slot: string): Promise<void> {

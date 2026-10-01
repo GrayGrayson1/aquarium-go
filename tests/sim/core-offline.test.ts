@@ -53,7 +53,10 @@ describe('core offline progress', () => {
     expect(s.hours).toBe(OFFLINE_CAP_HOURS);
     for (const id of alive) {
       expect(g.creatures[id]?.status, `creature ${id}`).toBe('alive');
-      expect(g.creatures[id].stats.health).toBeGreaterThanOrEqual(GRACE_HEALTH_FLOOR);
+      // lane:fix-core (P5-02): held where they were — no worse than the save, and no free healing to the floor
+      expect(g.creatures[id].stats.health).toBeGreaterThanOrEqual(3);
+      expect(g.creatures[id].stats.health).toBeLessThanOrEqual(Math.max(3, GRACE_HEALTH_FLOOR) + 1e-9);
+      expect(g.creatures[id].stats.health).toBeLessThan(GRACE_HEALTH_FLOOR);
     }
     expect(g.log.some((e) => e.kind === 'death')).toBe(false);
     expect(findNonFinite(g)).toEqual([]);

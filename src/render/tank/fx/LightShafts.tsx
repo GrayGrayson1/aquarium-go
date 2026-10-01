@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import type { TankDims } from '@/sim/tankSpace';
 import { UNDERWATER_PARS, type TankFXUniforms } from '../../shared/underwater';
 import { GLSL_VALUE_NOISE } from '../../shared/glsl';
+import { useParkedMaterial } from '../../shared/programPark';
 
 const noPick = () => null;
 
@@ -124,7 +125,7 @@ export function LightShafts({ d, fx, count, strength, seed }: { d: TankDims; fx:
     });
     return m;
   }, [fx, strength, d.substrateY]);
-  useEffect(() => () => mat.dispose(), [mat]);
+  useParkedMaterial(mat);
 
   return <mesh name="light-shafts" geometry={geo} material={mat} frustumCulled={false} raycast={noPick} userData={{ noPick: true }} renderOrder={1} />;
 }

@@ -98,9 +98,23 @@ export function ensureLive(state: GameState): VisitorLiveState {
   return v.live;
 }
 
+/**
+ * Only display tanks are exhibits. Quarantine, nursery and breeding tanks are back of house: visitors never see them,
+ * so a sick fish in the hospital tank costs no satisfaction or reputation, and fry-only nurseries never drag the fair
+ * ticket price down. (Old saves without a purpose count as display; see migrations.)
+ */
+export function onDisplay(state: GameState, tankId: string): boolean {
+  const t = state.tanks[tankId];
+  return !!t && (t.purpose ?? 'display') === 'display';
+}
+
+function displayInfos(state: GameState): ExhibitInfo[] {
+  return state.tankOrder.filter((id) => onDisplay(state, id)).map((id) => exhibitInfo(state, state.tanks[id]));
+}
+
 /** What a fair ticket price looks like for this facility right now. */
 export function fairAdmission(state: GameState, infos?: ExhibitInfo[]): number {
-  const list = infos ?? state.tankOrder.map((id) => state.tanks[id]).filter(Boolean).map((t) => exhibitInfo(state, t));
+  const list = infos ?? displayInfos(state);
   let v = 0;
   for (const e of list) if (!e.empty) v += Math.pow(e.score / 100, 1.3) * (0.7 + 0.3 * e.factors.size);
   const lvl = facilityLevelIndex(state.facility.level);
@@ -138,8 +152,13 @@ function tankName(state: GameState, id: string): string {
   return state.tanks[id]?.name ?? 'tank';
 }
 
-function varsFor(state: GameState, e: ExhibitInfo): ReactionVars {
-  const star = e.star;
+/** The animal a reaction is about: the exhibit's star, or the unwell one when the visitor is concerned. */
+function subjectOf(e: ExhibitInfo, mood?: VisitorReaction['mood']): ExhibitInfo['star'] {
+  return mood === 'concerned' && e.concernCreature ? e.concernCreature : e.star;
+}
+
+function varsFor(state: GameState, e: ExhibitInfo, mood?: VisitorReaction['mood']): ReactionVars {
+  const star = subjectOf(e, mood);
   const sp = star ? findSpecies(star.speciesId) : e.mainSpeciesId ? findSpecies(e.mainSpeciesId) : undefined;
   return {
     name: star?.name ?? sp?.commonName ?? 'the fish',
@@ -147,7 +166,7 @@ function varsFor(state: GameState, e: ExhibitInfo): ReactionVars {
     tank: tankName(state, e.tankId),
     gallons: e.gallons,
     morph: star?.morphName && !/wild/i.test(star.morphName) ? star.morphName : undefined,
-    moment: e.moment?.text?.replace(/[.!]+$/, '').replace(/^./, (c) => c.toLowerCase()),
+    moment: e.moment?.text, // a noun phrase ("a bubble nest"); see exhibit.ts momentPhrase
     region: sp?.nativeRegion?.split(/[—,;(]/)[0]?.trim(),
   };
 }
@@ -160,6 +179,8 @@ interface VisitOutcome {
   donation: number;
   wows: number;
   concerned: number;
+  /** Stars this visitor gasped at (one entry per wow). */
+  starWows: string[];
   reaction?: { ctx: ReactionContext; mood: VisitorReaction['mood']; e: ExhibitInfo; priority: number };
   critic?: 'good' | 'bad';
 }
@@ -201,6 +222,7 @@ function simulateVisit(state: GameState, rng: Rng, arch: ArchetypeDef, env: Visi
   const enjoyments: number[] = [];
   let wows = 0;
   let concerned = 0;
+  const starWows: string[] = [];
   let reaction: VisitOutcome['reaction'];
   const consider = (r: NonNullable<VisitOutcome['reaction']>) => {
     if (!reaction || r.priority > reaction.priority) reaction = r;
@@ -236,16 +258,7 @@ function simulateVisit(state: GameState, rng: Rng, arch: ArchetypeDef, env: Visi
     if (wow) {
       stat.wows += weight;
       wows++;
-      if (e.star) {
-        const cr = state.creatures[e.star.id];
-        if (cr) {
-          cr.visitorWows = (cr.visitorWows ?? 0) + 1;
-          if (cr.visitorWows % 25 === 0) {
-            cr.history.push({ hour: state.clock.hour, kind: 'visitor_wow', text: `${cr.visitorWows} visitors have gasped at ${cr.name}.` });
-            if (cr.history.length > 40) cr.history.splice(0, cr.history.length - 40);
-          }
-        }
-      }
+      if (e.star) starWows.push(e.star.id); // credited per represented visitor by publicStep
     }
     if (concern) concerned++;
     stat.popularity += (enjoy * 100 - stat.popularity) * Math.min(1, 0.03 * weight);
@@ -307,12 +320,14 @@ function simulateVisit(state: GameState, rng: Rng, arch: ArchetypeDef, env: Visi
     critic = sat >= 72 ? 'good' : sat < 45 ? 'bad' : undefined;
     if (critic && reaction) reaction = { ctx: critic === 'good' ? 'critic_good' : 'critic_bad', mood: critic === 'good' ? 'wow' : 'concerned', e: reaction.e, priority: 6 };
   }
-  return { sat, tip, donation, wows, concerned, reaction, critic };
+  return { sat, tip, donation, wows, concerned, starWows, reaction, critic };
 }
 
 // ───────────────────────────── public opening ─────────────────────────────
 
 const MAX_SAMPLES = 16;
+/** Reaction lines pushed per 0.25 game hours at most (the pace the feed was tuned at). */
+const REACTIONS_PER_QUARTER = 2;
 
 function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
   const live = ensureLive(state);
@@ -330,7 +345,8 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     emitEvent(state, { kind: 'warning', text: `Visitors can’t reach ${theTank(tankName(state, id))} — clear an aisle.`, tankId: id, toast: true });
   }
 
-  const reachable = state.tankOrder.filter((id) => state.tanks[id] && reach.reachable.has(id));
+  // back-of-house tanks (quarantine, nursery, breeding) are not exhibits: nobody walks up to them or worries about them
+  const reachable = state.tankOrder.filter((id) => onDisplay(state, id) && reach.reachable.has(id));
   const infos = reachable.map((id) => exhibitInfo(state, state.tanks[id]));
   infos.sort((a, b) => (reach.distance[a.tankId] ?? 0) - (reach.distance[b.tankId] ?? 0));
   const fair = fairAdmission(state, infos);
@@ -367,10 +383,12 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     return;
   }
 
-  // arrivals (expected value preserved through the carry)
+  // arrivals: expected value preserved through the carry at ANY step size. An arrival granted early leaves a debt
+  // (negative carry) that later steps pay off; it is never forgiven, or 1× (0.025 h steps) would admit several times
+  // the visitors of 10× or the offline catch-up. One rng draw per step, always.
   const k = lambda * dt + live.carry;
-  let n = Math.floor(k);
-  const frac = k - n;
+  let n = Math.max(0, Math.floor(k));
+  const frac = k - n; // negative while a debt is outstanding: the draw below can't fire
   if (rng.next() < frac) {
     n += 1;
     live.carry = frac - 1;
@@ -409,6 +427,7 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
   let repDelta = 0;
   const reactions: NonNullable<VisitOutcome['reaction']>[] = [];
   const mixCount: Record<string, number> = {};
+  const starWowCount = new Map<string, number>();
   for (let i = 0; i < samples; i++) {
     const arch = rng.weighted(ARCHETYPES, (a) => a.weights[lvl] ?? 0);
     mixCount[arch.id] = (mixCount[arch.id] ?? 0) + 1;
@@ -420,10 +439,13 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     concerned += o.concerned * weight;
     repDelta += 0.05 * ((o.sat - 55) / 45) * weight;
     if (o.reaction) reactions.push(o.reaction);
+    for (const id of o.starWows) starWowCount.set(id, (starWowCount.get(id) ?? 0) + 1);
     if (o.critic) {
       const e = o.reaction?.e ?? infos[0];
       const good = o.critic === 'good';
-      addReputation(state, good ? 4 : -4, '');
+      // A sample stands for `weight` visitors, critics included: a busy hall gets the same critic swing per person
+      // whether it was watched at 1× (every visitor sampled) or caught up offline (16 samples for 60 people).
+      addReputation(state, (good ? 4 : -4) * weight, '');
       // Reputation always moves, but the log hears about critics at most once per exhibit per game day.
       live.warnedHour ??= {};
       const key = `critic:${e.tankId}`;
@@ -442,6 +464,18 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
         tankId: e.tankId,
         toast,
       });
+    }
+  }
+
+  // stars' "wow" tallies grow per represented visitor (rounded once per step, so the count stays a whole number)
+  for (const [id, count] of starWowCount) {
+    const cr = state.creatures[id];
+    if (!cr) continue;
+    const before = cr.visitorWows ?? 0;
+    cr.visitorWows = before + Math.round(count * weight);
+    if (Math.floor(cr.visitorWows / 25) > Math.floor(before / 25)) {
+      cr.history.push({ hour: state.clock.hour, kind: 'visitor_wow', text: `${cr.visitorWows} visitors have gasped at ${cr.name}.` });
+      if (cr.history.length > 40) cr.history.splice(0, cr.history.length - 40);
     }
   }
 
@@ -477,20 +511,21 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     live.mix[arch.id] = (live.mix[arch.id] ?? 0) * (1 - a) + share * a;
   }
 
-  // reactions: at most two per step, most notable first
+  // reactions: at most two per quarter game hour (a budget refilled per hour, so the feed turns over at the same pace
+  // at every speed), most notable first
+  live.reactionBudget = Math.min(REACTIONS_PER_QUARTER, (live.reactionBudget ?? REACTIONS_PER_QUARTER) + REACTIONS_PER_QUARTER * (dt / 0.25));
   reactions.sort((p, q) => q.priority - p.priority);
-  let pushed = 0;
   for (const r of reactions) {
-    if (pushed >= 2) break;
+    if (live.reactionBudget < 1) break;
     const p = r.mood === 'wow' || r.mood === 'concerned' ? 0.8 : 0.3;
     if (!rng.chance(p)) continue;
-    const vars = varsFor(state, r.e);
-    pushReaction(v.reactions, { hour: h, tankId: r.e.tankId, creatureId: r.e.star?.id, text: pickLine(rng, r.ctx, vars), mood: r.mood });
+    const vars = varsFor(state, r.e, r.mood);
+    pushReaction(v.reactions, { hour: h, tankId: r.e.tankId, creatureId: subjectOf(r.e, r.mood)?.id, text: pickLine(rng, r.ctx, vars), mood: r.mood });
     if (r.mood === 'wow') {
       const stat = v.exhibit[r.e.tankId];
       if (stat) stat.lastFeatured = h;
     }
-    pushed++;
+    live.reactionBudget -= 1;
   }
 }
 
@@ -687,7 +722,7 @@ export function visitorSummary(state: GameState): VisitorSummary {
   const level = getFacilityLevel(fac.level);
   const live = state.visitors.live;
   const t = state.visitors.today;
-  const infos = state.tankOrder.map((id) => state.tanks[id]).filter(Boolean).map((tk) => exhibitInfo(state, tk));
+  const infos = displayInfos(state);
   const top = infos
     .map((e) => {
       const s = state.visitors.exhibit[e.tankId];

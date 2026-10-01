@@ -2,13 +2,15 @@
  * Drives the simulation in real time. OWNER: lane "core".
  *
  * - Ticks at 4 Hz (TICK_MS): advances game time by realDt × speed × GAME_HOURS_PER_REAL_SECOND.
- * - Pauses while the tab is hidden and never jumps on resume (offline catch-up only happens on load,
- *   see src/persistence/offline.ts).
+ * - Pauses while the tab is hidden and never jumps on resume from a short break. After a long hidden spell
+ *   (OFFLINE_HIDDEN_MIN_MS) it runs the same bounded catch-up as loading a save (lane:fix-core P5-09; see
+ *   src/persistence/offline.ts), so a backgrounded phone and a closed tab come back to the same aquarium.
  * - One store update per tick (mutateFast: plain working copy + structural sharing, no Immer drafts); inside it the
  *   requested time is split into small advanceWorld slices under a per-tick time budget (TICK_BUDGET_MS). Unfinished
  *   time carries over as a bounded backlog, so 10× never stutters.
  * - The focused tank (tank view) runs at full fidelity; a smoothing pass flushes background tanks whose LOD debt is
  *   close to its threshold while budget remains, spreading their work across ticks instead of spiking.
+ * - Fast-forward drops back to 1× when an animal starts starving (lane:fix-core2, see ./starvationGuard.ts).
  * - Mounts the autosave hook.
  */
 import { useEffect } from 'react';
@@ -20,6 +22,8 @@ import type { GameState } from '@/types';
 import { loopStats } from './loopStats';
 import { useAutosave } from './useAutosave';
 import { mutateFast } from './fastMutate';
+import { catchUpAfterHidden } from '@/persistence/offline';
+import { checkStarvation, starvationSlowdownText } from './starvationGuard';
 
 export const TICK_MS = 250;
 /** Real milliseconds of sim work allowed per tick before carrying the rest over. */
@@ -81,6 +85,7 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
   const opts: AdvanceOptions = { focusTankId: ui.view === 'tank' ? ui.focusedTankId : null };
   const t0 = performance.now();
   let done = 0;
+  let slowedFor = null as string[] | null; // set inside the mutation (no narrowing to null)
   // Plain working copy + structural-sharing publish (see ./fastMutate.ts): ~15× cheaper than an Immer draft.
   try {
     mutateFast((d) => {
@@ -92,10 +97,12 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
         if (performance.now() - t0 > TICK_BUDGET_MS) break;
       }
       smoothBackgroundLod(d, opts, t0);
+      slowedFor = checkStarvation(d);
     });
   } catch (e) {
     reportError(e);
   }
+  if (slowedFor) ui.toast(starvationSlowdownText(slowedFor), 'warning');
   const ms = performance.now() - t0;
   loopStats.ticks++;
   loopStats.lastMs = ms;
@@ -115,12 +122,26 @@ export function GameLoop() {
     let backlog = 0;
     let hidden = typeof document !== 'undefined' ? document.hidden : false;
     loopStats.hidden = hidden;
+    let hiddenAt = hidden ? Date.now() : 0;
     const onVisibility = () => {
+      const wasHidden = hidden;
       hidden = document.hidden;
       loopStats.hidden = hidden;
       // Never jump on resume: restart the clock from now and drop any carried time.
       last = performance.now();
       backlog = 0;
+      if (hidden) hiddenAt = Date.now();
+      else if (wasHidden && hiddenAt) {
+        const span = Date.now() - hiddenAt;
+        hiddenAt = 0;
+        // A long absence catches up (bounded, under the grace period) — the autosave on hide already stored the
+        // moment the tab went dark, so a tab the OS discards instead comes back the same way through Continue.
+        try {
+          catchUpAfterHidden(span);
+        } catch (e) {
+          reportError(e);
+        }
+      }
     };
     document.addEventListener('visibilitychange', onVisibility);
     const id = window.setInterval(() => {

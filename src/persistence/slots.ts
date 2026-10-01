@@ -5,15 +5,27 @@
  *   aquarium-go.save.<slot>          current record (see ./serialize.ts)
  *   aquarium-go.save.<slot>.backup   previous good record (written just before an overwrite)
  *   aquarium-go.meta.<slot>          SaveMeta JSON for fast slot listing
+ *   aquarium-go.stamp.<slot>         (localStorage only) who wrote the slot last: { savedAt, saveId, tab }
+ *
+ * lane:fix-core additions:
+ *  - Stale tabs (P5-04/S06-04): a write is refused (`code: 'stale'`) when the same aquarium was saved during this
+ *    tab's session by someone else — i.e. the stored record is newer than anything this tab loaded or wrote — so a
+ *    forgotten second tab can never roll the player's progress back on hide/close.
+ *  - Sync mirror (P5-01): `saveGameSync` writes the record straight into localStorage from pagehide/hidden handlers,
+ *    where an IndexedDB round trip never lands. Boot reads every backend (newest wins) and moves it across.
+ *  - Displaced aquariums (P5-03/S06-03/S06-07): when a slot's `.backup` holds a DIFFERENT aquarium than its primary
+ *    (a load or overwrite replaced it), same-game writes keep that backup instead of rotating over it, and listings
+ *    show it as a loadable "Previous …" entry (`<slot>.backup`) so nothing is lost by one click.
  */
 import type { GameState } from '@/types';
-import { storage, onBackendChange, type KVBackend, type BackendName } from './storage';
+import { storage, syncStore, onBackendChange, type KVBackend, type BackendName } from './storage';
 import { encodeRecord, decodeRecord, readHeader, makeMeta, cyrb53, type DecodedSave } from './serialize';
 import { SaveError, type SaveMeta, type SaveResult, type LoadResult } from './types';
 
 export const SAVE_PREFIX = 'aquarium-go.save.';
 export const META_PREFIX = 'aquarium-go.meta.';
 export const BACKUP_SUFFIX = '.backup';
+const STAMP_PREFIX = 'aquarium-go.stamp.';
 /** Standard slots shown by the UI. Any id matching SLOT_RE works. */
 export const SAVE_SLOTS = ['auto', 'slot1', 'slot2', 'slot3'] as const;
 export type SaveSlot = (typeof SAVE_SLOTS)[number];
@@ -22,9 +34,86 @@ const SLOT_RE = /^[A-Za-z0-9_-]{1,32}$/;
 const saveKey = (slot: string) => SAVE_PREFIX + slot;
 const backupKey = (slot: string) => SAVE_PREFIX + slot + BACKUP_SUFFIX;
 const metaKey = (slot: string) => META_PREFIX + slot;
+const stampKey = (slot: string) => STAMP_PREFIX + slot;
 
 function checkSlot(slot: string): void {
   if (!SLOT_RE.test(slot)) throw new SaveError('invalid', `“${slot}” isn't a valid save slot name.`);
+}
+
+/** A loadable reference is a slot (`slot1`) or a slot's previous copy (`slot1.backup`). */
+export function parseSlotRef(ref: string): { slot: string; backup: boolean } {
+  return ref.endsWith(BACKUP_SUFFIX) ? { slot: ref.slice(0, -BACKUP_SUFFIX.length), backup: true } : { slot: ref, backup: false };
+}
+export const isBackupRef = (ref: string) => ref.endsWith(BACKUP_SUFFIX);
+
+// ───────────────────────────── who saved what, when (stale-tab protection) ─────────────────────────────
+
+const TAB_ID = Math.random().toString(36).slice(2, 10);
+/** When this page loaded: a record written after this by anyone but us came from another live tab. */
+const SESSION_START = Date.now();
+/** Newest `savedAt` this tab has loaded or written, per aquarium (saveId). */
+const knownSavedAt = new Map<string, number>();
+/** Aquariums whose write this tab had to refuse (another tab owns them now). */
+const staleGames = new Set<string>();
+/** `saveId` in each slot's `.backup` as far as this session knows (undefined = not read yet, null = none/legacy). */
+const backupIds = new Map<string, string | null>();
+/** Slots this tab mirrored into localStorage (cleaned up by the next regular write). */
+const mirrored = new Set<string>();
+
+interface WriteStamp {
+  savedAt: number;
+  saveId?: string;
+  tab: string;
+}
+
+function readStamp(slot: string): WriteStamp | null {
+  const raw = syncStore.get(stampKey(slot));
+  if (!raw) return null;
+  try {
+    const st = JSON.parse(raw) as WriteStamp;
+    return st && Number.isFinite(st.savedAt) ? st : null;
+  } catch {
+    return null;
+  }
+}
+
+function noteWritten(slot: string, savedAt: number, saveId: string | undefined): void {
+  if (saveId) knownSavedAt.set(saveId, Math.max(knownSavedAt.get(saveId) ?? 0, savedAt));
+  syncStore.set(stampKey(slot), JSON.stringify({ savedAt, saveId, tab: TAB_ID } satisfies WriteStamp));
+}
+
+function noteLoaded(saveId: string | undefined, savedAt: number): void {
+  if (!saveId) return;
+  knownSavedAt.set(saveId, Math.max(knownSavedAt.get(saveId) ?? 0, savedAt));
+  staleGames.delete(saveId);
+}
+
+/**
+ * Is a stored copy (`savedAt`, `saveId`) proof that another tab is playing `state`'s aquarium? Yes when it is the
+ * same aquarium, newer than anything this tab loaded or wrote, and written during this tab's session (an older
+ * session's copy — the same game autosaved yesterday, loaded today from a manual slot — is not another tab).
+ */
+function isStaleAgainst(state: GameState, savedAt: number | undefined, saveId: string | undefined, tab?: string): boolean {
+  if (!saveId || saveId !== state.saveId || !Number.isFinite(savedAt)) return false;
+  if (tab === TAB_ID) return false;
+  const known = knownSavedAt.get(saveId);
+  if (known === undefined) return false;
+  return savedAt! > known && savedAt! > SESSION_START;
+}
+
+/** True once a write for this aquarium was refused because another tab saved it more recently. */
+export function isStaleGame(saveId: string): boolean {
+  return staleGames.has(saveId);
+}
+
+const STALE_MESSAGE = 'This aquarium was saved more recently in another tab — this tab isn’t saving. Reload to pick up the latest.';
+
+/** Tests: forget what this tab knows about other tabs' writes. */
+export function resetSaveSession(): void {
+  knownSavedAt.clear();
+  staleGames.clear();
+  backupIds.clear();
+  mirrored.clear();
 }
 
 /** Serialize writes per slot so an autosave can never interleave with a manual save. */
@@ -57,38 +146,110 @@ function isIntact(raw: unknown): boolean {
   }
 }
 
+/** `saveId` of the record in `<slot>.backup` (cached per session; null when there is none or it predates saveIds). */
+async function backupSaveId(slot: string): Promise<string | null> {
+  const cached = backupIds.get(slot);
+  if (cached !== undefined) return cached;
+  let id: string | null = null;
+  try {
+    const raw = await storage.get(backupKey(slot));
+    const h = readHeader(raw);
+    id = h?.meta?.saveId ?? null;
+  } catch {
+    id = null;
+  }
+  backupIds.set(slot, id);
+  return id;
+}
+
 /**
  * Save a game state into a slot. Showcase worlds are never saved.
- * The previous record (if it is intact) is copied to `<slot>.backup` first.
+ * The previous record (if it is intact) is copied to `<slot>.backup` first — unless that backup holds a different
+ * aquarium this one displaced (see the header), which stays until the player loads or deletes it.
  */
 export async function saveGame(state: GameState, slot = 'auto'): Promise<SaveResult> {
   if (!state) return { ok: false, slot, message: 'Nothing to save.' };
   if (state.isShowcase) return { ok: false, slot, message: 'Showcase worlds are not saved.' };
   checkSlot(slot);
   return enqueue(slot, async () => {
+    const stamp = readStamp(slot);
+    if (stamp && isStaleAgainst(state, stamp.savedAt, stamp.saveId, stamp.tab)) {
+      staleGames.add(state.saveId);
+      return { ok: false, slot, code: 'stale', message: STALE_MESSAGE };
+    }
     const { text, header, stats } = encodeRecord(state, slot);
     try {
       const prev = await storage.get(saveKey(slot));
+      const ph = readHeader(prev);
+      if (ph && isStaleAgainst(state, ph.savedAt, ph.meta?.saveId)) {
+        staleGames.add(state.saveId);
+        return { ok: false, slot, code: 'stale', message: STALE_MESSAGE };
+      }
       // Only rotate an intact record into the backup; a damaged one must never overwrite a good backup.
       if (prev !== undefined && prev !== null && isIntact(prev)) {
-        await storage.set(backupKey(slot), typeof prev === 'string' ? prev : JSON.stringify(prev));
+        const prevId = ph?.meta?.saveId ?? null;
+        let keepBackup = false;
+        if (prevId && prevId === state.saveId) {
+          const bid = await backupSaveId(slot);
+          keepBackup = !!bid && bid !== state.saveId;
+        }
+        if (!keepBackup) {
+          await storage.set(backupKey(slot), typeof prev === 'string' ? prev : JSON.stringify(prev));
+          backupIds.set(slot, prevId);
+        }
       }
       await storage.set(saveKey(slot), text);
       await storage.set(metaKey(slot), JSON.stringify(header.meta));
+      noteWritten(slot, header.savedAt, state.saveId);
+      const backend = await storage.backendName();
+      if (mirrored.has(slot) && !syncStore.isActive()) clearMirror(slot, header.savedAt);
       if (stats.fixedNumbers > 0 && typeof console !== 'undefined') console.warn(`[aquarium-go] save: replaced ${stats.fixedNumbers} invalid number(s) with 0`);
+      const degraded = backend === 'memory';
       return {
         ok: true,
         slot,
-        message: 'Game saved',
+        message: degraded ? 'Saved for this session only — browser storage is unavailable. Export a copy to keep it.' : 'Game saved',
         bytes: text.length,
-        backend: await storage.backendName(),
+        backend,
         strippedPhotos: stats.strippedDataUrls,
+        degraded: degraded || undefined,
       };
     } catch (e) {
       if (typeof console !== 'undefined') console.warn('[aquarium-go] save failed', e);
       return { ok: false, slot, message: "Couldn't save — browser storage refused the write." };
     }
   });
+}
+
+/** Remove this tab's localStorage mirror of `slot` once a regular write at least as new has landed elsewhere. */
+function clearMirror(slot: string, writtenAt: number): void {
+  const h = readHeader(syncStore.get(saveKey(slot)));
+  if (h && h.savedAt <= writtenAt) {
+    syncStore.del(saveKey(slot));
+    syncStore.del(metaKey(slot));
+  }
+  if (!h || h.savedAt <= writtenAt) mirrored.delete(slot);
+}
+
+/**
+ * Write a slot synchronously into localStorage (no backup rotation). For pagehide / hidden handlers, where the
+ * document may be gone before an IndexedDB transaction commits. Every backend is read on the next boot and the
+ * newest copy wins, so this lands even when the regular write does not. Returns whether it was written.
+ */
+export function saveGameSync(state: GameState, slot = 'auto'): boolean {
+  if (!state || state.isShowcase) return false;
+  if (!SLOT_RE.test(slot)) return false;
+  const stamp = readStamp(slot);
+  if (stamp && isStaleAgainst(state, stamp.savedAt, stamp.saveId, stamp.tab)) {
+    staleGames.add(state.saveId);
+    return false;
+  }
+  const { text, header } = encodeRecord(state, slot);
+  if (!syncStore.set(saveKey(slot), text)) return false;
+  syncStore.set(metaKey(slot), JSON.stringify(header.meta));
+  noteWritten(slot, header.savedAt, state.saveId);
+  if (!syncStore.isActive()) mirrored.add(slot);
+  return true;
 }
 
 /** One stored copy of a slot (primary or backup) in one backend. */
@@ -167,20 +328,25 @@ function decodeCopy(c: SlotCopy): LoadResult {
  * can leave saves in localStorage) and loads the newest intact copy. Falls back to a `.backup` copy when the primary
  * is damaged (`restoredFromBackup: true` — the caller tells the player).
  */
-export async function loadGameDetailed(slot = 'auto'): Promise<LoadResult> {
+export async function loadGameDetailed(ref = 'auto'): Promise<LoadResult> {
+  const { slot, backup } = parseSlotRef(ref);
   try {
     checkSlot(slot);
   } catch (e) {
     return { ok: false, code: 'invalid', error: (e as SaveError).friendly };
   }
   await reconcileSaves();
-  const { copies, readError } = await slotCopies(slot);
+  const all = await slotCopies(slot);
+  const readError = all.readError;
+  // A `<slot>.backup` reference loads the previous copy on purpose (a displaced aquarium), never the primary.
+  const copies = backup ? all.copies.filter((c) => c.kind === 'backup') : all.copies;
   let firstError: LoadResult | null = null;
   for (const c of copies) {
     const r = decodeCopy(c);
     if (r.ok && r.state) {
-      if (c.kind === 'backup') return finishBackup(slot, r);
-      r.meta = { ...makeMeta(r.state, slot, r.state.lastSavedRealMs), backend: c.backend.name };
+      noteLoaded(r.state.saveId, c.savedAt);
+      if (c.kind === 'backup' && !backup) return finishBackup(slot, r);
+      r.meta = { ...makeMeta(r.state, ref, r.state.lastSavedRealMs), backend: c.backend.name, previousOf: backup ? slot : undefined };
       return r;
     }
     firstError ??= r;
@@ -210,12 +376,22 @@ export async function loadGame(slot = 'auto'): Promise<GameState | null> {
   return r.ok && r.state ? r.state : null;
 }
 
-/** Delete a slot everywhere it may live (so an older copy in another backend can't resurface). */
-export async function deleteSave(slot: string): Promise<void> {
+/**
+ * Delete a slot everywhere it may live (so an older copy in another backend can't resurface). A `<slot>.backup`
+ * reference deletes only that previous copy.
+ */
+export async function deleteSave(ref: string): Promise<void> {
+  const { slot, backup } = parseSlotRef(ref);
+  const keys = backup ? [backupKey(slot)] : [saveKey(slot), backupKey(slot), metaKey(slot), stampKey(slot)];
   await enqueue(slot, async () => {
-    await storage.del(saveKey(slot));
-    await storage.del(backupKey(slot));
-    await storage.del(metaKey(slot));
+    for (const k of keys) await storage.del(k);
+    backupIds.set(slot, null);
+    if (!backup) {
+      syncStore.del(saveKey(slot));
+      syncStore.del(metaKey(slot));
+      syncStore.del(stampKey(slot));
+      mirrored.delete(slot);
+    } else syncStore.del(backupKey(slot));
     let sources: KVBackend[] = [];
     try {
       sources = (await storage.sources()).slice(1);
@@ -223,7 +399,7 @@ export async function deleteSave(slot: string): Promise<void> {
       sources = [];
     }
     for (const b of sources) {
-      for (const k of [saveKey(slot), backupKey(slot), metaKey(slot)]) {
+      for (const k of keys) {
         try {
           await b.del(k);
         } catch {
@@ -277,6 +453,17 @@ async function listSavesIn(b: KVBackend): Promise<SaveMeta[]> {
       }
     }
     if (meta && Number.isFinite(meta.savedAt)) out.push({ ...meta, slot, backend: b.name });
+    // A backup that holds a DIFFERENT aquarium than the primary is a displaced game: list it as "Previous …".
+    if (hasPrimary && meta?.saveId && all.includes(backupKey(slot))) {
+      try {
+        const h = readHeader(await b.get(backupKey(slot)));
+        if (h?.meta?.saveId && h.meta.saveId !== meta.saveId && Number.isFinite(h.savedAt)) {
+          out.push({ ...h.meta, slot: slot + BACKUP_SUFFIX, previousOf: slot, savedAt: h.savedAt, backend: b.name });
+        }
+      } catch {
+        /* unreadable backup: nothing to list */
+      }
+    }
   }
   return out;
 }
@@ -376,7 +563,10 @@ async function migrateSlot(slot: string, src: KVBackend, target: KVBackend): Pro
   if (srcBest && (!tgtPrimary?.intact || srcBest.savedAt > tgtPrimary.savedAt)) {
     // Keep the best older copy as the backup: IndexedDB's own intact primary, else the source's backup.
     const olderForBackup = tgtPrimary?.intact ? tgtPrimary : srcBest === srcPrimary && srcBackup?.intact ? srcBackup : null;
-    if (olderForBackup && (!tgtBackup?.intact || olderForBackup.savedAt >= tgtBackup.savedAt)) await storage.set(backupKey(slot), str(olderForBackup.raw));
+    if (olderForBackup && (!tgtBackup?.intact || olderForBackup.savedAt >= tgtBackup.savedAt)) {
+      await storage.set(backupKey(slot), str(olderForBackup.raw));
+      backupIds.delete(slot);
+    }
     await storage.set(saveKey(slot), str(srcBest.raw));
     const h = readHeader(srcBest.raw);
     const meta = h ? { ...h.meta, slot } : srcBest.decoded ? makeMeta(srcBest.decoded.state, slot, srcBest.savedAt) : null;
@@ -444,7 +634,7 @@ export async function hasAnySave(): Promise<boolean> {
 /** Most recently written slot, or null. */
 export async function latestSaveSlot(): Promise<string | null> {
   const saves = await listSaves();
-  return saves[0]?.slot ?? null;
+  return saves.find((m) => !m.previousOf)?.slot ?? null;
 }
 
 /** Raw record access for tests/dev tools (e.g. to simulate corruption). */

@@ -230,9 +230,12 @@ export function composeMorphName(species: SpeciesDefinition, base: PhenotypeRule
   let words: string[];
   const baseWords = baseName.split(/\s+/).filter(Boolean);
   const nouns = speciesNounWords(species);
+  // Single-token overlays slot in before the species noun ("Orange Ocellaris" + "Misbar" → "Orange Misbar Ocellaris");
+  // descriptive ones ("Richly coloured", "Long-fin (Meteor)") read as a prefix instead of splitting the base name
+  // ("Richly coloured Skunk Cleaner", never "Skunk Richly coloured Cleaner").
+  const simpleOverlays = overlayNames.every((n) => !/[\s()]/.test(n));
   if (baseWords.length > 1 && nouns.has(baseWords[baseWords.length - 1].toLowerCase())) {
-    // "Orange Ocellaris" + "Misbar" → "Orange Misbar Ocellaris"
-    words = [...baseWords.slice(0, -1), ...overlayNames.join(' ').split(/\s+/), baseWords[baseWords.length - 1]];
+    words = simpleOverlays ? [...baseWords.slice(0, -1), ...overlayNames, baseWords[baseWords.length - 1]] : [...overlayNames.join(' ').split(/\s+/), ...baseWords];
   } else {
     words = [...baseWords, ...overlayNames.join(' ').split(/\s+/)];
   }
@@ -346,33 +349,44 @@ export function resolvePhenotype(species: SpeciesDefinition, genome: Genome, pat
  */
 export function predictOffspringMorphs(species: SpeciesDefinition, mother: Genome, father: Genome): { morphName: string; chance: number }[] {
   const loci = species.genetics.loci;
+  // Per locus, the distinct unordered allele pairs a child can inherit, each with its weight (¼ per ordered combo).
+  // Rule matching only counts alleles, so order never matters: at most 3 states per locus instead of 4, and a
+  // shared homozygous locus collapses to one — a 7-locus medaka cross stays well within the cap.
   const options = loci.map((locus) => {
     const m = allelePair(locus, mother);
     const f = allelePair(locus, father);
-    const combos: [string, string][] = [
-      [m[0], f[0]],
-      [m[0], f[1]],
-      [m[1], f[0]],
-      [m[1], f[1]],
-    ];
-    return combos;
+    const states = new Map<string, { pair: [string, string]; weight: number }>();
+    for (const a of m) {
+      for (const b of f) {
+        const pair: [string, string] = a <= b ? [a, b] : [b, a];
+        const key = `${pair[0]}|${pair[1]}`;
+        const cur = states.get(key);
+        if (cur) cur.weight += 0.25;
+        else states.set(key, { pair, weight: 0.25 });
+      }
+    }
+    return [...states.values()];
   });
   const tally = new Map<string, number>();
   const pots = normalizeGenome(species, mother).potentials;
   const MAX_COMBOS = 4096;
-  const total = Math.pow(4, loci.length);
+  const total = options.reduce((n, o) => n * o.length, 1);
   if (total > MAX_COMBOS) return [{ morphName: resolveMorph(species, mother).morphName, chance: 1 }];
   const idx = new Array(loci.length).fill(0);
   for (let n = 0; n < total; n++) {
     let rem = n;
-    for (let i = 0; i < loci.length; i++) {
-      idx[i] = rem % 4;
-      rem = Math.floor(rem / 4);
-    }
+    let weight = 1;
     const alleles: Genome['alleles'] = {};
-    loci.forEach((l, i) => (alleles[l.id] = options[i][idx[i]]));
+    for (let i = 0; i < loci.length; i++) {
+      const opts = options[i];
+      idx[i] = rem % opts.length;
+      rem = Math.floor(rem / opts.length);
+      const st = opts[idx[i]];
+      alleles[loci[i].id] = st.pair;
+      weight *= st.weight;
+    }
     const name = resolveMorph(species, { alleles, potentials: pots }).morphName;
-    tally.set(name, (tally.get(name) ?? 0) + 1 / total);
+    tally.set(name, (tally.get(name) ?? 0) + weight);
   }
   return [...tally.entries()].map(([morphName, chance]) => ({ morphName, chance })).sort((a, b) => b.chance - a.chance);
 }

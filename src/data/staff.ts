@@ -94,8 +94,12 @@ export const STAFF_POOL_SIZE: Record<FacilityLevelId, number> = {
 
 /** The candidate pool refreshes every this many game days (at 8 AM). */
 export const STAFF_POOL_REFRESH_DAYS = 3;
-/** Midnights without pay before someone leaves (they give notice on the first one). */
-export const STAFF_NOTICE_DAYS = 3;
+/**
+ * Midnights without pay before someone leaves (they give notice on the first one). One more than the club's
+ * emergency loan takes to arrive (LOAN_AFTER_DEBT_HOURS = 3 midnights in the red), so the lifeline lands — and pays
+ * the team — before anyone walks out (lane:staff, S05-11).
+ */
+export const STAFF_NOTICE_DAYS = 4;
 /** Days of experience to go from skill s to s + 1 is XP_PER_LEVEL × s (so 1→2 takes 8 days, 4→5 takes 32). */
 export const STAFF_XP_PER_LEVEL = 8;
 

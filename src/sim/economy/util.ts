@@ -230,12 +230,24 @@ export function morphTitle(morphName: string | undefined, commonName: string): s
   // The morph repeats part of the species name elsewhere ("Peppermint Richly coloured" + "Peppermint Shrimp",
   // "Red Honey (Sunset)" + "Honey Gourami"): drop the repeated words, keep any "(…)" aside at the end →
   // "Richly coloured Peppermint Shrimp", "Red Honey Gourami (Sunset)".
-  const common = new Set(c.map((w) => w.toLowerCase()));
+  // A shortened species word counts as repeated too ("Banggai Cardinal" for a Banggai Cardinalfish), and a descriptive
+  // overlay trailing the repeated words moves to the front as a unit: "Banggai Cardinal Heavily spotted" →
+  // "Heavily spotted Banggai Cardinalfish", never "Cardinal Heavily spotted Banggai Cardinalfish".
+  const cl = c.map((w) => w.toLowerCase());
+  const repeated = (w: string) => {
+    const k = w.toLowerCase();
+    return cl.includes(k) || (k.length >= 4 && cl.some((x) => x.length > k.length && x.startsWith(k)));
+  };
   const parens = morph.match(/\([^)]*\)/g) ?? [];
   const core = morph.replace(/\([^)]*\)/g, ' ').split(/\s+/).filter(Boolean);
-  if (core.some((w) => common.has(w.toLowerCase()))) {
-    const rest = core.filter((w) => !common.has(w.toLowerCase()));
-    return [...rest, ...c, ...parens].join(' ');
+  let last = -1;
+  core.forEach((w, i) => {
+    if (repeated(w)) last = i;
+  });
+  if (last >= 0) {
+    const lead = core.slice(0, last).filter((w) => !repeated(w));
+    const trail = core.slice(last + 1);
+    return [...trail, ...lead, ...c, ...parens].join(' ');
   }
   return `${morph} ${commonName}`;
 }

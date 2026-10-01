@@ -34,6 +34,8 @@ export const cameraInput = {
   lastDragEnd: 0,
   /** Pixels moved during the current/last gesture. */
   moved: 0,
+  /** Pointers currently down on the canvas (2 = pinch / two-finger pan). */
+  pointers: 0,
 };
 
 /** DOM event fired (at most ~1×/s) when the player orbits, pans or zooms the camera by hand (tutorial hook). */

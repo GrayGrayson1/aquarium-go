@@ -1,10 +1,11 @@
 /**
  * Water chemistry & life-support stepper. OWNER: lane "waterlab".
  *
- * Per call: equipment wear/failures → autofeeder → N substeps (≤ 0.25 h) of
+ * Per call: equipment wear/failures → N substeps (≤ 0.25 h) of
  *   temperature (room drift, heaters/chillers/fans/lights) → food rot & detritus → nitrification (AOB/NOB with lag)
  *   → nitrate export (plants, refugium, skimmer, live rock) → bacteria growth → O₂ / CO₂ / pH / KH → algae, clarity,
- *   pods → evaporation, ATO and salinity.
+ *   pods → evaporation, ATO and salinity → then the autofeeder (last, so the food it drops is fresh when the creature
+ *   step that follows this one lets the animals eat; lane:fix-water).
  * Internally chemistry is tracked as MASS (mg) and converted back to ppm with the current litres, so evaporation
  * concentrates everything and big tanks change slowly. Robust to any dt (tested up to 6 h chunks); clamps all values.
  */
@@ -34,6 +35,8 @@ import {
   MAX_WATER_SUBSTEP_H,
   CLASS_DEFAULTS,
   WEAR_PER_DAY,
+  DETOX_FREE_FRACTION,
+  TEMP_TOLERANCE_C,
   isMarineClass,
 } from './constants';
 import { computeTankEnv, roomTempAt, type TankEnv, type EqEntry } from './env';
@@ -69,6 +72,8 @@ export function sanitizeWater(tank: Tank): void {
   lab.reefElements = clamp01(finite(lab.reefElements, isMarineClass(tank.waterClass) ? 0.8 : 0));
   lab.pods = clamp01(finite(lab.pods, 0.02));
   lab.co2 = clamp(finite(lab.co2, 3), 0, 80);
+  if (lab.boundAmmonia !== undefined) lab.boundAmmonia = clamp(finite(lab.boundAmmonia, 0), 0, 50); // lane:fix-water
+  if (lab.boundNitrite !== undefined) lab.boundNitrite = clamp(finite(lab.boundNitrite, 0), 0, 50);
   if (lab.bioTempC !== undefined) lab.bioTempC = clamp(finite(lab.bioTempC, w.tempC), 0, 40); // lane:w2-sim
 }
 
@@ -174,7 +179,9 @@ function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, c
         continue;
       }
       const food = getFoodDef(foodId)!;
-      const servings = Math.min(3, recommendedServings(state, tank, food), state.inventory.foods[foodId] ?? 0);
+      // lane:fix-water — the same portion a manual Feed gives (portionForDemand caps it by pack size), not a flat 3:
+      // three servings fed four small fish and starved a school of neons on the default 2×/day schedule.
+      const servings = Math.min(recommendedServings(state, tank, food), state.inventory.foods[foodId] ?? 0);
       if (servings <= 0) continue;
       state.inventory.foods[foodId] = (state.inventory.foods[foodId] ?? 0) - servings;
       addFood(tank, food, servings, at);
@@ -237,8 +244,10 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   const fT = clamp(q10(T), 0.25, 1.6);
 
   // ── masses (mg) ──
-  let tan = w.ammonia * L;
-  let no2 = w.nitrite * L;
+  // lane:fix-water — conditioner-bound ammonia/nitrite (lab.boundAmmonia/boundNitrite, ppm) is still there for the
+  // filter bacteria; it is split from the free (toxic, reported) part again at the end of the substep.
+  let tan = (w.ammonia + (lab.boundAmmonia ?? 0)) * L;
+  let no2 = (w.nitrite + (lab.boundNitrite ?? 0)) * L;
   let no3 = w.nitrate * L;
   let tanIn = 0;
 
@@ -426,8 +435,17 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   w.level = level;
   L = litresAfter;
 
-  w.ammonia = clamp(tan / L, 0, 50);
-  w.nitrite = clamp(no2 / L, 0, 50);
+  // The dose is active until stepTankWaterImpl expires it (releaseDetox, the one place the bound share is put back).
+  const free = lab.detoxUntilHour !== undefined ? DETOX_FREE_FRACTION : 1;
+  w.ammonia = clamp((tan / L) * free, 0, 50);
+  w.nitrite = clamp((no2 / L) * free, 0, 50);
+  if (free < 1) {
+    lab.boundAmmonia = clamp((tan / L) * (1 - free), 0, 50);
+    lab.boundNitrite = clamp((no2 / L) * (1 - free), 0, 50);
+  } else {
+    delete lab.boundAmmonia;
+    delete lab.boundNitrite;
+  }
   w.nitrate = clamp(no3 / L, 0, 500);
   return { tanIn };
 }
@@ -441,7 +459,6 @@ export function stepTankWaterImpl(state: GameState, tank: Tank, dt: number, ctx:
   const lab = ensureLab(tank);
   stepEquipmentWear(state, tank, dt, ctx);
   const env = computeTankEnv(state, tank);
-  runAutofeeder(state, tank, env, dt, ctx);
 
   const pending = lab.pendingWaste ?? 0;
   lab.pendingWaste = 0;
@@ -467,7 +484,13 @@ export function stepTankWaterImpl(state: GameState, tank: Tank, dt: number, ctx:
   // Target-fed portions are released to everyone after about an hour.
   if (w.targetFeed && ctx.hour + dt - w.targetFeed.hour > 1) delete w.targetFeed;
   if (w.shock && ctx.hour + dt > w.shock.untilHour + 24) delete w.shock;
-  if (lab.detoxUntilHour !== undefined && ctx.hour + dt > lab.detoxUntilHour + 48) delete lab.detoxUntilHour;
+  // lane:fix-water — the conditioner wears off: what it held bound is toxic (and on the test kit) again. Expire the
+  // dose right away (it used to linger 48 h, discounting the comfort model long after the water was dangerous).
+  if (lab.detoxUntilHour !== undefined && ctx.hour + dt >= lab.detoxUntilHour) releaseDetox(state, tank, env, ctx.hour + dt, ctx);
+
+  // The autofeeder drops its portion LAST so it is fresh when the creature step (next in the piece) lets the animals
+  // eat; dropped first it aged — and in 1 h / 4 h background pieces mostly rotted — before anyone took a bite.
+  runAutofeeder(state, tank, env, dt, ctx);
 
   // Instability (EMA over ~12 h).
   const rT = Math.abs(w.tempC - prevT) / dt;
@@ -486,6 +509,34 @@ export function stepTankWaterImpl(state: GameState, tank: Tank, dt: number, ctx:
   emitWaterWarnings(state, tank, env, ctx, dt);
 }
 
+/** Conditioner has worn off: put the bound ammonia/nitrite back and, if it matters, say so once. */
+function releaseDetox(state: GameState, tank: Tank, env: TankEnv, hour: number, ctx: SimContext): void {
+  const w = tank.water;
+  const lab = ensureLab(tank);
+  const nh = lab.boundAmmonia ?? 0;
+  const no2 = lab.boundNitrite ?? 0;
+  w.ammonia = clamp(w.ammonia + nh, 0, 50);
+  w.nitrite = clamp(w.nitrite + no2, 0, 50);
+  delete lab.boundAmmonia;
+  delete lab.boundNitrite;
+  delete lab.detoxUntilHour;
+  if (state.isShowcase || env.inhabitants.length === 0) return;
+  const weighted = w.ammonia * ammoniaToxicityWeight(w.pH, w.tempC) + w.nitrite * (env.salt ? 0.25 : 1);
+  if (weighted < 0.25 || nh + no2 < 0.05) return;
+  const parts: string[] = [];
+  if (nh >= 0.02) parts.push(`ammonia is back to ${w.ammonia.toFixed(2)} ppm`);
+  if (no2 >= 0.02) parts.push(`nitrite is back to ${w.nitrite.toFixed(2)} ppm`);
+  // This notice carries the advice, so the spike toasts for this water hold off for their usual day.
+  warnKey(lab, 'ammonia', hour, 24);
+  warnKey(lab, 'nitrite', hour, 24);
+  ctx.emit({
+    kind: weighted >= 0.5 ? 'danger' : 'warning',
+    text: `The conditioner in ${tank.name} has worn off — ${parts.join(' and ')}. Change 30–50% of the water, or dose again to buy another day.`,
+    tankId: tank.id,
+    toast: true,
+  });
+}
+
 function emitWaterWarnings(state: GameState, tank: Tank, env: TankEnv, ctx: SimContext, dt: number): void {
   if (state.isShowcase) return;
   const w = tank.water;
@@ -501,9 +552,18 @@ function emitWaterWarnings(state: GameState, tank: Tank, env: TankEnv, ctx: SimC
     });
   }
   if (env.inhabitants.length === 0) return;
-  const weighted = w.ammonia * ammoniaToxicityWeight(w.pH, w.tempC) * (lab.detoxUntilHour !== undefined && hour < lab.detoxUntilHour ? 0.3 : 1);
+  const weighted = w.ammonia * ammoniaToxicityWeight(w.pH, w.tempC); // free ammonia only: conditioner already holds its share bound
   if (weighted >= 0.5 && warnKey(lab, 'ammonia', hour, 24)) {
-    const cause = w.bioMaturity < 0.5 ? 'the biological filter is not established yet' : env.stockingLoad > 1 ? 'the tank is overstocked for its filter' : w.foodInWater > 0 ? 'uneaten food is rotting' : 'waste is outpacing the filter';
+    const deadFilter = env.summary.failed.find((e) => e.def.kind === 'filter');
+    const cause = deadFilter
+      ? `the ${deadFilter.def.name} has failed — repair it in the tank card › Equipment`
+      : w.bioMaturity < 0.5
+        ? 'the biological filter is not established yet'
+        : env.stockingLoad > 1
+          ? 'the tank is overstocked for its filter'
+          : w.foodInWater > 0
+            ? 'uneaten food is rotting'
+            : 'waste is outpacing the filter';
     ctx.emit({ kind: 'danger', text: `Ammonia is spiking in ${tank.name} (${w.ammonia.toFixed(2)} ppm) — ${cause}. Do a 30–50% water change and feed lightly.`, tankId: tank.id, toast: true });
   }
   const nitriteW = w.nitrite * (env.salt ? 0.25 : 1);
@@ -514,8 +574,9 @@ function emitWaterWarnings(state: GameState, tank: Tank, env: TankEnv, ctx: SimC
   let tooWarm: string | null = null;
   let tooCold: string | null = null;
   for (const { creature, species } of env.inhabitants) {
-    if (w.tempC > species.tempC.max + 0.3) tooWarm = tooWarm ?? (creature.name || species.commonName);
-    if (w.tempC < species.tempC.min - 0.3) tooCold = tooCold ?? (creature.name || species.commonName);
+    // lane:fix-water — past the tolerance band, where the report turns DANGER (inside it the bar says "a little cool").
+    if (w.tempC > species.tempC.max + TEMP_TOLERANCE_C) tooWarm = tooWarm ?? (creature.name || species.commonName);
+    if (w.tempC < species.tempC.min - TEMP_TOLERANCE_C) tooCold = tooCold ?? (creature.name || species.commonName);
   }
   if (tooWarm && warnKey(lab, 'too_warm', hour, 12))
     ctx.emit({ kind: 'danger', text: `${tank.name} is ${w.tempC.toFixed(1)} °C — too warm for ${tooWarm}. Check the heater/chiller settings.`, tankId: tank.id, toast: true });

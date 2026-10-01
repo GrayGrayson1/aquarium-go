@@ -13,7 +13,7 @@ import { bodyFits, locomote, takeOff, tryLand } from './loco';
 import { cosmetics, writeOrientation } from './cosmetics';
 import { clamp, clamp01, lerp, rchance, rdur, rnd, rrange, safeNormalize } from './math';
 import { SURF_FLOOR, floorAt, nearestSurface, pointFree } from './env';
-import { bodyHY, bodySide, randomSurfacePoint, randomSwimPoint } from './nav';
+import { bodyHY, bodySide, findParticle, randomSurfacePoint, randomSwimPoint } from './nav';
 import { consumeSpitRequest, spitRequested, spitWeight } from './spit'; // lane:brackish
 
 const SWIM_ACTS = new Set<ActId>(['cruise', 'breathe', 'startle', 'cleaning', 'dead', 'gasp', 'reposition']);
@@ -189,6 +189,7 @@ function think(a: Agent, w: AIWorld): void {
   if (cur < 60 && w.food.length) {
     const p = chooseFood(a, w);
     if (p) {
+      if (p.id !== a.foodId && p.id !== a.lastFoodId) a.foodT = w.time;
       a.foodId = p.id;
       if (startAct(a, w, isLivePrey(a, p) ? 'hunt' : 'feed')) {
         a.lastInterrupt = 'food';
@@ -388,6 +389,12 @@ export function initialPlacement(a: Agent, w: AIWorld, keepExisting: boolean): v
 
 // ───────────────────────────── per-frame pipeline ─────────────────────────────
 
+/** Is the particle a walker is feeding on still well above the bottom (worth swimming for)? */
+function foodHigh(a: Agent, w: AIWorld): boolean {
+  const p = findParticle(w, a.foodId);
+  return !!p && p.pos.y > floorAt(w.env, p.pos.x, p.pos.z) + a.L * 0.5;
+}
+
 export function stepAgent(a: Agent, w: AIWorld, dt: number): void {
   resetControl(a.ctrl);
   a.actT += dt;
@@ -423,7 +430,8 @@ export function stepAgent(a: Agent, w: AIWorld, dt: number): void {
     ACTS[a.act].tick(a, w, dt);
   }
   // crawlers/walkers that swam (short swim, gulp, tail flip) settle back onto a surface
-  if (a.loco === 'swim' && (a.set.loco === 'crawl' || a.set.loco === 'walk') && !SWIM_ACTS.has(a.act) && !(a.act === 'feed' && a.set.loco === 'walk')) {
+  // (a walker after sinking food keeps swimming for it; once the piece lies near the bottom it comes down to it)
+  if (a.loco === 'swim' && (a.set.loco === 'crawl' || a.set.loco === 'walk') && !SWIM_ACTS.has(a.act) && !(a.act === 'feed' && a.set.loco === 'walk' && foodHigh(a, w))) {
     const c = a.ctrl;
     c.allowFloor = true;
     c.avoid = Math.min(c.avoid, 0.4);

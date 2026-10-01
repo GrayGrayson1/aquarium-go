@@ -28,6 +28,7 @@
  * │ spent                 │ betta female                 │ just spawned; must be moved out (see `harassment`)       │
  * │ resting               │ anyone                       │ cooldown after breeding — stageEndsHour                 │
  * │ transitioning_female  │ clownfish (reproRole too)    │ protandrous sex change male → female — progress         │
+ * │ transitioning_male    │ clown goby (protogyny.ts)    │ protogynous sex change female → male — progress         │
  * └───────────────────────┴──────────────────────────────┴─────────────────────────────────────────────────────────┘
  * Other repro fields: rank (clownfish hierarchy, 0 = dominant), harassment 0..1 (betta female chased/bitten —
  * renderers may fray her fins), partnerId, stageSinceHour/stageEndsHour, totalClutches, totalOffspringRaised.
@@ -46,6 +47,7 @@ import { findSpecies } from '@/data/species';
 import { incidentRisks } from '@/sim/compat';
 import { moduleFor } from './registry';
 import { stepClutch } from './clutch';
+import { stepProtogynous } from './protogyny';
 import { evaluatePair } from './check';
 import { creatureBreedingStatus } from './status';
 import {
@@ -90,6 +92,7 @@ export const BREEDING_STAGE_LABELS: Record<string, string> = {
   spent: 'Spent — separate her',
   resting: 'Resting',
   transitioning_female: 'Becoming female',
+  transitioning_male: 'Becoming male',
 };
 
 export function stepTankBreeding(state: GameState, tank: Tank, dt: number, ctx: SimContext): void {
@@ -130,6 +133,7 @@ function stepOnce(state: GameState, tank: Tank, hour: number, dt: number, ctx: S
       updateReadiness(tank, c, sp, hour, dt, info);
     }
     try {
+      if (sp.sexSystem === 'protogynous') stepProtogynous(state, tank, sp, members, hour, ctx);
       mod.step({ state, tank, species: sp, members, hour, dt, ctx, info });
     } catch (e) {
       // A breeding glitch must never stop the world.

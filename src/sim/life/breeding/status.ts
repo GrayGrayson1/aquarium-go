@@ -92,6 +92,8 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
       return { label: `Preparing a nest site with ${pn}`, progress: prog };
     case 'transitioning_female':
       return { label: 'Becoming female', progress: prog };
+    case 'transitioning_male':
+      return { label: 'Becoming male', progress: prog };
     default: {
       const p = partner && isAlive(partner) && partner.tankId === c.tankId ? partner : undefined;
       return { label: 'Not breeding', detail: p ? `Paired with ${p.name} · readiness ${readiness}%` : readiness >= READY ? 'In breeding condition — needs a partner' : `Breeding readiness ${readiness}%` };

@@ -44,7 +44,9 @@ export const neonTetra: SpeciesDefinition = {
   aggression: 0.02,
   finNipper: 0.05,
   hasLongFins: false,
-  social: { kind: 'school', minGroup: 6, idealGroup: 12, note: 'Needs a school — at least six, and ten or more for confident, natural behaviour.' },
+  // lane:fix-water S16-06 — eight is what its 10-gallon recommended tank holds at a sensible load (0.5 bioload each);
+  // a dozen there is overstocked, so the old ideal of 12 had the card and the stocking model disagree.
+  social: { kind: 'school', minGroup: 6, idealGroup: 8, note: 'Needs a school — at least six, and eight or more for confident, natural behaviour (a dozen suits a 20-gallon tank).' },
   sameSpeciesRule: { maleMale: 'ok', femaleFemale: 'ok', mixed: 'ok', juvenile: 'ok' },
 
   predatorTags: ['fry', 'eggs', 'shrimp_fry', 'copepod'],

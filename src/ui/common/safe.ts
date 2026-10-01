@@ -83,5 +83,16 @@ export function useMedia(query: string): boolean {
   return m;
 }
 
-export const MOBILE_QUERY = '(max-width: 720px)';
+/** A phone held sideways (844×390): too short for the desktop chrome, so it gets the phone layout (hud.css/tokens.css key off the same condition). */
+export const SHORT_LANDSCAPE_QUERY = '(max-height: 500px) and (orientation: landscape)';
+export const MOBILE_QUERY = `(max-width: 720px), ${SHORT_LANDSCAPE_QUERY}`;
 export const useIsMobile = () => useMedia(MOBILE_QUERY);
+
+const TEXT_INPUT_TYPES = new Set(['text', 'search', 'email', 'url', 'number', 'password', 'tel', '']);
+/** A field the player types into (Escape / letter shortcuts stay out of it). Sliders, checkboxes and selects are not. */
+export function isTextEntry(el: EventTarget | null): boolean {
+  const t = el as HTMLElement | null;
+  if (!t || !t.tagName) return false;
+  if (t.tagName === 'TEXTAREA' || t.isContentEditable) return true;
+  return t.tagName === 'INPUT' && TEXT_INPUT_TYPES.has(((t as HTMLInputElement).type ?? '').toLowerCase());
+}

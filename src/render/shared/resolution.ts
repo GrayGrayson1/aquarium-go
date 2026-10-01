@@ -16,8 +16,14 @@
  *     shader.
  *  3. Last resort: only when the scale is at its floor and frames are still slow does the tier drop one step (a
  *     feature change that recompiles programs) — at most once per session, never back up mid-session, and only while
- *     Settings › Graphics is on Auto. The settled scale and any drop are remembered per device (localStorage), so the
- *     next visit starts there; a session with clear headroom at full scale lets the next visit try one step higher.
+ *     Settings › Graphics is on Auto. The settled scale is remembered per device (localStorage), so the next visit
+ *     starts there; a drop is remembered only once the following seconds show it actually helped (lane:tankrender —
+ *     a drop forced by a passing main-thread burst used to be persisted at once and made every later visit uglier);
+ *     a session with clear headroom at full scale lets the next visit try one step higher.
+ *
+ * Main-thread work outside the frame loop (React commits, the sim tick, portrait rendering, GC) is measured with a
+ * LatenessProbe and counted as CPU time, so a UI burst is diagnosed as CPU-bound and never answered with a blurrier
+ * picture (lane:tankrender — only the frame loop's own span used to count, so bursts looked GPU-bound).
  */
 import type { QualityLevel } from '@/types';
 
@@ -50,7 +56,12 @@ export function budgetDpr(deviceDpr: number, range: [number, number], maxMP: num
   return Math.round(dpr * 40) / 40;
 }
 
-export type ScaleDecision = { kind: 'scale'; scale: number; reason: 'down' | 'up' | 'revert' } | { kind: 'drop' } | { kind: 'headroom' } | null;
+export type ScaleDecision = { kind: 'scale'; scale: number; reason: 'down' | 'up' | 'revert' } | { kind: 'drop' } | { kind: 'drop_helped' } | { kind: 'headroom' } | null;
+
+/** Windows after a drop that must be on time before the drop is remembered for the next visit. */
+const DROP_CONFIRM_WINDOWS = 3;
+/** Slow windows after a drop that write it off as not the answer (the machine is simply struggling right now). */
+const DROP_GIVE_UP_WINDOWS = 3;
 
 type Phase = 'steady' | 'settle' | 'verify';
 
@@ -66,6 +77,10 @@ export class ScaleController {
   private span = 0;
   /** Main-thread ms spent inside frames this window (-1 = not measured). */
   private work = 0;
+  /** Main-thread ms of every frame this window, hitches included (a burst-ridden window is CPU-bound as a whole). */
+  private workAll = 0;
+  /** Main-thread ms outside the frame loop this window (LatenessProbe), attributed to the window, not a frame. */
+  private ext = 0;
   private phase: Phase = 'steady';
   private pending: { dir: 'up' | 'down'; before: number; prev: number } | null = null;
   private good = 0;
@@ -80,6 +95,12 @@ export class ScaleController {
   private slowRun = 0;
   private headroomWindows = 0;
   dropped = false;
+  /** QA: the last closed window's mean frame time (ms) and main-thread share. */
+  readonly lastWindow = { ms: 0, busy: 0 };
+  /** After a drop: windows on time / still slow, until the drop is confirmed or written off. */
+  private dropGood = 0;
+  private dropSlow = 0;
+  private dropVerdict: 'none' | 'pending' | 'done' = 'none';
 
   constructor(start = 1, min = SCALE_MIN) {
     this.min = min;
@@ -88,16 +109,27 @@ export class ScaleController {
 
   /** Discard the current window (after a hitch source such as a warm-up, a tab switch or a resize). */
   reset(): void {
-    this.sum = this.n = this.span = this.work = 0;
+    this.sum = this.n = this.span = this.work = this.workAll = this.ext = 0;
+  }
+
+  /** A tier change starts a fresh controller: carry over what must not restart (the once-per-session drop). */
+  carryOver(prev: ScaleController): void {
+    this.dropped = prev.dropped;
+    this.dropVerdict = prev.dropVerdict;
+    this.dropGood = prev.dropGood;
+    this.dropSlow = prev.dropSlow;
   }
 
   /**
    * `workMs`: main-thread time spent producing this frame (scene updates + render submission), when known. A frame
-   * that is mostly main-thread work is CPU-bound, and a lower resolution would only blur it.
+   * that is mostly main-thread work is CPU-bound, and a lower resolution would only blur it. `extMs`: main-thread time
+   * spent outside the frame loop since the previous frame (LatenessProbe); it belongs to the window as a whole.
    */
-  frame(dtMs: number, workMs = 0): ScaleDecision {
+  frame(dtMs: number, workMs = 0, extMs = 0): ScaleDecision {
     if (!(dtMs > 0)) return null;
     this.span += dtMs;
+    this.workAll += Math.max(0, Math.min(dtMs, workMs));
+    this.ext += Math.max(0, extMs);
     if (dtMs <= HITCH_MS) {
       this.sum += dtMs;
       this.n++;
@@ -108,7 +140,9 @@ export class ScaleController {
       return null;
     }
     const m = this.sum / this.n;
-    const busy = this.work / this.sum;
+    const busy = Math.max(this.work / this.sum, Math.min(1, (this.workAll + this.ext) / this.span));
+    this.lastWindow.ms = m;
+    this.lastWindow.busy = busy;
     this.reset();
     return this.window(m, busy);
   }
@@ -122,6 +156,15 @@ export class ScaleController {
 
   private window(m: number, busy = 0): ScaleDecision {
     if (this.hold > 0) this.hold--;
+    if (this.dropVerdict === 'pending') {
+      // did the feature drop fix it? remember it only then (a drop forced by a passing burst must not stick)
+      if (m > SLOW_MS) {
+        if (++this.dropSlow >= DROP_GIVE_UP_WINDOWS) this.dropVerdict = 'done';
+      } else if (++this.dropGood >= DROP_CONFIRM_WINDOWS) {
+        this.dropVerdict = 'done';
+        return { kind: 'drop_helped' };
+      }
+    }
     if (this.phase === 'settle') {
       // the window right after a resize carries its reallocation hitch: skip it
       this.phase = 'verify';
@@ -140,8 +183,9 @@ export class ScaleController {
         this.backoff = Math.max(3, Math.round(this.backoff / 2));
         return null;
       }
-      // down: keep only if it helped (GPU-bound); otherwise this device is CPU-bound — restore and hold off
-      if (m < p.before * 0.94) return null;
+      // down: keep only if it helped (GPU-bound); otherwise this device is CPU-bound — restore and hold off. A window
+      // that is mostly main-thread work cannot credit the resolution for whatever it gained.
+      if (m < p.before * 0.94 && busy <= CPU_BOUND) return null;
       this.hold = this.holdLen;
       this.holdLen = Math.min(240, this.holdLen * 2);
       return this.set(p.prev, 'revert');
@@ -171,6 +215,7 @@ export class ScaleController {
         if (++this.slowAtFloor >= (atFloor ? 5 : 10)) {
           this.slowAtFloor = 0;
           this.dropped = true;
+          this.dropVerdict = 'pending';
           return { kind: 'drop' };
         }
       }
@@ -198,6 +243,56 @@ export class ScaleController {
       this.good = 0;
     }
     return null;
+  }
+}
+
+// ───────────────────────────── main-thread probe ─────────────────────────────
+
+/** A timer this late (ms) was held back by other work; below it is scheduling jitter. */
+const LATE_MIN_MS = 1.5;
+/** Frame spans remembered for the overlap correction (a probe interval spans at most a couple of frames). */
+const SPAN_RING = 6;
+
+/**
+ * Main-thread time spent outside the frame loop, estimated from how late a chain of short timers fires: a timer due at
+ * T that runs at T + x was held back x ms by other tasks (React commits, the sim tick, portrait rendering, GC, layout).
+ * The frame loop's own spans are reported with `frame()` and subtracted, so nothing is counted twice; GPU-bound
+ * frames (the main thread idles while the compositor waits) add nothing. Pure; driven by ResolutionGovernor.
+ */
+export class LatenessProbe {
+  private spans: [number, number][] = [];
+  private acc = 0;
+  /** QA: external ms accumulated since construction. */
+  total = 0;
+
+  /** A frame-loop span (start, end in ms). */
+  frame(t0: number, t1: number): void {
+    if (t1 <= t0) return;
+    this.spans.push([t0, t1]);
+    if (this.spans.length > SPAN_RING) this.spans.shift();
+  }
+
+  /** A probe timer scheduled at `at` for `due` ms later ran at `now`: accumulate the external busy time it saw. */
+  tick(at: number, due: number, now: number): number {
+    let late = now - (at + due);
+    if (late < LATE_MIN_MS) return 0;
+    for (const [t0, t1] of this.spans) late -= Math.max(0, Math.min(t1, now) - Math.max(t0, at));
+    const ext = Math.max(0, late);
+    this.acc += ext;
+    this.total += ext;
+    return ext;
+  }
+
+  /** External busy time accumulated since the last take (ms). */
+  take(): number {
+    const v = this.acc;
+    this.acc = 0;
+    return v;
+  }
+
+  reset(): void {
+    this.acc = 0;
+    this.spans.length = 0;
   }
 }
 

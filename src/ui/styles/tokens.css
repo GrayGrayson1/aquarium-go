@@ -11,7 +11,7 @@
   --c-line: rgba(200, 235, 245, 0.11);
   --c-line-strong: rgba(200, 235, 245, 0.2);
   --c-line-bright: rgba(220, 245, 250, 0.32);
-  --c-glass: rgba(9, 22, 30, 0.56);
+  --c-glass: rgba(9, 22, 30, 0.68); /* was 0.56: 11 px labels over a day-lit room fell to 2–4:1 */
   --c-glass-strong: rgba(7, 17, 24, 0.84);
   --c-glass-soft: rgba(12, 28, 38, 0.38);
   --c-glass-hover: rgba(30, 58, 72, 0.55);
@@ -69,9 +69,21 @@
   --z-panel: 40;
   --z-toast: 70;
   --z-modal: 80;
+
+  /* safe-area insets (viewport-fit=cover: the notch / Dynamic Island, home indicator and landscape camera housing).
+     .ag-hud and .ag-screen are inset by them, so their absolute children need nothing; fixed layers use these. */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --edge-t: max(var(--edge), var(--safe-t));
+  --edge-r: max(var(--edge), var(--safe-r));
+  --edge-b: max(var(--edge), var(--safe-b));
+  --edge-l: max(var(--edge), var(--safe-l));
 }
 
-@media (max-width: 720px) {
+/* phones — and any phone held sideways (short landscape), which used to get the desktop chrome */
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   :root {
     --edge: 10px;
     --topbar-h: 48px;

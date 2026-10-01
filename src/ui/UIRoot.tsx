@@ -7,7 +7,6 @@ import { useEffect, lazy, Suspense } from 'react';
 import { AnimatePresence, MotionConfig } from 'motion/react';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { unlockAudio } from '@/audio/sfx';
 import { registerDisplayFont } from './common/fonts';
 import { ErrorBoundary } from './common/ErrorBoundary';
 import { TitleScreen } from './screens/TitleScreen';
@@ -40,26 +39,8 @@ function useDocumentSettings() {
   }, [textScale, contrast, reduced]);
 }
 
-/** WebAudio unlock on the first gesture anywhere. */
-function useAudioUnlock() {
-  useEffect(() => {
-    const once = () => {
-      unlockAudio();
-      window.removeEventListener('pointerdown', once, true);
-      window.removeEventListener('keydown', once, true);
-    };
-    window.addEventListener('pointerdown', once, true);
-    window.addEventListener('keydown', once, true);
-    return () => {
-      window.removeEventListener('pointerdown', once, true);
-      window.removeEventListener('keydown', once, true);
-    };
-  }, []);
-}
-
 export function UIRoot() {
   useDocumentSettings();
-  useAudioUnlock();
   const screen = useUI((s) => s.screen);
   const reduced = useSettings((s) => s.reducedMotion);
   const devMode = useSettings((s) => s.devMode);

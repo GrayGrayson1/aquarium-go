@@ -724,6 +724,9 @@ function mutual(A: CompatMember, B: CompatMember, ctx: CompatContext, out: Colle
   const iov = Math.min(a.tempC.idealMax, b.tempC.idealMax) - Math.max(a.tempC.idealMin, b.tempC.idealMin);
   const rng = (s: SpeciesDefinition) => `${s.tempC.min}–${s.tempC.max} °C`;
   if (ov < 0) add('critical', 'temperature', `Their temperature needs don't overlap at all (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}).`);
+  // lane:fix-water — ranges that merely touch (axolotl ≤ 21 °C, betta ≥ 21 °C) are no overlap in practice: the only
+  // shared temperature is the edge where one is as cold and the other as warm as it can bear.
+  else if (ov < 0.5) add('critical', 'temperature', `Their temperature needs only meet at the edge (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}) — too cold for one, too warm for the other.`);
   else if (ov < 2) add('warning', 'temperature', `Temperature ranges barely overlap (${lower(a.commonName)} ${rng(a)}, ${lower(b.commonName)} ${rng(b)}).`);
   else if (iov < 0) add('caution', 'temperature', `Their ideal temperatures don't overlap — one of them will always be a little outside its comfort zone.`);
   // pH

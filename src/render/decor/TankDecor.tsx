@@ -24,7 +24,7 @@ import { DecorEditor } from './DecorEditor';
 import { createTankUniforms, makeDecorMaterial } from './materials';
 import { makeAcrylicMaterial } from './acrylic'; // lane:w2-visual
 import { equipmentEmitters } from './emitters';
-import { editingDecor } from './registry';
+import { useEditingDecorId } from './registry';
 import { acquireDecorGeometry, releaseDecorGeometry } from './gen';
 
 const ACTINIC: Record<string, number> = { reef_actinic: 1, reef_full: 0.6, moonlight: 0.85, cool: 0.3, daylight: 0.18, planted: 0.12, warm: 0.08, sunset: 0.1 };
@@ -120,6 +120,7 @@ export function TankDecor({ tank, lod }: { tank: Tank; lod: RenderLod }) {
   tankU.uSwayScale.value = reducedMotion ? 0.45 : 1;
 
   const heroDecorReady = useProgressiveDecor(tank, lod);
+  const editingId = useEditingDecorId();
 
   const preset = tank.lighting.preset;
   const moon = tank.lighting.moonlight;
@@ -150,7 +151,7 @@ export function TankDecor({ tank, lod }: { tank: Tank; lod: RenderLod }) {
               tankU={tankU}
               shared={shared}
               flowTank={flow}
-              hidden={editing && editingDecor.id === inst.id}
+              hidden={editing && editingId === inst.id}
               reducedMotion={reducedMotion}
             />
           );

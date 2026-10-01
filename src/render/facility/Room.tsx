@@ -11,6 +11,7 @@ import { getFacilityLevel } from '@/data/facilities';
 import { ROOM_STYLES, type RoomStyle } from './styles';
 import { Batch, box, rbox, floorPlane, wallWithOpenings, noPick } from './kit';
 import { acquireTexture, releaseTexture, woodPlanks, concrete, stoneTiles, tiles, plaster, woodSlats } from './textures';
+import { createSkyMaterial, updateSkyMaterial } from './skyMaterial';
 
 export interface Opening {
   x0: number;
@@ -106,7 +107,10 @@ interface RoomMaterials {
   glow: THREE.MeshBasicMaterial;
   dark: THREE.MeshStandardMaterial;
   ground: THREE.MeshBasicMaterial;
-  nightGlass: THREE.MeshBasicMaterial;
+  /** Transparent pane overlay (dark mullion bars) for windows / storefronts; the sky shows through. */
+  mullions: THREE.MeshBasicMaterial;
+  /** Live sky behind every opening (lane:facrender — was a static night gradient on hall windows, void elsewhere). */
+  sky: THREE.ShaderMaterial;
   keys: string[];
 }
 
@@ -140,21 +144,17 @@ function groundCanvas(color: string): HTMLCanvasElement {
   return c;
 }
 
-function nightGlassCanvas(): HTMLCanvasElement {
+function mullionCanvas(): HTMLCanvasElement {
   const c = document.createElement('canvas');
   c.width = 64;
   c.height = 256;
   const ctx = c.getContext('2d')!;
-  const g = ctx.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, '#0b1b33');
-  g.addColorStop(0.6, '#15325a');
-  g.addColorStop(1, '#27517a');
-  ctx.fillStyle = g;
+  // a faint tint so the pane reads as glass, then the mullion bars
+  ctx.fillStyle = 'rgba(120,160,190,0.12)';
   ctx.fillRect(0, 0, 64, 256);
-  // mullions
-  ctx.fillStyle = 'rgba(0,0,0,0.75)';
-  ctx.fillRect(30, 0, 4, 256);
-  for (let y = 60; y < 256; y += 64) ctx.fillRect(0, y, 64, 3);
+  ctx.fillStyle = 'rgba(8,10,12,0.9)';
+  ctx.fillRect(31, 0, 2, 256);
+  for (let y = 62; y < 256; y += 64) ctx.fillRect(0, y, 64, 2);
   return c;
 }
 
@@ -190,14 +190,15 @@ function useRoomMaterials(level: FacilityLevelId, style: RoomStyle): RoomMateria
     const dark = new THREE.MeshStandardMaterial({ color: '#0e0f10', roughness: 0.8 });
     const groundMap = tex(`ground:${style.ground}`, () => groundCanvas(style.ground), { repeat: false });
     const ground = new THREE.MeshBasicMaterial({ map: groundMap, transparent: true, depthWrite: false });
-    const nightMap = tex('nightglass', nightGlassCanvas);
-    const nightGlass = new THREE.MeshBasicMaterial({ map: nightMap, toneMapped: true });
-    return { floor, wall, accent, trim, wainscot, glow, dark, ground, nightGlass, keys };
+    const mullionMap = tex('mullions', mullionCanvas, { repeat: false });
+    const mullions = new THREE.MeshBasicMaterial({ map: mullionMap, transparent: true, depthWrite: false });
+    const sky = createSkyMaterial();
+    return { floor, wall, accent, trim, wainscot, glow, dark, ground, mullions, sky, keys };
   }, [level, style]);
   useEffect(
     () => () => {
       for (const k of mats.keys) releaseTexture(k);
-      for (const m of [mats.floor, mats.wall, mats.accent, mats.trim, mats.wainscot, mats.glow, mats.dark, mats.ground, mats.nightGlass]) m.dispose();
+      for (const m of [mats.floor, mats.wall, mats.accent, mats.trim, mats.wainscot, mats.glow, mats.dark, mats.ground, mats.mullions, mats.sky]) m.dispose();
     },
     [mats],
   );
@@ -323,7 +324,35 @@ function WallMeshes({ geoms, mats }: { geoms: Map<string, THREE.BufferGeometry>;
 
 const _v = new THREE.Vector3();
 
-function Wall({ side, w, d, height, style, openings, mats, accent, cut }: { side: WallSide; w: number; d: number; height: number; style: RoomStyle; openings: Opening[]; mats: RoomMaterials; accent: boolean; cut: 'auto' | 'never' }) {
+/**
+ * What lies outside an opening: a live sky/skyline plane a little way behind the wall (only ever seen through the
+ * opening, and hidden with the wall when the cut-away drops it), plus a glass pane with mullions for windows and
+ * storefronts. The plane is padded well past the opening so parallax never shows its edge. lane:facrender (S10-03/08)
+ */
+function Exterior({ o, mats }: { o: Opening; mats: RoomMaterials }) {
+  const ref = useRef<THREE.Group>(null);
+  useEffect(() => noPick(ref.current), []);
+  const back = 0.45;
+  const pad = 1.6;
+  const w = o.x1 - o.x0 + pad * 2;
+  const bottom = Math.min(o.y0, 0) - 0.6;
+  const top = o.y1 + pad;
+  const glazed = o.kind === 'window' || o.kind === 'storefront';
+  return (
+    <group ref={ref}>
+      <mesh position={[(o.x0 + o.x1) / 2, (bottom + top) / 2, -back]} material={mats.sky}>
+        <planeGeometry args={[w, top - bottom]} />
+      </mesh>
+      {glazed && (
+        <mesh position={[(o.x0 + o.x1) / 2, (o.y0 + o.y1) / 2, -0.02]} material={mats.mullions}>
+          <planeGeometry args={[o.x1 - o.x0, o.y1 - o.y0]} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+function Wall({ side, w, d, height, style, openings, mats, accent, cut, exterior }: { side: WallSide; w: number; d: number; height: number; style: RoomStyle; openings: Opening[]; mats: RoomMaterials; accent: boolean; cut: 'auto' | 'never'; exterior: boolean }) {
   const frame = wallFrame(side, w, d);
   const geoms = useMemo(() => buildWall(style, side, frame.length, height, openings, accent), [style, side, frame.length, height, openings, accent]);
   useEffect(
@@ -357,13 +386,7 @@ function Wall({ side, w, d, height, style, openings, mats, accent, cut }: { side
     <group position={frame.pos} rotation={[0, frame.rotY, 0]}>
       <group ref={fullRef}>
         <WallMeshes geoms={geoms.full} mats={mats} />
-        {openings
-          .filter((o) => o.kind === 'window' && style.baseGlow)
-          .map((o, i) => (
-            <mesh key={i} position={[(o.x0 + o.x1) / 2, (o.y0 + o.y1) / 2, -0.02]} material={mats.nightGlass}>
-              <planeGeometry args={[o.x1 - o.x0, o.y1 - o.y0]} />
-            </mesh>
-          ))}
+        {exterior && openings.map((o, i) => <Exterior key={i} o={o} mats={mats} />)}
         {style.baseGlow && (
           <mesh position={[0, 0.012, WALL_T / 2 + 0.03]} material={mats.glow}>
             <boxGeometry args={[frame.length - WALL_T * 2 - 0.1, 0.006, 0.012]} />
@@ -394,6 +417,7 @@ export function RoomShell({ level, width, depth }: { level: FacilityLevelId; wid
     noPick(groundRef.current);
   }, []);
   const H = def.wallHeight;
+  useFrame(({ clock }) => updateSkyMaterial(mats.sky, clock.elapsedTime));
   return (
     <group name="facility-room">
       {style.fill && <hemisphereLight args={[style.fill[0], style.fill[1], style.fill[2]]} />}
@@ -402,7 +426,7 @@ export function RoomShell({ level, width, depth }: { level: FacilityLevelId; wid
       </mesh>
       <mesh ref={floorRef} geometry={floorGeo} material={mats.floor} receiveShadow />
       {(['back', 'left', 'right', 'front'] as WallSide[]).map((side) => (
-        <Wall key={side} side={side} w={width} d={depth} height={H} style={style} openings={openings[side]} mats={mats} accent={side === 'back' && !!style.accent} cut={side === 'back' ? 'auto' : 'auto'} />
+        <Wall key={side} side={side} w={width} d={depth} height={H} style={style} openings={openings[side]} mats={mats} accent={side === 'back' && !!style.accent} cut={side === 'back' ? 'auto' : 'auto'} exterior={level !== 'hobby_room'} />
       ))}
     </group>
   );

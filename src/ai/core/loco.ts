@@ -456,9 +456,21 @@ function stepSwim(a: Agent, w: AIWorld, dt: number): void {
   // pinned: a fish swimming at its goal through decor it cannot pass (nosing under a plant crown, a rock between it
   // and the spot) makes no headway — the constraints hand back nearly every step, and it sits there shivering by a
   // fraction of a millimetre. After a moment the brain gives that goal up (brain: blockedT), as it does for walkers.
-  if (ctrl.hasGoal && !(ctrl.attach > 0) && !upright) {
-    const want = a.speed * dt;
-    const handedBack = (_intent.x - pos.x) * a.fwd.x + (_intent.y - pos.y) * a.fwd.y + (_intent.z - pos.z) * a.fwd.z;
+  if (ctrl.hasGoal && !(ctrl.attach > 0)) {
+    let want: number;
+    let handedBack: number;
+    if (upright) {
+      // a seahorse moves mostly by fin drift: measure the step it meant to take, sculling included
+      const wx = a.fwd.x * a.speed + a.drift.x;
+      const wy = a.fwd.y * a.speed + a.drift.y;
+      const wz = a.fwd.z * a.speed + a.drift.z;
+      const wl = Math.hypot(wx, wy, wz);
+      want = wl * dt;
+      handedBack = wl > 1e-9 ? ((_intent.x - pos.x) * wx + (_intent.y - pos.y) * wy + (_intent.z - pos.z) * wz) / wl : 0;
+    } else {
+      want = a.speed * dt;
+      handedBack = (_intent.x - pos.x) * a.fwd.x + (_intent.y - pos.y) * a.fwd.y + (_intent.z - pos.z) * a.fwd.z;
+    }
     if (want > cruise * 0.3 * dt && handedBack > want * 0.6 && dist > ctrl.arriveR) a.blockedT += dt;
     else a.blockedT = Math.max(0, a.blockedT - dt);
   }
@@ -598,7 +610,7 @@ export function constrainBody(a: Agent, w: AIWorld): void {
       const cs = env.colliders;
       for (let i = 0; i < cs.length; i++) {
         const c = cs[i];
-        if (!c.hard || c.decorId === ctrl.ignoreDecor || (deep & (1 << Math.min(i, 30))) !== 0) continue;
+        if (!c.hard || c.decorId === ctrl.ignoreDecor || (deep !== 0 && _deep[i] !== 0)) continue;
         const qx = pos.x + ox;
         const qy = pos.y + oy;
         const qz = pos.z + oz;
@@ -835,7 +847,7 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
     deep = easeOutOfDecor(a, env, pos, side, true, climbH);
     for (let i = 0; i < env.colliders.length; i++) {
       const c = env.colliders[i];
-      if (!c.hard || c.decorId === ctrl.ignoreDecor || c.rise <= climbH || (deep & (1 << Math.min(i, 30))) !== 0) continue;
+      if (!c.hard || c.decorId === ctrl.ignoreDecor || c.rise <= climbH || (deep !== 0 && _deep[i] !== 0)) continue;
       if (pos.y + side < c.cy - c.hy || pos.y - side > c.top) continue;
       const d = colliderSdfXZ(c, pos.x, pos.z);
       if (d < side) {
@@ -957,7 +969,7 @@ function constrainCrawlBody(a: Agent, w: AIWorld, mask: number, prevFwd: THREE.V
       if (mask & SURF_DECOR) continue;
       for (let i = 0; i < env.colliders.length; i++) {
         const c = env.colliders[i];
-        if (!c.hard || c.decorId === ctrl.ignoreDecor || c.rise <= climbH || (deep & (1 << Math.min(i, 30))) !== 0) continue;
+        if (!c.hard || c.decorId === ctrl.ignoreDecor || c.rise <= climbH || (deep !== 0 && _deep[i] !== 0)) continue;
         if (Math.abs(px - c.cx) > c.hx + r || Math.abs(pz - c.cz) > c.hz + r) continue;
         if (walk ? py + r < c.cy - c.hy || py - r - a.stepLift > c.top : Math.abs(py - c.cy) > c.hy + r) continue;
         let d: number;
@@ -1279,9 +1291,16 @@ function clipPushToGlass(env: TankEnv, pos: THREE.Vector3, rc: number, push: THR
  * glass or the next rock — at a bounded speed, one push per collider per frame. Returns a bitmask of the colliders
  * handled (the sampled constraints skip them this frame so nose/tail pushes never pull the body back in).
  */
+// which colliders the body is being eased out of this frame (one flag per collider — a 32-bit mask saturated at
+// bit 30, so in decor-heavy exhibits with 50–70 colliders every collider past the 30th shared one flag and lost its
+// constraints whenever any of them was being eased out of)
+let _deep = new Uint8Array(64);
+/** Returns how many colliders the body is caught in (their flags are set in `_deep`). */
 function easeOutOfDecor(a: Agent, env: TankEnv, pos: THREE.Vector3, side: number, walker: boolean, climbH: number): number {
-  let mask = 0;
+  let n = 0;
   const cs = env.colliders;
+  if (_deep.length < cs.length) _deep = new Uint8Array(cs.length + 32);
+  else _deep.fill(0, 0, cs.length);
   for (let i = 0; i < cs.length; i++) {
     const c = cs[i];
     if (!c.hard || c.decorId === a.ctrl.ignoreDecor) continue;
@@ -1302,9 +1321,10 @@ function easeOutOfDecor(a: Agent, env: TankEnv, pos: THREE.Vector3, side: number
     }
     pos.addScaledVector(_n, side * (1 - Math.pow(0.5, _dt * 60)) + EASE_OUT_SPEED * _dt);
     a.speed *= Math.pow(0.6, _dt * 60);
-    mask |= 1 << Math.min(i, 30);
+    _deep[i] = 1;
+    n++;
   }
-  return mask;
+  return n;
 }
 
 /** Deepest penetration (r − distance) of the nose/tail points into non-climbable hard decor for a heading. */

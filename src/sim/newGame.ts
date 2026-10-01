@@ -51,7 +51,7 @@ export const STARTER_SETUPS: Record<StarterId, StarterSetup> = {
     saltKg: 0,
     sex: 'male',
     ageDays: 18,
-    nameIdeas: ['Ember', 'Sapphire', 'Koi', 'Rogue', 'Velvet'],
+    nameIdeas: ['Ember', 'Cobalt', 'Koi', 'Rogue', 'Velvet'], // a male starter: no feminine-reading names (names.ts)
     teaches: 'Warm planted tanks, territorial behaviour and show-fish lines',
     pathNote: 'Tropical planted · display & bubble nests',
   },
@@ -75,7 +75,7 @@ export const STARTER_SETUPS: Record<StarterId, StarterSetup> = {
     saltKg: 10,
     sex: 'male',
     ageDays: 14,
-    nameIdeas: ['Tango', 'Coral', 'Sunny', 'Poppy', 'Biscuit'],
+    nameIdeas: ['Tango', 'Reef', 'Sunny', 'Mango', 'Biscuit'], // protandrous: neutral names only (names.ts)
     teaches: 'Salinity, live rock, reef-safe choices and social hierarchy',
     pathNote: 'Marine · reef path & pairing',
   },
@@ -87,7 +87,7 @@ export const STARTER_SETUPS: Record<StarterId, StarterSetup> = {
     saltKg: 10,
     sex: 'male',
     ageDays: 22,
-    nameIdeas: ['Ripple', 'Drift', 'Hitch', 'Atlas', 'Seraphina'],
+    nameIdeas: ['Ripple', 'Drift', 'Hitch', 'Atlas', 'Nereus'], // a male starter: no feminine-reading names (names.ts)
     teaches: 'Slow feeding, gentle flow, peaceful tank mates and male pregnancy',
     pathNote: 'Marine · advanced & magical',
   },

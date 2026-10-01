@@ -20,6 +20,14 @@ export interface SaveMeta {
   fromBackup?: boolean;
   /** Storage backend the listed copy lives in (a slow first visit can leave saves in localStorage). */
   backend?: BackendName;
+  /** lane:fix-core — identity of the game in the record (GameState.saveId), so "same aquarium?" checks are exact. */
+  saveId?: string;
+  /**
+   * lane:fix-core — this entry is the `.backup` copy of `previousOf` and holds a DIFFERENT aquarium than the slot's
+   * current record (the one a load or overwrite displaced). Listed so a mis-click is recoverable; its `slot` is the
+   * loadable reference `<slot>.backup`.
+   */
+  previousOf?: string;
 }
 
 export type SaveErrorCode = 'empty' | 'not_json' | 'not_a_save' | 'checksum' | 'too_new' | 'invalid' | 'too_large' | 'storage';
@@ -45,6 +53,10 @@ export interface SaveResult {
   backend?: string;
   /** Large photos stripped from the save to keep it small. */
   strippedPhotos?: number;
+  /** lane:fix-core — 'stale': another tab saved this aquarium more recently, so this tab's copy was not written. */
+  code?: 'stale';
+  /** lane:fix-core — the write only reached the in-memory backend (lost when the tab closes); `message` says so. */
+  degraded?: boolean;
 }
 
 export interface LoadResult {

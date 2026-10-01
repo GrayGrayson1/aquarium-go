@@ -159,6 +159,63 @@ export function isNight(game: GameState | null, tank: Tank | null | undefined): 
 }
 
 /**
+ * Real-time hysteresis for the listener's day/night flag. A game day is four real minutes at 1× (night is
+ * 100 s), so raw `isNight` would swap the score's key and tempo every 10–12 s at 10×. The gate only follows a
+ * change after it has held for `minHoldMs` and the current value has been in place for `minDwellMs`, and
+ * while fast-forwarding (speed ≥ 3) it keeps the current value: the music settles instead of chasing the clock.
+ * Pure (no Web Audio) — unit-tested.
+ */
+export class NightGate {
+  private held: boolean | null = null;
+  private heldSince = -Infinity;
+  private candidate: boolean | null = null;
+  private candidateSince = 0;
+
+  constructor(
+    readonly minHoldMs = 8000,
+    readonly minDwellMs = 45000,
+  ) {}
+
+  get value(): boolean | null {
+    return this.held;
+  }
+
+  /** Forget everything (new save / screen change): the next update adopts the raw value at once. */
+  reset(): void {
+    this.held = null;
+    this.candidate = null;
+  }
+
+  update(raw: boolean, speed: number, nowMs: number): boolean {
+    if (this.held === null) {
+      this.held = raw;
+      this.heldSince = nowMs;
+      this.candidate = null;
+      return raw;
+    }
+    if (raw === this.held) {
+      this.candidate = null;
+      return this.held;
+    }
+    if (speed >= 3) {
+      // fast-forward: hold the mood; the candidate clock restarts once the player slows down
+      this.candidate = null;
+      return this.held;
+    }
+    if (this.candidate !== raw) {
+      this.candidate = raw;
+      this.candidateSince = nowMs;
+    }
+    if (nowMs - this.candidateSince >= this.minHoldMs && nowMs - this.heldSince >= this.minDwellMs) {
+      this.held = raw;
+      this.heldSince = nowMs;
+      this.candidate = null;
+    }
+    return this.held;
+  }
+}
+
+/**
  * 0..1 estimate of how many visitors are in the building right now. The facility lane may override with an exact
  * value via `setVisitorPresence` (director.ts).
  */

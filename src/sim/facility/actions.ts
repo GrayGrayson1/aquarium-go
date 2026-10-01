@@ -87,22 +87,35 @@ export function upgradeFacility(state: GameState): ActionResult {
   fac.openHour = next.openHour;
   fac.closeHour = next.closeHour;
   if (fac.admission < next.defaultAdmission * 0.5) fac.admission = next.defaultAdmission;
-  // keep player-bought fixtures that still fit, then lay out the new room's defaults
+  // keep player-bought fixtures that still fit, then lay out the new room's defaults; every bought fixture that
+  // doesn't make the move (outside the new walls, in a doorway, or in the way of a tank afterwards) is refunded in full
   const kept = (fac.fixtures ?? []).filter((f) => !f.id.startsWith('fx_'));
+  const returned: string[] = [];
+  let refund = 0;
+  const giveBack = (f: FacilityState['fixtures'][number]) => {
+    const def = FIXTURE_DEFS[f.kind as FixtureKind];
+    if (!def || f.id.startsWith('fx_')) return;
+    returned.push(def.name.toLowerCase());
+    refund += def.price;
+  };
   fac.fixtures = [];
   for (const f of [...defaultFixtures(next), ...kept]) {
     if (fixtureFits(state, f.kind as FixtureKind, f.x, f.z, f.rotY, { ignoreTanks: true }).ok) fac.fixtures.push(f);
+    else giveBack(f);
   }
   const { moved, unplaced } = relayoutTanks(state, old);
-  // fixtures that ended up in the way of tanks after the move are dropped (refunded)
   const tanks = placedTanks(state);
   fac.fixtures = fac.fixtures.filter((f) => {
     const def = FIXTURE_DEFS[f.kind as FixtureKind];
     const o = { cx: f.x, cz: f.z, hx: (def?.w ?? 0.6) / 2, hz: (def?.d ?? 0.6) / 2, rot: f.rotY };
     const clash = tanks.some((t) => obbOverlap(o, tankFootprint(t.tierId, t.placement), 0.05) || obbOverlap(o, tankFrontZone(t.tierId, t.placement), 0));
-    if (clash && def && !f.id.startsWith('fx_')) earn(state, def.price, 'facility', `Refund: ${def.name}`);
+    if (clash) giveBack(f);
     return !clash;
   });
+  if (refund > 0 && !state.isShowcase) {
+    earn(state, refund, 'facility', `Refund: ${returned.length} fixture${returned.length === 1 ? '' : 's'} that didn’t fit the ${next.name}`);
+    emitEvent(state, { kind: 'info', text: `The movers returned ${returned.length === 1 ? withArticle(returned[0]) : `${returned.length} fixtures`} that didn’t fit the new floor plan — $${refund.toLocaleString()} refunded.` });
+  }
   if (next.order >= 1) {
     unlock(state, 'visitors');
     fac.openToPublic = true;
@@ -233,6 +246,7 @@ export function removeFixture(state: GameState, fixtureId: string): ActionResult
   if (!f) return { ok: false, message: 'Not found.' };
   fac.fixtures = fac.fixtures.filter((x) => x.id !== fixtureId);
   const def = FIXTURE_DEFS[f.kind as FixtureKind];
-  if (def && !state.isShowcase) earn(state, Math.round(def.price / 2), 'facility', `Sold: ${def.name}`);
+  // the room's own furniture (fx_*) came free and sells for nothing; bought fixtures fetch half price
+  if (def && !state.isShowcase && !f.id.startsWith('fx_')) earn(state, Math.round(def.price / 2), 'facility', `Sold: ${def.name}`);
   return { ok: true, message: `${def?.name ?? 'Fixture'} removed.` };
 }

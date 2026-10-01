@@ -19,22 +19,23 @@ import { findSpecies } from '@/data/species';
 import { tutorialChain, habitatPicks } from '@/data/quests';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { getFacilityLevel } from '@/data/facilities';
-import { buyTank, tankKitPrice } from '@/sim/economy';
+import { buyTank, tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
 import { findFreeSpot } from '@/sim/facility';
 import { removeEquipment, setEquipment, installEquipment, repairEquipment } from '@/sim/care';
 import { removeDecor } from '@/sim/aquascape';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
-import { usePanelGame, safe, useIsPhone } from '../common/hooks';
+import { formatTemp } from '@/ui/common/format';
+import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
 import { act } from '../common/act';
 import { Chip, Seg, Select, EmptyState, SectionHead, Callout, Bar, Checkbox, Tile } from '../common/parts';
 import { FacilityUpgradeCard } from '../common/FacilityUpgrade';
 import { EquipRow } from '../market/Supplies';
-import { takeOfferReturn, clearOfferReturn } from '../market/offerReturn'; // lane:qa-play
+import { takeOfferReturn, clearOfferReturn, peekOfferReturn } from '../market/offerReturn'; // lane:qa-play
 import { getGame } from '@/state/game'; // lane:qa-play
 import { orderedTanks, gallonsOf, unlocked, livingInTank } from '../common/derive';
 import { setBackdrop, changeSubstrate, substrateCost } from '../common/tankOps';
 import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
-import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural } from '../common/format';
+import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
 
 type Tab = 'tanks' | 'decor' | 'equipment' | 'substrate' | 'facility';
 
@@ -126,10 +127,15 @@ export function BuildPanel() {
 
 function TanksTab({ g }: { g: GameState }) {
   const { close } = useSheet();
-  const [wc, setWc] = useState<WaterClass>(() => (g.tanks[g.tankOrder[0]]?.waterClass as WaterClass) ?? 'freshwater_tropical');
+  const marineOk = unlocked(g, 'marine_basics');
+  const wcLocked = (w: WaterClass) => (w === 'brackish' ? !unlocked(g, 'brackish') : !w.startsWith('fresh') && (!marineOk || (w === 'reef' && !unlocked(g, 'reef')))); // lane:brackish
+  // lane:fix-panels (P2-03) — arriving from a shop offer's "New tank": start on the water that animal needs
+  const [wc, setWc] = useState<WaterClass>(() => {
+    const wanted = peekOfferReturn()?.waterClass;
+    return wanted && !wcLocked(wanted) ? wanted : ((g.tanks[g.tankOrder[0]]?.waterClass as WaterClass) ?? 'freshwater_tropical');
+  });
   const [seeded, setSeeded] = useState(true);
   const env = wc.startsWith('fresh') ? 'freshwater' : wc === 'brackish' ? 'brackish' : 'marine'; // lane:brackish
-  const marineOk = unlocked(g, 'marine_basics');
   const [a, b] = WATER_CLASS_TINT[wc];
 
   const place = (tier: TankTier) => {
@@ -158,7 +164,7 @@ function TanksTab({ g }: { g: GameState }) {
         <SectionHead title="1 · Water type" icon={<Waves size={14} />} />
         <div className="pn-wcgrid" role="radiogroup" aria-label="Water type">
           {PLAYABLE_WATER_CLASSES.map((w) => {
-            const locked = w === 'brackish' ? !unlocked(g, 'brackish') : !w.startsWith('fresh') && (!marineOk || (w === 'reef' && !unlocked(g, 'reef'))); // lane:brackish
+            const locked = wcLocked(w);
             const [ta, tb] = WATER_CLASS_TINT[w];
             return (
               <button key={w} type="button" role="radio" aria-checked={wc === w} disabled={locked} className={clsx('pn-wc', wc === w && 'is-on')} onClick={() => setWc(w)} title={locked ? 'Locked' : WATER_CLASS_BLURB[w]}>
@@ -192,7 +198,9 @@ function TanksTab({ g }: { g: GameState }) {
         <div className="pn-tiers">
           {TANK_TIERS.map((tier) => {
             const isUnlocked = unlocked(g, tier.unlock);
-            const kit = safe(() => tankKitPrice(tier.id, wc, seeded), { total: tier.price, tank: tier.price, equipment: 0, substrate: 0, seeded: 0 });
+            // lane:fix-integrate-ui — the kit this player actually gets (locked gear swapped for unlocked units), priced as buyTank charges it (S16-03)
+            const kit = safe(() => tankKitPrice(tier.id, wc, seeded, g), { total: tier.price, tank: tier.price, equipment: 0, substrate: 0, seeded: 0 });
+            const swap = isUnlocked ? safe(() => kitSwapLine(kitEquipmentFor(g, tier.id, wc)), null) : null;
             const afford = g.finance.money >= kit.total;
             const hint = tier.unlock ? UNLOCK_RULE_BY_KEY[tier.unlock]?.hint ?? UNLOCK_KEYS[tier.unlock as keyof typeof UNLOCK_KEYS] : '';
             return (
@@ -208,7 +216,14 @@ function TanksTab({ g }: { g: GameState }) {
                     {tier.dimsIn.l} × {tier.dimsIn.w} × {tier.dimsIn.h} in · {titleCase(tier.material)} · {tier.glassMm} mm
                   </div>
                   {isUnlocked ? (
-                    <div className="pn-small pn-dim">{tier.blurb}</div>
+                    <>
+                      <div className="pn-small pn-dim">{tier.blurb}</div>
+                      {swap && (
+                        <div className="pn-tiny pn-tone-watch" title={swap.full}>
+                          <Info size={11} style={{ verticalAlign: '-1px' }} /> {swap.short}
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="pn-small pn-muted">
                       <Lock size={11} style={{ verticalAlign: '-1px' }} /> {hint}
@@ -244,6 +259,18 @@ function TanksTab({ g }: { g: GameState }) {
       </section>
     </div>
   );
+}
+
+/** lane:fix-integrate-ui — the kit card's one-liner for locked default gear (S16-03); the sim's full note is the tooltip. */
+function kitSwapLine(kit: KitEquipment): { short: string; full: string } | null {
+  if (!kit.swaps.length) return null;
+  const parts = kit.swaps.map((sw) => {
+    const to = sw.to ? getEquipmentDef(sw.to) : undefined;
+    return to ? `${sw.count > 1 ? `${sw.count} × ` : ''}${to.name}` : `no ${getEquipmentDef(sw.from)?.name ?? sw.from}`;
+  });
+  const keys = [...new Set(kit.swaps.map((sw) => getEquipmentDef(sw.from)?.unlock).filter((k): k is NonNullable<typeof k> => !!k))];
+  const unlocks = keys.map((k) => (UNLOCK_KEYS as Record<string, string>)[k] ?? k.replace(/_/g, ' '));
+  return { short: `Ships with ${nameList(parts)}${unlocks.length ? ` until you unlock ${nameList(unlocks)}` : ''}.`, full: kitSwapNote(kit) };
 }
 
 function TierSilhouette({ tier, tintA, tintB, locked }: { tier: TankTier; tintA: string; tintB: string; locked: boolean }) {
@@ -557,9 +584,10 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
 
 // ───────────────────────── Equipment ─────────────────────────
 
-const SETTING_META: Record<string, { label: string; min: number; max: number; step: number; fmt: (v: number) => string }> = {
-  heater: { label: 'Target', min: 18, max: 32, step: 0.5, fmt: (v) => `${v.toFixed(1)} °C` },
-  chiller: { label: 'Target', min: 12, max: 26, step: 0.5, fmt: (v) => `${v.toFixed(1)} °C` },
+// Temperatures are stored in °C; fmt shows them in the player's unit (Settings › Temperature).
+const SETTING_META: Record<string, { label: string; min: number; max: number; step: number; fmt: (v: number, unit: 'C' | 'F') => string }> = {
+  heater: { label: 'Target', min: 18, max: 32, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
+  chiller: { label: 'Target', min: 12, max: 26, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
   light: { label: 'Intensity', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
   powerhead: { label: 'Flow', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
   wavemaker: { label: 'Flow', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
@@ -590,6 +618,7 @@ function EquipIcon({ kind }: { kind?: string }) {
 }
 
 function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
+  const { unit: tempUnit } = useTempText();
   const tank = g.tanks[tankId];
   const gal = gallonsOf(tank);
   const installed = tank.equipment;
@@ -646,7 +675,7 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
                       <div className="pn-equip__setting">
                         <div className="pn-metric__row">
                           <span>{meta.label}</span>
-                          <span className="pn-metric__val">{meta.fmt(inst.setting)}</span>
+                          <span className="pn-metric__val">{meta.fmt(inst.setting, tempUnit)}</span>
                         </div>
                         <Slider value={inst.setting} min={meta.min} max={meta.max} step={meta.step} onChange={(v) => act((d) => setEquipment(d, tankId, inst.id, { setting: v }), { sound: null, quiet: true })} label={`${def?.name} ${meta.label}`} />
                       </div>

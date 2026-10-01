@@ -5,7 +5,7 @@
  * Design language: dark frosted glass, 1px light borders, Fraunces for names/titles, Inter for UI.
  * Status is always icon + word + colour. Touch targets ≥ 40px on primary controls.
  */
-import { useEffect, useId, useRef, type ReactNode, type ButtonHTMLAttributes, type CSSProperties, type InputHTMLAttributes } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type ButtonHTMLAttributes, type CSSProperties, type InputHTMLAttributes } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { CircleCheck, TriangleAlert, OctagonAlert, X, Minus, Plus, Lock } from 'lucide-react';
@@ -154,6 +154,8 @@ export function Section({ title, children, actions }: { title?: ReactNode; child
   );
 }
 
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Modal({ open, onClose, title, subtitle, children, actions, width, testId }: { open: boolean; onClose: () => void; title?: ReactNode; subtitle?: ReactNode; children: ReactNode; actions?: ReactNode; width?: number; testId?: string }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -165,6 +167,29 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
       if (e.key === 'Escape') {
         e.stopPropagation();
         closeRef.current();
+      } else if (e.key === 'Tab') {
+        // aria-modal promises the rest of the page is out of reach: Tab cycles inside the dialog (it used to walk out
+        // into the toasts, the panel and the speed control behind the backdrop)
+        const root = wrapRef.current;
+        if (!root) return;
+        const items = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.tabIndex >= 0 && el.offsetParent !== null);
+        if (!items.length) {
+          e.preventDefault();
+          return;
+        }
+        const first = items[0];
+        const last = items[items.length - 1];
+        const cur = document.activeElement;
+        if (!root.contains(cur)) {
+          e.preventDefault();
+          (e.shiftKey ? last : first).focus();
+        } else if (e.shiftKey && cur === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && cur === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     window.addEventListener('keydown', onKey, true);
@@ -231,8 +256,41 @@ export function Toggle({ checked, onChange, label, disabled, testId }: { checked
   );
 }
 
+/**
+ * A control's value that answers the player at once. Cards read a throttled game snapshot (up to 500 ms old), so a
+ * controlled slider snapped back mid-drag and quick stepper presses were lost. The local value follows the player;
+ * a prop that arrives later and disagrees within ~1.2 s is a stale snapshot and is ignored, after which the prop
+ * (or a rejected change) wins again.
+ */
+function useOptimisticValue(value: number, onChange: (v: number) => void): [number, (v: number) => void] {
+  const [local, setLocal] = useState(value);
+  const pending = useRef<{ v: number; at: number } | null>(null);
+  const latest = useRef(value);
+  latest.current = value;
+  const resync = useRef(0);
+  useEffect(() => {
+    const p = pending.current;
+    if (p && p.v !== value && performance.now() - p.at < 1200) return;
+    pending.current = null;
+    setLocal(value);
+  }, [value]);
+  useEffect(() => () => window.clearTimeout(resync.current), []);
+  const change = (v: number) => {
+    pending.current = { v, at: performance.now() };
+    setLocal(v);
+    onChange(v);
+    window.clearTimeout(resync.current);
+    resync.current = window.setTimeout(() => {
+      pending.current = null;
+      setLocal(latest.current);
+    }, 1300);
+  };
+  return [local, change];
+}
+
 export function Slider({ value, min = 0, max = 1, step = 0.01, onChange, label, disabled }: { value: number; min?: number; max?: number; step?: number; onChange: (v: number) => void; label: string; disabled?: boolean }) {
-  const pct = ((Number.isFinite(value) ? value : min) - min) / (max - min || 1);
+  const [cur, change] = useOptimisticValue(Number.isFinite(value) ? value : min, onChange);
+  const pct = ((Number.isFinite(cur) ? cur : min) - min) / (max - min || 1);
   return (
     <input
       className="ag-slider"
@@ -241,10 +299,10 @@ export function Slider({ value, min = 0, max = 1, step = 0.01, onChange, label, 
       min={min}
       max={max}
       step={step}
-      value={Number.isFinite(value) ? value : min}
+      value={Number.isFinite(cur) ? cur : min}
       disabled={disabled}
       style={{ ['--fill' as string]: `${Math.max(0, Math.min(1, pct)) * 100}%` }}
-      onChange={(e) => onChange(Number(e.target.value))}
+      onChange={(e) => change(Number(e.target.value))}
     />
   );
 }
@@ -324,14 +382,15 @@ export function Segmented<T extends string | number>({ value, onChange, items, l
 }
 
 /** −  value  + stepper (setpoints, schedules). */
-export function Stepper({ value, onChange, min = -Infinity, max = Infinity, step = 1, format, label, disabled }: {
+export function Stepper({ value: prop, onChange, min = -Infinity, max = Infinity, step = 1, format, label, disabled }: {
   value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number; format?: (v: number) => ReactNode; label: string; disabled?: boolean;
 }) {
+  const [value, change] = useOptimisticValue(prop, onChange);
   const set = (v: number) => {
-    const nv = Math.round(Math.max(min, Math.min(max, v)) / step) * step;
+    const nv = Number((Math.round(Math.max(min, Math.min(max, v)) / step) * step).toFixed(4));
     if (nv !== value) {
       sfx('click');
-      onChange(Number(nv.toFixed(4)));
+      change(nv);
     }
   };
   return (

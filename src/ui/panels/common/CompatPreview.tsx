@@ -9,6 +9,7 @@ import { CircleCheck, Info, TriangleAlert, OctagonAlert, Ban, ChevronDown, Light
 import type { CompatReason, CompatReport, CompatVerdict } from '@/types';
 import { StatusBadge } from '@/ui/kit';
 import { VERDICT_LABEL, verdictStatus, pct } from './format';
+import { useTempText } from './hooks';
 import { CompatView, VerdictBadge as ShellVerdictBadge } from '@/ui/common/CompatView';
 
 const SEV_ICON = {
@@ -42,6 +43,7 @@ function LocalVerdictBadge({ verdict, testId }: { verdict: CompatVerdict; testId
 
 export function ReasonRow({ r }: { r: CompatReason }) {
   const Icon = SEV_ICON[r.severity] ?? Info;
+  const { t } = useTempText();
   return (
     <li className={clsx('pn-reason', `pn-reason--${r.severity}`)} data-testid="compat-reason">
       <span className="pn-reason__icon" aria-hidden>
@@ -50,12 +52,12 @@ export function ReasonRow({ r }: { r: CompatReason }) {
       <div className="pn-reason__body">
         <div className="pn-reason__text">
           <span className="pn-sr">{SEV_WORD[r.severity]}: </span>
-          {r.text}
+          {t(r.text)}
           {typeof r.probability === 'number' && r.probability > 0 && <span className="pn-reason__prob"> · ~{pct(Math.min(1, r.probability))} chance per week</span>}
         </div>
         {r.mitigation && (
           <div className="pn-reason__mit">
-            <Lightbulb size={12} aria-hidden /> {r.mitigation}
+            <Lightbulb size={12} aria-hidden /> {t(r.mitigation)}
           </div>
         )}
       </div>

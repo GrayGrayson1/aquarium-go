@@ -64,14 +64,16 @@ describe('core migrations', () => {
     const g = JSON.parse(JSON.stringify(newGame({ starterId: 'axolotl', starterName: 'R', seed: 21 })));
     const starter = Object.values(g.creatures)[0] as { id: string; tankId: string };
     g.creatures.cr_ghost_zz = { ...JSON.parse(JSON.stringify(starter)), id: 'cr_ghost_zz', speciesId: 'unicorn_fish' };
-    g.creatures.cr_orphan_zz = { ...JSON.parse(JSON.stringify(starter)), id: 'cr_orphan_zz', tankId: 'tank_missing' };
-    delete g.creatures.cr_orphan_zz.stats.hunger;
+    // lane:fix-core (P5-12): only nextId-shaped ids (`prefix_<n>`) drive the counter — an id like cr_orphan_zz can't
+    // collide with one, and counting it (as the starter's cr_starter_<seed> was) changed every id born after a load.
+    g.creatures.cr_zz = { ...JSON.parse(JSON.stringify(starter)), id: 'cr_zz', tankId: 'tank_missing' };
+    delete g.creatures.cr_zz.stats.hunger;
     g.idCounter = 0;
     g.clock.hour = 'noon';
     const notes = repairState(g);
     expect(g.creatures.cr_ghost_zz).toBeUndefined();
-    expect(g.creatures.cr_orphan_zz.tankId).toBeNull();
-    expect(typeof g.creatures.cr_orphan_zz.stats.hunger).toBe('number');
+    expect(g.creatures.cr_zz.tankId).toBeNull();
+    expect(typeof g.creatures.cr_zz.stats.hunger).toBe('number');
     expect(g.clock.hour).toBe(8);
     expect(g.idCounter).toBeGreaterThanOrEqual(parseInt('zz', 36));
     expect(notes.length).toBeGreaterThan(0);

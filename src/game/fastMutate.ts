@@ -137,6 +137,14 @@ function publish(current: GameState): void {
       return;
     }
     useGame.getState().setGame(next);
+    // lane:fix-core (S06-05) — a store subscriber may mutate synchronously inside setGame (an achievement pop, an
+    // auto-pause). Then the store no longer holds `next`; remembering the subscriber's state as "published" would
+    // make the next call reuse the stale working copy and silently revert that write. Drop the copy instead.
+    if (useGame.getState().game !== next) {
+      work = null;
+      published = null;
+      return;
+    }
   }
   published = useGame.getState().game;
 }

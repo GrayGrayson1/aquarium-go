@@ -33,9 +33,9 @@ import { useRenderQuality } from '@/render/shared/quality'; // lane:pc-perf
 import type { QualityLevel } from '@/types';
 import { sfx } from '@/audio/sfx';
 import { Sheet } from '../common/Sheet';
-import { Button, Row, Segmented, Slider, Tabs, Toggle, Section } from '../kit';
+import { Button, Row, Segmented, Slider, Tabs, Toggle, Section, Modal } from '../kit';
 import { usePrefs } from '../common/prefs';
-import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, type SaveMeta } from '../common/saves';
+import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, type SaveMeta } from '../common/saves';
 import { SaveRow } from '../screens/LoadDialog';
 
 type Tab = 'general' | 'display' | 'saves' | 'about';
@@ -158,7 +158,7 @@ function DisplayTab() {
         </Row>
       </Section>
       <Section title="Gameplay">
-        <Row label="Temperature" description="Used everywhere temperatures are shown." icon={<Thermometer size={16} />}>
+        <Row label="Temperature" description="Cards, panels and the guide show temperatures in this unit." icon={<Thermometer size={16} />}>
           <Segmented size="sm" label="Temperature unit" value={s.tempUnit} onChange={(u) => up({ tempUnit: u })} items={[{ id: 'C', label: '°C' }, { id: 'F', label: '°F' }]} />
         </Row>
         <Row label="Exact water values" description="Show numbers, not just Good / Watch / Danger." icon={<FlaskConical size={16} />}>
@@ -187,11 +187,20 @@ function DisplayTab() {
   );
 }
 
+type SaveConfirm = { kind: 'load'; slot: string } | { kind: 'overwrite'; slot: string };
+
+/**
+ * lane:fix-core (P7-03/S14-05/S06-07) — Load and Overwrite in the save list used to act on one click: the running
+ * game was replaced (or a checkpoint destroyed) with no confirmation and nothing saved first. Both now confirm in a
+ * modal that says what happens to the current game; loading autosaves it first (loadIntoGame) and can park it in a
+ * free slot; a displaced slot's previous copy is listed as "Previous …" so an overwrite can be undone.
+ */
 function SavesTab() {
   const game = useGame((s) => s.game);
   const inGame = !!game && !game.isShowcase;
   const [saves, setSaves] = useState<SaveMeta[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState<SaveConfirm | null>(null);
   const [importSlot, setImportSlot] = useState<string>('slot3');
   const [importError, setImportError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -201,51 +210,79 @@ function SavesTab() {
     return watchSaves(() => void refresh());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const bySlot = new Map((saves ?? []).map((s) => [s.slot, s]));
+  const previousOf = (slot: string) => (saves ?? []).find((s) => s.previousOf === slot);
+
+  const doLoad = async (slot: string) => {
+    setBusy(true);
+    const g = await loadIntoGame(slot);
+    setBusy(false);
+    if (g) useUI.getState().set({ panel: null });
+    else void refresh();
+  };
+  const doOverwrite = async (slot: string) => {
+    setBusy(true);
+    await saveNow(slot, true);
+    setBusy(false);
+    void refresh();
+  };
+  // Load in game asks first; from the title there is nothing running to lose.
+  const askLoad = (slot: string) => (inGame ? setConfirm({ kind: 'load', slot }) : void doLoad(slot));
+
+  const target = confirm ? bySlot.get(confirm.slot) : undefined;
+  const advice = confirm?.kind === 'load' ? loadKeepAdvice(saves ?? [], game) : null;
+  const sameAsRunning = !!(target && game && isSameGame(target, game));
+  const describe = (m: SaveMeta | undefined) => (m ? `${m.shopName} (Day ${m.day}, saved ${timeAgo(m.savedAt)})` : '');
+
   return (
     <>
       <Section title="Save slots">
         <div className="ag-savelist">
           {SAVE_SLOTS.map((slot) => {
             const meta = bySlot.get(slot);
-            if (meta)
-              return (
-                <div key={slot} className="ag-slotwrap">
-                  <SaveRow
-                    s={meta}
-                    busy={busy}
-                    onLoad={
-                      game?.saveId && inGame && slot === 'auto'
-                        ? undefined
-                        : async () => {
-                            setBusy(true);
-                            const g = await loadIntoGame(slot);
-                            setBusy(false);
-                            if (g) useUI.getState().set({ panel: null });
-                          }
-                    }
-                    onDelete={async () => {
-                      await deleteSlot(slot);
-                      void refresh();
-                    }}
-                  />
-                  {inGame && slot !== 'auto' && (
-                    <Button size="sm" variant="ghost" disabled={busy} onClick={async () => { setBusy(true); await saveNow(slot, true); setBusy(false); void refresh(); }}>
-                      <Save size={14} /> Overwrite with current game
-                    </Button>
-                  )}
-                </div>
-              );
-            return (
+            const prev = previousOf(slot);
+            const row = meta ? (
+              <div key={slot} className="ag-slotwrap">
+                <SaveRow
+                  s={meta}
+                  busy={busy}
+                  onLoad={game?.saveId && inGame && slot === 'auto' ? undefined : () => askLoad(slot)}
+                  onDelete={async () => {
+                    await deleteSlot(slot);
+                    void refresh();
+                  }}
+                />
+                {inGame && slot !== 'auto' && (
+                  <Button size="sm" variant="ghost" disabled={busy} data-testid={`save-overwrite-${slot}`} onClick={() => setConfirm({ kind: 'overwrite', slot })}>
+                    <Save size={14} /> Overwrite with current game
+                  </Button>
+                )}
+              </div>
+            ) : (
               <div key={slot} className="ag-saverow ag-saverow--empty">
                 <div className="ag-grow">
                   <div className="ag-saverow__title">{slotLabel(slot)}</div>
                   <div className="ag-saverow__meta">Empty</div>
                 </div>
                 {inGame && slot !== 'auto' && (
-                  <Button size="sm" disabled={busy} onClick={async () => { setBusy(true); await saveNow(slot, true); setBusy(false); void refresh(); }}>
+                  <Button size="sm" disabled={busy} data-testid={`save-here-${slot}`} onClick={() => void doOverwrite(slot)}>
                     <Save size={14} /> Save here
                   </Button>
                 )}
+              </div>
+            );
+            if (!prev) return row;
+            return (
+              <div key={slot} className="ag-slotwrap">
+                {row}
+                <SaveRow
+                  s={prev}
+                  busy={busy}
+                  onLoad={() => askLoad(prev.slot)}
+                  onDelete={async () => {
+                    await deleteSlot(prev.slot);
+                    void refresh();
+                  }}
+                />
               </div>
             );
           })}
@@ -296,6 +333,81 @@ function SavesTab() {
           </Button>
         </Section>
       )}
+      <Modal
+        open={confirm?.kind === 'load'}
+        onClose={() => setConfirm(null)}
+        title={`Load ${slotLabel(confirm?.slot ?? '')}?`}
+        subtitle={sameAsRunning ? 'This is an earlier copy of the aquarium you are playing. Your current progress is saved to Autosave first.' : 'Your current game is saved to Autosave first.'}
+        width={540}
+        testId="load-confirm"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button>
+            {!sameAsRunning && advice?.freeSlot && (
+              <Button
+                data-testid="load-confirm-park"
+                onClick={async () => {
+                  const slot = confirm!.slot;
+                  const park = advice.freeSlot!;
+                  setConfirm(null);
+                  setBusy(true);
+                  const ok = await saveNow(park, true);
+                  setBusy(false);
+                  if (ok) await doLoad(slot);
+                  else void refresh();
+                }}
+              >
+                Save to {slotLabel(advice.freeSlot)} &amp; load
+              </Button>
+            )}
+            <Button
+              variant="primary"
+              data-testid="load-confirm-load"
+              onClick={() => {
+                const slot = confirm!.slot;
+                setConfirm(null);
+                void doLoad(slot);
+              }}
+            >
+              Load
+            </Button>
+          </>
+        }
+      >
+        <p className="ag-muted" style={{ margin: 0 }}>
+          {target ? `${describe(target)} replaces what you see now.` : ''} {!sameAsRunning && advice ? advice.text : ''}
+        </p>
+      </Modal>
+      <Modal
+        open={confirm?.kind === 'overwrite'}
+        onClose={() => setConfirm(null)}
+        title={`Replace ${slotLabel(confirm?.slot ?? '')}?`}
+        subtitle={target ? `${slotLabel(target.slot)} holds ${describe(target)}.` : undefined}
+        width={460}
+        testId="overwrite-confirm"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>Keep it</Button>
+            <Button
+              variant="danger"
+              data-testid="overwrite-confirm-replace"
+              onClick={() => {
+                const slot = confirm!.slot;
+                setConfirm(null);
+                void doOverwrite(slot);
+              }}
+            >
+              Replace
+            </Button>
+          </>
+        }
+      >
+        <p className="ag-muted" style={{ margin: 0 }}>
+          {sameAsRunning
+            ? `It will be brought up to date with the aquarium you are playing (Day ${Math.floor((game?.clock.hour ?? 0) / 24) + 1}).`
+            : `It will be replaced with ${game?.shopName ?? 'your current game'} (Day ${Math.floor((game?.clock.hour ?? 0) / 24) + 1}). The old copy stays listed as “${slotLabel((confirm?.slot ?? '') + '.backup')}”, so this can be undone.`}
+        </p>
+      </Modal>
     </>
   );
 }

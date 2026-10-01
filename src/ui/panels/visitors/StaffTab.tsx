@@ -11,7 +11,7 @@ import { Button, Slider, formatMoney } from '@/ui/kit';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { STAFF_NOTICE_DAYS, STAFF_ROLES, STAFF_ROLE_ORDER, STAFF_TRAITS, STAFF_XP_PER_LEVEL, STOCK_BUDGET, skillStars } from '@/data/staff';
 import { getFacilityLevel } from '@/data/facilities';
-import { dayOf, formatClock } from '@/sim/time';
+import { dayOf } from '@/sim/time';
 import {
   assignTank,
   autoAssignAll,
@@ -32,6 +32,7 @@ import { safe } from '../common/hooks';
 import { EmptyState, SectionHead, Tile, Bar, Callout } from '../common/parts';
 import { Requirements, reqsFor } from '../common/Requirements';
 import { orderedTanks, unlocked } from '../common/derive';
+import { poolWhen } from '../common/format';
 import { StaffAvatar } from './StaffAvatar';
 import { tutorialAdvance } from '@/sim/facility'; // lane:w2-ui
 import './staff.css';
@@ -74,7 +75,6 @@ export function StaffTab({ g }: { g: GameState }) {
   const issues = roster.flatMap((m) => (m.today?.day === dayOf(g.clock.hour) ? m.today.issues.map((t) => ({ who: first(m), t })) : []));
   const unpaid = roster.filter((m) => (m.unpaidDays ?? 0) > 0);
   const order = [...roster].sort((a, b) => STAFF_ROLE_ORDER.indexOf(a.role) - STAFF_ROLE_ORDER.indexOf(b.role) || a.hiredHour - b.hiredHour);
-  const poolIn = st ? Math.max(0, st.nextPoolHour - g.clock.hour) : 0;
   return (
     <div className="pn-stack pn-stack--lg st-tab" data-testid="staff-tab">
       <HiredFlagSync g={g} />
@@ -91,7 +91,7 @@ export function StaffTab({ g }: { g: GameState }) {
 
       {unpaid.length > 0 && (
         <Callout tone="danger" icon={<TriangleAlert size={16} />} title="Wages unpaid">
-          {unpaid.map((m) => `${first(m)} hasn’t been paid for ${m.unpaidDays} day${m.unpaidDays === 1 ? '' : 's'}`).join(' · ')}. Anyone unpaid for {STAFF_NOTICE_DAYS} days leaves — your animals stay safe either way.
+          {unpaid.map((m) => `${first(m)} hasn’t been paid for ${m.unpaidDays} day${m.unpaidDays === 1 ? '' : 's'}`).join(' · ')}. Anyone unpaid for {STAFF_NOTICE_DAYS} days leaves — you’ll be feeding and cleaning yourself until you can rehire.
         </Callout>
       )}
       {issues.length > 0 && (
@@ -130,7 +130,7 @@ export function StaffTab({ g }: { g: GameState }) {
       <section>
         <SectionHead title="Hiring" icon={<UserPlus size={14} />}>
           <span className="pn-tiny pn-muted st-pool-clock">
-            <Clock size={12} aria-hidden /> New faces {poolIn < 20 ? `tomorrow at ${formatClock(8)}` : `in ${Math.max(1, Math.round(poolIn / 24))} days`}
+            <Clock size={12} aria-hidden /> New faces {poolWhen(st?.nextPoolHour ?? -1, g.clock.hour)}
           </span>
         </SectionHead>
         {roster.length >= cap && (st?.candidates.length ?? 0) > 0 && (

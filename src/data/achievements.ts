@@ -40,7 +40,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'reefkeeper', title: 'Reefkeeper', description: 'Run a reef aquarium.', cond: { type: 'tanks', min: 1, reef: true }, reputation: 8, icon: 'Flower2', tier: 'silver' },
   { id: 'estuary_keeper', title: 'Where Rivers Meet', description: 'Run a brackish estuary aquarium.', cond: { type: 'tanks', min: 1, env: 'brackish' }, reputation: 5, icon: 'Droplets', tier: 'silver' }, // lane:brackish
   { id: 'aquascaper', title: 'Aquascaper', description: 'Aquascape a tank yourself to a beauty score of 80.', cond: { type: 'beauty', min: 80, scaped: SCAPED_EDITS }, reputation: 6, icon: 'Sparkles', tier: 'silver' },
-  { id: 'living_art', title: 'Living Art', description: 'Aquascape a tank yourself to a beauty score of 95.', cond: { type: 'beauty', min: 95, scaped: SCAPED_EDITS }, reputation: 15, icon: 'Gem', tier: 'gold' },
+  { id: 'living_art', title: 'Living Art', description: 'Aquascape a tank yourself to a beauty score of 95.', cond: { type: 'beauty', min: 95, scaped: SCAPED_EDITS, ownLayout: true }, reputation: 15, icon: 'Gem', tier: 'gold' },
   { id: 'five_tanks', title: 'Fish Room', description: 'Run 5 aquariums.', cond: { type: 'tanks', min: 5 }, reputation: 5, icon: 'LayoutGrid', tier: 'bronze' },
   { id: 'twelve_tanks', title: 'Exhibit Hall', description: 'Run 12 aquariums.', cond: { type: 'tanks', min: 12 }, reputation: 12, icon: 'LayoutDashboard', tier: 'silver' },
   { id: 'big_water', title: 'Big Water', description: 'Run a 300-gallon aquarium.', cond: { type: 'tanks', min: 1, minGallons: 300 }, reputation: 10, icon: 'Maximize', tier: 'silver' },

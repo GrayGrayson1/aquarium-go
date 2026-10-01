@@ -58,7 +58,7 @@ import { speciesWaterComfort } from '@/sim/water';
 import { isUnlocked } from '@/sim/facility';
 import { getTankTier } from '@/data/catalog/tanks';
 import { Sheet } from '../common/Sheet';
-import { useDockedCard } from '../hud/cardDock';
+import { enterCinematic, useDockedCard } from '../hud/cardDock';
 import { Portrait } from '../common/Portrait';
 import { safe, useGameThrottled, useInterval } from '../common/safe';
 import { act, tutorialFlag } from '../common/actions';
@@ -486,7 +486,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
             setCameraMode('follow');
           }
         }} />
-        <ActionBtn icon={<Camera size={17} />} label="Photo" onClick={() => { sfx('camera'); useUI.getState().set({ photoMode: true, followCreatureId: c.id }); tutorialFlag('opened_photo'); }} />
+        <ActionBtn icon={<Camera size={17} />} label="Photo" onClick={() => { sfx('camera'); enterCinematic('photo', { followCreatureId: c.id }); tutorialFlag('opened_photo'); }} />
         <ActionBtn icon={<Star size={17} fill={c.favorite ? 'currentColor' : 'none'} />} label={c.favorite ? 'Favourite' : 'Favourite'} active={!!c.favorite} disabled={readOnly} onClick={() => act((d) => { toggleFavorite(d, c.id); }, { toast: false, sound: 'click' })} />
         <ActionBtn icon={<ArrowRightLeft size={17} />} label="Move" disabled={readOnly || c.status !== 'alive'} onClick={() => { sfx('open'); useShell.getState().set({ moveCreatureId: c.id }); }} />
         <ActionBtn icon={<Tag size={17} />} label="Sell" disabled={readOnly || c.status !== 'alive'} onClick={() => { sfx('open'); useUI.getState().set({ panel: 'market', panelTarget: `list:creature:${c.id}` }); }} />
@@ -528,7 +528,9 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           <Meter label="Comfort" value={c.stats.comfort} tone="auto" display={levelWord(c.stats.comfort)} />
           <Meter label="Stress" value={c.stats.stress} tone="auto" invert display={stressWord(c.stats.stress)} />
           <Meter label="Social" value={c.stats.social} tone="auto" display={levelWord(c.stats.social)} />
-          <Meter label="Enrichment" value={c.stats.enrichment} tone="auto" display={c.stats.enrichment < 30 ? 'Bored' : levelWord(c.stats.enrichment)} />
+          {/* "Thriving" starts at enrichment > 55 (sim/life/index.ts): the same cut here, so a day-1 starter at ~58 is not
+              "Good · Thriving" with an orange "Enrichment: Low" underneath */}
+          <Meter label="Enrichment" value={c.stats.enrichment} tone={c.stats.enrichment > 55 ? 'good' : 'auto'} display={c.stats.enrichment < 30 ? 'Bored' : levelWord(c.stats.enrichment > 55 ? Math.max(60, c.stats.enrichment) : c.stats.enrichment)} />
         </div>
         {comfort && comfort.stressors.length > 0 && (
           <ul className="ag-stressors">

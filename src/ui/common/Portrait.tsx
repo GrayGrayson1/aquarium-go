@@ -53,8 +53,14 @@ function PortraitInner({ subject, speciesId, size = 256, className, shape = 'rou
   const src = subject ? usePortrait(subject, size) : useSpeciesPortrait(sid, size); // eslint-disable-line react-hooks/rules-of-hooks -- `subject` presence is stable per mount (keyed by parent)
   if (!src) return <PortraitFallback subject={subject} speciesId={speciesId} className={className} shape={shape} style={style} />;
   const { c1, c2 } = fallbackColors(subject, speciesId);
+  // portraits are square renders; a card shows them in a wide box, where the cover crop took an upright animal's head
+  // and tail (the starter seahorse lost its coronet): those are shown whole over a blurred fill of their own backdrop
+  const upright = shape === 'card' && findSpecies(sid)?.behaviorSet === 'seahorse';
   return (
-    <div className={clsx('ag-portrait', `ag-portrait--${shape}`, className)} style={{ ...style, ['--p1' as string]: c1, ['--p2' as string]: c2 }}>
+    <div
+      className={clsx('ag-portrait', `ag-portrait--${shape}`, upright && 'ag-portrait--upright', className)}
+      style={{ ...style, ['--p1' as string]: c1, ['--p2' as string]: c2, ...(upright ? { ['--portrait-src' as string]: `url("${src}")` } : null) }}
+    >
       <img src={src} alt={alt ?? ''} draggable={false} />
     </div>
   );

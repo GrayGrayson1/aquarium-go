@@ -11,6 +11,12 @@ import { SpeciesPortrait } from '../common/Portrait';
 import { speciesOf } from '../common/derive';
 import { LISTING_KIND_LABEL, relTime, untilTime } from '../common/format';
 
+/** lane:fix-panels — "+12%", "−8%", or "±0%" for a demand within half a percent of normal (no more "−0%"). */
+function demandDelta(m: number): string {
+  const d = Math.round((m - 1) * 100);
+  return d === 0 ? '±0%' : `${d > 0 ? '+' : '−'}${Math.abs(d)}%`;
+}
+
 export function TrendsTab({ g }: { g: GameState }) {
   const demand = useMemo(() => {
     const discovered = new Set(g.progress.discoveredSpecies);
@@ -22,7 +28,10 @@ export function TrendsTab({ g }: { g: GameState }) {
   }, [g.market.demand, g.progress.discoveredSpecies, g.creatures]);
 
   const history = [...g.market.history].sort((a, b) => b.hour - a.hour);
-  const total = history.reduce((a, h) => a + h.price, 0);
+  // lane:fix-panels — the history list is capped (200), so "all time" comes from the lifetime counters when they exist
+  const counters = g.progress.counters ?? {};
+  const sales = Math.max(counters.sales ?? 0, history.length);
+  const total = Math.max(counters.salesRevenue ?? 0, history.reduce((a, h) => a + h.price, 0));
   const best = history.reduce<(typeof history)[number] | null>((m, h) => (!m || h.price > m.price ? h : m), null);
   const hot = demand.filter((d) => d.m >= 1.08);
   const cold = demand.filter((d) => d.m <= 0.92);
@@ -30,8 +39,8 @@ export function TrendsTab({ g }: { g: GameState }) {
   return (
     <div className="pn-stack pn-stack--lg">
       <div className="pn-grid pn-grid--tiles">
-        <Tile icon={<Receipt size={14} />} tone="gold" label="Sales" value={history.length} hint="all time" />
-        <Tile icon={<TrendingUp size={14} />} tone="good" label="Revenue" value={<Money value={total} />} hint="from listings" />
+        <Tile icon={<Receipt size={14} />} tone="gold" label="Sales" value={sales} hint="all time" />
+        <Tile icon={<TrendingUp size={14} />} tone="good" label="Revenue" value={<Money value={total} />} hint="all sales" />
         <Tile icon={<Trophy size={14} />} tone="gold" label="Best sale" value={best ? <Money value={best.price} /> : '—'} hint={best ? best.title : 'no sales yet'} />
       </div>
 
@@ -84,8 +93,7 @@ export function TrendsTab({ g }: { g: GameState }) {
                     <span className="pn-demandchip__v">
                       <Icon size={13} aria-hidden />
                       <span className="pn-sr">{up ? 'rising' : down ? 'falling' : 'steady'}</span>
-                      {m >= 1 ? '+' : '−'}
-                      {Math.abs(Math.round((m - 1) * 100))}%
+                      {demandDelta(m)}
                     </span>
                   </button>
                 );

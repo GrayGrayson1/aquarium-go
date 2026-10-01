@@ -23,11 +23,13 @@ import { sfx } from '@/audio/sfx';
 import { EventIcon, type AnyKind } from './eventIcons';
 import { focusTank } from './AlertsPopover';
 import { useShell } from '../common/shellStore';
-import { safe, useMedia } from '../common/safe';
+import { MOBILE_QUERY, safe, useMedia } from '../common/safe';
 import { tutorialChain } from '@/data/quests';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { useDockedCard } from './cardDock';
 import { UNLOCK_KEYS } from '@/data/unlockKeys'; // lane:w2-ui
+import { convertTempText } from '../common/format';
+import { isExpired, pickShown, prio, ttlOf } from './toastQueue';
 
 interface Entry {
   key: string;
@@ -44,15 +46,12 @@ interface Entry {
   rev: number;
 }
 
-const PRIORITY: Partial<Record<AnyKind, number>> = { death: 6, danger: 6, warning: 5, celebrate: 4, unlock: 4, breeding: 4, market: 3, visitor: 3, success: 2, info: 1, tip: 1 };
-const TTL: Partial<Record<AnyKind, number>> = { death: 9000, danger: 8500, warning: 6500, celebrate: 5200, unlock: 5000, breeding: 5500, market: 4600, visitor: 4200, success: 3000, info: 3400, tip: 3000 };
 const MERGE_WINDOW = 6000;
 /** Routine news that waited this long in the queue is dropped (it is in the event log). */
 const STALE_MS = 9000;
 
-const prio = (k: AnyKind) => PRIORITY[k] ?? 2;
 /** Routine news that never made it on screen within STALE_MS. */
-const isStale = (e: Entry, now: number, shown: Set<string>) => prio(e.kind) <= 3 && now - e.born > STALE_MS && !shown.has(e.key);
+const isStale = (e: Entry, now: number, shown: ReadonlyMap<string, number>) => prio(e.kind) <= 3 && now - e.born > STALE_MS && !shown.has(e.key);
 
 /** lane:qa-final — brood-loss warnings (adults eating a clutch, a brood lost in the display). */
 const BROOD_WARNING = /\bare eating .+’s (eggs|larvae|fry|wrigglers)\b|\bis eating (her|his|their) own\b|’s brood didn’t make it\b/;
@@ -241,6 +240,40 @@ function isGuideDoneLine(text: string): boolean {
   );
 }
 
+/**
+ * Phones: a full-height bottom sheet owns its top (header, tabs, filters — P4-06) and its foot (buy bar, panel
+ * switcher — X-1), so the stack sits at the bottom of the sheet's scrolling body, over content the player can scroll
+ * away from under it. Returns that band's distance from the bottom of the viewport, or null (normal placement).
+ */
+function useSheetBand(active: boolean): number | null {
+  const [band, setBand] = useState<number | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setBand(null);
+      return;
+    }
+    const measure = () => {
+      const body = document.querySelector<HTMLElement>('.pn-sheet--bottom.is-max .pn-body, .ag-sheet--bottom.is-expanded .ag-sheet__body');
+      const r = body?.getBoundingClientRect();
+      let floor = r && r.height > 0 ? r.bottom : null;
+      // bars pinned to the bottom of the scrolling body (the offer's buy bar, a wizard's nav) count as its foot
+      if (body && floor != null) {
+        for (const bar of body.querySelectorAll<HTMLElement>('.pn-buybar, .pn-wizard__nav')) {
+          const b = bar.getBoundingClientRect();
+          if (b.height > 0 && b.top < floor && b.bottom > r!.top + r!.height / 2) floor = b.top;
+        }
+      }
+      const next = floor != null ? Math.max(0, Math.round(window.innerHeight - floor)) : null;
+      setBand((b) => (b === next ? b : next));
+    };
+    measure();
+    // the sheet springs open, swaps its footer (offer detail ↔ list) and follows the keyboard: re-measure while toasts are up
+    const id = window.setInterval(measure, 300);
+    return () => window.clearInterval(id);
+  }, [active]);
+  return active ? band : null;
+}
+
 export function Toasts() {
   const screen = useUI((s) => s.screen);
   // Cinematic modes stay clean: only urgent news breaks through.
@@ -249,13 +282,14 @@ export function Toasts() {
   const drawer = useShell((s) => s.popover === 'alerts');
   const leftSheet = useDockedCard() === 'tank' && screen === 'game';
   const bottomSheets = useMedia(BOTTOM_SHEET_QUERY);
-  const phone = useMedia('(max-width: 720px)');
+  const phone = useMedia(MOBILE_QUERY);
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const seq = useRef(0);
-  /** Keys that have been on screen at least once (never dropped as stale). */
-  const everShown = useRef(new Set<string>());
-  const lastCue = useRef<Record<string, number>>({});
+  /** When each key first went on screen (never dropped as stale; expires after its lifetime once off screen). */
+  const shownAt = useRef(new Map<string, number>());
+  /** Keys on screen after the last commit: they stay up until dismissed, whatever arrives behind them. */
+  const onScreen = useRef(new Set<string>());
 
   const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; uiId?: number; source: 'ui' | 'log' }) => {
     const group = groupOf(kind, text, (useGame.getState().game?.tankOrder.length ?? 0) >= 4 /* lane:qa-final */);
@@ -263,7 +297,7 @@ export function Toasts() {
     if (group === 'tip' && extra.source === 'log' && isGuideDoneLine(text)) return;
     const now = performance.now();
     setEntries((list) => {
-      const live = list.filter((e) => !isStale(e, now, everShown.current));
+      const live = list.filter((e) => !isStale(e, now, shownAt.current) && !(isExpired(e, shownAt.current.get(e.key), now) && !onScreen.current.has(e.key)));
       if (group && group !== 'tip') {
         const i = live.findIndex((e) => e.group === group && now - e.born < MERGE_WINDOW);
         if (i >= 0) {
@@ -286,14 +320,8 @@ export function Toasts() {
 
   const pushLog = useCallback(
     (e: GameEvent) => {
+      // no sound here: the audio director voices log events (src/audio/cues.ts), one cue per burst
       add(e.kind, e.text, { tankId: e.tankId, creatureId: e.creatureId, source: 'log' });
-      const cue = e.kind === 'celebrate' || e.kind === 'unlock' ? 'celebrate' : e.kind === 'danger' || e.kind === 'death' ? 'warning' : e.kind === 'breeding' ? 'birth' : e.kind === 'market' ? 'bid' : null;
-      // one cue per burst
-      const now = performance.now();
-      if (cue && now - (lastCue.current[cue] ?? -1e9) > 1500) {
-        lastCue.current[cue] = now;
-        sfx(cue);
-      }
     },
     [add],
   );
@@ -329,21 +357,24 @@ export function Toasts() {
     });
   }, []);
 
-  // Choose what is on screen: highest priority first, then oldest; shown in arrival order.
+  // Choose what is on screen: what is already up stays up, free slots go by priority (see toastQueue.ts).
   const max = phone ? 2 : 3;
   const now = performance.now();
-  const eligible = drawer ? [] : entries.filter((e) => (!quiet || e.kind === 'danger' || e.kind === 'death') && !isStale(e, now, everShown.current));
-  const shown = [...eligible]
-    .sort((a, b) => prio(b.kind) - prio(a.kind) || a.born - b.born)
-    .slice(0, max)
-    .sort((a, b) => a.born - b.born);
+  const eligible = drawer
+    ? []
+    : entries.filter((e) => (!quiet || e.kind === 'danger' || e.kind === 'death') && !isStale(e, now, shownAt.current) && !(isExpired(e, shownAt.current.get(e.key), now) && !onScreen.current.has(e.key)));
+  const shown = pickShown(eligible, onScreen.current, max);
   useEffect(() => {
-    for (const e of shown) everShown.current.add(e.key);
+    onScreen.current = new Set(shown.map((e) => e.key));
+    for (const e of shown) if (!shownAt.current.has(e.key)) shownAt.current.set(e.key, performance.now());
+    if (shownAt.current.size > 400) for (const k of shownAt.current.keys()) if (!onScreen.current.has(k) && !entries.some((e) => e.key === k)) shownAt.current.delete(k);
   });
 
+  const band = useSheetBand(phone && screen === 'game' && shown.length > 0);
   return (
     <div
       className={clsx('ag-toasts', screen !== 'game' && 'is-onboarding', leftSheet && !bottomSheets && 'has-left-sheet')}
+      style={band != null ? { top: 'auto', bottom: band + 8, flexDirection: 'column-reverse' } : undefined}
       aria-live="polite"
       aria-relevant="additions"
     >
@@ -358,17 +389,23 @@ export function Toasts() {
 
 function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
   const [hover, setHover] = useState(false);
+  // a tap on the text (phones have no hover) opens the whole message and gives it extra time
+  const [pinned, setPinned] = useState(false);
   // a toast on its way out (fading) is no longer "on screen": no test id, no pointer events
   const present = useIsPresent();
   const done = useRef(onDone);
   done.current = onDone;
-  const v = viewOf(e);
-  const ttl = (TTL[e.kind] ?? 4000) + (e.texts.length > 1 ? 1200 : 0);
+  // sim lines quote water temperatures in °C: °F players read their own unit (as on the cards and the guide)
+  const unit = useSettings((s) => s.tempUnit);
+  const raw = viewOf(e);
+  const v = { ...raw, title: convertTempText(raw.title, unit) ?? raw.title, detail: convertTempText(raw.detail, unit) };
+  const ttl = ttlOf(e.kind, e.texts) + (pinned ? 6000 : 0);
   useEffect(() => {
     if (hover) return;
     const t = window.setTimeout(() => done.current(), ttl);
     return () => window.clearTimeout(t);
   }, [hover, ttl, e.rev]);
+  const expanded = (hover || pinned) && present;
   const celebrate = e.kind === 'celebrate' || e.kind === 'unlock';
   const actionable = !!e.tankId || !!v.opensLog || !!v.link;
   const onAct = () => {
@@ -395,7 +432,7 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
   return (
     <motion.div
       layout="position"
-      className={clsx('ag-toast', `ag-toast--${e.kind}`, celebrate && 'is-celebrate', hover && present && 'is-expanded', !present && 'is-leaving')}
+      className={clsx('ag-toast', `ag-toast--${e.kind}`, celebrate && 'is-celebrate', expanded && 'is-expanded', !present && 'is-leaving')}
       data-testid={present ? 'toast' : undefined}
       data-kind={e.kind}
       role={e.kind === 'danger' || e.kind === 'death' ? 'alert' : 'status'}
@@ -407,6 +444,10 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
       onPointerLeave={() => setHover(false)}
       onFocus={() => setHover(true)}
       onBlur={() => setHover(false)}
+      onClick={(ev) => {
+        if ((ev.target as HTMLElement).closest('button')) return;
+        setPinned((p) => !p);
+      }}
     >
       <span className="ag-toast__icon">
         <EventIcon kind={e.kind} size={14} />
@@ -421,7 +462,7 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
       <button type="button" className="ag-toast__close" aria-label="Dismiss" onClick={onDone}>
         <X size={13} />
       </button>
-      <span className="ag-toast__timer" key={e.rev} style={{ animationDuration: `${ttl}ms`, animationPlayState: hover ? 'paused' : 'running' }} aria-hidden />
+      <span className="ag-toast__timer" key={`${e.rev}:${pinned ? 1 : 0}`} style={{ animationDuration: `${ttl}ms`, animationPlayState: hover ? 'paused' : 'running' }} aria-hidden />
     </motion.div>
   );
 }

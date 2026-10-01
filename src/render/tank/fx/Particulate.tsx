@@ -9,6 +9,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import type { TankDims } from '@/sim/tankSpace';
 import { UNDERWATER_PARS, type TankFXUniforms } from '../../shared/underwater';
 import { cameraFX } from '../../camera/cameraFX';
+import { useParkedMaterial } from '../../shared/programPark';
 
 const noPick = () => null;
 
@@ -103,7 +104,7 @@ export function Particulate({ d, fx, count, flow, seed }: { d: TankDims; fx: Tan
     });
     return m;
   }, [fx, extra]);
-  useEffect(() => () => mat.dispose(), [mat]);
+  useParkedMaterial(mat);
 
   useFrame((state) => {
     const cam = state.camera as THREE.PerspectiveCamera;

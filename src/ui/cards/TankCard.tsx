@@ -3,7 +3,7 @@
  * quick care actions, equipment + lighting, stocking, compatibility, beauty, exhibit, running cost, valuation.
  * Left side sheet on desktop, bottom sheet on phones. OWNER: lane "ui-shell".
  */
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import clsx from 'clsx';
 import {
   Droplets,
@@ -353,8 +353,17 @@ function EquipmentRow({ tank, e, readOnly }: { tank: Tank; e: EquipmentInstance;
 
 function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
   const L = tank.lighting;
-  const set = (patch: Partial<{ preset: LightPreset; intensity: number; onHour: number; offHour: number; moonlight: boolean }>) =>
-    act((d) => setLighting(d, tank.id, patch), { toast: false, sound: 'click', flag: 'changed_lights' });
+  // (a slider drag fires an input event per pixel: the intensity change clicks at most every 300 ms instead of ~28×/s)
+  const lastClick = useRef(0);
+  const set = (patch: Partial<{ preset: LightPreset; intensity: number; onHour: number; offHour: number; moonlight: boolean }>) => {
+    let sound: 'click' | null = 'click';
+    if (patch.intensity !== undefined) {
+      const now = performance.now();
+      sound = now - lastClick.current < 300 ? null : 'click';
+      if (sound) lastClick.current = now;
+    }
+    act((d) => setLighting(d, tank.id, patch), { toast: false, sound, flag: 'changed_lights' });
+  };
   return (
     <div className="ag-lighting">
       <div className="ag-row ag-wrap" style={{ gap: 6 }}>
@@ -579,6 +588,9 @@ export function TankCard() {
   const [tab, setTab] = useState<TabId>('water');
   useEffect(() => {
     if (open && tank && !game?.isShowcase) tutorialFlag('opened_tank_card');
+    // the guide's expanded parameter (and its scroll) used to outlive the card: every later open started scrolled
+    // past the status headline, with the temperature row still open
+    if (!open && useShell.getState().openParam) useShell.getState().set({ openParam: null });
   }, [open, tank?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const tier = useMemo(() => (tank ? safe('tier', () => getTankTier(tank.tierId), null) : null), [tank?.tierId]); // eslint-disable-line react-hooks/exhaustive-deps
   const visible = open && !!tank && docked === 'tank';
@@ -590,7 +602,9 @@ export function TankCard() {
       <div className="ag-row ag-wrap" style={{ gap: 6 }}>
         <WaterChip wc={tank.waterClass} size="sm" />
         <StatusBadge status={tank.cache.status} label={tank.cache.status === 'good' ? 'Healthy' : undefined} />
-        {tank.purpose !== 'display' && <Badge tone="violet">{titleCase(tank.purpose)}</Badge>}
+        {/* back-of-house tanks are skipped by visitors (sim/facility/visitors.ts onDisplay), as the Visitors panel says */}
+        {(tank.purpose ?? 'display') !== 'display' && <Badge tone="violet">{titleCase(tank.purpose)}</Badge>}
+        {(tank.purpose ?? 'display') !== 'display' && <Badge title="Back of house — not shown to visitors">Off display</Badge>}
       </div>
       {tank.cache.status !== 'good' && game && (
         <div className={clsx('ag-thead__reason', `is-${tank.cache.status}`)} data-testid="tank-status-reason">

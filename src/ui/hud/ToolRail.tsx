@@ -35,11 +35,14 @@ import { getDecorDef, isEpiphyte, isFloating } from '@/data/catalog/decor';
 import { creaturesInTank } from '@/sim/life';
 import { setLighting, feedTank } from '@/sim/care';
 import { tankDims } from '@/sim/tankSpace';
+import { tutorialWants } from '@/sim/facility/progression';
+import { tutorialChain } from '@/data/quests';
 import { pushVisualEvent, runtime, nowSeconds } from '@/runtime/tankRuntime';
 import { noteInteraction } from '@/sim/life/actions'; // lane:qa-play
 import { aiFeed } from '@/ai/registry'; // lane:qa-play
 import { CAMERA_USER_EVENT } from '@/render/camera/cameraFX';
 import { useShell } from '../common/shellStore';
+import { enterCinematic } from './cardDock';
 import { foodName, LIGHT_PRESET_LABEL, lightPresetsFor } from '../common/format';
 import { safe, useMedia } from '../common/safe';
 import { tutorialFlag, act } from '../common/actions';
@@ -59,10 +62,32 @@ export interface FoodOption {
   count: number;
   eaters: string[];
   delivery?: string;
+  /** The guide's feed step names this food ("drop an earthworm", "pick micro pellets"): it leads the list. */
+  suggested?: boolean;
+}
+
+const GENERIC_FOOD_WORDS = new Set(['frozen', 'live', 'shrimp', 'pellets', 'flakes', 'food', 'mix', 'culture', 'sheets', 'wafers', 'baby', 'pest']);
+
+/** The food the guide's feed step talks about, by name ("Earthworms" ↔ "drop an earthworm", "Frozen Mysis Shrimp" ↔ "offer frozen mysis"). */
+export function guideMentions(body: string, foodName: string): boolean {
+  const text = body.toLowerCase();
+  const name = foodName.toLowerCase();
+  if (text.includes(name)) return true;
+  return name.split(/[^a-z]+/).some((w) => w.length >= 4 && !GENERIC_FOOD_WORDS.has(w) && (text.includes(w) || text.includes(w.replace(/s$/, ''))));
+}
+
+/** Body of the guide's feed step while it is the current step (and still unfed), else null. */
+function guideFeedBody(g: GameState): string | null {
+  const t = g.progress?.tutorial;
+  if (!t || t.done || t.skipped) return null;
+  if (!safe('tutorialWants', () => tutorialWants(g, 'fed') || tutorialWants(g, 'target_fed'), false)) return null;
+  const step = safe('tutorialChain', () => tutorialChain(t.starterId || g.starterId)[t.step], undefined);
+  return step?.id === 'feed' ? step.body : null;
 }
 
 export function foodOptions(g: GameState, tankId: string | null): FoodOption[] {
   const residents = tankId ? safe('creaturesInTank', () => creaturesInTank(g, tankId), []) : [];
+  const guide = guideFeedBody(g);
   const young = tankId ? safe('youngFoodNeed', () => youngFoodNeed(g, tankId), null) : null; // lane:qa-play
   return Object.entries(g.inventory.foods ?? {})
     .map(([id, count]) => {
@@ -78,9 +103,9 @@ export function foodOptions(g: GameState, tankId: string | null): FoodOption[] {
         .map((c) => c.name);
       // lane:qa-play — larvae / fry growing here count as eaters too ("Eaten by the fry")
       if (!eaters.length && young && tags.some((t) => young.tags.includes(t))) eaters.push(`the ${young.label}`);
-      return { id, name: foodName(id), count: Math.floor(count), eaters, delivery: def?.delivery };
+      return { id, name: foodName(id), count: Math.floor(count), eaters, delivery: def?.delivery, suggested: !!guide && guideMentions(guide, foodName(id)) };
     })
-    .sort((a, b) => Number(b.count > 0) - Number(a.count > 0) || b.eaters.length - a.eaters.length || a.name.localeCompare(b.name));
+    .sort((a, b) => Number(b.count > 0) - Number(a.count > 0) || Number(!!b.suggested) - Number(!!a.suggested) || b.eaters.length - a.eaters.length || a.name.localeCompare(b.name));
 }
 
 const DELIVERY_WORD: Record<string, string> = { floating: 'Floats', slow_sink: 'Sinks slowly', fast_sink: 'Sinks fast', live: 'Live food', target: 'Target fed' };
@@ -100,7 +125,7 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
   const game = useGame((s) => s.game);
   const tankId = useUI((s) => s.focusedTankId);
   const feedFoodId = useUI((s) => s.feedFoodId);
-  const opts = useMemo(() => (game ? foodOptions(game, tankId) : []), [game?.inventory.foods, tankId, game?.tankOrder]); // eslint-disable-line react-hooks/exhaustive-deps
+  const opts = useMemo(() => (game ? foodOptions(game, tankId) : []), [game?.inventory.foods, tankId, game?.tankOrder, game?.progress?.tutorial?.step]); // eslint-disable-line react-hooks/exhaustive-deps
   const alert = useMemo(() => (game && tankId ? safe('tankFoodAlert', () => tankFoodAlert(game, tankId), null) : null), [game?.inventory.foods, tankId, game?.tankOrder]); // eslint-disable-line react-hooks/exhaustive-deps
   // lane:qa-play — fry / larvae in this tank with nothing they can eat in the cupboard
   const youngNeed = useMemo(() => (game && tankId ? safe('youngFoodNeed', () => youngFoodNeed(game, tankId), null) : null), [game?.inventory.foods, game?.clutches, tankId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -163,7 +188,10 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
                 >
                   <span className="ag-food__dot" style={{ background: def?.color ?? 'var(--c-gold)' }} aria-hidden />
                   <span className="ag-grow">
-                    <span className="ag-food__name">{f.name}</span>
+                    <span className="ag-food__name">
+                      {f.name}
+                      {f.suggested && !out && <span className="ag-food__tag">Suggested</span>}
+                    </span>
                     <span className="ag-food__meta">
                       {f.delivery && DELIVERY_WORD[f.delivery] ? `${DELIVERY_WORD[f.delivery]} · ` : ''}
                       {f.eaters.length ? `Eaten by ${f.eaters.slice(0, 2).join(', ')}${f.eaters.length > 2 ? ` +${f.eaters.length - 2}` : ''}` : 'No one here eats this'}
@@ -396,7 +424,7 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
         onClick={() => {
           sfx('camera');
           useShell.getState().set({ popover: null });
-          useUI.getState().set({ photoMode: true, tool: 'none' });
+          enterCinematic('photo');
           tutorialFlag('opened_photo');
         }}
       />
@@ -427,7 +455,7 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
         onClick={() => {
           sfx('close');
           useShell.getState().set({ popover: null, tankCardOpen: false });
-          useUI.getState().set({ hudHidden: true, tool: 'none' });
+          enterCinematic('watch');
           tutorialFlag('watch_mode');
         }}
       />
@@ -522,6 +550,7 @@ export function ToolHint() {
     return c && c.tankId === useUI.getState().focusedTankId && (c.status === 'alive' || c.status === 'listed') ? c : null;
   });
   useUI((s) => s.selectedCreatureId); // re-render when the selection changes
+  const panelTarget = useUI((s) => s.panelTarget);
   const fine = useMedia('(hover: hover) and (pointer: fine)');
   const Click = fine ? 'Click' : 'Tap';
   let text: ReactNode = null;
@@ -547,7 +576,13 @@ export function ToolHint() {
     );
   }
   else if (tool === 'decor_move') text = <>Drag a piece to move it{fine ? ' · R rotates while held' : ''}</>;
-  else if (tool === 'tank_place') text = <>{Click} a free spot on the floor to place your new tank</>;
+  // touch previews on the first tap and buys on the second (PlacementGhost resolveFloorTap); a mouse click places
+  else if (tool === 'tank_place') {
+    const moving = panelTarget?.startsWith('move:'); // PlacementGhost: tank_place + 'move:<id>'
+    text = fine
+      ? <>Click a free spot on the floor to {moving ? 'move the tank there' : 'place your new tank'} · R rotates</>
+      : <>Tap a spot to preview {moving ? 'the tank there' : 'your new tank'}, then tap it again (or {moving ? 'Move here' : 'Place here'}) to {moving ? 'move it' : 'buy it'}</>;
+  }
   return (
     <AnimatePresence>
       {text && (

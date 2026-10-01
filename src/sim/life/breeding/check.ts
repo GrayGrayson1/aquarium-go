@@ -4,6 +4,7 @@
  */
 import type { Creature, GameState, SpeciesDefinition, Tank } from '@/types';
 import { findSpecies } from '@/data/species';
+import { fitsEnvironment } from '@/sim/compat/salinity';
 import { moduleFor } from './registry';
 import { withArticle } from '../../economy/util'; // lane:w2-ui
 import type { BreedingModule, CheckCtx } from './types';
@@ -46,6 +47,7 @@ const BUSY_TEXT: Record<string, string> = {
   laying: 'is laying eggs',
   spent: 'is recovering from spawning',
   transitioning_female: 'is changing sex',
+  transitioning_male: 'is changing sex',
   depositing: 'is mid-courtship',
   following: 'is mid-courtship',
   nest_preparing: 'is preparing a nest with another partner',
@@ -100,8 +102,17 @@ export function evaluatePair(state: GameState, aId: string, bId: string, forStar
     const fb = rb === 'female';
     female = fa ? a : fb ? b : ra === 'transitioning' ? a : rb === 'transitioning' ? b : a;
     male = female === a ? b : a;
-    if (fa && fb) hard('Both are established females — they can’t change back, and two females will fight.', 'Pair the female with a male instead.');
-    else if (!fa && !fb) {
+    if (fa && fb) {
+      if (sp.sexSystem === 'protogynous') {
+        // Protogynous (clown goby): females can still become the male — the dominant one changes once settled in.
+        const t = a.repro.stage === 'transitioning_male' ? a : b.repro.stage === 'transitioning_male' ? b : null;
+        if (t) {
+          male = t;
+          female = t === a ? b : a;
+          hard(`${t.name} is becoming the male (${Math.round(stageProgress(t, hour) * 100)}%).`, 'Wait a little longer — the change takes a few days.');
+        } else hard('Both are still females — the larger one becomes the male once they have settled in together.', 'Keep them together in the same tank for a few days.');
+      } else hard('Both are established females — they can’t change back, and two females will fight.', 'Pair the female with a male instead.');
+    } else if (!fa && !fb) {
       const t = ra === 'transitioning' ? a : rb === 'transitioning' ? b : null;
       if (t) hard(`${t.name} is still changing sex (${Math.round(stageProgress(t, hour) * 100)}%).`, 'Wait a little longer — the change takes a few days.');
       else if (sp.sexSystem === 'protandrous') hard('Neither fish is female yet.', `${spPlural(sp)[0].toUpperCase()}${spPlural(sp).slice(1)} all start out male — keep two together and the larger, bolder one becomes the female over a few days.`);
@@ -158,7 +169,8 @@ export function evaluatePair(state: GameState, aId: string, bId: string, forStar
   else tank = (a.tankId && state.tanks[a.tankId]) || (b.tankId && state.tanks[b.tankId]) || null;
   const apart = !mod.introducedByKeeper && a.tankId !== b.tankId;
   if (tank) {
-    if (tank.environment !== sp.environment) hard(`${tank.name} is a ${tank.environment} tank — ${spPlural(sp)} need ${waterWord(sp.environment)} water.`); // lane:w2-ui: not "freshwater water"
+    if (!fitsEnvironment(sp, tank.environment)) hard(`${tank.name} is a ${tank.environment} tank — ${spPlural(sp)} need ${waterWord(sp.environment)} water.`); // lane:w2-ui: not "freshwater water"
+    else if (tank.environment !== sp.environment) soft(`${tank.name} is a ${tank.environment} tank — ${spPlural(sp)} manage there, but breed best in ${waterWord(sp.environment)} water.`, `For the most fry, keep the breeding pair in ${withArticle(`${waterWord(sp.environment)} tank`)}.`);
     const min = sp.breeding.conditions.minTankGallons;
     if (min && gallonsOf(tank) < min) soft(`${tank.name} is only ${gallonsOf(tank)} gallons — ${spPlural(sp)} need at least ${min} gallons to breed.`, `Use a tank of ${min} gallons or more.`);
   }

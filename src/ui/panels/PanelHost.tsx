@@ -23,6 +23,8 @@ import { useIsPhone, useMedia, useReducedMotion } from './common/hooks';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { edit } from './common/act';
 import { PanelErrorBoundary } from './common/ErrorBoundary';
+import { useSettings } from '@/state/settings';
+import { DOCK_ITEMS, openPanel } from '../hud/Dock';
 import { TanksPanel } from './tanks/TanksPanel';
 import { LivestockPanel } from './livestock/LivestockPanel';
 import { MarketPanel } from './market/MarketPanel';
@@ -140,6 +142,7 @@ export function PanelHost() {
         close,
         maximised,
         toggleMax: () => setMaximised((m) => !m),
+        setMax: setMaximised,
         phone,
         bottom,
         startDrag: (e) => {
@@ -176,10 +179,50 @@ export function PanelHost() {
             <PanelErrorBoundary key={panel} onClose={close}>
               <Comp />
             </PanelErrorBoundary>
+            {bottom && <PanelSwitcher active={panel as ManagedPanelId} />}
           </motion.aside>
         )}
       </AnimatePresence>
     </SheetContext.Provider>
+  );
+}
+
+/**
+ * Bottom sheets sit over the dock, so hopping Tanks → Build → Research used to mean close, then reopen. This strip
+ * is the dock's unlocked destinations inside the sheet; the sheet stays open (half or full) and just swaps panels.
+ */
+function PanelSwitcher({ active }: { active: ManagedPanelId }) {
+  const unlocked = useGame((s) => s.game?.progress.unlocked.join('|') ?? '');
+  const dev = useSettings((s) => s.devMode);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>(`[data-testid="sheet-switch-${active}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center' });
+  }, [active]);
+  const items = DOCK_ITEMS.filter((it) => it.id !== 'settings' && (!it.lock || dev || unlocked.split('|').includes(it.lock)));
+  return (
+    <nav className="pn-switch" ref={ref} aria-label="Switch panel" data-testid="sheet-switch">
+      {items.map((it) => {
+        const Icon = it.icon;
+        const isActive = it.id === active;
+        return (
+          <button
+            key={it.id}
+            type="button"
+            className={`pn-switch__item ${isActive ? 'is-active' : ''}`}
+            aria-pressed={isActive}
+            aria-label={it.label}
+            data-testid={`sheet-switch-${it.id}`}
+            onClick={() => {
+              if (isActive) return;
+              openPanel(it.id);
+            }}
+          >
+            <Icon size={18} aria-hidden />
+            <span>{it.label}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 

@@ -24,6 +24,7 @@ import { useGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
 import { archerShots, JET_FLIGHT_S, JET_POUR_S, type ArcherShot } from '@/runtime/archerShots';
 import { addSurfaceRipple, type TankFXUniforms } from '../../shared/underwater';
+import { parkShaderMaterial } from '../../shared/programPark';
 
 const noPick = () => null;
 const NP = { noPick: true };
@@ -41,6 +42,13 @@ const K_GLINT = 4;
 const MM = 0.001;
 /** A generous greenbottle (~12 mm) so it reads at viewing distance. */
 const FLY_SCALE = 1.3;
+/**
+ * lane:tankrender — the fly never draws smaller than this many pixels long (9 mm was a 3–4 px dot from the default
+ * front camera), and never grows past FLY_MAX_SCALE (a close camera sees it at its true size).
+ */
+const FLY_MIN_PX = 12;
+const FLY_MAX_SCALE = 4;
+const FLY_BODY_M = 9 * 0.001;
 
 function hasSpitter(g: GameState | null | undefined, tankId: string): boolean {
   if (!g) return false;
@@ -334,6 +342,11 @@ function buildFly(fx: TankFXUniforms): Fly {
 }
 
 /** Wing pose: spread (rad, sweeping the tips out) and lift (rad, raising them). */
+/** Wings whirring (landing, falling, flying off). */
+function buzzWings(f: Fly, t: number, lift: number): void {
+  poseWings(f, 0.55 + Math.sin(t * 97) * 0.15, lift * (0.55 + 0.45 * Math.sin(t * 131)));
+}
+
 function poseWings(f: Fly, spread: number, lift: number): void {
   // sweep the blade out from the body (about Y), then raise it about the body axis (X)
   f.wingL.rotation.set(-lift, spread, 0, 'XYZ');
@@ -424,12 +437,14 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
     });
     return { g, mat, u };
   }, [d.H, d.L, d.W, fx, extra]);
+  // lane:tankrender — the jet/drop/ring materials are parked, not disposed, so their programs survive LOD swaps
+  const gl = useThree((s3) => s3.gl);
   useEffect(
     () => () => {
       jet.g.dispose();
-      jet.mat.dispose();
+      parkShaderMaterial(gl, jet.mat);
     },
-    [jet],
+    [jet, gl],
   );
 
   const drops = useMemo(() => {
@@ -458,14 +473,14 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
       blendSrc: THREE.OneFactor,
       blendDst: THREE.OneMinusSrcAlphaFactor,
     });
-    return { g, mat, pos, vel, sz, alpha, life, kind, mode, head: 1 };
+    return { g, mat, pos, vel, sz, alpha, life, kind, mode, head: 1, live: false, lands: new Float32Array(MAXD * 2), nLand: 0 };
   }, [d.H, d.L, d.W, fx, extra]);
   useEffect(
     () => () => {
       drops.g.dispose();
-      drops.mat.dispose();
+      parkShaderMaterial(gl, drops.mat);
     },
-    [drops],
+    [drops, gl],
   );
 
   // lane:w2-visual — expanding light rings on the surface (see the header)
@@ -496,9 +511,9 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
   useEffect(
     () => () => {
       rings.g.dispose();
-      rings.mat.dispose();
+      parkShaderMaterial(gl, rings.mat);
     },
-    [rings],
+    [rings, gl],
   );
   const ringMesh = useRef<THREE.Mesh>(null);
 
@@ -611,13 +626,14 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
     if (jetMesh.current) jetMesh.current.visible = jetOn;
 
     // ── droplets ──
-    stepDrops(D, dt, sy, d, (x, z) => {
-      if (J.ripples < 3) {
-        J.ripples++;
-        addSurfaceRipple(fx, x, z, 0.14 * calm, now);
-        if (J.ripples <= 2) spawnRing(R, x, z, 0.3 * calm, t);
-      }
-    });
+    stepDrops(D, dt, sy, d);
+    for (let k = 0; k < D.nLand && J.ripples < 3; k++) {
+      J.ripples++;
+      const x = D.lands[k * 2];
+      const z = D.lands[k * 2 + 1];
+      addSurfaceRipple(fx, x, z, 0.14 * calm, now);
+      if (J.ripples <= 2) spawnRing(R, x, z, 0.3 * calm, t);
+    }
     if (ringMesh.current) ringMesh.current.visible = t < R.until;
 
     // ── the fly ──
@@ -635,8 +651,13 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
       return;
     }
     g.visible = true;
-    const buzz = (lift: number) => poseWings(fly, 0.55 + Math.sin(t * 97) * 0.15, lift * (0.55 + 0.45 * Math.sin(t * 131)));
     fly.wingMat.uniforms.uAlpha.value = 1;
+    // lane:tankrender — a minimum on-screen size (like the glints'): from the default camera the fly was a 3–4 px dot
+    let flyS = FLY_SCALE;
+    if (groupRef.current) {
+      const dist = _P.copy(g.position).applyMatrix4(groupRef.current.matrixWorld).distanceTo(cam.position);
+      flyS = Math.min(FLY_SCALE * FLY_MAX_SCALE, Math.max(FLY_SCALE, (FLY_MIN_PX * dist) / (extra.uPixelScale.value * FLY_BODY_M)));
+    }
     switch (s.phase) {
       case 'rest':
       case 'shot': {
@@ -644,19 +665,21 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
         const land = clamp01(s.phase === 'rest' ? s.age / 0.45 : 1);
         g.quaternion.copy(J.restQ);
         restPosition(s, g.position);
+        // a fly drawn larger than life stands on longer legs: lift it so they still just touch the perch
+        if (flyS > FLY_SCALE) g.position.addScaledVector(_up.set(0, 1, 0).applyQuaternion(g.quaternion), 0.0019 * (flyS - FLY_SCALE));
         if (land < 1) {
           const k = (1 - land) * (1 - land);
           _side.crossVectors(s.perchN, Y);
           if (_side.lengthSq() < 1e-4) _side.set(1, 0, 0);
           _side.normalize();
           g.position.addScaledVector(s.perchN, 0.022 * k).addScaledVector(_side, 0.02 * k).addScaledVector(Y, 0.006 * k);
-          buzz(1);
+          buzzWings(fly, t, 1);
           fly.wingMat.uniforms.uAlpha.value = 0.6;
         } else {
           const flick = Math.max(0, Math.sin(t * 2.3 + s.seed * 20) - 0.93) * 12;
           poseWings(fly, 0.3 + flick * 0.25, 0.08 + flick * 0.35);
         }
-        g.scale.setScalar(FLY_SCALE * (0.6 + 0.4 * land));
+        g.scale.setScalar(flyS * (0.6 + 0.4 * land));
         break;
       }
       case 'fall': {
@@ -665,8 +688,8 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
         _axis.set(Math.sin(s.seed * 40), 0.4, Math.cos(s.seed * 40)).normalize();
         _q2.setFromAxisAngle(_axis, s.spin);
         g.quaternion.copy(J.restQ).premultiply(_q2);
-        g.scale.setScalar(FLY_SCALE);
-        buzz(1);
+        g.scale.setScalar(flyS);
+        buzzWings(fly, t, 1);
         fly.wingMat.uniforms.uAlpha.value = 0.55;
         break;
       }
@@ -677,7 +700,7 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
         }
         // stuck in the surface film, twitching and turning; little rings as it struggles
         g.position.copy(s.insect);
-        g.position.y = sy + 0.0017 * FLY_SCALE + Math.sin(t * 7 + s.seed * 9) * 0.00025;
+        g.position.y = sy + 0.0017 * flyS + Math.sin(t * 7 + s.seed * 9) * 0.00025;
         _fwd.set(Math.cos(s.insectYaw + s.age * 0.8), 0, Math.sin(s.insectYaw + s.age * 0.8));
         _up.set(0, 1, 0);
         basis(_fwd, _up, g.quaternion);
@@ -687,7 +710,7 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
           J.lastStruggle = t;
           addSurfaceRipple(fx, s.insect.x, s.insect.z, 0.08 * calm, now);
         }
-        g.scale.setScalar(FLY_SCALE);
+        g.scale.setScalar(flyS);
         break;
       }
       case 'flyoff': {
@@ -698,9 +721,9 @@ function ArcherJetsInner({ tankId, d, fx, reducedMotion }: { tankId: string; d: 
         _side.crossVectors(s.perchN, Y);
         if (_side.lengthSq() > 1e-4) g.position.addScaledVector(_side.normalize(), 0.08 * k * k);
         g.quaternion.copy(J.restQ);
-        buzz(1);
+        buzzWings(fly, t, 1);
         fly.wingMat.uniforms.uAlpha.value = 0.55;
-        g.scale.setScalar(FLY_SCALE * (1 - k * k));
+        g.scale.setScalar(flyS * (1 - k * k));
         break;
       }
       default:
@@ -808,6 +831,11 @@ type Drops = {
   mode: Float32Array;
   head: number;
   g: THREE.BufferGeometry;
+  /** Something was drawn last frame (the buffers are uploaded only while drops live, plus once to clear them). */
+  live: boolean;
+  /** Tank-local (x, z) of the free droplets that fell back into the water this step, `nLand` of them. */
+  lands: Float32Array;
+  nLand: number;
 };
 
 type Rings = { data: Float32Array; attr: THREE.InstancedBufferAttribute; head: number; until: number };
@@ -895,13 +923,16 @@ function splash(D: Drops, s: ArcherShot, reducedMotion: boolean): void {
   }
 }
 
-function stepDrops(D: Drops, dt: number, sy: number, d: TankDims, onLand: (x: number, z: number) => void): void {
+function stepDrops(D: Drops, dt: number, sy: number, d: TankDims): void {
+  D.nLand = 0;
+  let live = D.sz[0] > 0;
   const x0 = -d.L / 2 + 0.002;
   const x1 = d.L / 2 - 0.002;
   const z0 = -d.W / 2 + 0.002;
   const z1 = d.W / 2 - 0.002;
   for (let i = 1; i < MAXD; i++) {
     if (D.sz[i] <= 0) continue;
+    live = true;
     D.life[i] -= dt;
     if (D.kind[i] === K_GLINT) {
       // a glint: flares in a frame, then fades fast
@@ -944,11 +975,19 @@ function stepDrops(D: Drops, dt: number, sy: number, d: TankDims, onLand: (x: nu
       }
     }
     if (D.pos[i * 3 + 1] <= sy || D.life[i] <= 0) {
-      if (D.pos[i * 3 + 1] <= sy && D.kind[i] === 0) onLand(D.pos[i * 3], D.pos[i * 3 + 2]);
+      if (D.pos[i * 3 + 1] <= sy && D.kind[i] === 0) {
+        D.lands[D.nLand * 2] = D.pos[i * 3];
+        D.lands[D.nLand * 2 + 1] = D.pos[i * 3 + 2];
+        D.nLand++;
+      }
       D.sz[i] = 0;
       D.alpha[i] = 0;
     }
   }
+  // lane:tankrender — idle (the normal state: shots are ~45 s apart) uploads nothing; the frame after the last drop
+  // dies uploads once more so its zeroed size reaches the GPU
+  if (!live && !D.live) return;
+  D.live = live;
   (D.g.attributes.position as THREE.BufferAttribute).needsUpdate = true;
   (D.g.attributes.aSize as THREE.BufferAttribute).needsUpdate = true;
   (D.g.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;

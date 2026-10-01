@@ -11,13 +11,23 @@
  *   doesn't offer — the hatch is explained and the larvae are lost.
  * Simultaneous hermaphrodites (Lysmata) pair with any other adult.
  */
-import type { Creature } from '@/types';
+import type { Creature, Tank } from '@/types';
 import type { BreedingModule, RearingPlan, StepEnv } from '../types';
 import { createClutch } from '../clutch';
 import { bumpCounter } from '@/sim/facility';
-import { approxDuration, isMature, plural, rollClutchSize, roleOf, say, setStage, spName, spawningWaterIssue, startResting, tickTimers } from '../common';
+import { approxDuration, gallonsOf, isMature, livingIn, plural, rollClutchSize, roleOf, say, setStage, spName, spawningWaterIssue, startResting, tickTimers } from '../common';
 
 const BERRY_READY = 55;
+/** Berried females at once per species per tank — bounds the growth of a colony to a steady trickle. */
+const MAX_BERRIED_PER_TANK = 6;
+
+/**
+ * Colony ceiling per tank (a game abstraction, ~6 shrimp per gallon up to 80): once the group is this large the females
+ * stop berrying until some are sold or moved. Keeps a staffed late-game colony from exploding into hundreds of animals.
+ */
+export function shrimpColonyCap(tank: Tank): number {
+  return Math.min(80, Math.max(20, Math.round(6 * gallonsOf(tank))));
+}
 
 function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: RearingPlan, viable: boolean): BreedingModule {
   return {
@@ -41,6 +51,8 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
       const temp = tank.water.tempC;
       const goodTemp = temp >= sp.tempC.idealMin - 1 && temp <= sp.tempC.idealMax + 1;
       const matureTank = (tank.water.bioMaturity ?? 0) >= 0.45;
+      const colonyFull = members.length >= shrimpColonyCap(tank);
+      let berriedNow = females.filter((f) => f.repro.stage === 'berried').length;
 
       for (const f of females) {
         const r = f.repro;
@@ -51,10 +63,11 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
         }
         if (r.stage !== 'idle' && r.stage !== 'conditioning') continue;
         const mate: Creature | undefined = males.find((m) => m !== f && m.stats.health >= 40);
-        if (!mate || waterIssue || !goodTemp || !matureTank || f.stats.breedingReadiness < BERRY_READY) {
+        if (!mate || waterIssue || !goodTemp || !matureTank || colonyFull || berriedNow >= MAX_BERRIED_PER_TANK || f.stats.breedingReadiness < BERRY_READY) {
           if (r.stage === 'idle' && mate) setStage(f, 'conditioning', hour);
           continue;
         }
+        berriedNow++;
         const n = rollClutchSize(ctx.rng, sp, f);
         const cl = createClutch(state, {
           sp,
@@ -110,6 +123,12 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
       if (t < sp.tempC.idealMin - 1 || t > sp.tempC.idealMax + 1) {
         cc.reasons.push(`Shrimp breed best at ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C.`);
         cc.steps.push(`Adjust the heater to about ${Math.round((sp.tempC.idealMin + sp.tempC.idealMax) / 2)} °C.`);
+      }
+      const cap = shrimpColonyCap(tank);
+      const colony = livingIn(cc.state, tank.id).filter((c) => c.speciesId === sp.id).length;
+      if (colony >= cap) {
+        cc.reasons.push(`The colony is as large as ${tank.name} can support (${cap} ${spName(sp)}) — the females won’t berry until it thins out.`);
+        cc.steps.push('Sell or move some of the colony to keep them breeding.');
       }
     },
 

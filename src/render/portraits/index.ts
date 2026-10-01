@@ -3,11 +3,11 @@
  *
  * One shared offscreen WebGLRenderer renders a creature through its registered factory (fish + critterart specials)
  * in a flattering 3/4 view with soft studio lighting over a subtle gradient backdrop tinted by the species'
- * environment. Results are cached as data URLs by (creature/species, appearance hash, life stage, sex, size) and
- * rendered asynchronously, one per animation frame, so the UI never stalls. Returns null while pending or when WebGL
- * is unavailable.
+ * environment. Results are cached as image URLs by (creature/species, appearance hash, life stage, sex, size) and
+ * rendered asynchronously, one per animation frame, so the UI never stalls; a job whose last subscriber unmounts
+ * before it renders is dropped. Returns null while pending or when WebGL is unavailable.
  */
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 import type { Creature, CreatureRuntime, CreatureVisualParams, SpeciesDefinition } from '@/types';
 import { findSpecies } from '@/data/species';
@@ -36,6 +36,11 @@ let unavailable = false;
 /** lane:pc-perf — ms the last job took; an expensive job spaces out the next one (see schedule). */
 let lastJobMs = 0;
 let delayId = 0;
+/**
+ * lane:fix-panels — the job whose pixels are still being encoded off the main thread (canvas.toBlob). The pump waits
+ * for it, so the shared canvas still holds that render if the encode fails and the synchronous fallback is needed.
+ */
+let encoding = false;
 
 /**
  * lane:pc-perf — one live (off-stage) object per species keeps its shader programs linked. Disposing every portrait
@@ -185,16 +190,17 @@ const _box = new THREE.Box3();
 const _ctr = new THREE.Vector3();
 const _sz = new THREE.Vector3();
 
-function renderJob(job: Job): string | null {
-  if (!ensureRenderer() || !renderer || !scene || !camera || !stage) return null;
+/** Render the job onto the shared canvas. True when the canvas now holds the portrait (read it back with `readback`). */
+function renderJob(job: Job): boolean {
+  if (!ensureRenderer() || !renderer || !scene || !camera || !stage) return false;
   const factory = getCreatureFactory(job.species.id, job.species.behaviorSet);
-  if (!factory) return null;
+  if (!factory) return false;
   let obj;
   try {
     obj = factory({ species: job.species, creature: job.creature, appearance: job.appearance, lod: 0, quality: 'high', fx });
   } catch (e) {
     console.warn('[portraits] factory failed', job.species.id, e);
-    return null;
+    return false;
   }
   try {
     const rt = portraitRuntime(job.species);
@@ -224,40 +230,202 @@ function renderJob(job: Job): string | null {
     renderer.setSize(px, px, false);
     renderer.setClearColor(0x000000, job.transparent ? 0 : 1);
     renderer.render(scene, camera);
-    let url: string;
-    try {
-      url = renderer.domElement.toDataURL('image/webp', 0.9);
-      if (!url.startsWith('data:image/webp')) url = renderer.domElement.toDataURL('image/png');
-    } catch {
-      url = renderer.domElement.toDataURL('image/png');
-    }
     stage.remove(holder);
     keep(`${job.species.id}|${job.creature?.lifeStage ?? 'adult'}`, obj);
     obj = null;
-    return url;
+    return true;
   } catch (e) {
     console.warn('[portraits] render failed', job.species.id, e);
-    return null;
+    return false;
   } finally {
     obj?.dispose();
   }
 }
 
-function pump() {
-  rafId = 0;
-  const job = queue.shift();
-  if (!job) return;
-  queued.delete(job.key);
-  const t0 = performance.now();
-  const url = renderJob(job);
-  lastJobMs = performance.now() - t0;
+/** Synchronous readback: WebP where the browser encodes it, PNG otherwise. */
+function dataUrl(canvas: HTMLCanvasElement): string | null {
+  try {
+    const url = canvas.toDataURL('image/webp', 0.9);
+    return url.startsWith('data:image/webp') ? url : canvas.toDataURL('image/png');
+  } catch {
+    try {
+      return canvas.toDataURL('image/png');
+    } catch {
+      return null;
+    }
+  }
+}
+
+function finish(job: Job, url: string | null) {
+  encoding = false;
   results.set(job.key, url);
   notify(job.key);
   if (queue.length) schedule();
 }
 
+/**
+ * lane:fix-panels — encode a canvas that holds the portrait. `toBlob` encodes off the main thread (the synchronous
+ * `toDataURL` encode + base64 was ~a third of every job's main-thread time); the pump waits for the callback, so on
+ * failure the canvas still holds this render and the synchronous path takes over.
+ */
+function encode(job: Job, canvas: HTMLCanvasElement) {
+  if (typeof canvas.toBlob !== 'function' || typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') return finish(job, dataUrl(canvas));
+  encoding = true;
+  let settled = false;
+  let guard = 0;
+  const settle = (blob: Blob | null) => {
+    if (settled) return;
+    settled = true;
+    window.clearTimeout(guard);
+    let url: string | null = null;
+    if (blob) {
+      try {
+        url = URL.createObjectURL(blob);
+      } catch {
+        url = null;
+      }
+    }
+    finish(job, url ?? dataUrl(canvas));
+  };
+  try {
+    const t0 = performance.now();
+    canvas.toBlob((b) => settle(b), 'image/webp', 0.9);
+    lastJobMs += performance.now() - t0; // a slow copy spaces out the next job too (see schedule)
+    // a callback that never comes (context lost mid-encode) must not stall every portrait after it
+    guard = window.setTimeout(() => settle(null), 2000);
+  } catch {
+    settle(null);
+  }
+}
+
+/** The 2D canvas an asynchronous readback paints its pixels into before encoding. */
+let scratch: HTMLCanvasElement | null = null;
+
+/**
+ * lane:fix-integrate-ui — read the rendered portrait back without stalling the main thread. `toBlob` on the WebGL
+ * canvas copied the pixels synchronously, waiting for the GPU to finish everything queued before it, the main scene's
+ * frame included: 29 ms per portrait on average and 88 ms at worst while Livestock opened beside a busy tank
+ * (measured). Now the pixels go into a pixel-pack buffer behind a fence, the fence is polled between tasks, and the
+ * bytes are painted into a 2D canvas that is encoded as before. Any failure falls back to the synchronous copy (the
+ * pump is held, so the WebGL canvas still holds this render).
+ */
+function readback(job: Job) {
+  const canvas = renderer?.domElement;
+  if (!canvas) return finish(job, null);
+  const gl = renderer?.getContext();
+  if (typeof WebGL2RenderingContext === 'undefined' || !(gl instanceof WebGL2RenderingContext) || typeof ImageData === 'undefined') return encode(job, canvas);
+  const w = gl.drawingBufferWidth;
+  const h = gl.drawingBufferHeight;
+  let buf: WebGLBuffer | null = null;
+  let fence: WebGLSync | null = null;
+  const release = () => {
+    if (gl.isContextLost()) return;
+    if (fence) gl.deleteSync(fence);
+    if (buf) gl.deleteBuffer(buf);
+    fence = null;
+    buf = null;
+  };
+  try {
+    buf = gl.createBuffer();
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buf);
+    gl.bufferData(gl.PIXEL_PACK_BUFFER, w * h * 4, gl.STREAM_READ);
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    fence = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    gl.flush();
+  } catch {
+    fence = null;
+  }
+  if (!fence || !buf) {
+    release();
+    return encode(job, canvas);
+  }
+  encoding = true;
+  const started = performance.now();
+  const poll = () => {
+    if (!renderer || renderer.getContext() !== gl || gl.isContextLost()) return finish(job, null);
+    const status = gl.clientWaitSync(fence!, 0, 0);
+    if (status === gl.TIMEOUT_EXPIRED && performance.now() - started < 2000) {
+      window.setTimeout(poll, 4);
+      return;
+    }
+    if (status !== gl.ALREADY_SIGNALED && status !== gl.CONDITION_SATISFIED) {
+      release();
+      return encode(job, canvas);
+    }
+    try {
+      const px = new Uint8ClampedArray(w * h * 4);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, buf);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, px);
+      gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+      release();
+      scratch ??= document.createElement('canvas');
+      scratch.width = w;
+      scratch.height = h;
+      const ctx = scratch.getContext('2d', { willReadFrequently: true }); // a CPU-backed canvas: toBlob copies no GPU pixels
+      if (!ctx) return encode(job, canvas);
+      ctx.putImageData(new ImageData(flipRows(px, w, h), w, h), 0, 0);
+      encode(job, scratch);
+    } catch {
+      release();
+      encode(job, canvas);
+    }
+  };
+  window.setTimeout(poll, 0);
+}
+
+/**
+ * GL rows run bottom-up and the drawing buffer holds premultiplied colour; ImageData wants top-down, straight alpha.
+ * Exported for tests.
+ */
+export function flipRows(src: Uint8ClampedArray, w: number, h: number): Uint8ClampedArray<ArrayBuffer> {
+  const out = new Uint8ClampedArray(new ArrayBuffer(src.length));
+  const row = w * 4;
+  for (let y = 0; y < h; y++) out.set(src.subarray((h - 1 - y) * row, (h - y) * row), y * row);
+  for (let i = 0; i < out.length; i += 4) {
+    const a = out[i + 3];
+    if (a === 255 || a === 0) continue;
+    const k = 255 / a;
+    out[i] = out[i] * k;
+    out[i + 1] = out[i + 1] * k;
+    out[i + 2] = out[i + 2] * k;
+  }
+  return out;
+}
+
+function pump() {
+  rafId = 0;
+  if (encoding) return; // resumes from finish()
+  const job = queue.shift();
+  if (!job) return;
+  queued.delete(job.key);
+  const t0 = performance.now();
+  const ok = renderJob(job);
+  lastJobMs = performance.now() - t0;
+  if (!ok) return finish(job, null);
+  readback(job);
+}
+
+/** lane:fix-panels — forget a queued job nobody is waiting for any more (its row unmounted before it rendered). */
+function dequeue(key: string) {
+  if (!queued.has(key)) return;
+  const i = queue.findIndex((j) => j.key === key);
+  if (i >= 0) queue.splice(i, 1);
+  queued.delete(key);
+}
+
+/**
+ * lane:fix-panels — a subscriber is gone: once the current commit has settled (a remount that resubscribes keeps the
+ * job), drop the job if nobody else is waiting for it. Rendered results stay cached.
+ */
+export function releasePortrait(key: string): void {
+  queueMicrotask(() => {
+    if (!listeners.get(key)?.size) dequeue(key);
+  });
+}
+
 function schedule() {
-  if (rafId || delayId || typeof requestAnimationFrame === 'undefined') return;
+  if (rafId || delayId || encoding || typeof requestAnimationFrame === 'undefined') return;
   // lane:pc-perf — a cheap job (programs warm) runs every frame; after an expensive one (a first compile, a big
   // readback) leave a few frames free so a panel full of new portraits never turns into a run of dropped frames
   if (lastJobMs > 8) {
@@ -334,13 +502,19 @@ const noop = () => () => {};
 
 export function usePortrait(subject: Creature | { speciesId: string; appearance?: CreatureVisualParams } | null, size = 256): string | null {
   const key = portraitKey(subject, size);
+  // a stable subscribe function per key — a fresh closure every render made React resubscribe on each re-render
+  const sub = useMemo(() => (key ? (f: () => void) => subscribe(key, f) : noop), [key]);
   const url = useSyncExternalStore(
-    key ? (f) => subscribe(key, f) : noop,
+    sub,
     () => (key ? results.get(key) ?? null : null),
     () => null,
   );
   useEffect(() => {
-    if (key && !results.has(key)) enqueue(subject, key, { size });
+    if (!key) return;
+    if (!results.has(key)) enqueue(subject, key, { size });
+    // a row that goes away before its turn (panel closed, list paged or filtered) takes its job with it: closing
+    // Livestock on a big facility used to leave 300+ renders stuttering the tank for a minute
+    return () => releasePortrait(key);
     // subject identity may change every render; the key captures everything that matters
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
@@ -352,9 +526,26 @@ export function useSpeciesPortrait(speciesId: string, size = 256): string | null
   return usePortrait(species ? { speciesId, appearance: species.genetics?.baseVisual } : null, size);
 }
 
+/**
+ * lane:fix-panels — render portraits ahead of need, e.g. the five starters while the title screen idles, so the
+ * cards that follow find them cached instead of rendering one per frame during their entrance animation.
+ */
+export function prewarmPortraits(subjects: PortraitSubject[], size = 192): void {
+  for (const s of subjects) {
+    const key = portraitKey(s, size);
+    if (key) enqueue(s, key, { size });
+  }
+}
+
 /** Drop cached portraits (e.g. on memory pressure). */
 export function clearPortraitCache(): void {
+  for (const url of results.values()) if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
   results.clear();
+}
+
+/** lane:fix-panels — jobs still waiting to render (diagnostics / tests). */
+export function portraitQueueLength(): number {
+  return queue.length;
 }
 
 /** True when portraits cannot be rendered (no WebGL). */

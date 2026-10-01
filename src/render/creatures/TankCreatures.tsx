@@ -12,9 +12,15 @@
  * - The drawn transform is steadied by a One-Euro filter (core/poseFilter.ts): no frame-to-frame micro-jitter at rest,
  *   no visible lag when swimming.
  * - Positions are clamped so bodies never poke through the glass (half a body length + width margin).
+ * - A creature that dies keeps its body for a short while (the AI's 'dead' act sinks it to the floor, the visuals
+ *   collapse fins / gills) instead of blinking out with the toast; the sim keeps dead creatures forever, so the window
+ *   is the renderer's (game hours since the death was first seen here, with a real-time floor so the sink is seen).
+ * - Facility LOD flips (1 <-> 2) are applied only after the new level has held for a moment, and replacements of
+ *   existing visuals are built a few per frame while the old body keeps being drawn: a camera drag across the
+ *   facility no longer rebuilds hundreds of creatures in one frame.
  */
 import { substrateHeightAt } from '@/sim/aquascape/terrain';
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { Creature, CreatureRuntime, Tank, SpeciesDefinition } from '@/types';
@@ -64,19 +70,52 @@ function creatureSig(c: Creature): string {
   return `${c.speciesId}|${hashOf(c)}|${c.lifeStage}|${c.sex}`;
 }
 
+/** A dead body stays in the tank this many game hours after its death was first seen here… */
+export const DEAD_LINGER_HOURS = 4;
+/** …and at least this long in real time, so the sink to the floor is seen even at 10×. */
+export const DEAD_LINGER_MS = 12000;
+/** A facility LOD 1 <-> 2 flip must hold this long before creatures are rebuilt for it (SceneRoot re-ranks every 0.33 s). */
+export const FAR_LOD_SETTLE_MS = 700;
+/** Per-frame budget for replacing existing visuals (ms); at least one is built per frame. */
+export const REBUILD_BUDGET_MS = 3;
+
+/** Creatures seen alive by this renderer, and the deaths it is still showing (game hour + real time first seen dead). */
+const seenAlive = new Set<string>();
+const recentDeaths = new Map<string, { hour: number; at: number }>();
+
+/** Is a dead creature still within its linger window (records the death the first time it is seen)? */
+export function deadBodyShown(c: Creature, hour: number, now: number): boolean {
+  if (seenAlive.delete(c.id)) recentDeaths.set(c.id, { hour, at: now });
+  const d = recentDeaths.get(c.id);
+  if (!d) return false;
+  const inHours = hour >= d.hour && hour < d.hour + DEAD_LINGER_HOURS;
+  if (inHours || now - d.at < DEAD_LINGER_MS) return true;
+  recentDeaths.delete(c.id);
+  return false;
+}
+
+/** Test hook: forget every death / sighting. */
+export function resetDeathMemory(): void {
+  seenAlive.clear();
+  recentDeaths.clear();
+}
+
 /**
  * Stable key per tank of the creatures living in it (+ what forces a rebuild), for every tank at once.
  * lane:perf — computed in ONE pass per published creatures object (it changes at most once per sim tick) instead of
  * one full scan per mounted tank per store update; same strings as before.
  */
 const keysCache = new WeakMap<object, Map<string, string>>();
-function creatureKeysByTank(creatures: Record<string, Creature>): Map<string, string> {
+export function creatureKeysByTank(creatures: Record<string, Creature>, hour = 0): Map<string, string> {
   let m = keysCache.get(creatures);
   if (m) return m;
   m = new Map();
+  const now = performance.now();
   for (const id in creatures) {
     const c = creatures[id];
-    if (!c.tankId || (c.status !== 'alive' && c.status !== 'listed')) continue;
+    if (!c.tankId) continue;
+    if (c.status === 'alive' || c.status === 'listed') seenAlive.add(c.id);
+    else if (c.status !== 'dead' || !deadBodyShown(c, hour, now)) continue;
     if (c.lifeStage === 'egg' || c.lifeStage === 'larva') continue;
     m.set(c.tankId, (m.get(c.tankId) ?? '') + `${id}=${creatureSig(c)};`);
   }
@@ -182,61 +221,101 @@ export function TankCreatures({ tank, lod }: { tank: Tank; lod: RenderLod }) {
   const quality = useSettings((s) => s.quality);
   const group = useRef<THREE.Group>(null);
   const entries = useRef(new Map<string, Entry>());
+  /** Replacements of existing visuals still to build (id -> full signature), drained a few per frame. */
+  const pending = useRef(new Map<string, string>());
 
   // Stable key of the creatures living in this tank (+ what forces a rebuild). WeakMap-cached hashes keep it cheap.
-  const key = useGame((s) => (s.game ? creatureKeysByTank(s.game.creatures).get(tank.id) ?? '' : ''));
+  const key = useGame((s) => (s.game ? creatureKeysByTank(s.game.creatures, s.game.clock.hour).get(tank.id) ?? '' : ''));
 
-  // (Re)build objects when the tank population, LOD, quality or tank FX change.
-  useLayoutEffect(() => {
+  // The LOD visuals are built for: hero (0) transitions apply at once; facility 1 <-> 2 re-ranks only once settled.
+  const [buildLod, setBuildLod] = useState(lod);
+  const [prevLod, setPrevLod] = useState(lod);
+  if (lod !== prevLod) {
+    setPrevLod(lod);
+    if (lod === 0 || buildLod === 0) setBuildLod(lod);
+  }
+  useEffect(() => {
+    if (lod === buildLod) return;
+    const t = setTimeout(() => setBuildLod(lod), FAR_LOD_SETTLE_MS);
+    return () => clearTimeout(t);
+  }, [lod, buildLod]);
+
+  /** Build (or replace) one creature's visual; the old one is disposed only after the new one exists. */
+  const build = (id: string, sig: string): void => {
     const g = getGame();
     const root = group.current;
     if (!g || !root) return;
     const map = entries.current;
+    const c = g.creatures[id];
+    if (!c) return;
+    const species = findSpecies(c.speciesId);
+    if (!species) return;
+    const factory = getCreatureFactory(c.speciesId, species.behaviorSet);
+    if (!factory) return;
+    let obj: CreatureObject;
+    try {
+      obj = factory({ species, creature: c, appearance: c.appearance ?? species.genetics.baseVisual, lod: buildLod, quality, fx });
+    } catch (err) {
+      console.warn('[fishart] creature visual failed', c.speciesId, err);
+      return;
+    }
+    obj.root.userData.creatureId = id;
+    obj.root.userData.pickRadius = obj.pickRadius ?? 0.5;
+    const prev = map.get(id);
+    if (prev) {
+      // a replacement takes over where the old body was drawn (no blink, no pose-filter restart)
+      const pr = prev.obj.root;
+      obj.root.position.copy(pr.position);
+      obj.root.rotation.copy(pr.rotation);
+      obj.root.scale.copy(pr.scale);
+      obj.root.visible = pr.visible;
+      if (prev.highlighted) obj.setHighlight?.(true);
+    } else obj.root.visible = false; // shown once positioned in the first frame
+    root.add(obj.root);
+    // dispose after building: shared geometry / critter templates never drop to zero refs on a same-key rebuild
+    prev?.obj.dispose();
+    map.set(id, { id, sig, obj, species, idle: prev?.idle ?? makeIdleRuntime(c), seed: hashStr(id), highlighted: prev?.highlighted ?? false, pose: prev?.pose ?? makePoseFilter() });
+  };
+
+  // (Re)build objects when the tank population, LOD, quality or tank FX change.
+  useLayoutEffect(() => {
+    const g = getGame();
+    if (!g || !group.current) return;
+    const map = entries.current;
+    const queue = pending.current;
+    queue.clear();
     const want = new Map<string, string>();
     for (const part of key.split(';')) {
       if (!part) continue;
       const i = part.indexOf('=');
       want.set(part.slice(0, i), part.slice(i + 1));
     }
-    const lodSig = `|${lod}|${quality}`;
-    // remove / rebuild changed
+    const lodSig = `|${buildLod}|${quality}`;
+    // gone
     for (const [id, e] of map) {
-      const sig = want.get(id);
-      if (sig === undefined || sig + lodSig !== e.sig) {
-        e.obj.dispose();
-        map.delete(id);
-      }
+      if (want.has(id)) continue;
+      e.obj.dispose();
+      map.delete(id);
     }
+    // new arrivals build now; an existing visual that must change (LOD / quality / look) keeps being drawn and is
+    // replaced from the per-frame queue in facility views, at once in the hero tank
     for (const [id, sig] of want) {
-      if (map.has(id)) continue;
-      const c = g.creatures[id];
-      if (!c) continue;
-      const species = findSpecies(c.speciesId);
-      if (!species) continue;
-      const factory = getCreatureFactory(c.speciesId, species.behaviorSet);
-      if (!factory) continue;
-      let obj: CreatureObject;
-      try {
-        obj = factory({ species, creature: c, appearance: c.appearance ?? species.genetics.baseVisual, lod, quality, fx });
-      } catch (err) {
-        console.warn('[fishart] creature visual failed', c.speciesId, err);
-        continue;
-      }
-      obj.root.userData.creatureId = id;
-      obj.root.userData.pickRadius = obj.pickRadius ?? 0.5;
-      obj.root.visible = false; // shown once positioned in the first frame
-      root.add(obj.root);
-      const seed = hashStr(id);
-      map.set(id, { id, sig: sig + lodSig, obj, species, idle: makeIdleRuntime(c), seed, highlighted: false, pose: makePoseFilter() });
+      const full = sig + lodSig;
+      const e = map.get(id);
+      if (e?.sig === full) continue;
+      if (e && buildLod >= 1) queue.set(id, full);
+      else build(id, full);
     }
-  }, [key, lod, quality, fx]);
+  }, [key, buildLod, quality, fx]);
 
   // dispose everything on unmount
   useEffect(() => {
     const map = entries.current;
+    const queue = pending.current;
     return () => {
       for (const e of map.values()) e.obj.dispose();
       map.clear();
+      queue.clear();
     };
   }, []);
 
@@ -251,6 +330,16 @@ export function TankCreatures({ tank, lod }: { tank: Tank; lod: RenderLod }) {
     for (let p: THREE.Object3D | null = group.current; p; p = p.parent) if (!p.visible) return;
     const g = getGame();
     if (!g) return;
+    // time-sliced replacements (facility LOD / quality flips): a few per frame, the old bodies keep being drawn
+    const queue = pending.current;
+    if (queue.size) {
+      const t0 = performance.now();
+      for (const [id, sig] of queue) {
+        queue.delete(id);
+        build(id, sig);
+        if (performance.now() - t0 > REBUILD_BUDGET_MS) break;
+      }
+    }
     const dt = Math.min(0.1, delta);
     const t = state.clock.elapsedTime;
     const ui = useUI.getState();
@@ -275,8 +364,15 @@ export function TankCreatures({ tank, lod }: { tank: Tank; lod: RenderLod }) {
       const c = g.creatures[e.id];
       if (!c) continue;
       let rt = runtime.creatures.get(e.id);
-      if (!rt || rt.tankId !== tank.id) rt = idleWander(e, c, b, t, dt);
       const root = e.obj.root;
+      if (!rt || rt.tankId !== tank.id) {
+        // a body the AI is not driving (far tank): it must not wander
+        if (c.status === 'dead') {
+          root.visible = false;
+          continue;
+        }
+        rt = idleWander(e, c, b, t, dt);
+      }
       const L = rt.lengthM > 0 ? rt.lengthM : Math.max(0.004, c.sizeCm / 100);
       root.visible = rt.visible !== false && (lod < 2 || L * pxPerM > 2.4);
       if (!root.visible) continue;

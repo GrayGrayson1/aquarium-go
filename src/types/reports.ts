@@ -62,6 +62,21 @@ export interface WaterReport {
   stockingLoad: number;
   /** Daily operating cost for this tank. */
   dailyCost: number;
+  /**
+   * lane:fix-water — the tank's residents by species with the water-lane harm rate each is taking (0..1, see
+   * speciesWaterComfort; 0 = none), worst first. The tank status reads it so the tank bar agrees with the creature cards.
+   */
+  residents?: WaterResidents[];
+}
+
+/** lane:fix-water — one species group in the tank and what the water is doing to it. */
+export interface WaterResidents {
+  speciesId: string;
+  /** Water-lane harm rate 0..1 (1 ≈ lethal within a day); 0 when the water is not hurting them. */
+  harm: number;
+  creatureIds: string[];
+  /** Creature names (species name when unnamed), same order as creatureIds. */
+  names: string[];
 }
 
 export type CompatCategory =

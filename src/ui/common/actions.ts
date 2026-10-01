@@ -14,7 +14,8 @@ export interface ActOptions {
   toast?: boolean;
   /** Toast kind on success. */
   kind?: Toast['kind'];
-  sound?: SfxId;
+  /** Sound on success (default 'confirm'); null for none (a slider drag fires per pixel). */
+  sound?: SfxId | null;
   /** Override the success message. */
   message?: string;
   /** Tutorial flag to fire on success. */
@@ -52,7 +53,7 @@ export function act(fn: (d: GameState) => ActionResult | void | undefined, opts:
   const r = result as ActionResult;
   if (r.ok) {
     if (opts.toast !== false) ui.toast(opts.message ?? r.message, opts.kind ?? 'success');
-    sfx(opts.sound ?? 'confirm');
+    if (opts.sound !== null) sfx(opts.sound ?? 'confirm');
   } else {
     ui.toast(r.message || 'Not possible right now.', 'warning');
     sfx('error');

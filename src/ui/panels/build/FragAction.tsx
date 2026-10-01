@@ -20,7 +20,7 @@ import { act } from '../common/act';
 import { safe } from '../common/hooks';
 import { Chip, SectionHead } from '../common/parts';
 import { useSheet } from '../common/PanelLayout';
-import { formatSpan, plural } from '../common/format';
+import { formatSpan, plural, nameList } from '../common/format';
 import './frags.css';
 
 // ───────────────────────────── swatch ─────────────────────────────
@@ -318,7 +318,8 @@ export function FragStorage({ g, tankId }: { g: GameState; tankId: string }) {
   const market = safe(() => marketAccess(g), { listings: false, tankAuctions: false });
   // lane:w2-ui — discoverability: until the first cut, say which pieces here are ready (the "Take frag" pills sit in
   // the placed-decor rows at the very bottom of this tab, below the whole catalogue)
-  if (tank && frags.length === 0 && !(g.progress.counters.fragsTaken ?? 0)) return <FragReadyHint g={g} tank={tank} />;
+  const guided = g.progress.tutorial && !g.progress.tutorial.done && !g.progress.tutorial.skipped; // the guide's own picks come first
+  if (tank && frags.length === 0 && !(g.progress.counters.fragsTaken ?? 0)) return guided ? null : <FragReadyHint g={g} tank={tank} />;
   if (!tank || frags.length === 0) return null;
   const now = g.clock.hour;
 
@@ -398,7 +399,7 @@ function FragReadyHint({ g, tank }: { g: GameState; tank: Tank }) {
   const ready = tank.decor.filter((inst) => safe(() => fragEligibility(g, tank, inst).ok, false));
   if (!ready.length) return null;
   const names = [...new Set(ready.map((inst) => getDecorDef(inst.defId)?.name).filter(Boolean) as string[])];
-  const list = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${plural(names.length - 2, 'more')}`;
+  const list = nameList(names, 2); // "Vallisneria, Java Fern and 3 more"
   const coral = ready.some((inst) => isCoralDef(getDecorDef(inst.defId)));
   const show = () => {
     const row = document.querySelector<HTMLElement>(`[data-testid="frag-take-${ready[0].id}"]`);

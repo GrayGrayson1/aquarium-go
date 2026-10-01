@@ -187,8 +187,13 @@ function coralTarget(def: DecorDef, tank: Tank, lightRatio: number): number {
   return t;
 }
 
-/** Grow plants/corals, trim needs, algae interaction. Called per tank step (dt in game hours). */
-export function stepTankDecorImpl(state: GameState, tank: Tank, dt: number): void {
+/**
+ * Grow plants/corals, trim needs, algae interaction. Called per tank step (dt in game hours). `startHour` is the
+ * world hour the step begins at: a background tank catching up in pieces passes each piece's own start (lane:staff,
+ * S05-10), so the day/night window — and every healing / settling timer — lines up with the clock; by default the
+ * step is the last `dt` hours before the clock.
+ */
+export function stepTankDecorImpl(state: GameState, tank: Tank, dt: number, startHour = state.clock.hour - dt): void {
   if (!(dt > 0) || !Number.isFinite(dt)) return;
   if (!tank.decor.length) return;
   const light = tankLightInfo(tank);
@@ -199,12 +204,11 @@ export function stepTankDecorImpl(state: GameState, tank: Tank, dt: number): voi
     /* keep default */
   }
   const per10 = 10 / Math.max(1, gallons);
-  const endHour = state.clock.hour;
   const steps = Math.max(1, Math.ceil(dt / 1));
   const h = dt / steps;
   const w = tank.water;
   for (let s = 0; s < steps; s++) {
-    const h0 = endHour - dt + s * h;
+    const h0 = startHour + s * h;
     const lit = litFraction(tank, h0, h0 + h);
     let uptake = 0;
     let oxygen = 0;

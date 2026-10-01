@@ -22,6 +22,7 @@ import { FACILITY_LEVEL_ORDER, getFacilityLevel } from '@/data/facilities';
 import { findSpecies } from '@/data/species';
 import { getTankTier } from '@/data/catalog/tanks';
 import { withArticle } from '../economy/util'; // lane:w2-ui
+import { giftedLayoutShare } from '../aquascape/starters';
 
 // ───────────────────────────── basics ─────────────────────────────
 
@@ -103,17 +104,37 @@ export function counterValue(state: GameState, key: string): number {
   return v;
 }
 
-/** Per-unit effects applied when an activity's effective counter rises. */
+/**
+ * Per-unit effects applied when an activity's effective counter rises. `repCapDaily`: at most this many units earn
+ * reputation per game day — a cap per DAY, not per step, so a 50-shrimp hatch is worth the same whether it was
+ * watched at 1× (five separate steps) or caught up offline (one step).
+ */
 const COUNTER_EFFECTS: { key: string; track: MasteryTrack; xp: number; rep?: number; repCapDaily?: number }[] = [
   { key: 'feeds', track: 'husbandry', xp: 1 },
-  { key: 'waterChanges', track: 'husbandry', xp: 4, rep: 0.2 },
+  { key: 'waterChanges', track: 'husbandry', xp: 4, rep: 0.2, repCapDaily: 20 },
   { key: 'cleanings', track: 'husbandry', xp: 2 },
-  { key: 'sales', track: 'business', xp: 10, rep: 1.5 },
-  { key: 'tank_sales', track: 'business', xp: 30, rep: 4 },
-  { key: 'births', track: 'breeding', xp: 25, rep: 3 },
+  { key: 'sales', track: 'business', xp: 10, rep: 1.5, repCapDaily: 20 },
+  { key: 'tank_sales', track: 'business', xp: 30, rep: 4, repCapDaily: 20 },
+  { key: 'births', track: 'breeding', xp: 25, rep: 3, repCapDaily: 20 },
   { key: 'friend_visits', track: 'exhibition', xp: 3 },
   { key: 'photos', track: 'aquascaping', xp: 1 },
 ];
+
+/** Units of `key` that may still earn reputation today (see COUNTER_EFFECTS.repCapDaily); spends `used` of them. */
+function takeDailyRepBudget(state: GameState, key: string, cap: number, wanted: number): number {
+  const c = state.progress.counters;
+  const today = dayOf(state.clock.hour);
+  const dayKey = `_fxday:${key}`;
+  const usedKey = `_fxused:${key}`;
+  if (c[dayKey] !== today) {
+    c[dayKey] = today;
+    c[usedKey] = 0;
+  }
+  const used = c[usedKey] ?? 0;
+  const take = Math.max(0, Math.min(wanted, cap - used));
+  c[usedKey] = used + take;
+  return take;
+}
 
 function applyCounterEffects(state: GameState): void {
   const c = state.progress.counters;
@@ -125,7 +146,7 @@ function applyCounterEffects(state: GameState): void {
       const d = eff - seen;
       c[seenKey] = eff;
       addMastery(state, e.track, e.xp * d);
-      if (e.rep) addReputation(state, e.rep * Math.min(d, 20), '');
+      if (e.rep) addReputation(state, e.rep * (e.repCapDaily ? takeDailyRepBudget(state, e.key, e.repCapDaily, d) : d), '');
       // Marine keepers learn from marine work too.
       if (e.key === 'feeds' || e.key === 'waterChanges') {
         const marine = state.tankOrder.some((id) => state.tanks[id]?.environment === 'marine');
@@ -157,18 +178,25 @@ function maxLogSeq(state: GameState): number {
   return m;
 }
 
+/** Reputation lost per death, and the most a single game day of deaths can cost (a cap per day, not per step). */
+const DEATH_REP = 1.5;
+const DEATH_REP_CAP_DAILY = 10;
+
 function scanLog(state: GameState): void {
   const scan = ensureScan(state);
   let maxSeq = scan.logSeq;
-  let deathPenalty = 0;
+  let deaths = 0;
   for (const e of state.log) {
     const s = seqOf(e.id);
     if (s <= scan.logSeq) continue;
     maxSeq = Math.max(maxSeq, s);
-    if (e.kind === 'death') deathPenalty += 1.5;
+    if (e.kind === 'death') deaths++;
   }
   scan.logSeq = maxSeq;
-  if (deathPenalty > 0) addReputation(state, -Math.min(10, deathPenalty), 'an animal died in your care');
+  if (deaths > 0) {
+    const penalty = takeDailyRepBudget(state, 'deaths', DEATH_REP_CAP_DAILY, deaths * DEATH_REP);
+    if (penalty > 0) addReputation(state, -penalty, 'an animal died in your care');
+  }
 }
 
 function scanMarket(state: GameState): void {
@@ -221,8 +249,8 @@ function scanBirths(state: GameState): void {
 interface CondCache {
   owned?: { all: Set<string>; fw: Set<string>; marine: Set<string> };
   bred?: Set<string>;
-  /** Best beauty by minimum player-edit count (0 = any tank). */
-  maxBeauty?: Record<number, number>;
+  /** Best beauty by minimum player-edit count (0 = any tank), '+own' for tanks that are mostly the player's layout. */
+  maxBeauty?: Record<string, number>;
 }
 
 function owned(state: GameState, cache: CondCache) {
@@ -255,17 +283,27 @@ function bred(state: GameState, cache: CondCache) {
 }
 
 /** Best beauty among tanks (optionally only those the player has aquascaped with at least `scaped` edits). */
-function maxBeauty(state: GameState, cache: CondCache, scaped = 0) {
+/** A tank with at least this share of its pieces still on the gifted starter template is not the player's layout. */
+const GIFTED_LAYOUT_MAX = 0.5;
+
+const ownLayout = (state: GameState, id: string): boolean => {
+  const t = state.tanks[id];
+  return !!t && giftedLayoutShare(state, t) < GIFTED_LAYOUT_MAX;
+};
+
+function maxBeauty(state: GameState, cache: CondCache, scaped = 0, own = false) {
   cache.maxBeauty ??= {};
-  if (cache.maxBeauty[scaped] === undefined) {
+  const key = own ? `${scaped}+own` : `${scaped}`;
+  if (cache.maxBeauty[key] === undefined) {
     let m = 0;
     for (const id of state.tankOrder) {
       if (scaped > 0 && (state.progress.counters[scapeEditsKey(id)] ?? 0) < scaped) continue;
-      m = Math.max(m, state.tanks[id]?.cache?.beauty ?? 0);
+      const b = state.tanks[id]?.cache?.beauty ?? 0;
+      if (b > m && (!own || ownLayout(state, id))) m = b;
     }
-    cache.maxBeauty[scaped] = m;
+    cache.maxBeauty[key] = m;
   }
-  return cache.maxBeauty[scaped];
+  return cache.maxBeauty[key];
 }
 
 /** One measurable part of a compound goal ("layout edits 1/3", "beauty 95/70"). */
@@ -280,15 +318,16 @@ export interface CondStep {
  * Progress toward "beauty `min` in a tank you aquascaped (`scaped` edits)": the tank closest to meeting BOTH parts.
  * current/target report the part still missing (edits first), so a 95-beauty tank without edits reads "1/3", not "0/70".
  */
-function scapedBeautyProgress(state: GameState, min: number, scaped: number): { tankId: string | null; current: number; target: number; detail: string; steps: CondStep[] } {
-  let best: { id: string; edits: number; beauty: number; score: number } | null = null;
+function scapedBeautyProgress(state: GameState, min: number, scaped: number, own = false): { tankId: string | null; current: number; target: number; detail: string; steps: CondStep[] } {
+  let best: { id: string; edits: number; beauty: number; score: number; mine: boolean } | null = null;
   for (const id of state.tankOrder) {
     const t = state.tanks[id];
     if (!t) continue;
     const edits = Math.max(0, Math.floor(state.progress.counters[scapeEditsKey(id)] ?? 0));
     const beauty = Math.floor(t.cache?.beauty ?? 0);
-    const score = Math.min(1, edits / scaped) + Math.min(1, beauty / Math.max(1, min));
-    if (!best || score > best.score + 1e-9 || (Math.abs(score - best.score) <= 1e-9 && beauty > best.beauty)) best = { id, edits, beauty, score };
+    const mine = !own || ownLayout(state, id);
+    const score = (scaped > 0 ? Math.min(1, edits / scaped) : 1) + Math.min(1, beauty / Math.max(1, min)) + (mine ? 1 : 0);
+    if (!best || score > best.score + 1e-9 || (Math.abs(score - best.score) <= 1e-9 && beauty > best.beauty)) best = { id, edits, beauty, score, mine };
   }
   if (!best) {
     return { tankId: null, current: 0, target: scaped, detail: `Set up a tank, then edit its layout (0/${scaped}) · beauty 0/${min}`, steps: [{ label: 'Layout edits', current: 0, target: scaped, met: false }, { label: 'Beauty', current: 0, target: min, met: false }] };
@@ -297,13 +336,16 @@ function scapedBeautyProgress(state: GameState, min: number, scaped: number): { 
   const editsMet = best.edits >= scaped;
   const beautyMet = best.beauty >= min;
   const editsShown = Math.min(best.edits, scaped);
-  const detail = `${name}: ${editsMet ? 'layout edited' : 'edit the layout'} (${editsShown}/${scaped}) · beauty ${best.beauty}/${min}`;
+  const gift = own && !best.mine ? ' · still mostly the gifted layout: rework it into your own' : '';
+  const detail = `${name}: ${editsMet ? 'layout edited' : 'edit the layout'} (${editsShown}/${scaped}) · beauty ${best.beauty}/${min}${gift}`;
   const steps: CondStep[] = [
     { label: `Layout edits in ${name}`, current: editsShown, target: scaped, met: editsMet },
     { label: 'Beauty', current: best.beauty, target: min, met: beautyMet },
   ];
-  // The missing part drives current/target (edits first: they are what the player has to go and do).
-  const bottleneck = !editsMet ? steps[0] : steps[1];
+  if (own) steps.push({ label: 'A layout of your own', current: best.mine ? 1 : 0, target: 1, met: best.mine });
+  // The missing part drives current/target (edits first, then your own layout: they are what the player has to go
+  // and do).
+  const bottleneck = !editsMet ? steps[0] : own && !best.mine ? steps[2] : steps[1];
   return { tankId: best.id, current: Math.min(bottleneck.current, bottleneck.target), target: bottleneck.target, detail, steps };
 }
 
@@ -403,12 +445,13 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
     }
     case 'beauty': {
       const scaped = cond.scaped ?? 0;
-      const v = maxBeauty(state, cache, scaped);
-      if (!scaped) return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `Beauty ${cond.min}` };
-      const label = `Beauty ${cond.min} in a tank you aquascaped (${scaped} layout edits)`;
+      const own = !!cond.ownLayout;
+      const v = maxBeauty(state, cache, scaped, own);
+      if (!scaped && !own) return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `Beauty ${cond.min}` };
+      const label = own ? `Beauty ${cond.min} in a layout of your own (${scaped} layout edits)` : `Beauty ${cond.min} in a tank you aquascaped (${scaped} layout edits)`;
       if (v >= cond.min) return { met: true, current: cond.min, target: cond.min, label };
       // Not met yet: say which part is missing instead of "0/70" beside a tank that already scores 95.
-      const pr = scapedBeautyProgress(state, cond.min, scaped);
+      const pr = scapedBeautyProgress(state, cond.min, scaped, own);
       return { met: false, current: pr.current, target: pr.target, label, detail: pr.detail, steps: pr.steps, tankId: pr.tankId ?? undefined };
     }
     case 'flag': {
@@ -499,9 +542,14 @@ export interface ObjectiveStatus {
 function objectiveStatus(state: GameState, obj: Objective, opts: { baseline?: number; baselines?: Record<string, number>; target?: number; startHour?: number }, cache: CondCache): ObjectiveStatus {
   switch (obj.type) {
     case 'flag': {
-      // Only flags raised since the current step began count (see ProgressState.tutorial.flagHours).
+      // Only flags raised since the current step began count (see ProgressState.tutorial.flagHours) — and, with
+      // `minHours`, only once the step has been on screen that long (an "observe" step should be watched, not flashed).
+      // A flag seen during the dwell counts when the dwell ends: the AI throttles repeat sightings (30 s a behaviour),
+      // so waiting for a fresh one could hold the step several times longer than the dwell.
       const fresh = state.progress.tutorial.flagHours ?? {};
-      let met = obj.anyOf.some((f) => fresh[f] !== undefined);
+      const start = opts.startHour ?? -Infinity;
+      const dwelt = state.clock.hour >= start + (obj.minHours ?? 0) - 1e-9;
+      let met = dwelt && obj.anyOf.some((f) => fresh[f] !== undefined && fresh[f] >= start);
       if (!met && obj.fallbackHours !== undefined && opts.startHour !== undefined) met = state.clock.hour - opts.startHour >= obj.fallbackHours;
       return { met, current: met ? 1 : 0, target: 1 };
     }
@@ -667,7 +715,9 @@ export function tutorialAdvance(state: GameState, flag?: string): void {
   if (t.done || t.skipped) return;
   const step = tutorialStepDefs(state)[t.step];
   if (!step) return;
-  const met = objectiveStatus(state, step.objective, tutorialOpts(state), {}).met;
+  // "Look here" steps (a flag objective: open the market, watch the fish, peek at Research) hand out their reward on
+  // Next too — there is nothing to cheat, and the done line ("You can now list animals for sale.") must be true.
+  const met = objectiveStatus(state, step.objective, tutorialOpts(state), {}).met || step.objective.type === 'flag';
   completeTutorialStep(state, step, met);
   checkTutorial(state, {});
 }
@@ -683,7 +733,9 @@ export function tutorialWants(state: GameState, flag: string): boolean {
   const step = tutorialStepDefs(state)[t.step];
   if (!step) return false;
   const lists = (o: Objective): boolean => (o.type === 'flag' ? o.anyOf.includes(flag) : o.type === 'any' ? o.of.some(lists) : false);
-  return lists(step.objective) && (t.flagHours ?? {})[flag] === undefined;
+  if (!lists(step.objective)) return false;
+  // flagHours is reset at every step start; a flag raised during a step's minimum dwell counts once the dwell ends.
+  return (t.flagHours ?? {})[flag] === undefined;
 }
 
 export function tutorialSkip(state: GameState): void {
@@ -702,8 +754,18 @@ function questTitle(q: QuestState): string {
   return QUEST_BY_ID[q.id]?.title ?? q.id;
 }
 
+/** A quest the player can no longer make progress on (hobby-room goals once the shop opens). */
+function questOutgrown(state: GameState, def: QuestDef): boolean {
+  return def.maxFacility !== undefined && levelIdx(state.facility.level) > levelIdx(def.maxFacility);
+}
+
 function updateQuests(state: GameState, cache: CondCache): void {
-  for (const q of state.progress.quests) {
+  // an unfinished quest the player has outgrown leaves the board (it was never claimable, so nothing is lost)
+  const p = state.progress;
+  if (p.quests.some((q) => q.status === 'active' && q.id !== 'tutorial' && QUEST_BY_ID[q.id] && questOutgrown(state, QUEST_BY_ID[q.id]))) {
+    p.quests = p.quests.filter((q) => !(q.status === 'active' && q.id !== 'tutorial' && QUEST_BY_ID[q.id] && questOutgrown(state, QUEST_BY_ID[q.id])));
+  }
+  for (const q of p.quests) {
     if (q.status !== 'active' || q.id === 'tutorial') continue;
     const def = QUEST_BY_ID[q.id];
     if (!def) continue;
@@ -747,24 +809,41 @@ function refillBoard(state: GameState, rng: Rng, cache: CondCache): void {
   const scan = ensureScan(state);
   const now = state.clock.hour;
   if (scan.boardRefreshHour !== undefined && now < scan.boardRefreshHour) return;
+  const present = new Set(p.quests.map((q) => q.id));
+  const eligible = (def: QuestDef): boolean => {
+    if (present.has(def.id)) return false;
+    const claimed = p.counters[`quest_claimed:${def.id}`] ?? 0;
+    if (claimed > 0 && !def.repeatable) return false;
+    if (questOutgrown(state, def)) return false;
+    return condsMet(state, def.requires, cache);
+  };
+  const metNow = (def: QuestDef): boolean => {
+    const times = p.counters[`quest_claimed:${def.id}`] ?? 0;
+    const target = scaledTarget(def, times);
+    const rk = relativeKey(def.objective);
+    const baseline = rk ? counterValue(state, rk) : undefined;
+    return objectiveStatus(state, def.objective, { baseline, target, startHour: now }, cache).met;
+  };
+  // A one-shot quest whose goal was reached before it was ever drawn (the move to a showroom while the board was
+  // full, the first marine tank right after the research) is still owed: it joins the board straight away — even a
+  // full one — and completes on the next tick, instead of being lost for good. One per draw, so an old save with a
+  // dozen such goals is paid out over a few hours rather than in one burst.
+  const owed = QUESTS.find((def) => !def.repeatable && eligible(def) && metNow(def));
+  if (owed) {
+    p.quests.push({ id: owed.id, status: 'active', progress: 0, startedHour: now });
+    scan.boardRefreshHour = now + 1;
+    return;
+  }
   const onBoard = p.quests.filter((q) => q.id !== 'tutorial' && (q.status === 'active' || q.status === 'complete'));
   // lane:w2-sim — a full board makes room only by rotating an untouched quest off. The board shows the fresh quest;
   // rotations aren't logged (three slots turning over every few days would add 5–10 log lines per real hour).
   if (onBoard.length >= QUEST_BOARD_SIZE && !rotateStaleQuest(state, now)) return;
-  const present = new Set(p.quests.map((q) => q.id));
   const candidates: QuestDef[] = [];
   for (const def of QUESTS) {
-    if (present.has(def.id)) continue;
     if (scan.rotated?.[def.id] !== undefined && now - scan.rotated[def.id] < QUEST_ROTATED_OFF_HOURS) continue; // lane:w2-sim
-    const claimed = p.counters[`quest_claimed:${def.id}`] ?? 0;
-    if (claimed > 0 && !def.repeatable) continue;
-    if (!condsMet(state, def.requires, cache)) continue;
-    // skip quests that would complete instantly
-    const times = claimed;
-    const target = scaledTarget(def, times);
-    const rk = relativeKey(def.objective);
-    const baseline = rk ? counterValue(state, rk) : undefined;
-    if (objectiveStatus(state, def.objective, { baseline, target, startHour: now }, cache).met) continue;
+    if (!eligible(def)) continue;
+    // skip repeatable quests that would complete instantly (they come round again)
+    if (metNow(def)) continue;
     candidates.push(def);
   }
   if (!candidates.length) {
@@ -1128,7 +1207,7 @@ export function activeQuests(state: GameState): QuestView[] {
     const st = objectiveStatus(state, def.objective, { baseline: q.baseline, target: q.target, startHour: q.startedHour }, cache);
     const target = st.target;
     let body = def.body;
-    if (q.target && def.objective.type === 'counter' && q.target !== def.objective.min) body = body.replace(String(def.objective.min), String(q.target));
+    if (q.target && def.objective.type === 'counter' && q.target !== def.objective.min) body = def.bodyRepeat ? def.bodyRepeat.replace(/\{n\}/g, String(q.target)) : body;
     const view: QuestView = { id: q.id, title: def.title, body, icon: def.icon ?? 'Target', status: q.status, progress: q.status === 'complete' ? 1 : q.progress, current: q.status === 'complete' ? target : Math.min(target, st.current), target, reward: def.reward, isTutorial: false };
     if (q.status === 'active' && def.objective.type === 'cond') {
       const cs = evalCond(state, def.objective.cond, cache);

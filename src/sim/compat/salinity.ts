@@ -49,6 +49,7 @@ export function waterNeedPhrase(sp: SpeciesDefinition): string {
 export function offIdealEnvironmentNote(sp: SpeciesDefinition, env: Environment): string | null {
   if (sp.environment !== 'brackish' || env === 'brackish' || !sp.salinitySG) return null;
   const r = sp.salinitySG;
-  if (env === 'freshwater') return `they live in fresh water, but hard water with a little salt (SG ${r.idealMin.toFixed(3)}–${r.idealMax.toFixed(3)}) suits them best`;
+  // lane:fix-water — name the route the player actually has (salt can't be dosed into a freshwater tank)
+  if (env === 'freshwater') return `they live in fresh water, but a little salt suits them best — a brackish tank (SG ${r.idealMin.toFixed(3)}–${r.idealMax.toFixed(3)}, from Research › Brackish Estuaries)`;
   return `they tolerate sea water, but brackish water (SG ${r.idealMin.toFixed(3)}–${r.idealMax.toFixed(3)}) suits them best`;
 }

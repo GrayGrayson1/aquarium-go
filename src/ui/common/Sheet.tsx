@@ -11,10 +11,10 @@ import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { sfx } from '@/audio/sfx';
-import { useMedia } from './safe';
+import { isTextEntry, SHORT_LANDSCAPE_QUERY, useMedia } from './safe';
 
-/** Phones, and tablets held upright, get bottom sheets so the tank stays visible above. */
-export const BOTTOM_SHEET_QUERY = '(max-width: 720px), (max-width: 1000px) and (orientation: portrait)';
+/** Phones (either way up), and tablets held upright, get bottom sheets so the tank stays visible above. */
+export const BOTTOM_SHEET_QUERY = `(max-width: 720px), (max-width: 1000px) and (orientation: portrait), ${SHORT_LANDSCAPE_QUERY}`;
 
 export interface SheetProps {
   open: boolean;
@@ -46,8 +46,10 @@ export function Sheet({ open, onClose, side = 'right', children, header, title, 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      if (isTextEntry(t)) return;
       if (document.querySelector('.ag-modal-backdrop')) return;
+      // a slider / select / switch keeps Escape too: it lets go of the field and the sheet closes in one press
+      if (t && t !== document.body && (t.tagName === 'INPUT' || t.tagName === 'SELECT')) t.blur();
       e.preventDefault();
       closeRef.current();
     };
@@ -66,7 +68,13 @@ export function Sheet({ open, onClose, side = 'right', children, header, title, 
       const t = window.setTimeout(() => sheetRef.current?.querySelector<HTMLElement>('.ag-sheet__close')?.focus({ preventScroll: true }), 60);
       return () => {
         window.clearTimeout(t);
-        if (opener && document.contains(opener) && sheetRef.current?.contains(document.activeElement)) opener.focus({ preventScroll: true });
+        if (!opener || !sheetRef.current?.contains(document.activeElement)) return;
+        if (document.contains(opener)) opener.focus({ preventScroll: true });
+        else {
+          // the opener is gone (a Livestock row closes its panel to show the card): back to that panel's dock button
+          const panel = opener.closest<HTMLElement>('[data-testid^="panel-"]')?.dataset.testid?.slice(6);
+          if (panel) document.querySelector<HTMLElement>(`[data-testid="dock-${panel}"]`)?.focus({ preventScroll: true });
+        }
       };
     }
   }, [open]);

@@ -19,6 +19,7 @@ import { ExhibitFocus, inForeground } from './visitorStaging';
 import { addSlotAttributes, setSlotColor, setSlotFlags, slotDepthMaterial, slotMaterial, type SlotAttrs } from './visitorMaterial';
 import { stepStaffRuntime, staffRuntime, type StaffAgent } from './staffRuntime';
 import { ACC_FLAG, buildAccessoryGeometry, makeStaffLook, type StaffLook } from './staffLooks';
+import { createContactShadows } from './contactShadows'; // lane:facrender
 
 const CAP = 12;
 const NEAR_FADE: [number, number] = [0.9, 1.6];
@@ -153,6 +154,8 @@ export function StaffLayer() {
     return out;
   }, [geos, mats]);
   const looks = useRef(new Map<string, StaffLook>());
+  const shadows = useMemo(() => createContactShadows(CAP), []);
+  useEffect(() => () => shadows.dispose(), [shadows]);
   const focus = useMemo(() => new ExhibitFocus(), []);
   const drawList = useRef<StaffAgent[]>([]);
   const hairCount = useMemo(() => meshes.hair.map(() => 0), [meshes]);
@@ -236,6 +239,7 @@ export function StaffLayer() {
       writeAgent(a, L, i);
     }
     const M = meshes;
+    shadows.commit(n);
     M.body.mesh.count = n;
     M.head.mesh.count = n;
     M.thigh.mesh.count = n * 2;
@@ -304,6 +308,7 @@ export function StaffLayer() {
       _e.set(0, heading, 0);
       _q.setFromEuler(_e);
       _root.compose(_p.set(a.x, bob * sc, a.z), _q, _s.set(sc, sc, sc));
+      shadows.set(i, a.x, a.z, heading, sc, fade, bob); // lane:facrender — contact shadow under the feet
       _root.multiply(_m.makeTranslation(shift * 0.02, 0, 0));
       const roll = -shift * 0.03 + (walking ? Math.sin(ph) * 0.03 * moving : 0);
       joint(_frame, _root, 0, 0.9, 0, lean, walking ? Math.sin(ph) * 0.06 * moving : 0, roll).multiply(_pivotDown);
@@ -497,6 +502,7 @@ export function StaffLayer() {
       {allParts(meshes).map((p, i) => (
         <primitive key={i} object={p.mesh} />
       ))}
+      <primitive object={shadows.mesh} />
     </group>
   );
 }

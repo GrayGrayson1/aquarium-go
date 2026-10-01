@@ -133,6 +133,10 @@ export function separateCreature(state: GameState, creatureId: string, toTankId:
       clutch.stage === 'fry'
         ? `Perfect timing — ${c.name}’s job is done and the fry are on their own now.`
         : `${c.name} has left the ${clutch.stage === 'eggs' ? 'eggs' : 'brood'} — without a parent tending them, some may fungus or fall from the nest.`;
+  } else if (stage === 'guarding' && !clutch) {
+    // Guard duty with nothing left to guard (the clutch hatched or was lost) — a move always clears it.
+    startResting(c, hour, cooldownH * 0.5);
+    msg = `${c.name} moved to ${tank.name} — nothing left to guard, so ${c.sex === 'female' ? 'she' : 'he'} can rest.`;
   } else if (['courting', 'spawning', 'nest_preparing', 'depositing', 'following'].includes(stage)) {
     setStage(c, 'conditioning', hour);
     if (partner && isAlive(partner) && partner.tankId === from && partner.repro.stage === stage) setStage(partner, partner.repro.stage === 'courting' && sp?.breeding.system === 'bubble_nest' ? 'nest_ready' : 'conditioning', hour);

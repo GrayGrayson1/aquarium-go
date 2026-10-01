@@ -407,17 +407,19 @@ const WATER_CHANGE_FIXES = new Set(['nitrate', 'ammonia', 'nitrite', 'ph', 'kh',
 
 /**
  * Seahorses, axolotls and long-finned bettas tire in strong current. If a resident wants low flow, turn powerheads
- * and wavemakers down to a gentle setting (never up — more flow is a design decision for the player).
+ * and wavemakers down to a gentle setting (never up — more flow is a design decision for the player), but never
+ * below what the most current-loving resident needs: a tang sharing the tank keeps the pumps up (lane:staff, S05-04),
+ * and the water report explains the clash.
  */
 function calmFlow(state: GameState, tank: Tank): void {
   let want: number | null = null;
   for (const c of Object.values(state.creatures)) {
     if (c.tankId !== tank.id || (c.status !== 'alive' && c.status !== 'listed')) continue;
     const pref = findSpecies(c.speciesId)?.flowPreference;
-    const v = pref === 'very_low' || pref === 'low' ? 0.1 : pref === 'moderate' ? 0.6 : null;
-    if (v !== null) want = want === null ? v : Math.min(want, v);
+    const v = pref === 'very_low' || pref === 'low' ? 0.1 : pref === 'moderate' ? 0.6 : pref === 'high' ? 1 : null;
+    if (v !== null) want = want === null ? v : Math.max(want, v);
   }
-  if (want === null) return;
+  if (want === null || want >= 1) return;
   for (const inst of tank.equipment ?? []) {
     const kind = getEquipmentDef(inst.defId)?.kind;
     if ((kind !== 'powerhead' && kind !== 'wavemaker') || inst.failed || !inst.on) continue;
@@ -477,7 +479,8 @@ export function keeperWaterCare(state: GameState, m: StaffMember, tank: Tank, ro
       .filter((p) => p.status !== 'good' && (WATER_CHANGE_FIXES.has(p.key) || (p.key === 'salinity' && salty && w.salinitySG < 1.02)))
       .map((p) => p.key);
     tempOff = rep.params.some((p) => p.key === 'temp' && p.status !== 'good');
-    flowOff = rep.params.some((p) => p.key === 'flow' && p.status !== 'good');
+    // only too MUCH current is the keeper's to calm; too still is a note for the player (S05-04)
+    flowOff = rep.params.some((p) => p.key === 'flow' && p.status !== 'good' && /too strong/i.test(p.reason ?? ''));
     nitrogenDanger = rep.params.some((p) => (p.key === 'ammonia' || p.key === 'nitrite') && p.status === 'danger');
     // KH that has crashed can't be fixed with soft change water alone: a dose of buffer (a couple of dollars, on the
     // supplies ledger) stops the pH sliding. At most once a day per tank.
@@ -555,7 +558,9 @@ function speciesPhrase(list: SpeciesDefinition[]): string {
 
 /**
  * Keepers look over the equipment on every visit. Repairs cost money, so they're the player's call — the keeper
- * flags a failure (once) and makes a stuck-on heater safe by switching it off before it cooks the tank.
+ * flags a failure and makes a stuck-on heater safe by switching it off before it cooks the tank. The 48 h reminder
+ * toasts (at most one equipment toast a game day across the facility, G2-06): the failure's own toast is easy to miss
+ * at 10×, and a dead filter quietly turns a healthy tank into an overstocked one.
  */
 export function keeperEquipmentCheck(state: GameState, m: StaffMember, tank: Tank): void {
   for (const inst of tank.equipment ?? []) {
@@ -571,9 +576,9 @@ export function keeperEquipmentCheck(state: GameState, m: StaffMember, tank: Tan
         kind: 'warning',
         text: stuck
           ? `${firstName(m)} found the ${name} in ${tank.name} stuck on and switched it off before the water overheated. It needs a repair (tank card › Equipment).`
-          : `${firstName(m)} noticed the ${name} in ${tank.name} has failed. Repairs are your call — tank card › Equipment.`,
+          : `${firstName(m)} noticed the ${name} in ${tank.name} has failed${def?.kind === 'filter' ? ', so the tank can’t process its waste properly' : ''}. Repairs are your call — tank card › Equipment.`,
         tankId: tank.id,
-        toast: stuck,
+        toast: stuck || throttled(state, 'eq:toast', 24),
       });
     }
   }
@@ -608,21 +613,27 @@ export function keeperVisit(state: GameState, m: StaffMember, tankId: string, ro
       });
     }
   }
-  keeperEquipmentCheck(state, m, tank);
   // Moving or selling animals is the player's call; the keeper says plainly when a tank has outgrown its filter
   // (a shrimp colony boom, a big clutch raised in the display).
   if (round === 'morning' && (tank.cache?.stockingLoad ?? 0) > 1 && (tank.water.ammonia > 0.05 || tank.water.nitrite > 0.1)) {
     noteIssue(day, `${tank.name} is overcrowded`);
     if (throttled(state, `crowd:${tank.id}`, 48)) {
       const n = Object.values(state.creatures).filter((c) => c.tankId === tank.id && c.status === 'alive').length;
+      // A failed filter is the likelier culprit than the headcount: name it first (G2-06).
+      const dead = (tank.equipment ?? []).find((e) => e.failed && getEquipmentDef(e.defId)?.kind === 'filter');
+      const deadName = dead ? (getEquipmentDef(dead.defId)?.name ?? 'filter') : null;
+      if (dead) ensureStaff(state).warned[`eq:${dead.id}`] = state.clock.hour; // this says it; skip the equipment reminder
       emitEvent(state, {
         kind: 'warning',
-        text: `${firstName(m)}: ${tank.name} is overcrowded (${n} animals) — waste is outpacing the filter even with daily water changes. Moving some to another tank, adding filtration or selling a few is your call.`,
+        text: deadName
+          ? `${firstName(m)}: the ${deadName} in ${tank.name} has failed, so the rest of the filtration can’t keep up with ${n} animals even with daily water changes. Repair it in the tank card › Equipment.`
+          : `${firstName(m)}: ${tank.name} is overcrowded (${n} animals) — waste is outpacing the filter even with daily water changes. Moving some to another tank, adding filtration or selling a few is your call.`,
         tankId: tank.id,
         toast: true,
       });
     }
   }
+  keeperEquipmentCheck(state, m, tank); // after the crowding check, which names a failed filter itself
   // Treatment is the player's decision; the keeper makes sure they hear about a sick animal.
   if (!quickRound(round)) {
     for (const c of Object.values(state.creatures)) {
@@ -788,21 +799,27 @@ export function stockCheck(state: GameState, m: StaffMember, hour: number): void
   const orders = plannedOrders(state, m);
   if (!orders.length) return;
   const bought: string[] = [];
-  const blocked: string[] = [];
+  // lane:staff (S05-03) — what could not be bought, and why: the day's budget, or the till itself
+  const overBudget: string[] = [];
+  const noCash: string[] = [];
   let spentNow = 0;
   for (const o of orders) {
     const left = Math.max(0, st.stockBudget - st.stockSpent.amount);
+    const cash = Math.max(0, state.finance.money);
     if (o.kind === 'food' && o.foodId) {
       const def = getFoodDef(o.foodId);
       if (!def) continue;
-      const affordable = Math.min(o.packs ?? 1, Math.floor((left + 1e-6) / Math.max(0.01, def.price)));
+      // as many packs as both the budget and the cash on hand allow — when money is tight the most urgent staple
+      // still gets a pack or two rather than nothing
+      const each = Math.max(0.01, def.price);
+      const affordable = Math.min(o.packs ?? 1, Math.floor((left + 1e-6) / each), Math.floor((cash + 1e-6) / each));
       if (affordable < 1) {
-        blocked.push(def.name.toLowerCase());
+        (cash < each ? noCash : overBudget).push(def.name.toLowerCase());
         continue;
       }
       const res = buyFood(state, def.id, affordable);
       if (!res.ok) {
-        blocked.push(def.name.toLowerCase());
+        noCash.push(def.name.toLowerCase());
         continue;
       }
       const price = Math.round(def.price * affordable * 100) / 100;
@@ -811,14 +828,14 @@ export function stockCheck(state: GameState, m: StaffMember, hour: number): void
       spentNow += price;
       bought.push(`${affordable} × ${def.name}`);
     } else if (o.kind === 'salt' && o.kg) {
-      const kg = Math.min(o.kg, Math.floor((left + 1e-6) / SALT_PRICE_PER_KG / 5) * 5);
+      const kg = Math.min(o.kg, Math.floor((Math.min(left, cash) + 1e-6) / SALT_PRICE_PER_KG / 5) * 5);
       if (kg < 5) {
-        blocked.push('salt mix');
+        (cash < 5 * SALT_PRICE_PER_KG ? noCash : overBudget).push('salt mix');
         continue;
       }
       const res = buySalt(state, kg);
       if (!res.ok) {
-        blocked.push('salt mix');
+        noCash.push('salt mix');
         continue;
       }
       tagLastLedger(state, m);
@@ -836,9 +853,10 @@ export function stockCheck(state: GameState, m: StaffMember, hour: number): void
     tt.spent += spentNow;
     day.last = { hour, kind: 'order', text: `Ordered ${bought.slice(0, 2).join(' and ')}${bought.length > 2 ? ` and ${bought.length - 2} more` : ''} (${fmt$(spentNow)})` };
   }
-  if (blocked.length) {
-    const broke = state.finance.money < 5;
-    const what = blocked.slice(0, 2).join(' and ');
+  if (noCash.length || overBudget.length) {
+    // name the real blocker: an empty till is not a budget problem
+    const broke = noCash.length > 0;
+    const what = (broke ? noCash : overBudget).slice(0, 2).join(' and ');
     noteIssue(day, broke ? `Couldn’t afford ${what}` : `Budget spent — ${what} wait for tomorrow`);
     if (throttled(state, `budget:${m.id}`, 20)) {
       emitEvent(state, {
@@ -967,7 +985,8 @@ export function docentEffect(state: GameState, hour: number): DocentEffect | nul
   let kids = false;
   let story = false;
   for (const m of docents) {
-    reach += Math.max(1, m.tankIds.filter((id) => state.tanks[id]).length || 3 + m.skill);
+    // only the exhibits they actually present (lane:staff, S05-05: a docent with nothing assigned covers nothing)
+    reach += m.tankIds.filter((id) => state.tanks[id]).length;
     quality += 0.55 + 0.1 * clamp(m.skill, 1, 5);
     if (m.trait === 'great_with_kids') kids = true;
     if (m.trait === 'storyteller') story = true;

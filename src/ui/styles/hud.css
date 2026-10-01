@@ -1,12 +1,16 @@
 /* In-game HUD: top bar, tank bar, tool rail, camera chips, dock, toasts, coach, party, photo, dev. OWNER: lane "ui-shell". */
 
-.ag-hud { position: absolute; inset: 0; pointer-events: none; }
+.ag-hud { position: absolute; inset: var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l); pointer-events: none; }
 .ag-hud.is-hidden, .ag-hud.is-hidden * { pointer-events: none !important; }
+/* once faded out it leaves the tab order too (GameHUD also sets `inert`): Enter on an invisible control used to switch views */
+.ag-hud.is-hidden { visibility: hidden; transition: visibility 0s .35s; }
 /* A bottom sheet owns the lower screen: tank tools step aside instead of peeking out above it. */
 .ag-hud.has-bottom-sheet .ag-toolrail, .ag-hud.has-bottom-sheet .ag-hud__cam, .ag-hud.has-bottom-sheet .ag-toolhint { opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s; }
 /* Calm watching: after a few idle seconds the chrome recedes (the guide card stays). */
 .ag-hud > * { transition: opacity .28s var(--ease); }
 .ag-hud.is-calm > :not(.ag-hud__coach) { opacity: 0; transition: opacity 1.6s ease; }
+/* the faded chrome takes no taps (keyboard focus still works): the first touch only wakes it (GameHUD swallows its click) */
+.ag-hud.is-calm > :not(.ag-hud__coach), .ag-hud.is-calm > :not(.ag-hud__coach) * { pointer-events: none; }
 .ag-hud.is-calm > .ag-topbar, .ag-hud.is-calm > .ag-tankbar { opacity: 0.3; }
 .ag-hud.is-calm .ag-topbar__center { opacity: 0; transition: opacity 1.6s ease; }
 :root[data-reduced-motion='true'] .ag-hud > *, :root[data-reduced-motion='true'] .ag-hud.is-calm > * { transition-duration: .2s; }
@@ -35,13 +39,15 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-speed { padding: 0 12px 0 4px; gap: 10px; min-height: 48px; }
 .ag-speed .ag-seg { background: transparent; border: 0; padding: 0; }
 .ag-speed .ag-seg__item { min-width: 40px; min-height: 38px; padding: 0 10px; }
-.ag-speed__label { min-width: 46px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); font-weight: 650; font-variant-numeric: tabular-nums; text-align: center; }
+.ag-speed__label { min-width: 46px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-2); font-weight: 650; font-variant-numeric: tabular-nums; text-align: center; }
 
 .ag-money-pill { position: relative; gap: 9px; padding: 0 16px 0 8px; min-height: 48px; }
 .ag-money-pill__coin { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffe6a3, var(--c-gold) 55%, #b88415); color: #3b2703; font-weight: 800; font-size: 15px; box-shadow: 0 0 16px rgba(245, 196, 81, 0.35), inset 0 -2px 3px rgba(0, 0, 0, 0.2); }
 .ag-money-pill__val { font-size: calc(17px * var(--text-scale)); font-weight: 680; font-variant-numeric: tabular-nums; letter-spacing: 0.005em; }
 .ag-money-pill.is-debt .ag-money-pill__val { color: var(--c-danger); }
-.ag-money-delta { position: absolute; right: 10px; top: calc(100% + 6px); padding: 3px 9px; border-radius: 99px; font-size: calc(12.5px * var(--text-scale)); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; background: var(--c-glass-strong); border: 1px solid var(--c-line); box-shadow: var(--shadow-1); }
+/* the delta floats over whatever sits under the money pill (on phones: the tank bar, which used to hide it) */
+.ag-topbar { z-index: 1; }
+.ag-money-delta { pointer-events: none; position: absolute; right: 10px; top: calc(100% + 6px); padding: 3px 9px; border-radius: 99px; font-size: calc(12.5px * var(--text-scale)); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; background: var(--c-glass-strong); border: 1px solid var(--c-line); box-shadow: var(--shadow-1); }
 .ag-money-delta.is-pos { color: var(--c-good); border-color: rgba(74, 222, 128, 0.35); }
 .ag-money-delta.is-neg { color: var(--c-coral); border-color: rgba(255, 138, 101, 0.35); }
 .ag-money-delta + .ag-money-delta { top: calc(100% + 36px); }
@@ -90,7 +96,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-switcher__status.is-good { color: var(--c-good); }
 .ag-switcher__status.is-watch { color: var(--c-watch); }
 .ag-switcher__status.is-danger { color: var(--c-danger); }
-.ag-switcher__gal { color: var(--c-ink-3); font-weight: 500; }
+.ag-switcher__gal { color: var(--c-ink-2); font-weight: 500; }
 .ag-hudbtn { gap: 8px; padding: 0 14px; min-height: 50px; font-size: calc(13px * var(--text-scale)); }
 .ag-hudbtn.is-on { background: rgba(94, 234, 212, 0.16); border-color: rgba(94, 234, 212, 0.5); color: #effffc; }
 .ag-hudbtn svg { color: var(--c-aqua); flex: none; }
@@ -103,7 +109,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-tool:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: -2px; }
 .ag-tool.is-active, .ag-tool[aria-expanded='true'] { background: linear-gradient(180deg, rgba(94, 234, 212, 0.24), rgba(45, 212, 191, 0.12)); color: #f0fffc; box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.45); }
 .ag-tool.is-active .ag-tool__icon, .ag-tool[aria-expanded='true'] .ag-tool__icon { color: var(--c-aqua); }
-.ag-tool.is-locked { opacity: 0.55; }
+.ag-tool.is-locked { opacity: 0.72; }
 .ag-tool__icon { position: relative; display: grid; place-items: center; }
 .ag-tool__lock { position: absolute; right: -7px; bottom: -4px; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: #0b1a22; border: 1px solid var(--c-line-strong); color: var(--c-ink-2); }
 .ag-tool__label { font-size: calc(10.5px * var(--text-scale)); font-weight: 620; letter-spacing: 0.01em; }
@@ -124,7 +130,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-hud__cam { position: absolute; right: var(--edge); bottom: calc(var(--edge) + 6px); transition: right .35s var(--ease); }
 .ag-hud.has-right-sheet .ag-hud__cam { right: calc(min(var(--sheet-w), 100vw) + var(--edge) * 2); bottom: calc(var(--dock-h) + var(--edge) * 2); }
 .ag-camchips { padding: 4px; gap: 2px; min-height: 48px; }
-.ag-camchip { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: var(--c-ink-3); font-size: calc(12px * var(--text-scale)); font-weight: 640; cursor: pointer; transition: background .2s, color .2s; }
+.ag-camchip { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 12px; border: 0; border-radius: 12px; background: transparent; color: var(--c-ink-2); font-size: calc(12px * var(--text-scale)); font-weight: 640; cursor: pointer; transition: background .2s, color .2s; }
 .ag-camchip:hover { color: var(--c-ink); background: var(--c-fill-2); }
 .ag-camchip[aria-checked='true'] { color: #effffc; background: rgba(94, 234, 212, 0.18); box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.4); }
 .ag-camchip:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 1px; }
@@ -150,7 +156,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-dock__item.is-active { color: #f0fffc; background: linear-gradient(180deg, rgba(94, 234, 212, 0.2), rgba(45, 212, 191, 0.08)); box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.38); }
 .ag-dock__item.is-active .ag-dock__icon { color: var(--c-aqua); }
 .ag-dock__item.is-active::after { content: ''; position: absolute; bottom: 4px; width: 16px; height: 3px; border-radius: 99px; background: var(--c-aqua); box-shadow: 0 0 10px var(--c-aqua); }
-.ag-dock__item.is-locked { color: var(--c-ink-4); }
+/* locked: the label stays readable (4.5:1 over a bright room); the icon and lock badge carry the "locked" cue */
+.ag-dock__item.is-locked { color: var(--c-ink-2); }
+.ag-dock__item.is-locked .ag-dock__icon > svg:first-child { opacity: 0.5; }
 .ag-dock__icon { position: relative; display: grid; place-items: center; }
 .ag-dock__lock { position: absolute; right: -8px; bottom: -4px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #0b1a22; border: 1px solid var(--c-line-strong); color: var(--c-ink-2); }
 .ag-dock__label { font-size: calc(11px * var(--text-scale)); font-weight: 620; letter-spacing: 0.01em; white-space: nowrap; }
@@ -160,9 +168,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ───────── Toasts ─────────
    Top-left column under the tank switcher: never over a right-hand panel, barely over the tank. */
-.ag-toasts { position: fixed; z-index: var(--z-toast); top: calc(var(--edge) + var(--topbar-h) + 72px); left: var(--edge); width: min(340px, calc(100vw - 2 * var(--edge))); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; transition: left .35s var(--ease), top .35s var(--ease); }
-.ag-toasts.has-left-sheet { left: calc(min(var(--sheet-w), 100vw) + var(--edge) * 2); }
-.ag-toasts.is-onboarding { top: var(--edge); left: auto; right: var(--edge); align-items: flex-end; }
+.ag-toasts { position: fixed; z-index: var(--z-toast); top: calc(var(--edge-t) + var(--topbar-h) + 72px); left: var(--edge-l); width: min(340px, calc(100vw - 2 * var(--edge))); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; transition: left .35s var(--ease), top .35s var(--ease); }
+.ag-toasts.has-left-sheet { left: calc(min(var(--sheet-w), 100vw) + var(--edge-l) + var(--edge)); }
+.ag-toasts.is-onboarding { top: var(--edge-t); left: auto; right: var(--edge-r); align-items: flex-end; }
 .ag-toast { position: relative; display: flex; align-items: center; gap: 9px; max-width: 100%; padding: 7px 4px 7px 7px; border-radius: 14px; background: rgba(6, 15, 21, 0.72); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border: 1px solid var(--c-line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.04); overflow: hidden; font-size: calc(12.5px * var(--text-scale)); line-height: 1.35; color: var(--c-ink); pointer-events: auto; }
 .ag-toast__icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 9px; background: var(--c-fill-2); flex: none; align-self: flex-start; }
 .ag-toast__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -202,9 +210,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* ───────── Tutorial coach ───────── */
 .ag-hud__coach { position: absolute; left: var(--edge); bottom: calc(var(--edge) + 6px); width: 340px; transition: left .35s var(--ease), bottom .35s var(--ease); }
 /* mid-size windows: the dock would run under the guide, so the guide sits above the dock line */
-@media (min-width: 721px) { .ag-hud__coach.is-raised { bottom: calc(var(--dock-h) + var(--edge) * 2); } }
+@media (min-width: 721px) and (min-height: 501px) { .ag-hud__coach.is-raised { bottom: calc(var(--dock-h) + var(--edge) * 2); } }
 /* the left tank card stacks above the guide (TutorialCoach publishes --coach-clear) */
-.ag-sheet--left { bottom: max(calc(var(--dock-h) + var(--edge) * 2), var(--coach-clear, 0px)); }
+.ag-sheet--left { bottom: max(calc(var(--dock-h) + var(--edge) + var(--edge-b)), var(--coach-clear, 0px)); }
 .ag-coach { position: relative; padding: 14px 16px 14px; border-radius: 20px; background: var(--c-glass-strong); backdrop-filter: var(--blur-strong); -webkit-backdrop-filter: var(--blur-strong); border: 1px solid var(--c-line-strong); box-shadow: var(--shadow-2); overflow: hidden; }
 .ag-coach::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--c-aqua), transparent); opacity: 0.8; }
 .ag-coach.is-advanced { animation: ag-coach-glow 1.4s var(--ease-out); }
@@ -237,7 +245,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 @keyframes ag-ring-pulse { 0%, 100% { opacity: 1; box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.18), 0 0 26px rgba(94, 234, 212, 0.5); } 50% { opacity: 0.6; box-shadow: 0 0 0 9px rgba(94, 234, 212, 0.06), 0 0 34px rgba(94, 234, 212, 0.3); } }
 
 /* ───────── Watch mode restore ───────── */
-.ag-watch-restore { position: fixed; right: 14px; bottom: 14px; z-index: 40; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(4, 12, 16, 0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: rgba(255, 255, 255, 0.55); cursor: pointer; pointer-events: auto; transition: opacity .3s, color .2s, background .2s; opacity: 0.55; }
+.ag-watch-restore { position: fixed; right: calc(14px + var(--safe-r)); bottom: calc(14px + var(--safe-b)); z-index: 40; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(4, 12, 16, 0.3); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: rgba(255, 255, 255, 0.55); cursor: pointer; pointer-events: auto; transition: opacity .3s, color .2s, background .2s; opacity: 0.55; }
 .ag-watch-restore:hover, .ag-watch-restore:focus-visible { opacity: 1; color: #fff; background: rgba(4, 12, 16, 0.6); }
 
 /* ───────── Party banner ───────── */
@@ -263,7 +271,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* lane:w2-ui — honest away time + grace period + actionable rows (show results, bids, staff) */
 .ag-welcome { max-height: calc(100dvh - 16vh - 16px); overflow-y: auto; overscroll-behavior: contain; }
 /* phones: the toast stack spans the top of the screen — the welcome card (the catch-up's own summary) sits above it */
-@media (max-width: 720px) { .ag-welcome { z-index: calc(var(--z-toast) + 1); top: max(12vh, 88px); max-height: calc(100dvh - max(12vh, 88px) - 16px); } }
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) { .ag-welcome { z-index: calc(var(--z-toast) + 1); top: max(12vh, 88px); max-height: calc(100dvh - max(12vh, 88px) - 16px); } }
 .ag-welcome__text strong { color: var(--c-ink); font-weight: 650; }
 .ag-welcome__grace { display: flex; gap: 9px; align-items: flex-start; padding: 9px 12px; border-radius: 14px; background: rgba(74, 222, 128, 0.07); border: 1px solid rgba(74, 222, 128, 0.22); color: var(--c-ink-2); font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; }
 .ag-welcome__grace > svg { flex: none; margin-top: 2px; color: var(--c-good); }
@@ -331,7 +339,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-hud__coach, .ag-hud__cam { bottom: calc(var(--dock-h) + var(--edge) * 2); }
   .ag-sheet--right { bottom: calc(var(--dock-h) + var(--edge) * 2); }
 }
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-topbar { grid-template-columns: auto 1fr auto; gap: 6px; }
   .ag-topbar__center { justify-self: center; }
   .ag-clock-pill { padding: 4px 10px; min-height: 40px; }
@@ -340,12 +348,14 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-clock-pill__time span:first-of-type { display: none; }
   .ag-speed { padding: 0 2px; min-height: 40px; }
   .ag-speed__label { display: none; }
-  .ag-speed .ag-seg__item { min-width: 32px; min-height: 34px; padding: 0 6px; }
+  /* the four segments fill the pill's height with a seam between them (28×34 edge-to-edge buttons mis-tapped Pause vs 1×) */
+  .ag-speed .ag-seg { gap: 2px; }
+  .ag-speed .ag-seg__item { min-width: 32px; min-height: 40px; padding: 0 6px; border-radius: 12px; }
   .ag-money-pill { min-height: 40px; padding: 0 10px 0 5px; gap: 6px; }
   .ag-money-pill__coin { width: 24px; height: 24px; font-size: 12px; }
   .ag-money-pill__val { font-size: calc(14.5px * var(--text-scale)); }
   .ag-alerts-btn { width: 40px; min-height: 40px; }
-  .ag-alerts-pop { position: fixed; top: calc(var(--edge) + var(--topbar-h) + 8px); left: var(--edge); right: var(--edge); width: auto; }
+  .ag-alerts-pop { position: fixed; top: calc(var(--edge-t) + var(--topbar-h) + 8px); left: var(--edge-l); right: var(--edge-r); width: auto; }
   .ag-hudpill { border-radius: 14px; }
 
   .ag-tankbar { top: calc(var(--edge) + var(--topbar-h) + 6px); right: var(--edge); gap: 6px; }
@@ -380,8 +390,8 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-coach__foot > .ag-row { width: 100%; justify-content: space-between; }
   .ag-toolhint { bottom: calc(var(--dock-h) + var(--edge) + 72px); font-size: calc(12px * var(--text-scale)); }
   /* phones: compact single-line toasts under the tank switcher, at most two */
-  .ag-toasts { top: calc(var(--edge) + var(--topbar-h) + 58px); left: var(--edge); right: var(--edge); width: auto; align-items: stretch; gap: 5px; }
-  .ag-toasts.is-onboarding { top: max(var(--edge), env(safe-area-inset-top)); left: var(--edge); right: var(--edge); }
+  .ag-toasts { top: calc(var(--edge-t) + var(--topbar-h) + 58px); left: var(--edge-l); right: var(--edge-r); width: auto; align-items: stretch; gap: 5px; }
+  .ag-toasts.is-onboarding { top: var(--edge-t); left: var(--edge-l); right: var(--edge-r); }
   .ag-toast { padding: 5px 2px 5px 6px; border-radius: 12px; gap: 8px; }
   .ag-toast__icon { width: 22px; height: 22px; border-radius: 7px; align-self: center; }
   .ag-toast__text { flex-direction: row; align-items: baseline; gap: 6px; }
@@ -409,9 +419,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* Tool popovers sit ABOVE an open right-hand card (over the card, not over the tank). */
 .ag-toolrail:has(.ag-popover) { z-index: calc(var(--z-sheet) + 2); }
-@media (min-width: 721px) { .ag-toolpop { width: 300px; } }
+@media (min-width: 721px) and (min-height: 501px) { .ag-toolpop { width: 300px; } }
 .ag-tool__label--short { display: none; }
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-tool__label--long { display: none; }
   .ag-tool__label--short { display: inline; }
 }
@@ -423,6 +433,8 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-foodrow { display: flex; align-items: stretch; gap: 6px; }
 .ag-foodrow > .ag-food { flex: 1; min-width: 0; }
 .ag-food__name, .ag-food__meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the guide's pick ("drop an earthworm") leads the list with a small tag */
+.ag-food__tag { display: inline-block; margin-left: 7px; padding: 1px 7px; border-radius: 99px; vertical-align: 1px; background: rgba(94, 234, 212, 0.14); border: 1px solid rgba(94, 234, 212, 0.4); color: var(--c-aqua); font-size: calc(10px * var(--text-scale)); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .ag-food__count { flex: none; white-space: nowrap; }
 .ag-food__count.is-low { color: var(--c-watch); }
 .ag-food__count.is-out { color: var(--c-ink-3); }
@@ -441,7 +453,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* The action prompt never sits on the camera chips: beside a right card the chips share the band above the dock,
    so the prompt moves up a row (and centres in the space the card leaves). */
 .ag-hud.has-right-sheet .ag-toolhint { right: calc(min(var(--sheet-w), 100vw) + var(--edge) * 2); bottom: calc(var(--dock-h) + var(--edge) * 2 + 58px); }
-@media (min-width: 721px) and (max-width: 980px) {
+@media (min-width: 721px) and (max-width: 980px) and (min-height: 501px) {
   .ag-toolhint { bottom: calc(var(--dock-h) + var(--edge) * 2 + 58px); }
 }
 
@@ -450,27 +462,42 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-coach__foot .ag-btn { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ag-coach__note { display: inline-flex; align-items: center; gap: 4px; font-size: calc(11.5px * var(--text-scale)); color: var(--c-ink-3); font-weight: 600; }
 
-/* Toasts: a tighter column so a burst covers less of the tank. */
-@media (min-width: 721px) {
-  .ag-toasts { width: min(320px, calc(100vw - 2 * var(--edge))); gap: 5px; }
+/* Toasts: a tighter column so a burst covers less of the tank — but never one clipped line: the first thing the game
+   says ("Welcome home, Wasabi! Your axolotl…") and every tip amount / unlock condition / market special used to end
+   in an ellipsis unless the player raced to hover. Two lines fit nearly every message; warnings get three because the
+   instruction ("… do a 30–50% water change") is the part at the end. */
+@media (min-width: 721px) and (min-height: 501px) {
+  .ag-toasts { width: min(360px, calc(100vw - 2 * var(--edge))); gap: 5px; }
   .ag-toast { padding: 6px 4px 6px 7px; }
-  .ag-toast__title { -webkit-line-clamp: 1; }
+  .ag-toast__title { -webkit-line-clamp: 2; }
+  .ag-toast--warning .ag-toast__title, .ag-toast--danger .ag-toast__title, .ag-toast--death .ag-toast__title { -webkit-line-clamp: 3; }
   .ag-toast.is-expanded .ag-toast__title { -webkit-line-clamp: 6; }
+}
+/* Phones: one line for routine news, two for warnings; a tap on the text opens the whole message (Toasts.tsx pins it). */
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
+  .ag-toast--warning .ag-toast__title, .ag-toast--danger .ag-toast__title, .ag-toast--death .ag-toast__title { -webkit-line-clamp: 2; }
+  .ag-toast__text:not(.ag-toast__text--btn) { cursor: pointer; }
+  /* a full-height bottom sheet owns the top of the screen (its tabs and filters sat under the toasts): the stack
+     moves to the bottom band, newest lowest, over scrolling content instead of navigation */
+  :root:has(.pn-sheet--bottom.is-max, .ag-sheet--bottom.is-expanded) .ag-toasts:not(.is-onboarding) { top: auto; bottom: var(--edge-b); flex-direction: column-reverse; }
 }
 
 /* Phones: the top bar must fit 390 px with a five-digit balance (speed control used to slide under the clock). */
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-topbar__center { min-width: 0; justify-self: stretch; display: flex; justify-content: center; }
   .ag-speed { min-width: 0; max-width: 100%; }
   .ag-speed .ag-seg { min-width: 0; }
-  .ag-speed .ag-seg__item { min-width: 30px; padding: 0 5px; }
+  .ag-speed .ag-seg__item { min-width: 34px; padding: 0 4px; }
   .ag-topbar__left, .ag-topbar__right { min-width: 0; }
 }
 @media (max-width: 400px) {
   .ag-clock-pill { padding: 4px 8px; }
   .ag-clock-pill__icon { display: none; }
-  .ag-speed .ag-seg__item { min-width: 28px; padding: 0 4px; }
   .ag-money-pill { padding: 0 8px 0 4px; gap: 5px; }
+}
+/* the narrowest phones (360 px Android) give the speed segments back a few pixels rather than overflow the bar */
+@media (max-width: 374px) {
+  .ag-speed .ag-seg__item { min-width: 30px; padding: 0 3px; }
 }
 
 /* Tank bar: food shortage beside the status word */
@@ -478,7 +505,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-switcher__food.is-low { color: var(--c-watch); }
 .ag-switcher__food.is-out { color: var(--c-danger); }
 .ag-toast.is-leaving { pointer-events: none; }
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   /* phones: the food chip replaces the gallons so the status line never runs out of the switcher */
   .ag-switcher__status { min-width: 0; overflow: hidden; }
   .ag-switcher__status:has(.ag-switcher__food) .ag-switcher__gal:not(:last-child) { display: none; }
@@ -489,6 +516,26 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* lane:qa-play — beside a right-hand card the action prompt ("Click the water to drop …") centred under the guide
    card's right edge; it now sits in the band between the expanded guide and the tool rail (which stands beside the
    card), shrinking to fit — and wrapping if it must — instead of running under either. */
+/* fix:HUD — 721–1199 px: the raised guide card shares the band above the dock with the action prompt ("Click the
+   water to drop …" started under the guide at 1024×700): the prompt centres in the space right of the card instead. */
+@media (min-width: 721px) and (max-width: 1199px) and (min-height: 501px) {
+  /* (and short of the tool rail on the right: at 800 px the centred prompt ran under it) */
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-toolhint { --coach-w: 340px; left: calc(var(--coach-w) + var(--edge) * 2); right: calc(var(--edge) * 2 + 76px); width: fit-content; max-width: calc(100% - var(--coach-w) - 76px - var(--edge) * 4); }
+}
+@media (min-width: 721px) and (max-width: 980px) and (min-height: 501px) {
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-toolhint { --coach-w: 300px; } /* the guide card is 300 px wide here */
+}
+/* fix:HUD-2 — windows under ~760 px tall (800×600, 1024×700, 1280×720 at 140 % text): the centred tool rail ran into the camera chips and the
+   action prompt, and beside a creature card (where it moves left of the card) into the tank bar and the guide. The
+   rail hangs from under the top bar with compact tools, and steps aside while a card is open beside it (the card has
+   its own Feed / Photo / Follow). */
+@media (min-width: 721px) and (min-height: 501px) and (max-height: 760px) {
+  .ag-toolrail { top: calc(var(--edge) + var(--topbar-h) + 10px); transform: none; }
+  .ag-tool { min-height: 44px; padding: 4px 2px; gap: 2px; }
+}
+@media (min-width: 721px) and (max-width: 980px) and (min-height: 501px) and (max-height: 760px) {
+  .ag-hud.has-right-sheet .ag-toolrail, .ag-hud.has-right-sheet .ag-hud__cam { opacity: 0; visibility: hidden; transition: opacity .2s, visibility 0s .2s; }
+}
 @media (min-width: 1200px) {
   .ag-hud.has-right-sheet:has(.ag-hud__coach .ag-coach) .ag-toolhint {
     left: calc(340px + var(--edge) * 2);
@@ -500,14 +547,14 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* lane:qa-visual — phones: a soft top scrim under the top bar + tank bar. Bright room details (a hall's glowing
    lettering, lit walls) sit right behind the pills on a portrait screen; the scrim keeps them legible, including in
    calm watching when the pills recede to 30%. It is a pseudo-element, so it fades with the whole HUD in watch mode. */
-@media (max-width: 720px) {
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-hud::before {
     content: '';
     position: absolute;
     left: 0;
     right: 0;
-    top: 0;
-    height: calc(var(--edge) + var(--topbar-h) + 92px);
+    top: calc(-1 * var(--safe-t));
+    height: calc(var(--safe-t) + var(--edge) + var(--topbar-h) + 92px);
     background: linear-gradient(to bottom, rgba(3, 9, 13, 0.62) 0%, rgba(3, 9, 13, 0.4) 50%, rgba(3, 9, 13, 0) 100%);
     pointer-events: none;
     transition: opacity 1.6s ease;
@@ -525,7 +572,50 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* lane:qa-final — phones / portrait tablets: the tank card is a bottom sheet (≤54dvh) that covered the guide. The guide
    folds into its pill meanwhile (TutorialCoach), lifted just above the sheet; a full-height sheet hides it. */
-@media (max-width: 720px), (max-width: 1000px) and (orientation: portrait) {
+@media (max-width: 720px), (max-width: 1000px) and (orientation: portrait), (max-height: 500px) and (orientation: landscape) {
   :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud__coach { bottom: calc(min(54dvh, 640px) + 10px); }
   :root:has(.ag-tcard.ag-sheet--bottom.is-expanded) .ag-hud__coach { opacity: 0; visibility: hidden; }
+}
+
+/* fix:HUD — a phone held sideways (844×390) used to get the desktop chrome: a 418 px vertical rail with Feed above and
+   Watch below the screen, side sheets 218 px tall. It now takes the phone layout (tokens.css / the ≤720 px rules above,
+   MOBILE_QUERY and BOTTOM_SHEET_QUERY) with one change: the eight-button rail would eat 60 px of the 390, so it folds
+   into a 2×4 grid at the right edge, ending above the dock, and the tank bar, toasts, guide and prompts stay clear of it.
+   --rail-w is the grid's width plus its gap. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .ag-hud { --rail-w: 132px; }
+  .ag-toolrail { left: auto; right: var(--edge); top: calc(var(--edge) + var(--topbar-h) + 6px); bottom: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 4px; }
+  .ag-tool-wrap, .ag-tool-wrap--mobile { display: flex; }
+  .ag-tool { min-height: 46px; width: 58px; }
+  .ag-tankbar { right: calc(var(--edge) + var(--rail-w)); }
+  .ag-toasts:not(.is-onboarding) { right: calc(var(--edge) + var(--rail-w)); }
+  .ag-toasts > .ag-toast:nth-last-child(n + 3) { display: flex; } /* three fit beside the rail */
+  .ag-hud__coach, .ag-hud.is-facility .ag-hud__coach { left: var(--edge); right: auto; width: min(320px, 42vw); bottom: calc(var(--dock-h) + var(--edge) * 2); max-height: calc(100dvh - var(--edge) - var(--topbar-h) - var(--dock-h) - var(--edge) * 2 - 12px); }
+  .ag-coach { max-height: inherit; display: flex; flex-direction: column; }
+  .ag-coach__body { overflow-y: auto; min-height: 0; }
+  .ag-hud:has(.ag-toolpop, .ag-toolhint) .ag-hud__coach { opacity: 1; visibility: visible; }
+  .ag-hud:has(.ag-toolpop) .ag-hud__coach { opacity: 0; visibility: hidden; }
+  .ag-toolhint { left: var(--edge); right: calc(var(--edge) + var(--rail-w)); margin-inline: auto; bottom: calc(var(--dock-h) + var(--edge) * 2); }
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-toolhint { left: calc(min(320px, 42vw) + var(--edge) * 2); }
+  .ag-party { bottom: calc(var(--dock-h) + var(--edge) * 2); right: calc(var(--edge) + var(--rail-w)); left: var(--edge); }
+  /* the rail's backdrop-filter makes it the containing block of its fixed popovers: they hang off its left edge */
+  .ag-toolpop { left: auto; right: calc(100% + 8px); top: 50px; bottom: auto; width: min(340px, calc(100vw - var(--rail-w) - var(--edge) * 2 - 8px)); max-height: calc(100dvh - var(--edge) - var(--topbar-h) - var(--dock-h) - var(--edge) * 2 - 56px); overflow-y: auto; }
+  .ag-foodlist { max-height: none; overflow: visible; }
+  .ag-alerts-pop { max-height: calc(100dvh - var(--edge) * 2 - var(--topbar-h) - 8px); }
+  .ag-hud::before { height: calc(var(--edge) + var(--topbar-h) + 60px); }
+  :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud__coach { opacity: 0; visibility: hidden; }
+  /* every bottom sheet reaches the top bar here: toasts drop to the bottom band, above a panel's switcher row */
+  :root:has(.pn-sheet--bottom, .ag-sheet--bottom) .ag-toasts:not(.is-onboarding) { top: auto; bottom: calc(var(--edge-b) + 64px); right: var(--edge-r); flex-direction: column-reverse; }
+}
+
+/* Room view: the "Reset view" chip in the camera corner (the tank view's camera chips live there), with a one-time
+   line on how the room view moves. Its label stays at every width: it is the only chip. */
+.ag-roomcam { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.ag-roomcam__hint { padding: 7px 12px; border-radius: var(--r-pill); background: var(--c-glass-strong); border: 1px solid var(--c-line); color: var(--c-ink-2); font-size: calc(12px * var(--text-scale)); white-space: nowrap; pointer-events: none; }
+.ag-hud__cam--room .ag-camchip span { display: inline; }
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
+  .ag-hud__cam.ag-hud__cam--room { display: block; right: var(--edge); bottom: calc(var(--dock-h) + var(--edge) + 8px); }
+  .ag-roomcam__hint { white-space: normal; max-width: calc(100vw - 2 * var(--edge)); }
+  /* the guide card owns the band above the dock while it is open */
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { display: none; }
 }

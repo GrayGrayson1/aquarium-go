@@ -361,11 +361,13 @@ function startGroove(s: Session, e: Engine): void {
 
 /**
  * Start party mode. With `mic: true` the browser's microphone permission prompt appears now (never earlier).
- * Resolves with the resulting status; never rejects.
+ * `retry: true` restarts a running session that wanted the mic but fell back to the groove (permission denied
+ * or no device) so the browser asks again / uses a grant given since. Resolves with the resulting status;
+ * never rejects.
  */
-export async function startPartyMode({ mic = false }: { mic?: boolean } = {}): Promise<PartyStatus> {
+export async function startPartyMode({ mic = false, retry = false }: { mic?: boolean; retry?: boolean } = {}): Promise<PartyStatus> {
   try {
-    if (session && session.wantMic === mic) return getAudioStatus().partyStatus;
+    if (session && session.wantMic === mic && !(retry && mic && session.source !== 'microphone')) return getAudioStatus().partyStatus;
     if (session) stopPartyMode(true);
     const my = ++token;
     unlockAudio();
@@ -445,8 +447,10 @@ export function stopPartyMode(silent = false): void {
     if (s.raf) cancelAnimationFrame(s.raf);
     const e = getEngine();
     if (s.groove && e) {
-      s.groove.stop(e.ctx.currentTime);
-      dyingGrooves.push(s.groove);
+      if (e.ctx.state === 'running') {
+        s.groove.stop(e.ctx.currentTime);
+        dyingGrooves.push(s.groove);
+      } else s.groove.dispose(); // inaudible anyway, and the ticker that would retire it is not running
     }
     s.micStream?.getTracks().forEach((tr) => tr.stop());
     s.micSource?.disconnect();

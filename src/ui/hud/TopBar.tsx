@@ -8,7 +8,7 @@ import { Pause, Play, FastForward, ChevronsRight, Star, Bell, Sun, Moon } from '
 import { useGame, useGameSelector } from '@/state/game';
 import { useSettings } from '@/state/settings';
 import type { GameSpeed } from '@/types';
-import { sfx } from '@/audio/sfx';
+import { incomeCue, sfx } from '@/audio/sfx';
 import { formatClock, dayOf, hourOfDay } from '@/sim/time';
 import { formatMoney, Segmented } from '../kit';
 import { formatRep } from '../common/format';
@@ -90,7 +90,7 @@ function MoneyPill({ compact }: { compact?: boolean }) {
       if (last && Math.sign(last.v) === Math.sign(d) && id - last.id < 2) return [...list.slice(0, -1), { id, v: last.v + d }];
       return [...list.slice(-2), { id, v: d }];
     });
-    if (d > 0) sfx('coin', { volume: 0.5 });
+    if (d > 0) incomeCue(d); // passive income: sparse, quiet (explicit buy/sell cues come from act())
     timers.current.push(window.setTimeout(() => setDeltas((list) => list.filter((x) => x.id !== id)), 2200));
   }, [money, saveId]);
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);

@@ -179,10 +179,18 @@ function ResearchTab({ g }: { g: GameState }) {
           </>
         }
       >
-        <p className="pn-p">Progress on {active?.def.name} will be lost. The cost isn’t refunded.</p>
+        <p className="pn-p">
+          Progress on {active?.def.name} will be lost. Half of what you paid ({formatMoney(cancelRefund(g, active?.def.cost ?? 0))}) comes back; the rest doesn’t.
+        </p>
       </Modal>
     </div>
   );
+}
+
+/** Mirrors cancelResearch: half of what was paid (the list price for saves from before the paid amount was recorded). */
+function cancelRefund(g: GameState, listCost: number): number {
+  const paid = g.progress.counters['_research_paid'];
+  return Math.round((typeof paid === 'number' && Number.isFinite(paid) && paid >= 0 ? paid : listCost) / 2);
 }
 
 const grantLabel = (k: string): string => safe(() => unlockLabel(k), UNLOCK_KEYS[k as keyof typeof UNLOCK_KEYS] ?? k);

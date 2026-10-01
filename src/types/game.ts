@@ -271,6 +271,10 @@ export interface WaterLabState {
   swing?: number;
   /** Conditioner binds ammonia/nitrite (less toxic) until this game hour. */
   detoxUntilHour?: number;
+  /** lane:fix-water — ammonia (ppm TAN) held bound by conditioner: not toxic, not on the test kit, released at expiry. */
+  boundAmmonia?: number;
+  /** lane:fix-water — nitrite (ppm) held bound by conditioner (see boundAmmonia). */
+  boundNitrite?: number;
   /** 0..1 plant fertiliser level (decays over a few days). */
   fertilizer?: number;
   /** 0..1 reef elements (calcium / alkalinity / trace) — consumed by corals, restored by supplements & water changes. */
@@ -507,6 +511,8 @@ export interface Bid {
   response?: string;
   /** lane:market — the player opened the counter form: no expiry or change of heart before this game hour. */
   holdUntilHour?: number;
+  /** lane:fix-econ — when the current negotiation hold began; the total hold is capped from here (S03-08). */
+  holdStartHour?: number;
 }
 
 export interface ListingSnapshot {
@@ -549,6 +555,8 @@ export interface Listing {
   changedSinceListing?: string;
   soldTo?: Id;
   soldFor?: number;
+  /** lane:fix-panels — game hour the listing closed (sold, withdrawn, expired, invalidated); `endsHour` keeps the scheduled end. */
+  closedHour?: number;
   /** lane:market — advice shown when a listing expires or is invalidated. */
   advice?: string;
   /** lane:market — 0..1 listing appeal (drives buyer arrivals). */
@@ -557,6 +565,8 @@ export interface Listing {
   lastValuation?: number;
   /** lane:market — issue keys already reported (e.g. 'sick:<id>', 'dead:<id>', 'water', 'decor'). */
   alerts?: string[];
+  /** lane:fix-econ — why no buyer can complete this sale right now (an unlisted animal with nowhere to go); cleared when it can (S03-07). */
+  blocked?: string;
   /** lane:market — closing notes for the UI (why it sold/expired/was invalidated). */
   outcome?: string;
   /** lane:frags — kind 'frag': the frags/cuttings held for this listing (returned to storage if it doesn't sell). */
@@ -686,6 +696,8 @@ export interface VisitorLiveState {
   warnedHour?: Record<Id, number>;
   /** Concerned-visitor reputation loss taken today (capped). */
   concernLossToday?: number;
+  /** lane:facility — reaction lines still allowed this quarter hour (refilled per game hour, not per step). */
+  reactionBudget?: number;
 }
 
 // ───────────────────────────────── Progression ─────────────────────────────────
@@ -822,6 +834,8 @@ export interface GameState {
     lastBilledDay?: number;
     /** lane:market — throttle for low-cash / debt warnings. */
     lastWarnHour?: number;
+    /** lane:fix-econ — first midnight at which nothing was alive and the player could not afford a restart (P5-08). */
+    strandedSinceHour?: number;
   };
   progress: ProgressState;
   visitors: VisitorsState;

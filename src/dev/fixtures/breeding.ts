@@ -12,6 +12,7 @@ import type { GameState } from '@/types';
 import type { StarterId as SId } from '@/data/species';
 import { newGame, previewStarters } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
+import { placeOrGrow } from './core-helpers';
 import { createCreature, addCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { advanceWorld } from '@/sim/world';
@@ -63,7 +64,8 @@ function safe(build: () => GameState, fallback: SId): () => GameState {
 function bettaNest(untilFry: boolean): GameState {
   const g = base('betta', 5150);
   const male = starterOf(g);
-  const side = createTank(g, 'g10', 'freshwater_planted', { cycled: true, name: 'Recovery Tank' });
+  // lane:facrender — on a proper floor spot (it sat at the room origin, in front of the starter tank)
+  const side = createTank(g, 'g10', 'freshwater_planted', { cycled: true, name: 'Recovery Tank', placement: placeOrGrow(g, 'g10') });
   devForceBreeding(g, male.id);
   forward(g, 16, () => hasClutch(g, 'betta'), ['bloodworm']);
   const female = male.repro.partnerId ? g.creatures[male.repro.partnerId] : undefined;

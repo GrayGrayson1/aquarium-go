@@ -8,7 +8,7 @@ import { Clock, BadgeCheck, ShoppingBag, Store, Lock, Mars, Venus, CircleDashed,
 import type { Creature, GameState, ShopOffer, Tank, CompatReport } from '@/types';
 import { Button, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { buyOffer } from '@/sim/economy';
+import { buyOffer, offerPickPrice } from '@/sim/economy';
 import { describePersonality } from '@/sim/life';
 import { previewAddition, environmentGate } from '@/sim/compat';
 import { fitsEnvironment } from '@/sim/compat/salinity'; // lane:brackish
@@ -173,8 +173,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const [active, setActive] = useState(0);
   const tank = tankId ? g.tanks[tankId] : undefined;
   const chosen = offer.creatures.filter((_, i) => picked.has(i));
-  const unitPrice = offer.unitPrice ?? (offer.creatures.length ? offer.price / offer.creatures.length : offer.price);
-  const price = offer.kind === 'group' && chosen.length !== offer.creatures.length ? Math.round(unitPrice * chosen.length) : offer.price;
+  // The same quote buyOffer charges (lane:fix-econ, S13-11): a partial pick is never priced above the whole group.
+  const { unit: unitPrice, price } = offerPickPrice(offer, chosen.length);
   const lead = offer.creatures[active] ?? offer.creatures[0];
 
   const gate = useMemo(() => (sp && tank ? safe(() => environmentGate(sp, tank), { ok: sp.environment === tank.environment }) : { ok: false, reason: 'Choose a destination tank.' }), [sp, tank]);
@@ -316,7 +316,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
               type="button"
               className="pn-desttank pn-desttank--new"
               onClick={() => {
-                rememberOfferReturn(offer.id); // lane:qa-play — Quick buy comes back to this offer
+                // lane:qa-play — Quick buy comes back to this offer; lane:fix-panels — Build opens on water the animal can live in
+                rememberOfferReturn(offer.id, sp.waterClasses.find((w) => tanks.some((t) => t.waterClass === w)) ?? sp.waterClasses[0]);
                 useUI.getState().set({ panel: 'build', panelTarget: 'tab:tanks' });
               }}
             >

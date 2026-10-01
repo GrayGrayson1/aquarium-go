@@ -19,6 +19,7 @@ import { VisitorsLayer } from './VisitorsLayer';
 import { StaffLayer } from './StaffLayer'; // lane:staff
 import { StaffFeedBridge } from './StaffFeedBridge'; // lane:staff
 import { PlacementGhost } from './PlacementGhost';
+import { RoomTankPick } from './RoomTankPick'; // lane:facrender
 import { usePropMaterials } from './materials';
 import { TrophyCase } from './Trophies'; // lane:shows
 import { ShopDressing } from './ShopDressing'; // lane:w2-visual
@@ -44,6 +45,7 @@ export function FacilityWorld() {
       <StaffLayer />
       <StaffFeedBridge />
       <PlacementGhost />
+      <RoomTankPick />
     </group>
   );
 }

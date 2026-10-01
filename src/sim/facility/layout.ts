@@ -486,8 +486,12 @@ export function checkPlacement(fac: FacilityState, tanks: PlacedTank[], tierId: 
   const r = computeReachability(fac, next);
   if (r.grid.entrance < 0) return { ok: false, reason: 'That would block the doorway.' };
   if (r.unreachable.length) {
-    const blockedOthers = r.unreachable.filter((id) => id !== candidate.id);
-    if (!blockedOthers.length) return { ok: false, reason: 'Nobody could walk up to this tank there — leave an aisle.', blocks: [candidate.id] };
+    if (r.unreachable.includes(candidate.id)) return { ok: false, reason: 'Nobody could walk up to this tank there — leave an aisle.', blocks: [candidate.id] };
+    // Only tanks THIS placement cuts off count against it. A tank that was already unreachable (turned to face a
+    // wall by an upgrade's relayout, an old save) must not veto every other move and every new-tank spot.
+    const already = new Set(computeReachability(fac, tanks.filter((t) => t.id !== ignoreId)).unreachable);
+    const blockedOthers = r.unreachable.filter((id) => !already.has(id));
+    if (!blockedOthers.length) return { ok: true };
     const t = next.find((x) => x.id === blockedOthers[0]);
     return { ok: false, reason: `Visitors couldn’t reach ${t ? theTank(nameOf(t)) : 'the other tanks'} — leave an aisle.`, blocks: blockedOthers };
   }

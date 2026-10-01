@@ -106,6 +106,19 @@ export function onEngineReady(cb: (e: Engine) => void): () => void {
 }
 
 /**
+ * Build the AudioContext and bus graph ahead of the first gesture (it stays suspended until `unlockAudio`).
+ * Constructing a context is allowed anywhere and, in Chromium, opens the audio device (~100 ms+ on the main
+ * thread): doing it at idle time keeps that cost out of the player's first click. Idempotent, never throws.
+ */
+export function prewarmAudio(): void {
+  try {
+    if (!engine && !failed) createEngine();
+  } catch (err) {
+    console.warn('[audio] prewarm failed', err);
+  }
+}
+
+/**
  * Create (if needed) and resume the AudioContext. Call from a user gesture. Idempotent, never throws.
  */
 export function unlockAudio(): void {
@@ -239,7 +252,11 @@ function createEngine(): void {
     roomBus, roomLevel, uiIn, uiBus, sendMusic, sendAquarium, sendUi, reverbIn, reverbPre, meter,
   };
 
-  ctx.onstatechange = () => syncState();
+  ctx.onstatechange = () => {
+    syncState();
+    // a context unlocked (or resumed) while muted should still go to sleep after the fade
+    if (ctx.state === 'running') updateMuteSuspend(useSettings.getState());
+  };
   applySettings(useSettings.getState(), true);
   settingsUnsub = useSettings.subscribe((s) => applySettings(s));
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);

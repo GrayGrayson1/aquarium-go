@@ -27,13 +27,15 @@ export interface IllnessDef {
 }
 
 const idealTemp = (sp: SpeciesDefinition) => `${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`;
+/** Schooling fish recover best with their group; solitary animals can be moved to a quiet quarantine tank. */
+const restAdvice = (sp: SpeciesDefinition, alone: string) => (sp.social.minGroup > 1 ? 'keep it with its group — being alone stresses it more than the illness' : alone);
 
 export const ILLNESSES: Record<IllnessKind, IllnessDef> = {
   ich: {
     kind: 'ich',
     name: (sp) => (sp.environment === 'marine' ? 'marine white spot' : 'white spot (ich)'),
     symptom: 'Tiny white specks on the body and fins; flashing against decor.',
-    cure: (sp) => `Keep the water clean and stable at ${idealTemp(sp)}, reduce stress, and consider a quarantine tank while it recovers.`,
+    cure: (sp) => `Keep the water clean and stable at ${idealTemp(sp)}, reduce stress, and ${restAdvice(sp, 'consider a quarantine tank while it recovers')}.`,
     drainPerHour: 0.45,
     stress: 18,
     worsenPerHour: 1.1,
@@ -53,7 +55,7 @@ export const ILLNESSES: Record<IllnessKind, IllnessDef> = {
     kind: 'fungus',
     name: (sp) => (sp.category === 'amphibian' ? 'fungal patches' : 'fungal infection'),
     symptom: 'Fluffy white patches, often on gills or wounds.',
-    cure: (sp) => `Keep the water very clean and within ${idealTemp(sp)}. A quiet quarantine tank speeds recovery.`,
+    cure: (sp) => `Keep the water very clean and within ${idealTemp(sp)}. ${sp.social.minGroup > 1 ? 'Keep it with its group — being alone slows recovery.' : 'A quiet quarantine tank speeds recovery.'}`,
     drainPerHour: 0.5,
     stress: 14,
     worsenPerHour: 1,

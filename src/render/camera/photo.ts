@@ -38,10 +38,13 @@ export function onPhotoCapture(fn: (capturing: boolean) => void): () => void {
 /**
  * Capture the current view. `width` = output pixel width (default: current drawing-buffer width, capped at 4096).
  * `hideUI` is accepted for API compatibility; DOM UI is never part of the canvas.
+ * lane:fix-panels — `format`/`quality` pick the encoding (default PNG); listing photos use a small JPEG so they fit
+ * in a save.
  */
-export async function capturePhoto(opts: { width?: number; hideUI?: boolean } = {}): Promise<string | null> {
+export async function capturePhoto(opts: { width?: number; hideUI?: boolean; format?: 'image/png' | 'image/jpeg' | 'image/webp'; quality?: number } = {}): Promise<string | null> {
   const h = slot.handles;
   const composer = slot.composer;
+  const format = opts.format ?? 'image/png';
   if (!h) {
     const c = document.querySelector('canvas');
     if (!c) return null;
@@ -49,7 +52,7 @@ export async function capturePhoto(opts: { width?: number; hideUI?: boolean } = 
     return new Promise((resolve) =>
       requestAnimationFrame(() => {
         try {
-          resolve(c.toDataURL('image/png'));
+          resolve(c.toDataURL(format, opts.quality));
         } catch {
           resolve(null);
         }
@@ -75,7 +78,7 @@ export async function capturePhoto(opts: { width?: number; hideUI?: boolean } = 
     }
     if (composer) composer.render(0);
     else gl.render(scene, camera);
-    url = canvas.toDataURL('image/png');
+    url = canvas.toDataURL(format, opts.quality);
   } catch {
     url = null;
   } finally {

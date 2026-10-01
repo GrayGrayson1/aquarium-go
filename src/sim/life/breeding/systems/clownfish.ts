@@ -93,6 +93,17 @@ export const clownfishModule: BreedingModule = {
     const females = ranked.filter((c) => c.reproRole === 'female');
     const trans = ranked.filter((c) => c.reproRole === 'transitioning_female');
 
+    // A male without a live clutch stops guarding — checked for every fish (not only a paired male) so a guardian
+    // whose female left is released and can start the sex change himself.
+    for (const c of ranked) {
+      if (c.repro.stage !== 'guarding') continue;
+      const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
+      if (!cl || cl.tankId !== c.tankId || cl.guardedById !== c.id || cl.stage !== 'eggs') {
+        if (cl && cl.guardedById === c.id) cl.guardedById = undefined;
+        startResting(c, hour, sp.breeding.cooldownDays * 24 * 0.5);
+      }
+    }
+
     // Two established females: fights.
     if (females.length >= 2) fight(state, tank, females, hour, dt, ctx);
 
@@ -311,14 +322,6 @@ function pairLoop(env: StepEnv, f: Creature, ranked: Creature[]): void {
       }
       if (stageDue(f, hour)) spawn(state, tank, sp, m, f, hour, ctx);
       break;
-    }
-  }
-  // Male without a live clutch stops guarding.
-  if (m.repro.stage === 'guarding') {
-    const cl = m.repro.clutchId ? state.clutches[m.repro.clutchId] : undefined;
-    if (!cl || cl.tankId !== m.tankId || cl.guardedById !== m.id || cl.stage !== 'eggs') {
-      if (cl && cl.guardedById === m.id) cl.guardedById = undefined;
-      startResting(m, hour, b.cooldownDays * 24 * 0.5);
     }
   }
   if ((m.repro.stage === 'nest_preparing' || m.repro.stage === 'spawning') && f.repro.stage !== m.repro.stage) setStage(m, 'idle', hour);

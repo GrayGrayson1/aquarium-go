@@ -21,7 +21,7 @@ import type {
   Clutch,
 } from '@/types';
 import type { BadgeTone } from '@/ui/kit';
-import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time'; // lane:w2-ui (realIn)
+import { GAME_HOURS_PER_REAL_SECOND, formatClock } from '@/sim/time'; // lane:w2-ui (realIn)
 
 export const HOURS_PER_DAY = 24;
 
@@ -39,12 +39,15 @@ export function formatSpan(hours: number): string {
 }
 
 /**
- * lane:w2-ui — "about 6 min": how long a span of GAME hours lasts in REAL time at 1× (1 game hour = 10 real seconds).
+ * lane:w2-ui — "about 6 min": how long a span of GAME hours lasts in REAL time (1 game hour = 10 real seconds at 1×).
  * Market bids, counter replies and show deadlines are set in real time, so they are shown this way (moved here from
  * the Shows panel so both panels share one format).
+ * lane:fix-panels — pass the clock `speed` for the countdown the player will actually see: at 10× a bid "expiring in
+ * about 3 min" was gone in 20 s. Paused (0) reads as 1×, since that is what it will be once the game resumes.
  */
-export function realIn(hours: number): string {
-  const min = (Math.max(0, Number.isFinite(hours) ? hours : 0) / GAME_HOURS_PER_REAL_SECOND) / 60;
+export function realIn(hours: number, speed = 1): string {
+  const mult = Number.isFinite(speed) && speed > 0 ? speed : 1;
+  const min = (Math.max(0, Number.isFinite(hours) ? hours : 0) / GAME_HOURS_PER_REAL_SECOND) / 60 / mult;
   if (min < 0.75) return 'under a minute';
   if (min < 59.5) return `about ${Math.round(min)} min`;
   const h = Math.floor(min / 60);
@@ -52,10 +55,17 @@ export function realIn(hours: number): string {
   return m >= 5 && m < 60 ? `about ${h} h ${m} min` : `about ${m >= 60 ? h + 1 : h} h`;
 }
 
-/** lane:w2-ui — "about 2 min ago" / "just now" (real time at 1×), the past-tense twin of `realIn`. */
-export function realAgo(hours: number): string {
-  const min = (Math.max(0, Number.isFinite(hours) ? hours : 0) / GAME_HOURS_PER_REAL_SECOND) / 60;
-  return min < 0.75 ? 'just now' : `${realIn(hours)} ago`;
+/** lane:w2-ui — "about 2 min ago" / "just now" (real time), the past-tense twin of `realIn`. */
+export function realAgo(hours: number, speed = 1): string {
+  const mult = Number.isFinite(speed) && speed > 0 ? speed : 1;
+  const min = (Math.max(0, Number.isFinite(hours) ? hours : 0) / GAME_HOURS_PER_REAL_SECOND) / 60 / mult;
+  return min < 0.75 ? 'just now' : `${realIn(hours, speed)} ago`;
+}
+
+/** lane:fix-panels — " at 3×" / " (paused)" to qualify a real-time countdown; nothing at 1×. */
+export function speedNote(speed: number): string {
+  if (!Number.isFinite(speed) || speed === 1) return '';
+  return speed > 0 ? ` at ${speed}×` : ' (paused)';
 }
 
 /** Relative game time for past events: "just now", "3 h ago", "yesterday", "4 days ago". */
@@ -386,3 +396,12 @@ export const FOOD_TAG_LABEL: Record<string, string> = {
   infusoria: 'infusoria',
   baby_brine: 'baby brine shrimp',
 };
+
+/** lane:fix-integrate-ui — when the hiring pool next refreshes, by calendar day ('today at 8:00 AM', 'in 2 days'). */
+export function poolWhen(nextPoolHour: number, now: number): string {
+  if (nextPoolHour < 0 || nextPoolHour <= now) return 'any moment now';
+  const days = Math.floor(nextPoolHour / 24) - Math.floor(now / 24);
+  if (days === 0) return `today at ${formatClock(nextPoolHour)}`;
+  if (days === 1) return `tomorrow at ${formatClock(nextPoolHour)}`;
+  return `in ${plural(days, 'day')}`;
+}

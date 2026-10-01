@@ -78,6 +78,10 @@ export interface Agent {
   clutchId: string | null;
   juvenile: boolean;
   dead: boolean;
+  /** A dead body that has come to rest: world.stepWorld stops stepping it (until the layout changes around it). */
+  laidToRest: boolean;
+  /** Body height at the previous step while dead (sink speed). */
+  deadY: number;
   /** 0..1 current activity level from time of day + nocturnality + personality. */
   activeness: number;
   /** Individual quirks (fixed per individual). */
@@ -99,6 +103,13 @@ export interface Agent {
   actNormal: THREE.Vector3;
   actTarget: string | null;
   foodId: number;
+  /** When `foodId` was last set to a different particle (the animal has been after this one since then), and the
+   * particle it let go of last (going back to it counts as the same pursuit). */
+  foodT: number;
+  lastFoodId: number;
+  /** Particles this animal gave up on (could not reach / did not take), a small ring: ignored until `badFoodUntil[i]`. */
+  badFoodIds: number[];
+  badFoodUntil: number[];
   anchorKey: string | null;
   anchorPos: THREE.Vector3;
   anchorDecor: string | null;
@@ -322,6 +333,8 @@ export function createAgent(c: Creature, sp: SpeciesDefinition, rt: CreatureRunt
     clutchId: null,
     juvenile: false,
     dead: false,
+    laidToRest: false,
+    deadY: 0,
     activeness: 1,
     speedMul: 1,
     zoneBias: 0,
@@ -339,6 +352,10 @@ export function createAgent(c: Creature, sp: SpeciesDefinition, rt: CreatureRunt
     actNormal: new THREE.Vector3(0, 1, 0),
     actTarget: null,
     foodId: -1,
+    foodT: -1e9,
+    lastFoodId: -1,
+    badFoodIds: [-1, -1, -1, -1],
+    badFoodUntil: [0, 0, 0, 0],
     anchorKey: null,
     anchorPos: new THREE.Vector3(),
     anchorDecor: null,

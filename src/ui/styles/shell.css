@@ -30,10 +30,10 @@
 /* ── Sheets ── */
 .ag-sheet { position: fixed; z-index: var(--z-sheet); display: flex; flex-direction: column; background: var(--c-glass-strong); backdrop-filter: var(--blur-strong); -webkit-backdrop-filter: var(--blur-strong); border: 1px solid var(--c-line); box-shadow: var(--shadow-2); color: var(--c-ink); overflow: hidden; }
 .ag-sheet::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0) 30%); border-radius: inherit; }
-.ag-sheet--right, .ag-sheet--left { top: calc(var(--edge) + var(--topbar-h) + 10px); bottom: calc(var(--dock-h) + var(--edge) * 2); width: min(var(--sheet-w), calc(100vw - 2 * var(--edge))); border-radius: var(--r-xl); }
-.ag-sheet--right { right: var(--edge); }
-.ag-sheet--left { left: var(--edge); top: calc(var(--edge) + var(--topbar-h) + 72px); }
-[data-screen='title'] .ag-sheet--right, [data-screen='starter'] .ag-sheet--right, [data-screen='naming'] .ag-sheet--right { top: var(--edge); bottom: var(--edge); }
+.ag-sheet--right, .ag-sheet--left { top: calc(var(--edge-t) + var(--topbar-h) + 10px); bottom: calc(var(--dock-h) + var(--edge) + var(--edge-b)); width: min(var(--sheet-w), calc(100vw - 2 * var(--edge))); border-radius: var(--r-xl); }
+.ag-sheet--right { right: var(--edge-r); }
+.ag-sheet--left { left: var(--edge-l); top: calc(var(--edge-t) + var(--topbar-h) + 72px); }
+[data-screen='title'] .ag-sheet--right, [data-screen='starter'] .ag-sheet--right, [data-screen='naming'] .ag-sheet--right { top: var(--edge-t); bottom: var(--edge-b); }
 .ag-sheet--bottom { left: 0; right: 0; bottom: 0; max-height: min(54dvh, 640px); border-radius: var(--r-xl) var(--r-xl) 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom); transition: max-height .32s var(--ease); }
 .ag-sheet--bottom.is-expanded { max-height: calc(100dvh - 24px); }
 .ag-sheet__handle { flex: none; display: grid; place-items: center; width: 64px; height: 20px; margin: 2px auto -6px; padding: 0; border: 0; background: transparent; cursor: pointer; }
@@ -64,6 +64,9 @@
 .ag-portrait--circle { border-radius: 50%; }
 .ag-portrait--rounded { border-radius: 18px; }
 .ag-portrait--card { aspect-ratio: auto; border-radius: 0; }
+.ag-portrait--upright::before { content: ''; position: absolute; inset: -14%; background: var(--portrait-src) center / cover no-repeat; filter: blur(14px); }
+.ag-portrait--upright img { position: relative; object-fit: contain; -webkit-mask-image: linear-gradient(90deg, transparent calc(50% - 50cqh), #000 calc(50% - 30cqh), #000 calc(50% + 30cqh), transparent calc(50% + 50cqh)); mask-image: linear-gradient(90deg, transparent calc(50% - 50cqh), #000 calc(50% - 30cqh), #000 calc(50% + 30cqh), transparent calc(50% + 50cqh)); }
+.ag-portrait--upright { container-type: size; }
 .ag-portrait--fallback { background:
   radial-gradient(58% 50% at 50% 62%, color-mix(in srgb, var(--p1, #2a6f7a) 78%, transparent) 0%, color-mix(in srgb, var(--p1, #2a6f7a) 22%, transparent) 55%, transparent 75%),
   radial-gradient(36% 34% at 66% 38%, color-mix(in srgb, var(--p2, #1c3f55) 70%, transparent) 0%, transparent 72%),
@@ -82,3 +85,21 @@
 /* ── Flash (photo) ── */
 .ag-flash { position: fixed; inset: 0; z-index: 95; background: #fff; pointer-events: none; animation: ag-flash .6s var(--ease-out) forwards; }
 @keyframes ag-flash { from { opacity: 0.85; } to { opacity: 0; } }
+
+/* fix:HUD — a phone held sideways (844×390): a half-height card sheet (54dvh = 211 px) showed only the header, so a
+   card opens under the top bar instead and expands to nearly the whole screen. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .ag-sheet--bottom { max-height: calc(100dvh - var(--edge) - var(--topbar-h) - 6px); }
+  .ag-sheet--bottom.is-expanded { max-height: calc(100dvh - 12px); }
+}
+
+/* Touch screens (iOS Safari first). G4-06: a long press on any HUD / guide / toast label opened the selection loupe
+   and the Copy / Look Up callout, and a camera drag that began on a label extended a selection instead of orbiting.
+   G4-05: Safari zooms the page to any focused field whose text is under 16 px and never zooms back (body is
+   touch-action: none, so the player cannot pinch out): fields keep at least 16 px on touch screens. */
+.ag-ui, .scene-canvas { -webkit-touch-callout: none; }
+@media (pointer: coarse) {
+  .ag-ui, .scene-canvas { -webkit-user-select: none; user-select: none; }
+  .ag-ui :is(input, textarea, [contenteditable='true']) { -webkit-user-select: text; user-select: text; }
+  .ag-ui :is(input, select, textarea):not([type='range'], [type='checkbox'], [type='radio'], [type='color']) { font-size: max(16px, calc(14px * var(--text-scale))); }
+}

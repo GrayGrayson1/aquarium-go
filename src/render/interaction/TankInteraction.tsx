@@ -20,16 +20,16 @@ import { findSpecies } from '@/data/species';
 import { getFoodDef } from '@/data/catalog/foods';
 import { sfx } from '@/audio/sfx';
 import { aiFeed, aiTap } from '@/ai/registry';
+import { TapSpam } from './tapSpam';
 
 const CLICK_PX = 7;
 const CLICK_MS = 550;
 const DOUBLE_MS = 380;
-const SPAM_WINDOW_S = 3;
-const SPAM_TAPS = 4;
 const TOAST_THROTTLE_S = 20;
 const BLOCKING_TOOLS = new Set(['decor_place', 'decor_move', 'tank_place']);
 
 let lastSpamToast = -1e9;
+const glassTaps = new TapSpam();
 let lastHintToast = -1e9;
 
 export interface GlassHit {
@@ -150,6 +150,12 @@ export function TankInteraction({ tank }: { tank: Tank }) {
     };
 
     const onMove = (e: PointerEvent) => {
+      // lane:tankrender — a mouse press released outside the page (or swallowed by the decor editor) never reaches
+      // onUp: with no button held there is no press, so drop any stale one instead of treating every hover as a drag
+      if (e.pointerType === 'mouse' && e.buttons === 0 && down.size) {
+        down.clear();
+        dragging = false;
+      }
       const st = down.get(e.pointerId);
       if (st && Math.hypot(e.clientX - st.x, e.clientY - st.y) > CLICK_PX) dragging = true;
       if (down.size > 1 || dragging || blocked()) {
@@ -187,18 +193,20 @@ export function TankInteraction({ tank }: { tank: Tank }) {
       if (e.pointerType !== 'mouse') onMove(e);
     };
 
+    // lane:tankrender — listens on window: a camera drag released over the HUD must still end the press
     const onUp = (e: PointerEvent) => {
       const st = down.get(e.pointerId);
       down.delete(e.pointerId);
       const wasDrag = dragging;
       if (down.size === 0) dragging = false;
+      if (!st) return;
       if (e.pointerType !== 'mouse') {
         // keep the finger "present" for a moment so curious fish can come and look
         touchReleaseTimer = window.setTimeout(() => {
           if (runtime.pointer.tankId === tankRef.current.id) runtime.pointer.active = false;
         }, 1800);
       }
-      if (!st || wasDrag || down.size > 0) return;
+      if (wasDrag || down.size > 0 || e.target !== el) return;
       if (performance.now() - st.t > CLICK_MS) return;
       if (Math.hypot(e.clientX - st.x, e.clientY - st.y) > CLICK_PX) return;
       if (blocked()) return;
@@ -206,11 +214,16 @@ export function TankInteraction({ tank }: { tank: Tank }) {
     };
 
     const onLeave = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.buttons === 0) {
+        down.clear();
+        dragging = false;
+      }
       if (e.pointerType === 'mouse' && runtime.pointer.tankId === tankRef.current.id) runtime.pointer.active = false;
       setCursor('');
     };
 
     const onCancel = (e: PointerEvent) => {
+      if (!down.has(e.pointerId)) return;
       down.delete(e.pointerId);
       dragging = false;
       if (runtime.pointer.tankId === tankRef.current.id) runtime.pointer.active = false;
@@ -236,6 +249,7 @@ export function TankInteraction({ tank }: { tank: Tank }) {
         const def = getFoodDef(foodId);
         const zone: 'surface' | 'middle' | 'bottom' = !def || def.delivery === 'floating' ? 'surface' : _p.y < d.waterY * 0.35 ? 'bottom' : 'middle';
         let res = { ok: false, message: 'Could not feed' };
+        const had = game.inventory.foods[foodId] ?? 0;
         mutate((dr) => {
           res = feedTank(dr, t.id, foodId, { zone });
         });
@@ -246,7 +260,10 @@ export function TankInteraction({ tank }: { tank: Tank }) {
         // food goes in from the top, above where you tapped
         const z = face === 'front' ? d.W / 2 - d.W * 0.28 : _p.z;
         const local: [number, number, number] = [_p.x, d.waterY - 0.002, z];
-        aiFeed(t.id, foodId, local);
+        // lane:tankrender — the sim portions the feed for the whole tank (8–9 servings for a stocked one): drop that many
+        // servings' worth of particles, not a single serving's pinch (the servings used = what left the inventory)
+        const servings = Math.max(1, had - (useGame.getState().game?.inventory.foods[foodId] ?? 0));
+        aiFeed(t.id, foodId, local, { servings });
         pushVisualEvent({ kind: 'feed', tankId: t.id, pos: local, t: nowSeconds(), strength: 0.6 });
         sfx('feed');
         return;
@@ -316,20 +333,22 @@ export function TankInteraction({ tank }: { tank: Tank }) {
         return;
       }
       lastClick = { t: now, id: null };
-      if (face && !ui.photoMode) tapGlass(t.id, face === 'front' ? [_p.x, _p.y, d.W / 2] : [_p.x, _p.y, _p.z], 0.5);
+      // lane:tankrender — a miss (usually a fish that just swam off) is a soft knock: ripple, sound and a small
+      // startle, but it only stresses the animals when it adds up to spamming (it counts half a deliberate tap)
+      if (face && !ui.photoMode) tapGlass(t.id, face === 'front' ? [_p.x, _p.y, d.W / 2] : [_p.x, _p.y, _p.z], 0.5, { gentle: true });
     };
 
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerdown', onDown);
-    el.addEventListener('pointerup', onUp);
+    window.addEventListener('pointerup', onUp);
     el.addEventListener('pointerleave', onLeave);
-    el.addEventListener('pointercancel', onCancel);
+    window.addEventListener('pointercancel', onCancel);
     return () => {
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerdown', onDown);
-      el.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointerleave', onLeave);
-      el.removeEventListener('pointercancel', onCancel);
+      window.removeEventListener('pointercancel', onCancel);
       if (touchReleaseTimer !== null) window.clearTimeout(touchReleaseTimer);
       if (runtime.pointer.tankId === tankRef.current.id) runtime.pointer.active = false;
       if (hoverCursor) el.style.cursor = '';
@@ -339,18 +358,18 @@ export function TankInteraction({ tank }: { tank: Tank }) {
   return <group ref={group} name={`interaction:${tank.id}`} />;
 }
 
-/** A glass tap: startle wave in the AI, visual + sound, sim tap pressure, and a gentle warning on repeated taps. */
-export function tapGlass(tankId: string, local: [number, number, number], strength: number): void {
+/**
+ * A glass tap: startle wave in the AI, visual + sound, sim tap pressure, and a gentle warning on repeated taps.
+ * `gentle` (a plain click that missed every animal): no sim stress unless the clicks add up to spamming.
+ */
+export function tapGlass(tankId: string, local: [number, number, number], strength: number, opts: { gentle?: boolean } = {}): void {
   const now = nowSeconds();
-  const taps = runtime.pointer.taps;
-  taps.push(now);
-  while (taps.length && now - taps[0] > SPAM_WINDOW_S) taps.shift();
-  const spam = taps.length >= SPAM_TAPS;
+  const spam = glassTaps.add(now, strength);
   const s = spam ? Math.max(strength, 1) * 1.4 : strength;
   aiTap(tankId, local, s, spam);
   pushVisualEvent({ kind: 'tap', tankId, pos: local, t: now, strength: s });
   sfx('tap_glass', { volume: Math.min(1, 0.35 + 0.45 * s) });
-  useGame.getState().mutate((d) => registerGlassTap(d, tankId, spam ? 1.5 : strength * 0.5));
+  if (spam || !opts.gentle) useGame.getState().mutate((d) => registerGlassTap(d, tankId, spam ? 1.5 : strength * 0.5));
   if (spam && now - lastSpamToast > TOAST_THROTTLE_S) {
     lastSpamToast = now;
     useUI.getState().toast('Give them a moment — repeated tapping stresses fish.', 'warning');

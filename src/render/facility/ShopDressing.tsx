@@ -32,7 +32,7 @@ import { standHeight } from '@/sim/tankSpace';
 import { box, rbox, cyl, lathe, tube, leaf, noPick } from './kit';
 import { matByKey, type PropMaterials } from './materials';
 import { ROOM_STYLES } from './styles';
-import { exhibitExtent } from './bounds';
+import { backWallSign, exhibitExtent } from './bounds';
 import { caseSize, chooseCaseSpot } from './Trophies';
 import { WALL_T } from './Room';
 import { acquireTexture, releaseTexture } from './textures';
@@ -632,17 +632,8 @@ function trophyCaseRect(g: GameState, level: FacilityLevelId, W: number, D: numb
 
 /** The shop sign's rectangle on the back wall — the same placement PublicRoom's <Sign> uses. */
 function signRect(g: GameState, level: FacilityLevelId, W: number): { x0: number; x1: number; y0: number; y1: number } | null {
-  const def = getFacilityLevel(level);
-  const style = ROOM_STYLES[level];
-  if (!(style.sign.w > 0)) return null;
-  const e = exhibitExtent(g);
-  const span = e ? e.maxX - e.minX : W;
-  const signW = Math.min(W * 0.5, style.sign.w, Math.max(2.2, span * (def.order >= 3 ? 1.1 : 0.8)));
-  const signH = signW * 0.22;
-  const gap = [0, 0.2, 0.3, 0.5, 0.7, 0.9][def.order] ?? 0.5;
-  const y = Math.max(1.5, Math.min(def.wallHeight - signH / 2 - 0.15, style.sign.y, e ? e.topY + gap + signH / 2 : Infinity));
-  const x = e ? THREE.MathUtils.clamp((e.minX + e.maxX) / 2, -W / 2 + signW / 2 + 0.3, W / 2 - signW / 2 - 0.3) : 0;
-  return { x0: x - signW / 2, x1: x + signW / 2, y0: y - signH / 2, y1: y + signH / 2 };
+  const s = backWallSign(level, W, exhibitExtent(g));
+  return s ? { x0: s.x - s.w / 2, x1: s.x + s.w / 2, y0: s.y - s.h / 2, y1: s.y + s.h / 2 } : null;
 }
 
 /** Subtract [a, b] from a list of spans. */

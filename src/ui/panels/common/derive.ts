@@ -63,10 +63,15 @@ export function speciesUnlocked(g: GameState, sp: SpeciesDefinition): boolean {
   return (sp.unlock?.requires ?? []).every((k) => unlocked(g, k));
 }
 
+/**
+ * Spoken for by an active listing: listed itself, or (lane:fix-integrate-ui) living in a tank that is listed as a
+ * whole aquarium — the sim refuses to list or sell such residents separately.
+ */
 export function isListed(g: GameState, creatureId: string): boolean {
   const c = g.creatures[creatureId];
   if (c?.status === 'listed') return true;
-  return g.market.listings.some((l) => l.status === 'active' && l.creatureIds.includes(creatureId));
+  const tankId = c?.tankId;
+  return g.market.listings.some((l) => l.status === 'active' && (l.creatureIds.includes(creatureId) || (!!tankId && l.kind === 'tank' && l.tankId === tankId)));
 }
 
 export function activeListingFor(g: GameState, creatureId: string) {

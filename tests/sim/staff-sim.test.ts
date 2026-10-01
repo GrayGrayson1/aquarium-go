@@ -165,11 +165,13 @@ describe('staff: wages', () => {
     expect([staffWage('docent', 1), staffWage('docent', 5)]).toEqual([70, 140]);
   });
 
-  it('never create debt: unpaid staff give notice, then leave, and the animals are safe', () => {
+  it('never create debt: unpaid staff give notice, then leave, and their tanks come back to the player', () => {
     const g = staffStoreWorld(31);
     g.facility.openToPublic = false; // no income
     addStaffDirect(g, { name: 'Maya Okafor', role: 'aquarist', skill: 3, trait: 'meticulous' });
     g.finance.money = 0;
+    // The club's one-time loan is already used, so nobody pays the team this time (the rescue path is S05-11's test).
+    g.finance.loan = { amount: 500, outstanding: 0, takenHour: 0, repaidHour: 0 };
     for (let d = 1; d <= STAFF_NOTICE_DAYS; d++) {
       advanceWorld(g, 24);
       expect(g.finance.ledger.some((e) => e.memo.startsWith('Wages')), `day ${d}`).toBe(false);
@@ -178,7 +180,8 @@ describe('staff: wages', () => {
     expect(g.log.some((e) => /wasn’t enough cash to pay Maya/.test(e.text))).toBe(true);
     expect(g.staff!.roster.length).toBe(0);
     expect(g.staff!.departed?.at(-1)).toMatchObject({ name: 'Maya Okafor', reason: 'unpaid' });
-    expect(g.log.some((e) => /Maya Okafor has left/.test(e.text) && /animals are safe/.test(e.text))).toBe(true);
+    expect(g.log.some((e) => /Maya Okafor has left/.test(e.text) && /feed and clean them yourself/.test(e.text))).toBe(true);
+    expect(g.log.some((e) => /animals are safe/.test(e.text))).toBe(false);
     for (const id of g.tankOrder) expect(keeperOf(g, id)).toBeNull();
   });
 

@@ -36,6 +36,10 @@ export interface Migration {
 
 const isObj = (v: unknown): v is Record<string, Json> => !!v && typeof v === 'object' && !Array.isArray(v);
 const num = (v: unknown, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+/** lane:fix-core (P5-05) — an array of records: anything that is not an object (null, a number…) is dropped. */
+const records = (a: unknown): Json[] => (Array.isArray(a) ? a.filter(isObj) : []);
+/** An array of strings (ids, unlock keys): anything else is dropped. */
+const strings = (a: unknown): string[] => (Array.isArray(a) ? a.filter((x): x is string => typeof x === 'string') : []);
 
 export const MIGRATIONS: Migration[] = [
   {
@@ -206,7 +210,7 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   t.water = fillNumbers(t.water, defaultWater(marine, wc === 'freshwater_cool'), `tank ${id}.water`, repairs);
   if (!isObj(t.placement)) t.placement = { x: 0, z: 0, rotY: 0 };
   t.placement = fillNumbers(t.placement, { x: 0, z: 0, rotY: 0 }, `tank ${id}.placement`, repairs);
-  if (!Array.isArray(t.equipment)) t.equipment = [];
+  t.equipment = records(t.equipment);
   if (!Array.isArray(t.decor)) t.decor = [];
   t.decor = t.decor.filter((d: Json) => isObj(d) && typeof d.defId === 'string');
   for (const d of t.decor) {
@@ -256,7 +260,7 @@ function repairCreature(s: Json, id: string, c: Json, repairs: string[]): Creatu
     repairs.push(`creature ${id}.appearance`);
   }
   c.morphName ??= 'Wild type';
-  if (!Array.isArray(c.personality)) c.personality = [];
+  c.personality = strings(c.personality);
   c.stats = fillNumbers(c.stats, DEFAULT_STATS, `creature ${id}.stats`, repairs);
   for (const k of Object.keys(DEFAULT_STATS) as (keyof CreatureStats)[]) c.stats[k] = Math.max(0, Math.min(100, c.stats[k]));
   c.repro = fillNumbers(c.repro, { stage: 'idle', stageSinceHour: hour, totalClutches: 0, totalOffspringRaised: 0 }, `creature ${id}.repro`, repairs);
@@ -270,7 +274,7 @@ function repairCreature(s: Json, id: string, c: Json, repairs: string[]): Creatu
   c.acquiredHour = num(c.acquiredHour, hour);
   c.purchasePrice = num(c.purchasePrice, 0);
   c.status ??= 'alive';
-  if (!Array.isArray(c.history)) c.history = [];
+  c.history = records(c.history);
   c.visitorWows = num(c.visitorWows, 0);
   return c as Creature;
 }
@@ -335,8 +339,8 @@ export function repairState(s: Json): string[] {
   if (!isObj(s.inventory)) s.inventory = {};
   if (!isObj(s.inventory.foods)) s.inventory.foods = {};
   s.inventory.salt = num(s.inventory.salt, 0);
-  if (!Array.isArray(s.inventory.equipment)) s.inventory.equipment = [];
-  if (!Array.isArray(s.inventory.decor)) s.inventory.decor = [];
+  s.inventory.equipment = records(s.inventory.equipment);
+  s.inventory.decor = records(s.inventory.decor);
   // lane:frags — optional frag storage: drop unreadable entries, never invent the list for old saves
   if (s.inventory.frags !== undefined) s.inventory.frags = Array.isArray(s.inventory.frags) ? s.inventory.frags.filter((d: Json) => isObj(d) && typeof d.defId === 'string') : [];
 
@@ -344,14 +348,13 @@ export function repairState(s: Json): string[] {
   s.facility = fillNumbers(s.facility, { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] }, 'facility', repairs);
 
   if (!isObj(s.market)) s.market = {};
-  for (const k of ['stock', 'listings', 'buyers', 'history'] as const) if (!Array.isArray(s.market[k])) s.market[k] = [];
+  for (const k of ['stock', 'listings', 'buyers', 'history'] as const) s.market[k] = records(s.market[k]);
   if (!isObj(s.market.demand)) s.market.demand = {};
   s.market.lastRefreshHour = num(s.market.lastRefreshHour, -999);
   s.market.stock = s.market.stock.filter((o: Json) => isObj(o) && findSpecies(o.speciesId) && Array.isArray(o.creatures));
   for (const l of s.market.listings as Json[]) {
-    if (!isObj(l)) continue;
-    if (!Array.isArray(l.bids)) l.bids = [];
-    if (!Array.isArray(l.creatureIds)) l.creatureIds = [];
+    l.bids = records(l.bids);
+    l.creatureIds = strings(l.creatureIds);
     if (!isObj(l.snapshot)) l.snapshot = { valuation: 0, healthScore: 0, beautyScore: 0, careDifficulty: '', lineageSummary: '', summary: '', creatureIds: l.creatureIds };
     if (l.fragItems !== undefined && !Array.isArray(l.fragItems)) l.fragItems = []; // lane:frags
   }
@@ -359,17 +362,18 @@ export function repairState(s: Json): string[] {
 
   if (!isObj(s.finance)) s.finance = { money: 0, ledger: [], daily: [] };
   s.finance.money = num(s.finance.money, 0);
-  if (!Array.isArray(s.finance.ledger)) s.finance.ledger = [];
-  if (!Array.isArray(s.finance.daily)) s.finance.daily = [];
+  s.finance.ledger = records(s.finance.ledger);
+  s.finance.daily = records(s.finance.daily);
 
   if (!isObj(s.progress)) s.progress = {};
   const p = s.progress;
   p.reputation = num(p.reputation, 0);
   p.mastery = fillNumbers(p.mastery, { husbandry: 0, breeding: 0, aquascaping: 0, marine: 0, business: 0, exhibition: 0 }, 'progress.mastery', repairs);
-  for (const k of ['unlocked', 'achievements', 'quests', 'discoveredSpecies', 'discoveredMorphs'] as const) if (!Array.isArray(p[k])) p[k] = [];
+  for (const k of ['unlocked', 'achievements', 'discoveredSpecies', 'discoveredMorphs'] as const) p[k] = strings(p[k]);
+  p.quests = records(p.quests);
   if (!isObj(p.research)) p.research = { progressHours: 0, completed: [] };
   p.research.progressHours = num(p.research.progressHours, 0);
-  if (!Array.isArray(p.research.completed)) p.research.completed = [];
+  p.research.completed = strings(p.research.completed);
   if (!isObj(p.tutorial)) p.tutorial = { starterId: s.starterId, step: 0, done: true, skipped: true, flags: {} };
   if (!isObj(p.tutorial.flags)) p.tutorial.flags = {};
   if (!isObj(p.counters)) p.counters = {};
@@ -377,11 +381,11 @@ export function repairState(s: Json): string[] {
   if (!isObj(s.visitors)) s.visitors = {};
   const v = s.visitors;
   v.today = fillNumbers(v.today, { day: Math.floor(num(s.clock.hour, 0) / 24) + 1, count: 0, revenue: 0, tips: 0, satisfactionSum: 0 }, 'visitors.today', repairs);
-  for (const k of ['history', 'reactions'] as const) if (!Array.isArray(v[k])) v[k] = [];
+  for (const k of ['history', 'reactions'] as const) v[k] = records(v[k]);
   if (!isObj(v.exhibit)) v.exhibit = {};
   v.totalVisitors = num(v.totalVisitors, 0);
 
-  if (!Array.isArray(s.log)) s.log = [];
+  s.log = records(s.log);
   // lane:shows — optional; an unreadable shows block is dropped (src/sim/shows re-creates it lazily), arrays repaired.
   if (s.shows !== undefined && !isObj(s.shows)) {
     delete s.shows;
@@ -423,12 +427,16 @@ export function repairState(s: Json): string[] {
   return repairs;
 }
 
-/** Highest base-36 numeric suffix among ids created by nextId (`prefix_<n>`). */
+/**
+ * Highest base-36 numeric suffix among ids created by nextId (`prefix_<n>`, one underscore). Ids of another shape —
+ * the starter's `cr_starter_<seed>` — are not counters: lane:fix-core (P5-12) they used to bump the counter to the
+ * seed on every load, so every save/load changed the ids (and hashed sexes) of animals born afterwards.
+ */
 function maxIdSuffix(s: Json): number {
   let max = 0;
   const scan = (id: unknown) => {
     if (typeof id !== 'string') return;
-    const m = /_([0-9a-z]+)$/.exec(id);
+    const m = /^[a-z]+_([0-9a-z]+)$/.exec(id);
     if (!m) return;
     const n = parseInt(m[1], 36);
     if (Number.isFinite(n) && n > max && n < 1e12) max = n;

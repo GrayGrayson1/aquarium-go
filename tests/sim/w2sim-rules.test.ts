@@ -30,6 +30,7 @@ import { QUEST_STALE_HOURS } from '@/sim/facility/progression';
 import { dayOf } from '@/sim/time';
 import { FIXTURES } from '@/dev/fixtures';
 import { getSpecies, listSpecies } from '@/data/species';
+import { STAFF_NOTICE_DAYS } from '@/data/staff';
 
 function starterGame(id: 'axolotl' | 'betta' | 'pea_puffer' | 'ocellaris_clownfish' | 'lined_seahorse', seed = 1234): GameState {
   const p = previewStarters(seed)[id];
@@ -269,10 +270,11 @@ describe('w2-sim finance: one daily bill, before and after staff leave over unpa
     g.facility.openToPublic = false;
     for (let i = 0; i < 3; i++) addStaffDirect(g, { name: `Temp ${i}`, role: 'aquarist', skill: 3, trait: 'steady' as never });
     g.finance.money = 20;
+    g.finance.loan = { amount: 500, outstanding: 0, takenHour: 0, repaidHour: 0 }; // the club's lifeline is spent
     const seen = new Set(g.log.map((e) => e.id));
     let checked = 0;
     let left = false;
-    for (let h = 0; h < 24 * 4; h++) {
+    for (let h = 0; h < 24 * (STAFF_NOTICE_DAYS + 1); h++) {
       advanceWorld(g, 1, {});
       for (const e of g.log) {
         if (seen.has(e.id)) continue;

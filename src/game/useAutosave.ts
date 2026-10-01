@@ -8,16 +8,36 @@ import { useEffect } from 'react';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { saveCurrentGame } from '@/persistence/session';
+import { saveCurrentGame, saveCurrentGameSync } from '@/persistence/session';
 import { loopStats } from './loopStats';
 
 export const AUTOSAVE_INTERVAL_MS = 60_000;
 /** Don't autosave again on hide if we saved this recently. */
 const MIN_GAP_MS = 4_000;
+/**
+ * lane:fix-core (S06-01) — a save that has not settled after this long releases the in-flight flag so later
+ * autosaves are not skipped for the rest of the session (the storage layer times its own operations out sooner).
+ */
+const SAVE_WATCHDOG_MS = 30_000;
+/** Consecutive failed autosaves before the player is told to export a copy. */
+const WARN_AFTER_FAILURES = 2;
 
 let fixtureSaveId: string | null = null;
 let saving = false;
+/** Which autosave call currently owns the `saving` flag (a watchdog-released call must not clear a newer one's). */
+let saveSeq = 0;
 let lastSaveAt = 0;
+let failures = 0;
+let warnedFailing = false;
+let warnedStaleFor: string | null = null;
+
+function toastOnce(text: string, kind: 'warning' | 'danger') {
+  try {
+    useUI.getState().toast(text, kind);
+  } catch {
+    /* UI store not ready */
+  }
+}
 
 function bootedFromFixture(): boolean {
   if (typeof location === 'undefined') return false;
@@ -35,24 +55,80 @@ export function autosaveAllowed(): boolean {
   return true;
 }
 
-/** Autosave right now (if allowed). Resolves to whether a save was written. */
+/**
+ * Autosave right now (if allowed). Resolves to whether a save was written.
+ *
+ * `hidden` / `pagehide` are the moments a page may be torn down before an asynchronous write lands (lane:fix-core
+ * P5-01: on reload and navigation the IndexedDB put never happened in any engine), so they first write the record
+ * synchronously into localStorage — independent of any save already in flight — and then run the regular save too.
+ */
 export async function autosaveNow(reason = 'manual'): Promise<boolean> {
-  if (saving || !autosaveAllowed()) return false;
+  if (!autosaveAllowed()) return false;
+  const urgent = reason === 'hidden' || reason === 'pagehide';
+  let mirrored = false;
+  if (urgent) {
+    mirrored = saveCurrentGameSync('auto');
+    if (mirrored) {
+      lastSaveAt = performance.now();
+      loopStats.lastAutosaveAt = Date.now();
+      loopStats.lastAutosaveOk = true;
+    }
+  }
+  if (saving) return mirrored;
   saving = true;
+  const token = ++saveSeq;
+  const watchdog = setTimeout(() => {
+    if (!saving || saveSeq !== token) return;
+    saving = false;
+    if (typeof console !== 'undefined') console.warn(`[aquarium-go] autosave (${reason}) is taking too long — later autosaves will not wait for it`);
+  }, SAVE_WATCHDOG_MS);
   try {
     const res = await saveCurrentGame('auto', { flush: true, toast: false });
     lastSaveAt = performance.now();
     loopStats.lastAutosaveAt = Date.now();
     loopStats.lastAutosaveOk = res.ok;
-    if (res.ok) loopStats.autosaves++;
-    else if (typeof console !== 'undefined') console.warn(`[aquarium-go] autosave (${reason}) failed: ${res.message}`);
-    return res.ok;
+    if (res.ok) {
+      loopStats.autosaves++;
+      failures = 0;
+      if (res.degraded && !warnedFailing) {
+        warnedFailing = true;
+        toastOnce(res.message, 'warning');
+      }
+    } else {
+      if (typeof console !== 'undefined') console.warn(`[aquarium-go] autosave (${reason}) failed: ${res.message}`);
+      if (res.code === 'stale') {
+        // lane:fix-core (P5-04) — another tab owns this aquarium now: say so once per game, don't count it as a fault.
+        const id = useGame.getState().game?.saveId ?? null;
+        if (id && warnedStaleFor !== id) {
+          warnedStaleFor = id;
+          toastOnce(res.message, 'warning');
+        }
+      } else if (++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
+        warnedFailing = true;
+        toastOnce('Autosave isn’t landing — export a copy from Settings › Saves to keep your progress safe.', 'danger');
+      }
+    }
+    return res.ok || mirrored;
   } catch (e) {
     if (typeof console !== 'undefined') console.warn(`[aquarium-go] autosave (${reason}) threw`, e);
-    return false;
+    if (++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
+      warnedFailing = true;
+      toastOnce('Autosave isn’t landing — export a copy from Settings › Saves to keep your progress safe.', 'danger');
+    }
+    return mirrored;
   } finally {
-    saving = false;
+    clearTimeout(watchdog);
+    if (saveSeq === token) saving = false;
   }
+}
+
+/** Tests: forget the in-flight flag and the warning state. */
+export function resetAutosaveState(): void {
+  saving = false;
+  failures = 0;
+  warnedFailing = false;
+  warnedStaleFor = null;
+  lastSaveAt = 0;
 }
 
 export function useAutosave(): void {

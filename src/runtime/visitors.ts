@@ -11,7 +11,7 @@ import type { GameState } from '@/types';
 import { getFacilityLevel } from '@/data/facilities';
 import { FIXTURE_DEFS } from '@/data/facilities';
 import { stateReachability, findPath, isWalkable, tankFootprint, type Reachability } from '@/sim/facility/layout';
-import { isOpenAt } from '@/sim/facility/visitors';
+import { isOpenAt, onDisplay } from '@/sim/facility/visitors';
 import { standHeight, tankDims } from '@/sim/tankSpace';
 
 export type AgentState = 'walk' | 'view' | 'sit' | 'leave';
@@ -187,7 +187,7 @@ function repath(a: VisitorAgent, r: Reachability): void {
 }
 
 function chooseTarget(g: GameState, a: VisitorAgent, r: Reachability, avoid?: string | null): string | null {
-  const ids = g.tankOrder.filter((id) => g.tanks[id] && r.reachable.has(id) && id !== avoid);
+  const ids = g.tankOrder.filter((id) => onDisplay(g, id) && r.reachable.has(id) && id !== avoid);
   if (!ids.length) return null;
   const crowd = new Map<string, number>();
   for (const o of visitorRuntime.agents) if (o.targetTankId) crowd.set(o.targetTankId, (crowd.get(o.targetTankId) ?? 0) + 1);
@@ -358,7 +358,7 @@ export function stepVisitorRuntime(dt: number, g: GameState | null, opts: Visito
   // warm start: arriving in an already-busy venue shouldn't look empty for a minute
   if (!friendMode && r && rt.agents.length === 0 && desired >= 4 && !rt.warmed) {
     rt.warmed = true;
-    const ids = g.tankOrder.filter((id) => g.tanks[id] && r.reachable.has(id));
+    const ids = g.tankOrder.filter((id) => onDisplay(g, id) && r.reachable.has(id));
     const n = Math.min(desired, Math.round(desired * 0.7));
     for (let i = 0; i < n && ids.length; i++) {
       const a = makeAgent(g, { archetype: pickMix(live?.mix) });

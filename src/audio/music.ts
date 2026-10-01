@@ -13,6 +13,8 @@ import { MOODS, MelodyGen, nextChord, type ChordDef, type MoodConfig, type Music
 
 const FADE_IN_TAU = 1.6;
 const FADE_OUT_TAU = 1.3;
+/** A fading layer this recent is revived (not rebuilt) when its mood is wanted again. */
+const REVIVE_WINDOW_S = 6;
 
 interface PadVoice {
   gain: GainNode;
@@ -41,6 +43,7 @@ class MoodLayer {
   private pads: PadVoice[] = [];
   private stopScheduling = false;
   disposeAt = Infinity;
+  private fadeAt = Infinity;
   readonly stepDur: number;
 
   constructor(
@@ -246,10 +249,28 @@ class MoodLayer {
 
   fadeOut(at: number): void {
     this.stopScheduling = true;
+    this.fadeAt = at;
     this.out.gain.cancelScheduledValues(at);
     this.out.gain.setValueAtTime(this.out.gain.value, at);
     this.out.gain.setTargetAtTime(0, at, FADE_OUT_TAU);
     this.disposeAt = at + FADE_OUT_TAU * 6;
+  }
+
+  /** A layer that started fading recently is still audible enough to bring back instead of rebuilding. */
+  revivable(now: number): boolean {
+    return this.disposeAt !== Infinity && now - this.fadeAt < REVIVE_WINDOW_S;
+  }
+
+  /** Cancel a fade-out (quick mood flick, e.g. a glance at the market): same key, same chord, no new swell. */
+  revive(now: number): void {
+    const sinking = now - this.fadeAt;
+    this.stopScheduling = false;
+    this.disposeAt = Infinity;
+    this.fadeAt = Infinity;
+    this.out.gain.cancelScheduledValues(now);
+    this.out.gain.setValueAtTime(this.out.gain.value, now);
+    this.out.gain.setTargetAtTime(1, now, FADE_IN_TAU * 0.5);
+    if (sinking > 2) this.stepsLeft = 0; // the old pad has sunk a while: start a fresh chord right away
   }
 
   dispose(): void {
@@ -285,12 +306,25 @@ export class Music {
   setMood(m: MusicMood): void {
     if (m === this.mood) return;
     this.mood = m;
-    const now = this.e.ctx.currentTime;
-    for (const l of this.layers) if (l.disposeAt === Infinity) l.fadeOut(now);
-    if (m !== 'off' && m !== 'party') {
-      const cfg = MOODS[m];
-      if (cfg) this.layers.push(new MoodLayer(this.e, cfg, now + 0.1));
+    if (this.e.ctx.state !== 'running') {
+      // nothing is audible (muted → suspended, hidden tab) and fades cannot progress: drop the old layers now
+      // instead of queueing them up, and let tick() build the wanted one once the clock runs again.
+      for (const l of this.layers) l.dispose();
+      this.layers = [];
+      return;
     }
+    const now = this.e.ctx.currentTime;
+    const back = this.layers.find((l) => l.cfg.mood === m && l.revivable(now));
+    for (const l of this.layers) if (l !== back && l.disposeAt === Infinity) l.fadeOut(now);
+    if (back) back.revive(now);
+    else this.build(now);
+  }
+
+  private build(now: number): void {
+    const m = this.mood;
+    if (m === 'off' || m === 'party') return;
+    const cfg = MOODS[m];
+    if (cfg) this.layers.push(new MoodLayer(this.e, cfg, now + 0.1));
   }
 
   private tick(now: number, horizon: number): void {
@@ -302,6 +336,8 @@ export class Music {
       l.schedule(now, horizon);
       return true;
     });
+    // a mood chosen while the context was not running has no layer yet
+    if (!this.layers.some((l) => l.cfg.mood === this.mood && l.disposeAt === Infinity)) this.build(now);
   }
 
   info() {

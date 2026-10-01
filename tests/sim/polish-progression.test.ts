@@ -74,7 +74,10 @@ describe('aquascaping achievements need the player’s own aquascaping', () => {
     const tank = g.tankOrder[0];
     const ctx = () => makeContext(g, 0.1);
     const spot = (defId: string, excludeId?: string) => {
+      // A move to the piece's current spot is not a layout edit (S05-01), so a move must go somewhere new.
+      const cur = excludeId ? g.tanks[tank].decor.find((d) => d.id === excludeId) : undefined;
       for (const x of [-0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3]) for (const z of [-0.08, 0, 0.08]) {
+        if (cur && Math.hypot(cur.x - x, cur.z - z) < 0.03) continue;
         if (checkPlacement(g, g.tanks[tank], defId, { x, z }, { excludeId, purchase: excludeId ? 'none' : 'buy' }).ok) return { x, z };
       }
       throw new Error(`no spot for ${defId}`);

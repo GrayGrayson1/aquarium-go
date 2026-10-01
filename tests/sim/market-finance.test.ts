@@ -62,7 +62,8 @@ describe('market: finances', () => {
     expect(g.finance.debtSinceHour).toBeDefined();
     const warn = g.log.filter((e) => e.kind === 'warning' && /in the red/.test(e.text));
     expect(warn.length).toBeGreaterThan(0);
-    expect(warn[0].text).toMatch(/animals are safe/);
+    expect(warn[0].text).toMatch(/nothing is ever taken from you/);
+    expect(warn[0].text).not.toMatch(/animals are safe/);
     expect(cashSuggestions(g).length).toBeGreaterThan(0);
     // Animals are never repossessed.
     const alive = Object.values(g.creatures).filter((c) => c.status === 'alive').length;

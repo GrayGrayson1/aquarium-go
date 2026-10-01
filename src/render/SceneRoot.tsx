@@ -5,13 +5,14 @@
  * LOD policy:
  *  - tank view: focused tank = lod 0; other tanks = lod 2 and only drawn when within ~7 m (they glow softly in the
  *    background; hidden ones keep ticking because their group is merely invisible).
- *  - facility view: the 4 tanks nearest the camera = lod 1 (full glass/surface materials), the rest lod 2.
+ *  - facility view: the 4 tanks nearest the camera = lod 1 (full glass/surface materials), the rest lod 2 — with
+ *    hysteresis (facilityLods in lod.ts), so dragging the camera does not flip the tanks at the cut-off.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGame, getGame } from '@/state/game';
 import { useRenderTank } from './shared/renderSelectors';
-import { ProgramKeeper, ShaderWarmup } from './shared/warmup';
+import { ProgramKeeper, ShaderWarmup, useWarmup } from './shared/warmup';
 import { useUI } from '@/state/ui';
 import { tankWorldTransform } from '@/sim/tankSpace';
 import { TankInstance } from './tank/TankInstance';
@@ -24,7 +25,7 @@ import { useRenderQuality } from './shared/quality';
 import { RenderBridge, RoomEnvironment, SceneAmbience } from './shared/environment';
 
 export { RenderBridge, RoomEnvironment, SceneAmbience };
-import type { RenderLod } from './lod';
+import { facilityLods, type RenderLod } from './lod';
 
 const NEAR_LOD1 = 4;
 const TANK_VIEW_RADIUS = 7;
@@ -62,7 +63,7 @@ function useSettledView(inTankView: boolean): boolean {
   return settled;
 }
 
-/** Facility view: the NEAR_LOD1 tanks nearest the camera get lod 1. Re-evaluated ~3×/s, re-renders only on change. */
+/** Facility view: the NEAR_LOD1 tanks nearest the camera get lod 1 (with hysteresis). Re-evaluated ~3×/s, re-renders only on change. */
 function useFacilityLods(hasGame: boolean, active: boolean): Record<string, RenderLod> {
   const [lods, setLods] = useState<Record<string, RenderLod>>({});
   const acc = useRef(0);
@@ -81,14 +82,49 @@ function useFacilityLods(hasGame: boolean, active: boolean): Record<string, Rend
         return { id, d: Math.hypot(p[0] - camera.position.x, p[2] - camera.position.z) };
       })
       .sort((a, b) => a.d - b.d);
-    const next: Record<string, RenderLod> = {};
-    ranked.forEach((r, i) => (next[r.id] = i < NEAR_LOD1 ? 1 : 2));
+    const next = facilityLods(
+      ranked.map((r) => r.id),
+      lods,
+      NEAR_LOD1,
+    );
     if (!sameLods(next, lods)) setLods(next);
   });
   return lods;
 }
 
 const NO_TANKS: string[] = [];
+
+/**
+ * lane:tankrender (G4-02/G4-07) — building a world (every tank's geometry, textures, creatures) is one synchronous
+ * commit: 0.3–1.4 s for the title showcase, up to ~4 s for a big save on a phone. It used to run before anything could
+ * show the warm-up veil, so the title screen or the pressed Continue button just froze. Now a new world first raises
+ * the veil and lets it paint, and only then is built — under the veil, which ShaderWarmup lowers once the
+ * world's shaders are ready, as one continuous transition. Returns the world key that may be built.
+ */
+function useVeiledBuild(hasGame: boolean, worldKey: string): string {
+  const [built, setBuilt] = useState('');
+  const pending = hasGame && built !== worldKey;
+  useLayoutEffect(() => {
+    if (!pending) return;
+    useWarmup.getState().set({ warming: true });
+    // wait for the veil's DOM commit (WarmupVeil reports it), then one more frame so it has been painted; never more
+    // than a handful of frames, so a missing veil can never hold the world back
+    let raf = 0;
+    let frames = 0;
+    let shown = false;
+    const tick = () => {
+      if (shown || ++frames > 8) {
+        setBuilt(worldKey);
+        return;
+      }
+      shown = useWarmup.getState().veilUp;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [pending, worldKey]);
+  return built;
+}
 
 /**
  * One tank's slot. lane:perf — subscribes to its own tank only (via useRenderTank, which ignores sim bookkeeping), so a
@@ -139,6 +175,8 @@ export function SceneRoot() {
   // lane:pc-perf — …and so does a tier change (Settings, or the governor's last-resort drop): its new programs compile
   // in parallel behind the veil instead of freezing the first frame (seconds on Windows/Direct3D)
   const renderQuality = useRenderQuality();
+  const builtKey = useVeiledBuild(hasGame, worldKey);
+  const showWorld = hasGame && builtKey === worldKey;
 
   return (
     <>
@@ -149,7 +187,7 @@ export function SceneRoot() {
       {/* lane:pc-perf — frame-time adaptation lives in SceneCanvas's ResolutionGovernor (resolution first, features last) */}
       {/* lane:perf — compiled programs survive LOD swaps, so switching tanks/views never recompiles (warmup.tsx) */}
       <ProgramKeeper />
-      {hasGame ? (
+      {showWorld ? (
         <>
           <FacilityWorld />
           {tankOrder.map((id) => {
@@ -165,7 +203,7 @@ export function SceneRoot() {
           {/* lane:perf — last child of the world: compiles every material in parallel behind a veil (see warmup.tsx) */}
           <ShaderWarmup key={`${worldKey}|${renderQuality}`} />
         </>
-      ) : (
+      ) : hasGame ? null : (
         <AmbientDepths />
       )}
       <CameraRig />

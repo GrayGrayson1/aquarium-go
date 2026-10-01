@@ -234,8 +234,16 @@ export const createDwarfFrog: CreatureFactory = (args) => {
   root.userData.groundOffset = GROUND;
   root.userData.speciesVisual = 'african_dwarf_frog';
   const B = rigI.byName;
+  // limb bones resolved once (the per-frame path allocates nothing)
+  const legs = [
+    { side: 1, hip: B.LRh, knee: B.LRk, ankle: B.LRa, shoulder: B.ARs, elbow: B.ARe },
+    { side: -1, hip: B.LLh, knee: B.LLk, ankle: B.LLa, shoulder: B.ALs, elbow: B.ALe },
+  ];
   const seed = ((ap.patternSeed ?? 21) % 1000) / 1000;
   const st = { kickPh: 0, swimW: 0, zenW: 0, crouchW: 1, ext: 0 };
+  // behaviour label test cached by string identity (labels change a few times a minute, not per frame)
+  let lastBehavior: string | undefined;
+  let zenBehavior = false;
   // selection: set by the renderer (not while the camera already follows this animal); drawn as a thin rim
   const sel = { on: false };
   const update = (rt: CreatureRuntime, dt: number, time: number) => {
@@ -244,7 +252,11 @@ export const createDwarfFrog: CreatureFactory = (args) => {
     const dead = pose === 'dead';
     const speed = Math.max(0, rt.speedBL || 0);
     const swimming = !dead && (speed > 0.15 || pose === 'surface_breath' || pose === 'startle');
-    const zen = !dead && !swimming && (pose === 'hover' || (rt.ai?.galleryHeight as number) > 0.5 || pose === 'rest' && /float|zen|surface/i.test(rt.behavior || ''));
+    if (rt.behavior !== lastBehavior) {
+      lastBehavior = rt.behavior;
+      zenBehavior = /float|zen|surface/i.test(rt.behavior || '');
+    }
+    const zen = !dead && !swimming && (pose === 'hover' || (rt.ai?.galleryHeight as number) > 0.5 || pose === 'rest' && zenBehavior);
     st.swimW = damp(st.swimW, swimming ? 1 : 0, 5, dt);
     st.zenW = damp(st.zenW, zen || dead ? 1 : 0, 2, dt);
     st.crouchW = 1 - Math.max(st.swimW, st.zenW);
@@ -256,14 +268,14 @@ export const createDwarfFrog: CreatureFactory = (args) => {
     st.ext = damp(st.ext, st.swimW * kick + st.zenW * 0.55, 14, dt);
     const e = st.ext;
     const drift = st.zenW * Math.sin(time * 0.4 + seed * 5) * 0.06;
-    for (const side of [1, -1]) {
-      const sd = side > 0 ? 'R' : 'L';
-      setRot(B[`L${sd}h`], side * drift, side * -1.7 * e, -0.08 * e);
-      setRot(B[`L${sd}k`], 0, side * 2.3 * e, 0);
-      setRot(B[`L${sd}a`], 0, side * (-0.15 * e + 0.2 * st.zenW), 0);
+    for (let li = 0; li < 2; li++) {
+      const { side, hip, knee, ankle, shoulder, elbow } = legs[li];
+      setRot(hip, side * drift, side * -1.7 * e, -0.08 * e);
+      setRot(knee, 0, side * 2.3 * e, 0);
+      setRot(ankle, 0, side * (-0.15 * e + 0.2 * st.zenW), 0);
       const armOut = st.zenW * 0.5 - st.swimW * kick * 0.6;
-      setRot(B[`A${sd}s`], side * st.zenW * 0.15, side * (armOut - 0.1), Math.sin(time * 0.7 + seed + side) * 0.05 * (1 - st.swimW));
-      setRot(B[`A${sd}e`], 0, side * st.zenW * 0.3, 0);
+      setRot(shoulder, side * st.zenW * 0.15, side * (armOut - 0.1), Math.sin(time * 0.7 + seed + side) * 0.05 * (1 - st.swimW));
+      setRot(elbow, 0, side * st.zenW * 0.3, 0);
     }
     setRot(B.head, 0, Math.sin(time * 0.3 + seed) * 0.05 * st.crouchW, Math.sin(time * 3.2) * 0.012 * (dead ? 0 : 1));
     setRot(B.root, 0, 0, st.swimW * (kick - 0.5) * 0.08);

@@ -7,7 +7,7 @@ import type { Potentials, SpeciesDefinition } from '@/types';
 import { potentialBand, structureLabel as lifeStructureLabel, temperamentWord as lifeTemperamentWord, curiosityWord as lifeCuriosityWord } from '@/sim/life';
 import { Chip } from './parts';
 import { DIFFICULTY_LABEL, DIFFICULTY_TONE, TEMPERAMENT_LABEL, DIET_LABEL, type ChipTone } from './format';
-import { safe } from './hooks';
+import { safe, useTempText } from './hooks';
 
 const BAND_TONE: Record<string, ChipTone> = { Remarkable: 'gold', Exceptional: 'violet', Promising: 'aqua', Ordinary: 'neutral' };
 
@@ -99,10 +99,11 @@ export function PotentialBands({ p, sp, highlightOnly, max = 8 }: { p: Potential
 
 /** Care stat chips (temp, pH, salinity, min tank, difficulty…). */
 export function CareChips({ sp, full, hideDifficulty }: { sp: SpeciesDefinition; full?: boolean; hideDifficulty?: boolean }) {
+  const { t } = useTempText();
   return (
     <div className="pn-chips">
-      <Chip icon={<Thermometer size={12} />} title={`Tolerates ${sp.tempC.min}–${sp.tempC.max} °C`}>
-        {sp.tempC.idealMin}–{sp.tempC.idealMax} °C
+      <Chip icon={<Thermometer size={12} />} title={t(`Tolerates ${sp.tempC.min}–${sp.tempC.max} °C`)}>
+        {t(`${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`)}
       </Chip>
       <Chip icon={<Droplets size={12} />} title={`Tolerates pH ${sp.pH.min}–${sp.pH.max}`}>
         pH {sp.pH.idealMin}–{sp.pH.idealMax}

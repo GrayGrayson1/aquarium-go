@@ -19,7 +19,7 @@ import { emitEvent } from '../context';
 import { hourOfDay, GAME_HOURS_PER_REAL_SECOND } from '../time';
 import { deleteTank } from '../tanks';
 import { creaturesInTank } from '../life';
-import { environmentGate } from '../compat';
+import { environmentGate, previewAddition } from '../compat';
 import { isUnlocked, addReputation, addMastery, bumpCounter } from '../facility';
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
@@ -34,6 +34,7 @@ import { clamp, clamp01, clonePlain, finite, fmtMoney, nicePrice, pushCapped, sp
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { touchResidents } from '../residents'; // lane:perf2
+import { saleWarnings } from './warnings'; // lane:fix-econ
 
 export interface ListingSpec {
   kind: ListingKind;
@@ -50,6 +51,8 @@ export interface ListingSpec {
 
 export const MIN_LISTING_HOURS = 6;
 export const MAX_LISTING_HOURS = 168;
+/** The market does its work in windows of at least this many game hours (stepMarket batches ticks up to it). */
+export const MARKET_STEP_HOURS = 0.1;
 
 /**
  * Market lifetimes are set in REAL time at 1× (1 game hour = 10 real seconds, so 6 game hours = 1 real minute):
@@ -67,6 +70,18 @@ export const COUNTER_REPLY_OPEN_HOURS = realMin(2);
 export const NEGOTIATION_HOLD_HOURS = realMin(2);
 /** When bidding closes, open offers stay at least this long (≈ 2 real min) so you can still accept one. */
 export const CLOSING_GRACE_HOURS = realMin(2);
+/** A counter form left open holds one offer at most this long in total (≈ 6 real min): buyers don't wait forever. */
+export const MAX_NEGOTIATION_HOLD_HOURS = NEGOTIATION_HOLD_HOURS * 3;
+
+/**
+ * The windows above are promises in REAL time, so at 3×/10× they cover the same real seconds: a bid that would last
+ * 3 real minutes at 1× lasts 3 real minutes at 10× too (lane:fix-econ, S03-02). Tests and the offline catch-up run at
+ * 1× (or paused), where this is exactly 1.
+ */
+export function marketTimeScale(state: GameState): number {
+  const speed = finite(state.clock?.speed, 1);
+  return speed > 1 ? speed : 1;
+}
 
 /** Real minutes a span of game hours lasts at 1× speed. */
 export function realMinutesAt1x(gameHours: number): number {
@@ -402,7 +417,12 @@ function buildFragSnapshot(state: GameState, frags: DecorInstance[], photo?: str
 
 function currentValuation(state: GameState, l: Listing): number {
   if (l.kind === 'frag') return l.fragItems?.length ? fragBundleValue(state, l.fragItems).expected : 0; // lane:frags
-  if (l.kind === 'tank') return l.tankId && state.tanks[l.tankId] ? tankValuation(state, l.tankId).expected : 0;
+  if (l.kind === 'tank') {
+    if (!l.tankId || !state.tanks[l.tankId]) return 0;
+    // Price what the buyer receives: the listed animals, gear and decor (see completeSale — anything added after
+    // listing is handed back to the seller), never the tank's current contents (lane:fix-econ, S03-01).
+    return tankValuation(state, l.tankId, { creatureIds: new Set(l.creatureIds), itemIds: listedItemIds(l.snapshot.signature) ?? undefined, maxBeauty: l.snapshot.beautyScore }).expected;
+  }
   const creatures = l.creatureIds.map((id) => state.creatures[id]).filter((c): c is Creature => !!c && (c.status === 'listed' || c.status === 'alive'));
   return creatures.length ? bundleValue(state, l.kind, creatures).expected : 0;
 }
@@ -450,10 +470,8 @@ export function previewListing(state: GameState, spec: Omit<ListingSpec, 'reserv
     warnings.push(`Included: the ${tier?.name ?? 'tank'}, ${n(contents.tank.equipment.length, 'equipment item', 'equipment items')}, ${n(contents.tank.decor.length, 'decor piece', 'decor pieces')} and ${n(contents.creatures.length, 'animal', 'animals')}. Anything added later is not part of the sale (animals are moved to another tank, gear and decor go to storage).`);
     if ((contents.tank.cache?.compatVerdict && compatRank(contents.tank.cache.compatVerdict) >= 3) || (contents.tank.cache?.waterStatus ?? contents.tank.cache?.status) === 'danger') warnings.push('Selling a tank in poor shape lowers bids and can cost reputation.');
   }
-  const sick = contents.creatures.filter((c) => c.illness || (c.stats?.health ?? 100) < 50);
-  if (sick.length) warnings.push(`${sick.map((c) => c.name).join(', ')} ${sick.length === 1 ? 'is' : 'are'} unwell. Buyers will see it, and selling sick animals can cost reputation.`);
-  const starter = contents.creatures.find((c) => c.isStarter);
-  if (starter) warnings.push(`${starter.name} is your very first animal. Once sold, they're gone for good.`);
+  // Sick, starter, brooding/guarding, pair and favourite warnings (shared with quick sale — S03-05).
+  warnings.push(...saleWarnings(state, contents.creatures.map((c) => c.id)));
   return {
     ok: true,
     message: 'ok',
@@ -572,6 +590,7 @@ export function withdrawListing(state: GameState, listingId: string): ActionResu
   if (!l) return fail('Listing not found.');
   if (l.status !== 'active') return fail(`This listing is already ${l.status}.`);
   l.status = 'withdrawn';
+  l.closedHour = state.clock.hour; // S13-10: the Sold card and 'Recently ended' order read it
   l.outcome = 'You withdrew this listing.';
   restoreContents(state, l);
   closeOpenBids(l, 'declined', 'Listing withdrawn by the seller.');
@@ -586,13 +605,18 @@ interface SaleCheck {
   message: string;
   creatures: Creature[];
   tank?: Tank;
-  relocations: { c: Creature; toTankId: string }[];
+  relocations: { c: Creature; toTankId: string; risky: boolean }[];
 }
 
-function findRelocation(state: GameState, c: Creature, excludeTankId: string, reserved: Map<string, number>): string | null {
+/**
+ * Where an animal that is not part of a tank sale goes: a tank it can live in (environment + temperature), preferring
+ * its water class, a compatible community and light stocking. Never an 'incompatible' mix; a high-risk one only when
+ * nothing better exists, and the sale then says so (lane:fix-econ, S03-04).
+ */
+function findRelocation(state: GameState, c: Creature, excludeTankId: string, reserved: Map<string, number>): { id: string; risky: boolean } | null {
   const sp = findSpecies(c.speciesId);
   if (!sp) return null;
-  let best: { id: string; score: number } | null = null;
+  let best: { id: string; score: number; risky: boolean } | null = null;
   for (const id of state.tankOrder) {
     if (id === excludeTankId) continue;
     const t = state.tanks[id];
@@ -608,11 +632,19 @@ function findRelocation(state: GameState, c: Creature, excludeTankId: string, re
     // (an axolotl must not land in a 26 °C tropical tank).
     const temp = finite(t.water?.tempC, NaN);
     if (Number.isFinite(temp) && (temp < sp.tempC.min || temp > sp.tempC.max)) continue;
-    const score = (sp.waterClasses?.includes(t.waterClass) ? 2 : 0) - (reserved.get(id) ?? 0) * 0.1 - finite(t.cache?.stockingLoad, 0);
-    if (!best || score > best.score) best = { id, score };
+    let verdict: string = 'excellent';
+    try {
+      verdict = previewAddition(state, id, { speciesId: c.speciesId, creatureIds: [c.id] }).verdict;
+    } catch {
+      verdict = 'excellent';
+    }
+    if (verdict === 'incompatible') continue;
+    const compat = verdict === 'high_risk' ? -3 : verdict === 'conditional' ? -1 : 0;
+    const score = (sp.waterClasses?.includes(t.waterClass) ? 2 : 0) + compat - (reserved.get(id) ?? 0) * 0.1 - finite(t.cache?.stockingLoad, 0);
+    if (!best || score > best.score) best = { id, score, risky: verdict === 'high_risk' };
   }
   if (best) reserved.set(best.id, (reserved.get(best.id) ?? 0) + 1);
-  return best?.id ?? null;
+  return best ? { id: best.id, risky: best.risky } : null;
 }
 
 function validateForSale(state: GameState, l: Listing): SaleCheck {
@@ -633,7 +665,7 @@ function validateForSale(state: GameState, l: Listing): SaleCheck {
   for (const c of unlisted) {
     const to = findRelocation(state, c, tank.id, reserved);
     if (!to) return { ...none, ok: false, message: `${c.name} isn't part of this sale and has no other suitable tank to move to. Move ${c.name} first, or withdraw and re-list the tank with ${c.name} included.` };
-    relocations.push({ c, toTankId: to });
+    relocations.push({ c, toTankId: to.id, risky: to.risky });
   }
   return { ok: true, message: 'ok', creatures: inTank, tank, relocations };
 }
@@ -753,6 +785,14 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
       if (cl.guardedById === r.c.id && (cl.stage === 'in_pouch' || (cl.visual === 'berried' && cl.stage === 'eggs'))) cl.tankId = r.toTankId;
     }
     pushCapped(r.c.history, { hour: now, kind: 'moved', text: `Moved to ${to?.name ?? 'another tank'} — not part of the sale of ${check.tank?.name ?? 'its tank'}.` }, 40);
+    // Say where they went (S03-04): the log entry opens the animal, and a risky mix is called out.
+    emitEvent(state, {
+      kind: r.risky ? 'warning' : 'info',
+      text: `${r.c.name} wasn't part of the sale and now lives in ${to?.name ?? 'another tank'}.${r.risky ? ` It's a risky mix there — the only tank that would do. Find ${r.c.name} a better home soon.` : ''}`,
+      creatureId: r.c.id,
+      tankId: r.toTankId,
+      toast: true,
+    });
   }
 
   // 3. Exactly the listed contents leave.
@@ -806,6 +846,7 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
   bid.status = 'accepted';
   if (via === 'counter') bid.amount = Math.round(price);
   l.status = 'sold';
+  l.closedHour = state.clock.hour;
   l.soldTo = bid.buyerId;
   l.soldFor = roundCents(price);
   l.outcome = `Sold to ${buyerName} for ${fmtMoney(price)}${via === 'buy_now' ? ' (buy-now)' : via === 'counter' ? ' (they accepted your counter)' : ''}.`;
@@ -879,6 +920,22 @@ function buyerWithRole(name: string, archetype: Parameters<typeof archetypeLabel
   return `${name}, ${/^[aeiou]/i.test(lower) ? 'an' : 'a'} ${lower},`;
 }
 
+/**
+ * True when the tank's signature changed only by adding equipment/decor: the tier, water class, substrate and backdrop
+ * are the same and every listed item is still installed (lane:fix-econ, S03-01).
+ */
+function onlyAdditions(listedSig: string, currentSig: string): boolean {
+  const a = listedSig.split('|');
+  const b = currentSig.split('|');
+  if (a.length < 6 || b.length < 6) return false;
+  for (let i = 0; i < 4; i++) if (a[i] !== b[i]) return false;
+  const now = listedItemIds(currentSig);
+  const listed = listedItemIds(listedSig);
+  if (!now || !listed) return false;
+  for (const id of listed) if (!now.has(id)) return false;
+  return true;
+}
+
 /** Equipment/decor instance ids recorded in a tank listing's signature (see tankSignature), or null if unknown. */
 function listedItemIds(sig: string | undefined): Set<string> | null {
   if (!sig) return null;
@@ -941,6 +998,8 @@ export function declineBid(state: GameState, listingId: string, bidId: string): 
   if (b.status !== 'open' && b.status !== 'countered') return fail(`That offer is no longer open (${b.status}).`);
   b.status = 'declined';
   b.note = 'Declined by you.';
+  delete b.holdUntilHour;
+  delete b.holdStartHour;
   const buyer = state.market.buyers.find((x) => x.id === b.buyerId);
   if (buyer) buyer.reputationWithPlayer = clamp(buyer.reputationWithPlayer - 0.02, -1, 1);
   return { ok: true, message: `Declined ${b.buyerName ? `${b.buyerName.replace(/^The /, 'the ')}’s` : 'the'} offer of ${fmtMoney(b.amount)}.` }; // lane:qa-play: possessive
@@ -968,6 +1027,7 @@ export function counterBid(state: GameState, listingId: string, bidId: string, a
   const patience = finite(buyer?.patience, 0.5);
   b.status = 'countered';
   delete b.holdUntilHour;
+  delete b.holdStartHour;
   b.counterAmount = amt;
   b.counterResponseHour = state.clock.hour + Math.max(0.5, rng.range(1, 3.5) * (1.3 - patience));
   delete b.response;
@@ -976,8 +1036,10 @@ export function counterBid(state: GameState, listingId: string, bidId: string, a
 }
 
 /**
- * The player opened the counter-offer form: hold the offer for NEGOTIATION_HOLD_HOURS (≈ 2 real minutes at 1×) so it
- * can't expire or be withdrawn while they type. Safe to call repeatedly (e.g. on every form open); never shortens.
+ * The player opened the counter-offer form: hold the offer for NEGOTIATION_HOLD_HOURS (≈ 2 real minutes at any speed)
+ * so it can't expire or be withdrawn while they type. Safe to call repeatedly (e.g. on every form open); never
+ * shortens. A form left open can't park a buyer forever: the hold is capped at MAX_NEGOTIATION_HOLD_HOURS in total
+ * (S03-08), after which the offer runs out normally.
  */
 export function holdBidForCounter(state: GameState, listingId: string, bidId: string): ActionResult {
   const l = state.market.listings.find((x) => x.id === listingId);
@@ -991,10 +1053,47 @@ export function holdBidForCounter(state: GameState, listingId: string, bidId: st
     b.status = 'expired';
     return fail('That offer has just expired.');
   }
-  const until = now + NEGOTIATION_HOLD_HOURS;
+  const k = marketTimeScale(state);
+  // A new hold starts only after the offer has run unheld for a full window (the form was closed and reopened much
+  // later); a form kept open can't chain holds, because the capped hold expires the offer with it.
+  if (b.holdStartHour === undefined || now - (b.holdUntilHour ?? -Infinity) >= NEGOTIATION_HOLD_HOURS * k) b.holdStartHour = now;
+  const cap = b.holdStartHour + MAX_NEGOTIATION_HOLD_HOURS * k;
+  const until = Math.min(cap, now + NEGOTIATION_HOLD_HOURS * k);
   b.holdUntilHour = Math.max(b.holdUntilHour ?? 0, until);
-  b.expiresHour = Math.max(b.expiresHour, until);
+  b.expiresHour = Math.max(b.expiresHour, b.holdUntilHour);
+  if (until <= now) return { ok: true, message: `${b.buyerName ?? 'The buyer'} has waited a while already — send your counter soon.` };
   return { ok: true, message: `${b.buyerName ?? 'The buyer'} will wait while you write your counter-offer.` };
+}
+
+// ───────────────────────────── counter suggestion (lane:fix-econ, S03-03) ─────────────────────────────
+
+export interface CounterSuggestion {
+  /** A counter most buyers of this kind can still say yes to (above their offer, never above buy-now). */
+  amount: number;
+  /** One line on how buyers tend to answer a counter. */
+  hint: string;
+}
+
+/**
+ * The number the counter form pre-fills. A buyer opens at a share of their private ceiling (BUYER_ARCHETYPES.opening),
+ * so asking for their offer ÷ (three quarters of the way up that range) leaves ~3 in 4 able to accept outright; over
+ * ~15% above their ceiling most walk. A buyer who has already replied to a counter is sitting near their ceiling.
+ */
+export function suggestCounter(l: Listing, b: Bid): CounterSuggestion {
+  const archetype = b.archetype ?? 'experienced_keeper';
+  const [lo, hi] = BUYER_ARCHETYPES[archetype]?.opening ?? [0.82, 0.95];
+  const max = l.buyNow && l.buyNow > 0 ? l.buyNow : b.amount * 5;
+  let k: number;
+  let hint: string;
+  if (b.response !== undefined) {
+    k = 1.03;
+    hint = `${b.buyerName ?? 'This buyer'} has already moved once — a small step, or accepting, is the safe play.`;
+  } else {
+    k = 1 / (lo + 0.75 * (hi - lo));
+    hint = archetype === 'bargain_hunter' ? 'Bargain hunters open low: there is room to ask for more, but they rarely pay full value.' : 'Most buyers meet a counter within about 10% of their offer; ask 15% more and they tend to walk.';
+  }
+  const amount = Math.min(Math.max(nicePrice(b.amount * k), Math.round(b.amount) + 1), Math.max(Math.round(b.amount) + 1, Math.floor(max)));
+  return { amount, hint };
 }
 
 // ───────────────────────────── quick sale ─────────────────────────────
@@ -1029,6 +1128,7 @@ export function quickSell(state: GameState, creatureIds: string[]): ActionResult
 
 function invalidate(state: GameState, l: Listing, text: string, advice: string): void {
   l.status = 'invalidated';
+  l.closedHour = state.clock.hour;
   l.outcome = text;
   l.advice = advice;
   restoreContents(state, l);
@@ -1036,12 +1136,16 @@ function invalidate(state: GameState, l: Listing, text: string, advice: string):
   emitEvent(state, { kind: 'warning', text, listingId: l.id, toast: true });
 }
 
-/** Re-value the listing and move open bids with it; some buyers may withdraw. */
+/**
+ * Re-value the listing and move open bids with it; some buyers may withdraw. Every reason to re-price is bad news
+ * (a loss, an illness, a layout change, a water crash), so offers only ever move down — a bid never ratchets up
+ * because the seller changed the tank after listing (lane:fix-econ, S03-01).
+ */
 function repriceBids(state: GameState, l: Listing, rng: Rng, reason: string, withdrawChance: number, withdrawReason: 'changed' | 'water' | 'sick', extraMult = 1): void {
   const newVal = currentValuation(state, l);
   const ref = finite(l.lastValuation ?? l.snapshot.valuation, 0);
-  const ratio = ref > 0 ? clamp((newVal / ref) * extraMult, 0.2, 1.5) : extraMult;
-  l.lastValuation = newVal;
+  const ratio = ref > 0 ? clamp((newVal / ref) * extraMult, 0.2, 1) : Math.min(1, extraMult);
+  l.lastValuation = ref > 0 ? Math.min(newVal, ref) : newVal;
   for (const b of l.bids) {
     if (b.status !== 'open' && b.status !== 'countered') continue;
     const buyer = state.market.buyers.find((x) => x.id === b.buyerId);
@@ -1052,10 +1156,10 @@ function repriceBids(state: GameState, l: Listing, rng: Rng, reason: string, wit
       b.note = withdrawMessage(rng, archetype, withdrawReason, msgVars(state, l, b.buyerName, orgOf(buyer)));
       continue;
     }
-    if (Math.abs(ratio - 1) > 0.01) {
+    if (ratio < 0.99) {
       b.amount = Math.max(1, nicePrice(b.amount * ratio));
       b.ceiling = Math.max(b.amount, nicePrice(finite(b.ceiling ?? b.amount, b.amount) * ratio));
-      b.note = `Revised ${ratio < 1 ? 'down' : 'up'} after ${reason}.`;
+      b.note = `Revised down after ${reason}.`;
     }
   }
 }
@@ -1143,12 +1247,30 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
       markChanged(l, `${names} joined the tank after listing (not part of the sale).`);
       emitEvent(state, { kind: 'info', text: `${names} ${extras.length === 1 ? 'is' : 'are'} in "${tank.name}" but not part of its listing — they'll be moved to another tank if it sells.`, listingId: l.id, tankId: tank.id });
     }
+    // Can a buyer actually complete this sale? Only unlisted residents can block it (S03-07): warn while they do.
+    const unlisted = creaturesInTank(state, tank.id).some((c) => !l.creatureIds.includes(c.id));
+    if (unlisted || l.blocked) {
+      const check = unlisted ? validateForSale(state, l) : null;
+      if (check && !check.ok) {
+        if (!l.blocked) emitEvent(state, { kind: 'warning', text: `No buyer can complete "${l.title}" right now: ${check.message}`, listingId: l.id, tankId: tank.id, toast: true });
+        l.blocked = check.message;
+      } else if (l.blocked) {
+        delete l.blocked;
+        emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn't part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
+      }
+    }
     const sig = tankSignature(tank);
     if (l.snapshot.signature && sig !== l.snapshot.signature && !has(`sig:${sig}`)) {
       addAlert(`sig:${sig}`);
-      markChanged(l, 'The aquascape or equipment changed after listing.');
-      repriceBids(state, l, rng, 'the layout change', 0.35, 'changed');
-      emitEvent(state, { kind: 'market', text: `You changed "${tank.name}" after listing it. Buyers re-evaluated — some withdrew.`, listingId: l.id, tankId: tank.id });
+      if (onlyAdditions(l.snapshot.signature, sig)) {
+        // Gear or decor added after listing stays with the seller (completeSale hands it back), so buyers price the
+        // listing exactly as before: no re-pricing, no change of heart (lane:fix-econ, S03-01).
+        emitEvent(state, { kind: 'info', text: `What you added to "${tank.name}" after listing it isn't part of the sale — it goes back to storage if the tank sells. Offers are unchanged.`, listingId: l.id, tankId: tank.id });
+      } else {
+        markChanged(l, 'The aquascape or equipment changed after listing.');
+        repriceBids(state, l, rng, 'the layout change', 0.35, 'changed');
+        emitEvent(state, { kind: 'market', text: `You changed "${tank.name}" after listing it. Buyers re-evaluated — some withdrew.`, listingId: l.id, tankId: tank.id });
+      }
     }
     const status = tank.cache?.waterStatus ?? tank.cache?.status;
     if (status === 'danger' && l.snapshot.waterStatus !== 'danger' && !has('water')) {
@@ -1203,13 +1325,13 @@ function resolveCounters(state: GameState, l: Listing, rng: Rng, end: number): v
       const mid = nicePrice(Math.min(ceiling * 1.03, (b.amount + counter) / 2));
       b.amount = Math.max(b.amount + 1, Math.min(mid, counter));
       b.status = 'open';
-      // The counter-offer stays open long enough to read and answer (≥ ~2 real minutes at 1×).
-      b.expiresHour = end + COUNTER_REPLY_OPEN_HOURS + rng.range(0, 12) * patience;
+      // The counter-offer stays open long enough to read and answer (≥ ~2 real minutes at any speed).
+      b.expiresHour = end + COUNTER_REPLY_OPEN_HOURS * marketTimeScale(state) + rng.range(0, 12) * patience;
       b.response = counterReply(rng, archetype, 'split', { ...vars, amount: fmtMoney(b.amount), counter: fmtMoney(counter) });
       emitEvent(state, { kind: 'market', text: `${b.buyerName ?? 'A buyer'} replied to your counter on "${l.title}": "${b.response}"`, listingId: l.id, toast: true });
     } else if (outcome === 'hold') {
       b.status = 'open';
-      b.expiresHour = Math.max(b.expiresHour, end + COUNTER_REPLY_OPEN_HOURS);
+      b.expiresHour = Math.max(b.expiresHour, end + COUNTER_REPLY_OPEN_HOURS * marketTimeScale(state));
       b.response = counterReply(rng, archetype, 'hold', { ...vars, amount: fmtMoney(b.amount), counter: fmtMoney(counter) });
       emitEvent(state, { kind: 'market', text: `${b.buyerName ?? 'A buyer'} replied to your counter on "${l.title}": "${b.response}"`, listingId: l.id, toast: true });
     } else {
@@ -1243,9 +1365,9 @@ function expireAndDrift(state: GameState, l: Listing, rng: Rng, dt: number, end:
     }
     // The player is writing a counter-offer: the buyer waits (no change of heart mid-negotiation).
     if (b.holdUntilHour !== undefined && b.holdUntilHour > end) continue;
-    // Buyers occasionally change their minds (waiting is never risk-free).
+    // Buyers occasionally change their minds (waiting is never risk-free) — per real second, so 10× is no riskier.
     const buyer = state.market.buyers.find((x) => x.id === b.buyerId);
-    const hazard = 0.015 * (1 - finite(buyer?.patience, 0.5));
+    const hazard = (0.015 * (1 - finite(buyer?.patience, 0.5))) / marketTimeScale(state);
     if (rng.chance(1 - Math.exp(-hazard * dt))) {
       b.status = 'withdrawn';
       b.note = withdrawMessage(rng, b.archetype ?? buyer?.archetype ?? 'experienced_keeper', 'lost_interest', msgVars(state, l, b.buyerName, orgOf(buyer)));
@@ -1333,6 +1455,9 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
     if (!res.ok) {
       bid.status = 'withdrawn';
       bid.note = `Tried to buy now, but: ${res.message}`;
+      // The sale is stuck, not the buyer: say so once, loudly (S03-07). checkIntegrity keeps l.blocked current.
+      if (!l.blocked) emitEvent(state, { kind: 'warning', text: `${buyer.name} tried to buy "${l.title}" now, but ${res.message}`, listingId: l.id, tankId: l.tankId, toast: true });
+      l.blocked = res.message;
     }
     return;
   }
@@ -1359,8 +1484,8 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
     amount,
     message,
     createdHour: now,
-    // At least ~3 real minutes at 1× (a patient buyer ~6): long enough to read, compare and counter.
-    expiresHour: now + (BID_MIN_OPEN_HOURS + (BID_MAX_OPEN_HOURS - BID_MIN_OPEN_HOURS) * patience) * rng.range(0.95, 1.1),
+    // At least ~3 real minutes at any speed (a patient buyer ~6): long enough to read, compare and counter.
+    expiresHour: now + (BID_MIN_OPEN_HOURS + (BID_MAX_OPEN_HOURS - BID_MIN_OPEN_HOURS) * patience) * rng.range(0.95, 1.1) * marketTimeScale(state),
     status: 'open',
     buyerName: buyer.name,
     archetype: buyer.archetype,
@@ -1386,6 +1511,7 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
 
 function expireListing(state: GameState, l: Listing): void {
   l.status = 'expired';
+  l.closedHour = state.clock.hour;
   restoreContents(state, l);
   const received = l.bids.length;
   const belowReserve = l.bids.filter((b) => b.note?.startsWith('Below your reserve'));
@@ -1400,6 +1526,8 @@ function expireListing(state: GameState, l: Listing): void {
   } else if (belowReserve.length === received) {
     const top = Math.max(...belowReserve.map((b) => b.amount));
     advice = `${received} offer${received === 1 ? ' was' : 's were'} below your reserve (best ${fmtMoney(top)}). A reserve near ${fmtMoney(nicePrice(top * 1.02))} would likely sell.`;
+  } else if (l.blocked) {
+    advice = `The sale was blocked: ${l.blocked}`;
   } else {
     advice = 'Offers expired before you accepted one. Buyers don’t wait forever — accept or counter sooner.';
   }
@@ -1419,7 +1547,13 @@ export function stepListings(state: GameState, dt: number, ctx: SimContext): voi
     if (l.status !== 'active') continue;
     expireAndDrift(state, l, rng, dt, end);
     updateInterest(state, l, rng, dt, end);
-    if (end < l.endsHour) arrivals(state, l, rng, dt, end);
+    if (end < l.endsHour) {
+      // One buyer per window at most, so a long window (10×, the offline catch-up) must be walked in market-cadence
+      // pieces or it sees fewer buyers per hour than 1× does (lane:fix-econ, G1-05). A 1× window is one piece.
+      const pieces = Math.max(1, Math.ceil(dt / MARKET_STEP_HOURS - 0.05));
+      const piece = dt / pieces;
+      for (let i = 1; i <= pieces && l.status === 'active'; i++) arrivals(state, l, rng, piece, end - dt + piece * i);
+    }
     if (l.status !== 'active') continue;
     if (end >= l.endsHour) {
       const pending = l.bids.some((b) => b.status === 'open' || b.status === 'countered');
@@ -1427,7 +1561,7 @@ export function stepListings(state: GameState, dt: number, ctx: SimContext): voi
       else if (!(l.alerts ?? []).includes('closed')) {
         (l.alerts ??= []).push('closed');
         // Bidding closed: every open offer stays long enough to act on the toast below.
-        for (const b of l.bids) if (b.status === 'open') b.expiresHour = Math.max(b.expiresHour, l.endsHour + CLOSING_GRACE_HOURS);
+        for (const b of l.bids) if (b.status === 'open') b.expiresHour = Math.max(b.expiresHour, l.endsHour + CLOSING_GRACE_HOURS * marketTimeScale(state));
         const best = bestOpen(l);
         emitEvent(state, { kind: 'market', text: `Bidding closed on "${l.title}". ${best ? `Best open offer: ${fmtMoney(best.amount)} from ${best.buyerName ?? 'a buyer'} — accept it before it expires.` : 'Waiting on a counter reply.'}`, listingId: l.id, toast: true });
       }

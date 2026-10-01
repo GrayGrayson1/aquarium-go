@@ -34,9 +34,11 @@ export type Cond =
   | { type: 'visitors'; min: number }
   /**
    * Any tank at this beauty score. `scaped` = only tanks the player has aquascaped themselves (at least this many
-   * place / move / remove edits in that tank), so a pre-built starter layout doesn't count on its own.
+   * place / move / remove edits in that tank), so a pre-built starter layout doesn't count on its own. `ownLayout`: the
+   * tank must also be mostly the player's own layout (under half its pieces still where the gifted starter put them),
+   * so a few nudges to the gift don't earn the top aquascaping honours (G2-01).
    */
-  | { type: 'beauty'; min: number; scaped?: number }
+  | { type: 'beauty'; min: number; scaped?: number; ownLayout?: boolean }
   | { type: 'flag'; flag: string; label?: string }
   | { type: 'tutorial_done' }
   | { type: 'money'; min: number }
@@ -110,7 +112,7 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'signage', when: [any(fac('specialty_shop'), rep(45), research('public_education'))], hint: 'Open a shop or reach 45 reputation.' },
   { key: 'nursery', when: [any(counter('births', 1, 'Raise a clutch'), mastery('breeding', 40), rep(70), research('breeding_program'))], hint: 'Research the Breeding Programme, or reach 70 reputation.' },
   { key: 'genetics_lab', when: [research('genetics_lab')], hint: 'Research the Genetics Lab.' },
-  { key: 'photo_contests', when: [any(mastery('aquascaping', 250), { type: 'beauty', min: 85, scaped: SCAPED_EDITS }, research('aquascape_awards'))], hint: 'Aquascape a tank yourself to beauty 85.' },
+  { key: 'photo_contests', when: [any(mastery('aquascaping', 250), { type: 'beauty', min: 85, scaped: SCAPED_EDITS, ownLayout: true }, research('aquascape_awards'))], hint: 'Aquascape a tank yourself to beauty 85.' },
   { key: 'party_mode', when: [any(rep(15), counter('feeds', 12, 'Feed 12 times'))], hint: 'Keep caring for your tank for a little while.' },
   // lane:shows — the show circuit opens after the guide; higher tiers need reputation, then a bigger venue
   { key: 'shows', when: [{ type: 'any', of: [{ type: 'tutorial_done' }, rep(20)], label: 'To finish the guide or reach 20 reputation' }], hint: 'Finish the guide or reach 20 reputation.' },

@@ -241,3 +241,59 @@ export function starterAquascapeImpl(state: GameState, starterId: string, tank: 
 }
 
 const round4 = (v: number) => Math.round(v * 10000) / 10000;
+
+/**
+ * A piece of the template's kind still sitting within this distance (m) and turn (rad) of its template spot, and no
+ * bigger than this ratio of its template size, reads as the gifted layout, not the player's work (the seed jitter
+ * is ±1 cm, ±0.25 rad, ±4 %).
+ */
+const GIFTED_MATCH_M = 0.025;
+const GIFTED_MATCH_RAD = 0.45;
+const GIFTED_MATCH_SCALE = 1.14;
+
+/**
+ * lane:staff (S05-01) — how much of this tank is still the gifted starter layout: the share of its pieces that sit
+ * (same kind, within a few cm) where the hand-authored template put them. 0 = every piece is the player's own
+ * placement, 1 = the layout the tank came with, pruned or not. Pure over the tank and the save's starter id, so it
+ * works for old saves too; the show judge scales composition marks by the scaper's own hand.
+ */
+export function giftedLayoutShare(state: Pick<GameState, 'starterId'>, tank: Tank): number {
+  const decor = tank.decor ?? [];
+  if (!decor.length) return 0;
+  const specs = STARTER_LAYOUTS[state.starterId] ?? (tank.environment === 'marine' ? GENERIC_MARINE : GENERIC_FW);
+  const d = tankDims(tank);
+  const ref = { L: 0.762, W: 0.3048 };
+  const isSmall = d.L < 0.6;
+  const sx = isSmall ? 1 : d.L / ref.L;
+  const sz = isSmall ? 1 : d.W / ref.W;
+  const taken = new Set<string>();
+  let matched = 0;
+  for (const spec of specs) {
+    const def = getDecorDef(spec.id);
+    if (!def) continue;
+    const tr = spec.rot ?? 0;
+    const ts = Math.max(def.scaleRange[0], Math.min(def.scaleRange[1], spec.s ?? 1));
+    // the template spot as tryPlace resolves it: scaled to the tank, then kept off the glass
+    const lim = placementLimits(tank, def, ts, tr);
+    const tx = Math.max(-lim.maxX, Math.min(lim.maxX, spec.x * sx));
+    const tz = Math.max(-lim.maxZ, Math.min(lim.maxZ, spec.z * sz));
+    let best: DecorInstance | null = null;
+    let bestD = GIFTED_MATCH_M;
+    for (const inst of decor) {
+      if (inst.defId !== spec.id || taken.has(inst.id)) continue;
+      const turn = Math.abs(Math.atan2(Math.sin(inst.rotY - tr), Math.cos(inst.rotY - tr)));
+      // (smaller is fine: starter pieces are shrunk to fit under the surface; bigger means the player resized it)
+      if (turn > GIFTED_MATCH_RAD || inst.scale > ts * GIFTED_MATCH_SCALE) continue;
+      const dist = Math.hypot(inst.x - tx, inst.z - tz);
+      if (dist <= bestD) {
+        bestD = dist;
+        best = inst;
+      }
+    }
+    if (best) {
+      taken.add(best.id);
+      matched++;
+    }
+  }
+  return matched / decor.length;
+}

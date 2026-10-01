@@ -47,35 +47,43 @@ function usePhotoParams() {
   return { v, keys, set: (k: string, x: number) => photoStore?.setState({ [k]: x }) };
 }
 
+/** One capture at a time: a full-resolution capture blocks the main thread for ~200 ms, so key repeat must not queue them. */
+let capturing = false;
+
 export async function takePhoto(): Promise<void> {
-  const ui = useUI.getState();
-  sfx('camera');
-  const flash = document.createElement('div');
-  flash.className = 'ag-flash';
-  document.body.appendChild(flash);
-  window.setTimeout(() => flash.remove(), 700);
-  const url = await capturePhoto({ hideUI: true }).catch(() => null);
-  if (!url) {
-    ui.toast('The photo could not be captured.', 'warning');
-    return;
+  if (capturing) return;
+  capturing = true;
+  try {
+    const ui = useUI.getState();
+    sfx('camera');
+    const flash = document.createElement('div');
+    flash.className = 'ag-flash';
+    document.body.appendChild(flash);
+    window.setTimeout(() => flash.remove(), 700);
+    const url = await capturePhoto({ hideUI: true }).catch(() => null);
+    if (!url) {
+      ui.toast('The photo could not be captured.', 'warning');
+      return;
+    }
+    const creatureId = ui.followCreatureId ?? ui.selectedCreatureId;
+    const g = useGame.getState().game;
+    if (creatureId && g && g.creatures[creatureId]) {
+      useGame.getState().mutate((d) => {
+        const c = d.creatures[creatureId];
+        if (!c) return;
+        // noteInteraction writes one throttled "photo" story line (6 game hours) — keep that throttle, just give the
+        // line it wrote the tank's name instead of adding a second entry for every shutter press.
+        const before = c.history.length;
+        safe('noteInteraction', () => noteInteraction(d, creatureId, 'photo'), undefined);
+        const last = c.history[c.history.length - 1];
+        if (c.history.length > before && last?.kind === 'photo') last.text = `Posed for a portrait in ${d.tanks[c.tankId ?? '']?.name ?? 'the aquarium'}.`;
+      });
+    }
+    tutorialFlag('photo_taken');
+    useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId } });
+  } finally {
+    capturing = false;
   }
-  const creatureId = ui.followCreatureId ?? ui.selectedCreatureId;
-  const g = useGame.getState().game;
-  if (creatureId && g && g.creatures[creatureId]) {
-    useGame.getState().mutate((d) => {
-      const c = d.creatures[creatureId];
-      if (!c) return;
-      const before = c.history.length;
-      safe('noteInteraction', () => noteInteraction(d, creatureId, 'photo'), undefined);
-      const last = c.history[c.history.length - 1];
-      if (c.history.length === before || last?.kind !== 'photo') {
-        c.history.push({ hour: d.clock.hour, kind: 'photo', text: `Posed for a portrait in ${d.tanks[c.tankId ?? '']?.name ?? 'the aquarium'}.` });
-        if (c.history.length > 40) c.history.splice(0, c.history.length - 40);
-      }
-    });
-  }
-  tutorialFlag('photo_taken');
-  useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId } });
 }
 
 export function PhotoMode() {
@@ -91,8 +99,10 @@ export function PhotoMode() {
   useEffect(() => {
     if (!photoMode) return;
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return; // holding Space must not fire a capture per auto-repeat
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
-      if (e.key === 'Escape' && !document.querySelector('.ag-modal-backdrop')) useUI.getState().set({ photoMode: false });
+      if (document.querySelector('.ag-modal-backdrop')) return; // the preview (or any dialog) owns the keys while open
+      if (e.key === 'Escape') useUI.getState().set({ photoMode: false });
       if ((e.key === ' ' || e.key === 'Enter') && !(e.target as HTMLElement)?.closest?.('button, a, [role="button"], [role="radio"], [role="switch"]')) {
         e.preventDefault();
         void takePhoto();

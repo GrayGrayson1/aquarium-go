@@ -23,6 +23,7 @@ import { decorAnchors, tankDims, type WorldAnchor } from '@/sim/tankSpace';
 import { tankHabitat, type TankHabitat } from '@/sim/aquascape';
 import type { IncidentRisk } from '@/sim/compat';
 import { computeTankEnv, effectiveBioload } from '@/sim/water';
+import { fitsEnvironment } from '@/sim/compat/salinity';
 import { findSpecies } from '@/data/species';
 import { getDecorDef } from '@/data/catalog/decor';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -185,6 +186,7 @@ export const BUSY_STAGES = new Set([
   'nest_preparing',
   'spent',
   'transitioning_female',
+  'transitioning_male',
 ]);
 
 export const isFreeStage = (c: Creature) => c.repro.stage === 'idle' || c.repro.stage === 'conditioning' || c.repro.stage === 'gravid' || c.repro.stage === 'bonding' || c.repro.stage === 'nest_ready' || c.repro.stage === 'nest_building';
@@ -574,9 +576,9 @@ export function isNurseryFor(state: GameState, tank: Tank, hour: number): boolea
 
 /** Severity (0 = fine) of the water for delicate eggs/young of this species. */
 export function youngWaterSeverity(tank: Tank, sp: SpeciesDefinition): number {
-  if (tank.environment !== sp.environment) return 6;
+  if (!fitsEnvironment(sp, tank.environment)) return 6;
   const w = tank.water;
-  let sev = 0;
+  let sev = tank.environment === sp.environment ? 0 : 0.5; // tolerated water: fine for the adults, harder on the young
   sev += Math.max(0, (w.ammonia ?? 0) - 0.2) * 1.6;
   sev += Math.max(0, (w.nitrite ?? 0) - 0.2) * 1.6;
   sev += Math.max(0, (w.nitrate ?? 0) - 60) / 100;
@@ -594,7 +596,7 @@ export function youngWaterSeverity(tank: Tank, sp: SpeciesDefinition): number {
 
 /** Is the water good enough for spawning at all (adults)? Returns a reason when not. */
 export function spawningWaterIssue(tank: Tank, sp: SpeciesDefinition): string | null {
-  if (tank.environment !== sp.environment) return `${tank.name} is ${tank.environment}; ${spPlural(sp)} need ${sp.environment === 'freshwater' ? 'fresh' : sp.environment === 'marine' ? 'salt' : sp.environment} water.`; // lane:w2-ui: not "freshwater water"
+  if (!fitsEnvironment(sp, tank.environment)) return `${tank.name} is ${tank.environment}; ${spPlural(sp)} need ${sp.environment === 'freshwater' ? 'fresh' : sp.environment === 'marine' ? 'salt' : sp.environment} water.`; // lane:w2-ui: not "freshwater water"
   const w = tank.water;
   if (w.ammonia > 0.25 || w.nitrite > 0.25) return 'Ammonia/nitrite is detectable — clean, stable water comes first.';
   return null;
@@ -802,9 +804,10 @@ export function makeTankInfo(state: GameState, tank: Tank, hour: number, risks: 
 export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): number {
   if (!isMature(c, sp, hour)) return 0;
   if (isResting(c, hour)) return 0;
-  if (tank.environment !== sp.environment) return 0;
+  // Shared salinity model (same as the purchase gate / welfare): a tolerated environment breeds, but less keenly.
+  if (!fitsEnvironment(sp, tank.environment)) return 0;
   const s = c.stats;
-  let f = 1;
+  let f = tank.environment === sp.environment ? 1 : 0.7;
   f *= ramp(s.health, 45, 85);
   f *= 1 - ramp(s.stress, 45, 90);
   f *= 1 - ramp(s.hunger, 55, 90);

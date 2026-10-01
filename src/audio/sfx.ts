@@ -6,6 +6,8 @@
 import { busAudible, duckMusic, getEngine, stats, unlockAudio as engineUnlock, type Engine } from './engine';
 import { bubble, chimeRoll, noiseHit, pluck, swell, tone } from './voices';
 import { midiToFreq } from './dsp';
+import { IncomeCueGate } from './cues';
+import { getGame } from '@/state/game';
 
 export type SfxId =
   | 'click'
@@ -261,6 +263,20 @@ export function sfx(id: SfxId, opts?: SfxOpts): void {
   } catch (err) {
     console.warn('[audio] sfx failed', id, err);
   }
+}
+
+const incomeGate = new IncomeCueGate();
+
+/**
+ * Money went up on its own (tickets, a listing sold, staff sales): a soft, sparse coin chime — at most one every
+ * 12 s (30 s while fast-forwarding), and never on top of a buy/sell cue the player just triggered.
+ */
+export function incomeCue(delta: number): void {
+  if (!(delta > 0)) return;
+  const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  if (nowMs - lastPlayed('coin') < 500 || nowMs - lastPlayed('sold') < 1500) return;
+  if (!incomeGate.allow(nowMs, getGame()?.clock?.speed ?? 1)) return;
+  sfx('coin', { volume: 0.35 });
 }
 
 /** performance.now() of the last time `id` actually played (−1e9 if never). */

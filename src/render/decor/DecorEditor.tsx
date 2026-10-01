@@ -3,9 +3,13 @@
  *
  *  tool 'decor_place' + ui.placingDecorDefId: a translucent ghost follows the pointer across the substrate (and
  *     onto rock/wood for epiphytes & corals). R / wheel rotate, Shift+wheel or [ ] scale, two-finger twist/pinch
- *     on touch. Tint = valid (aqua) / invalid (coral) with the reason under it. Click places (buys) it.
+ *     on touch. Tint = valid (aqua) / invalid (coral) with the reason under it. Click (a tap on touch) places it and
+ *     ends the tool; Shift+click keeps placing copies, and pieces from storage keep placing while any are left.
  *  tool 'decor_move': hover highlights an item; drag moves it (epiphytes ride along); R / wheel rotate while held;
- *     Delete / Backspace sells the hovered/held item back at 50 %. Esc exits either tool.
+ *     Delete / Backspace sells the held item back at 50 %, or the hovered one on a second press. Esc exits either tool.
+ *
+ * Picking (lane:tankrender): the pointer ray is marched against the analytic substrate heightfield and only the
+ * pieces whose footprint box it crosses first are ray-tested mesh by mesh — a big scape has >1M decor triangles.
  *
  * Only listens while one of these tools is active on the focused tank; everything else belongs to the behaviour lane.
  */
@@ -19,15 +23,23 @@ import { getDecorDef } from '@/data/catalog/decor';
 import { useUI } from '@/state/ui';
 import { useGame, getGame } from '@/state/game';
 import { checkPlacement, placementLimits, maxScaleFor, placeDecor, moveDecor, removeDecor, SELL_BACK_FRACTION, takeFrag, plantFrag, fragEligibility, fragLabel } from '@/sim/aquascape';
+import { tankDims } from '@/sim/tankSpace';
 import { fragStoreOffer } from '@/sim/economy'; // lane:frags
 import { sfx } from '@/audio/sfx';
 import { acquireDecorGeometry, releaseDecorGeometry, MAT_CLASSES } from './gen';
-import { decorPick, editingDecor } from './registry';
+import { decorPick, editingDecor, setEditingDecor } from './registry';
+import { raySubstrateT, rayDecorBoxT, isDecorTap } from './pickMath';
 import type { DecorTankUniforms } from './materials';
 import type { SharedDecorMats } from './DecorItem';
 
 const VALID = new THREE.Color('#5EEAD4');
 const INVALID = new THREE.Color('#F87171');
+/** A second Delete/Backspace on the same hovered piece within this long sells it (ms). */
+const SELL_CONFIRM_MS = 3000;
+
+const _inv = new THREE.Matrix4();
+const _lr = new THREE.Ray();
+const _hp = new THREE.Vector3();
 
 interface Ghost {
   defId: string;
@@ -91,9 +103,15 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
   const [ghost, setGhost] = useState<Ghost | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [heldId, setHeldId] = useState<string | null>(null);
+  // lane:tankrender — a touch player gets gesture hints instead of keyboard/mouse ones
+  const [touchUi, setTouchUi] = useState(() => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches);
+  // lane:tankrender — the hovered piece a first Delete/Backspace armed for selling
+  const [sellArm, setSellArm] = useState<{ id: string; at: number } | null>(null);
   // hitOk: lastX/lastZ hold a real pointer hit for the current tool (a tap never has to wait for React's ghost state)
   const ghostAt = useRef(0); // lane:pc-perf
-  const state = useRef({ rotY: 0, scale: 1, lastX: 0, lastZ: 0, hitOk: false, pointer: new THREE.Vector2(), hasPointer: false, touches: new Map<number, { x: number; y: number }>(), pinch0: 0, twist0: 0, scale0: 1, rot0: 0, grabOffset: [0, 0] as [number, number], downAt: 0 });
+  // dirty: the pointer moved since the last hit test (pointer moves are hit-tested at most once per frame)
+  // gestured: the current press became a two-finger twist/pinch, so lifting it never places
+  const state = useRef({ rotY: 0, scale: 1, lastX: 0, lastZ: 0, hitOk: false, pointer: new THREE.Vector2(), hasPointer: false, dirty: false, touches: new Map<number, { x: number; y: number }>(), pinch0: 0, twist0: 0, scale0: 1, rot0: 0, grabOffset: [0, 0] as [number, number], downAt: 0, downId: -1, downX: 0, downY: 0, gestured: false });
   const tankRef = useRef(tank);
   tankRef.current = tank;
   const placingDef = placingId ? getDecorDef(placingId) : undefined;
@@ -113,53 +131,81 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     state.current.rotY = 0;
     state.current.scale = fragItem()?.scale ?? 1;
     state.current.hitOk = false;
+    state.current.dirty = false;
+    state.current.touches.clear();
+    state.current.pinch0 = 0;
+    state.current.gestured = false;
+    state.current.downAt = 0;
     setGhost(null);
     setHeldId(null);
-    editingDecor.id = null;
+    setSellArm(null);
+    setEditingDecor(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool, placingId, placingFragId]);
   useEffect(
     () => () => {
-      editingDecor.id = null;
+      setEditingDecor(null);
       // lane:frags — leaving the editor ends any frag planting, so a later catalogue purchase never plants a stored frag
       if (useUI.getState().placingFragId) useUI.getState().set({ placingFragId: null });
     },
     [],
   );
 
-  /** Tank-local hit on the substrate (or on decor for epiphytes) under the pointer. */
+  /**
+   * Tank-local hit on the substrate (or on decor for epiphytes) under the pointer. lane:tankrender — the substrate is
+   * the analytic heightfield (its lod-0 mesh has ~80k triangles); pieces are mesh-tested only when the ray crosses
+   * their footprint box before reaching the substrate, nearest box first (a full raycast took 10–27 ms per move).
+   */
   const hitLocal = (): { x: number; z: number; itemId?: string } | null => {
-    const pick = decorPick(tankRef.current.id);
+    const r = root.current;
+    if (!r) return null;
+    const t = tankRef.current;
+    const pick = decorPick(t.id);
+    r.updateWorldMatrix(true, false);
     ray.setFromCamera(state.current.pointer, camera);
-    const targets: THREE.Object3D[] = [];
-    if (pick.substrate) targets.push(pick.substrate);
-    for (const [id, o] of pick.items) if (id !== editingDecor.id) targets.push(o);
-    const hits = ray.intersectObjects(targets, true);
-    const hit = hits[0];
-    if (!hit || !root.current) {
-      // fall back to the substrate plane at mid depth
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-      if (!root.current) return null;
-      const m = root.current.matrixWorld;
-      const n = new THREE.Vector3(0, 1, 0).transformDirection(m);
-      const o = new THREE.Vector3(0, 0.03, 0).applyMatrix4(m);
-      plane.setFromNormalAndCoplanarPoint(n, o);
-      const p = new THREE.Vector3();
-      if (!ray.ray.intersectPlane(plane, p)) return null;
-      const l = root.current.worldToLocal(p);
-      return { x: l.x, z: l.z };
+    _inv.copy(r.matrixWorld).invert();
+    _lr.copy(ray.ray).applyMatrix4(_inv);
+    const tSub = raySubstrateT(_lr, t);
+    const limit = tSub ?? Infinity;
+    const boxes: { t: number; o: THREE.Object3D }[] = [];
+    for (const inst of t.decor) {
+      if (inst.id === editingDecor.id) continue;
+      const o = pick.items.get(inst.id);
+      const def = o ? getDecorDef(inst.defId) : undefined;
+      if (!o || !def || !o.visible) continue;
+      const bt = rayDecorBoxT(_lr, inst, def);
+      if (bt !== null && bt < limit) boxes.push({ t: bt, o });
     }
-    const l = root.current.worldToLocal(hit.point.clone());
-    let obj: THREE.Object3D | null = hit.object;
-    let itemId: string | undefined;
-    while (obj) {
-      if (obj.userData?.decorId) {
-        itemId = obj.userData.decorId as string;
-        break;
+    boxes.sort((a, b) => a.t - b.t);
+    let best: THREE.Intersection | null = null;
+    for (const b of boxes) {
+      // a nearer box can still hide a nearer mesh behind the one already hit: stop once boxes start past it
+      if (best && b.t > r.worldToLocal(_hp.copy(best.point)).distanceTo(_lr.origin)) break;
+      const hit = ray.intersectObject(b.o, true)[0];
+      if (hit && (!best || hit.distance < best.distance)) best = hit;
+    }
+    if (best) {
+      const l = r.worldToLocal(best.point.clone());
+      if (tSub === null || l.distanceTo(_lr.origin) <= tSub) {
+        let obj: THREE.Object3D | null = best.object;
+        let itemId: string | undefined;
+        while (obj) {
+          if (obj.userData?.decorId) {
+            itemId = obj.userData.decorId as string;
+            break;
+          }
+          obj = obj.parent;
+        }
+        return { x: l.x, z: l.z, itemId };
       }
-      obj = obj.parent;
     }
-    return { x: l.x, z: l.z, itemId };
+    if (tSub !== null) return { x: _lr.origin.x + _lr.direction.x * tSub, z: _lr.origin.z + _lr.direction.z * tSub };
+    // off the scape (e.g. aiming above the bed at the back glass): the floor plane, clamped by the caller
+    const dy = _lr.direction.y;
+    if (dy > -1e-6) return null;
+    const tp = (tankDims(t).substrateY - _lr.origin.y) / dy;
+    if (!(tp > 0)) return null;
+    return { x: _lr.origin.x + _lr.direction.x * tp, z: _lr.origin.z + _lr.direction.z * tp };
   };
 
   /** Re-hit the pointer, clamp, validate and show the ghost. Returns true when lastX/lastZ now hold a valid hit. */
@@ -187,12 +233,15 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     st.lastX = x;
     st.lastZ = z;
     st.hitOk = true;
-    const chk = checkPlacement(g, t, def.id, { x, z, rotY: st.rotY, scale: st.scale }, tool === 'decor_move' ? { excludeId: heldId ?? undefined, purchase: 'none' } : { purchase: frag ? 'none' : 'buy' });
-    setGhost({ defId: def.id, x, z, y: chk.y, rotY: st.rotY, scale: chk.scale, ok: chk.ok, msg: chk.ok ? (tool === 'decor_place' ? (frag ? `${fragLabel(frag)} · plant free` : `${def.name} · $${def.price}`) : def.name) : chk.message, visible: true });
+    // lane:tankrender — a piece waiting in storage is placed free (placeDecor's `owned`), so never price-check it
+    const owned = !frag && tool === 'decor_place' && g.inventory.decor.some((d) => d.defId === def.id);
+    const chk = checkPlacement(g, t, def.id, { x, z, rotY: st.rotY, scale: st.scale }, tool === 'decor_move' ? { excludeId: heldId ?? undefined, purchase: 'none' } : { purchase: frag ? 'none' : owned ? 'owned' : 'buy' });
+    setGhost({ defId: def.id, x, z, y: chk.y, rotY: st.rotY, scale: chk.scale, ok: chk.ok, msg: chk.ok ? (tool === 'decor_place' ? (frag ? `${fragLabel(frag)} · plant free` : owned ? `${def.name} · from storage` : `${def.name} · $${def.price}`) : def.name) : chk.message, visible: true });
     return true;
   };
 
-  const doPlace = () => {
+  /** Place the piece at the last hit. `more` (Shift held) keeps a catalogue purchase armed for another copy. */
+  const doPlace = (more = false) => {
     const def = placingDef;
     if (!def) return;
     // use the latest pointer hit (a finger tap has no hover, so the React ghost may not exist yet)
@@ -223,6 +272,13 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     } catch {
       /* audio optional */
     }
+    // lane:tankrender — a placed purchase ends the tool, so the next click on the tank (an animal, the guide's next
+    // step) never silently buys another copy; Shift+click keeps placing, and so do further copies waiting in storage
+    const moreInStorage = owned && !!getGame()?.inventory.decor.some((d) => d.defId === def.id);
+    if (res.ok && !more && !moreInStorage) {
+      useUI.getState().set({ tool: 'none', placingDecorDefId: null });
+      return;
+    }
     requestAnimationFrame(updateGhost);
   };
 
@@ -240,7 +296,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
       /* audio optional */
     }
     setHeldId(null);
-    editingDecor.id = null;
+    setEditingDecor(null);
     setGhost(null);
   };
 
@@ -259,23 +315,36 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     }
     setHeldId(null);
     setHoverId(null);
-    editingDecor.id = null;
+    setSellArm(null);
+    setEditingDecor(null);
     setGhost(null);
   };
 
-  // DOM listeners (capture phase on window so camera controls don't also react while editing)
-  useEffect(() => {
-    const el = gl.domElement;
-    const onCanvas = (e: Event) => e.target === el;
-    const setPointer = (cx: number, cy: number) => {
-      const r = el.getBoundingClientRect();
-      state.current.pointer.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
-      state.current.hasPointer = true;
-    };
-    const move = (e: PointerEvent) => {
+  // DOM listeners (capture phase on window so camera controls don't also react while editing). lane:tankrender — the
+  // handlers are rebuilt every render (they read the latest tool/held/hover state) but registered once, through a ref
+  const onCanvas = (e: Event) => e.target === gl.domElement;
+  const setPointer = (cx: number, cy: number) => {
+    const r = gl.domElement.getBoundingClientRect();
+    state.current.pointer.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+    state.current.hasPointer = true;
+  };
+  const noteTouch = (e: PointerEvent) => {
+    const coarse = e.pointerType === 'touch' || e.pointerType === 'pen';
+    if (coarse !== touchUi) setTouchUi(coarse);
+  };
+  /** A finger went away without a normal lift (system gesture, palm): forget it so later taps still place. */
+  const dropTouch = (id: number) => {
+    const st = state.current;
+    st.touches.delete(id);
+    if (st.touches.size < 2) st.pinch0 = 0;
+    if (id === st.downId) st.downAt = 0;
+  };
+  const handlers = {
+    move: (e: PointerEvent) => {
       if (!onCanvas(e)) return;
+      noteTouch(e);
       const st = state.current;
-      if (e.pointerType === 'touch') st.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (e.pointerType === 'touch' && st.touches.has(e.pointerId)) st.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (st.touches.size >= 2) {
         const [a, b] = [...st.touches.values()];
         const dist = Math.hypot(a.x - b.x, a.y - b.y);
@@ -284,36 +353,39 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
           st.scale = st.scale0 * (dist / st.pinch0);
           st.rotY = st.rot0 - (ang - st.twist0);
         }
+        st.gestured = true;
         e.stopImmediatePropagation();
-        updateGhost();
+        st.dirty = true;
         return;
       }
       setPointer(e.clientX, e.clientY);
-      if (tool === 'decor_place' || heldId) {
-        updateGhost();
-        if (heldId) e.stopImmediatePropagation();
-      } else if (tool === 'decor_move') {
-        const h = hitLocal();
-        setHoverId(h?.itemId ?? null);
-      }
-    };
-    const down = (e: PointerEvent) => {
+      // hit-tested once per frame in useFrame (pointer events can outpace frames several times over)
+      if (tool === 'decor_place' || heldId || tool === 'decor_move') st.dirty = true;
+      if (heldId) e.stopImmediatePropagation();
+    },
+    down: (e: PointerEvent) => {
       if (!onCanvas(e) || e.button > 0) return;
+      noteTouch(e);
       const st = state.current;
       if (e.pointerType === 'touch') {
         st.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-        if (st.touches.size === 2) {
+        if (st.touches.size === 1) st.gestured = false;
+        if (st.touches.size >= 2) {
           const [a, b] = [...st.touches.values()];
           st.pinch0 = Math.hypot(a.x - b.x, a.y - b.y);
           st.twist0 = Math.atan2(b.y - a.y, b.x - a.x);
           st.scale0 = st.scale;
           st.rot0 = st.rotY;
+          st.gestured = true;
           e.stopImmediatePropagation();
           return;
         }
-      }
+      } else st.gestured = false;
       setPointer(e.clientX, e.clientY);
       st.downAt = performance.now();
+      st.downId = e.pointerId;
+      st.downX = e.clientX;
+      st.downY = e.clientY;
       if (tool === 'decor_place') {
         e.stopImmediatePropagation();
         // touch has no hover: hit-test right away so a tap without movement places where the finger landed
@@ -328,32 +400,45 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
             st.rotY = inst.rotY;
             st.scale = inst.scale;
             st.grabOffset = [h.x - inst.x, h.z - inst.z];
-            editingDecor.id = inst.id;
+            setEditingDecor(inst.id);
             setHeldId(inst.id);
+            setSellArm(null);
             e.stopImmediatePropagation();
             requestAnimationFrame(updateGhost);
           }
         }
       }
-    };
-    const up = (e: PointerEvent) => {
+    },
+    up: (e: PointerEvent) => {
       const st = state.current;
       if (e.pointerType === 'touch') {
         st.touches.delete(e.pointerId);
         if (st.touches.size < 2) st.pinch0 = 0;
       }
       if (!onCanvas(e)) return;
-      if (tool === 'decor_place' && e.button === 0 && performance.now() - st.downAt < 600 && st.touches.size === 0) {
+      const tap = isDecorTap(e, { ...st, touches: st.touches.size }, performance.now());
+      if (tool === 'decor_place' && tap) {
         e.stopImmediatePropagation();
+        st.downAt = 0;
         setPointer(e.clientX, e.clientY);
         updateGhost();
-        doPlace();
+        doPlace(e.shiftKey);
       } else if (tool === 'decor_move' && heldId) {
         e.stopImmediatePropagation();
         doMoveEnd();
       }
-    };
-    const wheel = (e: WheelEvent) => {
+    },
+    cancel: (e: PointerEvent) => {
+      const st = state.current;
+      if (heldId && e.pointerId === st.downId) {
+        // the drag was interrupted: the piece stays where it was
+        setHeldId(null);
+        setEditingDecor(null);
+        setGhost(null);
+      }
+      dropTouch(e.pointerId);
+    },
+    wheel: (e: WheelEvent) => {
       if (!onCanvas(e)) return;
       if (!(tool === 'decor_place' && placingDef) && !heldId) return;
       e.preventDefault();
@@ -362,8 +447,8 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
       if (e.shiftKey || e.ctrlKey) st.scale *= Math.exp(-Math.sign(e.deltaY || e.deltaX) * 0.06);
       else st.rotY += Math.sign(e.deltaY) * (Math.PI / 12);
       updateGhost();
-    };
-    const key = (e: KeyboardEvent) => {
+    },
+    key: (e: KeyboardEvent) => {
       const tgt = e.target as HTMLElement | null;
       if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable)) return;
       const st = state.current;
@@ -379,7 +464,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
       } else if (e.key === 'Escape') {
         if (heldId) {
           setHeldId(null);
-          editingDecor.id = null;
+          setEditingDecor(null);
           setGhost(null);
         } else useUI.getState().set({ tool: 'none', placingDecorDefId: null });
       } else if ((e.key === 'f' || e.key === 'F') && tool === 'decor_move' && !e.metaKey && !e.ctrlKey) {
@@ -398,32 +483,64 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
           }
         }
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && tool === 'decor_move') {
+        // lane:tankrender — the held piece sells at once; a merely hovered one needs a second press (Backspace is a
+        // reflex "go back" key, and a sale cannot be undone)
         const id = heldId ?? hoverId;
-        if (id) {
-          e.preventDefault();
-          doSell(id);
-        }
+        if (!id) return;
+        e.preventDefault();
+        if (heldId || (sellArm?.id === id && performance.now() - sellArm.at < SELL_CONFIRM_MS)) doSell(id);
+        else setSellArm({ id, at: performance.now() });
       }
-    };
+    },
+  };
+  useEffect(() => {
+    if (!sellArm) return;
+    const t = window.setTimeout(() => setSellArm(null), SELL_CONFIRM_MS);
+    return () => window.clearTimeout(t);
+  }, [sellArm]);
+  const live = useRef(handlers);
+  live.current = handlers;
+  useEffect(() => {
+    const move = (e: PointerEvent) => live.current.move(e);
+    const down = (e: PointerEvent) => live.current.down(e);
+    const up = (e: PointerEvent) => live.current.up(e);
+    const cancel = (e: PointerEvent) => live.current.cancel(e);
+    const wheel = (e: WheelEvent) => live.current.wheel(e);
+    const key = (e: KeyboardEvent) => live.current.key(e);
     window.addEventListener('pointermove', move, { capture: true });
     window.addEventListener('pointerdown', down, { capture: true });
     window.addEventListener('pointerup', up, { capture: true });
+    window.addEventListener('pointercancel', cancel, { capture: true });
     window.addEventListener('wheel', wheel, { capture: true, passive: false });
     window.addEventListener('keydown', key);
     return () => {
       window.removeEventListener('pointermove', move, { capture: true });
       window.removeEventListener('pointerdown', down, { capture: true });
       window.removeEventListener('pointerup', up, { capture: true });
+      window.removeEventListener('pointercancel', cancel, { capture: true });
       window.removeEventListener('wheel', wheel, { capture: true });
       window.removeEventListener('keydown', key);
     };
-  });
+  }, []);
 
-  // keep the ghost glued to the scape while the camera glides
+  // keep the ghost glued to the pointer (once per frame) and to the scape while the camera glides
   useFrame(() => {
+    const st = state.current;
+    const placing = tool === 'decor_place' || !!heldId;
+    if (st.dirty) {
+      st.dirty = false;
+      if (placing) {
+        ghostAt.current = performance.now();
+        updateGhost();
+      } else if (tool === 'decor_move') {
+        const id = hitLocal()?.itemId ?? null;
+        if (id !== hoverId) setHoverId(id);
+      }
+      return;
+    }
     // lane:pc-perf — ~15×/s by time (a per-frame coin flip ran 2.4× as often at 144 Hz)
     const now = performance.now();
-    if (state.current.hasPointer && (tool === 'decor_place' || heldId) && ghost && now - ghostAt.current > 66) {
+    if (st.hasPointer && placing && ghost && now - ghostAt.current > 66) {
       ghostAt.current = now;
       updateGhost();
     }
@@ -436,6 +553,9 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
   const hoverSell = hoverInst && hoverDef ? (hoverInst.frag && hoverInst.frag.grownHour === undefined && g0 ? fragStoreOffer(g0, hoverInst) : Math.round(hoverDef.price * SELL_BACK_FRACTION)) : 0;
   const hoverFrag = hoverInst && g0 ? fragEligibility(g0, tank, hoverInst) : null;
   const hoverFragHint = hoverFrag?.ok ? ` · F: ${hoverFrag.rule.action.toLowerCase()}` : hoverFrag?.code === 'recovering' ? ' · healing from a cut' : '';
+  const sellArmed = !!hoverInst && sellArm?.id === hoverInst.id;
+  const hoverHint = touchUi ? '  ·  drag to move' : sellArmed ? `  ·  press Del again to sell for $${hoverSell}` : `  ·  drag to move · Del sells for $${hoverSell}${hoverFragHint}`;
+  const placeHint = touchUi ? (placingFragId ? '  ·  twist to rotate' : '  ·  twist to rotate · pinch to size') : placingFragId ? '  ·  R rotate' : '  ·  R rotate · Shift+wheel size · Shift+click places more';
   const ghostDef = ghost ? getDecorDef(ghost.defId) : undefined;
   const fpColor = ghost?.ok ? VALID : INVALID;
   return (
@@ -448,7 +568,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
             <div style={{ ...label, borderColor: ghost.ok ? 'rgba(94,234,212,0.5)' : 'rgba(248,113,113,0.6)' }}>
               {ghost.ok ? '✓ ' : '✕ '}
               {ghost.msg}
-              <span style={{ opacity: 0.6 }}>{tool === 'decor_place' ? (placingFragId ? '  ·  R rotate' : '  ·  R rotate · Shift+wheel size') : '  ·  release to drop'}</span>
+              <span style={{ opacity: 0.6 }}>{tool === 'decor_place' ? placeHint : '  ·  release to drop'}</span>
             </div>
           </Html>
         </>
@@ -457,9 +577,9 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
         <>
           <Footprint x={hoverInst.x} y={hoverInst.y} z={hoverInst.z} rx={(hoverDef.size.w * hoverInst.scale) / 2} rz={(hoverDef.size.d * hoverInst.scale) / 2} rotY={hoverInst.rotY} color={VALID} visible />
           <Html position={[hoverInst.x, hoverInst.y + hoverDef.size.h * hoverInst.scale, hoverInst.z]} zIndexRange={[20, 10]} style={{ pointerEvents: 'none' }}>
-            <div style={{ ...label, transform: 'translate(-50%, -140%)' }}>
+            <div style={{ ...label, transform: 'translate(-50%, -140%)', ...(sellArmed ? { borderColor: 'rgba(248,113,113,0.6)' } : null) }}>
               {hoverDef.name}
-              <span style={{ opacity: 0.6 }}>{`  ·  drag to move · Del sells for $${hoverSell}${hoverFragHint}`}</span>
+              <span style={{ opacity: sellArmed ? 0.9 : 0.6 }}>{hoverHint}</span>
             </div>
           </Html>
         </>

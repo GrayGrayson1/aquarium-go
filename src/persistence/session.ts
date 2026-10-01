@@ -4,7 +4,7 @@
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { flushSimDebt } from '@/sim/world';
-import { saveGame } from './slots';
+import { saveGame, saveGameSync, parseSlotRef } from './slots';
 import { mutateFast } from '@/game/fastMutate';
 import type { SaveResult } from './types';
 
@@ -41,7 +41,9 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
   }
   if (opts.toast) {
     try {
-      useUI.getState().toast(res.ok ? (slot === 'auto' ? 'Game saved' : `Saved to ${slotLabel(slot)}`) : res.message, res.ok ? 'success' : 'danger');
+      // lane:fix-core (S06-08) — a write that only reached memory is not "saved": say so, as a warning.
+      if (res.ok && res.degraded) useUI.getState().toast(res.message, 'warning');
+      else useUI.getState().toast(res.ok ? (slot === 'auto' ? 'Game saved' : `Saved to ${slotLabel(slot)}`) : res.message, res.ok ? 'success' : 'danger');
     } catch {
       /* ignore */
     }
@@ -49,7 +51,34 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
   return res;
 }
 
-export function slotLabel(slot: string): string {
+/**
+ * lane:fix-core (P5-01) — synchronous emergency save for pagehide / hidden: flushes background tanks and writes the
+ * record straight into localStorage (see slots.saveGameSync). Returns whether it was written.
+ */
+export function saveCurrentGameSync(slot = 'auto'): boolean {
+  const { game } = useGame.getState();
+  if (!game || game.isShowcase) return false;
+  try {
+    mutateFast((d) => {
+      flushSimDebt(d);
+      d.lastTickRealMs = Date.now();
+    });
+  } catch (e) {
+    if (typeof console !== 'undefined') console.warn('[aquarium-go] flush before save failed', e);
+  }
+  const g = useGame.getState().game;
+  if (!g) return false;
+  try {
+    return saveGameSync(g, slot);
+  } catch (e) {
+    if (typeof console !== 'undefined') console.warn('[aquarium-go] emergency save failed', e);
+    return false;
+  }
+}
+
+export function slotLabel(ref: string): string {
+  const { slot, backup } = parseSlotRef(ref);
+  if (backup) return slot === 'auto' ? 'Previous autosave' : `Previous copy of ${slotLabel(slot)}`;
   if (slot === 'auto') return 'Autosave';
   const m = /^slot(\d+)$/.exec(slot);
   return m ? `Slot ${m[1]}` : slot;

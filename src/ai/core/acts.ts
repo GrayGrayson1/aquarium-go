@@ -21,6 +21,7 @@ import {
   pointNearDecor,
   randomSurfacePoint,
   randomSwimPoint,
+  releaseAnchor,
 } from './nav';
 import { bodyFits, takeOff } from './loco';
 import { biteParticle, particleTags } from './food';
@@ -100,10 +101,13 @@ function virtualAnchor(a: Agent, w: AIWorld, kind: AnchorKind): Anchor {
   }
   let best = list[0];
   let bestScore = -Infinity;
+  const lift = kind === 'hitch' ? a.L * 0.38 : bodyHY(a);
   for (const v of list) {
     if (v.kind !== kind) continue;
     const taken = (w.claims.get(v.key) ?? 0) >= v.capacity && v.key !== a.anchorKey;
-    const s = -v.pos.distanceTo(a.rt.pos) + (taken ? -5 : 0) + rnd(a) * 0.1;
+    // a spot under a stone the player set down there is no good (it used to press its snout into the rock for good)
+    const blocked = !pointFree(env, v.pos.x, v.pos.y + lift, v.pos.z, bodySide(a));
+    const s = -v.pos.distanceTo(a.rt.pos) + (taken ? -5 : 0) + (blocked ? -20 : 0) + rnd(a) * 0.1;
     if (s > bestScore) {
       bestScore = s;
       best = v;
@@ -211,6 +215,41 @@ export function appetite(a: Agent): number {
   return clamp(d, 0, 1.5);
 }
 
+/** Extra satiety a hand-fed animal accepts beyond its capacity (a target feed is at most 4 pieces). */
+const TARGET_EXTRA = 4;
+
+/** Can this animal still take `p`? Hand-fed food is accepted a little past a full belly. */
+function wantsMore(a: Agent, p: FoodParticle): boolean {
+  const c = capacity(a, p);
+  return a.satiety <= c || (p.targetCreatureId === a.id && a.satiety <= c + TARGET_EXTRA);
+}
+
+/**
+ * Let go of the particle this animal was going for: release its claim (so the sim sync may fade it and others may
+ * take it) and, when the animal spent a while on it without a bite, remember it as unreachable for a bit so the next
+ * think() does not pick the very same piece again.
+ */
+function dropFood(a: Agent, w: AIWorld, failed: boolean): void {
+  if (a.foodId < 0) return;
+  const p = findParticle(w, a.foodId);
+  if (p && p.claimedBy === a.id) p.claimedBy = undefined;
+  if (failed && p) {
+    // the oldest entry of the ring goes
+    let k = 0;
+    for (let i = 1; i < a.badFoodIds.length; i++) if (a.badFoodUntil[i] < a.badFoodUntil[k]) k = i;
+    a.badFoodIds[k] = p.id;
+    a.badFoodUntil[k] = w.time + 45;
+  }
+  a.lastFoodId = a.foodId;
+  a.foodId = -1;
+  a.settleBest = -1;
+}
+
+function isBadFood(a: Agent, id: number, time: number): boolean {
+  for (let i = 0; i < a.badFoodIds.length; i++) if (a.badFoodIds[i] === id && time < a.badFoodUntil[i]) return true;
+  return false;
+}
+
 function capacity(a: Agent, p: FoodParticle | null): number {
   let c = 2 + a.hunger * 10 + a.mods.feedingDrive * 3;
   if (a.tags.has('food_obsessed')) c += 4;
@@ -228,7 +267,9 @@ export function chooseFood(a: Agent, w: AIWorld): FoodParticle | null {
   if (a.stage === 'brooding') return null; // mouthbrooding males do not eat
   const drive = appetite(a);
   if (drive < 0.18) return null;
-  if (a.satiety > capacity(a, null)) return null;
+  // full animals ignore food — but one offered by hand (tongs / pipette) still gets a bite or two
+  const full = a.satiety > capacity(a, null);
+  if (full && a.satiety > capacity(a, null) + TARGET_EXTRA) return null;
   const env = w.env;
   const L = a.L;
   const H = col(w);
@@ -243,6 +284,8 @@ export function chooseFood(a: Agent, w: AIWorld): FoodParticle | null {
   let bestScore = Infinity;
   for (const p of w.food) {
     if (p.amount <= 0 || (p.fade && p.fade > 0)) continue;
+    if (full && p.targetCreatureId !== a.id) continue;
+    if (isBadFood(a, p.id, w.time)) continue; // gave up on that one a moment ago
     const d = m.distanceTo(p.pos);
     if (p.targetCreatureId && p.targetCreatureId !== a.id) {
       // tong-fed food is reserved; only a pushy, hungry neighbour right next to it steals it
@@ -257,6 +300,8 @@ export function chooseFood(a: Agent, w: AIWorld): FoodParticle | null {
     if (d > R && p.targetCreatureId !== a.id) continue;
     let score = d / (0.3 + a.sp.feedingSpeed);
     if (p.claimedBy && p.claimedBy !== a.id) score *= a.tags.has('competitive_feeder') ? 1.1 : 1.7;
+    // a walker goes for what lies ahead of it first (turning a long body round beside a stone is slow work)
+    if (crawler && a.loco !== 'swim' && (p.pos.x - a.rt.pos.x) * a.fwd.x + (p.pos.z - a.rt.pos.z) * a.fwd.z < 0) score *= 1.6;
     if (p.targetCreatureId === a.id) score *= 0.05;
     if (score < bestScore) {
       bestScore = score;
@@ -292,6 +337,7 @@ function biteSize(p: FoodParticle, style: FeedStyle): number {
 
 function eat(a: Agent, w: AIWorld, p: FoodParticle, style: FeedStyle): void {
   const gone = biteParticle(p, biteSize(p, style));
+  a.settleBest = -1;
   a.satiety += gone ? 1 : 0.5;
   a.mouthPulse = style === 'pick' ? 0.5 : 1;
   a.lastFedT = w.time;
@@ -302,9 +348,11 @@ function eat(a: Agent, w: AIWorld, p: FoodParticle, style: FeedStyle): void {
   if (gone && p.claimedBy === a.id) p.claimedBy = undefined;
 }
 
-/** Heading of an agent is aligned toward a point within `tol` radians? */
-function facing(a: Agent, p: THREE.Vector3, tol: number): boolean {
+/** Heading of an agent is aligned toward a point within `tol` radians? (`flat`: compass heading only — an upright body
+ * looking down at a piece right under its snout) */
+function facing(a: Agent, p: THREE.Vector3, tol: number, flat = false): boolean {
   _b.subVectors(p, a.rt.pos);
+  if (flat) _b.y = 0;
   const l = _b.length();
   if (l < 1e-6) return true;
   return a.fwd.dot(_b) / l > Math.cos(tol);
@@ -747,7 +795,7 @@ export const ACTS: Record<ActId, ActDef> = {
       } else {
         a.ctrl.hasGoal = false;
       }
-      if (rnd(a) < 0.12) {
+      if (rnd(a) < 0.12 * stepRate.k) {
         a.mouthPulse = Math.max(a.mouthPulse, 0.6 + rnd(a) * 0.4);
         if (crawler) a.appendage = Math.max(a.appendage, 0.8);
       }
@@ -1253,6 +1301,14 @@ export const ACTS: Record<ActId, ActDef> = {
       return true;
     },
     tick(a, w) {
+      // (a station it cannot get to — a cave mouth under the rock it is standing on — is kept where it stands)
+      if (a.actPhase === 0) {
+        const d = dist(a, a.home);
+        if (a.settleBest < 0 || d < a.settleBest - a.L * 0.05) {
+          a.settleBest = d;
+          a.settleT = w.time;
+        } else if (w.time - a.settleT > 4) a.home.copy(a.rt.pos);
+      }
       go(a, a.home, cruiseBL(a), a.L * 0.8);
       if (dist(a, a.home) < a.L * 0.9) {
         a.actPhase = 1;
@@ -1419,6 +1475,9 @@ export const ACTS: Record<ActId, ActDef> = {
 export function startAct(a: Agent, w: AIWorld, act: ActId): boolean {
   const def = ACTS[act];
   const prev = a.act;
+  // leaving a meal: let go of the particle (a claim held by a fish that is no longer going for it would keep the
+  // leftover on the sand forever); a piece it hovered over for a while without a bite is remembered as unreachable
+  if ((prev === 'feed' || prev === 'hunt') && act !== 'feed' && act !== 'hunt') dropFood(a, w, w.time - a.foodT > 6 && w.time - a.lastFedT > 6);
   a.prevAct = prev;
   a.act = act;
   a.actT = 0;
@@ -1436,8 +1495,15 @@ export function startAct(a: Agent, w: AIWorld, act: ActId): boolean {
     a.behavior = ACTS[prev].label;
     return false;
   }
+  // off to do something else: the cave / hide / perch it had claimed is free for the others (a claim used to be held
+  // until the animal picked another anchor, so most "full" hides in a community tank stood empty). A home-holder
+  // keeps the claim on its home decor (the anemone, the burrow mound, the holdfast).
+  if (a.anchorKey && !ANCHOR_ACTS.has(act) && !(a.hasHome && a.homeDecor !== null && a.anchorDecor === a.homeDecor)) releaseAnchor(a, w);
   return true;
 }
+
+/** Activities that hold an anchor while they run (their claim stays until the animal moves on to something else). */
+const ANCHOR_ACTS = new Set<ActId>(['rest', 'sleep', 'hide', 'retreat', 'nest_build', 'host', 'hitch', 'clean_station', 'perch', 'burrow', 'guard', 'court', 'spawn', 'brood', 'cleaning']);
 
 // ───────────────────────────── helpers used by activities ─────────────────────────────
 
@@ -1583,6 +1649,13 @@ function pickForageSpot(a: Agent, w: AIWorld, near = false): void {
   randomSwimPoint(a, w, a.actData, { y0: env.floorY + hy, y1: env.floorY + hy + a.L });
 }
 
+/** How far the fins hang below the body centre (long-finned bettas trail a lot; most fish little). */
+function finDrop(a: Agent): number {
+  const fl = a.c.appearance?.finLength;
+  const k = Number.isFinite(fl) ? clamp(fl as number, 0.6, 1.6) : 1;
+  return a.L * (a.setId === 'betta' ? 0.36 : 0.12) * k;
+}
+
 function chooseRestSpot(a: Agent, w: AIWorld): boolean {
   const env = w.env;
   const style = a.set.rest;
@@ -1609,7 +1682,13 @@ function chooseRestSpot(a: Agent, w: AIWorld): boolean {
     const an = claimAnchor(a, w, kinds, { near: a.rt.pos });
     if (an) {
       a.actData.copy(an.pos);
-      a.actData.y += style === 'leaf' ? bodyHY(a) * 0.8 : 0;
+      if (style === 'leaf') {
+        // draped over a leaf (or a low stone): the body sits a little above it, and never so low over the bed that the
+        // long anal and caudal fins hang into the substrate (a resting betta used to read as lying dead on the soil),
+        // not even at the bottom of its slow resting bob (restTick: ±0.08 L)
+        a.actData.y += bodyHY(a) * 0.8;
+        a.actData.y = Math.max(a.actData.y, floorAt(env, a.actData.x, a.actData.z) + bodyHY(a) + finDrop(a) + a.L * 0.08);
+      }
       a.ctrl.ignoreDecor = an.decorId;
       a.actTarget = an.decorId;
       fitInWater(a, w, a.actData);
@@ -2071,6 +2150,10 @@ function chooseHitch(a: Agent, w: AIWorld, moveOn: boolean): boolean {
   // the tail loop (lower ~40% of the body) wraps the post: body centre sits ~0.38 L above the holdfast
   _a.y += a.L * 0.38;
   fitInWater(a, w, _a, true);
+  // a holdfast tucked into a neighbouring stone (stones pushed together, a sea fan planted against live rock): the
+  // body settles beside that stone instead of pressing into it
+  clearOfDecor(a, w, _a, an.decorId || null);
+  fitInWater(a, w, _a, true);
   a.home.copy(_a);
   a.hasHome = true;
   a.homeDecor = an.decorId || null;
@@ -2084,13 +2167,27 @@ function chooseHitch(a: Agent, w: AIWorld, moveOn: boolean): boolean {
 function hitchTick(a: Agent, w: AIWorld): boolean {
   a.ctrl.ignoreDecor = a.actTarget;
   if (a.actPhase === 0) {
+    const d = dist(a, a.actData);
     go(a, a.actData, cruiseBL(a) * 1.15, a.L * 0.9);
-    a.ctrl.avoid = dist(a, a.actData) < a.L * 2 ? 0.2 : 0.8;
+    a.ctrl.avoid = d < a.L * 2 ? 0.2 : 0.8;
     a.pose = 'swim';
-    if (dist(a, a.actData) < a.L * 0.35) {
+    if (d < a.L * 0.35) {
       a.actPhase = 1;
       a.actTimer = 0;
       observe(a, w, 'hitch');
+    } else if (a.settleBest < 0 || d < a.settleBest - a.L * 0.03) {
+      a.settleBest = d;
+      a.settleT = w.time;
+    } else if (w.time - a.settleT > 3) {
+      // no headway for a while (the spot lies behind a stone it cannot pass): hitch right here if it is close, else
+      // let go of this holdfast and pick another
+      if (d < a.L * 1.2) {
+        a.actData.copy(a.rt.pos);
+        a.home.copy(a.rt.pos);
+        a.actPhase = 1;
+        a.actTimer = 0;
+      } else if (!chooseHitch(a, w, true)) return false;
+      a.settleBest = -1;
     }
     return true;
   }
@@ -2415,17 +2512,38 @@ function feedTick(a: Agent, w: AIWorld): boolean {
     const q = chooseFood(a, w);
     if (!q) return false;
     if (!p || q !== p) {
+      if (p && p.claimedBy === a.id) p.claimedBy = undefined; // let go of the old piece
       a.foodId = q.id;
+      a.foodT = w.time;
       p = q;
     }
   }
-  if (a.satiety > capacity(a, p)) return false;
+  if (!wantsMore(a, p)) return false;
   p.claimedBy = a.id;
   const style = feedStyle(a);
   const env = w.env;
   const m = mouthPos(a, _a);
   const d = m.distanceTo(p.pos);
   const size = p.size ?? 0.003;
+  // no headway toward the piece for a while (it lies in a crevice the body cannot enter, under a rock, or the animal
+  // is held off by its neighbours): give it up rather than hover over it until the act times out — and try another.
+  // (only once the piece has come to rest or the animal has: a slow seahorse chasing a mysis that sinks as fast as it
+  // swims is making headway of a kind — it gets the piece once it lands. The best distance is kept across re-picks
+  // among a cluster of equally far pieces: flipping between two it cannot reach is no headway either)
+  // (the clock starts when the animal first went for this piece, not when the act began: a walker pressing at a stone
+  // has its act cut and restarted by the brain's blocked-detector every second or two)
+  if (a.actPhase === 0) {
+    if (a.settleBest < 0) {
+      a.settleBest = d;
+      a.settleT = Math.max(a.foodT, a.lastFedT);
+    } else if (d < a.settleBest - Math.max(size * 0.5, a.L * 0.04)) {
+      a.settleBest = d;
+      a.settleT = w.time;
+    } else if (w.time - a.settleT > 5 && d > a.L * 0.3 && (p.settled || a.speed + a.drift.length() < cruiseBL(a) * a.L * 0.3)) {
+      dropFood(a, w, true);
+      return false;
+    }
+  }
   // chewing pause after a bite
   if (a.actPhase === 1) {
     a.ctrl.hasGoal = a.loco !== 'crawl' && a.loco !== 'walk';
@@ -2446,8 +2564,20 @@ function feedTick(a: Agent, w: AIWorld): boolean {
   switch (style) {
     case 'snick': {
       // seahorse: stay on the holdfast if the food drifts within reach, else creep over; pivot, then snick
+      // A piece lying on the bottom is below anything the snout can reach (the upright body cannot pitch, and stands
+      // about half a body length above the sand): the seahorse hovers over it, snout above the piece, and snicks it
+      // up from there.
+      // (or, once it can get no lower — a stone under it — from a little higher still)
+      const onBottom = p.settled || p.pos.y < floorAt(env, p.pos.x, p.pos.z) + L * 0.45;
+      const dh = Math.hypot(m.x - p.pos.x, m.z - p.pos.z);
+      const dy = m.y - p.pos.y;
+      const stalled = a.settleBest >= 0 && w.time - a.settleT > 2;
+      const inReach = onBottom ? dh < L * 0.3 + size && (dy < L * 1.05 || (stalled && dy < L * 1.3)) : d < L * 0.45 + size;
       const hitched = a.hasHome && a.rt.pos.distanceTo(a.home) < L * 0.6;
-      if (hitched && p.pos.distanceTo(a.home) < L * 1.4) {
+      // (waiting on the holdfast only while the piece is still coming down toward the snout: one that has sunk past
+      // it, or lies on the sand, has to be fetched)
+      if (hitched && p.pos.distanceTo(a.home) < L * 1.4 && (inReach || p.pos.y > m.y - L * 0.15)) {
+        a.settleBest = -1;
         go(a, a.home, 0.2, L);
         a.ctrl.attach = 0.8;
         a.ctrl.pitchBias = clamp((p.pos.y - m.y) / L, -0.5, 0.4);
@@ -2455,10 +2585,13 @@ function feedTick(a: Agent, w: AIWorld): boolean {
       } else {
         _b.copy(p.pos).addScaledVector(a.fwd, -L * 0.3);
         _b.y -= L * 0.3;
-        go(a, fitInWater(a, w, _b), cruiseBL(a) * 1.4, L * 0.6);
+        fitInWater(a, w, _b);
+        if (onBottom) clearOfDecor(a, w, _b, null);
+        // (a tight arrive radius: with a wide one it stopped short, a snout-length off, while the piece sank away)
+        go(a, _b, cruiseBL(a) * 1.4, L * 0.2);
         a.pose = 'feed';
       }
-      if (d < L * 0.45 + size && facing(a, p.pos, 0.9)) {
+      if (inReach && facing(a, p.pos, 0.9, onBottom)) {
         eat(a, w, p, style);
         observe(a, w, 'snick_feed');
         a.actPhase = 1;
@@ -2468,9 +2601,23 @@ function feedTick(a: Agent, w: AIWorld): boolean {
     }
     case 'strike': {
       // axolotl / frog: slow approach, then a sudden suction strike
-      if (a.loco === 'walk' && p.pos.y > floorAt(env, p.pos.x, p.pos.z) + L * 0.9) takeOff(a);
-      go(a, p.pos, cruiseBL(a) * (d < L ? 0.6 : 1.2), L * 0.6);
-      a.ctrl.pitchBias = a.loco === 'walk' ? 0.1 : a.ctrl.pitchBias;
+      const floorH = p.pos.y - floorAt(env, p.pos.x, p.pos.z);
+      if (a.loco === 'walk' && floorH > L * 0.9) takeOff(a);
+      if (a.loco === 'walk') {
+        // on foot: walk straight at the piece (the mouth leads; the strike fires before the body gets there)
+        go(a, p.pos, cruiseBL(a) * (d < L ? 0.6 : 1.2), L * 0.3);
+        a.ctrl.pitchBias = 0.1;
+      } else {
+        // swimming: steer so the MOUTH arrives at the piece (the body stops a head-length short along the approach
+        // line, nosing straight at it once within one) — aimed at the body centre with a wide arrive radius it used to
+        // "arrive" hovering a hand above a pellet on the sand and never strike
+        _b.subVectors(p.pos, a.rt.pos);
+        const dc = _b.length();
+        _c.copy(p.pos);
+        if (dc > bodyHX(a) * 1.1) _c.addScaledVector(_b, -(bodyHX(a) * 0.9) / dc);
+        go(a, _c, cruiseBL(a) * (d < L ? 0.6 : 1.2), L * 0.12);
+        if (floorH < L * 0.5) a.ctrl.pitchBias = -0.45; // nose down onto a piece lying on the bottom
+      }
       if (d < L * 0.55 + size) {
         a.speed = Math.max(a.speed, burstBL(a) * L * 0.25);
         eat(a, w, p, style);

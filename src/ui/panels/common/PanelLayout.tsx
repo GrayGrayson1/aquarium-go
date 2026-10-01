@@ -16,6 +16,8 @@ export interface SheetCtx {
   bottom?: boolean;
   /** Pointer-down on the header starts a drag-to-dismiss on phones. */
   startDrag?: (e: React.PointerEvent) => void;
+  /** Expand / restore the sheet (bottom sheets: full height vs half). */
+  setMax?: (v: boolean) => void;
 }
 
 export const SheetContext = createContext<SheetCtx>({ close: () => {}, maximised: false, toggleMax: () => {}, phone: false });
@@ -55,8 +57,25 @@ export function PanelLayout({ title, icon, subtitle, toolbar, children, footer, 
   );
 }
 
+/**
+ * Drill-downs on a half-open phone sheet (offer detail with its sticky buy bar, species page, listing wizard) leave a
+ * ~130px window to read in: expand the sheet while the view is mounted and drop back to half height when it goes.
+ */
+export function useExpandSheet(): void {
+  const { bottom, maximised, setMax } = useSheet();
+  const ref = useRef({ bottom, maximised, setMax });
+  ref.current = { bottom, maximised, setMax };
+  useEffect(() => {
+    const { bottom, maximised, setMax } = ref.current;
+    if (!bottom || maximised || !setMax) return;
+    setMax(true);
+    return () => ref.current.setMax?.(false);
+  }, []);
+}
+
 /** A sub-view inside a panel with its own back button (offer detail, species page, wizard). */
 export function SubView({ onBack, backLabel = 'Back', title, children, actions }: { onBack: () => void; backLabel?: string; title?: ReactNode; children: ReactNode; actions?: ReactNode }) {
+  useExpandSheet();
   return (
     <div className="pn-subview">
       <div className="pn-subview__bar">

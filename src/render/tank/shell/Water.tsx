@@ -10,6 +10,7 @@ import type { TankDims } from '@/sim/tankSpace';
 import { MAX_AGITATORS, MAX_RIPPLES, UNDERWATER_PARS, type TankFXUniforms } from '../../shared/underwater';
 import { GLSL_VALUE_NOISE } from '../../shared/glsl';
 import { setPremultipliedOver } from './materials';
+import { useParkedMaterial } from '../../shared/programPark';
 import type { RenderLod } from '../../lod';
 
 const noPick = () => null;
@@ -84,7 +85,7 @@ export function WaterVolume({ d, fx, lod = 0 }: { d: TankDims; fx: TankFXUniform
   const geo = useMemo(() => openTopBox(d.L, d.waterY, d.W), [d.L, d.waterY, d.W]);
   const mat = useMemo(() => createVolumeMaterial(fx, far), [fx, far]);
   useEffect(() => () => geo.dispose(), [geo]);
-  useEffect(() => () => mat.dispose(), [mat]);
+  useParkedMaterial(mat);
   return <mesh name="water-volume" geometry={geo} material={mat} renderOrder={-1} raycast={noPick} userData={{ noPick: true }} frustumCulled={false} />;
 }
 
@@ -260,7 +261,7 @@ export function WaterSurface({ d, fx, lod, segments, backdrop }: { d: TankDims; 
   const below = useMemo(() => createSurfaceBelowMaterial(fx, bd), [fx, bd]);
   useEffect(() => () => geo.dispose(), [geo]);
   useEffect(() => () => above.dispose(), [above]);
-  useEffect(() => () => below.dispose(), [below]);
+  useParkedMaterial(below);
   return (
     <group position={[0, d.waterY, 0]}>
       <mesh name="water-surface" geometry={geo} material={above} raycast={noPick} userData={{ noPick: true }} />
@@ -344,7 +345,7 @@ const envLumOf = (scene: THREE.Scene) => {
 export function FarSurface({ d, fx }: { d: TankDims; fx: TankFXUniforms }) {
   const env = useMemo(() => ({ value: 0.6 }), []);
   const mat = useMemo(() => createFarSurfaceMaterial(fx, env), [fx, env]);
-  useEffect(() => () => mat.dispose(), [mat]);
+  useParkedMaterial(mat);
   useFrame(({ scene }) => {
     env.value = envLumOf(scene);
   });
@@ -394,7 +395,7 @@ function createMeniscusMaterial(fx: TankFXUniforms) {
 
 export function Meniscus({ d, fx }: { d: TankDims; fx: TankFXUniforms }) {
   const mat = useMemo(() => createMeniscusMaterial(fx), [fx]);
-  useEffect(() => () => mat.dispose(), [mat]);
+  useParkedMaterial(mat);
   const h = Math.max(0.0035, Math.min(0.007, d.H * 0.012));
   const eps = 0.0006;
   const y = d.waterY - h * 0.35;

@@ -1,11 +1,12 @@
 /**
  * Build-mode tank placement: a translucent ghost of the tank + stand follows the pointer across the floor,
  * snaps flush against walls (facing into the room), shows its footprint and viewing aisle, and turns green when
- * the spot is valid or red with a reason when it isn't. Click to buy/move, R (or right-click) to rotate, Esc to
- * cancel. Handles both buying a new tier (`ui.placingTankTierId`) and moving an existing tank
- * (`ui.panelTarget = 'move:<tankId>'`). OWNER: lane "facility".
+ * the spot is valid or red with a reason when it isn't. Mouse: click to buy/move, R (or right-click) to rotate,
+ * Esc to cancel. Touch: tap to preview a spot, tap it again (or the Place button) to confirm, Rotate button to
+ * turn; a drag/pinch that pans the room never places anything. Handles both buying a new tier
+ * (`ui.placingTankTierId`) and moving an existing tank (`ui.panelTarget = 'move:<tankId>'`). OWNER: lane "facility".
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -19,7 +20,9 @@ import { buyTank, canAfford, tankKitPrice } from '@/sim/economy';
 import { fmtMoney } from '@/sim/economy/util';
 import { placeTank, validatePlacement } from '@/sim/facility';
 import { tankFootprint, tankOuterSize, WALL_MARGIN_M, FRONT_CLEARANCE_M } from '@/sim/facility/layout';
+import { cameraInput, wasCameraDrag } from '../camera/cameraFX';
 import { usePlacementStore } from './placementStore';
+import { resolveFloorTap } from './placementGesture';
 
 const GOOD = '#4ADE80';
 const BAD = '#F87171';
@@ -38,7 +41,7 @@ export function defaultWaterClass(g: GameState | null): WaterClass {
 /** What buying this tier here will actually charge (read from the sim's own kit pricing, as buyTank does). */
 function purchaseTotal(tierId: string, g: GameState | null): number {
   try {
-    return tankKitPrice(tierId, defaultWaterClass(g), useUI.getState().placingSeeded).total;
+    return tankKitPrice(tierId, defaultWaterClass(g), useUI.getState().placingSeeded, g ?? undefined).total;
   } catch {
     return getTankTier(tierId).price;
   }
@@ -160,18 +163,23 @@ export function PlacementGhost() {
   const active = !!tierId && !!fac;
   const manualRot = usePlacementStore((s) => s.rotY);
   const [ghost, setGhost] = useState<GhostState | null>(null);
+  /** Latest evaluation, readable synchronously (React state lags a tap by a render: see confirm). */
+  const ghostRef = useRef<GhostState | null>(null);
   const last = useRef<{ px: number; pz: number } | null>(null);
+  /** Pointer type of the last pointer event over the floor: touch gets tap-to-preview + a Place button. */
+  const [touch, setTouch] = useState(false);
 
   const cancel = useCallback(() => {
     useUI.getState().set({ tool: 'none', placingTankTierId: null, panelTarget: moveId ? null : useUI.getState().panelTarget });
     usePlacementStore.getState().reset();
+    ghostRef.current = null;
     setGhost(null);
   }, [moveId]);
 
   const evaluate = useCallback(
-    (px: number, pz: number) => {
+    (px: number, pz: number): GhostState | null => {
       const g = getGame();
-      if (!g || !tierId) return;
+      if (!g || !tierId) return null;
       last.current = { px, pz };
       const p = snap(g, tierId, px, pz, usePlacementStore.getState().rotY);
       const check = validatePlacement(g, tierId, p, moveId ?? undefined);
@@ -186,7 +194,11 @@ export function PlacementGhost() {
         }
       }
       usePlacementStore.getState().set({ valid: ok, message: reason || null });
-      setGhost((prev) => (prev && prev.x === p.x && prev.z === p.z && prev.rotY === p.rotY && prev.ok === ok && prev.reason === reason ? prev : { ...p, ok, reason }));
+      const prev = ghostRef.current;
+      const next = prev && prev.x === p.x && prev.z === p.z && prev.rotY === p.rotY && prev.ok === ok && prev.reason === reason ? prev : { ...p, ok, reason };
+      ghostRef.current = next;
+      setGhost(next);
+      return next;
     },
     [tierId, moveId],
   );
@@ -196,6 +208,12 @@ export function PlacementGhost() {
     if (last.current) evaluate(last.current.px, last.current.pz);
   }, [manualRot, evaluate]);
 
+  const rotate = useCallback((by?: number) => {
+    const store = usePlacementStore.getState();
+    if (store.rotY === null) store.set({ rotY: ghostRef.current?.rotY ?? 0 });
+    store.rotate(by);
+  }, []);
+
   // keyboard: R rotate, Escape cancel
   useEffect(() => {
     if (!active) return;
@@ -203,82 +221,119 @@ export function PlacementGhost() {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (e.key === 'Escape') cancel();
-      else if (e.key === 'r' || e.key === 'R') {
-        const cur = usePlacementStore.getState().rotY;
-        if (cur === null) usePlacementStore.getState().set({ rotY: ghost?.rotY ?? 0 });
-        usePlacementStore.getState().rotate(e.shiftKey ? -Math.PI / 2 : Math.PI / 2);
-      }
+      else if (e.key === 'r' || e.key === 'R') rotate(e.shiftKey ? -Math.PI / 2 : Math.PI / 2);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, cancel, ghost?.rotY]);
+  }, [active, cancel, rotate]);
 
   useEffect(() => {
     if (!active) {
+      ghostRef.current = null;
       setGhost(null);
       last.current = null;
     }
   }, [active]);
 
-  const confirm = useCallback(() => {
-    const g = getGame();
-    if (!g || !tierId || !ghost) return;
-    if (!ghost.ok) {
-      useUI.getState().toast(ghost.reason || 'That spot doesn’t work.', 'warning');
-      return;
-    }
-    const placement = { x: ghost.x, z: ghost.z, rotY: ghost.rotY };
-    let msg = '';
-    let ok = false;
-    let newId: string | undefined;
-    useGame.getState().mutate((d) => {
-      try {
-        if (moveId) {
-          const r = placeTank(d, moveId, placement.x, placement.z, placement.rotY);
-          ok = r.ok;
-          msg = r.message;
-        } else {
-          const r = buyTank(d, tierId, defaultWaterClass(d), placement, { seeded: useUI.getState().placingSeeded });
-          ok = r.ok;
-          msg = r.message;
-          newId = r.tankId;
-        }
-      } catch (err) {
-        ok = false;
-        msg = 'Could not place the tank.';
-        console.warn('placement failed', err);
+  /** Buy/move at an evaluated spot. Takes the state explicitly: the `ghost` React state is a render behind a tap. */
+  const confirm = useCallback(
+    (at: GhostState | null) => {
+      const g = getGame();
+      if (!g || !tierId || !at) return;
+      if (!at.ok) {
+        useUI.getState().toast(at.reason || 'That spot doesn’t work.', 'warning');
+        return;
       }
-    });
-    const ui = useUI.getState();
-    ui.toast(msg || (ok ? 'Placed.' : 'That spot doesn’t work.'), ok ? 'success' : 'warning');
-    if (ok) {
-      ui.set({ tool: 'none', placingTankTierId: null, panelTarget: moveId ? null : ui.panelTarget, ...(newId ? { focusedTankId: newId } : {}) });
-      usePlacementStore.getState().reset();
-      setGhost(null);
-    }
-  }, [ghost, tierId, moveId]);
+      const placement = { x: at.x, z: at.z, rotY: at.rotY };
+      let msg = '';
+      let ok = false;
+      let newId: string | undefined;
+      useGame.getState().mutate((d) => {
+        try {
+          if (moveId) {
+            const r = placeTank(d, moveId, placement.x, placement.z, placement.rotY);
+            ok = r.ok;
+            msg = r.message;
+          } else {
+            const r = buyTank(d, tierId, defaultWaterClass(d), placement, { seeded: useUI.getState().placingSeeded });
+            ok = r.ok;
+            msg = r.message;
+            newId = r.tankId;
+          }
+        } catch (err) {
+          ok = false;
+          msg = 'Could not place the tank.';
+          console.warn('placement failed', err);
+        }
+      });
+      const ui = useUI.getState();
+      ui.toast(msg || (ok ? 'Placed.' : 'That spot doesn’t work.'), ok ? 'success' : 'warning');
+      if (ok) {
+        ui.set({ tool: 'none', placingTankTierId: null, panelTarget: moveId ? null : ui.panelTarget, ...(newId ? { focusedTankId: newId } : {}) });
+        usePlacementStore.getState().reset();
+        ghostRef.current = null;
+        setGhost(null);
+      }
+    },
+    [tierId, moveId],
+  );
+
+  /** A click/tap on the floor: see resolveFloorTap (mouse places, touch previews then confirms, drags never place). */
+  const onFloorClick = useCallback(
+    (px: number, pz: number, isTouch: boolean) => {
+      const dragEnded = wasCameraDrag();
+      const prev = ghostRef.current;
+      const next = dragEnded ? null : evaluate(px, pz);
+      if (!next) return;
+      const tap = resolveFloorTap(prev, next, { touch: isTouch, dragEnded });
+      if (tap.kind !== 'confirm') return;
+      if (tap.at !== next) {
+        ghostRef.current = tap.at;
+        setGhost(tap.at);
+      }
+      confirm(tap.at);
+    },
+    [evaluate, confirm],
+  );
 
   if (!active || !fac) return null;
   const size = Math.max(fac.width, fac.depth) * 4 + 20;
   const color = ghost?.ok ? GOOD : BAD;
   const o = tierId ? tankOuterSize(tierId) : { L: 1, H: 1, W: 1 };
   const labelY = tierId ? standHeight(tierId) + o.H + 0.35 : 1.5;
+  const btn: CSSProperties = {
+    pointerEvents: 'auto',
+    font: 'inherit',
+    fontWeight: 620,
+    color: '#e8f1f2',
+    background: 'rgba(255,255,255,0.1)',
+    border: '1px solid rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    padding: '6px 12px',
+    minHeight: 32,
+    cursor: 'pointer',
+  };
   return (
     <group name="placement-ghost">
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, 0.002, 0]}
-        onPointerMove={(e: ThreeEvent<PointerEvent>) => evaluate(e.point.x, e.point.z)}
+        onPointerDown={(e: ThreeEvent<PointerEvent>) => setTouch(e.nativeEvent.pointerType === 'touch')}
+        onPointerMove={(e: ThreeEvent<PointerEvent>) => {
+          const t = e.nativeEvent.pointerType === 'touch';
+          if (t !== touch) setTouch(t);
+          // touch: a one-finger drag slides the ghost around; two fingers pan the room (the ghost stays put)
+          if (t && (e.nativeEvent.buttons === 0 || cameraInput.pointers >= 2)) return;
+          evaluate(e.point.x, e.point.z);
+        }}
         onClick={(e: ThreeEvent<MouseEvent>) => {
           e.stopPropagation();
-          evaluate(e.point.x, e.point.z);
-          confirm();
+          onFloorClick(e.point.x, e.point.z, touch);
         }}
         onContextMenu={(e: ThreeEvent<MouseEvent>) => {
           e.stopPropagation();
           e.nativeEvent.preventDefault?.();
-          if (usePlacementStore.getState().rotY === null) usePlacementStore.getState().set({ rotY: ghost?.rotY ?? 0 });
-          usePlacementStore.getState().rotate();
+          rotate();
         }}
       >
         <planeGeometry args={[size, size]} />
@@ -291,19 +346,48 @@ export function PlacementGhost() {
             <div
               data-testid="placement-hint"
               style={{
-                whiteSpace: 'nowrap',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+                maxWidth: 'min(72vw, 360px)',
+                textAlign: 'center',
                 font: '500 12px/1.3 "Inter Variable", Inter, system-ui, sans-serif',
                 color: '#e8f1f2',
                 background: 'rgba(8,16,20,0.72)',
                 border: `1px solid ${ghost.ok ? 'rgba(74,222,128,0.55)' : 'rgba(248,113,113,0.6)'}`,
-                borderRadius: 999,
-                padding: '5px 11px',
+                borderRadius: 18,
+                padding: touch ? '8px 12px' : '5px 11px',
                 backdropFilter: 'blur(8px)',
                 boxShadow: '0 4px 18px rgba(0,0,0,0.35)',
               }}
             >
-              <span style={{ color: ghost.ok ? GOOD : BAD, marginRight: 6 }}>{ghost.ok ? '✓' : '✕'}</span>
-              {ghost.ok ? `${getTankTier(tierId).name} — click to ${moveId ? 'move' : `buy kit (${fmtPrice(purchaseTotal(tierId, getGame()))})`} · R rotate · Esc cancel` : ghost.reason}
+              <div>
+                <span style={{ color: ghost.ok ? GOOD : BAD, marginRight: 6 }}>{ghost.ok ? '✓' : '✕'}</span>
+                {ghost.ok
+                  ? touch
+                    ? `${getTankTier(tierId).name} — ${moveId ? 'tap again to move it here' : `tap again to buy the kit (${fmtPrice(purchaseTotal(tierId, getGame()))})`}`
+                    : `${getTankTier(tierId).name} — click to ${moveId ? 'move' : `buy kit (${fmtPrice(purchaseTotal(tierId, getGame()))})`} · R rotate · Esc cancel`
+                  : ghost.reason}
+              </div>
+              {touch && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" data-testid="placement-rotate" style={btn} onPointerDown={(e) => e.stopPropagation()} onClick={() => rotate()}>
+                    Rotate
+                  </button>
+                  {ghost.ok && (
+                    <button
+                      type="button"
+                      data-testid="placement-confirm"
+                      style={{ ...btn, background: 'rgba(74,222,128,0.22)', borderColor: 'rgba(74,222,128,0.6)' }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => confirm(ghostRef.current)}
+                    >
+                      {moveId ? 'Move here' : 'Place here'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </Html>
         </group>

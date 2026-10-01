@@ -326,7 +326,8 @@ function harassment(state: GameState, tank: Tank, sp: SpeciesDefinition, males: 
     const mult = (r.stage === 'spent' ? 1.5 : 1) * (aggressor.repro.stage === 'guarding' ? 1.25 : 1);
     r.harassment = clamp01((r.harassment ?? 0) + HARASS_RATE * mult * (1 - 0.6 * cover) * dt);
     const h = r.harassment;
-    hurt(f, 6 * h * dt, h > 0.4 ? 1.2 * (h - 0.3) * dt : 0, h > 0.3 ? 1.5 * h * dt : 0, 'harassment');
+    // Sustained attacks wear her down for real (the copy promises it): an ignored female declines over ~2 days.
+    hurt(f, 6 * h * dt, h > 0.4 ? 2.5 * (h - 0.3) * dt : 0, h > 0.3 ? 1.5 * h * dt : 0, 'harassment', 5);
     const level = HARASS_WARN.filter((t) => h >= t).length;
     if (level > (r.warnLevel ?? 0)) {
       r.warnLevel = level;

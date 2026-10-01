@@ -27,7 +27,7 @@ export interface KVBackend {
 }
 
 /** Why the active backend is what it is (for dev tools / the title screen). */
-export type StorageReason = 'ok' | 'slow' | 'blocked' | 'unavailable' | 'demoted';
+export type StorageReason = 'ok' | 'slow' | 'blocked' | 'unavailable' | 'demoted' | 'full';
 
 export interface StorageStatus {
   /** null until detection has finished. */
@@ -49,6 +49,13 @@ export const PROBE_RETRIES = 2;
 const PROBE_RETRY_DELAY_MS = 400;
 /** Reads from a secondary (non-active) backend give up after this long so a wedged one can't hang the title screen. */
 const SECONDARY_READ_TIMEOUT_MS = 4000;
+/**
+ * lane:fix-core (S06-01) — an operation on the ACTIVE backend that has not settled after this much responsive page
+ * time counts as a failure: the backend is demoted and the operation retried on the next one, exactly as a thrown
+ * error is. Without it one wedged IndexedDB transaction (Safari after backgrounding, Chrome "connection is closing")
+ * left the per-slot save queue and the autosave flag waiting forever, silently, for the rest of the session.
+ */
+export const OP_TIMEOUT_MS = 12_000;
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -67,6 +74,26 @@ async function responsiveWait(ms: number, done: () => boolean): Promise<void> {
     waited += Math.min(Math.max(0, now - last), tick * 2);
     last = now;
   }
+}
+
+/** Like withTimeout, but counted in responsive page time (a frozen main thread never blames the database). */
+function withResponsiveTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
+  let settled = false;
+  const guarded = p.then(
+    (v) => {
+      settled = true;
+      return v;
+    },
+    (e) => {
+      settled = true;
+      throw e;
+    },
+  );
+  const late = responsiveWait(ms, () => settled).then(() => {
+    if (!settled) throw new Error(`${what} timed out after ${ms} ms`);
+    return guarded;
+  });
+  return Promise.race([guarded, late]);
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
@@ -183,6 +210,8 @@ interface DetectionConfig {
   retryDelayMs: number;
   /** Show player-facing warnings (browser only by default; tests can force it on to observe `lastWarning`). */
   notify: boolean;
+  /** Responsive-time budget for one operation on the active backend before it counts as failed (tests shorten it). */
+  opTimeoutMs: number;
 }
 
 const defaultConfig = (): DetectionConfig => ({
@@ -191,6 +220,7 @@ const defaultConfig = (): DetectionConfig => ({
   retries: PROBE_RETRIES,
   retryDelayMs: PROBE_RETRY_DELAY_MS,
   notify: typeof window !== 'undefined',
+  opTimeoutMs: OP_TIMEOUT_MS,
 });
 
 let config: DetectionConfig = defaultConfig();
@@ -199,7 +229,8 @@ let chain: KVBackend[] = [];
 /** Every backend saves may have been written to this session (read by `storage.sources()`). */
 let known: KVBackend[] = [];
 let resolving: Promise<KVBackend> | null = null;
-let warned = false;
+/** Warnings already shown this session, keyed by backend + reason (lane:fix-core S06-08 — memory must always warn). */
+let warned = new Set<string>();
 let status: StorageStatus = { backend: null, reason: 'ok', pendingPromotion: false };
 /** Bumped by every reset so a stale background probe can't promote into a newer configuration. */
 let generation = 0;
@@ -231,17 +262,31 @@ function remember(b: KVBackend) {
   if (!known.includes(b)) known.push(b);
 }
 
-function warningText(to: BackendName, reason: StorageReason): string {
-  if (to === 'memory') return 'Browser storage is unavailable — progress will only last until this tab closes. Use Export Save to keep a copy.';
+export function warningText(to: BackendName, reason: StorageReason): string {
+  if (to === 'memory') {
+    if (reason === 'full') return 'Browser storage is full — progress will only last until this tab closes. Use Export Save to keep a copy.';
+    return 'Browser storage is unavailable — progress will only last until this tab closes. Use Export Save to keep a copy.';
+  }
+  if (reason === 'full') return 'Browser storage is full — saving to local storage instead. Export a copy from Settings › Saves to be safe.';
   if (reason === 'slow') return 'The save database is slow to open — saving to local storage for now. Your saves move over automatically once it is ready.';
   return 'Your browser blocked the main save database — saving to local storage instead.';
 }
 
+/** A write refused for lack of space (QuotaExceededError in every browser's spelling). */
+export function isQuotaError(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false;
+  const name = (e as { name?: unknown }).name;
+  const code = (e as { code?: unknown }).code;
+  return name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' || code === 22 || code === 1014;
+}
+
 function warn(to: BackendName, reason: StorageReason) {
-  if (warned) return;
-  warned = true;
   const msg = warningText(to, reason);
+  // The notice text always reflects the CURRENT situation (the title screen shows it), even when the toast is skipped.
   lastWarning = msg;
+  const key = `${to}:${reason}`;
+  if (warned.has(key)) return;
+  warned.add(key);
   if (!config.notify) return;
   try {
     useUI.getState().toast(msg, 'warning');
@@ -350,32 +395,37 @@ async function resolveBackend(): Promise<KVBackend> {
   }
 }
 
-async function demote(): Promise<KVBackend | null> {
+async function demote(cause?: unknown): Promise<KVBackend | null> {
   const next = chain.shift();
   if (!next) return null;
   const prev = active;
   active = next;
   remember(next);
-  status = { backend: next.name, reason: 'demoted', pendingPromotion: false };
-  warn(next.name, 'demoted');
+  const reason: StorageReason = isQuotaError(cause) ? 'full' : 'demoted';
+  status = { backend: next.name, reason, pendingPromotion: false };
+  warn(next.name, reason);
   emitChange(next, prev);
   return next;
 }
 
-/** Run a storage op, demoting to the next backend (and retrying) when the current one throws. */
+/**
+ * Run a storage op, demoting to the next backend (and retrying) when the current one throws — or hangs
+ * (OP_TIMEOUT_MS of responsive time, lane:fix-core S06-01).
+ */
 async function run<T>(op: (b: KVBackend) => Promise<T>): Promise<T> {
   let b = await resolveBackend();
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      return await op(b);
+      return await withResponsiveTimeout(op(b), config.opTimeoutMs, `${b.name} operation`);
     } catch (e) {
+      if (typeof console !== 'undefined' && e instanceof Error && /timed out/.test(e.message)) console.warn(`[aquarium-go] save storage: ${e.message}`);
       // Another op may already have demoted (or a late IndexedDB may have been promoted) — use that first.
       if (active && active !== b) {
         b = active;
         continue;
       }
-      const next = await demote();
+      const next = await demote(e);
       if (!next) throw e;
       b = next;
     }
@@ -419,6 +469,50 @@ export const storage = {
   },
 };
 
+/**
+ * lane:fix-core (P5-01) — synchronous localStorage access for the moments a page may be torn down before any
+ * asynchronous write lands (pagehide, visibility → hidden). The slot layer mirrors the autosave here; every backend
+ * is read on the next boot (newest copy wins) and the mirror is moved into IndexedDB and removed. Best effort: every
+ * call swallows quota/security errors and reports success as a boolean. Tests can swap the store.
+ */
+let syncStoreImpl: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null | undefined;
+function syncTarget(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null {
+  if (syncStoreImpl !== undefined) return syncStoreImpl;
+  return localStorageOrNull();
+}
+export const syncStore = {
+  get: (k: string): string | null => {
+    try {
+      return syncTarget()?.getItem(k) ?? null;
+    } catch {
+      return null;
+    }
+  },
+  set: (k: string, v: string): boolean => {
+    try {
+      const t = syncTarget();
+      if (!t) return false;
+      t.setItem(k, v);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  del: (k: string): void => {
+    try {
+      syncTarget()?.removeItem(k);
+    } catch {
+      /* ignore */
+    }
+  },
+  /** True when the synchronous store is the ACTIVE backend too (nothing to mirror: the regular write goes there). */
+  isActive: (): boolean => active?.name === 'localstorage',
+};
+/** Tests: use a fake synchronous store (pass undefined to go back to the real localStorage, null for none). */
+export function setSyncStore(s: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null | undefined): void {
+  syncStoreImpl = s;
+}
+
 /** Current detection result (sync; `backend` is null until detection finishes). */
 export function storageStatus(): StorageStatus & { warning: string | null } {
   return { ...status, warning: lastWarning };
@@ -434,7 +528,7 @@ export function setStorageBackend(b: KVBackend | null, fallbacks: KVBackend[] = 
   chain = fallbacks;
   known = b ? [b, ...fallbacks, ...extraSources] : [...extraSources];
   resolving = null;
-  warned = false;
+  warned = new Set();
   lastWarning = null;
   status = { backend: b?.name ?? null, reason: 'ok', pendingPromotion: false };
 }

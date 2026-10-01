@@ -12,7 +12,7 @@ import { Button } from '@/ui/kit';
 import { Card, Chip, EmptyState, Tile } from '../common/parts';
 import { safe } from '../common/hooks';
 import { TierBadge, Rosette } from './Ribbons';
-import { gameWhen, money, purseRange, realIn } from './util';
+import { gameWhen, money, purseRange, realIn, speedNote } from './util';
 
 export function UpcomingTab({ g, onEnter }: { g: GameState; onEnter: (showId: string) => void }) {
   const s = g.shows;
@@ -80,7 +80,7 @@ export function ShowCard({ g, show, onEnter }: { g: GameState; show: Show; onEnt
       <div className="sh-show__top">
         <TierBadge tier={show.tier} locked={!open} />
         <span className={clsx('sh-show__when', toJudging < 4 && 'is-soon')} title={`Judging ${gameWhen(show.judgingHour)} (game time)`}>
-          <Trophy size={12} aria-hidden /> Judging in {realIn(toJudging)}
+          <Trophy size={12} aria-hidden /> Judging in {realIn(toJudging, g.clock.speed)}{speedNote(g.clock.speed)}
         </span>
       </div>
       <div>
@@ -133,7 +133,7 @@ export function ShowCard({ g, show, onEnter }: { g: GameState; show: Show; onEnt
         ) : (
           <span className={clsx('sh-show__deadline', soon && 'is-soon')} title={`Entries close ${gameWhen(show.deadlineHour)} (game time)`}>
             <Hourglass size={12} aria-hidden style={{ verticalAlign: '-2px', marginRight: 4 }} />
-            {toDeadline > 0 ? `Entries close in ${realIn(toDeadline)} at 1×` : 'Entries closed'}
+            {toDeadline > 0 ? `Entries close in ${realIn(toDeadline, g.clock.speed)}${speedNote(g.clock.speed)}` : 'Entries closed'}
           </span>
         )}
         {open && (

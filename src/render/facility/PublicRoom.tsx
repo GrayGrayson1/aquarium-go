@@ -17,7 +17,7 @@ import { Batch, box, rbox, cyl, lathe, leaf, noPick } from './kit';
 import { Batched } from './Batched';
 import type { PropMaterials } from './materials';
 import { ROOM_STYLES, poolColor } from './styles';
-import { exhibitExtent } from './bounds';
+import { backWallSign, exhibitExtent } from './bounds';
 import { acquireTexture, releaseTexture, radialGlow, wallWash, signCanvas, medallion } from './textures';
 
 // ───────────────────────────── builders ─────────────────────────────
@@ -480,12 +480,7 @@ export function PublicRoom({ level, width, depth, shopName, mats }: { level: Fac
     return e ? `${e.minX.toFixed(2)}|${e.maxX.toFixed(2)}|${e.topY.toFixed(2)}` : '';
   }, '');
   const ext = extKey ? extKey.split('|').map(Number) : null;
-  const span = ext ? ext[1] - ext[0] : width;
-  const signW = Math.min(width * 0.5, style.sign.w, Math.max(2.2, span * (def.order >= 3 ? 1.1 : 0.8)));
-  const signH = signW * 0.22;
-  const SIGN_GAP = [0, 0.2, 0.3, 0.5, 0.7, 0.9][def.order] ?? 0.5;
-  const signY = Math.max(1.5, Math.min(H - signH / 2 - 0.15, style.sign.y, ext ? ext[2] + SIGN_GAP + signH / 2 : Infinity));
-  const signX = ext ? THREE.MathUtils.clamp((ext[0] + ext[1]) / 2, -width / 2 + signW / 2 + 0.3, width / 2 - signW / 2 - 0.3) : 0;
+  const sign = backWallSign(level, width, ext ? { minX: ext[0], maxX: ext[1], topY: ext[2] } : null) ?? { x: 0, y: Math.max(1.5, style.sign.y), w: style.sign.w, h: style.sign.w * 0.22 };
   const sub0 = level === 'specialty_shop' ? 'Fish · Plants · Aquascapes' : level === 'aquarium_store' ? 'Aquarium Store' : level === 'showroom' ? 'Living Gallery' : level === 'destination' ? 'Public Aquarium' : 'Grand Aquarium';
   const subtitle = shopName.toLowerCase().includes(sub0.split(' ')[0].toLowerCase()) ? 'Living Aquariums' : sub0;
   const aisle = level === 'aquarium_store' ? ['Freshwater', 'Marine & Reef'] : null;
@@ -494,7 +489,7 @@ export function PublicRoom({ level, width, depth, shopName, mats }: { level: Fac
       {def.props.map((p, i) => (
         <PropMesh key={`${p.kind}-${i}`} p={p} mats={mats} level={level} height={H} />
       ))}
-      <Sign text={shopName} sub={subtitle} pos={[signX, signY, backZ]} w={signW} h={signH} fg={gallery ? '#e9c98f' : '#f7f1e6'} glow={gallery ? 'rgba(233,190,120,0.55)' : 'rgba(255,255,255,0.35)'} emissive={gallery ? 1.3 : 1.15} />
+      <Sign text={shopName} sub={subtitle} pos={[sign.x, sign.y, backZ]} w={sign.w} h={sign.h} fg={gallery ? '#e9c98f' : '#f7f1e6'} glow={gallery ? 'rgba(233,190,120,0.55)' : 'rgba(255,255,255,0.35)'} emissive={gallery ? 1.3 : 1.15} />
       {aisle && (
         <>
           <Sign text={aisle[0]} pos={[-width / 2 + 0.012, 3.0, -1.2]} rotY={Math.PI / 2} w={2.0} h={0.42} fg="#f3efe6" glow="rgba(120,220,210,0.5)" />

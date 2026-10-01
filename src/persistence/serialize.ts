@@ -88,6 +88,7 @@ export function makeMeta(state: GameState, slot: string, savedAt = Date.now(), s
     starterName: starter?.name,
     schemaVersion: state.schemaVersion,
     sizeBytes,
+    saveId: typeof state.saveId === 'string' ? state.saveId : undefined,
   };
 }
 

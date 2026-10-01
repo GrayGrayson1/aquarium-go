@@ -96,7 +96,14 @@ describe('facility: tutorial chains', () => {
         expect(view.body).not.toMatch(/\{name\}|\{species\}/);
         expect(view.hintTarget).toBeTruthy();
         seen.push(view.id);
-        satisfy(g, chain[i].objective);
+        // A step with a minimum dwell (observe: P1-06) only counts a flag raised once it has been on screen that long.
+        const dwell = chain[i].objective;
+        if (dwell.type === 'flag' && dwell.minHours) {
+          satisfy(g, dwell); // seen at once: the step holds for its dwell, then completes without another sighting
+          progress(g);
+          expect(g.progress.tutorial.step, `${view.id} completed before its dwell`).toBe(i);
+          progress(g, dwell.minHours);
+        } else satisfy(g, chain[i].objective);
         progress(g);
         expect(g.progress.tutorial.step).toBeGreaterThan(i);
       }

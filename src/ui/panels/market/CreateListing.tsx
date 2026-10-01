@@ -15,13 +15,14 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { safe } from '../common/hooks';
 import { act, toast } from '../common/act';
-import { Chip, Card, EmptyState, Callout, SectionHead, NumberField, Checkbox, KV, Seg, Bar } from '../common/parts';
+import { Chip, Card, EmptyState, Callout, SectionHead, NumberField, Checkbox, KV, Seg, Bar, LoadMore, usePaged } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { OffspringOdds } from '../common/Offspring';
 import { TankThumb } from '../common/TankThumb';
 import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, valueOf, speciesOf, isListed, tierOf, gallonsOf, creatureCondition, morphName } from '../common/derive';
 import { FragPicker, FragReview, FragValueDetails } from './FragListing'; // lane:frags
+import { useExpandSheet } from '../common/PanelLayout';
 import { LISTING_KIND_LABEL, DIFFICULTY_LABEL, WATER_CLASS_LABEL, LIFE_STAGE_LABEL, SEX_LABEL, nicePrice, plural, nameList, formatSpan, titleCase, VERDICT_RANK } from '../common/format';
 
 export interface WizardSeed {
@@ -58,6 +59,7 @@ const durationPreset = (h: number) => DURATIONS.find((d) => d.hours === h);
 const isYoung = (c: Creature) => c.lifeStage === 'juvenile' || c.lifeStage === 'fry' || c.lifeStage === 'larva';
 
 export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; seed: WizardSeed; onCancel: () => void; onDone: (listingId?: string) => void }) {
+  useExpandSheet(); // lane:fix-integrate-ui — the wizard is not a SubView: expand the phone sheet while it is open (P4-09)
   const [step, setStep] = useState<Step>(seed.kind ? 'items' : 'kind');
   const [kind, setKind] = useState<ListingKind | null>(seed.kind ?? null);
   const [ids, setIds] = useState<string[]>(seed.creatureIds ?? []);
@@ -72,7 +74,9 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
 
-  const eligible = useMemo(() => Object.values(g.creatures).filter((c) => c.status === 'alive' && c.tankId && !isListed(g, c.id)), [g]);
+  // lane:fix-panels — residents of a tank listed as a whole aquarium can't be listed on their own either (sim rule)
+  const listedTanks = useMemo(() => new Set(g.market.listings.filter((l) => l.status === 'active' && l.kind === 'tank' && l.tankId).map((l) => l.tankId as string)), [g.market.listings]);
+  const eligible = useMemo(() => Object.values(g.creatures).filter((c) => c.status === 'alive' && c.tankId && !listedTanks.has(c.tankId) && !isListed(g, c.id)), [g, listedTanks]);
   const tanks = orderedTanks(g);
   const freeTanks = tanks.filter((t) => !(t.listingId && g.market.listings.some((l) => l.id === t.listingId && l.status === 'active')));
   const chosen = ids.map((id) => g.creatures[id]).filter((c): c is Creature => !!c);
@@ -138,7 +142,9 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
 
   const itemsValid = (() => {
     if (!kind) return { ok: false, why: 'Choose what to sell.' };
-    if (kind === 'tank') return tank ? { ok: true } : { ok: false, why: 'Choose a tank.' };
+    // lane:fix-panels — the sim's own verdict (a resident listed separately, an already-listed tank) stops the wizard
+    // here, not six steps later at Confirm
+    if (kind === 'tank') return !tank ? { ok: false, why: 'Choose a tank.' } : preview && !preview.ok && preview.message ? { ok: false, why: preview.message } : { ok: true };
     if (kind === 'frag') return fragIds.length === 0 ? { ok: false, why: 'Select at least one frag or cutting.' } : preview && !preview.ok && preview.message ? { ok: false, why: preview.message } : { ok: true }; // lane:frags
     if (chosen.length === 0) return { ok: false, why: 'Select at least one animal.' };
     const species = new Set(chosen.map((c) => c.speciesId));
@@ -237,7 +243,21 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
               const gated = !access.listings || (k.id === 'tank' && !access.tankAuctions);
               const n = gated ? 0 : available[k.id] ?? 0;
               return (
-                <button key={k.id} type="button" data-testid={`listing-kind-${k.id}`} className={clsx('pn-kind', kind === k.id && 'is-on')} disabled={n === 0} onClick={() => { setKind(k.id); setIds([]); if (k.id !== 'tank') setTankId(null); setPriceTouched(false); }}>
+                <button
+                  key={k.id}
+                  type="button"
+                  data-testid={`listing-kind-${k.id}`}
+                  className={clsx('pn-kind', kind === k.id && 'is-on')}
+                  disabled={n === 0}
+                  onClick={() => {
+                    setKind(k.id);
+                    // lane:fix-panels — switching between animal kinds keeps the animals that still fit ("list them as
+                    // a group instead" used to wipe the selection)
+                    setIds(k.id === 'tank' || k.id === 'frag' ? [] : k.id === 'creature' ? ids.slice(0, 1) : k.id === 'pair' ? ids.slice(0, 2) : k.id === 'juveniles' ? ids.filter((id) => g.creatures[id] && isYoung(g.creatures[id])) : ids);
+                    if (k.id !== 'tank') setTankId(null);
+                    setPriceTouched(false);
+                  }}
+                >
                   <span className="pn-kind__icon">{k.icon}</span>
                   <span className="pn-kind__label">{LISTING_KIND_LABEL[k.id]}</span>
                   <span className="pn-kind__blurb">{k.blurb}</span>
@@ -332,7 +352,9 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
               variant="primary"
               silent
               onClick={async () => {
-                const url = await capturePhoto({ width: 960, hideUI: true }).catch(() => null);
+                // lane:fix-panels — a card-sized JPEG (~40–90 KB) instead of a 960px PNG (~800 KB), which the save
+                // stripped: no listing photo ever survived a reload
+                const url = await capturePhoto({ width: 640, hideUI: true, format: 'image/jpeg', quality: 0.82 }).catch(() => null);
                 if (url) {
                   setPhoto(url);
                   import('@/audio/sfx').then((m) => m.sfx('camera'));
@@ -413,9 +435,13 @@ function SexIcon({ c }: { c: Creature }) {
 function CreaturePicker({ g, kind, eligible, ids, setIds }: { g: GameState; kind: ListingKind; eligible: Creature[]; ids: string[]; setIds: (v: string[]) => void }) {
   const pool = kind === 'juveniles' ? eligible.filter(isYoung) : eligible;
   const speciesIds = [...new Set(pool.map((c) => c.speciesId))];
-  const firstSp = ids.length ? g.creatures[ids[0]]?.speciesId : undefined;
+  const seededSp = ids.length ? g.creatures[ids[0]]?.speciesId : undefined;
+  // lane:fix-panels — a seeded species with nothing eligible for this kind (adults seeded into 'juveniles') no longer
+  // opens on an empty list
+  const firstSp = seededSp && speciesIds.includes(seededSp) ? seededSp : undefined;
   const [sp, setSp] = useState<string>(firstSp ?? (kind === 'creature' ? 'all' : speciesIds.find((s) => pool.filter((c) => c.speciesId === s).length >= (kind === 'juveniles' ? 1 : 2)) ?? speciesIds[0] ?? 'all'));
   const list = pool.filter((c) => sp === 'all' || c.speciesId === sp).sort((a, b) => valueOf(g, b) - valueOf(g, a));
+  const { shown, more } = usePaged(list.length, `${kind}|${sp}`);
   const single = kind === 'creature';
   const toggle = (id: string, on: boolean) => {
     if (single) return setIds(on ? [id] : []);
@@ -465,7 +491,7 @@ function CreaturePicker({ g, kind, eligible, ids, setIds }: { g: GameState; kind
             </div>
           )}
           <ul className="pn-picklist" role="list">
-            {list.map((c) => {
+            {list.slice(0, shown).map((c) => {
               const on = ids.includes(c.id);
               const tank = c.tankId ? g.tanks[c.tankId] : undefined;
               return (
@@ -492,6 +518,11 @@ function CreaturePicker({ g, kind, eligible, ids, setIds }: { g: GameState; kind
                 </li>
               );
             })}
+            {list.length > shown && (
+              <li role="presentation">
+                <LoadMore remaining={list.length - shown} onMore={more} noun="animal" />
+              </li>
+            )}
           </ul>
           {chosen.length > 0 && (
             <div className="pn-small pn-dim">
@@ -532,13 +563,16 @@ function TankPicker({ g, tanks, tankId, setTankId, residents, listedElsewhere, c
         </EmptyState>
       ) : (
         <div className="pn-desttanks" role="radiogroup" aria-label="Tank to sell">
-          {tanks.map((t) => (
-            <button key={t.id} type="button" role="radio" aria-checked={t.id === tankId} className={clsx('pn-desttank pn-desttank--thumb', t.id === tankId && 'is-on')} onClick={() => setTankId(t.id)}>
-              <TankThumb tank={t} residents={livingInTank(g, t.id)} width={120} height={80} />
-              <span className="pn-desttank__name pn-ellipsis">{t.name}</span>
-              <span className="pn-tiny pn-muted">{gallonsOf(t)} gal · {plural(livingInTank(g, t.id).length, 'animal')}</span>
-            </button>
-          ))}
+          {tanks.map((t) => {
+            const held = livingInTank(g, t.id).some((c) => isListed(g, c.id));
+            return (
+              <button key={t.id} type="button" role="radio" aria-checked={t.id === tankId} className={clsx('pn-desttank pn-desttank--thumb', t.id === tankId && 'is-on', held && 'is-bad')} onClick={() => setTankId(t.id)}>
+                <TankThumb tank={t} residents={livingInTank(g, t.id)} width={120} height={80} />
+                <span className="pn-desttank__name pn-ellipsis">{t.name}</span>
+                <span className={clsx('pn-tiny', held ? 'pn-tone-danger' : 'pn-muted')}>{held ? 'A resident is listed' : `${gallonsOf(t)} gal · ${plural(livingInTank(g, t.id).length, 'animal')}`}</span>
+              </button>
+            );
+          })}
         </div>
       )}
       {tank && (
@@ -572,8 +606,9 @@ function TankPicker({ g, tanks, tankId, setTankId, residents, listedElsewhere, c
         </div>
       )}
       {tank && listedElsewhere.length > 0 && (
-        <Callout tone="watch" icon={<TriangleAlert size={16} />} title="Not included">
-          {nameList(listedElsewhere.map((c) => c.name))} {listedElsewhere.length === 1 ? 'is' : 'are'} already listed separately. Withdraw that listing first if you want {listedElsewhere.length === 1 ? 'them' : 'them all'} in this sale.
+        // lane:fix-panels — matches the sim: a whole-aquarium sale can't go ahead while a resident has a listing of their own
+        <Callout tone="danger" icon={<TriangleAlert size={16} />} title="Can’t list this aquarium yet">
+          {nameList(listedElsewhere.map((c) => c.name))} {listedElsewhere.length === 1 ? 'is' : 'are'} listed separately. Withdraw that listing, or move {listedElsewhere.length === 1 ? 'them' : 'them all'} to another tank, and come back.
         </Callout>
       )}
       {tank && clutches > 0 && (

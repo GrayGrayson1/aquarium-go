@@ -5,11 +5,11 @@
 import * as THREE from 'three';
 import type { Creature, CreatureRuntime, FoodParticle, SpeciesDefinition, Tank, Clutch, VisualEventKind } from '@/types';
 import type { PersonalityModifiers } from '@/sim/life';
-import { createEnv, syncEnvDynamic, syncEnvStatic, type Anchor, type DecorResolver, type ExtraResolver, type FlowResolver, type TankEnv } from './env';
+import { colliderSdf, createEnv, floorAt, pointFree, syncEnvDynamic, syncEnvStatic, type Anchor, type DecorResolver, type ExtraResolver, type FlowResolver, type TankEnv } from './env';
 import { createAgent, makeRuntime, refreshAgentInfo, type Agent } from './agent';
 import { SpatialHash } from './spatialHash';
 import { clamp } from './math';
-import { computeZoneBand, releaseAnchor } from './nav';
+import { bodySide, computeZoneBand, releaseAnchor } from './nav';
 import { initialPlacement, stepAgent } from './brain';
 import { stepFood, type FoodState, makeFoodState } from './food';
 import { stepArcherShot } from './spit'; // lane:brackish
@@ -128,19 +128,50 @@ const ANIMATED = (c: Creature) => c.status === 'alive' || c.status === 'listed' 
 /** Mirror the sim: add/remove agents, refresh stats, decor and clock. */
 export function syncWorld(w: AIWorld, input: SyncInput): void {
   const { tank } = input;
+  const surfaceBefore = w.env.surfaceY;
   const decorChanged = syncEnvStatic(w.env, tank, w.resolveDecor, w.extras);
   syncEnvDynamic(w.env, tank, input.hour, input.clutches, w.flowOf);
+  if (!decorChanged && w.env.surfaceY !== surfaceBefore) {
+    // the water level moved (evaporation / a top-off): swimming bands follow the surface; nobody replans
+    for (const a of w.agents) computeZoneBand(a, w);
+    const env = w.env;
+    w.hash.configure(env.minX, env.floorY - 0.05, env.minZ, env.maxX, env.surfaceY + 0.05, env.maxZ, Math.max(0.06, Math.min(0.2, (env.maxX - env.minX) / 12)));
+  }
   if (decorChanged) {
+    // The layout changed. Only the animals it touches replan: one whose anchor or home is gone (or moved, or now sits
+    // inside something solid), whose activity was about a piece that is gone, or whose body is now inside decor. The
+    // rest keep their claims and carry on — the whole tank used to reset on every edit (every sleeper woke at once).
+    const env = w.env;
     w.virtualAnchors.length = 0;
+    const byKey = new Map<string, Anchor>();
+    for (const an of env.anchors) byKey.set(an.key, an);
+    const solidIds = new Set<string>();
+    for (const c of env.colliders) solidIds.add(c.decorId);
     w.claims.clear();
     for (const a of w.agents) {
-      a.anchorKey = null;
-      a.anchorDecor = null;
-      a.hasHome = false;
+      let disturbed = false;
+      const an = a.anchorKey ? byKey.get(a.anchorKey) : undefined;
+      if (an && an.pos.distanceToSquared(a.anchorPos) < 1e-4) {
+        w.claims.set(an.key, (w.claims.get(an.key) ?? 0) + 1);
+      } else if (a.anchorKey) {
+        a.anchorKey = null;
+        a.anchorDecor = null;
+        disturbed = true;
+      }
+      if (a.hasHome) {
+        // a home on decor stays only with its anchor; a home spot in the open only while nothing solid landed on it
+        const homeOk = a.homeDecor ? !!an && a.anchorKey !== null && solidIds.has(a.homeDecor) : pointFree(env, a.home.x, a.home.y, a.home.z, bodySide(a) * 0.5);
+        if (!homeOk) {
+          a.hasHome = false;
+          disturbed = true;
+        }
+      }
+      if (a.actTarget && !solidIds.has(a.actTarget) && !w.byId.has(a.actTarget)) disturbed = true;
+      if (!disturbed && insideSolid(env, a)) disturbed = true;
+      a.laidToRest = false; // a body at rest settles again around the new layout
       computeZoneBand(a, w);
-      a.actDur = Math.min(a.actDur, a.actT + 0.1); // replan soon with the new layout
+      if (disturbed) a.actDur = Math.min(a.actDur, a.actT + 0.1); // replan soon with the new layout
     }
-    const env = w.env;
     w.hash.configure(env.minX, env.floorY - 0.05, env.minZ, env.maxX, env.surfaceY + 0.05, env.maxZ, Math.max(0.06, Math.min(0.2, (env.maxX - env.minX) / 12)));
   }
   // additions / updates
@@ -195,6 +226,37 @@ function removeAgent(w: AIWorld, i: number): void {
   for (const p of w.food) if (p.claimedBy === a.id) p.claimedBy = undefined;
 }
 
+// a dead body sinks for up to ~70 s (a large fish from the surface of a tall tank); past this it is left wherever it is
+const DEAD_SETTLE_MAX_S = 150;
+
+/**
+ * A dead body stops being stepped once it lies still — a swimmer on the floor, a crawler, walker or sessile animal
+ * wherever it let go — or at the latest after DEAD_SETTLE_MAX_S (lodged on a rock). Dead creatures stay in the game
+ * until they are removed, and each used to cost a full AI step every frame for the rest of the game. (The renderer
+ * shows the body for a few game hours only.)
+ */
+function settleDead(a: Agent, w: AIWorld, dt: number): void {
+  const p = a.rt.pos;
+  const vy = (p.y - a.deadY) / dt;
+  a.deadY = p.y;
+  if (a.act !== 'dead' || a.actT < 3) return;
+  const grounded = a.loco === 'crawl' || a.loco === 'walk' || a.loco === 'sessile';
+  const still = Math.abs(vy) < 1.5e-4 && (grounded || p.y - floorAt(w.env, p.x, p.z) < bodySide(a) * 1.6 + 0.005);
+  if (still || a.actT > DEAD_SETTLE_MAX_S) a.laidToRest = true;
+}
+
+/** Is the body centre inside hard decor it is not deliberately tucked into (a hide it entered)? */
+function insideSolid(env: TankEnv, a: Agent): boolean {
+  const r = bodySide(a) * 0.5;
+  const p = a.rt.pos;
+  for (const c of env.colliders) {
+    if (!c.hard || c.decorId === a.ctrl.ignoreDecor) continue;
+    if (Math.abs(p.x - c.cx) > c.hx + r || Math.abs(p.y - c.cy) > c.hy + r || Math.abs(p.z - c.cz) > c.hz + r) continue;
+    if (colliderSdf(c, p.x, p.y, p.z) < r) return true;
+  }
+  return false;
+}
+
 /** Remove every agent (tank unmounted). */
 export function disposeWorld(w: AIWorld): void {
   for (let i = w.agents.length - 1; i >= 0; i--) removeAgent(w, i);
@@ -222,7 +284,12 @@ export function stepWorld(w: AIWorld, dtIn: number): void {
   }
   stepSchools(w, dt);
   stepFood(w, dt);
-  for (let i = 0; i < w.agents.length; i++) stepAgent(w.agents[i], w, dt);
+  for (let i = 0; i < w.agents.length; i++) {
+    const a = w.agents[i];
+    if (a.laidToRest) continue;
+    stepAgent(a, w, dt);
+    if (a.dead) settleDead(a, w, dt);
+  }
   stepArcherShot(w, dt); // lane:brackish — the archerfish's fly and jet
 }
 

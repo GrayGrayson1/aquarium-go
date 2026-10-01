@@ -21,7 +21,7 @@ import { refreshCandidates, tidyAssignments } from './roster';
 import { stepKeepers, stepStockManager, stepDocents } from './work';
 
 export * from './common';
-export { refreshCandidates, canHire, hireStaff, fireStaff, assignTank, autoAssignAll, setStockBudget, tidyAssignments, payStaff, addStaffDirect } from './roster';
+export { refreshCandidates, canHire, hireStaff, fireStaff, assignTank, autoAssignAll, setStockBudget, tidyAssignments, payStaff, staffLeavingTonight, addStaffDirect } from './roster';
 export {
   ROUND_START,
   VISIT_HOURS,

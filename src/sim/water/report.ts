@@ -3,9 +3,9 @@
  * Priority: "what is wrong and why", judged against the actual inhabitants' ranges (intersection) and water class.
  */
 import { pluralPhrase } from '../economy/util';
-import type { GameState, ParamStatus, SpeciesDefinition, StatusLevel, Tank, WaterIssue, WaterParamKey, WaterReport } from '@/types';
+import type { GameState, ParamStatus, SpeciesDefinition, StatusLevel, Tank, WaterResidents, WaterIssue, WaterParamKey, WaterReport } from '@/types';
 import { clamp, fmt, ammoniaToxicityWeight, nitrateThresholds, nitrifierTempFactor } from './chem';
-import { CLASS_DEFAULTS, ROOM_TEMP_C } from './constants';
+import { CLASS_DEFAULTS, ROOM_TEMP_C, TEMP_TOLERANCE_C } from './constants';
 import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC } from './env';
 import { tankDailyCostImpl } from './kits';
 
@@ -153,6 +153,11 @@ function strictNitrate(species: SpeciesDefinition[]): boolean {
   );
 }
 
+/**
+ * lane:fix-water — conditioner is active. The water step expires the dose (and releases what it holds) as soon as
+ * detoxUntilHour passes, so the flag alone is at most one step stale; the bound share lives in lab.boundAmmonia /
+ * lab.boundNitrite and is already left out of water.ammonia / water.nitrite, so nothing here discounts them again.
+ */
 function detoxActive(tank: Tank, hour?: number): boolean {
   const u = tank.water.lab?.detoxUntilHour;
   if (u === undefined) return false;
@@ -184,7 +189,9 @@ export function speciesWaterComfortImpl(species: SpeciesDefinition, tank: Tank):
   if (t > tr.max || t < tr.min) {
     const d = t > tr.max ? t - tr.max : tr.min - t;
     pen += Math.min(90, 45 + 20 * d);
-    harm += Math.min(1, 0.12 + 0.18 * d);
+    // lane:fix-water — up to TEMP_TOLERANCE_C past the limit is stress only (the report says WATCH); beyond it harm
+    // ramps from zero instead of the old 0.12 step (which cost a betta ~10 HP a day at 0.01 °C below its floor).
+    if (d > TEMP_TOLERANCE_C) harm += Math.min(1, 0.3 * (d - TEMP_TOLERANCE_C));
     stressors.push(
       t > tr.max
         ? `Water is too warm: ${fmt(t, 1)} °C (${name} tolerate up to ${fmt(tr.max, 0)} °C, ideally ${fmt(tr.idealMin, 0)}–${fmt(tr.idealMax, 0)} °C).`
@@ -232,15 +239,14 @@ export function speciesWaterComfortImpl(species: SpeciesDefinition, tank: Tank):
       pen += 8;
       stressors.push(
         species.environment === 'brackish' && sg < r.idealMin && tank.environment === 'freshwater'
-          ? `${name[0].toUpperCase()}${name.slice(1)} live in fresh water, but a little salt (SG ${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}) suits them best.`
+          ? `${name[0].toUpperCase()}${name.slice(1)} live in fresh water, but a little salt suits them best — that means a brackish tank (SG ${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}, from Research › Brackish Estuaries); salt can't go into a freshwater tank.`
           : `Salinity ${fmt(sg, 3)} is slightly off ideal (${fmt(r.idealMin, 3)}–${fmt(r.idealMax, 3)}).`,
       );
     }
   }
 
-  // Nitrogen
-  const detox = detoxActive(tank) ? 0.35 : 1;
-  const nh = w.ammonia * ammoniaToxicityWeight(p, t) * detox * sens;
+  // Nitrogen (water.ammonia / water.nitrite are the free share; conditioner's bound share is not in them)
+  const nh = w.ammonia * ammoniaToxicityWeight(p, t) * sens;
   if (nh > 0.15) {
     pen += Math.min(70, 60 * (nh - 0.1));
     // lane:w2-sim — harm starts where the report turns WATCH (weighted 0.25), never while it still says GOOD;
@@ -249,7 +255,7 @@ export function speciesWaterComfortImpl(species: SpeciesDefinition, tank: Tank):
     stressors.push(`Ammonia ${fmt(w.ammonia, 2)} ppm is burning gills${p >= 8 ? ' — at this high pH much more of it is in its toxic form' : ''}.`);
   }
   const marine = species.environment !== 'freshwater';
-  const no2 = w.nitrite * (marine ? 0.25 : 1) * detox * sens;
+  const no2 = w.nitrite * (marine ? 0.25 : 1) * sens;
   if (no2 > 0.15) {
     pen += Math.min(60, 40 * (no2 - 0.1));
     harm += Math.max(0, no2 - 0.25) * 0.5; // lane:w2-sim — from the report's WATCH line, as for ammonia
@@ -357,7 +363,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
 
   // Temperature
   {
-    const j = judgeRange(w.tempC, groups, (sp) => sp.tempC, d.temp, ' °C', 1, d.label);
+    // lane:fix-water — up to TEMP_TOLERANCE_C past a limit is WATCH (stress, no harm), as for pH.
+    const j = judgeRange(w.tempC, groups, (sp) => sp.tempC, d.temp, ' °C', 1, d.label, TEMP_TOLERANCE_C);
     let advice: string | undefined;
     if (j.status !== 'good') {
       if (s.stuckHeaters.length) advice = 'A heater thermostat has stuck on — switch that heater off now.';
@@ -420,19 +427,24 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   {
     const sens = species.length ? Math.max(...species.map(speciesSensitivity)) : 1;
     const detox = detoxActive(tank, hour);
+    const bound = detox ? (w.lab?.boundAmmonia ?? 0) : 0;
     const tw = ammoniaToxicityWeight(w.pH, w.tempC);
-    const weighted = w.ammonia * tw * sens * (detox ? 0.35 : 1);
+    const weighted = w.ammonia * tw * sens;
     const st: StatusLevel = weighted >= 0.5 ? 'danger' : weighted >= 0.25 ? 'watch' : 'good';
     let reason: string | undefined;
     let advice: string | undefined;
-    if (st !== 'good') {
+    if (st === 'good' && bound >= 0.05) {
+      reason = `Ammonia ${fmt(w.ammonia, 2)} ppm free — conditioner is holding another ${fmt(bound, 2)} ppm bound for now; it comes back when the dose wears off.`;
+      advice = 'Do a 30–50% water change before then and feed lightly.';
+    } else if (st !== 'good') {
       const causes: string[] = [];
       if (w.bioMaturity < 0.6) causes.push('the biological filter is still establishing');
       if (s.activeFilters.length === 0) causes.push(s.filters.length ? 'the filter is off or broken' : 'there is no filter');
+      else if (s.failed.some((e) => e.def.kind === 'filter')) causes.push(`the ${s.failed.find((e) => e.def.kind === 'filter')!.def.name} has failed (repair it under Equipment)`);
       if (w.foodInWater > 5) causes.push('uneaten food is rotting');
       if (env.stockingLoad > 1) causes.push('there are more animals than the filter can handle');
       if (!causes.length) causes.push('waste is outpacing the filter');
-      reason = `Ammonia ${fmt(w.ammonia, 2)} ppm — ${causes.join(', ')}.${w.pH >= 7.8 ? ` At pH ${fmt(w.pH, 1)} far more of it is in the toxic NH₃ form.` : ''}${detox ? ' (Partly bound by conditioner for now.)' : ''}`;
+      reason = `Ammonia ${fmt(w.ammonia, 2)} ppm — ${causes.join(', ')}.${w.pH >= 7.8 ? ` At pH ${fmt(w.pH, 1)} far more of it is in the toxic NH₃ form.` : ''}${bound >= 0.05 ? ` (Conditioner is holding another ${fmt(bound, 2)} ppm bound for now.)` : ''}`;
       advice = `Do a 30–50% water change, feed lightly for a day${detox ? '' : ' and dose conditioner to bind ammonia'}.${w.bioMaturity < 0.6 ? ' Bottled bacteria speeds up the cycle.' : ''}`;
     }
     add(
@@ -444,13 +456,16 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   // Nitrite
   {
     const sens = species.length ? Math.max(...species.map(speciesSensitivity)) : 1;
-    const detox = detoxActive(tank, hour);
-    const weighted = w.nitrite * (marine ? 0.25 : 1) * sens * (detox ? 0.35 : 1);
+    const bound = detoxActive(tank, hour) ? (w.lab?.boundNitrite ?? 0) : 0;
+    const weighted = w.nitrite * (marine ? 0.25 : 1) * sens;
     const st: StatusLevel = weighted >= 0.5 ? 'danger' : weighted >= 0.25 ? 'watch' : 'good';
+    const boundNote = bound >= 0.05 ? ` Conditioner is holding another ${fmt(bound, 2)} ppm bound for now.` : '';
     const reason =
       st === 'good'
-        ? undefined
-        : `Nitrite ${fmt(w.nitrite, 2)} ppm — the second group of filter bacteria has not caught up${w.bioMaturity < 0.6 ? ' (normal mid-cycle)' : ''}. Nitrite stops blood carrying oxygen${marine ? ', although salt water softens it' : ''}.`;
+        ? bound >= 0.05
+          ? `Nitrite ${fmt(w.nitrite, 2)} ppm free — conditioner is holding another ${fmt(bound, 2)} ppm bound for now; it comes back when the dose wears off.`
+          : undefined
+        : `Nitrite ${fmt(w.nitrite, 2)} ppm — the second group of filter bacteria has not caught up${w.bioMaturity < 0.6 ? ' (normal mid-cycle)' : ''}. Nitrite stops blood carrying oxygen${marine ? ', although salt water softens it' : ''}.${boundNote}`;
     add(
       {
         key: 'nitrite',
@@ -461,7 +476,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         status: st,
         ideal: '0 ppm',
         reason,
-        advice: st === 'good' ? undefined : 'Change 30–50% of the water and hold off on new animals until it reads zero.',
+        advice: st === 'good' ? (bound >= 0.05 ? 'Change 30–50% of the water before then.' : undefined) : 'Change 30–50% of the water and hold off on new animals until it reads zero.',
       },
       st === 'danger' ? 'Nitrite spike — act now' : 'Nitrite detected',
     );
@@ -550,7 +565,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         reason: st === 'good' ? undefined : w.kh < kMin ? `KH ${fmt(w.kh, 1)} is low — it is the buffer that stops pH crashing${marine ? ' and corals use it to build skeletons' : ''}.` : `KH ${fmt(w.kh, 1)} is higher than your animals prefer.`,
         advice: st === 'good' ? undefined : w.kh < kMin ? `Dose buffer${marine ? ' or a coral supplement' : ''} and keep up with water changes.` : 'Use softer water for water changes.',
       },
-      'KH buffer is low',
+      w.kh < kMin ? 'KH buffer is low' : 'KH is higher than ideal',
     );
     if (!marine && d.gh) {
       const spG = species.filter((x) => x.gh).map((x) => x.gh!);
@@ -621,7 +636,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         reason: st === 'good' ? undefined : `The animals produce ${Math.round(load * 100)}% of what this tank's ${limit} can comfortably handle — chemistry will swing.${coolNote}`,
         advice: st === 'good' ? undefined : limit === 'filter capacity' ? 'Upgrade or add a filter, or rehome some animals.' : 'Move some animals to another tank or upgrade to a larger aquarium.',
       },
-      st === 'danger' ? 'Tank is overstocked' : 'Tank is nearly full',
+      st === 'danger' ? 'Tank is overstocked' : 'Stocking is near the limit',
     );
   }
 
@@ -740,7 +755,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
       st = 'watch';
       reason = env.corals > 0 ? 'Corals need stronger light to photosynthesise.' : `${cap(joinNames(brightLovers.map(whoOf)))} prefer bright light.`;
       advice = 'Raise the intensity or install a stronger light.';
-    } else if (photoperiod > 11 && w.algae > 25) {
+    } else if (photoperiod > 12 && w.algae > 25) {
+      // the same line setLighting draws (care/index.ts): up to 12 h is a normal day, longer feeds algae
       st = 'watch';
       reason = `Lights are on ${photoperiod} hours a day — long photoperiods feed algae.`;
       advice = 'Shorten the photoperiod to about 8 hours.';
@@ -891,6 +907,14 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     outIssues.push({ status: i.status, text: i.text, advice: i.advice, param: i.param });
   }
   const status: StatusLevel = issues.reduce<StatusLevel>((acc, i) => worst(acc, i.status), 'good');
+  // lane:fix-water — the residents and what the water is doing to them (the tank bar escalates on harm, like the card).
+  const residents: WaterResidents[] = groups.map((g) => ({
+    speciesId: g[0].species.id,
+    harm: speciesWaterComfortImpl(g[0].species, tank).harm,
+    creatureIds: g.map((i) => i.creature.id),
+    names: g.map((i) => i.creature.name || g[0].species.commonName),
+  }));
+  residents.sort((a, b) => b.harm - a.harm);
   let headline: string;
   if (issues.length && status !== 'good') headline = issues[0].headline;
   else if (!hasAnimals) headline = w.bioMaturity >= 0.75 ? 'Water is ready for animals' : 'Water is clean — the filter is still maturing';
@@ -906,6 +930,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     cycleProgress: clamp(w.bioMaturity, 0, 1),
     stockingLoad: Math.round(env.stockingLoad * 1000) / 1000,
     dailyCost: tankDailyCostImpl(state, tank, env.summary),
+    residents,
   };
 }
 

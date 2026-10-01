@@ -8,6 +8,7 @@ import { makeShowcase } from '@/dev/fixtures/showcase'; // lane:perf2 — not th
 import { previewStarters, randomSeed } from '@/sim/newGame';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
+import { prewarmPortraits } from '@/render/portraits';
 import { safe } from '../common/safe';
 
 interface OnboardingState {
@@ -36,6 +37,25 @@ function nextTitleStarter(): StarterId {
   return STARTER_IDS[((i % STARTER_IDS.length) + STARTER_IDS.length) % STARTER_IDS.length];
 }
 
+/** Seed + preview creatures made ahead of time on the title screen (prepareStarters), used by the next begin(). */
+let prepared: { seed: number; previews: Record<StarterId, Creature> } | null = null;
+
+function makePreviews() {
+  const seed = randomSeed();
+  return { seed, previews: safe('previewStarters', () => previewStarters(seed), {} as Record<StarterId, Creature>) };
+}
+
+/**
+ * Title screen idle time: roll the next starter lineup now and queue its five card portraits, so the starter reveal
+ * finds them cached instead of rendering one per frame during the cards' entrance animation (G4-03). Same size and
+ * subject as the StarterReveal cards (Portrait size 192 with the preview creature), so the cache keys match.
+ */
+export function prepareStarters(): void {
+  if (prepared) return;
+  prepared = makePreviews();
+  prewarmPortraits(Object.values(prepared.previews), 192);
+}
+
 export const useOnboarding = create<OnboardingState>((set, get) => ({
   seed: 424242,
   previews: {},
@@ -44,8 +64,8 @@ export const useOnboarding = create<OnboardingState>((set, get) => ({
   shopName: '',
   titleStarter: nextTitleStarter(),
   begin: () => {
-    const seed = randomSeed();
-    const previews = safe('previewStarters', () => previewStarters(seed), {} as Record<StarterId, Creature>);
+    const { seed, previews } = prepared ?? makePreviews();
+    prepared = null;
     set({ seed, previews, starterId: null, name: '', shopName: '' });
   },
   choose: (id) => {

@@ -2,7 +2,7 @@
  * Purchases: livestock offers, tank kits, equipment, food and salt. Pattern: validate → spend → act → log.
  * OWNER: lane "market". Purchases can never push money below 0 (spend without allowDebt).
  */
-import type { GameState, WaterClass, Creature } from '@/types';
+import type { GameState, WaterClass, Creature, Tank, ShopOffer } from '@/types';
 import type { ActionResult } from '../care';
 import { refreshFoodStatus } from '../tankStatus';
 import { installEquipment } from '../care';
@@ -16,7 +16,8 @@ import { isUnlocked, findFreeSpot, bumpCounter } from '../facility';
 import { emitEvent } from '../context';
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
-import { getEquipmentDef } from '@/data/catalog/equipment';
+import { getEquipmentDef, equipmentOfKind } from '@/data/catalog/equipment';
+import { nextId } from '../ids';
 import { getFoodDef } from '@/data/catalog/foods';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
@@ -42,6 +43,19 @@ function unlockHint(key: string | null): string {
 }
 
 // ───────────────────────────── livestock ─────────────────────────────
+
+/**
+ * What a shop offer costs for `count` of its animals: the whole group at the offer price, a partial pick at the
+ * per-animal price, never more than the whole group. The Shop panel quotes this so the button, the affordability check
+ * and the charge agree to the dollar (lane:fix-econ, S13-11).
+ */
+export function offerPickPrice(offer: Pick<ShopOffer, 'price' | 'unitPrice' | 'creatures'>, count: number): { unit: number; price: number } {
+  const total = Math.max(1, offer.creatures.length);
+  const unit = offer.unitPrice ?? Math.max(1, nicePrice((offer.price / total) * 1.12));
+  const n = Math.max(0, Math.min(total, Math.floor(count)));
+  const price = n >= total ? offer.price : Math.min(offer.price, Math.max(1, Math.round(unit * n)));
+  return { unit, price };
+}
 
 export function buyOffer(state: GameState, offerId: string, tankId: string, creatureIndexes?: number[]): ActionResult {
   const m = state.market;
@@ -76,8 +90,7 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     idx = uniq.sort((a, b) => a - b);
   } else idx = offer.creatures.map((_, i) => i);
   const all = idx.length === total;
-  const unit = offer.unitPrice ?? Math.max(1, nicePrice((offer.price / total) * 1.12));
-  const price = all ? offer.price : Math.min(offer.price, Math.max(1, Math.round(unit * idx.length)));
+  const { price } = offerPickPrice(offer, idx.length);
   const label = offer.label ?? `${idx.length} ${speciesPlural(offer.speciesId)}`;
   if (!spend(state, price, 'livestock_purchase', `Bought ${all ? label : `${idx.length} × ${sp.commonName}`} from ${offer.seller}`)) return needMoney(state, price, label);
 
@@ -138,13 +151,78 @@ export function seededMediaPrice(tierId: string): number {
   return nicePrice(15 + g * 0.6);
 }
 
-/** Kit price: tank + stand, default equipment (bundled at a discount) and substrate. */
-export function tankKitPrice(tierId: string, waterClass: WaterClass, seeded = false): { total: number; tank: number; equipment: number; substrate: number; seeded: number } {
+export interface KitEquipment {
+  /** Equipment definition ids the kit ships with (one entry per unit). */
+  ids: string[];
+  /** Locked defaults that were swapped (`to` = null: left out) — for the kit card and the purchase tip. */
+  swaps: { from: string; fromCount: number; to: string | null; count: number }[];
+}
+
+/**
+ * The gear a kit actually ships with for THIS player (lane:fix-econ, S16-03). A tier's default kit may list devices the
+ * player hasn't unlocked (a sump, a premium reef light, a titanium heater); a kit is not a back door past the unlock
+ * tree, so each locked device is replaced by the best unlocked device of its kind — several smaller units (up to 3)
+ * when the tank is bigger than one can handle — or left out when nothing of that kind is unlocked yet.
+ */
+export function kitEquipmentFor(state: GameState, tierId: string, waterClass: WaterClass): KitEquipment {
+  const tier = TANK_TIER_BY_ID[tierId];
+  const gallons = tier?.gallons ?? 20;
+  const env: Tank['environment'] = waterClass === 'brackish' ? 'brackish' : waterClass === 'reef' || waterClass.startsWith('marine') ? 'marine' : 'freshwater';
+  let defaults: string[] = [];
+  try {
+    defaults = defaultEquipmentFor(tierId, waterClass);
+  } catch {
+    defaults = [];
+  }
+  const ids: string[] = [];
+  const swaps = new Map<string, { fromCount: number; to: string | null; count: number }>();
+  for (const id of defaults) {
+    const def = getEquipmentDef(id);
+    if (!def || isUnlocked(state, def.unlock)) {
+      ids.push(id);
+      continue;
+    }
+    const options = equipmentOfKind(def.kind).filter((e) => e.id !== id && isUnlocked(state, e.unlock) && (!e.environments?.length || e.environments.includes(env)));
+    // Best available = the priciest unlocked unit; prefer one rated for the tank when there is one.
+    const rated = options.filter((e) => e.gallonsRange.max >= gallons);
+    const sub = (rated.length ? rated : options).at(-1);
+    let count = 0;
+    if (sub) {
+      count = def.kind === 'filter' || def.kind === 'heater' || def.kind === 'chiller' ? Math.min(3, Math.max(1, Math.ceil(gallons / Math.max(1, sub.gallonsRange.max)))) : 1;
+      for (let i = 0; i < count; i++) ids.push(sub.id);
+    }
+    const prev = swaps.get(id);
+    if (prev) {
+      prev.count += count;
+      prev.fromCount++;
+    } else swaps.set(id, { fromCount: 1, to: sub?.id ?? null, count });
+  }
+  return { ids, swaps: [...swaps.entries()].map(([from, v]) => ({ from, ...v })) };
+}
+
+/** One line for the kit card / purchase tip: what a kit swaps or leaves out and what unlocks the real thing. */
+export function kitSwapNote(kit: KitEquipment): string {
+  if (!kit.swaps.length) return '';
+  const parts = kit.swaps.map((sw) => {
+    const from = getEquipmentDef(sw.from);
+    const to = sw.to ? getEquipmentDef(sw.to) : undefined;
+    const need = unlockHint(from?.unlock ?? null);
+    const was = `${sw.fromCount > 1 ? `${sw.fromCount} × ` : ''}${from?.name ?? sw.from}`;
+    return `${to ? `${sw.count > 1 ? `${sw.count} × ` : ''}${to.name} instead of ${was}` : `no ${was}`}${need ? ` (unlock: ${need})` : ''}`;
+  });
+  return `This kit ships with ${parts.join('; ')}.`;
+}
+
+/**
+ * Kit price: tank + stand, default equipment (bundled at a discount) and substrate. With `state`, the equipment is
+ * what the kit ships with for this player (kitEquipmentFor); without it, the tier's default kit.
+ */
+export function tankKitPrice(tierId: string, waterClass: WaterClass, seeded = false, state?: GameState): { total: number; tank: number; equipment: number; substrate: number; seeded: number } {
   const tier = TANK_TIER_BY_ID[tierId];
   if (!tier) return { total: 0, tank: 0, equipment: 0, substrate: 0, seeded: 0 };
   let equipment = 0;
   try {
-    for (const id of defaultEquipmentFor(tierId, waterClass)) equipment += getEquipmentDef(id)?.price ?? 0;
+    for (const id of state ? kitEquipmentFor(state, tierId, waterClass).ids : defaultEquipmentFor(tierId, waterClass)) equipment += getEquipmentDef(id)?.price ?? 0;
   } catch {
     equipment = 0;
   }
@@ -176,10 +254,16 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
     }
   }
   if (!spot) return fail(`There's no floor space for ${aOrAn(tier.name)} ${tier.name}. Sell or move a tank, choose a smaller size, or expand your facility.`);
-  const kit = tankKitPrice(tierId, waterClass, !!opts.seeded);
+  const gear = kitEquipmentFor(state, tierId, waterClass);
+  const kit = tankKitPrice(tierId, waterClass, !!opts.seeded, state);
   if (!canAfford(state, kit.total)) return needMoney(state, kit.total, `the ${tier.name} kit`);
   if (!spend(state, kit.total, 'tank_purchase', `${tier.name} kit${opts.seeded ? ' + seeded media' : ''}`)) return needMoney(state, kit.total, `the ${tier.name} kit`);
-  const tank = createTank(state, tierId, waterClass, { cycled: false, placement: spot, name: opts.name?.trim() || undefined });
+  // The kit's gear is installed here (not createTank's defaults) so locked devices never arrive through a kit (S16-03).
+  const tank = createTank(state, tierId, waterClass, { cycled: false, placement: spot, name: opts.name?.trim() || undefined, withDefaultEquipment: false });
+  for (const defId of gear.ids) {
+    const def = getEquipmentDef(defId);
+    tank.equipment.push({ id: nextId(state, 'eq'), defId, installedHour: state.clock.hour, condition: 1, on: true, setting: def?.stats.defaultSetting });
+  }
   if (opts.seeded) tank.water.bioMaturity = Math.max(tank.water.bioMaturity, 0.6);
   bumpCounter(state, 'tanksBought');
   emitEvent(state, {
@@ -190,6 +274,8 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
     tankId: tank.id,
     toast: true,
   });
+  const swapNote = kitSwapNote(gear);
+  if (swapNote) emitEvent(state, { kind: 'info', text: `${swapNote} Research the missing gear and install it from the Build panel.`, tankId: tank.id });
   return { ok: true, message: `Bought ${aOrAn(tier.name)} ${tier.name} for ${fmtMoney(kit.total)}.`, tankId: tank.id };
 }
 

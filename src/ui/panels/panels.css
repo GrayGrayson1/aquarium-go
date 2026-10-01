@@ -7,7 +7,10 @@
   --pn-right: 16px;
   /* ≤ 600px so the tank keeps most of the screen; the renderer re-frames it in the free part (data-occlude). */
   --pn-w: clamp(460px, 40vw, 600px);
-  --pn-max-w: min(1180px, calc(100vw - 32px));
+  /* Expanded: never reach under the HUD's left column (tank switcher pill + its card/facility buttons, the 360px
+     toast stack, gutters), so on 1366–1536px laptops nothing pokes out from under the sheet and toasts don't land
+     on the panel's tab row. */
+  --pn-max-w: max(var(--pn-w), min(1180px, calc(100vw - 500px)));
   --pn-pad: 22px;
   --pn-card: rgba(255, 255, 255, 0.035);
   --pn-card-hover: rgba(255, 255, 255, 0.06);
@@ -63,6 +66,15 @@
 }
 .pn-sheet--bottom.is-max { top: max(12px, env(safe-area-inset-top)); }
 .pn-sheet--phone { --pn-pad: 16px; }
+/* Bottom sheets cover the dock, so they carry their own panel switcher (.pn-switch) under the panel's layout. */
+.pn-sheet--bottom .pn-layout { flex: 1 1 auto; height: auto; }
+.pn-sheet--bottom .pn-foot { padding-bottom: 12px; } /* the switcher below it carries the safe-area inset */
+.pn-switch { flex: none; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; padding: 5px 8px calc(5px + env(safe-area-inset-bottom)); border-top: 1px solid var(--c-line); background: rgba(4, 12, 17, 0.72); }
+.pn-switch::-webkit-scrollbar { display: none; }
+.pn-switch__item { position: relative; flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 64px; height: 48px; padding: 0 6px; border: 0; border-radius: 13px; background: transparent; color: var(--c-ink-3); font-family: inherit; font-size: calc(10.5px * var(--text-scale)); font-weight: 560; letter-spacing: 0.01em; cursor: pointer; scroll-snap-align: start; transition: background 0.2s var(--ease), color 0.2s; -webkit-tap-highlight-color: transparent; }
+.pn-switch__item:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: -2px; }
+.pn-switch__item.is-active { color: #f0fffc; background: linear-gradient(180deg, rgba(94, 234, 212, 0.2), rgba(45, 212, 191, 0.08)); box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.38); }
+.pn-switch__item.is-active svg { color: var(--c-aqua); }
 
 .pn-layout { position: relative; display: flex; flex-direction: column; min-height: 0; height: 100%; }
 .pn-head { position: relative; flex: none; padding: 16px var(--pn-pad) 12px; border-bottom: 1px solid var(--c-line); }
@@ -264,6 +276,7 @@ a.pn-link { text-decoration: none; }
 .pn-check input:checked + .pn-check__box::after { content: ''; width: 9px; height: 5px; border-left: 2px solid var(--c-aqua-ink); border-bottom: 2px solid var(--c-aqua-ink); transform: rotate(-45deg) translate(1px, -1px); }
 .pn-check input:focus-visible + .pn-check__box { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
 .pn-check__label { font-size: calc(13px * var(--text-scale)); color: var(--c-ink-2); }
+.pn-check.is-disabled { opacity: 0.45; cursor: not-allowed; }
 
 .pn-field { display: grid; gap: 6px; }
 .pn-field__label { font-size: calc(11.5px * var(--text-scale)); text-transform: uppercase; letter-spacing: 0.09em; color: var(--c-ink-3); font-weight: 650; }

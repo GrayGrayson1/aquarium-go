@@ -19,7 +19,7 @@ import { CreaturePortrait } from '../common/Portrait';
 import { TankThumb } from '../common/TankThumb';
 import { livingInTank, morphName } from '../common/derive';
 import { TierBadge, TitleBadge } from './Ribbons';
-import { money, realIn } from './util';
+import { money, realIn, speedNote } from './util';
 
 const BAND_N: Record<string, number> = { Ordinary: 1, Promising: 2, Exceptional: 3, Remarkable: 4 };
 
@@ -68,6 +68,10 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
   const locked = !!def?.requires && !g.progress.unlocked.includes(def.requires);
   const tier = SHOW_TIERS[show.tier];
 
+  // lane:fix-panels — a greyed confirm button says why (it used to go quiet when the fee couldn't be paid)
+  const broke = g.finance.money < show.fee;
+  const blocked = closed ? (closed.startsWith('You have the most') ? 'No more entries allowed' : closed.startsWith('This show') ? 'Already judged' : closed.includes('locked') ? 'Locked' : 'Entries closed') : locked ? 'Locked' : !chosen ? 'Choose an entrant' : broke ? `Not enough for the ${money(show.fee)} fee` : null;
+
   const submit = () => {
     if (!chosen) return;
     const r = act((d) => enterShow(d, show.id, classId, chosen.id), { sound: 'confirm', kind: 'success' });
@@ -84,7 +88,7 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
               Entry <strong>{money(show.fee)}</strong>
             </span>
             <span>
-              Judging in <strong>{realIn(show.judgingHour - g.clock.hour)}</strong> at 1×
+              Judging in <strong>{realIn(show.judgingHour - g.clock.hour, g.clock.speed)}</strong>{speedNote(g.clock.speed)}
             </span>
             <span>
               Judge <strong>{show.judge}</strong>
@@ -188,9 +192,9 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
         </div>
 
         <div className="sh-confirm">
-          <span className="pn-small pn-muted">You have {money(g.finance.money)}</span>
-          <Button variant="primary" disabled={!chosen || !!closed || locked || g.finance.money < show.fee} onClick={submit} data-testid="show-confirm-entry">
-            <Check size={15} aria-hidden /> {chosen ? `Enter ${chosen.name} — ${money(show.fee)}` : 'Choose an entrant'}
+          <span className={clsx('pn-small', broke ? 'pn-tone-danger' : 'pn-muted')}>You have {money(g.finance.money)}</span>
+          <Button variant="primary" disabled={!!blocked} onClick={submit} data-testid="show-confirm-entry" title={blocked ?? undefined} aria-label={blocked ?? undefined}>
+            <Check size={15} aria-hidden /> {blocked ?? `Enter ${chosen!.name} — ${money(show.fee)}`}
           </Button>
         </div>
       </div>

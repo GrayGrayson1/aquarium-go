@@ -37,10 +37,9 @@ export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject
   const inner = new THREE.Group();
   root.add(inner);
 
-  // highest point (dorsal fin / back) above the origin, so the tank can keep it under the waterline
-  if (!geo.body.boundingBox) geo.body.computeBoundingBox();
-  if (!geo.fins.boundingBox) geo.fins.computeBoundingBox();
-  root.userData.topOffset = Math.max(0.06, Math.min(0.6, Math.max(geo.body.boundingBox?.max.y ?? 0.1, geo.fins.boundingBox?.max.y ?? 0)));
+  // highest point (dorsal fin / back) above the origin, so the tank can keep it under the waterline: the measured
+  // rest-pose top (not the generous culling box), stretched by this individual's body depth, plus a little water
+  root.userData.topOffset = clamp(geo.topY * Math.max(1, a.bodyDepth ?? 1) + 0.02, 0.06, 0.6);
 
   const body = new THREE.Mesh(geo.body, mats.body);
   body.name = 'body';

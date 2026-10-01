@@ -21,6 +21,7 @@ import { facilityCameraBounds, facilityExhibitFrame } from '../facility/bounds';
 import { shellGeom } from '../tank/shell/Glass';
 import { tankLocalToWorld, worldToTankLocal } from './space';
 import { pickSightline } from './sightline'; // lane:w2-visual
+import { tankSlide } from './followFrame';
 import { cameraFX, cameraInput, focusToMetres, noteCameraUserMove, usePhotoSettings, zoomToFov, type RigMode } from './cameraFX';
 import { computeFreeRect, computeMenuRect, isPhoneLayout, measureOcclusion, viewportState, type FreeRect, type Occlusion } from './viewport';
 
@@ -89,6 +90,10 @@ const rig = {
   lastTankId: '' as string,
   /** Facility overview lens (halls use a longer lens so the floor recedes and the exhibit wall reads large). */
   fFov: DEFAULT_FOV,
+  /** Room view: tank the camera was flown to by a click (lane:facrender), '' = overview / hand-driven. */
+  fFocusId: '',
+  /** lane:fix-integrate-ui (G2-04) — the room the facility framing was computed for (level and floor size). */
+  roomSig: '',
 };
 
 /** Free-viewport tracking (HUD + `[data-occlude]` sheets) and the lens shift that centres the shot in it. */
@@ -305,6 +310,92 @@ function portraitAnchor(bodyH: number, distToFront: number, viewH: number, fov: 
   return Math.min(0, fr.y0 + Math.max(fh * 0.43, fh * 0.05 + bodyPx * 0.5) - (fr.y0 + fr.y1) / 2);
 }
 
+/**
+ * Default overview framing of the room: fit the exhibit band into the free viewport (the lens shift centres it there).
+ * Leaving a tank pulls back from that tank so the transition reads; otherwise the exhibit frame's own target is used.
+ */
+function frameFacility(g: GameState, tank: Tank | null, prevMode: RigMode, viewW: number, viewH: number) {
+  const b = facilityCameraBounds(g.facility);
+  const ex = facilityExhibitFrame(g);
+  rig.fFov = ex.fov;
+  const tv = Math.tan((ex.fov * Math.PI) / 360);
+  const fr = view.want;
+  const fw = Math.max(60, fr.x1 - fr.x0);
+  const fh = Math.max(60, fr.y1 - fr.y0);
+  // phones: fitting the whole exhibit row into a portrait width shrinks every tank to a speck — frame its heart.
+  // lane:facrender (P6-06) — wide screens: show as much of the row as keeps the tanks readable (≥ OVERVIEW_PX_PER_M),
+  // instead of always slicing a mature hall to its middle few tanks
+  const fitW = isPhoneLayout(viewW, viewH) ? Math.max(1.4, ex.width * 0.5) : clamp(fw / OVERVIEW_PX_PER_M, ex.width, ex.fullWidth);
+  const dW = (fitW * viewH) / (2 * tv * fw * 0.94);
+  const dH = (ex.height * viewH) / (2 * tv * fh * 0.9);
+  rig.fDist = clamp(Math.max(dW, dH), b.minDist, b.maxDist);
+  rig.fPitch = ex.pitch;
+  if (getFacilityLevel(g.facility.level).order < 3) {
+    // hobby room / shops: stand further back (the dollhouse cut-away drops the near wall) with a longer lens,
+    // above head height. The tanks keep their size in frame, while visitors wandering the small room stay
+    // figures in the scene instead of wide-angle silhouettes looming over the lens.
+    const lens = Math.min(ex.fov, 29);
+    rig.fDist = clamp((rig.fDist * tv) / Math.tan((lens * Math.PI) / 360), b.minDist, b.maxDist);
+    rig.fFov = lens;
+    rig.fPitch = Math.max(ex.pitch, 0.42);
+  }
+  if (tank && prevMode !== 'idle' && prevMode !== 'attract') {
+    // out of a tank (or the tank bar in the room): pull back from that tank (its front toward the camera) so the transition reads
+    tankLocalToWorld(tank, [0, 0, tankDims(tank).W / 2 + 0.5], rig.fTarget);
+    rig.fTarget.y = ex.target[1];
+    rig.fYaw = tank.placement.rotY;
+  } else {
+    rig.fTarget.set(ex.target[0], ex.target[1], ex.target[2]);
+    rig.fYaw = ex.yaw;
+  }
+}
+
+/**
+ * lane:facrender (S10-06) — room view: glide to one tank (clicked in the room) so it fills the frame, squarely from
+ * its front. `rig.fFocusId` remembers it so the next click on the same tank can enter it.
+ */
+function frameFacilityTank(g: GameState, tank: Tank) {
+  const b = facilityCameraBounds(g.facility);
+  const d = tankDims(tank);
+  const ex = facilityExhibitFrame(g);
+  tankLocalToWorld(tank, [0, d.H * 0.45, d.W / 2 + 0.2], rig.fTarget);
+  rig.fYaw = tank.placement.rotY;
+  rig.fPitch = 0.3;
+  rig.fFov = ex.fov;
+  const tv = Math.tan((ex.fov * Math.PI) / 360);
+  const fr = view.want;
+  const fw = Math.max(60, fr.x1 - fr.x0);
+  const fh = Math.max(60, fr.y1 - fr.y0);
+  // the tank with a little of its neighbours across, the tank on its stand plus some wall vertically
+  const w = Math.max(1.8, d.L * 2.4);
+  const h = d.H + 0.9;
+  rig.fDist = clamp(Math.max((w * view.h) / (2 * tv * fw), (h * view.h) / (2 * tv * fh)), b.minDist * FOCUS_MIN_DIST, b.maxDist);
+}
+
+/** A focused tank may bring the room camera in closer than the overview's floor (fraction of minDist). */
+const FOCUS_MIN_DIST = 0.55;
+/** Overview: never spread the exhibit row thinner than this on screen (a 1 m tank stays ≥ 90 px wide). */
+const OVERVIEW_PX_PER_M = 90;
+
+const facilityRequest = { reset: false, focusId: '' as string };
+
+/** Room view: fly to a tank (a click on it in the room). */
+export function focusFacilityTank(tankId: string): void {
+  facilityRequest.focusId = tankId;
+  facilityRequest.reset = false;
+}
+
+/** Room view: return to the default overview framing. */
+export function resetFacilityView(): void {
+  facilityRequest.reset = true;
+  facilityRequest.focusId = '';
+}
+
+/** The tank the room camera was last flown to (cleared by a reset or a hand-driven pan/orbit). */
+export function facilityFocusedTank(): string {
+  return rig.fFocusId;
+}
+
 export function CameraRig() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const gl = useThree((s) => s.gl);
@@ -329,6 +420,7 @@ export function CameraRig() {
       const k = sens();
       switch (rig.mode) {
         case 'facility':
+          rig.fFocusId = '';
           rig.fYaw -= dx * 0.0055 * k;
           rig.fPitch = clamp(rig.fPitch + dy * 0.004 * k, 0.22, 1.36);
           break;
@@ -358,6 +450,7 @@ export function CameraRig() {
     const pan = (dx: number, dy: number) => {
       const h = el.clientHeight || 800;
       if (rig.mode === 'facility') {
+        rig.fFocusId = '';
         const s = (rig.fDist / h) * 1.1;
         const c = Math.cos(rig.fYaw);
         const sn = Math.sin(rig.fYaw);
@@ -396,6 +489,7 @@ export function CameraRig() {
     const onDown = (e: PointerEvent) => {
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, button: e.button, shift: e.shiftKey, type: e.pointerType });
       cameraInput.moved = 0;
+      cameraInput.pointers = pointers.size;
       if (pointers.size === 2) {
         const [p1, p2] = [...pointers.values()];
         pinchD = Math.hypot(p1.x - p2.x, p1.y - p2.y);
@@ -442,6 +536,7 @@ export function CameraRig() {
     };
     const onUp = (e: PointerEvent) => {
       pointers.delete(e.pointerId);
+      cameraInput.pointers = pointers.size;
       if (pointers.size < 2) pinchD = 0;
       if (pointers.size === 0 && dragging) {
         dragging = false;
@@ -500,7 +595,8 @@ export function CameraRig() {
     view.axisWant = 0;
     const key = `${mode}|${tank?.id ?? ''}|${mode === 'follow' || mode === 'close' ? creatureId ?? '' : ''}`;
 
-    if (key !== rig.key) {
+    const keyChanged = key !== rig.key;
+    if (keyChanged) {
       const prevMode = rig.mode;
       rig.key = key;
       rig.mode = mode;
@@ -529,38 +625,13 @@ export function CameraRig() {
           rig.pitch = 0.22;
         }
         if (mode === 'facility' && g) {
-          const b = facilityCameraBounds(g.facility);
-          const ex = facilityExhibitFrame(g);
-          // fit the exhibit band into the free viewport (lens shift centres it there)
-          rig.fFov = ex.fov;
-          const tv = Math.tan((ex.fov * Math.PI) / 360);
-          const fr = view.want;
-          const fw = Math.max(60, fr.x1 - fr.x0);
-          const fh = Math.max(60, fr.y1 - fr.y0);
-          // phones: fitting the whole exhibit row into a portrait width shrinks every tank to a speck — frame its heart
-          const fitW = isPhoneLayout(size.width, size.height) ? Math.max(1.4, ex.width * 0.5) : ex.width;
-          const dW = (fitW * size.height) / (2 * tv * fw * 0.94);
-          const dH = (ex.height * size.height) / (2 * tv * fh * 0.9);
-          rig.fDist = clamp(Math.max(dW, dH), b.minDist, b.maxDist);
-          rig.fPitch = ex.pitch;
-          if (getFacilityLevel(g.facility.level).order < 3) {
-            // hobby room / shops: stand further back (the dollhouse cut-away drops the near wall) with a longer lens,
-            // above head height. The tanks keep their size in frame, while visitors wandering the small room stay
-            // figures in the scene instead of wide-angle silhouettes looming over the lens.
-            const lens = Math.min(ex.fov, 29);
-            rig.fDist = clamp((rig.fDist * tv) / Math.tan((lens * Math.PI) / 360), b.minDist, b.maxDist);
-            rig.fFov = lens;
-            rig.fPitch = Math.max(ex.pitch, 0.42);
-          }
-          if (tank && prevMode !== 'idle' && prevMode !== 'attract') {
-            // out of a tank: pull back from that tank (its front toward the camera) so the transition reads
-            tankLocalToWorld(tank, [0, 0, tankDims(tank).W / 2 + 0.5], rig.fTarget);
-            rig.fTarget.y = ex.target[1];
-            rig.fYaw = tank.placement.rotY;
-          } else {
-            rig.fTarget.set(ex.target[0], ex.target[1], ex.target[2]);
-            rig.fYaw = ex.yaw;
-          }
+          // lane:facrender — a click on a tank in the room sets the focused tank (this key change) and asks for a fly-to
+          const want = facilityRequest.focusId ? g.tanks[facilityRequest.focusId] ?? null : null;
+          if (want) frameFacilityTank(g, want);
+          else frameFacility(g, tank, prevMode, size.width, size.height);
+          rig.fFocusId = want ? want.id : '';
+          facilityRequest.focusId = '';
+          facilityRequest.reset = false;
         }
       }
       if (rig.initialized && mode !== 'photo') {
@@ -571,6 +642,42 @@ export function CameraRig() {
         // switching between in-tank views is a short move: keep it quick so the new subject is framed promptly
         const inTank = (m: RigMode) => m === 'front' || m === 'orbit' || m === 'follow' || m === 'close';
         rig.tDur = reduced ? 0.45 : prevMode === 'idle' ? 0.001 : prevMode === 'attract' ? 1.8 : inTank(prevMode) && inTank(mode) ? 0.9 : 1.25;
+        rig.tFromPos.copy(rig.pos);
+        rig.tFromTarget.copy(rig.target);
+        rig.tFromFov = rig.fov;
+      }
+    }
+
+    // lane:fix-integrate-ui (G2-04) — a facility upgrade grows the room and re-seats every tank without changing the
+    // key: re-frame the new room from its own overview (dropping the old room's pan/zoom) with the usual glide
+    let roomMove = false;
+    if (g) {
+      const sig = `${g.facility.level}|${g.facility.width}|${g.facility.depth}`;
+      if (sig !== rig.roomSig) {
+        roomMove = rig.roomSig !== '' && mode === 'facility' && !keyChanged && rig.initialized;
+        rig.roomSig = sig;
+        if (roomMove) {
+          resetOffsets();
+          facilityRequest.reset = true;
+          facilityRequest.focusId = '';
+        }
+      }
+    }
+
+    // lane:facrender — room view requests without a key change: fly to a clicked tank / back to the overview
+    if (mode === 'facility' && g && (facilityRequest.reset || facilityRequest.focusId)) {
+      const want = facilityRequest.focusId ? g.tanks[facilityRequest.focusId] ?? null : null;
+      if (want) frameFacilityTank(g, want);
+      else frameFacility(g, null, 'facility', size.width, size.height);
+      rig.fFocusId = want ? want.id : '';
+      facilityRequest.reset = false;
+      facilityRequest.focusId = '';
+      if (rig.initialized) {
+        cameraFX.transitionSeq++;
+        rig.tActive = true;
+        rig.tT = 0;
+        rig.tCut = reduced;
+        rig.tDur = reduced ? 0.45 : roomMove ? 1.6 : 0.9;
         rig.tFromPos.copy(rig.pos);
         rig.tFromTarget.copy(rig.target);
         rig.tFromFov = rig.fov;
@@ -635,7 +742,7 @@ export function CameraRig() {
         const b = facilityCameraBounds(g.facility);
         rig.fTarget.x = clamp(rig.fTarget.x, b.minX, b.maxX);
         rig.fTarget.z = clamp(rig.fTarget.z, b.minZ, b.maxZ);
-        rig.fDist = clamp(rig.fDist, b.minDist, b.maxDist);
+        rig.fDist = clamp(rig.fDist, rig.fFocusId ? b.minDist * FOCUS_MIN_DIST : b.minDist, b.maxDist);
         dTarget.copy(rig.fTarget);
         sph(rig.fYaw, rig.fPitch, rig.fDist, _off);
         dPos.copy(dTarget).add(_off);
@@ -789,21 +896,8 @@ export function CameraRig() {
           const px = C.x + (T.x - C.x) * tp;
           const py = C.y + (T.y - C.y) * tp;
           const s = (2 * Math.max(0.02, D * tp) * Math.tan((fov * Math.PI) / 360)) / vh; // metres per px at the front face
-          const ax = (fr.x0 + fr.x1) / 2;
-          const ay = (fr.y0 + fr.y1) / 2;
-          const left = ax * s;
-          const right = (vw - ax) * s;
-          const up = ay * s;
-          const down = (vh - ay) * s;
-          // a sliver of rim / stand / wall at the edges is fine; a frame that is mostly room is not
-          const mx = (left + right) * 0.05;
-          const my = (up + down) * 0.07;
-          const x0 = -sg.outerL / 2 - mx + left;
-          const x1 = sg.outerL / 2 + mx - right;
-          const y0 = sg.bottomY - my + down;
-          const y1 = sg.topY + my - up;
-          const dx = (x0 <= x1 ? clamp(px, x0, x1) : (x0 + x1) / 2) - px;
-          const dy = (y0 <= y1 ? clamp(py, y0, y1) : (y0 + y1) / 2) - py;
+          // lane:facrender — measured against the free rect (a phone's bottom sheet no longer pushes the subject under it)
+          const { dx, dy } = tankSlide({ px, py, outerL: sg.outerL, bottomY: sg.bottomY, topY: sg.topY, fr, vw, vh, s });
           T.x += dx;
           C.x += dx;
           T.y += dy;

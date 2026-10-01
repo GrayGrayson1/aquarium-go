@@ -217,6 +217,18 @@ export function sexRoleText(c: Creature, sp: SpeciesDefinition | undefined, nowH
         return { label: 'Male', detail: 'May become female if dominant.' };
     }
   }
+  if (sp?.sexSystem === 'protogynous') {
+    // the mirror image (clown gobies): every fish starts female, the dominant one of a group turns male (protogyny.ts)
+    if (c.repro?.stage === 'transitioning_male') return { label: 'Transitioning to male', detail: 'Now dominant, the change to male is under way.' };
+    switch (c.reproRole) {
+      case 'male':
+        return { label: 'Male', detail: 'Dominant — became the male of the group.' };
+      case 'undifferentiated':
+        return { label: 'Not yet differentiated', detail: 'Its role will be set by the social hierarchy.' };
+      default:
+        return { label: 'Female', detail: 'May become male if dominant.' };
+    }
+  }
   if (c.sex === 'unknown' || (sp && age < sp.lifecycle.sexVisibleAtDays && c.lifeStage !== 'adult')) {
     return { label: 'Not yet visible', detail: sp ? `Sex shows at around ${Math.round(sp.lifecycle.sexVisibleAtDays)} days.` : undefined };
   }

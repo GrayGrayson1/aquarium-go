@@ -10,6 +10,7 @@ import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { advanceWorld } from '@/sim/world';
+import { lightsOn } from '@/sim/time';
 import { getSpecies } from '@/data/species';
 import { breedingCheck, breedingStatus, noteBreedingFood } from '@/sim/life/breeding';
 import { devForceBreeding, moveClutch, separateCreature, startBreeding } from '@/sim/life/breeding/actions';
@@ -285,8 +286,7 @@ describe('breeding: starter loops end-to-end', () => {
     run(state, 24 * 5, { temps, feed: ['infusoria', 'baby_brine'] }, () => state.clutches[cl.id]?.stage === 'larvae');
     expect(state.clutches[cl.id]?.stage).toBe('larvae');
     const hatchHour = state.clock.hour;
-    const hod = ((hatchHour % 24) + 24) % 24;
-    expect(hod >= 21 || hod < 8).toBe(true); // hatched after lights-out
+    expect(lightsOn(nursery.lighting.onHour, nursery.lighting.offHour, hatchHour)).toBe(false); // hatched after lights-out
 
     run(state, 260, { temps, feed: ['infusoria', 'baby_brine', 'copepod_live'] }, () => !state.clutches[cl.id]);
     const kids = offspringOf(state, coral.id);

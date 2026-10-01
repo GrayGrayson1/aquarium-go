@@ -12,11 +12,13 @@ import { getDecorDef } from '@/data/catalog/decor';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { resolvePhenotype, potentialBand } from '../life';
 import { creaturesInTank } from '../life';
+import { ELDER_FRACTION } from '../life/growth'; // lane:fix-econ
 import { PERSONALITY_INFO } from '../life/personality'; // lane:qa-play
 import { LOCAL_FISH_STORE } from '@/data/buyers';
 import type { DecorInstance } from '@/types'; // lane:frags
 import { propagationFor } from '@/data/catalog/propagation'; // lane:frags
 import { showValueFactors } from '../shows/titles'; // lane:shows
+import { saleWarnings } from './warnings'; // lane:fix-econ
 import { clamp, clamp01, finite, roundCents, normSeverity, exhibitPopularity, RARITY_SCORE, DIFFICULTY_INDEX, DIFFICULTY_LABEL, difficultyIndex, speciesPlural, nicePrice } from './util';
 
 const NEUTRAL_EPS = 0.01;
@@ -67,6 +69,16 @@ function computeMorphRarity(sp: SpeciesDefinition, c: Creature): number {
 
 // ───────────────────────────── creature value ─────────────────────────────
 
+/**
+ * An adult's prime: from maturity to halfway through adult life. `adultDays` is the age at full size (growth.ts),
+ * not the length of the prime, so it plays no part here (lane:fix-econ, S16-01; judging.ts uses the same window).
+ */
+export function primeWindow(lc: SpeciesDefinition['lifecycle']): { primeEnd: number; elderAt: number } {
+  const elderAt = lc.lifespanDays * ELDER_FRACTION;
+  return { primeEnd: lc.juvenileDays + PRIME_SHARE_OF_ADULT_LIFE * Math.max(0, elderAt - lc.juvenileDays), elderAt };
+}
+const PRIME_SHARE_OF_ADULT_LIFE = 0.5;
+
 function lifeStageFactor(sp: SpeciesDefinition, c: Creature, nowHour: number): { mult: number; label: string; note: string } {
   const lc = sp.lifecycle;
   const age = Math.max(0, (nowHour - c.bornHour) / 24);
@@ -82,16 +94,18 @@ function lifeStageFactor(sp: SpeciesDefinition, c: Creature, nowHour: number): {
       return { mult: 0.42 + 0.4 * t, label: 'Life stage: juvenile', note: 'Still growing — value rises as it matures' };
     }
     case 'elder': {
-      const elderStart = lc.juvenileDays + lc.adultDays;
+      // Continues the mature-adult curve (0.85 at the elder boundary) down to ~0.45 at the end of life: no overnight
+      // cliff the day an animal turns elder (lane:fix-econ, S02-13).
+      const elderStart = lc.lifespanDays * ELDER_FRACTION;
       const t = clamp01((age - elderStart) / Math.max(1, lc.lifespanDays - elderStart));
-      return { mult: 0.62 - 0.22 * t, label: 'Life stage: elder', note: 'Calm and settled, with fewer breeding years ahead' };
+      return { mult: 0.85 - 0.4 * t, label: 'Life stage: elder', note: 'Calm and settled, with fewer breeding years ahead' };
     }
     case 'adult':
     default: {
-      const primeEnd = lc.juvenileDays + lc.adultDays;
+      const { primeEnd, elderAt } = primeWindow(lc);
       if (age <= primeEnd) return { mult: 1, label: 'Prime adult', note: 'In its prime' };
-      const t = clamp01((age - primeEnd) / Math.max(1, lc.lifespanDays * 0.8 - primeEnd));
-      return { mult: 1 - 0.15 * t, label: 'Mature adult', note: 'Past its prime breeding window' };
+      const t = clamp01((age - primeEnd) / Math.max(1, elderAt - primeEnd));
+      return { mult: 1 - 0.15 * t, label: 'Mature adult', note: 'Past its prime — colour and vigour ease off slowly' };
     }
   }
 }
@@ -308,10 +322,26 @@ export function tankSignature(tank: Tank): string {
   return `${tank.tierId}|${tank.waterClass}|${tank.substrate?.kind}|${tank.backdrop}|${eq}|${dec}`;
 }
 
+/**
+ * Restrict a tank valuation to what a buyer actually receives. A live listing prices only the animals, gear and decor
+ * that were listed (anything added afterwards stays with the seller), so stashing valuables in a listed tank can't
+ * raise its bids (lane:fix-econ, S03-01).
+ */
+export interface TankValuationScope {
+  /** Only these animals count. */
+  creatureIds?: ReadonlySet<string>;
+  /** Only these equipment/decor instance ids count. */
+  itemIds?: ReadonlySet<string>;
+  /** Beauty is priced at most at this score (decor added after listing goes back to storage). */
+  maxBeauty?: number;
+}
+
 /** Expected/low/high sale value of a complete aquarium with parts and modifiers. */
-export function tankValuation(state: GameState, tankId: string): TankValuation {
+export function tankValuation(state: GameState, tankId: string, scope?: TankValuationScope): TankValuation {
   const tank = state.tanks[tankId];
   if (!tank) return { expected: 0, low: 0, high: 0, parts: [], modifiers: [] };
+  const equipment = scope?.itemIds ? tank.equipment.filter((e) => scope.itemIds!.has(e.id)) : tank.equipment;
+  const decor = scope?.itemIds ? tank.decor.filter((d) => scope.itemIds!.has(d.id)) : tank.decor;
   const nowHour = state.clock.hour;
   const tier = TANK_TIER_BY_ID[tank.tierId];
   const gallons = tier?.gallons ?? 20;
@@ -327,7 +357,7 @@ export function tankValuation(state: GameState, tankId: string): TankValuation {
   let eqPart = 0;
   let eqCount = 0;
   let failed = 0;
-  for (const e of tank.equipment) {
+  for (const e of equipment) {
     const def = getEquipmentDef(e.defId);
     if (!def) continue;
     const ageD = Math.max(0, (nowHour - e.installedHour) / 24);
@@ -347,7 +377,7 @@ export function tankValuation(state: GameState, tankId: string): TankValuation {
   let livingCount = 0;
   let hard = 0;
   let hardCount = 0;
-  for (const d of tank.decor) {
+  for (const d of decor) {
     const def = getDecorDef(d.defId);
     if (!def) continue;
     if (isLivingDecor(def.category)) {
@@ -372,7 +402,7 @@ export function tankValuation(state: GameState, tankId: string): TankValuation {
   }
 
   // Livestock.
-  const creatures = creaturesInTank(state, tankId);
+  const creatures = scope?.creatureIds ? creaturesInTank(state, tankId).filter((c) => scope.creatureIds!.has(c.id)) : creaturesInTank(state, tankId);
   let livestock = 0;
   for (const c of creatures) livestock += creatureValue(state, c).total;
   if (creatures.length > 0) parts.push({ label: `Livestock (${creatures.length} animal${creatures.length === 1 ? '' : 's'})`, amount: roundCents(livestock), note: livestockSummary(creatures) });
@@ -385,7 +415,7 @@ export function tankValuation(state: GameState, tankId: string): TankValuation {
   let m = 1;
   const cache = tank.cache;
   const welfare = clamp(finite(cache?.welfare, 100), 0, 100);
-  const beauty = clamp(finite(cache?.beauty, 40), 0, 100);
+  const beauty = Math.min(clamp(finite(cache?.beauty, 40), 0, 100), finite(scope?.maxBeauty, 100));
   const stability = clamp(finite(cache?.stability, 70), 0, 100);
   const verdict: CompatVerdict = cache?.compatVerdict ?? 'excellent';
   // Water stability is about the water; animal welfare is priced separately (welfare factor above).
@@ -486,27 +516,30 @@ export interface QuickSellQuote {
   message: string;
   total: number;
   perCreature: { id: string; name: string; value: number; offer: number }[];
+  /** lane:fix-econ — reasons to think twice (starter, brood, pair, favourite, sick); empty when nothing is at stake. */
+  warnings: string[];
 }
 
 /** What the local fish store pays right now: ~40–55% of value depending on condition. */
 export function quickSellQuote(state: GameState, creatureIds: string[]): QuickSellQuote {
   const per: QuickSellQuote['perCreature'] = [];
   const seen = new Set<string>();
+  const no = (message: string): QuickSellQuote => ({ ok: false, message, total: 0, perCreature: [], warnings: [] });
   for (const id of creatureIds) {
-    if (seen.has(id)) return { ok: false, message: 'The same animal was selected twice.', total: 0, perCreature: [] };
+    if (seen.has(id)) return no('The same animal was selected twice.');
     seen.add(id);
     const c = state.creatures[id];
-    if (!c) return { ok: false, message: 'That animal could not be found.', total: 0, perCreature: [] };
-    if (c.status === 'listed') return { ok: false, message: `${c.name} is listed on the marketplace — withdraw the listing first.`, total: 0, perCreature: [] };
-    if (c.status !== 'alive') return { ok: false, message: `${c.name} is no longer in your care.`, total: 0, perCreature: [] };
+    if (!c) return no('That animal could not be found.');
+    if (c.status === 'listed') return no(`${c.name} is listed on the marketplace — withdraw the listing first.`);
+    if (c.status !== 'alive') return no(`${c.name} is no longer in your care.`);
     const v = creatureValue(state, c).total;
     const health = clamp(finite(c.stats?.health, 100), 0, 100) / 100;
     const rate = c.illness ? 0.4 : 0.4 + 0.15 * health;
     per.push({ id, name: c.name, value: v, offer: Math.max(1, Math.round(v * rate)) });
   }
-  if (per.length === 0) return { ok: false, message: 'Choose at least one animal to sell.', total: 0, perCreature: [] };
+  if (per.length === 0) return no('Choose at least one animal to sell.');
   const total = per.reduce((a, p) => a + p.offer, 0);
-  return { ok: true, message: `${LOCAL_FISH_STORE} will pay ${total > 0 ? `$${total}` : 'a token amount'} today.`, total, perCreature: per };
+  return { ok: true, message: `${LOCAL_FISH_STORE} will pay ${total > 0 ? `$${total}` : 'a token amount'} today.`, total, perCreature: per, warnings: saleWarnings(state, creatureIds) };
 }
 
 // ───────────────────────────── frags & cuttings (lane:frags) ─────────────────────────────

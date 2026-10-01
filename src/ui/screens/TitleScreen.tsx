@@ -8,12 +8,12 @@ import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
 import { sfx, unlockAudio } from '@/audio/sfx';
-import { useOnboarding, loadShowcase } from './onboarding';
+import { useOnboarding, loadShowcase, prepareStarters } from './onboarding';
 import { listSlots, loadIntoGame, timeAgo, slotLabel, watchSaves, storageNotice, type SaveMeta } from '../common/saves';
 import { LoadDialog } from './LoadDialog';
 import { speciesName } from '../common/format';
 import { Modal, Button } from '../kit';
-import { useIsMobile } from '../common/safe';
+import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
 
 export function Wordmark({ size = 'xl' }: { size?: 'xl' | 'md' }) {
   return (
@@ -55,6 +55,7 @@ export function TitleScreen() {
   const [confirmNew, setConfirmNew] = useState(false);
   const [busy, setBusy] = useState(false);
   const mobile = useIsMobile();
+  const sideways = useMedia(SHORT_LANDSCAPE_QUERY); // a phone held sideways: the menu is a left column again
   const [notice, setNotice] = useState(() => storageNotice());
 
   useEffect(() => {
@@ -76,6 +77,18 @@ export function TitleScreen() {
       unwatch();
     };
   }, [titleStarter]);
+
+  // the starter reveal's five card portraits render while the player reads the menu, not during the cards' entrance
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    const run = () => safe('prepareStarters', prepareStarters, undefined);
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(run, { timeout: 3000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = window.setTimeout(run, 1200);
+    return () => window.clearTimeout(t);
+  }, []);
 
   const latest = saves?.[0];
   const keep = useMemo(() => autosaveKeepAdvice(saves ?? []), [saves]);
@@ -114,7 +127,7 @@ export function TitleScreen() {
     <motion.div className="ag-screen ag-title" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.6 }}>
       <div className="ag-title__veil" aria-hidden />
       {/* camera framing (render/camera/viewport.ts): the menu column covers the left (phones: the bottom) */}
-      <div className="ag-title__col" data-occlude={mobile ? 'bottom' : 'left'}>
+      <div className="ag-title__col" data-occlude={mobile && !sideways ? 'bottom' : 'left'}>
         <motion.div initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}>
           <Wordmark />
         </motion.div>

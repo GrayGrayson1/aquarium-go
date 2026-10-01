@@ -8,13 +8,15 @@ import { addAfterEffect, addEffect, useFrame, useThree } from '@react-three/fibe
 import { useSettings } from '@/state/settings';
 import { useUI } from '@/state/ui';
 import { QUALITY, useRenderPerf, useRenderQuality } from './quality';
-import { budgetDpr, deviceKey, readPerfMemory, ScaleController, writePerfMemory } from './resolution';
+import { budgetDpr, deviceKey, LatenessProbe, readPerfMemory, ScaleController, writePerfMemory } from './resolution';
 import { detectGpu } from './gpuTier';
 import { useWarmup } from './warmup';
 
 const SOFTWARE_HINT_KEY = 'aquarium-go.hint.hwaccel';
 /** Ignore frame times for this long after the warm-up veil lifts or the tab comes back (first frames are uneven). */
 const QUIET_MS = 1500;
+/** Interval of the main-thread probe timer (ms): ~125 near-free wake-ups a second. */
+const PROBE_MS = 8;
 
 export function ResolutionGovernor() {
   const size = useThree((s) => s.size);
@@ -33,9 +35,9 @@ export function ResolutionGovernor() {
   if (!ctl.current || tierRef.current !== tier) {
     // a tier change (Settings, or the last-resort drop) starts from what this device settled on for that tier
     const start = mem.current.scale[tier] ?? (ctl.current ? ctl.current.scale : 1);
-    const dropped = ctl.current?.dropped ?? false;
+    const prev = ctl.current;
     ctl.current = new ScaleController(start);
-    ctl.current.dropped = dropped;
+    if (prev) ctl.current.carryOver(prev);
     tierRef.current = tier;
   }
   useEffect(() => {
@@ -68,18 +70,35 @@ export function ResolutionGovernor() {
     return () => window.clearTimeout(t);
   }, []);
 
-  // main-thread time of each frame (all useFrame work + render submission), to tell CPU-bound from GPU-bound
+  // main-thread time of each frame (all useFrame work + render submission), to tell CPU-bound from GPU-bound…
   const work = useRef({ t0: 0, ms: 0 });
+  // …plus main-thread time spent OUTSIDE the frame loop (React commits, the sim tick, portrait rendering, GC), seen as
+  // the lateness of a short timer chain (lane:tankrender — a UI burst used to look GPU-bound and blur the picture)
+  const probe = useRef(new LatenessProbe());
   useEffect(() => {
     const a = addEffect(() => {
       work.current.t0 = performance.now();
     });
     const b = addAfterEffect(() => {
-      if (work.current.t0) work.current.ms = performance.now() - work.current.t0;
+      if (work.current.t0) {
+        const t1 = performance.now();
+        work.current.ms = t1 - work.current.t0;
+        probe.current.frame(work.current.t0, t1);
+      }
     });
+    let timer = 0;
+    let at = performance.now();
+    const ping = () => {
+      const now = performance.now();
+      if (!document.hidden) probe.current.tick(at, PROBE_MS, now);
+      at = now;
+      timer = window.setTimeout(ping, PROBE_MS);
+    };
+    timer = window.setTimeout(ping, PROBE_MS);
     return () => {
       a();
       b();
+      window.clearTimeout(timer);
     };
   }, []);
 
@@ -88,6 +107,7 @@ export function ResolutionGovernor() {
       last.current = 0;
       quietUntil.current = performance.now() + QUIET_MS;
       ctl.current?.reset();
+      probe.current.reset();
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
@@ -99,13 +119,14 @@ export function ResolutionGovernor() {
     last.current = now;
     const c = ctl.current;
     if (!c || !prev || document.hidden) return;
+    const ext = probe.current.take();
     if (useWarmup.getState().warming) {
       quietUntil.current = now + QUIET_MS;
       c.reset();
       return;
     }
     if (now < quietUntil.current) return;
-    const d = c.frame(now - prev, work.current.ms);
+    const d = c.frame(now - prev, work.current.ms, ext);
     if (!d) return;
     const m = mem.current!;
     if (d.kind === 'scale') {
@@ -113,11 +134,16 @@ export function ResolutionGovernor() {
       m.scale[tierRef.current] = d.scale;
       writePerfMemory(m);
     } else if (d.kind === 'drop') {
-      // last resort (recompiles programs): once per session, only on Auto, never back up mid-session
+      // last resort (recompiles programs): once per session, only on Auto, never back up mid-session; remembered for
+      // the next visit only once 'drop_helped' confirms it, and always explained
       const cur = useRenderPerf.getState().degrade;
       if (!auto || cur <= -2) return;
       useRenderPerf.getState().setDegrade(cur - 1);
-      m.degrade = cur - 1;
+      useUI.getState().toast('Eased the graphics a notch to keep the aquarium smooth. Settings › Graphics has the manual choice.', 'info');
+    } else if (d.kind === 'drop_helped') {
+      const cur = useRenderPerf.getState().degrade;
+      if (!auto || cur >= 0) return;
+      m.degrade = cur;
       writePerfMemory(m);
     } else if (d.kind === 'headroom') {
       // two minutes at full scale and 60 fps: let the next visit try one step richer (never mid-session)
@@ -133,7 +159,8 @@ export function ResolutionGovernor() {
     if (!(import.meta.env.DEV || new URLSearchParams(location.search).has('perf'))) return;
     (window as unknown as { __AQ_PERF?: () => unknown }).__AQ_PERF = () => {
       const s = useRenderPerf.getState();
-      return { tier: tierRef.current, dpr: s.dpr, scale: s.scale, degrade: s.degrade, auto: useSettings.getState().qualityAuto !== false };
+      const w = ctl.current?.lastWindow;
+      return { tier: tierRef.current, dpr: s.dpr, scale: s.scale, degrade: s.degrade, auto: useSettings.getState().qualityAuto !== false, frameMs: w ? Math.round(w.ms * 10) / 10 : 0, busy: w ? Math.round(w.busy * 100) / 100 : 0, extTotal: Math.round(probe.current.total) };
     };
   }, []);
   return null;

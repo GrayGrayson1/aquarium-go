@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useSettings } from '@/state/settings';
+import { convertTempText, formatTemp } from '@/ui/common/format';
 
 let urgent = 0;
 /** Mark the next store change as player-driven so every panel refreshes immediately. */
@@ -65,6 +66,15 @@ export function safe<T>(fn: () => T, fallback: T): T {
 }
 
 /** Memoised safe call keyed on deps. */
+/**
+ * The player's temperature unit plus a formatter for sim text that carries "°C" values ("Water is too warm: 30 °C"),
+ * so panels honour the Settings › Temperature choice like the cards do.
+ */
+export function useTempText(): { unit: 'C' | 'F'; t: (text: string | undefined) => string | undefined; temp: (c: number, digits?: number) => string } {
+  const unit = useSettings((s) => s.tempUnit);
+  return useMemo(() => ({ unit, t: (text) => convertTempText(text, unit), temp: (c, digits = 1) => formatTemp(c, unit, digits) }), [unit]);
+}
+
 export function useSafeMemo<T>(fn: () => T, fallback: T, deps: unknown[]): T {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => safe(fn, fallback), deps);

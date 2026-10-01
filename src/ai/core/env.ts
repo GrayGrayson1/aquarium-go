@@ -70,6 +70,15 @@ const BRANCHY_WOOD: Record<string, [number, number, number]> = {
   wood_manzanita: [0.24, 0.28, 0.32],
 };
 /**
+ * Branching corals (a gorgonian sea rod, an acropora colony): thin branches fish weave through and nothing a snail can
+ * crawl on — only the base plug at the foot is solid. (A solid bounding box had trochus snails and hermit crabs
+ * grazing in open water on top of the sea fan.) Plate, brain, mushroom and LPS corals stay solid.
+ */
+const BRANCHY_CORAL: Record<string, [number, number, number]> = {
+  coral_gorgonian: [0.35, 0.6, 0.15],
+  coral_acropora: [0.5, 0.7, 0.2],
+};
+/**
  * lane:brackish — stilted mangrove roots: the crown stands on arching prop roots with open water beneath it, so the
  * whole piece is a soft tangle fish weave through (there is no solid boss on the bed to wall off).
  */
@@ -89,12 +98,13 @@ export interface DecorSolidity {
 /**
  * How solid a decor item is for the AI. Rock, chunky wood, caves, corals, ornaments, enrichment and marimo are
  * solid; stem plants, grasses, carpets, moss, floaters, macroalgae and anemones are soft; rosette/rhizome plants
- * (swords, crypts, java fern, anubias, water sprite…) are soft leaves over a solid crown, and branchy driftwood
- * (spider wood, manzanita) a soft canopy over a solid boss.
+ * (swords, crypts, java fern, anubias, water sprite…) are soft leaves over a solid crown, branchy driftwood
+ * (spider wood, manzanita) a soft canopy over a solid boss, and branching corals soft branches over a solid base plug.
  */
 export function decorSolidity(def: Pick<DecorDef, 'category' | 'visual'>): DecorSolidity {
   if (def.category === 'anemone') return { body: 'soft', round: false, base: null };
   if (BRANCHY_WOOD[def.visual]) return { body: 'soft', round: false, base: BRANCHY_WOOD[def.visual], baseMaxH: 0.07 };
+  if (BRANCHY_CORAL[def.visual]) return { body: 'soft', round: false, base: BRANCHY_CORAL[def.visual], baseMaxH: 0.03 };
   if (STILT_ROOTS.has(def.visual)) return { body: 'soft', round: false, base: null }; // lane:brackish
   if (def.category !== 'plant') return { body: 'hard', round: false, base: null };
   if (SOLID_PLANT_VISUALS.has(def.visual)) return { body: 'hard', round: true, base: null };
@@ -141,6 +151,9 @@ export interface TankEnv {
   anchors: Anchor[];
   byKind: Record<AnchorKind, Anchor[]>;
   decorSig: string;
+  /** How many colliders / anchors come from decor (the equipment solids follow them and are re-derived on their own). */
+  staticColliders: number;
+  staticAnchors: number;
   environment: Tank['environment'];
   /** Game clock (hours) and hour-of-day. */
   hour: number;
@@ -195,6 +208,8 @@ export function createEnv(tankId: string): TankEnv {
     anchors: [],
     byKind: emptyByKind(),
     decorSig: '',
+    staticColliders: 0,
+    staticAnchors: 0,
     environment: 'freshwater',
     hour: 12,
     hourOfDay: 12,
@@ -234,18 +249,27 @@ export interface ExtraSolid {
 export type ExtraResolver = (tank: Tank) => ExtraSolid[];
 export type FlowResolver = (tank: Tank) => number;
 
+// (the water level is deliberately NOT part of it: it drifts with evaporation every few game hours, and a rebuild on
+// each drift made every animal in the tank replan at once — sleeping schools woke together. See syncEnvStatic.)
 function decorSignature(tank: Tank, dims: TankDims): string {
-  let s = `${tank.id}|${dims.L.toFixed(3)}|${dims.W.toFixed(3)}|${dims.waterY.toFixed(3)}|${dims.substrateY.toFixed(3)}|${tank.substrate?.kind}`;
+  let s = `${tank.id}|${dims.L.toFixed(3)}|${dims.W.toFixed(3)}|${dims.substrateY.toFixed(3)}|${tank.substrate?.kind}`;
   for (const d of tank.decor) s += `|${d.id}:${d.defId}:${d.x.toFixed(3)},${d.y.toFixed(3)},${d.z.toFixed(3)},${d.rotY.toFixed(2)},${d.scale.toFixed(2)}`;
   return s;
 }
 
-/** Rebuild the static parts (bounds/colliders/anchors) only when decor or dimensions change. */
+/**
+ * Rebuild the static parts (bounds/colliders/anchors) only when decor or dimensions change (returns true then). A
+ * change of the water level alone (evaporation, a top-off) only moves the surface: anchors are re-clamped under it
+ * and the equipment solids that hang from the rim are re-derived, without disturbing anyone.
+ */
 export function syncEnvStatic(env: TankEnv, tank: Tank, resolveDecor: DecorResolver, extras?: ExtraResolver): boolean {
   const dims = tankDims(tank);
   let sig = decorSignature(tank, dims);
   if (extras) for (const e of tank.equipment ?? []) sig += `|eq:${e.id}:${e.defId}`;
-  if (sig === env.decorSig) return false;
+  if (sig === env.decorSig) {
+    if (Math.abs(dims.waterY - env.surfaceY) > 1e-4) syncWaterLevel(env, tank, dims, extras);
+    return false;
+  }
   env.decorSig = sig;
   env.dims = dims;
   env.minX = -dims.L / 2;
@@ -320,6 +344,15 @@ export function syncEnvStatic(env: TankEnv, tank: Tank, resolveDecor: DecorResol
       (env.byKind[a.kind] ??= []).push(an);
     });
   }
+  env.staticColliders = env.colliders.length;
+  env.staticAnchors = env.anchors.length;
+  addExtras(env, tank, extras);
+  env.hasHost = env.byKind.host.length > 0;
+  return true;
+}
+
+/** Append the equipment solids (and their holdfast points) after the decor colliders / anchors. */
+function addExtras(env: TankEnv, tank: Tank, extras?: ExtraResolver): void {
   if (extras) {
     let list: ExtraSolid[] = [];
     try {
@@ -341,8 +374,21 @@ export function syncEnvStatic(env: TankEnv, tank: Tank, resolveDecor: DecorResol
       });
     }
   }
+}
+
+/** The water surface moved (no decor change): re-clamp anchors under it and re-derive the equipment solids. */
+function syncWaterLevel(env: TankEnv, tank: Tank, dims: TankDims, extras?: ExtraResolver): void {
+  env.dims = dims;
+  env.surfaceY = dims.waterY;
+  // drop the equipment solids and their anchors (they follow the decor entries), then add them back for the new level
+  env.colliders.length = Math.min(env.colliders.length, env.staticColliders);
+  const removed = new Set<Anchor>();
+  for (let i = env.staticAnchors; i < env.anchors.length; i++) removed.add(env.anchors[i]);
+  env.anchors.length = Math.min(env.anchors.length, env.staticAnchors);
+  if (removed.size) env.byKind.hitch = env.byKind.hitch.filter((an) => !removed.has(an));
+  for (const an of env.anchors) clampAnchor(env, an.pos);
+  addExtras(env, tank, extras);
   env.hasHost = env.byKind.host.length > 0;
-  return true;
 }
 
 function clampAnchor(env: TankEnv, p: THREE.Vector3) {

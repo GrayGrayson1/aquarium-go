@@ -46,6 +46,15 @@ export const EMERGENT_REACH_M = 0.016;
 
 export const SELL_BACK_FRACTION = 0.5;
 
+/**
+ * lane:staff (S05-01) — a move counts as a layout edit (for "aquascape a tank yourself" goals and the aquascape show
+ * classes) only when the piece really went somewhere: at least this far, this much turn, or this much resize.
+ * Nudging three pieces by a millimetre is not aquascaping.
+ */
+const EDIT_MOVE_M = 0.03;
+const EDIT_TURN_RAD = 0.35;
+const EDIT_SCALE_RATIO = 1.1;
+
 
 function footprint(def: DecorDef, scale: number, rotY: number): { rx: number; rz: number } {
   const w = def.size.w * scale;
@@ -201,7 +210,11 @@ export function placeDecorImpl(state: GameState, tankId: string, defId: string, 
     return { ok: false, message: `Not enough money — ${def.name} costs $${def.price}.` };
   }
   const rng = simRng(state);
+  // lane:staff (S05-06) — a piece back out of storage keeps everything it had (growth, health, frag lineage, the
+  // healing timer after a cut); only its spot changes.
   const inst: DecorInstance = {
+    ...initialLivingState(def),
+    ...fromInventory,
     id: fromInventory?.id ?? nextId(state, 'dc'),
     defId,
     x: round4(pos.x),
@@ -210,15 +223,15 @@ export function placeDecorImpl(state: GameState, tankId: string, defId: string, 
     rotY: round4(check.rotY),
     scale: round4(check.scale),
     seed: fromInventory?.seed ?? rng.int(1, 2 ** 31 - 2),
-    ...initialLivingState(def),
   };
-  if (fromInventory?.growth !== undefined) inst.growth = fromInventory.growth;
-  if (fromInventory?.health !== undefined) inst.health = fromInventory.health;
   tank.decor.push(inst);
-  bumpCounter(state, 'decorPlaced');
   bumpCounter(state, scapeEditsKey(tankId));
   tutorialAdvance(state, 'decor_placed');
-  addMastery(state, 'aquascaping', 2);
+  if (!owned) {
+    // new material is what builds aquascaping mastery; shuffling a stone in and out of storage is not
+    bumpCounter(state, 'decorPlaced');
+    addMastery(state, 'aquascaping', 2);
+  }
   afterChange(tank);
   return { ok: true, message: owned ? `${def.name} placed.` : `${def.name} placed — $${def.price}.`, decorId: inst.id };
 }
@@ -248,6 +261,10 @@ export function moveDecorImpl(state: GameState, tankId: string, decorId: string,
   }
   const dRot = check.rotY - inst.rotY;
   const sRatio = check.scale / inst.scale;
+  const moved = Math.hypot(pos.x - inst.x, pos.z - inst.z);
+  const turned = Math.abs(Math.atan2(Math.sin(dRot), Math.cos(dRot)));
+  const resized = Math.max(sRatio, 1 / Math.max(1e-6, sRatio));
+  const realEdit = moved >= EDIT_MOVE_M || turned >= EDIT_TURN_RAD || resized >= EDIT_SCALE_RATIO;
   inst.x = round4(pos.x);
   inst.z = round4(pos.z);
   inst.y = round4(check.y);
@@ -255,18 +272,26 @@ export function moveDecorImpl(state: GameState, tankId: string, decorId: string,
   inst.scale = round4(check.scale);
   const c = Math.cos(dRot);
   const s = Math.sin(dRot);
-  const d = tankDims(tank);
+  const host = footprint(def, inst.scale, inst.rotY);
   for (const r of riders) {
+    const od = getDecorDef(r.o.defId)!;
     const nx = inst.x + (r.lx * c + r.lz * s) * sRatio;
     const nz = inst.z + (-r.lx * s + r.lz * c) * sRatio;
-    r.o.x = round4(clamp(nx, -d.L / 2 + 0.01, d.L / 2 - 0.01));
-    r.o.z = round4(clamp(nz, -d.W / 2 + 0.01, d.W / 2 - 0.01));
-    r.o.rotY = round4(r.o.rotY + dRot);
-    const od = getDecorDef(r.o.defId)!;
+    // lane:staff (S05-08) — a rider obeys the glass like anything else: clamp it to its own limits at its new
+    // heading, and if that takes it off the host (a move hard against a wall) it stays behind on the bed instead.
+    const rot = r.o.rotY + dRot;
+    const lim = placementLimits(tank, od, r.o.scale, rot);
+    const cx = clamp(nx, -lim.maxX, lim.maxX);
+    const cz = clamp(nz, -lim.maxZ, lim.maxZ);
+    if (((cx - inst.x) / Math.max(1e-4, host.rx)) ** 2 + ((cz - inst.z) / Math.max(1e-4, host.rz)) ** 2 <= 1) {
+      r.o.x = round4(cx);
+      r.o.z = round4(cz);
+      r.o.rotY = round4(rot);
+    }
     r.o.y = round4(resolveBaseY(tank, od, r.o.x, r.o.z, r.o.scale, r.o.id));
   }
   bumpCounter(state, 'decorMoved');
-  bumpCounter(state, scapeEditsKey(tankId));
+  if (realEdit) bumpCounter(state, scapeEditsKey(tankId));
   afterChange(tank);
   return { ok: true, message: `${getDecorDef(inst.defId)?.name ?? 'Decor'} moved.` };
 }
@@ -302,6 +327,24 @@ export function removeDecorImpl(state: GameState, tankId: string, decorId: strin
   state.inventory.decor.push({ ...inst, x: 0, y: 0, z: 0 });
   afterChange(tank);
   return { ok: true, message: `${name} moved to storage.` };
+}
+
+/**
+ * lane:staff (S05-02) — re-seat every piece on the bed after the ground under it changed (a new substrate, a water
+ * conversion that swapped the bed): hardscape and rooted plants first, then the epiphytes and corals so they land on
+ * their re-seated hosts. Positions, rotations and sizes are untouched.
+ */
+export function reseatDecorImpl(tank: Tank): void {
+  const d = tankDims(tank);
+  const pass = (epiphytes: boolean) => {
+    for (const inst of tank.decor) {
+      const def = getDecorDef(inst.defId);
+      if (!def || isEpiphyte(def) !== epiphytes) continue;
+      inst.y = round4(resolveBaseY(tank, def, inst.x, inst.z, inst.scale, inst.id, d));
+    }
+  };
+  pass(false);
+  pass(true);
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));

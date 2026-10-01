@@ -12,7 +12,7 @@ export const TankThumb = memo(function TankThumb({ tank, residents, width = 132,
   const uid = useId().replace(/:/g, '');
   const [a, b] = WATER_CLASS_TINT[tank.waterClass] ?? WATER_CLASS_TINT.freshwater_tropical;
   const sub = tank.substrate?.color ?? '#8a7c68';
-  const seed = hashStr(tank.id);
+  const seed = hashStr(tank.id); // unsigned 32-bit: shift with >>> below, or half of all ids land off the left edge
   const decorKinds = tank.decor.slice(0, 7).map((d, i) => {
     const def = getDecorDef(d.defId);
     return { cat: def?.category ?? (i % 2 ? 'plant' : 'hardscape'), color: def?.palette?.[0], i };
@@ -49,7 +49,7 @@ export const TankThumb = memo(function TankThumb({ tank, residents, width = 132,
         <path d={`M0 ${floor} C 30 ${floor - 3}, 60 ${floor + 2}, ${W} ${floor - 2} L ${W} ${H} L 0 ${H} Z`} fill={sub} opacity={0.95} />
         {/* decor */}
         {decor.map(({ cat, color, i }) => {
-          const x = 14 + ((seed >> (i * 3)) % 100) * 1.02;
+          const x = 14 + ((seed >>> (i * 3)) % 100) * 1.02;
           if (cat === 'plant') {
             const c = color ?? '#3f8f4a';
             return (
@@ -73,8 +73,8 @@ export const TankThumb = memo(function TankThumb({ tank, residents, width = 132,
         })}
         {/* residents */}
         {shown.map((c, i) => {
-          const x = 18 + (((seed >> (i * 5)) % 70) + i * 17) % 88;
-          const y = 16 + (((seed >> (i * 7)) % 30) + i * 9) % 38;
+          const x = 18 + (((seed >>> (i * 5)) % 70) + i * 17) % 88;
+          const y = 16 + (((seed >>> (i * 7)) % 30) + i * 9) % 38;
           const s = 26 - i * 2;
           return (
             <g key={c.id} transform={`translate(${x} ${y})`}>

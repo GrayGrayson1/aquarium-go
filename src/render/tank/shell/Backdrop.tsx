@@ -176,6 +176,47 @@ function rockWallGeometry(L: number, H: number, depth: number, seed: number, det
   return out;
 }
 
+interface RockWallEntry {
+  wall: string;
+  detail: number;
+  geo: THREE.BufferGeometry;
+  refs: number;
+}
+/** Built rock walls, by wall (tank + size) and detail. */
+const rockWalls = new Map<string, RockWallEntry>();
+/** Walls nobody draws right now, oldest first; kept for the next view switch (a big wall takes 0.1–0.3 s to build). */
+const idleWalls: RockWallEntry[] = [];
+const IDLE_WALLS = 3;
+
+/**
+ * lane:tankrender — rock walls are cached and shared: a tank ↔ room flight (lod 0 ↔ 1) or a hero change used to
+ * rebuild the wall synchronously every time. A wall built at a higher detail serves lower-detail requests too.
+ */
+function acquireRockWall(L: number, H: number, depth: number, tankId: string, detail: number): RockWallEntry {
+  const wall = `${tankId}|${L.toFixed(4)}|${H.toFixed(4)}|${depth.toFixed(4)}`;
+  let best: RockWallEntry | undefined;
+  for (const e of rockWalls.values()) if (e.wall === wall && e.detail >= detail && (!best || e.detail < best.detail)) best = e;
+  if (!best) {
+    best = { wall, detail, geo: rockWallGeometry(L, H, depth, seedFrom(tankId), detail), refs: 0 };
+    rockWalls.set(`${wall}|${detail}`, best);
+  }
+  if (best.refs++ === 0) {
+    const i = idleWalls.indexOf(best);
+    if (i >= 0) idleWalls.splice(i, 1);
+  }
+  return best;
+}
+
+function releaseRockWall(e: RockWallEntry): void {
+  if (--e.refs > 0) return;
+  idleWalls.push(e);
+  while (idleWalls.length > IDLE_WALLS) {
+    const old = idleWalls.shift()!;
+    rockWalls.delete(`${old.wall}|${old.detail}`);
+    old.geo.dispose();
+  }
+}
+
 export function Backdrop({ kind, d, sg, fx, lod, tankId }: { kind: BackdropKind; d: TankDims; sg: ShellGeom; fx: TankFXUniforms; lod: RenderLod; tankId: string }) {
   const flatKind = kind === 'black' || kind === 'deep_blue' || kind === 'frosted' ? kind : kind === 'rock_3d' ? 'black' : null;
   const flatMat = useMemo(() => (flatKind ? flatBackdropMaterial(flatKind, fx) : null), [flatKind, fx]);
@@ -183,11 +224,14 @@ export function Backdrop({ kind, d, sg, fx, lod, tankId }: { kind: BackdropKind;
 
   const rock = kind === 'rock_3d';
   const rockDepth = Math.min(0.1, Math.max(0.035, d.W * 0.2));
-  const rockGeo = useMemo(() => {
-    if (!rock) return null;
-    return rockWallGeometry(d.L - 0.002, d.H - 0.004, rockDepth, seedFrom(tankId), lod === 0 ? 3 : 1);
-  }, [rock, d.L, d.H, rockDepth, tankId, lod]);
-  useEffect(() => () => rockGeo?.dispose(), [rockGeo]);
+  const rockWall = useMemo(() => (rock ? acquireRockWall(d.L - 0.002, d.H - 0.004, rockDepth, tankId, lod === 0 ? 3 : 1) : null), [rock, d.L, d.H, rockDepth, tankId, lod]);
+  useEffect(
+    () => () => {
+      if (rockWall) releaseRockWall(rockWall);
+    },
+    [rockWall],
+  );
+  const rockGeo = rockWall?.geo ?? null;
   const rockMat = useMemo(() => {
     if (!rock) return null;
     const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });

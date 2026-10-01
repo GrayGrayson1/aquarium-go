@@ -72,7 +72,7 @@ export function toggleTankCard() {
     if (Object.keys(patch).length) ui.set(patch);
   }
   const param = open ? guideWaterParam() : null;
-  s.set(param ? { tankCardOpen: open, openParam: param } : { tankCardOpen: open });
+  s.set({ tankCardOpen: open, openParam: param });
   if (open) tutorialFlag('opened_tank_card');
 }
 

@@ -265,7 +265,8 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   const status: CreatureWellbeing['status'] = danger ? 'danger' : watch ? 'watch' : 'good';
   let headline: string;
   if (status === 'good') headline = s.stress < 25 && s.enrichment > 55 && s.comfort > 75 ? 'Thriving' : 'Doing well';
-  else headline = (notes[0] ?? (status === 'danger' ? 'Needs help' : 'Keep an eye on this one')).split(/[.:—]/)[0].trim();
+  // First clause of the first note; split on sentence ends only, so decimals ("1.35 ppm") survive.
+  else headline = (notes[0] ?? (status === 'danger' ? 'Needs help' : 'Keep an eye on this one')).split(/\.(?=\s|$)|[:—]/)[0].trim();
   return { status, headline, notes, stress: factors };
 }
 

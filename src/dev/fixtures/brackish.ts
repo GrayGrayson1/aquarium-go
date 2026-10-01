@@ -8,7 +8,7 @@
  */
 import type { GameState, Tank } from '@/types';
 import { newGame } from '@/sim/newGame';
-import { placeDecor, resolveBaseY } from '@/sim/aquascape';
+import { maxScaleFor, placeDecor, placementLimits, resolveBaseY } from '@/sim/aquascape';
 import { getDecorDef } from '@/data/catalog/decor';
 import { nextId } from '@/sim/ids';
 import { addPlacedTank, ensureFacility, finishTank, stockTank, unlockEverything, type StockEntry } from './core-helpers';
@@ -48,8 +48,13 @@ function scape(g: GameState, t: Tank, specs: DecorSpec[]): void {
       ok = false;
     }
     if (!ok) {
-      const scale = d.scale ?? 1;
-      t.decor.push({ id: nextId(g, 'dec'), defId: d.defId, x: d.x, y: resolveBaseY(t, def, d.x, d.z, scale), z: d.z, rotY: d.rotY ?? 0, scale, seed: 7000 + t.decor.length * 131 });
+      // lane:facrender (G3-04) — forced pieces still obey the tank: clamp the scale so the crown stays under the
+      // lid (the raw spec scale grew vallisneria through the hood) and pull the spot in from the glass
+      const scale = Math.min(d.scale ?? 1, maxScaleFor(t, def));
+      const lim = placementLimits(t, def, scale, d.rotY ?? 0);
+      const x = Math.max(-lim.maxX, Math.min(lim.maxX, d.x));
+      const z = Math.max(-lim.maxZ, Math.min(lim.maxZ, d.z));
+      t.decor.push({ id: nextId(g, 'dec'), defId: d.defId, x, y: resolveBaseY(t, def, x, z, scale), z, rotY: d.rotY ?? 0, scale, seed: 7000 + t.decor.length * 131 });
     }
   }
 }

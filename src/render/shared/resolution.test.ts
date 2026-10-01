@@ -1,8 +1,14 @@
 /** lane:pc-perf — pixel budget, adaptive render scale and GPU classification. */
 import { describe, expect, it } from 'vitest';
-import { budgetDpr, ScaleController, SCALE_MIN, type ScaleDecision } from './resolution';
+import { budgetDpr, LatenessProbe, ScaleController, SCALE_MIN, type ScaleDecision } from './resolution';
 import { classifyRenderer } from './gpuTier';
 import { QUALITY } from './quality';
+
+/** Feed slow frames at the floor until the controller asks for the feature drop. */
+function runToDrop(c: ScaleController): boolean {
+  for (let t = 0; t < 60_000; t += 45) if (c.frame(45)?.kind === 'drop') return true;
+  return false;
+}
 
 /** Feed `seconds` of frames at `ms` each; returns every decision. */
 function run(c: ScaleController, ms: number, seconds: number): ScaleDecision[] {
@@ -96,6 +102,52 @@ describe('ScaleController', () => {
     expect(drops).toHaveLength(1);
   });
 
+  // lane:tankrender — a drop forced by a passing burst must not be remembered; one that fixed the frame rate is
+  it('confirms a drop only once the frames after it are on time', () => {
+    const c = new ScaleController(SCALE_MIN);
+    expect(runToDrop(c)).toBe(true);
+    // the tier change hands the verdict to a fresh controller
+    const c2 = new ScaleController(1);
+    c2.carryOver(c);
+    expect(run(c2, 16.7, 2).filter((x) => x?.kind === 'drop_helped')).toHaveLength(0);
+    expect(run(c2, 16.7, 4).filter((x) => x?.kind === 'drop_helped')).toHaveLength(1);
+    // once only, and never a second drop this session
+    expect(run(c2, 16.7, 10).filter((x) => x?.kind === 'drop_helped')).toHaveLength(0);
+    expect(run(c2, 45, 60).filter((x) => x?.kind === 'drop')).toHaveLength(0);
+  });
+
+  it('writes a drop off when frames stay slow afterwards (the machine was just struggling)', () => {
+    const c = new ScaleController(SCALE_MIN);
+    expect(runToDrop(c)).toBe(true);
+    const c2 = new ScaleController(1);
+    c2.carryOver(c);
+    run(c2, 30, 5);
+    expect(run(c2, 16.7, 20).filter((x) => x?.kind === 'drop_helped')).toHaveLength(0);
+  });
+
+  it('does not credit the resolution for a faster window that was mostly main-thread work', () => {
+    const c = new ScaleController(1);
+    // slow and GPU-looking for a second: steps down
+    const out: ScaleDecision[] = [];
+    for (let i = 0; i < 25; i++) out.push(c.frame(40, 3));
+    expect(out.filter((x) => x?.kind === 'scale')[0]).toMatchObject({ reason: 'down' });
+    // settle window, then a verify window that is faster but CPU-bound (a UI burst tailing off): reverted
+    for (let i = 0; i < 25; i++) out.push(c.frame(40, 3));
+    for (let i = 0; i < 28; i++) out.push(c.frame(36, 6, 24));
+    const d = out.filter((x) => x?.kind === 'scale');
+    expect(d[1]).toMatchObject({ reason: 'revert', scale: 1 });
+  });
+
+  it('treats a window of main-thread bursts as CPU-bound even when the bursts land in hitch frames', () => {
+    const c = new ScaleController(1);
+    const out: ScaleDecision[] = [];
+    // an 80 ms burst every 100 ms: the frame after each burst is a >100 ms hitch, and the probe reports the burst's
+    // time with the short frame that follows it
+    for (let s = 0; s < 30; s++) for (let k = 0; k < 10; k++) out.push(c.frame(k % 2 ? 104 : 30, 6, k % 2 ? 0 : 80));
+    expect(out.filter((x) => x?.kind === 'scale')).toHaveLength(0);
+    expect(c.scale).toBe(1);
+  });
+
   it('ignores hitches (long frames) when judging throughput', () => {
     const c = new ScaleController(1);
     const out: ScaleDecision[] = [];
@@ -104,6 +156,34 @@ describe('ScaleController', () => {
       out.push(c.frame(400)); // a GC / sim hitch once a second
     }
     expect(out.filter((x) => x?.kind === 'scale')).toHaveLength(0);
+  });
+});
+
+describe('LatenessProbe', () => {
+  it('counts nothing for timers that fire on time', () => {
+    const p = new LatenessProbe();
+    expect(p.tick(100, 8, 108.4)).toBe(0);
+    expect(p.take()).toBe(0);
+  });
+  it('counts the lateness caused by work outside the frame loop', () => {
+    const p = new LatenessProbe();
+    expect(p.tick(100, 8, 140)).toBeCloseTo(32);
+    expect(p.take()).toBeCloseTo(32);
+    expect(p.take()).toBe(0);
+  });
+  it('subtracts the frame loop spans it overlapped, so a GPU-heavy frame adds nothing', () => {
+    const p = new LatenessProbe();
+    p.frame(102, 130); // a 28 ms render submission inside the probe interval
+    expect(p.tick(100, 8, 131)).toBe(0);
+    p.frame(140, 150);
+    // 10 ms of frame + 15 ms of something else
+    expect(p.tick(135, 8, 168)).toBeCloseTo(15);
+  });
+  it('forgets everything on reset', () => {
+    const p = new LatenessProbe();
+    p.tick(0, 8, 50);
+    p.reset();
+    expect(p.take()).toBe(0);
   });
 });
 

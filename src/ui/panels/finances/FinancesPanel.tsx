@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import { Wallet, TrendingUp, TrendingDown, Receipt, Gauge, TriangleAlert, HandCoins, Lightbulb, Landmark, Layers, Building2, Users } from 'lucide-react';
 import type { GameState, LedgerEntry } from '@/types';
 import { Money, formatMoney } from '@/ui/kit';
-import { dailyOperatingCost, cashSuggestions, LOAN_AFTER_DEBT_HOURS, type OperatingCosts } from '@/sim/economy';
+import { dailyOperatingCost, cashSuggestions, restartNeed, LOAN_AFTER_DEBT_HOURS, type OperatingCosts } from '@/sim/economy';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe } from '../common/hooks';
 import { Chip, Seg, EmptyState, SectionHead, Tile, Callout, Bar } from '../common/parts';
@@ -37,7 +37,13 @@ export function FinancesPanel() {
     }
     const series = [...byDay.values()].sort((a, b) => a.day - b.day).slice(-14);
     const from = (today - 14) * 24;
-    const recent = g.finance.ledger.filter((e) => e.hour >= from);
+    // lane:fix-panels — the ledger keeps a fixed number of entries, so in a busy venue it can cover fewer than 14 days;
+    // the category cards then say how many days they really cover (they used to disagree with the chart by a quarter)
+    const oldest = g.finance.ledger.reduce((m, e) => Math.min(m, e.hour), Infinity);
+    const catFrom = Math.max(from, Number.isFinite(oldest) ? oldest : from);
+    const truncated = catFrom > from && g.finance.daily.some((d) => d.day < dayOfHour(catFrom) && (d.income !== 0 || d.expenses !== 0));
+    const catDays = truncated ? Math.max(1, today - dayOfHour(catFrom) + 1) : 14;
+    const recent = g.finance.ledger.filter((e) => e.hour >= catFrom);
     const cats = new Map<CatKey, { inc: number; exp: number }>();
     for (const e of recent) {
       // lane:staff — wages are operating costs in the ledger, but get their own line in the breakdown
@@ -52,7 +58,7 @@ export function FinancesPanel() {
     const ops: OperatingCosts = safe(() => dailyOperatingCost(g), { total: orderedTanks(g).reduce((a, t) => a + dailyCost(g, t), 0), tanks: orderedTanks(g).map((t) => ({ tankId: t.id, name: t.name, cost: dailyCost(g, t) })), rent: 0, levelName: '' });
     const net14 = series.reduce((a, d) => a + d.income - d.expenses, 0);
     const todayPt = series.find((d) => d.day === today);
-    return { series, income, expenses, ops, net14, todayPt };
+    return { series, income, expenses, ops, net14, todayPt, catDays, truncated };
   }, [g]);
 
   if (!g || !data) return null;
@@ -62,6 +68,9 @@ export function FinancesPanel() {
   const loan = g.finance.loan;
   const runway = data.ops.total > 0 ? money / data.ops.total : Infinity;
   const tips = inDebt || runway < 3 ? safe(() => cashSuggestions(g), []) : [];
+  // lane:fix-integrate-ui — an empty room the player can't restock: the club lends a restart at its second midnight
+  // (the first one only notes it), so say which midnight (P5-08)
+  const stranded = safe(() => restartNeed(g), null);
 
   const ledger = [...g.finance.ledger]
     .filter((e) => (filter === 'income' ? e.amount >= 0 : filter === 'expenses' ? e.amount < 0 : true))
@@ -107,6 +116,12 @@ export function FinancesPanel() {
             )}
           </Callout>
         )}
+        {stranded !== null && (
+          <Callout tone="info" icon={<HandCoins size={16} />} title="A fresh start is on the way">
+            Your {g.tankOrder.length ? 'tanks are empty' : 'room is empty'} and money is short — the aquarium club will lend you enough to start again{' '}
+            {g.finance.strandedSinceHour != null ? 'tonight at midnight' : 'at the end of tomorrow, if nothing changes by then'}.
+          </Callout>
+        )}
         {!inDebt && runway < 3 && data.ops.total > 0 && (
           <Callout tone="watch" icon={<Gauge size={16} />} title="Running low">
             About {Math.max(0, Math.floor(runway))} day{Math.floor(runway) === 1 ? '' : 's'} of running costs left in the bank.
@@ -135,9 +150,14 @@ export function FinancesPanel() {
         </section>
 
         <div className="pn-grid pn-grid--2">
-          <CategoryList title="Income · 14 days" icon={<TrendingUp size={14} />} rows={data.income} tone="income" />
-          <CategoryList title="Spending · 14 days" icon={<TrendingDown size={14} />} rows={data.expenses} tone="expense" />
+          <CategoryList title={`Income · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingUp size={14} />} rows={data.income} tone="income" />
+          <CategoryList title={`Spending · ${data.truncated ? `last ${data.catDays} days` : '14 days'}`} icon={<TrendingDown size={14} />} rows={data.expenses} tone="expense" />
         </div>
+        {data.truncated && (
+          <p className="pn-tiny pn-muted" style={{ margin: '-6px 0 0' }}>
+            The ledger keeps only the most recent entries, so the breakdown covers the last {data.catDays} day{data.catDays === 1 ? '' : 's'}; the chart above uses the daily totals.
+          </p>
+        )}
 
         <section>
           <SectionHead title="Running costs per day" icon={<Gauge size={14} />} />

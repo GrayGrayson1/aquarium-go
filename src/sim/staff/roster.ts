@@ -9,6 +9,7 @@ import { emitEvent } from '../context';
 import { HOURS_PER_DAY } from '../time';
 import { spend } from '../economy';
 import { getFacilityLevel } from '@/data/facilities';
+import { AQUARIUM_CLUB } from '@/data/buyers';
 import {
   STAFF_FIRST_NAMES,
   STAFF_LAST_NAMES,
@@ -283,6 +284,12 @@ export function tidyAssignments(state: GameState): void {
       .filter((m) => m.role === 'aquarist' && fitsIn(state, m, tank))
       .sort((a, b) => b.skill - a.skill || a.tankIds.length - b.tankIds.length)[0];
     if (keeper) keeper.tankIds.push(id);
+    // lane:staff (S05-05) — docents only reach the exhibits they present, so a new display tank joins the round of the
+    // docent with the lightest load
+    if ((tank.purpose ?? 'display') === 'display') {
+      const docent = st.roster.filter((m) => m.role === 'docent' && fitsIn(state, m, tank)).sort((a, b) => a.tankIds.length - b.tankIds.length || b.skill - a.skill)[0];
+      if (docent) docent.tankIds.push(id);
+    }
   }
 }
 
@@ -293,9 +300,7 @@ export function tidyAssignments(state: GameState): void {
  * step's nightly bills so wages land in the same day's ledger and summary. Wages never create debt: someone who can't
  * be paid keeps working through their notice and leaves after STAFF_NOTICE_DAYS unpaid midnights.
  */
-export function payStaff(state: GameState): void {
-  const st = state.staff;
-  if (!st || !st.roster.length || state.isShowcase) return;
+function planPayroll(state: GameState, st: NonNullable<GameState['staff']>): { paid: { m: StaffMember; amount: number }[]; unpaid: StaffMember[] } {
   const hour = state.clock.hour;
   const priority = (r: StaffRole) => STAFF_ROLE_ORDER.indexOf(r);
   const order = [...st.roster].sort((a, b) => priority(a.role) - priority(b.role) || a.hiredHour - b.hiredHour);
@@ -312,6 +317,24 @@ export function payStaff(state: GameState): void {
       paid.push({ m, amount });
     } else unpaid.push(m);
   }
+  return { paid, unpaid };
+}
+
+/**
+ * Would tonight's payday cost the player someone on their last notice day? The finance step asks this before payday
+ * so the club's loan can pay the team even when the cash ran short of wages before it ran into the red (G2-03).
+ */
+export function staffLeavingTonight(state: GameState): boolean {
+  const st = state.staff;
+  if (!st || !st.roster.length || state.isShowcase) return false;
+  return planPayroll(state, st).unpaid.some((m) => (m.unpaidDays ?? 0) + 1 >= STAFF_NOTICE_DAYS);
+}
+
+export function payStaff(state: GameState): void {
+  const st = state.staff;
+  if (!st || !st.roster.length || state.isShowcase) return;
+  const hour = state.clock.hour;
+  const { paid, unpaid } = planPayroll(state, st);
   const total = Math.round(paid.reduce((a, p) => a + p.amount, 0) * 100) / 100;
   if (total > 0) {
     const names = paid.map((p) => firstName(p.m));
@@ -324,12 +347,12 @@ export function payStaff(state: GameState): void {
     if (m.unpaidDays >= STAFF_NOTICE_DAYS) {
       st.roster = st.roster.filter((x) => x.id !== m.id);
       noteDeparture(state, m, 'unpaid');
-      const tanks = m.role === 'aquarist' && m.tankIds.length ? ` ${listTanks(state, m.tankIds)} ${m.tankIds.length === 1 ? 'is' : 'are'} back in your hands — your animals are safe.` : '';
+      const tanks = m.role === 'aquarist' && m.tankIds.length ? ` ${listTanks(state, m.tankIds)} ${m.tankIds.length === 1 ? 'is' : 'are'} back in your hands — feed and clean them yourself until you can rehire.` : '';
       emitEvent(state, { kind: 'warning', text: `${m.name} has left: their wages went unpaid for ${STAFF_NOTICE_DAYS} days. No hard feelings.${tanks}`, toast: true });
     } else if (m.unpaidDays === 1) {
       emitEvent(state, {
         kind: 'warning',
-        text: `There wasn’t enough cash to pay ${m.name} (${fmt$(m.wage)}). ${firstName(m)} will keep working for now, but will leave after ${STAFF_NOTICE_DAYS} unpaid days.`,
+        text: `There wasn’t enough cash to pay ${m.name} (${fmt$(m.wage)}). ${firstName(m)} will keep working for now, but will leave after ${STAFF_NOTICE_DAYS} unpaid days${state.finance.loan ? '' : ` — if the red ink lasts, ${AQUARIUM_CLUB} may step in before then`}.`,
         toast: true,
       });
     }

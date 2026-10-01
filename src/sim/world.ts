@@ -9,7 +9,7 @@ import type { GameState, Tank } from '@/types';
 import { makeContext, type SimLod } from './context';
 import { MAX_SUBSTEP_HOURS } from './time';
 import { stepTankWater, getWaterReport } from './water';
-import { evaluateTank } from './compat';
+import { evaluateTank, clearCompatCache } from './compat';
 import { stepTankCreatures, stepTankBreeding, creaturesInTank } from './life';
 import { stepMarket, stepFinance } from './economy';
 import { stepVisitors, stepProgression, exhibitScore } from './facility';
@@ -36,8 +36,21 @@ export function tankLod(state: GameState, tankId: string, opts: AdvanceOptions):
   return idx < REDUCED_TANK_BUDGET ? 'reduced' : 'summary';
 }
 
+/**
+ * lane:fix-core — the compatibility cache answers by a quantized signature, so a cache warmed by another world can
+ * answer for a slightly different tank and be cleared at a different moment; two identical runs then drift apart in
+ * the last decimals (tests/sim/staff-sim 'is deterministic'). Every distinct world object starts cold.
+ */
+let lastWorld: GameState | null = null;
+function enterWorld(state: GameState): void {
+  if (state === lastWorld) return;
+  lastWorld = state;
+  clearCompatCache();
+}
+
 /** Advance the whole world by `hours` of game time. */
 export function advanceWorld(state: GameState, hours: number, opts: AdvanceOptions = {}): void {
+  enterWorld(state);
   let remaining = Math.max(0, hours);
   while (remaining > 1e-9) {
     const dt = Math.min(MAX_SUBSTEP_HOURS, remaining);
@@ -47,6 +60,11 @@ export function advanceWorld(state: GameState, hours: number, opts: AdvanceOptio
 }
 
 function stepOnce(state: GameState, dt: number, opts: AdvanceOptions): void {
+  // lane:fix-core (G1-03) — this step covers world time [clock, clock + dt); a tank flushed here is anchored so its
+  // pieces END at clock + dt, exactly like a flush from flushSimDebt / the loop's smoothing pass (which run after
+  // the clock advanced and end at `clock`). Anchoring in-step flushes one step early left a dt-long gap in the
+  // tank's time axis whenever the two kinds of flush alternated, and autofeeds inside the gap never fired.
+  const endHour = state.clock.hour + dt;
   for (const tankId of [...state.tankOrder]) {
     const tank = state.tanks[tankId];
     if (!tank) continue;
@@ -56,7 +74,7 @@ function stepOnce(state: GameState, dt: number, opts: AdvanceOptions): void {
     if (tank.simDebtHours + 1e-9 >= threshold) {
       const tdt = tank.simDebtHours;
       tank.simDebtHours = 0;
-      stepTank(state, tank, tdt, lod);
+      stepTank(state, tank, tdt, lod, endHour);
     }
   }
   const ctx = makeContext(state, dt, 'full');
@@ -71,6 +89,7 @@ function stepOnce(state: GameState, dt: number, opts: AdvanceOptions): void {
 
 /** Flush all accumulated tank sim debt (before save / when leaving a tank). */
 export function flushSimDebt(state: GameState): void {
+  enterWorld(state);
   for (const tankId of state.tankOrder) {
     const tank = state.tanks[tankId];
     if (tank && (tank.simDebtHours ?? 0) > 0) {
@@ -97,13 +116,17 @@ const FOOD_PIECE_H = 1;
  */
 const FRESH_FOOD_PIECE_H = 0.5;
 
-export function stepTank(state: GameState, tank: Tank, dt: number, lod: SimLod): void {
-  if (!inResidentScope(state)) return withResidentIndex(state, () => stepTank(state, tank, dt, lod)); // lane:perf2 (flush/smoothing calls)
+/**
+ * Step one tank by `dt` hours of accumulated debt. `endHour` is the world time the debt runs up to: the current
+ * clock for a flush between steps (default), `clock + dt` for a flush inside stepOnce (see there).
+ */
+export function stepTank(state: GameState, tank: Tank, dt: number, lod: SimLod, endHour = state.clock.hour): void {
+  if (!inResidentScope(state)) return withResidentIndex(state, () => stepTank(state, tank, dt, lod, endHour)); // lane:perf2 (flush/smoothing calls)
   let left = dt;
   while (left > 1e-9) {
     const fresh = (tank.water.lab?.foodAgeH ?? 0) < FRESH_FOOD_PIECE_H; // lane:staff2
     const piece = lod !== 'full' && tank.water.foodInWater > 0.5 ? Math.min(fresh ? FRESH_FOOD_PIECE_H : FOOD_PIECE_H, left) : left;
-    stepTankPiece(state, tank, piece, lod, state.clock.hour - left);
+    stepTankPiece(state, tank, piece, lod, endHour - left);
     left -= piece;
   }
   const food = refreshTankCache(state, tank);
@@ -112,10 +135,10 @@ export function stepTank(state: GameState, tank: Tank, dt: number, lod: SimLod):
 
 function stepTankPiece(state: GameState, tank: Tank, dt: number, lod: SimLod, startHour: number): void {
   const ctx = makeContext(state, dt, lod);
-  // Tank sub-steps are anchored to the current clock minus the debt so timestamps stay meaningful.
+  // Tank sub-steps are anchored to world time (end of the debt minus what is left) so timestamps stay meaningful.
   ctx.hour = startHour;
   stepTankWater(state, tank, dt, ctx);
-  stepTankDecor(state, tank, dt);
+  stepTankDecor(state, tank, dt, ctx.hour); // lane:fix-core2 (S05-10) — same world-time window as the water step
   stepTankCreatures(state, tank, dt, ctx);
   stepTankBreeding(state, tank, dt, ctx);
   tank.tapPressure = Math.max(0, tank.tapPressure - dt * 6);

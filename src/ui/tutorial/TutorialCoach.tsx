@@ -22,7 +22,7 @@ import { tutorialAdvance, tutorialSkip, currentTutorialStep } from '@/sim/facili
 import { interpolate } from '@/sim/facility/progression';
 import { findSpecies } from '@/data/species';
 import { useShell } from '../common/shellStore';
-import { safe, useMedia } from '../common/safe';
+import { safe, SHORT_LANDSCAPE_QUERY, useMedia } from '../common/safe';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { ProgressDots, Button } from '../kit';
 import { openPanel } from '../hud/Dock';
@@ -253,7 +253,8 @@ function useCoachLayout(active: boolean) {
         const aspect = 2;
         const bottomFit = Math.min(W / aspect, Math.max(0, r.top - hudTop));
         const leftFit = Math.min(Math.max(0, W - r.right) / aspect, H - hudTop - hudBottom);
-        const phone = window.matchMedia?.(BOTTOM_SHEET_QUERY).matches ?? false;
+        // (a phone held sideways keeps the card in the bottom-left corner: a left strip leaves the tank more room)
+        const phone = (window.matchMedia?.(BOTTOM_SHEET_QUERY).matches ?? false) && !(window.matchMedia?.(SHORT_LANDSCAPE_QUERY).matches ?? false);
         const side = !phone && leftFit > bottomFit * 1.05 ? 'left' : 'bottom';
         if (useShell.getState().coachSide !== side) useShell.getState().set({ coachSide: side });
       } else if (useShell.getState().coachSide) useShell.getState().set({ coachSide: null });
@@ -275,6 +276,7 @@ export function TutorialCoach() {
   const game = useGame((s) => s.game);
   const hints = useSettings((s) => s.showTutorialHints);
   const panel = useUI((s) => s.panel);
+  const popover = useShell((s) => s.popover);
   const tool = useUI((s) => s.tool);
   const speed = useGame((s) => s.game?.clock.speed ?? 1);
   const fine = useMedia(FINE_POINTER);
@@ -298,7 +300,9 @@ export function TutorialCoach() {
     if (lastIdx.current != null && cur.index > lastIdx.current) {
       sfx('unlock', { volume: 0.6 });
       setJustAdvanced(true);
-      const slowed = restoreGuideSpeed();
+      // two waiting steps in a row ("Word gets around" → reputation): ×3 carries over instead of dropping to 1× for
+      // a second wait the player would have to speed up again
+      const slowed = isWaitingStep(cur.step.objective) ? false : restoreGuideSpeed();
       setDoneLine(slowed ? `${cur.prevDone ?? 'Done.'} Back to normal speed.` : cur.prevDone);
       setCollapsed(false);
       setConfirmSkip(false);
@@ -352,7 +356,9 @@ export function TutorialCoach() {
   const observing = cur.step.id === 'observe' && target === 'scene';
   const action = observing ? 'follow-starter' : target;
   const starterName = Object.values(game.creatures).find((c) => c.isStarter && c.status === 'alive')?.name;
-  const showLabel = observing ? (starterName ? `Follow ${shortName(starterName)}` : 'Follow') : SHOW_ME_LABEL[target] ?? (target.startsWith('dock-') ? `Open ${target.slice(5)}` : '');
+  // the CTA follows the state: once the food picker / Build is open it says what to do there instead of "Open …"
+  const opened = (target === 'tool-feed' && popover === 'food') || (target === 'tool-target-feed' && popover === 'target_food') ? 'Pick a food' : target === 'dock-build' && panel === 'build' ? 'Pick a plant or cave' : null;
+  const showLabel = observing ? (starterName ? `Follow ${shortName(starterName)}` : 'Follow') : opened ?? SHOW_ME_LABEL[target] ?? (target.startsWith('dock-') ? `Open ${target.slice(5)}` : '');
   const canNext = cur.step.objective.type === 'flag' && !!cur.step.objective.fallbackHours;
   const waiting = isWaitingStep(cur.step.objective);
   const progress = waiting ? stepProgress(game, cur.step.objective) : null;
@@ -514,8 +520,16 @@ function TutorialHighlight({ target }: { target: string }) {
     }
     let raf = 0;
     let last = '';
+    // phones: the dock scrolls sideways, and the ring used to sit around a Build / Research button that was off the
+    // edge of the screen. The target is scrolled into view once per step (the ring then tracks it as usual).
+    let scrolled = false;
     const measure = () => {
       const el = document.querySelector<HTMLElement>(`[data-tutorial-id="${CSS.escape(target)}"]`);
+      if (el && !scrolled && el.closest('.ag-dock__scroll')) {
+        scrolled = true;
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && (r.left < 0 || r.right > window.innerWidth)) el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+      }
       if (!el || el.offsetParent === null || isCovered(el)) {
         if (last !== 'none') {
           last = 'none';
@@ -548,11 +562,10 @@ function TutorialHighlight({ target }: { target: string }) {
 
 /** End of the guide: what the player has learnt (care, beauty, individuals, business) and what unlocks next. */
 function GuideFinale({ game, onClose }: { game: GameState; onClose: () => void }) {
+  // (no auto-close: the recap is the one place that says what unlocks next, and "Later" is right there)
   useEffect(() => {
     sfx('celebrate');
-    const t = window.setTimeout(onClose, 30000);
-    return () => window.clearTimeout(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   const starter = Object.values(game.creatures).find((c) => c.isStarter && c.status === 'alive');
   const tank = starter?.tankId ? game.tanks[starter.tankId] : game.tanks[game.tankOrder[0]];
   const name = starter?.name ?? 'Your companion';

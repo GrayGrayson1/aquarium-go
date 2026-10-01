@@ -5,6 +5,8 @@
  * Invariants:
  * - Purchases (spend without allowDebt) can NEVER push money below 0.
  * - Only operating bills (allowDebt) may create debt. Animals are never repossessed.
+ * - The game never dead-ends on money: debt brings the club loan after LOAN_AFTER_DEBT_HOURS, and an empty room the
+ *   player can't restock brings a restart loan after a day (lane:fix-econ, P5-08).
  */
 import type { GameState, LedgerEntry, DailySummary } from '@/types';
 import type { SimContext } from '../context';
@@ -12,16 +14,22 @@ import { emitEvent } from '../context';
 import { tankDailyCost } from '../water';
 import { isUnlocked } from '../facility';
 import { getFacilityLevel } from '@/data/facilities';
-import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { TANK_TIER_BY_ID, TANK_TIERS } from '@/data/catalog/tanks';
 import { AQUARIUM_CLUB, LOCAL_FISH_STORE } from '@/data/buyers';
-import { dayIndex, finite, fmtMoney, roundCents, pushCapped } from './util';
+import { findSpecies } from '@/data/species';
+import { dayIndex, finite, fmtMoney, roundCents, pushCapped, nicePrice } from './util';
 import { quickSellQuote } from './valuation';
-import { payStaff, staffWagesPerDay } from '../staff'; // lane:staff
+import { payStaff, staffLeavingTonight, staffWagesPerDay } from '../staff'; // lane:staff
 
 const LEDGER_CAP = 400;
 const DAILY_CAP = 120;
-/** Debt duration before the aquarium club steps in. */
+/**
+ * Debt duration before the aquarium club steps in (three midnights in the red). The loan lands at that midnight BEFORE
+ * wages are paid, so a team on notice can be paid by it instead of walking out the same night (S05-11).
+ */
 export const LOAN_AFTER_DEBT_HOURS = 72;
+/** An empty room the player can't restock gets the club's restart loan after this long (one midnight to the next). */
+export const RESTART_AFTER_HOURS = 24;
 /** Share of each day's income that repays the loan. */
 export const LOAN_REPAY_SHARE = 0.25;
 const LOAN_MEMO = 'Emergency loan';
@@ -118,6 +126,40 @@ export function cashSuggestions(state: GameState): string[] {
   return out;
 }
 
+// ───────────────────────────── stranded: empty room, no way back ─────────────────────────────
+
+/** A restart means a proper animal (not one $3 shrimp from a split group): at least this much for livestock. */
+const RESTART_FLOOR = 40;
+
+/**
+ * Money the player needs to get going again when nothing is alive: the cheapest animal in the shop that fits one of
+ * their tanks (at least RESTART_FLOOR), plus a tank if the room is empty, and two days of bills. Returns null when
+ * they are not stranded — something is alive, hatching, listed, or they can already afford a restart (P5-08).
+ */
+export function restartNeed(state: GameState): number | null {
+  const creatures = Object.values(state.creatures);
+  if (creatures.some((c) => c.status === 'alive' || c.status === 'listed')) return null;
+  if (Object.values(state.clutches ?? {}).some((cl) => cl.count > 0)) return null;
+  if (state.market.listings.some((l) => l.status === 'active')) return null;
+  const tanks = state.tankOrder.map((id) => state.tanks[id]).filter(Boolean);
+  let cheapest = Infinity;
+  for (const o of state.market.stock) {
+    const sp = findSpecies(o.speciesId);
+    if (tanks.length && !tanks.some((t) => !sp || sp.environment === t.environment)) continue;
+    const n = Math.max(1, o.creatures.length);
+    const unit = n > 1 ? (o.unitPrice ?? Math.max(1, nicePrice((o.price / n) * 1.12))) : o.price;
+    cheapest = Math.min(cheapest, unit, o.price);
+  }
+  let need = Math.max(RESTART_FLOOR, Number.isFinite(cheapest) ? cheapest : 0);
+  if (!tanks.length) {
+    // No tank either: the cheapest kit the player can buy (tank + bundled gear, roughly 1.5× the glass).
+    const tier = TANK_TIERS.filter((t) => isUnlocked(state, t.unlock)).sort((a, b) => a.price - b.price)[0];
+    need += Math.round((tier?.price ?? 60) * 1.5);
+  }
+  need += dailyOperatingCost(state).total * 2;
+  return state.finance.money < need ? Math.ceil(need) : null;
+}
+
 // ───────────────────────────── daily step ─────────────────────────────
 
 function ledgerForDay(state: GameState, day0: number): LedgerEntry[] {
@@ -126,7 +168,7 @@ function ledgerForDay(state: GameState, day0: number): LedgerEntry[] {
   return state.finance.ledger.filter((e) => e.hour >= lo - 1e-6 && e.hour < hi + 1e-6);
 }
 
-function runMidnight(state: GameState, endedDay0: number): void {
+function runMidnight(state: GameState, endedDay0: number, end: number): void {
   const f = state.finance;
   const costs = dailyOperatingCost(state);
 
@@ -139,6 +181,9 @@ function runMidnight(state: GameState, endedDay0: number): void {
     spend(state, tankTotal, 'operating', `Running costs — ${costs.tanks.length} tanks (largest: ${top.map((t) => `${t.name} ${fmtMoney(t.cost)}`).join(', ')})`, true);
   }
   if (costs.rent > 0) spend(state, costs.rent, 'facility', `Rent — ${costs.levelName}`, true);
+  // The club's lifeline lands before payday, so the wages it covers are paid tonight (S05-11) — also when cash ran
+  // short of wages before it ran into the red, so the team would walk out before the debt is three days old (G2-03).
+  if (!f.loan && ((f.debtSinceHour !== undefined && end - f.debtSinceHour >= LOAN_AFTER_DEBT_HOURS - 1e-6) || staffLeavingTonight(state))) grantLoan(state);
   // lane:staff — wages: animal care is paid first; anyone who can't be paid works out a notice period instead of creating debt.
   payStaff(state);
   // lane:w2-sim — the daily bill the warnings quote is the one the Finances panel shows: the same dailyOperatingCost,
@@ -171,13 +216,36 @@ function runMidnight(state: GameState, endedDay0: number): void {
   };
   pushCapped(f.daily, summary, DAILY_CAP);
 
-  // 4. Warnings with concrete suggestions.
+  // 4. An empty room the player can't restock: the club steps in after one more midnight (P5-08).
+  const need = restartNeed(state);
+  if (need === null) delete f.strandedSinceHour;
+  else if (f.strandedSinceHour === undefined) {
+    f.strandedSinceHour = end;
+    emitEvent(state, {
+      kind: 'tip',
+      text: `Your ${state.tankOrder.length ? 'tanks are empty' : 'room is empty'} and ${fmtMoney(Math.max(0, f.money))} won't restock ${state.tankOrder.length ? 'them' : 'it'}. If that's still true tomorrow, ${AQUARIUM_CLUB} will lend you enough to start again.`,
+      toast: true,
+    });
+  } else if (end - f.strandedSinceHour >= RESTART_AFTER_HOURS - 1e-6) {
+    grantLoan(state, need);
+    delete f.strandedSinceHour;
+  }
+
+  // 5. Warnings with concrete suggestions — honest ones: purchases (food included) stop in debt, so say so.
   if (f.money < 0) {
     const tips = cashSuggestions(state);
-    const loanNote = f.loan ? '' : ' If things stay tight for a few days, the local aquarium club may be able to help.';
+    const loanNote = f.loan ? '' : ` If it lasts ${Math.round(LOAN_AFTER_DEBT_HOURS / 24)} days, ${AQUARIUM_CLUB} may be able to help.`;
+    const alive = Object.values(state.creatures).some((c) => c.status === 'alive' || c.status === 'listed');
+    const shelf = state.tankOrder.map((id) => state.tanks[id]?.cache?.foodLevel).filter(Boolean);
+    const food = shelf.includes('out') ? 'bare' : shelf.includes('low') ? 'running low' : null;
+    const status = !alive
+      ? 'Purchases are paused.'
+      : food
+        ? `Purchases are paused, food included, and the food shelf is ${food} — raise cash before anyone goes hungry.`
+        : "Purchases are paused, food included — nothing is ever taken from you, but keep feeding from the shelf and raise cash before it runs low.";
     emitEvent(state, {
       kind: 'warning',
-      text: `You're ${fmtMoney(-f.money)} in the red after today's bills (${fmtMoney(ahead.total)}/day). Purchases are paused, but your animals are safe.${tips.length ? ` Ideas: ${tips.slice(0, 3).join(' ')}` : ''}${loanNote}`,
+      text: `You're ${fmtMoney(-f.money)} in the red after today's bills (${fmtMoney(ahead.total)}/day). ${status}${tips.length ? ` Ideas: ${tips.slice(0, 3).join(' ')}` : ''}${loanNote}`,
       toast: true,
     });
     f.lastWarnHour = state.clock.hour;
@@ -199,17 +267,30 @@ function visitorsForDay(state: GameState, day: number): number {
   return h ? Math.round(finite(h.count)) : 0;
 }
 
-function grantLoan(state: GameState): void {
+/**
+ * The club's interest-free loan: clears the debt plus a cushion of a few days' bills. With `restart` (money needed to
+ * restock an empty room, see restartNeed) it covers that instead, and may top up a loan already taken — the debt loan
+ * is one-time, but an empty room never stays a dead end.
+ */
+function grantLoan(state: GameState, restart?: number): void {
   const f = state.finance;
   const costs = dailyOperatingCost(state);
   const cushion = Math.max(120, costs.total * 3);
-  const amount = Math.ceil((Math.max(0, -f.money) + cushion) / 10) * 10;
+  const amount = Math.ceil(Math.max(Math.max(0, -f.money) + cushion, (restart ?? 0) - f.money) / 10) * 10;
   earn(state, amount, 'other', `${LOAN_MEMO} from ${AQUARIUM_CLUB}`);
-  f.loan = { amount, outstanding: amount, takenHour: state.clock.hour };
+  const again = !!f.loan;
+  if (f.loan) {
+    f.loan.amount = roundCents(f.loan.amount + amount);
+    f.loan.outstanding = roundCents(f.loan.outstanding + amount);
+    f.loan.takenHour = state.clock.hour;
+    delete f.loan.repaidHour;
+  } else f.loan = { amount, outstanding: amount, takenHour: state.clock.hour };
   delete f.debtSinceHour;
   emitEvent(state, {
     kind: 'celebrate',
-    text: `Good news: ${AQUARIUM_CLUB} heard you were struggling and lent you ${fmtMoney(amount)}, interest-free. It is repaid automatically from a quarter of your future daily income. This is a one-time lifeline, so plan your running costs carefully.`,
+    text: restart
+      ? `${AQUARIUM_CLUB} would rather see your room full than quiet: they've lent you ${again ? 'another ' : ''}${fmtMoney(amount)}, interest-free, to start again — enough for ${state.tankOrder.length ? 'a new animal' : 'a tank kit and a new animal'} and a few days of bills. It is repaid automatically from a quarter of your future daily income.`
+      : `Good news: ${AQUARIUM_CLUB} heard you were struggling and lent you ${fmtMoney(amount)}, interest-free. It is repaid automatically from a quarter of your future daily income. This is a one-time lifeline, so plan your running costs carefully.`,
     toast: true,
   });
 }
@@ -226,7 +307,7 @@ export function stepFinance(state: GameState, dt: number, ctx: SimContext): void
     const endedDay0 = dayIndex(start);
     if ((f.lastBilledDay ?? 0) < endedDay0 + 1) {
       f.lastBilledDay = endedDay0 + 1;
-      runMidnight(state, endedDay0);
+      runMidnight(state, endedDay0, end);
     }
   }
 

@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { TankDims } from '@/sim/tankSpace';
 import { UNDERWATER_PARS, addSurfaceRipple, type TankFXUniforms } from '../../shared/underwater';
+import { useParkedMaterial } from '../../shared/programPark';
 
 const noPick = () => null;
 
@@ -99,7 +100,7 @@ export function Bubbles({ d, fx, sources, max, reducedMotion }: { d: TankDims; f
       blendDst: THREE.OneMinusSrcAlphaFactor,
     });
   }, [fx, extra]);
-  useEffect(() => () => mat.dispose(), [mat]);
+  useParkedMaterial(mat);
 
   const srcRef = useRef(sources);
   srcRef.current = sources;

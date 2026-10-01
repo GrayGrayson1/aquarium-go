@@ -18,6 +18,7 @@ import { useSettings } from '@/state/settings';
 import { stepVisitorRuntime, visitorRuntime, type VisitorAgent } from '@/runtime/visitors';
 import { setVisitorPresence } from '@/audio/director';
 import { useRenderQuality } from '../shared/quality';
+import { createContactShadows } from './contactShadows'; // lane:facrender
 import { acquireTexture, releaseTexture, starSprite } from './textures';
 import { BODY, buildVisitorGeometries } from './visitorGeometry';
 import { VisitorLooks, type VisitorLook } from './visitorLooks';
@@ -139,6 +140,8 @@ export function VisitorsLayer() {
     return out;
   }, [geos, mats]);
   const looks = useMemo(() => new VisitorLooks(), []);
+  const shadows = useMemo(() => createContactShadows(CAP), []);
+  useEffect(() => () => shadows.dispose(), [shadows]);
   const stager = useMemo(() => new VisitorStager(), []);
   const focus = useMemo(() => new ExhibitFocus(), []);
   useEffect(() => {
@@ -277,6 +280,7 @@ export function VisitorsLayer() {
     bound.center.set(cx, 1, cz);
     bound.radius = rad + 1.6;
     for (let i = 0; i < n; i++) writeAgent(agents[i], looks.get(agents[i], crowdN), i);
+    shadows.commit(n);
     meshes.body.mesh.count = n;
     meshes.head.mesh.count = n;
     meshes.thigh.mesh.count = n * 2;
@@ -354,6 +358,8 @@ export function VisitorsLayer() {
       _e.set(0, heading, 0);
       _q.setFromEuler(_e);
       _root.compose(_p.set(a.x, (bob + hop - seatDrop) * sc, a.z), _q, _s.set(sc, sc, sc));
+      // lane:facrender — contact shadow under the feet (none for someone dissolved out of the shot)
+      shadows.set(i, a.x, a.z, heading, sc, fade, sitting ? 0 : bob + hop);
       // hips slide over the standing leg
       _root.multiply(_m.makeTranslation(shift * 0.022, 0, 0));
       // torso frame: slight forward lean when walking, counter-roll against the hip shift
@@ -496,6 +502,7 @@ export function VisitorsLayer() {
         <primitive key={i} object={p.mesh} />
       ))}
       <primitive object={spark.pts} />
+      <primitive object={shadows.mesh} />
     </group>
   );
 }

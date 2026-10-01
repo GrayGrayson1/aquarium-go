@@ -727,6 +727,21 @@ export const createAxolotl: CreatureFactory = (args) => {
   const ptr: [number, number, number] = [0, 0, 0];
   const legNames = ['FR', 'FL', 'HR', 'HL'];
   const legPhaseOff = [0, Math.PI, Math.PI, 0]; // diagonal couplets: FR+HL, FL+HR
+  // bones resolved once: the per-frame path allocates nothing
+  const legBones = legNames.map((nm) => ({ front: nm[0] === 'F', side: nm[1] === 'R' ? 1 : -1, s: B[`${nm}_s`], e: B[`${nm}_e`], w: B[`${nm}_w`] }));
+  const tailBones = [B.tail1, B.tail2, B.tail3, B.tail4, B.tail5];
+  // behaviour label test cached by string identity (labels change a few times a minute, not per frame)
+  let lastBehavior: string | undefined;
+  let curiousBehavior = false;
+  // spine yaw of segment k (0 = hips … 5 = tail5) from the current frame's amplitudes (set before use in update)
+  const sp = { swimAmp: 0, idleSway: 0, wlk: 0, w0: 0, bend: 0, time: 0 };
+  const bodyYaw = (k: number) => {
+    const travel = Math.sin(st.tailPhase - k * 0.85) * sp.swimAmp * (0.25 + k * 0.22);
+    const idle = Math.sin(sp.time * 0.7 + seed * 6 - k * 0.6) * sp.idleSway * (0.3 + k * 0.25);
+    const walkWave = sp.w0 * 0.11 * sp.wlk * (k === 0 ? -1 : 0.4);
+    const curl = restCurl * st.restW * (0.12 + k * 0.05);
+    return travel + idle + walkWave + curl - sp.bend * 0.18;
+  };
   const gillBones: THREE.Bone[][] = [];
   for (const side of ['R', 'L']) for (let k = 0; k < 3; k++) gillBones.push([B[`g${side}${k}a`], B[`g${side}${k}b`]]);
 
@@ -763,15 +778,12 @@ export const createAxolotl: CreatureFactory = (args) => {
     const idleSway = (0.035 + 0.02 * noise1(time * 0.2, seed * 10)) * live;
     const wlk = st.walkW;
     const w0 = Math.sin(st.walkPhase);
-    const tailBones = [B.tail1, B.tail2, B.tail3, B.tail4, B.tail5];
-    const bodyYaw = (k: number) => {
-      // k: 0 = hips … 5 = tail5
-      const travel = Math.sin(st.tailPhase - k * 0.85) * swimAmp * (0.25 + k * 0.22);
-      const idle = Math.sin(time * 0.7 + seed * 6 - k * 0.6) * idleSway * (0.3 + k * 0.25);
-      const walkWave = w0 * 0.11 * wlk * (k === 0 ? -1 : 0.4);
-      const curl = restCurl * st.restW * (0.12 + k * 0.05);
-      return travel + idle + walkWave + curl - bend * 0.18;
-    };
+    sp.swimAmp = swimAmp;
+    sp.idleSway = idleSway;
+    sp.wlk = wlk;
+    sp.w0 = w0;
+    sp.bend = bend;
+    sp.time = time;
     setRot(B.hips, 0, bodyYaw(0), 0);
     for (let k = 0; k < 5; k++) {
       const pitch = -0.04 * st.restW * (k > 2 ? 1 : 0) + Math.sin(st.tailPhase * 0.5 - k) * 0.02 * st.swimW;
@@ -784,7 +796,10 @@ export const createAxolotl: CreatureFactory = (args) => {
     let tYaw = 0;
     let tPitch = 0;
     let tTilt = 0;
-    const curiousBehavior = /inspect|curious|glass|player|watch|beg/i.test(rt.behavior || '');
+    if (rt.behavior !== lastBehavior) {
+      lastBehavior = rt.behavior;
+      curiousBehavior = /inspect|curious|glass|player|watch|beg/i.test(rt.behavior || '');
+    }
     if (!dead && pointerInCreatureFrame(rt, ptr)) {
       const dist = Math.hypot(ptr[0], ptr[1], ptr[2]);
       if (ptr[0] > -0.2 && dist < 8) {
@@ -811,9 +826,7 @@ export const createAxolotl: CreatureFactory = (args) => {
 
     // ── limbs
     for (let li = 0; li < 4; li++) {
-      const nm = legNames[li];
-      const front = li < 2;
-      const side = nm[1] === 'R' ? 1 : -1;
+      const { front, side, s: sb, e: eb, w: wb } = legBones[li];
       const ph = st.walkPhase + legPhaseOff[li];
       const fore = Math.cos(ph);
       const liftW = Math.max(0, -Math.sin(ph));
@@ -829,9 +842,6 @@ export const createAxolotl: CreatureFactory = (args) => {
       const idle = (1 - wlk) * (1 - st.swimW);
       const yaw = wYaw * wlk + rYaw * st.restW * idle + sYaw * st.swimW + (1 - st.restW) * idle * side * (front ? 0.1 : -0.15);
       const lift = wLift * wlk + rLift * st.restW * idle + sLift * st.swimW;
-      const sb = B[`${nm}_s`];
-      const eb = B[`${nm}_e`];
-      const wb = B[`${nm}_w`];
       setRot(sb, -side * lift, yaw, 0, 'YXZ');
       const elbow = liftW * 0.35 * wlk + st.swimW * 0.25 - st.restW * idle * 0.15;
       setRot(eb, -side * elbow, 0, 0);

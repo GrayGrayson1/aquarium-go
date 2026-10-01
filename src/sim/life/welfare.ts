@@ -9,6 +9,7 @@ import { getSpecies, findSpecies } from '@/data/species';
 import { getTankTier } from '@/data/catalog/tanks';
 import { speciesWaterComfort } from '../water';
 import { ammoniaToxicityWeight } from '../water/chem'; // lane:w2-sim
+import { TEMP_TOLERANCE_C } from '../water/constants';
 import { tankHabitat, type TankHabitat } from '../aquascape';
 import { lightsOn } from '../time';
 import { ageDaysOf, gallonsNeededNow } from './growth';
@@ -169,14 +170,15 @@ export function fallbackWater(sp: SpeciesDefinition, tank: Tank): SpeciesWaterVi
     note('environment', 8, `the wrong kind of water — ${plural} are ${sp.environment} animals`);
     penalty += 70;
   }
-  // Temperature
+  // Temperature. Up to TEMP_TOLERANCE_C past a limit is stress only (the water report says WATCH), as for pH; beyond
+  // it harm ramps up from zero, so a heater failure at room temperature doesn't mark every marine fish DANGER.
   if (temp > sp.tempC.max) {
     const over = temp - sp.tempC.max;
-    note('too_warm', 0.25 * Math.pow(over, 1.4) + 0.15, `water that is too warm (${temp.toFixed(1)} °C) — ${plural} need ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`);
+    if (over > TEMP_TOLERANCE_C) note('too_warm', 0.25 * Math.pow(over - TEMP_TOLERANCE_C, 1.4), `water that is too warm (${temp.toFixed(1)} °C) — ${plural} need ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`);
     penalty += 35 + over * 8;
   } else if (temp < sp.tempC.min) {
     const under = sp.tempC.min - temp;
-    note('too_cold', 0.2 * Math.pow(under, 1.4) + 0.1, `water that is too cold (${temp.toFixed(1)} °C) — ${plural} need ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`);
+    if (under > TEMP_TOLERANCE_C) note('too_cold', 0.2 * Math.pow(under - TEMP_TOLERANCE_C, 1.4), `water that is too cold (${temp.toFixed(1)} °C) — ${plural} need ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`);
     penalty += 35 + under * 8;
   } else if (temp > sp.tempC.idealMax) {
     penalty += Math.min(30, ((temp - sp.tempC.idealMax) / Math.max(0.5, sp.tempC.max - sp.tempC.idealMax)) * 28);
@@ -444,7 +446,10 @@ export function stressFactors(state: GameState, env: TankEnv, c: Creature, sp: S
   if (tap > 0) add('tapping', 'glass tapping', tap * 2.5 * tapSensitivityMul(c.personality) * (1 + num(c.life?.tapSensitivity, 0) * 0.25));
   const g = env.groups.get(sp.id);
   const n = g?.n ?? 1;
-  if (sp.social.minGroup > 1 && n < sp.social.minGroup) add('lonely', `lonely — likes groups of ${sp.social.minGroup}+`, (1 - n / sp.social.minGroup) * 40);
+  // A quarantine tank is a short stay away from the group on purpose: being alone there weighs far less, so a sick
+  // schooling fish can actually recover where the illness advice sends it.
+  const qMul = env.quarantine ? 0.25 : 1;
+  if (sp.social.minGroup > 1 && n < sp.social.minGroup) add('lonely', env.quarantine ? 'away from its group while recovering' : `lonely — likes groups of ${sp.social.minGroup}+`, (1 - n / sp.social.minGroup) * 40 * qMul);
   const t = conspecificTension(sp, g, c, env.gallons);
   if (t) add(t.key, t.label, t.amount);
   if (c.stats.hunger > 65) add('hunger', 'hunger', (c.stats.hunger - 65) * 0.35);
@@ -455,7 +460,7 @@ export function stressFactors(state: GameState, env: TankEnv, c: Creature, sp: S
   if (since >= 0 && since < 24) add('new_home', 'settling into a new home', 12 * (1 - since / 24));
   const lit = lightsOn(env.tank.lighting.onHour, env.tank.lighting.offHour, hour);
   if (lit && sp.behaviorTraits.nocturnal >= 0.5 && env.habitat.hides < Math.max(1, sp.hidesNeeded)) add('daylight', 'no dark place to rest by day', 6);
-  if (c.stats.social < 55) add('social', 'social needs unmet', ((55 - c.stats.social) / 55) * 10);
+  if (c.stats.social < 55) add('social', 'social needs unmet', ((55 - c.stats.social) / 55) * 10 * qMul);
   const shock = env.tank.water.shock;
   if (shock && hour < shock.untilHour && hour >= shock.hour - 1e-6) add('shock', shock.reason || 'a sudden change in the water', clamp(shock.severity, 0, 1) * 30);
   return out.sort((a, b) => b.amount - a.amount);

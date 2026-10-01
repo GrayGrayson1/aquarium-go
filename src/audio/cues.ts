@@ -78,3 +78,22 @@ export class CueLimiter {
     return best;
   }
 }
+
+/**
+ * Passive income (ticket sales, listings, staff sales) arrives in small ticks — every second or two at 10× in an
+ * open facility. One soft chime per gap is plenty; fast-forwarding gets an even sparser one.
+ */
+export class IncomeCueGate {
+  private last = -1e9;
+  constructor(
+    public gapMs = 12000,
+    public fastGapMs = 30000,
+  ) {}
+
+  allow(nowMs: number, speed: number): boolean {
+    const gap = speed >= 3 ? this.fastGapMs : this.gapMs;
+    if (nowMs - this.last < gap) return false;
+    this.last = nowMs;
+    return true;
+  }
+}

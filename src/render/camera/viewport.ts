@@ -30,16 +30,18 @@ export function isPhoneLayout(w: number, h: number): boolean {
   return w < 700 || w / Math.max(1, h) < 0.9;
 }
 
+/** Width of the desktop tool rail strip at the right edge (rail + its margin), CSS px. */
+const DESKTOP_RAIL_PX = 96;
+
 /** Space the always-on HUD takes from the top and bottom edges (CSS px). */
 export function hudReserve(w: number, h: number): { top: number; bottom: number; left: number; right: number } {
-  if (isPhoneLayout(w, h)) return { top: 112, bottom: 150, left: 0, right: 0 };
+  // lane:facrender — portrait tablets (721–1000 px) get the phone framing but keep the desktop's vertical tool rail
+  // (hud.css folds it only at ≤ 720 px), so reserve its strip or the rail sits over the right end of the tank
+  if (isPhoneLayout(w, h)) return { top: 112, bottom: 150, left: 0, right: w > 720 ? DESKTOP_RAIL_PX : 0 };
   // desktop: top bar + tank switcher row ≈ 130 px, dock ≈ 110 px; short windows get a little back
   const k = h < 700 ? 0.8 : 1;
   return { top: 130 * k, bottom: 110 * k, left: 0, right: 0 };
 }
-
-/** Width of the desktop tool rail strip at the right edge (rail + its margin), CSS px. */
-const DESKTOP_RAIL_PX = 96;
 
 type VisCheck = HTMLElement & { checkVisibility?: (o?: { opacityProperty?: boolean; visibilityProperty?: boolean }) => boolean };
 

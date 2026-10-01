@@ -15,7 +15,7 @@ import { nextId } from '@/sim/ids';
 import { simRng, type Rng } from '@/sim/rng';
 import { findSpecies } from '@/data/species';
 import { createCreature, addCreature, sizeAtAge } from '@/sim/life';
-import { inheritGenome, resolvePhenotype, rollGenome } from '@/sim/life/genetics';
+import { inheritGenome, resolveMorph, resolvePhenotype, rollGenome } from '@/sim/life/genetics';
 import { consumeFood } from '@/sim/water';
 import { addMastery, addReputation, bumpCounter } from '@/sim/facility';
 import type { BreedingModule, NaturalFood, RearingPhase, TankInfo } from './types';
@@ -378,6 +378,22 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
     }
   }
 
+  // Eggs still being laid one by one need the mother present: if she was sold or died mid-lay, whatever she had
+  // already placed carries on alone and the rest never come (a moved-out mother is handled by her module).
+  if (cl.pendingEggs && cl.pendingEggs > 0) {
+    const mother = cl.motherId ? state.creatures[cl.motherId] : undefined;
+    const gone = !mother || (mother.status !== 'alive' && mother.status !== 'listed');
+    if (gone) {
+      cl.pendingEggs = undefined;
+      if (cl.count <= 0) {
+        const who = mother?.name ?? 'The mother';
+        if (mother?.status === 'sold') loseClutch(state, cl, sp, ctx, `${who} left for a new home before laying any eggs — there is no clutch to raise.`, 'info');
+        else loseClutch(state, cl, sp, ctx, `${who} never finished laying — no eggs were left behind.`);
+        return;
+      }
+    }
+  }
+
   // Infertile eggs (nerite eggs in freshwater…) never hatch — they fade after a while.
   if (cl.infertile) {
     if (hour >= cl.nextStageHour) {
@@ -571,7 +587,9 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   const limit = Math.max(0, Math.min(cl.count, sp.breeding.maxRaisedPerClutch));
   const generation = Math.max(mother?.lineage.generation ?? 0, father?.lineage.generation ?? 0) + 1;
   const lineId = cl.lineId ?? lineIdFor(sp, mother, father);
-  const ageDays = Math.max(0.5, (hour - cl.laidHour) / 24);
+  // Rearing can outlast the species' juvenile phase (seahorses, shrimp, small gobies): cap the birth age so every
+  // youngster arrives as a juvenile with growth, the sex reveal and maturity still ahead of it.
+  const ageDays = Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8)));
   const parents = mother && father ? `${mother.name} × ${father.name}` : (mother ?? father)?.name ?? 'your breeding stock';
   const used = new Set<string>(Object.values(state.creatures).filter((c) => c.speciesId === sp.id).map((c) => c.name));
   const minted: Creature[] = [];
@@ -662,7 +680,9 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   say(state, ctx, { kind: 'breeding', text, tankId: tank.id, creatureId: minted[0]?.id ?? mother?.id, toast: toastWorthy(state, sp, 'raised') });
 
   for (const m of newMorphs) {
-    if (/wild/i.test(m)) continue;
+    // Plain wild types don't count as a discovery — but a wild base with an overlay ("Kuro (Wild) Miyuki") does.
+    const example = minted.find((c) => c.morphName === m);
+    if (!example || isPlainWildType(sp, example)) continue;
     addMastery(state, 'breeding', 25);
     bumpCounter(state, 'morphsDiscovered');
     say(state, ctx, { kind: 'celebrate', text: `First ${m} ${spName(sp)} bred in your shop!`, tankId: tank.id, creatureId: minted.find((c) => c.morphName === m)?.id, toast: true });
@@ -671,6 +691,15 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   releaseParents(state, cl);
   delete state.clutches[cl.id];
   return minted;
+}
+
+/** True for a morph with no overlays whose base is absent, a catch-all, or itself a wild type. */
+function isPlainWildType(sp: SpeciesDefinition, c: Creature): boolean {
+  const r = resolveMorph(sp, c.genome);
+  if (r.overlayIds.length) return false;
+  if (!r.baseId) return true;
+  const base = sp.genetics.phenotypes.find((p) => p.id === r.baseId);
+  return !base || base.when.length === 0 || /wild/i.test(base.name);
 }
 
 /** Remaining nursery room for a species in a tank (for UI). */

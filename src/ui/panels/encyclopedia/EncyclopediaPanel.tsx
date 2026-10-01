@@ -23,6 +23,7 @@ import { CareChips } from '../common/Profile';
 import { VerdictBadge } from '../common/CompatPreview';
 import { ENV_LABEL, RARITY_LABEL, RARITY_TONE, DIFFICULTY_LABEL, DIFFICULTY_TONE, VERDICT_RANK, FOOD_TAG_LABEL, titleCase } from '../common/format';
 import { ARTICLES } from './science';
+import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } from './morphs';
 
 type Tab = 'species' | 'science';
 type Show = 'all' | 'discovered' | 'freshwater' | 'marine' | 'brackish'; // lane:brackish: + 'brackish'
@@ -72,7 +73,7 @@ export function EncyclopediaPanel() {
       }
     >
       {tab === 'species' && speciesId ? (
-        <SpeciesPage g={g} id={speciesId} known={known.has(speciesId)} onBack={() => setSpeciesId(null)} onOpen={setSpeciesId} />
+        <SpeciesPage g={g} id={speciesId} known={known.has(speciesId)} knownSet={known} onBack={() => setSpeciesId(null)} onOpen={setSpeciesId} />
       ) : tab === 'species' ? (
         <SpeciesGrid g={g} known={known} onOpen={setSpeciesId} />
       ) : (
@@ -185,7 +186,12 @@ function FactRow({ icon, label, children }: { icon: React.ReactNode; label: stri
   );
 }
 
-function SpeciesPage({ g, id, known, onBack, onOpen }: { g: GameState; id: string; known: boolean; onBack: () => void; onOpen: (id: string) => void }) {
+/** Tank-mate rows keep the grid's discovery rule: an undiscovered species is a silhouette, not a spoiler. */
+function mateName(sp: SpeciesDefinition, known: Set<string>): string {
+  return known.has(sp.id) ? sp.commonName : 'Undiscovered';
+}
+
+function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState; id: string; known: boolean; knownSet: Set<string>; onBack: () => void; onOpen: (id: string) => void }) {
   const sp = findSpecies(id);
   const pairs = useMemo(() => {
     if (!sp) return { good: [], bad: [] as { s: SpeciesDefinition; v: CompatVerdict; why: string }[] };
@@ -241,7 +247,12 @@ function SpeciesPage({ g, id, known, onBack, onOpen }: { g: GameState; id: strin
   }
 
   const e = sp.encyclopedia;
-  const morphsSeen = new Set(g.progress.discoveredMorphs.filter((m) => m.startsWith(`${sp.id}:`)).map((m) => m.slice(sp.id.length + 1).toLowerCase()));
+  // Curated chips vs composed morph names ("Red Veiltail" vs "Red Butterfly Veiltail"): word-based match, see ./morphs.
+  const morphsSeen = seenMorphChips(sp, g.progress.discoveredMorphs);
+  // The player's own morph names, when they read differently from the chips ("Red Butterfly Veiltail").
+  const chipLabels = new Set(sp.visualMorphs.map((m) => m.toLowerCase()));
+  const morphFinds = discoveredMorphNames(g.progress.discoveredMorphs, sp.id).filter((n) => !chipLabels.has(n.toLowerCase()));
+  const noMorphs = hasNoNamedMorphs(sp);
   const owned = Object.values(g.creatures).filter((c) => c.speciesId === sp.id && (c.status === 'alive' || c.status === 'listed')).length;
 
   return (
@@ -326,8 +337,8 @@ function SpeciesPage({ g, id, known, onBack, onOpen }: { g: GameState; id: strin
                 {pairs.good.map((p) => (
                   <li key={p.s.id}>
                     <button type="button" className="pn-mate" onClick={() => onOpen(p.s.id)}>
-                      <SpeciesPortrait speciesId={p.s.id} size={30} />
-                      <span className="pn-grow pn-ellipsis">{p.s.commonName}</span>
+                      <SpeciesPortrait speciesId={p.s.id} size={30} silhouette={!knownSet.has(p.s.id)} />
+                      <span className={clsx('pn-grow pn-ellipsis', !knownSet.has(p.s.id) && 'pn-muted')}>{mateName(p.s, knownSet)}</span>
                       <VerdictBadge verdict={p.v} />
                     </button>
                   </li>
@@ -346,9 +357,9 @@ function SpeciesPage({ g, id, known, onBack, onOpen }: { g: GameState; id: strin
                 {pairs.bad.map((p) => (
                   <li key={p.s.id}>
                     <button type="button" className="pn-mate" onClick={() => onOpen(p.s.id)} title={p.why}>
-                      <SpeciesPortrait speciesId={p.s.id} size={30} />
+                      <SpeciesPortrait speciesId={p.s.id} size={30} silhouette={!knownSet.has(p.s.id)} />
                       <span className="pn-grow pn-col" style={{ gap: 1, minWidth: 0 }}>
-                        <span className="pn-ellipsis">{p.s.commonName}</span>
+                        <span className={clsx('pn-ellipsis', !knownSet.has(p.s.id) && 'pn-muted')}>{mateName(p.s, knownSet)}</span>
                         {p.why && <span className="pn-tiny pn-muted pn-ellipsis">{p.why}</span>}
                       </span>
                       <VerdictBadge verdict={p.v} />
@@ -361,20 +372,32 @@ function SpeciesPage({ g, id, known, onBack, onOpen }: { g: GameState; id: strin
         </div>
       </section>
 
-      {sp.visualMorphs.length > 0 && (
+      {noMorphs ? (
         <section>
-          <SectionHead title={`Morphs · ${sp.visualMorphs.filter((m) => morphsSeen.has(m.toLowerCase())).length}/${sp.visualMorphs.length} seen`} icon={<Palette size={14} />} />
-          <div className="pn-chips">
-            {sp.visualMorphs.map((m) => {
-              const seen = morphsSeen.has(m.toLowerCase());
-              return (
-                <Chip key={m} tone={seen ? 'aqua' : 'neutral'} icon={seen ? <CircleCheck size={11} /> : <Lock size={10} />}>
-                  {seen ? m : '???'}
-                </Chip>
-              );
-            })}
-          </div>
+          <SectionHead title="Morphs" icon={<Palette size={14} />} />
+          <p className="pn-small pn-muted">No named colour morphs{noMorphsNote(sp) ? ` — ${noMorphsNote(sp)}` : ''}.</p>
         </section>
+      ) : (
+        sp.visualMorphs.length > 0 && (
+          <section>
+            <SectionHead title={`Morphs · ${morphsSeen.size}/${sp.visualMorphs.length} seen`} icon={<Palette size={14} />} />
+            <div className="pn-chips" data-testid="enc-morph-chips">
+              {sp.visualMorphs.map((m) => {
+                const seen = morphsSeen.has(m);
+                return (
+                  <Chip key={m} tone={seen ? 'aqua' : 'neutral'} icon={seen ? <CircleCheck size={11} /> : <Lock size={10} />}>
+                    {seen ? m : '???'}
+                  </Chip>
+                );
+              })}
+            </div>
+            {morphFinds.length > 0 && (
+              <p className="pn-tiny pn-muted" style={{ marginTop: 6 }} data-testid="enc-morph-finds">
+                Your finds: {morphFinds.join(' · ')}
+              </p>
+            )}
+          </section>
+        )
       )}
 
       {sp.sourceReferences.length > 0 && (

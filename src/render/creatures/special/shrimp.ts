@@ -781,6 +781,10 @@ function makeShrimpFactory(spec: ShrimpSpec): CreatureFactory {
     const abs = [B.ab1, B.ab2, B.ab3, B.ab4, B.ab5, B.ab6];
     const seed = ((ap.patternSeed ?? 5) % 1000) / 1000;
     const st = { walk: 0, walkW: 0, pick: 0, pickW: 0, swim: 0, swimW: 0, flick: 0, eggs: 0, spread: 0, wave: 0, lastPose: '', strike: 0, claw: 0, peek: 0 };
+    // behaviour label tests cached by string identity (labels change a few times a minute, not per frame)
+    let lastBehavior: string | undefined;
+    let cleaningBehavior = false;
+    let peekBehavior = false;
 
     // selection: set by the renderer (not while the camera already follows this animal); drawn as a thin rim
 
@@ -801,11 +805,18 @@ function makeShrimpFactory(spec: ShrimpSpec): CreatureFactory {
       st.walk += dt * TAU * (0.8 + speed * 6) * st.walkW;
       st.pick += dt * TAU * (2.2 + noise1(time * 0.3, seed) * 0.8) * live;
       st.swim += dt * TAU * (1.2 + st.swimW * 5 + speed * 2) * live;
-      const cleaning = /clean|station|display/i.test(rt.behavior || '') || pose === 'display';
+      if (rt.behavior !== lastBehavior) {
+        lastBehavior = rt.behavior;
+        cleaningBehavior = /clean|station|display/i.test(rt.behavior || '');
+        peekBehavior = /burrow|peek/i.test(rt.behavior || '');
+      }
+      const cleaning = cleaningBehavior || pose === 'display';
       // claws (crayfish) raise in display; mantis club strikes on 'smash' events / feeding pulses
       if (spec.raptorial) {
-        const ev = latestEvent('smash', rt.id, time - 1.5);
-        let strikeT = ev > 0 ? clamp(1 - (performance.now() / 1000 - ev) / 0.35) : 0;
+        // runtime events are stamped with performance.now() (not the render clock): one clock for cut-off and ageing
+        const nowS = performance.now() / 1000;
+        const ev = latestEvent('smash', rt.id, nowS - 1.5);
+        let strikeT = ev > 0 ? clamp(1 - (nowS - ev) / 0.35) : 0;
         if (pose === 'feed' || pose === 'spawn') strikeT = Math.max(strikeT, clamp((rt.mouthOpen || 0) * 1.4));
         st.strike = strikeT > st.strike ? strikeT : damp(st.strike, strikeT, 6, dt);
         uClear.uAgcF1.value.y = st.strike;
@@ -845,7 +856,7 @@ function makeShrimpFactory(spec: ShrimpSpec): CreatureFactory {
           e.rotation.set(Math.sin(time * 0.8 + i * 2) * 0.4, (i === 0 ? 0.3 : -0.3) + look + Math.sin(time * 0.53 + i) * 0.5, Math.sin(time * 1.1 + i * 3) * 0.5);
         }
         // burrow peeking: the body tips down into the burrow so only eyes and clubs show
-        st.peek = damp(st.peek, pose === 'hiding' || pose === 'rest' && /burrow|peek/i.test(rt.behavior || '') ? 1 : 0, 2, dt);
+        st.peek = damp(st.peek, pose === 'hiding' || pose === 'rest' && peekBehavior ? 1 : 0, 2, dt);
         setRot(B.root, 0, 0, st.peek * 0.9 + Math.sin(st.walk * 2) * 0.012 * st.walkW);
       }
       u.uAgcCI.value = rt.colorIntensity ?? 1;

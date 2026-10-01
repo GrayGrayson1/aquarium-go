@@ -81,3 +81,20 @@ export function useCardDockRules() {
     };
   }, []);
 }
+
+/**
+ * Watch (H) / Photo (P) mode. The tools go down, a management sheet closes (it used to stay up under the cinematic
+ * view, with photo sliders drawn over the Market), popovers close and keyboard focus is dropped so Space reaches the
+ * shutter instead of the hidden button that opened photo mode.
+ */
+export function enterCinematic(mode: 'watch' | 'photo', extra: Parameters<ReturnType<typeof useUI.getState>['set']>[0] = {}) {
+  const ui = useUI.getState();
+  const patch: Parameters<typeof ui.set>[0] = { ...extra, tool: 'none', ...(mode === 'watch' ? { hudHidden: true } : { photoMode: true }) };
+  if (isManagedPanel(ui.panel)) {
+    patch.panel = null;
+    patch.panelTarget = null;
+  }
+  if (useShell.getState().popover) useShell.getState().set({ popover: null });
+  (document.activeElement as HTMLElement | null)?.blur?.();
+  ui.set(patch);
+}

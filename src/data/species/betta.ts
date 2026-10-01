@@ -21,7 +21,7 @@ export const betta: SpeciesDefinition = {
   activeSwimmer: false,
   bioload: 1,
 
-  tempC: { min: 23, max: 30, idealMin: 24.5, idealMax: 28 },
+  tempC: { min: 21, max: 30, idealMin: 24.5, idealMax: 28 }, // lane:fix-water — 21 °C floor: bettas ride out room temperature (22 ± 0.8 °C) for weeks; 23 made every heater failure lethal
   pH: { min: 6.0, max: 8.0, idealMin: 6.5, idealMax: 7.5 },
   salinitySG: null,
   gh: { min: 5, max: 19 },

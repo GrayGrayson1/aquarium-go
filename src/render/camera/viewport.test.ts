@@ -20,6 +20,14 @@ describe('free viewport', () => {
     expect(phone.x1).toBe(390);
   });
 
+  it('portrait tablets keep the vertical tool rail strip clear; phones do not reserve it (lane:facrender P4-02)', () => {
+    const tablet = computeFreeRect(820, 1180, none(), true, rect());
+    expect(tablet.x1).toBeLessThanOrEqual(820 - 90);
+    expect(tablet.y0).toBe(112);
+    const phone = computeFreeRect(390, 844, none(), true, rect());
+    expect(phone.x1).toBe(390);
+  });
+
   it('ignores a sheet that would leave too little of the canvas', () => {
     const r = computeFreeRect(1440, 900, { ...none(), right: 1200 }, true, rect());
     expect(r.x1).toBe(1440);

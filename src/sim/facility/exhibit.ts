@@ -54,6 +54,8 @@ export interface ExhibitInfo {
   /** Sick / stressed / suffering animals are visible — visitors will be concerned. */
   concerned: boolean;
   concernText?: string;
+  /** The animal visitors are worried about (unwell first, then starving) — reaction lines name this one, not the star. */
+  concernCreature?: Creature;
   empty: boolean;
   speciesIds: string[];
   groups: string[];
@@ -61,7 +63,7 @@ export interface ExhibitInfo {
   mainSpeciesId: string | null;
   /** Most charismatic individual (for reaction lines). */
   star: Creature | null;
-  /** Recent rare behaviour (birth, eggs, nest, pregnancy) visitors can witness. */
+  /** Recent rare behaviour visitors can witness — `text` is a noun phrase ("a bubble nest", "newly hatched fry"). */
   moment: { text: string; creatureId?: string } | null;
   gallons: number;
   /** Expected visitors/hour contribution before reputation & price. */
@@ -79,7 +81,28 @@ export function sizeFactor(gallons: number): number {
   return clamp01(Math.log(Math.max(2.5, gallons) / 2.5) / Math.log(400));
 }
 
-const MOMENT_RE = /(born|birth|hatch|fry|eggs?|nest|spawn|pregnan|pouch|clutch|courtship|dance)/i;
+/**
+ * What a breeding log line lets visitors see, as a noun phrase for the reaction templates ("Is that {moment}?").
+ * Ordered most-specific first. Lines that describe nothing visible (a seasonal cool-down, a group's new male) are not
+ * moments: they must not inflate the exhibit's behaviour factor or the wow rate.
+ */
+const MOMENT_PHRASES: [RegExp, string][] = [
+  [/free-swimming|hatched|larva|newborn|dropped .*fry|released|youngster|were born|\bborn\b/i, 'newly hatched fry'],
+  [/bubble nest/i, 'a bubble nest'],
+  [/\bfry\b|growing well/i, 'a cloud of fry'],
+  [/pouch|pregnan/i, 'a pregnant male'],
+  [/berried|carrying eggs/i, 'a berried female'],
+  [/laying|egg tube|finished laying|clutch|spawning embrace|\bspawn(ed|ing)?\b|eggs/i, 'a fresh clutch of eggs'],
+  [/dancing|dance|waltz|courting|courtship|greet|circling|entwined/i, 'a courtship dance'],
+  [/nipping|cleaning a patch|spermatophore/i, 'a pair preparing to spawn'],
+  [/bonded pair|accepted .* as her partner|sticking close/i, 'a newly bonded pair'],
+  [/\bnest\b/i, 'a nest'],
+];
+
+export function momentPhrase(text: string): string | null {
+  for (const [re, phrase] of MOMENT_PHRASES) if (re.test(text)) return phrase;
+  return null;
+}
 
 function recentMoment(state: GameState, tank: Tank, now: number): ExhibitInfo['moment'] {
   // breeding events in the log (births, eggs, nests) within the last 2 game days
@@ -87,8 +110,9 @@ function recentMoment(state: GameState, tank: Tank, now: number): ExhibitInfo['m
     const e = state.log[i];
     if (now - e.hour > 48) break;
     if (e.tankId !== tank.id) continue;
-    if (e.kind === 'breeding' || (e.kind === 'celebrate' && MOMENT_RE.test(e.text))) {
-      return { text: e.text, creatureId: e.creatureId };
+    if (e.kind === 'breeding' || e.kind === 'celebrate') {
+      const phrase = momentPhrase(e.text);
+      if (phrase) return { text: phrase, creatureId: e.creatureId };
     }
   }
   // visible clutches (bubble nests, egg strands, a pregnant seahorse's pouch)
@@ -229,9 +253,11 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
 
   const concerned = !empty && (sickFrac > 0 || suffering > 0 || welfare < 0.42 || tank.cache?.status === 'danger');
   let concernText: string | undefined;
+  let concernCreature: Creature | undefined;
   if (concerned) {
     const sickOne = creatures.find((c) => c.illness || (c.stats && (c.stats.health < 45 || c.stats.stress > 78)));
     const starving = creatures.find((c) => (c.stats?.hunger ?? 0) >= 90);
+    concernCreature = sickOne ?? starving;
     concernText = sickOne ? `${sickOne.name} doesn’t look well` : starving ? `${starving.name} looks half-starved` : (tank.cache?.waterStatus ?? tank.cache?.status) === 'danger' ? 'the water looks wrong' : 'the animals seem stressed';
   }
 
@@ -254,6 +280,7 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
     welfareGate,
     concerned,
     concernText,
+    concernCreature,
     empty,
     speciesIds: [...bySpecies.keys()],
     groups: [...groups],
@@ -274,7 +301,7 @@ export function exhibitReport(state: GameState, tankId: string): ExhibitReport {
   const info = exhibitInfo(state, tank);
   const notes: Partial<Record<ExhibitFactorKey, string>> = {};
   if (info.welfareGate < 1) notes.welfare = 'Visitors notice unwell or stressed animals — welfare caps this exhibit.';
-  if (info.moment) notes.behaviour = `Visitors can see ${info.moment.text.replace(/\.$/, '')}.`;
+  if (info.moment) notes.behaviour = `Visitors can see ${info.moment.text}.`;
   if (!tank.signage) notes.signage = 'Add a sign to teach visitors about these animals.';
   if (info.factors.clarity < 0.6) notes.clarity = 'Algae or cloudy water dulls the view.';
   if (info.empty) notes.charisma = 'No animals yet.';

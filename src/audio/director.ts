@@ -8,13 +8,13 @@ import { useUI, getUI } from '@/state/ui';
 import { useSettings, getSettings } from '@/state/settings';
 import { runtime } from '@/runtime/tankRuntime';
 import type { VisualEvent } from '@/types';
-import { onEngineReady, setMix, setRoom, isRunning, type Engine, type MixTargets } from './engine';
+import { busAudible, onEngineReady, setMix, setRoom, isRunning, type Engine, type MixTargets } from './engine';
 import { Ambience } from './ambience';
 import { Music } from './music';
 import { sfx, lastPlayed, type SfxId } from './sfx';
 import { startPartyMode, stopPartyMode } from './party';
 import { CueLimiter, diffLog, type LogCursor } from './cues';
-import { chooseMood, facilitySoundProfile, isNight, roomFor, ROOMS, tankSoundProfile, visitorPresence, SILENT_PROFILE } from './soundscape';
+import { chooseMood, facilitySoundProfile, isNight, NightGate, roomFor, ROOMS, tankSoundProfile, visitorPresence, SILENT_PROFILE } from './soundscape';
 import type { MusicMood } from './theory';
 import { getAudioStatus, setAudioStatus } from './store';
 
@@ -29,7 +29,11 @@ let forcedMood: MusicMood | null = null;
 let pendingMood: MusicMood | null = null;
 let pendingSince = 0;
 let appliedMood: MusicMood | null = null;
+let appliedAt = 0;
+let appliedView = '';
 let lastScreen = '';
+let lastSaveId: string | null = null;
+const nightGate = new NightGate();
 let cursor: LogCursor = { saveId: null, lastId: null };
 const limiter = new CueLimiter(700);
 let lastFoodCount = -1;
@@ -51,6 +55,11 @@ export function forceMood(m: MusicMood | null): void {
 const MIX_TANK: MixTargets = { tankLevel: 1, roomLevel: 0.45, distanceHz: 16000, aquariumSend: 0.1, musicSend: 0.38, uiSend: 0.18 };
 const MIX_FACILITY: MixTargets = { tankLevel: 0.5, roomLevel: 1, distanceHz: 2600, aquariumSend: 0.3, musicSend: 0.45, uiSend: 0.22 };
 const MIX_TITLE: MixTargets = { tankLevel: 0.55, roomLevel: 0.5, distanceHz: 5000, aquariumSend: 0.25, musicSend: 0.5, uiSend: 0.2 };
+/** Quick panel flicks (a glance at the market) must not restart the score. */
+const MOOD_DEBOUNCE_MS = 1500;
+const PANEL_MOOD_DEBOUNCE_MS = 3000;
+/** A mood keeps playing at least this long before an automatic change (not a screen/view/panel switch, not party). */
+const MOOD_MIN_DWELL_MS = 12000;
 
 function update(): void {
   try {
@@ -64,32 +73,46 @@ function update(): void {
     const tank = game && tankId ? game.tanks[tankId] : null;
     const view = ui.view;
     const active = ui.screen !== 'boot' && !!game;
+    const now = performance.now();
+    const screenChanged = ui.screen !== lastScreen;
+    lastScreen = ui.screen;
+    const saveId = game?.saveId ?? null;
+    if (saveId !== lastSaveId || screenChanged) {
+      lastSaveId = saveId;
+      nightGate.reset();
+    }
+    // a bus at zero volume costs no DSP: the ambience tears its layers down, the score goes quiet (S15-07)
+    const aquariumOn = busAudible('aquarium');
+    const musicOn = busAudible('music');
     const profile = !game ? SILENT_PROFILE : view === 'tank' ? tankSoundProfile(tank) : facilitySoundProfile(game);
     const room = inMenus && !game ? ROOMS.title : roomFor(game?.facility?.level);
-    const night = isNight(game, view === 'tank' ? tank : null);
+    const nightRaw = isNight(game, view === 'tank' ? tank : null);
+    const night = nightGate.update(nightRaw, game?.clock?.speed ?? 0, now);
     const visitors = inMenus ? 0 : visitorOverride ?? visitorPresence(game);
     const master = partyOn ? (party === 'microphone' ? 0.3 : 0.5) : inMenus ? 0.75 : 1;
     const waterPresence = !game ? 0 : view === 'tank' ? (tank ? 1 : 0) : Math.min(1, (game.tankOrder?.length ?? 0) * 0.4);
-    ambience.update({ active, profile, room, roomTone: night ? 0.6 : 1, visitors, waterPresence, master });
+    ambience.update({ active: active && aquariumOn, profile, room, roomTone: night ? 0.6 : 1, visitors, waterPresence, master });
     setRoom(room);
     setMix(inMenus ? MIX_TITLE : view === 'facility' ? MIX_FACILITY : ui.photoMode ? { ...MIX_TANK, tankLevel: 0.85 } : MIX_TANK);
 
-    // mood (debounced so quick panel flicks don't thrash the score)
-    const want = forcedMood ?? chooseMood({ screen: ui.screen, view, panel: ui.panel, partyMode: ui.partyMode, night, hasGame: !!game });
-    const now = performance.now();
+    // mood (debounced so quick panel flicks don't thrash the score; day/night already passed the NightGate)
+    const chosen = forcedMood ?? chooseMood({ screen: ui.screen, view, panel: ui.panel, partyMode: ui.partyMode, night, hasGame: !!game });
+    const want: MusicMood = forcedMood === null && !musicOn && chosen !== 'party' ? 'off' : chosen;
     if (want !== pendingMood) {
       pendingMood = want;
       pendingSince = now;
     }
-    const screenChanged = ui.screen !== lastScreen;
-    lastScreen = ui.screen;
     const immediate = screenChanged || appliedMood === null || appliedMood === 'off' || want === 'party' || appliedMood === 'party' || forcedMood !== null;
-    if (want !== appliedMood && (immediate || now - pendingSince > 1500)) {
+    const panelDriven = want === 'market' || appliedMood === 'market';
+    const settled = now - pendingSince > (panelDriven ? PANEL_MOOD_DEBOUNCE_MS : MOOD_DEBOUNCE_MS) && (panelDriven || want === 'off' || view !== appliedView || now - appliedAt > MOOD_MIN_DWELL_MS);
+    if (want !== appliedMood && (immediate || settled)) {
       appliedMood = want;
+      appliedAt = now;
+      appliedView = view;
       music.setMood(want);
       setAudioStatus({ mood: want });
     }
-    lastTargets = { active, view, tankId, room: room.id, night: night, visitors: +visitors.toFixed(2), master, profile };
+    lastTargets = { active, view, tankId, room: room.id, night, nightRaw, visitors: +visitors.toFixed(2), master, profile, aquariumOn, musicOn };
   } catch (err) {
     console.warn('[audio] director update failed', err);
   }
@@ -164,7 +187,8 @@ function onGameChange(): void {
   if (pick) sfx(pick.spec.sfx, { volume: pick.spec.volume });
 }
 
-function syncParty(): void {
+/** `micToggled`: the microphone setting was just switched on → ask again even after an earlier denial. */
+function syncParty(micToggled = false): void {
   const ui = getUI();
   const s = getSettings();
   const status = getAudioStatus().partyStatus;
@@ -172,8 +196,10 @@ function syncParty(): void {
     const wantMic = !!s.partyUseMicrophone;
     const running = status !== 'off';
     const usingMic = status === 'microphone' || status === 'requesting_mic';
-    if (!running || (wantMic && !usingMic && status !== 'mic_denied' && status !== 'mic_unavailable') || (!wantMic && usingMic)) {
-      void startPartyMode({ mic: wantMic }).then(() => update());
+    const fellBack = status === 'mic_denied' || status === 'mic_unavailable';
+    const retry = wantMic && micToggled && fellBack;
+    if (!running || (wantMic && !usingMic && (!fellBack || retry)) || (!wantMic && usingMic)) {
+      void startPartyMode({ mic: wantMic, retry }).then(() => update());
     }
   } else if (status !== 'off') {
     stopPartyMode();
@@ -193,6 +219,7 @@ export function startDirector(): () => void {
           if (!ambience) ambience = new Ambience(e);
           if (!music) music = new Music(e);
           appliedMood = null;
+          nightGate.reset();
           update();
         }, 0);
       }),
@@ -212,7 +239,7 @@ export function startDirector(): () => void {
       useSettings.subscribe((s) => {
         if (s.partyUseMicrophone !== prevMic) {
           prevMic = s.partyUseMicrophone;
-          if (getUI().partyMode) syncParty();
+          if (getUI().partyMode) syncParty(!!s.partyUseMicrophone);
         }
       }),
     );
@@ -235,6 +262,7 @@ export function startDirector(): () => void {
     ambience = null;
     music = null;
     appliedMood = null;
+    nightGate.reset();
   };
 }
 

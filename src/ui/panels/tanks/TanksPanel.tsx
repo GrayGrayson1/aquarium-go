@@ -9,15 +9,16 @@ import type { GameState, Tank, TankPurpose, WaterClass } from '@/types';
 import { Button, StatusBadge, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { getEquipmentDef } from '@/data/catalog/equipment';
+import { getSubstrateDef } from '@/data/catalog/substrates';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
-import { usePanelGame, safe } from '../common/hooks';
+import { usePanelGame, safe, useTempText } from '../common/hooks';
 import { tankStatusReason } from '@/ui/common/tankStatus';
 import { act } from '../common/act';
 import { Chip, Seg, Select, Card, EmptyState, Tile, Bar, Callout } from '../common/parts';
 import { TankThumb } from '../common/TankThumb';
 import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, tankValue, dailyCost, tierOf, waterReport } from '../common/derive';
-import { renameTank, setTankPurpose, convertWaterClass, canChangeWaterClass } from '../common/tankOps';
+import { renameTank, setTankPurpose, convertWaterClass, canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
 
 export function TanksPanel() {
@@ -206,12 +207,33 @@ function wcLockHint(w: WaterClass): string {
   return w === 'brackish' ? 'Brackish water unlocks with the Brackish Estuaries research.' : w === 'reef' ? 'Reef tanks unlock with the Reef Systems research (after Marine Systems).' : 'Marine tanks unlock with the Marine Systems research.';
 }
 
+/** lane:fix-integrate-ui — what a conversion takes (new bed, salt, gear to storage) before the click (S14-06). */
+function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterClass }) {
+  const cost = safe(() => convertWaterClassCost(g, tank.id, wc), null);
+  if (!cost || (cost.total <= 0 && cost.saltKg <= 0 && cost.equipmentOut.length === 0)) return null;
+  const parts: string[] = [];
+  if (cost.substrate > 0) parts.push(`New ${getSubstrateDef(cost.substrateKind!)?.name.toLowerCase() ?? 'substrate'} bed ${formatMoney(cost.substrate)}`);
+  if (cost.saltKg > 0) {
+    const kg = (n: number) => `${Math.round(n * 10) / 10} kg`;
+    parts.push(cost.saltCost > 0 ? `${kg(cost.saltKg)} of salt ${formatMoney(cost.saltCost, { cents: cost.saltCost < 20 })}${cost.saltFromStore > 0 ? ` (${kg(cost.saltFromStore)} from storage)` : ''}` : `${kg(cost.saltKg)} of salt from storage`);
+  }
+  const short = cost.total > g.finance.money;
+  return (
+    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : 'Converting uses stored salt'}>
+      {parts.length > 0 && <>{parts.join(' · ')}. </>}
+      {cost.equipmentOut.length > 0 && <>Moves to storage (can’t run in the new water): {cost.equipmentOut.join(', ')}. </>}
+      {short && <>You have {formatMoney(Math.max(0, g.finance.money))}.</>}
+    </Callout>
+  );
+}
+
 function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: GameState; tank: Tank; residents: number; lastTank: boolean; starterHere: boolean; listed: boolean }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(tank.name);
   const [wc, setWc] = useState<WaterClass>(tank.waterClass);
   const convertGate = canChangeWaterClass(g, tank.id);
   const report = waterReport(g, tank.id);
+  const { t: tempText } = useTempText();
   const equipment = tank.equipment.map((e) => ({ e, def: getEquipmentDef(e.defId) }));
 
   return (
@@ -262,12 +284,12 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
           <span className="pn-field__label">Water</span>
           <div className="pn-row pn-gap-2 pn-row--wrap">
             <StatusBadge status={report.status} />
-            <span className="pn-dim pn-small">{report.headline}</span>
+            <span className="pn-dim pn-small">{tempText(report.headline)}</span>
           </div>
           {report.issues.slice(0, 2).map((i, k) => (
             <div key={k} className="pn-small pn-muted">
-              • {i.text}
-              {i.advice ? ` ${i.advice}` : ''}
+              • {tempText(i.text)}
+              {i.advice ? ` ${tempText(i.advice)}` : ''}
             </div>
           ))}
         </div>
@@ -315,6 +337,8 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
           </span>
         )}
       </div>
+
+      {convertGate.ok && wc !== tank.waterClass && !wcLocked(g, wc) && <ConvertPreview g={g} tank={tank} wc={wc} />}
 
       {(lastTank || starterHere) && (
         <Callout tone="watch" icon={<Sparkles size={16} />}>

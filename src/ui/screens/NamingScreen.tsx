@@ -16,7 +16,7 @@ import { personalityLabel, sexRoleText } from '../common/format';
 import { aOrAn } from '@/sim/economy/util'; // lane:qa-play
 import { Button, Chip, TextField } from '../kit';
 import { saveNow } from '../common/saves';
-import { safe, useIsMobile } from '../common/safe';
+import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
 
 /** The sim keeps names to 24 characters (src/sim/life/actions.ts renameCreature). */
 const NAME_MAX = 24;
@@ -52,7 +52,7 @@ function warmLine(name: string, speciesId: string, personality: string[], morph:
   const trait = `${aOrAn(word)} ${word}`;
   const morphText = !morph || /^wild\s*type$/i.test(morph) ? '' : `${morph.toLowerCase()} `;
   const lines: Record<string, string> = {
-    axolotl: `${who} is ${trait} little ${morphText}axolotl, already walking the sand and flicking those feathery gills at you.`,
+    axolotl: `${who} is ${trait} ${morphText}axolotl, already walking the sand and flicking those feathery gills at you.`,
     betta: `${who} is ${trait} ${morphText}betta who has noticed you — expect a flare of fins when you lean close to the glass.`,
     pea_puffer: `${who} is ${trait} ${morphText}pea puffer, hovering by the glass and swivelling one eye, then the other, to size you up.`,
     ocellaris_clownfish: `${who} is ${trait} ${morphText}clownfish, waddling through the live rock like it owns the place.`,
@@ -66,6 +66,7 @@ export function NamingScreen() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [starting, setStarting] = useState(false);
   const mobile = useIsMobile();
+  const sideways = useMedia(SHORT_LANDSCAPE_QUERY); // a phone held sideways: the card hugs the right edge
 
   useEffect(() => {
     if (!starterId) useUI.getState().set({ screen: 'starter' });
@@ -112,7 +113,7 @@ export function NamingScreen() {
       <div className="ag-reveal__veil" aria-hidden />
       <motion.form
         className="ag-naming__card"
-        data-occlude={mobile ? 'bottom' : 'left'}
+        data-occlude={sideways ? 'right' : mobile ? 'bottom' : 'left'}
         onSubmit={(e) => {
           e.preventDefault();
           void begin();

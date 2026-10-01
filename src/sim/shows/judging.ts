@@ -10,8 +10,9 @@
  *   + prime age               colour and form soften a little in very young and ageing adults
  *   + the judge's eye         a small, honest bit of luck (±5 at most) shown on the card
  *
- * Aquascapes: composition (the aquascaping beauty score), plant/coral health, animal welfare, clarity & upkeep,
- * sensible stocking and — for biotopes — whether the animals really share one habitat.
+ * Aquascapes: composition (the judge's stricter critique of the layout, scaled by how much of it is the scaper's
+ * own work rather than the gifted starter layout — lane:staff, S05-01), plant/coral health, animal welfare,
+ * clarity & upkeep, sensible stocking and — for biotopes — whether the animals really share one habitat.
  *
  * Better genes and better care always mean a better expected score (tests/sim/shows-judging.test.ts).
  */
@@ -19,8 +20,8 @@ import type { Creature, GameState, JudgeCard, JudgeCriterion, SpeciesDefinition,
 import { findSpecies } from '@/data/species';
 import { CRITERION_LABEL, SHOW_TIERS, type ShowClassDef, type ShowCriterionKey } from '@/data/shows';
 import type { ShowTier } from '@/types';
-import { beautyScore } from '../aquascape';
-import { morphRarity } from '../economy/valuation';
+import { beautyScore, giftedLayoutShare, scapeCritique } from '../aquascape';
+import { morphRarity, primeWindow } from '../economy/valuation';
 import { ageDaysOf } from '../life/growth';
 import { tankGallons } from './eligibility';
 import type { Rng } from '../rng';
@@ -65,16 +66,19 @@ const sumPoints = (cs: ScoredCriterion[]) => cs.reduce((a, c) => a + c.q * c.max
 
 // ───────────────────────────── livestock ─────────────────────────────
 
-/** 0.82..1 — colour and form are at their best in a prime adult. */
+/**
+ * 0.84..1 — colour and form are at their best in a prime adult. The prime window is the economy's (primeWindow:
+ * maturity to mid-adult life), not `adultDays`, which is the age at full size (lane:fix-econ, S16-01); a freshly
+ * matured animal is still filling out for a while ('young').
+ */
 export function primeFactor(sp: SpeciesDefinition, c: Creature, nowHour: number): { f: number; phase: 'young' | 'prime' | 'past' | 'elder' } {
   const lc = sp.lifecycle;
   const age = ageDaysOf(c, nowHour);
-  if (c.lifeStage === 'elder') return { f: 0.84, phase: 'elder' };
+  const { primeEnd, elderAt } = primeWindow(lc);
+  if (c.lifeStage === 'elder') return { f: 0.9 - 0.06 * clamp01((age - elderAt) / Math.max(1, lc.lifespanDays - elderAt)), phase: 'elder' };
   const t = (age - lc.juvenileDays) / Math.max(1, lc.adultDays);
   if (t < 0.35) return { f: 0.9 + 0.1 * clamp01(t / 0.35), phase: 'young' };
-  const primeEnd = lc.juvenileDays + lc.adultDays;
   if (age <= primeEnd) return { f: 1, phase: 'prime' };
-  const elderAt = lc.lifespanDays * 0.8;
   return { f: 1 - 0.1 * clamp01((age - primeEnd) / Math.max(1, elderAt - primeEnd)), phase: 'past' };
 }
 
@@ -185,16 +189,24 @@ const REGION_LABEL: Record<string, string> = {
   other: 'one habitat',
 };
 
+/** Composition credit an untouched gifted layout keeps (the rest is earned by the scaper's own placements). */
+const SCAPER_HAND_FLOOR = 0.12;
+
 const COMPAT_Q: Record<string, number> = { excellent: 1, usually_compatible: 0.95, conditional: 0.8, high_risk: 0.55, incompatible: 0.3 };
 
 export function assessTank(state: GameState, tank: Tank, def: ShowClassDef): EntryAssessment {
   const report = beautyScore(state, tank);
   const factor = (label: string) => report.factors.find((f) => f.label === label)?.value;
-  const beauty = num(report.score, num(tank.cache?.beauty, 40));
   const animals = Object.values(state.creatures).filter((c) => c.tankId === tank.id && (c.status === 'alive' || c.status === 'listed'));
   const q: Partial<Record<ShowCriterionKey, number>> = {};
-  // Judges are harder to impress than the everyday beauty score: 85 is solid, 95+ is contest-winning living art.
-  q.composition = Math.pow(clamp01((beauty - 55) / 43), 1.5);
+  // Judges are far harder to impress than the everyday beauty score (which any full, healthy tank pushes into the
+  // 90s): composition is the strict critique — a dominant focal point on a third, real depth, an open lane, choice
+  // material, botanical richness — on a steep curve, then scaled by the scaper's own hand: the layout the tank came
+  // with is a club-level entry however pretty it is.
+  const critique = scapeCritique(tank, report);
+  const gifted = giftedLayoutShare(state, tank);
+  const craft = Math.pow(clamp01((critique.composition - 0.58) / 0.38), 2);
+  q.composition = craft * (SCAPER_HAND_FLOOR + (1 - SCAPER_HAND_FLOOR) * (1 - gifted));
   const lifeHealth = factor('Plant & coral health');
   const maturity = factor('Maturity');
   q.living = lifeHealth === undefined ? 0.2 : clamp01((lifeHealth / 100) * (0.7 + 0.3 * clamp01((maturity ?? 60) / 100)));
@@ -228,8 +240,8 @@ export function assessTank(state: GameState, tank: Tank, def: ShowClassDef): Ent
 
   const notes: EntryAssessment['notes'] = [];
   const wt = (k: ShowCriterionKey) => def.standard[k] ?? 0;
-  // composition: name the layout's strongest and weakest points from the aquascaping judge's factors
-  const comp = report.factors.filter((f) => ['Focal point', 'Depth layering', 'Height & rhythm', 'Open water', 'Hardscape ↔ planting', 'Colour harmony', 'Texture contrast', 'Fullness'].includes(f.label));
+  // composition: name the layout's strongest and weakest points from the judge's critique
+  const comp = critique.factors.filter((f) => ['Focal point', 'Depth layering', 'Height & rhythm', 'Open water', 'Hardscape ↔ planting', 'Colour harmony', 'Texture contrast', 'Fullness', 'Material', 'Richness'].includes(f.label));
   const best = [...comp].sort((a, b) => b.value - a.value)[0];
   const worst = [...comp].sort((a, b) => a.value - b.value)[0];
   const GOOD: Record<string, string> = {
@@ -241,6 +253,8 @@ export function assessTank(state: GameState, tank: Tank, def: ShowClassDef): Ent
     'Colour harmony': 'Harmonious, restrained colour',
     'Texture contrast': 'Lovely contrast of fine and bold textures',
     Fullness: 'Lush and well filled',
+    Material: 'Choice hardscape and plants throughout',
+    Richness: 'A rich, varied planting',
   };
   const BAD: Record<string, string> = {
     'Focal point': 'The eye has nowhere to land — no clear focal point',
@@ -251,11 +265,16 @@ export function assessTank(state: GameState, tank: Tank, def: ShowClassDef): Ent
     'Colour harmony': 'Too many competing colours',
     'Texture contrast': 'Textures all alike',
     Fullness: 'Sparse — not yet filled in',
+    Material: 'Everyday material — finer stone, wood or plants would lift it',
+    Richness: 'Only a few kinds of plant or coral',
   };
   if (wt('composition')) {
+    if (gifted >= 0.5) notes.push({ text: gifted >= 0.9 ? 'The layout the tank came with — the judges want to see the scaper’s own hand' : 'Still mostly the layout the tank came with — the judges want to see more of the scaper’s own hand', weight: 14, tone: 'bad' });
+    else if (gifted >= 0.25) notes.push({ text: 'Part of the gifted layout still shows through', weight: 5, tone: 'neutral' });
     if (q.composition >= 0.8) notes.push({ text: best ? GOOD[best.label] ?? 'A striking composition' : 'A striking composition', weight: 12, tone: 'good' });
-    else if (best && best.value >= 75) notes.push({ text: GOOD[best.label] ?? 'Some lovely touches', weight: 7, tone: 'good' });
-    if (worst && worst.value < 55) notes.push({ text: BAD[worst.label] ?? 'The composition needs work', weight: 9 + (55 - worst.value) / 10, tone: 'bad' });
+    else if (best && best.value >= 90) notes.push({ text: GOOD[best.label] ?? 'Some lovely touches', weight: 7, tone: 'good' });
+    if (worst && worst.value < 60) notes.push({ text: BAD[worst.label] ?? 'The composition needs work', weight: 9 + (60 - worst.value) / 10, tone: 'bad' });
+    else if (craft < 0.5 && gifted < 0.5) notes.push({ text: 'A pleasant layout, but not yet contest craft — every part must be deliberate', weight: 6, tone: 'bad' });
   }
   if (wt('living')) {
     if (q.living >= 0.85) notes.push({ text: tank.waterClass === 'reef' ? 'Corals open and thriving' : 'Lush, healthy growth', weight: 8, tone: 'good' });

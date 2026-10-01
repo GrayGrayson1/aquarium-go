@@ -1,7 +1,8 @@
 /** Camera bounds for the facility overview (used by the waterfx lane's CameraRig). OWNER: lane "facility". */
-import type { FacilityState, GameState } from '@/types';
+import type { FacilityLevelId, FacilityState, GameState } from '@/types';
 import { getFacilityLevel } from '@/data/facilities';
 import { tankDims, tankWorldTransform } from '@/sim/tankSpace';
+import { ROOM_STYLES } from './styles';
 
 export function facilityCameraBounds(fac: FacilityState): { minX: number; maxX: number; minZ: number; maxZ: number; minDist: number; maxDist: number; target: [number, number, number] } {
   const lvl = getFacilityLevel(fac.level);
@@ -45,6 +46,8 @@ export interface ExhibitFrame {
   target: [number, number, number];
   /** World width (m) to fit across the free viewport at the target depth. */
   width: number;
+  /** The whole exhibit row + air (m): what `width` compresses in big halls; wide screens may fit it (lane:facrender). */
+  fullWidth: number;
   /** World height (m) of the exhibit band to fit vertically. */
   height: number;
   yaw: number;
@@ -83,7 +86,7 @@ export function facilityExhibitFrame(g: Pick<GameState, 'facility' | 'tanks' | '
   }
   const b = facilityCameraBounds(fac);
   if (!(wSum > 0)) {
-    return { target: b.target, width: Math.max(3, fac.width * 0.7), height: 2, yaw: 0, pitch: hobby ? 0.42 : 0.4, fov: 36 };
+    return { target: b.target, width: Math.max(3, fac.width * 0.7), fullWidth: Math.max(3, fac.width * 0.7), height: 2, yaw: 0, pitch: hobby ? 0.42 : 0.4, fov: 36 };
   }
   const cx = (minX + maxX) / 2;
   const span = maxX - minX;
@@ -99,7 +102,7 @@ export function facilityExhibitFrame(g: Pick<GameState, 'facility' | 'tanks' | '
   // shops look over the visitors' heads at the wall of tanks; halls are big enough to go lower and more cinematic
   const hall = lvl.order >= 3;
   const pitch = hobby ? 0.3 : hall ? 0.22 : 0.42;
-  return { target, width, height: Math.max(1.4, topY + 0.6), yaw: 0, pitch, fov: hall ? 30 : 36 };
+  return { target, width, fullWidth: Math.max(width, span + 1.4), height: Math.max(1.4, topY + 0.6), yaw: 0, pitch, fov: hall ? 30 : 36 };
 }
 
 /**
@@ -123,3 +126,39 @@ export function exhibitExtent(g: Pick<GameState, 'tanks' | 'tankOrder'>): { minX
   }
   return Number.isFinite(minX) && Number.isFinite(maxX) ? { minX, maxX, topY } : null;
 }
+
+/** Air kept between the back-wall sign and a column shaft (the base and capital flare out past the shaft). */
+const SIGN_COLUMN_CLEARANCE = 0.45;
+
+/**
+ * The back-wall shop sign's placement (centre x/y, width, height), shared by PublicRoom's <Sign> and the dressing
+ * that keeps clear of it. It hangs just above the exhibit row and no wider than it (plus some air), and
+ * (lane:fix-integrate-ui, G2-07) stays inside the clear bay between back-wall columns, so a long exhibit row in the
+ * Grand Hall no longer runs the name behind a pillar.
+ */
+export function backWallSign(level: FacilityLevelId, W: number, ext: { minX: number; maxX: number; topY: number } | null): { x: number; y: number; w: number; h: number } | null {
+  const def = getFacilityLevel(level);
+  const style = ROOM_STYLES[level];
+  if (!(style.sign.w > 0)) return null;
+  const span = ext ? ext.maxX - ext.minX : W;
+  let w = Math.min(W * 0.5, style.sign.w, Math.max(2.2, span * (def.order >= 3 ? 1.1 : 0.8)));
+  let x = ext ? clamp((ext.minX + ext.maxX) / 2, -W / 2 + w / 2 + 0.3, W / 2 - w / 2 - 0.3) : 0;
+  // the clear bay around the sign's centre, between the nearest back-wall columns on either side
+  let lo = -W / 2 + 0.3;
+  let hi = W / 2 - 0.3;
+  for (const p of def.props) {
+    if (p.kind !== 'column' || p.z > -def.depth / 2 + 1) continue;
+    if (p.x <= x) lo = Math.max(lo, p.x + p.w / 2 + SIGN_COLUMN_CLEARANCE);
+    else hi = Math.min(hi, p.x - p.w / 2 - SIGN_COLUMN_CLEARANCE);
+  }
+  if (hi > lo) {
+    w = Math.min(w, hi - lo);
+    x = clamp(x, lo + w / 2, hi - w / 2);
+  }
+  const h = w * 0.22;
+  const gap = [0, 0.2, 0.3, 0.5, 0.7, 0.9][def.order] ?? 0.5;
+  const y = Math.max(1.5, Math.min(def.wallHeight - h / 2 - 0.15, style.sign.y, ext ? ext.topY + gap + h / 2 : Infinity));
+  return { x, y, w, h };
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));

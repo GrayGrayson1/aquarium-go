@@ -11,6 +11,7 @@ import { nextId } from '@/sim/ids';
 import { starterAquascape, placeDecor } from '@/sim/aquascape';
 import { tuneEquipmentForSpecies } from '@/sim/care';
 import { findFreeSpot } from '@/sim/facility';
+import { FRONT_CLEARANCE_M, relayoutTanks } from '@/sim/facility/layout';
 import { refreshTankCache } from '@/sim/world';
 import { IN_TO_M } from '@/sim/tankSpace';
 import { getTankTier, TANK_TIERS } from '@/data/catalog/tanks';
@@ -33,9 +34,19 @@ const FALLBACK_DIMS: Record<FacilityLevelId, { width: number; depth: number }> =
 export function ensureFacility(state: GameState, level: FacilityLevelId): void {
   const def = getFacilityLevel(level);
   const dims = def && def.id === level ? { width: def.width, depth: def.depth } : FALLBACK_DIMS[level];
+  const old = { width: state.facility.width, depth: state.facility.depth };
   state.facility.level = level;
   state.facility.width = Math.max(state.facility.width, dims.width);
   state.facility.depth = Math.max(state.facility.depth, dims.depth);
+  // lane:facrender (P2-09) — re-seat tanks placed before the room grew, as the real upgrade does: a starter tank left
+  // on the old back-wall line ended up standing in the viewing aisle of the tanks added along the new back wall
+  if (state.tankOrder.length && (state.facility.width !== old.width || state.facility.depth !== old.depth)) {
+    try {
+      relayoutTanks(state, old);
+    } catch {
+      /* dev fixture: keep the old spots if the layout pass is unavailable */
+    }
+  }
 }
 
 export function unlockEverything(state: GameState): void {
@@ -60,9 +71,13 @@ function footprint(tierId: string, rotY = 0): { hx: number; hz: number } {
 
 const overlaps = (a: Rect, b: Rect) => Math.abs(a.x - b.x) < a.hx + b.hx && Math.abs(a.z - b.z) < a.hz + b.hz;
 
-/** Side gap between neighbouring tanks and the aisle kept in front/behind rows (metres). */
+/**
+ * Side gap between neighbouring tanks and the aisle kept in front/behind rows (metres). The aisle matches the sim's
+ * island rows (layout.ts: FRONT_CLEARANCE_M + 1.6): the tank camera's front shot stands ~1.5 m out, so a tank parked
+ * closer in front of another put the lens inside it (lane:facrender P2-09, was 1.3).
+ */
 const GAP_X = 0.5;
-const AISLE_Z = 1.3;
+const AISLE_Z = FRONT_CLEARANCE_M + 1.6;
 const WALL_MARGIN = 0.3;
 
 function occupied(state: GameState, ignoreId?: string): Rect[] {
@@ -77,19 +92,22 @@ function occupied(state: GameState, ignoreId?: string): Rect[] {
   return out;
 }
 
-/** Loose check (inside the room, no footprint overlap) — used to sanity-check the facility lane's suggestion. */
+/**
+ * Loose check (inside the room, no footprint overlap, nothing parked in the viewing aisle) — used to sanity-check the
+ * facility lane's suggestion, which only knows the tanks the sim placed, not ones a fixture left behind on upgrade.
+ */
 function fitsLoose(state: GameState, tierId: string, p: { x: number; z: number; rotY: number }, ignoreId?: string): boolean {
   const fp = footprint(tierId, p.rotY);
   const hw = state.facility.width / 2;
   const hd = state.facility.depth / 2;
   if (Math.abs(p.x) + fp.hx > hw + 1e-6 || Math.abs(p.z) + fp.hz > hd + 1e-6) return false;
-  const me: Rect = { x: p.x, z: p.z, hx: fp.hx, hz: fp.hz };
+  const me: Rect = { x: p.x, z: p.z, hx: fp.hx, hz: fp.hz + AISLE_Z / 2 };
   for (const id of state.tankOrder) {
     if (id === ignoreId) continue;
     const t = state.tanks[id];
     if (!t) continue;
     const o = footprint(t.tierId, t.placement.rotY);
-    if (overlaps(me, { x: t.placement.x, z: t.placement.z, hx: o.hx, hz: o.hz })) return false;
+    if (overlaps(me, { x: t.placement.x, z: t.placement.z, hx: o.hx, hz: o.hz + AISLE_Z / 2 })) return false;
   }
   return true;
 }

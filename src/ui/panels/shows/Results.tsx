@@ -12,7 +12,7 @@ import { Button } from '@/ui/kit';
 import { Card, Chip, EmptyState } from '../common/parts';
 import { act } from '../common/act';
 import { TierBadge, Rosette } from './Ribbons';
-import { gameWhen, money, realIn } from './util';
+import { gameWhen, money, realIn, speedNote } from './util';
 
 // ───────────────────────────── entries ─────────────────────────────
 
@@ -38,7 +38,7 @@ export function EntriesTab({ g, onBrowse }: { g: GameState; onBrowse: () => void
             <div className="sh-show__top">
               <TierBadge tier={show.tier} />
               <span className="sh-show__when" title={gameWhen(show.judgingHour)}>
-                <Trophy size={12} aria-hidden /> Judging in {realIn(show.judgingHour - now)}
+                <Trophy size={12} aria-hidden /> Judging in {realIn(show.judgingHour - now, g.clock.speed)}{speedNote(g.clock.speed)}
               </span>
             </div>
             <h4 className="sh-show__name">{show.name}</h4>
@@ -62,7 +62,7 @@ export function EntriesTab({ g, onBrowse }: { g: GameState; onBrowse: () => void
               ))}
             </div>
             <div className="sh-show__deadline">
-              {open ? `Entries close in ${realIn(show.deadlineHour - now)} at 1× — withdraw before then for a full refund.` : 'Entries are closed. If an entrant is unwell on the day, it stays home and the club refunds the fee.'}
+              {open ? `Entries close in ${realIn(show.deadlineHour - now, g.clock.speed)}${speedNote(g.clock.speed)} — withdraw before then for a full refund.` : 'Entries are closed. If an entrant is unwell on the day, it stays home and the club refunds the fee.'}
             </div>
           </Card>
         );

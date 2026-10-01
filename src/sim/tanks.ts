@@ -70,7 +70,9 @@ export function createTank(state: GameState, tierId: string, waterClass: WaterCl
     decor: [],
     substrate: opts.substrate ?? defaultSubstrate(waterClass),
     backdrop: opts.backdrop ?? (env === 'marine' ? 'deep_blue' : 'black'),
-    lighting: { preset: defaultLightPreset(waterClass), intensity: 1, onHour: 7, offHour: 22, moonlight: true },
+    // S01-11 — a 12 h day (07–19): fully lit by a new game's 08:00 start (the sunrise ramp is an hour), the length the
+    // game's own lighting advice accepts, and the upkeep baseline (kits.ts bills light by photoperiod / 12).
+    lighting: { preset: defaultLightPreset(waterClass), intensity: 1, onHour: 7, offHour: 19, moonlight: true },
     createdHour: state.clock.hour,
     cache: { stockingLoad: 0, beauty: 40, welfare: 100, exhibitScore: 30, stability: 70, status: 'good', compatVerdict: 'excellent' },
     signage: false,

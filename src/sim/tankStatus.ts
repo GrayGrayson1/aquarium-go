@@ -9,7 +9,7 @@
  * Everything here is cheap (one pass over the tank's animals + the food inventory) and runs in refreshTankCache.
  */
 import type { Creature, FoodDef, GameState, SpeciesDefinition, Tank } from '@/types';
-import type { StatusLevel } from '@/types/reports';
+import type { StatusLevel, WaterResidents } from '@/types/reports';
 import { findSpecies } from '@/data/species';
 import { FOODS, getFoodDef } from '@/data/catalog/foods';
 import { portionForDemand, TYPICAL_MEAL_HUNGER } from './water/food';
@@ -18,6 +18,7 @@ import { illnessDef } from './life/illness';
 import { emitEvent } from './context';
 import { getWaterReport } from './water';
 import { creaturesInTank } from './life';
+import { speciesWaterView } from './life/welfare'; // lane:fix-water — the creature card's water-harm number
 import { pluralName } from './economy/util';
 import { allResidents } from './residents'; // lane:perf2
 
@@ -26,7 +27,7 @@ export const worseStatus = (a: StatusLevel, b: StatusLevel): StatusLevel => (RAN
 
 // ───────────────────────────── animals ─────────────────────────────
 
-export type AnimalIssue = 'starving' | 'dying' | 'seriously_ill' | 'badly_stressed' | 'failing' | 'very_hungry' | 'ill' | 'stressed' | 'injured' | 'recovering';
+export type AnimalIssue = 'starving' | 'harmed_by_water' | 'dying' | 'seriously_ill' | 'badly_stressed' | 'failing' | 'very_hungry' | 'ill' | 'stressed' | 'injured' | 'recovering';
 
 /** Thresholds mirror creatureWellbeing (src/sim/life/index.ts) so the card and the tank bar always agree. */
 export const ANIMAL_THRESHOLDS = {
@@ -39,10 +40,12 @@ export const ANIMAL_THRESHOLDS = {
   badStress: 80,
   stress: 55,
   injury: 20,
+  /** lane:fix-water — water harm (health points per game hour) the creature card calls DANGER (creatureWellbeing). */
+  waterHarmHp: 0.05,
 } as const;
 
-const ISSUE_ORDER: AnimalIssue[] = ['starving', 'dying', 'seriously_ill', 'failing', 'badly_stressed', 'very_hungry', 'ill', 'stressed', 'injured', 'recovering'];
-const DANGER_ISSUES = new Set<AnimalIssue>(['starving', 'dying', 'seriously_ill', 'failing', 'badly_stressed']);
+const ISSUE_ORDER: AnimalIssue[] = ['starving', 'harmed_by_water', 'dying', 'seriously_ill', 'failing', 'badly_stressed', 'very_hungry', 'ill', 'stressed', 'injured', 'recovering'];
+const DANGER_ISSUES = new Set<AnimalIssue>(['starving', 'harmed_by_water', 'dying', 'seriously_ill', 'failing', 'badly_stressed']);
 
 export interface AnimalStatus {
   status: StatusLevel;
@@ -69,7 +72,7 @@ function issueOf(c: Creature): AnimalIssue | null {
   return null;
 }
 
-function who(creatures: Creature[]): { subject: string; plural: boolean } {
+function who(creatures: Pick<Creature, 'name' | 'speciesId'>[]): { subject: string; plural: boolean } {
   if (creatures.length === 1) return { subject: creatures[0].name, plural: false };
   const species = new Set(creatures.map((c) => c.speciesId));
   if (species.size === 1) {
@@ -86,6 +89,8 @@ function issueText(issue: AnimalIssue, list: Creature[]): string {
   switch (issue) {
     case 'starving':
       return `${subject} ${is} starving — feed right away.`;
+    case 'harmed_by_water':
+      return `${subject} ${is} being harmed by the water.`;
     case 'dying':
       return `${subject} ${is} gravely weak — health is failing fast.`;
     case 'seriously_ill': {
@@ -158,9 +163,15 @@ export interface FoodOutlook {
 
 const OK_OUTLOOK: FoodOutlook = { level: 'ok', meals: Infinity, servings: 0, names: [], speciesIds: [], foodIds: [], restockId: null, text: null };
 
-/** Animals that live off light or biofilm/algae don't depend on the food cupboard. */
+/**
+ * Animals that live off light or biofilm/algae don't depend on the food cupboard. lane:fix-water — only the true
+ * self-feeders (otos, nerites, shrimp… flagged `needsAlgaeOrBiofilm`, which forage the film at ~10 hunger points an
+ * hour in forageSubstep). A fish that merely lists biofilm (endlers, mollies, bristlenose) gets a few points an hour
+ * from the shared film and starves in a week without fed food, so it counts for the low / out-of-food warnings.
+ */
 export function needsFedFood(sp: SpeciesDefinition): boolean {
-  return sp.diet !== 'photosynthetic' && !sp.foods.includes('biofilm');
+  if (sp.diet === 'photosynthetic') return false;
+  return !(sp.special?.needsAlgaeOrBiofilm && sp.foods.includes('biofilm'));
 }
 
 const eatsRaw = (sp: SpeciesDefinition, f: FoodDef) => f.tags.some((t) => sp.foods.includes(t));
@@ -226,18 +237,43 @@ export function foodPerRound(state: GameState, index: ResidentIndex = fedResiden
   return perRound;
 }
 
+/**
+ * lane:fix-water — how well a food suits this species, the way pickStaffFood (staff/work.ts) judges it: a food made
+ * for another animal (goldfish or axolotl pellets, marine foods in fresh water) barely counts even when its tags
+ * technically match, and a food with many tags the species doesn't eat (big pellets for small fish) counts less.
+ */
+function foodFit(sp: SpeciesDefinition, f: FoodDef): number {
+  const wrongKind =
+    (/^marine_/.test(f.id) && sp.environment !== 'marine') || (/^axolotl_/.test(f.id) && sp.id !== 'axolotl') || (/^goldfish_/.test(f.id) && !/goldfish/.test(sp.id));
+  const tagFit = f.tags.filter((t) => sp.foods.includes(t)).length / Math.max(1, f.tags.length);
+  return (wrongKind ? 0.2 : 1) * (0.6 + 0.4 * tagFit);
+}
+
+/**
+ * The food to suggest for these animals: each species' own best buy (suits it, a staple over a small-pack treat,
+ * something the player already uses, then cheapest per serving — the keeper's own ranking), and among those picks the
+ * one that feeds the most of them; ties go to the neediest (first) species. It used to be "whatever's tags cover the
+ * most species", which sent tetra + corydoras and axolotl tanks to the goldfish pellets.
+ */
 function restockFor(state: GameState, species: SpeciesDefinition[]): string | null {
   const known = new Set(Object.keys(state.inventory.foods ?? {}));
-  let best: { id: string; score: number } | null = null;
-  for (const f of FOODS) {
-    const n = species.filter((sp) => eats(sp, f)).length;
-    if (!n || !foodUnlocked(state, f)) continue;
-    const perServing = f.price / Math.max(1, f.servingsPerPack);
-    // Feeds the most of them, then something the player already uses, then the cheapest per serving.
-    const score = n * 10 + (known.has(f.id) ? 5 : 0) - Math.min(4, perServing * 4);
-    if (!best || score > best.score) best = { id: f.id, score };
+  const picks: FoodDef[] = [];
+  for (const sp of species) {
+    let best: { f: FoodDef; score: number } | null = null;
+    for (const f of FOODS) {
+      if (!eats(sp, f) || !foodUnlocked(state, f)) continue;
+      const perServing = f.price / Math.max(1, f.servingsPerPack);
+      const score = foodFit(sp, f) * 10 + (f.servingsPerPack > 24 ? 3 : 0) + (known.has(f.id) ? 5 : 0) - Math.min(4, perServing * 4);
+      if (!best || score > best.score) best = { f, score };
+    }
+    if (best && !picks.includes(best.f)) picks.push(best.f);
   }
-  return best?.id ?? null;
+  let bestPick: { f: FoodDef; covers: number } | null = null;
+  for (const f of picks) {
+    const covers = species.filter((sp) => eats(sp, f)).length;
+    if (!bestPick || covers > bestPick.covers) bestPick = { f, covers };
+  }
+  return bestPick?.f.id ?? null;
 }
 
 function listNames(names: string[]): string {
@@ -327,11 +363,35 @@ export function foodOutlookAll(state: GameState): Record<string, FoodOutlook> {
 const WATER_CONSEQUENCES = new Set<AnimalIssue | null>(['dying', 'failing', 'badly_stressed', 'stressed', 'recovering']);
 
 /**
- * Combine water, animals and food into `cache.status` + reasons. `waterHeadline` is the water report's one-liner.
- * Pure over its inputs; writes only tank.cache.
+ * lane:fix-water — the creature card says DANGER as soon as the water is costing an animal health (harm above
+ * ANIMAL_THRESHOLDS.waterHarmHp), which starts at the report's WATCH line; the tank bar used to stay at "watch" for that
+ * whole band while every card in the tank was red. The water report lists who it is harming; this folds that into the
+ * animals' status ahead of everything but starvation, with the water headline as the explanation.
  */
-export function composeTankStatus(tank: Tank, water: { status: StatusLevel; headline: string }, animals: AnimalStatus, food: FoodOutlook): void {
+function withWaterHarm(tank: Tank, animals: AnimalStatus, water: { headline: string; residents?: WaterResidents[] }): AnimalStatus {
+  if (!water.residents?.length || animals.issue === 'starving') return animals;
+  const hurt = water.residents.filter((r) => {
+    const sp = findSpecies(r.speciesId);
+    return sp ? speciesWaterView(sp, tank).harm > ANIMAL_THRESHOLDS.waterHarmHp : false;
+  });
+  if (!hurt.length) return animals;
+  const list = hurt.flatMap((h) => h.creatureIds.map((id, i) => ({ id, name: h.names[i] ?? h.speciesId, speciesId: h.speciesId })));
+  const { subject, plural } = who(list);
+  return {
+    status: 'danger',
+    issue: 'harmed_by_water',
+    reason: `${subject} ${plural ? 'are' : 'is'} being harmed by the water — ${water.headline.charAt(0).toLowerCase()}${water.headline.slice(1)}.`,
+    creatureIds: list.map((x) => x.id),
+  };
+}
+
+/**
+ * Combine water, animals and food into `cache.status` + reasons. `water` is the water report (its status, one-line
+ * headline and, when present, who it is harming). Pure over its inputs; writes only tank.cache.
+ */
+export function composeTankStatus(tank: Tank, water: { status: StatusLevel; headline: string; residents?: WaterResidents[] }, animalsIn: AnimalStatus, food: FoodOutlook): void {
   const c = tank.cache;
+  const animals = withWaterHarm(tank, animalsIn, water);
   c.waterStatus = water.status;
   c.animalStatus = animals.status;
   c.foodLevel = food.level;
