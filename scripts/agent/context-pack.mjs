@@ -29,6 +29,21 @@ export function section(text, from, to) {
   return lines.slice(start, rel < 0 ? undefined : start + 1 + rel).join('\n').trim();
 }
 
+/**
+ * The sections a range names: "12-16" → 12…16 and "12.2-12.5" → 12.2…12.5 (same parent, last number counts up);
+ * any other pair gives just its two ends.
+ */
+function expandRange(from, to) {
+  if (!to) return [from];
+  const a = from.split('.');
+  const b = to.split('.');
+  const first = Number(a[a.length - 1]);
+  const last = Number(b[b.length - 1]);
+  if (a.length !== b.length || a.slice(0, -1).join('.') !== b.slice(0, -1).join('.') || last < first || last - first > 100) return [from, to];
+  const parent = a.slice(0, -1);
+  return Array.from({ length: last - first + 1 }, (_, i) => [...parent, String(first + i)].join('.'));
+}
+
 /** Section numbers cited as design sections: "design §5.2", "design §12-§16", "§5.2" items of designSections. */
 export function designCitations(texts, designSections = []) {
   const out = new Set(designSections.map((d) => String(d).replace(/^§/, '')));
@@ -36,12 +51,7 @@ export function designCitations(texts, designSections = []) {
     for (const m of String(t).matchAll(/design\s+((?:§\d+(?:\.\d+)*(?:\s*[-–]\s*§?\d+(?:\.\d+)*)?(?:\s*(?:,|and)\s*)?)+)/gi)) {
       for (const part of m[1].split(/\s*(?:,|and)\s*/)) {
         const r = part.match(/§?(\d+(?:\.\d+)*)(?:\s*[-–]\s*§?(\d+(?:\.\d+)*))?/);
-        if (!r) continue;
-        if (r[2] && !r[1].includes('.') && !r[2].includes('.')) for (let n = Number(r[1]); n <= Number(r[2]); n++) out.add(String(n));
-        else {
-          out.add(r[1]);
-          if (r[2]) out.add(r[2]);
-        }
+        if (r) for (const n of expandRange(r[1], r[2])) out.add(n);
       }
     }
   }

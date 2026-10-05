@@ -10,10 +10,11 @@ const CLOSED = ['GREEN', 'DEFERRED', 'SUPERSEDED'];
 const BEFORE_TASKS = ['BOOTSTRAP', 'BASELINE_VERIFY', 'SLICE_DISCOVERY', 'PLAN_LOCK'];
 
 /**
- * Schema and append-only checks. `committed` is a list of earlier registry versions (HEAD, the last accepted
- * checkpoint): an id that existed in any of them must still exist. `fileExists(rel)` checks GREEN evidence paths.
+ * Schema and append-only checks. `committed` is a list of earlier registry versions (every committed version since
+ * the last accepted checkpoint): an id that existed in any of them must still exist. `fileExists(rel)` checks GREEN
+ * evidence paths, and `adrOk(id)` that a DEFERRED or SUPERSEDED decision is a committed ADR listed in the index.
  */
-export function validateRequirements(reqs, committed = [], fileExists = () => true) {
+export function validateRequirements(reqs, committed = [], fileExists = () => true, adrOk = () => true) {
   const errors = [];
   const warnings = [];
   const list = reqs?.requirements;
@@ -34,7 +35,11 @@ export function validateRequirements(reqs, committed = [], fileExists = () => tr
       if (!(r.evidence?.length && r.tests?.length)) errors.push(`${where}: GREEN without tests and evidence`);
       for (const e of r.evidence ?? []) if (!fileExists(String(e).split(' ')[0])) errors.push(`${where}: GREEN evidence ${e} does not exist`);
     }
-    if (['DEFERRED', 'SUPERSEDED'].includes(r?.status) && !/ADR-\d{4}/.test(String(r.decision ?? ''))) errors.push(`${where}: ${r.status} needs a decision citing an ADR`);
+    if (['DEFERRED', 'SUPERSEDED'].includes(r?.status)) {
+      const adr = String(r.decision ?? '').match(/ADR-\d{4}/)?.[0];
+      if (!adr) errors.push(`${where}: ${r.status} needs a decision citing an ADR`);
+      else if (!adrOk(adr)) errors.push(`${where}: ${r.status} cites ${adr}, which is not a committed ADR listed in decisions/INDEX.md`);
+    }
     if (r?.status === 'BLOCKED' && !r.blockedBy) errors.push(`${where}: BLOCKED needs blockedBy`);
   }
   for (const version of committed) {
@@ -52,8 +57,8 @@ export const umbrellaOf = (r) => [...String(r.source ?? '').matchAll(/umbrella (
  * Traceability audit (master §41 requirements-audit): tasks after PLAN_LOCK, closed requirements in accepted slices,
  * known ids in the slice contract, and umbrella requirements GREEN only when every child is closed.
  */
-export function auditRequirements(reqs, state, { committed = [], sliceText = '', fileExists = () => true } = {}) {
-  const { errors, warnings } = validateRequirements(reqs, committed, fileExists);
+export function auditRequirements(reqs, state, { committed = [], sliceText = '', fileExists = () => true, adrOk = () => true } = {}) {
+  const { errors, warnings } = validateRequirements(reqs, committed, fileExists, adrOk);
   const list = Array.isArray(reqs?.requirements) ? reqs.requirements : [];
   const current = SLICES.indexOf(state.currentSlice);
   const pastPlan = LEGAL_STATES.includes(state.machineState) && !BEFORE_TASKS.includes(state.machineState);

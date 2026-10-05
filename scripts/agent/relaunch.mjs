@@ -14,8 +14,9 @@
  * errors, the state is an owner gate / BLOCKED_MANUAL_REVIEW / COMPLETE_LOCAL, remote mutation is allowed, or the
  * branch isn't the integration branch. After each session it stops on: a non-zero exit, no recorded progress, any stop
  * state, the session cap, the STOP file, a dirty tree, and (with an alarm) any sign of a remote write or a guard
- * change: the origin's refs moved (git ls-remote), a remote-tracking ref changed other than by fetch, a local ref was
- * deleted or rewound, git config, hooks or .claude changed, or a protected file changed.
+ * change: the origin's refs moved (git ls-remote), a remote-tracking ref changed or appeared other than by fetch, a
+ * local ref was deleted or rewound, git config, hooks or .claude changed, a protected file or PROTECTED.json changed,
+ * or the deploy configuration changed (DEPLOY_CONFIG: what a later push would build and deploy).
  *
  * Sessions run with --permission-mode auto and --permission-prompts none (anything that would need a person is
  * denied), deny rules passed inline for every spawn, and push credentials stripped from the child environment.
@@ -28,7 +29,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PATHS, ROOT, STOP_STATES, appendEvent, exists, git, nowIso, parseArgs, positiveInt, positiveNumber, readJson, readText, sha256File, sha256Text } from './lib.mjs';
 import { checkRepository } from './check-state.mjs';
-import { verifyProtected } from './protect.mjs';
+import { currentHashes, verifyProtected } from './protect.mjs';
 
 export const RUNS_DIR = '.agent-runs';
 export const LOCK_FILE = `${RUNS_DIR}/relaunch.lock`;
@@ -44,6 +45,11 @@ export const DENY_RULES = [
   'Bash(git -c *)',
   'Bash(git --git-dir*)',
   'Bash(git --work-tree*)',
+  'Bash(git --no-pager push*)',
+  'Bash(/usr/bin/git *)',
+  'Bash(/usr/local/bin/git *)',
+  'Bash(/opt/homebrew/bin/git *)',
+  'Bash(git credential*)',
   'Bash(git remote add *)',
   'Bash(git remote set-url *)',
   'Bash(git remote remove *)',
@@ -68,14 +74,19 @@ export const DENY_RULES = [
   'Bash(bash -c *)',
   'Bash(zsh -c *)',
   'Bash(env *)',
+  'Bash(xargs *)',
   'Bash(git reset --hard)',
   'Bash(git reset --hard *)',
+  'Bash(git reset --soft *)',
+  'Bash(git reset --mixed *)',
   'Bash(git clean *)',
   'Bash(git checkout -- *)',
   'Bash(git checkout .)',
   'Bash(git checkout -f*)',
   'Bash(git checkout --force*)',
   'Bash(git switch --discard-changes*)',
+  'Bash(git switch -f*)',
+  'Bash(git switch --force*)',
   'Bash(git restore *)',
   'Bash(git stash drop)',
   'Bash(git stash drop *)',
@@ -83,6 +94,8 @@ export const DENY_RULES = [
   'Bash(git branch -D *)',
   'Bash(git branch -d *)',
   'Bash(git branch --delete *)',
+  'Bash(git branch -f *)',
+  'Bash(git branch --force *)',
   'Bash(git tag -d *)',
   'Bash(git tag --delete *)',
   'Bash(git tag -f *)',
@@ -92,10 +105,12 @@ export const DENY_RULES = [
   'Bash(git commit --amend)',
   'Bash(git commit --amend *)',
   'Bash(git commit -a --amend*)',
+  'Bash(git commit *--amend*)',
   'Bash(git filter-branch *)',
   'Bash(git filter-repo *)',
   'Bash(git reflog expire *)',
-  'Bash(git gc --prune *)',
+  'Bash(git reflog delete*)',
+  'Bash(git gc --prune*)',
 ];
 
 export const UNATTENDED_NOTE = [
@@ -113,11 +128,15 @@ export function extractKickoff(markdown) {
   return m[1].replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/** Child environment: no push credentials (tokens removed, git credential helpers blanked), no prompts. */
+/**
+ * Child environment: no push credentials (tokens, the SSH agent and askpass helpers removed, git credential helpers
+ * blanked, gh pointed at an empty config directory), no prompts.
+ */
 export function childEnv(base, bgWaitHours) {
   const env = { ...base };
-  for (const k of ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'RENDER_API_KEY', 'VERCEL_TOKEN', 'NPM_TOKEN']) delete env[k];
+  for (const k of ['GH_TOKEN', 'GITHUB_TOKEN', 'GH_ENTERPRISE_TOKEN', 'GITHUB_ENTERPRISE_TOKEN', 'RENDER_API_KEY', 'VERCEL_TOKEN', 'NPM_TOKEN', 'SSH_AUTH_SOCK', 'GIT_ASKPASS', 'SSH_ASKPASS']) delete env[k];
   Object.assign(env, {
+    GH_CONFIG_DIR: join(ROOT, RUNS_DIR, 'gh-config-empty'),
     GIT_TERMINAL_PROMPT: '0',
     GIT_CONFIG_COUNT: '2',
     GIT_CONFIG_KEY_0: 'credential.helper',
@@ -176,6 +195,12 @@ function remoteRefs() {
   return r.status === 0 ? r.stdout : null;
 }
 
+/**
+ * Files whose content decides what a later push builds and deploys: both channels (GitHub Pages and Render) run
+ * `npm ci && npm run build` on the pushed tree (SD-12).
+ */
+export const DEPLOY_CONFIG = ['.github', 'render.yaml', 'package.json', 'package-lock.json', '.npmrc', 'vite.config.ts'];
+
 function dirHash(rel) {
   const dir = join(ROOT, rel);
   if (!existsSync(dir)) return 'absent';
@@ -191,6 +216,12 @@ function dirHash(rel) {
   return sha256Text(parts.join('\n'));
 }
 
+function pathHash(rel) {
+  const p = join(ROOT, rel);
+  if (!existsSync(p)) return 'absent';
+  return statSync(p).isDirectory() ? dirHash(rel) : sha256File(p);
+}
+
 function snapshot() {
   return {
     head: git('rev-parse', 'HEAD'),
@@ -202,6 +233,9 @@ function snapshot() {
     hooks: dirHash('.git/hooks'),
     claude: dirHash('.claude'),
     protectedErrors: verifyProtected().errors.length,
+    protectedFiles: sha256Text(JSON.stringify(currentHashes())),
+    protectedRecord: pathHash(PATHS.protected),
+    deployConfig: Object.fromEntries(DEPLOY_CONFIG.map((rel) => [rel, pathHash(rel)])),
   };
 }
 
@@ -223,10 +257,17 @@ export function alarmsBetween(before, after, { integrationBranch, isAncestor, re
     } else if (ref.startsWith('refs/tags/')) alarms.push(`tag ${ref} was moved`);
     else alarms.push(`ref ${ref} was moved`);
   }
+  for (const ref of Object.keys(after.refs)) {
+    if (ref in before.refs || !ref.startsWith('refs/remotes/')) continue;
+    if (reflogSubjects(ref).some((s) => !s.startsWith('fetch'))) alarms.push(`remote-tracking ref ${ref} appeared other than by fetch (a push of a new branch?)`);
+  }
   if (before.gitConfig !== after.gitConfig) alarms.push('.git/config changed');
   if (before.hooks !== after.hooks) alarms.push('.git/hooks changed');
   if (before.claude !== after.claude) alarms.push('.claude settings changed');
   if (after.protectedErrors > before.protectedErrors) alarms.push('protected harness files changed without an approval (protect.mjs)');
+  if (before.protectedFiles !== after.protectedFiles || before.protectedRecord !== after.protectedRecord) alarms.push('protected harness files or docs/agent/PROTECTED.json changed during the session: the owner reviews the change and its ADR');
+  const deploy = [...new Set([...Object.keys(before.deployConfig ?? {}), ...Object.keys(after.deployConfig ?? {})])].filter((p) => before.deployConfig?.[p] !== after.deployConfig?.[p]);
+  if (deploy.length) alarms.push(`deploy configuration changed (${deploy.join(', ')}): a push would build and deploy it, so the owner reviews it first`);
   return alarms;
 }
 

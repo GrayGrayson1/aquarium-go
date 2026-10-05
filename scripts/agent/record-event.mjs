@@ -16,11 +16,13 @@
  * A transition must start at STATE.machineState, name STATE.currentSlice and be in docs/agent/OPERATIONS.md §4; it
  * then updates STATE.json (machine state, and the owner-gate fields on entering or leaving OWNER_GATE). Leaving
  * OWNER_GATE or BLOCKED_MANUAL_REVIEW, and owner-decision events, need --decision ADR-NNNN naming a committed ADR
- * listed in decisions/INDEX.md. `--distinct` on a repair records a reviewer's judgement that the strategy is
- * materially different (OPERATIONS.md §5). Exits 1, writing nothing, when the event is invalid.
+ * listed in decisions/INDEX.md. Leaving NEXT_SLICE (into the next slice or the readiness gate) must happen in a
+ * different Claude Code session from the one that recorded HANDOFF → NEXT_SLICE. `--distinct` on a repair records a
+ * reviewer's judgement that the strategy is materially different (OPERATIONS.md §5). Exits 1, writing nothing, when
+ * the event is invalid.
  */
 import { pathToFileURL } from 'node:url';
-import { EVENT_KINDS, PATHS, appendEvent, checkTransition, exists, findAdr, nowIso, parseArgs, readJson, writeJson } from './lib.mjs';
+import { EVENT_KINDS, PATHS, appendEvent, checkTransition, currentSession, exists, findAdr, nowIso, parseArgs, parseLedger, readJson, readText, writeJson } from './lib.mjs';
 
 const ALLOWED = ['kind', 'actor', 'slice', 'task', 'from', 'to', 'result', 'evidence', 'decision', 'note', 'defect', 'strategy', 'reason', 'resume'];
 const BOOLEANS = ['help', 'distinct', 'resolved'];
@@ -92,7 +94,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     if (event.slice !== state.currentSlice) problems.push(`${event.kind} events name the current slice ${state.currentSlice}`);
   }
   if (event.kind === 'transition') {
-    problems.push(...checkTransition({ from: event.fromState, to: event.toState, slice: event.slice, decisions: event.decisions, reason: event.reason, resume: event.resume }, { state, adrExists: (id) => !!findAdr(id), s4Accepted: s4Accepted() }));
+    const { events } = parseLedger(exists(PATHS.ledger) ? readText(PATHS.ledger) : '');
+    const closing = [...events].reverse().find((e) => e?.kind === 'transition' && e.toState === 'NEXT_SLICE');
+    problems.push(...checkTransition({ from: event.fromState, to: event.toState, slice: event.slice, decisions: event.decisions, reason: event.reason, resume: event.resume }, { state, adrExists: (id) => !!findAdr(id), s4Accepted: s4Accepted(), session: currentSession(), closingSession: closing?.session ?? null }));
   }
   if (event.kind === 'owner-decision') {
     if (!event.decisions.length) problems.push('an owner-decision event cites the ADR that records the owner\'s words (--decision ADR-NNNN)');

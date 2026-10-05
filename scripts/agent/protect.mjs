@@ -7,14 +7,15 @@
  *   node scripts/agent/protect.mjs                              # verify; exit 1 if a protected file changed
  *   node scripts/agent/protect.mjs --update --adr ADR-0006      # record the current hashes under that ADR
  *
- * --update needs a committed ADR listed in decisions/INDEX.md. When an owner-only file changed (OWNER_ONLY), that ADR
- * must contain an "## Owner approval" section quoting the owner. Accepted ADRs are never edited: a changed ADR file
- * fails verification. Every update appends a ledger event carrying the new PROTECTED.json hash, and verification
+ * --update needs an Accepted ADR, committed, listed in decisions/INDEX.md and written since the last accepted
+ * checkpoint (or the baseline before the first one), so an old, unrelated ADR can't bless a new change. When an
+ * owner-only file changed (OWNER_ONLY), that ADR must contain an "## Owner approval" section quoting the owner; the
+ * ADR template's placeholder text and a "Pending" note don't count. Accepted ADRs are never edited: a changed ADR file fails verification. Every update appends a ledger event carrying the new PROTECTED.json hash, and verification
  * checks PROTECTED.json against the latest such event, so editing it by hand is caught.
  */
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { PATHS, abs, appendEvent, exists, findAdr, git, nowIso, parseArgs, parseLedger, readJson, readText, sha256File, sha256Text } from './lib.mjs';
+import { PATHS, abs, appendEvent, exists, findAdr, git, nowIso, parseArgs, parseLedger, readJson, readText, sha256File, sha256Text, showAt } from './lib.mjs';
 
 export const PROTECTED_PATH = PATHS.protected;
 
@@ -79,15 +80,35 @@ export function compareProtected(recorded, current) {
   return { errors, warnings: [] };
 }
 
-/** True when the ADR text has an "## Owner approval" section with real content. */
-export function hasOwnerApproval(adrText) {
-  const lines = String(adrText).split('\n');
+export const ADR_TEMPLATE = 'docs/agent/templates/ADR_TEMPLATE.md';
+
+/** The non-empty, trimmed lines of a text's "## Owner approval" section, or null when it has none. */
+function ownerApprovalLines(text) {
+  const lines = String(text).split('\n');
   const start = lines.findIndex((l) => /^## Owner approval\s*$/.test(l));
-  if (start < 0) return false;
+  if (start < 0) return null;
   const rest = lines.slice(start + 1);
   const end = rest.findIndex((l) => /^## /.test(l));
-  const body = (end < 0 ? rest : rest.slice(0, end)).join('').replace(/\s+/g, '');
-  return body.length >= 40;
+  return (end < 0 ? rest : rest.slice(0, end)).map((l) => l.trim()).filter(Boolean);
+}
+
+/**
+ * True when the ADR text has an "## Owner approval" section with real content. Lines copied unchanged from the ADR
+ * template's own section (its instructions) don't count, and a section that starts "Pending", "TBD" or "To be
+ * recorded" is no approval.
+ */
+export function hasOwnerApproval(adrText, templateText = exists(ADR_TEMPLATE) ? readText(ADR_TEMPLATE) : '') {
+  const lines = ownerApprovalLines(adrText);
+  if (!lines) return false;
+  const placeholder = new Set(ownerApprovalLines(templateText) ?? []);
+  const own = lines.filter((l) => !placeholder.has(l));
+  if (/^(pending|tbd|todo|to be (recorded|added|confirmed))\b/i.test((own[0] ?? '').replace(/[*_>`]/g, '').trim())) return false;
+  return own.join('').replace(/\s+/g, '').length >= 40;
+}
+
+/** The ADR's status word from its "**Status:**" line (Accepted, Proposed, …), or null. */
+export function adrStatus(adrText) {
+  return String(adrText).match(/^\*\*Status:\*\*\s*([A-Za-z]+)/m)?.[1] ?? null;
 }
 
 /** The PROTECTED.json hash recorded by the latest protect.mjs ledger event, or null. */
@@ -122,6 +143,16 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       console.error('--update needs --adr ADR-NNNN: a committed ADR listed in docs/agent/decisions/INDEX.md that approves the change');
       process.exit(1);
     }
+    if (adrStatus(readText(adrPath)) !== 'Accepted') {
+      console.error(`${adrPath} is ${adrStatus(readText(adrPath)) ?? 'without a **Status:** line'}, not Accepted: a proposed ADR approves nothing yet`);
+      process.exit(1);
+    }
+    const state = readJson(PATHS.state);
+    const anchor = state.lastAcceptedCheckpoint ?? state.actualBaselineSha ?? null;
+    if (anchor && showAt(anchor, adrPath) !== null) {
+      console.error(`${adrPath} already existed at ${anchor.slice(0, 10)} (the last accepted checkpoint, or the baseline): write a new ADR for this change`);
+      process.exit(1);
+    }
     const files = currentHashes();
     const before = exists(PROTECTED_PATH) ? readJson(PROTECTED_PATH).files ?? {} : {};
     const changed = Object.keys({ ...before, ...files }).filter((f) => before[f] !== files[f]);
@@ -146,7 +177,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     };
     const text = `${JSON.stringify(doc, null, 2)}\n`;
     writeFileSync(abs(PROTECTED_PATH), text);
-    const state = readJson(PATHS.state);
     appendEvent({ kind: 'decision', actor: 'protect.mjs', slice: state.currentSlice, task: state.currentTask, result: `protected hashes recorded for ${Object.keys(files).length} file(s), ${changed.length} changed`, decisions: [id], evidence: [PROTECTED_PATH], protectedSha256: sha256Text(text) });
     console.log(`recorded ${Object.keys(files).length} protected files (${changed.length} changed) under ${adrPath}`);
     process.exit(0);

@@ -10,7 +10,8 @@
  *     --actions "open shop; toggle Prismatic only" --expected "..." --observed "..." --console-errors 0 \
  *     --screenshot .agent-runs/evidence/S1/screens/shop-390.png [--req MKT-001]
  *
- * A reviewer's verdict (the reviewer's own report file must exist and state the verdict):
+ * A reviewer's verdict (the reviewer's own report file must exist under evidence/<slice>/reviews/ and end with the
+ * verdict line):
  *   node scripts/agent/capture-evidence.mjs --review --role code-architecture --verdict GREEN \
  *     --report docs/agent/evidence/S1/reviews/code-architecture-1.md --reviewer "fresh subagent"
  *
@@ -102,6 +103,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   } else if (args.review) {
     for (const k of ['role', 'verdict', 'report']) if (typeof args[k] !== 'string') fail(`--review needs --${k}`);
     if (!REVIEW_VERDICTS.includes(args.verdict)) fail(`--verdict must be one of ${REVIEW_VERDICTS.join(', ')}`);
+    const reviewsDir = `${PATHS.evidence}/${slice}/reviews/`;
+    if (!args.report.startsWith(reviewsDir) || args.report.split('/').includes('..')) fail(`--report must be the reviewer's own file under ${reviewsDir} (committed with the evidence)`);
     if (!existsSync(abs(args.report))) fail(`report ${args.report} does not exist`);
     const ended = reportVerdict(readText(args.report));
     if (ended !== args.verdict) fail(`report ${args.report} ends with ${ended ? `"Verdict: ${ended}"` : 'no verdict line'}, not "Verdict: ${args.verdict}"`);

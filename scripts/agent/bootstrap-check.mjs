@@ -16,7 +16,8 @@
  *   }
  *
  * Fails when a field disagrees with reality, a mandated file wasn't read, the session id isn't the running Claude Code
- * session, or the session is the same one that closed the previous slice (the rollover didn't happen).
+ * session (or no session id is known), or the session is the same one that closed the previous slice, or that closing
+ * transition recorded no session (the rollover didn't happen, or can't be shown).
  * expectedSha may trail HEAD when the only commits since touch harness bookkeeping (NON_CODE_PATHS): the handoff is
  * written before the commit that contains it.
  */
@@ -54,7 +55,8 @@ export function checkAssertion(a, { state, head, branch, events, session = null,
 
   if (a.actualSha !== head) errors.push(`actualSha ${a.actualSha} is not HEAD ${head}`);
   if (!bookkeepingOnlySince(a.expectedSha, head, changedSinceExpected)) errors.push(`expectedSha ${a.expectedSha} differs from HEAD ${head} by more than harness bookkeeping: reconcile HANDOFF/STATE with Git before editing (master §16)`);
-  if (session && a.sessionId !== session) errors.push(`sessionId ${a.sessionId} is not this Claude Code session (${session})`);
+  if (!session) errors.push('CLAUDE_CODE_SESSION_ID is not set: run the check inside the Claude Code session it describes, so the session id can be compared');
+  else if (a.sessionId !== session) errors.push(`sessionId ${a.sessionId} is not this Claude Code session (${session})`);
   if (a.branch !== branch) errors.push(`branch ${a.branch} is not the current branch ${branch}`);
   for (const k of [['slice', 'currentSlice'], ['task', 'currentTask'], ['machineState', 'machineState']]) {
     if (a[k[0]] !== state[k[1]]) errors.push(`${k[0]} ${a[k[0]]} differs from STATE.${k[1]} ${state[k[1]]}`);
@@ -68,7 +70,8 @@ export function checkAssertion(a, { state, head, branch, events, session = null,
   if (a.risks.length < 3) errors.push('name at least three risks');
   if (!a.firstFiles.length) errors.push('name the first files to inspect');
   const closing = [...events].reverse().find((e) => e?.kind === 'transition' && e.toState === 'NEXT_SLICE');
-  if (closing?.session && closing.session === a.sessionId) {
+  if (closing && !closing.session) errors.push('the transition that closed the previous slice records no session id, so the rollover to a fresh session can\'t be checked');
+  else if (closing?.session === a.sessionId) {
     errors.push(`session ${a.sessionId} also closed the previous slice: a fresh session is required after every mega-slice`);
   }
   return errors;

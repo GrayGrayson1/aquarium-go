@@ -11,21 +11,26 @@
  *   GREEN, DEFERRED or SUPERSEDED;
  * - a DEFERRED or SUPERSEDED requirement doesn't cite an ADR, or a BLOCKED one doesn't say what blocks it;
  * - an umbrella requirement is GREEN while a child that names it is still open;
- * - a requirement that existed at HEAD or at the last accepted checkpoint was deleted (ids are append-only);
+ * - a DEFERRED or SUPERSEDED decision cites an ADR that isn't committed and listed in decisions/INDEX.md;
+ * - a requirement that existed in any version committed since the last accepted checkpoint (or the baseline) was
+ *   deleted (ids are append-only);
  * - CURRENT_SLICE.md names an unknown requirement.
  */
 import { pathToFileURL } from 'node:url';
-import { PATHS, exists, parseArgs, readJson, readText, showAt } from './lib.mjs';
+import { PATHS, committedVersions, exists, findAdr, parseArgs, readJson, readText } from './lib.mjs';
 import { auditRequirements } from './requirements.mjs';
 
 export { auditRequirements };
 
-/** Earlier committed versions of the registry: HEAD and the last accepted checkpoint. */
+/** Earlier committed versions of the registry: every one since the last accepted checkpoint (or the baseline). */
 export function committedRegistries(state) {
   const out = [];
-  for (const ref of ['HEAD', state.lastAcceptedCheckpoint].filter(Boolean)) {
-    const text = showAt(ref, PATHS.requirements);
-    if (text) out.push(JSON.parse(text));
+  for (const text of committedVersions(PATHS.requirements, state.lastAcceptedCheckpoint ?? state.actualBaselineSha ?? null)) {
+    try {
+      out.push(JSON.parse(text));
+    } catch {
+      /* a committed version that wasn't valid JSON can't name ids */
+    }
   }
   return out;
 }
@@ -42,7 +47,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   const state = readJson(PATHS.state);
   const reqs = readJson(PATHS.requirements);
   const sliceText = exists(PATHS.currentSlice) ? readText(PATHS.currentSlice) : '';
-  const r = auditRequirements(reqs, state, { committed: committedRegistries(state), sliceText, fileExists: exists });
+  const r = auditRequirements(reqs, state, { committed: committedRegistries(state), sliceText, fileExists: exists, adrOk: (id) => !!findAdr(id) });
   if (args.json) console.log(JSON.stringify(r, null, 2));
   else {
     for (const e of r.errors) console.log(`ERROR   ${e}`);
