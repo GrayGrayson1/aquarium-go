@@ -100,10 +100,14 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
       slowedFor = checkStarvation(d);
     });
   } catch (e) {
-    // mutateFast published nothing, so none of this tick's slices happened: keep them all in the backlog
-    // (anything over MAX_BACKLOG_HOURS is counted as dropped below) instead of silently losing them.
-    done = 0;
-    slowedFor = null;
+    // A recipe that throws publishes nothing (mutateFast is atomic), so none of this tick's slices happened: keep
+    // them all in the backlog (anything over MAX_BACKLOG_HOURS is counted as dropped below). But a store subscriber
+    // can also throw from inside the publish, after the world has moved: then the slices did happen, and running
+    // them again next tick would make time run away (S0 review, adversarial F7).
+    if (useGame.getState().game === game) {
+      done = 0;
+      slowedFor = null;
+    }
     reportError(e);
   }
   if (slowedFor) ui.toast(starvationSlowdownText(slowedFor), 'warning');
