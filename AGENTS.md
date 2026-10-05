@@ -17,7 +17,10 @@ The full rules are in `docs/agent/AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md`, and the
   (of any branch or tag), pull requests, GitHub writes, workflow runs, releases, deploys or publishing. There are
   two live sites: a push to `main` deploys GitHub Pages through GitHub Actions, and the Render static site
   (`render.yaml`) deploys through the Render CLI or API. Local branches and local commits are fine.
-- **Never commit on `main` or `feat/*`.** Work on the integration branch named in `docs/agent/STATE.json`.
+- **Never commit on `feat/*`.** Work on the integration branch named in `docs/agent/STATE.json`
+  (`integrationBranch`): local `main` (ADR-0005 decision 6). A push of `main` deploys, so it still needs the owner's
+  recorded yes. A cloud session (claude.ai/code) works on `agent/s0-wip` and pushes only as an owner ADR allows
+  (ADR-0007, ADR-0009).
 - **Inspect before you edit.** Never invent file paths, APIs or results. A claim that something passes needs
   the command, its exit code and the evidence (`scripts/agent/verify-slice.mjs`, `capture-evidence.mjs`).
 - **Don't weaken, skip or delete tests to get green, and don't quietly drop scope.**

@@ -12,11 +12,13 @@
       "source": "Private Claude canvas \"Design\" (https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk). The repo copy is normative; the canvas ranks below it (master §3.9).",
       "scope": ["S1", "S2", "S3-A", "S3-B", "S3-C", "S4"],
       "overriddenBy": [
-        { "section": "§3.3 save compatibility and schema", "by": "master §3.5" },
+        { "section": "§3.3 save compatibility and schema", "by": "master §3.5 and ADR-0005 decision 1 (old saves not required; schema changes allowed when documented and tested; PERSIST-003)" },
         { "section": "§3.4 lane sign-off for core-owned files", "by": "master §3.8" },
         { "section": "§21 release step and D14 version timing", "by": "master §3.6 and ADR-0001" },
         { "section": "§22 open questions 1-5", "by": "master §3.10 and ADR-0001" },
-        { "section": "§21 phase order (Social before Production) and Phase 6 native", "by": "master §9 (S3 before S4) and §3.10 (native deferred)" }
+        { "section": "§21 phase order (Social before Production) and Phase 6 native", "by": "master §9 (S3 before S4) and §3.10 (native deferred)" },
+        { "section": "§11.1 single production line card per species", "by": "master §3.10, ADR-0001 and ADR-0005 decision 6: several lines per species; the multi-line screens come with DESIGN-S3C-LINES" },
+        { "section": "D2, D5 and §13: Social visible to players", "by": "ADR-0005 decision 3 (SOC-011): the whole Social stub (panel, dock item, More tile, routes and deep links) is reachable only in dev mode until a real backend exists; it is still built and tested as designed" }
       ]
     },
     {
@@ -33,8 +35,24 @@
         "S3-D resource and data names that players see"
       ],
       "doesNotBlock": [
-        "S3-A, S3-B and S3-C (designed in DESIGN-0.5 §10-§12)",
+        "S3-A and S3-B (designed in DESIGN-0.5 §10 and §12), and S3-C's simulation (DESIGN-0.5 §11; the multi-line Production UI waits for DESIGN-S3C-LINES)",
         "Read-only reconnaissance of existing inventory, food and equipment data in preparation for S3-D"
+      ]
+    },
+    {
+      "id": "DESIGN-S3C-LINES",
+      "title": "Multi-line Production screens (S3-C): several production lines per species, with their screens, copy, routes and test ids",
+      "status": "PENDING_OWNER_DESIGN",
+      "path": null,
+      "approval": null,
+      "source": "The owner is finalizing these designs (ADR-0005 decision 6, 2026-10-05). The approved DESIGN-0.5 §11 shows one line card per species.",
+      "scope": ["S3-C"],
+      "blocks": [
+        "The multi-line Production UI: line cards, line setup and detail screens, their routes, copy and test ids"
+      ],
+      "doesNotBlock": [
+        "S3-C simulation work that DESIGN-0.5 §11.2-§11.3 already covers (the Prismatic rule and the sell step are open owner questions: BACKLOG B-135)",
+        "S3-A and S3-B"
       ]
     }
   ]

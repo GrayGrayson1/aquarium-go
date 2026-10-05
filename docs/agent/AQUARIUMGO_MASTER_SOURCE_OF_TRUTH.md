@@ -8,7 +8,7 @@
 **Primary approved design contract:** `docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md`\
 **Default autonomous stopping point:** complete the local Social stub and all prior mega-slices, harden the full local stack, then stop at the Multiplayer Readiness Gate.\
 **Remote-state rule:** nothing is pushed, merged, deployed, migrated remotely, published, or submitted without explicit owner approval.\
-**Revisions:** 2026-10-05 harness review at the owner's request (ADR-0002, ADR-0003). Procedures live in `OPERATIONS.md`; `decisions/INDEX.md` lists every decision.
+**Revisions:** 2026-10-05 harness review at the owner's request (ADR-0002, ADR-0003); corrections after the owner's answers (ADR-0008). Procedures live in `OPERATIONS.md`; `decisions/INDEX.md` lists every decision.
 
 ---
 
@@ -91,6 +91,7 @@ These decisions are locked unless the owner explicitly changes them later.
   - Browser/QA reviewer
   - Security/data reviewer when state, persistence, auth, service workers, networking, trust boundaries, permissions or the harness's own guards change
   - Performance reviewer when rendering, simulation cost, large collections, route/layout churn or automation scale can regress performance
+  - Adversarial reviewer for every mega-slice (`OPERATIONS.md` §7)
 
 ### 3.3 Failure behavior
 
@@ -106,12 +107,12 @@ It must not continue making random changes.
 
 ### 3.4 Git behavior
 
-- Use one local integration branch for the stacked build.
+- Use one local integration branch for the stacked build: local `main` (`STATE.integrationBranch`, ADR-0005 decision 6).
 - Reviewers may use additional local worktrees for isolation.
 - Subagents do not push.
 - The orchestrator owns local integration commits.
 - Each mega-slice ends in a named local checkpoint commit. Checkpoint commits are never amended or rebased.
-- Nobody commits on `main` or `feat/*`; local `main` stays equal to `origin/main` until the owner approves a release.
+- Nobody commits on `feat/*`. A push of `main` deploys GitHub Pages, so it needs the owner's recorded approval like any other push (§3.1). A cloud session (claude.ai/code) works on `agent/s0-wip` and pushes only as an owner ADR allows (ADR-0007, ADR-0009).
 - Destructive Git commands are forbidden by default.
 
 ### 3.5 Save compatibility
@@ -123,8 +124,6 @@ Prefer compatibility where it is easy and low-risk. The approved 0.5 design is a
 A schema bump or explicit migration is allowed if deep automation or later architecture requires it, provided it is documented, tested, and locally reversible during development.
 
 This owner decision supersedes any older statement that schema version 1 can never change.
-
-**Open owner question (2026-10-05 review):** the live v0.4.0 code treats a save with a newer schema as damaged, falls back to an older backup and can then overwrite the newer save (`src/persistence/slots.ts`, `migrations.ts` "too_new"). Until the owner decides the schema policy, a `SCHEMA_VERSION` bump is an owner gate (`SCHEMA_BUMP`), not a pre-authorized change.
 
 ### 3.6 Versioning
 
@@ -736,7 +735,8 @@ ACCEPT
   → CHECKPOINT
   → COMPACT
   → HANDOFF
-  → MULTIPLAYER_READINESS_GATE
+  → NEXT_SLICE (the session ends)
+  → MULTIPLAYER_READINESS_GATE (in a new session)
   → OWNER_GATE
   → COMPLETE_LOCAL (when the owner closes the program)
 ```
@@ -1219,11 +1219,11 @@ Performance evidence captures:
 
 ## 29. Integration model
 
-Recommended local branch:
+Local integration branch:
 
-`agent/aquariumgo-local-stack-20261005`
+`main` (local; ADR-0005 decision 6)
 
-The harness must derive the actual name at installation and store it in `STATE.json`.
+It replaced the branch first recommended here, `agent/aquariumgo-local-stack-20261005`, which is no longer used. `STATE.integrationBranch` records the name.
 
 ### Allowed
 

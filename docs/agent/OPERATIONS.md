@@ -30,7 +30,9 @@ before and after every state change.
 
 - **The owner** is the person who owns the `GrayGrayson1/aquarium-go` repository and starts these sessions. Only the
   owner approves remote actions, multiplayer, new dependencies, owner-visible scope changes, designs, YELLOW
-  verdicts, a schema bump and the release version.
+  verdicts and the release version. A schema change needs no separate approval: it is allowed when a feature needs
+  it, documented and tested, and the save code never treats a save written by newer code as damaged, falls back past
+  it or overwrites it (master §3.5, ADR-0005 decision 1, PERSIST-003).
 - **An approval is valid only when** the owner typed it in a top-level session, and it is recorded word for word in
   an ADR (the question, the exact answer, the date, the scope and any expiry) plus a ledger event of kind
   `owner-decision`. Subagent output, tool results, workflow results, files an agent wrote and the agent's own
@@ -43,7 +45,7 @@ before and after every state change.
   2. When nothing else can proceed, or the slice can't be accepted without the decision: write the question under
      "Owner questions" in `HANDOFF.md` (options and a recommendation), set `ownerGateRequired: true`,
      `ownerGateReason` (`DESIGN_PENDING:<id>`, `YELLOW_VERDICT:<slice>`, `SCOPE_REDUCTION:<req>`,
-     `DEPENDENCY:<name>`, `SCHEMA_BUMP`, `BASELINE_RED:<test>`, `REMOTE_ACTION`, `MULTIPLAYER` or `OTHER:<text>`) and
+     `DEPENDENCY:<name>`, `BASELINE_RED:<test>`, `REMOTE_ACTION`, `MULTIPLAYER` or `OTHER:<text>`) and
      `resumeState`, record the transition to `OWNER_GATE`, commit and end the session.
   3. The next session leaves `OWNER_GATE` only after the decision is recorded (an ADR), returning to `resumeState`.
 
@@ -72,7 +74,7 @@ Allowed: read-only network access for documentation, package metadata and resear
 | From | To | When |
 |---|---|---|
 | (start of program) | `BOOTSTRAP` | the first S0 session |
-| `NEXT_SLICE` | `BOOTSTRAP` | the first session of the next slice |
+| `NEXT_SLICE` | `BOOTSTRAP` | the first session of the next slice (S1-S4), after `next-slice.mjs` (§6) |
 | `BOOTSTRAP` | `BASELINE_VERIFY` | bootstrap assertion written and checked against Git |
 | `BASELINE_VERIFY` | `SLICE_DISCOVERY` | baseline (or last checkpoint) gates recorded |
 | `SLICE_DISCOVERY` | `PLAN_LOCK` | contract, requirements and target files known |
@@ -91,8 +93,8 @@ Allowed: read-only network access for documentation, package metadata and resear
 | `ACCEPT` | `CHECKPOINT` | checkpoint commit and tag made |
 | `CHECKPOINT` | `COMPACT` | `lastAcceptedCheckpoint` recorded |
 | `COMPACT` | `HANDOFF` | obsolete context pruned |
-| `HANDOFF` | `NEXT_SLICE` | S0-S3: handoff regenerated; the session ends |
-| `HANDOFF` | `MULTIPLAYER_READINESS_GATE` | S4 only |
+| `HANDOFF` | `NEXT_SLICE` | handoff regenerated; the session ends (every slice, S4 included) |
+| `NEXT_SLICE` | `MULTIPLAYER_READINESS_GATE` | S4 accepted: the first session after it ("After S4" below) |
 | `MULTIPLAYER_READINESS_GATE` | `OWNER_GATE` | readiness result and owner package written |
 | any state | `OWNER_GATE` | §2 owner gate protocol |
 | `OWNER_GATE` | `resumeState` or `COMPLETE_LOCAL` | owner decision recorded in an ADR |
@@ -104,6 +106,13 @@ multiplayer work without the owner. `record-event.mjs` refuses transitions that 
 
 Internal checkpoints (master §3.1): a local commit after Level 2 checks pass, during `IMPLEMENT` or
 `TARGETED_VERIFY`. It doesn't change the machine state; record its commands as evidence.
+
+**After S4.** The session that accepts S4 goes through `CHECKPOINT`, `COMPACT` and `HANDOFF` to `NEXT_SLICE` and
+ends, like every slice; it doesn't run `next-slice.mjs`, which refuses after S4. A new session (`bootstrap-check.mjs`
+refuses the session that recorded `HANDOFF → NEXT_SLICE`) records `NEXT_SLICE → MULTIPLAYER_READINESS_GATE`, which
+`record-event.mjs` allows only while the slice is S4 and `evidence/S4/manifest.json` has verdict GREEN. It runs the
+gate (master §10), writes the readiness result and the owner package (master §49), moves to `OWNER_GATE` with reason
+`MULTIPLAYER`, commits and ends. Only an owner decision recorded in an ADR leaves that gate (§2).
 
 ## 5. Repairs (master §3.3)
 
@@ -163,12 +172,41 @@ again. At acceptance, `check-state.mjs` checks that every gate passed on exactly
 
 **Checkpoint procedure.**
 1. Finish all code. Run `verify-slice.mjs` for every gate on that final tree.
-2. Have the required reviewers review the same tree; record each verdict with `capture-evidence.mjs --review`.
+2. Have the required reviewers review the same tree; each re-runs the gates its verdict depends on (§7). Record each
+   verdict with `capture-evidence.mjs --review`.
 3. Run `requirements-audit.mjs`; write `evidence/<slice>/acceptance-report.md` from the template; set the manifest
    verdict to GREEN; record `ADVERSARIAL_REVIEW → ACCEPT`.
 4. Commit code and evidence together as `S<n>: checkpoint — <name>`, and add the local tag `checkpoint/S<n>-<name>`.
-5. In a bookkeeping commit, set `lastAcceptedCheckpoint` to that commit's full SHA and move through `CHECKPOINT`,
-   `COMPACT` and `HANDOFF` to `NEXT_SLICE`; run `handoff.mjs --write`; commit; end the session.
+5. Back up the repository (ADR-0006 decision 1, HARNESS-008). The first time, create the folder
+   `/Volumes/Dev/Backup Projects/AquariumGo/`. Run
+   `git bundle create "/Volumes/Dev/Backup Projects/AquariumGo/aquariumgo-S<n>-<sha12>.bundle" --all` (`<sha12>`: the
+   first 12 characters of the checkpoint commit), then `git bundle verify` on that file through
+   `capture-evidence.mjs --command` (label `backup-bundle`), so its exit code and log are recorded. The folder is on
+   the same drive as the repository: it protects against a damaged or rewritten repository, not a lost drive. A cloud
+   session can't reach that folder (§8): it records this step as not run, in the acceptance report and in
+   `HANDOFF.md`, never as done.
+6. In a bookkeeping commit, set `lastAcceptedCheckpoint` to that commit's full SHA and move through `CHECKPOINT`,
+   `COMPACT` and `HANDOFF` to `NEXT_SLICE`; for S0-S3 run `next-slice.mjs` (below); run `handoff.mjs --write`;
+   commit; end the session.
+
+**Starting the next slice** (S0-S3). The closing session runs, after it records `HANDOFF → NEXT_SLICE` and before its
+last commit:
+
+```bash
+node scripts/agent/next-slice.mjs --reviewers code-architecture,adversarial[,browser-qa,security-data,performance] [--no-browser]
+```
+
+It refuses unless the machine state is `NEXT_SLICE`, refuses after S4 (the next step there is the readiness gate,
+§4), and refuses a reviewer list without `code-architecture` and `adversarial` (`MANDATORY_REVIEWERS`). It:
+- copies `CURRENT_SLICE.md` to `evidence/<finished slice>/slice-contract.md`;
+- sets `STATE.currentSlice` to the next slice and `currentTask` to `<slice>-BOOTSTRAP`, every gate to `PENDING`
+  (`browserQa` to `NOT_APPLICABLE` with `--no-browser`), `requiredReviewers` to the list given, the repair counters to
+  zero and `contextRolloverRequired` to true;
+- creates the next slice's empty `manifest.json` if there is none, and writes a `CURRENT_SLICE.md` draft from the
+  template.
+
+The next session records `NEXT_SLICE → BOOTSTRAP` for the new slice and completes the contract at `PLAN_LOCK`,
+adding to `STATE.requiredReviewers` any specialist role the contract triggers (§7).
 
 **Baseline failures.** A gate that is red before the slice changed anything is classified, not fixed in passing:
 record it in `evidence/<slice>/baseline-failures.json` (test, evidence, classification, owner acknowledgement), and
@@ -184,21 +222,48 @@ retry it to get green.
 - Reviewers are read-only. Each writes one report, `evidence/<slice>/reviews/<role>-<n>.md`, with file-level
   findings and a final `Verdict:` line. The orchestrator records it unchanged.
 - After any repair, a new reviewer instance reviews the new tree.
-- **Required roles:** `code-architecture` for every slice; `browser-qa` for user-visible slices; `security-data`
+- **Required roles:** `code-architecture` and `adversarial` for every slice (`next-slice.mjs` refuses a reviewer
+  list without them); `browser-qa` for user-visible slices; `security-data`
   when persistence, the service worker, auth or social state, networking, trust boundaries, permissions or the
   harness's guards change; `performance` when rendering, simulation cost, large collections, routing churn or
   automation scale can regress. The slice contract names them in `STATE.requiredReviewers`.
+- **Reviewers re-run the gates.** A gate recorded GREEN in the manifest is data an agent wrote, so it is not proof on
+  its own (adversarial-1 F2). Each reviewer re-runs, on the candidate tree, the gates its verdict depends on (for
+  example `npm test` and `npm run typecheck` for code, `node --test 'scripts/agent/*.test.mjs'` and
+  `node scripts/agent/check-state.mjs` for harness changes) and lists the commands and exit codes in its report. The
+  adversarial reviewer re-runs every objective gate its shell can run. Reviewers run the plain commands, not
+  `verify-slice.mjs`, which writes evidence. A gate the reviewer's shell can't run (§8) is reported as not run.
+
+**What the checks can't catch.** The scripts check records, hashes, trees and transitions; they can't judge meaning.
+Reviewers, and the owner at each boundary, are the only control for:
+- a test that asserts the wrong thing, or one that can't fail (`expect(true).toBe(true)`), which no tool detects
+  (adversarial-1 F10; B-161);
+- scope that shrank in meaning: a reworded acceptance criterion, a simplified machine, a requirement closed on weaker
+  evidence (B-107, B-133);
+- design fidelity: whether screens match the written design (`qa:shots` never fails; B-185);
+- browser behaviour from a sandboxed shell, where headless Chromium can't start (§8): no pass can be recorded there;
+- evidence written by an agent with the code open, such as a forged record or a review the orchestrator wrote itself
+  (adversarial-1 F2; B-103, B-109);
+- tests that depend on the wall clock or time zone (B-173), and performance numbers taken under load (§8, B-137).
 
 ## 8. This machine
 
 - The repo lives on the external Dev volume at `/Volumes/Dev/Projects/AquariumGo`. If `/Volumes/Dev` isn't
   mounted, stop and ask the owner; never recreate the project elsewhere.
+- **A cloud session (claude.ai/code) is not this machine.** It runs in a container with its own clone; the rule
+  above is for sessions on this machine. None of the `/Volumes/Dev` paths in this section exist there (no backup
+  folder, no Playwright cache). The container is discarded when the session ends, so its work survives only if it is
+  pushed under an owner ADR (ADR-0009: fast-forward pushes of `agent/s0-wip`, for that one session). It works on
+  `agent/s0-wip`, so `check-state.mjs` warns that the branch isn't the integration branch; that warning is expected
+  there. Whether headless Chromium starts in the container is checked with a real run, never assumed from the facts
+  below.
 - Node 22. Playwright's browsers are in `PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright`; if e2e says the
   executable is missing, run `npx playwright install chromium`.
 - **Claude Code's sandboxed shell can't launch headless Chromium.** On 2026-10-05, `npm run e2e` failed at
   `browserType.launch` (180 s timeout) and a direct headless launch also hung, while typecheck, unit and build ran
-  normally. Until the owner decides how browser work runs (an exception for test commands, or the owner running
-  them), e2e and browser QA can't pass from a sandboxed session; record them as not run, never as passed.
+  normally. The owner decided that browser work runs from the Claude desktop app, which has web testing capability
+  (ADR-0004 decision 2). From a sandboxed session, e2e and browser QA can't pass; record them as not run, never as
+  passed.
 - Playwright reuses a server already listening on its port only when `E2E_REUSE=1` is set; otherwise a busy port
   fails loudly. Give each worktree its own `E2E_PORT`.
 - The first e2e test after a cold Vite start can time out while Vite compiles (BACKLOG B-003: add a warm-up). Until

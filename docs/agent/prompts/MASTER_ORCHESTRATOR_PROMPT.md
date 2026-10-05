@@ -35,7 +35,9 @@ Until the owner explicitly approves (recorded verbatim in an ADR, `OPERATIONS.md
 - submit native apps;
 - begin real multiplayer/backend infrastructure.
 
-Never commit on `main` or `feat/*`. Never change permission settings, hooks or push guards.
+Never commit on `feat/*`. Work on `STATE.integrationBranch` (local `main`, ADR-0005 decision 6); a cloud session works
+on `agent/s0-wip` and pushes only as an owner ADR allows (ADR-0007, ADR-0009). Never change permission settings, hooks
+or push guards.
 
 Read-only research/network access is allowed.
 
@@ -116,7 +118,7 @@ what doesn't depend on it, then record the question in HANDOFF.md, set `ownerGat
 
 ## Multiplayer
 
-At the end of S4 run the Multiplayer Readiness Gate.
+At the end of S4 run the Multiplayer Readiness Gate, in a new session after S4's handoff (`OPERATIONS.md` §4).
 Even if everything is healthy, STOP and ask the owner for explicit approval before implementing real multiplayer/backend systems.
 
 ## Truth rules
@@ -139,6 +141,7 @@ Builder cannot approve itself.
 A mega-slice requires:
 - objective gates;
 - independent code/architecture review;
+- adversarial review (every slice, `OPERATIONS.md` §7);
 - browser/QA review if visible;
 - specialist security/data/performance review when triggered;
 - requirements audit;
