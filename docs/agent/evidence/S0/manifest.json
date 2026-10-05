@@ -133,6 +133,14 @@
   "screenshots": [],
   "performance": [],
   "reviews": [],
+  "files": [
+    {
+      "timestamp": "2026-10-05T23:44:08.481Z",
+      "kind": "test-inventory-baseline",
+      "path": "docs/agent/evidence/S0/test-inventory-baseline.json",
+      "sha256": "c5599a37709988c3bfbd11de49e787944e6f5c0c2656a29e8ee9ae8e64a352ef"
+    }
+  ],
   "requirements": [],
   "verdict": "PENDING"
 }
