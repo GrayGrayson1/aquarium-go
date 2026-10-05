@@ -46,6 +46,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   unsubscribe?.();
   unsubscribe = null;
   failAfter.calls = Infinity;
@@ -56,6 +57,9 @@ describe('PERSIST-010: runTick backlog after a failure', () => {
     const before = start(601, 10);
     const want = 1 * GAME_HOURS_PER_REAL_SECOND * 10; // 1 real second at 10x = 1 game hour = 4 slices
     failAfter.calls = 2;
+    // runTick stops slicing once TICK_BUDGET_MS has passed, and a cold first slice can take longer than that on a
+    // slow machine, so the throwing third slice would never run. Freeze the clock so the budget never trips (D-S0-1).
+    vi.spyOn(performance, 'now').mockReturnValue(0);
     const errors0 = getLoopStats().errors;
     const backlog = runTick(1);
     expect(getLoopStats().errors).toBe(errors0 + 1);
