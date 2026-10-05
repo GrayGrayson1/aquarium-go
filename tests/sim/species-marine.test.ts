@@ -254,6 +254,7 @@ describe.each(MARINE_ALL.map((s) => [s.id, s] as const))('%s', (id, s) => {
   });
 
   it('exception rules and positive interactions point at real species ids, vocabulary tags or species groups', () => {
+    expect(Array.isArray(s.exceptionRules), `${id} exceptionRules is a list`).toBe(true);
     for (const r of s.exceptionRules) {
       if (r.other.startsWith('tag:')) {
         const t = r.other.slice(4);
