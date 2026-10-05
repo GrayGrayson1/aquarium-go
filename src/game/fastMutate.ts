@@ -105,6 +105,11 @@ export function share(prev: unknown, next: unknown): unknown {
 /**
  * Apply a (heavy) mutation to the running game without Immer. `recipe` receives a plain mutable GameState.
  * Returns what the recipe returned (plain values only — do not return objects from the state).
+ *
+ * Atomic, like `useGame.mutate` (Immer's `produce` discards a draft whose recipe throws): when the recipe throws,
+ * nothing is published, the half-changed working copy is dropped (the next call re-clones from the store), and the
+ * error is rethrown for the caller to report. A world step that fails part-way must never become the game state,
+ * be built on by the next tick, or be autosaved (S0 review, PERSIST-004 / docs/agent/OPERATIONS.md §11).
  */
 export function mutateFast<R>(recipe: (state: GameState) => R): R | undefined {
   const store = useGame.getState();
@@ -118,9 +123,7 @@ export function mutateFast<R>(recipe: (state: GameState) => R): R | undefined {
   try {
     result = recipe(work);
   } catch (e) {
-    // Keep whatever the recipe managed to do (same semantics as a caught error inside a mutate recipe),
-    // then rethrow so the caller can report it.
-    publish(current);
+    resetFastMutate();
     throw e;
   }
   publish(current);
