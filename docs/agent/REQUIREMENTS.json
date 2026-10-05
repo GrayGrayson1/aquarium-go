@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "requirements": [
+    {
+      "id": "HARNESS-001",
+      "slice": "S0",
+      "description": "Project state must be recoverable from repository artifacts without chat history.",
+      "status": "PENDING"
+    },
+    {
+      "id": "REL-001",
+      "slice": "ALL",
+      "description": "No mutating remote action before explicit owner approval.",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "NAV-001",
+      "slice": "S1",
+      "description": "Implement approved mobile tab bar, More sheet and hash-route navigation contract.",
+      "status": "PENDING"
+    },
+    {
+      "id": "GEN-001",
+      "slice": "S2",
+      "description": "Implement approved genetics expansion and disclosure experience without unnecessary genetics-engine rewrite.",
+      "status": "PENDING"
+    },
+    {
+      "id": "MKT-001",
+      "slice": "S2",
+      "description": "Implement approved shop filters, offer detail and purchase-fit behavior.",
+      "status": "PENDING"
+    },
+    {
+      "id": "AUTO-001",
+      "slice": "S3",
+      "description": "Implement maintenance automation and Auto Water Changer deterministically.",
+      "status": "PENDING"
+    },
+    {
+      "id": "AUTO-002",
+      "slice": "S3",
+      "description": "Implement deep local aquarium/aquaculture automation beyond simple maintenance toggles.",
+      "status": "PENDING"
+    },
+    {
+      "id": "PROD-001",
+      "slice": "S3",
+      "description": "Implement multiple deterministic production lines per species.",
+      "status": "PENDING"
+    },
+    {
+      "id": "NOTIFY-001",
+      "slice": "S3",
+      "description": "Implement truthful web notifications and approved quiet-hours/category behavior.",
+      "status": "PENDING"
+    },
+    {
+      "id": "SOC-001",
+      "slice": "S4",
+      "description": "Implement the complete local SocialService stub experience.",
+      "status": "PENDING"
+    },
+    {
+      "id": "REL-002",
+      "slice": "S4",
+      "description": "Stop at Multiplayer Readiness Gate and require explicit owner approval before real multiplayer.",
+      "status": "PENDING"
+    }
+  ]
+}
