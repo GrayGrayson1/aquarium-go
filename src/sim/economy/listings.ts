@@ -75,10 +75,12 @@ export const MAX_NEGOTIATION_HOLD_HOURS = NEGOTIATION_HOLD_HOURS * 3;
 
 /**
  * The windows above are promises in REAL time, so at 3×/10× they cover the same real seconds: a bid that would last
- * 3 real minutes at 1× lasts 3 real minutes at 10× too (lane:fix-econ, S03-02). Tests and the offline catch-up run at
- * 1× (or paused), where this is exactly 1.
+ * 3 real minutes at 1× lasts 3 real minutes at 10× too (lane:fix-econ, S03-02). Tests run at 1× (or paused), where
+ * this is exactly 1. The offline catch-up keeps the saved speed on the clock but nobody is watching, so it runs the
+ * market at 1× too (S0 review: a game saved at 10× used to stretch every window tenfold during catch-up).
  */
 export function marketTimeScale(state: GameState): number {
+  if (state.offlineGrace) return 1;
   const speed = finite(state.clock?.speed, 1);
   return speed > 1 ? speed : 1;
 }
