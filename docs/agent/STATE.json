@@ -23,7 +23,8 @@
   "designRegistry": "docs/agent/design/DESIGN_REGISTRY.json",
   "requiredReviewers": [
     "code-architecture",
-    "security-data"
+    "security-data",
+    "adversarial"
   ],
   "gates": {
     "typecheck": "PENDING",

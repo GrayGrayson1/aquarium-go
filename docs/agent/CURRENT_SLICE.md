@@ -40,9 +40,9 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 | S0-T3 | Create the integration branch and commit the owner's harness unchanged | HARNESS-001, REL-001 | DONE (`94de6bb`) |
 | S0-T4 | Harness scripts: state, ledger, evidence, gates, audits, test inventory, protected files, bootstrap check, context pack, handoff, relaunch | HARNESS-001, HARNESS-002, HARNESS-004, HARNESS-005 | REPAIRING: scripts repaired after RED reviews, `agent.test.mjs` not yet updated (HANDOFF step 2) |
 | S0-T5 | Reconcile the design with the master and the code; design registry and intake | HARNESS-003 | DONE, pending independent review (ADR-0003, `design/DESIGN_REGISTRY.json`) |
-| S0-T6 | Decompose master §9 and the design into the requirements registry | HARNESS-001 | IN PROGRESS |
-| S0-T7 | Repair the harness documents found inconsistent by the adversarial review | HARNESS-001, HARNESS-004 | DONE, pending independent review |
-| S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | PERSIST-004 | Fixes DONE (`f999618`, `58ae313`, `d98731d`, `d8fb896`), pending independent review; BACKLOG.md not written (HANDOFF step 4) |
+| S0-T6 | Decompose master §9 and the design into the requirements registry | HARNESS-001 | DONE: draft merged into REQUIREMENTS.json (`5ae85a3`), pending a fresh requirements reviewer |
+| S0-T7 | Repair the harness documents found inconsistent by the adversarial review | HARNESS-001, HARNESS-004 | DONE (`62df438`; corrections under owner-approved ADR-0008, `1a74863`), pending independent review |
+| S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | PERSIST-004, PERSIST-009 to PERSIST-013, MKT-016, CONST-004 | Fixes DONE (`3e00a32`, `58ae313`, `6347c5d` + `d98731d`, `16233a1`, `c774d38`, `f999618`, `d8fb896`; test repair `9edfa12`, D-S0-1), pending independent review; BACKLOG.md written (`1a74863`) |
 | S0-T9 | Gate configuration: e2e server reuse opt-in, e2e typecheck, required assertions, no focused tests | HARNESS-006 | DONE, pending independent review |
 | S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | all S0 | PENDING |
 | S0-T11 | Fresh-session bootstrap test: a new session's assertion passes `bootstrap-check.mjs` | HARNESS-001, HARNESS-002 | PENDING (needs a new session) |
@@ -64,7 +64,8 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 `scripts/agent/agent.test.mjs`; `npm run typecheck`; `npm test`; `npm run build`; `npm run e2e` (see BF-001).
 
 ## Required reviewers
-code-architecture, security-data (S0 changes the harness guards, permissions and the relaunch model).
+code-architecture, security-data (S0 changes the harness guards, permissions and the relaunch model), adversarial
+(every slice, ADR-0008), and a fresh requirements reviewer for the registry merge (HANDOFF step 5).
 
 ## Known risks
 - The e2e and browser gates can't run inside Claude Code's sandboxed shell (BF-001).
