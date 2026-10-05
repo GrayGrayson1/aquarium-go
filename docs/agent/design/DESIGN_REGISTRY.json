@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "statuses": ["PENDING_OWNER_DESIGN", "RECEIVED", "UNDER_REVIEW", "APPROVED", "SUPERSEDED", "REJECTED"],
+  "rule": "Work that depends on a design may start only when that design is APPROVED here. Only the owner approves a design, and the approval is recorded verbatim in an ADR. See docs/agent/design/DESIGN_INTAKE.md.",
+  "designs": [
+    {
+      "id": "DESIGN-0.5",
+      "title": "Aquarium Go 0.5: design and build specification",
+      "status": "APPROVED",
+      "path": "docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md",
+      "approval": "Owner-approved before the harness was installed: master §7 and ADR-0001 (2026-10-05).",
+      "source": "Private Claude canvas \"Design\" (https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk). The repo copy is normative; the canvas ranks below it (master §3.9).",
+      "scope": ["S1", "S2", "S3-A", "S3-B", "S3-C", "S4"],
+      "overriddenBy": [
+        { "section": "§3.3 save compatibility and schema", "by": "master §3.5" },
+        { "section": "§3.4 lane sign-off for core-owned files", "by": "master §3.8" },
+        { "section": "§21 release step and D14 version timing", "by": "master §3.6 and ADR-0001" },
+        { "section": "§22 open questions 1-5", "by": "master §3.10 and ADR-0001" },
+        { "section": "§21 phase order (Social before Production) and Phase 6 native", "by": "master §9 (S3 before S4) and §3.10 (native deferred)" }
+      ]
+    },
+    {
+      "id": "DESIGN-S3D",
+      "title": "Extended aquarium/aquaculture automation (S3-D): screens, copy, test ids and the names of resources shown to players",
+      "status": "PENDING_OWNER_DESIGN",
+      "path": null,
+      "approval": null,
+      "source": "The owner is producing this with Claude Design (ADR-0002 decision 4, 2026-10-05).",
+      "scope": ["S3-D"],
+      "blocks": [
+        "S3-D owner-visible surfaces: automation dashboard, facility operations overview, reserve/feed/production screens, shortage and bottleneck indicators",
+        "S3-D copy and test ids",
+        "S3-D resource and data names that players see"
+      ],
+      "doesNotBlock": [
+        "S3-A, S3-B and S3-C (designed in DESIGN-0.5 §10-§12)",
+        "Read-only reconnaissance of existing inventory, food and equipment data in preparation for S3-D"
+      ]
+    }
+  ]
+}

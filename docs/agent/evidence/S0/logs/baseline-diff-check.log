@@ -1,0 +1,1 @@
+### diff-check: git diff --check; rc=$?; for f in $(git ls-files --others --exclude-standard); do git diff --no-index --check /dev/null "$f" || true; done; exit $rc

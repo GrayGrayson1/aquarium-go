@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "rule": "OPERATIONS.md §6: a gate that is red (or can't run) before the slice changed anything is classified here, never skipped, loosened or retried to green. Entries need the owner's acknowledgement (an ADR) before S1.",
+  "baselineSha": "0d9fc5a46085f746510a1041335632cd4f7314a2",
+  "codeTree": "454801df2ce47efb1e53cd2a4b41b90cb71e3679",
+  "failures": [
+    {
+      "id": "BF-001",
+      "gate": "e2e",
+      "tests": "all 47 Playwright tests (only the first two were attempted)",
+      "evidence": [
+        "docs/agent/evidence/S0/logs/baseline-e2e.log",
+        "Playwright error context (cleared from test-results/ by a later run), quoted: \"TimeoutError: browserType.launch: Timeout 180000ms exceeded. Call log: <launching> /Volumes/Dev/Caches/playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell ... --use-angle=metal --enable-gpu --ignore-gpu-blocklist --enable-webgl ... <launched> pid=64487\"",
+        "Direct check in the same shell: chrome-headless-shell --headless --no-sandbox --disable-gpu --dump-dom 'data:text/html,...' printed nothing in 25 s.",
+        "Running it with the sandbox disabled was denied by the Claude Code auto-mode safety check, so the cause is inferred, not proven."
+      ],
+      "classification": "ENVIRONMENT",
+      "detail": "Headless Chromium hangs at start-up inside the Claude Code sandboxed Bash shell on this Mac, so no e2e test reached the game. Typecheck, unit tests (151 files, 1,753 tests) and build passed in the same shell. The product's e2e status at the baseline is UNKNOWN, not failing.",
+      "nextStep": "The owner decides how browser work runs (a sandbox exception for the e2e and QA commands, or the owner running them). Then record a real baseline e2e run at 0d9fc5a or at the S0 code tree.",
+      "ownerAcknowledgement": null
+    }
+  ]
+}

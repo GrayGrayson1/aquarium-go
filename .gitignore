@@ -9,3 +9,10 @@ tsconfig.tsbuildinfo
 .cnvs
 .vite
 *.local
+
+# Agent harness: session transcripts, full-size logs, screenshots and context packs (docs/agent/OPERATIONS.md §6)
+.agent-runs/
+# scripts/shot.mjs writes here when no output path is given
+shot.png
+# ...but evidence logs are committed (check-state.mjs fails on ignored evidence)
+!docs/agent/evidence/**/*.log

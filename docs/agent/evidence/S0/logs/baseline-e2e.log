@@ -1,0 +1,10 @@
+### e2e: npm run e2e
+
+> aquarium-go@0.4.0 e2e
+> playwright test
+
+
+Running 47 tests using 1 worker
+
+  ✘   1 [desktop] › tests/e2e/boot.spec.ts:5:3 › boot › first launch: title is visible and the canvas is not blank (1ms)
+  ✘   2 [desktop] › tests/e2e/boot.spec.ts:17:3 › boot › no console-error storm during a busy session (1ms)

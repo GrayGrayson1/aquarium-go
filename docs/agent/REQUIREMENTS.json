@@ -1,70 +1,412 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "statuses": [
+    "PENDING",
+    "IN_PROGRESS",
+    "GREEN",
+    "YELLOW",
+    "RED",
+    "ACTIVE",
+    "BLOCKED",
+    "DEFERRED",
+    "SUPERSEDED"
+  ],
+  "rule": "Ids are append-only (supersede, never delete). Each requirement traces to acceptance criteria and tests (master §13, §40). The 11 original ids are umbrella requirements: they are GREEN only when every requirement that cites them in its source is closed.",
   "requirements": [
     {
       "id": "HARNESS-001",
       "slice": "S0",
+      "source": "master §0, §9 S0, §12-§16",
       "description": "Project state must be recoverable from repository artifacts without chat history.",
-      "status": "PENDING"
+      "acceptance": [
+        "A fresh session reading only README_FIRST's list writes a bootstrap assertion that scripts/agent/bootstrap-check.mjs accepts",
+        "node scripts/agent/check-state.mjs exits 0 on the S0 checkpoint",
+        "STATE.json, LEDGER.jsonl, HANDOFF.md and the S0 evidence manifest agree with Git"
+      ],
+      "tasks": [
+        "S0-T1",
+        "S0-T2",
+        "S0-T3",
+        "S0-T4",
+        "S0-T6",
+        "S0-T7",
+        "S0-T11",
+        "S0-T12"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs",
+        "scripts/agent/bootstrap-check.mjs"
+      ],
+      "evidence": [
+        "docs/agent/evidence/S0/manifest.json"
+      ],
+      "status": "IN_PROGRESS"
     },
     {
       "id": "REL-001",
       "slice": "ALL",
+      "source": "master §3.1, §29; ADR-0001",
       "description": "No mutating remote action before explicit owner approval.",
+      "acceptance": [
+        "No push, PR, GitHub write, workflow run, deploy (GitHub Pages or Render) or publish happens without an owner approval recorded verbatim in an ADR",
+        "Every session-end check (relaunch.mjs) finds no 'update by push' reflog entry and unchanged remotes"
+      ],
+      "tasks": [],
+      "tests": [
+        "scripts/agent/agent.test.mjs (relaunch decide)"
+      ],
+      "evidence": [],
       "status": "ACTIVE"
     },
     {
       "id": "NAV-001",
       "slice": "S1",
+      "source": "design §5, §6; master §9 S1",
       "description": "Implement approved mobile tab bar, More sheet and hash-route navigation contract.",
+      "acceptance": [
+        "Every NAV requirement sourced from design §5-§6 or master §9 S1 is GREEN"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/e2e/nav.spec.ts",
+        "new: tests/e2e/mobile-tabbar.spec.ts",
+        "new: tests/sim/nav-routes.test.ts"
+      ],
+      "evidence": [],
       "status": "PENDING"
     },
     {
       "id": "GEN-001",
       "slice": "S2",
+      "source": "design §8, §9; master §9 S2",
       "description": "Implement approved genetics expansion and disclosure experience without unnecessary genetics-engine rewrite.",
+      "acceptance": [
+        "Every GEN requirement sourced from design §8-§9 or master §9 S2 is GREEN",
+        "src/sim/life/genetics.ts is extended, not restructured (design §3.2)"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/genetics-expansion.test.ts",
+        "new: tests/sim/genetics-lab-reveal.test.ts"
+      ],
+      "evidence": [],
       "status": "PENDING"
     },
     {
       "id": "MKT-001",
       "slice": "S2",
+      "source": "design §7; master §9 S2",
       "description": "Implement approved shop filters, offer detail and purchase-fit behavior.",
+      "acceptance": [
+        "Every MKT requirement sourced from design §7 or master §9 S2 is GREEN"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/shop-filters.test.ts",
+        "new: tests/e2e/shop-filters.spec.ts"
+      ],
+      "evidence": [],
       "status": "PENDING"
     },
     {
       "id": "AUTO-001",
       "slice": "S3",
+      "source": "design §10; master §9 S3-A",
       "description": "Implement maintenance automation and Auto Water Changer deterministically.",
+      "acceptance": [
+        "Every AUTO requirement sourced from design §10 or master §9 S3-A is GREEN",
+        "core-determinism and fix-core-step-invariance stay green"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/automation-water-changer.test.ts",
+        "new: tests/e2e/automation.spec.ts"
+      ],
+      "evidence": [],
       "status": "PENDING"
     },
     {
       "id": "AUTO-002",
       "slice": "S3",
+      "source": "master §9 S3-D; ADR-0001 (option C); ADR-0002 decision 4",
       "description": "Implement deep local aquarium/aquaculture automation beyond simple maintenance toggles.",
-      "status": "PENDING"
+      "acceptance": [
+        "Every AUTO requirement sourced from master §9 S3-D is GREEN or closed by an owner-approved ADR",
+        "DESIGN-S3D is APPROVED before any owner-visible S3-D surface is built"
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "BLOCKED",
+      "blockedBy": "DESIGN-S3D"
     },
     {
       "id": "PROD-001",
       "slice": "S3",
+      "source": "design §11; master §9 S3-C; master §3.10",
       "description": "Implement multiple deterministic production lines per species.",
+      "acceptance": [
+        "Every PROD requirement is GREEN",
+        "Two lines for the same species run side by side without sharing a creature, clutch or listing"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/production-line.test.ts"
+      ],
+      "evidence": [],
       "status": "PENDING"
     },
     {
       "id": "NOTIFY-001",
       "slice": "S3",
+      "source": "design §12; master §9 S3-B; master §44",
       "description": "Implement truthful web notifications and approved quiet-hours/category behavior.",
+      "acceptance": [
+        "Every NOTIFY requirement sourced from design §12 or master §9 S3-B is GREEN",
+        "No copy promises alerts while the game is closed"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/notify-rules.test.ts",
+        "new: tests/e2e/notifications.spec.ts"
+      ],
+      "evidence": [],
       "status": "PENDING"
     },
     {
       "id": "SOC-001",
       "slice": "S4",
+      "source": "design §13; master §9 S4",
       "description": "Implement the complete local SocialService stub experience.",
+      "acceptance": [
+        "Every SOC requirement sourced from design §13 or master §9 S4 is GREEN"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/social-stub.test.ts"
+      ],
+      "evidence": [],
       "status": "PENDING"
     },
     {
       "id": "REL-002",
       "slice": "S4",
+      "source": "master §10, §11; ADR-0001",
       "description": "Stop at Multiplayer Readiness Gate and require explicit owner approval before real multiplayer.",
+      "acceptance": [
+        "After S4 acceptance the state reaches MULTIPLAYER_READINESS_GATE, then OWNER_GATE (reason MULTIPLAYER)",
+        "No backend, account, cloud-save or real trading code exists without an owner-approved ADR"
+      ],
+      "tasks": [],
+      "tests": [
+        "scripts/agent/agent.test.mjs (transitions)"
+      ],
+      "evidence": [],
+      "status": "PENDING"
+    },
+    {
+      "id": "HARNESS-002",
+      "slice": "S0",
+      "source": "ADR-0002 decision 3; master §3.2; OPERATIONS.md §1",
+      "description": "Each session ends at a mega-slice boundary or early-rollover point; the owner starts the next one with KICKOFF.md, or the opt-in relaunch.mjs does.",
+      "acceptance": [
+        "relaunch.mjs never starts a session when STOP exists, check-state fails, the state is a stop state, remote mutation is allowed or the branch isn't the integration branch",
+        "relaunch.mjs stops on a non-zero exit, no progress, any stop state, the session cap, a detected push, changed remotes or changed deploy configuration",
+        "bootstrap-check.mjs rejects an assertion from the session that closed the previous slice"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T11"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-003",
+      "slice": "S0",
+      "source": "ADR-0002 decision 4; master §8; design/DESIGN_INTAKE.md",
+      "description": "Designs enter through the registry and intake procedure, and work that depends on a design starts only once it is APPROVED.",
+      "acceptance": [
+        "DESIGN_REGISTRY.json lists DESIGN-0.5 (APPROVED, with its overrides) and DESIGN-S3D (PENDING_OWNER_DESIGN)",
+        "check-state.mjs rejects an APPROVED design without an approval reference or an existing path"
+      ],
+      "tasks": [
+        "S0-T5"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (design registry)"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-004",
+      "slice": "S0",
+      "source": "OPERATIONS.md §2; master §3.1",
+      "description": "Owner approvals are valid only when the owner's own words are recorded verbatim in an ADR, and remote or multiplayer permission can't be set without one.",
+      "acceptance": [
+        "check-state.mjs fails when remoteMutationAllowed or multiplayerApproved is true without an existing ADR reference",
+        "record-event.mjs refuses to leave OWNER_GATE or BLOCKED_MANUAL_REVIEW without a decision reference"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T7"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-005",
+      "slice": "S0",
+      "source": "master §28, §35, §54; OPERATIONS.md §6, §10",
+      "description": "Evidence is tamper-evident and tied to the code it judged: logs hashed and committed, gates bound to a code tree, tests inventoried, protected files hashed.",
+      "acceptance": [
+        "check-state.mjs fails on a GREEN gate without a passing run on the accepted code tree, on edited or ignored evidence, on a rewritten ledger line and on a deleted requirement id",
+        "test-inventory.mjs fails when a test id disappears, the count drops or a skip marker appears",
+        "protect.mjs fails when a protected file changes without --update --adr"
+      ],
+      "tasks": [
+        "S0-T4"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-006",
+      "slice": "S0",
+      "source": "master §27, §35; ADR-0003",
+      "description": "The objective gates can be trusted: e2e never tests a foreign server, e2e specs are typechecked, tests must assert, and focused tests can't pass a gate.",
+      "acceptance": [
+        "playwright.config.ts reuses a running server only with E2E_REUSE=1 (a busy port fails)",
+        "tsconfig.json includes tests/e2e and playwright.config.ts, and npm run typecheck passes",
+        "vitest.config.ts sets allowOnly: false and expect.requireAssertions: true, and npm test passes",
+        "playwright.config.ts sets forbidOnly: true"
+      ],
+      "tasks": [
+        "S0-T9"
+      ],
+      "tests": [
+        "npm run typecheck",
+        "npm test"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "REL-003",
+      "slice": "S4",
+      "source": "master §3.6, §49; design D14, §16, §21 release step",
+      "description": "The release step is prepared but not executed: package.json stays at its current version, user-facing notes go under '## Unreleased' in CHANGELOG.md, and the owner package proposes the version, changelog entry and What's new copy.",
+      "acceptance": [
+        "package.json version and the newest versioned CHANGELOG heading are unchanged until the owner approves a release plan (tests/sim/version.test.ts stays green)",
+        "The owner package contains the proposed version, CHANGELOG entry and What's new list"
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/version.test.ts"
+      ],
+      "evidence": [],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "PERSIST-001",
+      "slice": "ALL",
+      "source": "design §3.3, §21 (each phase's Done when); master §3.5",
+      "description": "A v0.4.0 save still loads at the end of every slice, with repairs: [] unless an owner-approved ADR changes the save policy.",
+      "acceptance": [
+        "A committed v0.4.0 fixture save loads with repairs: [] at each slice's acceptance"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/persistence-05.test.ts"
+      ],
+      "evidence": [],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "PERSIST-002",
+      "slice": "ALL",
+      "source": "design §20.1 persistence-05; master §38",
+      "description": "repairState is idempotent and two save/load round trips keep the stateHash, for a fresh game, a legacy save and the big facility fixture.",
+      "acceptance": [
+        "repairState applied twice gives an equal stateHash",
+        "load → save → load keeps the stateHash"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/persistence-05.test.ts"
+      ],
+      "evidence": [],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "PERSIST-003",
+      "slice": "ALL",
+      "source": "master §3.5 (open owner question); 2026-10-05 review",
+      "description": "No SCHEMA_VERSION bump without an owner decision; the code that ships must never fall back past, rotate away or overwrite a save written by newer code ('too_new').",
+      "acceptance": [
+        "SCHEMA_VERSION stays 1 unless an owner-approved ADR says otherwise",
+        "A too_new save is never replaced by an older backup or overwritten"
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "PERSIST-004",
+      "slice": "S4",
+      "source": "2026-10-05 review (persistence-security); master §9 S4 persistence sanity",
+      "description": "A crafted or corrupted save can't pollute object prototypes, crash the sim loop or make the game fetch remote URLs.",
+      "acceptance": [
+        "Ids such as __proto__, constructor and toString are rejected or repaired",
+        "Listing photos that aren't data:image URLs are dropped on load"
+      ],
+      "tasks": [
+        "S0-T8"
+      ],
+      "tests": [
+        "tests/sim/core-crafted-saves.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "note": "Inherited-key ids and non-embedded listing photos fixed in S0 (S0-T8); oversized arrays and number ranges remain for S4 hardening."
+    },
+    {
+      "id": "PERSIST-005",
+      "slice": "S3",
+      "source": "2026-10-05 review (persistence-security)",
+      "description": "Save size stays within a stated budget at maximum scale, so the synchronous localStorage mirror keeps working.",
+      "acceptance": [
+        "A maximum-scale fixture (tanks, creatures, production lines, listing photos) serializes under the budget the S3 contract states"
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING"
+    },
+    {
+      "id": "SOC-002",
+      "slice": "S4",
+      "source": "master §9 S4, §24; design §13.6",
+      "description": "The Social stub never persists a password anywhere: localStorage, IndexedDB, the save or an export.",
+      "acceptance": [
+        "After sign-in and sign-up, no stored value contains the typed password"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/social-stub.test.ts"
+      ],
+      "evidence": [],
       "status": "PENDING"
     }
   ]

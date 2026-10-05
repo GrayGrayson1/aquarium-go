@@ -1,5 +1,11 @@
 # Aquarium Go 0.5: design and build specification
 
+> **Under the agent harness (2026-10-05).** This spec stays normative for product behaviour. Its process instructions
+> (the phase order, the release step and version bump, "no schema bump", lane sign-offs, "paste the whole file into a
+> coding assistant") are replaced by the master source of truth; ADR-0003 lists every overridden clause, and
+> `DESIGN_REGISTRY.json` records this spec's status. Errata found by the 2026-10-05 review are in
+> `docs/agent/BACKLOG.md` (design errata) and are applied through the slice contracts.
+
 - **Status:** the design is approved for build. The code isn't written yet; this document is the brief for writing it.
 - **Target release:** v0.5.0. The current release is v0.4.0.
 - **Repo:** `GrayGrayson1/aquarium-go`. The local clone is at `/Volumes/Dev/Projects/AquariumGo`, commit `0d9fc5a` (the same as `origin/main` when this was written).

@@ -1,5 +1,12 @@
 # Aquarium Go — Parallel Build Handbook (read fully before writing code)
 
+> **Superseded for the autonomous build (2026-10-05).** This handbook describes the original sixteen-lane parallel
+> build. For agents working under `docs/agent/`, the master source of truth wins where they conflict: the orchestrator
+> makes local commits on the integration branch (master §3.4); core-owned edits an approved slice needs are
+> pre-authorized, except the gate-defining files (§3.8); `npm ci` is allowed in a fresh worktree; type-check and test
+> the whole project, not just your files; and the final report is the evidence in `docs/agent/evidence/`. The
+> ownership map, contracts, art direction and quality bar below still describe the code.
+
 Sixteen agents build the game at the same time, in one folder. The orchestrator owns integration. The contracts in
 `src/types/**`, the stub files, and this handbook are what hold the project together, so follow them exactly.
 

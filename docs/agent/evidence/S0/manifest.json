@@ -1,0 +1,138 @@
+{
+  "slice": "S0",
+  "checkpointSha": null,
+  "commands": [
+    {
+      "gate": "check:git-state",
+      "command": "git status --porcelain=v1 -b && git rev-parse HEAD && git log -1 --format=%s",
+      "cwd": "/Volumes/Dev/Projects/AquariumGo",
+      "start": "2026-10-05T18:33:43Z",
+      "end": "2026-10-05T18:33:43Z",
+      "seconds": 0,
+      "exitCode": 0,
+      "counts": {},
+      "log": "docs/agent/evidence/S0/logs/baseline-git-state.log",
+      "logSha256": "259053f1b87e379f24a6533c933ce642092b135965d08451f79fb68e1bd7fba1",
+      "head": "0d9fc5a46085f746510a1041335632cd4f7314a2",
+      "dirty": true,
+      "codeTree": "454801df2ce47efb1e53cd2a4b41b90cb71e3679",
+      "requirements": [
+        "HARNESS-001"
+      ],
+      "phase": "BASELINE_VERIFY",
+      "recordedBy": "baseline runner of the 2026-10-05 harness review session (before scripts/agent existed)"
+    },
+    {
+      "gate": "diffCheck",
+      "command": "git diff --check; rc=$?; for f in $(git ls-files --others --exclude-standard); do git diff --no-index --check /dev/null \"$f\" || true; done; exit $rc",
+      "cwd": "/Volumes/Dev/Projects/AquariumGo",
+      "start": "2026-10-05T18:33:43Z",
+      "end": "2026-10-05T18:33:44Z",
+      "seconds": 1,
+      "exitCode": 0,
+      "counts": {},
+      "log": "docs/agent/evidence/S0/logs/baseline-diff-check.log",
+      "logSha256": "7aa2d3647564f9bf17dab9fc56f186337455354d4634999478e24aa53fdfc214",
+      "head": "0d9fc5a46085f746510a1041335632cd4f7314a2",
+      "dirty": true,
+      "codeTree": "454801df2ce47efb1e53cd2a4b41b90cb71e3679",
+      "requirements": [
+        "HARNESS-001"
+      ],
+      "phase": "BASELINE_VERIFY",
+      "recordedBy": "baseline runner of the 2026-10-05 harness review session (before scripts/agent existed)",
+      "note": "git diff --check plus a --no-index check of the then-untracked harness files; no output means clean."
+    },
+    {
+      "gate": "typecheck",
+      "command": "npm run typecheck",
+      "cwd": "/Volumes/Dev/Projects/AquariumGo",
+      "start": "2026-10-05T18:33:44Z",
+      "end": "2026-10-05T18:37:27Z",
+      "seconds": 223,
+      "exitCode": 0,
+      "counts": {},
+      "log": "docs/agent/evidence/S0/logs/baseline-typecheck.log",
+      "logSha256": "51623969d6d9bf2db5ee2449fc435598e8a6580d533eeb7c60d33008c9a098e7",
+      "head": "0d9fc5a46085f746510a1041335632cd4f7314a2",
+      "dirty": true,
+      "codeTree": "454801df2ce47efb1e53cd2a4b41b90cb71e3679",
+      "requirements": [
+        "HARNESS-001"
+      ],
+      "phase": "BASELINE_VERIFY",
+      "recordedBy": "baseline runner of the 2026-10-05 harness review session (before scripts/agent existed)"
+    },
+    {
+      "gate": "unit",
+      "command": "npm test",
+      "cwd": "/Volumes/Dev/Projects/AquariumGo",
+      "start": "2026-10-05T18:37:30Z",
+      "end": "2026-10-05T18:39:11Z",
+      "seconds": 101,
+      "exitCode": 0,
+      "counts": {
+        "vitestFiles": "151 passed (151)",
+        "vitestTests": "1753 passed (1753)"
+      },
+      "log": "docs/agent/evidence/S0/logs/baseline-unit.log",
+      "logSha256": "318dfc7412aea6bc8ec51c4af89ea08d3246440c9a133cd18bd1f3c984f449c7",
+      "head": "0d9fc5a46085f746510a1041335632cd4f7314a2",
+      "dirty": true,
+      "codeTree": "454801df2ce47efb1e53cd2a4b41b90cb71e3679",
+      "requirements": [
+        "HARNESS-001"
+      ],
+      "phase": "BASELINE_VERIFY",
+      "recordedBy": "baseline runner of the 2026-10-05 harness review session (before scripts/agent existed)"
+    },
+    {
+      "gate": "build",
+      "command": "npm run build",
+      "cwd": "/Volumes/Dev/Projects/AquariumGo",
+      "start": "2026-10-05T18:39:13Z",
+      "end": "2026-10-05T18:48:17Z",
+      "seconds": 544,
+      "exitCode": 0,
+      "counts": {},
+      "log": "docs/agent/evidence/S0/logs/baseline-build.log",
+      "logSha256": "2f5fcb87eac24f39e2c2a881c0dfeef41d384d5f5676b586d8b33474d34645ca",
+      "head": "0d9fc5a46085f746510a1041335632cd4f7314a2",
+      "dirty": true,
+      "codeTree": "454801df2ce47efb1e53cd2a4b41b90cb71e3679",
+      "requirements": [
+        "HARNESS-001"
+      ],
+      "phase": "BASELINE_VERIFY",
+      "recordedBy": "baseline runner of the 2026-10-05 harness review session (before scripts/agent existed)",
+      "note": "Ran while about 15 review agents were active; the 544 s duration is not a performance baseline."
+    },
+    {
+      "gate": "e2e",
+      "command": "npm run e2e",
+      "cwd": "/Volumes/Dev/Projects/AquariumGo",
+      "start": "2026-10-05T18:48:18Z",
+      "end": "2026-10-05T19:00:16Z",
+      "seconds": 718,
+      "exitCode": 143,
+      "counts": {},
+      "log": "docs/agent/evidence/S0/logs/baseline-e2e.log",
+      "logSha256": "3697ad70bd73169dc55cbed9fb7d5cd2139e6d6a7c979b3c6988ca1c18e8166a",
+      "head": "94de6bb990a05a734c1bbefa7db65c55fca1bb05",
+      "dirty": true,
+      "codeTree": "454801df2ce47efb1e53cd2a4b41b90cb71e3679",
+      "requirements": [
+        "HARNESS-001"
+      ],
+      "phase": "BASELINE_VERIFY",
+      "recordedBy": "baseline runner of the 2026-10-05 harness review session (before scripts/agent existed)",
+      "note": "Stopped by the session (SIGTERM, exit 143) after the first two tests failed at browserType.launch (180 s timeout): headless Chromium cannot start inside the Claude Code sandboxed shell. Not a product result. See baseline-failures.json."
+    }
+  ],
+  "browserRuns": [],
+  "screenshots": [],
+  "performance": [],
+  "reviews": [],
+  "requirements": [],
+  "verdict": "PENDING"
+}

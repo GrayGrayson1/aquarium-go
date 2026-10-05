@@ -1,0 +1,7 @@
+### git-state: git status --porcelain=v1 -b && git rev-parse HEAD && git log -1 --format=%s
+## main...origin/main
+?? AGENTS.md
+?? CLAUDE.md
+?? docs/agent/
+0d9fc5a46085f746510a1041335632cd4f7314a2
+v0.4.0: Prismatic animals, named strains and the morph catalog

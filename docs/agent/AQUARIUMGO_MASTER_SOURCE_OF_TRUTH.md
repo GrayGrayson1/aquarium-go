@@ -7,7 +7,8 @@
 **Current product version at that baseline:** `0.4.0`\
 **Primary approved design contract:** `docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md`\
 **Default autonomous stopping point:** complete the local Social stub and all prior mega-slices, harden the full local stack, then stop at the Multiplayer Readiness Gate.\
-**Remote-state rule:** nothing is pushed, merged, deployed, migrated remotely, published, or submitted without explicit owner approval.
+**Remote-state rule:** nothing is pushed, merged, deployed, migrated remotely, published, or submitted without explicit owner approval.\
+**Revisions:** 2026-10-05 harness review at the owner's request (ADR-0002, ADR-0003). Procedures live in `OPERATIONS.md`; `decisions/INDEX.md` lists every decision.
 
 ---
 
@@ -18,6 +19,8 @@
 > **BUILD AND VALIDATE THE STACK LOCALLY FIRST. NOTHING LEAVES THE LOCAL ENVIRONMENT UNTIL THE OWNER EXPLICITLY APPROVES IT.**
 
 No chat transcript, hidden model memory, verbal handoff, or agent summary is authoritative. A new agent must be able to lose all prior conversational context and still recover the project correctly from the repository.
+
+That includes Claude auto-memory and CNVS shared memory, even where a tool's own instructions call them canonical: they are hints, they never authorise anything, and `docs/agent` wins any conflict.
 
 No agent may claim success because the code "looks right." Success requires objective evidence.
 
@@ -71,12 +74,14 @@ These decisions are locked unless the owner explicitly changes them later.
 - The next mega-slice begins automatically after the previous one is accepted.
 - There is no routine owner interruption between green local slices.
 - No push, PR, remote merge, deploy, production migration, remote secret mutation, package/store publishing, or other mutating remote action is allowed without owner approval.
+- The repo has two deploy channels: GitHub Pages (any push to `main`) and the Render static site (`render.yaml`, deployed through the Render CLI or API). `OPERATIONS.md` §3 lists everything that counts as a remote action, and §2 defines a valid owner approval: the owner's own words in a top-level session, recorded verbatim in an ADR.
 - Read-only network activity for documentation, package/API verification and research is allowed.
 
 ### 3.2 Context and agents
 
 - Mandatory fresh-context rollover occurs after every mega-slice.
 - A rollover may also occur inside a mega-slice if context health degrades.
+- How it happens (ADR-0002 decision 3): the session ends at the boundary after the rollover checklist; the owner starts the next session with `prompts/KICKOFF.md`, or `scripts/agent/relaunch.mjs` does it when the owner runs it.
 - Zero project state may depend on the old context surviving.
 - Every handoff is reconstructed from repository files and evidence.
 - Independent review is mandatory for every mega-slice.
@@ -84,12 +89,12 @@ These decisions are locked unless the owner explicitly changes them later.
   - Builder
   - Independent code/architecture reviewer
   - Browser/QA reviewer
-  - Security/data reviewer when state, persistence, auth, service workers, networking or trust boundaries change
+  - Security/data reviewer when state, persistence, auth, service workers, networking, trust boundaries, permissions or the harness's own guards change
   - Performance reviewer when rendering, simulation cost, large collections, route/layout churn or automation scale can regress performance
 
 ### 3.3 Failure behavior
 
-After three materially different unsuccessful repair attempts for the same blocking defect, stop the repair loop.
+After three materially different unsuccessful repair attempts for the same blocking defect, stop the repair loop. Every attempt is counted per defect, a reviewer (not the repairer) judges whether a strategy is materially different, and five attempts in total on one defect also stop the loop (`OPERATIONS.md` §5).
 
 The orchestrator must:
 1. mark the slice `BLOCKED_MANUAL_REVIEW`;
@@ -105,7 +110,8 @@ It must not continue making random changes.
 - Reviewers may use additional local worktrees for isolation.
 - Subagents do not push.
 - The orchestrator owns local integration commits.
-- Each mega-slice ends in a named local checkpoint commit.
+- Each mega-slice ends in a named local checkpoint commit. Checkpoint commits are never amended or rebased.
+- Nobody commits on `main` or `feat/*`; local `main` stays equal to `origin/main` until the owner approves a release.
 - Destructive Git commands are forbidden by default.
 
 ### 3.5 Save compatibility
@@ -117,6 +123,8 @@ Prefer compatibility where it is easy and low-risk. The approved 0.5 design is a
 A schema bump or explicit migration is allowed if deep automation or later architecture requires it, provided it is documented, tested, and locally reversible during development.
 
 This owner decision supersedes any older statement that schema version 1 can never change.
+
+**Open owner question (2026-10-05 review):** the live v0.4.0 code treats a save with a newer schema as damaged, falls back to an older backup and can then overwrite the newer save (`src/persistence/slots.ts`, `migrations.ts` "too_new"). Until the owner decides the schema policy, a `SCHEMA_VERSION` bump is an owner gate (`SCHEMA_BUMP`), not a pre-authorized change.
 
 ### 3.6 Versioning
 
@@ -142,6 +150,8 @@ Such changes must:
 - receive stronger regression coverage.
 
 This does not authorize remote release.
+
+It also doesn't cover the files that define the gates: `package.json` scripts, `tsconfig*.json`, `vitest.config.ts`, `playwright.config.ts`, `.github/**`, `render.yaml` and `scripts/agent/**`. Changing one of those needs an ADR and an independent reviewer's sign-off on that diff, and the deploy files also appear in the owner package. Harness files listed in `PROTECTED.json` change only as `OPERATIONS.md` §10 says.
 
 ### 3.9 UX authority
 
@@ -242,11 +252,11 @@ src/dev          fixtures, sandboxes and debug support
 
 Core architectural laws:
 
-- the deterministic simulation is the source of truth;
+- the deterministic simulation is the source of truth ("deterministic" as defined in `OPERATIONS.md` §11);
 - render code never mutates game state directly;
-- persisted game mutations go through the game mutation boundary;
+- persisted game mutations go through the game mutation boundary: `useGame.mutate` (UI and AI actions), `mutateFast` (the game loop and offline catch-up, `src/game/fastMutate.ts`) and `setGame` (replacing the whole world on load or new game);
 - species data is read through the species registry;
-- simulation randomness uses the persisted simulation RNG;
+- simulation randomness uses the persisted simulation RNG (`simRng(state)` / `ctx.rng`) or a subsystem's own persisted stream (`staff.rng`, `shows.rng`); new subsystems get their own stream; never `Math.random`, the wall clock or render state;
 - cosmetic randomness may be independent;
 - exported contracts should remain stable unless a deliberate approved change requires otherwise.
 
@@ -314,6 +324,8 @@ It is normative for:
 - expected tests and known at-risk tests.
 
 Do not duplicate the entire design into slice prompts. Slice prompts should cite exact design sections and load only the relevant portions.
+
+`design/DESIGN_REGISTRY.json` lists every design contract and its status, including where later owner decisions override parts of this one (ADR-0003). New designs, such as the S3-D screens the owner is producing, enter through `design/DESIGN_INTAKE.md`.
 
 ## 8. Design change gate
 
@@ -493,6 +505,8 @@ The basic pipeline:
 must be deterministic, restart-safe and tolerant of missing/reassigned creatures/tanks.
 
 #### S3-D: extended aquarium/aquaculture automation
+
+**Design dependency (ADR-0002 decision 4).** The owner is producing the S3-D screens, copy and test ids with Claude Design. S3-D work that depends on that design (owner-visible surfaces, copy, test ids and player-facing resource names) starts only once `DESIGN-S3D` is `APPROVED` in `design/DESIGN_REGISTRY.json`. If S3-A, S3-B and S3-C are done first, the orchestrator stops at `OWNER_GATE` with `DESIGN_PENDING:DESIGN-S3D`.
 
 The production-line feature is not the ceiling.
 
@@ -687,10 +701,13 @@ CHECKPOINT
 COMPACT
 HANDOFF
 NEXT_SLICE
+MULTIPLAYER_READINESS_GATE
 OWNER_GATE
 BLOCKED_MANUAL_REVIEW
 COMPLETE_LOCAL
 ```
+
+The full transition table, including how `OWNER_GATE`, `BLOCKED_MANUAL_REVIEW` and `NEXT_SLICE` are left, is in `OPERATIONS.md` §4; `scripts/agent/lib.mjs` holds the machine-readable copy that `record-event.mjs` enforces.
 
 ### 11.1 Normal flow
 
@@ -717,8 +734,11 @@ At the end of S4:
 ```text
 ACCEPT
   → CHECKPOINT
+  → COMPACT
+  → HANDOFF
   → MULTIPLAYER_READINESS_GATE
   → OWNER_GATE
+  → COMPLETE_LOCAL (when the owner closes the program)
 ```
 
 ### 11.2 Failure transitions
@@ -753,9 +773,14 @@ The harness preserves evidence and stops.
 docs/agent/
   README_FIRST.md
   AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md
+  OPERATIONS.md
+  PROTECTED.json
+  BACKLOG.md
 
   design/
     AQUARIUM_GO_0_5_DESIGN_SPEC.md
+    DESIGN_REGISTRY.json
+    DESIGN_INTAKE.md
 
   STATE.json
   LEDGER.jsonl
@@ -764,6 +789,7 @@ docs/agent/
   HANDOFF.md
 
   decisions/
+    INDEX.md
     ADR-0001-*.md
     ADR-0002-*.md
     ...
@@ -771,6 +797,11 @@ docs/agent/
   evidence/
     S0/
       manifest.json
+      logs/
+      reviews/
+      test-inventory.json
+      bootstrap-<timestamp>.json
+      acceptance-report.md
       ...
     S1/
     S2/
@@ -778,6 +809,7 @@ docs/agent/
     S4/
 
   prompts/
+    KICKOFF.md
     MASTER_ORCHESTRATOR_PROMPT.md
     ROLE_PROMPTS.md
 
@@ -787,9 +819,13 @@ docs/agent/
     ADR_TEMPLATE.md
     ACCEPTANCE_REPORT_TEMPLATE.md
     EVIDENCE_MANIFEST_TEMPLATE.json
+    DESIGN_INTAKE_TEMPLATE.md
+
+scripts/agent/        harness scripts (§41) and their tests
+.agent-runs/          ignored by Git: session transcripts, full-size logs, screenshots, context packs
 ```
 
-Generated local scratch output that is large or ephemeral may live outside Git, but its path/hash must be recorded in evidence.
+Generated local scratch output that is large or ephemeral may live outside Git (in `.agent-runs/`), but its path/hash must be recorded in evidence.
 
 ## 13. What each file means
 
@@ -808,9 +844,10 @@ It answers:
 - required reviewers;
 - current gates;
 - last accepted checkpoint;
-- whether owner approval is required.
+- whether owner approval is required, why (`ownerGateReason`) and where work resumes (`resumeState`);
+- the defect under repair (`repairTarget`), its distinct strategies (`repairAttempt`) and all attempts (`repairTotalAttempts`).
 
-It must stay small.
+It must stay small. `scripts/agent/check-state.mjs` validates it.
 
 ### `LEDGER.jsonl`
 
@@ -818,6 +855,7 @@ Append-only event history.
 
 Every meaningful transition writes one JSON object:
 - timestamp;
+- kind (transition, repair, evidence, review, decision, owner-decision, session-start, session-end, note);
 - actor;
 - slice;
 - task;
@@ -825,9 +863,10 @@ Every meaningful transition writes one JSON object:
 - toState;
 - command/evidence refs;
 - decision refs;
-- result.
+- result;
+- the Git HEAD and the Claude Code session id (filled in by `scripts/agent/record-event.mjs`).
 
-Never rewrite old ledger lines.
+Never rewrite old ledger lines. Write them with `record-event.mjs`, which refuses illegal transitions.
 
 ### `REQUIREMENTS.json`
 
@@ -842,7 +881,9 @@ Every requirement has:
 - acceptance criteria;
 - tests;
 - evidence;
-- status.
+- status: `PENDING`, `IN_PROGRESS`, `GREEN`, `YELLOW`, `RED`, `ACTIVE` (standing constraints), `BLOCKED`, `DEFERRED` or `SUPERSEDED` (the last two cite the ADR that decided it).
+
+Requirement ids are append-only: a requirement is never deleted, only superseded.
 
 ### `CURRENT_SLICE.md`
 
@@ -883,16 +924,7 @@ If the environment cannot estimate token usage precisely, use document-size heur
 
 ## 15. Mandatory reading order for a fresh agent
 
-1. `docs/agent/README_FIRST.md`
-2. `docs/agent/AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md`
-3. `docs/agent/STATE.json`
-4. `docs/agent/CURRENT_SLICE.md`
-5. `docs/agent/HANDOFF.md`
-6. ADRs explicitly referenced by CURRENT_SLICE/HANDOFF
-7. only the relevant sections of the approved design spec
-8. repository architecture/lane docs relevant to touched areas
-9. actual target code files
-10. relevant tests
+The canonical list is in `docs/agent/README_FIRST.md` (one list, so the copies can't drift). It covers the constitution, `OPERATIONS.md`, state, slice, handoff, the decision index and cited ADRs, the slice's requirements, the ledger tail, the slice's evidence manifest, the design registry and only the relevant design sections, then architecture docs, code and tests.
 
 Do not preload unrelated old slice reports.
 
@@ -1096,7 +1128,7 @@ Verdicts:
 
 A mega-slice may advance only with `GREEN`.
 
-`YELLOW` requires orchestrator review and, if it changes owner-visible behavior, owner approval.
+`YELLOW` requires orchestrator review and, if it changes owner-visible behavior, owner approval. It never advances on its own: it becomes `GREEN` either through a repair and a fresh `GREEN` re-review, or through an owner-approved ADR that lists each accepted limitation (owner gate `YELLOW_VERDICT:<slice>`).
 
 ---
 
@@ -1124,22 +1156,26 @@ At a meaningful green internal milestone:
 - screenshot/browser evidence.
 
 ### Level 3 — mega-slice acceptance
-Required:
+Required (run with `node scripts/agent/verify-slice.mjs`, which records the evidence):
 - `npm run typecheck`
 - `npm test`
 - `npm run build`
 - `npm run e2e`
-- `git diff --check`
-- requirement audit
+- `node scripts/agent/diff-check.mjs` (everything since the last checkpoint, untracked files included)
+- `node --test 'scripts/agent/*.test.mjs'` (the harness's own tests)
+- `node scripts/agent/test-inventory.mjs` (no test disappeared or was newly skipped)
+- requirement audit (`node scripts/agent/requirements-audit.mjs`)
 - independent review
 - browser QA for user-visible work
 
 Also run as appropriate:
-- `npm run qa:shots`
+- `npm run qa:shots -- <url> --out .agent-runs/evidence/<slice>/shots` (never into the tracked `screenshots/`)
 - `npm run qa:motion`
 - deterministic/step-invariance tests
 - persistence tests
 - performance profiling
+
+`qa:shots` and `qa:motion` produce evidence for reviewers; they don't fail on their own, so they never count as a passing gate.
 
 ### Level 4 — full local stack
 At S4:
@@ -1216,13 +1252,21 @@ The harness must derive the actual name at installation and store it in `STATE.j
 
 ### Destructive local commands prohibited by default
 
+A command is destructive when it discards uncommitted changes, deletes or moves a ref, rewrites or orphans a commit, removes a stash or worktree, or deletes or overwrites files under `docs/agent/` or `screenshots/`. Examples:
+
 - `git reset --hard`
 - `git clean -fd`
+- `git checkout -- .`, `git restore .`
+- `git stash drop` / `git stash clear`
+- `git branch -D`, `git tag -d`, `git update-ref -d`
+- `git worktree remove --force`
+- `git commit --amend` or a rebase over an accepted checkpoint
 - deleting untracked work without evidence
-- rebasing away accepted checkpoints
 - mass checkout/restore that discards unknown work
 
-Recovery should use explicit commits/worktrees/reverts so history remains inspectable.
+Before one is unavoidable, commit or copy what it would lose to a `recovery/<date>-<reason>` branch and record a ledger event. Recovery should use explicit commits/worktrees/reverts so history remains inspectable.
+
+Edits to `.github/**` or `render.yaml` are local, but they change what the owner's next push deploys: they need a requirement and must be listed in the owner package.
 
 ## 30. Checkpoint naming
 
@@ -1369,7 +1413,7 @@ No requirement may disappear simply because a later agent did not load its sourc
 
 ## 41. Recommended helper scripts
 
-All should use Node built-ins wherever practical; no new dependency is required.
+All should use Node built-ins wherever practical; no new dependency is required. Installed 2026-10-05 (ADR-0003), with their tests in `scripts/agent/agent.test.mjs`:
 
 ```text
 scripts/agent/check-state.mjs
@@ -1379,6 +1423,12 @@ scripts/agent/context-pack.mjs
 scripts/agent/capture-evidence.mjs
 scripts/agent/verify-slice.mjs
 scripts/agent/handoff.mjs
+scripts/agent/diff-check.mjs        the diffCheck gate (committed, uncommitted and untracked changes)
+scripts/agent/test-inventory.mjs    test ids and skip markers, compared slice to slice (§35)
+scripts/agent/bootstrap-check.mjs   checks a fresh session's bootstrap assertion (§16)
+scripts/agent/protect.mjs           hashes of the protected harness files (§54)
+scripts/agent/relaunch.mjs          opt-in automatic session relaunch (ADR-0002)
+scripts/agent/lib.mjs, evidence.mjs shared code
 ```
 
 ### `check-state.mjs`
@@ -1607,7 +1657,7 @@ git diff --check
 
 If existing baseline tests are red, S0 must classify them as pre-existing before feature implementation.
 
-Do not begin S1 with unexplained red baseline failures.
+Do not begin S1 with unexplained red baseline failures. A gate that can't run in the session's environment (for example headless Chromium inside a sandboxed shell) is recorded as not run, never as passed, and classified the same way (`OPERATIONS.md` §6 and §8).
 
 ---
 
@@ -1631,6 +1681,8 @@ External research may inform decisions but does not silently override the approv
 ## 54. Updating this master
 
 The master should be changed rarely.
+
+Only the owner changes this master, `OPERATIONS.md`, `README_FIRST.md`, `AGENTS.md`, `CLAUDE.md`, the prompts and the owner-decision ADRs; agents propose a change as an ADR. Those files, plus the templates, design contracts and `scripts/agent/`, are hashed in `PROTECTED.json`, and `check-state.mjs` fails when one changes without `protect.mjs --update --adr <ADR>` (`OPERATIONS.md` §10).
 
 A normal implementation discovery belongs in an ADR or slice contract.
 

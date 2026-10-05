@@ -1,0 +1,87 @@
+#!/usr/bin/env node
+/**
+ * Build a compact context pack for a builder or reviewer prompt (master §14 and §41 context-pack): the owner's hard
+ * decisions and the non-negotiables from the master, the current slice, the handoff, the ADRs they cite, the
+ * slice's requirements, the design sections they cite (headings only) and any design still waiting for approval.
+ * It never includes chat history.
+ *
+ *   node scripts/agent/context-pack.mjs                  # writes .agent-runs/CONTEXT_PACK.md
+ *   node scripts/agent/context-pack.mjs --out -          # prints it
+ */
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { PATHS, ROOT, exists, git, nowIso, parseArgs, readJson, readText } from './lib.mjs';
+
+const MASTER = 'docs/agent/AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md';
+const DESIGN = 'docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md';
+
+/** Text from the line that starts with `from` up to (not including) the next line that starts with `to`. */
+export function section(text, from, to) {
+  const lines = text.split('\n');
+  const start = lines.findIndex((l) => l.startsWith(from));
+  if (start < 0) return '';
+  const rel = lines.slice(start + 1).findIndex((l) => l.startsWith(to));
+  return lines.slice(start, rel < 0 ? undefined : start + 1 + rel).join('\n').trim();
+}
+
+/** Design headings for every "§n" or "§n.m" cited in `text`. */
+export function citedDesignHeadings(text, design) {
+  const cites = new Set(text.match(/§\d+(?:\.\d+)*/g) ?? []);
+  const headings = design.split('\n').filter((l) => /^#{2,4} \d+(\.\d+)*\.? /.test(l));
+  const out = [];
+  for (const c of [...cites].sort()) {
+    const num = c.slice(1);
+    const h = headings.find((l) => l.replace(/^#+ /, '').startsWith(`${num}.`) || l.replace(/^#+ /, '').startsWith(`${num} `));
+    if (h) out.push(`- ${c}: ${h.replace(/^#+ /, '')}`);
+  }
+  return out;
+}
+
+export function buildPack() {
+  const state = readJson(PATHS.state);
+  const master = readText(MASTER);
+  const slice = exists(PATHS.currentSlice) ? readText(PATHS.currentSlice) : '(missing)';
+  const handoff = exists(PATHS.handoff) ? readText(PATHS.handoff) : '(missing)';
+  const reqs = readJson(PATHS.requirements).requirements.filter((r) => r.slice === state.currentSlice || r.slice === 'ALL');
+  const adrIds = new Set(`${slice}\n${handoff}`.match(/ADR-\d{4}/g) ?? []);
+  const adrFiles = readdirSync(join(ROOT, PATHS.decisions)).filter((f) => [...adrIds].some((id) => f.startsWith(id)));
+  const registry = readJson(PATHS.designRegistry);
+  const pending = registry.designs.filter((d) => d.status !== 'APPROVED' && d.status !== 'SUPERSEDED');
+  const reqText = reqs.map((r) => `${r.source} ${r.description}`).join('\n');
+
+  const parts = [
+    `# CONTEXT PACK — ${state.currentSlice} (${state.machineState})`,
+    `Generated ${nowIso()} from repository files at ${git('rev-parse', '--short', 'HEAD')} on ${git('rev-parse', '--abbrev-ref', 'HEAD')}. Not chat history. Regenerate rather than edit.`,
+    '## State',
+    '```json',
+    JSON.stringify({ currentSlice: state.currentSlice, currentTask: state.currentTask, machineState: state.machineState, repairAttempt: state.repairAttempt, gates: state.gates, requiredReviewers: state.requiredReviewers, ownerGateRequired: state.ownerGateRequired, ownerGateReason: state.ownerGateReason ?? null }, null, 2),
+    '```',
+    section(master, '## 3. Hard owner decisions', '# PART II'),
+    section(master, '# PART XXIV', '# END STATE'),
+    '## Current slice',
+    slice,
+    '## Handoff',
+    handoff,
+    ...adrFiles.map((f) => `## ${f}\n\n${readText(`${PATHS.decisions}/${f}`)}`),
+    `## Requirements for ${state.currentSlice} and ALL`,
+    ...reqs.map((r) => `- **${r.id}** [${r.status}] ${r.description}\n  - source: ${r.source}\n  - acceptance: ${(r.acceptance ?? []).join(' | ')}`),
+    '## Design sections cited (load only these from the design spec)',
+    ...citedDesignHeadings(`${slice}\n${reqText}`, readText(DESIGN)),
+    '## Designs not yet approved (do not build what depends on them)',
+    ...(pending.length ? pending.map((d) => `- ${d.id} [${d.status}]: ${d.title}`) : ['- none']),
+  ];
+  return `${parts.join('\n\n')}\n`;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  const args = parseArgs(process.argv.slice(2));
+  const pack = buildPack();
+  const out = args.out ?? '.agent-runs/CONTEXT_PACK.md';
+  if (out === '-') process.stdout.write(pack);
+  else {
+    mkdirSync(dirname(join(ROOT, out)), { recursive: true });
+    writeFileSync(join(ROOT, out), pack);
+    console.log(`wrote ${out} (${pack.length} characters, about ${Math.round(pack.length / 4)} tokens)`);
+  }
+}

@@ -1,33 +1,39 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "project": "AquariumGo",
   "repo": "GrayGrayson1/aquarium-go",
   "planningBaselineSha": "0d9fc5a46085f746510a1041335632cd4f7314a2",
-  "actualBaselineSha": null,
-  "integrationBranch": null,
+  "actualBaselineSha": "0d9fc5a46085f746510a1041335632cd4f7314a2",
+  "integrationBranch": "agent/aquariumgo-local-stack-20261005",
   "remoteMutationAllowed": false,
+  "remoteApproval": null,
   "currentSlice": "S0",
-  "currentTask": "S0-BOOTSTRAP",
-  "machineState": "BOOTSTRAP",
+  "currentTask": "S0-T8",
+  "machineState": "IMPLEMENT",
+  "resumeState": null,
   "repairAttempt": 0,
+  "repairTotalAttempts": 0,
+  "repairTarget": null,
   "lastAcceptedCheckpoint": null,
   "contextRolloverRequired": false,
   "ownerGateRequired": false,
+  "ownerGateReason": null,
   "multiplayerApproved": false,
-  "design": {
-    "status": "APPROVED",
-    "contract": "docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md"
-  },
-  "requiredReviewers": [
-    "code-architecture"
-  ],
+  "multiplayerApproval": null,
+  "designRegistry": "docs/agent/design/DESIGN_REGISTRY.json",
+  "requiredReviewers": ["code-architecture", "security-data"],
   "gates": {
     "typecheck": "PENDING",
     "unit": "PENDING",
     "build": "PENDING",
     "e2e": "PENDING",
-    "browserQa": "NOT_YET_REQUIRED",
+    "diffCheck": "PENDING",
+    "harnessTests": "PENDING",
+    "requirementsAudit": "PENDING",
+    "testInventory": "PENDING",
+    "protectedFiles": "PENDING",
+    "browserQa": "NOT_APPLICABLE",
     "independentReview": "PENDING"
   },
-  "updatedAt": null
+  "updatedAt": "2026-10-05T20:00:00Z"
 }

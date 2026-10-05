@@ -9,7 +9,7 @@
 **Consequences:**
 - One command to run (`npm run dev` / `npm start`), no install beyond `npm install`.
 - All art is **procedural / code-generated**: creature meshes are lofted from species body plans, decor and plants are generated from seeds, textures are shader-based. That keeps the art style consistent and avoids licensing problems. Nothing loads from the network at runtime (fonts are bundled via @fontsource; the environment map is built from in-scene light formers).
-- Web deployment is possible later, but nothing is deployed.
+- The game is live on two static hosts built from `main`: GitHub Pages (`.github/workflows/deploy.yml`, on every push, base path `/aquarium-go/`) and Render (`render.yaml`, deployed with the Render CLI; base path `/`). Under the agent harness nothing is pushed or deployed without the owner's recorded approval (`docs/agent/OPERATIONS.md` §3).
 
 ## Layering (strict)
 
@@ -31,8 +31,8 @@ src/dev          fixtures, sandboxes, debug commands
 Rules:
 - **Species facts live only in `src/data/species`.** UI/render/AI read them through `getSpecies()`.
 - **The simulation is the source of truth.** Rendering and AI only present it. Example: feeding adds food to `tank.water.foodInWater`. The sim shares it out by feeding speed and competition, so a seahorse really does lose out to fast feeders. The AI animates particles being eaten, but the numbers come from the sim.
-- **All game-state changes go through `useGame.getState().mutate(draft => domainFn(draft, …))`.** Domain mutators live in `src/sim/**`.
-- **Determinism:** the sim draws randomness only from `simRng(state)`, which persists `rngState`. Cosmetic randomness uses `visualRng`/`Math.random`.
+- **All game-state changes go through the store boundary.** Player, UI and AI actions use `useGame.getState().mutate(draft => domainFn(draft, …))`; the game loop, offline catch-up and the pre-save flush use `mutateFast` (`src/game/fastMutate.ts`: a plain working copy published with structural sharing, about 15× cheaper than an Immer draft for a whole-world step); loading a save or starting a new game replaces the world with `setGame`. Domain mutators live in `src/sim/**`, and rendering never writes game state.
+- **Determinism:** the sim draws randomness only from `simRng(state)` / `ctx.rng`, which persists `rngState`, or from a subsystem's own persisted stream (`shows.rng`, `staff.rng`). Cosmetic randomness uses `visualRng`/`Math.random`. What "deterministic" promises, and what it doesn't, is defined in `docs/agent/OPERATIONS.md` §11.
 
 ## Time
 

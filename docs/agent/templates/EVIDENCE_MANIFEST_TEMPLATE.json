@@ -1,11 +1,49 @@
 {
   "slice": "S#",
   "checkpointSha": null,
-  "commands": [],
-  "browserRuns": [],
+  "commands": [
+    {
+      "gate": "unit (or check:<label> for targeted checks)",
+      "command": "npm test",
+      "cwd": "/Volumes/Dev/Projects/AquariumGo",
+      "start": "ISO time",
+      "end": "ISO time",
+      "seconds": 0,
+      "exitCode": 0,
+      "counts": { "vitestFiles": "151 passed (151)", "vitestTests": "1753 passed (1753)" },
+      "log": "docs/agent/evidence/S#/logs/<gate>-<stamp>.log",
+      "logSha256": "hex",
+      "fullLog": "optional: { path, bytes, sha256 } when the committed log was trimmed",
+      "head": "full SHA",
+      "dirty": false,
+      "codeTree": "git tree hash without docs/agent, AGENTS.md, CLAUDE.md",
+      "requirements": ["ID"]
+    }
+  ],
+  "browserRuns": [
+    {
+      "timestamp": "ISO time",
+      "route": "#/shop",
+      "viewport": "390x844",
+      "fixture": "name or null",
+      "actions": "what was done",
+      "expected": "what should happen",
+      "observed": "what happened",
+      "consoleErrors": 0,
+      "screenshot": "path",
+      "screenshotSha256": "hex",
+      "head": "full SHA",
+      "codeTree": "tree hash",
+      "requirements": ["ID"]
+    }
+  ],
   "screenshots": [],
-  "performance": [],
-  "reviews": [],
+  "performance": [
+    { "timestamp": "ISO time", "scenario": "", "metric": "", "baseline": "", "machine": "", "quality": "", "population": "", "head": "", "codeTree": "", "requirements": [] }
+  ],
+  "reviews": [
+    { "timestamp": "ISO time", "role": "code-architecture", "reviewer": "fresh subagent", "verdict": "GREEN", "report": "docs/agent/evidence/S#/reviews/<role>-<n>.md", "reportSha256": "hex", "head": "", "codeTree": "", "requirements": [] }
+  ],
   "requirements": [],
   "verdict": "PENDING"
 }
