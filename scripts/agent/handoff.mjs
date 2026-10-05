@@ -80,7 +80,13 @@ export function buildBlock() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  const args = parseArgs(process.argv.slice(2), ['write']);
+  let args;
+  try {
+    args = parseArgs(process.argv.slice(2), ['write'], []);
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
   const block = buildBlock();
   if (!args.write) console.log(block);
   else {

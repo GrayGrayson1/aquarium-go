@@ -1,11 +1,16 @@
 /**
  * Shared helpers for the agent harness scripts (docs/agent). Node built-ins only (master §41).
  * The vocabularies below are the single machine-readable copy of the ones defined in
- * docs/agent/AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md; keep the two in step.
+ * docs/agent/AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md and docs/agent/OPERATIONS.md; keep them in step.
+ *
+ * What these checks can and can't do: they catch accidental and single-step violations (a gate marked GREEN by hand,
+ * an illegal transition, an edited log, a rewritten ledger line, a deleted requirement). An agent with write access to
+ * every file could still forge several files at once; that is visible in Git history, and independent reviewers
+ * re-run the gates themselves instead of trusting the manifest (OPERATIONS.md §7).
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,8 +24,10 @@ export const PATHS = {
   handoff: 'docs/agent/HANDOFF.md',
   designRegistry: 'docs/agent/design/DESIGN_REGISTRY.json',
   decisions: 'docs/agent/decisions',
+  decisionIndex: 'docs/agent/decisions/INDEX.md',
   evidence: 'docs/agent/evidence',
   kickoff: 'docs/agent/prompts/KICKOFF.md',
+  protected: 'docs/agent/PROTECTED.json',
   stopFile: 'docs/agent/STOP',
 };
 
@@ -49,8 +56,10 @@ export const LEGAL_STATES = [
 ];
 
 /**
- * Legal transitions (docs/agent/OPERATIONS.md §4). Any state may also move to OWNER_GATE. Leaving OWNER_GATE or
- * BLOCKED_MANUAL_REVIEW needs a recorded owner decision (an ADR reference in the event's `decisions`).
+ * Legal transitions (docs/agent/OPERATIONS.md §4). Any state may also move to OWNER_GATE. OWNER_GATE leaves only to
+ * its recorded resume state or COMPLETE_LOCAL, and BLOCKED_MANUAL_REVIEW only to the listed states, both with a
+ * committed ADR in `decisions`. NEXT_SLICE leads to MULTIPLAYER_READINESS_GATE only once S4 is accepted, and always in
+ * a new session (checkTransition).
  */
 export const TRANSITIONS = {
   BOOTSTRAP: ['BASELINE_VERIFY'],
@@ -67,10 +76,10 @@ export const TRANSITIONS = {
   ACCEPT: ['CHECKPOINT'],
   CHECKPOINT: ['COMPACT'],
   COMPACT: ['HANDOFF'],
-  HANDOFF: ['NEXT_SLICE', 'MULTIPLAYER_READINESS_GATE'],
-  NEXT_SLICE: ['BOOTSTRAP'],
+  HANDOFF: ['NEXT_SLICE'],
+  NEXT_SLICE: ['BOOTSTRAP', 'MULTIPLAYER_READINESS_GATE'],
   MULTIPLAYER_READINESS_GATE: ['OWNER_GATE'],
-  OWNER_GATE: null, // filled below: back to any state, with a decision
+  OWNER_GATE: [], // contextual: resumeState or COMPLETE_LOCAL (checkTransition)
   BLOCKED_MANUAL_REVIEW: ['SLICE_DISCOVERY', 'IMPLEMENT', 'REPAIR'],
   COMPLETE_LOCAL: [],
 };
@@ -87,12 +96,15 @@ export const STOP_STATES = ['OWNER_GATE', 'BLOCKED_MANUAL_REVIEW', 'COMPLETE_LOC
 /** States that claim the current slice has been accepted. */
 export const ACCEPTED_STATES = ['ACCEPT', 'CHECKPOINT', 'COMPACT', 'HANDOFF', 'NEXT_SLICE', 'MULTIPLAYER_READINESS_GATE', 'COMPLETE_LOCAL'];
 
+/** Accepted states after the checkpoint commit exists. */
+export const POST_CHECKPOINT_STATES = ['CHECKPOINT', 'COMPACT', 'HANDOFF', 'NEXT_SLICE', 'MULTIPLAYER_READINESS_GATE', 'COMPLETE_LOCAL'];
+
 export const SLICES = ['S0', 'S1', 'S2', 'S3', 'S4'];
 
 /** Gate values (master §26 verdicts plus bookkeeping values). */
 export const GATE_VALUES = ['PENDING', 'RUNNING', 'GREEN', 'YELLOW', 'RED', 'NOT_YET_REQUIRED', 'NOT_APPLICABLE'];
 
-/** The command whose recorded exit code 0 proves each objective gate. */
+/** The command whose recorded exit code 0 proves each objective gate. Every key is required in STATE.gates. */
 export const GATE_COMMANDS = {
   typecheck: 'npm run typecheck',
   unit: 'npm test',
@@ -105,6 +117,9 @@ export const GATE_COMMANDS = {
   protectedFiles: 'node scripts/agent/protect.mjs',
 };
 
+/** Gates that may be NOT_APPLICABLE without a waiver; e2e needs an owner ADR in STATE.gateWaivers. */
+export const WAIVABLE_GATES = ['browserQa'];
+
 /** Requirement statuses (docs/agent/REQUIREMENTS.json). */
 export const REQ_STATUSES = ['PENDING', 'IN_PROGRESS', 'GREEN', 'YELLOW', 'RED', 'ACTIVE', 'BLOCKED', 'DEFERRED', 'SUPERSEDED'];
 
@@ -114,16 +129,43 @@ export const REQ_FAMILIES = ['CONST', 'DES', 'NAV', 'GEN', 'MKT', 'AUTO', 'NOTIF
 /** Design registry statuses (docs/agent/design/DESIGN_INTAKE.md). */
 export const DESIGN_STATUSES = ['PENDING_OWNER_DESIGN', 'RECEIVED', 'UNDER_REVIEW', 'APPROVED', 'SUPERSEDED', 'REJECTED'];
 
-TRANSITIONS.OWNER_GATE = LEGAL_STATES.filter((s) => s !== 'OWNER_GATE');
+/** Ledger event kinds. A 'transition' must follow TRANSITIONS; a 'repair' names its defect in `defect`. */
+export const EVENT_KINDS = ['transition', 'repair', 'evidence', 'review', 'decision', 'owner-decision', 'session-start', 'session-end', 'note'];
 
-/** True when `from → to` is in the transition table (any state may go to OWNER_GATE). */
+export const ADR_ID_RE = /^ADR-\d{4}$/;
+
+/** True when `from → to` is in the static table (any state may go to OWNER_GATE; OWNER_GATE exits are contextual). */
 export function isLegalTransition(from, to) {
-  if (to === 'OWNER_GATE') return LEGAL_STATES.includes(from);
+  if (!LEGAL_STATES.includes(from) || !LEGAL_STATES.includes(to)) return false;
+  if (to === 'OWNER_GATE') return from !== 'OWNER_GATE';
+  if (from === 'OWNER_GATE') return true; // narrowed by checkTransition to resumeState or COMPLETE_LOCAL
   return (TRANSITIONS[from] ?? []).includes(to);
 }
 
-/** Ledger event kinds. A 'transition' must follow TRANSITIONS; a 'repair' names its defect in `defect`. */
-export const EVENT_KINDS = ['transition', 'repair', 'evidence', 'review', 'decision', 'owner-decision', 'session-start', 'session-end', 'note'];
+/**
+ * Full check of a transition against the current state. `ctx`: { state, adrExists(id) → bool, s4Accepted }.
+ * Returns problems (empty when the transition may be recorded).
+ */
+export function checkTransition({ from, to, slice, decisions = [], reason, resume }, { state, adrExists = () => true, s4Accepted = false }) {
+  const problems = [];
+  if (!isLegalTransition(from, to)) problems.push(`${from} → ${to} is not a legal transition (OPERATIONS.md §4)`);
+  if (state) {
+    if (from !== state.machineState) problems.push(`the transition starts from ${from}, but STATE.machineState is ${state.machineState}`);
+    if (slice !== state.currentSlice) problems.push(`the transition names slice ${slice}, but STATE.currentSlice is ${state.currentSlice}`);
+    if (from === 'OWNER_GATE' && to !== 'COMPLETE_LOCAL' && to !== state.resumeState) problems.push(`OWNER_GATE may only resume at ${state.resumeState} (STATE.resumeState) or close at COMPLETE_LOCAL`);
+  }
+  if (to === 'OWNER_GATE') {
+    if (!reason) problems.push('entering OWNER_GATE needs --reason (OPERATIONS.md §2)');
+    if (!resume || !LEGAL_STATES.includes(resume) || STOP_STATES.includes(resume)) problems.push('entering OWNER_GATE needs --resume <state to continue at>');
+  }
+  if (DECISION_EXITS.includes(from)) {
+    if (!decisions.length) problems.push(`leaving ${from} needs a recorded decision (--decision ADR-NNNN)`);
+    for (const d of decisions) if (!ADR_ID_RE.test(d) || !adrExists(d)) problems.push(`decision ${d} is not a committed ADR listed in decisions/INDEX.md`);
+  }
+  if (from === 'NEXT_SLICE' && to === 'MULTIPLAYER_READINESS_GATE' && !(state?.currentSlice === 'S4' && s4Accepted)) problems.push('the readiness gate follows only an accepted S4');
+  if (from === 'NEXT_SLICE' && to === 'BOOTSTRAP' && state?.currentSlice === 'S4' && s4Accepted) problems.push('S4 is accepted: the next step is MULTIPLAYER_READINESS_GATE, not another slice');
+  return problems;
+}
 
 export const abs = (rel) => join(ROOT, rel);
 export const exists = (rel) => existsSync(abs(rel));
@@ -151,9 +193,51 @@ export function gitOk(...args) {
   }
 }
 
+/** Contents of `rel` at commit `ref`, or null when it doesn't exist there. Trailing newline preserved. */
+export function showAt(ref, rel) {
+  try {
+    return execFileSync('git', ['show', `${ref}:${rel}`], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch {
+    return null;
+  }
+}
+
+/** True when `rel` is tracked at HEAD (committed). */
+export const isCommitted = (rel) => gitOk('cat-file', '-e', `HEAD:${rel}`);
+
+/**
+ * Path of a committed ADR (`ADR-NNNN-*.md`) that is listed in decisions/INDEX.md, or null. Decisions and approvals
+ * may only cite such ADRs.
+ */
+export function findAdr(id) {
+  if (!ADR_ID_RE.test(id)) return null;
+  let index = '';
+  try {
+    index = readText(PATHS.decisionIndex);
+  } catch {
+    return null;
+  }
+  if (!index.includes(`[${id}]`)) return null;
+  const file = (existsSync(abs(PATHS.decisions)) ? readdirSync(abs(PATHS.decisions)) : []).find((f) => f.startsWith(`${id}-`) && f.endsWith('.md'));
+  if (!file) return null;
+  const rel = `${PATHS.decisions}/${file}`;
+  return isCommitted(rel) ? rel : null;
+}
+
+/** An approval reference (STATE.remoteApproval and similar) must be a committed, indexed ADR path or id. */
+export function approvalIsAdr(ref) {
+  if (typeof ref !== 'string') return false;
+  const id = (ref.match(/ADR-\d{4}/) ?? [])[0];
+  if (!id) return false;
+  const path = findAdr(id);
+  return !!path && (ref === id || ref === path);
+}
+
 export function sha256File(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
+
+export const sha256Text = (text) => createHash('sha256').update(text).digest('hex');
 
 export const nowIso = () => new Date().toISOString();
 
@@ -176,7 +260,7 @@ export function parseLedger(text) {
   return { events, errors };
 }
 
-/** Returns a list of problems with one ledger event (empty when valid). */
+/** Returns a list of problems with one ledger event on its own (empty when valid). */
 export function validateEvent(e) {
   const problems = [];
   if (!e || typeof e !== 'object' || Array.isArray(e)) return ['event is not an object'];
@@ -191,12 +275,13 @@ export function validateEvent(e) {
   }
   if (e.kind === 'transition') {
     if (!e.fromState || !e.toState) problems.push('a transition needs fromState and toState');
-    else if (LEGAL_STATES.includes(e.fromState) && LEGAL_STATES.includes(e.toState)) {
-      if (!isLegalTransition(e.fromState, e.toState)) problems.push(`${e.fromState} → ${e.toState} is not a legal transition (OPERATIONS.md §4)`);
-      if (DECISION_EXITS.includes(e.fromState) && !e.decisions?.length) problems.push(`leaving ${e.fromState} needs a recorded decision in "decisions"`);
-    }
+    else if (!isLegalTransition(e.fromState, e.toState)) problems.push(`${e.fromState} → ${e.toState} is not a legal transition (OPERATIONS.md §4)`);
+    else if (DECISION_EXITS.includes(e.fromState) && !(e.decisions ?? []).some((d) => ADR_ID_RE.test(d))) problems.push(`leaving ${e.fromState} needs an ADR in "decisions"`);
   }
-  if (e.kind === 'repair' && (typeof e.defect !== 'string' || !e.defect.trim())) problems.push('a repair event needs its defect id in "defect"');
+  if (e.kind === 'repair') {
+    if (typeof e.defect !== 'string' || !e.defect.trim()) problems.push('a repair event needs its defect id in "defect"');
+    if (!e.resolved && (typeof e.strategy !== 'string' || !e.strategy.trim())) problems.push('a repair attempt needs a one-line "strategy"');
+  }
   for (const k of ['evidence', 'decisions']) {
     if (e[k] != null && (!Array.isArray(e[k]) || e[k].some((x) => typeof x !== 'string'))) problems.push(`${k} must be a list of strings`);
   }
@@ -204,7 +289,7 @@ export function validateEvent(e) {
 }
 
 /**
- * Append one event to LEDGER.jsonl (append-only: never rewrites a line). Fills timestamp and head.
+ * Append one event to LEDGER.jsonl (append-only: never rewrites a line). Fills timestamp, head and session.
  * Throws when the event is invalid or the existing ledger doesn't end with a newline.
  */
 export function appendEvent(event) {
@@ -224,8 +309,11 @@ export function appendEvent(event) {
   return e;
 }
 
-/** Simple --flag value / --flag parser. Repeated flags collect into arrays. */
-export function parseArgs(argv, booleans = []) {
+/**
+ * --flag value / --flag=value / --flag parser. Repeated flags collect into arrays. With `allowed`, an unknown flag
+ * throws (a mistyped flag must never be ignored: `relaunch.mjs --self-tset` would otherwise start real sessions).
+ */
+export function parseArgs(argv, booleans = [], allowed = null) {
   const out = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -235,6 +323,7 @@ export function parseArgs(argv, booleans = []) {
     }
     const eq = a.indexOf('=');
     const key = (eq > 0 ? a.slice(2, eq) : a.slice(2)).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    if (allowed && !allowed.includes(key) && !booleans.includes(key)) throw new Error(`unknown option --${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`);
     let value;
     if (eq > 0) value = a.slice(eq + 1);
     else if (booleans.includes(key)) value = true;
@@ -244,4 +333,20 @@ export function parseArgs(argv, booleans = []) {
     else out[key] = value;
   }
   return out;
+}
+
+/** A positive integer option (throws otherwise). */
+export function positiveInt(value, name, fallback) {
+  if (value === undefined) return fallback;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) throw new Error(`--${name} must be a whole number of at least 1 (got ${value})`);
+  return n;
+}
+
+/** A positive number option (throws otherwise). */
+export function positiveNumber(value, name, fallback) {
+  if (value === undefined) return fallback;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`--${name} must be a positive number (got ${value})`);
+  return n;
 }

@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 /**
- * Validate the harness's durable state (master §41 check-state): STATE.json, REQUIREMENTS.json, LEDGER.jsonl,
- * the design registry, CURRENT_SLICE.md and the current slice's evidence manifest, against Git reality.
+ * Validate the harness's durable state (master §41 check-state): STATE.json, REQUIREMENTS.json, LEDGER.jsonl, the
+ * design registry, CURRENT_SLICE.md, every slice's evidence manifest and the protected files, against Git reality.
  *
  *   node scripts/agent/check-state.mjs           # errors exit 1, warnings don't
  *   node scripts/agent/check-state.mjs --json    # machine-readable result
  *   node scripts/agent/check-state.mjs --strict  # warnings fail too
  *
- * It refuses the "accepted without evidence" combinations: a GREEN gate without a passing recorded command for the
- * same code tree, an accepted state without GREEN gates, review and manifest, remote or multiplayer permission
- * without an ADR, a rewritten ledger line, and a requirement deleted from the committed registry.
+ * It refuses the "accepted without evidence" combinations (lib.mjs explains what such checks can and can't catch):
+ * a GREEN gate without a passing run of its real command on the accepted code tree; reviews or browser runs from
+ * another tree; a review whose report doesn't end with the recorded verdict; an accepted state with open gates;
+ * evidence edited after it was recorded; remote, multiplayer, waiver or design approvals that aren't committed ADRs;
+ * rewritten ledger lines, broken transition chains, deleted requirements or rewritten manifests (against HEAD and the
+ * last accepted checkpoint); repair limits passed without stopping; and changed protected files.
  */
+import { readdirSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   ACCEPTED_STATES,
@@ -19,13 +23,15 @@ import {
   GATE_VALUES,
   LEGAL_STATES,
   PATHS,
+  POST_CHECKPOINT_STATES,
   REPAIR_LIMITS,
-  REQ_FAMILIES,
-  REQ_STATUSES,
   SLICES,
   STOP_STATES,
+  WAIVABLE_GATES,
   abs,
+  approvalIsAdr,
   exists,
+  findAdr,
   git,
   gitOk,
   parseArgs,
@@ -33,11 +39,17 @@ import {
   readJson,
   readText,
   sha256File,
+  showAt,
   validateEvent,
 } from './lib.mjs';
 import { codeTreeOf } from './evidence.mjs';
 import { verifyProtected } from './protect.mjs';
+import { reportVerdict } from './capture-evidence.mjs';
+import { REQ_TOKEN_RE, auditRequirements, validateRequirements } from './requirements.mjs';
 
+export { validateRequirements };
+
+const SHA_RE = /^[0-9a-f]{40}$/;
 const REQUIRED_STATE_KEYS = {
   schemaVersion: 'number',
   project: 'string',
@@ -53,10 +65,7 @@ const REQUIRED_STATE_KEYS = {
   requiredReviewers: 'object',
   gates: 'object',
 };
-
-const SHA_RE = /^[0-9a-f]{40}$/;
-const REQ_ID_RE = new RegExp(`^(${REQ_FAMILIES.join('|')})-\\d{3}$`);
-const REQ_TOKEN_RE = new RegExp(`\\b(?:${REQ_FAMILIES.join('|')})-\\d{3}\\b`, 'g');
+const ALL_GATES = [...Object.keys(GATE_COMMANDS), 'browserQa', 'independentReview'];
 
 /** Pure checks on STATE.json alone. */
 export function validateState(s) {
@@ -70,31 +79,26 @@ export function validateState(s) {
   if (!LEGAL_STATES.includes(s.machineState)) errors.push(`STATE.machineState ${s.machineState} is not a legal state (master §11)`);
   if (!SLICES.includes(s.currentSlice)) errors.push(`STATE.currentSlice ${s.currentSlice} is not one of ${SLICES.join(', ')}`);
   const total = s.repairTotalAttempts ?? 0;
-  if (!Number.isInteger(s.repairAttempt) || s.repairAttempt < 0 || s.repairAttempt > REPAIR_LIMITS.distinctStrategies) {
-    errors.push(`STATE.repairAttempt (distinct strategies) must be an integer 0-${REPAIR_LIMITS.distinctStrategies}`);
-  }
-  if (!Number.isInteger(total) || total < 0 || total > REPAIR_LIMITS.totalAttempts || total < s.repairAttempt) {
-    errors.push(`STATE.repairTotalAttempts must be an integer from repairAttempt to ${REPAIR_LIMITS.totalAttempts}`);
-  }
-  if ((s.repairAttempt >= REPAIR_LIMITS.distinctStrategies || total >= REPAIR_LIMITS.totalAttempts) && s.machineState !== 'BLOCKED_MANUAL_REVIEW') {
-    errors.push(`the repair limit (${REPAIR_LIMITS.distinctStrategies} distinct strategies or ${REPAIR_LIMITS.totalAttempts} attempts) requires BLOCKED_MANUAL_REVIEW (master §3.3, OPERATIONS.md §5)`);
-  }
+  if (!Number.isInteger(s.repairAttempt) || s.repairAttempt < 0) errors.push('STATE.repairAttempt (distinct strategies) must be a whole number');
+  if (!Number.isInteger(total) || total < 0 || total < s.repairAttempt) errors.push('STATE.repairTotalAttempts must be a whole number of at least repairAttempt');
   if ((s.repairAttempt > 0 || total > 0) && !s.repairTarget) errors.push('STATE.repairTarget must name the blocking defect while repairs are counted');
-  if (s.resumeState != null && !LEGAL_STATES.includes(s.resumeState)) errors.push(`STATE.resumeState ${s.resumeState} is not a legal state`);
+  if (s.resumeState != null && (!LEGAL_STATES.includes(s.resumeState) || STOP_STATES.includes(s.resumeState))) errors.push(`STATE.resumeState ${s.resumeState} is not a state work can resume at`);
   if (s.machineState === 'OWNER_GATE' && !s.resumeState) errors.push('OWNER_GATE needs STATE.resumeState (where work continues after the decision)');
+  if (s.machineState === 'OWNER_GATE' && !s.ownerGateReason) errors.push('OWNER_GATE needs STATE.ownerGateReason');
+  if (s.ownerGateRequired && s.machineState !== 'OWNER_GATE') warnings.push('ownerGateRequired is true but machineState is not OWNER_GATE');
   for (const k of ['planningBaselineSha', 'actualBaselineSha', 'lastAcceptedCheckpoint']) {
     if (s[k] != null && !SHA_RE.test(s[k])) errors.push(`STATE.${k} must be a full 40-character SHA or null`);
   }
   if (s.remoteMutationAllowed && !s.remoteApproval) errors.push('remoteMutationAllowed is true without STATE.remoteApproval (an ADR that records the owner\'s verbatim yes)');
   if (s.multiplayerApproved && !s.multiplayerApproval) errors.push('multiplayerApproved is true without STATE.multiplayerApproval (an ADR that records the owner\'s verbatim yes)');
-  if (s.machineState === 'OWNER_GATE' && !s.ownerGateReason) errors.push('OWNER_GATE needs STATE.ownerGateReason');
-  if (s.ownerGateRequired && s.machineState !== 'OWNER_GATE') warnings.push('ownerGateRequired is true but machineState is not OWNER_GATE');
   if (s.gates && typeof s.gates === 'object') {
+    for (const g of ALL_GATES) if (!(g in s.gates)) errors.push(`STATE.gates.${g} is missing (every gate is required)`);
     for (const [g, v] of Object.entries(s.gates)) {
+      if (!ALL_GATES.includes(g)) errors.push(`STATE.gates.${g} is not a known gate`);
       if (!GATE_VALUES.includes(v)) errors.push(`STATE.gates.${g} has unknown value ${v}`);
-    }
-    for (const g of ['typecheck', 'unit', 'build', 'e2e', 'diffCheck', 'independentReview']) {
-      if (!(g in s.gates)) errors.push(`STATE.gates.${g} is missing`);
+      if ((v === 'NOT_APPLICABLE' || v === 'NOT_YET_REQUIRED') && !WAIVABLE_GATES.includes(g) && !s.gateWaivers?.[g]) {
+        errors.push(`gate ${g} can't be ${v} without an owner-approved waiver in STATE.gateWaivers.${g}`);
+      }
     }
   }
   if (!Array.isArray(s.requiredReviewers) || !s.requiredReviewers.includes('code-architecture')) {
@@ -103,46 +107,54 @@ export function validateState(s) {
   return { errors, warnings };
 }
 
-/** The newest manifest command record for a gate, or undefined. */
-function latestRecord(manifest, gate) {
-  const recs = (manifest?.commands ?? []).filter((c) => c.gate === gate);
-  return recs[recs.length - 1];
-}
+/** Gate records count as evidence only when they ran the gate's real command and aren't baseline records. */
+const gateRecords = (manifest, gate) => (manifest?.commands ?? []).filter((c) => c.gate === gate && !c.phase);
 
 /**
- * Cross-checks between STATE.json and the current slice's evidence manifest. `codeTree` is the code tree that the
- * gates must have been run on (HEAD's when the state claims acceptance).
+ * STATE vs the current slice's manifest. `targetTree` is the code tree the evidence must belong to (null when it
+ * couldn't be computed); in accepted states every check is an error, before acceptance tree mismatches only warn.
  */
-export function validateGateEvidence(s, manifest, { codeTree, acceptedTree } = {}) {
+export function validateGateEvidence(s, manifest, { targetTree = null, accepted = false } = {}) {
   const errors = [];
   const warnings = [];
+  const strict = (msg) => (accepted ? errors : warnings).push(msg);
   const gates = s.gates ?? {};
+  if (accepted && !targetTree) errors.push('the accepted code tree could not be computed, so no gate evidence can be checked');
   for (const [gate, value] of Object.entries(gates)) {
     if (value !== 'GREEN') continue;
     if (gate in GATE_COMMANDS) {
-      const rec = latestRecord(manifest, gate);
-      if (!rec) errors.push(`gate ${gate} is GREEN but the ${s.currentSlice} manifest has no recorded "${GATE_COMMANDS[gate]}" run`);
-      else if (rec.exitCode !== 0) errors.push(`gate ${gate} is GREEN but its latest recorded run exited ${rec.exitCode}`);
-      else if (codeTree && rec.codeTree && rec.codeTree !== codeTree) {
-        (acceptedTree ? errors : warnings).push(`gate ${gate} passed on code tree ${rec.codeTree.slice(0, 10)}, not the current ${codeTree.slice(0, 10)}; re-run it`);
+      const recs = gateRecords(manifest, gate);
+      const rec = recs[recs.length - 1];
+      if (!rec) {
+        errors.push(`gate ${gate} is GREEN but the ${s.currentSlice} manifest has no recorded "${GATE_COMMANDS[gate]}" run`);
+        continue;
       }
+      if (rec.command !== GATE_COMMANDS[gate]) errors.push(`gate ${gate} is GREEN but its latest record ran "${rec.command}", not "${GATE_COMMANDS[gate]}"`);
+      if (rec.exitCode !== 0) errors.push(`gate ${gate} is GREEN but its latest recorded run exited ${rec.exitCode}`);
+      if (!rec.log || !rec.logSha256 || !rec.codeTree) errors.push(`gate ${gate}'s latest record has no log, log hash or code tree`);
+      if (rec.treeChanged) errors.push(`gate ${gate}'s latest run saw the code change while it ran; run it again`);
+      if (targetTree && rec.codeTree && rec.codeTree !== targetTree) strict(`gate ${gate} passed on code tree ${rec.codeTree.slice(0, 10)}, not ${targetTree.slice(0, 10)}; run it again`);
     } else if (gate === 'independentReview') {
       const greens = (manifest?.reviews ?? []).filter((r) => r.verdict === 'GREEN' && r.role === 'code-architecture');
       if (!greens.length) errors.push('independentReview is GREEN but the manifest has no GREEN code-architecture review');
     } else if (gate === 'browserQa') {
-      if (!(manifest?.browserRuns ?? []).length) errors.push('browserQa is GREEN but the manifest has no browser runs');
+      const runs = manifest?.browserRuns ?? [];
+      if (!runs.length) errors.push('browserQa is GREEN but the manifest has no browser runs');
+      const onTree = targetTree ? runs.filter((b) => b.codeTree === targetTree) : runs;
+      if (accepted && targetTree && !onTree.length) errors.push('browserQa is GREEN but no browser run was recorded on the accepted code tree');
+      if (onTree.some((b) => b.consoleErrors !== 0)) strict('a browser run on this code tree recorded console errors');
     }
   }
-  for (const role of s.requiredReviewers ?? []) {
-    const reviews = (manifest?.reviews ?? []).filter((r) => r.role === role);
-    const last = reviews[reviews.length - 1];
-    if (ACCEPTED_STATES.includes(s.machineState) && (!last || last.verdict !== 'GREEN')) {
-      errors.push(`${s.machineState} needs a GREEN ${role} review in the ${s.currentSlice} manifest`);
+  if (accepted) {
+    for (const role of s.requiredReviewers ?? []) {
+      const reviews = (manifest?.reviews ?? []).filter((r) => r.role === role);
+      const last = reviews[reviews.length - 1];
+      if (!last || last.verdict !== 'GREEN') errors.push(`${s.machineState} needs a GREEN ${role} review in the ${s.currentSlice} manifest`);
+      else if (targetTree && last.codeTree !== targetTree) errors.push(`the latest ${role} review covered code tree ${String(last.codeTree).slice(0, 10)}, not the accepted ${targetTree.slice(0, 10)}`);
     }
-  }
-  if (ACCEPTED_STATES.includes(s.machineState)) {
     for (const [gate, value] of Object.entries(gates)) {
-      if (!['GREEN', 'NOT_APPLICABLE'].includes(value)) errors.push(`${s.machineState} claims acceptance but gate ${gate} is ${value}`);
+      const waived = (value === 'NOT_APPLICABLE' && (WAIVABLE_GATES.includes(gate) || s.gateWaivers?.[gate]));
+      if (value !== 'GREEN' && !waived) errors.push(`${s.machineState} claims acceptance but gate ${gate} is ${value}`);
     }
     if (!manifest) errors.push(`${s.machineState} claims acceptance but docs/agent/evidence/${s.currentSlice}/manifest.json is missing`);
     else if (manifest.verdict !== 'GREEN') errors.push(`${s.machineState} claims acceptance but the manifest verdict is ${manifest.verdict}`);
@@ -151,29 +163,44 @@ export function validateGateEvidence(s, manifest, { codeTree, acceptedTree } = {
 }
 
 /**
- * Every file the manifest cites must still exist with the recorded hash, and committed evidence must not be
- * ignored by Git. Files kept outside Git on purpose (.agent-runs/) only warn when missing. Also flags gates that
- * failed and then passed on the same code tree: those are FLAKY and must be listed in the acceptance report.
+ * Every file the manifest cites must still exist with its recorded hash and must not be ignored by Git (files kept
+ * outside Git on purpose, under .agent-runs/, only warn when missing). Gate records need a log. A review's report
+ * must end with the verdict it was recorded with. A gate that failed and then passed on one tree is FLAKY.
  */
-export function validateEvidenceFiles(manifest, { exists: fileExists, hash, ignored }) {
+export function validateEvidenceFiles(manifest, { exists: fileExists, hash, ignored, read }) {
   const errors = [];
   const warnings = [];
   const check = (rel, sha, what) => {
-    if (!rel) return;
+    if (!rel) {
+      errors.push(`${what} has no path`);
+      return false;
+    }
     const outside = rel.startsWith('.agent-runs/');
-    if (!fileExists(rel)) (outside ? warnings : errors).push(`${what} ${rel} cited in the manifest is missing`);
-    else if (sha && hash(rel) !== sha) errors.push(`${what} ${rel} no longer matches its recorded SHA-256 (evidence was edited)`);
-    else if (!outside && ignored(rel)) errors.push(`${what} ${rel} is ignored by Git, so it would never be committed`);
+    if (!fileExists(rel)) {
+      (outside ? warnings : errors).push(`${what} ${rel} cited in the manifest is missing`);
+      return false;
+    }
+    if (!sha) errors.push(`${what} ${rel} has no recorded SHA-256`);
+    else if (hash(rel) !== sha) errors.push(`${what} ${rel} no longer matches its recorded SHA-256 (evidence was edited)`);
+    if (!outside && ignored(rel)) errors.push(`${what} ${rel} is ignored by Git, so it would never be committed`);
+    return true;
   };
   for (const c of manifest.commands ?? []) {
     check(c.log, c.logSha256, 'log');
     if (c.fullLog) check(c.fullLog.path, c.fullLog.sha256, 'full log');
   }
-  for (const r of manifest.reviews ?? []) check(r.report, r.reportSha256, 'review report');
+  for (const r of manifest.reviews ?? []) {
+    if (check(r.report, r.reportSha256, 'review report') && read) {
+      const ended = reportVerdict(read(r.report));
+      if (ended !== r.verdict) errors.push(`review report ${r.report} ends with ${ended ?? 'no verdict'}, but it was recorded as ${r.verdict}`);
+    }
+  }
   for (const b of manifest.browserRuns ?? []) check(b.screenshot, b.screenshotSha256, 'screenshot');
+  for (const f of manifest.files ?? []) check(f.path, f.sha256, `${f.kind ?? 'evidence'} file`);
   const seenRed = new Set();
   const flaky = new Set();
   for (const c of manifest.commands ?? []) {
+    if (c.phase) continue;
     const key = `${c.gate}@${c.codeTree}`;
     if (c.exitCode !== 0) seenRed.add(key);
     else if (seenRed.has(key)) flaky.add(c.gate);
@@ -182,53 +209,43 @@ export function validateEvidenceFiles(manifest, { exists: fileExists, hash, igno
   return { errors, warnings };
 }
 
-/** The ledger's repair events for the current defect must not outnumber STATE.repairTotalAttempts. */
-export function validateRepairCount(s, events) {
-  if (!s.repairTarget) return { errors: [], warnings: [] };
-  const logged = events.filter((e) => e?.kind === 'repair' && e.defect === s.repairTarget).length;
-  if (logged > (s.repairTotalAttempts ?? 0)) {
-    return { errors: [`LEDGER.jsonl records ${logged} repair attempt(s) on ${s.repairTarget} but STATE.repairTotalAttempts is ${s.repairTotalAttempts ?? 0}`], warnings: [] };
-  }
-  return { errors: [], warnings: [] };
-}
-
-/** Pure checks on REQUIREMENTS.json; `committed` is the version at HEAD (or null). */
-export function validateRequirements(reqs, committed) {
+/** A manifest may only grow: every committed record stays, unchanged and in order; an accepted verdict stays. */
+export function validateManifestAppendOnly(current, committed, label) {
   const errors = [];
-  const warnings = [];
-  const list = reqs?.requirements;
-  if (!Array.isArray(list)) return { errors: ['REQUIREMENTS.json has no requirements array'], warnings };
-  const seen = new Set();
-  for (const r of list) {
-    const where = `requirement ${r?.id ?? '(no id)'}`;
-    if (!REQ_ID_RE.test(r?.id ?? '')) errors.push(`${where}: id must be FAMILY-NNN with a master §40 family`);
-    if (seen.has(r?.id)) errors.push(`${where}: duplicate id`);
-    seen.add(r?.id);
-    if (r?.slice !== 'ALL' && !SLICES.includes(r?.slice)) errors.push(`${where}: unknown slice ${r?.slice}`);
-    if (!REQ_STATUSES.includes(r?.status)) errors.push(`${where}: unknown status ${r?.status}`);
-    for (const k of ['source', 'description']) if (typeof r?.[k] !== 'string' || !r[k].trim()) errors.push(`${where}: missing ${k}`);
-    for (const k of ['acceptance', 'tasks', 'tests', 'evidence']) if (!Array.isArray(r?.[k])) errors.push(`${where}: ${k} must be a list`);
-    if (Array.isArray(r?.acceptance) && !r.acceptance.length) errors.push(`${where}: needs at least one acceptance criterion (master §40)`);
-    if (r?.status === 'GREEN' && !(r.evidence?.length && r.tests?.length)) errors.push(`${where}: GREEN without tests and evidence`);
-    if (['DEFERRED', 'SUPERSEDED'].includes(r?.status) && !r.decision) errors.push(`${where}: ${r.status} needs a decision (ADR) reference`);
+  if (!committed) return { errors, warnings: [] };
+  for (const k of ['commands', 'reviews', 'browserRuns', 'files', 'performance']) {
+    const before = committed[k] ?? [];
+    const now = current?.[k] ?? [];
+    if (now.length < before.length || before.some((x, i) => JSON.stringify(x) !== JSON.stringify(now[i]))) {
+      errors.push(`${label} manifest ${k} no longer starts with its committed records (records are append-only)`);
+    }
   }
-  for (const old of committed?.requirements ?? []) {
-    if (old?.id && !seen.has(old.id)) errors.push(`requirement ${old.id} exists at HEAD but was deleted; mark it SUPERSEDED with a decision instead`);
-  }
-  return { errors, warnings };
+  if (committed.verdict === 'GREEN' && current?.verdict !== 'GREEN') errors.push(`${label} manifest verdict was GREEN when committed and is now ${current?.verdict}`);
+  if (committed.checkpointSha && current?.checkpointSha !== committed.checkpointSha) errors.push(`${label} manifest checkpointSha changed after it was recorded`);
+  return { errors, warnings: [] };
 }
 
-/** The committed ledger must be a prefix of the working ledger (append-only). */
-export function validateLedger(text, committedText) {
+/** The committed ledger versions must be prefixes of the working ledger, and transitions must form one chain. */
+export function validateLedger(text, committedTexts = []) {
   const errors = [];
   const { events, errors: parseErrors } = parseLedger(text);
   errors.push(...parseErrors);
   events.forEach((e, i) => {
     for (const p of validateEvent(e)) errors.push(`LEDGER.jsonl line ${i + 1}: ${p}`);
   });
-  if (committedText != null && !text.startsWith(committedText)) {
-    errors.push('LEDGER.jsonl no longer starts with its committed content: a line was rewritten or deleted (append-only, master §13)');
+  for (const committed of committedTexts) {
+    if (committed != null && !text.startsWith(committed)) {
+      errors.push('LEDGER.jsonl no longer starts with a committed version of itself: a line was rewritten or deleted (append-only, master §13)');
+      break;
+    }
   }
+  let prev = null;
+  events.forEach((e, i) => {
+    if (e?.kind !== 'transition') return;
+    if (prev === null && e.fromState !== 'BOOTSTRAP') errors.push(`LEDGER.jsonl line ${i + 1}: the first transition must start at BOOTSTRAP`);
+    if (prev !== null && e.fromState !== prev) errors.push(`LEDGER.jsonl line ${i + 1}: transition starts at ${e.fromState} but the previous one ended at ${prev}`);
+    prev = e.toState;
+  });
   return { errors, warnings: [], events };
 }
 
@@ -238,12 +255,44 @@ export function validateStateAgainstLedger(s, events) {
   const last = transitions[transitions.length - 1];
   if (!last) return { errors: [], warnings: s.machineState === 'BOOTSTRAP' ? [] : ['no transition is recorded in LEDGER.jsonl yet'] };
   if (last.toState !== s.machineState) {
-    return { errors: [`STATE.machineState is ${s.machineState} but the last recorded transition went to ${last.toState}; record the transition with record-event.mjs`], warnings: [] };
+    return { errors: [`STATE.machineState is ${s.machineState} but the last recorded transition went to ${last.toState}; record transitions with record-event.mjs`], warnings: [] };
   }
   return { errors: [], warnings: [] };
 }
 
-export function validateRegistry(reg, fileExists) {
+/** Per-defect repair counts from the ledger (current slice). */
+export function repairCounts(events, slice) {
+  const out = {};
+  for (const e of events) {
+    if (e?.kind !== 'repair' || e.slice !== slice || !e.defect) continue;
+    const d = (out[e.defect] ??= { attempts: 0, distinct: 0, resolved: false });
+    if (e.resolved) {
+      d.resolved = true;
+      continue;
+    }
+    if (d.resolved) Object.assign(d, { attempts: 0, distinct: 0, resolved: false }); // a new failure after a fix
+    d.attempts++;
+    if (e.distinct) d.distinct++;
+  }
+  return out;
+}
+
+/** No open defect may pass a repair limit outside BLOCKED_MANUAL_REVIEW unless the owner overrode it in an ADR. */
+export function validateRepairs(s, events, adrOk = () => true) {
+  const errors = [];
+  for (const [defect, c] of Object.entries(repairCounts(events, s.currentSlice))) {
+    if (c.resolved) continue;
+    const over = c.attempts >= REPAIR_LIMITS.totalAttempts || c.distinct >= REPAIR_LIMITS.distinctStrategies;
+    const override = s.repairOverrides?.[defect];
+    if (over && s.machineState !== 'BLOCKED_MANUAL_REVIEW' && !(override && adrOk(override))) {
+      errors.push(`defect ${defect} reached the repair limit (${c.attempts} attempts, ${c.distinct} distinct strategies): BLOCKED_MANUAL_REVIEW or an owner ADR in STATE.repairOverrides is required (OPERATIONS.md §5)`);
+    }
+    if (s.repairTarget === defect && (s.repairTotalAttempts ?? 0) < c.attempts) errors.push(`LEDGER.jsonl records ${c.attempts} attempt(s) on ${defect} but STATE.repairTotalAttempts is ${s.repairTotalAttempts ?? 0}`);
+  }
+  return { errors, warnings: [] };
+}
+
+export function validateRegistry(reg, fileExists, adrOk = () => true) {
   const errors = [];
   if (!Array.isArray(reg?.designs)) return { errors: ['DESIGN_REGISTRY.json has no designs array'], warnings: [] };
   const ids = new Set();
@@ -252,7 +301,8 @@ export function validateRegistry(reg, fileExists) {
     ids.add(d.id);
     if (!DESIGN_STATUSES.includes(d.status)) errors.push(`design ${d.id}: unknown status ${d.status}`);
     if (d.status === 'APPROVED') {
-      if (!d.approval) errors.push(`design ${d.id}: APPROVED without an approval reference`);
+      const adr = String(d.approval ?? '').match(/ADR-\d{4}/)?.[0];
+      if (!adr || !adrOk(adr)) errors.push(`design ${d.id}: APPROVED without an approval citing a committed ADR`);
       if (!d.path || !fileExists(d.path)) errors.push(`design ${d.id}: APPROVED but its path ${d.path} does not exist`);
     }
   }
@@ -282,86 +332,113 @@ export function checkRepository() {
     return { errors: [`cannot read STATE.json: ${e.message}`], warnings };
   }
   add(validateState(s));
+  const adrOk = (ref) => approvalIsAdr(ref) || !!findAdr(ref);
 
   // Git reality.
   const head = tryGit('rev-parse', 'HEAD');
   const branch = tryGit('rev-parse', '--abbrev-ref', 'HEAD');
-  if (branch === 'main' || branch?.startsWith('feat/')) errors.push(`HEAD is on ${branch}: agents never commit on main or feat/* (a push to main deploys); switch to ${s.integrationBranch ?? 'the integration branch'}`);
-  else if (s.integrationBranch && branch !== s.integrationBranch) warnings.push(`current branch ${branch} is not the integration branch ${s.integrationBranch}`);
-  const mainAhead = tryGit('rev-list', '--count', 'origin/main..main');
-  if (mainAhead && Number(mainAhead) > 0) warnings.push(`local main has ${mainAhead} commit(s) that origin/main lacks; a push of main would deploy them`);
+  if (s.integrationBranch && branch !== s.integrationBranch) warnings.push(`current branch ${branch} is not the integration branch ${s.integrationBranch}`);
+  if (branch?.startsWith('feat/')) errors.push(`HEAD is on ${branch}: agents never commit on feat/* branches`);
   for (const tag of (tryGit('tag', '--list', 'checkpoint/*') ?? '').split('\n').filter(Boolean)) {
     if (head && !gitOk('merge-base', '--is-ancestor', tag, head)) errors.push(`checkpoint tag ${tag} is not an ancestor of HEAD (accepted history was rewritten or abandoned)`);
   }
   for (const k of ['planningBaselineSha', 'actualBaselineSha', 'lastAcceptedCheckpoint']) {
     if (s[k] && SHA_RE.test(s[k]) && !gitOk('cat-file', '-e', `${s[k]}^{commit}`)) errors.push(`STATE.${k} ${s[k]} is not a commit in this repository`);
   }
-  if (s.lastAcceptedCheckpoint && head && !gitOk('merge-base', '--is-ancestor', s.lastAcceptedCheckpoint, head)) {
-    errors.push('STATE.lastAcceptedCheckpoint is not an ancestor of HEAD (accepted history was rewritten)');
-  }
-  for (const k of ['remoteApproval', 'multiplayerApproval']) {
-    if (s[k] && !exists(s[k])) errors.push(`STATE.${k} points at ${s[k]}, which does not exist`);
-  }
-  if (exists(PATHS.stopFile)) warnings.push('docs/agent/STOP exists: the relaunch script will not start sessions');
-
-  // Evidence for the current slice.
-  const manifestPath = `${PATHS.evidence}/${s.currentSlice}/manifest.json`;
-  let manifest = null;
-  if (exists(manifestPath)) {
-    try {
-      manifest = readJson(manifestPath);
-    } catch (e) {
-      errors.push(`${manifestPath} is not valid JSON: ${e.message}`);
+  if (s.lastAcceptedCheckpoint) {
+    if (head && !gitOk('merge-base', '--is-ancestor', s.lastAcceptedCheckpoint, head)) errors.push('STATE.lastAcceptedCheckpoint is not an ancestor of HEAD (accepted history was rewritten)');
+    if (s.actualBaselineSha && (s.lastAcceptedCheckpoint === s.actualBaselineSha || !gitOk('merge-base', '--is-ancestor', s.actualBaselineSha, s.lastAcceptedCheckpoint))) {
+      errors.push('STATE.lastAcceptedCheckpoint must be a commit made after the baseline (actualBaselineSha)');
     }
   }
-  const accepted = ACCEPTED_STATES.includes(s.machineState);
-  let codeTree = null;
-  try {
-    codeTree = accepted && s.lastAcceptedCheckpoint ? codeTreeOf(s.lastAcceptedCheckpoint) : codeTreeOf(null);
-  } catch (e) {
-    warnings.push(`could not compute the code tree: ${e.message}`);
+  for (const k of ['remoteApproval', 'multiplayerApproval']) {
+    if (s[k] && !approvalIsAdr(s[k])) errors.push(`STATE.${k} (${s[k]}) is not a committed ADR listed in decisions/INDEX.md`);
   }
-  add(validateGateEvidence(s, manifest, { codeTree, acceptedTree: accepted }));
-  if (manifest) add(validateEvidenceFiles(manifest, { exists, hash: (rel) => sha256File(abs(rel)), ignored: (rel) => gitOk('check-ignore', '-q', rel) }));
+  for (const [g, ref] of Object.entries(s.gateWaivers ?? {})) if (!approvalIsAdr(ref)) errors.push(`STATE.gateWaivers.${g} (${ref}) is not a committed ADR listed in decisions/INDEX.md`);
+  for (const [d, ref] of Object.entries(s.repairOverrides ?? {})) if (!approvalIsAdr(ref)) errors.push(`STATE.repairOverrides.${d} (${ref}) is not a committed ADR listed in decisions/INDEX.md`);
+  if (exists(PATHS.stopFile)) warnings.push('docs/agent/STOP exists: the relaunch script will not start sessions');
 
-  // Requirements (append-only ids against HEAD).
+  // The code tree the evidence must belong to.
+  const accepted = ACCEPTED_STATES.includes(s.machineState);
+  let targetTree = null;
+  try {
+    const working = codeTreeOf(null);
+    if (accepted && POST_CHECKPOINT_STATES.includes(s.machineState)) {
+      if (!s.lastAcceptedCheckpoint) errors.push(`${s.machineState} needs STATE.lastAcceptedCheckpoint (the checkpoint commit)`);
+      else {
+        targetTree = codeTreeOf(s.lastAcceptedCheckpoint);
+        if (working !== targetTree) errors.push('the code changed after the checkpoint commit: bookkeeping commits may only touch docs/agent, AGENTS.md and CLAUDE.md');
+      }
+    } else targetTree = working;
+  } catch (e) {
+    (accepted ? errors : warnings).push(`could not compute the code tree: ${e.message.split('\n')[0]}`);
+  }
+
+  // Evidence: the current slice's gates, and every slice's manifest (files and append-only history).
+  const manifestOf = (slice) => `${PATHS.evidence}/${slice}/manifest.json`;
+  let manifest = null;
+  if (exists(manifestOf(s.currentSlice))) {
+    try {
+      manifest = readJson(manifestOf(s.currentSlice));
+    } catch (e) {
+      errors.push(`${manifestOf(s.currentSlice)} is not valid JSON: ${e.message}`);
+    }
+  }
+  add(validateGateEvidence(s, manifest, { targetTree, accepted }));
+  if (accepted && POST_CHECKPOINT_STATES.includes(s.machineState) && manifest && manifest.checkpointSha !== s.lastAcceptedCheckpoint) {
+    errors.push(`the ${s.currentSlice} manifest's checkpointSha (${manifest.checkpointSha}) is not STATE.lastAcceptedCheckpoint`);
+  }
+  const sliceDirs = exists(PATHS.evidence) ? readdirSync(abs(PATHS.evidence)).filter((d) => SLICES.includes(d)) : [];
+  for (const slice of sliceDirs) {
+    const rel = manifestOf(slice);
+    if (!exists(rel)) continue;
+    let m;
+    try {
+      m = readJson(rel);
+    } catch {
+      continue;
+    }
+    add(validateEvidenceFiles(m, { exists, hash: (p) => sha256File(abs(p)), ignored: (p) => gitOk('check-ignore', '-q', p), read: readText }));
+    for (const ref of ['HEAD', s.lastAcceptedCheckpoint].filter(Boolean)) {
+      const committed = showAt(ref, rel);
+      if (committed) add(validateManifestAppendOnly(m, JSON.parse(committed), `${slice} (vs ${ref === 'HEAD' ? 'HEAD' : 'the last checkpoint'})`));
+    }
+  }
+
+  // Requirements: schema, append-only ids against HEAD and the last checkpoint, the slice contract, and in accepted
+  // states the full audit.
   try {
     const reqs = readJson(PATHS.requirements);
-    const committedText = tryGit('show', `HEAD:${PATHS.requirements}`);
-    add(validateRequirements(reqs, committedText ? JSON.parse(committedText) : null));
+    const committed = ['HEAD', s.lastAcceptedCheckpoint].filter(Boolean).map((ref) => showAt(ref, PATHS.requirements)).filter(Boolean).map((t) => JSON.parse(t));
+    const sliceText = exists(PATHS.currentSlice) ? readText(PATHS.currentSlice) : '';
+    add(accepted ? auditRequirements(reqs, s, { committed, sliceText, fileExists: exists }) : validateRequirements(reqs, committed, exists));
     const known = new Set(reqs.requirements.map((r) => r.id));
-    if (exists(PATHS.currentSlice)) {
-      const slice = readText(PATHS.currentSlice);
-      const first = slice.split('\n').slice(0, 6).join('\n');
-      if (!first.includes(s.currentSlice)) errors.push(`CURRENT_SLICE.md does not name the current slice ${s.currentSlice} in its header`);
-      for (const id of new Set(slice.match(REQ_TOKEN_RE) ?? [])) {
-        if (!known.has(id)) errors.push(`CURRENT_SLICE.md references unknown requirement ${id}`);
-      }
+    if (sliceText) {
+      if (!sliceText.split('\n').slice(0, 6).join('\n').includes(s.currentSlice)) errors.push(`CURRENT_SLICE.md does not name the current slice ${s.currentSlice} in its header`);
+      for (const id of new Set(sliceText.match(REQ_TOKEN_RE) ?? [])) if (!known.has(id)) errors.push(`CURRENT_SLICE.md references unknown requirement ${id}`);
     }
   } catch (e) {
     errors.push(`cannot check REQUIREMENTS.json: ${e.message}`);
   }
 
-  // Ledger.
+  // Ledger: append-only against HEAD and the last checkpoint, one transition chain, agreement with STATE, repairs.
   try {
     const text = exists(PATHS.ledger) ? readText(PATHS.ledger) : '';
-    const committed = tryGit('show', `HEAD:${PATHS.ledger}`);
-    const ledger = validateLedger(text, committed == null ? null : committed.length ? `${committed}\n` : '');
+    const committed = ['HEAD', s.lastAcceptedCheckpoint].filter(Boolean).map((ref) => showAt(ref, PATHS.ledger));
+    const ledger = validateLedger(text, committed);
     add(ledger);
     add(validateStateAgainstLedger(s, ledger.events));
-    add(validateRepairCount(s, ledger.events));
+    add(validateRepairs(s, ledger.events, adrOk));
   } catch (e) {
     errors.push(`cannot check LEDGER.jsonl: ${e.message}`);
   }
 
-  // Design registry.
+  // Design registry and protected files.
   try {
-    add(validateRegistry(readJson(PATHS.designRegistry), exists));
+    add(validateRegistry(readJson(PATHS.designRegistry), exists, adrOk));
   } catch (e) {
     errors.push(`cannot check the design registry: ${e.message}`);
   }
-
-  // Protected harness files.
   try {
     add(verifyProtected());
   } catch (e) {
@@ -373,7 +450,13 @@ export function checkRepository() {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  const args = parseArgs(process.argv.slice(2), ['json', 'strict']);
+  let args;
+  try {
+    args = parseArgs(process.argv.slice(2), ['json', 'strict'], []);
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
   const r = checkRepository();
   if (args.json) console.log(JSON.stringify(r, null, 2));
   else {

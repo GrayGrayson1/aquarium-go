@@ -1,7 +1,7 @@
 # CURRENT SLICE — S0
 
 **Slice:** S0 — Autonomous Harness, Baseline and Architecture Lock\
-**Status:** IN PROGRESS\
+**Status:** IN PROGRESS: repair round after RED reviews (see HANDOFF.md, next steps)\
 **Machine state:** IMPLEMENT (see `STATE.json` for the live value)
 
 ## Objective

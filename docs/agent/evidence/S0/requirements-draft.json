@@ -1,0 +1,3330 @@
+[
+  {
+    "id": "CONST-001",
+    "slice": "ALL",
+    "source": "design §3 item 1, §21 (each phase's Done when: no new dependencies); master §3.7",
+    "description": "No dependency is added to package.json or the lockfile during S1-S4 without an ADR that records the owner's approval, so the router, platform layer, service worker and Social stub are hand-written.",
+    "acceptance": [
+      "At every slice acceptance, package.json dependencies and devDependencies, and the lockfile's direct dependencies, equal those at the S0 checkpoint (core-dependencies test).",
+      "Any dependency proposal has an ADR with the owner's approval recorded verbatim before anything is installed, and the test's recorded list changes only with that ADR."
+    ],
+    "tests": [
+      "new: tests/sim/core-dependencies.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "ACTIVE",
+    "designSections": [
+      "§3",
+      "§21"
+    ]
+  },
+  {
+    "id": "CONST-002",
+    "slice": "ALL",
+    "source": "design §3 item 8, §20.3, §20.4; master §18 rules 12-13",
+    "description": "The whole existing e2e suite and the design §20.4 must-stay-green unit tests keep passing through S1-S4, and the only existing tests that change are the design §20.3 rows, changed the way §20.3 describes.",
+    "acceptance": [
+      "At every slice acceptance every existing spec in tests/e2e passes: boot, camera-freeze, features, gameplay, hud-layout (phone calm HUD and bell), mobile, perf, prismatic, resilience, save, starters and ui-layout, with helpers.openPanel still working at desktop for build, market, settings and shows; the one intended change is the ui-layout.spec phone test that §20.3 rewrites (NAV-017).",
+      "The §20.4 unit tests pass at every slice acceptance: ui-notify-news, staff2-feeding, fix-water-autofeeder, staff-sim, core-determinism, fix-core-step-invariance, copy-fixes, species-fw, rare-persistence and core-persistence.",
+      "A diff of these test files since the S0 checkpoint is empty except where a requirement names the change (the §20.3 rows: NAV-017, NAV-018, GEN-005, GEN-006, GEN-009, GEN-012, NOTIFY-006, SOC-004 and REL-003)."
+    ],
+    "tests": [
+      "tests/e2e/boot.spec.ts",
+      "tests/e2e/camera-freeze.spec.ts",
+      "tests/e2e/features.spec.ts",
+      "tests/e2e/gameplay.spec.ts",
+      "tests/e2e/hud-layout.spec.ts",
+      "tests/e2e/mobile.spec.ts",
+      "tests/e2e/perf.spec.ts",
+      "tests/e2e/prismatic.spec.ts",
+      "tests/e2e/resilience.spec.ts",
+      "tests/e2e/save.spec.ts",
+      "tests/e2e/starters.spec.ts",
+      "tests/e2e/ui-layout.spec.ts",
+      "tests/sim/ui-notify-news.test.ts",
+      "tests/sim/staff2-feeding.test.ts",
+      "tests/sim/fix-water-autofeeder.test.ts",
+      "tests/sim/staff-sim.test.ts",
+      "tests/sim/core-determinism.test.ts",
+      "tests/sim/fix-core-step-invariance.test.ts",
+      "tests/sim/copy-fixes.test.ts",
+      "tests/sim/species-fw.test.ts",
+      "tests/sim/rare-persistence.test.ts",
+      "tests/sim/core-persistence.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "ACTIVE",
+    "designSections": [
+      "§20.3",
+      "§20.4",
+      "§3"
+    ]
+  },
+  {
+    "id": "CONST-003",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: determinism); master §5; OPERATIONS.md §11 (determinism contract)",
+    "description": "On the final S4 tree the whole simulation is still deterministic with every 0.5 system enabled: the same seed and inputs give the same stateHash across runs and across step partitions, and the only entropy the simulation reads is the accepted new-game seed and creation time in src/sim/newGame.ts.",
+    "acceptance": [
+      "core-determinism.test.ts and fix-core-step-invariance.test.ts pass on the S4 tree.",
+      "A full-feature run from the facility fixture (new betta genes, Autofeeders, Auto Water Changers and production lines) repeated with the same seed gives an equal stateHash, and repeated with a different step partition gives the same outcomes.",
+      "core-determinism-guard.test.ts passes on the S4 tree: src/sim and src/data use no wall clock, unseeded randomness, crypto or locale-dependent API beyond its allow-list, which stays the new-game seed and creation time in src/sim/newGame.ts."
+    ],
+    "tests": [
+      "tests/sim/core-determinism.test.ts",
+      "tests/sim/fix-core-step-invariance.test.ts",
+      "tests/sim/core-determinism-guard.test.ts",
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "DES-001",
+    "slice": "S1",
+    "source": "master §9 S1 (design-token fidelity); design §17 (colour, type, motion), §3 item 6",
+    "description": "New 0.5 UI takes its colours and type from the existing tokens in src/ui/styles/tokens.css, uses literal values only where design §17 or the owning section gives them (such as the tab active gradient and the Prismatic gradient), and reuses the genetics.css keyframes ag-prism-flow (7 s), ag-prism-spin (9 s) and ag-prism-twinkle (3.4 s).",
+    "acceptance": [
+      "A static test scans every CSS file added for 0.5 and fails on a colour literal that is neither a tokens.css variable nor a value given in design §17 or the owning section.",
+      "tokens.css keeps the §17 colour values (background #03090d, ink #eaf5f7 / #b9ccd1 / #8199a0 / #5d7379, aqua #5eead4 / #2dd4bf, glass rgba(9, 22, 30, 0.68), and the rest of the table).",
+      "Panel titles render in Fraunces 24/560, section heads in Inter 11.5 uppercase with .11em letter-spacing at weight 680 in ink-3, and tab labels at 10.5/620.",
+      "The scan runs in npm test, so CSS added in S2-S4 is checked as well."
+    ],
+    "tests": [
+      "new: tests/sim/ui-tokens-05.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§17",
+      "§3"
+    ],
+    "note": "Needs owner or reviewer confirmation: the scan's allow-list must include every literal the design itself gives outside §17 (for example the tab active gradient in §5.2, the chip colours in §7.2 and the Prismatic frame in §7.3), and a reviewer should confirm that list."
+  },
+  {
+    "id": "DES-002",
+    "slice": "S1",
+    "source": "master §9 S1 (baseline visual snapshots); master §27, §28, §35",
+    "description": "S1 captures a baseline set of visual snapshots before its UI changes and an after set at acceptance (tank view, tab bar, More sheet, an open full-height panel, a locked panel, the loading card and the desktop dock) at 390×844, 844×390 and 1440×900, stored outside Git and recorded in the S1 evidence manifest.",
+    "acceptance": [
+      "evidence/S1/manifest.json lists both snapshot sets with viewport, route, fixture, path and SHA-256 for each image.",
+      "Snapshots are written under .agent-runs/evidence/S1/shots, never into the tracked screenshots/ folder.",
+      "The browser/QA reviewer's verdict comparing the two sets is recorded in evidence/S1/reviews/.",
+      "Any later regeneration of a baseline snapshot states its reason in evidence (master §35: no blind regeneration)."
+    ],
+    "tests": [
+      "npm run qa:shots (evidence only, never a passing gate)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§17"
+    ]
+  },
+  {
+    "id": "DES-003",
+    "slice": "S1",
+    "source": "design §16 (Navigation), §19 (Navigation), §3 item 7; master §9 S1 (required test IDs)",
+    "description": "The design §16 Navigation strings render verbatim (the Social strings arrive with S4), the §19 Navigation test ids exist, and docs/TEST_IDS.md gains a \"0.5\" table per lane with the §6.2 deep-link grammar beside it.",
+    "acceptance": [
+      "A copy test asserts the tab labels (Tanks · Livestock · Market · Build · More), the More title and tiles, the Settings row 'Settings' / 'Saves, sound, notifications', and the guide bubble 'Guide · Research' / 'Research now lives under More. Tap More, then Research.' exactly as §16 writes them.",
+      "nav-tabbar, dock-tanks, dock-livestock, dock-market, dock-build, dock-more, more-sheet, more-visitors, more-shows, more-research, more-finances, more-encyclopedia and more-settings each resolve to one element at the matching viewport.",
+      "docs/TEST_IDS.md has the 0.5 Navigation table listing these ids, with the §6.2 route grammar documented next to it."
+    ],
+    "tests": [
+      "new: tests/sim/ui-copy-05.test.ts (proposed)",
+      "new: tests/e2e/mobile-tabbar.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§16",
+      "§19",
+      "§6.2"
+    ]
+  },
+  {
+    "id": "DES-004",
+    "slice": "S1",
+    "source": "design §16 (Links and boot), §19 (Boot / links); master §9 S1 (required test IDs)",
+    "description": "The design §16 Links and boot strings render verbatim (broken-link toast, 'Loading your save · catching up {duration}…', 'Then: {destination}', 'Copy link' / 'Copy link to this offer', 'Link copied'), and the boot-deeplink and boot-deeplink-dest test ids exist and are documented; 'Opened from your notification' is covered with the offer banner in S2 (DES-005).",
+    "acceptance": [
+      "A copy test asserts each Links and boot string exactly as design §16 specifies, typography included (apostrophes, the ellipsis character in the loading line and the › separator in destination pills).",
+      "boot-deeplink and boot-deeplink-dest exist during a link boot (deeplink-boot.spec) and are listed in docs/TEST_IDS.md's 0.5 tables."
+    ],
+    "tests": [
+      "new: tests/sim/ui-copy-05.test.ts (proposed)",
+      "new: tests/e2e/deeplink-boot.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§16",
+      "§19"
+    ]
+  },
+  {
+    "id": "DES-005",
+    "slice": "S2",
+    "source": "design §16 (Shop and offers; plus 'Opened from your notification' from Links and boot), §19 (Shop, Offer)",
+    "description": "Every design §16 Shop and offers string renders verbatim with its typography, and the §19 Shop and Offer test ids exist and are documented in docs/TEST_IDS.md.",
+    "acceptance": [
+      "A copy test asserts every Shop and offers string, and the 'Opened from your notification' banner, exactly as design §16 specifies, typography included (apostrophes, the em dash in the water-class tile reason, the toast parts).",
+      "shop-filter-prismatic, shop-filter-rare, shop-filter-count, shop-filter-hint, shop-empty, shop-clear-filters and shop-offer-<stockIndex> resolve on the Shop tab; offer-copy-link, offer-link-row, offer-from-notification, offer-genes, offer-gene-<locusId>, offer-temperament, offer-morph-line, offer-build-tank, buy-offer and compat-verdict resolve on the offer detail.",
+      "docs/TEST_IDS.md's 0.5 tables list the Shop and Offer ids."
+    ],
+    "tests": [
+      "new: tests/sim/ui-copy-05.test.ts (proposed)",
+      "new: tests/e2e/shop-filters.spec.ts",
+      "new: tests/e2e/offer-fit.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§16",
+      "§19"
+    ]
+  },
+  {
+    "id": "DES-006",
+    "slice": "S2",
+    "source": "design §16 (Encyclopedia), §19 (Encyclopedia)",
+    "description": "The design §16 Encyclopedia strings render verbatim ('Cambodian · recessive', 'Metallic · additive', the 'New in 0.5: …' note, 'Morph catalog · {seen}/540 seen', 'Named strains · {n}/10', the Cambodian Veiltail note and 'How genes combine: dominant, recessive and additive'), and enc-genes joins the existing enc-catalog, enc-strains and enc-prismatic ids.",
+    "acceptance": [
+      "A copy test asserts each Encyclopedia string exactly, including the em dashes in the new-genes note and in the Cambodian Veiltail note.",
+      "enc-genes, enc-catalog, enc-strains and enc-prismatic resolve on #/encyclopedia/betta, and enc-genes is listed in docs/TEST_IDS.md's 0.5 tables."
+    ],
+    "tests": [
+      "new: tests/sim/ui-copy-05.test.ts (proposed)",
+      "new: tests/sim/ui-encyclopedia-05.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§16",
+      "§19"
+    ]
+  },
+  {
+    "id": "DES-007",
+    "slice": "S3",
+    "source": "design §16 (Automation), §19 (Tank card, Alerts)",
+    "description": "Every design §16 Automation string renders verbatim, and the §19 Tank card ids (tank-auto-feed, tank-auto-feed-meals-<1-4>, tank-auto-feed-buy, tank-auto-clean, tank-auto-clean-buy, water-autoclean-note) and Alerts ids (alert-autofeed-paused, alerts-notify-cta) exist and are documented.",
+    "acceptance": [
+      "A copy test asserts each Automation string (section, Auto-feed and Auto-clean rows, Water tab callout, Installed and Not enough money toasts, out-of-salt notice, alert row, equipment description, Build/Supplies line, and the 'Automation gear' Finances label if that optional row is built), including the em dashes in 'Paused — feed {name} by hand, …' and 'Auto-feed is paused — feed {name} by hand.'",
+      "Each listed id resolves in automation.spec or notifications.spec and is listed in docs/TEST_IDS.md's 0.5 tables."
+    ],
+    "tests": [
+      "new: tests/sim/ui-copy-05.test.ts (proposed)",
+      "new: tests/e2e/automation.spec.ts",
+      "new: tests/e2e/notifications.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§16",
+      "§19"
+    ]
+  },
+  {
+    "id": "DES-008",
+    "slice": "S3",
+    "source": "design §16 (Production), §19 (Production); ADR-0003 (supersession register: several lines per species, the UI needs a design ADR before S3-C UI work)",
+    "description": "The Production copy and test ids are those of design §16 and §19 as amended by the approved DESIGN-S3C-LINES, which decides how several lines of one species are named and how per-line ids are formed (the single-line copy would show \"Betta line\" twice).",
+    "acceptance": [
+      "A copy test asserts each Production string exactly as design §16 specifies, with the changes DESIGN-S3C-LINES approves.",
+      "The Production ids (from §19: livestock-tab-production, production-toggle, production-rule-<pauseWhenFull|keepPrismatic|autoList>, production-setup, production-stage-<breed|raise|sort|quarantine|sell>, made per-line where DESIGN-S3C-LINES says) resolve in the production e2e and are listed in docs/TEST_IDS.md's 0.5 tables."
+    ],
+    "tests": [
+      "new: tests/sim/ui-copy-05.test.ts (proposed)",
+      "new: tests/e2e/production.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "BLOCKED",
+    "blockedBy": "DESIGN-S3C-LINES",
+    "designSections": [
+      "§16",
+      "§19",
+      "§11.1"
+    ]
+  },
+  {
+    "id": "DES-009",
+    "slice": "S3",
+    "source": "design §16 (Notifications: the strings of §12.2-§12.5 and the Alerts drawer footer), §19 (Settings); ADR-0003 (supersession register: the §12.3 iOS copy is an open owner question; native parts deferred); master §44",
+    "description": "The web notification strings of design §12.2-§12.5 (categories, subtitles, web callouts, test row, quiet hours, toasts, title/body templates) and the Alerts drawer footer render as design §16 specifies, the Unsupported callout uses the copy the owner decides, no 'app' variant ships, and the Settings ids (settings-tab-<general|display|saves|notifications|about>, notify-status, notify-turn-on, notify-test, notify-cat-<rare|care|market|breeding|shows>, notify-quiet) exist and are documented.",
+    "acceptance": [
+      "A copy test asserts each web notification string and the Alerts drawer footer ('Get alerts like these as system notifications, not just in here.' / 'Turn on') exactly as design §16 specifies.",
+      "The Unsupported callout's text is the copy the owner decides (recorded in an ADR); the iOS 'add Aquarium Go to your Home Screen' sentence is not asserted until then, and no 'app' variant (copy promising alerts while the game is closed) ships, because native wrapping is deferred (NOTIFY-011).",
+      "Each Settings id resolves in notifications.spec and is listed in docs/TEST_IDS.md's 0.5 tables."
+    ],
+    "tests": [
+      "new: tests/sim/ui-copy-05.test.ts (proposed)",
+      "new: tests/e2e/notifications.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§16",
+      "§19",
+      "§12.2",
+      "§12.3",
+      "§12.4",
+      "§12.5"
+    ],
+    "note": "Needs owner or reviewer confirmation: the Unsupported callout copy is an open owner question (ADR-0003; design §22 risk 5; master §44); stop at OWNER_GATE with reason OTHER:notify-unsupported-copy if S3-B reaches it undecided. Design §12 prints straight apostrophes while §16 calls curly ones intentional, so \"exactly as §16 specifies\" needs one rule confirmed for both."
+  },
+  {
+    "id": "DES-010",
+    "slice": "S4",
+    "source": "design §16 (Social: the strings of §13.2-§13.5; Navigation 'Social' and the More 'New' tag), §19 (Social; Navigation dock-social and more-social)",
+    "description": "Every Social string of design §13.2-§13.5 and the Navigation strings Social and New render verbatim, and the Social ids (panel-social, social-tab-<id>, social-email, social-password, social-signin, social-signup, social-invite-code, social-invite-join, social-error, social-join-club, social-club-<id>, social-club-join-<id>, social-signout, social-lb-<collection_value|prismatics|show_wins>) plus dock-social and more-social exist and are documented.",
+    "acceptance": [
+      "A copy test asserts each Social string exactly as design §16 specifies, typography included (apostrophes and em dashes).",
+      "Each id resolves in the Social, mobile-tabbar or dock-width e2e and is listed in docs/TEST_IDS.md's 0.5 tables."
+    ],
+    "tests": [
+      "new: tests/sim/ui-copy-05.test.ts (proposed)",
+      "new: tests/e2e/social.spec.ts (proposed)",
+      "new: tests/e2e/mobile-tabbar.spec.ts",
+      "new: tests/e2e/dock-width.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§16",
+      "§19"
+    ]
+  },
+  {
+    "id": "DES-011",
+    "slice": "S4",
+    "source": "master §9 S4 (visual QA); master §10 (UI/browser QA green); master §23; design §17",
+    "description": "The browser/QA reviewer compares every 0.5 surface with the design (§17 geometry and tokens, §16 copy) at 1440×900 and 390×844 and records a GREEN verdict with screenshots.",
+    "acceptance": [
+      "evidence/S4 holds screenshots (path and SHA-256) at both viewports of: tab bar, More sheet, phone sheets, locked panels, loading card, shop filters and empty states, offer card and detail, Genes and Temperament, destination fit, tank card Automation, Settings › Notifications, Production and Social.",
+      "Each §17 geometry row (phone tab bar, phone panel sheet, phone tank card, sticky footer, desktop panel, desktop tank card, filter chips, segmented, switch, gene row, temperament meter, destination tile, buy bar, toast, loading card) is measured on its screen and recorded with the measured value.",
+      "The reviewer's verdict is GREEN, with zero console errors on the visited screens."
+    ],
+    "tests": [
+      "npm run qa:shots (evidence only, never a passing gate)",
+      "scripts/agent/capture-evidence.mjs (--review)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§17",
+      "§16"
+    ],
+    "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it."
+  },
+  {
+    "id": "DES-012",
+    "slice": "S4",
+    "source": "master §9 S4 (responsive QA); master §23; design §5.2, §5.4, §5.6",
+    "description": "The whole stack works at phone portrait, phone landscape, both sides of MOBILE_QUERY and the desktop dock breakpoints, with no horizontal page scroll and every primary action reachable.",
+    "acceptance": [
+      "QA covers 390×844, 844×390, 720 and 721 px wide, 1180, 1400, 1520 and 1440×900, with screenshots recorded in evidence/S4.",
+      "No viewport shows horizontal page scroll, and every panel's primary action is reachable.",
+      "The tab bar replaces the dock exactly where MOBILE_QUERY matches, phones held sideways included."
+    ],
+    "tests": [
+      "new: tests/e2e/mobile-tabbar.spec.ts",
+      "new: tests/e2e/mobile-sheets.spec.ts",
+      "new: tests/e2e/dock-width.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.2",
+      "§5.4",
+      "§5.6"
+    ],
+    "note": "Needs owner or reviewer confirmation: the viewport list is derived from the design breakpoints (MOBILE_QUERY at 720px, the dock rules at 981-1180px, 1400-1519px and from 1520px) rather than given by the design; a reviewer may extend it."
+  },
+  {
+    "id": "NAV-002",
+    "slice": "S1",
+    "source": "design §5.1, §5.2 (items, states, behaviour, test ids); master §9 S1 (phone five-tab bar); umbrella NAV-001",
+    "description": "On viewports matching MOBILE_QUERY (phone portrait and landscape) a five-tab bar, Tanks · Livestock · Market · Build · More (Lucide Box, Fish, Store, Hammer, Ellipsis; 22px icons over 10.5/620 labels), replaces the dock, opens #/tanks, #/livestock, #/shop, #/build and #/more, and closes the active destination when its tab is tapped again.",
+    "acceptance": [
+      "At 390×844 and 844×390, nav-tabbar shows exactly five equal-width buttons in that order and .ag-dock is not rendered; at 1440×900 the dock renders and nav-tabbar does not.",
+      "The destination tabs keep the ids dock-tanks, dock-livestock, dock-market and dock-build, the More tab is dock-more, and helpers.openPanel still works at desktop for build, market, settings and shows.",
+      "Tapping an idle tab opens its destination and writes its route; tapping the active tab navigates to #/; the More tab is active while #/more or any More destination is open.",
+      "nav-tabbar has scrollWidth <= clientWidth at 390×844, and an active tab matches §5.2 (text #f0fffc, icon #5eead4, inset ring rgba(94,234,212,.38), 16×3 aqua underline)."
+    ],
+    "tests": [
+      "new: tests/e2e/mobile-tabbar.spec.ts",
+      "tests/e2e/ui-layout.spec.ts",
+      "tests/e2e/gameplay.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.1",
+      "§5.2"
+    ]
+  },
+  {
+    "id": "NAV-003",
+    "slice": "S1",
+    "source": "design §5.2 (placement and size, stacking, calm HUD), §22 risk 7; umbrella NAV-001",
+    "description": "The tab bar is a direct child of .ag-hud inset only by var(--edge) (the HUD already applies the safe areas), 64px high with 4px padding, 2px gap, 18px radius and the §5.2 glass, painted at z-index 60 between phone sheets (55) and toasts (70), and it keeps the calm-HUD rule that a first tap only wakes the HUD.",
+    "acceptance": [
+      "With a phone panel open at 390×844, document.elementFromPoint at the bar's centre returns a tab button.",
+      ".ag-hud gains no z-index, transform, filter or will-change; the bar's computed z-index is 60, its height 64px, and its bottom offset var(--edge) with no extra --safe-b.",
+      "hud-layout.spec's phone calm-HUD test passes unchanged, and the bar is not matched by the CALM_LIVE selector.",
+      "The phone camera bottom reserve (hudReserve 150px) is unchanged."
+    ],
+    "tests": [
+      "tests/e2e/hud-layout.spec.ts",
+      "new: tests/e2e/mobile-sheets.spec.ts",
+      "new: tests/e2e/mobile-tabbar.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.2",
+      "§17",
+      "§22"
+    ]
+  },
+  {
+    "id": "NAV-004",
+    "slice": "S1",
+    "source": "design §5.3, §5.2 (More attention dot); master §9 S1 (More sheet); umbrella NAV-001",
+    "description": "On phones #/more opens the More sheet: a glass-strong bottom card about 48% of the screen high, titled 'More' with a close button, a 3-column grid of 92px tiles with 42px icon chips (Visitors, Shows, Research, Finances, Encyclopedia; Social joins in S4) and a full-width Settings row; a tile closes More and opens its panel, and on desktop #/more is treated as #/.",
+    "acceptance": [
+      "At 390×844, dock-more opens more-sheet with its top at about 48% of the viewport height (proposed tolerance ± 3%, see note), containing more-visitors, more-shows, more-research, more-finances, more-encyclopedia and more-settings.",
+      "more-research closes the sheet and opens panel-research, and the More tab stays active while Research is open.",
+      "At 1440×900, navigating to #/more opens nothing and leaves the route at home.",
+      "The Visitors tile shows the 15px lock badge while Visitors is locked, and the Shows tile and the More tab show an attention dot whenever navDots reports one for Shows."
+    ],
+    "tests": [
+      "new: tests/e2e/mobile-tabbar.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.1",
+      "§5.2",
+      "§5.3"
+    ],
+    "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\"."
+  },
+  {
+    "id": "NAV-005",
+    "slice": "S1",
+    "source": "design §5.5; master §9 S1 (tutorial fallback behavior); umbrella NAV-001",
+    "description": "When a tutorial hint target dock-<id> is not rendered because <id> lives in More, TutorialCoach rings dock-more with the guide bubble, then rings the matching More tile with a gold glow once the sheet opens, and the step completes when the destination opens.",
+    "acceptance": [
+      "At 390×844 on the 'preview' step (hintTarget dock-research), dock-more carries the guide ring and the bubble reads 'Guide · Research' / 'Research now lives under More. Tap More, then Research.'",
+      "Opening More rings more-research, and opening Research completes the step through its existing opened_panel:research objective.",
+      "The fallback applies to any hint target inside More, while dock-build and dock-market hints still ring the tab itself.",
+      "The ring pulses at 2.4 s (ag-prism-twinkle or an identical ag-guide-pulse in nav.css) and is static under reduced motion."
+    ],
+    "tests": [
+      "new: tests/e2e/mobile-tabbar.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.5",
+      "§17"
+    ]
+  },
+  {
+    "id": "NAV-006",
+    "slice": "S1",
+    "source": "design §5.6 (full panels, sheet bodies, Settings, hidden chrome, tab strips, panel switcher, camera); design §5.2 'Phones held sideways' (AQUARIUM_GO_0_5_DESIGN_SPEC.md L191-193: sheets keep today's landscape rule, top: max(6px, safe-area-inset-top), panels.css L965-980; the folded 2×4 tool rail keeps ending above the bar); master §9 S1 (full-height phone panels); umbrella NAV-001",
+    "description": "On portrait phones every full panel, Settings included, opens as a bottom sheet from calc(var(--safe-t) + var(--edge) + var(--topbar-h) + 6px) (64px without a notch) with a scrolling body padded calc(112px + var(--safe-b)) above a 110px fade; phones held sideways keep today's landscape sheet rule (top: max(6px, safe-area-inset-top)); on any phone .is-max is no longer used, the tank bar, tool rail, camera chips and tool hint hide while a full panel is open, and the .pn-switch strip leaves phone sheets (tablets keep it).",
+    "acceptance": [
+      "At 390×844 an open panel's top edge and #/settings's top edge are at 64px ± 2, and the sheet's last element can scroll clear of the tab bar.",
+      "At 844×390 an open panel's top edge is at max(6px, safe-area-inset-top) as in v0.4.0 (panels.css L965-980), and with no panel open the folded 2×4 tool rail ends above the tab bar.",
+      "While a full panel is open the tank bar, tool rail, camera chips and tool hint are not visible and no .pn-switch renders inside a phone sheet (outside MOBILE_QUERY the PanelSwitcher behaves as in v0.4.0), and opening #/settings/about or #/research/achievements at 390×844 scrolls the active tab fully into view in its tab strip.",
+      "Phone sheets keep data-occlude='bottom', and opening or closing a full-height sheet leaves the camera framing unchanged."
+    ],
+    "tests": [
+      "new: tests/e2e/mobile-sheets.spec.ts (844×390 landscape case to add)",
+      "tests/e2e/ui-layout.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.6",
+      "§5.2",
+      "§17",
+      "§22"
+    ]
+  },
+  {
+    "id": "NAV-007",
+    "slice": "S1",
+    "source": "design §5.6 (toasts, sticky footer, tank card on phones); umbrella NAV-001",
+    "description": "On phones, while any sheet is open, toasts move to the bottom band lifted above the tab bar (bottom: calc(var(--safe-b) + 84px), in a new rule in src/ui/styles/nav.css), sticky footers such as the offer buy bar pad calc(84px + var(--safe-b)), and on a portrait phone the tank card (#/tanks/:id…) opens at its expanded height from calc(var(--safe-t) + 118px) below a visible tank bar, with the guide hidden.",
+    "acceptance": [
+      "At 390×844 with a panel open, a toast's bounding box lies above the tab bar and does not overlap the sheet's tab strip.",
+      "The toast rule lives in nav.css, and hud.css's existing toast block (L521-523) is unchanged.",
+      "#/tanks/<id> at 390×844 opens the tank card with its top at 118px (no notch; proposed tolerance ± 2px, see note), the tank bar visible and the guide hidden.",
+      "The offer detail's buy bar ends above the tab bar's top edge."
+    ],
+    "tests": [
+      "new: tests/e2e/mobile-sheets.spec.ts",
+      "tests/sim/fix-hud-toasts.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.6",
+      "§17"
+    ],
+    "note": "Needs owner or reviewer confirmation: the ± 2px tolerance on the 118px tank-card top is a proposal (design §20.2 gives ± 2 only for the 64px sheet top)."
+  },
+  {
+    "id": "NAV-008",
+    "slice": "S1",
+    "source": "design §5.7, §16 (Locked panels); master §3.10; ADR-0001; master §9 S1 (locked destination states; desktop navigation changes); umbrella NAV-001",
+    "description": "A locked Visitors (until fac('specialty_shop')) or Shows (until the guide is done or reputation reaches 20) destination opens its panel in a locked state (lock icon, the §16 title and text, tabs hidden) from a dock tap, a More tile or a deep link instead of showing lockedToast, and locked dock items and More tiles carry a 15px lock badge at the icon's bottom-right while keeping their normal label colour.",
+    "acceptance": [
+      "In an early-game save, clicking dock-visitors at 1440×900 opens panel-visitors titled 'Visitors open with a Specialty Shop' with no tabs, and no lockedToast toast appears.",
+      "Navigating to #/visitors/staff and #/shows/results while locked shows the locked panel, so a shared link never lands on nothing.",
+      "The Visitors locked panel's 'Open Build › Facility' button navigates to #/build/facility, and the Shows locked panel reads 'Shows unlock after the guide' / 'Finish the guide or reach 20 reputation to enter club shows.'",
+      "Locked dock items and More tiles show the lock badge with their normal label colour; once unlocked, the badge goes and the panel shows its tabs."
+    ],
+    "tests": [
+      "new: tests/e2e/nav.spec.ts (locked-state cases to add)",
+      "new: tests/e2e/mobile-tabbar.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.7",
+      "§16"
+    ]
+  },
+  {
+    "id": "NAV-009",
+    "slice": "S1",
+    "source": "design §6.1, §6.2 (route table, shop query rules), §6.3 (routes.ts), §6.4 item 6, §21 Phase 0 Done when (route unit tests); master §9 S1 (route parser/formatter; hash routing); umbrella NAV-001",
+    "description": "A hand-written, dependency-free router in src/ui/nav/ uses hash URLs only, and its pure parseRoute/formatRoute in routes.ts round-trip every row of the design §6.2 route table (the Social and Production rows included as pure data), with the aliases equipment↔gear, play↔display and market/trends→market/history, shop query keys in the order prismatic, rare, env with defaults omitted, and null for an unknown path.",
+    "acceptance": [
+      "nav-routes.test.ts: formatRoute(parseRoute(h)) returns h for a canonical hash of every §6.2 row.",
+      "#/tanks/<id>/equipment parses to tab 'gear', #/settings/play to 'display' and #/market/trends to the History & demand route, and formatRoute writes the canonical words equipment, play and history.",
+      "Filters format as #/shop?prismatic=1&rare=1&env=marine in that key order with defaults omitted (no filters gives #/shop); an unknown path parses to null; an unknown tab on a known panel parses to that panel's default tab.",
+      "The router reads only location.hash: boots with ?dev=1, ?fixture= and ?showcase= behave as in v0.4.0 (boot.spec green)."
+    ],
+    "tests": [
+      "new: tests/sim/nav-routes.test.ts",
+      "tests/e2e/boot.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.1",
+      "§6.2",
+      "§6.3",
+      "§6.4",
+      "§21"
+    ]
+  },
+  {
+    "id": "NAV-010",
+    "slice": "S1",
+    "source": "design §6.2 (the 'Applied to today's stores as' column), §6.3 (applyRoute), §21 Phase 1 Done when; master §9 S1 (deep links; route/unit/E2E coverage); umbrella NAV-001",
+    "description": "applyRoute applies every design §6.2 route except the Social and Production rows to today's stores exactly as the 'Applied to today's stores as' column says, calling useUI.set({panel, panelTarget}) directly and never openPanel, on desktop and on phones.",
+    "acceptance": [
+      "A route-matrix e2e opens every §6.2 route except #/social… and #/livestock/production at 1440×900 and 390×844 and finds the expected panel, tab or sub-view (for example #/livestock/past opens Past residents through the new target tab:past, and #/shop?env=marine opens the Shop with the Marine chip selected).",
+      "nav-sync.test.ts: applying a route whose panel is already open keeps it open and switches its tab or target (no openPanel toggle).",
+      "#/tanks/<id> calls focusTank(id, true) and opens the tank card on Water, and /equipment, /life and /value open gear, life and value.",
+      "#/livestock/animal/<id> selects the creature through useUI.set({selectedCreatureId}), and #/log opens the full event log."
+    ],
+    "tests": [
+      "new: tests/sim/nav-sync.test.ts",
+      "new: tests/e2e/nav-routes-matrix.spec.ts (proposed)",
+      "new: tests/e2e/nav.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.2",
+      "§6.3",
+      "§21"
+    ]
+  },
+  {
+    "id": "NAV-011",
+    "slice": "S1",
+    "source": "design §6.3 (two-way sync; panels report their tab); master §9 S1 (two-way store synchronization); umbrella NAV-001",
+    "description": "Store changes write the URL: a change of panel, tab or sub-view pushes one history entry with the computed route, a shop filter change uses history.replaceState, a re-entrancy guard keeps a URL-driven store write from pushing a second entry, every tabbed panel reports its tab with useNavTab, and sub-views set and clear useNav.sub.",
+    "acceptance": [
+      "nav-sync.test.ts: opening Market and then switching to Supplies pushes exactly two history entries, #/shop and #/market/supplies.",
+      "nav-sync.test.ts: changing a shop filter chip changes the hash without a new history entry, and a hashchange-driven navigation adds no extra entry.",
+      "Changing the tab of Livestock, Market, Build, Visitors, Shows, Research, Encyclopedia or Settings updates the hash.",
+      "Opening an offer sets useNav.sub.market to 'offer:<id>' and closing it clears the value."
+    ],
+    "tests": [
+      "new: tests/sim/nav-sync.test.ts",
+      "new: tests/e2e/nav.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.3"
+    ]
+  },
+  {
+    "id": "NAV-012",
+    "slice": "S1",
+    "source": "design §6.4 items 2, 4 and 5; master §9 S1 (Back/Forward/Esc behavior); master §43; umbrella NAV-001",
+    "description": "A reload (navigation type 'reload') behaves exactly as v0.4.0 by replacing the hash with #/ and showing the title screen; Back and Forward move through panel history; closing a panel with Esc, × or its active tab navigates to #/; and returning to the title, starting a new game or loading another slot replaces the hash with #/ and clears panelTarget, useNav.sub and fromNotification, keyed on useUI.screen leaving 'game' or the saveId changing.",
+    "acceptance": [
+      "nav.spec: page.reload() on #/settings shows title-continue with the hash #/; save.spec (reload then title-continue) and prismatic.spec (reload then __AQ.loadAndResume) pass unchanged.",
+      "nav.spec: from #/shop/fish/<id>, Back shows the shop, Forward reopens the offer, and Esc closes one layer at a time until the hash is #/.",
+      "After 'Save and return to title' from an open offer, Back does not reopen the previous game's panel, and panelTarget, useNav.sub and fromNotification are cleared; the same holds after a new game and after loading another slot.",
+      "nav-sync.test.ts: repeated useGame.mutate calls with an unchanged saveId never trigger the reset."
+    ],
+    "tests": [
+      "new: tests/e2e/nav.spec.ts",
+      "new: tests/sim/nav-sync.test.ts",
+      "tests/e2e/save.spec.ts",
+      "tests/e2e/prismatic.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.4",
+      "§18",
+      "§22"
+    ]
+  },
+  {
+    "id": "NAV-013",
+    "slice": "S1",
+    "source": "design §6.4 items 1 and 3, §16 (Links and boot); master §9 S1 (deep links; pending route boot behavior); umbrella NAV-001",
+    "description": "UIRoot captures location.hash and the navigation type once at startup; opening a link while a save exists skips the title screen and loads latestSaveSlot() through loadAndResume behind the boot-deeplink loading card ('Loading your save · catching up {duration}…' with the pill 'Then: {destination}') before applying the route, and with no save the route waits in useNav.pending through onboarding and is applied once, when the first game starts.",
+    "acceptance": [
+      "deeplink-boot.spec: with a save present, page.goto('/#/livestock/eggs') shows boot-deeplink and then Livestock › Eggs & fry, and boot-deeplink-dest reads 'Then: Livestock › Eggs & fry'.",
+      "With empty storage, page.goto('/#/build/tanks') followed by onboarding opens Build › Tanks once, and useNav.pending is null afterwards.",
+      "A boot or pending route to a gone target (for example #/shop/fish/offer_zz00) lands on that panel's empty state ('This offer has gone').",
+      "The loading card is 300px wide with a 6px progress bar animated by the new ag-load keyframes over 1.8 s ease-out (static under reduced motion), and App.tsx and main.tsx are not changed for the capture."
+    ],
+    "tests": [
+      "new: tests/e2e/deeplink-boot.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.4",
+      "§16",
+      "§17"
+    ]
+  },
+  {
+    "id": "NAV-014",
+    "slice": "S1",
+    "source": "design §6.5; umbrella NAV-001",
+    "description": "An unknown path opens the tank view with the broken-link info toast (copy exactly as design §16 specifies), an unknown tab on a known panel opens that panel's default tab without a toast, and an unknown offer, creature, tank, listing or species id shows that panel's own gone or not-found state.",
+    "acceptance": [
+      "nav.spec: /#/nowhere shows the broken-link toast with its §16 copy, with nothing open.",
+      "#/build/notatab opens Build on its default tab with no toast.",
+      "#/shop/fish/<unknown> shows 'This offer has gone', and #/tanks/<unknown>, #/livestock/animal/<unknown>, #/market/listings/<unknown> and #/encyclopedia/<unknown> each show a defined empty or not-found state with no console error."
+    ],
+    "tests": [
+      "new: tests/e2e/nav.spec.ts",
+      "new: tests/sim/nav-routes.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.5",
+      "§16"
+    ],
+    "note": "Needs owner or reviewer confirmation: DESIGN-0.5 gives no copy for the not-found states of a tank, creature, listing or species; the owner or the S1 contract must supply it before the third criterion can be judged."
+  },
+  {
+    "id": "NAV-015",
+    "slice": "S1",
+    "source": "design §6.6, §7.4 item 1 (back bar Copy link); master §9 S1 (Copy link/share seam); umbrella NAV-001",
+    "description": "The offer detail's back bar has a Copy link action (desktop: 'Copy link', sm, link icon; phone: icon-only with aria-label 'Copy link to this offer') that writes shareUrl(route) through platform().clipboard.write and then reads 'Link copied' (good tone, check icon) for 4 s above a monospace, ellipsised link row, and no shared URL ever carries ?dev=1, fixture or another query flag.",
+    "acceptance": [
+      "With the memory platform or a granted clipboard, clicking offer-copy-link writes location.origin + location.pathname + '#/shop/fish/<id>' with no query string, and offer-link-row shows it.",
+      "The button reads 'Link copied' for 4 s (proposed tolerance ± 0.5 s, see note) and then reverts.",
+      "When clipboard.write resolves false, the link is shown selected for manual copy.",
+      "nav-routes.test.ts: shareUrl drops ?dev=1 and ?fixture=… from the current URL."
+    ],
+    "tests": [
+      "new: tests/sim/nav-routes.test.ts",
+      "new: tests/e2e/nav.spec.ts (copy-link case to add)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.6",
+      "§7.4"
+    ],
+    "note": "Needs owner or reviewer confirmation: the ± 0.5 s tolerance on the 4-second \"Link copied\" state is a proposal; design §6.6 says \"for 4 seconds\"."
+  },
+  {
+    "id": "NAV-016",
+    "slice": "S1",
+    "source": "master §9 S1 (settings-tab widening); design §6.2 (#/settings row), §12.3 (tab list), §15 (shellStore.ts); umbrella NAV-001",
+    "description": "useShell.settingsTab is widened from 'about' | null to the full Settings tab union, and #/settings, #/settings/play, #/settings/saves and #/settings/about open General, Play & access (internal 'display'), Saves and About, each tab exposing settings-tab-<id>.",
+    "acceptance": [
+      "At 1440×900 and 390×844, #/settings opens General and #/settings/play, /saves and /about open those tabs; switching tabs rewrites the hash.",
+      "The title screen's version badge still opens Settings on About.",
+      "save.spec stays green: General is still the default tab, and settings-save and settings-quality-low still work.",
+      "Until the Notifications tab exists (S1-S2), #/settings/notifications opens Settings on General without an error (the unknown-tab rule)."
+    ],
+    "tests": [
+      "tests/e2e/save.spec.ts",
+      "new: tests/sim/nav-routes.test.ts",
+      "new: tests/e2e/nav-routes-matrix.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.2",
+      "§12.3",
+      "§15"
+    ]
+  },
+  {
+    "id": "NAV-017",
+    "slice": "S1",
+    "source": "design §20.3 (tests/e2e/ui-layout.spec.ts phone test, L84-104); umbrella NAV-001",
+    "description": "The phone test in tests/e2e/ui-layout.spec.ts is renamed and updated for the deliberate 0.5 layout: the scrolling-dock assertion becomes a tab-bar assertion and the half-sheet check becomes the full-height geometry, with the test's other assertions kept.",
+    "acceptance": [
+      "The has-more-right dock assertion (L89) is replaced by: nav-tabbar visible, 5 buttons, scrollWidth <= clientWidth.",
+      "The pb.y > 844 * 0.4 check (L98) is replaced by: the sheet's top is 64px ± 2 and the tab bar is still hit-testable above it.",
+      "The data-occlude='bottom' and at-most-2-toasts assertions are kept, and test-inventory shows no other ui-layout.spec test removed or weakened."
+    ],
+    "tests": [
+      "tests/e2e/ui-layout.spec.ts",
+      "scripts/agent/test-inventory.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§20.3",
+      "§5.2",
+      "§5.6"
+    ]
+  },
+  {
+    "id": "NAV-018",
+    "slice": "S1",
+    "source": "design §20.3 (fix-hud-css, fix-hud-toasts, fix-hud-polish), §3 item 6; umbrella NAV-001",
+    "description": "0.5 CSS goes into new files (src/ui/styles/nav.css, later social.css, notify.css and src/ui/panels/market/offer-genes.css) or into new @media blocks after the existing ones, and the hud.css, shell.css and screens.css blocks that the fix-hud tests read are not edited.",
+    "acceptance": [
+      "fix-hud-css.test.ts, fix-hud-toasts.test.ts and fix-hud-polish.test.ts pass with their files unchanged.",
+      "git diff of hud.css, shell.css and screens.css shows no edited or removed line inside an existing @media block.",
+      "Tab-bar, More-sheet and phone-sheet rules live in nav.css as global ag-/pn- prefixed classes (no CSS modules)."
+    ],
+    "tests": [
+      "tests/sim/fix-hud-css.test.ts",
+      "tests/sim/fix-hud-toasts.test.ts",
+      "tests/sim/fix-hud-polish.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§20.3",
+      "§3"
+    ]
+  },
+  {
+    "id": "NAV-019",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: route audit)",
+    "description": "On the final S4 tree every design route, Social and Production included, opens the right screen on desktop and phone, every screen reachable from the UI has a route that round-trips, and Back, Forward, Esc and reload still behave as S1 specified.",
+    "acceptance": [
+      "The route-matrix e2e covers every §6.2 row at 1440×900 and 390×844 and passes.",
+      "An audit table in evidence/S4 lists each screen with its route and result, and no screen lacks a route.",
+      "nav.spec and deeplink-boot.spec pass on the S4 tree."
+    ],
+    "tests": [
+      "new: tests/e2e/nav-routes-matrix.spec.ts (proposed)",
+      "new: tests/e2e/nav.spec.ts",
+      "new: tests/e2e/deeplink-boot.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.2"
+    ]
+  },
+  {
+    "id": "GEN-002",
+    "slice": "S2",
+    "source": "design §8.2, §15 (species files); master §9 S2 (rare allele metadata); umbrella GEN-001",
+    "description": "LocusDefinition.alleles[] gains the optional rare?: boolean with the §8.2 lane:genetics doc comment, set on exactly nine alleles: betta c (Cambodian), marble, dragon, double and white; ocellaris clownfish mb; lined seahorse p; axolotl ax and c.",
+    "acceptance": [
+      "A test that lists every allele with rare: true across all species returns exactly those nine.",
+      "npm run typecheck passes and the species-fw and species-marine invariants stay green.",
+      "No other species data changes."
+    ],
+    "tests": [
+      "new: tests/sim/genetics-expansion.test.ts",
+      "tests/sim/species-fw.test.ts",
+      "tests/sim/species-marine.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.2",
+      "§15"
+    ]
+  },
+  {
+    "id": "GEN-003",
+    "slice": "S2",
+    "source": "design §8.1, §8.3 (cambodian locus and overlay), §8.4; master §9 S2 (Cambodian locus); umbrella GEN-001",
+    "description": "Bettas gain a mendelian 'cambodian' locus appended after fins (C 'Normal body', dominance 2, frequency 0.9; c 'Cambodian', dominance 1, frequency 0.1, rare) and a Cambodian overlay inserted before 'butterfly' that applies only to c/c on an expressed red colour (bodyColor #e9c3b0, bodyColor2 #d9a892, bellyColor #f2d6c8), labelled a game simplification in its note, without editing the genetics engine.",
+    "acceptance": [
+      "red/yellow · solid · veil · c/c is named 'Red Cambodian Veiltail Betta', and royal/red · solid · veil · c/c is too (red is expressed).",
+      "royal/royal · c/c has no 'Cambodian' in its name and keeps its non-Cambodian look.",
+      "The locus note equals the §8.3 text, and git diff shows no change to src/sim/life/genetics.ts or src/sim/life/morphCatalog.ts.",
+      "copy-fixes.test.ts stays green (no doubled words in the new names)."
+    ],
+    "tests": [
+      "new: tests/sim/genetics-expansion.test.ts",
+      "tests/sim/copy-fixes.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.1",
+      "§8.3",
+      "§8.4"
+    ]
+  },
+  {
+    "id": "GEN-004",
+    "slice": "S2",
+    "source": "design §8.1, §8.3 (metallic locus and overlay), §8.4; master §3.10; ADR-0001; master §9 S2 (Metallic locus); umbrella GEN-001",
+    "description": "Bettas gain an additive 'metallic' locus (std 'Standard sheen', frequency 0.88; me 'Metallic', frequency 0.12) and a Metallic overlay (rarity 0.2; me/me gives metallic 0.75 and iridescence 0.9) inserted before 'butterfly', where one copy stays unnamed and adds only a half-blended sheen and two copies add 'Metallic' to the name.",
+    "acceptance": [
+      "royal/yellow · butterfly · halfmoon · me/std is named 'Royal Blue Butterfly Halfmoon Betta' and its visual metallic value is higher than the same genome with std/std.",
+      "The same genome with me/me is named 'Royal Blue Metallic Butterfly Halfmoon Betta'.",
+      "A Metallic Marble Dragon Scale fish reads 'Royal Blue Metallic Marble Dragon Scale …' (Metallic stays ahead of the pattern overlays).",
+      "No one-copy Metallic name (such as 'Soft Metallic') exists in data, copy or tests."
+    ],
+    "tests": [
+      "new: tests/sim/genetics-expansion.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.1",
+      "§8.3",
+      "§8.4"
+    ]
+  },
+  {
+    "id": "GEN-005",
+    "slice": "S2",
+    "source": "design §8.3 (strain, visualMorphs, notes), §2 D11, §20.3 (fix-panels-b-morphs.test.ts); master §9 S2 (Cambodian Veiltail strain; exact test updates); umbrella GEN-001",
+    "description": "Bettas gain a tenth strain, cambodian_veil 'Cambodian Veiltail' (requires red, cambodian and veil; tier very_rare; note 'A pale, flesh-pink body under flowing red veil fins — the classic Cambodian look.'), the visualMorphs chips 'Cambodian' and 'Metallic', and one genetics.notes sentence on the two new genes, with every chip still reachable in fix-panels-b-morphs.",
+    "acceptance": [
+      "validateStrains reports nothing, bettas have 10 strains, and cambodian_veil is within one tier of its catalog tier under the owner's tier model (GEN-007).",
+      "fix-panels-b-morphs.test.ts (L58-77) passes with Cambodian and Metallic among the reachable chips.",
+      "If a chip goes missing there, only the betta roll count is raised (for example to 1,500); the mulberry32(42) seed and the exception list stay unchanged."
+    ],
+    "tests": [
+      "tests/sim/fix-panels-b-morphs.test.ts",
+      "new: tests/sim/genetics-expansion.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.3",
+      "§20.3"
+    ]
+  },
+  {
+    "id": "GEN-006",
+    "slice": "S2",
+    "source": "design §8.5, Appendix C, §20.3 (morph-catalog.test.ts), §21 Phase 2 Done when (catalog shows 540); master §9 S2 (updated betta catalog; exact test updates); umbrella GEN-001",
+    "description": "The betta morph catalog has 540 entries (Red 120, every other colour group 60) from 72,900 genotypes with the design §8.5 frequencies, and each entry's tier comes from the tier model recorded in the owner's ADR before S2 starts (GEN-007).",
+    "acceptance": [
+      "genetics-expansion.test.ts: 540 entries, Red 120 + 7 × 60, and 72,900 genotypes (under the species tests' 200k cap).",
+      "Catalog frequencies match design §8.5: Royal Blue Butterfly Halfmoon '1 in 143', Red Cambodian Veiltail '1 in 520', Red Metallic Veiltail '1 in 360' and Royal Blue Metallic Butterfly Halfmoon '1 in 9,804'.",
+      "The tier assertions follow the tier model recorded in the owner's ADR before S2 starts, not today's MORPH_TIER_MIN_SHARE thresholds by default, and the S2 reviewer attaches the resulting tier distribution to evidence (GEN-007).",
+      "morph-catalog.test.ts (L58-65) asserts Red 120, others 60 and 540 in total instead of 8 × 30 = 240."
+    ],
+    "tests": [
+      "new: tests/sim/genetics-expansion.test.ts",
+      "tests/sim/morph-catalog.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.5",
+      "§20.3",
+      "§21"
+    ]
+  },
+  {
+    "id": "GEN-007",
+    "slice": "S2",
+    "source": "master §42; design §22 risk 1; ADR-0003 (supersession register: rarity tiers are an open owner question, to settle before S2); master §9 S2 (catalog checks); umbrella GEN-001",
+    "description": "Before S2 starts, the owner's answer to the rarity-tier question (keep today's absolute MORPH_TIER_MIN_SHARE thresholds, under which design §8.5 predicts 466 of 540 betta entries Legendary, or change the tier model) is recorded in an ADR, S2 implements the tier model that ADR records, and the S2 reviewer attaches the resulting distribution as evidence.",
+    "acceptance": [
+      "An ADR recording the owner's tier-model decision verbatim exists before S2's tier work starts; until it does, S2 parks the tier work and stops at OWNER_GATE (reason OTHER:rarity-tiers) once the independent work is done.",
+      "The tier code and genetics-expansion.test.ts implement the tier model that ADR records.",
+      "evidence/S2 holds the catalog tier counts and the share of market-stocked bettas per tier from a seeded stocking run, attached by the S2 reviewer with a verdict on whether the labels communicate a useful hierarchy."
+    ],
+    "tests": [
+      "new: tests/sim/genetics-expansion.test.ts",
+      "scripts/agent/capture-evidence.mjs (--review)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§22",
+      "§8.5"
+    ]
+  },
+  {
+    "id": "GEN-008",
+    "slice": "S2",
+    "source": "design §8.4 (forecast), §8.5 (forecast combinations), §7.4.1 (Genes footer advice); master §9 S2 (breeding forecast integration); umbrella GEN-001",
+    "description": "predictOffspringMorphs handles the new loci without engine changes: Red Cambodian Veiltail (red/red, c/c) × Red Veiltail (red/yellow, C/c) forecasts 50% Red Veiltail and 50% Red Cambodian Veiltail, a red/copper C/c × red/royal c/c pair gives about 3 in 8 Red Cambodian young, and the worst-case betta forecast has 576 combinations, within MAX_COMBOS 4,096.",
+    "acceptance": [
+      "genetics-expansion.test.ts asserts the 50/50 forecast and the 3-in-8 Red Cambodian share.",
+      "The worst-case betta pair yields 576 combinations with no truncation.",
+      "The existing forecast UI (src/ui/panels/common/Offspring.tsx) lists 'Red Cambodian Veiltail' for the 50/50 pair."
+    ],
+    "tests": [
+      "new: tests/sim/genetics-expansion.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.4",
+      "§8.5",
+      "§7.4.1"
+    ]
+  },
+  {
+    "id": "GEN-009",
+    "slice": "S2",
+    "source": "design §8.6, §20.3 (name tests on hand-built genomes), §21 Phase 2 Done when (existing bettas keep names); master §9 S2 (determinism checks; exact test updates); umbrella GEN-001",
+    "description": "Bettas from before 0.5 normalise the missing loci to C/C and std/std and keep their name, appearance and value with no migration or repair note, the wild-type allele stays the most common in both new loci, and new bettas draw from a shifted RNG stream without breaking determinism.",
+    "acceptance": [
+      "A 0.4 genome without the new loci normalises to C/C + std/std with an unchanged morph name, and loading a v0.4.0 save leaves every betta's cached morphName, appearance and creatureValue unchanged.",
+      "A test asserts that C (0.9) and std (0.88) are the most common alleles of their loci.",
+      "core-determinism.test.ts and fix-core-step-invariance.test.ts stay green.",
+      "lifecycle-genetics (L150-152), rare-variants (L202-203, L241-242), fix-sim3-morphs and fix-life-genetics pass unchanged; if one changes, the evidence shows a moved mutation rather than a naming change."
+    ],
+    "tests": [
+      "new: tests/sim/genetics-expansion.test.ts",
+      "tests/sim/core-determinism.test.ts",
+      "tests/sim/fix-core-step-invariance.test.ts",
+      "tests/sim/lifecycle-genetics.test.ts",
+      "tests/sim/rare-variants.test.ts",
+      "tests/sim/fix-sim3-morphs.test.ts",
+      "tests/sim/fix-life-genetics.test.ts",
+      "tests/sim/rare-persistence.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.6",
+      "§20.3",
+      "§21"
+    ]
+  },
+  {
+    "id": "GEN-010",
+    "slice": "S2",
+    "source": "design §9.1, §7.4.1 (disclosure rule), §8.7 (creature card), §2 D4; master §9 S2 (Genetics Lab reveal correction; genotype disclosure rules); umbrella GEN-001",
+    "description": "The reveal level is computed once as isUnlocked(game, 'genetics_lab') ? 1 : (c.geneticsRevealed ?? 0): CreatureCard uses it (fixing the lab never revealing genes for new animals), and so do the offer Genes panel, the offer card 'Carries' chip, the Rare genes filter and the temperament numbers, so hidden alleles stay hidden everywhere before the lab and show everywhere after it.",
+    "acceptance": [
+      "genetics-lab-reveal.test.ts: with genetics_lab unlocked, a new creature (geneticsRevealed: 0) gets exact gene rows including 'carries … (het)'; without the lab it gets band words only.",
+      "One shared helper computes the level and the Genes panel, card chip, Rare genes filter and temperament numbers all call it (no second implementation in the code).",
+      "A betta's creature card lists Cambodian and Metallic rows once the lab is researched.",
+      "A creature without the geneticsRevealed field (old save) keeps its current display."
+    ],
+    "tests": [
+      "new: tests/sim/genetics-lab-reveal.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§9.1",
+      "§7.4.1",
+      "§8.7"
+    ]
+  },
+  {
+    "id": "GEN-011",
+    "slice": "S2",
+    "source": "design §9.2, §7.4 item 5, §17 (temperament meter); master §9 S2 (temperament section); umbrella GEN-001",
+    "description": "Offer detail gains a Temperament section after Genes (offer-temperament, Smile icon) with Temperament (Shy to Bold, temperamentWord) and Curiosity (Reserved to Curious, curiosityWord) meters, numbers only after the Genetics Lab, an inheritance footer and a no-meter text for groups, while PotentialBands gains temperament?: boolean (default true) and OfferDetail passes false.",
+    "acceptance": [
+      "offer-temperament shows both meters with their words, and values such as 'Bold · 66' appear only with genetics_lab unlocked.",
+      "The offer's Individual profile no longer lists Temperament or Curiosity, while the creature card and every other PotentialBands caller are unchanged.",
+      "A group offer shows the group text and no meters, and a single animal shows the inheritance footer, both with copy exactly as design §16 specifies.",
+      "Meters use a 6px blue-aqua-coral track, a 12px thumb with a 2px dark ring and 10.5px ink-4 end labels."
+    ],
+    "tests": [
+      "new: tests/sim/ui-offer-temperament.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§9.2",
+      "§7.4",
+      "§17"
+    ]
+  },
+  {
+    "id": "GEN-012",
+    "slice": "S2",
+    "source": "design §8.7 (Encyclopedia › Betta), §20.3 (ui-prismatic.test.ts); master §9 S2 (encyclopedia updates; exact test updates); umbrella GEN-001",
+    "description": "Encyclopedia › Betta gains the enc-genes line with the 'New in 0.5' note, the heading 'Morph catalog · {seen}/540 seen' with colour groups of 120 and 60, 'Named strains · {n}/10' with Cambodian Veiltail marked New, and a new Aquarium science article 'How genes combine: dominant, recessive and additive' marked New.",
+    "acceptance": [
+      "enc-genes shows 'Body colour · 8 alleles · dominance ladder', 'Pattern · 5 · ladder', 'Finnage · 5 · ladder', 'Cambodian · recessive' and 'Metallic · additive' (the last two aqua with a sparkle) with the §16 note, and unseen catalog entries show the seen trait words with '???'.",
+      "ui-prismatic.test.ts (L49) expects 'Morph catalog · 1/540 seen' and passes.",
+      "enc-strains shows '/10' with a New chip on Cambodian Veiltail.",
+      "The science article opens at #/encyclopedia/science/<articleId> and is marked New."
+    ],
+    "tests": [
+      "tests/sim/ui-prismatic.test.ts",
+      "new: tests/sim/ui-encyclopedia-05.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.7",
+      "§20.3"
+    ]
+  },
+  {
+    "id": "MKT-002",
+    "slice": "S2",
+    "source": "design §7.2 (chips, filter logic, count, hint lines, test-id safety), §2 D4; master §9 S2 (Prismatic-only filter; Rare genes filter); umbrella MKT-001",
+    "description": "The Shop tab gains a second chip row, 'Prismatic only' (Sparkles; violet outline when off, the PrismaticBadge pastel gradient with the 7 s ag-prism-flow and #2a1640 text when on, static under reduced motion) and 'Rare genes' (Dna; standard aqua selected style), plus a right-aligned '{visible} of {inStock}' count, with all filters combined by AND in a pure offerMatches in src/ui/panels/market/shopFilters.ts.",
+    "acceptance": [
+      "shop-filters.test.ts: Prismatic only keeps offers with a Prismatic creature; Rare genes keeps visibly rare morphs (a morph tier of rare or above under the owner's tier model, GEN-007, or a named strain of tier ≥ rare) before the lab and adds hidden carriers of rare: true alleles after it; env results equal today's EnvFilter.",
+      "shop-filter-count reads '{visible} of {inStock}' (for example '6 of 9'), sorting stays Prismatic-first, and with default filters every stock offer shows with shop-offer-<i> indexing g.market.stock (gameplay.spec and prismatic.spec green).",
+      "While Rare genes is on, shop-filter-hint shows the dashed Lock line before genetics_lab and the violet Dna line after it, with the §16 text.",
+      "shop-filters.spec: toggling shop-filter-prismatic and shop-filter-rare updates the URL query and the count."
+    ],
+    "tests": [
+      "new: tests/sim/shop-filters.test.ts",
+      "new: tests/e2e/shop-filters.spec.ts",
+      "tests/e2e/gameplay.spec.ts",
+      "tests/e2e/prismatic.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.2",
+      "§17"
+    ]
+  },
+  {
+    "id": "MKT-003",
+    "slice": "S2",
+    "source": "design §6.2 (shop query rules), §7.2 (URL and session, empty states, footer), §5.7 (edge states); umbrella MKT-001",
+    "description": "#/shop without a query re-applies the filters last used this session and rewrites the URL to include them, 'Clear filters' (shop-clear-filters) always gives plain #/shop, filters survive switching tabs within the session, and a grid with no match is replaced by shop-empty: the Prismatic case, the generic no-match case, or, with no stock at all, the existing restocking state without a button.",
+    "acceptance": [
+      "Turning on Prismatic only, switching to Supplies and back keeps the filter, and navigating to #/shop re-applies it and rewrites the URL to #/shop?prismatic=1.",
+      "With Prismatic only on and no Prismatic in stock, shop-empty shows the Sparkles state 'No Prismatic animals right now' / 'About 1 in 4,096 stocked animals shimmers. New stock arrives through the day.' with Clear filters; other empty filters show the Store state 'Nothing matches that filter'.",
+      "shop-clear-filters resets every filter and leaves the URL at #/shop, and the no-stock state shows no Clear filters button.",
+      "The leaf footer 'Captive-bred animals are hardier and kinder to wild reefs and rivers.' shows under a non-empty grid."
+    ],
+    "tests": [
+      "new: tests/e2e/shop-filters.spec.ts",
+      "new: tests/sim/shop-filters.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§6.2",
+      "§7.2",
+      "§5.7"
+    ]
+  },
+  {
+    "id": "MKT-004",
+    "slice": "S2",
+    "source": "design §7.3, §7.1 (maximised grid); master §9 S2 (offer card redesign); umbrella MKT-001",
+    "description": "Offer cards are titled with the morph display name (display font 16.5/560; groups '10 × …') and the sex icon, carry the second line '{Sex} · {size} cm · {first personality}' (groups 'Group of {n} · {size} cm') and the §7.3 chip row, drop the Captive-bred, species-rarity, personality and potential chips, keep the footer notes, and fill 3 columns when the Market is maximised.",
+    "acceptance": [
+      "A static render of a royal/yellow butterfly halfmoon offer shows the title 'Royal Blue Butterfly Halfmoon Betta' and the chips in order: PrismaticBadge; '{Strain}' + '{Tier} strain' or '{Tier} morph' (hidden for Common); 'New gene · {Gene}' only for an expressed 0.5 gene; 'Carries {Gene}' (with a sparkle) only after the lab for a hidden rare carrier; TierChip.",
+      "Cards carry no Captive-bred, species-rarity, personality or potential chips, and still show the three existing notes under the price (water-class need, cannot afford yet, locked) with their current copy.",
+      "Tier tones follow §7.3 (Common neutral, Uncommon aqua, Rare violet, Very rare and Legendary gold), and a Prismatic card has the §7.3 frame.",
+      "At 1440×900 the maximised Market grid has 3 columns and the normal panel 2, and the Market header copy and tabs are unchanged."
+    ],
+    "tests": [
+      "new: tests/sim/ui-offer-card-05.test.ts (proposed)",
+      "new: tests/e2e/shop-filters.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.3",
+      "§7.1"
+    ]
+  },
+  {
+    "id": "MKT-005",
+    "slice": "S2",
+    "source": "design §7.4 (items 3, 6, 8, 9 and 10); master §9 S2 (offer detail redesign); umbrella MKT-001",
+    "description": "Offer detail keeps every existing section and orders them back bar → from-notification banner → hero → Genes → Temperament → Prismatic callout → morph line → Individual profile → destination tank → buy bar, titles the hero with the morph display name (groups keep '{n} {Species}', and the second line stays the scientific name), and drops the separate aqua morph-name chip.",
+    "acceptance": [
+      "A static render shows the sections in the §7.4 order.",
+      "The group picker or 'Sold as one lot', Individual profile, destination tiles with '+ New tank', CompatPreview, size and water-class callouts, risk acknowledgement and every existing buy state are still present.",
+      "The hero chips run PrismaticBadge, TierChip, the strain or morph chip, 'New gene · {Gene}', '{Sex} · {size} cm', 'Captive-bred' or 'Wild-caught', then the personality chips, with no separate morph-name chip, while CareChips, the personality sentence and the seller's quote are unchanged."
+    ],
+    "tests": [
+      "new: tests/sim/ui-offer-detail-05.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.4"
+    ]
+  },
+  {
+    "id": "MKT-006",
+    "slice": "S2",
+    "source": "design §7.4 items 2 and 7, §6.3 (fromNotification); master §9 S2 (morph frequency presentation); umbrella MKT-001",
+    "description": "Offer detail shows offer-from-notification (aqua row, BellRing, 'Opened from your notification') when it was opened with go(route, {fromNotification: true}), until the next navigation, and shows offer-morph-line (violet Sparkles) reading '{Tier} morph · about 1 in {n} market {species plural}' with n from catalogEntry(sp, morphName).frequency through oneInLabel.",
+    "acceptance": [
+      "go(offerRoute, {fromNotification: true}) shows the banner, the next navigation clears it, and opening the same offer normally shows none.",
+      "A Royal Blue Butterfly Halfmoon offer reads '{Tier} morph · about 1 in 143 market bettas' and a Red Cambodian Veiltail offer '{Tier} morph · about 1 in 520 market bettas', with {Tier} from the owner's tier model (GEN-007)."
+    ],
+    "tests": [
+      "new: tests/sim/ui-offer-detail-05.test.ts (proposed)",
+      "new: tests/sim/nav-sync.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.4",
+      "§6.3",
+      "§16"
+    ]
+  },
+  {
+    "id": "MKT-007",
+    "slice": "S2",
+    "source": "design §7.4.1 (rows and rule summary), §17 (gene row); master §9 S2 (offer Genes panel); umbrella MKT-001",
+    "description": "offer-genes lists one offer-gene-<locusId> row per locus of the offer's species in data order, built from offer.creatures[active].genome with no new offer fields: the locus name (0.5 loci with a small aqua NEW), the expressed allele in bold with a generated rule summary, and a copies chip right-aligned on desktop and under the summary on phones.",
+    "acceptance": [
+      "offer-genes.test.ts: summaries read 'Dominant over every other {noun}' (top of the ladder), 'Recessive to {A}' / 'Recessive to {A} and {B}' / 'Recessive to most colours' (three or more above), 'Codominant · one copy Snowflake, two Platinum' (clownfish), 'Additive · two copies = {name}', the suffix ' · only shows on red bettas' for Cambodian, and the prefix 'New gene · ' for 0.5 loci.",
+      "A betta offer shows five rows in order (Body colour, Pattern, Finnage, Cambodian, Metallic) with NEW on the last two, and every shop species shows its own loci.",
+      "Rows are at least 50px high on a '96px 1fr auto' grid on desktop and '92px 1fr' with the chip under the text on phones."
+    ],
+    "tests": [
+      "new: tests/sim/offer-genes.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.4.1",
+      "§17"
+    ]
+  },
+  {
+    "id": "MKT-008",
+    "slice": "S2",
+    "source": "design §7.4.1 (copies chip and footer), §2 D4; umbrella MKT-001",
+    "description": "Each gene row's copies chip is known from the phenotype (neutral 'no copies' / '1 copy' / '2 copies'), hidden before the Genetics Lab (dashed '+ ?' with a lock) or revealed after it (violet 'carries {allele}' / '2 copies' / 'no copies', with a sparkle for rare carriers), and the Genes footer gives the no-lab line, a 'Genetics Lab: {advice}' line or a nothing-hidden line.",
+    "acceptance": [
+      "offer-genes.test.ts covers the known-from-phenotype rules (chip titled 'The visible trait already proves this'): codominant and additive loci always; a mendelian allele at the bottom of its ladder gives '2 copies'; a new-gene locus with no copy that would be visible gives 'no copies'.",
+      "Before the lab, hidden rows show '+ ?' titled 'Second copy hidden until the Genetics Lab', and the footer reads 'What it carries stays hidden until you research the Genetics Lab.'",
+      "After the lab, a recessive carrier's footer reads 'Pair {him/her} with another {allele} carrier for about 1 in 4 {allele} young.', or, with a known partner in the player's tanks, a predictOffspringMorphs line such as '… about 3 in 8 young would be Red Cambodian.'",
+      "With nothing hidden the footer reads 'Nothing hidden: every trait here shows its copies.' (additive or codominant-only species: 'Nothing hidden: additive traits always show their copies.')."
+    ],
+    "tests": [
+      "new: tests/sim/offer-genes.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.4.1"
+    ]
+  },
+  {
+    "id": "MKT-009",
+    "slice": "S2",
+    "source": "design §7.5 items 1, 2 and 4, §2 D12, §17 (destination tile); master §9 S2 (destination-tank fit behavior); umbrella MKT-001",
+    "description": "Each suitable destination tile shows previewAddition's verdict as icon + long label with a short top reason (for example 'Incompatible — Ember would fight him', or for water class 'High risk — too warm for axolotls'), the fit badge uses the long VERDICT_LABEL map rendered like CompatPreview (StatusBadge + verdictStatus), and a gate-passing but wrong water class stays buyable behind the existing risk acknowledgement, its callout gaining 'Set up a cool-water tank' → #/build/tanks.",
+    "acceptance": [
+      "Tile verdicts use 'Excellent match', 'Usually compatible', 'Conditional', 'High risk' and 'Incompatible', and the short VERDICT_LABEL in src/ui/common/format.ts is unchanged.",
+      "An axolotl offer with only a 25 °C tropical tank shows 'High risk — too warm for axolotls' on the tile, needs the risk checkbox before buying, and CompatPreview reads 'This tank runs at about 25 °C — too warm for axolotls (10–21 °C).' using the tolerable range with a no-break space before °C.",
+      "The fit badge sits beside the price at 1440×900 and on the Destination tank header at 390×844, and the cool-water link opens #/build/tanks (under the callout text on phones)."
+    ],
+    "tests": [
+      "new: tests/sim/ui-offer-fit.test.ts (proposed)",
+      "new: tests/e2e/offer-fit.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.5",
+      "§17"
+    ]
+  },
+  {
+    "id": "MKT-010",
+    "slice": "S2",
+    "source": "design §7.5 item 3, §2 D12, §5.7 (no suitable tank); umbrella MKT-001",
+    "description": "When no tank passes environmentGate (including having no tanks), tiles show 'Freshwater' (danger, CircleX) instead of 'Wrong water', the fit badge (watch) and the danger callout say which tank is missing, and the buy button becomes the gold offer-build-tank, which calls rememberOfferReturn(offer.id, waterClass) and opens #/build/tanks.",
+    "acceptance": [
+      "With only freshwater tanks, a clownfish offer shows offer-build-tank labelled 'Build a marine tank' (Hammer icon); clicking it opens Build › Tanks, and Quick buy returns to the offer as today.",
+      "The badge reads 'No marine tank' or 'No brackish tank', the callout 'Saltwater animals need a marine tank. Build one first; the offer stays until it expires.' (or the brackish variant), and the phone button label is 'Build a tank'.",
+      "With no tanks at all, the existing 'You need an aquarium first.' callout and its 'Buy a tank' button still show."
+    ],
+    "tests": [
+      "new: tests/e2e/offer-fit.spec.ts (proposed)",
+      "new: tests/sim/ui-offer-fit.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.5",
+      "§5.7"
+    ]
+  },
+  {
+    "id": "MKT-011",
+    "slice": "S2",
+    "source": "design §7.5 items 5 and 6, §7.7 (celebrate toast); master §9 S2 (buy-state rules); umbrella MKT-001",
+    "description": "The buy button takes the label of the first matching row of the design §7.5 table (desktop and phone variants), the price note reads '{$left} left after' or, when short, 'You need $X more', and a purchase returns to #/ focused on the destination tank with a 'Prismatic find' celebrate toast or a 'Bought' success toast ('{Morph name} is settling into {Tank}' · 'Find them in Livestock.').",
+    "acceptance": [
+      "A unit test runs the seven conditions in combination and asserts first-match precedence with the desktop labels Locked, Pick at least one animal, Build a marine (or brackish) tank, Not enough money, Choose a suitable tank, Confirm the risk first and Buy for $X, and the phone labels Locked, Pick one, Build a tank, Not enough, Choose a tank, Confirm the risk and Buy.",
+      "With money below the price, the note reads 'You need $X more' in danger tone.",
+      "After buy-offer the hash is #/ and the destination tank is focused; a Prismatic purchase shows the gold Prismatic find toast, an ordinary one the Bought toast.",
+      "gameplay.spec and prismatic.spec stay green."
+    ],
+    "tests": [
+      "new: tests/sim/ui-offer-fit.test.ts (proposed)",
+      "tests/e2e/gameplay.spec.ts",
+      "tests/e2e/prismatic.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.5",
+      "§7.7"
+    ]
+  },
+  {
+    "id": "MKT-012",
+    "slice": "S2",
+    "source": "design §7.6, §6.5 (unknown offer id), §5.7; master §9 S2 (gone-offer behavior); umbrella MKT-001",
+    "description": "#/shop/fish/:id for a bought, expired or invented id keeps the existing 'This offer has gone' state (Clock icon, 'Back to shop' back bar, 'Another shop snapped it up, or it expired. New stock arrives regularly.') and adds a new button (Store icon, label exactly as design §16 specifies) that opens #/shop.",
+    "acceptance": [
+      "/#/shop/fish/offer_zz00 shows the gone state with the new button, and the button navigates to #/shop.",
+      "After an offer is bought, going Back to its URL shows the gone state rather than a blank panel."
+    ],
+    "tests": [
+      "new: tests/e2e/nav.spec.ts (gone-offer case to add)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.6",
+      "§6.5"
+    ]
+  },
+  {
+    "id": "MKT-013",
+    "slice": "S2",
+    "source": "design §7.7; umbrella MKT-001",
+    "description": "Prismatic animals' Livestock rows gain a tinted row frame beside the existing compact badge, and the existing Prismatic surfaces (shop sort, PrismaticBadge, card frame, detail callout, ×12 value, lot rule, encyclopedia PrismaticBox, achievement and render glints) stay unchanged.",
+    "acceptance": [
+      "A Prismatic animal's Livestock row has the tinted frame and an ordinary row does not.",
+      "rare-variants, rare-persistence, ui-prismatic and prismatic.spec stay green."
+    ],
+    "tests": [
+      "tests/sim/rare-variants.test.ts",
+      "tests/sim/rare-persistence.test.ts",
+      "tests/sim/ui-prismatic.test.ts",
+      "tests/e2e/prismatic.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.7"
+    ]
+  },
+  {
+    "id": "MKT-014",
+    "slice": "S2",
+    "source": "design §5.2 (Market attention dot), §7.7, §15 (src/ui/common/notify.ts); master §9 S2 (rare-stock nav signal); umbrella MKT-001",
+    "description": "When no bid is waiting, Market's nav dot (tab bar and dock) signals Prismatic or rare offers stocked since the player last opened the Shop (label 'Prismatic {species} in the shop' or 'Rare stock: {morph}', target offer:<id>), with the seen offer ids kept in a UI store rather than the save, seeded from the current stock when a game loads, and passed to navDots as an optional 4th parameter.",
+    "acceptance": [
+      "notify-navdots.test.ts: 'bids waiting' wins over rare stock, only unseen Prismatic or rare offers light the dot, and loading a game marks the current stock as seen.",
+      "Without the 4th parameter navDots behaves exactly as today: ui-notify-news (L117 Market bids dot) and ui-notify-attention pass unchanged.",
+      "Opening the Shop marks the current stock as seen, and the seen set never appears in the save or its stateHash."
+    ],
+    "tests": [
+      "new: tests/sim/notify-navdots.test.ts",
+      "tests/sim/ui-notify-news.test.ts",
+      "tests/sim/ui-notify-attention.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.2",
+      "§7.7",
+      "§15"
+    ]
+  },
+  {
+    "id": "MKT-015",
+    "slice": "S2",
+    "source": "design §7.8 (phone row layout); umbrella MKT-001",
+    "description": "On phones, Market › Supplies rows are reworked so the description gets the full width: icon or swatch on the left, name and chips, the description, then a bottom line with the info (for example '34 servings left · about 17 days', or the price) on the left and the action ('Buy · $6', 'Buy & install') on the right.",
+    "acceptance": [
+      "At 390×844 every Supplies row's description spans the row's content width and its action sits at the right of the bottom line.",
+      "No Supplies row overflows horizontally at 390×844, and desktop Supplies rows are unchanged."
+    ],
+    "tests": [
+      "new: tests/e2e/mobile-supplies.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§7.8"
+    ]
+  },
+  {
+    "id": "AUTO-003",
+    "slice": "S3",
+    "source": "design §10.1, §17 (switch, segmented); umbrella AUTO-001",
+    "description": "The tank card's Equipment tab (internal id gear) shows an Automation section (Zap icon) with the Auto-feed and Auto-clean rows above the existing Equipment list and Lighting block, each row having a 36px aqua icon chip, a 13.5/620 title, one or two 11.5 ink-3 sublines and a 44×26 role=switch, with an aqua-tinted border when installed and a dashed border and dimmer icon when locked.",
+    "acceptance": [
+      "A static render of GearTab shows Automation, Equipment and Lighting in that order, and the tabs stay Water · Equipment · Life · Value.",
+      "tank-auto-feed and tank-auto-clean are 44×26 role=switch elements with a 20px knob, 18px travel and an aqua-2 track when on.",
+      "Installed rows have the aqua-tinted border and locked rows the dashed border, and segmented controls use a 3px-padded pill container with items of at least 32×28 at 11.5/650."
+    ],
+    "tests": [
+      "new: tests/sim/automation-autofeed-ui.test.ts",
+      "new: tests/e2e/automation.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.1",
+      "§17"
+    ]
+  },
+  {
+    "id": "AUTO-004",
+    "slice": "S3",
+    "source": "design §10.2 (states and wiring); master §9 S3-A (Auto-feed controls; meals/day controls); umbrella AUTO-001",
+    "description": "The Auto-feed row renders the four design §10.2 states (installed and on, with 'Meals a day' 1-4; installed and off or legacy setting 0, shown as paused with the amber keeper line; not installed, with 'Needs an Autofeeder' and a gold 'Buy · $35' or the lock hint; installed but useless, with the existing fit line) and binds the switch and the meals control to the Autofeeder's on and setting, adding no simulation.",
+    "acceptance": [
+      "automation-autofeed-ui.test.ts: the switch maps to on and tank-auto-feed-meals-<1-4> to setting, legacy setting 0 renders as off, and turning on a device whose setting is 0 sets it to 2.",
+      "{food} comes from pickAutofeedFood and {d} = ⌊servings ÷ (meals × recommendedServings per feeding)⌋ shows only when it is at least 1; the keeper clause is dropped when the tank has no keeper; while gear_autofeeder is locked the not-installed row shows the lock and the unlock hint ('Research Better Life Support, or build husbandry mastery with regular care.') instead of the Buy button.",
+      "automation.spec: tank-auto-feed toggles the Autofeeder, the meals control changes its setting, and tank-auto-feed-buy buys and installs an Autofeeder into this tank.",
+      "With no Auto Water Changer installed, Autofeeder and keeper behaviour is unchanged: fix-water-autofeeder, staff2-feeding and staff-sim pass unchanged."
+    ],
+    "tests": [
+      "new: tests/sim/automation-autofeed-ui.test.ts",
+      "new: tests/e2e/automation.spec.ts",
+      "tests/sim/fix-water-autofeeder.test.ts",
+      "tests/sim/staff2-feeding.test.ts",
+      "tests/sim/staff-sim.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.2"
+    ]
+  },
+  {
+    "id": "AUTO-005",
+    "slice": "S3",
+    "source": "design §10.2 (alerts), §12.2 (Animal care); master §9 S3-A (alerts); umbrella AUTO-001",
+    "description": "When Auto-feed is paused, or the Autofeeder is empty or failed, and any resident's hunger is at least 50, the Alerts drawer's Tanks section shows alert-autofeed-paused ('{Tank}' · 'Auto-feed is paused — feed {name} by hand.' with a 'Fix' link to #/tanks/:id/equipment), and the same condition produces an Animal care event.",
+    "acceptance": [
+      "A unit test raises the row at hunger 50 with Auto-feed paused, and not at hunger 49 or with Auto-feed on and stocked.",
+      "Fix navigates to #/tanks/<id>/equipment.",
+      "The row clears once the condition no longer holds (Auto-feed back on with food, or the residents fed)."
+    ],
+    "tests": [
+      "new: tests/sim/automation-autofeed-ui.test.ts",
+      "new: tests/e2e/automation.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.2",
+      "§12.2"
+    ]
+  },
+  {
+    "id": "AUTO-006",
+    "slice": "S3",
+    "source": "design §10.3 (definition, EquipmentKind, EQUIPMENT_KIND_LABEL, money), §10.4, §15, §22 risk 8; master §3.10; ADR-0001; master §9 S3-A (Auto Water Changer; finances/upkeep); umbrella AUTO-001",
+    "description": "A new equipment definition auto_water_changer (kind 'water_changer', tier 2, $120, upkeep $0.06/day, unlock gear_autofeeder so it shares the Autofeeder's unlock, ALL_ENV, 5-300 gal, defaultSetting 0.1, failureRate 0.002, visual 'ato_sensor', and the §10.3 description) is added, with 'water_changer' in EquipmentKind (// lane:automation) and EQUIPMENT_KIND_LABEL, and its upkeep flows through tankDailyCost while it is on, with no new ledger category.",
+    "acceptance": [
+      "npm run typecheck passes with EQUIPMENT_KIND_LABEL.water_changer, and the definition matches §10.3 field by field.",
+      "The device unlocks exactly when the Autofeeder does, through Better Life Support research or husbandry mastery 220.",
+      "tankDailyCost includes $0.06/day while it is on and not while it is off, Build › Equipment's 'Installed {n}' and 'Upkeep ${x} per day' include it, and no new finance category exists."
+    ],
+    "tests": [
+      "new: tests/sim/automation-water-changer.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3",
+      "§10.4",
+      "§15",
+      "§22"
+    ]
+  },
+  {
+    "id": "AUTO-007",
+    "slice": "S3",
+    "source": "design §10.3 (states table; buying from the tank card), §7.8 (Supplies row); master §9 S3-A (Auto-clean); umbrella AUTO-001",
+    "description": "Until the device is installed the Auto-clean row is dashed with 'Needs an Auto Water Changer', a gold 'Buy · $120' and a disabled switch (aria-disabled, 40% opacity); once installed it reads 'Runs your Auto Water Changer · 10% each morning · glass once a week · $0.06/day' with the switch bound to the device's on; buying from the tank card calls buyEquipment(state, tankId, 'auto_water_changer') and switches the device on.",
+    "acceptance": [
+      "automation.spec: tank-auto-clean-buy installs the device, enables tank-auto-clean and shows the celebrate toast 'Installed' · 'Auto Water Changer on {Tank}' · 'Auto-clean is on. Switch it off any time on the tank card.'",
+      "Without $120, the buy shows the toast 'Not enough money' · 'The Auto Water Changer costs $120.' and buys nothing.",
+      "water-autoclean-note ('Auto-clean is on' …) shows on the Water tab only while the device is on, and the Supplies and Build listings show 'Unlocks the Auto-clean switch on the tank card · upkeep $0.06/day'.",
+      "While gear_autofeeder is still locked (the device shares the Autofeeder's unlock), the Auto-clean row shows the same lock and unlock hint as the Auto-feed row instead of 'Buy · $120' (proposed, see note)."
+    ],
+    "tests": [
+      "new: tests/e2e/automation.spec.ts",
+      "new: tests/sim/automation-autoclean-ui.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3",
+      "§7.8"
+    ],
+    "note": "Needs owner or reviewer confirmation: DESIGN-0.5 doesn't define the Auto-clean row while gear_autofeeder is locked, and its not-installed row offers 'Buy · $120'; mirroring the Auto-feed lock hint is a proposal."
+  },
+  {
+    "id": "AUTO-008",
+    "slice": "S3",
+    "source": "design §10.3 (running without counting as the player), §15, §22 risk 13; master §9 S3-A (water-change core extraction); umbrella AUTO-001",
+    "description": "The state-changing core of waterChange and cleanTank(…, 'glass') moves into src/sim/water/change.ts as applyWaterChange(state, tank, fraction, opts) and scrapeGlass(tank) (or, if that proves less safe, the documented import-with-counter-guard alternative), so manual actions keep their signatures, messages, salt use, shock warning, bumpCounter calls and lastMaintenanceHour exactly, while the device calls the core with no counters, messages or toasts but still sets lastMaintenanceHour.",
+    "acceptance": [
+      "automation-water-changer.test.ts: manual waterChange and cleanTank still bump waterChanges and cleanings (refactor guard), and device runs bump neither and move no quest, mastery or achievement counter.",
+      "The existing water, care and staff tests pass unchanged: fix-water-* (including fix-water-grace-equipment), waterlab-care, waterlab-water, waterlab-compat, fix-staff-*, staff-sim and staff2-feeding.",
+      "If the alternative is chosen, an ADR records why extraction was the less safe option."
+    ],
+    "tests": [
+      "new: tests/sim/automation-water-changer.test.ts",
+      "tests/sim/fix-water-autofeeder.test.ts",
+      "tests/sim/fix-water-care-copy.test.ts",
+      "tests/sim/fix-water-detox.test.ts",
+      "tests/sim/fix-water-status.test.ts",
+      "tests/sim/fix-water-temperature.test.ts",
+      "tests/sim/fix-water-grace-equipment.test.ts",
+      "tests/sim/waterlab-care.test.ts",
+      "tests/sim/waterlab-water.test.ts",
+      "tests/sim/waterlab-compat.test.ts",
+      "tests/sim/fix-staff-scapes.test.ts",
+      "tests/sim/fix-staff-staff.test.ts",
+      "tests/sim/fix-staff-tankops.test.ts",
+      "tests/sim/staff-sim.test.ts",
+      "tests/sim/staff2-feeding.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3",
+      "§15",
+      "§22"
+    ]
+  },
+  {
+    "id": "AUTO-009",
+    "slice": "S3",
+    "source": "design §10.3 (when it runs, daily change, weekly scrape, determinism), §21 Phase 3 Done when (automation tests; water, staff, determinism and step-invariance tests stay green); master §9 S3-A (deterministic daily water changes; weekly glass cleaning; offline/catch-up correctness); umbrella AUTO-001",
+    "description": "runWaterChanger, called right after runAutofeeder in stepTankWaterImpl for a device that is on and not failed, finds each crossing of the tank's lights-on hour (tank.lighting?.onHour ?? 8) inside [ctx.hour, ctx.hour + dt), changes setting ?? 0.1 of the water with matched temperature when at least 20 game hours have passed since water.lab.lastAutoChangeHour, scrapes the glass when at least 168 have passed since water.lab.lastAutoScrapeHour, uses no RNG, is step-size invariant and runs during offline catch-up.",
+    "acceptance": [
+      "Over 14 game days a device that is on makes exactly one change per game day at lights-on and one scrape per 7 game days; off or failed it makes none, and a failed device raises the existing 'Equipment failed — Auto Water Changer. Repair or replace it.' alert.",
+      "equipmentSummary() fills waterChanger the way it fills autofeeder, and the sudden-change (shock) check still applies to device changes.",
+      "Two identical runs give an equal stateHash, and 4 h steps versus 0.25 h steps give the same number of changes and scrapes and water values equal within a stated tolerance (design §20.1 says ≈; see note).",
+      "simulateOffline across a lights-on hour performs the change without the device failing during the offline grace (fix-water-grace-equipment stays green), and core-determinism and fix-core-step-invariance stay green."
+    ],
+    "tests": [
+      "new: tests/sim/automation-water-changer.test.ts",
+      "tests/sim/core-determinism.test.ts",
+      "tests/sim/fix-core-step-invariance.test.ts",
+      "tests/sim/fix-water-grace-equipment.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3",
+      "§21"
+    ],
+    "note": "Needs owner or reviewer confirmation: the tolerance for \"water values equal\" between 4 h and 0.25 h steps is not set by the design (§20.1 writes ≈); a reviewer should fix it in the S3 contract."
+  },
+  {
+    "id": "AUTO-010",
+    "slice": "S3",
+    "source": "design §10.3 (salt tanks; out-of-salt state); master §9 S3-A (marine/brackish salt consumption); umbrella AUTO-001",
+    "description": "For marine and brackish tanks the device checks waterChangeCost(state, tankId, fraction).enoughSalt first: with enough salt it uses salt exactly as a manual change of the same fraction, and without it skips the change and raises '{Tank}: the Auto Water Changer is out of salt. Buy marine salt to keep it running.' at most once per 24 game hours through warnKey(lab, key, at, 24).",
+    "acceptance": [
+      "A device change on a marine tank lowers the salt stock by the same amount as a manual change of the same fraction.",
+      "With too little salt no change happens, and the notice appears once per 24 game hours rather than every step.",
+      "Freshwater tanks use no salt."
+    ],
+    "tests": [
+      "new: tests/sim/automation-water-changer.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3"
+    ]
+  },
+  {
+    "id": "AUTO-011",
+    "slice": "S3",
+    "source": "design §10.3 (staff interplay), §20.4; master §9 S3-A (staff interaction); umbrella AUTO-001",
+    "description": "keeperWaterCare skips its routine water change and glass scrape on tanks whose Auto Water Changer ran in the last 30 game hours, still performs urgent ammonia/nitrite changes and gravel vacuuming, and behaves exactly as in v0.4.0 on tanks without the device.",
+    "acceptance": [
+      "A keeper skips the routine change on a tank whose device ran within the last 30 game hours and performs it once more than 30 have passed (proposed probes at 29 h and 31 h, see note).",
+      "With ammonia or nitrite at urgent levels, the keeper changes water even if the device ran recently.",
+      "staff-sim, staff2-feeding and fix-water-autofeeder pass unchanged."
+    ],
+    "tests": [
+      "new: tests/sim/automation-water-changer.test.ts",
+      "tests/sim/staff-sim.test.ts",
+      "tests/sim/staff2-feeding.test.ts",
+      "tests/sim/fix-water-autofeeder.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3",
+      "§20.4"
+    ],
+    "note": "Needs owner or reviewer confirmation: the 29 h / 31 h probe points around the design's 30-game-hour rule are a proposal, and whether exactly 30 h counts as \"in the last 30 game hours\" is not stated."
+  },
+  {
+    "id": "AUTO-012",
+    "slice": "S3",
+    "source": "master §9 S3-D Tier 2 (central life-support logistics); ADR-0002 decision 4; umbrella AUTO-002",
+    "description": "Central life-support logistics: conditioned-water reserves with a capacity, freshwater and saltwater preparation, salt consumption, automated top-off and water-change scheduling that draw on the reserves, a central automation dashboard, and storage and shortage indicators.",
+    "acceptance": [
+      "Automated top-off and water changes draw prepared water from a reserve of finite capacity, and preparing salt water consumes tracked salt.",
+      "An empty reserve skips the scheduled job and shows a shortage indicator until it is refilled.",
+      "The dashboard shows each reserve's level, capacity and shortage state with the names, copy and test ids that DESIGN-S3D approves.",
+      "Whether and how the S3-A Auto Water Changer draws on the reserves is as the approved DESIGN-S3D specifies; until then AUTO-010's rule (salt used exactly as in a manual change) stands."
+    ],
+    "tests": [
+      "new: tests/sim/automation-reserves.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "BLOCKED",
+    "blockedBy": "DESIGN-S3D",
+    "designSections": [
+      "§10.3"
+    ]
+  },
+  {
+    "id": "AUTO-013",
+    "slice": "S3",
+    "source": "master §9 S3-D Tier 3 (feed production); ADR-0002 decision 4; umbrella AUTO-002",
+    "description": "At least one deterministic, facility-scale feed-production chain suited to species needs (for example live-feed culture, prepared feed batches or hatch/culture cycles) with storage capacity, consumption rates and shortage behaviour, using resource names reconciled with the current inventory and food data.",
+    "acceptance": [
+      "Before implementation, a reconnaissance note maps the chain's inputs and outputs to existing food ids and inventory fields, so no resource is invented where an existing one fits.",
+      "A culture or batch cycle turns tracked inputs into tracked feed on a game-time schedule, capped by storage capacity.",
+      "Autofeeders or keepers consume the produced feed at defined rates, and running out shows a shortage instead of silently skipping.",
+      "Copy, test ids and player-facing resource names come from the approved DESIGN-S3D."
+    ],
+    "tests": [
+      "new: tests/sim/automation-feed-production.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "BLOCKED",
+    "blockedBy": "DESIGN-S3D",
+    "designSections": []
+  },
+  {
+    "id": "AUTO-014",
+    "slice": "S3",
+    "source": "master §9 S3-D Tier 4 (breeding facility); ADR-0002 decision 4; umbrella AUTO-002",
+    "description": "The breeding-facility tier is the S3-C production lines integrated into the facility layer: multiple lines, nursery/grow-out routing, trait-based sorting, quarantine scheduling, protected keepers, automatic listing and capacity-aware pausing, each reported to the operations control.",
+    "acceptance": [
+      "Each Tier 4 item maps to a GREEN PROD requirement: multiple lines PROD-002, routing PROD-006, sorting PROD-013, quarantine PROD-007, keepers PROD-008 and PROD-011, listing PROD-012, pausing PROD-010.",
+      "Every line's status, per-line throughput and bottlenecks appear in the Tier 5 operations overview through the surfaces DESIGN-S3D approves."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "BLOCKED",
+    "blockedBy": "DESIGN-S3D",
+    "designSections": [
+      "§11.1",
+      "§11.3"
+    ]
+  },
+  {
+    "id": "AUTO-015",
+    "slice": "S3",
+    "source": "master §9 S3-D Tier 5 (operations control); ADR-0002 decision 4; umbrella AUTO-002",
+    "description": "A facility automation overview shows the status of every automated subsystem, bottleneck and shortage reports, per-line throughput, scheduling, pause/resume, an emergency/manual override and weekly economics.",
+    "acceptance": [
+      "The overview lists every automated subsystem (Autofeeders, Auto Water Changers, reserves, feed chains, production lines) with its current status.",
+      "Pause/resume and the emergency override stop the targeted subsystem from the next simulation step, and manual care actions stay available while it is stopped.",
+      "Weekly economics sum automation costs and revenue from tracked ledger entries and match the finance ledger for the same week.",
+      "Copy and test ids come from the approved DESIGN-S3D."
+    ],
+    "tests": [
+      "new: tests/sim/automation-operations.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "BLOCKED",
+    "blockedBy": "DESIGN-S3D",
+    "designSections": []
+  },
+  {
+    "id": "AUTO-016",
+    "slice": "S3",
+    "source": "master §9 S3-D automation simulation rules (deterministic; game time, not render frames; variable step sizes; bounded offline catch-up; testable as pure simulation logic); master §5; umbrella AUTO-002",
+    "description": "Every automation subsystem (the S3-A devices, the S3-C production lines and the S3-D chains) is pure, deterministic simulation logic in src/sim, driven by game time rather than render frames or the wall clock, giving the same outcome for any partition of a game-time span into steps and running inside bounded offline catch-up wherever it would run live.",
+    "acceptance": [
+      "A seeded property test splits the same game-time span into random step sizes and gets the same automation outcomes and stateHash for each subsystem.",
+      "No automation code under src/sim uses Math.random, Date.now, performance.now or requestAnimationFrame (core-determinism-guard passes with its allow-list unchanged), and any randomness comes from ctx.rng or a subsystem's own persisted stream.",
+      "simulateOffline over a span gives the same automation results as live stepping over the same span.",
+      "Automation unit tests import only from src/sim, src/data and src/types (no React or DOM)."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)",
+      "tests/sim/core-determinism.test.ts",
+      "tests/sim/fix-core-step-invariance.test.ts",
+      "tests/sim/core-determinism-guard.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3",
+      "§11.3"
+    ]
+  },
+  {
+    "id": "AUTO-017",
+    "slice": "S3",
+    "source": "master §9 S3-D automation simulation rules (consume real tracked resources; never create money, animals, feed or supplies from nothing; surface shortages instead of silently skipping forever); umbrella AUTO-002",
+    "description": "Automation only consumes and produces tracked resources, so money, animals, feed, salt and supplies change only through recorded consumption, production, purchases, sales, births and deaths, and no job is skipped silently for lack of a resource.",
+    "acceptance": [
+      "Over a long seeded run with every automation enabled, the change in money equals the sum of ledger entries, and food, salt and supply stocks equal their recorded inflows minus outflows.",
+      "The creature count changes only through recorded births, deaths, purchases and sales.",
+      "Each skip path records the shortage and emits a throttled notice the way design §10.3's out-of-salt notice does; any further surfacing (Alerts drawer rows, dashboard indicators) is as the approved DESIGN-S3D specifies."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3"
+    ]
+  },
+  {
+    "id": "AUTO-018",
+    "slice": "S3",
+    "source": "master §9 S3-D automation simulation rules (idempotent across retries/load boundaries; persist last-run markers where required); umbrella AUTO-002",
+    "description": "Every scheduled automation action records a persisted last-run marker in the save (such as water.lab.lastAutoChangeHour), so re-running a step over a game-time window that already ran, after a retry, a repair or a load, does nothing more.",
+    "acceptance": [
+      "Running the automation step for a window and then again for the same window leaves the state unchanged on the second run.",
+      "Every marker is an optional, lane-tagged save field that repairState validates when present.",
+      "A save without a marker (an older save) triggers at most one catch-up action per job, never a burst."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)",
+      "new: tests/sim/persistence-05.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3",
+      "§15"
+    ]
+  },
+  {
+    "id": "AUTO-019",
+    "slice": "S3",
+    "source": "master §9 S3-D automation simulation rules (respect tank capacity and compatibility; preserve protected/Prismatic animals); umbrella AUTO-002",
+    "description": "No automation moves an animal into a tank the player's own move action would refuse, and none sells, lists or moves out of protection a Prismatic animal or a protected keeper.",
+    "acceptance": [
+      "A property test over all automation finds no automated move into a tank that fails the environment gate or the stocking limit; production lines move animals only into the tanks validated at setup (design §11.1), and any further compatibility cut-off for automated moves is as the approved DESIGN-S3D specifies.",
+      "The same test finds no automated listing, sale or move that takes a Prismatic animal or an animal in a keep tank out of protection."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)",
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.1",
+      "§11.3"
+    ],
+    "note": "Needs owner or reviewer confirmation: master §9 S3-D says \"preserve protected/Prismatic animals\" without defining \"protected\"; whether the existing creature.favorite flag counts is UNKNOWN and needs an owner decision in the S3 contract."
+  },
+  {
+    "id": "AUTO-020",
+    "slice": "S3",
+    "source": "master §9 S3-D anti-dupe invariants (one creature cannot occupy two automation stages at once); umbrella AUTO-002",
+    "description": "At every step each creature belongs to at most one automation stage across all production lines and automation jobs, so it can't be one line's parent and another line's juvenile, or be in quarantine and kept at once.",
+    "acceptance": [
+      "A property test over seeded multi-line runs checks after every step that no creature id appears in two stages.",
+      "Starting a line whose pair would put a creature into a second stage (for example a parent already used by another line) is refused."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3"
+    ],
+    "note": "Needs owner or reviewer confirmation: the design gives no copy for refusing such a line; the wording comes from DESIGN-S3C-LINES or the S3 contract."
+  },
+  {
+    "id": "AUTO-021",
+    "slice": "S3",
+    "source": "master §9 S3-D anti-dupe invariants (one creature cannot be sold/listed twice); umbrella AUTO-002",
+    "description": "A creature is in at most one active listing at a time and is sold at most once, whether the player or automation listed it.",
+    "acceptance": [
+      "A property test finds, after every step, no creature id in two active listings and no sold creature in a later listing.",
+      "A line never lists a creature the player has already listed."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "AUTO-022",
+    "slice": "S3",
+    "source": "master §9 S3-D anti-dupe invariants (one resource unit cannot be consumed twice); umbrella AUTO-002",
+    "description": "Each unit of food, salt, prepared water or other supply is consumed by at most one action, so two jobs due in the same step can't both spend the same stock.",
+    "acceptance": [
+      "With stock for exactly one job and two jobs due in the same step, exactly one runs and the other reports a shortage.",
+      "No stock goes negative in any seeded run."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "AUTO-023",
+    "slice": "S3",
+    "source": "master §9 S3-D anti-dupe invariants (one scheduled maintenance crossing cannot execute twice); design §10.3 (the 20 h and 168 h guards); umbrella AUTO-002",
+    "description": "Each scheduled maintenance crossing, such as a lights-on water change or a weekly scrape, executes at most once, even when a step boundary falls exactly on the crossing hour or the same window is stepped again.",
+    "acceptance": [
+      "A step ending exactly at the lights-on hour followed by a step starting there performs one change, not two.",
+      "Re-stepping the same window after the change ran performs no second change (the 20 h and 168 h guards hold)."
+    ],
+    "tests": [
+      "new: tests/sim/automation-water-changer.test.ts",
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§10.3"
+    ]
+  },
+  {
+    "id": "AUTO-024",
+    "slice": "S3",
+    "source": "master §9 S3-D anti-dupe invariants (one clutch cannot be routed twice); umbrella AUTO-002",
+    "description": "Each clutch is moved to a raise tank at most once, by at most one line.",
+    "acceptance": [
+      "A property test finds no clutch id that is the subject of two Move to nursery actions.",
+      "Two lines that share a tank never both route the same clutch."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts",
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3"
+    ]
+  },
+  {
+    "id": "AUTO-025",
+    "slice": "S3",
+    "source": "master §9 S3-D anti-dupe invariants (one listing cannot be generated twice from the same automation event); umbrella AUTO-002",
+    "description": "Each automation event that creates a listing, such as a juvenile finishing quarantine, creates exactly one listing even if the step is retried or the event is seen again.",
+    "acceptance": [
+      "Re-running the step that ended a quarantine creates no second listing for the same juvenile.",
+      "In seeded runs, the number of automation listings equals the number of distinct quarantine completions with autoList on (Prismatic and kept animals excluded)."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3"
+    ]
+  },
+  {
+    "id": "AUTO-026",
+    "slice": "S3",
+    "source": "master §9 S3-D anti-dupe invariants (save/load does not repeat a completed job); master §9 S3-D automation simulation rules (never double-run an action after save/load); master §9 S3-C (restart-safe pipeline); umbrella AUTO-002",
+    "description": "Saving and loading at any point (mid-pipeline, just after a water change, just after a listing) never repeats a completed automation job or skips a due one.",
+    "acceptance": [
+      "For each job type, a run that saves and loads right after the job completes ends with the same stateHash as an uninterrupted run.",
+      "A production line saved mid-quarantine resumes after loading with the same time left."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)",
+      "new: tests/sim/persistence-05.test.ts",
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "AUTO-027",
+    "slice": "S3",
+    "source": "master §9 S3-D anti-dupe invariants (repair/recovery cannot duplicate a line's output); design §15 (repairState for production); umbrella AUTO-002",
+    "description": "Running repairState or recovering from a backup save never duplicates a line's output: no juvenile, nursery move, listing or statistic is created or counted twice.",
+    "acceptance": [
+      "repairState applied to a save with a broken line creates no creature or listing and no stats increment.",
+      "Recovering from the backup slot and continuing gives the same line outputs as continuing from the main save, with no duplicate creature, listing or stat count."
+    ],
+    "tests": [
+      "new: tests/sim/persistence-05.test.ts",
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§15"
+    ]
+  },
+  {
+    "id": "AUTO-028",
+    "slice": "S3",
+    "source": "master §9 S3-D (extended automation scope control); master §45; ADR-0001 (option C); ADR-0002 decision 4; umbrella AUTO-002",
+    "description": "S3 may simplify an individual proposed machine but may not reduce extended automation to Auto-feed and Auto-clean, and any substantial reduction of S3-D is recorded in an ADR with the architectural blocker, independent reviewer agreement and, when the owner-visible experience changes, owner approval.",
+    "acceptance": [
+      "requirements-audit.mjs refuses S3 acceptance while any of AUTO-012 to AUTO-015 is open, unless an owner-approved ADR closes it (SUPERSEDED with that decision).",
+      "Every simplification of a Tier 2-5 item has an ADR that names the blocker and records the reviewer's agreement, and an owner-visible reduction stops at OWNER_GATE with reason SCOPE_REDUCTION:<requirement id>."
+    ],
+    "tests": [
+      "scripts/agent/requirements-audit.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "AUTO-029",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: automation invariants); master §10 (automation invariants green)",
+    "description": "On the final S4 tree every automation invariant (AUTO-016 to AUTO-027 and the PROD determinism and tolerance requirements) is re-run and GREEN.",
+    "acceptance": [
+      "automation-invariants, automation-water-changer and production-line tests pass on the S4 tree.",
+      "The S4 report lists each invariant with its test and result."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)",
+      "new: tests/sim/automation-water-changer.test.ts",
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "NOTIFY-002",
+    "slice": "S3",
+    "source": "design §12.2 (preferences; quiet hours), §12.3 item 3; master §3.10; ADR-0001; master §9 S3-B (device-local notification preferences; fixed 10 PM–8 AM quiet hours); umbrella NOTIFY-001",
+    "description": "Notification preferences live only on the device, in localStorage 'aquarium-go.notify.v1' as {categories: Record<Category, boolean>, quiet: {on, start: 22, end: 8}} with Rare stock, Animal care, Market and Breeding on and Shows off by default, and quiet hours are fixed at 10:00 PM – 8:00 AM on the device clock with only an on/off switch (notify-quiet, on by default) and hold every notification except danger-level Animal care.",
+    "acceptance": [
+      "Toggling a category or quiet hours writes the key and survives a reload, a missing or malformed value falls back to the defaults, and nothing about notifications enters the save or its stateHash.",
+      "notify-rules.test.ts: with quiet hours on, a Market event at 22:00 and at 07:59 is not shown, one at 08:00 is (proposed boundaries, see note), and a danger-level Animal care event at 23:00 is shown.",
+      "With quiet hours off, the same 23:00 Market event is shown.",
+      "The Quiet hours row reads '10:00 PM – 8:00 AM' / 'Urgent animal care still comes through' and offers no control to edit the hours."
+    ],
+    "tests": [
+      "new: tests/sim/notify-rules.test.ts",
+      "new: tests/e2e/notifications.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.2",
+      "§12.3"
+    ],
+    "note": "Needs owner or reviewer confirmation: treating 22:00 as inside and 08:00 as outside quiet hours is a proposal (the design gives start 22 and end 8 only), and the design does not say whether held notifications are dropped or delivered when quiet hours end."
+  },
+  {
+    "id": "NOTIFY-003",
+    "slice": "S3",
+    "source": "design §12.2 (categories table; rules), §21 Phase 3 Done when (notify-rules, notify-offer-events, notifications.spec); master §9 S3-B (categories); umbrella NOTIFY-001",
+    "description": "Pure rules in src/ui/notify/rules.ts map GameEvents to {category, title, body, route, priority} per the design §12.2 table (Rare stock, Animal care, Market, Breeding and Shows results) with its exact title and body templates and routes, unmapped events never notify, and a switched-off category suppresses its events.",
+    "acceptance": [
+      "notify-rules.test.ts asserts title, body and route per category, for example 'Prismatic {species} in the shop' to #/shop/fish/{offerId}, Auto-feed paused to #/tanks/{id}/equipment, illness to #/livestock/animal/{id}, a bid to #/market/listings/{id}, a hatch to #/livestock/eggs and a show result to #/shows/results.",
+      "An unmapped event returns no notification, and a category set to off produces none.",
+      "Danger-level Animal care events carry the priority that quiet hours let through."
+    ],
+    "tests": [
+      "new: tests/sim/notify-rules.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.2",
+      "§21"
+    ]
+  },
+  {
+    "id": "NOTIFY-004",
+    "slice": "S3",
+    "source": "design §12.2 (event links need an offer id), §7.7, §15; umbrella NOTIFY-001",
+    "description": "GameEvent gains an optional offerId (// lane:notify) that announcePrismatic, stockNewUnlocks and maybeSpecial set, so the rule routes those events to #/shop/fish/{offerId} (rare-stock events without one go to #/shop), and the Alerts drawer's link for a Prismatic stocking reads 'Open the shop'.",
+    "acceptance": [
+      "notify-offer-events.test.ts: announcePrismatic and the special and new-unlock stock events set offerId, and the rule maps it to #/shop/fish/{offerId}, or to #/shop when absent.",
+      "The Alerts drawer entry for a Prismatic stocking links 'Open the shop' to #/shop/fish/<offerId>."
+    ],
+    "tests": [
+      "new: tests/sim/notify-offer-events.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.2",
+      "§7.7",
+      "§15"
+    ]
+  },
+  {
+    "id": "NOTIFY-005",
+    "slice": "S3",
+    "source": "design §12.2 (rate limits; tag); master §9 S3-B (rate limiting); umbrella NOTIFY-001",
+    "description": "System notifications are limited to one per category per 30 real minutes, with later ones folded into '… and {n} more' on the next one, and to six per real hour overall, and every notification of a category carries the same tag so the OS replaces rather than stacks them.",
+    "acceptance": [
+      "notify-rules.test.ts with a fake clock: a second same-category event within 30 minutes is not shown, and the next one shown ends with 'and {n} more' counting the folded events.",
+      "The seventh notification within one real hour is not shown.",
+      "Every shown notification has tag equal to its category, and the limits run on real time, not game time."
+    ],
+    "tests": [
+      "new: tests/sim/notify-rules.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.2"
+    ]
+  },
+  {
+    "id": "NOTIFY-006",
+    "slice": "S3",
+    "source": "design §12.1 (web vs app copy), §12.3, §12.5, §20.3 (tests that count Settings tabs); ADR-0003 (supersession register: the §12.3 iOS copy is an open owner question; native parts deferred); master §44; master §9 S3-B; umbrella NOTIFY-001",
+    "description": "Settings gains the Notifications tab (General · Play & access · Saves · Notifications · About; #/settings/notifications; settings-tab-notifications) with the notify-status callout in web wording (the Unsupported state's copy as the owner decides), the 'This browser' row whose notify-test sends the §12.5 test notification, the five notify-cat-<id> category rows with their exact subtitles, disabled unless permission is granted, and the Quiet hours row.",
+    "acceptance": [
+      "notifications.spec: with notifications granted and window.Notification stubbed, notify-turn-on leads to the granted callout, and notify-test records exactly one notification titled 'Test notification' after about 1.5 s, even with the page focused; when not granted, notify-test shows the toast 'Turn notifications on first'.",
+      "notify-status shows the §12.3 web callout for default, granted and denied, and for unsupported the copy the owner decides (recorded in an ADR); no 'app' variant ships, so no callout promises alerts while the game is closed (native wrapping is deferred, NOTIFY-011).",
+      "The notify-cat-<rare|care|market|breeding|shows> switches are aria-disabled, focusable and explained until permission is granted, and their subtitles match §12.2.",
+      "#/settings/notifications opens the tab (scrolled into view on phones), tests that count Settings tabs expect five, and save.spec stays green."
+    ],
+    "tests": [
+      "new: tests/e2e/notifications.spec.ts",
+      "tests/e2e/save.spec.ts",
+      "tests/e2e/boot.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.1",
+      "§12.3",
+      "§12.5",
+      "§20.3"
+    ],
+    "note": "Needs owner or reviewer confirmation: the Unsupported callout copy (design §12.3's iOS 'add Aquarium Go to your Home Screen' sentence; §22 risk 5) is an open owner question (ADR-0003, master §44); the app has no manifest today."
+  },
+  {
+    "id": "NOTIFY-007",
+    "slice": "S3",
+    "source": "design §12.4; master §9 S3-B (permission flow); umbrella NOTIFY-001",
+    "description": "The game never asks for notification permission on launch: 'Turn on' in Settings › Notifications and in the Alerts drawer footer (alerts-notify-cta, shown only while permission is 'default') calls platform().notifications.request() from the click handler, a grant shows the info toast 'Notifications on' and applies the category defaults, a denial shows the Denied callout, and a dismissed prompt leaves 'Not asked'.",
+    "acceptance": [
+      "No permission request happens during boot or play until a Turn on click (a spy on Notification.requestPermission stays at zero calls).",
+      "alerts-notify-cta shows only for permission default and opens #/settings/notifications.",
+      "A grant shows the 'Notifications on' info toast (copy exactly as design §16 specifies) and the granted callout; a denial shows 'Blocked in your browser'; a dismissal leaves 'Notifications are off'."
+    ],
+    "tests": [
+      "new: tests/e2e/notifications.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.4"
+    ]
+  },
+  {
+    "id": "NOTIFY-008",
+    "slice": "S3",
+    "source": "design §12.1, §12.6 (event source, when to show, content), §2 D13; master §44; master §9 S3-B (web notification delivery); umbrella NOTIFY-001",
+    "description": "The notify module subscribes to new state.log entries (the stream Toasts uses), runs the rules, and shows a system notification only when permission is granted, the category is on, quiet hours don't hold it and document.visibilityState === 'visible' && !document.hasFocus(), each carrying the title, body, a 192px PNG app icon rendered from public/favicon.svg, tag = category and data.route, while toasts, emitEvent and the Alerts drawer stay the primary channel.",
+    "acceptance": [
+      "With the page focused, an eligible event shows the in-game toast and no system notification.",
+      "Visible but unfocused, with permission granted and the category on, exactly one notification is shown with icon, tag and data.route set.",
+      "With the tab hidden nothing is shown, and no push subscription or push server is used anywhere.",
+      "A 192px PNG app icon exists under public/ and is the notification icon."
+    ],
+    "tests": [
+      "new: tests/sim/notify-rules.test.ts",
+      "new: tests/sim/notify-deliver.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.1",
+      "§12.6"
+    ]
+  },
+  {
+    "id": "NOTIFY-009",
+    "slice": "S3",
+    "source": "design §12.6 (service worker; on click), §15 (public/sw.js), §22 risk 3, §6.4; master §9 S3-B (service worker click routing; deep-link return); master §24; umbrella NOTIFY-001",
+    "description": "A minimal hand-written public/sw.js (no build plugin, no dependency), registered at import.meta.env.BASE_URL + 'sw.js' with scope BASE_URL, handles only notificationclick by focusing an existing game window and posting {route} or opening BASE_URL + '#' + route, after which the game calls go(route, {fromNotification: true}), and a newly opened window goes through the §6.4 link boot before the route.",
+    "acceptance": [
+      "sw.js registers only a notificationclick listener (no fetch, cache or push handlers), and its registration scope equals BASE_URL (/aquarium-go/ in the GitHub Pages build).",
+      "A unit test of sw.js with a fake clients API focuses and messages an open window, and opens BASE_URL#route when no window exists.",
+      "notifications.spec: opening a notification for an offer shows the offer with offer-from-notification visible, and a fresh window shows boot-deeplink before the offer.",
+      "The security/data review of the service-worker change is GREEN."
+    ],
+    "tests": [
+      "new: tests/sim/platform-sw.test.ts (proposed)",
+      "new: tests/e2e/notifications.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.6",
+      "§15",
+      "§22",
+      "§6.4"
+    ]
+  },
+  {
+    "id": "NOTIFY-010",
+    "slice": "S3",
+    "source": "master §9 S3-B (notification evidence/testing); master §28; design §12.8; umbrella NOTIFY-001",
+    "description": "S3 records objective notification evidence: the notify unit tests and notifications.spec with command, exit code and counts, plus browser screenshots of the Settings › Notifications tab in its default, granted, denied and unsupported states, the Alerts drawer footer, a system notification while unfocused, and an offer opened from a notification.",
+    "acceptance": [
+      "evidence/S3/manifest.json lists notify-rules, notify-offer-events and notifications.spec runs with exit code 0 and pass counts.",
+      "Screenshots of each listed state at 1440×900 and 390×844 are recorded with path and SHA-256.",
+      "The browser/QA reviewer's verdict on these states is recorded in evidence/S3/reviews/."
+    ],
+    "tests": [
+      "new: tests/sim/notify-rules.test.ts",
+      "new: tests/sim/notify-offer-events.test.ts",
+      "new: tests/e2e/notifications.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§12.8"
+    ]
+  },
+  {
+    "id": "NOTIFY-011",
+    "slice": "S3",
+    "source": "design §12.7, §21 Phase 6, §20.1 (notify-forecast.test.ts), §2 D13, §12.3 ('app' variants); ADR-0001 (native wrapping deferred); ADR-0003 (supersession register: D13 native part, §12.7, Phase 6 and notify-forecast.test.ts DEFERRED); master §3.10; master §9 S3-B (closed/native notifications deferred); umbrella NOTIFY-001",
+    "description": "Predicted notifications while the game is closed (forecasting the catch-up on a structuredClone of the game at app pause, scheduling at most 3 local notifications at +15 min and a +2 h digest shifted out of quiet hours, cancelling them on resume), and the §12.3 'app' copy variants that promise them, need the native wrapper and are deferred.",
+    "acceptance": [
+      "No forecast or scheduling code, and no 'app' copy variant, ships in this program.",
+      "When un-deferred: notify-forecast.test.ts shows the forecast on a cloned state produces the same events as simulateOffline from the same state and leaves the original untouched, and a device test shows scheduled alerts that match the catch-up."
+    ],
+    "tests": [
+      "new: tests/sim/notify-forecast.test.ts (deferred with design Phase 6)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "DEFERRED",
+    "decision": "ADR-0001",
+    "designSections": [
+      "§12.7",
+      "§21",
+      "§20.1"
+    ]
+  },
+  {
+    "id": "PROD-002",
+    "slice": "S3",
+    "source": "design §11.2, §15, §21 Phase 5 Done when (production-line.test.ts and persistence-05 pass); master §3.10; ADR-0001; master §9 S3-C (multiple production lines per species); umbrella PROD-001",
+    "description": "GameState gains the optional production?: ProductionState {lines: ProductionLine[]} (// lane:production; absent means no lines) with the design §11.2 ProductionLine shape (id, speciesId, pair, tanks {breed, raise, quarantine, keep}, running, rules {pauseWhenFull, keepPrismatic, autoList, keep[]}, stats?), and several lines may share a speciesId while staying independent.",
+    "acceptance": [
+      "production-line.test.ts: two betta lines with different pairs and tanks progress independently over the same game days.",
+      "A fresh game has no production field and the same stateHash as before the change, and SCHEMA_VERSION is unchanged.",
+      "The new types are optional additions in src/types/game.ts tagged // lane:production."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts",
+      "new: tests/sim/persistence-05.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.2",
+      "§15",
+      "§21"
+    ]
+  },
+  {
+    "id": "PROD-003",
+    "slice": "S3",
+    "source": "design §11.1, §6.2 (#/livestock/production), §19 (Production); ADR-0003 (supersession register: several lines per species, the UI needs a design ADR before S3-C UI work); master §3.10; master §9 S3-C; umbrella PROD-001",
+    "description": "Livestock gains a fourth tab, 'Production', after Past residents (livestock-tab-production, #/livestock/production, target tab:production) that shows every line, its stages, tiles, status and rules, the empty state and the set-up flow as the approved DESIGN-S3C-LINES specifies, starting from design §11.1 for a single line.",
+    "acceptance": [
+      "#/livestock/production opens the tab on desktop and phone, and the route round-trips.",
+      "Each line, including two or more lines of one species, renders with the header, tiles, stage cards, status badge and rule switches in the layout and copy DESIGN-S3C-LINES approves, with the stage and tile values (Quarantine count and days left, the Sort keep-rule chips, the Sell reserve line, Running or Paused shown with an icon and a word, the This week figure) taken from the line's live state.",
+      "The set-up flow offers only compatible adult pairs, validates tanks with the existing compatibility and stocking checks, collects the keep tank where DESIGN-S3C-LINES places that step, and Start line creates a running line.",
+      "The empty state and its Set up a line action, and how further lines are added once some exist, follow DESIGN-S3C-LINES."
+    ],
+    "tests": [
+      "new: tests/e2e/production.spec.ts (proposed)",
+      "new: tests/sim/production-ui.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "BLOCKED",
+    "blockedBy": "DESIGN-S3C-LINES",
+    "designSections": [
+      "§11.1",
+      "§6.2",
+      "§19"
+    ]
+  },
+  {
+    "id": "PROD-004",
+    "slice": "S3",
+    "source": "master §9 S3-C (breeding pair); design §11.2 (pair), §11.3 (Breed); umbrella PROD-001",
+    "description": "Each line names one breeding pair (pair.motherId, pair.fatherId), a compatible adult female and male of the line's species when the line starts, and processes only the clutches that pair lays.",
+    "acceptance": [
+      "Starting a line with a non-adult, a same-sex pair or a pair of another species is refused.",
+      "A clutch laid by another pair in the same tank is never moved, sorted or listed by the line."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.2",
+      "§11.3"
+    ]
+  },
+  {
+    "id": "PROD-005",
+    "slice": "S3",
+    "source": "master §9 S3-C (breed tank); design §11.2 (tanks.breed), §11.3 (Breed); umbrella PROD-001",
+    "description": "tanks.breed is the tank where the pair lives and spawns through the existing breeding simulation, and the line adds no new biology and never creates eggs itself.",
+    "acceptance": [
+      "With the pair in the breed tank and breeding conditions met, clutches come only from the existing breeding simulation (no production code path creates a clutch).",
+      "Breeding of a pair that belongs to no line is unchanged, and lifecycle-genetics stays green."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts",
+      "tests/sim/lifecycle-genetics.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.2",
+      "§11.3"
+    ]
+  },
+  {
+    "id": "PROD-006",
+    "slice": "S3",
+    "source": "master §9 S3-C (raise/grow-out tank); design §11.3 (Raise); umbrella PROD-001",
+    "description": "When a clutch from the pair reaches 'Free-swimming fry', the line runs the existing 'Move to nursery' action into tanks.raise, exactly once per clutch.",
+    "acceptance": [
+      "production-line.test.ts: fry move to the raise tank at the free-swimming stage and not before.",
+      "The move goes through the same code path and validation as the player's Move to nursery action.",
+      "If the move is refused (for example the raise tank is full), the fry stay where they are and the line records a notice naming the blocked stage."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3"
+    ],
+    "note": "Needs owner or reviewer confirmation: design §11.3 does not say what happens when the raise tank is full and pauseWhenFull is off, and gives no copy for the notice; keeping the fry in place with a notice is a proposal for the S3 contract or DESIGN-S3C-LINES."
+  },
+  {
+    "id": "PROD-007",
+    "slice": "S3",
+    "source": "master §9 S3-C (quarantine tank); design §11.3 (Quarantine), §11.1 (stage 4); umbrella PROD-001",
+    "description": "Juveniles not kept at the Sort stage move to tanks.quarantine and are held there for 7 game days before the Sell stage.",
+    "acceptance": [
+      "A juvenile entering quarantine becomes eligible for the Sell stage after exactly 168 game hours, whatever the step size.",
+      "Before its hold ends a quarantined juvenile is never listed or moved by the line, even with autoList on."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3",
+      "§11.1"
+    ]
+  },
+  {
+    "id": "PROD-008",
+    "slice": "S3",
+    "source": "master §9 S3-C (safe/keeper tank); design §11.2 (tanks.keep), §11.3 (Sort), §11.1 (rule subline); umbrella PROD-001",
+    "description": "tanks.keep is the line's safe tank: with keepPrismatic on, every Prismatic youngster moves there instead of to quarantine, and the line never moves an animal out of it to quarantine or a listing.",
+    "acceptance": [
+      "With keepPrismatic on, a Prismatic juvenile moves to the keep tank at the Sort stage.",
+      "No animal in the keep tank is ever moved to quarantine or listed by the line."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.2",
+      "§11.3",
+      "§11.1"
+    ],
+    "note": "Needs owner or reviewer confirmation: design §11.3 says the Sort stage \"keeps\" juveniles matching the trait rules without saying where they go (only Prismatic ones are sent to the keep tank); the destination needs an owner decision in the S3 contract."
+  },
+  {
+    "id": "PROD-009",
+    "slice": "S3",
+    "source": "master §9 S3-C (running/paused state); design §11.1 (header switch and status badge); umbrella PROD-001",
+    "description": "line.running is set by the production-toggle switch ('{Species} line running'); a paused line moves, sorts and lists nothing, and resuming continues the pipeline from where it stopped.",
+    "acceptance": [
+      "Over several game days a paused line performs no move, sort or listing.",
+      "Resuming continues the pipeline without repeating or skipping a stage."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.1"
+    ]
+  },
+  {
+    "id": "PROD-010",
+    "slice": "S3",
+    "source": "master §9 S3-C (pause-when-full rule); design §11.3 (Breed), §11.1 (rule row); umbrella PROD-001",
+    "description": "With pauseWhenFull on, while the raise tank is at its stocking limit the line stops the pair from spawning, through the tank's breedingEnv conditions or by parking one parent in tanks.keep (chosen after reading the breeding module), until there is room again.",
+    "acceptance": [
+      "production-line.test.ts 'pauses when full': no new clutch is laid while the raise tank is at its stocking limit.",
+      "Spawning resumes once the raise tank has room, and a parked parent (if that mechanism is chosen) returns to the breed tank.",
+      "The chosen mechanism is recorded in the S3 slice contract or an ADR."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3",
+      "§11.1"
+    ]
+  },
+  {
+    "id": "PROD-011",
+    "slice": "S3",
+    "source": "master §9 S3-C (never-sell-Prismatic rule); design §11.3 (Sell), §11.1 (rule row); umbrella PROD-001",
+    "description": "A production line never lists or sells a Prismatic animal, whatever its rule switches say, and the 'Never sell Prismatic animals' switch (keepPrismatic) also moves Prismatic youngsters to the keep tank.",
+    "acceptance": [
+      "production-line.test.ts 'never lists Prismatic': across seeded runs with Prismatic juveniles, no listing references a Prismatic creature, with keepPrismatic on or off.",
+      "With keepPrismatic off, a Prismatic juvenile is still never listed."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3",
+      "§11.1"
+    ],
+    "note": "Needs owner or reviewer confirmation: with keepPrismatic off the design gives a Prismatic juvenile no destination, so it would stay in quarantine indefinitely; the owner should decide where it goes."
+  },
+  {
+    "id": "PROD-012",
+    "slice": "S3",
+    "source": "master §9 S3-C (automatic listing rule); design §11.3 (Sell), §11.1 (rule row); umbrella PROD-001",
+    "description": "With autoList on, the day quarantine ends each juvenile is listed through the existing listing code as kind 'Juveniles', and with autoList off the line creates no listing.",
+    "acceptance": [
+      "With autoList on, a juvenile is listed on the day its 7-day quarantine ends, through the same listing function the player's listings use.",
+      "With autoList off, no listing is created."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3",
+      "§11.1"
+    ]
+  },
+  {
+    "id": "PROD-013",
+    "slice": "S3",
+    "source": "master §9 S3-C (trait-based keep rules); design §11.2 (rules.keep), §11.3 (Sort), §11.1 (Sort chips); umbrella PROD-001",
+    "description": "rules.keep is a list of {traitIds, count}, and at the juvenile stage the line keeps up to count animals matching each rule's traits, choosing the best by creatureValue with a deterministic tie-break, and sends the rest on to quarantine.",
+    "acceptance": [
+      "production-line.test.ts 'sorts by rules': with 'Keep best 2 Cambodian', the two highest-value Cambodian juveniles are kept and the others go to quarantine.",
+      "Equal creatureValue ties resolve the same way on every run (proposed tie-break: creature id, see note)."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.2",
+      "§11.3",
+      "§11.1"
+    ],
+    "note": "Needs owner or reviewer confirmation: breaking creatureValue ties by creature id is a proposal; the design only requires the sort to be deterministic."
+  },
+  {
+    "id": "PROD-014",
+    "slice": "S3",
+    "source": "master §9 S3-C (sale reserve behavior); design §11.3 (Sell), §11.1 (stage 5); umbrella PROD-001",
+    "description": "Listings a line creates are auctions with a reserve of the animal's fair value × 0.9 ('Auctions, reserve at fair value −10%').",
+    "acceptance": [
+      "production-line.test.ts: every listed juvenile's reserve equals its fair value × 0.9."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3",
+      "§11.1"
+    ]
+  },
+  {
+    "id": "PROD-015",
+    "slice": "S3",
+    "source": "master §9 S3-C (statistics); design §11.2 (stats), §11.1 (tiles); umbrella PROD-001",
+    "description": "Each line keeps stats {soldCount, revenue, costs, weekStartHour} that drive its This week figure (design §11.1's 'After food and power'), with the weekly figures restarting every 168 game hours from weekStartHour.",
+    "acceptance": [
+      "soldCount and revenue rise exactly once per completed sale of one of the line's listings.",
+      "The This week figure (revenue minus the costs attributed to the line) restarts after 168 game hours.",
+      "costs grows only by the food and power costs attributed to the line, using the attribution method the S3 slice contract records before implementation."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.2",
+      "§11.1"
+    ],
+    "note": "Needs owner or reviewer confirmation: design §11.1 shows This week 'After food and power' but never says how a tank's food and power costs are attributed to a line (tanks can be shared); the owner or the S3 contract must decide."
+  },
+  {
+    "id": "PROD-016",
+    "slice": "S3",
+    "source": "master §9 S3-C (deterministic pipeline); design §11.3 (no RNG, step-size invariant, world hook), §15; master §3.8; umbrella PROD-001",
+    "description": "src/sim/production/index.ts runs once per game hour from the world step through a minimal, pre-authorized hook in src/sim/world.ts, uses no RNG, and gives the same results for the same inputs and for different step sizes.",
+    "acceptance": [
+      "production-line.test.ts: two identical runs give an equal stateHash, and different step sizes (proposed: 1-hour versus 6-hour steps, see note) give the same moves, sorts and listings.",
+      "The world.ts change is limited to the production hook and is mapped to this requirement in the diff review.",
+      "core-determinism and fix-core-step-invariance stay green."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts",
+      "tests/sim/core-determinism.test.ts",
+      "tests/sim/fix-core-step-invariance.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3",
+      "§15"
+    ],
+    "note": "Needs owner or reviewer confirmation: comparing 1-hour with 6-hour steps is a proposal; the design says only \"step-size invariant\", and the S3 contract may choose other step sizes."
+  },
+  {
+    "id": "PROD-017",
+    "slice": "S3",
+    "source": "master §9 S3-C (tolerant of missing/reassigned creatures/tanks); design §11.3 (skips safely; the line pauses with a notice); umbrella PROD-001",
+    "description": "When a creature or tank a line references no longer exists, or the player has reassigned it (moved the animal, or reused the tank), the step skips safely, pauses the line and shows one notice naming the reference, without losing, duplicating or orphaning any animal or listing.",
+    "acceptance": [
+      "production-line.test.ts 'survives missing references' for a removed parent and for each removed tank (breed, raise, quarantine, keep).",
+      "A parent moved to another tank by the player causes no exception, no duplicate and no lost animal, and the line shows the reason.",
+      "The notice is emitted once per incident, not every game hour."
+    ],
+    "tests": [
+      "new: tests/sim/production-line.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.3"
+    ],
+    "note": "Needs owner or reviewer confirmation: design §11.3 pauses such a line with a notice, while design §15 and §20.1 have repairState drop lines with dangling ids on load, so a paused line would vanish after the next reload; the owner should choose one behaviour (PERSIST-006 currently encodes §15)."
+  },
+  {
+    "id": "PROD-018",
+    "slice": "S3",
+    "source": "ADR-0003 (supersession register: '§11 single production line card' → several lines per species, 'the UI needs a design ADR before S3-C UI work'); master §3.10; master §7, §8 (design change gate); ADR-0002 decision 4 (design-dependent work waits for APPROVED); umbrella PROD-001",
+    "description": "DESIGN-S3C-LINES (the multi-line Production screens, from the owner's Claude Design work or an agent-drafted Design ADR the owner approves) is APPROVED in the design registry before any multi-line Production UI is built.",
+    "acceptance": [
+      "docs/agent/design/DESIGN_REGISTRY.json lists DESIGN-S3C-LINES as APPROVED with an approval reference and an existing path, and check-state.mjs passes.",
+      "git log shows the commit that set DESIGN-S3C-LINES to APPROVED as an ancestor of the first commit that adds src/ui/panels/livestock/Production.tsx or any production-* test id.",
+      "Until then S3 builds only the PROD simulation, data and rule requirements, PROD-003 and DES-008 stay BLOCKED, and once the independent S3 work is done the orchestrator stops at OWNER_GATE with reason DESIGN_PENDING:DESIGN-S3C-LINES."
+    ],
+    "tests": [
+      "scripts/agent/check-state.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§11.1"
+    ]
+  },
+  {
+    "id": "SOC-003",
+    "slice": "S4",
+    "source": "design §13.1, §6.2 (Social rows), §15 (PanelId); master §9 S4 (Social panel; routes/deep links); umbrella SOC-001",
+    "description": "A new panel id 'social' (in PanelId in src/state/ui.ts, PANEL_COMPONENTS and DOCK_ITEMS) renders panel-social with the Globe icon, title 'Social' and subtitle 'Clubs, trading, friends and leaderboards' when signed out or 'Signed in as {email}' when signed in, with the tabs Overview · Clubs · Trading · Friends · Leaderboards (social-tab-<id>) once signed in, and #/social, #/social/<tab> and #/social/join/:code apply as design §6.2 says.",
+    "acceptance": [
+      "#/social opens panel-social on desktop and phone, with no tabs signed out and the five tabs signed in.",
+      "Each #/social/<tab> route opens that tab, tab changes rewrite the hash, and a boot from #/social/join/HIGHLAND-4821 shows the pill 'Then: Social › Club invite'.",
+      "The subtitle switches between 'Clubs, trading, friends and leaderboards' and 'Signed in as {email}'.",
+      "The core-owned edit to src/state/ui.ts (PanelId += 'social') meets master §3.8: minimal, mapped to this requirement, independently reviewed, with stronger regression coverage (boot.spec, ui-notify-news and ui-notify-attention stay green)."
+    ],
+    "tests": [
+      "new: tests/e2e/social.spec.ts (proposed)",
+      "new: tests/sim/nav-routes.test.ts",
+      "tests/e2e/boot.spec.ts",
+      "tests/sim/ui-notify-news.test.ts",
+      "tests/sim/ui-notify-attention.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§13.1",
+      "§6.2",
+      "§15"
+    ]
+  },
+  {
+    "id": "SOC-004",
+    "slice": "S4",
+    "source": "design §5.2 (More dot), §5.3 (Social tile), §5.4, §20.2 (dock-width.spec), §20.3 (tests that count dock items), §21 Phase 4 Done when (dock-width.spec passes), §22 risk 12; master §9 S4 (desktop dock Social; phone More Social); umbrella SOC-001",
+    "description": "The desktop dock gains Social (Globe, dock-social, tutorial id dock-social) between Shows and Build for 11 items, with an attention dot until Social is first opened and later for new club or trade items, without touching the labelled camera chips, and the phone More sheet gains more-social with a New tag until first opened.",
+    "acceptance": [
+      "dock-width.spec at 1400, 1440, 1519, 1520 and 1600 × 900: the .ag-dock and .ag-hud__cam boxes do not intersect and .ag-dock has no has-more-right class, with items narrowed to min-width 58px at 1400-1519px and 67px from 1520px by .ag-dock .ag-dock__item rules in nav.css (or the chips' icon-only breakpoint raised, each chip keeping its aria-label and title).",
+      "The dock order is Tanks · Livestock · Market · Visitors · Shows · Social · Build · Research · Finances · Encyclopedia · Settings.",
+      "mobile-tabbar.spec: more-social opens panel-social, and its New tag and the More dot clear after the first open.",
+      "Tests that pass DOCK_ITEMS or iterate dock ids (boot.spec, ui-notify-news, ui-notify-attention) pass with the 11th item, any fixed dock-item count being updated to 11."
+    ],
+    "tests": [
+      "new: tests/e2e/dock-width.spec.ts",
+      "new: tests/e2e/mobile-tabbar.spec.ts",
+      "tests/e2e/boot.spec.ts",
+      "tests/sim/ui-notify-news.test.ts",
+      "tests/sim/ui-notify-attention.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§5.2",
+      "§5.3",
+      "§5.4",
+      "§20.2",
+      "§20.3",
+      "§21",
+      "§22"
+    ]
+  },
+  {
+    "id": "SOC-005",
+    "slice": "S4",
+    "source": "design §13.2, §18 (inputs; form errors); master §9 S4 (sign-in/create-account UX stub); umbrella SOC-001",
+    "description": "Signed out, Social shows 'Bring your aquarium online' with its text, an Email field (social-email; type=email, autocomplete=email, placeholder 'you@example.com'), a Password field (social-password; type=password, autocomplete=current-password, placeholder 'At least 8 characters'), 'Sign in' (social-signin) and 'Create account' (social-signup), and the 'Have an invite?' code field (social-invite-code) with 'Join group' (social-invite-join); invalid input shows social-error in a role=alert danger callout and success shows a toast.",
+    "acceptance": [
+      "An email not shaped like x@y.z or a password under 8 characters shows 'Enter your email and a password of at least 8 characters.' in role=alert, and an unknown invite shows the invalid-invite error (copy exactly as design §16 specifies).",
+      "A valid sign-in shows the toast 'Signed in' · '{email}' · 'Your aquarium still saves on this device.', and creating an account uses the label 'Account created'.",
+      "The hint 'Prototype: any email with an @ and a password of 8+ characters signs you in.' renders only in dev mode (proposed reading: the ?dev=1 boot, see note).",
+      "The inputs render at 16px on phones with the stated type and autocomplete."
+    ],
+    "tests": [
+      "new: tests/sim/social-stub.test.ts",
+      "new: tests/e2e/social.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§13.2",
+      "§18"
+    ],
+    "note": "Needs owner or reviewer confirmation: design §13.2 says the hint ships \"only in dev mode\"; reading that as the ?dev=1 boot is a proposal. Design §13.2 also gives Create account autocomplete=current-password, while §18 asks for correct autocomplete (new-password would fit sign-up)."
+  },
+  {
+    "id": "SOC-006",
+    "slice": "S4",
+    "source": "design §13.3, §6.6 (club invites share like offers), §21 Phase 4 Done when (#/social/join/HIGHLAND-4821 works signed out → in → joined; expired codes handled); master §9 S4 (invites); umbrella SOC-001",
+    "description": "#/social/join/:code shows the four design §13.3 states (signed out with a valid code, signed in but not a member, already a member, and unknown or expired), and HIGHLAND-4821 is the only valid stub code.",
+    "acceptance": [
+      "social e2e: signed out, #/social/join/HIGHLAND-4821 shows the aqua invite callout above the sign-in form; after signing in, the 'Join Highland Betta Club?' card offers 'Join club' (social-join-club) and 'Not now' (to #/social); joining lands on #/social/clubs with the celebrate toast 'Welcome' · 'You joined Highland Betta Club'; all copy exactly as design §16 specifies.",
+      "Any other code shows the Ticket empty state 'This invite has expired' with 'Find clubs'.",
+      "Opening the invite again as a member shows the already-member state with 'Open club' (copy exactly as design §16 specifies)."
+    ],
+    "tests": [
+      "new: tests/e2e/social.spec.ts (proposed)",
+      "new: tests/sim/social-stub.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§13.3",
+      "§6.6",
+      "§21"
+    ]
+  },
+  {
+    "id": "SOC-007",
+    "slice": "S4",
+    "source": "design §13.4; umbrella SOC-001",
+    "description": "Signed in, Overview shows four cards, Your club, Trading circle, Friends' aquariums and This week's leaderboard (with the header actions Find clubs, All trades and All friends), and a ghost 'Sign out' (social-signout).",
+    "acceptance": [
+      "A static render covers both Your club variants (member: club row and 'Club show on Saturday · 12 entries so far' with 'Enter'; non-member: 'No club yet' with 'Find clubs' and a ghost 'Use an invite'), three trades with 'View', three 16:10 friend tiles with '{gal} gal · {likes} likes', and the Collection value · Prismatics · Show wins leaderboard with the top 4 rows and the player's highlighted row.",
+      "'Enter' opens #/shows, and social-signout returns Social to the signed-out view.",
+      "The overview has two columns when the desktop panel is maximised and one on phones."
+    ],
+    "tests": [
+      "new: tests/sim/social-ui.test.ts (proposed)",
+      "new: tests/e2e/social.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§13.4"
+    ]
+  },
+  {
+    "id": "SOC-008",
+    "slice": "S4",
+    "source": "design §13.5, §7.7 (Prismatics leaderboard); master §9 S4 (clubs; trading-circle UI stub; friends' aquarium snapshots; leaderboards); umbrella SOC-001",
+    "description": "Clubs has the search field, 'Your club' and 'Suggested for you' rows whose 'Join' (social-club-join-<id>) becomes 'Joined' with a toast; Trading has the coral 'Trade with your circle' hero whose 'Offer a trade' opens a coming-soon note, plus the trade list; Friends has the friend-code field with 'Add friend', a tile grid and the read-only snapshots note; Leaderboards shows the full-width card with social-lb-<collection_value|prismatics|show_wins> and the player's row computed locally from the save.",
+    "acceptance": [
+      "Joining a suggested club turns its button into 'Joined', shows the toast 'You joined {club}', and persists across reloads.",
+      "'Offer a trade' opens the coming-soon note and changes nothing in the game (stateHash unchanged).",
+      "social-stub.test.ts: the player's row is computed from a save (Collection value = sum of creatureValue + tank values; Prismatics = owned Prismatic count; Show wins = class wins this week).",
+      "The Friends grid has 2 columns at 390×844 and 3 at 1440×900, with the note 'Visits are read-only snapshots: friends see your tanks as they were when you last went online.'"
+    ],
+    "tests": [
+      "new: tests/sim/social-stub.test.ts",
+      "new: tests/e2e/social.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§13.5",
+      "§7.7"
+    ]
+  },
+  {
+    "id": "SOC-009",
+    "slice": "S4",
+    "source": "design §13.6, §15 (localStorage); master §9 S4 (local SocialService; complete test coverage for the stub); umbrella SOC-001",
+    "description": "src/social/service.ts defines the design §13.6 types and the SocialService interface, and createLocalSocialStub() serves canned data with 300-600 ms fake latency, stores only {email, displayName, joinedClubIds} in localStorage 'aquarium-go.social.v1', rejects signIn with {code: 'invalid' | 'network'}, computes the player's leaderboard row from the save and keeps every piece of social data outside the save, while the UI talks only to the interface.",
+    "acceptance": [
+      "social-stub.test.ts exercises every SocialService method: validation, HIGHLAND-4821 resolving while other codes return null, joinClub persisting, trades, friendsAquariums, addFriend and leaderboard.",
+      "The UI receives the service through one injection point, and a test swaps in a fake service without UI changes.",
+      "No social action changes the save or its stateHash, and the stored value holds only email, displayName and joinedClubIds."
+    ],
+    "tests": [
+      "new: tests/sim/social-stub.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§13.6",
+      "§15"
+    ]
+  },
+  {
+    "id": "SOC-010",
+    "slice": "S4",
+    "source": "master §9 S4 (loading/error/empty states); design §13.6 (skeleton loading), §13.2 (network error), §13.3 (expired invite), §13.4 (No club yet); umbrella SOC-001",
+    "description": "Every Social view shows skeleton rows with a gentle shimmer while the service loads (static under reduced motion), shows the network error (copy exactly as design §16 specifies) when the service rejects with code 'network', and shows a defined empty state when a list is empty.",
+    "acceptance": [
+      "With the stub's latency each tab shows skeleton rows before its data, and they do not animate under reducedMotion.",
+      "A stub set to reject with 'network' shows the network error in role=alert, and the game keeps running.",
+      "A stub with no clubs, trades or friends shows an empty state for each list."
+    ],
+    "tests": [
+      "new: tests/e2e/social.spec.ts (proposed)",
+      "new: tests/sim/social-ui.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§13.6",
+      "§13.2",
+      "§13.3",
+      "§13.4"
+    ],
+    "note": "Needs owner or reviewer confirmation: DESIGN-0.5 defines only 'No club yet'; the empty-state copy for trades and friends must come from the owner or the S4 contract before the third criterion can be judged."
+  },
+  {
+    "id": "PLAT-001",
+    "slice": "S1",
+    "source": "design §14 (module, platform(), setPlatform, createMemoryPlatform), §21 Phase 0 Done when (platform unit tests); master §9 S1 (platform abstraction)",
+    "description": "src/platform/ provides platform() (creating the web platform lazily, once), setPlatform(p), createWebPlatform() and createMemoryPlatform({permission?}) with the design §14 Platform, NotificationPort and PlatformNotification types, and makes no runtime import from src/persistence, src/sim, src/state or src/ui (type-only imports are allowed).",
+    "acceptance": [
+      "platform-memory.test.ts: createMemoryPlatform records shown notifications in .shown and reports the requested permission state, and setPlatform swaps the implementation platform() returns.",
+      "A test scanning src/platform/** finds no runtime import from persistence, sim, state or ui.",
+      "Outside src/platform, no code calls window.Notification, navigator.clipboard or navigator.share directly."
+    ],
+    "tests": [
+      "new: tests/sim/platform-memory.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§14",
+      "§21"
+    ]
+  },
+  {
+    "id": "PLAT-002",
+    "slice": "S1",
+    "source": "design §14 (web implementation: notifications); master §9 S1 (base notification platform seam)",
+    "description": "The web NotificationPort reports 'unsupported' when window.Notification is absent and otherwise maps Notification.permission, asks for permission only when request() is called, returns false from show() without permission or support, otherwise shows through navigator.serviceWorker.ready → showNotification(title, {body, tag: category, icon, data: {route}}) when a registration exists and falls back to new Notification(), fires onOpen for service-worker messages and Notification.onclick, and leaves schedule and cancelAll undefined.",
+    "acceptance": [
+      "With window.Notification absent, permission() is 'unsupported' and show() resolves false.",
+      "With permission 'default' or 'denied', show() resolves false and creates nothing, and nothing calls request() during boot.",
+      "With permission 'granted' and no service worker, show() creates one Notification whose tag is the category, and clicking it calls every onOpen subscriber with the route.",
+      "createWebPlatform().notifications.schedule and .cancelAll are undefined."
+    ],
+    "tests": [
+      "new: tests/sim/platform-web.test.ts (proposed)",
+      "new: tests/sim/platform-memory.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§14"
+    ]
+  },
+  {
+    "id": "PLAT-003",
+    "slice": "S1",
+    "source": "design §14 (web implementation: clipboard, share, lifecycle, storage)",
+    "description": "The web platform's clipboard.write uses navigator.clipboard.writeText with a hidden-textarea fallback and resolves false when both fail, share exists only when navigator.share does, lifecycle.onPause/onResume map to visibilitychange, pagehide and pageshow and return unsubscribe functions, and storageCandidates stays undefined so persistence keeps its own detection, while a platform that defines it is applied through configureStorageDetection before any save is read or written.",
+    "acceptance": [
+      "platform-web.test.ts: clipboard.write resolves true when writeText succeeds, uses the textarea fallback when writeText rejects, and resolves false when both fail.",
+      "share is undefined without navigator.share; onPause fires on visibilitychange to hidden and on pagehide, onResume on visible and pageshow, and the returned function unsubscribes.",
+      "createWebPlatform().storageCandidates is undefined, src/persistence/storage.ts is unchanged, and core-persistence stays green.",
+      "With a test platform that defines storageCandidates, configureStorageDetection is called before the first save read."
+    ],
+    "tests": [
+      "new: tests/sim/platform-web.test.ts (proposed)",
+      "tests/sim/core-persistence.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§14"
+    ]
+  },
+  {
+    "id": "PLAT-004",
+    "slice": "S4",
+    "source": "design §14 (native, later), §21 Phase 6, §3 item 1; ADR-0001 (native wrapping deferred); ADR-0003 (supersession register: Phase 6 DEFERRED); master §3.7, §3.10",
+    "description": "A native wrapper (createCapacitorPlatform mapping @capacitor/local-notifications, @capacitor/app, @capacitor/clipboard and @capacitor/share, plus app-icon and store builds) is deferred, and no native dependency is added in this program.",
+    "acceptance": [
+      "When un-deferred: an owner-approved ADR opens the native dependency domain (master §3.7) before any package is added.",
+      "When un-deferred: createCapacitorPlatform implements the §14 Platform, honours storageCandidates at boot, and a device build runs the game with the native platform selected."
+    ],
+    "tests": [
+      "new: tests/sim/platform-native.test.ts (proposed; deferred with design Phase 6)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "DEFERRED",
+    "decision": "ADR-0001",
+    "designSections": [
+      "§14",
+      "§21"
+    ]
+  },
+  {
+    "id": "ACC-001",
+    "slice": "S1",
+    "source": "design §18 (tab bar; panel tab strips); master §9 S1 (responsive/accessibility behavior)",
+    "description": "The tab bar is a <nav aria-label='Main'> whose buttons have visible labels and aria-current='page' on the active tab (the dock keeps aria-pressed), and every panel tab strip uses role=tablist and role=tab with aria-selected, with the Left and Right arrow keys moving between tabs.",
+    "acceptance": [
+      "nav-tabbar is a nav element labelled 'Main', exactly one tab has aria-current='page' while a destination is open and none on #/, and dock items keep aria-pressed without aria-current.",
+      "Each tab strip present at S1 (Livestock, Market, Build, Visitors, Shows, Research, Encyclopedia, Settings, tank card) has role=tablist, role=tab tabs and exactly one aria-selected=true.",
+      "With focus on a tab, ArrowRight and ArrowLeft move focus and selection to the neighbouring tab, and the hash follows."
+    ],
+    "tests": [
+      "new: tests/e2e/a11y-nav.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§18"
+    ]
+  },
+  {
+    "id": "ACC-002",
+    "slice": "S1",
+    "source": "design §18 (focus, live regions, touch targets, high contrast), §17 (motion), §3 item 6; master §9 S1 (responsive/accessibility behavior)",
+    "description": "Opening a panel or sheet moves focus to its title and closing returns it to the opener (usePopoverFocusReturn), the More sheet and modals trap focus, toasts are role=status and \"Link copied\" is announced, nav touch targets are at least 44×44, and under the high-contrast setting or reducedMotion the new nav surfaces turn solid and stop animating.",
+    "acceptance": [
+      "Opening Market from dock-market or from a deep link focuses its title, Esc returns focus to the opener, and with more-sheet open Tab and Shift+Tab stay inside the sheet.",
+      "Toasts render in a role=status region, and the change to 'Link copied' is announced.",
+      "Tab-bar buttons, More tiles and the More close button measure at least 44×44 px.",
+      "With data-contrast high the tab bar, More sheet and loading card backgrounds are opaque, and with reducedMotion on the guide pulse and the ag-load progress do not animate."
+    ],
+    "tests": [
+      "new: tests/e2e/a11y-nav.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§18",
+      "§17",
+      "§3"
+    ]
+  },
+  {
+    "id": "ACC-003",
+    "slice": "S2",
+    "source": "design §18 (radiogroups, status icon + word, portraits and icons, touch targets, high contrast), §3 item 6",
+    "description": "On the S2 surfaces destination tiles are a role=radiogroup of role=radio with aria-checked, verdicts and fit badges show an icon and a word, portraits have alt set to the animal's name while decorative icons are aria-hidden, filter chips are at least 36px high and primary actions at least 44×44, and under high contrast the Prismatic chip text keeps a contrast of at least 4.5:1.",
+    "acceptance": [
+      "Destination tiles expose role=radiogroup and role=radio with exactly one aria-checked='true', and the arrow keys move the selection.",
+      "Every verdict, fit badge and status chip renders an icon and a word, and no state is shown by colour alone.",
+      "Offer card and detail portraits have alt equal to the animal's name, and decorative Lucide icons have aria-hidden='true'.",
+      "shop-filter-* chips are at least 36px high, buy-offer at least 44×44, and with data-contrast high the 'Prismatic only' on-state text (#2a1640 on the pastel) measures at least 4.5:1."
+    ],
+    "tests": [
+      "new: tests/e2e/a11y-shop.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§18",
+      "§3"
+    ]
+  },
+  {
+    "id": "ACC-004",
+    "slice": "S3",
+    "source": "design §18 (switches, segmented controls, status icon + word)",
+    "description": "Automation, notification and production switches are role=switch with aria-checked and accessible names that include their subject (the tank's name for the automation switches, as design §18 shows), locked or disabled switches use aria-disabled and stay focusable with an explanation, the meals control is a role=radiogroup of role=radio with aria-checked, and Running/Paused and tank status badges show an icon and a word.",
+    "acceptance": [
+      "tank-auto-feed, tank-auto-clean, notify-cat-*, notify-quiet, production-toggle and production-rule-* expose role=switch, aria-checked and a subject-specific accessible name.",
+      "The disabled Auto-clean switch and the category switches before permission is granted have aria-disabled=true, are reachable with Tab, and expose their explanation to assistive technology.",
+      "tank-auto-feed-meals-<1-4> form a radiogroup with one aria-checked radio, operable with the arrow keys.",
+      "Running/Paused badges and tank status chips render an icon plus a word."
+    ],
+    "tests": [
+      "new: tests/e2e/a11y-automation.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§18"
+    ]
+  },
+  {
+    "id": "ACC-005",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: accessibility review); design §18",
+    "description": "An accessibility review of the whole stack checks every design §18 rule on every 0.5 surface, including those added in S3 and S4 (Settings › Notifications, Production, Social), with a keyboard-only pass and a screen-reader pass.",
+    "acceptance": [
+      "A keyboard-only pass reaches and operates every 0.5 control at 1440×900, with visible focus and Esc closing one layer at a time.",
+      "The Social tab strip and the leaderboard segmented control meet the tablist and radiogroup rules, and Social form errors are role=alert.",
+      "A VoiceOver pass announces toasts, Link copied, switch states and form errors, and the findings and verdict are recorded in evidence/S4/reviews/."
+    ],
+    "tests": [
+      "new: tests/e2e/a11y-nav.spec.ts (proposed)",
+      "new: tests/e2e/a11y-shop.spec.ts (proposed)",
+      "new: tests/e2e/a11y-automation.spec.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§18"
+    ]
+  },
+  {
+    "id": "PERF-001",
+    "slice": "S2",
+    "source": "master §9 S2 (catalog/performance checks); master §25, §28; design §8.5 (genotype caps), §22 risk 6",
+    "description": "The 540-entry betta catalog, the encyclopedia's catalog view and the offer detail's per-tile compatibility previews stay within the budgets the S2 contract records (PERF-003), measured against the v0.4.0 baseline and accepted by the performance reviewer, with the previews computed lazily or for at most the first 6 tiles.",
+    "acceptance": [
+      "evidence/S2 records, with capture-evidence.mjs --perf, the time to build the betta catalog and to render Encyclopedia › Betta before (v0.4.0) and after the expansion on the same machine, each within the budget the S2 contract states.",
+      "Betta genotype enumeration is 72,900, under the 200k species-test cap and the 400k exact-catalog limit.",
+      "With a many-tank save (the facility fixture), opening an offer computes at most 6 tile previews eagerly, or computes them lazily, with timing recorded, and perf.spec stays green.",
+      "The performance reviewer's verdict is recorded in evidence/S2/reviews/."
+    ],
+    "tests": [
+      "tests/e2e/perf.spec.ts",
+      "new: tests/sim/genetics-expansion.test.ts",
+      "scripts/agent/capture-evidence.mjs (--perf)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§8.5",
+      "§22"
+    ]
+  },
+  {
+    "id": "PERF-002",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: performance QA); master §10 (performance within accepted budgets); master §25, §28",
+    "description": "Whole-stack performance is measured against the v0.4.0 baseline with the master §28 fields, including the maximum-scale fixture with every automation subsystem enabled, and stays within the budgets the slice contracts recorded.",
+    "acceptance": [
+      "evidence/S4 records scenario, machine and browser, quality setting, tank and creature counts, frame timing or simulation-step time, and the baseline comparison for each scenario.",
+      "Simulation step time on the maximum-scale fixture (PERSIST-005) with every automation subsystem and production lines running is within the budget the S3 contract recorded (PERF-003).",
+      "perf.spec stays green and the performance reviewer's verdict is GREEN."
+    ],
+    "tests": [
+      "tests/e2e/perf.spec.ts",
+      "scripts/agent/capture-evidence.mjs (--perf)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "PERF-003",
+    "slice": "ALL",
+    "source": "master §10 (performance within accepted budgets); master §25, §28; docs/agent/evidence/S0/reviews/requirements-1.md (F9)",
+    "description": "Every slice that triggers the performance reviewer records its performance budgets and baseline measurements in its evidence manifest, and the master §10 readiness gate checks the final measurements against those recorded budgets.",
+    "acceptance": [
+      "Before implementation, each slice whose contract names the performance reviewer (the master §25 triggers) states numeric budgets in CURRENT_SLICE.md for its scenarios: frame time or fps, simulation-step time, and any size budget (such as PERSIST-005's save size).",
+      "The slice's evidence manifest records the baseline and the after measurement for each budgeted scenario with capture-evidence.mjs --perf (scenario, metric, baseline, machine, quality, population).",
+      "PERF-002 and the readiness gate compare the final measurements with these recorded budgets, and a measurement outside its budget is RED unless an owner-approved ADR accepts it."
+    ],
+    "tests": [
+      "scripts/agent/capture-evidence.mjs (--perf)",
+      "tests/e2e/perf.spec.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "ACTIVE",
+    "designSections": []
+  },
+  {
+    "id": "PERSIST-006",
+    "slice": "S3",
+    "source": "design §15 (migrations.ts repairState), §20.1 (persistence-05.test.ts), §21 Phase 5 Done when (persistence-05 passes); master §3.8",
+    "description": "repairState validates production when present (dropping lines that reference missing creatures or tanks and noting a repair only when something was broken) and checks that water.lab.lastAutoChangeHour and lastAutoScrapeHour are finite numbers when present.",
+    "acceptance": [
+      "persistence-05.test.ts: a production state with dangling ids is repaired with a note, and a valid one loads with repairs: [].",
+      "Non-finite lastAutoChangeHour or lastAutoScrapeHour values are repaired with a note, and absent ones need no repair.",
+      "A fresh 0.5 game needs no repairs.",
+      "The core-owned edit to src/persistence/migrations.ts meets master §3.8: minimal, mapped to this requirement, independently reviewed (security/data reviewer included), with stronger regression coverage (rare-persistence and core-persistence stay green)."
+    ],
+    "tests": [
+      "new: tests/sim/persistence-05.test.ts",
+      "tests/sim/rare-persistence.test.ts",
+      "tests/sim/core-persistence.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§15",
+      "§20.1",
+      "§21"
+    ]
+  },
+  {
+    "id": "PERSIST-007",
+    "slice": "ALL",
+    "source": "design §3 item 3, §15 (all changes additive and optional); master §3.5",
+    "description": "Every save field added for 0.5 is optional and tagged // lane:<name>, repairState validates it only when present, and an absent field leaves stateHash unchanged (hash.ts skips undefined), unless an owner-approved ADR changes the save policy (master §3.5).",
+    "acceptance": [
+      "Each new save field (water.lab.lastAutoChangeHour, water.lab.lastAutoScrapeHour, GameEvent.offerId, GameState.production and any S3-D marker) is optional and carries a // lane: tag; species data such as alleles[].rare is not save data.",
+      "persistence-05.test.ts: a state without the new fields has the same stateHash as before they existed."
+    ],
+    "tests": [
+      "new: tests/sim/persistence-05.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "ACTIVE",
+    "designSections": [
+      "§15",
+      "§3"
+    ]
+  },
+  {
+    "id": "PERSIST-008",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: persistence sanity); master §38",
+    "description": "A save holding every 0.5 field (production lines mid-pipeline, water-lab auto hours, events with offerId) round-trips with an equal stateHash and repairs: [], and corrupted variants of the new fields are repaired with a note.",
+    "acceptance": [
+      "persistence-05.test.ts round-trips the full-feature save twice with an equal stateHash and repairs: [].",
+      "Dangling production ids and non-finite lab hours, each corrupted in turn, load with a repair note and no crash.",
+      "rare-persistence and core-persistence stay green on the S4 tree."
+    ],
+    "tests": [
+      "new: tests/sim/persistence-05.test.ts",
+      "tests/sim/rare-persistence.test.ts",
+      "tests/sim/core-persistence.test.ts"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "HARNESS-007",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: requirements traceability audit); master §10 (requirements traceability complete); master §40, §41",
+    "description": "At S4 every other requirement of S1-S4 is GREEN, or DEFERRED or SUPERSEDED with a decision, standing requirements live only in ALL (as ACTIVE), every GREEN requirement points at tests and evidence that exist, and requirements-audit.mjs passes.",
+    "acceptance": [
+      "node scripts/agent/requirements-audit.mjs exits 0 on the S4 tree.",
+      "No other requirement of S1-S4 is PENDING, IN_PROGRESS, YELLOW, RED, BLOCKED or ACTIVE (standing requirements are slice ALL).",
+      "Every test and evidence path cited by a GREEN requirement exists at that path."
+    ],
+    "tests": [
+      "scripts/agent/requirements-audit.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-004",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: typecheck); master §27 Level 4",
+    "description": "npm run typecheck passes on the final S4 code tree with the gate configuration unchanged except through an ADR.",
+    "acceptance": [
+      "verify-slice.mjs records typecheck GREEN (exit 0) on the S4 acceptance tree.",
+      "tsconfig*.json and the typecheck script are unchanged since the S0 checkpoint unless an ADR approved the change (master §3.8)."
+    ],
+    "tests": [
+      "npm run typecheck"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-005",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: all unit tests); master §27, §35",
+    "description": "npm test passes on the final S4 code tree with no test skipped, focused or removed since the baseline.",
+    "acceptance": [
+      "verify-slice.mjs records unit GREEN (exit 0) with the pass count.",
+      "test-inventory.mjs shows no test id removed and no new skip marker since the S0 checkpoint."
+    ],
+    "tests": [
+      "npm test",
+      "scripts/agent/test-inventory.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-006",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: all E2E); master §27, §52",
+    "description": "npm run e2e passes on the final S4 code tree, run where headless Chromium works (a run that cannot start is recorded as not run, never as passed).",
+    "acceptance": [
+      "verify-slice.mjs records e2e GREEN (exit 0) with the pass count on the S4 tree.",
+      "Every spec named in design §20.2 is part of the run."
+    ],
+    "tests": [
+      "npm run e2e"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [
+      "§20.2"
+    ]
+  },
+  {
+    "id": "REL-007",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: production build); master §27",
+    "description": "npm run build produces the production bundle on the final S4 code tree.",
+    "acceptance": [
+      "verify-slice.mjs records build GREEN (exit 0) on the S4 tree.",
+      "The built output serves sw.js at BASE_URL + 'sw.js'."
+    ],
+    "tests": [
+      "npm run build"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-008",
+    "slice": "S4",
+    "source": "master §9 S4 (whole-stack hardening: unresolved TODO/stub audit); master §18 rule 11",
+    "description": "Every TODO, FIXME, XXX, HACK, stub or 'coming soon' added since the baseline is listed and is either resolved, mapped to a requirement or backlog item, or a contract-declared stub (the Social service and the 'Offer a trade' note).",
+    "acceptance": [
+      "The core-todo-markers test scans src (which has no such marker at the v0.4.0 baseline) and fails on any TODO, FIXME, XXX or HACK marker that does not name a requirement id, a backlog entry or the contract that declares the stub.",
+      "evidence/S4 lists every stub that ships (the local SocialService, the 'Offer a trade' coming-soon note) with the contract that declares it, and none is unaccounted for."
+    ],
+    "tests": [
+      "new: tests/sim/core-todo-markers.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [],
+    "note": "Needs owner or reviewer confirmation: docs/agent/BACKLOG.md, which master §12 lists and ADR-0003 says was created, is not in the tree at the time of writing; backlog references need it to exist."
+  },
+  {
+    "id": "REL-009",
+    "slice": "ALL",
+    "source": "master §10 (all five mega-slices accepted); master §30; umbrella REL-002",
+    "description": "At the Multiplayer Readiness Gate, which runs after S4 is accepted, S0 through S4 each have a checkpoint commit and a GREEN acceptance report.",
+    "acceptance": [
+      "checkpoint/S0-harness through checkpoint/S4-social-local-complete, or their recorded SHAs, exist locally and are ancestors of HEAD (check-state.mjs verifies the ancestry).",
+      "evidence/S0 through evidence/S4 each hold an acceptance-report.md with a GREEN verdict."
+    ],
+    "tests": [
+      "scripts/agent/check-state.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "ACTIVE",
+    "designSections": []
+  },
+  {
+    "id": "REL-010",
+    "slice": "S4",
+    "source": "master §10 (every required independent review passed); master §26; umbrella REL-002",
+    "description": "Every review required for S0-S4 (code/architecture, browser/QA, and security/data and performance where triggered) is recorded GREEN in evidence.",
+    "acceptance": [
+      "For each slice, evidence/<slice>/reviews/ holds a GREEN verdict from every reviewer in that slice's required reviewers, recorded with capture-evidence.mjs --review and accepted by check-state.mjs.",
+      "No review was performed by the builder of the reviewed work."
+    ],
+    "tests": [
+      "scripts/agent/check-state.mjs",
+      "scripts/agent/capture-evidence.mjs (--review)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-011",
+    "slice": "S4",
+    "source": "master §10 (zero unresolved red defects); umbrella REL-002",
+    "description": "No RED finding, RED requirement or open blocking defect remains at the gate.",
+    "acceptance": [
+      "REQUIREMENTS.json has no RED requirement (requirements-audit.mjs), and no review in evidence has an unresolved RED finding.",
+      "Every defect logged since S0 is fixed, or is recorded as a non-blocking limitation in the owner package."
+    ],
+    "tests": [
+      "scripts/agent/requirements-audit.mjs",
+      "scripts/agent/check-state.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-012",
+    "slice": "S4",
+    "source": "master §10 (fresh-context handoffs succeeded throughout); master §16, §17; umbrella REL-002",
+    "description": "Every session that started a mega-slice or resumed after a rollover bootstrapped from repository state alone and passed bootstrap-check.mjs.",
+    "acceptance": [
+      "LEDGER.jsonl records a session start with a passing bootstrap check for each mega-slice and each early rollover.",
+      "No ledger entry records a failed handoff that was left unrepaired."
+    ],
+    "tests": [
+      "scripts/agent/bootstrap-check.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-013",
+    "slice": "S4",
+    "source": "master §10 (tests reliable rather than flaky); master §35; umbrella REL-002",
+    "description": "The unit and e2e suites are shown to be reliable: repeated runs on the S4 tree give the same results, and no retry hides a failure.",
+    "acceptance": [
+      "npm test and npm run e2e each pass in several consecutive runs on the S4 tree (proposed: at least 3, see note), recorded in the gate report.",
+      "Playwright retries stay at 0 for the gate runs, and no test is marked flaky or skipped."
+    ],
+    "tests": [
+      "npm test",
+      "npm run e2e"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [],
+    "note": "Needs owner or reviewer confirmation: the number of consecutive runs that counts as \"reliable\" is not set by master §10; 3 is a proposal."
+  },
+  {
+    "id": "REL-014",
+    "slice": "S4",
+    "source": "master §10 (branch reproducible from the documented baseline); master §29, §30; umbrella REL-002",
+    "description": "The integration branch is reproducible from the documented baseline: its history from 0d9fc5a consists of local commits with recorded checkpoints, and a clean checkout with npm ci passes the gates.",
+    "acceptance": [
+      "git log 0d9fc5a..HEAD shows only commits on the integration branch, and every checkpoint created so far (S0-S3 when S4 is accepted) is recorded in STATE.json or evidence and is an ancestor of HEAD.",
+      "A fresh local worktree at HEAD, after npm ci with the lockfile unchanged, passes typecheck, unit, build and e2e through verify-slice.mjs."
+    ],
+    "tests": [
+      "scripts/agent/verify-slice.mjs",
+      "scripts/agent/check-state.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-015",
+    "slice": "S4",
+    "source": "master §10 (simulation stable); umbrella REL-002",
+    "description": "Long simulation runs over the full-feature fixtures stay stable, with no exception, no non-finite value and no repair note on save and load.",
+    "acceptance": [
+      "A seeded long run over each dev fixture with all 0.5 systems enabled finishes with no exception and no NaN or Infinity in the state, and the run length is recorded in the gate report.",
+      "Saving and loading at the end of each run gives repairs: []."
+    ],
+    "tests": [
+      "new: tests/sim/automation-invariants.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [],
+    "note": "Needs owner or reviewer confirmation: master §10 sets no minimum run length; the S4 contract or a reviewer must fix one before this can be judged."
+  },
+  {
+    "id": "REL-016",
+    "slice": "S4",
+    "source": "master §10 (clean trust boundary for future server authority); master §5 (mutation boundary); umbrella REL-002",
+    "description": "The architecture has a clean trust boundary for future server authority: game state changes only through the mutation boundary, social data only through the SocialService interface, and browser platform effects only through src/platform.",
+    "acceptance": [
+      "A static check finds persisted-state writes only through useGame.mutate, mutateFast and setGame, and core-architecture-boundaries shows no new cross-layer value import beyond its shrink-only baseline.",
+      "The UI reaches social data only through SocialService, and notifications, clipboard and share only through src/platform.",
+      "The gate report lists every state change a future server would need to authorise (purchases, sales, listings, production actions)."
+    ],
+    "tests": [
+      "tests/sim/core-architecture-boundaries.test.ts",
+      "new: tests/sim/core-mutation-boundary.test.ts (proposed)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": []
+  },
+  {
+    "id": "REL-017",
+    "slice": "S4",
+    "source": "master §10 (technical debt small enough that multiplayer would not magnify it); umbrella REL-002",
+    "description": "The gate report inventories the technical debt multiplayer would magnify (open backlog items, deferred requirements, known limitations and core-owned workarounds), and an independent reviewer judges it small enough.",
+    "acceptance": [
+      "The report lists every open backlog item, DEFERRED requirement and docs/KNOWN_LIMITATIONS.md entry with a note on its multiplayer impact.",
+      "An independent reviewer's verdict on that debt is recorded with capture-evidence.mjs --review."
+    ],
+    "tests": [
+      "scripts/agent/capture-evidence.mjs (--review)",
+      "scripts/agent/requirements-audit.mjs"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "PENDING",
+    "designSections": [],
+    "note": "Needs owner or reviewer confirmation: docs/agent/BACKLOG.md is not in the tree at the time of writing; the backlog inventory needs it to exist."
+  },
+  {
+    "id": "REL-018",
+    "slice": "ALL",
+    "source": "master §10 (gate output, then STOP); master §11.3; umbrella REL-002",
+    "description": "At the Multiplayer Readiness Gate, which runs after S4 is accepted, the gate produces a report that answers every master §10 question with linked evidence and, only when all are green, READY_FOR_MULTIPLAYER_EXPANSION with a proposed multiplayer architecture, risks, schema, backend plan, security plan and next mega-slice.",
+    "acceptance": [
+      "evidence/S4 holds the gate report with each §10 question answered and linked to its evidence.",
+      "When every answer is green the report contains the six proposals; otherwise it names each failing question, and in both cases no multiplayer work starts."
+    ],
+    "tests": [
+      "scripts/agent/agent.test.mjs (transitions)"
+    ],
+    "tasks": [],
+    "evidence": [],
+    "status": "ACTIVE",
+    "designSections": []
+  }
+]

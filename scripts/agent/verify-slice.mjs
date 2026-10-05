@@ -9,6 +9,7 @@
  * Each run is logged and hashed into docs/agent/evidence/<slice>/manifest.json (see evidence.mjs), and its gate in
  * STATE.json becomes GREEN (exit 0) or RED. Gates that are NOT_APPLICABLE or NOT_YET_REQUIRED are skipped unless named.
  * This script can never mark independentReview or browserQa: those need a reviewer's recorded verdict.
+ * The e2e gate always starts its own server: E2E_REUSE is removed from its environment (OPERATIONS.md §8).
  */
 import { pathToFileURL } from 'node:url';
 import { GATE_COMMANDS, PATHS, nowIso, parseArgs, readJson, writeJson } from './lib.mjs';
@@ -25,7 +26,13 @@ export function selectGates(state, requested) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
-  const args = parseArgs(process.argv.slice(2), ['noState', 'help']);
+  let args;
+  try {
+    args = parseArgs(process.argv.slice(2), ['noState', 'help'], ['gates', 'req']);
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
   if (args.help) {
     console.log('Usage: node scripts/agent/verify-slice.mjs [--gates g1,g2] [--req ID ...] [--no-state]');
     console.log(`Gates with commands: ${Object.entries(GATE_COMMANDS).map(([g, c]) => `${g} (${c})`).join(', ')}`);
@@ -38,7 +45,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   let failed = 0;
   for (const gate of gates) {
     process.stdout.write(`${gate}: ${GATE_COMMANDS[gate]} … `);
-    const rec = await runAndRecord({ slice: state.currentSlice, gate, command: GATE_COMMANDS[gate], requirements });
+    const env = gate === 'e2e' ? { E2E_REUSE: '' } : {};
+    const rec = await runAndRecord({ slice: state.currentSlice, gate, command: GATE_COMMANDS[gate], requirements, env });
     console.log(`exit ${rec.exitCode} in ${rec.seconds}s ${JSON.stringify(rec.counts)} → ${rec.log}`);
     if (rec.exitCode !== 0) failed++;
     if (!args.noState) {

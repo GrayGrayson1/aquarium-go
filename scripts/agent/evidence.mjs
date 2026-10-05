@@ -8,7 +8,7 @@
  * exactly the code that was later checkpointed.
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { closeSync, copyFileSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { PATHS, ROOT, abs, exists, git, nowIso, readJson, sha256File, writeJson } from './lib.mjs';
@@ -27,7 +27,9 @@ export function codeTreeOf(ref) {
   try {
     run('read-tree', ref ?? 'HEAD');
     if (!ref) run('add', '-A', '--', '.');
-    run('rm', '-r', '--cached', '-q', '--ignore-unmatch', '--', ...NON_CODE_PATHS);
+    // -f: with a throwaway index these paths may differ from HEAD and the work tree (any older commit); --cached
+    // means nothing on disk is touched either way.
+    run('rm', '-r', '-f', '--cached', '-q', '--ignore-unmatch', '--', ...NON_CODE_PATHS);
     return run('write-tree');
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -37,7 +39,24 @@ export function codeTreeOf(ref) {
 export const manifestPath = (slice) => `${PATHS.evidence}/${slice}/manifest.json`;
 
 export function emptyManifest(slice) {
-  return { slice, checkpointSha: null, commands: [], browserRuns: [], screenshots: [], performance: [], reviews: [], requirements: [], verdict: 'PENDING' };
+  return { slice, checkpointSha: null, commands: [], browserRuns: [], screenshots: [], performance: [], reviews: [], files: [], requirements: [], verdict: 'PENDING' };
+}
+
+/** Record a committed evidence file (an inventory, a report) with its hash, so later edits are detected. */
+export function recordFile(slice, rel, kind) {
+  const manifest = loadManifest(slice);
+  manifest.files.push({ timestamp: nowIso(), kind, path: rel, sha256: sha256File(abs(rel)) });
+  saveManifest(manifest);
+}
+
+/** A unique log path: millisecond stamp, plus a counter if two runs start in the same millisecond. */
+function uniqueLogPath(slice, gate, startIso) {
+  const stamp = startIso.replace(/[-:]/g, '').replace('.', '');
+  const safeGate = gate.replace(/[^A-Za-z0-9_.-]/g, '_');
+  for (let n = 0; ; n++) {
+    const rel = `${PATHS.evidence}/${slice}/logs/${safeGate}-${stamp}${n ? `-${n}` : ''}.log`;
+    if (!existsSync(abs(rel))) return rel;
+  }
 }
 
 export function loadManifest(slice) {
@@ -93,9 +112,8 @@ export function trimLog(logRel, text, slice) {
  */
 export async function runAndRecord({ slice, gate, command, requirements = [], env = {} }) {
   const startIso = nowIso();
-  const stamp = startIso.replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
-  const logRel = `${PATHS.evidence}/${slice}/logs/${gate}-${stamp}.log`;
   mkdirSync(abs(`${PATHS.evidence}/${slice}/logs`), { recursive: true });
+  const logRel = uniqueLogPath(slice, gate, startIso);
   const head = git('rev-parse', 'HEAD');
   const dirty = git('status', '--porcelain').length > 0;
   const codeTree = codeTreeOf(null);
@@ -127,6 +145,9 @@ export async function runAndRecord({ slice, gate, command, requirements = [], en
     codeTree,
     requirements,
   };
+  // A gate run is evidence for the tree it started on only if nothing changed while it ran.
+  const codeTreeAfter = codeTreeOf(null);
+  if (codeTreeAfter !== codeTree) Object.assign(record, { codeTreeAfter, treeChanged: true });
   const manifest = loadManifest(slice);
   manifest.commands.push(record);
   saveManifest(manifest);
