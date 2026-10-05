@@ -316,8 +316,9 @@ function judgeShow(state: GameState, s: ShowsState, show: Show): void {
       e.card = buildCard(a, show.judge, e.score - round1(a.criteria.reduce((acc, c) => acc + c.points, 0)));
       all.push({ place: 0, name: e.kind === 'creature' ? titledName(state.creatures[e.subjectId]) : e.name, exhibitor: state.shopName, score: e.score, mine: true, entryId: e.id });
     }
-    // ties: the player's entry is listed after an equal rival (judges favour the incumbent), then by name
-    all.sort((a, b) => b.score - a.score || Number(!!a.mine) - Number(!!b.mine) || a.name.localeCompare(b.name));
+    // ties: the player's entry is listed after an equal rival (judges favour the incumbent), then by name. Code-unit
+    // order, not localeCompare: placings are saved, so they must not depend on the player's locale (S0 review).
+    all.sort((a, b) => b.score - a.score || Number(!!a.mine) - Number(!!b.mine) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     all.forEach((p, i) => (p.place = i + 1));
     cls.entrants = all.length;
     cls.results = all.filter((p) => p.place <= 4 || p.mine).slice(0, 8);

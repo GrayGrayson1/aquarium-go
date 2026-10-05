@@ -66,10 +66,10 @@ export function facilityUpgradeInfo(state: GameState): FacilityUpgradeInfo {
       reqs.push({ label: s.label, met: s.met, current: s.current, target: s.target });
     }
   }
-  reqs.push({ label: `$${next.upgradeCost.toLocaleString()}`, met: state.finance.money >= next.upgradeCost, current: Math.floor(state.finance.money), target: next.upgradeCost });
+  reqs.push({ label: `$${next.upgradeCost.toLocaleString('en-US')}`, met: state.finance.money >= next.upgradeCost, current: Math.floor(state.finance.money), target: next.upgradeCost });
   const unlockedOk = !next.unlockKey || isUnlocked(state, next.unlockKey);
   const canUpgrade = unlockedOk && state.finance.money >= next.upgradeCost;
-  const reason = !unlockedOk ? rule?.hint ?? `Locked: ${unlockLabel(next.unlockKey ?? '')}` : !canUpgrade ? `You need $${next.upgradeCost.toLocaleString()}.` : undefined;
+  const reason = !unlockedOk ? rule?.hint ?? `Locked: ${unlockLabel(next.unlockKey ?? '')}` : !canUpgrade ? `You need $${next.upgradeCost.toLocaleString('en-US')}.` : undefined;
   return { current, next, canUpgrade, cost: next.upgradeCost, requirements: reqs, reason };
 }
 
@@ -78,7 +78,7 @@ export function upgradeFacility(state: GameState): ActionResult {
   const next = info.next;
   if (!next) return { ok: false, message: info.reason ?? 'Already at the top level.' };
   if (next.unlockKey && !isUnlocked(state, next.unlockKey)) return { ok: false, message: `Not yet — ${info.reason ?? 'keep growing your reputation.'}` };
-  if (!spend(state, next.upgradeCost, 'facility', `Moved into the ${next.name}`)) return { ok: false, message: `You need $${next.upgradeCost.toLocaleString()} to move into the ${next.name}.` };
+  if (!spend(state, next.upgradeCost, 'facility', `Moved into the ${next.name}`)) return { ok: false, message: `You need $${next.upgradeCost.toLocaleString('en-US')} to move into the ${next.name}.` };
   const fac = state.facility;
   const old = { width: fac.width, depth: fac.depth };
   fac.level = next.id;
@@ -114,7 +114,7 @@ export function upgradeFacility(state: GameState): ActionResult {
   });
   if (refund > 0 && !state.isShowcase) {
     earn(state, refund, 'facility', `Refund: ${returned.length} fixture${returned.length === 1 ? '' : 's'} that didn’t fit the ${next.name}`);
-    emitEvent(state, { kind: 'info', text: `The movers returned ${returned.length === 1 ? withArticle(returned[0]) : `${returned.length} fixtures`} that didn’t fit the new floor plan — $${refund.toLocaleString()} refunded.` });
+    emitEvent(state, { kind: 'info', text: `The movers returned ${returned.length === 1 ? withArticle(returned[0]) : `${returned.length} fixtures`} that didn’t fit the new floor plan — $${refund.toLocaleString('en-US')} refunded.` });
   }
   if (next.order >= 1) {
     unlock(state, 'visitors');

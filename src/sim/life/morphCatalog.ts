@@ -246,8 +246,8 @@ function buildCatalog(species: SpeciesDefinition): MorphCatalog {
     grp.frequency += e.frequency;
   }
   const orderOf = (grp: CatalogGroup) => baseOrder.get(grp.baseId) ?? Number.MAX_SAFE_INTEGER;
-  const groupList = [...groups.values()].sort((a, b) => orderOf(a) - orderOf(b) || a.name.localeCompare(b.name));
-  for (const grp of groupList) grp.entries.sort((a, b) => b.frequency - a.frequency || a.morphName.localeCompare(b.morphName));
+  const groupList = [...groups.values()].sort((a, b) => orderOf(a) - orderOf(b) || a.name.localeCompare(b.name, 'en'));
+  for (const grp of groupList) grp.entries.sort((a, b) => b.frequency - a.frequency || a.morphName.localeCompare(b.morphName, 'en'));
   return {
     speciesId: species.id,
     entries: groupList.flatMap((grp) => grp.entries),

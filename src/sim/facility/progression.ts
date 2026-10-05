@@ -399,7 +399,7 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
     case 'total_sales': {
       const hist = (state.market?.history ?? []).reduce((a, h) => a + Math.max(0, h.price || 0), 0);
       const v = Math.max(counterValue(state, 'sales_total'), hist);
-      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `$${cond.min.toLocaleString()} in sales` };
+      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `$${cond.min.toLocaleString('en-US')} in sales` };
     }
     case 'sales_count': {
       const v = counterValue(state, 'sales');
@@ -441,7 +441,7 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
     }
     case 'visitors': {
       const v = state.visitors.totalVisitors ?? 0;
-      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `${cond.min.toLocaleString()} visitors` };
+      return { met: v >= cond.min, current: Math.floor(v), target: cond.min, label: `${cond.min.toLocaleString('en-US')} visitors` };
     }
     case 'beauty': {
       const scaped = cond.scaped ?? 0;
@@ -463,7 +463,7 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
       return { met: d, current: d ? 1 : 0, target: 1, label: 'Finish the tutorial' };
     }
     case 'money': {
-      return { met: state.finance.money >= cond.min, current: Math.floor(state.finance.money), target: cond.min, label: `$${cond.min.toLocaleString()}` };
+      return { met: state.finance.money >= cond.min, current: Math.floor(state.finance.money), target: cond.min, label: `$${cond.min.toLocaleString('en-US')}` };
     }
     case 'morphs': {
       const v = p.discoveredMorphs.length;
@@ -961,11 +961,11 @@ export function startResearch(state: GameState, researchId: string): ActionResul
   const missing = researchMissing(state, def);
   if (missing.length) return { ok: false, message: `Needs: ${missing.join(', ')}.` };
   const cost = researchCost(state, def);
-  if (!spend(state, cost, 'research', `Research: ${def.name}`)) return { ok: false, message: `You need $${cost.toLocaleString()} to start ${def.name}.` };
+  if (!spend(state, cost, 'research', `Research: ${def.name}`)) return { ok: false, message: `You need $${cost.toLocaleString('en-US')} to start ${def.name}.` };
   state.progress.counters[RESEARCH_PAID_KEY] = cost;
   r.activeId = def.id;
   r.progressHours = 0;
-  const reduced = cost < def.cost ? ` (reduced to $${cost.toLocaleString()} — you already have part of it)` : '';
+  const reduced = cost < def.cost ? ` (reduced to $${cost.toLocaleString('en-US')} — you already have part of it)` : '';
   if (!state.isShowcase) emitEvent(state, { kind: 'info', text: `Research started: ${def.name}${reduced}.` });
   return { ok: true, message: `Research started: ${def.name}${reduced}` };
 }
@@ -1010,7 +1010,7 @@ function stepResearch(state: GameState, dt: number): void {
     if (frac > 0) addMastery(state, def.track, Math.round(def.xp * frac));
     if (!state.isShowcase) {
       if (paid > 0) earn(state, paid, 'research', `Research refund: ${def.name}`);
-      emitEvent(state, { kind: 'info', text: `You picked up everything ${def.name} covers through your own keeping, so the project was closed${paid > 0 ? ` and your $${paid.toLocaleString()} refunded` : ''}.`, toast: true });
+      emitEvent(state, { kind: 'info', text: `You picked up everything ${def.name} covers through your own keeping, so the project was closed${paid > 0 ? ` and your $${paid.toLocaleString('en-US')} refunded` : ''}.`, toast: true });
     }
     return;
   }
