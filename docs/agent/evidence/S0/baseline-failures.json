@@ -18,6 +18,22 @@
       "detail": "Headless Chromium hangs at start-up inside the Claude Code sandboxed Bash shell on this Mac, so no e2e test reached the game. Typecheck, unit tests (151 files, 1,753 tests) and build passed in the same shell. The product's e2e status at the baseline is UNKNOWN, not failing.",
       "nextStep": "The owner decides how browser work runs (a sandbox exception for the e2e and QA commands, or the owner running them). Then record a real baseline e2e run at 0d9fc5a or at the S0 code tree.",
       "ownerAcknowledgement": null
+    },
+    {
+      "id": "BF-002",
+      "gate": "unit",
+      "tests": "No test fails: tests/sim/playthrough-starters.test.ts (about 62 s of synchronous simulation on a 4-core cloud container) makes Vitest report an unhandled 'Timeout calling \"onTaskUpdate\"' error, so `npm test` exits 1 with every test passing.",
+      "evidence": [
+        "Cloud session 2026-10-05, HEAD 94eae78: npm test → Test Files 161 passed, Tests 1792 passed, Errors 5 ('[vitest-worker]: Timeout calling \"onTaskUpdate\"'), exit 1 (an earlier run under load: 3 errors).",
+        "npx vitest run tests/sim/playthrough-starters.test.ts alone → 6 passed in 62.5 s, 1 unhandled error, exit 1.",
+        "The same command at 0d9fc5a (temporary worktree, same node_modules) → 6 passed in 62.9 s, 1 unhandled error, exit 1: present at the baseline.",
+        "With an afterEach that awaits setImmediate (throwaway config) → 6 passed in 61.8 s, no error, exit 0.",
+        "Vitest 3.2.7: the worker's RPC timeout is DEFAULT_TIMEOUT = 6e4 (node_modules/vitest/dist/chunks/index.B521nVV-.js) and the runner advances between tests on microtasks only."
+      ],
+      "classification": "ENVIRONMENT (machine speed and load); the owner's Mac passed the baseline unit gate (151 files, 1,753 tests, exit 0).",
+      "detail": "The 60 s RPC reply timer fires before the worker's event loop can read the reply when a file runs more than 60 s of synchronous tests back to back. Slower or busier machines cross that line.",
+      "nextStep": "Fixed by ADR-0010: tests/sim/setup/yield-between-tests.ts registered in vitest.config.ts setupFiles. The unit gate is re-run on the S0 tree with verify-slice.mjs.",
+      "ownerAcknowledgement": "ADR-0010 (owner chose \"Fix it (Recommended)\", 2026-10-05)"
     }
   ]
 }
