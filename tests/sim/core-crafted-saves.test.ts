@@ -73,6 +73,27 @@ describe('crafted saves', () => {
     expect(repairs.some((r) => r.includes('ls_remote') && r.includes('photo'))).toBe(true);
   });
 
+  it('SD-1: a record keeps its key as its own id, and an id reference to an inherited name is cleared', () => {
+    const s = craftedSave();
+    const tankId = s.tankOrder[0];
+    const creatureId = Object.keys(s.creatures)[0];
+    // Path A: a clutch under a safe key whose own id is "__proto__" (the sim re-reads state.clutches[cl.id]).
+    s.clutches.cl_own = { id: '__proto__', tankId, speciesId: 'betta', count: 3, survival: 1, nextStageHour: 10 };
+    // Path B: a creature's clutch reference names an inherited property.
+    s.creatures[creatureId].repro = { ...s.creatures[creatureId].repro, clutchId: '__proto__', partnerId: 'constructor' };
+    s.progress.research = { progressHours: 1, completed: [], activeId: 'toString' };
+    s.tanks[tankId].equipment.push({ id: 'eq_bad', defId: 'constructor', installedHour: 0, condition: 1, on: true });
+    const repairs = repairState(s);
+    expect(s.clutches.cl_own.id).toBe('cl_own');
+    expect(s.creatures[creatureId].repro.clutchId).toBeNull();
+    expect(s.creatures[creatureId].repro.partnerId).toBeNull();
+    expect(s.progress.research.activeId).toBeUndefined();
+    expect(s.tanks[tankId].equipment.some((e: Json) => e.id === 'eq_bad')).toBe(false);
+    expect(repairs.some((r) => r.includes('clutchId'))).toBe(true);
+    expect(() => advanceWorld(s as GameState, 24, {})).not.toThrow();
+    for (const k of POLLUTION_KEYS) expect(Object.hasOwn(Object.prototype, k), `Object.prototype.${k}`).toBe(false);
+  });
+
   it('a second repair finds nothing left to fix', () => {
     const s = craftedSave();
     repairState(s);

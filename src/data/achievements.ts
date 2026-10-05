@@ -6,6 +6,7 @@
  * the player has aquascaped themselves (`scaped`), because the hand-built starter layouts already score 87–94.
  */
 import { SCAPED_EDITS, type Cond } from './unlocks';
+import { byId } from '@/data/byId';
 
 export interface AchievementDef {
   id: string;
@@ -69,4 +70,4 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'world_stage', title: 'World Stage', description: 'Place at an International show.', cond: c('show_intl_placings', 1), reputation: 12, icon: 'Sparkle', tier: 'gold' },
 ];
 
-export const ACHIEVEMENT_BY_ID: Record<string, AchievementDef> = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]));
+export const ACHIEVEMENT_BY_ID: Record<string, AchievementDef> = byId(ACHIEVEMENTS);

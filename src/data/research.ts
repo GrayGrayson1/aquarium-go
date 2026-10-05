@@ -6,6 +6,7 @@
 import type { MasteryTrack } from '@/types';
 import type { Cond } from './unlocks';
 import type { UnlockKey } from './unlockKeys';
+import { byId } from '@/data/byId';
 
 export interface ResearchDef {
   id: string;
@@ -58,7 +59,7 @@ export const RESEARCH: ResearchDef[] = [
   { id: 'grand_display', name: 'Grand Display Engineering', blurb: 'Panoramic glass, structural plinths and life support for 800–1,000 gallon exhibits.', cost: 30000, hours: 168, requires: [{ type: 'facility', level: 'destination' }, { type: 'unlocked', key: 'tank_500' }], grants: ['tank_800', 'tank_1000'], track: 'exhibition', xp: 400, icon: 'Landmark', branch: 'exhibition' },
 ];
 
-export const RESEARCH_BY_ID: Record<string, ResearchDef> = Object.fromEntries(RESEARCH.map((r) => [r.id, r]));
+export const RESEARCH_BY_ID: Record<string, ResearchDef> = byId(RESEARCH);
 
 export function getResearch(id: string): ResearchDef | undefined {
   return RESEARCH_BY_ID[id];

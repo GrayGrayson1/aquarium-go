@@ -21,6 +21,7 @@
  * `failureRate` is the per-game-day failure chance of a new unit; wear multiplies it (see water sim).
  */
 import type { EquipmentDef } from '@/types';
+import { byId } from '@/data/byId';
 
 const ALL_ENV: EquipmentDef['environments'] = ['freshwater', 'marine', 'brackish'];
 const SALT: EquipmentDef['environments'] = ['marine', 'brackish'];
@@ -431,9 +432,8 @@ export const EQUIPMENT: EquipmentDef[] = [
   },
 ];
 
-export const EQUIPMENT_BY_ID: Record<string, EquipmentDef> = {};
+export const EQUIPMENT_BY_ID: Record<string, EquipmentDef> = byId(EQUIPMENT);
 export function getEquipmentDef(id: string): EquipmentDef | undefined {
-  if (!EQUIPMENT_BY_ID[id]) for (const e of EQUIPMENT) EQUIPMENT_BY_ID[e.id] = e;
   return EQUIPMENT_BY_ID[id];
 }
 

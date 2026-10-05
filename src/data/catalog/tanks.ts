@@ -3,6 +3,7 @@
  * OWNER: core (prices may be tuned by the economy lane).
  */
 import type { TankTier } from '@/types';
+import { byId } from '@/data/byId';
 
 export const TANK_TIERS: TankTier[] = [
   { id: 'g5', gallons: 5, name: '5 Gallon Nano', dimsIn: { l: 16, w: 8, h: 10 }, price: 45, unlock: null, material: 'glass', glassMm: 4, standStyle: 'desk', baseUpkeep: 0.4, blurb: 'A jewel-box tank. Cheap, but tiny volumes swing fast.' },
@@ -23,7 +24,7 @@ export const TANK_TIERS: TankTier[] = [
   { id: 'g1000', gallons: 1000, name: '1,000 Gallon Grand Display', dimsIn: { l: 144, w: 48, h: 33 }, price: 17500, unlock: 'tank_1000', material: 'panoramic', glassMm: 38, standStyle: 'plinth', baseUpkeep: 18, blurb: 'The grand hall centrepiece.' },
 ];
 
-export const TANK_TIER_BY_ID: Record<string, TankTier> = Object.fromEntries(TANK_TIERS.map((t) => [t.id, t]));
+export const TANK_TIER_BY_ID: Record<string, TankTier> = byId(TANK_TIERS);
 
 export function getTankTier(id: string): TankTier {
   const t = TANK_TIER_BY_ID[id];

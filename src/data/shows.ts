@@ -10,6 +10,7 @@
  * shows the points, so every score can be explained.
  */
 import type { Environment, ShowTier } from '@/types';
+import { byId } from '@/data/byId';
 
 // ───────────────────────────── tiers ─────────────────────────────
 
@@ -365,7 +366,7 @@ export const SHOW_CLASSES: ShowClassDef[] = [
   },
 ];
 
-export const SHOW_CLASS_BY_ID: Record<string, ShowClassDef> = Object.fromEntries(SHOW_CLASSES.map((c) => [c.id, c]));
+export const SHOW_CLASS_BY_ID: Record<string, ShowClassDef> = byId(SHOW_CLASSES);
 
 export const CRITERION_LABEL: Record<ShowCriterionKey, string> = {
   form: 'Form',

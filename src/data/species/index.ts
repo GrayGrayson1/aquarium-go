@@ -11,13 +11,14 @@ import { linedSeahorse } from './lined_seahorse';
 import { FRESHWATER_SPECIES } from './freshwater';
 import { MARINE_SPECIES } from './marine';
 import { BRACKISH_SPECIES } from './brackish'; // lane:brackish
+import { byId } from '@/data/byId';
 
 export const STARTER_IDS = ['axolotl', 'betta', 'pea_puffer', 'ocellaris_clownfish', 'lined_seahorse'] as const;
 export type StarterId = (typeof STARTER_IDS)[number];
 
 export const ALL_SPECIES: SpeciesDefinition[] = [axolotl, betta, peaPuffer, ocellarisClownfish, linedSeahorse, ...FRESHWATER_SPECIES, ...MARINE_SPECIES, ...BRACKISH_SPECIES]; // lane:brackish: + BRACKISH_SPECIES
 
-const BY_ID: Record<string, SpeciesDefinition> = Object.fromEntries(ALL_SPECIES.map((s) => [s.id, s]));
+const BY_ID: Record<string, SpeciesDefinition> = byId(ALL_SPECIES);
 
 export function getSpecies(id: string): SpeciesDefinition {
   const s = findSpecies(id);

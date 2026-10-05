@@ -12,6 +12,7 @@
  * No brand names: generic descriptions only.
  */
 import type { FoodDef, FoodForm } from '@/types';
+import { byId } from '@/data/byId';
 
 export const FOODS: FoodDef[] = [
   {
@@ -354,7 +355,7 @@ export const FOODS: FoodDef[] = [
   },
 ];
 
-const FOOD_BY_ID: Record<string, FoodDef> = Object.fromEntries(FOODS.map((f) => [f.id, f]));
+const FOOD_BY_ID: Record<string, FoodDef> = byId(FOODS);
 
 export function getFoodDef(id: string): FoodDef | undefined {
   return FOOD_BY_ID[id];

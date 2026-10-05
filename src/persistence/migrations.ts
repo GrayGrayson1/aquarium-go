@@ -22,6 +22,9 @@ import { SCHEMA_VERSION } from './schema';
 import { SaveError } from './types';
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { getEquipmentDef } from '@/data/catalog/equipment';
+import { DECOR_BY_ID } from '@/data/catalog/decor';
+import { RESEARCH_BY_ID } from '@/data/research';
 import { DEFAULT_LIGHTS_ON, defaultLightsOff } from '@/sim/time';
 import { renamedMorphs } from '@/sim/life/genetics';
 import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
@@ -53,6 +56,46 @@ function dropUnsafeKeys(map: Json, what: string, repairs: string[]): void {
     if (isSafeKey(id)) continue;
     delete map[id];
     repairs.push(`${what} ${JSON.stringify(id).slice(0, 40)}: not a valid id, removed`);
+  }
+}
+/** A name that an Object inherits ("__proto__", "constructor", "toString", …): never a valid key or id in a save. */
+const isInheritedName = (k: string): boolean => k in Object.prototype || k === 'prototype';
+/** A field holding one id (`id`, `tankId`, `defId`, `clutchId`, …). */
+const ID_FIELD = /^id$|Id$/;
+/**
+ * lane:core (S0 review SD-1/SD-2, PERSIST-004) — one pass over the whole save before the targeted repairs. It removes
+ * every map key that names an inherited Object property (in any id-keyed map or sub-map: tanks, alleles, counters,
+ * food tags…), clears every id field holding such a name, and drops such names and records with such an id from every
+ * list. After it,
+ * no lookup through save data (`state.clutches[cl.id]`, `CATALOG[defId]`) can reach Object.prototype, so the sim can
+ * neither pollute it nor crash on it every tick. Player-written text (names, messages) is left alone.
+ */
+function scrubInheritedNames(node: Json, path: string, repairs: string[], depth = 0): void {
+  if (depth > 64 || !node || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    // A string id, or a record whose own id is such a name, is dropped from its list (a record without an id breaks
+    // whatever numbers or finds it, e.g. the log's sequence).
+    const kept = node.filter((x) => (typeof x === 'string' ? !isInheritedName(x) : !(isObj(x) && typeof x.id === 'string' && isInheritedName(x.id))));
+    if (kept.length !== node.length) {
+      node.splice(0, node.length, ...kept);
+      repairs.push(`${path}: invalid ids removed`);
+    }
+    for (let i = 0; i < node.length; i++) scrubInheritedNames(node[i], `${path}[${i}]`, repairs, depth + 1);
+    return;
+  }
+  for (const k of Object.keys(node)) {
+    if (isInheritedName(k)) {
+      delete node[k];
+      repairs.push(`${path}: key ${JSON.stringify(k)} is not a valid id, removed`);
+      continue;
+    }
+    const v = node[k];
+    if (typeof v === 'string' && ID_FIELD.test(k) && isInheritedName(v)) {
+      node[k] = null;
+      repairs.push(`${path}.${k}: ${JSON.stringify(v)} is not a valid id, cleared`);
+      continue;
+    }
+    scrubInheritedNames(v, path ? `${path}.${k}` : k, repairs, depth + 1);
   }
 }
 const num = (v: unknown, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -214,6 +257,22 @@ function fillNumbers<T extends object>(target: Json, defaults: T, label: string,
   return target as T;
 }
 
+/** Equipment records whose defId is in the catalog (an unknown one crashes the wear step every tick, SD-2). */
+function knownEquipment(a: unknown, label: string, repairs: string[]): Json[] {
+  const all = records(a);
+  const kept = all.filter((e) => typeof e.defId === 'string' && !!getEquipmentDef(e.defId));
+  if (kept.length !== all.length) repairs.push(`${label}: ${all.length - kept.length} unknown equipment removed`);
+  return kept;
+}
+
+/** Decor (and frag) records whose defId is in the catalog. */
+function knownDecor(a: unknown, label: string, repairs: string[]): Json[] {
+  const all = records(a);
+  const kept = all.filter((d) => typeof d.defId === 'string' && !!DECOR_BY_ID[d.defId]);
+  if (kept.length !== all.length) repairs.push(`${label}: ${all.length - kept.length} unknown decor removed`);
+  return kept;
+}
+
 function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | null {
   if (!isObj(t)) return null;
   t.id = id;
@@ -230,9 +289,8 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   t.water = fillNumbers(t.water, defaultWater(marine, wc === 'freshwater_cool'), `tank ${id}.water`, repairs);
   if (!isObj(t.placement)) t.placement = { x: 0, z: 0, rotY: 0 };
   t.placement = fillNumbers(t.placement, { x: 0, z: 0, rotY: 0 }, `tank ${id}.placement`, repairs);
-  t.equipment = records(t.equipment);
-  if (!Array.isArray(t.decor)) t.decor = [];
-  t.decor = t.decor.filter((d: Json) => isObj(d) && typeof d.defId === 'string');
+  t.equipment = knownEquipment(t.equipment, `tank ${id}`, repairs);
+  t.decor = knownDecor(t.decor, `tank ${id}`, repairs);
   for (const d of t.decor) {
     for (const k of ['x', 'y', 'z', 'rotY'] as const) d[k] = num(d[k], 0);
     d.scale = num(d.scale, 1);
@@ -351,6 +409,7 @@ function renameLegacyMorphs(s: Json): void {
 
 export function repairState(s: Json): string[] {
   const repairs: string[] = [];
+  scrubInheritedNames(s, '', repairs);
   s.schemaVersion = SCHEMA_VERSION;
   s.saveId ??= `save_repaired_${Date.now().toString(36)}`;
   s.seed = num(s.seed, 1) >>> 0;
@@ -363,7 +422,7 @@ export function repairState(s: Json): string[] {
   if (!isObj(s.clock)) s.clock = { hour: 8, speed: 1 };
   s.clock.hour = num(s.clock.hour, 8);
   if (![0, 1, 3, 10].includes(s.clock.speed)) s.clock.speed = 1;
-  s.starterId ??= 'betta';
+  if (typeof s.starterId !== 'string' || !findSpecies(s.starterId)) s.starterId = 'betta';
   s.shopName = typeof s.shopName === 'string' && s.shopName ? s.shopName : 'My Aquarium';
 
   if (!isObj(s.tanks)) s.tanks = {};
@@ -400,6 +459,7 @@ export function repairState(s: Json): string[] {
       repairs.push(`clutch ${id}: removed (missing tank/species)`);
       continue;
     }
+    cl.id = id; // the sim re-reads `state.clutches[cl.id]` (SD-1): a record's own id must be its key
     cl.count = Math.max(0, Math.floor(num(cl.count, 0)));
     cl.survival = Math.max(0, Math.min(1, num(cl.survival, 1)));
     cl.nextStageHour = num(cl.nextStageHour, num(s.clock.hour, 0) + 24);
@@ -408,10 +468,10 @@ export function repairState(s: Json): string[] {
   if (!isObj(s.inventory)) s.inventory = {};
   if (!isObj(s.inventory.foods)) s.inventory.foods = {};
   s.inventory.salt = num(s.inventory.salt, 0);
-  s.inventory.equipment = records(s.inventory.equipment);
-  s.inventory.decor = records(s.inventory.decor);
+  s.inventory.equipment = knownEquipment(s.inventory.equipment, 'inventory', repairs);
+  s.inventory.decor = knownDecor(s.inventory.decor, 'inventory', repairs);
   // lane:frags — optional frag storage: drop unreadable entries, never invent the list for old saves
-  if (s.inventory.frags !== undefined) s.inventory.frags = Array.isArray(s.inventory.frags) ? s.inventory.frags.filter((d: Json) => isObj(d) && typeof d.defId === 'string') : [];
+  if (s.inventory.frags !== undefined) s.inventory.frags = knownDecor(s.inventory.frags, 'inventory frags', repairs);
 
   if (!isObj(s.facility)) s.facility = { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] };
   s.facility = fillNumbers(s.facility, { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] }, 'facility', repairs);
@@ -432,7 +492,8 @@ export function repairState(s: Json): string[] {
       delete l.snapshot.photo;
       repairs.push(`listing ${String(l.id).slice(0, 40)}: photo was not an embedded image, removed`);
     }
-    if (l.fragItems !== undefined && !Array.isArray(l.fragItems)) l.fragItems = []; // lane:frags
+    if (l.fragItems !== undefined) l.fragItems = knownDecor(l.fragItems, `listing ${String(l.id).slice(0, 40)}`, repairs); // lane:frags
+    if (l.tankId !== undefined && !hasKey(s.tanks, l.tankId)) delete l.tankId;
   }
   if (s.market.fragSaleHours !== undefined) s.market.fragSaleHours = Array.isArray(s.market.fragSaleHours) ? s.market.fragSaleHours.filter((h: unknown) => typeof h === 'number' && Number.isFinite(h)) : []; // lane:frags
 
@@ -449,11 +510,13 @@ export function repairState(s: Json): string[] {
   // lane:genetics — optional lists: repaired when present, derived from the collection when missing (pre-0.4 saves)
   if (p.discoveredStrains !== undefined) p.discoveredStrains = strings(p.discoveredStrains);
   if (p.prismaticFinds !== undefined) p.prismaticFinds = records(p.prismaticFinds).filter((f) => typeof f.speciesId === 'string' && typeof f.creatureId === 'string');
-  p.quests = records(p.quests);
+  p.quests = records(p.quests).filter((q) => typeof q.id === 'string');
   if (!isObj(p.research)) p.research = { progressHours: 0, completed: [] };
   p.research.progressHours = num(p.research.progressHours, 0);
   p.research.completed = strings(p.research.completed);
+  if (p.research.activeId !== undefined && (typeof p.research.activeId !== 'string' || !RESEARCH_BY_ID[p.research.activeId])) delete p.research.activeId;
   if (!isObj(p.tutorial)) p.tutorial = { starterId: s.starterId, step: 0, done: true, skipped: true, flags: {} };
+  if (typeof p.tutorial.starterId !== 'string' || !findSpecies(p.tutorial.starterId)) p.tutorial.starterId = s.starterId;
   if (!isObj(p.tutorial.flags)) p.tutorial.flags = {};
   if (!isObj(p.counters)) p.counters = {};
 

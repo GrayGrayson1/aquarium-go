@@ -25,6 +25,7 @@
 import type { FacilityLevelId, MasteryTrack } from '@/types';
 import { SCAPED_EDITS, type Cond } from './unlocks';
 import type { UnlockKey } from './unlockKeys';
+import { byId } from '@/data/byId';
 
 export type Objective =
   /**
@@ -242,7 +243,7 @@ export const QUESTS: QuestDef[] = [
   { id: 'q_show_ribbon', title: 'Ribbon day', body: 'Place 1st, 2nd or 3rd in any show class.', bodyRepeat: 'Place 1st, 2nd or 3rd in {n} show classes.', objective: { type: 'counter', key: 'show_ribbons', min: 1, relative: true }, reward: { money: 150, reputation: 6, mastery: { track: 'breeding', xp: 40 } }, requires: [unlockedCond('shows'), { type: 'counter', key: 'show_entries', min: 1 }], repeatable: true, weight: 0.9, icon: 'Award' },
 ];
 
-export const QUEST_BY_ID: Record<string, QuestDef> = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
+export const QUEST_BY_ID: Record<string, QuestDef> = byId(QUESTS);
 
 /** Number of simultaneous board quests (completed-but-unclaimed quests keep their slot). */
 export const QUEST_BOARD_SIZE = 3;

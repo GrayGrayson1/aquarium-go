@@ -13,6 +13,7 @@
  * - `visual` keys are interpreted by src/render/decor/gen/index.ts.
  */
 import type { DecorDef, DecorAnchorTemplate } from '@/types';
+import { byId } from '@/data/byId';
 
 type Habitat = DecorDef['habitat'];
 const hab = (h: Partial<Habitat>): Habitat => ({
@@ -907,7 +908,7 @@ export const DECOR: DecorDef[] = [
   },
 ];
 
-export const DECOR_BY_ID: Record<string, DecorDef> = Object.fromEntries(DECOR.map((d) => [d.id, d]));
+export const DECOR_BY_ID: Record<string, DecorDef> = byId(DECOR);
 
 export function getDecorDef(id: string): DecorDef | undefined {
   return DECOR_BY_ID[id];
