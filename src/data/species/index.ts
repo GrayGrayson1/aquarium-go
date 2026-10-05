@@ -20,13 +20,14 @@ export const ALL_SPECIES: SpeciesDefinition[] = [axolotl, betta, peaPuffer, ocel
 const BY_ID: Record<string, SpeciesDefinition> = Object.fromEntries(ALL_SPECIES.map((s) => [s.id, s]));
 
 export function getSpecies(id: string): SpeciesDefinition {
-  const s = BY_ID[id];
+  const s = findSpecies(id);
   if (!s) throw new Error(`Unknown species: ${id}`);
   return s;
 }
 
+/** Own keys only: an id from a save such as "constructor" or "__proto__" must not find an inherited Object property. */
 export function findSpecies(id: string): SpeciesDefinition | undefined {
-  return BY_ID[id];
+  return Object.hasOwn(BY_ID, id) ? BY_ID[id] : undefined;
 }
 
 export function listSpecies(filter?: (s: SpeciesDefinition) => boolean): SpeciesDefinition[] {

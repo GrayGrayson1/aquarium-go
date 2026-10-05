@@ -39,6 +39,22 @@ export interface Migration {
 }
 
 const isObj = (v: unknown): v is Record<string, Json> => !!v && typeof v === 'object' && !Array.isArray(v);
+/**
+ * lane:core (S0 review, PERSIST-004) — an id read from a save must be a plain own key. "__proto__", "constructor",
+ * "toString" and the other inherited Object properties would otherwise pass lookups such as `s.tanks[id]`, and the sim
+ * would then write through them (prototype pollution, or a crash on every tick).
+ */
+const isSafeKey = (id: unknown): id is string => typeof id === 'string' && id.length > 0 && !(id in Object.prototype) && id !== 'prototype';
+/** `id` is a safe own key of `obj`. */
+const hasKey = (obj: Json, id: unknown): boolean => isSafeKey(id) && Object.hasOwn(obj, id);
+/** Remove entries whose key isn't a safe id from an id-keyed map, noting each removal. */
+function dropUnsafeKeys(map: Json, what: string, repairs: string[]): void {
+  for (const id of Object.keys(map)) {
+    if (isSafeKey(id)) continue;
+    delete map[id];
+    repairs.push(`${what} ${JSON.stringify(id).slice(0, 40)}: not a valid id, removed`);
+  }
+}
 const num = (v: unknown, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
 /** lane:fix-core (P5-05) — an array of records: anything that is not an object (null, a number…) is dropped. */
 const records = (a: unknown): Json[] => (Array.isArray(a) ? a.filter(isObj) : []);
@@ -351,6 +367,7 @@ export function repairState(s: Json): string[] {
   s.shopName = typeof s.shopName === 'string' && s.shopName ? s.shopName : 'My Aquarium';
 
   if (!isObj(s.tanks)) s.tanks = {};
+  dropUnsafeKeys(s.tanks, 'tank', repairs);
   for (const [id, t] of Object.entries(s.tanks)) {
     const fixed = repairTank(s, id, t, repairs);
     if (!fixed) {
@@ -359,24 +376,26 @@ export function repairState(s: Json): string[] {
     }
   }
   if (!Array.isArray(s.tankOrder)) s.tankOrder = [];
-  s.tankOrder = [...new Set((s.tankOrder as unknown[]).filter((id): id is string => typeof id === 'string' && !!s.tanks[id]))];
+  s.tankOrder = [...new Set((s.tankOrder as unknown[]).filter((id): id is string => hasKey(s.tanks, id)))];
   for (const id of Object.keys(s.tanks)) if (!s.tankOrder.includes(id)) s.tankOrder.push(id);
 
   if (!isObj(s.creatures)) s.creatures = {};
+  dropUnsafeKeys(s.creatures, 'creature', repairs);
   for (const [id, c] of Object.entries(s.creatures)) {
     const fixed = repairCreature(s, id, c, repairs);
     if (!fixed) {
       delete s.creatures[id];
       continue;
     }
-    if (fixed.tankId && !s.tanks[fixed.tankId] && (fixed.status === 'alive' || fixed.status === 'listed')) {
+    if (fixed.tankId && !hasKey(s.tanks, fixed.tankId) && (fixed.status === 'alive' || fixed.status === 'listed')) {
       repairs.push(`creature ${id}: tank ${fixed.tankId} missing → holding`);
       fixed.tankId = null;
     }
   }
   if (!isObj(s.clutches)) s.clutches = {};
+  dropUnsafeKeys(s.clutches, 'clutch', repairs);
   for (const [id, cl] of Object.entries(s.clutches) as [string, Json][]) {
-    if (!isObj(cl) || !s.tanks[cl.tankId] || !findSpecies(cl.speciesId)) {
+    if (!isObj(cl) || !hasKey(s.tanks, cl.tankId) || !findSpecies(cl.speciesId)) {
       delete s.clutches[id];
       repairs.push(`clutch ${id}: removed (missing tank/species)`);
       continue;
@@ -405,8 +424,14 @@ export function repairState(s: Json): string[] {
   for (const o of s.market.stock as Json[]) for (const c of o.creatures as Json[]) if (isObj(c)) repairRareVariant(c, String(c.id), `offer ${o.id} creature ${c.id}`, repairs); // lane:genetics
   for (const l of s.market.listings as Json[]) {
     l.bids = records(l.bids);
-    l.creatureIds = strings(l.creatureIds);
+    l.creatureIds = strings(l.creatureIds).filter(isSafeKey);
     if (!isObj(l.snapshot)) l.snapshot = { valuation: 0, healthScore: 0, beautyScore: 0, careDifficulty: '', lineageSummary: '', summary: '', creatureIds: l.creatureIds };
+    // lane:core (S0 review, PERSIST-004) — a listing photo is an embedded image (capturePhoto's data URL). Anything else
+    // would be rendered as <img src>, the only way a save could make the game fetch a remote URL.
+    if (l.snapshot.photo !== undefined && !(typeof l.snapshot.photo === 'string' && l.snapshot.photo.startsWith('data:image/'))) {
+      delete l.snapshot.photo;
+      repairs.push(`listing ${String(l.id).slice(0, 40)}: photo was not an embedded image, removed`);
+    }
     if (l.fragItems !== undefined && !Array.isArray(l.fragItems)) l.fragItems = []; // lane:frags
   }
   if (s.market.fragSaleHours !== undefined) s.market.fragSaleHours = Array.isArray(s.market.fragSaleHours) ? s.market.fragSaleHours.filter((h: unknown) => typeof h === 'number' && Number.isFinite(h)) : []; // lane:frags
@@ -463,7 +488,7 @@ export function repairState(s: Json): string[] {
     s.staff.roster = (s.staff.roster as Json[]).filter((m) => isObj(m) && typeof m.id === 'string' && typeof m.role === 'string');
     for (const m of s.staff.roster as Json[]) {
       if (!Array.isArray(m.tankIds)) m.tankIds = [];
-      m.tankIds = (m.tankIds as unknown[]).filter((id) => typeof id === 'string' && !!s.tanks[id as string]);
+      m.tankIds = (m.tankIds as unknown[]).filter((id) => hasKey(s.tanks, id));
       m.skill = Math.max(1, Math.min(5, Math.round(num(m.skill, 1))));
       m.wage = Math.max(0, num(m.wage, 60));
       m.xp = Math.max(0, num(m.xp, 0));
