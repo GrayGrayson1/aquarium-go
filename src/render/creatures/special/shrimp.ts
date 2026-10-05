@@ -710,7 +710,7 @@ function makeShrimpFactory(spec: ShrimpSpec): CreatureFactory {
     for (const b of rigI.roots) inner.add(b);
 
     const u = createCritterUniforms(fx);
-    applyAppearance(u, ap);
+    applyAppearance(u, ap, args.creature);
     const eggCol = spec.kind === 0 ? new THREE.Color('#e3c23a') : spec.kind === 1 ? new THREE.Color('#6f7a4a') : new THREE.Color('#d8a13a');
     u.uAgcPal.value[6].copy(eggCol);
     u.uAgcF0.value.set(spec.kind, 0, 0, 0);

@@ -35,6 +35,7 @@ import { useTankFX } from '../shared/underwater';
 import { getCreatureFactory } from './registry';
 import type { CreatureObject } from './types';
 import { appearanceHash } from './core/palette';
+import { prismaticOf, prismaticSig, attachPrismaticGlints } from './core/prismatic'; // lane:genetics
 import { hashStr, hash1, clamp, approach } from './core/math';
 import { filterPose, makePoseFilter, type PoseFilter } from './core/poseFilter';
 import { detailTiers } from '../shared/detail';
@@ -67,7 +68,7 @@ function hashOf(c: Creature): string {
 
 /** Signature of everything that requires rebuilding a creature's visual. */
 function creatureSig(c: Creature): string {
-  return `${c.speciesId}|${hashOf(c)}|${c.lifeStage}|${c.sex}`;
+  return `${c.speciesId}|${hashOf(c)}|${c.lifeStage}|${c.sex}${prismaticSig(c)}`; // lane:genetics: + Prismatic
 }
 
 /** A dead body stays in the tank this many game hours after its death was first seen here… */
@@ -302,6 +303,15 @@ export function TankCreatures({ tank, lod }: { tank: Tank; lod: RenderLod }) {
     } catch (err) {
       console.warn('[fishart] creature visual failed', c.speciesId, err);
       return;
+    }
+    // lane:genetics — a Prismatic in the focused tank also trails a few star glints (cosmetic; tank clock only)
+    const prism = buildLod === 0 ? prismaticOf(c) : null;
+    if (prism) {
+      try {
+        obj = attachPrismaticGlints(obj, fx, prism.seed, useSettings.getState().reducedMotion);
+      } catch (err) {
+        console.warn('[fishart] prismatic glints failed', err);
+      }
     }
     obj.root.userData.creatureId = id;
     obj.root.userData.pickRadius = obj.pickRadius ?? 0.5;

@@ -8,7 +8,7 @@
 import type { Creature, ExhibitReport, GameState, Rarity, Tank } from '@/types';
 import { findSpecies } from '@/data/species';
 import { getTankTier } from '@/data/catalog/tanks';
-import { creaturesInTank } from '../life';
+import { creaturesInTank, isPrismatic } from '../life';
 import { hourOfDay, lightsOn } from '../time';
 import { showsExhibitBoost } from '../shows/titles'; // lane:shows
 
@@ -155,6 +155,7 @@ function visibility(c: Creature, day: boolean): number {
 }
 
 function morphRarity(c: Creature): number {
+  if (isPrismatic(c)) return 1; // lane:genetics — visitors crowd the glass for a Prismatic
   const sp = findSpecies(c.speciesId);
   if (!sp || !c.morphName) return 0;
   let best = 0;

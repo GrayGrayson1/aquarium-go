@@ -1,0 +1,243 @@
+/*
+ * lane:genetics — Prismatic individuals, morph tiers, named strains and the morph catalog.
+ * Motion is slow (≥2 s cycles, no strobing) and stops entirely under reduced motion.
+ */
+@property --ag-prism-a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* ── the badge ── */
+.ag-prismatic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: #2a1640;
+  background: linear-gradient(110deg, #ffd1ef 0%, #fff0b3 20%, #c6ffe6 40%, #cfe4ff 60%, #e6d4ff 80%, #ffd1ef 100%);
+  background-size: 250% 100%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 2px 12px rgba(214, 170, 255, 0.35);
+  animation: ag-prism-flow 7s linear infinite;
+}
+.ag-prismatic-badge.is-compact {
+  padding: 2px 4px;
+}
+@keyframes ag-prism-flow {
+  to {
+    background-position: -250% 0;
+  }
+}
+
+/* ── portrait frames (both portrait components add .ag-prismatic-frame + a .ag-prism-glints child) ── */
+.pn-portrait.ag-prismatic-frame,
+.ag-portrait.ag-prismatic-frame {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 0 18px rgba(205, 160, 255, 0.4), 0 0 7px rgba(140, 230, 255, 0.35);
+}
+.ag-prism-glints {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 2;
+}
+.ag-prism-glints::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(from var(--ag-prism-a), #ff9bd8, #ffe08a, #9dffcf, #8fd0ff, #c7a6ff, #ff9bd8);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ag-prism-spin 9s linear infinite;
+}
+.ag-prism-glints::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 24% 26%, rgba(255, 255, 255, 0.95) 0 1.2px, rgba(255, 236, 190, 0.55) 2.2px, transparent 4.5px),
+    radial-gradient(circle at 76% 22%, rgba(255, 255, 255, 0.9) 0 1px, rgba(205, 228, 255, 0.55) 2px, transparent 4px),
+    radial-gradient(circle at 70% 78%, rgba(255, 255, 255, 0.9) 0 1.1px, rgba(255, 205, 238, 0.55) 2px, transparent 4px),
+    radial-gradient(circle at 30% 74%, rgba(255, 255, 255, 0.7) 0 0.9px, rgba(190, 255, 225, 0.45) 1.8px, transparent 3.5px);
+  mix-blend-mode: screen;
+  animation: ag-prism-twinkle 3.4s ease-in-out infinite;
+}
+@keyframes ag-prism-spin {
+  to {
+    --ag-prism-a: 360deg;
+  }
+}
+@keyframes ag-prism-twinkle {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ── cards that carry a Prismatic (shop offers) ── */
+.ag-prismatic-card {
+  box-shadow: inset 0 0 0 1px rgba(214, 180, 255, 0.55), 0 0 22px rgba(190, 150, 255, 0.16) !important;
+  background-image: linear-gradient(160deg, rgba(255, 210, 240, 0.07), rgba(200, 255, 235, 0.04) 40%, transparent 70%);
+}
+.ag-strain-badge svg {
+  vertical-align: -1px;
+}
+
+/* ── encyclopedia: named strains, the morph catalog (colour tree), Prismatic finds ── */
+.pn-strains,
+.pn-catalog {
+  display: grid;
+  gap: 6px;
+}
+.pn-strain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(200, 235, 245, 0.08);
+}
+.pn-strain.is-unknown {
+  color: rgba(210, 236, 242, 0.62);
+}
+.pn-strain__name {
+  flex: 1 1 140px;
+  font-weight: 600;
+  min-width: 0;
+}
+.pn-strain__recipe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  font-size: 12px;
+}
+.pn-strain__plus {
+  opacity: 0.55;
+}
+.pn-catalog__group {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(200, 235, 245, 0.08);
+}
+.pn-catalog__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pn-catalog__head:focus-visible {
+  outline: 2px solid var(--c-aqua);
+  outline-offset: -2px;
+}
+.pn-catalog__swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.pn-catalog__title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+.pn-catalog__count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+.pn-catalog__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 10px 10px 30px;
+  list-style: none;
+}
+.pn-catalog__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-size: 13px;
+}
+.pn-catalog__row.is-unknown {
+  color: rgba(210, 236, 242, 0.55);
+}
+.pn-catalog__label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pn-prismatic-box {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: linear-gradient(140deg, rgba(255, 209, 239, 0.08), rgba(198, 255, 230, 0.06) 45%, rgba(207, 228, 255, 0.07));
+  box-shadow: inset 0 0 0 1px rgba(214, 180, 255, 0.28);
+}
+.pn-prismatic-box ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.pn-spec__prism {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-prismatic-badge,
+  .ag-prism-glints::before,
+  .ag-prism-glints::after {
+    animation: none;
+  }
+}
+:root[data-reduced-motion='true'] .ag-prismatic-badge,
+:root[data-reduced-motion='true'] .ag-prism-glints::before,
+:root[data-reduced-motion='true'] .ag-prism-glints::after {
+  animation: none !important;
+}
+.pn-good-ic {
+  flex: none;
+  color: var(--c-good);
+}
+.ag-prismatic-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: #ead9ff;
+}
+.ag-prismatic-line svg {
+  flex: none;
+  color: #ffd6f2;
+}
+.ag-morph__tiers {
+  gap: 6px;
+  margin-top: 6px;
+}

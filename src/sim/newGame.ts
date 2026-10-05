@@ -5,7 +5,7 @@ import type { GameState, WaterClass, Creature, Sex } from '@/types';
 import { SCHEMA_VERSION } from '@/persistence/schema';
 import { simRng, mulberry32 } from './rng';
 import { createTank } from './tanks';
-import { createCreature, addCreature } from './life';
+import { createCreature, addCreature, recordFinds } from './life';
 import { initMarket } from './economy';
 import { initialFacility, initProgress, findFreeSpot, settleStartingProgress } from './facility';
 import { starterAquascape } from './aquascape';
@@ -126,6 +126,8 @@ function emptyState(seed: number, starterId: string): GameState {
       counters: {},
       discoveredSpecies: [],
       discoveredMorphs: [],
+      discoveredStrains: [], // lane:genetics
+      prismaticFinds: [], // lane:genetics
     },
     visitors: {
       today: { day: 1, count: 0, revenue: 0, tips: 0, satisfactionSum: 0 },
@@ -209,6 +211,7 @@ export function newGame(opts: NewGameOptions): GameState {
 
   state.progress.discoveredSpecies.push(opts.starterId);
   state.progress.discoveredMorphs.push(`${opts.starterId}:${creature.morphName}`);
+  recordFinds(state, creature); // lane:genetics — the starter's named strain, if it has one (starters are never rolled Prismatic)
 
   initProgress(state, opts.starterId);
   initMarket(state);

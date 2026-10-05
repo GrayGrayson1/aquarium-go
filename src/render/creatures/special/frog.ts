@@ -213,7 +213,7 @@ export const createDwarfFrog: CreatureFactory = (args) => {
   const rigI = instantiateRig(tpl.rig);
   for (const b of rigI.roots) inner.add(b);
   const u = createCritterUniforms(fx);
-  applyAppearance(u, ap);
+  applyAppearance(u, ap, args.creature);
   const bodyMat = createCritterMaterial({ name: 'frog', fx, u, surface: FROG_SURFACE, params: { roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 } });
   const webMat = createCritterMaterial({ name: 'frog-web', fx, u, surface: FROG_SURFACE, bump: 0, params: { roughness: 0.45, transparent: true, side: THREE.DoubleSide, depthWrite: false } });
   const body = makeSkinned(tpl.body, bodyMat, rigI, 2.2);

@@ -17,6 +17,7 @@ import { getCreatureFactory } from '../creatures/registry';
 import '../creatures';
 import { createTankFXUniforms } from '../shared/underwater';
 import { appearanceHash } from '../creatures/core/palette';
+import { prismaticSig } from '../creatures/core/prismatic'; // lane:genetics
 
 export type PortraitSubject = Creature | { speciesId: string; appearance?: CreatureVisualParams } | null;
 
@@ -578,7 +579,7 @@ export function portraitKey(subject: PortraitSubject, size: number, transparent 
   if (!subject) return null;
   const c = 'id' in subject && 'genome' in subject ? (subject as Creature) : null;
   const a = subject.appearance;
-  return `${subject.speciesId}|${a ? appearanceHash(a) : 'base'}|${c?.lifeStage ?? 'adult'}|${c?.sex ?? '-'}|${size}|${transparent ? 't' : 'b'}`;
+  return `${subject.speciesId}|${a ? appearanceHash(a) : 'base'}|${c?.lifeStage ?? 'adult'}|${c?.sex ?? '-'}|${size}|${transparent ? 't' : 'b'}${prismaticSig(c)}`; // lane:genetics: + Prismatic
 }
 
 /** Imperative API: request a portrait; resolves with a data URL (or null when unavailable). */

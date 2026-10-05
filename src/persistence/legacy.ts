@@ -35,6 +35,10 @@ export function makeLegacyV0Save(seed = 20240601): Json {
     if (c.repro) delete c.repro.totalOffspringRaised;
   }
   delete s.progress.discoveredMorphs;
+  delete s.progress.discoveredStrains; // lane:genetics — prototype saves predate strains and Prismatic animals
+  delete s.progress.prismaticFinds;
+  for (const c of Object.values(s.creatures) as Json[]) delete c.rareVariant;
+  for (const o of s.market.stock as Json[]) for (const c of o.creatures ?? []) delete c.rareVariant;
   delete s.progress.counters;
   delete s.market.history;
   s.lastTickRealMs = s.lastSavedRealMs = s.createdRealMs = Date.UTC(2024, 5, 1);

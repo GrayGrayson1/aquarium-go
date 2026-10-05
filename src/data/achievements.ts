@@ -33,6 +33,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'first_clutch', title: 'New Generation', description: 'Raise your first clutch.', cond: c('births', 1), reputation: 5, icon: 'Egg', tier: 'bronze' },
   { id: 'breeder', title: 'Breeder', description: 'Raise 10 clutches.', cond: c('births', 10), reputation: 10, icon: 'GitBranch', tier: 'silver' },
   { id: 'morph_hunter', title: 'Morph Hunter', description: 'Discover 10 morphs.', cond: { type: 'morphs', min: 10 }, reputation: 8, icon: 'Palette', tier: 'silver' },
+  { id: 'strain_seeker', title: 'Strain Seeker', description: 'Breed or buy 3 named strains.', cond: { type: 'strains', min: 3 }, reputation: 4, icon: 'Dna', tier: 'silver' }, // lane:genetics
+  { id: 'prismatic', title: 'Prismatic!', description: 'Own a Prismatic animal — a once-in-thousands shimmer.', cond: { type: 'prismatics', min: 1 }, reputation: 10, icon: 'Sparkles', tier: 'gold' }, // lane:genetics
   { id: 'community', title: 'Community Builder', description: 'Keep 5 species at once.', cond: { type: 'owns_species', min: 5 }, reputation: 5, icon: 'Fish', tier: 'bronze' },
   { id: 'naturalist', title: 'Naturalist', description: 'Keep 15 species at once.', cond: { type: 'owns_species', min: 15 }, reputation: 15, icon: 'Library', tier: 'gold' },
   { id: 'all_starters', title: 'Full Set', description: 'Keep all five starter species.', cond: { type: 'all', of: ['axolotl', 'betta', 'pea_puffer', 'ocellaris_clownfish', 'lined_seahorse'].map((speciesId) => ({ type: 'owns_species' as const, speciesId })) }, reputation: 20, icon: 'Crown', tier: 'gold' },

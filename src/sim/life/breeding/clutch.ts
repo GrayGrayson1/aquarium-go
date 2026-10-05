@@ -14,7 +14,9 @@ import type { SimContext } from '@/sim/context';
 import { nextId } from '@/sim/ids';
 import { simRng, type Rng } from '@/sim/rng';
 import { findSpecies } from '@/data/species';
-import { createCreature, addCreature, sizeAtAge } from '@/sim/life';
+import { createCreature, addCreature, sizeAtAge, assignPrismatic, isPrismatic, prismaticChance, oneInLabel, recordFinds, strainTier } from '@/sim/life';
+import type { MorphStrain } from '@/types';
+import { TIER_WORD } from '@/data/rarity';
 import { inheritGenome, resolveMorph, resolvePhenotype, rollGenome } from '@/sim/life/genetics';
 import { consumeFood } from '@/sim/water';
 import { addMastery, addReputation, bumpCounter } from '@/sim/facility';
@@ -593,6 +595,8 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   const parents = mother && father ? `${mother.name} × ${father.name}` : (mother ?? father)?.name ?? 'your breeding stock';
   const used = new Set<string>(Object.values(state.creatures).filter((c) => c.speciesId === sp.id).map((c) => c.name));
   const minted: Creature[] = [];
+  const prismatic: Creature[] = []; // lane:genetics
+  const newStrains = new Map<string, MorphStrain>(); // lane:genetics — creature id → first-time strain
   let estSize = sp.adultSizeCm * 0.5;
   try {
     estSize = sizeAtAge(sp, mg, ageDays);
@@ -631,8 +635,13 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
     c.acquiredHour = hour;
     c.history = [{ hour, kind: 'born', text: `Raised in your shop — offspring of ${parents} (generation ${generation}).` }];
     if (genome.mutations?.length) c.history.push({ hour, kind: 'milestone', text: 'Carries a spontaneous colour mutation!' });
+    // lane:genetics — one Prismatic roll per youngster, from its own generator (the sim stream is untouched). Prismatic
+    // parents raise the odds; nothing makes it certain.
+    if (assignPrismatic(state, c, 'bred', [mother, father])) prismatic.push(c);
     addCreature(state, c, tank.id);
     minted.push(c);
+    const finds = recordFinds(state, c);
+    if (finds.strains.length) newStrains.set(c.id, finds.strains[0]);
     if (Number.isFinite(c.sizeCm) && c.sizeCm > 0) estSize = c.sizeCm;
   }
   const n = minted.length;
@@ -685,7 +694,18 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
     if (!example || isPlainWildType(sp, example)) continue;
     addMastery(state, 'breeding', 25);
     bumpCounter(state, 'morphsDiscovered');
-    say(state, ctx, { kind: 'celebrate', text: `First ${m} ${spName(sp)} bred in your shop!`, tankId: tank.id, creatureId: minted.find((c) => c.morphName === m)?.id, toast: true });
+    // lane:genetics — a first that is also a recognised strain says so in the same toast (never a second one)
+    const strain = minted.filter((c) => c.morphName === m).map((c) => newStrains.get(c.id)).find(Boolean);
+    const strainNote = strain ? ` A recognised ${TIER_WORD[strainTier(sp, strain)]} strain: ${strain.name}.` : '';
+    say(state, ctx, { kind: 'celebrate', text: `First ${m} ${spName(sp)} bred in your shop!${strainNote}`, tankId: tank.id, creatureId: minted.find((c) => c.morphName === m)?.id, toast: true });
+  }
+
+  // lane:genetics — Prismatic young: announced after the brood's other news (so siblings' ids never shift)
+  for (const c of prismatic) {
+    addMastery(state, 'breeding', 40);
+    bumpCounter(state, 'prismaticsBred');
+    const odds = oneInLabel(prismaticChance({ source: 'bred', rareParents: [mother, father].filter((p) => isPrismatic(p)).length }));
+    say(state, ctx, { kind: 'celebrate', text: `Prismatic! ${c.name}, one of the new ${spPlural(sp)} from ${parents}, shimmers with rainbow light — about ${odds} young are born like this.`, tankId: tank.id, creatureId: c.id, toast: true });
   }
 
   releaseParents(state, cl);

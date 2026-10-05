@@ -18,7 +18,7 @@ import { nextId } from '../ids';
 import { emitEvent } from '../context';
 import { hourOfDay, GAME_HOURS_PER_REAL_SECOND } from '../time';
 import { deleteTank } from '../tanks';
-import { creaturesInTank } from '../life';
+import { creaturesInTank, isPrismatic } from '../life';
 import { environmentGate, previewAddition } from '../compat';
 import { isUnlocked, addReputation, addMastery, bumpCounter } from '../facility';
 import { findSpecies } from '@/data/species';
@@ -264,7 +264,7 @@ function defaultTitle(state: GameState, kind: ListingKind, creatures: Creature[]
   const c = creatures[0];
   const sp = findSpecies(c.speciesId);
   const common = sp?.commonName ?? c.speciesId;
-  const full = morphTitle(c.morphName, common);
+  const full = `${isPrismatic(c) ? 'Prismatic ' : ''}${morphTitle(c.morphName, common)}`; // lane:genetics
   switch (kind) {
     case 'creature':
       return c.name && c.name !== common ? `${c.name} — ${full}` : full;

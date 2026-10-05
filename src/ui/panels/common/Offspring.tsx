@@ -1,9 +1,9 @@
 /**
  * Expected offspring morphs for a pair (lifecycle lane's exact genetics). OWNER: lane "ui-panels".
  */
-import { Dna } from 'lucide-react';
+import { Dna, Sparkles } from 'lucide-react';
 import type { Creature } from '@/types';
-import { predictOffspringMorphs, morphDisplayName } from '@/sim/life';
+import { predictOffspringMorphs, morphDisplayName, predictOffspringStrains, prismaticChanceForPair, oneInLabel } from '@/sim/life';
 import { findSpecies } from '@/data/species';
 import { safe } from './hooks';
 
@@ -15,6 +15,9 @@ export function OffspringOdds({ a, b, max = 4 }: { a: Creature; b: Creature; max
   const odds = safe(() => predictOffspringMorphs(sp, mom.genome, dad.genome), [] as { morphName: string; chance: number }[]);
   if (!odds.length) return null;
   const top = [...odds].sort((x, y) => y.chance - x.chance).slice(0, max);
+  // lane:genetics — named strains among the young + this pair's Prismatic odds
+  const strains = safe(() => predictOffspringStrains(sp, mom.genome, dad.genome), [] as ReturnType<typeof predictOffspringStrains>).slice(0, 2);
+  const shimmer = safe(() => prismaticChanceForPair(mom, dad), 0);
   return (
     <div className="pn-odds">
       <div className="pn-odds__head">
@@ -33,6 +36,16 @@ export function OffspringOdds({ a, b, max = 4 }: { a: Creature; b: Creature; max
           </li>
         ))}
       </ul>
+      {strains.length > 0 && (
+        <p className="pn-tiny pn-muted" style={{ margin: '4px 0 0' }}>
+          Named strains: {strains.map((o) => `${o.strain.name} ${o.chance >= 0.01 ? `${Math.round(o.chance * 100)}%` : '<1%'}`).join(' · ')}
+        </p>
+      )}
+      {shimmer > 0 && (
+        <p className="pn-tiny ag-prismatic-line" style={{ margin: '4px 0 0' }}>
+          <Sparkles size={11} aria-hidden /> Prismatic ≈ {oneInLabel(shimmer)} per youngster
+        </p>
+      )}
     </div>
   );
 }

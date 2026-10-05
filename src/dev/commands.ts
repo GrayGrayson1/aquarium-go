@@ -8,7 +8,9 @@ import { useUI, type ViewMode } from '@/state/ui';
 import { advanceWorld, flushSimDebt } from '@/sim/world';
 import { simRng } from '@/sim/rng';
 import { nextId } from '@/sim/ids';
-import { createCreature } from '@/sim/life';
+import { createCreature, assignPrismatic, forcePrismatic, recordFinds } from '@/sim/life';
+import { creatureValue } from '@/sim/economy/valuation';
+import { nicePrice } from '@/sim/economy/util';
 import { devAgeCreature, devForceBreeding } from '@/sim/life/actions';
 import { environmentGate } from '@/sim/compat';
 import { earn, spend } from '@/sim/economy';
@@ -311,28 +313,67 @@ export const dev = {
     useUI.getState().set({ focusedTankId: tankId, view });
   },
 
-  /** Put a specific livestock offer at the front of the shop (e.g. to test compatibility warnings). */
-  addShopOffer(speciesId: string, opts: { count?: number; sex?: 'male' | 'female'; price?: number; ageDays?: number } = {}): DevResult {
+  /**
+   * Put a specific livestock offer at the front of the shop (e.g. to test compatibility warnings). `prismatic` makes its
+   * first animal Prismatic (lane:genetics) and prices the offer by its valuation, as the shop would.
+   */
+  addShopOffer(speciesId: string, opts: { count?: number; sex?: 'male' | 'female'; price?: number; ageDays?: number; prismatic?: boolean } = {}): DevResult {
     const sp = findSpecies(speciesId);
     if (!sp) return { ok: false, message: `Unknown species ${speciesId}` };
     return withGame<DevResult>(
       (d) => {
         const count = Math.max(1, Math.floor(opts.count ?? 1));
+        const creatures = makeOfferCreatures(d, speciesId, count, opts.sex, opts.ageDays);
+        if (opts.prismatic) {
+          forcePrismatic('shop', 1);
+          assignPrismatic(d, creatures[0], 'shop');
+        }
+        const valued = opts.prismatic ? Math.max(1, nicePrice(creatures.reduce((a, c) => a + creatureValue(d, c).total, 0) * 1.4)) : Math.round(sp.baseValue * count);
+        const price = opts.price ?? valued;
         const offer: ShopOffer = {
           id: nextId(d, 'offer'),
           kind: count > 1 ? 'group' : 'creature',
           speciesId,
-          creatures: makeOfferCreatures(d, speciesId, count, opts.sex, opts.ageDays),
-          price: opts.price ?? Math.round(sp.baseValue * count),
+          creatures,
+          price,
           seller: 'Dev Supply',
           expiresHour: d.clock.hour + 24 * 7,
-          note: 'Added by dev tools',
+          note: opts.prismatic ? 'Prismatic! Added by dev tools' : 'Added by dev tools',
+          ...(count > 1 ? { unitPrice: Math.max(1, nicePrice((price / count) * 1.12)) } : {}),
         };
         d.market.stock.unshift(offer);
         return { ok: true, message: `Offer: ${count} × ${sp.commonName}`, ids: [offer.id] };
       },
       { ok: false, message: 'No game running' },
     );
+  },
+
+  /** lane:genetics — make an owned animal Prismatic (or ordinary again with `on = false`). */
+  makePrismatic(creatureId: string, on = true): DevResult {
+    return withGame<DevResult>(
+      (d) => {
+        const c = d.creatures[creatureId];
+        if (!c) return { ok: false, message: 'Not found' };
+        if (!on) {
+          delete c.rareVariant;
+          return { ok: true, message: `${c.name} is ordinary again` };
+        }
+        if (c.rareVariant) return { ok: true, message: `${c.name} is already Prismatic` };
+        const bred = c.lineage.breederName === 'Your shop';
+        forcePrismatic(bred ? 'bred' : 'shop', 1);
+        const parents = [c.lineage.motherId, c.lineage.fatherId].map((id) => (id ? d.creatures[id] : undefined));
+        assignPrismatic(d, c, bred ? 'bred' : 'shop', parents);
+        recordFinds(d, c);
+        return { ok: true, message: `${c.name} is now Prismatic`, ids: [c.id] };
+      },
+      { ok: false, message: 'No game running' },
+    );
+  },
+
+  /** lane:genetics — the next `n` shop animals / bred young come out Prismatic (dev state only; never saved). */
+  forcePrismatic(source: 'shop' | 'bred', n = 1): DevResult {
+    forcePrismatic(source, n);
+    return { ok: true, message: `Next ${n} ${source === 'shop' ? 'shop animal' : 'bred youngster'}${n === 1 ? '' : 's'} will be Prismatic` };
   },
 
   /** Kill a creature (tests listing invalidation / death handling). */

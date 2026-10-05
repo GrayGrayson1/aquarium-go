@@ -24,6 +24,8 @@ import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { DEFAULT_LIGHTS_ON, defaultLightsOff } from '@/sim/time';
 import { renamedMorphs } from '@/sim/life/genetics';
+import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
+import { backfillFinds } from '@/sim/life/discovery'; // lane:genetics
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -280,7 +282,24 @@ function repairCreature(s: Json, id: string, c: Json, repairs: string[]): Creatu
   c.status ??= 'alive';
   c.history = records(c.history);
   c.visitorWows = num(c.visitorWows, 0);
+  repairRareVariant(c, id, `creature ${id}`, repairs);
   return c as Creature;
+}
+
+/**
+ * lane:genetics — keep a valid Prismatic state exactly as saved; drop an unreadable one (with a note) and coerce a broken
+ * origin/seed deterministically. An absent field means an ordinary animal and is left alone (no note).
+ */
+function repairRareVariant(c: Json, id: string, label: string, repairs: string[]): void {
+  if (c.rareVariant === undefined) return;
+  const fixed = sanitizeRareVariant(c.rareVariant, id);
+  if (!fixed) {
+    delete c.rareVariant;
+    repairs.push(`${label}.rareVariant: unreadable, removed`);
+  } else if (fixed.origin !== c.rareVariant.origin || fixed.visualSeed !== c.rareVariant.visualSeed || Object.keys(c.rareVariant).length !== 3) {
+    c.rareVariant = fixed;
+    repairs.push(`${label}.rareVariant`);
+  }
 }
 
 /**
@@ -383,6 +402,7 @@ export function repairState(s: Json): string[] {
   if (!isObj(s.market.demand)) s.market.demand = {};
   s.market.lastRefreshHour = num(s.market.lastRefreshHour, -999);
   s.market.stock = s.market.stock.filter((o: Json) => isObj(o) && findSpecies(o.speciesId) && Array.isArray(o.creatures));
+  for (const o of s.market.stock as Json[]) for (const c of o.creatures as Json[]) if (isObj(c)) repairRareVariant(c, String(c.id), `offer ${o.id} creature ${c.id}`, repairs); // lane:genetics
   for (const l of s.market.listings as Json[]) {
     l.bids = records(l.bids);
     l.creatureIds = strings(l.creatureIds);
@@ -401,6 +421,9 @@ export function repairState(s: Json): string[] {
   p.reputation = num(p.reputation, 0);
   p.mastery = fillNumbers(p.mastery, { husbandry: 0, breeding: 0, aquascaping: 0, marine: 0, business: 0, exhibition: 0 }, 'progress.mastery', repairs);
   for (const k of ['unlocked', 'achievements', 'discoveredSpecies', 'discoveredMorphs'] as const) p[k] = strings(p[k]);
+  // lane:genetics — optional lists: repaired when present, derived from the collection when missing (pre-0.4 saves)
+  if (p.discoveredStrains !== undefined) p.discoveredStrains = strings(p.discoveredStrains);
+  if (p.prismaticFinds !== undefined) p.prismaticFinds = records(p.prismaticFinds).filter((f) => typeof f.speciesId === 'string' && typeof f.creatureId === 'string');
   p.quests = records(p.quests);
   if (!isObj(p.research)) p.research = { progressHours: 0, completed: [] };
   p.research.progressHours = num(p.research.progressHours, 0);
@@ -453,6 +476,7 @@ export function repairState(s: Json): string[] {
   }
   delete s.offlineGrace;
   renameLegacyMorphs(s);
+  backfillFinds(s as GameState); // lane:genetics — only fills lists a pre-0.4 save lacks; silent
   if (s.isShowcase === undefined) s.isShowcase = false;
   // Keep the id counter ahead of every id we know about so new ids never collide after a repair.
   s.idCounter = Math.max(s.idCounter, maxIdSuffix(s));

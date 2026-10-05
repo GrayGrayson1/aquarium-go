@@ -9,7 +9,9 @@ import type { Creature, GameState, ShopOffer, Tank, CompatReport } from '@/types
 import { Button, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { buyOffer, offerPickPrice } from '@/sim/economy';
-import { describePersonality } from '@/sim/life';
+import { describePersonality, isPrismatic, isLotOffer, oneInLabel } from '@/sim/life';
+import { PRISMATIC } from '@/data/rarity'; // lane:genetics
+import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { previewAddition, environmentGate } from '@/sim/compat';
 import { fitsEnvironment } from '@/sim/compat/salinity'; // lane:brackish
 import { SubView } from '../common/PanelLayout';
@@ -74,7 +76,8 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
         </EmptyState>
       ) : (
         <div className="pn-grid pn-grid--2 pn-grid--auto-wide">
-          {stock.map((o) => (
+          {/* lane:genetics — a Prismatic offer leads the shelf (stable: shop order is otherwise untouched) */}
+          {[...stock].sort((a, b) => Number(b.creatures.some(isPrismatic)) - Number(a.creatures.some(isPrismatic))).map((o) => (
             <OfferCard key={o.id} g={g} offer={o} index={g.market.stock.indexOf(o)} onOpen={() => setOfferId(o.id)} tanks={tanks} />
           ))}
         </div>
@@ -99,10 +102,13 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
   const expSoon = offer.expiresHour - g.clock.hour < 6;
   const affordable = g.finance.money >= offer.price;
   const locked = sp ? !speciesUnlocked(g, sp) : false;
+  // lane:genetics — a Prismatic in the offer (any member of a group) is the face of the card
+  const shimmer = offer.creatures.find((c) => isPrismatic(c));
+  const face = shimmer ?? lead;
   return (
-    <Card className="pn-offer" onClick={onOpen} testId={`shop-offer-${index}`} label={`${sp?.commonName ?? offer.speciesId}, ${formatMoney(offer.price)}`}>
+    <Card className={clsx('pn-offer', shimmer && 'ag-prismatic-card')} onClick={onOpen} testId={`shop-offer-${index}`} label={`${shimmer ? 'Prismatic ' : ''}${sp?.commonName ?? offer.speciesId}, ${formatMoney(offer.price)}`}>
       <div className="pn-offer__top">
-        {lead ? <CreaturePortrait creature={lead} size={68} /> : null}
+        {face ? <CreaturePortrait creature={face} size={68} /> : null}
         <div className="pn-grow">
           <div className="pn-offer__name">
             {offer.kind === 'group' ? `${offer.creatures.length} × ` : ''}
@@ -120,6 +126,7 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
         </div>
       </div>
       <div className="pn-chips">
+        {shimmer && <PrismaticBadge />}
         {lead?.captiveBred && (
           <Chip tone="good" icon={<BadgeCheck size={11} />}>
             Captive-bred
@@ -176,6 +183,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   // The same quote buyOffer charges (lane:fix-econ, S13-11): a partial pick is never priced above the whole group.
   const { unit: unitPrice, price } = offerPickPrice(offer, chosen.length);
   const lead = offer.creatures[active] ?? offer.creatures[0];
+  const lot = isLotOffer(offer); // lane:genetics — a group with a Prismatic is bought whole
+  const shimmer = offer.creatures.some((c) => isPrismatic(c));
 
   const gate = useMemo(() => (sp && tank ? safe(() => environmentGate(sp, tank), { ok: sp.environment === tank.environment }) : { ok: false, reason: 'Choose a destination tank.' }), [sp, tank]);
   const report: CompatReport | null = useMemo(() => {
@@ -223,6 +232,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             <div className="pn-offerhero__sci">{sp.scientificName}</div>
           </div>
           <div className="pn-chips">
+            <PrismaticBadge creature={lead} />
             {offer.tier && offer.tier !== 'standard' && <TierChip tier={offer.tier} />}
             {lead.morphName && <Chip tone="aqua">{lead.morphName}</Chip>}
             <Chip>
@@ -247,9 +257,16 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
         </div>
       </div>
 
+      {shimmer && (
+        <Callout tone="gold" icon={<Sparkles size={15} />} title="Prismatic — an ultra-rare individual">
+          About {oneInLabel(PRISMATIC.shopChance)} animals a seller stocks shimmers like this, and it is valued about {PRISMATIC.valueMultiplier}× an ordinary animal. The shimmer is permanent. It isn’t a gene: its young are likelier, never certain, to share it.
+          {lot ? ' This group is sold as one lot.' : ''}
+        </Callout>
+      )}
+
       {offer.kind === 'group' && offer.creatures.length > 1 && (
         <section>
-          <SectionHead title={`Choose individuals · ${chosen.length} of ${offer.creatures.length}`} icon={<Users size={14} />} />
+          <SectionHead title={lot ? `Sold as one lot · ${offer.creatures.length} animals` : `Choose individuals · ${chosen.length} of ${offer.creatures.length}`} icon={<Users size={14} />} />
           <div className="pn-pickgrid">
             {offer.creatures.map((c, i) => (
               <div key={c.id} className={clsx('pn-pick', picked.has(i) && 'is-on', active === i && 'is-active')}>
@@ -263,6 +280,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
                   checked={picked.has(i)}
                   label={`Include individual ${i + 1}`}
                   hideLabel
+                  disabled={lot}
+                  title={lot ? 'Sold as one lot — this group includes a Prismatic' : undefined}
                   onChange={(v) => {
                     const n = new Set(picked);
                     if (v) n.add(i);

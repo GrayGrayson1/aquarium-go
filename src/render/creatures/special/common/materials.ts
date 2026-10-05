@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { patchUnderwaterMaterial, type TankFXUniforms } from '../../../shared/underwater';
 import { AGC_BUMP, AGC_NOISE } from './glsl';
 import { hashStr } from './math';
+import { GLSL_PRISM_HUE } from '../../core/prismatic'; // lane:genetics
 
 export interface CritterUniforms {
   uAgcTime: { value: number };
@@ -34,6 +35,8 @@ export interface CritterUniforms {
   uAgcHi: { value: number };
   /** Tank overhead light colour × intensity (shared reference with the tank FX). */
   uAgcLight: { value: THREE.Color };
+  /** lane:genetics — Prismatic: strength, hue offset, twinkle seed, unused (0 = ordinary). */
+  uAgcRare: { value: THREE.Vector4 };
 }
 
 export const PATTERN_IDS: Record<string, number> = {
@@ -56,6 +59,7 @@ export const PATTERN_IDS: Record<string, number> = {
 export function createCritterUniforms(fx: TankFXUniforms): CritterUniforms {
   return {
     uAgcTime: { value: 0 },
+    uAgcRare: { value: new THREE.Vector4(0, 0, 0, 0) }, // lane:genetics
     uAgcPal: { value: Array.from({ length: 8 }, () => new THREE.Color(1, 1, 1)) },
     uAgcPat: { value: new THREE.Vector4(0, 1, 0.5, 0) },
     uAgcMat: { value: new THREE.Vector4(0, 0, 0, 0) },
@@ -75,6 +79,7 @@ uniform float uAgcTime;
 uniform vec3 uAgcPal[8];
 uniform vec4 uAgcPat;
 uniform vec4 uAgcMat;
+uniform vec4 uAgcRare;
 uniform vec4 uAgcV0;
 uniform vec4 uAgcV1;
 uniform vec4 uAgcF0;
@@ -150,7 +155,7 @@ export function createCritterMaterial(o: CritterMaterialOptions): THREE.MeshPhys
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        `#include <common>\n${COMMON_PARS}\n${SURF_STRUCT}\n${AGC_NOISE}\n${AGC_BUMP}\n${o.surface}\n${o.post ? `#define AGC_POST\n${o.post}` : ''}\n`,
+        `#include <common>\n${COMMON_PARS}\n${GLSL_PRISM_HUE}\n${SURF_STRUCT}\n${AGC_NOISE}\n${AGC_BUMP}\n${o.surface}\n${o.post ? `#define AGC_POST\n${o.post}` : ''}\n`,
       )
       .replace(
         '#include <color_fragment>',
@@ -198,6 +203,16 @@ export function createCritterMaterial(o: CritterMaterialOptions): THREE.MeshPhys
     float agcSil = smoothstep(0.6, 0.97, 1.0 - clamp(abs(dot(normal, agcV)), 0.0, 1.0)) * (gl_FrontFacing ? 1.0 : 0.0);
     // capped low so thin parts that are all 'edge' (legs, antennae, gills) only take a faint tint, never a wash
     reflectedLight.indirectDiffuse += vec3(0.4, 1.0, 0.88) * uAgcHi * agcSil * agcSil * 0.85;
+    // lane:genetics — Prismatic: a slow rainbow sheen in rest space (it rides on the body) + a few twinkling cells
+    if (uAgcRare.x > 0.0) {
+      float agcAlong = dot(vAgcRest, vec3(0.9, 0.35, 0.2));
+      vec3 agcPr = agPrismSat(uAgcRare.y + agcAlong * 1.3 + agcRim * 0.45 - uAgcTime * 0.05);
+      float agcBand = agPrismSweep(agcAlong + 0.5, uAgcTime, uAgcRare.y);
+      reflectedLight.indirectDiffuse += agcPr * uAgcRare.x * (0.48 * agcRim + 0.2 * agcBand) * (0.35 + 0.5 * clamp(dot(agcL, vec3(0.333)), 0.0, 2.0));
+      vec3 agcCell = floor(vAgcRest * 36.0 + uAgcRare.z * 7.0);
+      float agcTw = agPrismHash(agcCell + vec3(floor(uAgcTime * 0.5 + fract(agPrismHash(agcCell) * 3.0)), 0.0, 0.0));
+      reflectedLight.indirectDiffuse += vec3(1.0, 0.96, 0.9) * smoothstep(0.988, 1.0, agcTw) * uAgcRare.x * 1.3 * (gl_FrontFacing ? 1.0 : 0.0);
+    }
   }`,
       );
   };

@@ -257,9 +257,33 @@ export interface PhenotypeRule {
   note?: string;
 }
 
+/**
+ * lane:genetics — a recognised named strain: a combination of phenotype rules the genetics already express (one base
+ * and/or overlays, matched by rule id, in any order). Strains add no inheritance of their own; they name, tier and price
+ * combinations collectors seek. Validated by validateStrains (src/sim/life/morphCatalog.ts).
+ */
+export interface MorphStrain {
+  id: string;
+  /** Player-facing strain name, e.g. "Black Samurai". Game-recognised lines; real hobby names only where the traits match. */
+  name: string;
+  /** Phenotype rule ids (genetics.phenotypes) that must ALL be expressed. */
+  requires: string[];
+  /** Phenotype rule ids that must NOT be expressed. */
+  excludes?: string[];
+  /** Collector tier. Omitted = derived from how often market stock shows the combination. */
+  tier?: Rarity;
+  /** Breaks ties between equally specific strains (higher wins). */
+  priority?: number;
+  /** Encyclopedia shows "???" instead of its name and recipe until the player has bred or bought one. */
+  hidden?: boolean;
+  note?: string;
+}
+
 export interface GeneticsDefinition {
   loci: LocusDefinition[];
   phenotypes: PhenotypeRule[];
+  /** lane:genetics — optional named strains (curated combinations of the phenotypes above). */
+  strains?: MorphStrain[];
   /** Defaults merged under every phenotype. */
   baseVisual: CreatureVisualParams;
   /** Individual colour jitter strength (0..1). */

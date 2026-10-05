@@ -324,33 +324,66 @@ export function morphDisplayName(species: SpeciesDefinition, morphName: string):
   return morphTitle(morphName, common);
 }
 
-/** Morph + genetic (pre-individual-variation) visual. */
-export function resolveMorph(species: SpeciesDefinition, genome: Genome): { visual: CreatureVisualParams; morphName: string; rarity: number; baseId: string | null; overlayIds: string[] } {
-  const g = normalizeGenome(species, genome);
-  const visual: CreatureVisualParams = { ...species.genetics.baseVisual };
+/** Which phenotype rules a genome expresses (see matchRules). */
+export interface RuleMatches {
+  /** The winning base rule (first full match), or null. */
+  base: PhenotypeRule | null;
+  /** Half-expressed base rules met before the winner (blended at 0.5). */
+  partialBases: PhenotypeRule[];
+  /** Fully expressed overlays, in rule order — these name the morph. */
+  overlays: PhenotypeRule[];
+  /** Every overlay that shows at all, in rule order, with its weight (1 = full, 0.5 = additive half-expression). */
+  overlayWeights: { rule: PhenotypeRule; weight: number }[];
+}
+
+/**
+ * The phenotype rules a genome expresses — the one place rule selection happens (resolveMorph, offspring forecasts and
+ * named strains all read it). Expects a normalized genome (resolveMorph normalizes; forecasts build valid ones).
+ */
+export function matchRules(species: SpeciesDefinition, g: Genome): RuleMatches {
+  return selectRules(species, (r) => ruleMatch(species, g, r));
+}
+
+/**
+ * Rule selection given each rule's match score (1 full, 0.5 half, 0 none — ruleMatch's scale): the first full base
+ * wins (half bases met before it blend in), then every overlay that shows, in rule order. matchRules scores with
+ * ruleMatch; the morph catalog scores from tables built with ruleMatch, so both select identically.
+ */
+export function selectRules(species: SpeciesDefinition, score: (rule: PhenotypeRule) => number): RuleMatches {
   const rules = species.genetics.phenotypes;
   let base: PhenotypeRule | null = null;
   const partialBases: PhenotypeRule[] = [];
   for (const r of rules) {
     if (r.layer !== 'base') continue;
-    const w = ruleMatch(species, g, r);
+    const w = score(r);
     if (w >= 1) {
       base = r;
       break;
     }
     if (w > 0) partialBases.push(r);
   }
-  if (base) applyVisual(visual, base.visual, 1);
-  for (const pb of partialBases) applyVisual(visual, pb.visual, 0.5);
   const overlays: PhenotypeRule[] = [];
+  const overlayWeights: { rule: PhenotypeRule; weight: number }[] = [];
   for (const r of rules) {
     if (r.layer !== 'overlay') continue;
-    const w = ruleMatch(species, g, r);
+    const w = score(r);
     if (w >= 1) {
-      applyVisual(visual, r.visual, 1);
       overlays.push(r);
-    } else if (w > 0) applyVisual(visual, r.visual, 0.5);
+      overlayWeights.push({ rule: r, weight: 1 });
+    } else if (w > 0) overlayWeights.push({ rule: r, weight: 0.5 });
   }
+  return { base, partialBases, overlays, overlayWeights };
+}
+
+/** Morph + genetic (pre-individual-variation) visual. */
+export function resolveMorph(species: SpeciesDefinition, genome: Genome): { visual: CreatureVisualParams; morphName: string; rarity: number; baseId: string | null; overlayIds: string[] } {
+  const g = normalizeGenome(species, genome);
+  const visual: CreatureVisualParams = { ...species.genetics.baseVisual };
+  const { base, partialBases, overlays, overlayWeights } = matchRules(species, g);
+  if (base) applyVisual(visual, base.visual, 1);
+  for (const pb of partialBases) applyVisual(visual, pb.visual, 0.5);
+  // full and half-expressed overlays blend in rule order, exactly as they always have
+  for (const o of overlayWeights) applyVisual(visual, o.rule.visual, o.weight >= 1 ? 1 : 0.5);
   let keep = 1 - clamp(base?.rarity ?? 0, 0, 1);
   for (const o of overlays) keep *= 1 - clamp(o.rarity, 0, 1);
   return { visual, morphName: composeMorphName(species, base, overlays), rarity: clamp(1 - keep, 0, 1), baseId: base?.id ?? null, overlayIds: overlays.map((o) => o.id) };
@@ -410,6 +443,48 @@ export function resolvePhenotype(species: SpeciesDefinition, genome: Genome, pat
  * Sorted by chance, highest first. Useful for breeding previews ("25% Leucistic").
  */
 export function predictOffspringMorphs(species: SpeciesDefinition, mother: Genome, father: Genome): { morphName: string; chance: number }[] {
+  const tally = new Map<string, number>();
+  const pots = normalizeGenome(species, mother).potentials;
+  const exact = forEachOffspringGenotype(species, mother, father, (alleles, weight) => {
+    const name = resolveMorph(species, { alleles, potentials: pots }).morphName;
+    tally.set(name, (tally.get(name) ?? 0) + weight);
+  });
+  if (!exact) return [{ morphName: resolveMorph(species, mother).morphName, chance: 1 }];
+  return [...tally.entries()].map(([morphName, chance]) => ({ morphName, chance })).sort((a, b) => b.chance - a.chance);
+}
+
+/** One expected offspring phenotype: the rule set (base + overlays) it expresses, its composed name and its chance. */
+export interface OffspringPhenotype {
+  morphName: string;
+  baseId: string | null;
+  overlayIds: string[];
+  chance: number;
+}
+
+/**
+ * Expected offspring phenotypes of a pairing — the same exact enumeration as predictOffspringMorphs, kept per rule set
+ * (so named strains can be forecast). Sorted by chance, highest first; null when the cross is too large to enumerate.
+ */
+export function predictOffspringPhenotypes(species: SpeciesDefinition, mother: Genome, father: Genome): OffspringPhenotype[] | null {
+  const tally = new Map<string, OffspringPhenotype>();
+  const pots = normalizeGenome(species, mother).potentials;
+  const exact = forEachOffspringGenotype(species, mother, father, (alleles, weight) => {
+    const m = matchRules(species, { alleles, potentials: pots });
+    const overlayIds = m.overlays.map((o) => o.id);
+    const key = `${m.base?.id ?? ''}|${overlayIds.join(',')}`;
+    const cur = tally.get(key);
+    if (cur) cur.chance += weight;
+    else tally.set(key, { morphName: composeMorphName(species, m.base, m.overlays), baseId: m.base?.id ?? null, overlayIds, chance: weight });
+  });
+  if (!exact) return null;
+  return [...tally.values()].sort((a, b) => b.chance - a.chance);
+}
+
+/**
+ * Visit every distinct offspring genotype of a pairing with its probability (exact Mendelian enumeration over all loci;
+ * mutations ignored). Returns false — visiting nothing — when the cross is too large to enumerate.
+ */
+function forEachOffspringGenotype(species: SpeciesDefinition, mother: Genome, father: Genome, visit: (alleles: Genome['alleles'], weight: number) => void): boolean {
   const loci = species.genetics.loci;
   // Per locus, the distinct unordered allele pairs a child can inherit, each with its weight (¼ per ordered combo).
   // Rule matching only counts alleles, so order never matters: at most 3 states per locus instead of 4, and a
@@ -429,11 +504,9 @@ export function predictOffspringMorphs(species: SpeciesDefinition, mother: Genom
     }
     return [...states.values()];
   });
-  const tally = new Map<string, number>();
-  const pots = normalizeGenome(species, mother).potentials;
   const MAX_COMBOS = 4096;
   const total = options.reduce((n, o) => n * o.length, 1);
-  if (total > MAX_COMBOS) return [{ morphName: resolveMorph(species, mother).morphName, chance: 1 }];
+  if (total > MAX_COMBOS) return false;
   const idx = new Array(loci.length).fill(0);
   for (let n = 0; n < total; n++) {
     let rem = n;
@@ -447,10 +520,9 @@ export function predictOffspringMorphs(species: SpeciesDefinition, mother: Genom
       alleles[loci[i].id] = st.pair;
       weight *= st.weight;
     }
-    const name = resolveMorph(species, { alleles, potentials: pots }).morphName;
-    tally.set(name, (tally.get(name) ?? 0) + weight);
+    visit(alleles, weight);
   }
-  return [...tally.entries()].map(([morphName, chance]) => ({ morphName, chance })).sort((a, b) => b.chance - a.chance);
+  return true;
 }
 
 // ───────────────────────────────── disclosure ─────────────────────────────────

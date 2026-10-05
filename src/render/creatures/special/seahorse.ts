@@ -459,7 +459,7 @@ export const createSeahorse: CreatureFactory = (args) => {
 
   const isFemale = args.creature?.sex === 'female';
   const u = createCritterUniforms(fx);
-  applyAppearance(u, ap);
+  applyAppearance(u, ap, args.creature);
   u.uAgcF0.value.set(isFemale ? 0 : 1, 0, 0, 0);
   u.uAgcF1.value.set(0, 0, 1, 0);
   const bodyMat = createCritterMaterial({

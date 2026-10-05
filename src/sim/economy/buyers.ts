@@ -18,6 +18,8 @@ import type { Aspect } from './messages';
 import { ASPECTS } from './messages';
 import { clamp, clamp01, finite, RARITY_SCORE, difficultyIndex, exhibitPopularity } from './util';
 import { morphRarity } from './valuation';
+import { isPrismatic } from '../life/rareVariants'; // lane:genetics
+import { PRISMATIC } from '@/data/rarity'; // lane:genetics
 
 export const BUYER_POOL_SIZE = 18;
 
@@ -163,7 +165,8 @@ export function buildProfile(state: GameState, kind: ListingKind, creatures: Cre
     const sp = findSpecies(c.speciesId);
     const mr = morphRarity(sp, c);
     const sr = RARITY_SCORE[sp?.rarity ?? 'common'] ?? 0.1;
-    rarity += clamp01(0.7 * mr + 0.6 * sr);
+    const shimmer = isPrismatic(c); // lane:genetics — a Prismatic is as rare as an animal gets, to any collector
+    rarity += shimmer ? 1 : clamp01(0.7 * mr + 0.6 * sr);
     const gen = c.lineage?.generation ?? 0;
     lineage += clamp01(Math.min(1, gen / 4) * 0.55 + ((c.repro?.totalOffspringRaised ?? 0) > 0 ? 0.3 : 0) + (c.captiveBred ? 0.15 : 0));
     const p = c.genome?.potentials;
@@ -172,7 +175,7 @@ export function buildProfile(state: GameState, kind: ListingKind, creatures: Cre
     size += clamp01(finite(c.sizeCm, 3) / SIZE_REF_CM);
     appeal += clamp01(sp?.visitorAppeal ?? 0.5);
     diff += difficultyIndex(sp);
-    const score = (sp?.baseValue ?? 10) * (1 + mr);
+    const score = (sp?.baseValue ?? 10) * (1 + mr) * (shimmer ? PRISMATIC.valueMultiplier : 1);
     if (score > leadScore) {
       leadScore = score;
       lead = c;

@@ -469,6 +469,14 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
       const v = p.discoveredMorphs.length;
       return { met: v >= cond.min, current: v, target: cond.min, label: `${cond.min} morphs discovered` };
     }
+    case 'strains': {
+      const v = p.discoveredStrains?.length ?? 0;
+      return { met: v >= cond.min, current: v, target: cond.min, label: `${cond.min} named ${cond.min === 1 ? 'strain' : 'strains'} discovered` };
+    }
+    case 'prismatics': {
+      const v = p.prismaticFinds?.length ?? 0;
+      return { met: v >= cond.min, current: v, target: cond.min, label: `${cond.min} Prismatic ${cond.min === 1 ? 'animal' : 'animals'}` };
+    }
     case 'any': {
       const subs = cond.of.map((c) => evalCond(state, c, cache));
       const met = subs.some((s) => s.met);

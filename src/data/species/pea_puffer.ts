@@ -107,6 +107,8 @@ export const peaPuffer: SpeciesDefinition = {
       { id: 'wild', name: 'Wild Type', layer: 'base', rarity: 0, when: [], visual: {} },
       { id: 'bold', name: 'Bold-spotted', layer: 'overlay', rarity: 0.1, when: [{ locus: 'spots', allele: 'bold', count: 'hom' }], visual: { patternScale: 1.4, patternContrast: 0.9 } },
     ],
+    // lane:genetics — recognised strain (game-recognised line combining the traits above).
+    strains: [{ id: 'bold_golden', name: 'Bold Golden', requires: ['golden', 'bold'], tier: 'rare', note: 'Golden base with big, bold spotting.' }],
     baseVisual: {
       bodyColor: '#b9bf52',
       bodyColor2: '#8e9a3e',

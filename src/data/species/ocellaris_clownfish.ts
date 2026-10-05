@@ -145,6 +145,12 @@ export const ocellarisClownfish: SpeciesDefinition = {
       { id: 'orange', name: 'Orange Ocellaris', layer: 'base', rarity: 0, when: [], visual: {} },
       { id: 'misbar', name: 'Misbar', layer: 'overlay', rarity: 0.2, when: [{ locus: 'misbar', allele: 'mb', count: 'hom' }], visual: { patternScale: 0.7, patternContrast: 0.8 } },
     ],
+    // lane:genetics — recognised strains (game-recognised lines combining the traits above).
+    strains: [
+      { id: 'misbar_snowflake', name: 'Misbar Snowflake', requires: ['snowflake', 'misbar'], tier: 'very_rare', note: 'Jagged snowflake white with missing bars.' },
+      { id: 'misbar_platinum', name: 'Misbar Platinum', requires: ['platinum', 'misbar'], tier: 'legendary', note: 'Near all-white, with the faint ghost of missing bars.' },
+      { id: 'black_misbar', name: 'Black Misbar', requires: ['black', 'misbar'], tier: 'very_rare', note: 'Black form with incomplete bars.' },
+    ],
     baseVisual: {
       bodyColor: '#f26a1b',
       bodyColor2: '#dc4f16',

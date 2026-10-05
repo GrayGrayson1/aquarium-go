@@ -208,7 +208,7 @@ function patchCommon(
         .replace('#include <dithering_fragment>', `${UW_APPLY}\n#include <dithering_fragment>\n#ifdef FS_DEBUG\ngl_FragColor.rgb = FS_DEBUG;\n#endif`);
     if (DEBUG) shader.defines.FS_DEBUG = DEBUG;
   };
-  mat.customProgramCacheKey = () => `fishart-${kind}-${cheap ? 'c' : 'f'}-v4`;
+  mat.customProgramCacheKey = () => `fishart-${kind}-${cheap ? 'c' : 'f'}-v5`; // v5: Prismatic sheen (lane:genetics)
 }
 
 /** Which pattern the shader draws: species map first, then species default for plain appearances. */

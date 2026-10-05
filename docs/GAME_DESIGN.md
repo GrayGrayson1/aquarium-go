@@ -45,6 +45,25 @@ Each creature has two layers:
 
 On top of that, every creature has 1–3 **personality tags** that change visible behaviour within species limits (bold, shy, explorer, food-obsessed, glass-curious, nest-builder, homebody, social, solitary, night owl, showoff, easily startled, patient feeder, competitive feeder, decor inspector). Genetics are simplified Mendelian loci of real domestic morphs. Market value is a game valuation, never a statement about a living thing's worth.
 
+### Morphs, strains and Prismatic animals (0.4)
+
+- **Morph catalog.** Every species' genetics are enumerated into every reachable morph (one base colour plus its overlays). Each morph is rated by how often market stock shows it, using exact Hardy–Weinberg odds from the allele frequencies. The tiers are Common ≥ 10 %, Uncommon ≥ 2 %, Rare ≥ 0.5 %, Very rare ≥ 0.1 %, and Legendary below that.
+  - The encyclopedia shows it as a colour tree: base colour, then combinations.
+  - An undiscovered entry shows only the trait names the player has already seen elsewhere; the rest read "???". It never reveals hidden carrier alleles.
+  - The catalog is derived, never hand-written (`src/sim/life/morphCatalog.ts`).
+- **Named strains.** Curated, game-recognised combinations of existing phenotype rules (`genetics.strains`: requires/excludes rule ids, in any order), such as the Black Samurai betta (Black Melano + Dragon Scale).
+  - Strains add no inheritance. The most specific match wins, and `validateStrains` rejects broken, unreachable or ambiguous recipes.
+  - A strain adds a gentle value factor by tier, on top of the morph factor: ×1.1 / 1.25 / 1.5 / 2.
+  - Morph × strain × show qualities is capped at ×6.
+  - Shipped for the starters: betta (9), clownfish (3), seahorse (3) and pea puffer (1). Axolotl morphs are single base colours.
+- **Prismatic** is an ultra-rare individual shimmer. It is a game-only phenomenon, labelled as such in the encyclopedia, and is not a gene.
+  - **Rolled once:** when a seller stocks an animal (about 1 in 4,096) or a youngster is born in the shop (1 in 8,192; ×4 with one Prismatic parent, ×8 with two, capped at 1 in 512).
+  - **Rolled from the creature's own generator,** so the simulation's random stream never moves. Reopening the shop or reloading can never reroll it.
+  - **Value:** ×12, as one valuation factor.
+  - **Group offers:** a group containing a Prismatic is sold as one lot.
+  - **Display:** a rainbow sheen, scale twinkles and star glints in the tank; a shimmering portrait frame, badge, encyclopedia finds and the "Prismatic!" achievement in the UI.
+  - **Balance:** every number lives in `src/data/rarity.ts`.
+
 ## Time
 
 - 1 real second at 1× = 6 game minutes, so a game day lasts 4 real minutes. Speeds are pause, 1×, 3× and 10×.

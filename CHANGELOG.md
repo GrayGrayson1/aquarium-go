@@ -4,6 +4,22 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.4.0 — 2026-10-05
+
+- **Prismatic animals.** A rare, permanent rainbow shimmer, about 1 in 4,096 stocked animals and 1 in 8,192 young bred
+  in your shop.
+  - A Prismatic parent makes it likelier in each youngster (×4, or ×8 with two Prismatic parents), never certain.
+  - Each one is worth about 12× an ordinary animal.
+  - Look for the sheen and sparkles in the tank, the badge in the shop, cards and lists, and the "Prismatic!"
+    achievement.
+- **Named strains.** Recognised combinations such as the Black Samurai betta, the Misbar Snowflake clownfish and the
+  Red Pinto seahorse.
+  - Logged when you first breed or buy one; each adds a modest premium to value.
+  - Breeding forecasts show strain odds and the pair's Prismatic chance.
+- **Morph catalog.** Each species page shows every colour and combination its genetics can produce, as a colour tree
+  rated from Common to Legendary by how often sellers stock it. Unseen entries hint only at traits you've already met.
+- Saves from earlier versions load unchanged: no existing animal turns Prismatic, and past strains are recognised.
+
 ## 0.3.1 — 2026-10-01
 
 - Version numbers: shown on the title screen and in Settings (with the build's commit and date), and the reload

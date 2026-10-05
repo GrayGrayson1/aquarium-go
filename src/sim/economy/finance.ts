@@ -19,6 +19,7 @@ import { AQUARIUM_CLUB, LOCAL_FISH_STORE } from '@/data/buyers';
 import { findSpecies } from '@/data/species';
 import { dayIndex, finite, fmtMoney, roundCents, pushCapped, nicePrice } from './util';
 import { quickSellQuote } from './valuation';
+import { isLotOffer } from '../life/rareVariants'; // lane:genetics
 import { payStaff, staffLeavingTonight, staffWagesPerDay } from '../staff'; // lane:staff
 
 const LEDGER_CAP = 400;
@@ -150,7 +151,8 @@ export function restartNeed(state: GameState): number | null {
     const sp = findSpecies(o.speciesId);
     if (tanks.length && !tanks.some((t) => !sp || sp.environment === t.environment)) continue;
     const n = Math.max(1, o.creatures.length);
-    const unit = n > 1 ? (o.unitPrice ?? Math.max(1, nicePrice((o.price / n) * 1.12))) : o.price;
+    // a Prismatic lot can only be bought whole (lane:genetics)
+    const unit = n > 1 && !isLotOffer(o) ? (o.unitPrice ?? Math.max(1, nicePrice((o.price / n) * 1.12))) : o.price;
     cheapest = Math.min(cheapest, unit, o.price);
   }
   let need = Math.max(RESTART_FLOOR, Number.isFinite(cheapest) ? cheapest : 0);

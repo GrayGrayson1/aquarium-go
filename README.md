@@ -58,6 +58,7 @@ Regenerate the species research ledger after editing species data: `npm run docs
 
 - `?dev=1` enables the in-game dev panel: add money, unlock everything, spawn species, age creatures, force breeding, set water parameters, advance time, and inspect AI state and compatibility reasons.
 - `?showcase=<axolotl|betta|pea_puffer|ocellaris_clownfish|lined_seahorse>` jumps straight into a starter tank. `?fixture=<name>` loads any registered dev fixture, and `&view=facility` opens the room view.
+- `?fixture=prismatic_showcase` shows Prismatic animals (betta, axolotl, guppy, cherry shrimp) beside ordinary ones, plus a Prismatic shop offer. In any game, the dev panel can make the selected animal Prismatic, add a Prismatic offer, or make the next shop animal or bred youngster Prismatic.
 - `window.__AQ` in the browser console exposes the stores and dev commands.
 
 ## Project docs

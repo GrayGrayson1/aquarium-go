@@ -13,6 +13,7 @@ import { acquireFishGeometry, releaseFishGeometry, eyeGeometry, type FishGeometr
 import { createFishUniforms, createFishMaterials, createFishDepthMaterial } from './materials';
 import { approach, clamp, clamp01, smoothstep, hash1, hashStr } from './math';
 import { FISH_DETAIL, nextDetailTier } from '../../shared/detail';
+import { prismaticOf } from './prismatic'; // lane:genetics
 
 export interface FishObject extends CreatureObject {
   plan: FishPlan;
@@ -33,6 +34,9 @@ export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject
   const geo = acquireFishGeometry(plan, lod, quality);
   const S = geo.sampler;
   const u = createFishUniforms(plan, S, a);
+  // lane:genetics — a Prismatic individual's sheen rides in the spare uLookH.yzw (no new uniform vectors)
+  const prism = prismaticOf(args.creature);
+  if (prism) u.uLookH.value.set(u.uLookH.value.x, prism.strength, prism.hue, prism.twinkle);
   const mats = createFishMaterials(plan, u, a, fx, lod, quality);
 
   const root = new THREE.Group();

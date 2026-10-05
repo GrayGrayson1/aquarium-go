@@ -30,7 +30,7 @@ import {
 } from '@/sim/facility';
 import { buyOffer, buyTank, buyFood, buySalt, createListing, acceptBid, quickSell, suggestPricing, bestOpenBid, tankKitPrice, dailyOperatingCost, quickSellQuote } from '@/sim/economy';
 import { placeDecor, checkPlacement } from '@/sim/aquascape';
-import { breedingCheck, creaturesInTank } from '@/sim/life';
+import { breedingCheck, creaturesInTank, isLotOffer } from '@/sim/life';
 import { startBreeding, separateCreature, moveClutch } from '@/sim/life/breeding/actions';
 import { moduleFor } from '@/sim/life/breeding/registry';
 import { currentPhase, isCarried } from '@/sim/life/breeding/clutch';
@@ -463,6 +463,7 @@ class Bot {
       const want = sp.sexSystem === 'gonochoristic' ? (st.sex === 'male' ? 'female' : st.sex === 'female' ? 'male' : undefined) : undefined;
       const offers = s.market.stock
         .filter((o) => o.speciesId === st.speciesId && o.creatures.length <= 2)
+        .filter((o) => !isLotOffer(o)) // a Prismatic lot can't be split, and is no starter-mate bargain (lane:genetics)
         .filter((o) => !want || o.creatures.some((c) => c.sex === want))
         .sort((a, b) => a.price - b.price);
       for (const o of offers) {

@@ -52,7 +52,15 @@ import {
   structureLabel,
   temperamentWord,
   curiosityWord,
+  isPrismatic, // lane:genetics
+  catalogEntry,
+  strainOf,
+  strainTier,
+  predictOffspringStrains,
+  prismaticChanceForPair,
+  oneInLabel,
 } from '@/sim/life';
+import { PrismaticBadge, MorphTierBadge, StrainBadge } from '../common/Prismatic'; // lane:genetics
 import { renameCreature, toggleFavorite, noteInteraction, startBreeding } from '@/sim/life/actions';
 import { illnessDef } from '@/sim/life/illness'; // lane:guide
 import { creatureValue } from '@/sim/economy';
@@ -88,6 +96,16 @@ import { CreatureRibbons } from '../panels/shows/Ribbons'; // lane:shows
 import { creatureFoodChoice } from '../common/foodStock'; // lane:w2-ui
 import { targetFeedNow } from '../hud/ToolRail'; // lane:w2-ui
 import { buyFood } from '@/sim/economy'; // lane:w2-ui
+
+// lane:genetics — where this Prismatic's shimmer came from
+const PRISMATIC_ORIGIN: Record<NonNullable<Creature['rareVariant']>['origin'], string> = {
+  shop: 'Prismatic — stocked by a seller. Its shimmer is permanent; its young are likelier, never certain, to share it.',
+  bred: 'Prismatic — born in your shop. A Prismatic parent made it likelier; nothing made it certain.',
+  spontaneous: 'Prismatic — born in your shop to ordinary parents, against thousands-to-one odds.',
+};
+
+/** Offspring odds as a percentage, without rounding a real chance down to "0%". */
+const oddsPct = (ch: number) => (ch >= 0.995 ? '100%' : ch >= 0.01 ? `${Math.round(ch * 100)}%` : ch > 0 ? '<1%' : '0%');
 
 const BAND_TONE: Record<string, string> = { Ordinary: 'b1', Promising: 'b2', Exceptional: 'b3', Remarkable: 'b4' };
 const BAND_IDX: Record<string, number> = { Ordinary: 1, Promising: 2, Exceptional: 3, Remarkable: 4 };
@@ -337,6 +355,16 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
     const [mom, dad] = p.sex === 'female' && c.sex !== 'female' ? [p, c] : [c, p];
     return safe('predictOffspringMorphs', () => predictOffspringMorphs(sp, mom.genome, dad.genome), []).slice(0, 5);
   }, [partner, c.id, game.creatures, sp]); // eslint-disable-line react-hooks/exhaustive-deps
+  // lane:genetics — named strains among the young, and the Prismatic odds for this pair
+  const strainOdds = useMemo(() => {
+    const p = partner ? game.creatures[partner] : null;
+    if (!p) return [];
+    const [mom, dad] = p.sex === 'female' && c.sex !== 'female' ? [p, c] : [c, p];
+    return safe('predictOffspringStrains', () => predictOffspringStrains(sp, mom.genome, dad.genome), []).slice(0, 3);
+  }, [partner, c.id, game.creatures, sp]); // eslint-disable-line react-hooks/exhaustive-deps
+  const partnerC = partner ? game.creatures[partner] : null;
+  const shimmerParents = (isPrismatic(c) ? 1 : 0) + (isPrismatic(partnerC) ? 1 : 0);
+  const shimmerChance = partnerC ? safe('prismaticChanceForPair', () => prismaticChanceForPair(c, partnerC), 0) : 0;
   return (
     <div className="ag-breeding">
       {status ? (
@@ -392,6 +420,26 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
                       <span className="ag-tabular ag-odds__pct">{Math.round(o.chance * 100)}%</span>
                     </div>
                   ))}
+                  {strainOdds.length > 0 && (
+                    <>
+                      <div className="ag-odds__title">Named strains</div>
+                      {strainOdds.map((o) => (
+                        <div key={o.strain.id} className="ag-odds__row">
+                          <span className="ag-grow">{o.strain.name}</span>
+                          <span className="ag-odds__bar" aria-hidden>
+                            <i style={{ width: `${Math.max(2, Math.round(o.chance * 100))}%` }} />
+                          </span>
+                          <span className="ag-tabular ag-odds__pct">{oddsPct(o.chance)}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {shimmerChance > 0 && (
+                    <div className="ag-small ag-prismatic-line" data-testid="breed-prismatic-odds">
+                      <Sparkles size={12} aria-hidden /> Prismatic chance per youngster ≈ {oneInLabel(shimmerChance)}
+                      {shimmerParents > 0 ? ` (${shimmerParents === 2 ? 'both parents' : 'one parent'} Prismatic)` : ''}
+                    </div>
+                  )}
                 </div>
               )}
               <Button
@@ -469,6 +517,7 @@ function CardHeader({ c, game }: { c: Creature; game: GameState }) {
           {sp?.commonName ?? titleCase(c.speciesId)} · <em>{sp?.scientificName}</em>
         </div>
         <div className="ag-chead__chips">
+          <PrismaticBadge creature={c} />
           <Badge tone="aqua">{LIFE_STAGE_LABEL[c.lifeStage] ?? c.lifeStage}</Badge>
           <Badge>{formatAge(c.bornHour, game.clock.hour)}</Badge>
           <Badge tone={sex.label.startsWith('Male') ? 'aqua' : sex.label.startsWith('Female') ? 'violet' : 'neutral'} title={sex.detail}>
@@ -499,6 +548,8 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
   const comfort = !wellbeing && sp && tank ? safe('speciesWaterComfort', () => speciesWaterComfort(sp, tank), null) : null;
   const structure = sp ? safe('structureLabel', () => structureLabel(sp), 'Form') : 'Form';
   const morph = sp ? safe('morphDisplayName', () => morphDisplayName(sp, c.morphName), c.morphName) : c.morphName;
+  const morphEntry = sp ? safe('catalogEntry', () => catalogEntry(sp, c.morphName), undefined) : undefined; // lane:genetics
+  const strain = sp ? safe('strainOf', () => strainOf(sp, c.genome), undefined) : undefined; // lane:genetics
   const tankGallons = tank ? safe('tier', () => getTankTier(tank.tierId).gallons, 0) : 0;
   const history = [...c.history].reverse().slice(0, 14);
   // lane:guide — where Sell leads (see the action row)
@@ -624,6 +675,18 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           {c.appearance.finType && c.appearance.finType !== 'default' && <Chip size="sm">{titleCase(c.appearance.finType)}</Chip>}
           <Chip size="sm">{c.sizeCm.toFixed(1)} cm</Chip>
         </div>
+        {/* lane:genetics — how rare this morph is in market stock, its named strain, and the Prismatic shimmer */}
+        {(morphEntry || strain) && (
+          <div className="ag-row ag-wrap ag-morph__tiers">
+            {morphEntry && <MorphTierBadge tier={morphEntry.tier} share={morphEntry.frequency} />}
+            {strain && sp && <StrainBadge strain={strain} tier={safe('strainTier', () => strainTier(sp, strain), 'common')} />}
+          </div>
+        )}
+        {c.rareVariant && isPrismatic(c) && (
+          <div className="ag-small ag-prismatic-line">
+            <Sparkles size={13} aria-hidden /> {PRISMATIC_ORIGIN[c.rareVariant.origin]}
+          </div>
+        )}
         <div className="ag-potentials">
           {POTENTIALS.map((p) => {
             const band = potentialBand(c.genome.potentials[p.key] ?? 0);

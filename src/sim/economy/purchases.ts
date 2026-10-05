@@ -7,7 +7,7 @@ import type { ActionResult } from '../care';
 import { refreshFoodStatus } from '../tankStatus';
 import { installEquipment } from '../care';
 import { environmentGate } from '../compat';
-import { addCreature } from '../life';
+import { addCreature, isLotOffer, recordFinds } from '../life';
 import { generateName } from '../life/names';
 import { mulberry32, hashString } from '../rng';
 import { createTank, defaultSubstrate } from '../tanks';
@@ -90,6 +90,8 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     idx = uniq.sort((a, b) => a - b);
   } else idx = offer.creatures.map((_, i) => i);
   const all = idx.length === total;
+  // lane:genetics — a group carrying a Prismatic is one lot: the jewel can't be picked out at the group's unit price
+  if (!all && isLotOffer(offer)) return fail('This group includes a Prismatic and is sold as one lot — buy the whole group.');
   const { price } = offerPickPrice(offer, idx.length);
   const label = offer.label ?? `${idx.length} ${speciesPlural(offer.speciesId)}`;
   if (!spend(state, price, 'livestock_purchase', `Bought ${all ? label : `${idx.length} × ${sp.commonName}`} from ${offer.seller}`)) return needMoney(state, price, label);
@@ -118,6 +120,7 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
     if (!state.progress.discoveredSpecies.includes(c.speciesId)) state.progress.discoveredSpecies.push(c.speciesId);
     const mk = `${c.speciesId}:${c.morphName}`;
     if (!state.progress.discoveredMorphs.includes(mk)) state.progress.discoveredMorphs.push(mk);
+    recordFinds(state, c); // lane:genetics — named strains + Prismatic finds (silent; the encyclopedia shows them)
   }
 
   if (all) m.stock = m.stock.filter((o) => o.id !== offerId);

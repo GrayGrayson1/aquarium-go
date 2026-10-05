@@ -172,7 +172,12 @@ export function potentialBand(v: number): 'Ordinary' | 'Promising' | 'Exceptiona
 }
 
 export { stepTankBreeding, breedingCheck, breedingStatus } from './breeding';
-export { rollGenome, inheritGenome, resolvePhenotype, describeGenetics, predictOffspringMorphs, morphDisplayName, describeLocus, hiddenAlleles, structureLabel, temperamentWord, curiosityWord } from './genetics';
+export { rollGenome, inheritGenome, resolvePhenotype, describeGenetics, predictOffspringMorphs, predictOffspringPhenotypes, morphDisplayName, describeLocus, hiddenAlleles, structureLabel, temperamentWord, curiosityWord } from './genetics';
+// lane:genetics — Prismatic individuals, named strains and the morph catalog
+export { isPrismatic, isLotOffer, prismaticChance, prismaticChanceForPair, oneInLabel, assignPrismatic, forcePrismatic, sanitizeRareVariant } from './rareVariants';
+export { morphCatalog, catalogEntry, morphTierOf, seenTraitIds, strainOf, strainsOf, strainTier, matchStrains, predictOffspringStrains, validateStrains, tierForShare } from './morphCatalog';
+export type { CatalogEntry, CatalogGroup, MorphCatalog } from './morphCatalog';
+export { recordFinds } from './discovery';
 export { PERSONALITY_INFO, allowedTags as allowedPersonalityTags } from './personality';
 export { generateName, suggestNames, nameMoodsFor } from './names';
 export { ageDaysOf, lifeStageFor, sizeAtAge, adultSizeFor, sizePotentialFactor, gallonsNeededNow } from './growth';

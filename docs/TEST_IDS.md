@@ -189,6 +189,9 @@ Dev/QA (with `?perf=1` or in dev): `window.__AQ_PERF()` → `{ tier, dpr, scale,
 | `tutorial-hint` | The guide's plain hint ("Pick a food", "Pick a plant"…) shown instead of a button when the popover or panel it points at is already open |
 | `sheet-switch` / `sheet-switch-<panelId>` | Panel switcher strip inside a bottom sheet, and one destination in it |
 | `enc-morph-chips` / `enc-morph-finds` | Encyclopedia › Morphs: the seen/unseen morph chips and the "Your finds" line |
+| `prismatic-badge` | "Prismatic" badge on a Prismatic animal (shop cards and offer detail, creature card header, livestock rows, encyclopedia tiles) |
+| `enc-strains` / `enc-catalog` / `enc-prismatic` | Encyclopedia species page: Named strains, the Morph catalog (colour tree) and the Prismatic box |
+| `breed-prismatic-odds` | Creature card › Breeding: the Prismatic chance line for the chosen pair |
 | `save-here-<slot>` / `save-overwrite-<slot>` | Settings › Saves: "Save here" on an empty manual slot / "Overwrite with current game" on a filled one (asks first) |
 | `overwrite-confirm` / `overwrite-confirm-replace` | The "Replace <slot>?" modal and its Replace button |
 | `load-confirm` / `load-confirm-load` / `load-confirm-park` | The "Load <slot>?" modal, its Load button, and "Save to <free slot> & load" (shown when a manual slot is free) |

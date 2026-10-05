@@ -9,7 +9,8 @@ import type { Creature, GameState } from '@/types';
 import { Button, Money, Modal, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { quickSell, quickSellQuote, saleWarnings } from '@/sim/economy';
-import { breedingStatus } from '@/sim/life';
+import { breedingStatus, isPrismatic } from '@/sim/life';
+import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { isCarried } from '@/sim/life/breeding/clutch';
 import { toggleFavorite, moveClutch } from '@/sim/life/actions';
 import { useShell } from '../../common/shellStore';
@@ -92,7 +93,7 @@ export function LivestockPanel() {
       if (status === 'juveniles' && !(c.lifeStage === 'juvenile' || c.lifeStage === 'fry' || c.lifeStage === 'larva')) return false;
       if (needle) {
         const sp = speciesOf(c.speciesId);
-        const hay = `${c.name} ${sp?.commonName ?? ''} ${c.morphName} ${c.personality.join(' ')}`.toLowerCase();
+        const hay = `${c.name} ${sp?.commonName ?? ''} ${c.morphName} ${c.personality.join(' ')}${isPrismatic(c) ? ' prismatic' : ''}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       return true;
@@ -350,6 +351,7 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
                   </span>
                   <SexIcon sex={c.sex} />
                   {c.isStarter && <Sparkles size={13} className="pn-gold" aria-label="Starter" />}
+                  <PrismaticBadge creature={c} compact />
                 </span>
                 <span className="pn-lsrow__species pn-ellipsis" title={`${morphName(c)} · ${c.lifeStage === 'adult' ? formatAge(ageDaysOf(g, c)) : LIFE_STAGE_LABEL[c.lifeStage]}`}>
                   {morphName(c)} · {c.lifeStage === 'adult' ? formatAge(ageDaysOf(g, c)) : LIFE_STAGE_LABEL[c.lifeStage]}

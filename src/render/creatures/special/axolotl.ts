@@ -628,7 +628,7 @@ export const createAxolotl: CreatureFactory = (args) => {
 
   // ── materials
   const u = createCritterUniforms(fx);
-  applyAppearance(u, ap);
+  applyAppearance(u, ap, args.creature);
   const body = color(ap.bodyColor);
   const acc = color(ap.accentColor);
   const b2 = color(ap.bodyColor2);

@@ -43,6 +43,10 @@ export type Cond =
   | { type: 'tutorial_done' }
   | { type: 'money'; min: number }
   | { type: 'morphs'; min: number }
+  /** lane:genetics — named strains discovered (progress.discoveredStrains). */
+  | { type: 'strains'; min: number }
+  /** lane:genetics — Prismatic animals ever owned (progress.prismaticFinds). */
+  | { type: 'prismatics'; min: number }
   | { type: 'any'; of: Cond[]; label?: string }
   | { type: 'all'; of: Cond[]; label?: string };
 

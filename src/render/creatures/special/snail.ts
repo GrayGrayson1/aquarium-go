@@ -570,7 +570,7 @@ function makeSnailFactory(spec: SnailSpec): CreatureFactory {
     const rigI = instantiateRig(tpl.rig);
     for (const b of rigI.roots) inner.add(b);
     const u = createCritterUniforms(fx);
-    applyAppearance(u, ap);
+    applyAppearance(u, ap, args.creature);
     u.uAgcF0.value.set(spec.kind, 0, 0, 0);
     u.uAgcV1.value.set(tpl.aperture.x, tpl.aperture.y, tpl.aperture.z, 0);
     const mat = createCritterMaterial({

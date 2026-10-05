@@ -11,6 +11,7 @@ import { Button, Money, formatMoney, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { createListing, suggestPricing, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
 import { capturePhoto } from '@/render/camera/photo';
+import { isPrismatic } from '@/sim/life'; // lane:genetics
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { safe } from '../common/hooks';
@@ -717,7 +718,7 @@ function fixPlurals(text: string): string {
 }
 
 /** What exactly is for sale, in words a buyer would use: "Leucistic Axolotl" + "Female · Adult", or "4 × Neon Tetra". */
-function reviewChips(kind: ListingKind, chosen: Creature[]): { text: string; title?: string; tone?: 'aqua' | 'violet' }[] {
+function reviewChips(kind: ListingKind, chosen: Creature[]): { text: string; title?: string; tone?: 'aqua' | 'violet' | 'gold' }[] {
   if (kind === 'tank') return [{ text: LISTING_KIND_LABEL.tank }];
   if (chosen.length === 0) return [{ text: LISTING_KIND_LABEL[kind] }];
   if (kind === 'creature' || chosen.length === 1) {
@@ -725,13 +726,14 @@ function reviewChips(kind: ListingKind, chosen: Creature[]): { text: string; tit
     const sp = speciesOf(c.speciesId);
     const who = [c.sex !== 'unknown' ? SEX_LABEL[c.sex] : null, LIFE_STAGE_LABEL[c.lifeStage]].filter(Boolean).join(' · ');
     return [
+      ...(isPrismatic(c) ? [{ text: 'Prismatic', title: 'An ultra-rare individual', tone: 'gold' as const }] : []), // lane:genetics
       { text: morphName(c), title: sp?.scientificName ? `${sp.commonName} (${sp.scientificName})` : undefined, tone: 'aqua' },
       ...(who ? [{ text: who }] : []),
     ];
   }
   const bySpecies = new Map<string, Creature[]>();
   for (const c of chosen) bySpecies.set(c.speciesId, [...(bySpecies.get(c.speciesId) ?? []), c]);
-  const out: { text: string; title?: string; tone?: 'aqua' | 'violet' }[] = [...bySpecies.entries()].slice(0, 3).map(([id, cs]) => ({
+  const out: { text: string; title?: string; tone?: 'aqua' | 'violet' | 'gold' }[] = [...bySpecies.entries()].slice(0, 3).map(([id, cs]) => ({
     text: `${cs.length} × ${speciesOf(id)?.commonName ?? titleCase(id)}`,
     title: nameList(cs.map((c) => c.name), 6),
     tone: 'aqua' as const,
@@ -742,6 +744,8 @@ function reviewChips(kind: ListingKind, chosen: Creature[]): { text: string; tit
     const f = chosen.find((c) => c.sex === 'female');
     if (m && f) out.push({ text: `${m.name} ♂ & ${f.name} ♀`, tone: 'violet' });
   } else if (kind === 'juveniles') out.push({ text: 'Raised in your shop' });
+  const shimmer = chosen.filter((c) => isPrismatic(c)).length; // lane:genetics
+  if (shimmer) out.unshift({ text: shimmer === 1 ? 'Includes a Prismatic' : `${shimmer} Prismatic`, title: 'Ultra-rare individuals', tone: 'gold' });
   return out;
 }
 

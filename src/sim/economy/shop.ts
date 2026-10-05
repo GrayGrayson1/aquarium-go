@@ -10,7 +10,7 @@ import { findSpecies, listSpecies } from '@/data/species';
 import { ROSTER } from '@/data/species/roster';
 import { SELLERS, type SellerDef } from '@/data/buyers';
 import { isUnlocked } from '../facility';
-import { createCreature } from '../life';
+import { createCreature, assignPrismatic, isPrismatic, isLotOffer } from '../life';
 import { generateName, takenNames } from '../life/names';
 import { mulberry32, hashString } from '../rng';
 import { creatureValue, morphRarity } from './valuation';
@@ -244,6 +244,10 @@ export function generateOffer(state: GameState, rng: Rng, speciesId: string, opt
     creatures.push(c);
   }
   uniqueOfferNames(state, sp, creatures);
+  // lane:genetics — one Prismatic roll per stocked animal, after the seller's pick (never per candidate), from each
+  // animal's own generator (the sim stream is untouched). The result is stored with the offer, so reopening or
+  // reloading the shop can never reroll it.
+  for (const c of creatures) assignPrismatic(state, c, 'shop');
   const lead = creatures[0];
   const sum = creatures.reduce((a, c) => a + creatureValue(state, c).total, 0);
   // Rare/special singles were hand-picked (best of several) and carry a collector markup; groups get breeder pricing.
@@ -262,6 +266,13 @@ export function generateOffer(state: GameState, rng: Rng, speciesId: string, opt
     const r = morphRarity(sp, lead);
     note = `${tier === 'special' ? 'Today only' : 'Rare find'}: ${r > 0.05 ? lead.morphName : `top-quality ${sp.commonName.toLowerCase()}`}${note ? `. ${note}` : ''}`;
     if (comp.count === 1 && !opts.label) label = singular;
+  }
+  // lane:genetics — a Prismatic is the headline; a group carrying one is sold as one lot (see isLotOffer).
+  const shimmer = creatures.filter((c) => isPrismatic(c)).length;
+  if (shimmer) {
+    if (creatures.length === 1 && !opts.label) label = `Prismatic ${label}`;
+    const lot = creatures.length > 1 ? ` Includes ${shimmer === 1 ? 'a Prismatic' : `${shimmer} Prismatics`} — sold as one lot.` : '';
+    note = `Prismatic! An ultra-rare shimmer — one in thousands.${lot}${note ? ` ${note}` : ''}`;
   }
   return {
     id: nextId(state, 'offer'),
@@ -308,6 +319,7 @@ export function refreshStock(state: GameState, rng: Rng, hour: number, initial =
     if (o) {
       m.stock.push(o);
       added++;
+      if (!initial) announcePrismatic(state, o);
     }
   }
   let guard = 0;
@@ -321,10 +333,19 @@ export function refreshStock(state: GameState, rng: Rng, hour: number, initial =
     if (o) {
       m.stock.push(o);
       added++;
+      if (!initial) announcePrismatic(state, o);
     }
   }
   if (!initial) m.lastRefreshHour = hour;
   return added;
+}
+
+/** lane:genetics — a Prismatic in the morning's restock is always news (the very first stock stays quiet). */
+function announcePrismatic(state: GameState, o: ShopOffer): void {
+  const c = o.creatures.find((x) => isPrismatic(x));
+  const sp = findSpecies(o.speciesId);
+  if (!c || !sp) return;
+  emitEvent(state, { kind: 'market', text: `Something special at the shop: a Prismatic ${morphLabel(c, sp)} from ${o.seller} — ${fmtMoney(o.price)}${isLotOffer(o) ? ' (sold with its group)' : ''}.`, toast: true });
 }
 
 /** When new unlocks land, stock the newly available species right away. */
@@ -345,7 +366,7 @@ export function stockNewUnlocks(state: GameState, rng: Rng, hour: number, announ
     const o = generateOffer(state, rng, sp.id, { expiresHour: nextRefreshHour(hour) + 24 });
     if (o) {
       m.stock.push(o);
-      names.push(pluralName(sp.commonName));
+      names.push(o.creatures.some((x) => isPrismatic(x)) ? `${pluralName(sp.commonName)} (one of them Prismatic!)` : pluralName(sp.commonName));
     }
   }
   if (announce && names.length) emitEvent(state, { kind: 'market', text: `New arrivals at the shop: ${names.join(', ')}.`, toast: true });
@@ -372,5 +393,7 @@ export function maybeSpecial(state: GameState, rng: Rng, start: number, dt: numb
   // to a tetra keeper. Every special is still in the log and the shop. Log-pace sweep: ~1 fewer toast per game day.
   const fits = state.tankOrder.some((id) => { const t = state.tanks[id]; return !!t && sp.waterClasses.includes(t.waterClass); });
   const news = sp.id === state.starterId || !state.progress.discoveredSpecies.includes(sp.id);
-  emitEvent(state, { kind: 'market', text: `Market special: ${o.label} from ${o.seller} — ${fmtMoney(o.price)}, today only.`, toast: fits && news });
+  // lane:genetics — a Prismatic special is always news
+  const shimmer = o.creatures.some((x) => isPrismatic(x));
+  emitEvent(state, { kind: 'market', text: `Market special: ${o.label} from ${o.seller} — ${fmtMoney(o.price)}, today only.`, toast: shimmer || (fits && news) });
 }

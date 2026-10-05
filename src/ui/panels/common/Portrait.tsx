@@ -9,6 +9,8 @@ import type { Creature, CreatureVisualParams, SpeciesDefinition, WaterClass } fr
 import { findSpecies } from '@/data/species';
 import { usePortrait, useSpeciesPortrait } from '@/render/portraits';
 import { WATER_CLASS_TINT } from './format';
+import { isPrismatic } from '@/sim/life/rareVariants'; // lane:genetics
+import { PrismaticGlints } from '@/ui/common/Prismatic'; // lane:genetics
 
 type Plan = 'fish' | 'longfin' | 'seahorse' | 'axolotl' | 'shrimp' | 'snail' | 'crab' | 'frog' | 'coral' | 'anemone' | 'eel' | 'flat';
 
@@ -313,9 +315,12 @@ export const CreatureGlyph = memo(function CreatureGlyph({ speciesId, appearance
 /** Portrait of an individual creature (real render when available, glyph otherwise). */
 export function CreaturePortrait({ creature, size = 56, className, ring }: { creature: Creature | { speciesId: string; appearance?: CreatureVisualParams }; size?: number; className?: string; ring?: 'gold' | 'aqua' | null }) {
   const url = usePortrait(creature as Creature, Math.min(512, size * 2));
+  // lane:genetics — Prismatic individuals wear the shimmering frame everywhere their portrait shows
+  const shimmer = 'rareVariant' in creature && isPrismatic(creature as Creature);
   return (
-    <span className={clsx('pn-portrait', ring && `pn-portrait--${ring}`, className)} style={{ width: size, height: size }}>
+    <span className={clsx('pn-portrait', ring && `pn-portrait--${ring}`, shimmer && 'ag-prismatic-frame', className)} style={{ width: size, height: size }}>
       {url ? <img src={url} alt="" width={size} height={size} draggable={false} /> : <CreatureGlyph speciesId={creature.speciesId} appearance={creature.appearance} size={size} />}
+      {shimmer && <PrismaticGlints />}
     </span>
   );
 }

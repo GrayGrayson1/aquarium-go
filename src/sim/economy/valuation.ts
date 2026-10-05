@@ -10,7 +10,8 @@ import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { getSubstrateDef } from '@/data/catalog/substrates';
-import { resolvePhenotype, potentialBand } from '../life';
+import { resolvePhenotype, potentialBand, strainOf, strainTier, isPrismatic, oneInLabel } from '../life';
+import { PRISMATIC, STRAIN_VALUE, MAX_GENETIC_MULTIPLIER, TIER_WORD } from '@/data/rarity'; // lane:genetics
 import { creaturesInTank } from '../life';
 import { ELDER_FRACTION } from '../life/growth'; // lane:fix-econ
 import { PERSONALITY_INFO } from '../life/personality'; // lane:qa-play
@@ -157,16 +158,20 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
 
   // 4. Phenotype rarity (morph).
   const r = morphRarity(sp, c);
+  let morphMult = 1;
   if (r > 0.06) {
     const note = r >= 0.45 ? 'A rare colour line — collectors compete for these' : r >= 0.25 ? 'An uncommon variety' : 'A popular variety';
-    m *= pushFactor(factors, `Morph: ${c.morphName}`, 1 + 1.6 * r, note);
+    morphMult = pushFactor(factors, `Morph: ${c.morphName}`, 1 + 1.6 * r, note);
+    m *= morphMult;
   }
 
-  // 5. Potentials (colour, pattern, form, size) — show qualities.
+  // 5. Potentials (colour, pattern, form, size) — show qualities. Measured here, listed after the strain below.
   const p = c.genome?.potentials;
+  let pm = 1;
+  let pNoteQ = '';
   if (p) {
     const q = 0.3 * finite(p.color, 50) + 0.25 * finite(p.pattern, 50) + 0.3 * finite(p.structure, 50) + 0.15 * finite(p.size, 50);
-    let pm = 0.8 + 0.4 * Math.pow(clamp01(q / 100), 1.1);
+    pm = 0.8 + 0.4 * Math.pow(clamp01(q / 100), 1.1);
     const notable: string[] = [];
     const bands: [string, number][] = [
       ['colour', p.color],
@@ -178,8 +183,23 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
       if (v >= 90) pm += 0.06;
       if (v >= 75) notable.push(`${potentialBand(v)} ${label}`);
     }
-    m *= pushFactor(factors, 'Show qualities', pm, notable.length ? notable.join(' · ') : q < 40 ? 'Ordinary colour and form' : 'Typical colour and form');
+    pNoteQ = notable.length ? notable.join(' · ') : q < 40 ? 'Ordinary colour and form' : 'Typical colour and form';
   }
+
+  // 5a. lane:genetics — a recognised named strain: a gentle premium on top of the morph factor (which already prices each
+  //     trait). Morph × strain × show qualities never passes MAX_GENETIC_MULTIPLIER, so stacked genetics can't run away.
+  const strain = strainOf(sp, c.genome);
+  if (strain) {
+    const tier = strainTier(sp, strain);
+    const want = STRAIN_VALUE[tier] ?? 1;
+    const sm = Math.max(1, Math.min(want, MAX_GENETIC_MULTIPLIER / Math.max(1e-6, morphMult * pm)));
+    m *= pushFactor(factors, `Named strain: ${strain.name}`, sm, sm < want - 1e-9 ? `A ${TIER_WORD[tier]} strain — already at the collector ceiling for genetics` : `A recognised ${TIER_WORD[tier]} strain — collectors pay a premium`);
+  }
+
+  // 5b. lane:genetics — Prismatic: an ultra-rare individual. One factor, applied once; nothing else multiplies by it.
+  if (isPrismatic(c)) m *= pushFactor(factors, 'Prismatic', PRISMATIC.valueMultiplier, `An ultra-rare shimmer — about ${oneInLabel(PRISMATIC.shopChance)} stocked animals`);
+
+  if (p) m *= pushFactor(factors, 'Show qualities', pm, pNoteQ);
 
   // 6. Lineage: generation depth, proven breeder, established rare line.
   const gen = Math.max(0, Math.floor(finite(c.lineage?.generation, 0)));

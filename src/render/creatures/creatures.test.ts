@@ -278,3 +278,51 @@ describe('long fins clear the substrate (L-4)', () => {
     }
   });
 });
+
+describe('Prismatic sheen (lane:genetics)', () => {
+  /** Uniform values a material would hand its shader (onBeforeCompile on a stub — no GL needed). */
+  function uniformsOf(root: THREE.Object3D): Record<string, { value: unknown }>[] {
+    const out: Record<string, { value: unknown }>[] = [];
+    root.traverse((o) => {
+      const mats = ([] as THREE.Material[]).concat(((o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined) ?? []);
+      for (const m of mats) {
+        if (!m?.onBeforeCompile) continue;
+        const stub = { uniforms: {} as Record<string, { value: unknown }>, vertexShader: '', fragmentShader: '', defines: {} };
+        m.onBeforeCompile(stub as unknown as THREE.WebGLProgramParametersWithUniforms, undefined as unknown as THREE.WebGLRenderer);
+        out.push(stub.uniforms);
+      }
+    });
+    return out;
+  }
+  const strength = (u: Record<string, { value: unknown }>) => {
+    const v = (u.uLookH?.value ?? u.uAgcRare?.value) as THREE.Vector4 | undefined;
+    return v ? (u.uLookH ? v.y : v.x) : undefined;
+  };
+
+  for (const id of ['betta', 'fancy_guppy', 'axolotl', 'cherry_shrimp', 'lined_seahorse', 'mystery_snail', 'hermit_crab', 'african_dwarf_frog']) {
+    it(`${id}: a Prismatic individual carries the sheen, an ordinary one never does`, () => {
+      const sp = ALL_SPECIES.find((s) => s.id === id)!;
+      const factory = getCreatureFactory(sp.id, sp.behaviorSet)!;
+      for (const lod of LODS) {
+        const plain = fakeCreature(sp.id, 'adult', 'female', sp.adultSizeCm);
+        const rare = { ...plain, id: `${plain.id}_p`, rareVariant: { kind: 'prismatic', origin: 'shop', visualSeed: 123457 } } as Creature;
+        const a = factory({ species: sp, creature: plain, appearance: sp.genetics.baseVisual, lod, quality: 'high', fx: DEFAULT_TANK_FX });
+        const b = factory({ species: sp, creature: rare, appearance: sp.genetics.baseVisual, lod, quality: 'high', fx: DEFAULT_TANK_FX });
+        for (let i = 0; i < 3; i++) b.update(fakeRuntime(sp.id), 1 / 60, i / 60);
+        checkFinite(b.root, `${id} prismatic lod${lod}`);
+        const sa = uniformsOf(a.root).map(strength).filter((x) => x !== undefined);
+        const sb = uniformsOf(b.root).map(strength).filter((x) => x !== undefined);
+        expect(sa.length, `${id}: shader uniforms found`).toBeGreaterThan(0);
+        expect(sa.every((x) => x === 0), `${id}: ordinary stays plain`).toBe(true);
+        expect(sb.some((x) => x === 1), `${id}: Prismatic sheen on`).toBe(true);
+        a.dispose();
+        b.dispose();
+      }
+    });
+  }
+
+  it('Prismatic builds release every shared geometry / template', () => {
+    for (const s of fishCacheStats()) expect(s.refs, s.key).toBe(0);
+    for (const s of cacheStats()) expect(s.refs, s.key).toBe(0);
+  });
+});

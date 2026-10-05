@@ -3,6 +3,8 @@
  * aquarium-husbandry references (see docs/research). Never implies releasing animals is okay. OWNER: lane "ui-panels".
  */
 import type { ReactNode } from 'react';
+import { PRISMATIC } from '@/data/rarity'; // lane:genetics
+import { oneInLabel } from '@/sim/life/rareVariants'; // lane:genetics
 
 export interface Article {
   id: string;
@@ -143,6 +145,28 @@ export const ARTICLES: Article[] = [
           </li>
         </ul>
         <p>“Conditional” means it can work with the right setup — more cover, a bigger tank or target feeding. “High risk” and “Incompatible” mean real harm is likely.</p>
+      </>
+    ),
+  },
+  // lane:genetics
+  {
+    id: 'morphs_strains',
+    title: 'Morphs, strains and Prismatic animals',
+    teaser: 'How colours combine, why some are rare — and the one shimmer genetics can’t explain.',
+    body: (
+      <>
+        <p>
+          Every animal carries two copies of each colour, pattern and fin gene, one from each parent. Which copy <b>shows</b> depends on the gene: some are dominant, some only show with two copies, some blend. Aquarium Go simplifies real genetics, and each species page notes how.
+        </p>
+        <p>
+          A <b>morph</b> is what those genes add up to: a base colour plus any patterns and fin types on top, such as Royal Blue + Butterfly + Halfmoon. The <b>morph catalog</b> in each species page lists every combination the genetics can produce, grouped by base colour and rated by how often sellers stock it — from <i>Common</i> to <i>Legendary</i>. Breed two carriers and a hidden trait can surface in their young.
+        </p>
+        <p>
+          A <b>named strain</b> is a recognised combination that collectors seek, such as the Black Samurai betta (melano black with dragon scaling). Strains add a little to an animal’s value, and you log each one the first time you breed or buy it.
+        </p>
+        <p>
+          <b>Prismatic</b> animals are different, and purely a game feature: no real animal shimmers like this. About {oneInLabel(PRISMATIC.shopChance)} animals a seller stocks is Prismatic, and about {oneInLabel(PRISMATIC.bredBaseChance)} young born in your shop. It isn’t a gene, so it can’t be bred true. A Prismatic parent makes it {PRISMATIC.oneParentMultiplier}× likelier in each youngster, and two Prismatic parents {PRISMATIC.twoParentMultiplier}× — never certain.
+        </p>
       </>
     ),
   },

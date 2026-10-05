@@ -207,7 +207,7 @@ export const createHermitCrab: CreatureFactory = (args) => {
   const rigI = instantiateRig(tpl.rig);
   for (const b of rigI.roots) inner.add(b);
   const u = createCritterUniforms(fx);
-  applyAppearance(u, ap);
+  applyAppearance(u, ap, args.creature);
   u.uAgcV1.value.set(tpl.aperture.x - 0.03, tpl.aperture.y, tpl.aperture.z, 0);
   const mat = createCritterMaterial({ name: 'hermit', fx, u, surface: HERMIT_SURFACE, vertex: HERMIT_VERTEX, params: { side: THREE.DoubleSide, roughness: 0.5, clearcoat: 0.5, clearcoatRoughness: 0.3 } });
   const mesh = makeSkinned(tpl.geo, mat, rigI, 1.8);

@@ -148,6 +148,35 @@ export interface Creature {
   life?: CreatureLifeMeta;
   /** lane:shows — show ribbons, class wins and titles (Champion / Grand Champion). Absent until its first show. */
   awards?: CreatureAwards;
+  /**
+   * lane:genetics — an ultra-rare individual (Prismatic). Rolled ONCE, when a seller stocks the animal or it is born in
+   * the shop (src/sim/life/rareVariants.ts), and never rerolled. Absent = ordinary (every pre-0.4 animal). It is not a
+   * gene: a Prismatic parent only raises its young's odds.
+   */
+  rareVariant?: RareVariant;
+}
+
+/** lane:genetics — kinds of ultra-rare individual (game-only phenomena; extensible). */
+export type RareVariantKind = 'prismatic';
+/** shop = stocked by a seller · bred = born to at least one Prismatic parent · spontaneous = born to two ordinary ones. */
+export type RareVariantOrigin = 'shop' | 'bred' | 'spontaneous';
+
+export interface RareVariant {
+  kind: RareVariantKind;
+  origin: RareVariantOrigin;
+  /** Stable seed for the procedural sheen and sparkle placement (never rerolled on render or load). */
+  visualSeed: number;
+}
+
+/** lane:genetics — a Prismatic animal the player has owned (encyclopedia record; one per individual, in order found). */
+export interface PrismaticFind {
+  speciesId: string;
+  creatureId: Id;
+  name: string;
+  morphName: string;
+  origin: RareVariantOrigin;
+  /** Game hour it joined the collection (bought or born). */
+  hour: number;
 }
 
 /** lane:lifecycle — per-creature bookkeeping for the life simulation. All optional; safe to omit in old saves. */
@@ -745,6 +774,10 @@ export interface ProgressState {
   counters: Record<string, number>; // e.g. feeds, waterChanges, sales, births
   discoveredSpecies: string[]; // encyclopedia
   discoveredMorphs: string[]; // `${speciesId}:${morphName}`
+  /** lane:genetics — named strains bred or bought: `${speciesId}:${strainId}`. Absent in pre-0.4 saves (backfilled on load). */
+  discoveredStrains?: string[];
+  /** lane:genetics — every Prismatic animal the player has owned, in the order found. Absent in pre-0.4 saves (backfilled). */
+  prismaticFinds?: PrismaticFind[];
   /** lane:facility — incremental scan cursors so progression can react to log/market/breeding events. */
   scan?: {
     logSeq: number;

@@ -71,3 +71,7 @@ registerFixture('big_facility', () => staffUpLateGame(bigFacility()));
 import { buildShowsDemo, buildShowsHall } from './shows';
 registerFixture('shows-demo', buildShowsDemo);
 registerFixture('shows-hall', () => buildShowsHall(FIXTURES.big_facility()));
+
+// lane:genetics fixture (prismatic_showcase = Prismatic betta, axolotl, guppy and cherry shrimp beside ordinary ones, plus a Prismatic shop offer)
+import { buildPrismaticShowcase } from './prismatic';
+registerFixture('prismatic_showcase', buildPrismaticShowcase);

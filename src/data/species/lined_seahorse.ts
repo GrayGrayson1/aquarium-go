@@ -132,6 +132,12 @@ export const linedSeahorse: SpeciesDefinition = {
       { id: 'dark', name: 'Classic Dark', layer: 'base', rarity: 0, when: [], visual: {} },
       { id: 'pinto', name: 'Pinto', layer: 'overlay', rarity: 0.5, when: [{ locus: 'pinto', allele: 'p', count: 'hom' }], visual: { pattern: 'mottled', patternContrast: 0.9, accentColor: '#f7f3ea' } },
     ],
+    // lane:genetics — recognised strains (game-recognised lines combining the traits above).
+    strains: [
+      { id: 'red_pinto', name: 'Red Pinto', requires: ['red', 'pinto'], tier: 'legendary', note: 'Patchy pinto white on a red seahorse.' },
+      { id: 'yellow_pinto', name: 'Yellow Pinto', requires: ['yellow', 'pinto'], tier: 'legendary', note: 'Patchy pinto white on a yellow seahorse.' },
+      { id: 'orange_pinto', name: 'Orange Pinto', requires: ['orange', 'pinto'], tier: 'legendary', note: 'Patchy pinto white on an orange seahorse.' },
+    ],
     baseVisual: {
       bodyColor: '#5a4636',
       bodyColor2: '#382a20',

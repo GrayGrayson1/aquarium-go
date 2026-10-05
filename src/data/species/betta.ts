@@ -161,6 +161,19 @@ export const betta: SpeciesDefinition = {
       { id: 'crown', name: 'Crowntail', layer: 'overlay', rarity: 0.2, when: [{ locus: 'fins', allele: 'crown', count: 'any' }, { locus: 'fins', allele: 'veil', count: 'none' }, { locus: 'fins', allele: 'plakat', count: 'none' }, { locus: 'fins', allele: 'halfmoon', count: 'none' }], visual: { finType: 'crowntail', finLength: 1.3 } },
       { id: 'double', name: 'Double Tail', layer: 'overlay', rarity: 0.3, when: [{ locus: 'fins', allele: 'double', count: 'hom' }], visual: { finType: 'double_tail', finLength: 1.25 } },
     ],
+    // lane:genetics — recognised strains: game-recognised show lines built from the traits above (real hobby names only
+    // where the game's traits match them). Tiers are set by hand and kept within one step of how often stock shows them.
+    strains: [
+      { id: 'blue_butterfly', name: 'Blue Butterfly', requires: ['royal', 'butterfly'], tier: 'uncommon', note: 'Royal blue body with clean pale fin bands.' },
+      { id: 'royal_butterfly_hm', name: 'Royal Butterfly Halfmoon', requires: ['royal', 'butterfly', 'halfmoon'], tier: 'rare', note: 'The show-hall classic: butterfly banding on a full 180° halfmoon spread.' },
+      { id: 'red_dragon', name: 'Red Dragon', requires: ['red', 'dragon'], priority: 1, tier: 'rare', note: 'Red body under thick, armour-like dragon scaling.' },
+      { id: 'black_samurai', name: 'Black Samurai', requires: ['black', 'dragon'], priority: 1, tier: 'legendary', note: 'Melano black with metallic dragon scaling — a hobby favourite.' },
+      { id: 'copper_dragon', name: 'Copper Dragon', requires: ['copper', 'dragon'], priority: 1, tier: 'legendary', note: 'Copper sheen over dragon scaling.' },
+      { id: 'turquoise_crowntail', name: 'Turquoise Crowntail', requires: ['turq', 'crown'], tier: 'rare', note: 'Turquoise with spiky crowntail rays.' },
+      { id: 'steel_plakat', name: 'Steel Blue Plakat', requires: ['steel', 'plakat'], tier: 'rare', note: 'Short-finned and sturdy in steel blue.' },
+      { id: 'opaque_halfmoon', name: 'Opaque White Halfmoon', requires: ['white', 'halfmoon'], tier: 'legendary', note: 'Two copies of opaque white on a halfmoon spread.' },
+      { id: 'marble_double', name: 'Marble Double Tail', requires: ['marble', 'double'], tier: 'legendary', note: 'Marbling on a split double tail — two recessive traits at once.' },
+    ],
     baseVisual: {
       bodyColor: '#b0102a',
       bodyColor2: '#6e0a1c',

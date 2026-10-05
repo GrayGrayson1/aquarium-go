@@ -25,6 +25,8 @@ import { ENV_LABEL, RARITY_LABEL, RARITY_TONE, DIFFICULTY_LABEL, DIFFICULTY_TONE
 import { DietGuideView, HabitatGuideView, RealLifeTips } from './SpeciesGuide'; // lane:guide
 import { ARTICLES } from './science';
 import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } from './morphs';
+import { GeneticsSections } from './MorphCatalog'; // lane:genetics
+import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 
 type Tab = 'species' | 'science';
 type Show = 'all' | 'discovered' | 'freshwater' | 'marine' | 'brackish'; // lane:brackish: + 'brackish'
@@ -57,7 +59,7 @@ export function EncyclopediaPanel() {
     <PanelLayout
       title="Encyclopedia"
       icon={<BookOpen size={20} />}
-      subtitle={`${known.size} of ${total} species discovered · ${g.progress.discoveredMorphs.length} ${g.progress.discoveredMorphs.length === 1 ? 'morph' : 'morphs'} seen`}
+      subtitle={`${known.size} of ${total} species discovered · ${g.progress.discoveredMorphs.length} ${g.progress.discoveredMorphs.length === 1 ? 'morph' : 'morphs'} seen${(g.progress.prismaticFinds?.length ?? 0) > 0 ? ` · ${g.progress.prismaticFinds!.length} Prismatic` : ''}`}
       scrollKey={`${tab}:${speciesId ?? ''}`}
       toolbar={
         speciesId ? undefined : (
@@ -160,6 +162,7 @@ function SpeciesGrid({ g, known, onOpen }: { g: GameState; known: Set<string>; o
                     <span className="pn-spec__name">{k ? sp.commonName : 'Undiscovered'}</span>
                     {k ? <span className="pn-spec__sci">{sp.scientificName}</span> : <span className={clsx('pn-spec__hint', avail?.available && 'is-available')}>{avail?.text}</span>}
                     {k && sp.isStarter && <span className="pn-spec__badge">Starter</span>}
+                    {k && g.progress.prismaticFinds?.some((f) => f.speciesId === sp.id) && <PrismaticBadge compact className="pn-spec__prism" />}
                   </button>
                 );
               })}
@@ -412,6 +415,9 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
           </section>
         )
       )}
+
+      {/* lane:genetics — named strains, the morph catalog (colour tree) and Prismatic finds */}
+      <GeneticsSections sp={sp} discoveredMorphs={g.progress.discoveredMorphs} discoveredStrains={g.progress.discoveredStrains ?? []} prismaticFinds={g.progress.prismaticFinds ?? []} showCatalog={!noMorphs} />
 
       {sp.sourceReferences.length > 0 && (
         <section>

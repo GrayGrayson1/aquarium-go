@@ -10,6 +10,7 @@
  *  - underwater caustics + path fog (UNDERWATER_PARS / agApplyUnderwater from src/render/shared/underwater.ts)
  */
 import { GLSL_SIMPLEX3 } from '../../shared/glsl';
+import { GLSL_PRISM_HUE } from './prismatic'; // lane:genetics
 
 export const PATTERN_ID: Record<string, number> = {
   solid: 0,
@@ -202,6 +203,7 @@ export const VERT_WORLD = /* glsl */ `
 // ───────────────────────────────── fragment ─────────────────────────────────
 
 export const FRAG_PARS = /* glsl */ `
+${GLSL_PRISM_HUE}
 uniform vec3 uCBody;
 uniform vec3 uCBody2;
 uniform vec3 uCBelly;
@@ -221,7 +223,7 @@ uniform vec4 uLookF;  // iridMode, iridHue, sss, patternBellyFade
 uniform vec4 uLookG;  // regularity, gloss, pattern id, opT
 uniform vec4 uPatA;
 uniform vec4 uPatB;
-uniform vec4 uLookH;  // marksUnderPattern, _, _, _
+uniform vec4 uLookH;  // marksUnderPattern, Prismatic strength, Prismatic hue, Prismatic twinkle seed (lane:genetics)
 uniform vec4 uBands[4];
 uniform vec4 uStripe;  // yn0, yn1, halfW, redT0
 uniform vec4 uStripe2; // t0, t1, _, _
@@ -730,6 +732,20 @@ export const FRAG_EMISSIVE = (fin: boolean) => /* glsl */ `
   totalEmissiveRadiance += env * (fsMetal * 0.6 + 0.05) * mix(vec3(1.0), fsCol * 1.4 + 0.1, clamp(fsMetal + fsIrid * 0.5, 0.0, 1.0)) * (0.3 + 0.7 * fres) * 0.55;
   totalEmissiveRadiance += uLightColor * glint * (0.25 + 0.6 * fsMetal) * 0.5;
   totalEmissiveRadiance += fsCol * uLookC.w * 1.5;
+  // lane:genetics — Prismatic: a slow rainbow film travelling along body and fins (shared: vFsRest + uSwimB exist in
+  // both programs), plus a few body scales twinkling in turn (fsScaleId is 0 on fins and in the cheap path)
+  if (uLookH.y > 0.0) {
+    float prT = clamp((uSwimB.x - vFsRest.x) / max(0.05, uSwimB.x - uSwimB.y), 0.0, 1.0);
+    // saturated rainbow mostly at grazing angles (the face keeps the animal's own colour) + a slow travelling band
+    vec3 prism = agPrismSat(uLookH.z + prT * 1.4 + (1.0 - cosT) * 0.45 - uTime * 0.05);
+    float prRim = pow(1.0 - cosT, 2.2);
+    float prBand = agPrismSweep(prT, uTime, uLookH.z);
+    totalEmissiveRadiance += prism * uLookH.y * (0.6 * prRim + ${fin ? '0.22' : '0.3'} * prBand) * (0.35 + 0.5 * lightLum);
+    float prCell = floor(fsScaleId * 997.0 + uLookH.w);
+    float prTw = agPrismHash(vec3(prCell, floor(uTime * 0.5 + fract(prCell * 0.618)), uLookH.w));
+    float prPulse = smoothstep(0.955, 1.0, prTw) * (0.55 + 0.45 * sin(uTime * 2.1 + prCell));
+    totalEmissiveRadiance += vec3(1.0, 0.96, 0.9) * prPulse * step(0.001, fsScaleId) * uLookH.y * 1.7;
+  }
   // selection: a thin soft rim hugging the silhouette only (no flat term, so the fish's own colours stay fully
   // visible); membranes get less, since a fin seen edge-on is all "silhouette"
   totalEmissiveRadiance += vec3(0.4, 1.0, 0.88) * uLookE.y * pow(smoothstep(0.58, 0.97, 1.0 - cosT), 2.0) * ${fin ? '0.2' : '1.15'};

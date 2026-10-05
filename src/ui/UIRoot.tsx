@@ -19,6 +19,7 @@ import './styles/shell.css';
 import './styles/screens.css';
 import './styles/hud.css';
 import './styles/cards.css';
+import './styles/genetics.css'; // lane:genetics
 
 registerDisplayFont();
 

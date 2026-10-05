@@ -5,7 +5,7 @@
  */
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Wrench, Coins, LockOpen, Clock, Fish, Droplets, Bot, Scale, FlaskConical, Egg, Hourglass, Store } from 'lucide-react';
+import { Wrench, Coins, LockOpen, Clock, Fish, Droplets, Bot, Scale, FlaskConical, Egg, Hourglass, Store, Sparkles } from 'lucide-react';
 import { devOpenMarket, forceBuyerVisit } from '@/sim/economy';
 import { act } from '../common/actions';
 import type { GameSpeed, WaterState } from '@/types';
@@ -171,6 +171,12 @@ export function DevPanel() {
                 >
                   <LockOpen size={14} /> Open market
                 </Button>
+                {/* lane:genetics — Prismatic QA */}
+                <Button size="sm" onClick={() => run('Prismatic offer', () => dev.addShopOffer(game.starterId, { prismatic: true }))}>
+                  <Sparkles size={14} /> Prismatic offer
+                </Button>
+                <Button size="sm" onClick={() => run('Next shop Prismatic', () => dev.forcePrismatic('shop', 1))}>Next shop animal Prismatic</Button>
+                <Button size="sm" onClick={() => run('Next bred Prismatic', () => dev.forcePrismatic('bred', 1))}>Next bred young Prismatic</Button>
               </div>
               {activeListings.length === 0 ? (
                 <div className="ag-small ag-muted">No active listings. List something in the Market to test buyers.</div>
@@ -259,6 +265,9 @@ export function DevPanel() {
                     ))}
                     <Button size="sm" onClick={() => run('Force breeding', () => dev.forceBreeding(sc.id))}>
                       <Egg size={14} /> Force breeding
+                    </Button>
+                    <Button size="sm" onClick={() => run(sc.rareVariant ? 'Make ordinary' : 'Make Prismatic', () => dev.makePrismatic(sc.id, !sc.rareVariant))}>
+                      <Sparkles size={14} /> {sc.rareVariant ? 'Make ordinary' : 'Make Prismatic'}
                     </Button>
                   </div>
                 </>
