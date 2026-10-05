@@ -15,6 +15,11 @@ import { pathToFileURL } from 'node:url';
 import { GATE_COMMANDS, PATHS, nowIso, parseArgs, readJson, writeJson } from './lib.mjs';
 import { runAndRecord } from './evidence.mjs';
 
+/** The script's options; an unknown or mistyped one throws instead of running every gate. */
+export function parseVerifyArgs(argv) {
+  return parseArgs(argv, ['noState', 'help'], ['gates', 'req']);
+}
+
 export function selectGates(state, requested) {
   const all = Object.keys(state.gates ?? {}).filter((g) => g in GATE_COMMANDS);
   if (requested?.length) {
@@ -28,7 +33,7 @@ export function selectGates(state, requested) {
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   let args;
   try {
-    args = parseArgs(process.argv.slice(2), ['noState', 'help'], ['gates', 'req']);
+    args = parseVerifyArgs(process.argv.slice(2));
   } catch (e) {
     console.error(e.message);
     process.exit(1);

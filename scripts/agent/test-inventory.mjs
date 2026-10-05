@@ -26,10 +26,10 @@ import { codeTreeOf, recordFile } from './evidence.mjs';
  * Markers that skip, focus, defer or invert a test, in any of the forms Vitest and Playwright accept: modifiers
  * (`.skip(`, `.skip (`, `.skip.each(`, and aliases such as `const s = it.skip`), skipIf/runIf, test.fail, x-prefixed
  * functions, options objects (`{ skip: true }`), bracket access (`describe['skip']`) and runtime skips from the test
- * context (`ctx.skip()`, `({ skip }) => skip()`).
+ * context (`ctx.skip()`, `({ skip }) => skip()`, `async ({ expect, skip }) => …`).
  */
 export const DISABLE_RE =
-  /\.(?:skip|only|todo|fixme|fails)\b|\b(?:skipIf|runIf)\s*\(|\btest\.fail\s*\(|\bx(?:it|test|describe)\s*\(|\b(?:skip|only|todo|fails)\s*:\s*true\b|\[\s*['"](?:skip|only|todo|fails|fixme)['"]\s*\]|\b(?:ctx|context|t|task)\.skip\s*\(|\(\s*\{\s*skip\s*\}\s*\)/g;
+  /\.(?:skip|only|todo|fixme|fails)\b|\b(?:skipIf|runIf)\s*\(|\btest\.fail\s*\(|\bx(?:it|test|describe)\s*\(|\b(?:skip|only|todo|fails)\s*:\s*true\b|\[\s*['"](?:skip|only|todo|fails|fixme)['"]\s*\]|\b(?:ctx|context|t|task)\.skip\s*\(|\(\s*\{\s*skip\s*\}\s*\)|\(\s*\{[^{}]*\bskip\b[^{}]*\}\s*\)\s*=>/g;
 
 function npx(args, cwd) {
   return execFileSync('npx', args, { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });

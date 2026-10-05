@@ -145,8 +145,9 @@ export function isLegalTransition(from, to) {
 /**
  * Full check of a transition against the current state. `ctx`: { state, adrExists(id) → bool, s4Accepted, session,
  * closingSession }. `session` is the Claude Code session recording the transition and `closingSession` the one that
- * recorded the last → NEXT_SLICE transition; when `session` is passed (record-event.mjs always does), leaving
- * NEXT_SLICE needs a known session that differs from the closing one.
+ * recorded the last → NEXT_SLICE transition; when `session` is passed (record-event.mjs always does), entering
+ * NEXT_SLICE needs a known session (so the next one can prove it is fresh), and leaving it needs a known session that
+ * differs from the closing one.
  * Returns problems (empty when the transition may be recorded).
  */
 export function checkTransition({ from, to, slice, decisions = [], reason, resume }, { state, adrExists = () => true, s4Accepted = false, session, closingSession = null }) {
@@ -167,6 +168,7 @@ export function checkTransition({ from, to, slice, decisions = [], reason, resum
   }
   if (from === 'NEXT_SLICE' && to === 'MULTIPLAYER_READINESS_GATE' && !(state?.currentSlice === 'S4' && s4Accepted)) problems.push('the readiness gate follows only an accepted S4');
   if (from === 'NEXT_SLICE' && to === 'BOOTSTRAP' && state?.currentSlice === 'S4' && s4Accepted) problems.push('S4 is accepted: the next step is MULTIPLAYER_READINESS_GATE, not another slice');
+  if (to === 'NEXT_SLICE' && session !== undefined && !session) problems.push('entering NEXT_SLICE needs this session\'s id (CLAUDE_CODE_SESSION_ID): without it the next session can\'t prove it is a fresh one, and leaving NEXT_SLICE is refused');
   if (from === 'NEXT_SLICE' && session !== undefined) {
     if (!session || !closingSession) problems.push('leaving NEXT_SLICE needs the Claude Code session ids of this session and of the one that closed the previous slice (CLAUDE_CODE_SESSION_ID), to prove the context was refreshed');
     else if (session === closingSession) problems.push(`session ${session} also closed the previous slice: the next slice and the readiness gate start in a new session (master §3.2)`);

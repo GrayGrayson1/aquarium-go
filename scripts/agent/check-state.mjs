@@ -46,6 +46,7 @@ import {
   validateEvent,
 } from './lib.mjs';
 import { codeTreeOf } from './evidence.mjs';
+import { MANDATORY_REVIEWERS } from './next-slice.mjs';
 import { verifyProtected } from './protect.mjs';
 import { reportVerdict } from './capture-evidence.mjs';
 import { REQ_TOKEN_RE, auditRequirements, validateRequirements } from './requirements.mjs';
@@ -244,6 +245,26 @@ export function validateManifestAppendOnly(current, committed, label) {
 }
 
 /**
+ * A slice manifest against its committed versions (pure; `committedTexts` from committedVersions). A manifest that was
+ * committed may not disappear (`current` null), and every committed version's records must still lead it. A committed
+ * version that wasn't valid JSON holds no records.
+ */
+export function validateManifestHistory(rel, current, committedTexts, label) {
+  if (current == null) return { errors: committedTexts.length ? [`${rel} was committed and has been deleted (evidence is append-only)`] : [], warnings: [] };
+  const errors = new Set();
+  for (const text of committedTexts) {
+    let committed;
+    try {
+      committed = JSON.parse(text);
+    } catch {
+      continue;
+    }
+    for (const e of validateManifestAppendOnly(current, committed, label).errors) errors.add(e);
+  }
+  return { errors: [...errors], warnings: [] };
+}
+
+/**
  * The committed ledger versions must be prefixes of the working ledger, and transitions must form one chain. With
  * `adrOk(id)`, an owner-decision event and every exit from OWNER_GATE or BLOCKED_MANUAL_REVIEW must cite committed ADRs,
  * and OWNER_GATE may only resume at the state recorded when it was entered, or close at COMPLETE_LOCAL. That catches
@@ -339,6 +360,33 @@ export function validateRegistry(reg, fileExists, adrOk = () => true) {
   return { errors, warnings: [] };
 }
 
+/**
+ * Which slice's evidence must hold, and how strictly (pure). `lastTransition` is the last transition in the ledger.
+ * next-slice.mjs prepares the next slice while the machine is still at NEXT_SLICE: until the new session records
+ * NEXT_SLICE → BOOTSTRAP, the accepted slice is the one that recorded HANDOFF → NEXT_SLICE (`prepared`), its evidence
+ * must still hold, and the new slice's fresh gates claim nothing.
+ */
+export function evidenceScope(s, lastTransition) {
+  const current = SLICES.indexOf(s.currentSlice);
+  const prepared = s.machineState === 'NEXT_SLICE' && lastTransition?.toState === 'NEXT_SLICE' && current > 0 && SLICES.indexOf(lastTransition.slice) === current - 1;
+  return {
+    prepared,
+    acceptedSlice: prepared ? lastTransition.slice : s.currentSlice,
+    accepted: ACCEPTED_STATES.includes(s.machineState) && !prepared,
+    postCheckpoint: POST_CHECKPOINT_STATES.includes(s.machineState),
+  };
+}
+
+/**
+ * The STATE view a prepared slice's accepted predecessor is checked against (pure): every objective gate GREEN unless
+ * an owner ADR waived it, the independent review GREEN, and a GREEN review from every role each slice requires
+ * (MANDATORY_REVIEWERS, OPERATIONS.md §7). next-slice.mjs has replaced the predecessor's own reviewer list.
+ */
+export function preparedView(s, acceptedSlice) {
+  const gates = Object.fromEntries(Object.keys(GATE_COMMANDS).map((g) => [g, s.gateWaivers?.[g] ? 'NOT_APPLICABLE' : 'GREEN']));
+  return { ...s, currentSlice: acceptedSlice, requiredReviewers: [...MANDATORY_REVIEWERS], gates: { ...gates, independentReview: 'GREEN', browserQa: 'NOT_APPLICABLE' } };
+}
+
 function tryGit(...args) {
   try {
     return git(...args);
@@ -392,13 +440,7 @@ export function checkRepository() {
   const anchor = s.lastAcceptedCheckpoint ?? s.actualBaselineSha ?? null;
   const ledgerText = exists(PATHS.ledger) ? readText(PATHS.ledger) : '';
   const lastTransition = parseLedger(ledgerText).events.filter((e) => e?.kind === 'transition').pop();
-  // next-slice.mjs prepares the next slice while the machine is still at NEXT_SLICE. Until the new session records
-  // NEXT_SLICE → BOOTSTRAP, the slice that was accepted is the one that recorded HANDOFF → NEXT_SLICE: its evidence
-  // must still hold, and the new slice's fresh gates claim nothing.
-  const prepared = s.machineState === 'NEXT_SLICE' && lastTransition?.toState === 'NEXT_SLICE' && SLICES.indexOf(lastTransition.slice) === SLICES.indexOf(s.currentSlice) - 1 && SLICES.indexOf(s.currentSlice) > 0;
-  const acceptedSlice = prepared ? lastTransition.slice : s.currentSlice;
-  const accepted = ACCEPTED_STATES.includes(s.machineState) && !prepared;
-  const postCheckpoint = POST_CHECKPOINT_STATES.includes(s.machineState);
+  const { prepared, acceptedSlice, accepted, postCheckpoint } = evidenceScope(s, lastTransition);
 
   // The code tree the evidence must belong to.
   let targetTree = null;
@@ -429,39 +471,24 @@ export function checkRepository() {
   const manifest = loadSliceManifest(s.currentSlice);
   add(validateGateEvidence(s, manifest, { targetTree, accepted }));
   const acceptedManifest = prepared ? loadSliceManifest(acceptedSlice) : manifest;
-  if (prepared) {
-    // The accepted slice's objective gates, its code-architecture review and its verdict, on the checkpoint tree.
-    const gates = Object.fromEntries(Object.keys(GATE_COMMANDS).map((g) => [g, s.gateWaivers?.[g] ? 'NOT_APPLICABLE' : 'GREEN']));
-    const view = { ...s, currentSlice: acceptedSlice, requiredReviewers: ['code-architecture'], gates: { ...gates, independentReview: 'GREEN', browserQa: 'NOT_APPLICABLE' } };
-    add(validateGateEvidence(view, acceptedManifest, { targetTree, accepted: true }));
-  }
+  // The accepted slice's objective gates, mandatory reviews and verdict, on the checkpoint tree.
+  if (prepared) add(validateGateEvidence(preparedView(s, acceptedSlice), acceptedManifest, { targetTree, accepted: true }));
   if (postCheckpoint && acceptedManifest && acceptedManifest.checkpointSha !== s.lastAcceptedCheckpoint) {
     errors.push(`the ${acceptedSlice} manifest's checkpointSha (${acceptedManifest.checkpointSha}) is not STATE.lastAcceptedCheckpoint`);
   }
   for (const slice of SLICES) {
     const rel = manifestOf(slice);
-    const versions = committedVersions(rel, anchor);
-    if (!exists(rel)) {
-      if (versions.length) errors.push(`${rel} was committed and has been deleted (evidence is append-only)`);
-      continue;
-    }
-    let m;
-    try {
-      m = readJson(rel);
-    } catch (e) {
-      if (slice !== s.currentSlice && slice !== acceptedSlice) errors.push(`${rel} is not valid JSON: ${e.message}`);
-      continue;
-    }
-    add(validateEvidenceFiles(m, { exists, hash: (p) => sha256File(abs(p)), ignored: (p) => gitOk('check-ignore', '-q', p), read: readText }));
-    const appendOnly = new Set();
-    for (const text of versions) {
+    let m = null;
+    if (exists(rel)) {
       try {
-        for (const e of validateManifestAppendOnly(m, JSON.parse(text), `${slice} (vs a committed version)`).errors) appendOnly.add(e);
-      } catch {
-        /* a committed version that wasn't valid JSON holds no records */
+        m = readJson(rel);
+      } catch (e) {
+        if (slice !== s.currentSlice && slice !== acceptedSlice) errors.push(`${rel} is not valid JSON: ${e.message}`);
+        continue;
       }
+      add(validateEvidenceFiles(m, { exists, hash: (p) => sha256File(abs(p)), ignored: (p) => gitOk('check-ignore', '-q', p), read: readText }));
     }
-    errors.push(...appendOnly);
+    add(validateManifestHistory(rel, m, committedVersions(rel, anchor), `${slice} (vs a committed version)`));
   }
 
   // Requirements: schema, append-only ids against every committed version since the anchor, the slice contract, and

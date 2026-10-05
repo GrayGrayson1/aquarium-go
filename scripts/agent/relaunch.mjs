@@ -14,9 +14,10 @@
  * errors, the state is an owner gate / BLOCKED_MANUAL_REVIEW / COMPLETE_LOCAL, remote mutation is allowed, or the
  * branch isn't the integration branch. After each session it stops on: a non-zero exit, no recorded progress, any stop
  * state, the session cap, the STOP file, a dirty tree, and (with an alarm) any sign of a remote write or a guard
- * change: the origin's refs moved (git ls-remote), a remote-tracking ref changed or appeared other than by fetch, a
- * local ref was deleted or rewound, git config, hooks or .claude changed, a protected file or PROTECTED.json changed,
- * or the deploy configuration changed (DEPLOY_CONFIG: what a later push would build and deploy).
+ * change: the origin's refs moved or couldn't be read (git ls-remote), a remote-tracking ref changed or appeared other
+ * than by fetch, a local ref was deleted or rewound, git config, hooks, .claude, .mcp.json or the user-level Claude
+ * settings changed, a protected file or PROTECTED.json changed, or the deploy configuration changed (DEPLOY_CONFIG:
+ * what a later push would build and deploy). It doesn't start a session when origin's refs can't be read.
  *
  * Sessions run with --permission-mode auto and --permission-prompts none (anything that would need a person is
  * denied), deny rules passed inline for every spawn, and push credentials stripped from the child environment.
@@ -25,6 +26,7 @@
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PATHS, ROOT, STOP_STATES, appendEvent, exists, git, nowIso, parseArgs, positiveInt, positiveNumber, readJson, readText, sha256File, sha256Text } from './lib.mjs';
@@ -36,8 +38,17 @@ export const LOCK_FILE = `${RUNS_DIR}/relaunch.lock`;
 export const DEFAULT_MAX_SESSIONS = 6;
 export const DEFAULT_BG_WAIT_HOURS = 6;
 const ALLOWED = ['maxSessions', 'budgetUsd', 'model', 'effort', 'bgWaitHours', 'claude'];
+const BOOLEANS = ['dryRun', 'help'];
 
-/** Commands an unattended session may never run (documented "Bash(prefix *)" rule syntax). */
+/** The launcher's options; an unknown or mistyped one throws, so it can never start real sessions by accident. */
+export function parseRelaunchArgs(argv) {
+  return parseArgs(argv, BOOLEANS, ALLOWED);
+}
+
+/**
+ * Commands an unattended session may never run ("Bash(pattern)" rules, where `*` matches any run of characters, at
+ * the end or inside the pattern). agent.test.mjs checks them against the bypass forms the S0 reviews found.
+ */
 export const DENY_RULES = [
   'Bash(git push)',
   'Bash(git push *)',
@@ -46,6 +57,7 @@ export const DENY_RULES = [
   'Bash(git --git-dir*)',
   'Bash(git --work-tree*)',
   'Bash(git --no-pager push*)',
+  'Bash(git -* push*)',
   'Bash(/usr/bin/git *)',
   'Bash(/usr/local/bin/git *)',
   'Bash(/opt/homebrew/bin/git *)',
@@ -161,7 +173,8 @@ export function decide(o) {
   if (o.dirty) return stop('the session left uncommitted changes (an incomplete handoff)');
   if (!o.progressed) return stop('the session made no recorded progress (HEAD, STATE.json and LEDGER.jsonl unchanged)');
   if (o.stopFile) return stop('docs/agent/STOP exists');
-  if (o.sessionsRun >= o.maxSessions) return stop(`the session cap (${o.maxSessions}) was reached`);
+  // Written so that a cap that isn't a number (NaN, undefined) stops too, instead of never being reached (M9).
+  if (!(o.sessionsRun < o.maxSessions)) return stop(`the session cap (${o.maxSessions}) was reached`);
   return { action: 'continue', reason: `continue with ${s.currentSlice} ${s.machineState}` };
 }
 
@@ -222,6 +235,15 @@ function pathHash(rel) {
   return statSync(p).isDirectory() ? dirHash(rel) : sha256File(p);
 }
 
+/**
+ * The user-level Claude Code settings a later session loads (SD-5): permission rules and hooks that live outside the
+ * repository. Only these files, because the rest of the config directory (transcripts, history) changes every session.
+ */
+function userSettingsHash() {
+  const dir = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude');
+  return ['settings.json', 'settings.local.json'].map((f) => (existsSync(join(dir, f)) ? `${f}:${sha256File(join(dir, f))}` : `${f}:absent`)).join(' ');
+}
+
 function snapshot() {
   return {
     head: git('rev-parse', 'HEAD'),
@@ -232,6 +254,8 @@ function snapshot() {
     gitConfig: sha256File(join(ROOT, '.git', 'config')),
     hooks: dirHash('.git/hooks'),
     claude: dirHash('.claude'),
+    mcp: pathHash('.mcp.json'),
+    userSettings: userSettingsHash(),
     protectedErrors: verifyProtected().errors.length,
     protectedFiles: sha256Text(JSON.stringify(currentHashes())),
     protectedRecord: pathHash(PATHS.protected),
@@ -242,7 +266,8 @@ function snapshot() {
 /** Alarms comparing two snapshots (pure). `isAncestor(a, b)` and `reflogSubjects(ref)` are injected. */
 export function alarmsBetween(before, after, { integrationBranch, isAncestor, reflogSubjects }) {
   const alarms = [];
-  if (before.remote && after.remote && before.remote !== after.remote) alarms.push("origin's refs changed during the session (git ls-remote): a push or remote write happened");
+  if (!before.remote || !after.remote) alarms.push(`could not read origin's refs (git ls-remote) ${before.remote ? 'after' : 'before'} the session, so a push can't be ruled out`);
+  else if (before.remote !== after.remote) alarms.push("origin's refs changed during the session (git ls-remote): a push or remote write happened");
   for (const [ref, sha] of Object.entries(before.refs)) {
     const now = after.refs[ref];
     if (now === undefined) {
@@ -264,6 +289,8 @@ export function alarmsBetween(before, after, { integrationBranch, isAncestor, re
   if (before.gitConfig !== after.gitConfig) alarms.push('.git/config changed');
   if (before.hooks !== after.hooks) alarms.push('.git/hooks changed');
   if (before.claude !== after.claude) alarms.push('.claude settings changed');
+  if (before.mcp !== after.mcp) alarms.push('.mcp.json changed (MCP servers a later session would load without asking)');
+  if (before.userSettings !== after.userSettings) alarms.push('the user-level Claude Code settings changed (~/.claude/settings*.json)');
   if (after.protectedErrors > before.protectedErrors) alarms.push('protected harness files changed without an approval (protect.mjs)');
   if (before.protectedFiles !== after.protectedFiles || before.protectedRecord !== after.protectedRecord) alarms.push('protected harness files or docs/agent/PROTECTED.json changed during the session: the owner reviews the change and its ADR');
   const deploy = [...new Set([...Object.keys(before.deployConfig ?? {}), ...Object.keys(after.deployConfig ?? {})])].filter((p) => before.deployConfig?.[p] !== after.deployConfig?.[p]);
@@ -329,7 +356,7 @@ function lockHeld() {
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2), ['dryRun', 'help'], ALLOWED);
+  const args = parseRelaunchArgs(process.argv.slice(2));
   if (args.help) {
     console.log('Usage: node scripts/agent/relaunch.mjs [--dry-run] [--max-sessions N] [--budget-usd X] [--model M] [--effort E] [--bg-wait-hours H] [--claude PATH]');
     console.log('Stops at owner gates, blocks, errors, no progress, a dirty tree, docs/agent/STOP, the session cap, or (with an alarm) any sign of a remote write or guard change.');
@@ -371,6 +398,12 @@ async function main() {
     const stamp = nowIso().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
     const argv = claudeArgs({ kickoff, slice: state.currentSlice, stamp, model: args.model, effort: args.effort, budgetUsd });
     const before = snapshot();
+    if (!before.remote) {
+      const msg = "Not starting a session: git ls-remote origin failed, so a push during the session couldn't be detected";
+      console.log(msg);
+      notify(msg);
+      return sessionsRun ? 0 : 1;
+    }
     const logRel = `${RUNS_DIR}/${stamp}-${state.currentSlice}.jsonl`;
     const errRel = `${RUNS_DIR}/${stamp}-${state.currentSlice}.err.log`;
     appendEvent({ kind: 'session-start', actor: 'relaunch', slice: state.currentSlice, task: state.currentTask, fromState: state.machineState, toState: state.machineState, result: `session ${sessionsRun + 1} of at most ${maxSessions} started`, evidence: [logRel] });

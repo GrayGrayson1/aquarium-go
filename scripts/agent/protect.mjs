@@ -10,8 +10,10 @@
  * --update needs an Accepted ADR, committed, listed in decisions/INDEX.md and written since the last accepted
  * checkpoint (or the baseline before the first one), so an old, unrelated ADR can't bless a new change. When an
  * owner-only file changed (OWNER_ONLY), that ADR must contain an "## Owner approval" section quoting the owner; the
- * ADR template's placeholder text and a "Pending" note don't count. Accepted ADRs are never edited: a changed ADR file fails verification. Every update appends a ledger event carrying the new PROTECTED.json hash, and verification
- * checks PROTECTED.json against the latest such event, so editing it by hand is caught.
+ * ADR template's placeholder text and a "Pending" note don't count. Accepted ADRs are never edited: a changed ADR file
+ * fails verification and --update refuses it. Every update appends a ledger event carrying the new PROTECTED.json
+ * hash, and verification checks PROTECTED.json against the latest such event, so editing it by hand is caught;
+ * --update refuses to start from such a hand-edited or deleted record (updateProblems).
  */
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -117,6 +119,32 @@ export function lastRecordedHash(events) {
   return e ? e.protectedSha256 : null;
 }
 
+/**
+ * Why `--update --adr <id>` must refuse (pure; `problems` is empty when it may record). `adrPath`: the ADR findAdr
+ * resolved (null when it isn't committed and indexed), with its text; `adrAtAnchor`: whether that file already existed
+ * at the last accepted checkpoint (or the baseline); `recorded`: the `files` of the current PROTECTED.json, or null when
+ * there is none; `recordHash`: that file's SHA-256; `ledgerHash`: the hash the last protect.mjs ledger event recorded
+ * (null when none did); `files`: the current hashes. The changes are judged against the record only when it is the one
+ * the ledger vouches for: otherwise hand-editing (or deleting) PROTECTED.json first would let an edited accepted ADR or
+ * an owner-only change through.
+ */
+export function updateProblems({ adrPath, adrText = '', adrAtAnchor = false, recorded, recordHash = null, ledgerHash = null, files, templateText }) {
+  if (!adrPath) return { problems: ['--update needs --adr ADR-NNNN: a committed ADR listed in docs/agent/decisions/INDEX.md that approves the change'], changed: [] };
+  const problems = [];
+  const status = adrStatus(adrText);
+  if (status !== 'Accepted') problems.push(`${adrPath} is ${status ?? 'without a **Status:** line'}, not Accepted: a proposed ADR approves nothing yet`);
+  if (adrAtAnchor) problems.push(`${adrPath} already existed at the last accepted checkpoint (or the baseline before the first one): write a new ADR for this change`);
+  if (recorded && recordHash !== ledgerHash) problems.push(`${PROTECTED_PATH} doesn't match the hash its last protect.mjs ledger event recorded (edited by hand?): restore it from Git before updating`);
+  if (!recorded && ledgerHash) problems.push(`${PROTECTED_PATH} is missing although the ledger records it: restore it from Git before updating`);
+  const before = recorded ?? {};
+  const changed = Object.keys({ ...before, ...files }).filter((f) => before[f] !== files[f]);
+  const editedAdrs = changed.filter((f) => f.startsWith('docs/agent/decisions/ADR-') && f in before);
+  if (editedAdrs.length) problems.push(`accepted ADRs are never edited: ${editedAdrs.join(', ')} (restore them and write a superseding ADR)`);
+  const ownerOnly = changed.filter((f) => matches(f, OWNER_ONLY));
+  if (ownerOnly.length && !hasOwnerApproval(adrText, templateText)) problems.push(`${adrPath} needs an "## Owner approval" section quoting the owner, because owner-only files changed: ${ownerOnly.join(', ')}`);
+  return { problems, changed };
+}
+
 export function verifyProtected() {
   if (!exists(PROTECTED_PATH)) return { errors: [`${PROTECTED_PATH} is missing`], warnings: [] };
   const rec = readJson(PROTECTED_PATH);
@@ -139,31 +167,20 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   if (args.update) {
     const id = String(args.adr ?? '').match(/ADR-\d{4}/)?.[0] ?? '';
     const adrPath = findAdr(id);
-    if (!adrPath) {
-      console.error('--update needs --adr ADR-NNNN: a committed ADR listed in docs/agent/decisions/INDEX.md that approves the change');
-      process.exit(1);
-    }
-    if (adrStatus(readText(adrPath)) !== 'Accepted') {
-      console.error(`${adrPath} is ${adrStatus(readText(adrPath)) ?? 'without a **Status:** line'}, not Accepted: a proposed ADR approves nothing yet`);
-      process.exit(1);
-    }
     const state = readJson(PATHS.state);
     const anchor = state.lastAcceptedCheckpoint ?? state.actualBaselineSha ?? null;
-    if (anchor && showAt(anchor, adrPath) !== null) {
-      console.error(`${adrPath} already existed at ${anchor.slice(0, 10)} (the last accepted checkpoint, or the baseline): write a new ADR for this change`);
-      process.exit(1);
-    }
     const files = currentHashes();
-    const before = exists(PROTECTED_PATH) ? readJson(PROTECTED_PATH).files ?? {} : {};
-    const changed = Object.keys({ ...before, ...files }).filter((f) => before[f] !== files[f]);
-    const editedAdrs = changed.filter((f) => f.startsWith('docs/agent/decisions/ADR-') && f in before);
-    if (editedAdrs.length) {
-      console.error(`accepted ADRs are never edited: ${editedAdrs.join(', ')} (restore them and write a superseding ADR)`);
-      process.exit(1);
-    }
-    const ownerOnly = changed.filter((f) => matches(f, OWNER_ONLY));
-    if (ownerOnly.length && !hasOwnerApproval(readText(adrPath))) {
-      console.error(`${adrPath} needs an "## Owner approval" section quoting the owner, because owner-only files changed: ${ownerOnly.join(', ')}`);
+    const { problems, changed } = updateProblems({
+      adrPath,
+      adrText: adrPath ? readText(adrPath) : '',
+      adrAtAnchor: !!(adrPath && anchor && showAt(anchor, adrPath) !== null),
+      recorded: exists(PROTECTED_PATH) ? readJson(PROTECTED_PATH).files ?? {} : null,
+      recordHash: exists(PROTECTED_PATH) ? sha256File(abs(PROTECTED_PATH)) : null,
+      ledgerHash: lastRecordedHash(parseLedger(exists(PATHS.ledger) ? readText(PATHS.ledger) : '').events),
+      files,
+    });
+    if (problems.length) {
+      for (const p of problems) console.error(p);
       process.exit(1);
     }
     const doc = {

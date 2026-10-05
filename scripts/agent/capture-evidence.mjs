@@ -43,6 +43,23 @@ export function reportStatesVerdict(text, verdict) {
   return reportVerdict(text) === verdict;
 }
 
+/**
+ * Why a --review can't be recorded (pure; empty when it can): the role, verdict and report are required, the report
+ * must be the reviewer's own file under evidence/<slice>/reviews/ (committed with the evidence, never .agent-runs/ or a
+ * path outside the repository), and its last line must be the verdict being recorded.
+ */
+export function reviewProblems({ role, verdict, report }, slice, { exists: fileExists, read }) {
+  const missing = Object.entries({ role, verdict, report }).filter(([, v]) => typeof v !== 'string').map(([k]) => `--review needs --${k}`);
+  if (missing.length) return missing;
+  if (!REVIEW_VERDICTS.includes(verdict)) return [`--verdict must be one of ${REVIEW_VERDICTS.join(', ')}`];
+  const reviewsDir = `${PATHS.evidence}/${slice}/reviews/`;
+  if (!report.startsWith(reviewsDir) || report.split('/').includes('..')) return [`--report must be the reviewer's own file under ${reviewsDir} (committed with the evidence)`];
+  if (!fileExists(report)) return [`report ${report} does not exist`];
+  const ended = reportVerdict(read(report));
+  if (ended !== verdict) return [`report ${report} ends with ${ended ? `"Verdict: ${ended}"` : 'no verdict line'}, not "Verdict: ${verdict}"`];
+  return [];
+}
+
 const list = (v) => (v == null ? [] : [].concat(v).map(String));
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
@@ -101,13 +118,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       requirements,
     });
   } else if (args.review) {
-    for (const k of ['role', 'verdict', 'report']) if (typeof args[k] !== 'string') fail(`--review needs --${k}`);
-    if (!REVIEW_VERDICTS.includes(args.verdict)) fail(`--verdict must be one of ${REVIEW_VERDICTS.join(', ')}`);
-    const reviewsDir = `${PATHS.evidence}/${slice}/reviews/`;
-    if (!args.report.startsWith(reviewsDir) || args.report.split('/').includes('..')) fail(`--report must be the reviewer's own file under ${reviewsDir} (committed with the evidence)`);
-    if (!existsSync(abs(args.report))) fail(`report ${args.report} does not exist`);
-    const ended = reportVerdict(readText(args.report));
-    if (ended !== args.verdict) fail(`report ${args.report} ends with ${ended ? `"Verdict: ${ended}"` : 'no verdict line'}, not "Verdict: ${args.verdict}"`);
+    const problems = reviewProblems(args, slice, { exists: (p) => existsSync(abs(p)), read: readText });
+    if (problems.length) fail(problems.join('; '));
     manifest.reviews.push({
       timestamp: nowIso(),
       role: args.role,
