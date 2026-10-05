@@ -28,6 +28,28 @@ src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
 ```
 
+**Allowed value imports** (S0 architecture lock). A layer may import values from itself and from the layers in its
+row; type-only imports are free. `tests/sim/core-architecture-boundaries.test.ts` enforces this table (`ALLOWED`). The
+ten imports that already broke it on 2026-10-05 are listed in that test's `BASELINE`: they may be removed, never added.
+Changing a row needs an ADR.
+
+| Layer | May import values from |
+|---|---|
+| `types` | nothing |
+| `data` | types |
+| `sim` | types, data |
+| `state` | types |
+| `persistence` | types, data, sim, state, game |
+| `game` | types, data, sim, state, persistence |
+| `runtime` | types, data, sim |
+| `audio` | types, data, sim, state, runtime |
+| `ai` | types, data, sim, state, runtime |
+| `render` | types, data, sim, state, runtime, ai, audio |
+| `ui` | types, data, sim, state, persistence, game, runtime, ai, render, audio |
+| `app` | every layer above |
+| `dev` | every layer above, and app |
+| files at the `src/` root | every layer |
+
 Rules:
 - **Species facts live only in `src/data/species`.** UI/render/AI read them through `getSpecies()`.
 - **The simulation is the source of truth.** Rendering and AI only present it. Example: feeding adds food to `tank.water.foodInWater`. The sim shares it out by feeding speed and competition, so a seahorse really does lose out to fast feeders. The AI animates particles being eaten, but the numbers come from the sim.

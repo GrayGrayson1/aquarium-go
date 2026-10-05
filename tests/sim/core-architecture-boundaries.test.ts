@@ -5,8 +5,8 @@
  * when this lock was installed (2026-10-05) are listed in BASELINE; they may be removed, but any new one fails.
  * Type-only imports are free (they vanish at build time). Zero dependencies: imports are parsed with regexes.
  */
-import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..');
@@ -44,12 +44,10 @@ const BASELINE: string[] = [
   'src/ui/screens/onboarding.ts -> dev',
 ];
 
-function walk(dir: string, out: string[] = []): string[] {
-  for (const f of readdirSync(dir)) {
-    const p = join(dir, f);
-    if (statSync(p).isDirectory()) walk(p, out);
-    else if (/\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f)) out.push(p);
-  }
+/** Every file under src (for import resolution) — read asynchronously so a slow disk never blocks the worker. */
+async function allFiles(dir: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const e of await readdir(dir, { withFileTypes: true, recursive: true })) if (e.isFile()) out.push(join(e.parentPath, e.name));
   return out;
 }
 
@@ -58,13 +56,13 @@ const layerOf = (abs: string): string => {
   return top in ALLOWED && top !== 'root' ? top : 'root';
 };
 
-function resolveSpec(from: string, spec: string): string | null {
+function resolveSpec(files: Set<string>, from: string, spec: string): string | null {
   let base: string;
   if (spec.startsWith('@/')) base = join(SRC, spec.slice(2));
   else if (spec.startsWith('.')) base = resolve(dirname(from), spec);
   else return null; // a package
   for (const c of [base, `${base}.ts`, `${base}.tsx`, join(base, 'index.ts'), join(base, 'index.tsx')]) {
-    if (existsSync(c) && statSync(c).isFile()) return c;
+    if (files.has(c)) return c;
   }
   return base;
 }
@@ -79,36 +77,44 @@ export function valueImports(code: string): string[] {
   return specs;
 }
 
-function violations(): string[] {
+/** One scan of src: read every source file concurrently, then resolve imports against the file list (no more I/O). */
+async function violations(): Promise<string[]> {
+  const files = await allFiles(SRC);
+  const known = new Set(files);
+  const sources = files.filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f));
+  const codes = await Promise.all(sources.map((f) => readFile(f, 'utf8')));
   const found = new Set<string>();
-  for (const file of walk(SRC)) {
+  sources.forEach((file, i) => {
     const from = layerOf(file);
-    const code = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+    const code = codes[i].replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
     for (const spec of valueImports(code)) {
-      const target = resolveSpec(file, spec);
+      const target = resolveSpec(known, file, spec);
       if (!target || !target.startsWith(SRC)) continue;
       const to = layerOf(target);
       if (to === from || ALLOWED[from].includes(to)) continue;
       found.add(`${relative(ROOT, file).split('\\').join('/')} -> ${to}`);
     }
-  }
+  });
   return [...found].sort();
 }
 
 describe('architecture lock: layer import directions', () => {
+  let now: string[] = [];
+  beforeAll(async () => {
+    now = await violations();
+  }, 300_000);
+
   it('parses value imports and skips type-only ones', () => {
     const code = "import type { A } from '@/types';\nimport { b, type C } from '@/sim/x';\nexport { d } from './d';\nimport '@/ui/side';\nconst m = await import('@/render/lazy');";
     expect(valueImports(code)).toEqual(['@/sim/x', './d', '@/ui/side', '@/render/lazy']);
   });
 
   it('no new cross-layer value import breaks the layering', () => {
-    const now = violations();
     const added = now.filter((v) => !BASELINE.includes(v));
     expect(added, 'new layering violations (fix the import, or record an ADR and update ALLOWED)').toEqual([]);
   });
 
   it('the baseline only lists violations that still exist', () => {
-    const now = new Set(violations());
-    expect(BASELINE.filter((v) => !now.has(v)), 'remove fixed entries from BASELINE').toEqual([]);
+    expect(BASELINE.filter((v) => !now.includes(v)), 'remove fixed entries from BASELINE').toEqual([]);
   });
 });
