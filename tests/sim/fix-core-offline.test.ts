@@ -265,6 +265,9 @@ describe('P5-09: a long hidden spell catches up on return', () => {
     const g = newGame({ starterId: 'betta', starterName: 'Hidden', seed: 27 });
     g.isShowcase = false;
     g.clock.speed = speed;
+    // The world last ticked before the tab went hidden (S0 review: a catch-up never covers time before the world's
+    // own lastTickRealMs, so a world created "now" would otherwise have nothing to catch up).
+    g.lastTickRealMs = Date.now() - 7 * 24 * HOUR;
     useGame.getState().setGame(g);
     useUI.setState({ screen: 'game' });
     return g;

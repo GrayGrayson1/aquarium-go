@@ -432,10 +432,16 @@ export function catchUpAfterHidden(hiddenMs: number): OfflineSummary | null {
   if (!g || g.isShowcase || g.clock.speed === 0) return null;
   if (useUI.getState().screen !== 'game') return null;
   if (isStaleGame(g.saveId)) return null; // another tab owns this aquarium; its world is the one moving on
+  // lane:core (S0 review) — the world may have caught up during the hidden spell already (a load that finished while
+  // the tab was hidden runs its own catch-up and moves lastTickRealMs to that moment): only the time since then is
+  // missing. Without this the overlap was simulated twice.
+  const sinceTick = Number.isFinite(g.lastTickRealMs) ? Math.max(0, Date.now() - g.lastTickRealMs) : hiddenMs;
+  const awayMs = Math.min(hiddenMs, sinceTick);
+  if (!(awayMs >= OFFLINE_HIDDEN_MIN_MS)) return null;
   let summary: OfflineSummary | null = null;
   try {
     mutateFast((d) => {
-      summary = simulateOffline(d, hiddenMs);
+      summary = simulateOffline(d, awayMs);
       d.lastTickRealMs = Date.now();
       if (summaryWorthShowing(summary)) pauseForCard(d, summary);
     });
