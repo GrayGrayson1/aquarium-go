@@ -20,7 +20,7 @@ PERSIST-003.
 
 ## Governing decisions
 ADR-0001 (owner operating decisions), ADR-0002 (owner decisions from the harness review), ADR-0003 (harness revision
-and design reconciliation).
+and design reconciliation), ADR-0004, ADR-0005, ADR-0006 (owner answers).
 
 ## Governing design sections
 None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-0003).
@@ -36,11 +36,11 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 | S0-T1 | Verify Git state and the baseline SHA without discarding anything | HARNESS-001 | DONE (`evidence/S0/logs/baseline-git-state.log`) |
 | S0-T2 | Run and record the baseline test matrix | HARNESS-001 | DONE except e2e: not run, environment (`evidence/S0/baseline-failures.json` BF-001, needs owner acknowledgement) |
 | S0-T3 | Create the integration branch and commit the owner's harness unchanged | HARNESS-001, REL-001 | DONE (`94de6bb`) |
-| S0-T4 | Harness scripts: state, ledger, evidence, gates, audits, test inventory, protected files, bootstrap check, context pack, handoff, relaunch | HARNESS-001, HARNESS-002, HARNESS-004, HARNESS-005 | DONE, pending independent review |
+| S0-T4 | Harness scripts: state, ledger, evidence, gates, audits, test inventory, protected files, bootstrap check, context pack, handoff, relaunch | HARNESS-001, HARNESS-002, HARNESS-004, HARNESS-005 | REPAIRING: scripts repaired after RED reviews, `agent.test.mjs` not yet updated (HANDOFF step 2) |
 | S0-T5 | Reconcile the design with the master and the code; design registry and intake | HARNESS-003 | DONE, pending independent review (ADR-0003, `design/DESIGN_REGISTRY.json`) |
 | S0-T6 | Decompose master §9 and the design into the requirements registry | HARNESS-001 | IN PROGRESS |
 | S0-T7 | Repair the harness documents found inconsistent by the adversarial review | HARNESS-001, HARNESS-004 | DONE, pending independent review |
-| S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | PERSIST-004 | IN PROGRESS |
+| S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | PERSIST-004 | Fixes DONE (`f999618`, `58ae313`, `d98731d`, `d8fb896`), pending independent review; BACKLOG.md not written (HANDOFF step 4) |
 | S0-T9 | Gate configuration: e2e server reuse opt-in, e2e typecheck, required assertions, no focused tests | HARNESS-006 | DONE, pending independent review |
 | S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | all S0 | PENDING |
 | S0-T11 | Fresh-session bootstrap test: a new session's assertion passes `bootstrap-check.mjs` | HARNESS-001, HARNESS-002 | PENDING (needs a new session) |
