@@ -34,6 +34,21 @@
       "detail": "The 60 s RPC reply timer fires before the worker's event loop can read the reply when a file runs more than 60 s of synchronous tests back to back. Slower or busier machines cross that line.",
       "nextStep": "Fixed by ADR-0010: tests/sim/setup/yield-between-tests.ts registered in vitest.config.ts setupFiles. The unit gate is re-run on the S0 tree with verify-slice.mjs.",
       "ownerAcknowledgement": "ADR-0010 (owner chose \"Fix it (Recommended)\", 2026-10-05)"
+    },
+    {
+      "id": "BF-003",
+      "gate": "unit",
+      "tests": "tests/sim/core-gameloop.test.ts > core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time (its wall-clock assertion: median tick < 20 ms, retry 2)",
+      "evidence": [
+        "verify-slice unit run on the S0 tree (docs/agent/evidence/S0/logs/unit-20261005T234539917Z.log): 1791/1792 pass; this test fails all 3 attempts with median 34.57, 24.03, 23.39 ms while 4 Vitest workers share the container's 4 cores.",
+        "The same file alone, 3 runs each, same container: HEAD 15.45, 14.36, 15.57 ms; 0d9fc5a 14.84, 14.97/13.01, 15.38 ms. No regression from S0.",
+        "Full `npx vitest run` at 0d9fc5a in a temporary worktree, same container: this test fails all 3 attempts (27.30, 26.39, 26.17 ms); 1 failed | 1752 passed, plus 4 BF-002 errors: present at the baseline.",
+        "Owner's Mac baseline (docs/agent/evidence/S0/manifest.json, unit): 151 files, 1753 tests passed, exit 0."
+      ],
+      "classification": "ENVIRONMENT (CPU count and speed under full-suite parallel load); not an S0 regression.",
+      "detail": "The test measures wall-clock time per game-loop tick. On a 4-core cloud container running 4 Vitest workers, the median roughly doubles; its retries don't help because the load lasts for the whole suite. Alone it is at about 15 ms, inside the 20 ms budget.",
+      "nextStep": "Owner decision (asked with the session's open questions): count the unit gate from the owner's Mac (where step 9 runs e2e on the same tree), or isolate wall-clock tests from parallel load. Never loosen the 20 ms budget or add retries to get green.",
+      "ownerAcknowledgement": null
     }
   ]
 }
