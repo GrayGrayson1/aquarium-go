@@ -128,6 +128,9 @@ function stepEquipmentWear(state: GameState, tank: Tank, dt: number, ctx: SimCon
     const pDay = clamp(base * (1 + 6 * Math.pow(1 - inst.condition, 2)), 0, 0.5);
     const p = 1 - Math.pow(1 - pDay, dt / 24);
     if (!ctx.rng.chance(p)) continue;
+    // lane:core (S0 review) — the offline-grace contract (src/persistence/offline.ts): equipment doesn't fail while
+    // catching up. The roll above still draws, so the random stream only differs where a failure would have happened.
+    if (state.offlineGrace) continue;
     inst.failed = true;
     const stuck = def.kind === 'heater' && ctx.rng.chance(0.15);
     inst.failMode = stuck ? 'stuck_on' : 'off';
