@@ -87,7 +87,7 @@ function localeCompareArgs(code: string): string[][] {
   return calls;
 }
 
-describe('determinism guard: src/sim and src/data', () => {
+describe('CONST-004: determinism guard: src/sim and src/data', () => {
   let sources: { rel: string; code: string }[] = [];
 
   // Asynchronous reads, so a slow disk never blocks the Vitest worker (S0 review H1).

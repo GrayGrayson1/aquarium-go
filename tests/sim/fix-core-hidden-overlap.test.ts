@@ -29,7 +29,7 @@ beforeEach(() => {
   useGame.getState().setGame(null);
 });
 
-describe('hidden-tab catch-up after a load during the hidden spell', () => {
+describe('PERSIST-013: hidden-tab catch-up after a load during the hidden spell', () => {
   it('a world that caught up a minute ago gets no second catch-up for a 30-minute absence', () => {
     const g = anchoredWorld(1 * MIN);
     expect(catchUpAfterHidden(30 * MIN)).toBeNull();

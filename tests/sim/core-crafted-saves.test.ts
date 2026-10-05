@@ -38,7 +38,7 @@ afterEach(() => {
   for (const k of POLLUTION_KEYS) delete (Object.prototype as Json)[k];
 });
 
-describe('crafted saves', () => {
+describe('PERSIST-011: crafted saves', () => {
   it('the species registry only finds its own ids', () => {
     expect(findSpecies('constructor')).toBeUndefined();
     expect(findSpecies('__proto__')).toBeUndefined();

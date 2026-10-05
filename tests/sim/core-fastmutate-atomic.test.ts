@@ -20,7 +20,7 @@ beforeEach(() => {
   useUI.getState().set({ screen: 'title', view: 'tank', focusedTankId: null });
 });
 
-describe('mutateFast is atomic', () => {
+describe('PERSIST-009: mutateFast is atomic', () => {
   it('a recipe that throws publishes nothing and leaves the store state untouched', () => {
     const g = newGame({ starterId: 'betta', starterName: 'Atom', seed: 501 });
     useGame.getState().setGame(g);
@@ -55,7 +55,7 @@ describe('mutateFast is atomic', () => {
   });
 });
 
-describe('runTick on a world step that throws', () => {
+describe('PERSIST-009: runTick on a world step that throws', () => {
   it('changes nothing, reports the error and keeps the hours in the backlog', () => {
     const g = newGame({ starterId: 'betta', starterName: 'Broken', seed: 503 });
     // A corrupt tank makes every world step throw part-way.

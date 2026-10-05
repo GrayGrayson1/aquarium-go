@@ -98,7 +98,7 @@ async function violations(): Promise<string[]> {
   return [...found].sort();
 }
 
-describe('architecture lock: layer import directions', () => {
+describe('CONST-004: architecture lock: layer import directions', () => {
   let now: string[] = [];
   beforeAll(async () => {
     now = await violations();

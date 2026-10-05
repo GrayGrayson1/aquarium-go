@@ -15,12 +15,14 @@ makes the objective gates trustworthy; and the contained game fixes the owner ap
 Product features (S1-S4), multiplayer, any remote action, version bumps.
 
 ## Governing requirements
-HARNESS-001, HARNESS-002, HARNESS-003, HARNESS-004, HARNESS-005, HARNESS-006, REL-001, PERSIST-001, PERSIST-002,
-PERSIST-003.
+HARNESS-001, HARNESS-002, HARNESS-003, HARNESS-004, HARNESS-005, HARNESS-006, HARNESS-008, REL-001, PERSIST-002,
+PERSIST-003; the S0 game fixes PERSIST-009, PERSIST-010, PERSIST-011, PERSIST-012, PERSIST-013, MKT-016 and CONST-004;
+GEN-013 (rarity report). PERSIST-001 is superseded (ADR-0005 decision 1).
 
 ## Governing decisions
 ADR-0001 (owner operating decisions), ADR-0002 (owner decisions from the harness review), ADR-0003 (harness revision
-and design reconciliation), ADR-0004, ADR-0005, ADR-0006 (owner answers).
+and design reconciliation), ADR-0004, ADR-0005, ADR-0006 (owner answers), ADR-0007 and ADR-0009 (pushes of
+`agent/s0-wip` and subagents).
 
 ## Governing design sections
 None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-0003).
@@ -45,6 +47,7 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 | S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | all S0 | PENDING |
 | S0-T11 | Fresh-session bootstrap test: a new session's assertion passes `bootstrap-check.mjs` | HARNESS-001, HARNESS-002 | PENDING (needs a new session) |
 | S0-T12 | Owner review of the harness and the open owner questions, then S0 acceptance and checkpoint | all S0 | PENDING |
+| S0-T13 | Rarity counting tool `npm run report:rarity` (ADR-0005 decision 4) | GEN-013 | DONE (`172b5c3`), pending independent review |
 
 ## Acceptance criteria
 - `node scripts/agent/check-state.mjs` exits 0, and `node --test 'scripts/agent/*.test.mjs'` passes.

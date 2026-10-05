@@ -28,7 +28,7 @@ function world(seed: number, speed: GameSpeed): GameState {
   return g;
 }
 
-describe('bids made during the offline catch-up last their promised real time after the return', () => {
+describe('MKT-016: bids made during the offline catch-up last their promised real time after the return', () => {
   it('marketTimeScale keeps the saved speed during the grace catch-up', () => {
     const g = world(11, 10);
     g.offlineGrace = true;

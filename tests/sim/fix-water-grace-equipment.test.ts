@@ -21,7 +21,7 @@ function rig(seed: number): GameState {
 
 const failed = (g: GameState) => Object.values(g.tanks).flatMap((t) => t.equipment ?? []).filter((e) => e.failed).length;
 
-describe('equipment during the offline grace', () => {
+describe('PERSIST-012: equipment during the offline grace', () => {
   it('nothing fails while catching up, though wear still accrues', () => {
     const g = rig(7);
     simulateOffline(g, 12 * 3600 * 1000);

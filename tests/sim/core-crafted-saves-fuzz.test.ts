@@ -116,7 +116,7 @@ function play(text: string): string | null {
   return null;
 }
 
-describe.each(['shows-demo', 'frags_market'])('crafted-save fuzz on %s', (fixture) => {
+describe.each(['shows-demo', 'frags_market'])('PERSIST-011: crafted-save fuzz on %s', (fixture) => {
   const base = JSON.parse(JSON.stringify(FIXTURES[fixture]())) as Json;
 
   it('the unmodified fixture loads and runs cleanly', () => {

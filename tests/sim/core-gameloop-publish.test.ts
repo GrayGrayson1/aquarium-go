@@ -51,7 +51,7 @@ afterEach(() => {
   failAfter.calls = Infinity;
 });
 
-describe('runTick backlog after a failure', () => {
+describe('PERSIST-010: runTick backlog after a failure', () => {
   it('a slice that throws after several good ones publishes nothing and keeps every hour in the backlog', () => {
     const before = start(601, 10);
     const want = 1 * GAME_HOURS_PER_REAL_SECOND * 10; // 1 real second at 10x = 1 game hour = 4 slices
