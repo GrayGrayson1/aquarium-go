@@ -11,3 +11,4 @@ recorded verbatim (`OPERATIONS.md` §2).
 | [ADR-0004](ADR-0004-owner-answers-round-1.md) | 2026-10-05 | Accepted | Yes | No push guards for now; browser tests from the Claude desktop app; keep ADR-0003's tightened rules; save policy asked again |
 | [ADR-0005](ADR-0005-owner-answers-rounds-2-3.md) | 2026-10-05 | Accepted | Yes | Old saves not required; dev tools only with ?dev=1; Social dev-only; rarity counts tool; S3-D stays in S3; designs coming; local main is the integration branch; backups to another drive |
 | [ADR-0006](ADR-0006-owner-answers-round-4.md) | 2026-10-05 | Accepted | Yes | Backups go to `/Volumes/Dev/Backup Projects/AquariumGo/` (same drive); publishing docs/agent deferred; go-ahead to run the handoff steps 1-9 |
+| [ADR-0007](ADR-0007-owner-approval-push-wip-branch.md) | 2026-10-05 | Accepted | Yes | One push of local main to the remote branch `agent/s0-wip` (not main, so no deploy); docs/agent becomes public |

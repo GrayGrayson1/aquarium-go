@@ -6,10 +6,12 @@ Verify everything below against Git; don't trust it blindly._
 ## Where we are
 - **Slice S0, machine state IMPLEMENT, in a repair round.** Five independent reviews of the S0 work came back RED or
   YELLOW. This session finished **step 1 (game repairs)**. Steps 2-8 below are not started; step 9 is the owner's part.
-- **Owner go-ahead (ADR-0006):** run next steps 1-8, then step 9. No push, PR or deploy is authorized.
-- **Branch:** local `main` is the integration branch (ADR-0005 #6). **Nothing has been pushed** (`main` is ahead of
-  `origin/main`). A push of `main` deploys GitHub Pages; Render deploys through its CLI. Both need the owner's recorded
-  yes. `agent/aquariumgo-local-stack-20261005` is stale (points at `7c0dbf4`) and can be deleted.
+- **Owner go-ahead (ADR-0006):** run next steps 1-8, then step 9. No other push, PR or deploy is authorized.
+- **Branch:** local `main` is the integration branch (ADR-0005 #6). With the owner's approval (ADR-0007) it was pushed
+  once to the remote branch **`agent/s0-wip`** so a cloud session can reach it; `origin/main` is untouched (it doesn't
+  deploy). Any later push, including an update of `agent/s0-wip`, needs a new owner yes. A cloud session works on
+  `agent/s0-wip` and must not push to `main`: a push of `main` deploys GitHub Pages, and `render.yaml` has
+  `autoDeploy: true`. The repo is public. `agent/aquariumgo-local-stack-20261005` is stale (points at `7c0dbf4`) and can be deleted.
 - **Known doc conflict:** AGENTS.md and the master still say "never commit on `main`". The owner overrode that
   (ADR-0005 #6) and `STATE.integrationBranch` is `main`; step 3 fixes the docs.
 
@@ -57,17 +59,17 @@ steps 5 and 7: requirement AUTO-002: names no test; requirement PERSIST-003: nam
    Test the fail-closed cases from `evidence/S0/reviews/code-architecture-harness-1.md`, `security-data-1.md` and
    `adversarial-1.md` (bypass table). Fix script bugs the tests reveal; never weaken tests. Then
    `node scripts/agent/check-state.mjs` must exit 0.
-3. **Docs** (ADR number is now **ADR-0007**):
+3. **Docs** (ADR number is now **ADR-0008**):
    - AGENTS.md, CLAUDE.md and the master: main is the integration branch, so drop "never commit on main"; remove the
      SCHEMA_BUMP sentence from master §3.5.
    - OPERATIONS.md: the slice-start procedure (`next-slice.mjs`), the checkpoint backup step (git bundle to
      `/Volumes/Dev/Backup Projects/AquariumGo/` plus `git bundle verify`, ADR-0006), the S4 flow (readiness gate in a
      new session), reviewers re-running gates, "what the checks can't catch", and that adversarial review is required.
    - `design/DESIGN_REGISTRY.json`: add DESIGN-S3C-LINES and the Social dev-only override.
-   - ADR-0007: correct ADR-0002/0003's wrong claims (`--self-test`, missing evidence, SD-13's "STATE.json counts as an
+   - ADR-0008: correct ADR-0002/0003's wrong claims (`--self-test`, missing evidence, SD-13's "STATE.json counts as an
      owner decision"), replace ADR-0003 rules 5 and 7, and add it to `decisions/INDEX.md`.
 
-   AGENTS.md, the master and the prompts are protected (`docs/agent/PROTECTED.json`): edit them under ADR-0007.
+   AGENTS.md, the master and the prompts are protected (`docs/agent/PROTECTED.json`): edit them under ADR-0008.
 4. **`docs/agent/BACKLOG.md`** from `evidence/S0/reviews/adversarial-review-2026-10-05.json` `synthesis.merged`. It
    holds 101 findings: 30 fix-now-harness, 24 needs-slice, 23 owner-decision, 18 fix-now-app-safe, 3 fix-now-repo and 3
    record-only. Mark the ones already fixed (with commit), include the step-1 leftovers above and the design errata
@@ -84,7 +86,7 @@ steps 5 and 7: requirement AUTO-002: names no test; requirement PERSIST-003: nam
    so the owner can tune on real numbers.
 7. **Evidence:**
    - `node scripts/agent/test-inventory.mjs --baseline`;
-   - `node scripts/agent/protect.mjs --update --adr ADR-0007`;
+   - `node scripts/agent/protect.mjs --update --adr ADR-0008`;
    - `node scripts/agent/verify-slice.mjs` for every gate except e2e.
 8. **Fresh independent re-review** (code-architecture, security-data, adversarial) as separate subagents, following
    `CLAUDE.md`. Repair what they find, with a new reviewer instance after every repair.

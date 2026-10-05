@@ -32,7 +32,7 @@ session, and in the same message asked the orchestrator to run the handoff's nex
 
 - HARNESS-008 names the folder above. `scripts/agent` has no backup step yet; the checkpoint procedure in
   `OPERATIONS.md` must add it (`git bundle create` then `git bundle verify`).
-- The corrections ADR that `HANDOFF.md` step 3 called "ADR-0006" becomes ADR-0007.
+- The corrections ADR that `HANDOFF.md` step 3 called "ADR-0006" becomes ADR-0008 (ADR-0007 records the push approval).
 
 ## Owner approval
 
