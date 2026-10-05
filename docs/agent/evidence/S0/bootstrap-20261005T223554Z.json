@@ -1,0 +1,60 @@
+{
+  "sessionId": "fb16c5d5-671a-5220-bdec-f4fad52a7de1",
+  "startedAt": "2026-10-05T22:35:54Z",
+  "environment": "Claude Code cloud session (claude.ai/code), container clone of GrayGrayson1/aquarium-go; not the owner's /Volumes/Dev machine. Works on agent/s0-wip per HANDOFF.md and ADR-0007.",
+  "readFiles": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs/agent/README_FIRST.md",
+    "docs/agent/AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md",
+    "docs/agent/OPERATIONS.md",
+    "docs/agent/STATE.json",
+    "docs/agent/CURRENT_SLICE.md",
+    "docs/agent/HANDOFF.md",
+    "docs/agent/prompts/KICKOFF.md",
+    "docs/agent/decisions/INDEX.md",
+    "docs/agent/decisions/ADR-0001-owner-operating-decisions.md",
+    "docs/agent/decisions/ADR-0002-harness-review-owner-decisions.md",
+    "docs/agent/decisions/ADR-0003-harness-revision-and-design-reconciliation.md",
+    "docs/agent/decisions/ADR-0004-owner-answers-round-1.md",
+    "docs/agent/decisions/ADR-0005-owner-answers-rounds-2-3.md",
+    "docs/agent/decisions/ADR-0006-owner-answers-round-4.md",
+    "docs/agent/decisions/ADR-0007-owner-approval-push-wip-branch.md",
+    "docs/agent/REQUIREMENTS.json",
+    "docs/agent/LEDGER.jsonl",
+    "docs/agent/evidence/S0/manifest.json",
+    "docs/agent/design/DESIGN_REGISTRY.json"
+  ],
+  "expectedSha": "8c5700df22f353c918c1bcf491b16c2d01738410",
+  "actualSha": "8c5700df22f353c918c1bcf491b16c2d01738410",
+  "branch": "agent/s0-wip",
+  "slice": "S0",
+  "task": "S0-T4",
+  "machineState": "IMPLEMENT",
+  "requiredGates": ["typecheck", "unit", "build", "e2e", "diffCheck", "harnessTests", "requirementsAudit", "testInventory", "protectedFiles", "independentReview"],
+  "requiredReviewers": ["code-architecture", "security-data"],
+  "forbidden": [
+    "git push to main or any branch other than agent/s0-wip; any push without a recorded owner approval (ADR-0007 covered one push; this session's further agent/s0-wip pushes need their own ADR)",
+    "force push, tag push, PR, merge, GitHub writes, workflow runs",
+    "deploy (GitHub Pages via main, Render via CLI/API) or publish",
+    "product feature work before S0 acceptance; multiplayer; version bump",
+    "editing protected files (AGENTS.md, CLAUDE.md, master, OPERATIONS.md, prompts, decisions) outside the ADR process",
+    "weakening, skipping or deleting tests to get green",
+    "destructive git commands (reset --hard, clean -fd, branch -D, amend over checkpoints)"
+  ],
+  "firstFiles": [
+    "scripts/agent/agent.test.mjs",
+    "scripts/agent/lib.mjs",
+    "scripts/agent/check-state.mjs",
+    "scripts/agent/requirements.mjs",
+    "docs/agent/evidence/S0/reviews/code-architecture-harness-1.md",
+    "docs/agent/evidence/S0/reviews/security-data-1.md",
+    "docs/agent/evidence/S0/reviews/adversarial-1.md"
+  ],
+  "risks": [
+    "This is a cloud container, not the owner's machine: OPERATIONS.md §8 facts (/Volumes/Dev, the backup folder, Playwright cache path) don't hold here, and anything not pushed to agent/s0-wip is lost when the container is reclaimed.",
+    "STATE.integrationBranch is main but this session works on agent/s0-wip (HANDOFF, ADR-0007); check-state warns, and a push to main would deploy the live site.",
+    "The full unit suite has not been re-run since d8fb896 (the H1 worker-timeout fix); harness tests fail at import (agent.test.mjs imports the removed validateRepairCount).",
+    "Step 3 edits protected files (AGENTS.md, CLAUDE.md, the master, OPERATIONS.md); they change only under ADR-0008 with owner approval and protect.mjs --update."
+  ]
+}
