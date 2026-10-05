@@ -27,17 +27,17 @@
     "adversarial"
   ],
   "gates": {
-    "typecheck": "PENDING",
-    "unit": "PENDING",
-    "build": "PENDING",
+    "typecheck": "GREEN",
+    "unit": "RED",
+    "build": "GREEN",
     "e2e": "PENDING",
-    "diffCheck": "PENDING",
-    "harnessTests": "PENDING",
+    "diffCheck": "GREEN",
+    "harnessTests": "GREEN",
     "requirementsAudit": "PENDING",
-    "testInventory": "PENDING",
-    "protectedFiles": "PENDING",
+    "testInventory": "GREEN",
+    "protectedFiles": "GREEN",
     "browserQa": "NOT_APPLICABLE",
     "independentReview": "PENDING"
   },
-  "updatedAt": "2026-10-05T23:30:00Z"
+  "updatedAt": "2026-10-05T23:50:37.562Z"
 }

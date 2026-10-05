@@ -1,0 +1,460 @@
+TAP version 13
+# Subtest: args parser handles values, booleans, repeats and kebab-case
+ok 1 - args parser handles values, booleans, repeats and kebab-case
+  ---
+  duration_ms: 2.66163
+  type: 'test'
+  ...
+# Subtest: args: with an allowed list, unknown and mistyped options throw (F5)
+ok 2 - args: with an allowed list, unknown and mistyped options throw (F5)
+  ---
+  duration_ms: 0.628655
+  type: 'test'
+  ...
+# Subtest: relaunch: unknown or mistyped options are refused, so a typo never starts sessions (F5)
+ok 3 - relaunch: unknown or mistyped options are refused, so a typo never starts sessions (F5)
+  ---
+  duration_ms: 0.438579
+  type: 'test'
+  ...
+# Subtest: verify-slice: unknown options are refused instead of running every gate
+ok 4 - verify-slice: unknown options are refused instead of running every gate
+  ---
+  duration_ms: 0.215566
+  type: 'test'
+  ...
+# Subtest: lib: numeric options must be positive, so the session cap and waits stay meaningful (M9)
+ok 5 - lib: numeric options must be positive, so the session cap and waits stay meaningful (M9)
+  ---
+  duration_ms: 0.355316
+  type: 'test'
+  ...
+# Subtest: cli: every script that takes options refuses an unknown one before doing anything
+ok 6 - cli: every script that takes options refuses an unknown one before doing anything
+  ---
+  duration_ms: 608.41187
+  type: 'test'
+  ...
+# Subtest: transitions: the table matches OPERATIONS.md §4
+ok 7 - transitions: the table matches OPERATIONS.md §4
+  ---
+  duration_ms: 0.442212
+  type: 'test'
+  ...
+# Subtest: transitions: the table is enforced, any state may go to OWNER_GATE, gated exits need a decision
+ok 8 - transitions: the table is enforced, any state may go to OWNER_GATE, gated exits need a decision
+  ---
+  duration_ms: 0.976663
+  type: 'test'
+  ...
+# Subtest: transitions: a transition must start at STATE.machineState and name the current slice (M1, \#21)
+ok 9 - transitions: a transition must start at STATE.machineState and name the current slice (M1, \#21)
+  ---
+  duration_ms: 0.673342
+  type: 'test'
+  ...
+# Subtest: transitions: leaving OWNER_GATE or BLOCKED_MANUAL_REVIEW needs a committed ADR, and OWNER_GATE resumes only where it was entered
+ok 10 - transitions: leaving OWNER_GATE or BLOCKED_MANUAL_REVIEW needs a committed ADR, and OWNER_GATE resumes only where it was entered
+  ---
+  duration_ms: 0.84116
+  type: 'test'
+  ...
+# Subtest: transitions: entering OWNER_GATE needs a reason and a state work can resume at
+ok 11 - transitions: entering OWNER_GATE needs a reason and a state work can resume at
+  ---
+  duration_ms: 0.294872
+  type: 'test'
+  ...
+# Subtest: transitions: NEXT_SLICE is entered with a session id and left only in a different session (L2, M04)
+ok 12 - transitions: NEXT_SLICE is entered with a session id and left only in a different session (L2, M04)
+  ---
+  duration_ms: 0.293983
+  type: 'test'
+  ...
+# Subtest: transitions: the readiness gate follows only an accepted S4, and an accepted S4 starts no other slice
+ok 13 - transitions: the readiness gate follows only an accepted S4, and an accepted S4 starts no other slice
+  ---
+  duration_ms: 0.209667
+  type: 'test'
+  ...
+# Subtest: ledger events: required fields, legal states, repair defects and strategies
+ok 14 - ledger events: required fields, legal states, repair defects and strategies
+  ---
+  duration_ms: 0.352521
+  type: 'test'
+  ...
+# Subtest: a valid state passes
+ok 15 - a valid state passes
+  ---
+  duration_ms: 0.48381
+  type: 'test'
+  ...
+# Subtest: state: illegal machine state, unknown gate value and missing gates are errors
+ok 16 - state: illegal machine state, unknown gate value and missing gates are errors
+  ---
+  duration_ms: 0.288969
+  type: 'test'
+  ...
+# Subtest: state: every gate is required, and only browserQa may be waived without an owner ADR (M2, \#6, \#7)
+ok 17 - state: every gate is required, and only browserQa may be waived without an owner ADR (M2, \#6, \#7)
+  ---
+  duration_ms: 0.408258
+  type: 'test'
+  ...
+# Subtest: state: remote or multiplayer permission needs an ADR reference
+ok 18 - state: remote or multiplayer permission needs an ADR reference
+  ---
+  duration_ms: 0.119403
+  type: 'test'
+  ...
+# Subtest: state: at 3 distinct strategies or 5 attempts the slice must be in BLOCKED_MANUAL_REVIEW unless the owner overrode it
+ok 19 - state: at 3 distinct strategies or 5 attempts the slice must be in BLOCKED_MANUAL_REVIEW unless the owner overrode it
+  ---
+  duration_ms: 0.268135
+  type: 'test'
+  ...
+# Subtest: OWNER_GATE needs a reason and a resume state
+ok 20 - OWNER_GATE needs a reason and a resume state
+  ---
+  duration_ms: 0.203192
+  type: 'test'
+  ...
+# Subtest: state: SHAs are full commits, and the reviewers include code-architecture
+ok 21 - state: SHAs are full commits, and the reviewers include code-architecture
+  ---
+  duration_ms: 0.197422
+  type: 'test'
+  ...
+# Subtest: state must match the last recorded transition
+ok 22 - state must match the last recorded transition
+  ---
+  duration_ms: 0.240895
+  type: 'test'
+  ...
+# Subtest: evidence: a GREEN gate needs a passing run of its real command with a log and a code tree (\#1, \#4, \#5)
+ok 23 - evidence: a GREEN gate needs a passing run of its real command with a log and a code tree (\#1, \#4, \#5)
+  ---
+  duration_ms: 0.657679
+  type: 'test'
+  ...
+# Subtest: evidence: GREEN gates on a stale or foreign code tree warn before acceptance and fail at it (\#2, \#3, \#8, \#9)
+ok 24 - evidence: GREEN gates on a stale or foreign code tree warn before acceptance and fail at it (\#2, \#3, \#8, \#9)
+  ---
+  duration_ms: 0.493977
+  type: 'test'
+  ...
+# Subtest: evidence: acceptance needs every gate GREEN, a GREEN review per required role on the accepted tree and a GREEN manifest (M3, \#15)
+ok 25 - evidence: acceptance needs every gate GREEN, a GREEN review per required role on the accepted tree and a GREEN manifest (M3, \#15)
+  ---
+  duration_ms: 0.379863
+  type: 'test'
+  ...
+# Subtest: evidence: independentReview needs a GREEN code-architecture review; browserQa needs a clean run on the accepted tree
+ok 26 - evidence: independentReview needs a GREEN code-architecture review; browserQa needs a clean run on the accepted tree
+  ---
+  duration_ms: 0.352398
+  type: 'test'
+  ...
+# Subtest: evidence: at acceptance only browserQa, or a gate with an owner waiver, may be NOT_APPLICABLE (\#6)
+ok 27 - evidence: at acceptance only browserQa, or a gate with an owner waiver, may be NOT_APPLICABLE (\#6)
+  ---
+  duration_ms: 0.24742
+  type: 'test'
+  ...
+# Subtest: evidence files: missing, edited, ignored and flaky evidence is caught (\#10, \#12)
+ok 28 - evidence files: missing, edited, ignored and flaky evidence is caught (\#10, \#12)
+  ---
+  duration_ms: 0.551104
+  type: 'test'
+  ...
+# Subtest: evidence files: cited paths stay inside the evidence folders, and only full logs and screenshots may live outside Git (SD-8, SD-9)
+ok 29 - evidence files: cited paths stay inside the evidence folders, and only full logs and screenshots may live outside Git (SD-8, SD-9)
+  ---
+  duration_ms: 1.192616
+  type: 'test'
+  ...
+# Subtest: evidence files: a review report must exist, keep its hash and end with the verdict it was recorded with (H2, \#14, \#16)
+ok 30 - evidence files: a review report must exist, keep its hash and end with the verdict it was recorded with (H2, \#14, \#16)
+  ---
+  duration_ms: 0.594652
+  type: 'test'
+  ...
+# Subtest: manifest: committed records are append-only, and an accepted verdict and checkpoint stay (M4, \#11, \#13)
+ok 31 - manifest: committed records are append-only, and an accepted verdict and checkpoint stay (M4, \#11, \#13)
+  ---
+  duration_ms: 0.655712
+  type: 'test'
+  ...
+# Subtest: manifest: a committed manifest may not be deleted, and a rewrite committed mid-slice is still caught (M4, SD-8)
+ok 32 - manifest: a committed manifest may not be deleted, and a rewrite committed mid-slice is still caught (M4, SD-8)
+  ---
+  duration_ms: 0.54867
+  type: 'test'
+  ...
+# Subtest: ledger: rewritten and deleted lines are caught against every committed version, even after a commit (M4, SD-8, \#17-\#19)
+ok 33 - ledger: rewritten and deleted lines are caught against every committed version, even after a commit (M4, SD-8, \#17-\#19)
+  ---
+  duration_ms: 0.661324
+  type: 'test'
+  ...
+# Subtest: ledger: transitions form one chain from BOOTSTRAP (M1, \#21)
+ok 34 - ledger: transitions form one chain from BOOTSTRAP (M1, \#21)
+  ---
+  duration_ms: 0.502707
+  type: 'test'
+  ...
+# Subtest: ledger: owner decisions and owner-gate exits must cite committed ADRs, and OWNER_GATE resumes only at its recorded state
+ok 35 - ledger: owner decisions and owner-gate exits must cite committed ADRs, and OWNER_GATE resumes only at its recorded state
+  ---
+  duration_ms: 0.627141
+  type: 'test'
+  ...
+# Subtest: repairs: counts are per defect, a new defect id resets nothing, and only a fix resets its own defect (M5, F14, \#36)
+ok 36 - repairs: counts are per defect, a new defect id resets nothing, and only a fix resets its own defect (M5, F14, \#36)
+  ---
+  duration_ms: 0.361277
+  type: 'test'
+  ...
+# Subtest: repairs: a defect at 3 distinct strategies or 5 attempts forces BLOCKED_MANUAL_REVIEW, whatever STATE names (OPERATIONS.md §5)
+ok 37 - repairs: a defect at 3 distinct strategies or 5 attempts forces BLOCKED_MANUAL_REVIEW, whatever STATE names (OPERATIONS.md §5)
+  ---
+  duration_ms: 1.543688
+  type: 'test'
+  ...
+# Subtest: repair counts can not be understated
+ok 38 - repair counts can not be understated
+  ---
+  duration_ms: 0.194705
+  type: 'test'
+  ...
+# Subtest: check-state: after next-slice.mjs the accepted slice is judged on its own evidence, on the checkpoint tree
+ok 39 - check-state: after next-slice.mjs the accepted slice is judged on its own evidence, on the checkpoint tree
+  ---
+  duration_ms: 0.59133
+  type: 'test'
+  ...
+# Subtest: code tree ignores docs/agent and is stable for a commit
+ok 40 - code tree ignores docs/agent and is stable for a commit
+  ---
+  duration_ms: 49.65033
+  type: 'test'
+  ...
+# Subtest: code tree: an older commit whose docs/agent differs from HEAD still gets its tree (H1, F3)
+ok 41 - code tree: an older commit whose docs/agent differs from HEAD still gets its tree (H1, F3)
+  ---
+  duration_ms: 67.217613
+  type: 'test'
+  ...
+# Subtest: committed versions: every version since the anchor is checked, oldest first, ending at HEAD (M4, SD-8)
+ok 42 - committed versions: every version since the anchor is checked, oldest first, ending at HEAD (M4, SD-8)
+  ---
+  duration_ms: 125.318506
+  type: 'test'
+  ...
+# Subtest: approvals: only a committed ADR listed in decisions/INDEX.md counts (SD-6, SD-11, \#25-\#27)
+ok 43 - approvals: only a committed ADR listed in decisions/INDEX.md counts (SD-6, SD-11, \#25-\#27)
+  ---
+  duration_ms: 21.549774
+  type: 'test'
+  ...
+# Subtest: requirements: schema, append-only ids and GREEN evidence (\#22-\#24)
+ok 44 - requirements: schema, append-only ids and GREEN evidence (\#22-\#24)
+  ---
+  duration_ms: 1.627599
+  type: 'test'
+  ...
+# Subtest: requirements audit: tasks after PLAN_LOCK, accepted slices closed, unknown ids in the slice contract
+ok 45 - requirements audit: tasks after PLAN_LOCK, accepted slices closed, unknown ids in the slice contract
+  ---
+  duration_ms: 0.578032
+  type: 'test'
+  ...
+# Subtest: requirements audit: an umbrella is GREEN only when every child that names it is closed
+ok 46 - requirements audit: an umbrella is GREEN only when every child that names it is closed
+  ---
+  duration_ms: 0.588995
+  type: 'test'
+  ...
+# Subtest: design registry: APPROVED needs an approval citing a committed ADR and an existing path (\#28, \#29)
+ok 47 - design registry: APPROVED needs an approval citing a committed ADR and an existing path (\#28, \#29)
+  ---
+  duration_ms: 0.337213
+  type: 'test'
+  ...
+# Subtest: protected files: changes, deletions and unrecorded files fail; an edited accepted ADR is named as such (\#30-\#32)
+ok 48 - protected files: changes, deletions and unrecorded files fail; an edited accepted ADR is named as such (\#30-\#32)
+  ---
+  duration_ms: 0.230686
+  type: 'test'
+  ...
+# Subtest: protected files: the patterns cover the rules, the scripts and the gate-defining and deploy files (F10, SD-12)
+ok 49 - protected files: the patterns cover the rules, the scripts and the gate-defining and deploy files (F10, SD-12)
+  ---
+  duration_ms: 7.045186
+  type: 'test'
+  ...
+# Subtest: protected files: an owner approval is a real quote, not the template text or a placeholder
+ok 50 - protected files: an owner approval is a real quote, not the template text or a placeholder
+  ---
+  duration_ms: 1.479327
+  type: 'test'
+  ...
+# Subtest: protected files: --update refuses a missing, proposed, old or unapproved ADR, an edited accepted ADR, and a hand-edited or deleted record (M10, SD-7, \#33)
+ok 51 - protected files: --update refuses a missing, proposed, old or unapproved ADR, an edited accepted ADR, and a hand-edited or deleted record (M10, SD-7, \#33)
+  ---
+  duration_ms: 1.976718
+  type: 'test'
+  ...
+# Subtest: gate configuration: the settings that make a passing gate mean something are still in place (HARNESS-006, F10)
+ok 52 - gate configuration: the settings that make a passing gate mean something are still in place (HARNESS-006, F10)
+  ---
+  duration_ms: 0.720175
+  type: 'test'
+  ...
+# Subtest: bootstrap assertion is checked field by field and must come from a fresh session (M6, F13, SD-11, \#37)
+ok 53 - bootstrap assertion is checked field by field and must come from a fresh session (M6, F13, SD-11, \#37)
+  ---
+  duration_ms: 0.980715
+  type: 'test'
+  ...
+# Subtest: bootstrap: bookkeeping-only commits are exactly the NON_CODE_PATHS
+ok 54 - bootstrap: bookkeeping-only commits are exactly the NON_CODE_PATHS
+  ---
+  duration_ms: 0.161759
+  type: 'test'
+  ...
+# Subtest: test inventory: disappearing tests, dropped counts and new skips fail; approved removals pass (M7, \#38)
+ok 55 - test inventory: disappearing tests, dropped counts and new skips fail; approved removals pass (M7, \#38)
+  ---
+  duration_ms: 0.626834
+  type: 'test'
+  ...
+# Subtest: test inventory: every form of skip, focus, todo, fixme or inversion is a marker (F10 V3-V7, SD-19)
+ok 56 - test inventory: every form of skip, focus, todo, fixme or inversion is a marker (F10 V3-V7, SD-19)
+  ---
+  duration_ms: 0.829216
+  type: 'test'
+  ...
+# Subtest: test inventory: a removal needs a known requirement and a committed ADR, and S0 compares with the baseline inventory
+ok 57 - test inventory: a removal needs a known requirement and a committed ADR, and S0 compares with the baseline inventory
+  ---
+  duration_ms: 0.380356
+  type: 'test'
+  ...
+# Subtest: relaunch: stop conditions, alarms first
+ok 58 - relaunch: stop conditions, alarms first
+  ---
+  duration_ms: 0.813479
+  type: 'test'
+  ...
+# Subtest: relaunch: pre-flight refuses unsafe starts
+ok 59 - relaunch: pre-flight refuses unsafe starts
+  ---
+  duration_ms: 0.44067
+  type: 'test'
+  ...
+# Subtest: relaunch: alarms for pushes, remote writes, rewritten refs and guard or deploy-config changes (SD-4, SD-5, SD-12, F16, M9)
+ok 60 - relaunch: alarms for pushes, remote writes, rewritten refs and guard or deploy-config changes (SD-4, SD-5, SD-12, F16, M9)
+  ---
+  duration_ms: 1.721765
+  type: 'test'
+  ...
+# Subtest: relaunch: deploy configuration covers both channels' build inputs (SD-12)
+ok 61 - relaunch: deploy configuration covers both channels' build inputs (SD-12)
+  ---
+  duration_ms: 0.166529
+  type: 'test'
+  ...
+# Subtest: relaunch: unattended sessions get no push credentials and their deny rules inline (SD-4, SD-5)
+ok 62 - relaunch: unattended sessions get no push credentials and their deny rules inline (SD-4, SD-5)
+  ---
+  duration_ms: 0.727418
+  type: 'test'
+  ...
+# Subtest: relaunch: the deny rules cover every push, credential, wrapper and history-rewrite form the reviews found (SD-4, SD-14, F16, M9)
+ok 63 - relaunch: the deny rules cover every push, credential, wrapper and history-rewrite form the reviews found (SD-4, SD-14, F16, M9)
+  ---
+  duration_ms: 3.106435
+  type: 'test'
+  ...
+# Subtest: relaunch: the kickoff prompt is the first text block
+ok 64 - relaunch: the kickoff prompt is the first text block
+  ---
+  duration_ms: 0.478161
+  type: 'test'
+  ...
+# Subtest: reviews must state the verdict they are recorded with, on their last line (H2, SD-9, F11)
+ok 65 - reviews must state the verdict they are recorded with, on their last line (H2, SD-9, F11)
+  ---
+  duration_ms: 0.833639
+  type: 'test'
+  ...
+# Subtest: capture-evidence: a review is recorded only from the reviewer's own report under evidence/<slice>/reviews/ (SD-9)
+ok 66 - capture-evidence: a review is recorded only from the reviewer's own report under evidence/<slice>/reviews/ (SD-9)
+  ---
+  duration_ms: 0.692015
+  type: 'test'
+  ...
+# Subtest: evidence: counts from Vitest, Playwright and tsc output
+ok 67 - evidence: counts from Vitest, Playwright and tsc output
+  ---
+  duration_ms: 0.935727
+  type: 'test'
+  ...
+# Subtest: evidence: oversized logs keep their tail in Git and the full copy outside it
+ok 68 - evidence: oversized logs keep their tail in Git and the full copy outside it
+  ---
+  duration_ms: 20.83278
+  type: 'test'
+  ...
+# Subtest: next-slice: the next slice starts with fresh gates, the mandatory reviewers and a rollover (OPERATIONS.md §6)
+ok 69 - next-slice: the next slice starts with fresh gates, the mandatory reviewers and a rollover (OPERATIONS.md §6)
+  ---
+  duration_ms: 1.032693
+  type: 'test'
+  ...
+# Subtest: record-event: STATE follows a transition, and the owner-gate fields are set on entry and cleared on exit
+ok 70 - record-event: STATE follows a transition, and the owner-gate fields are set on entry and cleared on exit
+  ---
+  duration_ms: 0.365918
+  type: 'test'
+  ...
+# Subtest: verify-slice: gate selection skips not-applicable gates and rejects unknown ones
+ok 71 - verify-slice: gate selection skips not-applicable gates and rejects unknown ones
+  ---
+  duration_ms: 0.270593
+  type: 'test'
+  ...
+# Subtest: context pack: sections and cited design headings
+ok 72 - context pack: sections and cited design headings
+  ---
+  duration_ms: 0.55936
+  type: 'test'
+  ...
+# Subtest: context pack: only "design §" citations count, and ranges are expanded (M8)
+ok 73 - context pack: only "design §" citations count, and ranges are expanded (M8)
+  ---
+  duration_ms: 1.740966
+  type: 'test'
+  ...
+# Subtest: context pack: the reviewer pack leaves out the handoff and the ledger (M8, F12, SD-13)
+ok 74 - context pack: the reviewer pack leaves out the handoff and the ledger (M8, F12, SD-13)
+  ---
+  duration_ms: 30.906234
+  type: 'test'
+  ...
+# Subtest: handoff: replaces only the generated block
+ok 75 - handoff: replaces only the generated block
+  ---
+  duration_ms: 0.310521
+  type: 'test'
+  ...
+1..75
+# tests 75
+# suites 0
+# pass 75
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1132.125377

@@ -1,0 +1,1035 @@
+
+> aquarium-go@0.4.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /home/user/aquarium-go
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > seiryu_stone: builds at every LOD, stays inside its size box, no NaN
+seiryu_stone           lod0   4412 verts 151.9ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > dragon_stone: builds at every LOD, stays inside its size box, no NaN
+dragon_stone           lod0   4412 verts 50.8ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > river_stone: builds at every LOD, stays inside its size box, no NaN
+river_stone            lod0   1692 verts 35.5ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > lava_rock: builds at every LOD, stays inside its size box, no NaN
+lava_rock              lod0   3612 verts 64.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > slate_stack: builds at every LOD, stays inside its size box, no NaN
+slate_stack            lod0   4060 verts 26.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > spider_wood: builds at every LOD, stays inside its size box, no NaN
+spider_wood            lod0  16646 verts 61.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > manzanita_branch: builds at every LOD, stays inside its size box, no NaN
+manzanita_branch       lod0   8050 verts 40.0ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > mopani_wood: builds at every LOD, stays inside its size box, no NaN
+mopani_wood            lod0   2168 verts 19.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > cholla_wood: builds at every LOD, stays inside its size box, no NaN
+cholla_wood            lod0   2918 verts 34.7ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > stone_cave: builds at every LOD, stays inside its size box, no NaN
+stone_cave             lod0   5636 verts 54.4ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > terracotta_cave: builds at every LOD, stays inside its size box, no NaN
+terracotta_cave        lod0    752 verts 1.9ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > smooth_hide: builds at every LOD, stays inside its size box, no NaN
+smooth_hide            lod0   1566 verts 6.5ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > java_fern: builds at every LOD, stays inside its size box, no NaN
+java_fern              lod0    993 verts 18.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > anubias_nana: builds at every LOD, stays inside its size box, no NaN
+anubias_nana           lod0    726 verts 6.1ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > vallisneria: builds at every LOD, stays inside its size box, no NaN
+vallisneria            lod0   2052 verts 11.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > amazon_sword: builds at every LOD, stays inside its size box, no NaN
+amazon_sword           lod0   1456 verts 2.5ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > cryptocoryne: builds at every LOD, stays inside its size box, no NaN
+cryptocoryne           lod0    845 verts 2.2ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > java_moss: builds at every LOD, stays inside its size box, no NaN
+java_moss              lod0   7724 verts 27.6ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > monte_carlo: builds at every LOD, stays inside its size box, no NaN
+monte_carlo            lod0  10787 verts 65.0ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > dwarf_hairgrass: builds at every LOD, stays inside its size box, no NaN
+dwarf_hairgrass        lod0   7488 verts 15.4ms
+
+stdout | tests/sim/playthrough-starters.test.ts > balance: every starter played by a careful bot for ~3 real hours > axolotl: first money, tutorial, breeding, shop, visitors — and nobody dies
+══ axolotl · seed 1234 ══
+first_money=1 min (d0.2) · market_opened=1 min (d0.2) · mate_bought=1 min (d0.2) · second_tank=8 min (d2.0) · nursery_ready=8 min (d2.0) · first_spawn=5 min (d1.3) · first_juveniles=54 min (d13.6) · first_sale=55 min (d13.7) · first_offspring_sale=55 min (d13.6) · tutorial_done=5 min (d1.1) · shop_unlocked=54 min (d13.6) · specialty_shop=97 min (d24.1) · first_visitor=97 min (d24.1)
+day  money   rep  level           tanks alive dead young births sales  in/out  op   tut
+  0    350      0 hobby_room          1     1    0     0      0     0      0/0     1 meet
+  1    265   11.9 hobby_room          1     2    0     0      0     0   77/162     1 upgrade
+  2     50   28.8 hobby_room          2     2    0   391      0     0    199/1     2 done
+  3    180   37.5 hobby_room          2     2    0   391      0     0  132/415     2 done
+  4    209   42.2 hobby_room          2     2    0   391      0     0     31/2     2 done
+  5    235   46.8 hobby_room          2     2    0   391      0     0     28/2     2 done
+  6    257   51.5 hobby_room          2     2    0   391      0     0     24/2     2 done
+  7    276   57.2 hobby_room          2     2    0   374      0     0     27/2     2 done
+  8    304   61.8 hobby_room          2     2    0   203      0     0     30/8     2 done
+  9    365   66.4 hobby_room          2     2    0   154      0     0     63/2     2 done
+ 10    397   71.1 hobby_room          2     2    0   132      0     0     34/2     2 done
+ 11    412   75.6 hobby_room          2     2    0   121      0     0     17/2     2 done
+ 12    471   80.3 hobby_room          2     2    0   113      0     0     61/2     2 done
+ 13    491   84.8 hobby_room          2     2    0   109      0     0     22/2     2 done
+ 14    584  112.1 hobby_room          2     4    0     0      3     1    102/9     2 done
+ 15    736  124.6 hobby_room          2     2    0     0      3     3    154/2     2 done
+ 16    758  129.1 hobby_room          2     2    0     0      3     3     24/2   2.1 done
+ 17    845  135.5 hobby_room          2     2    0     0      3     3     89/2     2 done
+ 18    871  139.8 hobby_room          2     2    0   368      3     3     29/2     2 done
+ 19    886  144.3 hobby_room          2     2    0   392      3     3     17/2     2 done
+ 20    910  148.5 hobby_room          2     2    0   392      3     3     26/2     2 done
+ 21    936  152.9 hobby_room          2     2    0   392      3     3     28/2     2 done
+ 22   1023  161.4 hobby_room          2     2    0   392      3     3     89/2     2 done
+ 23   1055  165.8 hobby_room          2     2    0   375      3     3     34/2     2 done
+ 24   1079  169.9 hobby_room          2     2    0   203      3     3     26/2     2 done
+ 25    445    194 specialty_shop      2     2    0   154      3     3 413/1047    32 done
+ 26    818    205 specialty_shop      2     2    0   132      3     3   106/32    32 done
+ 27    951  210.6 specialty_shop      2     2    0   121      3     3   465/32    32 done
+ 28   1048    212 specialty_shop      2     2    0   113      3     3   128/32    32 done
+ 29   1096  212.8 specialty_shop      2     2    0   109      3     3    88/39    32 done
+ 30   1272  230.6 specialty_shop      2     3    0     0      6     5   150/32    32 done
+ 31   1388  235.1 specialty_shop      2     2    0     0      6     6   206/32    32 done
+ 32   1478  236.1 specialty_shop      2     2    0     0      6     6   122/32    32 done
+ 33   1583  237.4 specialty_shop      2     2    0     0      6     6   137/32    32 done
+ 34   1729  239.2 specialty_shop      2     2    0   319      6     6   178/32    32 done
+ 35   1864  240.7 specialty_shop      2     2    0   434      6     6   167/32    32 done
+ 36   1937  241.9 specialty_shop      2     2    0   434      6     6   105/32    32 done
+ 37   2021    243 specialty_shop      2     2    0   434      6     6   116/32    32 done
+ 38   2129  244.2 specialty_shop      2     2    0   434      6     6   141/32    32 done
+ 39   2221  245.2 specialty_shop      2     2    0   434      6     6   124/32    32 done
+ 40   2576  254.4 specialty_shop      2     2    0   231      6     6   387/32    32 done
+ 41   2697  258.8 specialty_shop      2     2    0   165      6     6   159/38    32 done
+ 42   2837  260.2 specialty_shop      2     2    0   137      6     6   172/32    32 done
+ 43   2898  261.1 specialty_shop      2     2    0   123      6     6   100/39    32 done
+ 44   2979  262.2 specialty_shop      2     2    0   115      6     6   113/32    32 done
+ 45   3050  263.1 specialty_shop      2     2    0   110      6     6   103/32    32 done
+events 198 (112 toasts); most repeated: 9× visitor: The neighbour’s kids dropped by to see Mochi and left a $N tip. || 4× visitor: Felix dropped by to see Mochi and left a $N tip. || 4× visitor: Jonah dropped by to see Mochi and left a $N tip. || 3× breeding: The water in Mochi’s Tank has cooled by N °C — like the first cool rains of the season. Mo || 3× visitor: Auntie Bea dropped by to see Mochi and left a $N tip. || 3× breeding: Tofu is courting Mochi — a slow, tail-waving “waltz” across the sand in the cool night wat
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > rotala: builds at every LOD, stays inside its size box, no NaN
+rotala                 lod0  35424 verts 152.2ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > ludwigia: builds at every LOD, stays inside its size box, no NaN
+ludwigia               lod0   6628 verts 19.5ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > water_sprite: builds at every LOD, stays inside its size box, no NaN
+water_sprite           lod0   2880 verts 7.1ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > floating_plants: builds at every LOD, stays inside its size box, no NaN
+floating_plants        lod0   3700 verts 14.8ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > almond_leaf: builds at every LOD, stays inside its size box, no NaN
+almond_leaf            lod0    117 verts 1.1ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > marimo_ball: builds at every LOD, stays inside its size box, no NaN
+marimo_ball            lod0   6095 verts 18.2ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > live_rock: builds at every LOD, stays inside its size box, no NaN
+live_rock              lod0   4412 verts 125.9ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > live_rock_arch: builds at every LOD, stays inside its size box, no NaN
+live_rock_arch         lod0  18484 verts 314.4ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > rubble: builds at every LOD, stays inside its size box, no NaN
+rubble                 lod0   4706 verts 112.7ms
+
+stdout | tests/sim/playthrough-starters.test.ts > balance: every starter played by a careful bot for ~3 real hours > betta: first money, tutorial, breeding, shop, visitors — and nobody dies
+══ betta · seed 1234 ══
+first_money=1 min (d0.2) · market_opened=1 min (d0.3) · mate_bought=1 min (d0.3) · second_tank=1 min (d0.3) · nursery_ready=14 min (d3.5) · first_spawn=7 min (d1.7) · first_juveniles=29 min (d7.3) · first_sale=37 min (d9.2) · first_offspring_sale=37 min (d9.1) · tutorial_done=5 min (d1.1) · shop_unlocked=30 min (d7.5) · specialty_shop=69 min (d17.1) · first_visitor=69 min (d17.1)
+day  money   rep  level           tanks alive dead young births sales  in/out  op   tut
+  0    300      0 hobby_room          1     1    0     0      0     0      0/0   0.7 meet
+  1     99   13.8 hobby_room          2     2    0     0      0     0   93/294   1.5 upgrade
+  2    400   34.3 hobby_room          2     2    0   139      0     0    303/1   1.5 done
+  3    404   39.1 hobby_room          2     2    0   139      0     0     10/6   1.5 done
+  4    205   44.2 hobby_room          3     2    0   139      0     0   16/214   2.2 done
+  5    231   49.1 hobby_room          3     2    0   139      0     0     28/2   2.2 done
+  6    257   53.9 hobby_room          3     2    0   139      0     0     28/2   2.2 done
+  7    281   58.8 hobby_room          3     2    0   139      0     0     26/2   2.2 done
+  8    561  102.4 hobby_room          3    10    0     0      8     0    282/2   2.2 done
+  9    639  111.5 hobby_room          3    10    0     0      8     0     87/8   2.2 done
+ 10    924  138.3 hobby_room          3     2    0     0      8     1    287/2   2.2 done
+ 11    945  142.6 hobby_room          3     2    0     0      8     1     23/2   2.2 done
+ 12    965  147.2 hobby_room          3     2    0     0      8     1     22/2   2.2 done
+ 13    985  152.7 hobby_room          3     2    0   198      8     1     22/2   2.2 done
+ 14   1011  157.1 hobby_room          3     2    0   198      8     1     29/2   2.2 done
+ 15   1030  161.2 hobby_room          3     2    0   197      8     1     21/2   2.2 done
+ 16   1054  171.4 hobby_room          3     2    0   197      8     1     32/8   2.2 done
+ 17   1080  175.7 hobby_room          3     2    0   197      8     1     28/2   2.2 done
+ 18    493  230.8 specialty_shop      3    10    0     0     16     1 476/1062  32.2 done
+ 19    925  244.9 specialty_shop      3    10    0     0     16     1   164/32  32.2 done
+ 20   1342  260.3 specialty_shop      3     2    0     0     16     2   749/32  32.2 done
+ 21   1509  261.5 specialty_shop      3     2    0     0     16     2   199/32  32.2 done
+ 22   1795  270.4 specialty_shop      3     2    0     0     16     2   318/32  32.2 done
+ 23   1907  271.4 specialty_shop      3     2    0   160     16     2   145/32  32.2 done
+ 24   2029  272.7 specialty_shop      3     2    0   160     16     2   154/32  32.2 done
+ 25   2441    282 specialty_shop      3     2    0   159     16     2   456/43  32.2 done
+ 26   2595  283.4 specialty_shop      3     2    0   159     16     2   185/32  32.2 done
+ 27   3014  300.1 specialty_shop      3     2    0   159     16     2   459/39  32.2 done
+ 28   3186  304.4 specialty_shop      3     2    0   159     16     2   204/32  32.2 done
+ 29   3286  326.3 specialty_shop      3    10    0     0     24     2   132/32  32.2 done
+ 30   3420  327.6 specialty_shop      3    10    0     0     24     2   167/32  32.2 done
+ 31   3720  340.6 specialty_shop      3     2    0     0     24     3   339/38  32.2 done
+ 32   3858  341.7 specialty_shop      3     2    0     0     24     3   170/32  32.2 done
+ 33   4037  343.2 specialty_shop      3     2    0     0     24     3   210/32  32.2 done
+ 34   4418  351.3 specialty_shop      3     2    0   200     24     3   414/32  32.2 done
+ 35   4629  352.9 specialty_shop      3     2    0   200     24     3   243/32  32.2 done
+ 36   5041  362.3 specialty_shop      3     2    0   199     24     3   145/32  32.2 done
+ 37   5192  363.9 specialty_shop      3     2    0   199     24     3   483/32  32.2 done
+ 38   5387  365.2 specialty_shop      3     2    0   199     24     3   167/32  32.2 done
+ 39   5517  385.3 specialty_shop      3    10    0     0     32     3   223/32  32.2 done
+ 40   6154  396.9 specialty_shop      3    10    0     0     32     3   669/32  32.2 done
+ 41   6607    416 specialty_shop      3     2    0     0     32     4   491/38  32.2 done
+ 42   6809  426.1 specialty_shop      3     2    0     0     32     4   235/32  32.2 done
+ 43   6934  427.5 specialty_shop      3     2    0     0     32     4   157/32  32.2 done
+ 44   7387  438.7 specialty_shop      3     2    0     0     32     4   185/32  32.2 done
+ 45   7599  439.9 specialty_shop      3     2    0   150     32     4   504/32  32.2 done
+events 221 (152 toasts); most repeated: 5× visitor: Jonah dropped by to see Ember and left a $N tip. || 5× visitor: The neighbour’s kids dropped by to see Ember and left a $N tip. || 5× breeding: Ember has built a shimmering bubble nest beneath the leaves — he’s ready for a conditioned || 5× breeding: Carmine has been floated into Ember’s Tank. Ember is displaying beneath his nest — remove  || 5× breeding: Ember wraps around Carmine beneath the nest — the spawning embrace has begun. || 5× breeding: Ember and Carmine spawned! Ember is catching N eggs and spitting them into the nest. Move 
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > chaetomorpha: builds at every LOD, stays inside its size box, no NaN
+chaetomorpha           lod0   9000 verts 43.1ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > red_ogo: builds at every LOD, stays inside its size box, no NaN
+red_ogo                lod0  69947 verts 204.1ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > gorgonian: builds at every LOD, stays inside its size box, no NaN
+gorgonian              lod0   6874 verts 8.2ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > hitching_post: builds at every LOD, stays inside its size box, no NaN
+hitching_post          lod0    701 verts 1.5ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > zoanthids: builds at every LOD, stays inside its size box, no NaN
+zoanthids              lod0   2840 verts 104.7ms
+
+ ✓ tests/sim/breeding-colony.test.ts (7 tests) 43204ms
+   ✓ breeding: livebearers > guppies breed readily but the population never runs away over 60 days  7034ms
+   ✓ breeding: livebearers > a lone gravid female can still drop a bounded number of broods from stored sperm  4579ms
+   ✓ breeding: shrimp colonies > females become berried, shrimplets hatch, the colony grows but stays bounded; fish eat the young  6135ms
+   ✓ breeding: other systems complete > Banggai cardinal: the male mouthbroods (stage brooding) then releases young  1073ms
+   ✓ breeding: other systems complete > mystery snail: needs a lid, then lays a pink clutch above the waterline that hatches  1267ms
+   ✓ breeding: other systems complete > marine shrimp larvae are explained as not yet rearable  1043ms
+   ✓ breeding: every species is robust > check/status/force/step never throw or produce NaN for any species  22071ms
+stdout | tests/sim/playthrough-starters.test.ts > balance: every starter played by a careful bot for ~3 real hours > pea_puffer: first money, tutorial, breeding, shop, visitors — and nobody dies
+══ pea_puffer · seed 1234 ══
+first_money=1 min (d0.2) · market_opened=1 min (d0.2) · mate_bought=1 min (d0.2) · second_tank=5 min (d1.2) · nursery_ready=5 min (d1.2) · first_spawn=5 min (d1.2) · first_juveniles=31 min (d7.8) · first_sale=33 min (d8.3) · first_offspring_sale=33 min (d8.3) · tutorial_done=5 min (d1.1) · shop_unlocked=33 min (d8.3) · specialty_shop=56 min (d14.0) · first_visitor=56 min (d14.1)
+day  money   rep  level           tanks alive dead young births sales  in/out  op   tut
+  0    300      0 hobby_room          1     1    0     0      0     0      0/0   0.7 meet
+  1    357   11.9 hobby_room          1     2    0     0      0     0    84/27   0.7 upgrade
+  2    427   32.5 hobby_room          2     2    0     5      0     0  290/220   1.4 done
+  3    508   42.1 hobby_room          2     2    0     5      0     0     88/1   1.4 done
+  4    527   46.7 hobby_room          2     2    0     5      0     0     20/6   1.4 done
+  5    552   51.3 hobby_room          2     2    0     5      0     0     26/1   1.4 done
+  6    574     57 hobby_room          2     2    0     5      0     0     24/1   1.4 done
+  7    595   61.5 hobby_room          2     2    0     5      0     0     27/6   1.4 done
+  8    617   85.1 hobby_room          2     7    0     7      5     0     24/1   1.4 done
+  9    744    102 hobby_room          2     2    0     7      5     1     68/1   1.4 done
+ 10    772  106.3 hobby_room          2     2    0     7      5     1     89/1   1.4 done
+ 11    793  110.8 hobby_room          2     2    0     7      5     1     28/1   1.4 done
+ 12    823  115.2 hobby_room          2     2    0     7      5     1     31/6   1.4 done
+ 13    842  119.6 hobby_room          2     2    0     7      5     1     21/1   1.4 done
+ 14   1061  158.5 hobby_room          2     8    0     7     11     1     27/8   1.4 done
+ 15    455    191 specialty_shop      2     2    0     7     11     2 641/1046  31.4 done
+ 16    514    192 specialty_shop      2     2    0     7     11     2    95/36  31.4 done
+ 17    563    193 specialty_shop      2     2    0     7     11     2    80/31  31.4 done
+ 18    616  197.2 specialty_shop      2     2    0     7     11     2    84/31  31.4 done
+ 19    680  198.3 specialty_shop      2     2    0     7     11     2    96/31  31.4 done
+ 20    839  219.5 specialty_shop      2     8    0     6     17     2   195/36  31.4 done
+ 21   1198  238.8 specialty_shop      2     2    0     6     17     3   390/31  31.4 done
+ 22   1244  239.7 specialty_shop      2     2    0     6     17     3    78/31  31.4 done
+ 23   1307  240.6 specialty_shop      2     2    0     6     17     3    94/31  31.4 done
+ 24   1365  241.6 specialty_shop      2     2    0     6     17     3    97/38  31.4 done
+ 25   1485  242.3 specialty_shop      2     2    0     6     17     3    96/36  31.4 done
+ 26   1689    270 specialty_shop      2     2    0     6     23     4   183/31  31.4 done
+ 27   2034  279.3 specialty_shop      2     2    0     6     23     4   488/31  31.4 done
+ 28   2145  280.6 specialty_shop      2     2    0     6     23     4   142/31  31.4 done
+ 29   2191  284.4 specialty_shop      2     2    0     6     23     4    83/31  31.4 done
+ 30   2285  285.3 specialty_shop      2     2    0     6     23     4   125/36  31.4 done
+ 31   2343  286.2 specialty_shop      2     2    0     6     23     4    90/31  31.4 done
+ 32   2964  337.9 specialty_shop      2     2    0     5     29     5   106/31  31.4 done
+ 33   3083  339.3 specialty_shop      2     2    0     5     29     5   696/31  31.4 done
+ 34   3460  347.5 specialty_shop      2     2    0     5     29     5   414/36  31.4 done
+ 35   3584  348.6 specialty_shop      2     2    0     5     29     5   155/31  31.4 done
+ 36   3646  349.5 specialty_shop      2     2    0     5     29     5    94/31  31.4 done
+ 37   4002  358.6 specialty_shop      2     2    0     5     29     5    94/38  31.4 done
+ 38   4083  370.2 specialty_shop      2     7    0     7     34     5   417/36  31.4 done
+ 39   4528  388.8 specialty_shop      2     2    0     7     34     6   176/31  31.4 done
+ 40   4640  392.5 specialty_shop      2     2    0     7     34     6   444/31  31.4 done
+ 41   4782  393.7 specialty_shop      2     2    0     7     34     6   173/31  31.4 done
+ 42   4915  397.3 specialty_shop      2     2    0     7     34     6   165/31  31.4 done
+ 43   4967  398.2 specialty_shop      2     2    0     7     34     6    88/36  31.4 done
+ 44   5059  414.1 specialty_shop      2     8    0     6     40     6   123/31  31.4 done
+ 45   5220  422.8 specialty_shop      2     2    0     6     40     7   193/31  31.4 done
+events 217 (140 toasts); most repeated: 8× breeding: Pea darkens his belly stripe and chases Bao into the moss — a pea puffer courtship! || 8× breeding: Bao and Pea spawned deep in the plants — N tiny eggs! Adult pea puffers eat their eggs, so || 8× warning: The adult pea puffers are eating Bao’s eggs! Move the clutch to a nursery tank. || 8× breeding: Moved Bao’s N eggs from Pea’s Tank to Nursery. || 8× breeding: Bao’s eggs hatched — N larvae! || 7× breeding: Bao’s N fry are growing well.
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > mushroom_coral: builds at every LOD, stays inside its size box, no NaN
+mushroom_coral         lod0   2297 verts 17.2ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > green_star_polyps: builds at every LOD, stays inside its size box, no NaN
+green_star_polyps      lod0  31944 verts 68.0ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > leather_coral: builds at every LOD, stays inside its size box, no NaN
+leather_coral          lod0   3758 verts 9.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > hammer_coral: builds at every LOD, stays inside its size box, no NaN
+hammer_coral           lod0   9320 verts 18.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > torch_coral: builds at every LOD, stays inside its size box, no NaN
+torch_coral            lod0  15795 verts 77.6ms
+
+stdout | tests/sim/playthrough-starters.test.ts > balance: every starter played by a careful bot for ~3 real hours > ocellaris_clownfish: first money, tutorial, breeding, shop, visitors — and nobody dies
+══ ocellaris_clownfish · seed 1234 ══
+first_money=1 min (d0.2) · market_opened=1 min (d0.3) · mate_bought=1 min (d0.3) · second_tank=34 min (d8.5) · nursery_ready=34 min (d8.5) · first_spawn=34 min (d8.5) · first_juveniles=79 min (d19.8) · first_sale=80 min (d20.0) · first_offspring_sale=80 min (d19.9) · tutorial_done=5 min (d1.2) · shop_unlocked=48 min (d12.1) · specialty_shop=81 min (d20.1) · first_visitor=81 min (d20.1)
+day  money   rep  level           tanks alive dead young births sales  in/out  op   tut
+  0    450      0 hobby_room          1     1    0     0      0     0      0/0   1.7 meet
+  1    417      9 hobby_room          1     2    0     0      0     0    42/75   1.7 first_goal
+  2    853   36.7 hobby_room          1     2    0     0      0     0    437/2   1.7 done
+  3    886   41.4 hobby_room          1     2    0     0      0     0     35/2   1.7 done
+  4    907   46.2 hobby_room          1     2    0     0      0     0     23/2   1.7 done
+  5    920   50.9 hobby_room          1     2    0     0      0     0     14/2   1.7 done
+  6    949   55.6 hobby_room          1     2    0     0      0     0     31/2   1.7 done
+  7    970   69.7 hobby_room          1     2    0     0      0     0     23/2   1.7 done
+  8    998   74.4 hobby_room          1     2    0     0      0     0     30/2   1.7 done
+  9    712   82.8 hobby_room          2     2    0   347      0     0  132/418   3.1 done
+ 10    756   89.5 hobby_room          2     2    0   267      0     0     47/3   3.1 done
+ 11    784   94.1 hobby_room          2     2    0   206      0     0     31/3   3.1 done
+ 12    796   98.6 hobby_room          2     2    0   177      0     0     20/8   3.1 done
+ 13    822  103.1 hobby_room          2     2    0   177      0     0     29/3   3.1 done
+ 14    844  107.6 hobby_room          2     2    0   177      0     0     25/3   3.1 done
+ 15    852    112 hobby_room          2     2    0   177      0     0     23/3   3.1 done
+ 16    880  116.4 hobby_room          2     2    0   177      0     0    31/15   3.1 done
+ 17    909  120.9 hobby_room          2     2    0   177      0     0     32/3   3.1 done
+ 18    931  125.3 hobby_room          2     2    0   172      0     0     25/3   3.1 done
+ 19    966  129.6 hobby_room          2     2    0   172      0     0     38/3   3.1 done
+ 20   1068    170 hobby_room          2     7    0     0      7     2     27/3   3.1 done
+ 21    657  214.5 specialty_shop      2     2    0     0      7     7 715/1048  33.1 done
+ 22    727  215.5 specialty_shop      2     2    0     0      7     7   104/33  33.1 done
+ 23    802  216.7 specialty_shop      2     2    0     0      7     7   108/33  33.1 done
+ 24    908    218 specialty_shop      2     2    0   494      7     7   138/33  33.1 done
+ 25   1015  219.5 specialty_shop      2     2    0   381      7     7   140/33  33.1 done
+ 26   1148    221 specialty_shop      2     2    0   293      7     7   166/33  33.1 done
+ 27   1304  222.6 specialty_shop      2     2    0   252      7     7   189/33  33.1 done
+ 28   1430  224.1 specialty_shop      2     2    0   252      7     7   172/45  33.1 done
+ 29   1504  229.2 specialty_shop      2     2    0   252      7     7   106/33  33.1 done
+ 30   1594  230.3 specialty_shop      2     2    0   252      7     7   123/33  33.1 done
+ 31   1682  231.5 specialty_shop      2     2    0   252      7     7   121/33  33.1 done
+ 32   1785  232.7 specialty_shop      2     2    0   252      7     7   141/38  33.1 done
+ 33   2111    242 specialty_shop      2     2    0   247      7     7   359/33  33.1 done
+ 34   2265  246.9 specialty_shop      2     2    0   247      7     7   186/33  33.1 done
+ 35   2907  296.4 specialty_shop      2     2    0     0     14     8   175/33  33.1 done
+ 36   2983  298.5 specialty_shop      2     2    0     0     14     8   609/33  33.1 done
+ 37   3081  299.7 specialty_shop      2     2    0     0     14     8   131/33  33.1 done
+ 38   3185  300.9 specialty_shop      2     2    0     0     14     8   136/33  33.1 done
+ 39   3548    317 specialty_shop      2     2    0     0     14     8   397/33  33.1 done
+ 40   3711  324.5 specialty_shop      2     2    0   641     14     8   203/40  33.1 done
+ 41   3923  326.5 specialty_shop      2     2    0   494     14     8   245/33  33.1 done
+ 42   4109  328.3 specialty_shop      2     2    0   381     14     8   219/33  33.1 done
+ 43   4253  329.3 specialty_shop      2     2    0   328     14     8   177/33  33.1 done
+ 44   4355  330.5 specialty_shop      2     2    0   327     14     8   135/33  33.1 done
+ 45   4465  331.6 specialty_shop      2     2    0   327     14     8   143/33  33.1 done
+events 190 (116 toasts); most repeated: 7× visitor: The neighbour’s kids dropped by to see Tango and left a $N tip. || 5× visitor: Ms Lindqvist dropped by to see Tango and left a $N tip. || 4× visitor: Mr Okafor dropped by to see Tango and left a $N tip. || 3× visitor: June dropped by to see Tango and left a $N tip. || 3× visitor: Nadia dropped by to see Tango and left a $N tip. || 3× unlock: Unlocked: N gal
+
+ ✓ tests/sim/perf2-residents.test.ts (14 tests) 55083ms
+   ✓ perf2 residents index > A/B: big facility (staffed + shows hall) gives the identical state with the index on and off  12360ms
+   ✓ perf2 residents index > A/B: community freshwater gives the identical state with the index on and off  2331ms
+   ✓ perf2 residents index > A/B: marine reef gives the identical state with the index on and off  1407ms
+   ✓ perf2 residents index > A/B: staffed store gives the identical state with the index on and off  4137ms
+   ✓ perf2 residents index > A/B: shows demo gives the identical state with the index on and off  1241ms
+   ✓ perf2 residents index > A/B: breeding_betta gives the identical state with the index on and off  2545ms
+   ✓ perf2 residents index > A/B: breeding_betta_fry gives the identical state with the index on and off  2462ms
+   ✓ perf2 residents index > A/B: breeding_axolotl gives the identical state with the index on and off  1900ms
+   ✓ perf2 residents index > A/B: breeding_clownfish gives the identical state with the index on and off  1517ms
+   ✓ perf2 residents index > A/B: breeding_seahorse gives the identical state with the index on and off  2175ms
+   ✓ perf2 residents index > A/B: a scripted playthrough (buying, selling, breeding, moving) is identical with the index on and off  8275ms
+   ✓ perf2 residents index > VERIFY: every indexed lookup matches a fresh scan through long busy worlds  14642ms
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > frogspawn_coral: builds at every LOD, stays inside its size box, no NaN
+frogspawn_coral        lod0  25560 verts 42.2ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > acropora: builds at every LOD, stays inside its size box, no NaN
+acropora               lod0   3034 verts 13.2ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > bubble_tip_anemone: builds at every LOD, stays inside its size box, no NaN
+bubble_tip_anemone     lod0   7430 verts 29.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > ceramic_ruins: builds at every LOD, stays inside its size box, no NaN
+ceramic_ruins          lod0   2353 verts 19.0ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > feeding_dish: builds at every LOD, stays inside its size box, no NaN
+feeding_dish           lod0    328 verts 0.4ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > shell_pile: builds at every LOD, stays inside its size box, no NaN
+shell_pile             lod0   5474 verts 17.5ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > frag_rack: builds at every LOD, stays inside its size box, no NaN
+frag_rack              lod0   3160 verts 14.3ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > mangrove_roots: builds at every LOD, stays inside its size box, no NaN
+mangrove_roots         lod0   8411 verts 109.4ms
+
+stdout | tests/sim/playthrough-starters.test.ts > balance: every starter played by a careful bot for ~3 real hours > lined_seahorse: first money, tutorial, breeding, shop, visitors — and nobody dies
+══ lined_seahorse · seed 1234 ══
+first_money=1 min (d0.2) · market_opened=1 min (d0.3) · mate_bought=1 min (d0.3) · second_tank=36 min (d9.0) · nursery_ready=36 min (d9.0) · first_spawn=9 min (d2.2) · first_juveniles=76 min (d19.0) · first_sale=76 min (d19.0) · first_offspring_sale=76 min (d19.0) · tutorial_done=5 min (d1.1) · shop_unlocked=37 min (d9.3) · specialty_shop=77 min (d19.1) · first_visitor=77 min (d19.1)
+day  money   rep  level           tanks alive dead young births sales  in/out  op   tut
+  0    500      0 hobby_room          1     1    0     0      0     0      0/0   1.6 meet
+  1    256   14.3 hobby_room          1     2    0     0      0     0   85/329   1.6 upgrade
+  2    654   39.1 hobby_room          1     2    0     0      0     0    399/2   1.6 done
+  3    837   51.6 hobby_room          1     2    0   384      0     0     35/2   1.6 done
+  4    864   56.4 hobby_room          1     2    0   384      0     0    178/2   1.6 done
+  5    886   61.1 hobby_room          1     2    0   384      0     0    34/12   1.6 done
+  6    907   65.8 hobby_room          1     2    0   384      0     0     23/2   1.6 done
+  7    943   79.9 hobby_room          1     2    0   384      0     0     37/2   1.6 done
+  8    972   84.6 hobby_room          1     2    0   384      0     0     31/2   1.6 done
+  9   1060   93.8 hobby_room          1     2    0   376      0     0     90/2   1.6 done
+ 10    676  102.1 hobby_room          2     2    0   376      0     0  126/485   3.3 done
+ 11    703  106.6 hobby_room          2     2    0   376      0     0    30/28   3.3 done
+ 12    736  111.1 hobby_room          2     2    0   376      0     0     36/3   3.3 done
+ 13    741  115.6 hobby_room          2     2    0   376      0     0    24/18   3.3 done
+ 14    774  120.1 hobby_room          2     2    0   792      0     0     36/3   3.3 done
+ 15    792  124.6 hobby_room          2     2    0   792      0     0     36/3   3.3 done
+ 16    809    129 hobby_room          2     2    0   792      0     0    31/28   3.3 done
+ 17    836  133.4 hobby_room          2     2    0   792      0     0     30/3   3.3 done
+ 18    850  137.9 hobby_room          2     2    0   792      0     0    32/18   3.3 done
+ 19    865    171 hobby_room          2    10    0   416      8     0     18/3   3.3 done
+ 20   1027  235.5 specialty_shop      2     2    0   412      8     8 1211/1048  33.3 done
+ 21   1186  240.6 specialty_shop      2     2    0   411      8     8   217/58  33.3 done
+ 22   1270  245.2 specialty_shop      2     2    0   411      8     8   118/33  33.3 done
+ 23   1392  246.5 specialty_shop      2     2    0   411      8     8   155/33  33.3 done
+ 24   1486  247.8 specialty_shop      2     2    0   411      8     8   142/48  33.3 done
+ 25   1622  257.1 specialty_shop      2     2    0   893      8     8   169/33  33.3 done
+ 26   1736  258.8 specialty_shop      2     2    0   893      8     8   163/48  33.3 done
+ 27   1921  260.8 specialty_shop      2     2    0   893      8     8   228/43  33.3 done
+ 28   2126  262.9 specialty_shop      2     2    0   893      8     8   238/33  33.3 done
+ 29   2255  267.2 specialty_shop      2     2    0   893      8     8   178/48  33.3 done
+ 30   2364  297.5 specialty_shop      2    10    0   482     16     8   142/33  33.3 done
+ 31   3466    336 specialty_shop      2     2    0   472     16    16  1145/33  33.3 done
+ 32   3594  337.5 specialty_shop      2     2    0   471     16    16   177/58  33.3 done
+ 33   3768    342 specialty_shop      2     2    0   471     16    16   207/33  33.3 done
+ 34   3947  343.8 specialty_shop      2     2    0   471     16    16   227/33  33.3 done
+ 35   4126  345.7 specialty_shop      2     2    0   471     16    16   213/48  33.3 done
+ 36   4229  346.9 specialty_shop      2     2    0   861     16    16   137/33  33.3 done
+ 37   4332  348.3 specialty_shop      2     2    0   861     16    16   161/58  33.3 done
+ 38   4475  349.7 specialty_shop      2     2    0   861     16    16   176/33  33.3 done
+ 39   4910  359.6 specialty_shop      2     2    0   861     16    16   183/33  33.3 done
+ 40   5086    364 specialty_shop      2     2    0   861     16    16   510/48  33.3 done
+ 41   5307    385 specialty_shop      2    10    0   390     24    16   254/33  33.3 done
+ 42   6251  413.4 specialty_shop      2     2    0   386     24    24   988/43  33.3 done
+ 43   6343  417.2 specialty_shop      2     2    0   385     24    24   140/48  33.3 done
+ 44   6481  418.5 specialty_shop      2     2    0   385     24    24   172/33  33.3 done
+ 45   6642  419.8 specialty_shop      2     2    0   385     24    24   209/48  33.3 done
+events 251 (156 toasts); most repeated: 5× visitor: The neighbour’s kids dropped by to see Ripple and left a $N tip. || 5× celebrate: A visiting critic praised Ripple’s Tank: “welfare and beauty, done right.” (+reputation) || 4× breeding: Ripple and Stardust are dancing at dawn — tails entwined, pointing their snouts upward and || 4× breeding: Stardust transferred her eggs — Ripple is pregnant! He’ll carry them in his brood pouch fo || 4× visitor: Sam dropped by to see Ripple and left a $N tip. || 4× breeding: Ripple gave birth to N fry! Move them to a nursery tank with gentle flow and live copepods
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > oyster_shells: builds at every LOD, stays inside its size box, no NaN
+oyster_shells          lod0   5204 verts 53.8ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > estuary_pebbles: builds at every LOD, stays inside its size box, no NaN
+estuary_pebbles        lod0   1406 verts 8.5ms
+
+stdout | tests/sim/aquascape-geometry.test.ts > procedural decor geometry > mangrove_seedling: builds at every LOD, stays inside its size box, no NaN
+mangrove_seedling      lod0    977 verts 2.7ms
+
+ ✓ tests/sim/aquascape-geometry.test.ts (50 tests) 68909ms
+   ✓ procedural decor geometry > seiryu_stone: builds at every LOD, stays inside its size box, no NaN  772ms
+   ✓ procedural decor geometry > dragon_stone: builds at every LOD, stays inside its size box, no NaN  613ms
+   ✓ procedural decor geometry > lava_rock: builds at every LOD, stays inside its size box, no NaN  555ms
+   ✓ procedural decor geometry > slate_stack: builds at every LOD, stays inside its size box, no NaN  572ms
+   ✓ procedural decor geometry > spider_wood: builds at every LOD, stays inside its size box, no NaN  3160ms
+   ✓ procedural decor geometry > manzanita_branch: builds at every LOD, stays inside its size box, no NaN  1586ms
+   ✓ procedural decor geometry > mopani_wood: builds at every LOD, stays inside its size box, no NaN  671ms
+   ✓ procedural decor geometry > cholla_wood: builds at every LOD, stays inside its size box, no NaN  740ms
+   ✓ procedural decor geometry > stone_cave: builds at every LOD, stays inside its size box, no NaN  1776ms
+   ✓ procedural decor geometry > smooth_hide: builds at every LOD, stays inside its size box, no NaN  469ms
+   ✓ procedural decor geometry > java_fern: builds at every LOD, stays inside its size box, no NaN  335ms
+   ✓ procedural decor geometry > vallisneria: builds at every LOD, stays inside its size box, no NaN  335ms
+   ✓ procedural decor geometry > java_moss: builds at every LOD, stays inside its size box, no NaN  1543ms
+   ✓ procedural decor geometry > monte_carlo: builds at every LOD, stays inside its size box, no NaN  1799ms
+   ✓ procedural decor geometry > dwarf_hairgrass: builds at every LOD, stays inside its size box, no NaN  1361ms
+   ✓ procedural decor geometry > rotala: builds at every LOD, stays inside its size box, no NaN  5047ms
+   ✓ procedural decor geometry > ludwigia: builds at every LOD, stays inside its size box, no NaN  1023ms
+   ✓ procedural decor geometry > water_sprite: builds at every LOD, stays inside its size box, no NaN  558ms
+   ✓ procedural decor geometry > floating_plants: builds at every LOD, stays inside its size box, no NaN  477ms
+   ✓ procedural decor geometry > marimo_ball: builds at every LOD, stays inside its size box, no NaN  1149ms
+   ✓ procedural decor geometry > live_rock: builds at every LOD, stays inside its size box, no NaN  1278ms
+   ✓ procedural decor geometry > live_rock_arch: builds at every LOD, stays inside its size box, no NaN  4149ms
+   ✓ procedural decor geometry > rubble: builds at every LOD, stays inside its size box, no NaN  1524ms
+   ✓ procedural decor geometry > chaetomorpha: builds at every LOD, stays inside its size box, no NaN  1546ms
+   ✓ procedural decor geometry > red_ogo: builds at every LOD, stays inside its size box, no NaN  9870ms
+   ✓ procedural decor geometry > gorgonian: builds at every LOD, stays inside its size box, no NaN  850ms
+   ✓ procedural decor geometry > zoanthids: builds at every LOD, stays inside its size box, no NaN  612ms
+   ✓ procedural decor geometry > mushroom_coral: builds at every LOD, stays inside its size box, no NaN  370ms
+   ✓ procedural decor geometry > green_star_polyps: builds at every LOD, stays inside its size box, no NaN  4099ms
+   ✓ procedural decor geometry > leather_coral: builds at every LOD, stays inside its size box, no NaN  564ms
+   ✓ procedural decor geometry > hammer_coral: builds at every LOD, stays inside its size box, no NaN  1681ms
+   ✓ procedural decor geometry > torch_coral: builds at every LOD, stays inside its size box, no NaN  3100ms
+   ✓ procedural decor geometry > frogspawn_coral: builds at every LOD, stays inside its size box, no NaN  5224ms
+   ✓ procedural decor geometry > acropora: builds at every LOD, stays inside its size box, no NaN  721ms
+   ✓ procedural decor geometry > bubble_tip_anemone: builds at every LOD, stays inside its size box, no NaN  1343ms
+   ✓ procedural decor geometry > ceramic_ruins: builds at every LOD, stays inside its size box, no NaN  485ms
+   ✓ procedural decor geometry > shell_pile: builds at every LOD, stays inside its size box, no NaN  1147ms
+   ✓ procedural decor geometry > frag_rack: builds at every LOD, stays inside its size box, no NaN  615ms
+   ✓ procedural decor geometry > mangrove_roots: builds at every LOD, stays inside its size box, no NaN  1821ms
+   ✓ procedural decor geometry > oyster_shells: builds at every LOD, stays inside its size box, no NaN  1537ms
+   ✓ procedural decor geometry > estuary_pebbles: builds at every LOD, stays inside its size box, no NaN  328ms
+ ✓ tests/sim/fix-core-step-invariance.test.ts (4 tests) 67575ms
+   ✓ step-size invariance > visitors alone (facility_shop, 10 days): arrivals, revenue and reputation agree across 0.025 / 0.25 / 0.5 h steps  3534ms
+   ✓ step-size invariance > market alone (6 identical listings, 80 h): bids and sales agree across step sizes  2772ms
+   ✓ step-size invariance > a hatch of N young earns the same reputation whether it lands in one big step or many small ones  32841ms
+   ✓ step-size invariance > whole world (community_fw, 4 days): money and reputation agree across step sizes  28425ms
+ ✓ tests/sim/staff2-feeding.test.ts (12 tests) 41400ms
+   ✓ staff2: keepers keep fast-metabolism animals fed > a staffed floor of discus, chromis, guppies, tetras and seahorses: hungry under 3% of tank-hours over 10 days, nobody starving, no water DANGER  13586ms
+   ✓ staff2: keepers keep fast-metabolism animals fed > the staffed big_facility grand hall (the QA world: ~23% hungry before) stays under 3%  16357ms
+   ✓ staff2: keepers keep fast-metabolism animals fed > the staff_store floor (~5% hungry before) stays under 3% on several seeds  8075ms
+   ✓ staff2: keepers keep fast-metabolism animals fed > is deterministic  1715ms
+   ✓ staff2: meals a day follow metabolism > a full day of rounds feeds a discus tank four times  535ms
+   ✓ staff2: meals dropped into background tanks > are eaten before they rot, as in the focused tank  413ms
+ ✓ tests/sim/staff-sim.test.ts (17 tests) 30485ms
+   ✓ staff: keepers > keep a 7-tank store fed and its water in range for 14 game days, with no deaths  12529ms
+   ✓ staff: keepers > make a real difference: the same store with nobody hired goes hungry  1594ms
+   ✓ staff: keepers > feed from the cupboard through feedTank and say so honestly when a food runs out  520ms
+   ✓ staff: keepers > never raise the keeper bond — only the player’s own hand care does  1484ms
+   ✓ staff: wages > are part of the daily bills and paid at midnight as one Wages line  474ms
+   ✓ staff: wages > never create debt: unpaid staff give notice, then leave, and their tanks come back to the player  1305ms
+   ✓ staff: wages > grow skill slowly with experience (and the wage with it)  2204ms
+   ✓ staff: stock manager > reorders what the animals eat and never spends past the daily budget  1906ms
+   ✓ staff: stock manager > keeps the shelves stocked with a sensible budget (no "No food left" for anyone)  664ms
+   ✓ staff: stock manager > buys nothing with a zero budget  480ms
+   ✓ staff: docents > lift satisfaction, donations and talk at exhibits, within bounds  3761ms
+   ✓ staff: hiring pool, capacity and saves > is deterministic: same world + same hires → same hash  1709ms
+   ✓ staff: hiring pool, capacity and saves > loads old saves without staff and repairs broken staff data  1515ms
+ ✓ tests/sim/playthrough-robust.test.ts (5 tests) 95802ms
+   ✓ balance robustness: the core promises hold on more seeds > axolotl: shop in ~1–2 real hours, offspring sold, nobody dies, no debt — seeds 3, 8, 13, 21, 34, 55  21158ms
+   ✓ balance robustness: the core promises hold on more seeds > betta: shop in ~1–2 real hours, offspring sold, nobody dies, no debt — seeds 3, 8, 13, 21, 34, 55  21679ms
+   ✓ balance robustness: the core promises hold on more seeds > pea_puffer: shop in ~1–2 real hours, offspring sold, nobody dies, no debt — seeds 3, 8, 13, 21, 34, 55  18464ms
+   ✓ balance robustness: the core promises hold on more seeds > ocellaris_clownfish: shop in ~1–2 real hours, offspring sold, nobody dies, no debt — seeds 3, 8, 13, 21, 34, 55  18260ms
+   ✓ balance robustness: the core promises hold on more seeds > lined_seahorse: shop in ~1–2 real hours, offspring sold, nobody dies, no debt — seeds 3, 8, 13, 21, 34, 55  16241ms
+ ✓ tests/sim/qafinal-fixes.test.ts (9 tests) 33779ms
+   ✓ overfeeding tip > never fires for keeper rounds (big_facility, 3 game days)  7420ms
+   ✓ background tanks eat their food before it rots > a meal dropped into a summary-LOD tank is eaten about as well as in the focused tank  2253ms
+   ✓ playthrough bot > a seahorse keeper feeding two or three times a day never wakes them "very hungry" (seed 1234, 20 days)  2699ms
+   ✓ mouthbrooders > a brooding Banggai male fasts through the brood without starving (and the tank never says "feed right away" for him)  14952ms
+   ✓ late-game toasts > critic praise pops up at most once a game day across a big venue (every visit still logged)  5369ms
+   ✓ small UI-facing rules > the creature card offers a reef fish marine food before goldfish or axolotl pellets  471ms
+   ✓ small UI-facing rules > a guide skipped by setting the flags (fixtures, old saves) leaves no "First steps" quest on the board  360ms
+stdout | tests/sim/core-perf.test.ts > core performance & robustness > dozens of tanks advance 7 days in < 10 s
+[core-perf] 36 tanks × 7 days: 8664 ms
+
+stdout | tests/sim/core-perf.test.ts > core performance & robustness > the big facility advances a day quickly and saves under a few MB
+[core-perf] big_facility × 1 day: 1690 ms
+[core-perf] big_facility save size: 817 KB
+
+ ✓ tests/sim/fix-facrender-fixtures.test.ts (4 tests) 21756ms
+   ✓ no fixture parks a tank in another tank's viewing aisle (P2-09) > every registered fixture  21382ms
+ ✓ src/ai/core/motion.test.ts (4 tests) 26318ms
+   ✓ creature motion quality (uneven browser frame times) > starter animals do not vibrate in place — raw AI motion  5013ms
+   ✓ creature motion quality (uneven browser frame times) > what is drawn is steady  3357ms
+   ✓ creature motion quality (uneven browser frame times) > burrowing and hiding animals settle without shaking  8069ms
+   ✓ creature motion quality (uneven browser frame times) > long, uneven frames (a busy browser at 17–25 fps) stay steady, substepped or over budget  9875ms
+ ✓ tests/sim/core-perf.test.ts (3 tests) 19941ms
+   ✓ core performance & robustness > dozens of tanks advance 7 days in < 10 s  9980ms
+   ✓ core performance & robustness > the big facility advances a day quickly and saves under a few MB  2165ms
+   ✓ core performance & robustness > no NaN / Infinity anywhere after 30 days (freshwater community + reef)  7794ms
+ ✓ src/render/decor/gen/normals.test.ts (4 tests) 17686ms
+   ✓ decor normals are always valid > red ogo (gracilaria) over many seeds  11822ms
+   ✓ decor normals are always valid > gorgonian over many seeds  1364ms
+   ✓ decor normals are always valid > hitching post, acropora, anemone, wood  3626ms
+   ✓ decor normals are always valid > cholla lattice and frag rack  874ms
+ ✓ tests/sim/fix-facility-audit.test.ts (26 tests) 16467ms
+   ✓ S04-01 / G1-04: visitor arrivals do not depend on the sim step size > a one-exhibit shop admits the same visitors at 1× (0.025 h) and offline (0.5 h) steps  795ms
+   ✓ G1-02: critics and wows count per represented visitor > reputation earned per visitor in a busy hall is the same at 0.025 h and 0.5 h steps  14256ms
+   ✓ G1-02: critics and wows count per represented visitor > the reaction feed turns over at the same pace per game hour at every speed  756ms
+ ✓ tests/sim/core-crafted-saves-fuzz.test.ts (6 tests) 60836ms
+   ✓ PERSIST-011: crafted-save fuzz on shows-demo > the unmodified fixture loads and runs cleanly  364ms
+   ✓ PERSIST-011: crafted-save fuzz on shows-demo > every id field set to an inherited name is repaired  10335ms
+   ✓ PERSIST-011: crafted-save fuzz on shows-demo > an own inherited-name key on any object is repaired  16014ms
+   ✓ PERSIST-011: crafted-save fuzz on frags_market > the unmodified fixture loads and runs cleanly  581ms
+   ✓ PERSIST-011: crafted-save fuzz on frags_market > every id field set to an inherited name is repaired  12988ms
+   ✓ PERSIST-011: crafted-save fuzz on frags_market > an own inherited-name key on any object is repaired  20549ms
+ ✓ tests/sim/fix-core-loop.test.ts (3 tests) 15355ms
+   ✓ G1-03: background tank time is contiguous however it is flushed > fires every autofeed whether flushes happen in-step, in the smoothing pass, or alternate  15070ms
+ ✓ tests/sim/w2sim-rules.test.ts (17 tests) 11328ms
+   ✓ w2-sim flow: one level off is a note, two or more is WATCH — report, comfort and compat agree > facility_grand's Grand Reef (gentle, moderate and strong-flow fish together) reaches GOOD with a note  1290ms
+   ✓ w2-sim visitors: occupancy never exceeds the day’s arrivals > a busy shop over several days, including open-until-midnight hours  807ms
+   ✓ w2-sim finance: one daily bill, before and after staff leave over unpaid wages > the debt message quotes dailyOperatingCost as it stands after payday  7709ms
+   ✓ w2-sim water: two adult axolotls in the starter 20-gallon > a careful keeper (earthworms twice a day, a 25% change every 3 days) stays GOOD and nobody is harmed  917ms
+stdout | tests/sim/playthrough-starters.test.ts > balance: the long game > every facility level and a 1,000-gallon display are reachable; rent matters but never bankrupts
+══ betta · long game ══
+first_money=1 min (d0.2) · market_opened=1 min (d0.3) · mate_bought=1 min (d0.3) · second_tank=1 min (d0.3) · nursery_ready=14 min (d3.5) · first_spawn=7 min (d1.7) · first_juveniles=29 min (d7.3) · first_sale=37 min (d9.2) · first_offspring_sale=37 min (d9.1) · tutorial_done=5 min (d1.1) · shop_unlocked=30 min (d7.5) · specialty_shop=69 min (d17.1) · first_visitor=69 min (d17.1) · aquarium_store=170 min (d42.5) · showroom=314 min (d78.5) · destination=442 min (d110.4) · grand_hall=578 min (d144.6)
+day  money   rep  level           tanks alive dead young births sales  in/out  op   tut
+  0    300      0 hobby_room          1     1    0     0      0     0      0/0   0.7 meet
+ 10    924  138.3 hobby_room          3     2    0     0      8     1    287/2   2.2 done
+ 20   1296  274.8 specialty_shop      4     4    0     0     16     2 1097/426  33.1 done
+ 30   4559  362.9 specialty_shop      4     4    0     0     24     3   198/33  33.1 done
+ 40   7158  429.4 specialty_shop      4     4    0   146     32     4   304/33  33.1 done
+ 50   6127  563.7 aquarium_store      7    22    0   326     40     5  985/161   156 done
+ 60  17986  844.7 aquarium_store      7    22    0   276    134    34 1302/156   156 done
+ 70  30290  987.9 aquarium_store      7    27    0   352    241    65 1607/161   156 done
+ 80   4768   1000 showroom            9    24    0   371    353    97 3517/881 457.8 done
+ 90  47428   1000 showroom           10    54    0   202    493   129 5598/472 458.8 done
+100  88310   1000 showroom           10    46    0   193    634   165 4160/477 458.8 done
+110 119071   1000 showroom           10    36    0   226    772   200 4934/465 458.8 done
+120  91241   1000 destination        11    53    0   334    917   200 7818/1235 1221.8 done
+130 177561   1000 destination        11    51    0   350   1084   200 9477/1235 1221.8 done
+140 270930   1000 destination        11    39    3   421   1241   200 11616/1240 1221.8 done
+145  20909   1000 grand_hall         11    34    8   138   1336   200 30963/305272 3021.8 done
+deaths: Midnight (fancy_guppy) d134.8: old age; Valentin (fancy_guppy) d137.5: old age; Flit (fancy_guppy) d139.4: old age; Fizz (fancy_guppy) d141.7: old age; Marquis (fancy_guppy) d142.6: old age; Pip (medaka) d143.3: old age; Carmine (betta) d143.7: old age; Sprint (medaka) d144.5: old age
+events 4343 (1235 toasts); most repeated: 280× market: Listed "N juvenile medaka ricefish" — expected $N–$N Buyers will start looking soon. || 152× celebrate: A visiting critic praised the N gal exhibit: “welfare and beauty, done right.” (+reputatio || 50× warning: The adult medaka ricefish are eating Swoosh’s eggs! Move the clutch to a nursery tank. || 50× warning: The adult medaka ricefish are eating Glint’s eggs! Move the clutch to a nursery tank. || 50× warning: The adult medaka ricefish are eating Hopper’s eggs! Move the clutch to a nursery tank. || 49× warning: The adult medaka ricefish are eating Sprint’s eggs! Move the clutch to a nursery tank.
+
+ ✓ tests/sim/playthrough-starters.test.ts (6 tests) 133247ms
+   ✓ balance: every starter played by a careful bot for ~3 real hours > axolotl: first money, tutorial, breeding, shop, visitors — and nobody dies  16875ms
+   ✓ balance: every starter played by a careful bot for ~3 real hours > betta: first money, tutorial, breeding, shop, visitors — and nobody dies  14414ms
+   ✓ balance: every starter played by a careful bot for ~3 real hours > pea_puffer: first money, tutorial, breeding, shop, visitors — and nobody dies  11938ms
+   ✓ balance: every starter played by a careful bot for ~3 real hours > ocellaris_clownfish: first money, tutorial, breeding, shop, visitors — and nobody dies  10130ms
+   ✓ balance: every starter played by a careful bot for ~3 real hours > lined_seahorse: first money, tutorial, breeding, shop, visitors — and nobody dies  11417ms
+   ✓ balance: the long game > every facility level and a 1,000-gallon display are reachable; rent matters but never bankrupts  68471ms
+ ✓ tests/sim/shows-balance.test.ts (5 tests) 15105ms
+   ✓ show balance > real judging over 30 club shows: the betta starter takes ribbons and wins some  1004ms
+   ✓ show balance > the bot player’s own animals after 40 days (no deliberate show breeding)  13610ms
+(node:17075) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/sim/fix-life-colony.test.ts (2 tests) 11032ms
+   ✓ P5-10 — shrimp colony ceiling > a pampered 10-gallon colony stays near the ceiling over 60 days, with at most 6 berried females at once  10996ms
+ ✓ tests/sim/lifecycle-metabolism.test.ts (13 tests) 10267ms
+   ✓ lifecycle — robustness > no NaN after 30 simulated days for every starter (advanceWorld, forceFull)  8990ms
+   ✓ lifecycle — robustness > is deterministic across identical runs and robust to big dt  487ms
+ ✓ tests/sim/behavior-core.test.ts (7 tests) 9176ms
+   ✓ behavior core > 10k steps: every creature stays inside the water and out of hard decor, no NaN  7216ms
+   ✓ behavior core > schools stay cohesive  896ms
+   ✓ behavior core > hitching seahorses end up at hitch anchors  352ms
+   ✓ behavior feeding (real starter tank) > the showcase betta actually eats pellets dropped at the surface (mouth reaches food, even over decor)  362ms
+ ✓ src/ai/core/colliders.test.ts (5 tests) 10342ms
+   ✓ AI decor colliders > 20k steps: nobody passes through marimo, stones, caves or plant crowns; walkers keep moving  7782ms
+   ✓ AI decor colliders > marine soak: hosting, hitching, perching and burrowing still work around solid decor  2484ms
+ ✓ tests/sim/breeding-rules.test.ts (12 tests) 12476ms
+   ✓ breeding: betta pair left together too long > the male harasses the spent female with escalating warnings, stress and injury  669ms
+   ✓ breeding: betta pair left together too long > a female dropped into a male’s tank without courtship is chased too  321ms
+   ✓ breeding: clownfish protandrous hierarchy > exactly one female emerges; when she is removed the top-ranked male transitions  1478ms
+   ✓ breeding: clownfish protandrous hierarchy > a lone clownfish stays male; breedingCheck explains protandry  330ms
+   ✓ breeding: nursery vs display, capacity > axolotl eggs left with adults suffer heavy losses; the same clutch in a nursery survives  2859ms
+   ✓ breeding: nursery vs display, capacity > nursery capacity caps the juveniles minted; the rest are rehomed  2104ms
+   ✓ breeding: nursery vs display, capacity > starving larvae die without live food  941ms
+   ✓ breeding: determinism > the same seed and actions give identical breeding outcomes  3584ms
+ ✓ src/render/creatures/creatures.test.ts (66 tests) 12246ms
+   ✓ creature visuals build headless for every species / LOD / stage / sex > axolotl builds, animates and disposes cleanly  1818ms
+   ✓ creature visuals build headless for every species / LOD / stage / sex > betta builds, animates and disposes cleanly  465ms
+   ✓ creature visuals build headless for every species / LOD / stage / sex > lined_seahorse builds, animates and disposes cleanly  481ms
+   ✓ creature visuals build headless for every species / LOD / stage / sex > bristlenose_pleco builds, animates and disposes cleanly  584ms
+   ✓ Prismatic sheen (lane:genetics) > axolotl: a Prismatic individual carries the sheen, an ordinary one never does  948ms
+stdout | tests/sim/core-gameloop.test.ts > core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time
+[core-loop] big_facility 10× tick median 34.57 ms, mean 40.09 ms
+
+ ✓ tests/sim/w2ui-copy.test.ts (7 tests) 8905ms
+   ✓ buyer messages: one animal vs a batch > pairs, groups and juvenile batches never read as a single animal  6247ms
+   ✓ buyer messages: one animal vs a batch > frag packs read as plurals, single frags as singular  2362ms
+ ✓ tests/sim/breeding-starters.test.ts (6 tests) 7844ms
+   ✓ breeding: starter loops end-to-end > axolotl: cooling cue → courtship → spermatophore → eggs on plants → nursery → juveniles  1758ms
+   ✓ breeding: starter loops end-to-end > betta: bubble nest → introduce female → spawn → separate both → free-swimming fry → juveniles  1237ms
+   ✓ breeding: starter loops end-to-end > pea puffer: conditioning + dense cover → chase into the moss → scattered eggs → nursery → juveniles  1026ms
+   ✓ breeding: starter loops end-to-end > clownfish: hierarchy → sex change → pair → nest rock → male tends eggs → night hatch in nursery → juveniles  1759ms
+   ✓ breeding: starter loops end-to-end > seahorse: morning greetings → dawn dance → male pregnancy → birth → nursery with copepods → juveniles  1846ms
+stdout | tests/sim/core-gameloop.test.ts > core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time
+[core-loop] big_facility 10× tick median 24.03 ms, mean 28.00 ms
+
+ ✓ tests/sim/fix-AI-feeding.test.ts (5 tests) 7258ms
+   ✓ fix AI: feeding leftovers and claims > S07-01: fish that get full before the food is gone do not leave a carpet of claimed flakes behind  1353ms
+   ✓ fix AI: feeding leftovers and claims > S07-02: tong-fed food the animal does not take fades once the sim has consumed it, and a full fish still takes a bite  439ms
+   ✓ fix AI: starter animals reach their food or give it up > S07-03: the starter seahorse eats a mysis feeding instead of hovering over unreachable shrimp for minutes  2016ms
+   ✓ fix AI: starter animals reach their food or give it up > S07-04: the starter axolotl strikes pellets on the sand instead of hovering above them  3115ms
+   ✓ fix AI: starter animals reach their food or give it up > R04-01: a fish going back to a piece it let go of a while ago pursues it afresh instead of giving it up at once  333ms
+stdout | tests/sim/core-gameloop.test.ts > core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time
+[core-loop] big_facility 10× tick median 23.39 ms, mean 26.75 ms
+
+ ✓ tests/sim/market-invariants.test.ts (2 tests) 6624ms
+   ✓ market: invariants under random play > no duplication, no dangling references, no NaN — across many seeds  6193ms
+   ✓ market: invariants under random play > is deterministic under the same random play  430ms
+ ✓ tests/sim/progression-research-owned.test.ts (7 tests) 6775ms
+   ✓ research: never charge for unlocks already owned > in a 45-day clownfish game no project is paid for without teaching something new  6418ms
+stdout | tests/sim/core-gameloop.test.ts > core fastMutate (structural sharing without Immer) > diff cost on the big facility stays small
+[core-loop] share() full walk of big_facility: 4.66 ms
+
+ ❯ tests/sim/core-gameloop.test.ts (7 tests | 1 failed) 10561ms
+   ✓ core game loop tick > advances game time by realDt × speed and records the tick 108ms
+   ✓ core game loop tick > does not tick outside the game screen, or when paused 35ms
+   × core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time 9155ms (retry x2)
+     → expected 34.574931000000106 to be less than 20
+     → expected 24.031089000000065 to be less than 20
+     → expected 23.393557999999757 to be less than 20
+   ✓ core fastMutate (structural sharing without Immer) > share keeps identity for unchanged subtrees and never aliases the working copy 2ms
+   ✓ core fastMutate (structural sharing without Immer) > mutateFast gives the same result as a plain advance, with one store update, keeping untouched tanks shared  646ms
+   ✓ core fastMutate (structural sharing without Immer) > external mutations between fast ticks are picked up (never lost) 10ms
+   ✓ core fastMutate (structural sharing without Immer) > diff cost on the big facility stays small  603ms
+ ✓ tests/sim/fix-integrate-sim.test.ts (7 tests) 6052ms
+   ✓ G2-03: the club loan pays the team before anyone walks out > cash that covers the bills but not the wages: the loan still lands before the fourth unpaid payday  3281ms
+   ✓ G2-03: the club loan pays the team before anyone walks out > with the loan already spent, the team leaves and no message promises the animals are safe  2484ms
+ ✓ tests/sim/lifecycle-predation.test.ts (9 tests) 5911ms
+   ✓ predation: the stated risk actually happens > over a week, shrimp go missing at about the stated weekly probability (many seeds)  2608ms
+   ✓ predation: the stated risk actually happens > a well-fed puffer hunts less, but never not at all  1435ms
+   ✓ predation: the stated risk actually happens > a compatible community loses nobody to predation  342ms
+   ✓ starters arrive fed and never starve before the feed step > every starter starts "Well fed" and stays below "Very hungry" for 36 unfed game hours  1142ms
+ ✓ src/render/decor/gen/estuary.test.ts (7 tests) 5040ms
+   ✓ estuary decor geometry > builds valid, finite, unit-normal geometry over many seeds and every LOD  4545ms
+ ✓ tests/sim/fix-sim3-gourami.test.ts (2 tests) 4968ms
+   ✓ R02-01 — honey gourami pairs are not harassed to death > a male + female pair in a tended tank lives 14 days unharmed  4762ms
+ ✓ tests/sim/market-integration.test.ts (1 test) 4847ms
+   ✓ market: integration with the whole simulation > every starter path can buy, list and sell over a week of game time  4846ms
+ ✓ tests/sim/fix-staff-staff.test.ts (8 tests) 4882ms
+   ✓ S05-03 — stock orders under tight cash > with $15 the most urgent staple gets the packs the cash allows, and the warning blames cash, not the budget  413ms
+   ✓ S05-05 — docent reach > no exhibits assigned means no coverage; one each is a little; all is a lot  520ms
+   ✓ S05-11 — the club’s loan arrives before the team walks out > a cash crunch ends with the loan paying wages, not an empty roster  3554ms
+ ✓ tests/sim/shows-circuit.test.ts (9 tests) 4423ms
+   ✓ show calendar > keeps 3–5 upcoming shows on the calendar, judged in order, about one a day  1733ms
+   ✓ show calendar > only schedules tiers the player has opened (plus at most one teaser for the next tier)  873ms
+   ✓ show calendar > is deterministic: same save + same actions → identical circuit, fields and results  901ms
+   ✓ robustness > repairState drops an unreadable shows block and fixes broken arrays  306ms
+ ✓ tests/sim/fix-life-quarantine.test.ts (2 tests) 4000ms
+   ✓ S02-07 — quarantine trap > a sick neon tetra alone in a quarantine tank recovers (faster than with the school)  3987ms
+stdout | tests/sim/fix-core-saves.test.ts > P5-01: synchronous mirror for pagehide > saveGameSync writes localStorage and the next boot loads it (and moves it into the main store)
+[aquarium-go] moved save "auto" from localstorage to memory
+
+ ✓ tests/sim/fix-life-protogyny.test.ts (3 tests) 4829ms
+   ✓ S02-02 — protogynous clown goby > two mature females kept together: the dominant one becomes the male within a few days  1868ms
+   ✓ S02-02 — protogynous clown goby > a group of three ends up with exactly one male  1909ms
+   ✓ S02-02 — protogynous clown goby > a lone female never changes  1050ms
+stdout | tests/sim/fix-core-saves.test.ts > R03-02: "Previous autosave" survives the next reload > a pagehide mirror of the new aquarium moved into the main store on boot keeps the displaced one
+[aquarium-go] moved save "auto" from localstorage to indexeddb
+
+ ✓ tests/sim/fix-life-toasts.test.ts (5 tests) 3909ms
+   ✓ S02-11 — sex reveals of a brood > 30 guppy siblings revealing together produce one toast (and 30 log lines)  1055ms
+   ✓ S02-11 — sex reveals of a brood > a single reveal still toasts with its own line  535ms
+   ✓ P7-08 — starving danger toasts > at 10× one tank with three starving groups toasts once per 240 h, while the log still gets a line per group per day  1349ms
+   ✓ P7-08 — starving danger toasts > at 1× the same tank re-toasts every game day  919ms
+ ✓ src/render/decor/mergedDecorCache.test.ts (4 tests) 4338ms
+   ✓ merged decor cache > hands the same scape back for the same lod + signature while it is kept  712ms
+   ✓ merged decor cache > with the cache off every call builds a fresh scape, freed on release (the old behaviour)  3200ms
+ ✓ tests/sim/core-determinism.test.ts (4 tests) 4702ms
+   ✓ core determinism > same seed + same actions → identical snapshot hash  1834ms
+   ✓ core determinism > different seeds diverge  1165ms
+   ✓ core determinism > a save/load in the middle does not change the outcome  1181ms
+   ✓ core determinism > the hash ignores wall-clock fields  521ms
+stderr | tests/sim/fix-core-saves.test.ts > S06-01: a hung write does not wedge saving for the session > times out, demotes and the save lands on the next backend
+[aquarium-go] save storage: indexeddb operation timed out after 60 ms
+
+ ✓ tests/sim/fix-core-saves.test.ts (20 tests) 4092ms
+   ✓ P5-05: null entries in record arrays > are dropped on repair and the world can be simulated  2281ms
+   ✓ P5-12: save/load is transparent for a real starter > does not bump the id counter to the starter seed; later ids and the world hash match  800ms
+ ✓ tests/sim/fix-econ-listings.test.ts (11 tests) 4128ms
+   ✓ S03-02 / P2-05 / P5-06 / S03-08 — market windows are real-time promises at every speed, and holds are capped > the counter form hold survives the UI renew interval (45 real s) at 3× and 10×  1791ms
+   ✓ S03-03 — the suggested counter is one most buyers can accept > sells outright in most cases and rarely makes the buyer walk (150 seeds)  1582ms
+ ✓ tests/sim/fix-sim3-gifted.test.ts (2 tests) 4077ms
+   ✓ R01-01 — gifted layout share is translation tolerant > a uniform 3-4 cm slide of every piece keeps the layout gifted and out of the Regional running  3262ms
+   ✓ R01-01 — gifted layout share is translation tolerant > a real rearrangement (mirrored, or every piece moved 10+ cm) still reads as the player’s own  814ms
+ ✓ tests/sim/lifecycle-roster.test.ts (3 tests) 3329ms
+   ✓ lifecycle — whole roster > every registered species produces valid, species-bounded individuals  1364ms
+   ✓ lifecycle — whole roster > a mixed tank of every freshwater and marine species steps for a week without NaN  1924ms
+ ✓ tests/sim/fix-AI-behaviour.test.ts (8 tests) 3216ms
+   ✓ fix AI: crawlers, resting and holdfasts > P6-01: branching corals are soft for the AI (a base plug only), so snails do not graze in open water on a sea fan  392ms
+   ✓ fix AI: crawlers, resting and holdfasts > P6-03 / R04-04: a long-finned betta never rests with its fins in the substrate, nor hovers over a leaf too low for them  777ms
+   ✓ fix AI: crawlers, resting and holdfasts > S08-02: a seahorse whose holdfast lies inside a neighbouring stone still hitches (beside it, or elsewhere)  785ms
+   ✓ fix AI: crawlers, resting and holdfasts > S08-02: virtual holdfasts under a stone are not chosen  502ms
+   ✓ fix AI: claims, step rate and colliders > S07-06: the forage mouth pulse fires at the same rate at 144 Hz and 30 Hz  301ms
+   ✓ fix AI: claims, step rate and colliders > S08-03: sump overflow, canister intake and HOB skimmer pump are solid for the AI; the tilted heater is covered  405ms
+ ✓ tests/sim/fix-life-clutch.test.ts (3 tests) 2391ms
+   ✓ P2-01 — axolotl clutch when the mother leaves mid-lay > quick-selling the mother before any egg is placed resolves the clutch instead of leaving it "still being laid"  676ms
+   ✓ P2-01 — axolotl clutch when the mother leaves mid-lay > a mother that dies mid-lay leaves the eggs she already placed, which hatch and can be moved  1219ms
+   ✓ S02-06 — minted young are always juveniles > every breedable species arrives immature even after a long rearing pipeline  495ms
+ ✓ tests/sim/audio-dsp.test.ts (13 tests) 3886ms
+   ✓ audio dsp — generators > noise generators are bounded, finite and roughly zero-mean  3457ms
+ ✓ tests/sim/frags-sim.test.ts (11 tests) 2962ms
+   ✓ frags: old saves and determinism > old saves without the new fields load, step and repair cleanly  481ms
+   ✓ frags: old saves and determinism > is deterministic: the same cuts and time give the same world  1854ms
+ ✓ tests/sim/fix-life-clownfish.test.ts (2 tests) 2826ms
+   ✓ S02-01 — guarding clownfish male whose female left > is released after the clutch is gone and becomes the female for a new, smaller tank mate  2662ms
+ ✓ tests/sim/edge-cases.test.ts (10 tests) 3870ms
+   ✓ edge cases (spec §28): water & husbandry > many animals at once through the shop: allowed, but the stocking load and compatibility say so  561ms
+   ✓ edge cases (spec §28): market & saves > saving in the middle of a pregnancy and loading resumes to exactly the same birth  2898ms
+ ✓ tests/sim/species-fw.test.ts (225 tests) 2473ms
+   ✓ betta > every conditional phenotype rule is reachable by at least one genotype (no shadowed morphs)  324ms
+   ✓ fancy_guppy > every conditional phenotype rule is reachable by at least one genotype (no shadowed morphs)  1801ms
+ ✓ tests/sim/market-auction.test.ts (25 tests) 2721ms
+   ✓ market: counters > buyers reply after a delay: accept, split the difference, hold firm or walk away  615ms
+   ✓ market: waiting is not a guaranteed win > the best open offer rises in some runs and falls in others  1037ms
+ ✓ tests/sim/waterlab-care.test.ts (18 tests) 2197ms
+   ✓ waterlab: starters stay healthy > all five starter tanks are GOOD with comfort ≥ 85 at start and after 3 days of normal feeding  1561ms
+ ✓ tests/sim/lifecycle-genetics.test.ts (11 tests) 2579ms
+   ✓ lifecycle genetics — rolls > potentials stay in 0..100 with a sensible spread, and bias lifts premium stock  1056ms
+   ✓ lifecycle genetics — inheritance > offspring potentials stay within 0..100 and near mid-parent  832ms
+   ✓ lifecycle genetics — inheritance > mutations are rare, stay within the locus and are flagged  301ms
+ ✓ tests/sim/fix-core-offline.test.ts (15 tests) 2197ms
+ ✓ tests/sim/polish-progression.test.ts (27 tests) 2653ms
+   ✓ game start: nothing is celebrated that the player did not do > plants growing on their own never award Living Art  562ms
+   ✓ quiet, readable logs > friend visits toast the first few times, then about once a game day (all still logged)  845ms
+ ✓ tests/sim/species-brackish.test.ts (49 tests) 2111ms
+   ✓ brackish water > a stocked brackish tank stays in its ideal band over a week of sim time  1607ms
+ ✓ tests/sim/fix-AI-world.test.ts (6 tests) 1929ms
+   ✓ fix AI: water level and decor edits > S08-01: a falling water level does not rebuild the colliders or wake the tank  416ms
+   ✓ fix AI: dead bodies > R04-03: a body woken by a rock dropped on it is only laid to rest again once it is out of the rock  967ms
+ ✓ tests/sim/fix-life-harassment.test.ts (2 tests) 1999ms
+   ✓ S02-08 — betta female left with the male > declines and dies of harassment within ~5 days, after the danger warnings  1045ms
+   ✓ S02-08 — betta female left with the male > recovers once separated  952ms
+ ✓ tests/sim/qa-play-fixes.test.ts (6 tests) 1485ms
+   ✓ fry food need (feed picker) > names what the fry eat and offers a pack when none is in stock  328ms
+   ✓ showcase fixtures load well run > big_facility: every tank Good at load, nobody short of food  837ms
+ ✓ tests/sim/fix-panels-b-morphs.test.ts (6 tests) 1659ms
+   ✓ encyclopedia morph chips > every curated chip of every species is reachable from rolled genomes  1642ms
+ ✓ tests/sim/fit-equipment.test.ts (23 tests) 1405ms
+ ✓ tests/sim/morph-catalog.test.ts (18 tests) 1914ms
+   ✓ morph catalog > covers every species exactly, and the market shares sum to 1  339ms
+   ✓ morph catalog > contains every morph market stock actually rolls (400 seeded genomes per species)  924ms
+   ✓ morph catalog > builds every catalog quickly  316ms
+ ✓ tests/sim/breeding-fixtures.test.ts (5 tests) 1737ms
+   ✓ breeding fixtures > breeding_betta_fry: free-swimming fry, male moved out  546ms
+   ✓ breeding fixtures > breeding_seahorse: a visibly pregnant male  597ms
+ ✓ tests/sim/fix-panels-b-thumb-copy.test.ts (3 tests) 1441ms
+   ✓ TankThumb placement > keeps decor and residents inside the thumbnail for every big_facility tank  1033ms
+   ✓ FragReadyHint > renders five ready plants as "A, B and 3 more"  395ms
+ ✓ tests/sim/tank-status.test.ts (15 tests) 1269ms
+   ✓ friend and visitor tips are gated by welfare > a fed betta gets full tips; a very hungry one (WATCH) gets smaller ones  754ms
+ ✓ tests/sim/fix-econ-offline-market-speed.test.ts (3 tests) 1274ms
+   ✓ MKT-016: bids made during the offline catch-up last their promised real time after the return > a game saved at 3x: every bid still open on return lasts at least ~3 real minutes  607ms
+   ✓ MKT-016: bids made during the offline catch-up last their promised real time after the return > a game saved at 10x: every bid still open on return lasts at least ~3 real minutes  527ms
+ ✓ tests/sim/core-lod.test.ts (2 tests) 2077ms
+   ✓ core LOD scheduler > 30 tanks: off-focus tanks accumulate sim debt and a flush resolves it  1391ms
+   ✓ core LOD scheduler > fixtures are well-formed: big_facility has a 1,000 gal display with 60+ fish, stress_school has 80  685ms
+ ✓ tests/sim/fix-panels-photo-story.test.ts (2 tests) 1581ms
+   ✓ notePhoto > names the tank in the new line, then reports nothing added while throttled  1081ms
+   ✓ notePhoto > renames the line when the history is already at its cap  498ms
+ ✓ tests/sim/fix-core-requests.test.ts (6 tests) 1717ms
+   ✓ X-2: the grace cap holds conditioner-bound toxins too > a conditioner dose running through a long catch-up does not bank more than the cap  781ms
+   ✓ X-2: the grace cap holds conditioner-bound toxins too > a save that already held more bound toxin than the cap keeps it (no free healing), but never gains  360ms
+ ✓ tests/sim/facility-visitors.test.ts (18 tests) 1014ms
+ ✓ tests/sim/facility-progression.test.ts (22 tests) 724ms
+ ✓ tests/sim/fix-water-autofeeder.test.ts (2 tests) 912ms
+   ✓ fix-water S01-02: autofeeder portions follow the tank > a school of six neons on the default 2x/day schedule is fed, not starved  468ms
+   ✓ fix-water S01-03: autofed food is eaten fresh at every LOD > summary-LOD (4 h) pieces feed the tank about as well as the focused tank  443ms
+ ✓ src/ai/core/spit.test.ts (3 tests) 1125ms
+   ✓ archerfish spit act > archerfish shoot on their own now and then, one at a time, and keep still while aiming  960ms
+ ✓ tests/sim/fix-water-temperature.test.ts (2 tests) 755ms
+   ✓ fix-water S16-02: temperature tolerance band > the starter betta survives a week at room temperature after its heater fails  735ms
+ ✓ tests/sim/lifecycle-creatures.test.ts (9 tests) 1050ms
+   ✓ lifecycle — personality > tags stay species-valid, 1–3, never contradictory  571ms
+ ✓ tests/sim/fix-sim3-listings.test.ts (1 test) 1276ms
+   ✓ R01-03 — blocked-sale check cost with unlisted residents > 40 same-species juveniles in a listed 300-gal tank cost little per market step, and the sale still checks out  1272ms
+ ✓ tests/sim/fix-life-environment.test.ts (2 tests) 957ms
+   ✓ S02-05 — brackish livebearers in a tolerated freshwater tank > build breeding readiness and are only softly nudged toward brackish water  927ms
+ ✓ tests/sim/core-offline.test.ts (6 tests) 838ms
+   ✓ core offline progress > loadAndResume loads, catches up, and makes it the running game  351ms
+ ✓ tests/sim/shows-rewards.test.ts (5 tests) 905ms
+   ✓ show rewards > a class win pays the purse share, adds reputation and mastery, a trophy and a ribbon  333ms
+   ✓ show rewards > Champion after 3 class wins at Regional+, Grand Champion after 3 at National+  395ms
+ ✓ tests/sim/aquascape-sim.test.ts (22 tests) 898ms
+ ✓ tests/sim/market-shop.test.ts (17 tests) 841ms
+ ✓ tests/sim/waterlab-water.test.ts (17 tests) 873ms
+stdout | tests/sim/core-storage-backends.test.ts > storage detection: a slow IndexedDB is not a blocked one > falls back after its patience runs out, then promotes IndexedDB and moves the saves across
+[aquarium-go] moved save "auto" from localstorage to indexeddb
+
+stdout | tests/sim/core-storage-backends.test.ts > saves are found wherever they were written > next visit (fast IndexedDB) finds and migrates a save left in localStorage
+[aquarium-go] moved save "auto" from localstorage to indexeddb
+
+stdout | tests/sim/core-storage-backends.test.ts > saves are found wherever they were written > newest copy wins; the older IndexedDB copy becomes the backup, never lost
+[aquarium-go] moved save "auto" from localstorage to indexeddb
+
+stdout | tests/sim/core-storage-backends.test.ts > saves are found wherever they were written > keeps damaged source data and still recovers the intact backup
+[aquarium-go] moved save "auto" from localstorage to indexeddb
+
+ ✓ tests/sim/core-storage-backends.test.ts (9 tests) 634ms
+ ✓ tests/sim/brackish-fishart.test.ts (14 tests) 558ms
+ ✓ tests/sim/copy-fixes.test.ts (11 tests) 973ms
+   ✓ a / an > visitor reaction lines use the right article for every species  362ms
+ ✓ tests/sim/market-timing.test.ts (7 tests) 790ms
+ ✓ tests/sim/shows-eligibility.test.ts (11 tests) 787ms
+ ✓ tests/sim/fix-staff-scapes.test.ts (8 tests) 942ms
+   ✓ S05-01 / G2-01 — the gifted starter layout is a club-level aquascape entry at best > every starter tank, grown in, is out of the running at Regional and National  533ms
+ ✓ tests/sim/core-determinism-guard.test.ts (4 tests) 675ms
+ ✓ tests/sim/fix-water-grace-equipment.test.ts (2 tests) 463ms
+ ✓ tests/sim/market-messages.test.ts (4 tests) 500ms
+   ✓ market: buyer message bank > never leaks placeholders or scope tags, and stays readable  336ms
+stderr | tests/sim/core-persistence.test.ts > core persistence: slots, backup and corruption > falls back to the backup when the primary is corrupted, and never overwrites a good backup with a bad one
+[aquarium-go] save slot slot2 was damaged; restored its backup
+
+stderr | tests/sim/core-persistence.test.ts > core persistence: slots, backup and corruption > falls back to the backup when the primary is corrupted, and never overwrites a good backup with a bad one
+[aquarium-go] save slot slot2 is damaged: This save is damaged and can't be read.
+
+ ✓ tests/sim/round2-orchestrator.test.ts (2 tests) 472ms
+   ✓ young-only predation respects the predator’s mouth > a seahorse never eats a juvenile cardinalfish that has outgrown its mouth, but fresh hatchlings stay at risk  454ms
+ ✓ tests/sim/core-migration.test.ts (5 tests) 648ms
+   ✓ core migrations > loads a v0 JSON string through the normal decode path and the result can be simulated  437ms
+ ✓ tests/sim/core-persistence.test.ts (13 tests) 613ms
+stdout | tests/sim/frags-market.test.ts > frags: balance > a mature reef and a mature planted tank earn a pleasant side income
+[frags balance] mature 40 gal reef (6 colonies): 46 frags in 30 days ≈ $19.3/game-day · mature 40 gal planted (8 plants): 71 cuttings ≈ $5.7/game-day
+
+ ✓ tests/sim/frags-market.test.ts (10 tests) 669ms
+ ✓ tests/sim/w2ui-features.test.ts (5 tests) 365ms
+ ✓ tests/sim/fix-core-hidden-overlap.test.ts (3 tests) 333ms
+ ✓ tests/sim/market-valuation.test.ts (13 tests) 329ms
+ ✓ tests/sim/fix-econ-finance.test.ts (6 tests) 601ms
+ ✓ tests/sim/core-crafted-saves.test.ts (5 tests) 544ms
+ ✓ tests/sim/fix-core-leave-save.test.ts (3 tests) 371ms
+stderr | tests/sim/core-gameloop-publish.test.ts > PERSIST-010: runTick backlog after a failure > a slice that throws after several good ones publishes nothing and keeps every hour in the backlog
+[aquarium-go] simulation tick failed: Error: slice failed
+    at advanceWorld [90m(/home/user/aquarium-go/[39mtests/sim/core-gameloop-publish.test.ts:25:39[90m)[39m
+    at [90m/home/user/aquarium-go/[39msrc/game/GameLoop.tsx:95:9
+    at mutateFast [90m(/home/user/aquarium-go/[39msrc/game/fastMutate.ts:124:14[90m)[39m
+    at Module.runTick [90m(/home/user/aquarium-go/[39msrc/game/GameLoop.tsx:91:5[90m)[39m
+    at [90m/home/user/aquarium-go/[39mtests/sim/core-gameloop-publish.test.ts:64:21
+    at [90mfile:///home/user/aquarium-go/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/user/aquarium-go/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/user/aquarium-go/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1897:20
+    at new Promise (<anonymous>)
+    at runWithTimeout [90m(file:///home/user/aquarium-go/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:1863:10[90m)[39m
+
+stderr | tests/sim/core-gameloop-publish.test.ts > PERSIST-010: runTick backlog after a failure > a store subscriber that throws keeps the published hours out of the backlog
+[aquarium-go] simulation tick failed: Error: subscriber failed
+    at [90m/home/user/aquarium-go/[39mtests/sim/core-gameloop-publish.test.ts:76:15
+    at [90mfile:///home/user/aquarium-go/[39mnode_modules/[4mzustand[24m/esm/vanilla.mjs:9:39
+    at Set.forEach (<anonymous>)
+    at setState [90m(file:///home/user/aquarium-go/[39mnode_modules/[4mzustand[24m/esm/vanilla.mjs:9:17[90m)[39m
+    at Object.setGame [90m(/home/user/aquarium-go/[39msrc/state/game.ts:32:19[90m)[39m
+    at publish [90m(/home/user/aquarium-go/[39msrc/game/fastMutate.ts:142:24[90m)[39m
+    at mutateFast [90m(/home/user/aquarium-go/[39msrc/game/fastMutate.ts:129:3[90m)[39m
+    at Module.runTick [90m(/home/user/aquarium-go/[39msrc/game/GameLoop.tsx:91:5[90m)[39m
+    at [90m/home/user/aquarium-go/[39mtests/sim/core-gameloop-publish.test.ts:82:21
+    at [90mfile:///home/user/aquarium-go/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+
+ ✓ tests/sim/core-gameloop-publish.test.ts (2 tests) 204ms
+ ✓ tests/sim/core-architecture-boundaries.test.ts (3 tests) 257ms
+ ✓ tests/sim/rare-persistence.test.ts (6 tests) 299ms
+ ✓ tests/sim/fix-econ-purchases.test.ts (3 tests) 524ms
+   ✓ S13-11 — the shop quotes a partial group at exactly what buyOffer charges > offerPickPrice equals the charge for every pick size and never exceeds the whole group  386ms
+ ✓ tests/sim/ui-notify-log.test.ts (6 tests) 564ms
+ ✓ tests/sim/rare-variants.test.ts (20 tests) 411ms
+ ✓ tests/sim/audio-beat.test.ts (13 tests) 498ms
+ ✓ tests/sim/report-rarity.test.ts (8 tests) 405ms
+   ✓ GEN-013: rarity report > is deterministic: two calls agree, and so does a catalog rebuilt from scratch  339ms
+ ✓ tests/sim/fix-staff-tankops.test.ts (6 tests) 208ms
+ ✓ tests/sim/fix-water-care-copy.test.ts (7 tests) 276ms
+ ✓ tests/sim/fix-life-genetics.test.ts (6 tests) 428ms
+ ✓ tests/sim/fix-sim3-water.test.ts (6 tests) 444ms
+ ✓ tests/sim/waterlab-compat.test.ts (18 tests) 333ms
+ ✓ tests/sim/ui-notify-news.test.ts (9 tests) 374ms
+ ✓ tests/sim/lifecycle-incidents.test.ts (4 tests) 350ms
+ ✓ tests/sim/fix-life-copy.test.ts (5 tests) 200ms
+ ✓ tests/sim/ui-notify-attention.test.ts (11 tests) 255ms
+ ✓ tests/sim/shows-judging.test.ts (9 tests) 232ms
+ ✓ tests/sim/fix-sim-grace-clamps.test.ts (4 tests) 323ms
+ ✓ tests/sim/guide-feedback.test.ts (15 tests) 330ms
+ ✓ tests/sim/fix-econ-valuation.test.ts (3 tests) 315ms
+ ✓ tests/sim/species-marine.test.ts (178 tests) 139ms
+ ✓ tests/sim/fix-water-status.test.ts (5 tests) 172ms
+ ✓ tests/sim/market-finance.test.ts (5 tests) 248ms
+stderr | tests/sim/core-fastmutate-atomic.test.ts > PERSIST-009: runTick on a world step that throws > changes nothing, reports the error and keeps the hours in the backlog
+[aquarium-go] simulation tick failed: TypeError: Cannot read properties of null (reading 'lab')
+    at stepTank [90m(/home/user/aquarium-go/[39msrc/sim/world.ts:127:31[90m)[39m
+    at stepOnce [90m(/home/user/aquarium-go/[39msrc/sim/world.ts:77:7[90m)[39m
+    at [90m/home/user/aquarium-go/[39msrc/sim/world.ts:57:36
+    at withResidentIndex [90m(/home/user/aquarium-go/[39msrc/sim/residents.ts:86:12[90m)[39m
+    at advanceWorld [90m(/home/user/aquarium-go/[39msrc/sim/world.ts:57:5[90m)[39m
+    at [90m/home/user/aquarium-go/[39msrc/game/GameLoop.tsx:95:9
+    at mutateFast [90m(/home/user/aquarium-go/[39msrc/game/fastMutate.ts:124:14[90m)[39m
+    at runTick [90m(/home/user/aquarium-go/[39msrc/game/GameLoop.tsx:91:5[90m)[39m
+    at [90m/home/user/aquarium-go/[39mtests/sim/core-fastmutate-atomic.test.ts:68:21
+    at [90mfile:///home/user/aquarium-go/[39mnode_modules/[4m@vitest/runner[24m/dist/chunk-hooks.js:155:11
+
+ ✓ tests/sim/core-fastmutate-atomic.test.ts (3 tests) 214ms
+ ✓ tests/sim/core-offline-safetynet.test.ts (1 test) 222ms
+ ✓ tests/sim/qa-r3-caution.test.ts (9 tests) 289ms
+ ✓ tests/sim/fix-AUDIO-engine.test.ts (4 tests) 93ms
+ ✓ tests/sim/fix-sim3-morphs.test.ts (2 tests) 109ms
+ ✓ tests/sim/fix-sim3-lights.test.ts (3 tests) 230ms
+ ✓ tests/sim/fix-water-detox.test.ts (3 tests) 202ms
+ ✓ tests/sim/fix-integrate-ui-panels.test.ts (3 tests) 203ms
+ ✓ tests/sim/fix-hud-guide.test.ts (8 tests) 315ms
+ ✓ tests/sim/version.test.ts (4 tests) 27ms
+ ✓ tests/sim/guide-species.test.ts (17 tests) 68ms
+ ✓ src/render/shared/staticMerge.test.ts (3 tests) 22ms
+ ✓ tests/sim/qa-visual-equipment.test.ts (16 tests) 88ms
+ ✓ src/render/shared/resolution.test.ts (37 tests) 72ms
+ ✓ tests/sim/fix-AUDIO-director.test.ts (10 tests) 30ms
+(node:19441) [THREE_CJS_DEPRECATED] DeprecationWarning: `require("three")` is deprecated and will be removed.
+Replace `const THREE = require("three")` with `import * as THREE from "three"`.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ ✓ tests/sim/ui-prismatic.test.ts (5 tests) 104ms
+ ✓ tests/sim/fix-tankrender-lod.test.ts (5 tests) 29ms
+ ✓ tests/sim/fix-hud-toasts.test.ts (9 tests) 17ms
+ ✓ tests/sim/fix-hud-polish.test.ts (5 tests) 53ms
+ ✓ tests/sim/fix-hud-update.test.ts (4 tests) 19ms
+ ✓ tests/sim/fix-tankrender-pointer.test.ts (11 tests) 19ms
+ ✓ tests/sim/fix-facrender-placement.test.ts (6 tests) 8ms
+ ✓ tests/sim/fix-panels-temp-delta.test.ts (3 tests) 4ms
+ ✓ tests/sim/ui-fit-note.test.ts (4 tests) 52ms
+ ✓ tests/sim/audio-cues.test.ts (8 tests) 17ms
+ ✓ tests/sim/fix-AUDIO-music.test.ts (18 tests) 10ms
+ ✓ tests/sim/fix-hud-css.test.ts (6 tests) 9ms
+ ✓ tests/sim/fix-facrender-follow.test.ts (3 tests) 4ms
+ ✓ tests/sim/fix-integrate-ui-render.test.ts (4 tests) 5ms
+ ✓ src/ai/core/steps.test.ts (4 tests) 6ms
+ ✓ src/render/camera/viewport.test.ts (7 tests) 6ms
+ ✓ tests/sim/fix-panels-a-format.test.ts (5 tests) 8ms
+ ✓ tests/sim/fix-hud-format.test.ts (3 tests) 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/sim/core-gameloop.test.ts > core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time
+AssertionError: expected 34.574931000000106 to be less than 20
+ ❯ tests/sim/core-gameloop.test.ts:72:16
+     70|     expect(getLoopStats().droppedHours).toBe(0);
+     71|     expect(getLoopStats().errors).toBe(0);
+     72|     expect(ms).toBeLessThan(20);
+       |                ^
+     73|   });
+     74| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/sim/core-gameloop.test.ts > core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time
+AssertionError: expected 24.031089000000065 to be less than 20
+ ❯ tests/sim/core-gameloop.test.ts:72:16
+     70|     expect(getLoopStats().droppedHours).toBe(0);
+     71|     expect(getLoopStats().errors).toBe(0);
+     72|     expect(ms).toBeLessThan(20);
+       |                ^
+     73|   });
+     74| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/sim/core-gameloop.test.ts > core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time
+AssertionError: expected 23.393557999999757 to be less than 20
+ ❯ tests/sim/core-gameloop.test.ts:72:16
+     70|     expect(getLoopStats().droppedHours).toBe(0);
+     71|     expect(getLoopStats().errors).toBe(0);
+     72|     expect(ms).toBeLessThan(20);
+       |                ^
+     73|   });
+     74| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯⎯
+Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ ❯ Object.onTimeoutError node_modules/vitest/dist/chunks/rpc.-pEldfrD.js:53:10
+ ❯ Timeout._onTimeout node_modules/vitest/dist/chunks/index.B521nVV-.js:59:62
+ ❯ listOnTimeout node:internal/timers:588:17
+ ❯ processTimers node:internal/timers:523:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 160 passed (161)
+      Tests  1 failed | 1791 passed (1792)
+     Errors  1 error
+   Start at  23:45:40
+   Duration  212.59s (transform 10.77s, setup 2.44s, collect 127.00s, tests 1052.67s, environment 65ms, prepare 22.77s)
+
