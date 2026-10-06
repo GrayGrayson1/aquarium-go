@@ -20,7 +20,6 @@
  * (no silent state edits).
  */
 import { isAbsolute } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import {
   ADR_ID_RE,
   DECISION_EXITS,
@@ -41,6 +40,7 @@ import {
   git,
   gitOk,
   isLegacyDesignApproval,
+  isMainModule,
   legacyEventCount,
   nextSlice,
   ownerApprovalProblems,
@@ -703,7 +703,7 @@ export function checkRepository() {
   return { errors, warnings, state: { slice: s.currentSlice, task: s.currentTask, machineState: s.machineState, branch, head } };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseArgs(process.argv.slice(2), ['json', 'strict'], []);

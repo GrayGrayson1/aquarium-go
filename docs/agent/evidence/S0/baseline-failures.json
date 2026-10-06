@@ -7,48 +7,52 @@
     {
       "id": "BF-001",
       "gate": "e2e",
-      "tests": "all 47 Playwright tests (only the first two were attempted)",
+      "tests": "At the baseline: all 47 Playwright tests (only the first two were attempted). On the owner's Mac run of verify-slice.mjs on code tree 3e9ce488 (HEAD b94938f), 2026-10-06 10:15-11:39Z: tests/e2e/boot.spec.ts:5 (first launch), tests/e2e/boot.spec.ts:17 (no console-error storm) and tests/e2e/camera-freeze.spec.ts:34 (High quality) failed on timeouts.",
       "evidence": [
         "docs/agent/evidence/S0/logs/baseline-e2e.log",
         "Playwright error context (cleared from test-results/ by a later run), quoted: \"TimeoutError: browserType.launch: Timeout 180000ms exceeded. Call log: <launching> /Volumes/Dev/Caches/playwright/chromium_headless_shell-1243/chrome-headless-shell-mac-arm64/chrome-headless-shell ... --use-angle=metal --enable-gpu --ignore-gpu-blocklist --enable-webgl ... <launched> pid=64487\"",
         "Direct check in the same shell: chrome-headless-shell --headless --no-sandbox --disable-gpu --dump-dom 'data:text/html,...' printed nothing in 25 s.",
-        "Running it with the sandbox disabled was denied by the Claude Code auto-mode safety check, so the cause is inferred, not proven."
+        "Running it with the sandbox disabled was denied by the Claude Code auto-mode safety check, so the cause is inferred, not proven.",
+        "Latest: the owner's Mac run of verify-slice.mjs on code tree 3e9ce488 (HEAD b94938f), 2026-10-06 10:15-11:39Z (docs/agent/evidence/S0/logs/e2e-20261006T105750274Z.log, the manifest's e2e record, exit 1). Headless Chromium started natively on the Mac; 47 tests ran on 1 worker, 44 passed and 3 failed on timeouts: \"boot > first launch: title is visible and the canvas is not blank\" (its first test: page.goto exceeded the 120 s test timeout on a cold Vite start), and \"boot > no console-error storm during a busy session\" and \"camera modes keep rendering > photo mode and close-up toggles never freeze the canvas (High quality)\" (tearing down the browser context exceeded the 120 s test timeout)."
       ],
-      "classification": "ENVIRONMENT",
-      "detail": "Headless Chromium hangs at start-up inside the Claude Code sandboxed Bash shell on this Mac, so no e2e test reached the game. Typecheck, unit tests (151 files, 1,753 tests) and build passed in the same shell. The product's e2e status at the baseline is UNKNOWN, not failing.",
-      "nextStep": "The owner decides how browser work runs (a sandbox exception for the e2e and QA commands, or the owner running them). Then record a real baseline e2e run at 0d9fc5a or at the S0 code tree.",
+      "classification": "ENVIRONMENT (headless Chromium can't start in the Claude Code sandboxed shell). The three timeouts of the owner's Mac run on the S0 code tree are not classified yet: that needs a re-run or the owner's decision.",
+      "detail": "Headless Chromium hangs at start-up inside the Claude Code sandboxed Bash shell on this Mac, so no e2e test reached the game. Typecheck, unit tests (151 files, 1,753 tests) and build passed in the same shell. The product's e2e status at the baseline is UNKNOWN, not failing. On the owner's Mac (ADR-0012 decision 3) Chromium starts, and 44 of the 47 tests passed on the S0 code tree 3e9ce488.",
+      "nextStep": "Decided: the owner runs e2e natively on the Mac with verify-slice.mjs (ADR-0012 decision 3), and the run on the S0 code tree is recorded. Next: classify its three timeouts. A cold-start timeout of the first test is re-run once as its own run (OPERATIONS.md §8, B-003); the two context-teardown timeouts need a re-run on the final S0 tree or the owner's decision. Then e2e is GREEN, or the owner acknowledges BF-001 in an ADR (HARNESS-018 A3, CURRENT_SLICE.md acceptance criterion 3). Never loosen a timeout or add retries to get green.",
       "ownerAcknowledgement": null
     },
     {
       "id": "BF-002",
       "gate": "unit",
-      "tests": "No test fails: tests/sim/playthrough-starters.test.ts (about 62 s of synchronous simulation on a 4-core cloud container) makes Vitest report an unhandled 'Timeout calling \"onTaskUpdate\"' error, so `npm test` exits 1 with every test passing.",
+      "tests": "No test fails: tests/sim/playthrough-starters.test.ts (about 62 s of synchronous simulation on a 4-core cloud container) makes Vitest report an unhandled 'Timeout calling \"onTaskUpdate\"' error, so `npm test` exits 1 with every test passing. On the S0 code tree a single test of that file, \"balance: the long game > every facility level and a 1,000-gallon display are reachable; rent matters but never bankrupts\", ran for 68 s on the same kind of container.",
       "evidence": [
         "Cloud session 2026-10-05, HEAD 94eae78: npm test → Test Files 161 passed, Tests 1792 passed, Errors 5 ('[vitest-worker]: Timeout calling \"onTaskUpdate\"'), exit 1 (an earlier run under load: 3 errors).",
         "npx vitest run tests/sim/playthrough-starters.test.ts alone → 6 passed in 62.5 s, 1 unhandled error, exit 1.",
         "The same command at 0d9fc5a (temporary worktree, same node_modules) → 6 passed in 62.9 s, 1 unhandled error, exit 1: present at the baseline.",
         "With an afterEach that awaits setImmediate (throwaway config) → 6 passed in 61.8 s, no error, exit 0.",
-        "Vitest 3.2.7: the worker's RPC timeout is DEFAULT_TIMEOUT = 6e4 (node_modules/vitest/dist/chunks/index.B521nVV-.js) and the runner advances between tests on microtasks only."
+        "Vitest 3.2.7: the worker's RPC timeout is DEFAULT_TIMEOUT = 6e4 (node_modules/vitest/dist/chunks/index.B521nVV-.js) and the runner advances between tests on microtasks only.",
+        "Recurrence with ADR-0010's setup file in place: verify-slice unit run on S0 code tree 4d29120a in the 4-core cloud container (docs/agent/evidence/S0/logs/unit-20261005T234539917Z.log): \"Errors  1 error\", Vitest's unhandled '[vitest-worker]: Timeout calling \"onTaskUpdate\"' (:1015-1032), because the long-game test above took 68,471 ms (:591), longer than the 60 s RPC timer the setup file can't cover (code-architecture-game-2 B1; ADR-0015 decision 4).",
+        "The owner's Mac run of verify-slice.mjs on code tree 3e9ce488 (HEAD b94938f), 2026-10-06 10:15-11:39Z (docs/agent/evidence/S0/logs/unit-20261006T103000860Z.log): Test Files 163 passed, Tests 1809 passed, no \"Errors\" line, exit 0; the long-game test took 10,513 ms."
       ],
-      "classification": "ENVIRONMENT (machine speed and load); the owner's Mac passed the baseline unit gate (151 files, 1,753 tests, exit 0).",
-      "detail": "The 60 s RPC reply timer fires before the worker's event loop can read the reply when a file runs more than 60 s of synchronous tests back to back. Slower or busier machines cross that line.",
-      "nextStep": "Fixed by ADR-0010: tests/sim/setup/yield-between-tests.ts registered in vitest.config.ts setupFiles. The unit gate is re-run on the S0 tree with verify-slice.mjs.",
-      "ownerAcknowledgement": "ADR-0010 (owner chose \"Fix it (Recommended)\", 2026-10-05)"
+      "classification": "ENVIRONMENT (machine speed and load); MITIGATED, not fixed (ADR-0013 decision 2): ADR-0010's setup file stops a long file of short tests from tripping the timer, but a single test that runs synchronously for more than 60 s still does on a slow or busy machine. The owner's Mac passed the unit gate at the baseline (151 files, 1,753 tests) and on the S0 code tree 3e9ce488 (163 files, 1,809 tests), both without the error.",
+      "detail": "The 60 s RPC reply timer fires before the worker's event loop can read the reply when a file runs more than 60 s of synchronous tests back to back. Slower or busier machines cross that line. ADR-0010's setup file yields between tests, which covers a long file of short tests; one test that runs synchronously for more than 60 s still trips the timer, as the 68 s long-game test did on the 4-core container.",
+      "nextStep": "Mitigated, not fixed (ADR-0013 decision 2). The unit gate counts only from the owner's native Mac run (verify-slice.mjs in Terminal, ADR-0012 decision 3), which on code tree 3e9ce488 passed without the error; runs elsewhere are evidence only. The error on the owner's Mac would be a real failure. Never hide it with a test change, a retry or a longer timeout.",
+      "ownerAcknowledgement": "ADR-0013 decision 2 (owner chose \"Mac only (Recommended)\", 2026-10-06): the unit gate counts only from the owner's Mac, and BF-002 is acknowledged as mitigated, not fixed; earlier, ADR-0010 (owner chose \"Fix it (Recommended)\", 2026-10-05) added the setup file."
     },
     {
       "id": "BF-003",
       "gate": "unit",
       "tests": "tests/sim/core-gameloop.test.ts > core game loop tick > 10× on the big facility: one mutation per tick, keeps up, never drops time (its wall-clock assertion: median tick < 20 ms, retry 2)",
       "evidence": [
-        "verify-slice unit run on the S0 tree (docs/agent/evidence/S0/logs/unit-20261005T234539917Z.log): 1791/1792 pass; this test fails all 3 attempts with median 34.57, 24.03, 23.39 ms while 4 Vitest workers share the container's 4 cores.",
+        "verify-slice unit run on the S0 tree (docs/agent/evidence/S0/logs/unit-20261005T234539917Z.log): 1791/1792 pass; this test fails all 3 attempts with median 34.57, 24.03, 23.39 ms while 4 Vitest workers share the container's 4 cores. The same run also reports BF-002's unhandled 'Timeout calling \"onTaskUpdate\"' error (\"Errors  1 error\", :1015-1032), so it would have exited 1 even with this test passing.",
         "The same file alone, 3 runs each, same container: HEAD 15.45, 14.36, 15.57 ms; 0d9fc5a 14.84, 14.97/13.01, 15.38 ms. No regression from S0.",
         "Full `npx vitest run` at 0d9fc5a in a temporary worktree, same container: this test fails all 3 attempts (27.30, 26.39, 26.17 ms); 1 failed | 1752 passed, plus 4 BF-002 errors: present at the baseline.",
-        "Owner's Mac baseline (docs/agent/evidence/S0/manifest.json, unit): 151 files, 1753 tests passed, exit 0."
+        "Owner's Mac baseline (docs/agent/evidence/S0/manifest.json, unit): 151 files, 1753 tests passed, exit 0.",
+        "The owner's Mac run of verify-slice.mjs on code tree 3e9ce488 (HEAD b94938f), 2026-10-06 10:15-11:39Z (docs/agent/evidence/S0/logs/unit-20261006T103000860Z.log): this test passes with a median tick of 5.56 ms (mean 6.44 ms); 163 files and 1809 tests pass, no \"Errors\" line, exit 0."
       ],
-      "classification": "ENVIRONMENT (CPU count and speed under full-suite parallel load); not an S0 regression.",
+      "classification": "ENVIRONMENT (CPU count and speed under full-suite parallel load); not an S0 regression. Acknowledged by the owner (ADR-0013 decision 2).",
       "detail": "The test measures wall-clock time per game-loop tick. On a 4-core cloud container running 4 Vitest workers, the median roughly doubles; its retries don't help because the load lasts for the whole suite. Alone it is at about 15 ms, inside the 20 ms budget.",
-      "nextStep": "Owner decision (asked with the session's open questions): count the unit gate from the owner's Mac (where step 9 runs e2e on the same tree), or isolate wall-clock tests from parallel load. Never loosen the 20 ms budget or add retries to get green.",
-      "ownerAcknowledgement": null
+      "nextStep": "Decided by ADR-0013 decision 2: the unit gate counts only from the owner's native Mac run (verify-slice.mjs in Terminal, ADR-0012 decision 3), and runs elsewhere are evidence only. The Mac run on code tree 3e9ce488 passed. Never loosen the 20 ms budget or add retries to get green; a failure on the owner's Mac is a real failure.",
+      "ownerAcknowledgement": "ADR-0013 decision 2 (owner chose \"Mac only (Recommended)\", 2026-10-06): the unit gate counts only from the owner's native Mac run, with no test change, loosened budget or retry."
     }
   ]
 }

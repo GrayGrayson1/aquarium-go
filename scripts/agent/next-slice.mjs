@@ -13,8 +13,7 @@
  * NEXT_SLICE → MULTIPLAYER_READINESS_GATE instead.
  */
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { GATE_COMMANDS, PATHS, SLICES, abs, exists, nowIso, parseArgs, readJson, readText, writeJson } from './lib.mjs';
+import { GATE_COMMANDS, PATHS, SLICES, abs, exists, isMainModule, nowIso, parseArgs, readJson, readText, writeJson } from './lib.mjs';
 import { emptyManifest, saveManifest } from './evidence.mjs';
 
 export const MANDATORY_REVIEWERS = ['code-architecture', 'adversarial'];
@@ -45,7 +44,7 @@ export function nextState(state, { reviewers, browser = true }) {
   };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   try {
     const args = parseArgs(process.argv.slice(2), ['noBrowser'], ['reviewers']);
     if (typeof args.reviewers !== 'string') throw new Error('--reviewers a,b,c is required');

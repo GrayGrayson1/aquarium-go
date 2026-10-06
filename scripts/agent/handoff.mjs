@@ -10,9 +10,8 @@
  * (verified complete, verified failing, risks, exact next legal action, owner questions) stay as the orchestrator
  * wrote them.
  */
-import { pathToFileURL } from 'node:url';
 import { writeFileSync } from 'node:fs';
-import { PATHS, abs, exists, git, nowIso, parseArgs, parseLedger, readJson, readText } from './lib.mjs';
+import { PATHS, abs, exists, git, isMainModule, nowIso, parseArgs, parseLedger, readJson, readText } from './lib.mjs';
 import { loadManifest } from './evidence.mjs';
 
 export const START = '<!-- generated:start -->';
@@ -79,7 +78,7 @@ export function buildBlock() {
   return lines.join('\n');
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseArgs(process.argv.slice(2), ['write'], []);

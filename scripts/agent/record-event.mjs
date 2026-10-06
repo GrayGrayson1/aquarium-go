@@ -35,8 +35,7 @@
  * docs/agent/evidence/ (the passing run) and resets the counters of the defect it resolves. Exits 1, writing nothing,
  * when the event is invalid.
  */
-import { pathToFileURL } from 'node:url';
-import { EVENT_KINDS, PATHS, appendEvent, checkTransition, currentSession, exists, git, nowIso, ownerApprovalProblems, parseArgs, parseLedger, readJson, readText, showAt, writeJson } from './lib.mjs';
+import { EVENT_KINDS, PATHS, appendEvent, checkTransition, currentSession, exists, git, isMainModule, nowIso, ownerApprovalProblems, parseArgs, parseLedger, readJson, readText, showAt, writeJson } from './lib.mjs';
 import { checkpointBackingProblems, checkpointTagCommits, manifestOf, repairCounts } from './check-state.mjs';
 import { codeTreeOf, loadManifest, saveManifest } from './evidence.mjs';
 
@@ -129,7 +128,7 @@ function commitOf(ref) {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseArgs(process.argv.slice(2), BOOLEANS, ALLOWED);

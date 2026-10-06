@@ -74,7 +74,7 @@ These decisions are locked unless the owner explicitly changes them later.
 - The next mega-slice begins automatically after the previous one is accepted.
 - There is no routine owner interruption between green local slices.
 - No push, PR, remote merge, deploy, production migration, remote secret mutation, package/store publishing, or other mutating remote action is allowed without owner approval.
-- The repo has two deploy channels: GitHub Pages (any push to `main`) and the Render static site (`render.yaml`, deployed through the Render CLI or API). `OPERATIONS.md` §3 lists everything that counts as a remote action, and §2 defines a valid owner approval: the owner's own words in a top-level session, recorded verbatim in an ADR.
+- The repo has two deploy channels: GitHub Pages (any push to `main`) and the Render static site (`render.yaml`, deployed through the Render CLI or API, and possibly by any push to `main` too, because it sets `autoDeploy: true`). `OPERATIONS.md` §3 lists everything that counts as a remote action, and §2 defines a valid owner approval: the owner's own words in a top-level session, recorded verbatim in an ADR.
 - Read-only network activity for documentation, package/API verification and research is allowed.
 
 ### 3.2 Context and agents
@@ -150,7 +150,7 @@ Such changes must:
 
 This does not authorize remote release.
 
-It also doesn't cover the files that define the gates: `package.json` scripts, `tsconfig*.json`, `vitest.config.ts`, `playwright.config.ts`, `.github/**`, `render.yaml` and `scripts/agent/**`. Changing one of those needs an ADR and an independent reviewer's sign-off on that diff, and the deploy files also appear in the owner package. Harness files listed in `PROTECTED.json` change only as `OPERATIONS.md` §10 says.
+It also doesn't cover the files that define the gates: `package.json` scripts, every `tsconfig*.json`, `vitest.config.ts` and the setup files it loads (`tests/sim/setup/`), `playwright.config.ts`, `.gitignore` (it decides which files Git, and so the code tree and the checks, can see), `.github/**`, `render.yaml` and `scripts/agent/**`. Changing one of those needs an ADR and an independent reviewer's sign-off on that diff, and the deploy files also appear in the owner package. All of them (the whole of `package.json`) and the harness files are protected in `PROTECTED.json`: they change only as `OPERATIONS.md` §10 says, with the owner's approval in the ADR.
 
 ### 3.9 UX authority
 
@@ -1682,7 +1682,7 @@ External research may inform decisions but does not silently override the approv
 
 The master should be changed rarely.
 
-Only the owner changes this master, `OPERATIONS.md`, `README_FIRST.md`, `AGENTS.md`, `CLAUDE.md`, the prompts and the owner-decision ADRs; agents propose a change as an ADR. Those files, plus the templates, design contracts and `scripts/agent/`, are hashed in `PROTECTED.json`, and `check-state.mjs` fails when one changes without `protect.mjs --update --adr <ADR>` (`OPERATIONS.md` §10).
+Only the owner changes this master, `OPERATIONS.md`, `README_FIRST.md`, `AGENTS.md`, `CLAUDE.md`, the prompts, `package.json`, `.github/**` and `render.yaml` (the owner-only files, `OWNER_ONLY` in `protect.mjs`); agents propose a change as an ADR. Accepted ADRs are never edited: a later ADR supersedes them. Those files, plus the ADRs, templates, design files, `scripts/agent/` and the other gate-defining files (§3.8), are hashed in `PROTECTED.json`. `check-state.mjs` and `protect.mjs` fail when one changes, disappears or appears until `protect.mjs --update --adr <ADR>` records it, and that update needs an ADR that records the owner's approval word for word and names each owner-only file it lets change (`OPERATIONS.md` §10).
 
 A normal implementation discovery belongs in an ADR or slice contract.
 

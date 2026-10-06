@@ -13,7 +13,9 @@ last ledger events.
 ## Relevant ADRs
 ## Risks
 ## Owner questions
-Each with options and a recommendation; unanswered questions keep `ownerGateRequired` set.
+Each with options and a recommendation. An open question doesn't set `ownerGateRequired`: `record-event.mjs` sets it
+on the move to `OWNER_GATE`, made only when nothing else can proceed or the slice can't be accepted without the
+answer (`OPERATIONS.md` §2).
 ## Exact next legal action
 ## Required first reads
 `docs/agent/README_FIRST.md` (canonical order), plus anything this handoff adds.

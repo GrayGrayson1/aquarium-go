@@ -19,8 +19,7 @@
  * editing it by hand is caught; --update refuses to start from such a hand-edited or deleted record (updateProblems).
  */
 import { writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { PATHS, abs, adrStatus, appendEvent, approvalTextProblems, exists, findAdr, git, hasOwnerApproval, nowIso, ownerApprovalProblems, parseArgs, parseLedger, readJson, readText, sha256File, sha256Text, showAt } from './lib.mjs';
+import { PATHS, abs, adrStatus, appendEvent, approvalTextProblems, exists, findAdr, git, hasOwnerApproval, isMainModule, nowIso, ownerApprovalProblems, parseArgs, parseLedger, readJson, readText, sha256File, sha256Text, showAt } from './lib.mjs';
 
 export { adrStatus, hasOwnerApproval };
 
@@ -152,7 +151,7 @@ export function verifyProtected() {
   return r;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseArgs(process.argv.slice(2), ['update'], ['adr']);

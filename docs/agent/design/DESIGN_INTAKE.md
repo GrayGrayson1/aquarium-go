@@ -22,7 +22,8 @@ Every design has one entry in `docs/agent/design/DESIGN_REGISTRY.json`:
 | `SUPERSEDED` | Replaced by a newer approved design (record which sections). |
 | `REJECTED` | The owner decided not to use it. |
 
-Only the owner moves a design to `APPROVED`. The approval is recorded word for word in an ADR, like ADR-0002.
+Only the owner moves a design to `APPROVED`. The approval is recorded word for word in the "## Owner approval"
+section of an ADR, like ADR-0016 (step 5).
 
 ## Intake steps
 
@@ -40,9 +41,19 @@ Only the owner moves a design to `APPROVED`. The approval is recorded word for w
    against `src/data/**` and `src/types/**` (master §45 says S3-D names must be reconciled, not invented).
    Mismatches are listed in INTAKE.md.
 4. **Independent review.** A reviewer subagent that did not write INTAKE.md checks it against the design files
-   and the code, and returns GREEN, YELLOW or RED.
+   and the code, and returns GREEN, YELLOW or RED. Each intake review writes its report to
+   `docs/agent/evidence/<current slice>/reviews/design-intake-<n>.md`, ending with the verdict line, and is recorded
+   with a ledger event (`record-event.mjs --kind review`, the report as `--evidence`), not in the slice manifest: a
+   design intake review doesn't judge the slice's code tree, and `check-state.mjs` requires every report series in
+   the manifest to end GREEN on the accepted tree.
 5. **Owner approval.** The owner reads INTAKE.md and approves, changes or rejects it. Record the answer verbatim
-   in a new ADR, set the status, and fill in `approval`.
+   in a new ADR whose "## Owner approval" section names the design id, then commit the ADR and list it in
+   `decisions/INDEX.md`. Set the status, and fill in `approval`, citing that ADR before any other. `check-state.mjs`
+   accepts an `APPROVED` entry only when the first ADR its `approval` cites is the owner's approval
+   (`OPERATIONS.md` §2) and names the design id (the script finds the id anywhere in the ADR), and its `path` exists.
+   Then run `protect.mjs --update --adr <that ADR>`: `design/` is protected, so the files steps 1 and 2 add and
+   every registry change fail `protect.mjs` and `check-state.mjs` until an update records them
+   (`OPERATIONS.md` §10).
 6. **Traceability.** Add requirement ids (`DES-*`, `AUTO-*` and so on) to `REQUIREMENTS.json` for every
    normative behaviour, add the test ids to a new section of `docs/TEST_IDS.md`, and update the affected slice
    contract. Unaffected contracts stay as they are (master §8).

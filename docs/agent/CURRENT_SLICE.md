@@ -21,8 +21,8 @@ HARNESS-010, HARNESS-011, HARNESS-012, HARNESS-013, HARNESS-014, HARNESS-015, HA
 HARNESS-019, HARNESS-020, HARNESS-021 and HARNESS-022; the standing rules HARNESS-008, HARNESS-023, HARNESS-024,
 HARNESS-025, HARNESS-026, HARNESS-027, HARNESS-028, HARNESS-029, REL-001, REL-003, CONST-001, PERSIST-002 and
 PERSIST-003 (implemented in S1 by PERSIST-014); the S0 game fixes PERSIST-009, PERSIST-010, PERSIST-011, PERSIST-012,
-PERSIST-013, MKT-016 and CONST-004; GEN-013 (rarity report). PERSIST-001 is superseded (ADR-0005 decision 1), and
-PERSIST-011 is the S0 part of PERSIST-004 (S4).
+PERSIST-013, PERSIST-015, MKT-016 and CONST-004; GEN-013 (rarity report). PERSIST-001 is superseded (ADR-0005
+decision 1), and PERSIST-011 is the S0 part of PERSIST-004 (S4).
 
 ## Governing decisions
 ADR-0001 (owner operating decisions), ADR-0002 (owner decisions from the harness review), ADR-0003 (harness revision
@@ -48,7 +48,7 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 | S0-T5 | Reconcile the design with the master and the code; design registry and intake | HARNESS-003, HARNESS-020, HARNESS-021 | DONE, pending independent review (ADR-0003, `design/DESIGN_REGISTRY.json`) |
 | S0-T6 | Decompose master §9 and the design into the requirements registry | HARNESS-011 | DONE: draft merged into REQUIREMENTS.json (`5ae85a3`), pending a fresh requirements reviewer |
 | S0-T7 | Repair the harness documents found inconsistent by the adversarial review | HARNESS-004, HARNESS-009, HARNESS-021 | DONE (`62df438`; corrections under owner-approved ADR-0008, `1a74863`), pending independent review |
-| S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | HARNESS-022, PERSIST-002, PERSIST-003, PERSIST-009, PERSIST-010, PERSIST-011, PERSIST-012, PERSIST-013, MKT-016, CONST-004 | Fixes DONE (`3e00a32`, `58ae313`, `6347c5d` + `d98731d`, `16233a1`, `c774d38`, `f999618`, `d8fb896`; test repair `9edfa12`, D-S0-1), pending independent review; BACKLOG.md written (`1a74863`) |
+| S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | HARNESS-022, PERSIST-002, PERSIST-003, PERSIST-009, PERSIST-010, PERSIST-011, PERSIST-012, PERSIST-013, PERSIST-015, MKT-016, CONST-004 | Fixes DONE (`3e00a32`, `58ae313`, `6347c5d` + `d98731d`, `16233a1`, `c774d38`, `f999618`, `d8fb896`; test repair `9edfa12`, D-S0-1; repair round 1 `9e1bf66`, ADR-0015: forward-safe saves, PERSIST-009 residuals, B-001 as PERSIST-015), pending independent review; BACKLOG.md written (`1a74863`) |
 | S0-T9 | Gate configuration: e2e server reuse opt-in, e2e typecheck, required assertions, no focused tests | HARNESS-006, HARNESS-018, HARNESS-028 | DONE, pending independent review |
 | S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | HARNESS-022, HARNESS-025, HARNESS-026, HARNESS-028; all S0 | IN PROGRESS: round 1 RED (requirements-3, code-architecture-game-2, code-architecture-harness-2, security-data-2); repairs D-S0-6 to D-S0-14 applied (ADR-0015); D-S0-3 to D-S0-5 open; adversarial after the fixes |
 | S0-T11 | Fresh-session bootstrap test: a new session's assertion passes `bootstrap-check.mjs` | HARNESS-001, HARNESS-002 | DONE: the Cowork session's assertion (`evidence/S0/bootstrap-20261006T012944Z.json`) passed `bootstrap-check.mjs`, recorded in the manifest (label `bootstrap-check`) |

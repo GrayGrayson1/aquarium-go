@@ -23,8 +23,7 @@
  * written before the commit that contains it.
  */
 import { isAbsolute } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { PATHS, currentSession, exists, git, gitOk, parseLedger, readJson, readText } from './lib.mjs';
+import { PATHS, currentSession, exists, git, gitOk, isMainModule, parseLedger, readJson, readText } from './lib.mjs';
 import { NON_CODE_PATHS } from './evidence.mjs';
 
 export const MANDATED_READS = [
@@ -86,7 +85,7 @@ export function checkAssertion(a, { state, head, branch, events, session = null,
   return errors;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   const file = process.argv[2];
   if (!file || !exists(file)) {
     console.error('Usage: node scripts/agent/bootstrap-check.mjs <assertion.json>');

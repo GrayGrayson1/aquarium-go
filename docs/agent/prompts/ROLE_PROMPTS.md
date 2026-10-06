@@ -3,9 +3,13 @@
 Each reviewer is a fresh subagent. Give it this role text verbatim, then only: the slice contract
 (`CURRENT_SLICE.md`), the requirement subset, the design excerpt, how to see the diff (`git diff <base>..<candidate>`
 plus untracked files, or a detached worktree at the candidate commit), the evidence paths, and the path of the report
-file it must write (`docs/agent/evidence/<slice>/reviews/<role>-<n>.md`). Never give a reviewer the builder's
-summary, `HANDOFF.md`, the ledger or commit messages. Record its verdict unchanged with
-`node scripts/agent/capture-evidence.mjs --review --role <role> --verdict <V> --report <path>`.
+file it must write (`docs/agent/evidence/<slice>/reviews/<role>-<n>.md`, where `<n>` counts up within that report
+series; a role reviewed in parts gets one series per part, such as S0's `code-architecture-game-<n>.md`). Never give
+a reviewer the builder's summary, `HANDOFF.md`, the ledger or commit messages. Record its verdict unchanged with
+`node scripts/agent/capture-evidence.mjs --review --role <role> --verdict <V> --report <path> --candidate <commit>`,
+where `<commit>` is the commit it reviewed; the script refuses a commit whose code tree isn't the working code's.
+At acceptance the latest report of every series must be GREEN on the accepted tree (`OPERATIONS.md` §6 and §7). A
+design-intake verdict goes to the ledger instead (`design/DESIGN_INTAKE.md` step 4).
 
 Every reviewer: is read-only except for its one report file; checks claims itself (opens the files, runs the targeted
 tests it needs); gives file-level findings with severity; and ends the report with a line `Verdict: GREEN`,

@@ -10,7 +10,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -434,6 +434,24 @@ export const nowIso = () => new Date().toISOString();
 
 /** The Claude Code session running this script (null outside Claude Code). Used to prove fresh-context rollovers. */
 export const currentSession = () => process.env.CLAUDE_CODE_SESSION_ID ?? null;
+
+/**
+ * True when the module at `moduleUrl` (a script passes its import.meta.url) is the script this process was started
+ * with, so a CLI runs its main block only then and not when another script imports it (D-S0-15). Node gives the main
+ * module's import.meta.url its real path (symlinks resolved, unless --preserve-symlinks-main) but keeps any symlink in
+ * process.argv[1], so comparing the two unresolved made every CLI exit 0 without doing anything whenever it was
+ * reached through a symlink: on macOS, everything under os.tmpdir() (/var is a symlink to /private/var). Both
+ * sides are compared as real paths. Without an argv[1] (node -e, the REPL), or with one that doesn't resolve, no module
+ * is the main one.
+ */
+export function isMainModule(moduleUrl, argv1 = process.argv[1]) {
+  if (!argv1) return false;
+  try {
+    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argv1);
+  } catch {
+    return false;
+  }
+}
 
 /** Parse LEDGER.jsonl text. Blank lines are errors too: the ledger is one JSON object per line. */
 export function parseLedger(text) {

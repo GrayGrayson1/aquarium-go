@@ -14,8 +14,7 @@
  */
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { PATHS, ROOT, exists, git, nowIso, parseArgs, readJson, readText } from './lib.mjs';
+import { PATHS, ROOT, exists, git, isMainModule, nowIso, parseArgs, readJson, readText } from './lib.mjs';
 
 const MASTER = 'docs/agent/AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md';
 const DESIGN = 'docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md';
@@ -105,7 +104,7 @@ export function buildPack({ forReviewer = false } = {}) {
   return `${parts.join('\n\n')}\n`;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseArgs(process.argv.slice(2), [], ['out', 'for']);

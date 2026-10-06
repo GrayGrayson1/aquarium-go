@@ -25,8 +25,7 @@
  *     --machine "M4 Pro, Chrome headless" --quality high --population "12 tanks"
  */
 import { existsSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-import { PATHS, abs, git, nowIso, parseArgs, readJson, readText, sha256File } from './lib.mjs';
+import { PATHS, abs, git, isMainModule, nowIso, parseArgs, readJson, readText, sha256File } from './lib.mjs';
 import { codeTreeOf, loadManifest, recordFile, runAndRecord, saveManifest } from './evidence.mjs';
 
 const REVIEW_VERDICTS = ['GREEN', 'YELLOW', 'RED'];
@@ -74,7 +73,7 @@ export function candidateProblems(candidate, candidateTree, workingTree) {
 
 const list = (v) => (v == null ? [] : [].concat(v).map(String));
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseArgs(process.argv.slice(2), ['browser', 'review', 'perf', 'help'], ['command', 'label', 'req', 'slice', 'route', 'viewport', 'fixture', 'actions', 'expected', 'observed', 'consoleErrors', 'screenshot', 'role', 'verdict', 'report', 'reviewer', 'candidate', 'scenario', 'metric', 'baseline', 'machine', 'quality', 'population', 'file', 'kind']);

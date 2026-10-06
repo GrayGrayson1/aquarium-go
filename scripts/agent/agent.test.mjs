@@ -12,10 +12,11 @@
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { pathToFileURL } from 'node:url';
 import {
   GATE_COMMANDS,
   LEGACY_DESIGN_APPROVALS,
@@ -32,6 +33,7 @@ import {
   indexOwnerDecision,
   isLegacyDesignApproval,
   isLegalTransition,
+  isMainModule,
   legacyEventCount,
   namesPath,
   nextSlice,
@@ -254,6 +256,54 @@ test('cli: every script that takes options refuses an unknown one before doing a
     }
   }
   assert.equal(fingerprint(), before, 'a refused command wrote a harness file');
+});
+
+test('lib: isMainModule compares real paths: the script itself, through a symlink either way, but no other file, a missing path or no argv[1] (D-S0-15)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'aq-main-'));
+  try {
+    mkdirSync(join(dir, 'real'));
+    symlinkSync(join(dir, 'real'), join(dir, 'link'), 'dir');
+    for (const f of ['cli.mjs', 'other.mjs']) writeFileSync(join(dir, 'real', f), '');
+    const real = join(dir, 'real', 'cli.mjs');
+    const linked = join(dir, 'link', 'cli.mjs');
+    const url = pathToFileURL(real).href;
+    assert.equal(isMainModule(url, real), true);
+    // Started through a symlinked directory, as on macOS: import.meta.url has the real path, argv[1] the link.
+    assert.equal(isMainModule(url, linked), true);
+    // Started with --preserve-symlinks-main: import.meta.url keeps the link.
+    assert.equal(isMainModule(pathToFileURL(linked).href, real), true);
+    assert.equal(isMainModule(url, join(dir, 'real', 'other.mjs')), false);
+    assert.equal(isMainModule(url, join(dir, 'link', 'other.mjs')), false);
+    assert.equal(isMainModule(url, join(dir, 'real', 'missing.mjs')), false);
+    for (const none of [null, '']) assert.equal(isMainModule(url, none), false);
+    assert.equal(isMainModule('data:text/javascript,export%20default%201', real), false);
+    // This process was started on a test file, so lib.mjs is not its main module.
+    assert.equal(isMainModule(new URL('./lib.mjs', import.meta.url).href), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('lib: a script started through a symlinked directory runs its main block; imported, or with no argv[1], it does not (D-S0-15)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'aq-main-'));
+  try {
+    mkdirSync(join(dir, 'real'));
+    symlinkSync(join(dir, 'real'), join(dir, 'link'), 'dir');
+    const libUrl = new URL('./lib.mjs', import.meta.url).href;
+    writeFileSync(join(dir, 'real', 'cli.mjs'), `import { isMainModule } from ${JSON.stringify(libUrl)};\nif (isMainModule(import.meta.url)) {\n  console.log('main block ran');\n  process.exit(3);\n}\n`);
+    writeFileSync(join(dir, 'real', 'importer.mjs'), "import './cli.mjs';\nconsole.log('imported');\n");
+    const runs = (args, status, stdout) => {
+      const r = spawnSync(process.execPath, args, { cwd: dir, encoding: 'utf8', timeout: 30000 });
+      assert.deepEqual([r.status, r.stdout.trim()], [status, stdout], `node ${args.join(' ')}\n${r.stderr}`);
+    };
+    runs([join(dir, 'real', 'cli.mjs')], 3, 'main block ran');
+    runs([join(dir, 'link', 'cli.mjs')], 3, 'main block ran');
+    runs(['--preserve-symlinks-main', join(dir, 'link', 'cli.mjs')], 3, 'main block ran');
+    runs([join(dir, 'link', 'importer.mjs')], 0, 'imported');
+    runs(['-e', `import(${JSON.stringify(pathToFileURL(join(dir, 'link', 'cli.mjs')).href)})`], 0, '');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -19,8 +19,7 @@
  * In the prepared NEXT_SLICE state that next-slice.mjs leaves (lib.mjs evidenceScope, as check-state.mjs judges it),
  * the audit judges the accepted predecessor: its requirements must be closed, and the new slice's claim nothing yet.
  */
-import { pathToFileURL } from 'node:url';
-import { PATHS, committedVersions, evidenceScope, exists, findAdr, parseArgs, parseLedger, readJson, readText } from './lib.mjs';
+import { PATHS, committedVersions, evidenceScope, exists, findAdr, isMainModule, parseArgs, parseLedger, readJson, readText } from './lib.mjs';
 import { auditRequirements, sliceHeaderProblems } from './requirements.mjs';
 
 export { auditRequirements };
@@ -44,7 +43,7 @@ export function auditView(state, lastTransition) {
   return scope.prepared ? { ...state, currentSlice: scope.acceptedSlice } : state;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseArgs(process.argv.slice(2), ['json'], []);

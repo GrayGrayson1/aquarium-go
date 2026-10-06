@@ -29,14 +29,18 @@ This is the one canonical order; master §15 and the orchestrator prompt point h
 Then run `node scripts/agent/check-state.mjs`, write the bootstrap assertion described in `prompts/KICKOFF.md`, and
 check it with `node scripts/agent/bootstrap-check.mjs <file>` before editing anything.
 
-Items 1-11 come to roughly 70 KB. Builder and reviewer subagents get a compact pack instead:
-`node scripts/agent/context-pack.mjs`.
+Items 1-11 come to several hundred KB and grow with the project: about 430 KB on 2026-10-06 (S0), counting the ADRs
+the slice and handoff cite, the design sections the slice cites and only the S0 and ALL entries of
+`REQUIREMENTS.json` (about 650 KB with the whole file).
+Builder and reviewer subagents get a compact pack instead: `node scripts/agent/context-pack.mjs` for builders, and
+`node scripts/agent/context-pack.mjs --for reviewer` for reviewers (without the handoff).
 
 ## Remote-state prohibition
 
 No push, PR, merge, deploy, remote migration, secret mutation, publishing, or app-store action without explicit owner
-approval recorded word for word in an ADR. This repo has two live sites (GitHub Pages on a push to `main`, and Render
-through its CLI or API); `OPERATIONS.md` §3 lists everything that counts as remote.
+approval recorded word for word in an ADR. This repo has two live sites: GitHub Pages deploys on a push to `main`, and
+Render through its CLI or API and possibly on a push to `main` too (`render.yaml` sets `autoDeploy: true`).
+`OPERATIONS.md` §3 lists everything that counts as remote.
 
 ## If documentation and code disagree
 

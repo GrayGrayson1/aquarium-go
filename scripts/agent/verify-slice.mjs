@@ -11,8 +11,7 @@
  * This script can never mark independentReview or browserQa: those need a reviewer's recorded verdict.
  * The e2e gate always starts its own server: E2E_REUSE is removed from its environment (OPERATIONS.md §8).
  */
-import { pathToFileURL } from 'node:url';
-import { GATE_COMMANDS, PATHS, nowIso, parseArgs, readJson, writeJson } from './lib.mjs';
+import { GATE_COMMANDS, PATHS, isMainModule, nowIso, parseArgs, readJson, writeJson } from './lib.mjs';
 import { runAndRecord } from './evidence.mjs';
 
 /** The script's options; an unknown or mistyped one throws instead of running every gate. */
@@ -30,7 +29,7 @@ export function selectGates(state, requested) {
   return all.filter((g) => !['NOT_APPLICABLE', 'NOT_YET_REQUIRED'].includes(state.gates[g]));
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseVerifyArgs(process.argv.slice(2));

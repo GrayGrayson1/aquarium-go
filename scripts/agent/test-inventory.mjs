@@ -21,8 +21,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { PATHS, ROOT, SLICES, abs, exists, findAdr, git, nowIso, parseArgs, readJson, writeJson } from './lib.mjs';
+import { PATHS, ROOT, SLICES, abs, exists, findAdr, git, isMainModule, nowIso, parseArgs, readJson, writeJson } from './lib.mjs';
 import { codeTreeOf, recordFile } from './evidence.mjs';
 
 /**
@@ -260,7 +259,7 @@ export function referenceInventoryPath(slice) {
   return null;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   let args;
   try {
     args = parseArgs(process.argv.slice(2), ['write', 'baseline'], []);

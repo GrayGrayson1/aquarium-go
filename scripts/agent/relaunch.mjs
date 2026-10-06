@@ -30,8 +30,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, statSync, writeSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { PATHS, ROOT, STOP_STATES, appendEvent, exists, git, nowIso, parseArgs, parseLedger, positiveInt, positiveNumber, readJson, readText, sha256File, sha256Text } from './lib.mjs';
+import { PATHS, ROOT, STOP_STATES, appendEvent, exists, git, isMainModule, nowIso, parseArgs, parseLedger, positiveInt, positiveNumber, readJson, readText, sha256File, sha256Text } from './lib.mjs';
 import { checkRepository } from './check-state.mjs';
 import { currentHashes, verifyProtected } from './protect.mjs';
 
@@ -522,7 +521,7 @@ async function main() {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+if (isMainModule(import.meta.url)) {
   main().then(
     (code) => process.exit(code),
     (e) => {

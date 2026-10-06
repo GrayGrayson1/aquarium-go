@@ -9,16 +9,18 @@
  * gate scripts pass or fail on demand, so nothing is installed or fetched. Nothing is written into this repository,
  * nothing reaches the network, the fixtures' git reads neither the user's nor the system's git config (no signing, no
  * hooks), and no `git push` is ever run (the relaunch origin is a bare clone). Each test names the guard it pins.
+ * The D-S0-15 tests reach a fixture through a symlink, as every fixture is reached on macOS (os.tmpdir() is under /var,
+ * a symlink to /private/var), and check that the scripts still run there.
  *
  * Stages, built once and copied per test: "implement" (S0 in IMPLEMENT, protected hashes recorded), "accept" (every gate
  * run and GREEN, both mandatory reviews GREEN, ADVERSARIAL_REVIEW → ACCEPT, uncommitted), "checkpoint" (the checkpoint
  * commit and tag, ACCEPT → CHECKPOINT recorded, uncommitted) and "prepared" (CHECKPOINT → … → NEXT_SLICE, next-slice.mjs
- * run for S1, committed).
+ * run for S1, committed). If the build fails, every test that needs the stages fails with that first error.
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { after, test } from 'node:test';
@@ -256,8 +258,22 @@ function buildStages() {
   return { implement: g, accept: a, checkpoint: c, prepared: p, baseline, harness, checkpointSha: checkpoint };
 }
 
+/**
+ * The stages, built on first use. A failed build is remembered as well, so every later test reports its original error
+ * instead of building again into the half-built stage-implement directory and failing with EEXIST (D-S0-15).
+ */
 let built = null;
-const stages = () => (built ??= buildStages());
+function stages() {
+  if (!built) {
+    try {
+      built = { stages: buildStages() };
+    } catch (error) {
+      built = { error };
+    }
+  }
+  if (built.error) throw built.error;
+  return built.stages;
+}
 
 /** Run `fn` on a fresh copy of a stage, removed afterwards. */
 function inStage(stage, fn) {
@@ -303,6 +319,88 @@ test('record-event: entering NEXT_SLICE needs this session\'s id (F5 record-even
     for (const [from, to] of [['CHECKPOINT', 'COMPACT'], ['COMPACT', 'HANDOFF']]) assertDone(move(dir, from, to));
     assertRefused(move(dir, 'HANDOFF', 'NEXT_SLICE'), "entering NEXT_SLICE needs this session's id");
     assertDone(move(dir, 'HANDOFF', 'NEXT_SLICE', [], { CLAUDE_CODE_SESSION_ID: 'closing-session' }));
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// The scripts run when the repository is reached through a symlink (D-S0-15)
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Run `fn` on a fresh copy of a stage that it reaches only through a symlink, as every fixture is reached on macOS.
+ * Node gives the script it starts an import.meta.url with the real path but keeps process.argv[1] as given, and the
+ * scripts' old main-module check, which compared the two unresolved, made each of them exit 0 there without running.
+ */
+function throughSymlink(stage, fn) {
+  return inStage(stage, (dir) => {
+    const link = `${dir}-link`;
+    symlinkSync(dir, link, 'dir');
+    try {
+      return fn(link);
+    } finally {
+      rmSync(link, { force: true });
+    }
+  });
+}
+
+test('fixtures: reached through a symlink, record-event, protect, check-state and requirements-audit still run, and fail where the repository is broken (D-S0-15)', () => {
+  throughSymlink('implement', (link) => {
+    // A sound repository: each gate prints its verdict (behind the old main-module check, each printed nothing, exit 0).
+    const protect = agent(link, 'protect');
+    assertDone(protect);
+    assert.match(protect.stdout, /^OK$/m);
+    assertClean(checkState(link));
+    const audit = agent(link, 'requirements-audit');
+    assertDone(audit);
+    assert.match(audit.stdout, /^OK$/m);
+    // record-event records the event and moves STATE (the first silent no-op of the stage build on the owner's Mac).
+    const before = ledgerEvents(link).length;
+    assertDone(move(link, 'IMPLEMENT', 'TARGETED_VERIFY'));
+    assert.equal(ledgerEvents(link).length, before + 1);
+    assert.equal(getJson(link, 'docs/agent/STATE.json').machineState, 'TARGETED_VERIFY');
+    // A broken repository fails each gate instead of passing it silently.
+    appendFileSync(join(link, 'scripts/agent/ok.test.mjs'), '// edited\n');
+    assertRefused(agent(link, 'protect'), 'protected file scripts/agent/ok.test.mjs changed without a recorded approval');
+    const r = checkState(link);
+    assertHas(r.errors, 'protected file scripts/agent/ok.test.mjs changed without a recorded approval');
+    assert.equal(r.status, 1);
+    put(link, 'docs/agent/CURRENT_SLICE.md', '# CURRENT SLICE — S9\n\nHARNESS-001\n');
+    assertRefused(agent(link, 'requirements-audit'), 'CURRENT_SLICE.md does not name the current slice S0 in its header');
+  });
+});
+
+test('fixtures: reached through a symlink, every harness CLI runs its main block instead of exiting 0 without a word (D-S0-15)', () => {
+  // Refusing an unknown option is something only a script's main block does. relaunch shows its dry run instead, in
+  // relaunchIn's box, where no real claude can be reached.
+  const refusals = {
+    'bootstrap-check': 'Usage: node scripts/agent/bootstrap-check.mjs <assertion.json>',
+    'capture-evidence': 'unknown option --no-such-option',
+    'check-state': 'unknown option --no-such-option',
+    'context-pack': 'unknown option --no-such-option',
+    'diff-check': 'unknown option --no-such-option',
+    handoff: 'unknown option --no-such-option',
+    'next-slice': 'unknown option --no-such-option',
+    protect: 'unknown option --no-such-option',
+    'record-event': 'unknown option --no-such-option',
+    'requirements-audit': 'usage: requirements-audit.mjs',
+    'test-inventory': 'unknown option --no-such-option',
+    'verify-slice': 'unknown option --no-such-option',
+  };
+  throughSymlink('implement', (link) => {
+    // Every script but the three libraries is a CLI, and every CLI is checked here.
+    const libraries = ['evidence.mjs', 'lib.mjs', 'requirements.mjs'];
+    const clis = readdirSync(join(link, 'scripts/agent')).filter((f) => f.endsWith('.mjs') && !f.endsWith('.test.mjs') && !libraries.includes(f));
+    assert.deepEqual(clis.map((f) => f.replace(/\.mjs$/, '')).sort(), [...Object.keys(refusals), 'relaunch'].sort());
+    const unexpected = [];
+    for (const [name, message] of Object.entries(refusals)) {
+      const r = agent(link, name, ['--no-such-option']);
+      if (r.status === 0 || r.status === null || !r.out.includes(message)) unexpected.push(`${name} exited ${r.status}: ${r.out.trim() || '(no output)'}`);
+    }
+    const dry = relaunchIn(link, ['--dry-run']);
+    if (dry.status !== 0 || !/Pre-flight OK\. Would run:/.test(dry.out)) unexpected.push(`relaunch --dry-run exited ${dry.status}: ${dry.out.trim() || '(no output)'}`);
+    assert.deepEqual(unexpected, [], `these scripts did not run their main block as expected through the symlink:\n${unexpected.join('\n')}`);
+    assert.equal(dry.call, null, 'no session was started');
+    assert.equal(dry.decoyCalled, false);
   });
 });
 
