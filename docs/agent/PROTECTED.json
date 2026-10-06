@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "rule": "Change these files only through an ADR with the owner's approval (an \"## Owner approval\" section quoting the owner, naming each changed ownerOnly file), then run protect.mjs --update --adr <ADR>. Accepted ADRs are never edited.",
-  "approvedBy": "docs/agent/decisions/ADR-0017-s0-repair-round-2.md",
-  "updatedAt": "2026-10-06T20:33:13.284Z",
+  "approvedBy": "docs/agent/decisions/ADR-0014-design-s3d-deep-automation.md",
+  "updatedAt": "2026-10-06T21:10:44.471Z",
   "patterns": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -62,6 +62,7 @@
     "docs/agent/decisions/ADR-0017-s0-repair-round-2.md": "fe64f57f2409c413e37f9b2048bb775c2939e7f895229d2d9599305364fd2de8",
     "docs/agent/decisions/INDEX.md": "f90bc6323b03211959aedd75c3129974c2b8137994d3c63c20ea78dbf417b1b6",
     "docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md": "fb922f351d255485ebf94c5f26df7a1225a6c305c6750c6014b4db9a3a394449",
+    "docs/agent/design/DESIGN-S3D/INTAKE.md": "562bf67d68f62af934ddd2b9c9ecc050f137b39c658909d41c55e11dfabac0d0",
     "docs/agent/design/DESIGN-S3D/SOURCE.md": "61527d849988ff57856792920a6c5f6435f871754036f634b4805013d95a119a",
     "docs/agent/design/DESIGN-S3D/SPEC.md": "7886a7758f2251540351391c129bffaf97106516a80ce88811339bc2042cf207",
     "docs/agent/design/DESIGN-S3D/screens/alerts-before-desk-desktop.png": "6ec57702aa3058107499c071ddc691e462f2f65c4a4c0cc9eb0e5ccd72728b96",
@@ -170,7 +171,7 @@
     "docs/agent/design/DESIGN-S3D/screens/visitors-staff-budget-short-desktop.png": "d6c73fe2e8eb30500e7b462eb40cefa3f628a10e7cf961c92fef864861a5e4a7",
     "docs/agent/design/DESIGN-S3D/screens/visitors-staff-budget-short-phone.png": "f197e6ab673643b6038b3e0c5149ce7e82a92a6177dcd79e2789fe22845f50e8",
     "docs/agent/design/DESIGN_INTAKE.md": "6bae5fe1f13e1850b9d425832e5d75c476fadd7b37a1f6e375c85650d541624f",
-    "docs/agent/design/DESIGN_REGISTRY.json": "6f28cf3d54dce90c16d9ee89e98e43b797b31f67d5a740c9df063e158ccf5c16",
+    "docs/agent/design/DESIGN_REGISTRY.json": "c138a13642f11ae3ec95a09975b5839b6dd32b3dd270cd243b3c400d23f82659",
     "docs/agent/prompts/KICKOFF.md": "1816a42d9a823bef64aff8466552356274fd9824b47a4d1a604ae206999fb549",
     "docs/agent/prompts/MASTER_ORCHESTRATOR_PROMPT.md": "8886cb8ae01d2db1c7a2d9f3cebca16c82d434483a397101e26ecd42582d3b37",
     "docs/agent/prompts/ROLE_PROMPTS.md": "6356eac2e79ca68dfb54c065a3dc0e843a7e1a0f52f313114107c47251d732ce",
