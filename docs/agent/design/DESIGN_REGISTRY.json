@@ -24,10 +24,14 @@
     {
       "id": "DESIGN-S3D",
       "title": "Extended aquarium/aquaculture automation (S3-D): screens, copy, test ids and the names of resources shown to players",
-      "status": "PENDING_OWNER_DESIGN",
-      "path": null,
+      "status": "RECEIVED",
+      "path": "docs/agent/design/DESIGN-S3D/SPEC.md",
       "approval": null,
-      "source": "The owner is producing this with Claude Design (ADR-0002 decision 4, 2026-10-05).",
+      "source": "Owner's Claude Design canvas \"Design\" (https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk), Version 23 (1791264082-fb19), captured 2026-10-05 with ADR-0014. The repo copy is normative; the canvas ranks below it (master §3.9).",
+      "notes": [
+        "The owner chose to approve after INTAKE.md and an independent review (ADR-0014, answer 21).",
+        "ADR-0014 decision 14: this design's Lines tab and Production line picker count for DESIGN-S3C-LINES' line cards and detail view, with new lines set up through the 0.5 §11.1 steps. DESIGN-S3C-LINES' status is set by the approval ADR."
+      ],
       "scope": ["S3-D"],
       "blocks": [
         "S3-D owner-visible surfaces: automation dashboard, facility operations overview, reserve/feed/production screens, shortage and bottleneck indicators",
