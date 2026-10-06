@@ -6,11 +6,11 @@ ran step 8 round 1 (four RED reviews) and repair round 1 (ADR-0015). The owner a
 the context small. Verify everything below against Git; don't trust it blindly._
 
 <!-- generated:start -->
-_Generated 2026-10-06T06:41:37.959Z by scripts/agent/handoff.mjs. Edit the sections below the block, not inside it._
+_Generated 2026-10-06T07:44:54.642Z by scripts/agent/handoff.mjs. Edit the sections below the block, not inside it._
 
 ## Checkpoint
 - branch: main
-- HEAD: b024608aa4f0a7b9dea0f7a51a003ca7c4550997 (S0: ledger: ADR-0015 owner decision and repair round 1; protected hashes under ADR-0015)
+- HEAD: 00388a73092b7994d31aeae738e9a4e853056be4 (S0: ADR-0016 records the owner's answers: helpers until S0 is accepted, save version bumps, bid windows, push locks)
 - baseline: 0d9fc5a46085f746510a1041335632cd4f7314a2
 - last accepted checkpoint: none yet
 
@@ -39,28 +39,23 @@ _Generated 2026-10-06T06:41:37.959Z by scripts/agent/handoff.mjs. Edit the secti
 - 28 IN_PROGRESS
 
 ## Dirty files
-- `M docs/agent/CURRENT_SLICE.md`
+- `M docs/agent/HANDOFF.md`
 - ` M docs/agent/LEDGER.jsonl`
-- ` M docs/agent/STATE.json`
-- ` M docs/agent/evidence/S0/manifest.json`
-- `?? docs/agent/evidence/S0/logs/diffCheck-20261006T063936336Z.log`
-- `?? docs/agent/evidence/S0/logs/harnessTests-20261006T063953457Z.log`
-- `?? docs/agent/evidence/S0/logs/protectedFiles-20261006T063943091Z.log`
-- `?? docs/agent/evidence/S0/logs/requirementsAudit-20261006T063940722Z.log`
+- ` M docs/agent/PROTECTED.json`
 
 ## Designs not yet approved
 - DESIGN-S3D [PENDING_OWNER_DESIGN]: Extended aquarium/aquaculture automation (S3-D): screens, copy, test ids and the names of resources shown to players
 - DESIGN-S3C-LINES [PENDING_OWNER_DESIGN]: Multi-line Production screens (S3-C): several production lines per species, with their screens, copy, routes and test ids
 
 ## Last ledger events
-- 2026-10-06T06:38:03.816Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
-- 2026-10-06T06:38:03.916Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
 - 2026-10-06T06:38:03.945Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
 - 2026-10-06T06:38:03.976Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
 - 2026-10-06T06:38:04.002Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
 - 2026-10-06T06:38:04.029Z orchestrator repair S0/S0-T10: repaired in 9e1bf66 (main 47eb199, ADR-0015); Vitest can't run here, so it awaits the owner's Mac gates and a fresh code-architecture review
 - 2026-10-06T06:38:04.053Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
 - 2026-10-06T06:41:18.139Z orchestrator session-end S0/S0-T10: Cowork session ends at the owner's request for a fresh conversation (context). Done: sync to b243b23, bootstrap (S0-T11), round-1 reviews (4 RED, recorded), ADR-0012, ADR-0013, repair round 1 (ADR-0015, D-S0-6 to D-S0-14), harness gates GREEN on code tree 3e9ce488. Next: D-S0-3 registry, D-S0-5 owner-only docs ADR, the owner's Mac run of every gate (D-S0-4), fresh reviews then adversarial; ADR-0014 reserved for the DESIGN-S3D intake
+- 2026-10-06T07:44:11.184Z orchestrator owner-decision S0/S0-T10: Owner approved builder and reviewer subagents for every S0 session until S0 is accepted, chose a SCHEMA_VERSION bump for new species and tank sizes, kept catch-up bid windows as they are (MKT-016 A2 corrected), and will be asked again about push locks before the first unattended run; recorded verbatim in ADR-0016
+- 2026-10-06T07:44:51.681Z protect.mjs decision S0/S0-T10: protected hashes recorded for 59 file(s), 2 changed
 <!-- generated:end -->
 
 ## Where S0 stands
@@ -84,10 +79,12 @@ _Generated 2026-10-06T06:41:37.959Z by scripts/agent/handoff.mjs. Edit the secti
   - ADR-0012: reviewer subagents, the bundle sync applied in place, and the owner runs the Mac gates;
   - ADR-0013: builder subagents, the unit gate counts only from the Mac (acknowledging BF-002 and BF-003), and
     approvals need the owner's verbatim words plus named owner-only files;
-  - ADR-0015: repair round 1.
-
-  The subagent approvals in ADR-0012 and ADR-0013 were for that session only. **Ask the owner again** before running
-  builders or reviewers, and record the answer in an ADR.
+  - ADR-0015: repair round 1;
+  - ADR-0016, given after the handoff:
+    - builder and reviewer subagents for every S0 session until S0 is accepted, so don't ask again;
+    - a new species or tank size bumps `SCHEMA_VERSION`;
+    - catch-up bid windows stay as they are, and MKT-016 A2 is corrected;
+    - ask again about push locks before the first unattended run.
 - **ADR-0014 is reserved for the DESIGN-S3D intake.** The owner said the handoff folder
   `/Volumes/Dev/Projects/AquariumGo-design-handoff/DESIGN-S3D` is being refreshed. Until the owner says the refresh is
   done, don't copy it into the repo, accept its ADR-0014 or run `protect.mjs --update` for it. If it was copied before
@@ -111,11 +108,13 @@ _Generated 2026-10-06T06:41:37.959Z by scripts/agent/handoff.mjs. Edit the secti
     - PERSIST-009: a publish that throws, the refusal of nested calls, and the now-stale A3 note;
     - a requirement for B-001 (`core-resume-catchup.test.ts`);
     - CONST-004: the unknown-directory check and the stripper;
-    - MKT-016 A2: at 3× the floor is about 2.5 minutes;
+    - MKT-016 A2: at 3× the floor is about 2.5 minutes (ADR-0016 decision 3). The test's 3× check may be aligned with
+      it, reviewed as a test change;
+    - PERSIST-003 or PERSIST-007: adding a species or a tank tier bumps `SCHEMA_VERSION` (ADR-0016 decision 2);
     - HARNESS-006 A3 and A5: the unit gate is judged on the Mac (ADR-0013);
     - HARNESS-028: add `tests/sim/setup/`, `tsconfig*.json` and `.gitignore`;
     - HARNESS-013 A1;
-    - HARNESS-021 A2: add ADR-0012, ADR-0013 and ADR-0015;
+    - HARNESS-021 A2: add ADR-0012, ADR-0013, ADR-0015 and ADR-0016;
     - the criteria the harness builder listed: HARNESS-004 A1/A2, -005 A2, -010, -012 A1, -019 A1/A3, -021 A1, -023 A2,
       -024 A1, -025 A1, -026 A1/A2, -027 A1 and -028 A1. Use the new test names in `scripts/agent/agent.test.mjs` and
       `scripts/agent/fixture.test.mjs`.
@@ -155,10 +154,10 @@ _Generated 2026-10-06T06:41:37.959Z by scripts/agent/handoff.mjs. Edit the secti
 
 ## Exact next legal action
 
-1. **Bootstrap** (`prompts/KICKOFF.md`, then `bootstrap-check.mjs`). Also read ADR-0012, ADR-0013 and ADR-0015, and the
-   four round-1 reports.
-2. **Ask the owner** whether builder and reviewer subagents may run in this session, and record the answer in an ADR.
-   Then a builder repairs D-S0-3 as listed.
+1. **Bootstrap** (`prompts/KICKOFF.md`, then `bootstrap-check.mjs`). Also read ADR-0012, ADR-0013, ADR-0015 and
+   ADR-0016, and the four round-1 reports.
+2. **D-S0-3:** a builder repairs it as listed. ADR-0016 decision 1 allows builder and reviewer subagents until S0 is
+   accepted, so there's no need to ask.
 3. **D-S0-5:** draft the owner-only docs ADR with the exact diffs. Use the next free number (ADR-0014 is reserved). Get
    the owner's verbatim approval, then run `protect.mjs --update`.
 4. **D-S0-4 and every gate on code tree `3e9ce488`.** The owner runs, in Terminal on the Mac:
@@ -181,21 +180,13 @@ _Generated 2026-10-06T06:41:37.959Z by scripts/agent/handoff.mjs. Edit the secti
 
 ## Owner questions
 
-1. **Push guard (ADR-0011 open point 6).** Only a pre-push hook or a `pushurl` block actually prevents a push to `main`.
-   The owner chose text rules only (ADR-0004). Revisit before any unattended run. Agents may not install it.
-2. **MKT-016 (`code-architecture-game-2` m3).** Should offline catch-up time use up real-time bid windows? The 3× test
-   passes on its seeds, but the bound isn't guaranteed.
-3. **PERSIST-003, same-schema gaps dating from v0.4.0.** Today:
-   - creatures, clutches and offers of an unknown species are deleted;
-   - an unknown tank tier is reset to `g20L`;
-   - the research step drops an unknown active project.
-
-   Keep these inert, or require a schema bump for every new species or tier?
-4. **BF-001:** a real e2e run on the Mac (step 4), or the owner's acknowledgement in an ADR.
-5. **The 57 open questions** in `evidence/S0/reviews/adversarial-review-2026-10-05.json`: triage them, and ask only the
+1. **BF-001:** a real e2e run on the Mac (step 4), or the owner's acknowledgement in an ADR.
+2. **The 57 open questions** in `evidence/S0/reviews/adversarial-review-2026-10-05.json`: triage them, and ask only the
    important ones.
-6. **Launcher residuals (`security-data-2` m7):** should unattended sessions run as a separate OS user with no GitHub or
-   Render credentials?
+3. **Before the first unattended run** (`relaunch.mjs`), ask about the push locks again (ADR-0016 decision 4).
+
+Answered on 2026-10-06 in ADR-0016: helpers until S0 is accepted, the save-version rule for new species and tank sizes,
+and the catch-up bid window.
 
 ## Deferred review items (to put in BACKLOG under D-S0-3)
 
@@ -230,8 +221,8 @@ _Generated 2026-10-06T06:41:37.959Z by scripts/agent/handoff.mjs. Edit the secti
 
 ## Required first reads
 
-`docs/agent/README_FIRST.md` (the canonical order), plus ADR-0012, ADR-0013 and ADR-0015, and the four round-1 reports
-in `evidence/S0/reviews/`.
+`docs/agent/README_FIRST.md` (the canonical order), plus ADR-0012, ADR-0013, ADR-0015 and ADR-0016, and the four
+round-1 reports in `evidence/S0/reviews/`.
 
 ## Forbidden actions
 

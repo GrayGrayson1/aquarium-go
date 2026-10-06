@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "rule": "Change these files only through an ADR with the owner's approval (an \"## Owner approval\" section quoting the owner, naming each changed ownerOnly file), then run protect.mjs --update --adr <ADR>. Accepted ADRs are never edited.",
-  "approvedBy": "docs/agent/decisions/ADR-0015-s0-repair-round-1.md",
-  "updatedAt": "2026-10-06T06:37:26.771Z",
+  "approvedBy": "docs/agent/decisions/ADR-0016-owner-answers-helpers-saves-bids-push-locks.md",
+  "updatedAt": "2026-10-06T07:44:50.822Z",
   "patterns": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -57,7 +57,8 @@
     "docs/agent/decisions/ADR-0012-owner-answers-cowork-session.md": "eedb906c57d046b80391beb8bf5dc693d56476a8384433a2f4fd46667725c690",
     "docs/agent/decisions/ADR-0013-owner-answers-after-s0-reviews.md": "9410b2943bb06d69095c5f8cf3af35c5c3a429beaca3aa9b00f2ffcf6d7003c9",
     "docs/agent/decisions/ADR-0015-s0-repair-round-1.md": "f030c3ee573ba10162af5a1ac821c7317f8c29ed3f5ae98851adcdea7ab34bd5",
-    "docs/agent/decisions/INDEX.md": "4a88262e656103a4cf78f0b0f1a606f7e53e2f1c1287377cc61596e3310db97b",
+    "docs/agent/decisions/ADR-0016-owner-answers-helpers-saves-bids-push-locks.md": "c89f40e3fcf71aa43b1689f970b6978a2308c8435ee3bf12439b6e3f69b93c1d",
+    "docs/agent/decisions/INDEX.md": "6b06c7b00213a2e93d073444bda2442469961932367174bf2c1e6ee43b296e44",
     "docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md": "fb922f351d255485ebf94c5f26df7a1225a6c305c6750c6014b4db9a3a394449",
     "docs/agent/design/DESIGN_INTAKE.md": "b1d0f9b83f4b7126163d4238a7b7bd775a8b4bfdd2c81ce9774eb68d5650b553",
     "docs/agent/design/DESIGN_REGISTRY.json": "fc0e5f8f43c9ad56a9a900af76415335f2f071e7ffa742e3a54914a9c57fe319",
