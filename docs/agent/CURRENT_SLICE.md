@@ -1,8 +1,8 @@
 # CURRENT SLICE — S0
 
 **Slice:** S0 — Autonomous Harness, Baseline and Architecture Lock\
-**Status:** IN PROGRESS: repair round 1 applied after the RED step 8 reviews (ADR-0015); the registry repair, the
-owner-only docs ADR, the owner's Mac gate run and fresh reviews come next (see HANDOFF.md)\
+**Status:** IN PROGRESS: repair round 2 applied (ADR-0017) after the owner's Mac run on code tree `3e9ce488`;
+the owner's Mac run of every gate on code tree `9beda1a3`, then fresh reviews, come next (see HANDOFF.md)\
 **Machine state:** IMPLEMENT (see `STATE.json` for the live value)
 
 ## Objective
@@ -27,8 +27,10 @@ decision 1), and PERSIST-011 is the S0 part of PERSIST-004 (S4).
 ## Governing decisions
 ADR-0001 (owner operating decisions), ADR-0002 (owner decisions from the harness review), ADR-0003 (harness revision
 and design reconciliation), ADR-0004, ADR-0005, ADR-0006 (owner answers), ADR-0007 and ADR-0009 (pushes of
-`agent/s0-wip` and subagents), ADR-0012 (this Cowork session: reviewer subagents, the in-place sync, the owner runs the
-Mac gates).
+`agent/s0-wip` and subagents), ADR-0012 (a Cowork session: reviewer subagents, the in-place sync, the owner runs the
+Mac gates), ADR-0013 (the unit gate counts from the owner's Mac; approvals need the owner's words), ADR-0015 and
+ADR-0017 (repair rounds 1 and 2), ADR-0016 (builder and reviewer subagents until S0 is accepted; save versions; bid
+windows; push locks), ADR-0014 (the DESIGN-S3D capture and intake note, not the design's approval).
 
 ## Governing design sections
 None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-0003).
@@ -50,9 +52,9 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 | S0-T7 | Repair the harness documents found inconsistent by the adversarial review | HARNESS-004, HARNESS-009, HARNESS-021 | DONE (`62df438`; corrections under owner-approved ADR-0008, `1a74863`), pending independent review |
 | S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | HARNESS-022, PERSIST-002, PERSIST-003, PERSIST-009, PERSIST-010, PERSIST-011, PERSIST-012, PERSIST-013, PERSIST-015, MKT-016, CONST-004 | Fixes DONE (`3e00a32`, `58ae313`, `6347c5d` + `d98731d`, `16233a1`, `c774d38`, `f999618`, `d8fb896`; test repair `9edfa12`, D-S0-1; repair round 1 `9e1bf66`, ADR-0015: forward-safe saves, PERSIST-009 residuals, B-001 as PERSIST-015), pending independent review; BACKLOG.md written (`1a74863`) |
 | S0-T9 | Gate configuration: e2e server reuse opt-in, e2e typecheck, required assertions, no focused tests | HARNESS-006, HARNESS-018, HARNESS-028 | DONE, pending independent review |
-| S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | HARNESS-022, HARNESS-025, HARNESS-026, HARNESS-028; all S0 | IN PROGRESS: round 1 RED (requirements-3, code-architecture-game-2, code-architecture-harness-2, security-data-2); repairs D-S0-6 to D-S0-14 applied (ADR-0015); D-S0-3 to D-S0-5 open; adversarial after the fixes |
+| S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | HARNESS-022, HARNESS-025, HARNESS-026, HARNESS-028; all S0 | IN PROGRESS: round 1 RED (requirements-3, code-architecture-game-2, code-architecture-harness-2, security-data-2); repairs D-S0-6 to D-S0-14 (ADR-0015) and round 2, D-S0-3, D-S0-5 and D-S0-15 (ADR-0017), applied; next the owner's Mac run on code tree `9beda1a3`, then requirements-4, code-architecture-game-3, code-architecture-harness-3, security-data-3 and adversarial-2 |
 | S0-T11 | Fresh-session bootstrap test: a new session's assertion passes `bootstrap-check.mjs` | HARNESS-001, HARNESS-002 | DONE: the Cowork session's assertion (`evidence/S0/bootstrap-20261006T012944Z.json`) passed `bootstrap-check.mjs`, recorded in the manifest (label `bootstrap-check`) |
-| S0-T12 | Owner review of the harness and the open owner questions, then S0 acceptance and checkpoint | HARNESS-001, HARNESS-008, HARNESS-009, HARNESS-013, HARNESS-015, HARNESS-016, HARNESS-017, HARNESS-018, HARNESS-021, HARNESS-024, HARNESS-029, CONST-001, REL-001, REL-003; all S0 | PENDING |
+| S0-T12 | Owner review of the harness and the open owner questions, then S0 acceptance and checkpoint | HARNESS-001, HARNESS-008, HARNESS-009, HARNESS-013, HARNESS-015, HARNESS-016, HARNESS-017, HARNESS-018, HARNESS-021, HARNESS-024, HARNESS-029, CONST-001, REL-001, REL-003; all S0 | PENDING; the DESIGN-S3D intake the owner asked for is done up to the owner's decision (ADR-0014: capture, INTAKE.md, reviews design-intake-1 to -3) |
 | S0-T13 | Rarity counting tool `npm run report:rarity` (ADR-0005 decision 4) | HARNESS-022, GEN-013 | DONE (`172b5c3`), pending independent review |
 
 ## Acceptance criteria
@@ -78,7 +80,8 @@ requirements for the registry (in `STATE.requiredReviewers` since requirements-3
 ## Known risks
 - The e2e and browser gates can't run inside Claude Code's sandboxed shell (BF-001).
 - S0 builds the tools that judge it: their own tests and an independent review are the check (master §41).
-- The S3-D design is pending (DESIGN-S3D); S3 will stop at an owner gate without it.
+- DESIGN-S3D is `UNDER_REVIEW` (ADR-0014, `design/DESIGN-S3D/INTAKE.md`): S3-D work waits for the owner's approval
+  (DESIGN_INTAKE step 5); S3 would stop at an owner gate without it.
 
 ## Forbidden actions
 No push, PR, deploy, remote mutation, multiplayer implementation, product feature work, version bump, or edits to

@@ -1,16 +1,16 @@
 # HANDOFF
 
-_Written 2026-10-06 at the end of the Cowork session (Claude desktop app, Claude Code session
-`9fb166e0-94f7-5c6b-881e-3278c698d633`). It synced the cloud session's work onto local `main`, bootstrapped (S0-T11),
-ran step 8 round 1 (four RED reviews) and repair round 1 (ADR-0015). The owner asked for a fresh conversation to keep
-the context small. Verify everything below against Git; don't trust it blindly._
+_Written 2026-10-06 at the end of a Cowork session (Claude desktop app, Claude Code session
+`fba2c9be-b138-5280-9d88-73d0d368cce5`). It committed the owner's Mac run of every gate on code tree `3e9ce488`, moved
+the DESIGN-S3D capture into the repo and ran its intake up to the owner's decision (ADR-0014), and applied repair
+round 2 (ADR-0017: D-S0-15, D-S0-3, D-S0-5). Verify everything below against Git; don't trust it blindly._
 
 <!-- generated:start -->
-_Generated 2026-10-06T07:44:54.642Z by scripts/agent/handoff.mjs. Edit the sections below the block, not inside it._
+_Generated 2026-10-06T21:13:56.946Z by scripts/agent/handoff.mjs. Edit the sections below the block, not inside it._
 
 ## Checkpoint
 - branch: main
-- HEAD: 00388a73092b7994d31aeae738e9a4e853056be4 (S0: ADR-0016 records the owner's answers: helpers until S0 is accepted, save version bumps, bid windows, push locks)
+- HEAD: 7ba5956ca67ee76f5b6c48068d3ba26e31028d41 (S0: ledger: protected hashes under ADR-0014 for INTAKE.md and the UNDER_REVIEW registry entry)
 - baseline: 0d9fc5a46085f746510a1041335632cd4f7314a2
 - last accepted checkpoint: none yet
 
@@ -23,214 +23,164 @@ _Generated 2026-10-06T07:44:54.642Z by scripts/agent/handoff.mjs. Edit the secti
 - required reviewers: code-architecture, code-architecture-harness, security-data, adversarial, requirements
 
 ## Gates
-- typecheck: GREEN (last run 2026-10-05T23:45:09.756Z, exit 0, docs/agent/evidence/S0/logs/typecheck-20261005T234509756Z.log)
-- unit: RED (last run 2026-10-05T23:45:39.917Z, exit 1, docs/agent/evidence/S0/logs/unit-20261005T234539917Z.log)
-- build: GREEN (last run 2026-10-05T23:49:13.464Z, exit 0, docs/agent/evidence/S0/logs/build-20261005T234913464Z.log)
-- e2e: PENDING (last run 2026-10-05T18:48:18Z, exit 143, docs/agent/evidence/S0/logs/baseline-e2e.log)
-- diffCheck: GREEN (last run 2026-10-06T06:39:36.336Z, exit 0, docs/agent/evidence/S0/logs/diffCheck-20261006T063936336Z.log)
-- harnessTests: GREEN (last run 2026-10-06T06:39:53.457Z, exit 0, docs/agent/evidence/S0/logs/harnessTests-20261006T063953457Z.log)
-- requirementsAudit: GREEN (last run 2026-10-06T06:39:40.722Z, exit 0, docs/agent/evidence/S0/logs/requirementsAudit-20261006T063940722Z.log)
-- testInventory: GREEN (last run 2026-10-05T23:50:01.227Z, exit 0, docs/agent/evidence/S0/logs/testInventory-20261005T235001227Z.log)
-- protectedFiles: GREEN (last run 2026-10-06T06:39:43.091Z, exit 0, docs/agent/evidence/S0/logs/protectedFiles-20261006T063943091Z.log)
+- typecheck: GREEN (last run 2026-10-06T10:15:24.865Z, exit 0, docs/agent/evidence/S0/logs/typecheck-20261006T101524865Z.log)
+- unit: GREEN (last run 2026-10-06T10:30:00.860Z, exit 0, docs/agent/evidence/S0/logs/unit-20261006T103000860Z.log)
+- build: GREEN (last run 2026-10-06T10:34:33.674Z, exit 0, docs/agent/evidence/S0/logs/build-20261006T103433674Z.log)
+- e2e: RED (last run 2026-10-06T10:57:50.274Z, exit 1, docs/agent/evidence/S0/logs/e2e-20261006T105750274Z.log)
+- diffCheck: GREEN (last run 2026-10-06T11:37:34.861Z, exit 0, docs/agent/evidence/S0/logs/diffCheck-20261006T113734861Z.log)
+- harnessTests: RED (last run 2026-10-06T11:37:35.946Z, exit 1, docs/agent/evidence/S0/logs/harnessTests-20261006T113735946Z.log)
+- requirementsAudit: GREEN (last run 2026-10-06T11:37:45.205Z, exit 0, docs/agent/evidence/S0/logs/requirementsAudit-20261006T113745205Z.log)
+- testInventory: GREEN (last run 2026-10-06T11:37:45.531Z, exit 0, docs/agent/evidence/S0/logs/testInventory-20261006T113745531Z.log)
+- protectedFiles: GREEN (last run 2026-10-06T11:39:21.111Z, exit 0, docs/agent/evidence/S0/logs/protectedFiles-20261006T113921111Z.log)
 - browserQa: NOT_APPLICABLE
 - independentReview: PENDING
 
 ## Requirements for S0
-- 28 IN_PROGRESS
+- 29 IN_PROGRESS
 
 ## Dirty files
-- `M docs/agent/HANDOFF.md`
+- `M docs/agent/CURRENT_SLICE.md`
 - ` M docs/agent/LEDGER.jsonl`
-- ` M docs/agent/PROTECTED.json`
 
 ## Designs not yet approved
-- DESIGN-S3D [PENDING_OWNER_DESIGN]: Extended aquarium/aquaculture automation (S3-D): screens, copy, test ids and the names of resources shown to players
+- DESIGN-S3D [UNDER_REVIEW]: Extended aquarium/aquaculture automation (S3-D): screens, copy, test ids and the names of resources shown to players
 - DESIGN-S3C-LINES [PENDING_OWNER_DESIGN]: Multi-line Production screens (S3-C): several production lines per species, with their screens, copy, routes and test ids
 
 ## Last ledger events
-- 2026-10-06T06:38:03.945Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
-- 2026-10-06T06:38:03.976Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
-- 2026-10-06T06:38:04.002Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
-- 2026-10-06T06:38:04.029Z orchestrator repair S0/S0-T10: repaired in 9e1bf66 (main 47eb199, ADR-0015); Vitest can't run here, so it awaits the owner's Mac gates and a fresh code-architecture review
-- 2026-10-06T06:38:04.053Z orchestrator repair S0/S0-T10: repaired in d7ca486 (main 47eb199, ADR-0015); node --test 145/145 in the cloud workspace; awaits fresh code-architecture-harness and security-data reviews
-- 2026-10-06T06:41:18.139Z orchestrator session-end S0/S0-T10: Cowork session ends at the owner's request for a fresh conversation (context). Done: sync to b243b23, bootstrap (S0-T11), round-1 reviews (4 RED, recorded), ADR-0012, ADR-0013, repair round 1 (ADR-0015, D-S0-6 to D-S0-14), harness gates GREEN on code tree 3e9ce488. Next: D-S0-3 registry, D-S0-5 owner-only docs ADR, the owner's Mac run of every gate (D-S0-4), fresh reviews then adversarial; ADR-0014 reserved for the DESIGN-S3D intake
-- 2026-10-06T07:44:11.184Z orchestrator owner-decision S0/S0-T10: Owner approved builder and reviewer subagents for every S0 session until S0 is accepted, chose a SCHEMA_VERSION bump for new species and tank sizes, kept catch-up bid windows as they are (MKT-016 A2 corrected), and will be asked again about push locks before the first unattended run; recorded verbatim in ADR-0016
-- 2026-10-06T07:44:51.681Z protect.mjs decision S0/S0-T10: protected hashes recorded for 59 file(s), 2 changed
+- 2026-10-06T20:35:05.465Z orchestrator repair S0/S0-T10: repaired in 58bf22d (ADR-0017): REQUIREMENTS.json 208 -> 210 (CONST-005, PERSIST-015), no id removed; requirements-audit exit 0; awaits a fresh requirements reviewer (requirements-4)
+- 2026-10-06T20:35:05.546Z orchestrator repair S0/S0-T10: docs changed in 58bf22d; owner-approved in ADR-0017; protect.mjs --update recorded 25 changed files
+- 2026-10-06T20:35:05.589Z orchestrator repair S0/S0-T10: resolved: the owner approved ADR-0017 and protect.mjs verifies clean after the update
+- 2026-10-06T21:10:19.573Z orchestrator review S0/S0-T10: Design intake reviewer, first review of DESIGN-S3D's INTAKE.md (fresh instance, role design-intake): YELLOW. Accurate and usable, but ten conflicts missing, three major (the dock plan ignored slice order; the phone notifications board shows native-only copy; C-16 weakened AUTO-012); sign-off given for the reviewed version. The note was revised for every finding before recording
+- 2026-10-06T21:10:19.662Z orchestrator review S0/S0-T10: Design intake reviewer, re-review of the revised INTAKE.md (fresh instance, role design-intake): YELLOW. design-intake-2's three majors fixed, about 90 citations and 42 name rows correct, the 20 owner questions listed; still missing M1-M7 (AUTO-015 A5 scheduling, a Water room without a stock manager, Supplies sections, Recent events vs AUTO-008, keepers' water source, held Autofeeders vs AUTO-005, C-45 vs AUTO-016 A1) and C-23 should need the owner. OPERATIONS.md §10 sign-off given for recording INTAKE.md (sha256 562bf67d) and the UNDER_REVIEW status under ADR-0014
+- 2026-10-06T21:10:19.691Z orchestrator note S0/S0-T10: DESIGN-S3D: RECEIVED -> UNDER_REVIEW (DESIGN_INTAKE.md steps 2 and 7) with INTAKE.md (sha256 562bf67d), reconciled against the master, the 0.5 spec, the code and the tests: 64 conflicts, 20 for the owner; 28 proposed requirements. Two intake reviews (design-intake-2, design-intake-3: YELLOW). Next: the owner's design decision (step 5)
+- 2026-10-06T21:10:44.475Z protect.mjs decision S0/S0-T10: protected hashes recorded for 169 file(s), 2 changed
+- 2026-10-06T21:13:53.895Z orchestrator session-end S0/S0-T10: Cowork session ends its turn waiting for the owner's Mac run of every gate on code tree 9beda1a3 (if the owner continues in this session, a session-start resume event follows). Done: the owner's run on 3e9ce488 committed; DESIGN-S3D captured and its intake taken to the owner's decision under ADR-0014 (design-intake-1 GREEN, -2 and -3 YELLOW, registry UNDER_REVIEW); repair round 2 under owner-approved ADR-0017 (D-S0-15 symlink-safe CLIs, D-S0-3 registry, D-S0-5 docs resolved). Next: the Mac run, then requirements-4, code-architecture-game-3, code-architecture-harness-3, security-data-3, adversarial-2
 <!-- generated:end -->
 
 ## Where S0 stands
 
-- **Branch and pushes.** Local `main` is about 45 commits ahead of `origin/main`. `origin/main` is `0d9fc5a` (v0.4.0,
-  the live site) and untouched. Nothing was pushed, and no push approval exists: ADR-0009's ended with the cloud session.
-- **Step 8, round 1 (all RED, recorded unchanged):** `requirements-3`, `code-architecture-game-2`,
-  `code-architecture-harness-2` (new role `code-architecture-harness`) and `security-data-2`. The adversarial review
-  hasn't run; it goes last, after the fixes.
-- **Repair round 1** (ADR-0015, owner-approved):
-  - harness `d7ca486`: D-S0-7 to D-S0-12 and D-S0-14;
-  - game `9e1bf66`: D-S0-6 and D-S0-13.
+- **Branch and pushes.** Local `main` is well ahead of `origin/main`, which is still `0d9fc5a` (v0.4.0, the live site).
+  Nothing was pushed, and no push approval exists.
+- **The owner's Mac run on code tree `3e9ce488`** (2026-10-06 10:15-11:39Z, committed as `219e9a4`):
+  - GREEN: typecheck, unit (163 files, 1,809 tests, no "Errors" line), build, diffCheck, requirementsAudit,
+    testInventory, protectedFiles;
+  - RED, harnessTests: 43 of 145 fixture tests failed on macOS. Root cause D-S0-15: every guarded harness CLI ran its
+    main block only when `import.meta.url` (a real path) equalled `process.argv[1]` (the path as given), so through a
+    symlinked path (macOS `os.tmpdir()` is under `/var` → `/private/var`) the scripts exited 0 silently. The same hole
+    could let any gate pass without running when the repo is reached through a symlink;
+  - RED, e2e: 44 of 47 passed; 3 timeouts (the first test's `page.goto` at a cold Vite start, and context teardown in
+    `boot.spec.ts:17` and `camera-freeze.spec.ts:34` High quality). Not classified yet (BF-001).
+- **Repair round 2 (ADR-0017, owner-approved verbatim, commits `58bf22d` `3e66163` `3ee0f5f`):**
+  - D-S0-15: `lib.mjs` `isMainModule` compares real paths in all twelve guarded CLIs; four regression tests
+    (HARNESS-006 A7); fixture stage failures memoised. 149/149 in the cloud workspace, also with `TMPDIR` on a symlinked
+    directory, where the old code reproduced the Mac failure exactly (102/145);
+  - D-S0-3: `REQUIREMENTS.json` 208 → 210 (CONST-005, PERSIST-015; none removed), `baseline-failures.json`, `BACKLOG.md`,
+    `CURRENT_SLICE.md`;
+  - D-S0-5: AGENTS.md, the master, OPERATIONS.md, README_FIRST.md, prompts/ROLE_PROMPTS.md, design/DESIGN_INTAKE.md
+    and two templates now describe what the scripts enforce; the new written rules of ADR-0017 Decision 5 apply from now
+    in S0 (no `gh` at all; `capture-evidence.mjs --review --candidate <sha>`; design-intake reviews go in the ledger,
+    not the manifest; and the others listed there);
+  - `protect.mjs --update --adr ADR-0017` recorded exactly its 25 files. D-S0-5 is resolved.
+- **The code tree is now `9beda1a3`.** Every gate result above was on `3e9ce488`, so check-state warns, and every gate
+  must run again on the owner's Mac (step 1 below). Docs-only commits since then don't change the tree.
+- **D-S0-4 (the unit gate)** is not resolved yet: the Mac unit run was GREEN, but on `3e9ce488`, not the final tree.
 
-  Both are applied to `main` (`47eb199`). `protect.mjs --update --adr ADR-0015` is recorded, and repair attempts are
-  logged.
-- **The code tree is now `3e9ce488`.**
-  - diffCheck, harnessTests (145/145), requirementsAudit and protectedFiles ran GREEN on it, in the Cowork sandbox.
-  - typecheck, unit, build, e2e and testInventory have NOT run on it. Their GREEN/RED entries above are from tree
-    `4d29120a`, so check-state warns. They need `node_modules`, so they run on the owner's Mac (step 4 below).
-- **Owner decisions this session:**
-  - ADR-0012: reviewer subagents, the bundle sync applied in place, and the owner runs the Mac gates;
-  - ADR-0013: builder subagents, the unit gate counts only from the Mac (acknowledging BF-002 and BF-003), and
-    approvals need the owner's verbatim words plus named owner-only files;
-  - ADR-0015: repair round 1;
-  - ADR-0016, given after the handoff:
-    - builder and reviewer subagents for every S0 session until S0 is accepted, so don't ask again;
-    - a new species or tank size bumps `SCHEMA_VERSION`;
-    - catch-up bid windows stay as they are, and MKT-016 A2 is corrected;
-    - ask again about push locks before the first unattended run.
-- **ADR-0014 is reserved for the DESIGN-S3D intake.** The owner said the handoff folder
-  `/Volumes/Dev/Projects/AquariumGo-design-handoff/DESIGN-S3D` is being refreshed. Until the owner says the refresh is
-  done, don't copy it into the repo, accept its ADR-0014 or run `protect.mjs --update` for it. If it was copied before
-  then, copy the refreshed folder over it before recording anything.
-- **Uncommitted owner run.** If this session finds uncommitted `docs/agent/evidence/S0/logs/*`, `manifest.json` and
-  `STATE.json` gate changes, they are the owner's Mac run of `verify-slice.mjs`. Check them, then commit them as that
-  run.
+## DESIGN-S3D intake (the owner's request this session)
+
+- **Done (ADR-0014, Accepted for the capture and the intake note only; owner's words recorded verbatim):**
+  - capture (`fb2ce5f`, `70917e3`): `docs/agent/design/DESIGN-S3D/` SPEC.md, SOURCE.md and 105 screens copied byte
+    for byte from `/Volumes/Dev/Projects/AquariumGo-design-handoff/DESIGN-S3D` (canvas Version 23; every PNG matches
+    SOURCE.md; the handoff folder is still in place), the INDEX row and the registry entry;
+  - capture sign-off `design-intake-1` (GREEN); owner-decision event; protected hashes under ADR-0014;
+  - `INTAKE.md` (64 conflicts, 20 marked "Needs owner"; 28 proposed requirements), first review `design-intake-2`
+    (YELLOW, ten missed conflicts, folded in), re-review `design-intake-3` (YELLOW, §10 sign-off given); registry at
+    `UNDER_REVIEW` (`0df586c`, `7ba5956`). Intake reviews are ledger `review` events, not in the S0 manifest.
+- **Still open in the note (design-intake-3):** seven missing conflicts M1-M7 (AUTO-015 A5 scheduling; a Water room
+  without a stock manager; Supplies sections for frozen and hand-fed foods; Recent events versus AUTO-008; the keepers'
+  water source; held Autofeeders versus AUTO-005; C-45's tolerances versus AUTO-016 A1), C-23 should need the owner
+  (it loosens AUTO-013 A2), C-63's question is wider than copy, C-38's copy should route through C-48, the desktop
+  viewport is 1440×900 (not 1440×948), and a few behaviours lack a testable requirement.
+- **Not done (needs the owner):** step 5, the approval; then step 6, traceability (`REQUIREMENTS.json` from INTAKE §12,
+  an S3-D section in `docs/TEST_IDS.md`, the S3 contract). DESIGN-S3C-LINES stays `PENDING_OWNER_DESIGN` until the
+  approval ADR sets it (ADR-0014 decision 14).
 
 ## Open defects
 
-- **D-S0-3, the registry** (attempt 1: `e79aeba`). It stays open until a requirements review is GREEN.
-  `requirements-3` found:
-  - R3-B1: HARNESS-013 A3 and HARNESS-016 A2 can be observed only after ACCEPT;
-  - R3-M1: REL-011 A2 depends on the owner package;
-  - R3-m1 to R3-m7.
-
-  It also needs:
-  - **Wording the repairs require:**
-    - PERSIST-011: unusable ids are dropped, and well-formed unknown ids are kept (ADR-0005 decision 1);
-    - PERSIST-003: a criterion for newer content under the same schema (`core-forward-compat.test.ts`);
-    - PERSIST-009: a publish that throws, the refusal of nested calls, and the now-stale A3 note;
-    - a requirement for B-001 (`core-resume-catchup.test.ts`);
-    - CONST-004: the unknown-directory check and the stripper;
-    - MKT-016 A2: at 3× the floor is about 2.5 minutes (ADR-0016 decision 3). The test's 3× check may be aligned with
-      it, reviewed as a test change;
-    - PERSIST-003 or PERSIST-007: adding a species or a tank tier bumps `SCHEMA_VERSION` (ADR-0016 decision 2);
-    - HARNESS-006 A3 and A5: the unit gate is judged on the Mac (ADR-0013);
-    - HARNESS-028: add `tests/sim/setup/`, `tsconfig*.json` and `.gitignore`;
-    - HARNESS-013 A1;
-    - HARNESS-021 A2: add ADR-0012, ADR-0013, ADR-0015 and ADR-0016;
-    - the criteria the harness builder listed: HARNESS-004 A1/A2, -005 A2, -010, -012 A1, -019 A1/A3, -021 A1, -023 A2,
-      -024 A1, -025 A1, -026 A1/A2, -027 A1 and -028 A1. Use the new test names in `scripts/agent/agent.test.mjs` and
-      `scripts/agent/fixture.test.mjs`.
-  - **`evidence/S0/baseline-failures.json`:**
-    - BF-002 becomes "mitigated", with ADR-0013 as the owner's acknowledgement and the 68 s recurrence (unit log `:591`,
-      `:1015-1032`);
-    - BF-003 gets ADR-0013 as its acknowledgement, plus that run's onTaskUpdate error;
-    - BF-001 stays open.
-  - **`BACKLOG.md`:**
-    - close B-001, B-005 and B-118;
-    - B-113 is partly done: `AGENTS.md`, `src/state/game.ts` and `src/sim/rng.ts` remain;
-    - add the deferred items listed below;
-    - fix B-135's "ADR-0008 (proposed)".
-- **D-S0-4, the unit gate.** The only unit run on S0 code failed (BF-003, plus BF-002's error from a 68 s test). It is
-  resolved by a GREEN unit run on the owner's Mac, on the final tree, with no RPC error (ADR-0013 decision 2).
-- **D-S0-5, owner-only docs now out of step with the scripts.**
-  - **`OPERATIONS.md`:**
-    - §1: typos refused, exclusive lock, new alarm, STOP ignored;
-    - §2: an Owner approval section, a new ADR for stop-state exits, resume where entered;
-    - §3: a push to `main` may also deploy Render (`autoDeploy: true`);
-    - §4: `ACCEPT → CHECKPOINT` sets the checkpoint; the slice changes only at `NEXT_SLICE → BOOTSTRAP`;
-    - §5: counters kept by record-event; `--resolved` needs evidence; overrides name the defect;
-    - §6: no hand-set checkpoint; waivers keyed by slice; report series; the missing `test-inventory.mjs --write` step;
-    - §7: adversarial in STATE, `--candidate`, session ids can be set from the environment;
-    - §8: agents don't use `gh`;
-    - §10: new files fail, not warn; the full pattern list; the owner's words for every `--update`, naming owner-only
-      files.
-  - **`AGENTS.md`:** its protected-files line, the Render wording, and B-113's mutation and RNG wording.
-  - **The master:** §3.8 (the gate-defining list) and §54.
-  - **`README_FIRST.md`:** items 1-11 come to about 132 KB; mention `context-pack --for reviewer`.
-  - **Stale but not owner-only:** `ROLE_PROMPTS.md` (`--candidate`, `<role>-<n>.md` naming), `DESIGN_INTAKE.md` step 5,
-    the ADR template's Owner approval guidance, and `HANDOFF_TEMPLATE.md` line 16.
-  - It's resolved by one ADR with the owner's verbatim approval, naming each owner-only file, then `protect.mjs --update`.
-    Do it before relying on OPERATIONS §6 or running `relaunch.mjs`. Until then, the code wins for what exists now.
-- **D-S0-6 to D-S0-14** are repaired (ADR-0015) and waiting for fresh reviews. When the matching review is GREEN, resolve
-  each with `record-event.mjs --kind repair --defect <id> --resolved --evidence <that review>`.
+- **D-S0-15** (attempt 1 applied): resolved by a GREEN harnessTests run on the owner's Mac on `9beda1a3`, then a fresh
+  code-architecture-harness review.
+- **D-S0-3** (attempt 2 applied): stays open until `requirements-4` is GREEN.
+- **D-S0-4:** resolved by a GREEN unit run on the owner's Mac on the final tree with no "Errors" line (ADR-0013).
+- **D-S0-6 to D-S0-14** (ADR-0015): waiting for fresh reviews; resolve each with
+  `record-event.mjs --kind repair --defect <id> --resolved --evidence <that review>` when its review is GREEN.
+- **e2e (BF-001):** three timeouts on `3e9ce488`. If they recur on `9beda1a3`, one re-run is allowed as its own run
+  (`node scripts/agent/verify-slice.mjs --gates e2e` on the Mac); a recurring failure becomes an owner gate
+  (`BASELINE_RED:<test>`) or a defect, never a skip, a longer timeout or a retry.
 
 ## Exact next legal action
 
-1. **Bootstrap** (`prompts/KICKOFF.md`, then `bootstrap-check.mjs`). Also read ADR-0012, ADR-0013, ADR-0015 and
-   ADR-0016, and the four round-1 reports.
-2. **D-S0-3:** a builder repairs it as listed. ADR-0016 decision 1 allows builder and reviewer subagents until S0 is
-   accepted, so there's no need to ask.
-3. **D-S0-5:** draft the owner-only docs ADR with the exact diffs. Use the next free number (ADR-0014 is reserved). Get
-   the owner's verbatim approval, then run `protect.mjs --update`.
-4. **D-S0-4 and every gate on code tree `3e9ce488`.** The owner runs, in Terminal on the Mac:
-   `cd /Volumes/Dev/Projects/AquariumGo && PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright node scripts/agent/verify-slice.mjs`
-   and then
-   `node scripts/agent/capture-evidence.mjs --command "npm run report:rarity" --label report-rarity --req GEN-013`.
-   - Registry and `docs/agent` edits don't change the code tree. Any further code fix does, and needs another run.
-   - If e2e says the browser executable is missing:
-     `PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npx playwright install chromium`.
-5. **Fresh reviewers** of the resulting tree, recorded with `capture-evidence.mjs --review --candidate <sha>`:
-   - `requirements-4`;
-   - `code-architecture-game-3`;
-   - `code-architecture-harness-3`, which signs off the scripts under ADR-0015;
+1. **The owner's Mac run on code tree `9beda1a3`.** The owner was given these two commands in Terminal (the session
+   doesn't write to the repo while they run):
+   - `cd /Volumes/Dev/Projects/AquariumGo && PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright node scripts/agent/verify-slice.mjs`
+   - then `node scripts/agent/capture-evidence.mjs --command "npm run report:rarity" --label report-rarity --req GEN-013`.
+
+   If a session finds uncommitted `docs/agent/evidence/S0/logs/*`, `manifest.json` and `STATE.json` gate changes, they
+   are that run: check them (code tree `9beda1a3`, no `treeChanged`), commit them as the owner's run, and record an
+   `evidence` ledger event. If e2e failed, ask the owner before any re-run.
+2. **Fresh S0 reviewers** (ADR-0016 decision 1 allows them), each on the commit that holds the run, recorded with
+   `capture-evidence.mjs --review --candidate <sha>`:
+   - `requirements-4` (D-S0-3, including HARNESS-006 A7);
+   - `code-architecture-game-3` (the game and gate-configuration part; D-S0-4, D-S0-6, D-S0-13);
+   - `code-architecture-harness-3` (signs off the scripts under ADR-0015 and ADR-0017, and the two template diffs);
    - `security-data-3`;
    - then `adversarial-2`.
-6. **Step 9, the owner's part:**
-   - the DESIGN-S3D intake once the owner says the refresh is done, and DESIGN-S3C-LINES;
-   - the owner questions below;
-   - S0 acceptance, `checkpoint/S0-harness`, and the backup bundle (OPERATIONS §6).
+
+   Give each only what `prompts/ROLE_PROMPTS.md` lists. Reviewers run in a cloud clone made from a bundle of `main`
+   (see "Working in the Cowork sandbox").
+3. **Repairs** if any review is RED or YELLOW, with fresh re-reviews (counting attempts per defect).
+4. **The owner's part:** the owner questions below; then S0 acceptance (`ADVERSARIAL_REVIEW → ACCEPT` needs the state
+   chain from IMPLEMENT through the verify and review states), `checkpoint/S0-harness`, and the backup bundle
+   (`OPERATIONS.md` §6).
+5. **DESIGN-S3D step 5** whenever the owner is ready (owner question 4). It doesn't block S0.
 
 ## Owner questions
 
-1. **BF-001:** a real e2e run on the Mac (step 4), or the owner's acknowledgement in an ADR.
+1. **e2e (BF-001):** after the Mac run on `9beda1a3`: if the three timeouts recur, how to classify them (a recorded
+   re-run, `BASELINE_RED`, or a defect to repair).
 2. **The 57 open questions** in `evidence/S0/reviews/adversarial-review-2026-10-05.json`: triage them, and ask only the
    important ones.
 3. **Before the first unattended run** (`relaunch.mjs`), ask about the push locks again (ADR-0016 decision 4).
-
-Answered on 2026-10-06 in ADR-0016: helpers until S0 is accepted, the save-version rule for new species and tank sizes,
-and the catch-up bid window.
-
-## Deferred review items (to put in BACKLOG under D-S0-3)
-
-- **code-architecture-harness-2:**
-  - m10: `.gitattributes` isn't protected (none exists);
-  - m5: session ids can be set from the environment (add to OPERATIONS §7's "can't catch" list).
-- **security-data-2:**
-  - I1: enum fields read through plain-object tables (B-004 / PERSIST-004, S4);
-  - I4: `window.__AQ` in production (PLAT-005, S1);
-  - I5: a home-directory path in the public adversarial JSON;
-  - I6: newly added `retry` options aren't flagged.
-- **code-architecture-game-2:** the info items (null-prototype tables, fake timers, large lists, `slowedFor`).
-- **The harness builder's remaining risks:**
-  - a real owner ADR can be cited for a gate waiver it doesn't mean;
-  - requirement DEFERRED/SUPERSEDED decisions and `test-changes.json` entries accept any committed ADR;
-  - check-state doesn't re-check the owner-only naming rule after the fact.
+4. **DESIGN-S3D approval (DESIGN_INTAKE step 5).** Recommendation: first fold design-intake-3's open items into
+   INTAKE.md and re-review it (`design-intake-4`), then put the owner questions to the owner in batches of four with a
+   picture of where each lives (the owner's preferred style, ADR-0014), then write the approval ADR: it quotes the
+   question and answer verbatim, names DESIGN-S3D, lists the approved 0.5 items it overrides (INTAKE C-2), sets
+   DESIGN-S3C-LINES per ADR-0014 decision 14, records an `owner-decision` event and runs `protect.mjs --update`.
+5. **S0 acceptance (S0-T12):** the owner's review of the harness once the reviews are GREEN.
 
 ## Working in the Cowork sandbox (if the next session runs there too)
 
-- **Its shell is Linux.** It has no GitHub or npm network, it can't delete files in `/Volumes/Dev`, and it can't run
-  Vitest, Vite or Playwright with the Mac's `node_modules`.
-- **For git there:**
-  - set `GIT_OPTIONAL_LOCKS=0`, `core.createObject=rename`, `maintenance.auto=false` and `gc.auto=0`;
-  - move aside any empty `.git/*.lock` it leaves (a rolled-back lock can't be unlinked there);
-  - `.agent-runs/sync/` holds those leftovers.
-- **The cloud workspace can't install npm packages either**, so builders and reviewers there can't run Vitest. The
-  harness tests run fine.
-- **To move commits:**
-  - Mac → cloud: `git bundle` in `.agent-runs/sync/`, then stage the file.
-  - Cloud → Mac: commit the bundle into `.agent-runs/sync/`, fetch it into a ref, then apply in place: write the changed
-    files, `git update-ref`, then `git read-tree -m -i`. ADR-0012 decision 2 describes the method.
+- **Its shell is a Linux VM on the Mac.** It can't delete files under `/Volumes/Dev/Projects`, has no npm registry,
+  can't run Vitest, Vite or Playwright against the Mac's `node_modules`, and each command is capped at 180 s.
+- **Git there:** `GIT_OPTIONAL_LOCKS=0` and `-c core.checkStat=minimal -c core.trustctime=false -c core.createObject=rename
+  -c gc.auto=0 -c maintenance.auto=false` (`OPERATIONS.md` §8). Without checkStat=minimal, `git status` re-hashes the
+  whole tree and times out. Every commit leaves an empty `.git/HEAD.lock`: move it into
+  `.agent-runs/sync/stale-locks/` right after. A throwaway-index `git add -A` (codeTreeOf) takes 20-80 s there, so
+  `check-state.mjs` and `capture-evidence.mjs --command` fit but are slow.
+- **Never write to the repo while the owner's verify-slice run is going:** new protected files would turn its
+  protectedFiles gate red. Check `docs/agent/evidence/S0/logs/` for a log that is still growing before writing.
+- **Moving work:** Mac → cloud with `git bundle create .agent-runs/sync/<name>.bundle <base>..main`, staged and fetched
+  into a cloud clone; cloud → Mac by writing the reviewed files byte for byte (checked by SHA-256 against their base
+  first), then committing in the VM. The cloud workspace has no npm registry either; harness tests run there.
 
 ## Required first reads
 
-`docs/agent/README_FIRST.md` (the canonical order), plus ADR-0012, ADR-0013, ADR-0015 and ADR-0016, and the four
-round-1 reports in `evidence/S0/reviews/`.
+`docs/agent/README_FIRST.md` (the canonical order), plus ADR-0014, ADR-0016 and ADR-0017, `design/DESIGN_INTAKE.md`,
+and the reports `design-intake-3.md` and `requirements-3.md` in `evidence/S0/reviews/`.
 
 ## Forbidden actions
 
 - No push (of `main` or anything else), PR, deploy or remote mutation without the owner's approval recorded verbatim in
   an ADR.
-- No multiplayer.
-- No product features before S0 is accepted.
-- No version bump.
-- No edits to protected files outside the ADR process.
-- Never run `relaunch.mjs` to check something.
-- No copying of the DESIGN-S3D folder until the owner says its refresh is done.
+- No multiplayer; no product features before S0 is accepted; no version bump.
+- No edits to protected files outside the ADR process; never edit an accepted ADR.
+- Never run `relaunch.mjs` to check something; never use `gh`.
+- No S3-D work and no approval of DESIGN-S3D or DESIGN-S3C-LINES without the owner's recorded decision.
