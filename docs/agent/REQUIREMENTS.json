@@ -17,21 +17,26 @@
       "id": "CONST-001",
       "slice": "ALL",
       "source": "design §3 item 1, §21 (each phase's Done when: no new dependencies); master §3.7",
-      "description": "No dependency is added to package.json or the lockfile during S1-S4 without an ADR that records the owner's approval, so the router, platform layer, service worker and Social stub are hand-written.",
+      "description": "No dependency is added to package.json or the lockfile during the local build (S0-S4) without an ADR that records the owner's approval, so the router, platform layer, service worker and Social stub are hand-written.",
       "acceptance": [
-        "At every slice acceptance, package.json dependencies and devDependencies, and the lockfile's direct dependencies, equal those at the S0 checkpoint (core-dependencies test).",
+        "At S0 acceptance git diff 0d9fc5a -- package-lock.json is empty and the package.json diff since 0d9fc5a only adds the report:rarity script (ADR-0005 decision 4, GEN-013): no dependency or devDependency changed (logged with capture-evidence.mjs --command).",
+        "At every later slice acceptance, package.json dependencies and devDependencies, and the lockfile's direct dependencies, equal those at the S0 checkpoint (core-dependencies test).",
         "Any dependency proposal has an ADR with the owner's approval recorded verbatim before anything is installed, and the test's recorded list changes only with that ADR."
       ],
-      "tasks": [],
+      "tasks": [
+        "S0-T12"
+      ],
       "tests": [
-        "new: tests/sim/core-dependencies.test.ts (proposed)"
+        "git diff 0d9fc5a -- package.json package-lock.json (S0; logged with scripts/agent/capture-evidence.mjs --command)",
+        "new: tests/sim/core-dependencies.test.ts (proposed; written in S1, the first slice that hand-writes what a library could do: router and platform layer)"
       ],
       "evidence": [],
       "status": "ACTIVE",
       "designSections": [
         "§3",
         "§21"
-      ]
+      ],
+      "note": "requirements-2 M2: the test now has an owning slice (S1), and S0 is checked with git diff against the baseline."
     },
     {
       "id": "CONST-002",
@@ -74,7 +79,8 @@
         "§20.3",
         "§20.4",
         "§3"
-      ]
+      ],
+      "note": "Owning slice for the check: S1 onward, first judged at S1 acceptance against the S0 checkpoint. In S0 the e2e suite is HARNESS-018 (BF-001), and the S0 edit to species-fw.test.ts (a §20.4 test) is named by HARNESS-006 A6."
     },
     {
       "id": "CONST-003",
@@ -116,7 +122,7 @@
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
-      "note": "Leftover (HANDOFF step 1, for the backlog): the determinism guard's comment stripper treats quotes inside regex literals as strings."
+      "note": "Leftover in BACKLOG.md: B-005 (S0): the determinism guard's comment stripper treats quotes inside regex literals as strings."
     },
     {
       "id": "DES-001",
@@ -469,7 +475,7 @@
         "At 390×844, dock-more opens more-sheet with its top at about 48% of the viewport height (proposed tolerance ± 3%, see note), containing more-visitors, more-shows, more-research, more-finances, more-encyclopedia and more-settings.",
         "more-research closes the sheet and opens panel-research, and the More tab stays active while Research is open.",
         "At 1440×900, navigating to #/more opens nothing and leaves the route at home.",
-        "The Visitors tile shows the 15px lock badge while Visitors is locked, and the Shows tile and the More tab show an attention dot whenever navDots reports one for Shows."
+        "The Visitors tile shows the 15px lock badge while Visitors is locked, the Shows tile shows an attention dot whenever navDots reports one for Shows, and the More tab shows a dot whenever navDots reports one for any destination inside More (design §5.2: Shows results, a new Social item from S4, …) and none otherwise."
       ],
       "tasks": [],
       "tests": [
@@ -482,7 +488,7 @@
         "§5.2",
         "§5.3"
       ],
-      "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\"."
+      "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\". requirements-2 m8: A4 covers the More dot for every More destination, not only Shows."
     },
     {
       "id": "NAV-005",
@@ -889,7 +895,7 @@
       "acceptance": [
         "red/yellow · solid · veil · c/c is named 'Red Cambodian Veiltail Betta', and royal/red · solid · veil · c/c is too (red is expressed).",
         "royal/royal · c/c has no 'Cambodian' in its name and keeps its non-Cambodian look.",
-        "The locus note equals the §8.3 text, and git diff shows no change to src/sim/life/genetics.ts or src/sim/life/morphCatalog.ts.",
+        "The locus note equals the §8.3 text, and git diff <S1 checkpoint>..<S2 candidate> -- src/sim/life/genetics.ts src/sim/life/morphCatalog.ts is empty (the base is the S1 checkpoint: S0 already changed morphCatalog.ts for locale-independent sorting, CONST-004).",
         "copy-fixes.test.ts stays green (no doubled words in the new names)."
       ],
       "tasks": [],
@@ -903,7 +909,8 @@
         "§8.1",
         "§8.3",
         "§8.4"
-      ]
+      ],
+      "note": "requirements-2 m6: A3 names its base."
     },
     {
       "id": "GEN-004",
@@ -953,18 +960,20 @@
     {
       "id": "GEN-006",
       "slice": "S2",
-      "source": "design §8.5, Appendix C, §20.3 (morph-catalog.test.ts), §21 Phase 2 Done when (catalog shows 540); master §9 S2 (updated betta catalog; exact test updates); umbrella GEN-001",
-      "description": "The betta morph catalog has 540 entries (Red 120, every other colour group 60) from 72,900 genotypes with the design §8.5 frequencies, and each entry's tier comes from the tier model recorded in the owner's ADR before S2 starts (GEN-007).",
+      "source": "design §8.5, Appendix C, §20.1 (genetics-expansion tiers), §20.3 (morph-catalog.test.ts), §21 Phase 2 Done when (catalog shows 540); master §9 S2 (updated betta catalog; exact test updates); ADR-0005 decision 4 (keep today's tier rule); umbrella GEN-001",
+      "description": "The betta morph catalog has 540 entries (Red 120, every other colour group 60) from 72,900 genotypes with the design §8.5 frequencies, and each entry's tier comes from today's tier rule (MORPH_TIER_MIN_SHARE over the entry's share), which ADR-0005 decision 4 keeps (GEN-007); design §8.5 predicts 1 / 9 / 21 / 43 / 466 entries per tier under it.",
       "acceptance": [
         "genetics-expansion.test.ts: 540 entries, Red 120 + 7 × 60, and 72,900 genotypes (under the species tests' 200k cap).",
         "Catalog frequencies match design §8.5: Royal Blue Butterfly Halfmoon '1 in 143', Red Cambodian Veiltail '1 in 520', Red Metallic Veiltail '1 in 360' and Royal Blue Metallic Butterfly Halfmoon '1 in 9,804'.",
-        "The tier assertions follow the tier model recorded in the owner's ADR before S2 starts, not today's MORPH_TIER_MIN_SHARE thresholds by default, and the S2 reviewer attaches the resulting tier distribution to evidence (GEN-007).",
-        "morph-catalog.test.ts (L58-65) asserts Red 120, others 60 and 540 in total instead of 8 × 30 = 240."
+        "genetics-expansion.test.ts asserts the design §20.1 tiers under today's rule (ADR-0005 decision 4): Royal Blue Butterfly Halfmoon rare, Red Cambodian Veiltail very_rare and Royal Blue Metallic Butterfly Halfmoon legendary, and catalog tier counts of 1 / 9 / 21 / 43 / 466 (design §8.5); a later owner ADR that changes the tier model changes these assertions with it (GEN-007).",
+        "morph-catalog.test.ts (L58-65) asserts Red 120, others 60 and 540 in total instead of 8 × 30 = 240.",
+        "The one planned edit to tests/sim/report-rarity.test.ts is its pinned betta row (\"betta, pinned from the current data: 240 morphs at 1 / 9 / 21 / 39 / 170, 9 strains, …\"): S2 re-pins it to the S2 data (540 entries at 1 / 9 / 21 / 43 / 466 per design §8.5, 10 strains with cambodian_veil, and the stock shares npm run report:rarity prints on the S2 tree) and renames it to match; the report output before and after the change is in evidence/S2 (GEN-007 A3), the file's other tests stay unchanged, and if the counts differ from design §8.5 the evidence says why and the S2 reviewer judges it."
       ],
       "tasks": [],
       "tests": [
         "new: tests/sim/genetics-expansion.test.ts",
-        "tests/sim/morph-catalog.test.ts"
+        "tests/sim/morph-catalog.test.ts",
+        "tests/sim/report-rarity.test.ts"
       ],
       "evidence": [],
       "status": "PENDING",
@@ -972,12 +981,13 @@
         "§8.5",
         "§20.3",
         "§21"
-      ]
+      ],
+      "note": "requirements-2 m1: A3 now asserts the §20.1 tiers under the rule ADR-0005 decision 4 kept. requirements-2 m2: A5 names the S2 change to report-rarity.test.ts (an S0 test, GEN-013), the way the §20.3 rows are named."
     },
     {
       "id": "GEN-007",
       "slice": "S2",
-      "source": "master §42; design §22 risk 1; ADR-0003 (supersession register: rarity tiers are an open owner question, to settle before S2); master §9 S2 (catalog checks); ADR-0005 decision 4 (keep today's tier rule, count the real numbers); umbrella GEN-001",
+      "source": "master §42; design §22 risk 1; ADR-0003 supersession register (§22 risk 1, then an open owner question) answered by ADR-0005 decision 4 (keep today's tier rule, count the real numbers; ADR-0008 §4); master §9 S2 (catalog checks); umbrella GEN-001",
       "description": "S2 keeps today's tier rule (the absolute MORPH_TIER_MIN_SHARE thresholds, under which design §8.5 predicts 466 of 540 betta entries Legendary), as the owner decided in ADR-0005 decision 4, and reports the real per-tier counts (npm run report:rarity, GEN-013) so the owner can decide any change from them; the tier model changes only through a later owner ADR.",
       "acceptance": [
         "ADR-0005 decision 4 records the owner's answer verbatim (keep today's rule and report the counts); any change to MORPH_TIER_MIN_SHARE or the tier model needs a later ADR recording the owner's approval verbatim, and until one exists S2 keeps today's rule.",
@@ -1023,9 +1033,9 @@
       "id": "GEN-009",
       "slice": "S2",
       "source": "design §8.6, §20.3 (name tests on hand-built genomes), §21 Phase 2 Done when (existing bettas keep names); master §9 S2 (determinism checks; exact test updates); umbrella GEN-001",
-      "description": "Bettas from before 0.5 normalise the missing loci to C/C and std/std and keep their name, appearance and value with no migration or repair note, the wild-type allele stays the most common in both new loci, and new bettas draw from a shifted RNG stream without breaking determinism.",
+      "description": "Bettas whose genomes predate the new loci (every betta created before S2) normalise the missing loci to C/C and std/std and keep their name, appearance and value with no migration or repair note, the wild-type allele stays the most common in both new loci, and new bettas draw from a shifted RNG stream without breaking determinism.",
       "acceptance": [
-        "A 0.4 genome without the new loci normalises to C/C + std/std with an unchanged morph name, and loading a v0.4.0 save leaves every betta's cached morphName, appearance and creatureValue unchanged.",
+        "A genome without the new loci normalises to C/C + std/std with an unchanged morph name, and a state whose bettas lack the new loci survives a save/load round trip on the S2 tree with every betta's cached morphName, appearance and creatureValue unchanged and repairs: [] (design §8.6 as genome normalisation).",
         "A test asserts that C (0.9) and std (0.88) are the most common alleles of their loci.",
         "core-determinism.test.ts and fix-core-step-invariance.test.ts stay green.",
         "lifecycle-genetics (L150-152), rare-variants (L202-203, L241-242), fix-sim3-morphs and fix-life-genetics pass unchanged; if one changes, the evidence shows a moved mutation rather than a naming change."
@@ -1047,7 +1057,8 @@
         "§8.6",
         "§20.3",
         "§21"
-      ]
+      ],
+      "note": "requirements-2 m5: design §8.6 still applies as genome normalisation; it is not a promise that v0.4.0 saves load (PERSIST-001 superseded, ADR-0005 decision 1)."
     },
     {
       "id": "GEN-010",
@@ -1136,7 +1147,7 @@
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
-      "note": "HANDOFF step 6, commit 172b5c3 (package.json script, scripts/report-rarity.ts, src/sim/life/rarityReport.ts, tests/sim/report-rarity.test.ts), pending independent review. Task S0-T13 in CURRENT_SLICE.md."
+      "note": "HANDOFF step 6, commit 172b5c3 (package.json script, scripts/report-rarity.ts, src/sim/life/rarityReport.ts, tests/sim/report-rarity.test.ts), pending independent review. Task S0-T13 in CURRENT_SLICE.md. S2 re-pins the test's betta row (GEN-006 A5)."
     },
     {
       "id": "MKT-001",
@@ -2162,7 +2173,8 @@
       "designSections": [
         "§12.2",
         "§21"
-      ]
+      ],
+      "note": "Club-show reminders need the Social stub's clubs (S4); their route and dev-mode gating are tested with SOC-011 A5 in S4, not here (requirements-2 m8)."
     },
     {
       "id": "NOTIFY-004",
@@ -2741,7 +2753,7 @@
     {
       "id": "SOC-002",
       "slice": "S4",
-      "source": "master §9 S4, §24; design §13.6",
+      "source": "master §9 S4, §24; design §13.6; umbrella SOC-001",
       "description": "The Social stub never persists a password anywhere: localStorage, IndexedDB, the save or an export.",
       "acceptance": [
         "After sign-in and sign-up, no stored value contains the typed password"
@@ -2790,7 +2802,8 @@
         "dock-width.spec at 1400, 1440, 1519, 1520 and 1600 × 900: the .ag-dock and .ag-hud__cam boxes do not intersect and .ag-dock has no has-more-right class, with items narrowed to min-width 58px at 1400-1519px and 67px from 1520px by .ag-dock .ag-dock__item rules in nav.css (or the chips' icon-only breakpoint raised, each chip keeping its aria-label and title).",
         "The dock order is Tanks · Livestock · Market · Visitors · Shows · Social · Build · Research · Finances · Encyclopedia · Settings.",
         "mobile-tabbar.spec: more-social opens panel-social, and its New tag and the More dot clear after the first open.",
-        "Tests that pass DOCK_ITEMS or iterate dock ids (boot.spec, ui-notify-news, ui-notify-attention) pass with the 11th item, any fixed dock-item count being updated to 11."
+        "Tests that pass DOCK_ITEMS or iterate dock ids (boot.spec, ui-notify-news, ui-notify-attention) pass with the 11th item, any fixed dock-item count being updated to 11.",
+        "dock-social shows an attention dot until Social is first opened, the dot clears on that first open, and it returns when the stub reports a new club or trade item (design §5.4; in dev mode, SOC-011)."
       ],
       "tasks": [],
       "tests": [
@@ -2798,7 +2811,8 @@
         "new: tests/e2e/mobile-tabbar.spec.ts",
         "tests/e2e/boot.spec.ts",
         "tests/sim/ui-notify-news.test.ts",
-        "tests/sim/ui-notify-attention.test.ts"
+        "tests/sim/ui-notify-attention.test.ts",
+        "new: tests/sim/social-stub.test.ts"
       ],
       "evidence": [],
       "status": "PENDING",
@@ -2811,7 +2825,7 @@
         "§21",
         "§22"
       ],
-      "note": "ADR-0005 decision 3: dock-social and more-social appear only in dev mode (SOC-011); these criteria apply in dev mode, and without it the dock and More sheet stay as they are without Social."
+      "note": "ADR-0005 decision 3: dock-social and more-social appear only in dev mode (SOC-011); these criteria apply in dev mode, and without it the dock and More sheet stay as they are without Social. requirements-2 m8: A5 is the §5.4 dock-social attention dot."
     },
     {
       "id": "SOC-005",
@@ -2959,18 +2973,20 @@
         "Outside dev mode no Social surface is reachable: no dock-social item, no more-social tile, and #/social, #/social/<tab> and #/social/join/:code open no Social screen",
         "In dev mode the stub behaves exactly as SOC-002 to SOC-010 and DES-010 specify, and their tests run with dev mode on",
         "The dock, More sheet and route tests check both modes",
-        "Making Social reachable outside dev mode needs a later owner ADR (a real backend)"
+        "Making Social reachable outside dev mode needs a later owner ADR (a real backend)",
+        "Outside dev mode no notification or in-game link opens a Social route: a Shows club-show reminder (design §12.2, which opens #/social/clubs) is shown only in dev mode (NOTIFY-003)"
       ],
       "tasks": [],
       "tests": [
         "new: tests/e2e/social.spec.ts (proposed)",
         "new: tests/e2e/mobile-tabbar.spec.ts",
         "new: tests/e2e/dock-width.spec.ts",
-        "new: tests/sim/nav-routes.test.ts"
+        "new: tests/sim/nav-routes.test.ts",
+        "new: tests/sim/notify-rules.test.ts"
       ],
       "evidence": [],
       "status": "PENDING",
-      "note": "The design registry override for this decision is HANDOFF step 3 (DESIGN_REGISTRY.json)."
+      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision."
     },
     {
       "id": "PLAT-001",
@@ -3268,18 +3284,27 @@
     {
       "id": "PERSIST-002",
       "slice": "ALL",
-      "source": "design §20.1 persistence-05; master §38",
-      "description": "repairState is idempotent and two save/load round trips keep the stateHash, for a fresh game, a legacy save and the big facility fixture.",
+      "source": "design §20.1 persistence-05; master §38; requirements-2 M2, m5",
+      "description": "repairState is idempotent and two save/load round trips keep the stateHash, for a fresh game, the in-repo legacy v0 fixture (while its migration exists), crafted saves and the big facility fixture. This is idempotence, not a promise that v0.4.0 saves load (PERSIST-001 is superseded, ADR-0005 decision 1).",
       "acceptance": [
-        "repairState applied twice gives an equal stateHash",
-        "load → save → load keeps the stateHash"
+        "repairState applied twice gives an equal stateHash and a second repair finds nothing to fix: core-migration.test.ts (\"repair … is idempotent\"), core-crafted-saves.test.ts (\"a second repair finds nothing left to fix\"), core-crafted-saves-fuzz.test.ts and rare-persistence.test.ts (\"a broken rare state is repaired deterministically (and repair is idempotent)\")",
+        "load → save → load keeps the stateHash: core-persistence.test.ts (\"roundtrip is idempotent\") and rare-persistence.test.ts (\"repeated loads agree, and a loaded save never changes on the next load\")",
+        "persistence-05.test.ts, written in S3 with PERSIST-006, adds the big_facility fixture (src/dev/fixtures) to both checks"
       ],
-      "tasks": [],
+      "tasks": [
+        "S0-T8"
+      ],
       "tests": [
-        "new: tests/sim/persistence-05.test.ts"
+        "tests/sim/core-migration.test.ts",
+        "tests/sim/core-crafted-saves.test.ts",
+        "tests/sim/core-crafted-saves-fuzz.test.ts",
+        "tests/sim/rare-persistence.test.ts",
+        "tests/sim/core-persistence.test.ts",
+        "new: tests/sim/persistence-05.test.ts (written in S3 with PERSIST-006: design §20.1, §21 Phase 5)"
       ],
       "evidence": [],
-      "status": "ACTIVE"
+      "status": "ACTIVE",
+      "note": "requirements-2 M2: it governs S0 because S0 changes repairState (PERSIST-011), so S0 is judged on the existing tests in A1-A2."
     },
     {
       "id": "PERSIST-003",
@@ -3292,33 +3317,37 @@
         "Every data shape this build adds to the save is validated on load by repairState: a malformed value is repaired with a note, never trusted (PERSIST-006, PERSIST-007, PERSIST-011)",
         "Any SCHEMA_VERSION change ships with its migration, a test that loads the previous version, and a docs entry (master §3.5)"
       ],
-      "tasks": [],
-      "tests": [
-        "new: tests/sim/core-save-forward-safety.test.ts (proposed: a schemaVersion-2 primary plus a v1 backup on a memory backend)"
-      ],
-      "evidence": [],
-      "status": "ACTIVE",
-      "note": "Not implemented yet: adversarial review M02 found that the v0.4.0 code treats a too_new save as damaged, falls back to the older .backup and can then overwrite the newer record (src/persistence/slots.ts, migrations.ts). M02 recommends implementing this now as a contained core-persistence change; which slice does it is the orchestrator's call."
-    },
-    {
-      "id": "PERSIST-004",
-      "slice": "S4",
-      "source": "2026-10-05 review (persistence-security); master §9 S4 persistence sanity",
-      "description": "A crafted or corrupted save can't pollute object prototypes, crash the sim loop or make the game fetch remote URLs.",
-      "acceptance": [
-        "Ids such as __proto__, constructor and toString are rejected or repaired",
-        "Listing photos that aren't data:image URLs are dropped on load"
-      ],
       "tasks": [
         "S0-T8"
       ],
       "tests": [
+        "new: tests/sim/core-save-forward-safety.test.ts (proposed; written in S1 by PERSIST-014: a schemaVersion-2 primary plus a v1 backup on a memory backend)"
+      ],
+      "evidence": [],
+      "status": "ACTIVE",
+      "note": "Not implemented yet: adversarial review M02 (BACKLOG B-102) found that the v0.4.0 code treats a too_new save as damaged, falls back to the older .backup and can then overwrite the newer record (src/persistence/slots.ts, migrations.ts). requirements-2 M2: this stays the standing rule, and PERSIST-014 (S1) implements A1-A2, so S1 can't be accepted without it. In S0: S0 changes repairState (PERSIST-011) but adds no save shape and doesn't change SCHEMA_VERSION (git diff 0d9fc5a -- src/persistence/schema.ts is empty), so A3-A4 hold there; A1-A2 hold for no build until PERSIST-014."
+    },
+    {
+      "id": "PERSIST-004",
+      "slice": "S4",
+      "source": "2026-10-05 review (persistence-security); master §9 S4 persistence sanity; BACKLOG B-122 (leftovers) and B-004; requirements-2 M3",
+      "description": "A crafted or corrupted save can't pollute object prototypes, crash the sim loop or make the game fetch remote URLs. The S0 part (inherited-key ids, null-prototype catalogs, non-embedded listing photos) is PERSIST-011; this requirement is the rest: oversized lists, out-of-range numbers, enum-valued fields and the clone that copies inherited keys.",
+      "acceptance": [
+        "A save whose lists are far longer than play produces (proposed: 100,000 entries in progress.discoveredMorphs, the event log, market listings and one tank's creatures, see note) loads through decodeRecord, migrateSave and repairState in bounded time (proposed: under 2 s on the gate machine), is trimmed or de-duplicated with a repair note, and the world then steps one game day without throwing (B-122: the quadratic discoveredMorphs de-dup)",
+        "Numeric fields holding non-finite or out-of-range values (NaN, 1e999 parsed as Infinity, negative money or counts, ages and hours outside their domain) are clamped or reset with a repair note; afterwards findNonFinite(state) is empty and the world steps one game day without throwing",
+        "Enum-valued fields (staff role, visitor archetype and the like) holding a value missing from their table are repaired with a note (B-004)",
+        "fastMutate's deep clone copies only own keys, so a crafted inherited-name key can't reach a prototype through it (B-122 leftover)",
+        "A second repairState finds nothing to fix, and PERSIST-011's tests (core-crafted-saves, core-crafted-saves-fuzz) stay green"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/core-crafted-saves-limits.test.ts (proposed; written in S4)",
         "tests/sim/core-crafted-saves.test.ts",
         "tests/sim/core-crafted-saves-fuzz.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "The S0 part (inherited-key ids, null-prototype catalogs and non-embedded listing photos: 6347c5d, d98731d) is PERSIST-011; oversized arrays and number ranges remain for S4 hardening."
+      "status": "PENDING",
+      "note": "requirements-2 M3: the old A1-A2 (inherited-key ids, non-embedded photos) are PERSIST-011 and passed in S0 (6347c5d, d98731d); this entry now carries only the S4 remainder, so it can't close GREEN with that work dropped. Needs owner or reviewer confirmation: the list size and time bound are proposals; the S4 contract fixes them (HARNESS-030)."
     },
     {
       "id": "PERSIST-005",
@@ -3378,7 +3407,8 @@
       "designSections": [
         "§15",
         "§3"
-      ]
+      ],
+      "note": "Owning slice for its test: the new fields arrive with design §21 Phases 3 and 5, both S3 work (master §9), and persistence-05.test.ts is written in S3 with PERSIST-006. S0 adds no save field."
     },
     {
       "id": "PERSIST-008",
@@ -3407,7 +3437,8 @@
       "description": "mutateFast is atomic like useGame.mutate: when its recipe throws, nothing is published, so a world step that fails part-way never becomes the game state, is never built on by the next tick and is never autosaved; runTick keeps the failed tick's hours in its backlog instead of dropping them.",
       "acceptance": [
         "A mutateFast recipe that throws leaves the store's game object, its version and every value unchanged, and the next call starts from the store, not from the abandoned working copy",
-        "runTick on a world step that throws changes nothing, counts one error in the loop stats and returns the tick's game hours as backlog"
+        "runTick on a world step that throws changes nothing, counts one error in the loop stats and returns the tick's game hours as backlog",
+        "tests/sim/core-fastmutate-atomic.test.ts names PERSIST-009 in its header comment, as its describe titles do (the header still says PERSIST-004: requirements-2 m9)"
       ],
       "tasks": [
         "S0-T8"
@@ -3417,7 +3448,7 @@
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
-      "note": "Leftovers (HANDOFF step 1, for the backlog): loadAndResume still adopts a half-simulated catch-up when simulateOffline throws (SD-10 / adversarial F9), and repeated tick failures aren't shown to the player."
+      "note": "Leftovers in BACKLOG.md: B-001 (S0) loadAndResume still adopts a half-simulated catch-up when simulateOffline throws (SD-10 / adversarial F9); B-002 (owner question) repeated tick failures aren't shown to the player."
     },
     {
       "id": "PERSIST-010",
@@ -3455,25 +3486,29 @@
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
-      "note": "Oversized arrays and number ranges stay with PERSIST-004 (S4). Leftover (HANDOFF step 1): enum-valued save fields (role, archetype, …) aren't checked against their tables."
+      "note": "Oversized lists, out-of-range numbers, enum-valued fields (B-004) and the other B-122 leftovers are PERSIST-004 (S4)."
     },
     {
       "id": "PERSIST-012",
       "slice": "S0",
       "source": "S0 review; the offline-grace contract in src/persistence/offline.ts; ADR-0002 decision 2; commit 16233a1",
-      "description": "Equipment doesn't fail during the offline grace (the catch-up), as the grace contract says; wear still accrues, and the failure roll still draws, so the random stream is unchanged.",
+      "description": "Equipment doesn't fail during the offline grace (the catch-up), as the grace contract says; wear still accrues, and the failure roll still draws, so the random stream changes only where a failure would have happened (the stuck-heater draw is then skipped).",
       "acceptance": [
         "A tank with 400 worn-out heaters has no failed equipment after a 12-hour simulateOffline, while its heaters' condition still drops",
-        "The same rig stepped 12 game hours outside the grace does fail, so the check is meaningful"
+        "The same rig stepped 12 game hours outside the grace does fail, so the check is meaningful",
+        "The seeded suites pass on the S0 tree with the fix (core-determinism.test.ts, fix-core-step-invariance.test.ts and the rest of npm test), as OPERATIONS.md §11 asks of a change to draws on an existing stream, and no test or data was retuned for it"
       ],
       "tasks": [
         "S0-T8"
       ],
       "tests": [
-        "tests/sim/fix-water-grace-equipment.test.ts"
+        "tests/sim/fix-water-grace-equipment.test.ts",
+        "tests/sim/core-determinism.test.ts",
+        "tests/sim/fix-core-step-invariance.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "IN_PROGRESS",
+      "note": "requirements-2 m8: the description said the stream is \"unchanged\"; src/sim/water/step.ts skips the stuck-heater draw when it suppresses a failure, so the stream changes only where a failure would have happened, and A3 checks the seeded suites instead."
     },
     {
       "id": "PERSIST-013",
@@ -3496,33 +3531,57 @@
       "status": "IN_PROGRESS"
     },
     {
+      "id": "PERSIST-014",
+      "slice": "S1",
+      "source": "implements PERSIST-003 A1-A2; ADR-0005 decision 1 (\"allowing good saves going forward\"); master §3.5, §3.8; master §9 S1 (platform abstraction) with design §14 (the platform layer's persistence seam: lifecycle onPause for the pagehide write, storageCandidates through configureStorageDetection) and §21 Phase 0; 2026-10-05 adversarial review M02 (BACKLOG B-102); requirements-2 M2",
+      "description": "The save code becomes forward-safe in S1, with the platform seam: a slot whose primary record was written by newer code (schemaVersion above SCHEMA_VERSION, too_new) loads as too_new rather than damaged, nothing falls back past it to an older backup or another backend's copy, and no write path rotates it away or overwrites it.",
+      "acceptance": [
+        "core-save-forward-safety.test.ts, on a memory backend holding a primary with schemaVersion SCHEMA_VERSION + 1 and a valid v1 .backup: loading the slot reports too_new with the \"newer version\" message, restores neither the .backup nor another backend's copy, and doesn't report the save as damaged",
+        "saveGame, saveGameSync (the pagehide/hidden write) and the backup rotation leave a record whose header or body schemaVersion is above SCHEMA_VERSION unchanged, in both the primary and the .backup key",
+        "core-persistence, core-migration, rare-persistence and the crafted-save tests stay green; the change to these core-owned files is minimal and tagged // lane:core, and a security-data reviewer signs it off (master §3.8)",
+        "PERSIST-003 A1-A2 then hold on the S1 tree, and HARNESS-029's table at S1 acceptance shows PERSIST-003's test passing"
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/core-save-forward-safety.test.ts (proposed; written in S1)",
+        "tests/sim/core-persistence.test.ts",
+        "tests/sim/core-migration.test.ts",
+        "tests/sim/rare-persistence.test.ts",
+        "tests/sim/core-crafted-saves.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§14",
+        "§21"
+      ],
+      "note": "Why S1: master §9 S1 owns the platform abstraction, and design §14 defines its seam with persistence (the lifecycle hooks the pagehide write uses, and the storage candidates). Neither the master nor the design assigns forward safety to another slice; master §9 S4 persistence sanity (PERSIST-008) re-checks it. What a player can do with a too_new slot beyond today's too_new handling isn't decided here: a new player-facing choice is an owner question."
+    },
+    {
       "id": "HARNESS-001",
       "slice": "S0",
-      "source": "master §0, §9 S0, §12-§16",
+      "source": "master §0, §9 S0 (prove a fresh agent can bootstrap from repository state alone), §12-§16",
       "description": "Project state must be recoverable from repository artifacts without chat history.",
       "acceptance": [
-        "A fresh session reading only README_FIRST's list writes a bootstrap assertion that scripts/agent/bootstrap-check.mjs accepts",
+        "A new Claude Code session, started after the S0 work is committed (S0-T11), reads only README_FIRST's list, writes evidence/S0/bootstrap-<timestamp>.json, and node scripts/agent/bootstrap-check.mjs on that file exits 0 (logged with capture-evidence.mjs --command); bootstrap-check.mjs checks each field against Git and STATE.json and rejects an unread mandated file or a session id that isn't the running session (agent.test.mjs: bootstrap)",
         "node scripts/agent/check-state.mjs exits 0 on the S0 checkpoint",
-        "STATE.json, LEDGER.jsonl, HANDOFF.md and the S0 evidence manifest agree with Git"
+        "STATE.json, LEDGER.jsonl, HANDOFF.md and the S0 evidence manifest agree with Git: STATE.machineState is the last recorded transition, the recorded HEAD, baseline and checkpoint SHAs exist where they say, and HANDOFF.md's generated block is what handoff.mjs prints (HARNESS-010, HARNESS-016, HARNESS-019)"
       ],
       "tasks": [
-        "S0-T1",
-        "S0-T2",
-        "S0-T3",
         "S0-T4",
-        "S0-T6",
-        "S0-T7",
         "S0-T11",
         "S0-T12"
       ],
       "tests": [
-        "scripts/agent/agent.test.mjs",
-        "scripts/agent/bootstrap-check.mjs"
+        "scripts/agent/agent.test.mjs (bootstrap, check-state)",
+        "scripts/agent/bootstrap-check.mjs",
+        "scripts/agent/check-state.mjs"
       ],
       "evidence": [
         "docs/agent/evidence/S0/manifest.json"
       ],
-      "status": "IN_PROGRESS"
+      "status": "IN_PROGRESS",
+      "note": "requirements-2 B1: the S0 tasks HARNESS-001 used to list (S0-T1 to S0-T12) now map to the requirements whose criteria test them (HARNESS-009 to HARNESS-022). evidence/S0/bootstrap-20261005T223554Z.json is the assertion of the cloud session doing S0 (fb16c5d5-…), not the S0-T11 fresh-session test."
     },
     {
       "id": "HARNESS-002",
@@ -3550,17 +3609,20 @@
       "source": "ADR-0002 decision 4; master §8; design/DESIGN_INTAKE.md",
       "description": "Designs enter through the registry and intake procedure, and work that depends on a design starts only once it is APPROVED.",
       "acceptance": [
-        "DESIGN_REGISTRY.json lists DESIGN-0.5 (APPROVED, with its overrides) and DESIGN-S3D (PENDING_OWNER_DESIGN)",
-        "check-state.mjs rejects an APPROVED design without an approval reference or an existing path"
+        "DESIGN_REGISTRY.json lists DESIGN-0.5 (APPROVED, with its overrides), DESIGN-S3D (PENDING_OWNER_DESIGN, ADR-0002 decision 4) and DESIGN-S3C-LINES (PENDING_OWNER_DESIGN, ADR-0005 decision 6, added under ADR-0008 §5)",
+        "check-state.mjs rejects an APPROVED design without an approval reference or an existing path",
+        "Every requirement whose work needs a pending design is BLOCKED with blockedBy naming it: AUTO-002 and AUTO-012 to AUTO-015 by DESIGN-S3D, DES-008 and PROD-003 by DESIGN-S3C-LINES (the validator refuses BLOCKED without blockedBy)"
       ],
       "tasks": [
         "S0-T5"
       ],
       "tests": [
-        "scripts/agent/agent.test.mjs (design registry)"
+        "scripts/agent/agent.test.mjs (design registry, requirements)",
+        "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "IN_PROGRESS",
+      "note": "requirements-2 m3: A1 now names DESIGN-S3C-LINES. Verifying the design against the repo is HARNESS-020."
     },
     {
       "id": "HARNESS-004",
@@ -3589,37 +3651,48 @@
       "acceptance": [
         "check-state.mjs fails on a GREEN gate without a passing run on the accepted code tree, on edited or ignored evidence, on a rewritten ledger line and on a deleted requirement id",
         "test-inventory.mjs fails when a test id disappears, the count drops or a skip marker appears",
-        "protect.mjs fails when a protected file changes without --update --adr"
+        "protect.mjs fails when a protected file changes without --update --adr",
+        "On the S0 tree protect.mjs and test-inventory.mjs exit 0 against their references: PROTECTED.json (recorded under ADR-0008, fe6f674) and evidence/S0/test-inventory-baseline.json (from 0d9fc5a)"
       ],
       "tasks": [
         "S0-T4"
       ],
       "tests": [
-        "scripts/agent/agent.test.mjs"
+        "scripts/agent/agent.test.mjs (evidence files, manifest, ledger, requirements, test inventory, protected files)",
+        "scripts/agent/protect.mjs",
+        "scripts/agent/test-inventory.mjs"
       ],
-      "evidence": [],
+      "evidence": [
+        "docs/agent/PROTECTED.json",
+        "docs/agent/evidence/S0/test-inventory-baseline.json"
+      ],
       "status": "IN_PROGRESS"
     },
     {
       "id": "HARNESS-006",
       "slice": "S0",
-      "source": "master §27, §35; ADR-0003",
-      "description": "The objective gates can be trusted: e2e never tests a foreign server, e2e specs are typechecked, tests must assert, and focused tests can't pass a gate.",
+      "source": "master §27, §35; ADR-0003; ADR-0010 (BF-002)",
+      "description": "The objective gates can be trusted: e2e never tests a foreign server, e2e specs are typechecked, tests must assert, focused tests can't pass a gate, and a long synchronous test file can't fail a run in which every test passed.",
       "acceptance": [
         "playwright.config.ts reuses a running server only with E2E_REUSE=1 (a busy port fails)",
         "tsconfig.json includes tests/e2e and playwright.config.ts, and npm run typecheck passes",
         "vitest.config.ts sets allowOnly: false and expect.requireAssertions: true, and npm test passes",
-        "playwright.config.ts sets forbidOnly: true"
+        "playwright.config.ts sets forbidOnly: true",
+        "vitest.config.ts registers tests/sim/setup/yield-between-tests.ts in setupFiles (ADR-0010, BF-002), and no npm test run on the S0 tree reports a Vitest \"Timeout calling onTaskUpdate\" error (verify-slice.mjs unit records in evidence/S0/manifest.json)",
+        "The only S0 edits to test files that existed at 0d9fc5a are the requireAssertions guards, one unconditional expect each in tests/sim/species-fw.test.ts and tests/sim/species-marine.test.ts (ADR-0003), and the P5-09 helper in tests/sim/fix-core-offline.test.ts (PERSIST-013 A3): git diff --name-status --diff-filter=M 0d9fc5a.. -- tests lists nothing else"
       ],
       "tasks": [
         "S0-T9"
       ],
       "tests": [
         "npm run typecheck",
-        "npm test"
+        "npm test",
+        "scripts/agent/agent.test.mjs (gate configuration)",
+        "git diff --name-status --diff-filter=M 0d9fc5a.. -- tests (logged with scripts/agent/capture-evidence.mjs --command)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "IN_PROGRESS",
+      "note": "requirements-2 m9: A6 names the S0 edits to species-fw.test.ts (a design §20.4 test) and species-marine.test.ts."
     },
     {
       "id": "HARNESS-007",
@@ -3629,7 +3702,8 @@
       "acceptance": [
         "node scripts/agent/requirements-audit.mjs exits 0 on the S4 tree.",
         "No other requirement of S1-S4 is PENDING, IN_PROGRESS, YELLOW, RED, BLOCKED or ACTIVE (standing requirements are slice ALL).",
-        "Every test and evidence path cited by a GREEN requirement exists at that path."
+        "Every test and evidence path cited by a GREEN requirement exists at that path.",
+        "No ALL requirement with status ACTIVE still names only proposed (\"new:\") tests on the S4 tree, and HARNESS-029's table in evidence/S4/acceptance-report.md shows each of their tests passing."
       ],
       "tasks": [],
       "tests": [
@@ -3649,29 +3723,556 @@
         "The bundle's path, SHA-256 and the verify output are recorded in that slice's evidence",
         "OPERATIONS.md's checkpoint procedure includes the bundle and verify step (git bundle create, then git bundle verify)"
       ],
-      "tasks": [],
+      "tasks": [
+        "S0-T12"
+      ],
       "tests": [
         "git bundle verify \"/Volumes/Dev/Backup Projects/AquariumGo/<bundle>\" (run at each checkpoint, log in evidence/<slice>/logs/)"
       ],
       "evidence": [],
       "status": "ACTIVE",
-      "note": "Runs on the owner's machine; a cloud session can't reach /Volumes/Dev. ADR-0005 decision 7 calls the folder STATE.backupDir, which STATE.json doesn't have; ADR-0006 names the folder. scripts/agent has no backup step yet (ADR-0006 consequences)."
+      "note": "Runs on the owner's machine; a cloud session can't reach /Volumes/Dev and records the step as not run (OPERATIONS.md §6 step 5, §8). ADR-0005 decision 7 calls the folder STATE.backupDir, which STATE.json doesn't have; ADR-0006 names the folder. OPERATIONS.md §6 has the bundle step since ADR-0008; no script does it yet."
+    },
+    {
+      "id": "HARNESS-009",
+      "slice": "S0",
+      "source": "master §9 S0 (create docs/agent operating package), §12; ADR-0003; ADR-0008",
+      "description": "The docs/agent operating package that master §12 lists is committed, so every later session and reviewer reads the same rules: the constitution and procedures, the design and its registry and intake, state, ledger, registry, slice contract, handoff, decisions, evidence, prompts and templates.",
+      "acceptance": [
+        "At the S0 checkpoint git ls-files lists every path master §12 names: README_FIRST.md, AQUARIUMGO_MASTER_SOURCE_OF_TRUTH.md, OPERATIONS.md, PROTECTED.json, BACKLOG.md; design/AQUARIUM_GO_0_5_DESIGN_SPEC.md, DESIGN_REGISTRY.json and DESIGN_INTAKE.md; STATE.json, LEDGER.jsonl, REQUIREMENTS.json, CURRENT_SLICE.md, HANDOFF.md; decisions/INDEX.md with its ADRs; prompts/KICKOFF.md, MASTER_ORCHESTRATOR_PROMPT.md and ROLE_PROMPTS.md; the six templates; and evidence/S0/manifest.json, logs/, reviews/, test-inventory.json, a bootstrap-<timestamp>.json and acceptance-report.md (run and logged with capture-evidence.mjs --command)",
+        ".agent-runs/ is ignored by Git (git check-ignore -q .agent-runs/x exits 0), so large or ephemeral output stays outside the repository with its path and hash in evidence (master §12)",
+        "AGENTS.md (loaded through CLAUDE.md) sends a fresh agent to docs/agent/README_FIRST.md, and every path in README_FIRST.md's reading order exists at the S0 checkpoint",
+        "The protected files among them are hashed in PROTECTED.json and protect.mjs exits 0 (HARNESS-005)"
+      ],
+      "tasks": [
+        "S0-T3",
+        "S0-T7",
+        "S0-T12"
+      ],
+      "tests": [
+        "git ls-files and git check-ignore on the master §12 paths (logged with scripts/agent/capture-evidence.mjs --command, label s0-operating-package)",
+        "scripts/agent/protect.mjs",
+        "scripts/agent/agent.test.mjs (protected files)"
+      ],
+      "evidence": [
+        "docs/agent/evidence/S0/manifest.json"
+      ],
+      "status": "IN_PROGRESS",
+      "note": "evidence/S0/test-inventory.json (test-inventory.mjs --write) and acceptance-report.md are written at S0-T12; PROTECTED.json and test-inventory-baseline.json exist since fe6f674."
+    },
+    {
+      "id": "HARNESS-010",
+      "slice": "S0",
+      "source": "master §9 S0 (create machine-readable state and append-only ledger), §11, §13 (STATE.json, LEDGER.jsonl); OPERATIONS.md §4",
+      "description": "STATE.json is the small machine-readable current truth master §13 describes, validated by check-state.mjs, and LEDGER.jsonl is the append-only event history, written only through record-event.mjs, which refuses illegal transitions.",
+      "acceptance": [
+        "check-state.mjs fails on a STATE.json with an unknown machine state, gate value or slice, a missing gate, a SHA that isn't a full commit, remote or multiplayer permission without an ADR, or a machineState that differs from the last recorded transition (agent.test.mjs: state)",
+        "record-event.mjs appends one validated JSON line carrying timestamp, kind, actor, slice, task, result, HEAD and session; it refuses a transition that isn't in OPERATIONS.md §4, doesn't start at STATE.machineState or names another slice, and on success updates STATE.json (agent.test.mjs: transitions, ledger events, record-event)",
+        "check-state.mjs fails when a committed ledger line is rewritten or deleted, compared with every version committed since the anchor, or when the transitions don't form one chain from BOOTSTRAP (agent.test.mjs: ledger)",
+        "On the S0 checkpoint tree check-state.mjs exits 0 against the real STATE.json and LEDGER.jsonl (HARNESS-001)"
+      ],
+      "tasks": [
+        "S0-T4"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (state, transitions, ledger events, ledger, record-event)",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-011",
+      "slice": "S0",
+      "source": "master §9 S0 (create requirements traceability), §13 (REQUIREMENTS.json), §19, §40, §41 (requirements-audit); CURRENT_SLICE.md acceptance criterion 4; docs/agent/evidence/S0/reviews/requirements-2.md",
+      "description": "REQUIREMENTS.json traces master §9, the master §10 gate and the approved design to requirements with acceptance criteria, tasks and tests; ids are append-only; requirements-audit.mjs enforces the registry rules; and an independent requirements reviewer confirms the coverage.",
+      "acceptance": [
+        "check-state.mjs and requirements-audit.mjs fail on a requirement with an unknown family, slice or status, no acceptance criterion, no test (unless DEFERRED or SUPERSEDED), GREEN without existing tests and evidence, DEFERRED or SUPERSEDED without a committed ADR listed in decisions/INDEX.md, BLOCKED without blockedBy, and on an id from any version committed since the anchor that is gone (agent.test.mjs: requirements)",
+        "requirements-audit.mjs fails when a current-slice requirement has no task after PLAN_LOCK, a requirement of an accepted slice (or of the current slice in an accepted state) isn't closed, an umbrella is GREEN with an open child, or CURRENT_SLICE.md names an unknown id (agent.test.mjs: requirements audit), and it exits 0 on the S0 tree (verify-slice.mjs requirementsAudit GREEN)",
+        "Every master §9 bullet (S0 to S4), every master §10 question, every normative design subsection, every design §19 test-id area and every design §20 test maps to at least one requirement, confirmed by a fresh requirements reviewer whose report in evidence/S0/reviews/ ends with Verdict: GREEN, recorded with capture-evidence.mjs --review",
+        "Every S0 requirement that isn't closed names an S0 task, every task row of CURRENT_SLICE.md names at least one requirement, and the two agree"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T6"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (requirements, requirements audit)",
+        "scripts/agent/requirements-audit.mjs",
+        "scripts/agent/capture-evidence.mjs (--review)"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "note": "requirements-1 (RED) and requirements-2 (RED) reviewed earlier versions of the registry; A3 needs a fresh reviewer after this repair."
+    },
+    {
+      "id": "HARNESS-012",
+      "slice": "S0",
+      "source": "master §9 S0 (create evidence capture), §28, §41 (capture-evidence); OPERATIONS.md §6",
+      "description": "capture-evidence.mjs records targeted commands, reviews, committed evidence files, browser runs and performance measurements in evidence/<slice>/manifest.json, hashing what it records, and check-state.mjs catches evidence that was edited, removed, ignored or rewritten.",
+      "acceptance": [
+        "A --command record holds the command, working directory, start and end times, exit code, pass/fail counts parsed from Vitest, Playwright or tsc output, the log path and its SHA-256, the requirement ids, HEAD, the dirty flag and the code tree (agent.test.mjs: evidence counts, evidence files)",
+        "--review records a verdict only from the reviewer's own report under evidence/<slice>/reviews/ whose last line states that verdict, and check-state.mjs fails when a recorded report is missing, changed or ends with another verdict (agent.test.mjs: capture-evidence, reviews, evidence files)",
+        "check-state.mjs fails when a recorded log or file is missing, edited (hash mismatch), git-ignored or outside the evidence folders (only full logs and screenshots may live in .agent-runs/, with their hash), or when a committed manifest record was rewritten or deleted (agent.test.mjs: evidence files, manifest)",
+        "A log over 1 MB keeps its last 2,000 lines and the counts in Git and its full copy in .agent-runs/, with the full log's hash in the manifest (agent.test.mjs: oversized logs)"
+      ],
+      "tasks": [
+        "S0-T4"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (capture-evidence, reviews, evidence, evidence files, manifest)",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [
+        "docs/agent/evidence/S0/manifest.json"
+      ],
+      "status": "IN_PROGRESS",
+      "note": "The --browser and --perf modes are first used by S1 browser QA and by PERF-003; S0 has no test of their master §28 fields, so the first slice that records them checks them."
+    },
+    {
+      "id": "HARNESS-013",
+      "slice": "S0",
+      "source": "master §9 S0 (create current-slice contract), §13 (CURRENT_SLICE.md); templates/CURRENT_SLICE_TEMPLATE.md; OPERATIONS.md §4 (PLAN_LOCK), §6 (starting the next slice)",
+      "description": "CURRENT_SLICE.md is the human-readable contract a builder works from (slice, objective, scope, governing requirements, decisions and design sections, task order with requirements, acceptance criteria, required tests and reviewers, risks, forbidden actions, completion evidence), and next-slice.mjs archives it and drafts the next slice's from the template.",
+      "acceptance": [
+        "check-state.mjs and requirements-audit.mjs fail when CURRENT_SLICE.md doesn't name STATE.currentSlice in its header or names an unknown requirement id (agent.test.mjs: requirements audit)",
+        "S0's CURRENT_SLICE.md has every section of templates/CURRENT_SLICE_TEMPLATE.md, its governing requirements include every S0 requirement and every ALL requirement that governs S0, and its required reviewers include every role in STATE.requiredReviewers",
+        "next-slice.mjs moves to the next slice only from NEXT_SLICE (agent.test.mjs: next-slice), and after S0's NEXT_SLICE evidence/S0/slice-contract.md holds the S0 contract and CURRENT_SLICE.md is S1's draft from the template"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T12"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (requirements audit, next-slice)",
+        "scripts/agent/check-state.mjs",
+        "scripts/agent/requirements-audit.mjs"
+      ],
+      "evidence": [
+        "docs/agent/CURRENT_SLICE.md"
+      ],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-014",
+      "slice": "S0",
+      "source": "master §9 S0 (create context pack generator), §14, §41 (context-pack); OPERATIONS.md §1, §7",
+      "description": "context-pack.mjs builds a compact pack for builder and reviewer prompts from repository files only (state, the owner's hard decisions and non-negotiables, the current slice, the handoff, cited ADRs, the slice's requirements and the cited design headings), never chat history; the reviewer pack leaves out the handoff and the ledger.",
+      "acceptance": [
+        "The builder pack has the sections master §41 lists, and design sections come only from \"design §\" citations and requirements' designSections, with ranges expanded (agent.test.mjs: context pack)",
+        "The reviewer pack (--for reviewer) contains no HANDOFF.md, LEDGER.jsonl or builder notes (agent.test.mjs: context pack, the reviewer pack)",
+        "On the S0 tree node scripts/agent/context-pack.mjs and node scripts/agent/context-pack.mjs --for reviewer exit 0 and write .agent-runs/CONTEXT_PACK.md and .agent-runs/CONTEXT_PACK.reviewer.md; both runs and the packs' sizes are recorded with capture-evidence.mjs --command, so a reviewer can judge them against master §14 (about 20% of the usable context)"
+      ],
+      "tasks": [
+        "S0-T4"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (context pack)",
+        "node scripts/agent/context-pack.mjs (logged with scripts/agent/capture-evidence.mjs --command)"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-015",
+      "slice": "S0",
+      "source": "master §9 S0 (create verification runner), §27, §28, §41 (verify-slice); OPERATIONS.md §6; CURRENT_SLICE.md acceptance criterion 2",
+      "description": "verify-slice.mjs runs the slice's objective gates with their GATE_COMMANDS, logs each run, records it in the slice manifest bound to the code tree and sets the gate GREEN or RED; it can't mark the independent review or browser QA.",
+      "acceptance": [
+        "verify-slice.mjs runs only gates that have a command, skips NOT_APPLICABLE and NOT_YET_REQUIRED ones unless named, and refuses unknown gates and unknown options (agent.test.mjs: verify-slice, cli)",
+        "check-state.mjs accepts a GREEN gate only with a recorded passing run of that gate's real command with a log and a code tree, at acceptance only on the accepted tree; independentReview needs a GREEN code-architecture review and browserQa a clean browser run (agent.test.mjs: evidence)",
+        "On the final S0 code tree verify-slice.mjs records GREEN for typecheck, unit, build, diffCheck, harnessTests, requirementsAudit, testInventory and protectedFiles in evidence/S0/manifest.json, each with its command, exit code 0, counts, log hash, HEAD and code tree; e2e is HARNESS-018 A3"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T12"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (verify-slice, evidence)",
+        "scripts/agent/verify-slice.mjs",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [
+        "docs/agent/evidence/S0/manifest.json"
+      ],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-016",
+      "slice": "S0",
+      "source": "master §9 S0 (create handoff generator), §13 (HANDOFF.md), §17 (rollover checklist), §41 (handoff)",
+      "description": "handoff.mjs regenerates the machine-derived block of HANDOFF.md from state, Git, evidence and the ledger, so a handoff never relies on memory for facts a script can read; the written sections stay as the orchestrator wrote them.",
+      "acceptance": [
+        "handoff.mjs --write replaces only the text between <!-- generated:start --> and <!-- generated:end -->, and inserts the block after the title when the markers are missing (agent.test.mjs: handoff)",
+        "In the commit that closes S0, HANDOFF.md holds the generated block that node scripts/agent/handoff.mjs prints for that state (run and logged with capture-evidence.mjs --command), and its written sections name the exact next legal action and the open owner questions (master §17)"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T12"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (handoff)",
+        "node scripts/agent/handoff.mjs (logged with scripts/agent/capture-evidence.mjs --command)"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "note": "HANDOFF.md has no generated markers yet, so the first handoff.mjs --write inserts the block after the title."
+    },
+    {
+      "id": "HARNESS-017",
+      "slice": "S0",
+      "source": "master §9 S0 (establish local integration branch), §3.4, §29; ADR-0002 decision 1; ADR-0005 decision 6; ADR-0008 §3; ADR-0007; ADR-0009",
+      "description": "The stacked build runs on one local integration branch, local main (STATE.integrationBranch, ADR-0005 decision 6), built on the baseline; nobody commits on feat/*, and a cloud session works on agent/s0-wip and pushes only as an owner ADR allows.",
+      "acceptance": [
+        "STATE.json integrationBranch is \"main\" (ADR-0005 decision 6, master §3.4)",
+        "check-state.mjs reports an error when HEAD is on a feat/* branch and a warning when the branch isn't STATE.integrationBranch (expected for agent/s0-wip in a cloud session, OPERATIONS.md §8), and relaunch.mjs refuses to start a session off the integration branch (HARNESS-002 A1; agent.test.mjs: relaunch pre-flight)",
+        "The baseline 0d9fc5a is an ancestor of HEAD, the owner's harness is committed unchanged as 94de6bb directly on it (ADR-0002 decision 1), and git log --merges 0d9fc5a..HEAD is empty, so the S0 history is one linear local stack",
+        "Nothing was pushed except as ADR-0007 and ADR-0009 allow: origin/main is still 0d9fc5a46085f746510a1041335632cd4f7314a2 (git rev-parse origin/main after git fetch; ADR-0009 Verification; REL-001)"
+      ],
+      "tasks": [
+        "S0-T1",
+        "S0-T3",
+        "S0-T12"
+      ],
+      "tests": [
+        "scripts/agent/check-state.mjs",
+        "scripts/agent/agent.test.mjs (relaunch pre-flight)",
+        "git merge-base --is-ancestor 0d9fc5a HEAD; git log --merges 0d9fc5a..HEAD; git rev-parse origin/main (read-only, logged with scripts/agent/capture-evidence.mjs --command)"
+      ],
+      "evidence": [
+        "docs/agent/STATE.json"
+      ],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-018",
+      "slice": "S0",
+      "source": "master §9 S0 (establish baseline test evidence), §27; OPERATIONS.md §6 (baseline failures), §8; ADR-0004 decision 2; ADR-0010; evidence/S0/baseline-failures.json (BF-001, BF-002, BF-003); CURRENT_SLICE.md acceptance criterion 3",
+      "description": "The test matrix at the baseline is recorded, every gate that was red or couldn't run there is classified in baseline-failures.json with the owner's acknowledgement, and before S0 is accepted e2e has a real run on the S0 tree or the owner's acknowledgement (ADR-0004 decision 2).",
+      "acceptance": [
+        "evidence/S0/manifest.json holds the baseline runs at 0d9fc5a (code tree 454801df): git state, diffCheck, typecheck, unit (151 files, 1,753 tests) and build with exit 0, and the e2e attempt (exit 143), each with its log in evidence/S0/logs/ and a matching hash (check-state.mjs)",
+        "Every baseline gate that was red or couldn't run has an entry in evidence/S0/baseline-failures.json with its test, evidence, classification and owner acknowledgement, and each acknowledgement is an ADR before S0 is accepted: BF-001 (e2e: headless Chromium can't start in the sandboxed shell, ENVIRONMENT), BF-002 (unit: Vitest \"Timeout calling onTaskUpdate\" with every test passing, acknowledged by ADR-0010) and BF-003 (unit: core-gameloop's 20 ms median-tick budget under full-suite load on a 4-core container, ENVIRONMENT, also at 0d9fc5a)",
+        "BF-001: npm run e2e runs for real on the S0 code tree in a shell that can start headless Chromium (ADR-0004 decision 2: the Claude desktop app) and is recorded with verify-slice.mjs, GREEN or with each failure classified; if browsers still can't start, the gate is recorded as not run and an owner ADR acknowledges BF-001 with the agreed way to run e2e (owner gate BASELINE_RED:e2e). It is never recorded as passed without a run.",
+        "The unit gate is GREEN on the S0 tree from an npm test run recorded with verify-slice.mjs, with the setup file ADR-0010 adds (BF-002, HARNESS-006 A5) and in the environment the owner's decision on BF-003 names; BF-003's 20 ms budget is never loosened and no retry is added to get green (OPERATIONS.md §6)",
+        "evidence/S0/test-inventory-baseline.json was written by test-inventory.mjs --baseline from 0d9fc5a (1,753 Vitest and 47 Playwright tests), and the testInventory gate compares the S0 tests with it"
+      ],
+      "tasks": [
+        "S0-T2",
+        "S0-T9",
+        "S0-T12"
+      ],
+      "tests": [
+        "npm test",
+        "npm run e2e",
+        "scripts/agent/verify-slice.mjs",
+        "scripts/agent/test-inventory.mjs",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [
+        "docs/agent/evidence/S0/manifest.json",
+        "docs/agent/evidence/S0/baseline-failures.json",
+        "docs/agent/evidence/S0/logs/",
+        "docs/agent/evidence/S0/test-inventory-baseline.json"
+      ],
+      "status": "IN_PROGRESS",
+      "note": "At the time of writing BF-001 and BF-003 have no owner acknowledgement (BF-003 is an open owner question: count the unit gate from the owner's Mac, or isolate wall-clock tests from parallel load), and no e2e run on a post-baseline tree is recorded; HANDOFF step 9 has the owner run e2e from the Claude desktop app."
+    },
+    {
+      "id": "HARNESS-019",
+      "slice": "S0",
+      "source": "master §9 S0 (record baseline SHA), §4, §13 (STATE.json: baseline); S0-T1",
+      "description": "The baseline the build starts from is recorded once and agrees everywhere it appears: 0d9fc5a46085f746510a1041335632cd4f7314a2 (v0.4.0).",
+      "acceptance": [
+        "STATE.json planningBaselineSha and actualBaselineSha are both 0d9fc5a46085f746510a1041335632cd4f7314a2, a full SHA of a commit in this repository (check-state.mjs; agent.test.mjs: state: SHAs are full commits)",
+        "evidence/S0/logs/baseline-git-state.log shows HEAD 0d9fc5a46085f746510a1041335632cd4f7314a2 (\"v0.4.0: Prismatic animals, named strains and the morph catalog\"); every BASELINE_VERIFY record in evidence/S0/manifest.json has code tree 454801df2ce47efb1e53cd2a4b41b90cb71e3679 and head 0d9fc5a… (the e2e attempt ran at 94de6bb, which adds only the owner's harness files); baseline-failures.json names the same SHA and tree",
+        "0d9fc5a is an ancestor of HEAD and of the S0 checkpoint, and check-state.mjs refuses a lastAcceptedCheckpoint that isn't a later commit"
+      ],
+      "tasks": [
+        "S0-T1"
+      ],
+      "tests": [
+        "scripts/agent/check-state.mjs",
+        "scripts/agent/agent.test.mjs (state)"
+      ],
+      "evidence": [
+        "docs/agent/evidence/S0/logs/baseline-git-state.log",
+        "docs/agent/evidence/S0/manifest.json",
+        "docs/agent/evidence/S0/baseline-failures.json"
+      ],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-020",
+      "slice": "S0",
+      "source": "master §9 S0 (verify approved design against actual repo), §3.9 (the repository wins for what exists now), §7, §8; ADR-0003 (design reconciliation and supersession register); ADR-0008 §4; design/DESIGN_REGISTRY.json",
+      "description": "Before product work the approved 0.5 design was checked against the master, the owner's decisions and the code: every clause they override is recorded, every statement about today's code that a requirement relies on matches the repository, and design errata wait in the backlog for the slice that applies them.",
+      "acceptance": [
+        "Every row of ADR-0003's supersession register, as updated by ADR-0008 §4, is listed in DESIGN_REGISTRY.json DESIGN-0.5 overriddenBy, or is carried by a requirement whose source cites the master section or ADR that decides it (DEFERRED ones with their ADR), or is an open owner question in HANDOFF.md (today the §12.3 iOS copy row: DES-009, NOTIFY-006)",
+        "The repository facts that requirements quote (file and line, CSS rule, config value, test name) match the S0 tree, as the S0 requirements reviewer checks; a mismatch is repaired in the requirement before S0 acceptance",
+        "Design errata the S0 reviews found are design-erratum rows in BACKLOG.md naming the slice that applies them (for example B-150 and B-151 for S1)",
+        "check-state.mjs validates DESIGN_REGISTRY.json: an APPROVED design needs an approval citing a committed ADR and an existing path (HARNESS-003)"
+      ],
+      "tasks": [
+        "S0-T5"
+      ],
+      "tests": [
+        "scripts/agent/check-state.mjs (design registry)",
+        "scripts/agent/agent.test.mjs (design registry)"
+      ],
+      "evidence": [
+        "docs/agent/design/DESIGN_REGISTRY.json",
+        "docs/agent/decisions/ADR-0003-harness-revision-and-design-reconciliation.md",
+        "docs/agent/decisions/ADR-0008-docs-corrections.md",
+        "docs/agent/BACKLOG.md"
+      ],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-021",
+      "slice": "S0",
+      "source": "master §9 S0 (create ADRs for any discovered conflict), §13 (decisions/), §16 (a mismatch becomes an ADR or state repair), §18; OPERATIONS.md §2, §10; ADR-0003; ADR-0008",
+      "description": "Every conflict S0 found between the master, the design, the owner's decisions, the harness documents and the code that changes future work is decided in an ADR listed in decisions/INDEX.md; an owner-only decision is valid only in an ADR that records the owner's words verbatim; and an accepted ADR is corrected only by a later ADR.",
+      "acceptance": [
+        "decisions/INDEX.md lists every ADR file in decisions/, each committed, with its status and whether it records an owner decision; requirement decisions, design approvals and STATE approval fields cite only such ADRs (check-state.mjs; agent.test.mjs: approvals)",
+        "Each owner decision S0 relies on records the question and the owner's answer verbatim, with the date and scope (ADR-0002 and ADR-0004 to ADR-0010; OPERATIONS.md §2), except ADR-0001, the owner's own list of operating decisions that master §3 restates",
+        "No accepted ADR is changed after PROTECTED.json records it: protect.mjs fails on an edited accepted ADR, and the wrong claims in ADR-0002 and ADR-0003 are corrected by ADR-0008 rather than in place (agent.test.mjs: protected files)",
+        "Every conflict the S0 reviews found that needs an owner decision is answered in an ADR or listed under \"Owner questions\" in HANDOFF.md before S0 acceptance (CURRENT_SLICE.md acceptance criterion 7)"
+      ],
+      "tasks": [
+        "S0-T5",
+        "S0-T7",
+        "S0-T12"
+      ],
+      "tests": [
+        "scripts/agent/check-state.mjs",
+        "scripts/agent/protect.mjs",
+        "scripts/agent/agent.test.mjs (approvals, ledger, protected files)"
+      ],
+      "evidence": [
+        "docs/agent/decisions/INDEX.md"
+      ],
+      "status": "IN_PROGRESS",
+      "note": "At the time of writing LEDGER.jsonl has owner-decision events for ADR-0002, ADR-0008, ADR-0009 and ADR-0010 only; ADR-0001 and ADR-0004 to ADR-0007 have none (OPERATIONS.md §2 asks for one). Whether to back-fill them is the orchestrator's call; A2 asks only for the verbatim record in the ADR."
+    },
+    {
+      "id": "HARNESS-022",
+      "slice": "S0",
+      "source": "master §9 S0 (\"No major product feature implementation is allowed until S0 itself passes\"); ADR-0002 decision 2; ADR-0005 decision 4; CURRENT_SLICE.md (out of scope); BACKLOG.md (S0 game fixes)",
+      "description": "Until S0 is accepted the only product-code changes are the contained fixes the owner allowed in ADR-0002 decision 2 and the rarity counting tool of ADR-0005 decision 4, each mapped to a requirement, a test and an independent review.",
+      "acceptance": [
+        "git diff --stat 0d9fc5a..<S0 candidate> -- src scripts/report-rarity.ts touches only the files of the S0 fixes listed in BACKLOG.md \"S0 game fixes\" and of the rarity tool, mapped to PERSIST-009 to PERSIST-013, MKT-016, CONST-004 and GEN-013, with no new screen, route, save field or SCHEMA_VERSION change; the acceptance report lists the files with their requirement",
+        "The code-architecture and adversarial reviews of the S0 diff confirm each src change belongs to one of those requirements, with Verdict: GREEN recorded by capture-evidence.mjs --review"
+      ],
+      "tasks": [
+        "S0-T8",
+        "S0-T10",
+        "S0-T13"
+      ],
+      "tests": [
+        "git diff --stat 0d9fc5a.. -- src scripts/report-rarity.ts (logged with scripts/agent/capture-evidence.mjs --command)",
+        "scripts/agent/capture-evidence.mjs (--review)"
+      ],
+      "evidence": [
+        "docs/agent/BACKLOG.md"
+      ],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "HARNESS-023",
+      "slice": "ALL",
+      "source": "ADR-0001 (\"Three materially different failed repairs triggers manual inspection\"); ADR-0004 decision 4 (ADR-0003 rule 1 kept by the owner: five attempts in total, a reviewer judges \"materially different\"); master §3.3, §11.2, §31; OPERATIONS.md §5",
+      "description": "A blocking defect stops its repair loop at 3 materially different strategies or 5 attempts in total: the slice moves to BLOCKED_MANUAL_REVIEW with the failing state, evidence and a root-cause report preserved, and only an owner instruction recorded in an ADR resumes it.",
+      "acceptance": [
+        "Every repair attempt is a ledger event of kind repair with its defect id and a one-line strategy; counts are per defect, a new defect id resets nothing, and only that defect's fix resets its counters (agent.test.mjs: ledger events, repairs)",
+        "check-state.mjs fails when a defect has 3 distinct strategies or 5 attempts and the machine state isn't BLOCKED_MANUAL_REVIEW (unless STATE.repairOverrides names an owner ADR for it), and when STATE understates the ledger's counts (agent.test.mjs: state, repairs, repair counts)",
+        "A strategy counts as distinct only on a reviewer's judgement, recorded with record-event.mjs --distinct, never on the repairer's; when unsure it counts as distinct (OPERATIONS.md §5)",
+        "On reaching the limit the orchestrator writes evidence/<slice>/root-cause-<defect>.md, records REPAIR → BLOCKED_MANUAL_REVIEW, commits and ends the session; leaving BLOCKED_MANUAL_REVIEW needs a committed ADR (agent.test.mjs: transitions)"
+      ],
+      "tasks": [
+        "S0-T4"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (repairs, repair counts, state, ledger events, transitions)",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [],
+      "status": "ACTIVE",
+      "note": "requirements-2 M4. The scripted checks are built and tested in S0 (S0-T4); the rule applies to every slice."
+    },
+    {
+      "id": "HARNESS-024",
+      "slice": "ALL",
+      "source": "ADR-0001 (\"Green mega-slices automatically advance\"; \"Local commit after each mega-slice\"); master §3.1, §3.2, §30, §47; ADR-0002 decision 3; OPERATIONS.md §1, §2, §6",
+      "description": "A slice accepted GREEN ends in a local checkpoint commit and tag and advances to the next slice without a routine owner question: the closing session prepares the next slice with next-slice.mjs and ends, and the owner's kickoff or the opt-in relaunch.mjs starts it. Owner gates stop the flow only for the reasons OPERATIONS.md §2 lists.",
+      "acceptance": [
+        "An accepted slice ends with a local commit \"S<n>: checkpoint — <name>\" and the local tag checkpoint/S<n>-<name> (master §30), never pushed; STATE.lastAcceptedCheckpoint is that commit, and check-state.mjs fails when it or any checkpoint tag isn't an ancestor of HEAD or when code changed after it (agent.test.mjs: check-state after next-slice)",
+        "next-slice.mjs moves S0-S3 on to the next slice with fresh gates, the mandatory reviewers, zero repair counters and contextRolloverRequired, and refuses after S4 (agent.test.mjs: next-slice, transitions)",
+        "Every OWNER_GATE transition in LEDGER.jsonl names a reason and a resume state (agent.test.mjs: transitions), and the slice's reviewers find each reason is one of OPERATIONS.md §2's; no owner question is raised between green slices otherwise",
+        "relaunch.mjs, when the owner runs it, starts the next session only after a clean stop and stops at owner gates, BLOCKED_MANUAL_REVIEW, COMPLETE_LOCAL, errors, no progress, the STOP file or its session cap (HARNESS-002)"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T12"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (next-slice, check-state, transitions, relaunch)",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [],
+      "status": "ACTIVE",
+      "note": "requirements-2 M4. REL-009 checks the checkpoints again at the readiness gate."
+    },
+    {
+      "id": "HARNESS-025",
+      "slice": "ALL",
+      "source": "master §3.2 (independent review is mandatory for every mega-slice), §11.3 (BUILDER CLAIM → ACCEPT is forbidden), §26 (a slice cannot approve itself); ADR-0001 (\"Independent builder/reviewer/QA topology\"); ADR-0008 §5 (adversarial for every slice); OPERATIONS.md §7; CLAUDE.md",
+      "description": "A slice can't approve itself: acceptance needs the objective gates plus GREEN verdicts from independent reviewers (fresh subagents that are not the builder, see only what their prompt lists and re-run the gates their verdict depends on): code-architecture and adversarial in every slice, browser-qa when the slice is user-visible, and the specialists its contract triggers.",
+      "acceptance": [
+        "check-state.mjs refuses an accepted state unless every gate is GREEN (or waived as allowed), every role in STATE.requiredReviewers has a GREEN review recorded on the accepted tree, independentReview has a GREEN code-architecture review and the manifest verdict is GREEN (agent.test.mjs: evidence)",
+        "verify-slice.mjs can't set independentReview or browserQa, and capture-evidence.mjs --review records a verdict only from the reviewer's own report under evidence/<slice>/reviews/ ending with that verdict (agent.test.mjs: verify-slice, capture-evidence, reviews)",
+        "next-slice.mjs refuses a reviewer list without code-architecture and adversarial (agent.test.mjs: next-slice)",
+        "Each review report says it was written by a fresh subagent that didn't build the reviewed work, lists what it read (no HANDOFF.md, LEDGER.jsonl, builder reports or commit messages) and the gate commands it re-ran with their exit codes; after every repair a new reviewer instance reviews the new tree (OPERATIONS.md §7; checked again at S4 by REL-010)"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T10"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (evidence, verify-slice, capture-evidence, reviews, next-slice)",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [],
+      "status": "ACTIVE",
+      "note": "requirements-2 M4: before this, only REL-010 A2 (S4) checked independence."
+    },
+    {
+      "id": "HARNESS-026",
+      "slice": "ALL",
+      "source": "ADR-0004 decision 4 (ADR-0003 rule 2 kept by the owner: YELLOW never advances on its own); master §26",
+      "description": "A YELLOW verdict never advances a slice on its own: it becomes GREEN only through a repair and a fresh GREEN review by a new reviewer instance, or through an owner-approved ADR that lists each accepted limitation (owner gate YELLOW_VERDICT:<slice>).",
+      "acceptance": [
+        "check-state.mjs refuses an accepted state while the latest review for a required role isn't GREEN or the manifest verdict isn't GREEN (agent.test.mjs: evidence: acceptance needs every gate GREEN, a GREEN review per required role and a GREEN manifest)",
+        "A YELLOW verdict leads either to REPAIR and a review by a new reviewer instance, or to OWNER_GATE with reason YELLOW_VERDICT:<slice>; leaving that gate needs a committed ADR that records the owner's approval verbatim and lists each accepted limitation (agent.test.mjs: transitions: leaving OWNER_GATE needs a committed ADR)"
+      ],
+      "tasks": [
+        "S0-T4",
+        "S0-T10"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (evidence, transitions)",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [],
+      "status": "ACTIVE",
+      "note": "requirements-2 M4."
+    },
+    {
+      "id": "HARNESS-027",
+      "slice": "ALL",
+      "source": "ADR-0004 decision 4 (ADR-0003 rule 6 kept by the owner: an owner gate parks only the blocked item); OPERATIONS.md §2 (owner gate protocol); ADR-0002 decision 4",
+      "description": "When a decision only the owner can make blocks work, the orchestrator parks only the blocked item and keeps working on everything in the slice that doesn't depend on it; it enters OWNER_GATE only when nothing else can proceed or the slice can't be accepted without the decision.",
+      "acceptance": [
+        "Entering OWNER_GATE needs a reason and a resume state that isn't a stop state; leaving it needs a committed ADR and returns only to STATE.resumeState or COMPLETE_LOCAL (agent.test.mjs: transitions, record-event, OWNER_GATE needs a reason and a resume state)",
+        "A requirement waiting on an owner decision or a pending design is BLOCKED with blockedBy naming it, while the slice's other tasks continue, and HANDOFF.md \"Owner questions\" holds the question with options and a recommendation (OPERATIONS.md §2 steps 1-2)",
+        "Each OWNER_GATE transition in LEDGER.jsonl comes only after the slice's tasks that don't depend on the decision are done or themselves blocked; the slice's reviewers check this against the task table"
+      ],
+      "tasks": [
+        "S0-T4"
+      ],
+      "tests": [
+        "scripts/agent/agent.test.mjs (transitions, record-event, state)",
+        "scripts/agent/check-state.mjs"
+      ],
+      "evidence": [],
+      "status": "ACTIVE",
+      "note": "requirements-2 M4."
+    },
+    {
+      "id": "HARNESS-028",
+      "slice": "ALL",
+      "source": "ADR-0004 decision 4 (ADR-0003 rule 4 kept by the owner: gate-defining and deploy files need an ADR and an independent reviewer's sign-off); master §3.8; OPERATIONS.md §3, §10; ADR-0010 and ADR-0011 (S0 changes under it)",
+      "description": "The files that define the gates and the deploys (package.json scripts, tsconfig*.json, vitest.config.ts, playwright.config.ts, .github/**, render.yaml and scripts/agent/**) change only with an ADR and an independent reviewer's sign-off on that diff, and changes to the deploy files also appear in the owner package.",
+      "acceptance": [
+        "PROTECTED.json covers these files and protect.mjs fails when one changes without protect.mjs --update --adr <ADR>; for package.json, .github/ and render.yaml the ADR must record the owner's approval (agent.test.mjs: protected files)",
+        "relaunch.mjs stops after a session that changed the deploy configuration (.github, render.yaml, package.json, package-lock.json, .npmrc, vite.config.ts) or a protected file (agent.test.mjs: relaunch alarms)",
+        "Every S0 change to these files has its ADR and an independent sign-off in evidence/S0/reviews/: tsconfig.json, vitest.config.ts and playwright.config.ts (gate configuration, ADR-0003, HARNESS-006), vitest.config.ts setupFiles (ADR-0010), package.json report:rarity (ADR-0005 decision 4, GEN-013) and scripts/agent/** (ADR-0003, ADR-0011)"
+      ],
+      "tasks": [
+        "S0-T9",
+        "S0-T10"
+      ],
+      "tests": [
+        "scripts/agent/protect.mjs",
+        "scripts/agent/agent.test.mjs (protected files, relaunch)"
+      ],
+      "evidence": [
+        "docs/agent/PROTECTED.json"
+      ],
+      "status": "ACTIVE",
+      "note": "requirements-2 M4: before this, only REL-004 A2 (S4, tsconfig) covered gate-defining files."
+    },
+    {
+      "id": "HARNESS-029",
+      "slice": "ALL",
+      "source": "docs/agent/evidence/S0/reviews/requirements-2.md (M2); master §13 (ACTIVE standing constraints), §40, §47; scripts/agent/requirements.mjs (auditRequirements audits only numbered slices)",
+      "description": "Standing requirements (slice ALL, status ACTIVE) are checked at every slice's acceptance, although requirements-audit.mjs audits only numbered slices: the acceptance report lists each one with the result of its named tests on the accepted tree, and a test that doesn't exist yet names the slice that writes it.",
+      "acceptance": [
+        "evidence/<slice>/acceptance-report.md has a table of every ALL requirement with status ACTIVE, giving for each named test its result on the accepted tree (from that slice's npm test, npm run e2e or harness gate runs, or \"not run\" with the reason, as OPERATIONS.md §6 and §8 require) and for each proposed test the slice that writes it",
+        "Every existing test named by an ALL/ACTIVE requirement passes on the accepted tree; a failing one is a RED finding and the slice isn't accepted",
+        "Every proposed test of an ALL/ACTIVE requirement names its owning slice (CONST-001 → S1; PERSIST-003 → S1 through PERSIST-014; PERSIST-002 and PERSIST-007 → S3 through PERSIST-006), and on the S4 tree none is still only proposed (HARNESS-007)"
+      ],
+      "tasks": [
+        "S0-T12"
+      ],
+      "tests": [
+        "npm test",
+        "npm run e2e",
+        "scripts/agent/agent.test.mjs",
+        "scripts/agent/capture-evidence.mjs (--file: the acceptance report)"
+      ],
+      "evidence": [],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "HARNESS-030",
+      "slice": "ALL",
+      "source": "docs/agent/evidence/S0/reviews/requirements-2.md (m7; requirements-1 F10, F14, F16); master §19, §26; OPERATIONS.md §2",
+      "description": "A requirement whose note says \"Needs owner or reviewer confirmation\" is settled by the slice that owns it before that slice's PLAN_LOCK, as a criterion that records who decided, an owner question or an owner gate; no slice is accepted while one of its requirements still carries such a note.",
+      "acceptance": [
+        "At PLAN_LOCK the slice's CURRENT_SLICE.md lists each of its requirements with such a note and how it is settled: a reviewer's choice written into the requirement (where no owner decision is needed), an ADR recording the owner's answer, or an owner question under \"Owner questions\" in HANDOFF.md with the dependent tasks parked (HARNESS-027)",
+        "A threshold or tolerance marked \"proposed\" in one of the slice's criteria is confirmed or replaced the same way before PLAN_LOCK",
+        "At the slice's ACCEPT none of its requirements' notes still says \"Needs owner or reviewer confirmation\": the list, logged with capture-evidence.mjs --command at PLAN_LOCK and at ACCEPT, is empty at ACCEPT"
+      ],
+      "tasks": [],
+      "tests": [
+        "scripts/agent/capture-evidence.mjs (--command, label open-notes-<slice>: the slice's requirements whose note still says \"Needs owner or reviewer confirmation\")"
+      ],
+      "evidence": [],
+      "status": "ACTIVE",
+      "note": "First applies to S1 (DES-001, NAV-004, NAV-007, NAV-014, NAV-015); no S0 requirement carries such a note."
     },
     {
       "id": "REL-001",
       "slice": "ALL",
-      "source": "master §3.1, §29; ADR-0001",
-      "description": "No mutating remote action before explicit owner approval.",
+      "source": "master §3.1, §29; ADR-0001; ADR-0004 decision 1 (text rules only, no push guards for now); ADR-0007 and ADR-0009 (the push approvals in force); OPERATIONS.md §3",
+      "description": "No mutating remote action before explicit owner approval. The only approvals so far are ADR-0007 (one push of local main to the remote branch agent/s0-wip) and ADR-0009 (fast-forward pushes of agent/s0-wip during one cloud session).",
       "acceptance": [
-        "No push, PR, GitHub write, workflow run, deploy (GitHub Pages or Render) or publish happens without an owner approval recorded verbatim in an ADR",
-        "Every session-end check (relaunch.mjs) finds no 'update by push' reflog entry and unchanged remotes"
+        "No push, PR, GitHub write, workflow run, deploy (GitHub Pages or Render) or publish happens without an owner approval recorded verbatim in an ADR; the approvals in force are ADR-0007 (one push of local main to agent/s0-wip, no deploy) and ADR-0009 (normal fast-forward pushes of agent/s0-wip during cloud session fb16c5d5-671a-5220-bdec-f4fad52a7de1 only; never main, a force push, tags, PRs or another branch)",
+        "Every session started by relaunch.mjs ends with its post-session check finding no new 'update by push' reflog entry, unchanged remotes and no remote-write alarm (agent.test.mjs: relaunch)",
+        "origin/main stays at 0d9fc5a46085f746510a1041335632cd4f7314a2 until an owner ADR approves a push of main, so nothing has deployed (git rev-parse origin/main after git fetch; ADR-0009 Verification)"
       ],
-      "tasks": [],
+      "tasks": [
+        "S0-T3",
+        "S0-T4",
+        "S0-T12"
+      ],
       "tests": [
-        "scripts/agent/agent.test.mjs (relaunch decide)"
+        "scripts/agent/agent.test.mjs (relaunch: stop conditions, alarms, deny rules)",
+        "git rev-parse origin/main (read-only, after git fetch)"
       ],
       "evidence": [],
-      "status": "ACTIVE"
+      "status": "ACTIVE",
+      "note": "requirements-2 m10: A1 now points at the approvals in force. Governs S0 and every slice. ADR-0004 decision 1: the ban rests on text rules, the launcher's deny rules and its post-session checks; no pre-push hook is installed."
     },
     {
       "id": "REL-002",
@@ -3700,12 +4301,15 @@
         "package.json version and the newest versioned CHANGELOG heading are unchanged until the owner approves a release plan (tests/sim/version.test.ts stays green)",
         "The owner package contains the proposed version, CHANGELOG entry and What's new list"
       ],
-      "tasks": [],
+      "tasks": [
+        "S0-T12"
+      ],
       "tests": [
         "tests/sim/version.test.ts"
       ],
       "evidence": [],
-      "status": "ACTIVE"
+      "status": "ACTIVE",
+      "note": "Governs S0 too: package.json's version is unchanged since 0d9fc5a, and version.test.ts passes on the S0 tree."
     },
     {
       "id": "REL-004",
@@ -3794,7 +4398,7 @@
       "evidence": [],
       "status": "PENDING",
       "designSections": [],
-      "note": "Needs owner or reviewer confirmation: docs/agent/BACKLOG.md, which master §12 lists and ADR-0003 says was created, is not in the tree at the time of writing; backlog references need it to exist."
+      "note": "requirements-2 m3: docs/agent/BACKLOG.md exists (written in 1a74863), so \"a backlog entry\" in A1 can be checked against it."
     },
     {
       "id": "REL-009",
@@ -3872,18 +4476,19 @@
       "source": "master §10 (tests reliable rather than flaky); master §35; umbrella REL-002",
       "description": "The unit and e2e suites are shown to be reliable: repeated runs on the S4 tree give the same results, and no retry hides a failure.",
       "acceptance": [
-        "npm test and npm run e2e each pass in several consecutive runs on the S4 tree (proposed: at least 3, see note), recorded in the gate report.",
-        "Playwright retries stay at 0 for the gate runs, and no test is marked flaky or skipped."
+        "npm test and npm run e2e each pass in several consecutive runs on the final S4 code tree (proposed: at least 3, see note), each run recorded as its own record in evidence/S4/manifest.json (verify-slice.mjs or capture-evidence.mjs --command) before S4 is accepted.",
+        "Playwright retries stay at 0 for those runs, no test is marked flaky or skipped, and check-state.mjs flags no flaky gate (a failure followed by a pass on the same tree) in the S4 manifest."
       ],
       "tasks": [],
       "tests": [
         "npm test",
-        "npm run e2e"
+        "npm run e2e",
+        "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
       "status": "PENDING",
       "designSections": [],
-      "note": "Needs owner or reviewer confirmation: the number of consecutive runs that counts as \"reliable\" is not set by master §10; 3 is a proposal."
+      "note": "Needs owner or reviewer confirmation: the number of consecutive runs that counts as \"reliable\" is not set by master §10; 3 is a proposal. requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only."
     },
     {
       "id": "REL-014",
@@ -3909,17 +4514,18 @@
       "source": "master §10 (simulation stable); umbrella REL-002",
       "description": "Long simulation runs over the full-feature fixtures stay stable, with no exception, no non-finite value and no repair note on save and load.",
       "acceptance": [
-        "A seeded long run over each dev fixture with all 0.5 systems enabled finishes with no exception and no NaN or Infinity in the state, and the run length is recorded in the gate report.",
+        "A seeded long run over each dev fixture with all 0.5 systems enabled finishes with no exception and no NaN or Infinity in the state; the run length and result are recorded in evidence/S4/manifest.json (capture-evidence.mjs --command) before S4 is accepted.",
         "Saving and loading at the end of each run gives repairs: []."
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/automation-invariants.test.ts (proposed)"
+        "new: tests/sim/automation-invariants.test.ts (proposed)",
+        "scripts/agent/capture-evidence.mjs (--command)"
       ],
       "evidence": [],
       "status": "PENDING",
       "designSections": [],
-      "note": "Needs owner or reviewer confirmation: master §10 sets no minimum run length; the S4 contract or a reviewer must fix one before this can be judged."
+      "note": "Needs owner or reviewer confirmation: master §10 sets no minimum run length; the S4 contract or a reviewer must fix one before this can be judged. requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only."
     },
     {
       "id": "REL-016",
@@ -3929,35 +4535,37 @@
       "acceptance": [
         "A static check finds persisted-state writes only through useGame.mutate, mutateFast and setGame, and core-architecture-boundaries shows no new cross-layer value import beyond its shrink-only baseline.",
         "The UI reaches social data only through SocialService, and notifications, clipboard and share only through src/platform.",
-        "The gate report lists every state change a future server would need to authorise (purchases, sales, listings, production actions)."
+        "Before S4 is accepted, S4's evidence lists every state change a future server would need to authorise (purchases, sales, listings, production actions), recorded with capture-evidence.mjs --file (proposed path evidence/S4/trust-boundary.md)."
       ],
       "tasks": [],
       "tests": [
         "tests/sim/core-architecture-boundaries.test.ts",
-        "new: tests/sim/core-mutation-boundary.test.ts (proposed)"
+        "new: tests/sim/core-mutation-boundary.test.ts (proposed)",
+        "scripts/agent/capture-evidence.mjs (--file)"
       ],
       "evidence": [],
       "status": "PENDING",
-      "designSections": []
+      "designSections": [],
+      "note": "requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only."
     },
     {
       "id": "REL-017",
       "slice": "S4",
       "source": "master §10 (technical debt small enough that multiplayer would not magnify it); umbrella REL-002",
-      "description": "The gate report inventories the technical debt multiplayer would magnify (open backlog items, deferred requirements, known limitations and core-owned workarounds), and an independent reviewer judges it small enough.",
+      "description": "Before S4 is accepted, S4's evidence inventories the technical debt multiplayer would magnify (open backlog items, deferred requirements, known limitations and core-owned workarounds), and an independent reviewer judges it small enough; the readiness-gate report links both.",
       "acceptance": [
-        "The report lists every open backlog item, DEFERRED requirement and docs/KNOWN_LIMITATIONS.md entry with a note on its multiplayer impact.",
-        "An independent reviewer's verdict on that debt is recorded with capture-evidence.mjs --review."
+        "A debt inventory recorded in S4's evidence with capture-evidence.mjs --file (proposed path evidence/S4/debt-inventory.md) lists every open docs/agent/BACKLOG.md item, DEFERRED requirement and docs/KNOWN_LIMITATIONS.md entry with a note on its multiplayer impact.",
+        "An independent reviewer's verdict on that inventory is recorded in evidence/S4/manifest.json with capture-evidence.mjs --review before S4 is accepted."
       ],
       "tasks": [],
       "tests": [
-        "scripts/agent/capture-evidence.mjs (--review)",
+        "scripts/agent/capture-evidence.mjs (--file, --review)",
         "scripts/agent/requirements-audit.mjs"
       ],
       "evidence": [],
       "status": "PENDING",
       "designSections": [],
-      "note": "Needs owner or reviewer confirmation: docs/agent/BACKLOG.md is not in the tree at the time of writing; the backlog inventory needs it to exist."
+      "note": "requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only. requirements-2 m3: docs/agent/BACKLOG.md exists (written in 1a74863), so the backlog part can be checked."
     },
     {
       "id": "REL-018",
@@ -3966,11 +4574,13 @@
       "description": "At the Multiplayer Readiness Gate, which runs after S4 is accepted, the gate produces a report that answers every master §10 question with linked evidence and, only when all are green, READY_FOR_MULTIPLAYER_EXPANSION with a proposed multiplayer architecture, risks, schema, backend plan, security plan and next mega-slice.",
       "acceptance": [
         "evidence/S4 holds the gate report with each §10 question answered and linked to its evidence.",
-        "When every answer is green the report contains the six proposals; otherwise it names each failing question, and in both cases no multiplayer work starts."
+        "When every answer is green the report contains the six proposals; otherwise it names each failing question, and in both cases no multiplayer work starts.",
+        "For the questions REL-013, REL-015, REL-016 and REL-017 answer, the report links the records those requirements made in evidence/S4 before S4 was accepted, and the gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so they still hold."
       ],
       "tasks": [],
       "tests": [
-        "scripts/agent/agent.test.mjs (transitions)"
+        "scripts/agent/agent.test.mjs (transitions)",
+        "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
       "status": "PENDING",
