@@ -377,17 +377,20 @@ export interface ResumeOptions {
 export async function loadAndResume(slot = 'auto', opts: ResumeOptions = {}): Promise<ResumeResult> {
   const res = await loadGameDetailed(slot);
   if (!res.ok || !res.state) return { ...res, slot };
-  const state = res.state;
+  let state = res.state;
   state.isShowcase = false;
   const now = opts.now ?? Date.now();
   const since = Number.isFinite(state.lastTickRealMs) && state.lastTickRealMs > 0 ? state.lastTickRealMs : state.lastSavedRealMs;
   const elapsed = Math.max(0, now - (Number.isFinite(since) ? since : now));
   let summary: OfflineSummary | undefined;
   try {
-    summary = simulateOffline(state, elapsed);
+    // lane:core (B-001, security-data-1 SD-10) — catch up on a copy: a catch-up that throws part-way must never become
+    // the running game, half simulated, and then be autosaved.
+    const caughtUp: GameState = typeof structuredClone === 'function' ? structuredClone(state) : JSON.parse(JSON.stringify(state));
+    summary = simulateOffline(caughtUp, elapsed);
+    state = caughtUp;
   } catch (e) {
-    // A sim bug must never block loading a save: keep the loaded state as-is.
-    delete state.offlineGrace;
+    // A sim bug must never block loading a save: resume the save exactly as it was loaded, without the catch-up.
     if (typeof console !== 'undefined') console.warn('[aquarium-go] offline catch-up failed; resuming without it', e);
   }
   state.lastTickRealMs = now;

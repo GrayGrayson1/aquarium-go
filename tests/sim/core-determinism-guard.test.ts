@@ -38,10 +38,49 @@ async function sourceFiles(dir: string): Promise<string[]> {
   return out;
 }
 
-/** Remove comments without touching string and template literals (a "//" in a URL string is code, not a comment). */
-export function stripComments(src: string): string {
+/** After one of these characters, or at the start, a "/" begins a regular expression literal rather than a division. */
+const REGEX_AFTER = new Set(['', '(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '<', '>', '~', '^']);
+const REGEX_AFTER_WORD = new Set(['return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void', 'throw', 'case', 'do', 'else', 'yield', 'await']);
+
+/** Does a "/" here start a regex literal? The usual tokenizer rule: look at the last code character kept so far. */
+function regexCanStart(out: string): boolean {
+  let k = out.length - 1;
+  while (k >= 0 && /\s/.test(out[k])) k--;
+  const last = k < 0 ? '' : out[k];
+  if (REGEX_AFTER.has(last)) return true;
+  if (!/[\w$]/.test(last)) return false;
+  let w = k;
+  while (w >= 0 && /[\w$]/.test(out[w])) w--;
+  return REGEX_AFTER_WORD.has(out.slice(w + 1, k + 1));
+}
+
+/** End (exclusive, flags included) of the regex literal that starts at `i`, or -1 when none closes on this line. */
+function regexEnd(src: string, i: number): number {
+  let inClass = false;
+  for (let j = i + 1; j < src.length; j++) {
+    const ch = src[j];
+    if (ch === '\n') return -1;
+    if (ch === '\\') j++;
+    else if (inClass) inClass = ch !== ']';
+    else if (ch === '[') inClass = true;
+    else if (ch === '/') {
+      let k = j + 1;
+      while (k < src.length && /[a-z]/i.test(src[k])) k++;
+      return k;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Strip comments from code starting at `i`; inside a template's `${…}` (`inExpr`), stop at its closing brace. Returns
+ * the kept text and where it stopped. String, template and regex literals are kept verbatim, so neither a quote inside
+ * a regex (`/['"]/`), a "//" inside one (`/\/\//`), nor a nested template (`${a ? `x` : ''}`) can make the scan
+ * mistake code for a comment or the other way round (B-005).
+ */
+function strip(src: string, i: number, inExpr: boolean): [string, number] {
   let out = '';
-  let i = 0;
+  let depth = 0;
   while (i < src.length) {
     const c = src[i];
     const n = src[i + 1];
@@ -51,17 +90,47 @@ export function stripComments(src: string): string {
       const end = src.indexOf('*/', i + 2);
       i = end < 0 ? src.length : end + 2;
       out += ' ';
-    } else if (c === '"' || c === "'" || c === '`') {
+    } else if (c === '/' && regexCanStart(out)) {
+      const end = regexEnd(src, i);
+      out += end < 0 ? c : src.slice(i, end);
+      i = end < 0 ? i + 1 : end;
+    } else if (c === '"' || c === "'") {
       let j = i + 1;
-      while (j < src.length && src[j] !== c) j += src[j] === '\\' ? 2 : 1;
+      while (j < src.length && src[j] !== c && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1;
       out += src.slice(i, j + 1);
       i = j + 1;
+    } else if (c === '`') {
+      out += c;
+      i++;
+      while (i < src.length && src[i] !== '`') {
+        if (src[i] === '\\') {
+          out += src.slice(i, i + 2);
+          i += 2;
+        } else if (src[i] === '$' && src[i + 1] === '{') {
+          const [code, end] = strip(src, i + 2, true);
+          out += `\${${code}}`;
+          i = end + 1;
+        } else {
+          out += src[i];
+          i++;
+        }
+      }
+      if (i < src.length) out += '`';
+      i++;
     } else {
+      if (inExpr && c === '}' && depth === 0) return [out, i];
+      if (inExpr && c === '{') depth++;
+      if (inExpr && c === '}') depth--;
       out += c;
       i++;
     }
   }
-  return out;
+  return [out, i];
+}
+
+/** Remove comments without touching string, template and regex literals (a "//" in a URL string is code). */
+export function stripComments(src: string): string {
+  return strip(src, 0, false)[0];
 }
 
 /** The arguments of every `.localeCompare(…)` call, split at top-level commas. */
@@ -100,6 +169,17 @@ describe('CONST-004: determinism guard: src/sim and src/data', () => {
 
   it('the comment stripper keeps strings and drops comments', () => {
     expect(stripComments("const u = 'https://x'; // Date.now()\n/* Math.random() */ f();")).toBe("const u = 'https://x'; \n  f();");
+  });
+
+  it('the comment stripper keeps regex and nested template literals whole (B-005)', () => {
+    // A quote or a "//" inside a regex literal, or a nested template, must neither hide code nor keep a comment.
+    expect(stripComments("const q = /['\"]/g; // Date.now()\nf();")).toBe("const q = /['\"]/g; \nf();");
+    expect(stripComments('const r = /\\/\\//; Math.random();')).toBe('const r = /\\/\\//; Math.random();');
+    expect(stripComments("function f(s) { return /'/.test(s); } // Date.now()")).toBe("function f(s) { return /'/.test(s); } ");
+    expect(stripComments("const t = `a ${b ? `http://x` : 'y'} c`; Math.random(); // Date.now()")).toBe("const t = `a ${b ? `http://x` : 'y'} c`; Math.random(); ");
+    expect(stripComments('const e = `${a /* Date.now() */ + { k: 1 }.k}`;')).toBe('const e = `${a   + { k: 1 }.k}`;');
+    // and a division is still a division
+    expect(stripComments('const half = a / 2; // Date.now()\nconst q = (b) / c; /* Math.random() */')).toBe('const half = a / 2; \nconst q = (b) / c;  ');
   });
 
   it('the patterns catch the forms the review listed', () => {

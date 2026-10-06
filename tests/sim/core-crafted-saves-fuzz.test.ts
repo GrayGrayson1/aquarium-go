@@ -4,9 +4,11 @@
  * fixtures is set to an inherited Object name ("__proto__", "constructor", "toString", …), and every object gains an
  * own key with such a name; each save then goes through the real import path (decodeRecord → migrateSave →
  * repairState), an offline catch-up and a day of world steps. None may pollute a built-in prototype, throw, or leave
- * the repair pass with work to do on a second run. The seed picks which name each site gets, so a failure reproduces.
+ * the repair pass with work to do on a second run. None may be refused either (a refusal would skip every other
+ * check), and no simulation step may catch and log an error along the way (code-architecture-game-2 m7). The seed
+ * picks which name each site gets, so a failure reproduces.
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { FIXTURES } from '@/dev/fixtures';
 import { decodeRecord } from '@/persistence/serialize';
 import { repairState } from '@/persistence/migrations';
@@ -57,6 +59,21 @@ function cleanPollution(): void {
 
 afterEach(cleanPollution);
 
+/**
+ * The breeding, visitor, staff, show and tank-cache steps catch their own errors and report them with console.warn,
+ * so the world keeps running. Record those reports: one during a play fails that case.
+ */
+let logged: string[] = [];
+beforeEach(() => {
+  logged = [];
+  const record = (...args: unknown[]) => void logged.push(args.map((a) => (a instanceof Error ? a.message : String(a))).join(' ').slice(0, 160));
+  vi.spyOn(console, 'warn').mockImplementation(record);
+  vi.spyOn(console, 'error').mockImplementation(record);
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 /** mulberry32: a small seeded generator, so the fuzz is reproducible (Math.random would not be). */
 function seeded(seed: number): () => number {
   let a = seed >>> 0;
@@ -88,13 +105,22 @@ function getAt(root: Json, path: Path): Json {
 
 /** Load `text` like an imported save, catch up 3 real hours and step a game day. Returns what went wrong, if anything. */
 function play(text: string): string | null {
+  const before = logged.length;
+  const bad = playOnce(text);
+  if (bad) return bad;
+  return logged.length > before ? `a caught error was logged: ${logged.slice(before, before + 2).join(' | ')}` : null;
+}
+
+function playOnce(text: string): string | null {
   let st: Json;
   try {
     st = decodeRecord(text, 'fuzz').state;
   } catch (e) {
     const p = pollution();
     if (p.length) return `pollution during load: ${p.join(', ')}`;
-    if ((e as { code?: string }).code) return null; // a clean refusal is a fine outcome
+    const code = (e as { code?: string }).code;
+    // Refusing a crafted save is safe, but it would also skip every check below, so here it counts as a failure.
+    if (code) return `load refused (${code}): ${(e as Error).message.slice(0, 120)}`;
     return `load threw: ${(e as Error).message}`;
   }
   let p = pollution();

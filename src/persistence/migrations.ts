@@ -22,9 +22,6 @@ import { SCHEMA_VERSION } from './schema';
 import { SaveError } from './types';
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
-import { getEquipmentDef } from '@/data/catalog/equipment';
-import { DECOR_BY_ID } from '@/data/catalog/decor';
-import { RESEARCH_BY_ID } from '@/data/research';
 import { DEFAULT_LIGHTS_ON, defaultLightsOff } from '@/sim/time';
 import { renamedMorphs } from '@/sim/life/genetics';
 import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
@@ -118,7 +115,9 @@ export const MIGRATIONS: Migration[] = [
         const rec: Record<string, Json> = {};
         const order: string[] = [];
         for (const t of s.tanks) {
-          if (!isObj(t) || typeof t.id !== 'string') continue;
+          // lane:core (security-data-2 I2) — only a usable id becomes a key: `rec["__proto__"] = t` would set the
+          // record's prototype instead of adding a tank. repairState then notes whatever still points at a dropped tank.
+          if (!isObj(t) || !isSafeKey(t.id)) continue;
           rec[t.id] = t;
           order.push(t.id);
         }
@@ -257,19 +256,20 @@ function fillNumbers<T extends object>(target: Json, defaults: T, label: string,
   return target as T;
 }
 
-/** Equipment records whose defId is in the catalog (an unknown one crashes the wear step every tick, SD-2). */
-function knownEquipment(a: unknown, label: string, repairs: string[]): Json[] {
-  const all = records(a);
-  const kept = all.filter((e) => typeof e.defId === 'string' && !!getEquipmentDef(e.defId));
-  if (kept.length !== all.length) repairs.push(`${label}: ${all.length - kept.length} unknown equipment removed`);
-  return kept;
-}
+/** How a repair note names a value that should have been an id. */
+const idText = (v: unknown): string => (v === undefined ? 'missing' : `${(JSON.stringify(v) ?? String(v)).slice(0, 40)} is not a valid id`);
 
-/** Decor (and frag) records whose defId is in the catalog. */
-function knownDecor(a: unknown, label: string, repairs: string[]): Json[] {
+/**
+ * lane:core (PERSIST-011; PERSIST-003 and ADR-0005 decision 1, "good saves going forward") — equipment, decor and frag
+ * records whose `defId` is a usable key. A well-formed id that this build's catalog doesn't know is kept unchanged: a
+ * newer build can add catalog items without a schema change (PERSIST-007), and deleting them here would lose them on
+ * the next save (security-data-2 M3). Every reader skips a definition it can't find. A record whose id is missing, not
+ * a string, empty, or an inherited Object name (which the scrub has already cleared to null) is dropped with a note.
+ */
+function withDefId(a: unknown, what: string, label: string, repairs: string[]): Json[] {
   const all = records(a);
-  const kept = all.filter((d) => typeof d.defId === 'string' && !!DECOR_BY_ID[d.defId]);
-  if (kept.length !== all.length) repairs.push(`${label}: ${all.length - kept.length} unknown decor removed`);
+  const kept = all.filter((r) => isSafeKey(r.defId));
+  if (kept.length !== all.length) repairs.push(`${label}: ${all.length - kept.length} ${what} without a valid id removed`);
   return kept;
 }
 
@@ -289,8 +289,8 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   t.water = fillNumbers(t.water, defaultWater(marine, wc === 'freshwater_cool'), `tank ${id}.water`, repairs);
   if (!isObj(t.placement)) t.placement = { x: 0, z: 0, rotY: 0 };
   t.placement = fillNumbers(t.placement, { x: 0, z: 0, rotY: 0 }, `tank ${id}.placement`, repairs);
-  t.equipment = knownEquipment(t.equipment, `tank ${id}`, repairs);
-  t.decor = knownDecor(t.decor, `tank ${id}`, repairs);
+  t.equipment = withDefId(t.equipment, 'equipment', `tank ${id}`, repairs);
+  t.decor = withDefId(t.decor, 'decor', `tank ${id}`, repairs);
   for (const d of t.decor) {
     for (const k of ['x', 'y', 'z', 'rotY'] as const) d[k] = num(d[k], 0);
     d.scale = num(d.scale, 1);
@@ -422,7 +422,12 @@ export function repairState(s: Json): string[] {
   if (!isObj(s.clock)) s.clock = { hour: 8, speed: 1 };
   s.clock.hour = num(s.clock.hour, 8);
   if (![0, 1, 3, 10].includes(s.clock.speed)) s.clock.speed = 1;
-  if (typeof s.starterId !== 'string' || !findSpecies(s.starterId)) s.starterId = 'betta';
+  // lane:core (PERSIST-011, ADR-0005 decision 1) — a starter species this build doesn't know is kept (a newer build may
+  // add one, and every reader falls back when findSpecies finds nothing); an id that isn't a usable key is reset.
+  if (!isSafeKey(s.starterId)) {
+    repairs.push(`starterId: ${idText(s.starterId)} → betta`);
+    s.starterId = 'betta';
+  }
   s.shopName = typeof s.shopName === 'string' && s.shopName ? s.shopName : 'My Aquarium';
 
   if (!isObj(s.tanks)) s.tanks = {};
@@ -468,10 +473,10 @@ export function repairState(s: Json): string[] {
   if (!isObj(s.inventory)) s.inventory = {};
   if (!isObj(s.inventory.foods)) s.inventory.foods = {};
   s.inventory.salt = num(s.inventory.salt, 0);
-  s.inventory.equipment = knownEquipment(s.inventory.equipment, 'inventory', repairs);
-  s.inventory.decor = knownDecor(s.inventory.decor, 'inventory', repairs);
+  s.inventory.equipment = withDefId(s.inventory.equipment, 'equipment', 'inventory', repairs);
+  s.inventory.decor = withDefId(s.inventory.decor, 'decor', 'inventory', repairs);
   // lane:frags — optional frag storage: drop unreadable entries, never invent the list for old saves
-  if (s.inventory.frags !== undefined) s.inventory.frags = knownDecor(s.inventory.frags, 'inventory frags', repairs);
+  if (s.inventory.frags !== undefined) s.inventory.frags = withDefId(s.inventory.frags, 'frags', 'inventory', repairs);
 
   if (!isObj(s.facility)) s.facility = { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] };
   s.facility = fillNumbers(s.facility, { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] }, 'facility', repairs);
@@ -492,8 +497,14 @@ export function repairState(s: Json): string[] {
       delete l.snapshot.photo;
       repairs.push(`listing ${String(l.id).slice(0, 40)}: photo was not an embedded image, removed`);
     }
-    if (l.fragItems !== undefined) l.fragItems = knownDecor(l.fragItems, `listing ${String(l.id).slice(0, 40)}`, repairs); // lane:frags
-    if (l.tankId !== undefined && !hasKey(s.tanks, l.tankId)) delete l.tankId;
+    if (l.fragItems !== undefined) l.fragItems = withDefId(l.fragItems, 'frags', `listing ${String(l.id).slice(0, 40)}`, repairs); // lane:frags
+    // A sold aquarium's listing keeps the id of the tank it sold, which no longer exists, so a usable id is kept even
+    // when its tank is gone (every reader handles a missing tank). One that isn't usable (the scrub clears an inherited
+    // name to null) is removed with a note.
+    if (l.tankId !== undefined && !isSafeKey(l.tankId)) {
+      repairs.push(`listing ${String(l.id).slice(0, 40)}: tankId ${idText(l.tankId)}, removed`);
+      delete l.tankId;
+    }
   }
   if (s.market.fragSaleHours !== undefined) s.market.fragSaleHours = Array.isArray(s.market.fragSaleHours) ? s.market.fragSaleHours.filter((h: unknown) => typeof h === 'number' && Number.isFinite(h)) : []; // lane:frags
 
@@ -510,13 +521,23 @@ export function repairState(s: Json): string[] {
   // lane:genetics — optional lists: repaired when present, derived from the collection when missing (pre-0.4 saves)
   if (p.discoveredStrains !== undefined) p.discoveredStrains = strings(p.discoveredStrains);
   if (p.prismaticFinds !== undefined) p.prismaticFinds = records(p.prismaticFinds).filter((f) => typeof f.speciesId === 'string' && typeof f.creatureId === 'string');
-  p.quests = records(p.quests).filter((q) => typeof q.id === 'string');
+  const quests = records(p.quests);
+  p.quests = quests.filter((q) => typeof q.id === 'string');
+  if (p.quests.length !== quests.length) repairs.push(`progress.quests: ${quests.length - p.quests.length} without an id removed`);
   if (!isObj(p.research)) p.research = { progressHours: 0, completed: [] };
   p.research.progressHours = num(p.research.progressHours, 0);
   p.research.completed = strings(p.research.completed);
-  if (p.research.activeId !== undefined && (typeof p.research.activeId !== 'string' || !RESEARCH_BY_ID[p.research.activeId])) delete p.research.activeId;
+  // lane:core (PERSIST-011, ADR-0005 decision 1) — a project this build doesn't know is kept, like any well-formed id
+  // (the research step closes it, as v0.4.0 did); an id that isn't a usable key is removed.
+  if (p.research.activeId !== undefined && !isSafeKey(p.research.activeId)) {
+    repairs.push(`progress.research.activeId: ${idText(p.research.activeId)}, removed`);
+    delete p.research.activeId;
+  }
   if (!isObj(p.tutorial)) p.tutorial = { starterId: s.starterId, step: 0, done: true, skipped: true, flags: {} };
-  if (typeof p.tutorial.starterId !== 'string' || !findSpecies(p.tutorial.starterId)) p.tutorial.starterId = s.starterId;
+  if (!isSafeKey(p.tutorial.starterId)) {
+    repairs.push(`progress.tutorial.starterId: ${idText(p.tutorial.starterId)} → ${s.starterId}`);
+    p.tutorial.starterId = s.starterId;
+  }
   if (!isObj(p.tutorial.flags)) p.tutorial.flags = {};
   if (!isObj(p.counters)) p.counters = {};
 

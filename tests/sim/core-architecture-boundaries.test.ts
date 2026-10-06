@@ -51,10 +51,25 @@ async function allFiles(dir: string): Promise<string[]> {
   return out;
 }
 
+/**
+ * A file's layer: its top-level directory under src, or "root" for a file directly in src. A directory is never the
+ * root layer, not even one named "root" (code-architecture-game-2 m5): a directory ALLOWED doesn't list is unknown.
+ */
 const layerOf = (abs: string): string => {
-  const top = relative(SRC, abs).split(/[\\/]/)[0];
-  return top in ALLOWED && top !== 'root' ? top : 'root';
+  const parts = relative(SRC, abs).split(/[\\/]/);
+  if (parts.length === 1) return 'root';
+  return parts[0] === 'root' ? 'root/' : parts[0];
 };
+
+/** Top-level src directories holding source files that ALLOWED has no row for (each one needs a row and an ADR). */
+export function unknownLayers(files: string[]): string[] {
+  const dirs = new Set<string>();
+  for (const f of files) {
+    const layer = layerOf(f);
+    if (layer !== 'root' && !Object.hasOwn(ALLOWED, layer)) dirs.add(relative(SRC, f).split(/[\\/]/)[0]);
+  }
+  return [...dirs].sort();
+}
 
 function resolveSpec(files: Set<string>, from: string, spec: string): string | null {
   let base: string;
@@ -77,8 +92,11 @@ export function valueImports(code: string): string[] {
   return specs;
 }
 
-/** One scan of src: read every source file concurrently, then resolve imports against the file list (no more I/O). */
-async function violations(): Promise<string[]> {
+/**
+ * One scan of src: read every source file concurrently, then resolve imports against the file list (no more I/O).
+ * Files in an unknown top-level directory are left to the unknown-layer check, which fails on them.
+ */
+async function scan(): Promise<{ violations: string[]; unknown: string[] }> {
   const files = await allFiles(SRC);
   const known = new Set(files);
   const sources = files.filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f));
@@ -86,6 +104,7 @@ async function violations(): Promise<string[]> {
   const found = new Set<string>();
   sources.forEach((file, i) => {
     const from = layerOf(file);
+    if (!Object.hasOwn(ALLOWED, from)) return;
     const code = codes[i].replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
     for (const spec of valueImports(code)) {
       const target = resolveSpec(known, file, spec);
@@ -95,18 +114,28 @@ async function violations(): Promise<string[]> {
       found.add(`${relative(ROOT, file).split('\\').join('/')} -> ${to}`);
     }
   });
-  return [...found].sort();
+  return { violations: [...found].sort(), unknown: unknownLayers(sources) };
 }
 
 describe('CONST-004: architecture lock: layer import directions', () => {
   let now: string[] = [];
+  let unknown: string[] = [];
   beforeAll(async () => {
-    now = await violations();
+    ({ violations: now, unknown } = await scan());
   }, 300_000);
 
   it('parses value imports and skips type-only ones', () => {
     const code = "import type { A } from '@/types';\nimport { b, type C } from '@/sim/x';\nexport { d } from './d';\nimport '@/ui/side';\nconst m = await import('@/render/lazy');";
     expect(valueImports(code)).toEqual(['@/sim/x', './d', '@/ui/side', '@/render/lazy']);
+  });
+
+  it('a file in a top-level directory that ALLOWED has no row for is reported, never taken for the src root', () => {
+    const files = [join(SRC, 'main.tsx'), join(SRC, 'sim', 'x.ts'), join(SRC, 'router', 'routes.ts'), join(SRC, 'root', 'y.ts'), join(SRC, 'router', 'a', 'b.ts')];
+    expect(unknownLayers(files)).toEqual(['root', 'router']);
+  });
+
+  it('every top-level src directory is a layer in ALLOWED', () => {
+    expect(unknown, 'a new top-level src directory needs a row in ALLOWED and docs/ARCHITECTURE.md (an ADR)').toEqual([]);
   });
 
   it('no new cross-layer value import breaks the layering', () => {

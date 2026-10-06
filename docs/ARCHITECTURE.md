@@ -21,8 +21,8 @@ src/state        Zustand stores: game (persistent), ui (transient), settings (lo
 src/persistence  IndexedDB save slots, versioned schema + migrations, offline cap
 src/game         real-time loop driving sim ticks
 src/runtime      per-frame non-persisted registries (creature runtime, food, events, audio-reactive)
-src/ai           per-frame creature behaviour (reads sim state, writes runtime)
-src/render       Three.js/R3F rendering (reads state + runtime; never mutates game state directly)
+src/ai           per-frame creature behaviour (reads sim state, writes runtime; game state only through mutate)
+src/render       Three.js/R3F rendering (reads state + runtime; input handlers change game state only through mutate)
 src/ui           React DOM UI (reads state; calls sim mutators through `mutate`)
 src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
@@ -53,8 +53,13 @@ Changing a row needs an ADR.
 Rules:
 - **Species facts live only in `src/data/species`.** UI/render/AI read them through `getSpecies()`.
 - **The simulation is the source of truth.** Rendering and AI only present it. Example: feeding adds food to `tank.water.foodInWater`. The sim shares it out by feeding speed and competition, so a seahorse really does lose out to fast feeders. The AI animates particles being eaten, but the numbers come from the sim.
-- **All game-state changes go through the store boundary.** Player, UI and AI actions use `useGame.getState().mutate(draft => domainFn(draft, …))`; the game loop, offline catch-up and the pre-save flush use `mutateFast` (`src/game/fastMutate.ts`: a plain working copy published with structural sharing, about 15× cheaper than an Immer draft for a whole-world step); loading a save or starting a new game replaces the world with `setGame`. Domain mutators live in `src/sim/**`, and rendering never writes game state.
-- **Determinism:** the sim draws randomness only from `simRng(state)` / `ctx.rng`, which persists `rngState`, or from a subsystem's own persisted stream (`shows.rng`, `staff.rng`). Cosmetic randomness uses `visualRng`/`Math.random`. What "deterministic" promises, and what it doesn't, is defined in `docs/agent/OPERATIONS.md` §11.
+- **All game-state changes go through the store boundary**, by exactly three paths. Domain mutators live in `src/sim/**`.
+  - `useGame.getState().mutate(draft => domainFn(draft, …))` for player actions, wherever they start: the UI, and the render layer's input handlers (glass taps in `render/interaction/TankInteraction.tsx`, the decor editor, tank placement). The AI's tutorial "observed" hook (`ai/TankAI.tsx`) also uses it.
+  - `mutateFast` (`src/game/fastMutate.ts`: a plain working copy published with structural sharing, about 15× cheaper than an Immer draft for a whole-world step) for the game loop, the hidden-tab catch-up, the flush before a save (`persistence/session.ts`) and dev commands. It is atomic (a recipe that throws publishes nothing, and after any failure, in the recipe or in the publish, the next call starts from the store) and not re-entrant.
+  - `setGame` to replace the whole world: loading a save (whose catch-up runs on the decoded copy first), starting a new game, the showcase and fixture boot (`App.tsx`, `ui/screens/onboarding.ts`) and dev tools.
+
+  The render frame loop (`useFrame`, render selectors) never writes game state. The AI's frame step writes only the `src/runtime` registries, with one exception: while the tutorial runs, its throttled "observed" hook advances the tutorial through `mutate`.
+- **Determinism:** the sim draws randomness only from `simRng(state)` / `ctx.rng`, which persists `rngState`; from a subsystem's own persisted stream (`shows.rng`, `staff.rng`); or from a keyed stream, `mulberry32(hashString(key))`, seeded from a stable key (creature names, breeding anchors, the morph catalog), which persists nothing and gives the same draws for the same key. Cosmetic randomness in render and AI uses `visualRng`/`Math.random`. What "deterministic" promises, and what it doesn't, is defined in `docs/agent/OPERATIONS.md` §11.
 
 ## Time
 
@@ -66,7 +71,7 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
 
 ## Simulation LOD
 
-`src/sim/world.ts` steps the **focused tank** at full fidelity every tick. Other tanks accumulate "sim debt". The first 12 are processed in ≥1 h chunks (reduced) and the rest in ≥4 h chunks (summary). Subsystems substep internally, so any chunk size gives stable results. Rendering LOD follows the same pattern: lod 0 is the hero tank, lod 1 is near tanks in the facility view, and lod 2 is far/cheap.
+`src/sim/world.ts` steps the **focused tank** at full fidelity every tick. Other tanks accumulate "sim debt". The first 12 are processed in ≥1 h chunks (reduced) and the rest in ≥4 h chunks (summary). Subsystems substep internally, so a large chunk stays well-behaved (no runaway values or NaN), but chunk size still shows: one large chunk and many small steps agree only within the tolerances each subsystem's tests state, and exact equality across LOD tiers isn't promised (`docs/agent/OPERATIONS.md` §11). Rendering LOD follows the same pattern: lod 0 is the hero tank, lod 1 is near tanks in the facility view, and lod 2 is far/cheap.
 
 ## Coordinate conventions
 

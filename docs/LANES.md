@@ -47,10 +47,15 @@ being tedious → stable and testable → fast to understand → extensible → 
 - `src/types/game.ts`: `GameState` and everything persisted. `src/types/catalog.ts`: tanks, equipment, decor, food.
 - `src/types/runtime.ts`: per-frame `CreatureRuntime`, food particles, visual events, pointer, audio-reactive, **coordinate conventions**.
 - `src/types/reports.ts`: water, compatibility, valuation, beauty and exhibit reports consumed by the UI.
-- `src/sim/context.ts`: `SimContext` (`rng`, `hour`, `dt`, `lod`, `emit`). **The sim uses only `ctx.rng` / `simRng(state)` for randomness.**
+- `src/sim/context.ts`: `SimContext` (`rng`, `hour`, `dt`, `lod`, `emit`). **Sim randomness comes only from `ctx.rng` /
+  `simRng(state)`, a subsystem's own persisted stream (`shows.rng`, `staff.rng`), or a keyed `mulberry32(hashString(key))`
+  stream** (see "Determinism" in `docs/ARCHITECTURE.md`).
 - `src/sim/world.ts`: the order in which subsystems are called each tick (read it).
 - `src/sim/tankSpace.ts`: tank dimensions in metres, swim bounds, decor anchors/colliders, `tankWorldTransform`.
-- `src/state/game.ts`: `useGame`, `mutate(recipe)`, `getGame()`, `mutateGame()`. **All state changes go through `mutate`.**
+- `src/state/game.ts`: `useGame`, `mutate(recipe)`, `getGame()`, `mutateGame()`. **State changes go through the store
+  boundary only: `mutate` for player actions (the UI, render input handlers, the AI's tutorial hook), `mutateFast` for
+  the game loop, the hidden-tab catch-up and the flush before a save, and `setGame` to replace the whole world** (see
+  `docs/ARCHITECTURE.md`). The render frame loop never writes game state.
 - `src/state/ui.ts`: transient UI state (screen, view, focused tank, camera mode, tool, panel, toasts, party/photo mode).
 - `src/state/settings.ts`: settings (volume, quality, reduced motion, advanced water, dev mode…).
 - `src/render/shared/underwater.ts`: `patchUnderwaterMaterial(mat, fx)` + `useTankFX()`. **Every material rendered

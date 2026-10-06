@@ -15,6 +15,8 @@ import { useGame } from '@/state/game';
 
 let work: GameState | null = null;
 let published: GameState | null = null;
+/** A recipe is running (mutateFast is not re-entrant, see below). */
+let running = false;
 
 type Obj = Record<string, unknown>;
 
@@ -109,29 +111,46 @@ export function share(prev: unknown, next: unknown): unknown {
  * Atomic, like `useGame.mutate` (Immer's `produce` discards a draft whose recipe throws): when the recipe throws,
  * nothing is published, the half-changed working copy is dropped (the next call re-clones from the store), and the
  * error is rethrown for the caller to report. A world step that fails part-way must never become the game state,
- * be built on by the next tick, or be autosaved (S0 review, PERSIST-004 / docs/agent/OPERATIONS.md §11).
+ * be built on by the next tick, or be autosaved (S0 review, PERSIST-009 / docs/agent/OPERATIONS.md §11). When the
+ * publish itself throws (share() failing, or a store subscriber), the copy is dropped too, so the next call starts
+ * from the store whether or not the store took the update.
+ *
+ * Not re-entrant: a call made from inside a running recipe throws before it touches anything. It would otherwise
+ * work on, and when failing drop, the outer call's working copy, so the outer call could publish half of a failed
+ * recipe, or `null` (code-architecture-game-2 m4). Do nested work inside the running recipe instead.
  */
 export function mutateFast<R>(recipe: (state: GameState) => R): R | undefined {
-  const store = useGame.getState();
-  const current = store.game;
+  if (running) throw new Error('mutateFast is not re-entrant: do this work inside the running recipe');
+  const current = useGame.getState().game;
   if (!current) return undefined;
   if (!work || published !== current) {
     work = deepClone(current);
     published = current;
   }
+  const copy = work;
   let result: R;
+  running = true;
   try {
-    result = recipe(work);
+    result = recipe(copy);
   } catch (e) {
     resetFastMutate();
     throw e;
+  } finally {
+    running = false;
   }
-  publish(current);
+  try {
+    publish(current, copy);
+  } catch (e) {
+    // share() or a store subscriber threw. Whether or not the store took the update, nothing may build on this copy
+    // again: the next call re-clones from the store (security-data-2 m2).
+    resetFastMutate();
+    throw e;
+  }
   return result;
 }
 
-function publish(current: GameState): void {
-  const next = share(current, work) as GameState;
+function publish(current: GameState, copy: GameState): void {
+  const next = share(current, copy) as GameState;
   if (next !== current) {
     // Anyone may have replaced the game while the recipe ran (it is synchronous, but be safe).
     if (useGame.getState().game !== current) {
