@@ -1,0 +1,118 @@
+
+> aquarium-go@0.4.0 e2e
+> playwright test
+
+
+Running 47 tests using 1 worker
+
+  ✘   1 [desktop] › tests/e2e/boot.spec.ts:5:3 › boot › first launch: title is visible and the canvas is not blank (2.2m)
+  ✓   2 [desktop] › tests/e2e/boot.spec.ts:17:3 › boot › no console-error storm during a busy session (1.0m)
+  ✓   3 [desktop] › tests/e2e/camera-freeze.spec.ts:34:3 › camera modes keep rendering › photo mode and close-up toggles never freeze the canvas (High quality) (1.3m)
+  ✓   4 [desktop] › tests/e2e/features.spec.ts:22:3 › round-2 features › shows: enter an eligible animal, see it judged with a judge’s card; ineligible entrants say why (15.0s)
+  ✓   5 [desktop] › tests/e2e/features.spec.ts:82:3 › round-2 features › staff: unlock with the shop, hire an aquarist, assign a tank, see the keeper on the tank card (22.0s)
+  ✓   6 [desktop] › tests/e2e/features.spec.ts:136:3 › round-2 features › frags: take a frag from a grown coral, then list it on the market (20.8s)
+  ✓   7 [desktop] › tests/e2e/features.spec.ts:167:3 › round-2 features › brackish: research gate, converting an empty tank, and the estuary renders (17.9s)
+  ✓   8 [desktop] › tests/e2e/gameplay.spec.ts:5:3 › core gameplay loop › tutorial: complete the first steps by doing them, then skip the rest (41.0s)
+  ✓   9 [desktop] › tests/e2e/gameplay.spec.ts:57:3 › core gameplay loop › feed the tank (8.5s)
+  ✓  10 [desktop] › tests/e2e/gameplay.spec.ts:74:3 › core gameplay loop › add decor in build mode (6.9s)
+  ✓  11 [desktop] › tests/e2e/gameplay.spec.ts:93:3 › core gameplay loop › buy livestock from the market (11.4s)
+  ✓  12 [desktop] › tests/e2e/gameplay.spec.ts:107:3 › core gameplay loop › incompatibility warning for a bad pairing (second male betta) (7.6s)
+  ✘  13 [desktop] › tests/e2e/gameplay.spec.ts:123:3 › core gameplay loop › create a listing, receive a bid, accept it (40.7s)
+  ✓  14 [desktop] › tests/e2e/gameplay.spec.ts:159:3 › core gameplay loop › add a second tank (19.7s)
+  ✓  15 [desktop] › tests/e2e/hud-layout.spec.ts:38:3 › desktop 1440×900 › the alerts popover opens above the creature card and above a panel (14.2s)
+  ✓  16 [desktop] › tests/e2e/hud-layout.spec.ts:54:3 › desktop 1440×900 › a calm HUD still takes the click of a mouse resting on a control (19.4s)
+  ✓  17 [desktop] › tests/e2e/hud-layout.spec.ts:65:3 › desktop 1440×900 › closing a clicked-open panel with Escape still lets the HUD calm (13.2s)
+  ✓  18 [desktop] › tests/e2e/hud-layout.spec.ts:81:3 › phone 390×844 (touch) › the money delta is drawn over the tank bar (13.1s)
+  ✓  19 [desktop] › tests/e2e/hud-layout.spec.ts:95:3 › phone 390×844 (touch) › a calm HUD: the first tap on the hidden dock only wakes it, the quick retry lands, the drawn bell acts at once (19.4s)
+  ✓  20 [desktop] › tests/e2e/hud-layout.spec.ts:142:3 › phone held sideways 844×390 (touch) › with a panel open, one toast sits in its header row, off the list, tabs and buttons (11.5s)
+  ✓  21 [desktop] › tests/e2e/hud-layout.spec.ts:158:3 › phone held sideways 932×430 (touch) › with Livestock open, one toast sits in its header row, off the list (7.6s)
+  ✓  22 [desktop] › tests/e2e/mobile.spec.ts:7:3 › mobile 390×844 with touch › title fits, onboarding works by touch, tapping the tank is handled (19.2s)
+  ✓  23 [desktop] › tests/e2e/perf.spec.ts:14:3 › performance › big_facility: facility view and the 1,000 gal display stay smooth (20.8s)
+  ✓  24 [desktop] › tests/e2e/perf.spec.ts:33:3 › performance › stress_school: 80 schooling fish (16.6s)
+  ✓  25 [desktop] › tests/e2e/perf.spec.ts:43:3 › performance › 10× speed does not stutter the sim (8.0s)
+  ✓  26 [desktop] › tests/e2e/perf.spec.ts:54:3 › performance › memory stays bounded entering/leaving tank view 20× (23.6s)
+  ✓  27 [desktop] › tests/e2e/prismatic.spec.ts:12:3 › Prismatic animals › a Prismatic shop animal is badged, bought, saved and reloaded unchanged (42.9s)
+  ✓  28 [desktop] › tests/e2e/prismatic.spec.ts:52:3 › Prismatic animals › a forced Prismatic youngster is born, celebrated and recorded (15.5s)
+  ✓  29 [desktop] › tests/e2e/resilience.spec.ts:5:3 › resilience › audio/microphone permission denied does not break party mode (13.4s)
+  ✓  30 [desktop] › tests/e2e/resilience.spec.ts:40:3 › resilience › works with no network (all non-local requests blocked) (23.5s)
+  ✓  31 [desktop] › tests/e2e/resilience.spec.ts:57:3 › resilience › reduced-motion preference is honoured and the game still runs (13.8s)
+  ✓  32 [desktop] › tests/e2e/resilience.spec.ts:70:3 › resilience › rapid glass-tap spam does not crash or reward (8.6s)
+  ✓  33 [desktop] › tests/e2e/resilience.spec.ts:84:3 › resilience › saving still works when IndexedDB is unavailable (localStorage fallback + warning toast) (3.2s)
+  ✓  34 [desktop] › tests/e2e/save.spec.ts:5:3 › save / load / settings › manual save → reload → Continue restores the game (25.2s)
+  ✓  35 [desktop] › tests/e2e/save.spec.ts:32:3 › save / load / settings › autosave writes the auto slot for a real game (7.0s)
+  ✓  36 [desktop] › tests/e2e/save.spec.ts:41:3 › save / load / settings › offline catch-up is capped and nobody dies (3.8s)
+  ✓  37 [desktop] › tests/e2e/save.spec.ts:56:3 › save / load / settings › a migrated legacy (v0) save loads and runs (11.6s)
+  ✓  38 [desktop] › tests/e2e/save.spec.ts:66:3 › save / load / settings › settings persist across reloads (8.6s)
+  ✓  39 [desktop] › tests/e2e/save.spec.ts:77:3 › save / load / settings › export → import roundtrip in the browser (2.4s)
+  ✓  40 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose axolotl → named → correct freshwater tank (28.8s)
+  ✓  41 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose betta → named → correct freshwater tank (33.0s)
+  ✓  42 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose pea_puffer → named → correct freshwater tank (31.0s)
+  ✓  43 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose ocellaris_clownfish → named → correct marine tank (33.0s)
+  ✓  44 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose lined_seahorse → named → correct marine tank (19.5s)
+  ✓  45 [desktop] › tests/e2e/ui-layout.spec.ts:29:3 › UI layout contracts (desktop) › panels are ≤600px, declare occlusion, and toasts stay clear of them (22.3s)
+  ✓  46 [desktop] › tests/e2e/ui-layout.spec.ts:63:3 › UI layout contracts (desktop) › creature card and tank card declare which side they cover (7.5s)
+  ✓  47 [desktop] › tests/e2e/ui-layout.spec.ts:84:3 › UI layout contracts (phone) › bottom sheets open half-height, the dock hints that it scrolls, at most two toasts (13.6s)
+
+
+  1) [desktop] › tests/e2e/boot.spec.ts:5:3 › boot › first launch: title is visible and the canvas is not blank 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.waitForFunction: Test timeout of 120000ms exceeded.
+
+       at helpers.ts:34
+
+      32 | export async function openApp(page: Page, path = '/'): Promise<void> {
+      33 |   await page.goto(path, { waitUntil: 'domcontentloaded' });
+    > 34 |   await page.waitForFunction(() => !!(window as unknown as { __AQ?: { ready?: boolean } }).__AQ?.ready, null, { timeout: 30_000 });
+         |              ^
+      35 | }
+      36 |
+      37 | /** Evaluate against window.__AQ (typed loosely on purpose). */
+        at openApp (/Volumes/Dev/Projects/AquariumGo/tests/e2e/helpers.ts:34:14)
+        at /Volumes/Dev/Projects/AquariumGo/tests/e2e/boot.spec.ts:7:5
+
+    Error Context: test-results/boot-boot-first-launch-tit-53dcd-and-the-canvas-is-not-blank-desktop/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/boot-boot-first-launch-tit-53dcd-and-the-canvas-is-not-blank-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/boot-boot-first-launch-tit-53dcd-and-the-canvas-is-not-blank-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [desktop] › tests/e2e/gameplay.spec.ts:123:3 › core gameplay loop › create a listing, receive a bid, accept it 
+
+    TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
+
+       at helpers.ts:164
+
+      162 | /** Poll a state predicate evaluated in the page (string body receives `g` = GameState). */
+      163 | export async function waitForState(page: Page, predicateBody: string, timeout = 10_000): Promise<void> {
+    > 164 |   await page.waitForFunction(
+          |              ^
+      165 |     (body) => {
+      166 |       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      167 |       const g = (window as any).__AQ.state();
+        at waitForState (/Volumes/Dev/Projects/AquariumGo/tests/e2e/helpers.ts:164:14)
+        at /Volumes/Dev/Projects/AquariumGo/tests/e2e/gameplay.spec.ts:155:11
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/gameplay-core-gameplay-loo-dc9a1-ing-receive-a-bid-accept-it-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/gameplay-core-gameplay-loo-dc9a1-ing-receive-a-bid-accept-it-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/gameplay-core-gameplay-loo-dc9a1-ing-receive-a-bid-accept-it-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/gameplay-core-gameplay-loo-dc9a1-ing-receive-a-bid-accept-it-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [desktop] › tests/e2e/boot.spec.ts:5:3 › boot › first launch: title is visible and the canvas is not blank 
+    [desktop] › tests/e2e/gameplay.spec.ts:123:3 › core gameplay loop › create a listing, receive a bid, accept it 
+  45 passed (19.8m)
