@@ -24,7 +24,7 @@
     {
       "id": "DESIGN-S3D",
       "title": "Extended aquarium/aquaculture automation (S3-D): screens, copy, test ids and the names of resources shown to players",
-      "status": "RECEIVED",
+      "status": "UNDER_REVIEW",
       "path": "docs/agent/design/DESIGN-S3D/SPEC.md",
       "approval": null,
       "source": "Owner's Claude Design canvas \"Design\" (https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk), Version 23 (1791264082-fb19), captured 2026-10-05 with ADR-0014. The repo copy is normative; the canvas ranks below it (master §3.9).",
