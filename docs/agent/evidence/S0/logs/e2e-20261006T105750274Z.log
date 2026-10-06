@@ -1,0 +1,130 @@
+
+> aquarium-go@0.4.0 e2e
+> playwright test
+
+
+Running 47 tests using 1 worker
+
+  ✘   1 [desktop] › tests/e2e/boot.spec.ts:5:3 › boot › first launch: title is visible and the canvas is not blank (2.2m)
+  ✘   2 [desktop] › tests/e2e/boot.spec.ts:17:3 › boot › no console-error storm during a busy session (3.5m)
+  ✘   3 [desktop] › tests/e2e/camera-freeze.spec.ts:34:3 › camera modes keep rendering › photo mode and close-up toggles never freeze the canvas (High quality) (3.6m)
+  ✓   4 [desktop] › tests/e2e/features.spec.ts:22:3 › round-2 features › shows: enter an eligible animal, see it judged with a judge’s card; ineligible entrants say why (1.2m)
+  ✓   5 [desktop] › tests/e2e/features.spec.ts:82:3 › round-2 features › staff: unlock with the shop, hire an aquarist, assign a tank, see the keeper on the tank card (1.2m)
+  ✓   6 [desktop] › tests/e2e/features.spec.ts:136:3 › round-2 features › frags: take a frag from a grown coral, then list it on the market (1.9m)
+  ✓   7 [desktop] › tests/e2e/features.spec.ts:167:3 › round-2 features › brackish: research gate, converting an empty tank, and the estuary renders (1.0m)
+  ✓   8 [desktop] › tests/e2e/gameplay.spec.ts:5:3 › core gameplay loop › tutorial: complete the first steps by doing them, then skip the rest (1.3m)
+  ✓   9 [desktop] › tests/e2e/gameplay.spec.ts:57:3 › core gameplay loop › feed the tank (8.7s)
+  ✓  10 [desktop] › tests/e2e/gameplay.spec.ts:74:3 › core gameplay loop › add decor in build mode (17.8s)
+  ✓  11 [desktop] › tests/e2e/gameplay.spec.ts:93:3 › core gameplay loop › buy livestock from the market (13.9s)
+  ✓  12 [desktop] › tests/e2e/gameplay.spec.ts:107:3 › core gameplay loop › incompatibility warning for a bad pairing (second male betta) (19.7s)
+  ✓  13 [desktop] › tests/e2e/gameplay.spec.ts:123:3 › core gameplay loop › create a listing, receive a bid, accept it (9.2s)
+  ✓  14 [desktop] › tests/e2e/gameplay.spec.ts:159:3 › core gameplay loop › add a second tank (8.9s)
+  ✓  15 [desktop] › tests/e2e/hud-layout.spec.ts:38:3 › desktop 1440×900 › the alerts popover opens above the creature card and above a panel (9.2s)
+  ✓  16 [desktop] › tests/e2e/hud-layout.spec.ts:54:3 › desktop 1440×900 › a calm HUD still takes the click of a mouse resting on a control (12.7s)
+  ✓  17 [desktop] › tests/e2e/hud-layout.spec.ts:65:3 › desktop 1440×900 › closing a clicked-open panel with Escape still lets the HUD calm (16.7s)
+  ✓  18 [desktop] › tests/e2e/hud-layout.spec.ts:81:3 › phone 390×844 (touch) › the money delta is drawn over the tank bar (3.9s)
+  ✓  19 [desktop] › tests/e2e/hud-layout.spec.ts:95:3 › phone 390×844 (touch) › a calm HUD: the first tap on the hidden dock only wakes it, the quick retry lands, the drawn bell acts at once (26.2s)
+  ✓  20 [desktop] › tests/e2e/hud-layout.spec.ts:142:3 › phone held sideways 844×390 (touch) › with a panel open, one toast sits in its header row, off the list, tabs and buttons (31.2s)
+  ✓  21 [desktop] › tests/e2e/hud-layout.spec.ts:158:3 › phone held sideways 932×430 (touch) › with Livestock open, one toast sits in its header row, off the list (9.9s)
+  ✓  22 [desktop] › tests/e2e/mobile.spec.ts:7:3 › mobile 390×844 with touch › title fits, onboarding works by touch, tapping the tank is handled (51.9s)
+  ✓  23 [desktop] › tests/e2e/perf.spec.ts:14:3 › performance › big_facility: facility view and the 1,000 gal display stay smooth (22.8s)
+  ✓  24 [desktop] › tests/e2e/perf.spec.ts:33:3 › performance › stress_school: 80 schooling fish (14.2s)
+  ✓  25 [desktop] › tests/e2e/perf.spec.ts:43:3 › performance › 10× speed does not stutter the sim (21.4s)
+  ✓  26 [desktop] › tests/e2e/perf.spec.ts:54:3 › performance › memory stays bounded entering/leaving tank view 20× (28.2s)
+  ✓  27 [desktop] › tests/e2e/prismatic.spec.ts:12:3 › Prismatic animals › a Prismatic shop animal is badged, bought, saved and reloaded unchanged (35.5s)
+  ✓  28 [desktop] › tests/e2e/prismatic.spec.ts:52:3 › Prismatic animals › a forced Prismatic youngster is born, celebrated and recorded (14.4s)
+  ✓  29 [desktop] › tests/e2e/resilience.spec.ts:5:3 › resilience › audio/microphone permission denied does not break party mode (26.1s)
+  ✓  30 [desktop] › tests/e2e/resilience.spec.ts:40:3 › resilience › works with no network (all non-local requests blocked) (34.6s)
+  ✓  31 [desktop] › tests/e2e/resilience.spec.ts:57:3 › resilience › reduced-motion preference is honoured and the game still runs (20.6s)
+  ✓  32 [desktop] › tests/e2e/resilience.spec.ts:70:3 › resilience › rapid glass-tap spam does not crash or reward (23.6s)
+  ✓  33 [desktop] › tests/e2e/resilience.spec.ts:84:3 › resilience › saving still works when IndexedDB is unavailable (localStorage fallback + warning toast) (28.3s)
+  ✓  34 [desktop] › tests/e2e/save.spec.ts:5:3 › save / load / settings › manual save → reload → Continue restores the game (54.0s)
+  ✓  35 [desktop] › tests/e2e/save.spec.ts:32:3 › save / load / settings › autosave writes the auto slot for a real game (11.5s)
+  ✓  36 [desktop] › tests/e2e/save.spec.ts:41:3 › save / load / settings › offline catch-up is capped and nobody dies (7.8s)
+  ✓  37 [desktop] › tests/e2e/save.spec.ts:56:3 › save / load / settings › a migrated legacy (v0) save loads and runs (6.6s)
+  ✓  38 [desktop] › tests/e2e/save.spec.ts:66:3 › save / load / settings › settings persist across reloads (15.0s)
+  ✓  39 [desktop] › tests/e2e/save.spec.ts:77:3 › save / load / settings › export → import roundtrip in the browser (9.9s)
+  ✓  40 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose axolotl → named → correct freshwater tank (32.6s)
+  ✓  41 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose betta → named → correct freshwater tank (39.3s)
+  ✓  42 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose pea_puffer → named → correct freshwater tank (35.8s)
+  ✓  43 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose ocellaris_clownfish → named → correct marine tank (47.7s)
+  ✓  44 [desktop] › tests/e2e/starters.spec.ts:6:5 › starter selection › choose lined_seahorse → named → correct marine tank (1.0m)
+  ✓  45 [desktop] › tests/e2e/ui-layout.spec.ts:29:3 › UI layout contracts (desktop) › panels are ≤600px, declare occlusion, and toasts stay clear of them (33.1s)
+  ✓  46 [desktop] › tests/e2e/ui-layout.spec.ts:63:3 › UI layout contracts (desktop) › creature card and tank card declare which side they cover (5.6s)
+  ✓  47 [desktop] › tests/e2e/ui-layout.spec.ts:84:3 › UI layout contracts (phone) › bottom sheets open half-height, the dock hints that it scrolls, at most two toasts (21.7s)
+
+
+  1) [desktop] › tests/e2e/boot.spec.ts:5:3 › boot › first launch: title is visible and the canvas is not blank 
+
+    Test timeout of 120000ms exceeded.
+
+    Error: page.goto: Test timeout of 120000ms exceeded.
+    Call log:
+      - navigating to "http://127.0.0.1:4399/", waiting until "domcontentloaded"
+
+
+       at helpers.ts:33
+
+      31 | /** Open the app and wait until window.__AQ is ready. */
+      32 | export async function openApp(page: Page, path = '/'): Promise<void> {
+    > 33 |   await page.goto(path, { waitUntil: 'domcontentloaded' });
+         |              ^
+      34 |   await page.waitForFunction(() => !!(window as unknown as { __AQ?: { ready?: boolean } }).__AQ?.ready, null, { timeout: 30_000 });
+      35 | }
+      36 |
+        at openApp (/Volumes/Dev/Projects/AquariumGo/tests/e2e/helpers.ts:33:14)
+        at /Volumes/Dev/Projects/AquariumGo/tests/e2e/boot.spec.ts:7:11
+
+    Error Context: test-results/boot-boot-first-launch-tit-53dcd-and-the-canvas-is-not-blank-desktop/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/boot-boot-first-launch-tit-53dcd-and-the-canvas-is-not-blank-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/boot-boot-first-launch-tit-53dcd-and-the-canvas-is-not-blank-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [desktop] › tests/e2e/boot.spec.ts:17:3 › boot › no console-error storm during a busy session ─
+
+    Tearing down "context" exceeded the test timeout of 120000ms.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/boot-boot-no-console-error-storm-during-a-busy-session-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/boot-boot-no-console-error-storm-during-a-busy-session-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/boot-boot-no-console-error-storm-during-a-busy-session-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/boot-boot-no-console-error-storm-during-a-busy-session-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [desktop] › tests/e2e/camera-freeze.spec.ts:34:3 › camera modes keep rendering › photo mode and close-up toggles never freeze the canvas (High quality) 
+
+    Tearing down "context" exceeded the test timeout of 120000ms.
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/camera-freeze-camera-modes-1bf88-ze-the-canvas-High-quality--desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/camera-freeze-camera-modes-1bf88-ze-the-canvas-High-quality--desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/camera-freeze-camera-modes-1bf88-ze-the-canvas-High-quality--desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/camera-freeze-camera-modes-1bf88-ze-the-canvas-High-quality--desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  Slow test file: [desktop] › tests/e2e/features.spec.ts (5.3m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  3 failed
+    [desktop] › tests/e2e/boot.spec.ts:5:3 › boot › first launch: title is visible and the canvas is not blank 
+    [desktop] › tests/e2e/boot.spec.ts:17:3 › boot › no console-error storm during a busy session ──
+    [desktop] › tests/e2e/camera-freeze.spec.ts:34:3 › camera modes keep rendering › photo mode and close-up toggles never freeze the canvas (High quality) 
+  44 passed (37.2m)

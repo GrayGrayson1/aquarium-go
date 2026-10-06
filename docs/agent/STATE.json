@@ -30,16 +30,16 @@
   ],
   "gates": {
     "typecheck": "GREEN",
-    "unit": "RED",
+    "unit": "GREEN",
     "build": "GREEN",
-    "e2e": "PENDING",
+    "e2e": "RED",
     "diffCheck": "GREEN",
-    "harnessTests": "GREEN",
+    "harnessTests": "RED",
     "requirementsAudit": "GREEN",
     "testInventory": "GREEN",
     "protectedFiles": "GREEN",
     "browserQa": "NOT_APPLICABLE",
     "independentReview": "PENDING"
   },
-  "updatedAt": "2026-10-06T06:40:03.333Z"
+  "updatedAt": "2026-10-06T11:39:21.399Z"
 }
