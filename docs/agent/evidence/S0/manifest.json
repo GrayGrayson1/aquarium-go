@@ -242,6 +242,22 @@
       "dirty": true,
       "codeTree": "4d29120aca765409be362299865ac7bfa0617a09",
       "requirements": []
+    },
+    {
+      "gate": "requirementsAudit",
+      "command": "node scripts/agent/requirements-audit.mjs",
+      "cwd": "/home/user/aquarium-go",
+      "start": "2026-10-06T00:16:25.283Z",
+      "end": "2026-10-06T00:16:25.541Z",
+      "seconds": 0,
+      "exitCode": 0,
+      "counts": {},
+      "log": "docs/agent/evidence/S0/logs/requirementsAudit-20261006T001625283Z.log",
+      "logSha256": "0f0ec95b2d92bec6cd9ffa9cd9dfa48f1558e240104d49126797d143c33847a4",
+      "head": "4c1a987960570f3bb9a8c6afff10848a906054b1",
+      "dirty": false,
+      "codeTree": "4d29120aca765409be362299865ac7bfa0617a09",
+      "requirements": []
     }
   ],
   "browserRuns": [],
