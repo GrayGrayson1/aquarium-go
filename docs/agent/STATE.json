@@ -12,8 +12,8 @@
   "machineState": "IMPLEMENT",
   "resumeState": null,
   "repairAttempt": 0,
-  "repairTotalAttempts": 0,
-  "repairTarget": null,
+  "repairTotalAttempts": 1,
+  "repairTarget": "D-S0-6",
   "lastAcceptedCheckpoint": null,
   "contextRolloverRequired": false,
   "ownerGateRequired": false,
@@ -41,5 +41,5 @@
     "browserQa": "NOT_APPLICABLE",
     "independentReview": "PENDING"
   },
-  "updatedAt": "2026-10-06T02:57:43Z"
+  "updatedAt": "2026-10-06T06:38:03.723Z"
 }
