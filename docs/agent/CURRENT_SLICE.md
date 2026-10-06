@@ -26,7 +26,8 @@ PERSIST-011 is the S0 part of PERSIST-004 (S4).
 ## Governing decisions
 ADR-0001 (owner operating decisions), ADR-0002 (owner decisions from the harness review), ADR-0003 (harness revision
 and design reconciliation), ADR-0004, ADR-0005, ADR-0006 (owner answers), ADR-0007 and ADR-0009 (pushes of
-`agent/s0-wip` and subagents).
+`agent/s0-wip` and subagents), ADR-0012 (this Cowork session: reviewer subagents, the in-place sync, the owner runs the
+Mac gates).
 
 ## Governing design sections
 None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-0003).
@@ -49,7 +50,7 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 | S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | HARNESS-022, PERSIST-002, PERSIST-003, PERSIST-009, PERSIST-010, PERSIST-011, PERSIST-012, PERSIST-013, MKT-016, CONST-004 | Fixes DONE (`3e00a32`, `58ae313`, `6347c5d` + `d98731d`, `16233a1`, `c774d38`, `f999618`, `d8fb896`; test repair `9edfa12`, D-S0-1), pending independent review; BACKLOG.md written (`1a74863`) |
 | S0-T9 | Gate configuration: e2e server reuse opt-in, e2e typecheck, required assertions, no focused tests | HARNESS-006, HARNESS-018, HARNESS-028 | DONE, pending independent review |
 | S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | HARNESS-022, HARNESS-025, HARNESS-026, HARNESS-028; all S0 | PENDING |
-| S0-T11 | Fresh-session bootstrap test: a new session's assertion passes `bootstrap-check.mjs` | HARNESS-001, HARNESS-002 | PENDING (needs a new session) |
+| S0-T11 | Fresh-session bootstrap test: a new session's assertion passes `bootstrap-check.mjs` | HARNESS-001, HARNESS-002 | DONE: the Cowork session's assertion (`evidence/S0/bootstrap-20261006T012944Z.json`) passed `bootstrap-check.mjs`, recorded in the manifest (label `bootstrap-check`) |
 | S0-T12 | Owner review of the harness and the open owner questions, then S0 acceptance and checkpoint | HARNESS-001, HARNESS-008, HARNESS-009, HARNESS-013, HARNESS-015, HARNESS-016, HARNESS-017, HARNESS-018, HARNESS-021, HARNESS-024, HARNESS-029, CONST-001, REL-001, REL-003; all S0 | PENDING |
 | S0-T13 | Rarity counting tool `npm run report:rarity` (ADR-0005 decision 4) | HARNESS-022, GEN-013 | DONE (`172b5c3`), pending independent review |
 

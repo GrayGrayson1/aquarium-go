@@ -258,6 +258,25 @@
       "dirty": false,
       "codeTree": "4d29120aca765409be362299865ac7bfa0617a09",
       "requirements": []
+    },
+    {
+      "gate": "check:bootstrap-check",
+      "command": "node scripts/agent/bootstrap-check.mjs docs/agent/evidence/S0/bootstrap-20261006T012944Z.json",
+      "cwd": "/sessions/rcw-014rhskdheg1hveag2yqnkhu/mnt/Dev/Projects/AquariumGo",
+      "start": "2026-10-06T01:30:46.789Z",
+      "end": "2026-10-06T01:30:59.347Z",
+      "seconds": 0,
+      "exitCode": 0,
+      "counts": {},
+      "log": "docs/agent/evidence/S0/logs/check_bootstrap-check-20261006T013046789Z.log",
+      "logSha256": "c7c44eff4b251ae5468c39acb83cc06113e8b7335a59ad736c628032d1df58f0",
+      "head": "b243b23236109f5e69c9dbef7b1d1270bb89d11c",
+      "dirty": true,
+      "codeTree": "4d29120aca765409be362299865ac7bfa0617a09",
+      "requirements": [
+        "HARNESS-001",
+        "HARNESS-002"
+      ]
     }
   ],
   "browserRuns": [],
