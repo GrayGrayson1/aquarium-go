@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "rule": "Change these files only through an ADR (owner-approved for ownerOnly files; independently reviewed for the rest), then run protect.mjs --update --adr <ADR>. Accepted ADRs are never edited.",
-  "approvedBy": "docs/agent/decisions/ADR-0008-docs-corrections.md",
-  "updatedAt": "2026-10-05T23:44:54.578Z",
+  "approvedBy": "docs/agent/decisions/ADR-0012-owner-answers-cowork-session.md",
+  "updatedAt": "2026-10-06T01:49:47.291Z",
   "patterns": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -50,7 +50,8 @@
     "docs/agent/decisions/ADR-0009-owner-approval-cloud-session-pushes-and-subagents.md": "3c55e9ff0119989269ae6b455095817f4f34222aae549efc203df2b932c48c29",
     "docs/agent/decisions/ADR-0010-vitest-yield-between-tests.md": "e26f0473ac34fac419aa905f2106409d9d87099ed3f49d3d1eb85812dcda566c",
     "docs/agent/decisions/ADR-0011-harness-script-repairs-step-2.md": "01ad4bab637161730539f4083135465ebae738eb37528e3d3ad4eb3650717548",
-    "docs/agent/decisions/INDEX.md": "cc199ba04877122d6b53e3d0588954d993baa06ab8215f189bcf30b0abb98e39",
+    "docs/agent/decisions/ADR-0012-owner-answers-cowork-session.md": "eedb906c57d046b80391beb8bf5dc693d56476a8384433a2f4fd46667725c690",
+    "docs/agent/decisions/INDEX.md": "f0fb8a09c7e29ebb2ad74dc13a11b320cbff78ce0fa6224d2ec06d7e517d507a",
     "docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md": "fb922f351d255485ebf94c5f26df7a1225a6c305c6750c6014b4db9a3a394449",
     "docs/agent/design/DESIGN_INTAKE.md": "b1d0f9b83f4b7126163d4238a7b7bd775a8b4bfdd2c81ce9774eb68d5650b553",
     "docs/agent/design/DESIGN_REGISTRY.json": "fc0e5f8f43c9ad56a9a900af76415335f2f071e7ffa742e3a54914a9c57fe319",
