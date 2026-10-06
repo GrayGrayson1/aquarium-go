@@ -13,7 +13,9 @@
  * A reviewer's verdict (the reviewer's own report file must exist under evidence/<slice>/reviews/ and end with the
  * verdict line):
  *   node scripts/agent/capture-evidence.mjs --review --role code-architecture --verdict GREEN \
- *     --report docs/agent/evidence/S1/reviews/code-architecture-1.md --reviewer "fresh subagent"
+ *     --report docs/agent/evidence/S1/reviews/code-architecture-1.md --reviewer "fresh subagent" [--candidate <sha>]
+ * With --candidate (the commit the reviewer judged), the record carries that commit and its code tree, and it is
+ * refused when the working tree's code is no longer that tree (security-data-2 m1).
  *
  * A committed evidence file (an inventory or report) recorded with its hash:
  *   node scripts/agent/capture-evidence.mjs --file docs/agent/evidence/S1/test-inventory.json --kind test-inventory
@@ -60,12 +62,22 @@ export function reviewProblems({ role, verdict, report }, slice, { exists: fileE
   return [];
 }
 
+/**
+ * Why a review of `candidate` can't be recorded on the working tree (pure; empty when it can): the candidate must be a
+ * commit, and its code tree must be the working tree's, so the verdict is recorded against the code it judged.
+ */
+export function candidateProblems(candidate, candidateTree, workingTree) {
+  if (!candidateTree) return [`--candidate ${candidate} is not a commit in this repository`];
+  if (candidateTree !== workingTree) return [`--candidate ${candidate} has code tree ${candidateTree.slice(0, 10)}, but the working tree's code is ${String(workingTree).slice(0, 10)}: the review judged other code, so record it on that code or review this tree`];
+  return [];
+}
+
 const list = (v) => (v == null ? [] : [].concat(v).map(String));
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   let args;
   try {
-    args = parseArgs(process.argv.slice(2), ['browser', 'review', 'perf', 'help'], ['command', 'label', 'req', 'slice', 'route', 'viewport', 'fixture', 'actions', 'expected', 'observed', 'consoleErrors', 'screenshot', 'role', 'verdict', 'report', 'reviewer', 'scenario', 'metric', 'baseline', 'machine', 'quality', 'population', 'file', 'kind']);
+    args = parseArgs(process.argv.slice(2), ['browser', 'review', 'perf', 'help'], ['command', 'label', 'req', 'slice', 'route', 'viewport', 'fixture', 'actions', 'expected', 'observed', 'consoleErrors', 'screenshot', 'role', 'verdict', 'report', 'reviewer', 'candidate', 'scenario', 'metric', 'baseline', 'machine', 'quality', 'population', 'file', 'kind']);
   } catch (e) {
     console.error(e.message);
     process.exit(1);
@@ -119,6 +131,16 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     });
   } else if (args.review) {
     const problems = reviewProblems(args, slice, { exists: (p) => existsSync(abs(p)), read: readText });
+    const codeTree = codeTreeOf(null);
+    let candidate = null;
+    if (args.candidate !== undefined) {
+      try {
+        candidate = git('rev-parse', '--verify', '--quiet', `${args.candidate}^{commit}`);
+      } catch {
+        candidate = null;
+      }
+      problems.push(...candidateProblems(args.candidate, candidate ? codeTreeOf(candidate) : null, codeTree));
+    }
     if (problems.length) fail(problems.join('; '));
     manifest.reviews.push({
       timestamp: nowIso(),
@@ -128,7 +150,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       report: args.report,
       reportSha256: sha256File(abs(args.report)),
       head,
-      codeTree: codeTreeOf(null),
+      ...(candidate ? { candidate } : {}),
+      codeTree,
       requirements,
     });
   } else if (args.perf) {

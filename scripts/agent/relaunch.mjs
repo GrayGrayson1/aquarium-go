@@ -8,16 +8,18 @@
  *   node scripts/agent/relaunch.mjs --dry-run       # show the checks and the exact command; starts and writes nothing
  *   node scripts/agent/relaunch.mjs --max-sessions 3 --budget-usd 40 --model opus --effort max
  *
- * Unknown options are refused, so a typo can never start real sessions.
+ * Unknown options, positional arguments, single-dash and typographic-dash forms (`-dry-run`, `—dry-run`), values on
+ * booleans and empty values (`--dry-run=`) are refused (lib.mjs parseArgs), so a typo can never start real sessions.
  *
- * It never starts a session when docs/agent/STOP exists, another launcher holds the lock, check-state.mjs reports
- * errors, the state is an owner gate / BLOCKED_MANUAL_REVIEW / COMPLETE_LOCAL, remote mutation is allowed, or the
- * branch isn't the integration branch. After each session it stops on: a non-zero exit, no recorded progress, any stop
- * state, the session cap, the STOP file, a dirty tree, and (with an alarm) any sign of a remote write or a guard
- * change: the origin's refs moved or couldn't be read (git ls-remote), a remote-tracking ref changed or appeared other
- * than by fetch, a local ref was deleted or rewound, git config, hooks, .claude, .mcp.json or the user-level Claude
- * settings changed, a protected file or PROTECTED.json changed, or the deploy configuration changed (DEPLOY_CONFIG:
- * what a later push would build and deploy). It doesn't start a session when origin's refs can't be read.
+ * It never starts a session when docs/agent/STOP exists, another launcher holds the lock (taken with an exclusive
+ * create), check-state.mjs reports errors, the state is an owner gate / BLOCKED_MANUAL_REVIEW / COMPLETE_LOCAL, remote
+ * mutation is allowed, or the branch isn't the integration branch. After each session it stops on: a non-zero exit, no
+ * recorded progress, any stop state, the session cap, the STOP file, a dirty tree, and (with an alarm) any sign of a
+ * remote write or a guard change: the origin's refs moved or couldn't be read (git ls-remote), a remote-tracking ref
+ * changed or appeared other than by fetch, a local ref was deleted or rewound, git config, hooks, .claude, .mcp.json or
+ * the user-level Claude settings changed, a protected file or PROTECTED.json changed, the deploy configuration changed
+ * (DEPLOY_CONFIG: what a later push would build and deploy), or the session recorded an owner decision or left a stop
+ * state itself (only the owner decides, ledgerAlarms). It doesn't start a session when origin's refs can't be read.
  *
  * Sessions run with --permission-mode auto and --permission-prompts none (anything that would need a person is
  * denied), deny rules passed inline for every spawn, and push credentials stripped from the child environment.
@@ -25,11 +27,11 @@
  * go to .agent-runs/ (ignored by Git); their paths and SHA-256 hashes go to the ledger.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, rmSync, statSync, writeSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { PATHS, ROOT, STOP_STATES, appendEvent, exists, git, nowIso, parseArgs, positiveInt, positiveNumber, readJson, readText, sha256File, sha256Text } from './lib.mjs';
+import { PATHS, ROOT, STOP_STATES, appendEvent, exists, git, nowIso, parseArgs, parseLedger, positiveInt, positiveNumber, readJson, readText, sha256File, sha256Text } from './lib.mjs';
 import { checkRepository } from './check-state.mjs';
 import { currentHashes, verifyProtected } from './protect.mjs';
 
@@ -295,6 +297,23 @@ export function alarmsBetween(before, after, { integrationBranch, isAncestor, re
   if (before.protectedFiles !== after.protectedFiles || before.protectedRecord !== after.protectedRecord) alarms.push('protected harness files or docs/agent/PROTECTED.json changed during the session: the owner reviews the change and its ADR');
   const deploy = [...new Set([...Object.keys(before.deployConfig ?? {}), ...Object.keys(after.deployConfig ?? {})])].filter((p) => before.deployConfig?.[p] !== after.deployConfig?.[p]);
   if (deploy.length) alarms.push(`deploy configuration changed (${deploy.join(', ')}): a push would build and deploy it, so the owner reviews it first`);
+  alarms.push(...ledgerAlarms(before.ledgerText ?? '', after.ledgerText ?? ''));
+  return alarms;
+}
+
+/**
+ * Alarms for ledger events an unattended session added (pure): nobody can give an owner decision in a session nobody
+ * attends, so an owner-decision event, or a transition out of a stop state (OWNER_GATE, BLOCKED_MANUAL_REVIEW), means
+ * the session decided for the owner, even if it ended in an ordinary state (security-data-2 M2). A ledger that no
+ * longer starts with its text from before the session was rewritten.
+ */
+export function ledgerAlarms(beforeText = '', afterText = '') {
+  if (!afterText.startsWith(beforeText)) return ['LEDGER.jsonl was rewritten during the session (it no longer starts with its text from before)'];
+  const alarms = [];
+  for (const e of parseLedger(afterText.slice(beforeText.length)).events) {
+    if (e?.kind === 'owner-decision') alarms.push(`an owner-decision event (${(e.decisions ?? []).join(', ') || 'no ADR'}) was recorded during an unattended session: only the owner decides, in a session they attend`);
+    if (e?.kind === 'transition' && STOP_STATES.includes(e.fromState)) alarms.push(`the unattended session left ${e.fromState} itself (${e.fromState} → ${e.toState}): only an owner decision, recorded in an attended session, leaves a stop state`);
+  }
   return alarms;
 }
 
@@ -342,17 +361,61 @@ export function claudeArgs({ kickoff, slice, stamp, model, effort, budgetUsd }) 
   ];
 }
 
-function lockHeld() {
-  const p = join(ROOT, LOCK_FILE);
-  if (!existsSync(p)) return false;
-  const pid = Number(readFileSync(p, 'utf8'));
-  if (!Number.isInteger(pid)) return true;
+/** Whether a process with this pid runs (one owned by another user counts as running). */
+function pidAlive(pid) {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false; // stale lock from a dead launcher
+  } catch (e) {
+    return e.code === 'EPERM';
   }
+}
+
+/** Whether the lock is held by a running launcher (read-only, for --dry-run). An unreadable pid counts as held. */
+function lockHeld() {
+  const p = join(ROOT, LOCK_FILE);
+  if (!existsSync(p)) return false;
+  const pid = Number(readFileSync(p, 'utf8').trim());
+  return !(Number.isInteger(pid) && pid > 0) || pidAlive(pid);
+}
+
+/**
+ * Take the launcher lock with an exclusive create, so two launchers started together can't both hold it
+ * (code-architecture-harness-2 m8). A lock whose pid no longer runs (a launcher that died) is removed and taken; a lock
+ * whose pid can't be read yet counts as held. Returns a function that releases the lock if it is still this process's,
+ * or null when another launcher holds it.
+ */
+export function acquireLock(path, { pid = process.pid, isAlive = pidAlive } = {}) {
+  mkdirSync(dirname(path), { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let fd;
+    try {
+      fd = openSync(path, 'wx');
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      let holder;
+      try {
+        holder = Number(readFileSync(path, 'utf8').trim());
+      } catch {
+        continue; // released meanwhile: try again
+      }
+      if (Number.isInteger(holder) && holder > 0 && !isAlive(holder)) {
+        rmSync(path, { force: true });
+        continue;
+      }
+      return null;
+    }
+    writeSync(fd, String(pid));
+    closeSync(fd);
+    return () => {
+      try {
+        if (readFileSync(path, 'utf8').trim() === String(pid)) rmSync(path, { force: true });
+      } catch {
+        /* already gone */
+      }
+    };
+  }
+  return null;
 }
 
 async function main() {
@@ -377,13 +440,11 @@ async function main() {
     return problems.length ? 1 : 0;
   }
 
-  if (lockHeld()) {
+  const release = acquireLock(join(ROOT, LOCK_FILE));
+  if (!release) {
     console.log(`Not starting: another launcher holds ${LOCK_FILE}`);
     return 1;
   }
-  mkdirSync(join(ROOT, RUNS_DIR), { recursive: true });
-  writeFileSync(join(ROOT, LOCK_FILE), String(process.pid));
-  const release = () => rmSync(join(ROOT, LOCK_FILE), { force: true });
   process.on('exit', release);
 
   for (let sessionsRun = 0; ; ) {

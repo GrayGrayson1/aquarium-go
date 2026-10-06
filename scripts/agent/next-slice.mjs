@@ -7,9 +7,10 @@
  *
  * It archives the finished slice contract as evidence/<slice>/slice-contract.md, then sets STATE.currentSlice to the
  * next slice with every gate PENDING (browserQa NOT_APPLICABLE with --no-browser), the given reviewers, fresh repair
- * counters and contextRolloverRequired, creates the next slice's empty manifest and a CURRENT_SLICE.md draft from the
- * template. The new session then records NEXT_SLICE → BOOTSTRAP for the new slice. S4 is last: after S4 the next
- * session goes NEXT_SLICE → MULTIPLAYER_READINESS_GATE instead.
+ * counters, no gate waivers of its own (only the finished slice's stay, for check-state's view of it) and
+ * contextRolloverRequired, creates the next slice's empty manifest and a CURRENT_SLICE.md draft from the template. The
+ * new session then records NEXT_SLICE → BOOTSTRAP for the new slice. S4 is last: after S4 the next session goes
+ * NEXT_SLICE → MULTIPLAYER_READINESS_GATE instead.
  */
 import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -27,6 +28,7 @@ export function nextState(state, { reviewers, browser = true }) {
   if (missing.length) throw new Error(`every slice needs the ${missing.join(' and ')} reviewer(s)`);
   const next = SLICES[idx + 1];
   const gates = Object.fromEntries(Object.keys(GATE_COMMANDS).map((g) => [g, 'PENDING']));
+  const finished = state.gateWaivers?.[state.currentSlice];
   return {
     ...state,
     currentSlice: next,
@@ -35,6 +37,7 @@ export function nextState(state, { reviewers, browser = true }) {
     repairTotalAttempts: 0,
     repairTarget: null,
     repairOverrides: {},
+    gateWaivers: finished ? { [state.currentSlice]: finished } : {},
     contextRolloverRequired: true,
     requiredReviewers: reviewers,
     gates: { ...gates, browserQa: browser ? 'PENDING' : 'NOT_APPLICABLE', independentReview: 'PENDING' },

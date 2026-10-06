@@ -3,22 +3,60 @@
  * (Node's built-in runner; no dependencies. Vitest doesn't collect these.)
  *
  * Most tests call the scripts' pure functions with hand-made inputs, including the bypasses the S0 reviews found
- * (docs/agent/evidence/S0/reviews: code-architecture-harness-1 H/M/L, security-data-1 SD-n, adversarial-1 F-n and the
- * numbered rows of its bypass table, "#n"). A few read the real repository (code trees, committed versions, ADRs, the
- * context pack) and never write to it. The CLI tests pass only an unknown option, which every script refuses before it
- * reads or writes anything. relaunch.mjs is never run: its decisions are exported and tested here.
+ * (docs/agent/evidence/S0/reviews: code-architecture-harness-1 H/M/L and -2 F/m, security-data-1 SD-n and -2 M/m,
+ * adversarial-1 F-n and the numbered rows of its bypass table, "#n"). A few read the real repository (code trees,
+ * committed versions, ADRs, the context pack) and never write to it; anything a test writes goes under os.tmpdir().
+ * The CLI tests pass only an unknown option, which every script refuses before it reads or writes anything.
+ * The repository-level checks (check-state, protect, record-event, diff-check, verify-slice, capture-evidence and a
+ * relaunch smoke run with a stub `--claude`) run against temporary git repositories in fixture.test.mjs.
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { GATE_COMMANDS, PATHS, ROOT, TRANSITIONS, approvalIsAdr, checkTransition, committedVersions, findAdr, git, isLegalTransition, parseArgs, parseLedger, positiveInt, positiveNumber, readText, sha256File, showAt, validateEvent } from './lib.mjs';
+import {
+  GATE_COMMANDS,
+  LEGACY_DESIGN_APPROVALS,
+  LEGACY_LEDGER,
+  PATHS,
+  ROOT,
+  TRANSITIONS,
+  approvalIsAdr,
+  approvalTextProblems,
+  checkTransition,
+  committedVersions,
+  findAdr,
+  git,
+  indexOwnerDecision,
+  isLegacyDesignApproval,
+  isLegalTransition,
+  legacyEventCount,
+  namesPath,
+  nextSlice,
+  ownerApprovalProblems,
+  parseArgs,
+  parseLedger,
+  positiveInt,
+  positiveNumber,
+  readText,
+  resolveAdrRef,
+  sha256File,
+  sha256Text,
+  showAt,
+  validateEvent,
+} from './lib.mjs';
 import {
   EVIDENCE_DIRS,
+  checkpointBackingProblems,
   evidenceScope,
+  gateWaiversOf,
   preparedView,
   repairCounts,
+  reviewSeries,
+  validateBaselines,
+  validateCheckpointAnchor,
   validateEvidenceFiles,
   validateGateEvidence,
   validateLedger,
@@ -29,19 +67,19 @@ import {
   validateState,
   validateStateAgainstLedger,
 } from './check-state.mjs';
-import { MANDATED_READS, bookkeepingOnlySince, checkAssertion } from './bootstrap-check.mjs';
-import { DISABLE_RE, compareInventories, playwrightIds, referenceInventoryPath, skipMarkers, validateTestChanges, vitestIds } from './test-inventory.mjs';
-import { ADR_TEMPLATE, OWNER_ONLY, PROTECTED_PATTERNS, adrStatus, compareProtected, hasOwnerApproval, lastRecordedHash, protectedFiles, updateProblems } from './protect.mjs';
-import { REQ_ID_RE, REQ_TOKEN_RE, auditRequirements, umbrellaOf, validateRequirements } from './requirements.mjs';
-import { committedRegistries } from './requirements-audit.mjs';
-import { DENY_RULES, DEPLOY_CONFIG, UNATTENDED_NOTE, alarmsBetween, childEnv, claudeArgs, decide, extractKickoff, parseRelaunchArgs, preflight } from './relaunch.mjs';
+import { ISO_TIME_RE, MANDATED_READS, bookkeepingOnlySince, checkAssertion } from './bootstrap-check.mjs';
+import { DISABLE_RE, NODE_TEST_DISABLE_RE, compareInventories, harnessSkipMarkers, harnessTestFiles, jsCodeOnly, playwrightIds, referenceInventoryPath, skipMarkers, validateTestChanges, vitestIds } from './test-inventory.mjs';
+import { ADR_TEMPLATE, OWNER_ONLY, PROTECTED_PATTERNS, adrStatus, compareProtected, hasOwnerApproval, isOwnerOnlyPath, isProtectedPath, lastRecordedHash, matchesPattern, protectedFiles, updateProblems } from './protect.mjs';
+import { REQ_ID_RE, REQ_TOKEN_RE, auditRequirements, sliceHeaderProblems, umbrellaOf, validateRequirements } from './requirements.mjs';
+import { auditView, committedRegistries } from './requirements-audit.mjs';
+import { DENY_RULES, DEPLOY_CONFIG, UNATTENDED_NOTE, acquireLock, alarmsBetween, childEnv, claudeArgs, decide, extractKickoff, ledgerAlarms, parseRelaunchArgs, preflight } from './relaunch.mjs';
 import { LOG_LIMIT_BYTES, NON_CODE_PATHS, codeTreeOf, emptyManifest, parseCounts, trimLog } from './evidence.mjs';
-import { reportStatesVerdict, reportVerdict, reviewProblems } from './capture-evidence.mjs';
+import { candidateProblems, reportStatesVerdict, reportVerdict, reviewProblems } from './capture-evidence.mjs';
 import { parseVerifyArgs, selectGates } from './verify-slice.mjs';
 import { buildPack, citedDesignHeadings, designCitations, section } from './context-pack.mjs';
 import { END, START, replaceBlock } from './handoff.mjs';
 import { MANDATORY_REVIEWERS, nextState } from './next-slice.mjs';
-import { buildEvent, stateAfter } from './record-event.mjs';
+import { buildEvent, resolvedEvidenceProblems, stateAfter, stateAfterRepair } from './record-event.mjs';
 
 // ---------------------------------------------------------------------------------------------------------------
 // Fixtures
@@ -98,6 +136,9 @@ const has = (list, needle) => list.some((x) => x.includes(needle));
 const assertHas = (list, needle) => assert.ok(has(list, needle), `expected an entry containing "${needle}" in:\n${list.join('\n')}`);
 const assertNone = (list, needle) => assert.ok(!has(list, needle), `expected no entry containing "${needle}" in:\n${list.join('\n')}`);
 
+/** An injected owner-approval check (lib.mjs ownerApprovalProblems' shape): only `approved` ids pass. */
+const ownerOnlyFor = (...approved) => (id) => (approved.includes(id) ? [] : [`${id} has no "## Owner approval" section`]);
+
 // ---------------------------------------------------------------------------------------------------------------
 // lib.mjs: arguments
 // ---------------------------------------------------------------------------------------------------------------
@@ -128,6 +169,44 @@ test('relaunch: unknown or mistyped options are refused, so a typo never starts 
   }
   assert.equal(parseRelaunchArgs(['--dry-run']).dryRun, true);
   assert.equal(parseRelaunchArgs(['--max-sessions', '3', '--budget-usd=40']).budgetUsd, '40');
+});
+
+test('relaunch: typos that used to start real sessions are refused: single dash, typographic dash, no dash, empty values (security-data-2 M1)', () => {
+  const refused = [
+    [['-dry-run'], /single-dash option "-dry-run"/],
+    [['—dry-run'], /typographic dash/], // em dash, as smart punctuation writes "--"
+    [['–dry-run'], /typographic dash/], // en dash
+    [['−dry-run'], /typographic dash/], // minus sign
+    [['dry-run'], /unexpected argument "dry-run"/],
+    [['-n'], /single-dash option "-n"/],
+    [['--dry-run='], /--dry-run takes no value/],
+    [['--help='], /--help takes no value/],
+    [['--dry-run=false'], /--dry-run takes no value/],
+    [['--max-sessions='], /--max-sessions= has an empty value/],
+    [['--max-sessions'], /--max-sessions needs a value/],
+    [['--model', '--dry-run'], /--model needs a value/],
+    [['--dry-run', 'now'], /unexpected argument "now"/],
+    [['--dry-run', '--', 'x'], /unknown option --/],
+  ];
+  for (const [argv, message] of refused) assert.throws(() => parseRelaunchArgs(argv), message, argv.join(' '));
+  assert.deepEqual(parseRelaunchArgs(['--dry-run', '--max-sessions', '2', '--claude=/opt/stub', '--budget-usd', '40']), { _: [], dryRun: true, maxSessions: '2', claude: '/opt/stub', budgetUsd: '40' });
+  assert.deepEqual(parseRelaunchArgs([]), { _: [] });
+});
+
+test('args: strict parsing keeps every legitimate command line of the other scripts working (D-S0-12)', () => {
+  const recordEvent = ['kind', 'actor', 'slice', 'task', 'from', 'to', 'result', 'evidence', 'decision', 'note', 'defect', 'strategy', 'reason', 'resume', 'checkpoint'];
+  const a = parseArgs(['--kind', 'repair', '--actor', 'orchestrator', '--slice', 'S0', '--task', 'S0-T10', '--defect', 'D-S0-7', '--strategy', '-x: a leading dash in a value is a value', '--distinct', '--result', 'still failing', '--evidence', 'a.log', '--evidence', 'b.log'], ['help', 'distinct', 'resolved'], recordEvent);
+  assert.deepEqual([a.strategy, a.distinct, a.evidence], ['-x: a leading dash in a value is a value', true, ['a.log', 'b.log']]);
+  // A value may start with a typographic dash or a single dash; only a standalone argument is refused.
+  assert.equal(parseArgs(['--result', '— done'], [], ['result']).result, '— done');
+  assert.equal(parseArgs(['--out', '-'], [], ['out', 'for']).out, '-');
+  assert.equal(parseArgs(['--command=npx vitest run tests/sim/a.test.ts --reporter=dot'], ['review'], ['command', 'label']).command, 'npx vitest run tests/sim/a.test.ts --reporter=dot');
+  assert.throws(() => parseArgs(['--command', 'npx', 'vitest', 'run'], ['review'], ['command']), /unexpected argument "vitest"/);
+  assert.deepEqual(parseArgs(['--json', '--strict'], ['json', 'strict'], []), { _: [], json: true, strict: true });
+  assert.deepEqual(parseArgs(['--update', '--adr', 'ADR-0100'], ['update'], ['adr']), { _: [], update: true, adr: 'ADR-0100' });
+  assert.deepEqual(parseArgs(['--reviewers', 'code-architecture,adversarial', '--no-browser'], ['noBrowser'], ['reviewers']), { _: [], reviewers: 'code-architecture,adversarial', noBrowser: true });
+  // Without an allowed list (the lenient form no script uses for its own CLI any more) positionals are collected.
+  assert.deepEqual(parseArgs(['pos', '-n'], []), { _: ['pos', '-n'] });
 });
 
 test('verify-slice: unknown options are refused instead of running every gate', () => {
@@ -167,6 +246,12 @@ test('cli: every script that takes options refuses an unknown one before doing a
     assert.notEqual(r.status, 0, `${name} exited 0`);
     assert.notEqual(r.status, null, `${name} did not exit by itself`);
     assert.match(`${r.stdout}${r.stderr}`, message, name);
+    // A stray word or a typographic-dash option is refused just as early (D-S0-12): no script ignores an argument.
+    for (const stray of ['stray-word', '—json']) {
+      const s = spawnSync(process.execPath, [join(ROOT, 'scripts/agent', `${name}.mjs`), stray], { cwd: ROOT, encoding: 'utf8', timeout: 30000 });
+      assert.ok(s.status !== 0 && s.status !== null, `${name} ${stray} exited ${s.status}`);
+      assert.match(`${s.stdout}${s.stderr}`, /unexpected argument "stray-word"|typographic dash/, `${name} ${stray}`);
+    }
   }
   assert.equal(fingerprint(), before, 'a refused command wrote a harness file');
 });
@@ -224,29 +309,77 @@ test('transitions: a transition must start at STATE.machineState and name the cu
   assert.deepEqual(checkTransition({ from: 'IMPLEMENT', to: 'TARGETED_VERIFY', slice: 'S1' }, { state }), []);
 });
 
-test('transitions: leaving OWNER_GATE or BLOCKED_MANUAL_REVIEW needs a committed ADR, and OWNER_GATE resumes only where it was entered', () => {
+test('transitions: leaving OWNER_GATE or BLOCKED_MANUAL_REVIEW needs the owner\'s approval, and OWNER_GATE resumes only where it was entered (F1, M2)', () => {
   const gate = { ...baseState(), machineState: 'OWNER_GATE', resumeState: 'IMPLEMENT', ownerGateReason: 'DESIGN_PENDING:DESIGN-S3D' };
-  const committed = (id) => id === 'ADR-0008';
-  const t = (to, decisions, state = gate) => checkTransition({ from: state.machineState, to, slice: 'S1', decisions }, { state, adrExists: committed });
+  const ownerApproval = (id) => (id === 'ADR-0008' ? [] : id === 'ADR-0003' ? ['ADR-0003 has no "## Owner approval" section with the owner\'s words'] : [`${id} is not a committed ADR listed in decisions/INDEX.md`]);
+  const t = (to, decisions, state = gate) => checkTransition({ from: state.machineState, to, slice: 'S1', decisions }, { state, ownerApproval });
   assertHas(t('IMPLEMENT', []), 'leaving OWNER_GATE needs a recorded decision');
   assertHas(t('IMPLEMENT', ['ADR-0099']), 'decision ADR-0099 is not a committed ADR');
-  assertHas(t('IMPLEMENT', ['owner said yes']), 'is not a committed ADR');
+  assertHas(t('IMPLEMENT', ['owner said yes']), 'decision owner said yes is not an ADR id');
+  // A committed, indexed ADR without the owner's words no longer leaves a stop state.
+  assertHas(t('IMPLEMENT', ['ADR-0003']), 'decision ADR-0003 has no "## Owner approval" section');
   assertHas(t('REPAIR', ['ADR-0008']), 'OWNER_GATE may only resume at IMPLEMENT');
   assert.deepEqual(t('IMPLEMENT', ['ADR-0008']), []);
   assert.deepEqual(t('COMPLETE_LOCAL', ['ADR-0008']), []);
   const blocked = { ...baseState(), machineState: 'BLOCKED_MANUAL_REVIEW' };
   assertHas(t('REPAIR', [], blocked), 'leaving BLOCKED_MANUAL_REVIEW needs a recorded decision');
   assertHas(t('REPAIR', ['ADR-0099'], blocked), 'not a committed ADR');
+  assertHas(t('REPAIR', ['ADR-0003'], blocked), 'has no "## Owner approval" section');
   assertHas(t('ACCEPT', ['ADR-0008'], blocked), 'not a legal transition');
   assert.deepEqual(t('REPAIR', ['ADR-0008'], blocked), []);
 });
 
-test('transitions: entering OWNER_GATE needs a reason and a state work can resume at', () => {
+test('transitions: a stop-state exit\'s ADR must postdate the entry, which must have recorded its commit (M2)', () => {
+  const blocked = { ...baseState(), machineState: 'BLOCKED_MANUAL_REVIEW' };
+  const entry = transition('REPAIR', 'BLOCKED_MANUAL_REVIEW', { head: 'e'.repeat(40) });
+  const seen = [];
+  const ownerApproval = (id, opts) => {
+    seen.push([id, opts?.notAt]);
+    return opts?.notAt && id === 'ADR-0013' ? [`${id} already existed at eeeeeeeeee, when the state it would end was entered`] : [];
+  };
+  const t = (decisions, lastTransition) => checkTransition({ from: 'BLOCKED_MANUAL_REVIEW', to: 'REPAIR', slice: 'S1', decisions }, { state: blocked, ownerApproval, lastTransition });
+  // The commit the entry recorded is passed on, so an owner ADR older than the stop state can't be cited for it.
+  assertHas(t(['ADR-0013'], entry), 'decision ADR-0013 already existed');
+  assert.deepEqual(seen.pop(), ['ADR-0013', 'e'.repeat(40)]);
+  assert.deepEqual(t(['ADR-0100'], entry), []);
+  assertHas(t(['ADR-0100'], { ...entry, head: null }), 'recorded no commit (head)');
+});
+
+test('transitions: entering OWNER_GATE needs a reason and resumes only at the state it is entered from (m3)', () => {
   const state = baseState();
-  const t = (reason, resume) => checkTransition({ from: 'IMPLEMENT', to: 'OWNER_GATE', slice: 'S1', reason, resume }, { state });
+  const t = (reason, resume, from = 'IMPLEMENT', s = state) => checkTransition({ from, to: 'OWNER_GATE', slice: 'S1', reason, resume }, { state: s });
   assertHas(t(undefined, 'IMPLEMENT'), 'needs --reason');
   for (const resume of [undefined, 'BLOCKED_MANUAL_REVIEW', 'COMPLETE_LOCAL', 'OWNER_GATE', 'DONE']) assertHas(t('OTHER:x', resume), 'needs --resume');
   assert.deepEqual(t('DESIGN_PENDING:DESIGN-S3D', 'IMPLEMENT'), []);
+  // A gate entered from IMPLEMENT can't resume at ACCEPT or anywhere else (code-architecture-harness-2 m3).
+  for (const resume of ['ACCEPT', 'CHECKPOINT', 'NEXT_SLICE', 'MULTIPLAYER_READINESS_GATE', 'REPAIR']) assertHas(t('OTHER:x', resume), `resumes only at the state it is entered from: --resume IMPLEMENT, not ${resume}`);
+  assert.deepEqual(t('YELLOW_VERDICT:S1', 'ADVERSARIAL_REVIEW', 'ADVERSARIAL_REVIEW', { ...state, machineState: 'ADVERSARIAL_REVIEW' }), []);
+  // Leaving the gate follows the resume state its entry recorded, even when STATE.resumeState was edited by hand.
+  const gate = { ...state, machineState: 'OWNER_GATE', resumeState: 'ACCEPT', ownerGateReason: 'OTHER:x' };
+  const entered = transition('IMPLEMENT', 'OWNER_GATE', { reason: 'OTHER:x', resume: 'IMPLEMENT', head: SHA });
+  assertHas(checkTransition({ from: 'OWNER_GATE', to: 'ACCEPT', slice: 'S1', decisions: ['ADR-0100'] }, { state: gate, lastTransition: entered }), 'OWNER_GATE was entered with resume IMPLEMENT');
+});
+
+test('transitions: the slice changes only at NEXT_SLICE → BOOTSTRAP, to the next slice (F3)', () => {
+  const s0 = { ...baseState(), currentSlice: 'S0', currentTask: 'S0-T1' };
+  const t = (o, lastTransition, state = s0) => checkTransition({ from: state.machineState, slice: state.currentSlice, ...o }, { state, lastTransition });
+  // STATE.currentSlice edited to S1 mid-S0: the last transition was S0's.
+  const lastS0 = transition('PLAN_LOCK', 'IMPLEMENT', { slice: 'S0' });
+  const edited = { ...s0, currentSlice: 'S1', currentTask: 'S1-T1' };
+  assertHas(t({ to: 'TARGETED_VERIFY' }, lastS0, edited), 'the last transition was recorded in S0, not S1');
+  assert.deepEqual(t({ to: 'TARGETED_VERIFY' }, lastS0), []);
+  // The very first transition belongs to S0.
+  assertHas(t({ from: 'BOOTSTRAP', to: 'BASELINE_VERIFY' }, null, { ...edited, machineState: 'BOOTSTRAP' }), 'the first transition belongs to S0, not S1');
+  assert.deepEqual(t({ from: 'BOOTSTRAP', to: 'BASELINE_VERIFY' }, null, { ...s0, machineState: 'BOOTSTRAP' }), []);
+  // NEXT_SLICE → BOOTSTRAP moves to exactly the next slice.
+  const closing = transition('HANDOFF', 'NEXT_SLICE', { slice: 'S0', session: 'old' });
+  const leave = (slice) => checkTransition({ from: 'NEXT_SLICE', to: 'BOOTSTRAP', slice }, { state: { ...s0, machineState: 'NEXT_SLICE', currentSlice: slice }, lastTransition: closing, session: 'new', closingSession: 'old' });
+  assert.deepEqual(leave('S1'), []);
+  assertHas(leave('S2'), 'NEXT_SLICE → BOOTSTRAP starts S1');
+  assertHas(leave('S0'), 'NEXT_SLICE → BOOTSTRAP starts S1');
+  assert.equal(nextSlice('S0'), 'S1');
+  assert.equal(nextSlice('S4'), null);
+  assert.equal(nextSlice('S9'), null);
 });
 
 test('transitions: NEXT_SLICE is entered with a session id and left only in a different session (L2, M04)', () => {
@@ -321,10 +454,27 @@ test('state: every gate is required, and only browserQa may be waived without an
   for (const v of ['NOT_APPLICABLE', 'NOT_YET_REQUIRED']) {
     const s = baseState();
     s.gates.e2e = v;
-    assertHas(validateState(s).errors, `gate e2e can't be ${v} without an owner-approved waiver`);
-    assert.deepEqual(validateState({ ...s, gateWaivers: { e2e: 'ADR-0004' } }).errors, []);
+    assertHas(validateState(s).errors, `gate e2e can't be ${v} without an owner-approved waiver in STATE.gateWaivers.S1.e2e`);
+    assert.deepEqual(validateState({ ...s, gateWaivers: { S1: { e2e: 'ADR-0004' } } }).errors, []);
   }
   assert.deepEqual(validateState({ ...baseState(), gates: { ...baseState().gates, browserQa: 'NOT_APPLICABLE' } }).errors, []);
+});
+
+test('state: gate waivers are keyed by slice, so one slice\'s waiver never covers another (ADR-0011 open point 4)', () => {
+  const s = { ...baseState(), gates: { ...baseState().gates, e2e: 'NOT_APPLICABLE' } };
+  // A waiver granted for S0 doesn't waive S1's e2e.
+  assertHas(validateState({ ...s, gateWaivers: { S0: { e2e: 'ADR-0004' } } }).errors, "gate e2e can't be NOT_APPLICABLE without an owner-approved waiver in STATE.gateWaivers.S1.e2e");
+  // The old flat shape is refused, so it can't carry over silently.
+  const flat = validateState({ ...s, gateWaivers: { e2e: 'ADR-0004' } }).errors;
+  assertHas(flat, 'STATE.gateWaivers.e2e: waivers are keyed by slice');
+  assertHas(flat, "gate e2e can't be NOT_APPLICABLE");
+  assertHas(validateState({ ...baseState(), gateWaivers: ['ADR-0004'] }).errors, 'STATE.gateWaivers must map a slice to its waived gates');
+  assertHas(validateState({ ...baseState(), gateWaivers: { S1: 'ADR-0004' } }).errors, 'STATE.gateWaivers.S1 must map gates');
+  assertHas(validateState({ ...baseState(), gateWaivers: { S1: { lint: 'ADR-0004' } } }).errors, 'STATE.gateWaivers.S1.lint is not a known gate');
+  assertHas(validateState({ ...baseState(), gateWaivers: { S1: { e2e: '' } } }).errors, 'STATE.gateWaivers.S1.e2e must cite an ADR');
+  assert.deepEqual(gateWaiversOf({ gateWaivers: { S0: { e2e: 'ADR-0004' } } }, 'S0'), { e2e: 'ADR-0004' });
+  assert.deepEqual(gateWaiversOf({ gateWaivers: { S0: { e2e: 'ADR-0004' } } }, 'S1'), {});
+  assert.deepEqual(gateWaiversOf({}, 'S1'), {});
 });
 
 test('state: remote or multiplayer permission needs an ADR reference', () => {
@@ -366,12 +516,62 @@ test('state: SHAs are full commits, and the reviewers include code-architecture'
   assertHas(validateState({ ...baseState(), schemaVersion: 1 }).errors, 'schemaVersion must be 2');
 });
 
+test('state: every mandatory reviewer is required, and the baseline, branch and repair keys must be present (m2, m9)', () => {
+  // Dropping adversarial from STATE no longer passes (m2).
+  assertHas(validateState({ ...baseState(), requiredReviewers: ['code-architecture', 'security-data'] }).errors, 'STATE.requiredReviewers must include adversarial');
+  assertHas(validateState({ ...baseState(), requiredReviewers: [] }).errors, 'must include code-architecture and adversarial');
+  assert.deepEqual(MANDATORY_REVIEWERS, ['code-architecture', 'adversarial']);
+  // Keys that silenced checks when deleted (m9).
+  for (const k of ['integrationBranch', 'actualBaselineSha', 'repairTotalAttempts']) {
+    const s = baseState();
+    delete s[k];
+    assertHas(validateState(s).errors, `STATE.${k} must be a`);
+  }
+  for (const k of ['lastAcceptedCheckpoint', 'repairTarget']) {
+    const s = baseState();
+    delete s[k];
+    assertHas(validateState(s).errors, `STATE.${k} must be a string or null`);
+    assertHas(validateState({ ...baseState(), [k]: 7 }).errors, `STATE.${k} must be a string or null`);
+  }
+  assert.deepEqual(validateState({ ...baseState(), integrationBranch: 'main' }).errors, []);
+  // The baseline is recorded once: actual must equal planning (HARNESS-019, F2).
+  assertHas(validateState({ ...baseState(), actualBaselineSha: 'b'.repeat(40) }).errors, 'STATE.actualBaselineSha (bbbbbbbbbb) must equal planningBaselineSha (aaaaaaaaaa)');
+});
+
+test('state: the baseline is write-once against every committed STATE.json (F2)', () => {
+  const s = baseState();
+  const v = (o) => JSON.stringify({ ...baseState(), ...o });
+  assert.deepEqual(validateBaselines(s, [v({ actualBaselineSha: null }), v({}), '{ not json']).errors, []);
+  const moved = { ...s, planningBaselineSha: 'c'.repeat(40), actualBaselineSha: 'c'.repeat(40) };
+  const errors = validateBaselines(moved, [v({}), v({})]).errors;
+  assert.equal(errors.length, 2, errors.join('\n'));
+  assertHas(errors, `STATE.actualBaselineSha is ${'c'.repeat(40)}, but a committed STATE.json recorded ${SHA}: the baseline is write-once`);
+  assertHas(errors, 'STATE.planningBaselineSha is');
+});
+
 test('state must match the last recorded transition', () => {
   const t = (toState) => ({ kind: 'transition', toState });
   assert.deepEqual(validateStateAgainstLedger({ machineState: 'IMPLEMENT' }, [t('PLAN_LOCK'), t('IMPLEMENT')]).errors, []);
   assertHas(validateStateAgainstLedger({ machineState: 'ACCEPT' }, [t('IMPLEMENT')]).errors, 'last recorded transition went to IMPLEMENT');
   assert.deepEqual(validateStateAgainstLedger({ machineState: 'BOOTSTRAP' }, []).warnings, []);
   assertHas(validateStateAgainstLedger({ machineState: 'IMPLEMENT' }, []).warnings, 'no transition is recorded');
+});
+
+test('state must match the slice and the resume state of the ledger, except in the prepared NEXT_SLICE state (F3, m3)', () => {
+  const s0 = { ...baseState(), currentSlice: 'S0', currentTask: 'S0-T10' };
+  const inS0 = [transition('PLAN_LOCK', 'IMPLEMENT', { slice: 'S0' })];
+  assert.deepEqual(validateStateAgainstLedger(s0, inS0).errors, []);
+  // STATE.currentSlice edited mid-S0, skipping S0's acceptance without a transition (P12).
+  assertHas(validateStateAgainstLedger({ ...s0, currentSlice: 'S1', currentTask: 'S1-T1' }, inS0).errors, 'STATE.currentSlice is S1 but the last recorded transition belongs to S0');
+  // next-slice.mjs prepares S1 while the machine is still at NEXT_SLICE: that is the one allowed difference.
+  const closing = [transition('HANDOFF', 'NEXT_SLICE', { slice: 'S0' })];
+  assert.deepEqual(validateStateAgainstLedger({ ...s0, currentSlice: 'S1', machineState: 'NEXT_SLICE' }, closing).errors, []);
+  assertHas(validateStateAgainstLedger({ ...s0, currentSlice: 'S2', machineState: 'NEXT_SLICE' }, closing).errors, 'STATE.currentSlice is S2');
+  // At OWNER_GATE, STATE.resumeState is the resume state the entry recorded.
+  const entered = [transition('IMPLEMENT', 'OWNER_GATE', { slice: 'S0', reason: 'OTHER:x', resume: 'IMPLEMENT' })];
+  const gate = { ...s0, machineState: 'OWNER_GATE', ownerGateReason: 'OTHER:x' };
+  assert.deepEqual(validateStateAgainstLedger({ ...gate, resumeState: 'IMPLEMENT' }, entered).errors, []);
+  assertHas(validateStateAgainstLedger({ ...gate, resumeState: 'ACCEPT' }, entered).errors, 'STATE.resumeState is ACCEPT but OWNER_GATE was entered with resume IMPLEMENT');
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -440,7 +640,34 @@ test('evidence: at acceptance only browserQa, or a gate with an owner waiver, ma
   const noE2e = { ...greenManifest(), commands: greenManifest().commands.filter((c) => c.gate !== 'e2e') };
   const unwaived = { ...s, gates: { ...s.gates, e2e: 'NOT_APPLICABLE' } };
   assertHas(validateGateEvidence(unwaived, noE2e, { targetTree: 'T', accepted: true }).errors, 'claims acceptance but gate e2e is NOT_APPLICABLE');
-  assert.deepEqual(validateGateEvidence({ ...unwaived, gateWaivers: { e2e: 'ADR-0010' } }, noE2e, { targetTree: 'T', accepted: true }).errors, []);
+  assert.deepEqual(validateGateEvidence({ ...unwaived, gateWaivers: { S1: { e2e: 'ADR-0010' } } }, noE2e, { targetTree: 'T', accepted: true }).errors, []);
+  // Another slice's waiver doesn't count (ADR-0011 open point 4).
+  assertHas(validateGateEvidence({ ...unwaived, gateWaivers: { S0: { e2e: 'ADR-0010' } } }, noE2e, { targetTree: 'T', accepted: true }).errors, 'claims acceptance but gate e2e is NOT_APPLICABLE');
+});
+
+test('evidence: at acceptance the latest review of every report series must be GREEN on the accepted tree, whatever the recording order (F4)', () => {
+  const s = acceptedState({ requiredReviewers: ['code-architecture', 'adversarial'] });
+  const ca = (name, verdict, o = {}) => ({ ...review('code-architecture', { verdict, ...o }), report: `docs/agent/evidence/S1/reviews/${name}.md` });
+  const base = greenManifest('T');
+  const withReviews = (...reviews) => ({ ...base, reviews: [...reviews, review('adversarial')] });
+  // Order 1: the harness half RED, then the game half GREEN, both under the role code-architecture.
+  const order1 = validateGateEvidence(s, withReviews(ca('code-architecture-harness-2', 'RED'), ca('code-architecture-game-2', 'GREEN')), { targetTree: 'T', accepted: true }).errors;
+  assertHas(order1, 'the latest review in the series docs/agent/evidence/S1/reviews/code-architecture-harness is RED');
+  assertNone(order1, 'needs a GREEN code-architecture review');
+  // Order 2: swapped. Both orders fail, so the recording order no longer decides acceptance.
+  const order2 = validateGateEvidence(s, withReviews(ca('code-architecture-game-2', 'GREEN'), ca('code-architecture-harness-2', 'RED')), { targetTree: 'T', accepted: true }).errors;
+  assertHas(order2, 'needs a GREEN code-architecture review');
+  assertHas(order2, 'series docs/agent/evidence/S1/reviews/code-architecture-harness is RED');
+  // A fresh GREEN review in the same series answers the RED one; a YELLOW latest is no better than RED.
+  assert.deepEqual(validateGateEvidence(s, withReviews(ca('code-architecture-harness-2', 'RED'), ca('code-architecture-game-2', 'GREEN'), ca('code-architecture-harness-3', 'GREEN')), { targetTree: 'T', accepted: true }).errors, []);
+  assertHas(validateGateEvidence(s, withReviews(ca('code-architecture-game-2', 'GREEN'), ca('code-architecture-harness-3', 'YELLOW'), ca('code-architecture-game-3', 'GREEN')), { targetTree: 'T', accepted: true }).errors, 'code-architecture-harness is YELLOW');
+  // The series' latest review must cover the accepted tree.
+  assertHas(validateGateEvidence(s, withReviews(ca('code-architecture-harness-3', 'GREEN', { codeTree: 'old' }), ca('code-architecture-game-3', 'GREEN')), { targetTree: 'T', accepted: true }).errors, 'code-architecture-harness-3.md) covered code tree old');
+  // Before acceptance a RED review is just a finding.
+  assert.deepEqual(validateGateEvidence({ ...s, machineState: 'IMPLEMENT', gates: { ...s.gates, independentReview: 'PENDING' } }, withReviews(ca('code-architecture-harness-2', 'RED')), { targetTree: 'T', accepted: false }).errors, []);
+  assert.equal(reviewSeries('docs/agent/evidence/S0/reviews/code-architecture-harness-2.md'), 'docs/agent/evidence/S0/reviews/code-architecture-harness');
+  assert.equal(reviewSeries('docs/agent/evidence/S0/reviews/requirements-12.md'), 'docs/agent/evidence/S0/reviews/requirements');
+  assert.equal(reviewSeries('docs/agent/evidence/S0/reviews/notes.md'), 'docs/agent/evidence/S0/reviews/notes.md');
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -548,25 +775,81 @@ test('ledger: rewritten and deleted lines are caught against every committed ver
   assert.equal(parseLedger('{"a":1}\nnot json\n').errors.length, 1);
 });
 
-test('ledger: transitions form one chain from BOOTSTRAP (M1, #21)', () => {
-  const chain = [transition('BOOTSTRAP', 'BASELINE_VERIFY'), transition('BASELINE_VERIFY', 'SLICE_DISCOVERY')];
+test('ledger: transitions form one chain from S0\'s BOOTSTRAP (M1, #21)', () => {
+  const chain = [transition('BOOTSTRAP', 'BASELINE_VERIFY', { slice: 'S0' }), transition('BASELINE_VERIFY', 'SLICE_DISCOVERY', { slice: 'S0' })];
   assert.deepEqual(validateLedger(lines(...chain)).errors, []);
-  assertHas(validateLedger(lines(...chain, transition('PLAN_LOCK', 'IMPLEMENT'))).errors, 'line 3: transition starts at PLAN_LOCK but the previous one ended at SLICE_DISCOVERY');
-  assertHas(validateLedger(lines(transition('ADVERSARIAL_REVIEW', 'ACCEPT'))).errors, 'the first transition must start at BOOTSTRAP');
-  assertHas(validateLedger(lines(...chain, transition('SLICE_DISCOVERY', 'ACCEPT'))).errors, 'not a legal transition');
+  assertHas(validateLedger(lines(...chain, transition('PLAN_LOCK', 'IMPLEMENT', { slice: 'S0' }))).errors, 'line 3: transition starts at PLAN_LOCK but the previous one ended at SLICE_DISCOVERY');
+  assertHas(validateLedger(lines(transition('ADVERSARIAL_REVIEW', 'ACCEPT', { slice: 'S0' }))).errors, 'the first transition must start at BOOTSTRAP');
+  assertHas(validateLedger(lines(transition('BOOTSTRAP', 'BASELINE_VERIFY', { slice: 'S1' }))).errors, 'the first transition belongs to S0, not S1');
+  assertHas(validateLedger(lines(...chain, transition('SLICE_DISCOVERY', 'ACCEPT', { slice: 'S0' }))).errors, 'not a legal transition');
 });
 
-test('ledger: owner decisions and owner-gate exits must cite committed ADRs, and OWNER_GATE resumes only at its recorded state', () => {
-  const committed = (id) => id === 'ADR-0008';
-  const toGate = [transition('BOOTSTRAP', 'BASELINE_VERIFY'), transition('BASELINE_VERIFY', 'OWNER_GATE', { reason: 'BASELINE_RED:unit', resume: 'BASELINE_VERIFY' })];
-  assertHas(validateLedger(lines(event({ kind: 'owner-decision' })), [], committed).errors, 'line 1: an owner-decision event must cite committed ADRs');
-  assertHas(validateLedger(lines(event({ kind: 'owner-decision', decisions: ['ADR-0099'] })), [], committed).errors, 'an owner-decision event must cite committed ADRs');
-  assert.deepEqual(validateLedger(lines(event({ kind: 'owner-decision', decisions: ['ADR-0008'] })), [], committed).errors, []);
+test('ledger: the slice changes only at NEXT_SLICE → BOOTSTRAP, to the next slice (F3)', () => {
+  const s0 = (from, to, o = {}) => transition(from, to, { slice: 'S0', ...o });
+  const start = [s0('BOOTSTRAP', 'BASELINE_VERIFY'), s0('BASELINE_VERIFY', 'SLICE_DISCOVERY')];
+  // A hand-written S1 line in the middle of S0.
+  assertHas(validateLedger(lines(...start, transition('SLICE_DISCOVERY', 'PLAN_LOCK', { slice: 'S1' }))).errors, 'line 3: the slice changed from S0 to S1 outside NEXT_SLICE → BOOTSTRAP');
+  const closing = [...start, s0('SLICE_DISCOVERY', 'PLAN_LOCK'), s0('PLAN_LOCK', 'IMPLEMENT'), s0('IMPLEMENT', 'TARGETED_VERIFY'), s0('TARGETED_VERIFY', 'FULL_VERIFY'), s0('FULL_VERIFY', 'ADVERSARIAL_REVIEW'), s0('ADVERSARIAL_REVIEW', 'ACCEPT'), s0('ACCEPT', 'CHECKPOINT', { checkpoint: SHA }), s0('CHECKPOINT', 'COMPACT'), s0('COMPACT', 'HANDOFF'), s0('HANDOFF', 'NEXT_SLICE')];
+  assert.deepEqual(validateLedger(lines(...closing, transition('NEXT_SLICE', 'BOOTSTRAP', { slice: 'S1' }))).errors, []);
+  assertHas(validateLedger(lines(...closing, transition('NEXT_SLICE', 'BOOTSTRAP', { slice: 'S2' }))).errors, 'NEXT_SLICE → BOOTSTRAP must start S1 (the slice after S0), not S2');
+  assertHas(validateLedger(lines(...closing, s0('NEXT_SLICE', 'BOOTSTRAP'))).errors, 'NEXT_SLICE → BOOTSTRAP must start S1');
+  // ACCEPT → CHECKPOINT records its checkpoint commit.
+  assertHas(validateEvent(s0('ACCEPT', 'CHECKPOINT')), 'ACCEPT → CHECKPOINT records the checkpoint commit');
+  assertHas(validateEvent(s0('ACCEPT', 'CHECKPOINT', { checkpoint: 'abc' })), 'ACCEPT → CHECKPOINT records the checkpoint commit');
+});
+
+test('ledger: owner decisions and stop-state exits must cite the owner\'s approval, and OWNER_GATE resumes only at its recorded state (F1, M2)', () => {
+  const approved = ownerOnlyFor('ADR-0008');
+  const s0 = (from, to, o = {}) => transition(from, to, { slice: 'S0', head: SHA, ...o });
+  const toGate = [s0('BOOTSTRAP', 'BASELINE_VERIFY'), s0('BASELINE_VERIFY', 'OWNER_GATE', { reason: 'BASELINE_RED:unit', resume: 'BASELINE_VERIFY' })];
+  assertHas(validateLedger(lines(event({ kind: 'owner-decision' })), [], approved).errors, 'line 1: an owner-decision event must cite the owner\'s approval: it cites no ADR');
+  assertHas(validateLedger(lines(event({ kind: 'owner-decision', decisions: ['ADR-0099'] })), [], approved).errors, 'an owner-decision event must cite the owner\'s approval: ADR-0099 has no "## Owner approval" section');
+  assertHas(validateLedger(lines(event({ kind: 'owner-decision', decisions: ['yes'] })), [], approved).errors, 'yes is not an ADR id');
+  assert.deepEqual(validateLedger(lines(event({ kind: 'owner-decision', decisions: ['ADR-0008'] })), [], approved).errors, []);
   // A line written by hand past record-event.mjs.
-  assertHas(validateLedger(lines(...toGate, transition('OWNER_GATE', 'BASELINE_VERIFY', { decisions: ['ADR-0099'] })), [], committed).errors, 'leaving OWNER_GATE must cite committed ADRs');
-  assertHas(validateLedger(lines(...toGate, transition('OWNER_GATE', 'IMPLEMENT', { decisions: ['ADR-0008'] })), [], committed).errors, 'OWNER_GATE may only resume at BASELINE_VERIFY');
-  assert.deepEqual(validateLedger(lines(...toGate, transition('OWNER_GATE', 'BASELINE_VERIFY', { decisions: ['ADR-0008'] })), [], committed).errors, []);
-  assert.deepEqual(validateLedger(lines(...toGate, transition('OWNER_GATE', 'COMPLETE_LOCAL', { decisions: ['ADR-0008'] })), [], committed).errors, []);
+  assertHas(validateLedger(lines(...toGate, s0('OWNER_GATE', 'BASELINE_VERIFY', { decisions: ['ADR-0099'] })), [], approved).errors, 'leaving OWNER_GATE must cite the owner\'s approval: ADR-0099');
+  assertHas(validateLedger(lines(...toGate, s0('OWNER_GATE', 'IMPLEMENT', { decisions: ['ADR-0008'] })), [], approved).errors, 'OWNER_GATE may only resume at BASELINE_VERIFY');
+  assert.deepEqual(validateLedger(lines(...toGate, s0('OWNER_GATE', 'BASELINE_VERIFY', { decisions: ['ADR-0008'] })), [], approved).errors, []);
+  assert.deepEqual(validateLedger(lines(...toGate, s0('OWNER_GATE', 'COMPLETE_LOCAL', { decisions: ['ADR-0008'] })), [], approved).errors, []);
+  // OWNER_GATE is entered with a reason and resumes where it was entered from (m3).
+  assertHas(validateLedger(lines(s0('BOOTSTRAP', 'OWNER_GATE', { reason: 'OTHER:x', resume: 'IMPLEMENT' }))).errors, 'OWNER_GATE resumes only at the state it was entered from (BOOTSTRAP), not IMPLEMENT');
+  assertHas(validateLedger(lines(s0('BOOTSTRAP', 'OWNER_GATE', { resume: 'BOOTSTRAP' }))).errors, 'entering OWNER_GATE records a reason');
+});
+
+test('ledger: a stop-state exit is judged against the commit its entry recorded, and only the pinned legacy lines may cite pre-convention ADRs (M2, ADR-0013)', () => {
+  const calls = [];
+  const spy = (id, opts) => {
+    calls.push({ id, ...opts });
+    return [];
+  };
+  const s0 = (from, to, o = {}) => transition(from, to, { slice: 'S0', ...o });
+  const blocked = [s0('BOOTSTRAP', 'BASELINE_VERIFY', { head: SHA }), s0('BASELINE_VERIFY', 'SLICE_DISCOVERY', { head: SHA }), s0('SLICE_DISCOVERY', 'PLAN_LOCK', { head: SHA }), s0('PLAN_LOCK', 'IMPLEMENT', { head: SHA }), s0('IMPLEMENT', 'TARGETED_VERIFY', { head: SHA }), s0('TARGETED_VERIFY', 'REPAIR', { head: SHA }), s0('REPAIR', 'BLOCKED_MANUAL_REVIEW', { head: 'b'.repeat(40) })];
+  validateLedger(lines(...blocked, s0('BLOCKED_MANUAL_REVIEW', 'REPAIR', { decisions: ['ADR-0100'] })), [], spy, { legacyCount: 0 });
+  assert.deepEqual(calls.pop(), { id: 'ADR-0100', legacy: false, notAt: 'b'.repeat(40) });
+  // An entry without its commit can't show that the decision is newer.
+  assertHas(validateLedger(lines(...blocked.slice(0, -1), s0('REPAIR', 'BLOCKED_MANUAL_REVIEW', { head: null }), s0('BLOCKED_MANUAL_REVIEW', 'REPAIR', { decisions: ['ADR-0100'] })), [], spy).errors, 'the transition into BLOCKED_MANUAL_REVIEW recorded no commit (head)');
+  // Owner decisions among the first legacyCount lines are judged as legacy citations, later ones are not.
+  validateLedger(lines(event({ kind: 'owner-decision', decisions: ['ADR-0001'] }), event({ kind: 'owner-decision', decisions: ['ADR-0001'] })), [], spy, { legacyCount: 1 });
+  assert.deepEqual(calls.slice(-2).map((c) => c.legacy), [true, false]);
+  // Only the exact pinned prefix of the real ledger is legacy: a hand-made or edited ledger gets none.
+  assert.equal(legacyEventCount(lines(event({}), event({}))), 0);
+  assert.equal(LEGACY_LEDGER.lines, 32);
+});
+
+test('ledger: the real ledger\'s owner decisions pass only because of the pinned legacy lines (ADR-0013 Consequences)', () => {
+  const text = readText(PATHS.ledger);
+  assert.equal(legacyEventCount(text), LEGACY_LEDGER.lines);
+  const prefix = `${text.split('\n').slice(0, LEGACY_LEDGER.lines).join('\n')}\n`;
+  assert.equal(sha256Text(prefix), LEGACY_LEDGER.sha256);
+  // Editing a single pinned line ends the legacy standing of all of them.
+  assert.equal(legacyEventCount(text.replace('Owner answered four process questions', 'Owner answered five process questions')), 0);
+  const ownerErrors = (opts) => validateLedger(text, [], ownerApprovalProblems, opts).errors.filter((e) => e.includes('owner-decision'));
+  assert.deepEqual(ownerErrors(), []);
+  // Without the pin, ADR-0001, -0002, -0004 and -0005 (owner decisions written before the section existed) fail.
+  const strict = ownerErrors({ legacyCount: 0 });
+  for (const id of ['ADR-0001', 'ADR-0002', 'ADR-0004', 'ADR-0005']) assertHas(strict, `approval: ${id} has no "## Owner approval" section`);
+  assert.equal(strict.length, 4, strict.join('\n'));
+  for (const id of ['ADR-0006', 'ADR-0007', 'ADR-0008', 'ADR-0009', 'ADR-0010', 'ADR-0012', 'ADR-0013']) assertNone(strict, `approval: ${id} `);
 });
 
 test('repairs: counts are per defect, a new defect id resets nothing, and only a fix resets its own defect (M5, F14, #36)', () => {
@@ -588,6 +871,10 @@ test('repairs: a defect at 3 distinct strategies or 5 attempts forces BLOCKED_MA
   assert.deepEqual(validateRepairs({ ...renamed, machineState: 'BLOCKED_MANUAL_REVIEW' }, five).errors, []);
   assert.deepEqual(validateRepairs({ ...renamed, repairOverrides: { 'D-S1-1': 'ADR-0010' } }, five, () => true).errors, []);
   assertHas(validateRepairs({ ...renamed, repairOverrides: { 'D-S1-1': 'ADR-0099' } }, five, () => false).errors, 'reached the repair limit');
+  // The override is judged together with the defect it must name (check-state: the owner's approval naming it).
+  const seen = [];
+  validateRepairs({ ...renamed, repairOverrides: { 'D-S1-1': 'ADR-0010' } }, five, (ref, defect) => seen.push([ref, defect]) && false);
+  assert.deepEqual(seen, [['ADR-0010', 'D-S1-1']]);
   assert.deepEqual(validateRepairs(renamed, [...five, event({ kind: 'repair', defect: 'D-S1-1', resolved: true })]).errors, []);
 });
 
@@ -597,6 +884,23 @@ test('repair counts can not be understated', () => {
   assertHas(validateRepairs(s, events).errors, 'LEDGER.jsonl records 2 attempt(s) on D-S1-1 but STATE.repairTotalAttempts is 1');
   assertHas(validateRepairs(s, events).errors, 'LEDGER.jsonl records 1 distinct strategy on D-S1-1 but STATE.repairAttempt is 0');
   assert.deepEqual(validateRepairs({ ...s, repairAttempt: 1, repairTotalAttempts: 2 }, events).errors, []);
+});
+
+test('ledger: every protect.mjs update must cite the owner\'s approval, and the real ones do without the legacy pin (ADR-0013 decision 3)', () => {
+  const approved = ownerOnlyFor('ADR-0008');
+  const update = (o) => event({ kind: 'decision', actor: 'protect.mjs', protectedSha256: 'p1', evidence: ['docs/agent/PROTECTED.json'], ...o });
+  assertHas(validateLedger(lines(update({ decisions: ['ADR-0003'] })), [], approved).errors, "line 1: a protect.mjs update must cite the owner's approval: ADR-0003 has no");
+  assertHas(validateLedger(lines(update({ decisions: [] })), [], approved).errors, "a protect.mjs update must cite the owner's approval: it cites no ADR");
+  assert.deepEqual(validateLedger(lines(update({ decisions: ['ADR-0008'] })), [], approved).errors, []);
+  // Other actors' decisions, and protect.mjs lines without a PROTECTED.json hash (lastRecordedHash ignores them), aren't updates.
+  assert.deepEqual(validateLedger(lines(event({ kind: 'decision', decisions: ['ADR-0003'] }), event({ kind: 'decision', actor: 'protect.mjs', decisions: ['ADR-0003'] })), [], approved).errors, []);
+  // The real ledger's updates (ADR-0008, ADR-0012, ADR-0013) and PROTECTED.json's approvedBy pass on the owner's words.
+  const text = readText(PATHS.ledger);
+  assert.deepEqual(validateLedger(text, [], ownerApprovalProblems, { legacyCount: 0 }).errors.filter((e) => e.includes('protect.mjs update')), []);
+  const real = parseLedger(text).events.filter((e) => e.actor === 'protect.mjs' && e.protectedSha256);
+  assert.ok(real.length >= 3, `${real.length} protect.mjs updates`);
+  for (const e of real) assert.deepEqual(ownerApprovalProblems(e.decisions[0]), [], e.decisions[0]);
+  assert.deepEqual(ownerApprovalProblems(JSON.parse(readText(PATHS.protected)).approvedBy), []);
 });
 
 test('check-state: after next-slice.mjs the accepted slice is judged on its own evidence, on the checkpoint tree', () => {
@@ -616,12 +920,43 @@ test('check-state: after next-slice.mjs the accepted slice is judged on its own 
   assert.equal(view.currentSlice, 'S0');
   assert.deepEqual(view.requiredReviewers, MANDATORY_REVIEWERS);
   for (const g of Object.keys(GATE_COMMANDS)) assert.equal(view.gates[g], 'GREEN', g);
-  assert.equal(preparedView({ ...prepared, gateWaivers: { e2e: 'ADR-0010' } }, 'S0').gates.e2e, 'NOT_APPLICABLE');
+  // The predecessor's own waivers count for it; the new slice's (or a flat, unkeyed one) don't.
+  assert.equal(preparedView({ ...prepared, gateWaivers: { S0: { e2e: 'ADR-0010' } } }, 'S0').gates.e2e, 'NOT_APPLICABLE');
+  assert.equal(preparedView({ ...prepared, gateWaivers: { S1: { e2e: 'ADR-0010' } } }, 'S0').gates.e2e, 'GREEN');
+  assert.equal(preparedView({ ...prepared, gateWaivers: { e2e: 'ADR-0010' } }, 'S0').gates.e2e, 'GREEN');
   const s0 = (m) => ({ ...m, slice: 'S0' });
   assert.deepEqual(validateGateEvidence(view, s0(greenManifest('T')), { targetTree: 'T', accepted: true }).errors, []);
   assertHas(validateGateEvidence(view, s0(greenManifest('T', ['code-architecture'])), { targetTree: 'T', accepted: true }).errors, 'needs a GREEN adversarial review in the S0 manifest');
   assertHas(validateGateEvidence(view, s0(greenManifest('old')), { targetTree: 'T', accepted: true }).errors, 'passed on code tree old, not T');
   assertHas(validateGateEvidence(view, null, { targetTree: 'T', accepted: true }).errors, 'docs/agent/evidence/S0/manifest.json is missing');
+  // The predecessor's report series must end GREEN too (F4): a RED harness review left behind blocks the prepared state.
+  const redSeries = { ...s0(greenManifest('T')), reviews: [...greenManifest('T').reviews, { ...review('code-architecture', { verdict: 'RED' }), report: 'docs/agent/evidence/S0/reviews/code-architecture-harness-2.md' }, review('code-architecture')] };
+  assertHas(validateGateEvidence(view, redSeries, { targetTree: 'T', accepted: true }).errors, 'code-architecture-harness is RED');
+});
+
+test('anchor: lastAcceptedCheckpoint is only ever the checkpoint the ledger and the evidence at that commit back (F2)', () => {
+  const CP = 'c'.repeat(40);
+  const accepted = lines(transition('ADVERSARIAL_REVIEW', 'ACCEPT', { slice: 'S0' }));
+  const greenAt = JSON.stringify({ ...emptyManifest('S0'), verdict: 'GREEN' });
+  const io = (o = {}) => ({ ledgerAt: (sha) => (sha === CP ? accepted : null), manifestAt: (sha, slice) => (sha === CP && slice === 'S0' ? greenAt : null), tagCommits: () => [], ...o });
+  const cpEvent = transition('ACCEPT', 'CHECKPOINT', { slice: 'S0', checkpoint: CP });
+  const s = { ...baseState(), currentSlice: 'S0', machineState: 'CHECKPOINT', lastAcceptedCheckpoint: CP };
+  assert.deepEqual(validateCheckpointAnchor(s, [cpEvent], io()).errors, []);
+  // Set mid-slice with no ACCEPT → CHECKPOINT at all (P11b).
+  assertHas(validateCheckpointAnchor({ ...s, machineState: 'IMPLEMENT' }, [], io()).errors, 'the ledger records no ACCEPT → CHECKPOINT transition');
+  // Moved to another commit than the one the transition recorded (P11b after a committed rewrite).
+  assertHas(validateCheckpointAnchor({ ...s, lastAcceptedCheckpoint: 'd'.repeat(40) }, [cpEvent], io()).errors, 'but the last ACCEPT → CHECKPOINT transition (S0) recorded cccccccccc');
+  // The ledger at the checkpoint doesn't end at → ACCEPT for that slice; the manifest there isn't GREEN; a tag disagrees.
+  assertHas(validateCheckpointAnchor(s, [cpEvent], io({ ledgerAt: () => lines(transition('PLAN_LOCK', 'IMPLEMENT', { slice: 'S0' })) })).errors, "doesn't end at → ACCEPT for S0 (its last transition is PLAN_LOCK → IMPLEMENT in S0)");
+  assertHas(validateCheckpointAnchor(s, [cpEvent], io({ ledgerAt: () => lines(transition('ADVERSARIAL_REVIEW', 'ACCEPT', { slice: 'S1' })) })).errors, "doesn't end at → ACCEPT for S0");
+  assertHas(validateCheckpointAnchor(s, [cpEvent], io({ manifestAt: () => JSON.stringify(emptyManifest('S0')) })).errors, "the S0 manifest committed at cccccccccc doesn't have verdict GREEN (PENDING)");
+  assertHas(validateCheckpointAnchor(s, [cpEvent], io({ manifestAt: () => null })).errors, 'no manifest there');
+  assertHas(validateCheckpointAnchor(s, [cpEvent], io({ tagCommits: () => [['checkpoint/S0-harness', 'e'.repeat(40)]] })).errors, 'tag checkpoint/S0-harness points at eeeeeeeeee, not the checkpoint cccccccccc');
+  assert.deepEqual(validateCheckpointAnchor(s, [cpEvent], io({ tagCommits: () => [['checkpoint/S0-harness', CP]] })).errors, []);
+  // A checkpoint the ledger recorded must be in STATE.
+  assertHas(validateCheckpointAnchor({ ...s, lastAcceptedCheckpoint: null }, [cpEvent], io()).errors, 'but STATE.lastAcceptedCheckpoint is not set');
+  assert.deepEqual(validateCheckpointAnchor({ ...baseState(), lastAcceptedCheckpoint: null }, [], io()).errors, []);
+  assert.deepEqual(checkpointBackingProblems(CP, 'S0', io()), []);
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -667,8 +1002,67 @@ test('approvals: only a committed ADR listed in decisions/INDEX.md counts (SD-6,
   assert.equal(path, 'docs/agent/decisions/ADR-0008-docs-corrections.md');
   assert.ok(approvalIsAdr('ADR-0008'));
   assert.ok(approvalIsAdr(path));
+  assert.equal(resolveAdrRef(path), path);
   for (const ref of ['README.md', 'package.json', 'ADR-0099', 'see ADR-0008', 'docs/agent/decisions/ADR-0008-other.md', null, 8]) assert.ok(!approvalIsAdr(ref), String(ref));
   for (const id of ['ADR-8', 'ADR-0099', '../ADR-0008', 'ADR-0008-docs-corrections.md', 'INDEX']) assert.equal(findAdr(id), null, id);
+});
+
+test('owner approval: an ADR counts only when Accepted with the owner\'s words, and names what it would approve (pure; F1, M2, ADR-0013 decision 3)', () => {
+  const template = readText(ADR_TEMPLATE);
+  const adr = (o = {}) => `# ADR-0100 — x\n\n**Status:** ${o.status ?? 'Accepted'}\\\n\n## Decision\n${o.decision ?? 'Lift the repair limit for D-S0-9; approve DESIGN-S3D; change docs/agent/OPERATIONS.md §10.'}\n\n${o.approval === null ? '' : `## Owner approval\n${o.approval ?? 'Given 2026-10-06 by the owner (verbatim): "Yes, approve it as written."'}\n`}`;
+  const p = (text, o) => approvalTextProblems(text, { templateText: template, ...o });
+  assert.deepEqual(p(adr()), []);
+  assertHas(p(adr({ approval: null })), 'has no "## Owner approval" section');
+  assertHas(p(adr({ approval: 'Pending: the owner answers next session, then we record it here word for word.' })), 'has no "## Owner approval" section');
+  assertHas(p(`${adr({ approval: null })}${template.slice(template.indexOf('## Owner approval'))}`), 'has no "## Owner approval" section');
+  assertHas(p(adr({ status: 'Proposed' })), 'is Proposed, not Accepted');
+  assert.deepEqual(p(adr({ status: 'Proposed' }), { checkStatus: false }), []);
+  // Each name must appear whole: a file path, a defect id, a design id.
+  assert.deepEqual(p(adr(), { names: ['docs/agent/OPERATIONS.md', 'D-S0-9', 'DESIGN-S3D'] }), []);
+  assertHas(p(adr(), { names: ['AGENTS.md'] }), "doesn't name AGENTS.md, which it would approve");
+  assertHas(p(adr(), { names: ['D-S0-90'] }), "doesn't name D-S0-90");
+  assertHas(p(adr(), { names: ['docs/agent/prompts/KICKOFF.md'] }), "doesn't name docs/agent/prompts/KICKOFF.md");
+  assert.ok(namesPath('see `docs/agent/OPERATIONS.md`.', 'docs/agent/OPERATIONS.md'));
+  assert.ok(namesPath('(D-S0-9)', 'D-S0-9'));
+  for (const [text, name] of [['docs/agent/OPERATIONS.md.bak', 'docs/agent/OPERATIONS.md'], ['x/docs/agent/OPERATIONS.md', 'docs/agent/OPERATIONS.md'], ['D-S0-91', 'D-S0-9'], ['DESIGN-S3C-LINES', 'DESIGN-S3C'], ['OPERATIONS.md', 'docs/agent/OPERATIONS.md']]) assert.ok(!namesPath(text, name), `${text} / ${name}`);
+  // Legacy citations (recorded before the convention) may rely on the index's "Owner decision: Yes" instead.
+  assert.deepEqual(p(adr({ approval: null }), { legacy: true, indexCell: 'Yes' }), []);
+  assertHas(p(adr({ approval: null }), { legacy: true, indexCell: 'No (needs independent review)' }), 'predates the "## Owner approval" convention');
+  assertHas(p(adr({ approval: null }), { legacy: true, indexCell: 'Requested by the owner' }), 'doesn\'t mark it as an owner decision');
+  assertHas(p(adr({ approval: null }), { legacy: true, indexCell: null }), 'no row');
+  // The index's "Owner decision" column, read by the row whose first cell links the ADR.
+  const index = '| ADR | Date | Status | Owner decision | Summary |\n|---|---|---|---|---|\n| [ADR-0003](a.md) | d | Accepted | Requested by the owner | mentions [ADR-0001] |\n| [ADR-0001](b.md) | d | Accepted | Yes | x |\n';
+  assert.equal(indexOwnerDecision(index, 'ADR-0001'), 'Yes');
+  assert.equal(indexOwnerDecision(index, 'ADR-0003'), 'Requested by the owner');
+  assert.equal(indexOwnerDecision(index, 'ADR-0099'), null);
+  assert.equal(indexOwnerDecision('no table', 'ADR-0001'), null);
+});
+
+test('owner approval: the real ADRs: agent ADRs and pre-convention ADRs are refused, owner ADRs with the section pass (read-only; F1, M2)', () => {
+  // Agent-written ADRs, committed and indexed, are not the owner's approval (security-data-2 M2's examples).
+  for (const id of ['ADR-0003', 'ADR-0011']) assertHas(ownerApprovalProblems(id), `${id} has no "## Owner approval" section`);
+  for (const id of ['ADR-0006', 'ADR-0007', 'ADR-0008', 'ADR-0009', 'ADR-0010', 'ADR-0012', 'ADR-0013']) assert.deepEqual(ownerApprovalProblems(id), [], id);
+  // Owner decisions written before the convention count only as legacy citations, and only with "Yes" in the index.
+  for (const id of ['ADR-0001', 'ADR-0002', 'ADR-0004', 'ADR-0005']) {
+    assertHas(ownerApprovalProblems(id), `${id} has no "## Owner approval" section`);
+    assert.deepEqual(ownerApprovalProblems(id, { legacy: true }), [], id);
+  }
+  assertHas(ownerApprovalProblems('ADR-0011', { legacy: true }), 'ADR-0011 predates the "## Owner approval" convention');
+  assertHas(ownerApprovalProblems('ADR-0003', { legacy: true }), "doesn't mark it as an owner decision");
+  // Unresolvable references.
+  for (const ref of ['ADR-0099', 'see ADR-0013', 'README.md']) assertHas(ownerApprovalProblems(ref), 'is not a committed ADR listed in decisions/INDEX.md');
+  // An ADR may not predate the stop state it ends: ADR-0013 existed at HEAD, not at the baseline.
+  const baseline = JSON.parse(readText(PATHS.state)).actualBaselineSha;
+  assert.deepEqual(ownerApprovalProblems('ADR-0013', { notAt: baseline }), []);
+  assertHas(ownerApprovalProblems('ADR-0013', { notAt: git('rev-parse', 'HEAD') }), 'ADR-0013 already existed at');
+  // ADR-0012 names no owner-only file, so it can't bless an OPERATIONS.md edit any more (harness-2 open point 2, P7).
+  assertHas(ownerApprovalProblems('ADR-0012', { names: ['docs/agent/OPERATIONS.md'] }), "ADR-0012 doesn't name docs/agent/OPERATIONS.md");
+  // The registry's one approved design was approved before the convention, pinned by its text.
+  assert.deepEqual(LEGACY_DESIGN_APPROVALS.map((d) => d.id), ['DESIGN-0.5']);
+  const registry = JSON.parse(readText(PATHS.designRegistry));
+  assert.ok(isLegacyDesignApproval(registry.designs.find((d) => d.id === 'DESIGN-0.5')));
+  assert.ok(!isLegacyDesignApproval({ id: 'DESIGN-S3D', approval: LEGACY_DESIGN_APPROVALS[0].approval }));
+  assert.ok(!isLegacyDesignApproval({ id: 'DESIGN-0.5', approval: 'Owner-approved: ADR-0004.' }));
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -713,6 +1107,26 @@ test('requirements audit: tasks after PLAN_LOCK, accepted slices closed, unknown
   assertHas(auditRequirements({ requirements: [req({ status: 'DEFERRED', decision: 'ADR-0099', tests: [] })] }, s, { adrOk: () => false }).errors, 'not a committed ADR');
 });
 
+test('requirements audit: the prepared NEXT_SLICE state is audited as the accepted predecessor, like check-state (m1)', () => {
+  const closing = transition('HANDOFF', 'NEXT_SLICE', { slice: 'S0' });
+  const prepared = { ...baseState(), currentSlice: 'S1', currentTask: 'S1-BOOTSTRAP', machineState: 'NEXT_SLICE' };
+  assert.equal(auditView(prepared, closing).currentSlice, 'S0');
+  assert.equal(auditView({ ...prepared, machineState: 'BOOTSTRAP' }, transition('NEXT_SLICE', 'BOOTSTRAP', { slice: 'S1' })).currentSlice, 'S1');
+  const reqs = { requirements: [req({ id: 'HARNESS-001', slice: 'S0', status: 'GREEN', tasks: ['S0-T1'], evidence: ['x'] }), ...Array.from({ length: 3 }, (_, i) => req({ id: `NAV-00${i + 1}` }))] };
+  // Judged as S1 itself, every open S1 requirement was reported twice (harness-2 P9: 58 false errors).
+  const asS1 = auditRequirements(reqs, prepared).errors;
+  assert.equal(asS1.length, 6, asS1.join('\n'));
+  assert.deepEqual(auditRequirements(reqs, auditView(prepared, closing)).errors, []);
+  // The predecessor's own requirements must still be closed.
+  const open = { requirements: [req({ id: 'HARNESS-001', slice: 'S0', status: 'IN_PROGRESS', tasks: ['S0-T1'] })] };
+  assertHas(auditRequirements(open, auditView(prepared, closing)).errors, 'HARNESS-001 is IN_PROGRESS but S0 claims acceptance (NEXT_SLICE)');
+  // The contract header names the slice STATE is on (HARNESS-013 A1).
+  assert.deepEqual(sliceHeaderProblems('# CURRENT SLICE — S1\n\n**Slice:** S1 — UX', 'S1'), []);
+  assertHas(sliceHeaderProblems('# CURRENT SLICE — S0\n', 'S1'), 'CURRENT_SLICE.md does not name the current slice S1 in its header');
+  assertHas(sliceHeaderProblems('# CURRENT SLICE — S10\n', 'S1'), 'does not name the current slice S1');
+  assert.deepEqual(sliceHeaderProblems('', 'S1'), []);
+});
+
 test('requirements audit: an umbrella is GREEN only when every child that names it is closed', () => {
   const umbrella = req({ id: 'NAV-001', status: 'GREEN', tasks: ['S1-T1'], evidence: ['docs/agent/evidence/S1/acceptance-report.md'] });
   const child = (status, o = {}) => req({ id: 'NAV-002', source: 'design §5.1; umbrella NAV-001', tasks: ['S1-T2'], status, ...o });
@@ -723,16 +1137,23 @@ test('requirements audit: an umbrella is GREEN only when every child that names 
   assertNone(auditRequirements({ requirements: [umbrella, child('GREEN', { evidence: ['x'] })] }, baseState()).errors, 'umbrella');
 });
 
-test('design registry: APPROVED needs an approval citing a committed ADR and an existing path (#28, #29)', () => {
+test('design registry: APPROVED needs the owner\'s approval and an existing path (#28, #29, F1)', () => {
   const reg = { designs: [{ id: 'D1', status: 'APPROVED', approval: null, path: 'missing.md' }, { id: 'D2', status: 'MAYBE' }, { id: 'D3', status: 'APPROVED', approval: 'the owner will surely like it', path: 'ok.md' }, { id: 'D2', status: 'RECEIVED' }] };
-  const { errors } = validateRegistry(reg, (p) => p === 'ok.md', () => true);
-  assertHas(errors, 'design D1: APPROVED without an approval citing a committed ADR');
+  const { errors } = validateRegistry(reg, (p) => p === 'ok.md', () => []);
+  assertHas(errors, "design D1: APPROVED without an approval citing the owner's ADR");
   assertHas(errors, 'design D1: APPROVED but its path missing.md does not exist');
   assertHas(errors, 'design D3: APPROVED without an approval');
   assertHas(errors, 'unknown status MAYBE');
   assertHas(errors, 'design D2: duplicate id');
-  assertHas(validateRegistry({ designs: [{ id: 'D4', status: 'APPROVED', approval: 'ADR-0099', path: 'ok.md' }] }, () => true, () => false).errors, 'APPROVED without an approval citing a committed ADR');
-  assert.deepEqual(validateRegistry({ designs: [{ id: 'D5', status: 'APPROVED', approval: 'ADR-0005 decision 6', path: 'ok.md' }] }, () => true, (id) => id === 'ADR-0005').errors, []);
+  // The approval's ADR goes through the owner-approval check, with the design entry (check-state names its id).
+  const seen = [];
+  const approvalOk = (adr, d) => {
+    seen.push([adr, d.id]);
+    return adr === 'ADR-0005' ? [] : [`${adr} has no "## Owner approval" section`];
+  };
+  assertHas(validateRegistry({ designs: [{ id: 'D4', status: 'APPROVED', approval: 'ADR-0003', path: 'ok.md' }] }, () => true, approvalOk).errors, "design D4: APPROVED, but its approval is not the owner's: ADR-0003 has no");
+  assert.deepEqual(validateRegistry({ designs: [{ id: 'D5', status: 'APPROVED', approval: 'ADR-0005 decision 6', path: 'ok.md' }] }, () => true, approvalOk).errors, []);
+  assert.deepEqual(seen, [['ADR-0003', 'D4'], ['ADR-0005', 'D5']]);
   assertHas(validateRegistry({}).errors, 'no designs array');
 });
 
@@ -765,6 +1186,20 @@ test('protected files: the patterns cover the rules, the scripts and the gate-de
   for (const f of files) assert.ok(!f.startsWith('.agent-runs/') && !f.includes('node_modules/') && !f.endsWith('.DS_Store') && f !== PATHS.protected, f);
 });
 
+test('protected files: the Vitest setup files, every tsconfig*.json and .gitignore are protected (game-2 M1, security-data-2 m6, harness-2 m10)', () => {
+  for (const p of ['tests/sim/setup/', '**/tsconfig*.json', '.gitignore', 'tsconfig.json']) assert.ok(PROTECTED_PATTERNS.includes(p), p);
+  for (const f of ['tests/sim/setup/yield-between-tests.ts', 'tests/sim/setup/other.ts', 'tsconfig.json', 'tsconfig.node.json', 'tsconfig.app.json', 'tests/e2e/tsconfig.json', 'packages/x/tsconfig.base.json', '.gitignore']) assert.ok(isProtectedPath(f), f);
+  for (const f of ['tests/sim/fix-core-offline.test.ts', 'tsconfig.json.bak', 'mytsconfig.json', 'src/.gitignore', 'README.md', 'tests/sim/setupx/a.ts']) assert.ok(!isProtectedPath(f), f);
+  assert.ok(matchesPattern('a/b/tsconfig.e2e.json', '**/tsconfig*.json') && !matchesPattern('a/b/tsconfig/e.json', '**/tsconfig*.json'));
+  assert.ok(isOwnerOnlyPath('docs/agent/prompts/KICKOFF.md') && isOwnerOnlyPath('package.json') && !isOwnerOnlyPath('.gitignore') && !isOwnerOnlyPath('tests/sim/setup/yield-between-tests.ts'));
+  // The real repository's files are covered.
+  const files = protectedFiles();
+  for (const f of ['.gitignore', 'tests/sim/setup/yield-between-tests.ts', 'tsconfig.json', 'vitest.config.ts']) assert.ok(files.includes(f), f);
+  // .gitignore keeps the relaunch stop signal out of Git (harness-2 m10, round-1 L10).
+  assert.match(readText('.gitignore'), /^docs\/agent\/STOP$/m);
+  assert.equal(spawnSync('git', ['check-ignore', '-q', '--no-index', PATHS.stopFile], { cwd: ROOT }).status, 0, 'docs/agent/STOP is ignored');
+});
+
 test('protected files: an owner approval is a real quote, not the template text or a placeholder', () => {
   const template = readText(ADR_TEMPLATE);
   const adr = (body) => `# ADR-0100 — x\n\n**Status:** Accepted\\\n\n## Decision\nx\n\n## Owner approval\n${body}\n\n## Notes\nlater\n`;
@@ -786,7 +1221,7 @@ test('protected files: an owner approval is a real quote, not the template text 
   assert.equal(adrStatus('Status: Accepted'), null);
 });
 
-test('protected files: --update refuses a missing, proposed, old or unapproved ADR, an edited accepted ADR, and a hand-edited or deleted record (M10, SD-7, #33)', () => {
+test('protected files: --update refuses a missing, proposed, old or unapproved ADR (every update needs the owner\'s words), an edited accepted ADR, and a hand-edited or deleted record (M10, SD-7, #33, ADR-0013 decision 3)', () => {
   const approved = '**Status:** Accepted\\\n\n## Owner approval\nGiven 2026-10-06 by the owner: "Approve as written", for the files listed in section 5.\n';
   const unapproved = '**Status:** Accepted\\\n\n## Decision\nScripts only.\n';
   const recorded = { 'docs/agent/OPERATIONS.md': 'o1', 'docs/agent/decisions/ADR-0002-x.md': 'a1', 'scripts/agent/lib.mjs': 'l1' };
@@ -801,16 +1236,30 @@ test('protected files: --update refuses a missing, proposed, old or unapproved A
   assertHas(problems({ files: { ...recorded, 'docs/agent/decisions/ADR-0002-x.md': 'a2' } }), 'accepted ADRs are never edited: docs/agent/decisions/ADR-0002-x.md');
   const { 'docs/agent/decisions/ADR-0002-x.md': _gone, ...withoutAdr } = recorded;
   assertHas(problems({ files: withoutAdr }), 'accepted ADRs are never edited');
-  // Owner-only files need the owner's words; other protected files only an ADR (and a reviewer, OPERATIONS.md §10).
-  assertHas(problems({ adrText: unapproved, files: { ...recorded, 'docs/agent/OPERATIONS.md': 'o2' } }), 'needs an "## Owner approval" section quoting the owner, because owner-only files changed: docs/agent/OPERATIONS.md');
-  assert.deepEqual(problems({ adrText: unapproved }), []);
+  // Every update needs the owner's words, a script-only change too (ADR-0013 decision 3: "protected-file updates all
+  // need an ADR with a real 'Owner approval' section").
+  assertHas(problems({ adrText: unapproved, files: { ...recorded, 'docs/agent/OPERATIONS.md': 'o2' } }), 'has no "## Owner approval" section with the owner\'s words');
+  assertHas(problems({ adrText: unapproved, files: { ...recorded, 'docs/agent/OPERATIONS.md': 'o2' } }), 'naming each owner-only file it lets change (changed: docs/agent/OPERATIONS.md)');
+  const scriptOnly = problems({ adrText: unapproved });
+  assertHas(scriptOnly, 'docs/agent/decisions/ADR-0100-x.md has no "## Owner approval" section with the owner\'s words');
+  assertHas(scriptOnly, "every protected-file update needs the owner's approval");
+  assertNone(scriptOnly, 'owner-only file');
+  assertHas(problems({ adrText: `${unapproved}\n## Owner approval\nPending: the owner reviews the script diff at the next session boundary.\n` }), 'has no "## Owner approval" section');
+  // ...and the ADR must name each owner-only file it lets change (ADR-0013 decision 3; harness-2 open point 2).
+  const naming = `${approved}\nThe owner approves the edit of docs/agent/OPERATIONS.md §10 described above.\n`;
+  assertHas(problems({ files: { ...recorded, 'docs/agent/OPERATIONS.md': 'o2' } }), "doesn't name docs/agent/OPERATIONS.md, which it would approve");
+  assert.deepEqual(problems({ adrText: naming, files: { ...recorded, 'docs/agent/OPERATIONS.md': 'o2' } }), []);
+  const twoFiles = { ...recorded, 'docs/agent/OPERATIONS.md': 'o2', 'AGENTS.md': 'g1' };
+  assertHas(problems({ adrText: naming, files: twoFiles }), "doesn't name AGENTS.md");
+  assertNone(problems({ adrText: naming, files: twoFiles }), "doesn't name docs/agent/OPERATIONS.md");
   // The edited ADR's new hash written into PROTECTED.json by hand first: the record no longer matches its ledger event.
   const handEdited = { recorded: { ...recorded, 'docs/agent/decisions/ADR-0002-x.md': 'a2' }, files: { ...recorded, 'docs/agent/decisions/ADR-0002-x.md': 'a2' }, recordHash: 'p2' };
   assertHas(problems(handEdited), "doesn't match the hash its last protect.mjs ledger event recorded");
   // PROTECTED.json deleted first, so every file looks new.
   assertHas(problems({ recorded: null, recordHash: null, files: { ...recorded, 'docs/agent/decisions/ADR-0002-x.md': 'a2' } }), 'is missing although the ledger records it');
-  // The very first record: nothing recorded yet, by file or by ledger.
-  const first = updateProblems({ ...ok, recorded: null, recordHash: null, ledgerHash: null });
+  // The very first record: nothing recorded yet, by file or by ledger, so every owner-only file counts as changed.
+  assertHas(updateProblems({ ...ok, recorded: null, recordHash: null, ledgerHash: null }).problems, "doesn't name docs/agent/OPERATIONS.md");
+  const first = updateProblems({ ...ok, adrText: naming, recorded: null, recordHash: null, ledgerHash: null });
   assert.deepEqual(first.problems, []);
   assert.deepEqual(first.changed.sort(), Object.keys(ok.files).sort());
   // The hash the ledger vouches for is the latest protect.mjs event's.
@@ -839,6 +1288,10 @@ test('gate configuration: the settings that make a passing gate mean something a
   assert.equal(scripts.e2e, 'playwright test');
   const include = JSON.parse(readText('tsconfig.json')).include;
   for (const p of ['src', 'tests/sim', 'tests/e2e', 'playwright.config.ts', 'vitest.config.ts']) assert.ok(include.includes(p), p);
+  // The setup file runs before every test file, so which files load is gate configuration too (ADR-0010; game-2 M1).
+  assert.match(vitest, /^\s*setupFiles:\s*\['tests\/sim\/setup\/yield-between-tests\.ts'\],\s*$/m);
+  assert.equal((vitest.match(/setupFiles/g) ?? []).length, 1, 'one setupFiles entry');
+  assert.doesNotMatch(vitest, /globalSetup/);
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -883,6 +1336,25 @@ test('bootstrap assertion is checked field by field and must come from a fresh s
   assertHas(checkAssertion(trailing, ctx), 'reconcile');
   assertHas(checkAssertion(trailing, { ...ctx, changedSinceExpected: ['docs/agent/HANDOFF.md', 'src/sim/world.ts'] }), 'reconcile');
   assert.deepEqual(checkAssertion(trailing, { ...ctx, changedSinceExpected: ['docs/agent/HANDOFF.md', 'docs/agent/STATE.json', 'AGENTS.md'] }), []);
+});
+
+test('bootstrap: readFiles and firstFiles must exist, and startedAt must be an ISO time (m5)', () => {
+  const state = { ...baseState(), currentSlice: 'S1', currentTask: 'S1-T1', machineState: 'BOOTSTRAP' };
+  const files = new Set([...MANDATED_READS, 'src/ui/hud/Dock.tsx']);
+  const good = { sessionId: 'new', startedAt: '2026-10-06T01:29:44Z', readFiles: [...MANDATED_READS], expectedSha: SHA, actualSha: SHA, branch: 'agent/x', slice: 'S1', task: 'S1-T1', machineState: 'BOOTSTRAP', requiredGates: Object.keys(state.gates), requiredReviewers: ['code-architecture', 'adversarial'], forbidden: ['git push', 'deploy'], firstFiles: ['src/ui/hud/Dock.tsx'], risks: ['a', 'b', 'c'] };
+  const ctx = { state, head: SHA, branch: 'agent/x', events: [], session: 'new', fileExists: (f) => files.has(f) };
+  assert.deepEqual(checkAssertion(good, ctx), []);
+  assertHas(checkAssertion({ ...good, readFiles: [...MANDATED_READS, 'docs/agent/NOTES.md'] }, ctx), 'readFiles names "docs/agent/NOTES.md", which is not a file in this repository');
+  assertHas(checkAssertion({ ...good, firstFiles: ['src/ui/hud/Dok.tsx'] }, ctx), 'firstFiles names "src/ui/hud/Dok.tsx"');
+  for (const f of ['/etc/passwd', '../outside.md', 7]) assertHas(checkAssertion({ ...good, firstFiles: [f] }, { ...ctx, fileExists: () => true }), 'which is not a file in this repository');
+  for (const t of ['yesterday', '2026-10-06', '2026-10-06 01:29:44', '2026-13-45T99:99:99Z', '2026-10-06T01:29:44']) assertHas(checkAssertion({ ...good, startedAt: t }, ctx), `startedAt ${t} is not an ISO time`);
+  for (const t of ['2026-10-06T01:29:44Z', '2026-10-06T01:29:44.123Z', '2026-10-06T01:29+02:00']) assert.ok(ISO_TIME_RE.test(t), t);
+  // The real assertions on file still pass these checks.
+  for (const f of ['bootstrap-20261005T223554Z.json', 'bootstrap-20261006T012944Z.json']) {
+    const a = JSON.parse(readText(`${PATHS.evidence}/S0/${f}`));
+    assert.ok(ISO_TIME_RE.test(a.startedAt), f);
+    for (const p of [...a.readFiles, ...a.firstFiles]) assert.ok(existsSync(join(ROOT, p)), `${f}: ${p}`);
+  }
 });
 
 test('bootstrap: bookkeeping-only commits are exactly the NON_CODE_PATHS', () => {
@@ -957,6 +1429,51 @@ test('test inventory: every form of skip, focus, todo, fixme or inversion is a m
   for (const p of plain) assert.equal((p.match(DISABLE_RE) ?? []).length, 0, `counted: ${p}`);
   const files = { 'tests/sim/a.test.ts': "it.skip('x', () => {})\nit.only('y', () => {})\n", 'tests/sim/b.test.ts': "it('z', () => {})\n" };
   assert.deepEqual(skipMarkers(Object.keys(files), (f) => files[f]), { 'tests/sim/a.test.ts': 2 });
+});
+
+test('test inventory: the harness\'s own node:test files are scanned too, in their code only (harness-2 m6)', () => {
+  const markers = [
+    "test('x', { skip: true }, () => {})",
+    "test('x', { skip: 'not on Windows' }, () => {})",
+    "test('x', { todo: true }, () => {})",
+    "test('x', { only: true }, () => {})",
+    "test('x', { skip: process.platform === 'win32' }, () => {})",
+    "test.skip('x', () => {})",
+    "test.todo('x')",
+    "describe.skip('x', () => {})",
+    "it.only('x', () => {})",
+    "test('x', (t) => { t.skip('later'); })",
+    "test('x', (t) => { t.todo(); })",
+    "test('x', async (t) => { await t.test('y', { skip: true }, () => {}); })",
+    "test('x', () => { t.skip(`${reason}`); })",
+  ];
+  for (const m of markers) assert.ok((jsCodeOnly(m).match(NODE_TEST_DISABLE_RE) ?? []).length >= 1, `not counted: ${m}`);
+  const plain = [
+    "test('x', { skip: false }, () => {})",
+    "const o = { only: 0, todo: null, skip: undefined };",
+    "assert.ok(line.includes('it.skip('), 'quoted marker');",
+    'const s = "test.only(\'x\')";',
+    "const t2 = `describe.skip('x') ${'it.todo'}`;",
+    "// test.skip('commented out')\n/* it.only( */",
+    'const re = /\\.skip\\(|{ skip: true }/g; const half = total / 2;',
+    "if (x) return /test\\.only\\(/.test(src);",
+    "const skipMarkers = { a: 1 }; const onlyChild = 2; skipMarkers.a++;",
+  ];
+  for (const p of plain) assert.equal((jsCodeOnly(p).match(NODE_TEST_DISABLE_RE) ?? []).length, 0, `counted: ${p} -> ${jsCodeOnly(p)}`);
+  // Quoted text is left out, code and template expressions are kept.
+  assert.equal(jsCodeOnly("a('it.skip(') + b"), "a('') + b");
+  assert.equal(jsCodeOnly('x = `a ${it.skip} b`'), 'x = `${it.skip}`');
+  assert.equal(jsCodeOnly('x = a / b; y = /c.skip/g.test(z) // it.only('), 'x = a / b; y = RE.test(z)  ');
+  // The real harness test files carry no markers, though agent.test.mjs quotes every form as test data.
+  const files = harnessTestFiles();
+  assert.ok(files.includes('scripts/agent/agent.test.mjs') && files.includes('scripts/agent/fixture.test.mjs'), files.join(', '));
+  assert.deepEqual(harnessSkipMarkers(files, (f) => readText(f)), {});
+  assert.ok((readText('scripts/agent/agent.test.mjs').match(DISABLE_RE) ?? []).length > 20, 'the raw text does quote the forms');
+  // A marker added to a harness test file is counted, so compareInventories fails the gate on it.
+  const tampered = harnessSkipMarkers(['scripts/agent/agent.test.mjs'], () => `${readText('scripts/agent/agent.test.mjs')}\ntest('later', { skip: true }, () => {});\n`);
+  assert.deepEqual(tampered, { 'scripts/agent/agent.test.mjs': 1 });
+  const base = { vitest: { count: 0, tests: [] }, playwright: { count: 0, tests: [] }, skipMarkers: {} };
+  assertHas(compareInventories(base, { ...base, skipMarkers: tampered }), 'scripts/agent/agent.test.mjs gained 1 skip/only/todo/fails marker(s)');
 });
 
 test('test inventory: a removal needs a known requirement and a committed ADR, and S0 compares with the baseline inventory', () => {
@@ -1061,6 +1578,51 @@ test('relaunch: alarms for pushes, remote writes, rewritten refs and guard or de
   // Origin unreadable before the session: nothing can rule out a push.
   assertHas(alarms(snap(), snap({ remote: null })), "could not read origin's refs (git ls-remote) before the session");
   for (const p of DEPLOY_CONFIG) assertHas(alarms(snap({ deployConfig: { ...snap().deployConfig, [p]: 'changed' } })), `deploy configuration changed (${p})`);
+});
+
+test('relaunch: an unattended session that records an owner decision or leaves a stop state raises an alarm (security-data-2 M2)', () => {
+  const before = lines(transition('BOOTSTRAP', 'BASELINE_VERIFY', { slice: 'S0' }));
+  const after = (...events) => `${before}${lines(...events)}`;
+  assert.deepEqual(ledgerAlarms(before, after(event({ kind: 'session-start', actor: 'relaunch' }), transition('BASELINE_VERIFY', 'SLICE_DISCOVERY', { slice: 'S0' }), repair('D-S0-1'))), []);
+  assertHas(ledgerAlarms(before, after(event({ kind: 'owner-decision', decisions: ['ADR-0013'] }))), 'an owner-decision event (ADR-0013) was recorded during an unattended session');
+  // Entering a stop state is the normal way to stop; leaving one inside the session is not.
+  assert.deepEqual(ledgerAlarms(before, after(transition('REPAIR', 'BLOCKED_MANUAL_REVIEW'))), []);
+  assertHas(ledgerAlarms(before, after(transition('REPAIR', 'BLOCKED_MANUAL_REVIEW'), transition('BLOCKED_MANUAL_REVIEW', 'REPAIR', { decisions: ['ADR-0013'] }))), 'the unattended session left BLOCKED_MANUAL_REVIEW itself (BLOCKED_MANUAL_REVIEW → REPAIR)');
+  assertHas(ledgerAlarms(before, after(transition('IMPLEMENT', 'OWNER_GATE'), transition('OWNER_GATE', 'IMPLEMENT'))), 'left OWNER_GATE itself');
+  assertHas(ledgerAlarms(`${before}${lines(event({}))}`, lines(event({ result: 'rewritten' }))), 'LEDGER.jsonl was rewritten during the session');
+  // alarmsBetween carries them, so the launcher stops with an alarm (exit 2).
+  const snap = (ledgerText) => ({ refs: {}, remote: 'r', gitConfig: 'c', hooks: 'h', claude: 'cl', mcp: 'm', userSettings: 'u', protectedErrors: 0, protectedFiles: 'p', protectedRecord: 'pr', deployConfig: {}, ledgerText });
+  const ctx = { integrationBranch: 'main', isAncestor: () => true, reflogSubjects: () => [] };
+  assertHas(alarmsBetween(snap(before), snap(after(event({ kind: 'owner-decision', decisions: ['ADR-0100'] }))), ctx), 'owner-decision event (ADR-0100)');
+  assert.equal(decide({ alarms: alarmsBetween(snap(before), snap(after(event({ kind: 'owner-decision', decisions: ['ADR-0100'] }))), ctx), exitCode: 0, after: baseState(), checkErrors: [], dirty: false, progressed: true, stopFile: false, sessionsRun: 1, maxSessions: 6 }).alarm, true);
+});
+
+test('relaunch: the lock is taken with an exclusive create, so two launchers can\'t both hold it (m8)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'aq-lock-'));
+  const lock = join(dir, '.agent-runs', 'relaunch.lock');
+  try {
+    const release = acquireLock(lock, { pid: 111, isAlive: () => true });
+    assert.equal(typeof release, 'function');
+    assert.equal(readFileSync(lock, 'utf8'), '111');
+    // A second launcher, started at the same time, is refused while the first one runs.
+    assert.equal(acquireLock(lock, { pid: 222, isAlive: () => true }), null);
+    assert.equal(readFileSync(lock, 'utf8'), '111');
+    // A lock left by a launcher that died is taken over; a lock whose pid isn't written yet counts as held.
+    assert.equal(typeof acquireLock(lock, { pid: 333, isAlive: (pid) => pid !== 111 }), 'function');
+    assert.equal(readFileSync(lock, 'utf8'), '333');
+    writeFileSync(lock, '');
+    assert.equal(acquireLock(lock, { pid: 444, isAlive: () => false }), null);
+    // Releasing removes only this process's own lock.
+    writeFileSync(lock, '555');
+    release();
+    assert.equal(readFileSync(lock, 'utf8'), '555');
+    rmSync(lock);
+    const own = acquireLock(lock, { pid: 666, isAlive: () => true });
+    own();
+    assert.ok(!existsSync(lock));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('relaunch: deploy configuration covers both channels\' build inputs (SD-12)', () => {
@@ -1206,6 +1768,12 @@ test('capture-evidence: a review is recorded only from the reviewer\'s own repor
   assertHas(problems({ report: 'docs/agent/evidence/S1/reviews/legend.md' }), 'ends with "Verdict: RED", not "Verdict: GREEN"');
 });
 
+test('capture-evidence: a review recorded with --candidate must judge the working tree\'s code (security-data-2 m1)', () => {
+  assert.deepEqual(candidateProblems('fd9ed14', 'T', 'T'), []);
+  assertHas(candidateProblems('fd9ed14', 'T-old', 'T-new'), '--candidate fd9ed14 has code tree T-old, but the working tree\'s code is T-new');
+  assertHas(candidateProblems('nope', null, 'T'), '--candidate nope is not a commit in this repository');
+});
+
 test('evidence: counts from Vitest, Playwright and tsc output', () => {
   const vitest = parseCounts(' Test Files  151 passed (151)\n      Tests  1753 passed (1753)\n');
   assert.equal(vitest.vitestFiles, '151 passed (151)');
@@ -1217,24 +1785,42 @@ test('evidence: counts from Vitest, Playwright and tsc output', () => {
   assert.equal(parseCounts('a.ts(1,1): error TS2322: x\nb.ts(2,2): error TS2345: y').tsErrors, 2);
 });
 
-test('evidence: oversized logs keep their tail in Git and the full copy outside it', () => {
-  const rel = '.agent-runs/test-tmp/big.log';
-  mkdirSync(join(ROOT, '.agent-runs/test-tmp'), { recursive: true });
+test('evidence: counts from node:test summaries and Vitest\'s "Errors" line (harness-2 m6, game-2 B1)', () => {
+  // The unit log of code tree 4d29120a: every test but one passed, plus an unhandled RPC timeout.
+  const vitest = parseCounts('\n Test Files  1 failed | 160 passed (161)\n      Tests  1 failed | 1791 passed (1792)\n     Errors  1 error\n   Start at  23:45:40\n');
+  assert.equal(vitest.vitestTests, '1 failed | 1791 passed (1792)');
+  assert.equal(vitest.vitestErrors, '1 error');
+  assert.equal(parseCounts('⎯⎯ Unhandled Errors ⎯⎯\n Test Files  1 passed (1)\n').vitestErrors, undefined);
+  // node:test, TAP reporter (a log file) and spec reporter (a terminal).
+  const tap = parseCounts('1..75\n# tests 75\n# suites 0\n# pass 74\n# fail 1\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1132.1\n');
+  assert.deepEqual([tap.node_tests, tap.node_pass, tap.node_fail, tap.node_cancelled, tap.node_skipped, tap.node_todo], [75, 74, 1, 0, 0, 0]);
+  const spec = parseCounts('ℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\n');
+  assert.deepEqual([spec.node_tests, spec.node_pass, spec.node_skipped], [3, 3, 1]);
+  // The recorded harnessTests log of code tree 4d29120a, which the old parser left empty.
+  assert.equal(parseCounts(readText(`${PATHS.evidence}/S0/logs/harnessTests-20261005T234959805Z.log`)).node_pass, 75);
+});
+
+test('evidence: oversized logs keep their tail in Git and the full copy outside it, written under the given root only (m6)', () => {
+  const root = mkdtempSync(join(tmpdir(), 'aq-trimlog-'));
+  const rel = 'docs/agent/evidence/TEST/logs/big.log';
+  mkdirSync(join(root, 'docs/agent/evidence/TEST/logs'), { recursive: true });
   const line = 'x'.repeat(600);
   const text = Array.from({ length: 2500 }, (_, i) => `${i} ${line}`).join('\n');
-  writeFileSync(join(ROOT, rel), text);
+  writeFileSync(join(root, rel), text);
+  const repoRuns = existsSync(join(ROOT, '.agent-runs/evidence/TEST'));
   try {
-    assert.equal(trimLog(rel, 'small', 'TEST'), null);
-    const full = trimLog(rel, text, 'TEST');
+    assert.equal(trimLog(rel, 'small', 'TEST', root), null);
+    const full = trimLog(rel, text, 'TEST', root);
     assert.ok(full && full.bytes > LOG_LIMIT_BYTES);
-    assert.ok(full.path.startsWith('.agent-runs/'), 'the full log stays outside Git');
-    const kept = readFileSync(join(ROOT, rel), 'utf8');
+    assert.equal(full.path, '.agent-runs/evidence/TEST/logs/big.full.log', 'the full log stays outside Git');
+    const kept = readFileSync(join(root, rel), 'utf8');
     assert.ok(kept.startsWith('[trimmed: last 2000 of 2500 lines'));
     assert.ok(kept.endsWith(`2499 ${line}`));
-    assert.equal(readFileSync(join(ROOT, full.path), 'utf8'), text);
+    assert.equal(readFileSync(join(root, full.path), 'utf8'), text);
+    assert.equal(full.sha256, sha256File(join(root, full.path)));
+    assert.equal(existsSync(join(ROOT, '.agent-runs/evidence/TEST')), repoRuns, 'nothing was written into the repository');
   } finally {
-    rmSync(join(ROOT, '.agent-runs/test-tmp'), { recursive: true, force: true });
-    rmSync(join(ROOT, '.agent-runs/evidence/TEST'), { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
@@ -1261,6 +1847,20 @@ test('next-slice: the next slice starts with fresh gates, the mandatory reviewer
   assert.deepEqual(validateState(s), { errors: [], warnings: [] });
 });
 
+test('next-slice: the new slice starts with no gate waivers; only the finished slice keeps its own (ADR-0011 open point 4)', () => {
+  const closing = { ...baseState(), currentSlice: 'S0', currentTask: 'S0-T12', machineState: 'NEXT_SLICE', gateWaivers: { S0: { e2e: 'ADR-0100' } }, gates: { ...gatesOf('GREEN'), e2e: 'NOT_APPLICABLE', browserQa: 'NOT_APPLICABLE' } };
+  const s = nextState(closing, { reviewers: ['code-architecture', 'adversarial'] });
+  assert.deepEqual(s.gateWaivers, { S0: { e2e: 'ADR-0100' } });
+  assert.deepEqual(gateWaiversOf(s, 'S1'), {});
+  assert.equal(s.gates.e2e, 'PENDING');
+  // Two slices on, the older slice's waivers are dropped.
+  const next = nextState({ ...s, gateWaivers: { S0: { e2e: 'ADR-0100' }, S1: { unit: 'ADR-0101' } }, machineState: 'NEXT_SLICE' }, { reviewers: ['code-architecture', 'adversarial'] });
+  assert.deepEqual(next.gateWaivers, { S1: { unit: 'ADR-0101' } });
+  assert.deepEqual(nextState({ ...closing, gateWaivers: undefined }, { reviewers: ['code-architecture', 'adversarial'] }).gateWaivers, {});
+  // S1 can't run with S0's waiver: its e2e must be GREEN or waived for S1.
+  assertHas(validateState({ ...s, machineState: 'IMPLEMENT', gates: { ...s.gates, e2e: 'NOT_APPLICABLE' } }).errors, 'STATE.gateWaivers.S1.e2e');
+});
+
 test('record-event: STATE follows a transition, and the owner-gate fields are set on entry and cleared on exit', () => {
   const e = buildEvent({ kind: 'transition', actor: 'o', slice: 'S1', task: 'S1-T1', from: 'IMPLEMENT', to: 'OWNER_GATE', result: 'r', reason: 'DESIGN_PENDING:DESIGN-S3D', resume: 'IMPLEMENT', decision: ['ADR-0005'], evidence: 'a.log', distinct: true });
   assert.deepEqual([e.fromState, e.toState, e.reason, e.resume, e.decisions, e.evidence, e.distinct], ['IMPLEMENT', 'OWNER_GATE', 'DESIGN_PENDING:DESIGN-S3D', 'IMPLEMENT', ['ADR-0005'], ['a.log'], true]);
@@ -1270,6 +1870,50 @@ test('record-event: STATE follows a transition, and the owner-gate fields are se
   const resumed = stateAfter(gated, { fromState: 'OWNER_GATE', toState: 'IMPLEMENT' });
   assert.deepEqual([resumed.machineState, resumed.ownerGateRequired, resumed.ownerGateReason, resumed.resumeState], ['IMPLEMENT', false, null, null]);
   assert.equal(buildEvent({ kind: 'note', actor: 'o', slice: 'S1', task: 'T', result: 'r' }).fromState, null);
+  // ACCEPT → CHECKPOINT records the checkpoint in STATE (m4); no other transition touches it.
+  const cp = buildEvent({ kind: 'transition', actor: 'o', slice: 'S1', task: 'T', from: 'ACCEPT', to: 'CHECKPOINT', result: 'r', checkpoint: 'c'.repeat(40) });
+  assert.equal(cp.checkpoint, 'c'.repeat(40));
+  assert.equal(stateAfter({ ...acceptedState(), lastAcceptedCheckpoint: null }, cp).lastAcceptedCheckpoint, 'c'.repeat(40));
+  assert.equal(stateAfter({ ...baseState(), lastAcceptedCheckpoint: SHA }, { fromState: 'IMPLEMENT', toState: 'TARGETED_VERIFY', checkpoint: 'c'.repeat(40) }).lastAcceptedCheckpoint, SHA);
+});
+
+test('record-event: repair events keep STATE\'s counters in step with the ledger for the target defect (m7)', () => {
+  const s = { ...baseState(), currentSlice: 'S1' };
+  const one = [repair('D-S1-1', { distinct: true })];
+  const first = stateAfterRepair(s, one, one[0]);
+  assert.deepEqual([first.repairTarget, first.repairAttempt, first.repairTotalAttempts], ['D-S1-1', 1, 1]);
+  assert.deepEqual(validateRepairs(first, one).errors, []);
+  const two = [...one, repair('D-S1-1')];
+  const second = stateAfterRepair(first, two, two[1]);
+  assert.deepEqual([second.repairAttempt, second.repairTotalAttempts], [1, 2]);
+  // Another defect's attempt leaves the target's counters alone.
+  const other = [...two, repair('D-S1-2', { distinct: true })];
+  assert.deepEqual(stateAfterRepair(second, other, other[2]), second);
+  // A counter set higher by hand is never lowered.
+  assert.equal(stateAfterRepair({ ...second, repairAttempt: 2 }, [...two, repair('D-S1-1')], repair('D-S1-1')).repairAttempt, 2);
+  // Resolving the target clears it; resolving another defect doesn't.
+  const fixed = event({ kind: 'repair', defect: 'D-S1-1', resolved: true });
+  assert.deepEqual((({ repairTarget, repairAttempt, repairTotalAttempts }) => [repairTarget, repairAttempt, repairTotalAttempts])(stateAfterRepair(second, [...two, fixed], fixed)), [null, 0, 0]);
+  assert.equal(stateAfterRepair(second, [...two, { ...fixed, defect: 'D-S1-2' }], { ...fixed, defect: 'D-S1-2' }).repairTarget, 'D-S1-1');
+  // The fifth attempt brings STATE to the limit, so check-state demands BLOCKED_MANUAL_REVIEW.
+  let st = s;
+  const five = [];
+  for (let i = 0; i < 5; i++) {
+    five.push(repair('D-S1-1'));
+    st = stateAfterRepair(st, five, five[i]);
+  }
+  assertHas(validateState(st).errors, 'at the repair limit');
+});
+
+test('record-event: --resolved needs an existing evidence file under docs/agent/evidence/ (ADR-0011 open point 5)', () => {
+  const resolved = (evidence) => ({ kind: 'repair', defect: 'D-S1-1', resolved: true, evidence });
+  const exists = (p) => p === 'docs/agent/evidence/S1/logs/unit.log';
+  assertHas(resolvedEvidenceProblems(resolved([]), exists), '--resolved needs --evidence naming the passing run that resolves D-S1-1');
+  for (const e of ['docs/agent/evidence/S1/logs/missing.log', '.agent-runs/unit.log', 'README.md', 'docs/agent/evidence/../../README.md', '/etc/passwd']) assertHas(resolvedEvidenceProblems(resolved([e]), () => !e.includes('missing')), '--resolved needs --evidence');
+  assert.deepEqual(resolvedEvidenceProblems(resolved(['docs/agent/evidence/S1/logs/unit.log sha256:abc']), exists), []);
+  assert.deepEqual(resolvedEvidenceProblems(resolved(['nope', 'docs/agent/evidence/S1/logs/unit.log']), exists), []);
+  // An attempt (not resolved) needs no evidence file.
+  assert.deepEqual(resolvedEvidenceProblems({ kind: 'repair', defect: 'D-S1-1', evidence: [] }, exists), []);
 });
 
 test('verify-slice: gate selection skips not-applicable gates and rejects unknown ones', () => {

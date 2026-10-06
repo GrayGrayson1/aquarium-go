@@ -14,11 +14,14 @@
  * - a DEFERRED or SUPERSEDED decision cites an ADR that isn't committed and listed in decisions/INDEX.md;
  * - a requirement that existed in any version committed since the last accepted checkpoint (or the baseline) was
  *   deleted (ids are append-only);
- * - CURRENT_SLICE.md names an unknown requirement.
+ * - CURRENT_SLICE.md doesn't name the current slice in its header, or names an unknown requirement.
+ *
+ * In the prepared NEXT_SLICE state that next-slice.mjs leaves (lib.mjs evidenceScope, as check-state.mjs judges it),
+ * the audit judges the accepted predecessor: its requirements must be closed, and the new slice's claim nothing yet.
  */
 import { pathToFileURL } from 'node:url';
-import { PATHS, committedVersions, exists, findAdr, parseArgs, readJson, readText } from './lib.mjs';
-import { auditRequirements } from './requirements.mjs';
+import { PATHS, committedVersions, evidenceScope, exists, findAdr, parseArgs, parseLedger, readJson, readText } from './lib.mjs';
+import { auditRequirements, sliceHeaderProblems } from './requirements.mjs';
 
 export { auditRequirements };
 
@@ -35,19 +38,26 @@ export function committedRegistries(state) {
   return out;
 }
 
+/** The STATE view the audit judges (pure): the accepted predecessor in the prepared NEXT_SLICE state, else STATE. */
+export function auditView(state, lastTransition) {
+  const scope = evidenceScope(state, lastTransition);
+  return scope.prepared ? { ...state, currentSlice: scope.acceptedSlice } : state;
+}
+
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
   let args;
   try {
-    args = parseArgs(process.argv.slice(2), ['json']);
-    if (Object.keys(args).some((k) => !['_', 'json'].includes(k))) throw new Error('usage: requirements-audit.mjs [--json]');
+    args = parseArgs(process.argv.slice(2), ['json'], []);
   } catch (e) {
-    console.error(e.message);
+    console.error(`${e.message}\nusage: requirements-audit.mjs [--json]`);
     process.exit(1);
   }
   const state = readJson(PATHS.state);
   const reqs = readJson(PATHS.requirements);
   const sliceText = exists(PATHS.currentSlice) ? readText(PATHS.currentSlice) : '';
-  const r = auditRequirements(reqs, state, { committed: committedRegistries(state), sliceText, fileExists: exists, adrOk: (id) => !!findAdr(id) });
+  const lastTransition = parseLedger(exists(PATHS.ledger) ? readText(PATHS.ledger) : '').events.filter((e) => e?.kind === 'transition').pop();
+  const r = auditRequirements(reqs, auditView(state, lastTransition), { committed: committedRegistries(state), sliceText, fileExists: exists, adrOk: (id) => !!findAdr(id) });
+  r.errors.push(...sliceHeaderProblems(sliceText, state.currentSlice));
   if (args.json) console.log(JSON.stringify(r, null, 2));
   else {
     for (const e of r.errors) console.log(`ERROR   ${e}`);

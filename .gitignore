@@ -16,3 +16,5 @@ tsconfig.tsbuildinfo
 shot.png
 # ...but evidence logs are committed (check-state.mjs fails on ignored evidence)
 !docs/agent/evidence/**/*.log
+# The relaunch stop signal is local and never committed (docs/agent/OPERATIONS.md §1)
+docs/agent/STOP

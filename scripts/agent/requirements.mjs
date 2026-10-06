@@ -50,6 +50,13 @@ export function validateRequirements(reqs, committed = [], fileExists = () => tr
   return { errors, warnings };
 }
 
+/** CURRENT_SLICE.md must name the current slice in its header (its first six lines). Empty when it does, or is empty. */
+export function sliceHeaderProblems(sliceText, slice) {
+  if (!sliceText) return [];
+  const escaped = String(slice).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b${escaped}\\b`).test(String(sliceText).split('\n').slice(0, 6).join('\n')) ? [] : [`CURRENT_SLICE.md does not name the current slice ${slice} in its header`];
+}
+
 /** Umbrella ids a requirement names in its source ("umbrella NAV-001"). */
 export const umbrellaOf = (r) => [...String(r.source ?? '').matchAll(/umbrella ((?:[A-Z]+)-\d{3})/g)].map((m) => m[1]);
 

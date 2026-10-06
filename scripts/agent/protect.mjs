@@ -8,19 +8,30 @@
  *   node scripts/agent/protect.mjs --update --adr ADR-0006      # record the current hashes under that ADR
  *
  * --update needs an Accepted ADR, committed, listed in decisions/INDEX.md and written since the last accepted
- * checkpoint (or the baseline before the first one), so an old, unrelated ADR can't bless a new change. When an
- * owner-only file changed (OWNER_ONLY), that ADR must contain an "## Owner approval" section quoting the owner; the
- * ADR template's placeholder text and a "Pending" note don't count. Accepted ADRs are never edited: a changed ADR file
- * fails verification and --update refuses it. Every update appends a ledger event carrying the new PROTECTED.json
- * hash, and verification checks PROTECTED.json against the latest such event, so editing it by hand is caught;
- * --update refuses to start from such a hand-edited or deleted record (updateProblems).
+ * checkpoint (or the baseline before the first one), so an old, unrelated ADR can't bless a new change. Every update
+ * takes that ADR as the owner's approval (ADR-0013 decision 3: "protected-file updates all need an ADR with a real
+ * 'Owner approval' section"), judged as committed by the same check as every other owner approval (lib.mjs
+ * approvalTextProblems): it must contain an "## Owner approval" section quoting the owner (the ADR template's
+ * placeholder text and a "Pending" note don't count), and it must name each changed owner-only file (OWNER_ONLY) by its
+ * path. Verification holds PROTECTED.json's approvedBy to the same standard. Accepted ADRs are never edited: a changed
+ * ADR file fails verification and --update refuses it. Every update appends a ledger event carrying the new
+ * PROTECTED.json hash and the changed files, and verification checks PROTECTED.json against the latest such event, so
+ * editing it by hand is caught; --update refuses to start from such a hand-edited or deleted record (updateProblems).
  */
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { PATHS, abs, appendEvent, exists, findAdr, git, nowIso, parseArgs, parseLedger, readJson, readText, sha256File, sha256Text, showAt } from './lib.mjs';
+import { PATHS, abs, adrStatus, appendEvent, approvalTextProblems, exists, findAdr, git, hasOwnerApproval, nowIso, ownerApprovalProblems, parseArgs, parseLedger, readJson, readText, sha256File, sha256Text, showAt } from './lib.mjs';
+
+export { adrStatus, hasOwnerApproval };
 
 export const PROTECTED_PATH = PATHS.protected;
 
+/**
+ * Exact paths, directory prefixes (ending in a slash) and globs: "*" matches within one path segment, and a leading
+ * double star plus slash matches any directories. The gate-defining files of master §3.8 include every tsconfig*.json
+ * and the Vitest setup files vitest.config.ts loads; .gitignore decides which files Git (and so the code tree, the
+ * protected-file list and the evidence checks) can see.
+ */
 export const PROTECTED_PATTERNS = [
   'AGENTS.md',
   'CLAUDE.md',
@@ -34,10 +45,13 @@ export const PROTECTED_PATTERNS = [
   'scripts/agent/',
   'package.json',
   'tsconfig.json',
+  '**/tsconfig*.json',
   'vitest.config.ts',
+  'tests/sim/setup/',
   'playwright.config.ts',
   '.github/',
   'render.yaml',
+  '.gitignore',
 ];
 
 /** Changing these needs the owner's approval recorded in the approving ADR. */
@@ -53,12 +67,23 @@ export const OWNER_ONLY = [
   'render.yaml',
 ];
 
-const matches = (file, patterns) => patterns.some((p) => (p.endsWith('/') ? file.startsWith(p) : file === p));
+export const ADR_TEMPLATE = PATHS.adrTemplate;
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const globRe = (pattern) => new RegExp(`^${pattern.split('**/').map((part) => part.split('*').map(escapeRe).join('[^/]*')).join('(?:.*/)?')}$`);
+
+/** True when repository path `file` matches the pattern: an exact path, a directory prefix ("dir/") or a glob. */
+export const matchesPattern = (file, pattern) => (pattern.includes('*') ? globRe(pattern).test(file) : pattern.endsWith('/') ? file.startsWith(pattern) : file === pattern);
+
+const matches = (file, patterns) => patterns.some((p) => matchesPattern(file, p));
+
+export const isProtectedPath = (file) => matches(file, PROTECTED_PATTERNS);
+export const isOwnerOnlyPath = (file) => matches(file, OWNER_ONLY);
 
 /** Files Git can see (tracked, or untracked and not ignored) that match the protected patterns. */
 export function protectedFiles() {
   const out = git('ls-files', '-co', '--exclude-standard').split('\n').filter(Boolean);
-  return [...new Set(out.filter((f) => matches(f, PROTECTED_PATTERNS) && exists(f)))].sort();
+  return [...new Set(out.filter((f) => isProtectedPath(f) && exists(f)))].sort();
 }
 
 export function currentHashes() {
@@ -82,37 +107,6 @@ export function compareProtected(recorded, current) {
   return { errors, warnings: [] };
 }
 
-export const ADR_TEMPLATE = 'docs/agent/templates/ADR_TEMPLATE.md';
-
-/** The non-empty, trimmed lines of a text's "## Owner approval" section, or null when it has none. */
-function ownerApprovalLines(text) {
-  const lines = String(text).split('\n');
-  const start = lines.findIndex((l) => /^## Owner approval\s*$/.test(l));
-  if (start < 0) return null;
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((l) => /^## /.test(l));
-  return (end < 0 ? rest : rest.slice(0, end)).map((l) => l.trim()).filter(Boolean);
-}
-
-/**
- * True when the ADR text has an "## Owner approval" section with real content. Lines copied unchanged from the ADR
- * template's own section (its instructions) don't count, and a section that starts "Pending", "TBD" or "To be
- * recorded" is no approval.
- */
-export function hasOwnerApproval(adrText, templateText = exists(ADR_TEMPLATE) ? readText(ADR_TEMPLATE) : '') {
-  const lines = ownerApprovalLines(adrText);
-  if (!lines) return false;
-  const placeholder = new Set(ownerApprovalLines(templateText) ?? []);
-  const own = lines.filter((l) => !placeholder.has(l));
-  if (/^(pending|tbd|todo|to be (recorded|added|confirmed))\b/i.test((own[0] ?? '').replace(/[*_>`]/g, '').trim())) return false;
-  return own.join('').replace(/\s+/g, '').length >= 40;
-}
-
-/** The ADR's status word from its "**Status:**" line (Accepted, Proposed, …), or null. */
-export function adrStatus(adrText) {
-  return String(adrText).match(/^\*\*Status:\*\*\s*([A-Za-z]+)/m)?.[1] ?? null;
-}
-
 /** The PROTECTED.json hash recorded by the latest protect.mjs ledger event, or null. */
 export function lastRecordedHash(events) {
   const e = [...events].reverse().find((x) => x?.actor === 'protect.mjs' && typeof x.protectedSha256 === 'string');
@@ -126,7 +120,8 @@ export function lastRecordedHash(events) {
  * there is none; `recordHash`: that file's SHA-256; `ledgerHash`: the hash the last protect.mjs ledger event recorded
  * (null when none did); `files`: the current hashes. The changes are judged against the record only when it is the one
  * the ledger vouches for: otherwise hand-editing (or deleting) PROTECTED.json first would let an edited accepted ADR or
- * an owner-only change through.
+ * an owner-only change through. Every update needs the owner's approval in the ADR, which must also name each changed
+ * owner-only file.
  */
 export function updateProblems({ adrPath, adrText = '', adrAtAnchor = false, recorded, recordHash = null, ledgerHash = null, files, templateText }) {
   if (!adrPath) return { problems: ['--update needs --adr ADR-NNNN: a committed ADR listed in docs/agent/decisions/INDEX.md that approves the change'], changed: [] };
@@ -140,8 +135,9 @@ export function updateProblems({ adrPath, adrText = '', adrAtAnchor = false, rec
   const changed = Object.keys({ ...before, ...files }).filter((f) => before[f] !== files[f]);
   const editedAdrs = changed.filter((f) => f.startsWith('docs/agent/decisions/ADR-') && f in before);
   if (editedAdrs.length) problems.push(`accepted ADRs are never edited: ${editedAdrs.join(', ')} (restore them and write a superseding ADR)`);
-  const ownerOnly = changed.filter((f) => matches(f, OWNER_ONLY));
-  if (ownerOnly.length && !hasOwnerApproval(adrText, templateText)) problems.push(`${adrPath} needs an "## Owner approval" section quoting the owner, because owner-only files changed: ${ownerOnly.join(', ')}`);
+  const ownerOnly = changed.filter((f) => isOwnerOnlyPath(f));
+  const why = `every protected-file update needs the owner's approval${ownerOnly.length ? `, naming each owner-only file it lets change (changed: ${ownerOnly.join(', ')})` : ''}`;
+  for (const p of approvalTextProblems(adrText, { templateText, names: ownerOnly, checkStatus: false })) problems.push(`${adrPath} ${p}: ${why}`);
   return { problems, changed };
 }
 
@@ -149,8 +145,8 @@ export function verifyProtected() {
   if (!exists(PROTECTED_PATH)) return { errors: [`${PROTECTED_PATH} is missing`], warnings: [] };
   const rec = readJson(PROTECTED_PATH);
   const r = compareProtected(rec.files ?? {}, currentHashes());
-  const id = String(rec.approvedBy ?? '').match(/ADR-\d{4}/)?.[0] ?? '';
-  if (!findAdr(id)) r.errors.push(`${PROTECTED_PATH} approvedBy (${rec.approvedBy}) is not a committed ADR listed in decisions/INDEX.md`);
+  // The record in force was approved by the owner, judged like every other owner approval (ADR-0013 decision 3).
+  for (const p of ownerApprovalProblems(String(rec.approvedBy ?? ''))) r.errors.push(`${PROTECTED_PATH} approvedBy (${rec.approvedBy}) is not the owner's approval: ${p}`);
   const { events } = parseLedger(exists(PATHS.ledger) ? readText(PATHS.ledger) : '');
   if (lastRecordedHash(events) !== sha256File(abs(PROTECTED_PATH))) r.errors.push(`${PROTECTED_PATH} doesn't match the hash its last protect.mjs ledger event recorded (edited by hand?)`);
   return r;
@@ -172,7 +168,8 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     const files = currentHashes();
     const { problems, changed } = updateProblems({
       adrPath,
-      adrText: adrPath ? readText(adrPath) : '',
+      // The ADR as committed: an uncommitted edit of it approves nothing.
+      adrText: adrPath ? showAt('HEAD', adrPath) ?? '' : '',
       adrAtAnchor: !!(adrPath && anchor && showAt(anchor, adrPath) !== null),
       recorded: exists(PROTECTED_PATH) ? readJson(PROTECTED_PATH).files ?? {} : null,
       recordHash: exists(PROTECTED_PATH) ? sha256File(abs(PROTECTED_PATH)) : null,
@@ -185,7 +182,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     }
     const doc = {
       schemaVersion: 2,
-      rule: 'Change these files only through an ADR (owner-approved for ownerOnly files; independently reviewed for the rest), then run protect.mjs --update --adr <ADR>. Accepted ADRs are never edited.',
+      rule: 'Change these files only through an ADR with the owner\'s approval (an "## Owner approval" section quoting the owner, naming each changed ownerOnly file), then run protect.mjs --update --adr <ADR>. Accepted ADRs are never edited.',
       approvedBy: adrPath,
       updatedAt: nowIso(),
       patterns: PROTECTED_PATTERNS,
@@ -194,7 +191,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     };
     const text = `${JSON.stringify(doc, null, 2)}\n`;
     writeFileSync(abs(PROTECTED_PATH), text);
-    appendEvent({ kind: 'decision', actor: 'protect.mjs', slice: state.currentSlice, task: state.currentTask, result: `protected hashes recorded for ${Object.keys(files).length} file(s), ${changed.length} changed`, decisions: [id], evidence: [PROTECTED_PATH], protectedSha256: sha256Text(text) });
+    appendEvent({ kind: 'decision', actor: 'protect.mjs', slice: state.currentSlice, task: state.currentTask, result: `protected hashes recorded for ${Object.keys(files).length} file(s), ${changed.length} changed`, decisions: [id], evidence: [PROTECTED_PATH], protectedSha256: sha256Text(text), changedFiles: changed });
     console.log(`recorded ${Object.keys(files).length} protected files (${changed.length} changed) under ${adrPath}`);
     process.exit(0);
   }

@@ -15,12 +15,14 @@
  *     "forbidden": ["git push", "deploy", ...], "firstFiles": ["src/..."], "risks": ["...", "...", "..."]
  *   }
  *
- * Fails when a field disagrees with reality, a mandated file wasn't read, the session id isn't the running Claude Code
- * session (or no session id is known), or the session is the same one that closed the previous slice, or that closing
- * transition recorded no session (the rollover didn't happen, or can't be shown).
+ * Fails when a field disagrees with reality, a mandated file wasn't read, a file in readFiles or firstFiles doesn't
+ * exist, startedAt isn't an ISO time, the session id isn't the running Claude Code session (or no session id is known),
+ * or the session is the same one that closed the previous slice, or that closing transition recorded no session (the
+ * rollover didn't happen, or can't be shown).
  * expectedSha may trail HEAD when the only commits since touch harness bookkeeping (NON_CODE_PATHS): the handoff is
  * written before the commit that contains it.
  */
+import { isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { PATHS, currentSession, exists, git, gitOk, parseLedger, readJson, readText } from './lib.mjs';
 import { NON_CODE_PATHS } from './evidence.mjs';
@@ -42,7 +44,10 @@ export function bookkeepingOnlySince(expected, head, changedFiles) {
   return changedFiles.every((f) => NON_CODE_PATHS.some((p) => f === p || f.startsWith(`${p}/`)));
 }
 
-export function checkAssertion(a, { state, head, branch, events, session = null, changedSinceExpected = null }) {
+/** An ISO 8601 date-time with a time zone ("2026-10-06T01:29:44Z", "2026-10-06T01:29:44.5+02:00"). */
+export const ISO_TIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+export function checkAssertion(a, { state, head, branch, events, session = null, changedSinceExpected = null, fileExists = exists }) {
   const errors = [];
   const req = (k, type) => {
     const ok = type === 'array' ? Array.isArray(a?.[k]) : typeof a?.[k] === type && a[k] !== '';
@@ -53,6 +58,10 @@ export function checkAssertion(a, { state, head, branch, events, session = null,
   for (const k of ['readFiles', 'requiredGates', 'requiredReviewers', 'forbidden', 'firstFiles', 'risks']) req(k, 'array');
   if (errors.length) return errors;
 
+  if (!ISO_TIME_RE.test(a.startedAt) || Number.isNaN(Date.parse(a.startedAt))) errors.push(`startedAt ${a.startedAt} is not an ISO time (for example 2026-10-06T01:29:44Z)`);
+  for (const k of ['readFiles', 'firstFiles']) {
+    for (const f of a[k]) if (typeof f !== 'string' || !f || isAbsolute(f) || f.split(/[\\/]/).includes('..') || !fileExists(f)) errors.push(`${k} names ${JSON.stringify(f)}, which is not a file in this repository`);
+  }
   if (a.actualSha !== head) errors.push(`actualSha ${a.actualSha} is not HEAD ${head}`);
   if (!bookkeepingOnlySince(a.expectedSha, head, changedSinceExpected)) errors.push(`expectedSha ${a.expectedSha} differs from HEAD ${head} by more than harness bookkeeping: reconcile HANDOFF/STATE with Git before editing (master §16)`);
   if (!session) errors.push('CLAUDE_CODE_SESSION_ID is not set: run the check inside the Claude Code session it describes, so the session id can be compared');

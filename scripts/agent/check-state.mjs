@@ -9,16 +9,19 @@
  *
  * It refuses the "accepted without evidence" combinations (lib.mjs explains what such checks can and can't catch):
  * a GREEN gate without a passing run of its real command on the accepted code tree; reviews or browser runs from
- * another tree; a review whose report doesn't end with the recorded verdict; an accepted state with open gates;
- * evidence edited after it was recorded; remote, multiplayer, waiver or design approvals that aren't committed ADRs;
- * rewritten ledger lines, broken transition chains, deleted requirements or manifests, or rewritten manifest records
- * (against every version committed since the last accepted checkpoint, or the baseline before the first one);
- * owner-gate exits without a committed ADR; repair limits passed without stopping; and changed protected files.
+ * another tree; a review whose report doesn't end with the recorded verdict; a report series whose latest review isn't
+ * GREEN at acceptance; an accepted state with open gates; evidence edited after it was recorded; remote, multiplayer,
+ * waiver, repair-override or design approvals that aren't the owner's approval (lib.mjs ownerApprovalProblems);
+ * rewritten ledger lines, broken transition chains, slice changes outside NEXT_SLICE → BOOTSTRAP, deleted requirements
+ * or manifests, or rewritten manifest records (against every version committed since the last accepted checkpoint, or
+ * the baseline before the first one); a baseline that changed after it was recorded, or a checkpoint the ledger and the
+ * evidence at that commit don't back; owner-gate exits without the owner's approval; repair limits passed without
+ * stopping; and changed protected files. STATE may not differ from the ledger in machine state, slice or resume state
+ * (no silent state edits).
  */
 import { isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
-  ACCEPTED_STATES,
   ADR_ID_RE,
   DECISION_EXITS,
   DESIGN_STATUSES,
@@ -26,43 +29,53 @@ import {
   GATE_VALUES,
   LEGAL_STATES,
   PATHS,
-  POST_CHECKPOINT_STATES,
   REPAIR_LIMITS,
   SLICES,
   STOP_STATES,
   WAIVABLE_GATES,
   abs,
-  approvalIsAdr,
   committedVersions,
+  evidenceScope,
   exists,
   findAdr,
   git,
   gitOk,
+  isLegacyDesignApproval,
+  legacyEventCount,
+  nextSlice,
+  ownerApprovalProblems,
   parseArgs,
   parseLedger,
   readJson,
   readText,
   sha256File,
+  showAt,
   validateEvent,
 } from './lib.mjs';
 import { codeTreeOf } from './evidence.mjs';
 import { MANDATORY_REVIEWERS } from './next-slice.mjs';
 import { verifyProtected } from './protect.mjs';
 import { reportVerdict } from './capture-evidence.mjs';
-import { REQ_TOKEN_RE, auditRequirements, validateRequirements } from './requirements.mjs';
+import { REQ_TOKEN_RE, auditRequirements, sliceHeaderProblems, validateRequirements } from './requirements.mjs';
 
-export { validateRequirements };
+export { evidenceScope, validateRequirements };
 
 const SHA_RE = /^[0-9a-f]{40}$/;
+/** Every key STATE.json must have, with its type ("string|null": present, and a string or null). */
 const REQUIRED_STATE_KEYS = {
   schemaVersion: 'number',
   project: 'string',
   planningBaselineSha: 'string',
+  actualBaselineSha: 'string',
+  integrationBranch: 'string',
   remoteMutationAllowed: 'boolean',
   currentSlice: 'string',
   currentTask: 'string',
   machineState: 'string',
   repairAttempt: 'number',
+  repairTotalAttempts: 'number',
+  repairTarget: 'string|null',
+  lastAcceptedCheckpoint: 'string|null',
   contextRolloverRequired: 'boolean',
   ownerGateRequired: 'boolean',
   multiplayerApproved: 'boolean',
@@ -70,6 +83,17 @@ const REQUIRED_STATE_KEYS = {
   gates: 'object',
 };
 const ALL_GATES = [...Object.keys(GATE_COMMANDS), 'browserQa', 'independentReview'];
+const isMap = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+const short = (sha) => String(sha).slice(0, 10);
+
+/**
+ * The gate waivers STATE.gateWaivers holds for `slice` ({ gate: owner ADR }). Waivers are keyed by slice, so a waiver
+ * covers only the slice it was granted for (ADR-0011 open point 4), and next-slice.mjs starts each slice with none.
+ */
+export function gateWaiversOf(s, slice) {
+  const w = s?.gateWaivers?.[slice];
+  return isMap(w) ? w : {};
+}
 
 /** Pure checks on STATE.json alone. */
 export function validateState(s) {
@@ -77,7 +101,9 @@ export function validateState(s) {
   const warnings = [];
   if (!s || typeof s !== 'object') return { errors: ['STATE.json is not an object'], warnings };
   for (const [k, t] of Object.entries(REQUIRED_STATE_KEYS)) {
-    if (typeof s[k] !== t || s[k] === null) errors.push(`STATE.${k} must be a ${t}`);
+    if (t === 'string|null') {
+      if (!(k in s) || (s[k] !== null && typeof s[k] !== 'string')) errors.push(`STATE.${k} must be a string or null`);
+    } else if (typeof s[k] !== t || s[k] === null) errors.push(`STATE.${k} must be a ${t}`);
   }
   if (s.schemaVersion !== 2) errors.push(`STATE.schemaVersion must be 2 (found ${s.schemaVersion})`);
   if (!LEGAL_STATES.includes(s.machineState)) errors.push(`STATE.machineState ${s.machineState} is not a legal state (master §11)`);
@@ -96,30 +122,53 @@ export function validateState(s) {
   for (const k of ['planningBaselineSha', 'actualBaselineSha', 'lastAcceptedCheckpoint']) {
     if (s[k] != null && !SHA_RE.test(s[k])) errors.push(`STATE.${k} must be a full 40-character SHA or null`);
   }
+  if (typeof s.actualBaselineSha === 'string' && typeof s.planningBaselineSha === 'string' && s.actualBaselineSha !== s.planningBaselineSha) {
+    errors.push(`STATE.actualBaselineSha (${short(s.actualBaselineSha)}) must equal planningBaselineSha (${short(s.planningBaselineSha)}): the baseline is recorded once (HARNESS-019)`);
+  }
   if (s.remoteMutationAllowed && !s.remoteApproval) errors.push('remoteMutationAllowed is true without STATE.remoteApproval (an ADR that records the owner\'s verbatim yes)');
   if (s.multiplayerApproved && !s.multiplayerApproval) errors.push('multiplayerApproved is true without STATE.multiplayerApproval (an ADR that records the owner\'s verbatim yes)');
+  if (s.gateWaivers != null) {
+    if (!isMap(s.gateWaivers)) errors.push('STATE.gateWaivers must map a slice to its waived gates, for example { "S0": { "e2e": "ADR-NNNN" } }');
+    else {
+      for (const [slice, waivers] of Object.entries(s.gateWaivers)) {
+        if (!SLICES.includes(slice)) errors.push(`STATE.gateWaivers.${slice}: waivers are keyed by slice (${SLICES.join(', ')}), then by gate`);
+        else if (!isMap(waivers)) errors.push(`STATE.gateWaivers.${slice} must map gates to the owner's ADRs`);
+        else {
+          for (const [g, ref] of Object.entries(waivers)) {
+            if (!ALL_GATES.includes(g)) errors.push(`STATE.gateWaivers.${slice}.${g} is not a known gate`);
+            if (typeof ref !== 'string' || !ref) errors.push(`STATE.gateWaivers.${slice}.${g} must cite an ADR`);
+          }
+        }
+      }
+    }
+  }
   if (s.gates && typeof s.gates === 'object') {
+    const waivers = gateWaiversOf(s, s.currentSlice);
     for (const g of ALL_GATES) if (!(g in s.gates)) errors.push(`STATE.gates.${g} is missing (every gate is required)`);
     for (const [g, v] of Object.entries(s.gates)) {
       if (!ALL_GATES.includes(g)) errors.push(`STATE.gates.${g} is not a known gate`);
       if (!GATE_VALUES.includes(v)) errors.push(`STATE.gates.${g} has unknown value ${v}`);
-      if ((v === 'NOT_APPLICABLE' || v === 'NOT_YET_REQUIRED') && !WAIVABLE_GATES.includes(g) && !s.gateWaivers?.[g]) {
-        errors.push(`gate ${g} can't be ${v} without an owner-approved waiver in STATE.gateWaivers.${g}`);
+      if ((v === 'NOT_APPLICABLE' || v === 'NOT_YET_REQUIRED') && !WAIVABLE_GATES.includes(g) && !waivers[g]) {
+        errors.push(`gate ${g} can't be ${v} without an owner-approved waiver in STATE.gateWaivers.${s.currentSlice}.${g}`);
       }
     }
   }
-  if (!Array.isArray(s.requiredReviewers) || !s.requiredReviewers.includes('code-architecture')) {
-    errors.push('STATE.requiredReviewers must include code-architecture (master §26)');
-  }
+  const missingReviewers = MANDATORY_REVIEWERS.filter((r) => !Array.isArray(s.requiredReviewers) || !s.requiredReviewers.includes(r));
+  if (missingReviewers.length) errors.push(`STATE.requiredReviewers must include ${missingReviewers.join(' and ')} (every slice needs them: master §26, OPERATIONS.md §7)`);
   return { errors, warnings };
 }
 
 /** Gate records count as evidence only when they ran the gate's real command and aren't baseline records. */
 const gateRecords = (manifest, gate) => (manifest?.commands ?? []).filter((c) => c.gate === gate && !c.phase);
 
+/** A review's report series: its report path without the "-<n>.md" suffix (code-architecture-harness-2.md → …-harness). */
+export const reviewSeries = (report) => String(report ?? '').replace(/-\d+\.md$/, '');
+
 /**
  * STATE vs the current slice's manifest. `targetTree` is the code tree the evidence must belong to (null when it
- * couldn't be computed); in accepted states every check is an error, before acceptance tree mismatches only warn.
+ * couldn't be computed); in accepted states every check is an error, before acceptance tree mismatches only warn. At
+ * acceptance, the latest review of each required role and of each report series must be GREEN on the accepted tree,
+ * so the order in which two reviews of one role were recorded can't decide acceptance (code-architecture-harness-2 F4).
  */
 export function validateGateEvidence(s, manifest, { targetTree = null, accepted = false } = {}) {
   const errors = [];
@@ -140,7 +189,7 @@ export function validateGateEvidence(s, manifest, { targetTree = null, accepted 
       if (rec.exitCode !== 0) errors.push(`gate ${gate} is GREEN but its latest recorded run exited ${rec.exitCode}`);
       if (!rec.log || !rec.logSha256 || !rec.codeTree) errors.push(`gate ${gate}'s latest record has no log, log hash or code tree`);
       if (rec.treeChanged) errors.push(`gate ${gate}'s latest run saw the code change while it ran; run it again`);
-      if (targetTree && rec.codeTree && rec.codeTree !== targetTree) strict(`gate ${gate} passed on code tree ${rec.codeTree.slice(0, 10)}, not ${targetTree.slice(0, 10)}; run it again`);
+      if (targetTree && rec.codeTree && rec.codeTree !== targetTree) strict(`gate ${gate} passed on code tree ${short(rec.codeTree)}, not ${short(targetTree)}; run it again`);
     } else if (gate === 'independentReview') {
       const greens = (manifest?.reviews ?? []).filter((r) => r.verdict === 'GREEN' && r.role === 'code-architecture');
       if (!greens.length) errors.push('independentReview is GREEN but the manifest has no GREEN code-architecture review');
@@ -157,10 +206,17 @@ export function validateGateEvidence(s, manifest, { targetTree = null, accepted 
       const reviews = (manifest?.reviews ?? []).filter((r) => r.role === role);
       const last = reviews[reviews.length - 1];
       if (!last || last.verdict !== 'GREEN') errors.push(`${s.machineState} needs a GREEN ${role} review in the ${s.currentSlice} manifest`);
-      else if (targetTree && last.codeTree !== targetTree) errors.push(`the latest ${role} review covered code tree ${String(last.codeTree).slice(0, 10)}, not the accepted ${targetTree.slice(0, 10)}`);
+      else if (targetTree && last.codeTree !== targetTree) errors.push(`the latest ${role} review covered code tree ${short(last.codeTree)}, not the accepted ${short(targetTree)}`);
     }
+    const latestBySeries = new Map();
+    for (const r of manifest?.reviews ?? []) latestBySeries.set(reviewSeries(r.report), r);
+    for (const [series, last] of latestBySeries) {
+      if (last.verdict !== 'GREEN') errors.push(`the latest review in the series ${series} is ${last.verdict} (${last.report}): every report series must end GREEN at acceptance`);
+      else if (targetTree && last.codeTree !== targetTree) errors.push(`the latest review in the series ${series} (${last.report}) covered code tree ${short(last.codeTree)}, not the accepted ${short(targetTree)}`);
+    }
+    const waivers = gateWaiversOf(s, s.currentSlice);
     for (const [gate, value] of Object.entries(gates)) {
-      const waived = (value === 'NOT_APPLICABLE' && (WAIVABLE_GATES.includes(gate) || s.gateWaivers?.[gate]));
+      const waived = value === 'NOT_APPLICABLE' && (WAIVABLE_GATES.includes(gate) || waivers[gate]);
       if (value !== 'GREEN' && !waived) errors.push(`${s.machineState} claims acceptance but gate ${gate} is ${value}`);
     }
     if (!manifest) errors.push(`${s.machineState} claims acceptance but docs/agent/evidence/${s.currentSlice}/manifest.json is missing`);
@@ -265,12 +321,16 @@ export function validateManifestHistory(rel, current, committedTexts, label) {
 }
 
 /**
- * The committed ledger versions must be prefixes of the working ledger, and transitions must form one chain. With
- * `adrOk(id)`, an owner-decision event and every exit from OWNER_GATE or BLOCKED_MANUAL_REVIEW must cite committed ADRs,
- * and OWNER_GATE may only resume at the state recorded when it was entered, or close at COMPLETE_LOCAL. That catches
- * lines written by hand, past record-event.mjs.
+ * The committed ledger versions must be prefixes of the working ledger, and transitions must form one chain from S0's
+ * BOOTSTRAP in which the slice changes only at NEXT_SLICE → BOOTSTRAP, to the next slice. `ownerApproval(id, { legacy,
+ * notAt })` → problems judges the ADRs an owner-decision event, a protect.mjs update (the events lastRecordedHash
+ * trusts) or an exit from OWNER_GATE or BLOCKED_MANUAL_REVIEW cites (check-state passes lib.mjs ownerApprovalProblems):
+ * an event among the first `legacyCount` lines (LEGACY_LEDGER) was recorded before the "## Owner approval" convention,
+ * and an exit's ADR may not exist yet at the commit its stop state was entered at. OWNER_GATE must be entered with a reason and the state it was entered from as
+ * its resume state, and left only to that state or COMPLETE_LOCAL. That catches lines written by hand, past
+ * record-event.mjs.
  */
-export function validateLedger(text, committedTexts = [], adrOk = () => true) {
+export function validateLedger(text, committedTexts = [], ownerApproval = () => [], { legacyCount = legacyEventCount(text) } = {}) {
   const errors = [];
   const { events, errors: parseErrors } = parseLedger(text);
   errors.push(...parseErrors);
@@ -283,31 +343,61 @@ export function validateLedger(text, committedTexts = [], adrOk = () => true) {
       break;
     }
   }
-  const citesAdrs = (e) => Array.isArray(e.decisions) && e.decisions.length > 0 && e.decisions.every((d) => ADR_ID_RE.test(d) && adrOk(d));
+  const approvalProblems = (e, legacy, notAt) => {
+    if (!Array.isArray(e.decisions) || !e.decisions.length) return ['it cites no ADR in "decisions"'];
+    return e.decisions.flatMap((d) => (ADR_ID_RE.test(d) ? ownerApproval(d, { legacy, notAt }) : [`${d} is not an ADR id`]));
+  };
   let prev = null;
   let resume = null;
   events.forEach((e, i) => {
-    if (e?.kind === 'owner-decision' && !citesAdrs(e)) errors.push(`LEDGER.jsonl line ${i + 1}: an owner-decision event must cite committed ADRs listed in decisions/INDEX.md`);
+    const where = `LEDGER.jsonl line ${i + 1}`;
+    const legacy = i < legacyCount;
+    if (e?.kind === 'owner-decision') for (const p of approvalProblems(e, legacy, null)) errors.push(`${where}: an owner-decision event must cite the owner's approval: ${p}`);
+    if (e?.actor === 'protect.mjs' && typeof e.protectedSha256 === 'string') for (const p of approvalProblems(e, legacy, null)) errors.push(`${where}: a protect.mjs update must cite the owner's approval: ${p}`);
     if (e?.kind !== 'transition') return;
-    if (prev === null && e.fromState !== 'BOOTSTRAP') errors.push(`LEDGER.jsonl line ${i + 1}: the first transition must start at BOOTSTRAP`);
-    if (prev !== null && e.fromState !== prev) errors.push(`LEDGER.jsonl line ${i + 1}: transition starts at ${e.fromState} but the previous one ended at ${prev}`);
-    if (DECISION_EXITS.includes(e.fromState) && !citesAdrs(e)) errors.push(`LEDGER.jsonl line ${i + 1}: leaving ${e.fromState} must cite committed ADRs listed in decisions/INDEX.md`);
-    if (e.fromState === 'OWNER_GATE' && e.toState !== 'COMPLETE_LOCAL' && e.toState !== resume) errors.push(`LEDGER.jsonl line ${i + 1}: OWNER_GATE may only resume at ${resume ?? '(no resume state was recorded)'} or close at COMPLETE_LOCAL`);
-    if (e.toState === 'OWNER_GATE') resume = e.resume ?? null;
-    prev = e.toState;
+    if (prev === null) {
+      if (e.fromState !== 'BOOTSTRAP') errors.push(`${where}: the first transition must start at BOOTSTRAP`);
+      if (e.slice !== SLICES[0]) errors.push(`${where}: the first transition belongs to ${SLICES[0]}, not ${e.slice}`);
+    } else {
+      if (e.fromState !== prev.toState) errors.push(`${where}: transition starts at ${e.fromState} but the previous one ended at ${prev.toState}`);
+      if (e.fromState === 'NEXT_SLICE' && e.toState === 'BOOTSTRAP') {
+        if (e.slice !== nextSlice(prev.slice)) errors.push(`${where}: NEXT_SLICE → BOOTSTRAP must start ${nextSlice(prev.slice) ?? 'no slice'} (the slice after ${prev.slice}), not ${e.slice}`);
+      } else if (e.slice !== prev.slice) {
+        errors.push(`${where}: the slice changed from ${prev.slice} to ${e.slice} outside NEXT_SLICE → BOOTSTRAP`);
+      }
+    }
+    if (DECISION_EXITS.includes(e.fromState)) {
+      const entry = prev?.toState === e.fromState ? prev : null;
+      if (entry && !entry.head) errors.push(`${where}: the transition into ${e.fromState} recorded no commit (head), so no decision can be shown to postdate it`);
+      for (const p of approvalProblems(e, legacy, entry?.head ?? null)) errors.push(`${where}: leaving ${e.fromState} must cite the owner's approval: ${p}`);
+    }
+    if (e.fromState === 'OWNER_GATE' && e.toState !== 'COMPLETE_LOCAL' && e.toState !== resume) errors.push(`${where}: OWNER_GATE may only resume at ${resume ?? '(no resume state was recorded)'} or close at COMPLETE_LOCAL`);
+    if (e.toState === 'OWNER_GATE') {
+      if (!e.reason) errors.push(`${where}: entering OWNER_GATE records a reason (OPERATIONS.md §2)`);
+      if (e.resume !== e.fromState) errors.push(`${where}: OWNER_GATE resumes only at the state it was entered from (${e.fromState}), not ${e.resume ?? '(none recorded)'}`);
+      resume = e.resume ?? null;
+    }
+    prev = e;
   });
   return { errors, warnings: [], events };
 }
 
-/** STATE.machineState must be where the last recorded transition left it (no silent state edits). */
+/**
+ * STATE must be where the last recorded transition left it (no silent state edits): its machine state, its slice
+ * (except in the prepared NEXT_SLICE state next-slice.mjs leaves, evidenceScope) and, at OWNER_GATE, the resume state
+ * the gate was entered with.
+ */
 export function validateStateAgainstLedger(s, events) {
   const transitions = events.filter((e) => e?.kind === 'transition');
   const last = transitions[transitions.length - 1];
   if (!last) return { errors: [], warnings: s.machineState === 'BOOTSTRAP' ? [] : ['no transition is recorded in LEDGER.jsonl yet'] };
-  if (last.toState !== s.machineState) {
-    return { errors: [`STATE.machineState is ${s.machineState} but the last recorded transition went to ${last.toState}; record transitions with record-event.mjs`], warnings: [] };
+  const errors = [];
+  if (last.toState !== s.machineState) errors.push(`STATE.machineState is ${s.machineState} but the last recorded transition went to ${last.toState}; record transitions with record-event.mjs`);
+  if (s.currentSlice !== last.slice && !evidenceScope(s, last).prepared) {
+    errors.push(`STATE.currentSlice is ${s.currentSlice} but the last recorded transition belongs to ${last.slice}: the slice changes only through NEXT_SLICE → BOOTSTRAP (next-slice.mjs prepares the next one at NEXT_SLICE)`);
   }
-  return { errors: [], warnings: [] };
+  if (s.machineState === 'OWNER_GATE' && last.toState === 'OWNER_GATE' && s.resumeState !== last.resume) errors.push(`STATE.resumeState is ${s.resumeState} but OWNER_GATE was entered with resume ${last.resume ?? '(none)'}`);
+  return { errors, warnings: [] };
 }
 
 /** Per-defect repair counts from the ledger (current slice). */
@@ -327,14 +417,17 @@ export function repairCounts(events, slice) {
   return out;
 }
 
-/** No open defect may pass a repair limit outside BLOCKED_MANUAL_REVIEW unless the owner overrode it in an ADR. */
-export function validateRepairs(s, events, adrOk = () => true) {
+/**
+ * No open defect may pass a repair limit outside BLOCKED_MANUAL_REVIEW unless the owner lifted it: `overrideOk(ref,
+ * defect)` judges STATE.repairOverrides[defect] (check-state: the owner's approval, naming the defect).
+ */
+export function validateRepairs(s, events, overrideOk = () => true) {
   const errors = [];
   for (const [defect, c] of Object.entries(repairCounts(events, s.currentSlice))) {
     if (c.resolved) continue;
     const over = c.attempts >= REPAIR_LIMITS.totalAttempts || c.distinct >= REPAIR_LIMITS.distinctStrategies;
     const override = s.repairOverrides?.[defect];
-    if (over && s.machineState !== 'BLOCKED_MANUAL_REVIEW' && !(override && adrOk(override))) {
+    if (over && s.machineState !== 'BLOCKED_MANUAL_REVIEW' && !(override && overrideOk(override, defect))) {
       errors.push(`defect ${defect} reached the repair limit (${c.attempts} attempts, ${c.distinct} distinct strategies): BLOCKED_MANUAL_REVIEW or an owner ADR in STATE.repairOverrides is required (OPERATIONS.md §5)`);
     }
     if (s.repairTarget === defect && (s.repairTotalAttempts ?? 0) < c.attempts) errors.push(`LEDGER.jsonl records ${c.attempts} attempt(s) on ${defect} but STATE.repairTotalAttempts is ${s.repairTotalAttempts ?? 0}`);
@@ -343,7 +436,11 @@ export function validateRepairs(s, events, adrOk = () => true) {
   return { errors, warnings: [] };
 }
 
-export function validateRegistry(reg, fileExists, adrOk = () => true) {
+/**
+ * Design registry: known statuses, unique ids, and every APPROVED design backed by an existing path and an approval
+ * whose ADR `approvalOk(adrId, design)` accepts (check-state: the owner's approval naming the design, ADR-0013).
+ */
+export function validateRegistry(reg, fileExists, approvalOk = () => []) {
   const errors = [];
   if (!Array.isArray(reg?.designs)) return { errors: ['DESIGN_REGISTRY.json has no designs array'], warnings: [] };
   const ids = new Set();
@@ -353,7 +450,8 @@ export function validateRegistry(reg, fileExists, adrOk = () => true) {
     if (!DESIGN_STATUSES.includes(d.status)) errors.push(`design ${d.id}: unknown status ${d.status}`);
     if (d.status === 'APPROVED') {
       const adr = String(d.approval ?? '').match(/ADR-\d{4}/)?.[0];
-      if (!adr || !adrOk(adr)) errors.push(`design ${d.id}: APPROVED without an approval citing a committed ADR`);
+      if (!adr) errors.push(`design ${d.id}: APPROVED without an approval citing the owner's ADR`);
+      else for (const p of approvalOk(adr, d)) errors.push(`design ${d.id}: APPROVED, but its approval is not the owner's: ${p}`);
       if (!d.path || !fileExists(d.path)) errors.push(`design ${d.id}: APPROVED but its path ${d.path} does not exist`);
     }
   }
@@ -361,30 +459,78 @@ export function validateRegistry(reg, fileExists, adrOk = () => true) {
 }
 
 /**
- * Which slice's evidence must hold, and how strictly (pure). `lastTransition` is the last transition in the ledger.
- * next-slice.mjs prepares the next slice while the machine is still at NEXT_SLICE: until the new session records
- * NEXT_SLICE → BOOTSTRAP, the accepted slice is the one that recorded HANDOFF → NEXT_SLICE (`prepared`), its evidence
- * must still hold, and the new slice's fresh gates claim nothing.
+ * The STATE view a prepared slice's accepted predecessor is checked against (pure): every objective gate GREEN unless
+ * the owner waived it for that slice, the independent review GREEN, and a GREEN review from every role each slice
+ * requires (MANDATORY_REVIEWERS, OPERATIONS.md §7). next-slice.mjs has replaced the predecessor's own reviewer list.
  */
-export function evidenceScope(s, lastTransition) {
-  const current = SLICES.indexOf(s.currentSlice);
-  const prepared = s.machineState === 'NEXT_SLICE' && lastTransition?.toState === 'NEXT_SLICE' && current > 0 && SLICES.indexOf(lastTransition.slice) === current - 1;
-  return {
-    prepared,
-    acceptedSlice: prepared ? lastTransition.slice : s.currentSlice,
-    accepted: ACCEPTED_STATES.includes(s.machineState) && !prepared,
-    postCheckpoint: POST_CHECKPOINT_STATES.includes(s.machineState),
-  };
+export function preparedView(s, acceptedSlice) {
+  const waivers = gateWaiversOf(s, acceptedSlice);
+  const gates = Object.fromEntries(Object.keys(GATE_COMMANDS).map((g) => [g, waivers[g] ? 'NOT_APPLICABLE' : 'GREEN']));
+  return { ...s, currentSlice: acceptedSlice, requiredReviewers: [...MANDATORY_REVIEWERS], gates: { ...gates, independentReview: 'GREEN', browserQa: 'NOT_APPLICABLE' } };
+}
+
+/** The baseline is write-once (pure): no committed STATE.json may have recorded a different baseline (HARNESS-019, F2). */
+export function validateBaselines(s, committedTexts = []) {
+  const errors = new Set();
+  for (const text of committedTexts) {
+    let v;
+    try {
+      v = JSON.parse(text);
+    } catch {
+      continue;
+    }
+    for (const k of ['planningBaselineSha', 'actualBaselineSha']) {
+      if (v?.[k] != null && v[k] !== s[k]) errors.add(`STATE.${k} is ${s[k]}, but a committed STATE.json recorded ${v[k]}: the baseline is write-once (HARNESS-019)`);
+    }
+  }
+  return { errors: [...errors], warnings: [] };
 }
 
 /**
- * The STATE view a prepared slice's accepted predecessor is checked against (pure): every objective gate GREEN unless
- * an owner ADR waived it, the independent review GREEN, and a GREEN review from every role each slice requires
- * (MANDATORY_REVIEWERS, OPERATIONS.md §7). next-slice.mjs has replaced the predecessor's own reviewer list.
+ * Why commit `sha` can't be `slice`'s checkpoint (pure; empty when it can): the ledger committed there must end at
+ * → ACCEPT for that slice, the slice's manifest committed there must have verdict GREEN, and every checkpoint/<slice>-*
+ * tag must point at it. `io`: ledgerAt(sha) and manifestAt(sha, slice) → the committed text or null, tagCommits(slice)
+ * → [[tag, commit]].
  */
-export function preparedView(s, acceptedSlice) {
-  const gates = Object.fromEntries(Object.keys(GATE_COMMANDS).map((g) => [g, s.gateWaivers?.[g] ? 'NOT_APPLICABLE' : 'GREEN']));
-  return { ...s, currentSlice: acceptedSlice, requiredReviewers: [...MANDATORY_REVIEWERS], gates: { ...gates, independentReview: 'GREEN', browserQa: 'NOT_APPLICABLE' } };
+export function checkpointBackingProblems(sha, slice, { ledgerAt, manifestAt, tagCommits = () => [] }) {
+  const problems = [];
+  const text = ledgerAt(sha);
+  const last = text == null ? null : parseLedger(text).events.filter((e) => e?.kind === 'transition').pop();
+  if (!last || last.toState !== 'ACCEPT' || last.slice !== slice) {
+    problems.push(`the ledger committed at ${short(sha)} doesn't end at → ACCEPT for ${slice} (${last ? `its last transition is ${last.fromState} → ${last.toState} in ${last.slice}` : 'no ledger or no transition there'})`);
+  }
+  let manifest = null;
+  try {
+    const m = manifestAt(sha, slice);
+    manifest = m == null ? null : JSON.parse(m);
+  } catch {
+    /* not valid JSON there: no verdict */
+  }
+  if (manifest?.verdict !== 'GREEN') problems.push(`the ${slice} manifest committed at ${short(sha)} doesn't have verdict GREEN (${manifest ? manifest.verdict : 'no manifest there'})`);
+  for (const [tag, commit] of tagCommits(slice)) if (commit !== sha) problems.push(`tag ${tag} points at ${commit ? short(commit) : 'no commit'}, not the checkpoint ${short(sha)}`);
+  return problems;
+}
+
+/**
+ * The append-only anchor (pure): STATE.lastAcceptedCheckpoint may be set only to the checkpoint the last ACCEPT →
+ * CHECKPOINT transition recorded, and that commit must back it (checkpointBackingProblems), so editing STATE can't move
+ * the anchor past a committed rewrite (code-architecture-harness-2 F2). Before any checkpoint it must be null.
+ */
+export function validateCheckpointAnchor(s, events, io) {
+  const errors = [];
+  const checkpoints = events.filter((e) => e?.kind === 'transition' && e.fromState === 'ACCEPT' && e.toState === 'CHECKPOINT');
+  const last = checkpoints[checkpoints.length - 1];
+  if (!s.lastAcceptedCheckpoint) {
+    if (last) errors.push(`the ledger records ACCEPT → CHECKPOINT for ${last.slice}, but STATE.lastAcceptedCheckpoint is not set`);
+    return { errors, warnings: [] };
+  }
+  if (!last) {
+    errors.push('STATE.lastAcceptedCheckpoint is set, but the ledger records no ACCEPT → CHECKPOINT transition: the anchor is only ever a checkpoint the ledger backs (record-event.mjs sets it)');
+    return { errors, warnings: [] };
+  }
+  if (last.checkpoint !== s.lastAcceptedCheckpoint) errors.push(`STATE.lastAcceptedCheckpoint is ${s.lastAcceptedCheckpoint}, but the last ACCEPT → CHECKPOINT transition (${last.slice}) recorded ${last.checkpoint ?? 'no checkpoint'}`);
+  for (const p of checkpointBackingProblems(s.lastAcceptedCheckpoint, last.slice, io)) errors.push(`STATE.lastAcceptedCheckpoint is not a backed checkpoint: ${p}`);
+  return { errors, warnings: [] };
 }
 
 function tryGit(...args) {
@@ -394,6 +540,14 @@ function tryGit(...args) {
     return null;
   }
 }
+
+/** The commits the checkpoint tags of `slice` point at: [[tag, commit or null]]. */
+export function checkpointTagCommits(slice) {
+  const tags = (tryGit('tag', '--list', `checkpoint/${slice}-*`, `checkpoint/${slice}`) ?? '').split('\n').filter(Boolean);
+  return tags.map((t) => [t, tryGit('rev-parse', '--verify', '--quiet', `${t}^{commit}`)]);
+}
+
+export const manifestOf = (slice) => `${PATHS.evidence}/${slice}/manifest.json`;
 
 /** Run every check against the repository. */
 export function checkRepository() {
@@ -410,7 +564,8 @@ export function checkRepository() {
     return { errors: [`cannot read STATE.json: ${e.message}`], warnings };
   }
   add(validateState(s));
-  const adrOk = (ref) => approvalIsAdr(ref) || !!findAdr(ref);
+  // Every ADR STATE, the ledger or the registry takes as the owner's approval (ADR-0013 decision 3).
+  const approval = (ref, opts) => ownerApprovalProblems(ref, opts);
 
   // Git reality.
   const head = tryGit('rev-parse', 'HEAD');
@@ -430,17 +585,24 @@ export function checkRepository() {
     }
   }
   for (const k of ['remoteApproval', 'multiplayerApproval']) {
-    if (s[k] && !approvalIsAdr(s[k])) errors.push(`STATE.${k} (${s[k]}) is not a committed ADR listed in decisions/INDEX.md`);
+    if (s[k]) for (const p of approval(s[k])) errors.push(`STATE.${k} is not the owner's approval: ${p}`);
   }
-  for (const [g, ref] of Object.entries(s.gateWaivers ?? {})) if (!approvalIsAdr(ref)) errors.push(`STATE.gateWaivers.${g} (${ref}) is not a committed ADR listed in decisions/INDEX.md`);
-  for (const [d, ref] of Object.entries(s.repairOverrides ?? {})) if (!approvalIsAdr(ref)) errors.push(`STATE.repairOverrides.${d} (${ref}) is not a committed ADR listed in decisions/INDEX.md`);
+  for (const [slice, waivers] of Object.entries(isMap(s.gateWaivers) ? s.gateWaivers : {})) {
+    for (const [g, ref] of Object.entries(isMap(waivers) ? waivers : {})) for (const p of approval(ref)) errors.push(`STATE.gateWaivers.${slice}.${g} is not the owner's approval: ${p}`);
+  }
+  for (const [d, ref] of Object.entries(s.repairOverrides ?? {})) for (const p of approval(ref, { names: [d] })) errors.push(`STATE.repairOverrides.${d} is not the owner's approval: ${p}`);
   if (exists(PATHS.stopFile)) warnings.push('docs/agent/STOP exists: the relaunch script will not start sessions');
 
+  const ledgerText = exists(PATHS.ledger) ? readText(PATHS.ledger) : '';
+  const ledgerEvents = parseLedger(ledgerText).events;
+  const lastTransition = ledgerEvents.filter((e) => e?.kind === 'transition').pop();
+  const { prepared, acceptedSlice, accepted, postCheckpoint } = evidenceScope(s, lastTransition);
+
+  // The baseline is write-once, and the anchor is a checkpoint the ledger and the evidence at that commit back.
+  add(validateBaselines(s, committedVersions(PATHS.state, null)));
+  add(validateCheckpointAnchor(s, ledgerEvents, { ledgerAt: (sha) => showAt(sha, PATHS.ledger), manifestAt: (sha, slice) => showAt(sha, manifestOf(slice)), tagCommits: checkpointTagCommits }));
   // Append-only checks compare with every version committed since this anchor.
   const anchor = s.lastAcceptedCheckpoint ?? s.actualBaselineSha ?? null;
-  const ledgerText = exists(PATHS.ledger) ? readText(PATHS.ledger) : '';
-  const lastTransition = parseLedger(ledgerText).events.filter((e) => e?.kind === 'transition').pop();
-  const { prepared, acceptedSlice, accepted, postCheckpoint } = evidenceScope(s, lastTransition);
 
   // The code tree the evidence must belong to.
   let targetTree = null;
@@ -458,7 +620,6 @@ export function checkRepository() {
   }
 
   // Evidence: the current slice's gates, and every slice's manifest (files and append-only history).
-  const manifestOf = (slice) => `${PATHS.evidence}/${slice}/manifest.json`;
   const loadSliceManifest = (slice) => {
     if (!exists(manifestOf(slice))) return null;
     try {
@@ -471,7 +632,7 @@ export function checkRepository() {
   const manifest = loadSliceManifest(s.currentSlice);
   add(validateGateEvidence(s, manifest, { targetTree, accepted }));
   const acceptedManifest = prepared ? loadSliceManifest(acceptedSlice) : manifest;
-  // The accepted slice's objective gates, mandatory reviews and verdict, on the checkpoint tree.
+  // The accepted slice's objective gates, mandatory reviews, report series and verdict, on the checkpoint tree.
   if (prepared) add(validateGateEvidence(preparedView(s, acceptedSlice), acceptedManifest, { targetTree, accepted: true }));
   if (postCheckpoint && acceptedManifest && acceptedManifest.checkpointSha !== s.lastAcceptedCheckpoint) {
     errors.push(`the ${acceptedSlice} manifest's checkpointSha (${acceptedManifest.checkpointSha}) is not STATE.lastAcceptedCheckpoint`);
@@ -492,7 +653,7 @@ export function checkRepository() {
   }
 
   // Requirements: schema, append-only ids against every committed version since the anchor, the slice contract, and
-  // in accepted states the full audit.
+  // in accepted states (and for a prepared slice's accepted predecessor, as requirements-audit.mjs does) the full audit.
   try {
     const reqs = readJson(PATHS.requirements);
     const committed = [];
@@ -505,30 +666,30 @@ export function checkRepository() {
     }
     const sliceText = exists(PATHS.currentSlice) ? readText(PATHS.currentSlice) : '';
     const adrIsCommitted = (id) => !!findAdr(id);
-    add(accepted ? auditRequirements(reqs, s, { committed, sliceText, fileExists: exists, adrOk: adrIsCommitted }) : validateRequirements(reqs, committed, exists, adrIsCommitted));
+    const auditView = prepared ? { ...s, currentSlice: acceptedSlice } : s;
+    add(accepted || prepared ? auditRequirements(reqs, auditView, { committed, sliceText, fileExists: exists, adrOk: adrIsCommitted }) : validateRequirements(reqs, committed, exists, adrIsCommitted));
     const known = new Set(reqs.requirements.map((r) => r.id));
-    if (sliceText) {
-      if (!sliceText.split('\n').slice(0, 6).join('\n').includes(s.currentSlice)) errors.push(`CURRENT_SLICE.md does not name the current slice ${s.currentSlice} in its header`);
-      for (const id of new Set(sliceText.match(REQ_TOKEN_RE) ?? [])) if (!known.has(id)) errors.push(`CURRENT_SLICE.md references unknown requirement ${id}`);
-    }
+    errors.push(...sliceHeaderProblems(sliceText, s.currentSlice));
+    for (const id of new Set(sliceText.match(REQ_TOKEN_RE) ?? [])) if (!known.has(id)) errors.push(`CURRENT_SLICE.md references unknown requirement ${id}`);
   } catch (e) {
     errors.push(`cannot check REQUIREMENTS.json: ${e.message}`);
   }
 
-  // Ledger: append-only against every committed version since the anchor, one transition chain, committed ADRs on
-  // owner-gate exits, agreement with STATE, repairs.
+  // Ledger: append-only against every committed version since the anchor, one transition chain, the owner's approval
+  // on owner decisions and stop-state exits, agreement with STATE, repairs.
   try {
-    const ledger = validateLedger(ledgerText, committedVersions(PATHS.ledger, anchor), (id) => !!findAdr(id));
+    const ledger = validateLedger(ledgerText, committedVersions(PATHS.ledger, anchor), approval);
     add(ledger);
     add(validateStateAgainstLedger(s, ledger.events));
-    add(validateRepairs(s, ledger.events, adrOk));
+    add(validateRepairs(s, ledger.events, (ref, defect) => approval(ref, { names: [defect] }).length === 0));
   } catch (e) {
     errors.push(`cannot check LEDGER.jsonl: ${e.message}`);
   }
 
   // Design registry and protected files.
   try {
-    add(validateRegistry(readJson(PATHS.designRegistry), exists, adrOk));
+    const legacy = (d) => isLegacyDesignApproval(d);
+    add(validateRegistry(readJson(PATHS.designRegistry), exists, (adr, d) => approval(adr, { legacy: legacy(d), names: legacy(d) ? [] : [d.id] })));
   } catch (e) {
     errors.push(`cannot check the design registry: ${e.message}`);
   }

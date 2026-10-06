@@ -70,13 +70,23 @@ export function saveManifest(manifest) {
   writeJson(manifestPath(manifest.slice), manifest);
 }
 
-/** Pull pass/fail counts out of Vitest, Playwright and tsc output. */
+/**
+ * Pull pass/fail counts out of Vitest, Playwright, node:test and tsc output. Vitest's "Errors" summary line (unhandled
+ * errors, such as an RPC timeout, in a run where every test passed) and node:test's "# tests/pass/fail/…" summary (TAP)
+ * or "ℹ tests …" summary (spec reporter) are counted too.
+ */
 export function parseCounts(text) {
   const counts = {};
   const files = text.match(/Test Files\s+([^\n]*)/);
   if (files) counts.vitestFiles = files[1].trim();
   const tests = text.match(/\n\s*Tests\s+([^\n]*)/);
   if (tests) counts.vitestTests = tests[1].trim();
+  const errs = text.match(/\n\s*Errors\s+([^\n]*)/);
+  if (errs) counts.vitestErrors = errs[1].trim();
+  for (const k of ['tests', 'pass', 'fail', 'cancelled', 'skipped', 'todo']) {
+    const m = text.match(new RegExp(`^(?:#|ℹ)\\s*${k}\\s+(\\d+)\\s*$`, 'm'));
+    if (m) counts[`node_${k}`] = Number(m[1]);
+  }
   for (const k of ['passed', 'failed', 'flaky', 'skipped', 'did not run', 'interrupted']) {
     const m = text.match(new RegExp(`^\\s*(\\d+) ${k}\\b`, 'm'));
     if (m) counts[`playwright_${k.replace(/ /g, '_')}`] = Number(m[1]);
@@ -93,16 +103,18 @@ export const LOG_TAIL_LINES = 2000;
 /**
  * When a log is over LOG_LIMIT_BYTES, copy it in full to .agent-runs/evidence/<slice>/logs/ (ignored by Git) and
  * replace the committed copy with its last LOG_TAIL_LINES lines. Returns the full log's path, size and hash, or null.
+ * Paths are relative to `root` (the repository unless a caller, such as a test, passes another directory).
  */
-export function trimLog(logRel, text, slice) {
+export function trimLog(logRel, text, slice, root = ROOT) {
   const bytes = Buffer.byteLength(text);
   if (bytes <= LOG_LIMIT_BYTES) return null;
+  const at = (rel) => join(root, rel);
   const keepRel = `.agent-runs/evidence/${slice}/logs/${basename(logRel, '.log')}.full.log`;
-  mkdirSync(dirname(abs(keepRel)), { recursive: true });
-  copyFileSync(abs(logRel), abs(keepRel));
-  const sha256 = sha256File(abs(keepRel));
+  mkdirSync(dirname(at(keepRel)), { recursive: true });
+  copyFileSync(at(logRel), at(keepRel));
+  const sha256 = sha256File(at(keepRel));
   const lines = text.split('\n');
-  writeFileSync(abs(logRel), `[trimmed: last ${LOG_TAIL_LINES} of ${lines.length} lines; full log ${keepRel} sha256:${sha256}]\n${lines.slice(-LOG_TAIL_LINES).join('\n')}`);
+  writeFileSync(at(logRel), `[trimmed: last ${LOG_TAIL_LINES} of ${lines.length} lines; full log ${keepRel} sha256:${sha256}]\n${lines.slice(-LOG_TAIL_LINES).join('\n')}`);
   return { path: keepRel, bytes, sha256 };
 }
 
