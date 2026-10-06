@@ -31,7 +31,7 @@ src/dev          fixtures, sandboxes, debug commands
 **Allowed value imports** (S0 architecture lock). A layer may import values from itself and from the layers in its
 row; type-only imports are free. `tests/sim/core-architecture-boundaries.test.ts` enforces this table (`ALLOWED`). The
 ten imports that already broke it on 2026-10-05 are listed in that test's `BASELINE`: they may be removed, never added.
-Changing a row needs an ADR.
+Changing a row is a deliberate architecture change: say why in the commit, and the chunk's reviewer checks it.
 
 | Layer | May import values from |
 |---|---|
@@ -83,8 +83,8 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
   its tests; exact equality across LOD tiers isn't promised. New systems state their tolerance (automation included).
 - **Randomness.** Only `simRng(state)` / `ctx.rng`, a subsystem's own persisted stream, or a keyed stream seeded from
   a stable key (`mulberry32(hashString(key))`, which persists nothing); inside a tank step use the step's `ctx.rng`,
-  never a second `simRng(state)`. Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto` or
-  locale-dependent formatting or sorting in `src/sim` or `src/data`. Accepted entropy: the new-game seed
+  never a second `simRng(state)`. Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto`, `Intl`
+  or locale-dependent formatting or sorting in `src/sim` or `src/data`. Accepted entropy: the new-game seed
   (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none (`src/persistence/migrations.ts`).
   `tests/sim/core-determinism-guard.test.ts` enforces this.
 - **RNG-stream changes.** A change that adds, removes or reorders draws on an existing stream (for example new betta
@@ -97,7 +97,7 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
 
 ## Simulation LOD
 
-`src/sim/world.ts` steps the **focused tank** at full fidelity every tick. Other tanks accumulate "sim debt". The first 12 are processed in ≥1 h chunks (reduced) and the rest in ≥4 h chunks (summary). Subsystems substep internally, so a large chunk stays well-behaved (no runaway values or NaN), but chunk size still shows: one large chunk and many small steps agree only within the tolerances each subsystem's tests state, and exact equality across LOD tiers isn't promised ("Determinism contract" below). Rendering LOD follows the same pattern: lod 0 is the hero tank, lod 1 is near tanks in the facility view, and lod 2 is far/cheap.
+`src/sim/world.ts` steps the **focused tank** at full fidelity every tick. Other tanks accumulate "sim debt". The first 12 are processed in ≥1 h chunks (reduced) and the rest in ≥4 h chunks (summary). Subsystems substep internally, so a large chunk stays well-behaved (no runaway values or NaN), but chunk size still shows: one large chunk and many small steps agree only within the tolerances each subsystem's tests state, and exact equality across LOD tiers isn't promised ("Determinism contract" above). Rendering LOD follows the same pattern: lod 0 is the hero tank, lod 1 is near tanks in the facility view, and lod 2 is far/cheap.
 
 ## Coordinate conventions
 

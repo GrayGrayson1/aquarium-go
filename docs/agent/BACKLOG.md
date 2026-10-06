@@ -1,10 +1,10 @@
 # Backlog
 
-Deferred work and logged defects. Since ADR-0018 retired the agent harness, a chunk may fix open items in the files
-it touches (the cheap ones especially): say which in the commit and mark the row fixed. Larger items go into a chunk's
-brief in `PLAN.md`. Rows whose type is `harness-doc`, `harness-script` or `evidence` were logged against the harness
-and no longer apply. The harness files the rows cite (`HANDOFF.md`, `OPERATIONS.md`, the master, `evidence/`, the
-scripts) are now in `docs/agent/archive/`.
+Deferred work and logged defects. Since ADR-0018 retired the agent harness, a chunk may fix open items in the files it
+touches (the cheap ones especially): say which in the commit and mark the row fixed. Larger items go into a chunk's
+brief in `PLAN.md`. Rows whose type is `harness-doc`, `harness-script`, `harness-doc+script` or `evidence` were logged
+against the harness and no longer apply. The harness files the rows cite (`HANDOFF.md`, `OPERATIONS.md`, the master,
+`evidence/`, the scripts) are now in `docs/agent/archive/`.
 
 Sources:
 - `evidence/S0/reviews/adversarial-review-2026-10-05.json`, `synthesis.merged`: the 101 merged findings of the
@@ -63,7 +63,7 @@ Fixed or partly fixed by these commits: `3e00a32`, `58ae313`, `9edfa12`, `6347c5
 |---|---|---|---|---|---|---|---|
 | B-001 | M01 | loadAndResume adopts a half-simulated catch-up when simulateOffline throws | medium | CONFIRMED | app-code | S0 | **fixed**. Fixed in 9e1bf66 (PERSIST-015, ADR-0015): loadAndResume runs the catch-up on a copy and resumes the decoded save unchanged when the catch-up throws (`tests/sim/core-resume-catchup.test.ts`). HANDOFF step 1 leftover; security-data-1 SD-10, adversarial-1 F9 (probe L2), security-data-2 m4, code-architecture-game-2 m8 (M01 fix 2). |
 | B-002 | M01 | Repeated tick failures aren't shown to the player | UNKNOWN | CONFIRMED | app-code | OWNER | **open**. HANDOFF step 1 leftover; M01 fix 3. A persistent fault freezes the world with one console message. What the player sees is the owner question "When a simulation step keeps failing with an error, what should the player see?" (synthesis.questions). |
-| B-003 | — | The first e2e test after a cold Vite start can time out while Vite compiles: add a warm-up | UNKNOWN | — | config | S1 | **fixed** in chunk 0 (ADR-0018): a Playwright setup project, `tests/e2e/warmup.setup.ts`, loads "/" and waits for `__AQ.ready` before any test runs; no retry (M32 fix 3). |
+| B-003 | — | The first e2e test after a cold Vite start can time out while Vite compiles: add a warm-up | UNKNOWN | — | config | S1 | **fixed** in `76951f1` (chunk 0; first run pending): a Playwright setup project, `tests/e2e/warmup.setup.ts`, loads "/" and waits for `__AQ.ready` before any test runs; no retry (M32 fix 3). |
 | B-004 | — | Enum-valued save fields (role, archetype, …) aren't checked against their tables | info | — | app-code | S4 | **open**. HANDOFF step 1 leftover. security-data-2 I1 (deferred under D-S0-3) found two such fields that crash the loop when set to an inherited name, `tanks.{}.waterClass` and `market.buyers[].archetype`, because plain-object tables in `src/sim` are read as `MAP[x] ?? default` (for example `src/sim/water/index.ts:27`, `src/sim/economy/buyers.ts:122`); reads only, nothing is polluted. Belongs with PERSIST-004 A3 (S4). |
 | B-005 | — | The determinism guard's comment stripper treats quotes inside regex literals as strings | UNKNOWN | — | test | S0 | **fixed**. Fixed in 9e1bf66 (CONST-004 A1, ADR-0015): the stripper keeps string, template (nested included) and regex literals whole; `tests/sim/core-determinism-guard.test.ts` "the comment stripper keeps regex and nested template literals whole (B-005)". HANDOFF step 1 leftover, after d8fb896 made the stripper leave strings alone (code-architecture-game-1 L3). |
 | B-006 | — | `.gitattributes` isn't protected: none exists today, but one could change how Git normalises, diffs or merges the files the gates and the code tree depend on | low | — | harness-script | S1 | **open**. code-architecture-harness-2 m10, deferred under D-S0-3. Fix: add `.gitattributes` to `PROTECTED_PATTERNS` in protect.mjs (an ADR with the owner's approval and a reviewer's sign-off, ADR-0013 decision 3). |
@@ -225,7 +225,7 @@ Verified clean; nothing to fix.
 ## Design errata by slice
 
 Where the approved 0.5 design (`design/AQUARIUM_GO_0_5_DESIGN_SPEC.md`) is wrong about today's code. The spec isn't
-edited: each erratum is applied through the named slice's contract (design banner, master §8). The wording below
+edited: the chunk that builds a section applies its errata (`PLAN.md` maps slices to chunks). The wording below
 comes from each finding's recommended fix; the JSON has the full text.
 
 | ID | Design section | Slice | Erratum |
@@ -247,7 +247,7 @@ Other findings whose recommended fix includes a design erratum, after an owner a
 ## S0 game fixes
 
 The approved contained fixes (ADR-0002 decision 2, and the repair round of ADR-0015) and their files, as
-`CURRENT_SLICE.md` "Expected files" refers to them. Each still needs a fresh independent review of the final S0 tree.
+`CURRENT_SLICE.md` "Expected files" referred to them. Chunk 1's reviewer reads them once (`PLAN.md`).
 
 | Commit | Fix | Files | Requirement | Item |
 |---|---|---|---|---|

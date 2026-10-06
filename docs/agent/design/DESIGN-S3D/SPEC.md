@@ -1,13 +1,14 @@
 # DESIGN-S3D: deep automation (S3-D) — design addendum to the 0.5 spec
 
-> **Registry status: RECEIVED on capture (prepared 2026-10-05).** Captured from the owner's Claude Design canvas after
-> the owner chose a direction in an option review and settled the follow-up questions (ADR-0014). It is not approved
-> yet: the owner chose to approve after the intake note and an independent review (`DESIGN_INTAKE.md` steps 2–5),
-> recorded word for word in a new ADR. Nothing that depends on this design starts before approval.
+> **Not approved yet (2026-10-06).** Captured from the owner's Claude Design canvas after the owner chose a direction
+> in an option review and settled the follow-up questions (ADR-0014). The owner approves it after answering the
+> questions in `INTAKE.md` §11, recorded word for word in a new ADR. Nothing that depends on this design starts before
+> approval (`PLAN.md`, chunks 4 and 5). The intake procedure it was captured under is archived with the harness
+> (ADR-0018).
 
 - **What this is:** the screens, states, copy, routes, test ids and simulation behaviour for the S3-D automation layer
   (master §9 S3-D, tiers 1–5), written as an addendum to `AQUARIUM_GO_0_5_DESIGN_SPEC.md` (the "0.5 spec"). Where this
-  document is silent, the 0.5 spec and the master apply.
+  document is silent, the 0.5 spec and the AUTO requirements in `docs/agent/REQUIREMENTS.json` apply.
 - **Design files:** the owner's "Design" canvas, https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk (who can open it is
   the owner's choice; the repo copy is what counts), Version 23 (`1791264082-fb19`). Relevant rows: "Automation · final
   · Operations", "Automation · final · Around the app", "Automation · final · Prototypes" (two clickable prototypes,

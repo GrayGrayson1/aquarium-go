@@ -48,11 +48,11 @@ and the listing test never confirms the "Sell to … ?" dialog that a low bid op
    and `npm run e2e` pass and one fresh reviewer has checked the diff and its blockers are fixed; then `next` is
    pushed.
 5. **Pushing and deploying:** pushing `next` after each chunk is approved, and it deploys nothing: GitHub Pages builds
-   only on a push to `main`, and `render.yaml` names no branch, so Render follows `main`. Because `main` is what
-   players get, `next` is merged into `main` only after a full green test pass, with the release step (version bump
-   and CHANGELOG entry). The owner approved that in principle ("Let's push to main if everything is tested and looks
-   fine to push"); an agent still confirms with the owner in the session before pushing `main`. For this change the
-   owner left the choice to the agent, which chose `next`.
+   only on a push to `main`, and `render.yaml` names no branch, so any Render auto-deploy follows `main` too. Because
+   `main` is what players get, `next` is merged into `main` only after a full green test pass, with the release step
+   (version bump and CHANGELOG entry). The owner approved that in principle ("Let's push to main if everything is tested
+   and looks fine to push"); an agent still confirms with the owner in the session before pushing `main`. For this
+   change the owner left the choice to the agent, which chose `next`.
 6. **Product decisions stay in force:** ADR-0001's product answers, ADR-0005, ADR-0016, and the owner's design answers
    in ADR-0014; `PLAN.md` summarises them. Where an earlier ADR sets harness process (sessions, slices, gates,
    evidence, reviewers, approvals recorded in ADRs, protected files, checkpoints and backups, holding the version

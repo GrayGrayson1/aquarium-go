@@ -11,7 +11,7 @@
     "DEFERRED",
     "SUPERSEDED"
   ],
-  "rule": "Ids are append-only (supersede, never delete). Each requirement traces to acceptance criteria and tests (master §13, §40). A requirement whose source names \"umbrella X\" is a child of X; the umbrellas (NAV-001, GEN-001, MKT-001, AUTO-001, AUTO-002, PROD-001, NOTIFY-001, SOC-001, REL-002) are GREEN only when every child is closed (GREEN, DEFERRED or SUPERSEDED), which requirements-audit.mjs enforces. Standing requirements are slice ALL. Since ADR-0018 retired the agent harness, this file is the feature checklist; PLAN.md says how chunks use it.",
+  "rule": "Ids are append-only (supersede, never delete). Each requirement traces to acceptance criteria and tests (master §13, §40). A requirement whose source names \"umbrella X\" is a child of X; the umbrellas (NAV-001, GEN-001, MKT-001, AUTO-001, AUTO-002, PROD-001, NOTIFY-001, SOC-001, REL-002) are GREEN only when every child is closed (GREEN, DEFERRED or SUPERSEDED), which requirements-audit.mjs enforces. Standing requirements are slice ALL. Since ADR-0018 retired the agent harness (requirements-audit.mjs included), this file is the feature checklist: umbrellas are checked by hand, and PLAN.md says how chunks use it.",
   "requirements": [
     {
       "id": "CONST-001",

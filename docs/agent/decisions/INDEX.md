@@ -1,7 +1,7 @@
 # Decisions index
 
 One line per ADR. A later ADR supersedes an earlier one rather than editing it. Owner decisions are recorded in the
-owner's own words. ADR-0018 retired the agent harness: the process rules in ADR-0002 to ADR-0017 no longer apply,
+owner's own words. ADR-0018 retired the agent harness: the process rules in ADR-0001 to ADR-0017 no longer apply,
 while their product decisions stay (`PLAN.md` lists them).
 
 | ADR | Date | Status | Owner decision | Summary |

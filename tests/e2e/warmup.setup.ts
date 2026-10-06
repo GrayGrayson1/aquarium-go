@@ -11,10 +11,13 @@ const LONG = 10 * 60_000;
 
 setup('warm up the dev server', async ({ page }) => {
   setup.setTimeout(LONG + 3 * 60_000);
+  const started = Date.now();
   await page.goto('/', { waitUntil: 'domcontentloaded', timeout: LONG });
   await page.waitForFunction(() => !!(window as unknown as { __AQ?: { ready?: boolean } }).__AQ?.ready, null, { timeout: LONG });
   // Best effort: start a game and open a panel, so the lazily loaded panel code is compiled too. If this part fails,
-  // the tests that open panels wait for them as they always did.
+  // the tests that open panels wait for them as they always did. It is skipped when the load itself used most of the
+  // budget, so it can never time the warm-up out.
+  if (Date.now() - started > LONG - 60_000) return;
   try {
     await quickGame(page, 'betta');
     await aq(page, 'setUI', { panel: 'market' });

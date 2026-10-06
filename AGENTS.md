@@ -23,9 +23,9 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 - **The repo is the memory.** Work from `PLAN.md`, the designs, the decisions and Git, not from chat history or
   another agent's summary. Record decisions and progress in `PLAN.md` (and owner decisions in an ADR).
 - **Branches.** Build on `next`. Push `next` when a chunk is done; that deploys nothing. `main` is what players get: a
-  push to `main` deploys GitHub Pages, and Render builds `main` too. Merge `next` into `main` only after a full green
-  test pass, with the release step (bump `version` in `package.json`, add the `CHANGELOG.md` entry), and with the
-  owner's go-ahead in the session. Never force-push or rewrite pushed history.
+  push to `main` deploys GitHub Pages (and Render, if its auto-deploy is on). Merge `next` into `main` only after a
+  full green test pass, with the release step (bump `version` in `package.json`, add the `CHANGELOG.md` entry), and
+  with the owner's go-ahead in the session. Never force-push or rewrite pushed history.
 - **Done means tested.** A chunk is done when `npm run typecheck`, `npm test`, `npm run build` and `npm run e2e` all
   pass on the final code, and one fresh reviewer (a subagent that didn't write the code) has read the diff against
   the chunk's brief and its blockers are fixed. Report the commands and their pass or fail lines. Never call a test

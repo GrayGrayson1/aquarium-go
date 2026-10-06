@@ -1,10 +1,11 @@
 # Aquarium Go 0.5: design and build specification
 
-> **Under the agent harness (2026-10-05).** This spec stays normative for product behaviour. Its process instructions
-> (the phase order, the release step and version bump, "no schema bump", lane sign-offs, "paste the whole file into a
-> coding assistant") are replaced by the master source of truth; ADR-0003 lists every overridden clause, and
-> `DESIGN_REGISTRY.json` records this spec's status. Errata found by the 2026-10-05 review are in
-> `docs/agent/BACKLOG.md` (design errata) and are applied through the slice contracts.
+> **Since ADR-0018 (2026-10-06).** This spec is approved and stays normative for product behaviour. Its process
+> instructions (lane sign-offs, "paste the whole file into a coding assistant") give way to `PLAN.md` and `AGENTS.md`;
+> its phases are `PLAN.md`'s chunks, and its release step (§21) applies. Where the owner overrode it, the decisions
+> win: ADR-0003's supersession register (its product rows), ADR-0005 and ADR-0016 (a new species or tank size bumps
+> `SCHEMA_VERSION`). Errata found by the 2026-10-05 review are in `docs/agent/BACKLOG.md` ("Design errata by slice");
+> the chunk that builds a section applies its errata.
 
 - **Status:** the design is approved for build. The code isn't written yet; this document is the brief for writing it.
 - **Target release:** v0.5.0. The current release is v0.4.0.

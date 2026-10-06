@@ -6,16 +6,24 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Chunk 1**, in Claude Code on the Mac, in this repo, on `next`: "Read PLAN.md and build chunk 1."
-2. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
+1. **Run the four checks on `next`** (the owner, in Terminal on the Mac): chunk 0's two e2e fixes haven't run yet.
+   This line pushes `next` (which deploys nothing), runs the checks and keeps a log in `.agent-runs/checks-next.log`.
+   e2e now reports 48 results: the 47 tests plus the warm-up.
+
+   ```bash
+   cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next; { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-next.log
+   ```
+
+2. **Chunk 1**, in Claude Code on the Mac, in this repo, on `next`: "Read PLAN.md and build chunk 1."
+3. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
    rest). Chunks 1 to 3 don't need them.
-3. **Optional:** release S0's fixes to players as 0.4.1 (see "Releases").
+4. **Optional:** release S0's fixes to players as 0.4.1 (see "Releases").
 
 ## Status
 
 | Chunk | What | Status |
 |---|---|---|
-| 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done, 2026-10-06 |
+| 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06, except a green run of the e2e fixes |
 | 1 | Navigation, links and the platform layer | Next |
 | 2 | Shop and genetics | Not started |
 | 3 | Automation and notifications | Not started |
@@ -29,14 +37,23 @@ build green; e2e 45 of 47 (the two failures chunk 0 fixes).
 ## How a chunk runs
 
 1. `git checkout next && git pull`, and note the commit you start from.
-2. Read the chunk's brief below and only the design sections it names (the 0.5 spec is 159 KB). Check
-   `docs/agent/BACKLOG.md` for open items in the files you touch; fix the cheap ones and mark them fixed there.
+2. Read the chunk's brief below and only the design sections it names (the 0.5 spec is 159 KB). The harness's
+   slices map to chunks: S1 is chunk 1, S2 is 2, S3 (S3-A, S3-B) is 3, S3-C is 4, S3-D is 5, S4 is 6. In
+   `docs/agent/BACKLOG.md`, apply your chunk's rows of "Design errata by slice", and fix the open rows of your slice
+   or defer them here with a reason. Fix cheap items in the files you touch and mark them fixed.
 3. Build it in sensible commits, following `AGENTS.md`.
 4. Run `npm run typecheck`, `npm test`, `npm run build` and `npm run e2e` on the final code; all four pass (for e2e
-   see `CLAUDE.md`). Every 0.5 phase also requires that a v0.4.0 save still loads with no repairs.
+   see `CLAUDE.md`). The 0.5 spec also asks that a v0.4.0 save loads with no repairs; that is best-effort only
+   (ADR-0005). What must hold: PERSIST-002, PERSIST-003, PERSIST-007 and, from chunk 1, PERSIST-014.
 5. One fresh reviewer subagent gets the brief and `git diff <start>..HEAD` (not your summary) and reports blockers;
    fix them and re-run the checks.
-6. Push `next`, update this file, and tell the owner what to try (`npm run dev`, then http://127.0.0.1:5173).
+6. Update this file, commit, push `next`, and tell the owner what to try (`npm run dev`, then
+   http://127.0.0.1:5173).
+
+**Known flaky tests** (from the harness's baseline): `boot.spec.ts:17` and `camera-freeze.spec.ts:34` once timed out
+tearing down the browser; `playthrough-starters` can trip Vitest's RPC timeout on a slow machine; `core-gameloop`'s
+20 ms median-tick test depends on machine speed. If one fails, re-run it alone on an idle machine before calling it
+a regression, and never loosen it.
 
 **Requirements.** The ids below come from `docs/agent/REQUIREMENTS.json`; their acceptance criteria are the
 checklist. Skip criteria that only made sense for the harness (gates, ledgers, evidence manifests, reviewer records,
@@ -58,17 +75,24 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 - **Requirements:** NAV-001 to NAV-018, PLAT-001 to PLAT-003, PLAT-005, ACC-001, ACC-002, DES-001 to DES-004,
   PERSIST-014, CONST-005.
 - **Done when:** the route and platform unit tests pass; every §6.2 route except Social and Production opens the right
-  screen on desktop and phone; Back and Esc behave; a reload shows the title screen; `nav.spec`, `deeplink-boot.spec`,
-  `mobile-tabbar.spec` and `mobile-sheets.spec` pass with everything else.
+  screen on desktop and phone; Back and Esc behave; a reload shows the title screen (unless the owner's §6.4 answer
+  changes that); `nav.spec`, `deeplink-boot.spec`, `mobile-tabbar.spec` and `mobile-sheets.spec` pass with everything
+  else.
 - **Watch:**
-  - `src/platform/` is a new top-level layer: add it on purpose to the layer table in `docs/ARCHITECTURE.md` and in
-    `tests/sim/core-architecture-boundaries.test.ts`.
+  - `src/platform/` is a new top-level layer, approved by the 0.5 spec (§14): add its row to the layer table in
+    `docs/ARCHITECTURE.md` and to `ALLOWED` in `tests/sim/core-architecture-boundaries.test.ts`, and say so in the
+    commit (no separate ADR).
+  - BACKLOG errata to apply: B-115, B-116, B-117 (after the §6.4 answer), B-146, B-150, B-151. Open S1 rows to fix or
+    defer: B-011, B-126, B-129, B-172, B-178, B-179, B-182, B-183.
   - DESIGN-S3D will later move Settings to a gear and put Operations in the dock and first in More (`INTAKE.md` C-1,
     C-2). Follow the 0.5 design now, but build the dock and More so that's a small change.
   - The reviewer also reads S0's game changes once (`git diff 0d9fc5a 19928b8 -- src`, about 400 lines; the
     harness's last re-reviews never ran). Then set the S0 requirements (CONST-004, GEN-013, MKT-016, PERSIST-009 to
     PERSIST-013, PERSIST-015) to `GREEN`.
-- **Decide:** NAV-014's not-found copy, if §6.5 and §16 don't give it (ask the owner).
+- **Decide:** ask the owner before building the boot rules: which links skip the title screen, what a reload does,
+  and what the loading card shows (§6.4). The harness's review recommended: a deep link is a hash that names a real
+  screen; an empty, `#/` or unknown hash shows the title; a reload returns to the title; the loading card shows an
+  indeterminate bar with the time away. Also NAV-014's not-found copy, if §6.5 and §16 don't give it.
 
 ### 2. Shop and genetics (0.5 phase 2)
 
@@ -150,17 +174,20 @@ REL-012, REL-018.
 
 ## Releases
 
-`main` is what players get: a push to `main` deploys GitHub Pages, and Render builds `main` too. To release:
+`main` is what players get: a push to `main` deploys GitHub Pages. Render may build `main` too (`render.yaml` has
+auto-deploy on, but `docs/ARCHITECTURE.md` says Render is deployed with its CLI), so check the Render site after a
+release and deploy it by hand if it didn't update. To release:
 
 1. a full green run of the four checks on `next`, and the owner has played it;
 2. bump `version` in `package.json` and add the `CHANGELOG.md` entry (patch for fixes, minor for features;
    `tests/sim/version.test.ts` checks that the newest entry matches);
 3. with the owner's go-ahead, merge `next` into `main` and push `main`.
 
-- **0.4.1 (optional):** S0's stability fixes (`git log --oneline 0d9fc5a..next -- src`): a game step that fails part
-  way no longer leaves half its changes, and a failing listener can't make time run away; time already simulated
-  isn't simulated again when the tab comes back; equipment no longer breaks during the offline catch-up; resuming a
-  save never keeps a catch-up that failed part way; a crafted save can't use built-in object names as ids.
+- **0.4.1 (optional):** S0's stability fixes (the "S0 game fixes" table in `docs/agent/BACKLOG.md`): a game step
+  that fails part way no longer leaves half its changes, and a failing listener can't make time run away; time
+  already simulated isn't simulated again when the tab comes back; equipment no longer breaks during the offline
+  catch-up; resuming a save never keeps a catch-up that failed part way; a crafted save can't use built-in object
+  names as ids.
 - **0.5.0:** after chunk 6, or earlier by the owner's choice, with later chunks as 0.5.x (§21).
 
 ## Product decisions in force
