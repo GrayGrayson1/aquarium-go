@@ -10,11 +10,9 @@ tsconfig.tsbuildinfo
 .vite
 *.local
 
-# Agent harness: session transcripts, full-size logs, screenshots and context packs (docs/agent/OPERATIONS.md §6)
+# Agent scratch space: transcripts, full-size logs, bundles and screenshots
 .agent-runs/
 # scripts/shot.mjs writes here when no output path is given
 shot.png
-# ...but evidence logs are committed (check-state.mjs fails on ignored evidence)
-!docs/agent/evidence/**/*.log
-# The relaunch stop signal is local and never committed (docs/agent/OPERATIONS.md §1)
-docs/agent/STOP
+# ...but the retired harness's evidence logs stay committed (docs/agent/archive/)
+!docs/agent/archive/evidence/**/*.log

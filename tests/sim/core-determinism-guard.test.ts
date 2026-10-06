@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * lane:core (S0 review; docs/agent/OPERATIONS.md §11 determinism contract) — a static guard: the simulation and the
+ * lane:core (S0 review; the determinism contract in docs/ARCHITECTURE.md) — a static guard: the simulation and the
  * game data never read the wall clock, an unseeded random source, crypto, or the player's locale. The only accepted
  * entropy is the new-game seed and creation time in src/sim/newGame.ts. Comments are ignored.
  */

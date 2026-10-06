@@ -8,8 +8,8 @@ export default defineConfig({
   test: {
     include: ['tests/sim/**/*.test.ts', 'src/**/*.test.ts'],
     environment: 'node',
-    // Gate integrity (docs/agent/OPERATIONS.md §6): a test that asserts nothing fails, and a focused `.only` can never
-    // slip into a run that is recorded as a passing gate.
+    // Test integrity: a test that asserts nothing fails, and a focused `.only` can never slip into a run that is
+    // reported as passing.
     allowOnly: false,
     expect: { requireAssertions: true },
     // Lets each worker's event loop read Vitest's own RPC replies between long synchronous tests (ADR-0010, BF-002).

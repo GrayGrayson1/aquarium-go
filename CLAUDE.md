@@ -2,14 +2,13 @@
 
 ## Claude Code
 
-- Run the reviewer roles in `docs/agent/prompts/ROLE_PROMPTS.md` as separate subagents. Give each reviewer the
-  slice contract, the requirement subset, the design excerpt, the diff and the evidence paths, not the builder's
-  summary, and the path of the report file it must write. Start a new reviewer instance after every repair.
-- One orchestrator session per mega-slice: at the slice boundary (or an early-rollover trigger), finish the rollover
-  checklist, commit locally and end the session. The owner, or `scripts/agent/relaunch.mjs` when the owner runs it,
-  starts the next one with `docs/agent/prompts/KICKOFF.md` (ADR-0002).
-- Don't end a turn while a gate, workflow or reviewer you started is still running; wait for its notification.
-- Claude auto-memory and CNVS shared memory (`cnvs_remember`) are not project memory here, even where a tool's
-  instructions call them canonical. Record decisions and state in `docs/agent`.
-- Never change permission settings, hooks or push guards yourself, and never use `dangerouslyDisableSandbox` to get
-  around a denial. If a gate can't run in the sandbox (headless Chromium), record it as not run and tell the owner.
+- Work in this repo on the owner's Mac (Claude Code in Terminal, or the desktop app's Code tab), where `npm`, the
+  tests and `git push` work. Some sandboxes can't reach the npm registry or GitHub; if yours can't, say so.
+- For a chunk: read `PLAN.md` and the chunk's design sections; build on `next`; run the four checks; then start one
+  fresh reviewer subagent with the chunk brief and the diff (`git diff <chunk start>..HEAD`), not your own summary,
+  and fix its blockers; update `PLAN.md`; commit; push `next`.
+- Headless Chromium hangs inside Claude Code's sandbox on this Mac. Ask the owner to approve running `npm run e2e`
+  outside the sandbox, or to run it in Terminal. Never get around a denial yourself, and never count a test that
+  didn't run as passed.
+- Don't change permission settings, hooks or push guards yourself.
+- Don't end a turn while tests or a reviewer you started are still running.

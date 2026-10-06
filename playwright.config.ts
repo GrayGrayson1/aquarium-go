@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * E2E + perf tests (tests/e2e). OWNER: lane "core".
  * Starts its own Vite server on E2E_PORT (default 4399). A server already listening there is reused only when
  * E2E_REUSE=1 (e.g. a production preview you started on purpose); otherwise a busy port fails loudly, so a server from
- * another checkout or worktree can never be tested by mistake (docs/agent/OPERATIONS.md §8).
+ * another checkout or worktree can never be tested by mistake.
  * Run: `npx playwright test` (all) · `npx playwright test tests/e2e/boot.spec.ts` (one file).
  */
 const PORT = Number(process.env.E2E_PORT ?? 4399);

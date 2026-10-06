@@ -1,8 +1,10 @@
 # Backlog
 
-Deferred work and logged defects. **Backlog items are never implemented opportunistically** (master §19,
-`OPERATIONS.md` §9): an item is worked only when a slice contract or an owner-approved ADR takes it, mapped to a
-requirement and a test, like any other change.
+Deferred work and logged defects. Since ADR-0018 retired the agent harness, a chunk may fix open items in the files
+it touches (the cheap ones especially): say which in the commit and mark the row fixed. Larger items go into a chunk's
+brief in `PLAN.md`. Rows whose type is `harness-doc`, `harness-script` or `evidence` were logged against the harness
+and no longer apply. The harness files the rows cite (`HANDOFF.md`, `OPERATIONS.md`, the master, `evidence/`, the
+scripts) are now in `docs/agent/archive/`.
 
 Sources:
 - `evidence/S0/reviews/adversarial-review-2026-10-05.json`, `synthesis.merged`: the 101 merged findings of the

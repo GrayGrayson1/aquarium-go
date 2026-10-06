@@ -1,5 +1,9 @@
 # DESIGN INTAKE — DESIGN-S3D
 
+> **Since ADR-0018 (2026-10-06)** the agent harness is retired. The harness files this note cites (the master,
+> `OPERATIONS.md`, `HANDOFF.md`, `DESIGN_INTAKE.md`, the registry, `evidence/`) are in `docs/agent/archive/`. What
+> still counts: the owner's questions in §11 and the proposals in §12; `PLAN.md` says which chunk needs which.
+
 **Design:** Extended aquarium/aquaculture automation (S3-D)\
 **Registry status:** UNDER_REVIEW (`DESIGN_INTAKE.md` step 2; ADR-0014's approved scope covers the move)\
 **Captured files:** `docs/agent/design/DESIGN-S3D/` (SPEC.md, screens/ with 105 PNGs, SOURCE.md with SHA-256s; all 105

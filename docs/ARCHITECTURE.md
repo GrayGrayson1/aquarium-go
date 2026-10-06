@@ -9,7 +9,7 @@
 **Consequences:**
 - One command to run (`npm run dev` / `npm start`), no install beyond `npm install`.
 - All art is **procedural / code-generated**: creature meshes are lofted from species body plans, decor and plants are generated from seeds, textures are shader-based. That keeps the art style consistent and avoids licensing problems. Nothing loads from the network at runtime (fonts are bundled via @fontsource; the environment map is built from in-scene light formers).
-- The game is live on two static hosts built from `main`: GitHub Pages (`.github/workflows/deploy.yml`, on every push, base path `/aquarium-go/`) and Render (`render.yaml`, deployed with the Render CLI; base path `/`). Under the agent harness nothing is pushed or deployed without the owner's recorded approval (`docs/agent/OPERATIONS.md` §3).
+- The game is live on two static hosts built from `main`: GitHub Pages (`.github/workflows/deploy.yml`, on every push, base path `/aquarium-go/`) and Render (`render.yaml`, deployed with the Render CLI; base path `/`). Work is built on the `next` branch, which deploys nothing; `main` is pushed only for a release, with the owner's go-ahead (`AGENTS.md`).
 
 ## Layering (strict)
 
@@ -59,7 +59,7 @@ Rules:
   - `setGame` to replace the whole world: loading a save (whose catch-up runs on the decoded copy first), starting a new game, the showcase and fixture boot (`App.tsx`, `ui/screens/onboarding.ts`) and dev tools.
 
   The render frame loop (`useFrame`, render selectors) never writes game state. The AI's frame step writes only the `src/runtime` registries, with one exception: while the tutorial runs, its throttled "observed" hook advances the tutorial through `mutate`.
-- **Determinism:** the sim draws randomness only from `simRng(state)` / `ctx.rng`, which persists `rngState`; from a subsystem's own persisted stream (`shows.rng`, `staff.rng`); or from a keyed stream, `mulberry32(hashString(key))`, seeded from a stable key (creature names, breeding anchors, the morph catalog), which persists nothing and gives the same draws for the same key. Cosmetic randomness in render and AI uses `visualRng`/`Math.random`. What "deterministic" promises, and what it doesn't, is defined in `docs/agent/OPERATIONS.md` §11.
+- **Determinism:** the sim draws randomness only from `simRng(state)` / `ctx.rng`, which persists `rngState`; from a subsystem's own persisted stream (`shows.rng`, `staff.rng`); or from a keyed stream, `mulberry32(hashString(key))`, seeded from a stable key (creature names, breeding anchors, the morph catalog), which persists nothing and gives the same draws for the same key. Cosmetic randomness in render and AI uses `visualRng`/`Math.random`. What "deterministic" promises, and what it doesn't, is defined under "Determinism contract" below.
 
 ## Time
 
@@ -69,9 +69,35 @@ The game loop (`src/game/GameLoop.tsx`) pauses while the tab is hidden. A tab hi
 
 Market windows (bid lifetimes, counter holds, closing grace, counter replies) are promises in real time: they are scaled by `marketTimeScale` (the clock speed above 1×), so a bid open 3 real minutes at 1× is open 3 real minutes at 10× too. Buyer arrivals are walked in `MARKET_STEP_HOURS` (0.1 h) pieces, so a long window (10×, catch-up) sees as many buyers per game hour as 1×. An open counter form renews its bid hold every 15 real seconds and on every speed change.
 
+## Determinism contract
+
+"Deterministic" in this repo means exactly this (moved here from the retired harness's `OPERATIONS.md` §11):
+
+- **Reproducible.** The same `GameState` plus the same ordered calls (the `advanceWorld` slice sizes, the focused tank
+  and `forceFull`, the points where sim debt is flushed, and the player's actions) produce an identical `stateHash`,
+  in one process and locale. Tests pin the call sequence to check it.
+- **Live play is not replayable.** Wall-clock tick slicing, which tank is focused (its LOD), autosave flushes and speed
+  changes all change the call sequence, so two live sessions diverge. That is accepted; it is not a determinism bug.
+  Known consequence: the focused tank changes how draws on the main stream interleave.
+- **Step-size invariance.** One large chunk and many small steps agree within the tolerances each subsystem states in
+  its tests; exact equality across LOD tiers isn't promised. New systems state their tolerance (automation included).
+- **Randomness.** Only `simRng(state)` / `ctx.rng`, a subsystem's own persisted stream, or a keyed stream seeded from
+  a stable key (`mulberry32(hashString(key))`, which persists nothing); inside a tank step use the step's `ctx.rng`,
+  never a second `simRng(state)`. Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto` or
+  locale-dependent formatting or sorting in `src/sim` or `src/data`. Accepted entropy: the new-game seed
+  (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none (`src/persistence/migrations.ts`).
+  `tests/sim/core-determinism-guard.test.ts` enforces this.
+- **RNG-stream changes.** A change that adds, removes or reorders draws on an existing stream (for example new betta
+  loci) shifts every seeded test after it. Run the seeded suites before and after, explain each changed expectation
+  in the commit, and never retune data or thresholds to absorb the shift. New randomness prefers its own keyed or
+  per-subsystem stream.
+- **Automation.** Every automated action is atomic per tick, idempotent across save and load (persisted last-run
+  markers), settles the sim debt of every tank it moves animals between, and never creates money, animals, feed or
+  supplies from nothing.
+
 ## Simulation LOD
 
-`src/sim/world.ts` steps the **focused tank** at full fidelity every tick. Other tanks accumulate "sim debt". The first 12 are processed in ≥1 h chunks (reduced) and the rest in ≥4 h chunks (summary). Subsystems substep internally, so a large chunk stays well-behaved (no runaway values or NaN), but chunk size still shows: one large chunk and many small steps agree only within the tolerances each subsystem's tests state, and exact equality across LOD tiers isn't promised (`docs/agent/OPERATIONS.md` §11). Rendering LOD follows the same pattern: lod 0 is the hero tank, lod 1 is near tanks in the facility view, and lod 2 is far/cheap.
+`src/sim/world.ts` steps the **focused tank** at full fidelity every tick. Other tanks accumulate "sim debt". The first 12 are processed in ≥1 h chunks (reduced) and the rest in ≥4 h chunks (summary). Subsystems substep internally, so a large chunk stays well-behaved (no runaway values or NaN), but chunk size still shows: one large chunk and many small steps agree only within the tolerances each subsystem's tests state, and exact equality across LOD tiers isn't promised ("Determinism contract" below). Rendering LOD follows the same pattern: lod 0 is the hero tank, lod 1 is near tanks in the facility view, and lod 2 is far/cheap.
 
 ## Coordinate conventions
 

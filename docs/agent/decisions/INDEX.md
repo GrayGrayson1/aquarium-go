@@ -1,7 +1,8 @@
 # Decisions index
 
-One line per ADR. Accepted ADRs are never edited; a later ADR supersedes them. Owner decisions are valid only when
-recorded verbatim (`OPERATIONS.md` §2).
+One line per ADR. A later ADR supersedes an earlier one rather than editing it. Owner decisions are recorded in the
+owner's own words. ADR-0018 retired the agent harness: the process rules in ADR-0002 to ADR-0017 no longer apply,
+while their product decisions stay (`PLAN.md` lists them).
 
 | ADR | Date | Status | Owner decision | Summary |
 |---|---|---|---|---|
@@ -22,3 +23,4 @@ recorded verbatim (`OPERATIONS.md` §2).
 | [ADR-0015](ADR-0015-s0-repair-round-1.md) | 2026-10-06 | Accepted | Yes | S0 repair round 1 after the RED step 8 reviews: owner-approval, anchor, slice and review-series guards with fixture tests; strict argument parsing; more protected files; forward-safe saves and other game fixes; corrects ADR-0010's and ADR-0011's verification claims. ADR-0014 is reserved for the DESIGN-S3D intake |
 | [ADR-0016](ADR-0016-owner-answers-helpers-saves-bids-push-locks.md) | 2026-10-06 | Accepted | Yes | Builder and reviewer subagents for every S0 session until S0 is accepted; a new species or tank size bumps SCHEMA_VERSION so older builds treat the save as too_new; catch-up bid windows stay, MKT-016 A2 is corrected; ask again about push locks before the first unattended run |
 | [ADR-0017](ADR-0017-s0-repair-round-2.md) | 2026-10-06 | Accepted | Yes | S0 repair round 2 after the owner's Mac run: symlink-safe main-module guard for the harness scripts (D-S0-15, HARNESS-006 A7); the registry, baseline-failure and backlog repair (D-S0-3); the docs brought in line with the scripts, five owner-only files (D-S0-5); its new written rules apply in S0 |
+| [ADR-0018](ADR-0018-retire-the-harness.md) | 2026-10-06 | Accepted | Yes | The agent harness is retired and archived in `docs/agent/archive/`; new short `AGENTS.md`, `CLAUDE.md` and `PLAN.md`; work runs in large chunks on `next`, pushed after each chunk; `main` (the live sites) only after a full green test pass with the release step and the owner's go-ahead |

@@ -11,7 +11,7 @@
     "DEFERRED",
     "SUPERSEDED"
   ],
-  "rule": "Ids are append-only (supersede, never delete). Each requirement traces to acceptance criteria and tests (master §13, §40). A requirement whose source names \"umbrella X\" is a child of X; the umbrellas (NAV-001, GEN-001, MKT-001, AUTO-001, AUTO-002, PROD-001, NOTIFY-001, SOC-001, REL-002) are GREEN only when every child is closed (GREEN, DEFERRED or SUPERSEDED), which requirements-audit.mjs enforces. Standing requirements are slice ALL.",
+  "rule": "Ids are append-only (supersede, never delete). Each requirement traces to acceptance criteria and tests (master §13, §40). A requirement whose source names \"umbrella X\" is a child of X; the umbrellas (NAV-001, GEN-001, MKT-001, AUTO-001, AUTO-002, PROD-001, NOTIFY-001, SOC-001, REL-002) are GREEN only when every child is closed (GREEN, DEFERRED or SUPERSEDED), which requirements-audit.mjs enforces. Standing requirements are slice ALL. Since ADR-0018 retired the agent harness, this file is the feature checklist; PLAN.md says how chunks use it.",
   "requirements": [
     {
       "id": "CONST-001",
@@ -3292,8 +3292,9 @@
         "tests/e2e/perf.spec.ts"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "designSections": []
+      "status": "SUPERSEDED",
+      "designSections": [],
+      "note": "Superseded by ADR-0018: there are no evidence manifests any more; a chunk writes its performance budgets and baseline numbers in PLAN.md."
     },
     {
       "id": "PERSIST-001",
@@ -3640,8 +3641,8 @@
       "evidence": [
         "docs/agent/evidence/S0/manifest.json"
       ],
-      "status": "IN_PROGRESS",
-      "note": "requirements-2 B1: the S0 tasks HARNESS-001 used to list (S0-T1 to S0-T12) now map to the requirements whose criteria test them (HARNESS-009 to HARNESS-022). evidence/S0/bootstrap-20261005T223554Z.json is the assertion of the cloud session doing S0 (fb16c5d5-…), not the S0-T11 fresh-session test. requirements-3 R3-B1: A2 is checked on the candidate before S0's ACCEPT, because from ACCEPT on the audit refuses any S0 requirement that isn't closed."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 B1: the S0 tasks HARNESS-001 used to list (S0-T1 to S0-T12) now map to the requirements whose criteria test them (HARNESS-009 to HARNESS-022). evidence/S0/bootstrap-20261005T223554Z.json is the assertion of the cloud session doing S0 (fb16c5d5-…), not the S0-T11 fresh-session test. requirements-3 R3-B1: A2 is checked on the candidate before S0's ACCEPT, because from ACCEPT on the audit refuses any S0 requirement that isn't closed."
     },
     {
       "id": "HARNESS-002",
@@ -3662,7 +3663,8 @@
         "scripts/agent/fixture.test.mjs (relaunch, fixtures)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-003",
@@ -3682,8 +3684,8 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "requirements-2 m3: A1 now names DESIGN-S3C-LINES. Verifying the design against the repo is HARNESS-020."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 m3: A1 now names DESIGN-S3C-LINES. Verifying the design against the repo is HARNESS-020."
     },
     {
       "id": "HARNESS-004",
@@ -3704,7 +3706,8 @@
         "scripts/agent/fixture.test.mjs (check-state, record-event)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-005",
@@ -3730,7 +3733,8 @@
         "docs/agent/PROTECTED.json",
         "docs/agent/evidence/S0/test-inventory-baseline.json"
       ],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-006",
@@ -3757,8 +3761,8 @@
         "git diff --name-status --diff-filter=M 0d9fc5a.. -- tests (logged with scripts/agent/capture-evidence.mjs --command)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "requirements-2 m9: A6 names the S0 edits to species-fw.test.ts (a design §20.4 test) and species-marine.test.ts. ADR-0013 decision 2 answers code-architecture-game-2 B1: the only unit run in the cloud on code tree 4d29120a (logs/unit-20261005T234539917Z.log) failed BF-003 and showed BF-002's error from one 68 s test; the owner's Mac run on code tree 3e9ce488 (logs/unit-20261006T103000860Z.log) passed 1,809 tests with no Errors line. A3 and A5 are judged on the Mac run of the final tree."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 m9: A6 names the S0 edits to species-fw.test.ts (a design §20.4 test) and species-marine.test.ts. ADR-0013 decision 2 answers code-architecture-game-2 B1: the only unit run in the cloud on code tree 4d29120a (logs/unit-20261005T234539917Z.log) failed BF-003 and showed BF-002's error from one 68 s test; the owner's Mac run on code tree 3e9ce488 (logs/unit-20261006T103000860Z.log) passed 1,809 tests with no Errors line. A3 and A5 are judged on the Mac run of the final tree."
     },
     {
       "id": "HARNESS-007",
@@ -3776,8 +3780,9 @@
         "scripts/agent/requirements-audit.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "SUPERSEDED",
+      "designSections": [],
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-008",
@@ -3796,8 +3801,8 @@
         "git bundle verify \"/Volumes/Dev/Backup Projects/AquariumGo/<bundle>\" (run at each checkpoint, log in evidence/<slice>/logs/)"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "Runs on the owner's machine; a cloud session can't reach /Volumes/Dev and records the step as not run (OPERATIONS.md §6 step 5, §8). ADR-0005 decision 7 calls the folder STATE.backupDir, which STATE.json doesn't have; ADR-0006 names the folder. OPERATIONS.md §6 has the bundle step since ADR-0008; no script does it yet."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: Runs on the owner's machine; a cloud session can't reach /Volumes/Dev and records the step as not run (OPERATIONS.md §6 step 5, §8). ADR-0005 decision 7 calls the folder STATE.backupDir, which STATE.json doesn't have; ADR-0006 names the folder. OPERATIONS.md §6 has the bundle step since ADR-0008; no script does it yet."
     },
     {
       "id": "HARNESS-009",
@@ -3823,8 +3828,8 @@
       "evidence": [
         "docs/agent/evidence/S0/manifest.json"
       ],
-      "status": "IN_PROGRESS",
-      "note": "evidence/S0/test-inventory.json (test-inventory.mjs --write) and acceptance-report.md are written at S0-T12; PROTECTED.json and test-inventory-baseline.json exist since fe6f674. requirements-3 R3-B1: A1 and A3 are checked on the candidate before S0's ACCEPT."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: evidence/S0/test-inventory.json (test-inventory.mjs --write) and acceptance-report.md are written at S0-T12; PROTECTED.json and test-inventory-baseline.json exist since fe6f674. requirements-3 R3-B1: A1 and A3 are checked on the candidate before S0's ACCEPT."
     },
     {
       "id": "HARNESS-010",
@@ -3846,7 +3851,8 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-011",
@@ -3870,8 +3876,8 @@
         "scripts/agent/capture-evidence.mjs (--review)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "requirements-1, requirements-2 and requirements-3 (all RED) reviewed earlier versions of the registry; A3 needs a fresh reviewer after the D-S0-3 repair. requirements-3 R3-m2: A1 no longer claims that the validator checks test files."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-1, requirements-2 and requirements-3 (all RED) reviewed earlier versions of the registry; A3 needs a fresh reviewer after the D-S0-3 repair. requirements-3 R3-m2: A1 no longer claims that the validator checks test files."
     },
     {
       "id": "HARNESS-012",
@@ -3895,8 +3901,8 @@
       "evidence": [
         "docs/agent/evidence/S0/manifest.json"
       ],
-      "status": "IN_PROGRESS",
-      "note": "The --browser and --perf modes are first used by S1 browser QA and by PERF-003; S0 has no test of their master §28 fields, so the first slice that records them checks them."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: The --browser and --perf modes are first used by S1 browser QA and by PERF-003; S0 has no test of their master §28 fields, so the first slice that records them checks them."
     },
     {
       "id": "HARNESS-013",
@@ -3922,7 +3928,8 @@
       "evidence": [
         "docs/agent/CURRENT_SLICE.md"
       ],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-014",
@@ -3942,7 +3949,8 @@
         "node scripts/agent/context-pack.mjs (logged with scripts/agent/capture-evidence.mjs --command)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-015",
@@ -3966,7 +3974,8 @@
       "evidence": [
         "docs/agent/evidence/S0/manifest.json"
       ],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-016",
@@ -3986,8 +3995,8 @@
         "node scripts/agent/handoff.mjs --write (logged with scripts/agent/capture-evidence.mjs --command)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "HANDOFF.md has carried the generated markers since the first handoff.mjs --write. requirements-3 R3-B1: the closing-commit check moved to HARNESS-024 A6, because S0's requirements must be closed at its ACCEPT, before the closing commit exists."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: HANDOFF.md has carried the generated markers since the first handoff.mjs --write. requirements-3 R3-B1: the closing-commit check moved to HARNESS-024 A6, because S0's requirements must be closed at its ACCEPT, before the closing commit exists."
     },
     {
       "id": "HARNESS-017",
@@ -4014,7 +4023,8 @@
       "evidence": [
         "docs/agent/STATE.json"
       ],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-018",
@@ -4046,8 +4056,8 @@
         "docs/agent/evidence/S0/logs/",
         "docs/agent/evidence/S0/test-inventory-baseline.json"
       ],
-      "status": "IN_PROGRESS",
-      "note": "ADR-0013 decision 2 acknowledges BF-002 (reclassified as mitigated) and BF-003 and makes the owner's native Mac run decide the unit gate; ADR-0012 decision 3 has the owner run the gates there. The owner's Mac run of verify-slice.mjs on code tree 3e9ce488 (2026-10-06; its manifest records and logs/*-20261006T1*.log) recorded unit GREEN (163 files, 1,809 tests, no Errors line) and e2e RED: 44 of 47 passed, and 3 failed on timeouts (boot.spec.ts's first test at page.goto on a cold Vite start; the browser context's teardown in boot.spec.ts's console-error-storm test and in camera-freeze.spec.ts's High quality test). BF-001 stays open until those failures are classified (a re-run, or the owner's decision in an ADR). A later code change needs another Mac run."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: ADR-0013 decision 2 acknowledges BF-002 (reclassified as mitigated) and BF-003 and makes the owner's native Mac run decide the unit gate; ADR-0012 decision 3 has the owner run the gates there. The owner's Mac run of verify-slice.mjs on code tree 3e9ce488 (2026-10-06; its manifest records and logs/*-20261006T1*.log) recorded unit GREEN (163 files, 1,809 tests, no Errors line) and e2e RED: 44 of 47 passed, and 3 failed on timeouts (boot.spec.ts's first test at page.goto on a cold Vite start; the browser context's teardown in boot.spec.ts's console-error-storm test and in camera-freeze.spec.ts's High quality test). BF-001 stays open until those failures are classified (a re-run, or the owner's decision in an ADR). A later code change needs another Mac run."
     },
     {
       "id": "HARNESS-019",
@@ -4072,7 +4082,8 @@
         "docs/agent/evidence/S0/manifest.json",
         "docs/agent/evidence/S0/baseline-failures.json"
       ],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-020",
@@ -4098,7 +4109,8 @@
         "docs/agent/decisions/ADR-0008-docs-corrections.md",
         "docs/agent/BACKLOG.md"
       ],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-021",
@@ -4125,8 +4137,8 @@
       "evidence": [
         "docs/agent/decisions/INDEX.md"
       ],
-      "status": "IN_PROGRESS",
-      "note": "LEDGER.jsonl has an owner-decision event for every owner-decision ADR (ADR-0001, ADR-0002, ADR-0004 to ADR-0010, ADR-0012, ADR-0013, ADR-0015 and ADR-0016); those for ADR-0001 and ADR-0004 to ADR-0007 were recorded after the fact (4c1a987). ADR-0001, ADR-0002, ADR-0004 and ADR-0005 predate the \"## Owner approval\" convention, so only the 32 ledger lines pinned at 7afa202 may cite them (ADR-0015 decision 1). requirements-3 R3-m1: A2 lists the owner ADRs since ADR-0010."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: LEDGER.jsonl has an owner-decision event for every owner-decision ADR (ADR-0001, ADR-0002, ADR-0004 to ADR-0010, ADR-0012, ADR-0013, ADR-0015 and ADR-0016); those for ADR-0001 and ADR-0004 to ADR-0007 were recorded after the fact (4c1a987). ADR-0001, ADR-0002, ADR-0004 and ADR-0005 predate the \"## Owner approval\" convention, so only the 32 ledger lines pinned at 7afa202 may cite them (ADR-0015 decision 1). requirements-3 R3-m1: A2 lists the owner ADRs since ADR-0010."
     },
     {
       "id": "HARNESS-022",
@@ -4149,7 +4161,8 @@
       "evidence": [
         "docs/agent/BACKLOG.md"
       ],
-      "status": "IN_PROGRESS"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-023",
@@ -4171,8 +4184,8 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "requirements-2 M4. The scripted checks are built and tested in S0 (S0-T4); the rule applies to every slice."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 M4. The scripted checks are built and tested in S0 (S0-T4); the rule applies to every slice."
     },
     {
       "id": "HARNESS-024",
@@ -4198,8 +4211,8 @@
         "scripts/agent/capture-evidence.mjs (--command: the next slice's BOOTSTRAP check of the closing commit, A5 and A6)"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "requirements-2 M4. REL-009 checks the checkpoints again at the readiness gate. requirements-3 R3-B1: A5 and A6 came from HARNESS-013 A3 and HARNESS-016 A2, which S0 can't observe before its own ACCEPT; as standing criteria they are checked for each slice by the next slice's session."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 M4. REL-009 checks the checkpoints again at the readiness gate. requirements-3 R3-B1: A5 and A6 came from HARNESS-013 A3 and HARNESS-016 A2, which S0 can't observe before its own ACCEPT; as standing criteria they are checked for each slice by the next slice's session."
     },
     {
       "id": "HARNESS-025",
@@ -4222,8 +4235,8 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "requirements-2 M4: before this, only REL-010 A2 (S4) checked independence."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 M4: before this, only REL-010 A2 (S4) checked independence."
     },
     {
       "id": "HARNESS-026",
@@ -4244,8 +4257,8 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "requirements-2 M4."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 M4."
     },
     {
       "id": "HARNESS-027",
@@ -4266,8 +4279,8 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "requirements-2 M4."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 M4."
     },
     {
       "id": "HARNESS-028",
@@ -4291,8 +4304,8 @@
       "evidence": [
         "docs/agent/PROTECTED.json"
       ],
-      "status": "ACTIVE",
-      "note": "requirements-2 M4: before this, only REL-004 A2 (S4, tsconfig) covered gate-defining files."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: requirements-2 M4: before this, only REL-004 A2 (S4, tsconfig) covered gate-defining files."
     },
     {
       "id": "HARNESS-029",
@@ -4314,7 +4327,8 @@
         "scripts/agent/capture-evidence.mjs (--file: the acceptance report)"
       ],
       "evidence": [],
-      "status": "ACTIVE"
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/."
     },
     {
       "id": "HARNESS-030",
@@ -4331,8 +4345,8 @@
         "scripts/agent/capture-evidence.mjs (--command, label open-notes-<slice>: the slice's requirements whose note still says \"Needs owner or reviewer confirmation\")"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "First applies to S1 (DES-001, NAV-004, NAV-007, NAV-014, NAV-015); no S0 requirement carries such a note."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018: the agent harness was retired and archived in docs/agent/archive/. Earlier note: First applies to S1 (DES-001, NAV-004, NAV-007, NAV-014, NAV-015); no S0 requirement carries such a note."
     },
     {
       "id": "REL-001",
@@ -4355,8 +4369,8 @@
         "git rev-parse origin/main (read-only, after git fetch)"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "requirements-2 m10: A1 now points at the approvals in force. Governs S0 and every slice. ADR-0004 decision 1: the ban rests on text rules, the launcher's deny rules and its post-session checks; no pre-push hook is installed."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018 decision 5: pushing `next` after each chunk is approved; `main` is pushed only after a full green test pass, with the release step and the owner's go-ahead. Earlier note: requirements-2 m10: A1 now points at the approvals in force. Governs S0 and every slice. ADR-0004 decision 1: the ban rests on text rules, the launcher's deny rules and its post-session checks; no pre-push hook is installed."
     },
     {
       "id": "REL-002",
@@ -4392,8 +4406,8 @@
         "tests/sim/version.test.ts"
       ],
       "evidence": [],
-      "status": "ACTIVE",
-      "note": "Governs S0 too: package.json's version is unchanged since 0d9fc5a, and version.test.ts passes on the S0 tree."
+      "status": "SUPERSEDED",
+      "note": "Superseded by ADR-0018 decision 5: a release bumps the version and adds the CHANGELOG entry (the repo's release rule, 0.5 spec §21). Earlier note: Governs S0 too: package.json's version is unchanged since 0d9fc5a, and version.test.ts passes on the S0 tree."
     },
     {
       "id": "REL-004",
@@ -4498,8 +4512,9 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "SUPERSEDED",
+      "designSections": [],
+      "note": "Superseded by ADR-0018: there are no slice checkpoints or acceptance reports any more."
     },
     {
       "id": "REL-010",
@@ -4516,8 +4531,9 @@
         "scripts/agent/capture-evidence.mjs (--review)"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "SUPERSEDED",
+      "designSections": [],
+      "note": "Superseded by ADR-0018: one fresh reviewer per chunk replaces the recorded review set."
     },
     {
       "id": "REL-011",
@@ -4553,8 +4569,9 @@
         "scripts/agent/bootstrap-check.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "SUPERSEDED",
+      "designSections": [],
+      "note": "Superseded by ADR-0018: there is no bootstrap check any more."
     },
     {
       "id": "REL-013",
@@ -4669,8 +4686,9 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "SUPERSEDED",
+      "designSections": [],
+      "note": "Superseded by ADR-0018: the readiness report against the master's §10 is retired with the master; REL-002 still stops real multiplayer until the owner approves it."
     }
   ]
 }

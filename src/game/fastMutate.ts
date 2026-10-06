@@ -111,7 +111,7 @@ export function share(prev: unknown, next: unknown): unknown {
  * Atomic, like `useGame.mutate` (Immer's `produce` discards a draft whose recipe throws): when the recipe throws,
  * nothing is published, the half-changed working copy is dropped (the next call re-clones from the store), and the
  * error is rethrown for the caller to report. A world step that fails part-way must never become the game state,
- * be built on by the next tick, or be autosaved (S0 review, PERSIST-009 / docs/agent/OPERATIONS.md §11). When the
+ * be built on by the next tick, or be autosaved (S0 review, PERSIST-009; docs/ARCHITECTURE.md, "Determinism contract"). When the
  * publish itself throws (share() failing, or a store subscriber), the copy is dropped too, so the next call starts
  * from the store whether or not the store took the update.
  *
