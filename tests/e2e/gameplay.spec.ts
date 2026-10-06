@@ -152,6 +152,10 @@ test.describe('core gameplay loop', () => {
     const moneyBefore = await probe<number>(page, 'g.finance.money');
     await aq(page, 'setUI', { panel: 'market', panelTarget: `listing:${listingId}` });
     await tid(page, 'bid-accept').first().click();
+    // Accepting a bid 15% or more under fair value (or any other weighty sale) asks "Sell to … for $X?" first
+    // (`weighty` in src/ui/panels/market/Listings.tsx). Which bid comes first depends on the market, so confirm if asked.
+    const confirm = tid(page, 'bid-accept-confirm');
+    if (await confirm.waitFor({ state: 'visible', timeout: 3_000 }).then(() => true, () => false)) await confirm.click();
     await waitForState(page, `g.market.listings.find(l => l.id === '${listingId}').status === 'sold'`);
     expect(await probe<number>(page, 'g.finance.money')).toBeGreaterThan(moneyBefore);
   });

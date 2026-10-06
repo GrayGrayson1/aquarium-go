@@ -50,8 +50,8 @@ ADR-0008, cited in several notes, was approved by the owner and committed in `1a
 | needs-slice | 24 | 0 | 1 | 0 | 0 | 23 | 0 |
 | owner-decision | 23 | 0 | 0 | 7 | 2 | 14 | 0 |
 | record-only | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
-| outside the review | 17 | 2 | 0 | 0 | 0 | 15 | 0 |
-| **total** | **118** | **5** | **9** | **7** | **2** | **92** | **3** |
+| outside the review | 17 | 3 | 0 | 0 | 0 | 14 | 0 |
+| **total** | **118** | **6** | **9** | **7** | **2** | **91** | **3** |
 
 Fixed or partly fixed by these commits: `3e00a32`, `58ae313`, `9edfa12`, `6347c5d`, `d98731d`, `16233a1`, `c774d38`,
 `2ef1ff7`, `d8fb896`, `7c0dbf4`, `5ae85a3`, `62df438`, `9e1bf66`. `dfc0a13` was reverted by `f999618` (B-158).
@@ -63,7 +63,7 @@ Fixed or partly fixed by these commits: `3e00a32`, `58ae313`, `9edfa12`, `6347c5
 |---|---|---|---|---|---|---|---|
 | B-001 | M01 | loadAndResume adopts a half-simulated catch-up when simulateOffline throws | medium | CONFIRMED | app-code | S0 | **fixed**. Fixed in 9e1bf66 (PERSIST-015, ADR-0015): loadAndResume runs the catch-up on a copy and resumes the decoded save unchanged when the catch-up throws (`tests/sim/core-resume-catchup.test.ts`). HANDOFF step 1 leftover; security-data-1 SD-10, adversarial-1 F9 (probe L2), security-data-2 m4, code-architecture-game-2 m8 (M01 fix 2). |
 | B-002 | M01 | Repeated tick failures aren't shown to the player | UNKNOWN | CONFIRMED | app-code | OWNER | **open**. HANDOFF step 1 leftover; M01 fix 3. A persistent fault freezes the world with one console message. What the player sees is the owner question "When a simulation step keeps failing with an error, what should the player see?" (synthesis.questions). |
-| B-003 | — | The first e2e test after a cold Vite start can time out while Vite compiles: add a warm-up | UNKNOWN | — | config | S1 | **open**. Cited by OPERATIONS §8 before this file existed; M32 fix 3: a Playwright globalSetup that loads "/" and waits for `__AQ.ready`, never a retry. playwright.config.ts is gate-defining (ADR plus reviewer, master §3.8). Until then a cold-start timeout is recorded, classified as environment and re-run once as its own run. |
+| B-003 | — | The first e2e test after a cold Vite start can time out while Vite compiles: add a warm-up | UNKNOWN | — | config | S1 | **fixed** in chunk 0 (ADR-0018): a Playwright setup project, `tests/e2e/warmup.setup.ts`, loads "/" and waits for `__AQ.ready` before any test runs; no retry (M32 fix 3). |
 | B-004 | — | Enum-valued save fields (role, archetype, …) aren't checked against their tables | info | — | app-code | S4 | **open**. HANDOFF step 1 leftover. security-data-2 I1 (deferred under D-S0-3) found two such fields that crash the loop when set to an inherited name, `tanks.{}.waterClass` and `market.buyers[].archetype`, because plain-object tables in `src/sim` are read as `MAP[x] ?? default` (for example `src/sim/water/index.ts:27`, `src/sim/economy/buyers.ts:122`); reads only, nothing is polluted. Belongs with PERSIST-004 A3 (S4). |
 | B-005 | — | The determinism guard's comment stripper treats quotes inside regex literals as strings | UNKNOWN | — | test | S0 | **fixed**. Fixed in 9e1bf66 (CONST-004 A1, ADR-0015): the stripper keeps string, template (nested included) and regex literals whole; `tests/sim/core-determinism-guard.test.ts` "the comment stripper keeps regex and nested template literals whole (B-005)". HANDOFF step 1 leftover, after d8fb896 made the stripper leave strings alone (code-architecture-game-1 L3). |
 | B-006 | — | `.gitattributes` isn't protected: none exists today, but one could change how Git normalises, diffs or merges the files the gates and the code tree depend on | low | — | harness-script | S1 | **open**. code-architecture-harness-2 m10, deferred under D-S0-3. Fix: add `.gitattributes` to `PROTECTED_PATTERNS` in protect.mjs (an ADR with the owner's approval and a reviewer's sign-off, ADR-0013 decision 3). |

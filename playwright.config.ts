@@ -29,7 +29,13 @@ export default defineConfig({
     actionTimeout: 15_000,
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, launchOptions: { args: GPU_ARGS } } },
+    // Loads the app once before the tests, so a cold Vite start can't time out whichever test runs first (B-003).
+    { name: 'warmup', testMatch: /warmup\.setup\.ts$/ },
+    {
+      name: 'desktop',
+      dependencies: ['warmup'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, launchOptions: { args: GPU_ARGS } },
+    },
   ],
   webServer: {
     command: `npx vite --host 127.0.0.1 --port ${PORT} --strictPort`,
