@@ -1,7 +1,8 @@
 # CURRENT SLICE — S0
 
 **Slice:** S0 — Autonomous Harness, Baseline and Architecture Lock\
-**Status:** IN PROGRESS: repair round after RED reviews (see HANDOFF.md, next steps)\
+**Status:** IN PROGRESS: repair round 1 applied after the RED step 8 reviews (ADR-0015); the registry repair, the
+owner-only docs ADR, the owner's Mac gate run and fresh reviews come next (see HANDOFF.md)\
 **Machine state:** IMPLEMENT (see `STATE.json` for the live value)
 
 ## Objective
@@ -49,7 +50,7 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 | S0-T7 | Repair the harness documents found inconsistent by the adversarial review | HARNESS-004, HARNESS-009, HARNESS-021 | DONE (`62df438`; corrections under owner-approved ADR-0008, `1a74863`), pending independent review |
 | S0-T8 | Contained game fixes from the review (owner decision 2) and the backlog for the rest | HARNESS-022, PERSIST-002, PERSIST-003, PERSIST-009, PERSIST-010, PERSIST-011, PERSIST-012, PERSIST-013, MKT-016, CONST-004 | Fixes DONE (`3e00a32`, `58ae313`, `6347c5d` + `d98731d`, `16233a1`, `c774d38`, `f999618`, `d8fb896`; test repair `9edfa12`, D-S0-1), pending independent review; BACKLOG.md written (`1a74863`) |
 | S0-T9 | Gate configuration: e2e server reuse opt-in, e2e typecheck, required assertions, no focused tests | HARNESS-006, HARNESS-018, HARNESS-028 | DONE, pending independent review |
-| S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | HARNESS-022, HARNESS-025, HARNESS-026, HARNESS-028; all S0 | PENDING |
+| S0-T10 | Independent review of the S0 diff (code-architecture, security-data) | HARNESS-022, HARNESS-025, HARNESS-026, HARNESS-028; all S0 | IN PROGRESS: round 1 RED (requirements-3, code-architecture-game-2, code-architecture-harness-2, security-data-2); repairs D-S0-6 to D-S0-14 applied (ADR-0015); D-S0-3 to D-S0-5 open; adversarial after the fixes |
 | S0-T11 | Fresh-session bootstrap test: a new session's assertion passes `bootstrap-check.mjs` | HARNESS-001, HARNESS-002 | DONE: the Cowork session's assertion (`evidence/S0/bootstrap-20261006T012944Z.json`) passed `bootstrap-check.mjs`, recorded in the manifest (label `bootstrap-check`) |
 | S0-T12 | Owner review of the harness and the open owner questions, then S0 acceptance and checkpoint | HARNESS-001, HARNESS-008, HARNESS-009, HARNESS-013, HARNESS-015, HARNESS-016, HARNESS-017, HARNESS-018, HARNESS-021, HARNESS-024, HARNESS-029, CONST-001, REL-001, REL-003; all S0 | PENDING |
 | S0-T13 | Rarity counting tool `npm run report:rarity` (ADR-0005 decision 4) | HARNESS-022, GEN-013 | DONE (`172b5c3`), pending independent review |
