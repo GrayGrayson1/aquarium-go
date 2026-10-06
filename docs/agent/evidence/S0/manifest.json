@@ -524,6 +524,25 @@
         "HARNESS-001",
         "HARNESS-002"
       ]
+    },
+    {
+      "gate": "check:protect-after-adr-0017",
+      "command": "node scripts/agent/protect.mjs",
+      "cwd": "/sessions/rcw-012uj3zhousutj5ydpnvq5fs/mnt/Projects/AquariumGo",
+      "start": "2026-10-06T20:33:13.473Z",
+      "end": "2026-10-06T20:34:50.533Z",
+      "seconds": 5,
+      "exitCode": 0,
+      "counts": {},
+      "log": "docs/agent/evidence/S0/logs/check_protect-after-adr-0017-20261006T203313473Z.log",
+      "logSha256": "a12b7cb43c9d9134b5bb1b35e9096b66775d9e92e7611d1cc92b02edd6782a87",
+      "head": "3e66163ee4123a8dfbb28845f0949fba03040535",
+      "dirty": true,
+      "codeTree": "9beda1a3e7824872777fa30ebaa35b91ec5b8822",
+      "requirements": [
+        "HARNESS-004",
+        "HARNESS-028"
+      ]
     }
   ],
   "browserRuns": [],
