@@ -69,8 +69,10 @@ None for product work. Design §2-§3 and §20-§22 for the reconciliation (ADR-
 `scripts/agent/agent.test.mjs`; `npm run typecheck`; `npm test`; `npm run build`; `npm run e2e` (see BF-001).
 
 ## Required reviewers
-code-architecture, security-data (S0 changes the harness guards, permissions and the relaunch model), adversarial
-(every slice, ADR-0008), and a fresh requirements reviewer for the registry merge (HANDOFF step 5).
+code-architecture for the game and gate-configuration part, and code-architecture-harness for `scripts/agent/**`
+(recorded under its own role, so both halves must be GREEN: code-architecture-harness-2 F4); security-data (S0
+changes the harness guards, permissions and the relaunch model); adversarial (every slice, ADR-0008); and
+requirements for the registry (in `STATE.requiredReviewers` since requirements-3 R3-m8, so check-state enforces it).
 
 ## Known risks
 - The e2e and browser gates can't run inside Claude Code's sandboxed shell (BF-001).

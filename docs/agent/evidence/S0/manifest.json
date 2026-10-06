@@ -282,7 +282,52 @@
   "browserRuns": [],
   "screenshots": [],
   "performance": [],
-  "reviews": [],
+  "reviews": [
+    {
+      "timestamp": "2026-10-06T02:57:44.030Z",
+      "role": "requirements",
+      "reviewer": "fresh subagent, Cowork session 9fb166e0 (ADR-0012)",
+      "verdict": "RED",
+      "report": "docs/agent/evidence/S0/reviews/requirements-3.md",
+      "reportSha256": "f5d77d716b39d9f7e5b032b301418d5bc874b59d50671c03664334f360c4c468",
+      "head": "fd9ed1489e3296c9d496cac3fe9ec0e60958d78d",
+      "codeTree": "4d29120aca765409be362299865ac7bfa0617a09",
+      "requirements": []
+    },
+    {
+      "timestamp": "2026-10-06T02:58:35.439Z",
+      "role": "code-architecture",
+      "reviewer": "fresh subagent, Cowork session 9fb166e0 (ADR-0012)",
+      "verdict": "RED",
+      "report": "docs/agent/evidence/S0/reviews/code-architecture-game-2.md",
+      "reportSha256": "5dfd35d28383738c23258cc62a0abf77ba43957e4ce27e761218fe0840057592",
+      "head": "fd9ed1489e3296c9d496cac3fe9ec0e60958d78d",
+      "codeTree": "4d29120aca765409be362299865ac7bfa0617a09",
+      "requirements": []
+    },
+    {
+      "timestamp": "2026-10-06T02:58:41.694Z",
+      "role": "code-architecture-harness",
+      "reviewer": "fresh subagent, Cowork session 9fb166e0 (ADR-0012)",
+      "verdict": "RED",
+      "report": "docs/agent/evidence/S0/reviews/code-architecture-harness-2.md",
+      "reportSha256": "b6acedf6034eb7f4bb82e243eb05f60cc444924935908623013ccc55fdb143e1",
+      "head": "fd9ed1489e3296c9d496cac3fe9ec0e60958d78d",
+      "codeTree": "4d29120aca765409be362299865ac7bfa0617a09",
+      "requirements": []
+    },
+    {
+      "timestamp": "2026-10-06T02:58:42.035Z",
+      "role": "security-data",
+      "reviewer": "fresh subagent, Cowork session 9fb166e0 (ADR-0012)",
+      "verdict": "RED",
+      "report": "docs/agent/evidence/S0/reviews/security-data-2.md",
+      "reportSha256": "5a47030476a3e8594728c394a48bfaffbbd2d1e51462c31d0112ed30314bbaab",
+      "head": "fd9ed1489e3296c9d496cac3fe9ec0e60958d78d",
+      "codeTree": "4d29120aca765409be362299865ac7bfa0617a09",
+      "requirements": []
+    }
+  ],
   "files": [
     {
       "timestamp": "2026-10-05T23:44:08.481Z",
