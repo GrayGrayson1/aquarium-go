@@ -6,15 +6,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Run the four checks on `next`** (the owner, in Terminal on the Mac): chunk 0's two e2e fixes haven't run yet.
-   This line pushes `next` (which deploys nothing), runs the checks and keeps a log in `.agent-runs/checks-next.log`.
-   e2e now reports 48 results: the 47 tests plus the warm-up.
-
-   ```bash
-   cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next; { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-next.log
-   ```
-
-2. **Chunk 1**, in Claude Code on the Mac, in this repo, on `next`: "Read PLAN.md and build chunk 1."
+1. **Finish chunk 0.** `next` is pushed (`3601860`). The owner's check run on it (2026-10-06): typecheck, unit
+   (1,809 tests) and build passed; e2e (48 results: the 47 tests plus the warm-up) was still running when this was
+   written. Read the end of `.agent-runs/checks-next.log` (on the Mac, not in Git). If e2e passed, mark chunk 0 done
+   below and B-003 "first run green" in `docs/agent/BACKLOG.md`. If not, fix the failures first (see "Known flaky
+   tests") and run e2e again.
+2. **Chunk 1**, in Claude Code on the Mac, in this repo, on `next`.
 3. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
    rest). Chunks 1 to 3 don't need them.
 4. **Optional:** release S0's fixes to players as 0.4.1 (see "Releases").
@@ -23,7 +20,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 | Chunk | What | Status |
 |---|---|---|
-| 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06, except a green run of the e2e fixes |
+| 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06, except the e2e result (Next step 1) |
 | 1 | Navigation, links and the platform layer | Next |
 | 2 | Shop and genetics | Not started |
 | 3 | Automation and notifications | Not started |
@@ -31,8 +28,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 5 | Deep automation (S3-D) | Not started; needs the owner's approval of DESIGN-S3D |
 | 6 | Social stub, hardening and the 0.5.0 release | Not started |
 
-**Last full test run:** the owner's Mac, 2026-10-06, before chunk 0's e2e fixes: typecheck, unit (1,809 tests),
-build green; e2e 45 of 47 (the two failures chunk 0 fixes).
+**Last full test run:** the owner's Mac, 2026-10-06, on `3601860`: typecheck, unit (1,809 tests) and build passed;
+e2e still running (Next step 1). The run before chunk 0's e2e fixes had e2e 45 of 47.
 
 ## How a chunk runs
 
@@ -49,6 +46,13 @@ build green; e2e 45 of 47 (the two failures chunk 0 fixes).
    fix them and re-run the checks.
 6. Update this file, commit, push `next`, and tell the owner what to try (`npm run dev`, then
    http://127.0.0.1:5173).
+
+**The owner's one-line check run**, for when the agent can't run e2e itself. It pushes `next`, runs all four checks
+and keeps a log in `.agent-runs/checks-next.log`:
+
+```bash
+cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next; { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-next.log
+```
 
 **Known flaky tests** (from the harness's baseline): `boot.spec.ts:17` and `camera-freeze.spec.ts:34` once timed out
 tearing down the browser; `playthrough-starters` can trip Vitest's RPC timeout on a slow machine; `core-gameloop`'s
