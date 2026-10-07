@@ -21,14 +21,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    player be offered more, such as saving to another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too
    (B-129)? (c) What accessibility level to aim for (B-178)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the
    developer tools for the session, and the dev panel comes on with the Settings switch.
-4. **Optional:** release what's done to players (see "Releases").
+4. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
 
 ## Status
 
 | Chunk | What | Status |
 |---|---|---|
 | 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06. Its e2e run (owner, `3601860`): 47 of 48, the one failure camera-freeze's teardown hang, fixed in `859858a` |
-| 1 | Navigation, links and the platform layer | Built and reviewed 2026-10-06; e2e pending (Next step 1) |
+| 1 | Navigation, links and the platform layer | Built and reviewed 2026-10-06; released in 0.5.0; e2e pending (Next step 1) |
 | 2 | Shop and genetics | Not started |
 | 3 | Automation and notifications | Not started |
 | 4 | Production lines | Not started; needs the owner's Production answers |
@@ -215,12 +215,10 @@ release and deploy it by hand if it didn't update. To release:
    `tests/sim/version.test.ts` checks that the newest entry matches);
 3. with the owner's go-ahead, merge `next` into `main` and push `main`.
 
-- **0.4.1 (optional):** S0's stability fixes (the "S0 game fixes" table in `docs/agent/BACKLOG.md`): a game step
-  that fails part way no longer leaves half its changes, and a failing listener can't make time run away; time
-  already simulated isn't simulated again when the tab comes back; equipment no longer breaks during the offline
-  catch-up; resuming a save never keeps a catch-up that failed part way; a crafted save can't use built-in object
-  names as ids.
-- **0.5.0:** after chunk 6, or earlier by the owner's choice, with later chunks as 0.5.x (§21).
+- **0.5.0, released 2026-10-06** at the owner's request ("push to github prod and make sure it's on render"), from
+  `next` after chunk 1: chunk 1, S0's stability fixes (the planned 0.4.1) and chunk 0. The owner chose to release
+  before chunk 1's e2e run (step 1 of "To release" waived for this release only); typecheck, unit and build passed.
+  Later chunks ship as 0.5.x (§21).
 
 ## Product decisions in force
 

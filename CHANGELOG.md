@@ -4,6 +4,21 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.5.0 — 2026-10-06
+
+- **Links to every screen.** Each screen has its own address (for example `…/#/shop` or `…/#/settings/about`).
+  - The browser's Back and Forward buttons move between screens.
+  - A link to a screen opens your latest save and goes straight there, and a reload brings you back to where you were.
+  - Offers have a Copy link button.
+- **A tab bar on phones.** Tanks · Livestock · Market · Build · More, with everything else in the More sheet. Panels
+  open at full height under the top bar, and the guide shows the way to Research.
+- **Locked places say what opens them.** Visitors and Shows open a panel explaining how to unlock them.
+- **Safer saves.** A save made by a newer version is never treated as damaged or overwritten by an older copy of the
+  game still open in another tab; that copy asks you to refresh instead.
+- **Steadier play.** A game step that fails part way no longer leaves half its changes, time already simulated isn't
+  simulated again when you come back to the tab, equipment no longer breaks during the catch-up for time away, and
+  resuming a save never keeps a catch-up that failed part way.
+
 ## 0.4.0 — 2026-10-05
 
 - **Prismatic animals.** A rare, permanent rainbow shimmer, about 1 in 4,096 stocked animals and 1 in 8,192 young bred
