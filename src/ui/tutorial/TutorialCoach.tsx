@@ -493,7 +493,7 @@ export function TutorialCoach() {
                       variant="danger"
                       data-testid="tutorial-skip"
                       onClick={() => {
-                        useGame.getState().mutate((d) => safe('tutorialSkip', () => tutorialSkip(d), undefined));
+                        safe('tutorialSkip', () => useGame.getState().mutate((d) => tutorialSkip(d)), undefined); // lane:ui-shell (B-179): a throw discards the draft
                         setConfirmSkip(false);
                       }}
                     >
@@ -510,7 +510,7 @@ export function TutorialCoach() {
                         size="sm"
                         variant="ghost"
                         data-testid="tutorial-next"
-                        onClick={() => useGame.getState().mutate((d) => safe('tutorialAdvance', () => tutorialAdvance(d), undefined))}
+                        onClick={() => safe('tutorialAdvance', () => useGame.getState().mutate((d) => tutorialAdvance(d)), undefined) /* lane:ui-shell (B-179) */}
                       >
                         Next <ArrowRight size={14} />
                       </Button>
@@ -559,6 +559,11 @@ function isCovered(el: HTMLElement): boolean {
   return !!top.closest('.ag-sheet, .pn-sheet, .ag-popover, .ag-coach, .ag-coach-pill, .ag-modal, .ag-welcome');
 }
 
+/** lane:ui-shell (chunk 1, §5.5, §16) — the guide's note for a destination that lives in More on phones. */
+export function moreGuideCopy(label: string): { label: string; text: string } {
+  return { label: `Guide · ${label}`, text: `${label} now lives under More. Tap More, then ${label}.` };
+}
+
 /**
  * lane:ui-shell (chunk 1, §5.5, §16) — the guide's note above the phone's More tab while it rings it: "Guide ·
  * Research" / "Research now lives under More. Tap More, then Research."
@@ -583,9 +588,10 @@ function MoreGuideBubble({ label }: { label: string }) {
     return () => window.clearTimeout(t);
   }, []);
   if (!pos) return null;
+  // (moreGuideCopy's text, with More in bold as §16 sets it)
   return (
     <div className="ag-guide-bubble" role="status" data-testid="guide-more-bubble" style={{ right: pos.right, bottom: pos.bottom }}>
-      <span className="ag-guide-bubble__label">Guide · {label}</span>
+      <span className="ag-guide-bubble__label">{moreGuideCopy(label).label}</span>
       {label} now lives under <strong>More</strong>. Tap More, then {label}.
     </div>
   );

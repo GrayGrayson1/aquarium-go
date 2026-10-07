@@ -106,7 +106,7 @@
 .pn-locked { padding-top: var(--sp-6); }
 
 /* ── Guide on phones (§5.5): Research lives under More ── */
-.ag-tut-ring.ag-tut-ring--gold { border-color: var(--c-gold); box-shadow: 0 0 0 4px var(--c-gold-soft), 0 0 26px rgba(245, 196, 81, 0.5); animation: ag-guide-pulse 2.4s ease-in-out infinite; }
+.ag-tut-ring.ag-tut-ring--gold { border-color: var(--c-gold); box-shadow: 0 0 0 4px var(--c-gold-soft), 0 0 26px color-mix(in srgb, var(--c-gold) 50%, transparent); animation: ag-guide-pulse 2.4s ease-in-out infinite; }
 @keyframes ag-guide-pulse {
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }

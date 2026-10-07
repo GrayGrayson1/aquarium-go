@@ -3,7 +3,7 @@
  * decision 3): a looping bar, since loading can't promise how long it takes, the real time away, and where it goes
  * next. OWNER: lane "ui-shell".
  */
-import { useNav } from './router';
+import { useNav, type NavBoot } from './router';
 import { Wordmark } from '../screens/TitleScreen';
 
 /** "3 h 12 min" / "40 min" / "3 days" of real time away, or null under a minute (the card then says only "Loading your save…"). */
@@ -41,7 +41,10 @@ function AppIcon() {
 }
 
 export function BootCard() {
-  const boot = useNav((s) => s.boot);
+  return <BootCardView boot={useNav((s) => s.boot)} />;
+}
+
+export function BootCardView({ boot }: { boot: NavBoot | null }) {
   if (!boot) return null;
   return (
     <div className="ag-boot">

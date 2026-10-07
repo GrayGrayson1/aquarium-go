@@ -81,12 +81,17 @@ test.describe('UI layout contracts (desktop)', () => {
 test.describe('UI layout contracts (phone)', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test('bottom sheets open half-height, the dock hints that it scrolls, at most two toasts', async ({ page }) => {
+  // lane:ui-shell (chunk 1, NAV-017; 0.5 spec §20.3) — renamed and updated on purpose: phones swap the scrolling dock
+  // for the five-tab bar (§5.2) and open panels at full height under the top bar (§5.6). The occlusion and toast
+  // assertions are kept.
+  test('bottom sheets open full height under the top bar, the five-tab bar fits, at most two toasts', async ({ page }) => {
     const errors = collectErrors(page);
     await openApp(page);
     await quickGame(page, 'pea_puffer');
-    // the dock does not fit: it says so with an edge fade
-    await expect(page.locator('.ag-dock')).toHaveClass(/has-more-right/);
+    const bar = tid(page, 'nav-tabbar');
+    await expect(bar).toBeVisible();
+    await expect(bar.locator('button')).toHaveCount(5);
+    expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 
     await tid(page, 'dock-market').tap();
     const panel = tid(page, 'panel-market');
@@ -94,8 +99,13 @@ test.describe('UI layout contracts (phone)', () => {
     await expect(panel).toHaveAttribute('data-occlude', 'bottom');
     await page.waitForTimeout(700);
     const pb = (await panel.boundingBox())!;
-    // the tank keeps (at least) the upper third of the screen above the sheet
-    expect(pb.y).toBeGreaterThan(844 * 0.4);
+    // the sheet starts just under the top bar (64 px without a notch), and the tab bar still takes taps above it
+    expect(Math.abs(pb.y - 64)).toBeLessThanOrEqual(2);
+    const onBar = await page.evaluate(() => {
+      const b = document.querySelector('[data-testid="nav-tabbar"]')!.getBoundingClientRect();
+      return !!document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)?.closest('[data-testid="nav-tabbar"]');
+    });
+    expect(onBar).toBe(true);
 
     await pushEvents(page, [...ACHIEVEMENTS, { kind: 'warning', text: 'The heater in the test tank has failed.' }, { kind: 'info', text: 'A routine note.' }]);
     await page.waitForTimeout(700);

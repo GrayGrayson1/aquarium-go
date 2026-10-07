@@ -75,9 +75,10 @@ const HOME: Route = { kind: 'home' };
 const GESTURE_MS = 1500;
 const SESSION_KEY = 'aquarium-go.nav.v1';
 
-const BROKEN_LINK = { title: 'That link doesn’t go anywhere', detail: 'Opened your aquarium instead.' };
+/** §6.5, §16: a link that names nothing. */
+export const BROKEN_LINK = { title: 'That link doesn’t go anywhere', detail: 'Opened your aquarium instead.' } as const;
 /** ADR-0019 decision 4: a link to something that no longer exists opens the nearest screen and says so. */
-const NOT_FOUND = {
+export const NOT_FOUND = {
   tank: { panel: 'tanks', target: null, title: 'That tank isn’t in your aquarium', detail: 'Showing your tanks instead.' },
   creature: { panel: 'livestock', target: 'tab:animals', title: 'That animal isn’t in your aquarium', detail: 'Showing your livestock instead.' },
   listing: { panel: 'market', target: 'tab:listings', title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' },

@@ -241,3 +241,59 @@ Verdicts: `src/sim/care/fit.ts` (tests: `tests/sim/fit-*.test.ts`); keeper's gui
 | `guide-strip` / `guide-diet` / `guide-autofeeder` / `guide-needs` / `guide-tips` | Encyclopedia species page: care summary strip, diet by food type (dry / frozen / live), whether an autofeeder can feed it (`data-level="yes|no"`), flow & temperature, "In real life" tips |
 | `tank-handfeed` | Tank card › Life: residents that only take frozen or live food (no autofeeder can feed them) |
 | `starter-diet` | Starter reveal: what the starter eats and whether an autofeeder can feed it |
+
+## 0.5 navigation and links (chunk 1: lanes ui-shell, ui-panels)
+
+0.5 spec §19. Phones are `MOBILE_QUERY` (≤ 720 px wide, or a phone held sideways): the tab bar replaces the dock there.
+The four destination tabs keep the dock's ids, so `helpers.openPanel` works on both.
+
+| test id | element |
+|---|---|
+| `nav-tabbar` | Phone tab bar root (`<nav aria-label="Main">`; the open destination's tab has `aria-current="page"`) |
+| `dock-tanks` · `dock-livestock` · `dock-market` · `dock-build` | Tab bar destination tabs on phones (the dock's buttons on wider screens) |
+| `dock-more` | Phone More tab (`aria-expanded` while the sheet is open; highlighted while a More destination is open) |
+| `dock-badge-more` | Attention dot on the More tab (a destination inside More has one) |
+| `more-sheet` | Phone More sheet root (`#/more`) |
+| `more-visitors` · `more-shows` · `more-research` · `more-finances` · `more-encyclopedia` | More tiles (a locked one carries `.ag-more__lock`); `more-badge-<id>` is a tile's attention dot |
+| `more-settings` | More sheet Settings row |
+| `guide-more-bubble` | Phone guide note above the More tab for a step whose target lives in More ("Guide · Research") |
+| `locked-visitors` · `locked-shows` | A locked destination's panel body (0.5 spec §5.7) |
+| `settings-tab-<general\|display\|saves\|about>` | Settings tabs (`notifications` arrives with chunk 3) |
+| `boot-deeplink` | Loading card while a link or a reload opens a save |
+| `boot-deeplink-dest` | Its "Then: {destination}" pill |
+| `offer-copy-link` | Offer detail: Copy link (icon-only on phones, aria-label "Copy link to this offer") |
+| `offer-link-row` | Offer detail: the copied link, selected for a manual copy when the clipboard refuses |
+
+Panel section strips are tabs (`role="tablist"` / `role="tab"`, `aria-selected`, Left and Right arrow keys); their
+existing prefixes stay (`build-tab-<id>`, `research-tab-<id>`, `shows-tab-<id>`, `visitors-tab-<id>`).
+
+### Deep-link grammar (`src/ui/nav/routes.ts`; 0.5 spec §6.2)
+
+A panel's first tab has no segment of its own (`#/build` is Build › Tanks). An unknown path opens the tank view with
+"That link doesn’t go anywhere"; an unknown tab opens the panel's first tab; an id that's gone shows that screen's own
+gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`, `?fixture=` or other query flags.
+
+| Route | Opens | Store command |
+|---|---|---|
+| `#/` | Tank view, nothing open | `panel: null` |
+| `#/tanks` | Tanks panel | `panel: 'tanks'` |
+| `#/tanks/:tankId` *`/equipment\|life\|value`* | Tank card on that tank (Water, or the tab) | `focusedTankId`, `tankCardOpen`, `useTankCardTab.want` (URL word `equipment` = tab `gear`) |
+| `#/livestock` *`/eggs\|past\|production`* | Livestock (Animals, Eggs & fry, Past residents; Production from chunk 4) | `tab:animals\|young\|past\|production` |
+| `#/livestock/animal/:creatureId` | Creature card | `selectedCreatureId` |
+| `#/shop` *`?prismatic=1&rare=1&env=fits\|freshwater\|marine\|brackish`* | Market › Shop (filters in that order, defaults left out; a bare `#/shop` re-applies the session's filters) | `tab:shop` |
+| `#/shop/fish/:offerId` | Offer detail ("This offer has gone" when it has) | `offer:<id>` |
+| `#/market/supplies` *`/:foodId`* | Market › Supplies (scrolled to a food) | `tab:supplies` / `food:<id>` |
+| `#/market/listings` *`/:listingId`* | Market › My listings (focused on a listing) | `tab:listings` / `listing:<id>` |
+| `#/market/history` (alias `#/market/trends`) | Market › History & demand | `tab:trends` |
+| `#/build` *`/decor\|equipment\|substrate\|facility`* | Build tabs | `tab:<id>` |
+| `#/visitors` *`/staff`* | Visitors / Staff (locked panel until the Specialty Shop) | `tab:visitors\|staff` |
+| `#/shows` *`/entries\|results\|trophies`* | Shows tabs (locked panel until the guide is done) | `tab:upcoming\|entries\|results\|trophies` |
+| `#/research` *`/unlocks\|quests\|achievements`* | Research tabs | `tab:research\|unlocks\|quests\|achievements` |
+| `#/finances` | Finances | `panel: 'finances'` |
+| `#/encyclopedia` | Species list | `tab:species` |
+| `#/encyclopedia/science` *`/:articleId`* | Aquarium science (an article open) | `tab:science` / `science:<id>` |
+| `#/encyclopedia/:speciesId` | Species page | `species:<id>` |
+| `#/social` *`/clubs\|trading\|friends\|leaderboards`*, `#/social/join/:code` | Parsed only: Social is built in chunk 6, dev-only (ADR-0005 decision 3) | — |
+| `#/settings` *`/play\|saves\|notifications\|about`* | Settings tabs (URL word `play` = tab `display`; Notifications from chunk 3) | `useShell.settingsTab` |
+| `#/more` | Phone More sheet (desktop: the tank view) | `useShell.popover: 'more'` |
+| `#/log` | Full event log | `panel: 'log'` |
