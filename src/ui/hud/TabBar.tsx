@@ -6,8 +6,9 @@
  *   above phone sheets (z 55) and below toasts (z 70); .ag-hud must stay free of z-index, transform and filter.
  * - The four destination tabs keep the dock's test and tutorial ids (dock-tanks …), so helpers and the guide work
  *   unchanged. Tapping the open destination closes it (openPanel's toggle).
- * - More opens the More sheet (MoreSheet.tsx) and is highlighted while it, or any destination inside it, is open; with
- *   the sheet open, More closes it. Opening More puts down what was open, so Back from a tile returns to More.
+ * - More opens the More sheet (MoreSheet.tsx) and is highlighted while it, or any destination inside it, is open.
+ *   Like every tab, tapping it while highlighted closes that and returns to the tank view (§5.2). Opening More puts
+ *   down what was open, so Back from a tile returns to More.
  * DESIGN-S3D will put Operations first in More and Settings on a gear (INTAKE.md C-1, C-2): MORE_ITEMS is the one
  * list to change.
  */
@@ -27,16 +28,20 @@ export const MORE_ITEMS = (['visitors', 'shows', 'research', 'finances', 'encycl
 /** Destinations that light up the More tab while open. */
 export const MORE_DESTINATIONS: ReadonlySet<PanelId> = new Set<PanelId>([...MORE_ITEMS.map((it) => it.id), 'settings']);
 
-/** Open the More sheet (putting down a panel or card), or close it when it is open. */
+/**
+ * The More tab: open the More sheet (putting down a panel or card); while More is highlighted (the sheet, or a
+ * destination inside it, is open) close that and return to the tank view, as every active tab does (§5.2).
+ */
 export function toggleMore(): void {
   const shell = useShell.getState();
-  if (shell.popover === 'more') {
+  const ui = useUI.getState();
+  if (shell.popover === 'more' || (!!ui.panel && MORE_DESTINATIONS.has(ui.panel))) {
     sfx('close');
-    shell.set({ popover: null });
+    if (shell.popover === 'more') shell.set({ popover: null });
+    if (ui.panel) ui.set({ panel: null, panelTarget: null });
     return;
   }
   sfx('open');
-  const ui = useUI.getState();
   if (ui.panel || ui.selectedCreatureId) ui.set({ panel: null, panelTarget: null, selectedCreatureId: null });
   shell.set({ popover: 'more', tankCardOpen: false });
 }

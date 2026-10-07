@@ -129,11 +129,10 @@ export function tutorialFlag(flag: string): void {
   const key = `${g.saveId}:${flag}`;
   if (!wanted && (firedFlags.has(key) || g.progress?.tutorial?.flags?.[flag])) return;
   firedFlags.add(key);
-  useGame.getState().mutate((d) => {
-    try {
-      tutorialAdvance(d, flag);
-    } catch {
-      /* ignore */
-    }
-  });
+  // lane:ui-shell (B-179) — the try sits outside the recipe: a throw discards the guide's half-made changes
+  try {
+    useGame.getState().mutate((d) => tutorialAdvance(d, flag));
+  } catch {
+    /* the guide is optional */
+  }
 }

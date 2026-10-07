@@ -12,14 +12,19 @@
  * or a return through history, reopens this tab's aquarium at the address; a plain address, or a link to `#/`, shows
  * the title. With no save the route waits (`pending`) and opens once, when the first game starts.
  * Leaving: back to the title clears the hash; another aquarium (a loaded slot) resets it to `#/`; one-shot targets,
- * sub-views and the notification flag go with them.
+ * sub-views and the notification flag go with them. Every entry the router writes is tagged with its aquarium
+ * (`history.state.aqGame`, the saveId), so Back into an entry from a game that has ended (from the title, onboarding or
+ * another aquarium) is recognised as stale: it is replaced with where the player is, never applied or booted (NAV-012
+ * A3). A typed or followed link has no tag and opens as a link.
  */
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useUI, type UIState } from '@/state/ui';
 import { useGame } from '@/state/game';
+import type { GameState } from '@/types';
 import { findSpecies } from '@/data/species';
-import { listSaves } from '@/persistence';
+import { isPrismatic } from '@/sim/life/rareVariants';
+import { listSaves, loadGame } from '@/persistence';
 import { useShell } from '../common/shellStore';
 import { loadIntoGame } from '../common/saves';
 import { MOBILE_QUERY } from '../common/safe';
@@ -40,6 +45,7 @@ import {
   type NavPanel,
   type ParsedRoute,
   type Route,
+  type RouteNames,
   type SettingsTab,
   type ShopFilters,
   type TankCardTab,
@@ -144,12 +150,45 @@ export function currentRoute(): Route {
 const hasHistory = () => typeof location !== 'undefined' && typeof history !== 'undefined';
 const routePart = (h: string) => h.split('?')[0];
 
+/** The aquarium an entry belongs to: the running game's saveId while it is on screen, else none (title, onboarding). */
+function gameTag(): string | undefined {
+  const g = useGame.getState().game;
+  return useUI.getState().screen === 'game' && g && !g.isShowcase ? g.saveId : undefined;
+}
+
+/** history.state for an entry the router writes: whatever else is there, plus (or minus) the aquarium tag. */
+function entryState(): Record<string, unknown> {
+  const prev = history.state && typeof history.state === 'object' ? { ...(history.state as Record<string, unknown>) } : {};
+  const tag = gameTag();
+  if (tag) prev.aqGame = tag;
+  else delete prev.aqGame;
+  return prev;
+}
+
+/** The aquarium tag of the entry the browser just moved to (undefined for a typed or followed link). */
+function entryTag(): string | undefined {
+  const st = history.state as { aqGame?: unknown } | null;
+  return st && typeof st.aqGame === 'string' ? st.aqGame : undefined;
+}
+
 /**
  * Write `hash` ('' removes it) without a hashchange. 'auto' pushes for the first change after a gesture and replaces
  * otherwise; a change of shop filters alone always replaces.
  */
 function writeHash(hash: string, mode: 'auto' | 'push' | 'replace'): void {
-  if (!hasHistory() || location.hash === hash) return;
+  if (!hasHistory()) return;
+  if (location.hash === hash) {
+    // the right address already: keep the entry's aquarium tag current (a game coming on screen at #/)
+    const tag = gameTag();
+    if (entryTag() !== tag) {
+      try {
+        history.replaceState(entryState(), '', location.pathname + location.search + location.hash);
+      } catch {
+        /* ignore */
+      }
+    }
+    return;
+  }
   const filtersOnly = !!hash && !!location.hash && routePart(hash) === routePart(location.hash);
   // (a page without a hash is the title or onboarding: the game coming on screen takes its entry over, never stacks one)
   const push = !filtersOnly && !!location.hash && (mode === 'push' || (mode === 'auto' && performance.now() - gestureAt < GESTURE_MS));
@@ -157,8 +196,8 @@ function writeHash(hash: string, mode: 'auto' | 'push' | 'replace'): void {
     const url = location.pathname + location.search + hash;
     if (push) {
       gestureAt = -Infinity; // one entry per gesture
-      history.pushState(history.state, '', url);
-    } else history.replaceState(history.state, '', url);
+      history.pushState(entryState(), '', url);
+    } else history.replaceState(entryState(), '', url);
   } catch (e) {
     console.warn('[nav] could not write the address', e);
   }
@@ -281,6 +320,13 @@ export function go(route: Route, opts: { replace?: boolean; filters?: ShopFilter
 
 function onHashChange(): void {
   gestureAt = -Infinity; // the entry exists already: nothing that follows may push another
+  const tag = entryTag();
+  if (tag !== undefined && tag !== gameTag()) {
+    // Back (or Forward) into an entry of an aquarium that has ended: stay where the player is (NAV-012 A3)
+    if (useUI.getState().screen === 'game') syncAddress('replace');
+    else writeHash('', 'replace');
+    return;
+  }
   const parsed = parseRoute(location.hash);
   const screen = useUI.getState().screen;
   if (screen !== 'game') {
@@ -363,13 +409,31 @@ function rememberedSaveId(): string | null {
   }
 }
 
+/** The names a "Then: …" pill uses (§16: "Ember’s Tank › Equipment", "Market › Prismatic betta"), from a save. */
+function routeNames(g: GameState | null): RouteNames {
+  return {
+    species: (id) => findSpecies(id)?.commonName ?? null,
+    tank: (id) => g?.tanks[id]?.name ?? null,
+    creature: (id) => g?.creatures[id]?.name ?? null,
+    offer: (id) => {
+      const o = g?.market.stock.find((x) => x.id === id);
+      const sp = o ? findSpecies(o.speciesId) : undefined;
+      if (!o || !sp) return null;
+      return o.creatures.some(isPrismatic) ? `Prismatic ${sp.commonName.toLowerCase()}` : (o.label ?? sp.commonName);
+    },
+  };
+}
+
+/** Does the route's pill name something only the save knows (a tank, an animal, an offer)? */
+const namesFromSave = (r: Route) => r.kind === 'tankCard' || r.kind === 'creature' || (r.kind === 'panel' && !!r.target?.startsWith('offer:'));
+
 /**
  * Open a save behind the loading card, then the route (it waits in `pending` until the game is on screen). A reload
  * prefers the aquarium this tab was playing; a link takes the latest save. No save: the title, and the route keeps
  * waiting for the first game. A failed load: the title, with the load's own message (`reportLoadFailure`).
  */
 async function bootLoad(parsed: ParsedRoute, returning: boolean): Promise<void> {
-  const dest = routeLabel(parsed.route);
+  let dest = routeLabel(parsed.route, routeNames(null));
   useNav.setState({ boot: { dest, awayMs: null }, pending: parsed.route.kind === 'home' ? null : parsed });
   let slot: string | null = null;
   try {
@@ -378,7 +442,14 @@ async function bootLoad(parsed: ParsedRoute, returning: boolean): Promise<void> 
     const meta = (sid ? metas.find((m) => m.saveId === sid) : undefined) ?? metas[0];
     if (meta) {
       slot = meta.slot;
-      useNav.setState({ boot: { dest, awayMs: Math.max(0, Date.now() - meta.savedAt) } });
+      const awayMs = Math.max(0, Date.now() - meta.savedAt);
+      useNav.setState({ boot: { dest, awayMs } });
+      // the pill names the tank, animal or offer, which only the save knows: read it once before the full load
+      if (namesFromSave(parsed.route)) {
+        const peek = await loadGame(meta.slot).catch(() => null);
+        dest = routeLabel(parsed.route, routeNames(peek));
+        if (useNav.getState().boot) useNav.setState({ boot: { dest, awayMs } });
+      }
     }
   } catch (e) {
     console.warn('[nav] could not list the saves for a link', e);

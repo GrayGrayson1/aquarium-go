@@ -81,12 +81,14 @@ test.describe('round-2 features', () => {
 
   test('staff: unlock with the shop, hire an aquarist, assign a tank, see the keeper on the tank card', async ({ page }) => {
     const errors = collectErrors(page);
-    // Before the specialty shop the Staff tab is a locked preview.
+    // Before the specialty shop, Visitors (and so its Staff tab) is a locked destination. lane:ui-shell (chunk 1, 0.5
+    // spec §5.7) — changed on purpose: the locked panel hides its tabs, so the Staff tab's "first shop" preview can't be
+    // reached any more (staff and visitors both unlock with the specialty shop); the panel says what opens it instead.
     await openApp(page);
     await quickGame(page, 'betta', { unlockAll: false });
     await aq(page, 'act', 'tutorialSkip');
     await aq(page, 'setUI', { panel: 'visitors', panelTarget: 'tab:staff' });
-    await expect(tid(page, 'staff-tab')).toContainText(/first shop/i);
+    await expect(tid(page, 'locked-visitors')).toContainText('Visitors open with a Specialty Shop');
     await expect(page.locator('[data-testid^="staff-hire-"]')).toHaveCount(0);
 
     // The specialty shop: the unlock fires (with a toast that leads to the Staff tab).

@@ -1,5 +1,5 @@
 import { test, expect, chromium } from '@playwright/test';
-import { openApp, aq, probe } from './helpers';
+import { openApp, aq, probe, devUrl } from './helpers';
 
 /** Minimum acceptable frame rates in headless Chromium on the dev Mac (hardware WebGL). */
 const MIN_FPS_FACILITY = 30;
@@ -57,7 +57,7 @@ test.describe('performance', () => {
     });
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const base = info.project.use.baseURL ?? `http://127.0.0.1:${process.env.E2E_PORT ?? 4399}`;
-    await page.goto(`${base}/?fixture=community_fw`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${base}${devUrl('/?fixture=community_fw')}`, { waitUntil: 'domcontentloaded' }); // ?dev=1: it uses write tools (PLAT-005)
     await page.waitForFunction(() => !!(window as unknown as { __AQ?: { ready?: boolean } }).__AQ?.ready);
     await page.waitForTimeout(4000);
     const heap = () =>

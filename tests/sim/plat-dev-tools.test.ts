@@ -85,18 +85,28 @@ describe('PLAT-005: window.__AQ without the tools is read-only', () => {
     const ui = api.ui() as Record<string, unknown>;
     expect(Object.values(ui).some((v) => typeof v === 'function')).toBe(false);
 
-    api.summary();
+    // every object a call hands out is a copy: changing it changes nothing (summary's tutorial was live before)
+    const summary = api.summary() as { tutorial: { step: number; flags: Record<string, boolean> } };
+    summary.tutorial.step = 99;
+    summary.tutorial.flags.cheat = true;
+    const creatures = api.listCreatures() as { health: number }[];
+    for (const c of creatures) c.health = 0;
+    const stats = api.stats() as Record<string, unknown>;
+    for (const k of Object.keys(stats)) stats[k] = 'changed';
     api.getMoney();
-    api.listCreatures();
     api.query('evaluateTank', g.tankOrder[0]);
     api.actions();
     api.hash();
     api.stateHash();
     api.exportText();
-    api.stats();
     api.memory();
+    api.resumeSummary();
+    api.facilityOverflow();
 
+    expect(useGame.getState().game!.progress.tutorial.step).toBe(g.progress.tutorial.step);
+    expect(useGame.getState().game!.progress.tutorial.flags.cheat).toBeUndefined();
     expect(stateHash(useGame.getState().game!)).toBe(before);
+    expect(Object.values((debugApi().stats as () => Record<string, unknown>)())).not.toContain('changed');
     expect(useGame.getState().game!.finance.money).toBe(g.finance.money);
     expect(JSON.stringify({ ...useSettings.getState(), update: 0, setVolume: 0, reset: 0 })).toBe(settingsBefore);
   });

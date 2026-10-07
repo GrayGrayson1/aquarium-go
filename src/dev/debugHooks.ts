@@ -308,15 +308,37 @@ export const READ_ONLY_KEYS = [
   'memory',
 ] as const;
 
-const copyOf = <T>(v: T): T => (v == null ? v : structuredClone(v));
+/** A copy of a value handed out (functions dropped), so nothing a read-only call returns is live state. */
+function copyOf<T>(v: T): T {
+  if (v == null || typeof v !== 'object') return v;
+  try {
+    return structuredClone(v);
+  } catch {
+    try {
+      return JSON.parse(JSON.stringify(v)) as T;
+    } catch {
+      return null as T;
+    }
+  }
+}
 /** A store's state without its functions (they would change it), copied. */
 function snapshot<T extends object>(state: T): Partial<T> {
   return copyOf(Object.fromEntries(Object.entries(state).filter(([, v]) => typeof v !== 'function')) as Partial<T>);
 }
+/** `fn`, returning a copy of its result (a promise's value too). */
+const copying =
+  (fn: (...a: unknown[]) => unknown) =>
+  (...args: unknown[]): unknown => {
+    const r = fn(...args);
+    return r instanceof Promise ? r.then(copyOf) : copyOf(r);
+  };
 
 export function readOnlyDebugApi(full: Record<string, unknown> = debugApi()): Record<string, unknown> {
   const api: Record<string, unknown> = {};
-  for (const k of READ_ONLY_KEYS) api[k] = full[k];
+  for (const k of READ_ONLY_KEYS) {
+    const v = full[k];
+    api[k] = typeof v === 'function' ? copying(v as (...a: unknown[]) => unknown) : v;
+  }
   api.game = () => copyOf(useGame.getState().game);
   api.state = () => copyOf(useGame.getState().game);
   api.ui = () => snapshot(useUI.getState());

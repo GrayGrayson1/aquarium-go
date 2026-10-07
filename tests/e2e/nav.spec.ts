@@ -4,7 +4,7 @@
  * address (ADR-0019), locked destinations, Copy link (never with ?dev=1) and tab strips that follow the address.
  */
 import { test, expect, type Page } from '@playwright/test';
-import { openApp, quickGame, aq, tid, probe } from './helpers';
+import { openApp, quickGame, aq, tid, probe, collectErrors } from './helpers';
 
 const hash = (page: Page) => page.evaluate(() => location.hash);
 /** Follow a link inside the running game (a new history entry, then hashchange), as clicking an <a href="#/…"> would. */
@@ -75,6 +75,7 @@ test.describe('hash routes (desktop 1440×900)', () => {
   });
 
   test('broken, unknown-tab and gone links (§6.5, ADR-0019)', async ({ page }) => {
+    const errors = collectErrors(page);
     await offerGame(page);
     await goHash(page, '#/nowhere');
     await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'That link doesn’t go anywhere' })).toBeVisible();
@@ -101,6 +102,23 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await goHash(page, '#/encyclopedia/dragon');
     await expect(tid(page, 'panel-encyclopedia')).toBeVisible();
     expect(await lastToast(page)).toMatchObject({ text: 'There’s no page for that species' });
+    expect(errors, errors.join('\n')).toEqual([]); // NAV-014 A3: no console error on the way
+  });
+
+  test('after “Save and return to title”, Back doesn’t reopen the game (NAV-012 A3)', async ({ page }) => {
+    const id = await offerGame(page);
+    await goHash(page, `#/shop/fish/${id}`);
+    await expect(tid(page, 'buy-offer')).toBeVisible();
+    await goHash(page, '#/settings/saves');
+    await tid(page, 'panel-settings').getByRole('button', { name: 'Save and return to title' }).click();
+    await expect(tid(page, 'title-continue')).toBeVisible();
+    expect(await hash(page)).toBe('');
+    await page.goBack(); // into the ended game's offer entry
+    await page.waitForTimeout(800);
+    await expect(tid(page, 'title-continue')).toBeVisible();
+    await expect(tid(page, 'boot-deeplink')).toHaveCount(0);
+    expect(await page.evaluate(() => (window as unknown as { __AQ: { summary(): { screen: string } } }).__AQ.summary().screen)).toBe('title');
+    expect(await hash(page)).toBe('');
   });
 
   test('a reload reopens the screen in the address (ADR-0019 decision 2)', async ({ page }) => {
@@ -159,6 +177,23 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await expect(tid(page, 'offer-link-row').locator('input')).toHaveValue(expected);
     // back to "Copy link" after 4 s
     await expect(copy).toHaveText('Copy link', { timeout: 6_000 });
+  });
+
+  test('when the clipboard refuses, the link is shown selected for a manual copy (NAV-015 A3)', async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('denied')) } });
+      document.execCommand = () => false;
+    });
+    const id = await offerGame(page);
+    await goHash(page, `#/shop/fish/${id}`);
+    await tid(page, 'offer-copy-link').click();
+    const input = tid(page, 'offer-link-row').locator('input');
+    await expect(input).toBeFocused();
+    await expect(tid(page, 'offer-copy-link')).toHaveText('Copy link');
+    const sel = await input.evaluate((el: HTMLInputElement) => ({ start: el.selectionStart, end: el.selectionEnd, len: el.value.length, value: el.value }));
+    expect(sel.start).toBe(0);
+    expect(sel.end).toBe(sel.len);
+    expect(sel.value).toMatch(new RegExp(`/#/shop/fish/${id}$`));
   });
 
   test('opening a panel moves focus into it, and Escape hands it back to its dock button (§18)', async ({ page }) => {

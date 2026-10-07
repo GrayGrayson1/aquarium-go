@@ -72,6 +72,13 @@ test.describe('phone 390×844 (touch)', () => {
     // Back returns to More
     await page.goBack();
     await expect(tid(page, 'more-sheet')).toBeVisible();
+    // the highlighted More tab, like any active tab, closes what it shows and returns to the tank view (§5.2)
+    await tid(page, 'more-research').tap();
+    await expect(tid(page, 'panel-research')).toBeVisible();
+    await tid(page, 'dock-more').tap();
+    await expect(tid(page, 'panel-research')).toBeHidden();
+    await expect(tid(page, 'more-sheet')).toHaveCount(0);
+    await expect.poll(() => hash(page)).toBe('#/');
   });
 
   test('Tab and Shift+Tab stay inside the More sheet, and Escape closes it', async ({ page }) => {

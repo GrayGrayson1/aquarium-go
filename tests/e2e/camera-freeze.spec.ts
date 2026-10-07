@@ -41,6 +41,7 @@ test.describe('camera modes keep rendering', () => {
   test('photo mode and close-up toggles never freeze the canvas (High quality)', async ({ baseURL }, testInfo) => {
     const browser = await chromium.launch({ args: GPU_ARGS });
     const context = await browser.newContext({ ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, baseURL });
+    context.setDefaultTimeout(15_000); // playwright.config.ts's actionTimeout (a hand-made context doesn't inherit `use`)
     const page = await context.newPage();
     try {
       await run(page);

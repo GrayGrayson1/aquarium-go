@@ -15,6 +15,7 @@ import { useUI } from './state/ui';
 import { makeShowcase } from './dev/fixtures/showcase';
 import { loadFixtureRegistry, isStarterFixture, holdReady } from './dev/fixtures/lazy';
 import type { GameState } from './types';
+import { devToolsAllowed } from './state/devTools';
 import { ErrorBoundary } from './app/ErrorBoundary';
 
 const sandboxModules = import.meta.glob('./dev/sandboxes/*.tsx');
@@ -22,7 +23,10 @@ const sandboxModules = import.meta.glob('./dev/sandboxes/*.tsx');
 // lane:perf2 — a non-starter ?fixture= needs the lazy registry: start fetching it now and hold __AQ.ready until the
 // boot below has applied it (e2e/QA scripts wait for `ready` and then read the fixture's state).
 const URL_QUERY = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
-const URL_FIXTURE = URL_QUERY ? (URL_QUERY.get('fixture') ?? URL_QUERY.get('showcase')) : null;
+const URL_FIXTURE_ASKED = URL_QUERY ? (URL_QUERY.get('fixture') ?? URL_QUERY.get('showcase')) : null;
+// lane:core (PLAT-005, ADR-0005 decision 2) — a registry fixture is a developer tool (a rich world Settings › Saves
+// could keep): only in a dev build or a ?dev=1 session. A starter showcase is a plain demo world, never saved.
+const URL_FIXTURE = URL_FIXTURE_ASKED && (isStarterFixture(URL_FIXTURE_ASKED) || devToolsAllowed()) ? URL_FIXTURE_ASKED : null;
 const releaseUrlBoot = URL_FIXTURE && !isStarterFixture(URL_FIXTURE) ? holdReady() : null;
 if (releaseUrlBoot) void loadFixtureRegistry().catch(() => undefined);
 

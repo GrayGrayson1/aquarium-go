@@ -19,37 +19,50 @@ const fakeWindow = {
   matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
 };
 const fakeLocation = { origin: 'http://127.0.0.1:4399', pathname: '/', search: '', hash: '' };
+/** Each entry's URL; `states` holds each entry's history.state (the browser restores it on Back and Forward). */
 const entries: string[] = [];
+const states: unknown[] = [];
 let index = 0;
 const setUrl = (url: string) => {
   const i = url.indexOf('#');
   fakeLocation.hash = i >= 0 && url.length > i + 1 ? url.slice(i) : '';
 };
 const fakeHistory = {
-  state: null,
-  pushState(_s: unknown, _t: string, url: string) {
+  state: null as unknown,
+  pushState(s: unknown, _t: string, url: string) {
     entries.splice(index + 1);
+    states.splice(index + 1);
     entries.push(url);
+    states.push(s);
     index = entries.length - 1;
+    fakeHistory.state = s;
     setUrl(url);
   },
-  replaceState(_s: unknown, _t: string, url: string) {
+  replaceState(s: unknown, _t: string, url: string) {
     entries[index] = url;
+    states[index] = s;
+    fakeHistory.state = s;
     setUrl(url);
   },
 };
-/** The browser's own navigation: a typed or followed link (a new entry) or Back (an older entry), then hashchange. */
+/** The browser's own navigation: a typed or followed link (a new entry with no state), then hashchange. */
 function browserGo(hash: string) {
   entries.splice(index + 1);
+  states.splice(index + 1);
   entries.push(`/${hash}`);
+  states.push(null);
   index = entries.length - 1;
+  fakeHistory.state = null;
   setUrl(`/${hash}`);
   fakeWindow.dispatch('hashchange');
 }
+/** Back: the older entry and its state, then hashchange (when the hash differs, as for a real browser). */
 function browserBack() {
+  const before = fakeLocation.hash;
   index--;
+  fakeHistory.state = states[index];
   setUrl(entries[index]);
-  fakeWindow.dispatch('hashchange');
+  if (fakeLocation.hash !== before) fakeWindow.dispatch('hashchange');
 }
 const gesture = () => fakeWindow.dispatch('pointerdown');
 const flush = async () => {
@@ -96,7 +109,10 @@ beforeEach(async () => {
   useGame.getState().setGame(g);
   entries.length = 0;
   entries.push('/');
+  states.length = 0;
+  states.push(null);
   index = 0;
+  fakeHistory.state = null;
   fakeLocation.hash = '';
   useUI.getState().set({ screen: 'game', focusedTankId: g.tankOrder[0] });
   await flush();
@@ -300,6 +316,53 @@ describe('nav-sync: leaving a game (NAV-012)', () => {
     useUI.getState().set({ screen: 'title', panel: null });
     await flush();
     expect(fakeLocation.hash).toBe('');
+  });
+
+  it('Back from the title into the ended game’s entries stays on the title (NAV-012 A3)', async () => {
+    gesture();
+    useUI.getState().set({ panel: 'market', panelTarget: null });
+    R.useNav.setState({ tab: { market: 'shop' }, sub: { market: 'offer:o1' } });
+    await flush();
+    expect(fakeLocation.hash).toBe('#/shop/fish/o1');
+    useUI.getState().set({ screen: 'title', panel: null }); // "Save and return to title"
+    await flush();
+    expect(fakeLocation.hash).toBe('');
+    browserBack(); // into #/ of the game that ended
+    await flush();
+    expect(useUI.getState().screen).toBe('title');
+    expect(R.useNav.getState().boot).toBeNull();
+    expect(R.useNav.getState().pending).toBeNull();
+    expect(fakeLocation.hash).toBe('');
+  });
+
+  it('Back into another aquarium’s entry keeps the one on screen, untouched', async () => {
+    gesture();
+    useUI.getState().set({ panel: 'research', panelTarget: null });
+    await flush();
+    gesture();
+    useUI.getState().set({ panel: 'build', panelTarget: null });
+    await flush();
+    expect(entries.slice(1)).toEqual(['/#/research', '/#/build']);
+    // another slot loaded from Settings: the new aquarium, nothing open (its #/ replaces the #/build entry)
+    useGame.getState().setGame(newGame({ starterId: 'axolotl', starterName: 'B', seed: 4 }));
+    useUI.getState().set({ screen: 'game', panel: null, panelTarget: null });
+    await flush();
+    expect(fakeLocation.hash).toBe('#/');
+    browserBack(); // into the first aquarium's #/research
+    await flush();
+    expect(useUI.getState().panel).toBeNull();
+    expect(fakeLocation.hash).toBe('#/');
+    expect((fakeHistory.state as { aqGame?: string }).aqGame).toBe(useGame.getState().game!.saveId);
+  });
+
+  it('a link typed on the title (no tag) still opens as a link', async () => {
+    useUI.getState().set({ screen: 'title', panel: null });
+    await flush();
+    browserGo('#/build/decor');
+    for (let i = 0; i < 20 && R.useNav.getState().boot; i++) await new Promise((r) => setTimeout(r, 10));
+    // no save in this test: the route waits for the first game
+    expect(R.useNav.getState().pending?.route).toEqual({ kind: 'panel', panel: 'build', tab: 'decor' });
+    R.useNav.setState({ pending: null, boot: null });
   });
 
   it('a route waiting for a game opens once, when the game starts', async () => {

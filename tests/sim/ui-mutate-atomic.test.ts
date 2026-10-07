@@ -73,3 +73,17 @@ describe('a throwing recipe changes nothing (B-179)', () => {
     expect(useGame.getState().game!.progress.tutorial.flags.half_made).toBeUndefined();
   });
 });
+
+describe('tutorialFlag (B-179)', () => {
+  it('a guide step that throws part-way leaves no half-made change and doesn’t throw', async () => {
+    const { tutorialFlag } = await import('@/ui/common/actions');
+    const before = hash();
+    advance.impl = (d) => {
+      (d as GameState).progress.tutorial.flags.half_made = true;
+      throw new Error('guide failure');
+    };
+    expect(() => tutorialFlag('b179_probe_flag')).not.toThrow();
+    expect(useGame.getState().game!.progress.tutorial.flags.half_made).toBeUndefined();
+    expect(hash()).toBe(before);
+  });
+});
