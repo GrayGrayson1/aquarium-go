@@ -23,6 +23,7 @@ src/game         real-time loop driving sim ticks
 src/runtime      per-frame non-persisted registries (creature runtime, food, events, audio-reactive)
 src/ai           per-frame creature behaviour (reads sim state, writes runtime; game state only through mutate)
 src/render       Three.js/R3F rendering (reads state + runtime; input handlers change game state only through mutate)
+src/platform     thin seam over browser APIs (notifications, clipboard, share, lifecycle); no runtime imports from persistence, sim, state or ui
 src/ui           React DOM UI (reads state; calls sim mutators through `mutate`)
 src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
@@ -45,7 +46,8 @@ Changing a row is a deliberate architecture change: say why in the commit, and t
 | `audio` | types, data, sim, state, runtime |
 | `ai` | types, data, sim, state, runtime |
 | `render` | types, data, sim, state, runtime, ai, audio |
-| `ui` | types, data, sim, state, persistence, game, runtime, ai, render, audio |
+| `platform` | types |
+| `ui` | types, data, sim, state, persistence, game, runtime, ai, render, audio, platform |
 | `app` | every layer above |
 | `dev` | every layer above, and app |
 | files at the `src/` root | every layer |

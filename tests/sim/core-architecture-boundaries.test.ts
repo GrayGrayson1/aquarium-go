@@ -24,10 +24,12 @@ const ALLOWED: Record<string, string[]> = {
   audio: ['types', 'data', 'sim', 'state', 'runtime'],
   ai: ['types', 'data', 'sim', 'state', 'runtime'],
   render: ['types', 'data', 'sim', 'state', 'runtime', 'ai', 'audio'],
-  ui: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'audio'],
-  app: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio'],
-  dev: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'app'],
-  root: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'app', 'dev'],
+  // 0.5 design §14: a thin seam over browser APIs; no runtime imports from persistence, sim, state or ui.
+  platform: ['types'],
+  ui: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'audio', 'platform'],
+  app: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform'],
+  dev: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform', 'app'],
+  root: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform', 'app', 'dev'],
 };
 
 /** Violations present when the lock was installed: "src/file -> layer". Shrink this list; never grow it. */
