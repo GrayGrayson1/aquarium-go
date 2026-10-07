@@ -36,7 +36,10 @@ export function PanelLayout({ title, icon, subtitle, toolbar, children, footer, 
         <div className="pn-head__row">
           {icon && <span className="pn-head__icon">{icon}</span>}
           <div className="pn-head__titles">
-            <h2 className="pn-head__title">{title}</h2>
+            {/* lane:ui-shell (chunk 1, §18) — opening a panel moves focus to its title (PanelHost) */}
+            <h2 className="pn-head__title" tabIndex={-1}>
+              {title}
+            </h2>
             {subtitle && <div className="pn-head__sub">{subtitle}</div>}
           </div>
           {headerExtra}

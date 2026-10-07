@@ -126,3 +126,6 @@
 .pn-linkrow { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; padding: 6px 10px; border-radius: var(--r-md); background: var(--c-fill); border: 1px solid var(--c-line); color: var(--c-ink-3); }
 .pn-linkrow.is-manual { border-color: var(--c-watch); }
 .pn-linkrow__url { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; color: var(--c-ink-2); font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: calc(12px * var(--text-scale)); text-overflow: ellipsis; outline: none; }
+
+/* ── Focus (§18): a panel's title takes focus when the panel opens; it is a target, not a control ── */
+.pn-head__title:focus { outline: none; }

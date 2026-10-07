@@ -98,7 +98,8 @@ export function PanelHost() {
       }
     }
     if (!lastFocus.current) lastFocus.current = document.activeElement as HTMLElement | null;
-    const t = window.setTimeout(() => sheetRef.current?.focus({ preventScroll: true }), 60);
+    // lane:ui-shell (chunk 1, §18) — focus goes to the panel's title (the sheet itself while the panel is loading)
+    const t = window.setTimeout(() => (sheetRef.current?.querySelector<HTMLElement>('.pn-head__title') ?? sheetRef.current)?.focus({ preventScroll: true }), 60);
     return () => window.clearTimeout(t);
   }, [open, panel]);
 
