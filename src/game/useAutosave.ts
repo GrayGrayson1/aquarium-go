@@ -103,7 +103,14 @@ export async function autosaveNow(reason = 'manual'): Promise<boolean> {
       if (typeof console !== 'undefined') console.warn(`[aquarium-go] autosave (${reason}) failed: ${res.message}`);
       // lane:fix-core (P5-04) — another tab played this aquarium further: not a fault. lane:fix3-saves (R03-01) — the
       // player is told by a lasting banner with a choice (StaleTabBanner), not by a toast.
-      if (res.code !== 'stale' && ++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
+      // lane:core (PERSIST-014, ADR-0016 decision 2) — a newer version of the game wrote this slot: say so once, with
+      // its "refresh the page" line, rather than "autosave isn't landing".
+      if (res.code === 'too_new') {
+        if (!warnedFailing) {
+          warnedFailing = true;
+          toastOnce(res.message, 'warning');
+        }
+      } else if (res.code !== 'stale' && ++failures >= WARN_AFTER_FAILURES && !warnedFailing) {
         warnedFailing = true;
         toastOnce('Autosave isn’t landing — export a copy from Settings › Saves to keep your progress safe.', 'danger');
       }

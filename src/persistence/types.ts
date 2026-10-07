@@ -58,8 +58,11 @@ export interface SaveResult {
   backend?: string;
   /** Large photos stripped from the save to keep it small. */
   strippedPhotos?: number;
-  /** lane:fix-core — 'stale': another tab saved this aquarium more recently, so this tab's copy was not written. */
-  code?: 'stale';
+  /**
+   * lane:fix-core — 'stale': another tab saved this aquarium more recently, so this tab's copy was not written.
+   * lane:core (PERSIST-014) — 'too_new': a newer version of the game wrote this slot; nothing was written.
+   */
+  code?: 'stale' | 'too_new';
   /** lane:fix-core — the write only reached the in-memory backend (lost when the tab closes); `message` says so. */
   degraded?: boolean;
 }

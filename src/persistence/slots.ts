@@ -20,11 +20,18 @@
  *  - Displaced aquariums (P5-03/S06-03/S06-07): when a slot's `.backup` holds a DIFFERENT aquarium than its primary
  *    (a load or overwrite replaced it), same-game writes keep that backup instead of rotating over it, and listings
  *    show it as a loadable "Previous …" entry (`<slot>.backup`) so nothing is lost by one click.
+ *
+ * lane:core (PERSIST-014; ADR-0005 decision 1, ADR-0016 decision 2) — forward safety: a record written by a newer build
+ * (header or body schemaVersion above SCHEMA_VERSION, `too_new`) is final here. A load stops at it and reports too_new
+ * (never "damaged", never an older `.backup` or another backend's copy), and no write (saveGame, saveGameSync, the
+ * backup rotation, moving saves between backends) rotates it out of its key or overwrites it.
  */
 import { create } from 'zustand';
 import type { GameState } from '@/types';
 import { storage, syncStore, onBackendChange, type KVBackend, type BackendName } from './storage';
-import { encodeRecord, decodeRecord, readHeader, makeMeta, cyrb53, type DecodedSave } from './serialize';
+import { encodeRecord, decodeRecord, readHeader, makeMeta, cyrb53, SAVE_FORMAT, type DecodedSave } from './serialize';
+import { detectVersion, tooNewMessage } from './migrations'; // lane:core (PERSIST-014)
+import { SCHEMA_VERSION } from './schema'; // lane:core (PERSIST-014)
 import { SaveError, type SaveMeta, type SaveResult, type LoadResult } from './types';
 
 export const SAVE_PREFIX = 'aquarium-go.save.';
@@ -82,6 +89,11 @@ interface WriteStamp {
   tab: string;
   /** lane:fix3-saves (R03-01) — clock.hour of the written state (absent in stamps from older builds). */
   hour?: number;
+  /**
+   * lane:core (PERSIST-014) — save format of the written record (absent in stamps from older builds), so an older build
+   * can see that a newer one wrote the slot last even when that record is in a store it can't read synchronously.
+   */
+  schemaVersion?: number;
 }
 
 function readStamp(slot: string): WriteStamp | null {
@@ -95,12 +107,12 @@ function readStamp(slot: string): WriteStamp | null {
   }
 }
 
-function noteWritten(slot: string, savedAt: number, saveId: string | undefined, hour?: number): void {
+function noteWritten(slot: string, savedAt: number, saveId: string | undefined, hour?: number, schemaVersion?: number): void {
   if (saveId) {
     knownSavedAt.set(saveId, Math.max(knownSavedAt.get(saveId) ?? 0, savedAt));
     caughtUpHours.delete(saveId);
   }
-  syncStore.set(stampKey(slot), JSON.stringify({ savedAt, saveId, tab: TAB_ID, hour } satisfies WriteStamp));
+  syncStore.set(stampKey(slot), JSON.stringify({ savedAt, saveId, tab: TAB_ID, hour, schemaVersion } satisfies WriteStamp));
 }
 
 function noteLoaded(saveId: string | undefined, savedAt: number): void {
@@ -221,6 +233,37 @@ async function backupSaveId(slot: string): Promise<string | null> {
   return id;
 }
 
+// ───────────────────────────── records from a newer build (lane:core, PERSIST-014) ─────────────────────────────
+
+/** The state a stored record holds: its body, a bare JSON state or an export file's state (undefined if unreadable). */
+function storedState(raw: unknown): unknown {
+  let obj: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      obj = JSON.parse(readHeader(raw) ? raw.slice(raw.indexOf('\n') + 1) : raw);
+    } catch {
+      return undefined;
+    }
+  }
+  const o = obj as { format?: unknown; state?: unknown } | null;
+  return o && typeof o === 'object' && o.format === SAVE_FORMAT && 'state' in o ? o.state : obj;
+}
+
+/**
+ * Save format of a record written by a newer build (`too_new`): the higher of its header's schemaVersion and its
+ * state's, when that is above SCHEMA_VERSION; 0 for anything this build wrote or could write. A header that says newer
+ * settles it without parsing the body; otherwise the body is read too (about 1.4 ms for the largest fixture), so a
+ * newer body under an older header is never written over.
+ */
+function newerVersion(raw: unknown): number {
+  let v = detectVersion(readHeader(raw));
+  if (v <= SCHEMA_VERSION) v = Math.max(v, detectVersion(storedState(raw)));
+  return v > SCHEMA_VERSION ? v : 0;
+}
+
+/** A write refused because the slot holds a newer build's record (format `v`): nothing was changed. */
+const tooNewRefusal = (slot: string, v: number): SaveResult => ({ ok: false, slot, code: 'too_new', message: tooNewMessage(v) });
+
 /**
  * Save a game state into a slot. Showcase worlds are never saved.
  * The previous record (if it is intact) is copied to `<slot>.backup` first — unless that backup holds a different
@@ -235,6 +278,12 @@ export async function saveGame(state: GameState, slot = 'auto'): Promise<SaveRes
     if (stamp && refuseStale(state, slot, stamp.savedAt, stamp.saveId, stamp.tab, stamp.hour)) {
       return { ok: false, slot, code: 'stale', message: STALE_MESSAGE };
     }
+    // lane:core (PERSIST-014) — a newer build wrote the slot last (its stamp), maybe into a store this write never reads
+    // (a pagehide copy in localStorage): leave the slot alone while any newer record of it is still stored.
+    if (stamp && detectVersion(stamp) > SCHEMA_VERSION) {
+      const newer = (await slotCopies(slot)).copies.find((c) => c.tooNew);
+      if (newer) return tooNewRefusal(slot, newer.tooNew!);
+    }
     const { text, header, stats } = encodeRecord(state, slot);
     try {
       const prev = await storage.get(saveKey(slot));
@@ -242,6 +291,9 @@ export async function saveGame(state: GameState, slot = 'auto'): Promise<SaveRes
       if (ph && refuseStale(state, slot, ph.savedAt, ph.meta?.saveId, undefined, ph.meta?.hour)) {
         return { ok: false, slot, code: 'stale', message: STALE_MESSAGE };
       }
+      // lane:core (PERSIST-014) — a newer build's record is never overwritten or rotated out of the primary.
+      const prevNewer = newerVersion(prev);
+      if (prevNewer) return tooNewRefusal(slot, prevNewer);
       // Only rotate an intact record into the backup; a damaged one must never overwrite a good backup.
       if (prev !== undefined && prev !== null && isIntact(prev)) {
         const prevId = ph?.meta?.saveId ?? null;
@@ -251,13 +303,20 @@ export async function saveGame(state: GameState, slot = 'auto'): Promise<SaveRes
           keepBackup = !!bid && bid !== state.saveId;
         }
         if (!keepBackup) {
-          await storage.set(backupKey(slot), typeof prev === 'string' ? prev : JSON.stringify(prev));
-          backupIds.set(slot, prevId);
+          // lane:core (PERSIST-014) — nor is one in the backup rotated over. The previous record then goes unbacked: fine
+          // for an older copy of this aquarium; any other (another aquarium, or one without an id) would be lost, so the
+          // write is refused.
+          const backupNewer = newerVersion(await storage.get(backupKey(slot)));
+          if (backupNewer && !(prevId && prevId === state.saveId)) return tooNewRefusal(slot, backupNewer);
+          if (!backupNewer) {
+            await storage.set(backupKey(slot), typeof prev === 'string' ? prev : JSON.stringify(prev));
+            backupIds.set(slot, prevId);
+          }
         }
       }
       await storage.set(saveKey(slot), text);
       await storage.set(metaKey(slot), JSON.stringify(header.meta));
-      noteWritten(slot, header.savedAt, state.saveId, header.meta.hour);
+      noteWritten(slot, header.savedAt, state.saveId, header.meta.hour, header.schemaVersion);
       const backend = await storage.backendName();
       if (mirrored.has(slot) && !syncStore.isActive()) clearMirror(slot, header.savedAt);
       if (stats.fixedNumbers > 0 && typeof console !== 'undefined') console.warn(`[aquarium-go] save: replaced ${stats.fixedNumbers} invalid number(s) with 0`);
@@ -298,17 +357,26 @@ export function saveGameSync(state: GameState, slot = 'auto'): boolean {
   if (!SLOT_RE.test(slot)) return false;
   const stamp = readStamp(slot);
   if (stamp && refuseStale(state, slot, stamp.savedAt, stamp.saveId, stamp.tab, stamp.hour)) return false;
+  // lane:core (PERSIST-014) — never over a newer build's save: its stamp says it wrote the slot last (that record may be
+  // in IndexedDB, which this can't read; the regular saveGame that follows checks the stores), or this key holds it.
+  if (stamp && detectVersion(stamp) > SCHEMA_VERSION) return false;
+  const prev = syncStore.get(saveKey(slot));
+  if (newerVersion(prev)) return false;
   const { text, header } = encodeRecord(state, slot);
   // lane:fix3-saves (R03-02) — when localStorage IS the save store, this write replaces the primary for good: a
   // different aquarium there is rotated into the backup first (as saveGame would), so it stays "Previous …".
   if (syncStore.isActive()) {
-    const prev = syncStore.get(saveKey(slot));
     const prevId = prev ? (readHeader(prev)?.meta?.saveId ?? null) : null;
-    if (prev && prevId && prevId !== state.saveId && isIntact(prev) && syncStore.set(backupKey(slot), prev)) backupIds.set(slot, prevId);
+    if (prev && prevId && prevId !== state.saveId && isIntact(prev)) {
+      // lane:core (PERSIST-014) — a newer build's record in the backup isn't rotated over, and writing without the
+      // rotation would lose the other aquarium: refused.
+      if (newerVersion(syncStore.get(backupKey(slot)))) return false;
+      if (syncStore.set(backupKey(slot), prev)) backupIds.set(slot, prevId);
+    }
   }
   if (!syncStore.set(saveKey(slot), text)) return false;
   syncStore.set(metaKey(slot), JSON.stringify(header.meta));
-  noteWritten(slot, header.savedAt, state.saveId, header.meta.hour);
+  noteWritten(slot, header.savedAt, state.saveId, header.meta.hour, header.schemaVersion);
   if (!syncStore.isActive()) mirrored.add(slot);
   return true;
 }
@@ -323,6 +391,8 @@ interface SlotCopy {
   savedAt: number;
   /** Legacy records are fully decoded to check them; keep the result. */
   decoded?: DecodedSave;
+  /** lane:core (PERSIST-014) — save format of a newer build's record (above SCHEMA_VERSION); absent otherwise. */
+  tooNew?: number;
 }
 
 const hasValue = (raw: unknown) => raw !== undefined && raw !== null && raw !== '';
@@ -330,6 +400,13 @@ const hasValue = (raw: unknown) => raw !== undefined && raw !== null && raw !== 
 function describeCopy(backend: KVBackend, kind: SlotCopy['kind'], raw: unknown): SlotCopy | null {
   if (!hasValue(raw)) return null;
   const h = readHeader(raw);
+  // lane:core (PERSIST-014) — a newer build's record isn't damaged, whatever this build makes of its body: it counts as
+  // intact, so it keeps its place (newest first) and a load stops there instead of falling back past it.
+  const tooNew = newerVersion(raw);
+  if (tooNew) {
+    const at = h ? h.savedAt : (storedState(raw) as { lastSavedRealMs?: unknown } | undefined)?.lastSavedRealMs;
+    return { backend, kind, raw, intact: true, savedAt: typeof at === 'number' && Number.isFinite(at) ? at : 0, tooNew };
+  }
   if (h) return { backend, kind, raw, intact: isIntact(raw), savedAt: Number.isFinite(h.savedAt) ? h.savedAt : 0 };
   try {
     const decoded = decodeRecord(raw);
@@ -374,6 +451,8 @@ async function slotCopies(slot: string): Promise<{ copies: SlotCopy[]; readError
 }
 
 function decodeCopy(c: SlotCopy): LoadResult {
+  // lane:core (PERSIST-014) — not decoded: the player is told it comes from a newer version, not that it is damaged.
+  if (c.tooNew) return { ok: false, code: 'too_new', error: tooNewMessage(c.tooNew) };
   const label = c.kind === 'primary' ? 'This save' : 'The backup save';
   try {
     const d = c.decoded ?? decodeRecord(c.raw, label);
@@ -387,7 +466,8 @@ function decodeCopy(c: SlotCopy): LoadResult {
 /**
  * Load a slot with full diagnostics. Looks in every backend the slot may have been written to (a slow first visit
  * can leave saves in localStorage) and loads the newest intact copy. Falls back to a `.backup` copy when the primary
- * is damaged (`restoredFromBackup: true` — the caller tells the player).
+ * is damaged (`restoredFromBackup: true` — the caller tells the player). lane:core (PERSIST-014) — never past a newer
+ * build's record: that reports `code: 'too_new'` instead.
  */
 export async function loadGameDetailed(ref = 'auto'): Promise<LoadResult> {
   const { slot, backup } = parseSlotRef(ref);
@@ -408,6 +488,12 @@ export async function loadGameDetailed(ref = 'auto'): Promise<LoadResult> {
       noteLoaded(r.state.saveId, c.savedAt);
       if (c.kind === 'backup' && !backup) return finishBackup(slot, r);
       r.meta = { ...makeMeta(r.state, ref, r.state.lastSavedRealMs), backend: c.backend.name, previousOf: backup ? slot : undefined };
+      return r;
+    }
+    // lane:core (PERSIST-014) — a newer build's record ends the search: every copy after it is older or damaged, and
+    // loading one (the `.backup`, another backend's copy) would fall back past the player's newest save.
+    if (r.code === 'too_new') {
+      if (typeof console !== 'undefined') console.warn(`[aquarium-go] save slot ${slot} was written by a newer version; not loading an older copy`);
       return r;
     }
     firstError ??= r;
@@ -650,7 +736,10 @@ async function migrateSlot(slot: string, src: KVBackend, target: KVBackend): Pro
   let moved = false;
 
   const srcBest = srcPrimary?.intact ? srcPrimary : srcBackup?.intact ? srcBackup : null;
-  if (srcBest && (!tgtPrimary?.intact || srcBest.savedAt > tgtPrimary.savedAt)) {
+  // lane:core (PERSIST-014) — when the target holds a newer build's record (primary or backup), nothing is moved: no
+  // copy may overwrite or rotate it away. Listing and loading still read every backend, newest first.
+  const keepsNewer = !!tgtPrimary?.tooNew || !!tgtBackup?.tooNew;
+  if (srcBest && !keepsNewer && (!tgtPrimary?.intact || srcBest.savedAt > tgtPrimary.savedAt)) {
     // Keep the best older copy as the backup: IndexedDB's own intact primary, else the source's backup.
     const olderForBackup = tgtPrimary?.intact ? tgtPrimary : srcBest === srcPrimary && srcBackup?.intact ? srcBackup : null;
     // lane:fix3-saves (R03-02) — like saveGame: an older copy of the SAME aquarium never rotates over a backup that

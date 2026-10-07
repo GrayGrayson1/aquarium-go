@@ -166,6 +166,14 @@ export function detectVersion(raw: Json): number {
 }
 
 /**
+ * lane:core (PERSIST-014, ADR-0019 decision 4) — what the player is told about a save written by a newer version
+ * (`too_new`, save format `v`). The slot layer uses it too, for a stored record it leaves alone.
+ */
+export function tooNewMessage(v: number): string {
+  return `This save comes from a newer version of Aquarium Go (save format v${v}; this game reads up to v${SCHEMA_VERSION}). Refresh the page to get the latest version.`;
+}
+
+/**
  * Structural validation before migrating. Returns a friendly error string, or null when it looks like a save.
  */
 export function validateSaveShape(raw: unknown): string | null {
@@ -174,7 +182,7 @@ export function validateSaveShape(raw: unknown): string | null {
   const looksLikeSave = hasTanks && isObj(raw.creatures) && (isObj(raw.clock) || typeof raw.starterId === 'string');
   if (!looksLikeSave) return "That file is readable, but it isn't an Aquarium Go save (no tanks or creatures found).";
   const v = detectVersion(raw);
-  if (v > SCHEMA_VERSION) return `This save comes from a newer version of Aquarium Go (save format v${v}; this game reads up to v${SCHEMA_VERSION}).`;
+  if (v > SCHEMA_VERSION) return tooNewMessage(v); // lane:core (PERSIST-014)
   return null;
 }
 
