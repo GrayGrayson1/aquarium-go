@@ -10,7 +10,8 @@ const hash = (page: Page) => page.evaluate(() => location.hash);
 /** Follow a link inside the running game (a new history entry, then hashchange), as clicking an <a href="#/…"> would. */
 const goHash = (page: Page, h: string) => page.evaluate((x) => void (location.hash = x), h);
 const ui = (page: Page) => page.evaluate(() => (window as unknown as { __AQ: { ui(): { panel: string | null; panelTarget: string | null } } }).__AQ.ui());
-const lastToast = (page: Page) => page.locator('[data-testid="toast"]').last();
+/** The newest toast raised (from the store: on screen, a burst of them may still be queued behind older ones). */
+const lastToast = (page: Page) => page.evaluate(() => (window as unknown as { __AQ: { ui(): { toasts: { text: string; detail?: string }[] } } }).__AQ.ui().toasts.at(-1) ?? null);
 
 async function offerGame(page: Page): Promise<string> {
   await openApp(page);
@@ -33,7 +34,8 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await expect(tid(page, 'panel-market')).toBeHidden();
     await tid(page, 'dock-market').click();
     await expect.poll(() => hash(page)).toBe('#/shop');
-    await page.locator(`[data-testid^="shop-offer-"]`).last().click();
+    const index = await probe<number>(page, `g.market.stock.findIndex(o => o.id === ${JSON.stringify(id)})`);
+    await tid(page, `shop-offer-${index}`).click();
     await expect(tid(page, 'buy-offer')).toBeVisible();
     await expect.poll(() => hash(page)).toBe(`#/shop/fish/${id}`);
 
@@ -75,7 +77,8 @@ test.describe('hash routes (desktop 1440×900)', () => {
   test('broken, unknown-tab and gone links (§6.5, ADR-0019)', async ({ page }) => {
     await offerGame(page);
     await goHash(page, '#/nowhere');
-    await expect(lastToast(page)).toContainText('That link doesn’t go anywhere');
+    await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'That link doesn’t go anywhere' })).toBeVisible();
+    expect(await lastToast(page)).toMatchObject({ text: 'That link doesn’t go anywhere', detail: 'Opened your aquarium instead.' });
     await expect.poll(() => hash(page)).toBe('#/');
     expect((await ui(page)).panel).toBeNull();
 
@@ -88,15 +91,16 @@ test.describe('hash routes (desktop 1440×900)', () => {
 
     await goHash(page, '#/tanks/tank_nope');
     await expect(tid(page, 'panel-tanks')).toBeVisible();
-    await expect(lastToast(page)).toContainText('That tank isn’t in your aquarium');
+    expect(await lastToast(page)).toMatchObject({ text: 'That tank isn’t in your aquarium', detail: 'Showing your tanks instead.' });
     await goHash(page, '#/livestock/animal/cr_nope');
     await expect(tid(page, 'panel-livestock')).toBeVisible();
-    await expect(lastToast(page)).toContainText('That animal isn’t in your aquarium');
+    expect(await lastToast(page)).toMatchObject({ text: 'That animal isn’t in your aquarium' });
     await goHash(page, '#/market/listings/listing_nope');
-    await expect(lastToast(page)).toContainText('That listing isn’t here any more');
+    await expect(tid(page, 'panel-market')).toBeVisible();
+    expect(await lastToast(page)).toMatchObject({ text: 'That listing isn’t here any more' });
     await goHash(page, '#/encyclopedia/dragon');
     await expect(tid(page, 'panel-encyclopedia')).toBeVisible();
-    await expect(lastToast(page)).toContainText('There’s no page for that species');
+    expect(await lastToast(page)).toMatchObject({ text: 'There’s no page for that species' });
   });
 
   test('a reload reopens the screen in the address (ADR-0019 decision 2)', async ({ page }) => {
@@ -121,7 +125,9 @@ test.describe('hash routes (desktop 1440×900)', () => {
     const visitors = tid(page, 'panel-visitors');
     await expect(visitors.getByText('Visitors open with a Specialty Shop')).toBeVisible();
     await expect(visitors.getByRole('tablist')).toHaveCount(0);
-    await expect(page.locator('[data-testid="toast"]')).toHaveCount(0);
+    // the dock no longer answers a locked destination with a toast (lockedToast)
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => (window as unknown as { __AQ: { ui(): { toasts: { text: string }[] } } }).__AQ.ui().toasts.filter((t) => /locked|opens once you move/i.test(t.text)).length)).toBe(0);
     await visitors.getByRole('button', { name: 'Open Build › Facility' }).click();
     await expect.poll(() => hash(page)).toBe('#/build/facility');
     await expect(tid(page, 'build-tab-facility')).toHaveAttribute('aria-selected', 'true');
