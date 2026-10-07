@@ -9,4 +9,10 @@
  */
 import { afterEach } from 'vitest';
 
-afterEach(() => new Promise<void>((resolve) => setImmediate(resolve)));
+/**
+ * The real setImmediate, taken when this file loads: a test that left fake timers on past its own afterEach would
+ * otherwise hang this hook for its full timeout (BACKLOG B-011).
+ */
+const realSetImmediate = globalThis.setImmediate;
+
+afterEach(() => new Promise<void>((resolve) => realSetImmediate(resolve)));

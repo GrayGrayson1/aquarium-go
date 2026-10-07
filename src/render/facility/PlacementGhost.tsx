@@ -251,8 +251,10 @@ export function PlacementGhost() {
       let msg = '';
       let ok = false;
       let newId: string | undefined;
-      useGame.getState().mutate((d) => {
-        try {
+      // lane:ui-shell (B-179) — the catch sits outside the recipe: buyTank spends before it creates the tank, so a throw
+      // must discard the whole draft (it used to commit the money with no tank)
+      try {
+        useGame.getState().mutate((d) => {
           if (moveId) {
             const r = placeTank(d, moveId, placement.x, placement.z, placement.rotY);
             ok = r.ok;
@@ -263,12 +265,13 @@ export function PlacementGhost() {
             msg = r.message;
             newId = r.tankId;
           }
-        } catch (err) {
-          ok = false;
-          msg = 'Could not place the tank.';
-          console.warn('placement failed', err);
-        }
-      });
+        });
+      } catch (err) {
+        ok = false;
+        newId = undefined;
+        msg = 'Could not place the tank.';
+        console.warn('placement failed', err);
+      }
       const ui = useUI.getState();
       ui.toast(msg || (ok ? 'Placed.' : 'That spot doesn’t work.'), ok ? 'success' : 'warning');
       if (ok) {

@@ -49,16 +49,21 @@ export function act(fn: (d: GameState) => ActionResult | void | undefined, opts:
     store.mutate((d) => {
       const r = fn(d);
       result = r ?? { ok: true, message: opts.message ?? 'Done' };
-      if (result.ok && opts.flag && !d.isShowcase) {
-        try {
-          tutorialAdvance(d, opts.flag);
-        } catch {
-          /* tutorial lane mid-edit */
-        }
-      }
     });
   } catch (e) {
     error = e;
+  }
+  // lane:ui-shell (B-179) — the guide's step runs in its own mutate once the action has committed: a throw there
+  // discards only the guide's half-made changes (it used to be caught inside the action's recipe and committed).
+  const flag = opts.flag;
+  if (!error && (result as ActionResult | null)?.ok && flag) {
+    try {
+      store.mutate((d) => {
+        if (!d.isShowcase) tutorialAdvance(d, flag);
+      });
+    } catch {
+      /* the guide is optional */
+    }
   }
   if (error || !result) {
     console.warn('[ui] action failed', error);

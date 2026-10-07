@@ -68,11 +68,17 @@ export function act<R extends ActResult>(fn: (d: GameState) => R | void, opts: A
   return r;
 }
 
-/** Silent state edit (no toast/sound) — for simple UI-owned toggles like names or read flags. */
+/**
+ * Silent state edit (no toast/sound) — for simple UI-owned toggles like names or read flags. lane:ui-shell (B-179) — a
+ * recipe that throws is discarded whole (immer) and logged, never thrown at the caller (an interval would rethrow it
+ * every 15 s).
+ */
 export function edit(fn: (d: GameState) => void): void {
   markUrgent(true);
   try {
     useGame.getState().mutate(fn);
+  } catch (e) {
+    console.warn('[panels] edit failed; nothing was changed', e);
   } finally {
     markUrgent(false);
   }

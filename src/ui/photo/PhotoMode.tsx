@@ -69,9 +69,14 @@ export async function takePhoto(): Promise<void> {
     const g = useGame.getState().game;
     let added = false;
     if (creatureId && g && g.creatures[creatureId]) {
-      useGame.getState().mutate((d) => {
-        added = notePhoto(d, creatureId);
-      });
+      // lane:ui-shell (B-179) — the story line is optional: a throw discards it whole, and the photo still shows
+      try {
+        useGame.getState().mutate((d) => {
+          added = notePhoto(d, creatureId);
+        });
+      } catch (e) {
+        console.warn('[photo] story line failed', e);
+      }
     }
     tutorialFlag('photo_taken');
     useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId, added } });
