@@ -30,6 +30,7 @@ import {
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { useSettings } from '@/state/settings';
+import { useDevTools } from '@/state/devTools';
 import { useRenderQuality } from '@/render/shared/quality'; // lane:pc-perf
 import type { QualityLevel } from '@/types';
 import { sfx } from '@/audio/sfx';
@@ -40,8 +41,11 @@ import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot
 import { SaveRow } from '../screens/LoadDialog';
 import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
+import { useNavTab } from '../nav/router'; // lane:ui-shell (chunk 1)
 
 type Tab = 'general' | 'display' | 'saves' | 'about';
+/** The tabs built so far (Notifications comes with chunk 3: until then `#/settings/notifications` opens General). */
+const TABS: readonly Tab[] = ['general', 'display', 'saves', 'about'];
 
 const QUALITY: { id: QualityLevel; label: string; note: string }[] = [
   { id: 'low', label: 'Low', note: 'Fastest. Simpler water and shadows.' },
@@ -418,6 +422,7 @@ function SavesTab() {
 
 function AboutTab() {
   const dev = useSettings((s) => s.devMode);
+  const devAllowed = useDevTools((s) => s.allowed); // lane:core (PLAT-005) — the switch exists only where the tools do
   return (
     <>
       <Section title="Version">
@@ -452,11 +457,13 @@ function AboutTab() {
           </div>
         </div>
       </Section>
-      <Section title="Developer">
-        <Row label="Developer tools" description="Adds a wrench button with testing tools. Not for normal play." icon={<Wrench size={16} />}>
-          <Toggle label="Developer tools" checked={dev} onChange={(v) => useSettings.getState().update({ devMode: v })} />
-        </Row>
-      </Section>
+      {devAllowed && (
+        <Section title="Developer">
+          <Row label="Developer tools" description="Adds a wrench button with testing tools. Not for normal play." icon={<Wrench size={16} />}>
+            <Toggle label="Developer tools" checked={dev} onChange={(v) => useSettings.getState().update({ devMode: v })} />
+          </Row>
+        </Section>
+      )}
     </>
   );
 }
@@ -491,17 +498,20 @@ export function SettingsPanel() {
   const [tab, setTab] = useState<Tab>('general');
   const wantTab = useShell((s) => s.settingsTab);
   useEffect(() => {
-    // the title screen's version badge opens Settings straight on About
+    // the title screen's version badge opens Settings straight on About; a link names any tab
     if (open && wantTab) {
-      setTab(wantTab);
+      setTab(TABS.includes(wantTab as Tab) ? (wantTab as Tab) : 'general');
       useShell.getState().set({ settingsTab: null });
     }
   }, [open, wantTab]);
+  useNavTab('settings', open ? tab : null); // lane:ui-shell (chunk 1)
   const close = () => useUI.getState().set({ panel: null });
   return (
     <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={`Saved on this device · ${versionLabel()}`} footer={inGame ? <SaveNowFooter /> : undefined}>
       <div className="ag-tcard__tabs">
         <Tabs<Tab>
+          label="Settings section"
+          testIdPrefix="settings-tab-"
           value={tab}
           onChange={(t) => {
             setTab(t);

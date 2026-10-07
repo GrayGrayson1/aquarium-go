@@ -5,12 +5,12 @@
 import clsx from 'clsx';
 import { Wrench } from 'lucide-react';
 import { useUI } from '@/state/ui';
-import { useSettings } from '@/state/settings';
+import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx } from '@/audio/sfx';
 
 /** Wrench button (lives in the top bar) — only when dev mode is on. */
 export function DevToggle() {
-  const devMode = useSettings((s) => s.devMode);
+  const devMode = useDevMode();
   const open = useUI((s) => s.panel === 'dev');
   if (!devMode) return null;
   return (

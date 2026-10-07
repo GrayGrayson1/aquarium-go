@@ -59,7 +59,10 @@ async function withPage(viewport, mobile, fn) {
 }
 
 async function ready(page, path = '/') {
-  await page.goto(`${base}${path}`, { waitUntil: 'domcontentloaded' });
+  // ?dev=1: the write tools these shots use exist only in a dev build or a ?dev=1 session (PLAT-005)
+  const u = new URL(path, 'http://qa.invalid');
+  u.searchParams.set('dev', '1');
+  await page.goto(`${base}${u.pathname}${u.search}${u.hash}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!window.__AQ?.ready, null, { timeout: 30_000 });
 }
 

@@ -15,9 +15,11 @@ import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { previewAddition, environmentGate } from '@/sim/compat';
 import { fitsEnvironment } from '@/sim/compat/salinity'; // lane:brackish
 import { SubView } from '../common/PanelLayout';
-import { safe } from '../common/hooks';
+import { safe, useIsPhone } from '../common/hooks';
 import { act } from '../common/act';
 import { rememberOfferReturn } from './offerReturn'; // lane:qa-play
+import { useShopFilters } from './shopFilters'; // lane:ui-shell (chunk 1)
+import { CopyLinkButton, OfferLinkRow, useOfferLink } from './OfferLink'; // lane:ui-shell (chunk 1)
 import { Chip, Card, EmptyState, Callout, SectionHead, Checkbox, KV } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { CompatPreview, VerdictBadge } from '../common/CompatPreview';
@@ -28,7 +30,9 @@ import { PERSONALITY_LABEL, PERSONALITY_TONE, WATER_CLASS_LABEL, ENV_LABEL, unti
 type EnvFilter = 'all' | 'freshwater' | 'marine' | 'brackish' | 'fits'; // lane:brackish: + 'brackish'
 
 export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: string | null; setOfferId: (id: string | null) => void }) {
-  const [env, setEnv] = useState<EnvFilter>('all');
+  // lane:ui-shell (chunk 1) — the filter lives in the session's shop filters, which the address carries (#/shop?env=…)
+  const env = useShopFilters((s) => s.filters.env);
+  const setEnv = (e: EnvFilter) => useShopFilters.getState().setFilters({ env: e });
   const tanks = orderedTanks(g);
   const envs = new Set(tanks.map((t) => t.environment));
   const offer = offerId ? g.market.stock.find((o) => o.id === offerId) : undefined;
@@ -167,6 +171,8 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
 }
 
 function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onBack: () => void }) {
+  const link = useOfferLink(offer.id); // lane:ui-shell (chunk 1, §6.6)
+  const phone = useIsPhone();
   const sp = speciesOf(offer.speciesId);
   const tanks = orderedTanks(g);
   const focused = useUI((s) => s.focusedTankId);
@@ -221,7 +227,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   };
 
   return (
-    <SubView onBack={onBack} backLabel="Back to shop" title={<span className="pn-ellipsis">{offer.seller}</span>}>
+    <SubView onBack={onBack} backLabel="Back to shop" title={<span className="pn-ellipsis">{offer.seller}</span>} actions={<CopyLinkButton link={link} phone={phone} />}>
+      <OfferLinkRow link={link} />
       <div className="pn-offerhero">
         <CreaturePortrait creature={lead} size={148} className="pn-offerhero__portrait" />
         <div className="pn-grow pn-col pn-gap-2">

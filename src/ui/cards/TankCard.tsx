@@ -5,7 +5,8 @@
  */
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import clsx from 'clsx';
-import { create } from 'zustand';
+import { useTankCardTab, type TankCardTabId } from './tankCardTab';
+import { useNavTab } from '../nav/router'; // lane:ui-shell (chunk 1)
 import {
   Droplets,
   Droplet,
@@ -79,10 +80,9 @@ import { TankKeeperLine } from '../panels/visitors/TankKeeperLine'; // lane:staf
 import { tankGearIssues, type FitVerdict } from '@/sim/care/fit'; // lane:fit
 import { FitLine } from '../common/FitNote'; // lane:fit
 
-type TabId = 'water' | 'gear' | 'life' | 'value';
+type TabId = TankCardTabId;
 
-/** Deep link into a tab of the tank card: the alerts' "Equipment failed" row opens straight on Equipment. */
-export const useTankCardTab = create<{ want: TabId | null }>(() => ({ want: null }));
+export { useTankCardTab };
 
 const STATUS_ICON = { good: CircleCheck, watch: TriangleAlert, danger: OctagonAlert } as const;
 const STATUS_WORD: Record<StatusLevel, string> = { good: 'Good', watch: 'Watch', danger: 'Danger' };
@@ -610,6 +610,7 @@ export function TankCard() {
     setTab(want);
     useTankCardTab.setState({ want: null });
   }, [want, open]);
+  useNavTab('tankCard', tab); // lane:ui-shell (chunk 1) — #/tanks/:id/equipment follows the card's tab
   useEffect(() => {
     if (open && tank && !game?.isShowcase) tutorialFlag('opened_tank_card');
     // the guide's expanded parameter (and its scroll) used to outlive the card: every later open started scrolled
@@ -660,6 +661,7 @@ export function TankCard() {
         <>
           <div className="ag-tcard__tabs">
             <Tabs<TabId>
+              label="Tank card section"
               value={tab}
               onChange={(t) => {
                 setTab(t);

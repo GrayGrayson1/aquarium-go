@@ -4,7 +4,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { Minus, Plus } from 'lucide-react';
-import { Button } from '@/ui/kit';
+import { Button, revealInStrip } from '@/ui/kit';
 import { sfx } from '@/audio/sfx';
 import type { ChipTone } from './format';
 
@@ -25,8 +25,17 @@ export function Chip({ tone = 'neutral', icon, children, title, className, onCli
   );
 }
 
-/** Segmented radio group — keyboard accessible (arrow keys), ≥40px touch targets. */
-export function Seg<T extends string>({ value, onChange, items, label, size = 'md', className, testIdPrefix }: { value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; disabled?: boolean; title?: string }[]; label: string; size?: 'sm' | 'md'; className?: string; testIdPrefix?: string }) {
+/**
+ * Segmented radio group — keyboard accessible (arrow keys), ≥40px touch targets. `tabs`: a panel's section strip,
+ * announced as tabs (role=tablist/tab, aria-selected; lane:ui-shell ACC-001), with the active one scrolled into view.
+ */
+export function Seg<T extends string>({ value, onChange, items, label, size = 'md', className, testIdPrefix, tabs }: { value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; disabled?: boolean; title?: string }[]; label: string; size?: 'sm' | 'md'; className?: string; testIdPrefix?: string; tabs?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!tabs) return;
+    const strip = ref.current;
+    revealInStrip(strip, [...(strip?.querySelectorAll<HTMLElement>('[data-seg]') ?? [])].find((e) => e.dataset.seg === value));
+  }, [tabs, value]);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
     e.preventDefault();
@@ -41,13 +50,14 @@ export function Seg<T extends string>({ value, onChange, items, label, size = 'm
     }
   };
   return (
-    <div role="radiogroup" aria-label={label} className={clsx('pn-seg', size === 'sm' && 'pn-seg--sm', className)} onKeyDown={onKey}>
+    <div ref={ref} role={tabs ? 'tablist' : 'radiogroup'} aria-label={label} className={clsx('pn-seg', size === 'sm' && 'pn-seg--sm', className)} onKeyDown={onKey}>
       {items.map((it) => (
         <button
           key={it.id}
           type="button"
-          role="radio"
-          aria-checked={it.id === value}
+          role={tabs ? 'tab' : 'radio'}
+          aria-checked={tabs ? undefined : it.id === value}
+          aria-selected={tabs ? it.id === value : undefined}
           tabIndex={it.id === value ? 0 : -1}
           disabled={it.disabled}
           title={it.title}

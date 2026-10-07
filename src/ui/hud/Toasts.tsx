@@ -44,6 +44,8 @@ interface Entry {
   tankId?: string;
   creatureId?: string;
   uiIds: number[];
+  /** lane:ui-shell (B-151) — a UI toast's explicit label and detail (they win over parsing its text). */
+  parts?: { label?: string; detail?: string };
   /** performance.now() when the entry was created (merge window + staleness). */
   born: number;
   /** Bumped when a merge restarts the timer. */
@@ -126,6 +128,7 @@ function parse(text: string): View {
 
 function viewOf(e: Entry): View {
   const n = e.texts.length;
+  if (n <= 1 && e.parts) return { label: e.parts.label, title: e.texts[0] ?? '', detail: e.parts.detail };
   if (n <= 1) return parse(e.texts[0] ?? '');
   const views = e.texts.map(parse);
   const list = (xs: string[]) => (xs.length <= 2 ? xs.join(' and ') : `${xs.slice(0, 2).join(', ')} and ${xs.length - 2} more`);
@@ -261,13 +264,20 @@ function useSheetBand(active: boolean, landscape: boolean): SheetBand | null {
         setBand((b) => (same(b, next) ? b : next));
         return;
       }
-      const body = document.querySelector<HTMLElement>('.pn-sheet--bottom.is-max .pn-body, .ag-sheet--bottom.is-expanded .ag-sheet__body');
+      // lane:ui-shell (chunk 1, B-116) — every 0.5 phone sheet is full height (panels, Settings, the tank card), not only
+      // an expanded one, and the tab bar floats over its foot: the band's floor is the highest of the body's bottom, the
+      // tab bar's top and a pinned bar's top
+      const body = document.querySelector<HTMLElement>(
+        '.pn-sheet--mobile .pn-body, .ag-settings.ag-sheet--bottom .ag-sheet__body, .ag-tcard.ag-sheet--bottom .ag-sheet__body, .pn-sheet--bottom.is-max .pn-body, .ag-sheet--bottom.is-expanded .ag-sheet__body',
+      );
       const r = body?.getBoundingClientRect();
       let floor = r && r.height > 0 ? r.bottom : null;
-      // bars pinned to the bottom of the scrolling body (the offer's buy bar, a wizard's nav) count as its foot
       if (body && floor != null) {
-        for (const bar of body.querySelectorAll<HTMLElement>('.pn-buybar, .pn-wizard__nav')) {
-          const b = bar.getBoundingClientRect();
+        const bar = document.querySelector<HTMLElement>('.ag-tabbar')?.getBoundingClientRect();
+        if (bar && bar.height > 0) floor = Math.min(floor, bar.top);
+        // bars pinned to the bottom of the scrolling body (the offer's buy bar, a wizard's nav) count as its foot
+        for (const pinned of body.querySelectorAll<HTMLElement>('.pn-buybar, .pn-wizard__nav')) {
+          const b = pinned.getBoundingClientRect();
           if (b.height > 0 && b.top < floor && b.bottom > r!.top + r!.height / 2) floor = b.top;
         }
       }
@@ -306,7 +316,7 @@ export function Toasts() {
   const onScreen = useRef(new Set<string>());
   const [, setRecheck] = useState(0);
 
-  const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; uiId?: number; source: 'ui' | 'log' }) => {
+  const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; uiId?: number; source: 'ui' | 'log'; parts?: Entry['parts'] }) => {
     const group = groupOf(kind, text, (useGame.getState().game?.tankOrder.length ?? 0) >= 4 /* lane:qa-final */);
     // The guide card shows its own "done" line; only toast tutorial tips when the guide is hidden.
     if (group === 'tip' && extra.source === 'log' && isGuideDoneLine(text)) return;
@@ -328,7 +338,7 @@ export function Toasts() {
         const d = live[dup];
         return [...live.slice(0, dup), { ...d, rev: d.rev + 1, uiIds: extra.uiId != null ? [...d.uiIds, extra.uiId] : d.uiIds }, ...live.slice(dup + 1)];
       }
-      const e: Entry = { key: `t${++seq.current}`, kind, group, texts: [text], tankId: extra.tankId, creatureId: extra.creatureId, uiIds: extra.uiId != null ? [extra.uiId] : [], born: now, rev: 0 };
+      const e: Entry = { key: `t${++seq.current}`, kind, group, texts: [text], tankId: extra.tankId, creatureId: extra.creatureId, uiIds: extra.uiId != null ? [extra.uiId] : [], ...(extra.parts ? { parts: extra.parts } : {}), born: now, rev: 0 };
       return [...live, e].slice(-14);
     });
   }, []);
@@ -351,13 +361,14 @@ export function Toasts() {
   // UI feedback toasts (ui.toast()).
   useEffect(() => {
     const seen = new Set<number>(useUI.getState().toasts.map((t) => t.id));
-    for (const t of useUI.getState().toasts) add(t.kind, t.text, { uiId: t.id, source: 'ui' });
+    const partsOf = (t: { label?: string; detail?: string }) => (t.label || t.detail ? { label: t.label, detail: t.detail } : undefined); // lane:ui-shell (B-151)
+    for (const t of useUI.getState().toasts) add(t.kind, t.text, { uiId: t.id, source: 'ui', parts: partsOf(t) });
     return useUI.subscribe((s, p) => {
       if (s.toasts === p.toasts) return;
       for (const t of s.toasts) {
         if (seen.has(t.id)) continue;
         seen.add(t.id);
-        add(t.kind, t.text, { uiId: t.id, source: 'ui' });
+        add(t.kind, t.text, { uiId: t.id, source: 'ui', parts: partsOf(t) });
       }
     });
   }, [add]);

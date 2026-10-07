@@ -1,5 +1,6 @@
 /**
- * Bottom dock: the nine management destinations. Locked items show a lock + hint. OWNER: lane "ui-shell".
+ * Bottom dock: the management destinations. Locked items show a lock badge and open a locked panel (0.5 spec §5.7).
+ * OWNER: lane "ui-shell".
  * lane:notify — attention dots (top-right of the icon): Tanks — a tank other than the one in view needs a look
  * (amber/red, live; the one in view has its dot on the Tank card button); Shows — new
  * results (opens Shows › Results, which marks them seen); Market — bids waiting for an answer; Research — a project
@@ -10,15 +11,13 @@ import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { Box, Fish, Store, Users, Hammer, FlaskConical, Wallet, BookOpen, Settings, Lock, Wrench, type LucideProps } from 'lucide-react';
 import { useUI, type PanelId } from '@/state/ui';
 import { useGameSelector, getGame } from '@/state/game';
-import { tutorialStepId, evalCond } from '@/sim/facility';
-import { UNLOCK_RULE_BY_KEY, type Cond } from '@/data/unlocks';
+import { tutorialStepId } from '@/sim/facility';
 import { safe } from '../common/safe';
-import { useSettings } from '@/state/settings';
+import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx } from '@/audio/sfx';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { tutorialFlag } from '../common/actions';
 import { Trophy } from 'lucide-react'; // lane:shows
-import { withArticle } from '@/sim/economy/util'; // lane:w2-ui
 import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
 
 interface DockItem {
@@ -42,40 +41,6 @@ export const DOCK_ITEMS: DockItem[] = [
   { id: 'encyclopedia', label: 'Encyclopedia', icon: BookOpen },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
-
-const lower = (t: string) => (/^[A-Z][a-z]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t);
-
-/** "60 reputation (you have 35)" — what is still missing, with the player's current numbers. */
-function missingParts(g: NonNullable<ReturnType<typeof getGame>>, conds: Cond[]): { facility: string | null; needs: string[] } {
-  const needs: string[] = [];
-  let facility: string | null = null;
-  const cache = {};
-  for (const c of conds) {
-    const st = safe('evalCond', () => evalCond(g, c, cache), null);
-    if (!st || st.met) continue;
-    if (c.type === 'facility') {
-      // a facility level is itself unlocked by reputation, sales…: list that rule's missing parts
-      facility = st.label;
-      const rule = UNLOCK_RULE_BY_KEY[`facility_${c.level}`];
-      if (rule && !g.progress.unlocked.includes(rule.key)) needs.push(...missingParts(g, rule.when).needs);
-    } else if (c.type === 'reputation') needs.push(`${st.target} reputation (you have ${Math.floor(st.current)})`);
-    else if (st.target > 1) needs.push(`${lower(st.label)} (${Math.floor(st.current)}/${st.target})`);
-    else needs.push(lower(st.label).replace(/ or ([A-Z])/g, (_m, ch: string) => ` or ${ch.toLowerCase()}`));
-  }
-  return { facility, needs };
-}
-
-/** Toast for a locked dock item: what unlocks it, with the player's numbers. */
-export function lockedToast(label: string, lock: string, hint: string | undefined): string {
-  const g = getGame();
-  const rule = UNLOCK_RULE_BY_KEY[lock];
-  const m = g && rule ? missingParts(g, rule.when) : { facility: null, needs: [] };
-  const needs = m.needs.length ? `You need ${m.needs.join(' and ')}.` : '';
-  // lane:w2-ui — "an Aquarium Store", not "a Aquarium Store"
-  if (m.facility) return `${label} opens once you move into ${withArticle(m.facility)} (Build › Facility). ${needs}`.trim();
-  if (needs) return `${label} is locked. ${needs}`;
-  return `${label} is locked — ${hint ?? 'keep growing your aquarium.'}`;
-}
 
 /** While the guide is on a step that needs a particular panel section, open straight to it. */
 export function guideTarget(id: PanelId): string | null {
@@ -135,7 +100,7 @@ export function Dock() {
     ref.current.querySelector<HTMLElement>(`[data-testid="dock-${panel}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   }, [panel, ref]);
   const unlocked = useGameSelector((g) => g.progress.unlocked.join('|'), '');
-  const dev = useSettings((s) => s.devMode);
+  const dev = useDevMode();
   const isUnlocked = (key?: string | null) => !key || dev || unlocked.split('|').includes(key);
   // lane:notify — attention dots (lane:w2-ui's show-results count badge became one of them)
   const badges = useNavDots(DOCK_ITEMS);
@@ -158,12 +123,8 @@ export function Dock() {
               aria-label={open ? (badge ? `${it.label} — ${badge.label}` : it.label) : `${it.label} (locked): ${hint ?? ''}`}
               title={open ? (badge ? `${it.label} — ${badge.label}` : it.label) : hint}
               onClick={() => {
-                if (!open) {
-                  sfx('error');
-                  useUI.getState().toast(safe('lockedToast', () => lockedToast(it.label, it.lock ?? '', hint), `${it.label} is locked — ${hint ?? 'keep growing your aquarium.'}`), 'info');
-                  return;
-                }
-                // lane:w2-ui — a badge opens straight to what it counts (e.g. Shows › Results)
+                // lane:ui-shell (chunk 1, §5.7) — a locked destination opens its panel, which says what unlocks it
+                // (it used to only toast `lockedToast`); a badge opens straight to what it counts (e.g. Shows › Results)
                 openPanel(it.id, badge && panel !== it.id ? badge.target : null);
               }}
             >

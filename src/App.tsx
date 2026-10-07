@@ -1,7 +1,8 @@
 /**
  * Application shell. OWNER: core.
- * URL flags (dev): ?showcase=<starterId> | ?fixture=<name> jump straight into a tank; ?dev=1 enables the debug panel;
- * ?sandbox=<name> renders src/dev/sandboxes/<name>.tsx instead of the game.
+ * URL flags (dev): ?showcase=<starterId> | ?fixture=<name> jump straight into a tank; ?dev=1 allows the developer
+ * tools for this session only (src/state/devTools.ts, ADR-0005 decision 2); ?sandbox=<name> renders
+ * src/dev/sandboxes/<name>.tsx instead of the game.
  */
 import { useEffect, useState, lazy, Suspense, type ComponentType } from 'react';
 import { Scene } from './render/Scene';
@@ -10,7 +11,6 @@ import { GameLoop } from './game/GameLoop';
 import { AudioRoot } from './audio/AudioRoot';
 import { useGame } from './state/game';
 import { useUI } from './state/ui';
-import { useSettings } from './state/settings';
 // lane:perf2 — the fixture registry is loaded on demand (its own chunk); starter showcases are built directly.
 import { makeShowcase } from './dev/fixtures/showcase';
 import { loadFixtureRegistry, isStarterFixture, holdReady } from './dev/fixtures/lazy';
@@ -29,7 +29,7 @@ if (releaseUrlBoot) void loadFixtureRegistry().catch(() => undefined);
 function useUrlBoot() {
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    if (q.get('dev') === '1') useSettings.getState().update({ devMode: true });
+    // lane:core (PLAT-005) — ?dev=1 is read by src/state/devTools.ts for this session; it is never saved to settings
     const fx = URL_FIXTURE;
     const toTitle = () => {
       if (useUI.getState().screen === 'boot') useUI.getState().set({ screen: 'title' });

@@ -1,0 +1,128 @@
+/*
+ * 0.5 navigation (chunk 1): the loading card, the phone tab bar and More sheet, full-height phone sheets, locked
+ * panels and Copy link. OWNER: lane "ui-shell". New file on purpose (0.5 spec §3 item 6, NAV-018): the hud.css,
+ * shell.css and screens.css blocks that tests read are never edited; rules that override them use more specific
+ * selectors here. Colours come from tokens.css, or are the literal values §5.2 / §17 give.
+ */
+
+/* ── Loading card (boot-deeplink; §17 "Loading card", ADR-0019: a looping bar) ── */
+.ag-boot { position: fixed; inset: 0; display: grid; place-items: center; padding: var(--edge); pointer-events: none; z-index: 5; }
+.ag-boot__card { width: 300px; max-width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); padding: var(--sp-6) var(--sp-5) var(--sp-5); border-radius: var(--r-xl); background: var(--c-glass-strong); backdrop-filter: var(--blur-strong); -webkit-backdrop-filter: var(--blur-strong); border: 1px solid var(--c-line); box-shadow: var(--shadow-2); text-align: center; }
+.ag-boot__icon { width: 52px; height: 52px; border-radius: 14px; box-shadow: var(--shadow-1); }
+.ag-boot .ag-wordmark { display: flex; justify-content: center; gap: 0.22em; font-size: calc(30px * var(--text-scale)); line-height: 1; }
+.ag-boot .ag-wordmark .ag-wordmark__a, .ag-boot .ag-wordmark .ag-wordmark__go { display: inline-block; margin: 0; }
+.ag-boot__line { margin: 0; color: var(--c-ink-2); font-size: calc(13px * var(--text-scale)); line-height: 1.45; }
+.ag-boot__bar { position: relative; width: 100%; height: 6px; border-radius: var(--r-pill); background: var(--c-fill-2); overflow: hidden; }
+.ag-boot__bar > span { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: inherit; background: linear-gradient(90deg, var(--c-aqua-2), var(--c-aqua)); animation: ag-load 1.8s ease-in-out infinite; }
+.ag-boot__dest { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 12px; border-radius: var(--r-pill); background: var(--c-aqua-soft); border: 1px solid var(--c-line-strong); color: var(--c-ink); font-size: calc(12px * var(--text-scale)); font-weight: 600; }
+@keyframes ag-load {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+:root[data-reduced-motion='true'] .ag-boot__bar > span { animation: none !important; transform: none; width: 100%; opacity: 0.55; }
+@media (prefers-reduced-motion: reduce) {
+  .ag-boot__bar > span { animation: none; transform: none; width: 100%; opacity: 0.55; }
+}
+:root[data-contrast='high'] .ag-boot__card { background: var(--c-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* ── Phone tab bar (nav-tabbar; §5.2, §17) — inside .ag-hud, which already applies the safe areas ── */
+.ag-tabbar { position: absolute; left: var(--edge); right: var(--edge); bottom: var(--edge); z-index: 60; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; height: 64px; padding: 4px; border-radius: 18px; background: var(--c-glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--c-line); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35); pointer-events: auto; }
+.ag-tabbar__item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 44px; padding: 0 2px; border: 0; border-radius: 14px; background: transparent; color: #b9ccd1; font-family: inherit; cursor: pointer; transition: background 0.2s var(--ease), color 0.2s; -webkit-tap-highlight-color: transparent; }
+.ag-tabbar__item:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: -2px; }
+.ag-tabbar__item.is-active { color: #f0fffc; background: linear-gradient(180deg, rgba(94, 234, 212, 0.2), rgba(45, 212, 191, 0.08)); box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.38); }
+.ag-tabbar__item.is-active .ag-tabbar__icon { color: #5eead4; }
+.ag-tabbar__item.is-active::after { content: ''; position: absolute; bottom: 3px; left: 50%; width: 16px; height: 3px; margin-left: -8px; border-radius: var(--r-pill); background: var(--c-aqua); box-shadow: 0 0 10px var(--c-aqua); }
+.ag-tabbar__icon { position: relative; display: grid; place-items: center; }
+.ag-tabbar__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(10.5px * var(--text-scale)); font-weight: 620; letter-spacing: 0.01em; }
+.ag-tabbar__attn { top: -3px; right: -6px; }
+:root[data-contrast='high'] .ag-tabbar { background: var(--c-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* ── Phone More sheet (more-sheet; §5.3) — outside .ag-hud, so it adds the safe areas itself ── */
+.ag-more.ag-popover { position: fixed; top: 48dvh; left: 0; right: 0; bottom: 0; z-index: 56; width: auto; max-width: none; display: flex; flex-direction: column; gap: var(--sp-3); padding: 10px max(var(--sp-4), var(--safe-r)) calc(84px + var(--safe-b)) max(var(--sp-4), var(--safe-l)); border-radius: 22px 22px 0 0; border-bottom: 0; overflow-y: auto; overscroll-behavior: contain; }
+.ag-more__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.ag-more__title { margin: 0; font-family: var(--font-display); font-weight: 560; font-size: calc(22px * var(--text-scale)); outline: none; }
+.ag-more__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-md); background: var(--c-fill); color: var(--c-ink-2); cursor: pointer; }
+.ag-more__close:focus-visible, .ag-more__tile:focus-visible, .ag-more__row:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
+.ag-more__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.ag-more__tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-width: 0; min-height: 92px; padding: var(--sp-2); border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-fill); color: var(--c-ink); font-family: inherit; cursor: pointer; transition: background 0.2s var(--ease), border-color 0.2s; }
+.ag-more__tile:active { background: var(--c-fill-2); }
+.ag-more__chip { position: relative; display: grid; place-items: center; width: 42px; height: 42px; flex: none; border-radius: var(--r-md); background: var(--c-aqua-soft); color: var(--c-aqua); }
+.ag-more__chip--sm { width: 36px; height: 36px; }
+.ag-more__tile.is-locked .ag-more__chip > svg:first-child { opacity: 0.5; }
+.ag-more__lock { position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: var(--c-bg); border: 1px solid var(--c-line-strong); color: var(--c-ink-2); }
+.ag-more__attn { top: -3px; right: -4px; }
+.ag-more__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(12.5px * var(--text-scale)); font-weight: 600; }
+.ag-more__row { display: flex; align-items: center; gap: var(--sp-3); width: 100%; min-height: 60px; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-fill); color: var(--c-ink); font-family: inherit; text-align: left; cursor: pointer; }
+.ag-more__rowtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ag-more__rowtitle { font-size: calc(14px * var(--text-scale)); font-weight: 620; }
+.ag-more__rowsub { color: var(--c-ink-3); font-size: calc(12px * var(--text-scale)); }
+.ag-more__chev { color: var(--c-ink-3); flex: none; }
+:root[data-contrast='high'] .ag-more.ag-popover { background: var(--c-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+@media (max-height: 500px) and (orientation: landscape) {
+  /* a phone held sideways: a 48 % sheet would hold one row; it rises to the top bar and the tiles go in one row */
+  .ag-more.ag-popover { top: max(6px, var(--safe-t)); }
+  .ag-more__grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .ag-more__tile { min-height: 76px; }
+}
+
+/* ── Phone sheets (§5.6, B-150): every tab-bar-dependent rule keys off .pn-sheet--mobile (MOBILE_QUERY) ── */
+.pn-sheet.pn-sheet--mobile.pn-sheet--bottom { top: calc(var(--safe-t) + var(--edge) + var(--topbar-h) + 6px); }
+.pn-sheet.pn-sheet--mobile .pn-head__max { display: none; }
+.pn-sheet.pn-sheet--mobile .pn-body { padding-bottom: calc(112px + var(--safe-b)); }
+/* a panel with a footer: the footer takes the tab bar's band, so the list needs no extra room */
+.pn-sheet.pn-sheet--mobile .pn-layout:has(> .pn-foot) .pn-body { padding-bottom: 28px; }
+.pn-sheet.pn-sheet--mobile .pn-foot { padding-bottom: calc(84px + var(--safe-b)); }
+/* sticky footers (the offer's buy bar, the listing wizard's steps) rest just above the tab bar */
+.pn-sheet.pn-sheet--mobile .pn-buybar, .pn-sheet.pn-sheet--mobile .pn-wizard__nav { bottom: calc(84px + var(--safe-b)); }
+/* the last 110 px fade out under the tab bar */
+.pn-sheet.pn-sheet--mobile::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 110px; background: linear-gradient(180deg, rgba(5, 13, 19, 0) 0%, rgba(5, 13, 19, 0.93) 100%); pointer-events: none; }
+@media (max-height: 500px) and (orientation: landscape) {
+  /* phones held sideways keep today's top (panels.css L965–980); the tab bar replaces the switcher row */
+  .pn-sheet.pn-sheet--mobile.pn-sheet--bottom { top: max(6px, env(safe-area-inset-top)); }
+}
+
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
+  /* a full panel or Settings hides the tank bar (the sheet would show it through as a ghost); the rail, camera chips
+     and tool hint already step aside (hud.css .has-bottom-sheet) */
+  .ag-hud.has-panel .ag-tankbar { opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0s 0.2s; }
+  /* the shell's bottom sheets (Settings, tank card, creature card) scroll clear of the tab bar */
+  .ag-sheet.ag-sheet--bottom .ag-sheet__body { padding-bottom: calc(28px + 84px + var(--safe-b)); }
+  .ag-sheet.ag-sheet--bottom:has(.ag-sheet__foot) .ag-sheet__body { padding-bottom: 28px; }
+  .ag-sheet.ag-sheet--bottom .ag-sheet__foot { padding-bottom: calc(12px + 84px + var(--safe-b)); }
+}
+@media (max-width: 720px) and (min-height: 501px) {
+  /* Settings opens at full height from the panels' top; the tank card opens at its full height below the tank bar,
+     which stays in view, and the guide steps aside meanwhile */
+  .ag-sheet.ag-settings.ag-sheet--bottom, .ag-sheet.ag-settings.ag-sheet--bottom.is-expanded { top: calc(var(--safe-t) + var(--edge) + var(--topbar-h) + 6px); max-height: none; }
+  .ag-sheet.ag-tcard.ag-sheet--bottom, .ag-sheet.ag-tcard.ag-sheet--bottom.is-expanded { top: calc(var(--safe-t) + 118px); max-height: none; }
+  .ag-sheet.ag-settings .ag-sheet__handle, .ag-sheet.ag-tcard .ag-sheet__handle { display: none; }
+  :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud .ag-hud__coach { opacity: 0; visibility: hidden; }
+  /* every open phone sheet moves the toasts to the band above the tab bar (Toasts.tsx measures the exact band;
+     this is the first frame). hud.css's own rule (L521–523) is left alone (fix-hud-toasts.test.ts). */
+  :root:has(.pn-sheet.pn-sheet--mobile, .ag-settings.ag-sheet--bottom, .ag-tcard.ag-sheet--bottom, .ag-sheet--bottom.is-expanded) .ag-ui .ag-toasts:not(.is-onboarding) { top: auto; bottom: calc(var(--safe-b) + 84px); flex-direction: column-reverse; }
+}
+
+/* ── Locked destinations (§5.7) ── */
+.pn-locked { padding-top: var(--sp-6); }
+
+/* ── Guide on phones (§5.5): Research lives under More ── */
+.ag-tut-ring.ag-tut-ring--gold { border-color: var(--c-gold); box-shadow: 0 0 0 4px var(--c-gold-soft), 0 0 26px rgba(245, 196, 81, 0.5); animation: ag-guide-pulse 2.4s ease-in-out infinite; }
+@keyframes ag-guide-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.ag-guide-bubble { position: fixed; z-index: 66; max-width: min(260px, calc(100vw - 2 * var(--edge))); padding: 10px 12px; border-radius: var(--r-md); background: var(--c-glass-strong); backdrop-filter: var(--blur-strong); -webkit-backdrop-filter: var(--blur-strong); border: 1px solid var(--c-gold); box-shadow: var(--shadow-1); color: var(--c-ink); font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; pointer-events: none; }
+.ag-guide-bubble__label { display: block; margin-bottom: 3px; color: var(--c-gold); font-size: calc(10.5px * var(--text-scale)); font-weight: 680; letter-spacing: 0.08em; text-transform: uppercase; }
+:root[data-reduced-motion='true'] .ag-tut-ring.ag-tut-ring--gold { animation: none !important; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .ag-tut-ring.ag-tut-ring--gold { animation: none; opacity: 1; }
+}
+:root[data-contrast='high'] .ag-guide-bubble { background: var(--c-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* ── Copy link on an offer (§6.6) ── */
+.pn-copylink { flex: none; }
+.pn-copylink--icon { width: 44px; min-height: 44px; padding: 0; justify-content: center; }
+.pn-copylink.is-copied { color: var(--c-good); border-color: var(--c-good); }
+.pn-linkrow { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; padding: 6px 10px; border-radius: var(--r-md); background: var(--c-fill); border: 1px solid var(--c-line); color: var(--c-ink-3); }
+.pn-linkrow.is-manual { border-color: var(--c-watch); }
+.pn-linkrow__url { flex: 1; min-width: 0; border: 0; padding: 0; background: transparent; color: var(--c-ink-2); font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: calc(12px * var(--text-scale)); text-overflow: ellipsis; outline: none; }

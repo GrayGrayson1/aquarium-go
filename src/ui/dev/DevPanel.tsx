@@ -11,7 +11,7 @@ import { act } from '../common/actions';
 import type { GameSpeed, WaterState } from '@/types';
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
-import { useSettings } from '@/state/settings';
+import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx } from '@/audio/sfx';
 import { dev } from '@/dev/commands';
 import { ALL_SPECIES } from '@/data/species';
@@ -112,7 +112,7 @@ function AIInspector({ id }: { id: string | null }) {
 export { DevToggle } from './DevToggle';
 
 export function DevPanel() {
-  const devMode = useSettings((s) => s.devMode);
+  const devMode = useDevMode();
   const open = useUI((s) => s.panel === 'dev');
   const screen = useUI((s) => s.screen);
   const game = useGameThrottled(600);

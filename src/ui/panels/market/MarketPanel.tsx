@@ -21,8 +21,10 @@ import { SuppliesTab } from './Supplies';
 import { ListingsTab } from './Listings';
 import { CreateListing, type WizardSeed } from './CreateListing';
 import { TrendsTab } from './Trends';
+import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 
 export type MarketTab = 'shop' | 'supplies' | 'listings' | 'trends';
+const MARKET_TABS: readonly MarketTab[] = ['shop', 'supplies', 'listings', 'trends'];
 
 export function MarketPanel() {
   const g = usePanelGame(700);
@@ -38,13 +40,23 @@ export function MarketPanel() {
   };
   const [focusListing, setFocusListing] = useState<string | null>(null);
   const [focusFood, setFocusFood] = useState<{ id: string; n: number } | null>(null);
+  /** lane:ui-shell (B-115) — a section switch closes whatever was open in the old one (an offer, a focused row, the wizard). */
+  const switchTab = (t: MarketTab) => {
+    setTab(t);
+    setOfferId(null);
+    setWizard(null);
+    setFocusListing(null);
+    setFocusFood(null);
+  };
+  // lane:ui-shell (chunk 1) — the address follows the section and the open offer / focused food / focused listing
+  useNavTab('market', tab);
+  useNavSub('market', wizard ? null : tab === 'shop' && offerId ? `offer:${offerId}` : tab === 'supplies' && focusFood ? `food:${focusFood.id}` : tab === 'listings' && focusListing ? `listing:${focusListing}` : null);
 
   useEffect(() => {
     if (!target) return;
     if (target.startsWith('tab:')) {
       const t = target.slice(4) as MarketTab;
-      if (['shop', 'supplies', 'listings', 'trends'].includes(t)) setTab(t);
-      setWizard(null);
+      switchTab(MARKET_TABS.includes(t) ? t : 'shop');
     } else if (target.startsWith('food:')) {
       setTab('supplies');
       setWizard(null);
@@ -57,6 +69,7 @@ export function MarketPanel() {
       setWizard(null);
     } else if (target.startsWith('listing:')) {
       setTab('listings');
+      setOfferId(null);
       setFocusListing(target.slice(8));
       setWizard(null);
     } else if (target === 'sell' || target === 'list') {
@@ -89,12 +102,10 @@ export function MarketPanel() {
         wizard ? undefined : (
           <Seg<MarketTab>
             label="Market section"
+            tabs
             size={phone ? 'sm' : 'md' /* lane:qa-final — "History & demand" was clipped on a 390 px phone */}
             value={tab}
-            onChange={(t) => {
-              setTab(t);
-              setOfferId(null);
-            }}
+            onChange={switchTab}
             items={[
               { id: 'shop', label: 'Shop' },
               { id: 'supplies', label: 'Supplies' },

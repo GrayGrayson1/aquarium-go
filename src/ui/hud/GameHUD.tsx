@@ -34,6 +34,8 @@ import { isTextEntry, useIsMobile, useMedia } from '../common/safe';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { TopBar, setSpeed, togglePause } from './TopBar';
 import { Dock } from './Dock';
+import { TabBar } from './TabBar'; // lane:ui-shell (chunk 1)
+import { MoreSheet } from './MoreSheet'; // lane:ui-shell (chunk 1)
 import { TankBar, cycleTank, toggleTankCard, toggleView } from './TankBar';
 import { ToolRail, CameraChips, ToolHint, selectTool } from './ToolRail';
 import { RoomViewChip } from './RoomChips';
@@ -247,7 +249,7 @@ function useHudKeys() {
 }
 
 /** Keyboard users: a popover that closes (Escape, a pick) hands focus back to the button that opened it. */
-const POPOVER_TRIGGER: Partial<Record<NonNullable<Popover>, string>> = { food: 'tool-feed', target_food: 'tool-target-feed', lights: 'tool-lights', alerts: 'hud-alerts' };
+const POPOVER_TRIGGER: Partial<Record<NonNullable<Popover>, string>> = { food: 'tool-feed', target_food: 'tool-target-feed', lights: 'tool-lights', alerts: 'hud-alerts', more: 'dock-more' };
 function usePopoverFocusReturn() {
   const popover = useShell((s) => s.popover);
   const prev = useRef<Popover>(null);
@@ -364,7 +366,8 @@ export function GameHUD() {
           <ToolHint />
         </ErrorBoundary>
         <ErrorBoundary name="dock">
-          <Dock />
+          {/* lane:ui-shell (chunk 1, §5.2) — phones get the five-tab bar instead of the dock */}
+          {mobile ? <TabBar /> : <Dock />}
         </ErrorBoundary>
         <ErrorBoundary name="tutorial">
           {/* the expanded guide card claims its corner: the coach picks data-occlude="bottom"|"left" so the camera frames the tank clear of it (desktop tank view) */}
@@ -387,6 +390,9 @@ export function GameHUD() {
         <Suspense fallback={null}>
           <PanelHost />
         </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary name="more">
+        <MoreSheet />
       </ErrorBoundary>
       <ErrorBoundary name="photo">
         <LazyPhotoMode />

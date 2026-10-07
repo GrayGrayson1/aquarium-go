@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 import { Users, DoorOpen, DoorClosed, Ticket, HandCoins, Smile, Sparkles, Meh, Frown, TriangleAlert, Eye, Star, Lock, Signpost, Trophy, Clock } from 'lucide-react';
 import type { GameState, VisitorReaction } from '@/types';
-import { Money, formatMoney, Toggle, Slider } from '@/ui/kit';
+import { Button, Money, formatMoney, Toggle, Slider } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { setOpenToPublic, setAdmission, toggleSignage, visitorSummary, SIGN_COST, type VisitorSummary } from '@/sim/facility';
 import { getFacilityLevel } from '@/data/facilities';
@@ -18,6 +18,8 @@ import { usePanelGame, useReducedMotion, safe } from '../common/hooks';
 import { act, edit } from '../common/act';
 import { EmptyState, SectionHead, Tile, Bar, Callout, Chip, Seg } from '../common/parts';
 import { StaffTab } from './StaffTab'; // lane:staff
+import { LockedDestination, useDestinationLocked } from '../common/Locked'; // lane:ui-shell (chunk 1)
+import { go, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { FacilityUpgradeCard } from '../common/FacilityUpgrade';
 import { Requirements, reqsFor } from '../common/Requirements';
 import { orderedTanks, unlocked } from '../common/derive';
@@ -39,9 +41,28 @@ export function VisitorsPanel() {
     setTab(t);
     useUI.getState().set({ panelTarget: null });
   }, [target]);
+  useNavTab('visitors', tab); // lane:ui-shell (chunk 1)
+  const locked = useDestinationLocked(g, 'visitors');
   if (!g) return null;
   const canOpen = sum ? sum.canOpen : unlocked(g, 'visitors');
   const level = getFacilityLevel(g.facility.level);
+  // lane:ui-shell (chunk 1, §5.7) — before the Specialty Shop the panel says what opens it (the dock used to only toast)
+  if (locked)
+    return (
+      <PanelLayout title="Visitors" icon={<Users size={20} />} subtitle={`${level.name} · private`}>
+        <LockedDestination
+          testId="locked-visitors"
+          title="Visitors open with a Specialty Shop"
+          action={
+            <Button variant="primary" onClick={() => go({ kind: 'panel', panel: 'build', tab: 'facility' })}>
+              Open Build › Facility
+            </Button>
+          }
+        >
+          Upgrade to a specialty shop to welcome paying visitors. Links to this page keep working — they show this until it unlocks.
+        </LockedDestination>
+      </PanelLayout>
+    );
   const t = g.visitors.today;
   const avgSat = t.count > 0 ? t.satisfactionSum / t.count : 0;
 
@@ -55,6 +76,7 @@ export function VisitorsPanel() {
         // lane:staff — venue operations: the public side and the team behind it
         <Seg<VisitorsTab>
           label="Visitors section"
+          tabs
           value={tab}
           onChange={setTab}
           testIdPrefix="visitors-tab-"

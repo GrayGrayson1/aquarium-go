@@ -21,8 +21,10 @@ import { Requirements } from '../common/Requirements';
 import { NamedIcon } from '../common/icons';
 import { formatSpan, plural } from '../common/format';
 import './research.css'; // lane:w2-ui
+import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 
 type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
+const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
 
 const TRACK_LABEL: Record<MasteryTrack, string> = { husbandry: 'Husbandry', breeding: 'Breeding', aquascaping: 'Aquascaping', marine: 'Marine', business: 'Business', exhibition: 'Exhibition' };
 const BRANCH_LABEL: Record<string, string> = { gear: 'Life support', freshwater: 'Freshwater', breeding: 'Breeding', marine: 'Marine', exhibition: 'Exhibition' };
@@ -32,9 +34,10 @@ export function ResearchPanel() {
   const target = useUI((s) => s.panelTarget);
   const [tab, setTab] = useState<Tab>('research');
   const phone = useIsPhone(); // lane:qa-final
+  useNavTab('research', tab); // lane:ui-shell (chunk 1)
   useEffect(() => {
     if (target?.startsWith('tab:')) {
-      setTab(target.slice(4) as Tab);
+      setTab(RESEARCH_TABS.includes(target.slice(4) as Tab) ? (target.slice(4) as Tab) : 'research');
       useUI.getState().set({ panelTarget: null });
     }
   }, [target]);
@@ -55,6 +58,7 @@ export function ResearchPanel() {
         // icons dropped on phones
         <Seg<Tab>
           label="Research section"
+          tabs
           value={tab}
           onChange={setTab}
           size="sm"

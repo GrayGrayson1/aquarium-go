@@ -23,6 +23,7 @@ import { OffspringOdds } from '../common/Offspring';
 import { orderedTanks, ownedCreatures, valueOf, isListed, speciesOf, creatureCondition, conditionWord, ageDaysOf, formatAge, wellbeing, morphName } from '../common/derive';
 import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_LABEL, plural, untilTime, pct, nameList } from '../common/format';
 import { SpeciesCareStrip } from '../encyclopedia/SpeciesGuide'; // lane:guide
+import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 
 type Tab = 'animals' | 'young' | 'past';
 type StatusFilter = 'all' | 'attention' | 'listed' | 'favorites' | 'juveniles';
@@ -41,10 +42,13 @@ export function LivestockPanel() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [confirmSell, setConfirmSell] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  useNavTab('livestock', tab); // lane:ui-shell (chunk 1)
 
   useEffect(() => {
     if (!target) return;
-    if (target.startsWith('tank:')) setTankF(target.slice(5));
+    // lane:ui-shell (chunk 1) — the router's explicit sections; Production arrives with chunk 4, so it opens Animals until then
+    if (target.startsWith('tab:')) setTab(target === 'tab:young' ? 'young' : target === 'tab:past' ? 'past' : 'animals');
+    else if (target.startsWith('tank:')) setTankF(target.slice(5));
     else if (target === 'young' || target === 'clutches') setTab('young');
     else if (target.startsWith('creature:')) useUI.getState().set({ selectedCreatureId: target.slice(9) });
     else if (target.startsWith('sell:')) {
@@ -153,6 +157,7 @@ export function LivestockPanel() {
         <div className="pn-col pn-gap-2" style={{ width: '100%' }}>
           <Seg<Tab>
             label="Livestock view"
+            tabs
             value={tab}
             onChange={setTab}
             items={[

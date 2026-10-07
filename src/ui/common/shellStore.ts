@@ -4,6 +4,7 @@
  */
 import { create } from 'zustand';
 import type { GameSpeed } from '@/types';
+import type { SettingsTab } from '../nav/routes';
 
 export type Popover = null | 'food' | 'target_food' | 'lights' | 'alerts' | 'camera' | 'more';
 
@@ -23,8 +24,11 @@ interface ShellState {
   /** Last captured photo (data URL) shown in the preview modal. */
   /** `added`: the shot wrote a new line into the creature's story (one per few game hours). */
   photo: { url: string; creatureId: string | null; tankId: string | null; added?: boolean } | null;
-  /** Settings tab to show the next time Settings opens (the title screen's version badge asks for About). */
-  settingsTab: 'about' | null;
+  /**
+   * Settings tab to show the next time Settings opens (a one-shot command: the title screen's version badge asks for
+   * About, `#/settings/play` for Play & access). lane:ui-shell (chunk 1, NAV-016) — every Settings tab, not just About.
+   */
+  settingsTab: SettingsTab | null;
   set: (p: Partial<Omit<ShellState, 'set' | 'togglePopover'>>) => void;
   togglePopover: (p: Exclude<Popover, null>) => void;
 }

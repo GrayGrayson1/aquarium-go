@@ -3,8 +3,10 @@
  * finances, encyclopedia, log). OWNER: lane "ui-panels". 'settings' and 'dev' are handled by lane "ui-shell".
  *
  * Desktop: a frosted sheet sliding in from the right (≤600px), never covering the whole tank unless the player
- * maximises it. Phones and upright tablets: a bottom sheet that opens half-height (the tank stays visible above);
- * drag the header up to expand, down to shrink/dismiss.
+ * maximises it. Upright tablets: a bottom sheet that opens half-height (the tank stays visible above); drag the
+ * header up to expand, down to shrink/dismiss. lane:ui-shell (chunk 1, 0.5 spec §5.6, B-150) — phones (MOBILE_QUERY,
+ * either way up) open every panel at full height under the top bar, with the tab bar floating over its foot:
+ * `.pn-sheet--mobile` carries that geometry (nav.css), and the panel switcher strip gives way to the tab bar.
  *
  * Occlusion contract with the renderer: the sheet root carries `data-occlude="right" | "bottom"`, so the camera
  * frames the aquarium in the uncovered part of the screen (src/render/camera/viewport.ts).
@@ -21,10 +23,10 @@ import { tutorialAdvance, tutorialWants } from '@/sim/facility';
 import { SheetContext } from './common/PanelLayout';
 import { useIsPhone, useMedia, useReducedMotion } from './common/hooks';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
-import { SHORT_LANDSCAPE_QUERY } from '../common/safe';
+import { SHORT_LANDSCAPE_QUERY, useIsMobile } from '../common/safe';
 import { edit } from './common/act';
 import { PanelErrorBoundary } from './common/ErrorBoundary';
-import { useSettings } from '@/state/settings';
+import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { DOCK_ITEMS, openPanel } from '../hud/Dock';
 import { AttnDot, useNavDots } from '../hud/AttnDot'; // lane:notify
 import { markResearchSeen, researchSeenStale } from '../common/notify'; // lane:notify
@@ -65,9 +67,11 @@ export function PanelHost() {
   const panel = useUI((s) => s.panel);
   const hasGame = useGame((s) => !!s.game);
   const phone = useIsPhone();
-  const bottom = useMedia(BOTTOM_SHEET_QUERY) || phone;
-  // a phone held sideways always shows the sheet at full height (panels.css), so there is no half size to drop back to
-  const fullHeight = useMedia(SHORT_LANDSCAPE_QUERY) && bottom;
+  const mobile = useIsMobile(); // lane:ui-shell (chunk 1) — the tab bar's layout
+  const bottom = useMedia(BOTTOM_SHEET_QUERY) || phone || mobile;
+  // a phone (either way up) always shows the sheet at full height (panels.css, nav.css), so there is no half size to
+  // drop back to
+  const fullHeight = (useMedia(SHORT_LANDSCAPE_QUERY) || mobile) && bottom;
   const reduced = useReducedMotion();
   const [maximised, setMaximised] = useState(false);
   const dragControls = useDragControls();
@@ -180,7 +184,7 @@ export function PanelHost() {
             data-testid={`panel-${panel}`}
             data-panel={panel}
             data-occlude={bottom ? 'bottom' : 'right'}
-            className={`pn-sheet ${bottom ? 'pn-sheet--bottom' : 'pn-sheet--side'} ${phone ? 'pn-sheet--phone' : ''} ${maximised ? 'is-max' : ''}`}
+            className={`pn-sheet ${bottom ? 'pn-sheet--bottom' : 'pn-sheet--side'} ${phone ? 'pn-sheet--phone' : ''} ${mobile ? 'pn-sheet--mobile' : ''} ${maximised && !mobile ? 'is-max' : ''}`}
             initial={variants.initial}
             animate={variants.animate}
             exit={variants.exit}
@@ -195,7 +199,7 @@ export function PanelHost() {
             <PanelErrorBoundary key={panel} onClose={close}>
               <Comp />
             </PanelErrorBoundary>
-            {bottom && <PanelSwitcher active={panel as ManagedPanelId} />}
+            {bottom && !mobile && <PanelSwitcher active={panel as ManagedPanelId} />}
           </motion.aside>
         )}
       </AnimatePresence>
@@ -209,7 +213,7 @@ export function PanelHost() {
  */
 function PanelSwitcher({ active }: { active: ManagedPanelId }) {
   const unlocked = useGame((s) => s.game?.progress.unlocked.join('|') ?? '');
-  const dev = useSettings((s) => s.devMode);
+  const dev = useDevMode();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.querySelector<HTMLElement>(`[data-testid="sheet-switch-${active}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center' });

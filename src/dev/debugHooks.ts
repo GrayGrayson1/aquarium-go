@@ -1,5 +1,7 @@
 /**
  * window.__AQ — scripted access for e2e tests, QA screenshots and the dev console. OWNER: lane "core".
+ * lane:core (PLAT-005) — the write calls exist only in a dev build or a ?dev=1 session (src/state/devTools.ts);
+ * otherwise only the read-only diagnostics of READ_ONLY_KEYS (QA scripts open the game with ?dev=1).
  * Other lanes may add their own keys at runtime (`window.__AQ.myThing = ...`); this module merges, never replaces.
  *
  * Main helpers:
@@ -17,6 +19,7 @@ import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
+import { devToolsAllowed } from '@/state/devTools';
 import { runtime } from '@/runtime/tankRuntime';
 import { dev } from './commands';
 // lane:perf2 — only the light helpers ship in the main bundle; the fixture registry is fetched on demand.
@@ -45,6 +48,7 @@ import * as facility from '@/sim/facility';
 import * as lifeActions from '@/sim/life/actions';
 import * as compat from '@/sim/compat';
 import { facilityOverflow } from '@/render/camera/facilityOverflow';
+import { navBootPending } from '@/ui/nav/router';
 
 declare global {
   interface Window {
@@ -186,8 +190,9 @@ function summary() {
   };
 }
 
-if (typeof window !== 'undefined') {
-  const api: Record<string, unknown> = {
+/** The whole scripted API: e2e tests, QA screenshots and the dev console (a dev build, or a ?dev=1 session). */
+export function debugApi(): Record<string, unknown> {
+  return {
     // stores (original hooks)
     game: () => useGame.getState().game,
     mutate: useGame.getState().mutate,
@@ -272,8 +277,63 @@ if (typeof window !== 'undefined') {
       return m ? { used: m.usedJSHeapSize, total: m.totalJSHeapSize, limit: m.jsHeapSizeLimit } : null;
     },
   };
+}
+
+/**
+ * lane:core (PLAT-005, ADR-0005 decision 2) — what a production build offers without ?dev=1: read-only diagnostics.
+ * Nothing here changes the game, the settings or a save; the state, UI and settings come back as copies.
+ */
+export const READ_ONLY_KEYS = [
+  'game',
+  'state',
+  'ui',
+  'settings',
+  'facilityOverflow',
+  'runtime',
+  'fixtures',
+  'summary',
+  'getMoney',
+  'listCreatures',
+  'query',
+  'actions',
+  'hash',
+  'listSaves',
+  'exportText',
+  'storageBackend',
+  'resumeSummary',
+  'stateHash',
+  'fps',
+  'frameStats',
+  'stats',
+  'memory',
+] as const;
+
+const copyOf = <T>(v: T): T => (v == null ? v : structuredClone(v));
+/** A store's state without its functions (they would change it), copied. */
+function snapshot<T extends object>(state: T): Partial<T> {
+  return copyOf(Object.fromEntries(Object.entries(state).filter(([, v]) => typeof v !== 'function')) as Partial<T>);
+}
+
+export function readOnlyDebugApi(full: Record<string, unknown> = debugApi()): Record<string, unknown> {
+  const api: Record<string, unknown> = {};
+  for (const k of READ_ONLY_KEYS) api[k] = full[k];
+  api.game = () => copyOf(useGame.getState().game);
+  api.state = () => copyOf(useGame.getState().game);
+  api.ui = () => snapshot(useUI.getState());
+  api.settings = () => snapshot(useSettings.getState());
+  api.query = (name: string, ...args: unknown[]) => {
+    const fn = QUERIES[name];
+    const g = copyOf(useGame.getState().game);
+    if (!fn || !g) return null;
+    return JSON.parse(JSON.stringify((fn as (s: GameState, ...a: unknown[]) => unknown)(g, ...args)));
+  };
+  return api;
+}
+
+if (typeof window !== 'undefined') {
+  const api = devToolsAllowed() ? debugApi() : readOnlyDebugApi();
   window.__AQ = Object.assign(window.__AQ ?? {}, api);
   // lane:perf2 — `ready` is false while a ?fixture= URL is still loading its (lazy) fixture, so callers that wait for
-  // it find the fixture in place.
-  Object.defineProperty(window.__AQ, 'ready', { get: () => !fixtureBootPending(), enumerable: true, configurable: true });
+  // it find the fixture in place. lane:ui-shell (chunk 1) — and while a link or a reload is opening a save.
+  Object.defineProperty(window.__AQ, 'ready', { get: () => !fixtureBootPending() && !navBootPending(), enumerable: true, configurable: true });
 }

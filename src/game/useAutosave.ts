@@ -1,13 +1,15 @@
 /**
  * Autosave: every AUTOSAVE_INTERVAL_MS of visible real time while in the game, plus when the tab is hidden and on
  * pagehide. Skips showcase worlds and worlds booted from a `?fixture=` / `?showcase=` URL (so dev fixtures and QA runs
- * never overwrite the player's autosave; add `&autosave=1` to opt in). Respects settings.autosave.
+ * never overwrite the player's autosave; add `&autosave=1` to opt in, in a dev build or a `?dev=1` session).
+ * Respects settings.autosave.
  * OWNER: lane "core".
  */
 import { useEffect } from 'react';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
+import { devToolsAllowed } from '@/state/devTools';
 import { saveCurrentGame, saveCurrentGameSync } from '@/persistence/session';
 import { loopStats } from './loopStats';
 
@@ -47,7 +49,8 @@ function toastOnce(text: string, kind: 'warning' | 'danger') {
 function bootedFromFixture(): boolean {
   if (typeof location === 'undefined') return false;
   const q = new URLSearchParams(location.search);
-  return (q.has('fixture') || q.has('showcase')) && q.get('autosave') !== '1';
+  // lane:core (PLAT-005) — a fixture that autosaves (over the player's autosave) is a developer tool: only where they're allowed
+  return (q.has('fixture') || q.has('showcase')) && !(q.get('autosave') === '1' && devToolsAllowed());
 }
 
 /** Is autosave currently allowed for the running game? */

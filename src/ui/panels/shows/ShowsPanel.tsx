@@ -14,6 +14,8 @@ import { unseenResults, markShowResultsSeen } from '@/sim/shows';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe, useIsPhone } from '../common/hooks';
 import { Seg } from '../common/parts';
+import { LockedDestination, useDestinationLocked } from '../common/Locked'; // lane:ui-shell (chunk 1)
+import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { edit } from '../common/act';
 import { UpcomingTab } from './Upcoming';
 import { EnterFlow } from './EnterFlow';
@@ -68,7 +70,18 @@ export function ShowsPanel() {
     edit((d) => markShowResultsSeen(d));
   }, [tab, unseen]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useNavTab('shows', tab); // lane:ui-shell (chunk 1)
+  const locked = useDestinationLocked(g, 'shows');
   if (!g) return null;
+  // lane:ui-shell (chunk 1, §5.7) — before the guide is done (or 20 reputation) the panel says what opens it
+  if (locked)
+    return (
+      <PanelLayout title="Shows" icon={<Trophy size={20} />} subtitle="Club, Regional, National and International shows">
+        <LockedDestination testId="locked-shows" title="Shows unlock after the guide">
+          Finish the guide or reach 20 reputation to enter club shows.
+        </LockedDestination>
+      </PanelLayout>
+    );
   const pending = (g.shows?.entries ?? []).filter((e) => e.status === 'entered').length;
   const flowShow = flow ? g.shows?.shows.find((x) => x.id === flow.showId && x.status === 'open') : null;
   const subtitle = flowShow ? 'Enter a show' : pending ? `${pending} entr${pending === 1 ? 'y' : 'ies'} waiting for the judges` : 'Club, Regional, National and International shows';
@@ -83,6 +96,7 @@ export function ShowsPanel() {
         flowShow ? undefined : (
           <Seg<ShowsTab>
             label="Shows section"
+            tabs
             value={tab}
             onChange={(t) => {
               setTab(t);

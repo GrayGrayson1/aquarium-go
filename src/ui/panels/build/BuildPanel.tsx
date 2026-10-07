@@ -38,8 +38,10 @@ import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
 import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
 import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
+import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 
 type Tab = 'tanks' | 'decor' | 'equipment' | 'substrate' | 'facility';
+const BUILD_TABS: readonly Tab[] = ['tanks', 'decor', 'equipment', 'substrate', 'facility'];
 
 /**
  * The section and decor category Build was last left on, per aquarium: reopening it to pick a different piece used to
@@ -65,9 +67,11 @@ export function BuildPanel() {
     if (saveId) lastBuild = { saveId, tab, cat: decorCat };
   }, [tab, decorCat]);
 
+  useNavTab('build', tab); // lane:ui-shell (chunk 1)
+
   useEffect(() => {
     if (!target) return;
-    if (target.startsWith('tab:')) setTab(target.slice(4) as Tab);
+    if (target.startsWith('tab:')) setTab(BUILD_TABS.includes(target.slice(4) as Tab) ? (target.slice(4) as Tab) : 'tanks');
     else if (target.startsWith('decor-cat:')) {
       setTab('decor');
       setDecorCat(target.slice(10) as DecorCategory);
@@ -102,6 +106,7 @@ export function BuildPanel() {
           {/* lane:w2-ui — five tabs didn't fit a phone or the 1280 side sheet ("Fa…"): compact tabs, icons dropped on phones */}
           <Seg<Tab>
             label="Build section"
+            tabs
             value={tab}
             onChange={setTab}
             size="sm"

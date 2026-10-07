@@ -80,11 +80,65 @@ export function IconButton({ label, pressed, className, onClick, children, silen
   );
 }
 
-export function Tabs<T extends string>({ value, onChange, items }: { value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode }[] }) {
+/**
+ * Scroll an overflowing tab strip sideways so `el` is fully in view (a deep link to a tab near the end of a phone's
+ * strip, 0.5 spec §5.6). Only the strip scrolls, never the page.
+ */
+export function revealInStrip(strip: HTMLElement | null, el: HTMLElement | null | undefined): void {
+  if (!strip || !el || strip.scrollWidth <= strip.clientWidth + 1) return;
+  const s = strip.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  if (r.left < s.left) strip.scrollLeft -= s.left - r.left + 8;
+  else if (r.right > s.right) strip.scrollLeft += r.right - s.right + 8;
+}
+
+/** The next tab for an arrow / Home / End key (§18: Left and Right move between tabs), or null for other keys. */
+export function tabKeyTarget<T extends string>(key: string, ids: readonly T[], current: T): T | null {
+  if (!ids.length) return null;
+  const i = Math.max(0, ids.indexOf(current));
+  if (key === 'ArrowRight') return ids[(i + 1) % ids.length];
+  if (key === 'ArrowLeft') return ids[(i - 1 + ids.length) % ids.length];
+  if (key === 'Home') return ids[0];
+  if (key === 'End') return ids[ids.length - 1];
+  return null;
+}
+
+/** A tab strip (WAI-ARIA tabs: role=tablist/tab, aria-selected, roving focus, arrow keys; lane:ui-shell ACC-001). */
+export function Tabs<T extends string>({ value, onChange, items, label, testIdPrefix }: { value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode }[]; label?: string; testIdPrefix?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const strip = ref.current;
+    revealInStrip(strip, [...(strip?.querySelectorAll<HTMLElement>('[data-tab]') ?? [])].find((e) => e.dataset.tab === value));
+  }, [value]);
   return (
-    <div className="ag-tabs" role="tablist">
+    <div
+      className="ag-tabs"
+      role="tablist"
+      aria-label={label}
+      ref={ref}
+      onKeyDown={(e) => {
+        const next = tabKeyTarget(e.key, items.map((it) => it.id), value);
+        if (!next) return;
+        e.preventDefault();
+        if (next !== value) {
+          sfx('click');
+          onChange(next);
+        }
+        [...(ref.current?.querySelectorAll<HTMLElement>('[data-tab]') ?? [])].find((el) => el.dataset.tab === next)?.focus();
+      }}
+    >
       {items.map((it) => (
-        <button key={it.id} type="button" role="tab" aria-selected={it.id === value} className="ag-tab" onClick={() => { sfx('click'); onChange(it.id); }}>
+        <button
+          key={it.id}
+          type="button"
+          role="tab"
+          aria-selected={it.id === value}
+          tabIndex={it.id === value ? 0 : -1}
+          data-tab={it.id}
+          data-testid={testIdPrefix ? `${testIdPrefix}${it.id}` : undefined}
+          className="ag-tab"
+          onClick={() => { sfx('click'); onChange(it.id); }}
+        >
           {it.label}
         </button>
       ))}

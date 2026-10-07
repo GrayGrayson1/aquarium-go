@@ -27,6 +27,7 @@ import { ARTICLES } from './science';
 import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } from './morphs';
 import { GeneticsSections } from './MorphCatalog'; // lane:genetics
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
+import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 
 type Tab = 'species' | 'science';
 type Show = 'all' | 'discovered' | 'freshwater' | 'marine' | 'brackish'; // lane:brackish: + 'brackish'
@@ -37,6 +38,14 @@ export function EncyclopediaPanel() {
   const [tab, setTab] = useState<Tab>('species');
   const [speciesId, setSpeciesId] = useState<string | null>(null);
   const [article, setArticle] = useState<string | null>(null);
+  /** lane:ui-shell (B-115) — a section switch closes the open species page or article. */
+  const switchTab = (t: Tab) => {
+    setTab(t);
+    setSpeciesId(null);
+    setArticle(null);
+  };
+  useNavTab('encyclopedia', tab); // lane:ui-shell (chunk 1)
+  useNavSub('encyclopedia', tab === 'species' && speciesId ? `species:${speciesId}` : tab === 'science' && article ? `science:${article}` : null);
 
   useEffect(() => {
     if (!target) return;
@@ -46,8 +55,8 @@ export function EncyclopediaPanel() {
     } else if (target.startsWith('science:')) {
       setTab('science');
       setArticle(target.slice(8));
-    } else if (target === 'tab:science') setTab('science');
-    else if (target === 'tab:species') setTab('species');
+    } else if (target === 'tab:science') switchTab('science');
+    else if (target.startsWith('tab:')) switchTab('species');
     useUI.getState().set({ panelTarget: null });
   }, [target]);
 
@@ -65,8 +74,9 @@ export function EncyclopediaPanel() {
         speciesId ? undefined : (
           <Seg<Tab>
             label="Encyclopedia section"
+            tabs
             value={tab}
-            onChange={setTab}
+            onChange={switchTab}
             items={[
               { id: 'species', label: <><BookOpen size={14} /> Species</> },
               { id: 'science', label: <><FlaskConical size={14} /> Aquarium science</> },

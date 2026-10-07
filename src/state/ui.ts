@@ -26,8 +26,14 @@ export interface Toast {
   id: number;
   kind: 'info' | 'success' | 'warning' | 'danger' | 'celebrate';
   text: string;
+  /** lane:ui-shell (B-151) — explicit parts: a small label over the text and a detail line under it. */
+  label?: string;
+  detail?: string;
   at: number;
 }
+
+/** lane:ui-shell (B-151) — the optional parts of a toast (Toasts.tsx prefers them to parsing the text). */
+export type ToastParts = Pick<Toast, 'label' | 'detail'>;
 
 export interface UIState {
   screen: Screen;
@@ -59,7 +65,7 @@ export interface UIState {
   /** Selected starter during onboarding. */
   pendingStarterId: string | null;
   set: (patch: Partial<Omit<UIState, 'set' | 'toast' | 'dismissToast'>>) => void;
-  toast: (text: string, kind?: Toast['kind']) => void;
+  toast: (text: string, kind?: Toast['kind'], parts?: ToastParts) => void;
   dismissToast: (id: number) => void;
 }
 
@@ -86,8 +92,8 @@ export const useUI = create<UIState>((set, get) => ({
   toasts: [],
   pendingStarterId: null,
   set: (patch) => set(patch),
-  toast: (text, kind = 'info') => {
-    const t: Toast = { id: toastSeq++, kind, text, at: performance.now() };
+  toast: (text, kind = 'info', parts) => {
+    const t: Toast = { id: toastSeq++, kind, text, ...(parts?.label ? { label: parts.label } : {}), ...(parts?.detail ? { detail: parts.detail } : {}), at: performance.now() };
     set({ toasts: [...get().toasts.slice(-4), t] });
   },
   dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),

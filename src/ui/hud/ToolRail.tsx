@@ -28,7 +28,7 @@ import {
 import type { GameState, LightPreset } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI, type CameraMode, type ToolId } from '@/state/ui';
-import { useSettings } from '@/state/settings';
+import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx } from '@/audio/sfx';
 import { getSpecies, findSpecies } from '@/data/species';
 import { getFoodDef } from '@/data/catalog/foods';
@@ -382,7 +382,7 @@ export function ToolRail({ occlude = false }: { occlude?: boolean } = {}) {
   const tool = useUI((s) => s.tool);
   const party = useUI((s) => s.partyMode);
   const popover = useShell((s) => s.popover);
-  const dev = useSettings((s) => s.devMode);
+  const dev = useDevMode();
   const partyUnlocked = useGame((s) => !!s.game && (s.game.progress.unlocked.includes('party_mode') || dev));
   // lane:qa-r3 — the real route (and progress) instead of "unlocks as your aquarium grows"
   const partyRoute = useGame((s) => (partyUnlocked || !s.game ? '' : partyHint(s.game)));

@@ -28,9 +28,20 @@ export function collectErrors(page: Page): string[] {
   return errors;
 }
 
-/** Open the app and wait until window.__AQ is ready. */
+/**
+ * `path` with ?dev=1 added (its other query flags and hash kept). The write tools the tests use (newGame, dev.*, act…)
+ * exist only in a dev build or a session opened with ?dev=1 (PLAT-005, ADR-0005 decision 2), so with the flag the
+ * suite also runs against a production preview (E2E_REUSE=1).
+ */
+export function devUrl(path = '/'): string {
+  const u = new URL(path, 'http://e2e.invalid');
+  u.searchParams.set('dev', '1');
+  return `${u.pathname}${u.search}${u.hash}`;
+}
+
+/** Open the app (with ?dev=1) and wait until window.__AQ is ready (after any link or reload boot has opened its save). */
 export async function openApp(page: Page, path = '/'): Promise<void> {
-  await page.goto(path, { waitUntil: 'domcontentloaded' });
+  await page.goto(devUrl(path), { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => !!(window as unknown as { __AQ?: { ready?: boolean } }).__AQ?.ready, null, { timeout: 30_000 });
 }
 

@@ -22,10 +22,11 @@ import { tutorialAdvance, tutorialSkip, currentTutorialStep } from '@/sim/facili
 import { interpolate } from '@/sim/facility/progression';
 import { findSpecies } from '@/data/species';
 import { useShell } from '../common/shellStore';
-import { safe, SHORT_LANDSCAPE_QUERY, useMedia } from '../common/safe';
+import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { ProgressDots, Button } from '../kit';
 import { guideTarget, openPanel } from '../hud/Dock';
+import { MORE_ITEMS } from '../hud/TabBar'; // lane:ui-shell (chunk 1)
 import { toggleTankCard } from '../hud/TankBar';
 import { useDockedCard } from '../hud/cardDock';
 import { setCameraMode } from '../hud/ToolRail';
@@ -312,6 +313,7 @@ export function TutorialCoach() {
   // lane:qa-final — on phones the tank card is a bottom sheet that hid the expanded guide (after the water step the
   // next step sat unseen under it). It folds into the pill too, which hud.css lifts just above the sheet.
   const phoneSheet = dockedCard === 'tank' && bottomSheets;
+  const mobile = useIsMobile(); // lane:ui-shell (chunk 1) — the tab bar's layout, where some destinations live in More
   const collapsed = userCollapsed || leftSheet || phoneSheet;
   const [confirmSkip, setConfirmSkip] = useState(false);
   const cur = currentCoachStep(game, fine);
@@ -398,9 +400,17 @@ export function TutorialCoach() {
   const progress = waiting ? stepProgress(game, cur.step.objective) : null;
   const pct = progress ? Math.max(0, Math.min(1, progress.cur / Math.max(1, progress.max))) : 0;
 
+  // lane:ui-shell (chunk 1, §5.5) — on phones a destination that lives in More (Research) has no dock button to ring:
+  // ring the More tab with a note saying so, then the destination's tile once the More sheet is open
+  const inMore = mobile && target.startsWith('dock-') ? MORE_ITEMS.find((it) => it.id === target.slice(5)) : undefined;
+  const moreOpen = popover === 'more';
+  const ringTarget = inMore ? (moreOpen ? `more-${inMore.id}` : 'dock-more') : target;
+  const ringing = !collapsed && !panel && tool === 'none';
+
   return (
     <>
-      {!collapsed && !panel && tool === 'none' && <TutorialHighlight target={target} />}
+      {ringing && <TutorialHighlight target={ringTarget} gold={!!inMore} />}
+      {ringing && inMore && !moreOpen && <MoreGuideBubble label={inMore.label} />}
       <AnimatePresence mode="wait">
         {collapsed ? (
           <motion.button
@@ -549,8 +559,40 @@ function isCovered(el: HTMLElement): boolean {
   return !!top.closest('.ag-sheet, .pn-sheet, .ag-popover, .ag-coach, .ag-coach-pill, .ag-modal, .ag-welcome');
 }
 
+/**
+ * lane:ui-shell (chunk 1, §5.5, §16) — the guide's note above the phone's More tab while it rings it: "Guide ·
+ * Research" / "Research now lives under More. Tap More, then Research."
+ */
+function MoreGuideBubble({ label }: { label: string }) {
+  const [pos, setPos] = useState<{ right: number; bottom: number } | null>(null);
+  useLayoutEffect(() => {
+    let t = 0;
+    let last = '';
+    const measure = () => {
+      const el = document.querySelector<HTMLElement>('[data-testid="dock-more"]');
+      const r = el?.getBoundingClientRect();
+      const next = r && r.width > 0 ? { right: Math.max(8, Math.round(window.innerWidth - r.right)), bottom: Math.round(window.innerHeight - r.top + 10) } : null;
+      const key = JSON.stringify(next);
+      if (key !== last) {
+        last = key;
+        setPos(next);
+      }
+      t = window.setTimeout(measure, 250);
+    };
+    measure();
+    return () => window.clearTimeout(t);
+  }, []);
+  if (!pos) return null;
+  return (
+    <div className="ag-guide-bubble" role="status" data-testid="guide-more-bubble" style={{ right: pos.right, bottom: pos.bottom }}>
+      <span className="ag-guide-bubble__label">Guide · {label}</span>
+      {label} now lives under <strong>More</strong>. Tap More, then {label}.
+    </div>
+  );
+}
+
 /** Pulsing ring around the element with the matching data-tutorial-id (tracks layout changes). */
-function TutorialHighlight({ target }: { target: string }) {
+function TutorialHighlight({ target, gold }: { target: string; gold?: boolean }) {
   const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number; round: boolean } | null>(null);
   useLayoutEffect(() => {
     if (!target || target === 'scene') {
@@ -592,7 +634,7 @@ function TutorialHighlight({ target }: { target: string }) {
   const pad = 5;
   return (
     <div
-      className={clsx('ag-tut-ring', rect.round && 'is-round')}
+      className={clsx('ag-tut-ring', rect.round && 'is-round', gold && 'ag-tut-ring--gold')}
       aria-hidden
       style={{ left: rect.x - pad, top: rect.y - pad, width: rect.w + pad * 2, height: rect.h + pad * 2 }}
     />
