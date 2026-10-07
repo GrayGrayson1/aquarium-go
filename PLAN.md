@@ -6,9 +6,9 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Finish chunk 1: its e2e run.** Chunk 1 is built and reviewed on `next` (from `fb80474`; review blockers fixed
-   in `743ca63`). Typecheck, unit (174 files, 2,031 tests) and build pass on `743ca63`; e2e needs the owner's Mac
-   (`CLAUDE.md`), so run it in Terminal:
+1. **Finish chunk 1: its e2e run.** Chunk 1 is built and reviewed on `next` (from `fb80474`; the review's blockers
+   fixed in `743ca63`, its follow-up in `bcdb65e`). Typecheck, unit (174 files, 2,032 tests) and build pass on
+   `bcdb65e`; e2e needs the owner's Mac (`CLAUDE.md`), so run it in Terminal:
    `cd /Volumes/Dev/Projects/AquariumGo && { git log --oneline -1; echo "=== npm run e2e"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run e2e; echo "=== e2e exit $?"; } 2>&1 | tee .agent-runs/e2e-chunk1.log`.
    Six specs are new (`nav`, `nav-routes-matrix`, `deeplink-boot`, `mobile-tabbar`, `mobile-sheets`, and the phone
    test in `ui-layout`), so fix whatever the first run shows, then mark chunk 1 done below, set its requirements
@@ -37,7 +37,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 **Last full test run:** the owner's Mac, 2026-10-06, on `3601860`: typecheck, unit (1,809 tests) and build passed;
 e2e 47 of 48 (camera-freeze's browser teardown hung after its body passed; see "Known flaky tests"). Chunk 1, on
-`743ca63` in Claude Code: typecheck, unit (2,031 tests) and build passed; e2e pending.
+`bcdb65e` in Claude Code: typecheck, unit (2,032 tests) and build passed; e2e pending.
 
 ## How a chunk runs
 
