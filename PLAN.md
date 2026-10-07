@@ -6,22 +6,29 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Finish chunk 0.** `next` is pushed (`3601860`). The owner's check run on it (2026-10-06): typecheck, unit
-   (1,809 tests) and build passed; e2e (48 results: the 47 tests plus the warm-up) was still running when this was
-   written. Read the end of `.agent-runs/checks-next.log` (on the Mac, not in Git). If e2e passed, mark chunk 0 done
-   below and B-003 "first run green" in `docs/agent/BACKLOG.md`. If not, fix the failures first (see "Known flaky
-   tests") and run e2e again.
-2. **Chunk 1**, in Claude Code on the Mac, in this repo, on `next`.
+1. **Finish chunk 1: its e2e run.** Chunk 1 is built and reviewed on `next` (from `fb80474`; review blockers fixed
+   in `743ca63`). Typecheck, unit (174 files, 2,031 tests) and build pass on `743ca63`; e2e needs the owner's Mac
+   (`CLAUDE.md`), so run it in Terminal:
+   `cd /Volumes/Dev/Projects/AquariumGo && { git log --oneline -1; echo "=== npm run e2e"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run e2e; echo "=== e2e exit $?"; } 2>&1 | tee .agent-runs/e2e-chunk1.log`.
+   Six specs are new (`nav`, `nav-routes-matrix`, `deeplink-boot`, `mobile-tabbar`, `mobile-sheets`, and the phone
+   test in `ui-layout`), so fix whatever the first run shows, then mark chunk 1 done below, set its requirements
+   (the "Requirements" line of its brief) to GREEN, DES-002 to DEFERRED (harness evidence) and S0's requirements to
+   GREEN (the reviewer read S0's diff and saw no reason not to), and push `next`.
+2. **Then chunk 2** (Shop and genetics), in Claude Code on the Mac, on `next`.
 3. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
-   rest). Chunks 1 to 3 don't need them.
-4. **Optional:** release S0's fixes to players as 0.4.1 (see "Releases").
+   rest). Chunks 1 to 3 don't need them. Also, from chunk 1: (a) after a rollback, an older copy of the game can't
+   autosave into a slot that holds a newer version's save (it says so once, with "Refresh the page"): should a
+   player be offered more, such as saving to another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too
+   (B-129)? (c) What accessibility level to aim for (B-178)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the
+   developer tools for the session, and the dev panel comes on with the Settings switch.
+4. **Optional:** release what's done to players (see "Releases").
 
 ## Status
 
 | Chunk | What | Status |
 |---|---|---|
-| 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06, except the e2e result (Next step 1) |
-| 1 | Navigation, links and the platform layer | Next |
+| 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06. Its e2e run (owner, `3601860`): 47 of 48, the one failure camera-freeze's teardown hang, fixed in `859858a` |
+| 1 | Navigation, links and the platform layer | Built and reviewed 2026-10-06; e2e pending (Next step 1) |
 | 2 | Shop and genetics | Not started |
 | 3 | Automation and notifications | Not started |
 | 4 | Production lines | Not started; needs the owner's Production answers |
@@ -29,7 +36,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 6 | Social stub, hardening and the 0.5.0 release | Not started |
 
 **Last full test run:** the owner's Mac, 2026-10-06, on `3601860`: typecheck, unit (1,809 tests) and build passed;
-e2e still running (Next step 1). The run before chunk 0's e2e fixes had e2e 45 of 47.
+e2e 47 of 48 (camera-freeze's browser teardown hung after its body passed; see "Known flaky tests"). Chunk 1, on
+`743ca63` in Claude Code: typecheck, unit (2,031 tests) and build passed; e2e pending.
 
 ## How a chunk runs
 
@@ -57,7 +65,10 @@ cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next; { git log --onel
 **Known flaky tests** (from the harness's baseline): `boot.spec.ts:17` and `camera-freeze.spec.ts:34` once timed out
 tearing down the browser; `playthrough-starters` can trip Vitest's RPC timeout on a slow machine; `core-gameloop`'s
 20 ms median-tick test depends on machine speed. If one fails, re-run it alone on an idle machine before calling it
-a regression, and never loosen it.
+a regression, and never loosen it. The teardown hang is Chromium's graceful `context.close()` on a busy WebGL page
+(headless, Metal): in the owner's run on `3601860` camera-freeze's body passed in 38 s and the close then hung for
+120 s, while closing the browser took 1.4 s. `camera-freeze.spec` now runs in a browser of its own and closes it with
+`browser.close()` (`859858a`); give `boot.spec.ts:17` the same treatment if it hangs again.
 
 **Requirements.** The ids below come from `docs/agent/REQUIREMENTS.json`; their acceptance criteria are the
 checklist. Skip criteria that only made sense for the harness (gates, ledgers, evidence manifests, reviewer records,
@@ -97,6 +108,23 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   and what the loading card shows (§6.4). The harness's review recommended: a deep link is a hash that names a real
   screen; an empty, `#/` or unknown hash shows the title; a reload returns to the title; the loading card shows an
   indeterminate bar with the time away. Also NAV-014's not-found copy, if §6.5 and §16 don't give it.
+- **Decided (2026-10-06):**
+  - The owner's answers are ADR-0019: a link to a real screen skips the title and opens the latest save behind the
+    loading card; **a reload (or a return through history) reopens this tab's aquarium at the address**, not the
+    title; the loading card's bar loops; the not-found toasts' wording.
+  - Values the requirements left open: panel and Settings sheets on a portrait phone start at 64 px ± 2 and the tank
+    card at 118 px ± 2; the More sheet's top at 48 % of the height (tests allow 45-51 %); "Link copied" for 4 s (the
+    test allows up to 6 s).
+  - `?dev=1` allows the developer tools for that session only (PLAT-005) and no longer switches the dev panel on by
+    itself, as NAV-009 A4 assumed: e2e and QA scripts open the game with `?dev=1`, and dev mode unlocks every
+    destination, which would change what they test. In such a session the Settings switch turns the panel on.
+  - The More tab follows §5.2: it opens the More sheet, and while it is highlighted (the sheet or a destination
+    inside More is open) tapping it returns to the tank view; Back from a tile returns to More. A panel's first tab
+    has no URL segment (`#/build` is Build › Tanks). A link opened in a fresh tab gets no synthetic parent entry, so
+    Back from it leaves the site; Back into an entry of a game that has ended stays where the player is.
+  - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-126 (an e2e run under `/aquarium-go/`) to chunk 3 with the
+    service worker; B-182 and B-183 (render) to the next chunk with a render pass; B-178's remaining accessibility
+    gaps to chunk 2; DES-002 (harness evidence). WebKit e2e (B-129) is an owner question.
 
 ### 2. Shop and genetics (0.5 phase 2)
 
