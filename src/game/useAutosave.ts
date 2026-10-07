@@ -10,6 +10,7 @@ import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { devToolsAllowed } from '@/state/devTools';
+import { STARTER_IDS } from '@/data/species';
 import { saveCurrentGame, saveCurrentGameSync } from '@/persistence/session';
 import { loopStats } from './loopStats';
 
@@ -46,11 +47,22 @@ function toastOnce(text: string, kind: 'warning' | 'danger') {
   }
 }
 
+/**
+ * lane:core (PLAT-005, ADR-0005 decision 2) — the world a `?fixture=` / `?showcase=` URL asks for, if it boots (App.tsx
+ * and the router use this too): a starter showcase always (a plain demo world, never saved); a registry fixture only in
+ * a dev build or a `?dev=1` session. A URL whose fixture doesn't boot is an ordinary page.
+ */
+export function urlFixtureName(search: string = typeof location !== 'undefined' ? location.search : ''): string | null {
+  const q = new URLSearchParams(search);
+  const name = q.get('fixture') ?? q.get('showcase');
+  if (!name) return null;
+  return (STARTER_IDS as readonly string[]).includes(name) || devToolsAllowed() ? name : null;
+}
+
 function bootedFromFixture(): boolean {
-  if (typeof location === 'undefined') return false;
-  const q = new URLSearchParams(location.search);
+  if (typeof location === 'undefined' || !urlFixtureName()) return false;
   // lane:core (PLAT-005) — a fixture that autosaves (over the player's autosave) is a developer tool: only where they're allowed
-  return (q.has('fixture') || q.has('showcase')) && !(q.get('autosave') === '1' && devToolsAllowed());
+  return !(new URLSearchParams(location.search).get('autosave') === '1' && devToolsAllowed());
 }
 
 /** Is autosave currently allowed for the running game? */

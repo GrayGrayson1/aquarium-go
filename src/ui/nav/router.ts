@@ -31,6 +31,7 @@ import { MOBILE_QUERY } from '../common/safe';
 import { tutorialFlag } from '../common/actions';
 import { toastMark, reportLoadFailure } from '../screens/loadFeedback';
 import { useTankCardTab } from '../cards/tankCardTab';
+import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
 import {
   formatRoute,
@@ -371,7 +372,7 @@ function captureBoot(): BootCapture {
   const q = new URLSearchParams(location.search);
   const hash = location.hash === '#' ? '' : location.hash;
   const returning = type === 'reload' || type === 'back_forward';
-  const urlBoot = q.has('fixture') || q.has('showcase') || q.has('sandbox');
+  const urlBoot = !!urlFixtureName(location.search) || q.has('sandbox'); // (a fixture that doesn't boot is an ordinary page)
   const parsed = hash ? parseRoute(hash) : null;
   const loads = !!hash && !urlBoot && (returning || (!!parsed && parsed.route.kind !== 'home'));
   return { hash, returning, urlBoot, loads, used: useUI.getState().screen !== 'boot' };

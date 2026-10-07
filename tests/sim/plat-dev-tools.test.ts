@@ -14,6 +14,7 @@ import { useGame } from '@/state/game';
 import { newGame } from '@/sim/newGame';
 import { stateHash } from '@/persistence';
 import { debugApi, readOnlyDebugApi, READ_ONLY_KEYS } from '@/dev/debugHooks';
+import { urlFixtureName } from '@/game/useAutosave';
 
 const ROOT = join(__dirname, '..', '..');
 const src = (p: string) => readFileSync(join(ROOT, p), 'utf8');
@@ -53,7 +54,19 @@ describe('PLAT-005: who gets the developer tools', () => {
   });
 
   it('a fixture boot autosaves only where the tools are allowed', () => {
-    expect(src('src/game/useAutosave.ts')).toMatch(/q\.get\('autosave'\) === '1' && devToolsAllowed\(\)/);
+    expect(src('src/game/useAutosave.ts')).toMatch(/get\('autosave'\) === '1' && devToolsAllowed\(\)/);
+  });
+
+  it('a registry fixture boots only where the tools are allowed; a starter showcase always (one rule for App, autosave and the router)', () => {
+    expect(urlFixtureName('?fixture=big_facility')).toBe('big_facility');
+    expect(urlFixtureName('?showcase=betta')).toBe('betta');
+    expect(urlFixtureName('')).toBeNull();
+    useDevTools.setState({ allowed: false });
+    expect(urlFixtureName('?fixture=big_facility')).toBeNull();
+    expect(urlFixtureName('?showcase=big_facility')).toBeNull();
+    expect(urlFixtureName('?fixture=axolotl')).toBe('axolotl');
+    expect(urlFixtureName('?showcase=betta&dev=0')).toBe('betta');
+    for (const f of ['src/App.tsx', 'src/ui/nav/router.ts']) expect(src(f)).toContain('urlFixtureName(');
   });
 });
 

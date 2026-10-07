@@ -320,6 +320,9 @@ describe('nav-sync: leaving a game (NAV-012)', () => {
 
   it('Back from the title into the ended game’s entries stays on the title (NAV-012 A3)', async () => {
     gesture();
+    useUI.getState().set({ panel: 'research', panelTarget: null });
+    await flush();
+    gesture();
     useUI.getState().set({ panel: 'market', panelTarget: null });
     R.useNav.setState({ tab: { market: 'shop' }, sub: { market: 'offer:o1' } });
     await flush();
@@ -327,7 +330,7 @@ describe('nav-sync: leaving a game (NAV-012)', () => {
     useUI.getState().set({ screen: 'title', panel: null }); // "Save and return to title"
     await flush();
     expect(fakeLocation.hash).toBe('');
-    browserBack(); // into #/ of the game that ended
+    browserBack(); // into #/research of the game that ended (a route that names a screen: it used to boot the save)
     await flush();
     expect(useUI.getState().screen).toBe('title');
     expect(R.useNav.getState().boot).toBeNull();
