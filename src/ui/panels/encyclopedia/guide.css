@@ -87,3 +87,6 @@
 .ag-sg-handfeed__sp { background: none; border: 0; padding: 0; font: inherit; color: var(--c-aqua); cursor: pointer; text-decoration: underline; text-decoration-color: rgba(94, 234, 212, 0.35); text-underline-offset: 2px; }
 .ag-sg-handfeed__sp:hover { text-decoration-color: var(--c-aqua); }
 .ag-sg-handfeed__sp:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; border-radius: 3px; }
+
+/* lane:genetics (0.5 §8.7) — "New" on an article added this release */
+.pn-article__new { margin-left: 8px; vertical-align: 2px; font-family: var(--font-ui); }
