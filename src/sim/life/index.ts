@@ -172,6 +172,7 @@ export function potentialBand(v: number): 'Ordinary' | 'Promising' | 'Exceptiona
 }
 
 export { stepTankBreeding, breedingCheck, breedingStatus } from './breeding';
+export { geneticsRevealLevel } from './reveal'; // lane:genetics (0.5 §9.1)
 export { rollGenome, inheritGenome, resolvePhenotype, describeGenetics, predictOffspringMorphs, predictOffspringPhenotypes, morphDisplayName, describeLocus, hiddenAlleles, structureLabel, temperamentWord, curiosityWord } from './genetics';
 // lane:genetics — Prismatic individuals, named strains and the morph catalog
 export { isPrismatic, isLotOffer, prismaticChance, prismaticChanceForPair, oneInLabel, assignPrismatic, forcePrismatic, sanitizeRareVariant } from './rareVariants';
