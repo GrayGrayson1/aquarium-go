@@ -26,6 +26,7 @@ import { DEFAULT_LIGHTS_ON, defaultLightsOff } from '@/sim/time';
 import { renamedMorphs } from '@/sim/life/genetics';
 import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
 import { backfillFinds } from '@/sim/life/discovery'; // lane:genetics
+import { emptyShowsState } from '@/sim/shows/state'; // B-168
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -565,7 +566,9 @@ export function repairState(s: Json): string[] {
     for (const k of ['shows', 'entries', 'trophies'] as const) if (!Array.isArray(s.shows[k])) s.shows[k] = [];
     if (!isObj(s.shows.tankAwards)) s.shows.tankAwards = {};
     if (!isObj(s.shows.stats)) s.shows.stats = { entered: 0, placings: 0, wins: 0, bestInShow: 0, prize: 0 };
-    s.shows.rng = num(s.shows.rng, s.seed) >>> 0;
+    // B-168: a broken stream restarts from its own seed, as ensureShowsState and a new game do (it used to restart from
+    // the save seed itself, the world stream's seed)
+    s.shows.rng = typeof s.shows.rng === 'number' && Number.isFinite(s.shows.rng) ? s.shows.rng >>> 0 : emptyShowsState(s as GameState).rng;
     s.shows.seq = Math.max(0, Math.floor(num(s.shows.seq, 0)));
     s.shows.cursorHour = num(s.shows.cursorHour, num(s.clock.hour, 0));
   }

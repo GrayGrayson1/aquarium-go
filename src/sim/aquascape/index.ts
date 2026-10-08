@@ -8,6 +8,7 @@
  */
 import type { GameState, Tank, BeautyReport, DecorInstance } from '@/types';
 import type { ActionResult } from '../care';
+import type { Rng } from '../rng';
 import { placeDecorImpl, moveDecorImpl, removeDecorImpl, reseatDecorImpl } from './placement';
 import { beautyScoreImpl } from './beauty';
 import { starterAquascapeImpl } from './starters';
@@ -63,8 +64,9 @@ export function starterAquascape(state: GameState, starterId: string, tank: Tank
 }
 
 /** Grow plants/corals, trim needs, algae interaction. Called per tank step (`startHour`: the step's world hour). */
-export function stepTankDecor(state: GameState, tank: Tank, dt: number, startHour?: number): void {
-  stepTankDecorImpl(state, tank, dt, startHour);
+/** `rng`: inside a tank step, the step's ctx.rng (B-168), so decor draws continue the one stream. */
+export function stepTankDecor(state: GameState, tank: Tank, dt: number, startHour?: number, rng?: Rng): void {
+  stepTankDecorImpl(state, tank, dt, startHour, rng);
 }
 
 /** Aggregate habitat features of a tank's decor + substrate (compat, welfare, breeding all use this). */

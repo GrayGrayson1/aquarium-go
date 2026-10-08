@@ -13,7 +13,7 @@ import { getTankTier } from '@/data/catalog/tanks';
 import { findSpecies } from '@/data/species';
 import { vitality } from './habitat';
 import { incidentRisks } from '../compat';
-import { simRng } from '../rng';
+import { simRng, type Rng } from '../rng';
 import { emitEvent } from '../context';
 import { fragGrowthFactor, stepFragGrowOut } from './frags'; // lane:frags
 
@@ -21,7 +21,7 @@ import { fragGrowthFactor, stepFragGrowOut } from './frags'; // lane:frags
  * Coral-nipping fish (compat `coral_nip` incidents): roll per step and damage a coral colony a little.
  * Deterministic (sim RNG); soft/LPS/zoanthid polyps are preferred targets over stony SPS and gorgonians.
  */
-function applyCoralNipping(state: GameState, tank: Tank, dt: number): void {
+function applyCoralNipping(state: GameState, tank: Tank, dt: number, stepRng?: Rng): void {
   const corals = tank.decor.filter((d) => {
     const def = getDecorDef(d.defId);
     return def && def.category === 'coral' && def.visual !== 'coral_gorgonian';
@@ -34,7 +34,10 @@ function applyCoralNipping(state: GameState, tank: Tank, dt: number): void {
     return;
   }
   if (!risks.length) return;
-  const rng = simRng(state);
+  // lane:core (B-168) — inside a tank step, draw from the step's ctx.rng: a second simRng(state) started from the same
+  // stored state, so the creature step replayed these draws and rewound rngState (nip outcomes and the next creature
+  // rolls were correlated). Callers outside a step (none today) still get the world stream.
+  const rng = stepRng ?? simRng(state);
   for (const risk of risks) {
     const p = 1 - Math.pow(1 - Math.min(0.95, Math.max(0, risk.perDay)), dt / 24);
     if (!rng.chance(p)) continue;
@@ -193,7 +196,7 @@ function coralTarget(def: DecorDef, tank: Tank, lightRatio: number): number {
  * S05-10), so the day/night window — and every healing / settling timer — lines up with the clock; by default the
  * step is the last `dt` hours before the clock.
  */
-export function stepTankDecorImpl(state: GameState, tank: Tank, dt: number, startHour = state.clock.hour - dt): void {
+export function stepTankDecorImpl(state: GameState, tank: Tank, dt: number, startHour = state.clock.hour - dt, rng?: Rng): void {
   if (!(dt > 0) || !Number.isFinite(dt)) return;
   if (!tank.decor.length) return;
   const light = tankLightInfo(tank);
@@ -257,7 +260,7 @@ export function stepTankDecorImpl(state: GameState, tank: Tank, dt: number, star
       w.oxygen = clamp(w.oxygen + oxygen * (lit * 0.02 - (1 - lit) * 0.004) * h, 0, 1);
     }
   }
-  applyCoralNipping(state, tank, dt);
+  applyCoralNipping(state, tank, dt, rng);
   stepFragGrowOut(state, tank); // lane:frags — growing frags enlarge toward a colony and grow out
 }
 
