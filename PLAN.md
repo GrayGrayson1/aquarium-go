@@ -140,6 +140,27 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   every changed expectation (`docs/ARCHITECTURE.md`, "Determinism contract"). Rarity tiers (§8.5): run
   `npm run report:rarity` before and after; changing the tier model needs the owner.
 - **Decide:** PERF-001's budgets (measure v0.4.0 first and write the numbers here).
+- **Decided (2026-10-08):**
+  - The owner's answers are ADR-0020: long verdict labels across the offer detail (B-148); Opaque White and Double
+    Tail one step below their partners (B-136); the science article, the betta note sentence and the brackish and
+    freshwater no-tank wording; gene nouns from the gene's name ("version" otherwise); tiles show a reason only for
+    temperature. The tier model stays (ADR-0005 decision 4); `npm run report:rarity`: betta 240 → 540 morphs,
+    1 / 9 / 21 / 39 / 170 → 1 / 9 / 21 / 43 / 466, legendary stock 3.1 % → 4.3 %.
+  - **PERF-001 budgets**, measured on the owner's Mac (internal disk, vite-node, median of 7; probe
+    `scripts/_audit/perf-s2.tsx`, not committed). v0.4.0 (`0d9fc5a`) → chunk 2: building the betta catalog 5 ms
+    (first build 10 ms) → 33 ms (first 43 ms); rendering Encyclopedia › Betta's genetics sections from cold
+    (catalog included) 9 ms → 28 ms, warm 4 ms → 4 ms; compatibility previews for the 10 freshwater tanks of
+    `big_facility` 0.8 ms → 0.8 ms. Budgets: the betta catalog builds in ≤ 100 ms once per session; Encyclopedia ›
+    Betta renders in ≤ 100 ms cold and ≤ 16 ms warm; an offer computes at most 6 tile previews eagerly (plus the
+    selected tank), ≤ 8 ms together; `perf.spec` stays green.
+  - The morph line is left out for Common morphs (a wild type would read "about 1 in 1"). Dev offers
+    (`dev.addShopOffer`) count as seen, so they never light the Market's rare-stock dot, whose target opens the
+    offer instead of the shop; `dev.addShopOffer` gains `alleles` for tests. The Genes line in the Encyclopedia is
+    shown for bettas, the one species with 0.5 genes.
+  - Seeded tests before and after the new loci: B-128's three seed-fragile tests were rebuilt first (`6343ca2`); the
+    rest passed unchanged.
+  - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-130 and B-170 to chunk 3, B-181 to the next render pass,
+    B-178's stability word (copy) and high contrast (owner question).
 
 ### 3. Automation and notifications (0.5 phase 3)
 

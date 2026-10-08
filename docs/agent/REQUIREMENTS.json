@@ -253,11 +253,12 @@
         "new: tests/e2e/offer-fit.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§16",
         "§19"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): ui-shop-05 asserts the §16 shop and offer strings it renders; the 0.5 ids are in docs/TEST_IDS.md."
     },
     {
       "id": "DES-006",
@@ -274,11 +275,12 @@
         "new: tests/sim/ui-encyclopedia-05.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§16",
         "§19"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): ui-encyclopedia-05 asserts the encyclopedia strings; enc-genes is in docs/TEST_IDS.md."
     },
     {
       "id": "DES-007",
@@ -892,7 +894,8 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 2 (2026-10-08): every child (GEN-002 to GEN-012) is GREEN; genetics.ts and morphCatalog.ts are unchanged (data, a reveal helper and UI only)."
     },
     {
       "id": "GEN-002",
@@ -911,11 +914,12 @@
         "tests/sim/species-marine.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.2",
         "§15"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): nine rare alleles, pinned by genetics-expansion.test.ts; species-fw and species-marine green."
     },
     {
       "id": "GEN-003",
@@ -935,13 +939,13 @@
         "tests/sim/copy-fixes.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.1",
         "§8.3",
         "§8.4"
       ],
-      "note": "requirements-2 m6: A3 names its base. requirements-3 R3-m3: A5 asserts the overlay's rarity, which valuation and buyers read through morphRarity."
+      "note": "requirements-2 m6: A3 names its base. requirements-3 R3-m3: A5 asserts the overlay's rarity, which valuation and buyers read through morphRarity. Chunk 2 (2026-10-08): locus, overlay (rarity 0.25), names and visual in genetics-expansion.test.ts; genetics.ts and morphCatalog.ts untouched since chunk 1."
     },
     {
       "id": "GEN-004",
@@ -961,12 +965,13 @@
         "new: tests/sim/genetics-expansion.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.1",
         "§8.3",
         "§8.4"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): locus, overlay (rarity 0.2), one-copy sheen without a name, name order, in genetics-expansion.test.ts."
     },
     {
       "id": "GEN-005",
@@ -985,11 +990,12 @@
         "new: tests/sim/genetics-expansion.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.3",
         "§20.3"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): tenth strain, chips and the owner-approved notes sentence (ADR-0020); fix-panels-b-morphs passed at 600 rolls, no change."
     },
     {
       "id": "GEN-006",
@@ -1011,13 +1017,13 @@
         "scripts/agent/test-inventory.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.5",
         "§20.3",
         "§21"
       ],
-      "note": "requirements-2 m1: A3 now asserts the §20.1 tiers under the rule ADR-0005 decision 4 kept. requirements-2 m2: A5 names the S2 change to report-rarity.test.ts (an S0 test, GEN-013), the way the §20.3 rows are named."
+      "note": "requirements-2 m1: A3 now asserts the §20.1 tiers under the rule ADR-0005 decision 4 kept. requirements-2 m2: A5 names the S2 change to report-rarity.test.ts (an S0 test, GEN-013), the way the §20.3 rows are named. Chunk 2 (2026-10-08): 540 entries (Red 120, others 60), 72,900 genotypes, the §8.5 odds and 1/9/21/43/466 tiers in genetics-expansion.test.ts; morph-catalog and report-rarity re-pinned (1b0e7e6). The harness evidence files (test-changes.json) were retired with ADR-0018."
     },
     {
       "id": "GEN-007",
@@ -1036,11 +1042,12 @@
         "scripts/agent/capture-evidence.mjs (--review)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§22",
         "§8.5"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): today's tier rule kept (ADR-0005 decision 4). npm run report:rarity before -> after: betta 240 -> 540 morphs, 1/9/21/39/170 -> 1/9/21/43/466, stock legendary 3.1% -> 4.3% (commit 1b0e7e6's message). The labels still order stock (Common 19%, Uncommon 45%, Rare 22%, Very rare 9%, Legendary 4%); the owner can revisit from these counts."
     },
     {
       "id": "GEN-008",
@@ -1057,12 +1064,13 @@
         "new: tests/sim/genetics-expansion.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.4",
         "§8.5",
         "§7.4.1"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): 50/50 and 3-in-8 forecasts, 576 combinations enumerated, and the OffspringOdds render, in genetics-expansion.test.ts."
     },
     {
       "id": "GEN-009",
@@ -1087,13 +1095,13 @@
         "tests/sim/rare-persistence.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.6",
         "§20.3",
         "§21"
       ],
-      "note": "requirements-2 m5: design §8.6 still applies as genome normalisation; it is not a promise that v0.4.0 saves load (PERSIST-001 superseded, ADR-0005 decision 1)."
+      "note": "requirements-2 m5: design §8.6 still applies as genome normalisation; it is not a promise that v0.4.0 saves load (PERSIST-001 superseded, ADR-0005 decision 1). Chunk 2 (2026-10-08): normalisation, a save round trip with name/appearance/value unchanged and repairs [], wild type most common; core-determinism, step invariance and the hand-built-genome name tests passed unchanged."
     },
     {
       "id": "GEN-010",
@@ -1111,12 +1119,13 @@
         "new: tests/sim/genetics-lab-reveal.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§9.1",
         "§7.4.1",
         "§8.7"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): geneticsRevealLevel (src/sim/life/reveal.ts) used by the card, Genes panel, card chips, Rare genes filter and temperament numbers; genetics-lab-reveal.test.ts."
     },
     {
       "id": "GEN-011",
@@ -1134,12 +1143,13 @@
         "new: tests/sim/ui-offer-temperament.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§9.2",
         "§7.4",
         "§17"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): OfferTemperament and PotentialBands temperament={false}; ui-shop-05.test.ts."
     },
     {
       "id": "GEN-012",
@@ -1158,11 +1168,12 @@
         "new: tests/sim/ui-encyclopedia-05.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.7",
         "§20.3"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): enc-genes, /540, /10 with New, the science article (ADR-0020 copy); ui-encyclopedia-05 and ui-prismatic tests."
     },
     {
       "id": "GEN-013",
@@ -1199,7 +1210,8 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 2 (2026-10-08): every child (MKT-002 to MKT-015) is GREEN."
     },
     {
       "id": "MKT-002",
@@ -1220,11 +1232,12 @@
         "tests/e2e/prismatic.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.2",
         "§17"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): shop-filters.test.ts (offerMatches), ui-shop-05 (copy) and shop-filters.spec (URL, count, hint)."
     },
     {
       "id": "MKT-003",
@@ -1243,12 +1256,13 @@
         "new: tests/sim/shop-filters.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.2",
         "§7.2",
         "§5.7"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): shop-filters.spec: filters survive a section switch, a bare #/shop re-applies them, Clear filters gives #/shop; empty states in ui-shop-05."
     },
     {
       "id": "MKT-004",
@@ -1267,11 +1281,12 @@
         "new: tests/e2e/shop-filters.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.3",
         "§7.1"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): ui-shop-05 (title, second line, chips, no dropped chips); shop-filters.spec (3 columns maximised)."
     },
     {
       "id": "MKT-005",
@@ -1288,10 +1303,11 @@
         "new: tests/sim/ui-offer-detail-05.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.4"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): ui-shop-05 asserts the §7.4 order and the hero."
     },
     {
       "id": "MKT-006",
@@ -1308,12 +1324,13 @@
         "new: tests/sim/nav-sync.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.4",
         "§6.3",
         "§16"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): ui-shop-05 (banner, morph line \"Rare morph · about 1 in 143 market bettas\"); the banner clears on the next navigation (router, chunk 1). The morph line is left out for Common morphs (a wild type would read \"about 1 in 1\")."
     },
     {
       "id": "MKT-007",
@@ -1330,11 +1347,12 @@
         "new: tests/sim/offer-genes.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.4.1",
         "§17"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): offer-genes.test.ts; nouns per ADR-0020 decision 4."
     },
     {
       "id": "MKT-008",
@@ -1352,10 +1370,11 @@
         "new: tests/sim/offer-genes.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.4.1"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): offer-genes.test.ts (chips, footers, partner forecast)."
     },
     {
       "id": "MKT-009",
@@ -1373,11 +1392,12 @@
         "new: tests/e2e/offer-fit.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.5",
         "§17"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): long labels (ADR-0020 decision 1), the temperature tile reason (decision 4), the no-break space; ui-shop-05 and shop-filters.spec (badge placement on desktop and phone)."
     },
     {
       "id": "MKT-010",
@@ -1395,11 +1415,12 @@
         "new: tests/sim/ui-offer-fit.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.5",
         "§5.7"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): ui-shop-05 (build button, badge, callout); brackish and freshwater wording from ADR-0020."
     },
     {
       "id": "MKT-011",
@@ -1419,11 +1440,12 @@
         "tests/e2e/prismatic.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.5",
         "§7.7"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): buyState table, \"You need $X more\" (ui-shop-05); return to #/ with the Bought toast (shop-filters.spec); gameplay and prismatic specs green."
     },
     {
       "id": "MKT-012",
@@ -1439,11 +1461,12 @@
         "new: tests/e2e/nav.spec.ts (gone-offer case to add)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.6",
         "§6.5"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): shop-filters.spec: Back to a bought offer shows the gone state and \"See what’s in stock\" opens #/shop."
     },
     {
       "id": "MKT-013",
@@ -1462,10 +1485,11 @@
         "tests/e2e/prismatic.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.7"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): Prismatic Livestock rows get .ag-prismatic-row (genetics.css)."
     },
     {
       "id": "MKT-014",
@@ -1484,12 +1508,13 @@
         "tests/sim/ui-notify-attention.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.2",
         "§7.7",
         "§15"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): notify-navdots.test.ts; ui-notify-news and ui-notify-attention unchanged and green. dev.addShopOffer marks its offer seen (a test scenario is not news)."
     },
     {
       "id": "MKT-015",
@@ -1505,10 +1530,11 @@
         "new: tests/e2e/mobile-supplies.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7.8"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): shop-filters.spec (phone): descriptions span the row, action at the right, no overflow."
     },
     {
       "id": "MKT-016",
@@ -3190,11 +3216,12 @@
         "new: tests/e2e/a11y-shop.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§18",
         "§3"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): radiogroup with one checked radio and arrow keys, icon + word verdicts and badges, named portraits, aria-hidden icons, chips >= 36 px and buy >= 44 px (shop-filters.spec); under high contrast the Prismatic chip turns solid #fff0b3 behind #2a1640 (about 13:1)."
     },
     {
       "id": "ACC-004",
@@ -3257,11 +3284,12 @@
         "scripts/agent/capture-evidence.mjs (--perf)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§8.5",
         "§22"
-      ]
+      ],
+      "note": "Chunk 2 (2026-10-08): budgets in PLAN.md chunk 2 \"Decided\": measured v0.4.0 (0d9fc5a) and the chunk 2 tree on the owner's Mac with scripts/_audit/perf-s2.tsx; tile previews capped at 6 eagerly; perf.spec green in the full run. The harness evidence and performance-reviewer records were retired with ADR-0018."
     },
     {
       "id": "PERF-002",
