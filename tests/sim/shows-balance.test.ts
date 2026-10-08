@@ -17,7 +17,10 @@ import { STARTER_IDS, getSpecies } from '@/data/species';
 import { assessCreature, creatureFitsClass, enterShow, fieldChances } from '@/sim/shows';
 import { advanceWorld } from '@/sim/world';
 import { runPlaythrough } from '@/dev/fixtures/playthrough';
-import { inheritGenome, rollGenome } from '@/sim/life/genetics';
+import { inheritGenome, normalizeGenome, rollGenome } from '@/sim/life/genetics';
+import { resolveAppearance } from '@/sim/life';
+import { sizeAtAge } from '@/sim/life/growth';
+import { waterChange } from '@/sim/care';
 import { mulberry32 } from '@/sim/rng';
 import { showGame, starterOf, wellKept, addAdult, addShow } from './shows-helpers';
 
@@ -25,6 +28,27 @@ const LOG = !!process.env.SHOWS_LOG;
 const log = (...a: unknown[]) => LOG && console.log(...a);
 const midField = (t: ShowTier) => (SHOW_TIERS[t].field[0] + SHOW_TIERS[t].field[1]) / 2;
 const pct = (v: number) => `${Math.round(v * 100)}%`;
+
+/**
+ * B-128: the starter as a typical roll, not one seed's roll. previewStarters rolls quality potentials with bias 0.25
+ * (mean 50 + 0.25 × 18 ≈ 55) and tendencies around 50; here every locus carries its most common (wild-type) alleles,
+ * the size is the middle of createCreature's 0.96–1.02 spread and there are no personality tags (neutral poise).
+ * A seeded roll can land far from that, and new loci change which roll a seed gives (chunk 2's betta genes moved the
+ * seed-1234 betta from an expected 66 to 60 and the pea puffer below its ribbon target), so the balance targets are
+ * judged on this typical animal.
+ */
+function typicalStarter(g: GameState): Creature {
+  const c = starterOf(g);
+  const sp = getSpecies(c.speciesId);
+  const q = 55;
+  c.genome = normalizeGenome(sp, { alleles: {}, potentials: { size: q, color: q, pattern: q, structure: q, fertility: q, hardiness: q, temperament: 50, curiosity: 50 } });
+  const look = resolveAppearance(sp, c.genome, c.appearance.patternSeed);
+  c.appearance = look.visual;
+  c.morphName = look.morphName;
+  c.sizeCm = sizeAtAge(sp, c.genome, (g.clock.hour - c.bornHour) / 24) * 0.99;
+  c.personality = [];
+  return c;
+}
 
 /** The animal's best class (highest expected score) among classes it fits. */
 function bestClass(g: GameState, c: Creature): { def: ShowClassDef; expected: number } | null {
@@ -45,6 +69,8 @@ function simulateShows(g: GameState, c: Creature, classId: string, tier: ShowTie
   const places: number[] = [];
   for (let i = 0; i < n; i++) {
     wellKept(c, { bond: c.life?.bond ?? 45, conditioning: 45, stress: 12 });
+    // B-128: a keeper's routine water change between shows (30 shows run about 315 game hours with no other care)
+    if (c.tankId) waterChange(g, c.tankId, 0.25);
     c.repro.stage = 'idle';
     if (c.awards) c.awards.lastShowHour = undefined;
     const show = addShow(g, tier, [classId], { field: Math.round(midField(tier)), seed: 1000 + i * 7919 });
@@ -67,7 +93,7 @@ describe('show balance', () => {
     let clubWinSum = 0;
     for (const id of STARTER_IDS) {
       const g = showGame(id, 1234, ['club', 'regional', 'national', 'international']);
-      const c = wellKept(starterOf(g), { bond: 45, conditioning: 45 });
+      const c = wellKept(typicalStarter(g), { bond: 45, conditioning: 45 });
       const best = bestClass(g, c)!;
       const ch = SHOW_TIER_ORDER.map((t) => fieldChances(t, best.expected, midField(t)));
       clubWinSum += ch[0].win;
@@ -83,7 +109,7 @@ describe('show balance', () => {
 
   it('real judging over 30 club shows: the betta starter takes ribbons and wins some', () => {
     const g = showGame('betta', 1234, ['club']);
-    const c = wellKept(starterOf(g), { bond: 45 });
+    const c = wellKept(typicalStarter(g), { bond: 45 });
     const best = bestClass(g, c)!;
     const r = simulateShows(g, c, best.def.id, 'club', 30);
     log(`\nBetta starter, 30 club shows in ${best.def.short}: avg score ${r.avgScore.toFixed(1)}, wins ${r.wins}, ribbons ${r.ribbons}, placings ${r.places.join(',')}`);

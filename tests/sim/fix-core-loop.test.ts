@@ -99,6 +99,10 @@ describe('G1-03: background tank time is contiguous however it is flushed', () =
           stepTank(g, tank, debt, lod);
         }
       }
+      // The feeder's random jam (failureRate per day) is not what this counts: with chunk 2's betta genes the fixture's
+      // stream jams it at about hour 205. Clear a jam after the step (its roll still draws, so the stream is unchanged).
+      const af = g.tanks[B].equipment.find((e) => e.defId === 'autofeeder');
+      if (af?.failed) af.failed = false;
       const l = ensureLab(g.tanks[B]);
       if (l.lastAutofeedHour !== last) {
         last = l.lastAutofeedHour;
