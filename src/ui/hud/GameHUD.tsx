@@ -30,6 +30,7 @@ function LazyPhotoMode() {
   ) : null;
 }
 import { useShell, type Popover } from '../common/shellStore';
+import { useResume } from '@/persistence'; // lane:ui-shell (B-178)
 import { isTextEntry, useIsMobile, useMedia } from '../common/safe';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { TopBar, setSpeed, togglePause } from './TopBar';
@@ -230,6 +231,7 @@ function useHudKeys() {
           const a = document.activeElement as HTMLElement | null;
           if (a && a !== document.body && (a.tagName === 'INPUT' || a.tagName === 'SELECT')) a.blur();
           if (shell.popover) shell.set({ popover: null });
+          else if (useResume.getState().summary && ui.screen === 'game') useResume.getState().clear(); // lane:ui-shell (B-178) — the welcome-back card
           else if (ui.tool !== 'none') selectTool('none');
           else if (ui.panel) ui.set({ panel: null });
           else if (ui.selectedCreatureId) ui.set({ selectedCreatureId: null });

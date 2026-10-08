@@ -15,8 +15,10 @@ import { sfx } from '@/audio/sfx';
 import './kit.css';
 import '../styles/tokens.css';
 
-export function Panel({ title, subtitle, actions, children, className, strong, style, onClose, bodyClassName, testId, icon }: {
+export function Panel({ title, subtitle, actions, children, className, strong, style, onClose, bodyClassName, testId, icon, titleId }: {
   title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode; children?: ReactNode; className?: string; strong?: boolean; style?: CSSProperties; onClose?: () => void; bodyClassName?: string;
+  /** id on the title, for a dialog's aria-labelledby (Modal). */
+  titleId?: string;
   /** data-testid on the root (e.g. `panel-market`). */
   testId?: string;
   /** Small leading icon in the header. */
@@ -28,7 +30,7 @@ export function Panel({ title, subtitle, actions, children, className, strong, s
         <header className="ag-panel__head">
           {icon && <span className="ag-panel__icon" aria-hidden>{icon}</span>}
           <div className="ag-grow">
-            {title && <h2 className="ag-panel__title">{title}</h2>}
+            {title && <h2 className="ag-panel__title" id={titleId}>{title}</h2>}
             {subtitle && <div className="ag-panel__sub">{subtitle}</div>}
           </div>
           {actions}
@@ -215,6 +217,7 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId(); // lane:ui-shell (B-178) — the dialog is named by its title
   useEffect(() => {
     if (!open) return;
     sfx('open');
@@ -287,8 +290,9 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             role="dialog"
             aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
           >
-            <Panel className="ag-modal" strong title={title} subtitle={subtitle} onClose={onClose} testId={testId}>
+            <Panel className="ag-modal" strong title={title} subtitle={subtitle} onClose={onClose} testId={testId} titleId={titleId}>
               {children}
               {actions && <div className="ag-row ag-modal__actions">{actions}</div>}
             </Panel>
