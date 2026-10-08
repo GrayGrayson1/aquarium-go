@@ -69,5 +69,6 @@ npm run dev         # local dev server on http://127.0.0.1:5173
 npm run report:rarity   # morph-catalog entries per rarity tier
 ```
 
-On the owner's Mac, Playwright's browsers are in `/Volumes/Dev/Caches/playwright`, so run e2e with
-`PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright`.
+On the owner's Mac, run the checks from the clone on the internal disk, `~/LocalTest/AquariumGo` (its remote `dev`
+is this repo), with `PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`. The `/Volumes/Dev` disk image is too slow for
+e2e. Keep editing and committing in this repo.
