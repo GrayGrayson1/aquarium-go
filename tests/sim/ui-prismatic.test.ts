@@ -46,7 +46,7 @@ describe('encyclopedia genetics sections', () => {
     const seen = seenTraitIds(betta, seenNames);
     const out = html(createElement(CatalogTree, { sp: betta, groups: cat.groups, total: cat.entries.length, seenNames, seenTraits: seen, initiallyOpen: ['Red'] }));
     expect(out).toContain('data-testid="enc-catalog"');
-    expect(out).toContain('Morph catalog · 1/240 seen');
+    expect(out).toContain('Morph catalog · 1/540 seen'); // chunk 2: 540 betta morphs (0.5 spec §20.3)
     expect(out).toContain('Red Veiltail');
     const redHalfmoon = cat.byName.get('Red Halfmoon')!;
     expect(catalogHint(betta, redHalfmoon, seen)).toBe('Red · ???');

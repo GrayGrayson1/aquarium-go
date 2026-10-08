@@ -120,7 +120,7 @@ export const linedSeahorse: SpeciesDefinition = {
         mode: 'mendelian',
         alleles: [
           { id: 'N', name: 'Normal', dominance: 2, frequency: 0.95 },
-          { id: 'p', name: 'Pinto', dominance: 1, frequency: 0.05 },
+          { id: 'p', name: 'Pinto', dominance: 1, frequency: 0.05, rare: true },
         ],
         note: 'Patchy white "pinto" forms appear in captive lines; inheritance uncertain — modelled as recessive.',
       },

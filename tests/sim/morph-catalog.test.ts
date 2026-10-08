@@ -55,11 +55,12 @@ describe('morph catalog', () => {
     }
   });
 
-  it('betta: 8 reachable base colours × 30 pattern/fin combinations, the colour tree', () => {
+  // chunk 2 (0.5 spec §20.3): Metallic triples every group, Cambodian (red only) doubles Red again
+  it('betta: 8 reachable base colours, Red 120 and the others 60 each (540), the colour tree', () => {
     const cat = morphCatalog(betta);
     expect(cat.groups.map((g) => g.name)).toEqual(['Red', 'Royal Blue', 'Turquoise', 'Steel Blue', 'Copper', 'Black Melano', 'Yellow', 'Opaque White']);
-    for (const g of cat.groups) expect(g.entries).toHaveLength(30);
-    expect(cat.entries).toHaveLength(240);
+    for (const g of cat.groups) expect(g.entries).toHaveLength(g.name === 'Red' ? 120 : 60);
+    expect(cat.entries).toHaveLength(540);
     expect(cat.byName.get('Red Veiltail')?.tier).toBe('common');
     expect(cat.byName.get('Royal Blue Butterfly Halfmoon')?.strains[0]?.id).toBe('royal_butterfly_hm');
   });
