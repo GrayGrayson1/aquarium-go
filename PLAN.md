@@ -6,15 +6,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Finish chunk 1: its e2e run.** Chunk 1 is built and reviewed on `next` (from `fb80474`; the review's blockers
-   fixed in `743ca63`, its follow-up in `bcdb65e`). Typecheck, unit (174 files, 2,032 tests) and build pass on
-   `bcdb65e`; e2e needs the owner's Mac (`CLAUDE.md`), so run it in Terminal:
-   `cd /Volumes/Dev/Projects/AquariumGo && { git log --oneline -1; echo "=== npm run e2e"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run e2e; echo "=== e2e exit $?"; } 2>&1 | tee .agent-runs/e2e-chunk1.log`.
-   Six specs are new (`nav`, `nav-routes-matrix`, `deeplink-boot`, `mobile-tabbar`, `mobile-sheets`, and the phone
-   test in `ui-layout`), so fix whatever the first run shows, then mark chunk 1 done below, set its requirements
-   (the "Requirements" line of its brief) to GREEN, DES-002 to DEFERRED (harness evidence) and S0's requirements to
-   GREEN (the reviewer read S0's diff and saw no reason not to), and push `next`.
-2. **Then chunk 2** (Shop and genetics), in Claude Code on the Mac, on `next`.
+1. **Chunk 2** (Shop and genetics), in Claude Code on the Mac, on `next`. Chunk 1 is done (its e2e passed on
+   `f59d51a`, 75 of 75).
+2. **Run the tests from the internal disk.** The `/Volumes/Dev` disk image is too slow for e2e: on 2026-10-07 a run
+   there took 3.7 minutes to warm up and then timed out. The same commit passed all four checks from a clone on the
+   Mac's internal disk (`~/LocalTest/AquariumGo`, browsers in `~/LocalTest/playwright`; remote `dev` is this repo).
+   Edit and commit here; to test, fetch and check out the commit there and run the checks with
+   `PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`.
 3. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
    rest). Chunks 1 to 3 don't need them. Also, from chunk 1: (a) after a rollback, an older copy of the game can't
    autosave into a slot that holds a newer version's save (it says so once, with "Refresh the page"): should a
@@ -28,16 +26,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | Chunk | What | Status |
 |---|---|---|
 | 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06. Its e2e run (owner, `3601860`): 47 of 48, the one failure camera-freeze's teardown hang, fixed in `859858a` |
-| 1 | Navigation, links and the platform layer | Built and reviewed 2026-10-06; released in 0.5.0; e2e pending (Next step 1) |
+| 1 | Navigation, links and the platform layer | Done 2026-10-07 (released in 0.5.0 on 2026-10-06). Its e2e run (`f59d51a`): 75 of 75, no fixes needed |
 | 2 | Shop and genetics | Not started |
 | 3 | Automation and notifications | Not started |
 | 4 | Production lines | Not started; needs the owner's Production answers |
 | 5 | Deep automation (S3-D) | Not started; needs the owner's approval of DESIGN-S3D |
 | 6 | Social stub, hardening and the 0.5.0 release | Not started |
 
-**Last full test run:** the owner's Mac, 2026-10-06, on `3601860`: typecheck, unit (1,809 tests) and build passed;
-e2e 47 of 48 (camera-freeze's browser teardown hung after its body passed; see "Known flaky tests"). Chunk 1, on
-`bcdb65e` in Claude Code: typecheck, unit (2,032 tests) and build passed; e2e pending.
+**Last full test run:** the owner's Mac, 2026-10-07, on `f59d51a`, in Claude Code from the internal-disk clone (Next
+step 2): typecheck passed; unit 174 files, 2,032 tests passed; build passed; e2e 75 passed (7.2 minutes, inside
+Claude Code's sandbox).
 
 ## How a chunk runs
 

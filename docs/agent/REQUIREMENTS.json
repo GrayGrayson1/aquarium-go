@@ -121,8 +121,8 @@
         "tests/sim/core-architecture-boundaries.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "B-005 (the stripper and regex literals) was fixed in 9e1bf66 (A1). Left in BACKLOG.md: B-120's allowlist of setGame and mutateFast call sites and a read-only-state test. code-architecture-game-2 B1: the guards weren't the cause of the cloud run's RPC timeout (they took 257 ms and 675 ms); BF-002 was."
+      "status": "GREEN",
+      "note": "B-005 (the stripper and regex literals) was fixed in 9e1bf66 (A1). Left in BACKLOG.md: B-120's allowlist of setGame and mutateFast call sites and a read-only-state test. code-architecture-game-2 B1: the guards weren't the cause of the cloud run's RPC timeout (they took 257 ms and 675 ms); BF-002 was. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "CONST-005",
@@ -140,12 +140,12 @@
         "scripts/agent/capture-evidence.mjs (--command)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§3",
         "§21"
       ],
-      "note": "requirements-3 R3-m7: CONST-001's test was to be written in S1, but no S1 requirement or audited criterion failed S1 without it (only HARNESS-007 A4 at S4 did). This is its S1 carrier, as PERSIST-014 is PERSIST-003's."
+      "note": "requirements-3 R3-m7: CONST-001's test was to be written in S1, but no S1 requirement or audited criterion failed S1 without it (only HARNESS-007 A4 at S4 did). This is its S1 carrier, as PERSIST-014 is PERSIST-003's. Chunk 1 (2026-10-06): tests/sim/core-dependencies.test.ts; the recorded lists change only with an ADR recording the owner's approval."
     },
     {
       "id": "DES-001",
@@ -163,7 +163,7 @@
         "new: tests/sim/ui-tokens-05.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§17",
         "§3"
@@ -186,10 +186,11 @@
         "npm run qa:shots (evidence only, never a passing gate)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "DEFERRED",
       "designSections": [
         "§17"
-      ]
+      ],
+      "note": "Chunk 1 (2026-10-06): its criteria are harness evidence (a manifest of snapshot hashes, a QA reviewer's recorded verdict), retired with the harness (ADR-0018). The owner's play-through on a phone and a desktop stands in; revisit if baseline screenshots are wanted."
     },
     {
       "id": "DES-003",
@@ -207,7 +208,7 @@
         "new: tests/e2e/mobile-tabbar.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§16",
         "§19",
@@ -229,7 +230,7 @@
         "new: tests/e2e/deeplink-boot.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§16",
         "§19"
@@ -438,7 +439,8 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 1 (2026-10-06): every child (NAV-002 to NAV-018) is GREEN."
     },
     {
       "id": "NAV-002",
@@ -458,7 +460,7 @@
         "tests/e2e/gameplay.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.1",
         "§5.2"
@@ -482,7 +484,7 @@
         "new: tests/e2e/mobile-tabbar.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.2",
         "§17",
@@ -505,13 +507,13 @@
         "new: tests/e2e/mobile-tabbar.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.1",
         "§5.2",
         "§5.3"
       ],
-      "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\". requirements-2 m8: A4 covers the More dot for every More destination, not only Shows."
+      "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\". requirements-2 m8: A4 covers the More dot for every More destination, not only Shows. Chunk 1 (2026-10-06): The More sheet's top is checked at 45-51 % of the viewport (mobile-tabbar.spec). The highlighted More tab returns to the tank view, as §5.2 says of every active tab."
     },
     {
       "id": "NAV-005",
@@ -529,7 +531,7 @@
         "new: tests/e2e/mobile-tabbar.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.5",
         "§17"
@@ -552,7 +554,7 @@
         "tests/e2e/ui-layout.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.6",
         "§5.2",
@@ -577,12 +579,12 @@
         "tests/sim/fix-hud-toasts.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.6",
         "§17"
       ],
-      "note": "Needs owner or reviewer confirmation: the ± 2px tolerance on the 118px tank-card top is a proposal (design §20.2 gives ± 2 only for the 64px sheet top)."
+      "note": "Needs owner or reviewer confirmation: the ± 2px tolerance on the 118px tank-card top is a proposal (design §20.2 gives ± 2 only for the 64px sheet top). Chunk 1 (2026-10-06): Tank card top 118 px ± 2 (mobile-sheets.spec)."
     },
     {
       "id": "NAV-008",
@@ -601,7 +603,7 @@
         "new: tests/e2e/mobile-tabbar.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.7",
         "§16"
@@ -624,14 +626,15 @@
         "tests/e2e/boot.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.1",
         "§6.2",
         "§6.3",
         "§6.4",
         "§21"
-      ]
+      ],
+      "note": "Chunk 1 (2026-10-06): ?dev=1 allows the developer tools for that session only (PLAT-005) but no longer switches the dev panel on by itself: e2e and QA scripts open the game with ?dev=1 (PLAT-005 A3), and dev mode unlocks every destination, which would change what they test. In a ?dev=1 session the Settings switch turns the panel on."
     },
     {
       "id": "NAV-010",
@@ -651,7 +654,7 @@
         "new: tests/e2e/nav.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.2",
         "§6.3",
@@ -675,7 +678,7 @@
         "new: tests/e2e/nav.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.3"
       ]
@@ -699,12 +702,13 @@
         "tests/e2e/prismatic.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.4",
         "§18",
         "§22"
-      ]
+      ],
+      "note": "Chunk 1 (2026-10-06): ADR-0019 decision 2 (the owner's answer) replaces the reload criteria: a reload reopens the screen in the address behind the loading card (nav.spec 'a reload reopens…'). A3: the router tags every history entry with its aquarium, so Back into an ended game stays where the player is (nav-sync, nav.spec)."
     },
     {
       "id": "NAV-013",
@@ -722,12 +726,13 @@
         "new: tests/e2e/deeplink-boot.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.4",
         "§16",
         "§17"
-      ]
+      ],
+      "note": "Chunk 1 (2026-10-06): ADR-0019 decision 3: the loading card's bar loops (ag-load 1.8 s, infinite; static under reduced motion) instead of filling once."
     },
     {
       "id": "NAV-014",
@@ -745,12 +750,12 @@
         "new: tests/sim/nav-routes.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.5",
         "§16"
       ],
-      "note": "Needs owner or reviewer confirmation: DESIGN-0.5 gives no copy for the not-found states of a tank, creature, listing or species; the owner or the S1 contract must supply it before the third criterion can be judged."
+      "note": "Needs owner or reviewer confirmation: DESIGN-0.5 gives no copy for the not-found states of a tank, creature, listing or species; the owner or the S1 contract must supply it before the third criterion can be judged. Chunk 1 (2026-10-06): Not-found wording from the owner (ADR-0019 decision 4)."
     },
     {
       "id": "NAV-015",
@@ -769,12 +774,12 @@
         "new: tests/e2e/nav.spec.ts (copy-link case to add)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.6",
         "§7.4"
       ],
-      "note": "Needs owner or reviewer confirmation: the ± 0.5 s tolerance on the 4-second \"Link copied\" state is a proposal; design §6.6 says \"for 4 seconds\"."
+      "note": "Needs owner or reviewer confirmation: the ± 0.5 s tolerance on the 4-second \"Link copied\" state is a proposal; design §6.6 says \"for 4 seconds\". Chunk 1 (2026-10-06): 'Link copied' reverts after 4 s (nav.spec allows up to 6 s)."
     },
     {
       "id": "NAV-016",
@@ -794,7 +799,7 @@
         "new: tests/e2e/nav-routes-matrix.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.2",
         "§12.3",
@@ -818,12 +823,13 @@
         "scripts/agent/test-inventory.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§20.3",
         "§5.2",
         "§5.6"
-      ]
+      ],
+      "note": "Chunk 1 (2026-10-06): The rename was done on purpose and said so in the commit (the harness's test-changes.json no longer exists)."
     },
     {
       "id": "NAV-018",
@@ -842,7 +848,7 @@
         "tests/sim/fix-hud-polish.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§20.3",
         "§3"
@@ -1175,8 +1181,8 @@
         "tests/sim/report-rarity.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "HANDOFF step 6, commit 172b5c3 (package.json script, scripts/report-rarity.ts, src/sim/life/rarityReport.ts, tests/sim/report-rarity.test.ts), pending independent review. Task S0-T13 in CURRENT_SLICE.md. S2 re-pins the test's betta row (GEN-006 A5)."
+      "status": "GREEN",
+      "note": "HANDOFF step 6, commit 172b5c3 (package.json script, scripts/report-rarity.ts, src/sim/life/rarityReport.ts, tests/sim/report-rarity.test.ts), pending independent review. Task S0-T13 in CURRENT_SLICE.md. S2 re-pins the test's betta row (GEN-006 A5). Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "MKT-001",
@@ -1520,8 +1526,8 @@
         "tests/sim/fix-econ-offline-market-speed.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "code-architecture-game-2 m3: tests/sim/fix-econ-offline-market-speed.test.ts asserts at least 171 real seconds (180 × 0.95) at both speeds, more than the code guarantees at 3x (about 148 s); it passes on its seeds 11-15, and the review found seed 116 failing it. ADR-0016 decision 3 allows aligning that 3x check with the documented minimum as a reviewed test change (it must assert what the code guarantees, never less); until then the test is stricter than A2."
+      "status": "GREEN",
+      "note": "code-architecture-game-2 m3: tests/sim/fix-econ-offline-market-speed.test.ts asserts at least 171 real seconds (180 × 0.95) at both speeds, more than the code guarantees at 3x (about 148 s); it passes on its seeds 11-15, and the review found seed 116 failing it. ADR-0016 decision 3 allows aligning that 3x check with the documented minimum as a reviewed test change (it must assert what the code guarantees, never less); until then the test is stricter than A2. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "AUTO-001",
@@ -3034,7 +3040,7 @@
         "new: tests/sim/platform-memory.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§14",
         "§21"
@@ -3057,7 +3063,7 @@
         "new: tests/sim/platform-memory.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§14"
       ]
@@ -3079,7 +3085,7 @@
         "tests/sim/core-persistence.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§14"
       ]
@@ -3122,7 +3128,7 @@
         "tests/e2e/boot.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "note": "Slice S1 chosen by this merge (the platform layer and the ?dev=1 boot are S1 work, NAV-009); ADR-0005 names no slice."
     },
     {
@@ -3140,7 +3146,7 @@
         "new: tests/e2e/a11y-nav.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§18"
       ]
@@ -3161,7 +3167,7 @@
         "new: tests/e2e/a11y-nav.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§18",
         "§17",
@@ -3360,7 +3366,7 @@
       ],
       "evidence": [],
       "status": "ACTIVE",
-      "note": "Not implemented yet: adversarial review M02 (BACKLOG B-102) found that the v0.4.0 code treats a too_new save as damaged, falls back to the older .backup and can then overwrite the newer record (src/persistence/slots.ts, migrations.ts). requirements-2 M2: this stays the standing rule, and PERSIST-014 (S1) implements A1-A2, so S1 can't be accepted without it. In S0: S0 changes repairState (PERSIST-011) but adds no save shape and doesn't change SCHEMA_VERSION (git diff 0d9fc5a -- src/persistence/schema.ts is empty), so A3-A4 hold there; A1-A2 hold for no build until PERSIST-014. security-data-2 M3 and code-architecture-game-2 m1: S0's first catalog checks in repairState (6347c5d, d98731d) deleted well-formed records a newer build adds under the same schema; 9e1bf66 keeps them (ADR-0015 decision 2), and A5 holds on the S0 tree. Still lost under the same schema, as in v0.4.0: creatures, clutches and offers of an unknown species, and an unknown tank size (reset to g20L), which ADR-0016 decision 2 settles with A6 (a SCHEMA_VERSION bump for each new species or tank size, enforced from S1 by PERSIST-014; S0 adds neither, so A6 holds on the S0 tree); and an active research project this build doesn't know, which the research step closes. ADR-0016 names only species and tank sizes, so that last case is BACKLOG B-017."
+      "note": "Chunk 1 (2026-10-06): A1-A2 now hold: PERSIST-014 (commit ee42973) makes a too_new slot final (no fallback past it, no overwrite)."
     },
     {
       "id": "PERSIST-004",
@@ -3484,8 +3490,8 @@
         "tests/sim/core-fastmutate-atomic.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "B-001 (loadAndResume adopting a half-simulated catch-up) was fixed in 9e1bf66 and is PERSIST-015. Left in BACKLOG.md: B-002 (owner question) repeated tick failures aren't shown to the player; B-177 (S3) the rest of mutateFast's working-copy contract (store writes during a recipe, the catch-up highlights)."
+      "status": "GREEN",
+      "note": "B-001 (loadAndResume adopting a half-simulated catch-up) was fixed in 9e1bf66 and is PERSIST-015. Left in BACKLOG.md: B-002 (owner question) repeated tick failures aren't shown to the player; B-177 (S3) the rest of mutateFast's working-copy contract (store writes during a recipe, the catch-up highlights). Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "PERSIST-010",
@@ -3503,7 +3509,8 @@
         "tests/sim/core-gameloop-publish.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "GREEN",
+      "note": "Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "PERSIST-011",
@@ -3525,8 +3532,8 @@
         "tests/sim/core-forward-compat.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "Oversized lists, out-of-range numbers, enum-valued fields (B-004) and the other B-122 leftovers are PERSIST-004 (S4). security-data-2 M3: the old wording (\"equipment, decor, frag, research and starter ids must exist in the catalog\") made repairState delete well-formed records a newer build added, against ADR-0005 decision 1; 9e1bf66 keeps them (ADR-0015 decision 2)."
+      "status": "GREEN",
+      "note": "Oversized lists, out-of-range numbers, enum-valued fields (B-004) and the other B-122 leftovers are PERSIST-004 (S4). security-data-2 M3: the old wording (\"equipment, decor, frag, research and starter ids must exist in the catalog\") made repairState delete well-formed records a newer build added, against ADR-0005 decision 1; 9e1bf66 keeps them (ADR-0015 decision 2). Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "PERSIST-012",
@@ -3547,8 +3554,8 @@
         "tests/sim/fix-core-step-invariance.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "requirements-2 m8: the description said the stream is \"unchanged\"; src/sim/water/step.ts skips the stuck-heater draw when it suppresses a failure, so the stream changes only where a failure would have happened, and A3 checks the seeded suites instead."
+      "status": "GREEN",
+      "note": "requirements-2 m8: the description said the stream is \"unchanged\"; src/sim/water/step.ts skips the stuck-heater draw when it suppresses a failure, so the stream changes only where a failure would have happened, and A3 checks the seeded suites instead. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "PERSIST-013",
@@ -3568,7 +3575,8 @@
         "tests/sim/fix-core-offline.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS"
+      "status": "GREEN",
+      "note": "Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "PERSIST-014",
@@ -3591,12 +3599,12 @@
         "tests/sim/core-crafted-saves.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§14",
         "§21"
       ],
-      "note": "Why S1: master §9 S1 owns the platform abstraction, and design §14 defines its seam with persistence (the lifecycle hooks the pagehide write uses, and the storage candidates). Neither the master nor the design assigns forward safety to another slice; master §9 S4 persistence sanity (PERSIST-008) re-checks it. What a player can do with a too_new slot beyond today's too_new handling isn't decided here: a new player-facing choice is an owner question."
+      "note": "Why S1: master §9 S1 owns the platform abstraction, and design §14 defines its seam with persistence (the lifecycle hooks the pagehide write uses, and the storage candidates). Neither the master nor the design assigns forward safety to another slice; master §9 S4 persistence sanity (PERSIST-008) re-checks it. What a player can do with a too_new slot beyond today's too_new handling isn't decided here: a new player-facing choice is an owner question. Chunk 1 (2026-10-06): commit ee42973 (tests/sim/core-save-forward-safety.test.ts). Open owner question (the requirement's note): after a rollback, an older build can't autosave into a slot holding a newer save until the newer build returns or the slot is deleted; the player sees the too_new message once."
     },
     {
       "id": "PERSIST-015",
@@ -3615,8 +3623,8 @@
         "tests/sim/core-resume-catchup.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "BACKLOG B-001, fixed in 9e1bf66 and approved with ADR-0015. The test's describe title reads \"PERSIST-009 (B-001): …\" because it was written before this id existed; renaming it would be a test-id change (test-changes.json) and isn't needed here."
+      "status": "GREEN",
+      "note": "BACKLOG B-001, fixed in 9e1bf66 and approved with ADR-0015. The test's describe title reads \"PERSIST-009 (B-001): …\" because it was written before this id existed; renaming it would be a test-id change (test-changes.json) and isn't needed here. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
       "id": "HARNESS-001",
