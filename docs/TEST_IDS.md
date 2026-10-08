@@ -297,3 +297,29 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 | `#/settings` *`/play\|saves\|notifications\|about`* | Settings tabs (URL word `play` = tab `display`; Notifications from chunk 3) | `useShell.settingsTab` |
 | `#/more` | Phone More sheet (desktop: the tank view) | `useShell.popover: 'more'` |
 | `#/log` | Full event log | `panel: 'log'` |
+
+## 0.5 shop and genetics (chunk 2: lanes ui-panels, genetics, notify)
+
+0.5 spec §19 (Shop, Offer, Encyclopedia). `shop-offer-<i>` keeps indexing `g.market.stock`, not the filtered list, so
+`shop-offer-0` is still the offer `dev.addShopOffer` just added (it adds at the front), whatever the filters show.
+
+| test id | element |
+|---|---|
+| `shop-filter-prismatic` · `shop-filter-rare` | Shop: the "Prismatic only" and "Rare genes" toggle chips (`aria-pressed`) |
+| `shop-filter-count` | Shop: "{visible} of {inStock}" |
+| `shop-filter-hint` | Shop: the Rare genes line (dashed Lock before the Genetics Lab, violet Dna after it) |
+| `shop-empty` | Shop: the empty state replacing the grid (Prismatic, no match, or no stock at all) |
+| `shop-clear-filters` | Shop: "Clear filters" in the Prismatic and no-match empty states |
+| `offer-from-notification` | Offer detail: "Opened from your notification" (after `go(route, { fromNotification: true })`) |
+| `offer-genes` | Offer detail: the Genes section; `offer-gene-<locusId>` is one locus row (e.g. `offer-gene-cambodian`) |
+| `offer-temperament` | Offer detail: the Temperament section (meters, or the group line) |
+| `offer-morph-line` | Offer detail: "{Tier} morph · about 1 in {n} market {species}" (not shown for Common morphs) |
+| `offer-build-tank` | Offer detail: the gold "Build a {water} tank" button that replaces `buy-offer` when no tank can hold the animal |
+| `offer-gone-stock` | Gone offer: "See what’s in stock" (opens `#/shop`) |
+| `enc-genes` | Encyclopedia › Betta: the genes line and its "New in 0.5" note (joins `enc-catalog`, `enc-strains`, `enc-prismatic`) |
+
+`compat-verdict` stays unique on the offer detail: it is the compatibility box's badge; the destination tiles' verdicts
+(`.ag-tilefit`, `data-verdict`) and the fit badge (`.ag-fitbadge`, `data-fit`) carry none (B-148). The destination
+tiles are `role="radiogroup"` / `role="radio"` with `aria-checked`; arrow keys move the choice. The Market's rare-stock
+dot is `dock-badge-market` (label "Prismatic {species} in the shop" or "Rare stock: {morph}", target `offer:<id>`).
+`dev.addShopOffer(speciesId, { alleles })` pins an offer's genes for tests (the rest normalise to the most common).
