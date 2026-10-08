@@ -108,11 +108,14 @@ test.describe('phone 390×844 (touch)', () => {
     await openApp(page);
     await quickGame(page, 'betta', { unlockAll: false });
     // jump the guide to its last step, "The road ahead" (hint target dock-research)
+    // one step at a time: wait for the card to show each step before the next bump (a fixed 150 ms wait overshot
+    // "preview" whenever rendering lagged on a busy machine, chunk 2)
+    const cardStep = () => page.evaluate(() => document.querySelector('[data-testid="tutorial-card"]')?.getAttribute('data-step') ?? null);
     for (let i = 0; i < 40; i++) {
-      const step = await page.evaluate(() => document.querySelector('[data-testid="tutorial-card"]')?.getAttribute('data-step'));
+      const step = await cardStep();
       if (step === 'preview') break;
       await page.evaluate(() => (window as unknown as { __AQ: { mutate(f: (d: { progress: { tutorial: { step: number } } }) => void): void } }).__AQ.mutate((d) => void (d.progress.tutorial.step += 1)));
-      await page.waitForTimeout(150);
+      await expect.poll(async () => { const s = await cardStep(); return !!s && s !== step; }).toBe(true);
     }
     await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'preview');
     const bubble = tid(page, 'guide-more-bubble');
