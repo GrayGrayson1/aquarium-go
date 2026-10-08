@@ -53,11 +53,12 @@ Claude Code's sandbox).
 6. Update this file, commit, push `next`, and tell the owner what to try (`npm run dev`, then
    http://127.0.0.1:5173).
 
-**The owner's one-line check run**, for when the agent can't run e2e itself. It pushes `next`, runs all four checks
-and keeps a log in `.agent-runs/checks-next.log`:
+**The owner's one-line check run**, for when the agent can't run e2e itself. It pushes `next`, checks it out in the
+internal-disk clone (Next step 2), runs all four checks there and keeps a log in
+`~/LocalTest/AquariumGo/.agent-runs/checks-next.log`:
 
 ```bash
-cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next; { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-next.log
+cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next && cd ~/LocalTest/AquariumGo && git fetch dev next && git checkout --detach FETCH_HEAD && npm ci && mkdir -p .agent-runs && { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-next.log
 ```
 
 **Known flaky tests** (from the harness's baseline): `boot.spec.ts:17` and `camera-freeze.spec.ts:34` once timed out
