@@ -1,0 +1,85 @@
+/* Market › Shop, 0.5 (chunk 2, spec §7 and §17): filter chips and count, offer cards, the offer detail's Genes and
+   Temperament sections, the morph line, tile verdicts, the fit badge, the build-a-tank button, Supplies rows on phones.
+   Tokens from tokens.css; motion off under reduced motion. OWNER: lane "ui-panels". */
+
+/* ── filters (§7.2) ── */
+.ag-shopfilters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ag-shopfilters__count { margin-left: auto; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); font-variant-numeric: tabular-nums; }
+.pn-chip--btn.ag-chip-prismatic { border-color: rgba(214, 180, 255, 0.4); background: rgba(182, 156, 255, 0.07); } /* §7.2 */
+.pn-chip--btn.ag-chip-prismatic svg { color: var(--c-violet); }
+.pn-chip--btn.ag-chip-prismatic.is-on {
+  color: #2a1640;
+  border-color: color-mix(in srgb, var(--c-ink) 60%, transparent);
+  background: linear-gradient(110deg, #ffd1ef 0%, #fff0b3 20%, #c6ffe6 40%, #cfe4ff 60%, #e6d4ff 80%, #ffd1ef 100%);
+  background-size: 250% 100%;
+  animation: ag-prism-flow 7s linear infinite;
+}
+.pn-chip--btn.ag-chip-prismatic.is-on svg { color: #2a1640; }
+.ag-shophint { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 12px; border-radius: var(--r-md); font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; }
+.ag-shophint svg { flex: none; margin-top: 2px; }
+.ag-shophint.is-locked { color: var(--c-ink-2); border: 1px dashed var(--c-line-strong); }
+.ag-shophint.is-lab { color: var(--c-ink); border: 1px solid color-mix(in srgb, var(--c-violet) 35%, transparent); background: color-mix(in srgb, var(--c-violet) 8%, transparent); }
+.ag-shophint.is-lab svg, .ag-violet { color: var(--c-violet); }
+.pn-sheet--side.is-max .pn-grid.ag-offergrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* ── offer cards (§7.3) ── */
+.ag-offercard__title { font-size: calc(16.5px * var(--text-scale)); font-weight: 560; min-width: 0; }
+.ag-offercard__sub { color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); margin-top: 3px; }
+
+/* ── offer detail (§7.4) ── */
+.ag-fromnotify { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r-md); color: var(--c-ink); background: color-mix(in srgb, var(--c-aqua) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); font-size: calc(12.5px * var(--text-scale)); }
+.ag-fromnotify svg { color: var(--c-aqua); }
+.ag-morphline { display: flex; align-items: center; gap: 8px; margin: 0; font-size: calc(13px * var(--text-scale)); color: var(--c-ink-2); }
+.ag-morphline svg { color: var(--c-violet); flex: none; }
+
+/* Genes (§7.4.1, §17 "Gene row") */
+.ag-genes { list-style: none; margin: 0; padding: 0; border: 1px solid var(--c-line); border-radius: var(--r-lg); overflow: hidden; }
+.ag-gene { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; min-height: 50px; padding: 8px 14px; }
+.ag-gene + .ag-gene { border-top: 1px solid var(--c-line); }
+.ag-gene__locus { display: flex; flex-direction: column; gap: 2px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); }
+.ag-gene__new { align-self: flex-start; font-size: calc(9.5px * var(--text-scale)); font-weight: 700; letter-spacing: 0.08em; color: var(--c-aqua); }
+.ag-gene__trait { display: flex; flex-direction: column; min-width: 0; font-size: calc(13.5px * var(--text-scale)); color: var(--c-ink); }
+.ag-gene__rule { font-size: calc(11.5px * var(--text-scale)); color: var(--c-ink-3); }
+.ag-copies { display: inline-flex; align-items: center; gap: 4px; justify-self: end; padding: 2px 9px; border-radius: var(--r-pill); font-size: calc(11.5px * var(--text-scale)); font-weight: 600; white-space: nowrap; color: var(--c-ink-2); background: var(--c-fill); border: 1px solid var(--c-line); }
+.ag-copies--hidden { border-style: dashed; border-color: var(--c-line-strong); background: transparent; color: var(--c-ink-3); }
+.ag-copies--revealed { color: var(--c-violet); border-color: color-mix(in srgb, var(--c-violet) 35%, transparent); background: color-mix(in srgb, var(--c-violet) 8%, transparent); }
+.ag-copies--revealed.is-rare { border-color: color-mix(in srgb, var(--c-violet) 60%, transparent); background: color-mix(in srgb, var(--c-violet) 16%, transparent); }
+.ag-genes__foot { display: flex; align-items: flex-start; gap: 6px; margin: 8px 2px 0; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); line-height: 1.45; }
+.ag-genes__foot svg { flex: none; margin-top: 2px; }
+.ag-genes__foot.is-lab { color: var(--c-ink-2); }
+.ag-genes__foot.is-lab svg { color: var(--c-violet); }
+.pn-sheet--phone .ag-gene { grid-template-columns: 92px minmax(0, 1fr); }
+.pn-sheet--phone .ag-copies { grid-column: 2; justify-self: start; }
+
+/* Temperament (§9.2, §17 "Temperament meter") */
+.ag-temper { display: grid; gap: 10px; padding: 12px 14px; border: 1px solid var(--c-line); border-radius: var(--r-lg); }
+.ag-temper__row { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.ag-temper__label { font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); }
+.ag-temper__meter { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ag-temper__track { position: relative; display: block; height: 6px; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--c-blue), var(--c-aqua) 50%, var(--c-coral)); }
+.ag-temper__thumb { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--c-ink); box-shadow: 0 0 0 2px var(--c-bg); }
+.ag-temper__ends { display: flex; justify-content: space-between; font-size: calc(10.5px * var(--text-scale)); color: var(--c-ink-4); }
+.ag-temper__word { font-size: calc(13px * var(--text-scale)); font-weight: 600; color: var(--c-ink); font-variant-numeric: tabular-nums; }
+.ag-temper__foot, .ag-temper__group { margin: 0; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); line-height: 1.45; }
+.pn-sheet--phone .ag-temper__row { grid-template-columns: minmax(0, 1fr) auto; }
+.pn-sheet--phone .ag-temper__label { grid-column: 1 / -1; }
+
+/* Destination tiles and the fit badge (§7.5) */
+.ag-tilefit { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; max-width: 100%; }
+.ag-tilefit .ag-badge { white-space: normal; text-align: left; }
+.ag-fitbadge { display: inline-flex; flex: none; }
+.ag-btn.ag-btn--buildtank { background: linear-gradient(180deg, color-mix(in srgb, var(--c-gold), var(--c-ink) 35%), var(--c-gold)); color: var(--c-bg); border-color: color-mix(in srgb, var(--c-ink) 25%, transparent); font-weight: 650; box-shadow: 0 8px 26px color-mix(in srgb, var(--c-gold) 25%, transparent), inset 0 1px 0 color-mix(in srgb, var(--c-ink) 45%, transparent); }
+.pn-sheet--phone .pn-callout:has(.ag-coollink) { flex-wrap: wrap; }
+.pn-sheet--phone .pn-callout .ag-coollink { flex-basis: 100%; text-align: left; }
+
+/* Market › Supplies on phones (§7.8): the description gets the row's full width; info left, action right below */
+.pn-sheet--phone .pn-supply:has(> .pn-supply__swatch) { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 4px; }
+.pn-sheet--phone .pn-supply:has(> .pn-supply__swatch) > .pn-grow { display: contents; }
+.pn-sheet--phone .pn-supply:has(> .pn-supply__swatch) > .pn-grow > :not(:first-child) { grid-column: 1 / -1; }
+.pn-sheet--phone .pn-supply:has(> .pn-supply__swatch) > .pn-supply__side { grid-column: 1 / -1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pn-chip--btn.ag-chip-prismatic.is-on { animation: none; }
+}
+:root[data-reduced-motion='true'] .pn-chip--btn.ag-chip-prismatic.is-on { animation: none; }
+:root[data-contrast='high'] .pn-chip--btn.ag-chip-prismatic.is-on { animation: none; background: #fff0b3; }

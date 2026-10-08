@@ -2,6 +2,7 @@
  * Dev/debug commands (backend for the dev panel + window.__AQ). OWNER: lane "core".
  * Every command is safe to call with no game running (it no-ops) and goes through `mutate`.
  */
+import { useSeenStock } from '@/ui/panels/market/seenStock'; // lane:notify (chunk 2)
 import type { GameState, WaterState, ShopOffer, Creature, WaterClass, GameSpeed } from '@/types';
 import { mutateGame, getGame, useGame } from '@/state/game';
 import { useUI, type ViewMode } from '@/state/ui';
@@ -95,10 +96,14 @@ function tankForSpecies(g: GameState, speciesId: string, explicit?: string): str
   return g.tankOrder.find(okFor) ?? null;
 }
 
-function makeOfferCreatures(d: GameState, speciesId: string, count: number, sex?: 'male' | 'female', ageDays?: number): Creature[] {
+function makeOfferCreatures(d: GameState, speciesId: string, count: number, sex?: 'male' | 'female', ageDays?: number, alleles?: Record<string, [string, string]>): Creature[] {
   const rng = simRng(d);
   const out: Creature[] = [];
-  for (let i = 0; i < count; i++) out.push(createCreature(d, rng, speciesId, { sex, ageDays, captiveBred: true }));
+  for (let i = 0; i < count; i++) {
+    // chunk 2 (e2e) — `alleles` pins the genes (the rest normalise to the most common), e.g. a rare morph for the Rare genes filter
+    const genome = alleles ? { alleles: { ...alleles }, potentials: { size: 50, color: 50, pattern: 50, structure: 50, fertility: 50, hardiness: 50, temperament: 50, curiosity: 50 } } : undefined;
+    out.push(createCreature(d, rng, speciesId, { sex, ageDays, captiveBred: true, genome }));
+  }
   return out;
 }
 
@@ -317,13 +322,13 @@ export const dev = {
    * Put a specific livestock offer at the front of the shop (e.g. to test compatibility warnings). `prismatic` makes its
    * first animal Prismatic (lane:genetics) and prices the offer by its valuation, as the shop would.
    */
-  addShopOffer(speciesId: string, opts: { count?: number; sex?: 'male' | 'female'; price?: number; ageDays?: number; prismatic?: boolean } = {}): DevResult {
+  addShopOffer(speciesId: string, opts: { count?: number; sex?: 'male' | 'female'; price?: number; ageDays?: number; prismatic?: boolean; alleles?: Record<string, [string, string]> } = {}): DevResult {
     const sp = findSpecies(speciesId);
     if (!sp) return { ok: false, message: `Unknown species ${speciesId}` };
-    return withGame<DevResult>(
+    const res = withGame<DevResult>(
       (d) => {
         const count = Math.max(1, Math.floor(opts.count ?? 1));
-        const creatures = makeOfferCreatures(d, speciesId, count, opts.sex, opts.ageDays);
+        const creatures = makeOfferCreatures(d, speciesId, count, opts.sex, opts.ageDays, opts.alleles);
         if (opts.prismatic) {
           forcePrismatic('shop', 1);
           assignPrismatic(d, creatures[0], 'shop');
@@ -346,6 +351,10 @@ export const dev = {
       },
       { ok: false, message: 'No game running' },
     );
+    // chunk 2 — a dev offer sets up a scenario, it isn't news: it never lights the Market's rare-stock dot (whose
+    // target would open the offer instead of the shop)
+    if (res.ok && res.ids?.length) useSeenStock.getState().markSeen(res.ids);
+    return res;
   },
 
   /** lane:genetics — make an owned animal Prismatic (or ordinary again with `on = false`). */

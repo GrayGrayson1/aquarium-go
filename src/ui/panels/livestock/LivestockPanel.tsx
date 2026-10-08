@@ -345,7 +345,7 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
           close();
         };
         return (
-          <li key={c.id} className={clsx('pn-lsrow', selectedId === c.id && 'is-selected', picked.has(c.id) && 'is-picked')}>
+          <li key={c.id} className={clsx('pn-lsrow', selectedId === c.id && 'is-selected', picked.has(c.id) && 'is-picked', isPrismatic(c) && 'ag-prismatic-row' /* lane:genetics (0.5 §7.7) */)}>
             <Checkbox checked={picked.has(c.id)} onChange={(v) => onPick(c.id, v)} label={`Select ${c.name}`} hideLabel disabled={listed} title={listed ? 'Already listed for sale — withdraw the listing first' : undefined} />
             <button type="button" className="pn-lsrow__main" onClick={open} aria-label={`Open ${c.name}’s card`}>
               <CreaturePortrait creature={c} size={phone ? 48 : 56} ring={c.isStarter ? 'gold' : c.favorite ? 'aqua' : null} />

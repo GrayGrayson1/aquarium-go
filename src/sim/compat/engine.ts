@@ -384,7 +384,7 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
     const t = ctx.expectedTempC;
     const r = sp.tempC;
     if (t > r.max + 0.2 || t < r.min - 0.2) {
-      add('warning', 'temperature', `This tank runs at about ${t.toFixed(0)} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max} °C).`, {
+      add('warning', 'temperature', `This tank runs at about ${t.toFixed(0)} °C — too ${t > r.max ? 'warm' : 'cold'} for ${name} (${r.min}–${r.max}\u00a0°C).` /* lane:ui-panels (0.5 §7.5) — the range stays on one line */, {
         // lane:guide — name the setting to aim for, and that a warm room needs cooling, not a lower heater
         mitigation:
           t > r.max

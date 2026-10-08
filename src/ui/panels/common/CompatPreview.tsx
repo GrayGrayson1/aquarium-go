@@ -3,12 +3,11 @@
  * Used before every purchase / move. Renders ui-shell's CompatView (src/ui/common/CompatView.tsx) so compatibility
  * reads the same everywhere, plus a hard environment-gate block. OWNER: lane "ui-panels".
  */
-import { useState } from 'react';
 import clsx from 'clsx';
-import { CircleCheck, Info, TriangleAlert, OctagonAlert, Ban, ChevronDown, Lightbulb } from 'lucide-react';
+import { CircleCheck, Info, TriangleAlert, OctagonAlert, Ban, Lightbulb } from 'lucide-react';
 import type { CompatReason, CompatReport, CompatVerdict } from '@/types';
 import { StatusBadge } from '@/ui/kit';
-import { VERDICT_LABEL, verdictStatus, pct } from './format';
+import { pct } from './format';
 import { useTempText } from './hooks';
 import { CompatView, VerdictBadge as ShellVerdictBadge } from '@/ui/common/CompatView';
 
@@ -31,14 +30,6 @@ const SEV_WORD: Record<CompatReason['severity'], string> = {
 /** Verdict pill for lists/cards (no test id — the preview's own badge carries `compat-verdict`). */
 export function VerdictBadge({ verdict, size = 'sm' }: { verdict: CompatVerdict; size?: 'sm' | 'md' | 'lg' }) {
   return <ShellVerdictBadge verdict={verdict} size={size} testId={null} />;
-}
-
-function LocalVerdictBadge({ verdict, testId }: { verdict: CompatVerdict; testId?: string }) {
-  return (
-    <span data-testid={testId} data-verdict={verdict} className="pn-verdict">
-      <StatusBadge status={verdictStatus(verdict)} label={VERDICT_LABEL[verdict]} />
-    </span>
-  );
 }
 
 export function ReasonRow({ r }: { r: CompatReason }) {
@@ -75,9 +66,11 @@ export interface CompatPreviewProps {
   limit?: number;
   /** lane:qa-play — species being added: its reasons first, pre-existing issues labelled (see CompatView). */
   focusSpeciesId?: string;
+  /** lane:ui-panels (ADR-0020) — verdict wording (the shop's offer detail passes the long labels). */
+  labels?: Record<CompatVerdict, string>;
 }
 
-export function CompatPreview({ report, gate, title = 'Compatibility', compact, limit = 5, focusSpeciesId }: CompatPreviewProps) {
+export function CompatPreview({ report, gate, title = 'Compatibility', compact, limit = 5, focusSpeciesId, labels }: CompatPreviewProps) {
   if (gate && !gate.ok) {
     return (
       <div className="pn-compat pn-compat--blocked" role="alert">
@@ -106,44 +99,7 @@ export function CompatPreview({ report, gate, title = 'Compatibility', compact, 
   if (!report) return null;
   return (
     <div className="pn-compatwrap">
-      <CompatView report={report} title={<span className="pn-compat__title">{title}</span>} compact={compact} limit={limit} focusSpeciesId={focusSpeciesId} />
+      <CompatView report={report} title={<span className="pn-compat__title">{title}</span>} compact={compact} limit={limit} focusSpeciesId={focusSpeciesId} labels={labels} />
     </div>
   );
-}
-
-/** Legacy local renderer (kept for reference/testing when the shell view is unavailable). */
-export function CompatPreviewLocal({ report, title = 'Compatibility', compact, limit = 5 }: CompatPreviewProps) {
-  const [all, setAll] = useState(false);
-  if (!report) return null;
-  const reasons = [...report.reasons].sort((a, b) => sevRank(b.severity) - sevRank(a.severity));
-  const shown = all ? reasons : reasons.slice(0, limit);
-  const status = verdictStatus(report.verdict);
-  return (
-    <div className={clsx('pn-compat', `pn-compat--${status}`, compact && 'pn-compat--compact')}>
-      <div className="pn-compat__head">
-        <span className="pn-compat__title">{title}</span>
-        <LocalVerdictBadge verdict={report.verdict} testId="compat-verdict" />
-      </div>
-      {reasons.length === 0 ? (
-        <p className="pn-compat__none">
-          <CircleCheck size={14} aria-hidden /> No concerns found for this combination.
-        </p>
-      ) : (
-        <ul className="pn-reasons">
-          {shown.map((r, i) => (
-            <ReasonRow key={i} r={r} />
-          ))}
-        </ul>
-      )}
-      {reasons.length > limit && (
-        <button type="button" className="pn-link" onClick={() => setAll(!all)} aria-expanded={all}>
-          <ChevronDown size={14} style={{ transform: all ? 'rotate(180deg)' : undefined }} aria-hidden /> {all ? 'Show fewer' : `Show all ${reasons.length} reasons`}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function sevRank(s: CompatReason['severity']): number {
-  return s === 'critical' ? 4 : s === 'warning' ? 3 : s === 'caution' ? 2 : s === 'info' ? 1 : 0;
 }

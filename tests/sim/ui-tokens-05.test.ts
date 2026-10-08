@@ -23,6 +23,8 @@ const DESIGN_LITERALS = new Set(
     'rgba(5,13,19,0)',
     // §5.2 phone tab bar: glass shadow, active text and icon, active gradient and ring
     'rgba(0,0,0,.35)', '#f0fffc', 'rgba(94,234,212,.2)', 'rgba(45,212,191,.08)', 'rgba(94,234,212,.38)',
+    // §7.2 (chunk 2): the "Prismatic only" chip's violet outline and tint while off
+    'rgba(214,180,255,.4)', 'rgba(182,156,255,.07)',
   ].map((v) => norm(v)),
 );
 

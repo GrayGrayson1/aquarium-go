@@ -21,6 +21,10 @@ import { tankFoodOutlook } from '@/sim/tankStatus';
 import { unseenResults } from '@/sim/shows';
 import { tankGearIssues, FIT_TONE } from '@/sim/care/fit'; // lane "fit" verdicts
 import { tankStatusReason } from './tankStatus';
+import { findSpecies } from '@/data/species';
+import { isPrismatic } from '@/sim/life/rareVariants';
+import { morphDisplayName } from '@/sim/life/genetics';
+import { visiblyRare } from '../panels/market/offerGenetics'; // lane:genetics (0.5 §5.2)
 
 const attempt = <T>(fn: () => T, fallback: T): T => {
   try {
@@ -442,7 +446,11 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * Shows: new results, else a never-opened Shows. Market: bids waiting for an answer. Research: a project finished
  * since it was last open. Any other gated item: unlocked but never opened.
  */
-export function navDots(g: GameState, items: { id: string; label: string; lock?: string | null }[], focusedTankId: string | null = null): Record<string, NavDot> {
+/**
+ * Dock / tab-bar / sheet-switcher dots by panel id. `seenOffers` (0.5 spec §5.2, optional): the shop offers the player
+ * has seen; with it, Market shows a rare-stock dot for an unseen Prismatic or rare offer when no bid is waiting.
+ */
+export function navDots(g: GameState, items: { id: string; label: string; lock?: string | null }[], focusedTankId: string | null = null, seenOffers?: ReadonlySet<string>): Record<string, NavDot> {
   const out: Record<string, NavDot> = {};
   let watch = 0;
   let danger = 0;
@@ -467,7 +475,25 @@ export function navDots(g: GameState, items: { id: string; label: string; lock?:
   if (shows > 0) out.shows = { level: 'new', label: plural(shows, 'new show result'), target: 'tab:results' };
   const bids = bidsAwaiting(g);
   if (bids > 0) out.market = { level: 'new', label: `${plural(bids, 'bid')} waiting for your answer`, target: 'tab:listings' };
+  else if (seenOffers) {
+    const rare = unseenRareOffer(g, seenOffers);
+    if (rare) out.market = rare;
+  }
   if (researchNews(g)) out.research = { level: 'new', label: 'Research finished — choose your next project', target: null };
   for (const it of items) if (!out[it.id] && featureUnseen(g, it.id, it.lock)) out[it.id] = { level: 'new', label: `New: ${it.label} just unlocked`, target: null };
   return out;
+}
+
+/** The first unseen Prismatic (else rare) offer in stock, as the Market's dot (0.5 spec §5.2), or null. */
+function unseenRareOffer(g: GameState, seen: ReadonlySet<string>): NavDot | null {
+  let rare: NavDot | null = null;
+  for (const o of g.market.stock) {
+    if (seen.has(o.id)) continue;
+    const sp = findSpecies(o.speciesId);
+    if (!sp) continue;
+    if (o.creatures.some(isPrismatic)) return { level: 'new', label: `Prismatic ${sp.commonName.toLowerCase()} in the shop`, target: `offer:${o.id}` };
+    const lead = o.creatures.find((c) => visiblyRare(sp, c));
+    if (!rare && lead) rare = { level: 'new', label: `Rare stock: ${morphDisplayName(sp, lead.morphName)}`, target: `offer:${o.id}` };
+  }
+  return rare;
 }
