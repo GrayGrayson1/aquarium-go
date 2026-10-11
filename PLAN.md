@@ -11,16 +11,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    rows). `docs/agent/SESSION_HANDOFF.md` gives the order of work after that: record the answers, release 0.5.1 if
    the owner says so, then the chunk the answers unblock (chunk 4, else chunk 6). Chunks 2 and 3 are done and on
    `next` only.
-2. **The questions as PLAN listed them before** (all are in OWNER_QUESTIONS.md, group A): (a) after a rollback, an older copy of the game can't autosave into a slot that holds a newer
-   version's save (it says so once, with "Refresh the page"): should a player be offered more, such as saving to
-   another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too (B-129)? (c) What accessibility level to
-   aim for (B-178: panels under high contrast)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the developer
-   tools for the session, and the dev panel comes on with the Settings switch. (e) Release chunks 2 and 3 as 0.5.1?
-   (f) Chunk 3's reviewer noted wording that fills design slots without an owner's say: the ribbon colours in a Shows
-   notification ("$120 prize · Blue ribbon."), "1 fry is free-swimming" for a single fry, "0% vs fair value", and
-   lower-case species in "Prismatic betta in the shop"; and Auto-feed rows for a jammed feeder show the switch on with
-   the paused line. Keep, or change?
-3. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
+2. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
 
 ## Status
 
