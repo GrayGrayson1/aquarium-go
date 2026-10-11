@@ -6,8 +6,9 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Chunk 2** (Shop and genetics), in Claude Code on the Mac, on `next`. Chunk 1 is done (its e2e passed on
-   `f59d51a`, 75 of 75).
+1. **Chunk 3** (Automation and notifications), in Claude Code on the Mac, on `next`. Chunk 2 is done (all four
+   checks passed on `d608dcf`, e2e 81 of 81). It is on `next` only: players get it with the next release (0.5.1),
+   which needs the owner's go-ahead (see "Releases").
 2. **Run the tests from the internal disk.** The `/Volumes/Dev` disk image is too slow for e2e: on 2026-10-07 a run
    there took 3.7 minutes to warm up and then timed out. The same commit passed all four checks from a clone on the
    Mac's internal disk (`~/LocalTest/AquariumGo`, browsers in `~/LocalTest/playwright`; remote `dev` is this repo).
@@ -18,7 +19,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    autosave into a slot that holds a newer version's save (it says so once, with "Refresh the page"): should a
    player be offered more, such as saving to another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too
    (B-129)? (c) What accessibility level to aim for (B-178)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the
-   developer tools for the session, and the dev panel comes on with the Settings switch.
+   developer tools for the session, and the dev panel comes on with the Settings switch. From chunk 2: (e) the
+   water report's stability number needs a word beside it (B-178): which words? (f) Lined seahorses: yellow/red
+   (equal dominance, both two-copy traits) looks Classic Dark, so a Classic Dark seahorse's colour gene reads "Can’t
+   be seen on this animal" before the Genetics Lab; fix it in the data as for B-136 (red below yellow, or yellow/red
+   showing one of them)? (g) The tier labels after the betta expansion (466 of 540 Legendary, 4.3 % of stock):
+   keep them, or revisit (ADR-0005 decision 4)?
 4. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
 
 ## Status
@@ -27,14 +33,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 |---|---|---|
 | 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06. Its e2e run (owner, `3601860`): 47 of 48, the one failure camera-freeze's teardown hang, fixed in `859858a` |
 | 1 | Navigation, links and the platform layer | Done 2026-10-07 (released in 0.5.0 on 2026-10-06). Its e2e run (`f59d51a`): 75 of 75, no fixes needed |
-| 2 | Shop and genetics | Not started |
+| 2 | Shop and genetics | Done 2026-10-11. Its full run (`d608dcf`): typecheck, unit 2,105, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
 | 3 | Automation and notifications | Not started |
 | 4 | Production lines | Not started; needs the owner's Production answers |
 | 5 | Deep automation (S3-D) | Not started; needs the owner's approval of DESIGN-S3D |
 | 6 | Social stub, hardening and the 0.5.0 release | Not started |
 
-**Last full test run:** the owner's Mac, 2026-10-07, on `f59d51a`, in Claude Code from the internal-disk clone (Next
-step 2): typecheck passed; unit 174 files, 2,032 tests passed; build passed; e2e 75 passed (7.2 minutes, inside
+**Last full test run:** the owner's Mac, 2026-10-11, on `d608dcf`, in Claude Code from the internal-disk clone (Next
+step 2): typecheck passed; unit 182 files, 2,105 tests passed; build passed; e2e 81 passed (7.4 minutes, inside
 Claude Code's sandbox).
 
 ## How a chunk runs
@@ -153,12 +159,16 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
     `big_facility` 0.8 ms → 0.8 ms. Budgets: the betta catalog builds in ≤ 100 ms once per session; Encyclopedia ›
     Betta renders in ≤ 100 ms cold and ≤ 16 ms warm; an offer computes at most 6 tile previews eagerly (plus the
     selected tank), ≤ 8 ms together; `perf.spec` stays green.
-  - The morph line is left out for Common morphs (a wild type would read "about 1 in 1"). Dev offers
+  - ADR-0021 (from the review): before the Genetics Lab a Genes row says only what the animal's look proves (every
+    genotype is grouped by look once per species), and a gene with no trace on the look reads "Can’t be seen on this
+    animal"; the lab advice says "all their young" when every youngster would show the trait, and "Pair it" for
+    unsexed animals. The first offer of a species builds its look table (bettas ≈ 30 ms, like the catalog).
+  - The morph line follows §7.4 for every tier; only a line that would read "about 1 in 1" is left out. Dev offers
     (`dev.addShopOffer`) count as seen, so they never light the Market's rare-stock dot, whose target opens the
     offer instead of the shop; `dev.addShopOffer` gains `alleles` for tests. The Genes line in the Encyclopedia is
     shown for bettas, the one species with 0.5 genes.
   - Seeded tests before and after the new loci: B-128's three seed-fragile tests were rebuilt first (`6343ca2`); the
-    rest passed unchanged.
+    rest passed unchanged. `mobile-tabbar.spec`'s guide test raced on a busy machine and now waits for each step.
   - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-130 and B-170 to chunk 3, B-181 to the next render pass,
     B-178's stability word (copy) and high contrast (owner question).
 
