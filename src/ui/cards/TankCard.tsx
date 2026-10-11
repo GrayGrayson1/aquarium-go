@@ -173,7 +173,8 @@ function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
       </div>
 
       <div className="ag-miniStats">
-        <Meter label="Stability" value={report.stability} tone="auto" display={`${Math.round(report.stability)}`} />
+        {/* lane:ui-shell (B-178, ADR-0022) — a word beside the number, on the meter's own 60 / 30 bands */}
+        <Meter label="Stability" value={report.stability} tone="auto" display={`${stabilityWord(report.stability)} · ${Math.round(report.stability)}`} />
         <Meter label="Biological filter" value={report.cycleProgress * 100} tone="auto" display={report.cycleProgress >= 0.8 ? 'Mature' : report.cycleProgress >= 0.4 ? 'Establishing' : 'New'} />
       </div>
 
@@ -689,3 +690,8 @@ export function TankCard() {
 }
 
 export { WATER_CLASS_LABEL };
+
+/** The Stability meter's word (owner's wording, ADR-0022), on the same bands as its colour: 60+, 30–59, under 30. */
+export function stabilityWord(v: number): string {
+  return v >= 60 ? 'Stable' : v >= 30 ? 'Sensitive' : 'Fragile';
+}

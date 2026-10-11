@@ -70,7 +70,9 @@ describe('morph catalog', () => {
     expect(tierForShare(0.05)).toBe('uncommon');
     expect(tierForShare(0.01)).toBe('rare');
     expect(tierForShare(0.002)).toBe('very_rare');
-    expect(tierForShare(0.0001)).toBe('legendary');
+    // owner (ADR-0022): Legendary below 1 in 10,000 (it was below 1 in 1,000; 0.0001 was legendary then)
+    expect(tierForShare(0.0001)).toBe('very_rare');
+    expect(tierForShare(0.00009)).toBe('legendary');
   });
 
   it('builds every catalog quickly', () => {

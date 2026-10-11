@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * lane:genetics — chunk 2 (0.5 spec §8): the Cambodian and Metallic betta genes, the Cambodian Veiltail strain, the
- * `rare` allele flags, the 540-entry betta catalog under today's tier rule (ADR-0005 decision 4), the breeding forecast,
+ * `rare` allele flags, the 540-entry betta catalog under the owner's tier rule (ADR-0022), the breeding forecast,
  * and bettas from older saves keeping their names (GEN-002 to GEN-009). B-136 (owner, ADR-0020): Opaque White and Double
  * Tail sit one step below yellow and crowntail, so their carriers read as hidden.
  */
@@ -131,7 +131,9 @@ describe('strain, chips and notes (GEN-005)', () => {
   });
 });
 
-describe('catalog under today’s tier rule (GEN-006, GEN-007, PERF-001 A2)', () => {
+// The tier rule changed on purpose after chunk 2 (owner, ADR-0022: Legendary below 1 in 10,000, was 1 in 1,000):
+// Royal Blue Metallic Butterfly Halfmoon (1 in 9,804) moves from legendary to very_rare; 1/9/21/43/466 → 1/9/21/145/364.
+describe('catalog under the owner’s tier rule (GEN-006, GEN-007, PERF-001 A2; ADR-0022)', () => {
   const genotypes = (sp: SpeciesDefinition) => sp.genetics.loci.reduce((n, l) => n * ((l.alleles.length * (l.alleles.length + 1)) / 2), 1);
   it('540 entries: Red 120, every other colour 60, from 72,900 genotypes', () => {
     const cat = morphCatalog(betta);
@@ -158,11 +160,12 @@ describe('catalog under today’s tier rule (GEN-006, GEN-007, PERF-001 A2)', ()
     expect(at('Royal Blue Butterfly Halfmoon')).toEqual(['rare', '1 in 143']);
     expect(at('Red Cambodian Veiltail')).toEqual(['very_rare', '1 in 520']);
     expect(at('Red Metallic Veiltail')).toEqual(['very_rare', '1 in 360']);
-    expect(at('Royal Blue Metallic Butterfly Halfmoon')).toEqual(['legendary', '1 in 9,804']);
+    expect(at('Royal Blue Metallic Butterfly Halfmoon')).toEqual(['very_rare', '1 in 9,804']);
+    expect(at('Royal Blue Metallic Marble Veiltail')).toEqual(['legendary', '1 in 62,006']);
     expect(at('Red Veiltail')).toEqual(['common', '1 in 5']);
     const tiers = { common: 0, uncommon: 0, rare: 0, very_rare: 0, legendary: 0 };
     for (const e of morphCatalog(betta).entries) tiers[e.tier]++;
-    expect(tiers).toEqual({ common: 1, uncommon: 9, rare: 21, very_rare: 43, legendary: 466 });
+    expect(tiers).toEqual({ common: 1, uncommon: 9, rare: 21, very_rare: 145, legendary: 364 });
   });
 });
 

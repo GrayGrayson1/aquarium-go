@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import type { Creature, Genome } from '@/types';
 import { getSpecies, findSpecies, listSpecies } from '@/data/species';
 import { geneRows, genesFooter, ruleSummary, locusNoun, aboutFraction, carriedTraits, expressedNewGenes, strainOrMorphTier, speciesPlural } from '@/ui/panels/market/offerGenetics';
-import { matchRules, normalizeGenome } from '@/sim/life/genetics';
+import { matchRules, normalizeGenome, resolveMorph } from '@/sim/life/genetics';
 import { mulberry32, hashString } from '@/sim/rng';
 
 const P = { size: 50, color: 50, pattern: 50, structure: 50, fertility: 50, hardiness: 50, temperament: 50, curiosity: 50 };
@@ -113,6 +113,13 @@ describe('copies chips', () => {
         else expect(shown, `${sp.id}: ${look}`).toBe(seen);
       }
     }
+  });
+
+  it('lined seahorse (ADR-0022): yellow/red looks Yellow, so a Classic Dark seahorse proves its dark copy', () => {
+    const sh = getSpecies('lined_seahorse');
+    expect(resolveMorph(sh, G({ hue: ['yellow', 'red'] })).morphName).toBe(resolveMorph(sh, G({ hue: ['yellow', 'yellow'] })).morphName);
+    expect(resolveMorph(sh, G({ hue: ['red', 'red'] })).morphName).toContain('Red');
+    expect(row(geneRows(sh, G({ hue: ['dark', 'yellow'] }), false), 'hue')).toMatchObject({ trait: 'Dark', copies: { kind: 'hidden', text: '+ ?' } });
   });
 
   it('alleles that both show read in the locus’s order', () => {

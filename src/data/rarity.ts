@@ -48,7 +48,7 @@ export const MORPH_TIER_MIN_SHARE: readonly (readonly [Rarity, number])[] = [
   ['common', 0.1],
   ['uncommon', 0.02],
   ['rare', 0.005],
-  ['very_rare', 0.001],
+  ['very_rare', 0.0001], // owner (ADR-0022): Legendary below 1 in 10,000 (it was 1 in 1,000 until chunk 2's betta genes)
   ['legendary', 0],
 ];
 
