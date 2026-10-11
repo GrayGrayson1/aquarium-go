@@ -296,6 +296,16 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   t.name ??= TANK_TIER_BY_ID[t.tierId].name;
   t.purpose ??= 'display';
   t.water = fillNumbers(t.water, defaultWater(marine, wc === 'freshwater_cool'), `tank ${id}.water`, repairs);
+  // lane:automation (PERSIST-006) — the Auto Water Changer's last-run hours are finite numbers when present; a broken one
+  // is dropped (the device then runs at the next lights-on, once). Absent ones need nothing.
+  if (isObj(t.water.lab)) {
+    for (const k of ['lastAutoChangeHour', 'lastAutoScrapeHour'] as const) {
+      const v = t.water.lab[k];
+      if (v === undefined || (typeof v === 'number' && Number.isFinite(v))) continue;
+      repairs.push(`tank ${id}.water.lab.${k}: ${String(v).slice(0, 40)}, removed`);
+      delete t.water.lab[k];
+    }
+  }
   if (!isObj(t.placement)) t.placement = { x: 0, z: 0, rotY: 0 };
   t.placement = fillNumbers(t.placement, { x: 0, z: 0, rotY: 0 }, `tank ${id}.placement`, repairs);
   t.equipment = withDefId(t.equipment, 'equipment', `tank ${id}`, repairs);

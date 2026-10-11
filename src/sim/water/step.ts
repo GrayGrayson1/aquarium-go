@@ -13,7 +13,7 @@ import type { GameState, Tank, WaterState, WaterLabState } from '@/types';
 import type { SimContext } from '../context';
 import { getFoodDef } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { lightsOn } from '../time';
+import { lightsOn, crossings } from '../time';
 import {
   clamp,
   clamp01,
@@ -41,7 +41,8 @@ import {
 } from './constants';
 import { computeTankEnv, roomTempAt, type TankEnv, type EqEntry } from './env';
 import { ensureLab, scaleFood, addFood, recommendedServings } from './food';
-import { planAutofeed, autofeedMessage, groupEaters, type AutofeedPlan } from '../care/autofeed'; // lane:fit
+import { planAutofeed, autofeedMessage, groupEaters, autofeedPause, type AutofeedPlan } from '../care/autofeed'; // lane:fit (lane:automation: autofeedPause)
+import { applyWaterChange, changeSaltNeed, clampChangeFraction, scrapeGlass } from './change'; // lane:automation
 import { keeperOf } from '../staff/common'; // lane:fit — a keeper's hand-feeding covers what the autofeeder can't
 
 /** Repair NaN / out-of-range values (old saves, other lanes' writes). */
@@ -135,7 +136,8 @@ function stepEquipmentWear(state: GameState, tank: Tank, dt: number, ctx: SimCon
     const stuck = def.kind === 'heater' && ctx.rng.chance(0.15);
     inst.failMode = stuck ? 'stuck_on' : 'off';
     const msg = describeFailure({ inst, def }, tank, stuck);
-    if (!state.isShowcase) ctx.emit({ kind: msg.kind, text: msg.text, tankId: tank.id, toast: true });
+    // lane:notify — a jammed autofeeder is Animal care (danger-level failures notify as care on their own)
+    if (!state.isShowcase) ctx.emit({ kind: msg.kind, text: msg.text, tankId: tank.id, toast: true, ...(def.kind === 'autofeeder' ? { notice: { topic: 'care' as const, vars: { open: 'equipment' } } } : {}) });
   }
 }
 
@@ -155,7 +157,7 @@ function autofeedNotice(state: GameState, tank: Tank, lab: WaterLabState, at: nu
   const keeper = keeperOf(state, tank.id);
   const msg = autofeedMessage(tank.name, plan, groupEaters(inhabitants), { keeperName: keeper?.name });
   if (!msg) return;
-  ctx.emit({ kind: msg.kind === 'misses' ? 'tip' : 'warning', text: msg.text, tankId: tank.id, toast: first && msg.kind !== 'empty' });
+  ctx.emit({ kind: msg.kind === 'misses' ? 'tip' : 'warning', text: msg.text, tankId: tank.id, toast: first && msg.kind !== 'empty', ...(msg.kind === 'empty' ? { notice: { topic: 'care' as const, vars: { open: 'equipment' } } } : {}) }); // lane:notify — an empty autofeeder is Animal care
 }
 
 function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, ctx: SimContext): void {
@@ -194,6 +196,62 @@ function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, c
       // It fed someone — but say so (rarely) when it leaves animals out that need other food.
       if (plan.cannot.length || plan.wrongFood.length) autofeedNotice(state, tank, lab, at, plan, env.inhabitants, ctx);
     }
+  }
+}
+
+/**
+ * lane:automation (0.5 §10.2, AUTO-005) — an Autofeeder switched off (or set to 0 meals a day) while a resident is
+ * hungry: one line in the log a game day per tank, which the Alerts drawer row repeats live and the Animal care
+ * notification picks up. A jammed or empty feeder already has its own event (the failure, `autofeedNotice`).
+ */
+function autofeedPausedNotice(state: GameState, tank: Tank, env: TankEnv, ctx: SimContext): void {
+  if (state.isShowcase || env.inhabitants.length === 0) return;
+  const pause = autofeedPause(tank.equipment, env.inhabitants, state.inventory.foods);
+  if (!pause || pause.reason !== 'off') return;
+  const lab = ensureLab(tank);
+  const first = lab.warned?.autofeed_paused === undefined;
+  if (!warnKey(lab, 'autofeed_paused', ctx.hour, 24)) return;
+  ctx.emit({ kind: 'warning', text: `${tank.name}: Auto-feed is paused — feed ${pause.name} by hand.`, tankId: tank.id, creatureId: pause.creatureId, toast: first, notice: { topic: 'care', vars: { open: 'equipment' } } });
+}
+
+// ───────────────────────────── Auto Water Changer ─────────────────────────────
+// lane:automation (0.5 §10.3) — a small water change at the tank's lights-on hour, at most once a game day, and a
+// glass scrape once a week, through the same core as the player's own change and scrape (./change.ts), without the
+// player's counters, message or toast. No randomness: walking the lights-on crossings inside the step window makes it
+// step-size invariant, the last-run hours make a re-stepped window do nothing more, and it runs in the offline
+// catch-up because that steps this same code.
+
+/** Game hours between two device water changes: one a game day, with slack for a lights-on hour moved later. */
+export const AUTO_CHANGE_GAP_H = 20;
+/** Game hours between two device glass scrapes. */
+export const AUTO_SCRAPE_GAP_H = 168;
+
+export function runWaterChanger(state: GameState, tank: Tank, env: TankEnv, dt: number, ctx: SimContext): void {
+  const dev = env.summary.waterChanger;
+  if (!dev) return;
+  const lab = ensureLab(tank);
+  const fraction = clampChangeFraction(finite(dev.inst.setting, dev.def.stats.defaultSetting ?? 0.1), 0.1);
+  for (const at of crossings(ctx.hour, ctx.hour + dt, tank.lighting?.onHour ?? 8)) {
+    const maintained = tank.lastMaintenanceHour;
+    if (lab.lastAutoChangeHour === undefined || at - lab.lastAutoChangeHour >= AUTO_CHANGE_GAP_H) {
+      // Salt tanks: the same check a keeper makes (waterChangeCost's enoughSalt) — a short-salted change would drop
+      // the salinity, so skip it and say so, at most once a game day (retried at the next lights-on).
+      if (state.inventory.salt < changeSaltNeed(state, tank, fraction) - 1e-6) {
+        const first = lab.warned?.water_changer_salt === undefined;
+        if (!state.isShowcase && warnKey(lab, 'water_changer_salt', at, 24))
+          ctx.emit({ kind: 'warning', text: `${tank.name}: the Auto Water Changer is out of salt. Buy marine salt to keep it running.`, tankId: tank.id, toast: first, notice: { topic: 'care', vars: { open: 'equipment' } } });
+      } else {
+        applyWaterChange(state, tank, fraction, { hour: at, matchTemperature: true });
+        lab.lastAutoChangeHour = at;
+      }
+    }
+    if (lab.lastAutoScrapeHour === undefined || at - lab.lastAutoScrapeHour >= AUTO_SCRAPE_GAP_H) {
+      scrapeGlass(tank);
+      lab.lastAutoScrapeHour = at;
+      tank.lastMaintenanceHour = at;
+    }
+    // a background tank's window can start before a change the player made by hand: never move the date back
+    if (Number.isFinite(maintained) && maintained > tank.lastMaintenanceHour) tank.lastMaintenanceHour = maintained;
   }
 }
 
@@ -498,6 +556,8 @@ export function stepTankWaterImpl(state: GameState, tank: Tank, dt: number, ctx:
   // The autofeeder drops its portion LAST so it is fresh when the creature step (next in the piece) lets the animals
   // eat; dropped first it aged — and in 1 h / 4 h background pieces mostly rotted — before anyone took a bite.
   runAutofeeder(state, tank, env, dt, ctx);
+  runWaterChanger(state, tank, env, dt, ctx); // lane:automation (0.5 §10.3)
+  autofeedPausedNotice(state, tank, env, ctx); // lane:automation (AUTO-005)
 
   // Instability (EMA over ~12 h).
   const rT = Math.abs(w.tempC - prevT) / dt;

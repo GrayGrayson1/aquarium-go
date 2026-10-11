@@ -8,7 +8,7 @@ import { environmentOf, defaultLightPreset, defaultSubstrate } from '@/sim/tanks
 import { initialWater } from '@/sim/water';
 import { creaturesInTank, clutchesInTank } from '@/sim/life';
 import { spend, SALT_PRICE_PER_KG } from '@/sim/economy';
-import { SALT_KG_PER_LITRE, LITRES_PER_GALLON, isSaltClass } from '@/sim/water/constants'; // lane:staff
+import { saltKgFor, LITRES_PER_GALLON, isSaltClass } from '@/sim/water/constants'; // lane:staff (lane:automation: the shared salt formula, B-169)
 import { getEquipmentDef } from '@/data/catalog/equipment'; // lane:staff
 import { isUnlocked } from '@/sim/facility'; // lane:brackish
 import { reseatDecor } from '@/sim/aquascape'; // lane:staff
@@ -79,7 +79,7 @@ export function convertWaterClassCost(state: GameState, tankId: string, wc: Wate
       // the tank is refilled from scratch: salt for every litre at the class's strength
       const litres = safeGallons(t.tierId) * LITRES_PER_GALLON;
       const sg = initialWater(wc, false).salinitySG;
-      out.saltKg = Math.round(litres * SALT_KG_PER_LITRE * ((sg - 1) / 0.025) * 100) / 100;
+      out.saltKg = Math.round(saltKgFor(litres, sg) * 100) / 100;
       out.saltFromStore = Math.min(out.saltKg, Math.max(0, state.inventory.salt ?? 0));
       out.saltCost = Math.round((out.saltKg - out.saltFromStore) * SALT_PRICE_PER_KG * 100) / 100;
     }

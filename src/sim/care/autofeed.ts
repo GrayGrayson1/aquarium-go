@@ -9,8 +9,9 @@
  * Pure functions over catalog data only (no game state, no RNG), so the water sim (`runAutofeeder` in
  * src/sim/water/step.ts), the fit verdicts (./fit.ts) and any UI can share them without import cycles.
  */
-import type { FoodDef, FoodTag, SpeciesDefinition } from '@/types';
+import type { EquipmentInstance, FoodDef, FoodTag, SpeciesDefinition } from '@/types';
 import { FOODS, foodForm, isAutofeederFood, autofeedFoodsForTags } from '@/data/catalog/foods';
+import { getEquipmentDef } from '@/data/catalog/equipment';
 import { pluralName } from '../economy/util';
 
 export { isAutofeederFood };
@@ -255,4 +256,46 @@ export function autofeedMessage(tankName: string, plan: AutofeedPlan, groups: re
     kind: 'misses',
     text: `The autofeeder on ${tankName} only feeds ${fed.length ? joinAnd(fed.map(whoPhrase)) : 'some of the animals'} (it drops ${lc(food?.name ?? 'dry food')}). ${parts.join(' ')}${keeper}`,
   };
+}
+
+// ───────────────────────────── Auto-feed paused (lane:automation, 0.5 §10.2, AUTO-005) ─────────────────────────────
+
+/** Hunger (0–100) at which a paused Auto-feed is worth an alert. */
+export const AUTOFEED_PAUSED_HUNGER = 50;
+
+/** Why a tank's Autofeeder isn't feeding: switched off (or a legacy 0 meals a day), jammed, or out of dry food. */
+export type AutofeedPauseReason = 'off' | 'failed' | 'empty';
+
+export interface AutofeedPause {
+  reason: AutofeedPauseReason;
+  /** The hungriest resident (hunger ≥ AUTOFEED_PAUSED_HUNGER): the alert says "feed {name} by hand". */
+  creatureId: string;
+  name: string;
+}
+
+/**
+ * Is the tank's Autofeeder installed but not feeding while a resident is hungry (hunger ≥ 50)? The alert row, the
+ * tank's attention dot and the sim's "Auto-feed is paused" event share this rule. 'empty' counts only when someone in
+ * the tank eats dry food (an autofeeder in a seahorse tank is useless, not empty: the fit line covers that).
+ */
+export function autofeedPause(
+  equipment: readonly EquipmentInstance[] | undefined,
+  inhabitants: readonly { creature: { id: string; name: string; stats?: { hunger?: number } }; species: SpeciesDefinition }[],
+  stock: Readonly<Record<string, number | undefined>>,
+): AutofeedPause | null {
+  const feeders = (equipment ?? []).filter((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder');
+  if (!feeders.length || !inhabitants.length) return null;
+  let hungry: (typeof inhabitants)[number] | null = null;
+  for (const i of inhabitants) {
+    const h = i.creature.stats?.hunger;
+    if (typeof h === 'number' && h >= AUTOFEED_PAUSED_HUNGER && (!hungry || h > (hungry.creature.stats?.hunger ?? 0))) hungry = i;
+  }
+  if (!hungry) return null;
+  const working = feeders.filter((e) => !e.failed);
+  const running = working.filter((e) => e.on && !(typeof e.setting === 'number' && Math.round(e.setting) <= 0));
+  let reason: AutofeedPauseReason | null = null;
+  if (!working.length) reason = 'failed';
+  else if (!running.length) reason = 'off';
+  else if (inhabitants.some((i) => canAutofeed(i.species)) && !pickAutofeedFood(stock, inhabitants.map((i) => i.species))) reason = 'empty';
+  return reason ? { reason, creatureId: hungry.creature.id, name: hungry.creature.name } : null;
 }

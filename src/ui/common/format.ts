@@ -147,6 +147,7 @@ export const EQUIPMENT_KIND_LABEL: Record<EquipmentKind, string> = {
   refugium: 'Refugium',
   wavemaker: 'Wavemaker',
   lid: 'Lid',
+  water_changer: 'Water changer', // lane:automation (0.5 §10.3)
 };
 
 export function cToF(c: number) {

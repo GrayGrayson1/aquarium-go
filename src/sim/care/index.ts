@@ -16,6 +16,7 @@ import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, ROOM_TEMP_C, DETO
 import { equipmentSummary, expectedTempC, safeGallons, inhabitantsOf, safeHabitat } from '../water/env';
 import { tuneTankForSpecies } from '../water/kits';
 import { sanitizeWater } from '../water/step';
+import { applyWaterChange, changeSaltNeed, clampChangeFraction, scrapeGlass } from '../water/change'; // lane:automation (AUTO-008)
 import { noteBreedingFood } from '../life/breeding';
 import { plural as pluralName, cap } from '../compat/text';
 import { refreshFoodStatus, tankFoodOutlook } from '../tankStatus';
@@ -174,94 +175,29 @@ export function feedTank(
 export function waterChangeCost(state: GameState, tankId: string, fraction: number): { saltKg: number; enoughSalt: boolean } {
   const tank = state.tanks[tankId];
   if (!tank || !isSaltClass(tank.waterClass)) return { saltKg: 0, enoughSalt: true };
-  const f = clamp(fraction, 0.05, 0.9);
-  const litresFull = safeGallons(tank) * LITRES_PER_GALLON;
-  const remaining = litresFull * tank.water.level * (1 - f);
-  const added = litresFull - remaining;
-  const target = idealBand(state, tank, 'salinitySG').mid;
-  const kg = added * SALT_KG_PER_LITRE * ((target - 1) / 0.025);
+  const kg = changeSaltNeed(state, tank, fraction);
   return { saltKg: Math.round(kg * 100) / 100, enoughSalt: state.inventory.salt >= kg - 1e-6 };
 }
 
 /**
  * Partial water change (0.05..0.9). Uses salt for marine tanks. New water is roughly temperature-matched unless
  * `opts.matchTemperature === false` (straight from the tap at room temperature) or `opts.newWaterTempC` is given.
+ * The chemistry is the shared core in src/sim/water/change.ts (the Auto Water Changer uses it too); this adds the
+ * player's side: the no-salt refusal, the counter and the message (lane:automation, AUTO-008).
  */
 export function waterChange(state: GameState, tankId: string, fraction: number, opts: { matchTemperature?: boolean; newWaterTempC?: number } = {}): ActionResult {
   const tank = getTank(state, tankId);
   if (!tank) return fail('That tank no longer exists.');
   const w = tank.water;
-  const f = clamp(Number.isFinite(fraction) ? fraction : 0.25, 0.05, 0.9);
-  const d = CLASS_DEFAULTS[tank.waterClass];
+  const f = clampChangeFraction(fraction);
   const salty = isSaltClass(tank.waterClass);
-  const litresFull = safeGallons(tank) * LITRES_PER_GALLON;
-  const current = litresFull * w.level;
-  const remaining = current * (1 - f);
-  const added = litresFull - remaining;
-  const kr = remaining / litresFull;
-  const ka = added / litresFull;
-  const hour = state.clock.hour;
-
-  // New water chemistry
-  let newSG = 1;
-  let saltUsed = 0;
-  let saltShort = false;
   if (salty) {
-    const target = idealBand(state, tank, 'salinitySG').mid;
-    const need = added * SALT_KG_PER_LITRE * ((target - 1) / 0.025);
-    const have = Math.max(0, state.inventory.salt);
-    if (have < 0.02 && need > 0.02) return fail(`You need about ${need.toFixed(1)} kg of marine salt mix to change ${Math.round(f * 100)}% of this tank — buy salt first.`);
-    saltUsed = Math.min(have, need);
-    saltShort = saltUsed < need - 1e-6;
-    newSG = 1 + (target - 1) * (need > 0 ? saltUsed / need : 1);
-    state.inventory.salt = Math.round((have - saltUsed) * 1000) / 1000;
+    const need = changeSaltNeed(state, tank, f);
+    if (Math.max(0, state.inventory.salt) < 0.02 && need > 0.02) return fail(`You need about ${need.toFixed(1)} kg of marine salt mix to change ${Math.round(f * 100)}% of this tank — buy salt first.`);
   }
-  const src = d.source;
-  const newTemp = opts.newWaterTempC ?? (opts.matchTemperature === false ? ROOM_TEMP_C : w.tempC + (ROOM_TEMP_C - w.tempC) * 0.15);
-  const before = { temp: w.tempC, pH: w.pH, sg: w.salinitySG, nitrate: w.nitrate, ammonia: w.ammonia };
-
-  w.ammonia = w.ammonia * kr;
-  w.nitrite = w.nitrite * kr;
-  w.nitrate = w.nitrate * kr + src.nitrate * ka;
-  const lab = ensureLab(tank);
-  if (lab.boundAmmonia !== undefined) lab.boundAmmonia *= kr; // lane:fix-water — conditioner-bound share goes out with the old water too
-  if (lab.boundNitrite !== undefined) lab.boundNitrite *= kr;
-  w.kh = w.kh * kr + src.kh * ka;
-  if (!salty || tank.waterClass === 'brackish') w.gh = w.gh * kr + src.gh * ka;
-  w.pH = w.pH * kr + src.pH * ka;
-  w.tempC = w.tempC * kr + newTemp * ka;
-  w.salinitySG = salty ? 1 + (w.salinitySG - 1) * kr + (newSG - 1) * ka : 1;
-  w.oxygen = clamp(w.oxygen * kr + 0.95 * ka, 0, 1);
-  w.level = 1;
-  scaleFood(tank, 1 - f * 0.6);
-  w.detritus = clamp(w.detritus * (1 - f * 0.35), 0, 100);
-  w.clarity = clamp(w.clarity + f * 0.3, 0, 1);
-  if (salty) lab.reefElements = clamp((lab.reefElements ?? 0.8) * kr + 0.85 * ka, 0, 1);
-  lab.co2 = (lab.co2 ?? 1) * kr + (salty ? 0.45 : 0.6) * ka;
-  tank.lastMaintenanceHour = hour;
+  const { before, saltUsed, saltShort, shock } = applyWaterChange(state, tank, f, { hour: state.clock.hour, ...opts });
   bumpCounter(state, 'waterChanges');
-
-  // Sudden-change stress
-  const dT = Math.abs(w.tempC - before.temp);
-  const dPH = Math.abs(w.pH - before.pH);
-  const dSG = Math.abs(w.salinitySG - before.sg);
-  // lane:fix-water — the reason names whichever shift actually caused the shock (a 1.5 °C or 0.3 pH shift used to
-  // fall through to "salinity jumped by 0.000" in freshwater tanks); salinity only counts in salt water.
-  const shifts = [
-    { v: (dT - 1) / 4, why: `the new water shifted the temperature by ${dT.toFixed(1)} °C` },
-    { v: (dPH - 0.2) / 0.8, why: `pH jumped by ${dPH.toFixed(1)}` },
-    { v: salty ? (dSG - 0.0015) / 0.006 : 0, why: `salinity jumped by ${dSG.toFixed(3)}` },
-  ];
-  const worst = shifts.reduce((a, b) => (b.v > a.v ? b : a));
-  const severity = clamp(worst.v, 0, 1);
-  let shockNote = '';
-  if (severity > 0.1) {
-    const why = worst.why;
-    w.shock = { hour, untilHour: hour + 4 + severity * 8, severity, reason: why };
-    lab.swing = clamp((lab.swing ?? 0) + severity * 0.5, 0, 1);
-    shockNote = ` Careful — ${why}; sudden changes stress animals. Match the new water next time.`;
-    if (!state.isShowcase) emitEvent(state, { kind: 'warning', text: `${tank.name}: ${why} during the water change — the animals are stressed.`, tankId: tank.id, toast: true });
-  }
+  const shockNote = shock ? ` Careful — ${shock}; sudden changes stress animals. Match the new water next time.` : '';
   // lane:fix-water — show a decimal when the rounded values would read as "5 → 5 ppm".
   const nDigits = before.nitrate.toFixed(0) === w.nitrate.toFixed(0) && Math.abs(before.nitrate - w.nitrate) >= 0.05 ? 1 : 0;
   const parts = [`Changed ${Math.round(f * 100)}% of the water. Nitrate ${before.nitrate.toFixed(nDigits)} → ${w.nitrate.toFixed(nDigits)} ppm.`];
@@ -326,9 +262,7 @@ export function cleanTank(state: GameState, tankId: string, what: 'gravel' | 'gl
         ? `Siphoned the bare bottom clean — waste ${before.toFixed(0)} → ${w.detritus.toFixed(0)}.`
         : `Vacuumed the ${sub}: waste ${before.toFixed(0)} → ${w.detritus.toFixed(0)}.${soil ? ' (Gently — hard siphoning crushes aqua soil.)' : ''}`;
   } else if (what === 'glass') {
-    const before = w.algae;
-    w.algae = clamp(w.algae * 0.45, 0, 100);
-    w.clarity = clamp(w.clarity + 0.04, 0, 1);
+    const before = scrapeGlass(tank); // lane:automation — the core the Auto Water Changer shares (src/sim/water/change.ts)
     message = before < 3 ? 'The glass was already spotless.' : `Scraped algae off the glass (${before.toFixed(0)}% → ${w.algae.toFixed(0)}%). Algae on rocks and plants needs grazers or a shorter photoperiod.`;
   } else {
     const filters = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === 'filter');

@@ -7,7 +7,7 @@ import { CLASS_DEFAULTS, ROOM_TEMP_C } from '../water/constants';
 import { equipmentSummary, inhabitantsOf } from '../water/env';
 
 /** Most units of one kind a tank can hold (installEquipment refuses more). */
-export const MAX_PER_KIND: Record<string, number> = { lid: 1, ato: 1, autofeeder: 1, co2: 1, filter: 4, heater: 4, chiller: 3, light: 4, skimmer: 2, uv: 2, refugium: 1, fan: 3, airstone: 4, powerhead: 6, wavemaker: 4 };
+export const MAX_PER_KIND: Record<string, number> = { lid: 1, ato: 1, autofeeder: 1, co2: 1, filter: 4, heater: 4, chiller: 3, light: 4, skimmer: 2, uv: 2, refugium: 1, fan: 3, airstone: 4, powerhead: 6, wavemaker: 4, water_changer: 1 }; // lane:automation — one Auto Water Changer per tank (B-149)
 
 /** Equipment kinds in running text ("2 auto top-offs", not "2 atos"). */
 export const KIND_PLURAL: Partial<Record<string, string>> = { ato: 'auto top-offs', co2: 'CO₂ systems', uv: 'UV sterilisers', lid: 'lids', light: 'lights', refugium: 'refugiums' };

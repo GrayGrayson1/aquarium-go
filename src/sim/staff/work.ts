@@ -18,7 +18,7 @@
  */
 import type { FoodDef, GameState, SpeciesDefinition, StaffMember, Tank } from '@/types';
 import { emitEvent } from '../context';
-import { hourOfDay, formatClock } from '../time';
+import { hourOfDay, formatClock, crossings } from '../time';
 import { feedTank, waterChange, waterChangeCost, cleanTank, topOff, setEquipment, dose } from '../care';
 import { getWaterReport } from '../water';
 import { needsFedFood, fedResidentIndex, foodOutlookAll } from '../tankStatus';
@@ -56,19 +56,8 @@ export function roundStart(m: StaffMember, round: KeeperRound): number {
   return ROUND_START[round] - (round === 'morning' && m.trait === 'early_bird' ? 1 : 0);
 }
 
-/** Absolute hours in [start, end) whose hour-of-day is `hod` (robust to any window length). */
-export function crossings(start: number, end: number, hod: number): number[] {
-  const out: number[] = [];
-  if (!(end > start)) return out;
-  hod = ((hod % 24) + 24) % 24; // lane:staff2 — a long round's last visits run past midnight
-  let t = Math.floor(start / 24) * 24 + hod;
-  if (t < start - 1e-9) t += 24;
-  while (t < end - 1e-9 && out.length < 64) {
-    out.push(t);
-    t += 24;
-  }
-  return out;
-}
+// lane:automation — `crossings` moved to ../time (the Auto Water Changer in src/sim/water uses it too); re-exported here.
+export { crossings };
 
 // ── lane:staff2 — meals a day by metabolism ──
 
@@ -449,6 +438,15 @@ function retuneThermostats(state: GameState, tank: Tank): void {
   }
 }
 
+/** lane:automation — game hours after an Auto Water Changer's run during which keepers leave routine water care alone. */
+export const AUTO_CHANGER_COVERS_H = 30;
+
+/** Did this tank's Auto Water Changer change its water in the last AUTO_CHANGER_COVERS_H game hours (30 h exactly: no)? */
+export function autoChangedRecently(tank: Tank, hour: number): boolean {
+  const last = tank.water.lab?.lastAutoChangeHour;
+  return typeof last === 'number' && Number.isFinite(last) && hour - last < AUTO_CHANGER_COVERS_H;
+}
+
 /** lane:staff2 — the midday and late rounds are quick feeding visits: no glass scraping or thermostat fiddling. */
 const quickRound = (round: KeeperRound) => round === 'midday' || round === 'late';
 
@@ -505,7 +503,10 @@ export function keeperWaterCare(state: GameState, m: StaffMember, tank: Tank, ro
   // Mornings: nitrate & co (at most every other day — 25% at a time is gentler than daily big swings), due dates.
   // Any round: ammonia / nitrite emergencies.
   const recent = hour - (care.lastWaterChange ?? -1e9) < 44;
-  if ((round === 'morning' && ((bad.length && !recent) || due)) || (urgent && hour - (care.lastWaterChange ?? -1e9) >= 8)) {
+  // lane:automation (0.5 §10.3, AUTO-011) — an Auto Water Changer that ran in the last 30 game hours has done the
+  // routine change and keeps the glass clean: only an ammonia / nitrite emergency (and the gravel) is left to do.
+  const autoRan = autoChangedRecently(tank, hour);
+  if ((round === 'morning' && !autoRan && ((bad.length && !recent) || due)) || (urgent && hour - (care.lastWaterChange ?? -1e9) >= 8)) {
     // Emergencies get a bigger change (still under half, so nobody is shocked).
     const fraction = nitrogenDanger ? 0.4 : urgent ? 0.3 : 0.25;
     const salt = waterChangeCost(state, tank.id, fraction);
@@ -528,7 +529,7 @@ export function keeperWaterCare(state: GameState, m: StaffMember, tank: Tank, ro
   }
   if (!quickRound(round)) {
     const algaeAt = m.trait === 'algae_hunter' ? 12 : 25;
-    if (w.algae > algaeAt) {
+    if (w.algae > algaeAt && !autoRan) {
       const r = asStaff(state, () => cleanTank(state, tank.id, 'glass'));
       if (r.ok) {
         day.cleanings++;
