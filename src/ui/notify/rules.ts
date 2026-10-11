@@ -53,7 +53,7 @@ const stop = (text: string) => (/[.!?…]$/.test(text) ? text : `${text}.`);
 function vsFair(amount: number, fair: number | null): string | null {
   if (!fair || fair <= 0) return null;
   const p = Math.round(((amount - fair) / fair) * 100);
-  return `${p > 0 ? '+' : p < 0 ? '−' : '±'}${Math.abs(p)}% vs fair value`;
+  return `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p)}% vs fair value`;
 }
 
 /** "Ember’s Tank: the Auto Water Changer is out of salt…" reads as "the Auto Water Changer…" under the tank's name. */

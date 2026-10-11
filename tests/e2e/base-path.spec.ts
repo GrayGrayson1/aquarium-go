@@ -13,6 +13,8 @@ test('the Pages build boots under /aquarium-go/; its worker, icon and version fi
   const origin = new URL(baseURL!).origin;
   // the browser has allowed notifications; record what would be shown
   await page.addInitScript(() => {
+    // quiet hours off: delivery reads the device clock, and this test must pass by night too
+    localStorage.setItem('aquarium-go.notify.v1', JSON.stringify({ categories: { rare: true, care: true, market: true, breeding: true, shows: false }, quiet: { on: false, start: 22, end: 8 } }));
     const w = window as unknown as W;
     w.__shown = [];
     class Granted {

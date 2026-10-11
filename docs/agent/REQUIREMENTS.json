@@ -1930,7 +1930,7 @@
         "§10.3",
         "§11.3"
       ],
-      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the tests import no React or DOM). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases."
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the automation tests import no React or DOM (src/sim, src/data, src/types, plus src/persistence for the offline and hash checks)). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases."
     },
     {
       "id": "AUTO-017",

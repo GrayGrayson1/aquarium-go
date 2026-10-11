@@ -285,8 +285,9 @@ export function toastWorthy(state: GameState, sp: SpeciesDefinition, kind: strin
 }
 
 /**
- * lane:notify — a Breeding notification's values (0.5 §12.2; ADR-0023 for births without eggs). Callers attach it only
- * to milestones that toast, so a busy colony tank notifies as rarely as it toasts.
+ * lane:notify — a Breeding notification's values (0.5 §12.2; ADR-0023 for births without eggs). Callers attach it to
+ * milestones that toast, so a busy colony tank notifies as rarely as it toasts, and to an axolotl's finished clutch
+ * (laying takes hours, so that line carries the count; one per clutch).
  */
 export function breedNotice(topic: 'eggs' | 'hatch' | 'birth', name: string | undefined, n: number, tank: Tank): EventNotice {
   return { topic, vars: { ...(name ? { name } : {}), n, tank: tank.name } };

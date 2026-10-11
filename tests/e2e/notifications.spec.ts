@@ -47,6 +47,10 @@ const asks = (page: Page) => page.evaluate(() => (window as unknown as W).__noti
 const lastToast = (page: Page) => page.evaluate(() => (window as unknown as W).__AQ.ui().toasts.at(-1) ?? null);
 const goHash = (page: Page, h: string) => page.evaluate((x) => void (location.hash = x), h);
 const hash = (page: Page) => page.evaluate(() => location.hash);
+/** Quiet hours off on this device (as the Settings switch stores it), for tests that aren't about them. */
+const quietOff = (page: Page) =>
+  page.addInitScript(() => localStorage.setItem('aquarium-go.notify.v1', JSON.stringify({ categories: { rare: true, care: true, market: true, breeding: true, shows: false }, quiet: { on: false, start: 22, end: 8 } })));
+
 /** The player is in another window: the page stays visible but loses focus. */
 const lookAway = (page: Page, away = true) => page.evaluate((a) => void (document.hasFocus = () => !a), away);
 
@@ -150,6 +154,7 @@ test.describe('Notifications (desktop 1440×900)', () => {
 
   test('delivery: only while unfocused, with the icon, tag and route; a tap opens the offer with its banner', async ({ page }) => {
     await stubNotifications(page, 'granted');
+    await quietOff(page); // delivery reads the device clock: the same by night (quiet hours have their own test)
     await game(page);
     const offerId = await page.evaluate(() => (window as unknown as W).__AQ.game().market.stock[0].id as string);
     const prismatic = { kind: 'market', text: 'Something special at the shop', toast: true, offerId, notice: { topic: 'prismatic', vars: { species: 'betta', morph: 'Royal Blue Halfmoon', seller: 'Coral Cove', until: 9999 } } };

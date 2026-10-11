@@ -147,15 +147,16 @@ export function startNotifications(): () => void {
   takeLaunchFlag();
   const offs: (() => void)[] = [];
   const rate = emptyRateState();
-  let seen: { saveId: string; ids: Set<string> } | null = null;
+  let seen: { saveId: string; idCounter: number; ids: Set<string> } | null = null;
 
   const onGame = (game: GameState | null) => {
     if (!game || game.isShowcase) return;
-    if (!seen || seen.saveId !== game.saveId) {
-      // a new or loaded aquarium: what is already in its log is history, not news
-      seen = { saveId: game.saveId, ids: new Set(game.log.map((e) => e.id)) };
+    if (!seen || seen.saveId !== game.saveId || game.idCounter < seen.idCounter) {
+      // a new or loaded aquarium (or an older save of this one, whose new events will reuse ids): its log is history
+      seen = { saveId: game.saveId, idCounter: game.idCounter, ids: new Set(game.log.map((e) => e.id)) };
       return;
     }
+    seen.idCounter = game.idCounter;
     const fresh: GameEvent[] = [];
     for (let i = Math.max(0, game.log.length - 40); i < game.log.length; i++) {
       const e = game.log[i];

@@ -282,6 +282,9 @@ function withDefId(a: unknown, what: string, label: string, repairs: string[]): 
   return kept;
 }
 
+/** The save's clock (0 when unreadable), for checks that run before the clock itself is repaired. */
+const hour0 = (s: Json): number => (typeof s.clock?.hour === 'number' && Number.isFinite(s.clock.hour) ? s.clock.hour : 0);
+
 function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | null {
   if (!isObj(t)) return null;
   t.id = id;
@@ -296,12 +299,13 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   t.name ??= TANK_TIER_BY_ID[t.tierId].name;
   t.purpose ??= 'display';
   t.water = fillNumbers(t.water, defaultWater(marine, wc === 'freshwater_cool'), `tank ${id}.water`, repairs);
-  // lane:automation (PERSIST-006) — the Auto Water Changer's last-run hours are finite numbers when present; a broken one
-  // is dropped (the device then runs at the next lights-on, once). Absent ones need nothing.
+  // lane:automation (PERSIST-006) — the Auto Water Changer's last-run hours are finite numbers, not after the clock, when
+  // present; a broken one is dropped (the device then runs at the next lights-on, once). Absent ones need nothing. A
+  // future hour would stop the device and keep keepers off the tank's routine care for good.
   if (isObj(t.water.lab)) {
     for (const k of ['lastAutoChangeHour', 'lastAutoScrapeHour'] as const) {
       const v = t.water.lab[k];
-      if (v === undefined || (typeof v === 'number' && Number.isFinite(v))) continue;
+      if (v === undefined || (typeof v === 'number' && Number.isFinite(v) && v <= hour0(s))) continue;
       repairs.push(`tank ${id}.water.lab.${k}: ${String(v).slice(0, 40)}, removed`);
       delete t.water.lab[k];
     }

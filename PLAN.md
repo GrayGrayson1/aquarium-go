@@ -6,15 +6,20 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Chunk 3** (Automation and notifications), in Claude Code on the Mac, on `next`. Read its brief below (the owner's
-   notification answers are in, ADR-0022). Chunk 2 is done and on `next` only: players get it with the next release
-   (0.5.1), which needs the owner's go-ahead (see "Releases").
-2. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
-   rest). Also: (a) after a rollback, an older copy of the game can't autosave into a slot that holds a newer
+1. **The owner's Production answers for chunk 4** (Production lines): approve DESIGN-S3D SPEC §8.6 and §8.6.1 and
+   answer `INTAKE.md` §11's C-27, C-28, C-29, C-33, C-34 and C-36 (chunk 4's brief below). Until then, chunk 6's
+   Social stub and hardening can go first if the owner prefers (it needs only SOC-010's empty-state copy). Chunks 2
+   and 3 are done and on `next` only: players get them with the next release (0.5.1), which needs the owner's go-ahead
+   (see "Releases").
+2. **When the owner has time:** the rest of the DESIGN-S3D questions (chunk 5). Also: (a) after a rollback, an older copy of the game can't autosave into a slot that holds a newer
    version's save (it says so once, with "Refresh the page"): should a player be offered more, such as saving to
    another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too (B-129)? (c) What accessibility level to
    aim for (B-178: panels under high contrast)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the developer
-   tools for the session, and the dev panel comes on with the Settings switch. (e) Release chunk 2 as 0.5.1?
+   tools for the session, and the dev panel comes on with the Settings switch. (e) Release chunks 2 and 3 as 0.5.1?
+   (f) Chunk 3's reviewer noted wording that fills design slots without an owner's say: the ribbon colours in a Shows
+   notification ("$120 prize · Blue ribbon."), "1 fry is free-swimming" for a single fry, "0% vs fair value", and
+   lower-case species in "Prismatic betta in the shop"; and Auto-feed rows for a jammed feeder show the switch on with
+   the paused line. Keep, or change?
 3. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
 
 ## Status
@@ -24,7 +29,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06. Its e2e run (owner, `3601860`): 47 of 48, the one failure camera-freeze's teardown hang, fixed in `859858a` |
 | 1 | Navigation, links and the platform layer | Done 2026-10-07 (released in 0.5.0 on 2026-10-06). Its e2e run (`f59d51a`): 75 of 75, no fixes needed |
 | 2 | Shop and genetics | Done 2026-10-11, with the owner's follow-ups (ADR-0022). Its full run (`7acb0b9`): typecheck, unit 2,107, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
-| 3 | Automation and notifications | Not started |
+| 3 | Automation and notifications | Done 2026-10-11 (on `next`). Its full run: see "Last full test run"; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Not started; needs the owner's Production answers |
 | 5 | Deep automation (S3-D) | Not started; needs the owner's approval of DESIGN-S3D |
 | 6 | Social stub, hardening and the 0.5.0 release | Not started |
@@ -65,7 +70,7 @@ a regression, and never loosen it. The teardown hang is Chromium's graceful `con
 120 s, while closing the browser took 1.4 s. `camera-freeze.spec` now runs in a browser of its own and closes it with
 `browser.close()` (`859858a`); give `boot.spec.ts:17` the same treatment if it hangs again.
 
-**Testing notes** (from chunks 1 and 2):
+**Testing notes** (from chunks 1 to 3):
 - To test uncommitted work, `git diff --binary` it into a patch and `git apply` that in the internal-disk clone (on
   the same base commit); run the checks there.
 - An e2e spec that counts shop stock pauses the clock (`dev.setSpeed 0`): a restock mid-test changes the counts.
@@ -73,6 +78,12 @@ a regression, and never loosen it. The teardown hang is Chromium's graceful `con
   `__AQ.mutate` to light it.
 - Server-rendered unit tests (`renderToStaticMarkup`) read a zustand store's initial state, not its live state: copy
   the live state into `getInitialState()` first (see `tests/sim/ui-shop-05.test.ts`).
+- Notification delivery reads the device clock (quiet hours): a test that expects one to show turns quiet hours off
+  (the e2e specs set `aquarium-go.notify.v1` in an init script) or pins the clock and timezone, or it fails at night.
+  e2e records notifications by stubbing `window.Notification` and `ServiceWorkerRegistration.prototype
+  .showNotification`. Playwright's `toBeEnabled` counts `aria-disabled` as disabled.
+- Every e2e run also builds the game for production under `/aquarium-go/` and serves it for the `base-path` project
+  (about 10 s more, even for one spec).
 
 **Requirements.** The ids below come from `docs/agent/REQUIREMENTS.json`; their acceptance criteria are the
 checklist. Skip criteria that only made sense for the harness (gates, ledgers, evidence manifests, reviewer records,
@@ -156,7 +167,10 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
     when it happens. The service worker is registered only once permission is granted.
   - Not built: the optional Finances "Automation gear" row (it would repeat the tanks' costs above it).
   - Seeded tests: none moved. The device runs only where installed; the new events fire only where the scenarios
-    don't look (the full unit suite passed unchanged after the sim commits, before the new tests).
+    don't look (the full unit suite passed unchanged after the sim commits, before the new tests). Accepted across
+    builds: the two new events ("auction ending soon", a switched-off Autofeeder with a hungry resident) take ids, and
+    some rolls are keyed on ids, so a save continued in this build can roll differently from the old one (old saves
+    are best-effort, ADR-0005).
   - Backlog: fixed B-013, B-117 (S3-B), B-126, B-149, B-173, B-188, B-189; partly B-169 (one salt formula; the UI-lane
     mutators move with chunk 5) and B-176 (the device is LOD-exact; cool-water cues left); deferred B-177 and B-127,
     B-171, B-174 to chunk 4 and B-180 to chunk 5 (reasons in `docs/agent/BACKLOG.md`); B-167 stays open (no

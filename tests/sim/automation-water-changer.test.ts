@@ -112,6 +112,14 @@ describe('AUTO-006 / B-149: the Auto Water Changer’s data', () => {
     expect(s.tanks[id].equipment.filter((e) => e.defId === 'auto_water_changer')).toHaveLength(1);
   });
 
+  it('a salt tank’s running cost counts the salt of its daily changes', () => {
+    const { s, tank } = build({ wc: 'marine_fowlr', salt: 50 });
+    const on = tankDailyCost(s, tank);
+    setEquipment(s, tank.id, changer(tank).id, { on: false });
+    // 10 % a day is 3.5× the 20 % a week the estimate assumes without it, plus the device's own $0.06
+    expect(on - tankDailyCost(s, tank)).toBeGreaterThan(0.06 + 0.01);
+  });
+
   it('its upkeep is in tankDailyCost while it is on, and not while it is off', () => {
     const { s, tank } = build();
     const on = tankDailyCost(s, tank);
@@ -157,7 +165,7 @@ describe('AUTO-009: a change at lights-on each game day, the glass once a week',
     expect(tank.water.nitrate).toBeGreaterThan(before * 0.85);
   });
 
-  it('off or failed, it does nothing; a failure raises the equipment-failed alert the drawer already shows', () => {
+  it('off or failed, it does nothing (a failed one is in the drawer’s generic failed-equipment row)', () => {
     for (const how of ['off', 'failed'] as const) {
       const { s, tank } = build();
       if (how === 'off') setEquipment(s, tank.id, changer(tank).id, { on: false });

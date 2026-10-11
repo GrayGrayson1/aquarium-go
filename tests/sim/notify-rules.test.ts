@@ -52,6 +52,7 @@ describe('NOTIFY-003, NOTIFY-004: events → notifications', () => {
     const bid = plan({ kind: 'market', listingId: 'l7', notice: { topic: 'bid', vars: { title: 'Ember’s Tank', buyer: 'Maya Chen', amount: 112, fair: 100 } } });
     expect(bid).toEqual({ category: 'market', title: 'New bid on Ember’s Tank', body: 'Maya Chen offers $112 (+12% vs fair value).', route: '#/market/listings/l7', priority: 'normal', tag: 'market' });
     expect(plan({ kind: 'market', listingId: 'l7', notice: { topic: 'bid', vars: { title: 'T', buyer: 'B', amount: 92, fair: 100 } } })?.body).toBe('B offers $92 (−8% vs fair value).');
+    expect(plan({ kind: 'market', listingId: 'l7', notice: { topic: 'bid', vars: { title: 'T', buyer: 'B', amount: 100, fair: 100 } } })?.body).toBe('B offers $100 (0% vs fair value).');
     expect(plan({ kind: 'celebrate', listingId: 'l7', notice: { topic: 'sale', vars: { title: 'Ember’s Tank', buyer: 'Maya Chen', amount: 120 } } })).toMatchObject({ title: 'Sold: Ember’s Tank', body: 'Maya Chen paid $120.' });
     const ending = plan({ kind: 'market', listingId: 'l7', notice: { topic: 'auction_ending', vars: { title: 'Ember’s Tank', buyer: 'Coral Reef Co.', amount: 120 } } });
     expect(ending).toMatchObject({ category: 'market', title: 'Ending soon: Ember’s Tank', body: 'Best offer so far: $120 from Coral Reef Co.', route: '#/market/listings/l7' });

@@ -43,17 +43,30 @@ describe('PERSIST-006: the lab hours', () => {
     const id = g.tankOrder[0];
     const lab = (g.tanks[id].water.lab ??= {});
     lab.lastAutoChangeHour = 'soon' as unknown as number;
-    lab.lastAutoScrapeHour = 120;
+    lab.lastAutoScrapeHour = g.clock.hour - 2;
     const raw = clonePlain(g) as unknown as Record<string, unknown>;
     const repairs = repairState(raw);
     const fixed = (raw as unknown as GameState).tanks[id].water.lab!;
     expect(repairs).toContain(`tank ${id}.water.lab.lastAutoChangeHour: soon, removed`);
     expect(fixed.lastAutoChangeHour).toBeUndefined();
-    expect(fixed.lastAutoScrapeHour).toBe(120);
+    expect(fixed.lastAutoScrapeHour).toBe(g.clock.hour - 2);
     // JSON has no Infinity or NaN (the serializer writes non-finite numbers as 0); a null in the file is repaired
     const nulled = clonePlain(g) as unknown as Record<string, unknown>;
     ((nulled as unknown as GameState).tanks[id].water.lab as Record<string, unknown>).lastAutoChangeHour = null;
     expect(repairState(nulled)).toContain(`tank ${id}.water.lab.lastAutoChangeHour: null, removed`);
+  });
+
+  it('an hour after the save’s clock is removed too (it would stop the device and keep keepers away for good)', () => {
+    const g = game();
+    const id = g.tankOrder[0];
+    const lab = (g.tanks[id].water.lab ??= {});
+    lab.lastAutoChangeHour = g.clock.hour + 500;
+    lab.lastAutoScrapeHour = g.clock.hour;
+    const raw = clonePlain(g) as unknown as Record<string, unknown>;
+    expect(repairState(raw)).toContain(`tank ${id}.water.lab.lastAutoChangeHour: ${g.clock.hour + 500}, removed`);
+    const fixed = (raw as unknown as GameState).tanks[id].water.lab!;
+    expect(fixed.lastAutoChangeHour).toBeUndefined();
+    expect(fixed.lastAutoScrapeHour).toBe(g.clock.hour);
   });
 
   it('absent hours need no repair and leave the stateHash as it was', () => {

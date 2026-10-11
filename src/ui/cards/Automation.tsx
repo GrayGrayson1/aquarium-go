@@ -153,7 +153,7 @@ function AutoFeedRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdi
           }
         />
       </div>
-      {autoFeedOn(dev) && (
+      {on && (
         <div className="ag-auto__meals">
           <span>Meals a day</span>
           <Segmented

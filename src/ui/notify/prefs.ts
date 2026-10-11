@@ -27,7 +27,7 @@ function save(p: NotifyPrefs): void {
 interface NotifyPrefsStore extends NotifyPrefs {
   setCategory(c: NotifyCategory, on: boolean): void;
   setQuiet(on: boolean): void;
-  /** A grant applies the defaults (§12.4): every category but Shows on. */
+  /** A grant applies the category defaults (§12.4): every category but Shows on. Quiet hours keep their switch. */
   applyDefaults(): void;
   /** Read the stored value again (another tab may have changed it). */
   reload(): void;
@@ -42,7 +42,7 @@ export const useNotifyPrefs = create<NotifyPrefsStore>((set, get) => {
     ...load(),
     setCategory: (c, on) => commit({ categories: { ...get().categories, [c]: on }, quiet: get().quiet }),
     setQuiet: (on) => commit({ categories: get().categories, quiet: { ...get().quiet, on } }),
-    applyDefaults: () => commit(normalizePrefs(DEFAULT_NOTIFY_PREFS)),
+    applyDefaults: () => commit({ categories: normalizePrefs(DEFAULT_NOTIFY_PREFS).categories, quiet: get().quiet }),
     reload: () => set(load()),
   };
 });

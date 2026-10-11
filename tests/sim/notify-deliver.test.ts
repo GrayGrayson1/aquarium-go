@@ -55,6 +55,7 @@ const game = (): GameState => {
 beforeEach(() => {
   useUI.setState({ toasts: [] });
   useNotifyPrefs.getState().applyDefaults();
+  useNotifyPrefs.getState().setQuiet(true);
 });
 
 afterEach(() => {
@@ -91,6 +92,7 @@ describe('NOTIFY-008: what is shown, and when', () => {
 
   it('live: a new log event while the page is unfocused notifies once; focused, it doesn’t; a loaded backlog never does', () => {
     usePlatform({ permission: 'granted' });
+    useNotifyPrefs.getState().setQuiet(false); // delivery reads the device clock: keep the test the same by night (B-173)
     const doc = page(false);
     const g = game();
     g.log.push(prismatic({ id: 'ev_old' })); // already in the save: history
@@ -112,6 +114,14 @@ describe('NOTIFY-008: what is shown, and when', () => {
       other.log.push(prismatic({ id: 'ev_other' }));
       useGame.setState({ game: other });
       expect(mem.shown).toHaveLength(1);
+      // an older save of the same aquarium reloaded: its new events reuse ids, and still notify
+      const older = game();
+      older.saveId = 'save_other';
+      older.idCounter = other.idCounter - 5;
+      useGame.setState({ game: older });
+      const sale: GameEvent = { id: 'ev_other', hour: 10, kind: 'celebrate', text: 'Sold!', listingId: 'l1', notice: { topic: 'sale', vars: { title: 'Ember', buyer: 'Maya Chen', amount: 40 } } };
+      useGame.setState({ game: { ...older, log: [...older.log, sale] } }); // (a sale: Rare stock showed one minutes ago)
+      expect(mem.shown).toHaveLength(2);
       expect(mem.prepared).toBe(1); // permission was already granted: taps are made ready at start
     } finally {
       stop();
@@ -146,6 +156,7 @@ describe('NOTIFY-007: "Turn on"', () => {
     expect(mem.requests).toBe(1);
     expect(useNotifyPermission.getState().permission).toBe('granted');
     expect(useNotifyPrefs.getState().categories).toEqual({ rare: true, care: true, market: true, breeding: true, shows: false });
+    expect(useNotifyPrefs.getState().quiet.on).toBe(true);
     const t = useUI.getState().toasts.at(-1)!;
     expect(t).toMatchObject({ kind: 'info', label: 'Notifications on', text: 'You’ll hear about rare stock, care and sales', detail: 'Choose exactly what below.' });
     expect(mem.prepared).toBe(1);

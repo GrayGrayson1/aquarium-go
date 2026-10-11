@@ -40,8 +40,8 @@ export const KH_PER_PPM_N = 0.4;
 /** Marine salt mix needed per litre for SG 1.025 (kg). */
 export const SALT_KG_PER_LITRE = 0.036;
 /**
- * Salt mix (kg) that brings `litres` of fresh water to specific gravity `sg`. The one formula behind water changes,
- * salt doses, a tank's conversion to salt water and the Auto Water Changer (B-169: it was written out in four places).
+ * Salt mix (kg) that brings `litres` of fresh water to specific gravity `sg`: the formula behind water changes, the
+ * Auto Water Changer and a tank's conversion to salt water (B-169; a salt dose still raises the SG by a step its own way).
  */
 export const saltKgFor = (litres: number, sg: number): number => litres * SALT_KG_PER_LITRE * ((sg - 1) / 0.025);
 /** Price per kg used for the daily-cost estimate of marine salt (bought by the economy lane). */
