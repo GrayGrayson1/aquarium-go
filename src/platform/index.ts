@@ -9,7 +9,7 @@ import type { Platform } from './types';
 import { createWebPlatform } from './web';
 
 export type { NotifyPermission, NotifyCategory, PlatformNotification, NotificationPort, Platform } from './types';
-export { createWebPlatform, APP_ICON, NOTIFICATION_CLICK, type NotificationClickMessage } from './web';
+export { createWebPlatform, APP_ICON, NOTIFICATION_CLICK, NOTIFICATION_WORKER, type NotificationClickMessage } from './web';
 export { createMemoryPlatform, type MemoryPlatform, type MemoryPlatformOptions } from './memory';
 
 let current: Platform | null = null;

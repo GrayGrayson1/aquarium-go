@@ -304,18 +304,28 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
   );
 }
 
-export function Toggle({ checked, onChange, label, disabled, testId }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean; testId?: string }) {
+/**
+ * On/off switch (role="switch"). `locked` (lane:automation, 0.5 §18) is a disabled switch that stays focusable:
+ * aria-disabled, dimmed, ignores presses, and `describedBy` names the element that explains why.
+ */
+export function Toggle({ checked, onChange, label, disabled, testId, locked, describedBy }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean; testId?: string; locked?: boolean; describedBy?: string }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      aria-disabled={locked || undefined}
+      aria-describedby={describedBy}
       title={label}
       disabled={disabled}
       data-testid={testId}
-      className="ag-toggle"
-      onClick={() => { sfx('click'); onChange(!checked); }}
+      className={clsx('ag-toggle', locked && 'is-locked')}
+      onClick={() => {
+        if (locked) return;
+        sfx('click');
+        onChange(!checked);
+      }}
     />
   );
 }
@@ -423,7 +433,26 @@ export function Segmented<T extends string | number>({ value, onChange, items, l
   value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; title?: string; icon?: ReactNode; disabled?: boolean }[]; label: string; testIdPrefix?: string; size?: 'sm' | 'md'; className?: string;
 }) {
   return (
-    <div className={clsx('ag-seg', size === 'sm' && 'ag-seg--sm', className)} role="radiogroup" aria-label={label}>
+    <div
+      className={clsx('ag-seg', size === 'sm' && 'ag-seg--sm', className)}
+      role="radiogroup"
+      aria-label={label}
+      onKeyDown={(e) => {
+        // lane:automation (0.5 §18) — arrow keys move the choice, as in any radio group
+        const live = items.filter((it) => !it.disabled);
+        const at = live.findIndex((it) => it.id === value);
+        const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+        if (!step || !live.length) return;
+        e.preventDefault();
+        const next = live[(Math.max(0, at) + step + live.length) % live.length];
+        if (next.id !== value) {
+          sfx('click');
+          onChange(next.id);
+        }
+        const btns = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+        btns[items.indexOf(next)]?.focus();
+      }}
+    >
       {items.map((it) => (
         <button
           key={String(it.id)}

@@ -21,6 +21,8 @@ export interface MemoryPlatform extends Platform {
   copied: string[];
   /** How many times request() was called (nothing may call it at boot). */
   requests: number;
+  /** How many times prepare() was called. */
+  prepared: number;
   /** The player taps a notification: every onOpen subscriber gets the route. */
   open(route: string | null): void;
   /** The page goes to the background: every onPause subscriber runs. */
@@ -47,6 +49,7 @@ export function createMemoryPlatform(opts: MemoryPlatformOptions = {}): MemoryPl
     shown: [],
     copied: [],
     requests: 0,
+    prepared: 0,
     notifications: {
       permission: () => permission,
       async request() {
@@ -59,6 +62,9 @@ export function createMemoryPlatform(opts: MemoryPlatformOptions = {}): MemoryPl
         if (permission !== 'granted') return false;
         mp.shown.push({ ...n });
         return true;
+      },
+      async prepare() {
+        mp.prepared++;
       },
       onOpen: (cb) => subscribe(openers, cb),
     },

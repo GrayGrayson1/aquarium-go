@@ -8,7 +8,7 @@
 import { describe, it, expect, afterEach, beforeAll, vi } from 'vitest';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
-import { createWebPlatform, APP_ICON, NOTIFICATION_CLICK, type PlatformNotification } from '@/platform';
+import { createWebPlatform, APP_ICON, NOTIFICATION_CLICK, NOTIFICATION_WORKER, type PlatformNotification } from '@/platform';
 
 const ROOT = join(__dirname, '..', '..');
 const SRC = join(ROOT, 'src');
@@ -270,9 +270,30 @@ describe('PLAT-002: web notifications', () => {
     expect(p.notifications.cancelAll).toBeUndefined();
   });
 
-  it('the notification icon is the favicon the repo ships, under the base path', async () => {
-    expect(APP_ICON).toBe(`${import.meta.env.BASE_URL}favicon.svg`);
+  // chunk 3 (NOTIFY-008 A4, §12.6): the icon is now the favicon rendered as a 192 px PNG (chunk 1 used the SVG itself
+  // until public/ had one; not every system draws an SVG notification icon)
+  it('the notification icon is a 192 px PNG of the favicon, under the base path', async () => {
+    expect(APP_ICON).toBe(`${import.meta.env.BASE_URL}icon-192.png`);
+    const png = await readFile(join(ROOT, 'public', 'icon-192.png'));
+    expect([...png.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(png.readUInt32BE(16)).toBe(192); // IHDR width
+    expect(png.readUInt32BE(20)).toBe(192); // IHDR height
     expect(await readFile(join(ROOT, 'public', 'favicon.svg'), 'utf8')).toContain('<svg');
+  });
+
+  it('prepare() registers public/sw.js with the base path as its scope, and never throws (chunk 3)', async () => {
+    const register = vi.fn(async (_url: string, _opts?: RegistrationOptions) => ({}));
+    browser({ Notification: notificationApi('granted').Api, navigator: { serviceWorker: Object.assign(fakeServiceWorker(undefined), { register }) } });
+    await createWebPlatform().notifications.prepare!();
+    expect(register).toHaveBeenCalledWith(NOTIFICATION_WORKER, { scope: import.meta.env.BASE_URL });
+    expect(NOTIFICATION_WORKER).toBe(`${import.meta.env.BASE_URL}sw.js`);
+    const refused = vi.fn(async () => {
+      throw new Error('SecurityError');
+    });
+    browser({ navigator: { serviceWorker: Object.assign(fakeServiceWorker(undefined), { register: refused }) } });
+    await expect(createWebPlatform().notifications.prepare!()).resolves.toBeUndefined();
+    browser({ navigator: {} });
+    await expect(createWebPlatform().notifications.prepare!()).resolves.toBeUndefined();
   });
 });
 

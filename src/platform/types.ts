@@ -16,6 +16,8 @@ export interface NotificationPort {
   permission(): NotifyPermission;
   request(): Promise<NotifyPermission>;                        // call only from a user gesture
   show(n: PlatformNotification): Promise<boolean>;             // false = not shown (no permission / unsupported)
+  /** Get ready to deliver taps (the web registers public/sw.js); call once permission is granted. Never prompts. */
+  prepare?(): Promise<void>;
   schedule?(n: PlatformNotification, at: Date): Promise<boolean>; // native only (§12.7)
   cancelAll?(): Promise<void>;                                 // native only
   onOpen(cb: (route: string | null) => void): () => void;      // a notification was tapped

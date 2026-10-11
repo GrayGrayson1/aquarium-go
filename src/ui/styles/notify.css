@@ -1,0 +1,32 @@
+/* Settings › Notifications and the Alerts drawer footer, 0.5 (chunk 3, spec §12.3, §12.4, §17). Tokens from tokens.css.
+   OWNER: lane "notify". */
+
+/* status callout (§12.3) */
+.ag-notify-status { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; margin-bottom: 14px; border-radius: var(--r-lg); border: 1px solid var(--c-line); background: var(--c-fill); }
+.ag-notify-status__icon { flex: none; margin-top: 1px; color: var(--c-ink-3); }
+.ag-notify-status__title { font-size: calc(13.5px * var(--text-scale)); font-weight: 620; color: var(--c-ink); }
+.ag-notify-status__text { margin-top: 2px; font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-2); }
+.ag-notify-status .ag-btn { flex: none; align-self: center; }
+.ag-notify-status.is-info { border-color: color-mix(in srgb, var(--c-aqua) 30%, transparent); background: color-mix(in srgb, var(--c-aqua) 7%, transparent); }
+.ag-notify-status.is-info .ag-notify-status__icon { color: var(--c-aqua); }
+.ag-notify-status.is-good { border-color: color-mix(in srgb, var(--c-good) 35%, transparent); background: color-mix(in srgb, var(--c-good) 8%, transparent); }
+.ag-notify-status.is-good .ag-notify-status__icon { color: var(--c-good); }
+.ag-notify-status.is-watch { border-color: color-mix(in srgb, var(--c-watch) 35%, transparent); background: color-mix(in srgb, var(--c-watch) 8%, transparent); }
+.ag-notify-status.is-watch .ag-notify-status__icon { color: var(--c-watch); }
+
+/* rows: icon chip, title and subtitle, control (§12.3 sections) */
+.ag-notify-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; border-bottom: 1px solid var(--c-line); }
+.ag-notify-row:last-child { border-bottom: 0; }
+.ag-notify-row__icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--r-md); color: var(--c-aqua); background: var(--c-aqua-soft); }
+.ag-notify-row__title { font-size: calc(13.5px * var(--text-scale)); font-weight: 620; color: var(--c-ink); }
+.ag-notify-row__sub { margin-top: 1px; font-size: calc(11.5px * var(--text-scale)); line-height: 1.4; color: var(--c-ink-3); }
+.ag-notify-row.is-locked .ag-notify-row__icon { color: var(--c-ink-3); background: var(--c-fill); }
+.ag-notify-row .ag-btn { flex: none; }
+
+/* Alerts drawer footer (§12.4) */
+.ag-alerts-cta { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--c-aqua) 28%, transparent); background: color-mix(in srgb, var(--c-aqua) 7%, transparent); font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; color: var(--c-ink-2); }
+.ag-alerts-cta svg { flex: none; color: var(--c-aqua); }
+.ag-alerts-cta .ag-btn { flex: none; }
+
+/* Alerts drawer: the auto-feed-paused row's "Fix" (0.5 §10.2) */
+.ag-alert-row__fix { flex: none; font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--c-aqua); }

@@ -18,6 +18,7 @@ import { Toasts } from './hud/Toasts';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { BootCard } from './nav/BootCard';
 import { startRouter, useNav } from './nav/router';
+import { startNotifications } from './notify/deliver'; // lane:notify (chunk 3)
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';
 import './styles/screens.css';
@@ -25,6 +26,8 @@ import './styles/hud.css';
 import './styles/cards.css';
 import './styles/genetics.css'; // lane:genetics
 import './styles/nav.css'; // lane:ui-shell (chunk 1)
+import './styles/automation.css'; // lane:ui-shell (chunk 3)
+import './styles/notify.css'; // lane:notify (chunk 3)
 
 registerDisplayFont();
 // lane:ui-shell (chunk 1, PLAT-003) — a platform with its own save backends (a native wrapper) hands them to persistence
@@ -52,6 +55,7 @@ export function UIRoot() {
   useDocumentSettings();
   // lane:ui-shell (chunk 1) — the hash router: links, Back/Forward, and the boot from a link or a reload (§6.4)
   useEffect(() => startRouter(), []);
+  useEffect(() => startNotifications(), []); // lane:notify — system notifications while the game is open but not focused
   const booting = useNav((s) => !!s.boot);
   const screen = useUI((s) => s.screen);
   const reduced = useSettings((s) => s.reducedMotion);

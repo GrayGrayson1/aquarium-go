@@ -42,10 +42,10 @@ import { SaveRow } from '../screens/LoadDialog';
 import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
 import { useNavTab } from '../nav/router'; // lane:ui-shell (chunk 1)
+import { NotificationsTab } from './NotificationsTab'; // lane:notify (chunk 3)
 
-type Tab = 'general' | 'display' | 'saves' | 'about';
-/** The tabs built so far (Notifications comes with chunk 3: until then `#/settings/notifications` opens General). */
-const TABS: readonly Tab[] = ['general', 'display', 'saves', 'about'];
+type Tab = 'general' | 'display' | 'saves' | 'notifications' | 'about';
+const TABS: readonly Tab[] = ['general', 'display', 'saves', 'notifications', 'about'];
 
 const QUALITY: { id: QualityLevel; label: string; note: string }[] = [
   { id: 'low', label: 'Low', note: 'Fastest. Simpler water and shadows.' },
@@ -521,6 +521,7 @@ export function SettingsPanel() {
             { id: 'general', label: 'General' },
             { id: 'display', label: 'Play & access' },
             { id: 'saves', label: 'Saves' },
+            { id: 'notifications', label: 'Notifications' },
             { id: 'about', label: 'About' },
           ]}
         />
@@ -529,6 +530,7 @@ export function SettingsPanel() {
         {tab === 'general' && <GeneralTab />}
         {tab === 'display' && <DisplayTab />}
         {tab === 'saves' && <SavesTab />}
+        {tab === 'notifications' && <NotificationsTab />}
         {tab === 'about' && <AboutTab />}
       </div>
     </Sheet>

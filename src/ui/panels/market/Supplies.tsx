@@ -253,9 +253,19 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
           {!fits && !(fit && /undersized|oversized/i.test(fit.text)) && <Chip tone="watch">Sized for {e.gallonsRange.min}–{e.gallonsRange.max} gal</Chip>}
           <FitBadge verdict={fit} />
         </div>
-        <div className="pn-small pn-muted">
-          {e.description} · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
-        </div>
+        {e.kind === 'water_changer' ? (
+          // lane:automation (0.5 §10.3, §16 "Build/Supplies line") — what it unlocks, then its running cost
+          <>
+            <div className="pn-small pn-muted">{e.description}</div>
+            <div className="pn-small pn-muted" data-testid={`shop-equip-unlocks-${e.id}`}>
+              Unlocks the Auto-clean switch on the tank card · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
+            </div>
+          </>
+        ) : (
+          <div className="pn-small pn-muted">
+            {e.description} · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
+          </div>
+        )}
         <FitLine verdict={fit} testId={`shop-equip-fit-${e.id}`} />
       </div>
       <div className="pn-supply__side">

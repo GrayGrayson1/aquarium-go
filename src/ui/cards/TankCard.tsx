@@ -79,6 +79,7 @@ import { WaterChip } from '../screens/StarterReveal';
 import { TankKeeperLine } from '../panels/visitors/TankKeeperLine'; // lane:staff
 import { tankGearIssues, type FitVerdict } from '@/sim/care/fit'; // lane:fit
 import { FitLine } from '../common/FitNote'; // lane:fit
+import { AutomationSection, AutoCleanNote } from './Automation'; // lane:ui-shell (chunk 3, 0.5 §10)
 
 type TabId = TankCardTabId;
 
@@ -103,6 +104,7 @@ const EQUIP_ICON: Partial<Record<EquipmentKind, ComponentType<LucideProps>>> = {
   ato: Droplets,
   refugium: Droplets,
   lid: Gauge,
+  water_changer: Droplets, // lane:automation
 };
 
 const FLOW_KINDS: EquipmentKind[] = ['filter', 'powerhead', 'wavemaker', 'airstone'];
@@ -134,7 +136,7 @@ function ParamRow({ p, exact, unit, open, onToggle }: { p: ParamStatus; exact: b
   );
 }
 
-function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
+export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
   const exact = useSettings((s) => s.advancedWater);
   const unit = useSettings((s) => s.tempUnit);
   const openParam = useShell((s) => s.openParam);
@@ -171,6 +173,7 @@ function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
           <div className="ag-waterhead__line">{convertTempText(report.headline, unit)}</div>
         </div>
       </div>
+      <AutoCleanNote tank={tank} />
 
       <div className="ag-miniStats">
         {/* lane:ui-shell (B-178, ADR-0022) — a word beside the number, on the meter's own 60 / 30 bands */}
@@ -413,12 +416,13 @@ function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
   );
 }
 
-function GearTab({ game, tank }: { game: GameState; tank: Tank }) {
+export function GearTab({ game, tank }: { game: GameState; tank: Tank }) {
   const readOnly = false; // dev showcase worlds (?showcase=) are fully interactive in the game screen; they are simply never saved
   // lane:fit — running gear that can't help these animals (an autofeeder in a seahorse tank, a pump too strong for them)
   const fits = useMemo(() => new Map(safe('tankGearIssues', () => tankGearIssues(game, tank.id), []).map((i) => [i.equipmentId, i.verdict])), [game, tank]);
   return (
     <>
+      <AutomationSection g={game} tank={tank} fits={fits} />
       <Section title={<><Wrench size={12} aria-hidden /> Equipment</>}>
         {tank.equipment.length === 0 ? (
           <Empty icon={<Power size={18} />}>No equipment installed.</Empty>

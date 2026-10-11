@@ -4,8 +4,9 @@
  *
  *  - TANK ATTENTION is live state, never a "read" flag. A tank's dot is amber (watch) or red (danger) while something
  *    there needs a look, and it clears itself the moment the problem is fixed. Sources: the sim's tank status
- *    (`cache.status` — water, animal welfare, out of food), food running low, failed equipment, and running gear that
- *    leaves the animals in that tank without something they need (lane "fit" verdicts, see `gearFitItems`).
+ *    (`cache.status` — water, animal welfare, out of food), food running low, failed equipment, running gear that
+ *    leaves the animals in that tank without something they need (lane "fit" verdicts, see `gearFitItems`), and an
+ *    Auto-feed that is paused while someone is hungry (`autofeedPaused`, chunk 3).
  *  - NEWS is "new until viewed": unread log events (the bell's number), show results judged after
  *    `shows.resultsSeenHour`, research finished since the Research panel was last open, a newly unlocked feature that
  *    was never opened. Bids waiting for an answer are live (they go when answered or expired).
@@ -20,6 +21,8 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { tankFoodOutlook } from '@/sim/tankStatus';
 import { unseenResults } from '@/sim/shows';
 import { tankGearIssues, FIT_TONE } from '@/sim/care/fit'; // lane "fit" verdicts
+import { autofeedPause, type AutofeedPause } from '@/sim/care/autofeed'; // lane:automation (AUTO-005)
+import { inhabitantsOf } from '@/sim/water/env';
 import { tankStatusReason } from './tankStatus';
 import { findSpecies } from '@/data/species';
 import { isPrismatic } from '@/sim/life/rareVariants';
@@ -173,6 +176,19 @@ function residentsSig(g: GameState, tankId: string): string {
 }
 
 /**
+ * lane:automation (0.5 §10.2, AUTO-005) — the tank's Autofeeder isn't feeding (switched off, jammed or out of dry food)
+ * while a resident is hungry (hunger ≥ 50): the Alerts drawer's row, the tank's dot and the tank card share it. Cheap
+ * for tanks without an Autofeeder (one pass over the equipment).
+ */
+export function autofeedPaused(g: GameState, tank: Tank): AutofeedPause | null {
+  if (!tank.equipment?.some((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder')) return null;
+  return attempt(() => autofeedPause(tank.equipment, inhabitantsOf(g, tank.id), g.inventory?.foods ?? {}), null);
+}
+
+/** §10.2's alert row text. */
+export const autofeedPausedText = (p: Pick<AutofeedPause, 'name'>): string => `Auto-feed is paused — feed ${p.name} by hand.`;
+
+/**
  * The tank's dot colour — cheap enough for a store selector (no reports, no text). Worst of the sim status, food
  * running low, failed gear and gear that isn't helping.
  */
@@ -182,7 +198,7 @@ export function tankAttentionLevel(g: GameState, tankId: string): AttentionLevel
   let w = level(t.cache?.status);
   if (w === 'danger') return w;
   const food = t.cache?.foodLevel;
-  if (food === 'low' || food === 'out' || t.equipment?.some((e) => e.failed)) w = 'watch';
+  if (food === 'low' || food === 'out' || t.equipment?.some((e) => e.failed) || autofeedPaused(g, t)) w = 'watch';
   for (const it of gearFitItems(g, t)) w = worseLevel(w, it.level);
   return w;
 }
@@ -227,6 +243,9 @@ export function tankAttention(g: GameState, tankId: string): TankAttention {
   }
   // 4. gear that can't help these animals (lane "fit")
   for (const it of gearFitItems(g, t)) if (!said.includes(it.text)) items.push(it);
+  // 5. lane:automation (AUTO-005) — Auto-feed paused (off, jammed or empty) while someone is hungry
+  const paused = autofeedPaused(g, t);
+  if (paused) items.push({ level: 'watch', source: 'gear', text: autofeedPausedText(paused), tab: 'gear' });
   if (!items.length) return GOOD;
   items.sort((a, b) => RANK[b.level] - RANK[a.level]);
   const lvl = items.reduce<AttentionLevel>((w, it) => worseLevel(w, it.level), 'good');

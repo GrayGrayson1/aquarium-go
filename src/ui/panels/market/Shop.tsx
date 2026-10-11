@@ -58,6 +58,7 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
   if (offerId && !offer)
     return (
       <SubView onBack={() => setOfferId(null)} backLabel="Back to shop">
+        <FromNotificationBanner />
         <EmptyState
           icon={<Clock size={24} />}
           title="This offer has gone"
@@ -275,9 +276,33 @@ interface TileFit {
   reason: string | null;
 }
 
+/**
+ * lane:notify (chunk 3) — "Opened from your notification" belongs to the screen the tap opened: the first offer view
+ * (or gone-offer view) to see the router's flag keeps it and clears it, so a later offer never shows the banner.
+ */
+function useFromNotification(): boolean {
+  const flag = useNav((s) => s.fromNotification);
+  const [mine, setMine] = useState(flag);
+  useEffect(() => {
+    if (!flag) return;
+    setMine(true);
+    useNav.setState({ fromNotification: false });
+  }, [flag]);
+  return mine;
+}
+
+function FromNotificationBanner() {
+  const fromNotification = useFromNotification();
+  if (!fromNotification) return null;
+  return (
+    <div className="ag-fromnotify" data-testid="offer-from-notification">
+      <BellRing size={14} aria-hidden /> Opened from your notification
+    </div>
+  );
+}
+
 function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onBack: () => void }) {
   const link = useOfferLink(offer.id); // lane:ui-shell (chunk 1, §6.6)
-  const fromNotification = useNav((s) => s.fromNotification);
   const phone = useIsPhone();
   const sp = speciesOf(offer.speciesId);
   const tanks = orderedTanks(g);
@@ -382,11 +407,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   return (
     <SubView onBack={onBack} backLabel="Back to shop" title={<span className="pn-ellipsis">{offer.seller}</span>} actions={<CopyLinkButton link={link} phone={phone} />}>
       <OfferLinkRow link={link} />
-      {fromNotification && (
-        <div className="ag-fromnotify" data-testid="offer-from-notification">
-          <BellRing size={14} aria-hidden /> Opened from your notification
-        </div>
-      )}
+      <FromNotificationBanner />
       <div className="pn-offerhero">
         <CreaturePortrait creature={lead} size={148} className="pn-offerhero__portrait" alt={lead.name} />
         <div className="pn-grow pn-col pn-gap-2">
