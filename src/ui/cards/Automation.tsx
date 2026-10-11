@@ -144,7 +144,13 @@ function AutoFeedRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdi
           label={label}
           testId="tank-auto-feed"
           checked={autoFeedOn(dev)}
-          onChange={(v) => act((d) => setEquipment(d, tank.id, dev.id, autoFeedPatch(dev, v)), { sound: 'click', flag: 'changed_equipment' })}
+          // the patch reads the live device, not this card's throttled snapshot (a legacy 0 may have just loaded)
+          onChange={(v) =>
+            act((d) => {
+              const live = d.tanks[tank.id]?.equipment.find((e) => e.id === dev.id);
+              return setEquipment(d, tank.id, dev.id, live ? autoFeedPatch(live, v) : { on: v });
+            }, { sound: 'click', flag: 'changed_equipment' })
+          }
         />
       </div>
       {autoFeedOn(dev) && (
