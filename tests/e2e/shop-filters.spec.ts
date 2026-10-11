@@ -72,6 +72,39 @@ test.describe('Shop filters (desktop 1440×900)', () => {
     expect(h).toBeGreaterThanOrEqual(36);
   });
 
+  test('the destination tiles move with the arrow keys (ACC-003)', async ({ page }) => {
+    await shopGame(page);
+    expect((await aq<{ ok: boolean }>(page, 'act', 'buyTank', 'g20L', 'freshwater_tropical')).ok).toBe(true);
+    expect((await aq<{ ok: boolean }>(page, 'dev.addShopOffer', 'mystery_snail', { price: 12 })).ok).toBe(true);
+    const id = await probe<string>(page, 'g.market.stock[0].id');
+    await goHash(page, `#/shop/fish/${id}`);
+    const radios = page.getByRole('radiogroup', { name: 'Destination tank' }).getByRole('radio');
+    await expect(radios).toHaveCount(2);
+    const checked = () => radios.evaluateAll((els) => els.findIndex((e) => e.getAttribute('aria-checked') === 'true'));
+    const first = await checked();
+    await radios.nth(first).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(checked).toBe((first + 1) % 2);
+    await expect(radios.nth((first + 1) % 2)).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(checked).toBe(first);
+  });
+
+  test('a rare offer stocked since the Shop was last open lights the Market dot; opening it clears the dot', async ({ page }) => {
+    await shopGame(page);
+    // a Prismatic offer the way the shop stocks one (dev.addShopOffer marks its own offers seen): a copy under a new id
+    expect((await aq<{ ok: boolean }>(page, 'dev.addShopOffer', 'mystery_snail', { prismatic: true })).ok).toBe(true);
+    await expect(tid(page, 'dock-badge-market')).toHaveCount(0);
+    await page.evaluate(() => (window as unknown as { __AQ: { mutate(fn: (g: { market: { stock: { id: string }[] } }) => void): void } }).__AQ.mutate((g) => void g.market.stock.unshift({ ...g.market.stock[0], id: 'offer_dot_test' })));
+    await expect(tid(page, 'dock-badge-market')).toBeVisible();
+    await expect(tid(page, 'dock-market')).toHaveAttribute('title', /Prismatic mystery snail in the shop/);
+    await tid(page, 'dock-market').click();
+    await expect.poll(() => hash(page)).toBe('#/shop/fish/offer_dot_test');
+    await page.keyboard.press('Escape');
+    await expect(tid(page, 'panel-market')).toBeHidden();
+    await expect(tid(page, 'dock-badge-market')).toHaveCount(0);
+  });
+
   test('a maximised Market shows three columns of offers', async ({ page }) => {
     await shopGame(page);
     for (let i = 0; i < 4; i++) await aq(page, 'dev.addShopOffer', 'neon_tetra');
@@ -92,7 +125,8 @@ test.describe('Shop filters (desktop 1440×900)', () => {
     await expect(tid(page, 'offer-genes')).toBeVisible();
     await expect(tid(page, 'offer-temperament')).toBeVisible();
     // the destination tiles are one radio group, one of them checked
-    await expect(page.getByRole('radiogroup', { name: 'Destination tank' }).getByRole('radio', { checked: true })).toHaveCount(1);
+    const tiles = page.getByRole('radiogroup', { name: 'Destination tank' });
+    await expect(tiles.getByRole('radio', { checked: true })).toHaveCount(1);
     await expect(tid(page, 'compat-verdict')).toContainText('Excellent match');
     const buy = tid(page, 'buy-offer');
     const box = (await buy.boundingBox())!;
