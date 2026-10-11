@@ -50,6 +50,8 @@ import {
   unitsPerJuvenile,
   youngWaterSeverity,
   type Vec,
+  breedNotice,
+  clutchParentName,
 } from './common';
 
 export type LossCause = keyof NonNullable<Clutch['losses']>;
@@ -521,7 +523,10 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   if (mod.onPhase?.(state, cl, tank, sp, hour, ctx)) return;
   const nursery = isNurseryFor(state, tank, hour);
   const hint = !nursery && sp.breeding.nurseryRequired ? ' Adults and filters are a danger — a nursery tank gives them their best chance.' : '';
-  say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} eggs hatched — ${plural(cl.count, ph.label.replace(/s$/, ''), ph.label)}!${hint}`, tankId: cl.tankId, creatureId: cl.motherId ?? undefined, toast: toastWorthy(state, sp, 'hatch') });
+  // lane:notify — berried shrimp release young rather than hatching eggs in view: a birth (ADR-0023)
+  const loud = toastWorthy(state, sp, 'hatch');
+  const notice = loud ? breedNotice(wasBerried ? 'birth' : 'hatch', clutchParentName(state, cl), cl.count, tank) : undefined;
+  say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} eggs hatched — ${plural(cl.count, ph.label.replace(/s$/, ''), ph.label)}!${hint}`, tankId: cl.tankId, creatureId: cl.motherId ?? undefined, toast: loud, ...(notice ? { notice } : {}) });
 }
 
 function setPhase(cl: Clutch, ph: RearingPhase, sp: SpeciesDefinition, hour: number): void {

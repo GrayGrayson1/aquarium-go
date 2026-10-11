@@ -55,7 +55,7 @@ export const SHOW_RESULT_TEXT = /The judge’s cards (are in Shows|explain why)\
 const RESULTS: EventLink = { panel: 'shows', target: 'tab:results', where: '', label: 'See results' };
 
 /** The panel a log event opens, or null (tank / creature links are handled by the caller). */
-export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId'>): EventLink | null {
+export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'offerId'>): EventLink | null {
   const text = e.text ?? '';
   const m = /^Unlocked:\s*(.+)$/.exec(text);
   if (m) {
@@ -65,6 +65,8 @@ export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId'>): Ev
   if (SHOW_RESULT_TEXT.test(text)) return RESULTS;
   if (/^Research complete:/.test(text) || /^You picked up everything .+ covers through your own keeping/.test(text)) return { panel: 'research', target: null, where: '', label: 'Open Research' };
   if (e.listingId) return { panel: 'market', target: `listing:${e.listingId}`, where: '', label: 'View listing' };
+  // lane:notify (chunk 3, NOTIFY-004) — a Prismatic or special stocked opens its offer (the shop says if it has gone)
+  if (typeof e.offerId === 'string' && e.offerId) return { panel: 'market', target: `offer:${e.offerId}`, where: '', label: 'Open the shop' };
   if (/^New arrivals at the shop:|^Market special:/.test(text)) return { panel: 'market', target: 'tab:shop', where: '', label: 'Open the shop' };
   return null;
 }

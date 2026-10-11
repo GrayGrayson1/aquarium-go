@@ -899,6 +899,7 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
     text: `Sold! "${l.title}" went to ${buyerWithRole(buyerName, archetype)} for ${fmtMoney(price)}.${showpiece ? ' A showpiece sale — your reputation grows.' : ''}${thanks}`,
     listingId: l.id,
     toast: true,
+    notice: { topic: 'sale', vars: { title: l.title, buyer: buyerName, amount: price } }, // lane:notify
   });
   if (assessment.kind !== 'good') {
     emitEvent(state, {
@@ -1355,6 +1356,29 @@ function resolveCounters(state: GameState, l: Listing, rng: Rng, end: number): v
   }
 }
 
+/** lane:notify (ADR-0023) — game hours before an auction's end at which "ending soon" is announced. */
+export const AUCTION_ENDING_SOON_H = 3;
+
+/**
+ * "Auction ending soon" (ADR-0022 decision 5, ADR-0023): once per listing, in its last AUCTION_ENDING_SOON_H game
+ * hours, the first step that finds an open bid announces it (no RNG; the 'ending' alert key makes it one-shot).
+ */
+function auctionEndingSoon(state: GameState, l: Listing, now: number): void {
+  if ((l.alerts ?? []).includes('ending')) return;
+  const best = bestOpen(l);
+  if (!best) return;
+  (l.alerts ??= []).push('ending');
+  const h = Math.max(1, Math.round(l.endsHour - now));
+  const buyer = best.buyerName ?? 'a buyer';
+  emitEvent(state, {
+    kind: 'market',
+    text: `Bidding on "${l.title}" ends in about ${h} hour${h === 1 ? '' : 's'}. Best offer so far: ${fmtMoney(best.amount)} from ${buyer}${/[.!?]$/.test(buyer) ? '' : '.'}`,
+    listingId: l.id,
+    toast: true,
+    notice: { topic: 'auction_ending', vars: { title: l.title, buyer, amount: best.amount } },
+  });
+}
+
 function bestOpen(l: Listing): Bid | undefined {
   let best: Bid | undefined;
   for (const b of l.bids) if (b.status === 'open' && (!best || b.amount > best.amount)) best = b;
@@ -1511,7 +1535,13 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
     l.interest = clamp(l.interest + 0.04, 0.02, 1);
     // Only the new best offer is logged/toasted (the listing card shows every bid) — keeps the shared log readable.
     if (!prevBest || amount > prevBest.amount) {
-      emitEvent(state, { kind: 'market', text: `${buyerWithRole(buyer.name, buyer.archetype)} offered ${fmtMoney(amount)} for "${l.title}".`, listingId: l.id, toast: true });
+      emitEvent(state, {
+        kind: 'market',
+        text: `${buyerWithRole(buyer.name, buyer.archetype)} offered ${fmtMoney(amount)} for "${l.title}".`,
+        listingId: l.id,
+        toast: true,
+        notice: { topic: 'bid', vars: { title: l.title, buyer: buyer.name, amount, fair: Math.round(finite(l.lastValuation, l.snapshot.valuation)) } }, // lane:notify
+      });
     }
   }
   l.bids.push(bid);
@@ -1567,6 +1597,7 @@ export function stepListings(state: GameState, dt: number, ctx: SimContext): voi
       for (let i = 1; i <= pieces && l.status === 'active'; i++) arrivals(state, l, rng, piece, end - dt + piece * i);
     }
     if (l.status !== 'active') continue;
+    if (end < l.endsHour && end >= l.endsHour - AUCTION_ENDING_SOON_H) auctionEndingSoon(state, l, end);
     if (end >= l.endsHour) {
       const pending = l.bids.some((b) => b.status === 'open' || b.status === 'countered');
       if (!pending) expireListing(state, l);
