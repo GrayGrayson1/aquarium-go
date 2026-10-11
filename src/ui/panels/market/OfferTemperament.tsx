@@ -31,7 +31,7 @@ function TemperMeter({ label, lo, hi, value, word, exact }: { label: string; lo:
     <div className="ag-temper__row">
       <span className="ag-temper__label">{label}</span>
       <span className="ag-temper__meter">
-        <span className="ag-temper__track" role="img" aria-label={`${label}: ${word}${exact ? ` (${Math.round(v)} of 100)` : ''}`}>
+        <span className="ag-temper__track" role="img" aria-label={`${label}: ${exact ? `${word} · ${Math.round(v)}` : word}`}>
           <span className="ag-temper__thumb" style={{ left: `${v}%` }} />
         </span>
         <span className="ag-temper__ends" aria-hidden>

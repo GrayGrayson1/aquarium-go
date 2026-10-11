@@ -53,7 +53,8 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
     useSeenStock.getState().markSeen(g.market.stock.map((o) => o.id));
   }, [stockKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (offerId && offer) return <OfferDetail g={g} offer={offer} onBack={() => setOfferId(null)} />;
+  // keyed by offer: moving straight from one offer to another starts with fresh picks, tank choice and risk box
+  if (offerId && offer) return <OfferDetail key={offer.id} g={g} offer={offer} onBack={() => setOfferId(null)} />;
   if (offerId && !offer)
     return (
       <SubView onBack={() => setOfferId(null)} backLabel="Back to shop">
@@ -216,7 +217,8 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
   const firstTrait = lead?.personality[0];
   // after the Genetics Lab: hidden carriers of rare alleles ("Carries Cambodian")
   const carries = sp && lead && geneticsRevealLevel(g, lead) >= 1 ? safe(() => rareCarried(sp, lead.genome), []) : [];
-  const status = [!fits && sp ? `needs a ${ENV_LABEL[sp.environment].toLowerCase()} tank` : '', fits && !affordable ? 'can’t afford yet' : '', locked ? 'locked' : ''].filter(Boolean).join(', ');
+  // the notes under the price, as they read on the card (B-178: status in the card's name)
+  const status = [!fits && sp ? `Needs a ${ENV_LABEL[sp.environment].toLowerCase()} tank` : '', fits && !affordable ? 'Can’t afford yet' : '', locked ? 'Locked' : ''].filter(Boolean).join(', ');
   return (
     <Card className={clsx('pn-offer', 'ag-offercard', shimmer && 'ag-prismatic-card')} onClick={onOpen} testId={`shop-offer-${index}`} label={`${shimmer ? 'Prismatic ' : ''}${title}, ${formatMoney(offer.price)}${status ? `, ${status}` : ''}`}>
       <div className="pn-offer__top">
@@ -603,8 +605,8 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
 /** "{Tier} morph · about 1 in {n} market {species plural}" (0.5 §7.4 item 7), from the catalog. */
 function MorphLine({ sp, c }: { sp: SpeciesDefinition; c: Creature }) {
   const e = safe(() => catalogEntry(sp, c.morphName), undefined);
-  // a Common morph would read "about 1 in 1" for most wild types: the line is for morphs worth noticing
-  if (!e || !(e.frequency > 0) || e.tier === 'common') return null;
+  // only the degenerate case is left out: a morph most market animals show would read "about 1 in 1"
+  if (!e || !(e.frequency > 0) || oneInLabel(e.frequency) === '1 in 1') return null;
   return (
     <p className="ag-morphline" data-testid="offer-morph-line">
       <Sparkles size={13} aria-hidden /> {RARITY_LABEL[e.tier]} morph · about {oneInLabel(e.frequency)} market {speciesPlural(sp)}

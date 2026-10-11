@@ -1330,7 +1330,7 @@
         "§6.3",
         "§16"
       ],
-      "note": "Chunk 2 (2026-10-08): ui-shop-05 (banner, morph line \"Rare morph · about 1 in 143 market bettas\"); the banner clears on the next navigation (router, chunk 1). The morph line is left out for Common morphs (a wild type would read \"about 1 in 1\")."
+      "note": "Chunk 2 (2026-10-08): ui-shop-05 (banner, morph line \"Rare morph · about 1 in 143 market bettas\"); the banner clears on the next navigation (router, chunk 1). Review fix: the line follows §7.4 for every tier (\"Common morph · about 1 in 5 market bettas\", ui-shop-05) and is left out only when it would read \"about 1 in 1\"."
     },
     {
       "id": "MKT-007",
@@ -1352,7 +1352,7 @@
         "§7.4.1",
         "§17"
       ],
-      "note": "Chunk 2 (2026-10-08): offer-genes.test.ts; nouns per ADR-0020 decision 4."
+      "note": "Chunk 2 (2026-10-08): offer-genes.test.ts; nouns per ADR-0020 decision 4. Review fix: before the lab a row says only what every genotype with the same look shares, so look-alikes read alike in every species (property test); a gene with no trace on the look reads \"Can’t be seen on this animal\" (ADR-0021); \"only shows on …\" appears only for betta Cambodian."
     },
     {
       "id": "MKT-008",
@@ -1374,7 +1374,7 @@
       "designSections": [
         "§7.4.1"
       ],
-      "note": "Chunk 2 (2026-10-08): offer-genes.test.ts (chips, footers, partner forecast)."
+      "note": "Chunk 2 (2026-10-08): offer-genes.test.ts (chips, footers, partner forecast, \"all their young\" and \"Pair it\" from ADR-0021). §7.4.1's \"no copies\" for a new gene holds for Metallic only (erratum in ADR-0021)."
     },
     {
       "id": "MKT-009",
@@ -1445,7 +1445,7 @@
         "§7.5",
         "§7.7"
       ],
-      "note": "Chunk 2 (2026-10-08): buyState table, \"You need $X more\" (ui-shop-05); return to #/ with the Bought toast (shop-filters.spec); gameplay and prismatic specs green."
+      "note": "Chunk 2 (2026-10-08): buyState table, \"You need $X more\" (ui-shop-05); return to #/ with the Bought toast (shop-filters.spec) and the gold Prismatic find toast (prismatic.spec); gameplay and prismatic specs green."
     },
     {
       "id": "MKT-012",
@@ -1489,7 +1489,7 @@
       "designSections": [
         "§7.7"
       ],
-      "note": "Chunk 2 (2026-10-08): Prismatic Livestock rows get .ag-prismatic-row (genetics.css)."
+      "note": "Chunk 2 (2026-10-08): Prismatic Livestock rows get .ag-prismatic-row (genetics.css); prismatic.spec checks the bought Prismatic's row."
     },
     {
       "id": "MKT-014",
@@ -1514,7 +1514,7 @@
         "§7.7",
         "§15"
       ],
-      "note": "Chunk 2 (2026-10-08): notify-navdots.test.ts; ui-notify-news and ui-notify-attention unchanged and green. dev.addShopOffer marks its offer seen (a test scenario is not news)."
+      "note": "Chunk 2 (2026-10-08): notify-navdots.test.ts; ui-notify-news and ui-notify-attention unchanged and green. dev.addShopOffer marks its offer seen (a test scenario is not news); shop-filters.spec lights the dot with an unseen Prismatic offer and sees it clear once the Shop has been open. A load (another aquarium, an earlier state, or a jump ahead of 6+ game hours) reseeds the seen set."
     },
     {
       "id": "MKT-015",
@@ -3221,7 +3221,7 @@
         "§18",
         "§3"
       ],
-      "note": "Chunk 2 (2026-10-08): radiogroup with one checked radio and arrow keys, icon + word verdicts and badges, named portraits, aria-hidden icons, chips >= 36 px and buy >= 44 px (shop-filters.spec); under high contrast the Prismatic chip turns solid #fff0b3 behind #2a1640 (about 13:1)."
+      "note": "Chunk 2 (2026-10-08): radiogroup with one checked radio, and arrow keys that move the choice (shop-filters.spec), icon + word verdicts and badges, named portraits, aria-hidden icons, chips >= 36 px and buy >= 44 px (shop-filters.spec); under high contrast the Prismatic chip turns solid #fff0b3 behind #2a1640 (about 13:1)."
     },
     {
       "id": "ACC-004",

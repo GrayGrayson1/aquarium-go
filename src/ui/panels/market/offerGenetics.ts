@@ -5,8 +5,9 @@
  * callers pass `labOwned` = that level ≥ 1. OWNER: lane "ui-panels" (lane:genetics).
  */
 import type { Creature, GameState, Genome, LocusDefinition, PhenotypeRule, Rarity, SpeciesDefinition } from '@/types';
-import { allelePair, expressedAlleles, matchRules, normalizeGenome, predictOffspringPhenotypes } from '@/sim/life/genetics';
+import { allelePair, expressedAlleles, matchRules, normalizeGenome, predictOffspringPhenotypes, ruleMatch, selectRules, type RuleMatches } from '@/sim/life/genetics';
 import { morphTierOf, strainOf, strainTier, tierRank } from '@/sim/life/morphCatalog';
+import { pluralName } from '@/sim/economy/util';
 
 /** Genes added in 0.5, per species: they get the "NEW" tag, the "New gene · " prefix and the card chip. Drop in 0.6. */
 export const NEW_LOCI: Readonly<Record<string, readonly string[]>> = { betta: ['cambodian', 'metallic'] };
@@ -49,10 +50,104 @@ function shownRuleIds(sp: SpeciesDefinition, g: Genome): Set<string> {
   return new Set([...(m.base ? [m.base.id] : []), ...m.overlays.map((o) => o.id)]);
 }
 
-/** Plural of a species' common name for running text ("bettas", "cherry shrimp"). */
+/** Plural of a species' common name for running text ("bettas", "cherry shrimp", "fancy guppies", "discus"). */
 export function speciesPlural(sp: SpeciesDefinition): string {
-  const n = sp.commonName.toLowerCase();
-  return /(shrimp|fish|sheep|koi)$/i.test(n) ? n : /(s|x|ch|sh)$/i.test(n) ? `${n}es` : `${n}s`;
+  return pluralName(sp.commonName);
+}
+
+/** A look: the rules a genome expresses and how strongly (base, half bases, overlay weights), as one key. */
+function lookKey(m: RuleMatches): string {
+  return [m.base?.id ?? '', ...m.partialBases.map((r) => `~${r.id}`), ...m.overlayWeights.map((o) => `${o.rule.id}:${o.weight}`)].join('|');
+}
+
+/** Per species: the unordered allele pairs of each locus, and for every look the pairs some genotype with it holds. */
+interface LookTable {
+  pairs: [string, string][][];
+  byLook: Map<string, Set<number>[]>;
+}
+
+const LOOK_TABLES = new Map<string, LookTable | null>();
+/** Above this many genotypes the table isn't built (none today: bettas have 72,900) and rows fall back to one locus. */
+const MAX_LOOK_GENOTYPES = 400_000;
+const NEUTRAL_POTENTIALS = { size: 50, color: 50, pattern: 50, structure: 50, fertility: 50, hardiness: 50, temperament: 50, curiosity: 50 };
+
+/**
+ * Every genotype of the species, grouped by look: which allele pairs of each locus occur under each look. Built once
+ * per species with the engine's own rule selection (selectRules over per-condition ruleMatch tables, as the morph
+ * catalog does), so it agrees with resolveMorph exactly.
+ */
+function lookTable(sp: SpeciesDefinition): LookTable | null {
+  if (LOOK_TABLES.has(sp.id)) return LOOK_TABLES.get(sp.id)!;
+  const loci = sp.genetics.loci;
+  const pairs = loci.map((l) => {
+    const out: [string, string][] = [];
+    for (let i = 0; i < l.alleles.length; i++) for (let j = i; j < l.alleles.length; j++) out.push([l.alleles[i].id, l.alleles[j].id]);
+    return out.length ? out : ([['?', '?']] as [string, string][]);
+  });
+  const total = pairs.reduce((n, p) => n * p.length, 1);
+  if (total > MAX_LOOK_GENOTYPES) {
+    LOOK_TABLES.set(sp.id, null);
+    return null;
+  }
+  // each rule condition's truth over its own locus's pairs (ruleMatch on that one condition)
+  const conds = new Map<PhenotypeRule, { li: number; t: number[] }[]>();
+  for (const r of sp.genetics.phenotypes) {
+    conds.set(
+      r,
+      r.when.map((w) => {
+        const li = loci.findIndex((l) => l.id === w.locus);
+        return { li, t: li < 0 ? [] : pairs[li].map((pair) => ruleMatch(sp, { alleles: { [w.locus]: pair }, potentials: NEUTRAL_POTENTIALS }, { ...r, when: [w] })) };
+      }),
+    );
+  }
+  const idx = new Array<number>(loci.length).fill(0);
+  const score = (r: PhenotypeRule): number => {
+    let m = 1;
+    for (const c of conds.get(r) ?? []) {
+      if (c.li < 0) return 0;
+      const v = c.t[idx[c.li]];
+      if (v < m) m = v;
+      if (m === 0) return 0;
+    }
+    return m;
+  };
+  const byLook = new Map<string, Set<number>[]>();
+  for (let n = 0; n < total; n++) {
+    let rem = n;
+    for (let i = 0; i < loci.length; i++) {
+      idx[i] = rem % pairs[i].length;
+      rem = Math.floor(rem / pairs[i].length);
+    }
+    const key = lookKey(selectRules(sp, score));
+    let sets = byLook.get(key);
+    if (!sets) byLook.set(key, (sets = loci.map(() => new Set<number>())));
+    for (let i = 0; i < loci.length; i++) sets[i].add(idx[i]);
+  }
+  const table = { pairs, byLook };
+  LOOK_TABLES.set(sp.id, table);
+  return table;
+}
+
+/**
+ * The allele pairs of a locus that some animal with exactly this look could carry. Before the Genetics Lab a row may
+ * only say what all of them share, so two animals that look alike read alike (no leak).
+ */
+function lookalikePairs(sp: SpeciesDefinition, g: Genome, locus: LocusDefinition): [string, string][] {
+  const li = sp.genetics.loci.indexOf(locus);
+  const table = lookTable(sp);
+  const sets = table?.byLook.get(lookKey(matchRules(sp, g)));
+  if (table && sets) return [...sets[li]].map((k) => table.pairs[li][k]);
+  // fallback (no table): vary this locus alone, every other locus as it is
+  const key = lookKey(matchRules(sp, g));
+  const out: [string, string][] = [];
+  for (const pair of table?.pairs[li] ?? lookTablePairs(locus)) if (lookKey(matchRules(sp, { ...g, alleles: { ...g.alleles, [locus.id]: pair } })) === key) out.push(pair);
+  return out;
+}
+
+function lookTablePairs(locus: LocusDefinition): [string, string][] {
+  const out: [string, string][] = [];
+  for (let i = 0; i < locus.alleles.length; i++) for (let j = i; j < locus.alleles.length; j++) out.push([locus.alleles[i].id, locus.alleles[j].id]);
+  return out;
 }
 
 // ───────────────────────────── Genes rows (§7.4.1) ─────────────────────────────
@@ -69,17 +164,20 @@ export interface GeneRow {
   copies: { kind: CopiesKind; text: string; title?: string; rare?: boolean };
 }
 
-/** The locus' conditional rule ("Cambodian needs red") as " · only shows on red bettas", or ''. */
+/**
+ * " · only shows on red bettas" when every rule that shows this locus needs the same allele of another locus showing
+ * (Cambodian needs red); '' when any rule shows it without that condition.
+ */
 function conditionalSuffix(sp: SpeciesDefinition, locus: LocusDefinition): string {
-  for (const r of sp.genetics.phenotypes) {
-    if (!r.when.some((w) => w.locus === locus.id && w.count !== 'none')) continue;
-    const other = r.when.find((w) => w.locus !== locus.id && w.count === 'any');
-    if (!other) continue;
-    const ol = sp.genetics.loci.find((l) => l.id === other.locus);
-    if (!ol) continue;
-    return ` · only shows on ${lower(alleleName(ol, other.allele))} ${speciesPlural(sp)}`;
-  }
-  return '';
+  // every rule the gene takes part in, "none" conditions included (cherry density shapes Blue Dream that way)
+  const rules = sp.genetics.phenotypes.filter((r) => r.when.some((w) => w.locus === locus.id));
+  if (!rules.length) return '';
+  const needs = (r: PhenotypeRule) => r.when.filter((w) => w.locus !== locus.id && w.count === 'any').map((w) => `${w.locus}|${w.allele}`);
+  const shared = needs(rules[0]).find((k) => rules.every((r) => needs(r).includes(k)));
+  if (!shared) return '';
+  const [otherLocus, allele] = shared.split('|');
+  const ol = sp.genetics.loci.find((l) => l.id === otherLocus);
+  return ol ? ` · only shows on ${lower(alleleName(ol, allele))} ${speciesPlural(sp)}` : '';
 }
 
 /** The rule summary for a locus, given the allele the row names (§7.4.1). */
@@ -118,19 +216,19 @@ function mostCommon(locus: LocusDefinition): string {
 }
 
 /**
- * A mendelian allele the animal carries but doesn't show. Visible when a rule in the phenotype needs it (axolotl d/d
- * shows inside White Albino). Otherwise hidden when it has a trait rule that isn't showing (unless it tops its ladder,
- * where its base rule may simply lose to another), or, with no rule, when the dominance ladder hides it. So a
- * heterozygous recessive is hidden, and so is Cambodian on a non-red betta.
+ * A mendelian allele the animal carries but doesn't show: an allele with a trait rule shows only when a rule in the
+ * phenotype needs it (axolotl d/d shows inside White Albino); one without a rule shows when the dominance ladder
+ * expresses it. So a heterozygous recessive is hidden, and so is Cambodian on a non-red betta.
  */
 function isHiddenAllele(sp: SpeciesDefinition, locus: LocusDefinition, a: string, pair: [string, string], shownRules: ReadonlySet<string>): boolean {
   const needed = sp.genetics.phenotypes.some((r) => shownRules.has(r.id) && r.when.some((w) => w.locus === locus.id && w.allele === a && w.count !== 'none'));
   if (needed) return false;
-  const top = Math.max(...locus.alleles.map((x) => x.dominance));
-  const dom = locus.alleles.find((x) => x.id === a)?.dominance ?? 0;
-  if (traitRule(sp, locus.id, a)) return dom < top;
+  if (traitRule(sp, locus.id, a)) return true;
   return !expressedAlleles(locus, pair).includes(a);
 }
+
+/** The row's trait when this gene leaves no trace on the animal's look (owner's wording, ADR-0021). */
+export const MASKED_TRAIT = 'Can’t be seen on this animal';
 
 const copiesWord = (n: number) => (n === 0 ? 'no copies' : n === 1 ? '1 copy' : '2 copies');
 const KNOWN_TITLE = 'The visible trait already proves this';
@@ -139,38 +237,54 @@ const HIDDEN_TITLE = 'Second copy hidden until the Genetics Lab';
 /** One row per locus, in data order. `labOwned`: the reveal level is 1 (the Genetics Lab is researched). */
 export function geneRows(sp: SpeciesDefinition, genome: Genome, labOwned: boolean): GeneRow[] {
   const g = normalizeGenome(sp, genome);
-  const shownRules = shownRuleIds(sp, g);
-  return sp.genetics.loci.map((locus) => {
+  return sp.genetics.loci.map((locus): GeneRow => {
     const pair = allelePair(locus, g);
     const isNew = isNewLocus(sp, locus.id);
     const base = { locusId: locus.id, label: locus.name, isNew };
     const common = mostCommon(locus);
+    const inOrder = (ids: Iterable<string>) => {
+      const set = new Set(ids);
+      return locus.alleles.map((a) => a.id).filter((id) => set.has(id));
+    };
+    // what every look-alike pair shares is what the look proves; one look-alike pair means the copies are known
+    const lookalikes = lookalikePairs(sp, g, locus);
+    const proven = inOrder(locus.alleles.map((a) => a.id).filter((id) => lookalikes.every((p) => p.includes(id))));
+    const known = lookalikes.length === 1;
+    const hiddenChip = { kind: 'hidden' as const, text: '+ ?', title: HIDDEN_TITLE };
+    const masked: GeneRow = { ...base, trait: MASKED_TRAIT, summary: '', copies: hiddenChip };
     if (locus.mode !== 'mendelian') {
-      // additive and codominant copies always show: count the allele that isn't the common one
-      const v = pair.find((a) => a !== common) ?? variantAllele(locus);
+      // additive and codominant copies show, wherever the gene shows at all: count the allele that isn't the common one
+      // (in the locus's order, so h/p and p/h read alike; two different ones are both named, one copy each)
+      const variants = inOrder(pair.filter((a) => a !== common));
+      const v = variants[variants.length - 1] ?? variantAllele(locus);
       const n = pair.filter((a) => a === v).length;
-      const trait = n > 0 ? (traitRule(sp, locus.id, v, n === 2 ? 'hom' : 'het')?.name ?? alleleName(locus, v)) : alleleName(locus, common);
-      return { ...base, trait, summary: ruleSummary(sp, locus, v), copies: { kind: 'known', text: copiesWord(n), title: KNOWN_TITLE } };
+      const trait = variants.length === 2 ? variants.map((a) => alleleName(locus, a)).join(' / ') : n > 0 ? (traitRule(sp, locus.id, v, n === 2 ? 'hom' : 'het')?.name ?? alleleName(locus, v)) : alleleName(locus, common);
+      const row: GeneRow = { ...base, trait, summary: ruleSummary(sp, locus, v), copies: { kind: 'known', text: copiesWord(n), title: KNOWN_TITLE } };
+      if (labOwned || known) return row;
+      // the look doesn't settle it (density on a wild-type shrimp): before the lab, only what the look proves
+      if (!proven.length) return masked;
+      return { ...base, trait: proven.map((a) => alleleName(locus, a)).join(' / '), summary: ruleSummary(sp, locus, proven[0]), copies: hiddenChip };
     }
-    // what the phenotype shows of this locus (Cambodian on a royal betta shows nothing: the row reads "Normal body")
-    const visible = [...new Set(pair)].filter((a) => !isHiddenAllele(sp, locus, a, pair, shownRules));
-    const named = visible.length ? visible : [common];
-    const trait = named.map((a) => alleleName(locus, a)).join(' / ');
-    const summary = ruleSummary(sp, locus, named[0]);
-    const minDom = Math.min(...locus.alleles.map((a) => a.dominance));
-    const dom = (a: string) => locus.alleles.find((x) => x.id === a)?.dominance ?? 0;
-    // the phenotype proves the copies: two different alleles both showing, or one at the bottom of the ladder
-    if (visible.length === 2) return { ...base, trait, summary, copies: { kind: 'known', text: '1 copy', title: KNOWN_TITLE } };
-    if (visible.length === 1 && dom(visible[0]) === minDom) return { ...base, trait, summary, copies: { kind: 'known', text: '2 copies', title: KNOWN_TITLE } };
-    if (!labOwned) return { ...base, trait, summary, copies: { kind: 'hidden', text: '+ ?', title: HIDDEN_TITLE } };
+    const knownChip = { kind: 'known' as const, text: pair[0] === pair[1] ? '2 copies' : '1 copy', title: KNOWN_TITLE };
+    if (!labOwned) {
+      if (!proven.length) return masked;
+      const trait = proven.map((a) => alleleName(locus, a)).join(' / ');
+      return { ...base, trait, summary: ruleSummary(sp, locus, proven[0]), copies: known ? knownChip : hiddenChip };
+    }
+    // after the lab: the genotype as the dominance ladder reads it, with every copy named
+    const shown = inOrder(expressedAlleles(locus, pair));
+    const trait = shown.map((a) => alleleName(locus, a)).join(' / ');
+    const summary = ruleSummary(sp, locus, shown[0]);
+    if (known) return { ...base, trait, summary, copies: knownChip };
     if (isNew) {
       // a 0.5 gene counts its own (rare) allele: "no copies" / "carries Cambodian" / "2 copies"
       const v = locus.alleles.find((a) => a.rare)?.id ?? variantAllele(locus);
       const n = pair.filter((a) => a === v).length;
       return { ...base, trait, summary, copies: { kind: 'revealed', text: n === 1 ? `carries ${alleleName(locus, v)}` : copiesWord(n), rare: n > 0 && !!locus.alleles.find((a) => a.id === v)?.rare } };
     }
-    const hidden = pair.find((a) => !visible.includes(a));
-    if (!hidden || pair[0] === pair[1]) return { ...base, trait, summary, copies: { kind: 'revealed', text: '2 copies' } };
+    if (pair[0] === pair[1]) return { ...base, trait, summary, copies: { kind: 'revealed', text: '2 copies' } };
+    const hidden = pair.find((a) => !shown.includes(a));
+    if (!hidden) return { ...base, trait, summary, copies: { kind: 'revealed', text: '1 copy' } };
     return { ...base, trait, summary, copies: { kind: 'revealed', text: `carries ${alleleName(locus, hidden)}`, rare: !!locus.alleles.find((a) => a.id === hidden)?.rare } };
   });
 }
@@ -246,11 +360,14 @@ export function strainOrMorphTier(sp: SpeciesDefinition, c: Pick<Creature, 'morp
 
 // ───────────────────────────── Genes footer (§7.4.1) ─────────────────────────────
 
-/** "about 3 in 8": the simplest fraction with a denominator up to 16 within 1% of the share. */
+/**
+ * "about 3 in 8": the simplest fraction with a denominator up to 16 within 1% of the share, never "n in n" (a share
+ * that rounds to every youngster reads "all their young", see genesFooter).
+ */
 export function aboutFraction(share: number): string {
   let best = { n: 1, d: 1, err: Infinity };
   for (let d = 2; d <= 16; d++) {
-    const n = Math.max(1, Math.round(share * d));
+    const n = Math.min(d - 1, Math.max(1, Math.round(share * d)));
     const err = Math.abs(n / d - share);
     if (err < best.err - 0.01) best = { n, d, err };
   }
@@ -265,7 +382,12 @@ export type GenesFooter = { kind: 'locked' | 'lab' | 'none'; text: string };
  */
 export function genesFooter(sp: SpeciesDefinition, c: Pick<Creature, 'sex' | 'genome'>, rows: GeneRow[], labOwned: boolean, partners: readonly Pick<Creature, 'name' | 'sex' | 'genome'>[] = []): GenesFooter {
   const allKnown = rows.every((r) => r.copies.kind === 'known');
-  const carried = carriedTraits(sp, c.genome);
+  // advice is about recessives the animal carries (an allele that only lost to another gene's look isn't one)
+  const recessive = (t: CarriedTrait) => {
+    const l = sp.genetics.loci.find((x) => x.id === t.locusId);
+    return !!l && (l.alleles.find((a) => a.id === t.allele)?.dominance ?? 0) < Math.max(...l.alleles.map((a) => a.dominance));
+  };
+  const carried = carriedTraits(sp, c.genome).filter(recessive);
   if (allKnown || (labOwned && carried.length === 0)) {
     const additiveOnly = sp.genetics.loci.length > 0 && sp.genetics.loci.every((l) => l.mode !== 'mendelian');
     return { kind: 'none', text: additiveOnly ? 'Nothing hidden: additive traits always show their copies.' : 'Nothing hidden: every trait here shows its copies.' };
@@ -284,7 +406,8 @@ export function genesFooter(sp: SpeciesDefinition, c: Pick<Creature, 'sex' | 'ge
       const share = ph.filter((o) => o.overlayIds.includes(trait.rule!.id) || o.baseId === trait.rule!.id).reduce((s, o) => s + o.chance, 0);
       if (share > 0 && (!best || share > best.share)) best = { name: p.name, share };
     }
-    if (best) return { kind: 'lab', text: `Genetics Lab: ${Pronoun} carries ${trait.name}: paired with ${best.name}, about ${aboutFraction(best.share)} young would be ${shownAs(sp, trait)}.` };
+    // "all their young" (ADR-0021) when practically every youngster shows it
+    if (best) return { kind: 'lab', text: `Genetics Lab: ${Pronoun} carries ${trait.name}: paired with ${best.name}, ${best.share >= 0.97 ? 'all their' : `about ${aboutFraction(best.share)}`} young would be ${shownAs(sp, trait)}.` };
   }
   return { kind: 'lab', text: `Genetics Lab: Pair ${him} with another ${trait.name} carrier for about 1 in 4 ${trait.name} young.` };
 }

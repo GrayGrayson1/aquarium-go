@@ -4,6 +4,8 @@
  * simRng(state) on the same stored state (which made the creature step replay its draws and rewound rngState).
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { GameState, Tank } from '@/types';
 import { FIXTURES } from '@/dev/fixtures';
 import { stepTankDecor } from '@/sim/aquascape';
@@ -34,7 +36,11 @@ describe('coral nipping uses the tank step’s stream (B-168)', () => {
     expect(g.rngState).toBe(before);
   });
 
-  it('a world step with a coral nipper keeps one stream: no decor draw is replayed by the creature step', () => {
+  it('the world step hands the decor step its own ctx.rng', () => {
+    expect(readFileSync(join(process.cwd(), 'src/sim/world.ts'), 'utf8')).toContain('stepTankDecor(state, tank, dt, ctx.hour, ctx.rng)');
+  });
+
+  it('decor steps given the world stream are deterministic and advance it', () => {
     // the same step twice from the same state agrees (determinism), and rngState moves on
     const a = reefWithNipper();
     const b = reefWithNipper();

@@ -111,7 +111,7 @@ export const betta: SpeciesDefinition = {
           { id: 'copper', name: 'Copper', dominance: 3, frequency: 0.07 },
           { id: 'black', name: 'Melano black', dominance: 2, frequency: 0.07 },
           { id: 'yellow', name: 'Non-red yellow', dominance: 1, frequency: 0.07 },
-          { id: 'white', name: 'Opaque white', dominance: 0, frequency: 0.07, rare: true }, // lane:genetics (B-136) — a two-copy trait sits below yellow, so a carrier reads as hidden,
+          { id: 'white', name: 'Opaque white', dominance: 0, frequency: 0.07, rare: true }, // lane:genetics (B-136) — a two-copy trait sits below yellow, so a carrier reads as hidden
         ],
         note: 'Real betta colour genetics involve several interacting loci (iridescence, red, melano, opaque...). Simplified to a single dominance ladder for play.',
       },

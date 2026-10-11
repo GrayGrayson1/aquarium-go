@@ -7,6 +7,8 @@ import { describe, it, expect } from 'vitest';
 import type { Creature, Genome } from '@/types';
 import { getSpecies, findSpecies, listSpecies } from '@/data/species';
 import { geneRows, genesFooter, ruleSummary, locusNoun, aboutFraction, carriedTraits, expressedNewGenes, strainOrMorphTier, speciesPlural } from '@/ui/panels/market/offerGenetics';
+import { matchRules, normalizeGenome } from '@/sim/life/genetics';
+import { mulberry32, hashString } from '@/sim/rng';
 
 const P = { size: 50, color: 50, pattern: 50, structure: 50, fertility: 50, hardiness: 50, temperament: 50, curiosity: 50 };
 const G = (alleles: Record<string, [string, string]>): Genome => ({ alleles, potentials: { ...P } });
@@ -40,11 +42,17 @@ describe('rule summaries', () => {
     expect([n('Body colour'), n('Base hue'), n('Colour tone'), n('Pattern'), n('Finnage'), n('Tail type'), n('Colour line'), n('Strain line'), n('Body type'), n('Pinto')]).toEqual(['colour', 'colour', 'colour', 'pattern', 'fin type', 'fin type', 'colour', 'line', 'form', 'version']);
   });
 
+  it('"only shows on …" only where every rule that shows the gene needs that other trait', () => {
+    const conditional: string[] = [];
+    for (const sp of listSpecies((s) => s.genetics.loci.length > 0)) for (const l of sp.genetics.loci) for (const a of l.alleles) if (ruleSummary(sp, l, a.id).includes('only shows on')) conditional.push(`${sp.id}:${l.id}`);
+    expect([...new Set(conditional)]).toEqual(['betta:cambodian']);
+  });
+
   it('every shop species gets a row per locus, in data order', () => {
     for (const sp of listSpecies((s) => s.genetics.loci.length > 0)) {
       const rows = geneRows(sp, G({}), false);
       expect(rows.map((r) => r.locusId)).toEqual(sp.genetics.loci.map((l) => l.id));
-      for (const r of rows) expect(r.summary.length, `${sp.id}:${r.locusId}`).toBeGreaterThan(5);
+      for (const r of rows) if (r.trait !== 'Can’t be seen on this animal') expect(r.summary.length, `${sp.id}:${r.locusId}`).toBeGreaterThan(5);
     }
   });
 });
@@ -74,10 +82,45 @@ describe('copies chips', () => {
     expect(row(red, 'cambodian')).toMatchObject({ trait: 'Cambodian', copies: { kind: 'known', text: '2 copies' } });
   });
 
-  it('before the lab a possible hidden copy is "+ ?"; Cambodian on a royal betta reads as normal', () => {
+  // chunk 2 review: Cambodian can't show on a royal betta, so before the lab its row names nothing (ADR-0021); it read
+  // "Normal body", which a c/c royal isn't
+  it('before the lab a possible hidden copy is "+ ?"; a gene that can’t show on this animal names no allele', () => {
     const rows = geneRows(betta, G({ color: ['royal', 'royal'], cambodian: ['c', 'c'] }), false);
     expect(row(rows, 'color').copies).toEqual({ kind: 'hidden', text: '+ ?', title: 'Second copy hidden until the Genetics Lab' });
-    expect(row(rows, 'cambodian')).toMatchObject({ trait: 'Normal body', copies: { kind: 'hidden', text: '+ ?' } });
+    expect(row(rows, 'cambodian')).toMatchObject({ trait: 'Can’t be seen on this animal', summary: '', copies: { kind: 'hidden', text: '+ ?' } });
+    // on a red betta it does show: C/? reads "Normal body" with a possible hidden copy
+    expect(row(geneRows(betta, G({ color: ['red', 'red'], cambodian: ['C', 'c'] }), false), 'cambodian')).toMatchObject({ trait: 'Normal body', copies: { kind: 'hidden', text: '+ ?' } });
+    // after the lab the real alleles show
+    expect(row(geneRows(betta, G({ color: ['royal', 'royal'], cambodian: ['c', 'c'] }), true), 'cambodian')).toMatchObject({ trait: 'Cambodian', copies: { kind: 'revealed', text: '2 copies' } });
+  });
+
+  it('before the lab two animals that look alike read alike, in every species (no leak)', () => {
+    const rnd = mulberry32(hashString('offer-genes:lookalikes'));
+    for (const sp of listSpecies((s) => s.genetics.loci.length > 0)) {
+      const byLook = new Map<string, string>();
+      for (let i = 0; i < 160; i++) {
+        const alleles: Record<string, [string, string]> = {};
+        for (const l of sp.genetics.loci) {
+          const pick = () => l.alleles[Math.floor(rnd.next() * l.alleles.length)].id;
+          alleles[l.id] = [pick(), pick()];
+        }
+        const g = G(alleles);
+        const m = matchRules(sp, normalizeGenome(sp, g));
+        const look = [m.base?.id ?? '', ...m.partialBases.map((r) => `~${r.id}`), ...m.overlayWeights.map((o) => `${o.rule.id}:${o.weight}`)].join('|');
+        const shown = JSON.stringify(geneRows(sp, g, false).map((r) => [r.trait, r.summary, r.copies.kind, r.copies.text]));
+        const seen = byLook.get(look);
+        if (seen === undefined) byLook.set(look, shown);
+        else expect(shown, `${sp.id}: ${look}`).toBe(seen);
+      }
+    }
+  });
+
+  it('alleles that both show read in the locus’s order', () => {
+    const a = row(geneRows(betta, G({ pattern: ['dragon', 'marble'] }), false), 'pattern');
+    const b = row(geneRows(betta, G({ pattern: ['marble', 'dragon'] }), false), 'pattern');
+    expect(a.trait).toBe('Marble / Dragon scale');
+    expect(b.trait).toBe(a.trait);
+    expect(a.copies).toMatchObject({ kind: 'known', text: '1 copy' });
   });
 
   it('after the lab: carries {allele}, 2 copies, no copies; rare carriers sparkle', () => {
@@ -114,6 +157,15 @@ describe('footer', () => {
     expect(aboutFraction(0.375)).toBe('3 in 8');
     expect(aboutFraction(0.25)).toBe('1 in 4');
     expect(aboutFraction(0.5)).toBe('1 in 2');
+    for (const s of [0.9, 0.97, 1]) expect(aboutFraction(s)).not.toMatch(/^(\d+) in \1$/);
+  });
+
+  it('every youngster: "all their young" (ADR-0021); an unsexed animal: "Pair it"', () => {
+    const royal = G({ color: ['royal', 'royal'], pattern: ['solid', 'solid'], fins: ['veil', 'veil'], cambodian: ['c', 'c'], metallic: ['std', 'std'] });
+    const cinder = animal(G({ color: ['red', 'red'], pattern: ['solid', 'solid'], fins: ['veil', 'veil'], cambodian: ['c', 'c'], metallic: ['std', 'std'] }), 'female', 'Cinder');
+    expect(genesFooter(betta, animal(royal, 'male'), geneRows(betta, royal, true), true, [cinder]).text).toBe('Genetics Lab: He carries Cambodian: paired with Cinder, all their young would be Red Cambodian.');
+    const him = G({ color: ['red', 'copper'], pattern: ['solid', 'solid'], fins: ['veil', 'veil'], cambodian: ['C', 'c'], metallic: ['std', 'std'] });
+    expect(genesFooter(betta, animal(him, 'unknown'), geneRows(betta, him, true), true).text).toBe('Genetics Lab: Pair it with another Cambodian carrier for about 1 in 4 Cambodian young.');
   });
 });
 
@@ -131,5 +183,7 @@ describe('card chips', () => {
     expect(strainOrMorphTier(betta, { morphName: 'Red Veiltail', genome: G({}) })).toBeNull();
     expect(strainOrMorphTier(betta, { morphName: 'Red Halfmoon', genome: G({ fins: ['halfmoon', 'halfmoon'] }) })).toEqual({ tier: 'uncommon' });
     expect([speciesPlural(betta), speciesPlural(getSpecies('axolotl')), speciesPlural(findSpecies('cherry_shrimp')!)]).toEqual(['bettas', 'axolotls', 'cherry shrimp']);
+    const pl = (id: string) => speciesPlural(findSpecies(id)!);
+    expect(['fancy_guppy', 'sailfin_molly', 'watchman_goby', 'discus', 'panda_corydoras', 'otocinclus', 'green_chromis'].map(pl)).toEqual(['fancy guppies', 'sailfin mollies', 'yellow watchman gobies', 'discus', 'panda corydoras', 'otocinclus', 'green chromis']);
   });
 });

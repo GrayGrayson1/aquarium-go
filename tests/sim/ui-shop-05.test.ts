@@ -215,6 +215,12 @@ describe('§7.4 offer detail', () => {
     expect(out).toContain('Confirm the risk first');
   });
 
+  it('the morph line follows §7.4 for Common morphs too ("Common morph · about 1 in 5 market bettas")', () => {
+    const g = game();
+    const o = offer(g, 'betta', { alleles: { color: ['red', 'red'], pattern: ['solid', 'solid'], fins: ['veil', 'veil'], cambodian: ['C', 'C'], metallic: ['std', 'std'] } });
+    expect(text(shop(g, o.id))).toContain('Common morph · about 1 in 5 market bettas');
+  });
+
   it('short of money: "You need $X more"', () => {
     const g = game();
     g.finance.money = 10;
