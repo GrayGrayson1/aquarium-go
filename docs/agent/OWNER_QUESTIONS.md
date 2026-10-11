@@ -79,6 +79,31 @@ before chunk 5. Show the relevant screens with each question. C15 is the overall
 | C14 | Manual mode holds the Autofeeders. Does a held one count as paused for the hungry-animal alert? | **Yes, worded "Auto-feed is held — feed {name} by hand, or resume it."** · No alert while held. | M6 (copy, with C-48) |
 | C15 | With the answers above, approve DESIGN-S3D for chunk 5? | **Approve.** · Not yet. | ADR-0014; PLAN chunk 5 |
 
+### C8's strings (gathered 2026-10-11, for the message before C8)
+
+Show the owner this list before asking C8. Quoted strings are proposed in `INTAKE.md` §11 or design-intake-3 (M2,
+M6), or reused from the repo and the designs. Rows marked **not worded** have no proposed string yet: draft one in
+the style of the strings around it and show it as a proposal (or ask C8 as "approve these, and the agent words the
+rest in the same style").
+
+| Where | Proposed copy | Source |
+|---|---|---|
+| A line that's gone (`#/livestock/production/<id>`) | "This line isn't here any more" · "See your lines" | C-48 |
+| A room that isn't built yet | SPEC §7.8's locked card: "The Water room isn't built yet" / "The Live food room isn't built yet", Locked "Tier {n}", the tier's description, "Links to this page keep working; they show this until it opens.", its requirements | C-48 |
+| No money / no floor space | Today's messages: "Not enough money for {what}: it costs {price} and you have {money}." (in debt: "You're {amount} in debt, so purchases are paused. Sell something or wait for income first.") · "There's no floor space for a {Tank}. Sell or move a tank, choose a smaller size, or expand your facility." | C-48; `src/sim/economy/purchases.ts` |
+| No line yet | 0.5 §11.1's empty state: "No production line yet" · "Pick a breeding pair and the tanks to use. The line moves fry, sorts keepers and lists the rest for you." · "Set up a line" | C-48 |
+| "Assisted care" tile before Tier 1 | A dashed tile with 0.5 §10.2's hint: "Research Better Life Support, or build husbandry mastery with regular care." | C-48 |
+| The bell before anything is automated | No Automation section (no copy) | C-48 |
+| Dry food rows without a stock manager | "You restock it from the Market" | C-48 |
+| The empty fresh reserve (the ATO stops) | **not worded** (a shortage item on the Water tab and in Problems) | C-16, C-48 |
+| A Water room with no salt-water use (freshwater-only Water tab) | **not worded** | C-63 |
+| Stock budget at the level's maximum ("Raise budget" hidden, with the reason) | **not worded** (SPEC §8.7's line reads "up to $600 at a Public Showroom") | C-21 |
+| Manual mode, tanks without a keeper | "{n} have no keeper: feed them by hand" | C-26 |
+| Line slot caption | "{n} of {m} line slots · more at {next facility}" · no line yet: "0 of 1 line slot · more at Specialty Shop" · "slot" or "slots" by count | C-36 |
+| The tier ladder's rows | List what is really missing (reputation, research, as the dock's locked hints do) instead of SPEC §11's "Specialty Shop (42 of 100 reputation) · research Central Water Supply, $900"; **not worded** beyond that | C-38 (R3) |
+| No stock manager, salt running out | "No one reorders salt mix. Buy it, or hire a stock manager." with Buy and "Hire a stock manager" (to `#/visitors/staff`) instead of "Raise budget"; no forecast or "arriving"; a matching notification (**not worded**) | M2 (also C13) |
+| A held Autofeeder with a hungry animal | "Auto-feed is held — feed {name} by hand, or resume it." | M6 (also C14) |
+
 ## D. Chunk 6: the Social stub
 
 | # | Question | Options (recommended first) | Source |

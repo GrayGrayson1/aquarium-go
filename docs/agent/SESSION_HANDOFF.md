@@ -1,52 +1,53 @@
-# Session handoff: after chunk 3
+# Session handoff: after group A and the 0.5.1 release
 
-For the next agent session (Chase, on the owner's AquariumGo CNVS canvas). Written 2026-10-11 by the session that
-built chunks 2 and 3. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of
-work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
+For the next agent session on Aquarium Go. Written 2026-10-11 by the session that asked group A and released 0.5.1;
+it replaces the handoff written after chunk 3. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule;
+this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when it's
+used up.
 
 ## Where things stand
 
-- `next` holds chunks 1 to 3, all tested: the last full run (`aeb7657`) passed typecheck, unit (194 files, 2,227
-  tests), build and e2e (90 of 90). `main` and the live sites still run 0.5.0 (chunk 1). Nothing is uncommitted.
-- Chunk 4 (Production lines) and chunk 5 (deep automation, DESIGN-S3D) wait on the owner's answers. Chunk 6 (Social
-  stub, hardening, the release step) waits on one copy question.
-- Every open owner question is in `docs/agent/OWNER_QUESTIONS.md` (groups A to E, about 45 questions, each with a
-  recommended option and its source).
+- `next` holds chunks 1 to 3, all tested, and the owner's group A answers (ADR-0024). **0.5.1 is released**
+  (chunks 2 and 3; PLAN.md "Releases" has the commit, the test run and the deploy checks). Nothing is uncommitted.
+- **Owner questions:** group A is answered (ADR-0024). Groups **B to E are still open** in
+  `docs/agent/OWNER_QUESTIONS.md`: the owner stopped after group A and asked for the docs to be ready for a new
+  conversation.
+- Chunk 4 (Production lines) waits on group B; chunk 5 (deep automation, DESIGN-S3D) on group C and chunk 4; chunk 6
+  (Social stub, hardening, now also the WebKit e2e project and WCAG 2.2 AA from ADR-0024) on D1.
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
    `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, How a chunk runs, the chunk briefs) and
    `docs/agent/OWNER_QUESTIONS.md`.
-2. **Ask the owner every question, first thing**, before building anything:
-   - Use AskUserQuestion, at most 4 questions per round, in the file's order (A, B, C, D, E), with the recommended
-     option first and labelled "(Recommended)". Tell the owner how many rounds there are and that they can stop after
-     any group and finish later.
-   - Before B1 open the production screens for the owner:
-     `open docs/agent/design/DESIGN-S3D/screens/livestock-production-*.png` (Preview, on the Mac). Before each C
-     question open its screens the same way (`alerts-*`, `build-facility-*`, `operations-*`, `market-supplies-*`,
-     `home-*`) and point to the SPEC.md section.
-   - For C8 show the full proposed strings (INTAKE.md §11 rows C-21, C-26, C-36, C-38, C-48, C-63 and
-     design-intake-3's M2 and M6) in the question's description or a short message before it.
-3. **Record the answers** after each group, verbatim (question as asked, option chosen, the owner's notes), in ADRs
-   like ADR-0019 to ADR-0023:
-   - ADR-0024 for groups A, B, D and E; ADR-0025 is the DESIGN-S3D approval (group C): it names the 0.5 items it
-     replaces (C2) and is also written into `INTAKE.md` §14 "Owner decision".
+2. **Ask the owner groups B to E, first thing**, before building anything:
+   - AskUserQuestion, at most 4 questions per round, in the file's order, with the recommended option first and
+     labelled "(Recommended)". Tell the owner up front how many rounds there are (12: B 3, C 4, D 1, E 4) and that
+     they can stop after any group. In each group's last round add one question, "Go on to group {next}?", with "Stop
+     here for now" as the other option; it fits within the 4 (B's last round has 2 questions, C's 3, D's 1). The
+     owner may type an instruction instead of choosing; do what it says.
+   - Before B1 open the production screens on the Mac:
+     `open docs/agent/design/DESIGN-S3D/screens/livestock-production-*.png` (Preview), and point to SPEC.md §8.6 and
+     §8.6.1. Before each C question open its screens the same way (`home-*` and `more-normal-phone.png` for C1 and C2,
+     `tanks-*` for C3, `operations-water-*` and `build-facility-water-*` for C4 and C5, `operations-feed-*` and
+     `market-supplies-home-grown-*` for C6, `build-facility-*` for C7, `visitors-staff-*` for C9,
+     `settings-notifications-automation-*` for C10, `alerts-*` and `operations-issues-*` for C13,
+     `operations-manual-*` and `tank-card-held-*` for C14) and name the SPEC.md section.
+   - For C8, send the "C8's strings" table in `OWNER_QUESTIONS.md` (under group C) as a short message before the
+     question, with your drafts for its four **not worded** rows.
+   - For E, read each row in `docs/agent/BACKLOG.md` (and the review finding it cites) before asking; E's fourth
+     round proposes closing B-132, B-133 and B-137 as "no action" (ADR-0018).
+3. **Record the answers** after each group, verbatim (question as asked, option chosen with its description, the
+   owner's notes or typed answer), in ADRs like ADR-0019 to ADR-0024:
+   - The next free number for groups B, D and E (ADR-0025 onward); the DESIGN-S3D approval (group C) gets an ADR of
+     its own that names the 0.5 items it replaces (C2) and is also written into `INTAKE.md` §14 "Owner decision".
    - Then: `decisions/INDEX.md`; mark the rows "Answered (ADR-00NN)" in `OWNER_QUESTIONS.md`; PLAN.md ("Product
      decisions in force", "Next step", the chunk briefs' "Before starting" lines); REQUIREMENTS.json notes (PROD-006,
-     PROD-008, PROD-011, PROD-015, PROD-017, SOC-010, AUTO-016); BACKLOG.md rows (status **decided**, the ADR).
-   - Commit ("Owner answers: …") and push `next`.
-4. **If A1 is "release 0.5.1"**, do PLAN.md's release step before new work:
-   - the four checks on `next`'s HEAD (below), all green;
-   - `package.json` version 0.5.1 and a new top `CHANGELOG.md` entry `## 0.5.1 — <date>` in the existing style
-     (`tests/sim/version.test.ts` checks they match), summarising chunks 2 and 3 for players; re-run the unit tests;
-   - commit on `next`, push `next`, then `git checkout main && git merge --no-ff next` and push `main` (never force);
-     that deploys GitHub Pages. Check the Render site, and deploy it by hand only if it didn't update (the owner's
-     memory note `render-manual-deploy` has the command; the A1 answer is the go-ahead, say so before pushing `main`);
-   - go back to `next` (`git checkout next`), and record the release in PLAN.md "Releases".
-5. **Build the next chunk** that the answers unblock: chunk 4 if B1 is approved and B2 to B10 are answered; otherwise
-   chunk 6 (needs D1, and A4 for its accessibility work). Chunk 5 only after C15 approves and chunk 4 is done. Follow
-   PLAN.md "How a chunk runs" exactly:
+     PROD-008, PROD-011, PROD-015, PROD-017, SOC-010); BACKLOG.md rows (status **decided**, the ADR).
+   - Commit ("Owner answers, group …") and push `next`.
+4. **Build the next chunk** that the answers unblock: chunk 4 if B1 is approved and B2 to B10 are answered; otherwise
+   chunk 6 (needs D1). Chunk 5 only after C15 approves and chunk 4 is done. Follow PLAN.md "How a chunk runs"
+   exactly:
    - note the start commit; read only the brief and the design sections it names; apply the chunk's BACKLOG errata and
      fix or defer its open rows;
    - ask the owner (batched, once) about player-visible text no design or ADR gives;
@@ -58,10 +59,11 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
      DEFERRED/IN_PROGRESS with the reason), BACKLOG.md, ADRs; commit and push `next`;
    - tell the owner each command with its pass or fail line, what changed, and what to try (`npm run dev`, then
      http://127.0.0.1:5173/?dev=1).
-6. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
-   `/compact` (an agent can't) and you re-read the docs before the next chunk.
+5. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
+   `/compact` (an agent can't) and you re-read the docs before the next chunk. Releases (`main`) only when the owner
+   says so in the session, through PLAN.md "Releases".
 
-## How this repo is worked (learned in chunks 1 to 3)
+## How this repo is worked (learned in chunks 1 to 3 and the 0.5.1 release)
 
 **Edit in `/Volumes/Dev/Projects/AquariumGo`, test in `~/LocalTest/AquariumGo`.** The disk image is slow (typecheck
 about 2 minutes there, 9 seconds on the internal disk; e2e times out there). The clone's remote `dev` is this repo.
@@ -78,12 +80,18 @@ The four checks on a commit (run it in the background with `run_in_background`, 
 or a reviewer runs):
 
 ```zsh
-cd ~/LocalTest/AquariumGo && git fetch -q dev next && git checkout -q --detach <sha>   # npm ci if the lock changed
+cd ~/LocalTest/AquariumGo && git fetch -q dev next && git checkout -q --detach <sha>   # npm ci if the dependencies changed
 for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright npm run $c; echo "=== $c exit $?"; done > $S/checks.log 2>&1
 ```
 
 Unit tests take about 40 s, e2e about 8 minutes (inside Claude Code's sandbox; it works, don't ask to leave it).
 Every e2e run also builds the production site under `/aquarium-go/` for the `base-path` project (about 10 s more).
+
+**Releasing.** The local `main` branch can lag `origin/main` (0.5.0 was pushed straight from `next`). Before merging:
+`git fetch origin && git checkout main && git merge --ff-only origin/main`, then `git merge --no-ff next`. A version
+bump changes `package.json` and the two root `version` fields in `package-lock.json` (no dependency change, so no
+`npm ci`). Pages deploys from the push (about 1.5 minutes); check `…/version.json` on Pages and Render, and deploy
+Render by hand only if it didn't update (the owner's memory note `render-manual-deploy` has the command).
 
 **Determinism.** In `src/sim` and `src/data` randomness comes only from `ctx.rng`, `simRng(state)`, a subsystem's own
 stream or a keyed `mulberry32(hashString(key))`. Every new log event takes an id from the shared `idCounter`, and some

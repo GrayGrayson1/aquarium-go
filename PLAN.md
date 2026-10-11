@@ -173,10 +173,11 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 - **Design:** 0.5 spec §11 for the data and simulation. The screens come from DESIGN-S3D, SPEC §8.6 (the line picker)
   and §8.6.1 (the new-line steps), which replace §11.1's single-line UI (ADR-0014, owner answer 14). The Lines tab
   (SPEC §7.4) comes with Operations in chunk 5.
-- **Before starting:** the owner approves SPEC §8.6 and §8.6.1 and answers the Production questions in
-  `docs/agent/design/DESIGN-S3D/INTAKE.md` §11: C-27 (raise timings and the sell step), C-28 (the "Never sell
-  Prismatic animals" switch), C-29 (what "protected" means), C-33 (adding a quarantine tank), C-34 (ending a line) and
-  C-36 (the slot caption). BACKLOG B-135 is the same question as C-27 and C-28.
+- **Before starting:** the owner answers group B of `docs/agent/OWNER_QUESTIONS.md` (open as of 2026-10-11): B1
+  approves SPEC §8.6 and §8.6.1; B2 to B10 settle `INTAKE.md` §11's Production rows (C-27 raise timings and the sell
+  step, C-28 the "Never sell Prismatic animals" switch, C-29 what "protected" means, C-33 adding a quarantine tank,
+  C-34 ending a line, C-36 the slot caption) and the PROD-006, PROD-015 and PROD-017 calls. BACKLOG B-135 is the same
+  question as C-27 and C-28.
 - **Build:** the production types and their `repairState` validation, `src/sim/production` and its world hook,
   Livestock › Production with the line picker and the new-line steps, several lines per species.
 - **Requirements:** PROD-001 to PROD-018, DES-008, AUTO-014 (the production part), AUTO-016 to AUTO-021, AUTO-024 to
@@ -189,10 +190,10 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 ### 5. Deep automation (S3-D)
 
 - **Design:** `docs/agent/design/DESIGN-S3D/SPEC.md`, its `screens/`, and `INTAKE.md`.
-- **Before starting:** the owner approves DESIGN-S3D: the rest of `INTAKE.md` §11's questions (20 rows that fold into
-  about 14 questions, chunk 4's included) and the open findings of
-  `docs/agent/archive/evidence/S0/reviews/design-intake-3.md` (R1 to R5, M1 to M7). Record the answers verbatim in a
-  short ADR.
+- **Before starting:** the owner answers group C of `docs/agent/OWNER_QUESTIONS.md` (C1 to C15: `INTAKE.md` §11's
+  remaining rows and design-intake-3's R1 to R3, M1, M2 and M6; M7 was answered as A7, ADR-0024) and C15 approves
+  DESIGN-S3D, recorded verbatim in its own ADR and in `INTAKE.md` §14. Write M3, M4, M5, R4 and R5 into the intake
+  first (no owner needed). Chunk 4 is done first.
 - **Build:** the Operations hub (Overview, Water, Feed, Lines, Map), the Water room and the Live food room, Hold all,
   Settings on a gear, the Supplies, Staff and Research changes, the Automation notification category.
 - **Requirements:** AUTO-002, AUTO-012, AUTO-013, AUTO-014 (the overview), AUTO-015, AUTO-016 to AUTO-018, AUTO-022,
