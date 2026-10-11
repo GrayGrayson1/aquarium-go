@@ -11,7 +11,7 @@
   e2e (a 3.7-minute warmup, then timeouts). Edit and commit here. To test a commit, go to `~/LocalTest/AquariumGo` and run
   `git fetch dev <branch> && git checkout --detach <sha>` (remote `dev` is this repo), then `npm ci` if
   `package-lock.json` changed. Run e2e with `PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`. e2e runs inside Claude
-  Code's sandbox (81 of 81 on 2026-10-11); if it can't, ask the owner once. Never get around a denial yourself, and
+  Code's sandbox (90 of 90 on 2026-10-11); if it can't, ask the owner once. Never get around a denial yourself, and
   never count a test that didn't run as passed. To test uncommitted work, apply a `git diff --binary` patch there.
 - Don't change permission settings, hooks or push guards yourself.
 - Don't end a turn while tests or a reviewer you started are still running.

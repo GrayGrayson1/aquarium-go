@@ -1,0 +1,102 @@
+# Open owner questions
+
+Every question that waits on the owner, in one place, grouped by what it unblocks. Written 2026-10-11 after chunk 3.
+Ask them with the AskUserQuestion tool, at most 4 per round, in group order (A first). Put the recommended option
+first and label it "(Recommended)". Before a question about screens, open them for the owner (the PNGs under
+`docs/agent/design/DESIGN-S3D/screens/`).
+
+After each group, record the answers **verbatim** (the question as asked, the option chosen, any notes) in an ADR, as
+ADR-0019 to ADR-0023 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
+update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
+
+| Group | Unblocks | Questions |
+|---|---|---|
+| A | The 0.5.1 release and standing decisions | A1–A7 |
+| B | Chunk 4 (Production lines) | B1–B10 |
+| C | Chunk 5 (DESIGN-S3D approval) | C1–C15 |
+| D | Chunk 6 (Social stub) | D1 |
+| E | Backlog rows waiting on the owner (block no chunk) | E1–E12 |
+
+## A. Release and standing decisions
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| A1 | Chunks 2 (shop and genetics) and 3 (automation and notifications) are on `next`, fully tested. Release them to players as 0.5.1 now? | **Release 0.5.1 now**: the release step in PLAN.md "Releases" (fresh four checks, version bump, CHANGELOG entry, merge `next` into `main`, push `main`, check Render). · Not yet: wait for more chunks. | PLAN.md Next step (e) |
+| A2 | After a rollback, an older copy of the game can't autosave into a slot that holds a newer version's save; it says so once, with "Refresh the page". Offer more? | **Keep it as is.** · Also offer "Save to another slot" (new copy). | PERSIST-014 note; PLAN (a) |
+| A3 | Run the e2e suite in WebKit (Safari's engine) as well as Chromium? | **No, Chromium only** (fast, stable). · Add a WebKit project (slower; catches Safari-only bugs). | B-129; PLAN (b) |
+| A4 | What accessibility level should 0.5 aim for? Today panels under the high-contrast setting keep their glass look (B-178). | **WCAG 2.2 AA for text and controls, with solid high-contrast panels (chunk 6).** · Fix only what's reported. | B-178; ACC-005; PLAN (c) |
+| A5 | Confirm `?dev=1`: it allows the developer tools for that session only, and the dev panel turns on with the Settings switch (it doesn't open by itself). | **Confirm.** · `?dev=1` should also turn the dev panel on. | Chunk 1 "Decided"; PLAN (d) |
+| A6 | Chunk 3's reviewer flagged wording that fills design slots without the owner's say: (1) the ribbon colours in a Shows notification, "$120 prize · Blue ribbon." (Blue, Red, Gold, Green for 1st, 2nd, 3rd and HM); (2) "1 fry is free-swimming in {Tank}." for one fry; (3) "0% vs fair value" for a bid at fair value; (4) lower-case species, as in "Prismatic betta in the shop"; (5) a jammed Autofeeder's row shows its switch on beside "Paused — feed {name} by hand." | **Keep all five.** · Change some (say which and how). | PLAN (f) |
+| A7 | Automation must give "the same outcomes and stateHash" for any split of game time into steps (AUTO-016 A1). The water chemistry is computed in steps, so the water itself can't be bit-identical across splits. Accept stated tolerances for water values, with exact equality for job counts, run hours and stock units? Chunk 3's tests do this (within 0.15 °C, 0.05 pH, 3 % nitrate). | **Accept the tolerances.** · Require bit-identical water (a fixed-point rewrite of the water integration; large). | AUTO-016 A1; design-intake-3 M7; `tests/sim/automation-invariants.test.ts` |
+
+## B. Chunk 4: Production lines
+
+Show the owner `livestock-production-*.png` (8 screens: early, Royal, all slots used, the three new-line steps) and
+DESIGN-S3D `SPEC.md` §8.6 and §8.6.1 before asking B1.
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| B1 | Approve DESIGN-S3D SPEC §8.6 (the line picker, several lines per species) and §8.6.1 (the new-line steps) as chunk 4's screens, replacing 0.5 §11.1's single-line UI? | **Approve.** · Approve with changes (say which). | ADR-0014 answer 14; PLAN chunk 4 |
+| B2 | The design's timings don't match the game: betta young are adults at 14 days from laying, so its "juveniles" listed on day 22 are adults, and a juvenile listing refuses adults. How should raising and selling work? | **Raise lengths and stage words come from each species' data, and the sell step lists each animal by its life stage at sale time.** · Keep the design's fixed timings and relabel the stages. | INTAKE C-27; B-135 |
+| B3 | What does "Never sell Prismatic animals" do when switched off? | **Automation never lists a Prismatic either way; the switch only chooses between moving it to the keep tank (on) and leaving it with its batch (off).** · Off lets the line list Prismatics. | INTAKE C-28; PROD-011; B-135 |
+| B4 | What is "protected", and where do kept youngsters go? | **Protected = every animal in a line's keep tank, every Prismatic and every favourite: automation never moves them out, lists or sells them. Youngsters kept by the trait rules go to the keep tank.** · Kept youngsters stay in the raise tank. | INTAKE C-29; PROD-008 |
+| B5 | "Add a quarantine tank · $95" in the setup steps has no real price or failure path. | **Show the real kit price, offer seeded media, handle no money and no floor space, check the tank suits the line, and give the restart day only once it's cycled or seeded.** · Drop the button (pick an existing tank only). | INTAKE C-33 |
+| B6 | There's no way to end a line. | **"End line" on the line's header card, with a confirmation: animals stay where they are, the slot frees, the stats stay in history.** · Pause only (no ending). | INTAKE C-34 |
+| B7 | The slot caption: "{n} of {m} line slots · more at {next facility}", plus the no-line case "0 of 1 line slot · more at Specialty Shop", singular or plural by count. | **Approve this wording.** · Different wording. | INTAKE C-36 (copy, with C-48) |
+| B8 | When the raise tank is full and "Pause when a tank is full" is off, where do free-swimming fry go? | **They stay where they are, and the line shows one notice: "{Line}: the raise tank is full, so the fry stay in {tank}."** · The line pauses itself. | PROD-006 note |
+| B9 | "This week · After food and power": tanks can be shared between lines, or with animals outside them. How are a tank's food and power costs split? | **By the line's share of each tank's residents, day by day.** · The whole cost of every tank the line uses. · Show revenue only (drop "After food and power"). | PROD-015 note |
+| B10 | A line whose parent or tank is gone (sold, moved or reused): design §11.3 pauses it with a notice, but §15 has the save repair drop such lines on load, so the paused line would vanish at the next reload. Which? | **Pause with one notice, and keep the paused line through saves (the repair marks the missing reference instead of dropping the line).** · Drop the line on load. | PROD-017 note; PERSIST-006 |
+
+## C. Chunk 5: approving DESIGN-S3D (deep automation)
+
+These are `docs/agent/design/DESIGN-S3D/INTAKE.md` §11's owner rows plus design-intake-3's findings
+(`docs/agent/archive/evidence/S0/reviews/design-intake-3.md`: R1, R2 and R3 change how C-22, C-63 and C-38 are asked;
+M2 and M6 add copy; M1 needs a yes or no). M3, M4, M5, R4 and R5 need no owner: the agent writes them into the intake
+before chunk 5. Show the relevant screens with each question. C15 is the overall approval and comes last.
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| C1 | Settings moves from the dock to a gear in normal builds too, not only when Social makes the dock crowded? | **Yes, a gear in every build** (one layout, room for Social). · Only when the dock is full. | C-1 |
+| C2 | DESIGN-S3D replaces some approved 0.5 items: Settings as a dock item, the More sheet's height (about 40 % instead of 48 %, with the Operations row), the production tiles' wording, and the test helper that opens Settings from the dock. Approve the replacements, named in the approval ADR? | **Approve.** · Keep some 0.5 items (say which). | C-2, C-58 |
+| C3 | The Tanks panel as drawn hides healthy tanks behind a footer (13 tanks' cards and actions gone in the sample). | **Keep every tank's row, problems first; the footer becomes "Show {n} more" or goes.** · Collapse healthy tanks as drawn. | C-6 |
+| C4 | Shared water reserves and background tanks (LOD): far tanks are simulated in chunks, so a shared reserve needs their pending time settled. | **Option B: settle a tank's pending time on every action, move and focus change; idle tanks stay coarse; stated tolerances.** · Simulate every tank at full detail (slower). | C-14 |
+| C5 | Is water a tracked resource? | **Water costs nothing; once a Water room exists it's limited by the prep rate and the reserve size (an empty fresh reserve stops the ATO until prep refills it). Without a Water room nothing changes.** · Water costs money per gallon. | C-15, C-16 |
+| C6 | Live food shelf life. | **(a) All stock of the two live foods expires, tracked by lot (bought packs too).** · (b) Only home-grown lots expire. · (c) Nothing expires: then AUTO-013 A2 needs a storage cap (new design) or the owner waives it. | C-22, C-23 (R1) |
+| C7 | Buying the rooms and machines (nothing in the design prices them). | **Finishing the research installs the base room (prep station, 150/60 gal reserves and a mixer; a hatchery with 2 cones and 4 jars); add-ons and upgrades are bought in Build › Facility; dosers are placed from the tank card; the economy lane sets the numbers.** · Rooms are bought outright in Build › Facility. | C-37 |
+| C8 | Approve the new copy the design needs but doesn't word: line not found ("This line isn't here any more" · "See your lines"), the locked room page, no money / no floor space, no line yet, the "Assisted care" tile before Tier 1, Dry food rows without a stock manager ("You restock it from the Market"), the empty fresh reserve, the freshwater-only Water tab, the ladder rows (C-38), and C-21, C-26, C-36 and C-63's strings. Show the full list from INTAKE C-48 and those rows. | **Approve as proposed.** · Change some (say which). | C-48 (with C-21, C-26, C-36, C-38 per R3, C-63) |
+| C9 | The stock budget control. | **A slider in $1 steps, "Raise budget" hidden at the level's maximum with the reason, and a separate switch for Rosa's orders that keeps the budget and the log quiet.** · $5 steps and a typed amount. | C-21 |
+| C10 | The Automation notification category's subtitle promises "manual mode" alerts with no template. | **Drop "and manual mode" from the subtitle.** · Add a manual-mode notification (new template). | C-57 |
+| C11 | A Water room in a freshwater-only facility (behaviour and copy): the mixer, the salt meter and the salt problem items would show for no salt use. | **They apply only while a salt tank or a hatchery needs salt water; Supplies shows the salt row once a Water room exists.** · Show them always. | C-63 (R2) |
+| C12 | Schedules: the design shows schedules but edits none. Do the player's existing levers count as schedules they change (a tank's lights-on hour moves its water change; Auto-feed meals a day; Hold or Resume per system)? | **Yes, those levers are enough (no schedule editor).** · Add a schedule editor in Operations (new design). | M1 |
+| C13 | Without a stock manager nobody reorders: "No one reorders salt mix. Buy it, or hire a stock manager.", with Buy and "Hire a stock manager" (to Visitors › Staff) instead of "Raise budget", no forecast, and a matching notification. | **Approve.** · Different wording. | M2 (copy, with C-48) |
+| C14 | Manual mode holds the Autofeeders. Does a held one count as paused for the hungry-animal alert? | **Yes, worded "Auto-feed is held — feed {name} by hand, or resume it."** · No alert while held. | M6 (copy, with C-48) |
+| C15 | With the answers above, approve DESIGN-S3D for chunk 5? | **Approve.** · Not yet. | ADR-0014; PLAN chunk 5 |
+
+## D. Chunk 6: the Social stub
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| D1 | The design words only the empty clubs list ("No club yet"). Empty trades and friends lists? | **"No trades yet" / "Trades you start or accept appear here." and "No friends yet" / "Friends you add appear here."** · Different wording. | SOC-010 note |
+
+## E. Backlog rows waiting on the owner (block no chunk)
+
+Read each row in `docs/agent/BACKLOG.md` (and its recommended fix in the adversarial review JSON it cites) before
+asking; the options below are the agent's proposals.
+
+| # | Row | Question | Options (recommended first) |
+|---|---|---|---|
+| E1 | B-002 | When a simulation step keeps failing, the world freezes with one console message. What should the player see? | **A banner: "Something went wrong — your aquarium is paused. Save and reload." with Save and Reload buttons.** · Nothing (as today). |
+| E2 | B-017 | An older build closes a research project it doesn't know, so a newer save loses that project when opened in the older build. | **Keep unknown projects untouched in older builds.** · Accept (old builds are best-effort). |
+| E3 | B-138 | An empty, freshly dressed tank sells at auction for more than its parts cost. | **Apply the beauty and ethical-display bonuses only to tanks with animals.** · Leave it. |
+| E4 | B-139 | The "sales" counter counts animals, so one quick sale of 25 shrimp unlocks tank auctions and Trusted Trader. | **Count sales, not animals.** · Leave it. |
+| E5 | B-185 | The approved 0.5 visual reference (45 screens) lives only in a private canvas. | **Export the screens into the repo** (owner supplies them). · Leave it. |
+| E6 | B-191 | Saves, settings, notification permission and the service worker share the graygrayson1.github.io origin with any other Pages site of the account. | **Leave it** (one site on the account). · Move the game to its own domain or origin. |
+| E7 | B-193 | The GitHub deploy and the Render build publish without running tests. | **Run typecheck and unit tests in the deploy workflow before publishing.** · Leave it (the agent runs the four checks before every release). |
+| E8 | B-194 | Morph names and catalog odds disagree in places (a bristlenose name collision, rare morphs stocked more often than "1 in n"). | **Fix the data in chunk 6.** · Leave it. |
+| E9 | B-195 | Animals in the holding container are frozen in time, though the game says "give them a tank soon". | **Change the copy to match (they wait safely).** · Make them age and get hungry there. |
+| E10 | B-196 | Moving a placed tank in the room view is unreachable (nothing opens it). | **Add a "Move tank" action to the tank card.** · Remove the dead code. |
+| E11 | B-197 | 46 lint suppressions exist with no linter installed. | **Leave it (no linter, no new dependency).** · Install ESLint (a new dev dependency). |
+| E12 | B-008 | A home-directory path with the owner's user name is in the public history of `agent/s0-wip`. | **Leave it** (no secret; a history rewrite needs a force push). · Rewrite that branch's history. |
+
+Harness-era owner rows (B-132, B-133, B-137) were about the retired harness's gates; propose closing them as "no
+action" (ADR-0018) in the same round as E.

@@ -6,12 +6,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **The owner's Production answers for chunk 4** (Production lines): approve DESIGN-S3D SPEC §8.6 and §8.6.1 and
-   answer `INTAKE.md` §11's C-27, C-28, C-29, C-33, C-34 and C-36 (chunk 4's brief below). Until then, chunk 6's
-   Social stub and hardening can go first if the owner prefers (it needs only SOC-010's empty-state copy). Chunks 2
-   and 3 are done and on `next` only: players get them with the next release (0.5.1), which needs the owner's go-ahead
-   (see "Releases").
-2. **When the owner has time:** the rest of the DESIGN-S3D questions (chunk 5). Also: (a) after a rollback, an older copy of the game can't autosave into a slot that holds a newer
+1. **Ask the owner every open question first:** `docs/agent/OWNER_QUESTIONS.md` (groups A to E: the 0.5.1 release and
+   standing decisions, chunk 4's Production answers, the DESIGN-S3D approval for chunk 5, chunk 6's copy, backlog
+   rows). `docs/agent/SESSION_HANDOFF.md` gives the order of work after that: record the answers, release 0.5.1 if
+   the owner says so, then the chunk the answers unblock (chunk 4, else chunk 6). Chunks 2 and 3 are done and on
+   `next` only.
+2. **The questions as PLAN listed them before** (all are in OWNER_QUESTIONS.md, group A): (a) after a rollback, an older copy of the game can't autosave into a slot that holds a newer
    version's save (it says so once, with "Refresh the page"): should a player be offered more, such as saving to
    another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too (B-129)? (c) What accessibility level to
    aim for (B-178: panels under high contrast)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the developer

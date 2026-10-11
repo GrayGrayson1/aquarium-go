@@ -9,6 +9,8 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 | What | Where |
 |---|---|
 | Chunk plan, status, next step, product decisions | `PLAN.md` |
+| Every open owner question, grouped by what it unblocks | `docs/agent/OWNER_QUESTIONS.md` |
+| The next session's order of work and practical tips | `docs/agent/SESSION_HANDOFF.md` |
 | Approved 0.5 design (load only the sections your chunk needs) | `docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md` |
 | S3-D design (not approved yet) and its intake note | `docs/agent/design/DESIGN-S3D/` (`SPEC.md`, `INTAKE.md`, `screens/`) |
 | Requirements checklist (ids, acceptance criteria, status) | `docs/agent/REQUIREMENTS.json` |
