@@ -3,7 +3,7 @@
  */
 import type { GameState, SpeciesDefinition, Tank, WaterClass } from '@/types';
 import { getTankTier } from '@/data/catalog/tanks';
-import { clamp } from './chem';
+import { clamp, finite } from './chem';
 import { LITRES_PER_GALLON, ROOM_TEMP_C, SALT_KG_PER_LITRE, SALT_PRICE_PER_KG, isSaltClass, saltStrength } from './constants';
 import { equipmentSummary, safeGallons, thermalTau, type EquipmentSummary } from './env';
 
@@ -128,8 +128,10 @@ export function tankDailyCostImpl(state: GameState, tank: Tank, summary?: Equipm
     }
   }
   if (isSaltClass(tank.waterClass)) {
-    // ~20% water change a week with fresh salt mix (lane:brackish: brackish water needs only ~a third of the salt)
-    const kgPerDay = (gallons * LITRES_PER_GALLON * 0.2 * SALT_KG_PER_LITRE * saltStrength(tank.waterClass)) / 7;
+    // ~20% water change a week with fresh salt mix (lane:brackish: brackish water needs only ~a third of the salt);
+    // lane:automation — a running Auto Water Changer swaps its share every day instead
+    const weekly = Math.max(0.2, s.waterChanger ? 7 * clamp(finite(s.waterChanger.inst.setting, s.waterChanger.def.stats.defaultSetting ?? 0.1), 0.05, 0.9) : 0);
+    const kgPerDay = (gallons * LITRES_PER_GALLON * weekly * SALT_KG_PER_LITRE * saltStrength(tank.waterClass)) / 7;
     cost += kgPerDay * SALT_PRICE_PER_KG;
   }
   return Math.round(cost * 100) / 100;

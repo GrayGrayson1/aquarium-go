@@ -9,6 +9,8 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 | What | Where |
 |---|---|
 | Chunk plan, status, next step, product decisions | `PLAN.md` |
+| Every open owner question, grouped by what it unblocks | `docs/agent/OWNER_QUESTIONS.md` |
+| The next session's order of work and practical tips | `docs/agent/SESSION_HANDOFF.md` |
 | Approved 0.5 design (load only the sections your chunk needs) | `docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md` |
 | S3-D design (not approved yet) and its intake note | `docs/agent/design/DESIGN-S3D/` (`SPEC.md`, `INTAKE.md`, `screens/`) |
 | Requirements checklist (ids, acceptance criteria, status) | `docs/agent/REQUIREMENTS.json` |
@@ -69,5 +71,6 @@ npm run dev         # local dev server on http://127.0.0.1:5173
 npm run report:rarity   # morph-catalog entries per rarity tier
 ```
 
-On the owner's Mac, Playwright's browsers are in `/Volumes/Dev/Caches/playwright`, so run e2e with
-`PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright`.
+On the owner's Mac, run the checks from the clone on the internal disk, `~/LocalTest/AquariumGo` (its remote `dev`
+is this repo), with `PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`. The `/Volumes/Dev` disk image is too slow for
+e2e. Keep editing and committing in this repo.

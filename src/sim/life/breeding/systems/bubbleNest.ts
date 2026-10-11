@@ -35,6 +35,8 @@ import {
   surfaceAgitation,
   throttle,
   tickTimers,
+  breedNotice,
+  clutchParentName,
 } from '../common';
 
 const NEST_BUILD_H = 30;
@@ -257,7 +259,7 @@ export const bubbleNestModule: BreedingModule = {
     }
     if (cl.stage === 'fry') {
       const extra = male && male.tankId === tank.id ? ` Move ${male.name} out now — his job is done and he may start eating them.` : '';
-      say(state, ctx, { kind: 'breeding', text: `${plural(cl.count, 'fry', 'fry')} are free-swimming! Feed infusoria, then baby brine shrimp.${extra}`, tankId: tank.id, creatureId: male?.id, toast: true });
+      say(state, ctx, { kind: 'breeding', text: `${plural(cl.count, 'fry', 'fry')} are free-swimming! Feed infusoria, then baby brine shrimp.${extra}`, tankId: tank.id, creatureId: male?.id, toast: true, notice: breedNotice('hatch', clutchParentName(state, cl), cl.count, tank) });
       return true;
     }
     return false;
@@ -308,6 +310,7 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
     tankId: tank.id,
     creatureId: m.id,
     toast: true,
+    notice: breedNotice('eggs', f.name, count, tank), // lane:notify
   });
 }
 

@@ -99,7 +99,7 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
 
 ## Simulation LOD
 
-`src/sim/world.ts` steps the **focused tank** at full fidelity every tick. Other tanks accumulate "sim debt". The first 12 are processed in ≥1 h chunks (reduced) and the rest in ≥4 h chunks (summary). Subsystems substep internally, so a large chunk stays well-behaved (no runaway values or NaN), but chunk size still shows: one large chunk and many small steps agree only within the tolerances each subsystem's tests state, and exact equality across LOD tiers isn't promised ("Determinism contract" above). Rendering LOD follows the same pattern: lod 0 is the hero tank, lod 1 is near tanks in the facility view, and lod 2 is far/cheap.
+`src/sim/world.ts` steps the **focused tank** at full fidelity every tick. Other tanks accumulate "sim debt". The first 12 are processed in ≥1 h chunks (reduced) and the rest in ≥4 h chunks (summary). Subsystems substep internally, so a large chunk stays well-behaved (no runaway values or NaN), but chunk size still shows: one large chunk and many small steps agree only within the tolerances each subsystem's tests state, and exact equality across LOD tiers isn't promised ("Determinism contract" above). Scheduled automation (the Auto Water Changer's lights-on change) walks the hour crossings inside each chunk, so it runs at the same game hours at every tier (`tests/sim/automation-water-changer.test.ts`). Rendering LOD follows the same pattern: lod 0 is the hero tank, lod 1 is near tanks in the facility view, and lod 2 is far/cheap.
 
 ## Coordinate conventions
 
@@ -166,6 +166,18 @@ GameState is plain JSON with a `schemaVersion`. `src/persistence/migrations.ts` 
 - The kit `Modal` renders through a portal into the `.ag-ui` root, so modal content no longer inherits panel-scoped selectors such as `.pn-sheet--phone .x`.
 - In short landscape (`max-height: 500px` and landscape), management panels always open at full height with a compact header and no expand button.
 - `convertTempText` converts temperature differences ("by 2 °C", "1 °C below", "1–2 °C of", "~2 °C cooler") ×1.8 with no offset. Sim copy that states a difference should use these phrasings.
+
+## Notifications (chunk 3)
+
+System notifications are a second channel beside the toasts and the Alerts drawer, never a replacement. The sim tags
+the log events a notification may need (`GameEvent.notice`, with the values its template fills in, and `offerId` on
+rare stock); `src/ui/notify/rules.ts` turns new log entries into notifications as pure functions (categories, quiet
+hours on the device clock, rate limits on real time); `src/ui/notify/deliver.ts` shows them through
+`platform().notifications` only while the page is visible but unfocused, and opens a tapped one's route. Preferences
+live in localStorage (`aquarium-go.notify.v1`), never the save. `public/sw.js` is the only service worker: it routes
+taps (focus a game window in its scope, or open `?notification=1#<route>`) and has no fetch, cache or push handler,
+so it never serves a page or `version.json`. The platform registers it, with the build's base path as its scope, once
+the player has allowed notifications.
 
 ## Deploy
 

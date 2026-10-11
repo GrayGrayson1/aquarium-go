@@ -28,6 +28,7 @@ import {
   throttleTank,
   throttleTankBackoff,
   tickTimers,
+  breedNotice,
 } from '../common';
 
 const STORED_BROODS = 2;
@@ -87,7 +88,7 @@ export const livebearerModule: BreedingModule = {
           bumpCounter(state, key);
           const cover = habitatOf(state, tank).cover;
           const tip = tank.purpose === 'nursery' ? '' : cover >= 0.5 ? ' The dense plants give them places to hide.' : ' Adults eat fry — dense plants or a nursery tank will save more of them.';
-          say(state, ctx, { kind: 'breeding', text: `${f.name} dropped ${plural(n, 'fry', 'fry')}!${tip}`, tankId: tank.id, creatureId: f.id, toast: seen < 3 });
+          say(state, ctx, { kind: 'breeding', text: `${f.name} dropped ${plural(n, 'fry', 'fry')}!${tip}`, tankId: tank.id, creatureId: f.id, toast: seen < 3, ...(seen < 3 ? { notice: breedNotice('birth', f.name, n, tank) } : {}) });
         }
         continue;
       }

@@ -77,13 +77,13 @@ const VERDICT_ICON: Record<CompatVerdict, Icon> = {
   incompatible: OctagonAlert,
 };
 
-export function VerdictBadge({ verdict, score, size = 'md', testId = 'compat-verdict' }: { verdict: CompatVerdict; score?: number; size?: 'sm' | 'md' | 'lg'; /** null = no data-testid (lists). */ testId?: string | null }) {
+export function VerdictBadge({ verdict, score, size = 'md', testId = 'compat-verdict', labels = VERDICT_LABEL }: { verdict: CompatVerdict; score?: number; size?: 'sm' | 'md' | 'lg'; /** null = no data-testid (lists). */ testId?: string | null; /** lane:ui-panels (ADR-0020) — the shop's offer detail passes the long labels ("Excellent match"). */ labels?: Record<CompatVerdict, string> }) {
   const status = VERDICT_STATUS[verdict] ?? 'watch';
   const I = VERDICT_ICON[verdict] ?? Info;
   return (
     <span className={clsx('ag-verdict', `ag-verdict--${status}`, `ag-verdict--${size}`)} data-testid={testId ?? undefined} data-verdict={verdict}>
       <I size={size === 'lg' ? 18 : 14} aria-hidden />
-      <span>{VERDICT_LABEL[verdict] ?? verdict}</span>
+      <span>{labels[verdict] ?? verdict}</span>
       {score != null && Number.isFinite(score) && <span className="ag-verdict__score">{Math.round(score)}</span>}
     </span>
   );
@@ -141,10 +141,12 @@ export interface CompatViewProps {
    * tank already had ("25 serious issues" for one betta joining a busy community tank read as all the betta's doing).
    */
   focusSpeciesId?: string;
+  /** lane:ui-panels (ADR-0020) — verdict wording; the shop's offer detail passes the long labels. */
+  labels?: Record<CompatVerdict, string>;
 }
 
 /** Verdict + WHY. Groups reasons by category, most severe first. */
-export function CompatView({ report, title, compact, limit = 6, emptyText, className, focusSpeciesId }: CompatViewProps) {
+export function CompatView({ report, title, compact, limit = 6, emptyText, className, focusSpeciesId, labels }: CompatViewProps) {
   const [showAll, setShowAll] = useState(false);
   const involves = (r: CompatReason) => !focusSpeciesId || !r.speciesIds?.length || r.speciesIds.includes(focusSpeciesId);
   const groups = useMemo(() => {
@@ -181,7 +183,7 @@ export function CompatView({ report, title, compact, limit = 6, emptyText, class
     <div className={clsx('ag-compat', `ag-compat--${status}`, className)}>
       {title && <div className="ag-compat__title">{title}</div>}
       <div className="ag-compat__head">
-        <VerdictBadge verdict={report.verdict} score={report.score} size="lg" />
+        <VerdictBadge verdict={report.verdict} score={report.score} size="lg" labels={labels} />
         <span className="ag-compat__summary">{summaryFull}</span>
       </div>
       {total === 0 ? (

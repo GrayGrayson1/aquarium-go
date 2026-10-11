@@ -471,7 +471,14 @@ function Science({ open, setOpen }: { open: string | null; setOpen: (id: string 
                 {a.id === 'ethics' ? <Leaf size={16} /> : a.id === 'compatibility' ? <Handshake size={16} /> : a.id === 'salinity' ? <Waves size={16} /> : <FlaskConical size={16} />}
               </span>
               <span className="pn-grow">
-                <span className="pn-article__title">{a.title}</span>
+                <span className="pn-article__title">
+                  {a.title}
+                  {a.isNew && (
+                    <Chip tone="aqua" className="pn-article__new">
+                      New
+                    </Chip>
+                  )}
+                </span>
                 <span className="pn-article__teaser">{a.teaser}</span>
               </span>
               <ChevronDown size={16} className="pn-article__chev" aria-hidden />

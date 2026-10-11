@@ -15,6 +15,9 @@
  * - ato         keeps the level topped with fresh water (salinity stays stable).
  * - autofeeder  `setting` = dry-food feedings per day. It dispenses DRY food only (isAutofeederFood in foods.ts) — one
  *               food per feeding, the one in stock that the most animals in the tank eat (src/sim/care/autofeed.ts).
+ * - water_changer  `setting` = share of the water changed each morning (lane:automation, 0.5 §10.3): at the tank's
+ *               lights-on hour it swaps that share for conditioned new water (marine and brackish tanks use salt from
+ *               stock) and scrapes the glass once a week (src/sim/water/step.ts runWaterChanger).
  * - co2         `setting` 0..1 = injection rate (planted growth up, pH down).
  * - lid         cuts evaporation and stops jumpers escaping.
  * `upkeep` is the daily running cost at 100 % duty — thermal devices are charged by estimated duty cycle.
@@ -401,6 +404,21 @@ export const EQUIPMENT: EquipmentDef[] = [
     stats: { defaultSetting: 2, failureRate: 0.002 },
     visual: 'autofeeder',
     description: 'Drops a measured portion of one dry food (flakes, pellets, wafers or dried seaweed) on a schedule, from your food stock — handy for flake and pellet eaters on busy days. It can’t dispense frozen or live food and can’t target-feed, so seahorses, puffers, bumblebee gobies and other frozen- or live-food eaters still need feeding by hand.',
+  },
+  // lane:automation (0.5 §10.3) — shares the Autofeeder's unlock (owner decision, PLAN.md "Product decisions")
+  {
+    id: 'auto_water_changer',
+    kind: 'water_changer',
+    name: 'Auto Water Changer',
+    tier: 2,
+    price: 120,
+    upkeep: 0.06,
+    unlock: 'gear_autofeeder',
+    environments: ALL_ENV,
+    gallonsRange: { min: 5, max: 300 },
+    stats: { defaultSetting: 0.1, failureRate: 0.002 },
+    visual: 'ato_sensor', // reuses the top-off's sensor until the render lane adds a prop (§22 risk 8)
+    description: 'Swaps a small share of the water every morning from a conditioned reservoir and scrapes the front glass once a week. Marine and brackish tanks draw on your salt stock for the new water.',
   },
   {
     id: 'co2_kit',

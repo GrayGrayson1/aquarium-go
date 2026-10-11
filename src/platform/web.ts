@@ -8,9 +8,10 @@
  * - Notifications: permission() maps Notification.permission, and is 'unsupported' without window.Notification.
  *   request() is the only call that asks; call it from a click handler, never at boot. show() needs 'granted'. It
  *   shows through the service worker's registration when there is one (phones and Android Chrome require that) and
- *   otherwise constructs a Notification. A tap reaches onOpen through Notification.onclick, or as a
- *   NotificationClickMessage that public/sw.js posts to the page. No schedule or cancelAll: a web page can't notify
- *   after it is closed.
+ *   otherwise constructs a Notification. prepare() registers public/sw.js (scope: the build's base path) once
+ *   permission is granted (lane:notify, chunk 3); the worker only routes taps. A tap reaches onOpen through
+ *   Notification.onclick, or as a NotificationClickMessage that public/sw.js posts to the page. No schedule or
+ *   cancelAll: a web page can't notify after it is closed.
  * - Clipboard: navigator.clipboard.writeText, then a hidden-textarea execCommand('copy'); false when both fail (the UI
  *   then shows the text selected for a manual copy).
  * - Share: present only when navigator.share is.
@@ -22,10 +23,13 @@
 import type { NotificationPort, NotifyPermission, Platform, PlatformNotification } from './types';
 
 /**
- * The icon on system notifications, under the build's base path (`/aquarium-go/` on Pages): the favicon, the only icon
- * the repo ships (§12.6 asks for a 192 px PNG of it; use that once public/ has one).
+ * The icon on system notifications, under the build's base path (`/aquarium-go/` on Pages): public/favicon.svg
+ * rendered at 192 px (§12.6; a PNG, because not every system draws an SVG notification icon).
  */
-export const APP_ICON = `${import.meta.env.BASE_URL}favicon.svg`;
+export const APP_ICON = `${import.meta.env.BASE_URL}icon-192.png`;
+
+/** The notification worker, registered with the build's base path as its scope (§12.6). */
+export const NOTIFICATION_WORKER = `${import.meta.env.BASE_URL}sw.js`;
 
 /** What public/sw.js posts to the page (`client.postMessage`) when a notification it showed is clicked. */
 export const NOTIFICATION_CLICK = 'notification-click';
@@ -119,6 +123,16 @@ function createWebNotifications(): NotificationPort {
         return true;
       } catch {
         return false; // e.g. Android Chrome, which allows only service-worker notifications
+      }
+    },
+
+    async prepare() {
+      const sw = nav()?.serviceWorker;
+      if (!sw || typeof sw.register !== 'function') return;
+      try {
+        await sw.register(NOTIFICATION_WORKER, { scope: import.meta.env.BASE_URL });
+      } catch {
+        /* an insecure origin, a private mode or a blocked script: taps then reach the page through onclick */
       }
     },
 

@@ -42,6 +42,7 @@ import {
   throttleTank,
   throttleTankBackoff,
   tickTimers,
+  breedNotice,
 } from '../common';
 
 /** Game hours for a male to become a functional female. */
@@ -356,5 +357,6 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
     tankId: tank.id,
     creatureId: f.id,
     toast: true,
+    notice: breedNotice('eggs', f.name, count, tank), // lane:notify
   });
 }

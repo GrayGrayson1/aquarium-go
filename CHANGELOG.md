@@ -4,6 +4,32 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.5.1 — 2026-10-11
+
+- **A sharper Market.**
+  - "Prismatic only" and "Rare genes" filters, each with a count, and Clear filters when nothing matches.
+  - Offers are named after their morph (for example Royal Blue Butterfly Halfmoon), show its rarity tier and say how
+    often sellers stock that look.
+  - An offer's page shows its genes and temperament, how it fits each of your tanks and why a tank won't do, and what
+    you'd need to buy it.
+  - A dot on the Market when rare stock arrives.
+- **New betta genetics.** Cambodian and Metallic genes and a tenth named strain, the Cambodian Veiltail. The betta
+  colour catalog grows from 240 to 540 entries, and Legendary now means rarer than 1 in 10,000.
+- **The Genetics Lab shows every animal's genes**, including animals you had before researching it (they used to show
+  only rough words).
+- **Encyclopedia:** a genes line on the betta page and a new science article, "How genes combine: dominant, recessive
+  and additive".
+- **The water report** names its stability: Stable, Sensitive or Fragile.
+- **Automation on the tank card.**
+  - The Auto Water Changer ($120): it changes 10% of the water every morning at lights-on and scrapes the glass once a
+    week, and keepers leave routine changes to it. Saltwater tanks need salt mix in stock.
+  - Auto-feed (with Meals a day) and Auto-clean have their own switches on the tank card's Equipment tab, and you can
+    buy them there.
+  - An alert when Auto-feed is paused and an animal is getting hungry.
+- **Notifications.** Settings › Notifications can send system notifications while the game is open in another tab or
+  window: rare stock, bids and sales, auctions ending soon, eggs and births, show results and animal-care warnings.
+  Quiet hours run from 10 PM to 8 AM (you can switch them off). Tapping a notification opens the right screen.
+
 ## 0.5.0 — 2026-10-06
 
 - **Links to every screen.** Each screen has its own address (for example `…/#/shop` or `…/#/settings/about`).

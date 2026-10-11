@@ -238,6 +238,8 @@ export interface LocusDefinition {
     /** Relative frequency in captive-bred market stock. */
     frequency: number;
     fictional?: boolean;
+    /** lane:genetics — a collector-sought allele: the shop's "Rare genes" filter includes hidden carriers of it once the Genetics Lab is researched. */
+    rare?: boolean;
   }[];
   mode: 'mendelian' | 'codominant' | 'additive';
   note?: string;

@@ -55,6 +55,8 @@ export interface EquipmentSummary {
   co2: number;
   ato: boolean;
   autofeeder: EqEntry | null;
+  /** lane:automation — a working Auto Water Changer (on, not failed), like `autofeeder`. */
+  waterChanger: EqEntry | null;
   lid: boolean;
   failed: EqEntry[];
   /** Heater thermostat set at/above chiller setpoint — they fight. */
@@ -99,6 +101,7 @@ export function equipmentSummary(tank: Tank): EquipmentSummary {
     co2: 0,
     ato: false,
     autofeeder: null,
+    waterChanger: null,
     lid: false,
     failed: [],
     conflict: false,
@@ -202,6 +205,9 @@ export function equipmentSummary(tank: Tank): EquipmentSummary {
         break;
       case 'autofeeder':
         if (working) s.autofeeder = e;
+        break;
+      case 'water_changer': // lane:automation
+        if (working) s.waterChanger = e;
         break;
       case 'lid':
         s.lid = true;

@@ -177,7 +177,8 @@ export function newGame(opts: NewGameOptions): GameState {
   if (opts.shopName) state.shopName = opts.shopName;
   const setup = STARTER_SETUPS[opts.starterId];
   const species = getSpecies(opts.starterId);
-  // advance the RNG past the preview rolls so previews and the world stay independent but deterministic
+  // the world's stream starts from its own seed (the save seed XOR a constant), not where the preview rolls ended, so
+  // previews and the world stay independent but deterministic (B-168: this used to say it advanced past the previews)
   state.rngState = mulberry32(seed ^ 0x9e3779b9).state();
   const rng = simRng(state);
 

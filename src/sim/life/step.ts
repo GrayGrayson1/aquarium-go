@@ -1003,7 +1003,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
         const cause = kind === 'impaction' ? 'swallowed substrate' : kind === 'swim_bladder' ? 'rich feeding and stress' : risk.causeText;
         const text = `${c.name} has ${def.name(sp)} — likely from ${cause}. ${def.cure(sp)}`;
         pushHistory(c, { hour, kind: 'illness', text: `Fell ill with ${def.name(sp)} (${cause}).` });
-        ctx.emit({ kind: 'warning', text, tankId: env.tank.id, creatureId: c.id, toast: true });
+        ctx.emit({ kind: 'warning', text, tankId: env.tank.id, creatureId: c.id, toast: true, notice: { topic: 'care', vars: { open: 'animal' } } }); // lane:notify — opens the animal
       }
     }
   }

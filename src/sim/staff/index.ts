@@ -40,6 +40,8 @@ export {
   keeperVisits,
   keeperFeed,
   keeperWaterCare,
+  AUTO_CHANGER_COVERS_H, // lane:automation
+  autoChangedRecently,
   keeperVisit,
   pickStaffFood,
   plannedOrders,

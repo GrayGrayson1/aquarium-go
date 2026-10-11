@@ -10,6 +10,7 @@ import type {
   DecorInstance,
   EquipmentKind,
   FoodTag,
+  EventNotice,
   GameEvent,
   GameState,
   SpeciesDefinition,
@@ -281,6 +282,21 @@ export function toastWorthy(state: GameState, sp: SpeciesDefinition, kind: strin
   state.progress.counters[key] = n + 1;
   if (sp.breeding.difficulty >= 0.3) return n < Math.max(first, 5) || n % 4 === 0;
   return n < first;
+}
+
+/**
+ * lane:notify — a Breeding notification's values (0.5 §12.2; ADR-0023 for births without eggs). Callers attach it to
+ * milestones that toast, so a busy colony tank notifies as rarely as it toasts, and to an axolotl's finished clutch
+ * (laying takes hours, so that line carries the count; one per clutch).
+ */
+export function breedNotice(topic: 'eggs' | 'hatch' | 'birth', name: string | undefined, n: number, tank: Tank): EventNotice {
+  return { topic, vars: { ...(name ? { name } : {}), n, tank: tank.name } };
+}
+
+/** The first name a clutch's notification uses: the mother, else the father, else whoever guards it. */
+export function clutchParentName(state: GameState, cl: { motherId?: string | null; fatherId?: string | null; guardedById?: string | null }): string | undefined {
+  for (const id of [cl.motherId, cl.fatherId, cl.guardedById]) if (id && state.creatures[id]) return state.creatures[id].name;
+  return undefined;
 }
 
 export function say(state: GameState, ctx: SimContext | null | undefined, e: Omit<GameEvent, 'id' | 'hour'>): void {

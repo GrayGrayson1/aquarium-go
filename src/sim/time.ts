@@ -34,6 +34,23 @@ export function formatDuration(hours: number): string {
 /** Age in game days from born hour. */
 export const ageDays = (bornHour: number, nowHour: number) => (nowHour - bornHour) / HOURS_PER_DAY;
 
+/**
+ * Absolute hours in [start, end) whose hour-of-day is `hod` (robust to any window length). Shared by the keepers'
+ * rounds (src/sim/staff/work.ts) and the Auto Water Changer (src/sim/water/step.ts).
+ */
+export function crossings(start: number, end: number, hod: number): number[] {
+  const out: number[] = [];
+  if (!(end > start)) return out;
+  hod = ((hod % 24) + 24) % 24; // lane:staff2 — a long round's last visits run past midnight
+  let t = Math.floor(start / 24) * 24 + hod;
+  if (t < start - 1e-9) t += 24;
+  while (t < end - 1e-9 && out.length < 64) {
+    out.push(t);
+    t += 24;
+  }
+  return out;
+}
+
 /** Is the tank light on at this hour-of-day. */
 export function lightsOn(onHour: number, offHour: number, hour: number): boolean {
   const h = hourOfDay(hour);

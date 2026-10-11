@@ -313,13 +313,14 @@ export const CreatureGlyph = memo(function CreatureGlyph({ speciesId, appearance
 });
 
 /** Portrait of an individual creature (real render when available, glyph otherwise). */
-export function CreaturePortrait({ creature, size = 56, className, ring }: { creature: Creature | { speciesId: string; appearance?: CreatureVisualParams }; size?: number; className?: string; ring?: 'gold' | 'aqua' | null }) {
+/** `alt`: the animal's name where the portrait stands for it (shop offers, ACC-003); decorative ('') by default. */
+export function CreaturePortrait({ creature, size = 56, className, ring, alt = '' }: { creature: Creature | { speciesId: string; appearance?: CreatureVisualParams }; size?: number; className?: string; ring?: 'gold' | 'aqua' | null; alt?: string }) {
   const url = usePortrait(creature as Creature, Math.min(512, size * 2));
   // lane:genetics — Prismatic individuals wear the shimmering frame everywhere their portrait shows
   const shimmer = 'rareVariant' in creature && isPrismatic(creature as Creature);
   return (
     <span className={clsx('pn-portrait', ring && `pn-portrait--${ring}`, shimmer && 'ag-prismatic-frame', className)} style={{ width: size, height: size }}>
-      {url ? <img src={url} alt="" width={size} height={size} draggable={false} /> : <CreatureGlyph speciesId={creature.speciesId} appearance={creature.appearance} size={size} />}
+      {url ? <img src={url} alt={alt} width={size} height={size} draggable={false} /> : alt ? <span role="img" aria-label={alt}><CreatureGlyph speciesId={creature.speciesId} appearance={creature.appearance} size={size} /></span> : <CreatureGlyph speciesId={creature.speciesId} appearance={creature.appearance} size={size} />}
       {shimmer && <PrismaticGlints />}
     </span>
   );

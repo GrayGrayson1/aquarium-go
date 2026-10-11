@@ -67,7 +67,7 @@ interface NavState {
   tab: Partial<Record<NavKey, string>>;
   /** The open sub-view of each mounted panel ('offer:<id>', 'species:<id>' …), as they report it (`useNavSub`). */
   sub: Partial<Record<NavKey, string>>;
-  /** Transient: the offer detail says "Opened from your notification" (its banner comes with chunk 2). */
+  /** Transient: the next offer view shows "Opened from your notification" and clears this (Shop.tsx, chunk 3). */
   fromNotification: boolean;
   /** A route waiting for a game (a link or reload boot, or a link with no save yet); applied once, when it starts. */
   pending: ParsedRoute | null;

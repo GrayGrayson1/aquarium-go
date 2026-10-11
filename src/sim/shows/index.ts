@@ -10,7 +10,7 @@
  * stepShows(state, dt, ctx) runs every world sub-step (src/sim/world.ts). It is deterministic and robust to any dt:
  * offline catch-up judges every show that passed (in order) and the calendar only ever schedules forward.
  */
-import type { Creature, CreatureRibbon, GameState, Show, ShowEntry, ShowPlacing, ShowTier, ShowsState, Tank, TrophyRecord } from '@/types';
+import type { Creature, CreatureRibbon, EventNotice, GameState, Show, ShowEntry, ShowPlacing, ShowTier, ShowsState, Tank, TrophyRecord } from '@/types';
 import type { SimContext } from '../context';
 import { emitEvent } from '../context';
 import type { ActionResult } from '../care';
@@ -35,6 +35,8 @@ export { TITLE_LABEL, TITLE_PREFIX, topTitle, titledName, qualifiedTitles, winsA
 const round1 = (v: number) => Math.round(v * 10) / 10;
 const clamp = (v: number, lo: number, hi: number) => (Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : lo);
 const PLACE_WORD = ['1st', '2nd', '3rd', 'Honourable Mention'];
+/** lane:notify — the rosette colours by place (src/ui/panels/shows/Ribbons.tsx: 1st blue, 2nd red, 3rd gold, HM green). */
+const RIBBON_WORD = ['Blue', 'Red', 'Gold', 'Green'];
 
 export function placeWord(rank: number): string {
   if (rank >= 1 && rank <= 4) return PLACE_WORD[rank - 1];
@@ -388,7 +390,10 @@ function judgeShow(state: GameState, s: ShowsState, show: Show): void {
     // lane:w2-ui (copy) — lead with the placing: a one-line toast used to show only the long show name
     const text = anyRibbon ? `${lines.join('; ')} at ${show.name}. The judge’s cards are in Shows.` : `${lines.join('; ')} at ${show.name} — no ribbons this time. The judge’s cards explain why.`;
     const sub = focus && focus.kind === 'creature' ? state.creatures[focus.subjectId] : null;
-    emitEvent(state, { kind: anyRibbon ? 'celebrate' : 'info', text, toast: true, creatureId: sub?.id, tankId: sub?.tankId ?? (focus?.kind === 'tank' ? focus.subjectId : undefined) }, hour);
+    // lane:notify — the Shows notification names the best placing (0.5 §12.2; no prize or ribbon: the line above, ADR-0023)
+    const top = focus ?? live.filter((e) => e.rank !== undefined).sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))[0];
+    const notice: EventNotice | undefined = top?.rank !== undefined ? { topic: 'show_result', vars: { show: show.name, name: top.name, place: placeWord(top.rank), ...(top.prize ? { prize: top.prize } : {}), ...(top.rank <= 4 ? { ribbon: RIBBON_WORD[top.rank - 1] } : {}) } } : undefined;
+    emitEvent(state, { kind: anyRibbon ? 'celebrate' : 'info', text, toast: true, creatureId: sub?.id, tankId: sub?.tankId ?? (focus?.kind === 'tank' ? focus.subjectId : undefined), ...(notice ? { notice } : {}) }, hour);
   }
   const scratched = mine.filter((e) => e.status === 'scratched');
   if (scratched.length) emitEvent(state, { kind: 'info', text: scratched.map((e) => e.note).join(' '), toast: live.length === 0 }, hour);

@@ -24,6 +24,9 @@ test.describe('Prismatic animals', () => {
     await expect(page.getByText('Prismatic — an ultra-rare individual').first()).toBeVisible();
     await tid(page, 'buy-offer').click();
     await waitForState(page, `Object.values(g.creatures).some(c => c.rareVariant && c.status === 'alive')`);
+    // chunk 2 (0.5 §7.5 item 6): the find is celebrated by name
+    const toast = await page.evaluate(() => (window as unknown as { __AQ: { ui(): { toasts: { kind: string; label?: string; detail?: string }[] } } }).__AQ.ui().toasts.at(-1));
+    expect(toast).toMatchObject({ kind: 'celebrate', label: 'Prismatic find', detail: 'Find them in Livestock.' });
 
     const before = await probe<{ id: string; name: string; rv: unknown; finds: number }>(
       page,
@@ -42,6 +45,10 @@ test.describe('Prismatic animals', () => {
     // the creature card carries the badge
     await aq(page, 'setUI', { selectedCreatureId: before.id });
     await expect(tid(page, 'creature-card').getByTestId('prismatic-badge').first()).toBeVisible();
+
+    // chunk 2 (0.5 §7.7): its Livestock row wears the Prismatic frame
+    await aq(page, 'setUI', { selectedCreatureId: null, panel: 'livestock', panelTarget: null });
+    await expect(tid(page, 'panel-livestock').locator('.pn-lsrow.ag-prismatic-row')).toHaveCount(1);
 
     // …and the encyclopedia records the find
     await aq(page, 'setUI', { selectedCreatureId: null, panel: 'encyclopedia', panelTarget: 'species:mystery_snail' });

@@ -26,6 +26,7 @@ import { DEFAULT_LIGHTS_ON, defaultLightsOff } from '@/sim/time';
 import { renamedMorphs } from '@/sim/life/genetics';
 import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
 import { backfillFinds } from '@/sim/life/discovery'; // lane:genetics
+import { emptyShowsState } from '@/sim/shows/state'; // B-168
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -281,6 +282,9 @@ function withDefId(a: unknown, what: string, label: string, repairs: string[]): 
   return kept;
 }
 
+/** The save's clock (0 when unreadable), for checks that run before the clock itself is repaired. */
+const hour0 = (s: Json): number => (typeof s.clock?.hour === 'number' && Number.isFinite(s.clock.hour) ? s.clock.hour : 0);
+
 function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | null {
   if (!isObj(t)) return null;
   t.id = id;
@@ -295,6 +299,17 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   t.name ??= TANK_TIER_BY_ID[t.tierId].name;
   t.purpose ??= 'display';
   t.water = fillNumbers(t.water, defaultWater(marine, wc === 'freshwater_cool'), `tank ${id}.water`, repairs);
+  // lane:automation (PERSIST-006) — the Auto Water Changer's last-run hours are finite numbers, not after the clock, when
+  // present; a broken one is dropped (the device then runs at the next lights-on, once). Absent ones need nothing. A
+  // future hour would stop the device and keep keepers off the tank's routine care for good.
+  if (isObj(t.water.lab)) {
+    for (const k of ['lastAutoChangeHour', 'lastAutoScrapeHour'] as const) {
+      const v = t.water.lab[k];
+      if (v === undefined || (typeof v === 'number' && Number.isFinite(v) && v <= hour0(s))) continue;
+      repairs.push(`tank ${id}.water.lab.${k}: ${String(v).slice(0, 40)}, removed`);
+      delete t.water.lab[k];
+    }
+  }
   if (!isObj(t.placement)) t.placement = { x: 0, z: 0, rotY: 0 };
   t.placement = fillNumbers(t.placement, { x: 0, z: 0, rotY: 0 }, `tank ${id}.placement`, repairs);
   t.equipment = withDefId(t.equipment, 'equipment', `tank ${id}`, repairs);
@@ -565,7 +580,9 @@ export function repairState(s: Json): string[] {
     for (const k of ['shows', 'entries', 'trophies'] as const) if (!Array.isArray(s.shows[k])) s.shows[k] = [];
     if (!isObj(s.shows.tankAwards)) s.shows.tankAwards = {};
     if (!isObj(s.shows.stats)) s.shows.stats = { entered: 0, placings: 0, wins: 0, bestInShow: 0, prize: 0 };
-    s.shows.rng = num(s.shows.rng, s.seed) >>> 0;
+    // B-168: a broken stream restarts from its own seed, as ensureShowsState and a new game do (it used to restart from
+    // the save seed itself, the world stream's seed)
+    s.shows.rng = typeof s.shows.rng === 'number' && Number.isFinite(s.shows.rng) ? s.shows.rng >>> 0 : emptyShowsState(s as GameState).rng;
     s.shows.seq = Math.max(0, Math.floor(num(s.shows.seq, 0)));
     s.shows.cursorHour = num(s.shows.cursorHour, num(s.clock.hour, 0));
   }

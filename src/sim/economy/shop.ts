@@ -2,7 +2,7 @@
  * Livestock shop: species availability, daily demand random walk + trend events, pre-rolled stock and
  * mid-day specials. OWNER: lane "market".
  */
-import type { GameState, ShopOffer, Creature, SpeciesDefinition, Sex, MarketTrend } from '@/types';
+import type { GameState, ShopOffer, Creature, SpeciesDefinition, Sex, MarketTrend, EventNotice } from '@/types';
 import type { Rng } from '../rng';
 import { nextId } from '../ids';
 import { emitEvent } from '../context';
@@ -345,7 +345,12 @@ function announcePrismatic(state: GameState, o: ShopOffer): void {
   const c = o.creatures.find((x) => isPrismatic(x));
   const sp = findSpecies(o.speciesId);
   if (!c || !sp) return;
-  emitEvent(state, { kind: 'market', text: `Something special at the shop: a Prismatic ${morphLabel(c, sp)} from ${o.seller} — ${fmtMoney(o.price)}${isLotOffer(o) ? ' (sold with its group)' : ''}.`, toast: true });
+  emitEvent(state, { kind: 'market', text: `Something special at the shop: a Prismatic ${morphLabel(c, sp)} from ${o.seller} — ${fmtMoney(o.price)}${isLotOffer(o) ? ' (sold with its group)' : ''}.`, toast: true, offerId: o.id, notice: prismaticNotice(o, c, sp) });
+}
+
+/** lane:notify — the Rare stock notification's values for a Prismatic offer (0.5 §12.2). */
+function prismaticNotice(o: ShopOffer, c: Creature, sp: SpeciesDefinition): EventNotice {
+  return { topic: 'prismatic', vars: { species: sp.commonName.toLowerCase(), morph: morphLabel(c, sp), seller: o.seller, until: o.expiresHour } };
 }
 
 /** When new unlocks land, stock the newly available species right away. */
@@ -362,14 +367,23 @@ export function stockNewUnlocks(state: GameState, rng: Rng, hour: number, announ
   if (fresh.length === 0) return;
   const picks = rng.shuffle([...fresh]).slice(0, 3);
   const names: string[] = [];
+  const stocked: ShopOffer[] = [];
   for (const sp of picks) {
     const o = generateOffer(state, rng, sp.id, { expiresHour: nextRefreshHour(hour) + 24 });
     if (o) {
       m.stock.push(o);
+      stocked.push(o);
       names.push(o.creatures.some((x) => isPrismatic(x)) ? `${pluralName(sp.commonName)} (one of them Prismatic!)` : pluralName(sp.commonName));
     }
   }
-  if (announce && names.length) emitEvent(state, { kind: 'market', text: `New arrivals at the shop: ${names.join(', ')}.`, toast: true });
+  if (!announce || !names.length) return;
+  // lane:notify (B-189) — the event opens the one offer it names: the Prismatic one, or the only one stocked (else the
+  // shop). New species aren't rare stock, so only a Prismatic among them notifies.
+  const shimmer = stocked.find((o) => o.creatures.some((x) => isPrismatic(x)));
+  const one = shimmer ?? (stocked.length === 1 ? stocked[0] : undefined);
+  const pc = shimmer?.creatures.find((x) => isPrismatic(x));
+  const psp = shimmer ? findSpecies(shimmer.speciesId) : undefined;
+  emitEvent(state, { kind: 'market', text: `New arrivals at the shop: ${names.join(', ')}.`, toast: true, ...(one ? { offerId: one.id } : {}), ...(shimmer && pc && psp ? { notice: prismaticNotice(shimmer, pc, psp) } : {}) });
 }
 
 /** Occasional mid-day special (11 AM–5 PM, at most one per day). */
@@ -395,5 +409,8 @@ export function maybeSpecial(state: GameState, rng: Rng, start: number, dt: numb
   const news = sp.id === state.starterId || !state.progress.discoveredSpecies.includes(sp.id);
   // lane:genetics — a Prismatic special is always news
   const shimmer = o.creatures.some((x) => isPrismatic(x));
-  emitEvent(state, { kind: 'market', text: `Market special: ${o.label} from ${o.seller} — ${fmtMoney(o.price)}, today only.`, toast: shimmer || (fits && news) });
+  // lane:notify — a special notifies when it is news (when it toasts); a Prismatic one as a Prismatic (0.5 §12.2)
+  const pc = shimmer ? o.creatures.find((x) => isPrismatic(x)) : undefined;
+  const notice: EventNotice | undefined = pc ? prismaticNotice(o, pc, sp) : fits && news ? { topic: 'special', vars: { morph: o.label ?? sp.commonName, seller: o.seller, price: o.price, until: o.expiresHour } } : undefined;
+  emitEvent(state, { kind: 'market', text: `Market special: ${o.label} from ${o.seller} — ${fmtMoney(o.price)}, today only.`, toast: shimmer || (fits && news), offerId: o.id, ...(notice ? { notice } : {}) });
 }

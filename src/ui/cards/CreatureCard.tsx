@@ -43,6 +43,7 @@ import { runtime } from '@/runtime/tankRuntime';
 import {
   potentialBand,
   describeGenetics,
+  geneticsRevealLevel,
   breedingStatus,
   breedingCheck,
   creaturesInTank,
@@ -542,8 +543,11 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
   const following = camMode === 'follow' && followId === c.id;
   const readOnly = false; // dev showcase worlds (?showcase=) are fully interactive in the game screen; they are simply never saved
   const value = safe('creatureValue', () => creatureValue(game, c), null);
-  const geneticsOpen = (c.geneticsRevealed ?? 0) >= 1 || safe('isUnlocked', () => isUnlocked(game, 'genetics_lab'), false);
-  const genetics = geneticsOpen && sp ? safe('describeGenetics', () => describeGenetics(sp, c.genome, c.geneticsRevealed ?? 1), []) : [];
+  // lane:genetics (0.5 §9.1) — the lab reveals every animal's genes; it used to pass the animal's own level (0 for every
+  // animal born or bought since 0.3), so the rows stayed band words. One rule with the shop (geneticsRevealLevel).
+  const revealLevel = safe('geneticsRevealLevel', () => geneticsRevealLevel(game, c), 0);
+  const geneticsOpen = revealLevel >= 1;
+  const genetics = geneticsOpen && sp ? safe('describeGenetics', () => describeGenetics(sp, c.genome, revealLevel), []) : [];
   const wellbeing = safe('creatureWellbeing', () => creatureWellbeing(game, c), null);
   const comfort = !wellbeing && sp && tank ? safe('speciesWaterComfort', () => speciesWaterComfort(sp, tank), null) : null;
   const structure = sp ? safe('structureLabel', () => structureLabel(sp), 'Form') : 'Form';

@@ -11,6 +11,8 @@ export interface Article {
   title: string;
   teaser: string;
   body: ReactNode;
+  /** lane:genetics — added in this release: the list marks it "New". */
+  isNew?: boolean;
 }
 
 function NitrogenCycleDiagram() {
@@ -166,6 +168,27 @@ export const ARTICLES: Article[] = [
         </p>
         <p>
           <b>Prismatic</b> animals are different, and purely a game feature: no real animal shimmers like this. About {oneInLabel(PRISMATIC.shopChance)} animals a seller stocks is Prismatic, and about {oneInLabel(PRISMATIC.bredBaseChance)} young born in your shop. It isn’t a gene, so it can’t be bred true. A Prismatic parent makes it {PRISMATIC.oneParentMultiplier}× likelier in each youngster, and two Prismatic parents {PRISMATIC.twoParentMultiplier}× — never certain.
+        </p>
+      </>
+    ),
+  },
+  // lane:genetics (0.5 §8.7) — copy approved by the owner (ADR-0020)
+  {
+    id: 'how_genes_combine',
+    title: 'How genes combine: dominant, recessive and additive',
+    teaser: 'Why a trait can skip a generation, and why some only show with two copies.',
+    isNew: true,
+    body: (
+      <>
+        <p>Every animal carries two copies of each gene, one from each parent, and passes one of them, chosen at random, to each of its young.</p>
+        <p>
+          <b>Dominant and recessive.</b> When the two copies differ, one usually wins: the dominant copy shows and the recessive one stays hidden. A Royal Blue betta can carry Cambodian without a trace of it. Pair two carriers and about 1 in 4 young get two hidden copies, and in them the trait appears.
+        </p>
+        <p>
+          <b>Additive.</b> Some genes blend instead: each copy adds a little. One Metallic copy gives a betta a soft sheen; two give the full Metallic look. Because every copy shows, additive genes never hide.
+        </p>
+        <p>
+          <b>Seeing what’s hidden.</b> The Genetics Lab reads both copies of every gene, so you can spot carriers in the shop and plan pairings before the first clutch.
         </p>
       </>
     ),

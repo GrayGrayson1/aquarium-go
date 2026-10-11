@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
-import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart, PowerOff, Eraser, ScrollText, Wrench } from 'lucide-react';
+import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart, PowerOff, Eraser, ScrollText, Wrench, Clock, BellRing } from 'lucide-react';
 import type { GameEvent, GameState } from '@/types';
 import { useGame, useGameSelector } from '@/state/game';
 import { useUI } from '@/state/ui';
@@ -22,7 +22,10 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { useTankCardTab } from '../cards/TankCard';
 import { EventIcon } from './eventIcons';
 import { Chip, formatMoney } from '../kit';
-import { attentionSummary, clearAllEvents, drawerEvents, gearFitItems, markAllRead } from '../common/notify'; // lane:notify
+import { attentionSummary, autofeedPaused, autofeedPausedText, clearAllEvents, drawerEvents, gearFitItems, markAllRead } from '../common/notify'; // lane:notify
+import { Button } from '../kit';
+import { go } from '../nav/router'; // lane:notify (chunk 3)
+import { useNotifyPermission } from '../notify/deliver'; // lane:notify (chunk 3)
 import { eventLink } from './eventLinks'; // lane:notify
 
 /**
@@ -81,7 +84,13 @@ function TankAlerts({ game }: { game: GameState }) {
     .filter((t) => !!t)
     .map((t) => ({ t, names: failedGear(t, reasons.get(t.id) ?? '') }))
     .filter((x) => x.names.length > 0);
-  if (!rows.length && !food.length && !gear.length && !fit.length)
+  // lane:automation (0.5 §10.2, AUTO-005) — Auto-feed paused (off, jammed or empty) while someone is hungry
+  const paused = game.tankOrder
+    .map((id) => game.tanks[id])
+    .filter((t) => !!t)
+    .map((t) => ({ t, p: autofeedPaused(game, t) }))
+    .filter((x): x is { t: GameState['tanks'][string]; p: NonNullable<ReturnType<typeof autofeedPaused>> } => !!x.p);
+  if (!rows.length && !food.length && !gear.length && !fit.length && !paused.length)
     return (
       <div className="ag-alert-ok">
         <CircleCheck size={16} aria-hidden /> All tanks look healthy.
@@ -155,6 +164,27 @@ function TankAlerts({ game }: { game: GameState }) {
           <ChevronRight size={16} aria-hidden />
         </button>
       ))}
+      {paused.map(({ t, p }) => (
+        <button
+          type="button"
+          key={`autofeed-${t.id}`}
+          className="ag-alert-row is-watch"
+          data-testid="alert-autofeed-paused"
+          title="Open the tank card's equipment"
+          onClick={() => {
+            sfx('open');
+            useShell.getState().set({ popover: null });
+            go({ kind: 'tankCard', tankId: t.id, tab: 'gear' }); // #/tanks/:id/equipment
+          }}
+        >
+          <Clock size={16} aria-hidden />
+          <span className="ag-grow">
+            <span className="ag-alert-row__title">{t.name}</span>
+            <span className="ag-alert-row__text">{autofeedPausedText(p)}</span>
+          </span>
+          <span className="ag-alert-row__fix">Fix</span>
+        </button>
+      ))}
       {fit.map(({ t, items }) => (
         <button
           type="button"
@@ -208,6 +238,32 @@ function TankAlerts({ game }: { game: GameState }) {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * lane:notify (0.5 §12.4) — the drawer's footer, only while the browser has never been asked: it opens Settings ›
+ * Notifications, where "Turn on" asks (never from here, never at launch).
+ */
+function NotifyCta() {
+  const permission = useNotifyPermission((s) => s.permission);
+  if (permission !== 'default') return null;
+  return (
+    <div className="ag-alerts-cta" data-testid="alerts-notify-cta">
+      <BellRing size={16} aria-hidden />
+      <span className="ag-grow">Get alerts like these as system notifications, not just in here.</span>
+      <Button
+        size="sm"
+        data-testid="alerts-notify-turn-on"
+        onClick={() => {
+          sfx('open');
+          useShell.getState().set({ popover: null });
+          go({ kind: 'settings', tab: 'notifications' });
+        }}
+      >
+        Turn on
+      </Button>
     </div>
   );
 }
@@ -324,6 +380,7 @@ export function AlertsPopover() {
         <button type="button" className="ag-linkbtn ag-alerts-pop__full" data-testid="alerts-open-log" onClick={openLog}>
           <ScrollText size={14} aria-hidden /> Full event log
         </button>
+        <NotifyCta />
       </div>
     </motion.div>
   );

@@ -1,0 +1,26 @@
+/* Tank card › Equipment › Automation and the Water tab's Auto-clean note, 0.5 (chunk 3, spec §10.1–§10.3, §17).
+   Tokens from tokens.css; the switch is the kit's (44×26). OWNER: lane "ui-shell". */
+
+.ag-autolist { display: grid; gap: 8px; }
+.ag-auto { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: start; gap: 4px 12px; padding: 12px; border-radius: var(--r-lg); border: 1px solid var(--c-line); background: var(--c-fill); }
+.ag-auto.is-installed { border-color: color-mix(in srgb, var(--c-aqua) 35%, transparent); background: color-mix(in srgb, var(--c-aqua) 6%, transparent); }
+.ag-auto.is-missing { border-style: dashed; border-color: var(--c-line-strong); background: transparent; }
+.ag-auto__icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-md); color: var(--c-aqua); background: var(--c-aqua-soft); }
+.ag-auto.is-missing .ag-auto__icon { color: var(--c-ink-3); background: var(--c-fill); opacity: 0.7; }
+.ag-auto__title { display: flex; align-items: center; gap: 6px; font-size: calc(13.5px * var(--text-scale)); font-weight: 620; color: var(--c-ink); }
+.ag-auto__title svg { color: var(--c-ink-3); }
+.ag-auto__sub { margin-top: 2px; font-size: calc(11.5px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-3); }
+.ag-auto__warn { margin-top: 4px; font-size: calc(11.5px * var(--text-scale)); line-height: 1.45; color: var(--c-watch); }
+.ag-auto__need { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-top: 8px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-2); }
+.ag-auto__hint { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; font-size: calc(11.5px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-3); }
+.ag-auto__hint svg { flex: none; margin-top: 2px; }
+.ag-auto__ctl { grid-column: 3; grid-row: 1; align-self: center; }
+.ag-auto__meals { grid-column: 2 / -1; display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-2); }
+.ag-auto .ag-fitline, .ag-auto .ag-fit { grid-column: 2 / -1; }
+.ag-btn.ag-btn--buygear { background: linear-gradient(180deg, color-mix(in srgb, var(--c-gold), var(--c-ink) 35%), var(--c-gold)); color: var(--c-bg); border-color: color-mix(in srgb, var(--c-ink) 25%, transparent); font-weight: 650; }
+
+/* Water tab: "Auto-clean is on" (§10.3) */
+.ag-autonote { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0 0; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); background: color-mix(in srgb, var(--c-aqua) 8%, transparent); }
+.ag-autonote svg { flex: none; margin-top: 2px; color: var(--c-aqua); }
+.ag-autonote__title { font-size: calc(13px * var(--text-scale)); font-weight: 620; color: var(--c-ink); }
+.ag-autonote__text { margin-top: 2px; font-size: calc(12px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-2); }

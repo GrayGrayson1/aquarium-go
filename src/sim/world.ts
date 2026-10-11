@@ -138,7 +138,7 @@ function stepTankPiece(state: GameState, tank: Tank, dt: number, lod: SimLod, st
   // Tank sub-steps are anchored to world time (end of the debt minus what is left) so timestamps stay meaningful.
   ctx.hour = startHour;
   stepTankWater(state, tank, dt, ctx);
-  stepTankDecor(state, tank, dt, ctx.hour); // lane:fix-core2 (S05-10) — same world-time window as the water step
+  stepTankDecor(state, tank, dt, ctx.hour, ctx.rng); // lane:fix-core2 (S05-10) — same world-time window as the water step; B-168: the step's own stream
   stepTankCreatures(state, tank, dt, ctx);
   stepTankBreeding(state, tank, dt, ctx);
   tank.tapPressure = Math.max(0, tank.tapPressure - dt * 6);

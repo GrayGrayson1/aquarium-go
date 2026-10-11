@@ -32,6 +32,7 @@ import {
   stageDue,
   startResting,
   tickTimers,
+  breedNotice,
 } from '../common';
 
 const COURT_H: [number, number] = [3, 5];
@@ -216,7 +217,8 @@ function layEggs(state: GameState, tank: Tank, env: StepEnv, f: Creature, dt: nu
     cl.pendingEggs = undefined;
     startResting(f, hour, sp.breeding.cooldownDays * 24);
     addHistory(f, 'bred', `Laid ${plural(cl.initialCount ?? cl.count, 'egg')}.`, hour);
-    say(state, ctx, { kind: 'breeding', text: `${f.name} has finished laying — ${plural(cl.count, 'egg')} cling to the plants. She needs a good rest now.`, tankId: tank.id, creatureId: f.id });
+    // lane:notify — the clutch's one Breeding notification: laying takes hours, and only now is the count known
+    say(state, ctx, { kind: 'breeding', text: `${f.name} has finished laying — ${plural(cl.count, 'egg')} cling to the plants. She needs a good rest now.`, tankId: tank.id, creatureId: f.id, notice: breedNotice('eggs', f.name, cl.count, tank) });
   }
 }
 

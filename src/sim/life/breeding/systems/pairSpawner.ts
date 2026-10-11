@@ -42,6 +42,8 @@ import {
   tickTimers,
   type SiteKind,
   type SpawnWindow,
+  breedNotice,
+  clutchParentName,
 } from '../common';
 import { bumpCounter } from '@/sim/facility';
 import { getSpecies } from '@/data/species';
@@ -177,7 +179,7 @@ function stepPairs(env: StepEnv, cfg: PairSpawnerConfig, mod: BreedingModule): v
         releaseCarried(cl, tank, sp, mod, hour);
         startResting(g, hour, b.cooldownDays * 24 * cfg.maleRestFrac);
         addHistory(g, 'bred', `Released ${plural(cl.count, 'youngster')} from his mouth.`, hour);
-        say(state, ctx, { kind: 'breeding', text: cfg.text.release?.(g, cl.count, sp) ?? `${g.name} released ${plural(cl.count, 'tiny youngster')}!`, tankId: tank.id, creatureId: g.id, toast: true });
+        say(state, ctx, { kind: 'breeding', text: cfg.text.release?.(g, cl.count, sp) ?? `${g.name} released ${plural(cl.count, 'tiny youngster')}!`, tankId: tank.id, creatureId: g.id, toast: true, notice: breedNotice('hatch', clutchParentName(state, cl), cl.count, tank) });
       }
       continue;
     }
@@ -254,7 +256,8 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
       if (carried) p.repro.carryingUntilHour = cl.nextStageHour;
     } else startResting(p, hour, b.cooldownDays * 24 * (p === m ? cfg.maleRestFrac : 1));
   }
-  say(state, ctx, { kind: 'breeding', text: cfg.text.spawn(m, f, sp, n, tank, infertile ? null : guardian), tankId: tank.id, creatureId: f.id, toast: toastWorthy(state, sp, 'spawn') });
+  const loud = toastWorthy(state, sp, 'spawn');
+  say(state, ctx, { kind: 'breeding', text: cfg.text.spawn(m, f, sp, n, tank, infertile ? null : guardian), tankId: tank.id, creatureId: f.id, toast: loud, ...(loud && !infertile ? { notice: breedNotice('eggs', f.name, n, tank) } : {}) });
   if (infertile && throttleTank(tank, `infertile_${sp.id}`, hour, 24 * 7)) say(state, ctx, { kind: 'info', text: infertile, tankId: tank.id });
 }
 

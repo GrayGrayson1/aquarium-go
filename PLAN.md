@@ -6,38 +6,28 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Finish chunk 1: its e2e run.** Chunk 1 is built and reviewed on `next` (from `fb80474`; the review's blockers
-   fixed in `743ca63`, its follow-up in `bcdb65e`). Typecheck, unit (174 files, 2,032 tests) and build pass on
-   `bcdb65e`; e2e needs the owner's Mac (`CLAUDE.md`), so run it in Terminal:
-   `cd /Volumes/Dev/Projects/AquariumGo && { git log --oneline -1; echo "=== npm run e2e"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run e2e; echo "=== e2e exit $?"; } 2>&1 | tee .agent-runs/e2e-chunk1.log`.
-   Six specs are new (`nav`, `nav-routes-matrix`, `deeplink-boot`, `mobile-tabbar`, `mobile-sheets`, and the phone
-   test in `ui-layout`), so fix whatever the first run shows, then mark chunk 1 done below, set its requirements
-   (the "Requirements" line of its brief) to GREEN, DES-002 to DEFERRED (harness evidence) and S0's requirements to
-   GREEN (the reviewer read S0's diff and saw no reason not to), and push `next`.
-2. **Then chunk 2** (Shop and genetics), in Claude Code on the Mac, on `next`.
-3. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
-   rest). Chunks 1 to 3 don't need them. Also, from chunk 1: (a) after a rollback, an older copy of the game can't
-   autosave into a slot that holds a newer version's save (it says so once, with "Refresh the page"): should a
-   player be offered more, such as saving to another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too
-   (B-129)? (c) What accessibility level to aim for (B-178)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the
-   developer tools for the session, and the dev panel comes on with the Settings switch.
-4. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
+1. **Group A is answered** (ADR-0024, 2026-10-11): release 0.5.1 now, plus standing decisions. The 0.5.1 release
+   (chunks 2 and 3) is under way in the same session.
+2. **Then ask the owner groups B to E** of `docs/agent/OWNER_QUESTIONS.md` (chunk 4's Production answers, the
+   DESIGN-S3D approval for chunk 5, chunk 6's copy, backlog rows); `docs/agent/SESSION_HANDOFF.md` gives the order
+   of work after that.
+3. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
 
 ## Status
 
 | Chunk | What | Status |
 |---|---|---|
 | 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06. Its e2e run (owner, `3601860`): 47 of 48, the one failure camera-freeze's teardown hang, fixed in `859858a` |
-| 1 | Navigation, links and the platform layer | Built and reviewed 2026-10-06; released in 0.5.0; e2e pending (Next step 1) |
-| 2 | Shop and genetics | Not started |
-| 3 | Automation and notifications | Not started |
+| 1 | Navigation, links and the platform layer | Done 2026-10-07 (released in 0.5.0 on 2026-10-06). Its e2e run (`f59d51a`): 75 of 75, no fixes needed |
+| 2 | Shop and genetics | Done 2026-10-11, with the owner's follow-ups (ADR-0022). Its full run (`7acb0b9`): typecheck, unit 2,107, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
+| 3 | Automation and notifications | Done 2026-10-11 (on `next`). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Not started; needs the owner's Production answers |
 | 5 | Deep automation (S3-D) | Not started; needs the owner's approval of DESIGN-S3D |
 | 6 | Social stub, hardening and the 0.5.0 release | Not started |
 
-**Last full test run:** the owner's Mac, 2026-10-06, on `3601860`: typecheck, unit (1,809 tests) and build passed;
-e2e 47 of 48 (camera-freeze's browser teardown hung after its body passed; see "Known flaky tests"). Chunk 1, on
-`bcdb65e` in Claude Code: typecheck, unit (2,032 tests) and build passed; e2e pending.
+**Last full test run:** the owner's Mac, 2026-10-11, on `aeb7657` (chunk 3 with its review fixes), in Claude Code from
+the internal-disk clone: typecheck passed; unit 194 files, 2,227 tests passed; build passed; e2e 90 passed (8.0
+minutes, inside Claude Code's sandbox; the warmup, the new `base-path` project and 88 desktop tests).
 
 ## How a chunk runs
 
@@ -55,11 +45,12 @@ e2e 47 of 48 (camera-freeze's browser teardown hung after its body passed; see "
 6. Update this file, commit, push `next`, and tell the owner what to try (`npm run dev`, then
    http://127.0.0.1:5173).
 
-**The owner's one-line check run**, for when the agent can't run e2e itself. It pushes `next`, runs all four checks
-and keeps a log in `.agent-runs/checks-next.log`:
+**The owner's one-line check run**, for when the agent can't run e2e itself. It pushes `next`, checks it out in the
+internal-disk clone (Next step 2), runs all four checks there and keeps a log in
+`~/LocalTest/AquariumGo/.agent-runs/checks-next.log`:
 
 ```bash
-cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next; { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=/Volumes/Dev/Caches/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-next.log
+cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next && cd ~/LocalTest/AquariumGo && git fetch dev next && git checkout --detach FETCH_HEAD && npm ci && mkdir -p .agent-runs && { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-next.log
 ```
 
 **Known flaky tests** (from the harness's baseline): `boot.spec.ts:17` and `camera-freeze.spec.ts:34` once timed out
@@ -70,6 +61,21 @@ a regression, and never loosen it. The teardown hang is Chromium's graceful `con
 120 s, while closing the browser took 1.4 s. `camera-freeze.spec` now runs in a browser of its own and closes it with
 `browser.close()` (`859858a`); give `boot.spec.ts:17` the same treatment if it hangs again.
 
+**Testing notes** (from chunks 1 to 3):
+- To test uncommitted work, `git diff --binary` it into a patch and `git apply` that in the internal-disk clone (on
+  the same base commit); run the checks there.
+- An e2e spec that counts shop stock pauses the clock (`dev.setSpeed 0`): a restock mid-test changes the counts.
+  `dev.addShopOffer` offers never light the Market's rare-stock dot; clone a stock offer under a new id through
+  `__AQ.mutate` to light it.
+- Server-rendered unit tests (`renderToStaticMarkup`) read a zustand store's initial state, not its live state: copy
+  the live state into `getInitialState()` first (see `tests/sim/ui-shop-05.test.ts`).
+- Notification delivery reads the device clock (quiet hours): a test that expects one to show turns quiet hours off
+  (the e2e specs set `aquarium-go.notify.v1` in an init script) or pins the clock and timezone, or it fails at night.
+  e2e records notifications by stubbing `window.Notification` and `ServiceWorkerRegistration.prototype
+  .showNotification`. Playwright's `toBeEnabled` counts `aria-disabled` as disabled.
+- Every e2e run also builds the game for production under `/aquarium-go/` and serves it for the `base-path` project
+  (about 10 s more, even for one spec).
+
 **Requirements.** The ids below come from `docs/agent/REQUIREMENTS.json`; their acceptance criteria are the
 checklist. Skip criteria that only made sense for the harness (gates, ledgers, evidence manifests, reviewer records,
 slice contracts). Where a criterion leaves a value to "the slice contract" (a budget, a tolerance, a string), choose
@@ -78,86 +84,89 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 
 ## Chunk briefs
 
-### 1. Navigation, links and the platform layer (0.5 phases 0 and 1)
+### 1. Navigation, links and the platform layer (0.5 phases 0 and 1) — done 2026-10-07
 
-- **Design:** 0.5 spec §5 (not Social), §6 and §14, and this chunk's parts of §16 (copy, including the locked
-  panels), §17 (the phone tab bar and sheet sizes), §18 (accessibility), §19 (test ids) and §20 (`nav-routes`,
-  `nav-sync`, `platform-memory`, `ui-layout.spec`).
-- **Build:** `src/platform/` (web and memory implementations); `src/ui/nav/` (pure routes with tests, the hash router
-  with two-way store sync, the boot, reload and leave rules of §6.4); the phone tab bar and More sheet; full-height
-  phone sheets; the tutorial fallback for targets in More; locked-panel states; Copy link on offers; the unknown-link
-  toast; the 0.5 sections of `docs/TEST_IDS.md`; forward-safe saves (PERSIST-014).
-- **Requirements:** NAV-001 to NAV-018, PLAT-001 to PLAT-003, PLAT-005, ACC-001, ACC-002, DES-001 to DES-004,
-  PERSIST-014, CONST-005.
-- **Done when:** the route and platform unit tests pass; every §6.2 route except Social and Production opens the right
-  screen on desktop and phone; Back and Esc behave; a reload shows the title screen (unless the owner's §6.4 answer
-  changes that); `nav.spec`, `deeplink-boot.spec`, `mobile-tabbar.spec` and `mobile-sheets.spec` pass with everything
-  else.
-- **Watch:**
-  - `src/platform/` is a new top-level layer, approved by the 0.5 spec (§14): add its row to the layer table in
-    `docs/ARCHITECTURE.md` and to `ALLOWED` in `tests/sim/core-architecture-boundaries.test.ts`, and say so in the
-    commit (no separate ADR).
-  - BACKLOG errata to apply: B-115, B-116, B-117 (after the §6.4 answer), B-146, B-150, B-151. Open S1 rows to fix or
-    defer: B-011, B-126, B-129, B-172, B-178, B-179, B-182, B-183.
-  - DESIGN-S3D will later move Settings to a gear and put Operations in the dock and first in More (`INTAKE.md` C-1,
-    C-2). Follow the 0.5 design now, but build the dock and More so that's a small change.
-  - The reviewer also reads S0's game changes once (`git diff 0d9fc5a 19928b8 -- src`, about 400 lines; the
-    harness's last re-reviews never ran). Then set the S0 requirements (CONST-004, GEN-013, MKT-016, PERSIST-009 to
-    PERSIST-013, PERSIST-015) to `GREEN`.
-- **Decide:** ask the owner before building the boot rules: which links skip the title screen, what a reload does,
-  and what the loading card shows (§6.4). The harness's review recommended: a deep link is a hash that names a real
-  screen; an empty, `#/` or unknown hash shows the title; a reload returns to the title; the loading card shows an
-  indeterminate bar with the time away. Also NAV-014's not-found copy, if §6.5 and §16 don't give it.
-- **Decided (2026-10-06):**
+- **Built:** `src/platform/` (a new top-level layer, in `docs/ARCHITECTURE.md` and the architecture test);
+  `src/ui/nav/` (routes, the hash router, the boot, reload and leave rules); the phone tab bar and More sheet;
+  full-height phone sheets; locked panels; Copy link on offers; forward-safe saves (PERSIST-014). Requirements
+  NAV-001 to NAV-018, PLAT-001 to PLAT-003, PLAT-005, ACC-001, ACC-002, DES-001 to DES-004, PERSIST-014, CONST-005.
+- **Decided:**
   - The owner's answers are ADR-0019: a link to a real screen skips the title and opens the latest save behind the
-    loading card; **a reload (or a return through history) reopens this tab's aquarium at the address**, not the
-    title; the loading card's bar loops; the not-found toasts' wording.
-  - Values the requirements left open: panel and Settings sheets on a portrait phone start at 64 px ± 2 and the tank
-    card at 118 px ± 2; the More sheet's top at 48 % of the height (tests allow 45-51 %); "Link copied" for 4 s (the
-    test allows up to 6 s).
-  - `?dev=1` allows the developer tools for that session only (PLAT-005) and no longer switches the dev panel on by
-    itself, as NAV-009 A4 assumed: e2e and QA scripts open the game with `?dev=1`, and dev mode unlocks every
-    destination, which would change what they test. In such a session the Settings switch turns the panel on.
-  - The More tab follows §5.2: it opens the More sheet, and while it is highlighted (the sheet or a destination
-    inside More is open) tapping it returns to the tank view; Back from a tile returns to More. A panel's first tab
-    has no URL segment (`#/build` is Build › Tanks). A link opened in a fresh tab gets no synthetic parent entry, so
-    Back from it leaves the site; Back into an entry of a game that has ended stays where the player is.
-  - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-126 (an e2e run under `/aquarium-go/`) to chunk 3 with the
-    service worker; B-182 and B-183 (render) to the next chunk with a render pass; B-178's remaining accessibility
-    gaps to chunk 2; DES-002 (harness evidence). WebKit e2e (B-129) is an owner question.
+    loading card; a reload (or a return through history) reopens this tab's aquarium at the address; the loading
+    card's bar loops; the not-found toasts' wording.
+  - Phone sheets start at 64 px ± 2, the tank card at 118 px ± 2, the More sheet's top at 48 % of the height;
+    "Link copied" shows for 4 s.
+  - `?dev=1` allows the developer tools for that session only and doesn't switch the dev panel on by itself (e2e and
+    QA open the game with `?dev=1`, and dev mode unlocks every destination). The owner confirmed it (ADR-0024).
+  - The More tab opens the More sheet; while it's highlighted, tapping it returns to the tank view. A panel's first
+    tab has no URL segment (`#/build` is Build › Tanks). A link opened in a fresh tab gets no synthetic parent entry.
+  - DESIGN-S3D will move Settings to a gear and put Operations in the dock and first in More (`INTAKE.md` C-1, C-2):
+    the dock and More are built so that's a small change.
 
-### 2. Shop and genetics (0.5 phase 2)
+### 2. Shop and genetics (0.5 phase 2) — done 2026-10-11
 
-- **Design:** 0.5 spec §5.2 (the Market rare-stock dot), §7.1 to §7.7, §8, §9, §20.3, and this chunk's parts of §16
-  to §19.
-- **Build:** shop filters and counts; offer cards; the offer detail's additions (genes, temperament, morph line, the
-  from-notification banner); destination fit and buy labels; the gone-offer state; the rare-stock dot; the Genetics
-  Lab reveal fix; the new betta genes, strain and rare flags; encyclopedia updates; the §20.3 test updates.
-- **Requirements:** GEN-001 to GEN-012, MKT-001 to MKT-015, DES-005, DES-006, ACC-003, PERF-001.
-- **Done when:** `genetics-expansion`, `genetics-lab-reveal`, `shop-filters`, `offer-genes`, `notify-navdots` and
-  `shop-filters.spec` pass with everything else; the catalog shows 540 betta entries; existing bettas keep their
-  names.
-- **Watch:** the new loci add draws to seeded streams, so seeded tests shift: run them before and after and explain
-  every changed expectation (`docs/ARCHITECTURE.md`, "Determinism contract"). Rarity tiers (§8.5): run
-  `npm run report:rarity` before and after; changing the tier model needs the owner.
-- **Decide:** PERF-001's budgets (measure v0.4.0 first and write the numbers here).
+- **Built:** shop filters and counts; morph-named offer cards; the offer detail's Genes and Temperament sections,
+  morph line, from-notification banner, per-tile verdicts, fit badge and buy labels; the gone-offer button; the
+  Market's rare-stock dot; the Genetics Lab reveal fix; the Cambodian and Metallic betta genes, the Cambodian Veiltail
+  strain and the `rare` allele flags; the Encyclopedia's genes line and science article. Requirements GEN-001 to
+  GEN-012, MKT-001 to MKT-015, DES-005, DES-006, ACC-003, PERF-001.
+- **Decided:**
+  - The owner's answers: ADR-0020 (long verdict labels in the offer detail; white and double tail below their
+    partners; the article, the betta note and the no-tank wording; gene nouns; tile reasons only for temperature),
+    ADR-0021 (a gene that leaves no trace reads "Can’t be seen on this animal" before the Genetics Lab; "all their
+    young"; "Pair it") and ADR-0022 (Legendary below 1 in 10,000; the Stability word "Stable · Sensitive · Fragile";
+    the lined seahorse's yellow/red looks Yellow).
+  - Tiers (`npm run report:rarity`): betta 240 morphs at 1 / 9 / 21 / 39 / 170 (v0.4.0) → 540 at
+    1 / 9 / 21 / 145 / 364, 0.56 % of betta stock Legendary.
+  - **PERF-001 budgets**, measured on the owner's Mac (internal disk, vite-node, median of 7). v0.4.0 (`0d9fc5a`) →
+    chunk 2: building the betta catalog 5 ms (first 10 ms) → 33 ms (first 43 ms); Encyclopedia › Betta's genetics
+    sections from cold 9 ms → 28 ms, warm 4 ms → 4 ms; previews for `big_facility`'s 10 freshwater tanks 0.8 ms →
+    0.8 ms. Budgets: the betta catalog builds in ≤ 100 ms once per session; Encyclopedia › Betta renders in ≤ 100 ms
+    cold and ≤ 16 ms warm; an offer computes at most 6 tile previews eagerly (plus the selected tank), ≤ 8 ms
+    together; the first offer of a species builds its look table once (bettas ≈ 30 ms); `perf.spec` stays green.
+  - Before the Genetics Lab a Genes row says only what the animal's look proves (`lookalikePairs` in
+    `src/ui/panels/market/offerGenetics.ts`; a property test checks look-alikes read alike in every species). The
+    morph line shows for every tier except a degenerate "about 1 in 1". `dev.addShopOffer` offers count as seen (a
+    test scenario isn't news) and take `alleles`. The Encyclopedia's genes line is shown for bettas only.
+  - Seeded tests: B-128's three seed-fragile tests were rebuilt first (`6343ca2`), the rest passed unchanged.
+  - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-130 to chunk 4, B-170 to chunk 5, B-181 to the next render
+    pass; B-178's high-contrast panels go to chunk 6 (ADR-0024: WCAG 2.2 AA with solid high-contrast panels).
 
-### 3. Automation and notifications (0.5 phase 3)
+### 3. Automation and notifications (0.5 phase 3) — done 2026-10-11
 
-- **Design:** 0.5 spec §7.8, §10 and §12, and this chunk's parts of §16 to §20.
-- **Build:** the tank card's Automation section; Auto-feed meals a day; the Auto Water Changer (equipment kind and
-  label, data, the extracted water-change core `water/change.ts`, `runWaterChanger`, salt, staff interplay, the alerts
-  row) and its Supplies row; `GameEvent.offerId` on rare-stock events; Settings › Notifications (categories, quiet
-  hours, the permission flow, the test notification); web delivery with `public/sw.js`; the Alerts drawer footer;
-  click routing.
-- **Requirements:** AUTO-001, AUTO-003 to AUTO-011, AUTO-016 to AUTO-018, AUTO-022, AUTO-023, AUTO-026, NOTIFY-001
-  to NOTIFY-010, DES-007, DES-009, ACC-004 (the automation and notification switches), PERSIST-006 (the water-lab
-  hours).
-- **Done when:** `automation-*`, `notify-rules`, `notify-offer-events`, `automation.spec` and `notifications.spec`
-  pass, and the existing water, care and staff tests (`fix-water-*`, `staff-*`) and the determinism and step-size
-  tests stay green.
-- **Decide:** NOTIFY-002's quiet-hour boundaries; the Unsupported callout copy (DES-009, NOTIFY-006: ask the owner);
-  the automation step-size tolerances (state them in the tests).
+- **Built:** the Auto Water Changer (data, one per tank, the shared water-change core `src/sim/water/change.ts`,
+  `runWaterChanger`, salt, keepers, save repair of its two lab hours); the tank card's Automation section (Auto-feed
+  with Meals a day, Auto-clean, buying from the card) and the Water tab's note; the "Auto-feed is paused" alert (drawer
+  row, tank dot, a once-a-day sim event); notification tags on sim events (`GameEvent.notice`, `offerId`) and the
+  "auction ending soon" event; Settings › Notifications; web delivery (`src/ui/notify/`), `public/sw.js`, the 192 px
+  icon; the Alerts drawer footer; tap routing with the one-shot offer banner; the `base-path` e2e project (B-126).
+  Requirements AUTO-001, AUTO-003 to AUTO-011, AUTO-023, NOTIFY-001 to NOTIFY-010, DES-007, DES-009 GREEN; AUTO-016
+  to AUTO-018, AUTO-022, AUTO-026, ACC-004 and PERSIST-006 IN_PROGRESS (met for this chunk's automation; chunks 4 and
+  5 add production lines and the S3-D chains).
+- **Decided:**
+  - The owner's answers: ADR-0022 decisions 4 and 5 (the Unsupported callout, "auction ending soon") and ADR-0023
+    (the "ending soon" wording, "{Name} gave birth" for live births, a prize-less show result keeps the log's line,
+    the locked Auto-clean row shows the Auto-feed lock hint).
+  - Quiet hours run from 22:00 up to 07:59 (22:00 held, 08:00 shown, B-173's proposal); a held notification is dropped,
+    not delivered at 8 AM (the Alerts drawer keeps everything). Danger-level Animal care, and untagged danger events
+    about a tank, come through. "Auction ending soon" fires 3 game hours before the end.
+  - Step-size tolerance (AUTO-009): 4 h and 0.25 h pieces make the same changes and scrapes at the same hours and end
+    within 0.15 °C, 0.05 pH and 3 % of nitrate (or 0.5 ppm); the owner accepted such tolerances for water values
+    (ADR-0024 decision 7). A keeper's 30-hour window is strict (30 h: the keeper
+    works again). The device skips a change for lack of salt (never a weak one) and retries the next morning.
+  - What notifies: events the sim tags (rare stock, bids, sales, ending soon, breeding milestones that toast, show
+    results, animal-care warnings) plus danger events about a tank. The notification needs come from the event, copied
+    when it happens. The service worker is registered only once permission is granted.
+  - Not built: the optional Finances "Automation gear" row (it would repeat the tanks' costs above it).
+  - Seeded tests: none moved. The device runs only where installed; the new events fire only where the scenarios
+    don't look (the full unit suite passed unchanged after the sim commits, before the new tests). Accepted across
+    builds: the two new events ("auction ending soon", a switched-off Autofeeder with a hungry resident) take ids, and
+    some rolls are keyed on ids, so a save continued in this build can roll differently from the old one (old saves
+    are best-effort, ADR-0005).
+  - Backlog: fixed B-013, B-117 (S3-B), B-126, B-149, B-173, B-188, B-189; partly B-169 (one salt formula; the UI-lane
+    mutators move with chunk 5) and B-176 (the device is LOD-exact; cool-water cues left); deferred B-177 and B-127,
+    B-171, B-174 to chunk 4 and B-180 to chunk 5 (reasons in `docs/agent/BACKLOG.md`); B-167 stays open (no
+    compatibility decisions in this chunk).
 
 ### 4. Production lines (0.5 phase 5, several lines per species)
 
@@ -195,10 +204,14 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   and §21's release step.
 - **Requirements:** SOC-001 to SOC-011, DES-010 to DES-012, NAV-019, AUTO-029, CONST-003, ACC-005, PERF-002,
   PERSIST-004, PERSIST-008, REL-004 to REL-008, REL-011, REL-013 to REL-017.
+- **Also (ADR-0024):** accessibility to WCAG 2.2 AA for text and controls, with solid panels under the high-contrast
+  setting (B-178, ACC-005); a WebKit e2e project beside Chromium (B-129). WebKit needs Playwright's WebKit browser in
+  `~/LocalTest/playwright` (check the internal disk's free space first; no new npm package), and REL-013's repeated
+  full runs include it. A WebKit-only failure is fixed, never skipped.
 - **Done when:** `social-stub.test.ts` and `dock-width.spec` pass; `#/social/join/HIGHLAND-4821` works signed out,
   then signed in, then joined; two full test passes in a row on the Mac (REL-013); the owner has played it on a phone
   and a desktop. Then the release.
-- **Decide:** SOC-010's empty-state copy (ask the owner).
+- **Decide:** SOC-010's empty-state copy (owner question D1).
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
@@ -234,4 +247,9 @@ release and deploy it by hand if it didn't update. To release:
   ADR-0005).
 - Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016).
 - Catch-up bid windows stay as they are (ADR-0016).
+- Morph tiers: Legendary below 1 in 10,000 of market stock (ADR-0022, replacing ADR-0005 decision 4's threshold).
+- From the owner's group A answers (ADR-0024): an older build that finds a newer save keeps today's one message
+  ("Refresh the page"); e2e gains a WebKit project (chunk 6); accessibility aims at WCAG 2.2 AA with solid
+  high-contrast panels (chunk 6); `?dev=1` as built; chunk 3's five flagged wordings stay; automation's step-size
+  checks are exact for job counts, run hours and stock units and within stated tolerances for water values.
 - No new dependencies without asking the owner.

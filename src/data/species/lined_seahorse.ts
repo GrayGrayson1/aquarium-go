@@ -110,7 +110,7 @@ export const linedSeahorse: SpeciesDefinition = {
           { id: 'dark', name: 'Dark', dominance: 3, frequency: 0.5 },
           { id: 'orange', name: 'Orange', dominance: 2, frequency: 0.2 },
           { id: 'yellow', name: 'Yellow', dominance: 1, frequency: 0.2 },
-          { id: 'red', name: 'Red', dominance: 1, frequency: 0.1 },
+          { id: 'red', name: 'Red', dominance: 0, frequency: 0.1 }, // owner (ADR-0022): below yellow, so yellow/red shows Yellow and red needs two copies
         ],
         note: 'Seahorses change colour with mood, surroundings and courtship; captive breeders select lines that tend toward yellow, orange or red. Simplified into a heritable tendency.',
       },
@@ -120,13 +120,13 @@ export const linedSeahorse: SpeciesDefinition = {
         mode: 'mendelian',
         alleles: [
           { id: 'N', name: 'Normal', dominance: 2, frequency: 0.95 },
-          { id: 'p', name: 'Pinto', dominance: 1, frequency: 0.05 },
+          { id: 'p', name: 'Pinto', dominance: 1, frequency: 0.05, rare: true },
         ],
         note: 'Patchy white "pinto" forms appear in captive lines; inheritance uncertain — modelled as recessive.',
       },
     ],
     phenotypes: [
-      { id: 'yellow', name: 'Yellow', layer: 'base', rarity: 0.3, when: [{ locus: 'hue', allele: 'yellow', count: 'hom' }], visual: { bodyColor: '#e7c040', bodyColor2: '#c59a24', bellyColor: '#f0d676', accentColor: '#fff4c8' } },
+      { id: 'yellow', name: 'Yellow', layer: 'base', rarity: 0.3, when: [{ locus: 'hue', allele: 'yellow', count: 'any' }], visual: { bodyColor: '#e7c040', bodyColor2: '#c59a24', bellyColor: '#f0d676', accentColor: '#fff4c8' } },
       { id: 'red', name: 'Red', layer: 'base', rarity: 0.45, when: [{ locus: 'hue', allele: 'red', count: 'hom' }], visual: { bodyColor: '#b3372a', bodyColor2: '#7c2118', bellyColor: '#cf5a45', accentColor: '#f6d6c8' } },
       { id: 'orange', name: 'Orange', layer: 'base', rarity: 0.25, when: [{ locus: 'hue', allele: 'orange', count: 'any' }, { locus: 'hue', allele: 'dark', count: 'none' }], visual: { bodyColor: '#e0782c', bodyColor2: '#b0501c', bellyColor: '#eea060', accentColor: '#fde3c8' } },
       { id: 'dark', name: 'Classic Dark', layer: 'base', rarity: 0, when: [], visual: {} },

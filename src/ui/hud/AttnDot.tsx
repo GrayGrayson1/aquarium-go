@@ -9,6 +9,7 @@ import clsx from 'clsx';
 import { useGameSelector } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { navDots, tankAttentionLevel, type AttentionLevel, type NavDot } from '../common/notify';
+import { useSeenStock } from '../panels/market/seenStock'; // lane:notify (0.5 §5.2)
 
 export type DotLevel = 'watch' | 'danger' | 'new';
 
@@ -35,9 +36,10 @@ export function useTankAttentionLevel(tankId: string | null | undefined): Attent
  *  Tanks dot: it has its own on the Tank card button. */
 export function useNavDots(items: { id: string; label: string; lock?: string | null }[]): Record<string, NavDot> {
   const focused = useUI((s) => s.focusedTankId);
+  const seen = useSeenStock((s) => s.seen);
   const key = useGameSelector((g) => {
     try {
-      return JSON.stringify(navDots(g, items, focused));
+      return JSON.stringify(navDots(g, items, focused, seen));
     } catch {
       return '{}';
     }

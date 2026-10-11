@@ -110,8 +110,8 @@ export const axolotl: SpeciesDefinition = {
       { id: 'dark', name: 'Leucistic (d)', mode: 'mendelian', alleles: [{ id: 'D', name: 'Pigmented', dominance: 2, frequency: 0.55 }, { id: 'd', name: 'Leucistic', dominance: 1, frequency: 0.45 }] },
       { id: 'albino', name: 'Albino (a)', mode: 'mendelian', alleles: [{ id: 'A', name: 'Normal', dominance: 2, frequency: 0.75 }, { id: 'a', name: 'Albino', dominance: 1, frequency: 0.25 }] },
       { id: 'melanoid', name: 'Melanoid (m)', mode: 'mendelian', alleles: [{ id: 'M', name: 'Normal', dominance: 2, frequency: 0.85 }, { id: 'm', name: 'Melanoid', dominance: 1, frequency: 0.15 }] },
-      { id: 'axanthic', name: 'Axanthic (ax)', mode: 'mendelian', alleles: [{ id: 'Ax', name: 'Normal', dominance: 2, frequency: 0.92 }, { id: 'ax', name: 'Axanthic', dominance: 1, frequency: 0.08 }] },
-      { id: 'copper', name: 'Copper (c)', mode: 'mendelian', alleles: [{ id: 'C', name: 'Normal', dominance: 2, frequency: 0.9 }, { id: 'c', name: 'Copper', dominance: 1, frequency: 0.1 }] },
+      { id: 'axanthic', name: 'Axanthic (ax)', mode: 'mendelian', alleles: [{ id: 'Ax', name: 'Normal', dominance: 2, frequency: 0.92 }, { id: 'ax', name: 'Axanthic', dominance: 1, frequency: 0.08, rare: true }] },
+      { id: 'copper', name: 'Copper (c)', mode: 'mendelian', alleles: [{ id: 'C', name: 'Normal', dominance: 2, frequency: 0.9 }, { id: 'c', name: 'Copper', dominance: 1, frequency: 0.1, rare: true }] },
     ],
     phenotypes: [
       { id: 'white_albino', name: 'White Albino', layer: 'base', rarity: 0.35, when: [{ locus: 'dark', allele: 'd', count: 'hom' }, { locus: 'albino', allele: 'a', count: 'hom' }], visual: { bodyColor: '#f6eee8', bodyColor2: '#f1dcd4', bellyColor: '#fbf4ef', finColor: '#f3e6df', finColor2: '#f7ece6', accentColor: '#f2e0d8', eyeColor: '#d9828d', gillColor: '#f2a3ae', pattern: 'solid', iridescence: 0 } },

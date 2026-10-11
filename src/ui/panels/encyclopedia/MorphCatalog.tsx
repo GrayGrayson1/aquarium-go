@@ -12,6 +12,7 @@ import type { MorphStrain, PrismaticFind, SpeciesDefinition } from '@/types';
 import { morphCatalog, seenTraitIds, strainTier, oneInLabel, prismaticChance, type CatalogEntry, type CatalogGroup } from '@/sim/life';
 import { Chip, SectionHead } from '../common/parts';
 import { RARITY_LABEL, RARITY_TONE, plural } from '../common/format';
+import { NEW_LOCI } from '../market/offerGenetics'; // lane:genetics (0.5)
 import { discoveredMorphNames } from './morphs';
 
 const ORIGIN_LABEL: Record<PrismaticFind['origin'], string> = { shop: 'bought', bred: 'bred from a Prismatic parent', spontaneous: 'bred in your shop' };
@@ -33,10 +34,44 @@ export function GeneticsSections({ sp, discoveredMorphs, discoveredStrains, pris
   const strainsFound = new Set(discoveredStrains.filter((k) => k.startsWith(`${sp.id}:`)).map((k) => k.slice(sp.id.length + 1)));
   return (
     <>
+      <GenesLine sp={sp} />
       {(sp.genetics.strains?.length ?? 0) > 0 && <StrainList sp={sp} found={strainsFound} seenTraits={seenTraits} />}
       {showCatalog && cat.entries.length > 1 && <CatalogTree sp={sp} groups={cat.groups} total={cat.entries.length} seenNames={seenNames} seenTraits={seenTraits} />}
       <PrismaticBox sp={sp} finds={prismaticFinds.filter((f) => f.speciesId === sp.id)} />
     </>
+  );
+}
+
+/** Strains added in 0.5 carry a "New" chip (remove in 0.6). */
+const NEW_STRAINS: ReadonlySet<string> = new Set(['cambodian_veil']);
+
+/**
+ * lane:genetics (0.5 §8.7) — the species' genes at a glance, for species that gained genes in 0.5 (bettas): ladders
+ * ("Body colour · 8 alleles · dominance ladder", then "Pattern · 5 · ladder"), and the new genes by mode, with the note.
+ */
+export function GenesLine({ sp }: { sp: SpeciesDefinition }) {
+  const fresh = NEW_LOCI[sp.id];
+  if (!fresh?.length) return null;
+  let ladders = 0;
+  const chips = sp.genetics.loci.map((l) => {
+    const isNew = fresh.includes(l.id);
+    let text: string;
+    if (l.mode === 'additive') text = `${l.name} · additive`;
+    else if (l.mode === 'codominant') text = `${l.name} · codominant`;
+    else if (l.alleles.length <= 2) text = `${l.name} · recessive`;
+    else text = ladders++ === 0 ? `${l.name} · ${l.alleles.length} alleles · dominance ladder` : `${l.name} · ${l.alleles.length} · ladder`;
+    return (
+      <Chip key={l.id} tone={isNew ? 'aqua' : 'neutral'} icon={isNew ? <Sparkles size={11} aria-hidden /> : undefined}>
+        {text}
+      </Chip>
+    );
+  });
+  return (
+    <section data-testid="enc-genes">
+      <SectionHead title="Genes" icon={<Dna size={14} />} />
+      <div className="pn-chips">{chips}</div>
+      {sp.id === 'betta' && <p className="pn-tiny pn-muted" style={{ margin: '6px 0 0' }}>New in 0.5: Cambodian (recessive, shows on red bettas) and Metallic (additive — one copy adds a sheen, two make it Metallic).</p>}
+    </section>
   );
 }
 
@@ -71,6 +106,7 @@ function StrainRow({ sp, s, known, seenTraits }: { sp: SpeciesDefinition; s: Mor
       {known ? <CircleCheck size={14} className="pn-good-ic" aria-label="Discovered" /> : <Lock size={13} aria-label="Not yet discovered" />}
       <span className="pn-strain__name">{secret ? '??? strain' : s.name}</span>
       <Chip tone={RARITY_TONE[tier]}>{RARITY_LABEL[tier]}</Chip>
+      {NEW_STRAINS.has(s.id) && <Chip tone="aqua">New</Chip>}
       {!secret && (
         <span className="pn-strain__recipe">
           {s.requires.map((id, i) => (

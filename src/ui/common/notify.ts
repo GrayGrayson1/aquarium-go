@@ -4,8 +4,9 @@
  *
  *  - TANK ATTENTION is live state, never a "read" flag. A tank's dot is amber (watch) or red (danger) while something
  *    there needs a look, and it clears itself the moment the problem is fixed. Sources: the sim's tank status
- *    (`cache.status` — water, animal welfare, out of food), food running low, failed equipment, and running gear that
- *    leaves the animals in that tank without something they need (lane "fit" verdicts, see `gearFitItems`).
+ *    (`cache.status` — water, animal welfare, out of food), food running low, failed equipment, running gear that
+ *    leaves the animals in that tank without something they need (lane "fit" verdicts, see `gearFitItems`), and an
+ *    Auto-feed that is paused while someone is hungry (`autofeedPaused`, chunk 3).
  *  - NEWS is "new until viewed": unread log events (the bell's number), show results judged after
  *    `shows.resultsSeenHour`, research finished since the Research panel was last open, a newly unlocked feature that
  *    was never opened. Bids waiting for an answer are live (they go when answered or expired).
@@ -20,7 +21,13 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { tankFoodOutlook } from '@/sim/tankStatus';
 import { unseenResults } from '@/sim/shows';
 import { tankGearIssues, FIT_TONE } from '@/sim/care/fit'; // lane "fit" verdicts
+import { autofeedPause, type AutofeedPause } from '@/sim/care/autofeed'; // lane:automation (AUTO-005)
+import { inhabitantsOf } from '@/sim/water/env';
 import { tankStatusReason } from './tankStatus';
+import { findSpecies } from '@/data/species';
+import { isPrismatic } from '@/sim/life/rareVariants';
+import { morphDisplayName } from '@/sim/life/genetics';
+import { visiblyRare } from '../panels/market/offerGenetics'; // lane:genetics (0.5 §5.2)
 
 const attempt = <T>(fn: () => T, fallback: T): T => {
   try {
@@ -169,6 +176,19 @@ function residentsSig(g: GameState, tankId: string): string {
 }
 
 /**
+ * lane:automation (0.5 §10.2, AUTO-005) — the tank's Autofeeder isn't feeding (switched off, jammed or out of dry food)
+ * while a resident is hungry (hunger ≥ 50): the Alerts drawer's row, the tank's dot and the tank card share it. Cheap
+ * for tanks without an Autofeeder (one pass over the equipment).
+ */
+export function autofeedPaused(g: GameState, tank: Tank): AutofeedPause | null {
+  if (!tank.equipment?.some((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder')) return null;
+  return attempt(() => autofeedPause(tank.equipment, inhabitantsOf(g, tank.id), g.inventory?.foods ?? {}), null);
+}
+
+/** §10.2's alert row text. */
+export const autofeedPausedText = (p: Pick<AutofeedPause, 'name'>): string => `Auto-feed is paused — feed ${p.name} by hand.`;
+
+/**
  * The tank's dot colour — cheap enough for a store selector (no reports, no text). Worst of the sim status, food
  * running low, failed gear and gear that isn't helping.
  */
@@ -178,7 +198,7 @@ export function tankAttentionLevel(g: GameState, tankId: string): AttentionLevel
   let w = level(t.cache?.status);
   if (w === 'danger') return w;
   const food = t.cache?.foodLevel;
-  if (food === 'low' || food === 'out' || t.equipment?.some((e) => e.failed)) w = 'watch';
+  if (food === 'low' || food === 'out' || t.equipment?.some((e) => e.failed) || autofeedPaused(g, t)) w = 'watch';
   for (const it of gearFitItems(g, t)) w = worseLevel(w, it.level);
   return w;
 }
@@ -223,6 +243,9 @@ export function tankAttention(g: GameState, tankId: string): TankAttention {
   }
   // 4. gear that can't help these animals (lane "fit")
   for (const it of gearFitItems(g, t)) if (!said.includes(it.text)) items.push(it);
+  // 5. lane:automation (AUTO-005) — Auto-feed paused (off, jammed or empty) while someone is hungry
+  const paused = autofeedPaused(g, t);
+  if (paused) items.push({ level: 'watch', source: 'gear', text: autofeedPausedText(paused), tab: 'gear' });
   if (!items.length) return GOOD;
   items.sort((a, b) => RANK[b.level] - RANK[a.level]);
   const lvl = items.reduce<AttentionLevel>((w, it) => worseLevel(w, it.level), 'good');
@@ -442,7 +465,11 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * Shows: new results, else a never-opened Shows. Market: bids waiting for an answer. Research: a project finished
  * since it was last open. Any other gated item: unlocked but never opened.
  */
-export function navDots(g: GameState, items: { id: string; label: string; lock?: string | null }[], focusedTankId: string | null = null): Record<string, NavDot> {
+/**
+ * Dock / tab-bar / sheet-switcher dots by panel id. `seenOffers` (0.5 spec §5.2, optional): the shop offers the player
+ * has seen; with it, Market shows a rare-stock dot for an unseen Prismatic or rare offer when no bid is waiting.
+ */
+export function navDots(g: GameState, items: { id: string; label: string; lock?: string | null }[], focusedTankId: string | null = null, seenOffers?: ReadonlySet<string>): Record<string, NavDot> {
   const out: Record<string, NavDot> = {};
   let watch = 0;
   let danger = 0;
@@ -467,7 +494,25 @@ export function navDots(g: GameState, items: { id: string; label: string; lock?:
   if (shows > 0) out.shows = { level: 'new', label: plural(shows, 'new show result'), target: 'tab:results' };
   const bids = bidsAwaiting(g);
   if (bids > 0) out.market = { level: 'new', label: `${plural(bids, 'bid')} waiting for your answer`, target: 'tab:listings' };
+  else if (seenOffers) {
+    const rare = unseenRareOffer(g, seenOffers);
+    if (rare) out.market = rare;
+  }
   if (researchNews(g)) out.research = { level: 'new', label: 'Research finished — choose your next project', target: null };
   for (const it of items) if (!out[it.id] && featureUnseen(g, it.id, it.lock)) out[it.id] = { level: 'new', label: `New: ${it.label} just unlocked`, target: null };
   return out;
+}
+
+/** The first unseen Prismatic (else rare) offer in stock, as the Market's dot (0.5 spec §5.2), or null. */
+function unseenRareOffer(g: GameState, seen: ReadonlySet<string>): NavDot | null {
+  let rare: NavDot | null = null;
+  for (const o of g.market.stock) {
+    if (seen.has(o.id)) continue;
+    const sp = findSpecies(o.speciesId);
+    if (!sp) continue;
+    if (o.creatures.some(isPrismatic)) return { level: 'new', label: `Prismatic ${sp.commonName.toLowerCase()} in the shop`, target: `offer:${o.id}` };
+    const lead = o.creatures.find((c) => visiblyRare(sp, c));
+    if (!rare && lead) rare = { level: 'new', label: `Rare stock: ${morphDisplayName(sp, lead.morphName)}`, target: `offer:${o.id}` };
+  }
+  return rare;
 }

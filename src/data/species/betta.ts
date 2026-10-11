@@ -111,7 +111,7 @@ export const betta: SpeciesDefinition = {
           { id: 'copper', name: 'Copper', dominance: 3, frequency: 0.07 },
           { id: 'black', name: 'Melano black', dominance: 2, frequency: 0.07 },
           { id: 'yellow', name: 'Non-red yellow', dominance: 1, frequency: 0.07 },
-          { id: 'white', name: 'Opaque white', dominance: 1, frequency: 0.07 },
+          { id: 'white', name: 'Opaque white', dominance: 0, frequency: 0.07, rare: true }, // lane:genetics (B-136) — a two-copy trait sits below yellow, so a carrier reads as hidden
         ],
         note: 'Real betta colour genetics involve several interacting loci (iridescence, red, melano, opaque...). Simplified to a single dominance ladder for play.',
       },
@@ -123,8 +123,8 @@ export const betta: SpeciesDefinition = {
           { id: 'solid', name: 'Solid', dominance: 3, frequency: 0.5 },
           { id: 'butterfly', name: 'Butterfly', dominance: 2, frequency: 0.2 },
           { id: 'bicolor', name: 'Bi-colour', dominance: 2, frequency: 0.12 },
-          { id: 'marble', name: 'Marble', dominance: 1, frequency: 0.1 },
-          { id: 'dragon', name: 'Dragon scale', dominance: 1, frequency: 0.08 },
+          { id: 'marble', name: 'Marble', dominance: 1, frequency: 0.1, rare: true },
+          { id: 'dragon', name: 'Dragon scale', dominance: 1, frequency: 0.08, rare: true },
         ],
         note: 'Marble is driven by a transposable element in real bettas and can change over the fish’s life; represented as recessive here.',
       },
@@ -137,8 +137,29 @@ export const betta: SpeciesDefinition = {
           { id: 'plakat', name: 'Plakat (short fin)', dominance: 3, frequency: 0.2 },
           { id: 'halfmoon', name: 'Halfmoon', dominance: 2, frequency: 0.28 },
           { id: 'crown', name: 'Crowntail', dominance: 1, frequency: 0.14 },
-          { id: 'double', name: 'Double tail', dominance: 1, frequency: 0.08 },
+          { id: 'double', name: 'Double tail', dominance: 0, frequency: 0.08, rare: true }, // lane:genetics (B-136) — a two-copy trait sits below crowntail
         ],
+      },
+      // lane:genetics — 0.5 expansion
+      {
+        id: 'cambodian',
+        name: 'Cambodian',
+        mode: 'mendelian',
+        alleles: [
+          { id: 'C', name: 'Normal body', dominance: 2, frequency: 0.9 },
+          { id: 'c', name: 'Cambodian', dominance: 1, frequency: 0.1, rare: true },
+        ],
+        note: 'Game simplification: a single recessive that pales the body of red bettas (fins stay red). It has no visible effect on other colours, so non-red fish can carry it unseen.',
+      },
+      {
+        id: 'metallic',
+        name: 'Metallic',
+        mode: 'additive',
+        alleles: [
+          { id: 'std', name: 'Standard sheen', dominance: 1, frequency: 0.88 },
+          { id: 'me', name: 'Metallic', dominance: 1, frequency: 0.12 },
+        ],
+        note: 'Game simplification: real metallic/iridescent scaling is polygenic and came from wild-species crosses. Here one copy adds a soft sheen and two copies give the full Metallic look.',
       },
     ],
     phenotypes: [
@@ -151,6 +172,9 @@ export const betta: SpeciesDefinition = {
       { id: 'yellow', name: 'Yellow', layer: 'base', rarity: 0.35, when: [{ locus: 'color', allele: 'yellow', count: 'any' }], visual: { bodyColor: '#f1cf3f', bodyColor2: '#d8a623', bellyColor: '#f6dd6d', finColor: '#f3d44e', finColor2: '#fbe98c', accentColor: '#8a6a10', iridescence: 0.1 } },
       { id: 'white', name: 'Opaque White', layer: 'base', rarity: 0.3, when: [{ locus: 'color', allele: 'white', count: 'hom' }], visual: { bodyColor: '#f2f0ec', bodyColor2: '#d9d6d0', bellyColor: '#faf8f5', finColor: '#f0eeea', finColor2: '#ffffff', accentColor: '#bdb8b0', iridescence: 0.2, translucency: 0.2 } },
       { id: 'mixed', name: 'Multicolour', layer: 'base', rarity: 0.2, when: [], visual: { bodyColor: '#6c2a8a', bodyColor2: '#2f1540', finColor: '#b0102a', finColor2: '#1d3fd6' } },
+      // lane:genetics — 0.5: before the first pattern overlay, so names read "Red Cambodian Veiltail" / "Royal Blue Metallic Butterfly Halfmoon"
+      { id: 'metallic', name: 'Metallic', layer: 'overlay', rarity: 0.2, when: [{ locus: 'metallic', allele: 'me', count: 'hom' }], visual: { metallic: 0.75, iridescence: 0.9 } },
+      { id: 'cambodian', name: 'Cambodian', layer: 'overlay', rarity: 0.25, when: [{ locus: 'cambodian', allele: 'c', count: 'hom' }, { locus: 'color', allele: 'red', count: 'any' }], visual: { bodyColor: '#e9c3b0', bodyColor2: '#d9a892', bellyColor: '#f2d6c8' } },
       { id: 'butterfly', name: 'Butterfly', layer: 'overlay', rarity: 0.15, when: [{ locus: 'pattern', allele: 'butterfly', count: 'any' }, { locus: 'pattern', allele: 'solid', count: 'none' }], visual: { pattern: 'butterfly', finColor2: '#f5f2ea', patternContrast: 0.9 } },
       { id: 'bicolor', name: 'Bi-colour', layer: 'overlay', rarity: 0.15, when: [{ locus: 'pattern', allele: 'bicolor', count: 'any' }, { locus: 'pattern', allele: 'solid', count: 'none' }, { locus: 'pattern', allele: 'butterfly', count: 'none' }], visual: { pattern: 'bicolor', patternContrast: 0.8 } },
       { id: 'marble', name: 'Marble', layer: 'overlay', rarity: 0.25, when: [{ locus: 'pattern', allele: 'marble', count: 'any' }, { locus: 'pattern', allele: 'solid', count: 'none' }, { locus: 'pattern', allele: 'butterfly', count: 'none' }, { locus: 'pattern', allele: 'bicolor', count: 'none' }], visual: { pattern: 'marble', accentColor: '#f4efe6', patternContrast: 0.85 } },
@@ -173,6 +197,7 @@ export const betta: SpeciesDefinition = {
       { id: 'steel_plakat', name: 'Steel Blue Plakat', requires: ['steel', 'plakat'], tier: 'rare', note: 'Short-finned and sturdy in steel blue.' },
       { id: 'opaque_halfmoon', name: 'Opaque White Halfmoon', requires: ['white', 'halfmoon'], tier: 'legendary', note: 'Two copies of opaque white on a halfmoon spread.' },
       { id: 'marble_double', name: 'Marble Double Tail', requires: ['marble', 'double'], tier: 'legendary', note: 'Marbling on a split double tail — two recessive traits at once.' },
+      { id: 'cambodian_veil', name: 'Cambodian Veiltail', requires: ['red', 'cambodian', 'veil'], tier: 'very_rare', note: 'A pale, flesh-pink body under flowing red veil fins — the classic Cambodian look.' },
     ],
     baseVisual: {
       bodyColor: '#b0102a',
@@ -195,9 +220,9 @@ export const betta: SpeciesDefinition = {
       gillFullness: 0,
     },
     variation: 0.25,
-    notes: 'Simplified: colour, pattern and finnage are three independent loci with a dominance ladder, and phenotype rules mirror that ladder (a trait shows when no higher-ranked allele is present). Real betta genetics is far richer — e.g. double tail is a recessive trait caused by a deletion in a zic1/zic4 regulatory element, elephant-ear fins involve kcnh8, and marble is associated with a transposable element, so marbles can change colour through life. Colour hexes are typical show-fish tones.',
+    notes: 'Simplified: colour, pattern and finnage are three independent loci with a dominance ladder, and phenotype rules mirror that ladder (a trait shows when no higher-ranked allele is present). Real betta genetics is far richer — e.g. double tail is a recessive trait caused by a deletion in a zic1/zic4 regulatory element, elephant-ear fins involve kcnh8, and marble is associated with a transposable element, so marbles can change colour through life. Colour hexes are typical show-fish tones. Cambodian and Metallic are single-gene simplifications too: Cambodian is a recessive that pales the body of red bettas, and one Metallic copy adds a soft sheen while two give the full Metallic look.',
   },
-  visualMorphs: ['Red Veiltail', 'Royal Blue Halfmoon', 'Turquoise Crowntail', 'Steel Blue Plakat', 'Copper Dragon', 'Black Melano', 'Yellow', 'Opaque White', 'Marble', 'Butterfly', 'Double Tail'],
+  visualMorphs: ['Red Veiltail', 'Royal Blue Halfmoon', 'Turquoise Crowntail', 'Steel Blue Plakat', 'Copper Dragon', 'Black Melano', 'Yellow', 'Opaque White', 'Marble', 'Butterfly', 'Double Tail', 'Cambodian', 'Metallic'],
 
   behaviorSet: 'betta',
   behaviorTraits: { cruiseSpeed: 0.7, burstSpeed: 5, turnRate: 2.2, hoverTendency: 0.5, schoolingTightness: 0, restOnBottom: 0.1, hitching: 0, burrowing: 0, glassSurfing: 0.05, curiosity: 0.85, nocturnal: 0 },

@@ -50,8 +50,12 @@ export function curiosityWord(v: number): string {
   return v >= 75 ? 'Very curious' : v >= 58 ? 'Curious' : v >= 42 ? 'Easy-going' : 'Reserved';
 }
 
-/** Potential bands as a compact list. `highlightOnly` shows only Promising+ traits (card summaries). */
-export function PotentialBands({ p, sp, highlightOnly, max = 8 }: { p: Potentials; sp?: SpeciesDefinition; highlightOnly?: boolean; max?: number }) {
+/**
+ * Potential bands as a compact list. `highlightOnly` shows only Promising+ traits (card summaries). `temperament`
+ * (default true) ends the full list with the Temperament and Curiosity words; the offer detail passes false because it
+ * shows them in its own Temperament section (0.5 spec §9.2).
+ */
+export function PotentialBands({ p, sp, highlightOnly, max = 8, temperament = true }: { p: Potentials; sp?: SpeciesDefinition; highlightOnly?: boolean; max?: number; temperament?: boolean }) {
   const rows: { k: string; label: string; v: number }[] = [
     { k: 'color', label: 'Colour', v: p.color },
     { k: 'pattern', label: 'Pattern', v: p.pattern },
@@ -81,7 +85,7 @@ export function PotentialBands({ p, sp, highlightOnly, max = 8 }: { p: Potential
           </div>
         ),
       )}
-      {!highlightOnly && (
+      {!highlightOnly && temperament && (
         <>
           <div className="pn-band">
             <span className="pn-band__label">Temperament</span>

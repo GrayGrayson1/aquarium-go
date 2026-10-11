@@ -35,6 +35,7 @@ import {
   stageDue,
   startResting,
   tickTimers,
+  breedNotice,
 } from '../common';
 
 const BOND_DAYS = 2;
@@ -236,5 +237,6 @@ function giveBirth(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creat
     tankId: tank.id,
     creatureId: m.id,
     toast: true,
+    notice: breedNotice('birth', m.name, n, tank), // lane:notify
   });
 }

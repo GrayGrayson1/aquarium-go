@@ -326,6 +326,10 @@ export interface WaterLabState {
   prevSG?: number;
   /** lane:w2-sim — temperature (°C) the filter bacteria are acclimated to; follows the water over ~2 game days. */
   bioTempC?: number;
+  /** lane:automation — game hour the Auto Water Changer last changed the water (its daily lights-on run). */
+  lastAutoChangeHour?: number;
+  /** lane:automation — game hour the Auto Water Changer last scraped the glass (weekly). */
+  lastAutoScrapeHour?: number;
 }
 
 export type EquipmentKind =
@@ -343,7 +347,8 @@ export type EquipmentKind =
   | 'uv'
   | 'refugium'
   | 'wavemaker'
-  | 'lid';
+  | 'lid'
+  | 'water_changer'; // lane:automation (0.5 §10.3)
 
 export interface EquipmentInstance {
   id: Id;
@@ -801,10 +806,35 @@ export interface GameEvent {
   tankId?: Id;
   creatureId?: Id;
   listingId?: Id;
+  /** lane:notify — the shop offer the event is about (a Prismatic or special stocked); its notification opens it. */
+  offerId?: Id;
+  /** lane:notify — what a system notification needs (src/ui/notify/rules.ts); absent: the event never notifies. */
+  notice?: EventNotice;
   read?: boolean;
   /** Toast it immediately. */
   toast?: boolean;
 }
+
+/**
+ * lane:notify — the subject of a notifiable event, and the values its template fills in (names, counts, money),
+ * copied when the event happens so the notification reads right even if the animal or listing has gone since.
+ */
+export interface EventNotice {
+  topic: NoticeTopic;
+  vars?: Record<string, string | number>;
+}
+
+export type NoticeTopic =
+  | 'prismatic' // a Prismatic animal stocked (vars: species, morph, seller)
+  | 'special' // a market special stocked (vars: morph, seller, price)
+  | 'care' // an animal-care warning: illness, autofeeder empty, auto-feed paused, out of salt (title: the tank)
+  | 'bid' // a new bid on a listing (vars: title, buyer, amount, fair)
+  | 'sale' // a listing sold (vars: title, buyer, amount)
+  | 'auction_ending' // an auction with open bids closes soon (vars: title, buyer, amount)
+  | 'eggs' // eggs laid (vars: name, n, tank)
+  | 'hatch' // eggs hatched (vars: name, n, tank)
+  | 'birth' // young born without eggs: livebearers, seahorses, shrimp (vars: name, n, tank)
+  | 'show_result'; // results of an entered show (vars: show, name, place; prize, ribbon when won)
 
 // ───────────────────────────────── Root ─────────────────────────────────
 

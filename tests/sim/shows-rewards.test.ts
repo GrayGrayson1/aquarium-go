@@ -55,6 +55,9 @@ describe('show rewards', () => {
     const g = showGame('betta', 4);
     // a male, so he never becomes gravid between shows (gravid females stay home)
     const c = addAdult(g, 'neon_tetra', g.tankOrder[0], TOP, undefined, 'male');
+    // A lone neon reaches show day at about stress 48 against the stay-home limit of 50 (and the odd stress illness), so
+    // which show it misses depended on the seeded stream; with its shoal it travels at about 11 (chunk 2, B-128).
+    for (let i = 0; i < 5; i++) addAdult(g, 'neon_tetra', g.tankOrder[0]);
     for (let i = 0; i < 3; i++) showAndJudge(g, c, 'regional', 0);
     expect(c.awards!.titles).toEqual(['champion']);
     expect(topTitle(c)).toBe('champion');

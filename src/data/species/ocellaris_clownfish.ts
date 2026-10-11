@@ -133,7 +133,7 @@ export const ocellarisClownfish: SpeciesDefinition = {
         mode: 'mendelian',
         alleles: [
           { id: 'N', name: 'Full bars', dominance: 2, frequency: 0.9 },
-          { id: 'mb', name: 'Misbar', dominance: 1, frequency: 0.1 },
+          { id: 'mb', name: 'Misbar', dominance: 1, frequency: 0.1, rare: true },
         ],
         note: 'Missing or incomplete bars can be caused by rearing conditions as well as by genes. Modelled as recessive.',
       },

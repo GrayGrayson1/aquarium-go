@@ -1,7 +1,8 @@
 /**
  * lane:ui-shell (chunk 1; DES-003, DES-004; 0.5 spec §16; ADR-0019) — the 0.5 navigation, links-and-boot and
  * locked-panel strings render exactly as the copy deck and the owner's answers write them (curly apostrophes, the
- * ellipsis character, the › separator). Components are server-rendered, as in ui-prismatic.
+ * ellipsis character, the › separator). Components are server-rendered, as in ui-prismatic. Chunk 3 adds the
+ * Automation (DES-007) and Notifications (DES-009; ADR-0022 decision 4) strings; curly apostrophes throughout (§16).
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createElement } from 'react';
@@ -18,6 +19,20 @@ import { CopyLinkButton } from '@/ui/panels/market/OfferLink';
 import { VisitorsPanel } from '@/ui/panels/visitors/VisitorsPanel';
 import { ShowsPanel } from '@/ui/panels/shows/ShowsPanel';
 import { tooNewMessage } from '@/persistence/migrations';
+import type { GameState, Tank } from '@/types';
+import type { NotifyPermission } from '@/platform';
+import { useUI } from '@/state/ui';
+import { installEquipment, setEquipment } from '@/sim/care';
+import { advanceWorld } from '@/sim/world';
+import { addStaffDirect } from '@/sim/staff';
+import { getEquipmentDef } from '@/data/catalog/equipment';
+import { AutomationSection, AutoCleanNote, buyAutoClean } from '@/ui/cards/Automation';
+import { EquipRow } from '@/ui/panels/market/Supplies';
+import { autofeedPausedText } from '@/ui/common/notify';
+import { AlertsPopover } from '@/ui/hud/AlertsPopover';
+import { NotificationsTab } from '@/ui/settings/NotificationsTab';
+import { useNotifyPermission } from '@/ui/notify/deliver';
+import { useNotifyPrefs } from '@/ui/notify/prefs';
 
 const html = (el: ReturnType<typeof createElement>) => renderToStaticMarkup(el);
 /** The visible text of rendered markup (tags dropped, entities a test could meet decoded). */
@@ -103,5 +118,134 @@ describe('ADR-0019 decision 4: links to things that no longer exist, and a newer
     expect(NOT_FOUND.listing).toMatchObject({ title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' });
     expect(NOT_FOUND.species).toMatchObject({ title: 'There’s no page for that species', detail: 'Showing every species instead.' });
     expect(tooNewMessage(2)).toMatch(/newer version of Aquarium Go .* Refresh the page to get the latest version\.$/);
+  });
+});
+
+// ───────────────────────────── chunk 3: Automation (DES-007) and Notifications (DES-009) ─────────────────────────────
+
+function automationWorld(o: { feeder?: boolean; changer?: boolean; feederOn?: boolean; keeper?: boolean } = {}): { g: GameState; tank: Tank } {
+  const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 9 });
+  g.isShowcase = false;
+  g.finance.money = 1000;
+  g.progress.unlocked.push('gear_autofeeder');
+  g.inventory.foods = { flake_tropical: 40 };
+  const tank = g.tanks[g.tankOrder[0]];
+  tank.name = 'Ember’s Tank';
+  tank.equipment = tank.equipment.filter((e) => !['autofeeder', 'water_changer'].includes(getEquipmentDef(e.defId)?.kind ?? ''));
+  for (const c of Object.values(g.creatures)) if (c.tankId === tank.id) c.name = 'Ember';
+  if (o.feeder) installEquipment(g, tank.id, 'autofeeder', { purchased: true });
+  if (o.feeder && o.feederOn === false) setEquipment(g, tank.id, tank.equipment.find((e) => e.defId === 'autofeeder')!.id, { on: false });
+  if (o.changer) installEquipment(g, tank.id, 'auto_water_changer', { purchased: true });
+  if (o.keeper) addStaffDirect(g, { name: 'Ana Test', role: 'aquarist', skill: 2, trait: 'meticulous', tankIds: [tank.id] });
+  return { g, tank };
+}
+const automation = (o: Parameters<typeof automationWorld>[0] = {}) => {
+  const { g, tank } = automationWorld(o);
+  return text(html(createElement(AutomationSection, { g, tank, fits: new Map() })));
+};
+
+describe('§16 Automation (DES-007)', () => {
+  afterAll(() => {
+    useGame.getState().setGame(null);
+    useUI.setState({ toasts: [] });
+  });
+
+  it('the section and both rows without their devices', () => {
+    const out = automation();
+    expect(out).toMatch(/^Automation /);
+    expect(out).toContain('Auto-feed Drops a measured portion of dry food on a schedule. Needs an Autofeeder Buy · $35');
+    expect(out).toContain('Auto-clean Small daily water changes and a weekly glass scrape. Needs an Auto Water Changer Buy · $120');
+  });
+
+  it('Auto-feed on, and paused (with and without a keeper; the em dash kept)', () => {
+    expect(automation({ feeder: true })).toMatch(/Auto-feed Runs your Autofeeder · Tropical Flakes · 40 servings left · about \d+ days? Meals a day/);
+    expect(automation({ feeder: true, feederOn: false })).toContain('Runs your Autofeeder · Tropical Flakes · 40 servings left · paused Paused — feed Ember by hand.');
+    expect(automation({ feeder: true, feederOn: false, keeper: true })).toContain('Paused — feed Ember by hand, or a keeper will on their rounds.');
+  });
+
+  it('Auto-clean installed, and the Water tab callout', () => {
+    expect(automation({ changer: true })).toContain('Auto-clean Runs your Auto Water Changer · 10% each morning · glass once a week · $0.06/day');
+    const { tank } = automationWorld({ changer: true });
+    expect(text(html(createElement(AutoCleanNote, { tank })))).toBe('Auto-clean is on The Auto Water Changer swaps 10% each morning and scrapes the glass once a week. You can still do it by hand.');
+  });
+
+  it('the Installed and Not enough money toasts', () => {
+    const poor = automationWorld();
+    poor.g.finance.money = 50;
+    useGame.getState().setGame(poor.g);
+    buyAutoClean(poor.tank.id);
+    expect(useUI.getState().toasts.at(-1)).toMatchObject({ label: 'Not enough money', text: 'The Auto Water Changer costs $120.' });
+    const rich = automationWorld();
+    useGame.getState().setGame(rich.g);
+    buyAutoClean(rich.tank.id);
+    expect(useUI.getState().toasts.at(-1)).toMatchObject({ label: 'Installed', text: 'Auto Water Changer on Ember’s Tank', detail: 'Auto-clean is on. Switch it off any time on the tank card.' });
+  });
+
+  it('the out-of-salt notice, the alert row, the equipment description and the Build/Supplies line', () => {
+    const { g, tank } = automationWorld({ changer: true });
+    tank.waterClass = 'marine_fowlr';
+    tank.environment = 'marine';
+    g.inventory.salt = 0;
+    g.clock.hour = 24 * 3 + 7;
+    tank.lighting.onHour = 8;
+    advanceWorld(g, 2, { forceFull: true });
+    expect(g.log.map((e) => e.text)).toContain('Ember’s Tank: the Auto Water Changer is out of salt. Buy marine salt to keep it running.');
+    expect(autofeedPausedText({ name: 'Ember' })).toBe('Auto-feed is paused — feed Ember by hand.');
+    const def = getEquipmentDef('auto_water_changer')!;
+    expect(def.description).toBe('Swaps a small share of the water every morning from a conditioned reservoir and scrapes the front glass once a week. Marine and brackish tanks draw on your salt stock for the new water.');
+    expect(text(html(createElement(EquipRow, { g, e: def, fits: true, installed: false, tankId: tank.id })))).toContain('Unlocks the Auto-clean switch on the tank card · upkeep $0.06/day');
+  });
+});
+
+/** Server rendering reads a store's initial state: copy the live state in first. */
+function syncNotifyStores(): void {
+  Object.assign(useNotifyPermission.getInitialState(), useNotifyPermission.getState());
+  Object.assign(useNotifyPrefs.getInitialState(), useNotifyPrefs.getState());
+}
+
+describe('§16 Notifications (DES-009; ADR-0022 decision 4)', () => {
+  const tab = (permission: NotifyPermission) => {
+    useNotifyPermission.setState({ permission });
+    syncNotifyStores();
+    return html(createElement(NotificationsTab));
+  };
+  afterAll(() => {
+    useNotifyPermission.setState({ permission: 'unsupported' });
+    syncNotifyStores();
+  });
+
+  it('the status callout in each permission state (web wording; no iPhone line)', () => {
+    expect(text(tab('default'))).toMatch(/^Notifications are off Get a nudge for rare stock, hungry animals and sales while Aquarium Go is open, even when you’re in another window\. Turn on /);
+    expect(text(tab('granted'))).toMatch(/^Notifications are on This browser shows alerts while Aquarium Go is open, even in another window\. Close the tab and they stop\. /);
+    expect(text(tab('denied'))).toMatch(/^Blocked in your browser To turn them on, allow notifications for this site in your browser’s site settings, then come back\. /);
+    const unsupported = text(tab('unsupported'));
+    expect(unsupported).toMatch(/^This browser can’t show notifications Alerts still appear in the game\. /);
+    expect(unsupported).not.toMatch(/Home Screen|iPhone/);
+    for (const p of ['default', 'granted', 'denied', 'unsupported'] as const) expect(text(tab(p))).not.toMatch(/when the game is closed|while the game is closed/);
+  });
+
+  it('the test row, the five categories with their subtitles, and quiet hours', () => {
+    const off = text(tab('default'));
+    expect(off).toContain('This browser Test notification Turn notifications on to try this Send test');
+    const on = text(tab('granted'));
+    expect(on).toContain('Test notification Arrives in a couple of seconds Send test');
+    expect(on).toContain(
+      'Notify me about Rare stock Prismatic animals and rare strains in the shop Animal care Hungry or sick animals, empty autofeeders Market New bids, sales and auctions ending Breeding Eggs laid and fry hatched Shows Results from shows you entered',
+    );
+    expect(on).toContain('Quiet hours 10:00 PM – 8:00 AM Urgent animal care still comes through');
+  });
+
+  it('the Alerts drawer footer, only before the browser has been asked', () => {
+    useGame.getState().setGame(newGame({ starterId: 'betta', starterName: 'Copy', seed: 9 }));
+    Object.assign(useGame.getInitialState(), useGame.getState());
+    useNotifyPermission.setState({ permission: 'default' });
+    syncNotifyStores();
+    const out = html(createElement(AlertsPopover));
+    expect(text(/<div class="ag-alerts-cta"[\s\S]*?<\/div>/.exec(out)?.[0] ?? '')).toBe('Get alerts like these as system notifications, not just in here. Turn on');
+    useNotifyPermission.setState({ permission: 'granted' });
+    syncNotifyStores();
+    expect(html(createElement(AlertsPopover))).not.toContain('alerts-notify-cta');
+    useGame.getState().setGame(null);
+    Object.assign(useGame.getInitialState(), { game: null });
   });
 });
