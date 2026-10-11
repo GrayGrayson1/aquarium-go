@@ -6,12 +6,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Group A is answered** (ADR-0024, 2026-10-11): release 0.5.1 now, plus standing decisions. The 0.5.1 release
-   (chunks 2 and 3) is under way in the same session.
-2. **Then ask the owner groups B to E** of `docs/agent/OWNER_QUESTIONS.md` (chunk 4's Production answers, the
-   DESIGN-S3D approval for chunk 5, chunk 6's copy, backlog rows); `docs/agent/SESSION_HANDOFF.md` gives the order
-   of work after that.
-3. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
+1. **Ask the owner groups B to E first** of `docs/agent/OWNER_QUESTIONS.md` (chunk 4's Production answers, the
+   DESIGN-S3D approval for chunk 5, chunk 6's copy, backlog rows). Group A is answered (ADR-0024).
+   `docs/agent/SESSION_HANDOFF.md` gives the order of work: record the answers, then the chunk they unblock (chunk 4,
+   else chunk 6).
+2. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
 
 ## Status
 
@@ -19,15 +18,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 |---|---|---|
 | 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06. Its e2e run (owner, `3601860`): 47 of 48, the one failure camera-freeze's teardown hang, fixed in `859858a` |
 | 1 | Navigation, links and the platform layer | Done 2026-10-07 (released in 0.5.0 on 2026-10-06). Its e2e run (`f59d51a`): 75 of 75, no fixes needed |
-| 2 | Shop and genetics | Done 2026-10-11, with the owner's follow-ups (ADR-0022). Its full run (`7acb0b9`): typecheck, unit 2,107, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
-| 3 | Automation and notifications | Done 2026-10-11 (on `next`). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
-| 4 | Production lines | Not started; needs the owner's Production answers |
-| 5 | Deep automation (S3-D) | Not started; needs the owner's approval of DESIGN-S3D |
-| 6 | Social stub, hardening and the 0.5.0 release | Not started |
+| 2 | Shop and genetics | Done 2026-10-11 (released in 0.5.1), with the owner's follow-ups (ADR-0022). Its full run (`7acb0b9`): typecheck, unit 2,107, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
+| 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
+| 4 | Production lines | Not started; needs group B's answers (`docs/agent/OWNER_QUESTIONS.md`) |
+| 5 | Deep automation (S3-D) | Not started; needs group C (the DESIGN-S3D approval) and chunk 4 |
+| 6 | Social stub, hardening and the last 0.5 release | Not started; needs D1 |
 
-**Last full test run:** the owner's Mac, 2026-10-11, on `aeb7657` (chunk 3 with its review fixes), in Claude Code from
-the internal-disk clone: typecheck passed; unit 194 files, 2,227 tests passed; build passed; e2e 90 passed (8.0
-minutes, inside Claude Code's sandbox; the warmup, the new `base-path` project and 88 desktop tests).
+**Last full test run:** the owner's Mac, 2026-10-11, on `6594d21` (the 0.5.1 release commit: chunk 3's code, the
+version bump and docs), in Claude Code from the internal-disk clone: typecheck passed; unit 194 files, 2,227 tests
+passed; build passed; e2e 90 passed (8.1 minutes, inside Claude Code's sandbox; the warmup, the `base-path` project
+and 88 desktop tests).
 
 ## How a chunk runs
 
@@ -199,7 +199,7 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 - **Requirements:** AUTO-002, AUTO-012, AUTO-013, AUTO-014 (the overview), AUTO-015, AUTO-016 to AUTO-018, AUTO-022,
   AUTO-026, AUTO-028, and the rest of `INTAKE.md` §12's proposals.
 
-### 6. Social stub, hardening and the 0.5.0 release (0.5 phase 4 and the release step)
+### 6. Social stub, hardening and the last 0.5 release (0.5 phase 4 and the release step)
 
 - **Design:** 0.5 spec §13 (Social stays reachable only in dev mode, ADR-0005 decision 3), §5.4 (the dock-width fix)
   and §21's release step.
@@ -220,9 +220,9 @@ REL-012, REL-018.
 
 ## Releases
 
-`main` is what players get: a push to `main` deploys GitHub Pages. Render may build `main` too (`render.yaml` has
-auto-deploy on, but `docs/ARCHITECTURE.md` says Render is deployed with its CLI), so check the Render site after a
-release and deploy it by hand if it didn't update. To release:
+`main` is what players get: a push to `main` deploys GitHub Pages. Render doesn't build on a push, though
+`render.yaml` has auto-deploy on (it didn't for 0.5.0 or 0.5.1): check its `version.json` after a release and deploy
+it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note has the command). To release:
 
 1. a full green run of the four checks on `next`, and the owner has played it;
 2. bump `version` in `package.json` and add the `CHANGELOG.md` entry (patch for fixes, minor for features;
@@ -233,6 +233,13 @@ release and deploy it by hand if it didn't update. To release:
   `next` after chunk 1: chunk 1, S0's stability fixes (the planned 0.4.1) and chunk 0. The owner chose to release
   before chunk 1's e2e run (step 1 of "To release" waived for this release only); typecheck, unit and build passed.
   Later chunks ship as 0.5.x (§21).
+- **0.5.1, released 2026-10-11** at the owner's request (ADR-0024 decision 1, "Release 0.5.1 now"): chunks 2 (shop
+  and genetics) and 3 (automation and notifications). The four checks passed on the release commit `6594d21`
+  (typecheck; unit 194 files, 2,227 tests; build; e2e 90 of 90); the owner's A1 answer stood for step 1's "the owner
+  has played it". `main` was fast-forwarded to `origin/main` (`5608ede`), `6594d21` merged with `--no-ff` as
+  `78548a3` (its tree is `6594d21`'s) and pushed. Pages deployed by itself; Render stayed on 0.5.0 and was deployed by
+  hand (`render deploys create … --commit 78548a3…`, deploy `dep-db61hn3bc2fs73afp29g`). Both `version.json` files
+  read `{"id":"78548a3-…","version":"0.5.1"}`.
 
 ## Product decisions in force
 

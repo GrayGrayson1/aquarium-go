@@ -8,7 +8,9 @@ used up.
 ## Where things stand
 
 - `next` holds chunks 1 to 3, all tested, and the owner's group A answers (ADR-0024). **0.5.1 is released**
-  (chunks 2 and 3; PLAN.md "Releases" has the commit, the test run and the deploy checks). Nothing is uncommitted.
+  (chunks 2 and 3): `main` is `78548a3`, and GitHub Pages and Render both serve 0.5.1 (Render deployed by hand, as
+  always). The last full run, on the release commit `6594d21`, passed typecheck, unit (194 files, 2,227 tests), build
+  and e2e (90 of 90). PLAN.md "Releases" has the details. Nothing is uncommitted.
 - **Owner questions:** group A is answered (ADR-0024). Groups **B to E are still open** in
   `docs/agent/OWNER_QUESTIONS.md`: the owner stopped after group A and asked for the docs to be ready for a new
   conversation.
