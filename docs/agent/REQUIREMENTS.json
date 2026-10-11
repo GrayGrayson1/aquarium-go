@@ -1930,7 +1930,7 @@
         "§10.3",
         "§11.3"
       ],
-      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the automation tests import no React or DOM (src/sim, src/data, src/types, plus src/persistence for the offline and hash checks)). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases. Not met as written: A1 asks for the same stateHash across step splits, which the water chemistry can’t give (it is integrated in steps); the tests hold job counts, run hours and stock exactly and water values within stated tolerances. Owner question A7 in docs/agent/OWNER_QUESTIONS.md (design-intake-3 M7)."
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the automation tests import no React or DOM (src/sim, src/data, src/types, plus src/persistence for the offline and hash checks)). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases. Not met as written: A1 asks for the same stateHash across step splits, which the water chemistry can’t give (it is integrated in steps); the tests hold job counts, run hours and stock exactly and water values within stated tolerances. Owner question A7 in docs/agent/OWNER_QUESTIONS.md (design-intake-3 M7). Owner (ADR-0024 decision 7, 2026-10-11, A7): accepted. Across step splits, job counts, run hours and stock units are exact and water values agree within stated tolerances (chunk 3: 0.15 °C, 0.05 pH, 3 % of nitrate); A1's identical stateHash holds for identical splits. Chunks 4 and 5 state their own tolerances the same way."
     },
     {
       "id": "AUTO-017",
@@ -3286,7 +3286,8 @@
       "status": "PENDING",
       "designSections": [
         "§18"
-      ]
+      ],
+      "note": "Owner (ADR-0024 decision 4, 2026-10-11, A4): the target is WCAG 2.2 AA for text and controls, with solid panels under the high-contrast setting (B-178), in chunk 6."
     },
     {
       "id": "PERF-001",
@@ -3655,7 +3656,7 @@
         "§14",
         "§21"
       ],
-      "note": "Why S1: master §9 S1 owns the platform abstraction, and design §14 defines its seam with persistence (the lifecycle hooks the pagehide write uses, and the storage candidates). Neither the master nor the design assigns forward safety to another slice; master §9 S4 persistence sanity (PERSIST-008) re-checks it. What a player can do with a too_new slot beyond today's too_new handling isn't decided here: a new player-facing choice is an owner question. Chunk 1 (2026-10-06): commit ee42973 (tests/sim/core-save-forward-safety.test.ts). Open owner question (the requirement's note): after a rollback, an older build can't autosave into a slot holding a newer save until the newer build returns or the slot is deleted; the player sees the too_new message once."
+      "note": "Why S1: master §9 S1 owns the platform abstraction, and design §14 defines its seam with persistence (the lifecycle hooks the pagehide write uses, and the storage candidates). Neither the master nor the design assigns forward safety to another slice; master §9 S4 persistence sanity (PERSIST-008) re-checks it. What a player can do with a too_new slot beyond today's too_new handling isn't decided here: a new player-facing choice is an owner question. Chunk 1 (2026-10-06): commit ee42973 (tests/sim/core-save-forward-safety.test.ts). Open owner question (the requirement's note): after a rollback, an older build can't autosave into a slot holding a newer save until the newer build returns or the slot is deleted; the player sees the too_new message once. Owner (ADR-0024 decision 2, 2026-10-11, A2): keep it as is; no \"Save to another slot\"."
     },
     {
       "id": "PERSIST-015",

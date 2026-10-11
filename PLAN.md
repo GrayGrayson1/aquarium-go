@@ -6,12 +6,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Ask the owner every open question first:** `docs/agent/OWNER_QUESTIONS.md` (groups A to E: the 0.5.1 release and
-   standing decisions, chunk 4's Production answers, the DESIGN-S3D approval for chunk 5, chunk 6's copy, backlog
-   rows). `docs/agent/SESSION_HANDOFF.md` gives the order of work after that: record the answers, release 0.5.1 if
-   the owner says so, then the chunk the answers unblock (chunk 4, else chunk 6). Chunks 2 and 3 are done and on
-   `next` only.
-2. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
+1. **Group A is answered** (ADR-0024, 2026-10-11): release 0.5.1 now, plus standing decisions. The 0.5.1 release
+   (chunks 2 and 3) is under way in the same session.
+2. **Then ask the owner groups B to E** of `docs/agent/OWNER_QUESTIONS.md` (chunk 4's Production answers, the
+   DESIGN-S3D approval for chunk 5, chunk 6's copy, backlog rows); `docs/agent/SESSION_HANDOFF.md` gives the order
+   of work after that.
+3. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
 
 ## Status
 
@@ -97,7 +97,7 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   - Phone sheets start at 64 px ± 2, the tank card at 118 px ± 2, the More sheet's top at 48 % of the height;
     "Link copied" shows for 4 s.
   - `?dev=1` allows the developer tools for that session only and doesn't switch the dev panel on by itself (e2e and
-    QA open the game with `?dev=1`, and dev mode unlocks every destination). Owner question (d) confirms it.
+    QA open the game with `?dev=1`, and dev mode unlocks every destination). The owner confirmed it (ADR-0024).
   - The More tab opens the More sheet; while it's highlighted, tapping it returns to the tank view. A panel's first
     tab has no URL segment (`#/build` is Build › Tanks). A link opened in a fresh tab gets no synthetic parent entry.
   - DESIGN-S3D will move Settings to a gear and put Operations in the dock and first in More (`INTAKE.md` C-1, C-2):
@@ -130,7 +130,7 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
     test scenario isn't news) and take `alleles`. The Encyclopedia's genes line is shown for bettas only.
   - Seeded tests: B-128's three seed-fragile tests were rebuilt first (`6343ca2`), the rest passed unchanged.
   - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-130 to chunk 4, B-170 to chunk 5, B-181 to the next render
-    pass; B-178's high-contrast panels wait on owner question (c).
+    pass; B-178's high-contrast panels go to chunk 6 (ADR-0024: WCAG 2.2 AA with solid high-contrast panels).
 
 ### 3. Automation and notifications (0.5 phase 3) — done 2026-10-11
 
@@ -151,7 +151,8 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
     not delivered at 8 AM (the Alerts drawer keeps everything). Danger-level Animal care, and untagged danger events
     about a tank, come through. "Auction ending soon" fires 3 game hours before the end.
   - Step-size tolerance (AUTO-009): 4 h and 0.25 h pieces make the same changes and scrapes at the same hours and end
-    within 0.15 °C, 0.05 pH and 3 % of nitrate (or 0.5 ppm). A keeper's 30-hour window is strict (30 h: the keeper
+    within 0.15 °C, 0.05 pH and 3 % of nitrate (or 0.5 ppm); the owner accepted such tolerances for water values
+    (ADR-0024 decision 7). A keeper's 30-hour window is strict (30 h: the keeper
     works again). The device skips a change for lack of salt (never a weak one) and retries the next morning.
   - What notifies: events the sim tags (rare stock, bids, sales, ending soon, breeding milestones that toast, show
     results, animal-care warnings) plus danger events about a tank. The notification needs come from the event, copied
@@ -203,10 +204,14 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   and §21's release step.
 - **Requirements:** SOC-001 to SOC-011, DES-010 to DES-012, NAV-019, AUTO-029, CONST-003, ACC-005, PERF-002,
   PERSIST-004, PERSIST-008, REL-004 to REL-008, REL-011, REL-013 to REL-017.
+- **Also (ADR-0024):** accessibility to WCAG 2.2 AA for text and controls, with solid panels under the high-contrast
+  setting (B-178, ACC-005); a WebKit e2e project beside Chromium (B-129). WebKit needs Playwright's WebKit browser in
+  `~/LocalTest/playwright` (check the internal disk's free space first; no new npm package), and REL-013's repeated
+  full runs include it. A WebKit-only failure is fixed, never skipped.
 - **Done when:** `social-stub.test.ts` and `dock-width.spec` pass; `#/social/join/HIGHLAND-4821` works signed out,
   then signed in, then joined; two full test passes in a row on the Mac (REL-013); the owner has played it on a phone
   and a desktop. Then the release.
-- **Decide:** SOC-010's empty-state copy (ask the owner).
+- **Decide:** SOC-010's empty-state copy (owner question D1).
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
@@ -243,4 +248,8 @@ release and deploy it by hand if it didn't update. To release:
 - Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016).
 - Catch-up bid windows stay as they are (ADR-0016).
 - Morph tiers: Legendary below 1 in 10,000 of market stock (ADR-0022, replacing ADR-0005 decision 4's threshold).
+- From the owner's group A answers (ADR-0024): an older build that finds a newer save keeps today's one message
+  ("Refresh the page"); e2e gains a WebKit project (chunk 6); accessibility aims at WCAG 2.2 AA with solid
+  high-contrast panels (chunk 6); `?dev=1` as built; chunk 3's five flagged wordings stay; automation's step-size
+  checks are exact for job counts, run hours and stock units and within stated tolerances for water values.
 - No new dependencies without asking the owner.

@@ -5,13 +5,18 @@ Ask them with the AskUserQuestion tool, at most 4 per round, in group order (A f
 first and label it "(Recommended)". Before a question about screens, open them for the owner (the PNGs under
 `docs/agent/design/DESIGN-S3D/screens/`).
 
+The owner may stop after any group: in each group's last round, ask a last question, "Go on to group {next}?" (it fits
+within the 4; group A's round did this on 2026-10-11).
+
 After each group, record the answers **verbatim** (the question as asked, the option chosen, any notes) in an ADR, as
-ADR-0019 to ADR-0023 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
+ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
+Group A is answered (ADR-0024). Use the next free ADR number for groups B, D and E (ADR-0025 onward); the DESIGN-S3D
+approval (group C) gets an ADR of its own, also written into `INTAKE.md` §14 "Owner decision".
 
 | Group | Unblocks | Questions |
 |---|---|---|
-| A | The 0.5.1 release and standing decisions | A1–A7 |
+| A | The 0.5.1 release and standing decisions | A1–A7: **answered 2026-10-11 (ADR-0024)** |
 | B | Chunk 4 (Production lines) | B1–B10 |
 | C | Chunk 5 (DESIGN-S3D approval) | C1–C15 |
 | D | Chunk 6 (Social stub) | D1 |
@@ -19,15 +24,17 @@ update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete
 
 ## A. Release and standing decisions
 
+All answered on 2026-10-11 (ADR-0024).
+
 | # | Question | Options (recommended first) | Source |
 |---|---|---|---|
-| A1 | Chunks 2 (shop and genetics) and 3 (automation and notifications) are on `next`, fully tested. Release them to players as 0.5.1 now? | **Release 0.5.1 now**: the release step in PLAN.md "Releases" (fresh four checks, version bump, CHANGELOG entry, merge `next` into `main`, push `main`, check Render). · Not yet: wait for more chunks. | PLAN.md Next step (e) |
-| A2 | After a rollback, an older copy of the game can't autosave into a slot that holds a newer version's save; it says so once, with "Refresh the page". Offer more? | **Keep it as is.** · Also offer "Save to another slot" (new copy). | PERSIST-014 note; PLAN (a) |
-| A3 | Run the e2e suite in WebKit (Safari's engine) as well as Chromium? | **No, Chromium only** (fast, stable). · Add a WebKit project (slower; catches Safari-only bugs). | B-129; PLAN (b) |
-| A4 | What accessibility level should 0.5 aim for? Today panels under the high-contrast setting keep their glass look (B-178). | **WCAG 2.2 AA for text and controls, with solid high-contrast panels (chunk 6).** · Fix only what's reported. | B-178; ACC-005; PLAN (c) |
-| A5 | Confirm `?dev=1`: it allows the developer tools for that session only, and the dev panel turns on with the Settings switch (it doesn't open by itself). | **Confirm.** · `?dev=1` should also turn the dev panel on. | Chunk 1 "Decided"; PLAN (d) |
-| A6 | Chunk 3's reviewer flagged wording that fills design slots without the owner's say: (1) the ribbon colours in a Shows notification, "$120 prize · Blue ribbon." (Blue, Red, Gold, Green for 1st, 2nd, 3rd and HM); (2) "1 fry is free-swimming in {Tank}." for one fry; (3) "0% vs fair value" for a bid at fair value; (4) lower-case species, as in "Prismatic betta in the shop"; (5) a jammed Autofeeder's row shows its switch on beside "Paused — feed {name} by hand." | **Keep all five.** · Change some (say which and how). | PLAN (f) |
-| A7 | Automation must give "the same outcomes and stateHash" for any split of game time into steps (AUTO-016 A1). The water chemistry is computed in steps, so the water itself can't be bit-identical across splits. Accept stated tolerances for water values, with exact equality for job counts, run hours and stock units? Chunk 3's tests do this (within 0.15 °C, 0.05 pH, 3 % nitrate). | **Accept the tolerances.** · Require bit-identical water (a fixed-point rewrite of the water integration; large). | AUTO-016 A1; design-intake-3 M7; `tests/sim/automation-invariants.test.ts` |
+| A1 | Chunks 2 (shop and genetics) and 3 (automation and notifications) are on `next`, fully tested. Release them to players as 0.5.1 now? | **Release 0.5.1 now**: the release step in PLAN.md "Releases" (fresh four checks, version bump, CHANGELOG entry, merge `next` into `main`, push `main`, check Render). · Not yet: wait for more chunks. → **Answered (ADR-0024): Release 0.5.1 now.** | PLAN.md Next step (e) |
+| A2 | After a rollback, an older copy of the game can't autosave into a slot that holds a newer version's save; it says so once, with "Refresh the page". Offer more? | **Keep it as is.** · Also offer "Save to another slot" (new copy). → **Answered (ADR-0024): Keep it as is.** | PERSIST-014 note; PLAN (a) |
+| A3 | Run the e2e suite in WebKit (Safari's engine) as well as Chromium? | **No, Chromium only** (fast, stable). · Add a WebKit project (slower; catches Safari-only bugs). → **Answered (ADR-0024): Add a WebKit project (not the recommended option).** | B-129; PLAN (b) |
+| A4 | What accessibility level should 0.5 aim for? Today panels under the high-contrast setting keep their glass look (B-178). | **WCAG 2.2 AA for text and controls, with solid high-contrast panels (chunk 6).** · Fix only what's reported. → **Answered (ADR-0024): WCAG 2.2 AA with solid high-contrast panels (chunk 6).** | B-178; ACC-005; PLAN (c) |
+| A5 | Confirm `?dev=1`: it allows the developer tools for that session only, and the dev panel turns on with the Settings switch (it doesn't open by itself). | **Confirm.** · `?dev=1` should also turn the dev panel on. → **Answered (ADR-0024): Confirm.** | Chunk 1 "Decided"; PLAN (d) |
+| A6 | Chunk 3's reviewer flagged wording that fills design slots without the owner's say: (1) the ribbon colours in a Shows notification, "$120 prize · Blue ribbon." (Blue, Red, Gold, Green for 1st, 2nd, 3rd and HM); (2) "1 fry is free-swimming in {Tank}." for one fry; (3) "0% vs fair value" for a bid at fair value; (4) lower-case species, as in "Prismatic betta in the shop"; (5) a jammed Autofeeder's row shows its switch on beside "Paused — feed {name} by hand." | **Keep all five.** · Change some (say which and how). → **Answered (ADR-0024): Keep all five.** | PLAN (f) |
+| A7 | Automation must give "the same outcomes and stateHash" for any split of game time into steps (AUTO-016 A1). The water chemistry is computed in steps, so the water itself can't be bit-identical across splits. Accept stated tolerances for water values, with exact equality for job counts, run hours and stock units? Chunk 3's tests do this (within 0.15 °C, 0.05 pH, 3 % nitrate). | **Accept the tolerances.** · Require bit-identical water (a fixed-point rewrite of the water integration; large). → **Answered (ADR-0024): Accept the tolerances.** | AUTO-016 A1; design-intake-3 M7; `tests/sim/automation-invariants.test.ts` |
 
 ## B. Chunk 4: Production lines
 
