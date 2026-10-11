@@ -54,6 +54,22 @@ test.describe('Tank card › Automation (desktop 1440×900)', () => {
     await expect(sw).not.toHaveAttribute('aria-disabled', 'true');
     await expect(tid(page, 'tank-auto-feed-row')).toContainText('Runs your Autofeeder');
 
+    // §17: a 44×26 switch, 20 px knob travelling 18 px, aqua-2 track when on; meals items at least 32×28
+    const box = (await sw.boundingBox())!;
+    expect([Math.round(box.width), Math.round(box.height)]).toEqual([44, 26]);
+    // (polled: the knob and the track ease in over ~0.2 s)
+    await expect
+      .poll(() =>
+        sw.evaluate((el) => {
+          const knob = getComputedStyle(el, '::after');
+          return { track: getComputedStyle(el).backgroundColor, knob: [knob.width, knob.height], move: knob.transform };
+        }),
+      )
+      .toEqual({ track: 'rgb(45, 212, 191)', knob: ['20px', '20px'], move: 'matrix(1, 0, 0, 1, 18, 0)' });
+    const meal = (await tid(page, 'tank-auto-feed-meals-1').boundingBox())!;
+    expect(meal.width).toBeGreaterThanOrEqual(32);
+    expect(meal.height).toBeGreaterThanOrEqual(28);
+
     // Meals a day: a radio group bound to the setting, arrow keys included
     await tid(page, 'tank-auto-feed-meals-3').click();
     await expect.poll(async () => (await device(page, tankId, 'autofeeder'))?.setting).toBe(3);

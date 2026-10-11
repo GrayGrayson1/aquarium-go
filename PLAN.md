@@ -130,41 +130,37 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-130 to chunk 4, B-170 to chunk 5, B-181 to the next render
     pass; B-178's high-contrast panels wait on owner question (c).
 
-### 3. Automation and notifications (0.5 phase 3)
+### 3. Automation and notifications (0.5 phase 3) — done 2026-10-11
 
-- **Design:** 0.5 spec §7.8, §10 and §12, and this chunk's parts of §16 to §20.
-- **Build:** the tank card's Automation section; Auto-feed meals a day; the Auto Water Changer (equipment kind and
-  label, data, the extracted water-change core `water/change.ts`, `runWaterChanger`, salt, staff interplay, the alerts
-  row) and its Supplies row; `GameEvent.offerId` on rare-stock events; the "auction ending soon" event (ADR-0022);
-  Settings › Notifications (categories, quiet hours, the permission flow, the test notification); web delivery with
-  `public/sw.js`; the Alerts drawer footer; click routing.
-- **Requirements:** AUTO-001, AUTO-003 to AUTO-011, AUTO-016 to AUTO-018, AUTO-022, AUTO-023, AUTO-026, NOTIFY-001
-  to NOTIFY-010, DES-007, DES-009, ACC-004 (the automation and notification switches), PERSIST-006 (the water-lab
-  hours).
-- **Done when:** `automation-*`, `notify-rules`, `notify-offer-events`, `automation.spec` and `notifications.spec`
-  pass, and the existing water, care and staff tests (`fix-water-*`, `staff-*`) and the determinism and step-size
-  tests stay green.
-- **Owner answers already in (ADR-0022):** the Unsupported callout reads "This browser can’t show notifications" /
-  "Alerts still appear in the game." (no iPhone Home Screen line); add an "auction ending soon" event and keep the
-  Market subtitle "New bids, sales and auctions ending". Earlier product decisions: the Auto Water Changer shares the
-  Autofeeder's unlock; quiet hours fixed at 10 PM to 8 AM with an on/off switch (`PLAN.md` "Product decisions").
-- **Watch:**
-  - BACKLOG errata to apply: B-149 (S3-A: `water_changer: 1` in `MAX_PER_KIND`, a test that a second install fails;
-    the Auto-feed switch sends `{ on: true, setting: def.defaultSetting }` from setting 0), B-117's S3-B part
-    (`clients.claim()`; `notificationclick` matches windows with `includeUncontrolled: true` within its scope), B-188
-    and B-189 (above).
-  - Open rows to fix or defer here: B-126 (an e2e run of the production build under `/aquarium-go/`, where the service
-    worker's scope matters), B-173 (quiet hours and rate limits are pure functions of an injected now and local
-    minutes; unit tests at 21:59, 22:00, 07:59, 08:00 and across midnight; e2e with Playwright's `page.clock` and a
-    fixed `timezoneId`), B-176 (background LOD chunks lose events: the water changer's lights-on run must fire in far
-    tanks; pin LOD equivalence), B-169 (the salt formula is duplicated in the UI lane, and the water changer uses
-    salt), B-177 (mutateFast's working copy, before any world-step hook), B-013 (a GameLoop test), B-167 (only if
-    automation makes compatibility decisions).
-  - The automation adds sim work: run the seeded and step-size tests before and after, and explain any changed
-    expectation. Notification prefs live in localStorage, never the save.
-- **Decide:** NOTIFY-002's quiet-hour boundaries (B-173 suggests 22:00 held, 08:00 shown); the automation step-size
-  tolerances (state them in the tests); the "auction ending soon" lead time. Ask the owner before any other
-  player-visible text the designs don't give.
+- **Built:** the Auto Water Changer (data, one per tank, the shared water-change core `src/sim/water/change.ts`,
+  `runWaterChanger`, salt, keepers, save repair of its two lab hours); the tank card's Automation section (Auto-feed
+  with Meals a day, Auto-clean, buying from the card) and the Water tab's note; the "Auto-feed is paused" alert (drawer
+  row, tank dot, a once-a-day sim event); notification tags on sim events (`GameEvent.notice`, `offerId`) and the
+  "auction ending soon" event; Settings › Notifications; web delivery (`src/ui/notify/`), `public/sw.js`, the 192 px
+  icon; the Alerts drawer footer; tap routing with the one-shot offer banner; the `base-path` e2e project (B-126).
+  Requirements AUTO-001, AUTO-003 to AUTO-011, AUTO-023, NOTIFY-001 to NOTIFY-010, DES-007, DES-009 GREEN; AUTO-016
+  to AUTO-018, AUTO-022, AUTO-026, ACC-004 and PERSIST-006 IN_PROGRESS (met for this chunk's automation; chunks 4 and
+  5 add production lines and the S3-D chains).
+- **Decided:**
+  - The owner's answers: ADR-0022 decisions 4 and 5 (the Unsupported callout, "auction ending soon") and ADR-0023
+    (the "ending soon" wording, "{Name} gave birth" for live births, a prize-less show result keeps the log's line,
+    the locked Auto-clean row shows the Auto-feed lock hint).
+  - Quiet hours run from 22:00 up to 07:59 (22:00 held, 08:00 shown, B-173's proposal); a held notification is dropped,
+    not delivered at 8 AM (the Alerts drawer keeps everything). Danger-level Animal care, and untagged danger events
+    about a tank, come through. "Auction ending soon" fires 3 game hours before the end.
+  - Step-size tolerance (AUTO-009): 4 h and 0.25 h pieces make the same changes and scrapes at the same hours and end
+    within 0.15 °C, 0.05 pH and 3 % of nitrate (or 0.5 ppm). A keeper's 30-hour window is strict (30 h: the keeper
+    works again). The device skips a change for lack of salt (never a weak one) and retries the next morning.
+  - What notifies: events the sim tags (rare stock, bids, sales, ending soon, breeding milestones that toast, show
+    results, animal-care warnings) plus danger events about a tank. The notification needs come from the event, copied
+    when it happens. The service worker is registered only once permission is granted.
+  - Not built: the optional Finances "Automation gear" row (it would repeat the tanks' costs above it).
+  - Seeded tests: none moved. The device runs only where installed; the new events fire only where the scenarios
+    don't look (the full unit suite passed unchanged after the sim commits, before the new tests).
+  - Backlog: fixed B-013, B-117 (S3-B), B-126, B-149, B-173, B-188, B-189; partly B-169 (one salt formula; the UI-lane
+    mutators move with chunk 5) and B-176 (the device is LOD-exact; cool-water cues left); deferred B-177 and B-127,
+    B-171, B-174 to chunk 4 and B-180 to chunk 5 (reasons in `docs/agent/BACKLOG.md`); B-167 stays open (no
+    compatibility decisions in this chunk).
 
 ### 4. Production lines (0.5 phase 5, several lines per species)
 

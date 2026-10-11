@@ -70,8 +70,10 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await expect(tid(page, 'settings-tab-display')).toHaveAttribute('aria-selected', 'true');
     await tid(page, 'settings-tab-about').click();
     await expect.poll(() => hash(page)).toBe('#/settings/about');
-    await goHash(page, '#/settings/notifications'); // built in chunk 3: General until then
-    await expect(tid(page, 'settings-tab-general')).toHaveAttribute('aria-selected', 'true');
+    // chunk 3 built Settings › Notifications: the address opens it (until then it opened General)
+    await goHash(page, '#/settings/notifications');
+    await expect(tid(page, 'settings-tab-notifications')).toHaveAttribute('aria-selected', 'true');
+    await expect.poll(() => hash(page)).toBe('#/settings/notifications');
   });
 
   test('broken, unknown-tab and gone links (§6.5, ADR-0019)', async ({ page }) => {

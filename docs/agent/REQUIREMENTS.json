@@ -298,11 +298,12 @@
         "new: tests/e2e/notifications.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§16",
         "§19"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): ui-copy-05 asserts every §16 Automation string (em dashes included) and the ids are in docs/TEST_IDS.md and the e2e specs. The optional Finances \"Automation gear\" row isn't built (it would repeat the tanks' running costs above it)."
     },
     {
       "id": "DES-008",
@@ -343,7 +344,7 @@
         "new: tests/e2e/notifications.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§16",
         "§19",
@@ -352,7 +353,7 @@
         "§12.4",
         "§12.5"
       ],
-      "note": "Needs owner or reviewer confirmation: the Unsupported callout copy is an open owner question (ADR-0003; design §22 risk 5; master §44); stop at OWNER_GATE with reason OTHER:notify-unsupported-copy if S3-B reaches it undecided. Design §12 prints straight apostrophes while §16 calls curly ones intentional, so \"exactly as §16 specifies\" needs one rule confirmed for both."
+      "note": "Chunk 3 (2026-10-11): ui-copy-05 asserts the web notification strings and the drawer footer; the Unsupported copy is ADR-0022 decision 4's; no app variant ships; curly apostrophes throughout (§16's rule); the Settings ids are in docs/TEST_IDS.md and notifications.spec."
     },
     {
       "id": "DES-010",
@@ -1571,7 +1572,8 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 3 (2026-10-11): every child (AUTO-003 to AUTO-011) is GREEN; core-determinism and fix-core-step-invariance pass unchanged."
     },
     {
       "id": "AUTO-002",
@@ -1607,11 +1609,12 @@
         "new: tests/e2e/automation.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.1",
         "§17"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): GearTab renders Automation, Equipment, Lighting (automation-autofeed-ui); the kit switch is 44×26 with a 20 px knob, 18 px travel and an aqua-2 track (automation.spec measures it); installed rows aqua-tinted, missing rows dashed with a dimmer icon (src/ui/styles/automation.css); the meals control is the kit Segmented (3 px pill, items ≥ 32×28 at 11.5/650)."
     },
     {
       "id": "AUTO-004",
@@ -1633,10 +1636,11 @@
         "tests/sim/staff-sim.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.2"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): the four states and the wiring (automation-autofeed-ui, automation.spec); {d} = ⌊servings ÷ (meals × recommendedServings)⌋, shown when ≥ 1; the keeper clause only with a keeper; turning on from a legacy 0 sends { on: true, setting: 2 } computed from the live device (B-149). fix-water-autofeeder, staff2-feeding and staff-sim pass unchanged."
     },
     {
       "id": "AUTO-005",
@@ -1654,11 +1658,12 @@
         "new: tests/e2e/automation.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.2",
         "§12.2"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): one rule (autofeedPause in src/sim/care/autofeed.ts: switched off or 0 meals, jammed, or out of every dry food its animals eat, with a resident at hunger ≥ 50) drives the drawer row with Fix (#/tanks/:id/equipment), the tank dot and the tank card line; the sim logs \"{Tank}: Auto-feed is paused — feed {name} by hand.\" once a game day for a switched-off feeder (empty and jammed ones already log their own care events). Tests: automation-autofeed-ui, automation.spec."
     },
     {
       "id": "AUTO-006",
@@ -1675,13 +1680,14 @@
         "new: tests/sim/automation-water-changer.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.3",
         "§10.4",
         "§15",
         "§22"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): the definition matches §10.3 field by field, shares gear_autofeeder, one per tank (B-149); its upkeep is in tankDailyCost only while on, so Build › Equipment's Installed/Upkeep tiles include it; no new ledger category (automation-water-changer, automation-autoclean-ui)."
     },
     {
       "id": "AUTO-007",
@@ -1700,12 +1706,12 @@
         "new: tests/sim/automation-autoclean-ui.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.3",
         "§7.8"
       ],
-      "note": "Needs owner or reviewer confirmation: DESIGN-0.5 doesn't define the Auto-clean row while gear_autofeeder is locked, and its not-installed row offers 'Buy · $120'; mirroring the Auto-feed lock hint is a proposal."
+      "note": "Chunk 3 (2026-10-11): the not-installed row (dashed, \"Needs an Auto Water Changer\", gold \"Buy · $120\", an aria-disabled switch that stays focusable), the installed subline, buying from the card with the Installed / Not enough money toasts, the Water tab note while on, and the Supplies/Build line (automation-autoclean-ui, automation.spec). Before the unlock the row shows the Auto-feed lock hint (owner, ADR-0023 decision 4)."
     },
     {
       "id": "AUTO-008",
@@ -1736,12 +1742,13 @@
         "tests/sim/staff2-feeding.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.3",
         "§15",
         "§22"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): extraction (the preferred option): src/sim/water/change.ts applyWaterChange / scrapeGlass; waterChange and cleanTank keep their signatures, messages, salt use, shock warning, counters and lastMaintenanceHour; the device calls the core without counters, messages or toasts and sets lastMaintenanceHour. All listed water, care and staff tests pass unchanged; automation-water-changer adds the refactor guard and a core-equals-manual check."
     },
     {
       "id": "AUTO-009",
@@ -1762,12 +1769,12 @@
         "tests/sim/fix-water-grace-equipment.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.3",
         "§21"
       ],
-      "note": "Needs owner or reviewer confirmation: the tolerance for \"water values equal\" between 4 h and 0.25 h steps is not set by the design (§20.1 writes ≈); a reviewer should fix it in the S3 contract."
+      "note": "Chunk 3 (2026-10-11): runWaterChanger after runAutofeeder walks the lights-on crossings in [ctx.hour, ctx.hour + dt) (crossings moved to src/sim/time.ts), 20 h and 168 h guards, no RNG, runs in simulateOffline without failing during the grace. Tolerance, stated in automation-water-changer: 4 h and 0.25 h pieces make the same changes and scrapes at the same hours and end within 0.15 °C, 0.05 pH and 3 % of nitrate (or 0.5 ppm). Background LOD pinned too (B-176)."
     },
     {
       "id": "AUTO-010",
@@ -1784,10 +1791,11 @@
         "new: tests/sim/automation-water-changer.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.3"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): salt tanks check the change's salt need first (the waterChangeCost rule) and use exactly what a manual change of the same share uses; short of salt they skip and log the out-of-salt notice once per 24 game hours (first one toasted, like the autofeeder's); freshwater uses none (automation-water-changer, automation-invariants)."
     },
     {
       "id": "AUTO-011",
@@ -1807,12 +1815,12 @@
         "tests/sim/fix-water-autofeeder.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.3",
         "§20.4"
       ],
-      "note": "Needs owner or reviewer confirmation: the 29 h / 31 h probe points around the design's 30-game-hour rule are a proposal, and whether exactly 30 h counts as \"in the last 30 game hours\" is not stated."
+      "note": "Chunk 3 (2026-10-11): keeperWaterCare skips the routine change and the glass scrape while hour − lastAutoChangeHour < 30 (exactly 30 h: the keeper works again); probes at 29 h and 31 h; ammonia/nitrite emergencies and gravel stay the keeper's; without the device nothing changes (automation-water-changer; staff-sim, staff2-feeding, fix-water-autofeeder pass unchanged)."
     },
     {
       "id": "AUTO-012",
@@ -1917,11 +1925,12 @@
         "tests/sim/core-determinism-guard.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§10.3",
         "§11.3"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the tests import no React or DOM). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases."
     },
     {
       "id": "AUTO-017",
@@ -1938,10 +1947,11 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§10.3"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: money moves only through the ledger, salt only through the changes, each the amount it needs; a skipped change leaves the out-of-salt notice). Chunks 4 and 5 add theirs."
     },
     {
       "id": "AUTO-018",
@@ -1959,11 +1969,12 @@
         "new: tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§10.3",
         "§15"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer: lastAutoChangeHour / lastAutoScrapeHour are optional lane-tagged save fields validated by repairState (persistence-05); a re-stepped window does nothing; a save without markers runs once at the next lights-on (automation-invariants). Chunks 4 and 5 add theirs."
     },
     {
       "id": "AUTO-019",
@@ -2038,8 +2049,9 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 3 (2026-10-11): met for salt: two changes due in the same step with salt for one, one runs and the other reports the shortage; no stock goes negative (automation-invariants). Chunks 4 and 5 add their resources."
     },
     {
       "id": "AUTO-023",
@@ -2056,10 +2068,11 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§10.3"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): a step ending exactly at lights-on then one starting there makes one change; a re-stepped window makes none (automation-invariants, automation-water-changer). The Auto Water Changer is the only scheduled maintenance so far."
     },
     {
       "id": "AUTO-024",
@@ -2116,8 +2129,9 @@
         "new: tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 3 (2026-10-11): A1 met for the Auto Water Changer (a save and load right after the change and scrape ends with the uninterrupted run's stateHash, automation-invariants). A2 (a production line saved mid-quarantine) is chunk 4's."
     },
     {
       "id": "AUTO-027",
@@ -2191,7 +2205,8 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 3 (2026-10-11): every child (NOTIFY-002 to NOTIFY-010) is GREEN; no copy promises alerts while the game is closed (ui-copy-05)."
     },
     {
       "id": "NOTIFY-002",
@@ -2210,12 +2225,12 @@
         "new: tests/e2e/notifications.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.2",
         "§12.3"
       ],
-      "note": "Needs owner or reviewer confirmation: treating 22:00 as inside and 08:00 as outside quiet hours is a proposal (the design gives start 22 and end 8 only), and the design does not say whether held notifications are dropped or delivered when quiet hours end."
+      "note": "Chunk 3 (2026-10-11): localStorage aquarium-go.notify.v1 only (notify-deliver); quiet hours fixed 22:00–08:00, 22:00 held and 08:00 shown (the proposal, B-173), held notifications dropped (the Alerts drawer keeps everything); danger-level Animal care comes through; tests at 21:59, 22:00, 07:59, 08:00 and across midnight (notify-rules) and on a pinned clock and timezone (notifications.spec)."
     },
     {
       "id": "NOTIFY-003",
@@ -2232,12 +2247,12 @@
         "new: tests/sim/notify-rules.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.2",
         "§21"
       ],
-      "note": "Club-show reminders need the Social stub's clubs (S4); their route and dev-mode gating are tested with SOC-011 A5 in S4, not here (requirements-2 m8)."
+      "note": "Chunk 3 (2026-10-11): src/ui/notify/rules.ts maps tagged events (GameEvent.notice, set by the sim when the event happens) and untagged danger events about a tank to {category, title, body, route, priority, tag}; every template and route is tested in notify-rules; categories switched off and unmapped events never notify. Club-show reminders wait for the Social stub (chunk 6). Live births and prize-less show results use ADR-0023's wording."
     },
     {
       "id": "NOTIFY-004",
@@ -2253,12 +2268,13 @@
         "new: tests/sim/notify-offer-events.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.2",
         "§7.7",
         "§15"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): GameEvent.offerId on a Prismatic in the restock, a market special and single-offer (or Prismatic) new arrivals (B-189); routed to #/shop/fish/{offerId}, #/shop without one; the drawer link reads \"Open the shop\" (notify-offer-events)."
     },
     {
       "id": "NOTIFY-005",
@@ -2275,10 +2291,11 @@
         "new: tests/sim/notify-rules.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.2"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): one per category per 30 real minutes with \"… and {n} more\" on the next, six an hour in all, tag = category, real time only (notify-rules with an injected clock)."
     },
     {
       "id": "NOTIFY-006",
@@ -2298,14 +2315,14 @@
         "tests/e2e/boot.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.1",
         "§12.3",
         "§12.5",
         "§20.3"
       ],
-      "note": "Needs owner or reviewer confirmation: the Unsupported callout copy (design §12.3's iOS 'add Aquarium Go to your Home Screen' sentence; §22 risk 5) is an open owner question (ADR-0003, master §44); the app has no manifest today."
+      "note": "Chunk 3 (2026-10-11): Settings › Notifications with the web callouts (Unsupported per ADR-0022 decision 4; no app variant), the test row (≈1.5 s, even focused; \"Turn notifications on first\" otherwise), five category switches locked until granted (aria-disabled, focusable, aria-describedby the status title) and quiet hours; five Settings tabs; save.spec and boot.spec pass (notifications.spec, ui-copy-05, notify-deliver)."
     },
     {
       "id": "NOTIFY-007",
@@ -2322,10 +2339,11 @@
         "new: tests/e2e/notifications.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.4"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): no request at boot or play (the stub counts zero until Turn on); the drawer footer shows only while permission is default and opens #/settings/notifications; granted: the \"Notifications on\" toast and the defaults; denied: \"Blocked in your browser\"; dismissed: still \"Notifications are off\" (notifications.spec, notify-deliver)."
     },
     {
       "id": "NOTIFY-008",
@@ -2344,11 +2362,12 @@
         "new: tests/sim/notify-deliver.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.1",
         "§12.6"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): delivery reads new log entries, shows only when granted, the category is on, quiet hours allow and the page is visible but unfocused; icon /icon-192.png (public/icon-192.png, the favicon at 192 px), tag = category, data.route; no push subscription or server (notify-deliver, notifications.spec, base-path.spec)."
     },
     {
       "id": "NOTIFY-009",
@@ -2367,13 +2386,14 @@
         "new: tests/e2e/notifications.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.6",
         "§15",
         "§22",
         "§6.4"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): public/sw.js (hand-written, no fetch/cache/push handlers) is registered by platform().notifications.prepare() at BASE_URL + \"sw.js\" with scope BASE_URL once permission is granted; it claims open windows and focuses + messages a game window in its scope (uncontrolled ones included, B-117) or opens BASE_URL?notification=1#route; the page opens the route, an offer with its banner (platform-sw, notifications.spec; the scope under /aquarium-go/ in base-path.spec). The security review is the chunk's fresh reviewer (ADR-0018)."
     },
     {
       "id": "NOTIFY-010",
@@ -2392,10 +2412,11 @@
         "new: tests/e2e/notifications.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§12.8"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): notify-rules, notify-offer-events, notify-deliver and notifications.spec ran in the chunk's full runs (PLAN.md \"Last full test run\"); the Settings states, the drawer footer and the tank card were screenshotted at 1440×900 and 390×844 and checked during the chunk. The harness's evidence manifest and browser-QA verdicts were retired with it (ADR-0018)."
     },
     {
       "id": "NOTIFY-011",
@@ -3239,10 +3260,11 @@
         "new: tests/e2e/a11y-automation.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§18"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): the automation and notification switches are role=switch with aria-checked and subject names (\"Auto-feed for {Tank}\", \"{Category} notifications\"); locked ones are aria-disabled, focusable and described (automation.spec tabs to one); the meals control is a radiogroup operable with the arrow keys (the kit Segmented now answers arrow keys everywhere). Production switches and Running/Paused badges come with chunk 4."
     },
     {
       "id": "ACC-005",
@@ -3451,12 +3473,13 @@
         "tests/sim/core-persistence.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§15",
         "§20.1",
         "§21"
-      ]
+      ],
+      "note": "Chunk 3 (2026-10-11): the water-lab hours: repairState removes a non-finite lastAutoChangeHour / lastAutoScrapeHour with a note, absent ones need nothing and leave the hash unchanged, a fresh 0.5 game needs no repairs (persistence-05). The production part is chunk 4's."
     },
     {
       "id": "PERSIST-007",

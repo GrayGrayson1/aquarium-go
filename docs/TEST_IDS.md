@@ -323,3 +323,38 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 tiles are `role="radiogroup"` / `role="radio"` with `aria-checked`; arrow keys move the choice. The Market's rare-stock
 dot is `dock-badge-market` (label "Prismatic {species} in the shop" or "Rare stock: {morph}", target `offer:<id>`).
 `dev.addShopOffer(speciesId, { alleles })` pins an offer's genes for tests (the rest normalise to the most common).
+
+## 0.5 automation and notifications (chunk 3: lanes ui-shell, notify, platform)
+
+0.5 spec §19 (Tank card, Alerts, Settings). The automation switches are `role="switch"` named "Auto-feed for {Tank}" /
+"Auto-clean for {Tank}"; a switch whose device isn't installed is `aria-disabled="true"` (never `disabled`, so it stays
+in the tab order) with `aria-describedby` on the "Needs …" line or the unlock hint. The category switches in Settings
+are locked the same way until the browser allows notifications (`aria-describedby="notify-status-title"`).
+
+| test id | element |
+|---|---|
+| `tank-automation` | Tank card › Equipment: the Automation section's list (above Equipment and Lighting) |
+| `tank-auto-feed` · `tank-auto-feed-row` | The Auto-feed switch (the Autofeeder's `on`); its row (`data-state` on / paused) |
+| `tank-auto-feed-meals-<1-4>` | "Meals a day": a `role="radiogroup"` of `role="radio"` (the Autofeeder's `setting`); arrow keys move it |
+| `tank-auto-feed-paused` | The amber "Paused — feed {name} by hand[, or a keeper will on their rounds]." line |
+| `tank-auto-feed-buy` | "Buy · $35" when the tank has no Autofeeder (buys and installs it here) |
+| `tank-auto-feed-fit` · `tank-auto-clean-fit` | The fit line when the device can't help these animals |
+| `tank-auto-clean` · `tank-auto-clean-row` | The Auto-clean switch (the Auto Water Changer's `on`); its row |
+| `tank-auto-clean-buy` | "Buy · $120" (buys, installs and switches on; "Not enough money" toast below $120) |
+| `water-autoclean-note` | Water tab: "Auto-clean is on" while the device runs |
+| `shop-equip-unlocks-auto_water_changer` | Supplies / Build: "Unlocks the Auto-clean switch on the tank card · upkeep $0.06/day" |
+| `alert-autofeed-paused` | Alerts drawer › Tanks: "{Tank}" · "Auto-feed is paused — feed {name} by hand." · "Fix" (opens `#/tanks/:id/equipment`) |
+| `alerts-notify-cta` · `alerts-notify-turn-on` | Alerts drawer footer (permission not asked yet only); its "Turn on" opens `#/settings/notifications` |
+| `settings-tab-notifications` | Settings › Notifications (five tabs: `settings-tab-<general\|display\|saves\|notifications\|about>`) |
+| `notify-status` | The status callout (`data-permission` default / granted / denied / unsupported) |
+| `notify-turn-on` | "Turn on" (asks the browser; only while not asked) |
+| `notify-test` · `notify-test-line` | "Send test" and its line ("Arrives in a couple of seconds" / "Sent — …" / "Turn notifications on to try this") |
+| `notify-cat-<rare\|care\|market\|breeding\|shows>` | The five category switches |
+| `notify-quiet` | Quiet hours "10:00 PM – 8:00 AM" on/off |
+
+Notification routes are hashes (`#/shop/fish/<offerId>`, `#/tanks/<id>/equipment`, `#/market/listings/<id>`,
+`#/livestock/eggs`, `#/livestock/animal/<id>`, `#/shows/results`); public/sw.js opens a new window at
+`<base>?notification=1#<route>` (the page drops the flag and shows the offer banner). e2e records notifications by
+stubbing `window.Notification` and `ServiceWorkerRegistration.prototype.showNotification`, and simulates a tap with a
+`notification-click` message on `navigator.serviceWorker` (tests/e2e/notifications.spec.ts). The `base-path` Playwright
+project runs the production build under `/aquarium-go/` (tests/e2e/base-path.spec.ts).
