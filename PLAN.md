@@ -6,11 +6,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Ask the owner groups B to E first** of `docs/agent/OWNER_QUESTIONS.md` (chunk 4's Production answers, the
-   DESIGN-S3D approval for chunk 5, chunk 6's copy, backlog rows). Group A is answered (ADR-0024).
-   `docs/agent/SESSION_HANDOFF.md` gives the order of work: record the answers, then the chunk they unblock (chunk 4,
-   else chunk 6).
-2. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
+1. **Ask the owner groups C to E** of `docs/agent/OWNER_QUESTIONS.md` (the DESIGN-S3D approval for chunk 5, chunk 6's
+   copy, backlog rows). Groups A and B are answered (ADR-0024, ADR-0025). `docs/agent/SESSION_HANDOFF.md` gives the
+   order of work.
+2. **Then chunk 4** (Production lines): group B unblocked it (ADR-0025).
+3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
 
 ## Status
 
@@ -20,7 +20,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 1 | Navigation, links and the platform layer | Done 2026-10-07 (released in 0.5.0 on 2026-10-06). Its e2e run (`f59d51a`): 75 of 75, no fixes needed |
 | 2 | Shop and genetics | Done 2026-10-11 (released in 0.5.1), with the owner's follow-ups (ADR-0022). Its full run (`7acb0b9`): typecheck, unit 2,107, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
 | 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
-| 4 | Production lines | Not started; needs group B's answers (`docs/agent/OWNER_QUESTIONS.md`) |
+| 4 | Production lines | Not started; group B answered (ADR-0025), so it's next |
 | 5 | Deep automation (S3-D) | Not started; needs group C (the DESIGN-S3D approval) and chunk 4 |
 | 6 | Social stub, hardening and the last 0.5 release | Not started; needs D1 |
 
@@ -174,19 +174,28 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 - **Design:** 0.5 spec §11 for the data and simulation. The screens come from DESIGN-S3D, SPEC §8.6 (the line picker)
   and §8.6.1 (the new-line steps), which replace §11.1's single-line UI (ADR-0014, owner answer 14). The Lines tab
   (SPEC §7.4) comes with Operations in chunk 5.
-- **Before starting:** the owner answers group B of `docs/agent/OWNER_QUESTIONS.md` (open as of 2026-10-11): B1
-  approves SPEC §8.6 and §8.6.1; B2 to B10 settle `INTAKE.md` §11's Production rows (C-27 raise timings and the sell
-  step, C-28 the "Never sell Prismatic animals" switch, C-29 what "protected" means, C-33 adding a quarantine tank,
-  C-34 ending a line, C-36 the slot caption) and the PROD-006, PROD-015 and PROD-017 calls. BACKLOG B-135 is the same
-  question as C-27 and C-28.
+- **Decided (ADR-0025, group B, 2026-10-11):** SPEC §8.6 and §8.6.1 are approved as the screens (B1). Raise lengths
+  and stage words come from each species' data, and the sell step lists each animal by its life stage at sale time
+  (B2, C-27). Automation never lists a Prismatic; "Never sell Prismatic animals" only chooses keep tank (on) or batch
+  (off) (B3, C-28, PROD-011). Protected = every animal in a line's keep tank, every Prismatic and every favourite;
+  automation never moves them out, lists or sells them; young kept by the trait rules go to the keep tank (B4, C-29,
+  PROD-008). "Add a quarantine tank" shows the real kit price, offers seeded media, handles no money and no floor
+  space, checks the tank suits the line and gives the restart day only once it's cycled or seeded (B5, C-33). "End
+  line" on the header card with a confirmation: animals stay, the slot frees, stats stay in history (B6, C-34). The
+  slot captions as worded in ADR-0025 (B7, C-36). A full raise tank with "Pause when a tank is full" off: the fry stay,
+  with one notice "{Line}: the raise tank is full, so the fry stay in {tank}." (B8, PROD-006). Costs split by the
+  line's share of each tank's residents, day by day (B9, PROD-015). A line with a missing parent or tank pauses with
+  one notice and is kept through saves; `repairState` marks it, never drops it (B10, PROD-017, PERSIST-006). B-135 is
+  decided.
 - **Build:** the production types and their `repairState` validation, `src/sim/production` and its world hook,
   Livestock › Production with the line picker and the new-line steps, several lines per species.
 - **Requirements:** PROD-001 to PROD-018, DES-008, AUTO-014 (the production part), AUTO-016 to AUTO-021, AUTO-024 to
   AUTO-027, ACC-004 (the production switches), PERSIST-005, PERSIST-006 (production), and `INTAKE.md` §12's
   PROD-019 to PROD-021 with its change rows for PROD-002, PROD-003, PROD-011, PROD-012, PROD-015, PROD-018 and DES-008.
 - **Done when:** `production-line.test.ts` and `persistence-05` pass with everything else.
-- **Decide:** the owner calls in PROD-006, PROD-008, PROD-011, PROD-015 and PROD-017 (ask); PERSIST-005's save-size
-  budget.
+- **Decide:** PERSIST-005's save-size budget. Ask the owner once, batched, for the player-visible text no design or
+  ADR gives (at least End line's confirmation, the missing-reference notice and the quarantine purchase's restart
+  line; ADR-0025's option descriptions gave examples, not approved copy).
 
 ### 5. Deep automation (S3-D)
 
@@ -261,4 +270,7 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   ("Refresh the page"); e2e gains a WebKit project (chunk 6); accessibility aims at WCAG 2.2 AA with solid
   high-contrast panels (chunk 6); `?dev=1` as built; chunk 3's five flagged wordings stay; automation's step-size
   checks are exact for job counts, run hours and stock units and within stated tolerances for water values.
+- From group B (ADR-0025): production lines follow DESIGN-S3D §8.6 and §8.6.1; automation never lists a Prismatic;
+  protected animals (keep tanks, Prismatics, favourites) are never moved out, listed or sold by automation; lines can
+  be ended; a line with a missing parent or tank is paused and kept, not dropped.
 - No new dependencies without asking the owner.

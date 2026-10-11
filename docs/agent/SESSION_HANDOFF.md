@@ -13,7 +13,7 @@ used up.
   and e2e (90 of 90). PLAN.md "Releases" has the details. Nothing is uncommitted.
 - **Owner questions:** group A is answered (ADR-0024). Groups **B to E are still open** in
   `docs/agent/OWNER_QUESTIONS.md`: the owner stopped after group A and asked for the docs to be ready for a new
-  conversation.
+  conversation. *Update, 2026-10-11 (Marshall's session): group B is answered (ADR-0025); C to E are being asked.*
 - Chunk 4 (Production lines) waits on group B; chunk 5 (deep automation, DESIGN-S3D) on group C and chunk 4; chunk 6
   (Social stub, hardening, now also the WebKit e2e project and WCAG 2.2 AA from ADR-0024) on D1.
 

@@ -2565,7 +2565,7 @@
       "designSections": [
         "§11.3"
       ],
-      "note": "Needs owner or reviewer confirmation: design §11.3 does not say what happens when the raise tank is full and pauseWhenFull is off, and gives no copy for the notice; keeping the fry in place with a notice is a proposal for the S3 contract or DESIGN-S3C-LINES."
+      "note": "Owner (ADR-0025 decision 8, 2026-10-11, B8): with the raise tank full and pauseWhenFull off, the fry stay where they are (with the parents) and the line keeps running, with one notice: \"{Line}: the raise tank is full, so the fry stay in {tank}.\""
     },
     {
       "id": "PROD-007",
@@ -2607,7 +2607,7 @@
         "§11.3",
         "§11.1"
       ],
-      "note": "Needs owner or reviewer confirmation: design §11.3 says the Sort stage \"keeps\" juveniles matching the trait rules without saying where they go (only Prismatic ones are sent to the keep tank); the destination needs an owner decision in the S3 contract."
+      "note": "Owner (ADR-0025 decision 4, 2026-10-11, B4): young kept by the trait rules move to the line's keep tank. Protected = every animal in a line's keep tank, every Prismatic and every favourite; automation never moves them out, lists or sells them."
     },
     {
       "id": "PROD-009",
@@ -2668,7 +2668,7 @@
         "§11.3",
         "§11.1"
       ],
-      "note": "Needs owner or reviewer confirmation: with keepPrismatic off the design gives a Prismatic juvenile no destination, so it would stay in quarantine indefinitely; the owner should decide where it goes."
+      "note": "Owner (ADR-0025 decision 3, 2026-10-11, B3): automation never lists a Prismatic, whatever the switch says; keepPrismatic on moves it to the keep tank, off leaves it with its batch (it then moves with the batch but is never listed). A player sells a Prismatic only by hand."
     },
     {
       "id": "PROD-012",
@@ -2751,7 +2751,7 @@
         "§11.2",
         "§11.1"
       ],
-      "note": "Needs owner or reviewer confirmation: design §11.1 shows This week 'After food and power' but never says how a tank's food and power costs are attributed to a line (tanks can be shared); the owner or the S3 contract must decide."
+      "note": "Owner (ADR-0025 decision 9, 2026-10-11, B9): each day a line pays for its share of each tank's residents (a tank shared half and half charges each line half); two lines never pay for the same food or power."
     },
     {
       "id": "PROD-016",
@@ -2796,7 +2796,7 @@
       "designSections": [
         "§11.3"
       ],
-      "note": "Needs owner or reviewer confirmation: design §11.3 pauses such a line with a notice, while design §15 and §20.1 have repairState drop lines with dangling ids on load, so a paused line would vanish after the next reload; the owner should choose one behaviour (PERSIST-006 currently encodes §15)."
+      "note": "Owner (ADR-0025 decision 10, 2026-10-11, B10): the line pauses with one notice and is kept through saves and reloads; repairState marks the missing parent or tank instead of dropping the line (this replaces §15 and §20.1 and changes PERSIST-006). The notice's wording is still to be asked in chunk 4."
     },
     {
       "id": "PROD-018",
@@ -3480,7 +3480,7 @@
         "§20.1",
         "§21"
       ],
-      "note": "Chunk 3 (2026-10-11): the water-lab hours: repairState removes a non-finite lastAutoChangeHour / lastAutoScrapeHour with a note, absent ones need nothing and leave the hash unchanged, a fresh 0.5 game needs no repairs (persistence-05). The production part is chunk 4's."
+      "note": "Chunk 3 (2026-10-11): the water-lab hours: repairState removes a non-finite lastAutoChangeHour / lastAutoScrapeHour with a note, absent ones need nothing and leave the hash unchanged, a fresh 0.5 game needs no repairs (persistence-05). The production part is chunk 4's. Owner (ADR-0025 decision 10, 2026-10-11, B10): a line whose parent or tank is missing is kept, paused and marked, not dropped; read the description's \"dropping lines\" and A1's \"repaired with a note\" that way."
     },
     {
       "id": "PERSIST-007",

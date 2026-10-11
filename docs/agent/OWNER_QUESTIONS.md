@@ -11,13 +11,13 @@ within the 4; group A's round did this on 2026-10-11).
 After each group, record the answers **verbatim** (the question as asked, the option chosen, any notes) in an ADR, as
 ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
-Group A is answered (ADR-0024). Use the next free ADR number for groups B, D and E (ADR-0025 onward); the DESIGN-S3D
-approval (group C) gets an ADR of its own, also written into `INTAKE.md` §14 "Owner decision".
+Groups A and B are answered (ADR-0024, ADR-0025). Use the next free ADR number for each later group (ADR-0026 onward);
+the DESIGN-S3D approval (group C) gets an ADR of its own, also written into `INTAKE.md` §14 "Owner decision".
 
 | Group | Unblocks | Questions |
 |---|---|---|
 | A | The 0.5.1 release and standing decisions | A1–A7: **answered 2026-10-11 (ADR-0024)** |
-| B | Chunk 4 (Production lines) | B1–B10 |
+| B | Chunk 4 (Production lines) | B1–B10: **answered 2026-10-11 (ADR-0025)** |
 | C | Chunk 5 (DESIGN-S3D approval) | C1–C15 |
 | D | Chunk 6 (Social stub) | D1 |
 | E | Backlog rows waiting on the owner (block no chunk) | E1–E12 |
@@ -41,18 +41,20 @@ All answered on 2026-10-11 (ADR-0024).
 Show the owner `livestock-production-*.png` (8 screens: early, Royal, all slots used, the three new-line steps) and
 DESIGN-S3D `SPEC.md` §8.6 and §8.6.1 before asking B1.
 
+All answered on 2026-10-11 (ADR-0025), each with the recommended option.
+
 | # | Question | Options (recommended first) | Source |
 |---|---|---|---|
-| B1 | Approve DESIGN-S3D SPEC §8.6 (the line picker, several lines per species) and §8.6.1 (the new-line steps) as chunk 4's screens, replacing 0.5 §11.1's single-line UI? | **Approve.** · Approve with changes (say which). | ADR-0014 answer 14; PLAN chunk 4 |
-| B2 | The design's timings don't match the game: betta young are adults at 14 days from laying, so its "juveniles" listed on day 22 are adults, and a juvenile listing refuses adults. How should raising and selling work? | **Raise lengths and stage words come from each species' data, and the sell step lists each animal by its life stage at sale time.** · Keep the design's fixed timings and relabel the stages. | INTAKE C-27; B-135 |
-| B3 | What does "Never sell Prismatic animals" do when switched off? | **Automation never lists a Prismatic either way; the switch only chooses between moving it to the keep tank (on) and leaving it with its batch (off).** · Off lets the line list Prismatics. | INTAKE C-28; PROD-011; B-135 |
-| B4 | What is "protected", and where do kept youngsters go? | **Protected = every animal in a line's keep tank, every Prismatic and every favourite: automation never moves them out, lists or sells them. Youngsters kept by the trait rules go to the keep tank.** · Kept youngsters stay in the raise tank. | INTAKE C-29; PROD-008 |
-| B5 | "Add a quarantine tank · $95" in the setup steps has no real price or failure path. | **Show the real kit price, offer seeded media, handle no money and no floor space, check the tank suits the line, and give the restart day only once it's cycled or seeded.** · Drop the button (pick an existing tank only). | INTAKE C-33 |
-| B6 | There's no way to end a line. | **"End line" on the line's header card, with a confirmation: animals stay where they are, the slot frees, the stats stay in history.** · Pause only (no ending). | INTAKE C-34 |
-| B7 | The slot caption: "{n} of {m} line slots · more at {next facility}", plus the no-line case "0 of 1 line slot · more at Specialty Shop", singular or plural by count. | **Approve this wording.** · Different wording. | INTAKE C-36 (copy, with C-48) |
-| B8 | When the raise tank is full and "Pause when a tank is full" is off, where do free-swimming fry go? | **They stay where they are, and the line shows one notice: "{Line}: the raise tank is full, so the fry stay in {tank}."** · The line pauses itself. | PROD-006 note |
-| B9 | "This week · After food and power": tanks can be shared between lines, or with animals outside them. How are a tank's food and power costs split? | **By the line's share of each tank's residents, day by day.** · The whole cost of every tank the line uses. · Show revenue only (drop "After food and power"). | PROD-015 note |
-| B10 | A line whose parent or tank is gone (sold, moved or reused): design §11.3 pauses it with a notice, but §15 has the save repair drop such lines on load, so the paused line would vanish at the next reload. Which? | **Pause with one notice, and keep the paused line through saves (the repair marks the missing reference instead of dropping the line).** · Drop the line on load. | PROD-017 note; PERSIST-006 |
+| B1 | Approve DESIGN-S3D SPEC §8.6 (the line picker, several lines per species) and §8.6.1 (the new-line steps) as chunk 4's screens, replacing 0.5 §11.1's single-line UI? | **Approve.** · Approve with changes (say which). | ADR-0014 answer 14; PLAN chunk 4 → **Answered (ADR-0025): Approve.** |
+| B2 | The design's timings don't match the game: betta young are adults at 14 days from laying, so its "juveniles" listed on day 22 are adults, and a juvenile listing refuses adults. How should raising and selling work? | **Raise lengths and stage words come from each species' data, and the sell step lists each animal by its life stage at sale time.** · Keep the design's fixed timings and relabel the stages. → **Answered (ADR-0025): Species data (raise lengths and stage words from each species; sold by life stage at sale time).** | INTAKE C-27; B-135 |
+| B3 | What does "Never sell Prismatic animals" do when switched off? | **Automation never lists a Prismatic either way; the switch only chooses between moving it to the keep tank (on) and leaving it with its batch (off).** · Off lets the line list Prismatics. → **Answered (ADR-0025): Automation never lists a Prismatic; the switch chooses keep tank or batch.** | INTAKE C-28; PROD-011; B-135 |
+| B4 | What is "protected", and where do kept youngsters go? | **Protected = every animal in a line's keep tank, every Prismatic and every favourite: automation never moves them out, lists or sells them. Youngsters kept by the trait rules go to the keep tank.** · Kept youngsters stay in the raise tank. → **Answered (ADR-0025): Protected = keep tank, every Prismatic, every favourite; kept young go to the keep tank.** | INTAKE C-29; PROD-008 |
+| B5 | "Add a quarantine tank · $95" in the setup steps has no real price or failure path. | **Show the real kit price, offer seeded media, handle no money and no floor space, check the tank suits the line, and give the restart day only once it's cycled or seeded.** · Drop the button (pick an existing tank only). → **Answered (ADR-0025): The real kit price, seeded media and the checks.** | INTAKE C-33 |
+| B6 | There's no way to end a line. | **"End line" on the line's header card, with a confirmation: animals stay where they are, the slot frees, the stats stay in history.** · Pause only (no ending). → **Answered (ADR-0025): "End line" with a confirmation.** | INTAKE C-34 |
+| B7 | The slot caption: "{n} of {m} line slots · more at {next facility}", plus the no-line case "0 of 1 line slot · more at Specialty Shop", singular or plural by count. | **Approve this wording.** · Different wording. → **Answered (ADR-0025): Approve this wording.** | INTAKE C-36 (copy, with C-48) |
+| B8 | When the raise tank is full and "Pause when a tank is full" is off, where do free-swimming fry go? | **They stay where they are, and the line shows one notice: "{Line}: the raise tank is full, so the fry stay in {tank}."** · The line pauses itself. → **Answered (ADR-0025): The fry stay, with one notice.** | PROD-006 note |
+| B9 | "This week · After food and power": tanks can be shared between lines, or with animals outside them. How are a tank's food and power costs split? | **By the line's share of each tank's residents, day by day.** · The whole cost of every tank the line uses. · Show revenue only (drop "After food and power"). → **Answered (ADR-0025): By the line's share of residents, day by day.** | PROD-015 note |
+| B10 | A line whose parent or tank is gone (sold, moved or reused): design §11.3 pauses it with a notice, but §15 has the save repair drop such lines on load, so the paused line would vanish at the next reload. Which? | **Pause with one notice, and keep the paused line through saves (the repair marks the missing reference instead of dropping the line).** · Drop the line on load. → **Answered (ADR-0025): Pause with one notice and keep the line through saves.** | PROD-017 note; PERSIST-006 |
 
 ## C. Chunk 5: approving DESIGN-S3D (deep automation)
 
