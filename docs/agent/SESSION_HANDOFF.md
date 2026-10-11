@@ -1,7 +1,7 @@
 # Session handoff: after group A and the 0.5.1 release
 
-For the next agent session on Aquarium Go. Written 2026-10-11 by the session that asked group A and released 0.5.1;
-it replaces the handoff written after chunk 3. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule;
+For the next agent session on Aquarium Go (Marshall, on the owner's AquariumGo CNVS canvas). Written 2026-10-11 by
+Chase, the session that asked group A and released 0.5.1; it replaces the handoff written after chunk 3. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule;
 this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when it's
 used up.
 
@@ -27,14 +27,18 @@ used up.
      labelled "(Recommended)". Tell the owner up front how many rounds there are (12: B 3, C 4, D 1, E 4) and that
      they can stop after any group. In each group's last round add one question, "Go on to group {next}?", with "Stop
      here for now" as the other option; it fits within the 4 (B's last round has 2 questions, C's 3, D's 1). The
-     owner may type an instruction instead of choosing; do what it says.
+     owner may type an instruction instead of choosing; do what it says. If the owner stops, record what's answered
+     (step 3), bring `PLAN.md`, `OWNER_QUESTIONS.md` and this file up to date so a new session can carry on from
+     there, and push `next` (as the group A session did).
    - Before B1 open the production screens on the Mac:
      `open docs/agent/design/DESIGN-S3D/screens/livestock-production-*.png` (Preview), and point to SPEC.md §8.6 and
      §8.6.1. Before each C question open its screens the same way (`home-*` and `more-normal-phone.png` for C1 and C2,
      `tanks-*` for C3, `operations-water-*` and `build-facility-water-*` for C4 and C5, `operations-feed-*` and
      `market-supplies-home-grown-*` for C6, `build-facility-*` for C7, `visitors-staff-*` for C9,
      `settings-notifications-automation-*` for C10, `alerts-*` and `operations-issues-*` for C13,
-     `operations-manual-*` and `tank-card-held-*` for C14) and name the SPEC.md section.
+     `operations-water-*` for C11 and C12, `operations-manual-*` and `tank-card-held-*` for C14) and name the SPEC.md
+     section. Each question's description gives the context the owner needs to choose (the source row's problem in
+     a sentence or two, and what each option means for players), as group A's did; keep labels short.
    - For C8, send the "C8's strings" table in `OWNER_QUESTIONS.md` (under group C) as a short message before the
      question, with your drafts for its four **not worded** rows.
    - For E, read each row in `docs/agent/BACKLOG.md` (and the review finding it cites) before asking; E's fourth
@@ -56,7 +60,8 @@ used up.
    - run the seeded tests before and after any sim change and explain every changed expectation (never retune data to
      hide a shift);
    - the four checks pass on the final code; one fresh reviewer subagent reads the brief (verbatim from PLAN.md at the
-     start commit) and `git diff <start>..HEAD`, not your summary; fix its blockers and re-run;
+     start commit) and `git diff <start>..HEAD`, not your summary; fix its blockers and re-run. **The reviewer runs on
+     Opus 5.5 at max effort** (Agent tool `model: "opus"`, `effort: "max"`), never Fable (the owner, 2026-10-11);
    - update PLAN.md (the chunk's record, Status, Next step, Last full test run), REQUIREMENTS.json (GREEN, or
      DEFERRED/IN_PROGRESS with the reason), BACKLOG.md, ADRs; commit and push `next`;
    - tell the owner each command with its pass or fail line, what changed, and what to try (`npm run dev`, then

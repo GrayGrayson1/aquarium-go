@@ -41,7 +41,8 @@ and 88 desktop tests).
    see `CLAUDE.md`). The 0.5 spec also asks that a v0.4.0 save loads with no repairs; that is best-effort only
    (ADR-0005). What must hold: PERSIST-002, PERSIST-003, PERSIST-007 and, from chunk 1, PERSIST-014.
 5. One fresh reviewer subagent gets the brief and `git diff <start>..HEAD` (not your summary) and reports blockers;
-   fix them and re-run the checks.
+   fix them and re-run the checks. Reviewers run on Opus 5.5 at max effort (`model: "opus"`, `effort: "max"`), never
+   Fable (the owner, 2026-10-11).
 6. Update this file, commit, push `next`, and tell the owner what to try (`npm run dev`, then
    http://127.0.0.1:5173).
 
