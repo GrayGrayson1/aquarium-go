@@ -20,7 +20,6 @@ import { runPlaythrough } from '@/dev/fixtures/playthrough';
 import { inheritGenome, normalizeGenome, rollGenome } from '@/sim/life/genetics';
 import { resolveAppearance } from '@/sim/life';
 import { sizeAtAge } from '@/sim/life/growth';
-import { waterChange } from '@/sim/care';
 import { mulberry32 } from '@/sim/rng';
 import { showGame, starterOf, wellKept, addAdult, addShow } from './shows-helpers';
 
@@ -69,8 +68,6 @@ function simulateShows(g: GameState, c: Creature, classId: string, tier: ShowTie
   const places: number[] = [];
   for (let i = 0; i < n; i++) {
     wellKept(c, { bond: c.life?.bond ?? 45, conditioning: 45, stress: 12 });
-    // B-128: a keeper's routine water change between shows (30 shows run about 315 game hours with no other care)
-    if (c.tankId) waterChange(g, c.tankId, 0.25);
     c.repro.stage = 'idle';
     if (c.awards) c.awards.lastShowHour = undefined;
     const show = addShow(g, tier, [classId], { field: Math.round(midField(tier)), seed: 1000 + i * 7919 });
