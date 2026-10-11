@@ -23,15 +23,15 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 |---|---|---|
 | 0 | Clean-up: the harness retired, S0's game fixes kept, two flaky e2e tests fixed | Done 2026-10-06. Its e2e run (owner, `3601860`): 47 of 48, the one failure camera-freeze's teardown hang, fixed in `859858a` |
 | 1 | Navigation, links and the platform layer | Done 2026-10-07 (released in 0.5.0 on 2026-10-06). Its e2e run (`f59d51a`): 75 of 75, no fixes needed |
-| 2 | Shop and genetics | Done 2026-10-11. Its full run (`d608dcf`): typecheck, unit 2,105, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
+| 2 | Shop and genetics | Done 2026-10-11, with the owner's follow-ups (ADR-0022). Its full run (`7acb0b9`): typecheck, unit 2,107, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
 | 3 | Automation and notifications | Not started |
 | 4 | Production lines | Not started; needs the owner's Production answers |
 | 5 | Deep automation (S3-D) | Not started; needs the owner's approval of DESIGN-S3D |
 | 6 | Social stub, hardening and the 0.5.0 release | Not started |
 
-**Last full test run:** the owner's Mac, 2026-10-11, on `d608dcf`, in Claude Code from the internal-disk clone (Next
-step 2): typecheck passed; unit 182 files, 2,105 tests passed; build passed; e2e 81 passed (7.4 minutes, inside
-Claude Code's sandbox).
+**Last full test run:** the owner's Mac, 2026-10-11, on `7acb0b9`, in Claude Code from the internal-disk clone:
+typecheck passed; unit 183 files, 2,107 tests passed; build passed; e2e 81 passed (7.4 minutes, inside Claude Code's
+sandbox).
 
 ## How a chunk runs
 
