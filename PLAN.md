@@ -6,26 +6,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Chunk 3** (Automation and notifications), in Claude Code on the Mac, on `next`. Chunk 2 is done (all four
-   checks passed on `d608dcf`, e2e 81 of 81). It is on `next` only: players get it with the next release (0.5.1),
-   which needs the owner's go-ahead (see "Releases").
-2. **Run the tests from the internal disk.** The `/Volumes/Dev` disk image is too slow for e2e: on 2026-10-07 a run
-   there took 3.7 minutes to warm up and then timed out. The same commit passed all four checks from a clone on the
-   Mac's internal disk (`~/LocalTest/AquariumGo`, browsers in `~/LocalTest/playwright`; remote `dev` is this repo).
-   Edit and commit here; to test, fetch and check out the commit there and run the checks with
-   `PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`.
-3. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
-   rest). Chunks 1 to 3 don't need them. Also, from chunk 1: (a) after a rollback, an older copy of the game can't
-   autosave into a slot that holds a newer version's save (it says so once, with "Refresh the page"): should a
-   player be offered more, such as saving to another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too
-   (B-129)? (c) What accessibility level to aim for (B-178)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the
-   developer tools for the session, and the dev panel comes on with the Settings switch. From chunk 2: (e) the
-   water report's stability number needs a word beside it (B-178): which words? (f) Lined seahorses: yellow/red
-   (equal dominance, both two-copy traits) looks Classic Dark, so a Classic Dark seahorse's colour gene reads "Can’t
-   be seen on this animal" before the Genetics Lab; fix it in the data as for B-136 (red below yellow, or yellow/red
-   showing one of them)? (g) The tier labels after the betta expansion (466 of 540 Legendary, 4.3 % of stock):
-   keep them, or revisit (ADR-0005 decision 4)?
-4. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
+1. **Chunk 3** (Automation and notifications), in Claude Code on the Mac, on `next`. Read its brief below (the owner's
+   notification answers are in, ADR-0022). Chunk 2 is done and on `next` only: players get it with the next release
+   (0.5.1), which needs the owner's go-ahead (see "Releases").
+2. **When the owner has time:** answer the DESIGN-S3D questions (chunk 4 needs the Production ones, chunk 5 the
+   rest). Also: (a) after a rollback, an older copy of the game can't autosave into a slot that holds a newer
+   version's save (it says so once, with "Refresh the page"): should a player be offered more, such as saving to
+   another slot (PERSIST-014's note)? (b) Run the e2e suite in WebKit too (B-129)? (c) What accessibility level to
+   aim for (B-178: panels under high contrast)? (d) Confirm `?dev=1` (chunk 1 "Decided"): it allows the developer
+   tools for the session, and the dev panel comes on with the Settings switch. (e) Release chunk 2 as 0.5.1?
+3. **Released:** 0.5.0 went to players on 2026-10-06 at the owner's request (see "Releases").
 
 ## Status
 
@@ -75,6 +65,15 @@ a regression, and never loosen it. The teardown hang is Chromium's graceful `con
 120 s, while closing the browser took 1.4 s. `camera-freeze.spec` now runs in a browser of its own and closes it with
 `browser.close()` (`859858a`); give `boot.spec.ts:17` the same treatment if it hangs again.
 
+**Testing notes** (from chunks 1 and 2):
+- To test uncommitted work, `git diff --binary` it into a patch and `git apply` that in the internal-disk clone (on
+  the same base commit); run the checks there.
+- An e2e spec that counts shop stock pauses the clock (`dev.setSpeed 0`): a restock mid-test changes the counts.
+  `dev.addShopOffer` offers never light the Market's rare-stock dot; clone a stock offer under a new id through
+  `__AQ.mutate` to light it.
+- Server-rendered unit tests (`renderToStaticMarkup`) read a zustand store's initial state, not its live state: copy
+  the live state into `getInitialState()` first (see `tests/sim/ui-shop-05.test.ts`).
+
 **Requirements.** The ids below come from `docs/agent/REQUIREMENTS.json`; their acceptance criteria are the
 checklist. Skip criteria that only made sense for the harness (gates, ledgers, evidence manifests, reviewer records,
 slice contracts). Where a criterion leaves a value to "the slice contract" (a budget, a tolerance, a string), choose
@@ -83,111 +82,89 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 
 ## Chunk briefs
 
-### 1. Navigation, links and the platform layer (0.5 phases 0 and 1)
+### 1. Navigation, links and the platform layer (0.5 phases 0 and 1) — done 2026-10-07
 
-- **Design:** 0.5 spec §5 (not Social), §6 and §14, and this chunk's parts of §16 (copy, including the locked
-  panels), §17 (the phone tab bar and sheet sizes), §18 (accessibility), §19 (test ids) and §20 (`nav-routes`,
-  `nav-sync`, `platform-memory`, `ui-layout.spec`).
-- **Build:** `src/platform/` (web and memory implementations); `src/ui/nav/` (pure routes with tests, the hash router
-  with two-way store sync, the boot, reload and leave rules of §6.4); the phone tab bar and More sheet; full-height
-  phone sheets; the tutorial fallback for targets in More; locked-panel states; Copy link on offers; the unknown-link
-  toast; the 0.5 sections of `docs/TEST_IDS.md`; forward-safe saves (PERSIST-014).
-- **Requirements:** NAV-001 to NAV-018, PLAT-001 to PLAT-003, PLAT-005, ACC-001, ACC-002, DES-001 to DES-004,
-  PERSIST-014, CONST-005.
-- **Done when:** the route and platform unit tests pass; every §6.2 route except Social and Production opens the right
-  screen on desktop and phone; Back and Esc behave; a reload shows the title screen (unless the owner's §6.4 answer
-  changes that); `nav.spec`, `deeplink-boot.spec`, `mobile-tabbar.spec` and `mobile-sheets.spec` pass with everything
-  else.
-- **Watch:**
-  - `src/platform/` is a new top-level layer, approved by the 0.5 spec (§14): add its row to the layer table in
-    `docs/ARCHITECTURE.md` and to `ALLOWED` in `tests/sim/core-architecture-boundaries.test.ts`, and say so in the
-    commit (no separate ADR).
-  - BACKLOG errata to apply: B-115, B-116, B-117 (after the §6.4 answer), B-146, B-150, B-151. Open S1 rows to fix or
-    defer: B-011, B-126, B-129, B-172, B-178, B-179, B-182, B-183.
-  - DESIGN-S3D will later move Settings to a gear and put Operations in the dock and first in More (`INTAKE.md` C-1,
-    C-2). Follow the 0.5 design now, but build the dock and More so that's a small change.
-  - The reviewer also reads S0's game changes once (`git diff 0d9fc5a 19928b8 -- src`, about 400 lines; the
-    harness's last re-reviews never ran). Then set the S0 requirements (CONST-004, GEN-013, MKT-016, PERSIST-009 to
-    PERSIST-013, PERSIST-015) to `GREEN`.
-- **Decide:** ask the owner before building the boot rules: which links skip the title screen, what a reload does,
-  and what the loading card shows (§6.4). The harness's review recommended: a deep link is a hash that names a real
-  screen; an empty, `#/` or unknown hash shows the title; a reload returns to the title; the loading card shows an
-  indeterminate bar with the time away. Also NAV-014's not-found copy, if §6.5 and §16 don't give it.
-- **Decided (2026-10-06):**
+- **Built:** `src/platform/` (a new top-level layer, in `docs/ARCHITECTURE.md` and the architecture test);
+  `src/ui/nav/` (routes, the hash router, the boot, reload and leave rules); the phone tab bar and More sheet;
+  full-height phone sheets; locked panels; Copy link on offers; forward-safe saves (PERSIST-014). Requirements
+  NAV-001 to NAV-018, PLAT-001 to PLAT-003, PLAT-005, ACC-001, ACC-002, DES-001 to DES-004, PERSIST-014, CONST-005.
+- **Decided:**
   - The owner's answers are ADR-0019: a link to a real screen skips the title and opens the latest save behind the
-    loading card; **a reload (or a return through history) reopens this tab's aquarium at the address**, not the
-    title; the loading card's bar loops; the not-found toasts' wording.
-  - Values the requirements left open: panel and Settings sheets on a portrait phone start at 64 px ± 2 and the tank
-    card at 118 px ± 2; the More sheet's top at 48 % of the height (tests allow 45-51 %); "Link copied" for 4 s (the
-    test allows up to 6 s).
-  - `?dev=1` allows the developer tools for that session only (PLAT-005) and no longer switches the dev panel on by
-    itself, as NAV-009 A4 assumed: e2e and QA scripts open the game with `?dev=1`, and dev mode unlocks every
-    destination, which would change what they test. In such a session the Settings switch turns the panel on.
-  - The More tab follows §5.2: it opens the More sheet, and while it is highlighted (the sheet or a destination
-    inside More is open) tapping it returns to the tank view; Back from a tile returns to More. A panel's first tab
-    has no URL segment (`#/build` is Build › Tanks). A link opened in a fresh tab gets no synthetic parent entry, so
-    Back from it leaves the site; Back into an entry of a game that has ended stays where the player is.
-  - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-126 (an e2e run under `/aquarium-go/`) to chunk 3 with the
-    service worker; B-182 and B-183 (render) to the next chunk with a render pass; B-178's remaining accessibility
-    gaps to chunk 2; DES-002 (harness evidence). WebKit e2e (B-129) is an owner question.
+    loading card; a reload (or a return through history) reopens this tab's aquarium at the address; the loading
+    card's bar loops; the not-found toasts' wording.
+  - Phone sheets start at 64 px ± 2, the tank card at 118 px ± 2, the More sheet's top at 48 % of the height;
+    "Link copied" shows for 4 s.
+  - `?dev=1` allows the developer tools for that session only and doesn't switch the dev panel on by itself (e2e and
+    QA open the game with `?dev=1`, and dev mode unlocks every destination). Owner question (d) confirms it.
+  - The More tab opens the More sheet; while it's highlighted, tapping it returns to the tank view. A panel's first
+    tab has no URL segment (`#/build` is Build › Tanks). A link opened in a fresh tab gets no synthetic parent entry.
+  - DESIGN-S3D will move Settings to a gear and put Operations in the dock and first in More (`INTAKE.md` C-1, C-2):
+    the dock and More are built so that's a small change.
 
-### 2. Shop and genetics (0.5 phase 2)
+### 2. Shop and genetics (0.5 phase 2) — done 2026-10-11
 
-- **Design:** 0.5 spec §5.2 (the Market rare-stock dot), §7.1 to §7.7, §8, §9, §20.3, and this chunk's parts of §16
-  to §19.
-- **Build:** shop filters and counts; offer cards; the offer detail's additions (genes, temperament, morph line, the
-  from-notification banner); destination fit and buy labels; the gone-offer state; the rare-stock dot; the Genetics
-  Lab reveal fix; the new betta genes, strain and rare flags; encyclopedia updates; the §20.3 test updates.
-- **Requirements:** GEN-001 to GEN-012, MKT-001 to MKT-015, DES-005, DES-006, ACC-003, PERF-001.
-- **Done when:** `genetics-expansion`, `genetics-lab-reveal`, `shop-filters`, `offer-genes`, `notify-navdots` and
-  `shop-filters.spec` pass with everything else; the catalog shows 540 betta entries; existing bettas keep their
-  names.
-- **Watch:** the new loci add draws to seeded streams, so seeded tests shift: run them before and after and explain
-  every changed expectation (`docs/ARCHITECTURE.md`, "Determinism contract"). Rarity tiers (§8.5): run
-  `npm run report:rarity` before and after; changing the tier model needs the owner.
-- **Decide:** PERF-001's budgets (measure v0.4.0 first and write the numbers here).
-- **Decided (2026-10-08):**
-  - The owner's answers are ADR-0020: long verdict labels across the offer detail (B-148); Opaque White and Double
-    Tail one step below their partners (B-136); the science article, the betta note sentence and the brackish and
-    freshwater no-tank wording; gene nouns from the gene's name ("version" otherwise); tiles show a reason only for
-    temperature. The tier model stays (ADR-0005 decision 4); `npm run report:rarity`: betta 240 → 540 morphs,
-    1 / 9 / 21 / 39 / 170 → 1 / 9 / 21 / 43 / 466, legendary stock 3.1 % → 4.3 %.
-  - **PERF-001 budgets**, measured on the owner's Mac (internal disk, vite-node, median of 7; probe
-    `scripts/_audit/perf-s2.tsx`, not committed). v0.4.0 (`0d9fc5a`) → chunk 2: building the betta catalog 5 ms
-    (first build 10 ms) → 33 ms (first 43 ms); rendering Encyclopedia › Betta's genetics sections from cold
-    (catalog included) 9 ms → 28 ms, warm 4 ms → 4 ms; compatibility previews for the 10 freshwater tanks of
-    `big_facility` 0.8 ms → 0.8 ms. Budgets: the betta catalog builds in ≤ 100 ms once per session; Encyclopedia ›
-    Betta renders in ≤ 100 ms cold and ≤ 16 ms warm; an offer computes at most 6 tile previews eagerly (plus the
-    selected tank), ≤ 8 ms together; `perf.spec` stays green.
-  - ADR-0021 (from the review): before the Genetics Lab a Genes row says only what the animal's look proves (every
-    genotype is grouped by look once per species), and a gene with no trace on the look reads "Can’t be seen on this
-    animal"; the lab advice says "all their young" when every youngster would show the trait, and "Pair it" for
-    unsexed animals. The first offer of a species builds its look table (bettas ≈ 30 ms, like the catalog).
-  - The morph line follows §7.4 for every tier; only a line that would read "about 1 in 1" is left out. Dev offers
-    (`dev.addShopOffer`) count as seen, so they never light the Market's rare-stock dot, whose target opens the
-    offer instead of the shop; `dev.addShopOffer` gains `alleles` for tests. The Genes line in the Encyclopedia is
-    shown for bettas, the one species with 0.5 genes.
-  - Seeded tests before and after the new loci: B-128's three seed-fragile tests were rebuilt first (`6343ca2`); the
-    rest passed unchanged. `mobile-tabbar.spec`'s guide test raced on a busy machine and now waits for each step.
-  - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-130 and B-170 to chunk 3, B-181 to the next render pass,
-    B-178's stability word (copy) and high contrast (owner question).
+- **Built:** shop filters and counts; morph-named offer cards; the offer detail's Genes and Temperament sections,
+  morph line, from-notification banner, per-tile verdicts, fit badge and buy labels; the gone-offer button; the
+  Market's rare-stock dot; the Genetics Lab reveal fix; the Cambodian and Metallic betta genes, the Cambodian Veiltail
+  strain and the `rare` allele flags; the Encyclopedia's genes line and science article. Requirements GEN-001 to
+  GEN-012, MKT-001 to MKT-015, DES-005, DES-006, ACC-003, PERF-001.
+- **Decided:**
+  - The owner's answers: ADR-0020 (long verdict labels in the offer detail; white and double tail below their
+    partners; the article, the betta note and the no-tank wording; gene nouns; tile reasons only for temperature),
+    ADR-0021 (a gene that leaves no trace reads "Can’t be seen on this animal" before the Genetics Lab; "all their
+    young"; "Pair it") and ADR-0022 (Legendary below 1 in 10,000; the Stability word "Stable · Sensitive · Fragile";
+    the lined seahorse's yellow/red looks Yellow).
+  - Tiers (`npm run report:rarity`): betta 240 morphs at 1 / 9 / 21 / 39 / 170 (v0.4.0) → 540 at
+    1 / 9 / 21 / 145 / 364, 0.56 % of betta stock Legendary.
+  - **PERF-001 budgets**, measured on the owner's Mac (internal disk, vite-node, median of 7). v0.4.0 (`0d9fc5a`) →
+    chunk 2: building the betta catalog 5 ms (first 10 ms) → 33 ms (first 43 ms); Encyclopedia › Betta's genetics
+    sections from cold 9 ms → 28 ms, warm 4 ms → 4 ms; previews for `big_facility`'s 10 freshwater tanks 0.8 ms →
+    0.8 ms. Budgets: the betta catalog builds in ≤ 100 ms once per session; Encyclopedia › Betta renders in ≤ 100 ms
+    cold and ≤ 16 ms warm; an offer computes at most 6 tile previews eagerly (plus the selected tank), ≤ 8 ms
+    together; the first offer of a species builds its look table once (bettas ≈ 30 ms); `perf.spec` stays green.
+  - Before the Genetics Lab a Genes row says only what the animal's look proves (`lookalikePairs` in
+    `src/ui/panels/market/offerGenetics.ts`; a property test checks look-alikes read alike in every species). The
+    morph line shows for every tier except a degenerate "about 1 in 1". `dev.addShopOffer` offers count as seen (a
+    test scenario isn't news) and take `alleles`. The Encyclopedia's genes line is shown for bettas only.
+  - Seeded tests: B-128's three seed-fragile tests were rebuilt first (`6343ca2`), the rest passed unchanged.
+  - Deferred, with reasons in `docs/agent/BACKLOG.md`: B-130 to chunk 4, B-170 to chunk 5, B-181 to the next render
+    pass; B-178's high-contrast panels wait on owner question (c).
 
 ### 3. Automation and notifications (0.5 phase 3)
 
 - **Design:** 0.5 spec §7.8, §10 and §12, and this chunk's parts of §16 to §20.
 - **Build:** the tank card's Automation section; Auto-feed meals a day; the Auto Water Changer (equipment kind and
   label, data, the extracted water-change core `water/change.ts`, `runWaterChanger`, salt, staff interplay, the alerts
-  row) and its Supplies row; `GameEvent.offerId` on rare-stock events; Settings › Notifications (categories, quiet
-  hours, the permission flow, the test notification); web delivery with `public/sw.js`; the Alerts drawer footer;
-  click routing.
+  row) and its Supplies row; `GameEvent.offerId` on rare-stock events; the "auction ending soon" event (ADR-0022);
+  Settings › Notifications (categories, quiet hours, the permission flow, the test notification); web delivery with
+  `public/sw.js`; the Alerts drawer footer; click routing.
 - **Requirements:** AUTO-001, AUTO-003 to AUTO-011, AUTO-016 to AUTO-018, AUTO-022, AUTO-023, AUTO-026, NOTIFY-001
   to NOTIFY-010, DES-007, DES-009, ACC-004 (the automation and notification switches), PERSIST-006 (the water-lab
   hours).
 - **Done when:** `automation-*`, `notify-rules`, `notify-offer-events`, `automation.spec` and `notifications.spec`
   pass, and the existing water, care and staff tests (`fix-water-*`, `staff-*`) and the determinism and step-size
   tests stay green.
-- **Decide:** NOTIFY-002's quiet-hour boundaries; the Unsupported callout copy (DES-009, NOTIFY-006: ask the owner);
-  the automation step-size tolerances (state them in the tests).
+- **Owner answers already in (ADR-0022):** the Unsupported callout reads "This browser can’t show notifications" /
+  "Alerts still appear in the game." (no iPhone Home Screen line); add an "auction ending soon" event and keep the
+  Market subtitle "New bids, sales and auctions ending". Earlier product decisions: the Auto Water Changer shares the
+  Autofeeder's unlock; quiet hours fixed at 10 PM to 8 AM with an on/off switch (`PLAN.md` "Product decisions").
+- **Watch:**
+  - BACKLOG errata to apply: B-149 (S3-A: `water_changer: 1` in `MAX_PER_KIND`, a test that a second install fails;
+    the Auto-feed switch sends `{ on: true, setting: def.defaultSetting }` from setting 0), B-117's S3-B part
+    (`clients.claim()`; `notificationclick` matches windows with `includeUncontrolled: true` within its scope), B-188
+    and B-189 (above).
+  - Open rows to fix or defer here: B-126 (an e2e run of the production build under `/aquarium-go/`, where the service
+    worker's scope matters), B-173 (quiet hours and rate limits are pure functions of an injected now and local
+    minutes; unit tests at 21:59, 22:00, 07:59, 08:00 and across midnight; e2e with Playwright's `page.clock` and a
+    fixed `timezoneId`), B-176 (background LOD chunks lose events: the water changer's lights-on run must fire in far
+    tanks; pin LOD equivalence), B-169 (the salt formula is duplicated in the UI lane, and the water changer uses
+    salt), B-177 (mutateFast's working copy, before any world-step hook), B-013 (a GameLoop test), B-167 (only if
+    automation makes compatibility decisions).
+  - The automation adds sim work: run the seeded and step-size tests before and after, and explain any changed
+    expectation. Notification prefs live in localStorage, never the save.
+- **Decide:** NOTIFY-002's quiet-hour boundaries (B-173 suggests 22:00 held, 08:00 shown); the automation step-size
+  tolerances (state them in the tests); the "auction ending soon" lead time. Ask the owner before any other
+  player-visible text the designs don't give.
 
 ### 4. Production lines (0.5 phase 5, several lines per species)
 
@@ -264,4 +241,5 @@ release and deploy it by hand if it didn't update. To release:
   ADR-0005).
 - Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016).
 - Catch-up bid windows stay as they are (ADR-0016).
+- Morph tiers: Legendary below 1 in 10,000 of market stock (ADR-0022, replacing ADR-0005 decision 4's threshold).
 - No new dependencies without asking the owner.

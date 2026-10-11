@@ -1023,7 +1023,7 @@
         "§20.3",
         "§21"
       ],
-      "note": "requirements-2 m1: A3 now asserts the §20.1 tiers under the rule ADR-0005 decision 4 kept. requirements-2 m2: A5 names the S2 change to report-rarity.test.ts (an S0 test, GEN-013), the way the §20.3 rows are named. Chunk 2 (2026-10-08): 540 entries (Red 120, others 60), 72,900 genotypes, the §8.5 odds and 1/9/21/43/466 tiers in genetics-expansion.test.ts; morph-catalog and report-rarity re-pinned (1b0e7e6). The harness evidence files (test-changes.json) were retired with ADR-0018."
+      "note": "requirements-2 m1: A3 now asserts the §20.1 tiers under the rule ADR-0005 decision 4 kept. requirements-2 m2: A5 names the S2 change to report-rarity.test.ts (an S0 test, GEN-013), the way the §20.3 rows are named. Chunk 2 (2026-10-08): 540 entries (Red 120, others 60), 72,900 genotypes, the §8.5 odds and 1/9/21/43/466 tiers in genetics-expansion.test.ts; morph-catalog and report-rarity re-pinned (1b0e7e6). The harness evidence files (test-changes.json) were retired with ADR-0018. After chunk 2 the owner changed the tier rule (ADR-0022: Legendary below 1 in 10,000): 1 / 9 / 21 / 145 / 364, and Royal Blue Metallic Butterfly Halfmoon (1 in 9,804) is Very rare; genetics-expansion, morph-catalog and report-rarity follow it."
     },
     {
       "id": "GEN-007",
@@ -1047,7 +1047,7 @@
         "§22",
         "§8.5"
       ],
-      "note": "Chunk 2 (2026-10-08): today's tier rule kept (ADR-0005 decision 4). npm run report:rarity before -> after: betta 240 -> 540 morphs, 1/9/21/39/170 -> 1/9/21/43/466, stock legendary 3.1% -> 4.3% (commit 1b0e7e6's message). The labels still order stock (Common 19%, Uncommon 45%, Rare 22%, Very rare 9%, Legendary 4%); the owner can revisit from these counts."
+      "note": "Chunk 2 (2026-10-08): today's tier rule kept (ADR-0005 decision 4). npm run report:rarity before -> after: betta 240 -> 540 morphs, 1/9/21/39/170 -> 1/9/21/43/466, stock legendary 3.1% -> 4.3% (commit 1b0e7e6's message). The labels still order stock (Common 19%, Uncommon 45%, Rare 22%, Very rare 9%, Legendary 4%); the owner can revisit from these counts. Superseded for the threshold by ADR-0022 (owner, 2026-10-11): Legendary below 1 in 10,000; betta Legendary stock 4.3 % -> 0.56 %."
     },
     {
       "id": "GEN-008",
