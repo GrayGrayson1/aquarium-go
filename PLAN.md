@@ -6,8 +6,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Ask the owner groups C to E** of `docs/agent/OWNER_QUESTIONS.md` (the DESIGN-S3D approval for chunk 5, chunk 6's
-   copy, backlog rows). Groups A and B are answered (ADR-0024, ADR-0025). `docs/agent/SESSION_HANDOFF.md` gives the
+1. **Ask the owner groups D and E** of `docs/agent/OWNER_QUESTIONS.md` (chunk 6's copy, backlog rows). Groups A, B and
+   C are answered (ADR-0024 to ADR-0027; DESIGN-S3D is approved, ADR-0027). `docs/agent/SESSION_HANDOFF.md` gives the
    order of work.
 2. **Then chunk 4** (Production lines): group B unblocked it (ADR-0025).
 3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
@@ -21,7 +21,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 2 | Shop and genetics | Done 2026-10-11 (released in 0.5.1), with the owner's follow-ups (ADR-0022). Its full run (`7acb0b9`): typecheck, unit 2,107, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
 | 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Not started; group B answered (ADR-0025), so it's next |
-| 5 | Deep automation (S3-D) | Not started; needs group C (the DESIGN-S3D approval) and chunk 4 |
+| 5 | Deep automation (S3-D) | Not started; DESIGN-S3D approved (ADR-0027); needs chunk 4 |
 | 6 | Social stub, hardening and the last 0.5 release | Not started; needs D1 |
 
 **Last full test run:** the owner's Mac, 2026-10-11, on `6594d21` (the 0.5.1 release commit: chunk 3's code, the
@@ -200,10 +200,18 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 ### 5. Deep automation (S3-D)
 
 - **Design:** `docs/agent/design/DESIGN-S3D/SPEC.md`, its `screens/`, and `INTAKE.md`.
-- **Before starting:** the owner answers group C of `docs/agent/OWNER_QUESTIONS.md` (C1 to C15: `INTAKE.md` §11's
-  remaining rows and design-intake-3's R1 to R3, M1, M2 and M6; M7 was answered as A7, ADR-0024) and C15 approves
-  DESIGN-S3D, recorded verbatim in its own ADR and in `INTAKE.md` §14. Write M3, M4, M5, R4 and R5 into the intake
-  first (no owner needed). Chunk 4 is done first.
+- **Decided:** DESIGN-S3D is approved (ADR-0027, C15; `INTAKE.md` §14), with the owner's answers to C1 to C14
+  (ADR-0026): Settings a gear in every build; the replaced 0.5 items (ADR-0027's list: Settings in the dock, the More
+  sheet's top at about 40 %, the production tiles, the Settings test helper); every tank keeps its row in the Tanks
+  panel, problems first; background tanks option B (settle pending time on actions, moves, focus changes and before
+  each shared water job); water free, limited by prep and reserve size; live food never expires, and a harvest that
+  would pass the room's storage is skipped ("Full"); finishing the research installs the base room, add-ons in Build ›
+  Facility, dosers from the tank card; C8's strings (the table in ADR-0026); a $1 budget slider, "Raise budget" hidden
+  at the maximum, an orders switch; the Automation subtitle "Shortages and paused lines"; the salt machinery only
+  while salt water is used; the existing levers are the schedules (no editor); without a stock manager nobody
+  reorders; a held Autofeeder raises the hungry-animal alert.
+- **Before starting:** chunk 4 is done. Write design-intake-3's M3, M4, M5, R4 and R5 into the intake (no owner
+  needed), and turn `INTAKE.md` §12's proposals into the chunk's requirements in `REQUIREMENTS.json`.
 - **Build:** the Operations hub (Overview, Water, Feed, Lines, Map), the Water room and the Live food room, Hold all,
   Settings on a gear, the Supplies, Staff and Research changes, the Automation notification category.
 - **Requirements:** AUTO-002, AUTO-012, AUTO-013, AUTO-014 (the overview), AUTO-015, AUTO-016 to AUTO-018, AUTO-022,
@@ -272,5 +280,8 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   checks are exact for job counts, run hours and stock units and within stated tolerances for water values.
 - From group B (ADR-0025): production lines follow DESIGN-S3D §8.6 and §8.6.1; automation never lists a Prismatic;
   protected animals (keep tanks, Prismatics, favourites) are never moved out, listed or sold by automation; lines can
-  be ended; a line with a missing parent or tank is paused and kept, not dropped.
+  be ended; a line with a missing parent or tank is paused and kept, not dropped. A line's "This week" tile shows sales
+  and count, then the net after food and power (ADR-0026 decision 3).
+- From group C (ADR-0026, ADR-0027): DESIGN-S3D is approved for chunk 5. Settings becomes a gear in every build; water
+  stays free; live food never expires (storage caps it); no schedule editor.
 - No new dependencies without asking the owner.

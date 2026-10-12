@@ -11,14 +11,14 @@ within the 4; group A's round did this on 2026-10-11).
 After each group, record the answers **verbatim** (the question as asked, the option chosen, any notes) in an ADR, as
 ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
-Groups A and B are answered (ADR-0024, ADR-0025). Use the next free ADR number for each later group (ADR-0026 onward);
-the DESIGN-S3D approval (group C) gets an ADR of its own, also written into `INTAKE.md` §14 "Owner decision".
+Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
+Use the next free ADR number for each later group (ADR-0028 onward).
 
 | Group | Unblocks | Questions |
 |---|---|---|
 | A | The 0.5.1 release and standing decisions | A1–A7: **answered 2026-10-11 (ADR-0024)** |
 | B | Chunk 4 (Production lines) | B1–B10: **answered 2026-10-11 (ADR-0025)** |
-| C | Chunk 5 (DESIGN-S3D approval) | C1–C15 |
+| C | Chunk 5 (DESIGN-S3D approval) | C1–C15: **answered 2026-10-11 (ADR-0026; the approval ADR-0027)** |
 | D | Chunk 6 (Social stub) | D1 |
 | E | Backlog rows waiting on the owner (block no chunk) | E1–E12 |
 
@@ -45,7 +45,7 @@ All answered on 2026-10-11 (ADR-0025), each with the recommended option.
 
 | # | Question | Options (recommended first) | Source |
 |---|---|---|---|
-| B1 | Approve DESIGN-S3D SPEC §8.6 (the line picker, several lines per species) and §8.6.1 (the new-line steps) as chunk 4's screens, replacing 0.5 §11.1's single-line UI? | **Approve.** · Approve with changes (say which). | ADR-0014 answer 14; PLAN chunk 4 → **Answered (ADR-0025): Approve.** |
+| B1 | Approve DESIGN-S3D SPEC §8.6 (the line picker, several lines per species) and §8.6.1 (the new-line steps) as chunk 4's screens, replacing 0.5 §11.1's single-line UI? | **Approve.** · Approve with changes (say which). → **Answered (ADR-0025): Approve.** | ADR-0014 answer 14; PLAN chunk 4 |
 | B2 | The design's timings don't match the game: betta young are adults at 14 days from laying, so its "juveniles" listed on day 22 are adults, and a juvenile listing refuses adults. How should raising and selling work? | **Raise lengths and stage words come from each species' data, and the sell step lists each animal by its life stage at sale time.** · Keep the design's fixed timings and relabel the stages. → **Answered (ADR-0025): Species data (raise lengths and stage words from each species; sold by life stage at sale time).** | INTAKE C-27; B-135 |
 | B3 | What does "Never sell Prismatic animals" do when switched off? | **Automation never lists a Prismatic either way; the switch only chooses between moving it to the keep tank (on) and leaving it with its batch (off).** · Off lets the line list Prismatics. → **Answered (ADR-0025): Automation never lists a Prismatic; the switch chooses keep tank or batch.** | INTAKE C-28; PROD-011; B-135 |
 | B4 | What is "protected", and where do kept youngsters go? | **Protected = every animal in a line's keep tank, every Prismatic and every favourite: automation never moves them out, lists or sells them. Youngsters kept by the trait rules go to the keep tank.** · Kept youngsters stay in the raise tank. → **Answered (ADR-0025): Protected = keep tank, every Prismatic, every favourite; kept young go to the keep tank.** | INTAKE C-29; PROD-008 |
@@ -63,25 +63,32 @@ These are `docs/agent/design/DESIGN-S3D/INTAKE.md` §11's owner rows plus design
 M2 and M6 add copy; M1 needs a yes or no). M3, M4, M5, R4 and R5 need no owner: the agent writes them into the intake
 before chunk 5. Show the relevant screens with each question. C15 is the overall approval and comes last.
 
+All answered on 2026-10-11 (ADR-0026; C15 in ADR-0027). Two follow-ups were asked: B9 and C2 conflicted over the
+line's "This week" tile (answer: sales and count, then a net line), and C6's (c) needed a storage cap or a waiver
+(answer: harvests pause when full).
+
 | # | Question | Options (recommended first) | Source |
 |---|---|---|---|
-| C1 | Settings moves from the dock to a gear in normal builds too, not only when Social makes the dock crowded? | **Yes, a gear in every build** (one layout, room for Social). · Only when the dock is full. | C-1 |
-| C2 | DESIGN-S3D replaces some approved 0.5 items: Settings as a dock item, the More sheet's height (about 40 % instead of 48 %, with the Operations row), the production tiles' wording, and the test helper that opens Settings from the dock. Approve the replacements, named in the approval ADR? | **Approve.** · Keep some 0.5 items (say which). | C-2, C-58 |
-| C3 | The Tanks panel as drawn hides healthy tanks behind a footer (13 tanks' cards and actions gone in the sample). | **Keep every tank's row, problems first; the footer becomes "Show {n} more" or goes.** · Collapse healthy tanks as drawn. | C-6 |
-| C4 | Shared water reserves and background tanks (LOD): far tanks are simulated in chunks, so a shared reserve needs their pending time settled. | **Option B: settle a tank's pending time on every action, move and focus change; idle tanks stay coarse; stated tolerances.** · Simulate every tank at full detail (slower). | C-14 |
-| C5 | Is water a tracked resource? | **Water costs nothing; once a Water room exists it's limited by the prep rate and the reserve size (an empty fresh reserve stops the ATO until prep refills it). Without a Water room nothing changes.** · Water costs money per gallon. | C-15, C-16 |
-| C6 | Live food shelf life. | **(a) All stock of the two live foods expires, tracked by lot (bought packs too).** · (b) Only home-grown lots expire. · (c) Nothing expires: then AUTO-013 A2 needs a storage cap (new design) or the owner waives it. | C-22, C-23 (R1) |
-| C7 | Buying the rooms and machines (nothing in the design prices them). | **Finishing the research installs the base room (prep station, 150/60 gal reserves and a mixer; a hatchery with 2 cones and 4 jars); add-ons and upgrades are bought in Build › Facility; dosers are placed from the tank card; the economy lane sets the numbers.** · Rooms are bought outright in Build › Facility. | C-37 |
-| C8 | Approve the new copy the design needs but doesn't word: line not found ("This line isn't here any more" · "See your lines"), the locked room page, no money / no floor space, no line yet, the "Assisted care" tile before Tier 1, Dry food rows without a stock manager ("You restock it from the Market"), the empty fresh reserve, the freshwater-only Water tab, the ladder rows (C-38), and C-21, C-26, C-36 and C-63's strings. Show the full list from INTAKE C-48 and those rows. | **Approve as proposed.** · Change some (say which). | C-48 (with C-21, C-26, C-36, C-38 per R3, C-63) |
-| C9 | The stock budget control. | **A slider in $1 steps, "Raise budget" hidden at the level's maximum with the reason, and a separate switch for Rosa's orders that keeps the budget and the log quiet.** · $5 steps and a typed amount. | C-21 |
-| C10 | The Automation notification category's subtitle promises "manual mode" alerts with no template. | **Drop "and manual mode" from the subtitle.** · Add a manual-mode notification (new template). | C-57 |
-| C11 | A Water room in a freshwater-only facility (behaviour and copy): the mixer, the salt meter and the salt problem items would show for no salt use. | **They apply only while a salt tank or a hatchery needs salt water; Supplies shows the salt row once a Water room exists.** · Show them always. | C-63 (R2) |
-| C12 | Schedules: the design shows schedules but edits none. Do the player's existing levers count as schedules they change (a tank's lights-on hour moves its water change; Auto-feed meals a day; Hold or Resume per system)? | **Yes, those levers are enough (no schedule editor).** · Add a schedule editor in Operations (new design). | M1 |
-| C13 | Without a stock manager nobody reorders: "No one reorders salt mix. Buy it, or hire a stock manager.", with Buy and "Hire a stock manager" (to Visitors › Staff) instead of "Raise budget", no forecast, and a matching notification. | **Approve.** · Different wording. | M2 (copy, with C-48) |
-| C14 | Manual mode holds the Autofeeders. Does a held one count as paused for the hungry-animal alert? | **Yes, worded "Auto-feed is held — feed {name} by hand, or resume it."** · No alert while held. | M6 (copy, with C-48) |
-| C15 | With the answers above, approve DESIGN-S3D for chunk 5? | **Approve.** · Not yet. | ADR-0014; PLAN chunk 5 |
+| C1 | Settings moves from the dock to a gear in normal builds too, not only when Social makes the dock crowded? | **Yes, a gear in every build** (one layout, room for Social). · Only when the dock is full. → **Answered (ADR-0026): Yes, a gear in every build.** | C-1 |
+| C2 | DESIGN-S3D replaces some approved 0.5 items: Settings as a dock item, the More sheet's height (about 40 % instead of 48 %, with the Operations row), the production tiles' wording, and the test helper that opens Settings from the dock. Approve the replacements, named in the approval ADR? | **Approve.** · Keep some 0.5 items (say which). → **Answered (ADR-0026): Approve (named in ADR-0027).** | C-2, C-58 |
+| C3 | The Tanks panel as drawn hides healthy tanks behind a footer (13 tanks' cards and actions gone in the sample). | **Keep every tank's row, problems first; the footer becomes "Show {n} more" or goes.** · Collapse healthy tanks as drawn. → **Answered (ADR-0026): Keep every row, problems first.** | C-6 |
+| C4 | Shared water reserves and background tanks (LOD): far tanks are simulated in chunks, so a shared reserve needs their pending time settled. | **Option B: settle a tank's pending time on every action, move and focus change; idle tanks stay coarse; stated tolerances.** · Simulate every tank at full detail (slower). → **Answered (ADR-0026): Option B (settle on actions).** | C-14 |
+| C5 | Is water a tracked resource? | **Water costs nothing; once a Water room exists it's limited by the prep rate and the reserve size (an empty fresh reserve stops the ATO until prep refills it). Without a Water room nothing changes.** · Water costs money per gallon. → **Answered (ADR-0026): Water is free, limited by prep.** | C-15, C-16 |
+| C6 | Live food shelf life. | **(a) All stock of the two live foods expires, tracked by lot (bought packs too).** · (b) Only home-grown lots expire. · (c) Nothing expires: then AUTO-013 A2 needs a storage cap (new design) or the owner waives it. → **Answered (ADR-0026): (c) Nothing expires (not the recommended option); follow-up: harvests pause when the room's storage is full ("Full"), so AUTO-013 A2 stands.** | C-22, C-23 (R1) |
+| C7 | Buying the rooms and machines (nothing in the design prices them). | **Finishing the research installs the base room (prep station, 150/60 gal reserves and a mixer; a hatchery with 2 cones and 4 jars); add-ons and upgrades are bought in Build › Facility; dosers are placed from the tank card; the economy lane sets the numbers.** · Rooms are bought outright in Build › Facility. → **Answered (ADR-0026): The research installs the base room.** | C-37 |
+| C8 | Approve the new copy the design needs but doesn't word: line not found ("This line isn't here any more" · "See your lines"), the locked room page, no money / no floor space, no line yet, the "Assisted care" tile before Tier 1, Dry food rows without a stock manager ("You restock it from the Market"), the empty fresh reserve, the freshwater-only Water tab, the ladder rows (C-38), and C-21, C-26, C-36 and C-63's strings. Show the full list from INTAKE C-48 and those rows. | **Approve as proposed.** · Change some (say which). → **Answered (ADR-0026): Approve as proposed, the agent's drafts included (the table is in ADR-0026).** | C-48 (with C-21, C-26, C-36, C-38 per R3, C-63) |
+| C9 | The stock budget control. | **A slider in $1 steps, "Raise budget" hidden at the level's maximum with the reason, and a separate switch for Rosa's orders that keeps the budget and the log quiet.** · $5 steps and a typed amount. → **Answered (ADR-0026): A $1 slider and an orders switch.** | C-21 |
+| C10 | The Automation notification category's subtitle promises "manual mode" alerts with no template. | **Drop "and manual mode" from the subtitle.** · Add a manual-mode notification (new template). → **Answered (ADR-0026): Drop "and manual mode".** | C-57 |
+| C11 | A Water room in a freshwater-only facility (behaviour and copy): the mixer, the salt meter and the salt problem items would show for no salt use. | **They apply only while a salt tank or a hatchery needs salt water; Supplies shows the salt row once a Water room exists.** · Show them always. → **Answered (ADR-0026): Only while salt water is used.** | C-63 (R2) |
+| C12 | Schedules: the design shows schedules but edits none. Do the player's existing levers count as schedules they change (a tank's lights-on hour moves its water change; Auto-feed meals a day; Hold or Resume per system)? | **Yes, those levers are enough (no schedule editor).** · Add a schedule editor in Operations (new design). → **Answered (ADR-0026): Yes, the existing levers are enough.** | M1 |
+| C13 | Without a stock manager nobody reorders: "No one reorders salt mix. Buy it, or hire a stock manager.", with Buy and "Hire a stock manager" (to Visitors › Staff) instead of "Raise budget", no forecast, and a matching notification. | **Approve.** · Different wording. → **Answered (ADR-0026): Approve.** | M2 (copy, with C-48) |
+| C14 | Manual mode holds the Autofeeders. Does a held one count as paused for the hungry-animal alert? | **Yes, worded "Auto-feed is held — feed {name} by hand, or resume it."** · No alert while held. → **Answered (ADR-0026): Yes, worded as held.** | M6 (copy, with C-48) |
+| C15 | With the answers above, approve DESIGN-S3D for chunk 5? | **Approve.** · Not yet. → **Answered (ADR-0027): Approve. DESIGN-S3D is approved.** | ADR-0014; PLAN chunk 5 |
 
 ### C8's strings (gathered 2026-10-11, for the message before C8)
+
+Answered: the owner approved the table as sent, with the agent's drafts for the **not worded** rows; the final table is
+in ADR-0026.
 
 Show the owner this list before asking C8. Quoted strings are proposed in `INTAKE.md` §11 or design-intake-3 (M2,
 M6), or reused from the repo and the designs. Rows marked **not worded** have no proposed string yet: draft one in

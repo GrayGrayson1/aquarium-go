@@ -320,8 +320,8 @@
         "new: tests/e2e/production.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "BLOCKED",
-      "blockedBy": "DESIGN-S3C-LINES",
+      "status": "PENDING",
+      "note": "Unblocked 2026-10-11: the owner approved DESIGN-S3D SPEC §8.6 and §8.6.1 as the production screens (ADR-0025 decision 1), which settle how several lines are named and how per-line ids are formed (§8.6.1 \"Names and ids\"). Chunk 4.",
       "designSections": [
         "§16",
         "§19",
@@ -516,7 +516,7 @@
         "§5.2",
         "§5.3"
       ],
-      "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\". requirements-2 m8: A4 covers the More dot for every More destination, not only Shows. Chunk 1 (2026-10-06): The More sheet's top is checked at 45-51 % of the viewport (mobile-tabbar.spec). The highlighted More tab returns to the tank view, as §5.2 says of every active tab."
+      "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\". requirements-2 m8: A4 covers the More dot for every More destination, not only Shows. Chunk 1 (2026-10-06): The More sheet's top is checked at 45-51 % of the viewport (mobile-tabbar.spec). The highlighted More tab returns to the tank view, as §5.2 says of every active tab. Owner (ADR-0026 decision 2 and ADR-0027, 2026-10-11, C2): DESIGN-S3D moves the More sheet's top to about 40 % (334 px of 844) for the Operations row, with the same ± 3 % tolerance; A1 and mobile-tabbar.spec change with chunk 5."
     },
     {
       "id": "NAV-005",
@@ -1590,8 +1590,8 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "BLOCKED",
-      "blockedBy": "DESIGN-S3D"
+      "status": "PENDING",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027), with the owner's answers in ADR-0026. Chunk 5, after chunk 4."
     },
     {
       "id": "AUTO-003",
@@ -1663,7 +1663,7 @@
         "§10.2",
         "§12.2"
       ],
-      "note": "Chunk 3 (2026-10-11): one rule (autofeedPause in src/sim/care/autofeed.ts: switched off or 0 meals, jammed, or out of every dry food its animals eat, with a resident at hunger ≥ 50) drives the drawer row with Fix (#/tanks/:id/equipment), the tank dot and the tank card line; the sim logs \"{Tank}: Auto-feed is paused — feed {name} by hand.\" once a game day for a switched-off feeder (empty and jammed ones already log their own care events). Tests: automation-autofeed-ui, automation.spec."
+      "note": "Chunk 3 (2026-10-11): one rule (autofeedPause in src/sim/care/autofeed.ts: switched off or 0 meals, jammed, or out of every dry food its animals eat, with a resident at hunger ≥ 50) drives the drawer row with Fix (#/tanks/:id/equipment), the tank dot and the tank card line; the sim logs \"{Tank}: Auto-feed is paused — feed {name} by hand.\" once a game day for a switched-off feeder (empty and jammed ones already log their own care events). Tests: automation-autofeed-ui, automation.spec. Owner (ADR-0026 decision 15, 2026-10-11, C14): an Autofeeder held by manual mode counts as paused for this alert, worded \"Auto-feed is held — feed {name} by hand, or resume it.\" (chunk 5)."
     },
     {
       "id": "AUTO-006",
@@ -1838,8 +1838,8 @@
         "new: tests/sim/automation-reserves.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "BLOCKED",
-      "blockedBy": "DESIGN-S3D",
+      "status": "PENDING",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decisions 5, 6 and 12, C4, C5, C11): water costs nothing; with a Water room it is limited by the prep rate and the reserve size, and an empty fresh reserve stops the Auto Top-Offs until prep refills it (A1 and A2 stand as written). Background tanks: option B (pending time settled on every action, move, focus change and before each shared water job; stated tolerances). The salt machinery applies only while a salt tank or a hatchery needs salt water.",
       "designSections": [
         "§10.3"
       ]
@@ -1860,8 +1860,8 @@
         "new: tests/sim/automation-feed-production.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "BLOCKED",
-      "blockedBy": "DESIGN-S3D",
+      "status": "PENDING",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 7, C6 and its follow-up): live food never expires (no lots, no \"keeps\" wording); the Live food room stores a limited amount of each food, a harvest that would pass it is skipped, and the Feed tab shows \"Full\". A2 (\"capped by storage capacity\") stands as written; INTAKE C-23's rewording is dropped. Finishing the research installs the base room (decision 8, C7).",
       "designSections": []
     },
     {
@@ -1878,8 +1878,8 @@
         "new: tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "BLOCKED",
-      "blockedBy": "DESIGN-S3D",
+      "status": "PENDING",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). The production part is chunk 4's (ADR-0025), the overview chunk 5's.",
       "designSections": [
         "§11.1",
         "§11.3"
@@ -1902,8 +1902,8 @@
         "new: tests/sim/automation-operations.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "BLOCKED",
-      "blockedBy": "DESIGN-S3D",
+      "status": "PENDING",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 13, C12): the player's existing levers are the schedules they change (a tank's lights-on hour moves its water change, Auto-feed meals a day, Hold or Resume per system), each from the next step; Water › Schedule and Today show every schedule; no schedule editor. A5 reads this way (design-intake-3 M1).",
       "designSections": []
     },
     {
@@ -2497,8 +2497,8 @@
         "new: tests/sim/production-ui.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "BLOCKED",
-      "blockedBy": "DESIGN-S3C-LINES",
+      "status": "PENDING",
+      "note": "Unblocked 2026-10-11: the owner approved DESIGN-S3D SPEC §8.6 and §8.6.1 as the production screens (ADR-0025 decision 1). Chunk 4.",
       "designSections": [
         "§11.1",
         "§6.2",
@@ -2751,7 +2751,7 @@
         "§11.2",
         "§11.1"
       ],
-      "note": "Owner (ADR-0025 decision 9, 2026-10-11, B9): each day a line pays for its share of each tank's residents (a tank shared half and half charges each line half); two lines never pay for the same food or power."
+      "note": "Owner (ADR-0025 decision 9, 2026-10-11, B9): each day a line pays for its share of each tank's residents (a tank shared half and half charges each line half); two lines never pay for the same food or power. Owner (ADR-0026 decision 3, 2026-10-11, the B9 and C2 follow-up): the line's This week tile shows sales and count as DESIGN-S3D draws it (\"$369 · 9 sold\"), then a second line for the net after food and power using this split; the net line's wording is asked with chunk 4's copy. INTAKE §12's proposed change to \"sales and count, not net\" is not taken."
     },
     {
       "id": "PROD-016",

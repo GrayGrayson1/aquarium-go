@@ -149,5 +149,8 @@ push next and start chunk 4 (Production lines). Groups C to E wait for another t
   Prismatic stays with its batch and is never listed by the line.
 - PERSIST-006 changes with decision 10: a line with a dangling parent or tank survives `repairState`, marked, not
   dropped (an absent field still leaves `stateHash` unchanged, AGENTS.md "Saves").
+- ADR-0026 decision 3 (the same session, a follow-up to B9 and C2) settles what the line's "This week" tile shows:
+  sales and count as DESIGN-S3D draws them, then a second line for the net after food and power, using decision 9's
+  split.
 - B-135 is decided (the Prismatic switch and the sell step). INTAKE §11's C-27, C-28, C-29, C-33, C-34 and C-36 are
   answered here; the rest of §11 waits on group C and the DESIGN-S3D approval.
