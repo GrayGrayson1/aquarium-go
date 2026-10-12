@@ -12,14 +12,14 @@ After each group, record the answers **verbatim** (the question as asked, the op
 ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
-Use the next free ADR number for each later group (ADR-0028 onward).
+Group D is answered (ADR-0028). Use the next free ADR number for group E (ADR-0029).
 
 | Group | Unblocks | Questions |
 |---|---|---|
 | A | The 0.5.1 release and standing decisions | A1–A7: **answered 2026-10-11 (ADR-0024)** |
 | B | Chunk 4 (Production lines) | B1–B10: **answered 2026-10-11 (ADR-0025)** |
 | C | Chunk 5 (DESIGN-S3D approval) | C1–C15: **answered 2026-10-11 (ADR-0026; the approval ADR-0027)** |
-| D | Chunk 6 (Social stub) | D1 |
+| D | Chunk 6 (Social stub) | D1: **answered 2026-10-11 (ADR-0028)** |
 | E | Backlog rows waiting on the owner (block no chunk) | E1–E12 |
 
 ## A. Release and standing decisions
@@ -117,7 +117,7 @@ rest in the same style").
 
 | # | Question | Options (recommended first) | Source |
 |---|---|---|---|
-| D1 | The design words only the empty clubs list ("No club yet"). Empty trades and friends lists? | **"No trades yet" / "Trades you start or accept appear here." and "No friends yet" / "Friends you add appear here."** · Different wording. | SOC-010 note |
+| D1 | The design words only the empty clubs list ("No club yet"). Empty trades and friends lists? | **"No trades yet" / "Trades you start or accept appear here." and "No friends yet" / "Friends you add appear here."** · Different wording. → **Answered (ADR-0028): Approve this wording.** | SOC-010 note |
 
 ## E. Backlog rows waiting on the owner (block no chunk)
 

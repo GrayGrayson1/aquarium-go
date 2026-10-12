@@ -3046,7 +3046,7 @@
         "§13.3",
         "§13.4"
       ],
-      "note": "Needs owner or reviewer confirmation: DESIGN-0.5 defines only 'No club yet'; the empty-state copy for trades and friends must come from the owner or the S4 contract before the third criterion can be judged."
+      "note": "Owner (ADR-0028, 2026-10-11, D1): the empty trades list reads \"No trades yet\" · \"Trades you start or accept appear here.\" and the empty friends list \"No friends yet\" · \"Friends you add appear here.\", in the style of \"No club yet\". Was: DESIGN-0.5 defines only 'No club yet'."
     },
     {
       "id": "SOC-011",

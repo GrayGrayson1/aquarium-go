@@ -6,9 +6,9 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Ask the owner groups D and E** of `docs/agent/OWNER_QUESTIONS.md` (chunk 6's copy, backlog rows). Groups A, B and
-   C are answered (ADR-0024 to ADR-0027; DESIGN-S3D is approved, ADR-0027). `docs/agent/SESSION_HANDOFF.md` gives the
-   order of work.
+1. **Ask the owner group E** of `docs/agent/OWNER_QUESTIONS.md` (backlog rows; blocks no chunk). Groups A to D are
+   answered (ADR-0024 to ADR-0028; DESIGN-S3D is approved, ADR-0027). `docs/agent/SESSION_HANDOFF.md` gives the order
+   of work.
 2. **Then chunk 4** (Production lines): group B unblocked it (ADR-0025).
 3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
 
@@ -22,7 +22,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Not started; group B answered (ADR-0025), so it's next |
 | 5 | Deep automation (S3-D) | Not started; DESIGN-S3D approved (ADR-0027); needs chunk 4 |
-| 6 | Social stub, hardening and the last 0.5 release | Not started; needs D1 |
+| 6 | Social stub, hardening and the last 0.5 release | Not started; D1 answered (ADR-0028); after chunks 4 and 5 |
 
 **Last full test run:** the owner's Mac, 2026-10-11, on `6594d21` (the 0.5.1 release commit: chunk 3's code, the
 version bump and docs), in Claude Code from the internal-disk clone: typecheck passed; unit 194 files, 2,227 tests
@@ -230,7 +230,8 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 - **Done when:** `social-stub.test.ts` and `dock-width.spec` pass; `#/social/join/HIGHLAND-4821` works signed out,
   then signed in, then joined; two full test passes in a row on the Mac (REL-013); the owner has played it on a phone
   and a desktop. Then the release.
-- **Decide:** SOC-010's empty-state copy (owner question D1).
+- **Decided:** SOC-010's empty states (ADR-0028, D1): "No trades yet" · "Trades you start or accept appear here." and
+  "No friends yet" · "Friends you add appear here."
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
