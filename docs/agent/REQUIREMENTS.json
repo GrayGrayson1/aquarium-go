@@ -80,7 +80,7 @@
         "§20.4",
         "§3"
       ],
-      "note": "Owning slice for the check: S1 onward, first judged at S1 acceptance against the S0 checkpoint. In S0 the e2e suite is HARNESS-018 (BF-001), and the S0 edit to species-fw.test.ts (a §20.4 test) is named by HARNESS-006 A6."
+      "note": "Owning slice for the check: S1 onward, first judged at S1 acceptance against the S0 checkpoint. In S0 the e2e suite is HARNESS-018 (BF-001), and the S0 edit to species-fw.test.ts (a §20.4 test) is named by HARNESS-006 A6. Chunk 5 intake (2026-10-14, INTAKE §12): A1's \"helpers.openPanel still working at desktop for build, market, settings and shows\" holds with Settings opened through hud-settings; A3's list adds NAV-020 for tests/e2e/helpers.ts and tests/e2e/boot.spec.ts (C-59)."
     },
     {
       "id": "CONST-003",
@@ -401,7 +401,7 @@
         "§17",
         "§16"
       ],
-      "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it."
+      "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it. Chunk 5 intake (2026-10-14, INTAKE §12): where DESIGN-S3D changes a 0.5 surface (the desktop dock and top bar, the More sheet, the tank card's Automation section, Settings › Notifications and Production), it is judged against DESIGN-S3D with DES-014's exceptions; A2's \"More top ≈ 48 %\" becomes 334 px (C-58)."
     },
     {
       "id": "DES-012",
@@ -427,6 +427,45 @@
         "§5.6"
       ],
       "note": "Needs owner or reviewer confirmation: the viewport list is derived from the design breakpoints (MOBILE_QUERY at 720px, the dock rules at 981-1180px, 1400-1519px and from 1520px) rather than given by the design; a reviewer may extend it."
+    },
+    {
+      "id": "DES-013",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed DES-013); ADR-0026; ADR-0027",
+      "description": "The S3-D copy (SPEC §11 and the strings quoted in §5–§8, as amended by C-48, C-49 and ADR-0026's table) renders verbatim, and the SPEC §14 ids (as corrected in INTAKE §10.1) exist and are documented in an \"S3-D\" section of docs/TEST_IDS.md.",
+      "acceptance": [
+        "Static renders and e2e find each string and id."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §11",
+        "S3D §14"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "DES-014",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed DES-014); ADR-0026; ADR-0027",
+      "description": "SPEC §12's components (status badge, meter, stage track, issue card, route strip, system tile, map, manual-mode amber) use the 0.5 tokens (src/ui/styles/tokens.css).",
+      "acceptance": [
+        "Browser QA against screens/ at 390×844 and 1440×900 (the desktop boards below their 48 px browser bar, design-intake-3 R4), leaving out what C-56 and C-57 say differs."
+      ],
+      "tasks": [],
+      "tests": [
+        "browser QA"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §12"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
     },
     {
       "id": "NAV-001",
@@ -518,7 +557,7 @@
         "§5.2",
         "§5.3"
       ],
-      "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\". requirements-2 m8: A4 covers the More dot for every More destination, not only Shows. Chunk 1 (2026-10-06): The More sheet's top is checked at 45-51 % of the viewport (mobile-tabbar.spec). The highlighted More tab returns to the tank view, as §5.2 says of every active tab. Owner (ADR-0026 decision 2 and ADR-0027, 2026-10-11, C2): DESIGN-S3D moves the More sheet's top to about 40 % (334 px of 844) for the Operations row, with the same ± 3 % tolerance; A1 and mobile-tabbar.spec change with chunk 5."
+      "note": "Needs owner or reviewer confirmation: the ± 3% tolerance on the More sheet height is a proposal; design §5.3 says only \"about 48%\". requirements-2 m8: A4 covers the More dot for every More destination, not only Shows. Chunk 1 (2026-10-06): The More sheet's top is checked at 45-51 % of the viewport (mobile-tabbar.spec). The highlighted More tab returns to the tank view, as §5.2 says of every active tab. Owner (ADR-0026 decision 2 and ADR-0027, 2026-10-11, C2): DESIGN-S3D moves the More sheet's top to about 40 % (334 px of 844) for the Operations row, with the same ± 3 % tolerance; A1 and mobile-tabbar.spec change with chunk 5. Chunk 5 intake (2026-10-14, INTAKE §12): the More sheet gains the Operations row (NAV-021), which lifts its top to 334 px of 844 (about 40 %), within the same ± 3 % (ADR-0026 decision 2, ADR-0027)."
     },
     {
       "id": "NAV-005",
@@ -880,6 +919,118 @@
       "designSections": [
         "§6.2"
       ]
+    },
+    {
+      "id": "NAV-020",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed NAV-020); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Desktop dock: Operations (Gauge, dock-operations, with dock-badge-operations) right after Build; Settings leaves the dock for a gear in the top bar (hud-settings, aria-label \"Settings\", pressed while Settings is open) in every build (ADR-0026 decision 1); phones reach Settings from More. Social arrives in chunk 6, in dev mode only, so the chunk 5 dock has 10 items in both modes. Named test edits (CONST-002, C-59): tests/e2e/helpers.ts openPanel(page, 'settings') clicks hud-settings and waits for panel-settings; the tests/e2e/boot.spec.ts sweep adds Operations and opens Settings from the gear.",
+      "acceptance": [
+        "The dock has 10 items in both modes, Operations right after Build, and no dock-settings; from chunk 6 dev mode has 11, with Social before Build and Operations eighth (SOC-004).",
+        "The gear opens and closes Settings, and focus returns to it.",
+        "save.spec.ts passes unchanged through the changed helper; no assertion is removed or weakened.",
+        "The dock and the tank-view camera chips don't intersect at 1400, 1440, 1519, 1520 and 1600 px."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations-nav.spec.ts (proposed)",
+        "tests/e2e/helpers.ts",
+        "tests/e2e/boot.spec.ts",
+        "tests/e2e/save.spec.ts",
+        "tests/e2e/dock-width.spec.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §5.1",
+        "S3D §5.4"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "NAV-021",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed NAV-021); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "More sheet (phones): Operations is the first row (more-operations, 60 px, Gauge chip, \"New\" chip, the copy deck's sub-line) above the tile grid; its dot follows SPEC §5.4 (red or amber, no news dot).",
+      "acceptance": [
+        "At 390×844 the row is first, opens #/operations, and the sheet's top sits at 334 px ± 3 % (NAV-004's changed A1).",
+        "The row's dot is red when anything needs you and amber when something is worth a look."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/mobile-tabbar.spec.ts",
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §5.1",
+        "S3D §5.4"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "NAV-022",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed NAV-022); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "SPEC §6's routes: #/operations[/water|/feed|/lines|/map|/issues|/manual] (the Map with ?layer=water|food|animals), #/build/facility/water|food and #/market/supplies/salt|brine_shrimp_eggs parse and format; a layer change replaces the address (no history entry); Problems and Manual mode highlight Overview; locked pages answer routes before their tier; an unknown Operations tab opens Overview; reload shows the title (NAV-012).",
+      "acceptance": [
+        "nav-routes round-trips each new row; an unknown layer reads as All.",
+        "e2e opens each route early (locked) and late; a layer change adds no history entry; reload on #/operations/water shows the title screen."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/nav-routes.test.ts",
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §6"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "NAV-023",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed NAV-023); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Room view: the Facility map chip (room-facility-map, Map icon, the aqua primary tint) beside Reset view opens #/operations/map; closing the Map returns to the room view; view-toggle is unchanged; both chips keep their labels and clear the dock (C-60).",
+      "acceptance": [
+        "e2e: room view → chip → Map → close → the room view still shows.",
+        "In the room view the dock and the chips don't intersect at 981, 1024, 1180, 1280 and 1440 px."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §5.6"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "NAV-024",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed NAV-024); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Operations' frame (SPEC §5.2, §5.4, C-5; design-intake-3 R5): desktop opens at --pn-max-w and Expand maximises it; the Map is full width with Expand hidden; the phone tab strip fits five tabs at 390 px and scrolls with the selected tab in view at 360 px; the More tab shows a red dot when anything needs you.",
+      "acceptance": [
+        "e2e measures the strip at 390 and 360 px and the panel's width on Map and Overview at 1440×900.",
+        "A unit test gives the More tab a red dot for an \"out\" item."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)",
+        "tests/sim/automation-problems.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §5.2",
+        "S3D §5.4"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
     },
     {
       "id": "GEN-001",
@@ -1559,6 +1710,26 @@
       "note": "code-architecture-game-2 m3: tests/sim/fix-econ-offline-market-speed.test.ts asserts at least 171 real seconds (180 × 0.95) at both speeds, more than the code guarantees at 3x (about 148 s); it passes on its seeds 11-15, and the review found seed 116 failing it. ADR-0016 decision 3 allows aligning that 3x check with the documented minimum as a reviewed test change (it must assert what the code guarantees, never less); until then the test is stricter than A2. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
     },
     {
+      "id": "MKT-017",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed MKT-017); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Market › Supplies (SPEC §8.5, C-63, C-65): Marine salt mix in 5, 20 and 40 kg (supplies-salt-buy-<5|20|40>, role=\"group\" \"Buy marine salt mix\") with a status line, shown with a salt tank, salt in stock or a Water room; Live food rows with a Home-grown chip; For the cultures (brine shrimp eggs $18 for 30 scoops, vegetables); Dry food rows for the Autofeeder foods; today's Food section below for every other food; #/market/supplies/salt and /brine_shrimp_eggs scroll to and outline the row.",
+      "acceptance": [
+        "Each size adds its kg at $3 a kg; after a 5 kg bag the low-salt copy names the real stock and batches.",
+        "A freshwater-only facility with a Water room shows the salt row."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.5"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
       "id": "AUTO-001",
       "slice": "S3",
       "source": "design §10; master §9 S3-A",
@@ -1593,7 +1764,7 @@
       ],
       "evidence": [],
       "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027), with the owner's answers in ADR-0026. Chunk 5, after chunk 4."
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027), with the owner's answers in ADR-0026. Chunk 5, after chunk 4. Chunk 5 intake (2026-10-14, INTAKE §12): the umbrella of AUTO-030 to AUTO-047, MKT-017 and NAV-020 to NAV-024."
     },
     {
       "id": "AUTO-003",
@@ -1776,7 +1947,7 @@
         "§10.3",
         "§21"
       ],
-      "note": "Chunk 3 (2026-10-11): runWaterChanger after runAutofeeder walks the lights-on crossings in [ctx.hour, ctx.hour + dt) (crossings moved to src/sim/time.ts), 20 h and 168 h guards, no RNG, runs in simulateOffline without failing during the grace. Tolerance, stated in automation-water-changer: 4 h and 0.25 h pieces make the same changes and scrapes at the same hours and end within 0.15 °C, 0.05 pH and 3 % of nitrate (or 0.5 ppm). Background LOD pinned too (B-176)."
+      "note": "Chunk 3 (2026-10-11): runWaterChanger after runAutofeeder walks the lights-on crossings in [ctx.hour, ctx.hour + dt) (crossings moved to src/sim/time.ts), 20 h and 168 h guards, no RNG, runs in simulateOffline without failing during the grace. Tolerance, stated in automation-water-changer: 4 h and 0.25 h pieces make the same changes and scrapes at the same hours and end within 0.15 °C, 0.05 pH and 3 % of nitrate (or 0.5 ppm). Background LOD pinned too (B-176). Chunk 5 intake (2026-10-14, INTAKE §12): applies to tanks without a Water room; with one, AUTO-032 and AUTO-037 govern the Auto Water Changer."
     },
     {
       "id": "AUTO-010",
@@ -1797,7 +1968,7 @@
       "designSections": [
         "§10.3"
       ],
-      "note": "Chunk 3 (2026-10-11): salt tanks check the change's salt need first (the waterChangeCost rule) and use exactly what a manual change of the same share uses; short of salt they skip and log the out-of-salt notice once per 24 game hours (first one toasted, like the autofeeder's); freshwater uses none (automation-water-changer, automation-invariants)."
+      "note": "Chunk 3 (2026-10-11): salt tanks check the change's salt need first (the waterChangeCost rule) and use exactly what a manual change of the same share uses; short of salt they skip and log the out-of-salt notice once per 24 game hours (first one toasted, like the autofeeder's); freshwater uses none (automation-water-changer, automation-invariants). Chunk 5 intake (2026-10-14, INTAKE §12): applies to tanks without a Water room; with one, salt is used once, at mixing (AUTO-032)."
     },
     {
       "id": "AUTO-011",
@@ -1841,7 +2012,7 @@
       ],
       "evidence": [],
       "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decisions 5, 6 and 12, C4, C5, C11): water costs nothing; with a Water room it is limited by the prep rate and the reserve size, and an empty fresh reserve stops the Auto Top-Offs until prep refills it (A1 and A2 stand as written). Background tanks: option B (pending time settled on every action, move, focus change and before each shared water job; stated tolerances). The salt machinery applies only while a salt tank or a hatchery needs salt water.",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decisions 5, 6 and 12, C4, C5, C11): water costs nothing; with a Water room it is limited by the prep rate and the reserve size, and an empty fresh reserve stops the Auto Top-Offs until prep refills it (A1 and A2 stand as written). Background tanks: option B (pending time settled on every action, move, focus change and before each shared water job; stated tolerances). The salt machinery applies only while a salt tank or a hatchery needs salt water. Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.2 and §9.2 (AUTO-032, AUTO-037). A1 and A2 stand: top-off and water changes draw only from the finite reserves, and an empty reserve skips (or, for the Auto Top-Off, stops) the jobs that draw on it and shows a shortage until it is refilled (C-16).",
       "designSections": [
         "§10.3"
       ]
@@ -1863,7 +2034,7 @@
       ],
       "evidence": [],
       "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 7, C6 and its follow-up): live food never expires (no lots, no \"keeps\" wording); the Live food room stores a limited amount of each food, a harvest that would pass it is skipped, and the Feed tab shows \"Full\". A2 (\"capped by storage capacity\") stands as written; INTAKE C-23's rewording is dropped. Finishing the research installs the base room (decision 8, C7).",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 7, C6 and its follow-up): live food never expires (no lots, no \"keeps\" wording); the Live food room stores a limited amount of each food, a harvest that would pass it is skipped, and the Feed tab shows \"Full\". A2 (\"capped by storage capacity\") stands as written; INTAKE C-23's rewording is dropped. Finishing the research installs the base room (decision 8, C7). Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.3 and §9.3 (AUTO-033). A2 stands as written (ADR-0026 decision 7: a storage limit, \"Full\").",
       "designSections": []
     },
     {
@@ -1881,7 +2052,7 @@
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). The production part is chunk 4's (ADR-0025), the overview chunk 5's. Chunk 4 (2026-10-14): The production part: multiple lines (PROD-002), routing (PROD-006), sorting (PROD-013), quarantine (PROD-007), keepers (PROD-008, PROD-011), listing (PROD-012) and pausing (PROD-010) are GREEN. The operations overview is chunk 5's.",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). The production part is chunk 4's (ADR-0025), the overview chunk 5's. Chunk 4 (2026-10-14): The production part: multiple lines (PROD-002), routing (PROD-006), sorting (PROD-013), quarantine (PROD-007), keepers (PROD-008, PROD-011), listing (PROD-012) and pausing (PROD-010) are GREEN. The operations overview is chunk 5's. Chunk 5 intake (2026-10-14, INTAKE §12): the overview is Operations › Lines and the Overview's Production lines tile (AUTO-030).",
       "designSections": [
         "§11.1",
         "§11.3"
@@ -1905,7 +2076,7 @@
       ],
       "evidence": [],
       "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 13, C12): the player's existing levers are the schedules they change (a tank's lights-on hour moves its water change, Auto-feed meals a day, Hold or Resume per system), each from the next step; Water › Schedule and Today show every schedule; no schedule editor. A5 reads this way (design-intake-3 M1).",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 13, C12): the player's existing levers are the schedules they change (a tank's lights-on hour moves its water change, Auto-feed meals a day, Hold or Resume per system), each from the next step; Water › Schedule and Today show every schedule; no schedule editor. A5 reads this way (design-intake-3 M1). Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.1, §7.6, §7.7 and §9.7 (AUTO-030, AUTO-035, AUTO-036); A3 points to AUTO-039; A5 reads as ADR-0026 decision 13 (the existing levers are the schedules; Water › Schedule and Today show them, AUTO-043).",
       "designSections": []
     },
     {
@@ -2000,7 +2171,7 @@
         "§11.1",
         "§11.3"
       ],
-      "note": "Needs owner or reviewer confirmation: master §9 S3-D says \"preserve protected/Prismatic animals\" without defining \"protected\"; whether the existing creature.favorite flag counts is UNKNOWN and needs an owner decision in the S3 contract. Chunk 4 (2026-10-14): Production lines move animals only into their own validated tanks (moveCreature/moveClutch keep the environment gate; quarantine and keep moves need a place for each animal; a brood moves only with a place for a young one), and never list, sell or move out of protection a Prismatic, a favourite or a keep-tank animal (\"protected\", ADR-0025 decision 4). The S3-D chains move no animals. Tests: production-line."
+      "note": "Needs owner or reviewer confirmation: master §9 S3-D says \"preserve protected/Prismatic animals\" without defining \"protected\"; whether the existing creature.favorite flag counts is UNKNOWN and needs an owner decision in the S3 contract. Chunk 4 (2026-10-14): Production lines move animals only into their own validated tanks (moveCreature/moveClutch keep the environment gate; quarantine and keep moves need a place for each animal; a brood moves only with a place for a young one), and never list, sell or move out of protection a Prismatic, a favourite or a keep-tank animal (\"protected\", ADR-0025 decision 4). The S3-D chains move no animals. Tests: production-line. Chunk 5 intake (2026-10-14, INTAKE §12): \"protected\" is defined by ADR-0025 decision 4 (keep tanks, Prismatics, favourites); the S3-D chains move no animals."
     },
     {
       "id": "AUTO-020",
@@ -2204,6 +2375,387 @@
       "designSections": []
     },
     {
+      "id": "AUTO-030",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-030); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "The Operations panel by tier (SPEC §5.3): the early, before-the-Desk and full Overview layouts; locked pages (SPEC §7.8); status words on tiles; Problems, This week, Today and Hold all only from Tier 5 (the Operations Desk). The PanelId edit in src/state/ui.ts is a core change, named in the commit.",
+      "acceptance": [
+        "Fixtures for Day 4 (early), Day 38 without the Desk, a Specialty Shop with a Water room, and Day 38 with the Desk render their layouts.",
+        "#/operations/issues and /manual stay locked until the Operations Desk completes.",
+        "boot.spec, ui-notify-news and ui-notify-attention stay green."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)",
+        "tests/sim/ui-notify-news.test.ts",
+        "tests/sim/ui-notify-attention.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §5.3",
+        "S3D §7.1",
+        "S3D §7.8"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-031",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-031); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Tier gates: three projects in a facility branch, appended to RESEARCH: Central Water Supply (after the Specialty Shop), Live Food Cultures (after it and the Breeding Programme) and Operations Desk (after the Aquarium Store), each granting a new unlock key (water_room, live_food_room, operations_desk); costs and times are the design's placeholders. Finishing Central Water Supply or Live Food Cultures installs the base room (ADR-0026 decision 8).",
+      "acceptance": [
+        "Each project opens only its tier and installs its room once.",
+        "progression-research-owned and facility-progression pass; the seeded suites are run before and after and any changed expectation is explained."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-tiers.test.ts (proposed)",
+        "tests/sim/progression-research-owned.test.ts",
+        "tests/sim/facility-progression.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.8",
+        "S3D §9.1"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-032",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-032); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "The Water room (SPEC §9.2): the prep station fills the fresh reserve to its cap; salt mixing starts a 30 gal batch at 10 AM and 10 PM while salt water is below 60 %, the mixing tank is empty and there are 4.1 kg of salt mix and 30 gal of fresh water; a batch finishes 12 h later and tops the reserve up, the rest waiting in the mixing tank; at each tank's lights-on every Auto Water Changer takes its change from the matching reserve (salt tanks blend salt and fresh water to their target salinity, C-17) tank by tank in tankOrder, skipped rather than weak; salt is used once, at mixing; the Auto Top-Offs draw only fresh water and stop while it's empty (ADR-0026 decision 6); the salt machinery and salt items apply only while a salt tank or a hatchery needs salt water (decision 12); the player's changes and the keepers' top-offs, routine and urgent changes stay on tap water and shelf salt (C-67).",
+      "acceptance": [
+        "The Day 38 fixture with no salt bought has 8.2 gal of salt water at 8:00 AM on Day 41 and skips the changes that don't fit, in tankOrder.",
+        "Reserves never go negative; an empty fresh reserve stops the Auto Top-Offs and the mixer and shows the shortage.",
+        "A freshwater-only Water room without a hatchery raises no salt item.",
+        "Without a Water room AUTO-010 holds unchanged."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-reserves.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §9.2"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-033",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-033); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "The Live food room (SPEC §9.3, ADR-0026 decisions 7 and 8): research installs 2 hatchery cones and 4 culture jars; a cone runs 24 h (1 scoop of brine shrimp eggs and 0.5 gal of salt water → 20 servings of Live Baby Brine Shrimp), a jar 72 h (1 serving of Blanched Vegetables → 15 of Infusoria Culture); nothing expires: the room stores a limited amount of each food, a harvest that would pass it waits (\"Full\"); live-food dosers are tank equipment (C-25) that feed young from stock at their dose times by need; shortages are raised, never silent.",
+      "acceptance": [
+        "Each start consumes once and each harvest adds once, across save, load and catch-up.",
+        "A cone with no eggs waits and raises a shortage; a doser with no stock skips and raises one.",
+        "A harvest past the storage limit waits until there is room, and the Feed tab says \"Full\"."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-feed-production.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §9.3"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-034",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-034); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "The stock manager with a Water room (SPEC §9.6, decision 15 of ADR-0014): salt's urgency counts the days until a water change would be skipped (the reserve and the mixing tank included) and the order follows the mixer's real use, the hatchery's included (C-63); 5 kg steps; machine and doser use (eggs, vegetables) joins her plan (C-20); the forecast is a pure dry run of her next check; an orders switch stops her orders and keeps the budget and the log quiet (ADR-0026 decision 10); without a stock manager nobody reorders (decision 14); no change without a Water room.",
+      "acceptance": [
+        "Day 38: $141 of food first and no salt at $150; $261 buys 40 kg; $200 buys 15 kg; a raised budget turns the item into \"arrives at 3:00 PM\".",
+        "staff-sim and staff2-feeding stay green unchanged."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-stock.test.ts (proposed)",
+        "tests/sim/staff-sim.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §9.6",
+        "S3D §8.7"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-035",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-035); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Problems (SPEC §9.8): supply low, out and arriving items and the line item (paused for room), with their tones; the counts drive the Operations sub-line, the Overview tab dot, the dock and More dots and the bell (SPEC §5.4); choosing Wait or adding capacity turns the line item into \"Resumes Day {d}\". Without a stock manager a supply item says no one reorders (ADR-0026 decision 14).",
+      "acceptance": [
+        "One unit case per state from fixtures; the dots follow the worst item."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-problems.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §9.8",
+        "S3D §5.4"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-036",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-036); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Manual mode (SPEC §9.7): five hold flags (water changes, salt mixing, live food, Autofeeders, production lines) with a game-hour timestamp; held jobs are skipped, not queued; filters, heaters, lights, Auto Top-Off, keepers' rounds and auctions already listed are never held; each system resumes alone and resuming the last one ends manual mode; saved. A held Autofeeder counts as paused for AUTO-005's alert, worded \"Auto-feed is held — feed {name} by hand, or resume it.\" (ADR-0026 decision 15).",
+      "acceptance": [
+        "Over a held day no held job runs and nothing catches up after resume; the Auto Top-Offs, keepers and auctions still run.",
+        "A held Autofeeder with a resident at hunger 50 raises the held alert."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-operations.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §9.7",
+        "S3D §7.7"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-037",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-037); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Facility jobs run at their scheduled game hour in SPEC §9.9's order (water changes, top-off, cones, jars, doser feeds, salt mixing, the shelf check; a batch finishes before the next start check, C-18), settle a tank's owed time before changing it (ADR-0026 decision 5) and share stock in tankOrder. The world.ts hook is a core change, named in the commit.",
+      "acceptance": [
+        "Results agree within the stated tolerances for different focused tanks, with forceFull on and off, and for 0.25 h and 4 h steps (job counts and stock units exact; gallons within 0.01 gal per job, ADR-0024 decision 7).",
+        "core-determinism and fix-core-step-invariance stay green."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-invariants.test.ts",
+        "tests/sim/core-determinism.test.ts",
+        "tests/sim/fix-core-step-invariance.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §9.9"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-038",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-038); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Machines: a machine catalog (prices, upkeep, what each upgrade does; chunk 5 sets the placeholder numbers, ADR-0026 decision 8); research installs the base rooms; add-ons and upgrades are bought in Build › Facility, dosers from the tank card; upkeep joins the nightly bills as its own ledger entry.",
+      "acceptance": [
+        "Upkeep shows in Finances and in the weekly money; prices come from data."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-machines.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.4",
+        "S3D §10"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-039",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-039); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Weekly money: line sales, \"Supplies & upkeep\" and the net for the last seven completed days equal Finances for the same days, and a per-day record keeps them right past the 400-entry ledger cap (C-41).",
+      "acceptance": [
+        "A long fixture past 400 ledger entries still matches."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-operations.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §7.1",
+        "S3D §16"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-040",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-040); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Operations › Map per SPEC §7.5 and C-46, C-47, C-61, C-64: labelled areas with tank tiles (grouping only); layers All · Water · Food · Animals (map-layer-<…>, a radio group; the layer in the address, NAV-022) with the drawn states; desktop selection outlines a room, machine or tank and fills map-details (selecting it again clears it), above the Key card; phones are room-level, each area a button at least 44 px tall that opens map-room-sheet; an area that overflows ends with \"+{n} more\" (opens Tanks), and line tanks always show; early, the Hobby Room map without layers; pipes and lines are never told apart by colour alone. Toasts stay clear of the full-width panel.",
+      "acceptance": [
+        "On a Day 38 fixture at 1440×900 each layer shows its marks; selecting a full grow-out tank shows its places and its line button opens #/livestock/production/<id>; selecting it again shows \"Select a room, machine or tank to see its details.\"",
+        "At 390×844 a room tap opens its sheet; a larger fixture shows \"+{n} more\"."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)",
+        "tests/sim/automation-map.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §7.5"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-041",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-041); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Automation chips and held notes (SPEC §8.1, §8.2): tank rows add Auto-feed, Auto-clean, Top-off, Live-food doser and line chips (tank-chip-<…> inside the row), each an icon plus a word, aqua running, amber held or paused, neutral off; every tank keeps its row, problem tanks first (ADR-0026 decision 4); a row with a problem adds the amber reason line and Why (Problems from Tier 5, else the problem's tab, C-13); the tank card header adds the Auto-feed and Auto-clean chips, Equipment › Automation shows the held notes while held, and with a Water room the Auto-clean subline ends \"· water from the Water room\".",
+      "acceptance": [
+        "A unit test maps tank state to each chip's word, tone and id for running, held, paused and off.",
+        "A line's full grow-out tank shows its reason and Why opens the route for the tier; with manual mode on, the tank card shows both held notes."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-chips.test.ts (proposed)",
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.1",
+        "S3D §8.2"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-042",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-042); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Manual mode in the HUD (SPEC §5.5): while any system is held, desktop shows the amber 48 px \"Manual mode\" pill (hud-manual-mode, Hand icon, aria-label \"Manual mode is on. Open it\") beside the clock pill, and phones turn the time pill amber with the Hand icon and the time; both open #/operations/manual.",
+      "acceptance": [
+        "After Hold all, the pill shows with its word at 1440×900 and the amber time pill at 390×844, and each opens #/operations/manual; Resume all removes both; with nothing held, or before the Operations Desk, neither shows."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §5.5"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-043",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-043); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Today and Saved this week: Today (the desktop Overview from Tier 5) lists the next four scheduled jobs from the sim's schedule (time, icon, title, detail, \"Next\" on the first), with \"Manual mode: held jobs wait until you resume.\" while manual mode is on; Saved this week (desktop Feed) compares the shop price of the live food the tanks used in the last seven completed days with what making it cost, from a seven-day use record. Nothing expires (ADR-0026 decision 7).",
+      "acceptance": [
+        "On a fixture the list shows the next four jobs in time order, and once a job has run the next one moves up.",
+        "Saved this week equals the shop cost of the servings used minus the making cost."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-today.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §7.1",
+        "S3D §7.3"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-044",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-044); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "The alerts drawer's Automation section (SPEC §8.3; design-intake-3 R5): \"Automation · {n}\" above the Tanks section with the Operations link (alerts-automation, alerts-automation-link): the manual mode row while on, then the items as compact issue cards with their main action and Details, or \"Automation is running smoothly.\"; no section until something is automated (C-48). Before the Operations Desk the link opens #/operations and each item's Details is the tab with the problem (alerts-item-tab-<water|feed|lines>); purchases stay as quick actions and fixes that belong to Problems are left out.",
+      "acceptance": [
+        "A unit test lists the section's rows with and without the Desk, and for a game with nothing automated (no section).",
+        "e2e opens a Details link to its tab."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-problems.test.ts (proposed)",
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.3"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-045",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-045); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Build › Facility (SPEC §8.4, C-7; design-intake-3 R5): the \"Your facility\" card (level, \"Next: {level}\", line slots, the stock budget cap) and Rooms (Water room and Live food room with their status, dashed with their requirements before they exist) above today's Venue, Tanks and Rent tiles and the upgrade card; #/build/facility/water and /food open each room's page (back \"Facility\", the link row to Operations, the reserves or cultures, machines with their upgrades and prices), or the locked room page before the room exists.",
+      "acceptance": [
+        "e2e: each route opens its page late and its locked page early.",
+        "Buying an upgrade changes the machine's numbers and the money by its price."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)",
+        "tests/sim/automation-machines.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.4"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-046",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-046); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Visitors › Staff (SPEC §8.7, ADR-0026 decisions 10 and 14; design-intake-3 R5): the stock budget is a $1 slider up to the level's maximum; \"Spent today: ${x} of ${budget} · …\"; a status line (green when the budget covers food and the salt order at the next check, amber with what it doesn't cover); the orders switch (\"Rosa's orders\") stops her orders and keeps the budget and the log quiet; \"Raise budget\" elsewhere is hidden at the maximum, with its reason.",
+      "acceptance": [
+        "Unit: the status line for $150, $200 and $261 on a Day 38 fixture; with the switch off she orders nothing and logs nothing.",
+        "e2e: the slider sets $261."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-stock.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.7"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
+      "id": "AUTO-047",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed AUTO-047); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "Research › Facility (SPEC §8.8, C-40; design-intake-3 R5): a Facility section with the three projects, each row in the Genetics Lab row's form: Locked (requirements with locks), Available (ticked requirements and Start), Researching (progress and days left) and Complete (a tick and a Complete chip).",
+      "acceptance": [
+        "A static render shows each state.",
+        "e2e starts the Operations Desk and, three game days later, #/operations/issues opens."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.8"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
       "id": "NOTIFY-001",
       "slice": "S3",
       "source": "design §12; master §9 S3-B; master §44",
@@ -2244,7 +2796,7 @@
         "§12.2",
         "§12.3"
       ],
-      "note": "Chunk 3 (2026-10-11): localStorage aquarium-go.notify.v1 only (notify-deliver); quiet hours fixed 22:00–08:00, 22:00 held and 08:00 shown (the proposal, B-173), held notifications dropped (the Alerts drawer keeps everything); danger-level Animal care comes through; tests at 21:59, 22:00, 07:59, 08:00 and across midnight (notify-rules) and on a pinned clock and timezone (notifications.spec)."
+      "note": "Chunk 3 (2026-10-11): localStorage aquarium-go.notify.v1 only (notify-deliver); quiet hours fixed 22:00–08:00, 22:00 held and 08:00 shown (the proposal, B-173), held notifications dropped (the Alerts drawer keeps everything); danger-level Animal care comes through; tests at 21:59, 22:00, 07:59, 08:00 and across midnight (notify-rules) and on a pinned clock and timezone (notifications.spec). Chunk 5 intake (2026-10-14, INTAKE §12): five categories become six: Automation, on by default (NOTIFY-012)."
     },
     {
       "id": "NOTIFY-003",
@@ -2266,7 +2818,7 @@
         "§12.2",
         "§21"
       ],
-      "note": "Chunk 3 (2026-10-11): src/ui/notify/rules.ts maps tagged events (GameEvent.notice, set by the sim when the event happens) and untagged danger events about a tank to {category, title, body, route, priority, tag}; every template and route is tested in notify-rules; categories switched off and unmapped events never notify. Club-show reminders wait for the Social stub (chunk 6). Live births and prize-less show results use ADR-0023's wording."
+      "note": "Chunk 3 (2026-10-11): src/ui/notify/rules.ts maps tagged events (GameEvent.notice, set by the sim when the event happens) and untagged danger events about a tank to {category, title, body, route, priority, tag}; every template and route is tested in notify-rules; categories switched off and unmapped events never notify. Club-show reminders wait for the Social stub (chunk 6). Live births and prize-less show results use ADR-0023's wording. Chunk 5 intake (2026-10-14, INTAKE §12): five categories become six: Automation, on by default (NOTIFY-012)."
     },
     {
       "id": "NOTIFY-004",
@@ -2336,7 +2888,7 @@
         "§12.5",
         "§20.3"
       ],
-      "note": "Chunk 3 (2026-10-11): Settings › Notifications with the web callouts (Unsupported per ADR-0022 decision 4; no app variant), the test row (≈1.5 s, even focused; \"Turn notifications on first\" otherwise), five category switches locked until granted (aria-disabled, focusable, aria-describedby the status title) and quiet hours; five Settings tabs; save.spec and boot.spec pass (notifications.spec, ui-copy-05, notify-deliver)."
+      "note": "Chunk 3 (2026-10-11): Settings › Notifications with the web callouts (Unsupported per ADR-0022 decision 4; no app variant), the test row (≈1.5 s, even focused; \"Turn notifications on first\" otherwise), five category switches locked until granted (aria-disabled, focusable, aria-describedby the status title) and quiet hours; five Settings tabs; save.spec and boot.spec pass (notifications.spec, ui-copy-05, notify-deliver). Chunk 5 intake (2026-10-14, INTAKE §12): A2 holds on phones too: the web callout and the \"This browser\" row, not the phone board's \"app\" callout (C-57)."
     },
     {
       "id": "NOTIFY-007",
@@ -2455,6 +3007,25 @@
       ]
     },
     {
+      "id": "NOTIFY-012",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed NOTIFY-012); ADR-0026; ADR-0027; umbrella AUTO-002",
+      "description": "The Automation notification category (auto, on by default, notify-cat-auto, subtitle \"Shortages and paused lines\", ADR-0026 decision 11) with SPEC §8.9's templates and the no-stock-manager variant (decision 9's table); quiet hours and rate limits apply; events carry their topic; links open #/operations/issues from Tier 5, else the problem's tab.",
+      "acceptance": [
+        "The out-of-salt and line-paused events map to it; quiet hours hold them; the route changes at Tier 5."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/notify-rules.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8.9"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
       "id": "PROD-001",
       "slice": "S3",
       "source": "design §11; master §9 S3-C; master §3.10",
@@ -2497,7 +3068,7 @@
         "§15",
         "§21"
       ],
-      "note": "Chunk 4 (2026-10-14): GameState.production? (lines, ended history, lastHour) in src/types/game.ts (lane:production). tanks.quarantine is a list (INTAKE C-32: the first free one takes the batch; \"Add a quarantine tank\" appends). A fresh game has no production field, the same stateHash, and SCHEMA_VERSION 1. Tests: production-line (two betta lines side by side; the fresh-game check)."
+      "note": "Chunk 4 (2026-10-14): GameState.production? (lines, ended history, lastHour) in src/types/game.ts (lane:production). tanks.quarantine is a list (INTAKE C-32: the first free one takes the batch; \"Add a quarantine tank\" appends). A fresh game has no production field, the same stateHash, and SCHEMA_VERSION 1. Tests: production-line (two betta lines side by side; the fresh-game check). Chunk 5 intake (2026-10-14, INTAKE §12): A2's \"SCHEMA_VERSION is unchanged\" becomes \"unchanged by the production field\": chunk 5 bumps it once for the S3-D state (C-44, PERSIST-016)."
     },
     {
       "id": "PROD-003",
@@ -3021,7 +3592,7 @@
         "§21",
         "§22"
       ],
-      "note": "ADR-0005 decision 3: dock-social and more-social appear only in dev mode (SOC-011); these criteria apply in dev mode, and without it the dock and More sheet stay as they are without Social. requirements-2 m8: A5 is the §5.4 dock-social attention dot."
+      "note": "ADR-0005 decision 3: dock-social and more-social appear only in dev mode (SOC-011); these criteria apply in dev mode, and without it the dock and More sheet stay as they are without Social. requirements-2 m8: A5 is the §5.4 dock-social attention dot. Chunk 5 intake (2026-10-14, INTAKE §12): from chunk 6, with S3-D's dock: A2's order becomes Tanks · Livestock · Market · Visitors · Shows · Social · Build · Operations · Research · Finances · Encyclopedia (Settings is on the gear, NAV-020); A4's fixed dock-item count becomes 11 in dev mode and 10 outside it."
     },
     {
       "id": "SOC-005",
@@ -3404,6 +3975,25 @@
       "note": "Owner (ADR-0024 decision 4, 2026-10-11, A4): the target is WCAG 2.2 AA for text and controls, with solid panels under the high-contrast setting (B-178), in chunk 6."
     },
     {
+      "id": "ACC-006",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed ACC-006); ADR-0026; ADR-0027",
+      "description": "S3-D accessibility: SPEC §13 plus INTAKE §4 (pipes and lines not coded by colour alone, C-47 and C-64; Map keyboard and Esc order; high contrast; text scale 1.3; focus return).",
+      "acceptance": [
+        "A keyboard-only pass of Operations; on the Animals layer each tank names its lines in text and each route has a label."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/operations.spec.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §13"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+    },
+    {
       "id": "PERF-001",
       "slice": "S2",
       "source": "master §9 S2 (catalog/performance checks); master §25, §28; design §8.5 (genotype caps), §22 risk 6",
@@ -3466,6 +4056,25 @@
       "status": "SUPERSEDED",
       "designSections": [],
       "note": "Superseded by ADR-0018: there are no evidence manifests any more; a chunk writes its performance budgets and baseline numbers in PLAN.md."
+    },
+    {
+      "id": "PERF-004",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed PERF-004); ADR-0026; ADR-0027",
+      "description": "Operations summaries (forecast, problems, flows, Today, weekly money) are computed once per game hour or memoised on it, never per publish; Map tiles are capped per area.",
+      "acceptance": [
+        "With Operations open, a 4 Hz publish recomputes no plannedUsage."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/automation-problems.test.ts (proposed)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §8 (INTAKE)"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
     },
     {
       "id": "PERSIST-001",
@@ -3597,7 +4206,7 @@
         "§20.1",
         "§21"
       ],
-      "note": "Chunk 3 (2026-10-11): the water-lab hours: repairState removes a non-finite lastAutoChangeHour / lastAutoScrapeHour with a note, absent ones need nothing and leave the hash unchanged, a fresh 0.5 game needs no repairs (persistence-05). The production part is chunk 4's. Owner (ADR-0025 decision 10, 2026-10-11, B10): a line whose parent or tank is missing is kept, paused and marked, not dropped; read the description's \"dropping lines\" and A1's \"repaired with a note\" that way. Chunk 4 (2026-10-14): Production part met: repairState validates production when present; a line whose parent or tank is missing is kept, paused and marked with a note (ADR-0025 decision 10), never dropped; an unreadable line or a stray repro.lineHold is removed with a note; a valid save loads with repairs [] and the same hash (persistence-05)."
+      "note": "Chunk 3 (2026-10-11): the water-lab hours: repairState removes a non-finite lastAutoChangeHour / lastAutoScrapeHour with a note, absent ones need nothing and leave the hash unchanged, a fresh 0.5 game needs no repairs (persistence-05). The production part is chunk 4's. Owner (ADR-0025 decision 10, 2026-10-11, B10): a line whose parent or tank is missing is kept, paused and marked, not dropped; read the description's \"dropping lines\" and A1's \"repaired with a note\" that way. Chunk 4 (2026-10-14): Production part met: repairState validates production when present; a line whose parent or tank is missing is kept, paused and marked with a note (ADR-0025 decision 10), never dropped; an unreadable line or a stray repro.lineHold is removed with a note; a valid save loads with repairs [] and the same hash (persistence-05). Chunk 5 intake (2026-10-14, INTAKE §12): the S3-D fields are PERSIST-016's."
     },
     {
       "id": "PERSIST-007",
@@ -3794,6 +4403,27 @@
       "evidence": [],
       "status": "GREEN",
       "note": "BACKLOG B-001, fixed in 9e1bf66 and approved with ADR-0015. The test's describe title reads \"PERSIST-009 (B-001): …\" because it was written before this id existed; renaming it would be a test-id change (test-changes.json) and isn't needed here. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
+    },
+    {
+      "id": "PERSIST-016",
+      "slice": "S3",
+      "source": "DESIGN-S3D INTAKE.md §12 (proposed PERSIST-016); ADR-0026; ADR-0027",
+      "description": "S3-D save fields are optional and validated by repairState when present (finite numbers, booleans, dangling tank and creature ids dropped with a note); absent fields leave stateHash unchanged; SCHEMA_VERSION goes up once with the S3-D state (C-44), so an older build reports too_new instead of losing a research or stalling the rooms.",
+      "acceptance": [
+        "Crafted saves repair with notes; round trips keep the hash; an older build reports too_new.",
+        "core-persistence and rare-persistence stay green."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/persistence-05.test.ts",
+        "tests/sim/core-crafted-saves.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "S3D §10"
+      ],
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
     },
     {
       "id": "HARNESS-001",
