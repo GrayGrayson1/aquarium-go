@@ -40,6 +40,7 @@ import { FinancesPanel } from './finances/FinancesPanel';
 import { EncyclopediaPanel } from './encyclopedia/EncyclopediaPanel';
 import { LogPanel } from './log/LogPanel';
 import { ShowsPanel } from './shows/ShowsPanel';
+import { OperationsPanel } from './operations/OperationsPanel'; // lane:automation (chunk 5)
 import './panels.css';
 
 export type ManagedPanelId = Exclude<PanelId, 'settings' | 'dev'>;
@@ -55,6 +56,7 @@ export const PANEL_COMPONENTS: Record<ManagedPanelId, ComponentType> = {
   encyclopedia: EncyclopediaPanel,
   log: LogPanel,
   shows: ShowsPanel,
+  operations: OperationsPanel,
 };
 
 export const MANAGED_PANELS = Object.keys(PANEL_COMPONENTS) as ManagedPanelId[];

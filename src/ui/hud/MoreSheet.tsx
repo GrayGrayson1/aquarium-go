@@ -7,7 +7,7 @@
 import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
-import { ChevronRight, Lock, Settings, X } from 'lucide-react';
+import { ChevronRight, Gauge, Lock, Settings, X } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGameSelector } from '@/state/game';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
@@ -18,6 +18,7 @@ import { openPanel } from './Dock';
 import { MORE_ITEMS } from './TabBar';
 import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
 import type { NavDot } from '../common/notify';
+import { moreSubline } from '../common/ops'; // lane:automation (chunk 5)
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -41,6 +42,7 @@ export function MoreSheetBody({ isLocked, dots }: { isLocked: (it: (typeof MORE_
           <X size={18} aria-hidden />
         </button>
       </div>
+      <OperationsRow dot={dots.operations} />
       <div className="ag-more__grid">
         {MORE_ITEMS.map((it) => {
           const Icon = it.icon;
@@ -90,6 +92,38 @@ export function MoreSheetBody({ isLocked, dots }: { isLocked: (it: (typeof MORE_
         <ChevronRight size={18} aria-hidden className="ag-more__chev" />
       </button>
     </>
+  );
+}
+
+/**
+ * lane:automation (chunk 5, DESIGN-S3D §5.1; NAV-021) — Operations is More's first row: 60 px, aqua-tinted, the Gauge
+ * chip, "Operations" with a New chip and the copy deck's sub-line; its dot is red or amber (§5.4, no news dot).
+ */
+function OperationsRow({ dot }: { dot?: NavDot }) {
+  const sub = useGameSelector((g) => moreSubline(g), '');
+  return (
+    <button
+      type="button"
+      className="ag-more__ops"
+      data-testid="more-operations"
+      aria-label={dot ? `Operations — ${dot.label}` : undefined}
+      onClick={() => {
+        useShell.getState().set({ popover: null });
+        openPanel('operations', null);
+      }}
+    >
+      <span className="ag-more__chip ag-more__ops-chip">
+        <Gauge size={20} aria-hidden />
+        {dot && <AttnDot level={dot.level} className="ag-more__attn" testId="more-badge-operations" />}
+      </span>
+      <span className="ag-more__rowtext">
+        <span className="ag-more__rowtitle">
+          Operations <span className="ag-more__new">New</span>
+        </span>
+        <span className="ag-more__rowsub">{sub}</span>
+      </span>
+      <ChevronRight size={18} aria-hidden className="ag-more__chev" />
+    </button>
   );
 }
 

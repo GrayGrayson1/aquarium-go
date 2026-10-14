@@ -80,6 +80,7 @@ import { TankKeeperLine } from '../panels/visitors/TankKeeperLine'; // lane:staf
 import { tankGearIssues, type FitVerdict } from '@/sim/care/fit'; // lane:fit
 import { FitLine } from '../common/FitNote'; // lane:fit
 import { AutomationSection, AutoCleanNote } from './Automation'; // lane:ui-shell (chunk 3, 0.5 §10)
+import { tankChips } from '../common/tankChips'; // lane:automation (chunk 5)
 
 type TabId = TankCardTabId;
 
@@ -646,6 +647,7 @@ export function TankCard() {
         {/* back-of-house tanks are skipped by visitors (sim/facility/visitors.ts onDisplay), as the Visitors panel says */}
         {(tank.purpose ?? 'display') !== 'display' && <Badge tone="violet">{titleCase(tank.purpose)}</Badge>}
         {(tank.purpose ?? 'display') !== 'display' && <Badge title="Back of house — not shown to visitors">Off display</Badge>}
+        {game && <HeaderChips game={game} tank={tank} />}
       </div>
       {tank.cache.status !== 'good' && game && (
         <div className={clsx('ag-thead__reason', `is-${tank.cache.status}`)} data-testid="tank-status-reason">
@@ -698,4 +700,18 @@ export { WATER_CLASS_LABEL };
 /** The Stability meter's word (owner's wording, ADR-0022), on the same bands as its colour: 60+, 30–59, under 30. */
 export function stabilityWord(v: number): string {
   return v >= 60 ? 'Stable' : v >= 30 ? 'Sensitive' : 'Fragile';
+}
+
+/** lane:automation (chunk 5, DESIGN-S3D §8.2; AUTO-041) — the header's Auto-feed and Auto-clean chips (icon plus word). */
+function HeaderChips({ game, tank }: { game: GameState; tank: Tank }) {
+  const chips = tankChips(game, tank).filter((c) => c.id === 'auto-feed' || c.id === 'auto-clean');
+  return (
+    <>
+      {chips.map((c) => (
+        <Badge key={c.key} tone={c.tone === 'aqua' ? 'aqua' : c.tone === 'watch' ? 'watch' : 'neutral'}>
+          <span data-testid={`tank-chip-${c.id}`}>{c.word}</span>
+        </Badge>
+      ))}
+    </>
+  );
 }

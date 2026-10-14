@@ -1048,7 +1048,9 @@ function stepResearch(state: GameState, dt: number): void {
   bumpCounter(state, 'research_done');
   addMastery(state, def.track, def.xp);
   addReputation(state, 5, '');
-  emitEvent(state, { kind: 'celebrate', text: `Research complete: ${def.name}!`, toast: true });
+  // lane:automation (chunk 5, DESIGN-S3D §11) — the Operations Desk says where its tools are
+  const where = def.id === 'operations_desk' ? ' Problems first, weekly money, Today and Hold all are in Operations.' : '';
+  emitEvent(state, { kind: 'celebrate', text: `Research complete: ${def.name}!${where}`, toast: true });
   for (const k of def.grants) unlock(state, k);
 }
 

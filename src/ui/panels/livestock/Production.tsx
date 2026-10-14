@@ -33,7 +33,15 @@ import { act } from '../common/act';
 import { Bar, EmptyState, Seg, Tile } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { NewLine, PairPicker, SortSheet, TankPicker } from './ProductionSetup';
+import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
 import './production.css';
+
+const NUMBER_WORDS: Record<number, string> = { 2: 'two', 3: 'three', 4: 'four', 5: 'five', 6: 'six', 7: 'seven', 8: 'eight' };
+
+/** lane:automation (chunk 5) — the Production tab's dot: a line held up (waiting for room, not yet decided) or broken. */
+export function productionDot(g: GameState): 'watch' | null {
+  return productionLines(g).some((l) => (l.waiting && g.automation?.lineWait?.[l.id] === undefined) || !!l.broken) ? 'watch' : null;
+}
 
 const gallons = (g: GameState, tankId: string | undefined) => (tankId ? TANK_TIER_BY_ID[g.tanks[tankId]?.tierId ?? '']?.gallons : undefined);
 
@@ -68,7 +76,13 @@ export function ProductionTab({ g, sel, onSelect }: { g: GameState; sel: string 
       {creating ? (
         <NewLine g={g} onStarted={(id) => onSelect(id)} />
       ) : current ? (
-        <LineDetail g={g} line={current} onEnded={() => onSelect(null)} />
+        <>
+          <LineDetail g={g} line={current} onEnded={() => onSelect(null)} />
+          {/* lane:automation (chunk 5, DESIGN-S3D §8.6) — the overview of every line is Operations' */}
+          <button type="button" className="pn-link" data-testid="production-ops-link" onClick={() => go({ kind: 'panel', panel: 'operations', tab: 'lines' })}>
+            Status, bottlenecks and routes for {lines.length === 1 ? 'your line' : `all ${NUMBER_WORDS[lines.length] ?? lines.length} lines`} are in Operations › Lines. <ChevronRight size={14} aria-hidden />
+          </button>
+        </>
       ) : (
         <EmptyState
           icon={<Factory size={26} />}
@@ -86,7 +100,8 @@ export function ProductionTab({ g, sel, onSelect }: { g: GameState; sel: string 
   );
 }
 
-function StatusWord({ v }: { v: LineView }) {
+/** The line's status word (Running, Paused by you, Paused); Operations › Lines shows it too. */
+export function StatusWord({ v }: { v: LineView }) {
   if (v.status === 'running')
     return (
       <Badge tone="good">
@@ -380,7 +395,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
  * "Full · 12/12", "busy to Day 44"). A tank holding the line up has an amber border, a warning icon and its tag (§13:
  * never colour or an icon alone).
  */
-function RouteStrip({ g, line, v }: { g: GameState; line: ProductionLine; v: LineView }) {
+export function RouteStrip({ g, line, v }: { g: GameState; line: ProductionLine; v: LineView }) {
   const b = line.broken;
   const gone = (ref: LineStage) => !!b && !b.moved && b.ref === ref;
   const keeperFemale = !!b?.moved && b.ref === 'mother' && !!line.pair.restTankId; // her place is her resting tank, not this one
@@ -449,8 +464,11 @@ function Rule({ title, sub, checked, onChange, testId, lineName }: { title: stri
   );
 }
 
-/** Add a quarantine tank (ADR-0025 decision 5, ADR-0030 decision 3): the real kit, seeded media optional. */
-function AddQuarantine({ g, line, onClose }: { g: GameState; line: ProductionLine; onClose: () => void }) {
+/**
+ * Add a quarantine tank (ADR-0025 decision 5, ADR-0030 decision 3): the real kit, seeded media optional. Also opened by
+ * Operations › Problems (lane:automation, chunk 5), which hears about the purchase through `onAdded`.
+ */
+export function AddQuarantine({ g, line, onClose, onAdded }: { g: GameState; line: ProductionLine; onClose: () => void; onAdded?: () => void }) {
   const [seeded, setSeeded] = useState(true);
   const kit = quarantineKit(g, line.id);
   if (!kit) return null;
@@ -474,6 +492,7 @@ function AddQuarantine({ g, line, onClose }: { g: GameState; line: ProductionLin
             onClick={() => {
               const r = act((d) => addQuarantineTank(d, line.id, seeded), { quiet: true });
               if (!r?.ok) return;
+              onAdded?.();
               onClose();
               useUI.getState().toast(`${r.tankName} · ${r.tierName}`, 'success', {
                 label: `Set up · ${formatMoney(r.price ?? total)}`,

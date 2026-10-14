@@ -27,7 +27,7 @@ type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
 const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
 
 const TRACK_LABEL: Record<MasteryTrack, string> = { husbandry: 'Husbandry', breeding: 'Breeding', aquascaping: 'Aquascaping', marine: 'Marine', business: 'Business', exhibition: 'Exhibition' };
-const BRANCH_LABEL: Record<string, string> = { gear: 'Life support', freshwater: 'Freshwater', breeding: 'Breeding', marine: 'Marine', exhibition: 'Exhibition' };
+const BRANCH_LABEL: Record<string, string> = { gear: 'Life support', freshwater: 'Freshwater', breeding: 'Breeding', marine: 'Marine', exhibition: 'Exhibition', facility: 'Facility' }; // facility: lane:automation (chunk 5, DESIGN-S3D §8.8)
 
 export function ResearchPanel() {
   const g = usePanelGame(900);
@@ -202,7 +202,8 @@ const grantLabel = (k: string): string => safe(() => unlockLabel(k), UNLOCK_KEYS
 function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boolean }) {
   const d = r.def;
   const status = r.status;
-  const reqs = status === 'locked' ? d.requires.map((c) => safe(() => evalCond(g, c, {}), { met: false, current: 0, target: 1, label: c.type })) : [];
+  // lane:automation (chunk 5, INTAKE C-40) — Available shows its requirements too, ticked
+  const reqs = status === 'locked' || status === 'available' ? d.requires.map((c) => safe(() => evalCond(g, c, {}), { met: false, current: 0, target: 1, label: c.type })) : [];
   const owned = !!r.alreadyOwned;
   const fresh = r.grantsNew ?? d.grants;
   const cost = typeof r.cost === 'number' ? r.cost : d.cost;
@@ -232,7 +233,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
                 </Chip>
               ))}
         </div>
-        {status === 'locked' && reqs.length > 0 && <Requirements items={reqs} compact />}
+        {(status === 'locked' || status === 'available') && reqs.length > 0 && <Requirements items={reqs} compact />}
       </div>
       <div className="pn-research__side">
         {status === 'done' && owned && <span className="pn-tiny pn-muted pn-research__owned">No study needed</span>}

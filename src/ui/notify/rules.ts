@@ -20,8 +20,9 @@ import type { GameEvent } from '@/types';
 import { fmtMoney as formatMoney } from '@/sim/economy/util'; // the log's own money format ("$120", "$4.50")
 import { untilTime } from '../panels/common/format';
 
-export type NotifyCategory = 'rare' | 'care' | 'market' | 'breeding' | 'shows';
-export const NOTIFY_CATEGORIES: readonly NotifyCategory[] = ['rare', 'care', 'market', 'breeding', 'shows'];
+export type NotifyCategory = 'rare' | 'care' | 'market' | 'breeding' | 'shows' | 'auto';
+/** lane:automation (chunk 5, DESIGN-S3D §8.9; NOTIFY-012) — the sixth, Automation (`auto`): shortages and paused lines. */
+export const NOTIFY_CATEGORIES: readonly NotifyCategory[] = ['rare', 'care', 'market', 'breeding', 'shows', 'auto'];
 
 export interface PlannedNotification {
   category: NotifyCategory;
@@ -40,6 +41,8 @@ export interface RuleLookups {
   /** The game hour now ("It leaves in 14 h"). */
   hour: number;
   tankName(id: string): string | null;
+  /** lane:automation (chunk 5) — the Operations Desk is researched: Automation notifications open Problems, else the problem's tab. */
+  desk?: boolean;
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
@@ -140,6 +143,20 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
       const parts = [prize ? `${formatMoney(prize)} prize` : null, ribbon ? `${ribbon} ribbon` : null].filter(Boolean);
       return make('shows', `${show}: ${name} placed ${place}`, parts.length ? `${parts.join(' · ')}.` : e.text, '#/shows/results');
     }
+    // lane:automation (chunk 5, DESIGN-S3D §8.9; ADR-0026 decision 9) — from the Desk they open Problems, before it the tab
+    case 'supply_out': {
+      const body = str(v.body);
+      if (!body || v.supply !== 'salt') return null;
+      return make('auto', 'Out of salt mix', body, look.desk ? '#/operations/issues' : '#/operations/water');
+    }
+    case 'line_paused': {
+      const line = str(v.line);
+      const tank = str(v.tank);
+      const pair = str(v.pair);
+      const day = num(v.day);
+      if (!line || !tank || !pair) return null;
+      return make('auto', `${line} paused`, `${tank} is full, so ${pair} wait.${day !== null ? ` It restarts by itself on Day ${day}.` : ''}`, look.desk ? '#/operations/issues' : '#/operations/lines');
+    }
     default:
       break;
   }
@@ -161,7 +178,7 @@ export interface NotifyPrefs {
 
 /** §12.2: every category on except Shows; quiet hours on, 10 PM to 8 AM. */
 export const DEFAULT_NOTIFY_PREFS: NotifyPrefs = Object.freeze({
-  categories: Object.freeze({ rare: true, care: true, market: true, breeding: true, shows: false }),
+  categories: Object.freeze({ rare: true, care: true, market: true, breeding: true, shows: false, auto: true }),
   quiet: Object.freeze({ on: true, start: 22, end: 8 }),
 }) as NotifyPrefs;
 

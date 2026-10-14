@@ -102,7 +102,7 @@ export function notificationsFor(events: readonly GameEvent[], env: DeliveryEnv)
   return out;
 }
 
-export const lookupsFor = (g: GameState): RuleLookups => ({ hour: g.clock.hour, tankName: (id) => g.tanks[id]?.name ?? null });
+export const lookupsFor = (g: GameState): RuleLookups => ({ hour: g.clock.hour, tankName: (id) => g.tanks[id]?.name ?? null, desk: g.progress.unlocked.includes('operations_desk') });
 
 const pageAway = (): boolean => typeof document !== 'undefined' && document.visibilityState === 'visible' && !document.hasFocus();
 const localMinutes = (): number => {

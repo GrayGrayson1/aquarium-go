@@ -19,6 +19,7 @@ export type PanelId =
   | 'settings'
   | 'log'
   | 'shows'
+  | 'operations' // lane:automation (chunk 5, DESIGN-S3D §5; AUTO-030) — a core change, named in the commit
   | 'dev';
 export type ToolId = 'none' | 'feed' | 'target_feed' | 'tap' | 'enrich' | 'decor_place' | 'decor_move' | 'tank_place';
 

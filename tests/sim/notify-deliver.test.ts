@@ -155,7 +155,7 @@ describe('NOTIFY-007: "Turn on"', () => {
     expect(await requestNotifications()).toBe('granted');
     expect(mem.requests).toBe(1);
     expect(useNotifyPermission.getState().permission).toBe('granted');
-    expect(useNotifyPrefs.getState().categories).toEqual({ rare: true, care: true, market: true, breeding: true, shows: false });
+    expect(useNotifyPrefs.getState().categories).toEqual({ rare: true, care: true, market: true, breeding: true, shows: false, auto: true }); // chunk 5: Automation, on by default (NOTIFY-012)
     expect(useNotifyPrefs.getState().quiet.on).toBe(true);
     const t = useUI.getState().toasts.at(-1)!;
     expect(t).toMatchObject({ kind: 'info', label: 'Notifications on', text: 'You’ll hear about rare stock, care and sales', detail: 'Choose exactly what below.' });
@@ -205,7 +205,7 @@ describe('NOTIFY-002: preferences live on the device, never in the save', () => 
     vi.stubGlobal('localStorage', store);
     useNotifyPrefs.getState().setCategory('shows', true);
     useNotifyPrefs.getState().setQuiet(false);
-    expect(JSON.parse(store.data.get(NOTIFY_PREFS_KEY)!)).toEqual({ categories: { rare: true, care: true, market: true, breeding: true, shows: true }, quiet: { on: false, start: 22, end: 8 } });
+    expect(JSON.parse(store.data.get(NOTIFY_PREFS_KEY)!)).toEqual({ categories: { rare: true, care: true, market: true, breeding: true, shows: true, auto: true }, quiet: { on: false, start: 22, end: 8 } }); // chunk 5: + Automation
     useNotifyPrefs.setState({ categories: normalizePrefs(undefined).categories, quiet: normalizePrefs(undefined).quiet });
     useNotifyPrefs.getState().reload();
     expect(useNotifyPrefs.getState().categories.shows).toBe(true);

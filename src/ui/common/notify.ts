@@ -14,6 +14,7 @@
  *    entries: progression (`progress.scan.logSeq`), exhibit scoring, the welcome-back card and duplicate checks all
  *    scan the log. The full history stays in the Log panel.
  */
+import { opsDot } from './ops'; // lane:automation (chunk 5)
 import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
 import type { Creature, DecorInstance, EquipmentInstance, GameEvent, GameState, NotifyState, Tank } from '@/types';
 import type { StatusLevel } from '@/types/reports';
@@ -501,6 +502,9 @@ export function navDots(g: GameState, items: { id: string; label: string; lock?:
     if (rare) out.market = rare;
   }
   if (researchNews(g)) out.research = { level: 'new', label: 'Research finished — choose your next project', target: null };
+  // lane:automation (chunk 5, DESIGN-S3D §5.4) — red when anything needs you, amber when worth a look or held (no news)
+  const ops = opsDot(g);
+  if (ops) out.operations = { level: ops.level, label: ops.label, target: null };
   for (const it of items) if (!out[it.id] && featureUnseen(g, it.id, it.lock)) out[it.id] = { level: 'new', label: `New: ${it.label} just unlocked`, target: null };
   return out;
 }

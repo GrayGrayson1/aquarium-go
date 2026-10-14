@@ -27,6 +27,7 @@ import { Button } from '../kit';
 import { go } from '../nav/router'; // lane:notify (chunk 3)
 import { useNotifyPermission } from '../notify/deliver'; // lane:notify (chunk 3)
 import { eventLink } from './eventLinks'; // lane:notify
+import { AutomationSection } from './AlertsAutomation'; // lane:automation (chunk 5)
 
 /**
  * Failed equipment in a tank, listed under the bell until it is repaired or replaced (its log line scrolls away in a
@@ -302,6 +303,7 @@ export function AlertsPopover() {
       exit={{ opacity: 0, y: -6, scale: 0.98 }}
       transition={{ duration: 0.2 }}
     >
+      <AutomationSection game={game} />
       <div className="ag-popover__section">
         <div className="ag-popover__title">Tanks</div>
         <TankAlerts game={game} />

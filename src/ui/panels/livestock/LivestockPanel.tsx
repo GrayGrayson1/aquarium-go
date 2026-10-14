@@ -24,7 +24,8 @@ import { orderedTanks, ownedCreatures, valueOf, isListed, speciesOf, creatureCon
 import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_LABEL, plural, untilTime, pct, nameList } from '../common/format';
 import { SpeciesCareStrip } from '../encyclopedia/SpeciesGuide'; // lane:guide
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
-import { ProductionTab } from './Production'; // lane:production (chunk 4)
+import { ProductionTab, productionDot } from './Production'; // lane:production (chunk 4)
+import { AttnDot } from '@/ui/hud/AttnDot'; // lane:automation (chunk 5)
 
 type Tab = 'animals' | 'young' | 'past' | 'production';
 type StatusFilter = 'all' | 'attention' | 'listed' | 'favorites' | 'juveniles';
@@ -174,7 +175,7 @@ export function LivestockPanel() {
               { id: 'animals', label: <>Animals <span className="pn-seg__count">{data.alive.length}</span></> },
               { id: 'young', label: <>Eggs & fry <span className={clsx('pn-seg__count', data.clutches.length > 0 && 'pn-seg__count--hot')}>{data.clutches.length}</span></> },
               { id: 'past', label: 'Past residents' },
-              { id: 'production', label: 'Production' },
+              { id: 'production', label: <>Production{productionDot(g) && <AttnDot inline level="watch" label="A line is held up" testId="livestock-production-dot" />}</> }, // lane:automation (chunk 5)
             ]}
           />
           {tab === 'animals' && (

@@ -8,7 +8,7 @@
  */
 import clsx from 'clsx';
 import { useEffect, useRef, useState, type ComponentType } from 'react';
-import { Box, Fish, Store, Users, Hammer, FlaskConical, Wallet, BookOpen, Settings, Lock, Wrench, type LucideProps } from 'lucide-react';
+import { Box, Fish, Store, Users, Hammer, FlaskConical, Wallet, BookOpen, Gauge, Lock, Wrench, type LucideProps } from 'lucide-react';
 import { useUI, type PanelId } from '@/state/ui';
 import { useGameSelector, getGame } from '@/state/game';
 import { tutorialStepId } from '@/sim/facility';
@@ -36,10 +36,12 @@ export const DOCK_ITEMS: DockItem[] = [
   { id: 'visitors', label: 'Visitors', icon: Users, lock: 'visitors', hint: 'Grow your reputation to open your doors to visitors.' },
   { id: 'shows', label: 'Shows', icon: Trophy, lock: 'shows', hint: 'Finish the guide (or reach 20 reputation) to enter club shows.' }, // lane:shows
   { id: 'build', label: 'Build', icon: Hammer },
+  // lane:automation (chunk 5, DESIGN-S3D §5.1, ADR-0026 decision 1) — Operations right after Build; Settings left the
+  // dock for the gear in the top bar (hud-settings), in every build
+  { id: 'operations', label: 'Operations', icon: Gauge },
   { id: 'research', label: 'Research', icon: FlaskConical },
   { id: 'finances', label: 'Finances', icon: Wallet },
   { id: 'encyclopedia', label: 'Encyclopedia', icon: BookOpen },
-  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 /** While the guide is on a step that needs a particular panel section, open straight to it. */

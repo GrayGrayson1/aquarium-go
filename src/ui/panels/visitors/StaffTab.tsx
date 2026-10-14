@@ -7,11 +7,14 @@ import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Users, UserPlus, Wallet, Fish, Package, Presentation, TriangleAlert, Clock, Lock, Shuffle, Utensils, Info, Sparkles, CircleCheck } from 'lucide-react';
 import type { GameState, StaffMember, StaffRole } from '@/types';
-import { Button, Slider, formatMoney } from '@/ui/kit';
+import { Button, Slider, Toggle, formatMoney } from '@/ui/kit';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { STAFF_NOTICE_DAYS, STAFF_ROLES, STAFF_ROLE_ORDER, STAFF_TRAITS, STAFF_XP_PER_LEVEL, STOCK_BUDGET, skillStars } from '@/data/staff';
-import { getFacilityLevel } from '@/data/facilities';
-import { dayOf } from '@/sim/time';
+import { getFacilityLevel, nextFacilityLevelDef } from '@/data/facilities';
+import { dayOf, formatClock } from '@/sim/time';
+import { setStockOrders } from '@/sim/automation'; // lane:automation (chunk 5)
+import { nextStockCheck, planPurchases, plannedOrders } from '@/sim/staff/work'; // lane:automation (chunk 5)
+import { SALT_PRICE_PER_KG } from '@/sim/economy'; // lane:automation (chunk 5)
 import {
   assignTank,
   autoAssignAll,
@@ -375,18 +378,53 @@ function BudgetControl({ g, m }: { g: GameState; m: StaffMember }) {
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => edit((d) => void setStockBudget(d, x)), 300);
   };
+  // lane:automation (chunk 5, DESIGN-S3D §8.7, ADR-0026 decision 10) — any whole-dollar amount up to the level's maximum,
+  // what it covers at the next check, and the orders switch (which keeps the budget)
+  const lvl = getFacilityLevel(g.facility.level);
+  const next = nextFacilityLevelDef(g.facility.level);
+  const nextMax = next ? STOCK_BUDGET[next.id]?.max : undefined;
+  const cap = v >= max ? (next && nextMax ? `the most at a ${lvl.name}; up to ${formatMoney(nextMax)} at a ${next.name}` : `the most at a ${lvl.name}`) : `up to ${formatMoney(max)} at a ${lvl.name}`;
   return (
     <div className="st-budget" data-testid="staff-budget">
       <div className="st-assign__head">
         <span className="pn-small">
-          Daily budget <b className="st-budget__v">{v === 0 ? 'Paused' : `${formatMoney(v)}/day`}</b>
+          Daily stock budget <b className="st-budget__v">{v === 0 ? 'Paused' : `${formatMoney(v)}/day`}</b>
         </span>
-        <span className="pn-tiny pn-muted">{formatMoney(spent)} spent today</span>
+        <Toggle checked={!st.ordersOff} onChange={(on) => edit((d) => void setStockOrders(d, on))} label={`${first(m)}’s orders`} testId="staff-orders" />
       </div>
-      <Slider value={v} min={0} max={max} step={5} onChange={commit} label={`${m.name}’s daily stock budget`} />
+      <Slider value={v} min={0} max={max} step={1} onChange={commit} label={`${m.name}’s daily stock budget`} />
+      <span className="pn-tiny pn-muted">
+        Spent today: {formatMoney(spent)} of {formatMoney(v)} · {cap}
+      </span>
+      <BudgetStatus g={g} m={m} budget={v} />
       <p className="pn-tiny pn-muted" style={{ margin: 0 }}>
         Keeps a few days of every food your animals eat, and salt for marine water changes. Orders show in Finances as “ordered by {first(m)}”.
       </p>
+    </div>
+  );
+}
+
+/**
+ * lane:automation (chunk 5, DESIGN-S3D §8.7; AUTO-046) — while a salt order is wanted: what the budget covers at the
+ * next check (green), or what doesn't fit and the amount that would cover it (amber). Between the two the stock manager
+ * buys what fits in 5 kg steps (§9.6). The design's words name Rosa and "her"; this names whoever the manager is.
+ */
+function BudgetStatus({ g, m, budget }: { g: GameState; m: StaffMember; budget: number }) {
+  const wanted = safe(() => plannedOrders(g, m).find((o) => o.kind === 'salt'), undefined);
+  if (!wanted?.kg || g.staff?.ordersOff) return null;
+  const all = safe(() => planPurchases(g, m, Infinity, Infinity), null);
+  if (!all) return null;
+  const food = all.buys.filter((b) => b.kind !== 'salt').reduce((a, b) => a + b.price, 0);
+  const saltPrice = wanted.kg * SALT_PRICE_PER_KG;
+  const need = Math.ceil(food + saltPrice);
+  const f = safe(() => nextStockCheck(g), null);
+  const at = f ? formatClock(f.at) : '9:00 AM';
+  const ok = budget >= need;
+  return (
+    <div className={`pn-small pn-tone-${ok ? 'good' : 'watch'}`} data-testid="staff-budget-status">
+      {ok
+        ? `Covers food (${formatMoney(food)}) and a ${wanted.kg} kg order of salt mix (${formatMoney(saltPrice)}): ${first(m)} buys it at the ${at} check.`
+        : `Food takes ${formatMoney(food)} of it, so salt mix doesn’t fit (5 kg is ${formatMoney(5 * SALT_PRICE_PER_KG)}). ${formatMoney(need)} covers food and the ${wanted.kg} kg order.`}
     </div>
   );
 }

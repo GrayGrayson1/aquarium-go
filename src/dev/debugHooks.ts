@@ -48,6 +48,7 @@ import * as facility from '@/sim/facility';
 import * as lifeActions from '@/sim/life/actions';
 import * as compat from '@/sim/compat';
 import * as production from '@/sim/production'; // lane:production (chunk 4)
+import * as automation from '@/sim/automation'; // lane:automation (chunk 5)
 import { facilityOverflow } from '@/render/camera/facilityOverflow';
 import { navBootPending } from '@/ui/nav/router';
 
@@ -111,6 +112,14 @@ const ACTIONS: Record<string, AnyFn> = {
   setLineTank: production.setLineTank as AnyFn,
   addQuarantineTank: production.addQuarantineTank as AnyFn,
   endLine: production.endLine as AnyFn,
+  // deep automation (chunk 5)
+  setManualMode: automation.setManualMode as AnyFn,
+  setStockOrders: automation.setStockOrders as AnyFn,
+  waitForLine: automation.waitForLine as AnyFn,
+  upgradePrep: automation.upgradePrep as AnyFn,
+  addReservoir: automation.addReservoir as AnyFn,
+  addCulture: automation.addCulture as AnyFn,
+  buyEggs: economy.buyEggs as AnyFn,
 };
 
 /** Read-only sim queries callable via __AQ.query(name, ...args). */

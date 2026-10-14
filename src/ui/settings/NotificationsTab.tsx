@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { Bell, BellOff, BellRing, Send, Sparkles, HeartPulse, Gavel, Egg, Trophy, Moon, Ban } from 'lucide-react';
+import { Bell, BellOff, BellRing, Send, Sparkles, HeartPulse, Gavel, Egg, Trophy, Moon, Ban, Gauge } from 'lucide-react';
 import { sfx } from '@/audio/sfx';
 import { Button, Section, Toggle } from '../kit';
 import { requestNotifications, sendTestNotification, useNotifyPermission, refreshNotifyPermission, TEST_DELAY_MS } from '../notify/deliver';
@@ -30,6 +30,8 @@ export const NOTIFY_CATEGORY_ROWS: { id: NotifyCategory; title: string; sub: str
   { id: 'market', title: 'Market', sub: 'New bids, sales and auctions ending', icon: Gavel },
   { id: 'breeding', title: 'Breeding', sub: 'Eggs laid and fry hatched', icon: Egg },
   { id: 'shows', title: 'Shows', sub: 'Results from shows you entered', icon: Trophy },
+  // lane:automation (chunk 5, DESIGN-S3D §8.9; the subtitle is ADR-0026 decision 11's)
+  { id: 'auto', title: 'Automation', sub: 'Shortages and paused lines', icon: Gauge },
 ];
 
 const STATUS_ICON: Record<NotifyPermission, typeof Bell> = { default: Bell, granted: BellRing, denied: BellOff, unsupported: Ban };
