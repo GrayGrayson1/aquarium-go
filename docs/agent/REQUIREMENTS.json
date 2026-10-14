@@ -317,11 +317,13 @@
       "tasks": [],
       "tests": [
         "new: tests/sim/ui-copy-05.test.ts (proposed)",
-        "new: tests/e2e/production.spec.ts (proposed)"
+        "new: tests/e2e/production.spec.ts (proposed)",
+        "tests/sim/production-ui.test.ts",
+        "tests/e2e/production.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "Unblocked 2026-10-11: the owner approved DESIGN-S3D SPEC §8.6 and §8.6.1 as the production screens (ADR-0025 decision 1), which settle how several lines are named and how per-line ids are formed (§8.6.1 \"Names and ids\"). Chunk 4.",
+      "status": "GREEN",
+      "note": "Unblocked 2026-10-11: the owner approved DESIGN-S3D SPEC §8.6 and §8.6.1 as the production screens (ADR-0025 decision 1), which settle how several lines are named and how per-line ids are formed (§8.6.1 \"Names and ids\"). Chunk 4. Chunk 4 (2026-10-14): The Production copy is 0.5 §16 as DESIGN-S3D §8.6, §8.6.1 and §11 amend it, plus ADR-0030's; per-line ids per DESIGN-S3D §14 (production-line-<lineId>, production-new-*), listed in docs/TEST_IDS.md. Tests: production-ui (copy asserted exactly), e2e production.spec.",
       "designSections": [
         "§16",
         "§19",
@@ -1878,8 +1880,8 @@
         "new: tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). The production part is chunk 4's (ADR-0025), the overview chunk 5's.",
+      "status": "IN_PROGRESS",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). The production part is chunk 4's (ADR-0025), the overview chunk 5's. Chunk 4 (2026-10-14): The production part: multiple lines (PROD-002), routing (PROD-006), sorting (PROD-013), quarantine (PROD-007), keepers (PROD-008, PROD-011), listing (PROD-012) and pausing (PROD-010) are GREEN. The operations overview is chunk 5's.",
       "designSections": [
         "§11.1",
         "§11.3"
@@ -1922,7 +1924,8 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)",
         "tests/sim/core-determinism.test.ts",
         "tests/sim/fix-core-step-invariance.test.ts",
-        "tests/sim/core-determinism-guard.test.ts"
+        "tests/sim/core-determinism-guard.test.ts",
+        "tests/sim/automation-invariants.test.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
@@ -1930,7 +1933,7 @@
         "§10.3",
         "§11.3"
       ],
-      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the automation tests import no React or DOM (src/sim, src/data, src/types, plus src/persistence for the offline and hash checks)). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases. Not met as written: A1 asks for the same stateHash across step splits, which the water chemistry can’t give (it is integrated in steps); the tests hold job counts, run hours and stock exactly and water values within stated tolerances. Owner question A7 in docs/agent/OWNER_QUESTIONS.md (design-intake-3 M7). Owner (ADR-0024 decision 7, 2026-10-11, A7): accepted. Across step splits, job counts, run hours and stock units are exact and water values agree within stated tolerances (chunk 3: 0.15 °C, 0.05 pH, 3 % of nitrate); A1's identical stateHash holds for identical splits. Chunks 4 and 5 state their own tolerances the same way."
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the automation tests import no React or DOM (src/sim, src/data, src/types, plus src/persistence for the offline and hash checks)). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases. Not met as written: A1 asks for the same stateHash across step splits, which the water chemistry can’t give (it is integrated in steps); the tests hold job counts, run hours and stock exactly and water values within stated tolerances. Owner question A7 in docs/agent/OWNER_QUESTIONS.md (design-intake-3 M7). Owner (ADR-0024 decision 7, 2026-10-11, A7): accepted. Across step splits, job counts, run hours and stock units are exact and water values agree within stated tolerances (chunk 3: 0.15 °C, 0.05 pH, 3 % of nitrate); A1's identical stateHash holds for identical splits. Chunks 4 and 5 state their own tolerances the same way. Chunk 4 (2026-10-14): Production lines added: random partitions give the same moves, sorts and listings with counts exact and hours within one game hour (the breeding sim raises a brood inside a sub-step), offline equals live, and the line code is in the determinism guard's scope (automation-invariants). The S3-D chains are chunk 5's."
     },
     {
       "id": "AUTO-017",
@@ -1951,7 +1954,7 @@
       "designSections": [
         "§10.3"
       ],
-      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: money moves only through the ledger, salt only through the changes, each the amount it needs; a skipped change leaves the out-of-salt notice). Chunks 4 and 5 add theirs."
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: money moves only through the ledger, salt only through the changes, each the amount it needs; a skipped change leaves the out-of-salt notice). Chunks 4 and 5 add theirs. Chunk 4 (2026-10-14): Production lines added: money moves only through the ledger and animals appear only by being raised (automation-invariants); a listing a line can't make is reported once (\"{Line}: {n} {young} couldn't be listed: {reason}\")."
     },
     {
       "id": "AUTO-018",
@@ -1974,7 +1977,7 @@
         "§10.3",
         "§15"
       ],
-      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer: lastAutoChangeHour / lastAutoScrapeHour are optional lane-tagged save fields validated by repairState (persistence-05); a re-stepped window does nothing; a save without markers runs once at the next lights-on (automation-invariants). Chunks 4 and 5 add theirs."
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer: lastAutoChangeHour / lastAutoScrapeHour are optional lane-tagged save fields validated by repairState (persistence-05); a re-stepped window does nothing; a save without markers runs once at the next lights-on (automation-invariants). Chunks 4 and 5 add theirs. Chunk 4 (2026-10-14): Production lines added: production.lastHour is the line step's marker (optional, validated by repairState); an hour stepped again does nothing more (automation-invariants)."
     },
     {
       "id": "AUTO-019",
@@ -1988,15 +1991,16 @@
       "tasks": [],
       "tests": [
         "new: tests/sim/automation-invariants.test.ts (proposed)",
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.1",
         "§11.3"
       ],
-      "note": "Needs owner or reviewer confirmation: master §9 S3-D says \"preserve protected/Prismatic animals\" without defining \"protected\"; whether the existing creature.favorite flag counts is UNKNOWN and needs an owner decision in the S3 contract."
+      "note": "Needs owner or reviewer confirmation: master §9 S3-D says \"preserve protected/Prismatic animals\" without defining \"protected\"; whether the existing creature.favorite flag counts is UNKNOWN and needs an owner decision in the S3 contract. Chunk 4 (2026-10-14): Production lines move animals only into their own validated tanks (moveCreature/moveClutch keep the environment gate; quarantine and keep moves need a place for each animal; a brood moves only with a place for a young one), and never list, sell or move out of protection a Prismatic, a favourite or a keep-tank animal (\"protected\", ADR-0025 decision 4). The S3-D chains move no animals. Tests: production-line."
     },
     {
       "id": "AUTO-020",
@@ -2009,14 +2013,15 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/automation-invariants.test.ts (proposed)"
+        "new: tests/sim/automation-invariants.test.ts (proposed)",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3"
       ],
-      "note": "Needs owner or reviewer confirmation: the design gives no copy for refusing such a line; the wording comes from DESIGN-S3C-LINES or the S3 contract."
+      "note": "Needs owner or reviewer confirmation: the design gives no copy for refusing such a line; the wording comes from DESIGN-S3C-LINES or the S3 contract. Chunk 4 (2026-10-14): After every step of a two-line run, no creature is in two stages (pair, batch) and starting a line with a parent already in one is refused. Tests: production-line. Review fix: a creature that becomes a line's parent leaves every line's batches (the parent role wins), and costs count it for that line only (production-line: two lines, one tank, shares sum to at most 1)."
     },
     {
       "id": "AUTO-021",
@@ -2029,11 +2034,13 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/automation-invariants.test.ts (proposed)"
+        "new: tests/sim/automation-invariants.test.ts (proposed)",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 4 (2026-10-14): After every step of a two-line run, no creature is in two active listings; a line lists only animals with status alive (never one the player listed). Tests: production-line."
     },
     {
       "id": "AUTO-022",
@@ -2086,13 +2093,15 @@
       "tasks": [],
       "tests": [
         "new: tests/sim/production-line.test.ts",
-        "new: tests/sim/automation-invariants.test.ts (proposed)"
+        "new: tests/sim/automation-invariants.test.ts (proposed)",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): Each brood is moved once (line.routed), only by the line whose pair laid it. Tests: production-line (Raise)."
     },
     {
       "id": "AUTO-025",
@@ -2105,13 +2114,15 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/automation-invariants.test.ts (proposed)"
+        "new: tests/sim/automation-invariants.test.ts (proposed)",
+        "tests/sim/automation-invariants.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): A quarantine ends in exactly one listing per life-stage group, and an hour stepped again creates none (automation-invariants)."
     },
     {
       "id": "AUTO-026",
@@ -2126,12 +2137,13 @@
       "tests": [
         "new: tests/sim/automation-invariants.test.ts (proposed)",
         "new: tests/sim/persistence-05.test.ts",
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [],
-      "note": "Chunk 3 (2026-10-11): A1 met for the Auto Water Changer (a save and load right after the change and scrape ends with the uninterrupted run's stateHash, automation-invariants). A2 (a production line saved mid-quarantine) is chunk 4's."
+      "note": "Chunk 3 (2026-10-11): A1 met for the Auto Water Changer (a save and load right after the change and scrape ends with the uninterrupted run's stateHash, automation-invariants). A2 (a production line saved mid-quarantine) is chunk 4's. Chunk 4 (2026-10-14): A2 met: a line saved mid-quarantine resumes with the same time left and ends where the uninterrupted run does (persistence-05). The S3-D jobs are chunk 5's."
     },
     {
       "id": "AUTO-027",
@@ -2145,13 +2157,15 @@
       "tasks": [],
       "tests": [
         "new: tests/sim/persistence-05.test.ts",
-        "new: tests/sim/automation-invariants.test.ts (proposed)"
+        "new: tests/sim/automation-invariants.test.ts (proposed)",
+        "tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§15"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): A1 met: repairState on a line with a missing parent or tank marks it and creates no animal, listing or sale (persistence-05). A2 (recovering from the backup slot) is checked as continuing from a saved copy; the S3-D jobs come with chunk 5. Status set to IN_PROGRESS: A1 is met for lines; A2 (recovering from the backup slot) has no test of its own yet."
     },
     {
       "id": "AUTO-028",
@@ -2452,10 +2466,12 @@
       "tasks": [],
       "tests": [
         "new: tests/sim/production-line.test.ts",
-        "scripts/agent/requirements-audit.mjs (umbrella rule)"
+        "scripts/agent/requirements-audit.mjs (umbrella rule)",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 4 (2026-10-14): Every child is closed (PROD-002 to PROD-021 GREEN, PROD-018 SUPERSEDED); two betta lines run side by side without sharing a creature, brood or listing (production-line)."
     },
     {
       "id": "PROD-002",
@@ -2470,15 +2486,18 @@
       "tasks": [],
       "tests": [
         "new: tests/sim/production-line.test.ts",
-        "new: tests/sim/persistence-05.test.ts"
+        "new: tests/sim/persistence-05.test.ts",
+        "tests/sim/production-line.test.ts",
+        "tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.2",
         "§15",
         "§21"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): GameState.production? (lines, ended history, lastHour) in src/types/game.ts (lane:production). tanks.quarantine is a list (INTAKE C-32: the first free one takes the batch; \"Add a quarantine tank\" appends). A fresh game has no production field, the same stateHash, and SCHEMA_VERSION 1. Tests: production-line (two betta lines side by side; the fresh-game check)."
     },
     {
       "id": "PROD-003",
@@ -2494,11 +2513,14 @@
       "tasks": [],
       "tests": [
         "new: tests/e2e/production.spec.ts (proposed)",
-        "new: tests/sim/production-ui.test.ts (proposed)"
+        "new: tests/sim/production-ui.test.ts (proposed)",
+        "tests/sim/production-ui.test.ts",
+        "tests/e2e/production.spec.ts",
+        "tests/sim/nav-routes.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "Unblocked 2026-10-11: the owner approved DESIGN-S3D SPEC §8.6 and §8.6.1 as the production screens (ADR-0025 decision 1). Chunk 4.",
+      "status": "GREEN",
+      "note": "Unblocked 2026-10-11: the owner approved DESIGN-S3D SPEC §8.6 and §8.6.1 as the production screens (ADR-0025 decision 1). Chunk 4. Chunk 4 (2026-10-14): Livestock › Production (src/ui/panels/livestock/Production.tsx, ProductionSetup.tsx): #/livestock/production[/:lineId|/new] round-trip; the line picker strip and slot caption; each line's header, four tiles, five stages and Line rules from live state; the empty state and the three set-up steps (pairs that can breed, tanks checked for water, temperament and space, Start line). Tests: production-ui, nav-routes, e2e production.spec. Review fixes: set-up asks the compatibility engine for each stage (the pair into the breed tank, the young into the others) and refuses its temperament reasons (aggression, predation, social at warning or worse) with its own words; one line's keep tank is never another line's breed, raise or quarantine tank; the line picker is a radio group (DESIGN-S3D §13). The refusal reasons for another line's tanks are ADR-0031 decision 1's.",
       "designSections": [
         "§11.1",
         "§6.2",
@@ -2516,14 +2538,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.2",
         "§11.3"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): linePairCheck: two adults of one species, a male and a female (any two for simultaneous hermaphrodites), in no other line. Only the pair's broods (mother and father ids) are moved. Tests: production-line (young, same-sex and two-species pairs refused; another pair's brood in the same tank untouched)."
     },
     {
       "id": "PROD-005",
@@ -2537,14 +2561,16 @@
       "tasks": [],
       "tests": [
         "new: tests/sim/production-line.test.ts",
-        "tests/sim/lifecycle-genetics.test.ts"
+        "tests/sim/lifecycle-genetics.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.2",
         "§11.3"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): The pair spawns through the existing breeding sim in the breed tank; no production code creates a clutch or creature (a source check in production-line). The full unit suite (lifecycle-genetics included) passed unchanged."
     },
     {
       "id": "PROD-006",
@@ -2558,14 +2584,15 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3"
       ],
-      "note": "Owner (ADR-0025 decision 8, 2026-10-11, B8): with the raise tank full and pauseWhenFull off, the fry stay where they are (with the parents) and the line keeps running, with one notice: \"{Line}: the raise tank is full, so the fry stay in {tank}.\""
+      "note": "Owner (ADR-0025 decision 8, 2026-10-11, B8): with the raise tank full and pauseWhenFull off, the fry stay where they are (with the parents) and the line keeps running, with one notice: \"{Line}: the raise tank is full, so the fry stay in {tank}.\" Chunk 4 (2026-10-14): A free-swimming brood of the pair (the species' last rearing phase, out of the egg and parent) moves to the raise tank once, through moveClutch (the player's Move to nursery). With no place for a young one there it stays, with one notice per brood: \"{Line}: the raise tank is full, so the fry stay in {tank}.\" (ADR-0025 decision 8). Tests: production-line."
     },
     {
       "id": "PROD-007",
@@ -2578,14 +2605,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3",
         "§11.1"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): A batch enters the first free, cycled quarantine tank with room (one batch per tank across lines) at a production hour and is listed at that hour + 168. Tests: production-line (not listed before, listed in the hour it ends). Review fix: \"cycled\" is the game's own line for a tank with animals (bioMaturity 0.4, where the water report says \"Tank is still cycling\" and buying animals warns \"This tank is not cycled yet\"; it was 0.6, which a seeded or idle tank falls below within hours or days), and a batch held only by an uncycled tank says so once (ADR-0031 decision 2)."
     },
     {
       "id": "PROD-008",
@@ -2598,16 +2627,17 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.2",
         "§11.3",
         "§11.1"
       ],
-      "note": "Owner (ADR-0025 decision 4, 2026-10-11, B4): young kept by the trait rules move to the line's keep tank. Protected = every animal in a line's keep tank, every Prismatic and every favourite; automation never moves them out, lists or sells them."
+      "note": "Owner (ADR-0025 decision 4, 2026-10-11, B4): young kept by the trait rules move to the line's keep tank. Protected = every animal in a line's keep tank, every Prismatic and every favourite; automation never moves them out, lists or sells them. Chunk 4 (2026-10-14): Young kept by the rules and Prismatics (with Never sell Prismatic animals on) move to the keep tank; nothing in a keep tank, no Prismatic and no favourite is ever moved out, listed or sold by a line (isProtected; ADR-0025 decision 4). Tests: production-line."
     },
     {
       "id": "PROD-009",
@@ -2620,13 +2650,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts",
+        "tests/e2e/production.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.1"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): The switch: off = \"Paused by you\"; nothing is moved, sorted or listed and the pair is held from spawning; resuming carries on (a brood waiting in the breed tank moves at the next hour). Tests: production-line, e2e production.spec."
     },
     {
       "id": "PROD-010",
@@ -2640,14 +2673,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3",
         "§11.1"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): Mechanism (recorded in PLAN.md, chunk 4): a held pair carries repro.lineHold, which keeps readinessTarget at 0 (as resting does), so no species starts a new courtship; nothing is moved. Pause when a tank is full holds the pair while the raise tank holds the line's young and has fewer places than the species raises per clutch, and restarts it by itself (\"{Line} is running again: {tank} has room.\"). Tests: production-line (real medaka spawning: a paused pair lays nothing while a running one does; the full raise tank holds and releases)."
     },
     {
       "id": "PROD-011",
@@ -2660,15 +2695,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3",
         "§11.1"
       ],
-      "note": "Owner (ADR-0025 decision 3, 2026-10-11, B3): automation never lists a Prismatic, whatever the switch says; keepPrismatic on moves it to the keep tank, off leaves it with its batch (it then moves with the batch but is never listed). A player sells a Prismatic only by hand."
+      "note": "Owner (ADR-0025 decision 3, 2026-10-11, B3): automation never lists a Prismatic, whatever the switch says; keepPrismatic on moves it to the keep tank, off leaves it with its batch (it then moves with the batch but is never listed). A player sells a Prismatic only by hand. Chunk 4 (2026-10-14): Never lists a Prismatic, with the rule on or off (on: keep tank; off: with its batch, never listed; ADR-0025 decision 3). Tests: production-line."
     },
     {
       "id": "PROD-012",
@@ -2681,14 +2717,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3",
         "§11.1"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): With List automatically on, the batch is listed through createListing the hour quarantine ends; off: nothing is listed and the young stay in quarantine. Listed by life stage then (juveniles as a juvenile batch; adults singly or as a group; ADR-0025 decision 2). Tests: production-line."
     },
     {
       "id": "PROD-013",
@@ -2701,16 +2739,17 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.2",
         "§11.3",
         "§11.1"
       ],
-      "note": "Needs owner or reviewer confirmation: breaking creatureValue ties by creature id is a proposal; the design only requires the sort to be deterministic."
+      "note": "Needs owner or reviewer confirmation: breaking creatureValue ties by creature id is a proposal; the design only requires the sort to be deterministic. Chunk 4 (2026-10-14): Keep rules keep the best matches by creatureValue, ties by creature id (the proposed tie-break, adopted); the Sort sheet edits them (ADR-0030 decision 6). Tests: production-line (\"keeps the best matches\")."
     },
     {
       "id": "PROD-014",
@@ -2722,14 +2761,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3",
         "§11.1"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): Reserve = round(fair value × 0.9) (bundleValue, the listing snapshot's valuation). Tests: production-line."
     },
     {
       "id": "PROD-015",
@@ -2743,15 +2784,17 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts",
+        "tests/sim/production-ui.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.2",
         "§11.1"
       ],
-      "note": "Owner (ADR-0025 decision 9, 2026-10-11, B9): each day a line pays for its share of each tank's residents (a tank shared half and half charges each line half); two lines never pay for the same food or power. Owner (ADR-0026 decision 3, 2026-10-11, the B9 and C2 follow-up): the line's This week tile shows sales and count as DESIGN-S3D draws it (\"$369 · 9 sold\"), then a second line for the net after food and power using this split; the net line's wording is asked with chunk 4's copy. INTAKE §12's proposed change to \"sales and count, not net\" is not taken."
+      "note": "Owner (ADR-0025 decision 9, 2026-10-11, B9): each day a line pays for its share of each tank's residents (a tank shared half and half charges each line half); two lines never pay for the same food or power. Owner (ADR-0026 decision 3, 2026-10-11, the B9 and C2 follow-up): the line's This week tile shows sales and count as DESIGN-S3D draws it (\"$369 · 9 sold\"), then a second line for the net after food and power using this split; the net line's wording is asked with chunk 4's copy. INTAKE §12's proposed change to \"sales and count, not net\" is not taken. Chunk 4 (2026-10-14): Sales of the line's listings count once (animals sold and what they fetched); the week restarts every 168 hours; costs are the line's share of each of its tanks' residents, hour by hour for running costs and per serving fed for food (ADR-0025 decision 9). The tile shows \"$369\" · \"9 sold\", then \"$221 after food and power\" (ADR-0030 decision 4). Tests: production-line, production-ui."
     },
     {
       "id": "PROD-016",
@@ -2767,15 +2810,17 @@
       "tests": [
         "new: tests/sim/production-line.test.ts",
         "tests/sim/core-determinism.test.ts",
-        "tests/sim/fix-core-step-invariance.test.ts"
+        "tests/sim/fix-core-step-invariance.test.ts",
+        "tests/sim/production-line.test.ts",
+        "tests/sim/automation-invariants.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3",
         "§15"
       ],
-      "note": "Needs owner or reviewer confirmation: comparing 1-hour with 6-hour steps is a proposal; the design says only \"step-size invariant\", and the S3 contract may choose other step sizes."
+      "note": "Needs owner or reviewer confirmation: comparing 1-hour with 6-hour steps is a proposal; the design says only \"step-size invariant\", and the S3 contract may choose other step sizes. Chunk 4 (2026-10-14): stepProduction runs from world.ts after the tanks for each whole hour crossed (production.lastHour), with no randomness. Identical runs: equal stateHash; 1-hour and 6-hour steps: the same moves, sorts and listings at the same hours (ids can differ only through the test harness's own care). Random partitions: counts exact, hours within one game hour, because the breeding sim raises a brood inside a sub-step (the AUTO-016 tolerance, PLAN.md chunk 4). core-determinism and fix-core-step-invariance passed unchanged. Tests: production-line, automation-invariants. Review fixes: simRng re-reads state.rngState on every draw, so the settles a line's moves make continue the one stream (they forked it before); identical runs with background tanks (the settler running) end with an equal stateHash."
     },
     {
       "id": "PROD-017",
@@ -2789,14 +2834,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/production-line.test.ts"
+        "new: tests/sim/production-line.test.ts",
+        "tests/sim/production-line.test.ts",
+        "tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§11.3"
       ],
-      "note": "Owner (ADR-0025 decision 10, 2026-10-11, B10): the line pauses with one notice and is kept through saves and reloads; repairState marks the missing parent or tank instead of dropping the line (this replaces §15 and §20.1 and changes PERSIST-006). The notice's wording is still to be asked in chunk 4."
+      "note": "Owner (ADR-0025 decision 10, 2026-10-11, B10): the line pauses with one notice and is kept through saves and reloads; repairState marks the missing parent or tank instead of dropping the line (this replaces §15 and §20.1 and changes PERSIST-006). The notice's wording is still to be asked in chunk 4. Chunk 4 (2026-10-14): A gone parent or tank, or a parent the player moved away, pauses the line with one notice per incident (ADR-0030 decision 2) and keeps it; \"Choose another pair\" / \"Choose another tank\" fix it; repairState marks a dangling reference (persistence-05). Tests: production-line (each tank, a parent, a moved parent), persistence-05."
     },
     {
       "id": "PROD-018",
@@ -2813,10 +2860,75 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "SUPERSEDED",
       "designSections": [
         "§11.1"
-      ]
+      ],
+      "note": "Chunk 4 (2026-10-14): Superseded by ADR-0018 and ADR-0025: the design registry and check-state.mjs retired with the harness; the owner approved DESIGN-S3D §8.6 and §8.6.1 as the multi-line screens (ADR-0025 decision 1) before chunk 4 built them."
+    },
+    {
+      "id": "PROD-019",
+      "slice": "S3",
+      "source": "DESIGN-S3D SPEC §8.6, §16; INTAKE.md §12 (proposed PROD-019); ADR-0025 decision 7; umbrella PROD-001",
+      "description": "Line slots by facility level (1 · 2 · 3 · 4 · 6 · 8 from the Hobby Room to the Grand Hall, facility data); the slot caption; \"+ New line\" only while a slot is free; #/livestock/production/new with no free slot is not found.",
+      "acceptance": [
+        "The caption reads \"{used} of {n} line slots · {level}\" while a slot is free, \"{n} of {n} line slots · more at {next level}\" when all are used, \"8 of 8 line slots · Grand Hall\" at the last level, and \"0 of 1 line slot · more at Specialty Shop\" with no line; slot or slots by count.",
+        "A line beyond the level's slots is refused; /new with no free slot is a broken link."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/production-line.test.ts",
+        "tests/sim/production-ui.test.ts",
+        "tests/e2e/production.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "S3D §8.6"
+      ],
+      "note": "Chunk 4 (2026-10-14): PRODUCTION_LINE_SLOTS in src/data/facilities.ts; slotsCaption in src/sim/production/view.ts; the router's not-found for /new."
+    },
+    {
+      "id": "PROD-020",
+      "slice": "S3",
+      "source": "DESIGN-S3D SPEC §9.5; INTAKE.md §12 (proposed PROD-020), C-32, C-33; ADR-0025 decision 5; umbrella PROD-001",
+      "description": "Shared tanks: lines may share a tank but not two stages of one line; a quarantine tank takes one batch at a time for 7 days; the capacity pause and its derived restart day; an added quarantine tank (a real kit, seeded optional) lets a waiting batch move on.",
+      "acceptance": [
+        "Two lines sharing a quarantine tank: the second line's batch waits until the first one's hold ends.",
+        "Add a quarantine tank buys the kit at its real price, joins the line, and gives a restart day only when the tank is seeded or cycled."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/production-line.test.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "S3D §9.5"
+      ],
+      "note": "Chunk 4 (2026-10-14): quarantineBusyUntil, restartDay, addQuarantineTank (src/sim/production); the dialog and toasts are ADR-0030 decision 3's. Review: an added seeded quarantine tank brings a waiting line's restart to today and takes the batch (production-line)."
+    },
+    {
+      "id": "PROD-021",
+      "slice": "S3",
+      "source": "DESIGN-S3D SPEC §8.6.1; INTAKE.md §12 (proposed PROD-021), C-35; ADR-0030; umbrella PROD-001",
+      "description": "Setting up a line: three steps on one route (pair, tanks, rules); pairs already in a line listed but disabled; tanks checked for water type, temperament and space; Breed for, Line name, Sort, Sell and Line rules; Start line creates and opens the line; leaving drops it; the naming and id rules.",
+      "acceptance": [
+        "Start line creates the line, opens #/livestock/production/{lineId} and toasts \"{Line name} started\"; nothing exists before it.",
+        "One line keeps \"{Species} line\"; when a second starts, lines on default names take their morph names; a typed name stays; ids are the morph's first word with -2, -3 when taken."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/production-line.test.ts",
+        "tests/sim/production-ui.test.ts",
+        "tests/e2e/production.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "S3D §8.6.1"
+      ],
+      "note": "Chunk 4 (2026-10-14): createLine, tankFitFor, candidatePairs (src/sim/production); NewLine (src/ui/panels/livestock/ProductionSetup.tsx)."
     },
     {
       "id": "SOC-001",
@@ -3257,14 +3369,16 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/e2e/a11y-automation.spec.ts (proposed)"
+        "new: tests/e2e/a11y-automation.spec.ts (proposed)",
+        "tests/sim/production-ui.test.ts",
+        "tests/e2e/production.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "§18"
       ],
-      "note": "Chunk 3 (2026-10-11): the automation and notification switches are role=switch with aria-checked and subject names (\"Auto-feed for {Tank}\", \"{Category} notifications\"); locked ones are aria-disabled, focusable and described (automation.spec tabs to one); the meals control is a radiogroup operable with the arrow keys (the kit Segmented now answers arrow keys everywhere). Production switches and Running/Paused badges come with chunk 4."
+      "note": "Chunk 3 (2026-10-11): the automation and notification switches are role=switch with aria-checked and subject names (\"Auto-feed for {Tank}\", \"{Category} notifications\"); locked ones are aria-disabled, focusable and described (automation.spec tabs to one); the meals control is a radiogroup operable with the arrow keys (the kit Segmented now answers arrow keys everywhere). Production switches and Running/Paused badges come with chunk 4. Chunk 4 (2026-10-14): Production switches added: production-toggle (\"{Line} running\") and production-rule-* (\"{Rule} ({Line})\") are role=switch with aria-checked; Running / Paused / Paused by you show an icon and a word; the set-up stepper marks the current step aria-current=\"step\". Tests: production-ui, e2e production.spec."
     },
     {
       "id": "ACC-005",
@@ -3451,10 +3565,12 @@
       ],
       "tasks": [],
       "tests": [
-        "new: tests/sim/core-save-size.test.ts (proposed)"
+        "new: tests/sim/core-save-size.test.ts (proposed)",
+        "tests/sim/core-save-size.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 4 (2026-10-14): Budget: 2.5 million characters (SAVE_BUDGET_CHARS, the smallest common localStorage quota, about 5 MB as UTF-16). A Grand Hall with 40 tanks, 500 animals with long histories, eight production lines and a full market fits (core-save-size). Recorded exception to A1: listing photos. With a photo on each of the 24 active listings the record passes the budget; the page-close copy then leaves the photos out and, being the newest copy, is what the next load uses, so those listings come back without photos (KNOWN_LIMITATIONS). A failed copy warns instead of failing silently (B-171). Where localStorage is the save store, a save near the budget leaves no room for its backup copy."
     },
     {
       "id": "PERSIST-006",
@@ -3471,16 +3587,17 @@
       "tests": [
         "new: tests/sim/persistence-05.test.ts",
         "tests/sim/rare-persistence.test.ts",
-        "tests/sim/core-persistence.test.ts"
+        "tests/sim/core-persistence.test.ts",
+        "tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "§15",
         "§20.1",
         "§21"
       ],
-      "note": "Chunk 3 (2026-10-11): the water-lab hours: repairState removes a non-finite lastAutoChangeHour / lastAutoScrapeHour with a note, absent ones need nothing and leave the hash unchanged, a fresh 0.5 game needs no repairs (persistence-05). The production part is chunk 4's. Owner (ADR-0025 decision 10, 2026-10-11, B10): a line whose parent or tank is missing is kept, paused and marked, not dropped; read the description's \"dropping lines\" and A1's \"repaired with a note\" that way."
+      "note": "Chunk 3 (2026-10-11): the water-lab hours: repairState removes a non-finite lastAutoChangeHour / lastAutoScrapeHour with a note, absent ones need nothing and leave the hash unchanged, a fresh 0.5 game needs no repairs (persistence-05). The production part is chunk 4's. Owner (ADR-0025 decision 10, 2026-10-11, B10): a line whose parent or tank is missing is kept, paused and marked, not dropped; read the description's \"dropping lines\" and A1's \"repaired with a note\" that way. Chunk 4 (2026-10-14): Production part met: repairState validates production when present; a line whose parent or tank is missing is kept, paused and marked with a note (ADR-0025 decision 10), never dropped; an unreadable line or a stray repro.lineHold is removed with a note; a valid save loads with repairs [] and the same hash (persistence-05)."
     },
     {
       "id": "PERSIST-007",

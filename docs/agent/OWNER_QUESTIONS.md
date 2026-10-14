@@ -23,6 +23,8 @@ new group, and record them the same way.
 | C | Chunk 5 (DESIGN-S3D approval) | C1–C15: **answered 2026-10-11 (ADR-0026; the approval ADR-0027)** |
 | D | Chunk 6 (Social stub) | D1: **answered 2026-10-11 (ADR-0028)** |
 | E | Backlog rows waiting on the owner (block no chunk) | E1–E12: **answered 2026-10-11 to 2026-10-13 (ADR-0029)** |
+| (chunk 4) | Chunk 4's own copy and two behaviours, asked during the chunk as its brief said | 8 questions: **answered 2026-10-14 (ADR-0030)** |
+| (chunk 4 review) | Four lines of copy the review's fixes needed | 4 questions: **answered 2026-10-14 (ADR-0031)** |
 
 ## A. Release and standing decisions
 
