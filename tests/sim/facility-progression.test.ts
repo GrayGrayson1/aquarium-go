@@ -236,7 +236,7 @@ describe('facility: quest board', () => {
     const q = g.progress.quests.find((x) => x.status === 'active' && x.baseline !== undefined);
     if (q) {
       const target = q.target ?? 1;
-      const key = { q_feed_routine: 'feeds', q_water_changes: 'waterChanges', q_breed_first: 'births', q_breed_more: 'births', q_sell_creature: 'sales', q_friends: 'friend_visits', q_visitors_50: 'visitors', q_wows: 'wows', q_satisfied: 'five_star_days', q_research: 'research_done' }[q.id as 'q_feed_routine'];
+      const key = { q_feed_routine: 'feeds', q_water_changes: 'waterChanges', q_breed_first: 'births', q_breed_more: 'births', q_sell_creature: 'animalsSold', q_friends: 'friend_visits', q_visitors_50: 'visitors', q_wows: 'wows', q_satisfied: 'five_star_days', q_research: 'research_done' }[q.id as 'q_feed_routine'];
       if (key) {
         F.bumpCounter(g, key, target);
         progress(g);

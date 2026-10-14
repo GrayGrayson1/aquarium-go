@@ -26,6 +26,7 @@ What is simplified, approximated or missing in this build. None of these block p
 - Equipment-bundle listings (marked "later" in the spec) are not implemented. Livestock (single, group, pair, juveniles), frag/cutting and whole-tank listings are.
 - Frags in storage don't grow. Coral colour-morph lines are not named: a frag is a clone of its parent's look, and its "line" records provenance only. Frag plugs are not drawn on far (merged) tanks.
 - Only the five most recent closed listings keep their photos, which keeps save files small.
+- **The holding container is a pause, not a tank.** An animal that wasn't part of a whole-tank sale and had no tank with room (or that a save repair found without a tank) rests there: it doesn't eat, age or breed until you move it to a tank, and the game says so (ADR-0029 decision 9, ADR-0030 decision 8).
 - The admission-price projection in the Visitors panel is an estimate; the simulation decides actual attendance.
 
 ## Rendering

@@ -99,6 +99,7 @@ describe('PERSIST-003 / PERSIST-011: a newer save keeps the catalog ids this bui
     const { save, tankId } = futureSave();
     const s = decodeRecord(JSON.stringify(save)).state as Json;
     const hour0 = s.clock.hour;
+    const progress0 = s.progress.research.progressHours;
     expect(() => {
       for (let h = 0; h < 24; h += 0.5) advanceWorld(s, 0.5, { focusTankId: tankId });
     }).not.toThrow();
@@ -110,7 +111,9 @@ describe('PERSIST-003 / PERSIST-011: a newer save keeps the catalog ids this bui
     expect(has(s.inventory.decor, FUTURE.storedDecor)).toBe(true);
     expect(has(s.inventory.frags, FUTURE.storedFrag)).toBe(true);
     expect(s.starterId).toBe(FUTURE.starter);
-    // research.activeId is not checked here: the research step closes a project it doesn't know, as v0.4.0 did.
+    // B-017 (ADR-0029 decision 2): a project this build doesn't know is left exactly as it is, for the build that knows it.
+    expect(s.progress.research.activeId).toBe(FUTURE.research);
+    expect(s.progress.research.progressHours).toBe(progress0);
   });
 });
 

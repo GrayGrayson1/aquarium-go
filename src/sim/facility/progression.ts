@@ -85,7 +85,8 @@ export const COUNTER_ALIASES: Record<string, string[]> = {
   waterChanges: ['waterChanges', 'water_changes', 'waterChange'],
   water_changes: ['waterChanges', 'water_changes', 'waterChange'],
   cleanings: ['cleanings', 'cleans', 'maintenance'],
-  sales: ['sales', 'sold_items', 'salesCount', 'creature_sales', 'animalsSold'],
+  // B-139 (ADR-0029 decision 4): a sale counts once however many animals it has; 'animalsSold' is its own counter.
+  sales: ['sales', 'sold_items', 'salesCount', 'creature_sales'],
   sales_total: ['sales_total', 'salesRevenue'],
   tank_sales: ['tank_sales', 'tankSales'],
   births: ['births', 'births_seen', 'clutches_raised', 'clutchesRaised'],
@@ -767,6 +768,31 @@ function questOutgrown(state: GameState, def: QuestDef): boolean {
   return def.maxFacility !== undefined && levelIdx(state.facility.level) > levelIdx(def.maxFacility);
 }
 
+/**
+ * B-139 (ADR-0029 decision 4): an older build counted animals as sales, so a quest or tutorial step started then holds
+ * a baseline above today's count and could never finish. A counter only grows, so a baseline above it is rebased to it
+ * (progress counts from here). Idempotent, and a no-op for every baseline taken by this build.
+ */
+function rebaseCounterBaselines(state: GameState): void {
+  const p = state.progress;
+  for (const q of p.quests) {
+    if (q.status !== 'active' || q.baseline === undefined || q.id === 'tutorial') continue;
+    const def = QUEST_BY_ID[q.id];
+    const rk = def ? relativeKey(def.objective) : undefined;
+    if (!rk) continue;
+    const cur = counterValue(state, rk);
+    if (q.baseline > cur) q.baseline = cur;
+  }
+  const b = p.tutorial.stepBaselines;
+  if (b) {
+    for (const k of Object.keys(b)) {
+      if (k === 'reputation') continue;
+      const cur = counterValue(state, k);
+      if (b[k] > cur) b[k] = cur;
+    }
+  }
+}
+
 function updateQuests(state: GameState, cache: CondCache): void {
   // an unfinished quest the player has outgrown leaves the board (it was never claimable, so nothing is lost)
   const p = state.progress;
@@ -995,10 +1021,9 @@ function stepResearch(state: GameState, dt: number): void {
   const r = state.progress.research;
   if (!r.activeId) return;
   const def = RESEARCH_BY_ID[r.activeId];
-  if (!def) {
-    r.activeId = undefined;
-    return;
-  }
+  // B-017 (ADR-0029 decision 2): a project this build doesn't know (a newer build started it) is left exactly as it is,
+  // so the save keeps it for the build that knows it; it doesn't advance here.
+  if (!def) return;
   // Everything this project teaches was earned through play while it ran: close it and give the money back.
   if (researchNewGrants(state, def).length === 0) {
     const paid = paidForActive(state, def);
@@ -1135,6 +1160,7 @@ export function stepProgression(state: GameState, dt: number, ctx: SimContext): 
   sampleDay(state);
   dailyRollover(state);
   applyCounterEffects(state);
+  rebaseCounterBaselines(state); // B-139
   checkTutorial(state, cache);
   updateQuests(state, cache);
   refillBoard(state, ctx.rng, cache);

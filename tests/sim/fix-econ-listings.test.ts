@@ -9,10 +9,11 @@ import { simRng } from '@/sim/rng';
 import { createCreature, addCreature } from '@/sim/life';
 import { moveCreature } from '@/sim/life/actions';
 import { createListing, acceptBid, counterBid, previewListing, suggestCounter, forceBuyerVisit, holdBidForCounter, devOpenMarket, devStepEconomy, tankValuation, creatureValue, buyTank, buyEquipment } from '@/sim/economy';
+import { holdingText } from '@/sim/economy/listings';
 import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
 import { unlock } from '@/sim/facility';
-import { createTank, deleteTank } from '@/sim/tanks';
-import { advanceWorld } from '@/sim/world';
+import { createTank } from '@/sim/tanks';
+import { advanceWorld, refreshTankCache } from '@/sim/world';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 
 function world(seed = 7, starterId: 'axolotl' | 'betta' = 'axolotl'): GameState {
@@ -64,10 +65,13 @@ describe('S03-01 — a listed tank is priced on what transfers, not on what is s
     const res = acceptBid(g, l.id, top!.id);
     expect(res.ok).toBe(true);
     expect(g.finance.money - money0).toBeLessThanOrEqual(snapVal * 1.5);
+    // They come back to the player, never sold with the tank: into a tank with room (home), else the holding container
+    // (B-174, ADR-0030 decision 8; four adult axolotls don't all fit back into the starter tank).
     for (const c of valuables) {
       expect(c.status).toBe('alive');
-      expect(c.tankId).toBe(home);
+      expect(c.tankId === home || c.tankId === null).toBe(true);
     }
+    expect(valuables.some((c) => c.tankId === home)).toBe(true);
   });
 
   it('gear installed after listing is not part of the sale: open bids are not revised up and buyers do not walk', () => {
@@ -258,46 +262,49 @@ describe('S03-04 — animals that are not part of a tank sale go somewhere compa
     expect(note!.text).not.toMatch(/risky/);
   });
 
-  it('falls back to a high-risk tank only when nothing else will do, and says so', () => {
+  it('never falls back to a high-risk mix: with nowhere else, the animal rests in the holding container (B-174, ADR-0030 decision 8)', () => {
     const { g, l, b, newcomer, fowlr } = predatorWorld(false);
     expect(acceptBid(g, l.id, b.id).ok).toBe(true);
-    expect(newcomer.tankId).toBe(fowlr.id);
-    const note = g.log.find((e) => e.creatureId === newcomer.id && /now lives in/.test(e.text));
+    expect(newcomer.tankId).toBeNull();
+    expect(newcomer.status).toBe('alive');
+    expect(g.creatures[newcomer.id]).toBeDefined();
+    expect(Object.values(g.creatures).filter((c) => c.tankId === fowlr.id).every((c) => c.id !== newcomer.id)).toBe(true);
+    const note = g.log.find((e) => e.creatureId === newcomer.id && /holding container/.test(e.text));
     expect(note).toBeDefined();
     expect(note!.kind).toBe('warning');
-    expect(note!.text).toMatch(/risky mix/);
+    expect(note!.text).toBe(holdingText(newcomer.name));
+    expect(note!.text).toContain("they don't eat or age there");
+  });
+
+  it('never moves an animal into a tank without room for it (B-174)', () => {
+    const { g, l, b, newcomer, safe } = predatorWorld(true);
+    // Fill the safe tank to its stocking limit with peaceful fish of the same water.
+    for (let i = 0; i < 400 && (safe!.cache.stockingLoad ?? 0) < 1.02; i++) {
+      addCreature(g, createCreature(g, simRng(g), 'ocellaris_clownfish', { ageDays: 60 }), safe!.id);
+      refreshTankCache(g, safe!);
+    }
+    expect(safe!.cache.stockingLoad).toBeGreaterThanOrEqual(1);
+    expect(acceptBid(g, l.id, b.id).ok).toBe(true);
+    expect(newcomer.tankId).not.toBe(safe!.id);
   });
 });
 
-describe('S03-07 — a sale no buyer can complete is called out, not dropped silently', () => {
-  it('toasts on the blocked buy-now, marks the listing blocked, clears it once the animal is moved, and explains an expiry', () => {
+describe('S03-07 → B-174 — an animal with nowhere to go no longer blocks a tank sale; it rests in the holding container', () => {
+  it('a buy-now completes with an animal added after listing and no other tank; the animal is told where it is', () => {
     const g = world(3);
     const home = g.tankOrder[0];
     const r = createListing(g, { kind: 'tank', tankId: home, reserve: 0, buyNow: 100, durationHours: 24 });
     expect(r.ok).toBe(true);
     const l = g.market.listings.find((x) => x.id === r.listingId)!;
-    // Only one tank: an axolotl added after listing has nowhere to go.
+    // Only one tank: an axolotl added after listing has nowhere to go (ADR-0030 decision 8: the sale still goes ahead).
     const extra = addCreature(g, createCreature(g, simRng(g), 'axolotl', { ageDays: 60 }), home);
-    const logN = g.log.length;
-    devStepEconomy(g, 0.2);
-    expect(l.status).toBe('active');
-    expect(l.blocked).toMatch(new RegExp(extra.name));
-    expect(g.log.slice(logN).some((e) => e.kind === 'warning' && e.toast && /No buyer can complete/.test(e.text))).toBe(true);
-    let tries = 0;
-    for (; tries < 60 && !l.bids.some((b) => b.note?.startsWith('Tried to buy now')); tries++) forceBuyerVisit(g, l.id);
-    expect(l.bids.some((b) => b.note?.startsWith('Tried to buy now'))).toBe(true);
-    expect(l.status).toBe('active');
-    // A second tank gives the extra animal a home: the block lifts.
-    const other = createTank(g, 'g20L', 'freshwater_cool', { cycled: true, placement: { x: 2.5, z: 1.5, rotY: 0 } });
-    other.water.tempC = g.tanks[home].water.tempC;
     devStepEconomy(g, 0.2);
     expect(l.blocked).toBeUndefined();
-    expect(g.log.some((e) => /can sell again/.test(e.text))).toBe(true);
-    // Blocked again and left to expire: the advice names the blocker.
-    deleteTank(g, other.id);
-    for (const b of l.bids) if (b.status === 'open') b.status = 'declined';
-    devStepEconomy(g, 30);
-    expect(l.status).toBe('expired');
-    expect(l.advice).toMatch(/blocked/);
+    for (let tries = 0; tries < 80 && l.status === 'active'; tries++) forceBuyerVisit(g, l.id);
+    expect(l.status).toBe('sold');
+    expect(extra.status).toBe('alive');
+    expect(extra.tankId).toBeNull();
+    expect(g.log.some((e) => e.creatureId === extra.id && e.text === holdingText(extra.name) && e.toast)).toBe(true);
+    expect(g.log.some((e) => /No buyer can complete/.test(e.text))).toBe(false);
   });
 });

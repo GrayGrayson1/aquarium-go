@@ -550,8 +550,8 @@ export function repairState(s: Json): string[] {
   if (!isObj(p.research)) p.research = { progressHours: 0, completed: [] };
   p.research.progressHours = num(p.research.progressHours, 0);
   p.research.completed = strings(p.research.completed);
-  // lane:core (PERSIST-011, ADR-0005 decision 1) — a project this build doesn't know is kept, like any well-formed id
-  // (the research step closes it, as v0.4.0 did); an id that isn't a usable key is removed.
+  // lane:core (PERSIST-011, ADR-0005 decision 1) — a project this build doesn't know is kept, like any well-formed id,
+  // and the research step leaves it exactly as it is (B-017, ADR-0029 decision 2); an id that isn't a usable key is removed.
   if (p.research.activeId !== undefined && !isSafeKey(p.research.activeId)) {
     repairs.push(`progress.research.activeId: ${idText(p.research.activeId)}, removed`);
     delete p.research.activeId;

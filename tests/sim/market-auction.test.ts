@@ -475,28 +475,40 @@ describe('market: edge cases while listed', () => {
     }
   });
 
-  it('animals added after listing are not sold: they move to another tank, or the sale is blocked', () => {
-    const g = world(44);
-    const tankId = g.tankOrder[0];
-    const r = createListing(g, { kind: 'tank', tankId, reserve: 0, durationHours: 48 });
-    const l = listing(g, r.listingId!);
-    ensureBids(g, l.id);
-    const newcomer = animal(g, tankId);
-    const b = best(l)!;
-    const blocked = acceptBid(g, l.id, b.id);
-    expect(blocked.ok).toBe(false);
-    expect(blocked.message).toContain(newcomer.name);
-    expect(newcomer.status).toBe('alive');
-    expect(g.tanks[tankId]).toBeDefined();
-    // Give the newcomer somewhere to go, then the sale completes.
-    const other = createTank(g, 'g20L', 'freshwater_cool', { cycled: true, placement: { x: 1.5, z: 1, rotY: 0 } });
-    ensureBids(g, l.id);
-    const b2 = best(l)!;
-    const ok = acceptBid(g, l.id, b2.id);
-    expect(ok.ok).toBe(true);
-    expect(newcomer.status).toBe('alive');
-    expect(newcomer.tankId).toBe(other.id);
-    expect(g.tanks[tankId]).toBeUndefined();
+  it('animals added after listing are not sold: they move to a tank with room, else rest in the holding container (B-174, ADR-0030)', () => {
+    // No other tank: the sale still goes ahead, and the newcomer rests in the holding container (it used to block the sale).
+    {
+      const g = world(44);
+      const tankId = g.tankOrder[0];
+      const r = createListing(g, { kind: 'tank', tankId, reserve: 0, durationHours: 48 });
+      const l = listing(g, r.listingId!);
+      ensureBids(g, l.id);
+      const newcomer = animal(g, tankId);
+      const b = best(l)!;
+      const sold = acceptBid(g, l.id, b.id);
+      expect(sold.ok).toBe(true);
+      expect(newcomer.status).toBe('alive');
+      expect(newcomer.tankId).toBeNull();
+      expect(g.log.some((e) => e.creatureId === newcomer.id && /resting in a holding container/.test(e.text))).toBe(true);
+      expect(g.tanks[tankId]).toBeUndefined();
+    }
+    // Another tank with room: the newcomer moves there.
+    {
+      const g = world(44);
+      const tankId = g.tankOrder[0];
+      const r = createListing(g, { kind: 'tank', tankId, reserve: 0, durationHours: 48 });
+      const l = listing(g, r.listingId!);
+      ensureBids(g, l.id);
+      const newcomer = animal(g, tankId);
+      const other = createTank(g, 'g20L', 'freshwater_cool', { cycled: true, placement: { x: 1.5, z: 1, rotY: 0 } });
+      other.water.tempC = g.tanks[tankId].water.tempC;
+      const b = best(l)!;
+      const ok = acceptBid(g, l.id, b.id);
+      expect(ok.ok).toBe(true);
+      expect(newcomer.status).toBe('alive');
+      expect(newcomer.tankId).toBe(other.id);
+      expect(g.tanks[tankId]).toBeUndefined();
+    }
   });
 
   it('selling a setup that deteriorated after listing costs reputation and brings feedback', () => {

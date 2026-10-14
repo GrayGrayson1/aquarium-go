@@ -390,7 +390,7 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
                 {/* with a single tank the tank name says nothing new — leave the room to the animal's name */}
                 {(tankName.size > 1 || !c.tankId) && (
                   <span className="pn-lsrow__tank pn-ellipsis" title={c.tankId ? tankName.get(c.tankId) ?? undefined : undefined}>
-                    {c.tankId ? tankName.get(c.tankId) ?? 'Unknown tank' : 'In transit'}
+                    {c.tankId ? tankName.get(c.tankId) ?? 'Unknown tank' : 'Resting in a holding container' /* E9, ADR-0030 decision 8 */}
                   </span>
                 )}
               </span>

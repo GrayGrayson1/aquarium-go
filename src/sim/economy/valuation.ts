@@ -456,7 +456,9 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
   const bio = clamp01(finite(tank.water?.bioMaturity, 0));
   m *= pushFactor(modifiers, 'System maturity', 0.9 + 0.12 * bio + Math.min(0.04, ageDays / 250), bio >= 0.7 ? `Fully cycled · established ${Math.round(ageDays) === 1 ? '1 day' : `${Math.round(ageDays)} days`}` : bio >= 0.3 ? 'Still cycling' : 'Not yet cycled');
 
-  m *= pushFactor(modifiers, 'Aquascape beauty', 0.72 + 0.85 * Math.pow(beauty / 100, 1.35), beauty >= 80 ? 'A striking, photogenic layout' : beauty >= 55 ? 'An attractive layout' : 'The layout needs work');
+  // B-138 (ADR-0029 decision 3): beauty prices a display, so it needs animals. An empty, freshly dressed tank sells for
+  // about what its parts cost (its decor is priced in the parts above); a beautiful stocked tank keeps its premium.
+  if (creatures.length > 0) m *= pushFactor(modifiers, 'Aquascape beauty', 0.72 + 0.85 * Math.pow(beauty / 100, 1.35), beauty >= 80 ? 'A striking, photogenic layout' : beauty >= 55 ? 'An attractive layout' : 'The layout needs work');
 
   // Rarity + lineage of livestock.
   if (creatures.length > 0) {
@@ -485,7 +487,7 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
   if (burden > 0.08) m *= pushFactor(modifiers, 'Maintenance burden', 1 - 0.15 * burden, burden >= 0.5 ? 'Demanding to keep — fewer buyers can take it on' : 'Some ongoing care demands');
 
   // Coherent, ethical display bonus: beauty + welfare + compatibility together.
-  if (beauty >= 70 && (creatures.length === 0 || (welfare >= 80 && compatRank(verdict) <= 1)) && status !== 'danger') {
+  if (creatures.length > 0 && beauty >= 70 && welfare >= 80 && compatRank(verdict) <= 1 && status !== 'danger') { // B-138
     m *= pushFactor(modifiers, 'Coherent, ethical display', 1.1, 'Beautiful, healthy and thoughtfully stocked');
   }
 
