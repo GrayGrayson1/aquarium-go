@@ -65,26 +65,33 @@ export function mulberry32(seed: number): Rng {
 }
 
 /**
- * RNG bound to the game state: every draw advances `state.rngState` (works on immer drafts).
+ * RNG bound to the game state: every draw continues from `state.rngState` and advances it (works on immer drafts).
+ *
+ * Chunk 4 review (B-127's settles): a draw first re-reads `state.rngState`, so a generator made earlier continues the
+ * one stream after other code drew from it (a tank settled for a move mid-step, a sale settling its tanks). Before,
+ * such a generator replayed the numbers already drawn and wrote its own state back, discarding the other draws (the
+ * fork B-168 fixed for coral nipping). With one generator alive at a time nothing changes.
  */
 export function simRng(state: GameState): Rng {
-  const inner = mulberry32(state.rngState);
-  const wrap = <A extends unknown[], R>(fn: (...a: A) => R) =>
+  let inner = mulberry32(state.rngState);
+  let seen = inner.state();
+  const wrap = <A extends unknown[], R>(pick: (r: Rng) => (...a: A) => R) =>
     (...a: A): R => {
-      const r = fn(...a);
-      state.rngState = inner.state();
+      if (state.rngState !== seen) inner = mulberry32(state.rngState);
+      const r = pick(inner)(...a);
+      seen = state.rngState = inner.state();
       return r;
     };
   return {
-    next: wrap(inner.next),
-    range: wrap(inner.range),
-    int: wrap(inner.int),
-    chance: wrap(inner.chance),
-    pick: wrap(inner.pick) as Rng['pick'],
-    weighted: wrap(inner.weighted) as Rng['weighted'],
-    gauss: wrap(inner.gauss),
-    shuffle: wrap(inner.shuffle) as Rng['shuffle'],
-    state: inner.state,
+    next: wrap((r) => r.next),
+    range: wrap((r) => r.range),
+    int: wrap((r) => r.int),
+    chance: wrap((r) => r.chance),
+    pick: wrap((r) => r.pick) as Rng['pick'],
+    weighted: wrap((r) => r.weighted) as Rng['weighted'],
+    gauss: wrap((r) => r.gauss),
+    shuffle: wrap((r) => r.shuffle) as Rng['shuffle'],
+    state: () => inner.state(),
   };
 }
 

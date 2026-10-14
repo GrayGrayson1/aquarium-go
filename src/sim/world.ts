@@ -100,8 +100,10 @@ function stepOnce(state: GameState, dt: number, opts: AdvanceOptions): void {
         stepTank(state, tank, tdt, lod, endHour);
       }
     }
+    // lane:production — once per game hour crossed (0.5 §11.3). Before the world context: a line's moves settle tanks,
+    // whose steps draw from the stream (the chunk 4 review), so the world systems' generator starts after them.
+    stepProduction(state, state.clock.hour, endHour);
     const ctx = makeContext(state, dt, 'full');
-    stepProduction(state, state.clock.hour, endHour, ctx); // lane:production — once per game hour crossed (0.5 §11.3)
     stepWorldSystems(state, dt, ctx);
   } finally {
     stepEndHour = outerEnd;

@@ -7,7 +7,8 @@
  * from nothing.
  *
  * - **Once per game hour.** `stepProduction` runs from the world step (src/sim/world.ts) for each whole hour crossed,
- *   after the tanks; `production.lastHour` makes a re-stepped hour do nothing more. No randomness.
+ *   after the tanks; `production.lastHour` makes a re-stepped hour do nothing more. A line draws no random numbers;
+ *   the tanks it settles before a move step as they always do (and simRng continues one stream across them).
  * - **Breed.** The pair spawns through the existing breeding sim in the breed tank. A held pair (paused by the player,
  *   waiting for room, or missing a partner or tank) gets `repro.lineHold`, which keeps its breeding readiness at 0, as
  *   resting does (the mechanism PROD-010 asks for). For species the keeper introduces (bettas), the female rests in her
@@ -29,7 +30,6 @@
  * - **Costs.** costs.ts: the line's share of its tanks' food and power, hour by hour (ADR-0025 decision 9).
  */
 import type { Clutch, Creature, GameState, ListingKind, ProductionBatch, ProductionKeepRule, ProductionLine, ProductionRef, ProductionState, SpeciesDefinition, Tank } from '@/types';
-import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
 import { emitEvent } from '../context';
 import { settleTanks } from '../settle';
@@ -46,9 +46,9 @@ import { moveCreature } from '../life/actions';
 import { isPrismatic } from '../life/rareVariants';
 import { resolveMorph, morphDisplayName, predictOffspringMorphs } from '../life/genetics';
 import { sizeAtAge } from '../life/growth';
-import { environmentGate } from '../compat';
+import { environmentGate, previewAddition } from '../compat';
 import { tankDailyCost } from '../water';
-import { createListing, DEFAULT_LISTING_HOURS } from '../economy/listings';
+import { activeListingFor, createListing, DEFAULT_LISTING_HOURS } from '../economy/listings';
 import { bundleValue, creatureValue } from '../economy/valuation';
 import { buyTank, tankKitPrice } from '../economy/purchases';
 import { chargeLine, isLineParent, isLineYoung, lineShare, lineTankIds } from './costs';
@@ -59,8 +59,18 @@ export const QUARANTINE_HOURS = 168;
 export const WEEK_HOURS = 168;
 /** "Auctions · reserve at fair value −10%" (0.5 §11.1, PROD-014). */
 export const RESERVE_SHARE = 0.9;
-/** A quarantine tank takes a batch once it's cycled or seeded (buyTank's seeded media gives 0.6). */
-export const QUARANTINE_READY_MATURITY = 0.6;
+/**
+ * A quarantine tank takes a batch once it's cycled: the game's own line, where Move to nursery warns "{tank} isn't
+ * cycled yet" below 0.3. Seeded media gives 0.6; a cycled tank 0.88. (It was 0.6: an empty tank's filter bacteria
+ * decline without waste, 0.88 → 0.6 in about five idle days, and the line then stalled without a word. The chunk 4
+ * review found the seeded case: a new seeded tank fell below 0.6 within hours of its "moves in today".)
+ */
+export const QUARANTINE_READY_MATURITY = 0.3;
+
+/** Is a quarantine tank cycled enough for a batch? */
+export function quarantineReady(t: Tank): boolean {
+  return (t.water.bioMaturity ?? 0) >= QUARANTINE_READY_MATURITY - 1e-9;
+}
 /** Ended lines kept for their history (ADR-0025 decision 6). */
 const ENDED_KEPT = 24;
 
@@ -262,9 +272,47 @@ export interface TankFit {
 
 const STAGE_WORD: Record<LineStage, string> = { breed: 'breed', raise: 'raise', quarantine: 'quarantine', keep: 'keepers' };
 
+/** The stage a line uses a tank for, if any (its quarantine tanks all count). */
+function stageOf(line: ProductionLine, tankId: string): LineStage | null {
+  if (line.tanks.breed === tankId) return 'breed';
+  if (line.tanks.raise === tankId) return 'raise';
+  if (line.tanks.quarantine.includes(tankId)) return 'quarantine';
+  if (line.tanks.keep === tankId) return 'keep';
+  return null;
+}
+
+/** The compatibility engine's temperament reasons: fights, fin-nipping, predation (space is the places check's). */
+const TEMPERAMENT: ReadonlySet<string> = new Set(['aggression', 'predation', 'social']);
+
+/**
+ * Temperament (§8.6.1, 0.5 §11.1 item 5, PROD-003): what the stage will hold, previewed with the compatibility engine
+ * as any move is. The breed tank gets the pair (only the male, for species the keeper introduces: the female rests
+ * elsewhere); the other stages get the pair's young at their raised size. A temperament reason the engine rates a
+ * warning or worse (what makes a mix high-risk or incompatible) doesn't fit, with the engine's own words.
+ */
+function temperamentRisk(state: GameState, sp: SpeciesDefinition, stage: LineStage, t: Tank, pairIds: string[]): { reason?: string } | null {
+  let report;
+  try {
+    if (stage === 'breed') {
+      const ids = (moduleFor(sp).introducedByKeeper ? pairIds.slice(1, 2) : pairIds).filter((id) => !!state.creatures[id] && state.creatures[id].tankId !== t.id);
+      if (!ids.length) return null;
+      report = previewAddition(state, t.id, { speciesId: sp.id, creatureIds: ids });
+    } else {
+      report = previewAddition(state, t.id, { speciesId: sp.id, count: Math.max(2, Math.min(6, sp.breeding.maxRaisedPerClutch)), sizeCm: sp.adultSizeCm * 0.35 });
+    }
+  } catch {
+    return null;
+  }
+  const bad = report.reasons.filter((r) => TEMPERAMENT.has(r.category) && (r.severity === 'critical' || r.severity === 'warning'));
+  if (!bad.length) return null;
+  return { reason: (bad.find((r) => r.severity === 'critical') ?? bad[0]).text };
+}
+
 /**
  * Can this tank serve this stage of a line (water type, temperament and space, §8.6.1)? `chosen` is the line's other
- * stages so far (a tank can't serve two stages of one line); `ignoreLineId` leaves a line out of the Shared check.
+ * stages so far (a tank can't serve two stages of one line); `pairIds` is [mother, father]; `ignoreLineId` leaves a line
+ * out of the checks against other lines. Lines may share tanks, but never a keep tank with another line's other stages
+ * (its animals are protected, ADR-0025 decision 4: a batch moved into it could never be listed, and young never leave it).
  */
 export function tankFitFor(state: GameState, speciesId: string, stage: LineStage, tankId: string, chosen: Partial<Record<LineStage, string>>, pairIds: string[] = [], ignoreLineId?: string): TankFit {
   const sp = findSpecies(speciesId);
@@ -272,6 +320,11 @@ export function tankFitFor(state: GameState, speciesId: string, stage: LineStage
   if (!sp || !t) return { ok: false, status: 'no', reason: 'That tank doesn’t exist.' };
   for (const [k, id] of Object.entries(chosen) as [LineStage, string][]) {
     if (k !== stage && id === tankId) return { ok: false, status: 'no', reason: `Already the ${STAGE_WORD[k]} tank` };
+  }
+  for (const l of productionLines(state)) {
+    if (l.id === ignoreLineId) continue;
+    const theirs = stageOf(l, tankId);
+    if (theirs && (theirs === 'keep') !== (stage === 'keep')) return { ok: false, status: 'no', reason: `Already ${l.name}’s ${STAGE_WORD[theirs]} tank` };
   }
   const gate = environmentGate(sp, t);
   if (!gate.ok) return { ok: false, status: 'no', reason: gate.reason ?? `${t.name} isn’t suitable.` };
@@ -283,7 +336,8 @@ export function tankFitFor(state: GameState, speciesId: string, stage: LineStage
     places = juvenileSlots(state, t, sp, state.clock.hour, sp.adultSizeCm * 0.35);
     if (places < 1) return { ok: false, status: 'no', reason: 'No room for young', places: 0 };
   }
-  void pairIds;
+  const risk = temperamentRisk(state, sp, stage, t, pairIds);
+  if (risk) return { ok: false, status: 'no', reason: risk.reason, places };
   const shared = productionLines(state).some((l) => l.id !== ignoreLineId && lineTankIds(l).includes(tankId));
   return { ok: true, status: shared ? 'shared' : 'fits', places };
 }
@@ -319,9 +373,15 @@ export function linePairCheck(state: GameState, aId: string, bId: string): { ok:
   return { ok: true, message: 'ok', motherId: ev.female.id, fatherId: ev.male.id };
 }
 
-/** Pairs a new line could use (§8.6.1 step 1): every adult pair that can breed together, with lines' pairs marked. */
-export function candidatePairs(state: GameState): { motherId: string; fatherId: string; speciesId: string; inLine?: string; ready: boolean }[] {
-  const adults = Object.values(state.creatures).filter((c) => c.status === 'alive' && !!c.tankId);
+/** Pairs listed per species: a big colony (20 shrimp make 100 pairs) mustn't crowd out every other species. */
+export const PAIRS_PER_SPECIES = 30;
+
+/**
+ * Pairs a new line could use (§8.6.1 step 1): every adult pair that can breed together, with lines' pairs marked, up to
+ * PAIRS_PER_SPECIES per species (ready pairs first); `speciesId` lists one species ("Choose another pair").
+ */
+export function candidatePairs(state: GameState, speciesId?: string): { motherId: string; fatherId: string; speciesId: string; inLine?: string; ready: boolean }[] {
+  const adults = Object.values(state.creatures).filter((c) => c.status === 'alive' && !!c.tankId && (!speciesId || c.speciesId === speciesId));
   const bySpecies = new Map<string, Creature[]>();
   for (const c of adults) {
     const sp = findSpecies(c.speciesId);
@@ -330,7 +390,8 @@ export function candidatePairs(state: GameState): { motherId: string; fatherId: 
   }
   const out: { motherId: string; fatherId: string; speciesId: string; inLine?: string; ready: boolean }[] = [];
   const seen = new Set<string>();
-  for (const [speciesId, list] of [...bySpecies.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1))) {
+  for (const [spId, list] of [...bySpecies.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1))) {
+    const mine: typeof out = [];
     const sorted = [...list].sort((x, y) => (x.id < y.id ? -1 : 1));
     for (let i = 0; i < sorted.length; i++) {
       for (let j = i + 1; j < sorted.length; j++) {
@@ -347,11 +408,24 @@ export function candidatePairs(state: GameState): { motherId: string; fatherId: 
         // a line's own pair is listed but disabled; a pair splitting a line's parent from its partner isn't listed
         if ((lf || lm) && !(lf && lf === lm && lf.pair.motherId === ev.female.id && lf.pair.fatherId === ev.male.id)) continue;
         const line = lf;
-        out.push({ motherId: ev.female.id, fatherId: ev.male.id, speciesId, ...(line ? { inLine: line.name } : {}), ready: !line && isReady(ev.female) && isReady(ev.male) });
+        mine.push({ motherId: ev.female.id, fatherId: ev.male.id, speciesId: spId, ...(line ? { inLine: line.name } : {}), ready: !line && isReady(ev.female) && isReady(ev.male) });
       }
     }
+    // a line's own pair first, then ready pairs; the order is otherwise by id (stable)
+    const rank = (p: (typeof out)[number]) => (p.inLine ? 0 : p.ready ? 1 : 2);
+    out.push(...mine.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank(b.p) || a.i - b.i).slice(0, PAIRS_PER_SPECIES).map((x) => x.p));
   }
-  return out.slice(0, 60);
+  return out;
+}
+
+/** A creature that becomes a line's parent leaves every line's batches: it belongs to one line (the parent role wins). */
+function claimParents(state: GameState, ids: string[]): void {
+  for (const l of productionLines(state)) {
+    if (!l.batches) continue;
+    for (const b of l.batches) b.creatureIds = b.creatureIds.filter((id) => !ids.includes(id));
+    l.batches = l.batches.filter((b) => b.creatureIds.length > 0 || (b.listingIds?.length ?? 0) > 0);
+    if (!l.batches.length) delete l.batches;
+  }
 }
 
 function freshStats(hour: number): ProductionLine['stats'] {
@@ -408,8 +482,7 @@ export function createLine(state: GameState, spec: NewLineSpec): ActionResult & 
     line.customName = true;
   } else line.name = defaultName;
   applyDefaultNames(state);
-  const qt = state.tanks[spec.tanks.quarantine];
-  if (qt && qt.purpose === 'display') qt.purpose = 'quarantine';
+  claimParents(state, [mother.id, father.id]);
   return { ok: true, message: `${line.name} started`, lineId: id };
 }
 
@@ -480,9 +553,13 @@ export function setLinePair(state: GameState, lineId: string, aId: string, bId: 
   const others = productionLines(state).filter((l) => l !== line);
   if (others.some((l) => isLineParent(l, aId) || isLineParent(l, bId))) return no('That pair already runs another line.');
   const saved = state.production!.lines;
+  let pair: ReturnType<typeof linePairCheck>;
   state.production!.lines = others; // check the pair without this line's own claim
-  const pair = linePairCheck(state, aId, bId);
-  state.production!.lines = saved;
+  try {
+    pair = linePairCheck(state, aId, bId);
+  } finally {
+    state.production!.lines = saved;
+  }
   if (!pair.ok || !pair.motherId || !pair.fatherId) return no(pair.message);
   const mother = state.creatures[pair.motherId];
   if (mother.speciesId !== line.speciesId) return no(`This line breeds ${findSpecies(line.speciesId)?.commonName.toLowerCase() ?? 'another species'}s.`);
@@ -498,6 +575,7 @@ export function setLinePair(state: GameState, lineId: string, aId: string, bId: 
     if (!r.ok) return no(r.message);
   }
   line.pair = { motherId: mother.id, fatherId: father.id, ...(keeper ? { restTankId: mother.tankId && mother.tankId !== line.tanks.breed ? mother.tankId : line.tanks.keep } : {}) };
+  claimParents(state, [mother.id, father.id]);
   line.routed = undefined;
   line.sortedThroughHour = state.clock.hour;
   clearBroken(line);
@@ -512,6 +590,16 @@ export function setLineTank(state: GameState, lineId: string, stage: LineStage, 
   delete chosen[stage];
   const fit = tankFitFor(state, line.speciesId, stage, tankId, chosen, [line.pair.motherId, line.pair.fatherId], line.id);
   if (!fit.ok) return no(fit.reason ?? 'That tank doesn’t fit.');
+  if (stage === 'breed') {
+    // the pair moves to its new breed tank (a keeper-introduced female stays where she rests)
+    const keeper = !!moduleFor(findSpecies(line.speciesId)!).introducedByKeeper;
+    for (const id of keeper ? [line.pair.fatherId] : [line.pair.motherId, line.pair.fatherId]) {
+      const c = state.creatures[id];
+      if (!c || c.status !== 'alive' || c.tankId === tankId) continue;
+      const r = moveCreature(state, c.id, tankId);
+      if (!r.ok) return no(r.message);
+    }
+  }
   if (stage === 'quarantine') {
     const qs = line.tanks.quarantine.filter((id) => id !== replace && !!state.tanks[id]);
     line.tanks.quarantine = [tankId, ...qs.filter((id) => id !== tankId)];
@@ -552,7 +640,7 @@ export function addQuarantineTank(state: GameState, lineId: string, seeded: bool
   const tank = state.tanks[r.tankId];
   tank.purpose = 'quarantine';
   line.tanks.quarantine = [...line.tanks.quarantine.filter((id) => !!state.tanks[id]), tank.id];
-  const ready = (tank.water.bioMaturity ?? 0) >= QUARANTINE_READY_MATURITY - 1e-9;
+  const ready = quarantineReady(tank);
   return {
     ok: true,
     message: r.message,
@@ -575,7 +663,7 @@ export function restartDay(state: GameState, line: ProductionLine): number {
   const busyUntil = line.tanks.quarantine
     .map((id) => quarantineBusyUntil(state, id))
     .filter((h): h is number => h !== null);
-  const freeNow = line.tanks.quarantine.some((id) => state.tanks[id] && quarantineBusyUntil(state, id) === null && (state.tanks[id].water.bioMaturity ?? 0) >= QUARANTINE_READY_MATURITY - 1e-9);
+  const freeNow = line.tanks.quarantine.some((id) => state.tanks[id] && quarantineBusyUntil(state, id) === null && quarantineReady(state.tanks[id]));
   if (waiting) return freeNow || !busyUntil.length ? day(now) : day(Math.min(...busyUntil));
   const brood = Object.values(state.clutches).find((cl) => cl.tankId === line.tanks.raise && cl.motherId === line.pair.motherId && cl.fatherId === line.pair.fatherId);
   return brood ? day(Math.max(now, brood.nextStageHour)) : day(now);
@@ -597,7 +685,7 @@ export function quarantineBusyUntil(state: GameState, tankId: string): number | 
 // ───────────────────────────── the hourly step ─────────────────────────────
 
 /** Run every line once for each whole game hour in [startHour, endHour) not already run (0.5 §11.3). */
-export function stepProduction(state: GameState, startHour: number, endHour: number, _ctx?: SimContext): void {
+export function stepProduction(state: GameState, startHour: number, endHour: number): void {
   const prod = state.production;
   if (!prod || !prod.lines.length) return;
   for (let h = Math.ceil(startHour - 1e-9); h < endHour - 1e-9; h++) {
@@ -607,7 +695,8 @@ export function stepProduction(state: GameState, startHour: number, endHour: num
       try {
         stepLine(state, line, h);
       } catch (e) {
-        // A line must never stop the world: report and carry on (the next hour tries again).
+        // A line must never stop the world: report and carry on (the next hour tries again). Each action the line took
+        // before the error was a whole action (a move, a listing), so they stay; nothing is half-done or rolled back.
         if (typeof console !== 'undefined') console.warn('production line step failed', line.id, e);
       }
     }
@@ -761,11 +850,16 @@ function stepLine(state: GameState, line: ProductionLine, hour: number): void {
   const mod = moduleFor(sp);
   const keeper = !!mod.introducedByKeeper;
   settleTanks(state, [...lineTankIds(line), state.creatures[line.pair.motherId]?.tankId, state.creatures[line.pair.fatherId]?.tankId]);
+  countSales(state, line); // sales closed during the hour that just ended count in its week
   rollWeek(line, hour);
   chargePower(state, line);
   if (state.tanks[line.tanks.breed] || state.tanks[line.tanks.raise]) noteTankNames(state, line);
-  countSales(state, line);
+  // a sold extra quarantine tank leaves the list (with none left, the line is missing its quarantine tank, below)
+  if (line.tanks.quarantine.length > 1 && line.tanks.quarantine.some((id) => !state.tanks[id]) && line.tanks.quarantine.some((id) => !!state.tanks[id])) {
+    line.tanks.quarantine = line.tanks.quarantine.filter((id) => !!state.tanks[id]);
+  }
   pruneBatches(state, line);
+  pruneNoticed(state, line);
 
   // Missing parent or tank: pause with one notice per incident, kept until fixed (ADR-0025 decision 10).
   const broken = findBroken(state, line, keeper);
@@ -777,6 +871,7 @@ function stepLine(state: GameState, line: ProductionLine, hour: number): void {
     }
     notice(state, line, key, hour, { kind: 'warning', text: brokenText(state, line, line.broken), tankId: state.tanks[line.tanks.breed] ? line.tanks.breed : undefined, creatureId: broken.ref === 'mother' || broken.ref === 'father' ? broken.id : undefined, toast: true });
     syncHolds(state, line);
+    if (keeper) tendFemale(state, line, sp, true); // a courting female still goes back to rest
     return;
   }
   clearBroken(line);
@@ -830,7 +925,7 @@ function tendFemale(state: GameState, line: ProductionLine, sp: SpeciesDefinitio
 /** Raise: each free-swimming brood of the pair in the breed tank moves to the raise tank once (PROD-006). */
 function routeBroods(state: GameState, line: ProductionLine, sp: SpeciesDefinition, hour: number): void {
   const raise = state.tanks[line.tanks.raise];
-  if (!raise) return;
+  if (!raise || activeListingFor(state, raise.id)) return; // a tank listed for sale takes nothing new
   const routed = new Set(line.routed ?? []);
   for (const cl of Object.values(state.clutches)) {
     if (cl.tankId !== line.tanks.breed || cl.motherId !== line.pair.motherId || cl.fatherId !== line.pair.fatherId) continue;
@@ -880,15 +975,17 @@ function sortYoung(state: GameState, line: ProductionLine, sp: SpeciesDefinition
     rest = rest.filter((c) => !picked.has(c.id));
   }
   const keepTank = state.tanks[line.tanks.keep];
+  const keepListed = !!keepTank && !!activeListingFor(state, keepTank.id);
   for (const c of keep) {
     const from = c.tankId;
+    if (keepListed) continue; // a tank listed for sale takes nothing new: the keeper stays where it is
     if (keepTank && juvenileSlots(state, keepTank, sp, hour, c.sizeCm) >= 1 && moveCreature(state, c.id, keepTank.id).ok) continue;
     notice(state, line, `keepfull:${c.id}`, hour, { kind: 'warning', text: `${line.name}: ${keepTank?.name ?? 'The keep tank'} is full, so ${c.name} stays in ${(from && state.tanks[from]?.name) || 'its tank'}.`, tankId: from ?? undefined, creatureId: c.id });
   }
   if (rest.length) (line.batches ??= []).push({ id: `b${hour}`, creatureIds: rest.map((c) => c.id), sortedHour: hour });
 }
 
-/** Drop batch members that died, were sold, listed or moved away by the player, or became protected. */
+/** Drop batch members that died, were sold, listed or moved away by the player, or became favourites (protected). */
 function pruneBatches(state: GameState, line: ProductionLine): void {
   if (!line.batches) return;
   for (const b of line.batches) {
@@ -896,7 +993,8 @@ function pruneBatches(state: GameState, line: ProductionLine): void {
       const c = state.creatures[id];
       if (!c || c.status === 'dead' || c.status === 'sold') return false;
       if (b.released) return true; // listed animals stay counted until their listing closes
-      if (c.status === 'listed') return false; // the player listed it
+      if (c.status === 'listed') return false; // listed (by the player, or by this batch's own partial listing)
+      if (c.favorite) return false; // a favourite is protected: never moved or listed by the line
       const where = b.tankId ?? undefined;
       if (where ? c.tankId !== where : c.tankId !== line.tanks.raise && c.tankId !== line.tanks.breed) return false;
       return true;
@@ -906,14 +1004,39 @@ function pruneBatches(state: GameState, line: ProductionLine): void {
   if (!line.batches.length) delete line.batches;
 }
 
-/** Quarantine: each waiting batch moves into the first free, ready quarantine tank with room (one batch per tank). */
+/** One-off notices are remembered only while what they're about exists (the save mustn't grow with them, B-171). */
+function pruneNoticed(state: GameState, line: ProductionLine): void {
+  if (!line.noticed) return;
+  const batches = new Set((line.batches ?? []).map((b) => b.id));
+  for (const k of Object.keys(line.noticed)) {
+    const [kind, id] = [k.slice(0, k.indexOf(':')), k.slice(k.indexOf(':') + 1)];
+    const c = kind === 'keepfull' ? state.creatures[id] : undefined;
+    const stale =
+      (kind === 'full' && !state.clutches[id]) ||
+      (kind === 'keepfull' && (!c || c.status !== 'alive' || c.tankId === line.tanks.keep)) ||
+      (kind === 'list' && !batches.has(id)) ||
+      (kind === 'cycle' && (!state.tanks[id] || quarantineReady(state.tanks[id])));
+    if (stale) delete line.noticed[k];
+  }
+  if (!Object.keys(line.noticed).length) delete line.noticed;
+}
+
+/**
+ * Quarantine: each waiting batch moves into the first free, cycled quarantine tank with room (one batch per tank). A
+ * batch held up only because the free tanks aren't cycled says so once per tank (ADR-0030 decision 3: "The juveniles
+ * move in once it has cycled.").
+ */
 function quarantine(state: GameState, line: ProductionLine, sp: SpeciesDefinition, hour: number): void {
   for (const b of line.batches ?? []) {
     if (b.tankId || b.released) continue;
+    let uncycled: Tank | null = null;
     for (const qid of line.tanks.quarantine) {
       const qt = state.tanks[qid];
-      if (!qt || quarantineBusyUntil(state, qid) !== null) continue;
-      if ((qt.water.bioMaturity ?? 0) < QUARANTINE_READY_MATURITY - 1e-9) continue;
+      if (!qt || quarantineBusyUntil(state, qid) !== null || activeListingFor(state, qid)) continue;
+      if (!quarantineReady(qt)) {
+        uncycled ??= qt;
+        continue;
+      }
       const moved: string[] = [];
       for (const id of b.creatureIds) {
         const c = state.creatures[id];
@@ -928,7 +1051,14 @@ function quarantine(state: GameState, line: ProductionLine, sp: SpeciesDefinitio
       b.quarantinedHour = hour;
       // what didn't fit waits as its own batch for the next free tank
       if (left.length) line.batches!.push({ id: `${b.id}r${hour}`, creatureIds: left, sortedHour: b.sortedHour });
+      uncycled = null;
       break;
+    }
+    if (uncycled && !b.tankId) {
+      const members = b.creatureIds.map((id) => state.creatures[id]).filter((c): c is Creature => !!c);
+      const where = members.map((c) => c.tankId).find(Boolean) ?? line.tanks.raise;
+      // "{Line}: {tank} isn't cycled yet, so the juveniles wait in {tank}."
+      notice(state, line, `cycle:${uncycled.id}`, hour, { kind: 'warning', text: `${line.name}: ${uncycled.name} isn’t cycled yet, so the ${youngWord(sp, members, members.length)} ${members.length === 1 ? 'waits' : 'wait'} in ${tankName(state, line, where)}.`, tankId: uncycled.id });
     }
   }
 }
@@ -958,18 +1088,23 @@ function release(state: GameState, line: ProductionLine, sp: SpeciesDefinition, 
     if (adults.length) groups.push({ kind: adults.length === 1 ? 'creature' : 'group', creatures: adults });
     const ids: string[] = [];
     let failed: string | null = null;
+    const unlisted: Creature[] = [];
     for (const g of groups) {
       const value = bundleValue(state, g.kind, g.creatures).expected;
       const r = createListing(state, { kind: g.kind, creatureIds: g.creatures.map((c) => c.id), reserve: Math.round(value * RESERVE_SHARE), durationHours: DEFAULT_LISTING_HOURS });
       if (r.ok && r.listingId) ids.push(r.listingId);
-      else failed = r.message;
+      else {
+        failed = r.message;
+        unlisted.push(...g.creatures);
+      }
     }
-    if (failed && !ids.length) {
-      const n = listable.length;
-      notice(state, line, `list:${b.id}`, hour, { kind: 'warning', text: `${line.name}: ${n} ${youngWord(sp, listable, n)} couldn't be listed: ${failed}`, tankId: b.tankId });
-      continue; // try again next hour
+    if (ids.length) b.listingIds = [...(b.listingIds ?? []), ...ids];
+    if (failed) {
+      // what couldn't be listed is said once and tried again next hour (what was listed has left the batch's members)
+      const n = unlisted.length;
+      notice(state, line, `list:${b.id}`, hour, { kind: 'warning', text: `${line.name}: ${n} ${youngWord(sp, unlisted, n)} couldn't be listed: ${failed}`, tankId: b.tankId });
+      continue;
     }
     b.released = true;
-    if (ids.length) b.listingIds = [...(b.listingIds ?? []), ...ids];
   }
 }

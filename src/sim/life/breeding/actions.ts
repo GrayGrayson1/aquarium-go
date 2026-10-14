@@ -64,6 +64,7 @@ function followCarried(state: GameState, c: Creature, _from: string | null): voi
 
 /** Begin a species-appropriate breeding attempt (e.g. introduce a conditioned female betta to the male's nest tank). */
 export function startBreeding(state: GameState, aId: string, bId: string, tankId?: string): ActionResult {
+  settleTanks(state, [state.creatures[aId]?.tankId, state.creatures[bId]?.tankId, tankId]); // B-127: catch up, then check the pair
   const ev = evaluatePair(state, aId, bId, true);
   if (!ev.sp || !ev.mod || !ev.male || !ev.female) return no(ev.reasons[0] ?? 'These two can’t breed.');
   const { sp, mod, male, female } = ev;
@@ -105,6 +106,8 @@ export function separateCreature(state: GameState, creatureId: string, toTankId:
   if (isGone(c)) return no(`${c.name} is no longer in your care.`);
   const tank = state.tanks[toTankId];
   if (!tank) return no('That tank doesn’t exist.');
+  settleTanks(state, [c.tankId, toTankId]); // B-127: catch up, then check
+  if (isGone(c)) return no(`${c.name} is no longer in your care.`);
   if (c.tankId === toTankId) return no(`${c.name} is already in ${tank.name}.`);
   const sp = findSpecies(c.speciesId);
   if (sp) {
@@ -156,10 +159,15 @@ export function separateCreature(state: GameState, creatureId: string, toTankId:
 
 /** Move a clutch (eggs/fry) to a nursery tank. */
 export function moveClutch(state: GameState, clutchId: string, toTankId: string): ActionResult {
-  const cl = state.clutches[clutchId];
-  if (!cl) return no('Those eggs or young are gone — they have hatched and grown on, or were lost.'); // lane:guide — was 'Not found'
+  const gone = () => no('Those eggs or young are gone — they have hatched and grown on, or were lost.'); // lane:guide — was 'Not found'
+  if (!state.clutches[clutchId]) return gone();
   const tank = state.tanks[toTankId];
   if (!tank) return no('That tank doesn’t exist.');
+  // B-127: both tanks catch up first; then the checks see the brood as it is now (its young may have been raised and
+  // the brood closed during the owed hours: the chunk 4 review)
+  settleTanks(state, [state.clutches[clutchId].tankId, toTankId]);
+  const cl = state.clutches[clutchId];
+  if (!cl || !(cl.count > 0)) return gone();
   if (cl.tankId === toTankId) return no(`They’re already in ${tank.name}.`);
   const sp = findSpecies(cl.speciesId);
   if (!sp) return no('Unknown species.');
@@ -175,7 +183,6 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
   }
 
   const hour = state.clock.hour;
-  settleTanks(state, [cl.tankId, toTankId]); // B-127: both tanks catch up first
   const from = state.tanks[cl.tankId];
   cl.tankId = toTankId;
   const guardian = cl.guardedById ? state.creatures[cl.guardedById] : undefined;

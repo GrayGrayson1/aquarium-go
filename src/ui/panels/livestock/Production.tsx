@@ -6,7 +6,7 @@
  */
 import { useState, type ReactNode } from 'react';
 import clsx from 'clsx';
-import { Box, CirclePlay, Egg, Factory, Gavel, Heart, ListFilter, Pause, ShieldCheck, Sprout, TrendingUp, TriangleAlert } from 'lucide-react';
+import { Box, ChevronRight, CirclePlay, Egg, Factory, Gavel, Heart, ListFilter, Pause, ShieldCheck, Sprout, TrendingUp, TriangleAlert } from 'lucide-react';
 import type { GameState, ProductionLine } from '@/types';
 import { Badge, Button, Modal, Toggle, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
@@ -28,7 +28,7 @@ import {
   setLineRunning,
   type LineStage,
 } from '@/sim/production';
-import { lineView, slotsCaption, type LineView, type StageId } from '@/sim/production/view';
+import { lineColour, lineView, slotsCaption, type LineView, type StageId } from '@/sim/production/view';
 import { act } from '../common/act';
 import { Bar, EmptyState, Seg, Tile } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
@@ -52,7 +52,7 @@ export function ProductionTab({ g, sel, onSelect }: { g: GameState; sel: string 
       {strip && (
         <Seg<string>
           label="Production lines"
-          tabs
+          reveal
           value={creating ? 'new' : current?.id ?? 'new'}
           onChange={(id) => onSelect(id)}
           testIdPrefix="production-line-"
@@ -68,7 +68,7 @@ export function ProductionTab({ g, sel, onSelect }: { g: GameState; sel: string 
       {creating ? (
         <NewLine g={g} onStarted={(id) => onSelect(id)} />
       ) : current ? (
-        <LineDetail g={g} line={current} />
+        <LineDetail g={g} line={current} onEnded={() => onSelect(null)} />
       ) : (
         <EmptyState
           icon={<Factory size={26} />}
@@ -149,8 +149,10 @@ function Stage({ id, n, icon, title, active, children, pill, onOpen, label }: { 
 
 type Fixing = null | { kind: 'pair' } | { kind: 'tank'; stage: LineStage; replace?: string };
 
+const daysLeft = (n: number | undefined) => `${n ?? 0} ${n === 1 ? 'day' : 'days'} left`;
+
 /** One line: header card, the note while it's held up, four tiles, five stages, Line rules. */
-export function LineDetail({ g, line }: { g: GameState; line: ProductionLine }) {
+export function LineDetail({ g, line, onEnded }: { g: GameState; line: ProductionLine; onEnded?: () => void }) {
   const [ending, setEnding] = useState(false);
   const [sorting, setSorting] = useState(false);
   const [addingQt, setAddingQt] = useState(false);
@@ -165,8 +167,15 @@ export function LineDetail({ g, line }: { g: GameState; line: ProductionLine }) 
   const raiseName = v.raise?.name ?? 'the raise tank';
   const keepName = v.keep?.name ?? 'the keep tank';
   const broken = line.broken;
-  const waitsForQuarantine = line.waiting && (line.batches ?? []).some((b) => !b.tankId);
+  // a batch waiting for a quarantine tank: "Add a quarantine tank" (ADR-0030 decision 3), in the note while the line
+  // waits for room, else on the Quarantine stage
+  const waitsForQuarantine = !broken && (line.batches ?? []).some((b) => !b.tankId && !b.released);
   const kit = waitsForQuarantine ? quarantineKit(g, line.id) : null;
+  const addQt = kit && (
+    <Button size="sm" variant="primary" data-testid="production-add-qt" onClick={() => setAddingQt(true)}>
+      Add a quarantine tank · {formatMoney(kit.price)}
+    </Button>
+  );
   const traits = new Map(pairTraits(g, line).map((t) => [t.id, t.name]));
   const fixTank = (stage: LineStage) => broken && !broken.moved && broken.ref === stage;
   const fixPair = broken && (broken.ref === 'mother' || broken.ref === 'father');
@@ -187,9 +196,11 @@ export function LineDetail({ g, line }: { g: GameState; line: ProductionLine }) 
     ? { value: `${v.raising.count} ${v.raising.word}`, hint: v.raising.dayOf !== undefined ? `${raiseName} · day ${v.raising.dayOf} of ${v.raising.ofDays}` : `${raiseName}${v.raising.full ? ' · full' : ''}` }
     : { value: '—', hint: raiseName };
   const quarantine = v.quarantined.count > 0
-    ? { value: String(v.quarantined.count), hint: line.rules.autoList ? `Lists Day ${v.quarantined.listsDay}` : `${v.quarantined.daysLeft} days left` }
+    ? { value: String(v.quarantined.count), hint: line.rules.autoList ? `Lists Day ${v.quarantined.listsDay}` : daysLeft(v.quarantined.daysLeft) }
     : v.quarantined.busyTank
       ? { value: '—', hint: `${v.quarantined.busyTank.name} is busy to Day ${v.quarantined.busyUntilDay}` }
+      : v.quarantined.uncycledTank
+        ? { value: '—', hint: `${v.quarantined.uncycledTank.name} isn’t cycled yet` }
       : { value: '—', hint: v.quarantine?.name ?? 'Quarantine' };
 
   return (
@@ -224,11 +235,7 @@ export function LineDetail({ g, line }: { g: GameState; line: ProductionLine }) 
           <span>
             {raiseName} is full, so {v.mother?.name ?? 'the pair'} and {v.father?.name ?? 'its partner'} are kept apart until there's room.
           </span>
-          {kit && (
-            <Button size="sm" variant="primary" data-testid="production-add-qt" onClick={() => setAddingQt(true)}>
-              Add a quarantine tank · {formatMoney(kit.price)}
-            </Button>
-          )}
+          {addQt}
         </div>
       )}
 
@@ -303,14 +310,15 @@ export function LineDetail({ g, line }: { g: GameState; line: ProductionLine }) 
           {v.quarantined.count > 0 ? (
             <>
               <p>
-                {v.quarantined.count} {v.quarantined.count === 1 ? 'juvenile' : 'juveniles'}
+                {v.quarantined.count} {v.quarantined.word}
               </p>
-              <Bar value={100 * (v.quarantined.holdFraction ?? 0)} tone="gold" thin label={`${v.quarantined.daysLeft} days left`} />
-              <p className="pr-stage__foot">{v.quarantined.daysLeft} days left</p>
+              <Bar value={100 * (v.quarantined.holdFraction ?? 0)} tone="gold" thin label={daysLeft(v.quarantined.daysLeft)} />
+              <p className="pr-stage__foot">{daysLeft(v.quarantined.daysLeft)}</p>
             </>
           ) : (
             <p>Free</p>
           )}
+          {!line.waiting && addQt}
           {fixTank('quarantine') && <FixTank onClick={() => setFixing({ kind: 'tank', stage: 'quarantine', replace: broken?.id })} />}
         </Stage>
         <Stage id="sell" n={5} icon={<Gavel size={16} />} title="Sell" active={v.active === 'sell'} pill={<TankPill g={g} name="Market" />}>
@@ -318,6 +326,8 @@ export function LineDetail({ g, line }: { g: GameState; line: ProductionLine }) 
           <p className="pr-stage__foot">{v.selling.listed > 0 ? `${v.selling.listed} listed${v.selling.bestBid !== undefined ? ` · best bid ${formatMoney(v.selling.bestBid)}` : ''}` : 'Nothing listed'}</p>
         </Stage>
       </div>
+
+      <RouteStrip g={g} line={line} v={v} />
 
       <section className="pr-rules" aria-label="Line rules">
         <h4 className="pr-section">Line rules</h4>
@@ -343,7 +353,10 @@ export function LineDetail({ g, line }: { g: GameState; line: ProductionLine }) 
                 const name = line.name;
                 setEnding(false);
                 const r = act((d) => endLine(d, line.id), { quiet: true });
-                if (r?.ok) useUI.getState().toast(`${name} ended`, 'info', { detail: 'Its animals stay where they are.' });
+                if (r?.ok) {
+                  useUI.getState().toast(`${name} ended`, 'info', { detail: 'Its animals stay where they are.' });
+                  onEnded?.(); // the address leaves the ended line (a reload would find nothing there)
+                }
               }}
             >
               End line
@@ -357,6 +370,61 @@ export function LineDetail({ g, line }: { g: GameState; line: ProductionLine }) 
       {sorting && <SortSheet g={g} line={line} onClose={() => setSorting(false)} />}
       {fixing?.kind === 'pair' && <PairPicker g={g} line={line} onClose={() => setFixing(null)} />}
       {fixing?.kind === 'tank' && <TankPicker g={g} line={line} stage={fixing.stage} replace={fixing.replace} onClose={() => setFixing(null)} />}
+    </div>
+  );
+}
+
+/**
+ * The route strip (DESIGN-S3D §7.4, §8.6, §12): the line's colour dot, then its tanks from breed tank to Market joined
+ * by chevrons, each with a short tag in the design's words ("14 fry", "3 juveniles", "3 listed"; "Pair waits",
+ * "Full · 12/12", "busy to Day 44"). A tank holding the line up has an amber border, a warning icon and its tag (§13:
+ * never colour or an icon alone).
+ */
+function RouteStrip({ g, line, v }: { g: GameState; line: ProductionLine; v: LineView }) {
+  const b = line.broken;
+  const gone = (ref: LineStage) => !!b && !b.moved && b.ref === ref;
+  const keeperFemale = !!b?.moved && b.ref === 'mother' && !!line.pair.restTankId; // her place is her resting tank, not this one
+  const qt = v.quarantine?.id ?? line.tanks.quarantine[0];
+  const name = (id: string | undefined) => (id && (g.tanks[id]?.name ?? line.tankNames?.[id])) || '—';
+  const held = v.status !== 'running';
+  const raiseFull = !!line.waiting && v.raising.full;
+  const chips: { key: string; name: string; tag?: string; warn: boolean }[] = [
+    { key: 'breed', name: name(line.tanks.breed), tag: gone('breed') ? 'Paused' : held ? 'Pair waits' : undefined, warn: gone('breed') || (!!b?.moved && !keeperFemale) },
+    {
+      key: 'raise',
+      name: name(line.tanks.raise),
+      tag: gone('raise') ? 'Paused' : raiseFull && v.raising.places ? `Full · ${v.raising.places.used}/${v.raising.places.cap}` : v.raising.count > 0 ? `${v.raising.count} ${v.raising.word}` : undefined,
+      warn: gone('raise') || raiseFull,
+    },
+    {
+      key: 'quarantine',
+      name: name(qt),
+      tag: gone('quarantine')
+        ? 'Paused'
+        : v.quarantined.count > 0
+          ? `${v.quarantined.count} ${v.quarantined.word}`
+          : v.quarantined.busyTank
+            ? `busy to Day ${v.quarantined.busyUntilDay}`
+            : v.quarantined.uncycledTank
+              ? 'isn’t cycled yet'
+              : undefined,
+      warn: gone('quarantine') || !!v.quarantined.busyTank || !!v.quarantined.uncycledTank,
+    },
+    { key: 'market', name: 'Market', tag: v.selling.listed > 0 ? `${v.selling.listed} listed` : undefined, warn: false },
+  ];
+  return (
+    <div className="pr-route" data-testid="production-route">
+      <span className="pr-route__dot" style={{ background: `var(--c-${lineColour(g, line)})` }} aria-hidden />
+      {chips.map((c, i) => (
+        <span key={c.key} className="pr-route__step">
+          {i > 0 && <ChevronRight size={13} aria-hidden className="pr-route__chev" />}
+          <span className={clsx('pr-route__chip', c.warn && 'is-warn')}>
+            {c.warn && <TriangleAlert size={12} aria-hidden />}
+            {c.name}
+            {c.tag && <span className="pr-route__tag">{c.tag}</span>}
+          </span>
+        </span>
+      ))}
     </div>
   );
 }

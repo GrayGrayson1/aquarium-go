@@ -28,14 +28,15 @@ export function Chip({ tone = 'neutral', icon, children, title, className, onCli
 /**
  * Segmented radio group — keyboard accessible (arrow keys), ≥40px touch targets. `tabs`: a panel's section strip,
  * announced as tabs (role=tablist/tab, aria-selected; lane:ui-shell ACC-001), with the active one scrolled into view.
+ * `reveal`: a radio group that scrolls its choice into view too (the production line picker, DESIGN-S3D §13).
  */
-export function Seg<T extends string>({ value, onChange, items, label, size = 'md', className, testIdPrefix, tabs }: { value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; disabled?: boolean; title?: string; testId?: string }[]; label: string; size?: 'sm' | 'md'; className?: string; testIdPrefix?: string; tabs?: boolean }) {
+export function Seg<T extends string>({ value, onChange, items, label, size = 'md', className, testIdPrefix, tabs, reveal }: { value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; disabled?: boolean; title?: string; testId?: string }[]; label: string; size?: 'sm' | 'md'; className?: string; testIdPrefix?: string; tabs?: boolean; reveal?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!tabs) return;
+    if (!tabs && !reveal) return;
     const strip = ref.current;
     revealInStrip(strip, [...(strip?.querySelectorAll<HTMLElement>('[data-seg]') ?? [])].find((e) => e.dataset.seg === value));
-  }, [tabs, value]);
+  }, [tabs, reveal, value]);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
     e.preventDefault();

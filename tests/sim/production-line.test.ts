@@ -39,8 +39,16 @@ import {
   setLineRule,
   setLineRunning,
   setLineTank,
+  tankFitFor,
   traitsOf,
+  restartDay,
+  quarantineReady,
+  PAIRS_PER_SPECIES,
 } from '@/sim/production';
+import { lineView } from '@/sim/production/view';
+import { createListing, withdrawListing } from '@/sim/economy/listings';
+import { repairState } from '@/persistence/migrations';
+import { getFoodDef } from '@/data/catalog/foods';
 import { creatureValue } from '@/sim/economy/valuation';
 import { readFileSync } from 'node:fs';
 import { unlock } from '@/sim/facility';
@@ -128,17 +136,27 @@ describe('PROD-004, PROD-019, PROD-021: starting a line', () => {
     const g = f.g;
     expect(g.production).toBeUndefined();
     const tanks = { breed: f.breed.id, raise: f.raise.id, quarantine: f.qt.id, keep: f.keep.id };
-    const kid = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'female', ageDays: 4 }), f.keep.id);
+    // the would-be partners live in tanks of their own (the line's tanks must stay safe for its young)
+    const spare = tank(g, 'Spare', 9);
+    const pufferTank = tank(g, 'Puffer Tank', 12);
+    const kid = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'female', ageDays: 4 }), spare.id);
     expect(createLine(g, { motherId: kid.id, fatherId: f.father.id, tanks }).ok).toBe(false);
-    const male2 = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'male', ageDays: 40 }), f.keep.id);
+    const male2 = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'male', ageDays: 40 }), spare.id);
     expect(createLine(g, { motherId: male2.id, fatherId: f.father.id, tanks }).ok).toBe(false);
-    const puffer = addCreature(g, createCreature(g, simRng(g), 'pea_puffer', { sex: 'female', ageDays: 40 }), f.keep.id);
+    const puffer = addCreature(g, createCreature(g, simRng(g), 'pea_puffer', { sex: 'female', ageDays: 40 }), pufferTank.id);
     expect(createLine(g, { motherId: puffer.id, fatherId: f.father.id, tanks }).ok).toBe(false);
     const twice = createLine(g, { motherId: f.mother.id, fatherId: f.father.id, tanks: { ...tanks, quarantine: f.raise.id } });
     expect(twice.ok).toBe(false);
     expect(twice.message).toMatch(/^Already the (raise|quarantine) tank$/); // ADR-0030 decision 5
     const salt = tank(g, 'Reef', 6, 'g20L', 'marine_fowlr');
     expect(createLine(g, { motherId: f.mother.id, fatherId: f.father.id, tanks: { ...tanks, keep: salt.id } }).ok).toBe(false);
+    // temperament (§8.6.1, PROD-003; the chunk 4 review): a breed tank with another male betta, young beside a pea puffer
+    const fight = createLine(g, { motherId: f.mother.id, fatherId: f.father.id, tanks: { ...tanks, breed: spare.id } });
+    expect(fight).toMatchObject({ ok: false, message: 'Two male bettas will fight — often to serious injury.' });
+    const nip = createLine(g, { motherId: f.mother.id, fatherId: f.father.id, tanks: { ...tanks, keep: pufferTank.id } });
+    expect(nip).toMatchObject({ ok: false, message: 'Pea puffers nip flowing fins.' });
+    expect(tankFitFor(g, 'betta', 'raise', pufferTank.id, { breed: f.breed.id })).toMatchObject({ ok: false, status: 'no', reason: 'Pea puffers nip flowing fins.' });
+    expect(f.father.tankId).toBe(f.breed.id); // a refused line moved nobody
     expect(g.production?.lines.length ?? 0).toBe(0);
     const line = start(f);
     expect(line.name).toBe('Betta line');
@@ -286,10 +304,14 @@ describe('PROD-011, PROD-008: never lists a Prismatic', () => {
       const prism = young(f).filter((c) => isPrismatic(c));
       expect(prism.length).toBe(1);
       expect(prism[0].tankId).toBe(keepPrismatic ? f.keep.id : f.qt.id);
+      // what's in the keep tank now (besides the resting female, whom the line brings to the male: ADR-0030 decision 7)
+      const kept = Object.values(g.creatures).filter((c) => c.tankId === f.keep.id && c.status === 'alive' && c.id !== f.mother.id).map((c) => c.id);
       run(g, QUARANTINE_HOURS + 6, 2);
       expect(g.market.listings.some((l) => l.creatureIds.includes(prism[0].id))).toBe(false);
       // and nothing in the keep tank is ever listed or moved out
       for (const c of Object.values(g.creatures)) if (c.tankId === f.keep.id) expect(g.market.listings.some((l) => l.creatureIds.includes(c.id))).toBe(false);
+      for (const id of kept) if (g.creatures[id].status === 'alive') expect(g.creatures[id].tankId).toBe(f.keep.id);
+      if (keepPrismatic) expect(kept).toContain(prism[0].id);
     });
   }
 });
@@ -658,6 +680,271 @@ describe('ADR-0025 decisions 5 and 6, PROD-020: quarantine tanks and ending a li
     expect(f.father.repro.lineHold).toBeUndefined();
     expect(Object.fromEntries(Object.values(g.creatures).map((c) => [c.id, c.tankId]))).toEqual(where);
     expect(lineSlots(g) - g.production!.lines.length).toBe(1);
-    setLineRule(g, 'nope', 'autoList', false);
+    expect(setLineRule(g, 'nope', 'autoList', false)).toMatchObject({ ok: false, message: 'That line isn’t here any more.' });
+  });
+});
+
+describe('the chunk 4 review: ownership, keep tanks, the pair list, and the line’s own housekeeping', () => {
+  /** A second betta pair and four tanks of its own. */
+  function secondPair(f: Farm) {
+    const g = f.g;
+    const rng = simRng(g);
+    const b2 = tank(g, 'Breed B', 9, 'g10');
+    const r2 = tank(g, 'Grow-out B', 12, 'g40B');
+    const q2 = tank(g, 'Quarantine B', 15, 'g40B');
+    const k2 = tank(g, 'Keep B', 18, 'g20L');
+    const m2 = addCreature(g, createCreature(g, rng, 'betta', { sex: 'male', ageDays: 40, name: 'Sapphire' }), b2.id);
+    const f2 = addCreature(g, createCreature(g, rng, 'betta', { sex: 'female', ageDays: 40, name: 'Iris' }), k2.id);
+    return { b2, r2, q2, k2, m2, f2 };
+  }
+
+  it('a line’s keep tank is never another line’s breed, raise or quarantine tank, and the other way round', () => {
+    const f = farm({ seed: 111 });
+    const g = f.g;
+    const a = start(f);
+    const p = secondPair(f);
+    const own = { breed: p.b2.id, raise: p.r2.id, quarantine: p.q2.id, keep: p.k2.id };
+    // A's keep tank (Quiet Corner) can't be B's quarantine tank: its animals are protected, so a batch there never lists
+    expect(tankFitFor(g, 'betta', 'quarantine', f.keep.id, { breed: p.b2.id }, [p.f2.id, p.m2.id])).toMatchObject({ ok: false, reason: `Already ${a.name}’s keepers tank` });
+    expect(createLine(g, { motherId: p.f2.id, fatherId: p.m2.id, tanks: { ...own, quarantine: f.keep.id } }).ok).toBe(false);
+    expect(createLine(g, { motherId: p.f2.id, fatherId: p.m2.id, tanks: { ...own, raise: f.keep.id } }).ok).toBe(false);
+    // A's raise tank can't be B's keep tank (young would never leave it)
+    expect(tankFitFor(g, 'betta', 'keep', f.raise.id, {}, [p.f2.id, p.m2.id])).toMatchObject({ ok: false, reason: `Already ${a.name}’s raise tank` });
+    // two lines may share a keep tank, and a quarantine tank (one batch at a time)
+    expect(tankFitFor(g, 'betta', 'keep', f.keep.id, {}, [p.f2.id, p.m2.id])).toMatchObject({ ok: true, status: 'shared' });
+    expect(tankFitFor(g, 'betta', 'quarantine', f.qt.id, {}, [p.f2.id, p.m2.id])).toMatchObject({ ok: true, status: 'shared' });
+    expect(g.production!.lines.length).toBe(1);
+  });
+
+  it('an animal belongs to one line: a batch member who becomes another line’s parent leaves the batch, and is charged once', () => {
+    const f = farm({ seed: 112 });
+    const g = f.g;
+    const a = start(f);
+    const rng = simRng(g);
+    // one of A's young, grown, waiting in A's quarantine batch
+    const ash = addCreature(g, createCreature(g, rng, 'betta', { sex: 'female', ageDays: 40, name: 'Ash', motherId: f.mother.id, fatherId: f.father.id }), f.qt.id);
+    const sib = addCreature(g, createCreature(g, rng, 'betta', { sex: 'female', ageDays: 40, motherId: f.mother.id, fatherId: f.father.id }), f.qt.id);
+    a.batches = [{ id: 'b1', creatureIds: [ash.id, sib.id], sortedHour: g.clock.hour, tankId: f.qt.id, quarantinedHour: g.clock.hour }];
+    const p = secondPair(f);
+    const rb = createLine(g, { motherId: ash.id, fatherId: p.m2.id, tanks: { breed: p.b2.id, raise: p.r2.id, quarantine: p.q2.id, keep: p.k2.id } });
+    expect(rb.ok, rb.message).toBe(true);
+    const b = findLine(g, rb.lineId!)!;
+    expect(a.batches?.[0].creatureIds).toEqual([sib.id]); // the parent role wins: A never lists B's mother
+    expect(b.pair.restTankId).toBe(f.qt.id); // she rests where she lives (ADR-0030 decision 7)
+    // shares of a tank never add up to more than 1, and a serving is charged at most once
+    const shareA = lineShare(g, a, f.qt.id);
+    const shareB = lineShare(g, b, f.qt.id);
+    expect(shareA).toBeCloseTo(0.5, 9); // sib
+    expect(shareB).toBeCloseTo(0.5, 9); // Ash
+    expect(shareA + shareB).toBeLessThanOrEqual(1 + 1e-9);
+    const before = a.stats.costs + b.stats.costs;
+    noteFoodSpend(g, f.qt.id, 'flake_tropical', 10);
+    const food = getFoodDef('flake_tropical')!;
+    expect(a.stats.costs + b.stats.costs - before).toBeLessThanOrEqual((10 * food.price) / food.servingsPerPack + 0.011);
+    // and nobody can take a creature that's already a line's parent
+    expect(createLine(g, { motherId: ash.id, fatherId: p.m2.id, tanks: { breed: p.b2.id, raise: p.r2.id, quarantine: p.q2.id, keep: p.k2.id } }).ok).toBe(false);
+  });
+
+  it('the pair list keeps every species: a big colony fills at most its own share', () => {
+    const f = farm({ seed: 113 });
+    const g = f.g;
+    const rng = simRng(g);
+    const colony = tank(g, 'Shrimp Colony', 21, 'g20L');
+    for (let i = 0; i < 20; i++) addCreature(g, createCreature(g, rng, 'cherry_shrimp', { sex: i % 2 ? 'male' : 'female', ageDays: 60 }), colony.id);
+    const guppies = tank(g, 'Guppies', 24, 'g20L');
+    const gm = addCreature(g, createCreature(g, rng, 'fancy_guppy', { sex: 'male', ageDays: 60 }), guppies.id);
+    const gf = addCreature(g, createCreature(g, rng, 'fancy_guppy', { sex: 'female', ageDays: 60 }), guppies.id);
+    const all = candidatePairs(g);
+    expect(all.filter((p) => p.speciesId === 'cherry_shrimp').length).toBeLessThanOrEqual(PAIRS_PER_SPECIES);
+    expect(all.some((p) => p.motherId === gf.id && p.fatherId === gm.id)).toBe(true);
+    expect(all.some((p) => p.motherId === f.mother.id && p.fatherId === f.father.id)).toBe(true);
+    const bettas = candidatePairs(g, 'betta');
+    expect(bettas.length).toBeGreaterThan(0);
+    expect(bettas.every((p) => p.speciesId === 'betta')).toBe(true);
+  });
+
+  it('starting a line leaves every tank’s purpose alone (a display tank stays on display)', () => {
+    const f = farm({ seed: 114 });
+    const purposes = Object.fromEntries(Object.values(f.g.tanks).map((t) => [t.id, t.purpose]));
+    start(f);
+    expect(Object.fromEntries(Object.values(f.g.tanks).map((t) => [t.id, t.purpose]))).toEqual(purposes);
+  });
+
+  it('choosing another breed tank moves the pair there, and the line runs on', () => {
+    const f = farm({ seed: 115 });
+    const g = f.g;
+    const line = start(f);
+    const b2 = tank(g, 'Breed Tank 2', 9, 'g10');
+    expect(setLineTank(g, line.id, 'breed', b2.id).ok).toBe(true);
+    expect(f.father.tankId).toBe(b2.id);
+    expect(f.mother.tankId).toBe(f.keep.id); // the betta female rests where she was
+    run(g, 2);
+    expect(line.broken).toBeUndefined();
+    expect(lineStatus(line)).toBe('running');
+  });
+
+  it('a favourite leaves its batch and stays put; one-off notices are forgotten with what they were about', () => {
+    const f = farm({ seed: 116 });
+    const g = f.g;
+    const line = start(f);
+    // a raise tank too small for the brood: the fry stay, with one "full" notice keyed on the brood
+    const tiny = tank(g, 'Tiny', 9, 'g5');
+    expect(setLineTank(g, line.id, 'raise', tiny.id).ok).toBe(true);
+    for (let i = 0; i < 6; i++) addCreature(g, createCreature(g, simRng(g), 'neon_tetra', { ageDays: 40 }), tiny.id);
+    const cl = brood(f, 'fry', 20, 30);
+    run(g, 2);
+    expect(Object.keys(line.noticed ?? {})).toContain(`full:${cl.id}`);
+    // the brood is raised where it is: its notice goes with it
+    cl.nextStageHour = g.clock.hour;
+    run(g, 3);
+    expect(g.clutches[cl.id]).toBeUndefined();
+    expect(Object.keys(line.noticed ?? {}).some((k) => k === `full:${cl.id}`)).toBe(false);
+    // the young sort into a batch in the breed tank; a favourite among them is never moved to quarantine
+    const batch = line.batches?.find((b) => !b.tankId);
+    if (batch) {
+      const fav = g.creatures[batch.creatureIds[0]];
+      fav.favorite = true;
+      const at = fav.tankId;
+      run(g, 4);
+      expect(line.batches?.some((b) => b.creatureIds.includes(fav.id)) ?? false).toBe(false);
+      expect(fav.tankId).toBe(at);
+    }
+  });
+
+  it('a sold extra quarantine tank leaves the line, so a save needs no repair', () => {
+    const f = farm({ seed: 117 });
+    const g = f.g;
+    const line = start(f);
+    const extra = addQuarantineTank(g, line.id, true);
+    expect(extra.ok).toBe(true);
+    deleteTank(g, extra.tankId!);
+    run(g, 2);
+    expect(line.tanks.quarantine).toEqual([f.qt.id]);
+    expect(line.broken).toBeUndefined();
+    const notes = repairState(structuredClone(g) as unknown as Parameters<typeof repairState>[0]);
+    expect(notes.filter((n) => /quarantine/.test(n))).toEqual([]);
+  });
+
+  it('a tank listed for sale takes no new young from a line', () => {
+    const f = farm({ seed: 118 });
+    const g = f.g;
+    start(f);
+    const listed = createListing(g, { kind: 'tank', tankId: f.raise.id, reserve: 100, durationHours: 72 });
+    expect(listed.ok, listed.message).toBe(true);
+    const cl = brood(f, 'fry', 20, 30);
+    run(g, 4);
+    expect(g.clutches[cl.id]?.tankId).toBe(f.breed.id); // not moved into the listed grow-out
+    expect(withdrawListing(g, listed.listingId!).ok).toBe(true);
+    run(g, 2);
+    expect(g.clutches[cl.id]?.tankId).toBe(f.raise.id);
+  });
+
+  it('a batch that lists only in part says so once and lists the rest when it can (no silent loss)', () => {
+    const f = farm({ seed: 119 });
+    const g = f.g;
+    const line = start(f);
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const batch = line.batches?.find((b) => b.tankId === f.qt.id);
+    expect(batch).toBeDefined();
+    const due = batch!.quarantinedHour! + QUARANTINE_HOURS;
+    // the market can take one more listing only
+    const fillers = tank(g, 'Fillers', 24, 'g40B');
+    const rng = simRng(g);
+    const active = () => g.market.listings.filter((l) => l.status === 'active').length;
+    const fillerIds: string[] = [];
+    while (active() < 23) {
+      const c = addCreature(g, createCreature(g, rng, 'neon_tetra', { ageDays: 40 }), fillers.id);
+      const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 5, durationHours: 168 * 3 });
+      expect(r.ok, r.message).toBe(true);
+      fillerIds.push(r.listingId!);
+    }
+    run(g, due - g.clock.hour - 2);
+    // two of the batch have grown up by the time quarantine ends: juveniles list as a batch, adults as a group
+    const sp = getSpecies('betta');
+    for (const id of batch!.creatureIds.slice(0, 2)) Object.assign(g.creatures[id], { bornHour: g.clock.hour - (sp.lifecycle.juvenileDays + 5) * 24, lifeStage: 'adult' });
+    run(g, 3);
+    expect(batch!.released).toBeFalsy();
+    const said = g.log.filter((e) => /couldn't be listed: You can run up to 24 listings at once\./.test(e.text));
+    expect(said.length).toBe(1);
+    expect(said[0].text).toMatch(/^Betta line: 2 bettas couldn't be listed/);
+    expect(batch!.listingIds?.length).toBe(1); // the juveniles listed
+    expect(withdrawListing(g, fillerIds[0]).ok).toBe(true);
+    run(g, 2);
+    expect(batch!.released).toBe(true);
+    expect(batch!.listingIds?.length).toBe(2);
+    expect(g.log.filter((e) => /couldn't be listed/.test(e.text)).length).toBe(1);
+  });
+
+  it('a quarantine tank that isn’t cycled holds the batch, says so once, and takes it once it has cycled', () => {
+    const f = farm({ seed: 122 });
+    const g = f.g;
+    const line = start(f);
+    f.qt.water.bioMaturity = 0.1; // an empty tank's bacteria starve: it needs cycling again
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    const waiting = line.batches?.find((b) => !b.tankId);
+    expect(waiting).toBeDefined();
+    run(g, 6);
+    const said = g.log.filter((e) => e.text === 'Betta line: Quarantine isn’t cycled yet, so the juveniles wait in Grow-out.');
+    expect(said.length).toBe(1);
+    expect(lineView(g, line)!.quarantined.uncycledTank?.id).toBe(f.qt.id);
+    f.qt.water.bioMaturity = 0.5;
+    run(g, 2);
+    expect(waiting!.tankId).toBe(f.qt.id);
+    expect(Object.keys(line.noticed ?? {}).some((k) => k.startsWith('cycle:'))).toBe(false);
+  });
+
+  it('a seeded quarantine tank bought for a waiting batch takes it the same day (it used to fall below "ready" within hours)', () => {
+    const f = farm({ seed: 123 });
+    const g = f.g;
+    const line = start(f);
+    const added = addQuarantineTank(g, line.id, true);
+    expect(added.restartDay).toBeDefined();
+    run(g, 48); // two idle days: the empty tank's bacteria decline a little
+    expect(quarantineReady(g.tanks[added.tankId!])).toBe(true);
+  });
+
+  it('an added quarantine tank brings the restart forward (PROD-020)', () => {
+    const f = farm({ seed: 120 });
+    const g = f.g;
+    const a = start(f, { breedFor: 'Cambodian Veiltail' });
+    const p = secondPair(f);
+    const rb = createLine(g, { motherId: p.f2.id, fatherId: p.m2.id, tanks: { breed: p.b2.id, raise: p.r2.id, quarantine: f.qt.id, keep: p.k2.id }, breedFor: 'Royal Blue Halfmoon' });
+    expect(rb.ok, rb.message).toBe(true);
+    const b = findLine(g, rb.lineId!)!;
+    brood(f, 'fry', 20, 6);
+    run(g, 12);
+    expect(a.batches?.[0].tankId).toBe(f.qt.id);
+    createClutch(g, { sp: getSpecies('betta'), tank: p.b2, mother: p.f2, father: p.m2, hour: g.clock.hour, stage: 'fry', count: 20, visual: 'fry_cloud', nextStageHour: g.clock.hour + 6 });
+    run(g, 12);
+    expect(b.batches?.some((bt) => !bt.tankId)).toBe(true); // waiting: the shared tank is busy
+    const waitingUntil = restartDay(g, b);
+    const today = Math.floor(g.clock.hour / 24) + 1;
+    expect(waitingUntil).toBeGreaterThan(today);
+    const added = addQuarantineTank(g, b.id, true);
+    expect(added.ok).toBe(true);
+    expect(added.restartDay).toBe(today);
+    expect(restartDay(g, b)).toBeLessThan(waitingUntil);
+    run(g, 2);
+    expect(b.batches?.some((bt) => bt.tankId === added.tankId)).toBe(true);
+  });
+
+  it('with the settler running (background tanks owe hours), two identical runs end with an equal stateHash', () => {
+    const scenario = () => {
+      const f = farm({ seed: 121 });
+      const g = f.g;
+      start(f);
+      brood(f, 'fry', 30, 6);
+      const elsewhere = tank(g, 'Elsewhere', 30);
+      for (let h = 0; h < QUARANTINE_HOURS + 24; h += 1.5) {
+        care(g);
+        advanceWorld(g, 1.5, { focusTankId: elsewhere.id }); // the line's tanks run on sim debt and settle for every move
+      }
+      return g;
+    };
+    const a = scenario();
+    expect(stateHash(a)).toBe(stateHash(scenario()));
+    expect(a.market.listings.some((l) => l.creatureIds.some((id) => a.creatures[id]?.lineage.motherId === a.production!.lines[0].pair.motherId))).toBe(true);
   });
 });

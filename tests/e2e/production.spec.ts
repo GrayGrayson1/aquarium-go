@@ -86,18 +86,24 @@ test.describe('Livestock › Production (desktop 1440×900)', () => {
     await tid(page, 'production-end-confirm-yes').click();
     await expect.poll(() => lastToast(page)).toMatchObject({ text: 'Betta line ended', detail: 'Its animals stay where they are.' });
     await expect(page.getByText('No production line yet')).toBeVisible();
+    await expect.poll(() => hash(page)).toBe('#/livestock/production'); // the address leaves the ended line (the chunk 4 review)
     await expect(tid(page, 'production-slots')).toHaveText('0 of 1 line slot · more at Specialty Shop');
   });
 
-  test('an unknown line, and "new" with no free slot, are broken links', async ({ page }) => {
+  // DESIGN-S3D §6 (unknown id → not found) with the owner's words (ADR-0026 decision 9); the chunk 4 review: these used to
+  // go home with the broken-link toast
+  test('an unknown line, and "new" with no free slot, open the lines with the not-found words', async ({ page }) => {
     await lineGame(page);
-    await setUpLine(page);
+    const id = await setUpLine(page);
     await goHash(page, '#/livestock/production/nope');
-    await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'That link doesn’t go anywhere' })).toBeVisible();
-    await expect.poll(() => hash(page)).toBe('#/');
+    await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'This line isn’t here any more' })).toBeVisible();
+    await expect.poll(() => hash(page)).toBe('#/livestock/production');
+    await expect(tid(page, 'livestock-tab-production')).toHaveAttribute('aria-selected', 'true');
+    await goHash(page, `#/livestock/production/${id}`);
+    await expect(tid(page, 'production-toggle')).toBeVisible();
     await goHash(page, '#/livestock/production/new'); // 1 of 1 line slot is used
-    await expect.poll(async () => (await page.evaluate(() => (window as unknown as AQ).__AQ.ui().toasts.filter((t) => t.text === 'That link doesn’t go anywhere').length))).toBe(2);
-    await expect.poll(() => hash(page)).toBe('#/');
+    await expect.poll(async () => (await page.evaluate(() => (window as unknown as AQ).__AQ.ui().toasts.filter((t) => t.text === 'This line isn’t here any more').length))).toBe(2);
+    await expect.poll(() => hash(page)).toBe('#/livestock/production');
   });
 });
 

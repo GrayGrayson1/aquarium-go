@@ -33,15 +33,17 @@ export function lineTankIds(line: ProductionLine): string[] {
 
 /**
  * The line's share (0..1) of a tank's residents: living animals count one each and a brood counts its young. A tank
- * with nobody in it charges nobody.
+ * with nobody in it charges nobody. Each animal belongs to one line: a line's young that became another line's parent
+ * is that line's (the parent role wins), so the shares of a tank never add up to more than 1.
  */
 export function lineShare(state: GameState, line: ProductionLine, tankId: string): number {
+  const others = (state.production?.lines ?? []).filter((l) => l !== line);
   let all = 0;
   let mine = 0;
   for (const c of Object.values(state.creatures)) {
     if (c.tankId !== tankId || (c.status !== 'alive' && c.status !== 'listed')) continue;
     all += 1;
-    if (isLineParent(line, c.id) || isLineYoung(line, c)) mine += 1;
+    if (isLineParent(line, c.id) || (isLineYoung(line, c) && !others.some((l) => isLineParent(l, c.id)))) mine += 1;
   }
   for (const cl of Object.values(state.clutches)) {
     if (cl.tankId !== tankId || !(cl.count > 0)) continue;

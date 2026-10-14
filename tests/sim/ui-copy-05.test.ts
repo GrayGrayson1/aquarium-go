@@ -117,6 +117,7 @@ describe('ADR-0019 decision 4: links to things that no longer exist, and a newer
     expect(NOT_FOUND.creature).toMatchObject({ title: 'That animal isn’t in your aquarium', detail: 'Showing your livestock instead.' });
     expect(NOT_FOUND.listing).toMatchObject({ title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' });
     expect(NOT_FOUND.species).toMatchObject({ title: 'There’s no page for that species', detail: 'Showing every species instead.' });
+    expect(NOT_FOUND.line).toMatchObject({ title: 'This line isn’t here any more', detail: 'See your lines' }); // ADR-0026 decision 9
     expect(tooNewMessage(2)).toMatch(/newer version of Aquarium Go .* Refresh the page to get the latest version\.$/);
   });
 });

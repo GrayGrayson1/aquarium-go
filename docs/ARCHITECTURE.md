@@ -85,7 +85,8 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
   its tests; exact equality across LOD tiers isn't promised. New systems state their tolerance (automation included).
 - **Randomness.** Only `simRng(state)` / `ctx.rng`, a subsystem's own persisted stream, or a keyed stream seeded from
   a stable key (`mulberry32(hashString(key))`, which persists nothing); inside a tank step use the step's `ctx.rng`,
-  never a second `simRng(state)`. Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto`, `Intl`
+  never a second `simRng(state)`. Every `simRng` draw re-reads `state.rngState` first (chunk 4), so a generator made
+  before other code drew (a tank settled for a move mid-step) continues the one stream instead of replaying it. Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto`, `Intl`
   or locale-dependent formatting or sorting in `src/sim` or `src/data`. Accepted entropy: the new-game seed
   (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none (`src/persistence/migrations.ts`).
   `tests/sim/core-determinism-guard.test.ts` enforces this.
@@ -95,7 +96,9 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
   per-subsystem stream.
 - **Automation.** Every automated action is atomic per tick, idempotent across save and load (persisted last-run
   markers), settles the sim debt of every tank it moves animals between, and never creates money, animals, feed or
-  supplies from nothing.
+  supplies from nothing. A production line's hour is a sequence of whole actions (each move or listing completes or
+  doesn't happen); if a line's step throws, the actions it already took stay, the error is reported, and the next hour
+  carries on from there (no snapshot and rollback per line).
 
 ## Simulation LOD
 
@@ -127,7 +130,7 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
 
 **Sim subsystems added in round 2.** `stepShows` (`src/sim/shows`) and `stepStaff` (`src/sim/staff`) run once per world step. Each draws from its own persisted random stream (`shows.rng`, `staff.rng`), so adding or tuning them never shifts the main sim's random sequence or the bot balance. Frags live in `src/sim/aquascape/frags.ts`, driven by per-decor propagation rules in `src/data/catalog/propagation.ts`. Fresh / brackish / marine fit is decided by one salinity model, `src/sim/compat/salinity.ts`.
 
-**Production lines (chunk 4).** `stepProduction` (`src/sim/production`) runs from `stepOnce` after the tanks, once for each whole game hour crossed (`production.lastHour` stops a re-stepped hour), and draws no randomness. It drives only what players can do themselves: Move to nursery, moving animals, Start breeding and Separate (keeper-introduced species), and listing. A held pair (paused, waiting for room, missing a partner or tank) carries `repro.lineHold`, which keeps `readinessTarget` at 0. Its costs come from `noteFoodSpend` (called by `feedTank` and the Autofeeder) and each tank's running cost, split by share of residents (`costs.ts`). `view.ts` is what the Production tab shows. Every move, a player's or a line's, first settles both tanks' sim debt (`src/sim/settle.ts`, which `world.ts` registers, B-127), anchored at the step's end while a step runs.
+**Production lines (chunk 4).** `stepProduction` (`src/sim/production`) runs from `stepOnce` after the tanks, once for each whole game hour crossed (`production.lastHour` stops a re-stepped hour), before the world systems' context is made: a line draws no random numbers itself, but the tanks it settles do. It drives only what players can do themselves: Move to nursery, moving animals, Start breeding and Separate (keeper-introduced species), and listing. A held pair (paused, waiting for room, missing a partner or tank) carries `repro.lineHold`, which keeps `readinessTarget` at 0. Its costs come from `noteFoodSpend` (called by `feedTank` and the Autofeeder) and each tank's running cost, split by share of residents (`costs.ts`). `view.ts` is what the Production tab shows. Every move, a player's or a line's, first settles both tanks' sim debt (`src/sim/settle.ts`, which `world.ts` registers, B-127), anchored at the step's end while a step runs, and only then checks the move (the animal or brood may have died or been raised in the owed hours). A sale settles the sold tank and the tanks its other animals move to before it's checked. Set-up checks each stage's tank for water, temperature, the engine's temperament reasons (aggression, predation, social at warning or worse) and places for young; lines may share tanks, but a keep tank never serves another line's other stages. Each animal belongs to one line: a creature that becomes a line's parent leaves every batch, and costs count it for that line only.
 
 **Sim rules from the 2026-09 audit.**
 - **Water.** `stepTankWater` runs the autofeeder last, so its food is fresh when the creature step lets the animals eat. It drops dry food only: `isAutofeederFood` (catalog `FoodDef.form`) and the pick/notice rules in `src/sim/care/autofeed.ts` are shared with the fit hints (`src/sim/care/fit.ts`), so the shop, the tank card and the log always agree on who it can feed. Conditioner really binds a share of ammonia and nitrite (`WaterLabState.boundAmmonia` / `boundNitrite`) for 24 game hours: the bound share neither harms animals nor shows on the report, so the reading drops (unlike a real test kit), and it comes back when the dose wears off. A dose while one is active only extends it. In salt tanks (brackish and marine alike) nitrite harm starts at raw 1 ppm, the report's WATCH line. `WaterReport.residents` (optional) lists each resident species with the harm the water is doing to it, so the tank bar agrees with the creature cards.

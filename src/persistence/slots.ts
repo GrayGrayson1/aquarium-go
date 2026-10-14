@@ -363,8 +363,9 @@ export function saveGameSync(state: GameState, slot = 'auto'): boolean {
   const prev = syncStore.get(saveKey(slot));
   if (newerVersion(prev)) return false;
   let { text, header } = encodeRecord(state, slot);
-  // B-171: a record past the budget won't fit localStorage; this copy leaves out listing photos (the regular save keeps
-  // them), and a write that still fails says so instead of failing silently.
+  // B-171: a record past the budget won't fit localStorage; this copy leaves out listing photos, and a write that still
+  // fails says so instead of failing silently. Being the newest copy, it's the one the next load uses: those listings
+  // lose their photos (recorded in KNOWN_LIMITATIONS; losing the last minutes of play would be worse).
   if (text.length > SAVE_BUDGET_CHARS) ({ text, header } = encodeRecord(state, slot, header.savedAt, { maxDataUrl: 0 }));
   // lane:fix3-saves (R03-02) — when localStorage IS the save store, this write replaces the primary for good: a
   // different aquarium there is rotated into the backup first (as saveGame would), so it stays "Previous …".

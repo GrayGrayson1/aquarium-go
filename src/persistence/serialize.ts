@@ -56,8 +56,10 @@ export function cyrb53(str: string, seed = 0): string {
 
 /**
  * B-171, PERSIST-005 — the most a save may take in localStorage: about 5 MB counted as UTF-16, the smallest quota the
- * game's browsers give an origin. A maximum-scale game fits (tests/sim/core-save-size.test.ts); listing photos are
- * what can push a save past it, so the page-close mirror leaves them out when the full record is too big.
+ * game's browsers give an origin. A maximum-scale game fits (tests/sim/core-save-size.test.ts) without listing photos;
+ * photos on many active listings can push it past, so the page-close copy then leaves them out. That copy is the
+ * newest on the next load, so those listings come back without their photos (the recorded exception, KNOWN_LIMITATIONS).
+ * Where localStorage is the save store itself, a save near the budget leaves no room for the backup copy beside it.
  */
 export const SAVE_BUDGET_CHARS = 2_500_000;
 

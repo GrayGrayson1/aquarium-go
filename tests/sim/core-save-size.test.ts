@@ -35,12 +35,9 @@ function maximumScale(): GameState {
     t.decor = starterAquascape(g, 'generic', t);
     tanks.push(t.id);
   }
-  const species = ['neon_tetra', 'betta', 'panda_corydoras', 'fancy_guppy', 'pea_puffer', 'honey_gourami'];
-  for (let i = 0; i < 500; i++) {
-    const c = addCreature(g, createCreature(g, rng, species[i % species.length], { ageDays: 30 + (i % 50), sex: i % 2 ? 'male' : 'female' }), tanks[i % tanks.length]);
-    for (let k = 0; k < 20; k++) c.history.push({ hour: k * 6, kind: 'note', text: `${c.name} explored the plants near the front glass and ate well at feeding time.` });
-  }
-  // eight production lines (betta and gourami pairs), each with a quarantined batch
+  // eight production lines (betta and gourami pairs), set up while their tanks are empty: set-up checks temperament
+  // (the chunk 4 review), and the gallery's mixed stock below would fail it
+  const lineIds: string[] = [];
   for (let n = 0; n < 8; n++) {
     const sp = n % 2 ? 'honey_gourami' : 'betta';
     const base = n * 5;
@@ -48,7 +45,17 @@ function maximumScale(): GameState {
     const f = addCreature(g, createCreature(g, rng, sp, { sex: 'female', ageDays: 40 }), tanks[base + 3]);
     const r = createLine(g, { motherId: f.id, fatherId: m.id, tanks: { breed: tanks[base], raise: tanks[base + 1], quarantine: tanks[base + 2], keep: tanks[base + 3] }, breedFor: `Morph ${n}` });
     expect(r.ok, r.message).toBe(true);
-    const line = g.production!.lines.find((l) => l.id === r.lineId)!;
+    lineIds.push(r.lineId!);
+  }
+  const species = ['neon_tetra', 'betta', 'panda_corydoras', 'fancy_guppy', 'pea_puffer', 'honey_gourami'];
+  for (let i = 0; i < 500; i++) {
+    const c = addCreature(g, createCreature(g, rng, species[i % species.length], { ageDays: 30 + (i % 50), sex: i % 2 ? 'male' : 'female' }), tanks[i % tanks.length]);
+    for (let k = 0; k < 20; k++) c.history.push({ hour: k * 6, kind: 'note', text: `${c.name} explored the plants near the front glass and ate well at feeding time.` });
+  }
+  // each line with a quarantined batch
+  for (let n = 0; n < 8; n++) {
+    const base = n * 5;
+    const line = g.production!.lines.find((l) => l.id === lineIds[n])!;
     const kids = Object.values(g.creatures).filter((c) => c.tankId === tanks[base + 2]).slice(0, 12).map((c) => c.id);
     line.batches = [{ id: `b${n}`, creatureIds: kids, sortedHour: 10, tankId: tanks[base + 2], quarantinedHour: 10 }];
     line.noticed = { [`full:clutch_${n}`]: 9 };

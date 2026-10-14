@@ -9,10 +9,11 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { dayOf } from '../time';
 import { moduleFor } from '../life/breeding/registry';
 import { youngLabel } from '../life/breeding/clutch';
+import { spPlural } from '../life/breeding/common';
 import { planAutofeed } from '../care/autofeed';
 import { bestOpenBid } from '../economy/listings';
 import { isLineYoung } from './costs';
-import { QUARANTINE_HOURS, lineStatus, quarantineBusyUntil, raiseTankFull, restartDay, type LineStatus } from './index';
+import { QUARANTINE_HOURS, lineStatus, productionLines, quarantineBusyUntil, quarantineReady, raiseTankFull, restartDay, youngPlaces, youngSizeCm, type LineStatus } from './index';
 
 export type StageId = 'breed' | 'raise' | 'sort' | 'quarantine' | 'sell';
 
@@ -29,9 +30,10 @@ export interface LineView {
   /** Next clutch: days until the pair is due again (rounded up), the cycle and how far through it they are. */
   next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean };
   /** Growing out: the brood in the raise tank (or the young waiting there), its word, and its days. */
-  raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number } };
-  /** Quarantine: the batch in its hold, days left, the day it lists; or the day a busy shared tank frees up. */
-  quarantined: { count: number; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number };
+  raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number }; places?: { used: number; cap: number } };
+  /** Quarantine: the batch in its hold (its word: "juveniles", or the species' plural once grown), days left, the day
+   * it lists; or the day a busy shared tank frees up. */
+  quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank };
   /** Sell: the line's open listings and the best open bid among them. */
   selling: { listed: number; bestBid?: number };
   week: { revenue: number; sold: number; net: number };
@@ -79,6 +81,11 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
   }
   raising.full = raise ? raiseTankFull(state, line, sp, now) : false;
   if (raise) {
+    // places for young (C-30): the line's young there (a brood counts what it raises) and what's still free
+    const used = waitingYoung + (brood ? Math.min(brood.count, sp.breeding.maxRaisedPerClutch) : 0);
+    raising.places = { used, cap: used + youngPlaces(state, raise, sp, now, youngSizeCm(state, line, sp)) };
+  }
+  if (raise) {
     const feeder = raise.equipment.find((e) => e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'autofeeder');
     if (feeder) {
       const plan = planAutofeed(state.inventory.foods, [sp]);
@@ -90,10 +97,13 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
   // Quarantine
   const inHold = (line.batches ?? []).find((b) => b.tankId && b.quarantinedHour !== undefined && !b.released);
   const quarantine = (inHold?.tankId ? state.tanks[inHold.tankId] : undefined) ?? line.tanks.quarantine.map((id) => state.tanks[id]).find(Boolean);
-  const quarantined: LineView['quarantined'] = { count: 0 };
+  const quarantined: LineView['quarantined'] = { count: 0, word: 'juveniles' };
   if (inHold && inHold.quarantinedHour !== undefined) {
     const end = inHold.quarantinedHour + QUARANTINE_HOURS;
     quarantined.count = inHold.creatureIds.length;
+    const members = inHold.creatureIds.map((id) => state.creatures[id]).filter(Boolean);
+    const grown = members.length > 0 && members.every((c) => c.lifeStage !== 'juvenile');
+    quarantined.word = grown ? (quarantined.count === 1 ? sp.commonName.toLowerCase() : spPlural(sp)) : quarantined.count === 1 ? 'juvenile' : 'juveniles';
     quarantined.daysLeft = Math.max(0, Math.ceil((end - now) / 24));
     quarantined.listsDay = dayOf(end);
     quarantined.holdFraction = Math.max(0, Math.min(1, (now - inHold.quarantinedHour) / QUARANTINE_HOURS));
@@ -108,6 +118,9 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     if (best) {
       quarantined.busyUntilDay = dayOf(best.until);
       quarantined.busyTank = best.tank;
+    } else {
+      // free but not cycled yet: the batch waits for it (the line's notice says so)
+      quarantined.uncycledTank = line.tanks.quarantine.map((id) => state.tanks[id]).find((t) => !!t && !quarantineReady(t));
     }
   }
 
@@ -139,9 +152,21 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     raising,
     quarantined,
     selling: { listed, bestBid },
-    week: { revenue: s.revenue, sold: s.soldCount, net: Math.round((s.revenue - s.costs) * 100) / 100 },
+    // whole dollars, as the tile shows them (a few cents' loss reads "$0", not "−$0")
+    week: { revenue: s.revenue, sold: s.soldCount, net: Math.round(s.revenue - s.costs) || 0 },
     active,
   };
+}
+
+/**
+ * Each line's colour (DESIGN-S3D §12: "Cambodian coral, Royal Blue blue, Snowflake aqua, Golden gold"), by its place in
+ * the line list, as a colour token's name (`--c-{name}`).
+ */
+export const LINE_COLOURS = ['coral', 'blue', 'aqua', 'gold', 'violet', 'good', 'watch', 'ink-2'] as const;
+
+export function lineColour(state: GameState, line: ProductionLine): (typeof LINE_COLOURS)[number] {
+  const i = Math.max(0, productionLines(state).findIndex((l) => l.id === line.id));
+  return LINE_COLOURS[i % LINE_COLOURS.length];
 }
 
 /** The line slots caption (ADR-0025 decision 7), as its parts: used, total, and the level it names. */

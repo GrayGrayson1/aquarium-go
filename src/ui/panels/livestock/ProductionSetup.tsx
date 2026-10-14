@@ -3,9 +3,9 @@
  * reuses: the pair list (step 1, "Choose another pair"), the tank rows (step 2, "Choose another tank") and the Sort
  * sheet (ADR-0030 decision 6). OWNER: lane "ui-panels". Nothing exists before Start line: leaving the flow drops it.
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import clsx from 'clsx';
-import { ArrowLeft, ArrowRight, Check, CircleCheck, Heart, Lock, Play, ShieldCheck, Sprout, Gem, Store, ChevronDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CircleCheck, Heart, Lock, Play, Plus, ShieldCheck, Sprout, Gem, Store, ChevronDown } from 'lucide-react';
 import type { GameState, ProductionKeepRule, ProductionLine } from '@/types';
 import { Badge, Button, Modal, Toggle } from '@/ui/kit';
 import { useUI } from '@/state/ui';
@@ -38,7 +38,7 @@ const gal = (g: GameState, id: string) => TANK_TIER_BY_ID[g.tanks[id]?.tierId ??
 
 // ───────────────────────────── step 1: the pair ─────────────────────────────
 
-function PairRow({ g, p, picked, onPick }: { g: GameState; p: Pair; picked: boolean; onPick: () => void }) {
+function PairRow({ g, p, picked, focusable, onPick }: { g: GameState; p: Pair; picked: boolean; focusable: boolean; onPick: () => void }) {
   const m = g.creatures[p.motherId];
   const f = g.creatures[p.fatherId];
   const sp = findSpecies(p.speciesId);
@@ -46,7 +46,7 @@ function PairRow({ g, p, picked, onPick }: { g: GameState; p: Pair; picked: bool
   const where = m.tankId === f.tankId ? `in ${g.tanks[m.tankId ?? '']?.name ?? '—'}` : `in ${g.tanks[m.tankId ?? '']?.name ?? '—'} and ${g.tanks[f.tankId ?? '']?.name ?? '—'}`;
   const sub = p.inLine ? `${sp.commonName} · already runs the ${p.inLine}` : `${sp.commonName} · ${where} · both adults`;
   return (
-    <button type="button" role="radio" aria-checked={picked} disabled={!!p.inLine} className={clsx('pr-pair', picked && 'is-on')} data-testid={`production-new-pair-${pairKey(p)}`} onClick={onPick}>
+    <button type="button" role="radio" aria-checked={picked} tabIndex={focusable ? 0 : -1} disabled={!!p.inLine} className={clsx('pr-pair', picked && 'is-on')} data-pair={pairKey(p)} data-testid={`production-new-pair-${pairKey(p)}`} onClick={onPick}>
       <span className="pr-radio" aria-hidden />
       <span className="pr-head__pair" aria-hidden>
         <CreaturePortrait creature={m} size={36} ring={null} />
@@ -71,12 +71,39 @@ function PairRow({ g, p, picked, onPick }: { g: GameState; p: Pair; picked: bool
   );
 }
 
+/**
+ * What the pair list depends on: the adults, where they live, their breeding state, the lines' pairs, and the game hour
+ * (readiness). The list is rebuilt when this changes, not on every snapshot (it checks every pair of adults).
+ */
+function pairsKey(g: GameState, speciesId?: string): string {
+  const parts = [String(Math.floor(g.clock.hour)), speciesId ?? ''];
+  for (const c of Object.values(g.creatures)) {
+    if (c.status !== 'alive' || !c.tankId || (speciesId && c.speciesId !== speciesId)) continue;
+    parts.push(`${c.id}:${c.tankId}:${c.lifeStage}:${c.sex}:${c.reproRole ?? ''}:${c.repro?.stage ?? ''}`);
+  }
+  for (const l of productionLines(g)) parts.push(`${l.id}:${l.name}:${l.pair.motherId}:${l.pair.fatherId}`);
+  return parts.join('|');
+}
+
 function PairList({ g, picked, onPick, speciesId }: { g: GameState; picked: string | null; onPick: (p: Pair) => void; speciesId?: string }) {
-  const pairs = useMemo(() => candidatePairs(g).filter((p) => !speciesId || p.speciesId === speciesId), [g, speciesId]);
+  const key = pairsKey(g, speciesId);
+  const pairs = useMemo(() => candidatePairs(g, speciesId), [key]); // eslint-disable-line react-hooks/exhaustive-deps -- `key` covers what it reads from `g`
+  const enabled = pairs.filter((p) => !p.inLine);
+  const focusKey = picked && enabled.some((p) => pairKey(p) === picked) ? picked : enabled[0] ? pairKey(enabled[0]) : null;
+  // a radio group: the arrow keys move the choice (DESIGN-S3D §13)
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+    if (!step || !enabled.length) return;
+    e.preventDefault();
+    const i = enabled.findIndex((p) => pairKey(p) === focusKey);
+    const next = enabled[(i + step + enabled.length) % enabled.length];
+    onPick(next);
+    (e.currentTarget.querySelector(`[data-pair="${pairKey(next)}"]`) as HTMLButtonElement | null)?.focus();
+  };
   return (
-    <div className="pr-pairs" role="radiogroup" aria-label="Which pair breeds?">
+    <div className="pr-pairs" role="radiogroup" aria-label="Which pair breeds?" onKeyDown={onKey}>
       {pairs.map((p) => (
-        <PairRow key={pairKey(p)} g={g} p={p} picked={picked === pairKey(p)} onPick={() => onPick(p)} />
+        <PairRow key={pairKey(p)} g={g} p={p} picked={picked === pairKey(p)} focusable={pairKey(p) === focusKey} onPick={() => onPick(p)} />
       ))}
       <div className="pr-pair pr-pair--dashed">
         <Store size={16} aria-hidden />
@@ -224,7 +251,7 @@ export function SortSheet({ g, line, draft, onClose }: { g: GameState; line: Pic
       </div>
       {traits.length > 0 && rules.length < 6 && (
         <Button size="sm" data-testid="production-sort-add" onClick={() => save([...rules, { traitIds: [traits[0].id], count: 2 }])}>
-          + Add a keep rule
+          <Plus size={14} aria-hidden /> Add a keep rule
         </Button>
       )}
     </Modal>

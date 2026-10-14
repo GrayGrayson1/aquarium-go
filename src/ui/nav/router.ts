@@ -91,6 +91,8 @@ export const NOT_FOUND = {
   creature: { panel: 'livestock', target: 'tab:animals', title: 'That animal isn’t in your aquarium', detail: 'Showing your livestock instead.' },
   listing: { panel: 'market', target: 'tab:listings', title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' },
   species: { panel: 'encyclopedia', target: 'tab:species', title: 'There’s no page for that species', detail: 'Showing every species instead.' },
+  // DESIGN-S3D §6 (unknown id → not found), with the owner's words (ADR-0026 decision 9, INTAKE C-48)
+  line: { panel: 'livestock', target: 'tab:production', title: 'This line isn’t here any more', detail: 'See your lines' },
 } as const satisfies Record<string, { panel: NavPanel; target: string | null; title: string; detail: string }>;
 
 let started = false;
@@ -292,14 +294,12 @@ function applyInner(route: Route, filters: ShopFilters | undefined): void {
       }
       if (p === 'market' && target?.startsWith('listing:') && !g?.market.listings.some((l) => l.id === target.slice(8))) return notFound('listing');
       if (p === 'encyclopedia' && target?.startsWith('species:') && !findSpecies(target.slice(8))) return notFound('species');
-      // lane:production (DESIGN-S3D §6, §8.6.1): an unknown line, or setting up a line with no free slot, is not found
+      // lane:production (DESIGN-S3D §6, §8.6.1): an unknown line, or setting up a line with no free slot, is not found:
+      // Livestock › Production opens with the line's not-found words (ADR-0019 decision 4: the nearest screen)
       if (p === 'livestock' && target?.startsWith('line:')) {
         const id = target.slice(5);
         const missing = id === 'new' ? !g || productionLines(g).length >= lineSlots(g) : !g || !findLine(g, id);
-        if (missing) {
-          toast(BROKEN_LINK);
-          return applyInner(HOME, undefined);
-        }
+        if (missing) return notFound('line');
       }
       if (p === 'market' && route.tab === 'shop' && !target && filters) useShopFilters.getState().setFilters(filters);
       useUI.getState().set({ selectedCreatureId: null });

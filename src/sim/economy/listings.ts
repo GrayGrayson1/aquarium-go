@@ -169,7 +169,8 @@ interface Contents {
 /** lane:frags — at most this many frags/cuttings in one listing (a frag pack or a bundle). */
 export const MAX_FRAGS_PER_LISTING = 12;
 
-function activeListingFor(state: GameState, tankId: string): Listing | undefined {
+/** The active whole-aquarium listing of a tank, if any (production lines don't move animals into it). */
+export function activeListingFor(state: GameState, tankId: string): Listing | undefined {
   return state.market.listings.find((l) => l.status === 'active' && l.kind === 'tank' && l.tankId === tankId);
 }
 
@@ -796,7 +797,16 @@ export const holdingText = (name: string): string =>
 
 /** The single path through which every sale happens (accept, accepted counter, buy-now). */
 function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via: 'accept' | 'counter' | 'buy_now', rng: Rng): ActionResult {
-  const check = validateForSale(state, l);
+  // B-127: a sold tank and the tanks its other animals move to catch up first, then the sale is checked as things are
+  // now (simRng keeps `rng` on the one stream across the settles' draws: the chunk 4 review)
+  if (l.kind === 'tank' && l.tankId) settleTanks(state, [l.tankId]);
+  let check = validateForSale(state, l);
+  for (let i = 0; i < 3 && check.ok; i++) {
+    const owed = check.relocations.map((r) => r.toTankId).filter((id): id is string => !!id && (state.tanks[id]?.simDebtHours ?? 0) > 1e-9);
+    if (!owed.length) break;
+    settleTanks(state, owed);
+    check = validateForSale(state, l);
+  }
   if (!check.ok) return fail(check.message);
   if (!Number.isFinite(price) || price <= 0) return fail('That offer is not valid.');
   const now = state.clock.hour;
@@ -822,7 +832,6 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
       continue;
     }
     const to = state.tanks[r.toTankId];
-    settleTanks(state, [r.toTankId]); // B-127: the destination catches up before the animal arrives
     r.c.tankId = r.toTankId;
     touchResidents(); // lane:perf2 — a move-in: drop the step's residents index
     // A brood carried by the animal (seahorse pouch, berried shrimp) moves with it.
@@ -1288,17 +1297,13 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
       markChanged(l, `${names} joined the tank after listing (not part of the sale).`);
       emitEvent(state, { kind: 'info', text: `${names} ${extras.length === 1 ? 'is' : 'are'} in "${tank.name}" but not part of its listing — they'll be moved to another tank if it sells.`, listingId: l.id, tankId: tank.id });
     }
-    // Can a buyer actually complete this sale? Only unlisted residents can block it (S03-07): warn while they do.
-    const unlisted = creaturesInTank(state, tank.id).some((c) => !l.creatureIds.includes(c.id));
-    if (unlisted || l.blocked) {
-      const check = unlisted ? validateForSale(state, l) : null;
-      if (check && !check.ok) {
-        if (!l.blocked) emitEvent(state, { kind: 'warning', text: `No buyer can complete "${l.title}" right now: ${check.message}`, listingId: l.id, tankId: tank.id, toast: true });
-        l.blocked = check.message;
-      } else if (l.blocked) {
-        delete l.blocked;
-        emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn't part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
-      }
+    // B-174 (ADR-0030 decision 8): an animal that isn't part of the sale no longer blocks it (it moves to a tank with
+    // room, or rests in the holding container), so this no longer previews every unlisted animal against every tank on
+    // each market step (the chunk 4 review: the check could only pass). A sale a buyer found stuck (buy-now, below) is
+    // re-checked until it can go ahead.
+    if (l.blocked && validateForSale(state, l).ok) {
+      delete l.blocked;
+      emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn't part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
     }
     const sig = tankSignature(tank);
     if (l.snapshot.signature && sig !== l.snapshot.signature && !has(`sig:${sig}`)) {

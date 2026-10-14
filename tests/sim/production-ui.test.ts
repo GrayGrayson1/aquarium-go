@@ -45,6 +45,9 @@ function line(g: GameState, s: ReturnType<typeof shop>, breedFor?: string) {
   return r.lineId!;
 }
 
+/** The route strip's words, from its opening tag on. */
+const routeText = (m: string) => text(m.slice(m.lastIndexOf('<', m.indexOf('data-testid="production-route"'))));
+
 const render = (g: GameState, sel: string | null = null) => {
   useGame.setState({ game: g });
   return renderToStaticMarkup(createElement(ProductionTab, { g, sel, onSelect: () => {} }));
@@ -95,6 +98,7 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(t).toContain('Keep Prismatic Sell the rest');
     expect(t).toContain('Free');
     expect(t).toContain('Auctions · reserve at fair value −10% Nothing listed');
+    expect(routeText(m)).toMatch(/^Breeding Tank Grow-out Tub Quarantine Market/); // the route strip (§8.6)
     expect(t).toContain('Line rules');
     expect(t).toContain('Pause when a tank is full Stops spawning when Grow-out Tub reaches its stocking limit.');
     expect(t).toContain('Never sell Prismatic animals A Prismatic youngster always moves to Quiet Corner instead.');
@@ -128,6 +132,11 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(t).toContain('2 of 2 line slots · more at Aquarium Store');
     expect(m).not.toContain('data-testid="production-add-line"');
     expect(t).toContain('Cambodian Veiltail Royal Blue Halfmoon'); // the strip, without "line"
+    // DESIGN-S3D §13: line pickers are radio groups (the chunk 4 review: it was a tablist)
+    expect(m).toMatch(/role="radiogroup" aria-label="Production lines"/);
+    expect(attr(m, 'production-line-royal', 'role')).toBe('radio');
+    expect(attr(m, 'production-line-royal', 'aria-checked')).toBe('true');
+    expect(attr(m, 'production-line-cambodian', 'aria-checked')).toBe('false');
     expect(t).toContain('Royal Blue Halfmoon line');
     expect(t).toContain('Betta · Iris × Sapphire · breeds, raises and sells while you play');
   });
@@ -148,6 +157,30 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(t).toContain('Betta line paused: Cinder is no longer in your care. Choose another pair, or end the line.');
     expect(m).toContain('data-testid="production-fix-pair"');
     expect(t).toContain('Choose another pair');
+    expect(routeText(m)).toMatch(/^Breeding Tank Pair waits Grow-out Tub Quarantine Market/); // the route strip's tag (§7.4)
+  });
+
+  it('the route strip’s tags, "1 day left", and Add a quarantine tank on the Quarantine stage (the chunk 4 review)', () => {
+    const s = shop();
+    line(s.g, s);
+    const l = s.g.production!.lines[0];
+    const rng = simRng(s.g);
+    const kids = [0, 1, 2].map(() => addCreature(s.g, createCreature(s.g, rng, 'betta', { ageDays: 8, motherId: s.cinder.id, fatherId: s.blaze.id }), s.tanks.quarantine.id));
+    l.batches = [{ id: 'b1', creatureIds: kids.map((c) => c.id), sortedHour: s.g.clock.hour, tankId: s.tanks.quarantine.id, quarantinedHour: s.g.clock.hour - 168 + 20 }];
+    l.rules.autoList = false;
+    let m = render(s.g);
+    let t = text(m);
+    expect(routeText(m)).toMatch(/^Breeding Tank Grow-out Tub Quarantine 3 juveniles Market/);
+    expect(t).toContain('3 juveniles 1 day left'); // the stage (it said "1 days left")
+    expect(t).not.toContain('1 days');
+    expect(m).toMatch(/class="pr-route__dot" style="background:var\(--c-coral\)"/); // the line's colour (§12)
+    // a batch waiting for quarantine while the line isn't waiting for room: the button is on the Quarantine stage
+    l.batches = [{ id: 'b2', creatureIds: [], sortedHour: s.g.clock.hour }];
+    m = render(s.g);
+    t = text(m);
+    expect(l.waiting).toBeFalsy();
+    expect(m).not.toContain('data-testid="production-note"');
+    expect(t).toMatch(/Free Add a quarantine tank · \$[\d,]+/);
   });
 
   it('waiting for room with a batch waiting for quarantine: DESIGN-S3D’s note and Add a quarantine tank', () => {

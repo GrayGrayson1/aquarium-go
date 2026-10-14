@@ -32,9 +32,12 @@ export function renameCreature(state: GameState, creatureId: string, name: strin
 export function moveCreature(state: GameState, creatureId: string, tankId: string): ActionResult {
   const c = state.creatures[creatureId];
   if (!c) return { ok: false, message: 'That animal is no longer in your care.' }; // lane:guide — was 'Not found'
-  if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can't be moved.` };
   const tank = state.tanks[tankId];
   if (!tank) return { ok: false, message: 'That tank no longer exists.' };
+  // B-127: both tanks catch up first, so the move happens at one world time; then the checks see the animal as it is
+  // now (it may have died during the owed hours: the chunk 4 review)
+  settleTanks(state, [c.tankId, tankId]);
+  if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can't be moved.` };
   if (c.tankId === tankId) return { ok: true, message: `${c.name} is already in ${tank.name}.` };
   const sp = findSpecies(c.speciesId);
   if (!sp) return { ok: false, message: 'Unknown species.' };
@@ -49,7 +52,6 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   }
   const from = c.tankId ? state.tanks[c.tankId]?.name ?? 'another tank' : 'holding';
   const hour = state.clock.hour;
-  settleTanks(state, [c.tankId, tankId]); // B-127: both tanks catch up first, so the move happens at one world time
   c.tankId = tankId;
   touchResidents(); // lane:perf2 — a move-in: drop the step's residents index
   // Transfer stress: netting and new surroundings (shy animals take it harder; never zero).

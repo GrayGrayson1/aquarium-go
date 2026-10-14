@@ -44,6 +44,16 @@
 .pr-rule__title { color: var(--c-ink); font-weight: 560; }
 .pr-rule__sub { color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; }
 
+.pr-route { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* DESIGN-S3D §12: an 8px line dot (the line's colour, set inline from a token), 26px pill chips, 13px chevrons */
+.pr-route__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-aqua); }
+.pr-route__step { display: inline-flex; align-items: center; gap: 6px; }
+.pr-route__chev { color: var(--c-ink-4); }
+.pr-route__chip { display: inline-flex; align-items: center; gap: 5px; min-height: 26px; padding: 0 10px; border-radius: var(--r-pill); border: 1px solid var(--c-line-strong); background: var(--c-fill); color: var(--c-ink-2); font-size: calc(12px * var(--text-scale)); }
+.pr-route__tag { color: var(--c-ink-3); }
+.pr-route__chip.is-warn { border-color: var(--c-watch); color: var(--c-ink); }
+.pr-route__chip.is-warn > svg, .pr-route__chip.is-warn .pr-route__tag { color: var(--c-watch); }
+
 /* setting up a line */
 .pr-newhead, .pr-card { display: grid; gap: 10px; padding: 14px 16px; border-radius: var(--r-lg); border: 1px solid var(--c-line); background: var(--c-fill); }
 .pr-hint { margin: 0; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; }

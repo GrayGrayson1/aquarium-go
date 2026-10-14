@@ -369,7 +369,7 @@ named "{Line} running", each rule "{Rule} ({Line})". The Livestock tabs are `liv
 |---|---|
 | `livestock-tab-production` | Livestock › Production (`#/livestock/production`) |
 | `production-slots` | The slot caption ("1 of 2 line slots · Specialty Shop") |
-| `production-line-<lineId>` · `production-add-line` | The line picker strip's items; "+ New line" while a slot is free |
+| `production-line-<lineId>` · `production-add-line` | The line picker (a `role="radiogroup"` of `role="radio"`, DESIGN-S3D §13; arrow keys move it); "+ New line" while a slot is free |
 | `production-setup` | The empty state's "Set up a line" |
 | `production-view-<lineId>` | One line's view |
 | `production-toggle` | The header card's switch (the line's `running`) |
@@ -377,8 +377,9 @@ named "{Line} running", each rule "{Rule} ({Line})". The Livestock tabs are `liv
 | `production-note` | The amber note while the line waits for room or is paused for a missing parent or tank |
 | `production-add-qt` · `production-add-qt-dialog` · `production-add-qt-seeded` · `production-add-qt-buy` | "Add a quarantine tank · $…"; its dialog, seeded-media switch and "Set up · $…" |
 | `production-week-net` | The This week tile's "$… after food and power" line |
+| `production-route` | The route strip: the line's colour dot, then breed tank › grow-out › quarantine › Market, each with its short tag (a tank holding the line up is amber, with a warning icon and its tag) |
 | `production-stage-<breed\|raise\|sort\|quarantine\|sell>` | The five stage cards (Sort opens the Sort sheet) |
-| `production-sort` · `production-sort-add` | The Sort sheet; "+ Add a keep rule" |
+| `production-sort` · `production-sort-add` | The Sort sheet; "Add a keep rule" |
 | `production-fix-pair` · `production-fix-tank` | "Choose another pair" / "Choose another tank" on a paused line's stage card (and their `…-dialog`s) |
 | `production-rule-<pauseWhenFull\|keepPrismatic\|autoList>` | The three Line rules switches (the line view and set-up step 3) |
 | `production-new-step-<1\|2\|3>` | The set-up stepper (`aria-current="step"` on the current one) |
