@@ -263,8 +263,11 @@ export function autofeedMessage(tankName: string, plan: AutofeedPlan, groups: re
 /** Hunger (0–100) at which a paused Auto-feed is worth an alert. */
 export const AUTOFEED_PAUSED_HUNGER = 50;
 
-/** Why a tank's Autofeeder isn't feeding: switched off (or a legacy 0 meals a day), jammed, or out of dry food. */
-export type AutofeedPauseReason = 'off' | 'failed' | 'empty';
+/**
+ * Why a tank's Autofeeder isn't feeding: switched off (or a legacy 0 meals a day), jammed, out of dry food, or held by
+ * manual mode (lane:automation, chunk 5; ADR-0026 decision 15: a held one counts as paused).
+ */
+export type AutofeedPauseReason = 'off' | 'failed' | 'empty' | 'held';
 
 export interface AutofeedPause {
   reason: AutofeedPauseReason;
@@ -282,6 +285,8 @@ export function autofeedPause(
   equipment: readonly EquipmentInstance[] | undefined,
   inhabitants: readonly { creature: { id: string; name: string; stats?: { hunger?: number } }; species: SpeciesDefinition }[],
   stock: Readonly<Record<string, number | undefined>>,
+  /** lane:automation (chunk 5) — manual mode holds the Autofeeders. */
+  held = false,
 ): AutofeedPause | null {
   const feeders = (equipment ?? []).filter((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder');
   if (!feeders.length || !inhabitants.length) return null;
@@ -296,6 +301,7 @@ export function autofeedPause(
   let reason: AutofeedPauseReason | null = null;
   if (!working.length) reason = 'failed';
   else if (!running.length) reason = 'off';
+  else if (held) reason = 'held';
   else if (inhabitants.some((i) => canAutofeed(i.species)) && !pickAutofeedFood(stock, inhabitants.map((i) => i.species))) reason = 'empty';
   return reason ? { reason, creatureId: hungry.creature.id, name: hungry.creature.name } : null;
 }

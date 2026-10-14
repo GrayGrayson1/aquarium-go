@@ -36,6 +36,10 @@ import { encodeRecord, decodeRecord, stateHash } from '@/persistence';
 import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
 import { stepProduction } from '@/sim/production';
 import { lineFarm, lineRecord } from './support/production';
+import { facility, run } from './support/automation'; // chunk 5
+import { stepAutomation, waterRoom } from '@/sim/automation';
+import { createClutch } from '@/sim/life/breeding/clutch';
+import { getSpecies } from '@/data/species';
 
 const OUT_OF_SALT = (tank: string) => `${tank}: the Auto Water Changer is out of salt. Buy marine salt to keep it running.`;
 
@@ -305,5 +309,121 @@ describe('production lines: AUTO-016, AUTO-017, AUTO-018, AUTO-025 (chunk 4)', (
     const released = (g.production!.lines[0].batches ?? []).filter((b) => b.released).length;
     expect(lineRecord(g).listings.length).toBeLessThanOrEqual(Math.max(1, released));
     expect(lineRecord(g).listings.length).toBe(1);
+  });
+});
+
+// ───────────────────────────── the S3-D chains (chunk 5) ─────────────────────────────
+
+describe('the S3-D chains: AUTO-016, AUTO-017, AUTO-018, AUTO-022, AUTO-026 (chunk 5)', () => {
+  /** Two freshwater and two marine tanks on changers and top-offs, both rooms, a doser on a tank of fry, and Rosa. */
+  const ops = (seed = 11) => {
+    const f = facility({ fresh: 2, marine: 2, ato: true, food: true, salt: 9, eggs: 6, veg: 3, rosa: 200, seed, hour: 24 * 3 + 2 });
+    waterRoom(f.g)!.salt = 25;
+    const t = f.fresh[1];
+    for (const c of Object.values(f.g.creatures)) if (c.tankId === t.id) delete f.g.creatures[c.id];
+    installEquipment(f.g, t.id, 'live_food_doser', { purchased: true });
+    createClutch(f.g, { sp: getSpecies('betta'), tank: t, mother: null as never, father: null as never, hour: f.g.clock.hour - 40, stage: 'fry', count: 40, visual: 'fry_cloud', nextStageHour: f.g.clock.hour + 400 });
+    return f;
+  };
+  const SPAN3 = 60;
+  const record = (g: GameState) => ({
+    changes: g.tankOrder.map((id) => g.tanks[id].water.lab?.lastAutoChangeHour),
+    doses: g.tankOrder.map((id) => g.tanks[id].water.lab?.lastDoseHour),
+    jobs: g.log.filter((e) => /^(Salt mixing|Cone|Jar|Morning water changes|Water changes)/.test(e.text)).map((e) => `${e.hour}:${e.text.split(' · ')[0]}`),
+    stock: { salt: g.inventory.salt, eggs: g.inventory.brineShrimpEggs, foods: { ...g.inventory.foods } },
+    cultures: { ...g.facility.food! },
+    money: g.finance.money,
+  });
+
+  it('AUTO-016: random step sizes make the same jobs at the same hours and the same stock; gallons within 0.5 gal', () => {
+    const a = ops();
+    run(a.g, SPAN3, 0.5);
+    const ra = record(a.g);
+    for (const seed of [1, 2]) {
+      const b = ops();
+      const rnd = mulberry32(seed);
+      let done = 0;
+      while (done < SPAN3 - 1e-9) {
+        const dt = Math.min(0.05 + rnd.next() * 0.45, SPAN3 - done);
+        advanceWorld(b.g, dt, { forceFull: true });
+        done += dt;
+      }
+      const rb = record(b.g);
+      expect(rb.changes).toEqual(ra.changes);
+      expect(rb.doses).toEqual(ra.doses);
+      expect(rb.jobs).toEqual(ra.jobs);
+      expect(rb.stock).toEqual(ra.stock);
+      expect(rb.cultures).toEqual(ra.cultures);
+      expect(Math.abs(waterRoom(b.g)!.fresh - waterRoom(a.g)!.fresh)).toBeLessThan(0.5);
+      expect(Math.abs(waterRoom(b.g)!.salt - waterRoom(a.g)!.salt)).toBeLessThan(0.5);
+    }
+  });
+
+  it('AUTO-016: identical runs end with the same stateHash; the offline catch-up runs the same jobs as live play', () => {
+    const a = ops(5);
+    const b = ops(5);
+    run(a.g, 30);
+    run(b.g, 30);
+    expect(stateHash(a.g)).toBe(stateHash(b.g));
+    const live = ops(6);
+    const away = clonePlain(live.g);
+    advanceWorld(live.g, 12, {});
+    simulateOffline(away, (12 / GAME_HOURS_PER_REAL_SECOND) * 1000);
+    expect(record(away).jobs).toEqual(record(live.g).jobs);
+    expect(record(away).stock.eggs).toBe(record(live.g).stock.eggs);
+    expect(record(away).changes).toEqual(record(live.g).changes);
+  });
+
+  it('AUTO-017: money moves only through the ledger; salt mix and eggs only through purchases and starts', () => {
+    const { g } = ops(7);
+    const money0 = g.finance.money;
+    const ledger0 = g.finance.ledger.length;
+    const salt0 = g.inventory.salt;
+    const eggs0 = g.inventory.brineShrimpEggs ?? 0;
+    run(g, SPAN3);
+    const added = g.finance.ledger.slice(ledger0).reduce((a, e) => a + e.amount, 0);
+    expect(g.finance.money - money0).toBeCloseTo(added, 6);
+    const saltBought = g.finance.ledger.slice(ledger0).filter((e) => / kg marine salt mix/.test(e.memo)).reduce((a, e) => a + parseFloat(e.memo), 0);
+    const batches = g.log.filter((e) => e.text.startsWith('Salt mixing')).length;
+    expect(g.inventory.salt).toBeCloseTo(salt0 + saltBought - batches * 4.1, 6);
+    const tins = g.finance.ledger.slice(ledger0).filter((e) => /× brine shrimp eggs/.test(e.memo)).reduce((a, e) => a + parseInt(e.memo, 10), 0);
+    const harvests = g.log.filter((e) => /^Cone \d+ harvested/.test(e.text)).length;
+    const running = g.facility.food!.cones.filter((c) => c.startedHour !== null).length;
+    expect(g.inventory.brineShrimpEggs).toBe(eggs0 + tins * 30 - (harvests + running));
+  });
+
+  it('AUTO-018: stepping the same window again changes nothing', () => {
+    const { g } = ops(8);
+    run(g, 40);
+    const hash = stateHash(g);
+    stepAutomation(g, g.clock.hour - 12, g.clock.hour);
+    expect(stateHash(g)).toBe(hash);
+  });
+
+  it('AUTO-022: eggs for one cone and two cones due: one starts, the other waits and shows the shortage', () => {
+    const f = facility({ fresh: 1, marine: 0, food: true, eggs: 1, veg: 0, rosa: null, hour: 24 * 3 + 5.5 });
+    waterRoom(f.g)!.salt = 60;
+    run(f.g, 1);
+    expect(f.g.facility.food!.cones.map((c) => c.startedHour)).toEqual([24 * 3 + 6, null]);
+    expect(f.g.inventory.brineShrimpEggs).toBe(0);
+  });
+
+  it('AUTO-022: no stock goes negative over a long run', () => {
+    const { g } = ops(9);
+    run(g, 24 * 5);
+    expect(g.inventory.salt).toBeGreaterThanOrEqual(0);
+    expect(g.inventory.brineShrimpEggs ?? 0).toBeGreaterThanOrEqual(0);
+    for (const v of Object.values(g.inventory.foods)) expect(v).toBeGreaterThanOrEqual(0);
+    expect(waterRoom(g)!.fresh).toBeGreaterThanOrEqual(0);
+    expect(waterRoom(g)!.salt).toBeGreaterThanOrEqual(0);
+  });
+
+  it('AUTO-026: a save and load right after the morning jobs ends where an uninterrupted run does', () => {
+    const a = ops(10);
+    run(a.g, 6.5); // past 08:00
+    const b = decodeRecord(encodeRecord(a.g, 'auto').text).state;
+    run(a.g, 30);
+    run(b, 30);
+    expect(record(b)).toEqual(record(a.g));
   });
 });

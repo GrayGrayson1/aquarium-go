@@ -820,6 +820,12 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
 
   // 1. Money.
   earn(state, roundCents(price), l.kind === 'tank' ? 'tank_sale' : 'livestock_sale', `Sold "${l.title}" to ${buyerName}`);
+  // lane:automation (chunk 5, AUTO-039) — a production line's listing: the ledger entry names the line (weekly money)
+  const lineId = lineOfListing(state, l.id);
+  if (lineId) {
+    const e = state.finance.ledger[state.finance.ledger.length - 1];
+    if (e && e.amount > 0) e.line = { id: lineId, n: l.creatureIds.length };
+  }
 
   // 2. Unlisted animals stay with the player.
   for (const r of check.relocations) {
@@ -1706,4 +1712,10 @@ export function quickSellFragsQuote(state: GameState, fragIds: string[]): number
 export function storedFragValue(state: GameState, fragId: string): number {
   const f = (state.inventory.frags ?? []).find((x) => x.id === fragId);
   return f ? fragValue(state, f).expected : 0;
+}
+
+/** lane:automation (chunk 5) — the production line whose batch listed this, if any (read from the save; no import cycle). */
+function lineOfListing(state: GameState, listingId: string): string | undefined {
+  for (const line of state.production?.lines ?? []) for (const b of line.batches ?? []) if (b.listingIds?.includes(listingId)) return line.id;
+  return undefined;
 }

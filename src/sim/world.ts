@@ -20,6 +20,7 @@ import { stepShows } from './shows'; // lane:shows
 import { withResidentIndex, inResidentScope } from './residents'; // lane:perf2 — per-step tank → residents index (./residents.ts)
 import { registerSettler } from './settle'; // B-127
 import { stepProduction } from './production'; // lane:production (chunk 4; 0.5 §11.3 hook)
+import { stepAutomation } from './automation'; // lane:automation (chunk 5; DESIGN-S3D §9.9, AUTO-037)
 
 export interface AdvanceOptions {
   focusTankId?: string | null;
@@ -103,6 +104,10 @@ function stepOnce(state: GameState, dt: number, opts: AdvanceOptions): void {
     // lane:production — once per game hour crossed (0.5 §11.3). Before the world context: a line's moves settle tanks,
     // whose steps draw from the stream (the chunk 4 review), so the world systems' generator starts after them.
     stepProduction(state, state.clock.hour, endHour);
+    // lane:automation (chunk 5) — the facility jobs at their game hours (water changes from the reserves, cultures,
+    // dosers, salt mixing), after the lines and before the world systems, so the stock manager's shelf check (staff)
+    // sees what they used. A tank a job changes is settled to this step's end first (ADR-0026 decision 5).
+    stepAutomation(state, state.clock.hour, endHour);
     const ctx = makeContext(state, dt, 'full');
     stepWorldSystems(state, dt, ctx);
   } finally {

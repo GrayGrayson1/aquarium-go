@@ -26,6 +26,7 @@ import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor } from './tunin
 import { installedFit, type FitVerdict } from './fit'; // lane:fit
 import { FOOD_TAG_WORDS, groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase)
 import { noteFoodSpend } from '../production/costs'; // lane:production
+import { noteLiveFoodUsed } from '../automation/reserve'; // lane:automation (chunk 5)
 
 export interface ActionResult {
   ok: boolean;
@@ -97,6 +98,7 @@ export function feedTank(
   const tankDemand = targetId ? foodDemandUnits(state, tank, food) : demand;
   state.inventory.foods[foodId] = have - servings;
   noteFoodSpend(state, tankId, foodId, servings); // lane:production — a line's share of the food (ADR-0025 decision 9)
+  noteLiveFoodUsed(state, foodId, servings); // lane:automation (chunk 5) — Saved this week counts the live food used
   const units = addFood(tank, food, servings, hour, targetId);
   const lab = ensureLab(tank);
 

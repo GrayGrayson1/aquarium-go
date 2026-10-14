@@ -23,7 +23,7 @@ export interface ResearchDef {
   xp: number;
   /** Lucide icon name hint for the UI. */
   icon: string;
-  branch: 'freshwater' | 'marine' | 'breeding' | 'gear' | 'exhibition';
+  branch: 'freshwater' | 'marine' | 'breeding' | 'gear' | 'exhibition' | 'facility';
 }
 
 export const RESEARCH: ResearchDef[] = [
@@ -57,6 +57,12 @@ export const RESEARCH: ResearchDef[] = [
   { id: 'aquascape_awards', name: 'Aquascape Awards', blurb: 'Enter the regional aquascaping awards and unlock premium hardscape.', cost: 500, hours: 24, requires: [{ type: 'mastery', track: 'aquascaping', min: 60 }], grants: ['photo_contests', 'decor_premium'], track: 'aquascaping', xp: 80, icon: 'Award', branch: 'exhibition' },
   { id: 'acrylic_engineering', name: 'Acrylic Engineering', blurb: 'Bonded acrylic panels and reinforced plinths for 500–600 gallon showpieces.', cost: 12000, hours: 120, requires: [{ type: 'facility', level: 'showroom' }, { type: 'unlocked', key: 'tank_300' }], grants: ['tank_500', 'tank_600'], track: 'exhibition', xp: 250, icon: 'Box', branch: 'exhibition' },
   { id: 'grand_display', name: 'Grand Display Engineering', blurb: 'Panoramic glass, structural plinths and life support for 800–1,000 gallon exhibits.', cost: 30000, hours: 168, requires: [{ type: 'facility', level: 'destination' }, { type: 'unlocked', key: 'tank_500' }], grants: ['tank_800', 'tank_1000'], track: 'exhibition', xp: 400, icon: 'Landmark', branch: 'exhibition' },
+
+  // ── facility (lane:automation, chunk 5, DESIGN-S3D §8.8, §9.1) — appended last, so the playthrough bot's research order
+  // is unchanged until it can afford them. Costs and times are the design's placeholders (ADR-0014 decision 17).
+  { id: 'central_water_supply', name: 'Central Water Supply', blurb: 'A Water room: prepared fresh and salt water piped to every tank.', cost: 900, hours: 24, requires: [{ type: 'facility', level: 'specialty_shop' }], grants: ['water_room'], track: 'husbandry', xp: 60, icon: 'Droplets', branch: 'facility' },
+  { id: 'live_food_cultures', name: 'Live Food Cultures', blurb: 'A Live food room: hatch baby brine shrimp and grow infusoria for fry.', cost: 1400, hours: 48, requires: [{ type: 'unlocked', key: 'water_room' }, { type: 'unlocked', key: 'nursery' }], grants: ['live_food_room'], track: 'breeding', xp: 80, icon: 'Egg', branch: 'facility' },
+  { id: 'operations_desk', name: 'Operations Desk', blurb: 'Problems first, weekly money, schedules and Hold all in Operations.', cost: 2400, hours: 72, requires: [{ type: 'facility', level: 'aquarium_store' }], grants: ['operations_desk'], track: 'business', xp: 100, icon: 'Gauge', branch: 'facility' },
 ];
 
 export const RESEARCH_BY_ID: Record<string, ResearchDef> = byId(RESEARCH);

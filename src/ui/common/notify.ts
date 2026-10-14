@@ -14,6 +14,7 @@
  *    entries: progression (`progress.scan.logSeq`), exhibit scoring, the welcome-back card and duplicate checks all
  *    scan the log. The full history stays in the Log panel.
  */
+import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
 import type { Creature, DecorInstance, EquipmentInstance, GameEvent, GameState, NotifyState, Tank } from '@/types';
 import type { StatusLevel } from '@/types/reports';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -182,11 +183,12 @@ function residentsSig(g: GameState, tankId: string): string {
  */
 export function autofeedPaused(g: GameState, tank: Tank): AutofeedPause | null {
   if (!tank.equipment?.some((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder')) return null;
-  return attempt(() => autofeedPause(tank.equipment, inhabitantsOf(g, tank.id), g.inventory?.foods ?? {}), null);
+  return attempt(() => autofeedPause(tank.equipment, inhabitantsOf(g, tank.id), g.inventory?.foods ?? {}, isHeld(g, 'feeders')), null);
 }
 
-/** §10.2's alert row text. */
-export const autofeedPausedText = (p: Pick<AutofeedPause, 'name'>): string => `Auto-feed is paused — feed ${p.name} by hand.`;
+/** §10.2's alert row text; held by manual mode: ADR-0026 decision 15's words (lane:automation, chunk 5). */
+export const autofeedPausedText = (p: Pick<AutofeedPause, 'name'> & Partial<Pick<AutofeedPause, 'reason'>>): string =>
+  p.reason === 'held' ? `Auto-feed is held — feed ${p.name} by hand, or resume it.` : `Auto-feed is paused — feed ${p.name} by hand.`;
 
 /**
  * The tank's dot colour — cheap enough for a store selector (no reports, no text). Worst of the sim status, food

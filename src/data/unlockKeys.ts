@@ -56,6 +56,10 @@ export const UNLOCK_KEYS = {
   facility_destination: 'Destination aquarium',
   facility_grand_hall: 'Grand hall',
   staff: 'Hire staff: aquarists, a stock manager and docents', // lane:staff
+  // lane:automation (chunk 5, DESIGN-S3D §9.1) — the facility tiers, granted only by the Facility research projects
+  water_room: 'Water room: prepared fresh and salt water for every tank',
+  live_food_room: 'Live food room: baby brine shrimp and infusoria for fry',
+  operations_desk: 'Operations Desk: problems first, weekly money, Today and Hold all',
   // decor
   decor_premium: 'Premium hardscape',
   decor_corals_soft: 'Soft corals & zoanthids',

@@ -19,6 +19,12 @@ const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi 
 /** The share of the water a change may swap (a player's 5–90 %; the device's setting is held to the same range). */
 export const clampChangeFraction = (fraction: number, fallback = 0.25): number => clamp(Number.isFinite(fraction) ? fraction : fallback, 0.05, 0.9);
 
+/** Gallons of new water a change of `fraction` takes (it also refills what evaporated). */
+export function changeGallons(tank: Tank, fraction: number): number {
+  const f = clamp(fraction, 0.05, 0.9);
+  return safeGallons(tank) * (1 - tank.water.level * (1 - f));
+}
+
 /** Salt mix (kg) to change `fraction` of a salt tank's water at its residents' ideal salinity; 0 in fresh water. */
 export function changeSaltNeed(state: GameState, tank: Tank, fraction: number): number {
   if (!isSaltClass(tank.waterClass)) return 0;
@@ -40,10 +46,12 @@ export interface WaterChangeOutcome {
 
 /**
  * Swap `fraction` (0.05–0.9) of the water for new water. Salt tanks take what salt there is (up to the need) from
- * stock. The new water is roughly temperature-matched unless `matchTemperature === false` (tap water at room
- * temperature) or `newWaterTempC` is given. A sudden shift stresses the animals: `water.shock`, and a warning event.
+ * stock, unless the new water comes premixed (`premixedSG`, the Water room's reserves: lane:automation, chunk 5), which
+ * uses no salt from the shelf. The new water is roughly temperature-matched unless `matchTemperature === false` (tap
+ * water at room temperature) or `newWaterTempC` is given. A sudden shift stresses the animals: `water.shock`, and a
+ * warning event.
  */
-export function applyWaterChange(state: GameState, tank: Tank, fraction: number, opts: { hour: number; matchTemperature?: boolean; newWaterTempC?: number }): WaterChangeOutcome {
+export function applyWaterChange(state: GameState, tank: Tank, fraction: number, opts: { hour: number; matchTemperature?: boolean; newWaterTempC?: number; premixedSG?: number }): WaterChangeOutcome {
   const w = tank.water;
   const f = clampChangeFraction(fraction);
   const d = CLASS_DEFAULTS[tank.waterClass];
@@ -60,7 +68,9 @@ export function applyWaterChange(state: GameState, tank: Tank, fraction: number,
   let newSG = 1;
   let saltUsed = 0;
   let saltShort = false;
-  if (salty) {
+  if (salty && opts.premixedSG !== undefined) {
+    newSG = Math.max(1, opts.premixedSG);
+  } else if (salty) {
     const target = idealBand(state, tank, 'salinitySG').mid;
     const need = saltKgFor(added, target);
     const have = Math.max(0, state.inventory.salt);

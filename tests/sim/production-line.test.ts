@@ -551,11 +551,13 @@ describe('PROD-001, PROD-002, AUTO-020, AUTO-021: two lines of one species', () 
     expect(youngA.every((c) => c.tankId !== r2.id && c.tankId !== q2.id)).toBe(true);
   });
 
-  it('a fresh game has no production field, and its hash and SCHEMA_VERSION are unchanged (PROD-002 A2)', () => {
+  it('a fresh game has no production field, and its hash and SCHEMA_VERSION are unchanged by it (PROD-002 A2)', () => {
     const g = newGame({ starterId: 'betta', starterName: 'Fresh', seed: 5 });
     expect(g.production).toBeUndefined();
     expect(stateHash(g)).toBe(stateHash({ ...g, production: undefined }));
-    expect(SCHEMA_VERSION).toBe(1);
+    // PROD-002 A2 reads "unchanged by the production field" since chunk 5 raised the version once for the S3-D state
+    // (INTAKE C-44, PERSIST-016): still the version chunk 5 set, with nothing more for production lines.
+    expect(SCHEMA_VERSION).toBe(2);
   });
 });
 

@@ -38,6 +38,7 @@ import {
   DETOX_FREE_FRACTION,
   TEMP_TOLERANCE_C,
   isMarineClass,
+  LITRES_PER_GALLON,
 } from './constants';
 import { computeTankEnv, roomTempAt, type TankEnv, type EqEntry } from './env';
 import { ensureLab, scaleFood, addFood, recommendedServings } from './food';
@@ -45,6 +46,8 @@ import { planAutofeed, autofeedMessage, groupEaters, autofeedPause, type Autofee
 import { applyWaterChange, changeSaltNeed, clampChangeFraction, scrapeGlass } from './change'; // lane:automation
 import { keeperOf } from '../staff/common'; // lane:fit — a keeper's hand-feeding covers what the autofeeder can't
 import { noteFoodSpend } from '../production/costs'; // lane:production
+import { isHeld } from '../automation/hold'; // lane:automation (chunk 5) — manual mode
+import { drawFresh } from '../automation/reserve'; // lane:automation (chunk 5) — top-offs from the Water room's fresh reserve
 
 /** Repair NaN / out-of-range values (old saves, other lanes' writes). */
 export function sanitizeWater(tank: Tank): void {
@@ -164,6 +167,7 @@ function autofeedNotice(state: GameState, tank: Tank, lab: WaterLabState, at: nu
 function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, ctx: SimContext): void {
   const af = env.summary.autofeeder;
   if (!af || env.inhabitants.length === 0) return;
+  if (isHeld(state, 'feeders')) return; // lane:automation (chunk 5) — manual mode: keepers feed on their rounds
   const perDay = clamp(Math.round(finite(af.inst.setting, af.def.stats.defaultSetting ?? 2)), 0, 4);
   if (perDay <= 0) return;
   const lab = ensureLab(tank);
@@ -208,12 +212,15 @@ function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, c
  */
 function autofeedPausedNotice(state: GameState, tank: Tank, env: TankEnv, ctx: SimContext): void {
   if (state.isShowcase || env.inhabitants.length === 0) return;
-  const pause = autofeedPause(tank.equipment, env.inhabitants, state.inventory.foods);
-  if (!pause || pause.reason !== 'off') return;
+  const pause = autofeedPause(tank.equipment, env.inhabitants, state.inventory.foods, isHeld(state, 'feeders'));
+  if (!pause || (pause.reason !== 'off' && pause.reason !== 'held')) return;
   const lab = ensureLab(tank);
-  const first = lab.warned?.autofeed_paused === undefined;
-  if (!warnKey(lab, 'autofeed_paused', ctx.hour, 24)) return;
-  ctx.emit({ kind: 'warning', text: `${tank.name}: Auto-feed is paused — feed ${pause.name} by hand.`, tankId: tank.id, creatureId: pause.creatureId, toast: first, notice: { topic: 'care', vars: { open: 'equipment' } } });
+  // lane:automation (chunk 5, ADR-0026 decision 15) — held by manual mode: its own words, and its own once-a-day key
+  const key = pause.reason === 'held' ? 'autofeed_held' : 'autofeed_paused';
+  const first = lab.warned?.[key] === undefined;
+  if (!warnKey(lab, key, ctx.hour, 24)) return;
+  const text = pause.reason === 'held' ? `${tank.name}: Auto-feed is held — feed ${pause.name} by hand, or resume it.` : `${tank.name}: Auto-feed is paused — feed ${pause.name} by hand.`;
+  ctx.emit({ kind: 'warning', text, tankId: tank.id, creatureId: pause.creatureId, toast: first, notice: { topic: 'care', vars: { open: 'equipment' } } });
 }
 
 // ───────────────────────────── Auto Water Changer ─────────────────────────────
@@ -231,6 +238,9 @@ export const AUTO_SCRAPE_GAP_H = 168;
 export function runWaterChanger(state: GameState, tank: Tank, env: TankEnv, dt: number, ctx: SimContext): void {
   const dev = env.summary.waterChanger;
   if (!dev) return;
+  // lane:automation (chunk 5) — with a Water room the changes run as a facility job from the reserves, tank by tank
+  // (src/sim/automation/water.ts); manual mode holds them either way
+  if (state.facility.water || isHeld(state, 'water')) return;
   const lab = ensureLab(tank);
   const fraction = clampChangeFraction(finite(dev.inst.setting, dev.def.stats.defaultSetting ?? 0.1), 0.1);
   for (const at of crossings(ctx.hour, ctx.hour + dt, tank.lighting?.onHour ?? 8)) {
@@ -264,6 +274,8 @@ interface StepInputs {
   hour: number;
   index: number;
   lightOn: boolean;
+  /** lane:automation (chunk 5) — with a Water room, the Auto Top-Off's water comes from the fresh reserve (gallons asked → got). */
+  drawFresh?: (gal: number) => number;
   lightIntensity: number;
 }
 
@@ -494,7 +506,12 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
     (1 + s.fans * 1.5) *
     (1 + 0.3 * Math.min(2, s.agitation));
   let level = w.level - evap * h;
-  if (s.ato && level < 0.995) level = 0.995;
+  if (s.ato && level < 0.995) {
+    // lane:automation (chunk 5, ADR-0026 decision 6) — with a Water room the top-off comes from the fresh reserve and
+    // stops while it's empty; without one it's tap water
+    if (inp.drawFresh) level += (inp.drawFresh(((0.995 - level) * env.litresFull) / LITRES_PER_GALLON) * LITRES_PER_GALLON) / env.litresFull;
+    else level = 0.995;
+  }
   level = clamp(level, 0.6, 1);
   const litresAfter = env.litresFull * level;
   // Salt does not evaporate: SG-1 scales inversely with volume.
@@ -538,10 +555,11 @@ export function stepTankWaterImpl(state: GameState, tank: Tank, dt: number, ctx:
   const h = dt / n;
   let tanIn = 0;
   const intensity = clamp(tank.lighting?.intensity ?? 1, 0, 1.5);
+  const topOff = state.facility.water ? (gal: number) => drawFresh(state, gal) : undefined; // lane:automation (chunk 5)
   for (let i = 0; i < n; i++) {
     const hour = ctx.hour + i * h + h / 2;
     const on = env.summary.lights.length > 0 && lightsOn(tank.lighting?.onHour ?? 8, tank.lighting?.offHour ?? 22, hour);
-    tanIn += substep(tank, env, h, { animalTanPerH, hour, index: i, lightOn: on, lightIntensity: intensity }).tanIn;
+    tanIn += substep(tank, env, h, { animalTanPerH, hour, index: i, lightOn: on, lightIntensity: intensity, drawFresh: topOff }).tanIn;
   }
 
   // Smoothed waste input (mg/h) drives colony adaptation and the "filter overloaded" report.

@@ -33,6 +33,7 @@ import type { Clutch, Creature, GameState, ListingKind, ProductionBatch, Product
 import type { ActionResult } from '../care';
 import { emitEvent } from '../context';
 import { settleTanks } from '../settle';
+import { isHeld } from '../automation/hold'; // lane:automation (chunk 5) — manual mode
 import { findSpecies } from '@/data/species';
 import { PRODUCTION_LINE_SLOTS, FACILITY_LEVELS, getFacilityLevel } from '@/data/facilities';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
@@ -725,7 +726,7 @@ function clearBroken(line: ProductionLine): void {
 
 /** Pair members held from spawning while the line is paused, waiting or broken (readinessTarget reads the flag). */
 function syncHolds(state: GameState, line: ProductionLine): void {
-  const hold = !line.running || !!line.waiting || !!line.broken;
+  const hold = !line.running || !!line.waiting || !!line.broken || isHeld(state, 'lines');
   for (const id of [line.pair.motherId, line.pair.fatherId]) {
     const c = state.creatures[id];
     if (!c || !c.repro) continue;
@@ -885,15 +886,24 @@ function stepLine(state: GameState, line: ProductionLine, hour: number): void {
     const f = state.creatures[line.pair.fatherId];
     if (full) {
       line.waiting = true;
-      if (line.running) emitEvent(state, { kind: 'info', text: `${raise?.name ?? 'The raise tank'} is full, so ${m?.name ?? 'the pair'} and ${f?.name ?? 'its partner'} are kept apart until there's room.`, tankId: line.tanks.raise });
+      // lane:automation (chunk 5, DESIGN-S3D §8.9) — the Automation notification "{Line} paused" carries the restart day
+      if (line.running)
+        emitEvent(state, {
+          kind: 'info',
+          text: `${raise?.name ?? 'The raise tank'} is full, so ${m?.name ?? 'the pair'} and ${f?.name ?? 'its partner'} are kept apart until there's room.`,
+          tankId: line.tanks.raise,
+          notice: { topic: 'line_paused', vars: { line: line.name, lineId: line.id, tank: raise?.name ?? 'The raise tank', pair: `${m?.name ?? 'the pair'} and ${f?.name ?? 'its partner'}`, day: restartDay(state, line) } },
+        });
     } else {
       delete line.waiting;
+      if (state.automation?.lineWait?.[line.id] !== undefined) delete state.automation.lineWait[line.id]; // lane:automation — the wait is over
       if (line.running) emitEvent(state, { kind: 'info', text: `${line.name} is running again: ${raise?.name ?? 'the raise tank'} has room.`, tankId: line.tanks.raise });
     }
   }
   syncHolds(state, line);
-  if (keeper) tendFemale(state, line, sp, !line.running || !!line.waiting);
-  if (!line.running) return; // paused by the player: nothing is moved, sorted or listed (PROD-009)
+  const held = isHeld(state, 'lines'); // lane:automation (chunk 5, AUTO-036) — manual mode holds every line as a pause does
+  if (keeper) tendFemale(state, line, sp, !line.running || held || !!line.waiting);
+  if (!line.running || held) return; // paused by the player, or held: nothing is moved, sorted or listed (PROD-009)
 
   routeBroods(state, line, sp, hour);
   sortYoung(state, line, sp, hour);

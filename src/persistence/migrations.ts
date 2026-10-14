@@ -158,6 +158,18 @@ export const MIGRATIONS: Migration[] = [
       return s;
     },
   },
+  {
+    from: 1,
+    to: 2,
+    // lane:automation (chunk 5, INTAKE C-44, PERSIST-016) — the S3-D state is optional and needs nothing filled in; the
+    // version goes up so an older build reports a chunk 5 save as newer (too_new) instead of closing its Facility
+    // research and running the clock with no Water room, Live food room or manual mode.
+    description: 'S3-D (deep automation): the Water and Live food rooms, manual mode and the Operations records',
+    up: (s: Json) => {
+      s.schemaVersion = 2;
+      return s;
+    },
+  },
 ];
 
 /** Version stored in a raw save (0 when absent = legacy prototype). */
@@ -303,7 +315,7 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   // present; a broken one is dropped (the device then runs at the next lights-on, once). Absent ones need nothing. A
   // future hour would stop the device and keep keepers off the tank's routine care for good.
   if (isObj(t.water.lab)) {
-    for (const k of ['lastAutoChangeHour', 'lastAutoScrapeHour'] as const) {
+    for (const k of ['lastAutoChangeHour', 'lastAutoScrapeHour', 'lastDoseHour'] as const) { // lastDoseHour: lane:automation (chunk 5)
       const v = t.water.lab[k];
       if (v === undefined || (typeof v === 'number' && Number.isFinite(v) && v <= hour0(s))) continue;
       repairs.push(`tank ${id}.water.lab.${k}: ${String(v).slice(0, 40)}, removed`);
@@ -609,6 +621,7 @@ export function repairState(s: Json): string[] {
     }
   }
   repairProduction(s, repairs); // lane:production (chunk 4; PERSIST-006, ADR-0025 decision 10)
+  repairAutomation(s, repairs); // lane:automation (chunk 5; PERSIST-016)
   delete s.offlineGrace;
   renameLegacyMorphs(s);
   backfillFinds(s as GameState); // lane:genetics — only fills lists a pre-0.4 save lacks; silent
@@ -795,6 +808,96 @@ function repairProduction(s: Json, repairs: string[]): void {
     const why = c.repro.lineHold === true ? 'no line' : 'unreadable';
     delete c.repro.lineHold;
     repairs.push(`creature ${id}.repro.lineHold: ${why}, removed`);
+  }
+}
+
+const finiteNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const HOLD_KEYS = ['water', 'salt', 'food', 'feeders', 'lines'] as const;
+
+/**
+ * lane:automation (chunk 5, PERSIST-016) — the S3-D fields, when present: the Water room, the Live food room, the egg
+ * stock, manual mode, the Operations records and the stock manager's orders switch. Notes only what it changed (a valid
+ * save loads with no repairs and an unchanged hash); never creates a room or stock.
+ */
+function repairAutomation(s: Json, repairs: string[]): void {
+  const hour = num(s.clock?.hour, 0);
+  const fac = s.facility;
+  const fix = (cond: boolean, note: string, apply: () => void) => {
+    if (!cond) return;
+    apply();
+    repairs.push(note);
+  };
+  if (fac.water !== undefined) {
+    const w = fac.water;
+    if (!isObj(w)) {
+      delete fac.water;
+      repairs.push('facility.water: unreadable, removed');
+    } else {
+      for (const k of ['fresh', 'salt'] as const) fix(!(finiteNum(w[k]) && w[k] >= 0), `facility.water.${k}: ${String(w[k]).slice(0, 40)} → 0`, () => (w[k] = 0));
+      fix(!(Number.isInteger(w.prepLevel) && w.prepLevel >= 0 && w.prepLevel <= 2), 'facility.water.prepLevel → 0', () => (w.prepLevel = 0));
+      fix(!(Number.isInteger(w.reservoirs) && w.reservoirs >= 0 && w.reservoirs <= 3), 'facility.water.reservoirs → 0', () => (w.reservoirs = 0));
+      fix(!(finiteNum(w.flowHour) && w.flowHour <= hour + 1), `facility.water.flowHour → ${hour}`, () => (w.flowHour = hour));
+      fix(w.lastMixHour !== undefined && !(finiteNum(w.lastMixHour) && w.lastMixHour <= hour + 1), 'facility.water.lastMixHour: removed', () => delete w.lastMixHour);
+      fix(w.mix !== undefined && w.mix !== null && !(isObj(w.mix) && finiteNum(w.mix.gal) && w.mix.gal >= 0 && finiteNum(w.mix.readyHour)), 'facility.water.mix: unreadable, emptied', () => (w.mix = null));
+    }
+  }
+  if (fac.food !== undefined) {
+    const f = fac.food;
+    if (!isObj(f)) {
+      delete fac.food;
+      repairs.push('facility.food: unreadable, removed');
+    } else {
+      for (const k of ['cones', 'jars'] as const) {
+        const list = Array.isArray(f[k]) ? f[k] : null;
+        const good = (list ?? []).filter((c: unknown) => isObj(c) && (c.startedHour === null || finiteNum(c.startedHour))).slice(0, 12);
+        fix(!list || good.length !== list.length, `facility.food.${k}: unreadable entries removed`, () => (f[k] = good));
+      }
+      fix(f.lastHour !== undefined && !(finiteNum(f.lastHour) && f.lastHour <= hour + 1), 'facility.food.lastHour: removed', () => delete f.lastHour);
+    }
+  }
+  const inv = s.inventory;
+  fix(inv.brineShrimpEggs !== undefined && !(finiteNum(inv.brineShrimpEggs) && inv.brineShrimpEggs >= 0), 'inventory.brineShrimpEggs → 0', () => (inv.brineShrimpEggs = 0));
+  if (isObj(s.staff)) fix(s.staff.ordersOff !== undefined && typeof s.staff.ordersOff !== 'boolean', 'staff.ordersOff: removed', () => delete s.staff.ordersOff);
+  for (const e of s.finance.ledger as Json[]) fix(e.line !== undefined && !(isObj(e.line) && isSafeKey(e.line.id) && finiteNum(e.line.n)), 'finance.ledger line: removed', () => delete e.line);
+  for (const d of s.finance.daily as Json[]) {
+    fix(d.lines !== undefined && !(isObj(d.lines) && Object.values(d.lines).every((v) => isObj(v) && finiteNum(v.n) && finiteNum(v.amount))), `finance.daily ${shortId(d.day)}.lines: removed`, () => delete d.lines);
+    for (const k of ['supplies', 'upkeep'] as const) fix(d[k] !== undefined && !finiteNum(d[k]), `finance.daily ${shortId(d.day)}.${k}: removed`, () => delete d[k]);
+  }
+  if (s.automation === undefined) return;
+  const a = s.automation;
+  if (!isObj(a)) {
+    delete s.automation;
+    repairs.push('automation: unreadable, removed');
+    return;
+  }
+  if (a.hold !== undefined) {
+    if (!isObj(a.hold)) {
+      delete a.hold;
+      repairs.push('automation.hold: unreadable, removed');
+    } else {
+      for (const k of HOLD_KEYS) fix(a.hold[k] !== undefined && typeof a.hold[k] !== 'boolean', `automation.hold.${k}: removed`, () => delete a.hold[k]);
+      fix(a.hold.since !== undefined && !finiteNum(a.hold.since), 'automation.hold.since: removed', () => delete a.hold.since);
+    }
+  }
+  if (a.lineWait !== undefined) {
+    const lines = new Set(((isObj(s.production) && Array.isArray(s.production.lines) ? s.production.lines : []) as Json[]).map((l) => l?.id));
+    if (!isObj(a.lineWait)) {
+      delete a.lineWait;
+      repairs.push('automation.lineWait: unreadable, removed');
+    } else
+      for (const [id, v] of Object.entries(a.lineWait)) fix(!lines.has(id) || !finiteNum(v), `automation.lineWait.${shortId(id)}: no such line, removed`, () => delete a.lineWait[id]);
+  }
+  const dayOk = (d: unknown) => isObj(d) && Number.isInteger(d.day) && isObj(d.used) && isObj(d.made) && finiteNum(d.makeCost) && (d.water === undefined || isObj(d.water));
+  fix(a.today !== undefined && !dayOk(a.today), 'automation.today: unreadable, removed', () => delete a.today);
+  if (a.days !== undefined) {
+    const good = (Array.isArray(a.days) ? a.days : []).filter(dayOk).slice(-8);
+    fix(!Array.isArray(a.days) || good.length !== a.days.length, 'automation.days: unreadable entries removed', () => (a.days = good));
+  }
+  if (a.warned !== undefined) {
+    if (!isObj(a.warned)) {
+      delete a.warned;
+      repairs.push('automation.warned: unreadable, removed');
+    } else for (const [k, v] of Object.entries(a.warned)) fix(!finiteNum(v), `automation.warned.${shortId(k)}: removed`, () => delete a.warned[k]);
   }
 }
 

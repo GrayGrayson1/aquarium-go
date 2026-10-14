@@ -26,6 +26,8 @@ import { devOpenMarket } from '@/sim/economy';
 import { unlock } from '@/sim/facility';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { createLine, QUARANTINE_HOURS } from '@/sim/production';
+import { facility } from './support/automation'; // chunk 5
+import { holdAll } from '@/sim/automation';
 
 const roundTrip = (g: GameState) => decodeRecord(encodeRecord(g, 'auto').text);
 
@@ -201,5 +203,95 @@ describe('PERSIST-006, AUTO-026, AUTO-027: production lines in a save', () => {
     bad.production = 'nope';
     expect(repairState(bad)).toContain('production: unreadable, removed');
     expect(bad.production).toBeUndefined();
+  });
+});
+
+// ───────────────────────────── the S3-D state (chunk 5) ─────────────────────────────
+
+describe('PERSIST-016: the S3-D state in a save', () => {
+  /** Both rooms running, manual mode on, a doser's marker, records and a tagged sale. */
+  function ops(): GameState {
+    const f = facility({ fresh: 1, marine: 1, ato: true, food: true, salt: 20, eggs: 10, veg: 5, rosa: 150 });
+    installEquipment(f.g, f.fresh[0].id, 'live_food_doser', { purchased: true });
+    advanceWorld(f.g, 50, { forceFull: true });
+    holdAll(f.g);
+    f.g.staff!.ordersOff = true;
+    return f.g;
+  }
+
+  it('round-trips with no repairs and the same hash twice; the save version is 2', () => {
+    const g = ops();
+    expect(g.automation?.days?.length).toBeGreaterThan(0);
+    const once = roundTrip(g);
+    expect(once.repairs).toEqual([]);
+    expect(once.state.schemaVersion).toBe(2);
+    expect(once.state.facility.water).toEqual(g.facility.water);
+    expect(once.state.facility.food).toEqual(g.facility.food);
+    expect(once.state.automation).toEqual(g.automation);
+    const twice = roundTrip(once.state);
+    expect(twice.repairs).toEqual([]);
+    expect(stateHash(twice.state)).toBe(stateHash(once.state));
+  });
+
+  it('absent fields need nothing and leave the hash as it was (a game without them)', () => {
+    const g = game();
+    const d = roundTrip(g);
+    expect(d.repairs).toEqual([]);
+    expect(d.state.facility.water).toBeUndefined();
+    expect(d.state.automation).toBeUndefined();
+    expect(stateHash({ ...g, automation: undefined, facility: { ...g.facility, water: undefined, food: undefined } })).toBe(stateHash(g));
+  });
+
+  it('crafted values are repaired with a note each, and nothing is invented', () => {
+    const g = ops();
+    const raw = clonePlain(g) as unknown as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    raw.facility.water.fresh = 'lots';
+    raw.facility.water.prepLevel = 9;
+    raw.facility.water.mix = { gal: 'x' };
+    raw.facility.food.cones.push({ startedHour: 'soon' });
+    raw.inventory.brineShrimpEggs = -3;
+    raw.automation.hold.water = 'yes';
+    raw.automation.lineWait = { gone: g.clock.hour };
+    raw.staff.ordersOff = 1;
+    raw.finance.ledger.push({ hour: 1, amount: 5, category: 'livestock_sale', memo: 'x', line: { id: 7 } });
+    raw.finance.daily[0].supplies = 'some';
+    const repairs = repairState(raw);
+    expect(repairs).toEqual(
+      expect.arrayContaining([
+        'facility.water.fresh: lots → 0',
+        'facility.water.prepLevel → 0',
+        'facility.water.mix: unreadable, emptied',
+        'facility.food.cones: unreadable entries removed',
+        'inventory.brineShrimpEggs → 0',
+        'automation.hold.water: removed',
+        'automation.lineWait.gone: no such line, removed',
+        'staff.ordersOff: removed',
+        'finance.ledger line: removed',
+      ]),
+    );
+    expect(repairs.some((r) => /^finance\.daily .*\.supplies: removed$/.test(r))).toBe(true);
+    expect(raw.facility.food.cones.length).toBe(2);
+    expect(raw.automation.hold.salt).toBe(true); // the rest of manual mode stays
+    expect(repairState(raw)).toEqual([]); // a second repair finds nothing
+  });
+
+  it('an unreadable room or automation section is removed with a note; no room is created by a repair', () => {
+    const g = game();
+    const raw = clonePlain(g) as unknown as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    raw.facility.water = 'pipes';
+    raw.automation = 7;
+    const repairs = repairState(raw);
+    expect(repairs).toEqual(expect.arrayContaining(['facility.water: unreadable, removed', 'automation: unreadable, removed']));
+    expect(raw.facility.water).toBeUndefined();
+    expect(raw.facility.food).toBeUndefined();
+  });
+
+  it('a v1 save migrates to v2 unchanged apart from its version (C-44)', () => {
+    const g = game();
+    const v1 = { ...clonePlain(g), schemaVersion: 1 } as GameState;
+    const d = roundTrip(v1);
+    expect(d.repairs).toEqual([]);
+    expect(d.state.schemaVersion).toBe(2);
+    expect(stateHash(d.state)).toBe(stateHash(roundTrip(g).state));
   });
 });

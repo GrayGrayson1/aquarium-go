@@ -173,3 +173,25 @@ export function displayTankIds(state: GameState): string[] {
     return !!t && (t.purpose ?? 'display') === 'display';
   });
 }
+
+// ───────────────────────────── staff care never counts as the player's ─────────────────────────────
+
+const PLAYER_COUNTERS = ['feeds', 'targetFeeds', 'waterChanges', 'cleanings', 'topOffs', 'doses'] as const;
+
+/**
+ * Run a care mutator on the staff's behalf (or a machine's: the live-food dosers, lane:automation): the player's
+ * counters (quests, mastery, achievements) are left untouched.
+ * (lane:qa-final) Feeds also pass `byStaff: true`, so the player's overfeeding tip never fires for a keeper's round.
+ */
+export function asStaff<T>(state: GameState, fn: () => T): T {
+  const c = state.progress.counters;
+  const saved = PLAYER_COUNTERS.map((k) => [k, c[k]] as const);
+  try {
+    return fn();
+  } finally {
+    for (const [k, v] of saved) {
+      if (v === undefined) delete c[k];
+      else c[k] = v;
+    }
+  }
+}
