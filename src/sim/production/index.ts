@@ -60,12 +60,13 @@ export const WEEK_HOURS = 168;
 /** "Auctions · reserve at fair value −10%" (0.5 §11.1, PROD-014). */
 export const RESERVE_SHARE = 0.9;
 /**
- * A quarantine tank takes a batch once it's cycled: the game's own line, where Move to nursery warns "{tank} isn't
- * cycled yet" below 0.3. Seeded media gives 0.6; a cycled tank 0.88. (It was 0.6: an empty tank's filter bacteria
- * decline without waste, 0.88 → 0.6 in about five idle days, and the line then stalled without a word. The chunk 4
- * review found the seeded case: a new seeded tank fell below 0.6 within hours of its "moves in today".)
+ * A quarantine tank takes a batch once it's cycled: the game's own line for a tank with animals, below which the water
+ * report says "Tank is still cycling" (danger) and buying animals warns "This tank is not cycled yet" (0.4). Seeded
+ * media gives 0.6; a cycled tank 0.88. (It was 0.6: an empty tank's filter bacteria decline without waste, 0.88 → 0.6
+ * in about five idle days and a seeded tank within hours, and the line then stalled without a word. An idle seeded
+ * tank stays above 0.4 for about five and a half days; after that the line says the tank isn't cycled yet.)
  */
-export const QUARANTINE_READY_MATURITY = 0.3;
+export const QUARANTINE_READY_MATURITY = 0.4;
 
 /** Is a quarantine tank cycled enough for a batch? */
 export function quarantineReady(t: Tank): boolean {

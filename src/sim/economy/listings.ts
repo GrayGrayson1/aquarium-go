@@ -1295,7 +1295,7 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
       for (const c of extras) addAlert(`added:${c.id}`);
       const names = extras.map((c) => c.name).join(', ');
       markChanged(l, `${names} joined the tank after listing (not part of the sale).`);
-      emitEvent(state, { kind: 'info', text: `${names} ${extras.length === 1 ? 'is' : 'are'} in "${tank.name}" but not part of its listing — they'll be moved to another tank if it sells.`, listingId: l.id, tankId: tank.id });
+      emitEvent(state, { kind: 'info', text: `${names} ${extras.length === 1 ? 'is' : 'are'} in "${tank.name}" but not part of its listing — if it sells, they move to a tank with room, or rest in a holding container.`, listingId: l.id, tankId: tank.id });
     }
     // B-174 (ADR-0030 decision 8): an animal that isn't part of the sale no longer blocks it (it moves to a tank with
     // room, or rests in the holding container), so this no longer previews every unlisted animal against every tank on

@@ -876,7 +876,7 @@ describe('the chunk 4 review: ownership, keep tanks, the pair list, and the line
     expect(g.log.filter((e) => /couldn't be listed/.test(e.text)).length).toBe(1);
   });
 
-  it('a quarantine tank that isn’t cycled holds the batch, says so once, and takes it once it has cycled', () => {
+  it('a quarantine tank that isn’t cycled (below 0.4) holds the batch, says so once, and takes it once it has cycled', () => {
     const f = farm({ seed: 122 });
     const g = f.g;
     const line = start(f);
@@ -889,6 +889,10 @@ describe('the chunk 4 review: ownership, keep tanks, the pair list, and the line
     const said = g.log.filter((e) => e.text === 'Betta line: Quarantine isn’t cycled yet, so the juveniles wait in Grow-out.');
     expect(said.length).toBe(1);
     expect(lineView(g, line)!.quarantined.uncycledTank?.id).toBe(f.qt.id);
+    // still cycling by the water report's own line (below 0.4 with animals: "Tank is still cycling"): it waits
+    f.qt.water.bioMaturity = 0.35;
+    run(g, 1);
+    expect(waiting!.tankId).toBeUndefined();
     f.qt.water.bioMaturity = 0.5;
     run(g, 2);
     expect(waiting!.tankId).toBe(f.qt.id);
