@@ -18,7 +18,7 @@ import {
   type Route,
 } from '@/ui/nav/routes';
 
-/** One canonical address per §6.2 row (Social and Production included: they parse now, their screens come later). */
+/** One canonical address per §6.2 row (Social included: it parses now, its screens come later), and DESIGN-S3D §6's lines. */
 const CANONICAL = [
   '#/',
   '#/tanks',
@@ -30,6 +30,8 @@ const CANONICAL = [
   '#/livestock/eggs',
   '#/livestock/past',
   '#/livestock/production',
+  '#/livestock/production/cambodian',
+  '#/livestock/production/new',
   '#/livestock/animal/cr_9fq',
   '#/shop',
   '#/shop?prismatic=1',
@@ -95,6 +97,9 @@ describe('nav routes: §6.2 round trip', () => {
     expect(r('#/livestock/eggs')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'young' });
     expect(r('#/livestock/past')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'past' });
     expect(r('#/livestock/animal/cr_9fq')).toEqual({ kind: 'creature', creatureId: 'cr_9fq' });
+    // lane:production (chunk 4; DESIGN-S3D §6): one line, and setting up another
+    expect(r('#/livestock/production/royal')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:royal' });
+    expect(r('#/livestock/production/new')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:new' });
     expect(r('#/shop/fish/offer_k3x9')).toEqual({ kind: 'panel', panel: 'market', tab: 'shop', target: 'offer:offer_k3x9' });
     expect(r('#/market/supplies/flakes')).toEqual({ kind: 'panel', panel: 'market', tab: 'supplies', target: 'food:flakes' });
     expect(r('#/market/listings/listing_7mm')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'listing:listing_7mm' });
@@ -203,6 +208,7 @@ describe('nav routes: what the router sends to a panel (B-115)', () => {
     expect(routeForPanelTarget('market', 'listing:l1')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'listing:l1' });
     expect(routeForPanelTarget('market', 'list:creature:c1')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings' });
     expect(routeForPanelTarget('livestock', 'clutches')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'young' });
+    expect(routeForPanelTarget('livestock', 'line:golden')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:golden' });
     expect(routeForPanelTarget('build', 'decor-cat:plant')).toEqual({ kind: 'panel', panel: 'build', tab: 'decor' });
     expect(routeForPanelTarget('shows', 'result:e1')).toEqual({ kind: 'panel', panel: 'shows', tab: 'results' });
     expect(routeForPanelTarget('visitors', 'tab:staff')).toEqual({ kind: 'panel', panel: 'visitors', tab: 'staff' });

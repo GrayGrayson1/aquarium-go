@@ -279,6 +279,7 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 | `#/tanks` | Tanks panel | `panel: 'tanks'` |
 | `#/tanks/:tankId` *`/equipment\|life\|value`* | Tank card on that tank (Water, or the tab) | `focusedTankId`, `tankCardOpen`, `useTankCardTab.want` (URL word `equipment` = tab `gear`) |
 | `#/livestock` *`/eggs\|past\|production`* | Livestock (Animals, Eggs & fry, Past residents; Production from chunk 4) | `tab:animals\|young\|past\|production` |
+| `#/livestock/production/:lineId` · `/new` | One production line; setting up another (chunk 4; an unknown line, or `new` with no free slot, is a broken link) | `line:<lineId>\|new` |
 | `#/livestock/animal/:creatureId` | Creature card | `selectedCreatureId` |
 | `#/shop` *`?prismatic=1&rare=1&env=fits\|freshwater\|marine\|brackish`* | Market › Shop (filters in that order, defaults left out; a bare `#/shop` re-applies the session's filters) | `tab:shop` |
 | `#/shop/fish/:offerId` | Offer detail ("This offer has gone" when it has) | `offer:<id>` |
@@ -358,3 +359,30 @@ Notification routes are hashes (`#/shop/fish/<offerId>`, `#/tanks/<id>/equipment
 stubbing `window.Notification` and `ServiceWorkerRegistration.prototype.showNotification`, and simulates a tap with a
 `notification-click` message on `navigator.serviceWorker` (tests/e2e/notifications.spec.ts). The `base-path` Playwright
 project runs the production build under `/aquarium-go/` (tests/e2e/base-path.spec.ts).
+
+## 0.5 production lines (chunk 4: lanes production, ui-panels)
+
+0.5 spec §19 as amended by DESIGN-S3D §14 (several lines, DES-008). The switches are `role="switch"`: the line's is
+named "{Line} running", each rule "{Rule} ({Line})". The Livestock tabs are `livestock-tab-<animals\|young\|past\|production>`.
+
+| test id | element |
+|---|---|
+| `livestock-tab-production` | Livestock › Production (`#/livestock/production`) |
+| `production-slots` | The slot caption ("1 of 2 line slots · Specialty Shop") |
+| `production-line-<lineId>` · `production-add-line` | The line picker strip's items; "+ New line" while a slot is free |
+| `production-setup` | The empty state's "Set up a line" |
+| `production-view-<lineId>` | One line's view |
+| `production-toggle` | The header card's switch (the line's `running`) |
+| `production-end-line` · `production-end-confirm` · `production-end-confirm-yes` | "End line"; its confirmation; its "End line" |
+| `production-note` | The amber note while the line waits for room or is paused for a missing parent or tank |
+| `production-add-qt` · `production-add-qt-dialog` · `production-add-qt-seeded` · `production-add-qt-buy` | "Add a quarantine tank · $…"; its dialog, seeded-media switch and "Set up · $…" |
+| `production-week-net` | The This week tile's "$… after food and power" line |
+| `production-stage-<breed\|raise\|sort\|quarantine\|sell>` | The five stage cards (Sort opens the Sort sheet) |
+| `production-sort` · `production-sort-add` | The Sort sheet; "+ Add a keep rule" |
+| `production-fix-pair` · `production-fix-tank` | "Choose another pair" / "Choose another tank" on a paused line's stage card (and their `…-dialog`s) |
+| `production-rule-<pauseWhenFull\|keepPrismatic\|autoList>` | The three Line rules switches (the line view and set-up step 3) |
+| `production-new-step-<1\|2\|3>` | The set-up stepper (`aria-current="step"` on the current one) |
+| `production-new-pair-<motherId>-<fatherId>` | Step 1's pair rows (`role="radio"`; a line's own pair is disabled, "In a line") |
+| `production-new-tank-<breed\|raise\|quarantine\|keepers>` | Step 2's stage rows (Fits · Shared · Doesn't fit) |
+| `production-new-breed-for` · `production-new-name` | Step 3's "Breed for" and "Line name" fields |
+| `production-new-back` · `production-new-next` · `production-start-line` | The pinned actions |

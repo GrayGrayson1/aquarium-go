@@ -342,7 +342,11 @@ export function candidatePairs(state: GameState): { motherId: string; fatherId: 
         const key = `${ev.female.id}|${ev.male.id}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const line = lineOfParent(state, ev.female.id) ?? lineOfParent(state, ev.male.id);
+        const lf = lineOfParent(state, ev.female.id);
+        const lm = lineOfParent(state, ev.male.id);
+        // a line's own pair is listed but disabled; a pair splitting a line's parent from its partner isn't listed
+        if ((lf || lm) && !(lf && lf === lm && lf.pair.motherId === ev.female.id && lf.pair.fatherId === ev.male.id)) continue;
+        const line = lf;
         out.push({ motherId: ev.female.id, fatherId: ev.male.id, speciesId, ...(line ? { inLine: line.name } : {}), ready: !line && isReady(ev.female) && isReady(ev.male) });
       }
     }
@@ -687,6 +691,11 @@ function brokenText(state: GameState, line: ProductionLine, b: NonNullable<Produ
   }
   if (b.ref === 'mother' || b.ref === 'father') return `${line.name} paused: ${b.name} is no longer in your care. Choose another pair, or end the line.`;
   return `${line.name} paused: ${b.name} is gone. Choose another tank, or end the line.`;
+}
+
+/** A paused line's notice, for its note (ADR-0030 decision 2); '' while nothing is missing. */
+export function lineNoticeText(state: GameState, line: ProductionLine): string {
+  return line.broken ? brokenText(state, line, line.broken) : '';
 }
 
 function rollWeek(line: ProductionLine, hour: number): void {

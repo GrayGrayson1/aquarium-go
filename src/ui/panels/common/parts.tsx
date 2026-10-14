@@ -29,7 +29,7 @@ export function Chip({ tone = 'neutral', icon, children, title, className, onCli
  * Segmented radio group — keyboard accessible (arrow keys), ≥40px touch targets. `tabs`: a panel's section strip,
  * announced as tabs (role=tablist/tab, aria-selected; lane:ui-shell ACC-001), with the active one scrolled into view.
  */
-export function Seg<T extends string>({ value, onChange, items, label, size = 'md', className, testIdPrefix, tabs }: { value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; disabled?: boolean; title?: string }[]; label: string; size?: 'sm' | 'md'; className?: string; testIdPrefix?: string; tabs?: boolean }) {
+export function Seg<T extends string>({ value, onChange, items, label, size = 'md', className, testIdPrefix, tabs }: { value: T; onChange: (v: T) => void; items: { id: T; label: ReactNode; disabled?: boolean; title?: string; testId?: string }[]; label: string; size?: 'sm' | 'md'; className?: string; testIdPrefix?: string; tabs?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!tabs) return;
@@ -62,7 +62,7 @@ export function Seg<T extends string>({ value, onChange, items, label, size = 'm
           disabled={it.disabled}
           title={it.title}
           data-seg={it.id}
-          data-testid={testIdPrefix ? `${testIdPrefix}${it.id}` : undefined}
+          data-testid={it.testId ?? (testIdPrefix ? `${testIdPrefix}${it.id}` : undefined)}
           className="pn-seg__opt"
           onClick={() => {
             if (it.id !== value) sfx('click');

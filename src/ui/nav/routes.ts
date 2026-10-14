@@ -3,7 +3,7 @@
  * (./router.ts) applies a Route to the stores and writes the address back. OWNER: lane "ui-shell".
  *
  * Grammar (docs/TEST_IDS.md has the table): `#/` · `#/tanks` · `#/tanks/:tankId[/equipment|/life|/value]` ·
- * `#/livestock[/eggs|/past|/production]` · `#/livestock/animal/:creatureId` · `#/shop[?prismatic=1&rare=1&env=…]` ·
+ * `#/livestock[/eggs|/past|/production]` · `#/livestock/production/:lineId|new` · `#/livestock/animal/:creatureId` · `#/shop[?prismatic=1&rare=1&env=…]` ·
  * `#/shop/fish/:offerId` · `#/market/supplies[/:foodId]` · `#/market/listings[/:listingId]` · `#/market/history` ·
  * `#/build[/decor|/equipment|/substrate|/facility]` · `#/visitors[/staff]` · `#/shows[/entries|/results|/trophies]` ·
  * `#/research[/unlocks|/quests|/achievements]` · `#/finances` · `#/encyclopedia[/science[/:articleId]|/:speciesId]` ·
@@ -150,6 +150,8 @@ export function parseRoute(hash: string): ParsedRoute | null {
       return { route: b ? { kind: 'tankCard', tankId: b, tab: (byWord(TANK_TABS, c)?.id ?? 'water') as TankCardTab } : panel('tanks') };
     case 'livestock':
       if (b === 'animal') return { route: c ? { kind: 'creature', creatureId: c } : panel('livestock', 'animals') };
+      // lane:production (chunk 4; DESIGN-S3D §6) — one line, or setting up another ('new')
+      if (b === 'production' && c) return { route: panel('livestock', 'production', `line:${c}`) };
       return { route: panel('livestock', tabOf('livestock', b)) };
     case 'shop':
       if (b === 'fish' && c) return { route: panel('market', 'shop', `offer:${c}`) };
@@ -223,6 +225,10 @@ export function formatRoute(route: Route, filters?: ShopFilters): string {
     const code = after(target, 'join:');
     if (code) return `#/social/join/${enc(code)}`;
   }
+  if (p === 'livestock') {
+    const line = after(target, 'line:');
+    if (line) return `#/livestock/production/${enc(line)}`;
+  }
   return spec?.word ? `#/${p}/${spec.word}` : `#/${p}`;
 }
 
@@ -262,6 +268,7 @@ export function routeForPanelTarget(p: NavPanel, target: string): Route | null {
     case 'livestock':
       if (target === 'young' || target === 'clutches') return panel(p, 'young');
       if (target.startsWith('sell:')) return panel(p, 'animals');
+      if (after(target, 'line:')) return panel(p, 'production', target);
       return null;
     case 'build':
       if (target.startsWith('equipment:')) return panel(p, 'equipment');

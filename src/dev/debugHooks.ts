@@ -47,6 +47,7 @@ import * as aquascape from '@/sim/aquascape';
 import * as facility from '@/sim/facility';
 import * as lifeActions from '@/sim/life/actions';
 import * as compat from '@/sim/compat';
+import * as production from '@/sim/production'; // lane:production (chunk 4)
 import { facilityOverflow } from '@/render/camera/facilityOverflow';
 import { navBootPending } from '@/ui/nav/router';
 
@@ -101,6 +102,15 @@ const ACTIONS: Record<string, AnyFn> = {
   startBreeding: lifeActions.startBreeding as AnyFn,
   separateCreature: lifeActions.separateCreature as AnyFn,
   moveClutch: lifeActions.moveClutch as AnyFn,
+  // production lines (chunk 4)
+  createLine: production.createLine as AnyFn,
+  setLineRunning: production.setLineRunning as AnyFn,
+  setLineRule: production.setLineRule as AnyFn,
+  setKeepRules: production.setKeepRules as AnyFn,
+  setLinePair: production.setLinePair as AnyFn,
+  setLineTank: production.setLineTank as AnyFn,
+  addQuarantineTank: production.addQuarantineTank as AnyFn,
+  endLine: production.endLine as AnyFn,
 };
 
 /** Read-only sim queries callable via __AQ.query(name, ...args). */

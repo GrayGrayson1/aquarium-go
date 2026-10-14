@@ -24,6 +24,7 @@ import { useGame } from '@/state/game';
 import type { GameState } from '@/types';
 import { findSpecies } from '@/data/species';
 import { isPrismatic } from '@/sim/life/rareVariants';
+import { findLine, lineSlots, productionLines } from '@/sim/production'; // lane:production (chunk 4)
 import { listSaves, loadGame } from '@/persistence';
 import { useShell } from '../common/shellStore';
 import { loadIntoGame } from '../common/saves';
@@ -291,6 +292,15 @@ function applyInner(route: Route, filters: ShopFilters | undefined): void {
       }
       if (p === 'market' && target?.startsWith('listing:') && !g?.market.listings.some((l) => l.id === target.slice(8))) return notFound('listing');
       if (p === 'encyclopedia' && target?.startsWith('species:') && !findSpecies(target.slice(8))) return notFound('species');
+      // lane:production (DESIGN-S3D §6, §8.6.1): an unknown line, or setting up a line with no free slot, is not found
+      if (p === 'livestock' && target?.startsWith('line:')) {
+        const id = target.slice(5);
+        const missing = id === 'new' ? !g || productionLines(g).length >= lineSlots(g) : !g || !findLine(g, id);
+        if (missing) {
+          toast(BROKEN_LINK);
+          return applyInner(HOME, undefined);
+        }
+      }
       if (p === 'market' && route.tab === 'shop' && !target && filters) useShopFilters.getState().setFilters(filters);
       useUI.getState().set({ selectedCreatureId: null });
       openPanelRoute(p, panelTargetFor(route));
