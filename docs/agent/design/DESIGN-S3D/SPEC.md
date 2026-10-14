@@ -1,10 +1,10 @@
 # DESIGN-S3D: deep automation (S3-D) — design addendum to the 0.5 spec
 
-> **Not approved yet (2026-10-06).** Captured from the owner's Claude Design canvas after the owner chose a direction
-> in an option review and settled the follow-up questions (ADR-0014). The owner approves it after answering the
-> questions in `INTAKE.md` §11, recorded word for word in a new ADR. Nothing that depends on this design starts before
-> approval (`PLAN.md`, chunks 4 and 5). The intake procedure it was captured under is archived with the harness
-> (ADR-0018).
+> **Approved by the owner on 2026-10-11 (ADR-0027).** Captured from the owner's Claude Design canvas after the owner
+> chose a direction in an option review and settled the follow-up questions (ADR-0014). Read it with `INTAKE.md`
+> §11's resolutions and the owner's answers in ADR-0025 (§8.6 and §8.6.1, chunk 4) and ADR-0026 (C1 to C14): where they
+> differ from this file, the ADRs win, then the intake. The intake procedure it was captured under is archived with
+> the harness (ADR-0018).
 
 - **What this is:** the screens, states, copy, routes, test ids and simulation behaviour for the S3-D automation layer
   (master §9 S3-D, tiers 1–5), written as an addendum to `AQUARIUM_GO_0_5_DESIGN_SPEC.md` (the "0.5 spec"). Where this

@@ -6,10 +6,10 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Ask the owner group E** of `docs/agent/OWNER_QUESTIONS.md` (backlog rows; blocks no chunk). Groups A to D are
-   answered (ADR-0024 to ADR-0028; DESIGN-S3D is approved, ADR-0027). `docs/agent/SESSION_HANDOFF.md` gives the order
-   of work.
-2. **Then chunk 4** (Production lines): group B unblocked it (ADR-0025).
+1. **Build chunk 4** (Production lines), from a fresh context: the owner chose to `/compact` first (ADR-0029 decision
+   14), then the agent re-reads the docs. `docs/agent/SESSION_HANDOFF.md` gives the order of work.
+2. **Every owner question is answered** (groups A to E, ADR-0024 to ADR-0029, 2026-10-11 to 2026-10-13); DESIGN-S3D
+   is approved (ADR-0027). Open: the owner's export of the 0.5 screens (E5).
 3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
 
 ## Status
@@ -192,10 +192,18 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 - **Requirements:** PROD-001 to PROD-018, DES-008, AUTO-014 (the production part), AUTO-016 to AUTO-021, AUTO-024 to
   AUTO-027, ACC-004 (the production switches), PERSIST-005, PERSIST-006 (production), and `INTAKE.md` §12's
   PROD-019 to PROD-021 with its change rows for PROD-002, PROD-003, PROD-011, PROD-012, PROD-015, PROD-018 and DES-008.
+- **Also:** the line's "This week" tile shows sales and count, then a second line for the net after food and power
+  (ADR-0026 decision 3). From group E (ADR-0029): a build leaves a research project it doesn't know untouched (E2,
+  B-017; lands before chunk 5 adds projects); the beauty and ethical-display bonuses need animals (E3, B-138) and
+  "sales" counts sales, not animals, with the save adjustment for quests in progress (E4, B-139), both with B-130's
+  value-loop tests; the holding container's honest copy (E9, B-195) if the chunk touches `listings.ts`'s relocation.
+  Backlog rows deferred to this chunk: B-127 (moves settle both tanks' sim debt), B-130, B-171 (PERSIST-005's
+  save-size budget), B-174 (the whole-tank sale's relocation), B-177 (store writes during a recipe, before the world
+  hook). E3 and E4 change money and progression: run the seeded tests before and after and explain every shift.
 - **Done when:** `production-line.test.ts` and `persistence-05` pass with everything else.
 - **Decide:** PERSIST-005's save-size budget. Ask the owner once, batched, for the player-visible text no design or
-  ADR gives (at least End line's confirmation, the missing-reference notice and the quarantine purchase's restart
-  line; ADR-0025's option descriptions gave examples, not approved copy).
+  ADR gives (at least End line's confirmation, the missing-reference notice, the quarantine purchase's restart line
+  and the This week tile's net line; ADR-0025's option descriptions gave examples, not approved copy).
 
 ### 5. Deep automation (S3-D)
 
@@ -227,6 +235,13 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   setting (B-178, ACC-005); a WebKit e2e project beside Chromium (B-129). WebKit needs Playwright's WebKit browser in
   `~/LocalTest/playwright` (check the internal disk's free space first; no new npm package), and REL-013's repeated
   full runs include it. A WebKit-only failure is fixed, never skipped.
+- **Also (ADR-0029):** the banner when the simulation keeps failing, "Something went wrong — your aquarium is paused.
+  Save and reload." with Save and Reload (E1, B-002); typecheck and unit tests before the GitHub deploy and Render's
+  build (E7, B-193; `deploy.yml` and `render.yaml` are core files, and a Render setting outside `render.yaml` is a
+  remote change: ask first); the morph data (E8, B-194: rename the bristlenose fin overlay with a save migration, a
+  test that no two looks share a name, odds that match how stock is picked); "Move tank" on the tank card with an e2e
+  test (E10, B-196); the holding container's copy (E9, B-195) if chunk 4 didn't do it; the 0.5 screens into
+  `docs/agent/design/DESIGN-0.5/` once the owner exports them (E5, B-185).
 - **Done when:** `social-stub.test.ts` and `dock-width.spec` pass; `#/social/join/HIGHLAND-4821` works signed out,
   then signed in, then joined; two full test passes in a row on the Mac (REL-013); the owner has played it on a phone
   and a desktop. Then the release.
@@ -285,4 +300,6 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   and count, then the net after food and power (ADR-0026 decision 3).
 - From group C (ADR-0026, ADR-0027): DESIGN-S3D is approved for chunk 5. Settings becomes a gear in every build; water
   stays free; live food never expires (storage caps it); no schedule editor.
+- From group E (ADR-0029): tank-sale bonuses need animals; "sales" counts sales; the shared Pages origin stays; deploys
+  run the unit tests; no linter (no new dependency); B-008's path stays.
 - No new dependencies without asking the owner.

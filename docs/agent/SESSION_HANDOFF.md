@@ -1,65 +1,34 @@
-# Session handoff: after group A and the 0.5.1 release
+# Session handoff: all owner questions answered, chunk 4 next
 
-For the next agent session on Aquarium Go (Marshall, on the owner's AquariumGo CNVS canvas). Written 2026-10-11 by
-Chase, the session that asked group A and released 0.5.1; it replaces the handoff written after chunk 3. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule;
-this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when it's
-used up.
+For the agent that builds chunk 4 on Aquarium Go (Marshall, after the owner's `/compact`, or a new session). Written
+2026-10-13 by Marshall, the session that asked groups B to E; it replaces Chase's handoff after group A. The repo is
+the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of work and the practical knowledge
+that makes it go smoothly. Replace or delete it when it's used up.
 
 ## Where things stand
 
-- `next` holds chunks 1 to 3, all tested, and the owner's group A answers (ADR-0024). **0.5.1 is released**
-  (chunks 2 and 3): `main` is `78548a3`, and GitHub Pages and Render both serve 0.5.1 (Render deployed by hand, as
-  always). The last full run, on the release commit `6594d21`, passed typecheck, unit (194 files, 2,227 tests), build
-  and e2e (90 of 90). PLAN.md "Releases" has the details. Nothing is uncommitted.
-- **Owner questions:** group A is answered (ADR-0024). Groups **B to E are still open** in
-  `docs/agent/OWNER_QUESTIONS.md`: the owner stopped after group A and asked for the docs to be ready for a new
-  conversation. *Update, 2026-10-11 (Marshall's session): groups B, C and D are answered (ADR-0025 to ADR-0028; DESIGN-S3D is
-  approved); E is being asked.*
-- Chunk 4 (Production lines) waits on group B; chunk 5 (deep automation, DESIGN-S3D) on group C and chunk 4; chunk 6
-  (Social stub, hardening, now also the WebKit e2e project and WCAG 2.2 AA from ADR-0024) on D1.
+- `next` holds chunks 1 to 3, all tested, and every owner answer: groups A to E (ADR-0024 to ADR-0029, 2026-10-11 to
+  2026-10-13). DESIGN-S3D is approved (ADR-0027, also in `INTAKE.md` §14). `docs/agent/OWNER_QUESTIONS.md` has
+  nothing open. **0.5.1 is released** (`main` `78548a3`, on Pages and Render); the last full run, on `6594d21`, passed
+  typecheck, unit (194 files, 2,227 tests), build and e2e (90 of 90). No code has changed since.
+- Chunk 4 (Production lines) is next; chunk 5 (deep automation) follows it; chunk 6 (Social stub, hardening, the last
+  0.5 release) after that. PLAN.md's briefs list what each chunk also picks up from groups C and E.
+- Waiting on the owner: the export of the 45 approved 0.5 screens (E5, B-185).
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
-   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, How a chunk runs, the chunk briefs) and
-   `docs/agent/OWNER_QUESTIONS.md`.
-2. **Ask the owner groups B to E, first thing**, before building anything:
-   - AskUserQuestion, at most 4 questions per round, in the file's order, with the recommended option first and
-     labelled "(Recommended)". Tell the owner up front how many rounds there are (12: B 3, C 4, D 1, E 4) and that
-     they can stop after any group. In each group's last round add one question, "Go on to group {next}?", with "Stop
-     here for now" as the other option; it fits within the 4 (B's last round has 2 questions, C's 3, D's 1). The
-     owner may type an instruction instead of choosing; do what it says. If the owner stops, record what's answered
-     (step 3), bring `PLAN.md`, `OWNER_QUESTIONS.md` and this file up to date so a new session can carry on from
-     there, and push `next` (as the group A session did).
-   - Before B1 open the production screens on the Mac:
-     `open docs/agent/design/DESIGN-S3D/screens/livestock-production-*.png` (Preview), and point to SPEC.md §8.6 and
-     §8.6.1. Before each C question open its screens the same way (`home-*` and `more-normal-phone.png` for C1 and C2,
-     `tanks-*` for C3, `operations-water-*` and `build-facility-water-*` for C4 and C5, `operations-feed-*` and
-     `market-supplies-home-grown-*` for C6, `build-facility-*` for C7, `visitors-staff-*` for C9,
-     `settings-notifications-automation-*` for C10, `alerts-*` and `operations-issues-*` for C13,
-     `operations-water-*` for C11 and C12, `operations-manual-*` and `tank-card-held-*` for C14) and name the SPEC.md
-     section. Each question's description gives the context the owner needs to choose (the source row's problem in
-     a sentence or two, and what each option means for players), as group A's did; keep labels short.
-   - For C8, send the "C8's strings" table in `OWNER_QUESTIONS.md` (under group C) as a short message before the
-     question, with your drafts for its four **not worded** rows.
-   - For E, read each row in `docs/agent/BACKLOG.md` (and the review finding it cites) before asking; E's fourth
-     round proposes closing B-132, B-133 and B-137 as "no action" (ADR-0018).
-3. **Record the answers** after each group, verbatim (question as asked, option chosen with its description, the
-   owner's notes or typed answer), in ADRs like ADR-0019 to ADR-0024:
-   - The next free number for groups B, D and E (ADR-0025 onward); the DESIGN-S3D approval (group C) gets an ADR of
-     its own that names the 0.5 items it replaces (C2) and is also written into `INTAKE.md` §14 "Owner decision".
-   - Then: `decisions/INDEX.md`; mark the rows "Answered (ADR-00NN)" in `OWNER_QUESTIONS.md`; PLAN.md ("Product
-     decisions in force", "Next step", the chunk briefs' "Before starting" lines); REQUIREMENTS.json notes (PROD-006,
-     PROD-008, PROD-011, PROD-015, PROD-017, SOC-010); BACKLOG.md rows (status **decided**, the ADR).
-   - Commit ("Owner answers, group …") and push `next`.
-4. **Build the next chunk** that the answers unblock: chunk 4 if B1 is approved and B2 to B10 are answered; otherwise
-   chunk 6 (needs D1). Chunk 5 only after C15 approves and chunk 4 is done. Follow PLAN.md "How a chunk runs"
-   exactly:
-   - note the start commit; read only the brief and the design sections it names; apply the chunk's BACKLOG errata and
-     fix or defer its open rows;
-   - ask the owner (batched, once) about player-visible text no design or ADR gives;
-   - run the seeded tests before and after any sim change and explain every changed expectation (never retune data to
-     hide a shift);
+   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, How a chunk runs, chunk 4's brief), then only the design
+   sections chunk 4 names: 0.5 spec §11 (data and simulation), DESIGN-S3D SPEC §8.6 and §8.6.1, and the ADRs its brief
+   cites (ADR-0025; ADR-0026 decision 3; ADR-0029 decisions 2, 3, 4 and 9).
+2. **Build chunk 4** following PLAN.md "How a chunk runs" exactly:
+   - note the start commit; apply the chunk's BACKLOG rows (B-017, B-127, B-130, B-138, B-139, B-171, B-174, B-177,
+     maybe B-195) and fix or defer each with a reason;
+   - ask the owner once, batched, about player-visible text no design or ADR gives (the brief lists at least four:
+     End line's confirmation, the missing-reference notice, the quarantine purchase's restart line, the This week
+     tile's net line);
+   - run the seeded tests before and after any sim change and explain every changed expectation (E3 and E4 change
+     money and progression; never retune data to hide a shift);
    - the four checks pass on the final code; one fresh reviewer subagent reads the brief (verbatim from PLAN.md at the
      start commit) and `git diff <start>..HEAD`, not your summary; fix its blockers and re-run. **The reviewer runs on
      Opus 5.5 at max effort** (Agent tool `model: "opus"`, `effort: "max"`), never Fable (the owner, 2026-10-11);
@@ -67,9 +36,15 @@ used up.
      DEFERRED/IN_PROGRESS with the reason), BACKLOG.md, ADRs; commit and push `next`;
    - tell the owner each command with its pass or fail line, what changed, and what to try (`npm run dev`, then
      http://127.0.0.1:5173/?dev=1).
-5. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
+3. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
    `/compact` (an agent can't) and you re-read the docs before the next chunk. Releases (`main`) only when the owner
    says so in the session, through PLAN.md "Releases".
+
+**Asking the owner** (how groups A to E went): AskUserQuestion, at most 4 questions per round, recommended option
+first and labelled "(Recommended)", each description giving the context needed to choose; open design screens on the
+Mac with `open <png>` first; record the answers verbatim in an ADR (question as asked, option chosen with its
+description, notes), then the index, PLAN.md, REQUIREMENTS.json and BACKLOG.md. Check new questions against earlier
+answers before asking: B9 and C2 conflicted and needed a follow-up.
 
 ## How this repo is worked (learned in chunks 1 to 3 and the 0.5.1 release)
 

@@ -1,6 +1,7 @@
 # Open owner questions
 
 Every question that waits on the owner, in one place, grouped by what it unblocks. Written 2026-10-11 after chunk 3.
+**As of 2026-10-13 groups A to E are all answered** (ADR-0024 to ADR-0029); nothing is open.
 Ask them with the AskUserQuestion tool, at most 4 per round, in group order (A first). Put the recommended option
 first and label it "(Recommended)". Before a question about screens, open them for the owner (the PNGs under
 `docs/agent/design/DESIGN-S3D/screens/`).
@@ -12,7 +13,8 @@ After each group, record the answers **verbatim** (the question as asked, the op
 ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
-Group D is answered (ADR-0028). Use the next free ADR number for group E (ADR-0029).
+Groups D and E are answered (ADR-0028, ADR-0029). **Every question here is answered** (2026-10-13); add new ones as a
+new group, and record them the same way.
 
 | Group | Unblocks | Questions |
 |---|---|---|
@@ -20,7 +22,7 @@ Group D is answered (ADR-0028). Use the next free ADR number for group E (ADR-00
 | B | Chunk 4 (Production lines) | B1–B10: **answered 2026-10-11 (ADR-0025)** |
 | C | Chunk 5 (DESIGN-S3D approval) | C1–C15: **answered 2026-10-11 (ADR-0026; the approval ADR-0027)** |
 | D | Chunk 6 (Social stub) | D1: **answered 2026-10-11 (ADR-0028)** |
-| E | Backlog rows waiting on the owner (block no chunk) | E1–E12 |
+| E | Backlog rows waiting on the owner (block no chunk) | E1–E12: **answered 2026-10-11 to 2026-10-13 (ADR-0029)** |
 
 ## A. Release and standing decisions
 
@@ -126,18 +128,18 @@ asking; the options below are the agent's proposals.
 
 | # | Row | Question | Options (recommended first) |
 |---|---|---|---|
-| E1 | B-002 | When a simulation step keeps failing, the world freezes with one console message. What should the player see? | **A banner: "Something went wrong — your aquarium is paused. Save and reload." with Save and Reload buttons.** · Nothing (as today). |
-| E2 | B-017 | An older build closes a research project it doesn't know, so a newer save loses that project when opened in the older build. | **Keep unknown projects untouched in older builds.** · Accept (old builds are best-effort). |
-| E3 | B-138 | An empty, freshly dressed tank sells at auction for more than its parts cost. | **Apply the beauty and ethical-display bonuses only to tanks with animals.** · Leave it. |
-| E4 | B-139 | The "sales" counter counts animals, so one quick sale of 25 shrimp unlocks tank auctions and Trusted Trader. | **Count sales, not animals.** · Leave it. |
-| E5 | B-185 | The approved 0.5 visual reference (45 screens) lives only in a private canvas. | **Export the screens into the repo** (owner supplies them). · Leave it. |
-| E6 | B-191 | Saves, settings, notification permission and the service worker share the graygrayson1.github.io origin with any other Pages site of the account. | **Leave it** (one site on the account). · Move the game to its own domain or origin. |
-| E7 | B-193 | The GitHub deploy and the Render build publish without running tests. | **Run typecheck and unit tests in the deploy workflow before publishing.** · Leave it (the agent runs the four checks before every release). |
-| E8 | B-194 | Morph names and catalog odds disagree in places (a bristlenose name collision, rare morphs stocked more often than "1 in n"). | **Fix the data in chunk 6.** · Leave it. |
-| E9 | B-195 | Animals in the holding container are frozen in time, though the game says "give them a tank soon". | **Change the copy to match (they wait safely).** · Make them age and get hungry there. |
-| E10 | B-196 | Moving a placed tank in the room view is unreachable (nothing opens it). | **Add a "Move tank" action to the tank card.** · Remove the dead code. |
-| E11 | B-197 | 46 lint suppressions exist with no linter installed. | **Leave it (no linter, no new dependency).** · Install ESLint (a new dev dependency). |
-| E12 | B-008 | A home-directory path with the owner's user name is in the public history of `agent/s0-wip`. | **Leave it** (no secret; a history rewrite needs a force push). · Rewrite that branch's history. |
+| E1 | B-002 | When a simulation step keeps failing, the world freezes with one console message. What should the player see? | **A banner: "Something went wrong — your aquarium is paused. Save and reload." with Save and Reload buttons.** · Nothing (as today). → **Answered (ADR-0029): A banner (chunk 6).** |
+| E2 | B-017 | An older build closes a research project it doesn't know, so a newer save loses that project when opened in the older build. | **Keep unknown projects untouched in older builds.** · Accept (old builds are best-effort). → **Answered (ADR-0029): Leave unknown projects untouched (chunk 4).** |
+| E3 | B-138 | An empty, freshly dressed tank sells at auction for more than its parts cost. | **Apply the beauty and ethical-display bonuses only to tanks with animals.** · Leave it. → **Answered (ADR-0029): Bonuses need animals (chunk 4).** |
+| E4 | B-139 | The "sales" counter counts animals, so one quick sale of 25 shrimp unlocks tank auctions and Trusted Trader. | **Count sales, not animals.** · Leave it. → **Answered (ADR-0029): Count sales (chunk 4).** |
+| E5 | B-185 | The approved 0.5 visual reference (45 screens) lives only in a private canvas. | **Export the screens into the repo** (owner supplies them). · Leave it. → **Answered (ADR-0029): Export into the repo (waits on the owner's export).** |
+| E6 | B-191 | Saves, settings, notification permission and the service worker share the graygrayson1.github.io origin with any other Pages site of the account. | **Leave it** (one site on the account). · Move the game to its own domain or origin. → **Answered (ADR-0029): Leave it.** |
+| E7 | B-193 | The GitHub deploy and the Render build publish without running tests. | **Run typecheck and unit tests in the deploy workflow before publishing.** · Leave it (the agent runs the four checks before every release). → **Answered (ADR-0029): Test before publishing (chunk 6).** |
+| E8 | B-194 | Morph names and catalog odds disagree in places (a bristlenose name collision, rare morphs stocked more often than "1 in n"). | **Fix the data in chunk 6.** · Leave it. → **Answered (ADR-0029): Fix the data in chunk 6.** |
+| E9 | B-195 | Animals in the holding container are frozen in time, though the game says "give them a tank soon". | **Change the copy to match (they wait safely).** · Make them age and get hungry there. → **Answered (ADR-0029): Match the copy (chunk 4 or 6).** |
+| E10 | B-196 | Moving a placed tank in the room view is unreachable (nothing opens it). | **Add a "Move tank" action to the tank card.** · Remove the dead code. → **Answered (ADR-0029): Add "Move tank" (chunk 6).** |
+| E11 | B-197 | 46 lint suppressions exist with no linter installed. | **Leave it (no linter, no new dependency).** · Install ESLint (a new dev dependency). → **Answered (ADR-0029): Leave it.** |
+| E12 | B-008 | A home-directory path with the owner's user name is in the public history of `agent/s0-wip`. | **Leave it** (no secret; a history rewrite needs a force push). · Rewrite that branch's history. → **Answered (ADR-0029): Leave it.** |
 
 Harness-era owner rows (B-132, B-133, B-137) were about the retired harness's gates; propose closing them as "no
-action" (ADR-0018) in the same round as E.
+action" (ADR-0018) in the same round as E. → **Answered (ADR-0029): closed as "no action".**
