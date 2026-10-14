@@ -608,6 +608,7 @@ export function repairState(s: Json): string[] {
       if (m.unpaidDays !== undefined) m.unpaidDays = Math.max(0, Math.floor(num(m.unpaidDays, 0)));
     }
   }
+  repairProduction(s, repairs); // lane:production (chunk 4; PERSIST-006, ADR-0025 decision 10)
   delete s.offlineGrace;
   renameLegacyMorphs(s);
   backfillFinds(s as GameState); // lane:genetics — only fills lists a pre-0.4 save lacks; silent
@@ -615,6 +616,186 @@ export function repairState(s: Json): string[] {
   // Keep the id counter ahead of every id we know about so new ids never collide after a repair.
   s.idCounter = Math.max(s.idCounter, maxIdSuffix(s));
   return repairs;
+}
+
+/** A well-formed id, as text for a repair note. */
+const shortId = (v: unknown): string => String(v).slice(0, 40);
+
+const PRODUCTION_REFS = ['mother', 'father', 'breed', 'raise', 'quarantine', 'keep', 'rest'] as const;
+const PRODUCTION_STAT_KEYS = ['weekStartHour', 'soldCount', 'revenue', 'costs', 'totalSold', 'totalRevenue', 'totalCosts'] as const;
+
+/**
+ * lane:production (PERSIST-006, ADR-0025 decision 10) — production lines, when present. A line whose parent or tank is
+ * missing is kept and marked (paused, `broken`) so the player can fix or end it; only an unreadable line is removed.
+ * Notes only what it changed: a valid save loads with no repairs and an unchanged hash. Creates nothing (AUTO-027).
+ */
+function repairProduction(s: Json, repairs: string[]): void {
+  // A line hold on an animal that isn't a parent in any line would keep it from ever breeding: remove it.
+  const parents = new Set<string>();
+  if (s.production !== undefined && !isObj(s.production)) {
+    delete s.production;
+    repairs.push('production: unreadable, removed');
+  } else if (isObj(s.production)) {
+    const p = s.production;
+    if (!Array.isArray(p.lines)) {
+      p.lines = [];
+      repairs.push('production.lines: unreadable, reset');
+    }
+    const kept: Json[] = [];
+    const ids = new Set<string>();
+    for (const l of p.lines as unknown[]) {
+      const ok = isObj(l) && isSafeKey(l.id) && !ids.has(l.id as string) && typeof l.speciesId === 'string' && isObj(l.pair) && typeof l.pair.motherId === 'string' && typeof l.pair.fatherId === 'string' && isObj(l.tanks) && ['breed', 'raise', 'keep'].every((k) => typeof (l.tanks as Json)[k] === 'string');
+      if (!ok) {
+        repairs.push(`production line ${shortId(isObj(l) ? l.id : l)}: unreadable, removed`);
+        continue;
+      }
+      ids.add(l.id);
+      kept.push(l);
+    }
+    p.lines = kept;
+    const hour = hour0(s);
+    for (const l of p.lines as Json[]) {
+      const at = `production line ${l.id}`;
+      if (typeof l.name !== 'string' || !l.name.trim()) {
+        l.name = `${shortId(l.id)} line`;
+        repairs.push(`${at}.name: missing, set`);
+      }
+      if (typeof l.tanks.quarantine === 'string') l.tanks.quarantine = [l.tanks.quarantine];
+      if (!Array.isArray(l.tanks.quarantine) || !(l.tanks.quarantine as unknown[]).every((x) => typeof x === 'string')) {
+        l.tanks.quarantine = strings(l.tanks.quarantine);
+        repairs.push(`${at}.tanks.quarantine: repaired`);
+      }
+      if (l.pair.restTankId !== undefined && typeof l.pair.restTankId !== 'string') {
+        delete l.pair.restTankId;
+        repairs.push(`${at}.pair.restTankId: unreadable, removed`);
+      }
+      if (typeof l.running !== 'boolean') {
+        l.running = true;
+        repairs.push(`${at}.running: set`);
+      }
+      if (!isObj(l.rules)) {
+        l.rules = {};
+        repairs.push(`${at}.rules: reset`);
+      }
+      for (const k of ['pauseWhenFull', 'keepPrismatic', 'autoList'] as const) {
+        if (typeof l.rules[k] !== 'boolean') {
+          l.rules[k] = true;
+          repairs.push(`${at}.rules.${k}: set`);
+        }
+      }
+      if (!Array.isArray(l.rules.keep)) {
+        l.rules.keep = [];
+        repairs.push(`${at}.rules.keep: reset`);
+      } else {
+        const good = (l.rules.keep as unknown[]).filter((r) => isObj(r) && Array.isArray(r.traitIds) && (r.traitIds as unknown[]).every((x) => typeof x === 'string') && typeof r.count === 'number' && Number.isFinite(r.count) && r.count >= 1);
+        if (good.length !== l.rules.keep.length) {
+          l.rules.keep = good;
+          repairs.push(`${at}.rules.keep: unreadable rules removed`);
+        }
+      }
+      if (!isObj(l.stats)) {
+        l.stats = {};
+        repairs.push(`${at}.stats: reset`);
+      }
+      for (const k of PRODUCTION_STAT_KEYS) {
+        if (typeof l.stats[k] !== 'number' || !Number.isFinite(l.stats[k])) {
+          l.stats[k] = k === 'weekStartHour' ? hour : 0;
+          repairs.push(`${at}.stats.${k}: set`);
+        }
+      }
+      if (typeof l.createdHour !== 'number' || !Number.isFinite(l.createdHour)) {
+        l.createdHour = hour;
+        repairs.push(`${at}.createdHour: set`);
+      }
+      for (const k of ['sortedThroughHour'] as const) {
+        if (l[k] !== undefined && (typeof l[k] !== 'number' || !Number.isFinite(l[k]))) {
+          delete l[k];
+          repairs.push(`${at}.${k}: unreadable, removed`);
+        }
+      }
+      if (l.routed !== undefined && (!Array.isArray(l.routed) || !(l.routed as unknown[]).every((x) => typeof x === 'string'))) {
+        l.routed = strings(l.routed);
+        repairs.push(`${at}.routed: repaired`);
+      }
+      if (l.batches !== undefined) {
+        const good = (Array.isArray(l.batches) ? l.batches : []).filter((b: unknown) => isObj(b) && typeof b.id === 'string' && Array.isArray(b.creatureIds) && typeof b.sortedHour === 'number' && Number.isFinite(b.sortedHour));
+        if (!Array.isArray(l.batches) || good.length !== l.batches.length) repairs.push(`${at}.batches: unreadable batches removed`);
+        for (const b of good as Json[]) {
+          const live = strings(b.creatureIds).filter((id) => hasKey(s.creatures, id));
+          if (live.length !== b.creatureIds.length) {
+            b.creatureIds = live;
+            repairs.push(`${at}.batch ${shortId(b.id)}: missing animals removed`);
+          }
+          if (b.quarantinedHour !== undefined && (typeof b.quarantinedHour !== 'number' || !Number.isFinite(b.quarantinedHour))) {
+            delete b.quarantinedHour;
+            delete b.tankId;
+            repairs.push(`${at}.batch ${shortId(b.id)}.quarantinedHour: unreadable, removed`);
+          }
+          if (b.listingIds !== undefined && !Array.isArray(b.listingIds)) {
+            delete b.listingIds;
+            repairs.push(`${at}.batch ${shortId(b.id)}.listingIds: unreadable, removed`);
+          }
+        }
+        if (good.length) l.batches = good;
+        else delete l.batches;
+      }
+      for (const k of ['noticed', 'tankNames'] as const) {
+        if (l[k] !== undefined && !isObj(l[k])) {
+          delete l[k];
+          repairs.push(`${at}.${k}: unreadable, removed`);
+        }
+      }
+      if (l.waiting !== undefined && l.waiting !== true) {
+        delete l.waiting;
+        repairs.push(`${at}.waiting: unreadable, removed`);
+      }
+      if (l.broken !== undefined && !(isObj(l.broken) && (PRODUCTION_REFS as readonly string[]).includes(l.broken.ref as string) && typeof l.broken.id === 'string')) {
+        delete l.broken;
+        repairs.push(`${at}.broken: unreadable, removed`);
+      }
+      // Missing references: keep the line, paused, and say what's missing (ADR-0025 decision 10).
+      const qts = strings(l.tanks.quarantine);
+      const liveQts = qts.filter((id) => hasKey(s.tanks, id));
+      if (liveQts.length && liveQts.length !== qts.length) {
+        l.tanks.quarantine = liveQts;
+        repairs.push(`${at}.tanks.quarantine: missing tanks removed`);
+      }
+      const missing: [string, string, 'creature' | 'tank'][] = [
+        ['mother', l.pair.motherId, 'creature'],
+        ['father', l.pair.fatherId, 'creature'],
+        ['breed', l.tanks.breed, 'tank'],
+        ['raise', l.tanks.raise, 'tank'],
+        ['keep', l.tanks.keep, 'tank'],
+      ];
+      if (!liveQts.length) missing.push(['quarantine', qts[0] ?? '', 'tank']);
+      const gone = missing.find(([, id, kind]) => !hasKey(kind === 'creature' ? s.creatures : s.tanks, id));
+      if (gone && !(isObj(l.broken) && l.broken.ref === gone[0] && l.broken.id === gone[1])) {
+        const names = isObj(l.tankNames) ? l.tankNames : {};
+        l.broken = { ref: gone[0], id: gone[1], name: typeof names[gone[1]] === 'string' ? names[gone[1]] : gone[2] === 'creature' ? 'A parent' : 'A tank', sinceHour: hour };
+        repairs.push(`${at}: ${gone[0]} ${shortId(gone[1])} missing, paused`);
+      }
+      parents.add(l.pair.motherId);
+      parents.add(l.pair.fatherId);
+    }
+    if (p.ended !== undefined) {
+      const good = (Array.isArray(p.ended) ? p.ended : []).filter((h: unknown) => isObj(h) && typeof h.id === 'string' && typeof h.name === 'string');
+      if (!Array.isArray(p.ended) || good.length !== p.ended.length) {
+        p.ended = good;
+        repairs.push('production.ended: unreadable entries removed');
+      }
+    }
+    if (p.lastHour !== undefined && !(typeof p.lastHour === 'number' && Number.isFinite(p.lastHour) && p.lastHour <= hour + 1)) {
+      repairs.push(`production.lastHour: ${String(p.lastHour).slice(0, 40)}, removed`);
+      delete p.lastHour;
+    }
+  }
+  for (const [id, c] of Object.entries(s.creatures ?? {}) as [string, Json][]) {
+    if (!isObj(c) || !isObj(c.repro) || c.repro.lineHold === undefined) continue;
+    if (c.repro.lineHold === true && parents.has(id)) continue;
+    const why = c.repro.lineHold === true ? 'no line' : 'unreadable';
+    delete c.repro.lineHold;
+    repairs.push(`creature ${id}.repro.lineHold: ${why}, removed`);
+  }
 }
 
 /**

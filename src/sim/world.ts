@@ -18,6 +18,8 @@ import { animalStatus, composeTankStatus, noteFoodLevel, tankFoodOutlook, type F
 import { stepStaff } from './staff'; // lane:staff
 import { stepShows } from './shows'; // lane:shows
 import { withResidentIndex, inResidentScope } from './residents'; // lane:perf2 — per-step tank → residents index (./residents.ts)
+import { registerSettler } from './settle'; // B-127
+import { stepProduction } from './production'; // lane:production (chunk 4; 0.5 §11.3 hook)
 
 export interface AdvanceOptions {
   focusTankId?: string | null;
@@ -59,32 +61,61 @@ export function advanceWorld(state: GameState, hours: number, opts: AdvanceOptio
   }
 }
 
+/**
+ * B-127 — while a step runs, a tank settled for a move (src/sim/settle.ts) owes hours up to the step's END, like the
+ * in-step flushes above; between steps it owes them up to the clock.
+ */
+let stepEndHour: number | null = null;
+
+registerSettler((state, tankIds) => {
+  enterWorld(state);
+  const end = stepEndHour ?? state.clock.hour;
+  for (const id of tankIds) {
+    const tank = state.tanks[id];
+    const debt = tank?.simDebtHours ?? 0;
+    if (!tank || debt <= 1e-9) continue;
+    tank.simDebtHours = 0;
+    stepTank(state, tank, debt, 'reduced', end);
+  }
+});
+
 function stepOnce(state: GameState, dt: number, opts: AdvanceOptions): void {
   // lane:fix-core (G1-03) — this step covers world time [clock, clock + dt); a tank flushed here is anchored so its
   // pieces END at clock + dt, exactly like a flush from flushSimDebt / the loop's smoothing pass (which run after
   // the clock advanced and end at `clock`). Anchoring in-step flushes one step early left a dt-long gap in the
   // tank's time axis whenever the two kinds of flush alternated, and autofeeds inside the gap never fired.
   const endHour = state.clock.hour + dt;
-  for (const tankId of [...state.tankOrder]) {
-    const tank = state.tanks[tankId];
-    if (!tank) continue;
-    const lod = tankLod(state, tankId, opts);
-    tank.simDebtHours = (tank.simDebtHours ?? 0) + dt;
-    const threshold = lod === 'full' ? 0 : lod === 'reduced' ? REDUCED_THRESHOLD_H : SUMMARY_THRESHOLD_H;
-    if (tank.simDebtHours + 1e-9 >= threshold) {
-      const tdt = tank.simDebtHours;
-      tank.simDebtHours = 0;
-      stepTank(state, tank, tdt, lod, endHour);
+  const outerEnd = stepEndHour;
+  stepEndHour = endHour; // B-127: a move during this step settles its tanks to the step's end
+  try {
+    for (const tankId of [...state.tankOrder]) {
+      const tank = state.tanks[tankId];
+      if (!tank) continue;
+      const lod = tankLod(state, tankId, opts);
+      tank.simDebtHours = (tank.simDebtHours ?? 0) + dt;
+      const threshold = lod === 'full' ? 0 : lod === 'reduced' ? REDUCED_THRESHOLD_H : SUMMARY_THRESHOLD_H;
+      if (tank.simDebtHours + 1e-9 >= threshold) {
+        const tdt = tank.simDebtHours;
+        tank.simDebtHours = 0;
+        stepTank(state, tank, tdt, lod, endHour);
+      }
     }
+    const ctx = makeContext(state, dt, 'full');
+    stepProduction(state, state.clock.hour, endHour, ctx); // lane:production — once per game hour crossed (0.5 §11.3)
+    stepWorldSystems(state, dt, ctx);
+  } finally {
+    stepEndHour = outerEnd;
   }
-  const ctx = makeContext(state, dt, 'full');
+  state.clock.hour += dt;
+}
+
+function stepWorldSystems(state: GameState, dt: number, ctx: ReturnType<typeof makeContext>): void {
   stepMarket(state, dt, ctx);
   stepFinance(state, dt, ctx);
   stepStaff(state, dt, ctx); // lane:staff — keeper rounds, stock orders, docent talks (after the nightly bills)
   stepVisitors(state, dt, ctx);
   stepProgression(state, dt, ctx);
   stepShows(state, dt, ctx); // lane:shows — show calendar + judging (deterministic; own RNG stream)
-  state.clock.hour += dt;
 }
 
 /** Flush all accumulated tank sim debt (before save / when leaving a tank). */

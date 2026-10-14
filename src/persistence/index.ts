@@ -67,7 +67,7 @@ export {
 } from './offline';
 export { exportSaveText, exportFileName, downloadSave, importSaveText, importSaveFile, type ImportResult } from './transfer';
 export { migrateSave, repairState, validateSaveShape, detectVersion, MIGRATIONS, type Migration, type MigrateResult } from './migrations';
-export { serializeState, encodeRecord, decodeRecord, makeMeta, cyrb53, MAX_INLINE_DATA_URL, SAVE_FORMAT } from './serialize';
+export { serializeState, encodeRecord, decodeRecord, makeMeta, cyrb53, MAX_INLINE_DATA_URL, SAVE_FORMAT, SAVE_BUDGET_CHARS } from './serialize';
 export { stateHash, canonicalState } from './hash';
 export {
   storage,

@@ -272,7 +272,8 @@ export function simulateOffline(state: GameState, realElapsedMs: number, opts: S
   const moneyAfter = state.finance.money;
   const moneyDelta = Math.round((moneyAfter - moneyBefore) * 100) / 100;
   const highlightKinds = new Set<GameEvent['kind']>(['celebrate', 'breeding', 'market', 'danger', 'warning', 'unlock']);
-  const highlights = state.log.filter((e) => !logIdsAtStart.has(e.id) && highlightKinds.has(e.kind)).slice(-6);
+  // B-177: copies, not the state's own events — the state may be mutateFast's private working copy.
+  const highlights = state.log.filter((e) => !logIdsAtStart.has(e.id) && highlightKinds.has(e.kind)).slice(-6).map((e) => JSON.parse(JSON.stringify(e)) as GameEvent);
 
   const parts: string[] = [];
   if (moneyDelta !== 0) parts.push(`${moneyDelta > 0 ? '+' : '−'}$${Math.abs(moneyDelta).toLocaleString('en-US', { maximumFractionDigits: 0 })}`);

@@ -819,6 +819,9 @@ export function makeTankInfo(state: GameState, tank: Tank, hour: number, risks: 
 /** Target breeding readiness 0..100 from welfare, water, conditioning foods, crowding and cooldown. */
 export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, info: TankInfo): number {
   if (!isMature(c, sp, hour)) return 0;
+  // lane:production — a line holding its pair (paused, waiting for room, missing a partner or tank) keeps them from
+  // spawning, the same way resting does (PROD-010; the mechanism recorded in PLAN.md chunk 4).
+  if (c.repro?.lineHold) return 0;
   if (isResting(c, hour)) return 0;
   // Shared salinity model (same as the purchase gate / welfare): a tolerated environment breeds, but less keenly.
   if (!fitsEnvironment(sp, tank.environment)) return 0;

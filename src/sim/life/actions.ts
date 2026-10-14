@@ -11,6 +11,7 @@ import { tapSensitivityMul } from './personality';
 import { ageDaysOf, gallonsNeededNow } from './growth';
 import { livingIn, tankGallons } from './welfare';
 import { touchResidents } from '../residents'; // lane:perf2
+import { settleTanks } from '../settle'; // B-127
 
 const clamp = (v: number, lo: number, hi: number) => (Number.isFinite(v) ? (v < lo ? lo : v > hi ? hi : v) : lo);
 
@@ -48,6 +49,7 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   }
   const from = c.tankId ? state.tanks[c.tankId]?.name ?? 'another tank' : 'holding';
   const hour = state.clock.hour;
+  settleTanks(state, [c.tankId, tankId]); // B-127: both tanks catch up first, so the move happens at one world time
   c.tankId = tankId;
   touchResidents(); // lane:perf2 — a move-in: drop the step's residents index
   // Transfer stress: netting and new surroundings (shy animals take it harder; never zero).

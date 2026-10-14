@@ -44,6 +44,7 @@ import { ensureLab, scaleFood, addFood, recommendedServings } from './food';
 import { planAutofeed, autofeedMessage, groupEaters, autofeedPause, type AutofeedPlan } from '../care/autofeed'; // lane:fit (lane:automation: autofeedPause)
 import { applyWaterChange, changeSaltNeed, clampChangeFraction, scrapeGlass } from './change'; // lane:automation
 import { keeperOf } from '../staff/common'; // lane:fit — a keeper's hand-feeding covers what the autofeeder can't
+import { noteFoodSpend } from '../production/costs'; // lane:production
 
 /** Repair NaN / out-of-range values (old saves, other lanes' writes). */
 export function sanitizeWater(tank: Tank): void {
@@ -191,6 +192,7 @@ function runAutofeeder(state: GameState, tank: Tank, env: TankEnv, dt: number, c
       const servings = Math.min(recommendedServings(state, tank, food), state.inventory.foods[foodId] ?? 0);
       if (servings <= 0) continue;
       state.inventory.foods[foodId] = (state.inventory.foods[foodId] ?? 0) - servings;
+      noteFoodSpend(state, tank.id, foodId, servings); // lane:production — a line's share of the food (ADR-0025 decision 9)
       addFood(tank, food, servings, at);
       lab.lastAutofeedHour = at;
       // It fed someone — but say so (rarely) when it leaves animals out that need other food.

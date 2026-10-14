@@ -54,9 +54,22 @@ export function cyrb53(str: string, seed = 0): string {
   return n.toString(16).padStart(14, '0');
 }
 
+/**
+ * B-171, PERSIST-005 — the most a save may take in localStorage: about 5 MB counted as UTF-16, the smallest quota the
+ * game's browsers give an origin. A maximum-scale game fits (tests/sim/core-save-size.test.ts); listing photos are
+ * what can push a save past it, so the page-close mirror leaves them out when the full record is too big.
+ */
+export const SAVE_BUDGET_CHARS = 2_500_000;
+
+export interface SerializeOptions {
+  /** Embedded data: URLs longer than this are left out (default MAX_INLINE_DATA_URL; 0 drops every one). */
+  maxDataUrl?: number;
+}
+
 /** JSON-serialize a game state for storage (strip transient + huge data, sanitize numbers). */
-export function serializeState(state: GameState): { json: string; stats: SerializeStats } {
+export function serializeState(state: GameState, opts: SerializeOptions = {}): { json: string; stats: SerializeStats } {
   const stats: SerializeStats = { strippedDataUrls: 0, fixedNumbers: 0 };
+  const maxDataUrl = opts.maxDataUrl ?? MAX_INLINE_DATA_URL;
   const root = state as unknown;
   const json = JSON.stringify(state, function (this: unknown, key: string, value: unknown) {
     if (this === root && TRANSIENT_KEYS.has(key)) return undefined;
@@ -64,7 +77,7 @@ export function serializeState(state: GameState): { json: string; stats: Seriali
       stats.fixedNumbers++;
       return 0;
     }
-    if (typeof value === 'string' && value.length > MAX_INLINE_DATA_URL && value.startsWith('data:')) {
+    if (typeof value === 'string' && value.length > maxDataUrl && value.startsWith('data:')) {
       stats.strippedDataUrls++;
       return undefined;
     }
@@ -94,9 +107,9 @@ export function makeMeta(state: GameState, slot: string, savedAt = Date.now(), s
 }
 
 /** Encode a state into the stored record string. */
-export function encodeRecord(state: GameState, slot: string, savedAt = Date.now()): { text: string; header: SaveHeader; stats: SerializeStats } {
+export function encodeRecord(state: GameState, slot: string, savedAt = Date.now(), opts: SerializeOptions = {}): { text: string; header: SaveHeader; stats: SerializeStats } {
   const stamped: GameState = { ...state, lastSavedRealMs: savedAt, schemaVersion: state.schemaVersion ?? SCHEMA_VERSION };
-  const { json, stats } = serializeState(stamped);
+  const { json, stats } = serializeState(stamped, opts);
   const header: SaveHeader = {
     format: SAVE_FORMAT,
     schemaVersion: stamped.schemaVersion,

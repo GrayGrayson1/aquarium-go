@@ -319,3 +319,16 @@ export function nextFacilityLevelDef(id: FacilityLevelId): FacilityLevelDef | nu
 export function facilityLevelIndex(id: FacilityLevelId): number {
   return Math.max(0, FACILITY_LEVEL_ORDER.indexOf(id));
 }
+
+/**
+ * lane:production — production line slots by facility level (DESIGN-S3D §8.6 and §16: 1 · 2 · 3 · 4 · 6 · 8 from the
+ * Hobby Room to the Grand Hall; INTAKE §12 PROD-019). The captions are ADR-0025 decision 7's.
+ */
+export const PRODUCTION_LINE_SLOTS: Readonly<Record<FacilityLevelId, number>> = Object.freeze({
+  hobby_room: 1,
+  specialty_shop: 2,
+  aquarium_store: 3,
+  showroom: 4,
+  destination: 6,
+  grand_hall: 8,
+});

@@ -118,6 +118,10 @@ export function share(prev: unknown, next: unknown): unknown {
  * Not re-entrant: a call made from inside a running recipe throws before it touches anything. It would otherwise
  * work on, and when failing drop, the outer call's working copy, so the outer call could publish half of a failed
  * recipe, or `null` (code-architecture-game-2 m4). Do nested work inside the running recipe instead.
+ *
+ * No store writes inside a recipe (B-177): a `useGame.mutate`/`setGame` made while a recipe runs can't be merged with
+ * the working copy. It is reported (console.error) and the recipe's work is dropped; the write stays, and the next
+ * call starts from it (before this, the work was dropped silently, or a later call reverted the write).
  */
 export function mutateFast<R>(recipe: (state: GameState) => R): R | undefined {
   if (running) throw new Error('mutateFast is not re-entrant: do this work inside the running recipe');
@@ -137,6 +141,12 @@ export function mutateFast<R>(recipe: (state: GameState) => R): R | undefined {
     throw e;
   } finally {
     running = false;
+  }
+  if (useGame.getState().game !== current) {
+    // B-177: the store was written while the recipe ran. Keep that write, drop this copy, and say so.
+    resetFastMutate();
+    if (typeof console !== 'undefined') console.error('mutateFast: the game store was written during a recipe; that recipe’s work was dropped (do the work inside the recipe).');
+    return result;
   }
   try {
     publish(current, copy);

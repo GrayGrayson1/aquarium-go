@@ -35,6 +35,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { touchResidents } from '../residents'; // lane:perf2
 import { computeTankEnv, effectiveBioload } from '../water'; // B-174
+import { settleTanks } from '../settle'; // B-127
 import { saleWarnings } from './warnings'; // lane:fix-econ
 
 export interface ListingSpec {
@@ -821,6 +822,7 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
       continue;
     }
     const to = state.tanks[r.toTankId];
+    settleTanks(state, [r.toTankId]); // B-127: the destination catches up before the animal arrives
     r.c.tankId = r.toTankId;
     touchResidents(); // lane:perf2 — a move-in: drop the step's residents index
     // A brood carried by the animal (seahorse pouch, berried shrimp) moves with it.

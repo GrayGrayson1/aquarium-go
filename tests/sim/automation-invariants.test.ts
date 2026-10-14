@@ -11,6 +11,10 @@
  *   after a run changes nothing.
  * - One unit, one job (AUTO-022): two changes due in the same step with salt for one: one runs, one reports.
  *
+ * Production lines (chunk 4) add their cases at the end: random partitions give the same moves, sorts and listings
+ * (counts exact, hours within one game hour, since the breeding sim raises a brood inside a sub-step), offline equals
+ * live, money only through the ledger, and an hour stepped again does nothing.
+ *
  * Only src/sim, src/data, src/types and src/persistence are imported (no React or DOM).
  */
 import { describe, it, expect } from 'vitest';
@@ -30,6 +34,8 @@ import { clonePlain } from '@/sim/economy/util';
 import { simulateOffline } from '@/persistence/offline';
 import { encodeRecord, decodeRecord, stateHash } from '@/persistence';
 import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
+import { stepProduction } from '@/sim/production';
+import { lineFarm, lineRecord } from './support/production';
 
 const OUT_OF_SALT = (tank: string) => `${tank}: the Auto Water Changer is out of salt. Buy marine salt to keep it running.`;
 
@@ -228,5 +234,76 @@ describe('AUTO-026: save and load never repeat or skip a job', () => {
     advanceWorld(b, 48, { forceFull: true });
     expect(stateHash(loaded)).toBe(stateHash(b));
     expect(loaded.tanks[a.tanks[0].id].water.lab?.lastAutoChangeHour).toBe(24 * 5 + 8);
+  });
+});
+
+// ───────────────────────────── production lines (chunk 4) ─────────────────────────────
+
+describe('production lines: AUTO-016, AUTO-017, AUTO-018, AUTO-025 (chunk 4)', () => {
+  const SPAN = 24 * 9; // the brood is moved, raised, sorted, quarantined 168 h and listed
+
+  it('AUTO-016: random step sizes make the same moves, sorts and listings: counts exact, hours within one game hour', () => {
+    const ref = lineFarm(17);
+    advanceWorld(ref.g, SPAN, { forceFull: true });
+    const want = lineRecord(ref.g);
+    expect(want.listings.length).toBe(1);
+    for (const seed of [1, 2, 3]) {
+      const run = lineFarm(17);
+      const rnd = mulberry32(seed);
+      let done = 0;
+      while (done < SPAN - 1e-9) {
+        const dt = Math.min(0.05 + rnd.next() * 3.95, SPAN - done);
+        advanceWorld(run.g, dt, { forceFull: true });
+        done += dt;
+      }
+      const got = lineRecord(run.g);
+      expect(got.routed).toBe(want.routed);
+      expect(got.listings.length).toBe(want.listings.length);
+      expect(got.batches.length).toBe(want.batches.length);
+      got.listings.forEach((l, i) => {
+        expect(l.kind).toBe(want.listings[i].kind);
+        expect(Math.abs(l.createdHour - want.listings[i].createdHour)).toBeLessThanOrEqual(1 + 1e-9);
+      });
+      got.batches.forEach((b, i) => expect(Math.abs((b.quarantinedHour ?? 0) - (want.batches[i].quarantinedHour ?? 0))).toBeLessThanOrEqual(1 + 1e-9));
+    }
+  });
+
+  it('AUTO-016: the offline catch-up does what live play does over the same span', () => {
+    const live = lineFarm(19);
+    const away = clonePlain(live.g);
+    advanceWorld(live.g, 12, {});
+    simulateOffline(away, (12 / GAME_HOURS_PER_REAL_SECOND) * 1000);
+    const a = lineRecord(live.g);
+    const b = lineRecord(away);
+    expect(a.routed + a.batches.length).toBeGreaterThan(0);
+    expect(b.routed).toBe(a.routed);
+    expect(b.batches.length).toBe(a.batches.length);
+    b.batches.forEach((bt, i) => expect(Math.abs((bt.quarantinedHour ?? 0) - (a.batches[i].quarantinedHour ?? 0))).toBeLessThanOrEqual(1 + 1e-9));
+  });
+
+  it('AUTO-017: money moves only through the ledger; animals appear only by being raised, and none vanish', () => {
+    const { g } = lineFarm(21);
+    const money0 = g.finance.money;
+    const ledger0 = g.finance.ledger.length;
+    const before = new Set(Object.keys(g.creatures));
+    advanceWorld(g, SPAN, { forceFull: true });
+    const added = g.finance.ledger.slice(ledger0).reduce((a, e) => a + e.amount, 0);
+    expect(g.finance.money - money0).toBeCloseTo(added, 6);
+    for (const id of before) expect(g.creatures[id]).toBeDefined();
+    for (const c of Object.values(g.creatures)) if (!before.has(c.id)) expect(c.history[0]?.kind).toBe('born');
+  });
+
+  it('AUTO-018, AUTO-025: an hour stepped again does nothing more; a quarantine ends in exactly one listing', () => {
+    const { g } = lineFarm(23);
+    advanceWorld(g, SPAN, { forceFull: true });
+    const listings = g.market.listings.length;
+    const h = g.production!.lastHour!;
+    const hash = stateHash(g);
+    stepProduction(g, h - 3, h + 0.5); // the last hours again
+    expect(stateHash(g)).toBe(hash);
+    expect(g.market.listings.length).toBe(listings);
+    const released = (g.production!.lines[0].batches ?? []).filter((b) => b.released).length;
+    expect(lineRecord(g).listings.length).toBeLessThanOrEqual(Math.max(1, released));
+    expect(lineRecord(g).listings.length).toBe(1);
   });
 });

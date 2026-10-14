@@ -95,6 +95,11 @@ export interface ReproState {
   storedBroods?: number;
   /** lane:breeding — planned end of a timed stage (courtship, laying, sex change). */
   stageEndsHour?: number;
+  /**
+   * lane:production — a production line is holding this parent back from spawning (paused by the player, waiting for
+   * room, or missing its partner or a tank): its breeding readiness falls to 0, as when resting. Absent = not held.
+   */
+  lineHold?: boolean;
 }
 
 export interface CreatureEvent {
@@ -921,6 +926,8 @@ export interface GameState {
   shows?: ShowsState;
   /** lane:notify — notification-centre bookkeeping (src/ui/common/notify.ts). Absent in old saves; written lazily by the UI. */
   notify?: NotifyState;
+  /** lane:production — production lines (src/sim/production). Absent = no lines (0.5 §11.2, DESIGN-S3D §8.6). */
+  production?: ProductionState;
 }
 
 /**
@@ -1193,4 +1200,95 @@ export interface ShowsState {
   stats: { entered: number; placings: number; wins: number; bestInShow: number; prize: number };
   /** UI: results judged after this game hour are "new". */
   resultsSeenHour?: number;
+}
+
+// ───────────────────────────────── Production lines (lane:production) ─────────────────────────────────
+
+/** lane:production — keep up to `count` young showing every trait (phenotype rule ids), best by value first. */
+export interface ProductionKeepRule {
+  traitIds: string[];
+  count: number;
+}
+
+/** lane:production — a line's money: this week (restarts every 168 game hours from `weekStartHour`) and since it began. */
+export interface ProductionStats {
+  weekStartHour: number;
+  /** Animals sold this week, what they fetched, and the line's share of food and power (ADR-0025 decision 9). */
+  soldCount: number;
+  revenue: number;
+  costs: number;
+  totalSold: number;
+  totalRevenue: number;
+  totalCosts: number;
+}
+
+/** lane:production — young the line sorted for sale: they wait, then quarantine (one batch per tank), then list. */
+export interface ProductionBatch {
+  /** `b<hour>` (the sorting hour), unique within its line. */
+  id: string;
+  creatureIds: Id[];
+  sortedHour: number;
+  /** The quarantine tank, once they moved in. */
+  tankId?: Id;
+  /** Production hour they entered quarantine; the hold ends 168 game hours later. */
+  quarantinedHour?: number;
+  /** The hold ended: listed (or left in quarantine when List automatically is off). */
+  released?: boolean;
+  /** The line's listings for this batch that are still open, and those already counted in the stats. */
+  listingIds?: Id[];
+}
+
+/** lane:production — what a paused line is missing (ADR-0025 decision 10): a parent, or a stage's tank. */
+export type ProductionRef = 'mother' | 'father' | 'breed' | 'raise' | 'quarantine' | 'keep' | 'rest';
+
+export interface ProductionLine {
+  /** Route id (`#/livestock/production/:id`): the first word of the morph it breeds for, `-2`, `-3` when taken. */
+  id: string;
+  name: string;
+  /** The player typed the name: it never follows the naming rule again (DESIGN-S3D §8.6.1). */
+  customName?: boolean;
+  speciesId: string;
+  /** The morph the line breeds for (names it; no biology). */
+  breedFor?: string;
+  /** `restTankId`: where the female rests between spawns when the keeper introduces her (bettas, ADR-0030 decision 7). */
+  pair: { motherId: Id; fatherId: Id; restTankId?: Id };
+  /** One tank per stage, all different; quarantine lists every tank the line may use, first free one first. */
+  tanks: { breed: Id; raise: Id; quarantine: Id[]; keep: Id };
+  /** The switch: off = paused by the player. */
+  running: boolean;
+  rules: { pauseWhenFull: boolean; keepPrismatic: boolean; autoList: boolean; keep: ProductionKeepRule[] };
+  stats: ProductionStats;
+  createdHour: number;
+  /** Clutches of the pair already moved to the raise tank (pruned when they're gone). */
+  routed?: Id[];
+  /** Young of the pair that arrived at or before this hour are sorted (one sort per brood). */
+  sortedThroughHour?: number;
+  batches?: ProductionBatch[];
+  /** Waiting for room: the raise tank can't take the next clutch, so the pair is held (Pause when a tank is full). */
+  waiting?: boolean;
+  /** Paused for a missing parent or tank (kept through saves; repairState marks it). */
+  broken?: { ref: ProductionRef; id: Id; name: string; sinceHour: number; moved?: boolean };
+  /** One-shot notices already given: key → production hour. */
+  noticed?: Record<string, number>;
+  /** The line's tanks' names, so a notice can name a tank after it's gone. */
+  tankNames?: Record<Id, string>;
+}
+
+/** lane:production — an ended line's numbers, kept for its history (ADR-0025 decision 6). */
+export interface ProductionHistory {
+  id: string;
+  name: string;
+  speciesId: string;
+  createdHour: number;
+  endedHour: number;
+  totalSold: number;
+  totalRevenue: number;
+  totalCosts: number;
+}
+
+export interface ProductionState {
+  lines: ProductionLine[];
+  ended?: ProductionHistory[];
+  /** Last production hour processed (an integer game hour): a re-stepped window does nothing more (AUTO-018). */
+  lastHour?: number;
 }

@@ -15,6 +15,7 @@ import { moduleFor } from './registry';
 import { evaluatePair } from './check';
 import { isCarried } from './clutch';
 import { touchResidents } from '../../residents'; // lane:perf2
+import { settleTanks } from '../../settle'; // B-127
 import {
   addHistory,
   ageDaysAt,
@@ -174,6 +175,7 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
   }
 
   const hour = state.clock.hour;
+  settleTanks(state, [cl.tankId, toTankId]); // B-127: both tanks catch up first
   const from = state.tanks[cl.tankId];
   cl.tankId = toTankId;
   const guardian = cl.guardedById ? state.creatures[cl.guardedById] : undefined;
