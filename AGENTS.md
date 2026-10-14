@@ -12,6 +12,7 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 | Every open owner question, grouped by what it unblocks | `docs/agent/OWNER_QUESTIONS.md` |
 | The next session's order of work and practical tips | `docs/agent/SESSION_HANDOFF.md` |
 | Approved 0.5 design (load only the sections your chunk needs) | `docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md` |
+| The approved 0.5 screens (PNG), what each shows and the later decisions that change them | `docs/agent/design/DESIGN-0.5/` (`SOURCE.md`, `screens/`) |
 | S3-D design (approved 2026-10-11, ADR-0027) and its intake note | `docs/agent/design/DESIGN-S3D/` (`SPEC.md`, `INTAKE.md`, `screens/`) |
 | Requirements checklist (ids, acceptance criteria, status) | `docs/agent/REQUIREMENTS.json` |
 | Known issues and deferred work | `docs/agent/BACKLOG.md`, `docs/KNOWN_LIMITATIONS.md` |

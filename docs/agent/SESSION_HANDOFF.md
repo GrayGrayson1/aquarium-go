@@ -13,7 +13,8 @@ that makes it go smoothly. Replace or delete it when it's used up.
   typecheck, unit (194 files, 2,227 tests), build and e2e (90 of 90). No code has changed since.
 - Chunk 4 (Production lines) is next; chunk 5 (deep automation) follows it; chunk 6 (Social stub, hardening, the last
   0.5 release) after that. PLAN.md's briefs list what each chunk also picks up from groups C and E.
-- Waiting on the owner: the export of the 45 approved 0.5 screens (E5, B-185).
+- The 45 approved 0.5 screens are in `docs/agent/design/DESIGN-0.5/` (E5, B-185, exported 2026-10-14); its
+  `SOURCE.md` says what each shows and which later decisions change them. Nothing waits on the owner.
 
 ## The order of work
 

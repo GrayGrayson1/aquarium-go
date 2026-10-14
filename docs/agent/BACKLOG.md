@@ -48,10 +48,10 @@ ADR-0008, cited in several notes, was approved by the owner and committed in `1a
 | fix-now-app-safe | 18 | 2 | 4 | 0 | 0 | 12 | 0 |
 | fix-now-repo | 3 | 0 | 0 | 0 | 0 | 3 | 0 |
 | needs-slice | 24 | 5 | 6 | 0 | 0 | 13 | 0 |
-| owner-decision | 23 | 3 | 0 | 16 | 0 | 0 | 4 |
+| owner-decision | 23 | 4 | 0 | 15 | 0 | 0 | 4 |
 | record-only | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 | outside the review | 17 | 5 | 0 | 2 | 0 | 9 | 1 |
-| **total** | **118** | **24** | **14** | **18** | **0** | **54** | **8** |
+| **total** | **118** | **25** | **14** | **17** | **0** | **54** | **8** |
 
 Fixed or partly fixed by these commits: `3e00a32`, `58ae313`, `9edfa12`, `6347c5d`, `d98731d`, `16233a1`, `c774d38`,
 `2ef1ff7`, `d8fb896`, `7c0dbf4`, `5ae85a3`, `62df438`, `9e1bf66`. `dfc0a13` was reverted by `f999618` (B-158).
@@ -201,7 +201,7 @@ The owner decides first; the follow-up work then goes to a slice.
 | B-137 | M37 | Performance gating can't produce the evidence the harness requires: perf.spec sits inside the e2e gate, two unit tests retry silently, and there's no baseline or GPU and AI-cost metric | medium | CONFIRMED | owner-decision | OWNER | **no action** (ADR-0029 decision 13): the harness's perf gating is retired (ADR-0018); PLAN.md's known flaky tests note covers re-runs. |
 | B-138 | M38 | An empty, freshly dressed tank sells at auction for more than its parts cost: the beauty multiplier and the ‘ethical display’ bonus apply to hardware, and empty tanks qualify | medium | CONFIRMED | owner-decision | OWNER | **decided** (ADR-0029 decision 3, E3): the beauty and ethical-display bonuses apply only to tanks with animals. Chunk 4, with B-130's loop tests. |
 | B-139 | M39 | The ‘sales’ counter counts animals: one quick sale of 25 shrimp unlocks tank auctions and ‘Trusted Trader’, and business XP is multiplied per animal | medium | CONFIRMED | owner-decision | OWNER | **decided** (ADR-0029 decision 4, E4): "sales" counts sales, not animals; "animals sold" stays its own counter; saves adjusted so a quest in progress can still complete. Chunk 4, with B-130's loop tests. |
-| B-185 | M85 | The approved 0.5 visual reference (45 static screens) lives only in a private canvas, so QA can't check ‘screenshot fidelity’ from the repo | low | CONFIRMED | owner-decision | OWNER | **decided** (ADR-0029 decision 5, E5): export the 45 screens into `docs/agent/design/DESIGN-0.5/` with a list of what each shows. Waits on the owner's export. |
+| B-185 | M85 | The approved 0.5 visual reference (45 static screens) lives only in a private canvas, so QA can't check ‘screenshot fidelity’ from the repo | low | CONFIRMED | owner-decision | OWNER | **fixed** (ADR-0029 decision 5, E5): the 45 screens are in `docs/agent/design/DESIGN-0.5/screens/`, exported from the canvas on 2026-10-14; `SOURCE.md` lists what each shows, the spec section it illustrates, the later decisions that change it, and the hashes. |
 | B-186 | M86 | The master puts production and the undesigned S3-D before Social and whole-stack hardening, which the design had last and allowed to slip | low | PLAUSIBLE | owner-decision | OWNER | **decided**. ADR-0005 decision 5: S3-D stays in S3. ADR-0002's "master §45" citation corrected in ADR-0008. |
 | B-187 | M87 | Rarity-tier inflation (466 of 540 betta morphs Legendary) is an open owner decision the master turned into reviewer judgement | low | CONFIRMED | owner-decision | OWNER | **decided again** (ADR-0022 decision 1, after chunk 2's real counts): Legendary below 1 in 10,000; bettas 1 / 9 / 21 / 145 / 364, 0.56 % of stock Legendary. |
 | B-188 | M88 | The approved ‘notifications unsupported’ copy tells iPhone players to add the game to their Home Screen, which the design's own risk list says won't work in this build | low | CONFIRMED | owner-decision | OWNER | **fixed** in chunk 3 (`657de69`): ADR-0022 decision 4's copy, checked in `ui-copy-05` and `notifications.spec`. |

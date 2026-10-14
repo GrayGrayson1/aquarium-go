@@ -9,7 +9,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 1. **Build chunk 4** (Production lines), from a fresh context: the owner chose to `/compact` first (ADR-0029 decision
    14), then the agent re-reads the docs. `docs/agent/SESSION_HANDOFF.md` gives the order of work.
 2. **Every owner question is answered** (groups A to E, ADR-0024 to ADR-0029, 2026-10-11 to 2026-10-13); DESIGN-S3D
-   is approved (ADR-0027). Open: the owner's export of the 0.5 screens (E5).
+   is approved (ADR-0027). The 45 approved 0.5 screens are in `docs/agent/design/DESIGN-0.5/` (E5, 2026-10-14).
 3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
 
 ## Status
@@ -240,8 +240,7 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   build (E7, B-193; `deploy.yml` and `render.yaml` are core files, and a Render setting outside `render.yaml` is a
   remote change: ask first); the morph data (E8, B-194: rename the bristlenose fin overlay with a save migration, a
   test that no two looks share a name, odds that match how stock is picked); "Move tank" on the tank card with an e2e
-  test (E10, B-196); the holding container's copy (E9, B-195) if chunk 4 didn't do it; the 0.5 screens into
-  `docs/agent/design/DESIGN-0.5/` once the owner exports them (E5, B-185).
+  test (E10, B-196); the holding container's copy (E9, B-195) if chunk 4 didn't do it.
 - **Done when:** `social-stub.test.ts` and `dock-width.spec` pass; `#/social/join/HIGHLAND-4821` works signed out,
   then signed in, then joined; two full test passes in a row on the Mac (REL-013); the owner has played it on a phone
   and a desktop. Then the release.

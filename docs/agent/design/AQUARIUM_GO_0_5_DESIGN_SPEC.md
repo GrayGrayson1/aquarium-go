@@ -11,7 +11,7 @@
 - **Target release:** v0.5.0. The current release is v0.4.0.
 - **Repo:** `GrayGrayson1/aquarium-go`. The local clone is at `/Volumes/Dev/Projects/AquariumGo`, commit `0d9fc5a` (the same as `origin/main` when this was written).
 - **Stack:** React 19, @react-three/fiber, zustand and Vite. It deploys to GitHub Pages under `/aquarium-go/`.
-- **Design files:** the "Design" canvas in Claude, at https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk. It's private to the owner and holds two live prototypes and 45 static screens; Appendix A lists every screen.
+- **Design files:** the "Design" canvas in Claude, at https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk. It's private to the owner and holds two live prototypes and 45 static screens; Appendix A lists every screen. The 45 static screens are in the repo as PNGs, `docs/agent/design/DESIGN-0.5/screens/` (exported 2026-10-14, ADR-0029 decision 5; its `SOURCE.md` lists the later decisions that change them).
 - **Written:** October 5, 2026. Every statement about today's code (paths, line numbers, strings, numbers) was checked against commit `0d9fc5a` twice. Line numbers can drift after that commit; search for the quoted code if one doesn't match.
 
 ---
@@ -1562,7 +1562,7 @@ Each phase ends with: `npm run typecheck` clean, unit + e2e green, no new depend
 
 ## Appendix A — Canvas screens
 
-Canvas: **"Design"** artifact (private), https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk.
+Canvas: **"Design"** artifact (private), https://claude.ai/artifact/SaZzQpkftDTxcZuzZQfgBk. Each static screen is also in the repo as `docs/agent/design/DESIGN-0.5/screens/<file name>.png` (for example `phone-offer.png`).
 
 **Row "Try it" — live prototypes**
 
