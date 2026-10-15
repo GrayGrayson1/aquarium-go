@@ -4,6 +4,7 @@ import { advanceWorld, flushSimDebt } from '@/sim/world';
 import { manyTankWorld, findNonFinite } from '@/dev/fixtures/core-testkit';
 import { communityFw, marineReef, bigFacility } from '@/dev/fixtures/core-fixtures';
 import { encodeRecord } from '@/persistence';
+import { budget } from './support/timeBudget';
 
 describe('core performance & robustness', () => {
   // Wall-clock budget: retried so a busy machine (other jobs pinning the performance cores) doesn't fail it;
@@ -16,7 +17,7 @@ describe('core performance & robustness', () => {
     flushSimDebt(g);
     const ms = performance.now() - t0;
     console.info(`[core-perf] 36 tanks × 7 days: ${ms.toFixed(0)} ms`);
-    expect(ms).toBeLessThan(10_000);
+    expect(ms).toBeLessThan(budget(10_000));
     expect(findNonFinite(g)).toEqual([]);
   });
 
@@ -26,7 +27,7 @@ describe('core performance & robustness', () => {
     advanceWorld(g, 24, { focusTankId: g.tankOrder[0] });
     const ms = performance.now() - t0;
     console.info(`[core-perf] big_facility × 1 day: ${ms.toFixed(0)} ms`);
-    expect(ms).toBeLessThan(5_000);
+    expect(ms).toBeLessThan(budget(5_000));
     const { text } = encodeRecord(g, 'auto');
     console.info(`[core-perf] big_facility save size: ${(text.length / 1024).toFixed(0)} KB`);
     expect(text.length).toBeLessThan(8 * 1024 * 1024);

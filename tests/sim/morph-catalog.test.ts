@@ -13,6 +13,7 @@ import { createCreature } from '@/sim/life';
 import { normalizeGenome, predictOffspringMorphs, predictOffspringPhenotypes, resolveMorph, rollGenome } from '@/sim/life/genetics';
 import { matchStrains, morphCatalog, predictOffspringStrains, strainOf, strainTier, tierForShare, validateStrains } from '@/sim/life/morphCatalog';
 import { creatureValue } from '@/sim/economy';
+import { budget } from './support/timeBudget';
 
 const betta = getSpecies('betta');
 const g3 = (sp: SpeciesDefinition, alleles: Genome['alleles'], pot = 50): Genome =>
@@ -80,7 +81,7 @@ describe('morph catalog', () => {
   it('builds every catalog quickly', () => {
     const t0 = performance.now();
     for (const sp of ALL_SPECIES) morphCatalog({ ...sp, id: `${sp.id}__timing` });
-    expect(performance.now() - t0).toBeLessThan(5000);
+    expect(performance.now() - t0).toBeLessThan(budget(5000));
   });
 });
 

@@ -10,6 +10,7 @@ import { newGame } from '@/sim/newGame';
 import { share, mutateFast, resetFastMutate } from '@/game/fastMutate';
 import { advanceWorld } from '@/sim/world';
 import { stateHash } from '@/persistence';
+import { budget } from './support/timeBudget';
 
 beforeEach(() => {
   useGame.getState().setGame(null);
@@ -69,7 +70,7 @@ describe('core game loop tick', () => {
     expect(useGame.getState().game!.clock.hour + backlog).toBeCloseTo(h0 + expected, 6);
     expect(getLoopStats().droppedHours).toBe(0);
     expect(getLoopStats().errors).toBe(0);
-    expect(ms).toBeLessThan(20);
+    expect(ms).toBeLessThan(budget(20));
   });
 });
 
@@ -139,6 +140,6 @@ describe('core fastMutate (structural sharing without Immer)', () => {
     for (let i = 0; i < 20; i++) share(g, copy);
     const ms = (performance.now() - t0) / 20;
     console.info(`[core-loop] share() full walk of big_facility: ${ms.toFixed(2)} ms`);
-    expect(ms).toBeLessThan(15);
+    expect(ms).toBeLessThan(budget(15));
   });
 });
