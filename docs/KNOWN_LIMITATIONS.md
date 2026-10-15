@@ -85,7 +85,6 @@ What is simplified, approximated or missing in this build. None of these block p
 - The iOS focus-zoom (G4-05) and long-press selection (G4-06) fixes are verified by code trace only: Playwright's WebKit emulates neither.
 
 ## Architecture
-- A few small tank-editing mutators (rename, purpose, water-class conversion, backdrop/substrate change) live in `src/ui/panels/common/tankOps.ts` rather than `src/sim`. They are written as plain draft mutators, so they can move without changes.
 - The AI imports `equipmentLayout` from the decor render module to place equipment colliders (an ai → render dependency).
 
 ## Creature motion
