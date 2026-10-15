@@ -1,11 +1,12 @@
 /**
  * Per-frame creature AI for a tank (writes src/runtime/tankRuntime). OWNER: lane "behavior".
  * Thin R3F wrapper around the pure core in ./core: mirrors the sim (creatures, stats, decor, clock, food) and steps
- * every agent before render (negative useFrame priority). Active for lod ≤ 1; far tanks (lod 2) tick cheaply.
+ * every agent before render (negative useFrame priority). Active for lod ≤ 1; far tanks (lod 2) tick cheaply, each at
+ * its own phase and within the AI's frame budget, and a tank hidden in tank view a quarter as often (chunk 6, B-180).
  */
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { Clutch, Creature, Tank, VisualEventKind } from '@/types';
+import type { Clutch, Creature, GameState, Tank, VisualEventKind } from '@/types';
 import type { RenderLod } from '../render/lod';
 import { useGame, getGame } from '@/state/game';
 import { useUI } from '@/state/ui';
@@ -17,7 +18,8 @@ import { getDecorDef } from '@/data/catalog/decor';
 import { personalityModifiers } from '@/sim/life';
 import { tutorialAdvance } from '@/sim/facility';
 import { createWorld, disposeWorld, stepWorld, syncWorld, type AIWorld } from './core/world';
-import { AI_FRAME_BUDGET_MS, planAiSteps, type AiSteps } from './core/steps';
+import { AI_FRAME_BUDGET_MS, FAR_PERIOD, HIDDEN_PERIOD, farPhase, planAiSteps, planFarStep, type AiSteps, type FarStep } from './core/steps';
+import { indexByTank, type TankIndex } from './core/tankIndex';
 import { syncFoodWithSim } from './core/food';
 import { aiWorlds, equipmentSolids, foodSpecForTags, tankFlow } from './registry';
 import { equipmentLayout } from '@/render/decor/emitters';
@@ -33,6 +35,19 @@ export const aiStats = { ms: 0, agents: 0, frames: 0 };
  */
 const aiFrame = { stamp: -1, ms: 0, lastMs: 0 };
 const _steps: AiSteps = { n: 1, h: 0 };
+const _far: FarStep = { accum: 0, h: 0 };
+const NO_CREATURES: Creature[] = [];
+const NO_CLUTCHES: Clutch[] = [];
+/** chunk 6 (B-180) — one creatures-and-clutches-by-tank index per game version, shared by every TankAI. */
+const shared: { version: number; game: GameState | null; index: TankIndex | null } = { version: -1, game: null, index: null };
+function tankIndex(game: GameState, version: number): TankIndex {
+  if (!shared.index || shared.version !== version || shared.game !== game) {
+    shared.index = indexByTank(game);
+    shared.version = version;
+    shared.game = game;
+  }
+  return shared.index;
+}
 if (typeof window !== 'undefined') (window as unknown as { __AQ_AI?: unknown }).__AQ_AI = { worlds: aiWorlds, stats: aiStats };
 const lastObserved = new Map<string, number>();
 /** Recently observed signature behaviours (debug panel / QA). */
@@ -71,11 +86,10 @@ function safePersonality(c: Creature) {
   }
 }
 
-export function TankAI({ tank, lod }: { tank: Tank; lod: RenderLod }) {
+export function TankAI({ tank, lod, hidden = false }: { tank: Tank; lod: RenderLod; /** Beyond the tank-view radius: drawn not at all (SceneRoot). */ hidden?: boolean }) {
   const worldRef = useRef<AIWorld | null>(null);
-  const state = useRef({ version: -1, accum: 0, frame: 0, creaturesKey: '' });
-  const creaturesBuf = useRef<Creature[]>([]);
-  const clutchBuf = useRef<Clutch[]>([]);
+  // far tanks start at their own phase (B-180): they used to start equal and all step on the same frame
+  const state = useRef({ version: -1, accum: farPhase(tank.id), frame: 0, creaturesKey: '' });
 
   if (!worldRef.current) {
     const tankId = tank.id;
@@ -114,19 +128,8 @@ export function TankAI({ tank, lod }: { tank: Tank; lod: RenderLod }) {
     // ── mirror the sim when it changes (≈4 Hz) ──
     if (store.version !== s.version) {
       s.version = store.version;
-      const cs = creaturesBuf.current;
-      cs.length = 0;
-      for (const id in game.creatures) {
-        const c = game.creatures[id];
-        if (c.tankId === t.id) cs.push(c);
-      }
-      const cl = clutchBuf.current;
-      cl.length = 0;
-      for (const id in game.clutches) {
-        const c = game.clutches[id];
-        if (c.tankId === t.id) cl.push(c);
-      }
-      syncWorld(w, { tank: t, creatures: cs, clutches: cl, hour: game.clock.hour, refreshInfo: true });
+      const index = tankIndex(game, store.version);
+      syncWorld(w, { tank: t, creatures: index.creatures.get(t.id) ?? NO_CREATURES, clutches: index.clutches.get(t.id) ?? NO_CLUTCHES, hour: game.clock.hour, refreshInfo: true });
       syncFoodWithSim(w, t.water?.foodInWater ?? 0, foodSpecForTags, t.water?.foodByTag);
     }
     // ── per-frame environment inputs ──
@@ -161,12 +164,11 @@ export function TankAI({ tank, lod }: { tank: Tank; lod: RenderLod }) {
     } else {
       // far tanks: cheap, lower-rate update. lane:pc-perf — paced by time, not frame count: every 4th frame used to
       // drop whatever exceeded 50 ms, so far animals swam at 75 % speed at 60 Hz, 37 % at 30 Hz and 100 % at 144 Hz.
-      // Now one 50 ms step whenever 50 ms have accrued (the carry is capped, so a long frame never queues catch-up).
-      s.accum = Math.min(s.accum + dt, 0.1);
-      if (s.accum >= 0.05) {
-        stepWorld(w, 0.05);
-        s.accum -= 0.05;
-      }
+      // One 50 ms step whenever 50 ms have accrued (the carry is capped, so a long frame never queues catch-up); chunk
+      // 6 (B-180): within the AI's frame budget (at least half rate), and a quarter as often while hidden.
+      planFarStep(s.accum, dt, hidden ? HIDDEN_PERIOD : FAR_PERIOD, aiFrame.ms > AI_FRAME_BUDGET_MS, _far);
+      s.accum = _far.accum;
+      if (_far.h > 0) stepWorld(w, _far.h);
     }
     const spent = performance.now() - t0;
     aiFrame.ms += spent;
