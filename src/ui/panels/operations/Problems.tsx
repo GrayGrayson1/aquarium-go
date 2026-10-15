@@ -131,12 +131,12 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
   const max = STOCK_BUDGET[g.facility.level]?.max ?? 0;
   const rows: { t: string; tone?: 'watch' | 'danger'; text: string }[] = [];
   if (p.state === 'arriving') {
-    rows.push({ t: whenText(p.arrives ?? now, now), text: 'The stock manager buys salt mix at the check.' }); // draft
+    rows.push({ t: whenText(p.arrives ?? now, now), text: 'The stock manager buys salt mix at the check.' }); // ADR-0032
     if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, text: 'No water change is skipped.' });
   } else if (p.state === 'out') {
     const ready = room?.mix && room.mix.readyHour > now ? `, plus ${Math.floor(room.mix.gal)} gal mixing (ready ${formatClock(room.mix.readyHour)})` : '';
     rows.push({ t: 'Now', text: `Salt water: ${Math.floor(room?.salt ?? 0)} gal${ready}.` });
-    if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'danger', text: `The salt tanks’ water changes are skipped, not done weak, unless salt arrives (they use about ${Math.round(saltWaterPerDay(g))} gal a day).` }); // draft
+    if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'danger', text: `The salt tanks’ water changes are skipped, not done weak, unless salt arrives (they use about ${Math.round(saltWaterPerDay(g))} gal a day).` }); // ADR-0032
   } else {
     rows.push({ t: whenText(mix, now), tone: 'watch', text: p.stock < 2 * batchKg ? `The batch uses the last ${Math.round(p.stock * 10) / 10} kg.` : `The batch uses ${batchKg.toFixed(1)} kg.` });
     if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'watch', text: 'The salt tanks run short of salt water unless salt arrives.' });

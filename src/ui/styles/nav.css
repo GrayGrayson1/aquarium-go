@@ -37,8 +37,9 @@
 .ag-tabbar__attn { top: -3px; right: -6px; }
 :root[data-contrast='high'] .ag-tabbar { background: var(--c-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
 
-/* ── Phone More sheet (more-sheet; §5.3) — outside .ag-hud, so it adds the safe areas itself ── */
-.ag-more.ag-popover { position: fixed; top: 48dvh; left: 0; right: 0; bottom: 0; z-index: 56; width: auto; max-width: none; display: flex; flex-direction: column; gap: var(--sp-3); padding: 10px max(var(--sp-4), var(--safe-r)) calc(84px + var(--safe-b)) max(var(--sp-4), var(--safe-l)); border-radius: 22px 22px 0 0; border-bottom: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* ── Phone More sheet (more-sheet; §5.3) — outside .ag-hud, so it adds the safe areas itself. lane:automation (chunk 5,
+   DESIGN-S3D §5.1, ADR-0026 decision 2): the Operations row lifts its top from about 48 % to 334 px of 844 (≈ 40 %). ── */
+.ag-more.ag-popover { position: fixed; top: 39.6dvh; left: 0; right: 0; bottom: 0; z-index: 56; width: auto; max-width: none; display: flex; flex-direction: column; gap: var(--sp-3); padding: 10px max(var(--sp-4), var(--safe-r)) calc(84px + var(--safe-b)) max(var(--sp-4), var(--safe-l)); border-radius: 22px 22px 0 0; border-bottom: 0; overflow-y: auto; overscroll-behavior: contain; }
 .ag-more__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .ag-more__title { margin: 0; font-family: var(--font-display); font-weight: 560; font-size: calc(22px * var(--text-scale)); outline: none; }
 .ag-more__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-md); background: var(--c-fill); color: var(--c-ink-2); cursor: pointer; }

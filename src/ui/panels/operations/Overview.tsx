@@ -420,7 +420,7 @@ const JOB_ICON: Record<ScheduledJob['kind'], ReactNode> = {
   shelves: <ShoppingBag size={15} aria-hidden />,
 };
 
-/** A scheduled job's title and detail (§7.1 Today; the details the design doesn't word are drafts). */
+/** A scheduled job's title and detail (§7.1 Today; the details the design doesn't word are ADR-0032 decision 3). */
 export function jobText(g: GameState, j: ScheduledJob): { title: string; detail: string } {
   const first = (n?: string) => (n ?? 'Your stock manager').split(' ')[0];
   switch (j.kind) {

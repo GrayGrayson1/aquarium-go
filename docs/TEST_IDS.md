@@ -11,7 +11,7 @@
 | `hud-money` | Money display |
 | `hud-clock` | Day + time display |
 | `hud-speed-<0|1|3|10>` | Speed buttons |
-| `dock-<panelId>` | Bottom dock buttons (tanks, livestock, market, visitors, build, research, finances, encyclopedia, settings) |
+| `dock-<panelId>` | Bottom dock buttons (tanks, livestock, market, visitors, shows, build, operations, research, finances, encyclopedia; Settings is the top bar's gear `hud-settings` since chunk 5) |
 | `view-toggle` | Facility ⇄ tank view toggle |
 | `tank-prev` / `tank-next` | Tank switcher |
 | `tool-feed` / `tool-target-feed` / `tool-tap` / `tool-photo` / `tool-party` / `tool-watch` | Tank tools |
@@ -387,3 +387,41 @@ named "{Line} running", each rule "{Rule} ({Line})". The Livestock tabs are `liv
 | `production-new-tank-<breed\|raise\|quarantine\|keepers>` | Step 2's stage rows (Fits · Shared · Doesn't fit) |
 | `production-new-breed-for` · `production-new-name` | Step 3's "Breed for" and "Line name" fields |
 | `production-new-back` · `production-new-next` · `production-start-line` | The pinned actions |
+
+## S3-D: deep automation (chunk 5: lane automation; DESIGN-S3D §14 as corrected in INTAKE §10.1)
+
+Index-based cone and jar ids, one id for the Operations tools tile, `staff-budget` and `research-<id>` reused (C-53).
+
+| Test id | Element |
+|---|---|
+| `dock-operations` · `dock-badge-operations` | The dock's Operations item (after Build) and its red or amber dot |
+| `hud-settings` | The top bar's Settings gear (`aria-pressed` while Settings is open) |
+| `hud-manual-mode` | Manual mode: the amber "Manual mode" pill (desktop) or the amber time pill (phone); opens `#/operations/manual` |
+| `more-operations` · `more-badge-operations` | The More sheet's first row, and its dot |
+| `room-facility-map` | The room view's "Facility map" chip beside `camera-room-reset` |
+| `panel-operations` · `ops-sub` · `ops-hold-all` | The panel, its sub-line, Hold all (desktop header; the phone Manual mode tile) |
+| `ops-tab-<overview\|water\|feed\|lines\|map>` | The tab strip (Water and Feed from their rooms) |
+| `ops-problems` · `ops-problem-<salt\|eggs\|veg\|live\|fresh\|line>` · `ops-problems-all` · `ops-all-clear` | Overview's Problems (from the Operations Desk), its items, the "All" link, "Everything is running smoothly." |
+| `ops-sys-<water-changes\|water-room\|live-food\|feeding\|lines\|keepers\|manual>` | The Systems tiles (Keepers & stock desktop only; Manual mode phone only) |
+| `ops-week` · `ops-today` · `ops-manual-banner` · `ops-resume-all` | This week, Today (desktop), the manual-mode banner and its Resume all |
+| `ops-assisted` · `ops-early-line` · `ops-ladder` | The early Overview's Assisted care card, its line row, the tier ladder |
+| `ops-early-locked-<water\|food\|lines\|tools>` | The dashed locked tiles (early and before the Desk) |
+| `ops-next-up` · `ops-next-up-research` | "What opens up next" before the Desk, and its Research link |
+| `ops-locked-<water\|feed\|issues\|manual>` | The locked pages (§7.8) |
+| `ops-issues-back` | Problems' back link to Overview |
+| `water-meter-<fresh\|salt\|saltmix>` · `water-buy-salt` · `water-flows` · `water-schedule` · `water-machines` | Operations › Water |
+| `feed-hatchery` · `feed-cone-<n>` · `feed-jars` · `feed-jar-<n>` · `feed-dosers` · `feed-buy-eggs` · `feed-buy-veg` | Operations › Feed (cones and jars numbered from 1) |
+| `line-row-<lineId>` · `line-toggle-<lineId>` · `line-status-<lineId>` · `line-route-<lineId>` · `lines-capacity` · `lines-upcoming` | Operations › Lines |
+| `map-layer-<all\|water\|food\|animals>` · `map-room-<water\|supplies\|food\|breeding\|quarantine\|gallery\|market>` · `map-tank-<tankId>` · `map-details` · `map-room-sheet` · `map-add-qt` · `map-more` | Operations › Map |
+| `issues-<salt\|eggs\|veg\|live\|fresh\|line>` · `issues-<kind>-action` · `issues-buy-salt` · `issues-raise-budget` · `issues-add-qt` · `issues-wait` · `issues-line-decided` · `issues-none` | Problems (`#/operations/issues`) |
+| `manual-banner` · `manual-resume-all` · `manual-hold-all` · `manual-row-<water\|salt\|food\|feeders\|lines>` · `manual-toggle-<…>` · `manual-rosa` · `manual-rosa-toggle` · `manual-still-open` | Manual mode (`#/operations/manual`) |
+| `tank-chip-<auto-feed\|auto-clean\|top-off\|doser\|line>` | Automation chips, inside `tanks-row-<tankId>` and in the tank card's header |
+| `tanks-row-line-<tankId>` | A Tanks row's amber "{Line} paused: …" reason with Why |
+| `tank-auto-feed-held` · `tank-auto-clean-held` · `tank-doser-row` · `tank-doser-buy` · `tank-doser` · `tank-doser-held` | The tank card's held notes and the live-food doser row |
+| `alerts-automation` · `alerts-automation-link` · `alerts-automation-manual` · `alerts-item-<kind>` · `alerts-item-tab-<water\|feed\|lines>` | The alerts drawer's Automation section |
+| `build-your-facility` · `build-facility-room-<water\|food>` · `build-room-<water\|food>` · `build-room-locked-<water\|food>` · `build-room-back` | Build › Facility's card, rooms and room pages |
+| `build-upgrade-prep` · `build-add-reservoir` · `build-add-cone` · `build-add-jar` | The rooms' upgrades and add-ons |
+| `supplies-row-<foodId\|salt\|brine_shrimp_eggs>` · `supplies-salt-buy-<5\|20\|40>` · `supplies-salt-status` · `supplies-buy-eggs` | Market › Supplies rows (one per food; the deep-link targets) and the salt sizes |
+| `staff-budget` · `staff-budget-status` · `staff-orders` | Visitors › Staff: the $1 budget slider, its status line, the orders switch |
+| `production-ops-link` · `livestock-production-dot` | Production's link row to Operations › Lines, and the Production tab's dot |
+| `notify-cat-auto` | Settings › Notifications' Automation category |

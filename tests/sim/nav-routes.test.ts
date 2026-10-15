@@ -256,3 +256,41 @@ describe('nav routes: the loading card pill (§16)', () => {
     expect(routeLabel(parseRoute('#/tanks/t1')!.route)).toBe('Tank card › Water');
   });
 });
+
+describe('NAV-022: DESIGN-S3D §6’s routes (chunk 5)', () => {
+  const rows: [string, Route][] = [
+    ['#/operations', { kind: 'panel', panel: 'operations', tab: 'overview' }],
+    ['#/operations/water', { kind: 'panel', panel: 'operations', tab: 'water' }],
+    ['#/operations/feed', { kind: 'panel', panel: 'operations', tab: 'feed' }],
+    ['#/operations/lines', { kind: 'panel', panel: 'operations', tab: 'lines' }],
+    ['#/operations/map', { kind: 'panel', panel: 'operations', tab: 'map' }],
+    ['#/operations/map?layer=water', { kind: 'panel', panel: 'operations', tab: 'map', target: 'layer:water' }],
+    ['#/operations/map?layer=animals', { kind: 'panel', panel: 'operations', tab: 'map', target: 'layer:animals' }],
+    ['#/operations/issues', { kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:issues' }],
+    ['#/operations/manual', { kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:manual' }],
+    ['#/build/facility/water', { kind: 'panel', panel: 'build', tab: 'facility', target: 'room:water' }],
+    ['#/build/facility/food', { kind: 'panel', panel: 'build', tab: 'facility', target: 'room:food' }],
+    ['#/market/supplies/salt', { kind: 'panel', panel: 'market', tab: 'supplies', target: 'food:salt' }],
+    ['#/market/supplies/brine_shrimp_eggs', { kind: 'panel', panel: 'market', tab: 'supplies', target: 'food:brine_shrimp_eggs' }],
+  ];
+  it('each row parses to its target and formats back to itself', () => {
+    for (const [h, route] of rows) {
+      expect(parseRoute(h)?.route, h).toEqual(route);
+      expect(formatRoute(route), h).toBe(h);
+    }
+  });
+  it('Problems and Manual mode highlight Overview; an unknown tab or layer opens Overview or All', () => {
+    expect(normalizeRoute(parseRoute('#/operations/issues')!.route)).toMatchObject({ tab: 'overview' });
+    expect(parseRoute('#/operations/foo')?.route).toEqual({ kind: 'panel', panel: 'operations', tab: 'overview' });
+    expect(parseRoute('#/operations/map?layer=nope')?.route).toEqual({ kind: 'panel', panel: 'operations', tab: 'map' });
+    expect(parseRoute('#/build/facility/garage')?.route).toEqual({ kind: 'panel', panel: 'build', tab: 'facility' });
+  });
+  it('the router’s commands map back to the same addresses, and the loading card names them', () => {
+    expect(routeForPanelTarget('operations', 'view:issues')).toEqual(rows[7][1]);
+    expect(routeForPanelTarget('operations', 'layer:water')).toEqual(rows[5][1]);
+    expect(routeForPanelTarget('build', 'room:food')).toEqual(rows[10][1]);
+    expect(routeLabel(rows[1][1])).toBe('Operations › Water');
+    expect(routeLabel(rows[7][1])).toBe('Operations › Problems');
+    expect(routeLabel(rows[9][1])).toBe('Build › Water room');
+  });
+});

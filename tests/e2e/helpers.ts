@@ -164,9 +164,12 @@ export async function clickTank(page: Page, touch = false, fx = 0.5, fy = 0.5): 
   await page.mouse.click(x, y);
 }
 
-/** Open a dock panel and wait for its root. */
+/**
+ * Open a dock panel and wait for its root. Settings is the top bar's gear since chunk 5 (DESIGN-S3D §5.1, ADR-0026
+ * decision 1; NAV-020 names this change, CONST-002): the same panel, opened from `hud-settings`.
+ */
 export async function openPanel(page: Page, panelId: string): Promise<void> {
-  await tid(page, `dock-${panelId}`).click();
+  await tid(page, panelId === 'settings' ? 'hud-settings' : `dock-${panelId}`).click();
   await expect(tid(page, `panel-${panelId}`)).toBeVisible();
 }
 

@@ -25,3 +25,9 @@
 .ag-camchip.ag-camchip--map svg { color: var(--c-aqua); }
 
 :root[data-contrast='high'] .ag-manual-pill, :root[data-contrast='high'] .ag-clock-pill.is-manual { background: #2a1e05; }
+
+/* INTAKE C-60 (NAV-023): the room view's two labelled chips (Reset view, Facility map) are about 230 px wide; where they
+   would meet the centred dock they sit above it, as all camera chips do at 980 px and below, and keep their labels. */
+@media (min-width: 981px) and (max-width: 1439px) {
+  .ag-hud__cam.ag-hud__cam--room { bottom: calc(var(--dock-h) + var(--edge) * 2); }
+}

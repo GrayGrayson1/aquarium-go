@@ -371,12 +371,21 @@ function BudgetControl({ g, m }: { g: GameState; m: StaffMember }) {
   const max = STOCK_BUDGET[g.facility.level]?.max ?? 300;
   const [v, setV] = useState(st.stockBudget);
   const timer = useRef<number | null>(null);
-  useEffect(() => setV(st.stockBudget), [st.stockBudget]);
+  // lane:automation (chunk 5) — follow the budget from elsewhere, but never while the player's own change is on its way
+  // (the save is debounced and this card refreshes on a timer: the slider used to jump back mid-gesture)
+  const pending = useRef(false);
+  useEffect(() => {
+    if (!pending.current) setV(st.stockBudget);
+  }, [st.stockBudget]);
   const spent = st.stockSpent.day === dayOf(g.clock.hour) ? st.stockSpent.amount : 0;
   const commit = (x: number) => {
     setV(x);
+    pending.current = true;
     if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => edit((d) => void setStockBudget(d, x)), 300);
+    timer.current = window.setTimeout(() => {
+      edit((d) => void setStockBudget(d, x));
+      pending.current = false;
+    }, 300);
   };
   // lane:automation (chunk 5, DESIGN-S3D §8.7, ADR-0026 decision 10) — any whole-dollar amount up to the level's maximum,
   // what it covers at the next check, and the orders switch (which keeps the budget)

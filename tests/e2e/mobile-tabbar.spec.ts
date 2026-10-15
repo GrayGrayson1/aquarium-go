@@ -43,7 +43,9 @@ test.describe('phone 390×844 (touch)', () => {
     await expect.poll(() => hash(page)).toBe('#/');
   });
 
-  test('More opens its sheet at about 48% height; a tile opens its panel and More stays highlighted', async ({ page }) => {
+  // chunk 5: the Operations row lifts the sheet's top from about 48 % to 334 px of 844, the same ± 3 % (DESIGN-S3D §5.1,
+  // ADR-0026 decision 2, NAV-004's changed A1); Operations is the first row (NAV-021)
+  test('More opens its sheet at about 40% height; a tile opens its panel and More stays highlighted', async ({ page }) => {
     await phoneGame(page);
     await tid(page, 'dock-more').tap();
     const sheet = tid(page, 'more-sheet');
@@ -51,8 +53,9 @@ test.describe('phone 390×844 (touch)', () => {
     await expect.poll(() => hash(page)).toBe('#/more');
     await page.waitForTimeout(500); // the sheet's spring
     const top = (await sheet.boundingBox())!.y;
-    expect(top / 844).toBeGreaterThan(0.45);
-    expect(top / 844).toBeLessThan(0.51);
+    expect(top / 844).toBeGreaterThan(334 / 844 - 0.03);
+    expect(top / 844).toBeLessThan(334 / 844 + 0.03);
+    await expect(tid(page, 'more-operations')).toBeVisible();
     for (const id of ['more-visitors', 'more-shows', 'more-research', 'more-finances', 'more-encyclopedia', 'more-settings']) await expect(tid(page, id)).toBeVisible();
     await expect(sheet).toContainText('Saves, sound, notifications');
     for (const id of ['more-research', 'more-settings']) {

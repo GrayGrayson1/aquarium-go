@@ -25,7 +25,7 @@ export function buySaltBag(kg: number): boolean {
   return true;
 }
 
-/** Buy a tin of brine shrimp eggs (draft toast detail). */
+/** Buy a tin of brine shrimp eggs (the toast is ADR-0032 decision 2). */
 export function buyEggTin(): boolean {
   const r = act((d) => buyEggs(d, 1), { quiet: true });
   if (!r?.ok) return false;

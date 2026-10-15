@@ -19,14 +19,16 @@ test.describe('boot', () => {
     await openApp(page);
     await quickGame(page, 'betta', { money: 5000 });
     await aq(page, 'dev.setSpeed', 10);
-    // Visit every dock panel that exists.
-    for (const panel of ['tanks', 'livestock', 'market', 'visitors', 'build', 'research', 'finances', 'encyclopedia', 'settings']) {
+    // Visit every dock panel that exists (chunk 5, NAV-020: Operations joins the dock; Settings is the top bar's gear).
+    for (const panel of ['tanks', 'livestock', 'market', 'visitors', 'build', 'operations', 'research', 'finances', 'encyclopedia']) {
       const btn = tid(page, `dock-${panel}`);
       if (await btn.count()) {
         await btn.click();
         await page.waitForTimeout(350);
       }
     }
+    await tid(page, 'hud-settings').click();
+    await page.waitForTimeout(350);
     await page.keyboard.press('Escape');
     const toggle = tid(page, 'view-toggle');
     if (await toggle.count()) {

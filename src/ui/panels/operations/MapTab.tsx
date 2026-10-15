@@ -6,7 +6,7 @@
  * a sheet. Flows and lines are named in words, never told apart by colour alone. Early (no Water room) there are no
  * layers. OWNER: lane "automation" (chunk 5).
  */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { ChevronRight, Map as MapIcon, Plus } from 'lucide-react';
 import type { GameState, Tank } from '@/types';
@@ -43,6 +43,17 @@ const GALLERY_TILES = 8;
 export function MapTab({ g, snap, tier, layer, onLayer, small, nav }: { g: GameState; snap: OpsSnapshot; tier: OpsTier; layer: MapLayer; onLayer: (l: MapLayer) => void; small: boolean; nav: OpsNav }) {
   const [sel, setSel] = useState<Sel>(null);
   const [sheet, setSheet] = useState<RoomId | null>(null);
+  // the first Esc clears a selection, the next closes the panel (INTAKE §4; PanelHost skips a handled Escape)
+  useEffect(() => {
+    if (!sel) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('.ag-modal-backdrop, [data-pn-modal]')) return;
+      e.preventDefault();
+      setSel(null);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [sel]);
   const [addingQt, setAddingQt] = useState<string | null>(null);
   const areas = mapAreas(g);
   const layers = tier.water;

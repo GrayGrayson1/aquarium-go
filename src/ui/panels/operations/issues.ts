@@ -2,7 +2,7 @@
  * Problems in words (DESIGN-S3D §7.1, §7.6, §8.3, §11; ADR-0026 decision 9): each item's title, badge, one-line reason,
  * the tab it belongs to (before the Operations Desk the links open it) and its main action. One place, so the Overview,
  * the Problems view, the alerts drawer and the tank rows say the same thing. OWNER: lane "automation" (chunk 5).
- * Wording the design doesn't give is marked "draft" (put to the owner in one batch, ADR-0026 decision 9).
+ * Wording the design doesn't give is the owner's ADR-0032 (asked in one batch, as ADR-0026 decision 9 says).
  */
 import type { GameState } from '@/types';
 import { EGGS_SUPPLY, WATER_ROOM } from '@/data/catalog/machines';
@@ -90,7 +90,7 @@ function saltIssue(g: GameState, p: SupplyProblem): IssueView {
         : saltOutText(g, p)
       : batches <= 1
         ? `${kg} kg: enough for ${nextMixHour(now) - now > 12 ? 'tomorrow’s' : 'the'} ${formatClock(nextMixHour(now))} batch, then none.`
-        : `${kg} kg: enough for ${batches} batches.`; // draft
+        : `${kg} kg: enough for ${batches} batches.`; // ADR-0032
   return {
     key: 'salt',
     kind: 'salt',
@@ -136,8 +136,8 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           kind: 'eggs',
           tone: p.tone,
           badge: p.state === 'out' ? 'Needs you' : 'Look soon',
-          title: p.state === 'arriving' ? 'Brine shrimp eggs arrive at the next check' : p.state === 'out' ? 'Out of brine shrimp eggs' : 'Brine shrimp eggs are low', // draft
-          reason: p.state === 'out' ? 'The hatchery cones wait for eggs.' : `${p.stock} ${p.stock === 1 ? 'scoop' : 'scoops'}: a cone takes one a day.`, // draft
+          title: p.state === 'arriving' ? 'Brine shrimp eggs arrive at the next check' : p.state === 'out' ? 'Out of brine shrimp eggs' : 'Brine shrimp eggs are low', // ADR-0032
+          reason: p.state === 'out' ? 'The hatchery cones wait for eggs.' : `${p.stock} ${p.stock === 1 ? 'scoop' : 'scoops'}: a cone takes one a day.`, // ADR-0032
           tab: 'feed',
           action: { id: 'buy-eggs', label: `Buy · $${EGGS_SUPPLY.price}`, short: 'Buy' },
           problem: p,
@@ -150,8 +150,8 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           kind: 'veg',
           tone: p.tone,
           badge: p.state === 'out' ? 'Needs you' : 'Look soon',
-          title: p.state === 'arriving' ? 'Vegetables arrive at the next check' : p.state === 'out' ? 'Out of vegetables for the jars' : 'Vegetables for the jars are low', // draft
-          reason: p.state === 'out' ? 'The infusoria jars wait for Blanched Vegetables.' : `${p.stock} ${p.stock === 1 ? 'serving' : 'servings'}: a jar takes one every 3 days.`, // draft
+          title: p.state === 'arriving' ? 'Vegetables arrive at the next check' : p.state === 'out' ? 'Out of vegetables for the jars' : 'Vegetables for the jars are low', // ADR-0032
+          reason: p.state === 'out' ? 'The infusoria jars wait for Blanched Vegetables.' : `${p.stock} ${p.stock === 1 ? 'serving' : 'servings'}: a jar takes one every 3 days.`, // ADR-0032
           tab: 'feed',
           action: { id: 'buy-veg', label: `Buy · $${veg?.price ?? 3}`, short: 'Buy' },
           problem: p,
@@ -165,8 +165,8 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           kind: 'live',
           tone: p.tone,
           badge: p.state === 'out' ? 'Needs you' : 'Look soon',
-          title: p.state === 'out' ? 'No live food for the dosers' : 'Live food is short for the dosers', // draft
-          reason: `${names[0] ?? 'A tank'}${names.length > 1 ? ` and ${names.length - 1} more` : ''} ${names.length > 1 ? 'have' : 'has'} young to feed and none of their food in stock.`, // draft
+          title: p.state === 'out' ? 'No live food for the dosers' : 'Live food is short for the dosers', // ADR-0032
+          reason: `${names[0] ?? 'A tank'}${names.length > 1 ? ` and ${names.length - 1} more` : ''} ${names.length > 1 ? 'have' : 'has'} young to feed and none of their food in stock.`, // ADR-0032
           tab: 'feed',
           action: { id: 'feed', label: 'Feed tab', short: 'Feed' },
           problem: p,

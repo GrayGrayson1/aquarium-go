@@ -57,6 +57,7 @@ export function OperationsPanel() {
       const t = target.slice(4) as OpsTab;
       setTab(['overview', 'water', 'feed', 'lines', 'map'].includes(t) ? t : 'overview');
       setView(null);
+      if (t === 'map') setLayer('all'); // an address without a layer is All
     } else if (target === 'view:issues' || target === 'view:manual') {
       setTab('overview');
       setView(target.slice(5) as OpsView);
