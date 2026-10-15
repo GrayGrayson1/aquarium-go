@@ -77,9 +77,10 @@ test.describe('accessibility (ACC-005)', () => {
     expect((await focused(page))?.ring, 'the gear shows its focus ring').toBe(true);
     await page.keyboard.press('Enter');
     await expect(tid(page, 'panel-settings')).toBeVisible();
-    // the sheet moves focus to its title as it opens (§18): wait for that, then for the tab to hold focus, before
-    // pressing Enter (once in WebKit a focus() during the opening didn't take, and Enter went back to the gear)
-    await expect.poll(async () => (await focused(page))?.tag).toBe('H2');
+    // opened from the keyboard, the sheet moves focus into itself (its close button, 60 ms after opening): wait for
+    // that before moving on. Once in WebKit the test's focus() came first, the sheet's move overtook it, and Enter
+    // landed on the close button.
+    await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('[data-testid="panel-settings"]'))).toBe(true);
     const display = tid(page, 'settings-tab-display');
     await display.focus();
     await expect(display).toBeFocused();
