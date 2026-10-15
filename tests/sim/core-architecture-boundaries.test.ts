@@ -26,10 +26,13 @@ const ALLOWED: Record<string, string[]> = {
   render: ['types', 'data', 'sim', 'state', 'runtime', 'ai', 'audio'],
   // 0.5 design §14: a thin seam over browser APIs; no runtime imports from persistence, sim, state or ui.
   platform: ['types'],
-  ui: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'audio', 'platform'],
-  app: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform'],
-  dev: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform', 'app'],
-  root: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform', 'app', 'dev'],
+  // lane:social (chunk 6, 0.5 design §13.6): the SocialService and its local stub; social data never enters the save,
+  // and the sim is read only for the player's own leaderboard row (src/social/standing.ts)
+  social: ['types', 'data', 'sim'],
+  ui: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'audio', 'platform', 'social'],
+  app: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform', 'social'],
+  dev: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform', 'social', 'app'],
+  root: ['types', 'data', 'sim', 'state', 'persistence', 'game', 'runtime', 'ai', 'render', 'ui', 'audio', 'platform', 'social', 'app', 'dev'],
 };
 
 /** Violations present when the lock was installed: "src/file -> layer". Shrink this list; never grow it. */

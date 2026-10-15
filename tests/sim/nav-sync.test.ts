@@ -167,7 +167,7 @@ describe('nav-sync: address → stores (NAV-010)', () => {
     expect(fakeLocation.hash).toBe('#/');
   });
 
-  it('a gone tank, animal, listing or species opens the nearest screen with its message (ADR-0019)', () => {
+  it('a gone tank, animal, listing, species or production line opens the nearest screen with its message (ADR-0019)', () => {
     const toastTitle = () => useUI.getState().toasts.at(-1);
     R.applyRoute({ kind: 'tankCard', tankId: 'tank_gone', tab: 'water' });
     expect(useUI.getState().panel).toBe('tanks');
@@ -181,6 +181,10 @@ describe('nav-sync: address → stores (NAV-010)', () => {
     R.applyRoute({ kind: 'panel', panel: 'encyclopedia', tab: 'species', target: 'species:dragon' });
     expect(useUI.getState()).toMatchObject({ panel: 'encyclopedia', panelTarget: 'tab:species' });
     expect(toastTitle()).toMatchObject({ text: 'There’s no page for that species', detail: 'Showing every species instead.' });
+    // chunk 4 review: a gone production line (DESIGN-S3D §6; the owner's words, ADR-0026 decision 9)
+    R.applyRoute({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:gone' });
+    expect(useUI.getState()).toMatchObject({ panel: 'livestock', panelTarget: 'tab:production' });
+    expect(toastTitle()).toMatchObject({ text: 'This line isn’t here any more', detail: 'See your lines' });
   });
 
   it('an unknown address opens the tank view with the broken-link toast and no extra entry', async () => {

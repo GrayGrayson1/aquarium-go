@@ -37,6 +37,32 @@ test.describe('resilience', () => {
     await context.close();
   });
 
+  // chunk 6 (B-002, ADR-0029 decision 1): a step that keeps failing stops the aquarium and says so; Save keeps the last
+  // good world, Reload reopens it
+  test('a simulation that keeps failing shows the banner; Save and Reload work', async ({ page }) => {
+    await openApp(page);
+    await quickGame(page, 'betta');
+    await aq(page, 'act', 'tutorialSkip');
+    await aq(page, 'dev.setSpeed', 1);
+    await page.evaluate(() => (window as unknown as { __AQ: { failSim(on: boolean): void } }).__AQ.failSim(true));
+    const banner = tid(page, 'sim-failure');
+    await expect(banner).toBeVisible();
+    await expect(banner).toHaveAttribute('role', 'alert');
+    await expect(banner).toContainText('Something went wrong — your aquarium is paused. Save and reload.');
+    // stopped: time doesn't move, even with the fault gone
+    await page.evaluate(() => (window as unknown as { __AQ: { failSim(on: boolean): void } }).__AQ.failSim(false));
+    const hour = await probe<number>(page, 'g.clock.hour');
+    await page.waitForTimeout(1500);
+    expect(await probe<number>(page, 'g.clock.hour')).toBe(hour);
+    await tid(page, 'sim-failure-save').click();
+    await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Game saved' })).toBeVisible();
+    await tid(page, 'sim-failure-reload').click();
+    await page.waitForFunction(() => !!(window as unknown as { __AQ?: { ready?: boolean } }).__AQ?.ready, null, { timeout: 30_000 });
+    await expect(tid(page, 'hud-money')).toBeVisible();
+    await expect(tid(page, 'sim-failure')).toHaveCount(0);
+    await expect.poll(() => probe<number>(page, 'g.clock.hour'), { timeout: 20_000 }).toBeGreaterThan(hour);
+  });
+
   test('works with no network (all non-local requests blocked)', async ({ page }) => {
     const external: string[] = [];
     await page.route('**/*', (route) => {

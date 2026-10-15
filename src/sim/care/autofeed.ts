@@ -10,11 +10,11 @@
  * src/sim/water/step.ts), the fit verdicts (./fit.ts) and any UI can share them without import cycles.
  */
 import type { EquipmentInstance, FoodDef, FoodTag, SpeciesDefinition } from '@/types';
-import { FOODS, foodForm, isAutofeederFood, autofeedFoodsForTags } from '@/data/catalog/foods';
+import { FOODS, foodForm, isAutofeederFood, autofeedFoodsForTags, eatsFood, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { pluralName } from '../economy/util';
 
-export { isAutofeederFood };
+export { isAutofeederFood, eatsFood };
 
 /** Plain words for food tags in running text ("live copepods", not "copepod_live"). */
 export const FOOD_TAG_WORDS: Partial<Record<FoodTag, string>> = {
@@ -37,11 +37,6 @@ export const FOOD_TAG_WORDS: Partial<Record<FoodTag, string>> = {
   baby_brine: 'baby brine shrimp',
 };
 
-/** Does this species eat this food? (the sim's rule everywhere: any food tag in the species' diet). */
-export function eatsFood(sp: Pick<SpeciesDefinition, 'foods'>, food: Pick<FoodDef, 'tags'>): boolean {
-  return food.tags.some((t) => sp.foods.includes(t));
-}
-
 /** Every dry (autofeeder) food, in catalog order. */
 export function autofeederFoods(): FoodDef[] {
   return FOODS.filter((f) => isAutofeederFood(f));
@@ -52,9 +47,8 @@ export function autofeedFoodsFor(sp: Pick<SpeciesDefinition, 'foods'>): FoodDef[
   return autofeedFoodsForTags(sp.foods);
 }
 
-/** A food named for another animal or water: axolotl / goldfish pellets for anyone else, marine pellets in fresh water. */
-const wrongKind = (f: FoodDef, sp: Pick<SpeciesDefinition, 'id' | 'environment'>) =>
-  (/^axolotl_/.test(f.id) && sp.id !== 'axolotl') || (/^goldfish_/.test(f.id) && !/goldfish/.test(sp.id)) || (/^marine_/.test(f.id) && sp.environment !== 'marine');
+/** A food made for another animal or water (the catalog's `madeFor`): axolotl / goldfish pellets for anyone else, marine pellets in fresh water. */
+const wrongKind = (f: FoodDef, sp: Pick<SpeciesDefinition, 'id' | 'environment'>) => madeForOtherSpecies(f, sp.id) || madeForOtherWater(f, sp.environment);
 
 /**
  * Dry foods to offer these species (first two, de-duplicated), skipping foods made for someone else — axolotl or
@@ -263,8 +257,11 @@ export function autofeedMessage(tankName: string, plan: AutofeedPlan, groups: re
 /** Hunger (0–100) at which a paused Auto-feed is worth an alert. */
 export const AUTOFEED_PAUSED_HUNGER = 50;
 
-/** Why a tank's Autofeeder isn't feeding: switched off (or a legacy 0 meals a day), jammed, or out of dry food. */
-export type AutofeedPauseReason = 'off' | 'failed' | 'empty';
+/**
+ * Why a tank's Autofeeder isn't feeding: switched off (or a legacy 0 meals a day), jammed, out of dry food, or held by
+ * manual mode (lane:automation, chunk 5; ADR-0026 decision 15: a held one counts as paused).
+ */
+export type AutofeedPauseReason = 'off' | 'failed' | 'empty' | 'held';
 
 export interface AutofeedPause {
   reason: AutofeedPauseReason;
@@ -282,6 +279,8 @@ export function autofeedPause(
   equipment: readonly EquipmentInstance[] | undefined,
   inhabitants: readonly { creature: { id: string; name: string; stats?: { hunger?: number } }; species: SpeciesDefinition }[],
   stock: Readonly<Record<string, number | undefined>>,
+  /** lane:automation (chunk 5) — manual mode holds the Autofeeders. */
+  held = false,
 ): AutofeedPause | null {
   const feeders = (equipment ?? []).filter((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder');
   if (!feeders.length || !inhabitants.length) return null;
@@ -296,6 +295,7 @@ export function autofeedPause(
   let reason: AutofeedPauseReason | null = null;
   if (!working.length) reason = 'failed';
   else if (!running.length) reason = 'off';
+  else if (held) reason = 'held';
   else if (inhabitants.some((i) => canAutofeed(i.species)) && !pickAutofeedFood(stock, inhabitants.map((i) => i.species))) reason = 'empty';
   return reason ? { reason, creatureId: hungry.creature.id, name: hungry.creature.name } : null;
 }

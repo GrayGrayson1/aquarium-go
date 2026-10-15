@@ -7,7 +7,7 @@
  */
 import { useMemo } from 'react';
 import clsx from 'clsx';
-import { Clock, Droplets, Lock, Zap } from 'lucide-react';
+import { Clock, Droplets, Hand, Lock, Syringe, Zap } from 'lucide-react';
 import type { EquipmentInstance, GameState, Tank } from '@/types';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getFoodDef } from '@/data/catalog/foods';
@@ -19,6 +19,8 @@ import { isUnlocked } from '@/sim/facility';
 import { recommendedServings } from '@/sim/water';
 import { inhabitantsOf } from '@/sim/water/env';
 import { keeperOf } from '@/sim/staff/common';
+import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
+import { doserNeeds } from '@/sim/automation'; // lane:automation (chunk 5)
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { sfx } from '@/audio/sfx';
@@ -138,6 +140,12 @@ function AutoFeedRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdi
             {keeper ? `Paused — feed ${name} by hand, or a keeper will on their rounds.` : `Paused — feed ${name} by hand.`}
           </div>
         )}
+        {/* lane:automation (chunk 5, DESIGN-S3D §8.2) — while manual mode holds the Autofeeders */}
+        {on && isHeld(g, 'feeders') && (
+          <div className="ag-auto__warn" data-testid="tank-auto-feed-held">
+            <Hand size={12} aria-hidden /> {keeper ? `Held by manual mode — keepers feed ${name ?? firstResident(g, tank)} on their rounds.` : `Auto-feed is held — feed ${name ?? firstResident(g, tank)} by hand, or resume it.`}
+          </div>
+        )}
       </div>
       <div className="ag-auto__ctl">
         <Toggle
@@ -249,7 +257,13 @@ function AutoCleanRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerd
         <div className="ag-auto__title">Auto-clean</div>
         <div className="ag-auto__sub">
           Runs your Auto Water Changer · {pct(share)} each morning · glass once a week · {formatMoney(upkeep, { cents: true })}/day
+          {g.facility.water ? ' · water from the Water room' : ''}
         </div>
+        {dev.on && isHeld(g, 'water') && (
+          <div className="ag-auto__warn" data-testid="tank-auto-clean-held">
+            <Hand size={12} aria-hidden /> Held by manual mode — tomorrow’s change waits.
+          </div>
+        )}
       </div>
       <div className="ag-auto__ctl">
         <Toggle label={label} testId="tank-auto-clean" checked={dev.on} onChange={(v) => act((d) => setEquipment(d, tank.id, dev.id, { on: v }), { sound: 'click', flag: 'changed_equipment' })} />
@@ -268,8 +282,72 @@ export function AutomationSection({ g, tank, fits }: { g: GameState; tank: Tank;
       <div className="ag-autolist" data-testid="tank-automation">
         <AutoFeedRow g={g} tank={tank} fit={feeder ? fits.get(feeder.id) : null} />
         <AutoCleanRow g={g} tank={tank} fit={changer ? fits.get(changer.id) : null} />
+        <DoserRow g={g} tank={tank} />
       </div>
     </Section>
+  );
+}
+
+const firstResident = (g: GameState, tank: Tank) => inhabitantsOf(g, tank.id)[0]?.creature.name ?? 'the animals';
+
+const DOSER_ID = 'live_food_doser';
+
+/**
+ * lane:automation (chunk 5, DESIGN-S3D §9.3, ADR-0026 decision 8) — the live-food doser is placed from the tank card:
+ * a row once Live Food Cultures is researched (bought here, like the Auto Water Changer), its switch once installed.
+ */
+function DoserRow({ g, tank }: { g: GameState; tank: Tank }) {
+  const dev = tank.equipment.find((e) => kindOf(e) === 'doser');
+  const def = getEquipmentDef(DOSER_ID);
+  const unlocked = safe('isUnlocked', () => isUnlocked(g, def?.unlock ?? null), false);
+  if (!dev && !unlocked) return null;
+  const needs = safe('doserNeeds', () => doserNeeds(g, tank), []);
+  const young = needs.reduce((a, n) => a + n.clutch.count, 0);
+  if (!dev)
+    return (
+      <div className="ag-auto is-missing" data-testid="tank-doser-row">
+        <span className="ag-auto__icon" aria-hidden>
+          <Syringe size={17} />
+        </span>
+        <div>
+          <div className="ag-auto__title">Live-food doser</div>
+          <div className="ag-auto__sub">Feeds fry and larvae baby brine shrimp or infusoria from the Live food room, three times a day.</div>
+          <div className="ag-auto__need">
+            <span>Not installed</span>
+            <Button
+              size="sm"
+              className="ag-btn--buygear"
+              data-testid="tank-doser-buy"
+              onClick={() => {
+                const r = act((d) => buyEquipment(d, tank.id, DOSER_ID), { toast: false, sound: 'coin', flag: 'changed_equipment' });
+                if (r?.ok) useUI.getState().toast(`Live-food doser on ${tank.name}`, 'celebrate', { label: 'Installed' });
+                else if (r) useUI.getState().toast(r.message, 'warning');
+              }}
+            >
+              Buy · {formatMoney(def?.price ?? 45)}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  return (
+    <div className="ag-auto is-installed" data-testid="tank-doser-row" data-state={dev.on && !dev.failed ? 'on' : 'off'}>
+      <span className="ag-auto__icon" aria-hidden>
+        <Syringe size={17} />
+      </span>
+      <div>
+        <div className="ag-auto__title">Live-food doser</div>
+        <div className="ag-auto__sub">{young ? `Feeding ${young} young · three times a day` : 'Idle until the next clutch hatches'}</div>
+        {dev.on && isHeld(g, 'food') && (
+          <div className="ag-auto__warn" data-testid="tank-doser-held">
+            <Hand size={12} aria-hidden /> Held by manual mode — no doses until you resume.
+          </div>
+        )}
+      </div>
+      <div className="ag-auto__ctl">
+        <Toggle label={`Live-food doser for ${tank.name}`} testId="tank-doser" checked={dev.on} onChange={(v) => act((d) => setEquipment(d, tank.id, dev.id, { on: v }), { sound: 'click', flag: 'changed_equipment' })} />
+      </div>
+    </div>
   );
 }
 

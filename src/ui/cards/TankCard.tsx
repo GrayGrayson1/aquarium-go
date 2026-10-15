@@ -35,6 +35,7 @@ import {
   Moon,
   Fish,
   Signpost,
+  Move,
   type LucideProps,
 } from 'lucide-react';
 import type { GameState, ParamStatus, Tank, EquipmentInstance, StatusLevel, LightPreset, EquipmentKind } from '@/types';
@@ -62,6 +63,7 @@ import { CompatView } from '../common/CompatView';
 import { useShell } from '../common/shellStore';
 import { safe, useGameThrottled } from '../common/safe';
 import { act, tutorialFlag } from '../common/actions';
+import { startTankMove } from './tankMove'; // lane:ui-shell (chunk 6, B-196)
 import { withFallback } from './waterFallback';
 import {
   WATER_CLASS_LABEL,
@@ -80,6 +82,8 @@ import { TankKeeperLine } from '../panels/visitors/TankKeeperLine'; // lane:staf
 import { tankGearIssues, type FitVerdict } from '@/sim/care/fit'; // lane:fit
 import { FitLine } from '../common/FitNote'; // lane:fit
 import { AutomationSection, AutoCleanNote } from './Automation'; // lane:ui-shell (chunk 3, 0.5 §10)
+import { tankChips } from '../common/tankChips'; // lane:automation (chunk 5)
+import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5, AUTO-041)
 
 type TabId = TankCardTabId;
 
@@ -646,6 +650,7 @@ export function TankCard() {
         {/* back-of-house tanks are skipped by visitors (sim/facility/visitors.ts onDisplay), as the Visitors panel says */}
         {(tank.purpose ?? 'display') !== 'display' && <Badge tone="violet">{titleCase(tank.purpose)}</Badge>}
         {(tank.purpose ?? 'display') !== 'display' && <Badge title="Back of house — not shown to visitors">Off display</Badge>}
+        {game && <HeaderChips game={game} tank={tank} />}
       </div>
       {tank.cache.status !== 'good' && game && (
         <div className={clsx('ag-thead__reason', `is-${tank.cache.status}`)} data-testid="tank-status-reason">
@@ -658,6 +663,12 @@ export function TankCard() {
         </div>
       )}
       {game && <TankKeeperLine game={game} tank={tank} /> /* lane:staff */}
+      {/* lane:ui-shell (chunk 6, B-196) — rearrange the room: the placement ghost, on this tank */}
+      {game && !game.isShowcase && (
+        <Button size="sm" variant="ghost" className="ag-thead__move" data-testid="tank-move" onClick={() => startTankMove(tank.id)}>
+          <Move size={14} aria-hidden /> Move tank
+        </Button>
+      )}
     </div>
   ) : null;
   return (
@@ -698,4 +709,18 @@ export { WATER_CLASS_LABEL };
 /** The Stability meter's word (owner's wording, ADR-0022), on the same bands as its colour: 60+, 30–59, under 30. */
 export function stabilityWord(v: number): string {
   return v >= 60 ? 'Stable' : v >= 30 ? 'Sensitive' : 'Fragile';
+}
+
+/** lane:automation (chunk 5, DESIGN-S3D §8.2; AUTO-041) — the header's Auto-feed and Auto-clean chips (icon plus word). */
+function HeaderChips({ game, tank }: { game: GameState; tank: Tank }) {
+  const chips = tankChips(game, tank).filter((c) => c.id === 'auto-feed' || c.id === 'auto-clean');
+  return (
+    <>
+      {chips.map((c) => (
+        <Badge key={c.key} tone={c.tone === 'aqua' ? 'aqua' : c.tone === 'watch' ? 'watch' : 'neutral'}>
+          {CHIP_ICON[c.id]} <span data-testid={`tank-chip-${c.id}`}>{c.word}</span>
+        </Badge>
+      ))}
+    </>
+  );
 }

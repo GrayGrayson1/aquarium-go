@@ -18,7 +18,7 @@ import {
   type Route,
 } from '@/ui/nav/routes';
 
-/** One canonical address per §6.2 row (Social and Production included: they parse now, their screens come later). */
+/** One canonical address per §6.2 row (Social included: it parses now, its screens come later), and DESIGN-S3D §6's lines. */
 const CANONICAL = [
   '#/',
   '#/tanks',
@@ -30,6 +30,8 @@ const CANONICAL = [
   '#/livestock/eggs',
   '#/livestock/past',
   '#/livestock/production',
+  '#/livestock/production/cambodian',
+  '#/livestock/production/new',
   '#/livestock/animal/cr_9fq',
   '#/shop',
   '#/shop?prismatic=1',
@@ -95,12 +97,16 @@ describe('nav routes: §6.2 round trip', () => {
     expect(r('#/livestock/eggs')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'young' });
     expect(r('#/livestock/past')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'past' });
     expect(r('#/livestock/animal/cr_9fq')).toEqual({ kind: 'creature', creatureId: 'cr_9fq' });
+    // lane:production (chunk 4; DESIGN-S3D §6): one line, and setting up another
+    expect(r('#/livestock/production/royal')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:royal' });
+    expect(r('#/livestock/production/new')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:new' });
     expect(r('#/shop/fish/offer_k3x9')).toEqual({ kind: 'panel', panel: 'market', tab: 'shop', target: 'offer:offer_k3x9' });
     expect(r('#/market/supplies/flakes')).toEqual({ kind: 'panel', panel: 'market', tab: 'supplies', target: 'food:flakes' });
     expect(r('#/market/listings/listing_7mm')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'listing:listing_7mm' });
     expect(r('#/encyclopedia/betta')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'species', target: 'species:betta' });
     expect(r('#/encyclopedia/science/nitrogen_cycle')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'science', target: 'science:nitrogen_cycle' });
-    expect(r('#/social/join/HIGHLAND-4821')).toEqual({ kind: 'panel', panel: 'social', tab: 'overview', target: 'join:HIGHLAND-4821' });
+    // chunk 6: an invite highlights Clubs, as the approved screen phone-join does (§6.2 names no tab for it)
+    expect(r('#/social/join/HIGHLAND-4821')).toEqual({ kind: 'panel', panel: 'social', tab: 'clubs', target: 'join:HIGHLAND-4821' });
     expect(r('#/settings')).toEqual({ kind: 'settings', tab: 'general' });
     expect(r('#/more')).toEqual({ kind: 'more' });
     expect(r('#/log')).toEqual({ kind: 'panel', panel: 'log' });
@@ -203,6 +209,7 @@ describe('nav routes: what the router sends to a panel (B-115)', () => {
     expect(routeForPanelTarget('market', 'listing:l1')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'listing:l1' });
     expect(routeForPanelTarget('market', 'list:creature:c1')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings' });
     expect(routeForPanelTarget('livestock', 'clutches')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'young' });
+    expect(routeForPanelTarget('livestock', 'line:golden')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:golden' });
     expect(routeForPanelTarget('build', 'decor-cat:plant')).toEqual({ kind: 'panel', panel: 'build', tab: 'decor' });
     expect(routeForPanelTarget('shows', 'result:e1')).toEqual({ kind: 'panel', panel: 'shows', tab: 'results' });
     expect(routeForPanelTarget('visitors', 'tab:staff')).toEqual({ kind: 'panel', panel: 'visitors', tab: 'staff' });
@@ -248,5 +255,43 @@ describe('nav routes: the loading card pill (§16)', () => {
     expect(routeLabel(parseRoute('#/shop/fish/o1')!.route, names)).toBe('Market › Prismatic betta');
     expect(routeLabel(parseRoute('#/livestock/animal/c1')!.route, names)).toBe('Livestock › Bubbles');
     expect(routeLabel(parseRoute('#/tanks/t1')!.route)).toBe('Tank card › Water');
+  });
+});
+
+describe('NAV-022: DESIGN-S3D §6’s routes (chunk 5)', () => {
+  const rows: [string, Route][] = [
+    ['#/operations', { kind: 'panel', panel: 'operations', tab: 'overview' }],
+    ['#/operations/water', { kind: 'panel', panel: 'operations', tab: 'water' }],
+    ['#/operations/feed', { kind: 'panel', panel: 'operations', tab: 'feed' }],
+    ['#/operations/lines', { kind: 'panel', panel: 'operations', tab: 'lines' }],
+    ['#/operations/map', { kind: 'panel', panel: 'operations', tab: 'map' }],
+    ['#/operations/map?layer=water', { kind: 'panel', panel: 'operations', tab: 'map', target: 'layer:water' }],
+    ['#/operations/map?layer=animals', { kind: 'panel', panel: 'operations', tab: 'map', target: 'layer:animals' }],
+    ['#/operations/issues', { kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:issues' }],
+    ['#/operations/manual', { kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:manual' }],
+    ['#/build/facility/water', { kind: 'panel', panel: 'build', tab: 'facility', target: 'room:water' }],
+    ['#/build/facility/food', { kind: 'panel', panel: 'build', tab: 'facility', target: 'room:food' }],
+    ['#/market/supplies/salt', { kind: 'panel', panel: 'market', tab: 'supplies', target: 'food:salt' }],
+    ['#/market/supplies/brine_shrimp_eggs', { kind: 'panel', panel: 'market', tab: 'supplies', target: 'food:brine_shrimp_eggs' }],
+  ];
+  it('each row parses to its target and formats back to itself', () => {
+    for (const [h, route] of rows) {
+      expect(parseRoute(h)?.route, h).toEqual(route);
+      expect(formatRoute(route), h).toBe(h);
+    }
+  });
+  it('Problems and Manual mode highlight Overview; an unknown tab or layer opens Overview or All', () => {
+    expect(normalizeRoute(parseRoute('#/operations/issues')!.route)).toMatchObject({ tab: 'overview' });
+    expect(parseRoute('#/operations/foo')?.route).toEqual({ kind: 'panel', panel: 'operations', tab: 'overview' });
+    expect(parseRoute('#/operations/map?layer=nope')?.route).toEqual({ kind: 'panel', panel: 'operations', tab: 'map' });
+    expect(parseRoute('#/build/facility/garage')?.route).toEqual({ kind: 'panel', panel: 'build', tab: 'facility' });
+  });
+  it('the router’s commands map back to the same addresses, and the loading card names them', () => {
+    expect(routeForPanelTarget('operations', 'view:issues')).toEqual(rows[7][1]);
+    expect(routeForPanelTarget('operations', 'layer:water')).toEqual(rows[5][1]);
+    expect(routeForPanelTarget('build', 'room:food')).toEqual(rows[10][1]);
+    expect(routeLabel(rows[1][1])).toBe('Operations › Water');
+    expect(routeLabel(rows[7][1])).toBe('Operations › Problems');
+    expect(routeLabel(rows[9][1])).toBe('Build › Water room');
   });
 });

@@ -200,6 +200,6 @@ export const cometGoldfish: SpeciesDefinition = {
     { other: 'tag:shrimp_fry', verdictFloor: 'high_risk', reason: 'Baby shrimp are at extreme predation risk around goldfish, even where adult shrimp survive.', incidentRisk: 0.8, mitigatedBy: ['cover'] },
     { other: 'fancy_goldfish', verdictFloor: 'conditional', reason: 'Fast comets outcompete slow fancy goldfish at feeding and can outgrow them; keep single-tails and fancies apart.', incidentRisk: 0.05, mitigatedBy: ['target_feeding', 'tank_size'] },
   ],
-  special: { coolWater: true, heavyWaste: true, outgrowsSmallTanks: true },
+  special: { coolWater: true, heavyWaste: true, outgrowsSmallTanks: true, swimBladderProne: true },
   visualLane: 'fish',
 };

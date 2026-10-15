@@ -192,7 +192,7 @@
   font-size: 13px;
 }
 .pn-catalog__row.is-unknown {
-  color: rgba(210, 236, 242, 0.55);
+  color: var(--c-ink-3); /* chunk 6 (ACC-005): a literal High contrast couldn't lift (4.2:1) */
 }
 .pn-catalog__label {
   flex: 1;

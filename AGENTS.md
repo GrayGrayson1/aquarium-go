@@ -12,7 +12,8 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 | Every open owner question, grouped by what it unblocks | `docs/agent/OWNER_QUESTIONS.md` |
 | The next session's order of work and practical tips | `docs/agent/SESSION_HANDOFF.md` |
 | Approved 0.5 design (load only the sections your chunk needs) | `docs/agent/design/AQUARIUM_GO_0_5_DESIGN_SPEC.md` |
-| S3-D design (not approved yet) and its intake note | `docs/agent/design/DESIGN-S3D/` (`SPEC.md`, `INTAKE.md`, `screens/`) |
+| The approved 0.5 screens (PNG), what each shows and the later decisions that change them | `docs/agent/design/DESIGN-0.5/` (`SOURCE.md`, `screens/`) |
+| S3-D design (approved 2026-10-11, ADR-0027) and its intake note | `docs/agent/design/DESIGN-S3D/` (`SPEC.md`, `INTAKE.md`, `screens/`) |
 | Requirements checklist (ids, acceptance criteria, status) | `docs/agent/REQUIREMENTS.json` |
 | Known issues and deferred work | `docs/agent/BACKLOG.md`, `docs/KNOWN_LIMITATIONS.md` |
 | Owner decisions and design ADRs | `docs/agent/decisions/` |
@@ -44,9 +45,9 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
   before and after and explain each changed expectation; never retune data to hide the shift.
 - **The store boundary.** Game state changes only through `useGame.mutate` (player actions from the UI, the render
   layer's input handlers and the AI's tutorial hook), `mutateFast` (the game loop, the hidden-tab catch-up, the flush
-  before a save, dev commands) and `setGame` (replacing the whole world). The render frame loop never writes game
-  state. A new top-level `src/` folder is a new layer: add it to the layer table in `docs/ARCHITECTURE.md` and in
-  `tests/sim/core-architecture-boundaries.test.ts` on purpose.
+  before a save or a manual-mode change, dev commands) and `setGame` (replacing the whole world). The render frame
+  loop never writes game state. A new top-level `src/` folder is a new layer: add it to the layer table in
+  `docs/ARCHITECTURE.md` and in `tests/sim/core-architecture-boundaries.test.ts` on purpose.
 - **Saves.** New save fields are optional and validated in `repairState` when present; an absent field leaves
   `stateHash` unchanged. Adding a species or a tank size bumps `SCHEMA_VERSION` (ADR-0016). A save written by a newer
   build must never be treated as damaged, loaded past or overwritten (PERSIST-014, chunk 1, finishes this). Old saves

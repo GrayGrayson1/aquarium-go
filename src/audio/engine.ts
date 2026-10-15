@@ -299,11 +299,19 @@ export const volumeCurve = (v: number) => {
   return x * x;
 };
 
+/**
+ * chunk 6 — a browser driven by automation (Playwright's e2e runs: `navigator.webdriver`) plays no sound, as if muted.
+ * Chromium runs muted already; WebKit, which has no mute switch, played the game out loud on the owner's Mac. Players'
+ * browsers never set the flag; the Sound settings stay as the player left them.
+ */
+const AUTOMATED = typeof navigator !== 'undefined' && navigator.webdriver === true;
+const isMuted = (s: Settings) => s.muted || AUTOMATED;
+
 let lastVolumes = '';
 export function applySettings(s: Settings, immediate = false): void {
   const e = engine;
   if (!e) return;
-  const key = `${gestureSeen}|${s.muted}|${s.volume.master}|${s.volume.music}|${s.volume.aquarium}|${s.volume.ui}`;
+  const key = `${gestureSeen}|${isMuted(s)}|${s.volume.master}|${s.volume.music}|${s.volume.aquarium}|${s.volume.ui}`;
   if (key === lastVolumes && !immediate) return;
   lastVolumes = key;
   const t = e.ctx.currentTime;
@@ -313,7 +321,7 @@ export function applySettings(s: Settings, immediate = false): void {
     p.setValueAtTime(p.value, t);
     p.setTargetAtTime(v, t, tau);
   };
-  set(e.masterVol.gain, s.muted || !gestureSeen ? 0 : volumeCurve(s.volume.master));
+  set(e.masterVol.gain, isMuted(s) || !gestureSeen ? 0 : volumeCurve(s.volume.master));
   set(e.musicBus.gain, volumeCurve(s.volume.music));
   set(e.aquariumBus.gain, volumeCurve(s.volume.aquarium));
   set(e.uiBus.gain, volumeCurve(s.volume.ui));
@@ -323,7 +331,7 @@ export function applySettings(s: Settings, immediate = false): void {
 /** Is a bus audible at all (skip creating voices otherwise). */
 export function busAudible(bus: 'music' | 'aquarium' | 'ui'): boolean {
   const s = useSettings.getState();
-  if (s.muted || s.volume.master <= 0.001) return false;
+  if (isMuted(s) || s.volume.master <= 0.001) return false;
   return s.volume[bus] > 0.001;
 }
 
@@ -337,7 +345,7 @@ export function setKeepAlive(reason: string, on: boolean): void {
 function updateMuteSuspend(s: Settings): void {
   const e = engine;
   if (!e) return;
-  const silent = s.muted || s.volume.master <= 0.001;
+  const silent = isMuted(s) || s.volume.master <= 0.001;
   if (muteSuspendTimer) {
     clearTimeout(muteSuspendTimer);
     muteSuspendTimer = null;

@@ -26,12 +26,12 @@ import {
   type LucideProps,
 } from 'lucide-react';
 import type { GameState, LightPreset } from '@/types';
-import { useGame } from '@/state/game';
+import { useGame, useGameSelector } from '@/state/game';
 import { useUI, type CameraMode, type ToolId } from '@/state/ui';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx } from '@/audio/sfx';
 import { getSpecies, findSpecies } from '@/data/species';
-import { getFoodDef } from '@/data/catalog/foods';
+import { eatsFood, getFoodDef } from '@/data/catalog/foods';
 import { getDecorDef, isEpiphyte, isFloating } from '@/data/catalog/decor';
 import { creaturesInTank } from '@/sim/life';
 import { setLighting, feedTank } from '@/sim/care';
@@ -101,7 +101,7 @@ export function foodOptions(g: GameState, tankId: string | null): FoodOption[] {
           const sp = findSpecies(c.speciesId);
           if (!sp) return false;
           if (!tags.length) return true; // unknown food data: assume edible
-          return tags.some((t) => sp.foods.includes(t));
+          return eatsFood(sp, { tags });
         })
         .map((c) => c.name);
       // lane:qa-play — larvae / fry growing here count as eaters too ("Eaten by the fry")
@@ -128,8 +128,11 @@ function FoodPicker({ mode }: { mode: 'feed' | 'target_feed' }) {
   const game = useGame((s) => s.game);
   const tankId = useUI((s) => s.focusedTankId);
   const feedFoodId = useUI((s) => s.feedFoodId);
-  const opts = useMemo(() => (game ? foodOptions(game, tankId) : []), [game?.inventory.foods, tankId, game?.tankOrder, game?.progress?.tutorial?.step]); // eslint-disable-line react-hooks/exhaustive-deps
-  const alert = useMemo(() => (game && tankId ? safe('tankFoodAlert', () => tankFoodAlert(game, tankId), null) : null), [game?.inventory.foods, tankId, game?.tankOrder]); // eslint-disable-line react-hooks/exhaustive-deps
+  // lane:ui-shell (chunk 6, B-197) — who lives here (and their life stages) is part of the answer: an arrival or a fry
+  // growing up while the picker is open used to leave its "eaten by" lines stale
+  const residents = useGameSelector((g) => (tankId ? safe('creaturesInTank', () => creaturesInTank(g, tankId), []).map((c) => `${c.id}:${c.speciesId}:${c.lifeStage}`).join('|') : ''), '');
+  const opts = useMemo(() => (game ? foodOptions(game, tankId) : []), [game?.inventory.foods, tankId, game?.tankOrder, game?.progress?.tutorial?.step, residents, game?.clutches]); // eslint-disable-line react-hooks/exhaustive-deps
+  const alert = useMemo(() => (game && tankId ? safe('tankFoodAlert', () => tankFoodAlert(game, tankId), null) : null), [game?.inventory.foods, tankId, game?.tankOrder, residents]); // eslint-disable-line react-hooks/exhaustive-deps
   // lane:qa-play — fry / larvae in this tank with nothing they can eat in the cupboard
   const youngNeed = useMemo(() => (game && tankId ? safe('youngFoodNeed', () => youngFoodNeed(game, tankId), null) : null), [game?.inventory.foods, game?.clutches, tankId]); // eslint-disable-line react-hooks/exhaustive-deps
   const youngOut = !alert && youngNeed?.text ? youngNeed : null;
@@ -540,7 +543,7 @@ export function CameraChips() {
       {CAMERA_MODES.map((m) => {
         const I = m.icon;
         return (
-          <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} title={m.title} className="ag-camchip" data-testid={`camera-${m.id}`} onClick={() => setCameraMode(m.id)}>
+          <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} aria-label={m.label} title={m.title} className="ag-camchip" data-testid={`camera-${m.id}`} onClick={() => setCameraMode(m.id)}>
             <I size={15} aria-hidden />
             <span>{m.label}</span>
           </button>
@@ -587,7 +590,7 @@ export function ToolHint() {
     return c && c.tankId === useUI.getState().focusedTankId && (c.status === 'alive' || c.status === 'listed') ? c : null;
   });
   useUI((s) => s.selectedCreatureId); // re-render when the selection changes
-  const panelTarget = useUI((s) => s.panelTarget);
+  const movingTankId = useUI((s) => s.movingTankId); // lane:ui-shell (chunk 6, B-196)
   const fine = useMedia('(hover: hover) and (pointer: fine)');
   const Click = fine ? 'Click' : 'Tap';
   let text: ReactNode = null;
@@ -618,7 +621,7 @@ export function ToolHint() {
   else if (tool === 'decor_move') text = <>Drag a piece to move it{fine ? ' · R rotates while held' : ''}</>;
   // touch previews on the first tap and buys on the second (PlacementGhost resolveFloorTap); a mouse click places
   else if (tool === 'tank_place') {
-    const moving = panelTarget?.startsWith('move:'); // PlacementGhost: tank_place + 'move:<id>'
+    const moving = !!movingTankId; // PlacementGhost: tank_place + ui.movingTankId (chunk 6, B-196)
     text = fine
       ? <>Click a free spot on the floor to {moving ? 'move the tank there' : 'place your new tank'} · R rotates</>
       : <>Tap a spot to preview {moving ? 'the tank there' : 'your new tank'}, then tap it again (or {moving ? 'Move here' : 'Place here'}) to {moving ? 'move it' : 'buy it'}</>;

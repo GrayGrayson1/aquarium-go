@@ -30,3 +30,10 @@
 
 /* Alerts drawer: the auto-feed-paused row's "Fix" (0.5 §10.2) */
 .ag-alert-row__fix { flex: none; font-size: calc(12px * var(--text-scale)); font-weight: 650; color: var(--c-aqua); }
+
+/* lane:core (chunk 6; B-002, ADR-0029 decision 1) — the banner when the simulation keeps failing: solid, above the HUD
+   and panels, below modals; centred under the top bar */
+.ag-simfail { position: fixed; z-index: calc(var(--z-toast) + 1); top: calc(var(--edge-t) + var(--topbar-h) + 10px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; width: min(620px, calc(100vw - var(--edge-l) - var(--edge-r))); padding: 12px 14px; border-radius: var(--r-lg); background: var(--c-glass-strong); border: 1px solid var(--c-danger); box-shadow: var(--shadow-2); color: var(--c-ink); font-size: calc(14px * var(--text-scale)); line-height: 1.4; }
+.ag-simfail__icon { flex: none; color: var(--c-danger); }
+.ag-simfail__text { flex: 1 1 260px; min-width: 0; font-weight: 600; }
+.ag-simfail__actions { display: flex; gap: 8px; margin-left: auto; }

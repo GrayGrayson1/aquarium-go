@@ -117,6 +117,7 @@ describe('ADR-0019 decision 4: links to things that no longer exist, and a newer
     expect(NOT_FOUND.creature).toMatchObject({ title: 'That animal isn’t in your aquarium', detail: 'Showing your livestock instead.' });
     expect(NOT_FOUND.listing).toMatchObject({ title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' });
     expect(NOT_FOUND.species).toMatchObject({ title: 'There’s no page for that species', detail: 'Showing every species instead.' });
+    expect(NOT_FOUND.line).toMatchObject({ title: 'This line isn’t here any more', detail: 'See your lines' }); // ADR-0026 decision 9
     expect(tooNewMessage(2)).toMatch(/newer version of Aquarium Go .* Refresh the page to get the latest version\.$/);
   });
 });
@@ -247,5 +248,22 @@ describe('§16 Notifications (DES-009; ADR-0022 decision 4)', () => {
     expect(html(createElement(AlertsPopover))).not.toContain('alerts-notify-cta');
     useGame.getState().setGame(null);
     Object.assign(useGame.getInitialState(), { game: null });
+  });
+});
+
+// chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8): the design's list without Social (dev-only), with
+// chunks 3 to 5's additions
+describe('§16 Settings › About: What’s new in 0.5', () => {
+  it('lists the 0.5 features, one line each', async () => {
+    const { WHATS_NEW_05 } = await import('@/ui/settings/SettingsPanel');
+    expect([...WHATS_NEW_05]).toEqual([
+      'Links to every screen, and a tab bar on phones',
+      'Shop filters: Prismatic only and Rare genes',
+      'New betta genes: Cambodian and Metallic',
+      'Auto-feed and Auto-clean on the tank card',
+      'Notifications while the game is open',
+      'Production lines in Livestock',
+      'Operations: the Water room and the Live food room',
+    ]);
   });
 });

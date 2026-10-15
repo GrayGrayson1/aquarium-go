@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
-import { Pause, Play, FastForward, ChevronsRight, Star, Bell, Sun, Moon } from 'lucide-react';
+import { Pause, Play, FastForward, ChevronsRight, Star, Bell, Sun, Moon, Settings, Hand } from 'lucide-react';
 import { useGame, useGameSelector } from '@/state/game';
 import { useSettings } from '@/state/settings';
 import type { GameSpeed } from '@/types';
@@ -17,6 +17,12 @@ import { AlertsPopover, useAlertCount } from './AlertsPopover';
 import { AttnDot } from './AttnDot'; // lane:notify
 import { unreadNews } from '../common/notify'; // lane:notify
 import { DevToggle } from '../dev/DevToggle'; // lane:perf — keeps DevPanel out of the main chunk
+import { useUI } from '@/state/ui'; // lane:automation (chunk 5)
+import { manualModeOn } from '@/sim/automation/hold'; // lane:automation (chunk 5)
+import { openPanel } from './Dock'; // lane:automation (chunk 5)
+import { go } from '../nav/router'; // lane:automation (chunk 5)
+import '../styles/operations-hud.css'; // lane:automation (chunk 5)
+import { opsDot } from '../common/ops'; // lane:automation (chunk 5)
 
 export function setSpeed(s: GameSpeed) {
   const g = useGame.getState().game;
@@ -121,11 +127,26 @@ function MoneyPill({ compact }: { compact?: boolean }) {
   );
 }
 
+/** lane:automation (chunk 5, DESIGN-S3D §5.5) — manual mode is on (from the Operations Desk). */
+const useManual = () => useGameSelector((g) => g.progress.unlocked.includes('operations_desk') && manualModeOn(g), false);
+const openManual = () => go({ kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:manual' });
+
 function ClockPill({ compact }: { compact?: boolean }) {
   const hour = useGameSelector((g) => g.clock.hour, 0);
   const shop = useGameSelector((g) => g.shopName, '');
+  const manual = useManual();
   const h = hourOfDay(hour);
   const night = h < 6.5 || h >= 20;
+  // lane:automation (chunk 5, AUTO-042) — phones turn the time pill amber with the Hand icon; it opens Manual mode
+  if (compact && manual)
+    return (
+      <button type="button" className="ag-hudpill ag-clock-pill is-manual" data-testid="hud-manual-mode" aria-label="Manual mode is on. Open it" onClick={openManual}>
+        <div className="ag-clock-pill__time" data-testid="hud-clock">
+          <Hand size={13} aria-hidden className="ag-clock-pill__icon" />
+          <span className="ag-tabular">{formatClock(hour)}</span>
+        </div>
+      </button>
+    );
   return (
     <div className="ag-hudpill ag-clock-pill">
       {!compact && <div className="ag-clock-pill__shop" title={shop}>{shop}</div>}
@@ -173,7 +194,15 @@ function ReputationPill() {
 }
 
 function AlertsButton() {
-  const count = useAlertCount();
+  const tanks = useAlertCount();
+  // lane:automation (chunk 5, DESIGN-S3D §5.4) — Problems join the bell: red when anything needs you, amber when worth
+  // a look or manual mode is on
+  const opsKey = useGameSelector((g) => {
+    const d = opsDot(g);
+    return d ? `${d.level}|${d.label}` : '';
+  }, '');
+  const [ops, opsLabel] = opsKey.split('|');
+  const count = { ...tanks, danger: tanks.danger + (ops === 'danger' ? 1 : 0), watch: tanks.watch + (ops === 'watch' ? 1 : 0), total: tanks.total + (ops ? 1 : 0) };
   const open = useShell((s) => s.popover === 'alerts');
   // lane:notify — the number is unread news (toasted events and every warning since the last read / clear); its colour
   // is the worst of the tanks and that news. Tanks needing a look with nothing unread: a plain amber / red dot. The
@@ -185,7 +214,7 @@ function AlertsButton() {
   const [nStr, newsWorst] = newsKey.split(':');
   const news = Number(nStr) || 0;
   const tone = count.danger > 0 || newsWorst === 'danger' ? 'danger' : count.watch > 0 || newsWorst === 'watch' ? 'watch' : 'news';
-  const tanksText = count.total ? `${count.total} tank${count.total === 1 ? ' needs' : 's need'} attention` : '';
+  const tanksText = [tanks.total ? `${tanks.total} tank${tanks.total === 1 ? ' needs' : 's need'} attention` : '', ops ? `Automation: ${opsLabel}` : ''].filter(Boolean).join(' · ');
   const newsText = news ? `${news} unread event${news === 1 ? '' : 's'}` : '';
   const summary = [tanksText, newsText].filter(Boolean).join(' · ');
   return (
@@ -217,11 +246,37 @@ function AlertsButton() {
   );
 }
 
+/** lane:automation (chunk 5, DESIGN-S3D §5.5) — desktop: the amber "Manual mode" pill beside the clock. */
+function ManualPill() {
+  const manual = useManual();
+  if (!manual) return null;
+  return (
+    <button type="button" className="ag-hudpill ag-manual-pill" data-testid="hud-manual-mode" aria-label="Manual mode is on. Open it" onClick={openManual}>
+      <Hand size={16} aria-hidden />
+      <span>Manual mode</span>
+    </button>
+  );
+}
+
+/**
+ * lane:automation (chunk 5, DESIGN-S3D §5.1, ADR-0026 decision 1; NAV-020) — Settings left the dock for this gear (every
+ * build): between the money and the bell, pressed while Settings is open. Phones reach Settings from More.
+ */
+function SettingsGear() {
+  const open = useUI((s) => s.panel === 'settings');
+  return (
+    <button type="button" className="ag-hudpill ag-hud-gear" data-testid="hud-settings" aria-label="Settings" aria-pressed={open} title="Settings" onClick={() => openPanel('settings')}>
+      <Settings size={18} aria-hidden />
+    </button>
+  );
+}
+
 export function TopBar({ compact }: { compact?: boolean }) {
   return (
     <div className="ag-topbar">
       <div className="ag-topbar__left">
         <ClockPill compact={compact} />
+        {!compact && <ManualPill />}
       </div>
       <div className="ag-topbar__center">
         <SpeedControls />
@@ -230,6 +285,7 @@ export function TopBar({ compact }: { compact?: boolean }) {
         <DevToggle />
         {!compact && <ReputationPill />}
         <MoneyPill compact={compact} />
+        {!compact && <SettingsGear />}
         <AlertsButton />
       </div>
     </div>

@@ -85,8 +85,8 @@ for now" ("Record group A, do the 0.5.1 release if you said so, and leave B–E 
 ## Consequences
 
 - The 0.5.1 release runs in the same session (PLAN.md "Releases" records it).
-- The WebKit project needs Playwright's WebKit browser downloaded into `~/LocalTest/playwright` (the internal disk,
-  which is nearly full: check the free space first; no new npm package). PLAN.md puts it in chunk 6's hardening, where
+- The WebKit project needs Playwright's WebKit browser downloaded into `~/LocalTest/playwright` (the internal disk:
+  check the free space first; no new npm package). PLAN.md puts it in chunk 6's hardening, where
   REL-013's repeated full runs include it; a WebKit-only failure found then is fixed, never skipped.
 - AUTO-016 A1 reads with the tolerances above for water values; production lines (chunk 4) and the S3-D chains
   (chunk 5) state their own tolerances the same way (INTAKE C-45's reserve gallons within 0.01 gal).

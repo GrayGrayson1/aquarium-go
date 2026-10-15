@@ -3,7 +3,7 @@
  * Every command is safe to call with no game running (it no-ops) and goes through `mutate`.
  */
 import { useSeenStock } from '@/ui/panels/market/seenStock'; // lane:notify (chunk 2)
-import type { GameState, WaterState, ShopOffer, Creature, WaterClass, GameSpeed } from '@/types';
+import type { GameState, WaterState, ShopOffer, Creature, WaterClass, GameSpeed, StaffRole } from '@/types';
 import { mutateGame, getGame, useGame } from '@/state/game';
 import { useUI, type ViewMode } from '@/state/ui';
 import { advanceWorld, flushSimDebt } from '@/sim/world';
@@ -16,6 +16,7 @@ import { devAgeCreature, devForceBreeding } from '@/sim/life/actions';
 import { environmentGate } from '@/sim/compat';
 import { earn, spend } from '@/sim/economy';
 import { unlock } from '@/sim/facility';
+import { addStaffDirect } from '@/sim/staff'; // lane:automation (chunk 5)
 import { newGame, previewStarters } from '@/sim/newGame';
 import { findSpecies, STARTER_IDS, type StarterId } from '@/data/species';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
@@ -225,6 +226,17 @@ export const dev = {
         newEvents: d.log.filter((e) => !logBefore.has(e.id)).length,
       };
     }) ?? empty;
+  },
+
+  /** lane:automation (chunk 5) — hire someone straight onto the roster (e2e): a stock manager at skill 3 checks at 9 AM and 3 PM. */
+  hireStaff(role: StaffRole = 'stock_manager', name = 'Rosa Duarte', skill = 3): DevResult {
+    return withGame<DevResult>(
+      (d) => {
+        const m = addStaffDirect(d, { name, role, skill, trait: 'quick_learner' });
+        return { ok: true, message: `Hired ${m.name}` };
+      },
+      { ok: false, message: 'No game running' },
+    );
   },
 
   setSpeed(speed: 0 | 1 | 3 | 10) {

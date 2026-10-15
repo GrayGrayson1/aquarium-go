@@ -11,7 +11,7 @@
 | `hud-money` | Money display |
 | `hud-clock` | Day + time display |
 | `hud-speed-<0|1|3|10>` | Speed buttons |
-| `dock-<panelId>` | Bottom dock buttons (tanks, livestock, market, visitors, build, research, finances, encyclopedia, settings) |
+| `dock-<panelId>` | Bottom dock buttons (tanks, livestock, market, visitors, shows, build, operations, research, finances, encyclopedia; Settings is the top bar's gear `hud-settings` since chunk 5) |
 | `view-toggle` | Facility ⇄ tank view toggle |
 | `tank-prev` / `tank-next` | Tank switcher |
 | `tool-feed` / `tool-target-feed` / `tool-tap` / `tool-photo` / `tool-party` / `tool-watch` | Tank tools |
@@ -254,7 +254,7 @@ The four destination tabs keep the dock's ids, so `helpers.openPanel` works on b
 | `dock-more` | Phone More tab (`aria-expanded` while the sheet is open; highlighted while a More destination is open) |
 | `dock-badge-more` | Attention dot on the More tab (a destination inside More has one) |
 | `more-sheet` | Phone More sheet root (`#/more`) |
-| `more-visitors` · `more-shows` · `more-research` · `more-finances` · `more-encyclopedia` | More tiles (a locked one carries `.ag-more__lock`); `more-badge-<id>` is a tile's attention dot |
+| `more-visitors` · `more-shows` · `more-research` · `more-finances` · `more-encyclopedia` | More tiles (a locked one carries `.ag-more__lock`); `more-badge-<id>` is a tile's attention dot; chunk 6 adds `more-social` in dev mode |
 | `more-settings` | More sheet Settings row |
 | `guide-more-bubble` | Phone guide note above the More tab for a step whose target lives in More ("Guide · Research") |
 | `locked-visitors` · `locked-shows` | A locked destination's panel body (0.5 spec §5.7) |
@@ -279,6 +279,7 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 | `#/tanks` | Tanks panel | `panel: 'tanks'` |
 | `#/tanks/:tankId` *`/equipment\|life\|value`* | Tank card on that tank (Water, or the tab) | `focusedTankId`, `tankCardOpen`, `useTankCardTab.want` (URL word `equipment` = tab `gear`) |
 | `#/livestock` *`/eggs\|past\|production`* | Livestock (Animals, Eggs & fry, Past residents; Production from chunk 4) | `tab:animals\|young\|past\|production` |
+| `#/livestock/production/:lineId` · `/new` | One production line; setting up another (chunk 4; an unknown line, or `new` with no free slot, is a broken link) | `line:<lineId>\|new` |
 | `#/livestock/animal/:creatureId` | Creature card | `selectedCreatureId` |
 | `#/shop` *`?prismatic=1&rare=1&env=fits\|freshwater\|marine\|brackish`* | Market › Shop (filters in that order, defaults left out; a bare `#/shop` re-applies the session's filters) | `tab:shop` |
 | `#/shop/fish/:offerId` | Offer detail ("This offer has gone" when it has) | `offer:<id>` |
@@ -293,7 +294,8 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 | `#/encyclopedia` | Species list | `tab:species` |
 | `#/encyclopedia/science` *`/:articleId`* | Aquarium science (an article open) | `tab:science` / `science:<id>` |
 | `#/encyclopedia/:speciesId` | Species page | `species:<id>` |
-| `#/social` *`/clubs\|trading\|friends\|leaderboards`*, `#/social/join/:code` | Parsed only: Social is built in chunk 6, dev-only (ADR-0005 decision 3) | — |
+| `#/social` *`/clubs\|trading\|friends\|leaderboards`* | Social tabs (chunk 6; dev mode only, ADR-0005 decision 3: elsewhere a broken link) | `tab:overview\|clubs\|trading\|friends\|leaderboards` |
+| `#/social/join/:code` | Club invite (Clubs highlighted, as the screen phone-join) | `join:<code>` |
 | `#/settings` *`/play\|saves\|notifications\|about`* | Settings tabs (URL word `play` = tab `display`; Notifications from chunk 3) | `useShell.settingsTab` |
 | `#/more` | Phone More sheet (desktop: the tank view) | `useShell.popover: 'more'` |
 | `#/log` | Full event log | `panel: 'log'` |
@@ -358,3 +360,92 @@ Notification routes are hashes (`#/shop/fish/<offerId>`, `#/tanks/<id>/equipment
 stubbing `window.Notification` and `ServiceWorkerRegistration.prototype.showNotification`, and simulates a tap with a
 `notification-click` message on `navigator.serviceWorker` (tests/e2e/notifications.spec.ts). The `base-path` Playwright
 project runs the production build under `/aquarium-go/` (tests/e2e/base-path.spec.ts).
+
+## 0.5 production lines (chunk 4: lanes production, ui-panels)
+
+0.5 spec §19 as amended by DESIGN-S3D §14 (several lines, DES-008). The switches are `role="switch"`: the line's is
+named "{Line} running", each rule "{Rule} ({Line})". The Livestock tabs are `livestock-tab-<animals\|young\|past\|production>`.
+
+| test id | element |
+|---|---|
+| `livestock-tab-production` | Livestock › Production (`#/livestock/production`) |
+| `production-slots` | The slot caption ("1 of 2 line slots · Specialty Shop") |
+| `production-line-<lineId>` · `production-add-line` | The line picker (a `role="radiogroup"` of `role="radio"`, DESIGN-S3D §13; arrow keys move it); "+ New line" while a slot is free |
+| `production-setup` | The empty state's "Set up a line" |
+| `production-view-<lineId>` | One line's view |
+| `production-toggle` | The header card's switch (the line's `running`) |
+| `production-end-line` · `production-end-confirm` · `production-end-confirm-yes` | "End line"; its confirmation; its "End line" |
+| `production-note` | The amber note while the line waits for room or is paused for a missing parent or tank |
+| `production-add-qt` · `production-add-qt-dialog` · `production-add-qt-seeded` · `production-add-qt-buy` | "Add a quarantine tank · $…"; its dialog, seeded-media switch and "Set up · $…" |
+| `production-week-net` | The This week tile's "$… after food and power" line |
+| `production-route` | The route strip: the line's colour dot, then breed tank › grow-out › quarantine › Market, each with its short tag (a tank holding the line up is amber, with a warning icon and its tag) |
+| `production-stage-<breed\|raise\|sort\|quarantine\|sell>` | The five stage cards (Sort opens the Sort sheet) |
+| `production-sort` · `production-sort-add` | The Sort sheet; "Add a keep rule" |
+| `production-fix-pair` · `production-fix-tank` | "Choose another pair" / "Choose another tank" on a paused line's stage card (and their `…-dialog`s) |
+| `production-rule-<pauseWhenFull\|keepPrismatic\|autoList>` | The three Line rules switches (the line view and set-up step 3) |
+| `production-new-step-<1\|2\|3>` | The set-up stepper (`aria-current="step"` on the current one) |
+| `production-new-pair-<motherId>-<fatherId>` | Step 1's pair rows (`role="radio"`; a line's own pair is disabled, "In a line") |
+| `production-new-tank-<breed\|raise\|quarantine\|keepers>` | Step 2's stage rows (Fits · Shared · Doesn't fit) |
+| `production-new-breed-for` · `production-new-name` | Step 3's "Breed for" and "Line name" fields |
+| `production-new-back` · `production-new-next` · `production-start-line` | The pinned actions |
+
+## S3-D: deep automation (chunk 5: lane automation; DESIGN-S3D §14 as corrected in INTAKE §10.1)
+
+Index-based cone and jar ids, one id for the Operations tools tile, `staff-budget` and `research-<id>` reused (C-53).
+
+| Test id | Element |
+|---|---|
+| `dock-operations` · `dock-badge-operations` | The dock's Operations item (after Build) and its red or amber dot |
+| `hud-settings` | The top bar's Settings gear (`aria-pressed` while Settings is open) |
+| `hud-manual-mode` | Manual mode: the amber "Manual mode" pill (desktop) or the amber time pill (phone); opens `#/operations/manual` |
+| `more-operations` · `more-badge-operations` | The More sheet's first row, and its dot |
+| `room-facility-map` | The room view's "Facility map" chip beside `camera-room-reset` |
+| `panel-operations` · `ops-sub` · `ops-hold-all` | The panel, its sub-line, Hold all (desktop header; the phone Manual mode tile) |
+| `ops-tab-<overview\|water\|feed\|lines\|map>` | The tab strip (Water and Feed from their rooms) |
+| `ops-problems` · `ops-problem-<salt\|eggs\|veg\|live\|fresh\|line>` · `ops-problems-all` · `ops-all-clear` | Overview's Problems (from the Operations Desk), its items, the "All" link, "Everything is running smoothly." |
+| `ops-sys-<water-changes\|water-room\|live-food\|feeding\|lines\|keepers\|manual>` | The Systems tiles (Keepers & stock desktop only; Manual mode phone only) |
+| `ops-week` · `ops-today` · `ops-manual-banner` · `ops-resume-all` | This week, Today (desktop), the manual-mode banner and its Resume all |
+| `ops-assisted` · `ops-early-line` · `ops-ladder` | The early Overview's Assisted care card, its line row, the tier ladder |
+| `ops-early-locked-<water\|food\|lines\|tools>` | The dashed locked tiles (early and before the Desk) |
+| `ops-next-up` · `ops-next-up-research` | "What opens up next" before the Desk, and its Research link |
+| `ops-locked-<water\|feed\|issues\|manual>` | The locked pages (§7.8) |
+| `ops-issues-back` | Problems' back link to Overview |
+| `water-meter-<fresh\|salt\|saltmix>` · `water-buy-salt` · `water-flows` · `water-schedule` · `water-machines` | Operations › Water |
+| `feed-hatchery` · `feed-cone-<n>` · `feed-jars` · `feed-jar-<n>` · `feed-dosers` · `feed-buy-eggs` · `feed-buy-veg` | Operations › Feed (cones and jars numbered from 1) |
+| `line-row-<lineId>` · `line-toggle-<lineId>` · `line-status-<lineId>` · `line-route-<lineId>` · `lines-capacity` · `lines-upcoming` | Operations › Lines |
+| `map-layer-<all\|water\|food\|animals>` · `map-room-<water\|supplies\|food\|breeding\|quarantine\|gallery\|market>` · `map-tank-<tankId>` · `map-details` · `map-room-sheet` · `map-add-qt` · `map-more` | Operations › Map |
+| `issues-<salt\|eggs\|veg\|live\|fresh\|salt_rate\|fresh_rate\|line>` · `issues-<kind>-action` · `issues-buy-salt` · `issues-raise-budget` · `issues-add-qt` · `issues-wait` · `issues-line-why` · `issues-line-decided` · `issues-none` | Problems (`#/operations/issues`) |
+| `manual-banner` · `manual-resume-all` · `manual-hold-all` · `manual-row-<water\|salt\|food\|feeders\|lines>` · `manual-toggle-<…>` · `manual-rosa` · `manual-rosa-toggle` · `manual-still-open` | Manual mode (`#/operations/manual`) |
+| `tank-chip-<auto-feed\|auto-clean\|top-off\|doser\|line>` | Automation chips, inside `tanks-row-<tankId>` and in the tank card's header |
+| `tanks-row-line-<tankId>` | A Tanks row's amber "{Line} paused: …" reason with Why |
+| `tank-auto-feed-held` · `tank-auto-clean-held` · `tank-doser-row` · `tank-doser-buy` · `tank-doser` · `tank-doser-held` | The tank card's held notes and the live-food doser row |
+| `alerts-automation` · `alerts-automation-link` · `alerts-automation-manual` · `alerts-item-<kind>` · `alerts-item-tab-<water\|feed\|lines>` | The alerts drawer's Automation section |
+| `build-your-facility` · `build-facility-room-<water\|food>` · `build-room-<water\|food>` · `build-room-locked-<water\|food>` · `build-room-back` | Build › Facility's card, rooms and room pages |
+| `build-upgrade-prep` · `build-add-reservoir` · `build-add-cone` · `build-add-jar` | The rooms' upgrades and add-ons |
+| `supplies-row-<foodId\|salt\|brine_shrimp_eggs>` · `supplies-salt-buy-<5\|20\|40>` · `supplies-salt-status` · `supplies-buy-eggs` | Market › Supplies rows (one per food; the deep-link targets) and the salt sizes |
+| `staff-budget` · `staff-budget-status` · `staff-orders` | Visitors › Staff: the $1 budget slider, its status line, the orders switch |
+| `production-ops-link` · `livestock-production-dot` | Production's link row to Operations › Lines, and the Production tab's dot |
+| `notify-cat-auto` | Settings › Notifications' Automation category |
+
+## 0.5 Social stub (chunk 6: lane social; 0.5 spec §13, §19)
+
+Social is reachable only in dev mode (ADR-0005 decision 3, SOC-011): a dev build, or a session opened with `?dev=1`.
+Outside it none of these exist, and every `#/social` address is a broken link (`prod-mode.spec`).
+
+| test id | element |
+|---|---|
+| `dock-social` · `dock-badge-social` | Dock item (Globe, between Shows and Build; tutorial id `dock-social`) and its dot: "New" until first opened, "New trades and club news" after |
+| `more-social` · `more-new-social` | Phone More tile (after Shows) and its "New" tag until Social is first opened |
+| `panel-social` · `social-body` | The panel (PanelHost's sheet) and its body |
+| `social-tab-<overview\|clubs\|trading\|friends\|leaderboards>` | Tabs (signed in only; `role="tab"`) |
+| `social-email` · `social-password` · `social-signin` · `social-signup` | Sign-in form (`type=email` / `autocomplete=email`; `type=password` / `autocomplete=current-password`; 16 px) |
+| `social-invite-code` · `social-invite-join` | "Have an invite?" field and Join group |
+| `social-error` | Every Social error (`role="alert"`): the sign-in rule, a bad invite or friend code, the network error |
+| `social-loading` | Skeleton rows while the service answers (`aria-busy`; still under reduced motion) |
+| `social-invite-callout` · `social-join-card` · `social-join-club` · `social-not-now` · `social-invite-member` · `social-invite-expired` | The four invite states (§13.3) |
+| `social-overview` · `social-your-club` · `social-trading-card` · `social-friends-card` · `social-leaderboard` · `social-signout` | Overview's cards (two columns when the desktop panel is maximised) and Sign out |
+| `social-club-<id>` · `social-club-join-<id>` | A club (a member's card, or a suggestion) and a suggestion's Join (→ "Joined") |
+| `social-search` · `social-nomatch` | Clubs search (a pasted invite code opens it with Enter) and its no-match line |
+| `social-trading` · `social-offer-trade` · `social-soon` · `social-soon-close` · `social-trades-empty` | Trading, Offer a trade, the coming-soon note (also behind a trade's View) and its Close; the empty list |
+| `social-friends` · `social-friend-code` · `social-add-friend` · `social-friend-grid` · `social-friends-empty` | Friends: Add friend by code, the snapshot grid (3 columns, 2 on phones), the empty list |
+| `social-leaderboards` · `social-lb-<collection_value\|prismatics\|show_wins>` · `social-lb-me` | Leaderboards: the radio group's options and the player's highlighted row |

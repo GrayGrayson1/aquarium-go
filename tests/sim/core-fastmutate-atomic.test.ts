@@ -170,3 +170,46 @@ describe('PERSIST-009: runTick on a world step that throws', () => {
     expect(backlog).toBeCloseTo(realDt * GAME_HOURS_PER_REAL_SECOND * before.clock.speed, 9);
   });
 });
+
+describe('B-177: no store writes inside a recipe, no private objects out of one', () => {
+  const fresh = (): GameState => newGame({ starterId: 'betta', starterName: 'Atom', seed: 502 });
+
+  it('a store write during a recipe is reported and kept; the recipe’s work is dropped and later calls don’t revert the write', () => {
+    useGame.getState().setGame(fresh());
+    const errors: unknown[] = [];
+    const orig = console.error;
+    console.error = (...a: unknown[]) => void errors.push(a);
+    try {
+      mutateFast((s) => {
+        s.finance.money = 1; // the recipe's own work…
+        useGame.getState().mutate((d) => {
+          d.shopName = 'Written during the recipe';
+        });
+      });
+    } finally {
+      console.error = orig;
+    }
+    expect(errors.length).toBe(1);
+    expect(useGame.getState().game!.shopName).toBe('Written during the recipe');
+    expect(useGame.getState().game!.finance.money).not.toBe(1);
+    // the next calls build on the store, so the write survives them
+    mutateFast((s) => {
+      s.finance.money += 5;
+    });
+    mutateFast(() => undefined);
+    expect(useGame.getState().game!.shopName).toBe('Written during the recipe');
+  });
+
+  it('the catch-up summary’s highlights are copies, not the working copy’s events', async () => {
+    const { simulateOffline } = await import('@/persistence/offline');
+    const g = fresh();
+    g.isShowcase = false;
+    const summary = simulateOffline(g, (12 / GAME_HOURS_PER_REAL_SECOND) * 1000);
+    for (const h of summary.highlights) {
+      expect(g.log.includes(h)).toBe(false);
+      const twin = g.log.find((e) => e.id === h.id);
+      if (twin) twin.text = 'changed afterwards';
+      expect(h.text).not.toBe('changed afterwards');
+    }
+  });
+});

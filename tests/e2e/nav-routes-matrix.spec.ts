@@ -1,6 +1,8 @@
 /**
- * lane:ui-shell (chunk 1; NAV-010, NAV-016; 0.5 spec §6.2, §21 Phase 1 "Done when") — every §6.2 route except
- * Social and Production (chunks 6 and 4) opens the right screen, tab or sub-view, on desktop and on a phone.
+ * lane:ui-shell (chunk 1; NAV-010, NAV-016; 0.5 spec §6.2, §21 Phase 1 "Done when") — every §6.2 route opens the right
+ * screen, tab or sub-view, on desktop and on a phone. Chunk 6 (NAV-019) adds the routes later chunks built: Livestock ›
+ * Production (chunk 4), Settings › Notifications (chunk 3), Operations (DESIGN-S3D §6, chunk 5) and Social (chunk 6, dev
+ * mode: the first Social route signs in, so its tabs show).
  */
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, quickGame, aq, tid, probe } from './helpers';
@@ -27,6 +29,7 @@ const ROUTES: [string, Check][] = [
   ['#/livestock', (p) => expect(selectedTab(p, 'panel-livestock', /Animals/)).toBeVisible()],
   ['#/livestock/eggs', (p) => expect(selectedTab(p, 'panel-livestock', /Eggs & fry/)).toBeVisible()],
   ['#/livestock/past', (p) => expect(selectedTab(p, 'panel-livestock', 'Past residents')).toBeVisible()],
+  ['#/livestock/production', (p) => expect(selectedTab(p, 'panel-livestock', /Production/)).toBeVisible()],
   ['#/livestock/animal/{creature}', (p) => expect(tid(p, 'creature-card')).toBeVisible()],
   ['#/shop', (p) => expect(selectedTab(p, 'panel-market', 'Shop')).toBeVisible()],
   ['#/shop?env=marine', (p) => expect(tid(p, 'panel-market').getByRole('button', { name: 'Marine', pressed: true })).toBeVisible()],
@@ -57,6 +60,7 @@ const ROUTES: [string, Check][] = [
   ['#/settings', (p) => expect(tid(p, 'settings-tab-general')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/play', (p) => expect(tid(p, 'settings-tab-display')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/saves', (p) => expect(tid(p, 'settings-tab-saves')).toHaveAttribute('aria-selected', 'true')],
+  ['#/settings/notifications', (p) => expect(tid(p, 'settings-tab-notifications')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/about', (p) => expect(tid(p, 'settings-tab-about')).toHaveAttribute('aria-selected', 'true')],
   [
     '#/more',
@@ -66,6 +70,26 @@ const ROUTES: [string, Check][] = [
     },
   ],
   ['#/log', (p) => expect(tid(p, 'panel-log')).toBeVisible()],
+  ['#/operations', (p) => expect(tid(p, 'ops-tab-overview')).toHaveAttribute('aria-selected', 'true')],
+  ['#/operations/lines', (p) => expect(tid(p, 'ops-tab-lines')).toHaveAttribute('aria-selected', 'true')],
+  ['#/operations/map', (p) => expect(tid(p, 'ops-tab-map')).toHaveAttribute('aria-selected', 'true')],
+  [
+    '#/social',
+    async (p) => {
+      await expect(tid(p, 'panel-social')).toBeVisible();
+      // signed out: the sign-in form and no tabs; sign in once, for the tab routes below
+      await expect(tid(p, 'panel-social').getByRole('tablist')).toHaveCount(0);
+      await tid(p, 'social-email').fill('you@example.com');
+      await tid(p, 'social-password').fill('password1');
+      await tid(p, 'social-signin').click();
+      await expect(tid(p, 'social-tab-overview')).toHaveAttribute('aria-selected', 'true');
+    },
+  ],
+  ['#/social/clubs', (p) => expect(tid(p, 'social-tab-clubs')).toHaveAttribute('aria-selected', 'true')],
+  ['#/social/trading', (p) => expect(tid(p, 'social-tab-trading')).toHaveAttribute('aria-selected', 'true')],
+  ['#/social/friends', (p) => expect(tid(p, 'social-tab-friends')).toHaveAttribute('aria-selected', 'true')],
+  ['#/social/leaderboards', (p) => expect(tid(p, 'social-tab-leaderboards')).toHaveAttribute('aria-selected', 'true')],
+  ['#/social/join/HIGHLAND-4821', (p) => expect(tid(p, 'social-join-card')).toBeVisible()],
 ];
 
 async function routeGame(page: Page): Promise<Ids> {
@@ -76,8 +100,8 @@ async function routeGame(page: Page): Promise<Ids> {
   return probe<Ids>(page, `({ tank: g.tankOrder[0], creature: Object.values(g.creatures).find(c => c.isStarter).id, offer: g.market.stock[g.market.stock.length - 1].id })`);
 }
 
-async function walk(page: Page, ids: Ids, phone: boolean) {
-  for (const [route, check] of ROUTES) {
+async function walk(page: Page, ids: Ids, phone: boolean, routes: [string, Check][]) {
+  for (const [route, check] of routes) {
     const h = route.replace('{tank}', ids.tank).replace('{creature}', ids.creature).replace('{offer}', ids.offer);
     await goHash(page, '#/');
     await goHash(page, h);
@@ -85,17 +109,36 @@ async function walk(page: Page, ids: Ids, phone: boolean) {
   }
 }
 
+/**
+ * chunk 6 (NAV-019) — the walk in parts, each on a fresh page: WebKit ignores a page's hash changes after about 200 in
+ * quick succession (measured: the 201st is dropped), and one walk of every route makes more (two per route, plus the
+ * router's own writes). The Social routes stay together (the first signs in).
+ */
+const PARTS: [string, [string, Check][]][] = [
+  ['tanks to build', ROUTES.slice(0, ROUTES.findIndex(([r]) => r === '#/visitors'))],
+  ['visitors to log', ROUTES.slice(ROUTES.findIndex(([r]) => r === '#/visitors'), ROUTES.findIndex(([r]) => r === '#/operations'))],
+  ['operations and social', ROUTES.slice(ROUTES.findIndex(([r]) => r === '#/operations'))],
+];
+
 test.describe('every §6.2 route opens its screen', () => {
-  test('desktop 1440×900', async ({ page }) => {
-    test.setTimeout(240_000);
-    await walk(page, await routeGame(page), false);
+  test('the parts cover every route once', () => {
+    expect(PARTS.flatMap(([, r]) => r)).toEqual(ROUTES);
   });
+
+  for (const [name, routes] of PARTS) {
+    test(`desktop 1440×900: ${name}`, async ({ page }) => {
+      test.setTimeout(240_000);
+      await walk(page, await routeGame(page), false, routes);
+    });
+  }
 
   test.describe('phone', () => {
     test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
-    test('390×844', async ({ page }) => {
-      test.setTimeout(240_000);
-      await walk(page, await routeGame(page), true);
-    });
+    for (const [name, routes] of PARTS) {
+      test(`390×844: ${name}`, async ({ page }) => {
+        test.setTimeout(240_000);
+        await walk(page, await routeGame(page), true, routes);
+      });
+    }
   });
 });

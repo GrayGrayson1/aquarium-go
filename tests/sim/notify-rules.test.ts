@@ -10,6 +10,7 @@ import {
   DEFAULT_NOTIFY_PREFS,
   HOUR_MS,
   MAX_PER_HOUR,
+  NOTIFY_CATEGORIES,
   TEST_NOTIFICATION,
   decide,
   emptyRateState,
@@ -118,9 +119,9 @@ describe('NOTIFY-002: quiet hours, 10 PM to 8 AM on the device clock (B-173)', (
   });
 
   it('stored preferences: defaults (Shows off, quiet on), malformed values fall back, the hours stay fixed', () => {
-    expect(normalizePrefs(undefined)).toEqual({ categories: { rare: true, care: true, market: true, breeding: true, shows: false }, quiet: { on: true, start: 22, end: 8 } });
+    expect(normalizePrefs(undefined)).toEqual({ categories: { rare: true, care: true, market: true, breeding: true, shows: false, auto: true }, quiet: { on: true, start: 22, end: 8 } }); // chunk 5: Automation on (NOTIFY-012)
     expect(normalizePrefs('nonsense')).toEqual(normalizePrefs(undefined));
-    expect(normalizePrefs({ categories: { rare: 'yes', shows: true }, quiet: { on: false, start: 1, end: 2 } })).toEqual({ categories: { rare: true, care: true, market: true, breeding: true, shows: true }, quiet: { on: false, start: 22, end: 8 } });
+    expect(normalizePrefs({ categories: { rare: 'yes', shows: true }, quiet: { on: false, start: 1, end: 2 } })).toEqual({ categories: { rare: true, care: true, market: true, breeding: true, shows: true, auto: true }, quiet: { on: false, start: 22, end: 8 } });
   });
 });
 
@@ -141,7 +142,7 @@ describe('NOTIFY-005: rate limits on real time', () => {
     const rate = emptyRateState();
     const p = prefs();
     const cats = ['rare', 'care', 'market', 'breeding', 'shows'] as const;
-    const all = { ...p, categories: { rare: true, care: true, market: true, breeding: true, shows: true } };
+    const all = { ...p, categories: { rare: true, care: true, market: true, breeding: true, shows: true, auto: true } }; // chunk 5: the sixth category
     let shown = 0;
     for (let i = 0; i < 10; i++) {
       const c = cats[i % cats.length];
@@ -168,5 +169,30 @@ describe('NOTIFY-005: rate limits on real time', () => {
 
   it('the test notification (§12.5)', () => {
     expect(TEST_NOTIFICATION).toEqual({ title: 'Test notification', body: 'Notifications work on this device. You’ll hear about rare stock, hungry animals and sales.' });
+  });
+});
+
+describe('NOTIFY-012: the Automation category (chunk 5)', () => {
+  const salt: GameEvent = { id: 'ev_a1', hour: 100, kind: 'warning', text: 'Out of salt mix. Rosa couldn’t reorder…', notice: { topic: 'supply_out', vars: { supply: 'salt', body: "Rosa couldn't reorder salt mix — today's stock budget is spent. Salt water lasts until Day 41.", day: 41 } } };
+  const line: GameEvent = { id: 'ev_a2', hour: 100, kind: 'info', text: 'Grow-out B is full, so Iris and Sapphire are kept apart until there’s room.', notice: { topic: 'line_paused', vars: { line: 'Royal Blue line', lineId: 'royal', tank: 'Grow-out B', pair: 'Iris and Sapphire', day: 44 } } };
+
+  it('is the sixth category, on by default', () => {
+    expect(NOTIFY_CATEGORIES).toContain('auto');
+    expect(DEFAULT_NOTIFY_PREFS.categories.auto).toBe(true);
+  });
+
+  it('"Out of salt mix" and "{Line} paused" in the design\'s words; Problems from the Desk, else the problem\'s tab', () => {
+    expect(planNotification(salt, { ...look, desk: true })).toMatchObject({ category: 'auto', tag: 'auto', title: 'Out of salt mix', body: "Rosa couldn't reorder salt mix — today's stock budget is spent. Salt water lasts until Day 41.", route: '#/operations/issues' });
+    expect(planNotification(salt, look)).toMatchObject({ route: '#/operations/water' });
+    expect(planNotification(line, { ...look, desk: true })).toMatchObject({ category: 'auto', title: 'Royal Blue line paused', body: 'Grow-out B is full, so Iris and Sapphire wait. It restarts by itself on Day 44.', route: '#/operations/issues' });
+    expect(planNotification(line, look)).toMatchObject({ route: '#/operations/lines' });
+  });
+
+  it('quiet hours hold them (decision 19), and the category switch turns them off', () => {
+    const plan = planNotification(salt, look)!;
+    expect(decide(plan, DEFAULT_NOTIFY_PREFS, emptyRateState(), 0, at(23))).toMatchObject({ show: false });
+    expect(decide(plan, DEFAULT_NOTIFY_PREFS, emptyRateState(), 0, at(12))).toMatchObject({ show: true });
+    const off = { ...DEFAULT_NOTIFY_PREFS, categories: { ...DEFAULT_NOTIFY_PREFS.categories, auto: false } };
+    expect(decide(plan, off, emptyRateState(), 0, at(12))).toEqual({ show: false, why: 'category-off' });
   });
 });

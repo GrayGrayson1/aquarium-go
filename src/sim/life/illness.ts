@@ -103,7 +103,7 @@ export function eligibleIllnesses(sp: SpeciesDefinition): IllnessKind[] {
   const out: IllnessKind[] = ['stress_coloration'];
   if (sp.category === 'fish') {
     out.push('ich', 'fin_rot', 'fungus');
-    if (sp.behaviorSet === 'goldfish' || sp.id === 'fancy_goldfish' || sp.id === 'betta') out.push('swim_bladder');
+    if (sp.special?.swimBladderProne) out.push('swim_bladder');
   }
   if (sp.category === 'amphibian') {
     out.push('fungus');

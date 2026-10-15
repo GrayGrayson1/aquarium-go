@@ -23,9 +23,11 @@ import { OffspringOdds } from '../common/Offspring';
 import { orderedTanks, ownedCreatures, valueOf, isListed, speciesOf, creatureCondition, conditionWord, ageDaysOf, formatAge, wellbeing, morphName } from '../common/derive';
 import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_LABEL, plural, untilTime, pct, nameList } from '../common/format';
 import { SpeciesCareStrip } from '../encyclopedia/SpeciesGuide'; // lane:guide
-import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { ProductionTab, productionDot } from './Production'; // lane:production (chunk 4)
+import { AttnDot } from '@/ui/hud/AttnDot'; // lane:automation (chunk 5)
 
-type Tab = 'animals' | 'young' | 'past';
+type Tab = 'animals' | 'young' | 'past' | 'production';
 type StatusFilter = 'all' | 'attention' | 'listed' | 'favorites' | 'juveniles';
 type SortKey = 'value' | 'age' | 'name' | 'health';
 
@@ -42,13 +44,21 @@ export function LivestockPanel() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [confirmSell, setConfirmSell] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  /** lane:production — the line on show ('new' while setting one up); null = the first line. */
+  const [lineSel, setLineSel] = useState<string | null>(null);
   useNavTab('livestock', tab); // lane:ui-shell (chunk 1)
+  useNavSub('livestock', tab === 'production' && lineSel ? `line:${lineSel}` : null); // lane:production (chunk 4)
 
   useEffect(() => {
     if (!target) return;
-    // lane:ui-shell (chunk 1) — the router's explicit sections; Production arrives with chunk 4, so it opens Animals until then
-    if (target.startsWith('tab:')) setTab(target === 'tab:young' ? 'young' : target === 'tab:past' ? 'past' : 'animals');
-    else if (target.startsWith('tank:')) setTankF(target.slice(5));
+    // lane:ui-shell (chunk 1) — the router's explicit sections; lane:production (chunk 4) adds Production and its lines
+    if (target.startsWith('tab:')) {
+      setTab(target === 'tab:young' ? 'young' : target === 'tab:past' ? 'past' : target === 'tab:production' ? 'production' : 'animals');
+      if (target === 'tab:production') setLineSel(null);
+    } else if (target.startsWith('line:')) {
+      setTab('production');
+      setLineSel(target.slice(5));
+    } else if (target.startsWith('tank:')) setTankF(target.slice(5));
     else if (target === 'young' || target === 'clutches') setTab('young');
     else if (target.startsWith('creature:')) useUI.getState().set({ selectedCreatureId: target.slice(9) });
     else if (target.startsWith('sell:')) {
@@ -157,6 +167,7 @@ export function LivestockPanel() {
         <div className="pn-col pn-gap-2" style={{ width: '100%' }}>
           <Seg<Tab>
             label="Livestock view"
+            testIdPrefix="livestock-tab-"
             tabs
             value={tab}
             onChange={setTab}
@@ -164,6 +175,7 @@ export function LivestockPanel() {
               { id: 'animals', label: <>Animals <span className="pn-seg__count">{data.alive.length}</span></> },
               { id: 'young', label: <>Eggs & fry <span className={clsx('pn-seg__count', data.clutches.length > 0 && 'pn-seg__count--hot')}>{data.clutches.length}</span></> },
               { id: 'past', label: 'Past residents' },
+              { id: 'production', label: <>Production{productionDot(g) && <AttnDot inline level="watch" label="A line is held up" testId="livestock-production-dot" />}</> }, // lane:automation (chunk 5)
             ]}
           />
           {tab === 'animals' && (
@@ -243,6 +255,7 @@ export function LivestockPanel() {
       )}
       {tab === 'young' && <YoungView g={g} />}
       {tab === 'past' && <PastView g={g} past={data.past} />}
+      {tab === 'production' && <ProductionTab g={g} sel={lineSel} onSelect={setLineSel} />}
 
       <Modal
         open={confirmSell}
@@ -390,7 +403,7 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
                 {/* with a single tank the tank name says nothing new — leave the room to the animal's name */}
                 {(tankName.size > 1 || !c.tankId) && (
                   <span className="pn-lsrow__tank pn-ellipsis" title={c.tankId ? tankName.get(c.tankId) ?? undefined : undefined}>
-                    {c.tankId ? tankName.get(c.tankId) ?? 'Unknown tank' : 'In transit'}
+                    {c.tankId ? tankName.get(c.tankId) ?? 'Unknown tank' : 'Resting in a holding container' /* E9, ADR-0030 decision 8 */}
                   </span>
                 )}
               </span>

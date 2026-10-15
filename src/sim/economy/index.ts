@@ -42,7 +42,7 @@ export { templateCount, composeBidMessage } from './messages';
 export type { Aspect } from './messages';
 
 // ── player actions ──
-export { buyOffer, offerPickPrice, buyTank, buyEquipment, buyFood, buySalt, tankKitPrice, kitEquipmentFor, kitSwapNote, seededMediaPrice, SALT_PRICE_PER_KG } from './purchases';
+export { buyOffer, offerPickPrice, buyTank, buyEquipment, buyFood, buySalt, buyEggs, tankKitPrice, kitEquipmentFor, kitSwapNote, seededMediaPrice, SALT_PRICE_PER_KG } from './purchases';
 export type { BuyTankOptions, KitEquipment } from './purchases';
 export {
   createListing,

@@ -9,7 +9,7 @@
 import type { KVBackend } from '@/persistence/storage';
 
 export type NotifyPermission = 'default' | 'granted' | 'denied' | 'unsupported';
-export type NotifyCategory = 'rare' | 'care' | 'market' | 'breeding' | 'shows' | 'test';
+export type NotifyCategory = 'rare' | 'care' | 'market' | 'breeding' | 'shows' | 'auto' | 'test'; // 'auto': lane:automation (chunk 5)
 export interface PlatformNotification { id: string; title: string; body: string; route: string | null; category: NotifyCategory }
 
 export interface NotificationPort {

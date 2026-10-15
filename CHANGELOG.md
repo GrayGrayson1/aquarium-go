@@ -4,6 +4,34 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.5.2 — 2026-10-15
+
+- **Production lines** in Livestock › Production. Pick a breeding pair and the tanks to use, and the line breeds,
+  raises the fry, keeps the ones your rules choose, quarantines the rest for a week and lists them on the Market.
+  - Each facility level adds line slots (one in the Hobby Room, up to eight in the Grand Hall); lines can share
+    tanks, and a line waits (no animals are lost) when its grow-out tank is full. Add a quarantine tank in one tap.
+  - Every line has a switch, its stages, its route between tanks, this week's sales and its costs.
+- **Operations** in the dock (Settings moved to the gear at the top). Overview, Water, Feed, Lines and a map of your
+  facility, with what needs you first.
+  - **The Water room** (research Central Water Supply): fresh and salt water reserves, salt mixing twice a day, and
+    Auto Water Changers that draw from them. Salt mix comes in 5, 20 and 40 kg bags.
+  - **The Live food room** (research Live Food Cultures): a brine shrimp hatchery, infusoria jars and live-food
+    dosers that feed fry and larvae three times a day.
+  - Your stock manager buys salt and brine shrimp eggs within a daily budget you set. The Operations Desk research
+    adds Problems, the week's money, today's schedule and Hold all (manual mode).
+- **Easier to see and use.** High contrast now makes panels, the top bar and messages solid, with stronger focus
+  rings, borders and selected tabs; the keyboard reaches every control, also in Safari.
+- **Move tank** on the tank card: pick a new spot for the tank without emptying it.
+- **If the game keeps hitting an error**, it pauses and offers Save and Reload instead of failing quietly.
+- **Sturdier saves.** A damaged or hand-edited save is repaired on loading (impossible numbers, endless lists,
+  unknown names) instead of breaking the game.
+- **Smaller fixes.**
+  - The bristlenose fin look "Long-fin" is now "Double Long-fin", so no two looks share a name, and a morph's rarity
+    follows how often shops stock it.
+  - The Water room warns when fresh water would run short at the salt mixer's checks in the week ahead.
+  - Withdrawing a show entry no longer counts toward the "Enter a show" quest.
+  - Settings › About lists what's new in 0.5.
+
 ## 0.5.1 — 2026-10-11
 
 - **A sharper Market.**

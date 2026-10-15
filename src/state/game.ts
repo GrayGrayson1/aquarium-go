@@ -14,6 +14,12 @@ export interface GameStore {
   game: GameState | null;
   /** Monotonic counter bumped on every mutation (cheap change detection). */
   version: number;
+  /**
+   * lane:automation (chunk 5) — bumped by `mutate` only (player actions, the render layer's input handlers, the AI's
+   * tutorial hook), not by the game loop's publishes: views cached per game hour (Operations, PERF-004) also key on it,
+   * so a change made while the clock is paused shows at once.
+   */
+  actions: number;
   mutate: (recipe: (draft: GameState) => void) => void;
   setGame: (g: GameState | null) => void;
 }
@@ -21,13 +27,14 @@ export interface GameStore {
 export const useGame = create<GameStore>((set, get) => ({
   game: null,
   version: 0,
+  actions: 0,
   mutate: (recipe) => {
     const g = get().game;
     if (!g) return;
     const next = produce(g, (d) => {
       recipe(d as GameState);
     });
-    if (next !== g) set({ game: next, version: get().version + 1 });
+    if (next !== g) set({ game: next, version: get().version + 1, actions: get().actions + 1 });
   },
   setGame: (g) => set({ game: g, version: get().version + 1 }),
 }));

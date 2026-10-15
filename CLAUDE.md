@@ -7,6 +7,8 @@
 - For a chunk: read `PLAN.md` and the chunk's design sections; build on `next`; run the four checks; then start one
   fresh reviewer subagent with the chunk brief and the diff (`git diff <chunk start>..HEAD`), not your own summary,
   and fix its blockers; update `PLAN.md`; commit; push `next`.
+- Reviewers (the chunk's fresh reviewer and any adversarial review) run on Opus 5.5 at max effort: the Agent tool
+  with `model: "opus"` and `effort: "max"`. Never Fable (the owner, 2026-10-11).
 - Run the checks from the clone on the Mac's internal disk, not from `/Volumes/Dev`: that disk image is too slow for
   e2e (a 3.7-minute warmup, then timeouts). Edit and commit here. To test a commit, go to `~/LocalTest/AquariumGo` and run
   `git fetch dev <branch> && git checkout --detach <sha>` (remote `dev` is this repo), then `npm ci` if

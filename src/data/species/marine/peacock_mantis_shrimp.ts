@@ -191,6 +191,7 @@ export const peacockMantisShrimp: SpeciesDefinition = {
     speciesOnly: true,
     glassStrikeRisk: true,
     medicationSensitive: true,
+    youngKind: 'shrimp',
   },
   visualLane: 'special',
 };

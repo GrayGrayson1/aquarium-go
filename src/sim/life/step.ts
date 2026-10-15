@@ -141,9 +141,17 @@ function consumeFoodFor(tank: Tank, tags: FoodTag[], amount: number, creatureId:
   return consumeFood(tank, tags, amount, creatureId);
 }
 
+/**
+ * chunk 6 (B-198) — health's own guard: a non-finite health (a future bug, never a save: repairState cleans those) keeps
+ * the last finite value, else a neutral 90 (repairState's default), and never becomes 0, which the death check would
+ * report as "a period of poor health". The other stats clamp to their floor as before.
+ */
+export const NEUTRAL_HEALTH = 90;
+const safeHealth = (v: number, last?: number): number => (Number.isFinite(v) ? clamp(v, 0, 100) : last !== undefined && Number.isFinite(last) ? clamp(last, 0, 100) : NEUTRAL_HEALTH);
+
 function sanitize(c: Creature): void {
   const s = c.stats;
-  s.health = clamp(s.health, 0, 100);
+  s.health = safeHealth(s.health);
   s.hunger = clamp(s.hunger, 0, 100);
   s.stress = clamp(s.stress, 0, 100);
   s.energy = clamp(s.energy, 0, 100);
@@ -973,7 +981,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   // No regeneration while a breeding partner keeps chasing and biting (bubble-nester female left with the male).
   const recovering = wv.harm < 0.05 && s.hunger < 75 && s.stress < 55 && !c.illness && (m.injury ?? 0) < 20 && (c.repro?.harassment ?? 0) < 0.5;
   if (recovering) s.health += (0.6 + 1.2 * hardy) * (0.4 + (s.comfort / 100) * 0.6) * h;
-  s.health = clamp(s.health, 0, 100);
+  s.health = safeHealth(s.health, healthBefore); // B-198: never a silent death from a NaN
   // Grace stops health falling past the floor; an animal already below it is held there, not healed for free (R03-04).
   const graceFloor = Math.min(GRACE_HEALTH_FLOOR, healthBefore);
   if (state.offlineGrace && s.health < graceFloor) s.health = graceFloor;

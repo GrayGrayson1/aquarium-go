@@ -29,7 +29,7 @@
 import { create } from 'zustand';
 import type { GameState } from '@/types';
 import { storage, syncStore, onBackendChange, type KVBackend, type BackendName } from './storage';
-import { encodeRecord, decodeRecord, readHeader, makeMeta, cyrb53, SAVE_FORMAT, type DecodedSave } from './serialize';
+import { encodeRecord, decodeRecord, readHeader, makeMeta, cyrb53, SAVE_FORMAT, SAVE_BUDGET_CHARS, type DecodedSave } from './serialize';
 import { detectVersion, tooNewMessage } from './migrations'; // lane:core (PERSIST-014)
 import { SCHEMA_VERSION } from './schema'; // lane:core (PERSIST-014)
 import { SaveError, type SaveMeta, type SaveResult, type LoadResult } from './types';
@@ -362,7 +362,11 @@ export function saveGameSync(state: GameState, slot = 'auto'): boolean {
   if (stamp && detectVersion(stamp) > SCHEMA_VERSION) return false;
   const prev = syncStore.get(saveKey(slot));
   if (newerVersion(prev)) return false;
-  const { text, header } = encodeRecord(state, slot);
+  let { text, header } = encodeRecord(state, slot);
+  // B-171: a record past the budget won't fit localStorage; this copy leaves out listing photos, and a write that still
+  // fails says so instead of failing silently. Being the newest copy, it's the one the next load uses: those listings
+  // lose their photos (recorded in KNOWN_LIMITATIONS; losing the last minutes of play would be worse).
+  if (text.length > SAVE_BUDGET_CHARS) ({ text, header } = encodeRecord(state, slot, header.savedAt, { maxDataUrl: 0 }));
   // lane:fix3-saves (R03-02) — when localStorage IS the save store, this write replaces the primary for good: a
   // different aquarium there is rotated into the backup first (as saveGame would), so it stays "Previous …".
   if (syncStore.isActive()) {
@@ -374,7 +378,10 @@ export function saveGameSync(state: GameState, slot = 'auto'): boolean {
       if (syncStore.set(backupKey(slot), prev)) backupIds.set(slot, prevId);
     }
   }
-  if (!syncStore.set(saveKey(slot), text)) return false;
+  if (!syncStore.set(saveKey(slot), text)) {
+    if (typeof console !== 'undefined') console.warn(`The page-close save copy of "${slot}" didn't fit this browser's storage (${text.length.toLocaleString('en-US')} characters).`);
+    return false;
+  }
   syncStore.set(metaKey(slot), JSON.stringify(header.meta));
   noteWritten(slot, header.savedAt, state.saveId, header.meta.hour, header.schemaVersion);
   if (!syncStore.isActive()) mirrored.add(slot);

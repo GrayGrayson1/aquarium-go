@@ -10,6 +10,7 @@
  */
 import type { FacilityLevelId, MasteryTrack } from '@/types';
 import type { UnlockKey } from './unlockKeys';
+import { noProto } from '@/data/byId'; // chunk 6 (B-010)
 
 export type Cond =
   | { type: 'reputation'; min: number }
@@ -139,7 +140,7 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'decor_mangrove', when: [unlocked('brackish')], hint: 'Comes with Brackish Estuaries.' }, // lane:brackish
 ];
 
-export const UNLOCK_RULE_BY_KEY: Record<string, UnlockRule> = Object.fromEntries(UNLOCK_RULES.map((r) => [r.key, r]));
+export const UNLOCK_RULE_BY_KEY: Record<string, UnlockRule> = noProto(Object.fromEntries(UNLOCK_RULES.map((r) => [r.key, r]))); // chunk 6 (B-010)
 
 /**
  * What each starter begins with. Freshwater starters get fw_basic (axolotl also cool-water + chillers); marine

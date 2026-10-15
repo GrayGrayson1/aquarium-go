@@ -225,22 +225,33 @@ describe('edge cases (spec §28): market & saves', () => {
     expect(Object.values(g.clutches).some((cl) => cl.tankId === tankId)).toBe(false);
   });
 
-  it('an unlisted animal is never parked in water that is too warm for it — the sale waits instead', () => {
-    const g = shop(62);
-    const tankId = g.tankOrder[0];
-    const r = createListing(g, { kind: 'tank', tankId, reserve: 0, durationHours: 48 });
-    const newcomer = add(g, tankId, 'axolotl', 1)[0];
-    const warm = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 1.5, z: 1, rotY: 0 } });
-    warm.water.tempC = 26;
-    const blocked = sellTank(g, r.listingId!);
-    expect(blocked.ok).toBe(false);
-    expect(blocked.message).toContain(newcomer.name);
-    expect(newcomer.tankId).toBe(tankId);
+  it('an unlisted animal is never parked in water that is too warm for it — it rests in the holding container instead', () => {
+    // B-174, ADR-0030 decision 8: the sale goes ahead (it used to wait), and the axolotl is never put in the warm tank.
+    {
+      const g = shop(62);
+      const tankId = g.tankOrder[0];
+      const r = createListing(g, { kind: 'tank', tankId, reserve: 0, durationHours: 48 });
+      const newcomer = add(g, tankId, 'axolotl', 1)[0];
+      const warm = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 1.5, z: 1, rotY: 0 } });
+      warm.water.tempC = 26;
+      expect(sellTank(g, r.listingId!).ok).toBe(true);
+      expect(newcomer.tankId).not.toBe(warm.id);
+      expect(newcomer.tankId).toBeNull();
+      expect(newcomer.status).toBe('alive');
+    }
     // A cool tank is fine.
-    const cool = createTank(g, 'g20L', 'freshwater_cool', { cycled: true, placement: { x: -1.5, z: 1, rotY: 0 } });
-    cool.water.tempC = 17;
-    expect(sellTank(g, r.listingId!).ok).toBe(true);
-    expect(newcomer.tankId).toBe(cool.id);
+    {
+      const g = shop(62);
+      const tankId = g.tankOrder[0];
+      const r = createListing(g, { kind: 'tank', tankId, reserve: 0, durationHours: 48 });
+      const newcomer = add(g, tankId, 'axolotl', 1)[0];
+      const warm = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 1.5, z: 1, rotY: 0 } });
+      warm.water.tempC = 26;
+      const cool = createTank(g, 'g20L', 'freshwater_cool', { cycled: true, placement: { x: -1.5, z: 1, rotY: 0 } });
+      cool.water.tempC = 17;
+      expect(sellTank(g, r.listingId!).ok).toBe(true);
+      expect(newcomer.tankId).toBe(cool.id);
+    }
   });
 
   it('saving in the middle of a pregnancy and loading resumes to exactly the same birth', () => {

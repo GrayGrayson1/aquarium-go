@@ -8,7 +8,7 @@ import { Utensils, Waves, Wrench, Mountain, Lock, Check, Package } from 'lucide-
 import type { GameState, FoodDef, EquipmentDef } from '@/types';
 import { Button, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { FOODS } from '@/data/catalog/foods';
+import { FOODS, eatsFood, madeForSpecies } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { buyFood, buySalt, buyEquipment, SALT_PRICE_PER_KG } from '@/sim/economy';
 import { act } from '../common/act';
@@ -19,19 +19,13 @@ import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { equipmentFit } from '@/sim/care/fit'; // lane:fit
 import { foodWhoEats } from '@/ui/common/foodStock'; // lane:fit
 import { FitBadge, FitLine, FoodEaters } from '@/ui/common/FitNote'; // lane:fit
+import { CulturesSection, DryFoodSection, LiveFoodSection, SaltRow, foodsShownAbove } from './SuppliesAutomation'; // lane:automation (chunk 5)
 
 /** How many foods show before "Show all" — foods you own (or have owned) and foods made for your animals always show. */
 const FOOD_PREVIEW = 8;
 
-/**
- * A food named for one of the species that eats it ("Axolotl Pellets", "Goldfish Pellets"): the food's first word is
- * the species' own noun. ("Frozen Brine Shrimp" is not *for* cherry shrimp, so only the first word counts.)
- */
-function madeFor(f: FoodDef, eaters: { id: string; commonName: string }[]): boolean {
-  const first = f.name.toLowerCase().split(/\s+/)[0] ?? '';
-  if (first.length < 4) return false;
-  return eaters.some((sp) => [sp.id.split('_').pop() ?? sp.id, sp.commonName.toLowerCase().split(/\s+/).pop() ?? ''].includes(first));
-}
+/** A food made for one of the species that eats it ("Axolotl Pellets", "Goldfish Pellets"; the catalog's madeFor, B-170). */
+const madeFor = (f: FoodDef, eaters: { id: string }[]): boolean => eaters.some((sp) => madeForSpecies(f, sp.id));
 
 export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`food:<id>` → Market): show, scroll to and highlight this food. */ focusFood?: { id: string; n: number } | null }) {
   const focused = useUI((s) => s.focusedTankId);
@@ -43,9 +37,11 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
   const ownedSpecies = useMemo(() => [...new Set(ownedCreatures(g).map((c) => c.speciesId))].map((id) => speciesOf(id)).filter((x): x is NonNullable<typeof x> => !!x), [g]);
   const [allFoods, setAllFoods] = useState(false);
 
+  // lane:automation (chunk 5, INTAKE C-65) — foods the new sections above show keep that one row; the list leaves them out
+  const above = useMemo(() => foodsShownAbove(g), [g]);
   const foods = useMemo(() => {
-    const eaters = (f: FoodDef) => ownedSpecies.filter((sp) => sp.foods.some((t) => f.tags.includes(t)));
-    const rows = FOODS.map((f) => {
+    const eaters = (f: FoodDef) => ownedSpecies.filter((sp) => eatsFood(sp, f));
+    const rows = FOODS.filter((f) => !above.has(f.id)).map((f) => {
       const e = eaters(f);
       const known = f.id in g.inventory.foods; // owned now, or bought/used before (the key stays at 0 when it runs out)
       const specific = e.length > 0 && madeFor(f, e);
@@ -61,7 +57,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
         b.have - a.have ||
         a.f.price - b.f.price,
     );
-  }, [ownedSpecies, g.inventory.foods]);
+  }, [ownedSpecies, g.inventory.foods, above]);
   const shownFoods = useMemo(() => {
     if (allFoods) return foods;
     const forced = (r: (typeof foods)[number]) => r.pinned || r.f.id === focusFood?.id;
@@ -110,6 +106,11 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
 
   return (
     <div className="pn-stack pn-stack--lg">
+      {/* lane:automation (chunk 5, DESIGN-S3D §8.5) — Live food, For the cultures, Dry food and Marine salt mix first */}
+      <LiveFoodSection g={g} flash={flash} />
+      <CulturesSection g={g} flash={flash} />
+      <DryFoodSection g={g} flash={flash} />
+      {(hasMarine || g.inventory.salt > 0 || !!g.facility.water) && <SaltRow g={g} flash={flash} />}
       <section>
         <SectionHead title="Food" icon={<Utensils size={14} />} />
         {foods.length === 0 ? (
@@ -122,7 +123,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
               const have = g.inventory.foods[f.id] ?? 0;
               const locked = !unlocked(g, f.unlock);
               return (
-                <div key={f.id} className={clsx('pn-supply', flash === f.id && 'is-flash', have <= 0 && f.id in g.inventory.foods && eaters.length > 0 && 'is-out')} data-food-row={f.id}>
+                <div key={f.id} className={clsx('pn-supply', flash === f.id && 'is-flash', have <= 0 && f.id in g.inventory.foods && eaters.length > 0 && 'is-out')} data-food-row={f.id} data-testid={`supplies-row-${f.id}`}>
                   <span className="pn-supply__swatch" style={{ background: `radial-gradient(circle at 35% 35%, #fff8, ${f.color})` }} aria-hidden />
                   <div className="pn-grow">
                     <div className="pn-row pn-gap-2 pn-row--wrap">
@@ -159,30 +160,6 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
           </div>
         )}
       </section>
-
-      {(hasMarine || g.inventory.salt > 0) && (
-        <section>
-          <SectionHead title="Marine salt" icon={<Waves size={14} />} />
-          <div className="pn-supply">
-            <span className="pn-supply__swatch pn-supply__swatch--salt" aria-hidden />
-            <div className="pn-grow">
-              <b>Reef-grade salt mix</b>
-              <div className="pn-small pn-muted">Used for every marine and brackish water change — brackish water needs only about a third as much. Top off evaporation with fresh water, not salt water.</div>
-            </div>
-            <div className="pn-supply__side">
-              <span className="pn-tiny pn-muted pn-num-t">{g.inventory.salt.toFixed(1)} kg in stock</span>
-              <div className="pn-row pn-gap-1">
-                <Button size="sm" silent disabled={g.finance.money < 5 * SALT_PRICE_PER_KG} onClick={() => act((d) => buySalt(d, 5), { sound: 'coin' })}>
-                  5 kg · {formatMoney(5 * SALT_PRICE_PER_KG)}
-                </Button>
-                <Button size="sm" silent disabled={g.finance.money < 20 * SALT_PRICE_PER_KG} onClick={() => act((d) => buySalt(d, 20), { sound: 'coin' })}>
-                  20 kg · {formatMoney(20 * SALT_PRICE_PER_KG)}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
 
       <section>
         <SectionHead title="Equipment" icon={<Wrench size={14} />}>
@@ -299,4 +276,3 @@ function safeFit<T>(fn: () => T): T | null {
     return null;
   }
 }
-

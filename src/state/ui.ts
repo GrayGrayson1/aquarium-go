@@ -19,6 +19,8 @@ export type PanelId =
   | 'settings'
   | 'log'
   | 'shows'
+  | 'operations' // lane:automation (chunk 5, DESIGN-S3D §5; AUTO-030) — a core change, named in the commit
+  | 'social' // lane:social (chunk 6, 0.5 spec §13.1; SOC-003) — dev mode only (ADR-0005 decision 3); a core change
   | 'dev';
 export type ToolId = 'none' | 'feed' | 'target_feed' | 'tap' | 'enrich' | 'decor_place' | 'decor_move' | 'tank_place';
 
@@ -53,6 +55,9 @@ export interface UIState {
   placingFragId?: string | null;
   /** Tank tier being placed on the facility floor (build mode). */
   placingTankTierId: string | null;
+  /** lane:ui-shell (chunk 6, B-196) — the placed tank being moved ("Move tank" on the tank card), while tool is
+   *  'tank_place'; cleared whenever the tool changes. */
+  movingTankId: string | null;
   /** Water class for the tank being placed (set by the Build panel). */
   placingWaterClass: import('@/types').WaterClass | null;
   /** Buy the placed tank with seeded (mature) filter media. */
@@ -84,6 +89,7 @@ export const useUI = create<UIState>((set, get) => ({
   feedFoodId: null,
   placingDecorDefId: null,
   placingTankTierId: null,
+  movingTankId: null,
   placingWaterClass: null,
   placingSeeded: false,
   partyMode: false,
@@ -100,6 +106,12 @@ export const useUI = create<UIState>((set, get) => ({
 }));
 
 export const getUI = () => useUI.getState();
+
+// lane:ui-shell (chunk 6, B-196) — a move belongs to the placement tool: any other tool (or none) ends it, so a later
+// purchase can never move a tank instead
+useUI.subscribe((s) => {
+  if (s.movingTankId && s.tool !== 'tank_place') useUI.setState({ movingTankId: null });
+});
 
 // lane:fix-core (P6-08) — toasts belong to the aquarium they were raised in: when another game (or none) takes
 // over, drop the pending ones so a loaded save is not told about creatures it does not have.

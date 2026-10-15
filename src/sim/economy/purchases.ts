@@ -14,11 +14,13 @@ import { createTank, defaultSubstrate } from '../tanks';
 import { defaultEquipmentFor } from '../water';
 import { isUnlocked, findFreeSpot, bumpCounter } from '../facility';
 import { emitEvent } from '../context';
+import { settleTanks } from '../settle'; // ADR-0026 decision 5 (chunk 5)
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { getEquipmentDef, equipmentOfKind } from '@/data/catalog/equipment';
 import { nextId } from '../ids';
 import { getFoodDef } from '@/data/catalog/foods';
+import { EGGS_SUPPLY } from '@/data/catalog/machines'; // lane:automation (chunk 5)
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { spend, canAfford } from './finance';
@@ -68,6 +70,8 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
   }
   const tank = state.tanks[tankId];
   if (!tank) return fail('Choose a tank for the new arrivals.');
+  // the tank catches up its owed hours first, so the newcomers arrive now, not hours back (ADR-0026 decision 5, B-176)
+  settleTanks(state, [tankId]);
   const sp = findSpecies(offer.speciesId);
   if (!sp) return fail('Unknown species.');
   let gate: { ok: boolean; reason?: string };
@@ -324,4 +328,19 @@ export function buySalt(state: GameState, kg: number): ActionResult {
   if (!spend(state, price, 'consumables', `${amount} kg marine salt mix`)) return needMoney(state, price, `${amount} kg of salt mix`);
   state.inventory.salt = Math.round((finite(state.inventory.salt, 0) + amount) * 10) / 10;
   return { ok: true, message: `Bought ${amount} kg of marine salt mix for ${fmtMoney(price)}.` };
+}
+
+/**
+ * lane:automation (chunk 5, DESIGN-S3D §4, §8.5) — brine shrimp eggs for the Live food room's hatchery: a tin of 30
+ * scoops (a scoop starts a cone). A supply, not a food: the scoops are `inventory.brineShrimpEggs`.
+ */
+export function buyEggs(state: GameState, tins: number): ActionResult {
+  const n = Math.floor(finite(tins, 0));
+  if (n < 1 || n > 99) return fail('Choose between 1 and 99 tins.');
+  const price = roundCents(EGGS_SUPPLY.price * n);
+  const what = `${n} × ${EGGS_SUPPLY.name.toLowerCase()}`;
+  if (!spend(state, price, 'consumables', what)) return needMoney(state, price, what);
+  const scoops = EGGS_SUPPLY.scoops * n;
+  state.inventory.brineShrimpEggs = Math.max(0, Math.floor(finite(state.inventory.brineShrimpEggs ?? 0, 0))) + scoops;
+  return { ok: true, message: `Bought ${n === 1 ? 'a tin' : `${n} tins`} of brine shrimp eggs (${scoops} scoops) for ${fmtMoney(price)}.` };
 }

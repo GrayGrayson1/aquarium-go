@@ -110,15 +110,8 @@ export function nicePrice(v: number): number {
   return round(v, 50);
 }
 
-export const WATER_CLASS_LABEL: Record<WaterClass, string> = {
-  freshwater_cool: 'Cool freshwater',
-  freshwater_tropical: 'Tropical freshwater',
-  freshwater_planted: 'Planted freshwater',
-  marine_fowlr: 'Marine fish-only',
-  marine_live_rock: 'Marine with live rock',
-  reef: 'Reef',
-  brackish: 'Brackish',
-};
+// chunk 6 (B-169): the labels the sim's tank edits use live in src/data
+export { WATER_CLASS_LABEL, PURPOSE_LABEL } from '@/data/tankLabels';
 
 export const WATER_CLASS_BLURB: Record<WaterClass, string> = {
   freshwater_cool: 'Unheated, clear and gentle. Axolotls, goldfish and white clouds.',
@@ -152,13 +145,6 @@ export const PLAYABLE_WATER_CLASSES: WaterClass[] = [
 ];
 
 export const ENV_LABEL: Record<Environment, string> = { freshwater: 'Freshwater', marine: 'Marine', brackish: 'Brackish' };
-
-export const PURPOSE_LABEL: Record<TankPurpose, string> = {
-  display: 'Display',
-  nursery: 'Nursery',
-  quarantine: 'Quarantine',
-  breeding: 'Breeding',
-};
 
 export const PURPOSE_HINT: Record<TankPurpose, string> = {
   display: 'Shown to visitors and scored as an exhibit.',

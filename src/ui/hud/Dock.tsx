@@ -8,12 +8,12 @@
  */
 import clsx from 'clsx';
 import { useEffect, useRef, useState, type ComponentType } from 'react';
-import { Box, Fish, Store, Users, Hammer, FlaskConical, Wallet, BookOpen, Settings, Lock, Wrench, type LucideProps } from 'lucide-react';
+import { Box, Fish, Store, Users, Hammer, FlaskConical, Wallet, BookOpen, Gauge, Globe, Lock, Wrench, type LucideProps } from 'lucide-react';
 import { useUI, type PanelId } from '@/state/ui';
 import { useGameSelector, getGame } from '@/state/game';
 import { tutorialStepId } from '@/sim/facility';
 import { safe } from '../common/safe';
-import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useDevMode, useDevTools } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx } from '@/audio/sfx';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { tutorialFlag } from '../common/actions';
@@ -27,6 +27,10 @@ interface DockItem {
   /** Unlock key that gates it (null = always open). */
   lock?: string | null;
   hint?: string;
+  /** lane:social (chunk 6, ADR-0005 decision 3) — shown only where the developer tools are allowed (dev mode). */
+  devOnly?: boolean;
+  /** lane:social (chunk 6, B-152) — an attention dot until first opened (its `opened_<id>` flag), with no unlock key. */
+  newUntilOpened?: boolean;
 }
 
 export const DOCK_ITEMS: DockItem[] = [
@@ -35,12 +39,21 @@ export const DOCK_ITEMS: DockItem[] = [
   { id: 'market', label: 'Market', icon: Store },
   { id: 'visitors', label: 'Visitors', icon: Users, lock: 'visitors', hint: 'Grow your reputation to open your doors to visitors.' },
   { id: 'shows', label: 'Shows', icon: Trophy, lock: 'shows', hint: 'Finish the guide (or reach 20 reputation) to enter club shows.' }, // lane:shows
+  // lane:social (chunk 6, 0.5 spec §5.4, §13.1) — between Shows and Build; dev mode only until a real backend exists
+  { id: 'social', label: 'Social', icon: Globe, devOnly: true, newUntilOpened: true },
   { id: 'build', label: 'Build', icon: Hammer },
+  // lane:automation (chunk 5, DESIGN-S3D §5.1, ADR-0026 decision 1) — Operations right after Build; Settings left the
+  // dock for the gear in the top bar (hud-settings), in every build
+  { id: 'operations', label: 'Operations', icon: Gauge },
   { id: 'research', label: 'Research', icon: FlaskConical },
   { id: 'finances', label: 'Finances', icon: Wallet },
   { id: 'encyclopedia', label: 'Encyclopedia', icon: BookOpen },
-  { id: 'settings', label: 'Settings', icon: Settings },
 ];
+
+/** lane:social (chunk 6, SOC-011) — the dock's destinations for this session: Social only in dev mode. */
+export function dockItems(devAllowed: boolean): DockItem[] {
+  return DOCK_ITEMS.filter((it) => !it.devOnly || devAllowed);
+}
 
 /** While the guide is on a step that needs a particular panel section, open straight to it. */
 export function guideTarget(id: PanelId): string | null {
@@ -101,13 +114,14 @@ export function Dock() {
   }, [panel, ref]);
   const unlocked = useGameSelector((g) => g.progress.unlocked.join('|'), '');
   const dev = useDevMode();
+  const items = dockItems(useDevTools((s) => s.allowed)); // lane:social (chunk 6)
   const isUnlocked = (key?: string | null) => !key || dev || unlocked.split('|').includes(key);
   // lane:notify — attention dots (lane:w2-ui's show-results count badge became one of them)
-  const badges = useNavDots(DOCK_ITEMS);
+  const badges = useNavDots(items);
   return (
     <nav className={clsx('ag-dock', fades.l && 'has-more-left', fades.r && 'has-more-right')} aria-label="Management">
       <div className="ag-dock__scroll" ref={ref}>
-        {DOCK_ITEMS.map((it) => {
+        {items.map((it) => {
           const open = isUnlocked(it.lock);
           const Icon = it.icon;
           const hint = it.hint ?? (it.lock ? (UNLOCK_KEYS as Record<string, string>)[it.lock] : undefined);

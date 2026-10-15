@@ -16,6 +16,7 @@ import { mulberry32, hashString } from '../rng';
 import { creatureValue, morphRarity } from './valuation';
 import { hourOfDay } from '../time';
 import { clamp, dayIndex, finite, fmtMoney, nicePrice, pluralName, capitalise, morphTitle } from './util';
+import { HAREM_TRIO_CHANCE, OFFER_TIER_WEIGHTS, PAIR_OFFER_CHANCE, PICK_MAX_ANIMALS, PICK_ROLLS, SPECIAL_PICKED_CHANCE } from '@/data/stocking'; // B-194
 
 // ───────────────────────────── availability ─────────────────────────────
 
@@ -129,7 +130,8 @@ interface Composition {
   note?: string;
 }
 
-function composition(sp: SpeciesDefinition, rng: Rng): Composition {
+/** An offer's size and sexes (exported for the morph catalog's odds test, B-194). */
+export function composition(sp: SpeciesDefinition, rng: Rng): Composition {
   const s = sp.social;
   const kind = s?.kind ?? 'solitary';
   const minG = Math.max(1, s?.minGroup ?? 1);
@@ -145,7 +147,7 @@ function composition(sp: SpeciesDefinition, rng: Rng): Composition {
     };
   }
   const gonochoristic = sp.sexSystem === 'gonochoristic';
-  if ((kind === 'pair' || kind === 'pair_hierarchy') && rng.chance(0.45)) {
+  if ((kind === 'pair' || kind === 'pair_hierarchy') && rng.chance(PAIR_OFFER_CHANCE)) {
     const note =
       sp.sexSystem === 'gonochoristic'
         ? 'A ready-made pair for breeding.'
@@ -163,7 +165,7 @@ function composition(sp: SpeciesDefinition, rng: Rng): Composition {
       note,
     };
   }
-  if (kind === 'harem' && gonochoristic && rng.chance(0.3)) {
+  if (kind === 'harem' && gonochoristic && rng.chance(HAREM_TRIO_CHANCE)) {
     return { count: 3, sexes: ['male', 'female', 'female'], label: (pl) => `Trio of ${pl} (1 male, 2 females)`, note: 'One male to several females spreads out his attention.' };
   }
   return { count: 1, sexes: [undefined], label: (_pl, sg) => sg };
@@ -204,7 +206,7 @@ export function uniqueOfferNames(state: GameState, sp: SpeciesDefinition, creatu
 export function generateOffer(state: GameState, rng: Rng, speciesId: string, opts: OfferOptions): ShopOffer | null {
   const sp = findSpecies(speciesId);
   if (!sp) return null;
-  const tier: OfferTier = opts.tier ?? rng.weighted<OfferTier>(['standard', 'breeder', 'rare'], (t) => (t === 'standard' ? 0.7 : t === 'breeder' ? 0.22 : 0.08));
+  const tier: OfferTier = opts.tier ?? rng.weighted<OfferTier>(['standard', 'breeder', 'rare'], (t) => OFFER_TIER_WEIGHTS[t as 'standard' | 'breeder' | 'rare']);
   const comp = opts.sexes ? { count: opts.sexes.length, sexes: opts.sexes, label: (_pl: string, sg: string) => sg, note: undefined as string | undefined } : composition(sp, rng);
   const seller = sellerFor(rng, speciesId);
   const captiveBred = sp.captiveBredAvailable !== false;
@@ -228,10 +230,11 @@ export function generateOffer(state: GameState, rng: Rng, speciesId: string, opt
         breederName: seller.name,
       });
     let c = roll();
-    // Rare/special singles: the seller picks the most striking of several candidates.
-    if ((tier === 'rare' || tier === 'special') && comp.count <= 2) {
+    // Rare/special singles: the seller picks the most striking of several candidates (the morph catalog's odds count
+    // this pick: src/data/stocking.ts, B-194).
+    if ((tier === 'rare' || tier === 'special') && comp.count <= PICK_MAX_ANIMALS) {
       let best = morphRarity(sp, c);
-      for (let k = 0; k < 5; k++) {
+      for (let k = 0; k < PICK_ROLLS - 1; k++) {
         const alt = roll();
         const r = morphRarity(sp, alt);
         if (r > best) {
@@ -251,7 +254,7 @@ export function generateOffer(state: GameState, rng: Rng, speciesId: string, opt
   const lead = creatures[0];
   const sum = creatures.reduce((a, c) => a + creatureValue(state, c).total, 0);
   // Rare/special singles were hand-picked (best of several) and carry a collector markup; groups get breeder pricing.
-  const picked = (tier === 'rare' || tier === 'special') && comp.count <= 2;
+  const picked = (tier === 'rare' || tier === 'special') && comp.count <= PICK_MAX_ANIMALS;
   const markup = tier === 'standard' ? rng.range(1.25, 1.45) : picked ? rng.range(1.5, 1.9) : rng.range(1.35, 1.6);
   const groupDiscount = creatures.length >= 3 ? 0.88 : 1;
   const price = Math.max(1, nicePrice(sum * markup * groupDiscount));
@@ -398,7 +401,7 @@ export function maybeSpecial(state: GameState, rng: Rng, start: number, dt: numb
   const avail = availableSpecies(state);
   if (avail.length === 0) return;
   const sp = rng.weighted(avail, (s) => (RARITY_WEIGHT[s.rarity] ?? 0.5) + (s.id === state.starterId ? 0.5 : 0));
-  const o = generateOffer(state, rng, sp.id, { tier: rng.chance(0.5) ? 'special' : 'breeder', expiresHour: start + rng.range(6, 10) });
+  const o = generateOffer(state, rng, sp.id, { tier: rng.chance(SPECIAL_PICKED_CHANCE) ? 'special' : 'breeder', expiresHour: start + rng.range(6, 10) });
   if (!o) return;
   o.tier = 'special';
   m.stock.unshift(o);

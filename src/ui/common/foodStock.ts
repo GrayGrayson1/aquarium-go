@@ -5,7 +5,7 @@
 import type { GameState } from '@/types';
 import { tankFoodOutlook } from '@/sim/tankStatus';
 import { findSpecies } from '@/data/species'; // lane:qa-play
-import { FOODS, getFoodDef } from '@/data/catalog/foods'; // lane:qa-play
+import { FOODS, getFoodDef, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods'; // lane:qa-play
 import { moduleFor } from '@/sim/life/breeding/registry'; // lane:qa-play
 import { currentPhase } from '@/sim/life/breeding/clutch'; // lane:qa-play
 import { buyFood } from '@/sim/economy';
@@ -128,7 +128,7 @@ export function creatureFoodChoice(g: GameState, creatureId: string): CreatureFo
   // lane:qa-final — made for this animal, as the keepers choose (src/sim/staff/work.ts pickStaffFood): goldfish or axolotl
   // pellets for a reef chromis, or marine pellets in fresh water, go to the back of the list (still offered if nothing else).
   const env = c.tankId ? g.tanks[c.tankId]?.environment : undefined;
-  const wrongKind = (id: string) => (/^marine_/.test(id) && env && env !== 'marine' ? 1 : 0) + (/^axolotl_/.test(id) && sp.id !== 'axolotl' ? 1 : 0) + (/^goldfish_/.test(id) && !/goldfish/.test(sp.id) ? 1 : 0);
+  const wrongKind = (id: string) => (madeForOtherWater(getFoodDef(id), env) ? 1 : 0) + (madeForOtherSpecies(getFoodDef(id), sp.id) ? 1 : 0); // the catalog's madeFor (B-170)
   const inStock = Object.entries(g.inventory.foods ?? {})
     .map(([id, n]) => ({ id, count: Math.floor(n ?? 0), rank: rank(getFoodDef(id)?.tags), wrong: wrongKind(id) }))
     .filter((f) => f.count >= 1 && Number.isFinite(f.rank))

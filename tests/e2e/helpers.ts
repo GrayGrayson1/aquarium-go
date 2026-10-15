@@ -164,9 +164,12 @@ export async function clickTank(page: Page, touch = false, fx = 0.5, fy = 0.5): 
   await page.mouse.click(x, y);
 }
 
-/** Open a dock panel and wait for its root. */
+/**
+ * Open a dock panel and wait for its root. Settings is the top bar's gear since chunk 5 (DESIGN-S3D §5.1, ADR-0026
+ * decision 1; NAV-020 names this change, CONST-002): the same panel, opened from `hud-settings`.
+ */
 export async function openPanel(page: Page, panelId: string): Promise<void> {
-  await tid(page, `dock-${panelId}`).click();
+  await tid(page, panelId === 'settings' ? 'hud-settings' : `dock-${panelId}`).click();
   await expect(tid(page, `panel-${panelId}`)).toBeVisible();
 }
 
@@ -193,4 +196,22 @@ export async function probe<T = any>(page: Page, body: string): Promise<T> {
     // eslint-disable-next-line no-new-func
     return new Function('g', `return (${b});`)(g);
   }, body) as Promise<T>;
+}
+
+/**
+ * lane:social (chunk 6; 0.5 spec §5.4) — the dock against the tank view's camera chips: the gap between their boxes (-1
+ * when they touch or overlap), whether the dock scrolls, and its labels (dock-width.spec, prod-mode.spec).
+ */
+export async function dockClear(page: Page): Promise<{ gap: number; scrolls: boolean; labels: string[] }> {
+  return page.evaluate(() => {
+    const dock = document.querySelector('.ag-dock')!;
+    const d = dock.getBoundingClientRect();
+    const c = document.querySelector('.ag-hud__cam:not(.ag-hud__cam--room)')!.getBoundingClientRect();
+    const apart = d.right <= c.left || c.right <= d.left || d.bottom <= c.top || c.bottom <= d.top;
+    return {
+      gap: apart ? Math.round(Math.max(c.left - d.right, d.left - c.right, c.top - d.bottom, d.top - c.bottom)) : -1,
+      scrolls: dock.classList.contains('has-more-right') || dock.classList.contains('has-more-left'),
+      labels: [...dock.querySelectorAll('.ag-dock__item:not(.ag-dock__item--dev) .ag-dock__label')].map((e) => e.textContent ?? ''),
+    };
+  });
 }

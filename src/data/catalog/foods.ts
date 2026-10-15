@@ -11,7 +11,7 @@
  *   `isAutofeederFood` (form 'dry') is the single rule the water sim's autofeeder and the UI's fit hints both use.
  * No brand names: generic descriptions only.
  */
-import type { FoodDef, FoodForm } from '@/types';
+import type { Environment, FoodDef, FoodForm, SpeciesDefinition } from '@/types';
 import { byId } from '@/data/byId';
 
 export const FOODS: FoodDef[] = [
@@ -78,6 +78,7 @@ export const FOODS: FoodDef[] = [
     unlock: null,
     color: '#6b4a2c',
     description: 'Large, soft, high-protein sinking pellets sized for salamanders and other big bottom feeders. Remove any left after a few hours.',
+    madeFor: { speciesIds: ['axolotl'] },
   },
   {
     id: 'earthworm',
@@ -240,6 +241,7 @@ export const FOODS: FoodDef[] = [
     unlock: null,
     color: '#b86a4a',
     description: 'Small marine-protein pellets with added seaweed. The everyday staple for clownfish and other reef fish.',
+    madeFor: { environments: ['marine'] },
   },
   {
     id: 'live_copepods',
@@ -336,6 +338,7 @@ export const FOODS: FoodDef[] = [
     unlock: null,
     color: '#c77d3a',
     description: 'Lower-protein, higher-fibre sinking pellets. Sinking food means less gulped air, which matters for round-bodied fancy goldfish.',
+    madeFor: { speciesIds: ['comet_goldfish', 'fancy_goldfish'] },
   },
   {
     id: 'gel_food',
@@ -364,6 +367,30 @@ export function getFoodDef(id: string): FoodDef | undefined {
 /** Foods an animal with these accepted tags will eat. */
 export function foodsForTags(tags: readonly string[]): FoodDef[] {
   return FOODS.filter((f) => f.tags.some((t) => tags.includes(t)));
+}
+
+/** Does this species eat this food? (the sim's rule everywhere: any food tag in the species' diet). */
+export function eatsFood(sp: Pick<SpeciesDefinition, 'foods'>, food: Pick<FoodDef, 'tags'>): boolean {
+  return food.tags.some((t) => sp.foods.includes(t));
+}
+
+// ───────────── chunk 6 (B-170) — food made for another animal or water ─────────────
+
+/** Sold for other animals (Axolotl Pellets for anyone but an axolotl). False for a food not tied to a species. */
+export function madeForOtherSpecies(food: Pick<FoodDef, 'madeFor'> | undefined, speciesId: string): boolean {
+  const ids = food?.madeFor?.speciesIds;
+  return !!ids && !ids.includes(speciesId);
+}
+
+/** Sold for another water type (Marine Pellets in fresh or brackish water). False when the water isn't known. */
+export function madeForOtherWater(food: Pick<FoodDef, 'madeFor'> | undefined, env: Environment | undefined): boolean {
+  const envs = food?.madeFor?.environments;
+  return !!envs && !!env && !envs.includes(env);
+}
+
+/** Sold for this species by name (Axolotl Pellets for an axolotl): the Market lists it first for a keeper of one. */
+export function madeForSpecies(food: Pick<FoodDef, 'madeFor'>, speciesId: string): boolean {
+  return !!food.madeFor?.speciesIds?.includes(speciesId);
 }
 
 // ───────────── lane:fit — food form & the autofeeder rule ─────────────

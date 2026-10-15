@@ -17,10 +17,10 @@ import type { GameEvent, GameState } from '@/types';
 import { platform, type NotifyPermission, type PlatformNotification } from '@/platform';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
-import { go, useNav } from '../nav/router';
-import { parseRoute, type Route } from '../nav/routes';
+import { go, parseNav, useNav } from '../nav/router';
+import type { Route } from '../nav/routes';
 import { notifyPrefs, useNotifyPrefs } from './prefs';
-import { decide, emptyRateState, planNotification, TEST_NOTIFICATION, type NotifyPrefs, type RateState, type RuleLookups } from './rules';
+import { decide, emptyRateState, planNotification, TEST_NOTIFICATION, type NotifyPrefs, type PlannedNotification, type RateState, type RuleLookups } from './rules';
 
 // ───────────────────────────── permission ─────────────────────────────
 
@@ -102,7 +102,7 @@ export function notificationsFor(events: readonly GameEvent[], env: DeliveryEnv)
   return out;
 }
 
-export const lookupsFor = (g: GameState): RuleLookups => ({ hour: g.clock.hour, tankName: (id) => g.tanks[id]?.name ?? null });
+export const lookupsFor = (g: GameState): RuleLookups => ({ hour: g.clock.hour, tankName: (id) => g.tanks[id]?.name ?? null, desk: g.progress.unlocked.includes('operations_desk') });
 
 const pageAway = (): boolean => typeof document !== 'undefined' && document.visibilityState === 'visible' && !document.hasFocus();
 const localMinutes = (): number => {
@@ -115,7 +115,7 @@ const opensOffer = (r: Route): boolean => r.kind === 'panel' && !!r.target?.star
 
 /** Open a notification's route (an offer with the banner). Before a game is on screen it waits for one (`pending`). */
 export function openNotificationRoute(route: string | null): void {
-  const parsed = route ? parseRoute(route) : null;
+  const parsed = route ? parseNav(route) : null;
   if (!parsed) return;
   const fromNotification = opensOffer(parsed.route);
   if (useUI.getState().screen === 'game') go(parsed.route, { filters: parsed.filters, fromNotification });
@@ -134,11 +134,26 @@ function takeLaunchFlag(): void {
   } catch {
     /* ignore: the flag only adds the banner */
   }
-  const parsed = parseRoute(location.hash);
+  const parsed = parseNav(location.hash);
   if (parsed && opensOffer(parsed.route)) useNav.setState({ fromNotification: true });
 }
 
 let started = false;
+/** The rate limits' memory, shared by game events and the notifications that don't come from one (`deliverPlanned`). */
+let rate = emptyRateState();
+
+/**
+ * lane:social (chunk 6, ADR-0034 decision 4) — deliver a notification that no game event carries (the dev-only club-show
+ * reminder), under the same rules: permission, only while the page is away, the category switch, quiet hours and the
+ * rate limits. True when it was shown.
+ */
+export function deliverPlanned(id: string, plan: PlannedNotification): boolean {
+  if (readPermission() !== 'granted' || !pageAway()) return false;
+  const d = decide(plan, notifyPrefs(), rate, Date.now(), localMinutes());
+  if (!d.show) return false;
+  void platform().notifications.show({ id, title: d.title, body: d.body, route: plan.route, category: plan.category });
+  return true;
+}
 
 /** Start delivery (UIRoot calls it once). Returns the cleanup (tests). */
 export function startNotifications(): () => void {
@@ -146,7 +161,7 @@ export function startNotifications(): () => void {
   started = true;
   takeLaunchFlag();
   const offs: (() => void)[] = [];
-  const rate = emptyRateState();
+  rate = emptyRateState();
   let seen: { saveId: string; idCounter: number; ids: Set<string> } | null = null;
 
   const onGame = (game: GameState | null) => {

@@ -26,6 +26,7 @@ import type { FacilityLevelId, MasteryTrack } from '@/types';
 import { SCAPED_EDITS, type Cond } from './unlocks';
 import type { UnlockKey } from './unlockKeys';
 import { byId } from '@/data/byId';
+import { noProto } from '@/data/byId'; // chunk 6 (B-010)
 
 export type Objective =
   /**
@@ -191,7 +192,7 @@ function chainFor(f: StarterFlavour): TutorialStepDef[] {
   ];
 }
 
-export const TUTORIAL_CHAINS: Record<string, TutorialStepDef[]> = Object.fromEntries(Object.entries(FLAVOURS).map(([id, f]) => [id, chainFor(f)]));
+export const TUTORIAL_CHAINS: Record<string, TutorialStepDef[]> = noProto(Object.fromEntries(Object.entries(FLAVOURS).map(([id, f]) => [id, chainFor(f)]))); // chunk 6 (B-010)
 
 export function tutorialChain(starterId: string): TutorialStepDef[] {
   return TUTORIAL_CHAINS[starterId] ?? TUTORIAL_CHAINS.betta;
@@ -216,7 +217,7 @@ export const QUESTS: QuestDef[] = [
   { id: 'q_breed_first', title: 'First generation', body: 'Raise a clutch of babies of your own.', objective: { type: 'counter', key: 'births', min: 1, relative: true }, reward: { money: 200, reputation: 10, mastery: { track: 'breeding', xp: 60 } }, requires: [], weight: 1.2, icon: 'Egg' },
   { id: 'q_breed_more', title: 'A proven line', body: 'Raise 3 more clutches.', bodyRepeat: 'Raise {n} more clutches.', objective: { type: 'counter', key: 'births', min: 3, relative: true }, reward: { money: 450, reputation: 15, mastery: { track: 'breeding', xp: 120 } }, requires: [{ type: 'counter', key: 'births', min: 1 }], repeatable: true, weight: 0.8, icon: 'GitBranch' },
   { id: 'q_morphs', title: 'Colour collector', body: 'Discover 4 different morphs.', objective: { type: 'cond', cond: { type: 'morphs', min: 4 } }, reward: { money: 250, reputation: 8 }, requires: [], weight: 0.7, icon: 'Palette' },
-  { id: 'q_sell_creature', title: 'Happy customer', body: 'Sell an animal to a buyer who will care for it.', bodyRepeat: 'Sell {n} animals to buyers who will care for them.', objective: { type: 'counter', key: 'sales', min: 1, relative: true }, reward: { money: 50, reputation: 4, mastery: { track: 'business', xp: 25 } }, requires: [unlockedCond('market_listings')], repeatable: true, weight: 1, icon: 'HandCoins' },
+  { id: 'q_sell_creature', title: 'Happy customer', body: 'Sell an animal to a buyer who will care for it.', bodyRepeat: 'Sell {n} animals to buyers who will care for them.', objective: { type: 'counter', key: 'animalsSold', min: 1, relative: true }, reward: { money: 50, reputation: 4, mastery: { track: 'business', xp: 25 } }, requires: [unlockedCond('market_listings')], repeatable: true, weight: 1, icon: 'HandCoins' },
   { id: 'q_sell_tank', title: 'Turnkey aquarium', body: 'Sell a whole aquarium for $500 or more.', objective: { type: 'cond', cond: { type: 'counter', key: 'best_tank_sale', min: 500 } }, reward: { money: 250, reputation: 12, mastery: { track: 'business', xp: 80 } }, requires: [unlockedCond('tank_auctions')], weight: 1, icon: 'Package' },
   { id: 'q_sell_tank_big', title: 'Masterpiece sale', body: 'Sell a whole aquarium for $5,000 or more.', objective: { type: 'cond', cond: { type: 'counter', key: 'best_tank_sale', min: 5000 } }, reward: { money: 1500, reputation: 30, mastery: { track: 'business', xp: 200 } }, requires: [unlockedCond('tank_auctions'), { type: 'facility', level: 'aquarium_store' }], weight: 0.8, icon: 'Trophy' },
   { id: 'q_friends', title: 'Show and tell', body: 'Host 3 friend visits in your hobby room.', objective: { type: 'counter', key: 'friend_visits', min: 3, relative: true }, reward: { money: 60, reputation: 5 }, requires: [], maxFacility: 'hobby_room', weight: 0.8, icon: 'Users' },

@@ -11,6 +11,7 @@ import { tapSensitivityMul } from './personality';
 import { ageDaysOf, gallonsNeededNow } from './growth';
 import { livingIn, tankGallons } from './welfare';
 import { touchResidents } from '../residents'; // lane:perf2
+import { settleTanks } from '../settle'; // B-127
 
 const clamp = (v: number, lo: number, hi: number) => (Number.isFinite(v) ? (v < lo ? lo : v > hi ? hi : v) : lo);
 
@@ -31,9 +32,12 @@ export function renameCreature(state: GameState, creatureId: string, name: strin
 export function moveCreature(state: GameState, creatureId: string, tankId: string): ActionResult {
   const c = state.creatures[creatureId];
   if (!c) return { ok: false, message: 'That animal is no longer in your care.' }; // lane:guide — was 'Not found'
-  if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can't be moved.` };
   const tank = state.tanks[tankId];
   if (!tank) return { ok: false, message: 'That tank no longer exists.' };
+  // B-127: both tanks catch up first, so the move happens at one world time; then the checks see the animal as it is
+  // now (it may have died during the owed hours: the chunk 4 review)
+  settleTanks(state, [c.tankId, tankId]);
+  if (c.status === 'dead' || c.status === 'sold') return { ok: false, message: `${c.name} can't be moved.` };
   if (c.tankId === tankId) return { ok: true, message: `${c.name} is already in ${tank.name}.` };
   const sp = findSpecies(c.speciesId);
   if (!sp) return { ok: false, message: 'Unknown species.' };

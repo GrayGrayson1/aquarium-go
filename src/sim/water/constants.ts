@@ -10,6 +10,7 @@
  * - A bare filter cycles in ~3–4 game days with an ammonia source (compressed; bottled bacteria is faster).
  */
 import type { ParamRange, WaterClass } from '@/types';
+import { noProto } from '@/data/byId'; // chunk 6 (B-010)
 
 /** Facility room temperature the tank drifts toward without heating/cooling (°C). */
 export const ROOM_TEMP_C = 22;
@@ -62,7 +63,7 @@ export interface ClassDefaults {
 const FW_SOURCE = { pH: 7.4, kh: 5, gh: 8, sg: 1.0, nitrate: 2 };
 const MARINE_SOURCE = { pH: 8.2, kh: 8.5, gh: 0, sg: 1.025, nitrate: 0 };
 
-export const CLASS_DEFAULTS: Record<WaterClass, ClassDefaults> = {
+export const CLASS_DEFAULTS: Record<WaterClass, ClassDefaults> = noProto({ // chunk 6 (B-004): no inherited names
   freshwater_cool: {
     label: 'cool freshwater tank',
     temp: { min: 12, max: 23, idealMin: 15, idealMax: 20 },
@@ -134,7 +135,7 @@ export const CLASS_DEFAULTS: Record<WaterClass, ClassDefaults> = {
     source: { pH: 8.0, kh: 10, gh: 12, sg: 1.008, nitrate: 1 },
     startTempC: 25.5,
   },
-};
+});
 
 export const isSaltClass = (c: WaterClass) => c === 'reef' || c === 'brackish' || c.startsWith('marine');
 export const isMarineClass = (c: WaterClass) => c === 'reef' || c.startsWith('marine');

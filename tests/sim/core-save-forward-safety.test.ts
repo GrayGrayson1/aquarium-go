@@ -397,6 +397,8 @@ const KNOWN_AT: Record<number, { species: string[]; tankTiers: string[] }> = {
     tankTiers: ['g5', 'g10', 'g20L', 'g29', 'g40B', 'g55', 'g75', 'g90', 'g125', 'g180', 'g240', 'g300', 'g500', 'g600', 'g800', 'g1000'],
   },
 };
+// v2 (chunk 5, INTAKE C-44): the S3-D state (the Water and Live food rooms, manual mode); no species or tank size changed.
+KNOWN_AT[2] = { species: [...KNOWN_AT[1].species], tankTiers: [...KNOWN_AT[1].tankTiers] };
 
 describe('PERSIST-014 A5 / ADR-0016 decision 2: a new species or tank size raises SCHEMA_VERSION', () => {
   it(`the species and tank sizes are exactly the ones pinned for save format v${SCHEMA_VERSION}`, () => {

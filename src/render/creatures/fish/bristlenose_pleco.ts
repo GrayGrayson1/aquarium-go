@@ -2,7 +2,7 @@
  * Bristlenose pleco (Ancistrus cf. cirrhosus) — flattened suckermouth catfish: broad rounded head and flat belly,
  * a body armoured in bony plates, eyes set high, a tall spiny dorsal sail, adipose fin with a spine, big spined
  * pectorals and pelvics held flat, and the namesake fleshy bristles on the snout (a full branching crown on males,
- * a short fringe on females). Long-fin / super long-fin forms grow flowing fins. OWNER: lane "fishart".
+ * a short fringe on females). Long-fin / double long-fin forms grow flowing fins. OWNER: lane "fishart".
  */
 import type { PlanFn } from './common';
 import type { FishPlan, ExtraSpec, Mark } from '../core/plan';

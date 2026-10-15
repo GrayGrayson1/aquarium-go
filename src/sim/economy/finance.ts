@@ -21,6 +21,7 @@ import { dayIndex, finite, fmtMoney, roundCents, pushCapped, nicePrice } from '.
 import { quickSellQuote } from './valuation';
 import { isLotOffer } from '../life/rareVariants'; // lane:genetics
 import { payStaff, staffLeavingTonight, staffWagesPerDay } from '../staff'; // lane:staff
+import { roomsUpkeep } from '../automation/reserve'; // lane:automation (chunk 5)
 
 const LEDGER_CAP = 400;
 const DAILY_CAP = 120;
@@ -69,6 +70,9 @@ export interface OperatingCosts {
   /** lane:staff — staff wages per day (included in `total`) and how many people they cover. */
   wages?: number;
   staffCount?: number;
+  /** lane:automation (chunk 5, AUTO-038) — the Water and Live food rooms' machines (included in `total`), and their names. */
+  rooms?: number;
+  roomNames?: string;
 }
 
 function safeTankCost(state: GameState, tankId: string): number {
@@ -91,8 +95,10 @@ export function dailyOperatingCost(state: GameState): OperatingCosts {
   // lane:staff — wages are part of the daily bills (paid at midnight, never into debt: see payStaff).
   const staff = state.staff?.roster.length ? staffWagesPerDay(state) : null;
   const wages = staff ? Math.max(0, finite(staff.total)) : 0;
-  const total = roundCents(tanks.reduce((a, t) => a + t.cost, 0) + rent + wages);
-  return { total, tanks, rent, levelName: lvl?.name ?? 'Facility', ...(staff ? { wages, staffCount: staff.count } : {}) };
+  const rooms = roomsUpkeep(state); // lane:automation (chunk 5)
+  const roomNames = [state.facility.water ? 'Water room' : null, state.facility.food ? 'Live food room' : null].filter(Boolean).join(' and ');
+  const total = roundCents(tanks.reduce((a, t) => a + t.cost, 0) + rent + wages + rooms);
+  return { total, tanks, rent, levelName: lvl?.name ?? 'Facility', ...(staff ? { wages, staffCount: staff.count } : {}), ...(rooms > 0 ? { rooms, roomNames } : {}) };
 }
 
 // ───────────────────────────── suggestions when cash is short ─────────────────────────────
@@ -186,6 +192,7 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
     spend(state, tankTotal, 'operating', `Running costs — ${costs.tanks.length} tanks (largest: ${top.map((t) => `${t.name} ${fmtMoney(t.cost)}`).join(', ')})`, true);
   }
   if (costs.rent > 0) spend(state, costs.rent, 'facility', `Rent — ${costs.levelName}`, true);
+  if (costs.rooms) spend(state, costs.rooms, 'operating', `Running costs — ${costs.roomNames}`, true); // lane:automation (chunk 5, AUTO-038)
   // The club's lifeline lands before payday, so the wages it covers are paid tonight (S05-11) — also when cash ran
   // short of wages before it ran into the red, so the team would walk out before the debt is three days old (G2-03).
   if (!f.loan && ((f.debtSinceHour !== undefined && end - f.debtSinceHour >= LOAN_AFTER_DEBT_HOURS - 1e-6) || staffLeavingTonight(state))) grantLoan(state);
@@ -219,6 +226,18 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
     visitors: visitorsForDay(state, endedDay0 + 1),
     sales: entries.filter((e) => e.amount > 0 && (e.category === 'livestock_sale' || e.category === 'tank_sale')).length,
   };
+  // lane:automation (chunk 5, AUTO-039) — Operations' weekly money, from these same entries, kept past the ledger cap
+  const lines: Record<string, { n: number; amount: number }> = {};
+  for (const e of entries) {
+    if (!e.line || !(e.amount > 0)) continue;
+    const l = (lines[e.line.id] ??= { n: 0, amount: 0 });
+    l.n += e.line.n;
+    l.amount = roundCents(l.amount + e.amount);
+  }
+  if (Object.keys(lines).length) summary.lines = lines;
+  const supplies = roundCents(-entries.filter((e) => e.amount < 0 && (e.category === 'food' || e.category === 'consumables')).reduce((a, e) => a + e.amount, 0));
+  if (supplies > 0) summary.supplies = supplies;
+  if (costs.rooms) summary.upkeep = costs.rooms;
   pushCapped(f.daily, summary, DAILY_CAP);
 
   // 4. An empty room the player can't restock: the club steps in after one more midnight (P5-08).

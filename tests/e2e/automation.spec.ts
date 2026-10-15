@@ -147,7 +147,7 @@ test.describe('Tank card › Automation (desktop 1440×900)', () => {
     await expect(tid(page, 'water-autoclean-note')).toHaveCount(0);
   });
 
-  test('the locked Auto-clean switch is reachable with Tab and names its reason', async ({ page }) => {
+  test('the locked Auto-clean switch is reachable with Tab and names its reason', async ({ page, browserName }) => {
     const tankId = await automationGame(page);
     await goHash(page, `#/tanks/${tankId}/equipment`);
     const sw = tid(page, 'tank-auto-clean');
@@ -155,7 +155,9 @@ test.describe('Tank card › Automation (desktop 1440×900)', () => {
     // aria-disabled, never the disabled attribute: it stays in the tab order (Playwright's toBeEnabled counts both)
     expect(await sw.evaluate((e) => (e as HTMLButtonElement).disabled)).toBe(false);
     await tid(page, 'tank-auto-clean-buy').focus();
-    await page.keyboard.press('Tab');
+    // WebKit moves focus to buttons with Tab only when Safari's "Press Tab to highlight each item" is on; Option+Tab
+    // always does (as in a11y.spec.ts)
+    await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
     await expect(sw).toBeFocused();
     const why = await sw.getAttribute('aria-describedby');
     expect(why).toBeTruthy();

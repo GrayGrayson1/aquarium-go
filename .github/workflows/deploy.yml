@@ -25,6 +25,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Owner's decision (ADR-0029 decision 7, B-193): typecheck and the unit tests run before publishing, and a failure
+      # stops the deploy (e2e stays local: the four checks run before every release)
+      - run: npm run typecheck
+      - run: npm test
       # The site is served from https://<owner>.github.io/<repo>/, so assets need that base path.
       - run: npm run build -- --base=/${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3

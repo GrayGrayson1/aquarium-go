@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Layers, Eye, Pencil, Check, X, Tag, Wrench, Plus, Fish, Droplets, Sparkles, Ticket, Gauge, ChevronDown, Egg, Coins } from 'lucide-react';
+import { Layers, Eye, Pencil, Check, X, Tag, Wrench, Plus, Fish, Droplets, Sparkles, Ticket, Gauge, ChevronDown, Egg, Coins, ClipboardList } from 'lucide-react';
 import type { GameState, Tank, TankPurpose, WaterClass } from '@/types';
 import { Button, StatusBadge, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
@@ -22,6 +22,9 @@ import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, tankValue, dailyCost, tierOf, waterReport } from '../common/derive';
 import { renameTank, setTankPurpose, convertWaterClass, canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
+import { tankChips, tankLineProblem } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
+import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
+import { CHIP_ICON } from '@/ui/common/tankChipIcons'; // lane:automation (chunk 5)
 
 export function TanksPanel() {
   const g = usePanelGame(800);
@@ -38,10 +41,17 @@ export function TanksPanel() {
 
   const rows = useMemo(() => {
     if (!g) return [];
-    return orderedTanks(g).map((t) => {
+    const list = orderedTanks(g).map((t) => {
       const residents = livingInTank(g, t.id);
-      return { t, residents, clutches: clutchesIn(g, t.id).length, value: tankValue(g, t.id)?.expected ?? 0, cost: dailyCost(g, t) };
+      return { t, residents, clutches: clutchesIn(g, t.id).length, young: clutchesIn(g, t.id).reduce((a, cl) => a + cl.count, 0), value: tankValue(g, t.id)?.expected ?? 0, cost: dailyCost(g, t) };
     });
+    // lane:automation (chunk 5, DESIGN-S3D §8.1, ADR-0026 decision 4) — every tank keeps its row; tanks with a problem
+    // come first (danger, then watch or a line held up), in their own order otherwise
+    const rank = (t: Tank) => {
+      const a = safe(() => tankAttention(g, t.id), null)?.level ?? 'good';
+      return a === 'danger' ? 0 : a === 'watch' || tankLineProblem(g, t) ? 1 : 2;
+    };
+    return list.map((r, i) => ({ r, i, k: rank(r.t) })).sort((a, b) => a.k - b.k || a.i - b.i).map((x) => x.r);
   }, [g]);
 
   if (!g) return null;
@@ -53,7 +63,7 @@ export function TanksPanel() {
     <PanelLayout
       title="Tanks"
       icon={<Layers size={20} />}
-      subtitle={`${plural(rows.length, 'aquarium')} · ${plural(animals, 'animal')} · ${formatMoney(totalValue)} estimated value`}
+      subtitle={`${plural(rows.length, 'aquarium')} · ${plural(animals, 'animal')} · ${plural(rows.reduce((a, r) => a + r.young, 0), 'young', 'young')}`} // lane:automation (chunk 5, DESIGN-S3D §8.1)
       footer={
         <>
           <span className="pn-muted pn-small pn-grow">Running all tanks costs about {formatMoney(totalCost, { cents: totalCost < 20 })} a day.</span>
@@ -166,7 +176,9 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
               </Chip>
             )}
             {c.compatVerdict !== 'excellent' && c.compatVerdict !== 'usually_compatible' && residents > 1 && <VerdictBadge verdict={c.compatVerdict} />}
+            <AutomationChips g={g} tank={tank} />
           </div>
+          <LineProblem g={g} tank={tank} />
         </div>
       </div>
 
@@ -185,6 +197,11 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
         <Button size="sm" variant={focused ? 'default' : 'primary'} onClick={focus}>
           <Eye size={15} /> {focused ? 'In view' : 'View'}
         </Button>
+        {focused && (
+          <Button size="sm" data-testid={`tank-row-card-${tank.id}`} onClick={() => go({ kind: 'tankCard', tankId: tank.id, tab: 'water' })}>
+            <ClipboardList size={15} /> Tank card
+          </Button>
+        )}
         <Button size="sm" onClick={onToggle} aria-expanded={open}>
           <ChevronDown size={15} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform .2s' }} /> Manage
         </Button>
@@ -192,6 +209,37 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
 
       {open && <TankManage g={g} tank={tank} residents={residents} lastTank={lastTank} starterHere={starterHere} listed={!!listing} />}
     </Card>
+  );
+}
+
+/** lane:automation (chunk 5, DESIGN-S3D §8.1; AUTO-041) — the tank's automation chips, an icon and a word each. */
+export function AutomationChips({ g, tank }: { g: GameState; tank: Tank }) {
+  const chips = safe(() => tankChips(g, tank), []);
+  return (
+    <>
+      {chips.map((c) => (
+        <Chip key={c.key} tone={c.tone} icon={CHIP_ICON[c.id]} testId={`tank-chip-${c.id}`}>
+          {c.word}
+        </Chip>
+      ))}
+    </>
+  );
+}
+
+/** A line held up by this tank: the amber reason and Why (Problems from the Desk, else Operations › Lines; C-13). */
+function LineProblem({ g, tank }: { g: GameState; tank: Tank }) {
+  const p = safe(() => tankLineProblem(g, tank), null);
+  if (!p) return null;
+  const desk = g.progress.unlocked.includes('operations_desk');
+  return (
+    <div className="pn-tankcard__why pn-tone-watch" role="note" data-testid={`tanks-row-line-${tank.id}`}>
+      <span>
+        {p.text}{' '}
+        <button type="button" className="pn-link" onClick={() => go(desk ? { kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:issues' } : { kind: 'panel', panel: 'operations', tab: 'lines' })}>
+          Why
+        </button>
+      </span>
+    </div>
   );
 }
 

@@ -47,8 +47,13 @@ import * as aquascape from '@/sim/aquascape';
 import * as facility from '@/sim/facility';
 import * as lifeActions from '@/sim/life/actions';
 import * as compat from '@/sim/compat';
+import * as production from '@/sim/production'; // lane:production (chunk 4)
+import * as automation from '@/sim/automation'; // lane:automation (chunk 5)
 import { facilityOverflow } from '@/render/camera/facilityOverflow';
 import { navBootPending } from '@/ui/nav/router';
+import { localStub } from '@/social'; // lane:social (chunk 6)
+import { setSimFault } from '@/game/simHealth'; // lane:core (chunk 6, B-002)
+import { refreshSocialNews } from '@/ui/panels/social/socialStore';
 
 declare global {
   interface Window {
@@ -101,6 +106,23 @@ const ACTIONS: Record<string, AnyFn> = {
   startBreeding: lifeActions.startBreeding as AnyFn,
   separateCreature: lifeActions.separateCreature as AnyFn,
   moveClutch: lifeActions.moveClutch as AnyFn,
+  // production lines (chunk 4)
+  createLine: production.createLine as AnyFn,
+  setLineRunning: production.setLineRunning as AnyFn,
+  setLineRule: production.setLineRule as AnyFn,
+  setKeepRules: production.setKeepRules as AnyFn,
+  setLinePair: production.setLinePair as AnyFn,
+  setLineTank: production.setLineTank as AnyFn,
+  addQuarantineTank: production.addQuarantineTank as AnyFn,
+  endLine: production.endLine as AnyFn,
+  // deep automation (chunk 5)
+  setManualMode: automation.setManualMode as AnyFn,
+  setStockOrders: automation.setStockOrders as AnyFn,
+  waitForLine: automation.waitForLine as AnyFn,
+  upgradePrep: automation.upgradePrep as AnyFn,
+  addReservoir: automation.addReservoir as AnyFn,
+  addCulture: automation.addCulture as AnyFn,
+  buyEggs: economy.buyEggs as AnyFn,
 };
 
 /** Read-only sim queries callable via __AQ.query(name, ...args). */
@@ -206,6 +228,20 @@ export function debugApi(): Record<string, unknown> {
     // e2e helpers
     // `ready` is defined below as a getter (lane:perf2)
     dev,
+    // lane:core (chunk 6, B-002) — make every tick fail (the banner after three in a row)
+    failSim: (on: boolean) => setSimFault(on),
+    // lane:social (chunk 6) — the local Social stub's test hooks: go offline (SOC-010), something new arrives (SOC-004 A5)
+    social: {
+      offline: (on: boolean) => localStub()?.setOffline(on),
+      pushTrade: () => {
+        localStub()?.pushTrade({ id: `trade-dev-${Date.now()}`, from: 'Priya', gives: 'offers a Prismatic Halfmoon Betta', wants: 'for two Golden Axolotls', createdAt: new Date().toISOString() });
+        return refreshSocialNews();
+      },
+      pushClubNews: () => {
+        localStub()?.pushClubNews();
+        return refreshSocialNews();
+      },
+    },
     fixtures: () => loadFixtureRegistry().then((r) => Object.keys(r)), // lane:perf2 — async (lazy registry)
     newGame: (starterId?: Parameters<typeof dev.newGame>[0], name?: string, seed?: number) => dev.newGame(starterId, name, seed),
     loadFixture: (name: string, view?: 'tank' | 'facility') => dev.loadFixture(name, view),

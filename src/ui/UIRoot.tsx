@@ -19,6 +19,8 @@ import { SettingsPanel } from './settings/SettingsPanel';
 import { BootCard } from './nav/BootCard';
 import { startRouter, useNav } from './nav/router';
 import { startNotifications } from './notify/deliver'; // lane:notify (chunk 3)
+import { startClubReminder } from './notify/clubReminder'; // lane:social (chunk 6)
+import { SimFailureBanner } from './common/SimFailureBanner'; // lane:core (chunk 6, B-002)
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';
 import './styles/screens.css';
@@ -28,6 +30,7 @@ import './styles/genetics.css'; // lane:genetics
 import './styles/nav.css'; // lane:ui-shell (chunk 1)
 import './styles/automation.css'; // lane:ui-shell (chunk 3)
 import './styles/notify.css'; // lane:notify (chunk 3)
+import './styles/a11y.css'; // chunk 6 (ACC-005): high contrast and focus rings, after every other stylesheet
 
 registerDisplayFont();
 // lane:ui-shell (chunk 1, PLAT-003) — a platform with its own save backends (a native wrapper) hands them to persistence
@@ -56,6 +59,7 @@ export function UIRoot() {
   // lane:ui-shell (chunk 1) — the hash router: links, Back/Forward, and the boot from a link or a reload (§6.4)
   useEffect(() => startRouter(), []);
   useEffect(() => startNotifications(), []); // lane:notify — system notifications while the game is open but not focused
+  useEffect(() => startClubReminder(), []); // lane:social (chunk 6, ADR-0034 decision 4) — dev mode only
   const booting = useNav((s) => !!s.boot);
   const screen = useUI((s) => s.screen);
   const reduced = useSettings((s) => s.reducedMotion);
@@ -88,6 +92,8 @@ export function UIRoot() {
         <ErrorBoundary name="boot">
           <BootCard />
         </ErrorBoundary>
+        {/* lane:core (chunk 6, B-002) — outside the HUD's boundary: it must show whatever else is failing */}
+        <SimFailureBanner />
         <ErrorBoundary name="settings">
           <SettingsPanel />
         </ErrorBoundary>

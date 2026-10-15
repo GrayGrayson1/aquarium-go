@@ -145,12 +145,20 @@ describe('R03-04: feeding during the catch-up counts for animals saved outside t
     // the same tank saved healthy shows what feeding earns over the catch-up: the sick tank recovers no faster
     const ref = feederTank(80, 60);
     simulateOffline(ref, 2 * HOUR);
-    const earned = Math.max(...alive(ref).map((c) => c.stats.health - 60));
+    // Each animal against itself in the healthy run (both fixtures roll the same six tetras). Chunk 4 review: this used
+    // to compare with the best recovery in the healthy run, which a chance illness there can pull below what a sick
+    // animal honestly earns (simRng's one-stream fix rolled the fixture's tetras differently, and the healthy run's
+    // best healer fell ill); an animal that fell ill in the healthy run has no clean reference and is left out.
+    let compared = 0;
     for (const c of alive(s)) {
       expect(c.stats.hunger).toBeLessThan(98);
       expect(c.stats.health).toBeGreaterThanOrEqual(10 - 1e-9);
-      expect(c.stats.health).toBeLessThanOrEqual(10 + earned + 1e-6); // P-3: real recovery counts, the floor never adds
+      const twin = ref.creatures[c.id];
+      if (!twin || twin.status !== 'alive' || twin.history.some((h) => h.kind === 'illness')) continue;
+      compared++;
+      expect(c.stats.health - 10).toBeLessThanOrEqual(twin.stats.health - 60 + 1e-6); // P-3: real recovery counts, the floor never adds
     }
+    expect(compared).toBeGreaterThanOrEqual(4);
   });
 
   it('an unfed, critically ill tank comes back exactly as it was saved', () => {

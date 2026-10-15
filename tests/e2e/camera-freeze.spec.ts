@@ -7,9 +7,11 @@
  * On the owner's Mac the body passed in 38 s and then Playwright's graceful context.close() hung for the whole 120 s
  * teardown (Chromium tearing down a High-quality WebGL page, headless with Metal), while closing the browser took 1.4 s.
  * browser.close() ends the GPU process too, so that hang can't fail the run. The assertions are unchanged.
+ * lane:core (chunk 6, ADR-0024 decision 3) — the browser is the project's own (Chromium with its GPU switches, or WebKit),
+ * so the WebKit project tests WebKit here too.
  */
 import { createHash } from 'node:crypto';
-import { test, expect, chromium, devices, type Page } from '@playwright/test';
+import { test, expect, chromium, webkit, devices, type Page } from '@playwright/test';
 import { openApp, quickGame, collectErrors, waitForWarmup } from './helpers';
 
 const GPU_ARGS = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-webgl'];
@@ -39,8 +41,9 @@ async function expectLive(page: Page, label: string): Promise<void> {
 
 test.describe('camera modes keep rendering', () => {
   test('photo mode and close-up toggles never freeze the canvas (High quality)', async ({ baseURL }, testInfo) => {
-    const browser = await chromium.launch({ args: GPU_ARGS });
-    const context = await browser.newContext({ ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, baseURL });
+    const safari = testInfo.project.use.browserName === 'webkit';
+    const browser = safari ? await webkit.launch() : await chromium.launch({ args: GPU_ARGS });
+    const context = await browser.newContext({ ...devices[safari ? 'Desktop Safari' : 'Desktop Chrome'], viewport: { width: 1440, height: 900 }, baseURL });
     context.setDefaultTimeout(15_000); // playwright.config.ts's actionTimeout (a hand-made context doesn't inherit `use`)
     const page = await context.newPage();
     try {

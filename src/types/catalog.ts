@@ -172,4 +172,11 @@ export interface FoodDef {
   unlock: string | null;
   color: string; // particle color
   description: string;
+  /**
+   * chunk 6 (B-170) — a food sold for certain animals or one water type (Axolotl Pellets, Goldfish Pellets, Marine
+   * Pellets). Anyone whose diet its tags match can still eat it; the keepers, the autofeeder's shopping list and the
+   * food lists rank it last for anyone else. Absent: a food for everyone. Read it through madeForOtherSpecies /
+   * madeForOtherWater in src/data/catalog/foods.ts.
+   */
+  madeFor?: { speciesIds?: readonly string[]; environments?: readonly Environment[] };
 }

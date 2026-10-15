@@ -258,6 +258,6 @@ export const betta: SpeciesDefinition = {
     { other: 'tag:shrimp_dwarf', verdictFloor: 'conditional', reason: 'Some bettas ignore adult dwarf shrimp; others hunt them. Shrimplets are usually eaten.', incidentRisk: 0.2, mitigatedBy: ['cover', 'hides'] },
     { other: 'fancy_guppy', verdictFloor: 'conditional', reason: 'Bettas often attack colourful long-finned male guppies as if they were rivals.', incidentRisk: 0.15, mitigatedBy: ['tank_size', 'sight_breaks'] },
   ],
-  special: { airBreather: true, escapeArtist: true },
+  special: { airBreather: true, escapeArtist: true, swimBladderProne: true },
   visualLane: 'fish',
 };

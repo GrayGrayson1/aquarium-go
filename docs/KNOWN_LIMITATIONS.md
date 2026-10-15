@@ -21,11 +21,17 @@ What is simplified, approximated or missing in this build. None of these block p
 - **Background tanks** (beyond the 12 nearest) step in pieces of at most 30 minutes while a meal is fresh, then in coarser chunks.
 - A three.js deprecation warning (`THREE.Clock`) comes from inside react-three-fiber and can't be fixed without changing dependencies.
 - **Sold animals stay in the save** (status `sold`) so lineage lookups keep working. Very long games accumulate these records.
+- **Save size.** A save is budgeted at 2.5 million characters, what the smallest browser storage quota holds (PERSIST-005); a Grand Hall with 40 tanks, 500 animals and eight production lines fits. Listing photos are the exception: with a photo on many active listings a save can pass the budget. It still saves normally (IndexedDB), but the quick copy written as the page closes then leaves the listing photos out, and since that copy is the newest, the next load uses it and those listings come back without photos. If even that copy doesn't fit, the console says so instead of failing silently. Where the browser has no IndexedDB and localStorage is the save store, a save near the budget leaves no room for its backup copy.
+- **The Water room's reserves are exact for jobs, approximate for top-offs** (chunk 5). Water changes, mixing and the cultures run at their game hours whatever the step size, and use exact stock; an Auto Top-Off draws fresh water as its tank catches up, so a background tank's top-off lands at the end of its chunk and the fresh reserve can read up to about half a gallon differently from a run that watched every tank. The player's own changes and the keepers' stay on tap water and shelf salt (INTAKE C-67), so they never draw on the reserves.
+- **A line "pauses", it never "pauses tonight"** (chunk 5). The design's Problems item "{Line} pauses tonight" forecasts a pause; the game holds a line's pair as soon as its grow-out tank can't take the next clutch (chunk 4), so Operations shows the line as paused, with the day it restarts.
+- **Salt water is mixed at full strength.** The salt reserve is SG 1.025; brackish tanks blend it with fresh water, and a marine tank kept saltier than 1.025 gets its changes at 1.025.
+- **The Water room's warnings are a forecast** (chunk 5, ADR-0033). "Salt water runs short" and "Fresh water runs short" come from a dry run of the room's next week that takes each tank's change at today's size and leaves out evaporation between changes, so near the limit a warning can come and go within a day, and a shortage rarer than about every five days shows only part of the time (B-202). The changes it predicts are skipped in the game all the same, and the log's summary line counts them.
 
 ## Economy
 - Equipment-bundle listings (marked "later" in the spec) are not implemented. Livestock (single, group, pair, juveniles), frag/cutting and whole-tank listings are.
 - Frags in storage don't grow. Coral colour-morph lines are not named: a frag is a clone of its parent's look, and its "line" records provenance only. Frag plugs are not drawn on far (merged) tanks.
 - Only the five most recent closed listings keep their photos, which keeps save files small.
+- **The holding container is a pause, not a tank.** An animal that wasn't part of a whole-tank sale and had no tank with room (or that a save repair found without a tank) rests there: it doesn't eat, age or breed until you move it to a tank, and the game says so (ADR-0029 decision 9, ADR-0030 decision 8).
 - The admission-price projection in the Visitors panel is an estimate; the simulation decides actual attendance.
 
 ## Rendering
@@ -79,7 +85,6 @@ What is simplified, approximated or missing in this build. None of these block p
 - The iOS focus-zoom (G4-05) and long-press selection (G4-06) fixes are verified by code trace only: Playwright's WebKit emulates neither.
 
 ## Architecture
-- A few small tank-editing mutators (rename, purpose, water-class conversion, backdrop/substrate change) live in `src/ui/panels/common/tankOps.ts` rather than `src/sim`. They are written as plain draft mutators, so they can move without changes.
 - The AI imports `equipmentLayout` from the decor render module to place equipment colliders (an ai → render dependency).
 
 ## Creature motion

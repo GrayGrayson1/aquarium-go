@@ -26,14 +26,17 @@ import { HUNGER_PER_HUNGER_HOURS } from '../life/step'; // lane:staff2 — metab
 import { residentsOf } from '../residents'; // lane:staff2 — same order as a creatures scan (perf2's index inside a step)
 import { effectiveBioload } from '../water/env';
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { buyFood, buySalt, SALT_PRICE_PER_KG } from '../economy';
+import { buyEggs, buyFood, buySalt, SALT_PRICE_PER_KG } from '../economy';
 import { isOpenAt } from '../facility';
 import { pushReaction } from '../facility/reactions';
 import { findSpecies } from '@/data/species';
-import { FOODS, getFoodDef } from '@/data/catalog/foods';
+import { FOODS, getFoodDef, eatsFood, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods';
 import { STAFF_TRAITS } from '@/data/staff';
 import { isSaltClass } from '../water/constants';
-import { clamp, dayRecord, displayTankIds, ensureStaff, firstName, fmt$, noteIssue, totals, FEED_RING, TALK_RING } from './common';
+import { EGGS_SUPPLY, FOOD_ROOM, VEGETABLES } from '@/data/catalog/machines'; // lane:automation (chunk 5)
+import { SALT_KG_PER_GAL, batchSaltKg, changerOf, saltDaysLeft, saltWaterPerDay } from '../automation/water'; // lane:automation (chunk 5)
+import { batchGal } from '../automation/reserve'; // lane:automation (chunk 5)
+import { asStaff, clamp, dayRecord, displayTankIds, ensureStaff, firstName, fmt$, noteIssue, totals, FEED_RING, TALK_RING } from './common';
 import { dayOf } from '../time';
 
 // ───────────────────────────── schedule ─────────────────────────────
@@ -155,28 +158,9 @@ function hoursToNextVisit(state: GameState, m: StaffMember, tankId: string, roun
   return gap + 0.5;
 }
 
-// ───────────────────────────── staff care never counts as the player's ─────────────────────────────
+// ───────────────────────────── helpers ─────────────────────────────
 
-const PLAYER_COUNTERS = ['feeds', 'targetFeeds', 'waterChanges', 'cleanings', 'topOffs', 'doses'] as const;
-
-/**
- * Run a care mutator on the staff's behalf: the player's counters (quests, mastery, achievements) are left untouched.
- * (lane:qa-final) Feeds also pass `byStaff: true`, so the player's overfeeding tip never fires for a keeper's round.
- */
-function asStaff<T>(state: GameState, fn: () => T): T {
-  const c = state.progress.counters;
-  const saved = PLAYER_COUNTERS.map((k) => [k, c[k]] as const);
-  try {
-    return fn();
-  } finally {
-    for (const [k, v] of saved) {
-      if (v === undefined) delete c[k];
-      else c[k] = v;
-    }
-  }
-}
-
-const eats = (sp: SpeciesDefinition, f: FoodDef) => f.tags.some((t) => sp.foods.includes(t));
+const eats = eatsFood;
 const inStock = (state: GameState, id: string) => Math.floor(state.inventory.foods?.[id] ?? 0);
 
 function throttled(state: GameState, key: string, hours: number): boolean {
@@ -210,7 +194,7 @@ export function pickStaffFood(state: GameState, sp: SpeciesDefinition, tankSpeci
     // Made for this animal: marine foods stay in salt water, axolotl / goldfish pellets go to axolotls / goldfish,
     // and a food with a large share of tags the species doesn't eat (big pellets for small fish) ranks lower.
     const tagFit = f.tags.filter((t) => sp.foods.includes(t)).length / Math.max(1, f.tags.length);
-    const wrongKind = (/^marine_/.test(f.id) && env && env !== 'marine' ? 3 : 0) + (/^axolotl_/.test(f.id) && sp.id !== 'axolotl' ? 2 : 0) + (/^goldfish_/.test(f.id) && !/goldfish/.test(sp.id) ? 2 : 0);
+    const wrongKind = (madeForOtherWater(f, env) ? 3 : 0) + (madeForOtherSpecies(f, sp.id) ? 2 : 0); // the catalog's madeFor (B-170)
     const score = staple + Math.min(2, Math.log10(1 + n)) - stolen - clash - Math.min(2, perUnit * 40) - 2 * (1 - tagFit) - wrongKind;
     if (score > bestScore) {
       bestScore = score;
@@ -678,14 +662,22 @@ export function stockTargetDays(m: StaffMember): number {
 }
 
 interface Order {
-  kind: 'food' | 'salt';
+  kind: 'food' | 'salt' | 'eggs';
   foodId?: string;
   packs?: number;
   kg?: number;
+  /** lane:automation (chunk 5) — tins of brine shrimp eggs for the hatchery. */
+  tins?: number;
   urgency: number;
   label: string;
   unit: number;
 }
+
+/**
+ * lane:automation (chunk 5, DESIGN-S3D §9.6, decision 15) — once a Water room mixes the salt, a salt order covers about
+ * this many days of the mixer's use (40 kg at the sample's 3.5 kg a day; planners keep three more).
+ */
+export const SALT_ORDER_DAYS = 11;
 
 /**
  * Servings of each food the keepers will use in a day, following the same choices a keeper makes (pickStaffFood per
@@ -725,6 +717,9 @@ export function plannedUsage(state: GameState): Map<string, number> {
       if (food) usage.set(foodId, (usage.get(foodId) ?? 0) + (demand * 1.15) / Math.max(1, food.nutrition));
     }
   }
+  // lane:automation (chunk 5, INTAKE C-20) — the Live food room's jars each take a serving of vegetables every 3 days
+  const jars = state.facility.food?.jars.length ?? 0;
+  if (jars > 0) usage.set(VEGETABLES, (usage.get(VEGETABLES) ?? 0) + (jars * 24) / FOOD_ROOM.jarHours);
   return usage;
 }
 
@@ -768,11 +763,33 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
     wanted.add(f.id);
     orders.push({ kind: 'food', foodId: f.id, packs: 1, urgency: -0.5, label: f.name, unit: f.price });
   }
-  // 3) Marine salt: enough for two rounds of 25% water changes in every salt-water tank.
+  // 3) Marine salt. lane:automation (chunk 5, DESIGN-S3D §9.6) — with a Water room the salt is mixed into salt water, so
+  // its urgency is the days until a water change would be skipped (the salt water in the reserve and the mixing tank
+  // included), and the order follows the mixer's use (INTAKE C-63: the hatchery's too). The keepers' changes stay on
+  // shelf salt (INTAKE C-67): the salt tanks a working changer doesn't serve (all of them without a Water room) keep
+  // their two or three changes' worth on top, as before (the chunk 5 review). Without a Water room, unchanged.
+  const water = state.facility.water;
+  const have = Math.max(0, state.inventory.salt ?? 0);
+  let saltKg = 0;
+  let saltUrgency = Infinity;
+  let mixerFloor = 0;
+  if (water) {
+    const galDay = saltWaterPerDay(state);
+    if (galDay > 1e-6) {
+      const kgDay = galDay * SALT_KG_PER_GAL;
+      const days = saltDaysLeft(state);
+      // the same line Problems draws: under two days of the mixer's use (or two batches) is low
+      mixerFloor = Math.max(2 * batchSaltKg(batchGal(water)), 2 * kgDay);
+      if (days < target || have < mixerFloor - 1e-6) {
+        saltKg += Math.max(5, Math.ceil((kgDay * (SALT_ORDER_DAYS + (m.trait === 'planner' ? 3 : 0))) / 5) * 5);
+        saltUrgency = days;
+      }
+    }
+  }
   let saltNeed = 0;
   for (const id of state.tankOrder) {
     const t = state.tanks[id];
-    if (!t || !isSaltClass(t.waterClass)) continue;
+    if (!t || !isSaltClass(t.waterClass) || (water && changerOf(t))) continue;
     try {
       saltNeed += waterChangeCost(state, id, 0.25).saltKg;
     } catch {
@@ -780,72 +797,121 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
     }
   }
   if (saltNeed > 0) {
-    const have = Math.max(0, state.inventory.salt ?? 0);
     const keep = saltNeed * (m.trait === 'planner' ? 3 : 2);
-    if (have < keep) {
-      const kg = Math.max(5, Math.ceil((keep * 1.25 - have) / 5) * 5);
-      orders.push({ kind: 'salt', kg: m.trait === 'thrifty' ? 5 : kg, urgency: have / Math.max(0.1, saltNeed) - 1, label: 'marine salt mix', unit: SALT_PRICE_PER_KG });
+    const spare = have - mixerFloor; // what the mixer's two batches leave the keepers (all of it without a Water room)
+    if (spare < keep) {
+      saltKg += Math.max(5, Math.ceil((keep * 1.25 - Math.max(0, spare)) / 5) * 5);
+      // never below -1 (the old rule's floor): a shelf under the mixer's two batches mustn't jump ahead of food that's out
+      saltUrgency = Math.min(saltUrgency, Math.max(0, spare) / Math.max(0.1, saltNeed) - 1);
+    }
+  }
+  if (saltKg > 0) orders.push({ kind: 'salt', kg: m.trait === 'thrifty' ? 5 : saltKg, urgency: saltUrgency, label: 'marine salt mix', unit: SALT_PRICE_PER_KG });
+  // lane:automation (chunk 5, INTAKE C-20) — the hatchery's eggs: a scoop a cone a day, kept like a food
+  const cones = state.facility.food?.cones.length ?? 0;
+  if (cones > 0) {
+    const have = Math.max(0, state.inventory.brineShrimpEggs ?? 0);
+    const days = have / cones;
+    if (days < target) {
+      const tins = clamp(Math.ceil(((target + 1) * cones - have) / EGGS_SUPPLY.scoops), 1, maxPacks);
+      orders.push({ kind: 'eggs', tins, urgency: days, label: 'brine shrimp eggs', unit: EGGS_SUPPLY.price });
     }
   }
   orders.sort((a, b) => a.urgency - b.urgency);
   return orders;
 }
 
-/** The stock manager's shelf check: buys what's needed within today's remaining budget. */
-export function stockCheck(state: GameState, m: StaffMember, hour: number): void {
-  const st = ensureStaff(state);
-  const day = dayRecord(state, m);
-  const today = dayOf(hour);
-  if (st.stockSpent.day !== today) st.stockSpent = { day: today, amount: 0 };
-  const orders = plannedOrders(state, m);
-  if (!orders.length) return;
-  const bought: string[] = [];
-  // lane:staff (S05-03) — what could not be bought, and why: the day's budget, or the till itself
-  const overBudget: string[] = [];
-  const noCash: string[] = [];
-  let spentNow = 0;
-  for (const o of orders) {
-    const left = Math.max(0, st.stockBudget - st.stockSpent.amount);
-    const cash = Math.max(0, state.finance.money);
+/** lane:automation (chunk 5) — one purchase a shelf check makes. */
+export interface PlannedBuy {
+  kind: Order['kind'];
+  foodId?: string;
+  packs?: number;
+  kg?: number;
+  tins?: number;
+  price: number;
+  /** "2 × Micro Pellets", "40 kg salt mix", "1 × brine shrimp eggs". */
+  label: string;
+}
+
+/** What a shelf check would buy, and what it couldn't (over the budget, or past the cash in the till). */
+export interface PurchasePlan {
+  buys: PlannedBuy[];
+  overBudget: string[];
+  noCash: string[];
+}
+
+/**
+ * lane:automation (chunk 5, DESIGN-S3D §9.6) — the shelf check's purchases with `left` of the day's budget and `cash`
+ * in the till, most urgent first: pure, so the forecast (Problems, Visitors › Staff) dry-runs the next check with it.
+ * As many packs as both allow, so when money is tight the most urgent staple still gets a pack or two; salt in 5 kg
+ * steps; eggs by the tin.
+ */
+export function planPurchases(state: GameState, m: StaffMember, left: number, cash: number, exec?: (b: PlannedBuy) => boolean): PurchasePlan {
+  const plan: PurchasePlan = { buys: [], overBudget: [], noCash: [] };
+  for (const o of plannedOrders(state, m)) {
+    left = Math.max(0, left);
+    cash = Math.max(0, cash);
+    let buy: PlannedBuy | null = null;
     if (o.kind === 'food' && o.foodId) {
       const def = getFoodDef(o.foodId);
       if (!def) continue;
-      // as many packs as both the budget and the cash on hand allow — when money is tight the most urgent staple
-      // still gets a pack or two rather than nothing
       const each = Math.max(0.01, def.price);
       const affordable = Math.min(o.packs ?? 1, Math.floor((left + 1e-6) / each), Math.floor((cash + 1e-6) / each));
       if (affordable < 1) {
-        (cash < each ? noCash : overBudget).push(def.name.toLowerCase());
+        (cash < each ? plan.noCash : plan.overBudget).push(def.name.toLowerCase());
         continue;
       }
-      const res = buyFood(state, def.id, affordable);
-      if (!res.ok) {
-        noCash.push(def.name.toLowerCase());
-        continue;
-      }
-      const price = Math.round(def.price * affordable * 100) / 100;
-      tagLastLedger(state, m);
-      st.stockSpent.amount += price;
-      spentNow += price;
-      bought.push(`${affordable} × ${def.name}`);
+      buy = { kind: 'food', foodId: def.id, packs: affordable, price: Math.round(def.price * affordable * 100) / 100, label: `${affordable} × ${def.name}` };
     } else if (o.kind === 'salt' && o.kg) {
       const kg = Math.min(o.kg, Math.floor((Math.min(left, cash) + 1e-6) / SALT_PRICE_PER_KG / 5) * 5);
       if (kg < 5) {
-        (cash < 5 * SALT_PRICE_PER_KG ? noCash : overBudget).push('salt mix');
+        (cash < 5 * SALT_PRICE_PER_KG ? plan.noCash : plan.overBudget).push('salt mix');
         continue;
       }
-      const res = buySalt(state, kg);
-      if (!res.ok) {
-        noCash.push('salt mix');
+      buy = { kind: 'salt', kg, price: kg * SALT_PRICE_PER_KG, label: `${kg} kg salt mix` };
+    } else if (o.kind === 'eggs' && o.tins) {
+      const tins = Math.min(o.tins, Math.floor((Math.min(left, cash) + 1e-6) / EGGS_SUPPLY.price));
+      if (tins < 1) {
+        (cash < EGGS_SUPPLY.price ? plan.noCash : plan.overBudget).push('brine shrimp eggs');
         continue;
       }
-      tagLastLedger(state, m);
-      const price = kg * SALT_PRICE_PER_KG;
-      st.stockSpent.amount += price;
-      spentNow += price;
-      bought.push(`${kg} kg salt mix`);
+      buy = { kind: 'eggs', tins, price: tins * EGGS_SUPPLY.price, label: `${tins} × brine shrimp eggs` };
     }
+    if (!buy) continue;
+    // the shelf check buys as it goes: a purchase that fails leaves its money for the orders after it (the chunk 5 review)
+    if (exec && !exec(buy)) {
+      plan.noCash.push(buy.kind === 'food' ? (getFoodDef(buy.foodId ?? '')?.name.toLowerCase() ?? 'food') : buy.kind === 'salt' ? 'salt mix' : 'brine shrimp eggs');
+      continue;
+    }
+    plan.buys.push(buy);
+    left -= buy.price;
+    cash -= buy.price;
   }
+  return plan;
+}
+
+/** The stock manager's shelf check: buys what's needed within today's remaining budget. */
+export function stockCheck(state: GameState, m: StaffMember, hour: number): void {
+  const st = ensureStaff(state);
+  // lane:automation (chunk 5, ADR-0026 decision 10) — her orders switched off: nothing bought, and nothing logged
+  if (st.ordersOff) return;
+  const day = dayRecord(state, m);
+  const today = dayOf(hour);
+  if (st.stockSpent.day !== today) st.stockSpent = { day: today, amount: 0 };
+  const bought: string[] = [];
+  let spentNow = 0;
+  const plan = planPurchases(state, m, st.stockBudget - st.stockSpent.amount, state.finance.money, (b) => {
+    const res = b.kind === 'food' && b.foodId ? buyFood(state, b.foodId, b.packs ?? 1) : b.kind === 'salt' ? buySalt(state, b.kg ?? 0) : buyEggs(state, b.tins ?? 1);
+    if (!res.ok) return false;
+    tagLastLedger(state, m);
+    st.stockSpent.amount += b.price;
+    spentNow += b.price;
+    bought.push(b.label);
+    return true;
+  });
+  if (!plan.buys.length && !plan.overBudget.length && !plan.noCash.length) return;
+  // lane:staff (S05-03) — what could not be bought, and why: the day's budget, or the till itself
+  const overBudget = plan.overBudget;
+  const noCash = plan.noCash;
   if (bought.length) {
     day.orders += bought.length;
     day.spent += spentNow;
@@ -870,6 +936,46 @@ export function stockCheck(state: GameState, m: StaffMember, hour: number): void
   }
 }
 
+/** The hours (of day) a stock manager checks the shelves. */
+export function stockCheckHours(m: StaffMember): number[] {
+  const checks = m.skill >= 3 ? STOCK_CHECKS : STOCK_CHECKS.slice(0, 1);
+  return checks.map((hod) => hod - (m.trait === 'early_bird' && hod === STOCK_CHECKS[0] ? 1 : 0));
+}
+
+/** lane:automation (chunk 5) — the stock manager on the roster (the first one), if any. */
+export function stockManager(state: GameState): StaffMember | null {
+  return state.staff?.roster.find((m) => m.role === 'stock_manager') ?? null;
+}
+
+/** The stock manager's next shelf check, dry-run: when, what it buys, what's left of the day's budget then. */
+export interface StockForecast {
+  m: StaffMember;
+  at: number;
+  plan: PurchasePlan;
+  left: number;
+  budget: number;
+  off: boolean;
+}
+
+/**
+ * lane:automation (chunk 5, DESIGN-S3D §9.6) — the forecast: the stock manager's next shelf check (from `hour` on) and
+ * what she'd buy at it, dry-run on today's state with what will be left of that day's budget. Null without a stock
+ * manager; `off` when her orders are switched off.
+ */
+export function nextStockCheck(state: GameState, hour = state.clock.hour): StockForecast | null {
+  const m = stockManager(state);
+  const st = state.staff;
+  if (!m || !st) return null;
+  let at = Infinity;
+  for (const h of stockCheckHours(m)) for (const t of crossings(hour, hour + 48, h)) if (t < at) at = t;
+  const budget = st.stockBudget;
+  const spent = st.stockSpent.day === dayOf(at) ? st.stockSpent.amount : 0;
+  const left = Math.max(0, budget - spent);
+  const off = !!st.ordersOff;
+  const plan = off ? { buys: [], overBudget: [], noCash: [] } : planPurchases(state, m, left, state.finance.money);
+  return { m, at, plan, left, budget, off };
+}
+
 /** Append "· ordered by Sam" to the purchase the stock manager just made, so the ledger says who bought it. */
 function tagLastLedger(state: GameState, m: StaffMember): void {
   const l = state.finance.ledger;
@@ -882,11 +988,7 @@ export function stepStockManager(state: GameState, start: number, end: number): 
   if (!st) return;
   for (const m of st.roster) {
     if (m.role !== 'stock_manager') continue;
-    const checks = m.skill >= 3 ? STOCK_CHECKS : STOCK_CHECKS.slice(0, 1);
-    for (const hod of checks) {
-      const h0 = hod - (m.trait === 'early_bird' && hod === STOCK_CHECKS[0] ? 1 : 0);
-      for (const h of crossings(start, end, h0)) stockCheck(state, m, h);
-    }
+    for (const h0 of stockCheckHours(m)) for (const h of crossings(start, end, h0)) stockCheck(state, m, h);
   }
 }
 

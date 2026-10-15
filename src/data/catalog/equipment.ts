@@ -420,6 +420,21 @@ export const EQUIPMENT: EquipmentDef[] = [
     visual: 'ato_sensor', // reuses the top-off's sensor until the render lane adds a prop (§22 risk 8)
     description: 'Swaps a small share of the water every morning from a conditioned reservoir and scrapes the front glass once a week. Marine and brackish tanks draw on your salt stock for the new water.',
   },
+  // lane:automation (chunk 5, DESIGN-S3D §9.3, INTAKE C-25) — tank equipment, so it moves and sells with its tank
+  {
+    id: 'live_food_doser',
+    kind: 'doser',
+    name: 'Live-food doser',
+    tier: 2,
+    price: 45,
+    upkeep: 0.02,
+    unlock: 'live_food_room',
+    environments: ALL_ENV,
+    gallonsRange: { min: 2, max: 300 },
+    stats: { failureRate: 0.001 },
+    visual: 'autofeeder', // reuses the Autofeeder's prop until the render lane adds one
+    description: 'Feeds fry and larvae live food from your Live food room\'s stock — baby brine shrimp or infusoria, whichever their stage needs, three times a day. It does nothing while the tank has no young to feed.',
+  },
   {
     id: 'co2_kit',
     kind: 'co2',

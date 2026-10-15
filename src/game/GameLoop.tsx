@@ -12,6 +12,7 @@
  *   close to its threshold while budget remains, spreading their work across ticks instead of spiking.
  * - Fast-forward drops back to 1× when an animal starts starving (lane:fix-core2, see ./starvationGuard.ts).
  * - Mounts the autosave hook.
+ * - lane:core (chunk 6, B-002) — a step that keeps failing stops the loop and the UI says so (./simHealth.ts).
  */
 import { useEffect } from 'react';
 import { useGame } from '@/state/game';
@@ -24,6 +25,7 @@ import { useAutosave } from './useAutosave';
 import { mutateFast } from './fastMutate';
 import { catchUpAfterHidden } from '@/persistence/offline';
 import { checkStarvation, starvationSlowdownText } from './starvationGuard';
+import { checkSimFault, noteTickFailed, noteTickOk, simStopped } from './simHealth';
 
 export const TICK_MS = 250;
 /** Real milliseconds of sim work allowed per tick before carrying the rest over. */
@@ -81,6 +83,7 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
   const ui = useUI.getState();
   if (ui.screen !== 'game' && !game.isShowcase) return 0;
   if (game.clock.speed === 0) return 0;
+  if (simStopped()) return 0; // a step kept failing: the banner is up (B-002)
   const want = Math.max(0, realDtSeconds) * GAME_HOURS_PER_REAL_SECOND * game.clock.speed + backlogHours;
   const opts: AdvanceOptions = { focusTankId: ui.view === 'tank' ? ui.focusedTankId : null };
   const t0 = performance.now();
@@ -89,6 +92,7 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
   // Plain working copy + structural-sharing publish (see ./fastMutate.ts): ~15× cheaper than an Immer draft.
   try {
     mutateFast((d) => {
+      checkSimFault();
       d.lastTickRealMs = Date.now();
       while (want - done > 1e-9) {
         const slice = Math.min(SLICE_HOURS, want - done);
@@ -99,6 +103,7 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
       smoothBackgroundLod(d, opts, t0);
       slowedFor = checkStarvation(d);
     });
+    noteTickOk();
   } catch (e) {
     // A recipe that throws publishes nothing (mutateFast is atomic), so none of this tick's slices happened: keep
     // them all in the backlog (anything over MAX_BACKLOG_HOURS is counted as dropped below). But a store subscriber
@@ -109,6 +114,7 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
       slowedFor = null;
     }
     reportError(e);
+    noteTickFailed();
   }
   if (slowedFor) ui.toast(starvationSlowdownText(slowedFor), 'warning');
   const ms = performance.now() - t0;

@@ -3,12 +3,13 @@
  * (./router.ts) applies a Route to the stores and writes the address back. OWNER: lane "ui-shell".
  *
  * Grammar (docs/TEST_IDS.md has the table): `#/` · `#/tanks` · `#/tanks/:tankId[/equipment|/life|/value]` ·
- * `#/livestock[/eggs|/past|/production]` · `#/livestock/animal/:creatureId` · `#/shop[?prismatic=1&rare=1&env=…]` ·
+ * `#/livestock[/eggs|/past|/production]` · `#/livestock/production/:lineId|new` · `#/livestock/animal/:creatureId` · `#/shop[?prismatic=1&rare=1&env=…]` ·
  * `#/shop/fish/:offerId` · `#/market/supplies[/:foodId]` · `#/market/listings[/:listingId]` · `#/market/history` ·
  * `#/build[/decor|/equipment|/substrate|/facility]` · `#/visitors[/staff]` · `#/shows[/entries|/results|/trophies]` ·
  * `#/research[/unlocks|/quests|/achievements]` · `#/finances` · `#/encyclopedia[/science[/:articleId]|/:speciesId]` ·
  * `#/social[/clubs|/trading|/friends|/leaderboards|/join/:code]` · `#/settings[/play|/saves|/notifications|/about]` ·
- * `#/more` · `#/log`.
+ * `#/more` · `#/log` · lane:automation (chunk 5, DESIGN-S3D §6): `#/operations[/water|/feed|/lines|/map|/issues|/manual]`
+ * (the Map takes `?layer=water|food|animals`) · `#/build/facility/water|food` · `#/market/supplies/salt|brine_shrimp_eggs`.
  *
  * Canonical addresses leave a panel's first tab out (`#/build` is Build › Tanks). The URL word differs from the
  * internal id in four places: equipment ↔ gear (tank card), play ↔ display (Settings), eggs ↔ young (Livestock) and
@@ -17,8 +18,9 @@
  */
 import type { PanelId } from '@/state/ui';
 
-/** The management panels a route can open. Settings has its own kind; Social is parsed now and built in chunk 6. */
-export type NavPanel = Exclude<PanelId, 'settings' | 'dev'> | 'social';
+/** The management panels a route can open. Settings has its own kind. Social (chunk 6) opens only in dev mode: the
+ *  router turns its addresses away elsewhere (ADR-0005 decision 3, SOC-011). */
+export type NavPanel = Exclude<PanelId, 'settings' | 'dev'>;
 export type SettingsTab = 'general' | 'display' | 'saves' | 'notifications' | 'about';
 export type TankCardTab = 'water' | 'gear' | 'life' | 'value';
 export type EnvFilter = 'all' | 'fits' | 'freshwater' | 'marine' | 'brackish';
@@ -68,6 +70,8 @@ const PANEL_TABS: Record<NavPanel, readonly TabSpec[]> = {
   log: [],
   shows: tabs(['upcoming', null, 'Upcoming'], ['entries', 'entries', 'Entries'], ['results', 'results', 'Results'], ['trophies', 'trophies', 'Trophy case']),
   social: tabs(['overview', null, 'Overview'], ['clubs', 'clubs', 'Clubs'], ['trading', 'trading', 'Trading'], ['friends', 'friends', 'Friends'], ['leaderboards', 'leaderboards', 'Leaderboards']),
+  // lane:automation (chunk 5): Problems and Manual mode are Overview's sub-views (`view:issues`, `view:manual`)
+  operations: tabs(['overview', null, 'Overview'], ['water', 'water', 'Water'], ['feed', 'feed', 'Feed'], ['lines', 'lines', 'Lines'], ['map', 'map', 'Map']),
 };
 
 /** Panel names in a "Then:" pill (the dock's labels). */
@@ -83,7 +87,14 @@ const PANEL_LABEL: Record<NavPanel, string> = {
   log: 'Event log',
   shows: 'Shows',
   social: 'Social',
+  operations: 'Operations',
 };
+
+/** lane:automation (chunk 5) — the Map's layers in its `?layer=` query (All has none). */
+export type MapLayer = 'all' | 'water' | 'food' | 'animals';
+const MAP_LAYERS: readonly MapLayer[] = ['water', 'food', 'animals'];
+/** lane:automation (chunk 5) — Build › Facility's room pages. */
+const ROOMS = ['water', 'food'] as const;
 
 const SETTINGS_TABS = tabs(['general', null, 'General'], ['display', 'play', 'Play & access'], ['saves', 'saves', 'Saves'], ['notifications', 'notifications', 'Notifications'], ['about', 'about', 'About']);
 const TANK_TABS = tabs(['water', null, 'Water'], ['gear', 'equipment', 'Equipment'], ['life', 'life', 'Life'], ['value', 'value', 'Value']);
@@ -150,6 +161,8 @@ export function parseRoute(hash: string): ParsedRoute | null {
       return { route: b ? { kind: 'tankCard', tankId: b, tab: (byWord(TANK_TABS, c)?.id ?? 'water') as TankCardTab } : panel('tanks') };
     case 'livestock':
       if (b === 'animal') return { route: c ? { kind: 'creature', creatureId: c } : panel('livestock', 'animals') };
+      // lane:production (chunk 4; DESIGN-S3D §6) — one line, or setting up another ('new')
+      if (b === 'production' && c) return { route: panel('livestock', 'production', `line:${c}`) };
       return { route: panel('livestock', tabOf('livestock', b)) };
     case 'shop':
       if (b === 'fish' && c) return { route: panel('market', 'shop', `offer:${c}`) };
@@ -164,9 +177,23 @@ export function parseRoute(hash: string): ParsedRoute | null {
       if (b === 'science') return { route: panel('encyclopedia', 'science', c ? `science:${c}` : undefined) };
       return { route: b ? panel('encyclopedia', 'species', `species:${b}`) : panel('encyclopedia', 'species') };
     case 'social':
-      if (b === 'join') return { route: c ? panel('social', 'overview', `join:${c}`) : panel('social', 'overview') };
+      // lane:social (chunk 6) — an invite highlights Clubs, as the approved screen phone-join does (§13.3)
+      if (b === 'join') return { route: c ? panel('social', 'clubs', `join:${c}`) : panel('social', 'overview') };
       return { route: panel('social', tabOf('social', b)) };
+    case 'operations': {
+      // lane:automation (chunk 5, DESIGN-S3D §6) — Problems and Manual mode highlight Overview; an unknown tab opens it
+      if (b === 'issues' || b === 'manual') return { route: panel('operations', 'overview', `view:${b}`) };
+      const tab = tabOf('operations', b);
+      if (tab === 'map') {
+        const layer = new URLSearchParams(query).get('layer') as MapLayer | null;
+        return { route: panel('operations', 'map', layer && MAP_LAYERS.includes(layer) ? `layer:${layer}` : undefined) };
+      }
+      return { route: panel('operations', tab) };
+    }
     case 'build':
+      // lane:automation (chunk 5) — a room's page in Build › Facility
+      if (b === 'facility' && c && (ROOMS as readonly string[]).includes(c)) return { route: panel('build', 'facility', `room:${c}`) };
+      return { route: panel(a, tabOf(a, b)) };
     case 'visitors':
     case 'shows':
     case 'research':
@@ -223,6 +250,20 @@ export function formatRoute(route: Route, filters?: ShopFilters): string {
     const code = after(target, 'join:');
     if (code) return `#/social/join/${enc(code)}`;
   }
+  if (p === 'livestock') {
+    const line = after(target, 'line:');
+    if (line) return `#/livestock/production/${enc(line)}`;
+  }
+  if (p === 'operations') {
+    const view = after(target, 'view:');
+    if (view === 'issues' || view === 'manual') return `#/operations/${view}`;
+    const layer = after(target, 'layer:');
+    if (spec?.id === 'map') return `#/operations/map${layer && (MAP_LAYERS as readonly string[]).includes(layer) ? `?layer=${layer}` : ''}`;
+  }
+  if (p === 'build') {
+    const room = after(target, 'room:');
+    if (room && (ROOMS as readonly string[]).includes(room)) return `#/build/facility/${room}`;
+  }
   return spec?.word ? `#/${p}/${spec.word}` : `#/${p}`;
 }
 
@@ -262,10 +303,16 @@ export function routeForPanelTarget(p: NavPanel, target: string): Route | null {
     case 'livestock':
       if (target === 'young' || target === 'clutches') return panel(p, 'young');
       if (target.startsWith('sell:')) return panel(p, 'animals');
+      if (after(target, 'line:')) return panel(p, 'production', target);
       return null;
     case 'build':
       if (target.startsWith('equipment:')) return panel(p, 'equipment');
       if (target.startsWith('decor:') || target.startsWith('decor-cat:')) return panel(p, 'decor');
+      if (after(target, 'room:')) return panel(p, 'facility', target); // lane:automation (chunk 5)
+      return null;
+    case 'operations': // lane:automation (chunk 5)
+      if (target === 'view:issues' || target === 'view:manual') return panel(p, 'overview', target);
+      if (after(target, 'layer:')) return panel(p, 'map', target);
       return null;
     case 'visitors':
       return target === 'staff' || target === 'visitors' ? panel(p, target) : null;
@@ -274,7 +321,7 @@ export function routeForPanelTarget(p: NavPanel, target: string): Route | null {
       if (target.startsWith('show:') || target.startsWith('enter:')) return panel(p, 'upcoming');
       return null;
     case 'social':
-      return after(target, 'join:') ? panel(p, 'overview', target) : null;
+      return after(target, 'join:') ? panel(p, 'clubs', target) : null;
     default:
       return null;
   }
@@ -324,6 +371,11 @@ export function routeLabel(route: Route, names: RouteNames = {}): string | null 
   const species = p === 'encyclopedia' ? after(target, 'species:') : null;
   if (species) return `${title}${SEP}${names.species?.(species) ?? 'Species'}`;
   if (p === 'social' && after(target, 'join:')) return `${title}${SEP}Club invite`;
+  // lane:automation (chunk 5)
+  if (p === 'operations' && target === 'view:issues') return `${title}${SEP}Problems`;
+  if (p === 'operations' && target === 'view:manual') return `${title}${SEP}Manual mode`;
+  if (p === 'build' && target === 'room:water') return `${title}${SEP}Water room`;
+  if (p === 'build' && target === 'room:food') return `${title}${SEP}Live food room`;
   const spec = byId(PANEL_TABS[p], route.tab);
   return spec ? `${title}${SEP}${spec.label}` : title;
 }

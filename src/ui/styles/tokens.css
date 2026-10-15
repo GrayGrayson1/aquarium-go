@@ -14,9 +14,11 @@
   --c-glass: rgba(9, 22, 30, 0.68); /* was 0.56: 11 px labels over a day-lit room fell to 2–4:1 */
   --c-glass-strong: rgba(7, 17, 24, 0.84);
   --c-glass-soft: rgba(12, 28, 38, 0.38);
-  --c-glass-hover: rgba(30, 58, 72, 0.55);
+  --c-glass-hover: rgba(30, 58, 72, 0.72); /* chunk 6 (ACC-005): was 0.55, hovered labels fell to 3.5:1 */
   --c-fill: rgba(255, 255, 255, 0.045);
   --c-fill-2: rgba(255, 255, 255, 0.075);
+  /* chunk 6 (ACC-005, WCAG 1.4.11): a text field's border, 3:1 against the glass (--c-line-strong gave 1.7:1) */
+  --c-line-field: rgba(200, 235, 245, 0.45);
   --c-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
 
   --c-aqua: #5eead4;
@@ -91,10 +93,18 @@
   }
 }
 
+/* High contrast (ADR-0024 decision 4, ADR-0035 decision 1): solid surfaces, no blur, so text and controls reach WCAG 2.2
+   AA on any background (the room behind never shows through). Normal mode keeps §17's glass. */
 :root[data-contrast='high'] {
-  --c-glass: rgba(4, 10, 14, 0.93);
-  --c-glass-strong: rgba(2, 6, 9, 0.97);
-  --c-glass-soft: rgba(4, 10, 14, 0.85);
+  --c-glass: #040a0e;
+  --c-glass-strong: #020609;
+  --c-glass-soft: #040a0e;
+  --c-glass-hover: #12242e;
+  --c-line-field: rgba(230, 250, 255, 0.5);
+  --blur: none;
+  --blur-strong: none;
+  --ag-scene-tip-bg: #020609;
+  --pn-sheet-bg: linear-gradient(180deg, #0b1b24 0%, #071119 42%, #050d13 100%);
   --c-line: rgba(220, 245, 250, 0.36);
   --c-line-strong: rgba(230, 250, 255, 0.5);
   --c-ink: #ffffff;

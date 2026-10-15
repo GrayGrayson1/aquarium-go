@@ -95,6 +95,11 @@ export interface ReproState {
   storedBroods?: number;
   /** lane:breeding — planned end of a timed stage (courtship, laying, sex change). */
   stageEndsHour?: number;
+  /**
+   * lane:production — a production line is holding this parent back from spawning (paused by the player, waiting for
+   * room, or missing its partner or a tank): its breeding readiness falls to 0, as when resting. Absent = not held.
+   */
+  lineHold?: boolean;
 }
 
 export interface CreatureEvent {
@@ -330,6 +335,8 @@ export interface WaterLabState {
   lastAutoChangeHour?: number;
   /** lane:automation — game hour the Auto Water Changer last scraped the glass (weekly). */
   lastAutoScrapeHour?: number;
+  /** lane:automation (chunk 5) — game hour the live-food doser last fed (one dose per dose time). */
+  lastDoseHour?: number;
 }
 
 export type EquipmentKind =
@@ -348,7 +355,8 @@ export type EquipmentKind =
   | 'refugium'
   | 'wavemaker'
   | 'lid'
-  | 'water_changer'; // lane:automation (0.5 §10.3)
+  | 'water_changer' // lane:automation (0.5 §10.3)
+  | 'doser'; // lane:automation (chunk 5, DESIGN-S3D §9.3, INTAKE C-25) — a live-food doser
 
 export interface EquipmentInstance {
   id: Id;
@@ -656,6 +664,8 @@ export interface LedgerEntry {
     | 'research'
     | 'other';
   memo: string;
+  /** lane:automation (chunk 5, AUTO-039) — a production line's sale: the line and how many animals (Operations' weekly money). */
+  line?: { id: Id; n: number };
 }
 
 export interface DailySummary {
@@ -664,6 +674,14 @@ export interface DailySummary {
   expenses: number;
   visitors: number;
   sales: number;
+  /**
+   * lane:automation (chunk 5, AUTO-039) — Operations' weekly money, from the same ledger entries (kept here so the
+   * 400-entry ledger cap can't cut the week): sales by production line, supplies bought (food and consumables) and the
+   * rooms' upkeep. Each only when there was some.
+   */
+  lines?: Record<Id, { n: number; amount: number }>;
+  supplies?: number;
+  upkeep?: number;
 }
 
 // ───────────────────────────────── Facility & visitors ─────────────────────────────────
@@ -683,6 +701,42 @@ export interface FacilityState {
   closeHour: number;
   /** Non-tank floor objects: benches, signs, plants, counters. */
   fixtures: { id: Id; kind: string; x: number; z: number; rotY: number }[];
+  /** lane:automation (chunk 5, DESIGN-S3D §9.2) — the Water room; absent until Central Water Supply is researched. */
+  water?: WaterRoomState;
+  /** lane:automation (chunk 5, DESIGN-S3D §9.3) — the Live food room; absent until Live Food Cultures is researched. */
+  food?: FoodRoomState;
+}
+
+/**
+ * lane:automation (chunk 5) — the Water room: a prep station fills the fresh reserve, a salt mixing station makes salt
+ * water from salt mix in batches, and every Auto Water Changer (and Auto Top-Off) draws from the reserves.
+ */
+export interface WaterRoomState {
+  /** Gallons in the fresh and salt-water reserves. */
+  fresh: number;
+  salt: number;
+  /** Prep station upgrades bought (0 = the base 6 gal an hour) and reservoir upgrades bought (each +150 / +60 gal). */
+  prepLevel: number;
+  reservoirs: number;
+  /** The mixing tank: a batch mixing until `readyHour`, then waiting there to top the salt reserve up. */
+  mix?: { gal: number; readyHour: number } | null;
+  /** Game hour the prep flow has been added up to (it runs continuously between jobs). */
+  flowHour: number;
+  /** Game hour of the last 10 AM / 10 PM mixing check (one check per crossing). */
+  lastMixHour?: number;
+}
+
+/** lane:automation (chunk 5) — one culture: a hatchery cone or an infusoria jar. `startedHour` null: empty, waiting for its inputs. */
+export interface CultureState {
+  startedHour: number | null;
+}
+
+/** lane:automation (chunk 5, DESIGN-S3D §9.3) — the Live food room: hatchery cones and infusoria jars. */
+export interface FoodRoomState {
+  cones: CultureState[];
+  jars: CultureState[];
+  /** Game hour of the last culture check (cones and jars start and harvest on the hour). */
+  lastHour?: number;
 }
 
 export interface VisitorReaction {
@@ -834,7 +888,9 @@ export type NoticeTopic =
   | 'eggs' // eggs laid (vars: name, n, tank)
   | 'hatch' // eggs hatched (vars: name, n, tank)
   | 'birth' // young born without eggs: livebearers, seahorses, shrimp (vars: name, n, tank)
-  | 'show_result'; // results of an entered show (vars: show, name, place; prize, ribbon when won)
+  | 'show_result' // results of an entered show (vars: show, name, place; prize, ribbon when won)
+  | 'supply_out' // lane:automation — a supply ran out and no reorder is coming (vars: supply, day; nobody when there's no stock manager)
+  | 'line_paused'; // lane:automation — a production line paused for room (vars: line, tank, pair, day)
 
 // ───────────────────────────────── Root ─────────────────────────────────
 
@@ -865,6 +921,8 @@ export interface GameState {
     decor: DecorInstance[]; // owned but not placed
     /** lane:frags — frags & cuttings waiting to be planted or sold (kept apart from bought decor). */
     frags?: DecorInstance[];
+    /** lane:automation (chunk 5) — scoops of brine shrimp eggs for the hatchery (supply id `brine_shrimp_eggs`). */
+    brineShrimpEggs?: number;
   };
   facility: FacilityState;
   market: {
@@ -921,6 +979,41 @@ export interface GameState {
   shows?: ShowsState;
   /** lane:notify — notification-centre bookkeeping (src/ui/common/notify.ts). Absent in old saves; written lazily by the UI. */
   notify?: NotifyState;
+  /** lane:production — production lines (src/sim/production). Absent = no lines (0.5 §11.2, DESIGN-S3D §8.6). */
+  production?: ProductionState;
+  /** lane:automation (chunk 5) — manual mode, the per-day records Operations reads, shortage throttles. Absent = none yet. */
+  automation?: AutomationState;
+}
+
+/** lane:automation (chunk 5, DESIGN-S3D §9.7) — the five systems Hold all stops. */
+export type HoldSystem = 'water' | 'salt' | 'food' | 'feeders' | 'lines';
+
+/**
+ * lane:automation (chunk 5) — one day's tallies for Operations that the ledger doesn't hold: live food used and made
+ * (Saved this week) and where the Water room's water went (Water › Where the water goes). The money is in
+ * `finance.daily` (DailySummary).
+ */
+export interface AutomationDay {
+  day: number;
+  /** Live food servings the tanks used, and servings the Live food room made, by food id. */
+  used: Record<string, number>;
+  made: Record<string, number>;
+  /** What making them cost (eggs, the salt mix in their salt water, vegetables), in dollars. */
+  makeCost: number;
+  /** Gallons: water changes from the fresh and salt reserves, fresh water to the mixer, top-offs, salt water to the hatchery. */
+  water?: { fresh: number; salt: number; mixer: number; topOff: number; hatchery: number; changes: number; skipped: number };
+}
+
+export interface AutomationState {
+  /** Manual mode: the systems on hold, and the game hour Hold all (or the first hold) was set. */
+  hold?: Partial<Record<HoldSystem, boolean>> & { since?: number };
+  /** Lines whose pause the player chose to wait out: line id → game hour chosen (DESIGN-S3D §7.6 "Wait"). */
+  lineWait?: Record<Id, number>;
+  /** The current day's running tallies (moved into `days` at midnight) and the last seven completed days. */
+  today?: AutomationDay;
+  days?: AutomationDay[];
+  /** Shortage and summary notices already given: key → game hour (once a day each). */
+  warned?: Record<string, number>;
 }
 
 /**
@@ -1031,6 +1124,8 @@ export interface StaffState {
   warned: Record<string, number>;
   /** People who left (for the log / UI "former staff" note), newest last, capped. */
   departed?: { name: string; role: StaffRole; hour: number; reason: 'fired' | 'unpaid' }[];
+  /** lane:automation (chunk 5, ADR-0026 decision 10) — the stock manager's orders are switched off (budget kept, log quiet). */
+  ordersOff?: boolean;
 }
 
 // ───────────────────────────────── Shows (lane:shows) ─────────────────────────────────
@@ -1193,4 +1288,95 @@ export interface ShowsState {
   stats: { entered: number; placings: number; wins: number; bestInShow: number; prize: number };
   /** UI: results judged after this game hour are "new". */
   resultsSeenHour?: number;
+}
+
+// ───────────────────────────────── Production lines (lane:production) ─────────────────────────────────
+
+/** lane:production — keep up to `count` young showing every trait (phenotype rule ids), best by value first. */
+export interface ProductionKeepRule {
+  traitIds: string[];
+  count: number;
+}
+
+/** lane:production — a line's money: this week (restarts every 168 game hours from `weekStartHour`) and since it began. */
+export interface ProductionStats {
+  weekStartHour: number;
+  /** Animals sold this week, what they fetched, and the line's share of food and power (ADR-0025 decision 9). */
+  soldCount: number;
+  revenue: number;
+  costs: number;
+  totalSold: number;
+  totalRevenue: number;
+  totalCosts: number;
+}
+
+/** lane:production — young the line sorted for sale: they wait, then quarantine (one batch per tank), then list. */
+export interface ProductionBatch {
+  /** `b<hour>` (the sorting hour), unique within its line. */
+  id: string;
+  creatureIds: Id[];
+  sortedHour: number;
+  /** The quarantine tank, once they moved in. */
+  tankId?: Id;
+  /** Production hour they entered quarantine; the hold ends 168 game hours later. */
+  quarantinedHour?: number;
+  /** The hold ended: listed (or left in quarantine when List automatically is off). */
+  released?: boolean;
+  /** The line's listings for this batch that are still open, and those already counted in the stats. */
+  listingIds?: Id[];
+}
+
+/** lane:production — what a paused line is missing (ADR-0025 decision 10): a parent, or a stage's tank. */
+export type ProductionRef = 'mother' | 'father' | 'breed' | 'raise' | 'quarantine' | 'keep' | 'rest';
+
+export interface ProductionLine {
+  /** Route id (`#/livestock/production/:id`): the first word of the morph it breeds for, `-2`, `-3` when taken. */
+  id: string;
+  name: string;
+  /** The player typed the name: it never follows the naming rule again (DESIGN-S3D §8.6.1). */
+  customName?: boolean;
+  speciesId: string;
+  /** The morph the line breeds for (names it; no biology). */
+  breedFor?: string;
+  /** `restTankId`: where the female rests between spawns when the keeper introduces her (bettas, ADR-0030 decision 7). */
+  pair: { motherId: Id; fatherId: Id; restTankId?: Id };
+  /** One tank per stage, all different; quarantine lists every tank the line may use, first free one first. */
+  tanks: { breed: Id; raise: Id; quarantine: Id[]; keep: Id };
+  /** The switch: off = paused by the player. */
+  running: boolean;
+  rules: { pauseWhenFull: boolean; keepPrismatic: boolean; autoList: boolean; keep: ProductionKeepRule[] };
+  stats: ProductionStats;
+  createdHour: number;
+  /** Clutches of the pair already moved to the raise tank (pruned when they're gone). */
+  routed?: Id[];
+  /** Young of the pair that arrived at or before this hour are sorted (one sort per brood). */
+  sortedThroughHour?: number;
+  batches?: ProductionBatch[];
+  /** Waiting for room: the raise tank can't take the next clutch, so the pair is held (Pause when a tank is full). */
+  waiting?: boolean;
+  /** Paused for a missing parent or tank (kept through saves; repairState marks it). */
+  broken?: { ref: ProductionRef; id: Id; name: string; sinceHour: number; moved?: boolean };
+  /** One-shot notices already given: key → production hour. */
+  noticed?: Record<string, number>;
+  /** The line's tanks' names, so a notice can name a tank after it's gone. */
+  tankNames?: Record<Id, string>;
+}
+
+/** lane:production — an ended line's numbers, kept for its history (ADR-0025 decision 6). */
+export interface ProductionHistory {
+  id: string;
+  name: string;
+  speciesId: string;
+  createdHour: number;
+  endedHour: number;
+  totalSold: number;
+  totalRevenue: number;
+  totalCosts: number;
+}
+
+export interface ProductionState {
+  lines: ProductionLine[];
+  ended?: ProductionHistory[];
+  /** Last production hour processed (an integer game hour): a re-stepped window does nothing more (AUTO-018). */
+  lastHour?: number;
 }

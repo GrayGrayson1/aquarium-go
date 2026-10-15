@@ -2,14 +2,14 @@
  * lane:ui-shell (chunk 1; DES-001; 0.5 spec §3 item 6, §17) — design-token fidelity for 0.5 CSS: every colour literal
  * in a CSS file added for 0.5 is either a tokens.css variable or a value the design itself gives (§17's table, §5.2's
  * tab bar), tokens.css keeps §17's values, and the tab labels are 10.5/620. CSS added by later chunks (social.css,
- * notify.css, automation.css, offer-genes.css) is scanned as soon as it exists.
+ * notify.css, automation.css, offer-genes.css, production.css) is scanned as soon as it exists.
  */
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..');
-const CSS_05 = ['src/ui/styles/nav.css', 'src/ui/styles/social.css', 'src/ui/styles/notify.css', 'src/ui/styles/automation.css', 'src/ui/panels/market/offer-genes.css'];
+const CSS_05 = ['src/ui/styles/nav.css', 'src/ui/styles/social.css', 'src/ui/styles/notify.css', 'src/ui/styles/automation.css', 'src/ui/panels/market/offer-genes.css', 'src/ui/panels/livestock/production.css'];
 
 /** Colour literals the design gives outright (normalised: lower case, no spaces, no leading zero on alphas). */
 const DESIGN_LITERALS = new Set(

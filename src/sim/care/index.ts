@@ -3,7 +3,7 @@
  * All return a result object the UI can toast. Every action teaches something: messages explain the "why".
  */
 import type { GameState, LightPreset, Tank, EquipmentInstance, SpeciesDefinition } from '@/types';
-import { getFoodDef } from '@/data/catalog/foods';
+import { eatsFood, getFoodDef } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { findSpecies } from '@/data/species';
@@ -25,6 +25,8 @@ import { photoperiodTooLong } from '../time';
 import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor } from './tuning'; // lane:fit — shared with the fit verdicts
 import { installedFit, type FitVerdict } from './fit'; // lane:fit
 import { FOOD_TAG_WORDS, groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase)
+import { noteFoodSpend } from '../production/costs'; // lane:production
+import { noteLiveFoodUsed } from '../automation/reserve'; // lane:automation (chunk 5)
 
 export interface ActionResult {
   ok: boolean;
@@ -95,11 +97,13 @@ export function feedTank(
   const ownWaiting = targetId && tank.water.targetFeed?.creatureId === targetId ? tank.water.targetFeed.units : 0;
   const tankDemand = targetId ? foodDemandUnits(state, tank, food) : demand;
   state.inventory.foods[foodId] = have - servings;
+  noteFoodSpend(state, tankId, foodId, servings); // lane:production — a line's share of the food (ADR-0025 decision 9)
+  noteLiveFoodUsed(state, foodId, servings); // lane:automation (chunk 5) — Saved this week counts the live food used
   const units = addFood(tank, food, servings, hour, targetId);
   const lab = ensureLab(tank);
 
   // Thawed frozen food leaks a little ammonia straight away.
-  if (/_frozen$/.test(food.id)) {
+  if (food.form === 'frozen') {
     const litres = safeGallons(tank) * LITRES_PER_GALLON * tank.water.level;
     tank.water.ammonia += (servings * food.waste * 0.05) / Math.max(1, litres);
   }
@@ -119,7 +123,7 @@ export function feedTank(
   noteBreedingFood(state, tank.id, food.tags);
 
   const residents = inhabitantsOf(state, tank.id);
-  const eaters = residents.filter((i) => food.tags.some((t) => i.species.foods.includes(t)));
+  const eaters = residents.filter((i) => eatsFood(i.species, food));
   const parts: string[] = [];
   // lane:qa-r3 — the note is worth seeing even where feeding is normally quiet (a click in the water): see `caution`
   let caution = false;

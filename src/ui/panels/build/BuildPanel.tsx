@@ -38,7 +38,8 @@ import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
 import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
 import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
-import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { RoomPage, Rooms, YourFacility, type RoomId } from './FacilityRooms'; // lane:automation (chunk 5)
 
 type Tab = 'tanks' | 'decor' | 'equipment' | 'substrate' | 'facility';
 const BUILD_TABS: readonly Tab[] = ['tanks', 'decor', 'equipment', 'substrate', 'facility'];
@@ -61,6 +62,7 @@ export function BuildPanel() {
   const [tab, setTab] = useState<Tab>(() => remembered()?.tab ?? 'tanks');
   const [tankId, setTankId] = useState<string | null>(focused);
   const [decorCat, setDecorCat] = useState<DecorCategory | 'all'>(() => remembered()?.cat ?? 'all');
+  const [room, setRoom] = useState<RoomId | null>(null); // lane:automation (chunk 5) — a room's page in Facility
   useEffect(() => () => clearOfferReturn(), []); // lane:qa-play — leaving Build forgets a pending "back to the offer"
   useEffect(() => {
     const saveId = getGame()?.saveId;
@@ -68,10 +70,17 @@ export function BuildPanel() {
   }, [tab, decorCat]);
 
   useNavTab('build', tab); // lane:ui-shell (chunk 1)
+  useNavSub('build', tab === 'facility' && room ? `room:${room}` : null); // lane:automation (chunk 5)
 
   useEffect(() => {
     if (!target) return;
-    if (target.startsWith('tab:')) setTab(BUILD_TABS.includes(target.slice(4) as Tab) ? (target.slice(4) as Tab) : 'tanks');
+    if (target.startsWith('tab:')) {
+      setTab(BUILD_TABS.includes(target.slice(4) as Tab) ? (target.slice(4) as Tab) : 'tanks');
+      setRoom(null);
+    } else if (target === 'room:water' || target === 'room:food') {
+      setTab('facility');
+      setRoom(target.slice(5) as RoomId);
+    }
     else if (target.startsWith('decor-cat:')) {
       setTab('decor');
       setDecorCat(target.slice(10) as DecorCategory);
@@ -139,7 +148,7 @@ export function BuildPanel() {
       {tab === 'decor' && tank && <DecorTab g={g} tankId={tank.id} cat={decorCat} setCat={setDecorCat} />}
       {tab === 'equipment' && tank && <EquipmentTab g={g} tankId={tank.id} />}
       {tab === 'substrate' && tank && <SubstrateTab g={g} tankId={tank.id} />}
-      {tab === 'facility' && <FacilityTab g={g} />}
+      {tab === 'facility' && <FacilityTab g={g} room={room} onRoom={setRoom} />}
     </PanelLayout>
   );
 }
@@ -161,7 +170,7 @@ function TanksTab({ g }: { g: GameState }) {
 
   const place = (tier: TankTier) => {
     const set = useUI.getState().set as (p: Record<string, unknown>) => void;
-    set({ tool: 'tank_place', placingTankTierId: tier.id, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panel: null, panelTarget: null });
+    set({ tool: 'tank_place', placingTankTierId: tier.id, movingTankId: null, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panel: null, panelTarget: null });
     useUI.getState().toast(`Choose a spot for your ${tier.name}. Press Esc to cancel.`, 'info');
   };
   const quick = (tier: TankTier) => {
@@ -864,11 +873,15 @@ function SubstrateTab({ g, tankId }: { g: GameState; tankId: string }) {
 
 // ───────────────────────── Facility ─────────────────────────
 
-function FacilityTab({ g }: { g: GameState }) {
+function FacilityTab({ g, room, onRoom }: { g: GameState; room: RoomId | null; onRoom: (r: RoomId | null) => void }) {
   const lvl = getFacilityLevel(g.facility.level);
   const tanks = orderedTanks(g);
+  // lane:automation (chunk 5, DESIGN-S3D §8.4, INTAKE C-7) — "Your facility" and Rooms above today's tiles; a room's page
+  if (room) return <RoomPage g={g} room={room} onBack={() => onRoom(null)} />;
   return (
     <div className="pn-stack pn-stack--lg">
+      <YourFacility g={g} />
+      <Rooms g={g} onOpen={onRoom} />
       <div className="pn-grid pn-grid--tiles">
         <Tile icon={<Building2 size={14} />} tone="gold" label="Venue" value={<span style={{ fontSize: 17 }}>{lvl.name}</span>} hint={`${g.facility.width} × ${g.facility.depth} m`} />
         <Tile icon={<Layers size={14} />} tone="aqua" label="Tanks" value={tanks.length} hint={`${tanks.reduce((a, t) => a + gallonsOf(t), 0).toLocaleString('en-US')} gallons`} />

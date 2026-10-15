@@ -8,11 +8,12 @@
  */
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ChevronLeft, ChevronRight, Scan } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Map as MapIcon, Scan } from 'lucide-react';
 import { resetFacilityView } from '@/render/camera/CameraRig';
 import { useFacilityOverflow } from '@/render/camera/facilityOverflow';
 import { sfx } from '@/audio/sfx';
 import { useMedia } from '../common/safe';
+import { go } from '../nav/router'; // lane:automation (chunk 5)
 
 const HINT_KEY = 'aquarium-go.room-view-hint';
 
@@ -47,7 +48,7 @@ export function RoomViewChip() {
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="ag-hudpill ag-camchips">
+      <div className="ag-hudpill ag-camchips" role="group" aria-label="Room view">
         <button
           type="button"
           className="ag-camchip"
@@ -61,6 +62,21 @@ export function RoomViewChip() {
         >
           <Scan size={15} aria-hidden />
           <span>Reset view</span>
+        </button>
+        {/* lane:automation (chunk 5, DESIGN-S3D §5.6; NAV-023) — a link to Operations › Map, not a toggle; closing the
+            Map returns to the room view (the view isn't part of the address) */}
+        <button
+          type="button"
+          className="ag-camchip ag-camchip--map"
+          data-testid="room-facility-map"
+          onClick={() => {
+            sfx('open');
+            setHint(false);
+            go({ kind: 'panel', panel: 'operations', tab: 'map' });
+          }}
+        >
+          <MapIcon size={15} aria-hidden />
+          <span>Facility map</span>
         </button>
       </div>
     </div>

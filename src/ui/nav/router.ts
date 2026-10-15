@@ -24,6 +24,7 @@ import { useGame } from '@/state/game';
 import type { GameState } from '@/types';
 import { findSpecies } from '@/data/species';
 import { isPrismatic } from '@/sim/life/rareVariants';
+import { findLine, lineSlots, productionLines } from '@/sim/production'; // lane:production (chunk 4)
 import { listSaves, loadGame } from '@/persistence';
 import { useShell } from '../common/shellStore';
 import { loadIntoGame } from '../common/saves';
@@ -33,6 +34,7 @@ import { toastMark, reportLoadFailure } from '../screens/loadFeedback';
 import { useTankCardTab } from '../cards/tankCardTab';
 import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
+import { devToolsAllowed } from '@/state/devTools'; // lane:social (chunk 6)
 import {
   formatRoute,
   isNavPanel,
@@ -82,6 +84,15 @@ const HOME: Route = { kind: 'home' };
 const GESTURE_MS = 1500;
 const SESSION_KEY = 'aquarium-go.nav.v1';
 
+/**
+ * lane:social (chunk 6, SOC-011) — parse an address for this session: outside dev mode a Social address names nothing
+ * (ADR-0005 decision 3), so it boots and lands like a broken link and never shows a "Then: Social" pill.
+ */
+export function parseNav(hash: string): ParsedRoute | null {
+  const parsed = parseRoute(hash);
+  return parsed && parsed.route.kind === 'panel' && parsed.route.panel === 'social' && !devToolsAllowed() ? null : parsed;
+}
+
 /** §6.5, §16: a link that names nothing. */
 export const BROKEN_LINK = { title: 'That link doesn’t go anywhere', detail: 'Opened your aquarium instead.' } as const;
 /** ADR-0019 decision 4: a link to something that no longer exists opens the nearest screen and says so. */
@@ -90,6 +101,8 @@ export const NOT_FOUND = {
   creature: { panel: 'livestock', target: 'tab:animals', title: 'That animal isn’t in your aquarium', detail: 'Showing your livestock instead.' },
   listing: { panel: 'market', target: 'tab:listings', title: 'That listing isn’t here any more', detail: 'Showing your listings instead.' },
   species: { panel: 'encyclopedia', target: 'tab:species', title: 'There’s no page for that species', detail: 'Showing every species instead.' },
+  // DESIGN-S3D §6 (unknown id → not found), with the owner's words (ADR-0026 decision 9, INTAKE C-48)
+  line: { panel: 'livestock', target: 'tab:production', title: 'This line isn’t here any more', detail: 'See your lines' },
 } as const satisfies Record<string, { panel: NavPanel; target: string | null; title: string; detail: string }>;
 
 let started = false;
@@ -284,13 +297,21 @@ function applyInner(route: Route, filters: ShopFilters | undefined): void {
     }
     case 'panel': {
       const { panel: p, target } = route;
-      if (p === 'social') {
-        // Social is built in chunk 6 (and is dev-only until a backend exists, ADR-0005 decision 3)
+      if (p === 'social' && !devToolsAllowed()) {
+        // lane:social (chunk 6) — Social is dev-only until a real backend exists (ADR-0005 decision 3, SOC-011): its
+        // addresses name nothing a player can open
         toast(BROKEN_LINK);
         return applyInner(HOME, undefined);
       }
       if (p === 'market' && target?.startsWith('listing:') && !g?.market.listings.some((l) => l.id === target.slice(8))) return notFound('listing');
       if (p === 'encyclopedia' && target?.startsWith('species:') && !findSpecies(target.slice(8))) return notFound('species');
+      // lane:production (DESIGN-S3D §6, §8.6.1): an unknown line, or setting up a line with no free slot, is not found:
+      // Livestock › Production opens with the line's not-found words (ADR-0019 decision 4: the nearest screen)
+      if (p === 'livestock' && target?.startsWith('line:')) {
+        const id = target.slice(5);
+        const missing = id === 'new' ? !g || productionLines(g).length >= lineSlots(g) : !g || !findLine(g, id);
+        if (missing) return notFound('line');
+      }
       if (p === 'market' && route.tab === 'shop' && !target && filters) useShopFilters.getState().setFilters(filters);
       useUI.getState().set({ selectedCreatureId: null });
       openPanelRoute(p, panelTargetFor(route));
@@ -328,7 +349,7 @@ function onHashChange(): void {
     else writeHash('', 'replace');
     return;
   }
-  const parsed = parseRoute(location.hash);
+  const parsed = parseNav(location.hash);
   const screen = useUI.getState().screen;
   if (screen !== 'game') {
     // a link typed or followed while on the title (open it like a link) or during onboarding (it waits)
@@ -373,7 +394,7 @@ function captureBoot(): BootCapture {
   const hash = location.hash === '#' ? '' : location.hash;
   const returning = type === 'reload' || type === 'back_forward';
   const urlBoot = !!urlFixtureName(location.search) || q.has('sandbox'); // (a fixture that doesn't boot is an ordinary page)
-  const parsed = hash ? parseRoute(hash) : null;
+  const parsed = hash ? parseNav(hash) : null;
   const loads = !!hash && !urlBoot && (returning || (!!parsed && parsed.route.kind !== 'home'));
   return { hash, returning, urlBoot, loads, used: useUI.getState().screen !== 'boot' };
 }
@@ -478,7 +499,7 @@ function runBoot(): void {
   BOOT.used = true;
   const { hash, returning, urlBoot } = BOOT;
   if (!hash) return; // a plain address: the title
-  const parsed = parseRoute(hash);
+  const parsed = parseNav(hash);
   if (urlBoot) {
     if (parsed && parsed.route.kind !== 'home') useNav.setState({ pending: parsed });
     return;

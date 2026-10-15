@@ -34,6 +34,8 @@ import { clamp, clamp01, clonePlain, finite, fmtMoney, nicePrice, pushCapped, sp
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { touchResidents } from '../residents'; // lane:perf2
+import { computeTankEnv, effectiveBioload } from '../water'; // B-174
+import { settleTanks } from '../settle'; // B-127
 import { saleWarnings } from './warnings'; // lane:fix-econ
 
 export interface ListingSpec {
@@ -167,7 +169,8 @@ interface Contents {
 /** lane:frags — at most this many frags/cuttings in one listing (a frag pack or a bundle). */
 export const MAX_FRAGS_PER_LISTING = 12;
 
-function activeListingFor(state: GameState, tankId: string): Listing | undefined {
+/** The active whole-aquarium listing of a tank, if any (production lines don't move animals into it). */
+export function activeListingFor(state: GameState, tankId: string): Listing | undefined {
   return state.market.listings.find((l) => l.status === 'active' && l.kind === 'tank' && l.tankId === tankId);
 }
 
@@ -608,21 +611,37 @@ interface SaleCheck {
   message: string;
   creatures: Creature[];
   tank?: Tank;
-  relocations: { c: Creature; toTankId: string; risky: boolean }[];
+  /** `toTankId` null: no tank has room for it, so it rests in the holding container (B-174, ADR-0030 decision 8). */
+  relocations: { c: Creature; toTankId: string | null }[];
+}
+
+/** B-174: animals already placed in a tank by this sale (count, and their bioload units). */
+type Reserved = Map<string, { n: number; units: number }>;
+
+/** Room for one more animal of this size, counting the animals this sale has already sent there (B-174). */
+function hasRoom(state: GameState, t: Tank, units: number, reserved: Reserved): boolean {
+  try {
+    const env = computeTankEnv(state, t);
+    const cap = Math.min(env.spaceCapUnits, env.processCapUnits);
+    return env.bioloadUnits + (reserved.get(t.id)?.units ?? 0) + units <= cap + 1e-9;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Where an animal that is not part of a tank sale goes: a tank it can live in (environment + temperature), preferring
- * its water class, a compatible community and light stocking. Never an 'incompatible' mix; a high-risk one only when
- * nothing better exists, and the sale then says so (lane:fix-econ, S03-04).
+ * Where an animal that is not part of a tank sale goes: a tank it can live in (environment + temperature) with room
+ * for it and no high-risk or incompatible mix, preferring its water class, a compatible community and light stocking
+ * (lane:fix-econ, S03-04). None: null, and the animal rests in the holding container (B-174, ADR-0030 decision 8).
  */
-function findRelocation(state: GameState, c: Creature, excludeTankId: string, reserved: Map<string, number>, verdicts: Map<string, string>): { id: string; risky: boolean } | null {
+function findRelocation(state: GameState, c: Creature, excludeTankId: string, reserved: Reserved, verdicts: Map<string, string>): { id: string } | null {
   const sp = findSpecies(c.speciesId);
   if (!sp) return null;
+  const units = effectiveBioload(sp, c.sizeCm);
   // Siblings (a minted clutch, a shoal) get the same compatibility verdict: preview each kind of animal once per tank
   // (round-3 R01-03 — this runs on every market step while a listed tank holds animals that aren't part of the sale).
   const kind = `${c.speciesId}|${c.sex ?? 'unknown'}|${c.lifeStage}|${Math.round(finite(c.sizeCm, 0) * 4)}`;
-  let best: { id: string; score: number; risky: boolean } | null = null;
+  let best: { id: string; score: number } | null = null;
   for (const id of state.tankOrder) {
     if (id === excludeTankId) continue;
     const t = state.tanks[id];
@@ -638,6 +657,7 @@ function findRelocation(state: GameState, c: Creature, excludeTankId: string, re
     // (an axolotl must not land in a 26 °C tropical tank).
     const temp = finite(t.water?.tempC, NaN);
     if (Number.isFinite(temp) && (temp < sp.tempC.min || temp > sp.tempC.max)) continue;
+    if (!hasRoom(state, t, units, reserved)) continue; // B-174
     const memoKey = `${id}|${kind}`;
     let verdict = verdicts.get(memoKey);
     if (verdict === undefined) {
@@ -648,13 +668,16 @@ function findRelocation(state: GameState, c: Creature, excludeTankId: string, re
       }
       verdicts.set(memoKey, verdict);
     }
-    if (verdict === 'incompatible') continue;
-    const compat = verdict === 'high_risk' ? -3 : verdict === 'conditional' ? -1 : 0;
-    const score = (sp.waterClasses?.includes(t.waterClass) ? 2 : 0) + compat - (reserved.get(id) ?? 0) * 0.1 - finite(t.cache?.stockingLoad, 0);
-    if (!best || score > best.score) best = { id, score, risky: verdict === 'high_risk' };
+    if (verdict === 'incompatible' || verdict === 'high_risk') continue; // B-174: never a high-risk mix
+    const compat = verdict === 'conditional' ? -1 : 0;
+    const score = (sp.waterClasses?.includes(t.waterClass) ? 2 : 0) + compat - (reserved.get(id)?.n ?? 0) * 0.1 - finite(t.cache?.stockingLoad, 0);
+    if (!best || score > best.score) best = { id, score };
   }
-  if (best) reserved.set(best.id, (reserved.get(best.id) ?? 0) + 1);
-  return best ? { id: best.id, risky: best.risky } : null;
+  if (best) {
+    const r = reserved.get(best.id) ?? { n: 0, units: 0 };
+    reserved.set(best.id, { n: r.n + 1, units: r.units + units });
+  }
+  return best ? { id: best.id } : null;
 }
 
 function validateForSale(state: GameState, l: Listing): SaleCheck {
@@ -671,13 +694,9 @@ function validateForSale(state: GameState, l: Listing): SaleCheck {
   const inTank = creatures.filter((c) => c.tankId === tank.id);
   const unlisted = creaturesInTank(state, tank.id).filter((c) => !l.creatureIds.includes(c.id));
   const relocations: SaleCheck['relocations'] = [];
-  const reserved = new Map<string, number>();
+  const reserved: Reserved = new Map();
   const verdicts = new Map<string, string>();
-  for (const c of unlisted) {
-    const to = findRelocation(state, c, tank.id, reserved, verdicts);
-    if (!to) return { ...none, ok: false, message: `${c.name} isn't part of this sale and has no other suitable tank to move to. Move ${c.name} first, or withdraw and re-list the tank with ${c.name} included.` };
-    relocations.push({ c, toTankId: to.id, risky: to.risky });
-  }
+  for (const c of unlisted) relocations.push({ c, toTankId: findRelocation(state, c, tank.id, reserved, verdicts)?.id ?? null });
   return { ok: true, message: 'ok', creatures: inTank, tank, relocations };
 }
 
@@ -769,9 +788,25 @@ function orgOf(buyer: BuyerProfile | undefined): string | undefined {
   return buyer.name.includes(' (') ? buyer.name.split(' (')[0] : undefined;
 }
 
+/**
+ * E9 (ADR-0029 decision 9): the holding container is honest about its stasis — an animal with no tank isn't stepped,
+ * so it doesn't eat or age there (docs/KNOWN_LIMITATIONS.md).
+ */
+export const holdingText = (name: string): string =>
+  `${name} was not part of the sale and is resting in a holding container (they don't eat or age there). Move ${name} to a tank when you can.`;
+
 /** The single path through which every sale happens (accept, accepted counter, buy-now). */
 function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via: 'accept' | 'counter' | 'buy_now', rng: Rng): ActionResult {
-  const check = validateForSale(state, l);
+  // B-127: a sold tank and the tanks its other animals move to catch up first, then the sale is checked as things are
+  // now (simRng keeps `rng` on the one stream across the settles' draws: the chunk 4 review)
+  if (l.kind === 'tank' && l.tankId) settleTanks(state, [l.tankId]);
+  let check = validateForSale(state, l);
+  for (let i = 0; i < 3 && check.ok; i++) {
+    const owed = check.relocations.map((r) => r.toTankId).filter((id): id is string => !!id && (state.tanks[id]?.simDebtHours ?? 0) > 1e-9);
+    if (!owed.length) break;
+    settleTanks(state, owed);
+    check = validateForSale(state, l);
+  }
   if (!check.ok) return fail(check.message);
   if (!Number.isFinite(price) || price <= 0) return fail('That offer is not valid.');
   const now = state.clock.hour;
@@ -785,9 +820,23 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
 
   // 1. Money.
   earn(state, roundCents(price), l.kind === 'tank' ? 'tank_sale' : 'livestock_sale', `Sold "${l.title}" to ${buyerName}`);
+  // lane:automation (chunk 5, AUTO-039) — a production line's listing: the ledger entry names the line (weekly money)
+  const lineId = lineOfListing(state, l.id);
+  if (lineId) {
+    const e = state.finance.ledger[state.finance.ledger.length - 1];
+    if (e && e.amount > 0) e.line = { id: lineId, n: l.creatureIds.length };
+  }
 
   // 2. Unlisted animals stay with the player.
   for (const r of check.relocations) {
+    if (r.toTankId === null) {
+      // B-174, ADR-0030 decision 8: no tank has room without a risky mix, so it rests in the holding container (E9).
+      r.c.tankId = null;
+      touchResidents(); // lane:perf2
+      pushCapped(r.c.history, { hour: now, kind: 'moved', text: `Resting in a holding container — not part of the sale of ${check.tank?.name ?? 'its tank'}.` }, 40);
+      emitEvent(state, { kind: 'warning', text: holdingText(r.c.name), creatureId: r.c.id, toast: true });
+      continue;
+    }
     const to = state.tanks[r.toTankId];
     r.c.tankId = r.toTankId;
     touchResidents(); // lane:perf2 — a move-in: drop the step's residents index
@@ -796,14 +845,8 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
       if (cl.guardedById === r.c.id && (cl.stage === 'in_pouch' || (cl.visual === 'berried' && cl.stage === 'eggs'))) cl.tankId = r.toTankId;
     }
     pushCapped(r.c.history, { hour: now, kind: 'moved', text: `Moved to ${to?.name ?? 'another tank'} — not part of the sale of ${check.tank?.name ?? 'its tank'}.` }, 40);
-    // Say where they went (S03-04): the log entry opens the animal, and a risky mix is called out.
-    emitEvent(state, {
-      kind: r.risky ? 'warning' : 'info',
-      text: `${r.c.name} wasn't part of the sale and now lives in ${to?.name ?? 'another tank'}.${r.risky ? ` It's a risky mix there — the only tank that would do. Find ${r.c.name} a better home soon.` : ''}`,
-      creatureId: r.c.id,
-      tankId: r.toTankId,
-      toast: true,
-    });
+    // Say where they went (S03-04): the log entry opens the animal.
+    emitEvent(state, { kind: 'info', text: `${r.c.name} wasn't part of the sale and now lives in ${to?.name ?? 'another tank'}.`, creatureId: r.c.id, tankId: r.toTankId, toast: true });
   }
 
   // 3. Exactly the listed contents leave.
@@ -848,7 +891,7 @@ function completeSale(state: GameState, l: Listing, bid: Bid, price: number, via
       if (c.tankId === soldTankId && (c.status === 'alive' || c.status === 'listed')) {
         c.tankId = null;
         if (c.status === 'listed' && !state.market.listings.some((x) => x.status === 'active' && x.creatureIds.includes(c.id))) c.status = 'alive';
-        emitEvent(state, { kind: 'warning', text: `${c.name} was not part of the sale and is waiting in a holding container. Give ${c.name} a tank soon.`, creatureId: c.id, toast: true });
+        emitEvent(state, { kind: 'warning', text: holdingText(c.name), creatureId: c.id, toast: true });
       }
     }
   }
@@ -1258,19 +1301,15 @@ function checkIntegrity(state: GameState, l: Listing, rng: Rng): boolean {
       for (const c of extras) addAlert(`added:${c.id}`);
       const names = extras.map((c) => c.name).join(', ');
       markChanged(l, `${names} joined the tank after listing (not part of the sale).`);
-      emitEvent(state, { kind: 'info', text: `${names} ${extras.length === 1 ? 'is' : 'are'} in "${tank.name}" but not part of its listing — they'll be moved to another tank if it sells.`, listingId: l.id, tankId: tank.id });
+      emitEvent(state, { kind: 'info', text: `${names} ${extras.length === 1 ? 'is' : 'are'} in "${tank.name}" but not part of its listing — if it sells, they move to a tank with room, or rest in a holding container.`, listingId: l.id, tankId: tank.id });
     }
-    // Can a buyer actually complete this sale? Only unlisted residents can block it (S03-07): warn while they do.
-    const unlisted = creaturesInTank(state, tank.id).some((c) => !l.creatureIds.includes(c.id));
-    if (unlisted || l.blocked) {
-      const check = unlisted ? validateForSale(state, l) : null;
-      if (check && !check.ok) {
-        if (!l.blocked) emitEvent(state, { kind: 'warning', text: `No buyer can complete "${l.title}" right now: ${check.message}`, listingId: l.id, tankId: tank.id, toast: true });
-        l.blocked = check.message;
-      } else if (l.blocked) {
-        delete l.blocked;
-        emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn't part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
-      }
+    // B-174 (ADR-0030 decision 8): an animal that isn't part of the sale no longer blocks it (it moves to a tank with
+    // room, or rests in the holding container), so this no longer previews every unlisted animal against every tank on
+    // each market step (the chunk 4 review: the check could only pass). A sale a buyer found stuck (buy-now, below) is
+    // re-checked until it can go ahead.
+    if (l.blocked && validateForSale(state, l).ok) {
+      delete l.blocked;
+      emitEvent(state, { kind: 'info', text: `"${l.title}" can sell again — every animal that isn't part of the sale has somewhere to go.`, listingId: l.id, tankId: tank.id });
     }
     const sig = tankSignature(tank);
     if (l.snapshot.signature && sig !== l.snapshot.signature && !has(`sig:${sig}`)) {
@@ -1673,4 +1712,10 @@ export function quickSellFragsQuote(state: GameState, fragIds: string[]): number
 export function storedFragValue(state: GameState, fragId: string): number {
   const f = (state.inventory.frags ?? []).find((x) => x.id === fragId);
   return f ? fragValue(state, f).expected : 0;
+}
+
+/** lane:automation (chunk 5) — the production line whose batch listed this, if any (read from the save; no import cycle). */
+function lineOfListing(state: GameState, listingId: string): string | undefined {
+  for (const line of state.production?.lines ?? []) for (const b of line.batches ?? []) if (b.listingIds?.includes(listingId)) return line.id;
+  return undefined;
 }

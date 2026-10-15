@@ -14,6 +14,8 @@
  *    entries: progression (`progress.scan.logSeq`), exhibit scoring, the welcome-back card and duplicate checks all
  *    scan the log. The full history stays in the Log panel.
  */
+import { opsDot } from './ops'; // lane:automation (chunk 5)
+import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
 import type { Creature, DecorInstance, EquipmentInstance, GameEvent, GameState, NotifyState, Tank } from '@/types';
 import type { StatusLevel } from '@/types/reports';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -28,6 +30,7 @@ import { findSpecies } from '@/data/species';
 import { isPrismatic } from '@/sim/life/rareVariants';
 import { morphDisplayName } from '@/sim/life/genetics';
 import { visiblyRare } from '../panels/market/offerGenetics'; // lane:genetics (0.5 §5.2)
+import { SOCIAL_COPY } from '../panels/social/copy'; // lane:social (chunk 6)
 
 const attempt = <T>(fn: () => T, fallback: T): T => {
   try {
@@ -182,11 +185,12 @@ function residentsSig(g: GameState, tankId: string): string {
  */
 export function autofeedPaused(g: GameState, tank: Tank): AutofeedPause | null {
   if (!tank.equipment?.some((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder')) return null;
-  return attempt(() => autofeedPause(tank.equipment, inhabitantsOf(g, tank.id), g.inventory?.foods ?? {}), null);
+  return attempt(() => autofeedPause(tank.equipment, inhabitantsOf(g, tank.id), g.inventory?.foods ?? {}, isHeld(g, 'feeders')), null);
 }
 
-/** §10.2's alert row text. */
-export const autofeedPausedText = (p: Pick<AutofeedPause, 'name'>): string => `Auto-feed is paused — feed ${p.name} by hand.`;
+/** §10.2's alert row text; held by manual mode: ADR-0026 decision 15's words (lane:automation, chunk 5). */
+export const autofeedPausedText = (p: Pick<AutofeedPause, 'name'> & Partial<Pick<AutofeedPause, 'reason'>>): string =>
+  p.reason === 'held' ? `Auto-feed is held — feed ${p.name} by hand, or resume it.` : `Auto-feed is paused — feed ${p.name} by hand.`;
 
 /**
  * The tank's dot colour — cheap enough for a store selector (no reports, no text). Worst of the sim status, food
@@ -468,8 +472,10 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 /**
  * Dock / tab-bar / sheet-switcher dots by panel id. `seenOffers` (0.5 spec §5.2, optional): the shop offers the player
  * has seen; with it, Market shows a rare-stock dot for an unseen Prismatic or rare offer when no bid is waiting.
+ * lane:social (chunk 6, §5.4, B-152) — an item marked `newUntilOpened` has a dot until its panel is first opened, and
+ * `news` (by panel id, from outside the save: the Social service's unseen trades and club items) adds one with its label.
  */
-export function navDots(g: GameState, items: { id: string; label: string; lock?: string | null }[], focusedTankId: string | null = null, seenOffers?: ReadonlySet<string>): Record<string, NavDot> {
+export function navDots(g: GameState, items: { id: string; label: string; lock?: string | null; newUntilOpened?: boolean }[], focusedTankId: string | null = null, seenOffers?: ReadonlySet<string>, news?: Readonly<Record<string, string>>): Record<string, NavDot> {
   const out: Record<string, NavDot> = {};
   let watch = 0;
   let danger = 0;
@@ -499,7 +505,16 @@ export function navDots(g: GameState, items: { id: string; label: string; lock?:
     if (rare) out.market = rare;
   }
   if (researchNews(g)) out.research = { level: 'new', label: 'Research finished — choose your next project', target: null };
+  // lane:automation (chunk 5, DESIGN-S3D §5.4) — red when anything needs you, amber when worth a look or held (no news)
+  const ops = opsDot(g);
+  if (ops) out.operations = { level: ops.level, label: ops.label, target: null };
   for (const it of items) if (!out[it.id] && featureUnseen(g, it.id, it.lock)) out[it.id] = { level: 'new', label: `New: ${it.label} just unlocked`, target: null };
+  for (const it of items) {
+    if (out[it.id]) continue;
+    const fresh = news?.[it.id];
+    if (fresh) out[it.id] = { level: 'new', label: fresh, target: null };
+    else if (it.newUntilOpened && !g.progress.tutorial?.flags?.[`opened_${it.id}`]) out[it.id] = { level: 'new', label: SOCIAL_COPY.dotNew, target: null };
+  }
   return out;
 }
 

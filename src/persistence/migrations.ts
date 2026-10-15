@@ -17,16 +17,20 @@
  *  - creatures without `visitorWows`, `history`, `repro.totalOffspringRaised`;
  *  - `progress` without `discoveredMorphs` / `counters`; market without `history`; no `isShowcase`.
  */
-import type { GameState, Tank, Creature, WaterState, CreatureStats, Potentials } from '@/types';
+import type { GameState, Tank, Creature, WaterState, CreatureStats, Potentials, Genome } from '@/types';
 import { SCHEMA_VERSION } from './schema';
 import { SaveError } from './types';
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { DEFAULT_LIGHTS_ON, defaultLightsOff } from '@/sim/time';
-import { renamedMorphs } from '@/sim/life/genetics';
+import { renamedMorphs, resolveMorph } from '@/sim/life/genetics';
 import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
 import { backfillFinds } from '@/sim/life/discovery'; // lane:genetics
 import { emptyShowsState } from '@/sim/shows/state'; // B-168
+import { CLASS_DEFAULTS } from '@/sim/water/constants'; // chunk 6 (PERSIST-004, B-004)
+import { LOG_CAP } from '@/sim/context';
+import { BUYER_ARCHETYPES } from '@/data/buyers';
+import { SHOW_TIERS } from '@/data/shows';
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,7 +79,9 @@ function scrubInheritedNames(node: Json, path: string, repairs: string[], depth 
     // whatever numbers or finds it, e.g. the log's sequence).
     const kept = node.filter((x) => (typeof x === 'string' ? !isInheritedName(x) : !(isObj(x) && typeof x.id === 'string' && isInheritedName(x.id))));
     if (kept.length !== node.length) {
-      node.splice(0, node.length, ...kept);
+      // (copied in place: spreading a list of several hundred thousand into splice's arguments throws, B-012)
+      for (let i = 0; i < kept.length; i++) node[i] = kept[i];
+      node.length = kept.length;
       repairs.push(`${path}: invalid ids removed`);
     }
     for (let i = 0; i < node.length; i++) scrubInheritedNames(node[i], `${path}[${i}]`, repairs, depth + 1);
@@ -97,6 +103,12 @@ function scrubInheritedNames(node: Json, path: string, repairs: string[], depth 
   }
 }
 const num = (v: unknown, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+/** chunk 6 (PERSIST-004 A2) — `num`, with a repair note when a value was there but unusable (NaN, 1e999, text…). */
+function numNoted(v: unknown, d: number, label: string, repairs: string[]): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (v !== undefined) repairs.push(`${label}: ${String(v).slice(0, 24)} → ${d}`);
+  return d;
+}
 /** lane:fix-core (P5-05) — an array of records: anything that is not an object (null, a number…) is dropped. */
 const records = (a: unknown): Json[] => (Array.isArray(a) ? a.filter(isObj) : []);
 /** An array of strings (ids, unlock keys): anything else is dropped. */
@@ -155,6 +167,18 @@ export const MIGRATIONS: Migration[] = [
       if (isObj(s.market)) s.market.history ??= [];
       s.isShowcase = false;
       s.schemaVersion = 1;
+      return s;
+    },
+  },
+  {
+    from: 1,
+    to: 2,
+    // lane:automation (chunk 5, INTAKE C-44, PERSIST-016) — the S3-D state is optional and needs nothing filled in; the
+    // version goes up so an older build reports a chunk 5 save as newer (too_new) instead of closing its Facility
+    // research and running the clock with no Water room, Live food room or manual mode.
+    description: 'S3-D (deep automation): the Water and Live food rooms, manual mode and the Operations records',
+    up: (s: Json) => {
+      s.schemaVersion = 2;
       return s;
     },
   },
@@ -292,7 +316,14 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
     repairs.push(`tank ${id}: unknown tier ${String(t.tierId)} → g20L`);
     t.tierId = 'g20L';
   }
-  const wc = typeof t.waterClass === 'string' ? t.waterClass : 'freshwater_tropical';
+  // chunk 6 (PERSIST-004 A3, B-004) — a water class the tables don't know (an inherited name crashed every tick) is
+  // reset, by the tank's environment, with a note
+  let wc: string = typeof t.waterClass === 'string' ? t.waterClass : 'freshwater_tropical';
+  if (!Object.hasOwn(CLASS_DEFAULTS, wc)) {
+    const fallback = t.environment === 'marine' ? 'marine_fowlr' : t.environment === 'brackish' ? 'brackish' : 'freshwater_tropical';
+    repairs.push(`tank ${id}.waterClass: ${String(t.waterClass).slice(0, 40)} unknown → ${fallback}`);
+    wc = fallback;
+  }
   t.waterClass = wc;
   const marine = wc === 'reef' || wc.startsWith('marine');
   t.environment ??= marine ? 'marine' : wc === 'brackish' ? 'brackish' : 'freshwater';
@@ -303,7 +334,7 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
   // present; a broken one is dropped (the device then runs at the next lights-on, once). Absent ones need nothing. A
   // future hour would stop the device and keep keepers off the tank's routine care for good.
   if (isObj(t.water.lab)) {
-    for (const k of ['lastAutoChangeHour', 'lastAutoScrapeHour'] as const) {
+    for (const k of ['lastAutoChangeHour', 'lastAutoScrapeHour', 'lastDoseHour'] as const) { // lastDoseHour: lane:automation (chunk 5)
       const v = t.water.lab[k];
       if (v === undefined || (typeof v === 'number' && Number.isFinite(v) && v <= hour0(s))) continue;
       repairs.push(`tank ${id}.water.lab.${k}: ${String(v).slice(0, 40)}, removed`);
@@ -419,13 +450,92 @@ function renameLegacyMorphs(s: Json): void {
   }
   const p = s.progress;
   if (!isObj(p) || !Array.isArray(p.discoveredMorphs)) return;
-  const out: string[] = [];
+  // (a Set: the list used to be de-duplicated with includes(), quadratic for a crafted 100,000 entries, B-122)
+  const out = new Set<string>();
   for (const key of p.discoveredMorphs as string[]) {
     const i = key.indexOf(':');
     const sp = i > 0 ? findSpecies(key.slice(0, i)) : undefined;
     const now = sp ? renamedMorphs(sp).get(key.slice(i + 1)) : undefined;
-    const k = now ? `${key.slice(0, i)}:${now}` : key;
-    if (!out.includes(k)) out.push(k);
+    out.add(now ? `${key.slice(0, i)}:${now}` : key);
+  }
+  p.discoveredMorphs = [...out];
+}
+
+/** chunk 6 (PERSIST-004 A1) — list lengths far beyond play: trimmed on load, with a note. */
+const MAX_CLOSED_LISTINGS = 1_000;
+const MAX_DISCOVERED_MORPHS = 20_000;
+
+/**
+ * chunk 6 (PERSIST-004 A2) — the last pass: any number still NaN or ±Infinity anywhere in the save (a field no targeted
+ * repair knows) becomes 0, noted by path (the first ten, then a count). The serializer never writes such numbers; only a
+ * hand-made file (1e999 parses to Infinity) has them.
+ */
+function scrubNonFinite(s: Json, repairs: string[]): void {
+  let n = 0;
+  const walk = (node: Json, path: string, depth: number) => {
+    if (depth > 64 || !node || typeof node !== 'object') return;
+    const keys = Array.isArray(node) ? node.keys() : Object.keys(node);
+    for (const k of keys as Iterable<string | number>) {
+      const v = node[k];
+      if (typeof v === 'number') {
+        if (Number.isFinite(v)) continue;
+        node[k] = 0;
+        if (++n <= 10) repairs.push(`${path}.${k}: ${String(v)} → 0`);
+      } else if (v && typeof v === 'object') walk(v, `${path}.${k}`, depth + 1);
+    }
+  };
+  walk(s, '$', 0);
+  if (n > 10) repairs.push(`…and ${n - 10} more unreadable numbers → 0`);
+}
+
+/**
+ * Chunk 6 (B-194; ADR-0029 decision 8, ADR-0034 decision 5) — overlays renamed so each look has its own name. The
+ * bristlenose's two-copy fin overlay was "Super Long-fin", which lost its "Super" beside the Super Red colour, so "Super
+ * Red Long-fin" named two looks; it is now "Double Long-fin". An animal (owned, or in the shop's stock) whose name the
+ * overlay touched takes the name its genes give now (that tells the two "Super Red Long-fin" looks apart); discovered
+ * names are renamed in place. Each renamed animal is noted.
+ */
+const OVERLAY_RENAMES: readonly { speciesId: string; from: string; to: string; touches: RegExp }[] = [{ speciesId: 'bristlenose_pleco', from: 'Super Long-fin', to: 'Double Long-fin', touches: /Long-fin/ }];
+
+function renameOverlays(s: Json, repairs: string[]): void {
+  const fix = (c: Json, label: string) => {
+    if (!isObj(c) || typeof c.morphName !== 'string') return;
+    const r = OVERLAY_RENAMES.find((x) => x.speciesId === c.speciesId);
+    if (!r || !r.touches.test(c.morphName)) return;
+    const sp = findSpecies(c.speciesId);
+    if (!sp) return;
+    let now = c.morphName.replace(r.from, r.to);
+    // from the genes only when every locus is there (a missing genome was filled in empty above: it would read wild)
+    const alleles = isObj(c.genome) && isObj(c.genome.alleles) ? (c.genome.alleles as Record<string, unknown>) : null;
+    if (alleles && sp.genetics.loci.every((l) => Array.isArray(alleles[l.id]) && (alleles[l.id] as unknown[]).length === 2)) {
+      try {
+        now = resolveMorph(sp, c.genome as Genome).morphName;
+      } catch {
+        /* a damaged genome: the plain rename */
+      }
+    }
+    if (now !== c.morphName) {
+      c.morphName = now;
+      repairs.push(`${label}.morphName renamed (B-194)`);
+    }
+  };
+  if (isObj(s.creatures)) for (const [id, c] of Object.entries(s.creatures)) fix(c as Json, `creatures.${shortId(id)}`);
+  if (isObj(s.market) && Array.isArray(s.market.stock)) {
+    for (const o of s.market.stock as Json[]) if (isObj(o) && Array.isArray(o.creatures)) for (const c of o.creatures as Json[]) fix(c, `market.stock.${shortId(o.id)}`);
+  }
+  const p = s.progress;
+  if (!isObj(p) || !Array.isArray(p.discoveredMorphs)) return;
+  const seen = new Set<string>();
+  const out: unknown[] = [];
+  for (const key of p.discoveredMorphs as unknown[]) {
+    let k = key;
+    if (typeof key === 'string') {
+      const r = OVERLAY_RENAMES.find((x) => key.startsWith(`${x.speciesId}:`) && key.includes(x.from));
+      if (r) k = key.replace(r.from, r.to);
+    }
+    if (typeof k === 'string' && seen.has(k)) continue;
+    if (typeof k === 'string') seen.add(k);
+    out.push(k);
   }
   p.discoveredMorphs = out;
 }
@@ -443,7 +553,7 @@ export function repairState(s: Json): string[] {
   s.lastSavedRealMs = num(s.lastSavedRealMs, now);
   s.lastTickRealMs = num(s.lastTickRealMs, s.lastSavedRealMs);
   if (!isObj(s.clock)) s.clock = { hour: 8, speed: 1 };
-  s.clock.hour = num(s.clock.hour, 8);
+  s.clock.hour = numNoted(s.clock.hour, 8, 'clock.hour', repairs);
   if (![0, 1, 3, 10].includes(s.clock.speed)) s.clock.speed = 1;
   // lane:core (PERSIST-011, ADR-0005 decision 1) — a starter species this build doesn't know is kept (a newer build may
   // add one, and every reader falls back when findSpecies finds nothing); an id that isn't a usable key is reset.
@@ -495,7 +605,13 @@ export function repairState(s: Json): string[] {
 
   if (!isObj(s.inventory)) s.inventory = {};
   if (!isObj(s.inventory.foods)) s.inventory.foods = {};
-  s.inventory.salt = num(s.inventory.salt, 0);
+  // chunk 6 (PERSIST-004 A2) — stock is a count: never negative or unreadable
+  for (const [k, v] of Object.entries(s.inventory.foods)) {
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0) continue;
+    repairs.push(`inventory.foods.${k.slice(0, 40)}: ${String(v).slice(0, 24)} → 0`);
+    s.inventory.foods[k] = 0;
+  }
+  s.inventory.salt = Math.max(0, numNoted(s.inventory.salt, 0, 'inventory.salt', repairs));
   s.inventory.equipment = withDefId(s.inventory.equipment, 'equipment', 'inventory', repairs);
   s.inventory.decor = withDefId(s.inventory.decor, 'decor', 'inventory', repairs);
   // lane:frags — optional frag storage: drop unreadable entries, never invent the list for old saves
@@ -529,10 +645,22 @@ export function repairState(s: Json): string[] {
       delete l.tankId;
     }
   }
+  // chunk 6 (PERSIST-004 A3, B-004) — a buyer whose archetype the table doesn't know (an inherited name crashed the market)
+  const buyers = s.market.buyers.length;
+  s.market.buyers = s.market.buyers.filter((b: Json) => typeof b.archetype === 'string' && Object.hasOwn(BUYER_ARCHETYPES, b.archetype));
+  if (s.market.buyers.length !== buyers) repairs.push(`market.buyers: ${buyers - s.market.buyers.length} with an unknown archetype removed`);
+  // chunk 6 (PERSIST-004 A1) — closed listings are history (the market keeps 40); far more than play makes are trimmed,
+  // oldest first; open ones are never touched
+  const closed = (s.market.listings as Json[]).filter((l) => l.status !== 'active');
+  if (closed.length > MAX_CLOSED_LISTINGS) {
+    const drop = new Set(closed.slice(0, closed.length - MAX_CLOSED_LISTINGS));
+    s.market.listings = (s.market.listings as Json[]).filter((l) => !drop.has(l));
+    repairs.push(`market.listings: ${drop.size} oldest closed listings removed`);
+  }
   if (s.market.fragSaleHours !== undefined) s.market.fragSaleHours = Array.isArray(s.market.fragSaleHours) ? s.market.fragSaleHours.filter((h: unknown) => typeof h === 'number' && Number.isFinite(h)) : []; // lane:frags
 
   if (!isObj(s.finance)) s.finance = { money: 0, ledger: [], daily: [] };
-  s.finance.money = num(s.finance.money, 0);
+  s.finance.money = numNoted(s.finance.money, 0, 'finance.money', repairs); // debt is allowed: only unreadable money is reset
   s.finance.ledger = records(s.finance.ledger);
   s.finance.daily = records(s.finance.daily);
 
@@ -541,6 +669,11 @@ export function repairState(s: Json): string[] {
   p.reputation = num(p.reputation, 0);
   p.mastery = fillNumbers(p.mastery, { husbandry: 0, breeding: 0, aquascaping: 0, marine: 0, business: 0, exhibition: 0 }, 'progress.mastery', repairs);
   for (const k of ['unlocked', 'achievements', 'discoveredSpecies', 'discoveredMorphs'] as const) p[k] = strings(p[k]);
+  // chunk 6 (PERSIST-004 A1) — every species' catalog together names about 2,000 morphs: a list far longer is cut
+  if (p.discoveredMorphs.length > MAX_DISCOVERED_MORPHS) {
+    repairs.push(`progress.discoveredMorphs: ${p.discoveredMorphs.length - MAX_DISCOVERED_MORPHS} beyond ${MAX_DISCOVERED_MORPHS} removed`);
+    p.discoveredMorphs.length = MAX_DISCOVERED_MORPHS;
+  }
   // lane:genetics — optional lists: repaired when present, derived from the collection when missing (pre-0.4 saves)
   if (p.discoveredStrains !== undefined) p.discoveredStrains = strings(p.discoveredStrains);
   if (p.prismaticFinds !== undefined) p.prismaticFinds = records(p.prismaticFinds).filter((f) => typeof f.speciesId === 'string' && typeof f.creatureId === 'string');
@@ -550,8 +683,8 @@ export function repairState(s: Json): string[] {
   if (!isObj(p.research)) p.research = { progressHours: 0, completed: [] };
   p.research.progressHours = num(p.research.progressHours, 0);
   p.research.completed = strings(p.research.completed);
-  // lane:core (PERSIST-011, ADR-0005 decision 1) — a project this build doesn't know is kept, like any well-formed id
-  // (the research step closes it, as v0.4.0 did); an id that isn't a usable key is removed.
+  // lane:core (PERSIST-011, ADR-0005 decision 1) — a project this build doesn't know is kept, like any well-formed id,
+  // and the research step leaves it exactly as it is (B-017, ADR-0029 decision 2); an id that isn't a usable key is removed.
   if (p.research.activeId !== undefined && !isSafeKey(p.research.activeId)) {
     repairs.push(`progress.research.activeId: ${idText(p.research.activeId)}, removed`);
     delete p.research.activeId;
@@ -572,6 +705,11 @@ export function repairState(s: Json): string[] {
   v.totalVisitors = num(v.totalVisitors, 0);
 
   s.log = records(s.log);
+  // chunk 6 (PERSIST-004 A1) — the sim keeps the newest LOG_CAP events; a longer log is trimmed the same way
+  if (s.log.length > LOG_CAP) {
+    repairs.push(`log: ${s.log.length - LOG_CAP} oldest events removed`);
+    s.log.splice(0, s.log.length - LOG_CAP);
+  }
   // lane:shows — optional; an unreadable shows block is dropped (src/sim/shows re-creates it lazily), arrays repaired.
   if (s.shows !== undefined && !isObj(s.shows)) {
     delete s.shows;
@@ -585,6 +723,17 @@ export function repairState(s: Json): string[] {
     s.shows.rng = typeof s.shows.rng === 'number' && Number.isFinite(s.shows.rng) ? s.shows.rng >>> 0 : emptyShowsState(s as GameState).rng;
     s.shows.seq = Math.max(0, Math.floor(num(s.shows.seq, 0)));
     s.shows.cursorHour = num(s.shows.cursorHour, num(s.clock.hour, 0));
+    // chunk 6 (PERSIST-004 A3) — a show of a tier the table doesn't know can't be judged (the calendar refills itself);
+    // an entry's unknown tier is only a label, so it goes
+    const shows = s.shows.shows.length;
+    s.shows.shows = (s.shows.shows as Json[]).filter((x) => isObj(x) && typeof x.tier === 'string' && Object.hasOwn(SHOW_TIERS, x.tier));
+    if (s.shows.shows.length !== shows) repairs.push(`shows.shows: ${shows - s.shows.shows.length} of an unknown tier removed`);
+    for (const e of s.shows.entries as Json[]) {
+      if (isObj(e) && e.tier !== undefined && !(typeof e.tier === 'string' && Object.hasOwn(SHOW_TIERS, e.tier))) {
+        repairs.push(`shows entry ${shortId(e.id)}: tier ${String(e.tier).slice(0, 24)} removed`);
+        delete e.tier;
+      }
+    }
   }
   // lane:staff — optional staff state (absent in old saves; rebuilt lazily). Drop it only if unreadable.
   if (s.staff !== undefined && (!isObj(s.staff) || !Array.isArray(s.staff.roster))) {
@@ -608,13 +757,287 @@ export function repairState(s: Json): string[] {
       if (m.unpaidDays !== undefined) m.unpaidDays = Math.max(0, Math.floor(num(m.unpaidDays, 0)));
     }
   }
+  repairProduction(s, repairs); // lane:production (chunk 4; PERSIST-006, ADR-0025 decision 10)
+  repairAutomation(s, repairs); // lane:automation (chunk 5; PERSIST-016)
   delete s.offlineGrace;
   renameLegacyMorphs(s);
+  renameOverlays(s, repairs); // chunk 6, B-194
   backfillFinds(s as GameState); // lane:genetics — only fills lists a pre-0.4 save lacks; silent
   if (s.isShowcase === undefined) s.isShowcase = false;
+  scrubNonFinite(s, repairs); // chunk 6 (PERSIST-004 A2): nothing unreadable is left anywhere
   // Keep the id counter ahead of every id we know about so new ids never collide after a repair.
   s.idCounter = Math.max(s.idCounter, maxIdSuffix(s));
   return repairs;
+}
+
+/** A well-formed id, as text for a repair note. */
+const shortId = (v: unknown): string => String(v).slice(0, 40);
+
+const PRODUCTION_REFS = ['mother', 'father', 'breed', 'raise', 'quarantine', 'keep', 'rest'] as const;
+const PRODUCTION_STAT_KEYS = ['weekStartHour', 'soldCount', 'revenue', 'costs', 'totalSold', 'totalRevenue', 'totalCosts'] as const;
+
+/**
+ * lane:production (PERSIST-006, ADR-0025 decision 10) — production lines, when present. A line whose parent or tank is
+ * missing is kept and marked (paused, `broken`) so the player can fix or end it; only an unreadable line is removed.
+ * Notes only what it changed: a valid save loads with no repairs and an unchanged hash. Creates nothing (AUTO-027).
+ */
+function repairProduction(s: Json, repairs: string[]): void {
+  // A line hold on an animal that isn't a parent in any line would keep it from ever breeding: remove it.
+  const parents = new Set<string>();
+  if (s.production !== undefined && !isObj(s.production)) {
+    delete s.production;
+    repairs.push('production: unreadable, removed');
+  } else if (isObj(s.production)) {
+    const p = s.production;
+    if (!Array.isArray(p.lines)) {
+      p.lines = [];
+      repairs.push('production.lines: unreadable, reset');
+    }
+    const kept: Json[] = [];
+    const ids = new Set<string>();
+    for (const l of p.lines as unknown[]) {
+      const ok = isObj(l) && isSafeKey(l.id) && !ids.has(l.id as string) && typeof l.speciesId === 'string' && isObj(l.pair) && typeof l.pair.motherId === 'string' && typeof l.pair.fatherId === 'string' && isObj(l.tanks) && ['breed', 'raise', 'keep'].every((k) => typeof (l.tanks as Json)[k] === 'string');
+      if (!ok) {
+        repairs.push(`production line ${shortId(isObj(l) ? l.id : l)}: unreadable, removed`);
+        continue;
+      }
+      ids.add(l.id);
+      kept.push(l);
+    }
+    p.lines = kept;
+    const hour = hour0(s);
+    for (const l of p.lines as Json[]) {
+      const at = `production line ${l.id}`;
+      if (typeof l.name !== 'string' || !l.name.trim()) {
+        l.name = `${shortId(l.id)} line`;
+        repairs.push(`${at}.name: missing, set`);
+      }
+      if (typeof l.tanks.quarantine === 'string') l.tanks.quarantine = [l.tanks.quarantine];
+      if (!Array.isArray(l.tanks.quarantine) || !(l.tanks.quarantine as unknown[]).every((x) => typeof x === 'string')) {
+        l.tanks.quarantine = strings(l.tanks.quarantine);
+        repairs.push(`${at}.tanks.quarantine: repaired`);
+      }
+      if (l.pair.restTankId !== undefined && typeof l.pair.restTankId !== 'string') {
+        delete l.pair.restTankId;
+        repairs.push(`${at}.pair.restTankId: unreadable, removed`);
+      }
+      if (typeof l.running !== 'boolean') {
+        l.running = true;
+        repairs.push(`${at}.running: set`);
+      }
+      if (!isObj(l.rules)) {
+        l.rules = {};
+        repairs.push(`${at}.rules: reset`);
+      }
+      for (const k of ['pauseWhenFull', 'keepPrismatic', 'autoList'] as const) {
+        if (typeof l.rules[k] !== 'boolean') {
+          l.rules[k] = true;
+          repairs.push(`${at}.rules.${k}: set`);
+        }
+      }
+      if (!Array.isArray(l.rules.keep)) {
+        l.rules.keep = [];
+        repairs.push(`${at}.rules.keep: reset`);
+      } else {
+        const good = (l.rules.keep as unknown[]).filter((r) => isObj(r) && Array.isArray(r.traitIds) && (r.traitIds as unknown[]).every((x) => typeof x === 'string') && typeof r.count === 'number' && Number.isFinite(r.count) && r.count >= 1);
+        if (good.length !== l.rules.keep.length) {
+          l.rules.keep = good;
+          repairs.push(`${at}.rules.keep: unreadable rules removed`);
+        }
+      }
+      if (!isObj(l.stats)) {
+        l.stats = {};
+        repairs.push(`${at}.stats: reset`);
+      }
+      for (const k of PRODUCTION_STAT_KEYS) {
+        if (typeof l.stats[k] !== 'number' || !Number.isFinite(l.stats[k])) {
+          l.stats[k] = k === 'weekStartHour' ? hour : 0;
+          repairs.push(`${at}.stats.${k}: set`);
+        }
+      }
+      if (typeof l.createdHour !== 'number' || !Number.isFinite(l.createdHour)) {
+        l.createdHour = hour;
+        repairs.push(`${at}.createdHour: set`);
+      }
+      for (const k of ['sortedThroughHour'] as const) {
+        if (l[k] !== undefined && (typeof l[k] !== 'number' || !Number.isFinite(l[k]))) {
+          delete l[k];
+          repairs.push(`${at}.${k}: unreadable, removed`);
+        }
+      }
+      if (l.routed !== undefined && (!Array.isArray(l.routed) || !(l.routed as unknown[]).every((x) => typeof x === 'string'))) {
+        l.routed = strings(l.routed);
+        repairs.push(`${at}.routed: repaired`);
+      }
+      if (l.batches !== undefined) {
+        const good = (Array.isArray(l.batches) ? l.batches : []).filter((b: unknown) => isObj(b) && typeof b.id === 'string' && Array.isArray(b.creatureIds) && typeof b.sortedHour === 'number' && Number.isFinite(b.sortedHour));
+        if (!Array.isArray(l.batches) || good.length !== l.batches.length) repairs.push(`${at}.batches: unreadable batches removed`);
+        for (const b of good as Json[]) {
+          const live = strings(b.creatureIds).filter((id) => hasKey(s.creatures, id));
+          if (live.length !== b.creatureIds.length) {
+            b.creatureIds = live;
+            repairs.push(`${at}.batch ${shortId(b.id)}: missing animals removed`);
+          }
+          if (b.quarantinedHour !== undefined && (typeof b.quarantinedHour !== 'number' || !Number.isFinite(b.quarantinedHour))) {
+            delete b.quarantinedHour;
+            delete b.tankId;
+            repairs.push(`${at}.batch ${shortId(b.id)}.quarantinedHour: unreadable, removed`);
+          }
+          if (b.listingIds !== undefined && !Array.isArray(b.listingIds)) {
+            delete b.listingIds;
+            repairs.push(`${at}.batch ${shortId(b.id)}.listingIds: unreadable, removed`);
+          }
+        }
+        if (good.length) l.batches = good;
+        else delete l.batches;
+      }
+      for (const k of ['noticed', 'tankNames'] as const) {
+        if (l[k] !== undefined && !isObj(l[k])) {
+          delete l[k];
+          repairs.push(`${at}.${k}: unreadable, removed`);
+        }
+      }
+      if (l.waiting !== undefined && l.waiting !== true) {
+        delete l.waiting;
+        repairs.push(`${at}.waiting: unreadable, removed`);
+      }
+      if (l.broken !== undefined && !(isObj(l.broken) && (PRODUCTION_REFS as readonly string[]).includes(l.broken.ref as string) && typeof l.broken.id === 'string')) {
+        delete l.broken;
+        repairs.push(`${at}.broken: unreadable, removed`);
+      }
+      // Missing references: keep the line, paused, and say what's missing (ADR-0025 decision 10).
+      const qts = strings(l.tanks.quarantine);
+      const liveQts = qts.filter((id) => hasKey(s.tanks, id));
+      if (liveQts.length && liveQts.length !== qts.length) {
+        l.tanks.quarantine = liveQts;
+        repairs.push(`${at}.tanks.quarantine: missing tanks removed`);
+      }
+      const missing: [string, string, 'creature' | 'tank'][] = [
+        ['mother', l.pair.motherId, 'creature'],
+        ['father', l.pair.fatherId, 'creature'],
+        ['breed', l.tanks.breed, 'tank'],
+        ['raise', l.tanks.raise, 'tank'],
+        ['keep', l.tanks.keep, 'tank'],
+      ];
+      if (!liveQts.length) missing.push(['quarantine', qts[0] ?? '', 'tank']);
+      const gone = missing.find(([, id, kind]) => !hasKey(kind === 'creature' ? s.creatures : s.tanks, id));
+      if (gone && !(isObj(l.broken) && l.broken.ref === gone[0] && l.broken.id === gone[1])) {
+        const names = isObj(l.tankNames) ? l.tankNames : {};
+        l.broken = { ref: gone[0], id: gone[1], name: typeof names[gone[1]] === 'string' ? names[gone[1]] : gone[2] === 'creature' ? 'A parent' : 'A tank', sinceHour: hour };
+        repairs.push(`${at}: ${gone[0]} ${shortId(gone[1])} missing, paused`);
+      }
+      parents.add(l.pair.motherId);
+      parents.add(l.pair.fatherId);
+    }
+    if (p.ended !== undefined) {
+      const good = (Array.isArray(p.ended) ? p.ended : []).filter((h: unknown) => isObj(h) && typeof h.id === 'string' && typeof h.name === 'string');
+      if (!Array.isArray(p.ended) || good.length !== p.ended.length) {
+        p.ended = good;
+        repairs.push('production.ended: unreadable entries removed');
+      }
+    }
+    if (p.lastHour !== undefined && !(typeof p.lastHour === 'number' && Number.isFinite(p.lastHour) && p.lastHour <= hour + 1)) {
+      repairs.push(`production.lastHour: ${String(p.lastHour).slice(0, 40)}, removed`);
+      delete p.lastHour;
+    }
+  }
+  for (const [id, c] of Object.entries(s.creatures ?? {}) as [string, Json][]) {
+    if (!isObj(c) || !isObj(c.repro) || c.repro.lineHold === undefined) continue;
+    if (c.repro.lineHold === true && parents.has(id)) continue;
+    const why = c.repro.lineHold === true ? 'no line' : 'unreadable';
+    delete c.repro.lineHold;
+    repairs.push(`creature ${id}.repro.lineHold: ${why}, removed`);
+  }
+}
+
+const finiteNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const HOLD_KEYS = ['water', 'salt', 'food', 'feeders', 'lines'] as const;
+
+/**
+ * lane:automation (chunk 5, PERSIST-016) — the S3-D fields, when present: the Water room, the Live food room, the egg
+ * stock, manual mode, the Operations records and the stock manager's orders switch. Notes only what it changed (a valid
+ * save loads with no repairs and an unchanged hash); never creates a room or stock.
+ */
+function repairAutomation(s: Json, repairs: string[]): void {
+  const hour = num(s.clock?.hour, 0);
+  const fac = s.facility;
+  const fix = (cond: boolean, note: string, apply: () => void) => {
+    if (!cond) return;
+    apply();
+    repairs.push(note);
+  };
+  if (fac.water !== undefined) {
+    const w = fac.water;
+    if (!isObj(w)) {
+      delete fac.water;
+      repairs.push('facility.water: unreadable, removed');
+    } else {
+      for (const k of ['fresh', 'salt'] as const) fix(!(finiteNum(w[k]) && w[k] >= 0), `facility.water.${k}: ${String(w[k]).slice(0, 40)} → 0`, () => (w[k] = 0));
+      fix(!(Number.isInteger(w.prepLevel) && w.prepLevel >= 0 && w.prepLevel <= 2), 'facility.water.prepLevel → 0', () => (w.prepLevel = 0));
+      fix(!(Number.isInteger(w.reservoirs) && w.reservoirs >= 0 && w.reservoirs <= 3), 'facility.water.reservoirs → 0', () => (w.reservoirs = 0));
+      fix(!(finiteNum(w.flowHour) && w.flowHour <= hour + 1), `facility.water.flowHour → ${hour}`, () => (w.flowHour = hour));
+      fix(w.lastMixHour !== undefined && !(finiteNum(w.lastMixHour) && w.lastMixHour <= hour + 1), 'facility.water.lastMixHour: removed', () => delete w.lastMixHour);
+      fix(w.mix !== undefined && w.mix !== null && !(isObj(w.mix) && finiteNum(w.mix.gal) && w.mix.gal >= 0 && finiteNum(w.mix.readyHour)), 'facility.water.mix: unreadable, emptied', () => (w.mix = null));
+    }
+  }
+  if (fac.food !== undefined) {
+    const f = fac.food;
+    if (!isObj(f)) {
+      delete fac.food;
+      repairs.push('facility.food: unreadable, removed');
+    } else {
+      for (const k of ['cones', 'jars'] as const) {
+        const list = Array.isArray(f[k]) ? f[k] : null;
+        const good = (list ?? []).filter((c: unknown) => isObj(c) && (c.startedHour === null || finiteNum(c.startedHour))).slice(0, 12);
+        fix(!list || good.length !== list.length, `facility.food.${k}: unreadable entries removed`, () => (f[k] = good));
+      }
+      fix(f.lastHour !== undefined && !(finiteNum(f.lastHour) && f.lastHour <= hour + 1), 'facility.food.lastHour: removed', () => delete f.lastHour);
+    }
+  }
+  const inv = s.inventory;
+  fix(inv.brineShrimpEggs !== undefined && !(finiteNum(inv.brineShrimpEggs) && inv.brineShrimpEggs >= 0), 'inventory.brineShrimpEggs → 0', () => (inv.brineShrimpEggs = 0));
+  if (isObj(s.staff)) fix(s.staff.ordersOff !== undefined && typeof s.staff.ordersOff !== 'boolean', 'staff.ordersOff: removed', () => delete s.staff.ordersOff);
+  for (const e of s.finance.ledger as Json[]) fix(e.line !== undefined && !(isObj(e.line) && isSafeKey(e.line.id) && finiteNum(e.line.n)), 'finance.ledger line: removed', () => delete e.line);
+  for (const d of s.finance.daily as Json[]) {
+    fix(d.lines !== undefined && !(isObj(d.lines) && Object.values(d.lines).every((v) => isObj(v) && finiteNum(v.n) && finiteNum(v.amount))), `finance.daily ${shortId(d.day)}.lines: removed`, () => delete d.lines);
+    for (const k of ['supplies', 'upkeep'] as const) fix(d[k] !== undefined && !finiteNum(d[k]), `finance.daily ${shortId(d.day)}.${k}: removed`, () => delete d[k]);
+  }
+  if (s.automation === undefined) return;
+  const a = s.automation;
+  if (!isObj(a)) {
+    delete s.automation;
+    repairs.push('automation: unreadable, removed');
+    return;
+  }
+  if (a.hold !== undefined) {
+    if (!isObj(a.hold)) {
+      delete a.hold;
+      repairs.push('automation.hold: unreadable, removed');
+    } else {
+      for (const k of HOLD_KEYS) fix(a.hold[k] !== undefined && typeof a.hold[k] !== 'boolean', `automation.hold.${k}: removed`, () => delete a.hold[k]);
+      fix(a.hold.since !== undefined && !finiteNum(a.hold.since), 'automation.hold.since: removed', () => delete a.hold.since);
+    }
+  }
+  if (a.lineWait !== undefined) {
+    const lines = new Set(((isObj(s.production) && Array.isArray(s.production.lines) ? s.production.lines : []) as Json[]).map((l) => l?.id));
+    if (!isObj(a.lineWait)) {
+      delete a.lineWait;
+      repairs.push('automation.lineWait: unreadable, removed');
+    } else
+      for (const [id, v] of Object.entries(a.lineWait)) fix(!lines.has(id) || !finiteNum(v), `automation.lineWait.${shortId(id)}: no such line, removed`, () => delete a.lineWait[id]);
+  }
+  const dayOk = (d: unknown) => isObj(d) && Number.isInteger(d.day) && isObj(d.used) && isObj(d.made) && finiteNum(d.makeCost) && (d.water === undefined || isObj(d.water));
+  fix(a.today !== undefined && !dayOk(a.today), 'automation.today: unreadable, removed', () => delete a.today);
+  if (a.days !== undefined) {
+    const good = (Array.isArray(a.days) ? a.days : []).filter(dayOk).slice(-8);
+    fix(!Array.isArray(a.days) || good.length !== a.days.length, 'automation.days: unreadable entries removed', () => (a.days = good));
+  }
+  if (a.warned !== undefined) {
+    if (!isObj(a.warned)) {
+      delete a.warned;
+      repairs.push('automation.warned: unreadable, removed');
+    } else for (const [k, v] of Object.entries(a.warned)) fix(!finiteNum(v), `automation.warned.${shortId(k)}: removed`, () => delete a.warned[k]);
+  }
 }
 
 /**
