@@ -27,7 +27,11 @@ import { unlock } from '@/sim/facility';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { createLine, QUARANTINE_HOURS } from '@/sim/production';
 import { facility } from './support/automation'; // chunk 5
-import { holdAll } from '@/sim/automation';
+import { holdAll, installFoodRoom, installWaterRoom } from '@/sim/automation';
+import { addStaffDirect } from '@/sim/staff'; // chunk 6
+import { emitEvent } from '@/sim/context';
+import { findNonFinite } from '@/dev/fixtures/core-testkit';
+import { lineFarm } from './support/production';
 
 const roundTrip = (g: GameState) => decodeRecord(encodeRecord(g, 'auto').text);
 
@@ -293,5 +297,64 @@ describe('PERSIST-016: the S3-D state in a save', () => {
     expect(d.repairs).toEqual([]);
     expect(d.state.schemaVersion).toBe(2);
     expect(stateHash(d.state)).toBe(stateHash(roundTrip(g).state));
+  });
+});
+
+/**
+ * chunk 6 (PERSIST-008) — one save holding every 0.5 field at once: a production line mid-pipeline, Auto Water Changer
+ * lab hours, both S3-D rooms with a stock manager and a day of records, a rare-stock event with its offer id and notice,
+ * a bristlenose under its chunk 6 name, show results. It round-trips twice with no repairs and the same hash, and its
+ * corrupted variants (a dangling line id, non-finite lab hours) load with a note and no crash.
+ */
+describe('PERSIST-008: the full 0.5 save', () => {
+  function full(): GameState {
+    const { g, tanks } = lineFarm(23);
+    installWaterRoom(g, g.clock.hour);
+    installFoodRoom(g);
+    addStaffDirect(g, { name: 'Rosa Duarte', role: 'stock_manager', skill: 3, trait: 'quick_learner' });
+    installEquipment(g, tanks.keep.id, 'auto_water_changer', { purchased: true });
+    const rng = simRng(g);
+    addCreature(g, createCreature(g, rng, 'bristlenose_pleco', { ageDays: 90, name: 'Bristle' }), tanks.keep.id);
+    advanceWorld(g, 40, { forceFull: true });
+    emitEvent(g, { kind: 'market', text: 'Something special at the shop.', toast: true, offerId: 'offer_full', notice: { topic: 'prismatic', vars: { species: 'betta', morph: 'Red Veiltail Betta', seller: 'A', until: g.clock.hour + 24 } } });
+    return g;
+  }
+
+  it('round-trips twice with no repairs and the same hash; every 0.5 field survives', () => {
+    const g = full();
+    expect(g.production?.lines.length).toBe(1);
+    expect(g.facility.water && g.facility.food).toBeTruthy();
+    expect(Object.values(g.tanks).some((t) => t.water.lab?.lastAutoChangeHour !== undefined)).toBe(true);
+    expect(g.log.some((e) => e.offerId === 'offer_full')).toBe(true);
+    const once = roundTrip(g);
+    expect(once.repairs).toEqual([]);
+    expect(once.state.production).toEqual(g.production);
+    expect(once.state.facility).toEqual(g.facility);
+    expect(once.state.automation).toEqual(g.automation);
+    expect(once.state.log.find((e) => e.offerId === 'offer_full')?.notice?.topic).toBe('prismatic');
+    const twice = roundTrip(once.state);
+    expect(twice.repairs).toEqual([]);
+    expect(stateHash(twice.state)).toBe(stateHash(once.state));
+    expect(stateHash(once.state)).toBe(stateHash(g));
+  });
+
+  it('a dangling line id and non-finite lab hours, each in turn, load with a note and no crash', () => {
+    const g = full();
+    const lineTank = g.production!.lines[0].tanks.breed;
+    const dangling = clonePlain(g);
+    dangling.production!.lines[0].tanks.breed = 'tank_gone';
+    const a = repairState(dangling);
+    expect(a.length).toBeGreaterThan(0);
+    advanceWorld(dangling, 6, { forceFull: true });
+    expect(findNonFinite(dangling)).toEqual([]);
+
+    const lab = clonePlain(g) as unknown as Record<string, any>;
+    const t = Object.values(lab.tanks as Record<string, any>).find((x) => x.water.lab?.lastAutoChangeHour !== undefined);
+    t.water.lab.lastAutoChangeHour = Number.POSITIVE_INFINITY;
+    const b = repairState(lab);
+    expect(b.some((r) => r.includes('lastAutoChangeHour'))).toBe(true);
+    advanceWorld(lab as unknown as GameState, 6, { forceFull: true });
+    expect(findNonFinite(lab)).toEqual([]);
+    expect(lineTank).toBeTruthy();
   });
 });

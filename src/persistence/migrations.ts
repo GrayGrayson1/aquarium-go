@@ -27,6 +27,10 @@ import { renamedMorphs, resolveMorph } from '@/sim/life/genetics';
 import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
 import { backfillFinds } from '@/sim/life/discovery'; // lane:genetics
 import { emptyShowsState } from '@/sim/shows/state'; // B-168
+import { CLASS_DEFAULTS } from '@/sim/water/constants'; // chunk 6 (PERSIST-004, B-004)
+import { LOG_CAP } from '@/sim/context';
+import { BUYER_ARCHETYPES } from '@/data/buyers';
+import { SHOW_TIERS } from '@/data/shows';
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,7 +79,9 @@ function scrubInheritedNames(node: Json, path: string, repairs: string[], depth 
     // whatever numbers or finds it, e.g. the log's sequence).
     const kept = node.filter((x) => (typeof x === 'string' ? !isInheritedName(x) : !(isObj(x) && typeof x.id === 'string' && isInheritedName(x.id))));
     if (kept.length !== node.length) {
-      node.splice(0, node.length, ...kept);
+      // (copied in place: spreading a list of several hundred thousand into splice's arguments throws, B-012)
+      for (let i = 0; i < kept.length; i++) node[i] = kept[i];
+      node.length = kept.length;
       repairs.push(`${path}: invalid ids removed`);
     }
     for (let i = 0; i < node.length; i++) scrubInheritedNames(node[i], `${path}[${i}]`, repairs, depth + 1);
@@ -97,6 +103,12 @@ function scrubInheritedNames(node: Json, path: string, repairs: string[], depth 
   }
 }
 const num = (v: unknown, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+/** chunk 6 (PERSIST-004 A2) — `num`, with a repair note when a value was there but unusable (NaN, 1e999, text…). */
+function numNoted(v: unknown, d: number, label: string, repairs: string[]): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (v !== undefined) repairs.push(`${label}: ${String(v).slice(0, 24)} → ${d}`);
+  return d;
+}
 /** lane:fix-core (P5-05) — an array of records: anything that is not an object (null, a number…) is dropped. */
 const records = (a: unknown): Json[] => (Array.isArray(a) ? a.filter(isObj) : []);
 /** An array of strings (ids, unlock keys): anything else is dropped. */
@@ -304,7 +316,14 @@ function repairTank(s: Json, id: string, t: Json, repairs: string[]): Tank | nul
     repairs.push(`tank ${id}: unknown tier ${String(t.tierId)} → g20L`);
     t.tierId = 'g20L';
   }
-  const wc = typeof t.waterClass === 'string' ? t.waterClass : 'freshwater_tropical';
+  // chunk 6 (PERSIST-004 A3, B-004) — a water class the tables don't know (an inherited name crashed every tick) is
+  // reset, by the tank's environment, with a note
+  let wc: string = typeof t.waterClass === 'string' ? t.waterClass : 'freshwater_tropical';
+  if (!Object.hasOwn(CLASS_DEFAULTS, wc)) {
+    const fallback = t.environment === 'marine' ? 'marine_fowlr' : t.environment === 'brackish' ? 'brackish' : 'freshwater_tropical';
+    repairs.push(`tank ${id}.waterClass: ${String(t.waterClass).slice(0, 40)} unknown → ${fallback}`);
+    wc = fallback;
+  }
   t.waterClass = wc;
   const marine = wc === 'reef' || wc.startsWith('marine');
   t.environment ??= marine ? 'marine' : wc === 'brackish' ? 'brackish' : 'freshwater';
@@ -431,15 +450,42 @@ function renameLegacyMorphs(s: Json): void {
   }
   const p = s.progress;
   if (!isObj(p) || !Array.isArray(p.discoveredMorphs)) return;
-  const out: string[] = [];
+  // (a Set: the list used to be de-duplicated with includes(), quadratic for a crafted 100,000 entries, B-122)
+  const out = new Set<string>();
   for (const key of p.discoveredMorphs as string[]) {
     const i = key.indexOf(':');
     const sp = i > 0 ? findSpecies(key.slice(0, i)) : undefined;
     const now = sp ? renamedMorphs(sp).get(key.slice(i + 1)) : undefined;
-    const k = now ? `${key.slice(0, i)}:${now}` : key;
-    if (!out.includes(k)) out.push(k);
+    out.add(now ? `${key.slice(0, i)}:${now}` : key);
   }
-  p.discoveredMorphs = out;
+  p.discoveredMorphs = [...out];
+}
+
+/** chunk 6 (PERSIST-004 A1) — list lengths far beyond play: trimmed on load, with a note. */
+const MAX_CLOSED_LISTINGS = 1_000;
+const MAX_DISCOVERED_MORPHS = 20_000;
+
+/**
+ * chunk 6 (PERSIST-004 A2) — the last pass: any number still NaN or ±Infinity anywhere in the save (a field no targeted
+ * repair knows) becomes 0, noted by path (the first ten, then a count). The serializer never writes such numbers; only a
+ * hand-made file (1e999 parses to Infinity) has them.
+ */
+function scrubNonFinite(s: Json, repairs: string[]): void {
+  let n = 0;
+  const walk = (node: Json, path: string, depth: number) => {
+    if (depth > 64 || !node || typeof node !== 'object') return;
+    const keys = Array.isArray(node) ? node.keys() : Object.keys(node);
+    for (const k of keys as Iterable<string | number>) {
+      const v = node[k];
+      if (typeof v === 'number') {
+        if (Number.isFinite(v)) continue;
+        node[k] = 0;
+        if (++n <= 10) repairs.push(`${path}.${k}: ${String(v)} → 0`);
+      } else if (v && typeof v === 'object') walk(v, `${path}.${k}`, depth + 1);
+    }
+  };
+  walk(s, '$', 0);
+  if (n > 10) repairs.push(`…and ${n - 10} more unreadable numbers → 0`);
 }
 
 /**
@@ -507,7 +553,7 @@ export function repairState(s: Json): string[] {
   s.lastSavedRealMs = num(s.lastSavedRealMs, now);
   s.lastTickRealMs = num(s.lastTickRealMs, s.lastSavedRealMs);
   if (!isObj(s.clock)) s.clock = { hour: 8, speed: 1 };
-  s.clock.hour = num(s.clock.hour, 8);
+  s.clock.hour = numNoted(s.clock.hour, 8, 'clock.hour', repairs);
   if (![0, 1, 3, 10].includes(s.clock.speed)) s.clock.speed = 1;
   // lane:core (PERSIST-011, ADR-0005 decision 1) — a starter species this build doesn't know is kept (a newer build may
   // add one, and every reader falls back when findSpecies finds nothing); an id that isn't a usable key is reset.
@@ -559,7 +605,13 @@ export function repairState(s: Json): string[] {
 
   if (!isObj(s.inventory)) s.inventory = {};
   if (!isObj(s.inventory.foods)) s.inventory.foods = {};
-  s.inventory.salt = num(s.inventory.salt, 0);
+  // chunk 6 (PERSIST-004 A2) — stock is a count: never negative or unreadable
+  for (const [k, v] of Object.entries(s.inventory.foods)) {
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0) continue;
+    repairs.push(`inventory.foods.${k.slice(0, 40)}: ${String(v).slice(0, 24)} → 0`);
+    s.inventory.foods[k] = 0;
+  }
+  s.inventory.salt = Math.max(0, numNoted(s.inventory.salt, 0, 'inventory.salt', repairs));
   s.inventory.equipment = withDefId(s.inventory.equipment, 'equipment', 'inventory', repairs);
   s.inventory.decor = withDefId(s.inventory.decor, 'decor', 'inventory', repairs);
   // lane:frags — optional frag storage: drop unreadable entries, never invent the list for old saves
@@ -593,10 +645,22 @@ export function repairState(s: Json): string[] {
       delete l.tankId;
     }
   }
+  // chunk 6 (PERSIST-004 A3, B-004) — a buyer whose archetype the table doesn't know (an inherited name crashed the market)
+  const buyers = s.market.buyers.length;
+  s.market.buyers = s.market.buyers.filter((b: Json) => typeof b.archetype === 'string' && Object.hasOwn(BUYER_ARCHETYPES, b.archetype));
+  if (s.market.buyers.length !== buyers) repairs.push(`market.buyers: ${buyers - s.market.buyers.length} with an unknown archetype removed`);
+  // chunk 6 (PERSIST-004 A1) — closed listings are history (the market keeps 40); far more than play makes are trimmed,
+  // oldest first; open ones are never touched
+  const closed = (s.market.listings as Json[]).filter((l) => l.status !== 'active');
+  if (closed.length > MAX_CLOSED_LISTINGS) {
+    const drop = new Set(closed.slice(0, closed.length - MAX_CLOSED_LISTINGS));
+    s.market.listings = (s.market.listings as Json[]).filter((l) => !drop.has(l));
+    repairs.push(`market.listings: ${drop.size} oldest closed listings removed`);
+  }
   if (s.market.fragSaleHours !== undefined) s.market.fragSaleHours = Array.isArray(s.market.fragSaleHours) ? s.market.fragSaleHours.filter((h: unknown) => typeof h === 'number' && Number.isFinite(h)) : []; // lane:frags
 
   if (!isObj(s.finance)) s.finance = { money: 0, ledger: [], daily: [] };
-  s.finance.money = num(s.finance.money, 0);
+  s.finance.money = numNoted(s.finance.money, 0, 'finance.money', repairs); // debt is allowed: only unreadable money is reset
   s.finance.ledger = records(s.finance.ledger);
   s.finance.daily = records(s.finance.daily);
 
@@ -605,6 +669,11 @@ export function repairState(s: Json): string[] {
   p.reputation = num(p.reputation, 0);
   p.mastery = fillNumbers(p.mastery, { husbandry: 0, breeding: 0, aquascaping: 0, marine: 0, business: 0, exhibition: 0 }, 'progress.mastery', repairs);
   for (const k of ['unlocked', 'achievements', 'discoveredSpecies', 'discoveredMorphs'] as const) p[k] = strings(p[k]);
+  // chunk 6 (PERSIST-004 A1) — every species' catalog together names about 2,000 morphs: a list far longer is cut
+  if (p.discoveredMorphs.length > MAX_DISCOVERED_MORPHS) {
+    repairs.push(`progress.discoveredMorphs: ${p.discoveredMorphs.length - MAX_DISCOVERED_MORPHS} beyond ${MAX_DISCOVERED_MORPHS} removed`);
+    p.discoveredMorphs.length = MAX_DISCOVERED_MORPHS;
+  }
   // lane:genetics — optional lists: repaired when present, derived from the collection when missing (pre-0.4 saves)
   if (p.discoveredStrains !== undefined) p.discoveredStrains = strings(p.discoveredStrains);
   if (p.prismaticFinds !== undefined) p.prismaticFinds = records(p.prismaticFinds).filter((f) => typeof f.speciesId === 'string' && typeof f.creatureId === 'string');
@@ -636,6 +705,11 @@ export function repairState(s: Json): string[] {
   v.totalVisitors = num(v.totalVisitors, 0);
 
   s.log = records(s.log);
+  // chunk 6 (PERSIST-004 A1) — the sim keeps the newest LOG_CAP events; a longer log is trimmed the same way
+  if (s.log.length > LOG_CAP) {
+    repairs.push(`log: ${s.log.length - LOG_CAP} oldest events removed`);
+    s.log.splice(0, s.log.length - LOG_CAP);
+  }
   // lane:shows — optional; an unreadable shows block is dropped (src/sim/shows re-creates it lazily), arrays repaired.
   if (s.shows !== undefined && !isObj(s.shows)) {
     delete s.shows;
@@ -649,6 +723,17 @@ export function repairState(s: Json): string[] {
     s.shows.rng = typeof s.shows.rng === 'number' && Number.isFinite(s.shows.rng) ? s.shows.rng >>> 0 : emptyShowsState(s as GameState).rng;
     s.shows.seq = Math.max(0, Math.floor(num(s.shows.seq, 0)));
     s.shows.cursorHour = num(s.shows.cursorHour, num(s.clock.hour, 0));
+    // chunk 6 (PERSIST-004 A3) — a show of a tier the table doesn't know can't be judged (the calendar refills itself);
+    // an entry's unknown tier is only a label, so it goes
+    const shows = s.shows.shows.length;
+    s.shows.shows = (s.shows.shows as Json[]).filter((x) => isObj(x) && typeof x.tier === 'string' && Object.hasOwn(SHOW_TIERS, x.tier));
+    if (s.shows.shows.length !== shows) repairs.push(`shows.shows: ${shows - s.shows.shows.length} of an unknown tier removed`);
+    for (const e of s.shows.entries as Json[]) {
+      if (isObj(e) && e.tier !== undefined && !(typeof e.tier === 'string' && Object.hasOwn(SHOW_TIERS, e.tier))) {
+        repairs.push(`shows entry ${shortId(e.id)}: tier ${String(e.tier).slice(0, 24)} removed`);
+        delete e.tier;
+      }
+    }
   }
   // lane:staff — optional staff state (absent in old saves; rebuilt lazily). Drop it only if unreadable.
   if (s.staff !== undefined && (!isObj(s.staff) || !Array.isArray(s.staff.roster))) {
@@ -679,6 +764,7 @@ export function repairState(s: Json): string[] {
   renameOverlays(s, repairs); // chunk 6, B-194
   backfillFinds(s as GameState); // lane:genetics — only fills lists a pre-0.4 save lacks; silent
   if (s.isShowcase === undefined) s.isShowcase = false;
+  scrubNonFinite(s, repairs); // chunk 6 (PERSIST-004 A2): nothing unreadable is left anywhere
   // Keep the id counter ahead of every id we know about so new ids never collide after a repair.
   s.idCounter = Math.max(s.idCounter, maxIdSuffix(s));
   return repairs;

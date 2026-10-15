@@ -31,6 +31,7 @@ import { docentEffect, type DocentEffect } from '../staff'; // lane:staff
 // ───────────────────────────── archetypes ─────────────────────────────
 
 export type VisitorArchetype = 'family' | 'kids' | 'student' | 'enthusiast' | 'photographer' | 'tourist' | 'conservation' | 'critic';
+import { noProto } from '@/data/byId'; // chunk 6 (B-010)
 
 export interface ArchetypeDef {
   id: VisitorArchetype;
@@ -62,7 +63,7 @@ export const ARCHETYPES: ArchetypeDef[] = [
   { id: 'critic', label: 'Critic', interests: I(1.5, 1.6, 1, 1, 1, 1.2, 1.2, 1, 1.4, 0.7), patience: 1, budget: 20, education: 0.7, conservation: 0.6, generosity: 0.1, priceSensitivity: 0.4, crowdTolerance: 0.4, comfortNeed: 0.5, welfareSensitivity: 1.5, weights: [0, 0.05, 0.1, 0.15, 0.15, 0.15] },
 ];
 
-const ARCH_BY_ID = Object.fromEntries(ARCHETYPES.map((a) => [a.id, a])) as Record<VisitorArchetype, ArchetypeDef>;
+const ARCH_BY_ID = noProto(Object.fromEntries(ARCHETYPES.map((a) => [a.id, a]))) as Record<VisitorArchetype, ArchetypeDef>; // chunk 6 (B-010)
 
 // ───────────────────────────── helpers ─────────────────────────────
 

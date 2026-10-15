@@ -7,6 +7,7 @@
  * about any animal's worth.
  */
 import type { BuyerArchetype, BuyerProfile, ListingKind } from '@/types';
+import { noProto } from '@/data/byId'; // chunk 6 (B-010)
 
 export interface BuyerArchetypeDef {
   id: BuyerArchetype;
@@ -31,7 +32,7 @@ export interface BuyerArchetypeDef {
   naming: 'person' | 'family' | 'public_aquarium' | 'conservation';
 }
 
-export const BUYER_ARCHETYPES: Record<BuyerArchetype, BuyerArchetypeDef> = {
+export const BUYER_ARCHETYPES: Record<BuyerArchetype, BuyerArchetypeDef> = noProto({ // chunk 6 (B-004): no inherited names
   beginner: {
     id: 'beginner',
     label: 'Beginner hobbyist',
@@ -158,7 +159,7 @@ export const BUYER_ARCHETYPES: Record<BuyerArchetype, BuyerArchetypeDef> = {
     minInterestValue: 0,
     naming: 'person',
   },
-};
+});
 
 export const BUYER_ARCHETYPE_IDS = Object.keys(BUYER_ARCHETYPES) as BuyerArchetype[];
 

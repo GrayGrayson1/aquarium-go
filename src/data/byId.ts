@@ -8,3 +8,11 @@ export function byId<T extends { id: string }>(items: readonly T[]): Record<stri
   for (const item of items) table[item.id] = item;
   return table;
 }
+
+/**
+ * chunk 6 (B-010, PERSIST-004) — the same safety for a table keyed by something other than `id` (a water class, a buyer
+ * archetype, an unlock key): a copy with no prototype, so a save's "toString" finds nothing rather than a function.
+ */
+export function noProto<T extends object>(table: T): T {
+  return Object.assign(Object.create(null) as T, table);
+}

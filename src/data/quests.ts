@@ -26,6 +26,7 @@ import type { FacilityLevelId, MasteryTrack } from '@/types';
 import { SCAPED_EDITS, type Cond } from './unlocks';
 import type { UnlockKey } from './unlockKeys';
 import { byId } from '@/data/byId';
+import { noProto } from '@/data/byId'; // chunk 6 (B-010)
 
 export type Objective =
   /**
@@ -191,7 +192,7 @@ function chainFor(f: StarterFlavour): TutorialStepDef[] {
   ];
 }
 
-export const TUTORIAL_CHAINS: Record<string, TutorialStepDef[]> = Object.fromEntries(Object.entries(FLAVOURS).map(([id, f]) => [id, chainFor(f)]));
+export const TUTORIAL_CHAINS: Record<string, TutorialStepDef[]> = noProto(Object.fromEntries(Object.entries(FLAVOURS).map(([id, f]) => [id, chainFor(f)]))); // chunk 6 (B-010)
 
 export function tutorialChain(starterId: string): TutorialStepDef[] {
   return TUTORIAL_CHAINS[starterId] ?? TUTORIAL_CHAINS.betta;

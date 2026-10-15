@@ -24,6 +24,7 @@ import { creatureFitsClass, creatureShowReasons, tankShowReasons, tierAtLeast } 
 import { assessCreature, assessTank, buildCard, judgeEye, fieldChances, scoreBand, chanceWord, type EntryAssessment } from './judging';
 import { emptyAwards, qualifiedTitles, TITLE_LABEL, titledName } from './titles';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
+import { noProto } from '@/data/byId'; // chunk 6 (B-010)
 
 export { ensureShowsState } from './state';
 export { upcoming as upcomingShows, tierOpen } from './schedule';
@@ -256,7 +257,7 @@ export function tierLockHint(state: GameState, tier: ShowTier): string {
   return missing.length ? `Needs ${missing.join(' and ')}.` : rule.hint;
 }
 
-const SHOW_TIER_BY_KEY: Record<string, ShowTier> = Object.fromEntries((Object.keys(SHOW_TIERS) as ShowTier[]).map((t) => [SHOW_TIERS[t].unlockKey, t]));
+const SHOW_TIER_BY_KEY: Record<string, ShowTier> = noProto(Object.fromEntries((Object.keys(SHOW_TIERS) as ShowTier[]).map((t) => [SHOW_TIERS[t].unlockKey, t]))); // chunk 6 (B-010)
 
 // ───────────────────────────── judging ─────────────────────────────
 

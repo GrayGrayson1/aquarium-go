@@ -44,6 +44,8 @@ function deepClone<T>(v: T): T {
   }
   const out: Obj = {};
   for (const k in v as Obj) {
+    // only own keys (B-122): an inherited enumerable name can never reach a prototype through the working copy
+    if (!Object.hasOwn(v as Obj, k)) continue;
     const x = (v as Obj)[k];
     out[k] = x === null || typeof x !== 'object' ? x : deepClone(x);
   }

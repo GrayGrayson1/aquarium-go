@@ -11,6 +11,7 @@
  */
 import type { Environment, ShowTier } from '@/types';
 import { byId } from '@/data/byId';
+import { noProto } from '@/data/byId'; // chunk 6 (B-010)
 
 // ───────────────────────────── tiers ─────────────────────────────
 
@@ -51,7 +52,7 @@ export interface ShowTierDef {
   blurb: string;
 }
 
-export const SHOW_TIERS: Record<ShowTier, ShowTierDef> = {
+export const SHOW_TIERS: Record<ShowTier, ShowTierDef> = noProto({ // chunk 6 (B-010): no inherited names
   club: {
     id: 'club',
     name: 'Club',
@@ -136,7 +137,7 @@ export const SHOW_TIERS: Record<ShowTier, ShowTierDef> = {
     tone: 'gold',
     blurb: 'The world stage. Only remarkable animals and living art place here.',
   },
-};
+});
 
 export const SHOW_TIER_ORDER: ShowTier[] = ['club', 'regional', 'national', 'international'];
 
