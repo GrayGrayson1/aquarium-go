@@ -449,6 +449,7 @@ a.pn-link { text-decoration: none; }
 @keyframes pn-supply-flash { 0%, 55% { background: rgba(94, 234, 212, 0.12); box-shadow: 0 0 0 2px rgba(94, 234, 212, 0.45), 0 0 26px rgba(94, 234, 212, 0.2); } 100% { background: var(--pn-card); box-shadow: none; } }
 .pn-sheet--phone .pn-supply { flex-wrap: wrap; }
 .pn-sheet--phone .pn-supply__side { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+.pn-sheet--phone .pn-supply__side > :last-child { margin-left: auto; } /* chunk 5: a row with only an action keeps it at the right */
 
 /* ───────────────────────── Market: listings ───────────────────────── */
 .pn-sellhero { display: flex; gap: 16px; align-items: center; padding: 18px 20px; border-radius: 20px; border: 1px solid rgba(255, 138, 101, 0.28); background: radial-gradient(120% 140% at 0% 0%, rgba(255, 138, 101, 0.16), rgba(255, 138, 101, 0.02) 60%), rgba(255, 255, 255, 0.02); }

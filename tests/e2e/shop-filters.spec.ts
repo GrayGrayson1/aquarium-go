@@ -160,7 +160,9 @@ test.describe('phone 390×844 (touch)', () => {
         const desc = row.querySelector('.pn-grow > .pn-small') as HTMLElement | null;
         const side = row.querySelector('.pn-supply__side') as HTMLElement;
         const d = desc?.getBoundingClientRect();
-        const btn = side.querySelector('button, .pn-tiny:last-child')!.getBoundingClientRect();
+        // the action is the side line's last button (DESIGN-S3D §8.5's live-food rows put the Hatchery link before Buy)
+        const buttons = side.querySelectorAll('button');
+        const btn = (buttons[buttons.length - 1] ?? side.querySelector('.pn-tiny:last-child')!).getBoundingClientRect();
         return { overflow: row.scrollWidth - row.clientWidth, rowLeft: r.left, rowRight: r.right, descLeft: d?.left ?? 0, descWidth: d?.width ?? 0, rowWidth: r.width, btnRight: btn.right, sideTop: side.getBoundingClientRect().top, descBottom: d?.bottom ?? 0 };
       }),
     );

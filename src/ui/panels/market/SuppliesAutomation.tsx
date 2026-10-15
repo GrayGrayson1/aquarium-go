@@ -74,9 +74,11 @@ export function LiveFoodSection({ g, flash }: { g: GameState; flash: string | nu
         flash={flash}
         side={
           <>
-            <button type="button" className="pn-link" onClick={() => go({ kind: 'panel', panel: 'operations', tab: 'feed' })}>
-              {kind === 'cone' ? 'Hatchery' : 'Jars'} <ChevronRight size={12} aria-hidden />
-            </button>
+            {kind === 'cone' && (
+              <button type="button" className="pn-link" onClick={() => go({ kind: 'panel', panel: 'operations', tab: 'feed' })}>
+                Hatchery <ChevronRight size={12} aria-hidden />
+              </button>
+            )}
             <Button size="sm" silent onClick={() => act((d) => buyFood(d, foodId, 1), { sound: 'coin' })} disabled={g.finance.money < f.price}>
               Buy · {formatMoney(f.price)}
             </Button>
