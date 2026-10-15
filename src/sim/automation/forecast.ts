@@ -3,7 +3,7 @@
  *
  * The same rules as the jobs (`water.ts`, `food.ts`), on copies of the numbers, never the state: the prep station fills
  * the fresh reserve at its rate up to its size; each tank's change at its lights-on takes all its water or is skipped;
- * the hatchery cones take 0.5 gal of salt water at each restart; the 10 AM and 10 PM checks start a batch while salt water
+ * the hatchery cones take a scoop of eggs and 0.5 gal of salt water at each restart (not while live food is held); the 10 AM and 10 PM checks start a batch while salt water
  * is under 60 %, the mixing tank is empty and there's salt mix and fresh water for it; a batch is ready 12 h later and
  * tops the reserve up as there's room. Top-offs drain fresh water at yesterday's rate. Jobs of the same hour run in
  * SPEC §9.9's order. Today lists its batches; Problems warns when it skips changes for want of salt or fresh water.
@@ -20,6 +20,8 @@ export interface WaterRun {
   mixing: number[];
   /** Changes skipped for want of salt water or fresh water. */
   skipped: { at: number; tankId: string; cause: 'salt' | 'fresh' }[];
+  /** Checks due to start a batch that waited for fresh water or salt mix (the salt skips that follow are theirs). */
+  waits: { at: number; cause: 'fresh' | 'salt' }[];
   /** Salt water the mixer made, and fresh water the changes, the mixer and the top-offs took (gal, over the run). */
   saltMade: number;
   freshUsed: number;
@@ -55,7 +57,9 @@ export function waterRoomRun(state: GameState, hours = 168, opts: WaterRunOption
   let salt = room.salt;
   let mix = room.mix && room.mix.gal > 1e-6 ? { gal: room.mix.gal, ready: room.mix.readyHour } : null;
   let kg = opts.unlimitedSalt ? Infinity : Math.max(0, state.inventory.salt);
-  const out: WaterRun = { mixing: [], skipped: [], saltMade: 0, freshUsed: 0, hours };
+  const heldFood = isHeld(state, 'food');
+  let eggs = Math.max(0, Math.floor(state.inventory.brineShrimpEggs ?? 0));
+  const out: WaterRun = { mixing: [], skipped: [], waits: [], saltMade: 0, freshUsed: 0, hours };
 
   const evs: Ev[] = [];
   state.tankOrder.forEach((id, i) => {
@@ -65,7 +69,7 @@ export function waterRoomRun(state: GameState, hours = 168, opts: WaterRunOption
     for (const at of crossings(start, end, t.lighting?.onHour ?? 8)) evs.push({ at, order: 0, i, kind: 'change', tankId: id, fresh: need.fresh, salt: need.salt });
   });
   const food = state.facility.food;
-  if (needed && food)
+  if (needed && food && !heldFood)
     food.cones.forEach((c, i) => {
       if (c.startedHour === null) return;
       for (let at = c.startedHour + FOOD_ROOM.coneHours; at < end; at += FOOD_ROOM.coneHours) if (at >= start) evs.push({ at, order: 2, i, kind: 'cone' });
@@ -103,11 +107,18 @@ export function waterRoomRun(state: GameState, hours = 168, opts: WaterRunOption
         topUp(e.at);
       }
     } else if (e.kind === 'cone') {
-      if (salt + 1e-9 >= FOOD_ROOM.coneSaltGal) salt -= FOOD_ROOM.coneSaltGal;
+      // a restart takes a scoop of eggs and half a gallon of salt water (food.ts); without both the cone waits
+      if (eggs >= 1 && salt + 1e-9 >= FOOD_ROOM.coneSaltGal) {
+        eggs -= 1;
+        salt -= FOOD_ROOM.coneSaltGal;
+      }
       topUp(e.at);
     } else {
       if (mix || salt >= sCap * WATER_ROOM.mixBelow - 1e-9) continue;
-      if (kg + 1e-6 < kgBatch || fresh + 1e-9 < gal) continue; // waits for salt mix or fresh water
+      if (kg + 1e-6 < kgBatch || fresh + 1e-9 < gal) {
+        out.waits.push({ at: e.at, cause: kg + 1e-6 < kgBatch ? 'salt' : 'fresh' }); // it waits
+        continue;
+      }
       fresh -= gal;
       kg -= kgBatch;
       out.freshUsed += gal;

@@ -8,6 +8,7 @@ import { facility, run } from './support/automation';
 import { lineFarm } from './support/production';
 import { addReservoir, automationProblems, batchGal, batchSaltKg, changesPerDay, decidedLines, freshCap, holdAll, mixerPerDay, problemCounts, saltCap, saltOutText, supplyNotices, upgradePrep, waitForLine, waterRoom, waterRoomRun } from '@/sim/automation';
 import type { GameState } from '@/types';
+import { issueViews } from '@/ui/panels/operations/issues';
 import { endLine, productionLines } from '@/sim/production';
 import { repairState } from '@/persistence';
 import type { SupplyProblem } from '@/sim/automation';
@@ -140,6 +141,21 @@ describe('ADR-0033: the Water room\'s day — the changes it would skip for want
     expect(item(g, 'fresh_rate')!.perDay).toBeGreaterThan(144);
     expect(upgradePrep(g).ok).toBe(true); // 9 gal an hour: 216 a day
     expect(item(g, 'fresh_rate')).toBeUndefined();
+  });
+
+  it('a mixer waiting for fresh water is the fresh water\'s shortage, not the salt\'s (the third confirmation review)', () => {
+    // three Reservoirs (120 gal batches) on the base prep (144 gal a day) and eight big marine tanks: the 10 AM check
+    // finds too little fresh water, so the salt tanks go short; faster prep, not "Water tab", is what helps
+    const { g, room } = shop({ fresh: 0, marine: 8 });
+    room.reservoirs = 3;
+    room.salt = saltCap(room);
+    room.fresh = 5; // not empty ("Fresh water ran out" would take its place), but short of a 120 gal batch at 10 AM
+    const run = waterRoomRun(g, 168, { unlimitedSalt: true })!;
+    expect(run.waits.some((w) => w.cause === 'fresh')).toBe(true);
+    expect(run.skipped.some((s) => s.cause === 'salt' && s.at >= g.clock.hour + 48)).toBe(true);
+    expect(item(g, 'salt_rate')).toBeUndefined();
+    expect(item(g, 'fresh_rate')).toMatchObject({ limit: 'prep', capacity: 144 });
+    expect(issueViews(g, automationProblems(g)).find((v) => v.key === 'fresh_rate')?.action).toMatchObject({ label: 'Faster prep in Build' });
   });
 
   it('"Fresh water runs short": the morning\'s changes need more than the fresh reserve holds; a Reservoir clears it', () => {
