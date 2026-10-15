@@ -65,8 +65,9 @@ export interface OpsSnapshot {
 const EMPTY: OpsSnapshot = { problems: [], counts: { total: 0, danger: 0, watch: 0 }, decided: [], manual: false, forecast: null };
 
 /**
- * What moves Problems: the hour, the stock, the budget, the holds, the lines, and the player's actions (a changer added
- * or a manager hired while the clock is paused; the confirmation review). Cheap: no walk over animals.
+ * What moves Problems: the hour, the stock, the budget, the holds, the lines, and, while the clock is paused, the
+ * player's actions (a changer added or a manager hired; the confirmation review). Running, the hour moves the key and
+ * each slider step doesn't. Cheap: no walk over animals.
  */
 export function opsKey(g: GameState): string {
   const st = g.staff;
@@ -75,7 +76,7 @@ export function opsKey(g: GameState): string {
   const f = g.facility.food;
   return [
     g.saveId,
-    useGame.getState().actions,
+    g.clock.speed === 0 ? useGame.getState().actions : '-', // while paused only: running, the hour moves it anyway
     Math.floor(g.clock.hour),
     g.inventory.salt,
     g.inventory.brineShrimpEggs ?? 0,
@@ -101,9 +102,24 @@ export function opsSnapshot(g: GameState | null | undefined): OpsSnapshot {
   if (cache?.key === key) return cache.snap;
   let snap: OpsSnapshot;
   try {
-    const forecast = nextStockCheck(g);
+    // the forecast walks every animal: made when Problems or a view first needs it, once per key
+    let fc: StockForecast | null | undefined;
+    const forecast = () => (fc === undefined ? (fc = nextStockCheck(g)) : fc);
     const problems = automationProblems(g, g.clock.hour, forecast);
-    snap = { problems, counts: problemCounts(problems), decided: decidedLines(g), manual: manualModeOn(g), forecast };
+    snap = {
+      problems,
+      counts: problemCounts(problems),
+      decided: decidedLines(g),
+      manual: manualModeOn(g),
+      get forecast() {
+        try {
+          return forecast();
+        } catch (e) {
+          if (typeof console !== 'undefined') console.warn('operations forecast failed', e);
+          return (fc = null);
+        }
+      },
+    };
   } catch (e) {
     if (typeof console !== 'undefined') console.warn('operations snapshot failed', e);
     snap = EMPTY;

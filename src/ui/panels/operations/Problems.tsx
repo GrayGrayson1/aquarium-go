@@ -51,6 +51,9 @@ export function IssueAction({ g, issue, nav, short, testId }: { g: GameState; is
       case 'feed':
         nav.tab('feed');
         return;
+      case 'water-tab':
+        nav.tab('water');
+        return;
       case 'faster-prep':
       case 'reservoirs':
         go({ kind: 'panel', panel: 'build', tab: 'facility', target: 'room:water' });

@@ -19,7 +19,9 @@ Chunk 5's fresh reviewer (Opus 5.5, max effort) and its confirmation pass raised
    skipped quietly (only the log's summary line said so), against SPEC §3 ("surfaces a shortage instead of silently
    skipping").
 
-The agent asked in two AskUserQuestion rounds (one question, then two).
+The agent asked in three AskUserQuestion rounds (one question, then two, then two). The reviewer's second
+confirmation pass found that a day's totals hid most real shortfalls (the 60 % rule and the fresh reserve's size), so
+the warnings now come from a dry run of the room's next week, and round 3 corrected round 2's "up to 240 gal a day".
 
 ## Decisions
 
@@ -32,14 +34,22 @@ The agent asked in two AskUserQuestion rounds (one question, then two).
      different species "serves both lines"; three or more "serves {n} lines"; and "(one clutch starts 1 day late; no
      animals are lost)".
 2. **Batches grow with the reservoir.** A batch is half the salt reserve: 30 gal and 4.1 kg at the base room (the
-   design's numbers), then 60, 90 and 120 gal with each Reservoir upgrade, salt mix in proportion. The mixer makes up to
-   two batches a day (up to 240 gal).
+   design's numbers), then 60, 90 and 120 gal with each Reservoir upgrade, salt mix in proportion. **The design's 60 %
+   rule stays** (round 3): a batch starts only while salt water is under 60 % of the reserve, so with the morning's
+   changes the mixer sustains about 33 gal a day at the base room and 67, 102 and 118 with one, two and three
+   Reservoirs, not the two batches a day (up to 240 gal) round 2's option described.
 3. **Two warnings in Problems and the alerts drawer**, Look soon, shown only while a day's use is more than the room
    makes:
    - "Salt water runs short" · "The salt tanks' changes use {u} gal of salt water a day, and the mixer makes up to {m}.
      The changes it can't cover are skipped, not done weak." · action "Reservoirs in Build".
    - "Fresh water runs short" · "The tanks use {u} gal of fresh water a day, and the prep station makes {m}. What it
-     can't cover waits: changes are skipped, not done weak." · action "Faster prep in Build" (ADR-0026's label).
+     can't cover waits: changes are skipped, not done weak." · action "Faster prep in Build" (ADR-0026's label). When the
+     fresh reserve's size is the limit (round 3): "The tanks' changes take {u} gal of fresh water at lights-on, and the
+     fresh reserve holds {cap}. What it can't cover waits: changes are skipped, not done weak." · "Reservoirs in Build".
+   - With every upgrade that would help already bought, the action is "Water tab".
+   - They show when the room's next week, dry-run with the jobs' rules, skips changes for want of that water after its
+     first two days (a new room starts with no salt water); {m} is what the mixer really makes. Not while water changes
+     are held.
 
 ## Owner approval
 
@@ -70,11 +80,28 @@ answer: **"Approve as drafted (Recommended)"** ("Two Look-soon items, worded as 
 day's use is more than the room can make."; the preview showed the strings in decision 3). Not chosen: "No warnings"
 ("Leave it as the log line; record it as a known limitation."); "Change some" ("Say in the notes what to change.").
 
+Round 3, question 1 (verbatim): "A correction to my last question: growing batches don't reach 'up to 240 gal a
+day'. The mixer only starts a batch while the salt reserve is under 60% (the design's rule), and tanks change in the
+morning, so it really sustains about 33 gal a day at the base room, then 67, 102 and 118 with one, two and three
+Reservoirs. The warnings now show the real figure. Keep the design's 60% rule?" Owner's answer: **"Keep the 60% rule
+(Recommended)"** ("The design's rule stays (SPEC §9.2). 'Salt water runs short' names what the mixer really makes, and
+Reservoirs raise it (about 33 → 118 gal a day). No other change."). Not chosen: "Mix whenever there's room" ("Each 10 AM
+and 10 PM check starts a batch whenever the reserve and the mixing tank have room for it, so two batches a day are
+reachable: 60, 120, 180, 240 gal a day. Changes the design's §9.2 rule; the stock manager buys salt a little more
+often.").
+
+Round 3, question 2 (verbatim): "'Fresh water runs short' has a second cause: the morning changes all draw at
+lights-on, and the fresh reserve can hold less than they need even when the prep station makes enough per day. Approve
+this wording for that case? When no upgrade is left to buy, the action becomes 'Water tab' (an existing label)."
+Owner's answer: **"Approve as drafted (Recommended)"** ("Use the reserve-size wording in the preview, with the
+'Reservoirs in Build' action (already approved)."). Not chosen: "Change some" ("Say in the notes what to change.").
+
 ## Consequences
 
 - `WATER_ROOM.batchShare` (0.5) sizes a batch from the salt reserve (`batchGal`, `mixerPerDay` in
   `src/sim/automation/reserve.ts`); SPEC §9.2's fixed 30 gal holds for the base room only.
-- Problems gains the supplies `salt_rate` and `fresh_rate` (`src/sim/automation/problems.ts`, `freshWaterPerDay`); the
-  issue views word them (`src/ui/panels/operations/issues.ts`). The fresh warning gives way to "Fresh water ran out"
-  while the reserve is empty.
+- Problems gains the supplies `salt_rate` and `fresh_rate` (`src/sim/automation/problems.ts`), from the Water room's
+  dry run (`src/sim/automation/forecast.ts`, `waterRoomRun`, which also gives Today its batches); the issue views word
+  them (`src/ui/panels/operations/issues.ts`). The fresh warning gives way to "Fresh water ran out" while the reserve is
+  empty.
 - The strings in decision 1 ship as built in `Problems.tsx` and `Production.tsx`.

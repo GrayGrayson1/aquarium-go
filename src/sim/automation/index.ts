@@ -29,6 +29,7 @@ export * from './water';
 export * from './food';
 export * from './problems';
 export * from './summary';
+export * from './forecast';
 
 /** Finishing Central Water Supply or Live Food Cultures installs the base room (ADR-0026 decision 8). */
 export function installRooms(state: GameState, hour = state.clock.hour): void {

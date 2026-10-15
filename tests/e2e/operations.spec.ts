@@ -4,9 +4,10 @@
  * NAV-020: the dock (Operations right after Build, no Settings) and the gear. NAV-021 and NAV-024: the More sheet's
  * Operations row first and the five-tab strip on a 390 px phone (scrolling at 360 px). NAV-022: the routes, locked before
  * their tier, and a Map layer change that replaces the address. NAV-023: the room view's Facility map chip. AUTO-030:
- * the Overview by tier. AUTO-036 and AUTO-042: Hold all, the HUD pill, Resume all. AUTO-040: Map selection. AUTO-044: the
- * bell's tab links before the Operations Desk. AUTO-047: researching the Operations Desk opens Problems. MKT-017: salt in
- * 5, 20 and 40 kg. AUTO-046: the stock budget in $1 steps.
+ * the Overview by tier. AUTO-036 and AUTO-042: Hold all, the HUD pill, Resume all. AUTO-040: Map selection, each layer's
+ * marks, a line's tank and its link, the phone's room sheet. AUTO-044: the bell's tab links before the Operations Desk.
+ * AUTO-047: researching the Operations Desk opens Problems. MKT-017: salt in 5, 20 and 40 kg. AUTO-046: the stock budget
+ * in $1 steps.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { aq, openApp, quickGame, tid } from './helpers';
@@ -142,6 +143,39 @@ test.describe('AUTO-040: the Map', () => {
     await expect(tid(page, 'panel-operations')).toBeHidden();
   });
 
+  test('each layer marks the tanks its own way; a line’s grow-out tank shows its places and opens the line', async ({ page }) => {
+    const ids = await facility(page);
+    // a betta line: the starter male breeds in the first tank, a female keeps in a new one, two more for raise and quarantine
+    const extra: string[] = [];
+    for (const name of ['Grow-out Tub', 'Quarantine', 'Quiet Corner']) {
+      expect((await aq<{ ok: boolean }>(page, 'act', 'buyTank', 'g20L', 'freshwater_tropical', undefined, { seeded: true, name })).ok).toBe(true);
+      extra.push(await page.evaluate(() => (window as unknown as { __AQ: { game(): { tankOrder: string[] } } }).__AQ.game().tankOrder.at(-1)!));
+    }
+    expect((await aq<{ ok: boolean }>(page, 'dev.spawnSpecies', 'betta', extra[2], { sex: 'female', ageDays: 40 })).ok).toBe(true);
+    const pair = await page.evaluate((keep) => {
+      const g = (window as unknown as { __AQ: { game(): { creatures: Record<string, { id: string; speciesId: string; sex: string; tankId: string | null }> } } }).__AQ.game();
+      const all = Object.values(g.creatures).filter((c) => c.speciesId === 'betta');
+      const f = all.find((c) => c.sex === 'female' && c.tankId === keep)!;
+      const m = all.find((c) => c.sex === 'male')!;
+      return { motherId: f.id, fatherId: m.id, breed: m.tankId! };
+    }, extra[2]);
+    const r = await aq<{ ok: boolean; lineId?: string; message: string }>(page, 'act', 'createLine', { motherId: pair.motherId, fatherId: pair.fatherId, tanks: { breed: pair.breed, raise: extra[0], quarantine: extra[1], keep: extra[2] } });
+    expect(r.ok, r.message).toBe(true);
+    await go(page, '#/operations/map');
+    await tid(page, 'map-layer-water').click();
+    await expect(tid(page, `map-tank-${ids[0]}`)).toContainText('gal a day'); // a tank on an Auto Water Changer
+    await tid(page, 'map-layer-food').click();
+    await expect(tid(page, `map-tank-${ids[0]}`)).toContainText(/Autofeeder|Keepers’ rounds|By hand|Doser/);
+    await tid(page, 'map-layer-animals').click();
+    // the Animals layer names its lines in text: the short name on the tile, the whole name in its label (C-64)
+    await expect(tid(page, `map-tank-${extra[0]}`)).toContainText('· Betta');
+    await expect(tid(page, `map-tank-${extra[0]}`)).toHaveAttribute('aria-label', /Betta line/);
+    await tid(page, `map-tank-${extra[0]}`).click();
+    await expect(tid(page, 'map-details')).toContainText('Places');
+    await tid(page, 'map-details').getByRole('button', { name: 'Betta line' }).click();
+    await expect.poll(() => hash(page)).toBe(`#/livestock/production/${r.lineId}`);
+  });
+
   test('the room view’s Facility map chip opens the Map; closing it returns to the room view', async ({ page }) => {
     await facility(page);
     await tid(page, 'view-toggle').click();
@@ -239,6 +273,16 @@ test.describe('NAV-021, NAV-024: phones', () => {
     const fits = await strip.evaluate((el) => el.scrollWidth <= el.clientWidth + 1);
     expect(fits).toBe(true);
     for (const t of ['overview', 'water', 'feed', 'lines', 'map']) await expect(tid(page, `ops-tab-${t}`)).toBeVisible();
+  });
+
+  test('AUTO-040: on the Map a room tap opens its sheet', async ({ page }) => {
+    await facility(page);
+    await go(page, '#/operations/map');
+    await tid(page, 'map-room-water').tap();
+    const sheet = tid(page, 'map-room-sheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toContainText('Water room');
+    await expect(sheet.getByRole('button', { name: /Water tab/ })).toBeVisible();
   });
 });
 

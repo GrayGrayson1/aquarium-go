@@ -17,7 +17,9 @@ import { emitEvent } from '../context';
 import { dayOf } from '../time';
 import { nextStockCheck, stockManager, type StockForecast } from '../staff/work';
 import { lineStatus, restartDay } from '../production';
-import { batchGal, mixerPerDay, prepRate } from './reserve';
+import { batchGal, freshCap, mixerPerDay, prepRate } from './reserve';
+import { isHeld } from './hold';
+import { waterRoomRun } from './forecast';
 import { SALT_KG_PER_GAL, batchSaltKg, saltDaysLeft, saltWaterNeeded, saltWaterPerDay, tankChangeNeed } from './water';
 import { doserNeeds, doserOf } from './food';
 
@@ -48,6 +50,8 @@ export interface SupplyProblem {
   tankIds?: string[];
   /** The Water room's day (salt_rate, fresh_rate): what the mixer or the prep station makes a day; `perDay` is the use. */
   capacity?: number;
+  /** fresh_rate: whether the prep station's rate or the fresh reserve's size is what runs short at lights-on. */
+  limit?: 'prep' | 'reserve';
 }
 
 export interface LineProblem {
@@ -63,10 +67,11 @@ export type Problem = SupplyProblem | LineProblem;
 const stockOf = (state: GameState, id: string) => Math.max(0, Math.floor(state.inventory.foods[id] ?? 0));
 
 /** The shortage items and held-up lines, most urgent first (danger, then watch; salt, eggs, vegetables, live food, water, lines). */
-export function automationProblems(state: GameState, hour = state.clock.hour, known?: StockForecast | null): Problem[] {
+export function automationProblems(state: GameState, hour = state.clock.hour, known?: StockForecast | null | (() => StockForecast | null)): Problem[] {
   const out: Problem[] = [];
-  let forecast: StockForecast | null | undefined = known; // the caller's dry run of the next check, if it has one (PERF-004)
-  const check = () => (forecast === undefined ? (forecast = nextStockCheck(state, hour)) : forecast);
+  // the caller's dry run of the next check, or a way to get it, if it has one (PERF-004); else made here when needed
+  let forecast: StockForecast | null | undefined = typeof known === 'function' ? undefined : known;
+  const check = () => (forecast === undefined ? (forecast = typeof known === 'function' ? known() : nextStockCheck(state, hour)) : forecast);
   const why = (label: string): NoReorder => {
     const f = check();
     if (!f) return 'no_manager';
@@ -88,10 +93,16 @@ export function automationProblems(state: GameState, hour = state.clock.hour, kn
     const days = saltDaysLeft(state);
     const shortDay = Number.isFinite(days) ? dayOf(hour + days * 24) : undefined;
     if (kg < batchKg - 1e-6 || kg < 2 * kgDay - 1e-6 || kg < 2 * batchKg - 1e-6) supply('salt', kg, kgDay, kg < batchKg - 1e-6, 'salt mix', shortDay !== undefined ? { shortDay } : {});
-    // more salt water a day than two batches make: the last changes are skipped every day (ADR-0033)
-    const use = saltWaterPerDay(state);
-    const make = mixerPerDay(water);
-    if (use > make + 1e-6) out.push({ kind: 'supply', supply: 'salt_rate', state: 'low', tone: 'watch', stock: water.salt, perDay: use, capacity: make, arrives: null, why: null });
+  }
+  // The Water room's next week, dry-run as if salt mix never ran out (the salt item covers the stock) and salt mixing
+  // weren't held: changes it skips for want of salt water or fresh water (ADR-0033; the chunk 5 review: a day's totals
+  // missed the 60 % rule and the reserve's size). Nothing while water changes are held: nothing is drawn.
+  // Skips in the first two days don't count: a new room starts with no salt water, and a reserve refills after a shortage.
+  const run = water && !isHeld(state, 'water') ? waterRoomRun(state, 168, { unlimitedSalt: true, ignoreSaltHold: true }) : null;
+  const steady = (cause: 'salt' | 'fresh') => !!run && run.skipped.some((s) => s.cause === cause && s.at >= state.clock.hour + 48);
+  if (water && run && steady('salt')) {
+    const use = changesPerDay(state).salt;
+    out.push({ kind: 'supply', supply: 'salt_rate', state: 'low', tone: 'watch', stock: water.salt, perDay: use, capacity: run.saltMade / (run.hours / 24), arrives: null, why: null });
   }
   const food = state.facility.food;
   if (food && food.cones.length) {
@@ -118,12 +129,12 @@ export function automationProblems(state: GameState, hour = state.clock.hour, kn
     out.push({ kind: 'supply', supply: 'live', state: growing ? 'low' : 'out', tone: growing ? 'watch' : 'danger', stock: servings, perDay: 0, arrives: null, why: null, tankIds: dry });
   }
   if (water && water.fresh < 1) out.push({ kind: 'supply', supply: 'fresh', state: 'out', tone: 'watch', stock: water.fresh, perDay: 0, arrives: null, why: null });
-  else if (water) {
-    // more fresh water a day than the prep station makes (the changes' fresh share, the mixer's batches, yesterday's
-    // top-offs): what it can't cover waits (ADR-0033)
+  else if (water && run && steady('fresh')) {
+    // the prep station can't keep up, or the fresh reserve can't hold the morning's changes (ADR-0033)
     const use = freshWaterPerDay(state, hour);
     const make = prepRate(water) * 24;
-    if (use > make + 1e-6) out.push({ kind: 'supply', supply: 'fresh_rate', state: 'low', tone: 'watch', stock: water.fresh, perDay: use, capacity: make, arrives: null, why: null });
+    const limit = make + 1e-6 < use ? 'prep' : 'reserve';
+    out.push({ kind: 'supply', supply: 'fresh_rate', state: 'low', tone: 'watch', stock: water.fresh, perDay: limit === 'prep' ? use : changesPerDay(state).fresh, capacity: limit === 'prep' ? make : freshCap(water), limit, arrives: null, why: null });
   }
 
   for (const line of state.production?.lines ?? []) {
@@ -134,15 +145,24 @@ export function automationProblems(state: GameState, hour = state.clock.hour, kn
   return out.map((p, i) => ({ p, i })).sort((a, b) => rank(a.p) - rank(b.p) || a.i - b.i).map((x) => x.p);
 }
 
+/** The changes' water a day (gal): the fresh and the salt reserve's shares of every working Auto Water Changer's change. */
+export function changesPerDay(state: GameState): { fresh: number; salt: number } {
+  const out = { fresh: 0, salt: 0 };
+  for (const id of state.tankOrder) {
+    const need = state.tanks[id] ? tankChangeNeed(state, state.tanks[id]) : null;
+    if (need) {
+      out.fresh += need.fresh;
+      out.salt += need.salt;
+    }
+  }
+  return out;
+}
+
 /** Fresh water used a day: the changers' fresh share, the mixer's batches (as much as it can make) and yesterday's top-offs. */
 export function freshWaterPerDay(state: GameState, hour = state.clock.hour): number {
   const water = state.facility.water;
   if (!water) return 0;
-  let gal = 0;
-  for (const id of state.tankOrder) {
-    const t = state.tanks[id];
-    if (t) gal += tankChangeNeed(state, t)?.fresh ?? 0;
-  }
+  let gal = changesPerDay(state).fresh;
   if (saltWaterNeeded(state)) gal += Math.min(saltWaterPerDay(state), mixerPerDay(water));
   const last = (state.automation?.days ?? []).filter((d) => d.day < dayOf(hour)).slice(-1)[0];
   return gal + (last?.water?.topOff ?? 0);

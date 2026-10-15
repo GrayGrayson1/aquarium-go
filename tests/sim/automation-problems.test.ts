@@ -6,7 +6,8 @@
 import { describe, it, expect } from 'vitest';
 import { facility, run } from './support/automation';
 import { lineFarm } from './support/production';
-import { addReservoir, automationProblems, batchGal, batchSaltKg, decidedLines, problemCounts, saltOutText, supplyNotices, upgradePrep, waitForLine, waterRoom } from '@/sim/automation';
+import { addReservoir, automationProblems, batchGal, batchSaltKg, changesPerDay, decidedLines, freshCap, holdAll, mixerPerDay, problemCounts, saltCap, saltOutText, supplyNotices, upgradePrep, waitForLine, waterRoom, waterRoomRun } from '@/sim/automation';
+import type { GameState } from '@/types';
 import { endLine, productionLines } from '@/sim/production';
 import { repairState } from '@/persistence';
 import type { SupplyProblem } from '@/sim/automation';
@@ -88,28 +89,66 @@ describe('NOTIFY-012: the "Out of salt mix" Automation notification', () => {
   });
 });
 
-describe('ADR-0033: the Water room\'s day — salt or fresh water used faster than the room makes it', () => {
-  it('"Salt water runs short" while the changes need more than two batches a day; a Reservoir upgrade grows the batches', () => {
-    const { g, marine } = facility({ fresh: 0, marine: 4, salt: 200, rosa: null });
-    for (const t of marine) t.tierId = 'g180'; // big tanks: about 18 gal of salt water each a day
-    const room = waterRoom(g)!;
-    expect(batchGal(room)).toBe(30);
-    const item = automationProblems(g).find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === 'salt_rate');
-    expect(item).toMatchObject({ tone: 'watch', capacity: 60 });
-    expect(item!.perDay).toBeGreaterThan(60);
+describe('ADR-0033: the Water room\'s day — the changes it would skip for want of salt or fresh water', () => {
+  // the Water room's next week, dry-run with the jobs' rules (forecast.ts); the first two days don't count
+  const shop = (o: { fresh: number; marine: number }) => {
+    const f = facility({ ...o, salt: 200, rosa: null });
+    for (const t of [...f.fresh, ...f.marine]) t.tierId = 'g180'; // big tanks: about 18 gal a day each
+    const room = waterRoom(f.g)!;
+    room.salt = saltCap(room); // a settled room: the reserve full
+    return { ...f, room };
+  };
+  const item = (g: GameState, supply: 'salt_rate' | 'fresh_rate') => automationProblems(g).find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === supply);
+
+  it('"Salt water runs short" below two batches a day too, with the mixer\'s real output; a Reservoir clears it', () => {
+    // two marine tanks: about 36 gal a day, under the 60 two batches would make, but the 60 % rule lets the mixer
+    // start only one batch a day after the morning's changes (the second confirmation review)
+    const { g, room } = shop({ fresh: 0, marine: 2 });
+    const use = changesPerDay(g).salt;
+    expect(use).toBeLessThan(mixerPerDay(room));
+    const run = waterRoomRun(g, 168, { unlimitedSalt: true })!;
+    expect(run.skipped.some((s) => s.cause === 'salt' && s.at >= g.clock.hour + 48)).toBe(true);
+    const it = item(g, 'salt_rate')!;
+    expect(it).toMatchObject({ tone: 'watch' });
+    expect(it.perDay).toBeCloseTo(use, 6);
+    expect(it.capacity!).toBeLessThan(use); // what the mixer really makes
     expect(addReservoir(g).ok).toBe(true);
     expect(batchGal(room)).toBe(60); // half the salt reserve (120 gal)
     expect(batchSaltKg(batchGal(room))).toBeCloseTo(8.2, 6);
-    expect(automationProblems(g).some((p) => p.kind === 'supply' && p.supply === 'salt_rate')).toBe(false);
+    room.salt = saltCap(room);
+    expect(item(g, 'salt_rate')).toBeUndefined();
   });
 
-  it('"Fresh water runs short" while the tanks need more than the prep station makes a day; faster prep clears it', () => {
-    const { g, fresh } = facility({ fresh: 9, marine: 0, rosa: null });
-    for (const t of fresh) t.tierId = 'g180'; // about 18 gal of fresh water each a day, 162 against 144
-    const item = automationProblems(g).find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === 'fresh_rate');
-    expect(item).toMatchObject({ tone: 'watch', capacity: 144 });
-    expect(item!.perDay).toBeGreaterThan(144);
+  it('no warning while water changes are held (nothing is drawn), and none for a new room\'s first empty morning', () => {
+    const { g, room } = shop({ fresh: 0, marine: 2 });
+    holdAll(g);
+    expect(item(g, 'salt_rate')).toBeUndefined();
+    const small = facility({ fresh: 0, marine: 2, salt: 40, rosa: null }); // 20 gal tanks, the salt reserve still empty
+    expect(waterRoom(small.g)!.salt).toBe(0);
+    expect(item(small.g, 'salt_rate')).toBeUndefined();
+    void room;
+  });
+
+  it('"Fresh water runs short": the prep station can\'t keep up; faster prep clears it', () => {
+    // ten big fresh tanks, half lit at 8 AM and half at 8 PM: 180 gal a day against 144, never more than 90 at a draw
+    const { g, fresh } = shop({ fresh: 10, marine: 0 });
+    fresh.slice(5).forEach((t) => {
+      t.lighting.onHour = 20;
+      t.lighting.offHour = 8;
+    });
+    expect(item(g, 'fresh_rate')).toMatchObject({ limit: 'prep', capacity: 144 });
+    expect(item(g, 'fresh_rate')!.perDay).toBeGreaterThan(144);
     expect(upgradePrep(g).ok).toBe(true); // 9 gal an hour: 216 a day
-    expect(automationProblems(g).some((p) => p.kind === 'supply' && p.supply === 'fresh_rate')).toBe(false);
+    expect(item(g, 'fresh_rate')).toBeUndefined();
+  });
+
+  it('"Fresh water runs short": the morning\'s changes need more than the fresh reserve holds; a Reservoir clears it', () => {
+    // nine big fresh tanks lit at 8 AM: 162 gal at once against a 150 gal reserve, though 144 a day of prep would do
+    const { g, room } = shop({ fresh: 9, marine: 0 });
+    expect(upgradePrep(g).ok).toBe(true);
+    expect(item(g, 'fresh_rate')).toMatchObject({ limit: 'reserve', capacity: 150 });
+    expect(addReservoir(g).ok).toBe(true);
+    room.fresh = freshCap(room);
+    expect(item(g, 'fresh_rate')).toBeUndefined();
   });
 });
