@@ -20,6 +20,7 @@ import { BootCard } from './nav/BootCard';
 import { startRouter, useNav } from './nav/router';
 import { startNotifications } from './notify/deliver'; // lane:notify (chunk 3)
 import { startClubReminder } from './notify/clubReminder'; // lane:social (chunk 6)
+import { SimFailureBanner } from './common/SimFailureBanner'; // lane:core (chunk 6, B-002)
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';
 import './styles/screens.css';
@@ -90,6 +91,8 @@ export function UIRoot() {
         <ErrorBoundary name="boot">
           <BootCard />
         </ErrorBoundary>
+        {/* lane:core (chunk 6, B-002) — outside the HUD's boundary: it must show whatever else is failing */}
+        <SimFailureBanner />
         <ErrorBoundary name="settings">
           <SettingsPanel />
         </ErrorBoundary>

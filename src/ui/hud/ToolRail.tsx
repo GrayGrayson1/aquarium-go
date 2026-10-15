@@ -590,7 +590,7 @@ export function ToolHint() {
     return c && c.tankId === useUI.getState().focusedTankId && (c.status === 'alive' || c.status === 'listed') ? c : null;
   });
   useUI((s) => s.selectedCreatureId); // re-render when the selection changes
-  const panelTarget = useUI((s) => s.panelTarget);
+  const movingTankId = useUI((s) => s.movingTankId); // lane:ui-shell (chunk 6, B-196)
   const fine = useMedia('(hover: hover) and (pointer: fine)');
   const Click = fine ? 'Click' : 'Tap';
   let text: ReactNode = null;
@@ -621,7 +621,7 @@ export function ToolHint() {
   else if (tool === 'decor_move') text = <>Drag a piece to move it{fine ? ' · R rotates while held' : ''}</>;
   // touch previews on the first tap and buys on the second (PlacementGhost resolveFloorTap); a mouse click places
   else if (tool === 'tank_place') {
-    const moving = panelTarget?.startsWith('move:'); // PlacementGhost: tank_place + 'move:<id>'
+    const moving = !!movingTankId; // PlacementGhost: tank_place + ui.movingTankId (chunk 6, B-196)
     text = fine
       ? <>Click a free spot on the floor to {moving ? 'move the tank there' : 'place your new tank'} · R rotates</>
       : <>Tap a spot to preview {moving ? 'the tank there' : 'your new tank'}, then tap it again (or {moving ? 'Move here' : 'Place here'}) to {moving ? 'move it' : 'buy it'}</>;

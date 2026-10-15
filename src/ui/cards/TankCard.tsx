@@ -35,6 +35,7 @@ import {
   Moon,
   Fish,
   Signpost,
+  Move,
   type LucideProps,
 } from 'lucide-react';
 import type { GameState, ParamStatus, Tank, EquipmentInstance, StatusLevel, LightPreset, EquipmentKind } from '@/types';
@@ -62,6 +63,7 @@ import { CompatView } from '../common/CompatView';
 import { useShell } from '../common/shellStore';
 import { safe, useGameThrottled } from '../common/safe';
 import { act, tutorialFlag } from '../common/actions';
+import { startTankMove } from './tankMove'; // lane:ui-shell (chunk 6, B-196)
 import { withFallback } from './waterFallback';
 import {
   WATER_CLASS_LABEL,
@@ -661,6 +663,12 @@ export function TankCard() {
         </div>
       )}
       {game && <TankKeeperLine game={game} tank={tank} /> /* lane:staff */}
+      {/* lane:ui-shell (chunk 6, B-196) — rearrange the room: the placement ghost, on this tank */}
+      {game && !game.isShowcase && (
+        <Button size="sm" variant="ghost" className="ag-thead__move" data-testid="tank-move" onClick={() => startTankMove(tank.id)}>
+          <Move size={14} aria-hidden /> Move tank
+        </Button>
+      )}
     </div>
   ) : null;
   return (

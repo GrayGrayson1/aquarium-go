@@ -4,7 +4,8 @@
  * the spot is valid or red with a reason when it isn't. Mouse: click to buy/move, R (or right-click) to rotate,
  * Esc to cancel. Touch: tap to preview a spot, tap it again (or the Place button) to confirm, Rotate button to
  * turn; a drag/pinch that pans the room never places anything. Handles both buying a new tier
- * (`ui.placingTankTierId`) and moving an existing tank (`ui.panelTarget = 'move:<tankId>'`). OWNER: lane "facility".
+ * (`ui.placingTankTierId`) and moving an existing tank (`ui.movingTankId`, from the tank card's Move tank; chunk 6,
+ * B-196). OWNER: lane "facility".
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ThreeEvent } from '@react-three/fiber';
@@ -155,8 +156,8 @@ function GhostBody({ tierId, color }: { tierId: string; color: string }) {
 export function PlacementGhost() {
   const tool = useUI((s) => s.tool);
   const tierFromUI = useUI((s) => s.placingTankTierId);
-  const panelTarget = useUI((s) => s.panelTarget);
-  const moveId = tool === 'tank_place' && panelTarget?.startsWith('move:') ? panelTarget.slice(5) : null;
+  const moving = useUI((s) => s.movingTankId);
+  const moveId = tool === 'tank_place' && moving ? moving : null;
   const moveTier = useGameSelector((g) => (moveId ? g.tanks[moveId]?.tierId ?? null : null), null);
   const fac = useGameSelector((g) => g.facility, null);
   const tierId = tool === 'tank_place' ? moveTier ?? tierFromUI : null;
@@ -172,7 +173,7 @@ export function PlacementGhost() {
   const [touch, setTouch] = useState(false);
 
   const cancel = useCallback(() => {
-    useUI.getState().set({ tool: 'none', placingTankTierId: null, panelTarget: moveId ? null : useUI.getState().panelTarget });
+    useUI.getState().set({ tool: 'none', placingTankTierId: null, movingTankId: null });
     usePlacementStore.getState().reset();
     ghostRef.current = null;
     setGhost(null);
@@ -275,7 +276,7 @@ export function PlacementGhost() {
       const ui = useUI.getState();
       ui.toast(msg || (ok ? 'Placed.' : 'That spot doesn’t work.'), ok ? 'success' : 'warning');
       if (ok) {
-        ui.set({ tool: 'none', placingTankTierId: null, panelTarget: moveId ? null : ui.panelTarget, ...(newId ? { focusedTankId: newId } : {}) });
+        ui.set({ tool: 'none', placingTankTierId: null, movingTankId: null, ...(newId ? { focusedTankId: newId } : {}) });
         usePlacementStore.getState().reset();
         ghostRef.current = null;
         setGhost(null);

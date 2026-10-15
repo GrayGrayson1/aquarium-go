@@ -277,3 +277,5 @@
 .ag-thead__reason { margin-top: 6px; font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; color: var(--c-ink-2); }
 .ag-thead__reason.is-watch { color: var(--c-watch); }
 .ag-thead__reason.is-danger { color: var(--c-danger); }
+/* lane:ui-shell (chunk 6, B-196) — the header's Move tank action, left-aligned under the chips */
+.ag-thead__move { justify-self: start; margin-top: 4px; }

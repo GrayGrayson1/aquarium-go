@@ -170,7 +170,7 @@ function TanksTab({ g }: { g: GameState }) {
 
   const place = (tier: TankTier) => {
     const set = useUI.getState().set as (p: Record<string, unknown>) => void;
-    set({ tool: 'tank_place', placingTankTierId: tier.id, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panel: null, panelTarget: null });
+    set({ tool: 'tank_place', placingTankTierId: tier.id, movingTankId: null, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panel: null, panelTarget: null });
     useUI.getState().toast(`Choose a spot for your ${tier.name}. Press Esc to cancel.`, 'info');
   };
   const quick = (tier: TankTier) => {
