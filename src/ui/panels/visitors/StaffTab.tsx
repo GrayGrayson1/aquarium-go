@@ -7,13 +7,13 @@ import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { Users, UserPlus, Wallet, Fish, Package, Presentation, TriangleAlert, Clock, Lock, Shuffle, Utensils, Info, Sparkles, CircleCheck } from 'lucide-react';
 import type { GameState, StaffMember, StaffRole } from '@/types';
-import { Button, Slider, Toggle, formatMoney } from '@/ui/kit';
+import { Badge, Button, Slider, Toggle, formatMoney } from '@/ui/kit';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { STAFF_NOTICE_DAYS, STAFF_ROLES, STAFF_ROLE_ORDER, STAFF_TRAITS, STAFF_XP_PER_LEVEL, STOCK_BUDGET, skillStars } from '@/data/staff';
 import { getFacilityLevel, nextFacilityLevelDef } from '@/data/facilities';
 import { dayOf, formatClock } from '@/sim/time';
 import { setStockOrders } from '@/sim/automation'; // lane:automation (chunk 5)
-import { planPurchases, plannedOrders } from '@/sim/staff/work'; // lane:automation (chunk 5)
+import { planPurchases, plannedOrders, stockCheckHours } from '@/sim/staff/work'; // lane:automation (chunk 5)
 import { opsMemo, opsSnapshot } from '@/ui/common/ops'; // lane:automation (chunk 5, PERF-004)
 import { SALT_PRICE_PER_KG } from '@/sim/economy'; // lane:automation (chunk 5)
 import {
@@ -224,6 +224,13 @@ function RoleTag({ role }: { role: StaffRole }) {
   );
 }
 
+/** "9 AM and 3 PM" (chunk 6, DES-013: the stock manager's checks in the design's words, §8.7). */
+function listHours(hours: number[]): string {
+  const word = (h: number) => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'AM' : 'PM'}`;
+  const w = hours.map(word);
+  return w.length <= 1 ? w[0] ?? '' : `${w.slice(0, -1).join(', ')} and ${w[w.length - 1]}`;
+}
+
 function StaffCard({ g, m }: { g: GameState; m: StaffMember }) {
   const [editing, setEditing] = useState(false);
   const trait = STAFF_TRAITS[m.trait];
@@ -242,7 +249,13 @@ function StaffCard({ g, m }: { g: GameState; m: StaffMember }) {
             <Stars skill={m.skill} />
             <span className="st-wage">{formatMoney(m.wage)}/day</span>
           </div>
+          {m.role === 'stock_manager' && (
+            <div className="st-card__duty" data-testid={`staff-duty-${m.id}`}>
+              Stock manager · skill {m.skill} · checks the shelves at {listHours(stockCheckHours(m))}
+            </div>
+          )}
         </div>
+        {m.role === 'stock_manager' && !(m.unpaidDays ?? 0) && <Badge tone="good">On shift</Badge>}
         <FireButton m={m} />
       </div>
       {trait && (

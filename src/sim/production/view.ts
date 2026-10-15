@@ -30,7 +30,7 @@ export interface LineView {
   /** Next clutch: days until the pair is due again (rounded up), the cycle and how far through it they are. */
   next: { days?: number; dayOf?: number; cycle: number; restartDay?: number; conditioning: boolean };
   /** Growing out: the brood in the raise tank (or the young waiting there), its word, and its days. */
-  raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number }; places?: { used: number; cap: number } };
+  raising: { count: number; word: string; dayOf?: number; ofDays?: number; full: boolean; waiting: number; feeding?: { food: string; meals: number }; places?: { used: number; cap: number }; /** Hours until the brood's next stage (chunk 6, DES-013: "next stage in 6 h"). */ nextStageIn?: number; /** The day the brood is raised and sorted (DES-013: "sorting on Day 42"). */ sortDay?: number };
   /** Quarantine: the batch in its hold (its word: "juveniles", or the species' plural once grown), days left, the day
    * it lists; or the day a busy shared tank frees up. */
   quarantined: { count: number; word: string; daysLeft?: number; listsDay?: number; busyUntilDay?: number; busyTank?: Tank; holdFraction?: number; uncycledTank?: Tank };
@@ -75,6 +75,10 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     raising.word = youngLabel(brood, moduleFor(sp));
     raising.dayOf = Math.max(0, Math.floor((now - brood.laidHour) / 24));
     raising.ofDays = Math.max(1, Math.round((sp.breeding.incubationHours + sp.breeding.fryRearingHours) / 24));
+    if (Number.isFinite(brood.nextStageHour) && brood.nextStageHour > now) raising.nextStageIn = Math.ceil(brood.nextStageHour - now - 1e-9);
+    // fry become juveniles at their next stage, and the line sorts them then (sortYoung); before that, the species' days
+    const raised = brood.stage === 'fry' && Number.isFinite(brood.nextStageHour) ? brood.nextStageHour : brood.laidHour + sp.breeding.incubationHours + sp.breeding.fryRearingHours;
+    raising.sortDay = dayOf(Math.max(now, raised));
   } else if (waitingYoung > 0) {
     raising.count = waitingYoung;
     raising.word = waitingYoung === 1 ? 'juvenile' : 'juveniles';

@@ -102,3 +102,5 @@
   .st-card__top { gap: 10px; }
   .st-card__name { font-size: calc(16px * var(--text-scale)); }
 }
+/* chunk 6 (DES-013): the stock manager's duty line under the name (§8.7) */
+.st-card__duty { font-size: calc(12px * var(--text-scale)); color: var(--c-ink-2); }

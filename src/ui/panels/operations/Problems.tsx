@@ -10,7 +10,7 @@ import { ArrowDown, ArrowLeft, CircleCheck, Factory, Heart, Plus, ShieldCheck, S
 import type { GameState } from '@/types';
 import { Button, formatMoney } from '@/ui/kit';
 import { go } from '@/ui/nav/router';
-import { formatClock, dayOf } from '@/sim/time';
+import { formatClock, dayOf, hourOfDay } from '@/sim/time';
 import { STOCK_BUDGET } from '@/data/staff';
 import { getFacilityLevel } from '@/data/facilities';
 import { batchGal, batchSaltKg, saltWaterPerDay, type SupplyProblem } from '@/sim/automation';
@@ -21,7 +21,7 @@ import { lineView } from '@/sim/production/view';
 import { opsSnapshot, type OpsSnapshot } from '@/ui/common/ops';
 import { AddQuarantine } from '../livestock/Production';
 import { Status, Kicker } from './parts';
-import { budgetAtMax, issueViews, nextMixHour, saltBuyLabel, whenText, type IssueView } from './issues';
+import { budgetAtMax, issueViews, nextMixHour, saltBuyLabel, saltChangeHour, whenText, type IssueView } from './issues';
 import { buyEggTin, buySaltBag, buyVegPack, doWait, markDecided } from './actions';
 import type { OpsNav } from './OperationsPanel';
 
@@ -99,7 +99,9 @@ export function ProblemsView({ g, snap, nav }: { g: GameState; snap: OpsSnapshot
               <section key={d.lineId} className="ops-card" data-testid="issues-line-decided">
                 <div className="ops-card__head">
                   <Factory size={16} aria-hidden />
-                  <h3 className="ops-card__title">{d.name}</h3>
+                  <h3 className="ops-card__title">
+                    {d.name} · {decidedWhat(g, d.lineId)}
+                  </h3>
                   <Status tone="watch" icon="time">
                     Resumes Day {d.restartDay}
                   </Status>
@@ -133,6 +135,7 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
   const now = g.clock.hour;
   const batchKg = room ? batchSaltKg(batchGal(room)) : 4.1;
   const mix = nextMixHour(now);
+  const changeAt = saltChangeHour(g);
   const lvl = getFacilityLevel(g.facility.level);
   const max = STOCK_BUDGET[g.facility.level]?.max ?? 0;
   const rows: { t: string; tone?: 'watch' | 'danger'; text: string }[] = [];
@@ -144,10 +147,16 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
   } else if (p.state === 'out') {
     const ready = room?.mix && room.mix.readyHour > now ? `, plus ${Math.floor(room.mix.gal)} gal mixing (ready ${formatClock(room.mix.readyHour)})` : '';
     rows.push({ t: 'Now', text: `Salt water: ${Math.floor(room?.salt ?? 0)} gal${ready}.` });
+    // chunk 6 (DES-013): the days whose morning water changes still go ahead ("Day 39 · 40"), then the short day
+    const firstDay = dayOf(now) + (changeAt !== null && hourOfDay(now) < changeAt ? 0 : 1);
+    if (p.shortDay !== undefined && p.shortDay > firstDay) rows.push({ t: dayRange(firstDay, p.shortDay - 1), text: 'Morning water changes go ahead as normal.' });
     if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'danger', text: `The salt tanks’ water changes are skipped, not done weak, unless salt arrives (they use about ${Math.round(saltWaterPerDay(g))} gal a day).` }); // ADR-0032
   } else {
-    rows.push({ t: whenText(mix, now), tone: 'watch', text: p.stock < 2 * batchKg ? `The batch uses the last ${Math.round(p.stock * 10) / 10} kg.` : `The batch uses ${batchKg.toFixed(1)} kg.` });
-    if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'watch', text: 'The salt tanks run short of salt water unless salt arrives.' });
+    const left = Math.round((p.stock - batchKg) * 10) / 10;
+    if (left < 0.05) rows.push({ t: whenText(mix, now), tone: 'watch', text: `The batch uses the last ${Math.round(p.stock * 10) / 10} kg.` });
+    else if (p.stock < 2 * batchKg - 1e-6) rows.push({ t: `Day ${dayOf(mix)}`, tone: 'watch', text: `${formatClock(mix)}: the batch uses ${batchKg.toFixed(1)} kg; the ${left} kg left won’t make another.` }); // DES-013
+    else rows.push({ t: whenText(mix, now), tone: 'watch', text: `The batch uses ${batchKg.toFixed(1)} kg.` });
+    if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'watch', text: `${changeAt !== null ? `${formatClock(changeAt)}: the` : 'The'} salt tanks run short of salt water unless salt arrives.` }); // DES-013
   }
   const raise =
     p.why === 'no_manager' ? (
@@ -187,6 +196,19 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
       {p.state !== 'arriving' && dayOf(now) < (p.shortDay ?? Infinity) && <span className="ops-muted">Salt mix · {Math.round(p.stock * 10) / 10} kg in stock</span>}
     </section>
   );
+}
+
+/** chunk 6 (DES-013, §7.6 "decided"): what the player chose for a paused line — the quarantine tank it added, or to wait. */
+function decidedWhat(g: GameState, lineId: string): string {
+  const at = g.automation?.lineWait?.[lineId];
+  const line = findLine(g, lineId);
+  const added = at === undefined || !line ? undefined : line.tanks.quarantine.map((id) => g.tanks[id]).find((t) => t && Math.abs(t.createdHour - at) <= 1);
+  return added ? `${added.name} added` : 'you chose to wait';
+}
+
+/** "Day 39", "Day 39 · 40" (DES-013: the days the morning changes still go ahead, in the design's form). */
+function dayRange(a: number, b: number): string {
+  return `Day ${Array.from({ length: b - a + 1 }, (_, i) => a + i).join(' · ')}`;
 }
 
 function FragmentRow({ t, tone, text }: { t: string; tone?: 'watch' | 'danger'; text: string }) {
@@ -240,7 +262,7 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
           <div className="ops-row__main">
             <span className="ops-row__title">{breed?.name ?? 'Breed tank'}</span>
             <span className="ops-row__sub">
-              {m?.name ?? '?'} × {f?.name ?? '?'} wait
+              {m?.name ?? '?'} × {f?.name ?? '?'} are ready to spawn
             </span>
           </div>
         </div>
@@ -251,7 +273,7 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
           <Sprout size={15} aria-hidden />
           <div className="ops-row__main">
             <span className="ops-row__title">{raise?.name ?? 'Raise tank'} · full</span>
-            <span className="ops-row__sub">{places ? `${places.used} of ${places.cap} places` : 'No room for the next clutch'}</span>
+            <span className="ops-row__sub">{places ? `${places.used} of ${places.cap} places${v.raising.sortDay !== undefined ? ` · sorting on Day ${v.raising.sortDay}` : ''}` : 'No room for the next clutch'}</span>
           </div>
         </div>
         {qt && (

@@ -12,6 +12,9 @@ import { BRINE, EGGS_SUPPLY, FOOD_ROOM, INFUSORIA, VEGETABLES } from '@/data/cat
 import { getFoodDef } from '@/data/catalog/foods';
 import { cultureState, doserNeeds, doserOf, isHeld, savedThisWeek, storeCap, type CultureKind } from '@/sim/automation';
 import { opsMemo } from '@/ui/common/ops';
+import { findSpecies } from '@/data/species';
+import { moduleFor } from '@/sim/life/breeding/registry';
+import { youngLabel } from '@/sim/life/breeding/clutch';
 import { Status, NewChip, Kicker, OpsBar } from './parts';
 import { buyEggTin, buyVegPack } from './actions';
 import type { OpsNav } from './OperationsPanel';
@@ -89,13 +92,26 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
       <div className="ops-rows">
         {tanks.map((t) => {
           const needs = doserNeeds(g, t);
-          const servings = needs.reduce((a, n) => a + n.servings, 0) * 3;
-          const words = [...new Set(needs.map((n) => (n.foods[0] === BRINE ? 'baby brine' : 'infusoria')))];
+          // chunk 6 (DES-013, §7.3): "clownfish larvae · 26 brine · 4 infusoria", each clutch on the first of its foods in stock, three doses a day
+          const per = new Map<string, number>();
+          for (const n of needs) {
+            const food = n.foods.find((f) => (g.inventory.foods[f] ?? 0) >= 1) ?? n.foods[0];
+            per.set(food, (per.get(food) ?? 0) + n.servings * 3);
+          }
+          const who = [
+            ...new Set(
+              needs.map((n) => {
+                const sp = findSpecies(n.clutch.speciesId);
+                return sp ? `${sp.commonName.toLowerCase()} ${youngLabel(n.clutch, moduleFor(sp))}` : 'young';
+              }),
+            ),
+          ].join(' and ');
+          const amounts = [BRINE, INFUSORIA].filter((f) => per.get(f)).map((f) => `${per.get(f)} ${f === BRINE ? 'brine' : 'infusoria'}`);
           return (
             <div key={t.id} className="ops-row">
               <div className="ops-row__main">
                 <span className="ops-row__title">{t.name}</span>
-                <span className="ops-row__sub">{needs.length ? `${needs.reduce((a, n) => a + n.clutch.count, 0)} young · about ${servings} servings of ${words.join(' and ')} a day` : 'idle until the next clutch hatches'}</span>
+                <span className="ops-row__sub">{needs.length ? [who, ...amounts].join(' · ') : 'idle until the next clutch hatches'}</span>
               </div>
               {held ? <Status tone="watch" icon="held">Held</Status> : needs.length ? <Status tone="good" icon="running">Running</Status> : <Status tone="neutral">Idle</Status>}
             </div>

@@ -10,7 +10,8 @@ import { Badge, Button, formatMoney } from '@/ui/kit';
 import { go } from '@/ui/nav/router';
 import { getFacilityLevel, nextFacilityLevelDef } from '@/data/facilities';
 import { STOCK_BUDGET } from '@/data/staff';
-import { FOOD_ROOM, WATER_ROOM } from '@/data/catalog/machines';
+import { BRINE, FOOD_ROOM, INFUSORIA, WATER_ROOM } from '@/data/catalog/machines';
+import { dayOf } from '@/sim/time';
 import { addCulture, addReservoir, batchGal, doserOf, freshCap, isHeld, prepRate, saltCap, saltWaterNeeded, upgradePrep } from '@/sim/automation';
 import { lineSlots, productionLines } from '@/sim/production';
 import { tierLadder } from '@/ui/common/ops';
@@ -190,6 +191,8 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
   const dosers = g.tankOrder.filter((id) => g.tanks[id] && doserOf(g.tanks[id])).length;
   const brine = f.cones.length * FOOD_ROOM.coneYield;
   const inf = Math.round((f.jars.length * FOOD_ROOM.jarYield * 24) / FOOD_ROOM.jarHours);
+  // chunk 6 (DES-013, §8.4 "makes, uses, takes"): what the tanks used on the last whole day, as Operations › Overview counts it
+  const last = (g.automation?.days ?? []).filter((d) => d.day < dayOf(g.clock.hour)).slice(-1)[0];
   return (
     <div className="pn-stack" data-testid="build-room-food">
       {back}
@@ -237,7 +240,7 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
           Each day
         </div>
         <div className="pn-small">
-          Makes {brine} baby brine and {inf} infusoria · takes {f.cones.length} {f.cones.length === 1 ? 'scoop' : 'scoops'} of eggs, {f.cones.length * FOOD_ROOM.coneSaltGal} gal of salt water and about {Math.round((f.jars.length / 3) * 10) / 10} servings of vegetables
+          Makes {brine} baby brine and {inf} infusoria · uses {last?.used[BRINE] ?? 0} baby brine and {last?.used[INFUSORIA] ?? 0} infusoria · takes {f.cones.length} {f.cones.length === 1 ? 'scoop' : 'scoops'} of eggs, {f.cones.length * FOOD_ROOM.coneSaltGal} gal of salt water and about {Math.round((f.jars.length / 3) * 10) / 10} servings of vegetables
         </div>
       </div>
     </div>

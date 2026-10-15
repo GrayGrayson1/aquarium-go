@@ -94,7 +94,7 @@ function TankAlerts({ game }: { game: GameState }) {
   if (!rows.length && !food.length && !gear.length && !fit.length && !paused.length)
     return (
       <div className="ag-alert-ok">
-        <CircleCheck size={16} aria-hidden /> All tanks look healthy.
+        <CircleCheck size={16} aria-hidden /> {game.tankOrder.length > 1 ? `All ${game.tankOrder.length} tanks look healthy.` : 'All tanks look healthy.'}
       </div>
     );
   return (

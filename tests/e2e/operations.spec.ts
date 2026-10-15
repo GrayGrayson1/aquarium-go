@@ -37,11 +37,13 @@ const hash = (page: Page) => page.evaluate(() => location.hash);
 const go = (page: Page, h: string) => page.evaluate((x) => (location.hash = x), h);
 
 test.describe('NAV-020: Operations in the dock, Settings on the gear', () => {
-  test('ten dock items in both modes, Operations right after Build, no dock-settings; the gear opens and closes Settings', async ({ page }) => {
+  test('the dock items, Operations right after Build, no dock-settings; the gear opens and closes Settings', async ({ page }) => {
     await openApp(page);
     await quickGame(page, 'betta');
     const ids = await page.locator('nav.ag-dock .ag-dock__item[data-testid^="dock-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
-    expect(ids).toEqual(['dock-tanks', 'dock-livestock', 'dock-market', 'dock-visitors', 'dock-shows', 'dock-build', 'dock-operations', 'dock-research', 'dock-finances', 'dock-encyclopedia']);
+    // chunk 6: the e2e app runs in dev mode, where the Social stub is in the dock after Shows (0.5 §13, ADR-0005 decision 3;
+    // the S3-D screens draw it there); prod-mode.spec checks the ten items without it in a production build
+    expect(ids).toEqual(['dock-tanks', 'dock-livestock', 'dock-market', 'dock-visitors', 'dock-shows', 'dock-social', 'dock-build', 'dock-operations', 'dock-research', 'dock-finances', 'dock-encyclopedia']);
     await expect(tid(page, 'dock-settings')).toHaveCount(0);
     const gear = tid(page, 'hud-settings');
     await expect(gear).toHaveAttribute('aria-label', 'Settings');

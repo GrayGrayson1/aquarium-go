@@ -190,7 +190,7 @@ describe('PROD-003, DES-008: the Production tab', () => {
     l.waiting = true;
     l.batches = [{ id: 'b1', creatureIds: [], sortedHour: s.g.clock.hour }];
     const t = text(render(s.g));
-    expect(t).toContain("Grow-out Tub is full, so Cinder and Blaze are kept apart until there's room.");
+    expect(t).toContain('Grow-out Tub is full, so Cinder and Blaze are kept apart until there’s room.'); // chunk 6 (DES-013): curly, as the 0.5 copy rule and §7.6 write it
     expect(t).toMatch(/Add a quarantine tank · \$[\d,]+/);
   });
 });

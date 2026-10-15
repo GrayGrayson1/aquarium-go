@@ -72,10 +72,18 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
   ) : (
     <Status tone="good">OK</Status>
   );
+  // chunk 6 (DES-013): salt mix isn't short, but the next shelf check buys some ("Order at 9:00 AM")
+  const orderAt = !saltItem && f && !f.off && f.plan.buys.some((b) => b.kind === 'salt') ? f.at : null;
   const mixStatus = !needed ? (
     <Status tone="neutral">Not needed</Status>
   ) : !saltItem ? (
-    <Status tone="good">OK</Status>
+    orderAt !== null ? (
+      <Status tone="aqua" icon="time">
+        Order at {formatClock(orderAt)}
+      </Status>
+    ) : (
+      <Status tone="good">OK</Status>
+    )
   ) : saltItem.state === 'out' ? (
     <Status tone="danger">Out</Status>
   ) : saltItem.state === 'arriving' ? (
@@ -91,7 +99,17 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
         ? `Uses ${g1(kgDay)} kg a day · ${f?.m.name.split(' ')[0] ?? 'Your stock manager'} reorders ${whenText(saltItem.arrives ?? now, now)}`
         : saltItem && f
           ? `Uses ${g1(kgDay)} kg a day · ${f.m.name.split(' ')[0]}’s ${formatMoney(f.budget)} budget won’t cover it today`
-          : `Uses ${g1(kgDay)} kg a day`;
+          : orderAt !== null && f
+            ? `Uses ${g1(kgDay)} kg a day · ${f.m.name.split(' ')[0]} reorders ${whenText(orderAt, now)}`
+            : `Uses ${g1(kgDay)} kg a day`;
+  // chunk 6 (DES-013): after a batch drew from the fresh reserve, and no water change has drawn since
+  const batchStart = room.mix && now < room.mix.readyHour ? room.mix.readyHour - WATER_ROOM.mixHoursLong : null;
+  const changedSince = batchStart !== null && onHours.some((h) => {
+    let t = Math.floor(batchStart / 24) * 24 + h;
+    if (t <= batchStart + 1e-9) t += 24;
+    return t <= now + 1e-9;
+  });
+  const drew = batchStart !== null && !changedSince ? `The ${formatClock(batchStart)} batch drew ${g0(room.mix!.gal)} gal · ` : null;
   const meters = (
     <>
       <Meter
@@ -106,7 +124,7 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
           </>
         }
         bar={<OpsBar value={room.fresh / fCap} label={`Fresh reserve ${g0(room.fresh)} of ${fCap} gal`} />}
-        hint={room.fresh < 1 ? `Top-offs stop until prep refills it · ${g0(rate * 4)} gal by ${formatClock(now + 4)}` : room.fresh >= fCap - 0.5 ? `Full · the prep station makes ${rate} gal an hour` : `Refilling ${rate} gal an hour · full by ${formatClock(fullBy)}`}
+        hint={room.fresh < 1 ? `Top-offs stop until prep refills it · ${g0(rate * 4)} gal by ${formatClock(now + 4)}` : room.fresh >= fCap - 0.5 ? `Full · the prep station makes ${rate} gal an hour` : drew ? `${drew}full by ${formatClock(fullBy)}` : `Refilling ${rate} gal an hour · full by ${formatClock(fullBy)}`}
       />
       <Meter
         testId="water-meter-salt"

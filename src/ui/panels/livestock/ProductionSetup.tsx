@@ -118,11 +118,12 @@ function PairList({ g, picked, onPick, speciesId }: { g: GameState; picked: stri
 
 // ───────────────────────────── step 2: the tanks ─────────────────────────────
 
-const STAGES: { id: LineStage; word: string; label: string; icon: ReactNode; testId: string }[] = [
-  { id: 'breed', word: 'Breed', label: 'BREED', icon: <Heart size={16} />, testId: 'breed' },
-  { id: 'raise', word: 'Raise', label: 'RAISE', icon: <Sprout size={16} />, testId: 'raise' },
-  { id: 'quarantine', word: 'Quarantine', label: 'QUARANTINE', icon: <ShieldCheck size={16} />, testId: 'quarantine' },
-  { id: 'keep', word: 'Keepers', label: 'KEEPERS', icon: <Gem size={16} />, testId: 'keepers' },
+// chunk 6 (DES-013): the design's words ("Breed" · "Raise" · "Quarantine" · "Keepers"); the capitals are the label's style
+const STAGES: { id: LineStage; word: string; icon: ReactNode; testId: string }[] = [
+  { id: 'breed', word: 'Breed', icon: <Heart size={16} />, testId: 'breed' },
+  { id: 'raise', word: 'Raise', icon: <Sprout size={16} />, testId: 'raise' },
+  { id: 'quarantine', word: 'Quarantine', icon: <ShieldCheck size={16} />, testId: 'quarantine' },
+  { id: 'keep', word: 'Keepers', icon: <Gem size={16} />, testId: 'keepers' },
 ];
 
 /** Why a tank suits a stage, in the design's words ("20 gal · Saffron × Amber live here", "room for 12 young"). */
@@ -183,7 +184,7 @@ function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }:
           {stage.icon}
         </span>
         <span className="pr-tankrow__text">
-          <span className="pr-tankrow__label">{stage.label}</span>
+          <span className="pr-tankrow__label">{stage.word}</span>
           <span className="pr-tankrow__name">{id ? g.tanks[id]?.name : '—'}</span>
           <span className="pr-tankrow__sub">{id && fit ? (fit.ok ? why(g, stage.id, id, fit, pair) : fit.reason) : ''}</span>
         </span>

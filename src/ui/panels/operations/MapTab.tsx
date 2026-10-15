@@ -8,27 +8,30 @@
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
-import { ChevronRight, Map as MapIcon, Plus } from 'lucide-react';
+import { ChevronRight, Lock, Map as MapIcon, Plus } from 'lucide-react';
 import type { GameState, Tank } from '@/types';
 import { Button, Modal, formatMoney } from '@/ui/kit';
 import { go } from '@/ui/nav/router';
 import type { MapLayer } from '@/ui/nav/routes';
-import { formatClock } from '@/sim/time';
+import { formatClock, dayOf } from '@/sim/time';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { FOOD_ROOM, BRINE, INFUSORIA } from '@/data/catalog/machines';
-import { isAutofeederFood } from '@/data/catalog/foods';
+import { getFoodDef, isAutofeederFood } from '@/data/catalog/foods';
+import { pickAutofeedFood } from '@/sim/care/autofeed';
+import { inhabitantsOf } from '@/sim/water/env';
 import { isMarineClass } from '@/sim/water/constants';
-import { changerOf, cultureState, doserNeeds, doserOf, freshCap, isHeld, manualModeOn, prepRate, saltCap, saltWaterNeeded, tankChangeNeed, weekMoney, type SupplyProblem } from '@/sim/automation';
+import { batchGal, batchSaltKg, changerOf, cultureState, doserNeeds, doserOf, freshCap, isHeld, manualModeOn, prepRate, saltCap, saltWaterNeeded, tankChangeNeed, weekMoney, type SupplyProblem } from '@/sim/automation';
 import { findLine, lineStatus, productionLines, quarantineKit } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
 import { WATER_CLASS_LABEL } from '../common/format';
 import { Seg } from '../common/parts';
-import { opsMemo, type OpsSnapshot, type OpsTier } from '@/ui/common/ops';
+import { opsMemo, tierLadder, type OpsSnapshot, type OpsTier } from '@/ui/common/ops';
 import { AddQuarantine } from '../livestock/Production';
-import { Kicker, OpsBar } from './parts';
+import { Kicker, OpsBar, Reqs, TierRow } from './parts';
 import { nextMixHour } from './issues';
 import { markDecided } from './actions';
+import { lockedSlotRows } from './LinesTab';
 import { areaTiles, mapAreas, type MapAreas } from './mapModel';
 import type { OpsNav } from './OperationsPanel';
 
@@ -67,7 +70,7 @@ export function MapTab({ g, snap, tier, layer, onLayer, small, nav }: { g: GameS
   };
   const isSel = (kind: 'room' | 'tank' | 'machine', id: string) => !!sel && sel.kind === kind && sel.id === id;
   const pausedLine = snap.problems.find((p) => p.kind === 'line');
-  const ctx: Ctx = { g, areas, L, pick, isSel, small, snap };
+  const ctx: Ctx = { g, areas, L, pick, isSel, small, snap, early: !layers, slots: tier.slots };
   const plan = (
     <div className="ops-map__plan" style={small ? { gridTemplateColumns: 'minmax(0,1fr)' } : undefined}>
       <WaterArea ctx={ctx} />
@@ -105,6 +108,7 @@ export function MapTab({ g, snap, tier, layer, onLayer, small, nav }: { g: GameS
           {plan}
           <span className="ops-muted">Tap a room to see what’s in it.</span>
           {!layers && <span className="ops-muted">Layers for water, food and animals appear when the Water room opens.</span>}
+          {!layers && <Tier2Row g={g} />}
         </>
       ) : (
         <div className="ops-map">
@@ -125,6 +129,17 @@ export function MapTab({ g, snap, tier, layer, onLayer, small, nav }: { g: GameS
   );
 }
 
+/** chunk 6 (DES-013): the phone's early map ends with the ladder's Tier 2 row (§7.5 "Early"). */
+function Tier2Row({ g }: { g: GameState }) {
+  const t = tierLadder(g).find((x) => x.tier === 2 && !x.open);
+  if (!t) return null;
+  return (
+    <section className="ops-card" data-testid="map-tier2">
+      <TierRow t={t} next />
+    </section>
+  );
+}
+
 interface Ctx {
   g: GameState;
   areas: MapAreas;
@@ -133,6 +148,9 @@ interface Ctx {
   isSel: (kind: 'room' | 'tank' | 'machine', id: string) => boolean;
   small: boolean;
   snap: OpsSnapshot;
+  /** No Water room yet: no layers (the early map, §7.5 "Early"). */
+  early: boolean;
+  slots: number;
 }
 
 /** A labelled area: on desktop its title selects it; on phones the whole area is one button (≥ 44 px). */
@@ -189,14 +207,25 @@ function TankTile({ ctx, t }: { ctx: Ctx; t: Tank }) {
   const doser = doserOf(t);
   const feeder = t.equipment.some((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder');
   const kept = (g.staff?.roster ?? []).some((m) => m.role === 'aquarist' && m.tankIds.includes(t.id));
-  const waiting = productionLines(g).some((l) => l.waiting && l.tanks.raise === t.id);
+  const waitingLine = productionLines(g).find((l) => l.waiting && l.tanks.raise === t.id);
+  const waiting = !!waitingLine;
+  // chunk 6 (DES-013, §7.5's states): a waiting line's pair and the quarantine tank it waits for
+  const pairWaits = productionLines(g).some((l) => l.waiting && l.tanks.breed === t.id && l.tanks.raise !== t.id);
+  const nextFor = productionLines(g).find((l) => l.waiting && l.tanks.quarantine.includes(t.id));
+  const places = waitingLine ? lineView(g, waitingLine)?.raising.places : undefined;
+  const autoFeed = t.equipment.some((e) => e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'autofeeder');
   let sub: string;
   if (L === 'water') sub = need ? `${g1(need.fresh + need.salt)} gal a day${t.equipment.some((e) => e.defId === 'ato') ? ' · top-off' : ''}` : 'By hand';
   else if (L === 'food') sub = doser ? `Doser · ${doserNeeds(g, t).reduce((a, n) => a + n.servings, 0) * 3} a day` : feeder ? 'Autofeeder' : kept ? 'Keepers’ rounds' : 'By hand';
-  else if (L === 'animals') sub = `${animals + young} ${animals + young === 1 ? 'animal' : 'animals'}${lines.length ? ` · ${lines.join(' · ')}` : ''}${waiting ? ' · waits' : ''}`;
-  else sub = waiting ? 'Full · waits' : young ? `${young} young` : `${gallons(t)} gal`;
+  else if (L === 'animals') sub = `${animals + young} ${animals + young === 1 ? 'animal' : 'animals'}${lines.length ? ` · ${lines.join(' · ')}` : ''}${waiting || pairWaits ? ' · waits' : ''}`;
+  else if (waiting) sub = places ? `Full · ${places.used}/${places.cap}` : 'Full · waits';
+  else if (pairWaits) sub = 'Pair waits';
+  else if (nextFor) sub = `Next: ${nextFor.name.replace(/ line$/, '')}`;
+  else if (young) sub = `${young} young`;
+  else sub = ctx.early && autoFeed ? `${gallons(t)} gal · Auto-feed on` : `${gallons(t)} gal`;
   const label = `${t.name}: ${WATER_CLASS_LABEL[t.waterClass] ?? t.waterClass}, ${gallons(t)} gal${lines.length ? `, ${lines.join(' and ')} ${lines.length === 1 ? 'line' : 'lines'}` : ''}. ${sub}`;
-  const cls = clsx('ops-tank', marine && 'ops-tank--marine', waiting && 'ops-tank--warn', L === 'food' && doser && 'ops-tank--violet', ctx.isSel('tank', t.id) && 'is-selected');
+  const warn = waiting || ((pairWaits || !!nextFor) && L === 'all');
+  const cls = clsx('ops-tank', marine && 'ops-tank--marine', warn && 'ops-tank--warn', L === 'food' && doser && 'ops-tank--violet', ctx.isSel('tank', t.id) && 'is-selected');
   if (ctx.small)
     return (
       <span className={cls} data-testid={`map-tank-${t.id}`} aria-label={label}>
@@ -218,7 +247,7 @@ function WaterArea({ ctx }: { ctx: Ctx }) {
   if (!room)
     return (
       <Area ctx={ctx} id="water" title="Water room" dashed style={{ gridColumn: ctx.small ? undefined : 'span 2' }}>
-        <span className="ops-tank__sub">Specialty Shop · research Central Water Supply</span>
+        <Reqs reqs={missingReqs(g, 2)} />
       </Area>
     );
   const needed = saltWaterNeeded(g);
@@ -241,21 +270,49 @@ function WaterArea({ ctx }: { ctx: Ctx }) {
   );
 }
 
+/** chunk 6 (DES-013): a room not built yet shows what it still needs, as the tier ladder words it (ADR-0026 C8). */
+function missingReqs(g: GameState, tier: 2 | 3) {
+  return tierLadder(g).find((t) => t.tier === tier)?.reqs.filter((r) => !r.met) ?? [];
+}
+
 function SuppliesArea({ ctx }: { ctx: Ctx }) {
   const { g, L } = ctx;
   const salt = ctx.snap.problems.find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === 'salt');
   const feeders = g.tankOrder.filter((id) => g.tanks[id]?.equipment.some((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder')).length;
   const dry = Object.entries(g.inventory.foods).filter(([id]) => isAutofeederFood(id)).reduce((a, [, n]) => a + Math.floor(n), 0);
+  // chunk 6 (DES-013, §7.5): each dry food an Autofeeder drops, with its stock ("Micro Pellets · 34 · Autofeeder")
+  const byFood = new Map<string, number>();
+  for (const id of g.tankOrder) {
+    const t = g.tanks[id];
+    if (!t?.equipment.some((e) => e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'autofeeder')) continue;
+    const food = pickAutofeedFood(g.inventory.foods, inhabitantsOf(g, id).map((i) => i.species));
+    if (food) byFood.set(food, (byFood.get(food) ?? 0) + 1);
+  }
+  const fed = [...byFood.entries()];
   return (
     <Area ctx={ctx} id="supplies" title="Supplies" dim={L === 'animals' || L === 'water'}>
-      {(g.facility.water || g.inventory.salt > 0) && (
-        <Machine ctx={ctx} id="saltmix" name="Salt mix" sub={`${g1(g.inventory.salt)} kg${salt ? ` · ${salt.state === 'out' ? 'Out' : salt.state === 'arriving' ? 'Due' : 'Low'}` : ''}`} warn={salt?.state === 'out'} />
+      {(g.facility.water || g.inventory.salt > 0) && <Machine ctx={ctx} id="saltmix" name="Salt mix" sub={`${g1(g.inventory.salt)} kg${salt ? ` · ${saltWord(g, salt)}` : ''}`} warn={salt?.state === 'out'} />}
+      {fed.length ? (
+        fed.map(([id, k]) => <Machine key={id} ctx={ctx} id="dry" name={getFoodDef(id)?.name ?? id} sub={`${Math.floor(g.inventory.foods[id] ?? 0)} · ${k === 1 ? 'Autofeeder' : `${k} Autofeeders`}`} />)
+      ) : (
+        <Machine ctx={ctx} id="dry" name="Dry food" sub={`${dry} servings · ${feeders} ${feeders === 1 ? 'Autofeeder' : 'Autofeeders'}`} />
       )}
-      <Machine ctx={ctx} id="dry" name="Dry food" sub={`${dry} servings · ${feeders} ${feeders === 1 ? 'Autofeeder' : 'Autofeeders'}`} />
       {g.facility.food && <Machine ctx={ctx} id="eggs" name="Brine shrimp eggs" sub={`${Math.floor(g.inventory.brineShrimpEggs ?? 0)} scoops`} />}
       {!g.staff?.roster.some((m) => m.role === 'stock_manager') && <span className="ops-tank__sub">You restock from the Market</span>}
     </Area>
   );
+}
+
+/** The salt mix tile's state: "Low · 1 batch", "Out", "due 3:00 PM" or "due Day 39" (DES-013, §7.5). */
+function saltWord(g: GameState, p: SupplyProblem): string {
+  if (p.state === 'out') return 'Out';
+  if (p.state === 'arriving') {
+    const at = p.arrives ?? g.clock.hour;
+    return dayOf(at) > dayOf(g.clock.hour) ? `due Day ${dayOf(at)}` : `due ${formatClock(at)}`;
+  }
+  const room = g.facility.water;
+  const n = room ? Math.floor((p.stock + 1e-6) / batchSaltKg(batchGal(room))) : 0;
+  return `Low · ${n} ${n === 1 ? 'batch' : 'batches'}`;
 }
 
 function FoodArea({ ctx }: { ctx: Ctx }) {
@@ -264,7 +321,7 @@ function FoodArea({ ctx }: { ctx: Ctx }) {
   if (!room)
     return (
       <Area ctx={ctx} id="food" title="Live food room" dashed style={{ gridColumn: ctx.small ? undefined : 'span 2' }}>
-        <span className="ops-tank__sub">Research Live Food Cultures</span>
+        <Reqs reqs={missingReqs(g, 3)} />
       </Area>
     );
   const next = (kind: 'cone' | 'jar') => {
@@ -346,6 +403,12 @@ function BreedingArea({ ctx }: { ctx: Ctx }) {
           <TankTile key={t.id} ctx={ctx} t={t} />
         ))}
       </div>
+      {ctx.early &&
+        lockedSlotRows(lines.length, ctx.slots, ctx.small ? 1 : 3).map((r) => (
+          <div key={r.n} className="ops-tank__sub ops-slot--locked" data-testid={`map-slot-${r.n}`}>
+            <Lock size={12} aria-hidden /> Line slot {r.n} · {r.level}
+          </div>
+        ))}
     </Area>
   );
 }
@@ -462,7 +525,7 @@ function TankDetails({ ctx, id }: { ctx: Ctx; id: string }) {
       </div>
       <div className="ops-card__actions">
         <Button size="sm" onClick={() => go({ kind: 'tankCard', tankId: id, tab: 'water' })}>
-          Open tank
+          Open tank card
         </Button>
         {line && (
           <button type="button" className="ops-link" onClick={() => go({ kind: 'panel', panel: 'livestock', tab: 'production', target: `line:${line.id}` })}>

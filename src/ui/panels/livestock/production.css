@@ -81,7 +81,7 @@ button.pr-pair { cursor: pointer; }
 .pr-tankrow__head { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 10px 14px; border: 0; background: transparent; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
 .pr-tankrow__icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-sm); background: var(--c-fill-2); color: var(--c-aqua); }
 .pr-tankrow__text { flex: 1; min-width: 0; display: grid; gap: 2px; }
-.pr-tankrow__label { color: var(--c-ink-3); font-size: calc(11px * var(--text-scale)); font-weight: 600; letter-spacing: 0.08em; }
+.pr-tankrow__label { color: var(--c-ink-3); font-size: calc(11px * var(--text-scale)); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .pr-tankrow__name { font-weight: 600; }
 .pr-tankrow__sub { color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); }
 .pr-tankrow__chev { flex: none; color: var(--c-ink-3); transition: transform 0.2s var(--ease); }

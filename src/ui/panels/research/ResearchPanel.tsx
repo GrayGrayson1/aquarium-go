@@ -213,6 +213,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
       <div className="pn-grow pn-col" style={{ gap: 6 }}>
         <div className="pn-row pn-gap-2 pn-row--wrap">
           <b className="pn-research__name">{d.name}</b>
+          {d.branch === 'facility' && <Chip tone="aqua">New</Chip> /* chunk 6 (DES-013, §8.8): the Facility projects are new in 0.5 */}
           {status === 'done' && (owned ? <Chip tone="good" title="You already unlocked everything this project teaches by playing — no need to study it.">Learned through play</Chip> : <Chip tone="good">Complete</Chip>)}
           {status === 'active' && <Chip tone="aqua">In progress</Chip>}
         </div>

@@ -14,7 +14,7 @@ import { flushBackgroundTanks } from '@/game/fastMutate';
 
 const toast = (label: string, text: string, detail?: string, kind: 'success' | 'info' = 'success') => useUI.getState().toast(text, kind, { label, ...(detail ? { detail } : {}) });
 
-/** Buy a bag of marine salt mix: "Bought · $15" / "5 kg of marine salt mix" / "{kg} kg in stock · enough for {n} batch(es)." */
+/** Buy a bag of marine salt mix: "Bought · $15" / "5 kg of marine salt mix" / "{kg} kg in stock · enough for {n} batch(es)." (40 kg: "The salt mixer can start its next batch.") */
 export function buySaltBag(kg: number): boolean {
   const r = act((d) => buySalt(d, kg), { quiet: true });
   if (!r?.ok) return false;
@@ -22,7 +22,9 @@ export function buySaltBag(kg: number): boolean {
   const stock = Math.round(g.inventory.salt * 10) / 10;
   const per = g.facility.water ? batchSaltKg(batchGal(g.facility.water)) : 4.1;
   const n = Math.floor((g.inventory.salt + 1e-6) / per);
-  toast(`Bought · $${kg * SALT_PRICE_PER_KG}`, `${kg} kg of marine salt mix`, `${stock} kg in stock · enough for ${n} ${n === 1 ? 'batch' : 'batches'}.`);
+  // the 40 kg sack's toast is the design's (§11 "Toasts", DES-013); the 5 and 20 kg bags count batches (§11 "Salt sizes")
+  const detail = kg === 40 ? 'The salt mixer can start its next batch.' : `${stock} kg in stock · enough for ${n} ${n === 1 ? 'batch' : 'batches'}.`;
+  toast(`Bought · $${kg * SALT_PRICE_PER_KG}`, `${kg} kg of marine salt mix`, detail);
   return true;
 }
 

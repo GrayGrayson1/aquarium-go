@@ -10,7 +10,7 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { STOCK_BUDGET } from '@/data/staff';
 import { formatClock, dayOf } from '@/sim/time';
 import { SALT_PRICE_PER_KG } from '@/sim/economy';
-import { batchGal, batchSaltKg, prepRate, saltOutText, freshCap, type Problem, type SupplyProblem } from '@/sim/automation';
+import { batchGal, batchSaltKg, prepRate, freshCap, tankChangeNeed, type Problem, type SupplyProblem } from '@/sim/automation';
 import { opsSnapshot } from '@/ui/common/ops';
 import { findLine } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
@@ -53,6 +53,37 @@ export function nextMixHour(now: number): number {
 }
 
 const first = (name: string) => name.split(' ')[0];
+const money = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`;
+
+/** chunk 6 (DES-013) — the salt tanks' morning water-change time (the earliest lights-on among them), or null. */
+export function saltChangeHour(g: GameState): number | null {
+  let best: number | null = null;
+  for (const id of g.tankOrder) {
+    const t = g.tanks[id];
+    if (!t || !((tankChangeNeed(g, t)?.salt ?? 0) > 0)) continue;
+    const h = t.lighting?.onHour ?? 8;
+    if (best === null || h < best) best = h;
+  }
+  return best;
+}
+
+/** The out-of-salt reason in the Problems card's words (DESIGN-S3D §7.6; the notification keeps saltOutText's). */
+function saltOutReason(g: GameState, p: SupplyProblem): string {
+  const f = opsSnapshot(g).forecast;
+  const name = first(f?.m.name ?? 'Your stock manager');
+  switch (p.why) {
+    case 'no_manager':
+      return 'No one reorders salt mix. Buy it, or hire a stock manager.';
+    case 'orders_off':
+      return `${name}’s orders are switched off, so nobody reorders salt mix.`;
+    case 'cash':
+      return `${name} couldn’t reorder salt mix: there isn’t enough cash right now.${p.shortDay !== undefined ? ` Salt water lasts until Day ${p.shortDay}.` : ''}`;
+    default: {
+      const mixing = (g.facility.water?.mix?.gal ?? 0) > 1e-6 ? ' Salt mixing stops after the batch in the tank.' : '';
+      return `${name} couldn’t reorder salt mix — today’s ${money(f?.budget ?? g.staff?.stockBudget ?? 0)} stock budget is spent.${mixing}`;
+    }
+  }
+}
 
 /** Is the stock budget at its level's maximum (then "Raise budget" gives way to the reason, ADR-0026 decision 10)? */
 export function budgetAtMax(g: GameState): boolean {
@@ -83,14 +114,14 @@ function saltIssue(g: GameState, p: SupplyProblem): IssueView {
     };
   }
   const batches = Math.floor((p.stock + 1e-6) / batchKg);
+  // chunk 6 (DES-013, ADR-0035 decision 3): why no reorder comes, in the design's words (§7.6)
+  const budget = p.why === 'budget' && f ? ` ${first(f.m.name)}’s ${money(f.budget)} budget won’t stretch to a sack today: food comes first.` : '';
   const reason =
     p.state === 'out'
-      ? noManager
-        ? 'No one reorders salt mix. Buy it, or hire a stock manager.'
-        : saltOutText(g, p)
+      ? saltOutReason(g, p)
       : batches <= 1
-        ? `${kg} kg: enough for ${nextMixHour(now) - now > 12 ? 'tomorrow’s' : 'the'} ${formatClock(nextMixHour(now))} batch, then none.`
-        : `${kg} kg: enough for ${batches} batches.`; // ADR-0032
+        ? `${kg} kg: enough for ${nextMixHour(now) - now > 12 ? 'tomorrow’s' : 'the'} ${formatClock(nextMixHour(now))} batch, then none.${budget}`
+        : `${kg} kg: enough for ${batches} batches.${budget}`; // ADR-0032
   return {
     key: 'salt',
     kind: 'salt',

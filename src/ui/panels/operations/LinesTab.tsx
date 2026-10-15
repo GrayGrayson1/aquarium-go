@@ -29,9 +29,16 @@ const STAGES: { id: StageId; label: string }[] = [
 
 const production = () => go({ kind: 'panel', panel: 'livestock', tab: 'production' });
 
-/** "12 juveniles in Grow-out B · day 15 of 19", or what the line waits for. */
+/** Within two days, the brood's next stage gets its hours (DES-013: "· next stage in 6 h"); a longer wait shows as "day x of y". */
+const NEXT_STAGE_SHOWN_H = 48;
+
+/** "12 juveniles in Grow-out B · day 15 of 19 · next stage in 6 h", or what the line waits for. */
 function doing(g: GameState, line: ProductionLine, v: LineView): string {
-  if (v.raising.count > 0) return `${v.raising.count} ${v.raising.word} in ${v.raise?.name ?? 'the raise tank'}${v.raising.dayOf !== undefined && v.raising.ofDays ? ` · day ${v.raising.dayOf} of ${v.raising.ofDays}` : ''}`;
+  if (v.raising.count > 0) {
+    const days = v.raising.dayOf !== undefined && v.raising.ofDays ? ` · day ${v.raising.dayOf} of ${v.raising.ofDays}` : '';
+    const h = v.raising.nextStageIn;
+    return `${v.raising.count} ${v.raising.word} in ${v.raise?.name ?? 'the raise tank'}${days}${h !== undefined && h <= NEXT_STAGE_SHOWN_H ? ` · next stage in ${h} h` : ''}`;
+  }
   if (v.quarantined.count > 0) return `${v.quarantined.count} ${v.quarantined.word} in ${v.quarantine?.name ?? 'quarantine'}${v.quarantined.listsDay ? ` · lists Day ${v.quarantined.listsDay}` : ''}`;
   if (v.next.days !== undefined) return `Next clutch in ${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`;
   return `${v.mother?.name ?? 'The pair'} and ${v.father?.name ?? 'its partner'} are getting ready`;
@@ -90,7 +97,7 @@ export function LinesTab({ g, small }: { g: GameState; small: boolean }) {
         </Kicker>
         <div className="ops-rows">
           {list.map((line) => (
-            <LineRow key={line.id} g={g} line={line} held={held} small={small} />
+            <LineRow key={line.id} g={g} line={line} held={held} small={small} early={slots <= 1} />
           ))}
         </div>
       </section>
@@ -108,7 +115,7 @@ export function LinesTab({ g, small }: { g: GameState; small: boolean }) {
   );
 }
 
-function LineRow({ g, line, held, small }: { g: GameState; line: ProductionLine; held: boolean; small: boolean }) {
+function LineRow({ g, line, held, small, early }: { g: GameState; line: ProductionLine; held: boolean; small: boolean; early: boolean }) {
   const v = lineView(g, line);
   if (!v) return null;
   const sp = v.sp;
@@ -129,6 +136,12 @@ function LineRow({ g, line, held, small }: { g: GameState; line: ProductionLine;
         </span>
         {!small && <Track v={v} held={stuck} />}
         <span className={stuck ? 'ops-amber' : 'ops-row__sub'}>{v.status === 'paused_by_you' ? 'Paused by you · animals stay where they are' : doing(g, line, v)}</span>
+        {early && v.selling.listed > 0 && (
+          <span className="ops-row__sub ops-num" data-testid={`line-listed-${line.id}`}>
+            Listed now {v.selling.listed}
+            {v.selling.bestBid ? ` · best bid ${formatMoney(v.selling.bestBid)}` : ''}
+          </span>
+        )}
       </div>
       <div className="ops-line__right">
         <span data-testid={`line-status-${line.id}`}>
@@ -141,8 +154,14 @@ function LineRow({ g, line, held, small }: { g: GameState; line: ProductionLine;
           )}
         </span>
         {!small && <span className="ops-muted ops-num">{week}</span>}
-        <Toggle checked={line.running} onChange={(on) => doLineSwitch(line.id, on)} label={`Run the ${line.name}`} testId={`line-toggle-${line.id}`} />
+        {!small && <Toggle checked={line.running} onChange={(on) => doLineSwitch(line.id, on)} label={`Run the ${line.name}`} testId={`line-toggle-${line.id}`} />}
         {small && <span className="ops-muted ops-num">This week {week}</span>}
+        {small && (
+          <span className="ops-line__switch">
+            <span aria-hidden>Line on</span>
+            <Toggle checked={line.running} onChange={(on) => doLineSwitch(line.id, on)} label={`Line on: ${line.name}`} testId={`line-toggle-${line.id}`} />
+          </span>
+        )}
       </div>
       <div className="ops-line__route" data-testid={`line-route-${line.id}`}>
         <RouteStrip g={g} line={line} v={v} />
@@ -228,14 +247,20 @@ function ComingUp({ g, lines }: { g: GameState; lines: ProductionLine[] }) {
   );
 }
 
-/** The line slots still locked, as dashed rows ("Line slot 2 · Specialty Shop"). */
-function LockedSlots({ used, slots }: { used: number; slots: number }) {
+/** The next line slots still locked and the level that opens each (the Lines tab and the early map). */
+export function lockedSlotRows(used: number, slots: number, max = 3): { n: number; level: string }[] {
   const rows: { n: number; level: string }[] = [];
   let n = Math.max(slots, used) + 1;
   for (const lvl of FACILITY_LEVELS) {
     const s = PRODUCTION_LINE_SLOTS[lvl.id];
-    while (n <= s && rows.length < 3) rows.push({ n: n++, level: lvl.name });
+    while (n <= s && rows.length < max) rows.push({ n: n++, level: lvl.name });
   }
+  return rows;
+}
+
+/** The line slots still locked, as dashed rows ("Line slot 2 · Specialty Shop"). */
+function LockedSlots({ used, slots }: { used: number; slots: number }) {
+  const rows = lockedSlotRows(used, slots);
   if (!rows.length) return null;
   return (
     <div className="ops-col">

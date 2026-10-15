@@ -29,6 +29,7 @@ import {
   type LineStage,
 } from '@/sim/production';
 import { lineColour, lineView, slotsCaption, type LineView, type StageId } from '@/sim/production/view';
+import { doserOf } from '@/sim/automation';
 import { act } from '../common/act';
 import { Bar, EmptyState, Seg, Tile } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
@@ -248,7 +249,10 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
         <div className="pr-note" role="status" data-testid="production-note">
           <TriangleAlert size={16} aria-hidden />
           <span>
-            {raiseName} is full, so {v.mother?.name ?? 'the pair'} and {v.father?.name ?? 'its partner'} are kept apart until there's room.
+            {raiseName} is full, so {v.mother?.name ?? 'the pair'} and {v.father?.name ?? 'its partner'} are kept apart until there’s room.{' '}
+            <button type="button" className="pn-link" data-testid="production-note-fix" onClick={() => go(g.progress.unlocked.includes('operations_desk') ? { kind: 'panel', panel: 'operations', tab: 'overview', target: 'view:issues' } : { kind: 'panel', panel: 'operations', tab: 'lines' })}>
+              Fix
+            </button>
           </span>
           {addQt}
         </div>
@@ -296,7 +300,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
         <Stage id="raise" n={2} icon={<Sprout size={16} />} title="Raise" active={v.active === 'raise'} pill={<TankPill g={g} tankId={line.tanks.raise} />}>
           <p>
             {v.raising.count > 0
-              ? `${v.raising.count} ${v.raising.word} · ${v.raising.feeding ? `${v.raising.feeding.food} ${v.raising.feeding.meals}× a day from the Autofeeder` : 'first foods by hand or on keepers’ rounds'}`
+              ? `${v.raising.count} ${v.raising.word} · ${v.raise && doserOf(v.raise) ? 'baby brine and infusoria from the doser' : v.raising.feeding ? `${v.raising.feeding.food} ${v.raising.feeding.meals}× a day from the Autofeeder` : 'first foods by hand or on keepers’ rounds'}`
               : 'Waiting for the next clutch'}
           </p>
           {v.raising.dayOf !== undefined && v.raising.ofDays && (

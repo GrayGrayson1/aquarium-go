@@ -12,7 +12,7 @@
 import type { GameState } from '@/types';
 import { BRINE, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { RESEARCH_BY_ID } from '@/data/research';
-import { FACILITY_LEVEL_ORDER, getFacilityLevel } from '@/data/facilities';
+import { FACILITY_LEVEL_ORDER, PRODUCTION_LINE_SLOTS, getFacilityLevel } from '@/data/facilities';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import type { FacilityLevelId } from '@/types';
 import { automationProblems, decidedLines, manualModeOn, problemCounts, type Problem } from '@/sim/automation';
@@ -210,6 +210,14 @@ function researchReq(g: GameState, id: string): LadderReq {
   return { met: false, text: `Research ${def.name} · $${def.cost.toLocaleString('en-US')} · ${days} ${days === 1 ? 'day' : 'days'}` };
 }
 
+/** chunk 6 (DES-013; SPEC §11 "Tier ladder"): "1 line now · 2 at a Specialty Shop", the next level that adds line slots. */
+function slotsReq(slots: number): LadderReq[] {
+  const next = FACILITY_LEVEL_ORDER.find((id) => (PRODUCTION_LINE_SLOTS[id] ?? 0) > slots);
+  if (!next) return [];
+  const name = getFacilityLevel(next).name;
+  return [{ met: false, text: `${slots} ${slots === 1 ? 'line' : 'lines'} now · ${PRODUCTION_LINE_SLOTS[next]} at ${/^[AEIOU]/.test(name) ? 'an' : 'a'} ${name}` }];
+}
+
 /** Tiers 2 to 5 with their requirements, met or missing (the early ladder, the before-the-Desk card, locked pages). */
 export function tierLadder(g: GameState): LadderTier[] {
   const t = opsTier(g);
@@ -223,7 +231,7 @@ export function tierLadder(g: GameState): LadderTier[] {
       open: t.food,
       reqs: [researchReq(g, 'central_water_supply'), researchReq(g, 'breeding_program'), researchReq(g, 'live_food_cultures')],
     },
-    { tier: 4, key: 'lines', name: 'Breeding facility', desc: 'More production lines that share tanks', open: t.slots >= 2, reqs: levelReq(g, 'specialty_shop') },
+    { tier: 4, key: 'lines', name: 'Breeding facility', desc: 'More production lines that share tanks', open: t.slots >= 2, reqs: [...slotsReq(t.slots), ...levelReq(g, 'specialty_shop')] },
     { tier: 5, key: 'tools', name: 'Operations', desc: 'Bottlenecks, schedules, weekly money, manual mode', open: t.desk, reqs: [...levelReq(g, 'aquarium_store'), researchReq(g, 'operations_desk')] },
   ];
 }

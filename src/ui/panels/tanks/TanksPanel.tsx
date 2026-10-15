@@ -4,7 +4,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Layers, Eye, Pencil, Check, X, Tag, Wrench, Plus, Fish, Droplets, Sparkles, Ticket, Gauge, ChevronDown, Egg, Coins } from 'lucide-react';
+import { Layers, Eye, Pencil, Check, X, Tag, Wrench, Plus, Fish, Droplets, Sparkles, Ticket, Gauge, ChevronDown, Egg, Coins, ClipboardList } from 'lucide-react';
 import type { GameState, Tank, TankPurpose, WaterClass } from '@/types';
 import { Button, StatusBadge, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
@@ -197,6 +197,11 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
         <Button size="sm" variant={focused ? 'default' : 'primary'} onClick={focus}>
           <Eye size={15} /> {focused ? 'In view' : 'View'}
         </Button>
+        {focused && (
+          <Button size="sm" data-testid={`tank-row-card-${tank.id}`} onClick={() => go({ kind: 'tankCard', tankId: tank.id, tab: 'water' })}>
+            <ClipboardList size={15} /> Tank card
+          </Button>
+        )}
         <Button size="sm" onClick={onToggle} aria-expanded={open}>
           <ChevronDown size={15} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform .2s' }} /> Manage
         </Button>

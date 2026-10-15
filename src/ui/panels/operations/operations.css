@@ -167,3 +167,7 @@ body:has(.pn-sheet--side[data-panel='operations'].is-max) .ag-toasts > :not(:las
 @media (prefers-reduced-motion: reduce) {
   .ops-bar__fill { transition: none; }
 }
+/* chunk 6 (DES-013): the phone card's "Line on" switch, its label beside it (§7.4) */
+.ops-line__switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--c-ink-2); }
+/* chunk 6 (DES-013): the early map's locked line slots in Breeding (§7.5 "Early") */
+.ops-slot--locked { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px dashed var(--c-line-strong); border-radius: 10px; }

@@ -7,7 +7,7 @@
  * tab); purchases stay as quick actions and fixes that belong to Problems are left out. No section until something is
  * automated (INTAKE C-48).
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronRight, Droplets, Egg, Factory, Hand, OctagonAlert, TriangleAlert } from 'lucide-react';
 import type { GameState } from '@/types';
 import { useGameSelector } from '@/state/game';
@@ -15,13 +15,15 @@ import { sfx } from '@/audio/sfx';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { formatClock } from '@/sim/time';
 import { HOLD_SYSTEMS, heldSystems, manualSince } from '@/sim/automation';
-import { productionLines } from '@/sim/production';
-import { Button } from '../kit';
+import { findLine, productionLines, quarantineKit } from '@/sim/production';
+import { Button, formatMoney } from '../kit';
+import { useIsMobile } from '../common/safe';
+import { AddQuarantine } from '../panels/livestock/Production';
 import { go } from '../nav/router';
 import { useShell } from '../common/shellStore';
 import { opsKey, opsSnapshot } from '../common/ops';
 import { issueViews, type IssueView } from '../panels/operations/issues';
-import { buyEggTin, buySaltBag, buyVegPack } from '../panels/operations/actions';
+import { buyEggTin, buySaltBag, buyVegPack, markDecided } from '../panels/operations/actions';
 
 const close = () => useShell.getState().set({ popover: null });
 
@@ -37,6 +39,8 @@ const TAB = { water: { label: 'Water tab', icon: Droplets }, feed: { label: 'Fee
 export function AutomationSection({ game }: { game: GameState }) {
   const key = useGameSelector(opsKey, '');
   const snap = useMemo(() => opsSnapshot(game), [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [addingQt, setAddingQt] = useState<string | null>(null);
+  const small = useIsMobile();
   if (!anythingAutomated(game)) return null;
   const desk = game.progress.unlocked.includes('operations_desk');
   const issues = issueViews(game, snap.problems);
@@ -59,9 +63,8 @@ export function AutomationSection({ game }: { game: GameState }) {
         <div className="ag-alert-row" data-testid="alerts-automation-manual">
           <Hand size={16} aria-hidden />
           <span className="ag-grow">
-            <span className="ag-alert-row__title">Manual mode{since !== null ? ` since ${formatClock(since)}` : ''}</span>
-            <span className="ag-alert-row__text">
-              {held.length} of {HOLD_SYSTEMS.length} systems held
+            <span className="ag-alert-row__title">
+              Manual mode{since !== null ? ` since ${formatClock(since)}` : ''} · {held.length} of {HOLD_SYSTEMS.length} systems held
             </span>
           </span>
           <button type="button" className="ag-linkbtn" onClick={() => open('view:manual')}>
@@ -70,16 +73,20 @@ export function AutomationSection({ game }: { game: GameState }) {
         </div>
       )}
       {issues.map((i) => (
-        <Item key={i.key} issue={i} desk={desk} onDetails={() => (desk ? open('view:issues') : open(null, i.tab))} />
+        <Item key={i.key} g={game} issue={i} desk={desk} small={small} onAddQt={setAddingQt} onDetails={() => (desk ? open('view:issues') : open(null, i.tab))} />
       ))}
       {!issues.length && !held.length && <div className="ag-muted ag-small">Automation is running smoothly.</div>}
+      {addingQt && findLine(game, addingQt) && <AddQuarantine g={game} line={findLine(game, addingQt)!} onClose={() => setAddingQt(null)} onAdded={() => markDecided(addingQt)} />}
     </div>
   );
 }
 
-function Item({ issue, desk, onDetails }: { issue: IssueView; desk: boolean; onDetails: () => void }) {
+function Item({ g, issue, desk, small, onAddQt, onDetails }: { g: GameState; issue: IssueView; desk: boolean; small: boolean; onAddQt: (lineId: string) => void; onDetails: () => void }) {
   const Icon = issue.tone === 'danger' ? OctagonAlert : TriangleAlert;
   const buy = issue.action && issue.action.id.startsWith('buy') ? issue.action : null;
+  // chunk 6 (DES-013, §8.3): with the Desk, a held-up line's main action is the fix (phone "Add QT tank · $95")
+  const lineId = desk && issue.problem.kind === 'line' ? issue.problem.lineId : null;
+  const kit = lineId ? quarantineKit(g, lineId) : null;
   const tab = TAB[issue.tab];
   const TabIcon = tab.icon;
   return (
@@ -100,6 +107,11 @@ function Item({ issue, desk, onDetails }: { issue: IssueView; desk: boolean; onD
               }}
             >
               {buy.label}
+            </Button>
+          )}
+          {lineId && kit && (
+            <Button size="sm" data-testid={`alerts-item-add-qt`} onClick={() => onAddQt(lineId)}>
+              {small ? 'Add QT tank' : 'Add a quarantine tank'} · {formatMoney(kit.price)}
             </Button>
           )}
           {desk ? (

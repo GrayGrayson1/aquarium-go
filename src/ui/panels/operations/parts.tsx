@@ -132,26 +132,33 @@ export function Ladder({ tiers, title, end, testId }: { tiers: LadderTier[]; tit
       <Kicker end={end}>{title}</Kicker>
       <div className="ops-rows">
         {locked.map((t, i) => (
-          <div key={t.tier} className="ops-row" style={{ alignItems: 'flex-start' }}>
-            <div className="ops-row__main">
-              <span className="ops-row__title">
-                <span className="ops-muted">Tier {t.tier}</span> {t.name}{' '}
-                {i === 0 ? (
-                  <Status tone="aqua" icon="time">
-                    Next up
-                  </Status>
-                ) : (
-                  <Status tone="neutral" icon="locked">
-                    Locked
-                  </Status>
-                )}
-              </span>
-              <span className="ops-row__sub">{t.desc}</span>
-              <Reqs reqs={t.reqs} />
-            </div>
-          </div>
+          <TierRow key={t.tier} t={t} next={i === 0} />
         ))}
       </div>
     </section>
+  );
+}
+
+/** One tier of the ladder: "Tier 2 Water room", Next up or Locked, what it gives and what it needs. */
+export function TierRow({ t, next }: { t: LadderTier; next: boolean }) {
+  return (
+    <div className="ops-row" style={{ alignItems: 'flex-start' }}>
+      <div className="ops-row__main">
+        <span className="ops-row__title">
+          <span className="ops-muted">Tier {t.tier}</span> {t.name}{' '}
+          {next ? (
+            <Status tone="aqua" icon="time">
+              Next up
+            </Status>
+          ) : (
+            <Status tone="neutral" icon="locked">
+              Locked
+            </Status>
+          )}
+        </span>
+        <span className="ops-row__sub">{t.desc}</span>
+        <Reqs reqs={t.reqs} />
+      </div>
+    </div>
   );
 }
