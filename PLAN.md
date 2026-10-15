@@ -365,6 +365,17 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   `78548a3` (its tree is `6594d21`'s) and pushed. Pages deployed by itself; Render stayed on 0.5.0 and was deployed by
   hand (`render deploys create … --commit 78548a3…`, deploy `dep-db61hn3bc2fs73afp29g`). Both `version.json` files
   read `{"id":"78548a3-…","version":"0.5.1"}`.
+- **0.5.2, released 2026-10-15** at the owner's request in the session ("run the checks and release 0.5.2 if green
+  yeah run all you were going to then release for sure"), before chunk 6 ends: chunks 4 (production lines) and 5
+  (Operations, the Water and Live food rooms) and chunk 6 so far. The four checks passed on `86de7c3` (typecheck; unit
+  222 files, 2,602 tests; build; e2e 257 of 257, Chromium and WebKit) after the first full WebKit runs found five
+  WebKit-only test problems (`3435f27`, `86de7c3`). Merged as `1268783` and pushed, but the Pages deploy (now running
+  typecheck and the unit tests, B-193) failed two wall-clock limits on GitHub's slower runner: `c36efa1` scales the
+  unit tests' time limits on CI and Render (merge `8a8b98e`, Pages deployed). Render's build (also running the tests
+  since ADR-0035) passed every test but failed on Vitest worker RPC timeouts: `6bc1bf8` uses two workers on Render
+  (merge `e527e10`). Pushes go from the internal-disk clone (from the disk image the push hung), after the owner added
+  gh's `workflow` scope (deploy.yml changed). Pages deployed `e527e10` by itself; Render by hand
+  (`dep-db8j6mpsrm7s73eh8f30`). Both `version.json` files read `{"id":"e527e10-…","version":"0.5.2"}`.
 
 ## Product decisions in force
 
