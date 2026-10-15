@@ -18,7 +18,7 @@ import { feedTank, type ActionResult } from '@/sim/care';
 import { toastCaution } from '@/ui/common/actions'; // lane:qa-r3
 import { registerGlassTap, noteInteraction } from '@/sim/life/actions';
 import { findSpecies } from '@/data/species';
-import { getFoodDef } from '@/data/catalog/foods';
+import { eatsFood, getFoodDef } from '@/data/catalog/foods';
 import { sfx } from '@/audio/sfx';
 import { aiFeed, aiTap } from '@/ai/registry';
 import { TapSpam } from './tapSpam';
@@ -387,7 +387,7 @@ function pickDefaultFood(foods: Record<string, number>, speciesId?: string): str
   for (const [id, n] of Object.entries(foods)) {
     if (!(n > 0)) continue;
     const def = getFoodDef(id);
-    if (sp && def && def.tags.some((t) => sp.foods.includes(t))) return id;
+    if (sp && def && eatsFood(sp, def)) return id;
     fallback ??= id;
   }
   return fallback;

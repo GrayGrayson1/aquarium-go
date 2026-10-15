@@ -207,6 +207,6 @@ export const fancyGoldfish: SpeciesDefinition = {
     { other: 'comet_goldfish', verdictFloor: 'conditional', reason: 'Slow fancy goldfish lose out to fast comets at feeding and may be outgrown and bullied at mealtimes.', incidentRisk: 0.05, mitigatedBy: ['target_feeding', 'tank_size'] },
     { other: 'white_cloud_minnow', verdictFloor: 'conditional', reason: 'Nimble white clouds reach food long before a fancy goldfish, and a large goldfish may swallow one.', incidentRisk: 0.03, mitigatedBy: ['target_feeding', 'cover'] },
   ],
-  special: { coolWater: true, heavyWaste: true, outgrowsSmallTanks: true },
+  special: { coolWater: true, heavyWaste: true, outgrowsSmallTanks: true, swimBladderProne: true },
   visualLane: 'fish',
 };

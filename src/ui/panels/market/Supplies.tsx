@@ -8,7 +8,7 @@ import { Utensils, Waves, Wrench, Mountain, Lock, Check, Package } from 'lucide-
 import type { GameState, FoodDef, EquipmentDef } from '@/types';
 import { Button, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { FOODS } from '@/data/catalog/foods';
+import { FOODS, eatsFood, madeForSpecies } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { buyFood, buySalt, buyEquipment, SALT_PRICE_PER_KG } from '@/sim/economy';
 import { act } from '../common/act';
@@ -24,15 +24,8 @@ import { CulturesSection, DryFoodSection, LiveFoodSection, SaltRow, foodsShownAb
 /** How many foods show before "Show all" — foods you own (or have owned) and foods made for your animals always show. */
 const FOOD_PREVIEW = 8;
 
-/**
- * A food named for one of the species that eats it ("Axolotl Pellets", "Goldfish Pellets"): the food's first word is
- * the species' own noun. ("Frozen Brine Shrimp" is not *for* cherry shrimp, so only the first word counts.)
- */
-function madeFor(f: FoodDef, eaters: { id: string; commonName: string }[]): boolean {
-  const first = f.name.toLowerCase().split(/\s+/)[0] ?? '';
-  if (first.length < 4) return false;
-  return eaters.some((sp) => [sp.id.split('_').pop() ?? sp.id, sp.commonName.toLowerCase().split(/\s+/).pop() ?? ''].includes(first));
-}
+/** A food made for one of the species that eats it ("Axolotl Pellets", "Goldfish Pellets"; the catalog's madeFor, B-170). */
+const madeFor = (f: FoodDef, eaters: { id: string }[]): boolean => eaters.some((sp) => madeForSpecies(f, sp.id));
 
 export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`food:<id>` → Market): show, scroll to and highlight this food. */ focusFood?: { id: string; n: number } | null }) {
   const focused = useUI((s) => s.focusedTankId);
@@ -47,7 +40,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
   // lane:automation (chunk 5, INTAKE C-65) — foods the new sections above show keep that one row; the list leaves them out
   const above = useMemo(() => foodsShownAbove(g), [g]);
   const foods = useMemo(() => {
-    const eaters = (f: FoodDef) => ownedSpecies.filter((sp) => sp.foods.some((t) => f.tags.includes(t)));
+    const eaters = (f: FoodDef) => ownedSpecies.filter((sp) => eatsFood(sp, f));
     const rows = FOODS.filter((f) => !above.has(f.id)).map((f) => {
       const e = eaters(f);
       const known = f.id in g.inventory.foods; // owned now, or bought/used before (the key stays at 0 when it runs out)

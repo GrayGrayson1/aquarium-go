@@ -11,7 +11,7 @@
 import type { Creature, FoodDef, GameState, SpeciesDefinition, Tank } from '@/types';
 import type { StatusLevel, WaterResidents } from '@/types/reports';
 import { findSpecies } from '@/data/species';
-import { FOODS, getFoodDef } from '@/data/catalog/foods';
+import { FOODS, getFoodDef, eatsFood, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods';
 import { portionForDemand, TYPICAL_MEAL_HUNGER } from './water/food';
 import { effectiveBioload } from './water/env';
 import { illnessDef } from './life/illness';
@@ -174,7 +174,7 @@ export function needsFedFood(sp: SpeciesDefinition): boolean {
   return !(sp.special?.needsAlgaeOrBiofilm && sp.foods.includes('biofilm'));
 }
 
-const eatsRaw = (sp: SpeciesDefinition, f: FoodDef) => f.tags.some((t) => sp.foods.includes(t));
+const eatsRaw = eatsFood;
 /** lane:perf2 — memoised per (species, food) definition object (pure over static catalog data; hot in foodPerRound). */
 const EATS = new WeakMap<SpeciesDefinition, Map<FoodDef, boolean>>();
 const eats = (sp: SpeciesDefinition, f: FoodDef): boolean => {
@@ -243,8 +243,7 @@ export function foodPerRound(state: GameState, index: ResidentIndex = fedResiden
  * technically match, and a food with many tags the species doesn't eat (big pellets for small fish) counts less.
  */
 function foodFit(sp: SpeciesDefinition, f: FoodDef): number {
-  const wrongKind =
-    (/^marine_/.test(f.id) && sp.environment !== 'marine') || (/^axolotl_/.test(f.id) && sp.id !== 'axolotl') || (/^goldfish_/.test(f.id) && !/goldfish/.test(sp.id));
+  const wrongKind = madeForOtherWater(f, sp.environment) || madeForOtherSpecies(f, sp.id); // the catalog's madeFor (B-170)
   const tagFit = f.tags.filter((t) => sp.foods.includes(t)).length / Math.max(1, f.tags.length);
   return (wrongKind ? 0.2 : 1) * (0.6 + 0.4 * tagFit);
 }

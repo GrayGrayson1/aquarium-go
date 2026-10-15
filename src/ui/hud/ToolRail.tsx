@@ -31,7 +31,7 @@ import { useUI, type CameraMode, type ToolId } from '@/state/ui';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx } from '@/audio/sfx';
 import { getSpecies, findSpecies } from '@/data/species';
-import { getFoodDef } from '@/data/catalog/foods';
+import { eatsFood, getFoodDef } from '@/data/catalog/foods';
 import { getDecorDef, isEpiphyte, isFloating } from '@/data/catalog/decor';
 import { creaturesInTank } from '@/sim/life';
 import { setLighting, feedTank } from '@/sim/care';
@@ -101,7 +101,7 @@ export function foodOptions(g: GameState, tankId: string | null): FoodOption[] {
           const sp = findSpecies(c.speciesId);
           if (!sp) return false;
           if (!tags.length) return true; // unknown food data: assume edible
-          return tags.some((t) => sp.foods.includes(t));
+          return eatsFood(sp, { tags });
         })
         .map((c) => c.name);
       // lane:qa-play — larvae / fry growing here count as eaters too ("Eaten by the fry")

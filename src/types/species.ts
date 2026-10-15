@@ -531,4 +531,11 @@ export interface SpeciesSpecialNeeds {
   speciesOnly?: boolean;
   /** lane:species-marine — Powerful strikes can chip or crack thin glass (smashing mantis shrimp); acrylic or thick glass preferred. */
   glassStrikeRisk?: boolean;
+  /** chunk 6 (B-170) — Prone to swim-bladder trouble (bettas, goldfish): the illness can strike it (eligibleIllnesses). */
+  swimBladderProne?: boolean;
+  /**
+   * chunk 6 (B-170) — What its young are to a predator and in words, when its prey tags don't say (a mantis shrimp's
+   * young are young shrimp). Read it through youngKindOf in src/data/species/index.ts.
+   */
+  youngKind?: 'shrimp' | 'snail';
 }

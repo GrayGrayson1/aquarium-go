@@ -2,6 +2,7 @@
  * Natural-language helpers for compatibility reasons. OWNER: lane "waterlab".
  */
 import type { SpeciesDefinition } from '@/types';
+import { youngKindOf } from '@/data/species';
 import { pluralName } from '../economy/util';
 
 export const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -20,10 +21,10 @@ export const Subj = (sp: SpeciesDefinition) => cap(plural(sp));
 
 /** Short noun for the young of a species. */
 export function youngNoun(sp: SpeciesDefinition): string {
-  const tags = sp.preyTags ?? [];
-  if (tags.includes('shrimp_dwarf') || tags.includes('shrimp_large') || /shrimp/i.test(sp.commonName)) return `young ${plural(sp)}`;
+  const kind = youngKindOf(sp); // B-170: from the species data, not its display name
+  if (kind === 'shrimp') return `young ${plural(sp)}`;
   if (sp.category === 'amphibian') return `${lower(sp.commonName)} larvae`;
-  if (tags.includes('snail') || tags.includes('snail_small') || /snail/i.test(sp.commonName)) return `baby ${plural(sp)}`;
+  if (kind === 'snail') return `baby ${plural(sp)}`;
   if (sp.category === 'invertebrate') return `young ${plural(sp)}`;
   return `${lower(sp.commonName)} fry`;
 }

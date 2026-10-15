@@ -5,7 +5,7 @@
  * suits an animal when their tags intersect), so the guide never disagrees with what really happens in a tank.
  */
 import type { FlowLevel, FoodDef, FoodForm, SpeciesDefinition, SpeciesSpecialNeeds } from '@/types';
-import { foodForm as catalogFoodForm, foodsForTags, autofeedFoodsForTags, isAutofeederFood } from '@/data/catalog/foods';
+import { foodForm as catalogFoodForm, foodsForTags, autofeedFoodsForTags, isAutofeederFood, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods';
 
 export type { FoodForm };
 
@@ -44,8 +44,6 @@ export function foodsFor(sp: Pick<SpeciesDefinition, 'foods'>): FoodDef[] {
 }
 
 /** Foods sold for the other water type: listed last, so a betta's guide says "micro pellets", not "marine pellets". */
-const MARINE_FOODS = new Set(['marine_pellets']);
-const FRESHWATER_FOODS = new Set(['goldfish_pellets', 'axolotl_pellets']);
 
 /**
  * The foods a keeper would actually offer, for the guide's lists: the sim's foods minus big-predator chunks (anything
@@ -53,12 +51,13 @@ const FRESHWATER_FOODS = new Set(['goldfish_pellets', 'axolotl_pellets']);
  * foods sold for the other water type (goldfish pellets for a clownfish) whenever something else is left. The sim
  * still accepts those; the autofeeder verdict and "in stock" checks use `foodsFor`, not this list.
  */
-export function menuFor(sp: Pick<SpeciesDefinition, 'foods' | 'environment'>): FoodDef[] {
+export function menuFor(sp: Pick<SpeciesDefinition, 'id' | 'foods' | 'environment'>): FoodDef[] {
   const bigMouth = sp.foods.includes('pellet_large');
   const all = foodsFor(sp);
   const sized = all.filter((f) => bigMouth || !f.tags.includes('pellet_large'));
   const list = sized.length ? sized : all;
-  const away = (f: FoodDef) => (sp.environment === 'marine' ? FRESHWATER_FOODS.has(f.id) : MARINE_FOODS.has(f.id));
+  // the catalog's madeFor (B-170): a reef animal's list drops the fresh-water animals' pellets, anyone else's the salt-water food
+  const away = (f: FoodDef) => (sp.environment === 'marine' ? madeForOtherSpecies(f, sp.id) : madeForOtherWater(f, sp.environment));
   const home = list.filter((f) => !away(f));
   return home.length ? home : list;
 }

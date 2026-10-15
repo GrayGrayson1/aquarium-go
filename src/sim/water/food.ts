@@ -8,6 +8,7 @@
  */
 import type { FoodDef, FoodTag, GameState, Tank, WaterLabState } from '@/types';
 import { findSpecies } from '@/data/species';
+import { eatsFood } from '@/data/catalog/foods';
 import { clamp } from './chem';
 import { effectiveBioload, inhabitantsOf } from './env';
 
@@ -147,7 +148,7 @@ export function foodDemandUnits(state: GameState, tank: Tank, food?: FoodDef, on
   let demand = 0;
   for (const { creature, species } of inhabitantsOf(state, tank.id)) {
     if (onlyCreatureId && creature.id !== onlyCreatureId) continue;
-    if (food && !food.tags.some((t) => species.foods.includes(t))) continue;
+    if (food && !eatsFood(species, food)) continue;
     const hunger = clamp(atHunger ?? creature.stats?.hunger ?? 50, 0, 100);
     demand += effectiveBioload(species, creature.sizeCm) * Math.max(20, hunger);
   }
@@ -163,7 +164,7 @@ export const TYPICAL_MEAL_HUNGER = 55;
 export function recommendedServings(state: GameState, tank: Tank, food: FoodDef, targetCreatureId?: string, atHunger?: number): number {
   const demand = foodDemandUnits(state, tank, food, targetCreatureId, atHunger);
   const eaterSpecies = new Set<string>();
-  if (!targetCreatureId) for (const { species } of inhabitantsOf(state, tank.id)) if (food.tags.some((t) => species.foods.includes(t))) eaterSpecies.add(species.id);
+  if (!targetCreatureId) for (const { species } of inhabitantsOf(state, tank.id)) if (eatsFood(species, food)) eaterSpecies.add(species.id);
   return portionForDemand(food, demand, eaterSpecies.size);
 }
 
@@ -183,7 +184,7 @@ export function portionForDemand(food: FoodDef, demand: number, eaterSpecies: nu
 /** Species in the tank that will eat this food (for UI hints / feeding messages). */
 export function eatersOf(state: GameState, tank: Tank, food: FoodDef): string[] {
   const ids = new Set<string>();
-  for (const { species } of inhabitantsOf(state, tank.id)) if (food.tags.some((t) => species.foods.includes(t))) ids.add(species.id);
+  for (const { species } of inhabitantsOf(state, tank.id)) if (eatsFood(species, food)) ids.add(species.id);
   return [...ids].map((id) => findSpecies(id)?.commonName ?? id);
 }
 

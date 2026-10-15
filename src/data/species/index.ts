@@ -34,3 +34,16 @@ export function findSpecies(id: string): SpeciesDefinition | undefined {
 export function listSpecies(filter?: (s: SpeciesDefinition) => boolean): SpeciesDefinition[] {
   return filter ? ALL_SPECIES.filter(filter) : ALL_SPECIES;
 }
+
+/**
+ * chunk 6 (B-170) — whether a species' young are young shrimp or baby snails (to a predator, and in words), from its
+ * own `special.youngKind` or else its prey tags; null for anything else (fry, larvae, eggs). One rule for compat's
+ * young-predation tags and its words (src/sim/compat/engine.ts, text.ts).
+ */
+export function youngKindOf(sp: Pick<SpeciesDefinition, 'preyTags' | 'special'>): 'shrimp' | 'snail' | null {
+  if (sp.special?.youngKind) return sp.special.youngKind;
+  const t = sp.preyTags ?? [];
+  if (t.includes('shrimp_dwarf') || t.includes('shrimp_large')) return 'shrimp';
+  if (t.includes('snail') || t.includes('snail_small')) return 'snail';
+  return null;
+}

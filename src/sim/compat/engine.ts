@@ -28,6 +28,7 @@ import type {
 import type { TankHabitat } from '../aquascape';
 import { cap, lower, plural, the, Subj, youngNoun, numberWord, joinAnd, SUBSTRATE_NAMES, CLASS_NAMES } from './text';
 import { preyFits, preyReachCm } from './predation';
+import { youngKindOf } from '@/data/species';
 import { withArticle } from '../economy/util'; // lane:w2-ui ("An ocellaris clownfish was stung…")
 import { fitsEnvironment, offIdealEnvironmentNote, sharedEnvironments, waterNeedPhrase } from './salinity'; // lane:brackish
 
@@ -180,10 +181,10 @@ function zoneOverlap(a: SpeciesDefinition, b: SpeciesDefinition): number {
 }
 
 function youngTagsOf(b: SpeciesDefinition): string[] {
-  const t = b.preyTags ?? [];
-  if (t.includes('shrimp_dwarf') || t.includes('shrimp_large') || /shrimp/i.test(b.commonName)) return ['shrimp_fry', 'eggs'];
+  const kind = youngKindOf(b); // B-170: from the species data, not its display name
+  if (kind === 'shrimp') return ['shrimp_fry', 'eggs'];
   if (b.category === 'amphibian') return ['amphibian_larva', 'eggs', 'fry'];
-  if (t.includes('snail') || t.includes('snail_small')) return ['snail_small', 'eggs'];
+  if (kind === 'snail') return ['snail_small', 'eggs'];
   if (b.category === 'fish') return ['fry', 'eggs'];
   return ['eggs'];
 }

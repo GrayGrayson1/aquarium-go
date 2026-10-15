@@ -3,7 +3,7 @@
  * All return a result object the UI can toast. Every action teaches something: messages explain the "why".
  */
 import type { GameState, LightPreset, Tank, EquipmentInstance, SpeciesDefinition } from '@/types';
-import { getFoodDef } from '@/data/catalog/foods';
+import { eatsFood, getFoodDef } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { findSpecies } from '@/data/species';
@@ -103,7 +103,7 @@ export function feedTank(
   const lab = ensureLab(tank);
 
   // Thawed frozen food leaks a little ammonia straight away.
-  if (/_frozen$/.test(food.id)) {
+  if (food.form === 'frozen') {
     const litres = safeGallons(tank) * LITRES_PER_GALLON * tank.water.level;
     tank.water.ammonia += (servings * food.waste * 0.05) / Math.max(1, litres);
   }
@@ -123,7 +123,7 @@ export function feedTank(
   noteBreedingFood(state, tank.id, food.tags);
 
   const residents = inhabitantsOf(state, tank.id);
-  const eaters = residents.filter((i) => food.tags.some((t) => i.species.foods.includes(t)));
+  const eaters = residents.filter((i) => eatsFood(i.species, food));
   const parts: string[] = [];
   // lane:qa-r3 — the note is worth seeing even where feeding is normally quiet (a click in the water): see `caution`
   let caution = false;

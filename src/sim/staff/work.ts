@@ -30,7 +30,7 @@ import { buyEggs, buyFood, buySalt, SALT_PRICE_PER_KG } from '../economy';
 import { isOpenAt } from '../facility';
 import { pushReaction } from '../facility/reactions';
 import { findSpecies } from '@/data/species';
-import { FOODS, getFoodDef } from '@/data/catalog/foods';
+import { FOODS, getFoodDef, eatsFood, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods';
 import { STAFF_TRAITS } from '@/data/staff';
 import { isSaltClass } from '../water/constants';
 import { EGGS_SUPPLY, FOOD_ROOM, VEGETABLES } from '@/data/catalog/machines'; // lane:automation (chunk 5)
@@ -160,7 +160,7 @@ function hoursToNextVisit(state: GameState, m: StaffMember, tankId: string, roun
 
 // ───────────────────────────── helpers ─────────────────────────────
 
-const eats = (sp: SpeciesDefinition, f: FoodDef) => f.tags.some((t) => sp.foods.includes(t));
+const eats = eatsFood;
 const inStock = (state: GameState, id: string) => Math.floor(state.inventory.foods?.[id] ?? 0);
 
 function throttled(state: GameState, key: string, hours: number): boolean {
@@ -194,7 +194,7 @@ export function pickStaffFood(state: GameState, sp: SpeciesDefinition, tankSpeci
     // Made for this animal: marine foods stay in salt water, axolotl / goldfish pellets go to axolotls / goldfish,
     // and a food with a large share of tags the species doesn't eat (big pellets for small fish) ranks lower.
     const tagFit = f.tags.filter((t) => sp.foods.includes(t)).length / Math.max(1, f.tags.length);
-    const wrongKind = (/^marine_/.test(f.id) && env && env !== 'marine' ? 3 : 0) + (/^axolotl_/.test(f.id) && sp.id !== 'axolotl' ? 2 : 0) + (/^goldfish_/.test(f.id) && !/goldfish/.test(sp.id) ? 2 : 0);
+    const wrongKind = (madeForOtherWater(f, env) ? 3 : 0) + (madeForOtherSpecies(f, sp.id) ? 2 : 0); // the catalog's madeFor (B-170)
     const score = staple + Math.min(2, Math.log10(1 + n)) - stolen - clash - Math.min(2, perUnit * 40) - 2 * (1 - tagFit) - wrongKind;
     if (score > bestScore) {
       bestScore = score;
