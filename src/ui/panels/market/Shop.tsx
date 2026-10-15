@@ -139,11 +139,10 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
           ))}
         </div>
       )}
-      {stock.length > 0 && (
-        <p className="pn-small pn-muted" style={{ textAlign: 'center' }}>
-          <Leaf size={12} style={{ verticalAlign: '-2px' }} aria-hidden /> Captive-bred animals are hardier and kinder to wild reefs and rivers.
-        </p>
-      )}
+      {/* chunk 6 (DES-011): under the empty states too, as phone-shop-empty draws it */}
+      <p className="pn-small pn-muted" style={{ textAlign: 'center' }}>
+        <Leaf size={12} style={{ verticalAlign: '-2px' }} aria-hidden /> Captive-bred animals are hardier and kinder to wild reefs and rivers.
+      </p>
     </div>
   );
 }
@@ -226,7 +225,7 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
         {face ? <CreaturePortrait creature={face} size={68} alt={face.name} /> : null}
         <div className="pn-grow">
           <div className="pn-offer__name ag-offercard__title">
-            <span className="pn-ellipsis">{title}</span>
+            <span className="ag-offercard__titletext">{title}</span>
             {lead && !group && <SexMark c={lead} />}
           </div>
           {lead && (
@@ -409,7 +408,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
       <OfferLinkRow link={link} />
       <FromNotificationBanner />
       <div className="pn-offerhero">
-        <CreaturePortrait creature={lead} size={148} className="pn-offerhero__portrait" alt={lead.name} />
+        <CreaturePortrait creature={lead} size={phone ? 104 : 148} className="pn-offerhero__portrait" alt={lead.name} /> {/* chunk 6 (DES-011): phone-offer.png draws it at about 104 */}
         <div className="pn-grow pn-col pn-gap-2">
           <div>
             <h3 className="pn-offerhero__name">{offer.kind === 'group' ? `${offer.creatures.length} ${sp.commonName}` : offerTitle(sp, offer, lead)}</h3>

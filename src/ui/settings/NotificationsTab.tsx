@@ -102,7 +102,7 @@ export function NotificationsTab() {
             <Toggle
               label={`${c.title} notifications`}
               testId={`notify-cat-${c.id}`}
-              checked={prefs.categories[c.id]}
+              checked={granted && prefs.categories[c.id]} /* chunk 6 (DES-011): off until notifications are allowed, as the 0.5 screens draw it; the stored choice comes back once they are */
               locked={!granted}
               describedBy={!granted ? 'notify-status-title' : undefined}
               onChange={(v) => prefs.setCategory(c.id, v)}

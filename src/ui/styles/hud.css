@@ -101,6 +101,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Alerts popover */
 .ag-alerts-pop { right: 0; top: calc(100% + 10px); width: 390px; max-height: min(72vh, 640px); overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 .ag-alerts-pop__log { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+/* chunk 6 (DES-011): the drawer's title row (0.5 phone-alerts.png, S3-D alerts-*.png) */
+.ag-alerts-pop__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px -4px -6px 0; }
+.ag-alerts-pop__title { margin: 0; font-family: var(--font-display); font-size: calc(20px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
 .ag-alert-ok { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(74, 222, 128, 0.08); border: 1px solid rgba(74, 222, 128, 0.25); color: var(--c-good); font-size: calc(13px * var(--text-scale)); }
 .ag-alert-list { display: grid; gap: 6px; }
 .ag-alert-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-line); background: var(--c-fill); color: var(--c-ink); text-align: left; cursor: pointer; }

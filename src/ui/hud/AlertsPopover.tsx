@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { motion } from 'motion/react';
-import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart, PowerOff, Eraser, ScrollText, Wrench, Clock, BellRing } from 'lucide-react';
+import { CircleCheck, TriangleAlert, OctagonAlert, ChevronRight, CheckCheck, ShoppingCart, PowerOff, Eraser, ScrollText, Wrench, Clock, BellRing, X } from 'lucide-react';
 import type { GameEvent, GameState } from '@/types';
 import { useGame, useGameSelector } from '@/state/game';
 import { useUI } from '@/state/ui';
@@ -21,7 +21,7 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { useTankCardTab } from '../cards/TankCard';
 import { EventIcon } from './eventIcons';
-import { Chip, formatMoney } from '../kit';
+import { Chip, IconButton, formatMoney } from '../kit';
 import { attentionSummary, autofeedPaused, autofeedPausedText, clearAllEvents, drawerEvents, gearFitItems, markAllRead } from '../common/notify'; // lane:notify
 import { Button } from '../kit';
 import { go } from '../nav/router'; // lane:notify (chunk 3)
@@ -303,6 +303,13 @@ export function AlertsPopover() {
       exit={{ opacity: 0, y: -6, scale: 0.98 }}
       transition={{ duration: 0.2 }}
     >
+      {/* chunk 6 (DES-011): the drawer's title and close, as the 0.5 and S3-D screens draw it */}
+      <div className="ag-alerts-pop__head">
+        <h2 className="ag-alerts-pop__title">Alerts</h2>
+        <IconButton label="Close alerts" className="ag-alerts-pop__close" data-testid="alerts-close" onClick={() => useShell.getState().set({ popover: null })}>
+          <X size={18} />
+        </IconButton>
+      </div>
       <AutomationSection game={game} />
       <div className="ag-popover__section">
         <div className="ag-popover__title">Tanks</div>

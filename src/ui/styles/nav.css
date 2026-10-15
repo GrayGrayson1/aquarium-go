@@ -42,7 +42,10 @@
 .ag-more.ag-popover { position: fixed; top: 39.6dvh; left: 0; right: 0; bottom: 0; z-index: 56; width: auto; max-width: none; display: flex; flex-direction: column; gap: var(--sp-3); padding: 10px max(var(--sp-4), var(--safe-r)) calc(84px + var(--safe-b)) max(var(--sp-4), var(--safe-l)); border-radius: 22px 22px 0 0; border-bottom: 0; overflow-y: auto; overscroll-behavior: contain; }
 .ag-more__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .ag-more__title { margin: 0; font-family: var(--font-display); font-weight: 560; font-size: calc(22px * var(--text-scale)); outline: none; }
-.ag-more__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-md); background: var(--c-fill); color: var(--c-ink-2); cursor: pointer; }
+.ag-more__close { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-md); background: transparent; color: var(--c-ink-2); cursor: pointer; }
+.ag-more__close:hover { background: var(--c-fill); color: var(--c-ink); }
+/* chunk 6 (DES-011): the sheet's grabber (0.5 phone-more.png, S3-D more-normal-phone.png), as the panel sheets have */
+.ag-more__grab { flex: none; width: 42px; height: 5px; margin: 0 auto -4px; border-radius: 99px; background: color-mix(in srgb, var(--c-ink-2) 30%, transparent); }
 .ag-more__close:focus-visible, .ag-more__tile:focus-visible, .ag-more__row:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
 .ag-more__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
 .ag-more__tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-width: 0; min-height: 92px; padding: var(--sp-2); border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-fill); color: var(--c-ink); font-family: inherit; cursor: pointer; transition: background 0.2s var(--ease), border-color 0.2s; }
@@ -74,8 +77,11 @@
 /* a panel with a footer: the footer takes the tab bar's band, so the list needs no extra room */
 .pn-sheet.pn-sheet--mobile .pn-layout:has(> .pn-foot) .pn-body { padding-bottom: 28px; }
 .pn-sheet.pn-sheet--mobile .pn-foot { padding-bottom: calc(84px + var(--safe-b)); }
-/* sticky footers (the offer's buy bar, the listing wizard's steps) rest just above the tab bar */
-.pn-sheet.pn-sheet--mobile .pn-buybar, .pn-sheet.pn-sheet--mobile .pn-wizard__nav { bottom: calc(84px + var(--safe-b)); }
+/* sticky footers (the offer's buy bar, the listing wizard's steps) sit at the sheet's foot and run under the tab bar;
+   their own padding keeps the controls above it (0.5 §17 "Phone sticky footer": padding-bottom 84 + the safe area).
+   chunk 6 (DES-011): they used to rest 84 px above the body's own 112 px foot, floating mid-sheet with content
+   scrolling between them and the tab bar. */
+.pn-sheet.pn-sheet--mobile .pn-buybar, .pn-sheet.pn-sheet--mobile .pn-wizard__nav { bottom: calc(-112px - var(--safe-b)); margin-bottom: calc(-112px - var(--safe-b)); padding-bottom: calc(84px + var(--safe-b)); }
 /* the last 110 px fade out under the tab bar */
 .pn-sheet.pn-sheet--mobile::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 110px; background: linear-gradient(180deg, rgba(5, 13, 19, 0) 0%, rgba(5, 13, 19, 0.93) 100%); pointer-events: none; }
 @media (max-height: 500px) and (orientation: landscape) {

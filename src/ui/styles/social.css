@@ -88,12 +88,13 @@
 .so-signout { display: flex; justify-content: center; }
 
 /* tabs */
-.so-tab { display: grid; gap: 14px; }
+/* chunk 6 (DES-011): one shrinkable column, or the club blurbs (one line each) widened it past a phone's edge */
+.so-tab { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .so-input { font-size: max(16px, calc(15px * var(--text-scale))); } /* 16 px: no zoom on iPhone (§13.2) */
 .so-search { position: relative; margin: 0; }
 .so-search__icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--c-ink-3); pointer-events: none; }
 .so-search__input { padding-left: 40px; border-radius: var(--r-pill); }
-.so-clubs { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.so-clubs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .so-suggest { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--c-fill); border: 1px solid var(--c-line); }
 .so-suggest__text { flex: 1; min-width: 0; }
 .so-suggest__name { color: var(--c-ink); font-size: calc(14.5px * var(--text-scale)); font-weight: 620; }
@@ -136,4 +137,8 @@
 
 /* the More sheet's Social tile: "New" in its top corner (§5.3), so the tile is no taller than the others (a phone held
    sideways fits the tiles and the Settings row above the tab bar) */
-.ag-more__new.ag-more__new--tile { position: absolute; top: 6px; right: 6px; margin: 0; }
+/* chunk 6 (DES-011): the tile's tag is an outlined capital NEW (0.5 phone-more.png) */
+.ag-more__new.ag-more__new--tile { position: absolute; top: 6px; right: 6px; margin: 0; background: transparent; text-transform: uppercase; letter-spacing: 0.06em; font-size: calc(9.5px * var(--text-scale)); }
+/* chunk 6 (DES-011): every one-column Social grid shrinks with the sheet (a grid with no column template grows to
+   its widest one-line child, which pushed Clubs past a phone's edge) */
+.so-panel, .so-card, .so-club, .so-noclub, .so-trades, .so-overview:not(.so-overview--two), .so-col, .so-lb__rows, .so-signin, .so-form, .so-field, .so-join, .so-hero { grid-template-columns: minmax(0, 1fr); }

@@ -1,9 +1,10 @@
 /**
  * chunk 6 (DES-011; 0.5 spec §17 "Geometry") — each §17 geometry row measured on its screen, within ± 2 px (the
  * tolerance §20 gives the phone sheet's top): the desktop panel and tank card, the Settings sheet, filter chips, the
- * segmented control (the tank card's Meals a day), the offer's gene row, temperament meter, destination tiles and buy bar, toasts and the loading
- * card at 1440×900; the tab bar, the panel sheet and its grabber, the tank card and the phone's gene row and price at
- * 390×844. (The switch is automation.spec.ts's; More's top is mobile-tabbar.spec.ts's.)
+ * segmented control (the tank card's Meals a day), the offer's gene row, temperament meter, destination tiles and buy
+ * bar, toasts and the loading card at 1440×900; the tab bar, the panel sheet and its grabber, the tank card, the phone's
+ * gene row and price, and the sticky footer at 390×844. (The switch is automation.spec.ts's; More's top is
+ * mobile-tabbar.spec.ts's.)
  */
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, quickGame, aq, tid } from './helpers';
@@ -208,6 +209,8 @@ test.describe('§17 geometry, phone 390×844', () => {
     const cols = await page.locator('[data-testid^="offer-gene-"]').first().evaluate((e) => getComputedStyle(e).gridTemplateColumns);
     c.near('phone gene row first column', px(cols.split(' ')[0]), 92, 0.5);
     c.near('phone buy bar price', px((await css(page, '.pn-buybar__price', ['font-size']))['font-size']), 22, 0.1);
+    // Phone sticky footer (the buy bar): padding-bottom 84 + the safe area (0 here), clear of the tab bar (§5.2, §17)
+    c.near('phone sticky footer padding bottom', px((await css(page, '.pn-buybar', ['padding-bottom']))['padding-bottom']), 84, 0.5);
     // Toast on a phone: §17's geometry (the text stays one line until tapped)
     await page.evaluate(() => (window as unknown as { __AQ: { ui(): { toast(t: string): void } } }).__AQ.ui().toast('Measured'));
     await expect(page.locator('.ag-toast').first()).toBeVisible();

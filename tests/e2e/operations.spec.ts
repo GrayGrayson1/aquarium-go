@@ -274,7 +274,8 @@ test.describe('NAV-021, NAV-024: phones', () => {
   test('More shows Operations first; the five tabs fit at 390 px', async ({ page }) => {
     await facility(page);
     await tid(page, 'dock-more').tap();
-    const first = page.locator('.ag-more > *:not(.ag-more__head)').first();
+    // (the sheet's grabber, as drawn, sits above its rows: chunk 6, DES-011)
+    const first = page.locator('.ag-more > *:not(.ag-more__head):not(.ag-more__grab)').first();
     await expect(first).toHaveAttribute('data-testid', 'more-operations');
     await tid(page, 'more-operations').tap();
     await expect(tid(page, 'panel-operations')).toBeVisible();

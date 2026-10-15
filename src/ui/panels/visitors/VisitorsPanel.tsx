@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
-import { Users, DoorOpen, DoorClosed, Ticket, HandCoins, Smile, Sparkles, Meh, Frown, TriangleAlert, Eye, Star, Lock, Signpost, Trophy, Clock } from 'lucide-react';
+import { Users, DoorOpen, DoorClosed, Ticket, HandCoins, Smile, Sparkles, Meh, Frown, TriangleAlert, Eye, Star, Lock, Signpost, Trophy, Clock, Hammer } from 'lucide-react';
 import type { GameState, VisitorReaction } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider } from '@/ui/kit';
 import { useUI } from '@/state/ui';
@@ -54,8 +54,9 @@ export function VisitorsPanel() {
           testId="locked-visitors"
           title="Visitors open with a Specialty Shop"
           action={
-            <Button variant="primary" onClick={() => go({ kind: 'panel', panel: 'build', tab: 'facility' })}>
-              Open Build › Facility
+            // chunk 6 (DES-011): a small outlined button with the hammer, as desk-early draws it
+            <Button size="sm" onClick={() => go({ kind: 'panel', panel: 'build', tab: 'facility' })}>
+              <Hammer size={14} aria-hidden /> Open Build › Facility
             </Button>
           }
         >

@@ -436,8 +436,6 @@ a.pn-link { text-decoration: none; }
 /* chunk 6 (DES-011, 0.5 §17 "Buy bar": price 24/650, phone 22) */
 .pn-sheet--phone .pn-buybar__price { font-size: calc(22px * var(--text-scale)); }
 .pn-buybar__ack { display: flex; justify-content: flex-end; }
-.pn-sheet--phone .pn-buybar__row { flex-wrap: wrap; }
-.pn-sheet--phone .pn-buybar .ag-btn--lg { width: 100%; }
 .pn-sheet--phone .pn-buybar__ack { justify-content: flex-start; }
 .pn-compatwrap { display: block; }
 

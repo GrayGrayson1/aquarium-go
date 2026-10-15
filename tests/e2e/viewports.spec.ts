@@ -53,6 +53,11 @@ const measure = (page: Page) =>
       id: sheet?.getAttribute('data-testid') ?? null,
       close: box(sheet?.querySelector('[data-testid="panel-close"], [aria-label^="Close"]') ?? null),
       tabs: box(sheet?.querySelector('[role="tablist"]') ?? null),
+      // content wider than the sheet's body (clipped by its overflow-x: hidden, so a control can sit out of reach)
+      inner: (() => {
+        const body = sheet?.querySelector('.pn-body, .ag-sheet__body');
+        return body ? body.scrollWidth - body.clientWidth : 0;
+      })(),
     };
   });
 
@@ -99,6 +104,21 @@ for (const vp of VIEWPORTS) {
         if (!m.close) problems.push(`${h}: ${m.id} has no close button`);
         else if (out(m.close) || m.close.bottom > m.vh + 1 || m.close.top < -1) problems.push(`${h}: ${m.id}'s close button is off screen`);
         if (out(m.tabs)) problems.push(`${h}: ${m.id}'s tabs spill out (${m.tabs!.left}–${m.tabs!.right} of ${m.vw})`);
+        if (m.inner > 1) problems.push(`${h}: ${m.id}'s content is ${m.inner} px wider than the sheet`);
+      }
+      // Social signed in (chunk 6, DES-011: Clubs ran off a phone's edge)
+      await goHash(page, '#/');
+      await goHash(page, '#/social');
+      await tid(page, 'social-email').fill('you@example.com');
+      await tid(page, 'social-password').fill('password1');
+      await tid(page, 'social-signin').click();
+      await expect(tid(page, 'social-tab-overview')).toHaveAttribute('aria-selected', 'true');
+      for (const t of ['overview', 'clubs', 'trading', 'friends', 'leaderboards']) {
+        await tid(page, `social-tab-${t}`).click();
+        await page.waitForTimeout(700); // the stub's 300–600 ms latency
+        const m = await measure(page);
+        if (m.page > m.vw + 1) problems.push(`Social › ${t}: the page scrolls sideways`);
+        if (m.inner > 1) problems.push(`Social › ${t}: content ${m.inner} px wider than the sheet`);
       }
       expect(problems).toEqual([]);
     });
