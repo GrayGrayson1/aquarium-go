@@ -6,13 +6,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Build chunk 5** (Deep automation, S3-D), from a fresh context: the owner's routine is to `/compact` between
-   chunks, then the agent re-reads the docs. `docs/agent/SESSION_HANDOFF.md` gives the order of work.
-2. **Chunk 4 is done** (2026-10-14, on `next`, not released). Every owner question is answered (groups A to E and
-   chunk 4's copy, ADR-0024 to ADR-0031); DESIGN-S3D is approved (ADR-0027). The 45 approved 0.5 screens are in
-   `docs/agent/design/DESIGN-0.5/`.
-3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases"). Releasing chunk 4
-   is the owner's call.
+1. **Build chunk 6** (Social stub, hardening and the last 0.5 release), from a fresh context: the owner's routine is
+   to `/compact` between chunks, then the agent re-reads the docs. `docs/agent/SESSION_HANDOFF.md` gives the order of
+   work, with what chunk 5 left (DES-013, DES-014, B-169, B-170, B-180, B-202).
+2. **Chunk 5 is done** (2026-10-14, on `next`, not released). Every owner question is answered (groups A to E and the
+   chunks' copy, ADR-0024 to ADR-0033). The 45 approved 0.5 screens are in `docs/agent/design/DESIGN-0.5/`.
+3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases"). Releasing chunks 4
+   and 5 is the owner's call.
 
 ## Status
 
@@ -23,12 +23,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 2 | Shop and genetics | Done 2026-10-11 (released in 0.5.1), with the owner's follow-ups (ADR-0022). Its full run (`7acb0b9`): typecheck, unit 2,107, build, e2e 81 of 81; the reviewer's blockers fixed (ADR-0021) |
 | 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
-| 5 | Deep automation (S3-D) | Next; DESIGN-S3D approved (ADR-0027) |
-| 6 | Social stub, hardening and the last 0.5 release | Not started; D1 answered (ADR-0028); after chunk 5 |
+| 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
+| 6 | Social stub, hardening and the last 0.5 release | Next; D1 answered (ADR-0028) |
 
-**Last full test run:** the owner's Mac, 2026-10-14, on `ab03ff1` (chunk 4's last code), in Claude Code from the
-internal-disk clone: typecheck passed; unit 200 files, 2,302 tests passed; build passed; e2e 93 passed
-(8.4 minutes, inside Claude Code's sandbox).
+**Last full test run:** the owner's Mac, 2026-10-14, on `baa2234` (chunk 5's last code), in Claude Code from the
+internal-disk clone: typecheck passed; unit 213 files, 2,402 tests passed; build passed; e2e 107 passed
+(9.4 minutes, inside Claude Code's sandbox).
 
 ## How a chunk runs
 
@@ -236,30 +236,86 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   - Backlog: fixed B-017, B-127, B-135, B-138, B-139, B-171, B-174, B-177, B-195; partly B-130 (M24 and M62 wait for
     their fixes); B-167 stays open (set-up now asks the engine; runtime moves don't).
 
-### 5. Deep automation (S3-D)
+### 5. Deep automation (S3-D) — done 2026-10-14
 
-- **Design:** `docs/agent/design/DESIGN-S3D/SPEC.md`, its `screens/`, and `INTAKE.md`.
-- **Decided:** DESIGN-S3D is approved (ADR-0027, C15; `INTAKE.md` §14), with the owner's answers to C1 to C14
-  (ADR-0026): Settings a gear in every build; the replaced 0.5 items (ADR-0027's list: Settings in the dock, the More
-  sheet's top at about 40 %, the production tiles, the Settings test helper); every tank keeps its row in the Tanks
-  panel, problems first; background tanks option B (settle pending time on actions, moves, focus changes and before
-  each shared water job); water free, limited by prep and reserve size; live food never expires, and a harvest that
-  would pass the room's storage is skipped ("Full"); finishing the research installs the base room, add-ons in Build ›
-  Facility, dosers from the tank card; C8's strings (the table in ADR-0026); a $1 budget slider, "Raise budget" hidden
-  at the maximum, an orders switch; the Automation subtitle "Shortages and paused lines"; the salt machinery only
-  while salt water is used; the existing levers are the schedules (no editor); without a stock manager nobody
-  reorders; a held Autofeeder raises the hungry-animal alert.
-- **Before starting:** chunk 4 is done. Write design-intake-3's M3, M4, M5, R4 and R5 into the intake (no owner
-  needed), and turn `INTAKE.md` §12's proposals into the chunk's requirements in `REQUIREMENTS.json`.
-- **Build:** the Operations hub (Overview, Water, Feed, Lines, Map), the Water room and the Live food room, Hold all,
-  Settings on a gear, the Supplies, Staff and Research changes, the Automation notification category.
-- **Requirements:** AUTO-002, AUTO-012, AUTO-013, AUTO-014 (the overview), AUTO-015, AUTO-016 to AUTO-018, AUTO-022,
-  AUTO-026 to AUTO-028, and the rest of `INTAKE.md` §12's proposals.
-- **From chunk 4:** Operations › Lines (SPEC §7.4) reads the lines through `src/sim/production/view.ts`; the
-  Production tab's dot and its link row to Operations › Lines wait for it. AUTO-014, AUTO-016 to AUTO-018, AUTO-026
-  and AUTO-027 are IN_PROGRESS, met for production lines (`automation-invariants` and `persistence-05` have the
-  production cases to copy). B-167 (no compatibility decision in the sim) is worth deciding when an automation first
-  moves animals on its own.
+- **Built:** `src/sim/automation` (the Water room: prep flow, salt mixing at 10 AM and 10 PM, water changes from the
+  reserves at each tank's lights-on, the Auto Top-Off on the fresh reserve; the Live food room: hatchery cones,
+  infusoria jars, the storage limit, live-food dosers; manual mode's five holds; Problems, Today, the weekly money and
+  the flows), the three Facility research projects (finishing one installs its room), the stock manager's check split
+  into a pure plan (`planPurchases`, the forecast) and the purchase (`stockCheck`), the orders switch, the nightly
+  running costs, brine shrimp egg tins and 5 / 20 / 40 kg salt, SCHEMA_VERSION 2. The UI: Operations (Overview early,
+  before the Desk and full; Water; Feed; Lines; Map; Problems with "Why the line stops"; Manual mode; the locked
+  pages), Operations in the dock after Build and Settings on the gear (`hud-settings`), the More row, the manual-mode
+  pill, the Facility map room chip, the tank chips in the Tanks panel (problems first) and on the tank card, the doser
+  row, the alerts drawer's Automation section, Build › Facility rooms, Supplies (Live food, Cultures, Dry food, salt
+  sizes), Staff (the $1 slider, the orders switch, the status line), Research's Facility branch, the Automation
+  notification category, the Production tab's dot and link row. Routes
+  `#/operations[/water|feed|lines|map|issues|manual][?layer=]` and `#/build/facility/water|food`.
+- **Requirements:** NAV-020 to NAV-024, MKT-017, NOTIFY-012, ACC-006, PERF-004, PERSIST-016, AUTO-002 and its chunk
+  5 children (AUTO-012 to AUTO-018, AUTO-022, AUTO-026 to AUTO-028, AUTO-030 to AUTO-047) GREEN. DES-013 (a test that
+  finds every SPEC §11 string and §14 id) and DES-014 (a full Browser QA pass against `screens/`) IN_PROGRESS, for
+  chunk 6's hardening and the owner's play-through.
+- **Reviewed:** one fresh reviewer (Opus 5.5, max effort) read `130995d..010d64a` against this brief: 3 blockers (the
+  keepers' salt lost once a Water room exists; the forecast recomputed on every panel refresh, PERF-004; Hold and
+  Resume not settling background tanks) and 10 smaller points, fixed in `0b316f1`. Its confirmation pass found them
+  fixed and one new blocker (salt sorting ahead of food that was out), fixed in `d917bdd` with three of its smaller
+  points; two points went to the owner (ADR-0033). Its second pass found the two Water room warnings hid most real
+  shortfalls (a day's totals missed the 60 % rule and the reserve's size): `6a36439` drives them from a dry run of the
+  room's week (`forecast.ts`), with the owner's third round (ADR-0033). Its third pass found no blockers (verdict:
+  ready); its first point (a mixer starved of fresh water reported as a salt shortage) is fixed in `baa2234`, the
+  rest is B-202. Its check of `baa2234`: no blockers, ready; its two notes on the fresh warning's wording are in B-202.
+- **Decided:**
+  - The owner's answers: ADR-0026 (C1 to C14), ADR-0027 (the approval), ADR-0032 (this chunk's copy: shortages, the
+    quiet log lines, toasts and receipts, the stock manager's lines without a pronoun, the small labels) and ADR-0033
+    (the review's copy; salt batches grow with the reservoir; "Salt water runs short" and "Fresh water runs short").
+  - **Jobs** run at their game hours in time order, same-hour jobs in SPEC §9.9's order; each has its own marker, so a
+    re-stepped window, a save and load or the catch-up never repeats one; no randomness. The prep flow is added up to
+    each job's hour first.
+  - **Settling (ADR-0026 decision 5, B-176):** a background tank catches up before each shared water job, a move, a
+    sale, a line's moves, a purchase into it, its water conversion or substrate change, and every manual-mode change
+    (Hold all and Resume flush every tank on the fast path first, `flushBackgroundTanks`); the focused tank runs at full
+    detail. Idle tanks stay coarse.
+  - **Water changes with a Water room** go tank by tank in `tankOrder` at each tank's lights-on; a change the reserve
+    can't cover is skipped, never done weak. The per-tank Auto Water Changer stands aside. The player's and the keepers'
+    changes stay on tap water and shelf salt (C-67).
+  - **The Auto Top-Off** draws from the fresh reserve as its tank catches up: background tanks' top-offs land at the end
+    of their chunk, so the fresh reserve agrees across step sizes and focus within 0.5 gal; the jobs' own gallons are
+    exact (AUTO-037's tolerance, KNOWN_LIMITATIONS).
+  - **Salt** is mixed at SG 1.025; a batch is half the salt reserve (30 gal and 4.1 kg at the base room, up to 120 gal
+    with three Reservoirs, ADR-0033); the design's 60 % rule stays, so with the morning's changes the mixer sustains
+    about 33 gal a day at the base room and 118 with three Reservoirs; brackish tanks blend it with fresh. The salt machinery runs
+    only while a salt tank or a hatchery uses salt water. **The stock manager's salt** with a Water room: the mixer's
+    use (reorder under 11 days, `SALT_ORDER_DAYS`) plus two or three changes' worth for the salt tanks no changer
+    serves, never ahead of food that's out; without a Water room the rule is unchanged. A shelf check buys as it plans,
+    so a failed purchase leaves its money for the orders after it.
+  - **Live food** never expires; a harvest that would pass the room's storage (60 servings a cone, 20 a jar) waits
+    ("Full"). Dosers are tank equipment (kind `doser`), feed at 8, 14 and 20, a serving per 20 young.
+  - **Manual mode** holds water changes, salt mixing, live food, Autofeeders and production lines; a held job is skipped,
+    not queued; a held Autofeeder raises the hungry-animal alert; held lines act as paused. Life support, keepers, the
+    Auto Top-Off, auctions already listed and the stock manager's orders keep running.
+  - **Problems** also warns when the Water room's next week, dry-run with the jobs' rules (`forecast.ts`, which also
+    gives Today its batches), skips changes for want of salt or fresh water after its first two days ("Salt water runs
+    short", "Fresh water runs short", the prep rate or the reserve's size; ADR-0033). The Water room's Overview tile
+    stays "OK" meanwhile: the design has no status word for it.
+  - **PERF-004:** the forecast is computed once per Operations key (the game hour, the stock, the budget, the holds,
+    the lines, and the player's actions, counted by `useGame.mutate`, so a change made while paused shows at once);
+    Today, the flows, the week's money and Staff's dry runs are kept per key (`opsMemo`).
+  - **Not as drawn:** a line "pauses", never "pauses tonight" (it holds as soon as its grow-out tank can't take the
+    next clutch; KNOWN_LIMITATIONS); the Map shows each room's flows as rows rather than the drawn pipe schematic, and
+    its layer control sits in the map body; the Overview's manual-mode banner has no "What's on hold" link (§7.1 draws
+    none).
+  - **Saves:** every new field is optional and checked by `repairState`; SCHEMA_VERSION 1 → 2 (a no-op migration).
+  - **Core files:** `world.ts` (the automation hook), the types, persistence (repair, the schema bump),
+    `src/state/game.ts` (the `actions` counter), `src/game/fastMutate.ts` (`flushBackgroundTanks`); AGENTS.md's store
+    boundary now names the flush before a manual-mode change.
+  - `dev.unlockAll` installs both rooms, so e2e games start with them.
+  - Seeded tests: none moved (the jobs draw no random numbers; the settles run outside the world step's draws). Tests
+    changed on purpose: `core-save-forward-safety` pins `KNOWN_AT[2]`, `production-line` expects SCHEMA_VERSION 2 (and
+    PROD-015's sale now also checks the ledger's line tag); the notification defaults gain `auto: true`; the e2e
+    Settings helper clicks the gear; `mobile-tabbar.spec` expects the More sheet's top at about 40 %; `shop-filters`'
+    phone Supplies test measures the side line's last button (the Hatchery link comes before Buy).
+  - Backlog: fixed B-176; closed B-145 (no action); partly B-169 and B-170 (the rest in chunk 6); B-167 and B-180 stay
+    open; new B-202 (the Water room dry run's limits and the fresh warning's wording in edge cases, from the review).
 
 ### 6. Social stub, hardening and the last 0.5 release (0.5 phase 4 and the release step)
 

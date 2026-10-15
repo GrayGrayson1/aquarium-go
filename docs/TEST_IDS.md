@@ -413,7 +413,7 @@ Index-based cone and jar ids, one id for the Operations tools tile, `staff-budge
 | `feed-hatchery` · `feed-cone-<n>` · `feed-jars` · `feed-jar-<n>` · `feed-dosers` · `feed-buy-eggs` · `feed-buy-veg` | Operations › Feed (cones and jars numbered from 1) |
 | `line-row-<lineId>` · `line-toggle-<lineId>` · `line-status-<lineId>` · `line-route-<lineId>` · `lines-capacity` · `lines-upcoming` | Operations › Lines |
 | `map-layer-<all\|water\|food\|animals>` · `map-room-<water\|supplies\|food\|breeding\|quarantine\|gallery\|market>` · `map-tank-<tankId>` · `map-details` · `map-room-sheet` · `map-add-qt` · `map-more` | Operations › Map |
-| `issues-<salt\|eggs\|veg\|live\|fresh\|line>` · `issues-<kind>-action` · `issues-buy-salt` · `issues-raise-budget` · `issues-add-qt` · `issues-wait` · `issues-line-decided` · `issues-none` | Problems (`#/operations/issues`) |
+| `issues-<salt\|eggs\|veg\|live\|fresh\|salt_rate\|fresh_rate\|line>` · `issues-<kind>-action` · `issues-buy-salt` · `issues-raise-budget` · `issues-add-qt` · `issues-wait` · `issues-line-why` · `issues-line-decided` · `issues-none` | Problems (`#/operations/issues`) |
 | `manual-banner` · `manual-resume-all` · `manual-hold-all` · `manual-row-<water\|salt\|food\|feeders\|lines>` · `manual-toggle-<…>` · `manual-rosa` · `manual-rosa-toggle` · `manual-still-open` | Manual mode (`#/operations/manual`) |
 | `tank-chip-<auto-feed\|auto-clean\|top-off\|doser\|line>` | Automation chips, inside `tanks-row-<tankId>` and in the tank card's header |
 | `tanks-row-line-<tankId>` | A Tanks row's amber "{Line} paused: …" reason with Why |

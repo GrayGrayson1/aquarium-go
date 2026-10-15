@@ -441,12 +441,12 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [
         "S3D §11",
         "S3D §14"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): most strings and ids are found by operations.spec and the automation unit tests, and every player-visible string the design left unworded is approved (ADR-0032, ADR-0033); a test that finds each SPEC §11 string and §14 id is left for chunk 6."
     },
     {
       "id": "DES-014",
@@ -461,11 +461,11 @@
         "browser QA"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [
         "S3D §12"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): the screens were compared with screens/ at 390×844 and 1440×900 while building (the layout fixes in 010d64a) and the review fixes' new cards were checked in the browser; a full Browser QA pass is left for chunk 6 and the owner's play-through."
     },
     {
       "id": "NAV-001",
@@ -940,12 +940,12 @@
         "tests/e2e/dock-width.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §5.1",
         "S3D §5.4"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: ten dock items in both modes with Operations after Build and no dock-settings; the gear opens and closes Settings and focus returns (operations.spec); the e2e Settings helper clicks the gear (helpers.ts, explained in 010d64a); the dock and the camera chips don't meet at 1400–1600 px."
     },
     {
       "id": "NAV-021",
@@ -962,12 +962,12 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §5.1",
         "S3D §5.4"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: Operations is the More sheet's first row and opens #/operations; the sheet's top at 334/844 ± 3 % (mobile-tabbar.spec, changed on purpose for ADR-0027); the row's dot follows the worst item (automation-chips)."
     },
     {
       "id": "NAV-022",
@@ -984,11 +984,11 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §6"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: nav-routes round-trips every new address, an unknown layer reads as All; operations.spec opens each route early (locked) and late, and a layer change replaces the address."
     },
     {
       "id": "NAV-023",
@@ -1004,11 +1004,11 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §5.6"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the room view's Facility map chip opens the Map and closing it returns to the room view; the dock and the chips don't meet at 981–1440 px (operations.spec)."
     },
     {
       "id": "NAV-024",
@@ -1025,12 +1025,12 @@
         "tests/sim/automation-problems.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §5.2",
         "S3D §5.4"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the five-tab strip fits at 390 px and scrolls at 360 (operations.spec); the More tab's dot is red for an \"out\" item (automation-chips)."
     },
     {
       "id": "GEN-001",
@@ -1723,11 +1723,11 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.5"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: 5, 20 and 40 kg at $3 a kg (operations.spec); the low line names the real stock and batches; the salt row shows with a salt tank, salt in stock or a Water room."
     },
     {
       "id": "AUTO-001",
@@ -1763,8 +1763,8 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027), with the owner's answers in ADR-0026. Chunk 5, after chunk 4. Chunk 5 intake (2026-10-14, INTAKE §12): the umbrella of AUTO-030 to AUTO-047, MKT-017 and NAV-020 to NAV-024."
+      "status": "GREEN",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027), with the owner's answers in ADR-0026. Chunk 5, after chunk 4. Chunk 5 intake (2026-10-14, INTAKE §12): the umbrella of AUTO-030 to AUTO-047, MKT-017 and NAV-020 to NAV-024. Chunk 5 (2026-10-14): every child is closed (GREEN): AUTO-012 to AUTO-018, AUTO-022, AUTO-026 to AUTO-028, AUTO-030 to AUTO-047, MKT-017, NAV-020 to NAV-024, NOTIFY-012."
     },
     {
       "id": "AUTO-003",
@@ -2011,8 +2011,8 @@
         "new: tests/sim/automation-reserves.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decisions 5, 6 and 12, C4, C5, C11): water costs nothing; with a Water room it is limited by the prep rate and the reserve size, and an empty fresh reserve stops the Auto Top-Offs until prep refills it (A1 and A2 stand as written). Background tanks: option B (pending time settled on every action, move, focus change and before each shared water job; stated tolerances). The salt machinery applies only while a salt tank or a hatchery needs salt water. Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.2 and §9.2 (AUTO-032, AUTO-037). A1 and A2 stand: top-off and water changes draw only from the finite reserves, and an empty reserve skips (or, for the Auto Top-Off, stops) the jobs that draw on it and shows a shortage until it is refilled (C-16).",
+      "status": "GREEN",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decisions 5, 6 and 12, C4, C5, C11): water costs nothing; with a Water room it is limited by the prep rate and the reserve size, and an empty fresh reserve stops the Auto Top-Offs until prep refills it (A1 and A2 stand as written). Background tanks: option B (pending time settled on every action, move, focus change and before each shared water job; stated tolerances). The salt machinery applies only while a salt tank or a hatchery needs salt water. Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.2 and §9.2 (AUTO-032, AUTO-037). A1 and A2 stand: top-off and water changes draw only from the finite reserves, and an empty reserve skips (or, for the Auto Top-Off, stops) the jobs that draw on it and shows a shortage until it is refilled (C-16). Chunk 5 (2026-10-14): met: the Water room's reserves (finite, upgradable), prep, salt mixing that uses tracked salt, the Auto Top-Offs and changes drawing on them; an empty reserve skips the job and shows the shortage (\"Fresh water ran out\", the salt items, and \"Salt/Fresh water runs short\", ADR-0033); the Water tab shows each reserve (automation-reserves, automation-problems).",
       "designSections": [
         "§10.3"
       ]
@@ -2033,8 +2033,8 @@
         "new: tests/sim/automation-feed-production.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 7, C6 and its follow-up): live food never expires (no lots, no \"keeps\" wording); the Live food room stores a limited amount of each food, a harvest that would pass it is skipped, and the Feed tab shows \"Full\". A2 (\"capped by storage capacity\") stands as written; INTAKE C-23's rewording is dropped. Finishing the research installs the base room (decision 8, C7). Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.3 and §9.3 (AUTO-033). A2 stands as written (ADR-0026 decision 7: a storage limit, \"Full\").",
+      "status": "GREEN",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 7, C6 and its follow-up): live food never expires (no lots, no \"keeps\" wording); the Live food room stores a limited amount of each food, a harvest that would pass it is skipped, and the Feed tab shows \"Full\". A2 (\"capped by storage capacity\") stands as written; INTAKE C-23's rewording is dropped. Finishing the research installs the base room (decision 8, C7). Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.3 and §9.3 (AUTO-033). A2 stands as written (ADR-0026 decision 7: a storage limit, \"Full\"). Chunk 5 (2026-10-14): met: the Live food room (INTAKE C-20 maps its inputs to existing food ids and inventory): cones and jars turn eggs, salt water and vegetables into Live Baby Brine Shrimp and Infusoria Culture on game time, capped by storage (\"Full\", ADR-0026 decision 7); dosers and keepers use them; running out shows a shortage (automation-feed-production, automation-problems).",
       "designSections": []
     },
     {
@@ -2051,8 +2051,8 @@
         "new: tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). The production part is chunk 4's (ADR-0025), the overview chunk 5's. Chunk 4 (2026-10-14): The production part: multiple lines (PROD-002), routing (PROD-006), sorting (PROD-013), quarantine (PROD-007), keepers (PROD-008, PROD-011), listing (PROD-012) and pausing (PROD-010) are GREEN. The operations overview is chunk 5's. Chunk 5 intake (2026-10-14, INTAKE §12): the overview is Operations › Lines and the Overview's Production lines tile (AUTO-030).",
+      "status": "GREEN",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). The production part is chunk 4's (ADR-0025), the overview chunk 5's. Chunk 4 (2026-10-14): The production part: multiple lines (PROD-002), routing (PROD-006), sorting (PROD-013), quarantine (PROD-007), keepers (PROD-008, PROD-011), listing (PROD-012) and pausing (PROD-010) are GREEN. The operations overview is chunk 5's. Chunk 5 intake (2026-10-14, INTAKE §12): the overview is Operations › Lines and the Overview's Production lines tile (AUTO-030). Chunk 5 (2026-10-14): met: every Tier 4 item maps to a GREEN PROD requirement (chunk 4) and every line's status, week and bottleneck shows in Operations › Lines, the Overview and Problems, with \"Why the line stops\" (automation-problems-ui, operations.spec).",
       "designSections": [
         "§11.1",
         "§11.3"
@@ -2075,8 +2075,8 @@
         "new: tests/sim/automation-operations.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 13, C12): the player's existing levers are the schedules they change (a tank's lights-on hour moves its water change, Auto-feed meals a day, Hold or Resume per system), each from the next step; Water › Schedule and Today show every schedule; no schedule editor. A5 reads this way (design-intake-3 M1). Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.1, §7.6, §7.7 and §9.7 (AUTO-030, AUTO-035, AUTO-036); A3 points to AUTO-039; A5 reads as ADR-0026 decision 13 (the existing levers are the schedules; Water › Schedule and Today show them, AUTO-043).",
+      "status": "GREEN",
+      "note": "Unblocked 2026-10-11: DESIGN-S3D is approved (ADR-0027). Owner (ADR-0026 decision 13, C12): the player's existing levers are the schedules they change (a tank's lights-on hour moves its water change, Auto-feed meals a day, Hold or Resume per system), each from the next step; Water › Schedule and Today show every schedule; no schedule editor. A5 reads this way (design-intake-3 M1). Chunk 5 intake (2026-10-14, INTAKE §12): points to SPEC §7.1, §7.6, §7.7 and §9.7 (AUTO-030, AUTO-035, AUTO-036); A3 points to AUTO-039; A5 reads as ADR-0026 decision 13 (the existing levers are the schedules; Water › Schedule and Today show them, AUTO-043). Chunk 5 (2026-10-14): met: Operations' Overview lists every automated system with its status; manual mode holds a system from the next step with manual care still available (automation-operations); the weekly money matches the ledger for the same days (AUTO-039); every job runs at most once per crossing, live and offline (automation-invariants).",
       "designSections": []
     },
     {
@@ -2099,12 +2099,12 @@
         "tests/sim/automation-invariants.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "§10.3",
         "§11.3"
       ],
-      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the automation tests import no React or DOM (src/sim, src/data, src/types, plus src/persistence for the offline and hash checks)). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases. Not met as written: A1 asks for the same stateHash across step splits, which the water chemistry can’t give (it is integrated in steps); the tests hold job counts, run hours and stock exactly and water values within stated tolerances. Owner question A7 in docs/agent/OWNER_QUESTIONS.md (design-intake-3 M7). Owner (ADR-0024 decision 7, 2026-10-11, A7): accepted. Across step splits, job counts, run hours and stock units are exact and water values agree within stated tolerances (chunk 3: 0.15 °C, 0.05 pH, 3 % of nitrate); A1's identical stateHash holds for identical splits. Chunks 4 and 5 state their own tolerances the same way. Chunk 4 (2026-10-14): Production lines added: random partitions give the same moves, sorts and listings with counts exact and hours within one game hour (the breeding sim raises a brood inside a sub-step), offline equals live, and the line code is in the determinism guard's scope (automation-invariants). The S3-D chains are chunk 5's."
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: random partitions give the same runs and salt, identical runs the same stateHash, offline equals live; the determinism guard covers the new files; the automation tests import no React or DOM (src/sim, src/data, src/types, plus src/persistence for the offline and hash checks)). Production lines (chunk 4) and the S3-D chains (chunk 5) add their cases. Not met as written: A1 asks for the same stateHash across step splits, which the water chemistry can’t give (it is integrated in steps); the tests hold job counts, run hours and stock exactly and water values within stated tolerances. Owner question A7 in docs/agent/OWNER_QUESTIONS.md (design-intake-3 M7). Owner (ADR-0024 decision 7, 2026-10-11, A7): accepted. Across step splits, job counts, run hours and stock units are exact and water values agree within stated tolerances (chunk 3: 0.15 °C, 0.05 pH, 3 % of nitrate); A1's identical stateHash holds for identical splits. Chunks 4 and 5 state their own tolerances the same way. Chunk 4 (2026-10-14): Production lines added: random partitions give the same moves, sorts and listings with counts exact and hours within one game hour (the breeding sim raises a brood inside a sub-step), offline equals live, and the line code is in the determinism guard's scope (automation-invariants). The S3-D chains are chunk 5's. Chunk 5 (2026-10-14): met for the S3-D chains: random partitions give the same jobs at the same hours and the same stock, reserve gallons within 0.5 gal (the Auto Top-Offs; ADR-0024 decision 7); identical runs the same stateHash; offline equals live (automation-invariants, automation-reserves with background LOD)."
     },
     {
       "id": "AUTO-017",
@@ -2121,11 +2121,11 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "§10.3"
       ],
-      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: money moves only through the ledger, salt only through the changes, each the amount it needs; a skipped change leaves the out-of-salt notice). Chunks 4 and 5 add theirs. Chunk 4 (2026-10-14): Production lines added: money moves only through the ledger and animals appear only by being raised (automation-invariants); a listing a line can't make is reported once (\"{Line}: {n} {young} couldn't be listed: {reason}\")."
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer (automation-invariants: money moves only through the ledger, salt only through the changes, each the amount it needs; a skipped change leaves the out-of-salt notice). Chunks 4 and 5 add theirs. Chunk 4 (2026-10-14): Production lines added: money moves only through the ledger and animals appear only by being raised (automation-invariants); a listing a line can't make is reported once (\"{Line}: {n} {young} couldn't be listed: {reason}\"). Chunk 5 (2026-10-14): met for the S3-D chains: money only through the ledger, salt mix and eggs only through purchases and starts; a skipped change or start is never silent (Problems, the out-of-salt notice) (automation-invariants)."
     },
     {
       "id": "AUTO-018",
@@ -2143,12 +2143,12 @@
         "new: tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "§10.3",
         "§15"
       ],
-      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer: lastAutoChangeHour / lastAutoScrapeHour are optional lane-tagged save fields validated by repairState (persistence-05); a re-stepped window does nothing; a save without markers runs once at the next lights-on (automation-invariants). Chunks 4 and 5 add theirs. Chunk 4 (2026-10-14): Production lines added: production.lastHour is the line step's marker (optional, validated by repairState); an hour stepped again does nothing more (automation-invariants)."
+      "note": "Chunk 3 (2026-10-11): met for the Auto Water Changer: lastAutoChangeHour / lastAutoScrapeHour are optional lane-tagged save fields validated by repairState (persistence-05); a re-stepped window does nothing; a save without markers runs once at the next lights-on (automation-invariants). Chunks 4 and 5 add theirs. Chunk 4 (2026-10-14): Production lines added: production.lastHour is the line step's marker (optional, validated by repairState); an hour stepped again does nothing more (automation-invariants). Chunk 5 (2026-10-14): met for the S3-D jobs: each has its own optional marker validated by repairState; stepping a window again changes nothing (automation-invariants, persistence-05)."
     },
     {
       "id": "AUTO-019",
@@ -2227,9 +2227,9 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Chunk 3 (2026-10-11): met for salt: two changes due in the same step with salt for one, one runs and the other reports the shortage; no stock goes negative (automation-invariants). Chunks 4 and 5 add their resources."
+      "note": "Chunk 3 (2026-10-11): met for salt: two changes due in the same step with salt for one, one runs and the other reports the shortage; no stock goes negative (automation-invariants). Chunks 4 and 5 add their resources. Chunk 5 (2026-10-14): met for the S3-D jobs: stock for one cone and two due starts one and shows the shortage; a change that can't get its water is skipped while later tanks that fit get theirs; no stock goes negative (automation-invariants, automation-reserves)."
     },
     {
       "id": "AUTO-023",
@@ -2312,9 +2312,9 @@
         "tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Chunk 3 (2026-10-11): A1 met for the Auto Water Changer (a save and load right after the change and scrape ends with the uninterrupted run's stateHash, automation-invariants). A2 (a production line saved mid-quarantine) is chunk 4's. Chunk 4 (2026-10-14): A2 met: a line saved mid-quarantine resumes with the same time left and ends where the uninterrupted run does (persistence-05). The S3-D jobs are chunk 5's."
+      "note": "Chunk 3 (2026-10-11): A1 met for the Auto Water Changer (a save and load right after the change and scrape ends with the uninterrupted run's stateHash, automation-invariants). A2 (a production line saved mid-quarantine) is chunk 4's. Chunk 4 (2026-10-14): A2 met: a line saved mid-quarantine resumes with the same time left and ends where the uninterrupted run does (persistence-05). The S3-D jobs are chunk 5's. Chunk 5 (2026-10-14): met for the S3-D jobs: a save and load right after the morning jobs ends where an uninterrupted run does (automation-invariants, persistence-05)."
     },
     {
       "id": "AUTO-027",
@@ -2332,11 +2332,11 @@
         "tests/sim/persistence-05.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "§15"
       ],
-      "note": "Chunk 4 (2026-10-14): A1 met: repairState on a line with a missing parent or tank marks it and creates no animal, listing or sale (persistence-05). A2 (recovering from the backup slot) is checked as continuing from a saved copy; the S3-D jobs come with chunk 5. Status set to IN_PROGRESS: A1 is met for lines; A2 (recovering from the backup slot) has no test of its own yet."
+      "note": "Chunk 4 (2026-10-14): A1 met: repairState on a line with a missing parent or tank marks it and creates no animal, listing or sale (persistence-05). A2 (recovering from the backup slot) is checked as continuing from a saved copy; the S3-D jobs come with chunk 5. Status set to IN_PROGRESS: A1 is met for lines; A2 (recovering from the backup slot) has no test of its own yet. Chunk 5 (2026-10-14): A2 met: recovering from the backup slot (the main copy damaged) continues to the same line outputs, stats and stateHash as the main save it was, with no creature in two listings (automation-backup)."
     },
     {
       "id": "AUTO-028",
@@ -2352,8 +2352,9 @@
         "scripts/agent/requirements-audit.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 5 (2026-10-14): no reduction of S3-D's automation; two screens are simplified and recorded in PLAN.md (the Map's flows as rows rather than the drawn pipes; a line pauses, never \"pauses tonight\"), and the owner's changes are in ADR-0032 and ADR-0033."
     },
     {
       "id": "AUTO-029",
@@ -2391,13 +2392,13 @@
         "tests/sim/ui-notify-attention.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §5.3",
         "S3D §7.1",
         "S3D §7.8"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the early, before-the-Desk and full layouts render (operations.spec's early and late routes, the before-the-Desk cases); Problems and Manual mode stay locked until the Operations Desk; boot.spec green."
     },
     {
       "id": "AUTO-031",
@@ -2415,12 +2416,12 @@
         "tests/sim/facility-progression.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.8",
         "S3D §9.1"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: three facility projects, each opening its tier and installing its room once (automation-tiers); the full unit suite ran before and after, no seeded test moved."
     },
     {
       "id": "AUTO-032",
@@ -2438,11 +2439,11 @@
         "tests/sim/automation-reserves.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §9.2"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met (automation-reserves): the reserves, the 10 AM / 10 PM batches under 60 %, skip-not-weak changes in tankOrder, the Auto Top-Offs on the fresh reserve, the salt machinery only while salt water is used, AUTO-010 unchanged without a Water room. Tested on the automation fixtures, not the design's Day 38 board. The owner (ADR-0033): a batch is half the salt reserve (30 gal and 4.1 kg at the base room)."
     },
     {
       "id": "AUTO-033",
@@ -2459,11 +2460,11 @@
         "tests/sim/automation-feed-production.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §9.3"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: each start consumes once and each harvest adds once across save, load and catch-up; a cone with no eggs waits and raises the shortage; a harvest past storage waits and the Feed tab says \"Full\" (automation-feed-production)."
     },
     {
       "id": "AUTO-034",
@@ -2480,12 +2481,12 @@
         "tests/sim/staff-sim.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §9.6",
         "S3D §8.7"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met on the automation fixture (automation-stock), not the design's Day 38 board: food first, the budget left after food buys salt in 5 kg steps, a budget that covers both buys the whole order, the forecast's \"arriving\"; staff-sim and staff2-feeding green unchanged. The chunk 5 review: with a Water room the keepers' changes on salt tanks without a changer keep their salt, never ahead of food that's out; a failed purchase leaves its money for the next order."
     },
     {
       "id": "AUTO-035",
@@ -2500,12 +2501,12 @@
         "tests/sim/automation-problems.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §9.8",
         "S3D §5.4"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: a unit case per state (automation-problems, automation-problems-ui); the dots follow the worst item (automation-chips). Also the Water room warnings (ADR-0033)."
     },
     {
       "id": "AUTO-036",
@@ -2521,12 +2522,12 @@
         "tests/sim/automation-operations.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §9.7",
         "S3D §7.7"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: over a held day no held job runs and nothing catches up after resume; Hold and Resume settle every background tank first (the review); the Auto Top-Offs, keepers and auctions still run; a held Autofeeder raises the held alert (automation-operations, automation-reserves, operations.spec)."
     },
     {
       "id": "AUTO-037",
@@ -2544,11 +2545,11 @@
         "tests/sim/fix-core-step-invariance.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §9.9"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the jobs' counts, hours and stock are exact for different focus, forceFull and step sizes, and each job's gallons are exact (well within A1's 0.01 gal); the reserve totals agree within 0.5 gal because the Auto Top-Offs, which aren't scheduled jobs, draw as their tanks catch up (automation-reserves, KNOWN_LIMITATIONS). core-determinism and fix-core-step-invariance green."
     },
     {
       "id": "AUTO-038",
@@ -2563,12 +2564,12 @@
         "tests/sim/automation-machines.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.4",
         "S3D §10"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the machine catalog in src/data/catalog/machines.ts; upkeep in Finances (\"Running costs — Water room and Live food room\") and in the weekly money (automation-machines)."
     },
     {
       "id": "AUTO-039",
@@ -2583,12 +2584,12 @@
         "tests/sim/automation-operations.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §7.1",
         "S3D §16"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the weekly money equals Finances for the same days, past the 400-entry ledger cap (automation-operations); completeSale tags a line's sale (production-line)."
     },
     {
       "id": "AUTO-040",
@@ -2605,11 +2606,11 @@
         "tests/sim/automation-map.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §7.5"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: each layer's marks, a line's grow-out tank with its places and its link to #/livestock/production/<id>, selecting it again clears it, the phone's room sheet (operations.spec); \"+{n} more\" (automation-map). Simplified (recorded in PLAN.md): flows as rows rather than the drawn pipes; the layer control in the map body."
     },
     {
       "id": "AUTO-041",
@@ -2626,12 +2627,12 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.1",
         "S3D §8.2"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: chip words, tones and icon ids for running, held, paused and off (automation-chips); the tank card's header chips carry their icons (the review); a line's full grow-out tank shows its reason and Why."
     },
     {
       "id": "AUTO-042",
@@ -2646,11 +2647,11 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §5.5"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: after Hold all the pill shows at 1440×900 and opens Manual mode; Resume all removes it (operations.spec)."
     },
     {
       "id": "AUTO-043",
@@ -2666,12 +2667,12 @@
         "tests/sim/automation-today.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §7.1",
         "S3D §7.3"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the next four jobs in time order, moving up once one has run; batches from the Water room's dry run; Saved this week (automation-today)."
     },
     {
       "id": "AUTO-044",
@@ -2688,11 +2689,11 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.3"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the section's rows with and without the Desk; a Details link opens its tab (operations.spec, automation tests)."
     },
     {
       "id": "AUTO-045",
@@ -2709,11 +2710,11 @@
         "tests/sim/automation-machines.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.4"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: buying an upgrade changes the machine's numbers and the money by its price (automation-machines); the routes open late and locked early (operations.spec)."
     },
     {
       "id": "AUTO-046",
@@ -2729,11 +2730,11 @@
         "tests/sim/automation-stock.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.7"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the status line at three budgets (automation-problems-ui, on the automation fixture rather than the design's Day 38); with the switch off nothing is bought or logged (automation-stock); the slider moves in $1 steps (operations.spec). The line compares what's left of the day's budget at the next check (the review)."
     },
     {
       "id": "AUTO-047",
@@ -2749,11 +2750,11 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.8"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: researching the Operations Desk opens Problems three days later (operations.spec); the Facility section's states render."
     },
     {
       "id": "NOTIFY-001",
@@ -3019,11 +3020,11 @@
         "tests/sim/notify-rules.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8.9"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the out-of-salt and line-paused events map to Automation; quiet hours hold them; the route changes at Tier 5 (notify-rules, notify-deliver, automation-problems)."
     },
     {
       "id": "PROD-001",
@@ -3987,11 +3988,11 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §13"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: a scripted keyboard-only pass of Overview, Water, Feed, Lines, Map, Problems and Manual mode at 1440×900 found every focus stop named (2026-10-14, on the review fixes); the Animals layer names each tank's lines in text and in its label (operations.spec); every status is an icon and a word; the Map's Esc order is tested."
     },
     {
       "id": "PERF-001",
@@ -4070,11 +4071,11 @@
         "tests/sim/automation-problems.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §8 (INTAKE)"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: the forecast and the summaries are kept once per Operations key (the hour, the stock, the budget, the holds, the lines, and player actions while paused); six re-renders in an hour run no dry run, a new hour one, a player action while paused one (automation-perf). The forecast is lazy, so the dock's dot runs none unless a supply is low."
     },
     {
       "id": "PERSIST-001",
@@ -4419,11 +4420,11 @@
         "tests/sim/core-crafted-saves.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "S3D §10"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): met: crafted saves repair with notes and a valid save repairs to nothing; round trips keep the hash; a newer build's save reports too_new (persistence-05, core-save-forward-safety pinning KNOWN_AT[2])."
     },
     {
       "id": "HARNESS-001",

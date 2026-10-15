@@ -1,54 +1,53 @@
-# Session handoff: chunk 4 done, chunk 5 next
+# Session handoff: chunk 5 done, chunk 6 next
 
-For the agent that builds chunk 5 (Deep automation, S3-D) on Aquarium Go, after the owner's `/compact` or in a new
-session. Written 2026-10-14 by Marshall, the session that built chunk 4 (Production lines); it replaces the handoff
-written after groups B to E. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the
-order of work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
+For the agent that builds chunk 6 (Social stub, hardening and the last 0.5 release) on Aquarium Go, after the owner's
+`/compact` or in a new session. Written 2026-10-14 by the session that built chunk 5 (Deep automation, S3-D); it
+replaces the handoff written after chunk 4. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this
+file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
 
 ## Where things stand
 
-- `next` holds chunks 1 to 4, all tested, and every owner answer (groups A to E, ADR-0024 to ADR-0029, and chunk 4's
-  own copy, ADR-0030 and ADR-0031). DESIGN-S3D is approved (ADR-0027). `docs/agent/OWNER_QUESTIONS.md` has nothing open. The 45
-  approved 0.5 screens are in `docs/agent/design/DESIGN-0.5/` (`SOURCE.md` says what each shows).
-- **0.5.1 is the release on `main`** (`78548a3`, Pages and Render). Chunk 4 is on `next` only: releasing it is the
-  owner's call (PLAN.md "Releases").
-- Chunk 5 (deep automation) is next; chunk 6 (Social stub, hardening, the last 0.5 release) after it.
+- `next` holds chunks 1 to 5, all tested, and every owner answer (groups A to E, ADR-0024 to ADR-0029; chunk 4's copy,
+  ADR-0030 and ADR-0031; chunk 5's, ADR-0032 and ADR-0033). `docs/agent/OWNER_QUESTIONS.md` has nothing open. The 45
+  approved 0.5 screens are in `docs/agent/design/DESIGN-0.5/`; DESIGN-S3D's in `docs/agent/design/DESIGN-S3D/screens/`.
+- **0.5.1 is the release on `main`** (`78548a3`, Pages and Render). Chunks 4 and 5 are on `next` only: releasing them
+  is the owner's call (PLAN.md "Releases"); chunk 6 ends with the last 0.5 release.
+- Chunk 6 is next: its brief is in PLAN.md (Social stub, WCAG 2.2 AA with solid high-contrast panels, WebKit e2e, the
+  failure banner, typecheck and tests before the deploys, the morph data, "Move tank", two full passes in a row).
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
-   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, How a chunk runs, chunk 5's brief), then
-   `docs/agent/design/DESIGN-S3D/SPEC.md` and `INTAKE.md` (its §11 resolutions, §12 proposals, §14 approval) and the
-   ADRs the brief cites.
-2. **Before building**, as the brief says: write design-intake-3's M3, M4, M5, R4 and R5 into the intake, and turn
-   `INTAKE.md` §12's proposals into requirements in `REQUIREMENTS.json` (PROD-019 to PROD-021 are already in, GREEN).
-3. **Build chunk 5** following PLAN.md "How a chunk runs": note the start commit; apply the chunk's BACKLOG rows; ask
-   the owner once, batched, for any player-visible text no design or ADR gives; run the seeded tests before and after
-   any sim change and explain every changed expectation; the four checks pass on the final code; one fresh reviewer
-   on Opus 5.5 at max effort (Agent tool `model: "opus"`, `effort: "max"`; never Fable) reads the brief and
-   `git diff <start>..HEAD`, not your summary; fix its blockers and re-run; update PLAN.md, REQUIREMENTS.json,
-   BACKLOG.md and the ADRs; commit and push `next`; tell the owner each command with its pass or fail line, what
-   changed, and what to try (`npm run dev`, then http://127.0.0.1:5173/?dev=1).
+   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, How a chunk runs, chunk 6's brief), then the design sections
+   the brief names and the ADRs it cites.
+2. **Build chunk 6** following PLAN.md "How a chunk runs": note the start commit; apply the chunk's BACKLOG rows (S4,
+   and what chunk 5 left: B-169's move into `src/sim`, B-170's rest, B-180's far-tank AI cost); ask the owner once,
+   batched, for any player-visible text no design or ADR gives; run the seeded tests before and after any sim change
+   and explain every changed expectation; the four checks pass on the final code; one fresh reviewer on Opus 5.5 at
+   max effort (Agent tool `model: "opus"`, `effort: "max"`; never Fable) reads the brief and `git diff <start>..HEAD`,
+   not your summary; fix its blockers and send it a confirmation pass; update PLAN.md, REQUIREMENTS.json, BACKLOG.md
+   and the ADRs; commit and push `next`; tell the owner each command with its pass or fail line, what changed, and
+   what to try (`npm run dev`, then http://127.0.0.1:5173/?dev=1).
+3. **Left from chunk 5 for chunk 6:** DES-013 (a test that finds every SPEC §11 string and §14 id) and DES-014 (Browser
+   QA of Operations against `DESIGN-S3D/screens/` at 390×844 and 1440×900) are IN_PROGRESS; REL-013's two full passes
+   and the owner's play-through cover the rest. Watch `shop-filters.spec.ts:75` (the destination tiles' arrow keys):
+   it failed twice in a row of four once on `0b316f1` under load and passed 13 times straight after; if it fails in a
+   full run again, look for a re-render that resets the Shop's chosen tank.
 4. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
    `/compact` (an agent can't) and you re-read the docs. Releases (`main`) only when the owner says so in the session.
 
-**What chunk 4 left for chunk 5.** Operations › Lines (`#/operations/lines`) shows the same lines:
-`src/sim/production/view.ts` has the numbers (status, next clutch, growing out, quarantine, sales, this week), and the
-Production tab's dot and its link row to Operations wait for it. AUTO-014, AUTO-016 to AUTO-018, AUTO-026 and AUTO-027
-are IN_PROGRESS, met for lines; chunk 5's chains add their cases (`tests/sim/automation-invariants.test.ts` has a
-production block to copy). B-167 (no compatibility decision in the sim) is worth deciding when an automation first
-moves animals on its own.
+**Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
+recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the
+exact strings in the option's preview; open design screens on the Mac with `open <png>` first; record the answers
+verbatim in an ADR (question as asked, option chosen with its description, notes), then the index, PLAN.md,
+REQUIREMENTS.json and BACKLOG.md. Check new questions against earlier answers before asking.
 
-**Asking the owner** (how groups A to E and chunk 4 went): AskUserQuestion, at most 4 questions per round, recommended
-option first and labelled "(Recommended)", each description giving the context needed to choose; open design screens on
-the Mac with `open <png>` first; record the answers verbatim in an ADR (question as asked, option chosen with its
-description, notes), then the index, PLAN.md, REQUIREMENTS.json and BACKLOG.md. Check new questions against earlier
-answers before asking.
+## How this repo is worked (learned in chunks 1 to 5 and the 0.5.1 release)
 
-## How this repo is worked (learned in chunks 1 to 4 and the 0.5.1 release)
-
-**Edit in `/Volumes/Dev/Projects/AquariumGo`, test in `~/LocalTest/AquariumGo`.** The disk image is slow (typecheck
-about 2 minutes there, 9 seconds on the internal disk; e2e times out there). The clone's remote `dev` is this repo.
+**Edit in `/Volumes/Dev/Projects/AquariumGo`, test in `~/LocalTest/AquariumGo`.** The disk image is slow, at times very
+slow (a `git add -A` and commit there took several minutes in chunk 5: run them with `run_in_background`; search the
+test clone instead of the image when grep hangs). Typecheck takes about 2 minutes there, 9 seconds on the internal
+disk; e2e times out there. The clone's remote `dev` is this repo.
 To test uncommitted work, apply it as a patch on the same base commit (make the script in your scratchpad):
 
 ```zsh
@@ -91,11 +90,15 @@ case compares hours and counts for that reason).
 **Moves settle tanks (B-127).** Code that moves an animal or a brood between tanks goes through `moveCreature` /
 `moveClutch` (or calls `settleTanks` from `src/sim/settle.ts`): both tanks catch up first, anchored at the step's end
 inside a world step, and the move is checked after that (the animal may have died, the brood been raised). Production
-lines and a sold tank's relocations already do.
+lines and a sold tank's relocations already do. Since chunk 5 (ADR-0026 decision 5) so do a shop purchase into a tank,
+a water conversion, a substrate change, the Water room's jobs and every manual-mode change: a player action that
+changes a background tank settles that tank first (`settleTanks` on its id costs a few ms; settling all 40 tanks
+inside an Immer action costs about 85 ms, so a whole-facility settle goes through `flushBackgroundTanks`, mutateFast).
 
-**Reviews take time.** Chunk 4's reviewer on Opus 5.5 at max effort ran about three hours (much of it one silent
-stretch of thinking before its report); wait for it with a background until-loop rather than assuming it hung. A
-follow-up through SendMessage (same agent, context kept) confirmed the fixes in about seven minutes.
+**Reviews take time.** Chunk 4's reviewer on Opus 5.5 at max effort ran about three hours, chunk 5's about 40
+minutes; its completion arrives as a notification, so keep working (docs, tests) meanwhile. Follow-ups through
+SendMessage (same agent, context kept) confirm fixes in 10 to 15 minutes, and do find new problems in the fixes:
+chunk 5's first confirmation pass caught a regression the fix had introduced.
 
 **Tests that pass by day and fail by night.** Notification delivery reads the device clock (quiet hours 22:00–08:00).
 A test that expects a notification turns quiet hours off (e2e: `aquarium-go.notify.v1` in an init script) or pins the
@@ -106,7 +109,12 @@ live state into `getInitialState()` first. Sim tests build worlds with `newGame`
 `createCreature`/`addCreature` and step with `advanceWorld` or `stepTank` (see `tests/sim/automation-*.test.ts`). Tank
 tiers and decor start locked: unlock with `UNLOCK_KEYS` and `unlock(g, k, { silent: true })`. Breeding needs real
 cover: the `@/sim/aquascape` mock doesn't reach the breeding module, so put planted decor in the tank
-(`tests/sim/support/production.ts` builds a working farm and line).
+(`tests/sim/support/production.ts` builds a working farm and line; `tests/sim/support/automation.ts` a facility with
+the Water room, the Live food room and a stock manager). To make a sim function fail in a test, `vi.mock` the file that
+defines it (`@/sim/economy/purchases`), not an index: the economy index's imports reach the staff code while the mock
+is being made, and that code then keeps the original. Operations' caches key on the game hour and on
+`useGame.getState().actions` (player actions); a test that renders twice in one hour and expects a recompute must
+change one of those.
 
 **e2e patterns.** Open the game with `?dev=1` (dev mode unlocks every destination, and counts the Genetics Lab as
 researched). `aq(page, 'dev.setSpeed', 0)` pauses the clock (a restock mid-test changes shop counts). `__AQ.mutate` takes

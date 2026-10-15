@@ -26,6 +26,7 @@ new group, and record them the same way.
 | (chunk 4) | Chunk 4's own copy and two behaviours, asked during the chunk as its brief said | 8 questions: **answered 2026-10-14 (ADR-0030)** |
 | (chunk 4 review) | Four lines of copy the review's fixes needed | 4 questions: **answered 2026-10-14 (ADR-0031)** |
 | (chunk 5) | Chunk 5's copy the design leaves unworded, asked once as ADR-0026 decision 9 says | 4 questions: **answered 2026-10-14 (ADR-0032)** |
+| (chunk 5 review) | The review's copy; the salt mixer's day (batches grow with the reservoir, the 60 % rule kept); the Water room warnings and their reserve-size wording | 5 questions in 3 rounds: **answered 2026-10-14 (ADR-0033)** |
 
 ## A. Release and standing decisions
 
