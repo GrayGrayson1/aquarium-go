@@ -39,6 +39,7 @@ import {
   type BackendName,
 } from '@/persistence';
 import type { GameState } from '@/types';
+import { budget } from './support/timeBudget';
 
 const SAVE = 'aquarium-go.save.auto';
 const STAMP = 'aquarium-go.stamp.auto';
@@ -407,7 +408,7 @@ describe('S06-01: a hung write does not wedge saving for the session', () => {
     const res = await saveGame(game('Hung', 17), 'auto');
     expect(res.ok).toBe(true);
     expect(res.backend).toBe('localstorage');
-    expect(Date.now() - t0).toBeLessThan(2000);
+    expect(Date.now() - t0).toBeLessThan(budget(2000));
     expect(lsMap.has(SAVE)).toBe(true);
     expect(storageStatus().reason).toBe('demoted');
     // and the next save just works

@@ -29,6 +29,7 @@ import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { TUTORIAL_CHAINS } from '@/data/quests';
 import { NEUTRAL_HEALTH } from '@/sim/life/step';
 import type { GameState } from '@/types';
+import { budget } from './support/timeBudget';
 
 type Json = Record<string, any>;
 const game = (seed = 3) => newGame({ starterId: 'betta', starterName: 'Crafty', seed }) as unknown as Json;
@@ -58,7 +59,7 @@ describe('A1: oversized lists load in bounded time, trimmed with a note', () => 
     const g = game();
     g.progress.discoveredMorphs = Array.from({ length: 100_000 }, (_, i) => `betta:Morph ${i % 50_000}`);
     const { s, repairs, ms } = load(g);
-    expect(ms).toBeLessThan(2000);
+    expect(ms).toBeLessThan(budget(2000));
     expect(s.progress.discoveredMorphs.length).toBe(20_000);
     expect(new Set(s.progress.discoveredMorphs).size).toBe(20_000);
     expect(repairs.some((r) => r.startsWith('progress.discoveredMorphs:'))).toBe(true);
@@ -69,7 +70,7 @@ describe('A1: oversized lists load in bounded time, trimmed with a note', () => 
     const e = { kind: 'info', text: 'x', hour: 0 };
     g.log = Array.from({ length: 100_000 }, (_, i) => ({ ...e, id: `ev_${i}` }));
     const { s, repairs, ms } = load(g);
-    expect(ms).toBeLessThan(2000);
+    expect(ms).toBeLessThan(budget(2000));
     expect(s.log.length).toBeLessThanOrEqual(300);
     expect(s.log.some((x) => x.id === 'ev_99999')).toBe(true);
     expect(repairs).toContain('log: 99700 oldest events removed');
@@ -82,7 +83,7 @@ describe('A1: oversized lists load in bounded time, trimmed with a note', () => 
       { id: 'l_open', status: 'active', kind: 'creature', creatureIds: [], bids: [] },
     ];
     const { s, repairs, ms } = load(g);
-    expect(ms).toBeLessThan(2000);
+    expect(ms).toBeLessThan(budget(2000));
     expect(s.market.listings.filter((l) => l.status !== 'active').length).toBeLessThanOrEqual(1000);
     expect(repairs).toContain('market.listings: 99000 oldest closed listings removed');
   });
@@ -93,7 +94,7 @@ describe('A1: oversized lists load in bounded time, trimmed with a note', () => 
     const c0 = Object.values(g.creatures)[0] as Json;
     for (let i = 0; i < 20_000; i++) g.creatures[`cx${i}`] = { ...clonePlain(c0), id: `cx${i}`, tankId: tank };
     const { s, ms } = load(g);
-    expect(ms).toBeLessThan(2000);
+    expect(ms).toBeLessThan(budget(2000));
     expect(Object.keys(s.creatures).length).toBeGreaterThanOrEqual(20_000);
     expect(findNonFinite(s)).toEqual([]);
   });
