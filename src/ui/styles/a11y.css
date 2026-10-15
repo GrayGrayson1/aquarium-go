@@ -2,7 +2,10 @@
    through the High contrast setting (W3C technique G174). The tokens turn solid under :root[data-contrast='high']
    (tokens.css); this file makes solid the surfaces that use colours of their own, gives selected states a ring that
    reaches 3:1, keeps the way to the High contrast switch at AA in normal mode, and adds focus rings where a control had
-   none (WebKit's default ring is 1.9:1 on the glass). Loaded after every other stylesheet. Tokens only. */
+   none (WebKit's default ring is 1.9:1 on the glass). Loaded after every other stylesheet UIRoot imports; the panels'
+   own stylesheets load later, with their lazy panels, so every rule here wins without the order: the High contrast
+   rules by their :root[data-contrast] prefix, the two-class rules by specificity, and the focus rings because no
+   other stylesheet styles those focus states (ui-contrast.test checks it). Tokens only. */
 
 /* ── High contrast: solid surfaces ── */
 :root[data-contrast='high'] .pn-sheet,

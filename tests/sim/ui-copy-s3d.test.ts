@@ -34,7 +34,7 @@ import { WaterTab } from '@/ui/panels/operations/WaterTab';
 import { FeedTab } from '@/ui/panels/operations/FeedTab';
 import { LinesTab } from '@/ui/panels/operations/LinesTab';
 import { MapTab } from '@/ui/panels/operations/MapTab';
-import { ProblemsView } from '@/ui/panels/operations/Problems';
+import { ProblemsView, dayRange } from '@/ui/panels/operations/Problems';
 import { ManualView } from '@/ui/panels/operations/Manual';
 import { LockedPage } from '@/ui/panels/operations/Locked';
 import { AutomationSection } from '@/ui/hud/AlertsAutomation';
@@ -156,6 +156,18 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
     const t = ops(f.g).problems();
     expect(t).toContain('Rosa couldn’t reorder salt mix — today’s $1 stock budget is spent. Salt mixing stops after the batch in the tank.'); // A91
     expect(t).toMatch(/Day 5( · \d+)* Morning water changes go ahead as normal\./); // A99 ("Day 39 · 40")
+  });
+
+  it('Problems › out of salt with days in hand: four days or more read as the range "Days 5–14", not each day', () => {
+    const f = saltLow(4.1);
+    run(f.g, 3);
+    const snap = opsSnapshot(f.g);
+    const salt = snap.problems.find((p) => p.kind === 'supply' && p.supply === 'salt' && p.state === 'out') as Extract<OpsSnapshot['problems'][number], { kind: 'supply' }>;
+    expect(salt?.shortDay).toBeDefined();
+    const t = ops(f.g, false, { problems: snap.problems.map((p) => (p === salt ? { ...salt, shortDay: 15 } : p)) }).problems();
+    expect(t).toContain('Days 5–14 Morning water changes go ahead as normal.');
+    expect(t).not.toContain('5 · 6 · 7');
+    expect([dayRange(39, 39), dayRange(39, 40), dayRange(39, 41), dayRange(39, 42)]).toEqual(['Day 39', 'Day 39 · 40', 'Day 39 · 40 · 41', 'Days 39–42']);
   });
 
   it('Water: the batch that drew from the fresh reserve, and "Order at {time}" (B6, B15; SPEC §7.2)', () => {

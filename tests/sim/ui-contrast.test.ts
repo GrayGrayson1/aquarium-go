@@ -6,7 +6,7 @@
  * relative luminance; translucent colours are composited over the backdrop first.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..');
@@ -115,5 +115,22 @@ describe('styles that were measured and fixed stay fixed (ACC-005)', () => {
     const root = css('src/ui/UIRoot.tsx');
     const imports = [...root.matchAll(/^import '\.\/styles\/([\w-]+\.css)'/gm)].map((m) => m[1]);
     expect(imports.at(-1)).toBe('a11y.css');
+  });
+  it('the panels’ stylesheets (they load later, with their lazy panels) never style the focus states a11y.css rings', () => {
+    // a11y.css's other rules carry :root[data-contrast] or two classes, so they win on specificity whatever the order
+    const strip = (t: string) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules = (t: string) => [...strip(t).matchAll(/([^{}]+)\{[^{}]*\}/g)].map((m) => m[1].trim());
+    const ringed = new Set<string>();
+    for (const sel of rules(css('src/ui/styles/a11y.css')))
+      for (const part of sel.split(/,(?![^()]*\))/).map((x) => x.trim()))
+        if (!part.startsWith(':root') && part.includes(':focus')) for (const m of part.matchAll(/\.([\w-]+)/g)) ringed.add(m[1]);
+    expect(ringed.size).toBeGreaterThan(10);
+    const sheets = (dir: string): string[] => readdirSync(join(ROOT, dir)).flatMap((e) => (statSync(join(ROOT, dir, e)).isDirectory() ? sheets(`${dir}/${e}`) : e.endsWith('.css') && e !== 'a11y.css' ? [`${dir}/${e}`] : []));
+    const clashes = sheets('src').flatMap((f) =>
+      rules(css(f))
+        .filter((sel) => sel.includes(':focus') && [...ringed].some((k) => new RegExp(`\\.${k}(?![\\w-])`).test(sel)))
+        .map((sel) => `${f}: ${sel.slice(0, 100)}`),
+    );
+    expect(clashes).toEqual([]);
   });
 });

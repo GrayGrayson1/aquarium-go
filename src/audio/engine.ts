@@ -300,11 +300,12 @@ export const volumeCurve = (v: number) => {
 };
 
 /**
- * chunk 6 — a browser driven by automation (Playwright's e2e runs: `navigator.webdriver`) plays no sound, as if muted.
- * Chromium runs muted already; WebKit, which has no mute switch, played the game out loud on the owner's Mac. Players'
- * browsers never set the flag; the Sound settings stay as the player left them.
+ * chunk 6 — the e2e runs' servers (playwright.config.ts sets VITE_E2E_MUTE) build a game that plays no sound, as if
+ * muted. Chromium runs muted already; WebKit, which has no mute switch, played the game out loud on the owner's Mac.
+ * It is a build-time flag (it used to be `navigator.webdriver`, which a player's automated browser could set too): the
+ * players' builds never have it, and the Sound settings stay as the player left them.
  */
-const AUTOMATED = typeof navigator !== 'undefined' && navigator.webdriver === true;
+const AUTOMATED = import.meta.env.VITE_E2E_MUTE === '1';
 const isMuted = (s: Settings) => s.muted || AUTOMATED;
 
 let lastVolumes = '';

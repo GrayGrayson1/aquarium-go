@@ -129,6 +129,11 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
   return backlog;
 }
 
+/** The tab is back after `hiddenMs`: catch up, unless the simulation is stopped (B-002's banner: it stays where it is). */
+export function catchUpOnReturn(hiddenMs: number): void {
+  if (!simStopped()) catchUpAfterHidden(hiddenMs);
+}
+
 export function GameLoop() {
   useAutosave();
   useEffect(() => {
@@ -151,7 +156,7 @@ export function GameLoop() {
         // A long absence catches up (bounded, under the grace period) — the autosave on hide already stored the
         // moment the tab went dark, so a tab the OS discards instead comes back the same way through Continue.
         try {
-          catchUpAfterHidden(span);
+          catchUpOnReturn(span);
         } catch (e) {
           reportError(e);
         }

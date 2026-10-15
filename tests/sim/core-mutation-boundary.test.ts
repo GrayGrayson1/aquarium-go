@@ -8,7 +8,7 @@
  * - the UI reaches Social data only through the SocialService (src/social/index.ts), never the stub's internals;
  * - notifications, the clipboard and the share sheet only through src/platform.
  * core-architecture-boundaries.test.ts keeps the layer imports. The list of state changes a future server would have
- * to authorise is docs/agent/TRUST_BOUNDARY.md.
+ * to authorise is docs/agent/TRUST_BOUNDARY.md, and it names every sim function those layers call through the store.
  */
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -88,5 +88,13 @@ describe('REL-016: the mutation boundary and the trust boundary', () => {
   it('docs/agent/TRUST_BOUNDARY.md lists the state changes a future server would authorise', () => {
     const doc = readFileSync(join(ROOT, 'docs', 'agent', 'TRUST_BOUNDARY.md'), 'utf8');
     for (const heading of ['Purchases', 'Sales and listings', 'Production lines', 'Staff', 'Research', 'Shows', 'Social']) expect(doc).toContain(`## ${heading}`);
+    // every sim function the UI, render and AI layers call through the store (`act((d) => buyTank(d, …))`,
+    // `mutate((d) => feedTank(d, …))`) is named there (the fresh review found four missing; the wrappers aren't actions)
+    const WRAPPERS = new Set(['fn', 'domainFn', 'flushSimDebt']);
+    const called = new Set<string>();
+    const outside = SOURCES.filter((f) => !/^src\/(sim|data|dev)\//.test(f.path));
+    for (const f of outside) for (const m of code(f.text).matchAll(/\b(?:act|mutate|mutateFast)\(\s*\(?\s*(\w+)\s*\)?\s*=>\s*\{?\s*(?:return\s+)?(?:const \w+ = )?(\w+)\(\s*\1\b/g)) called.add(m[2]);
+    expect(called.size).toBeGreaterThan(40);
+    expect([...called].filter((n) => !WRAPPERS.has(n) && !doc.includes(`\`${n}\``)).sort()).toEqual([]);
   });
 });

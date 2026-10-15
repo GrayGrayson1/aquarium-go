@@ -159,7 +159,7 @@ function LineRow({ g, line, held, small, early }: { g: GameState; line: Producti
         {small && (
           <span className="ops-line__switch">
             <span aria-hidden>Line on</span>
-            <Toggle checked={line.running} onChange={(on) => doLineSwitch(line.id, on)} label={`Line on: ${line.name}`} testId={`line-toggle-${line.id}`} />
+            <Toggle checked={line.running} onChange={(on) => doLineSwitch(line.id, on)} label={`Run the ${line.name}`} testId={`line-toggle-${line.id}`} />
           </span>
         )}
       </div>

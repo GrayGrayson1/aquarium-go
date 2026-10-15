@@ -31,6 +31,7 @@ import { CLASS_DEFAULTS } from '@/sim/water/constants'; // chunk 6 (PERSIST-004,
 import { LOG_CAP } from '@/sim/context';
 import { BUYER_ARCHETYPES } from '@/data/buyers';
 import { SHOW_TIERS } from '@/data/shows';
+import { STAFF_ROLES, STAFF_TRAITS } from '@/data/staff'; // chunk 6 (PERSIST-004 A3)
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -383,6 +384,12 @@ function repairCreature(s: Json, id: string, c: Json, repairs: string[]): Creatu
   c.sex ??= 'unknown';
   c.reproRole ??= c.sex === 'female' ? 'female' : c.sex === 'male' ? 'male' : 'undifferentiated';
   c.bornHour = num(c.bornHour, hour - 24 * (sp.lifecycle.juvenileDays + 2));
+  // chunk 6 (PERSIST-004 A2) — born after the clock's hour is a negative age: born now (a hatch inside a step can land
+  // a rounding error past the clock, so the check allows a millionth of an hour)
+  if (c.bornHour > hour + 1e-6) {
+    repairs.push(`creature ${id}.bornHour: ${String(c.bornHour).slice(0, 24)} after the clock → ${hour}`);
+    c.bornHour = hour;
+  }
   c.lifeStage ??= 'adult';
   c.sizeCm = Math.max(0.05, num(c.sizeCm, sp.adultSizeCm * 0.8));
   if (c.tankId !== null && typeof c.tankId !== 'string') c.tankId = null;
@@ -498,6 +505,9 @@ function scrubNonFinite(s: Json, repairs: string[]): void {
 const OVERLAY_RENAMES: readonly { speciesId: string; from: string; to: string; touches: RegExp }[] = [{ speciesId: 'bristlenose_pleco', from: 'Super Long-fin', to: 'Double Long-fin', touches: /Long-fin/ }];
 
 function renameOverlays(s: Json, repairs: string[]): void {
+  /** chunk 6 (the fresh review): each renamed animal's old and new discovery keys, so the Encyclopedia keeps it found. */
+  const renamed: { from: string; to: string }[] = [];
+  const renamedIds = new Map<string, string>();
   const fix = (c: Json, label: string) => {
     if (!isObj(c) || typeof c.morphName !== 'string') return;
     const r = OVERLAY_RENAMES.find((x) => x.speciesId === c.speciesId);
@@ -515,6 +525,8 @@ function renameOverlays(s: Json, repairs: string[]): void {
       }
     }
     if (now !== c.morphName) {
+      renamed.push({ from: `${c.speciesId}:${c.morphName}`, to: `${c.speciesId}:${now}` });
+      if (typeof c.id === 'string') renamedIds.set(c.id, now);
       c.morphName = now;
       repairs.push(`${label}.morphName renamed (B-194)`);
     }
@@ -523,10 +535,40 @@ function renameOverlays(s: Json, repairs: string[]): void {
   if (isObj(s.market) && Array.isArray(s.market.stock)) {
     for (const o of s.market.stock as Json[]) if (isObj(o) && Array.isArray(o.creatures)) for (const c of o.creatures as Json[]) fix(c, `market.stock.${shortId(o.id)}`);
   }
+  // the old name kept as text: a Prismatic find, and a listing's title and summary (its animals are renamed above)
+  const plain = (speciesId: unknown, text: unknown): unknown => {
+    const r = OVERLAY_RENAMES.find((x) => x.speciesId === speciesId);
+    return r && typeof text === 'string' && text.includes(r.from) ? text.replaceAll(r.from, r.to) : text;
+  };
   const p = s.progress;
+  if (isObj(p) && Array.isArray(p.prismaticFinds)) {
+    for (const f of p.prismaticFinds as Json[]) {
+      if (!isObj(f)) continue;
+      const now = (typeof f.creatureId === 'string' && renamedIds.get(f.creatureId)) || plain(f.speciesId, f.morphName);
+      if (now !== f.morphName) {
+        f.morphName = now;
+        repairs.push(`progress.prismaticFinds ${shortId(f.creatureId)}.morphName renamed (B-194)`);
+      }
+    }
+  }
+  if (isObj(s.market) && Array.isArray(s.market.listings)) {
+    for (const l of s.market.listings as Json[]) {
+      if (!isObj(l)) continue;
+      const species = isObj(l.snapshot) && Array.isArray(l.snapshot.speciesIds) ? (l.snapshot.speciesIds as unknown[]) : [];
+      for (const sp of species) {
+        const title = plain(sp, l.title);
+        const summary = isObj(l.snapshot) ? plain(sp, l.snapshot.summary) : undefined;
+        if (title === l.title && (!isObj(l.snapshot) || summary === l.snapshot.summary)) continue;
+        l.title = title;
+        if (isObj(l.snapshot)) l.snapshot.summary = summary;
+        repairs.push(`market.listings ${shortId(l.id)}: renamed (B-194)`);
+      }
+    }
+  }
   if (!isObj(p) || !Array.isArray(p.discoveredMorphs)) return;
   const seen = new Set<string>();
   const out: unknown[] = [];
+  const found = new Set((p.discoveredMorphs as unknown[]).filter((k): k is string => typeof k === 'string'));
   for (const key of p.discoveredMorphs as unknown[]) {
     let k = key;
     if (typeof key === 'string') {
@@ -536,6 +578,13 @@ function renameOverlays(s: Json, repairs: string[]): void {
     if (typeof k === 'string' && seen.has(k)) continue;
     if (typeof k === 'string') seen.add(k);
     out.push(k);
+  }
+  // a renamed animal's new name is found if its old one was (the plain rename can't tell "Super Red Long-fin" apart;
+  // the animal's genes can)
+  for (const r of renamed) {
+    if (!found.has(r.from) || seen.has(r.to)) continue;
+    seen.add(r.to);
+    out.push(r.to);
   }
   p.discoveredMorphs = out;
 }
@@ -554,6 +603,11 @@ export function repairState(s: Json): string[] {
   s.lastTickRealMs = num(s.lastTickRealMs, s.lastSavedRealMs);
   if (!isObj(s.clock)) s.clock = { hour: 8, speed: 1 };
   s.clock.hour = numNoted(s.clock.hour, 8, 'clock.hour', repairs);
+  // chunk 6 (PERSIST-004 A2) — the clock starts at Day 1, 08:00 and only runs forward: a negative hour is out of its domain
+  if (s.clock.hour < 0) {
+    repairs.push(`clock.hour: ${String(s.clock.hour).slice(0, 24)} → 8`);
+    s.clock.hour = 8;
+  }
   if (![0, 1, 3, 10].includes(s.clock.speed)) s.clock.speed = 1;
   // lane:core (PERSIST-011, ADR-0005 decision 1) — a starter species this build doesn't know is kept (a newer build may
   // add one, and every reader falls back when findSpecies finds nothing); an id that isn't a usable key is reset.
@@ -611,7 +665,11 @@ export function repairState(s: Json): string[] {
     repairs.push(`inventory.foods.${k.slice(0, 40)}: ${String(v).slice(0, 24)} → 0`);
     s.inventory.foods[k] = 0;
   }
-  s.inventory.salt = Math.max(0, numNoted(s.inventory.salt, 0, 'inventory.salt', repairs));
+  s.inventory.salt = numNoted(s.inventory.salt, 0, 'inventory.salt', repairs);
+  if (s.inventory.salt < 0) {
+    repairs.push(`inventory.salt: ${String(s.inventory.salt).slice(0, 24)} → 0`);
+    s.inventory.salt = 0;
+  }
   s.inventory.equipment = withDefId(s.inventory.equipment, 'equipment', 'inventory', repairs);
   s.inventory.decor = withDefId(s.inventory.decor, 'decor', 'inventory', repairs);
   // lane:frags — optional frag storage: drop unreadable entries, never invent the list for old saves
@@ -743,8 +801,21 @@ export function repairState(s: Json): string[] {
     for (const k of ['candidates', 'feeds', 'talks'] as const) if (!Array.isArray(s.staff[k])) s.staff[k] = [];
     if (!isObj(s.staff.care)) s.staff.care = {};
     if (!isObj(s.staff.warned)) s.staff.warned = {};
-    s.staff.roster = (s.staff.roster as Json[]).filter((m) => isObj(m) && typeof m.id === 'string' && typeof m.role === 'string');
-    for (const m of s.staff.roster as Json[]) {
+    // chunk 6 (PERSIST-004 A3) — a role the table doesn't know has no wage or duties (payday threw on it): that member
+    // or candidate goes, with a note (an unreadable one goes as before)
+    for (const k of ['roster', 'candidates'] as const) {
+      s.staff[k] = (s.staff[k] as Json[]).filter((m) => isObj(m) && typeof m.id === 'string' && typeof m.role === 'string');
+      const n = s.staff[k].length;
+      s.staff[k] = (s.staff[k] as Json[]).filter((m) => Object.hasOwn(STAFF_ROLES, m.role));
+      if (s.staff[k].length !== n) repairs.push(`staff.${k}: ${n - s.staff[k].length} with an unknown role removed`);
+    }
+    // (an unknown trait, like a missing one, becomes the trait every role can have)
+    for (const m of [...s.staff.roster, ...s.staff.candidates] as Json[]) {
+      if (typeof m.trait === 'string' && Object.hasOwn(STAFF_TRAITS, m.trait)) continue;
+      if (typeof m.trait === 'string') repairs.push(`staff ${shortId(m.id)}: trait ${m.trait.slice(0, 24)} unknown → quick_learner`);
+      m.trait = 'quick_learner';
+    }
+    for (const m of [...s.staff.roster, ...s.staff.candidates] as Json[]) {
       if (!Array.isArray(m.tankIds)) m.tankIds = [];
       m.tankIds = (m.tankIds as unknown[]).filter((id) => hasKey(s.tanks, id));
       m.skill = Math.max(1, Math.min(5, Math.round(num(m.skill, 1))));
@@ -753,7 +824,6 @@ export function repairState(s: Json): string[] {
       m.hiredHour = num(m.hiredHour, num(s.clock?.hour, 0));
       m.avatarSeed = num(m.avatarSeed, 1);
       if (typeof m.name !== 'string' || !m.name) m.name = 'Team member';
-      if (typeof m.trait !== 'string') m.trait = 'quick_learner';
       if (m.unpaidDays !== undefined) m.unpaidDays = Math.max(0, Math.floor(num(m.unpaidDays, 0)));
     }
   }

@@ -70,7 +70,7 @@ export function OverviewTab({ two, onInvite }: { two: boolean; onInvite: () => v
 }
 
 export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
-  const [q] = useSocialQuery(() => socialService().clubs(), []);
+  const [q, reload, patch] = useSocialQuery(() => socialService().clubs(), []);
   const [search, setSearch] = useState('');
   const [joining, setJoining] = useState<string | null>(null);
   const [joinedNow, setJoinedNow] = useState<ReadonlySet<string>>(new Set());
@@ -90,8 +90,14 @@ export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
       await socialService().joinClub(c.id);
       setJoinedNow((s) => new Set([...s, c.id]));
       useUI.getState().toast(C.youJoined(c.name), 'success');
+      // chunk 6: "Your club" shows the new club at once (it said "No club yet" until the tab remounted); the suggestion
+      // stays, marked Joined
+      const fresh = await socialService().clubs().catch(() => null);
+      if (fresh) patch((d) => ({ ...d, mine: fresh.mine }));
     } catch (e) {
-      setError(isSocialError(e) && e.code === 'network');
+      const network = isSocialError(e) && e.code === 'network';
+      setError(network);
+      if (!network) reload(); // the club is gone: the list says so (it showed nothing)
     } finally {
       setJoining(null);
     }

@@ -207,9 +207,13 @@ function decidedWhat(g: GameState, lineId: string): string {
   return added ? `${added.name} added` : 'you chose to wait';
 }
 
-/** "Day 39", "Day 39 · 40" (DES-013: the days the morning changes still go ahead, in the design's form). */
-function dayRange(a: number, b: number): string {
-  return `Day ${Array.from({ length: b - a + 1 }, (_, i) => a + i).join(' · ')}`;
+/**
+ * "Day 39", "Day 39 · 40" (DES-013: the days the morning changes still go ahead, in the design's form); four days or
+ * more as the design's range, "Days 39–44" (the Overview's "This week · Days 31–37", SPEC §7.1). A big salt reserve
+ * used to list every day up to the short one.
+ */
+export function dayRange(a: number, b: number): string {
+  return b - a >= 3 ? `Days ${a}–${b}` : `Day ${Array.from({ length: b - a + 1 }, (_, i) => a + i).join(' · ')}`;
 }
 
 function FragmentRow({ t, tone, text }: { t: string; tone?: 'watch' | 'danger'; text: string }) {

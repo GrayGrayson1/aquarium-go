@@ -2,7 +2,8 @@
  * Chunk 6 (B-194; ADR-0029 decision 8, ADR-0034 decisions 5 and 6) — the morph data:
  * - no two looks share a name, in any species (the catalog groups phenotypes by name, so a shared name was one discovery
  *   and one tier for two looks; looks reached by two genotype routes, like the cherry shrimp's two Fire Reds, are fine);
- * - the bristlenose's two-copy fin overlay is "Double Long-fin", and saves are renamed from each animal's genes;
+ * - the bristlenose's two-copy fin overlay is "Double Long-fin", and saves are renamed from each animal's genes (its
+ *   discoveries, Prismatic finds and listings with it);
  * - a look's "about 1 in n" and tier come from its share of market stock with the seller's pick counted, checked
  *   against the shop's own code (src/sim/economy/shop.ts).
  */
@@ -70,14 +71,23 @@ describe('the bristlenose’s "Double Long-fin" (ADR-0034 decision 5)', () => {
     g.creatures.bn4 = fish('bn4', 'Lemon Super Long-fin', null as unknown as Genome); // no genome: the plain rename
     g.market.stock = [{ id: 'offer_bn', kind: 'creature', speciesId: 'bristlenose_pleco', creatures: [fish('bn5', 'Brown (Wild) Super Long-fin', G(['L', 'L']))], price: 50, seller: 'S', expiresHour: 999 }];
     g.progress.discoveredMorphs = ['betta:Red Veiltail', 'bristlenose_pleco:Albino Super Long-fin', 'bristlenose_pleco:Super Red Long-fin', 'bristlenose_pleco:Albino Double Long-fin'];
+    // the old names kept as text: a Prismatic find (of a renamed animal, and of one sold since) and a listing
+    g.progress.prismaticFinds = [
+      { speciesId: 'bristlenose_pleco', creatureId: 'bn1', name: 'bn1', morphName: 'Super Red Long-fin', origin: 'born', hour: 1 },
+      { speciesId: 'bristlenose_pleco', creatureId: 'gone', name: 'Gone', morphName: 'Calico Super Long-fin', origin: 'bought', hour: 2 },
+    ];
+    g.market.listings = [{ id: 'l_bn', kind: 'creature', title: 'Calico Super Long-fin Bristlenose', creatureIds: ['bn3'], reserve: 10, createdHour: 0, status: 'sold', bids: [], snapshot: { valuation: 10, healthScore: 1, beautyScore: 1, careDifficulty: 'easy', lineageSummary: '', summary: 'A Calico Super Long-fin.', creatureIds: ['bn3'], speciesIds: ['bristlenose_pleco'] } }];
     const repairs = repairState(g);
     expect(g.creatures.bn1.morphName).toBe('Super Red Double Long-fin');
     expect(g.creatures.bn2.morphName).toBe('Super Red Long-fin');
     expect(g.creatures.bn3.morphName).toBe('Calico Double Long-fin');
     expect(g.creatures.bn4.morphName).toBe('Lemon Double Long-fin');
     expect(g.market.stock[0].creatures[0].morphName).toBe('Brown (Wild) Double Long-fin');
-    expect(g.progress.discoveredMorphs).toEqual(['betta:Red Veiltail', 'bristlenose_pleco:Albino Double Long-fin', 'bristlenose_pleco:Super Red Long-fin']);
-    expect(repairs.filter((r) => r.includes('B-194'))).toHaveLength(4);
+    // "Super Red Long-fin" was one copy or two: it stays, and bn1's genes add its two-copy look (the fresh review)
+    expect(g.progress.discoveredMorphs).toEqual(['betta:Red Veiltail', 'bristlenose_pleco:Albino Double Long-fin', 'bristlenose_pleco:Super Red Long-fin', 'bristlenose_pleco:Super Red Double Long-fin']);
+    expect(g.progress.prismaticFinds.map((f: { morphName: string }) => f.morphName)).toEqual(['Super Red Double Long-fin', 'Calico Double Long-fin']);
+    expect([g.market.listings[0].title, g.market.listings[0].snapshot.summary]).toEqual(['Calico Double Long-fin Bristlenose', 'A Calico Double Long-fin.']);
+    expect(repairs.filter((r) => r.includes('B-194'))).toHaveLength(7);
     expect(repairState(g).filter((r) => r.includes('B-194'))).toEqual([]);
   });
 });

@@ -23,7 +23,8 @@ and the game time (offline catch-up is computed on the device today: a server wo
 |---|---|---|
 | `buyOffer` (economy/purchases) | money −, a creature into a tank | the offer exists and is unsold, its price, room in the tank |
 | `buyTank`, `placeTank` | money −, a tank | price, the facility's tank limit, placement |
-| `buyEquipment`, `repairEquipment`, `removeEquipment`, `setEquipment` | money −, a tank's gear | price, the tank is the player's |
+| `buyEquipment`, `installEquipment`, `repairEquipment`, `removeEquipment`, `setEquipment` | money −, a tank's gear | price (or the piece is in the player's stock), the tank is the player's |
+| `convertWaterClass` | money −, a tank's water class (it empties and restarts its cycle) | the conversion's price, the tank is empty of animals that can't stay |
 | `buyFood`, `buySalt`, `buyEggs` | money −, stock + | price, pack size |
 | `placeDecor`, `moveDecor`, `removeDecor`, `addFixture`, `removeFixture`, `changeSubstrate` | money −, a tank's layout | price, unlocks |
 | `upgradeFacility`, `upgradePrep`, `addReservoir`, `addCulture` | money −, the facility | the level's requirements, price |
@@ -63,6 +64,7 @@ and the game time (offline catch-up is computed on the device today: a server wo
 |---|---|---|
 | `startResearch`, `cancelResearch` | money −, a project running | requirements, price, one at a time |
 | `claimQuest` | money +, reputation + | the quest's conditions were met |
+| `tutorialAdvance`, `tutorialSkip` | a guide step's reward; skipping grants the essentials a player would earn | the step's objective was met; skipping once |
 
 ## Shows
 
@@ -76,9 +78,11 @@ and the game time (offline catch-up is computed on the device today: a server wo
 | Action | What it changes | A server would check |
 |---|---|---|
 | `setOpenToPublic`, `setOpenHours`, `setAdmission`, `toggleSignage` | visitors and takings | ranges |
-| `moveCreature`, `separateCreature`, `moveClutch`, `startBreeding`, `renameCreature` | animals and broods | ownership |
-| `takeFrag`, `plantFrag`, `dose`, `waterChange`, `topOff`, `cleanTank`, feeding | tanks and animals | ownership; stock for what they use |
-| `setManualMode`, holds | automation on or off | none beyond ownership |
+| `moveCreature`, `separateCreature`, `moveClutch`, `startBreeding`, `renameCreature`, `toggleFavorite` | animals and broods | ownership |
+| `takeFrag`, `plantFrag`, `dose`, `waterChange`, `topOff`, `cleanTank`, `feedTank` | tanks and animals | ownership; stock for what they use |
+| `noteInteraction`, `registerGlassTap` (watching, photos, target feeding, a tap on the glass) | an animal's bond, enrichment and stress; quest progress | rates (the bond counts toward a show's deportment score; the device's diminishing returns would be the server's) |
+| `renameTank`, `setTankPurpose`, `setBackdrop`, `setLighting` | a tank's name, purpose, backdrop and light hours | ownership |
+| `setManualMode`, `holdAll`, `resumeAll`, `setHold` | automation on or off | none beyond ownership |
 
 ## Social
 
@@ -89,5 +93,7 @@ later", ADR-0034), so the game itself is untouched by Social today.
 
 ## Not for a server
 
-Camera, panels, settings, notification preferences, the alerts drawer's read marks, the tutorial's steps and dev
-tools (`?dev=1`) are the device's own. Dev tools never ship enabled in a player's build without `?dev=1` (PLAT-005).
+Camera, panels, settings, notification preferences and the alerts drawer's read marks (`markAllRead`, `clearAllEvents`)
+are the device's own. Dev tools (`?dev=1`: `devOpenMarket`, `devAgeCreature`, `devForceBreeding`, `forceBuyerVisit` and
+the dev panel's writes) never ship enabled in a player's build without `?dev=1` (PLAT-005); B-190 records that a
+player's build still accepts `?dev=1`, which a server would simply not trust.

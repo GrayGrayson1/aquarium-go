@@ -6,10 +6,12 @@
  *   one tank) load through decodeRecord, migrateSave and repairState in under 2 s each, trimmed or de-duplicated with a
  *   note, and the world steps a game day. (The bounds are chunk 6's: the Grand Hall's maximum-scale save holds 500
  *   animals, PERSIST-005; the sim keeps 300 log events and 40 closed listings.)
- * - A2: unreadable numbers (1e999 parses to Infinity, null where a number goes) and negative stock are reset or clamped
- *   with a note; nothing non-finite is left anywhere; the world steps a day. Debt (negative money) is real play: kept.
- * - A3: a water class, buyer archetype or show tier the tables don't know (an inherited name crashed every tick) is
- *   repaired with a note, and the tables themselves have no prototype (B-010).
+ * - A2: unreadable numbers (1e999 parses to Infinity, null where a number goes), negative stock (food and salt), a
+ *   negative clock and a birth after the clock are reset or clamped with a note; nothing non-finite is left anywhere;
+ *   the world steps a day. Debt (negative money) is real play: kept.
+ * - A3: a water class, buyer archetype, show tier, staff role or staff trait the tables don't know (an inherited name
+ *   crashed every tick; an unknown role threw at payday) is repaired with a note, and the tables themselves have no
+ *   prototype (B-010).
  * - A4: fastMutate's copy takes only own keys.
  * - A5: a second repair finds nothing.
  * - B-198: a NaN health never reads as a death.
@@ -28,6 +30,8 @@ import { SHOW_TIERS } from '@/data/shows';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { TUTORIAL_CHAINS } from '@/data/quests';
 import { NEUTRAL_HEALTH } from '@/sim/life/step';
+import { addStaffDirect, refreshCandidates } from '@/sim/staff';
+import { STAFF_ROLES, STAFF_TRAITS } from '@/data/staff';
 import type { GameState } from '@/types';
 import { budget } from './support/timeBudget';
 
@@ -82,6 +86,13 @@ describe('A1: oversized lists load in bounded time, trimmed with a note', () => 
       ...Array.from({ length: 100_000 }, (_, i) => ({ id: `l${i}`, status: 'expired', kind: 'creature', creatureIds: [], bids: [] })),
       { id: 'l_open', status: 'active', kind: 'creature', creatureIds: [], bids: [] },
     ];
+    // what the repair keeps, before any market step (the fresh review: the name promised more than the test checked)
+    const kept = clonePlain(g);
+    repairState(kept);
+    const closed = (kept.market.listings as Json[]).filter((l) => l.status !== 'active').map((l) => l.id);
+    expect(closed).toHaveLength(1000);
+    expect([closed[0], closed.at(-1)]).toEqual(['l99000', 'l99999']); // the newest (the list runs oldest first)
+    expect((kept.market.listings as Json[]).filter((l) => l.status === 'active').map((l) => l.id)).toEqual(['l_open']);
     const { s, repairs, ms } = load(g);
     expect(ms).toBeLessThan(budget(2000));
     expect(s.market.listings.filter((l) => l.status !== 'active').length).toBeLessThanOrEqual(1000);
@@ -133,6 +144,25 @@ describe('A2: unreadable numbers and negative stock', () => {
     expect(repairState(debt).some((r) => r.startsWith('finance.money'))).toBe(false);
     expect(debt.finance.money).toBe(-250);
   });
+
+  it('negative salt, a negative clock and a birth after the clock are clamped with a note', () => {
+    const g = game();
+    const id = Object.keys(g.creatures)[0];
+    g.inventory.salt = -3;
+    g.creatures[id].bornHour = g.clock.hour + 500;
+    const ahead = clonePlain(g);
+    const { s, repairs } = load(g);
+    expect(repairs).toContain('inventory.salt: -3 → 0');
+    expect(repairs).toContain(`creature ${id}.bornHour: ${ahead.clock.hour + 500} after the clock → ${ahead.clock.hour}`);
+    expect(s.inventory.salt).toBeGreaterThanOrEqual(0);
+    expect(s.creatures[id].bornHour).toBeLessThanOrEqual(s.clock.hour);
+
+    const early = clonePlain(game());
+    early.clock.hour = -40;
+    const notes = repairState(early);
+    expect(notes).toContain('clock.hour: -40 → 8');
+    expect(early.clock.hour).toBe(8);
+  });
 });
 
 describe('A3: values the tables don’t know (B-004, B-010)', () => {
@@ -156,8 +186,33 @@ describe('A3: values the tables don’t know (B-004, B-010)', () => {
     expect(repairs.some((r) => r.startsWith('shows entry e1: tier galactic removed'))).toBe(true);
   });
 
+  it.each(['toString', 'janitor'])('a team member and a candidate of role %j are removed with a note; payday runs', (role) => {
+    const g = game() as unknown as GameState;
+    g.facility.level = 'aquarium_store';
+    const keep = addStaffDirect(g, { name: 'Rosa Duarte', role: 'aquarist', skill: 2, trait: 'meticulous' });
+    const odd = addStaffDirect(g, { name: 'Ivo Lind', role: 'aquarist', skill: 2, trait: 'meticulous' });
+    refreshCandidates(g, g.clock.hour);
+    (odd as Json).role = role;
+    (g.staff!.candidates[0] as Json).role = role;
+    const { s, repairs } = load(g as unknown as Json); // the load steps a day: midnight pays the wages
+    expect(repairs).toContain('staff.roster: 1 with an unknown role removed');
+    expect(repairs).toContain('staff.candidates: 1 with an unknown role removed');
+    expect(s.staff!.roster.map((m) => m.id)).toEqual([keep.id]);
+  });
+
+  it('an unknown trait becomes the trait every role can have, with a note', () => {
+    const g = game() as unknown as GameState;
+    g.facility.level = 'aquarium_store';
+    const m = addStaffDirect(g, { name: 'Rosa Duarte', role: 'stock_manager', skill: 2, trait: 'quick_learner' });
+    (m as Json).trait = 'hasOwnProperty';
+    const { s, repairs } = load(g as unknown as Json);
+    expect(repairs).toContain(`staff ${m.id}: trait hasOwnProperty unknown → quick_learner`);
+    expect(s.staff!.roster[0].trait).toBe('quick_learner');
+    expect(STAFF_TRAITS.quick_learner.roles).toEqual(Object.keys(STAFF_ROLES));
+  });
+
   it('the save-keyed tables have no prototype: an inherited name finds nothing', () => {
-    for (const t of [CLASS_DEFAULTS, BUYER_ARCHETYPES, SHOW_TIERS, UNLOCK_RULE_BY_KEY, TUTORIAL_CHAINS] as Json[]) {
+    for (const t of [CLASS_DEFAULTS, BUYER_ARCHETYPES, SHOW_TIERS, UNLOCK_RULE_BY_KEY, TUTORIAL_CHAINS, STAFF_ROLES, STAFF_TRAITS] as Json[]) {
       expect(Object.getPrototypeOf(t)).toBeNull();
       expect(t.toString).toBeUndefined();
       expect(t.constructor).toBeUndefined();
@@ -184,6 +239,9 @@ describe('A5: a second repair finds nothing', () => {
     g.tanks[g.tankOrder[0]].waterClass = 'toString';
     g.inventory.foods[Object.keys(g.inventory.foods)[0]] = -1;
     g.log = Array.from({ length: 5000 }, (_, i) => ({ id: `ev_${i}`, kind: 'info', text: 'x', hour: 0 }));
+    g.inventory.salt = -2;
+    g.creatures[Object.keys(g.creatures)[0]].bornHour = g.clock.hour + 9;
+    g.staff = { roster: [{ id: 'st_x', name: 'X', role: 'toString', skill: 1, trait: 'quick_learner', wage: 60, avatarSeed: 1, hiredHour: 0, xp: 0, tankIds: [] }], candidates: [] };
     const first = repairState(g);
     expect(first.length).toBeGreaterThan(0);
     expect(repairState(g)).toEqual([]);

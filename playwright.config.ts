@@ -20,6 +20,12 @@ const GPU_ARGS = ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist',
 /** Specs that run against the production build under the Pages base path (the preview server). */
 const PROD_SPECS = /(base-path|prod-mode)\.spec\.ts$/;
 const PREVIEW_URL = `http://127.0.0.1:${PREVIEW_PORT}${BASE_PATH}`;
+/**
+ * chunk 6 — the game these servers serve plays no sound (src/audio/engine.ts): WebKit has no mute switch and played the
+ * runs out loud. A build-time flag, so no player's browser is ever muted by it (a server reused with E2E_REUSE=1 keeps
+ * whatever it was started with).
+ */
+const E2E_ENV = { VITE_E2E_MUTE: '1' };
 /** WebKit takes none of Chromium's GPU switches. */
 const SAFARI = { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 }, launchOptions: { args: [] } };
 
@@ -65,12 +71,14 @@ export default defineConfig({
       url: `http://127.0.0.1:${PORT}`,
       reuseExistingServer: process.env.E2E_REUSE === '1',
       timeout: 120_000,
+      env: E2E_ENV,
     },
     {
       command: `npx vite build --base=${BASE_PATH} --outDir .e2e-dist --emptyOutDir --logLevel warn && npx vite preview --base=${BASE_PATH} --outDir .e2e-dist --host 127.0.0.1 --port ${PREVIEW_PORT} --strictPort`,
       url: PREVIEW_URL,
       reuseExistingServer: false,
       timeout: 240_000,
+      env: E2E_ENV,
     },
   ],
 });
