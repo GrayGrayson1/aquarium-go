@@ -77,7 +77,12 @@ test.describe('accessibility (ACC-005)', () => {
     expect((await focused(page))?.ring, 'the gear shows its focus ring').toBe(true);
     await page.keyboard.press('Enter');
     await expect(tid(page, 'panel-settings')).toBeVisible();
-    await tid(page, 'settings-tab-display').focus();
+    // the sheet moves focus to its title as it opens (§18): wait for that, then for the tab to hold focus, before
+    // pressing Enter (once in WebKit a focus() during the opening didn't take, and Enter went back to the gear)
+    await expect.poll(async () => (await focused(page))?.tag).toBe('H2');
+    const display = tid(page, 'settings-tab-display');
+    await display.focus();
+    await expect(display).toBeFocused();
     await page.keyboard.press('Enter');
     const sw = page.getByRole('switch', { name: 'High contrast' });
     await sw.focus();
