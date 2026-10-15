@@ -466,6 +466,9 @@ describe('PROD-015: the line’s week', () => {
     expect(line.stats.soldCount).toBe(l!.creatureIds.length);
     expect(line.stats.revenue).toBe(Math.round(l!.soldFor! * 100) / 100);
     expect(line.stats.totalSold).toBe(l!.creatureIds.length);
+    // chunk 5 (AUTO-039): completeSale tags the ledger entry with the line, for Operations' weekly money
+    const sale = g.finance.ledger.filter((e) => e.category === 'livestock_sale' && e.memo.startsWith(`Sold "${l!.title}"`));
+    expect(sale.map((e) => e.line)).toEqual([{ id: line.id, n: l!.creatureIds.length }]);
     run(g, 3);
     expect(line.stats.soldCount).toBe(l!.creatureIds.length); // once
     const week0 = line.stats.weekStartHour;

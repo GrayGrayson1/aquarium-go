@@ -5,13 +5,13 @@
  * Wording the design doesn't give is the owner's ADR-0032 (asked in one batch, as ADR-0026 decision 9 says).
  */
 import type { GameState } from '@/types';
-import { EGGS_SUPPLY, WATER_ROOM } from '@/data/catalog/machines';
+import { EGGS_SUPPLY, VEGETABLES, WATER_ROOM } from '@/data/catalog/machines';
 import { getFoodDef } from '@/data/catalog/foods';
 import { STOCK_BUDGET } from '@/data/staff';
 import { formatClock, dayOf } from '@/sim/time';
 import { SALT_PRICE_PER_KG } from '@/sim/economy';
 import { batchGal, batchSaltKg, prepRate, saltOutText, freshCap, type Problem, type SupplyProblem } from '@/sim/automation';
-import { nextStockCheck } from '@/sim/staff/work';
+import { opsSnapshot } from '@/ui/common/ops';
 import { findLine } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
 
@@ -65,7 +65,7 @@ function saltIssue(g: GameState, p: SupplyProblem): IssueView {
   const room = g.facility.water;
   const batchKg = room ? batchSaltKg(batchGal(room)) : 4.1;
   const kg = Math.round(p.stock * 10) / 10;
-  const f = nextStockCheck(g);
+  const f = opsSnapshot(g).forecast;
   const noManager = p.why === 'no_manager';
   if (p.state === 'arriving') {
     const buy = f?.plan.buys.find((b) => b.kind === 'salt');
@@ -144,7 +144,7 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
         });
         break;
       case 'veg': {
-        const veg = getFoodDef('blanched_veg');
+        const veg = getFoodDef(VEGETABLES);
         out.push({
           key: 'veg',
           kind: 'veg',

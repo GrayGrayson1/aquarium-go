@@ -7,7 +7,8 @@ import { describe, it, expect } from 'vitest';
 import { facility, run } from './support/automation';
 import { lineFarm } from './support/production';
 import { automationProblems, batchSaltKg, decidedLines, problemCounts, saltOutText, supplyNotices, waitForLine, waterRoom } from '@/sim/automation';
-import { productionLines } from '@/sim/production';
+import { endLine, productionLines } from '@/sim/production';
+import { repairState } from '@/persistence';
 import type { SupplyProblem } from '@/sim/automation';
 
 const salt = (g: Parameters<typeof automationProblems>[0]) => automationProblems(g).find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === 'salt');
@@ -50,6 +51,17 @@ describe('AUTO-035: a line paused for room', () => {
     waitForLine(g, line.id);
     expect(automationProblems(g).some((p) => p.kind === 'line')).toBe(false);
     expect(decidedLines(g)).toEqual([{ lineId: line.id, name: line.name, restartDay: expect.any(Number) }]);
+  });
+
+  it('a "Wait" ends with its line, so a new line on the same id starts undecided (the chunk 5 review)', () => {
+    const { g } = lineFarm(17);
+    const line = productionLines(g)[0];
+    line.waiting = true;
+    waitForLine(g, line.id);
+    expect(g.automation?.lineWait?.[line.id]).toBeDefined();
+    expect(endLine(g, line.id).ok).toBe(true);
+    expect(g.automation?.lineWait).toBeUndefined();
+    expect(repairState(JSON.parse(JSON.stringify(g))).filter((n) => n.startsWith('automation.lineWait'))).toEqual([]); // a valid save repairs to nothing
   });
 });
 

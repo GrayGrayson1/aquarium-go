@@ -24,7 +24,7 @@ import { findLine, lineStatus, productionLines, quarantineKit } from '@/sim/prod
 import { lineView } from '@/sim/production/view';
 import { WATER_CLASS_LABEL } from '../common/format';
 import { Seg } from '../common/parts';
-import type { OpsSnapshot, OpsTier } from '@/ui/common/ops';
+import { opsMemo, type OpsSnapshot, type OpsTier } from '@/ui/common/ops';
 import { AddQuarantine } from '../livestock/Production';
 import { Kicker, OpsBar } from './parts';
 import { nextMixHour } from './issues';
@@ -395,7 +395,7 @@ function GalleryArea({ ctx }: { ctx: Ctx }) {
 
 function MarketArea({ ctx }: { ctx: Ctx }) {
   const { g } = ctx;
-  const w = weekMoney(g);
+  const w = opsMemo('week', g, () => weekMoney(g));
   const listed = g.market.listings.filter((l) => l.status === 'active');
   const best = Math.max(0, ...listed.flatMap((l) => l.bids.map((b) => b.amount)));
   return (

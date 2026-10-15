@@ -143,7 +143,7 @@ function AutoFeedRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdi
         {/* lane:automation (chunk 5, DESIGN-S3D §8.2) — while manual mode holds the Autofeeders */}
         {on && isHeld(g, 'feeders') && (
           <div className="ag-auto__warn" data-testid="tank-auto-feed-held">
-            <Hand size={12} aria-hidden /> {keeper ? `Held by manual mode — keepers feed ${name ?? firstResident(g, tank)} on their rounds.` : `Held by manual mode — feed ${name ?? firstResident(g, tank)} by hand, or resume it.`}
+            <Hand size={12} aria-hidden /> {keeper ? `Held by manual mode — keepers feed ${name ?? firstResident(g, tank)} on their rounds.` : `Auto-feed is held — feed ${name ?? firstResident(g, tank)} by hand, or resume it.`}
           </div>
         )}
       </div>

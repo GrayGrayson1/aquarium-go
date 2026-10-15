@@ -13,7 +13,8 @@ import { STAFF_NOTICE_DAYS, STAFF_ROLES, STAFF_ROLE_ORDER, STAFF_TRAITS, STAFF_X
 import { getFacilityLevel, nextFacilityLevelDef } from '@/data/facilities';
 import { dayOf, formatClock } from '@/sim/time';
 import { setStockOrders } from '@/sim/automation'; // lane:automation (chunk 5)
-import { nextStockCheck, planPurchases, plannedOrders } from '@/sim/staff/work'; // lane:automation (chunk 5)
+import { planPurchases, plannedOrders } from '@/sim/staff/work'; // lane:automation (chunk 5)
+import { opsMemo, opsSnapshot } from '@/ui/common/ops'; // lane:automation (chunk 5, PERF-004)
 import { SALT_PRICE_PER_KG } from '@/sim/economy'; // lane:automation (chunk 5)
 import {
   assignTank,
@@ -418,22 +419,27 @@ function BudgetControl({ g, m }: { g: GameState; m: StaffMember }) {
  * next check (green), or what doesn't fit and the amount that would cover it (amber). Between the two the stock manager
  * buys what fits in 5 kg steps (§9.6). The design's words name Rosa and "her"; this names whoever the manager is.
  */
-function BudgetStatus({ g, m, budget }: { g: GameState; m: StaffMember; budget: number }) {
-  const wanted = safe(() => plannedOrders(g, m).find((o) => o.kind === 'salt'), undefined);
-  if (!wanted?.kg || g.staff?.ordersOff) return null;
-  const all = safe(() => planPurchases(g, m, Infinity, Infinity), null);
-  if (!all) return null;
+export function BudgetStatus({ g, m, budget }: { g: GameState; m: StaffMember; budget: number }) {
+  // the dry runs walk every animal: once per Operations key (game hour, stock, budget), never per refresh (PERF-004)
+  const s = opsMemo('staff:budget', g, () => {
+    const wanted = safe(() => plannedOrders(g, m).find((o) => o.kind === 'salt'), undefined);
+    const all = wanted?.kg ? safe(() => planPurchases(g, m, Infinity, Infinity), null) : null;
+    return { wanted, all, f: opsSnapshot(g).forecast };
+  });
+  const { wanted, all, f } = s;
+  if (!wanted?.kg || g.staff?.ordersOff || !all) return null;
   const food = all.buys.filter((b) => b.kind !== 'salt').reduce((a, b) => a + b.price, 0);
   const saltPrice = wanted.kg * SALT_PRICE_PER_KG;
   const need = Math.ceil(food + saltPrice);
-  const f = safe(() => nextStockCheck(g), null);
   const at = f ? formatClock(f.at) : '9:00 AM';
-  const ok = budget >= need;
+  // what's left of the day's budget at that check (a purchase earlier the same day has used some; the chunk 5 review)
+  const spent = f ? Math.max(0, f.budget - f.left) : 0;
+  const ok = budget - spent >= need;
   return (
     <div className={`pn-small pn-tone-${ok ? 'good' : 'watch'}`} data-testid="staff-budget-status">
       {ok
         ? `Covers food (${formatMoney(food)}) and a ${wanted.kg} kg order of salt mix (${formatMoney(saltPrice)}): ${first(m)} buys it at the ${at} check.`
-        : `Food takes ${formatMoney(food)} of it, so salt mix doesn’t fit (5 kg is ${formatMoney(5 * SALT_PRICE_PER_KG)}). ${formatMoney(need)} covers food and the ${wanted.kg} kg order.`}
+        : `Food takes ${formatMoney(food)} of it, so salt mix doesn’t fit (5 kg is ${formatMoney(5 * SALT_PRICE_PER_KG)}). ${formatMoney(need + spent)} covers food and the ${wanted.kg} kg order.`}
     </div>
   );
 }

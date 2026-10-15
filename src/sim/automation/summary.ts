@@ -13,9 +13,9 @@ import type { GameState } from '@/types';
 import { BRINE, FOOD_ROOM, INFUSORIA, WATER_ROOM } from '@/data/catalog/machines';
 import { getFoodDef } from '@/data/catalog/foods';
 import { crossings, dayOf, hourOfDay } from '../time';
-import { nextStockCheck, stockCheckHours, stockManager } from '../staff/work';
+import { nextStockCheck, stockCheckHours, stockManager, type StockForecast } from '../staff/work';
 import { isHeld } from './hold';
-import { batchGal, saltCap } from './reserve';
+import { batchGal, freshCap, prepRate, saltCap } from './reserve';
 import { SALT_KG_PER_GAL, batchSaltKg, changerOf, saltWaterNeeded, tankChangeNeed } from './water';
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -148,8 +148,8 @@ export interface ScheduledJob {
   held?: boolean;
 }
 
-/** Today (desktop Overview): the next `n` scheduled jobs from `hour`, over the next day. */
-export function todayJobs(state: GameState, n = 4, hour = state.clock.hour): ScheduledJob[] {
+/** Today (desktop Overview): the next `n` scheduled jobs from `hour`, over the next day. `forecast`: the caller's dry run of the stock manager's next check (PERF-004), else made here. */
+export function todayJobs(state: GameState, n = 4, hour = state.clock.hour, forecast?: StockForecast | null): ScheduledJob[] {
   const end = hour + 24;
   const out: ScheduledJob[] = [];
   const water = state.facility.water;
@@ -168,12 +168,27 @@ export function todayJobs(state: GameState, n = 4, hour = state.clock.hour): Sch
     }
     for (const [at, r] of byHour) out.push({ at, kind: 'water', tanks: r.tanks, gal: round2(r.gal), held: isHeld(state, 'water') });
     if (saltWaterNeeded(state)) {
+      // the checks mixCheck will pass: the mixing tank empty, the salt reserve under 60 %, salt for a batch and the fresh
+      // water (with the prep station's flow by then); a batch tops the reserve up when it's ready (the chunk 5 review)
       const gal = batchGal(water);
-      for (const h of WATER_ROOM.mixHours)
-        for (const at of crossings(hour, end, h)) {
-          const due = water.salt < saltCap(water) * WATER_ROOM.mixBelow && !(water.mix && water.mix.gal > 1e-6);
-          if (due) out.push({ at, kind: 'mixing', gal, kg: batchSaltKg(gal), held: isHeld(state, 'salt') });
-        }
+      const kg = batchSaltKg(gal);
+      let salt = Math.max(0, state.inventory.salt);
+      let freshUsed = 0;
+      let reserve = water.salt;
+      let pending = water.mix && water.mix.gal > 1e-6 ? { gal: water.mix.gal, ready: water.mix.readyHour } : null;
+      const checks = WATER_ROOM.mixHours.flatMap((h) => crossings(hour, end, h)).sort((a, b) => a - b);
+      for (const at of checks) {
+        if (pending && pending.ready > at + 1e-9) continue; // the mixing tank is still busy
+        if (pending) reserve = Math.min(saltCap(water), reserve + pending.gal);
+        pending = null;
+        if (reserve >= saltCap(water) * WATER_ROOM.mixBelow - 1e-9) continue;
+        const fresh = Math.min(freshCap(water), water.fresh + prepRate(water) * (at - hour)) - freshUsed;
+        if (salt + 1e-6 < kg || fresh + 1e-9 < gal) break; // it waits: Problems says why
+        out.push({ at, kind: 'mixing', gal, kg, held: isHeld(state, 'salt') });
+        salt -= kg;
+        freshUsed += gal;
+        pending = { gal, ready: at + WATER_ROOM.mixHoursLong };
+      }
     }
   }
   const food = state.facility.food;
@@ -190,7 +205,7 @@ export function todayJobs(state: GameState, n = 4, hour = state.clock.hour): Sch
   const m = stockManager(state);
   if (m && !state.staff?.ordersOff) {
     const hours = stockCheckHours(m);
-    const f = nextStockCheck(state, hour);
+    const f = forecast !== undefined ? forecast : nextStockCheck(state, hour);
     for (const h of hours)
       for (const at of crossings(hour, end, h)) {
         const first = hourOfDay(at) === Math.min(...hours);

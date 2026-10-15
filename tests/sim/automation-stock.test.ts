@@ -5,7 +5,16 @@
  * next shelf check; the orders switch stops her and keeps the budget and the log quiet; without a stock manager nobody
  * reorders. Without a Water room nothing changes (staff-sim and staff2-feeding stay green).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// a shop purchase that fails at the till (the chunk 5 review): pass-through unless a test names the food. The file
+// that defines buyFood, not the economy index: the index's imports reach the stock manager while the mock is made.
+const failing = vi.hoisted(() => new Set<string>());
+vi.mock('@/sim/economy/purchases', async (importOriginal) => {
+  const m = await importOriginal<typeof import('@/sim/economy/purchases')>();
+  return { ...m, buyFood: (...a: Parameters<typeof m.buyFood>) => (failing.has(a[1]) ? { ok: false, message: 'No.' } : m.buyFood(...a)) };
+});
+
 import { facility, run } from './support/automation';
 import { automationProblems, saltDaysLeft, saltWaterPerDay, SALT_KG_PER_GAL, setStockOrders, waterRoom } from '@/sim/automation';
 import { nextStockCheck, planPurchases, plannedOrders, stockCheck, SALT_ORDER_DAYS } from '@/sim/staff/work';
@@ -87,6 +96,51 @@ describe('AUTO-034: the stock manager with a Water room', () => {
     const f = facility({ fresh: 0, marine: 2, salt: 0, rosa: null });
     expect(nextStockCheck(f.g)).toBeNull();
     expect(automationProblems(f.g).find((p) => p.kind === 'supply' && p.supply === 'salt')).toMatchObject({ state: 'out', why: 'no_manager' });
+  });
+
+  it('the keepers\' salt stays in the order with a Water room: salt tanks without a changer keep their changes\' worth (the chunk 5 review)', () => {
+    // three marine tanks with no Auto Water Changer: the keepers change them with shelf salt (INTAKE C-67)
+    const f = facility({ fresh: 0, marine: 3, salt: 0, rosa: 150 });
+    for (const t of f.marine) t.equipment = t.equipment.filter((e) => e.defId !== 'auto_water_changer');
+    expect(saltWaterPerDay(f.g)).toBeCloseTo(0, 9); // the mixer has nothing to do
+    const withRoom = saltOrder(f.g);
+    expect(withRoom).toBeDefined();
+    const room = f.g.facility.water;
+    delete f.g.facility.water;
+    expect(saltOrder(f.g)).toEqual(withRoom); // the same order as before the research
+    f.g.facility.water = room;
+    // one of them back on a changer: the mixer's order and the other two tanks' changes add up, the more urgent first
+    f.marine[0].equipment.push(...facility({ fresh: 0, marine: 1 }).marine[0].equipment.filter((e) => e.defId === 'auto_water_changer'));
+    const both = saltOrder(f.g)!;
+    const kgDay = saltWaterPerDay(f.g) * SALT_KG_PER_GAL;
+    expect(kgDay).toBeGreaterThan(0);
+    const mixerKg = Math.max(5, Math.ceil((kgDay * SALT_ORDER_DAYS) / 5) * 5);
+    expect(both.kg!).toBeGreaterThan(mixerKg);
+    expect(both.urgency).toBeLessThanOrEqual(saltDaysLeft(f.g));
+  });
+
+  it('a purchase that fails leaves its money for the orders after it (the chunk 5 review)', () => {
+    const { g, rosa } = shop(60); // $18 of food first, then 10 kg of a 15 kg salt order
+    const plan = planPurchases(g, rosa, 60, g.finance.money);
+    const food = plan.buys[0];
+    expect(food.kind).toBe('food'); // the most urgent buy: food with less than a day left
+    // salt comes after it, and the budget limits it
+    const saltBuy = plan.buys.find((b) => b.kind === 'salt')?.kg ?? 0;
+    expect(saltBuy).toBeLessThan(saltOrder(g)!.kg!);
+    const others = plan.buys.slice(1).reduce((a, b) => a + b.price, 0);
+    failing.add(food.foodId!);
+    try {
+      const money = g.finance.money;
+      const had = g.inventory.foods[food.foodId!] ?? 0;
+      stockCheck(g, rosa, g.clock.hour);
+      const spent = g.staff!.stockSpent.amount;
+      expect(spent).toBeGreaterThan(others); // the failed food's money went to the salt after it
+      expect(spent).toBeLessThanOrEqual(60);
+      expect(money - g.finance.money).toBeCloseTo(spent, 2);
+      expect(g.inventory.foods[food.foodId!] ?? 0).toBe(had); // and the failed food wasn't bought
+    } finally {
+      failing.clear();
+    }
   });
 
   it('the cultures\' supplies join her plan (INTAKE C-20): eggs by the tin, vegetables for the jars', () => {

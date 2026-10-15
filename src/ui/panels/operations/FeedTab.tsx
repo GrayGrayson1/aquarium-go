@@ -11,6 +11,7 @@ import { formatClock, dayOf } from '@/sim/time';
 import { BRINE, EGGS_SUPPLY, FOOD_ROOM, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { getFoodDef } from '@/data/catalog/foods';
 import { cultureState, doserNeeds, doserOf, isHeld, savedThisWeek, storeCap, type CultureKind } from '@/sim/automation';
+import { opsMemo } from '@/ui/common/ops';
 import { Status, NewChip, Kicker, OpsBar } from './parts';
 import { buyEggTin, buyVegPack } from './actions';
 import type { OpsNav } from './OperationsPanel';
@@ -112,7 +113,7 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
       <div className="ops-row">
         <ShoppingBag size={16} aria-hidden className="ops-muted" />
         <span className="ops-row__main ops-row__sub">Eggs and vegetables for the cultures are in Market › Supplies.</span>
-        <button type="button" className="ops-link" onClick={() => go({ kind: 'panel', panel: 'market', tab: 'supplies', target: 'food:brine_shrimp_eggs' })}>
+        <button type="button" className="ops-link" onClick={() => go({ kind: 'panel', panel: 'market', tab: 'supplies', target: `food:${EGGS_SUPPLY.id}` })}>
           Open <ChevronRight size={14} aria-hidden />
         </button>
       </div>
@@ -148,7 +149,7 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
       </div>
     </section>
   );
-  const s = savedThisWeek(g);
+  const s = opsMemo('saved', g, () => savedThisWeek(g));
   const brineUsed = s.used.find((u) => u.foodId === BRINE)?.servings ?? 0;
   const infUsed = s.used.find((u) => u.foodId === INFUSORIA)?.servings ?? 0;
   const saved = !small && (

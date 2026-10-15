@@ -15,7 +15,7 @@ import type { GameState } from '@/types';
 import { BRINE, INFUSORIA, VEGETABLES } from '@/data/catalog/machines';
 import { emitEvent } from '../context';
 import { dayOf } from '../time';
-import { nextStockCheck } from '../staff/work';
+import { nextStockCheck, stockManager, type StockForecast } from '../staff/work';
 import { lineStatus, restartDay } from '../production';
 import { batchGal } from './reserve';
 import { SALT_KG_PER_GAL, batchSaltKg, saltDaysLeft, saltWaterNeeded, saltWaterPerDay } from './water';
@@ -57,9 +57,9 @@ export type Problem = SupplyProblem | LineProblem;
 const stockOf = (state: GameState, id: string) => Math.max(0, Math.floor(state.inventory.foods[id] ?? 0));
 
 /** The shortage items and held-up lines, most urgent first (danger, then watch; salt, eggs, vegetables, live food, water, lines). */
-export function automationProblems(state: GameState, hour = state.clock.hour): Problem[] {
+export function automationProblems(state: GameState, hour = state.clock.hour, known?: StockForecast | null): Problem[] {
   const out: Problem[] = [];
-  let forecast: ReturnType<typeof nextStockCheck> | undefined;
+  let forecast: StockForecast | null | undefined = known; // the caller's dry run of the next check, if it has one (PERF-004)
   const check = () => (forecast === undefined ? (forecast = nextStockCheck(state, hour)) : forecast);
   const why = (label: string): NoReorder => {
     const f = check();
@@ -133,7 +133,7 @@ export function decidedLines(state: GameState): { lineId: string; name: string; 
 
 /** The "Out of salt mix" body (notification and log), in the reason's words (DESIGN-S3D §8.9, ADR-0026 decision 9). */
 export function saltOutText(state: GameState, p: SupplyProblem): string {
-  const m = nextStockCheck(state)?.m;
+  const m = stockManager(state); // the name only: no dry run (PERF-004)
   const name = m ? m.name.split(' ')[0] : 'Your stock manager';
   const lasts = p.shortDay !== undefined ? ` Salt water lasts until Day ${p.shortDay}.` : '';
   switch (p.why) {

@@ -22,9 +22,9 @@ import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, tankValue, dailyCost, tierOf, waterReport } from '../common/derive';
 import { renameTank, setTankPurpose, convertWaterClass, canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
-import { tankChips, tankLineProblem, type TankChip } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
+import { tankChips, tankLineProblem } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
 import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
-import { Utensils, Waves, Droplet, Syringe, Factory } from 'lucide-react'; // lane:automation (chunk 5)
+import { CHIP_ICON } from '@/ui/common/tankChipIcons'; // lane:automation (chunk 5)
 
 export function TanksPanel() {
   const g = usePanelGame(800);
@@ -208,14 +208,6 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
 }
 
 /** lane:automation (chunk 5, DESIGN-S3D §8.1; AUTO-041) — the tank's automation chips, an icon and a word each. */
-const CHIP_ICON: Record<TankChip['id'], React.ReactNode> = {
-  'auto-feed': <Utensils size={12} aria-hidden />,
-  'auto-clean': <Waves size={12} aria-hidden />,
-  'top-off': <Droplet size={12} aria-hidden />,
-  doser: <Syringe size={12} aria-hidden />,
-  line: <Factory size={12} aria-hidden />,
-};
-
 export function AutomationChips({ g, tank }: { g: GameState; tank: Tank }) {
   const chips = safe(() => tankChips(g, tank), []);
   return (

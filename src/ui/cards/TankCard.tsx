@@ -81,6 +81,7 @@ import { tankGearIssues, type FitVerdict } from '@/sim/care/fit'; // lane:fit
 import { FitLine } from '../common/FitNote'; // lane:fit
 import { AutomationSection, AutoCleanNote } from './Automation'; // lane:ui-shell (chunk 3, 0.5 §10)
 import { tankChips } from '../common/tankChips'; // lane:automation (chunk 5)
+import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5, AUTO-041)
 
 type TabId = TankCardTabId;
 
@@ -709,7 +710,7 @@ function HeaderChips({ game, tank }: { game: GameState; tank: Tank }) {
     <>
       {chips.map((c) => (
         <Badge key={c.key} tone={c.tone === 'aqua' ? 'aqua' : c.tone === 'watch' ? 'watch' : 'neutral'}>
-          <span data-testid={`tank-chip-${c.id}`}>{c.word}</span>
+          {CHIP_ICON[c.id]} <span data-testid={`tank-chip-${c.id}`}>{c.word}</span>
         </Badge>
       ))}
     </>

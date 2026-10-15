@@ -62,6 +62,34 @@ describe('AUTO-036: manual mode', () => {
     expect(g.log.some((e) => e.text === `${t.name}: Auto-feed is held — feed ${p!.name} by hand, or resume it.`)).toBe(true);
   });
 
+  it('Hold and Resume catch the background tanks up first: a meal due while held stays skipped, one due before is given (ADR-0026 d5, the chunk 5 review)', () => {
+    // fourteen tanks, the camera on the first: the last runs at summary LOD (4-hour pieces); its Autofeeder feeds at 9:00 and 19:00
+    const setup = () => {
+      const { g, fresh } = facility({ fresh: 14, marine: 0 });
+      const far = fresh[13];
+      installEquipment(g, far.id, 'autofeeder', { purchased: true });
+      const day = Math.floor(g.clock.hour / 24) + 1;
+      g.clock.hour = day * 24 + 4;
+      for (const t of fresh) t.simDebtHours = 0;
+      const to = (h: number) => run(g, day * 24 + h - g.clock.hour, 0.25, { focus: fresh[0].id });
+      return { g, far, day, to };
+    };
+    // Hold at 8:50, Resume at 9:20: the 9:00 meal fell due while held, so it never comes
+    const a = setup();
+    a.to(8 + 50 / 60);
+    holdAll(a.g);
+    a.to(9 + 20 / 60);
+    resumeAll(a.g);
+    a.to(14);
+    expect(a.far.water.lab?.lastAutofeedHour ?? -1).not.toBe(a.day * 24 + 9);
+    // Hold at 9:10: the 9:00 meal fell due before the hold, so the far tank gives it as it catches up
+    const b = setup();
+    b.to(9 + 10 / 60);
+    expect(b.g.clock.hour - (b.far.simDebtHours ?? 0)).toBeLessThan(b.day * 24 + 9); // it still owes 9:00 (its 8:00 change settled it to 8:15)
+    holdAll(b.g);
+    expect(b.far.water.lab?.lastAutofeedHour).toBe(b.day * 24 + 9);
+  });
+
   it('the Auto Top-Offs, filters and keepers\' rounds keep running while held', () => {
     const { g, fresh } = facility({ fresh: 1, marine: 0, ato: true });
     const t = fresh[0];

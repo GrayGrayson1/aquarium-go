@@ -141,7 +141,7 @@ function LineRow({ g, line, held, small }: { g: GameState; line: ProductionLine;
           )}
         </span>
         {!small && <span className="ops-muted ops-num">{week}</span>}
-        <Toggle checked={line.running} onChange={(on) => doLineSwitch(line.id, on)} label={small ? 'Line on' : `Run the ${line.name}`} testId={`line-toggle-${line.id}`} />
+        <Toggle checked={line.running} onChange={(on) => doLineSwitch(line.id, on)} label={`Run the ${line.name}`} testId={`line-toggle-${line.id}`} />
         {small && <span className="ops-muted ops-num">This week {week}</span>}
       </div>
       <div className="ops-line__route" data-testid={`line-route-${line.id}`}>

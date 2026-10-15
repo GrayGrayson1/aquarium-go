@@ -24,8 +24,8 @@ export const WATER_ROOM = {
   mixHours: [10, 22] as const,
   mixBelow: 0.6,
   mixHoursLong: 12,
-  /** Salt water a mixed batch holds: half the salt reserve (30 gal at the base 60). */
-  batchShare: 0.5,
+  /** Salt water a mixed batch makes (SPEC §9.2, AUTO-032: 30 gal and 4.1 kg, whatever the reserve's size). */
+  batchGal: 30,
   /** Running costs ($ a day). */
   prepUpkeep: 0.4,
   mixerUpkeep: 0.3,

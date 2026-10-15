@@ -5,9 +5,13 @@
  * growing), Autofeeders (keepers feed on their rounds) and production lines (no breeding moves, sorting or listings).
  * Filters, heaters, lights, Auto Top-Offs, keepers' rounds and auctions already listed never stop; the stock manager's
  * orders have their own switch (`staff.ordersOff`). Held jobs are skipped, not queued: on resume each system carries on
- * at its next scheduled time. A leaf module (types only), so the water, care and production steps can read it.
+ * at its next scheduled time. A leaf module (types and the settler only), so the water, care and production steps can
+ * read it. Every change first catches the background tanks up (ADR-0026 decision 5, the chunk 5 review): a tank owing
+ * hours would otherwise run them under the new setting, giving a meal that fell due while held after Resume, or
+ * skipping one that fell due before Hold.
  */
 import type { GameState, HoldSystem } from '@/types';
+import { settleTanks } from '../settle';
 
 export const HOLD_SYSTEMS: readonly HoldSystem[] = ['water', 'salt', 'food', 'feeders', 'lines'];
 
@@ -39,6 +43,7 @@ function holdState(state: GameState) {
 
 /** Hold all: every system at once (immediate, no confirm). */
 export function holdAll(state: GameState): void {
+  settleTanks(state, state.tankOrder);
   const h = holdState(state);
   if (!manualModeOn(state)) h.since = state.clock.hour;
   for (const s of HOLD_SYSTEMS) h[s] = true;
@@ -47,11 +52,14 @@ export function holdAll(state: GameState): void {
 /** Resume all: manual mode ends. */
 export function resumeAll(state: GameState): void {
   if (!state.automation?.hold) return;
+  settleTanks(state, state.tankOrder);
   delete state.automation.hold;
 }
 
 /** Hold or resume one system; resuming the last held system turns manual mode off. */
 export function setHold(state: GameState, sys: HoldSystem, on: boolean): void {
+  if (isHeld(state, sys) === on) return;
+  settleTanks(state, state.tankOrder);
   if (on) {
     const h = holdState(state);
     if (!manualModeOn(state)) h.since = state.clock.hour;

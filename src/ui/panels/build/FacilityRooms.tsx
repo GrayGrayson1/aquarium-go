@@ -178,7 +178,7 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
           <Machine
             icon={<FlaskConical size={16} aria-hidden />}
             name="Salt Mixing Station"
-            sub={`${Math.floor(saltCap(w) * WATER_ROOM.batchShare)} gal batches · 12 h · $${WATER_ROOM.mixerUpkeep.toFixed(2)}/day`}
+            sub={`${WATER_ROOM.batchGal} gal batches · 12 h · $${WATER_ROOM.mixerUpkeep.toFixed(2)}/day`}
             status={isHeld(g, 'salt') ? <Status tone="watch">Held</Status> : !needed ? <Status tone="neutral">Idle · not needed</Status> : w.mix && w.mix.readyHour > g.clock.hour ? <Status tone="good">Mixing</Status> : <Status tone="neutral">Idle</Status>}
           />
         </div>

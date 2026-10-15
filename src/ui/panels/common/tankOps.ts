@@ -15,6 +15,7 @@ import { reseatDecor } from '@/sim/aquascape'; // lane:staff
 import { getDecorDef } from '@/data/catalog/decor';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { getTankTier } from '@/data/catalog/tanks';
+import { settleTanks } from '@/sim/settle'; // lane:automation (chunk 5)
 import { WATER_CLASS_LABEL, PURPOSE_LABEL } from './format';
 
 export interface OpResult {
@@ -103,6 +104,7 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
   if (!t) return { ok: false, message: 'Tank not found' };
   const gate = canChangeWaterClass(state, tankId);
   if (!gate.ok) return { ok: false, message: gate.reason ?? 'Not possible' };
+  settleTanks(state, [tankId]); // its owed hours run on the old water, then it changes (ADR-0026 decision 5, chunk 5)
   if (t.waterClass === wc) return { ok: true, message: 'No change' };
   // lane:brackish — brackish water needs the estuary know-how first.
   if (wc === 'brackish' && !isUnlocked(state, 'brackish')) return { ok: false, message: 'Brackish water unlocks with the Brackish Estuaries research.' };
@@ -203,6 +205,7 @@ export function changeSubstrate(state: GameState, tankId: string, kind: Substrat
   if (!t) return { ok: false, message: 'Tank not found' };
   const def = getSubstrateDef(kind);
   if (!def) return { ok: false, message: 'Unknown substrate' };
+  settleTanks(state, [tankId]); // ADR-0026 decision 5 (chunk 5)
   if (!def.environments.includes(t.environment)) return { ok: false, message: `${def.name} isn’t suitable for ${t.environment} tanks` };
   if (t.substrate.kind === kind && (!color || color === t.substrate.color)) return { ok: true, message: 'Already in place' };
   const cost = t.substrate.kind === kind ? 0 : substrateCost(t.tierId, kind);

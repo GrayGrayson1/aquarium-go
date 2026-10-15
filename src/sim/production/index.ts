@@ -542,6 +542,12 @@ export function endLine(state: GameState, lineId: string): ActionResult {
     const c = state.creatures[id];
     if (c?.repro?.lineHold) delete c.repro.lineHold;
   }
+  // lane:automation (chunk 5 review) — a "Wait" decided for this line goes with it: a new line may reuse the id
+  const wait = state.automation?.lineWait;
+  if (wait && line.id in wait) {
+    delete wait[line.id];
+    if (!Object.keys(wait).length) delete state.automation!.lineWait;
+  }
   const s = line.stats;
   prod.ended = [...(prod.ended ?? []), { id: line.id, name: line.name, speciesId: line.speciesId, createdHour: line.createdHour, endedHour: state.clock.hour, totalSold: s.totalSold, totalRevenue: s.totalRevenue, totalCosts: s.totalCosts }].slice(-ENDED_KEPT);
   return ok(`${line.name} ended`);

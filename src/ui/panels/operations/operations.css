@@ -94,6 +94,9 @@ body:has(.pn-sheet--side[data-panel='operations'].is-max) .ag-toasts > :not(:las
 .ops-when { display: grid; grid-template-columns: 86px minmax(0, 1fr); border: 1px solid var(--pn-card-line); border-radius: 12px; overflow: hidden; font-size: calc(12.5px * var(--text-scale)); }
 .ops-when > * { padding: 8px 12px; border-top: 1px solid var(--pn-card-line); }
 .ops-when > :nth-child(-n + 2) { border-top: 0; }
+/* "Why the line stops" (SPEC §7.6) under the line card's actions; its labels are longer than a time */
+.ops-why { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--pn-card-line); }
+.ops-why .ops-when { grid-template-columns: minmax(120px, 40%) minmax(0, 1fr); }
 .ops-when__t { font-weight: 650; color: var(--c-good); }
 .ops-when__t--watch { color: var(--c-watch); }
 .ops-when__t--danger { color: var(--c-danger); }

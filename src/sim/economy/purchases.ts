@@ -14,6 +14,7 @@ import { createTank, defaultSubstrate } from '../tanks';
 import { defaultEquipmentFor } from '../water';
 import { isUnlocked, findFreeSpot, bumpCounter } from '../facility';
 import { emitEvent } from '../context';
+import { settleTanks } from '../settle'; // ADR-0026 decision 5 (chunk 5)
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { getEquipmentDef, equipmentOfKind } from '@/data/catalog/equipment';
@@ -69,6 +70,8 @@ export function buyOffer(state: GameState, offerId: string, tankId: string, crea
   }
   const tank = state.tanks[tankId];
   if (!tank) return fail('Choose a tank for the new arrivals.');
+  // the tank catches up its owed hours first, so the newcomers arrive now, not hours back (ADR-0026 decision 5, B-176)
+  settleTanks(state, [tankId]);
   const sp = findSpecies(offer.speciesId);
   if (!sp) return fail('Unknown species.');
   let gate: { ok: boolean; reason?: string };

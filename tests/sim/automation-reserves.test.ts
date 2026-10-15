@@ -9,8 +9,9 @@
 import { describe, it, expect } from 'vitest';
 import { facility, run } from './support/automation';
 import { stepTank } from '@/sim/world';
-import { automationProblems, batchSaltKg, holdAll, prepRate, saltShare, saltWaterNeeded, setHold, tankChangeNeed, waterRoom } from '@/sim/automation';
+import { automationProblems, batchSaltKg, holdAll, prepRate, saltShare, saltWaterNeeded, setHold, tankChangeNeed, today, waterRoom } from '@/sim/automation';
 import { WATER_ROOM } from '@/data/catalog/machines';
+import { dayOf } from '@/sim/time';
 import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature } from '@/sim/life';
 import { installEquipment } from '@/sim/care';
@@ -189,5 +190,35 @@ describe('AUTO-037: facility jobs settle tanks and share stock in tankOrder, wha
       expect(Math.abs(b.fresh - a.fresh)).toBeLessThan(0.5);
       expect(Math.abs(b.reserve - a.reserve)).toBeLessThan(0.5);
     }
+  });
+
+  it('with Auto Top-Offs on fourteen tanks (two at summary LOD): the same jobs, and the fresh reserve within 0.5 gal (the chunk 5 review)', () => {
+    const outcomeAto = (piece: number, opts: { forceFull?: boolean; focus?: string | null }) => {
+      const f = facility({ fresh: 8, marine: 6, salt: 40, hour: 24 * 3 + 2, rosa: null, ato: true });
+      const tanks = [...f.fresh, ...f.marine];
+      for (const t of tanks) t.water.level = 0.9; // low enough for every Auto Top-Off to draw
+      run(f.g, 72, piece, opts.focus === 'first' ? { focus: tanks[0].id } : opts);
+      const room = waterRoom(f.g)!;
+      return { changes: tanks.map((t) => lastChange(t)), salt: f.g.inventory.salt, fresh: room.fresh, topOff: (f.g.automation?.days ?? []).map((d) => d.water?.topOff ?? 0) };
+    };
+    const a = outcomeAto(0.5, { forceFull: true });
+    expect(a.topOff.reduce((x, y) => x + y, 0)).toBeGreaterThan(0); // the top-offs really drew on the reserve
+    const b = outcomeAto(0.5, { focus: 'first' });
+    expect(b.changes).toEqual(a.changes);
+    expect(b.salt).toBe(a.salt);
+    expect(Math.abs(b.fresh - a.fresh)).toBeLessThan(0.5);
+  });
+});
+
+describe('the day records (Saved this week, the water flows)', () => {
+  it('a call for an hour before the newest record adds to its own day, never over the newer day\'s tallies (the chunk 5 review)', () => {
+    const { g } = facility({ fresh: 1, marine: 0 });
+    const base = Math.floor(g.clock.hour / 24) * 24;
+    const d = dayOf(base);
+    today(g, base + 23).used.x = 1; // day d
+    today(g, base + 24).made.y = 20; // a midnight harvest opens day d + 1 and closes day d
+    today(g, base + 23.5).used.x! += 2; // a call on the clock's hour, still in day d, later in the same step
+    expect(g.automation!.today).toMatchObject({ day: d + 1, made: { y: 20 } });
+    expect(g.automation!.days!.filter((r) => r.day === d)).toEqual([expect.objectContaining({ used: { x: 3 } })]);
   });
 });

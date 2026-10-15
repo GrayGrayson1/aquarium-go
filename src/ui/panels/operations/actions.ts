@@ -8,7 +8,7 @@ import { sfx } from '@/audio/sfx';
 import { buyEggs, buyFood, buySalt, SALT_PRICE_PER_KG } from '@/sim/economy';
 import { batchGal, batchSaltKg, holdAll, resumeAll, setHold, waitForLine, manualModeOn } from '@/sim/automation';
 import { setLineRunning, findLine } from '@/sim/production';
-import { EGGS_SUPPLY } from '@/data/catalog/machines';
+import { EGGS_SUPPLY, VEGETABLES } from '@/data/catalog/machines';
 import { act } from '../common/act';
 
 const toast = (label: string, text: string, detail?: string, kind: 'success' | 'info' = 'success') => useUI.getState().toast(text, kind, { label, ...(detail ? { detail } : {}) });
@@ -36,7 +36,7 @@ export function buyEggTin(): boolean {
 
 /** Buy a pack of Blanched Vegetables (the jars' food). */
 export function buyVegPack(): boolean {
-  const r = act((d) => buyFood(d, 'blanched_veg', 1));
+  const r = act((d) => buyFood(d, VEGETABLES, 1));
   return !!r?.ok;
 }
 

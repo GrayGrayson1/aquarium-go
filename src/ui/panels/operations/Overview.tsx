@@ -37,7 +37,7 @@ import {
 import { lineStatus, productionLines } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
 import { stockManager } from '@/sim/staff/work';
-import { tierLadder, type OpsSnapshot, type OpsTier } from '@/ui/common/ops';
+import { opsMemo, opsSnapshot, tierLadder, type OpsSnapshot, type OpsTier } from '@/ui/common/ops';
 import { formatMoney } from '@/ui/kit';
 import { Status, SystemTile, LockedTile, Ladder, Kicker, OpsBar } from './parts';
 import { issueViews, issuesHeader, type IssueView } from './issues';
@@ -54,7 +54,7 @@ export function Overview({ g, snap, tier, nav, small }: { g: GameState; snap: Op
   const issues = issueViews(g, snap.problems);
   return (
     <>
-      {snap.manual && <ManualBanner g={g} nav={nav} />}
+      {snap.manual && <ManualBanner g={g} />}
       <ProblemsCard g={g} issues={issues} counts={snap.counts} nav={nav} small={small} />
       <SystemsGrid g={g} snap={snap} tier={tier} nav={nav} small={small} />
       {small ? (
@@ -70,7 +70,7 @@ export function Overview({ g, snap, tier, nav, small }: { g: GameState; snap: Op
 }
 
 /** Manual mode on: the amber banner leads the Overview (§7.1). */
-function ManualBanner({ g, nav }: { g: GameState; nav: OpsNav }) {
+function ManualBanner({ g }: { g: GameState }) {
   const since = manualSince(g);
   return (
     <section className="ops-card ops-manual" data-testid="ops-manual-banner">
@@ -86,9 +86,6 @@ function ManualBanner({ g, nav }: { g: GameState; nav: OpsNav }) {
           <Play size={15} aria-hidden /> Resume all
         </Button>
       </div>
-      <button type="button" className="ops-link" onClick={() => nav.view('manual')}>
-        What’s on hold <ChevronRight size={14} aria-hidden />
-      </button>
     </section>
   );
 }
@@ -150,7 +147,7 @@ function ProblemsCard({ g, issues, counts, nav, small }: { g: GameState; issues:
         </section>
       ))}
       <button type="button" className="ops-link" data-testid="ops-problems-all" onClick={() => nav.view('issues')}>
-        All problems <ChevronRight size={14} aria-hidden />
+        All <ChevronRight size={14} aria-hidden />
       </button>
     </div>
   );
@@ -279,7 +276,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
     const byYou = lines.filter((l) => lineStatus(l) === 'paused_by_you').length;
     const smooth = lines.length - paused - byYou;
     const decided = snap.decided[0];
-    const sold = weekMoney(g).sold;
+    const sold = opsMemo('week', g, () => weekMoney(g)).sold;
     const status = lHeld ? (
       <Status tone="watch" icon="held">Held</Status>
     ) : paused && !decided ? (
@@ -311,7 +308,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
   const rosa = stockManager(g);
   if (rosa && !small) {
     const aquarists = (g.staff?.roster ?? []).filter((m) => m.role === 'aquarist').length;
-    const next = todayJobs(g, 12).find((j) => j.kind === 'shelves');
+    const next = opsMemo('today:12', g, () => todayJobs(g, 12, g.clock.hour, opsSnapshot(g).forecast)).find((j) => j.kind === 'shelves');
     out.push({
       key: 'keepers',
       node: (
@@ -376,7 +373,7 @@ function ManualTile({ g, snap, nav }: { g: GameState; snap: OpsSnapshot; nav: Op
 // ───────────────────────────── This week · Today ─────────────────────────────
 
 function Week({ g, small }: { g: GameState; small: boolean }) {
-  const w = weekMoney(g);
+  const w = opsMemo('week', g, () => weekMoney(g));
   const lines = productionLines(g);
   const name = (id: string) => lines.find((l) => l.id === id)?.name.replace(/ line$/, '') ?? g.production?.ended?.find((h) => h.id === id)?.name.replace(/ line$/, '') ?? id;
   const max = Math.max(1, ...w.lines.map((l) => l.amount));
@@ -441,7 +438,7 @@ export function jobText(g: GameState, j: ScheduledJob): { title: string; detail:
 }
 
 function Today({ g, manual }: { g: GameState; manual: boolean }) {
-  const jobs = todayJobs(g);
+  const jobs = opsMemo('today:4', g, () => todayJobs(g, 4, g.clock.hour, opsSnapshot(g).forecast));
   return (
     <section className="ops-card" data-testid="ops-today">
       <Kicker icon={<CalendarClock size={14} aria-hidden />}>Today</Kicker>

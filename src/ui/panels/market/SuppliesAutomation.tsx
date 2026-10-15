@@ -18,8 +18,9 @@ import { buyFood, SALT_PRICE_PER_KG } from '@/sim/economy';
 import { pickAutofeedFood } from '@/sim/care/autofeed';
 import { inhabitantsOf } from '@/sim/water/env';
 import { formatClock, dayOf } from '@/sim/time';
-import { automationProblems, batchGal, batchSaltKg, cultureState, saltWaterNeeded, saltWaterPerDay, SALT_KG_PER_GAL, type SupplyProblem } from '@/sim/automation';
-import { nextStockCheck, stockManager } from '@/sim/staff/work';
+import { batchGal, batchSaltKg, cultureState, saltWaterNeeded, saltWaterPerDay, SALT_KG_PER_GAL, type SupplyProblem } from '@/sim/automation';
+import { stockManager } from '@/sim/staff/work';
+import { opsSnapshot } from '@/ui/common/ops';
 import { act } from '../common/act';
 import { SectionHead, Chip } from '../common/parts';
 import { buyEggTin, buySaltBag } from '../operations/actions';
@@ -202,11 +203,12 @@ export function DryFoodSection({ g, flash }: { g: GameState; flash: string | nul
 /** Marine salt mix in 5, 20 and 40 kg, with its status (§8.5; shown with a salt tank, salt in stock or a Water room). */
 export function SaltRow({ g, flash }: { g: GameState; flash: string | null }) {
   const room = g.facility.water;
-  const salt = automationProblems(g).find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === 'salt');
+  const snap = opsSnapshot(g); // memoised per game hour and stock (PERF-004)
+  const salt = snap.problems.find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === 'salt');
   const kg = Math.round(g.inventory.salt * 10) / 10;
   const m = stockManager(g);
   const who = m ? m.name.split(' ')[0] : null;
-  const f = nextStockCheck(g);
+  const f = snap.forecast;
   const needed = !!room && saltWaterNeeded(g);
   const kgDay = needed ? saltWaterPerDay(g) * SALT_KG_PER_GAL : 0;
   const batches = room ? Math.floor((g.inventory.salt + 1e-6) / batchSaltKg(batchGal(room))) : 0;

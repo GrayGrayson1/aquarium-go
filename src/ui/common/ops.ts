@@ -2,9 +2,10 @@
  * Operations' shared view of the game (DESIGN-S3D §5.3, §5.4, §7.1, §9.8). OWNER: lane "automation" (chunk 5).
  *
  * - The tier the player is at (Overview's early, before-the-Desk and full layouts) and the ladder of what opens next.
- * - Problems and their counts, memoised (PERF-004): the forecast dry-runs the stock manager's next check, which walks
- *   every animal, so it runs once per key — the game hour and the stock, budget, holds and lines that move it — never
- *   on each 4 Hz publish. The dock, More, bell and panel all read the same snapshot.
+ * - Problems, their counts and the forecast, memoised (PERF-004): the forecast dry-runs the stock manager's next check,
+ *   which walks every animal, so it runs once per key — the game hour and the stock, budget, holds and lines that move
+ *   it — never on each 4 Hz publish or panel refresh. The dock, More, bell, panel, Supplies and Staff all read the same
+ *   snapshot; Today, the flows and the week's money are kept per key too (`opsMemo`).
  * - The Operations dot: red when anything needs you, amber when something is worth a look or manual mode is on (§5.4;
  *   no news dot).
  */
@@ -17,6 +18,7 @@ import type { FacilityLevelId } from '@/types';
 import { automationProblems, decidedLines, manualModeOn, problemCounts, type Problem } from '@/sim/automation';
 import { evalCond } from '@/sim/facility';
 import { lineSlots, lineStatus, productionLines } from '@/sim/production';
+import { nextStockCheck, type StockForecast } from '@/sim/staff/work';
 import { HOURS_PER_DAY } from '@/sim/time';
 
 export type OpsLayout = 'early' | 'before' | 'full';
@@ -55,9 +57,11 @@ export interface OpsSnapshot {
   counts: { total: number; danger: number; watch: number };
   decided: { lineId: string; name: string; restartDay: number }[];
   manual: boolean;
+  /** The stock manager's next shelf check, dry-run (null without one). */
+  forecast: StockForecast | null;
 }
 
-const EMPTY: OpsSnapshot = { problems: [], counts: { total: 0, danger: 0, watch: 0 }, decided: [], manual: false };
+const EMPTY: OpsSnapshot = { problems: [], counts: { total: 0, danger: 0, watch: 0 }, decided: [], manual: false, forecast: null };
 
 /** What moves Problems: the hour, the stock, the budget, the holds, the lines. Cheap: no walk over animals. */
 export function opsKey(g: GameState): string {
@@ -92,14 +96,27 @@ export function opsSnapshot(g: GameState | null | undefined): OpsSnapshot {
   if (cache?.key === key) return cache.snap;
   let snap: OpsSnapshot;
   try {
-    const problems = automationProblems(g);
-    snap = { problems, counts: problemCounts(problems), decided: decidedLines(g), manual: manualModeOn(g) };
+    const forecast = nextStockCheck(g);
+    const problems = automationProblems(g, g.clock.hour, forecast);
+    snap = { problems, counts: problemCounts(problems), decided: decidedLines(g), manual: manualModeOn(g), forecast };
   } catch (e) {
     if (typeof console !== 'undefined') console.warn('operations snapshot failed', e);
     snap = EMPTY;
   }
   cache = { key, snap };
   return snap;
+}
+
+const memos = new Map<string, { key: string; value: unknown }>();
+
+/** A summary kept until the Operations key moves (PERF-004): Today, the water flows, the week's money, Staff's status. */
+export function opsMemo<T>(name: string, g: GameState, fn: () => T): T {
+  const key = opsKey(g);
+  const hit = memos.get(name);
+  if (hit?.key === key) return hit.value as T;
+  const value = fn();
+  memos.set(name, { key, value });
+  return value;
 }
 
 /** The Operations dot (dock, More row, sheet switcher): red when anything needs you, amber when worth a look or held. */
