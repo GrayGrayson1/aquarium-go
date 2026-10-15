@@ -10,12 +10,14 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ChevronRight, Gauge, Lock, Settings, X } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGameSelector } from '@/state/game';
-import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useDevMode, useDevTools } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx } from '@/audio/sfx';
 import { useShell } from '../common/shellStore';
 import { useIsMobile } from '../common/safe';
 import { openPanel } from './Dock';
-import { MORE_ITEMS } from './TabBar';
+import { cycleFocus } from '@/ui/kit';
+import { MORE_ITEMS, moreItems } from './TabBar';
+import { SOCIAL_COPY } from '../panels/social/copy'; // lane:social (chunk 6)
 import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
 import type { NavDot } from '../common/notify';
 import { moreSubline } from '../common/ops'; // lane:automation (chunk 5)
@@ -26,8 +28,11 @@ function closeMore() {
   if (useShell.getState().popover === 'more') useShell.getState().set({ popover: null });
 }
 
-/** The sheet's content: title and close, the tiles, the Settings row (`isLocked`, `dots` from the game). */
-export function MoreSheetBody({ isLocked, dots }: { isLocked: (it: (typeof MORE_ITEMS)[number]) => boolean; dots: Record<string, NavDot> }) {
+/**
+ * The sheet's content: title and close, the tiles, the Settings row (`isLocked`, `dots` from the game). lane:social
+ * (chunk 6, §5.3) — `social`: dev mode, where a Social tile follows Shows, with a "New" tag until Social is first opened.
+ */
+export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (it: (typeof MORE_ITEMS)[number]) => boolean; dots: Record<string, NavDot>; social?: boolean }) {
   const go = (id: (typeof MORE_ITEMS)[number]['id'], target: string | null) => {
     useShell.getState().set({ popover: null });
     openPanel(id, target);
@@ -44,10 +49,11 @@ export function MoreSheetBody({ isLocked, dots }: { isLocked: (it: (typeof MORE_
       </div>
       <OperationsRow dot={dots.operations} />
       <div className="ag-more__grid">
-        {MORE_ITEMS.map((it) => {
+        {moreItems(social).map((it) => {
           const Icon = it.icon;
           const locked = isLocked(it);
           const dot = locked ? undefined : dots[it.id];
+          const newTag = !!it.newUntilOpened && dot?.label === SOCIAL_COPY.dotNew; // the tag stands for the dot
           return (
             <button
               key={it.id}
@@ -65,9 +71,14 @@ export function MoreSheetBody({ isLocked, dots }: { isLocked: (it: (typeof MORE_
                     <Lock size={9} />
                   </span>
                 )}
-                {dot && <AttnDot level={dot.level} className="ag-more__attn" testId={`more-badge-${it.id}`} />}
+                {dot && !newTag && <AttnDot level={dot.level} className="ag-more__attn" testId={`more-badge-${it.id}`} />}
               </span>
               <span className="ag-more__label">{it.label}</span>
+              {newTag && (
+                <span className="ag-more__new ag-more__new--tile" data-testid={`more-new-${it.id}`} aria-hidden>
+                  {SOCIAL_COPY.dotNew}
+                </span>
+              )}
             </button>
           );
         })}
@@ -133,7 +144,8 @@ export function MoreSheet() {
   const ref = useRef<HTMLDivElement>(null);
   const unlocked = useGameSelector((g) => g.progress.unlocked.join('|'), '');
   const dev = useDevMode();
-  const dots = useNavDots(MORE_ITEMS);
+  const devAllowed = useDevTools((s) => s.allowed); // lane:social (chunk 6)
+  const dots = useNavDots(moreItems(devAllowed));
   const panel = useUI((s) => s.panel);
   const selected = useUI((s) => s.selectedCreatureId);
   const tankCard = useShell((s) => s.tankCardOpen);
@@ -150,20 +162,8 @@ export function MoreSheet() {
     if (!shown) return;
     const t = window.setTimeout(() => ref.current?.querySelector<HTMLElement>('.ag-more__title')?.focus({ preventScroll: true }), 60);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab' || !ref.current) return;
-      const items = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null);
-      if (!items.length) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      const a = document.activeElement as HTMLElement | null;
-      const inside = !!a && ref.current.contains(a);
-      if (e.shiftKey && (!inside || a === first || a === ref.current.querySelector('.ag-more__title'))) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && (!inside || a === last)) {
-        e.preventDefault();
-        first.focus();
-      }
+      // (cycleFocus moves focus on every press: WebKit doesn't Tab to buttons by itself)
+      if (e.key === 'Tab' && ref.current) cycleFocus(ref.current, e, FOCUSABLE);
     };
     window.addEventListener('keydown', onKey, true);
     return () => {
@@ -191,7 +191,7 @@ export function MoreSheet() {
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 34, stiffness: 340 }}
         >
-          <MoreSheetBody isLocked={(it) => !isUnlocked(it.lock)} dots={dots} />
+          <MoreSheetBody isLocked={(it) => !isUnlocked(it.lock)} dots={dots} social={devAllowed} />
         </motion.div>
       )}
     </AnimatePresence>

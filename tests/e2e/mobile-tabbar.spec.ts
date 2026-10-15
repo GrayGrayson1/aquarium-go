@@ -98,6 +98,49 @@ test.describe('phone 390×844 (touch)', () => {
     await expect.poll(() => hash(page)).toBe('#/');
   });
 
+  // chunk 6 (0.5 spec §5.2, §5.3; SOC-004 A3, SOC-011): in dev mode a Social tile follows Shows, with a "New" tag until
+  // Social is first opened, and the More tab's dot; both go after that first open
+  test('more-social opens Social; its New tag and the More dot clear after the first open', async ({ page }) => {
+    await phoneGame(page, { unlockAll: false });
+    // the guide's skip opens Shows: mark everything else in More seen, so Social's dot is the only one there
+    await page.evaluate(() =>
+      (window as unknown as { __AQ: { mutate(fn: (g: { progress: { tutorial: { flags: Record<string, boolean> } } }) => void): void } }).__AQ.mutate((g) => {
+        for (const id of ['visitors', 'shows', 'research', 'finances', 'encyclopedia', 'operations']) g.progress.tutorial.flags[`opened_${id}`] = true;
+      }),
+    );
+    await expect(tid(page, 'dock-badge-more')).toBeVisible();
+    await expect(tid(page, 'dock-more')).toHaveAttribute('aria-label', 'More — New');
+    await tid(page, 'dock-more').tap();
+    await expect(tid(page, 'more-sheet').locator('.ag-more__label')).toHaveText(['Visitors', 'Shows', 'Social', 'Research', 'Finances', 'Encyclopedia']);
+    await expect(tid(page, 'more-new-social')).toHaveText('New');
+    await expect(tid(page, 'more-social')).toHaveAttribute('aria-label', 'Social — New');
+    await tid(page, 'more-social').tap();
+    await expect(tid(page, 'panel-social')).toBeVisible();
+    await expect.poll(() => hash(page)).toBe('#/social');
+    await expect(tid(page, 'dock-more')).toHaveAttribute('aria-current', 'page');
+    // the sign-in fields are 16 px, so iOS doesn't zoom (§13.2)
+    expect(await tid(page, 'social-email').evaluate((e) => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(16);
+    await tid(page, 'dock-more').tap(); // closes Social
+    await expect(tid(page, 'panel-social')).toBeHidden();
+    await expect(tid(page, 'dock-badge-more')).toHaveCount(0);
+    await tid(page, 'dock-more').tap();
+    await expect(tid(page, 'more-sheet')).toBeVisible();
+    await expect(tid(page, 'more-new-social')).toHaveCount(0);
+  });
+
+  test('the Friends grid has two columns on a phone (SOC-008 A4)', async ({ page }) => {
+    await phoneGame(page);
+    await page.evaluate(() => void (location.hash = '#/social/friends'));
+    await tid(page, 'social-email').fill('you@example.com');
+    await tid(page, 'social-password').fill('password1');
+    await tid(page, 'social-signin').tap();
+    const tiles = tid(page, 'social-friend-grid').locator('li');
+    await expect(tiles).toHaveCount(6);
+    const xs = await tiles.evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().left)))]);
+    expect(xs).toHaveLength(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
   test('locked tiles carry a lock badge and open their locked panel (§5.7)', async ({ page }) => {
     await phoneGame(page, { unlockAll: false });
     await tid(page, 'dock-more').tap();

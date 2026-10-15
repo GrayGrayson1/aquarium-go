@@ -105,7 +105,8 @@ describe('nav routes: §6.2 round trip', () => {
     expect(r('#/market/listings/listing_7mm')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'listing:listing_7mm' });
     expect(r('#/encyclopedia/betta')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'species', target: 'species:betta' });
     expect(r('#/encyclopedia/science/nitrogen_cycle')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'science', target: 'science:nitrogen_cycle' });
-    expect(r('#/social/join/HIGHLAND-4821')).toEqual({ kind: 'panel', panel: 'social', tab: 'overview', target: 'join:HIGHLAND-4821' });
+    // chunk 6: an invite highlights Clubs, as the approved screen phone-join does (§6.2 names no tab for it)
+    expect(r('#/social/join/HIGHLAND-4821')).toEqual({ kind: 'panel', panel: 'social', tab: 'clubs', target: 'join:HIGHLAND-4821' });
     expect(r('#/settings')).toEqual({ kind: 'settings', tab: 'general' });
     expect(r('#/more')).toEqual({ kind: 'more' });
     expect(r('#/log')).toEqual({ kind: 'panel', panel: 'log' });

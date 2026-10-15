@@ -19,6 +19,7 @@ import { SettingsPanel } from './settings/SettingsPanel';
 import { BootCard } from './nav/BootCard';
 import { startRouter, useNav } from './nav/router';
 import { startNotifications } from './notify/deliver'; // lane:notify (chunk 3)
+import { startClubReminder } from './notify/clubReminder'; // lane:social (chunk 6)
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';
 import './styles/screens.css';
@@ -56,6 +57,7 @@ export function UIRoot() {
   // lane:ui-shell (chunk 1) — the hash router: links, Back/Forward, and the boot from a link or a reload (§6.4)
   useEffect(() => startRouter(), []);
   useEffect(() => startNotifications(), []); // lane:notify — system notifications while the game is open but not focused
+  useEffect(() => startClubReminder(), []); // lane:social (chunk 6, ADR-0034 decision 4) — dev mode only
   const booting = useNav((s) => !!s.boot);
   const screen = useUI((s) => s.screen);
   const reduced = useSettings((s) => s.reducedMotion);

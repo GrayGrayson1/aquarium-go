@@ -254,7 +254,7 @@ The four destination tabs keep the dock's ids, so `helpers.openPanel` works on b
 | `dock-more` | Phone More tab (`aria-expanded` while the sheet is open; highlighted while a More destination is open) |
 | `dock-badge-more` | Attention dot on the More tab (a destination inside More has one) |
 | `more-sheet` | Phone More sheet root (`#/more`) |
-| `more-visitors` · `more-shows` · `more-research` · `more-finances` · `more-encyclopedia` | More tiles (a locked one carries `.ag-more__lock`); `more-badge-<id>` is a tile's attention dot |
+| `more-visitors` · `more-shows` · `more-research` · `more-finances` · `more-encyclopedia` | More tiles (a locked one carries `.ag-more__lock`); `more-badge-<id>` is a tile's attention dot; chunk 6 adds `more-social` in dev mode |
 | `more-settings` | More sheet Settings row |
 | `guide-more-bubble` | Phone guide note above the More tab for a step whose target lives in More ("Guide · Research") |
 | `locked-visitors` · `locked-shows` | A locked destination's panel body (0.5 spec §5.7) |
@@ -294,7 +294,8 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 | `#/encyclopedia` | Species list | `tab:species` |
 | `#/encyclopedia/science` *`/:articleId`* | Aquarium science (an article open) | `tab:science` / `science:<id>` |
 | `#/encyclopedia/:speciesId` | Species page | `species:<id>` |
-| `#/social` *`/clubs\|trading\|friends\|leaderboards`*, `#/social/join/:code` | Parsed only: Social is built in chunk 6, dev-only (ADR-0005 decision 3) | — |
+| `#/social` *`/clubs\|trading\|friends\|leaderboards`* | Social tabs (chunk 6; dev mode only, ADR-0005 decision 3: elsewhere a broken link) | `tab:overview\|clubs\|trading\|friends\|leaderboards` |
+| `#/social/join/:code` | Club invite (Clubs highlighted, as the screen phone-join) | `join:<code>` |
 | `#/settings` *`/play\|saves\|notifications\|about`* | Settings tabs (URL word `play` = tab `display`; Notifications from chunk 3) | `useShell.settingsTab` |
 | `#/more` | Phone More sheet (desktop: the tank view) | `useShell.popover: 'more'` |
 | `#/log` | Full event log | `panel: 'log'` |
@@ -425,3 +426,26 @@ Index-based cone and jar ids, one id for the Operations tools tile, `staff-budge
 | `staff-budget` · `staff-budget-status` · `staff-orders` | Visitors › Staff: the $1 budget slider, its status line, the orders switch |
 | `production-ops-link` · `livestock-production-dot` | Production's link row to Operations › Lines, and the Production tab's dot |
 | `notify-cat-auto` | Settings › Notifications' Automation category |
+
+## 0.5 Social stub (chunk 6: lane social; 0.5 spec §13, §19)
+
+Social is reachable only in dev mode (ADR-0005 decision 3, SOC-011): a dev build, or a session opened with `?dev=1`.
+Outside it none of these exist, and every `#/social` address is a broken link (`prod-mode.spec`).
+
+| test id | element |
+|---|---|
+| `dock-social` · `dock-badge-social` | Dock item (Globe, between Shows and Build; tutorial id `dock-social`) and its dot: "New" until first opened, "New trades and club news" after |
+| `more-social` · `more-new-social` | Phone More tile (after Shows) and its "New" tag until Social is first opened |
+| `panel-social` · `social-body` | The panel (PanelHost's sheet) and its body |
+| `social-tab-<overview\|clubs\|trading\|friends\|leaderboards>` | Tabs (signed in only; `role="tab"`) |
+| `social-email` · `social-password` · `social-signin` · `social-signup` | Sign-in form (`type=email` / `autocomplete=email`; `type=password` / `autocomplete=current-password`; 16 px) |
+| `social-invite-code` · `social-invite-join` | "Have an invite?" field and Join group |
+| `social-error` | Every Social error (`role="alert"`): the sign-in rule, a bad invite or friend code, the network error |
+| `social-loading` | Skeleton rows while the service answers (`aria-busy`; still under reduced motion) |
+| `social-invite-callout` · `social-join-card` · `social-join-club` · `social-not-now` · `social-invite-member` · `social-invite-expired` | The four invite states (§13.3) |
+| `social-overview` · `social-your-club` · `social-trading-card` · `social-friends-card` · `social-leaderboard` · `social-signout` | Overview's cards (two columns when the desktop panel is maximised) and Sign out |
+| `social-club-<id>` · `social-club-join-<id>` | A club (a member's card, or a suggestion) and a suggestion's Join (→ "Joined") |
+| `social-search` · `social-nomatch` | Clubs search (a pasted invite code opens it with Enter) and its no-match line |
+| `social-trading` · `social-offer-trade` · `social-soon` · `social-soon-close` · `social-trades-empty` | Trading, Offer a trade, the coming-soon note (also behind a trade's View) and its Close; the empty list |
+| `social-friends` · `social-friend-code` · `social-add-friend` · `social-friend-grid` · `social-friends-empty` | Friends: Add friend by code, the snapshot grid (3 columns, 2 on phones), the empty list |
+| `social-leaderboards` · `social-lb-<collection_value\|prismatics\|show_wins>` · `social-lb-me` | Leaderboards: the radio group's options and the player's highlighted row |

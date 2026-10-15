@@ -18,8 +18,9 @@
  */
 import type { PanelId } from '@/state/ui';
 
-/** The management panels a route can open. Settings has its own kind; Social is parsed now and built in chunk 6. */
-export type NavPanel = Exclude<PanelId, 'settings' | 'dev'> | 'social';
+/** The management panels a route can open. Settings has its own kind. Social (chunk 6) opens only in dev mode: the
+ *  router turns its addresses away elsewhere (ADR-0005 decision 3, SOC-011). */
+export type NavPanel = Exclude<PanelId, 'settings' | 'dev'>;
 export type SettingsTab = 'general' | 'display' | 'saves' | 'notifications' | 'about';
 export type TankCardTab = 'water' | 'gear' | 'life' | 'value';
 export type EnvFilter = 'all' | 'fits' | 'freshwater' | 'marine' | 'brackish';
@@ -176,7 +177,8 @@ export function parseRoute(hash: string): ParsedRoute | null {
       if (b === 'science') return { route: panel('encyclopedia', 'science', c ? `science:${c}` : undefined) };
       return { route: b ? panel('encyclopedia', 'species', `species:${b}`) : panel('encyclopedia', 'species') };
     case 'social':
-      if (b === 'join') return { route: c ? panel('social', 'overview', `join:${c}`) : panel('social', 'overview') };
+      // lane:social (chunk 6) — an invite highlights Clubs, as the approved screen phone-join does (§13.3)
+      if (b === 'join') return { route: c ? panel('social', 'clubs', `join:${c}`) : panel('social', 'overview') };
       return { route: panel('social', tabOf('social', b)) };
     case 'operations': {
       // lane:automation (chunk 5, DESIGN-S3D §6) — Problems and Manual mode highlight Overview; an unknown tab opens it
@@ -319,7 +321,7 @@ export function routeForPanelTarget(p: NavPanel, target: string): Route | null {
       if (target.startsWith('show:') || target.startsWith('enter:')) return panel(p, 'upcoming');
       return null;
     case 'social':
-      return after(target, 'join:') ? panel(p, 'overview', target) : null;
+      return after(target, 'join:') ? panel(p, 'clubs', target) : null;
     default:
       return null;
   }

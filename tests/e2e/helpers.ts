@@ -197,3 +197,21 @@ export async function probe<T = any>(page: Page, body: string): Promise<T> {
     return new Function('g', `return (${b});`)(g);
   }, body) as Promise<T>;
 }
+
+/**
+ * lane:social (chunk 6; 0.5 spec §5.4) — the dock against the tank view's camera chips: the gap between their boxes (-1
+ * when they touch or overlap), whether the dock scrolls, and its labels (dock-width.spec, prod-mode.spec).
+ */
+export async function dockClear(page: Page): Promise<{ gap: number; scrolls: boolean; labels: string[] }> {
+  return page.evaluate(() => {
+    const dock = document.querySelector('.ag-dock')!;
+    const d = dock.getBoundingClientRect();
+    const c = document.querySelector('.ag-hud__cam:not(.ag-hud__cam--room)')!.getBoundingClientRect();
+    const apart = d.right <= c.left || c.right <= d.left || d.bottom <= c.top || c.bottom <= d.top;
+    return {
+      gap: apart ? Math.round(Math.max(c.left - d.right, d.left - c.right, c.top - d.bottom, d.top - c.bottom)) : -1,
+      scrolls: dock.classList.contains('has-more-right') || dock.classList.contains('has-more-left'),
+      labels: [...dock.querySelectorAll('.ag-dock__item:not(.ag-dock__item--dev) .ag-dock__label')].map((e) => e.textContent ?? ''),
+    };
+  });
+}

@@ -213,6 +213,21 @@ export function Section({ title, children, actions }: { title?: ReactNode; child
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * lane:ui-shell (chunk 6, ACC-005; a WebKit-only e2e failure) — keep Tab and Shift+Tab inside `root` by moving focus
+ * ourselves on every press: Safari's engine doesn't move focus to buttons with Tab by default, so a trap that steps in
+ * only at its first and last items let focus out there. Focus outside `root` (or on a non-tabbable title) goes to the
+ * first item, or the last with Shift.
+ */
+export function cycleFocus(root: HTMLElement, e: KeyboardEvent, selector: string = FOCUSABLE): void {
+  const items = [...root.querySelectorAll<HTMLElement>(selector)].filter((el) => el.tabIndex >= 0 && el.offsetParent !== null);
+  e.preventDefault();
+  if (!items.length) return;
+  const at = items.indexOf(document.activeElement as HTMLElement);
+  const next = at < 0 ? (e.shiftKey ? items.length - 1 : 0) : (at + (e.shiftKey ? -1 : 1) + items.length) % items.length;
+  items[next].focus();
+}
+
 export function Modal({ open, onClose, title, subtitle, children, actions, width, testId }: { open: boolean; onClose: () => void; title?: ReactNode; subtitle?: ReactNode; children: ReactNode; actions?: ReactNode; width?: number; testId?: string }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -229,25 +244,7 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
         // aria-modal promises the rest of the page is out of reach: Tab cycles inside the dialog (it used to walk out
         // into the toasts, the panel and the speed control behind the backdrop)
         const root = wrapRef.current;
-        if (!root) return;
-        const items = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.tabIndex >= 0 && el.offsetParent !== null);
-        if (!items.length) {
-          e.preventDefault();
-          return;
-        }
-        const first = items[0];
-        const last = items[items.length - 1];
-        const cur = document.activeElement;
-        if (!root.contains(cur)) {
-          e.preventDefault();
-          (e.shiftKey ? last : first).focus();
-        } else if (e.shiftKey && cur === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && cur === last) {
-          e.preventDefault();
-          first.focus();
-        }
+        if (root) cycleFocus(root, e);
       }
     };
     window.addEventListener('keydown', onKey, true);

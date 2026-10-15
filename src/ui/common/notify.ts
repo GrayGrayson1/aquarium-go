@@ -30,6 +30,7 @@ import { findSpecies } from '@/data/species';
 import { isPrismatic } from '@/sim/life/rareVariants';
 import { morphDisplayName } from '@/sim/life/genetics';
 import { visiblyRare } from '../panels/market/offerGenetics'; // lane:genetics (0.5 §5.2)
+import { SOCIAL_COPY } from '../panels/social/copy'; // lane:social (chunk 6)
 
 const attempt = <T>(fn: () => T, fallback: T): T => {
   try {
@@ -471,8 +472,10 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 /**
  * Dock / tab-bar / sheet-switcher dots by panel id. `seenOffers` (0.5 spec §5.2, optional): the shop offers the player
  * has seen; with it, Market shows a rare-stock dot for an unseen Prismatic or rare offer when no bid is waiting.
+ * lane:social (chunk 6, §5.4, B-152) — an item marked `newUntilOpened` has a dot until its panel is first opened, and
+ * `news` (by panel id, from outside the save: the Social service's unseen trades and club items) adds one with its label.
  */
-export function navDots(g: GameState, items: { id: string; label: string; lock?: string | null }[], focusedTankId: string | null = null, seenOffers?: ReadonlySet<string>): Record<string, NavDot> {
+export function navDots(g: GameState, items: { id: string; label: string; lock?: string | null; newUntilOpened?: boolean }[], focusedTankId: string | null = null, seenOffers?: ReadonlySet<string>, news?: Readonly<Record<string, string>>): Record<string, NavDot> {
   const out: Record<string, NavDot> = {};
   let watch = 0;
   let danger = 0;
@@ -506,6 +509,12 @@ export function navDots(g: GameState, items: { id: string; label: string; lock?:
   const ops = opsDot(g);
   if (ops) out.operations = { level: ops.level, label: ops.label, target: null };
   for (const it of items) if (!out[it.id] && featureUnseen(g, it.id, it.lock)) out[it.id] = { level: 'new', label: `New: ${it.label} just unlocked`, target: null };
+  for (const it of items) {
+    if (out[it.id]) continue;
+    const fresh = news?.[it.id];
+    if (fresh) out[it.id] = { level: 'new', label: fresh, target: null };
+    else if (it.newUntilOpened && !g.progress.tutorial?.flags?.[`opened_${it.id}`]) out[it.id] = { level: 'new', label: SOCIAL_COPY.dotNew, target: null };
+  }
   return out;
 }
 

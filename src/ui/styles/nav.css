@@ -62,7 +62,8 @@
 @media (max-height: 500px) and (orientation: landscape) {
   /* a phone held sideways: a 48 % sheet would hold one row; it rises to the top bar and the tiles go in one row */
   .ag-more.ag-popover { top: max(6px, var(--safe-t)); }
-  .ag-more__grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  /* lane:social (chunk 6) — one row whatever the count (dev mode adds Social: six tiles) */
+  .ag-more__grid { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
   .ag-more__tile { min-height: 76px; }
 }
 
@@ -130,3 +131,20 @@
 
 /* ── Focus (§18): a panel's title takes focus when the panel opens; it is a target, not a control ── */
 .pn-head__title:focus { outline: none; }
+
+/* lane:social (chunk 6, 0.5 spec §5.4; SOC-004 A1) — in dev mode the dock gains Social (11 items with Operations), and it
+   must stay clear of the labelled camera chips (dock-width.spec, 1400–1600 px, both modes). Items narrow to 58 px from
+   1181 to 1519 px wide and to 67 px from 1520 (10/11 of 64 and 74; Operations and Encyclopedia keep their labels' width),
+   and the tank view's camera chips drop their labels below 1440 px instead of 1400 (at 1400 the 58 px dock still came
+   within 4 px of them); each chip keeps its name as aria-label and title. Selectors beat hud.css's, so load order
+   doesn't matter; the room view's chips keep their labels at every width (hud.css). */
+@media (min-width: 1181px) and (max-width: 1519px) {
+  .ag-hud .ag-dock .ag-dock__item { min-width: 58px; }
+}
+@media (min-width: 1520px) {
+  .ag-hud .ag-dock .ag-dock__item { min-width: 67px; }
+}
+@media (max-width: 1439px) {
+  .ag-hud .ag-hud__cam:not(.ag-hud__cam--room) .ag-camchip span { display: none; }
+  .ag-hud .ag-hud__cam:not(.ag-hud__cam--room) .ag-camchip { padding: 0 10px; }
+}

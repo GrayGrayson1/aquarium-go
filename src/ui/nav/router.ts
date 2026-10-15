@@ -34,6 +34,7 @@ import { toastMark, reportLoadFailure } from '../screens/loadFeedback';
 import { useTankCardTab } from '../cards/tankCardTab';
 import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
+import { devToolsAllowed } from '@/state/devTools'; // lane:social (chunk 6)
 import {
   formatRoute,
   isNavPanel,
@@ -82,6 +83,15 @@ const HOME: Route = { kind: 'home' };
 /** How long after a pointer or key press a store change still counts as that gesture's navigation. */
 const GESTURE_MS = 1500;
 const SESSION_KEY = 'aquarium-go.nav.v1';
+
+/**
+ * lane:social (chunk 6, SOC-011) — parse an address for this session: outside dev mode a Social address names nothing
+ * (ADR-0005 decision 3), so it boots and lands like a broken link and never shows a "Then: Social" pill.
+ */
+export function parseNav(hash: string): ParsedRoute | null {
+  const parsed = parseRoute(hash);
+  return parsed && parsed.route.kind === 'panel' && parsed.route.panel === 'social' && !devToolsAllowed() ? null : parsed;
+}
 
 /** §6.5, §16: a link that names nothing. */
 export const BROKEN_LINK = { title: 'That link doesn’t go anywhere', detail: 'Opened your aquarium instead.' } as const;
@@ -287,8 +297,9 @@ function applyInner(route: Route, filters: ShopFilters | undefined): void {
     }
     case 'panel': {
       const { panel: p, target } = route;
-      if (p === 'social') {
-        // Social is built in chunk 6 (and is dev-only until a backend exists, ADR-0005 decision 3)
+      if (p === 'social' && !devToolsAllowed()) {
+        // lane:social (chunk 6) — Social is dev-only until a real backend exists (ADR-0005 decision 3, SOC-011): its
+        // addresses name nothing a player can open
         toast(BROKEN_LINK);
         return applyInner(HOME, undefined);
       }
@@ -338,7 +349,7 @@ function onHashChange(): void {
     else writeHash('', 'replace');
     return;
   }
-  const parsed = parseRoute(location.hash);
+  const parsed = parseNav(location.hash);
   const screen = useUI.getState().screen;
   if (screen !== 'game') {
     // a link typed or followed while on the title (open it like a link) or during onboarding (it waits)
@@ -383,7 +394,7 @@ function captureBoot(): BootCapture {
   const hash = location.hash === '#' ? '' : location.hash;
   const returning = type === 'reload' || type === 'back_forward';
   const urlBoot = !!urlFixtureName(location.search) || q.has('sandbox'); // (a fixture that doesn't boot is an ordinary page)
-  const parsed = hash ? parseRoute(hash) : null;
+  const parsed = hash ? parseNav(hash) : null;
   const loads = !!hash && !urlBoot && (returning || (!!parsed && parsed.route.kind !== 'home'));
   return { hash, returning, urlBoot, loads, used: useUI.getState().screen !== 'boot' };
 }
@@ -488,7 +499,7 @@ function runBoot(): void {
   BOOT.used = true;
   const { hash, returning, urlBoot } = BOOT;
   if (!hash) return; // a plain address: the title
-  const parsed = parseRoute(hash);
+  const parsed = parseNav(hash);
   if (urlBoot) {
     if (parsed && parsed.route.kind !== 'home') useNav.setState({ pending: parsed });
     return;

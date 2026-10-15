@@ -10,6 +10,8 @@ import { useGameSelector } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { navDots, tankAttentionLevel, type AttentionLevel, type NavDot } from '../common/notify';
 import { useSeenStock } from '../panels/market/seenStock'; // lane:notify (0.5 §5.2)
+import { hasSocialNews, useSocial } from '../panels/social/socialStore'; // lane:social (chunk 6)
+import { SOCIAL_COPY } from '../panels/social/copy';
 
 export type DotLevel = 'watch' | 'danger' | 'new';
 
@@ -34,12 +36,14 @@ export function useTankAttentionLevel(tankId: string | null | undefined): Attent
 
 /** Dock / sheet-switcher dots by panel id (stable object while nothing changes). The tank in view is left out of the
  *  Tanks dot: it has its own on the Tank card button. */
-export function useNavDots(items: { id: string; label: string; lock?: string | null }[]): Record<string, NavDot> {
+export function useNavDots(items: { id: string; label: string; lock?: string | null; newUntilOpened?: boolean }[]): Record<string, NavDot> {
   const focused = useUI((s) => s.focusedTankId);
   const seen = useSeenStock((s) => s.seen);
+  // lane:social (chunk 6, §5.4) — new trades or club news from the Social service (outside the save)
+  const socialNews = useSocial((s) => hasSocialNews(s.news));
   const key = useGameSelector((g) => {
     try {
-      return JSON.stringify(navDots(g, items, focused, seen));
+      return JSON.stringify(navDots(g, items, focused, seen, socialNews ? { social: SOCIAL_COPY.dotNews } : undefined));
     } catch {
       return '{}';
     }

@@ -17,14 +17,18 @@ import { Ellipsis } from 'lucide-react';
 import { useUI, type PanelId } from '@/state/ui';
 import { sfx } from '@/audio/sfx';
 import { useShell } from '../common/shellStore';
-import { DOCK_ITEMS, openPanel } from './Dock';
+import { useDevTools } from '@/state/devTools'; // lane:social (chunk 6)
+import { DOCK_ITEMS, dockItems, openPanel } from './Dock';
 import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
 
 const TAB_IDS: readonly PanelId[] = ['tanks', 'livestock', 'market', 'build'];
 /** The tab bar's destinations, from the dock's list (labels, icons). */
 export const TAB_ITEMS = TAB_IDS.map((id) => DOCK_ITEMS.find((it) => it.id === id)!);
-/** Everything else lives in More, in this order (Social joins in chunk 6, dev-only; Settings is the row below). */
-export const MORE_ITEMS = (['visitors', 'shows', 'research', 'finances', 'encyclopedia'] as const).map((id) => DOCK_ITEMS.find((it) => it.id === id)!);
+/** Everything else lives in More, in this order (Settings is the row below). lane:social (chunk 6, §5.3) — Social sits
+ *  after Shows, in dev mode only (ADR-0005 decision 3): `moreItems`. */
+export const MORE_ITEMS = (['visitors', 'shows', 'social', 'research', 'finances', 'encyclopedia'] as const).map((id) => DOCK_ITEMS.find((it) => it.id === id)!);
+/** The More tiles for this session (Social only where the developer tools are allowed). */
+export const moreItems = (devAllowed: boolean) => MORE_ITEMS.filter((it) => !it.devOnly || devAllowed);
 /** Destinations that light up the More tab while open (lane:automation: Operations is More's first row, chunk 5). */
 export const MORE_DESTINATIONS: ReadonlySet<PanelId> = new Set<PanelId>([...MORE_ITEMS.map((it) => it.id), 'settings', 'operations']);
 
@@ -49,10 +53,11 @@ export function toggleMore(): void {
 export function TabBar() {
   const panel = useUI((s) => s.panel);
   const moreOpen = useShell((s) => s.popover === 'more');
-  const dots = useNavDots(DOCK_ITEMS); // lane:notify — the dock's attention dots
+  const devAllowed = useDevTools((s) => s.allowed);
+  const dots = useNavDots(dockItems(devAllowed)); // lane:notify — the dock's attention dots
   const moreActive = moreOpen || (!!panel && MORE_DESTINATIONS.has(panel));
   const opsDanger = panel !== 'operations' && dots.operations?.level === 'danger' ? dots.operations : undefined;
-  const moreDot = opsDanger ?? MORE_ITEMS.map((it) => (panel !== it.id ? dots[it.id] : undefined)).find(Boolean);
+  const moreDot = opsDanger ?? moreItems(devAllowed).map((it) => (panel !== it.id ? dots[it.id] : undefined)).find(Boolean);
   return (
     <nav className="ag-tabbar" aria-label="Main" data-testid="nav-tabbar">
       {TAB_ITEMS.map((it) => {

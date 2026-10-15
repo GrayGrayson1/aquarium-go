@@ -26,7 +26,7 @@ import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { SHORT_LANDSCAPE_QUERY, useIsMobile } from '../common/safe';
 import { edit } from './common/act';
 import { PanelErrorBoundary } from './common/ErrorBoundary';
-import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useDevMode, useDevTools } from '@/state/devTools'; // lane:core (PLAT-005)
 import { DOCK_ITEMS, openPanel } from '../hud/Dock';
 import { AttnDot, useNavDots } from '../hud/AttnDot'; // lane:notify
 import { markResearchSeen, researchSeenStale } from '../common/notify'; // lane:notify
@@ -41,6 +41,7 @@ import { EncyclopediaPanel } from './encyclopedia/EncyclopediaPanel';
 import { LogPanel } from './log/LogPanel';
 import { ShowsPanel } from './shows/ShowsPanel';
 import { OperationsPanel } from './operations/OperationsPanel'; // lane:automation (chunk 5)
+import { SocialPanel } from './social/SocialPanel'; // lane:social (chunk 6)
 import './panels.css';
 
 export type ManagedPanelId = Exclude<PanelId, 'settings' | 'dev'>;
@@ -57,6 +58,7 @@ export const PANEL_COMPONENTS: Record<ManagedPanelId, ComponentType> = {
   log: LogPanel,
   shows: ShowsPanel,
   operations: OperationsPanel,
+  social: SocialPanel, // lane:social (chunk 6) — dev mode only (ADR-0005 decision 3): see `open` below
 };
 
 export const MANAGED_PANELS = Object.keys(PANEL_COMPONENTS) as ManagedPanelId[];
@@ -79,7 +81,9 @@ export function PanelHost() {
   const dragControls = useDragControls();
   const sheetRef = useRef<HTMLElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
-  const open = hasGame && isManagedPanel(panel);
+  // lane:social (chunk 6, SOC-011) — Social exists only where the developer tools are allowed
+  const devAllowed = useDevTools((s) => s.allowed);
+  const open = hasGame && isManagedPanel(panel) && (panel !== 'social' || devAllowed);
 
   const close = useCallback(() => {
     sfx('close');
@@ -217,11 +221,12 @@ export function PanelHost() {
 function PanelSwitcher({ active }: { active: ManagedPanelId }) {
   const unlocked = useGame((s) => s.game?.progress.unlocked.join('|') ?? '');
   const dev = useDevMode();
+  const devAllowed = useDevTools((s) => s.allowed); // lane:social (chunk 6) — Social only in dev mode
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.querySelector<HTMLElement>(`[data-testid="sheet-switch-${active}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center' });
   }, [active]);
-  const items = DOCK_ITEMS.filter((it) => it.id !== 'settings' && (!it.lock || dev || unlocked.split('|').includes(it.lock)));
+  const items = DOCK_ITEMS.filter((it) => it.id !== 'settings' && (!it.devOnly || devAllowed) && (!it.lock || dev || unlocked.split('|').includes(it.lock)));
   const dots = useNavDots(DOCK_ITEMS); // lane:notify — the dock's attention dots (the sheet covers the dock)
   return (
     <nav className="pn-switch" ref={ref} aria-label="Switch panel" data-testid="sheet-switch">

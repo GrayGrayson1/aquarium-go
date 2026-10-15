@@ -1,0 +1,139 @@
+/* lane:social (chunk 6) — the Social panel (0.5 spec §13; the approved screens desk-social, phone-signin, phone-invite,
+   phone-join, phone-clubs and phone-leaderboard). Colours come from tokens.css only (DES-001, ui-tokens-05). */
+
+.so-panel { display: grid; gap: 14px; }
+
+/* avatars: a person's initial, a club's initials (serif), each on its own gradient (set inline) */
+.so-avatar { flex: none; display: grid; place-items: center; border-radius: 50%; color: var(--c-ink); font-weight: 680; line-height: 1; box-shadow: var(--c-highlight); }
+.so-avatar--club { border-radius: var(--r-md); font-family: var(--font-display); font-weight: 560; letter-spacing: 0.02em; }
+
+/* cards */
+.so-card { display: grid; gap: 12px; padding: 16px; border-radius: var(--r-lg); background: var(--c-fill); border: 1px solid var(--c-line); }
+.so-card--plain { gap: 10px; }
+.so-card__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; }
+.so-card__title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--c-ink-3); font-size: calc(11.5px * var(--text-scale)); font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; }
+.so-card__icon { display: inline-grid; color: var(--c-ink-3); }
+.so-card__action { min-height: 28px; padding: 4px 2px; }
+.so-section { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; color: var(--c-ink-3); font-size: calc(11.5px * var(--text-scale)); font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; }
+
+/* skeleton rows: a gentle shimmer, still under reduced motion */
+.so-skel { display: grid; gap: 10px; padding: 4px 0; }
+.so-skel__row { height: 18px; border-radius: var(--r-sm); background: linear-gradient(90deg, var(--c-fill) 0%, var(--c-fill-2) 50%, var(--c-fill) 100%); background-size: 200% 100%; animation: so-shimmer 1.6s ease-in-out infinite; }
+.so-skel__row--tall { height: 44px; border-radius: var(--r-md); }
+.so-skel__row:nth-child(2n) { width: 82%; }
+@keyframes so-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+:root[data-reduced-motion='true'] .so-skel__row { animation: none; background: var(--c-fill-2); }
+@media (prefers-reduced-motion: reduce) { .so-skel__row { animation: none; background: var(--c-fill-2); } }
+
+/* a club the player belongs to */
+.so-club { display: grid; gap: 10px; }
+.so-club__row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.so-club__text { flex: 1; min-width: 0; }
+.so-club__name { font-family: var(--font-display); font-size: calc(18px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
+.so-club__meta { margin-top: 2px; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); }
+.so-chip { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 3px 10px; border-radius: var(--r-pill); font-size: calc(12px * var(--text-scale)); font-weight: 620; }
+.so-chip--member { color: var(--c-good); border: 1px solid var(--c-good); background: var(--c-fill); }
+.so-strip { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border-radius: var(--r-md); background: var(--c-fill); color: var(--c-ink-2); font-size: calc(12.5px * var(--text-scale)); }
+.so-strip__icon { flex: none; color: var(--c-gold); }
+.so-strip__text { flex: 1; min-width: 0; }
+.so-strip__link { flex: none; }
+
+.so-noclub { display: grid; gap: 4px; }
+.so-noclub__title { font-family: var(--font-display); font-size: calc(17px * var(--text-scale)); color: var(--c-ink); }
+.so-noclub__text { color: var(--c-ink-3); font-size: calc(13px * var(--text-scale)); }
+.so-noclub__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+/* trades */
+.so-trades { display: grid; margin: 0; padding: 0; list-style: none; }
+.so-trade { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--c-line); }
+.so-trade:first-child { border-top: 0; padding-top: 2px; }
+.so-trade__text { flex: 1; min-width: 0; }
+.so-trade__gives { color: var(--c-ink); font-size: calc(13.5px * var(--text-scale)); }
+.so-trade__gives strong { font-weight: 650; }
+.so-trade__wants { margin-top: 2px; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); }
+
+.so-empty { display: grid; gap: 4px; padding: 6px 0; }
+.so-empty__title { font-family: var(--font-display); font-size: calc(16px * var(--text-scale)); color: var(--c-ink); }
+.so-empty__text { color: var(--c-ink-3); font-size: calc(13px * var(--text-scale)); }
+
+/* friends' aquariums: 3 across, 2 on phones (the Friends tab) */
+.so-friends { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.pn-sheet--phone .so-tab .so-friends { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.so-friend { display: grid; gap: 4px; min-width: 0; }
+.so-friend__snap { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; border-radius: var(--r-md); border: 1px solid var(--c-line); object-fit: cover; }
+.so-friend__title { color: var(--c-ink); font-size: calc(13.5px * var(--text-scale)); font-weight: 600; overflow-wrap: anywhere; }
+.so-friend__meta { color: var(--c-ink-3); font-size: calc(12px * var(--text-scale)); line-height: 1.4; }
+.so-friend__heart { margin-right: 4px; vertical-align: -1px; }
+
+/* the leaderboard */
+.so-lb__seg { width: 100%; }
+.so-lb__rows { display: grid; margin: 0; padding: 0; list-style: none; }
+.so-lb__row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-top: 1px solid var(--c-line); }
+.so-lb__row:first-child { border-top: 0; }
+.so-lb__row.is-me { margin-top: 6px; border: 1px solid var(--c-aqua); border-radius: var(--r-md); background: var(--c-aqua-soft); }
+.so-lb__rank { width: 22px; flex: none; color: var(--c-ink-3); font-size: calc(14px * var(--text-scale)); font-weight: 650; font-variant-numeric: tabular-nums; text-align: right; }
+.so-lb__rank.is-first { color: var(--c-gold); }
+.so-lb__row.is-me .so-lb__rank { color: var(--c-aqua); }
+.so-lb__name { flex: 1; min-width: 0; color: var(--c-ink); font-size: calc(14px * var(--text-scale)); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.so-lb__value { flex: none; color: var(--c-ink); font-size: calc(14px * var(--text-scale)); font-weight: 650; font-variant-numeric: tabular-nums; }
+
+.so-soon { display: flex; gap: 10px; margin: 0; color: var(--c-ink-2); line-height: 1.5; }
+.so-soon__icon { flex: none; margin-top: 3px; color: var(--c-coral); }
+
+/* the overview: one column, two when the desktop panel is maximised */
+.so-overview { display: grid; gap: 14px; }
+.so-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.so-overview--two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+.so-overview--two > .pn-callout, .so-overview--two > .so-signout { grid-column: 1 / -1; }
+.so-signout { display: flex; justify-content: center; }
+
+/* tabs */
+.so-tab { display: grid; gap: 14px; }
+.so-input { font-size: max(16px, calc(15px * var(--text-scale))); } /* 16 px: no zoom on iPhone (§13.2) */
+.so-search { position: relative; margin: 0; }
+.so-search__icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--c-ink-3); pointer-events: none; }
+.so-search__input { padding-left: 40px; border-radius: var(--r-pill); }
+.so-clubs { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.so-suggest { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--c-fill); border: 1px solid var(--c-line); }
+.so-suggest__text { flex: 1; min-width: 0; }
+.so-suggest__name { color: var(--c-ink); font-size: calc(14.5px * var(--text-scale)); font-weight: 620; }
+.so-suggest__meta { margin-top: 2px; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.so-suggest__btn { flex: none; }
+.so-suggest__btn.is-joined { color: var(--c-good); opacity: 1; }
+.so-nomatch { margin: 0; color: var(--c-ink-3); font-size: calc(13px * var(--text-scale)); }
+.so-hero { display: grid; gap: 8px; justify-items: start; padding: 18px; border-radius: var(--r-lg); background: var(--c-coral-soft); border: 1px solid var(--c-coral); }
+.so-hero__title { margin: 0; font-family: var(--font-display); font-size: calc(20px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
+.so-hero__text { margin: 0 0 4px; color: var(--c-ink-2); font-size: calc(13.5px * var(--text-scale)); line-height: 1.45; }
+.so-addfriend { display: flex; gap: 8px; margin: 0; }
+.so-addfriend .so-input { flex: 1; min-width: 0; }
+.so-note { margin: 0; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; }
+
+/* signed out (§13.2) */
+.so-callout { display: flex; gap: 12px; padding: 12px 14px; border-radius: var(--r-md); background: var(--c-aqua-soft); border: 1px solid var(--c-aqua); }
+.so-callout__icon { flex: none; margin-top: 2px; color: var(--c-aqua); }
+.so-callout__title { color: var(--c-ink); font-weight: 650; font-size: calc(14px * var(--text-scale)); }
+.so-callout__text { margin-top: 2px; color: var(--c-ink-2); font-size: calc(13.5px * var(--text-scale)); line-height: 1.4; }
+.so-signin { display: grid; gap: 12px; }
+.so-signin__title { margin: 0; font-family: var(--font-display); font-size: calc(23px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
+.so-signin__text { margin: -4px 0 0; color: var(--c-ink-2); font-size: calc(14px * var(--text-scale)); line-height: 1.5; }
+.so-form { display: grid; gap: 12px; margin: 0; }
+.so-field { display: grid; gap: 6px; }
+.so-field__label { color: var(--c-ink-3); font-size: calc(11.5px * var(--text-scale)); font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; }
+.so-divider { display: flex; align-items: center; gap: 12px; margin: 4px 0; color: var(--c-ink-3); font-size: calc(11.5px * var(--text-scale)); font-weight: 650; letter-spacing: 0.12em; text-transform: uppercase; }
+.so-divider::before, .so-divider::after { content: ''; flex: 1; height: 1px; background: var(--c-line); }
+.so-invite { display: flex; gap: 8px; }
+.so-invite .so-input { flex: 1; min-width: 0; }
+.so-invite .ag-btn { flex: none; }
+.so-hint { margin: 0; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; }
+
+/* the join card (§13.3) */
+.so-join { display: grid; gap: 12px; padding: 16px; border-radius: var(--r-lg); background: var(--c-fill); border: 1px solid var(--c-aqua); }
+.so-join__head { display: flex; gap: 14px; align-items: flex-start; }
+.so-join__title { margin: 0; font-family: var(--font-display); font-size: calc(20px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
+.so-join__meta { margin-top: 4px; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; }
+.so-join__text { margin: 0; color: var(--c-ink-2); font-size: calc(13.5px * var(--text-scale)); line-height: 1.5; }
+.so-join__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* the More sheet's Social tile: "New" in its top corner (§5.3), so the tile is no taller than the others (a phone held
+   sideways fits the tiles and the Settings row above the tab bar) */
+.ag-more__new.ag-more__new--tile { position: absolute; top: 6px; right: 6px; margin: 0; }

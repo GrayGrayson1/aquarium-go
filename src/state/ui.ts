@@ -20,6 +20,7 @@ export type PanelId =
   | 'log'
   | 'shows'
   | 'operations' // lane:automation (chunk 5, DESIGN-S3D §5; AUTO-030) — a core change, named in the commit
+  | 'social' // lane:social (chunk 6, 0.5 spec §13.1; SOC-003) — dev mode only (ADR-0005 decision 3); a core change
   | 'dev';
 export type ToolId = 'none' | 'feed' | 'target_feed' | 'tap' | 'enrich' | 'decor_place' | 'decor_move' | 'tank_place';
 

@@ -24,6 +24,7 @@ src/runtime      per-frame non-persisted registries (creature runtime, food, eve
 src/ai           per-frame creature behaviour (reads sim state, writes runtime; game state only through mutate)
 src/render       Three.js/R3F rendering (reads state + runtime; input handlers change game state only through mutate)
 src/platform     thin seam over browser APIs (notifications, clipboard, share, lifecycle); no runtime imports from persistence, sim, state or ui
+src/social       the SocialService interface and its local stub (0.5 spec §13.6; chunk 6): social data, never in the save; reads a save only for the player's leaderboard row
 src/ui           React DOM UI (reads state; calls sim mutators through `mutate`)
 src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
@@ -47,7 +48,8 @@ Changing a row is a deliberate architecture change: say why in the commit, and t
 | `ai` | types, data, sim, state, runtime |
 | `render` | types, data, sim, state, runtime, ai, audio |
 | `platform` | types |
-| `ui` | types, data, sim, state, persistence, game, runtime, ai, render, audio, platform |
+| `social` | types, data, sim (pure reads, for the player's leaderboard row; chunk 6) |
+| `ui` | types, data, sim, state, persistence, game, runtime, ai, render, audio, platform, social |
 | `app` | every layer above |
 | `dev` | every layer above, and app |
 | files at the `src/` root | every layer |
