@@ -1,0 +1,93 @@
+# Trust boundary: the state changes a future server would authorise (REL-016)
+
+Written in chunk 6 (2026-10-15) for REL-016. Aquarium Go is local single-player: the browser holds the whole game
+and nothing is checked anywhere else (ADR-0005; REL-002 keeps real multiplayer, accounts and a backend for later, with
+the owner). This lists what a server would have to authorise if one ever owned the economy, so the work is visible
+before anyone starts it.
+
+**How state changes today.** Game state changes only through the store (`useGame.mutate` for the player's actions,
+`mutateFast` for the game loop, `setGame` for a whole new world), and every player action is one function in
+`src/sim` that takes the state and returns an `ActionResult` (`ok`, a message). `tests/sim/core-mutation-boundary.test.ts`
+checks that nothing else writes the game, that the render frame loop never does, that the UI reaches Social only
+through the `SocialService` and the browser's notifications, clipboard and share sheet only through `src/platform`. So
+each action below is already a single call a server could receive instead; what it would add is the checks in the
+right-hand column, done on its side.
+
+**What a server would always check:** the player's money and stock (no spending what isn't there), that the player owns
+what the action names (tank, creature, listing, line), the price from its own catalog and market, never the client's,
+and the game time (offline catch-up is computed on the device today: a server would replay or cap it).
+
+## Purchases
+
+| Action (src/sim) | What it changes | A server would check |
+|---|---|---|
+| `buyOffer` (economy/purchases) | money −, a creature into a tank | the offer exists and is unsold, its price, room in the tank |
+| `buyTank`, `placeTank` | money −, a tank | price, the facility's tank limit, placement |
+| `buyEquipment`, `repairEquipment`, `removeEquipment`, `setEquipment` | money −, a tank's gear | price, the tank is the player's |
+| `buyFood`, `buySalt`, `buyEggs` | money −, stock + | price, pack size |
+| `placeDecor`, `moveDecor`, `removeDecor`, `addFixture`, `removeFixture`, `changeSubstrate` | money −, a tank's layout | price, unlocks |
+| `upgradeFacility`, `upgradePrep`, `addReservoir`, `addCulture` | money −, the facility | the level's requirements, price |
+
+## Sales and listings
+
+| Action | What it changes | A server would check |
+|---|---|---|
+| `createListing` (economy/listings) | a creature, a tank's residents or frags listed | ownership; reserve and buy-now in range |
+| `acceptBid`, `declineBid`, `counterBid`, `holdBidForCounter` | money +, creatures leave | the bid is open and real (buyers are simulated today; with other players they would be people) |
+| `withdrawListing` | a listing closes | ownership |
+| `quickSell`, `quickSellFrags`, `sellFragsToStore` | money +, animals or frags leave | the store's price |
+| `forceBuyerVisit` | a buyer arrives | dev tools only (never in a player's build) |
+
+## Production lines
+
+| Action | What it changes | A server would check |
+|---|---|---|
+| `createLine`, `endLine`, `renameLine` | a line (pair, tanks, rules) | the facility's line slots; the pair and tanks are the player's |
+| `setLineRunning`, `setLineRule`, `setKeepRules`, `setLinePair`, `setLineTank` | a line's settings | as above |
+| `addQuarantineTank` | money −, a tank | price |
+| `waitForLine` | a decision note | none beyond ownership |
+| the line step (moves, sorts, quarantines, auto-listing) | creatures move; listings | it runs in the simulation: a server would run it, or check its results |
+
+## Staff
+
+| Action | What it changes | A server would check |
+|---|---|---|
+| `hireStaff`, `fireStaff` | wages from tomorrow; notice pay | the pool's candidates, wage |
+| `assignTank`, `autoAssignAll` | who looks after which tank | ownership |
+| `setStockBudget`, `setStockOrders` | the stock manager's daily spend | the facility's budget cap |
+| the stock manager's checks (purchases at 9 AM and 3 PM) | money −, stock + | simulated today; the same purchase checks as above |
+
+## Research
+
+| Action | What it changes | A server would check |
+|---|---|---|
+| `startResearch`, `cancelResearch` | money −, a project running | requirements, price, one at a time |
+| `claimQuest` | money +, reputation + | the quest's conditions were met |
+
+## Shows
+
+| Action | What it changes | A server would check |
+|---|---|---|
+| `enterShow`, `withdrawEntry` | money − (the fee), an entry | the class rules; the entrant is the player's |
+| judging | prizes, trophies | simulated today; with other players a server would judge |
+
+## Facility, animals and care
+
+| Action | What it changes | A server would check |
+|---|---|---|
+| `setOpenToPublic`, `setOpenHours`, `setAdmission`, `toggleSignage` | visitors and takings | ranges |
+| `moveCreature`, `separateCreature`, `moveClutch`, `startBreeding`, `renameCreature` | animals and broods | ownership |
+| `takeFrag`, `plantFrag`, `dose`, `waterChange`, `topOff`, `cleanTank`, feeding | tanks and animals | ownership; stock for what they use |
+| `setManualMode`, holds | automation on or off | none beyond ownership |
+
+## Social
+
+The Social panel (dev mode only, ADR-0005 decision 3) talks to the `SocialService` interface (`src/social/service.ts`),
+served today by a local stub that keeps sample data in the browser. Signing in, joining a club, offering a trade,
+adding a friend and the leaderboards would all be the server's: the stub changes no game state (trades are "open
+later", ADR-0034), so the game itself is untouched by Social today.
+
+## Not for a server
+
+Camera, panels, settings, notification preferences, the alerts drawer's read marks, the tutorial's steps and dev
+tools (`?dev=1`) are the device's own. Dev tools never ship enabled in a player's build without `?dev=1` (PLAT-005).
