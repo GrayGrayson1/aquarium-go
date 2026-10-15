@@ -52,6 +52,7 @@ export function IssueAction({ g, issue, nav, short, testId }: { g: GameState; is
         nav.tab('feed');
         return;
       case 'faster-prep':
+      case 'reservoirs':
         go({ kind: 'panel', panel: 'build', tab: 'facility', target: 'room:water' });
         return;
       default:
@@ -291,8 +292,9 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
 }
 
 /**
- * "Why the line stops" (SPEC §7.6): when a busy quarantine tank is what holds the line up, how long it stays busy, and
- * the restart day with a second quarantine tank against waiting. Nothing when the grow-out tank itself is the wait.
+ * "Why the line stops" (SPEC §7.6; its wording beyond "both betta lines", ADR-0033): when a busy quarantine tank is
+ * what holds the line up, how long it stays busy, and the restart day with a second quarantine tank against waiting.
+ * Nothing when the grow-out tank itself is the wait.
  */
 function WhyLineStops({ g, lineId }: { g: GameState; lineId: string }) {
   const line = findLine(g, lineId);

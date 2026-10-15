@@ -119,6 +119,18 @@ describe('AUTO-034: the stock manager with a Water room', () => {
     expect(both.urgency).toBeLessThanOrEqual(saltDaysLeft(f.g));
   });
 
+  it('food still comes first in a mixed facility with the shelf under two batches (the confirmation review)', () => {
+    // hatchery cones use salt water; three marine tanks have no changer (keepers, shelf salt); 4.1 kg; the food is out
+    const f = facility({ fresh: 1, marine: 3, salt: 4.1, rosa: 150, food: true, eggs: 30, veg: 20 });
+    for (const t of f.marine) t.equipment = t.equipment.filter((e) => e.defId !== 'auto_water_changer');
+    f.g.inventory.foods = { ...f.g.inventory.foods, flake_tropical: 0, marine_pellets: 0, micro_pellets: 0 };
+    const orders = plannedOrders(f.g, f.g.staff!.roster[0]);
+    const salt = orders.findIndex((o) => o.kind === 'salt');
+    expect(salt).toBeGreaterThan(-1);
+    expect(orders[salt].urgency).toBeGreaterThanOrEqual(-1); // the keepers' rule's floor, as before chunk 5
+    for (const o of orders.filter((x) => x.kind === 'food' && (f.g.inventory.foods[x.foodId!] ?? 0) < 1)) expect(orders.indexOf(o)).toBeLessThan(salt);
+  });
+
   it('a purchase that fails leaves its money for the orders after it (the chunk 5 review)', () => {
     const { g, rosa } = shop(60); // $18 of food first, then 10 kg of a 15 kg salt order
     const plan = planPurchases(g, rosa, 60, g.finance.money);

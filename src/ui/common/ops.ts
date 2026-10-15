@@ -19,6 +19,7 @@ import { automationProblems, decidedLines, manualModeOn, problemCounts, type Pro
 import { evalCond } from '@/sim/facility';
 import { lineSlots, lineStatus, productionLines } from '@/sim/production';
 import { nextStockCheck, type StockForecast } from '@/sim/staff/work';
+import { useGame } from '@/state/game';
 import { HOURS_PER_DAY } from '@/sim/time';
 
 export type OpsLayout = 'early' | 'before' | 'full';
@@ -63,7 +64,10 @@ export interface OpsSnapshot {
 
 const EMPTY: OpsSnapshot = { problems: [], counts: { total: 0, danger: 0, watch: 0 }, decided: [], manual: false, forecast: null };
 
-/** What moves Problems: the hour, the stock, the budget, the holds, the lines. Cheap: no walk over animals. */
+/**
+ * What moves Problems: the hour, the stock, the budget, the holds, the lines, and the player's actions (a changer added
+ * or a manager hired while the clock is paused; the confirmation review). Cheap: no walk over animals.
+ */
 export function opsKey(g: GameState): string {
   const st = g.staff;
   const lines = (g.production?.lines ?? []).map((l) => `${l.id}:${l.waiting ? 1 : 0}${l.running ? 1 : 0}`).join(',');
@@ -71,6 +75,7 @@ export function opsKey(g: GameState): string {
   const f = g.facility.food;
   return [
     g.saveId,
+    useGame.getState().actions,
     Math.floor(g.clock.hour),
     g.inventory.salt,
     g.inventory.brineShrimpEggs ?? 0,

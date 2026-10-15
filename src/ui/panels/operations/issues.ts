@@ -15,8 +15,8 @@ import { opsSnapshot } from '@/ui/common/ops';
 import { findLine } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
 
-export type IssueKind = 'salt' | 'eggs' | 'veg' | 'live' | 'fresh' | 'line';
-export type IssueAction = 'buy-salt' | 'buy-eggs' | 'buy-veg' | 'raise-budget' | 'hire' | 'staff' | 'add-qt' | 'wait' | 'faster-prep' | 'why' | 'feed';
+export type IssueKind = 'salt' | 'eggs' | 'veg' | 'live' | 'fresh' | 'salt_rate' | 'fresh_rate' | 'line';
+export type IssueAction = 'buy-salt' | 'buy-eggs' | 'buy-veg' | 'raise-budget' | 'hire' | 'staff' | 'add-qt' | 'wait' | 'faster-prep' | 'reservoirs' | 'why' | 'feed';
 
 export interface IssueView {
   key: string;
@@ -190,6 +190,33 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
         });
         break;
       }
+      // the Water room's day (ADR-0033)
+      case 'salt_rate':
+        out.push({
+          key: 'salt_rate',
+          kind: 'salt_rate',
+          tone: 'watch',
+          badge: 'Look soon',
+          title: 'Salt water runs short',
+          reason: `The salt tanks’ changes use ${Math.round(p.perDay)} gal of salt water a day, and the mixer makes up to ${Math.round(p.capacity ?? 0)}. The changes it can’t cover are skipped, not done weak.`,
+          tab: 'water',
+          action: { id: 'reservoirs', label: 'Reservoirs in Build', short: 'Build' },
+          problem: p,
+        });
+        break;
+      case 'fresh_rate':
+        out.push({
+          key: 'fresh_rate',
+          kind: 'fresh_rate',
+          tone: 'watch',
+          badge: 'Look soon',
+          title: 'Fresh water runs short',
+          reason: `The tanks use ${Math.round(p.perDay)} gal of fresh water a day, and the prep station makes ${Math.round(p.capacity ?? 0)}. What it can’t cover waits: changes are skipped, not done weak.`,
+          tab: 'water',
+          action: { id: 'faster-prep', label: 'Faster prep in Build', short: 'Build' },
+          problem: p,
+        });
+        break;
     }
   }
   return out;

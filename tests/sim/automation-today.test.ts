@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { facility, run } from './support/automation';
-import { holdAll, savedThisWeek, startCost, todayJobs, waterRoom } from '@/sim/automation';
+import { holdAll, savedThisWeek, startCost, tankChangeNeed, todayJobs, waterRoom } from '@/sim/automation';
 import { BRINE } from '@/data/catalog/machines';
 import { getFoodDef } from '@/data/catalog/foods';
 
@@ -21,6 +21,15 @@ describe('AUTO-043: Today', () => {
     expect(jobs[1]).toMatchObject({ at: 24 * 3 + 10, kind: 'mixing', gal: 30, kg: 4.1 });
     run(g, 0.5); // 09:00 runs
     expect(todayJobs(g)[0]).toMatchObject({ at: 24 * 3 + 10, kind: 'mixing' });
+  });
+
+  it('a batch is listed when the morning changes will take the salt reserve under 60 % (the confirmation review)', () => {
+    const { g, marine } = facility({ fresh: 0, marine: 2, salt: 20, hour: 24 * 3 + 12 });
+    const draw = marine.reduce((a, t) => a + (tankChangeNeed(g, t)?.salt ?? 0), 0);
+    expect(draw).toBeGreaterThan(0);
+    waterRoom(g)!.salt = 36 + draw / 2; // at or above 60 % now (no 10 PM batch); under it after tomorrow's 8 AM changes
+    const mixing = todayJobs(g, 12).filter((j) => j.kind === 'mixing');
+    expect(mixing.map((j) => j.at)).toEqual([24 * 4 + 10]);
   });
 
   it('held jobs are marked: they wait until you resume', () => {

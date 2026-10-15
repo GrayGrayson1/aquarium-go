@@ -45,9 +45,9 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
   before and after and explain each changed expectation; never retune data to hide the shift.
 - **The store boundary.** Game state changes only through `useGame.mutate` (player actions from the UI, the render
   layer's input handlers and the AI's tutorial hook), `mutateFast` (the game loop, the hidden-tab catch-up, the flush
-  before a save, dev commands) and `setGame` (replacing the whole world). The render frame loop never writes game
-  state. A new top-level `src/` folder is a new layer: add it to the layer table in `docs/ARCHITECTURE.md` and in
-  `tests/sim/core-architecture-boundaries.test.ts` on purpose.
+  before a save or a manual-mode change, dev commands) and `setGame` (replacing the whole world). The render frame
+  loop never writes game state. A new top-level `src/` folder is a new layer: add it to the layer table in
+  `docs/ARCHITECTURE.md` and in `tests/sim/core-architecture-boundaries.test.ts` on purpose.
 - **Saves.** New save fields are optional and validated in `repairState` when present; an absent field leaves
   `stateHash` unchanged. Adding a species or a tank size bumps `SCHEMA_VERSION` (ADR-0016). A save written by a newer
   build must never be treated as damaged, loaded past or overwritten (PERSIST-014, chunk 1, finishes this). Old saves

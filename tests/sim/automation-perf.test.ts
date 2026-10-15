@@ -85,4 +85,20 @@ describe('PERF-004: Operations computes its forecast once per game hour', () => 
     renderAll(g);
     expect(calls.nextStockCheck).toBe(1);
   });
+
+  it('a player action recomputes it at once, though the clock is paused (the confirmation review)', () => {
+    const f = facility({ fresh: 1, marine: 1, salt: 4.1, rosa: 150, hour: 24 * 3 + 8.25 });
+    f.g.clock.speed = 0;
+    useGame.setState({ game: f.g });
+    reset();
+    opsSnapshot(useGame.getState().game!);
+    opsSnapshot(useGame.getState().game!);
+    expect(calls.nextStockCheck).toBe(1);
+    // food on the shelf moves the forecast, and no part of the key but the player's actions sees it
+    useGame.getState().mutate((d) => {
+      d.inventory.foods.marine_pellets = (d.inventory.foods.marine_pellets ?? 0) + 500;
+    });
+    opsSnapshot(useGame.getState().game!);
+    expect(calls.nextStockCheck).toBe(2);
+  });
 });

@@ -801,7 +801,8 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
     const spare = have - mixerFloor; // what the mixer's two batches leave the keepers (all of it without a Water room)
     if (spare < keep) {
       saltKg += Math.max(5, Math.ceil((keep * 1.25 - Math.max(0, spare)) / 5) * 5);
-      saltUrgency = Math.min(saltUrgency, spare / Math.max(0.1, saltNeed) - 1);
+      // never below -1 (the old rule's floor): a shelf under the mixer's two batches mustn't jump ahead of food that's out
+      saltUrgency = Math.min(saltUrgency, Math.max(0, spare) / Math.max(0.1, saltNeed) - 1);
     }
   }
   if (saltKg > 0) orders.push({ kind: 'salt', kg: m.trait === 'thrifty' ? 5 : saltKg, urgency: saltUrgency, label: 'marine salt mix', unit: SALT_PRICE_PER_KG });

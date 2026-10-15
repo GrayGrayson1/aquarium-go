@@ -14,8 +14,10 @@ import { dayOf } from '../time';
 export const freshCap = (room: WaterRoomState): number => WATER_ROOM.freshCap + WATER_ROOM.reservoirFresh * room.reservoirs;
 export const saltCap = (room: WaterRoomState): number => WATER_ROOM.saltCap + WATER_ROOM.reservoirSalt * room.reservoirs;
 export const prepRate = (room: WaterRoomState): number => WATER_ROOM.prepRates[Math.max(0, Math.min(WATER_ROOM.prepRates.length - 1, room.prepLevel))];
-/** Gallons of salt water one batch makes: 30, whatever the reserves' size (SPEC §9.2; the chunk 5 review). */
-export const batchGal = (_room?: WaterRoomState): number => WATER_ROOM.batchGal;
+/** Gallons of salt water one batch makes: half the salt reserve (30 gal at the base 60; ADR-0033). */
+export const batchGal = (room: WaterRoomState): number => saltCap(room) * WATER_ROOM.batchShare;
+/** The most salt water the mixer can make in a day: a batch at each of the two checks (12 h each). */
+export const mixerPerDay = (room: WaterRoomState): number => batchGal(room) * WATER_ROOM.mixHours.length;
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
 

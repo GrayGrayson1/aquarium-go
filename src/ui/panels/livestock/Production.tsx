@@ -78,7 +78,7 @@ export function ProductionTab({ g, sel, onSelect }: { g: GameState; sel: string 
       ) : current ? (
         <>
           <LineDetail g={g} line={current} onEnded={() => onSelect(null)} />
-          {/* lane:automation (chunk 5, DESIGN-S3D §8.6) — the overview of every line is Operations' */}
+          {/* lane:automation (chunk 5, DESIGN-S3D §8.6; one line's wording ADR-0033) — the overview of every line is Operations' */}
           <button type="button" className="pn-link" data-testid="production-ops-link" onClick={() => go({ kind: 'panel', panel: 'operations', tab: 'lines' })}>
             Status, bottlenecks and routes for {lines.length === 1 ? 'your line' : `all ${NUMBER_WORDS[lines.length] ?? lines.length} lines`} are in Operations › Lines. <ChevronRight size={14} aria-hidden />
           </button>

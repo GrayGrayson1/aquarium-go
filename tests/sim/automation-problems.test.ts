@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { facility, run } from './support/automation';
 import { lineFarm } from './support/production';
-import { automationProblems, batchSaltKg, decidedLines, problemCounts, saltOutText, supplyNotices, waitForLine, waterRoom } from '@/sim/automation';
+import { addReservoir, automationProblems, batchGal, batchSaltKg, decidedLines, problemCounts, saltOutText, supplyNotices, upgradePrep, waitForLine, waterRoom } from '@/sim/automation';
 import { endLine, productionLines } from '@/sim/production';
 import { repairState } from '@/persistence';
 import type { SupplyProblem } from '@/sim/automation';
@@ -85,5 +85,31 @@ describe('NOTIFY-012: the "Out of salt mix" Automation notification', () => {
     expect(saltOutText(g, p)).toMatch(/^Rosa couldn't reorder salt mix — today's stock budget is spent\./);
     g.staff!.ordersOff = true;
     expect(saltOutText(g, salt(g)!)).toMatch(/^Rosa's orders are switched off, so nobody reorders salt mix\./);
+  });
+});
+
+describe('ADR-0033: the Water room\'s day — salt or fresh water used faster than the room makes it', () => {
+  it('"Salt water runs short" while the changes need more than two batches a day; a Reservoir upgrade grows the batches', () => {
+    const { g, marine } = facility({ fresh: 0, marine: 4, salt: 200, rosa: null });
+    for (const t of marine) t.tierId = 'g180'; // big tanks: about 18 gal of salt water each a day
+    const room = waterRoom(g)!;
+    expect(batchGal(room)).toBe(30);
+    const item = automationProblems(g).find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === 'salt_rate');
+    expect(item).toMatchObject({ tone: 'watch', capacity: 60 });
+    expect(item!.perDay).toBeGreaterThan(60);
+    expect(addReservoir(g).ok).toBe(true);
+    expect(batchGal(room)).toBe(60); // half the salt reserve (120 gal)
+    expect(batchSaltKg(batchGal(room))).toBeCloseTo(8.2, 6);
+    expect(automationProblems(g).some((p) => p.kind === 'supply' && p.supply === 'salt_rate')).toBe(false);
+  });
+
+  it('"Fresh water runs short" while the tanks need more than the prep station makes a day; faster prep clears it', () => {
+    const { g, fresh } = facility({ fresh: 9, marine: 0, rosa: null });
+    for (const t of fresh) t.tierId = 'g180'; // about 18 gal of fresh water each a day, 162 against 144
+    const item = automationProblems(g).find((p): p is SupplyProblem => p.kind === 'supply' && p.supply === 'fresh_rate');
+    expect(item).toMatchObject({ tone: 'watch', capacity: 144 });
+    expect(item!.perDay).toBeGreaterThan(144);
+    expect(upgradePrep(g).ok).toBe(true); // 9 gal an hour: 216 a day
+    expect(automationProblems(g).some((p) => p.kind === 'supply' && p.supply === 'fresh_rate')).toBe(false);
   });
 });

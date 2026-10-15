@@ -10,6 +10,7 @@ import { batchGal, batchSaltKg, holdAll, resumeAll, setHold, waitForLine, manual
 import { setLineRunning, findLine } from '@/sim/production';
 import { EGGS_SUPPLY, VEGETABLES } from '@/data/catalog/machines';
 import { act } from '../common/act';
+import { flushBackgroundTanks } from '@/game/fastMutate';
 
 const toast = (label: string, text: string, detail?: string, kind: 'success' | 'info' = 'success') => useUI.getState().toast(text, kind, { label, ...(detail ? { detail } : {}) });
 
@@ -42,17 +43,20 @@ export function buyVegPack(): boolean {
 
 /** Hold all (immediate, no confirm): the toast, then the panel opens Manual mode (§7.7). */
 export function doHoldAll(): void {
+  flushBackgroundTanks();
   act((d) => holdAll(d), { quiet: true, sound: 'click' });
   toast('Manual mode on', 'Automation is on hold', 'Filters, heaters, lights, top-off and keepers keep running.', 'info');
 }
 
 export function doResumeAll(): void {
+  flushBackgroundTanks();
   act((d) => resumeAll(d), { quiet: true, sound: 'click' });
   toast('Manual mode off', 'All automation is running again.', undefined, 'info');
 }
 
 /** Hold or resume one system; resuming the last turns manual mode off (and says so). */
 export function doHold(sys: HoldSystem, on: boolean): void {
+  flushBackgroundTanks();
   act((d) => setHold(d, sys, on), { quiet: true, sound: 'click' });
   const g = useGame.getState().game;
   if (!on && g && !manualModeOn(g)) toast('Manual mode off', 'All automation is running again.', undefined, 'info');

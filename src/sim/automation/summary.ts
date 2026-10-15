@@ -176,14 +176,25 @@ export function todayJobs(state: GameState, n = 4, hour = state.clock.hour, fore
       let freshUsed = 0;
       let reserve = water.salt;
       let pending = water.mix && water.mix.gal > 1e-6 ? { gal: water.mix.gal, ready: water.mix.readyHour } : null;
+      // the salt tanks' changes draw on the reserve at their lights-on before a check (the confirmation review)
+      const draws: { at: number; gal: number }[] = [];
+      for (const id of state.tankOrder) {
+        const t = state.tanks[id];
+        const s = t && changerOf(t) ? tankChangeNeed(state, t)?.salt ?? 0 : 0;
+        if (s > 1e-9) for (const at of crossings(hour, end, t.lighting?.onHour ?? 8)) draws.push({ at, gal: s });
+      }
+      let drawn = 0;
       const checks = WATER_ROOM.mixHours.flatMap((h) => crossings(hour, end, h)).sort((a, b) => a - b);
       for (const at of checks) {
+        for (const d of draws) if (d.at <= at + 1e-9 && d.at > drawn - 1e-9) reserve = Math.max(0, reserve - d.gal);
+        drawn = at + 1e-6;
         if (pending && pending.ready > at + 1e-9) continue; // the mixing tank is still busy
         if (pending) reserve = Math.min(saltCap(water), reserve + pending.gal);
         pending = null;
         if (reserve >= saltCap(water) * WATER_ROOM.mixBelow - 1e-9) continue;
+        if (salt + 1e-6 < kg) break; // no salt for it, nor for a later one: Problems says why
         const fresh = Math.min(freshCap(water), water.fresh + prepRate(water) * (at - hour)) - freshUsed;
-        if (salt + 1e-6 < kg || fresh + 1e-9 < gal) break; // it waits: Problems says why
+        if (fresh + 1e-9 < gal) continue; // waits for the prep station: the next check may start it
         out.push({ at, kind: 'mixing', gal, kg, held: isHeld(state, 'salt') });
         salt -= kg;
         freshUsed += gal;

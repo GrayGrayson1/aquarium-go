@@ -12,6 +12,7 @@
  */
 import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
+import { flushSimDebt } from '@/sim/world';
 
 let work: GameState | null = null;
 let published: GameState | null = null;
@@ -191,3 +192,16 @@ export function resetFastMutate(): void {
 useGame.subscribe((s) => {
   if (!s.game && work) resetFastMutate();
 });
+
+/**
+ * lane:automation (chunk 5) — catch every background tank up to the clock on the plain working copy, before a
+ * manual-mode change (Hold all, Resume all, one system): the hold functions settle the tanks themselves (ADR-0026
+ * decision 5), but inside the action's Immer draft that step is 15–60× slower; after this flush it has nothing to do.
+ */
+export function flushBackgroundTanks(): void {
+  try {
+    mutateFast((d) => flushSimDebt(d));
+  } catch (e) {
+    if (typeof console !== 'undefined') console.warn('[aquarium-go] flush before a hold failed', e);
+  }
+}

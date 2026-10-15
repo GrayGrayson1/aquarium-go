@@ -11,7 +11,7 @@ import { go } from '@/ui/nav/router';
 import { getFacilityLevel, nextFacilityLevelDef } from '@/data/facilities';
 import { STOCK_BUDGET } from '@/data/staff';
 import { FOOD_ROOM, WATER_ROOM } from '@/data/catalog/machines';
-import { addCulture, addReservoir, doserOf, freshCap, isHeld, prepRate, saltCap, saltWaterNeeded, upgradePrep } from '@/sim/automation';
+import { addCulture, addReservoir, batchGal, doserOf, freshCap, isHeld, prepRate, saltCap, saltWaterNeeded, upgradePrep } from '@/sim/automation';
 import { lineSlots, productionLines } from '@/sim/production';
 import { tierLadder } from '@/ui/common/ops';
 import { act } from '../common/act';
@@ -178,7 +178,7 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
           <Machine
             icon={<FlaskConical size={16} aria-hidden />}
             name="Salt Mixing Station"
-            sub={`${WATER_ROOM.batchGal} gal batches · 12 h · $${WATER_ROOM.mixerUpkeep.toFixed(2)}/day`}
+            sub={`${batchGal(w)} gal batches · 12 h · $${WATER_ROOM.mixerUpkeep.toFixed(2)}/day`}
             status={isHeld(g, 'salt') ? <Status tone="watch">Held</Status> : !needed ? <Status tone="neutral">Idle · not needed</Status> : w.mix && w.mix.readyHour > g.clock.hour ? <Status tone="good">Mixing</Status> : <Status tone="neutral">Idle</Status>}
           />
         </div>
