@@ -138,7 +138,8 @@ export function enterShow(state: GameState, showId: string, classId: string, sub
   s.seq += 1;
   const entry: ShowEntry = { id: `ent-${s.seq.toString(36)}`, showId, classId, kind: def.kind === 'livestock' ? 'creature' : 'tank', subjectId, name, speciesId, showName: show.name, tier: show.tier, fee: show.fee, enteredHour: state.clock.hour, status: 'entered' };
   s.entries.push(entry);
-  bumpCounter(state, 'show_entries');
+  // chunk 6 (B-175): the entry counts (the "Enter a show" quest) when the judges see it, not now: a withdrawn entry is
+  // refunded in full, and used to keep the quest's $60 and 4 reputation
   const what = def.kind === 'livestock' ? `${name} is entered in ${def.short}` : `${name} is entered in ${def.short} — the judges will visit on show day`;
   return { ok: true, message: `${what} at ${show.name}. Good luck!`, entryId: entry.id };
 }
@@ -298,6 +299,7 @@ function judgeShow(state: GameState, s: ShowsState, show: Show): void {
     if (e.fee > 0) earn(state, e.fee, 'other', `Show fee refund — ${show.name}`);
   }
   const live = mine.filter((e) => e.status === 'entered');
+  for (let i = 0; i < live.length; i++) bumpCounter(state, 'show_entries'); // B-175: judged entries only (scratched ones are refunded too)
   const eyeRng = subRng(show.seed, 'judge');
   const winners: (ShowPlacing & { classId: string })[] = [];
   // 2. judge each class: the other exhibitors come from the tier's field (fixed by the show's seed)

@@ -250,3 +250,20 @@ describe('§16 Notifications (DES-009; ADR-0022 decision 4)', () => {
     Object.assign(useGame.getInitialState(), { game: null });
   });
 });
+
+// chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8): the design's list without Social (dev-only), with
+// chunks 3 to 5's additions
+describe('§16 Settings › About: What’s new in 0.5', () => {
+  it('lists the 0.5 features, one line each', async () => {
+    const { WHATS_NEW_05 } = await import('@/ui/settings/SettingsPanel');
+    expect([...WHATS_NEW_05]).toEqual([
+      'Links to every screen, and a tab bar on phones',
+      'Shop filters: Prismatic only and Rare genes',
+      'New betta genes: Cambodian and Metallic',
+      'Auto-feed and Auto-clean on the tank card',
+      'Notifications while the game is open',
+      'Production lines in Livestock',
+      'Operations: the Water room and the Live food room',
+    ]);
+  });
+});

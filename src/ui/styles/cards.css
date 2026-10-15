@@ -253,6 +253,8 @@
 .ag-volrow { display: flex; align-items: center; gap: 10px; width: 170px; }
 .ag-volrow__val { width: 30px; text-align: right; color: var(--c-ink-2); }
 .ag-about { margin: 0; font-size: calc(13.5px * var(--text-scale)); line-height: 1.55; color: var(--c-ink-2); }
+/* chunk 6 (ADR-0034 decision 8) — Settings › About's "What’s new in 0.5" */
+.ag-whatsnew { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: calc(13.5px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-2); }
 .ag-credits { display: grid; gap: 8px; font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-2); }
 .ag-credits strong { color: var(--c-ink); font-weight: 640; }
 

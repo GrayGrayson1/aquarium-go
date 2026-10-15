@@ -420,6 +420,17 @@ function SavesTab() {
   );
 }
 
+/** chunk 6 (0.5 spec §16, §21's release step; ADR-0034 decision 8) — Settings › About's "What’s new in 0.5". */
+export const WHATS_NEW_05 = [
+  'Links to every screen, and a tab bar on phones',
+  'Shop filters: Prismatic only and Rare genes',
+  'New betta genes: Cambodian and Metallic',
+  'Auto-feed and Auto-clean on the tank card',
+  'Notifications while the game is open',
+  'Production lines in Livestock',
+  'Operations: the Water room and the Live food room',
+] as const;
+
 function AboutTab() {
   const dev = useSettings((s) => s.devMode);
   const devAllowed = useDevTools((s) => s.allowed); // lane:core (PLAT-005) — the switch exists only where the tools do
@@ -436,6 +447,13 @@ function AboutTab() {
           }
           icon={<Tag size={16} />}
         />
+      </Section>
+      <Section title="What’s new in 0.5">
+        <ul className="ag-whatsnew" data-testid="settings-whats-new">
+          {WHATS_NEW_05.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
       </Section>
       <Section title="Aquarium Go">
         <p className="ag-about">
