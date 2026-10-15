@@ -23,6 +23,9 @@ import { waterRoomRun } from './forecast';
 import { SALT_KG_PER_GAL, batchSaltKg, saltDaysLeft, saltWaterNeeded, saltWaterPerDay, tankChangeNeed } from './water';
 import { doserNeeds, doserOf } from './food';
 
+/** The Water room's dry run skips its first two days (a new room starts with no salt water; a reserve refills after a shortage). */
+const WARMUP_H = 48;
+
 export type ProblemTone = 'watch' | 'danger';
 /**
  * The supplies Problems watches: salt mix, brine shrimp eggs, vegetables for the jars, live food for the dosers, fresh
@@ -50,8 +53,9 @@ export interface SupplyProblem {
   tankIds?: string[];
   /** The Water room's day (salt_rate, fresh_rate): what the mixer or the prep station makes a day; `perDay` is the use. */
   capacity?: number;
-  /** fresh_rate: whether the prep station's rate or the fresh reserve's size is what runs short at lights-on. */
-  limit?: 'prep' | 'reserve';
+  /** fresh_rate: what runs short: the prep station's rate, the fresh reserve's size at lights-on, or (chunk 6, B-202,
+   *  ADR-0034 decision 7) the fresh water the salt mixer finds at its checks though the day's total is covered. */
+  limit?: 'prep' | 'reserve' | 'timing';
 }
 
 export interface LineProblem {
@@ -98,11 +102,14 @@ export function automationProblems(state: GameState, hour = state.clock.hour, kn
   // weren't held: changes it skips for want of salt water or fresh water (ADR-0033; the chunk 5 review: a day's totals
   // missed the 60 % rule and the reserve's size). Nothing while water changes are held: nothing is drawn.
   // Skips in the first two days don't count: a new room starts with no salt water, and a reserve refills after a shortage.
-  const run = water && !isHeld(state, 'water') ? waterRoomRun(state, 168, { unlimitedSalt: true, ignoreSaltHold: true }) : null;
-  const steady = (cause: 'salt' | 'fresh') => !!run && run.skipped.some((s) => s.cause === cause && s.at >= state.clock.hour + 48);
+  // chunk 6 (B-202): the two warm-up days plus a whole week, so a shortage that comes once a week always falls in the
+  // counted window (with 168 h, one rarer than every ~5 days showed only part of the time)
+  const run = water && !isHeld(state, 'water') ? waterRoomRun(state, WARMUP_H + 168, { unlimitedSalt: true, ignoreSaltHold: true }) : null;
+  const steady = (cause: 'salt' | 'fresh') => !!run && run.skipped.some((s) => s.cause === cause && s.at >= state.clock.hour + WARMUP_H);
   // a mixer waiting for fresh water starves the salt tanks: that's the fresh water's shortage, and faster prep or a
-  // bigger fresh reserve is what helps (the third confirmation review)
-  const starved = !!run && run.waits.some((w) => w.cause === 'fresh' && w.at >= state.clock.hour + 48);
+  // bigger fresh reserve is what helps (the third confirmation review). One passing wait doesn't make it so (B-202: it
+  // swapped the salt warning for the fresh one)
+  const starved = !!run && run.waits.filter((w) => w.cause === 'fresh' && w.at >= state.clock.hour + WARMUP_H).length >= 2;
   if (water && run && steady('salt') && !starved) {
     const use = changesPerDay(state).salt;
     out.push({ kind: 'supply', supply: 'salt_rate', state: 'low', tone: 'watch', stock: water.salt, perDay: use, capacity: run.saltMade / (run.hours / 24), arrives: null, why: null });
@@ -144,7 +151,10 @@ export function automationProblems(state: GameState, hour = state.clock.hour, kn
     const draw = Math.max(0, ...draws.values());
     const reserve = draw > freshCap(water) + 1e-6 || (saltWaterNeeded(state) && batchGal(water) > freshCap(water) + 1e-6);
     const use = freshWaterPerDay(state, hour);
-    out.push({ kind: 'supply', supply: 'fresh_rate', state: 'low', tone: 'watch', stock: water.fresh, perDay: reserve ? draw : use, capacity: reserve ? freshCap(water) : prepRate(water) * 24, limit: reserve ? 'reserve' : 'prep', arrives: null, why: null });
+    // B-202, ADR-0034 decision 7: the day's total is covered, yet the mixer finds too little at its checks
+    const timing = !reserve && starved && saltWaterNeeded(state) && use <= prepRate(water) * 24 + 1e-6;
+    const limit = reserve ? 'reserve' : timing ? 'timing' : 'prep';
+    out.push({ kind: 'supply', supply: 'fresh_rate', state: 'low', tone: 'watch', stock: water.fresh, perDay: reserve ? draw : use, capacity: reserve ? freshCap(water) : timing ? batchGal(water) : prepRate(water) * 24, limit, arrives: null, why: null });
   }
 
   for (const line of state.production?.lines ?? []) {

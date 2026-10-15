@@ -210,6 +210,23 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
       case 'fresh_rate': {
         const room = g.facility.water;
         const reserve = p.limit === 'reserve';
+        // chunk 6 (B-202, ADR-0034 decision 7): the mixer's checks find too little though the day is covered
+        if (p.limit === 'timing') {
+          const moreRes = !!room && room.reservoirs < WATER_ROOM.maxReservoirs;
+          const morePrep = !!room && room.prepLevel < WATER_ROOM.prepRates.length - 1;
+          out.push({
+            key: 'fresh_rate',
+            kind: 'fresh_rate',
+            tone: 'watch',
+            badge: 'Look soon',
+            title: 'Fresh water runs short',
+            reason: `Salt mixing needs ${Math.round(p.capacity ?? 0)} gal of fresh water at its 10 AM and 10 PM checks, and the fresh reserve doesn’t have it by then. What it can’t cover waits: changes are skipped, not done weak.`,
+            tab: 'water',
+            action: moreRes ? { id: 'reservoirs', label: 'Reservoirs in Build', short: 'Build' } : morePrep ? { id: 'faster-prep', label: 'Faster prep in Build', short: 'Build' } : { id: 'water-tab', label: 'Water tab', short: 'Water' },
+            problem: p,
+          });
+          break;
+        }
         const more = !!room && (reserve ? room.reservoirs < WATER_ROOM.maxReservoirs : room.prepLevel < WATER_ROOM.prepRates.length - 1);
         out.push({
           key: 'fresh_rate',

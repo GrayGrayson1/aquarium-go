@@ -154,8 +154,12 @@ describe('ADR-0033: the Water room\'s day — the changes it would skip for want
     expect(run.waits.some((w) => w.cause === 'fresh')).toBe(true);
     expect(run.skipped.some((s) => s.cause === 'salt' && s.at >= g.clock.hour + 48)).toBe(true);
     expect(item(g, 'salt_rate')).toBeUndefined();
-    expect(item(g, 'fresh_rate')).toMatchObject({ limit: 'prep', capacity: 144 });
-    expect(issueViews(g, automationProblems(g)).find((v) => v.key === 'fresh_rate')?.action).toMatchObject({ label: 'Faster prep in Build' });
+    // chunk 6 (B-202, ADR-0034 decision 7): the day's use (144 gal) fits the prep station's 144, so the prep reason read
+    // "use 144 … makes 144"; the limit is the batch the mixer can't collect at its checks
+    expect(item(g, 'fresh_rate')).toMatchObject({ limit: 'timing', capacity: 120 });
+    const view = issueViews(g, automationProblems(g)).find((v) => v.key === 'fresh_rate');
+    expect(view?.reason).toBe('Salt mixing needs 120 gal of fresh water at its 10 AM and 10 PM checks, and the fresh reserve doesn’t have it by then. What it can’t cover waits: changes are skipped, not done weak.');
+    expect(view?.action).toMatchObject({ label: 'Faster prep in Build' });
   });
 
   it('"Fresh water runs short": the morning\'s changes need more than the fresh reserve holds; a Reservoir clears it', () => {

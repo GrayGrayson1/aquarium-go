@@ -164,8 +164,10 @@ test.describe('AUTO-040: the Map', () => {
     await go(page, '#/operations/map');
     await tid(page, 'map-layer-water').click();
     await expect(tid(page, `map-tank-${ids[0]}`)).toContainText('gal a day'); // a tank on an Auto Water Changer
+    // chunk 6 (B-202): an exact answer (the check accepted any of four, so it couldn't fail): this tank gets an Autofeeder
+    expect((await aq<{ ok: boolean }>(page, 'act', 'installEquipment', ids[0], 'autofeeder', { purchased: true })).ok).toBe(true);
     await tid(page, 'map-layer-food').click();
-    await expect(tid(page, `map-tank-${ids[0]}`)).toContainText(/Autofeeder|Keepers’ rounds|By hand|Doser/);
+    await expect(tid(page, `map-tank-${ids[0]}`)).toContainText('Autofeeder');
     await tid(page, 'map-layer-animals').click();
     // the Animals layer names its lines in text: the short name on the tile, the whole name in its label (C-64)
     await expect(tid(page, `map-tank-${extra[0]}`)).toContainText('· Betta');
