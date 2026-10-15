@@ -100,8 +100,9 @@
         "new: tests/sim/automation-invariants.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 6 (2026-10-15): met: core-determinism, fix-core-step-invariance and core-determinism-guard pass; core-long-run.test.ts: the full-feature facility (new betta genes, Autofeeders, Auto Water Changers, both rooms, a stock manager, a production line) gives the same stateHash twice from one seed, and the same scheduled work at random step sizes."
     },
     {
       "id": "CONST-004",
@@ -374,11 +375,12 @@
         "new: tests/e2e/dock-width.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§16",
         "§19"
-      ]
+      ],
+      "note": "Chunk 6 (2026-10-15): met: the Social copy verbatim and its ids (social-ui.test, social.spec; TEST_IDS \"0.5 Social stub\")."
     },
     {
       "id": "DES-011",
@@ -396,12 +398,12 @@
         "scripts/agent/capture-evidence.mjs (--review)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§17",
         "§16"
       ],
-      "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it. Chunk 5 intake (2026-10-14, INTAKE §12): where DESIGN-S3D changes a 0.5 surface (the desktop dock and top bar, the More sheet, the tank card's Automation section, Settings › Notifications and Production), it is judged against DESIGN-S3D with DES-014's exceptions; A2's \"More top ≈ 48 %\" becomes 334 px (C-58)."
+      "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it. Chunk 5 intake (2026-10-14, INTAKE §12): where DESIGN-S3D changes a 0.5 surface (the desktop dock and top bar, the More sheet, the tank card's Automation section, Settings › Notifications and Production), it is judged against DESIGN-S3D with DES-014's exceptions; A2's \"More top ≈ 48 %\" becomes 334 px (C-58). Chunk 6 (2026-10-15): met: §17 geometry measured on its screens within ± 2 px (design-geometry.spec, Chromium and WebKit; toasts and the buy bar's price brought to §17); the 0.5 surfaces captured at both sizes with zero console errors and compared with DESIGN-0.5/screens by a fresh reviewer (PLAN.md, chunk 6)."
     },
     {
       "id": "DES-012",
@@ -420,13 +422,13 @@
         "new: tests/e2e/dock-width.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.2",
         "§5.4",
         "§5.6"
       ],
-      "note": "Needs owner or reviewer confirmation: the viewport list is derived from the design breakpoints (MOBILE_QUERY at 720px, the dock rules at 981-1180px, 1400-1519px and from 1520px) rather than given by the design; a reviewer may extend it."
+      "note": "Needs owner or reviewer confirmation: the viewport list is derived from the design breakpoints (MOBILE_QUERY at 720px, the dock rules at 981-1180px, 1400-1519px and from 1520px) rather than given by the design; a reviewer may extend it. Chunk 6 (2026-10-15): met: viewports.spec, every screen at 390×844, 844×390, 720, 721, 1180, 1400, 1520 and 1440×900 in Chromium and WebKit: no horizontal scroll, sheets and their close buttons on screen, the tab bar exactly where MOBILE_QUERY matches. It found and fixed Operations' header off screen at 721–1000 px portrait."
     },
     {
       "id": "DES-013",
@@ -441,12 +443,12 @@
         "tests/e2e/operations.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "S3D §11",
         "S3D §14"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): most strings and ids are found by operations.spec and the automation unit tests, and every player-visible string the design left unworded is approved (ADR-0032, ADR-0033); a test that finds each SPEC §11 string and §14 id is left for chunk 6."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): most strings and ids are found by operations.spec and the automation unit tests, and every player-visible string the design left unworded is approved (ADR-0032, ADR-0033); a test that finds each SPEC §11 string and §14 id is left for chunk 6. Chunk 6 (2026-10-15): met: tests/sim/ui-copy-s3d.test.ts renders every S3-D surface in about a dozen states: the design words chunk 6 built (ADR-0035 decision 3), the strings approved as shipped (decision 4), every §14 id (rendered or read by e2e, and in TEST_IDS.md), curly apostrophes."
     },
     {
       "id": "DES-014",
@@ -461,11 +463,11 @@
         "browser QA"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "S3D §12"
       ],
-      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): the screens were compared with screens/ at 390×844 and 1440×900 while building (the layout fixes in 010d64a) and the review fixes' new cards were checked in the browser; a full Browser QA pass is left for chunk 6 and the owner's play-through."
+      "note": "Added 2026-10-14 before chunk 5 from INTAKE.md §12 (DESIGN-S3D approved, ADR-0027), with the owner's answers (ADR-0026) folded in. Chunk 5 (2026-10-14): the screens were compared with screens/ at 390×844 and 1440×900 while building (the layout fixes in 010d64a) and the review fixes' new cards were checked in the browser; a full Browser QA pass is left for chunk 6 and the owner's play-through. Chunk 6 (2026-10-15): met: Operations at 1440×900 and 390×844 compared with DESIGN-S3D/screens: matches, apart from chunk 5's recorded \"Not as drawn\" (the Map's flows as rows, its layer control in the map body) and C-56/C-57."
     },
     {
       "id": "NAV-001",
@@ -915,10 +917,11 @@
         "new: tests/e2e/deeplink-boot.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6.2"
-      ]
+      ],
+      "note": "Chunk 6 (2026-10-15): met: nav-routes-matrix.spec covers every §6.2 route with Social, Production, Settings › Notifications and Operations at 1440×900 and 390×844 in Chromium and WebKit; nav.spec and deeplink-boot.spec pass. The route list in the spec is the audit table."
     },
     {
       "id": "NAV-020",
@@ -2372,8 +2375,9 @@
         "new: tests/sim/production-line.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 6 (2026-10-15): met: automation-invariants, automation-water-changer and production-line pass, and core-long-run.test.ts runs the full-feature facility thirty days with identical scheduled work at random step sizes."
     },
     {
       "id": "AUTO-030",
@@ -3516,7 +3520,8 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 6 (2026-10-15): every child (SOC-002 to SOC-011) is GREEN."
     },
     {
       "id": "SOC-002",
@@ -3531,7 +3536,8 @@
         "new: tests/sim/social-stub.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING"
+      "status": "GREEN",
+      "note": "Chunk 6 (2026-10-15): met: the stub never stores a password (social-stub.test checks localStorage, the save and an export)."
     },
     {
       "id": "SOC-003",
@@ -3553,13 +3559,13 @@
         "tests/sim/ui-notify-attention.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§13.1",
         "§6.2",
         "§15"
       ],
-      "note": "ADR-0005 decision 3: outside dev mode the panel and its routes are unreachable (SOC-011); these criteria apply in dev mode."
+      "note": "ADR-0005 decision 3: outside dev mode the panel and its routes are unreachable (SOC-011); these criteria apply in dev mode. Chunk 6 (2026-10-15): met: panel-social with the Globe icon, title and subtitles (social-ui.test, social.spec)."
     },
     {
       "id": "SOC-004",
@@ -3583,7 +3589,7 @@
         "new: tests/sim/social-stub.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.2",
         "§5.3",
@@ -3593,7 +3599,7 @@
         "§21",
         "§22"
       ],
-      "note": "ADR-0005 decision 3: dock-social and more-social appear only in dev mode (SOC-011); these criteria apply in dev mode, and without it the dock and More sheet stay as they are without Social. requirements-2 m8: A5 is the §5.4 dock-social attention dot. Chunk 5 intake (2026-10-14, INTAKE §12): from chunk 6, with S3-D's dock: A2's order becomes Tanks · Livestock · Market · Visitors · Shows · Social · Build · Operations · Research · Finances · Encyclopedia (Settings is on the gear, NAV-020); A4's fixed dock-item count becomes 11 in dev mode and 10 outside it."
+      "note": "ADR-0005 decision 3: dock-social and more-social appear only in dev mode (SOC-011); these criteria apply in dev mode, and without it the dock and More sheet stay as they are without Social. requirements-2 m8: A5 is the §5.4 dock-social attention dot. Chunk 5 intake (2026-10-14, INTAKE §12): from chunk 6, with S3-D's dock: A2's order becomes Tanks · Livestock · Market · Visitors · Shows · Social · Build · Operations · Research · Finances · Encyclopedia (Settings is on the gear, NAV-020); A4's fixed dock-item count becomes 11 in dev mode and 10 outside it. Chunk 6 (2026-10-15): met: dock-social between Shows and Build in dev mode (11 items, DESIGN-S3D INTAKE C-56), its dot until first opened (B-152; social.spec, operations.spec NAV-020)."
     },
     {
       "id": "SOC-005",
@@ -3612,12 +3618,12 @@
         "new: tests/e2e/social.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§13.2",
         "§18"
       ],
-      "note": "ADR-0005 decisions 2 and 3 settle what \"dev mode\" means (PLAT-005) and make the whole stub dev-only (SOC-011), so the hint shows whenever Social does. Still open: design §13.2 gives Create account autocomplete=current-password, while §18 asks for correct autocomplete (new-password would fit sign-up)."
+      "note": "ADR-0005 decisions 2 and 3 settle what \"dev mode\" means (PLAT-005) and make the whole stub dev-only (SOC-011), so the hint shows whenever Social does. Still open: design §13.2 gives Create account autocomplete=current-password, while §18 asks for correct autocomplete (new-password would fit sign-up). Chunk 6 (2026-10-15): met: the signed-out form, validation and errors (social.spec, a11y.spec)."
     },
     {
       "id": "SOC-006",
@@ -3635,12 +3641,13 @@
         "new: tests/sim/social-stub.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§13.3",
         "§6.6",
         "§21"
-      ]
+      ],
+      "note": "Chunk 6 (2026-10-15): met: the four join states; #/social/join/HIGHLAND-4821 signed out, then signed in, then joined (social.spec, nav-routes-matrix)."
     },
     {
       "id": "SOC-007",
@@ -3658,10 +3665,11 @@
         "new: tests/e2e/social.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§13.4"
-      ]
+      ],
+      "note": "Chunk 6 (2026-10-15): met: Overview's four cards and header actions (social-ui.test, social.spec)."
     },
     {
       "id": "SOC-008",
@@ -3680,11 +3688,12 @@
         "new: tests/e2e/social.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§13.5",
         "§7.7"
-      ]
+      ],
+      "note": "Chunk 6 (2026-10-15): met: Clubs, Trading (the coming-soon note, ADR-0034), Friends and Leaderboards (social.spec)."
     },
     {
       "id": "SOC-009",
@@ -3701,11 +3710,12 @@
         "new: tests/sim/social-stub.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§13.6",
         "§15"
-      ]
+      ],
+      "note": "Chunk 6 (2026-10-15): met: src/social/service.ts and createLocalSocialStub with 300–600 ms latency; the UI reaches Social only through the service (core-mutation-boundary.test)."
     },
     {
       "id": "SOC-010",
@@ -3723,14 +3733,14 @@
         "new: tests/sim/social-ui.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§13.6",
         "§13.2",
         "§13.3",
         "§13.4"
       ],
-      "note": "Owner (ADR-0028, 2026-10-11, D1): the empty trades list reads \"No trades yet\" · \"Trades you start or accept appear here.\" and the empty friends list \"No friends yet\" · \"Friends you add appear here.\", in the style of \"No club yet\". Was: DESIGN-0.5 defines only 'No club yet'."
+      "note": "Owner (ADR-0028, 2026-10-11, D1): the empty trades list reads \"No trades yet\" · \"Trades you start or accept appear here.\" and the empty friends list \"No friends yet\" · \"Friends you add appear here.\", in the style of \"No club yet\". Was: DESIGN-0.5 defines only 'No club yet'. Chunk 6 (2026-10-15): met: skeletons (still under reduced motion), the network error with the game running, the empty states (ADR-0028; social.spec)."
     },
     {
       "id": "SOC-011",
@@ -3753,8 +3763,8 @@
         "new: tests/sim/notify-rules.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision."
+      "status": "GREEN",
+      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project)."
     },
     {
       "id": "PLAT-001",
@@ -3969,11 +3979,11 @@
         "new: tests/e2e/a11y-automation.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§18"
       ],
-      "note": "Owner (ADR-0024 decision 4, 2026-10-11, A4): the target is WCAG 2.2 AA for text and controls, with solid panels under the high-contrast setting (B-178), in chunk 6."
+      "note": "Owner (ADR-0024 decision 4, 2026-10-11, A4): the target is WCAG 2.2 AA for text and controls, with solid panels under the high-contrast setting (B-178), in chunk 6. Chunk 6 (2026-10-15): met: WCAG 2.2 AA through High contrast (ADR-0035 decision 1, G174): the audit's defects fixed in both modes, High contrast solid (ui-contrast.test, a11y.spec in Chromium and WebKit); normal mode over a bright room is recorded in KNOWN_LIMITATIONS."
     },
     {
       "id": "ACC-006",
@@ -4035,8 +4045,9 @@
         "scripts/agent/capture-evidence.mjs (--perf)"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 6 (2026-10-15): met: measured on the owner's Mac (PLAN.md, chunk 6): big_facility 60 fps with the sim at 3.19 ms a tick, 10× at 6.08 ms, memory +3.3 MB; the maximum-scale save with every automation system and six lines 0.67 ms a tick at 1×, 2.82 ms at 10×, all within the 12 ms budget; perf.spec green."
     },
     {
       "id": "PERF-003",
@@ -4162,8 +4173,8 @@
         "tests/sim/core-crafted-saves-fuzz.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "note": "requirements-2 M3: the old A1-A2 (inherited-key ids, non-embedded photos) are PERSIST-011 and passed in S0 (6347c5d, d98731d); this entry now carries only the S4 remainder, so it can't close GREEN with that work dropped. Needs owner or reviewer confirmation: the list size and time bound are proposals; the S4 contract fixes them (HARNESS-030)."
+      "status": "GREEN",
+      "note": "requirements-2 M3: the old A1-A2 (inherited-key ids, non-embedded photos) are PERSIST-011 and passed in S0 (6347c5d, d98731d); this entry now carries only the S4 remainder, so it can't close GREEN with that work dropped. Needs owner or reviewer confirmation: the list size and time bound are proposals; the S4 contract fixes them (HARNESS-030). Chunk 6 (2026-10-15): met: core-crafted-saves-limits.test.ts: oversized lists, unreadable numbers, unknown table values, prototype-free tables, own-key copies, a second repair finds nothing, a NaN health never a death (B-004, B-010, B-012, B-122, B-198)."
     },
     {
       "id": "PERSIST-005",
@@ -4247,8 +4258,9 @@
         "tests/sim/core-persistence.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 6 (2026-10-15): met: a save holding every 0.5 field round-trips with an equal stateHash and repairs: [] (persistence-05 full-save test)."
     },
     {
       "id": "PERSIST-009",
@@ -5302,9 +5314,9 @@
         "new: tests/sim/core-todo-markers.test.ts (proposed)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "requirements-2 m3: docs/agent/BACKLOG.md exists (written in 1a74863), so \"a backlog entry\" in A1 can be checked against it."
+      "note": "requirements-2 m3: docs/agent/BACKLOG.md exists (written in 1a74863), so \"a backlog entry\" in A1 can be checked against it. Chunk 6 (2026-10-15): met: core-todo-markers.test fails on any unaccounted marker in src (none today) and checks the two stubs that ship are the declared ones (the local SocialService, the trades' coming-soon note)."
     },
     {
       "id": "REL-009",
@@ -5434,9 +5446,9 @@
         "scripts/agent/capture-evidence.mjs (--command)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Needs owner or reviewer confirmation: master §10 sets no minimum run length; the S4 contract or a reviewer must fix one before this can be judged. requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only."
+      "note": "Needs owner or reviewer confirmation: master §10 sets no minimum run length; the S4 contract or a reviewer must fix one before this can be judged. requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only. Chunk 6 (2026-10-15): met: core-long-run.test.ts runs all 45 dev fixtures two game weeks (no exception, nothing non-finite, repairs: [] on load) and the full-feature facility thirty days. Run length chosen in chunk 6: two weeks covers every daily and weekly job."
     },
     {
       "id": "REL-016",
@@ -5455,9 +5467,9 @@
         "scripts/agent/capture-evidence.mjs (--file)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only."
+      "note": "requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only. Chunk 6 (2026-10-15): met: core-mutation-boundary.test.ts (the store is the only writer, the frame loop never writes, Social only through the service, notifications, clipboard and share only through src/platform) and core-architecture-boundaries; docs/agent/TRUST_BOUNDARY.md lists the state changes a server would authorise."
     },
     {
       "id": "REL-017",

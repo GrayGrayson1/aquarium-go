@@ -16,6 +16,7 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 | S3-D design (approved 2026-10-11, ADR-0027) and its intake note | `docs/agent/design/DESIGN-S3D/` (`SPEC.md`, `INTAKE.md`, `screens/`) |
 | Requirements checklist (ids, acceptance criteria, status) | `docs/agent/REQUIREMENTS.json` |
 | Known issues and deferred work | `docs/agent/BACKLOG.md`, `docs/KNOWN_LIMITATIONS.md` |
+| What a future server would authorise; the debt multiplayer would magnify | `docs/agent/TRUST_BOUNDARY.md`, `docs/agent/DEBT_INVENTORY.md` |
 | Owner decisions and design ADRs | `docs/agent/decisions/` |
 | Code layers, data flow, the determinism contract | `docs/ARCHITECTURE.md` |
 | Test ids | `docs/TEST_IDS.md` |

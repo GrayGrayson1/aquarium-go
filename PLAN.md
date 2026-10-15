@@ -6,13 +6,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Build chunk 6** (Social stub, hardening and the last 0.5 release), from a fresh context: the owner's routine is
-   to `/compact` between chunks, then the agent re-reads the docs. `docs/agent/SESSION_HANDOFF.md` gives the order of
-   work, with what chunk 5 left (DES-013, DES-014, B-169, B-170, B-180, B-202).
-2. **Chunk 5 is done** (2026-10-14, on `next`, not released). Every owner question is answered (groups A to E and the
-   chunks' copy, ADR-0024 to ADR-0033). The 45 approved 0.5 screens are in `docs/agent/design/DESIGN-0.5/`.
-3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases"). Releasing chunks 4
-   and 5 is the owner's call.
+1. **Finish chunk 6** (built 2026-10-15 on `next`): the fresh reviewer's pass on `cf9f5bc..HEAD` and its blockers,
+   two full test passes in a row (REL-013), the owner's play-through on a phone and a desktop, then the last 0.5
+   release (0.5.3) with the owner's go-ahead. `docs/agent/SESSION_HANDOFF.md` has the order.
+2. **Released:** 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15, at the owner's request; 0.5.1 (chunks 2 and
+   3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
+3. Every owner question is answered (ADR-0024 to ADR-0035). The approved screens are in `docs/agent/design/DESIGN-0.5/`
+   and `docs/agent/design/DESIGN-S3D/`.
 
 ## Status
 
@@ -24,11 +24,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
-| 6 | Social stub, hardening and the last 0.5 release | Next; D1 answered (ADR-0028) |
+| 6 | Social stub, hardening and the last 0.5 release | Built 2026-10-15; most of it released in 0.5.2 (2026-10-15). Review, two full passes, the owner's play-through and 0.5.3 to come |
 
-**Last full test run:** the owner's Mac, 2026-10-14, on `baa2234` (chunk 5's last code), in Claude Code from the
-internal-disk clone: typecheck passed; unit 213 files, 2,402 tests passed; build passed; e2e 107 passed
-(9.4 minutes, inside Claude Code's sandbox).
+**Last full test run:** the owner's Mac, 2026-10-15, on `86de7c3` (the 0.5.2 release), in Claude Code from the
+internal-disk clone: typecheck passed; unit 222 files, 2,602 tests passed; build passed; e2e 257 of 257 passed in
+Chromium and WebKit, dev and production builds (21.9 minutes). Since then the four checks have run per change (the
+chunk's last full passes are REL-013's, below).
 
 ## How a chunk runs
 
@@ -338,6 +339,42 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   and a desktop. Then the release.
 - **Decided:** SOC-010's empty states (ADR-0028, D1): "No trades yet" · "Trades you start or accept appear here." and
   "No friends yet" · "Friends you add appear here."
+- **Built (2026-10-15, `cf9f5bc..` on `next`):**
+  - **Social stub** (`src/social`: the SocialService, the local stub with ADR-0034's sample data, standings;
+    `src/ui/panels/social`), dev mode only (SOC-011): dock, More, dots (B-152), routes and the club invite
+    (`#/social/join/HIGHLAND-4821` signed out → in → joined), the Friday club-show reminder (dev only).
+  - **Hardening:** the failure banner (B-002), Move tank (B-196), the morph data (B-194), save hardening (PERSIST-004,
+    PERSIST-008; B-004, B-010, B-012, B-122, B-198), B-175, "What's new in 0.5" (Settings › About), the TODO check
+    (REL-008), the week-ahead water check (B-202), the tank edits in the sim (B-169), the food and species rules in the
+    data (B-170), far-tank AI cost (B-180), WCAG 2.2 AA through High contrast (ACC-005, B-178; ADR-0035), typecheck and
+    unit tests before publishing on Pages and Render (B-193), silent e2e (the engine treats an automated browser as
+    muted).
+  - **S3-D copy** (DES-013, ADR-0035 decision 3): the 18 missing strings and the rewordings, pinned with chunk 5's
+    approved strings and every §14 id by `tests/sim/ui-copy-s3d.test.ts`.
+  - **0.5 geometry** (DES-011): §17 measured by `tests/e2e/design-geometry.spec.ts`; toasts and the buy bar's price
+    brought to it.
+  - **Viewports** (DES-012): `tests/e2e/viewports.spec.ts`, every screen at eight sizes in both browsers; it found
+    Operations' header off screen at 721–1000 px portrait, fixed.
+  - **Hardening tests:** the route matrix with Social, Production and Operations (NAV-019), long runs over every dev
+    fixture and the full-feature facility (REL-015, CONST-003, AUTO-029), the mutation boundary (REL-016,
+    `docs/agent/TRUST_BOUNDARY.md`), the debt inventory (REL-017, `docs/agent/DEBT_INVENTORY.md`).
+  - **WebKit** (B-129): every spec runs in Chromium and WebKit; WebKit-only test problems fixed on purpose (Tab focus,
+    clipboard permissions, a loading card faster than a poll, focus return after a mouse click, a sheet's focus race,
+    the ~200 hash changes WebKit allows a page).
+- **Requirements:** SOC-001 to SOC-011, DES-010 to DES-014, NAV-019, AUTO-029, CONST-003, ACC-005, PERF-002,
+  PERSIST-004, PERSIST-008, REL-008, REL-015, REL-016 GREEN; REL-004 to REL-007, REL-011, REL-013, REL-014 and REL-017
+  wait for the chunk's last passes and review (their harness-era evidence paths, `evidence/S4`, `STATE.json` and the
+  scripts, are retired: PLAN.md records them).
+- **Measured (PERF-002, 2026-10-15, the owner's Mac, headless Chromium with hardware WebGL):** big_facility (15 tanks,
+  356 animals) room view 60 fps (p95 16.7 ms), sim 3.19 ms a tick; the 1,000 gal display 60 fps; 80 schooling fish 60
+  fps; 10× sim 6.08 ms a tick on average (44.7 ms worst), no game time dropped; memory +3.3 MB over 20 tank-view trips
+  (budgets: 30 fps, 12 ms, 40 MB). The maximum-scale save (Grand Hall, 41 tanks, 513 animals, six lines) with every
+  automation system on: 0.67 ms a tick at 1×, 2.82 ms at 10×, a game day in 220 ms (vite-node, one core).
+- **Browser QA (DES-014):** Operations at 1440×900 and 390×844 matches `DESIGN-S3D/screens` apart from chunk 5's "Not as
+  drawn" (the Map's flows as rows, its layer control in the map body).
+- **Not as drawn:** phones keep their compact one-line toasts (tap to expand) at §17's geometry; the decided-line card
+  names a quarantine tank as added only when it is newer than the line.
+- **Releases:** 0.5.2 went out mid-chunk at the owner's request (see "Releases"); chunk 6 ends with 0.5.3.
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,

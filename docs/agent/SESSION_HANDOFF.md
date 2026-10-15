@@ -1,39 +1,36 @@
-# Session handoff: chunk 5 done, chunk 6 next
+# Session handoff: chunk 6 built, its review and the last 0.5 release next
 
-For the agent that builds chunk 6 (Social stub, hardening and the last 0.5 release) on Aquarium Go, after the owner's
-`/compact` or in a new session. Written 2026-10-14 by the session that built chunk 5 (Deep automation, S3-D); it
-replaces the handoff written after chunk 4. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this
-file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
+For the agent that finishes chunk 6 (Social stub, hardening and the last 0.5 release) on Aquarium Go, after the
+owner's `/compact` or in a new session. Written 2026-10-15 by the session that built chunk 6; it replaces the handoff
+written after chunk 5. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of
+work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
 
 ## Where things stand
 
-- `next` holds chunks 1 to 5, all tested, and every owner answer (groups A to E, ADR-0024 to ADR-0029; chunk 4's copy,
-  ADR-0030 and ADR-0031; chunk 5's, ADR-0032 and ADR-0033). `docs/agent/OWNER_QUESTIONS.md` has nothing open. The 45
-  approved 0.5 screens are in `docs/agent/design/DESIGN-0.5/`; DESIGN-S3D's in `docs/agent/design/DESIGN-S3D/screens/`.
-- **0.5.1 is the release on `main`** (`78548a3`, Pages and Render). Chunks 4 and 5 are on `next` only: releasing them
-  is the owner's call (PLAN.md "Releases"); chunk 6 ends with the last 0.5 release.
-- Chunk 6 is next: its brief is in PLAN.md (Social stub, WCAG 2.2 AA with solid high-contrast panels, WebKit e2e, the
-  failure banner, typecheck and tests before the deploys, the morph data, "Move tank", two full passes in a row).
+- `next` holds chunks 1 to 6, all tested (PLAN.md, chunk 6: what was built, the requirements met, the measurements).
+  Every owner question is answered (ADR-0024 to ADR-0035); `docs/agent/OWNER_QUESTIONS.md` has nothing open.
+- **0.5.2 is the release on `main`** (`e527e10`, Pages and Render, 2026-10-15): chunks 4 and 5 and chunk 6 up to
+  `86de7c3`, released mid-chunk at the owner's request so they could play it. Chunk 6's later work (B-180, the S3-D copy
+  test, the viewport and geometry specs, the 721 px Operations fix, toasts and the buy bar at §17, the long-run and
+  boundary tests, the docs) is on `next` only.
+- Left for chunk 6: the fresh reviewer's pass on `cf9f5bc..HEAD` (and its confirmation pass), two full passes in a row
+  (REL-013), the owner's play-through on a phone and a desktop, then 0.5.3 with the owner's go-ahead. REQUIREMENTS.json
+  has REL-004 to REL-007, REL-011, REL-013, REL-014 and REL-017 waiting on those (REL-017's inventory is written,
+  `docs/agent/DEBT_INVENTORY.md`; its reviewer verdict goes in PLAN.md).
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
-   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, How a chunk runs, chunk 6's brief), then the design sections
-   the brief names and the ADRs it cites.
-2. **Build chunk 6** following PLAN.md "How a chunk runs": note the start commit; apply the chunk's BACKLOG rows (S4,
-   and what chunk 5 left: B-169's move into `src/sim`, B-170's rest, B-180's far-tank AI cost); ask the owner once,
-   batched, for any player-visible text no design or ADR gives; run the seeded tests before and after any sim change
-   and explain every changed expectation; the four checks pass on the final code; one fresh reviewer on Opus 5.5 at
-   max effort (Agent tool `model: "opus"`, `effort: "max"`; never Fable) reads the brief and `git diff <start>..HEAD`,
-   not your summary; fix its blockers and send it a confirmation pass; update PLAN.md, REQUIREMENTS.json, BACKLOG.md
-   and the ADRs; commit and push `next`; tell the owner each command with its pass or fail line, what changed, and
-   what to try (`npm run dev`, then http://127.0.0.1:5173/?dev=1).
-3. **Left from chunk 5 for chunk 6:** DES-013 (a test that finds every SPEC §11 string and §14 id) and DES-014 (Browser
-   QA of Operations against `DESIGN-S3D/screens/` at 390×844 and 1440×900) are IN_PROGRESS; REL-013's two full passes
-   and the owner's play-through cover the rest. Watch `shop-filters.spec.ts:75` (the destination tiles' arrow keys):
-   it failed twice in a row of four once on `0b316f1` under load and passed 13 times straight after; if it fails in a
-   full run again, look for a re-render that resets the Shop's chosen tank.
-4. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
+   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's brief and record).
+2. **Review:** one fresh reviewer on Opus 5.5 at max effort (Agent tool `model: "opus"`, `effort: "max"`; never Fable)
+   reads chunk 6's brief and `git diff cf9f5bc..HEAD`, not a summary; fix its blockers; a confirmation pass with
+   SendMessage. Ask it for REL-017's verdict on `docs/agent/DEBT_INVENTORY.md` too.
+3. **Two full passes in a row** of the four checks on the final commit (both e2e browsers; retries stay 0); record
+   them in PLAN.md and set REL-004 to REL-007, REL-011, REL-013, REL-014 GREEN.
+4. **The owner plays it**, then the release: bump to 0.5.3, the CHANGELOG entry (chunk 6's later work), merge `next`
+   into `main` with the owner's go-ahead, push from the internal-disk clone, check both `version.json` files, deploy
+   Render by hand.
+5. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
    `/compact` (an agent can't) and you re-read the docs. Releases (`main`) only when the owner says so in the session.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
@@ -79,6 +76,22 @@ production actions (`createLine`, `setLineRunning`, …) are in `__AQ.act` too. 
 bump changes `package.json` and the two root `version` fields in `package-lock.json` (no dependency change, so no
 `npm ci`). Pages deploys from the push (about 1.5 minutes); check `…/version.json` on Pages and Render, and deploy
 Render by hand only if it didn't update (the owner's memory note `render-manual-deploy` has the command).
+
+**Learned in chunk 6.**
+- *Push from the internal-disk clone* (`~/LocalTest/AquariumGo`, remote `origin` is GitHub): a push from the disk
+  image hung for 13 minutes. Fetch `dev` there, then `git push origin "${SHA}:refs/heads/main"` (braces: zsh reads
+  `$M:r` as a modifier). A change under `.github/workflows/` needs gh's `workflow` scope (the owner added it in his own
+  Terminal; the device flow times out when run with `!`).
+- *Publishing runs the unit tests* (B-193): GitHub's runner and Render's build are about 2× slower and Render's has few
+  CPUs. Wall-clock limits in tests/sim go through `tests/sim/support/timeBudget.ts` (×4 on CI and RENDER) and Vitest
+  uses two workers when RENDER is set. Watch the Pages run (`gh run watch`) before deploying Render.
+- *WebKit*: Tab skips buttons unless Safari's setting is on (press Option+Tab in WebKit); it grants no clipboard
+  permissions; it doesn't focus a button on click; it drops a page's hash changes after about 200 in quick
+  succession (split long route walks across pages); a transient element can come and go before a poll sees it
+  (record it with a MutationObserver from the page's first moment).
+- *Silent e2e*: the audio engine treats an automated browser (`navigator.webdriver`) as muted; Chromium was muted by
+  Playwright already, WebKit played the game aloud.
+- *Fixed-position sheets*: `offsetParent` is always null; measure their box and computed style.
 
 **Determinism.** In `src/sim` and `src/data` randomness comes only from `ctx.rng`, `simRng(state)`, a subsystem's own
 stream or a keyed `mulberry32(hashString(key))`. Since chunk 4 every `simRng` draw re-reads `state.rngState`, so
