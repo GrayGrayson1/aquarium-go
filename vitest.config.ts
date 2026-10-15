@@ -17,6 +17,9 @@ export default defineConfig({
     // Simulation soak tests run many game-days; give them room on busy machines.
     testTimeout: 180000,
     hookTimeout: 60000,
-    maxWorkers: 6,
+    // Render's build machine (it runs the tests before publishing, ADR-0035) has few CPUs: six workers starved each
+    // other until long simulation tests held a worker past Vitest's 60 s RPC reply timer ("Timeout calling
+    // onTaskUpdate", ADR-0010) in a run where every test passed. Two workers there; six elsewhere.
+    maxWorkers: process.env.RENDER ? 2 : 6,
   },
 });
