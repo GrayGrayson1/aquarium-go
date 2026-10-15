@@ -58,7 +58,7 @@
 .ag-temper__meter { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .ag-temper__track { position: relative; display: block; height: 6px; border-radius: var(--r-pill); background: linear-gradient(90deg, var(--c-blue), var(--c-aqua) 50%, var(--c-coral)); }
 .ag-temper__thumb { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--c-ink); box-shadow: 0 0 0 2px var(--c-bg); }
-.ag-temper__ends { display: flex; justify-content: space-between; font-size: calc(10.5px * var(--text-scale)); color: var(--c-ink-4); }
+.ag-temper__ends { display: flex; justify-content: space-between; font-size: calc(10.5px * var(--text-scale)); color: var(--c-ink-3); } /* chunk 6 (ACC-005, ADR-0035): §17's ink-4 read 2.7–3.7:1 */
 .ag-temper__word { font-size: calc(13px * var(--text-scale)); font-weight: 600; color: var(--c-ink); font-variant-numeric: tabular-nums; }
 .ag-temper__foot, .ag-temper__group { margin: 0; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); line-height: 1.45; }
 .pn-sheet--phone .ag-temper__row { grid-template-columns: minmax(0, 1fr) auto; }

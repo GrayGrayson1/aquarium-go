@@ -61,7 +61,7 @@
 .st-assign__chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .st-chip { min-height: 32px; padding: 5px 11px; }
 .st-chip svg { color: var(--c-aqua); }
-.st-chip__who { color: var(--c-ink-4); font-weight: 500; }
+.st-chip__who { color: var(--c-ink-3); font-weight: 500; } /* chunk 6 (ACC-005) */
 .st-budget__v { color: var(--c-gold); font-variant-numeric: tabular-nums; }
 
 .st-xp { display: grid; gap: 5px; }

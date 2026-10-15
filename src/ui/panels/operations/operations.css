@@ -136,7 +136,7 @@ body:has(.pn-sheet--side[data-panel='operations'].is-max) .ag-toasts > :not(:las
 .ops-area { border: 1px solid var(--pn-card-line); border-radius: 18px; padding: 10px 12px 12px; background: rgba(255, 255, 255, 0.025); display: flex; flex-direction: column; gap: 8px; min-width: 0; text-align: left; font: inherit; color: inherit; }
 .pn-sheet--mobile .ops-area, .pn-sheet--phone .ops-area { border-radius: 14px; min-height: 44px; cursor: pointer; }
 .ops-area--dashed { border-style: dashed; opacity: 0.8; }
-.ops-area--dim { opacity: 0.45; }
+.ops-area--dim { opacity: 0.75; } /* chunk 6 (ACC-005) */
 .ops-area.is-selected, .ops-tank.is-selected, .ops-machine.is-selected { box-shadow: 0 0 0 2px var(--c-aqua), 0 0 18px rgba(94, 234, 212, 0.35); }
 .ops-area__title { display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.1em; font-size: calc(10.5px * var(--text-scale)); font-weight: 650; color: var(--c-ink-3); margin: 0; }
 .ops-area__tiles { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }

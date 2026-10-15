@@ -30,6 +30,7 @@ import './styles/genetics.css'; // lane:genetics
 import './styles/nav.css'; // lane:ui-shell (chunk 1)
 import './styles/automation.css'; // lane:ui-shell (chunk 3)
 import './styles/notify.css'; // lane:notify (chunk 3)
+import './styles/a11y.css'; // chunk 6 (ACC-005): high contrast and focus rings, after every other stylesheet
 
 registerDisplayFont();
 // lane:ui-shell (chunk 1, PLAT-003) — a platform with its own save backends (a native wrapper) hands them to persistence

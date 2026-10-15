@@ -33,7 +33,7 @@
 .fr-pickrow:hover { background: var(--pn-card-hover); }
 .fr-pickrow.is-on { border-color: rgba(94, 234, 212, 0.55); background: rgba(94, 234, 212, 0.07); }
 .fr-pickrow:focus-within { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
-.fr-check { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 1.5px solid var(--c-line-bright); display: grid; place-items: center; color: var(--c-aqua-ink); }
+.fr-check { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 1.5px solid var(--c-ink-3); display: grid; place-items: center; color: var(--c-aqua-ink); }
 .fr-pickrow.is-on .fr-check { background: var(--c-aqua); border-color: var(--c-aqua); }
 .fr-stack { position: relative; display: inline-block; flex: none; }
 .fr-stack > span { position: absolute; top: 0; }

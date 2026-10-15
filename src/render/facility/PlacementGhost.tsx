@@ -366,11 +366,11 @@ export function PlacementGhost() {
                 textAlign: 'center',
                 font: '500 12px/1.3 "Inter Variable", Inter, system-ui, sans-serif',
                 color: '#e8f1f2',
-                background: 'rgba(8,16,20,0.72)',
+                background: 'var(--ag-scene-tip-bg, rgba(8,16,20,0.72))', // chunk 6 (ACC-005): solid under High contrast
                 border: `1px solid ${ghost.ok ? 'rgba(74,222,128,0.55)' : 'rgba(248,113,113,0.6)'}`,
                 borderRadius: 18,
                 padding: touch ? '8px 12px' : '5px 11px',
-                backdropFilter: 'blur(8px)',
+                backdropFilter: 'var(--blur, blur(8px))',
                 boxShadow: '0 4px 18px rgba(0,0,0,0.35)',
               }}
             >

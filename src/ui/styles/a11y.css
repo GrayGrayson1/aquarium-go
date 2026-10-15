@@ -1,0 +1,46 @@
+/* Accessibility (chunk 6; ACC-005, B-178; ADR-0024 decision 4, ADR-0035 decision 1): WCAG 2.2 AA for text and controls
+   through the High contrast setting (W3C technique G174). The tokens turn solid under :root[data-contrast='high']
+   (tokens.css); this file makes solid the surfaces that use colours of their own, gives selected states a ring that
+   reaches 3:1, keeps the way to the High contrast switch at AA in normal mode, and adds focus rings where a control had
+   none (WebKit's default ring is 1.9:1 on the glass). Loaded after every other stylesheet. Tokens only. */
+
+/* ── High contrast: solid surfaces ── */
+:root[data-contrast='high'] .pn-sheet,
+:root[data-contrast='high'] :is(.ag-toast, .ag-update, .ag-party, .ag-photo__tag, .ag-photo__subjects, .ag-photo__params, .ag-simfail),
+:root[data-contrast='high'] .ag-hud.has-right-sheet .ag-toolpop {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root[data-contrast='high'] :is(.ag-toast, .ag-update, .ag-party, .ag-photo__tag, .ag-photo__subjects, .ag-photo__params),
+:root[data-contrast='high'] .ag-hud.has-right-sheet .ag-toolpop {
+  background: var(--c-glass-strong);
+}
+:root[data-contrast='high'] .ag-photo__side { background: var(--c-glass-strong); color: var(--c-ink); text-shadow: none; }
+:root[data-contrast='high'] :is(.ag-photo__side:hover, .ag-photo__side.is-on) { background: var(--c-glass-hover); }
+:root[data-contrast='high'] .ag-watch-restore { color: var(--c-ink-2); background: var(--c-glass-strong); border-color: var(--c-line-strong); backdrop-filter: none; -webkit-backdrop-filter: none; }
+:root[data-contrast='high'] :is(.ag-menubtn, .ag-title__version, .ag-title__notice, .ag-starter, .ag-sdetail__individual) {
+  background: var(--c-glass-strong);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+:root[data-contrast='high'] :is(.ag-menubtn:hover:not(:disabled), .ag-starter:hover, .ag-title__version:hover) { background: var(--c-glass-hover); }
+:root[data-contrast='high'] .ag-menubtn--primary { background: linear-gradient(135deg, var(--c-aqua-soft), transparent 70%), var(--c-glass-strong); }
+:root[data-contrast='high'] .ag-starter.is-selected { background: linear-gradient(var(--c-aqua-soft), var(--c-aqua-soft)), var(--c-glass-strong); }
+
+/* ── High contrast: a selected tab, segment or tool is ringed (a tint alone was 2–3.4:1) ── */
+:root[data-contrast='high'] :is(.ag-tab[aria-selected='true'], .pn-seg__opt[aria-checked='true'], .pn-seg__opt[aria-selected='true'], .pn-switch__item.is-active, .ag-tool.is-active, .ag-tool[aria-expanded='true'], .ag-camchip[aria-checked='true'], .ag-seg__item[aria-checked='true']) {
+  box-shadow: inset 0 0 0 2px var(--c-aqua);
+}
+
+/* ── The way to the High contrast switch, at AA in normal mode too (Settings › Play & access, the More row) ── */
+.ag-settings .ag-setrow__desc { color: var(--c-ink-2); }
+.ag-more .ag-more__rowsub { color: var(--c-ink-2); }
+
+/* ── Focus rings where a control had none ── */
+.pn-linkrow:focus-within { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
+:is(.ag-parent, .ag-moverow, .ag-resident, .ag-alert-row, .ag-toolhint__done, .ag-coach__icon, .ag-coach__skip, .ag-party__btn, .ag-party__close, .pn-step, .pn-pick__btn, .pr-pair, .pr-link, .pr-choice, .pr-tankrow__head, .pr-fieldbtn, .pr-field select, .pr-field input, .pr-sortrule select, .pr-sortrule input):focus-visible {
+  outline: 2px solid var(--c-aqua);
+  outline-offset: 2px;
+}
+/* over the scene: the ring sits on the control's own glass */
+:is(.ag-coach-pill, .ag-photo__side):focus-visible { outline: 2px solid var(--c-aqua); outline-offset: -3px; }

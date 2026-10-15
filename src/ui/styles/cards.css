@@ -10,7 +10,7 @@
 .ag-cname__btn:hover { background: var(--c-fill-2); color: var(--c-ink); }
 .ag-cname__btn:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 1px; }
 .ag-cname__input { width: 100%; min-width: 0; min-height: 40px; padding: 4px 10px; border-radius: 10px; border: 1px solid rgba(94, 234, 212, 0.6); background: rgba(0, 0, 0, 0.3); color: var(--c-ink); font-family: var(--font-display); font-size: calc(22px * var(--text-scale)); font-weight: 480; }
-.ag-cname__input:focus { outline: none; box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.14); }
+.ag-cname__input:focus { outline: 2px solid var(--c-aqua); outline-offset: 1px; box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.14); } /* chunk 6 (ACC-005) */
 .ag-chead__species { font-size: calc(13px * var(--text-scale)); color: var(--c-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ag-chead__species em { font-family: var(--font-display); color: var(--c-ink-3); }
 .ag-chead__chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
@@ -184,7 +184,7 @@
 
 .ag-equiplist { display: grid; gap: 8px; }
 .ag-equip { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 14px; border: 1px solid var(--c-line); background: var(--c-fill); transition: opacity .2s; }
-.ag-equip.is-off { opacity: 0.72; }
+.ag-equip.is-off { opacity: 0.9; } /* chunk 6 (ACC-005) */
 .ag-equip.is-failed { border-color: rgba(248, 113, 113, 0.45); }
 .ag-equip__icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--c-aqua-soft); color: var(--c-aqua); flex: none; }
 .ag-equip.is-off .ag-equip__icon { background: var(--c-fill-2); color: var(--c-ink-3); }
@@ -234,7 +234,7 @@
 .ag-moverow { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--c-line); background: var(--c-fill); color: var(--c-ink); text-align: left; cursor: pointer; }
 .ag-moverow:hover { background: var(--c-fill-2); border-color: var(--c-line-strong); }
 .ag-moverow.is-selected { border-color: rgba(94, 234, 212, 0.6); background: rgba(94, 234, 212, 0.1); }
-.ag-moverow.is-blocked { opacity: 0.75; }
+.ag-moverow.is-blocked { opacity: 0.9; } /* chunk 6 (ACC-005) */
 .ag-moverow__name { display: block; font-family: var(--font-display); font-size: calc(16px * var(--text-scale)); font-weight: 520; }
 .ag-moverow__meta { display: block; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-3); }
 .ag-movepreview { min-width: 0; }

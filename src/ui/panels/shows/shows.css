@@ -22,7 +22,7 @@
 .sh-showlist { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
 .pn-sheet.is-max:not(.pn-sheet--phone) .sh-showlist { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 .sh-show { display: grid; gap: 12px; padding: 16px 16px 14px; }
-.sh-show--locked { opacity: 0.72; }
+.sh-show--locked { opacity: 0.9; } /* chunk 6 (ACC-005) */
 .sh-show--mine { border-color: rgba(94, 234, 212, 0.32); }
 .sh-show__top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sh-show__when { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; color: var(--c-ink-2); font-size: calc(12px * var(--text-scale)); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -32,7 +32,7 @@
 .sh-classes { display: flex; flex-wrap: wrap; gap: 6px; }
 .sh-class-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 12px; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--c-ink-2); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--c-line); }
 .sh-class-chip b { font-weight: 700; color: var(--c-aqua); font-variant-numeric: tabular-nums; }
-.sh-class-chip.is-none b { color: var(--c-ink-4); }
+.sh-class-chip.is-none b { color: var(--c-ink-3); } /* chunk 6 (ACC-005) */
 .sh-class-chip.is-locked { color: var(--c-ink-3); border-style: dashed; }
 .sh-show__money { display: flex; gap: 14px; flex-wrap: wrap; font-size: calc(12.5px * var(--text-scale)); color: var(--c-ink-2); }
 .sh-show__money strong { color: var(--c-ink); font-variant-numeric: tabular-nums; }
@@ -65,9 +65,9 @@
 .sh-cand:hover { background: var(--pn-card-hover); }
 .sh-cand:focus-within { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
 .sh-cand.is-on { border-color: rgba(94, 234, 212, 0.55); background: rgba(94, 234, 212, 0.07); }
-.sh-cand.is-off { cursor: default; opacity: 0.78; }
+.sh-cand.is-off { cursor: default; opacity: 0.9; } /* chunk 6 (ACC-005) */
 .sh-cand.is-off:hover { background: var(--pn-card); }
-.sh-cand__mark { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid rgba(200, 235, 245, 0.35); display: grid; place-items: center; color: var(--c-aqua-ink); }
+.sh-cand__mark { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--c-ink-3); display: grid; place-items: center; color: var(--c-aqua-ink); } /* chunk 6 (ACC-005) */
 .sh-cand.is-on .sh-cand__mark { background: var(--c-aqua); border-color: var(--c-aqua); }
 .sh-cand.is-off .sh-cand__mark { border-style: dashed; }
 .sh-cand__body { flex: 1; min-width: 0; display: grid; gap: 3px; }
@@ -117,7 +117,7 @@
 .sh-card { display: grid; gap: 14px; padding: 4px 16px 16px; }
 .sh-card__paper { position: relative; display: grid; gap: 10px; padding: 14px 16px 12px; border-radius: 14px; background: linear-gradient(180deg, rgba(246, 240, 226, 0.95), rgba(236, 228, 210, 0.95)); color: #26303a; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.5); }
 .sh-card__paper::before { content: ''; position: absolute; inset: 6px; border: 1px solid rgba(80, 60, 30, 0.18); border-radius: 10px; pointer-events: none; }
-.sh-card__hdr { display: flex; align-items: baseline; gap: 8px; font-size: calc(10.5px * var(--text-scale)); text-transform: uppercase; letter-spacing: 0.12em; color: rgba(38, 48, 58, 0.65); font-weight: 700; }
+.sh-card__hdr { display: flex; align-items: baseline; gap: 8px; font-size: calc(10.5px * var(--text-scale)); text-transform: uppercase; letter-spacing: 0.12em; color: rgba(38, 48, 58, 0.82); font-weight: 700; }
 .sh-card__hdr span:last-child { margin-left: auto; letter-spacing: 0.04em; text-transform: none; font-style: italic; font-weight: 500; font-family: var(--font-display); font-size: calc(12.5px * var(--text-scale)); }
 .sh-card__lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; font-family: var(--font-display); font-size: calc(14.5px * var(--text-scale)); line-height: 1.35; }
 .sh-card__lines li { display: flex; gap: 8px; align-items: baseline; }
@@ -128,7 +128,7 @@
 .sh-crit__bar { height: 6px; border-radius: 3px; background: rgba(38, 48, 58, 0.12); overflow: hidden; }
 .sh-crit__bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #2f9e8f, #37b3a0); }
 .sh-crit__pts { text-align: right; font-variant-numeric: tabular-nums; color: #26303a; font-weight: 650; }
-.sh-crit__pts small { color: rgba(38, 48, 58, 0.55); font-weight: 500; }
+.sh-crit__pts small { color: rgba(38, 48, 58, 0.75); font-weight: 500; } /* chunk 6 (ACC-005) */
 .sh-crit__row--eye .sh-crit__label { font-style: italic; }
 .sh-crit__total { display: flex; justify-content: space-between; padding-top: 6px; border-top: 1px solid rgba(38, 48, 58, 0.15); font-weight: 700; font-size: calc(13px * var(--text-scale)); }
 .pn-sheet--phone .sh-crit__row { grid-template-columns: minmax(0, 1fr) 60px 48px; }

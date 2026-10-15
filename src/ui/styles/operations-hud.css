@@ -6,7 +6,7 @@
 .ag-hud-gear { display: grid; place-items: center; width: 48px; min-height: 48px; padding: 0; border: 1px solid var(--c-line); color: var(--c-ink-2); cursor: pointer; }
 .ag-hud-gear:hover { color: var(--c-ink); }
 .ag-hud-gear[aria-pressed='true'] { color: var(--c-aqua); box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.4); }
-.ag-hud-gear:focus-visible, .ag-manual-pill:focus-visible, .ag-clock-pill.is-manual:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
+.ag-hud-gear:focus-visible, .ag-manual-pill:focus-visible, .ag-clock-pill.is-manual:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: -3px; } /* chunk 6 (ACC-005): on the glass, not the scene */
 
 /* manual mode amber (§12): border, fill, text */
 .ag-manual-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 1px solid rgba(251, 191, 36, 0.5); background: rgba(52, 38, 10, 0.72); color: #ffe6a3; font: inherit; font-weight: 620; font-size: calc(14px * var(--text-scale)); cursor: pointer; }

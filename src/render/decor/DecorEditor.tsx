@@ -87,8 +87,8 @@ const label: React.CSSProperties = {
   whiteSpace: 'nowrap',
   padding: '5px 10px',
   borderRadius: 10,
-  background: 'rgba(10,16,22,0.72)',
-  backdropFilter: 'blur(8px)',
+  background: 'var(--ag-scene-tip-bg, rgba(10,16,22,0.72))', // chunk 6 (ACC-005): solid under High contrast
+  backdropFilter: 'var(--blur, blur(8px))',
   border: '1px solid rgba(255,255,255,0.14)',
   color: '#e8f4f2',
   font: '500 12px/1.3 "Inter Variable", Inter, system-ui, sans-serif',
@@ -571,7 +571,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
             <div style={{ ...label, borderColor: ghost.ok ? 'rgba(94,234,212,0.5)' : 'rgba(248,113,113,0.6)' }}>
               {ghost.ok ? '✓ ' : '✕ '}
               {ghost.msg}
-              <span style={{ opacity: 0.6 }}>{tool === 'decor_place' ? placeHint : '  ·  release to drop'}</span>
+              <span style={{ opacity: 0.85 }}>{tool === 'decor_place' ? placeHint : '  ·  release to drop'}</span>
             </div>
           </Html>
         </>
@@ -582,7 +582,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
           <Html position={[hoverInst.x, hoverInst.y + hoverDef.size.h * hoverInst.scale, hoverInst.z]} zIndexRange={[20, 10]} style={{ pointerEvents: 'none' }}>
             <div style={{ ...label, transform: 'translate(-50%, -140%)', ...(sellArmed ? { borderColor: 'rgba(248,113,113,0.6)' } : null) }}>
               {hoverDef.name}
-              <span style={{ opacity: sellArmed ? 0.9 : 0.6 }}>{hoverHint}</span>
+              <span style={{ opacity: sellArmed ? 0.95 : 0.85 }}>{hoverHint}</span>
             </div>
           </Html>
         </>
