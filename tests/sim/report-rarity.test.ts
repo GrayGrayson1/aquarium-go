@@ -99,18 +99,20 @@ describe('GEN-013: rarity report', () => {
   // Re-pinned in chunk 2 (GEN-006 A5) for the Cambodian and Metallic genes (v0.4.0: 240 morphs at 1 / 9 / 21 / 39 /
   // 170, 9 strains, 3.1% of stock legendary), then for the owner's tier rule (ADR-0022: Legendary below 1 in 10,000;
   // under the old rule chunk 2 gave 1 / 9 / 21 / 43 / 466 and 4.3% of stock legendary).
-  it('betta, pinned from the current data: 540 morphs at 1 / 9 / 21 / 145 / 364, 10 strains, 0.56% of stock legendary', () => {
+  // chunk 6 (B-194, ADR-0034 decision 6): tiers come from the share of market stock with the seller's pick counted (it
+  // was 1 / 9 / 21 / 145 / 364 from the genes alone; common 19.0 %, uncommon 45.5 %, rare 21.9 %, very rare 13.0 %)
+  it('betta, pinned from the current data: 540 morphs at 1 / 10 / 25 / 163 / 341, 10 strains, 0.56% of stock legendary', () => {
     const betta = report.species.find((r) => r.speciesId === 'betta')!;
     expect(betta.exactCatalog).toBe(true);
     expect(betta.entries).toBe(540);
-    expect(betta.entriesByTier).toEqual({ common: 1, uncommon: 9, rare: 21, very_rare: 145, legendary: 364 });
+    expect(betta.entriesByTier).toEqual({ common: 1, uncommon: 10, rare: 25, very_rare: 163, legendary: 341 });
     expect(betta.strains).toBe(10);
     expect(betta.strainsByTier).toEqual({ common: 0, uncommon: 1, rare: 4, very_rare: 1, legendary: 4 });
     expect(betta.strainsWithExplicitTier).toBe(10);
-    expect(betta.stockShareByTier.common).toBeCloseTo(0.1903433, 6);
-    expect(betta.stockShareByTier.uncommon).toBeCloseTo(0.4546289, 6);
-    expect(betta.stockShareByTier.rare).toBeCloseTo(0.2189102, 6);
-    expect(betta.stockShareByTier.very_rare).toBeCloseTo(0.130471, 6);
-    expect(betta.stockShareByTier.legendary).toBeCloseTo(0.0056467, 6);
+    expect(betta.stockShareByTier.common).toBeCloseTo(0.1695249, 6);
+    expect(betta.stockShareByTier.uncommon).toBeCloseTo(0.439731, 6);
+    expect(betta.stockShareByTier.rare).toBeCloseTo(0.2413432, 6);
+    expect(betta.stockShareByTier.very_rare).toBeCloseTo(0.1437927, 6);
+    expect(betta.stockShareByTier.legendary).toBeCloseTo(0.0056083, 6);
   });
 });

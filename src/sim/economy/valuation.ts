@@ -11,6 +11,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { resolvePhenotype, potentialBand, strainOf, strainTier, isPrismatic, oneInLabel } from '../life';
+import { lookRarity } from '../life/genetics'; // B-194
 import { PRISMATIC, STRAIN_VALUE, MAX_GENETIC_MULTIPLIER, TIER_WORD } from '@/data/rarity'; // lane:genetics
 import { creaturesInTank } from '../life';
 import { ELDER_FRACTION } from '../life/growth'; // lane:fix-econ
@@ -58,14 +59,7 @@ function computeMorphRarity(sp: SpeciesDefinition, c: Creature): number {
   } catch {
     r1 = 0;
   }
-  let r2 = 0;
-  const morph = (c.morphName ?? '').toLowerCase();
-  if (morph) {
-    for (const p of sp.genetics?.phenotypes ?? []) {
-      if (p.rarity > 0 && p.name && morph.includes(p.name.toLowerCase())) r2 += p.rarity;
-    }
-  }
-  return clamp(Math.max(r1, r2), 0, 1.25);
+  return lookRarity(sp, r1, c.morphName ?? ''); // B-194: one formula with the morph catalog's odds
 }
 
 // ───────────────────────────── creature value ─────────────────────────────

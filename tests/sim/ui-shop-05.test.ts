@@ -158,7 +158,7 @@ describe('§7.4 offer detail', () => {
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(text(out)).toContain('Royal Blue Butterfly Halfmoon Betta');
-    expect(text(out)).toContain('Rare morph · about 1 in 143 market bettas');
+    expect(text(out)).toContain('Rare morph · about 1 in 104 market bettas'); // chunk 6 (B-194): the seller's pick counted (1 in 143 from the genes alone)
     expect(out).toContain('data-testid="offer-gene-cambodian"');
     expect(text(out)).toContain('Royal Butterfly Halfmoon · Rare strain');
     // the profile no longer lists Temperament or Curiosity (they have their own section)
@@ -215,10 +215,11 @@ describe('§7.4 offer detail', () => {
     expect(out).toContain('Confirm the risk first');
   });
 
-  it('the morph line follows §7.4 for Common morphs too ("Common morph · about 1 in 5 market bettas")', () => {
+  // chunk 6 (B-194, ADR-0034 decision 6): the seller's pick counted, Red Veiltail is about 1 in 6 (1 in 5 from the genes)
+  it('the morph line follows §7.4 for Common morphs too ("Common morph · about 1 in 6 market bettas")', () => {
     const g = game();
     const o = offer(g, 'betta', { alleles: { color: ['red', 'red'], pattern: ['solid', 'solid'], fins: ['veil', 'veil'], cambodian: ['C', 'C'], metallic: ['std', 'std'] } });
-    expect(text(shop(g, o.id))).toContain('Common morph · about 1 in 5 market bettas');
+    expect(text(shop(g, o.id))).toContain('Common morph · about 1 in 6 market bettas');
   });
 
   it('short of money: "You need $X more"', () => {

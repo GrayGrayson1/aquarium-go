@@ -17,13 +17,13 @@
  *  - creatures without `visitorWows`, `history`, `repro.totalOffspringRaised`;
  *  - `progress` without `discoveredMorphs` / `counters`; market without `history`; no `isShowcase`.
  */
-import type { GameState, Tank, Creature, WaterState, CreatureStats, Potentials } from '@/types';
+import type { GameState, Tank, Creature, WaterState, CreatureStats, Potentials, Genome } from '@/types';
 import { SCHEMA_VERSION } from './schema';
 import { SaveError } from './types';
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { DEFAULT_LIGHTS_ON, defaultLightsOff } from '@/sim/time';
-import { renamedMorphs } from '@/sim/life/genetics';
+import { renamedMorphs, resolveMorph } from '@/sim/life/genetics';
 import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
 import { backfillFinds } from '@/sim/life/discovery'; // lane:genetics
 import { emptyShowsState } from '@/sim/shows/state'; // B-168
@@ -442,6 +442,58 @@ function renameLegacyMorphs(s: Json): void {
   p.discoveredMorphs = out;
 }
 
+/**
+ * Chunk 6 (B-194; ADR-0029 decision 8, ADR-0034 decision 5) — overlays renamed so each look has its own name. The
+ * bristlenose's two-copy fin overlay was "Super Long-fin", which lost its "Super" beside the Super Red colour, so "Super
+ * Red Long-fin" named two looks; it is now "Double Long-fin". An animal (owned, or in the shop's stock) whose name the
+ * overlay touched takes the name its genes give now (that tells the two "Super Red Long-fin" looks apart); discovered
+ * names are renamed in place. Each renamed animal is noted.
+ */
+const OVERLAY_RENAMES: readonly { speciesId: string; from: string; to: string; touches: RegExp }[] = [{ speciesId: 'bristlenose_pleco', from: 'Super Long-fin', to: 'Double Long-fin', touches: /Long-fin/ }];
+
+function renameOverlays(s: Json, repairs: string[]): void {
+  const fix = (c: Json, label: string) => {
+    if (!isObj(c) || typeof c.morphName !== 'string') return;
+    const r = OVERLAY_RENAMES.find((x) => x.speciesId === c.speciesId);
+    if (!r || !r.touches.test(c.morphName)) return;
+    const sp = findSpecies(c.speciesId);
+    if (!sp) return;
+    let now = c.morphName.replace(r.from, r.to);
+    // from the genes only when every locus is there (a missing genome was filled in empty above: it would read wild)
+    const alleles = isObj(c.genome) && isObj(c.genome.alleles) ? (c.genome.alleles as Record<string, unknown>) : null;
+    if (alleles && sp.genetics.loci.every((l) => Array.isArray(alleles[l.id]) && (alleles[l.id] as unknown[]).length === 2)) {
+      try {
+        now = resolveMorph(sp, c.genome as Genome).morphName;
+      } catch {
+        /* a damaged genome: the plain rename */
+      }
+    }
+    if (now !== c.morphName) {
+      c.morphName = now;
+      repairs.push(`${label}.morphName renamed (B-194)`);
+    }
+  };
+  if (isObj(s.creatures)) for (const [id, c] of Object.entries(s.creatures)) fix(c as Json, `creatures.${shortId(id)}`);
+  if (isObj(s.market) && Array.isArray(s.market.stock)) {
+    for (const o of s.market.stock as Json[]) if (isObj(o) && Array.isArray(o.creatures)) for (const c of o.creatures as Json[]) fix(c, `market.stock.${shortId(o.id)}`);
+  }
+  const p = s.progress;
+  if (!isObj(p) || !Array.isArray(p.discoveredMorphs)) return;
+  const seen = new Set<string>();
+  const out: unknown[] = [];
+  for (const key of p.discoveredMorphs as unknown[]) {
+    let k = key;
+    if (typeof key === 'string') {
+      const r = OVERLAY_RENAMES.find((x) => key.startsWith(`${x.speciesId}:`) && key.includes(x.from));
+      if (r) k = key.replace(r.from, r.to);
+    }
+    if (typeof k === 'string' && seen.has(k)) continue;
+    if (typeof k === 'string') seen.add(k);
+    out.push(k);
+  }
+  p.discoveredMorphs = out;
+}
+
 export function repairState(s: Json): string[] {
   const repairs: string[] = [];
   scrubInheritedNames(s, '', repairs);
@@ -624,6 +676,7 @@ export function repairState(s: Json): string[] {
   repairAutomation(s, repairs); // lane:automation (chunk 5; PERSIST-016)
   delete s.offlineGrace;
   renameLegacyMorphs(s);
+  renameOverlays(s, repairs); // chunk 6, B-194
   backfillFinds(s as GameState); // lane:genetics — only fills lists a pre-0.4 save lacks; silent
   if (s.isShowcase === undefined) s.isShowcase = false;
   // Keep the id counter ahead of every id we know about so new ids never collide after a repair.

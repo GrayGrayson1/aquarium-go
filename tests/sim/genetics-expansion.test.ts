@@ -152,20 +152,23 @@ describe('catalog under the owner’s tier rule (GEN-006, GEN-007, PERF-001 A2; 
     ]);
   });
 
+  // chunk 6 (B-194, ADR-0034 decision 6): §8.5's frequencies are the genes' shares (geneticFrequency, unchanged); the
+  // odds the game shows and the tiers now count the seller's pick, so rare looks read a little commoner and common ones a
+  // little rarer (Red Veiltail 1 in 5 → 1 in 6), and 30 betta looks move a tier (364 → 341 Legendary)
   it('the §8.5 frequencies and tiers', () => {
     const at = (n: string) => {
       const e = catalogEntry(betta, n)!;
-      return [e.tier, oneInLabel(e.frequency)];
+      return [e.tier, oneInLabel(e.frequency), oneInLabel(e.geneticFrequency)];
     };
-    expect(at('Royal Blue Butterfly Halfmoon')).toEqual(['rare', '1 in 143']);
-    expect(at('Red Cambodian Veiltail')).toEqual(['very_rare', '1 in 520']);
-    expect(at('Red Metallic Veiltail')).toEqual(['very_rare', '1 in 360']);
-    expect(at('Royal Blue Metallic Butterfly Halfmoon')).toEqual(['very_rare', '1 in 9,804']);
-    expect(at('Royal Blue Metallic Marble Veiltail')).toEqual(['legendary', '1 in 62,006']);
-    expect(at('Red Veiltail')).toEqual(['common', '1 in 5']);
+    expect(at('Royal Blue Butterfly Halfmoon')).toEqual(['rare', '1 in 104', '1 in 143']);
+    expect(at('Red Cambodian Veiltail')).toEqual(['very_rare', '1 in 518', '1 in 520']);
+    expect(at('Red Metallic Veiltail')).toEqual(['very_rare', '1 in 385', '1 in 360']);
+    expect(at('Royal Blue Metallic Butterfly Halfmoon')).toEqual(['very_rare', '1 in 6,534', '1 in 9,804']);
+    expect(at('Royal Blue Metallic Marble Veiltail')).toEqual(['legendary', '1 in 42,339', '1 in 62,006']);
+    expect(at('Red Veiltail')).toEqual(['common', '1 in 6', '1 in 5']);
     const tiers = { common: 0, uncommon: 0, rare: 0, very_rare: 0, legendary: 0 };
     for (const e of morphCatalog(betta).entries) tiers[e.tier]++;
-    expect(tiers).toEqual({ common: 1, uncommon: 9, rare: 21, very_rare: 145, legendary: 364 });
+    expect(tiers).toEqual({ common: 1, uncommon: 10, rare: 25, very_rare: 163, legendary: 341 });
   });
 });
 

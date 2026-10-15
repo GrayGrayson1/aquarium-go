@@ -384,9 +384,30 @@ export function resolveMorph(species: SpeciesDefinition, genome: Genome): { visu
   for (const pb of partialBases) applyVisual(visual, pb.visual, 0.5);
   // full and half-expressed overlays blend in rule order, exactly as they always have
   for (const o of overlayWeights) applyVisual(visual, o.rule.visual, o.weight >= 1 ? 1 : 0.5);
+  return { visual, morphName: composeMorphName(species, base, overlays), rarity: rulesRarity(base, overlays), baseId: base?.id ?? null, overlayIds: overlays.map((o) => o.id) };
+}
+
+/** A look's genetic rarity: its base and overlays' rarities combined as independent chances (resolveMorph's `rarity`). */
+export function rulesRarity(base: PhenotypeRule | null, overlays: readonly PhenotypeRule[]): number {
   let keep = 1 - clamp(base?.rarity ?? 0, 0, 1);
   for (const o of overlays) keep *= 1 - clamp(o.rarity, 0, 1);
-  return { visual, morphName: composeMorphName(species, base, overlays), rarity: clamp(1 - keep, 0, 1), baseId: base?.id ?? null, overlayIds: overlays.map((o) => o.id) };
+  return clamp(1 - keep, 0, 1);
+}
+
+/**
+ * How striking a look is to a seller (0..1.25; src/sim/economy/valuation.ts `morphRarity`, which ranks a Rare find's
+ * candidates): its genetic rarity, or the summed rarities of the rules its name mentions when that is more. The morph
+ * catalog ranks looks with it too, so its odds count the seller's pick (B-194).
+ */
+export function lookRarity(species: SpeciesDefinition, geneticRarity: number, morphName: string): number {
+  let named = 0;
+  const morph = morphName.toLowerCase();
+  if (morph) {
+    for (const p of species.genetics?.phenotypes ?? []) {
+      if (p.rarity > 0 && p.name && morph.includes(p.name.toLowerCase())) named += p.rarity;
+    }
+  }
+  return clamp(Math.max(Number.isFinite(geneticRarity) ? geneticRarity : 0, named), 0, 1.25);
 }
 
 /**

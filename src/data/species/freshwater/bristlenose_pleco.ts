@@ -108,7 +108,7 @@ export const bristlenosePleco: SpeciesDefinition = {
         ],
       },
       { id: 'leu', name: 'Blue-eye leucistic', mode: 'mendelian', alleles: [{ id: 'N', name: 'Normal', dominance: 2, frequency: 0.95 }, { id: 'b', name: 'Blue-eye leucistic', dominance: 1, frequency: 0.05 }] },
-      { id: 'fins', name: 'Fin length', mode: 'codominant', alleles: [{ id: 's', name: 'Standard', dominance: 1, frequency: 0.9 }, { id: 'L', name: 'Long-fin', dominance: 1, frequency: 0.1 }], note: 'One copy gives long fins, two copies give "super long-fin".' },
+      { id: 'fins', name: 'Fin length', mode: 'codominant', alleles: [{ id: 's', name: 'Standard', dominance: 1, frequency: 0.9 }, { id: 'L', name: 'Long-fin', dominance: 1, frequency: 0.1 }], note: 'One copy gives long fins, two copies give "double long-fin".' },
     ],
     phenotypes: [
       { id: 'blue_eye_lemon', name: 'Blue-eye Lemon', layer: 'base', rarity: 0.5, when: [{ locus: 'leu', allele: 'b', count: 'hom' }], visual: { bodyColor: '#f6edc6', bodyColor2: '#ecdca6', bellyColor: '#faf4dc', finColor: '#f3e6b8', finColor2: '#f8efd0', accentColor: '#fbf6e2', eyeColor: '#4f7fb8', pattern: 'solid' } },
@@ -118,7 +118,7 @@ export const bristlenosePleco: SpeciesDefinition = {
       { id: 'albino', name: 'Albino', layer: 'base', rarity: 0.1, when: [{ locus: 'albino', allele: 'a', count: 'hom' }], visual: { bodyColor: '#f2d58a', bodyColor2: '#e6c070', bellyColor: '#f8e6b8', finColor: '#f0d890', finColor2: '#f6e6b4', accentColor: '#fbf0cc', eyeColor: '#d9536b', pattern: 'spots', patternContrast: 0.25 } },
       { id: 'brown', name: 'Brown (Wild)', layer: 'base', rarity: 0, when: [], visual: {} },
       { id: 'longfin', name: 'Long-fin', layer: 'overlay', rarity: 0.25, when: [{ locus: 'fins', allele: 'L', count: 'het' }], visual: { finType: 'pleco_longfin', finLength: 1.35 } },
-      { id: 'super_longfin', name: 'Super Long-fin', layer: 'overlay', rarity: 0.4, when: [{ locus: 'fins', allele: 'L', count: 'hom' }], visual: { finType: 'pleco_longfin', finLength: 1.6 } },
+      { id: 'super_longfin', name: 'Double Long-fin', layer: 'overlay', rarity: 0.4, when: [{ locus: 'fins', allele: 'L', count: 'hom' }], visual: { finType: 'pleco_longfin', finLength: 1.6 } },
     ],
     baseVisual: {
       bodyColor: '#5b4a3a',
@@ -141,9 +141,9 @@ export const bristlenosePleco: SpeciesDefinition = {
       gillFullness: 0,
     },
     variation: 0.2,
-    notes: 'Real domestic forms: brown/wild (mottled grey-brown with pale spots), albino (pale yellow-white, pink-red eyes), super red (deep red-orange that fades in warm water), calico (red-orange with dark patches), lemon (butter-yellow, few spots), blue-eye lemon (leucistic, blue eyes) and long-fin / super long-fin (two copies). Simplified as recessive colour genes plus a codominant fin gene. The "starlight" bristlenose is a different species.',
+    notes: 'Real domestic forms: brown/wild (mottled grey-brown with pale spots), albino (pale yellow-white, pink-red eyes), super red (deep red-orange that fades in warm water), calico (red-orange with dark patches), lemon (butter-yellow, few spots), blue-eye lemon (leucistic, blue eyes) and long-fin / double long-fin (two copies). Simplified as recessive colour genes plus a codominant fin gene. The "starlight" bristlenose is a different species.',
   },
-  visualMorphs: ['Brown (Wild)', 'Albino', 'Super Red', 'Calico', 'Lemon', 'Blue-eye Lemon', 'Long-fin', 'Super Long-fin'],
+  visualMorphs: ['Brown (Wild)', 'Albino', 'Super Red', 'Calico', 'Lemon', 'Blue-eye Lemon', 'Long-fin', 'Double Long-fin'],
 
   behaviorSet: 'algae_grazer',
   behaviorTraits: { cruiseSpeed: 0.3, burstSpeed: 5, turnRate: 2, hoverTendency: 0, schoolingTightness: 0, restOnBottom: 0.85, hitching: 0, burrowing: 0, glassSurfing: 0.05, curiosity: 0.3, nocturnal: 0.7, pickRadiusMul: 1.1 },

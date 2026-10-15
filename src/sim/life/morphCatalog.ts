@@ -12,7 +12,8 @@
  */
 import type { Genome, MorphStrain, PhenotypeRule, Potentials, Rarity, SpeciesDefinition, LocusDefinition } from '@/types';
 import { MORPH_TIER_MIN_SHARE, RARITY_TIERS } from '@/data/rarity';
-import { composeMorphName, matchRules, normalizeGenome, predictOffspringPhenotypes, ruleMatch, selectRules, type RuleMatches } from './genetics';
+import { composeMorphName, lookRarity, matchRules, normalizeGenome, predictOffspringPhenotypes, ruleMatch, rulesRarity, selectRules, type RuleMatches } from './genetics';
+import { HAREM_TRIO_CHANCE, OFFER_TIER_WEIGHTS, PICK_ROLLS, SPECIAL_OFFER_SHARE, SPECIAL_PICKED_CHANCE } from '@/data/stocking'; // B-194
 import { mulberry32, hashString } from '../rng';
 
 // ───────────────────────────── tiers ─────────────────────────────
@@ -39,8 +40,10 @@ export interface CatalogPhenotype {
   /** Base first (when any), then overlays in rule order. */
   ruleIds: string[];
   morphName: string;
-  /** Share of market stock (0..1). */
+  /** Share of the genotypes sellers roll (Hardy–Weinberg from the allele frequencies; 0..1). */
   frequency: number;
+  /** Share of market stock (0..1): `frequency` with a Rare find's pick counted (B-194, ADR-0034 decision 6). */
+  share: number;
 }
 
 /** One morph (by composed name — the name the encyclopedia and discoveries use). */
@@ -51,7 +54,11 @@ export interface CatalogEntry {
   /** Rule ids this morph shows (base first) — for recipe hints. */
   traitIds: string[];
   phenotypes: CatalogPhenotype[];
+  /** Share of market stock (0..1), the seller's pick counted: "about 1 in n market animals", and what its tier comes
+   *  from (B-194, ADR-0034 decision 6). */
   frequency: number;
+  /** The genotypes' share before the pick (what the genes alone give). */
+  geneticFrequency: number;
   tier: Rarity;
   /** Named strains this morph satisfies, primary first. */
   strains: MorphStrain[];
@@ -98,6 +105,59 @@ function locusStates(locus: LocusDefinition): { pair: [string, string]; p: numbe
       const p = ((w[i] / total) * (w[j] / total)) * (i === j ? 1 : 2);
       if (p > 0) out.push({ pair: [al[i].id, al[j].id], p });
     }
+  }
+  return out;
+}
+
+// ───────────────────────────── what sellers stock (B-194) ─────────────────────────────
+
+/**
+ * The share of a species' stocked animals that a seller hand-picked: a Rare find (or a Today-only special) of one or two
+ * animals keeps, animal by animal, the most striking of PICK_ROLLS rolls (src/sim/economy/shop.ts). Offers of three or
+ * more (shoals, colonies, a harem's trio) are never picked. From the offer tiers, the specials' estimated share and the
+ * offer sizes, all in src/data/stocking.ts (ADR-0034 decision 6).
+ */
+export function pickedShare(species: SpeciesDefinition): number {
+  const s = species.social;
+  const kind = s?.kind ?? 'solitary';
+  const minG = Math.max(1, s?.minGroup ?? 1);
+  if (kind === 'school' || kind === 'shoal' || kind === 'colony' || (kind === 'group' && minG >= 3)) return 0;
+  // animals in offers small enough to be picked, over all animals offered (shop.ts `composition`)
+  let small = 1;
+  if (kind === 'harem' && species.sexSystem === 'gonochoristic') small = (1 - HAREM_TRIO_CHANCE) / (3 * HAREM_TRIO_CHANCE + (1 - HAREM_TRIO_CHANCE));
+  const w = OFFER_TIER_WEIGHTS;
+  const rare = w.rare / (w.standard + w.breeder + w.rare);
+  const pickedOffer = (1 - SPECIAL_OFFER_SHARE) * rare + SPECIAL_OFFER_SHARE * SPECIAL_PICKED_CHANCE;
+  return pickedOffer * small;
+}
+
+/**
+ * Each phenotype's share of market stock: (1 − picked) × its genotype share + picked × its chance of being the most
+ * striking of PICK_ROLLS rolls. Looks rank by `lookRarity` (what the seller compares); a later roll replaces the kept
+ * one only when strictly more striking, so equally striking looks split their group's chance by genotype share.
+ */
+function stockShares(species: SpeciesDefinition, phenotypes: readonly CatalogPhenotype[], rulesById: ReadonlyMap<string, PhenotypeRule>, picked: number): Map<string, number> {
+  const ranked = phenotypes.map((ph) => {
+    const base = ph.baseId ? rulesById.get(ph.baseId) ?? null : null;
+    const overlays = ph.overlayIds.map((id) => rulesById.get(id)).filter((r): r is PhenotypeRule => !!r);
+    return { ph, r: Math.round(lookRarity(species, rulesRarity(base, overlays), ph.morphName) * 1e9) };
+  });
+  const total = phenotypes.reduce((s, ph) => s + ph.frequency, 0) || 1;
+  const groups = new Map<number, { ph: CatalogPhenotype; f: number }[]>();
+  for (const { ph, r } of ranked) {
+    const g = groups.get(r);
+    if (g) g.push({ ph, f: ph.frequency / total });
+    else groups.set(r, [{ ph, f: ph.frequency / total }]);
+  }
+  const out = new Map<string, number>();
+  let below = 0;
+  for (const r of [...groups.keys()].sort((a, b) => a - b)) {
+    const g = groups.get(r)!;
+    const f = g.reduce((s, x) => s + x.f, 0);
+    const top = Math.min(1, below + f);
+    const best = top ** PICK_ROLLS - below ** PICK_ROLLS; // the most striking of the rolls is in this group
+    for (const x of g) out.set(x.ph.key, (1 - picked) * x.f + picked * (f > 0 ? (best * x.f) / f : 0));
+    below = top;
   }
   return out;
 }
@@ -170,6 +230,7 @@ function buildCatalog(species: SpeciesDefinition): MorphCatalog {
       ruleIds: m.base ? [m.base.id, ...overlayIds] : overlayIds,
       morphName: composeMorphName(species, m.base, m.overlays),
       frequency: weight,
+      share: weight,
     });
   };
 
@@ -204,12 +265,15 @@ function buildCatalog(species: SpeciesDefinition): MorphCatalog {
   }
 
   const phenotypes = [...records.values()];
+  // B-194: what sellers really stock (a Rare find keeps the most striking of several rolls)
+  const shares = stockShares(species, phenotypes, rulesById, pickedShare(species));
+  for (const ph of phenotypes) ph.share = shares.get(ph.key) ?? ph.frequency;
   // Named-strain tiers: explicit, or from how often stock shows the combination.
   const strains = species.genetics.strains ?? [];
   const strainTiers = new Map<string, Rarity>();
   for (const s of strains) {
     let share = 0;
-    for (const ph of phenotypes) if (strainMatches(s, new Set(ph.ruleIds))) share += ph.frequency;
+    for (const ph of phenotypes) if (strainMatches(s, new Set(ph.ruleIds))) share += ph.share; // B-194: market stock, the pick counted
     strainTiers.set(s.id, s.tier ?? tierForShare(share));
   }
 
@@ -217,16 +281,17 @@ function buildCatalog(species: SpeciesDefinition): MorphCatalog {
   const byName = new Map<string, CatalogEntry>();
   const baseOrder = new Map<string | null, number>();
   species.genetics.phenotypes.filter((r) => r.layer === 'base').forEach((r, i) => baseOrder.set(r.id, i));
-  for (const ph of [...phenotypes].sort((a, b) => b.frequency - a.frequency)) {
+  for (const ph of [...phenotypes].sort((a, b) => b.share - a.share)) {
     const cur = byName.get(ph.morphName);
     if (cur) {
       cur.phenotypes.push(ph);
-      cur.frequency += ph.frequency;
+      cur.frequency += ph.share;
+      cur.geneticFrequency += ph.frequency;
       for (const id of ph.ruleIds) if (!cur.traitIds.includes(id)) cur.traitIds.push(id);
       continue;
     }
     const base = ph.baseId ? rulesById.get(ph.baseId) : undefined;
-    byName.set(ph.morphName, { morphName: ph.morphName, group: base?.name ?? 'Unnamed', traitIds: [...ph.ruleIds], phenotypes: [ph], frequency: ph.frequency, tier: 'common', strains: [] });
+    byName.set(ph.morphName, { morphName: ph.morphName, group: base?.name ?? 'Unnamed', traitIds: [...ph.ruleIds], phenotypes: [ph], frequency: ph.share, geneticFrequency: ph.frequency, tier: 'common', strains: [] });
   }
   const groups = new Map<string, CatalogGroup>();
   for (const e of byName.values()) {

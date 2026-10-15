@@ -41,7 +41,9 @@ describe('morph catalog', () => {
     }
   });
 
-  it('frequencies agree with what market stock rolls (seeded sample, betta)', () => {
+  // chunk 6 (B-194): plain rolls give the genes' shares (geneticFrequency); the entry's frequency counts the seller's pick
+  // on top (checked below, "a look's share of market stock counts the seller's pick")
+  it('genetic frequencies agree with what plain rolls give (seeded sample, betta)', () => {
     const cat = morphCatalog(betta);
     const rng = mulberry32(99);
     const seen = new Map<string, number>();
@@ -50,8 +52,8 @@ describe('morph catalog', () => {
       const n = resolveMorph(betta, rollGenome(betta, rng)).morphName;
       seen.set(n, (seen.get(n) ?? 0) + 1);
     }
-    for (const e of [...cat.entries].sort((a, b) => b.frequency - a.frequency).slice(0, 6)) {
-      expect(Math.abs((seen.get(e.morphName) ?? 0) / N - e.frequency), e.morphName).toBeLessThan(0.015);
+    for (const e of [...cat.entries].sort((a, b) => b.geneticFrequency - a.geneticFrequency).slice(0, 6)) {
+      expect(Math.abs((seen.get(e.morphName) ?? 0) / N - e.geneticFrequency), e.morphName).toBeLessThan(0.015);
     }
   });
 
