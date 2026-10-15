@@ -195,10 +195,18 @@ test.describe('Notifications (desktop 1440×900)', () => {
     await aq(page, 'save');
     const fresh = await context.newPage();
     await stubNotifications(fresh, 'granted');
+    // the loading card can come and go before a poll sees it (WebKit opens a small save that fast): record that it
+    // appeared, from the first moment of the page
+    await fresh.addInitScript(() => {
+      const w = window as unknown as { __sawBootCard?: boolean };
+      new MutationObserver(() => {
+        if (document.querySelector('[data-testid="boot-deeplink"]')) w.__sawBootCard = true;
+      }).observe(document, { childList: true, subtree: true });
+    });
     const url = devUrl(`/?notification=1#/shop/fish/${offerId}`);
     await fresh.goto(url, { waitUntil: 'domcontentloaded' });
-    await expect(tid(fresh, 'boot-deeplink')).toBeVisible();
     await fresh.waitForFunction(() => !!(window as unknown as { __AQ?: { ready?: boolean } }).__AQ?.ready, null, { timeout: 30_000 });
+    expect(await fresh.evaluate(() => !!(window as unknown as { __sawBootCard?: boolean }).__sawBootCard), 'the loading card named the screen').toBe(true);
     await expect(tid(fresh, 'offer-from-notification')).toBeVisible();
     expect(await fresh.evaluate(() => location.search)).not.toContain('notification');
     await fresh.close();

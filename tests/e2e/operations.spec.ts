@@ -37,7 +37,7 @@ const hash = (page: Page) => page.evaluate(() => location.hash);
 const go = (page: Page, h: string) => page.evaluate((x) => (location.hash = x), h);
 
 test.describe('NAV-020: Operations in the dock, Settings on the gear', () => {
-  test('the dock items, Operations right after Build, no dock-settings; the gear opens and closes Settings', async ({ page }) => {
+  test('the dock items, Operations right after Build, no dock-settings; the gear opens and closes Settings', async ({ page, browserName }) => {
     await openApp(page);
     await quickGame(page, 'betta');
     const ids = await page.locator('nav.ag-dock .ag-dock__item[data-testid^="dock-"]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
@@ -47,7 +47,12 @@ test.describe('NAV-020: Operations in the dock, Settings on the gear', () => {
     await expect(tid(page, 'dock-settings')).toHaveCount(0);
     const gear = tid(page, 'hud-settings');
     await expect(gear).toHaveAttribute('aria-label', 'Settings');
-    await gear.click();
+    // WebKit doesn't focus a button on click (Safari's own behaviour), so there is no focus to give back after a mouse
+    // open: there the gear is opened from the keyboard, the case focus return is for (a11y.spec.ts does the same)
+    if (browserName === 'webkit') {
+      await gear.focus();
+      await page.keyboard.press('Enter');
+    } else await gear.click();
     await expect(tid(page, 'panel-settings')).toBeVisible();
     await expect(gear).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('Escape');

@@ -165,8 +165,16 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await expect(tid(page, 'dock-shows').locator('.ag-dock__lock')).toHaveCount(0);
   });
 
-  test('Copy link copies the offer’s share link, never with ?dev=1 (§6.6, NAV-015)', async ({ page, context, baseURL }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  test('Copy link copies the offer’s share link, never with ?dev=1 (§6.6, NAV-015)', async ({ page, context, baseURL, browserName }) => {
+    // WebKit grants no clipboard permissions (Playwright: "Unknown permission: clipboard-write"): there the test records
+    // what the app writes with navigator.clipboard.writeText, the call it makes in every browser
+    const webkit = browserName === 'webkit';
+    if (webkit)
+      await page.addInitScript(() => {
+        const w = window as unknown as { __copied?: string };
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (t: string) => ((w.__copied = t), Promise.resolve()), readText: () => Promise.resolve(w.__copied ?? '') } });
+      });
+    else await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const id = await offerGame(page);
     expect(page.url()).toContain('dev=1');
     await goHash(page, `#/shop/fish/${id}`);
