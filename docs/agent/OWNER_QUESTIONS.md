@@ -28,6 +28,7 @@ new group, and record them the same way.
 | (chunk 5) | Chunk 5's copy the design leaves unworded, asked once as ADR-0026 decision 9 says | 4 questions: **answered 2026-10-14 (ADR-0032)** |
 | (chunk 5 review) | The review's copy; the salt mixer's day (batches grow with the reservoir, the 60 % rule kept); the Water room warnings and their reserve-size wording | 5 questions in 3 rounds: **answered 2026-10-14 (ADR-0033)** |
 | (chunk 6) | Chunk 6's copy and data the designs leave unworded (Social, B-194, B-202, What's new in 0.5), asked once before building | 8 questions in 2 rounds: **answered 2026-10-14 (ADR-0034)** |
+| (chunk 6, second round) | The accessibility route, Render's build command, S3-D's copy (DES-013) | 4 questions: **answered 2026-10-15 (ADR-0035)** |
 
 ## A. Release and standing decisions
 
