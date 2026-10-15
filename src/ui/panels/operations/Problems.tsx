@@ -202,7 +202,8 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
 function decidedWhat(g: GameState, lineId: string): string {
   const at = g.automation?.lineWait?.[lineId];
   const line = findLine(g, lineId);
-  const added = at === undefined || !line ? undefined : line.tanks.quarantine.map((id) => g.tanks[id]).find((t) => t && Math.abs(t.createdHour - at) <= 1);
+  // a quarantine tank bought for this pause (Add a quarantine tank): newer than the line, and bought when it was decided
+  const added = at === undefined || !line ? undefined : line.tanks.quarantine.map((id) => g.tanks[id]).find((t) => t && t.createdHour > line.createdHour + 1e-9 && Math.abs(t.createdHour - at) <= 1);
   return added ? `${added.name} added` : 'you chose to wait';
 }
 

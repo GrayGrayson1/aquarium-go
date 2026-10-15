@@ -44,6 +44,8 @@ async function setUpLine(page: Page): Promise<string> {
   await tid(page, 'production-new-next').click();
   await expect(tid(page, 'production-new-step-3')).toHaveAttribute('aria-current', 'step');
   await expect(tid(page, 'production-new-name')).toHaveValue('Betta line');
+  await expect(tid(page, 'production-new-breed-for')).toBeVisible(); // chunk 6 (DES-013): "Breed for" and Back (§14)
+  await expect(tid(page, 'production-new-back')).toBeVisible();
   await tid(page, 'production-start-line').click();
   await expect.poll(async () => (await lastToast(page))?.text).toBe('Betta line started');
   const id = await page.evaluate(() => (window as unknown as AQ).__AQ.game().production.lines[0].id as string);
