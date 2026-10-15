@@ -398,12 +398,12 @@
         "scripts/agent/capture-evidence.mjs (--review)"
       ],
       "evidence": [],
-      "status": "GREEN",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§17",
         "§16"
       ],
-      "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it. Chunk 5 intake (2026-10-14, INTAKE §12): where DESIGN-S3D changes a 0.5 surface (the desktop dock and top bar, the More sheet, the tank card's Automation section, Settings › Notifications and Production), it is judged against DESIGN-S3D with DES-014's exceptions; A2's \"More top ≈ 48 %\" becomes 334 px (C-58). Chunk 6 (2026-10-15): met: §17 geometry measured on its screens within ± 2 px (design-geometry.spec, Chromium and WebKit; toasts and the buy bar's price brought to §17); the 0.5 surfaces captured at both sizes with zero console errors and compared with DESIGN-0.5/screens by a fresh reviewer (PLAN.md, chunk 6)."
+      "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it. Chunk 5 intake (2026-10-14, INTAKE §12): where DESIGN-S3D changes a 0.5 surface (the desktop dock and top bar, the More sheet, the tank card's Automation section, Settings › Notifications and Production), it is judged against DESIGN-S3D with DES-014's exceptions; A2's \"More top ≈ 48 %\" becomes 334 px (C-58). Chunk 6 (2026-10-15): §17 geometry measured on its screens within ± 2 px (design-geometry.spec, Chromium and WebKit; toasts and the buy bar's price brought to §17); the 0.5 surfaces captured at both sizes with zero console errors and compared with DESIGN-0.5/screens by a fresh reviewer (PLAN.md, chunk 6). The fresh browser/QA review (2026-10-15) was RED: the phone buy bar floating mid-sheet, one-line offer titles, phone Clubs overflowing, and smaller style gaps; fixed in chunk 6, a second review to come. The fresh code review (2026-10-15) noted the sticky footer row unmeasured: design-geometry.spec now measures the phone buy bar's padding-bottom (84 + the safe area)."
     },
     {
       "id": "DES-012",
@@ -422,13 +422,13 @@
         "new: tests/e2e/dock-width.spec.ts"
       ],
       "evidence": [],
-      "status": "GREEN",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§5.2",
         "§5.4",
         "§5.6"
       ],
-      "note": "Needs owner or reviewer confirmation: the viewport list is derived from the design breakpoints (MOBILE_QUERY at 720px, the dock rules at 981-1180px, 1400-1519px and from 1520px) rather than given by the design; a reviewer may extend it. Chunk 6 (2026-10-15): met: viewports.spec, every screen at 390×844, 844×390, 720, 721, 1180, 1400, 1520 and 1440×900 in Chromium and WebKit: no horizontal scroll, sheets and their close buttons on screen, the tab bar exactly where MOBILE_QUERY matches. It found and fixed Operations' header off screen at 721–1000 px portrait."
+      "note": "Needs owner or reviewer confirmation: the viewport list is derived from the design breakpoints (MOBILE_QUERY at 720px, the dock rules at 981-1180px, 1400-1519px and from 1520px) rather than given by the design; a reviewer may extend it. Chunk 6 (2026-10-15): viewports.spec, every screen at 390×844, 844×390, 720, 721, 1180, 1400, 1520 and 1440×900 in Chromium and WebKit: no horizontal scroll, sheets and their close buttons on screen, the tab bar exactly where MOBILE_QUERY matches. It found and fixed Operations' header off screen at 721–1000 px portrait. The browser/QA review found phone Social › Clubs running off the screen (a primary action unreachable), which viewports.spec missed (it checks sheets, not their contents); fixed in chunk 6, a second review to come."
     },
     {
       "id": "DES-013",
@@ -3979,11 +3979,11 @@
         "new: tests/e2e/a11y-automation.spec.ts (proposed)"
       ],
       "evidence": [],
-      "status": "GREEN",
+      "status": "IN_PROGRESS",
       "designSections": [
         "§18"
       ],
-      "note": "Owner (ADR-0024 decision 4, 2026-10-11, A4): the target is WCAG 2.2 AA for text and controls, with solid panels under the high-contrast setting (B-178), in chunk 6. Chunk 6 (2026-10-15): met: WCAG 2.2 AA through High contrast (ADR-0035 decision 1, G174): the audit's defects fixed in both modes, High contrast solid (ui-contrast.test, a11y.spec in Chromium and WebKit); normal mode over a bright room is recorded in KNOWN_LIMITATIONS."
+      "note": "Owner (ADR-0024 decision 4, 2026-10-11, A4): the target is WCAG 2.2 AA for text and controls, with solid panels under the high-contrast setting (B-178), in chunk 6. Chunk 6 (2026-10-15): met: WCAG 2.2 AA through High contrast (ADR-0035 decision 1, G174): the audit's defects fixed in both modes, High contrast solid (ui-contrast.test, a11y.spec in Chromium and WebKit); normal mode over a bright room is recorded in KNOWN_LIMITATIONS. The fresh code review (2026-10-15) found A3 unmet: no VoiceOver pass is recorded (an agent can't run VoiceOver), and A1's keyboard pass covers a sample of the controls (the dock, the Market tabs, a Social dialog, the way to High contrast). Back to IN_PROGRESS until the owner's VoiceOver pass in the 0.5.3 play-through, or an owner decision that narrows it (OWNER_QUESTIONS F1)."
     },
     {
       "id": "ACC-006",
@@ -4174,7 +4174,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "requirements-2 M3: the old A1-A2 (inherited-key ids, non-embedded photos) are PERSIST-011 and passed in S0 (6347c5d, d98731d); this entry now carries only the S4 remainder, so it can't close GREEN with that work dropped. Needs owner or reviewer confirmation: the list size and time bound are proposals; the S4 contract fixes them (HARNESS-030). Chunk 6 (2026-10-15): met: core-crafted-saves-limits.test.ts: oversized lists, unreadable numbers, unknown table values, prototype-free tables, own-key copies, a second repair finds nothing, a NaN health never a death (B-004, B-010, B-012, B-122, B-198)."
+      "note": "requirements-2 M3: the old A1-A2 (inherited-key ids, non-embedded photos) are PERSIST-011 and passed in S0 (6347c5d, d98731d); this entry now carries only the S4 remainder, so it can't close GREEN with that work dropped. Needs owner or reviewer confirmation: the list size and time bound are proposals; the S4 contract fixes them (HARNESS-030). Chunk 6 (2026-10-15): met: core-crafted-saves-limits.test.ts: oversized lists, unreadable numbers, unknown table values, prototype-free tables, own-key copies, a second repair finds nothing, a NaN health never a death (B-004, B-010, B-012, B-122, B-198). The fresh code review (2026-10-15) found an unknown staff role kept (payday threw on it) and negative salt clamped without a note, and A2's ages and hours not handled: fixed in chunk 6 (unknown roles removed and unknown traits reset with a note, the staff tables prototype-free, negative salt noted, a negative clock and a birth after the clock repaired with a note; core-crafted-saves-limits A2, A3 and A5)."
     },
     {
       "id": "PERSIST-005",
@@ -5469,7 +5469,7 @@
       "evidence": [],
       "status": "GREEN",
       "designSections": [],
-      "note": "requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only. Chunk 6 (2026-10-15): met: core-mutation-boundary.test.ts (the store is the only writer, the frame loop never writes, Social only through the service, notifications, clipboard and share only through src/platform) and core-architecture-boundaries; docs/agent/TRUST_BOUNDARY.md lists the state changes a server would authorise."
+      "note": "requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only. Chunk 6 (2026-10-15): met: core-mutation-boundary.test.ts (the store is the only writer, the frame loop never writes, Social only through the service, notifications, clipboard and share only through src/platform) and core-architecture-boundaries; docs/agent/TRUST_BOUNDARY.md lists the state changes a server would authorise. The fresh code review (2026-10-15) found TRUST_BOUNDARY.md missing convertWaterClass, renameTank, setTankPurpose and setBackdrop: added, with every other action the UI calls through the store (installEquipment, feedTank, setLighting, the holds, interactions, the tutorial's rewarded steps), and core-mutation-boundary now fails if one is missing."
     },
     {
       "id": "REL-017",
@@ -5486,9 +5486,9 @@
         "scripts/agent/requirements-audit.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "designSections": [],
-      "note": "requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only. requirements-2 m3: docs/agent/BACKLOG.md exists (written in 1a74863), so the backlog part can be checked."
+      "note": "requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only. requirements-2 m3: docs/agent/BACKLOG.md exists (written in 1a74863), so the backlog part can be checked. Chunk 6 (2026-10-15): docs/agent/DEBT_INVENTORY.md lists every open or partly fixed BACKLOG row, the three DEFERRED requirements, every KNOWN_LIMITATIONS entry and the core-owned workarounds (the architecture lock's ten baseline imports). The fresh reviewer's verdict on the first draft was YELLOW (that category and B-190 missing, B-167 and B-161 understated; the debt otherwise small enough): fixed in the document; the reviewer's confirmation is recorded in PLAN.md (chunk 6)."
     },
     {
       "id": "REL-018",

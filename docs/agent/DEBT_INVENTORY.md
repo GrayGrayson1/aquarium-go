@@ -1,9 +1,10 @@
 # Debt inventory: what multiplayer would magnify (REL-017)
 
 Written in chunk 6 (2026-10-15) for REL-017, after chunk 6's backlog fixes. It lists every open or partly fixed item in
-`docs/agent/BACKLOG.md`, every DEFERRED requirement in `docs/agent/REQUIREMENTS.json` and every entry in
-`docs/KNOWN_LIMITATIONS.md`, each with what a multiplayer version (shared markets, clubs, trades, leaderboards: REL-002,
-for later and with the owner) would do to it. `TRUST_BOUNDARY.md` lists the state changes a server would authorise.
+`docs/agent/BACKLOG.md`, every DEFERRED requirement in `docs/agent/REQUIREMENTS.json`, every entry in
+`docs/KNOWN_LIMITATIONS.md` and the core-owned workarounds (the cross-layer imports the architecture lock still allows),
+each with what a multiplayer version (shared markets, clubs, trades, leaderboards: REL-002, for later and with the owner)
+would do to it. `TRUST_BOUNDARY.md` lists the state changes a server would authorise.
 
 **Impact words.** *None*: local to one player's device or presentation. *Server rule*: fine alone, but a server would
 have to own or re-check it (one player could otherwise change what others see). *Magnified*: a flaw that matters more
@@ -12,6 +13,10 @@ with other players (an exploit, an imbalance others would feel, or data that gro
 ## Summary
 
 Multiplayer would magnify few items, and each is small:
+- **Write tools in every player's build (B-190, decided):** adding `?dev=1` to the address turns on the developer
+  tools in the production build, `window.__AQ`'s `setGame`, `mutate` and save import among them (without it the hook is
+  read-only). Alone it only lets a player edit their own game; with shared markets or leaderboards it is the largest
+  magnifier, so a server would trust nothing the device reports.
 - **Economy rules a player could farm against others:** B-124 (counter-offers can push a buyer to twice their
   ceiling), B-162 (admission revenue keeps rising with price), B-130 (no test hunts value-creating loops). Today they only
   shorten one player's game; with shared leaderboards or markets they would decide rankings.
@@ -22,7 +27,8 @@ Multiplayer would magnify few items, and each is small:
 - **Saves grow:** sold animals stay in the save, and its budget leaves out listing photos when full. A server would keep
   this data instead.
 Everything else is presentation, local performance, test tooling or the retired harness. The independent reviewer's
-verdict on whether this is small enough is recorded in PLAN.md (chunk 6).
+verdict on whether this is small enough is recorded in PLAN.md (chunk 6): YELLOW on the first draft (the core-owned
+workarounds and B-190 missing, B-167 and B-161 understated), fixed here.
 
 ## Open backlog items
 
@@ -39,7 +45,7 @@ verdict on whether this is small enough is recorded in PLAN.md (chunk 6).
 | B-154 qa:shots writes into tracked screenshots | open | None (QA tooling). |
 | B-155 stale facts in pre-harness docs | open | None (documentation). |
 | B-156 gate globs miss some files | open | None (harness-era gate). |
-| B-161 tests that check less than their names say | open | None directly; weak tests make server-side rules harder to trust later. |
+| B-161 tests that check less than their names say | open | **Weighs more** once a server enforces the rules: a server-side check is only as trustworthy as its tests, and these overstate what is checked (the chunk 6 review found another, core-crafted-saves-limits' listings case, fixed). |
 | B-166 the test-id contract isn't enforced | open | None (testing). Chunk 6's copy test checks S3-D's ids against TEST_IDS.md. |
 | B-120 S0's architecture guard tests | partly fixed | None; `core-architecture-boundaries` and `core-mutation-boundary` now cover the layers and the store. |
 | B-172 source-text CSS tests | partly fixed | None (testing). |
@@ -61,11 +67,13 @@ verdict on whether this is small enough is recorded in PLAN.md (chunk 6).
 | B-163 closing the welcome-back card overrides a pause | open | None (local). |
 | B-165 settings accept any JSON | open | None (settings stay on the device). |
 | B-130 no test hunts value-creating economy loops | partly fixed | **Magnified**: such loops become exploits between players. |
-| B-167 the global compatibility cache | open | None (presentation of verdicts); a server would compute its own. |
+| B-167 the global compatibility cache | open | Server rule: line set-up asks the compatibility engine, and its answers near a threshold depend on what was asked before; a server would compute its own, uncached. |
 | B-181 the portrait cache never evicts | open | None (local memory). |
 | B-182 per-frame allocations | open | None (local performance). |
 | B-183 facility InstancedMeshes never disposed | open | None (local memory). |
 | B-184 TankAI creates its world during render | open | None (presentation). |
+| B-190 developer write tools in production builds behind `?dev=1` (`window.__AQ` is read-only without it) | decided (ADR-0005 decision 2) | **Magnified**: see the summary. |
+| (no row) a save's unknown staff role threw at payday | fixed in chunk 6 (the review's blocker 2) | Server rule: a server validates every value from a client against its own tables, as `repairState` now does. |
 
 ## Deferred requirements
 
@@ -121,3 +129,16 @@ verdict on whether this is small enough is recorded in PLAN.md (chunk 6).
 | Browser only; saves in the browser | Server rule: a server copy would hold the save. |
 | First tap wakes the faded HUD; sideways phones show one toast at a time; iOS fixes by code trace; High contrast for bright rooms | None. |
 | The AI imports equipmentLayout from the render module | None (presentation layers). |
+
+## Core-owned workarounds
+
+The ten cross-layer imports `tests/sim/core-architecture-boundaries.test.ts` still allows (its BASELINE, shrink-only):
+
+| Import | What it brings in | Impact |
+|---|---|---|
+| `src/sim/newGame.ts → persistence` | `SCHEMA_VERSION` (a new world is stamped with the save format) | Server rule, small: the simulation would stamp the server's format; the constant would move to a shared module. |
+| `src/ui/screens/onboarding.ts → dev`, `src/ui/panels/dev/fixtures.ts → dev`, `src/ui/dev/DevPanel.tsx → dev` | the title screen's showcase world, the dev panel's fixtures and commands | Server rule through B-190: the dev layer ships in the player's build. The showcase is a backdrop (no game state of the player's). |
+| `src/game/StaleTabBanner.tsx → ui` | the load-into-game helper and a button | None (one device's tabs). |
+| `src/state/settings.ts → render` | the GPU tier for the default quality | None (a device setting). |
+| `src/ai/TankAI.tsx → render`, `src/ai/core/motionScan.ts → render` | equipment positions and the pose filter | None (presentation; the simulation is separate). |
+| `src/render/facility/RoomTankDots.tsx → ui`, `src/render/interaction/TankInteraction.tsx → ui` | the attention dots' words and a caution toast | None (presentation). |

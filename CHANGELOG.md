@@ -26,8 +26,8 @@ additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if 
 - **Sturdier saves.** A damaged or hand-edited save is repaired on loading (impossible numbers, endless lists,
   unknown names) instead of breaking the game.
 - **Smaller fixes.**
-  - The bristlenose fin look "Long-fin" is now "Double Long-fin", so no two looks share a name, and a morph's rarity
-    follows how often shops stock it.
+  - The bristlenose fin look "Super Long-fin" (two copies of Long-fin) is now "Double Long-fin", so no two looks share
+    a name, and a morph's rarity follows how often shops stock it.
   - The Water room warns when fresh water would run short at the salt mixer's checks in the week ahead.
   - Withdrawing a show entry no longer counts toward the "Enter a show" quest.
   - Settings › About lists what's new in 0.5.

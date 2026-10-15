@@ -8,23 +8,26 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
 ## Where things stand
 
 - `next` holds chunks 1 to 6, all tested (PLAN.md, chunk 6: what was built, the requirements met, the measurements).
-  Every owner question is answered (ADR-0024 to ADR-0035); `docs/agent/OWNER_QUESTIONS.md` has nothing open.
+  Owner questions up to group E are answered (ADR-0024 to ADR-0035); group F (three from chunk 6's review: the
+  VoiceOver pass, a quest's wording, pinning tables to SCHEMA_VERSION) is open in `docs/agent/OWNER_QUESTIONS.md`.
 - **0.5.2 is the release on `main`** (`e527e10`, Pages and Render, 2026-10-15): chunks 4 and 5 and chunk 6 up to
   `86de7c3`, released mid-chunk at the owner's request so they could play it. Chunk 6's later work (B-180, the S3-D copy
   test, the viewport and geometry specs, the 721 px Operations fix, toasts and the buy bar at §17, the long-run and
   boundary tests, the docs) is on `next` only.
-- Left for chunk 6: the fresh reviewer's pass on `cf9f5bc..HEAD` (and its confirmation pass), two full passes in a row
-  (REL-013), the owner's play-through on a phone and a desktop, then 0.5.3 with the owner's go-ahead. REQUIREMENTS.json
-  has REL-004 to REL-007, REL-011, REL-013, REL-014 and REL-017 waiting on those (REL-017's inventory is written,
-  `docs/agent/DEBT_INVENTORY.md`; its reviewer verdict goes in PLAN.md).
+- Chunk 6's fresh code review (5 blockers, 14 notes, REL-017 YELLOW) and browser/QA review (RED) are fixed
+  (`e23b8a2`, `bba00ab`; PLAN.md, chunk 6, "Reviewed"). Left: both reviewers' confirmation passes, two full passes in a row
+  (REL-013), the owner's play-through on a phone and a desktop (with VoiceOver for ACC-005, F1), then 0.5.3 with the
+  owner's go-ahead. REQUIREMENTS.json has DES-011, DES-012, ACC-005, REL-017, REL-004 to REL-007, REL-011, REL-013
+  and REL-014 waiting on those.
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
    `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's brief and record).
-2. **Review:** one fresh reviewer on Opus 5.5 at max effort (Agent tool `model: "opus"`, `effort: "max"`; never Fable)
-   reads chunk 6's brief and `git diff cf9f5bc..HEAD`, not a summary; fix its blockers; a confirmation pass with
-   SendMessage. Ask it for REL-017's verdict on `docs/agent/DEBT_INVENTORY.md` too.
+2. **Review:** done (a code reviewer and a browser/QA reviewer, Opus 5.5 at max effort; never Fable). If their
+   confirmation passes aren't recorded in PLAN.md, start fresh reviewers on `git diff db25042..HEAD` with the first
+   reports' findings (PLAN.md lists them), not a summary of the fixes. The QA reviewer needs new captures of the
+   screens it named (phone and desktop).
 3. **Two full passes in a row** of the four checks on the final commit (both e2e browsers; retries stay 0); record
    them in PLAN.md and set REL-004 to REL-007, REL-011, REL-013, REL-014 GREEN.
 4. **The owner plays it**, then the release: bump to 0.5.3, the CHANGELOG entry (chunk 6's later work), merge `next`

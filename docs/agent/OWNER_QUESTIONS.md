@@ -13,8 +13,8 @@ After each group, record the answers **verbatim** (the question as asked, the op
 ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
-Groups D and E are answered (ADR-0028, ADR-0029). **Every question here is answered** (2026-10-13); add new ones as a
-new group, and record them the same way.
+Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is answered (2026-10-13); **group F is open**
+(2026-10-15). Add new ones as a new group, and record them the same way.
 
 | Group | Unblocks | Questions |
 |---|---|---|
@@ -29,6 +29,7 @@ new group, and record them the same way.
 | (chunk 5 review) | The review's copy; the salt mixer's day (batches grow with the reservoir, the 60 % rule kept); the Water room warnings and their reserve-size wording | 5 questions in 3 rounds: **answered 2026-10-14 (ADR-0033)** |
 | (chunk 6) | Chunk 6's copy and data the designs leave unworded (Social, B-194, B-202, What's new in 0.5), asked once before building | 8 questions in 2 rounds: **answered 2026-10-14 (ADR-0034)** |
 | (chunk 6, second round) | The accessibility route, Render's build command, S3-D's copy (DES-013) | 4 questions: **answered 2026-10-15 (ADR-0035)** |
+| F (chunk 6 review) | What chunk 6's fresh code review left to the owner (block nothing in 0.5.3) | F1–F3: **open** (2026-10-15) |
 
 ## A. Release and standing decisions
 
@@ -149,3 +150,13 @@ asking; the options below are the agent's proposals.
 
 Harness-era owner rows (B-132, B-133, B-137) were about the retired harness's gates; propose closing them as "no
 action" (ADR-0018) in the same round as E. → **Answered (ADR-0029): closed as "no action".**
+
+## F. Chunk 6's fresh code review (open)
+
+Raised by the chunk 6 reviewer on 2026-10-15. None blocks 0.5.3; ask them with the owner's play-through.
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| F1 | ACC-005 asks for a VoiceOver pass (toasts, Link copied, switch states, form errors). An agent can't run VoiceOver. Who closes it? | **The owner turns on VoiceOver (Cmd-F5) during the 0.5.3 play-through and says what it reads**; the agent records it. · Narrow ACC-005 to the keyboard pass and the roles the tests check (tablist, radiogroup, role=alert, live toasts). | ACC-005; the review's blocker 4 |
+| F2 | The quest "Best foot forward" reads "Enter a show. A healthy, settled adult that trusts you shows best." but since B-175 completes on judging day (a withdrawn entry never counts). New wording? | **"Enter a show and see it judged. A healthy, settled adult that trusts you shows best."** · Keep it. · Different wording. | B-175 (`src/data/quests.ts`); the review's notes |
+| F3 | A save's unknown water class, show tier or buyer archetype is now reset or removed on load. If a later build adds one without bumping SCHEMA_VERSION, an older build opened after a rollback would convert those tanks and delete those shows (keeping their fees). Pin these tables? | **Pin them: adding a water class, show tier or buyer type bumps SCHEMA_VERSION, as species and tank sizes do (ADR-0016), checked by core-save-forward-safety.** · Leave it (old builds are best-effort, ADR-0005). | migrations.ts; the review's notes |
