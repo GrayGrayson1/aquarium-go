@@ -76,7 +76,7 @@ test.describe('phone 390×844 (touch)', () => {
     expect(await page.evaluate(() => location.hash)).toBe('#/settings');
   });
 
-  test('Settings › Notifications has no Save now footer, so four of its six categories show before scrolling (ADR-0036)', async ({ page }) => {
+  test('Settings › Notifications has no Save now footer, so with no notifications four of its six categories show before scrolling (ADR-0036)', async ({ page }) => {
     // the status card's height depends on the browser's notification state: pin it to an iPhone Safari tab's (none)
     await page.addInitScript(() => void delete (window as { Notification?: unknown }).Notification);
     await phoneGame(page);

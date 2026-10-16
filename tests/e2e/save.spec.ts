@@ -86,8 +86,8 @@ test.describe('save / load / settings', () => {
       await expect(tid(page, 'settings-save'), t).toHaveCount(on ? 1 : 0);
       await expect(foot, t).toHaveCount(on ? 1 : 0);
     }
-    // focus on Save now moves to the new tab as the footer goes, after a click (WebKit doesn't focus a clicked tab) or
-    // a link (Back and Forward), rather than falling to the page
+    // focus on Save now moves to the new tab as the footer goes after a link (Back and Forward), rather than falling to
+    // the page; a clicked tab takes focus itself in Chromium and WebKit (the click step checks that stays so)
     await tid(page, 'settings-save').focus();
     await tid(page, 'settings-tab-display').click();
     await expect(tid(page, 'settings-tab-display')).toBeFocused();

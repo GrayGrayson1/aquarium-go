@@ -517,8 +517,8 @@ export function SettingsPanel() {
   const inGame = useGame((s) => !!s.game && !s.game.isShowcase);
   const [tab, setTab] = useState<Tab>('general');
   const wantTab = useShell((s) => s.settingsTab);
-  /** Switching to a tab without the footer while Save now has focus (WebKit doesn't focus a clicked tab; Back and
-   *  Forward change the tab too): focus moves to that tab instead of falling to the page as the footer goes. */
+  /** A link (Back and Forward) switching to a tab without the footer while Save now has focus: focus moves to that tab
+   *  instead of falling to the page as the footer goes. (A clicked tab takes focus itself.) */
   const showTab = (t: Tab) => {
     if (!SAVE_FOOTER_TABS.includes(t) && document.activeElement?.closest('[data-testid="panel-settings"] .ag-sheet__foot')) {
       document.querySelector<HTMLElement>(`[data-testid="settings-tab-${t}"]`)?.focus();

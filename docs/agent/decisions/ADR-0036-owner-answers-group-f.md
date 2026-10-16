@@ -34,8 +34,8 @@ chat, after 0.5.3 shipped:
    at v2; v1 had no pin) and fails when one is added or removed without the bump. PERSIST-003 gains A7.
 3. **F4:** the "Save now" footer shows on Settings' General and Saves tabs only; Play & access, Notifications and About
    have none. Saves keeps its own save buttons too. Moving to a tab without the footer while Save now has focus (a
-   click in a browser that doesn't focus a clicked tab, or Back and Forward) moves focus to that tab, not to the page
-   (the fresh review's note).
+   link, as with Back and Forward) moves focus to that tab, not to the page (the fresh review's note; a clicked tab
+   takes focus itself).
 
 **Found while building decision 3 (and in its fresh review).** The recommended option's description in
 OWNER_QUESTIONS said Notifications, Play & access and About would then "show their whole list", and the question and the
@@ -52,7 +52,7 @@ scrolling, by the browser's notification state (it sets the status card's height
 | allowed | 3 of 6 | 2 of 6 |
 
 Play & access runs to 959 px and About to 1,194 px, so both still scroll. The owner is told this when the change is
-reported. `tests/e2e/mobile-sheets.spec.ts` checks the first row (no notifications, 4 of 6, and the tab's end clearing
+reported. `tests/e2e/mobile-sheets.spec.ts` checks the table's first row (no notifications, 4 of 6, and the tab's end clearing
 the tab bar); `tests/e2e/save.spec.ts` checks the footer tab by tab and the focus.
 
 ## Owner approval

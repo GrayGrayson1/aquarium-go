@@ -14,7 +14,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 2. **Released:** 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2
    and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
 3. Every owner question up to group E is answered (ADR-0024 to ADR-0035), and group F's F2–F4 (ADR-0036); F1, the
-   VoiceOver pass, is open in `docs/agent/OWNER_QUESTIONS.md`. The approved screens are in
+   VoiceOver pass, and G1 (B-203: more save values to pin) are open in `docs/agent/OWNER_QUESTIONS.md`. The approved screens are in
    `docs/agent/design/DESIGN-0.5/` and `docs/agent/design/DESIGN-S3D/`.
 
 ## Status
@@ -408,10 +408,11 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   mobile-sheets.spec that a 390×844 phone with no notifications shows 4 of Notifications' 6 categories before
   scrolling, 3 with the footer as measured, and that the tab's end clears the tab bar). None of the three tabs fits
   that phone whole (ADR-0036 corrects the F4 option's "whole list" and its count of five). Each new test was run
-  failing without its change, except save.spec's click step (Playwright's WebKit focuses a clicked tab itself).
+  failing without its change, except save.spec's click step (a clicked tab takes focus itself in Chromium and WebKit).
   The fresh review (Opus 5.5, max) found 2 blockers, both wording (the six categories; the handoff's "`next` =
-  `main`"), and 7 notes: fixed, or B-203 for the save values outside the five tables. Checks: see the commit that
-  records them.
+  `main`"), and 7 notes: fixed, or B-203 for the save values outside the five tables. Its confirmation pass on
+  `f74e9d8`: no blockers; its five wording notes fixed, and B-203 asked as G1. Checks: see the commit that records
+  them.
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,

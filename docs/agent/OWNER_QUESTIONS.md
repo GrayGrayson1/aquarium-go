@@ -14,7 +14,7 @@ ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
 Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is answered (2026-10-13); group F's F2–F4
-are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass). Add new ones as a new group, and record them the same way.
+are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); **group G is open** (2026-10-16). Add new ones as a new group, and record them the same way.
 
 | Group | Unblocks | Questions |
 |---|---|---|
@@ -30,6 +30,7 @@ are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pa
 | (chunk 6) | Chunk 6's copy and data the designs leave unworded (Social, B-194, B-202, What's new in 0.5), asked once before building | 8 questions in 2 rounds: **answered 2026-10-14 (ADR-0034)** |
 | (chunk 6, second round) | The accessibility route, Render's build command, S3-D's copy (DES-013) | 4 questions: **answered 2026-10-15 (ADR-0035)** |
 | F (chunk 6 review) | What chunk 6's fresh reviews left to the owner (block nothing in 0.5.3) | F2–F4: **answered 2026-10-16 (ADR-0036)**; F1: **open** (the owner's play-through) |
+| G (ADR-0036 review) | A backlog row the review of ADR-0036's changes left to the owner (blocks nothing) | G1: **open** (2026-10-16) |
 
 ## A. Release and standing decisions
 
@@ -161,3 +162,11 @@ Raised by the chunk 6 reviewer on 2026-10-15. None blocks 0.5.3; ask them with t
 | F2 | The quest "Best foot forward" reads "Enter a show. A healthy, settled adult that trusts you shows best." but since B-175 completes on judging day (a withdrawn entry never counts). New wording? | **"Enter a show and see it judged. A healthy, settled adult that trusts you shows best."** · Keep it. · Different wording. → **Answered (ADR-0036): the new wording.** | B-175 (`src/data/quests.ts`); the review's notes |
 | F3 | A save's unknown water class, show tier, buyer archetype, staff role or staff trait is now reset or removed on load. If a later build adds one without bumping SCHEMA_VERSION, an older build opened after a rollback would convert those tanks, delete those shows (keeping their fees) and remove those team members for good. Pin these tables? | **Pin them: adding a water class, show tier, buyer type, staff role or trait bumps SCHEMA_VERSION, as species and tank sizes do (ADR-0016), checked by core-save-forward-safety.** · Keep such entries inert instead of removing them (more code in every system that reads them). · Leave it (old builds are best-effort, ADR-0005). → **Answered (ADR-0036): pin them** (`TABLES_AT` in core-save-forward-safety). | migrations.ts; the review and its confirmation pass |
 | F4 | Settings has a "Save now" footer from before 0.5 ("Autosave keeps your progress. Save now any time."). No approved Settings screen draws it, and on a phone it covers part of Notifications' list (3 of 5 categories show before scrolling). Keep it? | **Keep it on General and Saves only** (where saving belongs; Notifications, Play & access and About show their whole list). · Keep it on every tab (as today). · Remove it (Saves has its own Save buttons). → **Answered (ADR-0036): General and Saves only.** Correction, measured after: Notifications has 6 categories (chunk 5's Automation), and on a 390×844 phone 3 or 4 of them show before scrolling by the browser's notification state (2 or 3 with the footer); Play & access and About still scroll too, so none shows its whole list (ADR-0036). | the QA review's second pass |
+
+## G. The fresh review of ADR-0036's changes (open)
+
+Raised by the review of ADR-0036's changes on 2026-10-16 (B-203). Blocks nothing; ask it with the play-through.
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| G1 | Beyond ADR-0036's five tables, a save's water-room prep level above 2, reservoir count above 3 and a rare-variant kind other than Prismatic are also reset or dropped on load, so an older build after a rollback would undo paid water-room upgrades or turn a newer rare animal ordinary; and the prep-level and reservoir limits are written out by hand, so a later build that adds a level without editing them would reset them in that same build. Pin these too? | **Pin them: a new prep level, more reservoirs or a new rare-variant kind raises SCHEMA_VERSION (pinned in core-save-forward-safety), and the limits are read from the Water room's table.** · Only read the limits from the table (fixes the same-build case; rollbacks stay best-effort, ADR-0005). · Leave it. | B-203; `src/persistence/migrations.ts` (`repairAutomation`), `src/sim/life/rareVariants.ts` |
