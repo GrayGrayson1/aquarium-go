@@ -65,7 +65,12 @@ export function Sheet({ open, onClose, side = 'right', children, header, title, 
     const opener = document.activeElement as HTMLElement | null;
     const fromControl = !!opener && opener !== document.body && !!opener.closest?.('button, [role="button"], a');
     if (fromControl) {
-      const t = window.setTimeout(() => sheetRef.current?.querySelector<HTMLElement>('.ag-sheet__close')?.focus({ preventScroll: true }), 60);
+      // (chunk 6: not when focus is already inside the sheet, a keyboard user's quick move would be overtaken)
+      const t = window.setTimeout(() => {
+        const sheet = sheetRef.current;
+        if (sheet && document.activeElement && sheet.contains(document.activeElement)) return;
+        sheet?.querySelector<HTMLElement>('.ag-sheet__close')?.focus({ preventScroll: true });
+      }, 60);
       return () => {
         window.clearTimeout(t);
         if (!opener || !sheetRef.current?.contains(document.activeElement)) return;

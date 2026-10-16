@@ -102,6 +102,7 @@
 .ag-section:last-child { margin-bottom: 0; }
 .ag-section__head { min-height: 24px; }
 .ag-section__title { font-size: calc(11px * var(--text-scale)); text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-ink-3); font-weight: 680; margin: 0; }
+.ag-section__title > svg { vertical-align: -1px; margin-right: 4px; }
 
 /* settings row */
 .ag-setrow { display: flex; align-items: center; gap: var(--sp-3); padding: 10px 0; border-bottom: 1px solid var(--c-line); min-height: 52px; }

@@ -198,6 +198,8 @@ function cancelRefund(g: GameState, listCost: number): number {
 }
 
 const grantLabel = (k: string): string => safe(() => unlockLabel(k), UNLOCK_KEYS[k as keyof typeof UNLOCK_KEYS] ?? k);
+/** chunk 6 (DES-011, desk-research.png): what an unlock also does elsewhere, as a chip beside its own. */
+const GRANT_EFFECTS: Record<string, string> = { genetics_lab: 'Shop: hidden carriers in Rare genes' };
 
 function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boolean }) {
   const d = r.def;
@@ -220,11 +222,13 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
         <div className="pn-small pn-dim">{d.blurb}</div>
         <div className="pn-chips">
           {/* only what the project would still add counts as an unlock; the rest you already have */}
-          {(status === 'done' ? d.grants : fresh).map((k) => (
-            <Chip key={k} tone={status === 'done' ? 'good' : 'violet'} icon={status === 'done' ? <Check size={10} /> : <Sparkles size={10} />}>
-              {grantLabel(k)}
-            </Chip>
-          ))}
+          {(status === 'done' ? d.grants : fresh).flatMap((k) =>
+            [grantLabel(k), ...(GRANT_EFFECTS[k] ? [GRANT_EFFECTS[k]] : [])].map((text, i) => (
+              <Chip key={`${k}:${i}`} tone={status === 'done' ? 'good' : 'violet'} icon={status === 'done' ? <Check size={10} /> : <Sparkles size={10} />}>
+                {text}
+              </Chip>
+            )),
+          )}
           {status !== 'done' &&
             d.grants
               .filter((k) => !fresh.includes(k))

@@ -270,9 +270,14 @@ function WaterArea({ ctx }: { ctx: Ctx }) {
   );
 }
 
-/** chunk 6 (DES-013): a room not built yet shows what it still needs, as the tier ladder words it (ADR-0026 C8). */
+/**
+ * chunk 6 (DES-013): a room not built yet shows what it still needs, as the tier ladder words it (ADR-0026 C8); with
+ * every requirement met (the room installs at the next step) it names them all, ticked, rather than an empty box.
+ */
 function missingReqs(g: GameState, tier: 2 | 3) {
-  return tierLadder(g).find((t) => t.tier === tier)?.reqs.filter((r) => !r.met) ?? [];
+  const reqs = tierLadder(g).find((t) => t.tier === tier)?.reqs ?? [];
+  const missing = reqs.filter((r) => !r.met);
+  return missing.length ? missing : reqs;
 }
 
 function SuppliesArea({ ctx }: { ctx: Ctx }) {
@@ -293,7 +298,7 @@ function SuppliesArea({ ctx }: { ctx: Ctx }) {
     <Area ctx={ctx} id="supplies" title="Supplies" dim={L === 'animals' || L === 'water'}>
       {(g.facility.water || g.inventory.salt > 0) && <Machine ctx={ctx} id="saltmix" name="Salt mix" sub={`${g1(g.inventory.salt)} kg${salt ? ` · ${saltWord(g, salt)}` : ''}`} warn={salt?.state === 'out'} />}
       {fed.length ? (
-        fed.map(([id, k]) => <Machine key={id} ctx={ctx} id="dry" name={getFoodDef(id)?.name ?? id} sub={`${Math.floor(g.inventory.foods[id] ?? 0)} · ${k === 1 ? 'Autofeeder' : `${k} Autofeeders`}`} />)
+        fed.map(([id, k]) => <Machine key={id} ctx={ctx} id={`dry:${id}`} name={getFoodDef(id)?.name ?? id} sub={`${Math.floor(g.inventory.foods[id] ?? 0)} · ${k === 1 ? 'Autofeeder' : `${k} Autofeeders`}`} />)
       ) : (
         <Machine ctx={ctx} id="dry" name="Dry food" sub={`${dry} servings · ${feeders} ${feeders === 1 ? 'Autofeeder' : 'Autofeeders'}`} />
       )}
@@ -598,7 +603,8 @@ function MachineDetails({ ctx, id, nav }: { ctx: Ctx; id: string; nav: OpsNav })
   const names: Record<string, string> = { prep: 'Water Prep Station', mixer: 'Salt Mixing Station', fresh: 'Fresh reserve', salt: 'Salt water reserve', jars: 'Infusoria jars', cones: 'Brine Shrimp Hatchery', saltmix: 'Salt mix', dry: 'Dry food', eggs: 'Brine shrimp eggs' };
   return (
     <>
-      <h3 className="ops-card__title">{names[id] ?? id}</h3>
+      {/* (each Autofeeder food has its own tile, "dry:{food}") */}
+      <h3 className="ops-card__title">{names[id] ?? (id.startsWith('dry:') ? (getFoodDef(id.slice(4))?.name ?? 'Dry food') : id)}</h3>
       {water && <RoomDetails ctx={{ ...ctx, small: true }} room="water" nav={nav} />}
       {food && <RoomDetails ctx={{ ...ctx, small: true }} room="food" nav={nav} />}
       {!water && !food && <RoomDetails ctx={{ ...ctx, small: true }} room="supplies" nav={nav} />}

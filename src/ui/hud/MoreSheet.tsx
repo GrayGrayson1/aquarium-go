@@ -39,6 +39,7 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
   };
   return (
     <>
+      <div className="ag-more__grab" aria-hidden />
       <div className="ag-more__head">
         <h2 className="ag-more__title" id="ag-more-title" tabIndex={-1}>
           More

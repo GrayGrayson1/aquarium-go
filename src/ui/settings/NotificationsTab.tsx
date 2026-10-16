@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
-import { Bell, BellOff, BellRing, Send, Sparkles, HeartPulse, Gavel, Egg, Trophy, Moon, Ban, Gauge } from 'lucide-react';
+import { Bell, BellOff, BellRing, Send, Sparkles, HeartPulse, Gavel, Egg, Trophy, Moon, Ban, Gauge, MonitorSmartphone } from 'lucide-react';
 import { sfx } from '@/audio/sfx';
 import { Button, Section, Toggle } from '../kit';
 import { requestNotifications, sendTestNotification, useNotifyPermission, refreshNotifyPermission, TEST_DELAY_MS } from '../notify/deliver';
@@ -65,7 +65,8 @@ export function NotificationsTab() {
         )}
       </div>
 
-      <Section title="This browser">
+      {/* chunk 6 (DES-011): the section heads' small icons, as phone-notif-off.png draws them */}
+      <Section title={<><MonitorSmartphone size={12} aria-hidden /> This browser</>}>
         <div className="ag-notify-row">
           <span className="ag-notify-row__icon" aria-hidden>
             <Send size={16} />
@@ -89,7 +90,7 @@ export function NotificationsTab() {
         </div>
       </Section>
 
-      <Section title="Notify me about">
+      <Section title={<><Bell size={12} aria-hidden /> Notify me about</>}>
         {NOTIFY_CATEGORY_ROWS.map((c) => (
           <div key={c.id} className={clsx('ag-notify-row', !granted && 'is-locked')}>
             <span className="ag-notify-row__icon" aria-hidden>
@@ -102,7 +103,7 @@ export function NotificationsTab() {
             <Toggle
               label={`${c.title} notifications`}
               testId={`notify-cat-${c.id}`}
-              checked={prefs.categories[c.id]}
+              checked={granted && prefs.categories[c.id]} /* chunk 6 (DES-011): off until notifications are allowed, as the 0.5 screens draw it; the stored choice comes back once they are */
               locked={!granted}
               describedBy={!granted ? 'notify-status-title' : undefined}
               onChange={(v) => prefs.setCategory(c.id, v)}

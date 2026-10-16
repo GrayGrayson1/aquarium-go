@@ -8,6 +8,7 @@
  * animals: keeper care feeds and cleans, but only the player's hand care raises a creature's familiarity.
  */
 import type { FacilityLevelId, StaffRole, StaffTrait } from '@/types';
+import { noProto } from '@/data/byId'; // chunk 6 (PERSIST-004 A3): a save's role or trait can't find an inherited name
 
 export interface StaffRoleDef {
   id: StaffRole;
@@ -22,7 +23,7 @@ export interface StaffRoleDef {
   max?: number;
 }
 
-export const STAFF_ROLES: Record<StaffRole, StaffRoleDef> = {
+export const STAFF_ROLES: Record<StaffRole, StaffRoleDef> = noProto({
   aquarist: {
     id: 'aquarist',
     label: 'Aquarist',
@@ -46,7 +47,7 @@ export const STAFF_ROLES: Record<StaffRole, StaffRoleDef> = {
     blurb: 'Talks visitors through your exhibits: happier guests, more learning, more donations.',
     wage: [70, 140],
   },
-};
+});
 
 export const STAFF_ROLE_ORDER: StaffRole[] = ['aquarist', 'stock_manager', 'docent'];
 
@@ -59,7 +60,7 @@ export interface StaffTraitDef {
   roles: StaffRole[];
 }
 
-export const STAFF_TRAITS: Record<StaffTrait, StaffTraitDef> = {
+export const STAFF_TRAITS: Record<StaffTrait, StaffTraitDef> = noProto({
   meticulous: { id: 'meticulous', label: 'Meticulous', line: 'never misses a feed — checks hungry animals again at midday', roles: ['aquarist'] },
   gentle_hands: { id: 'gentle_hands', label: 'Gentle hands', line: 'matches new water exactly, so water changes never shock anyone', roles: ['aquarist'] },
   algae_hunter: { id: 'algae_hunter', label: 'Algae hunter', line: 'scrapes the glass at the first green haze', roles: ['aquarist'] },
@@ -70,7 +71,7 @@ export const STAFF_TRAITS: Record<StaffTrait, StaffTraitDef> = {
   thrifty: { id: 'thrifty', label: 'Thrifty', line: 'orders one pack at a time and always the best value', roles: ['stock_manager'] },
   great_with_kids: { id: 'great_with_kids', label: 'Great with kids', line: 'families and school groups hang on every word', roles: ['docent'] },
   storyteller: { id: 'storyteller', label: 'Storyteller', line: 'talks that leave people reaching for the donation box', roles: ['docent'] },
-};
+});
 
 /** Most staff the venue can employ at each facility level. */
 export const STAFF_CAPACITY: Record<FacilityLevelId, number> = {

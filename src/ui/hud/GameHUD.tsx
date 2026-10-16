@@ -272,7 +272,9 @@ function usePopoverDismiss() {
     const onDown = (e: PointerEvent) => {
       if (!useShell.getState().popover) return;
       const t = e.target as HTMLElement | null;
-      if (t?.closest('.ag-popanchor, .ag-popover')) return;
+      // (a dialog opened from a popover, such as the bell's "Add a quarantine tank", is portalled outside it: a press
+      // inside it used to close the popover, and the dialog with it)
+      if (t?.closest('.ag-popanchor, .ag-popover, .ag-modal-backdrop')) return;
       useShell.getState().set({ popover: null });
     };
     window.addEventListener('pointerdown', onDown, true);

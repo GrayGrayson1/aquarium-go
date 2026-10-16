@@ -24,7 +24,13 @@
 
 /* ── offer cards (§7.3) ── */
 .ag-offercard__title { font-size: calc(16.5px * var(--text-scale)); font-weight: 560; min-width: 0; }
-.ag-offercard__sub { color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); margin-top: 3px; }
+/* chunk 6 (DES-011): the whole name wraps, as the 0.5 screens draw it (it was cut to one line, then two: a two-column
+   desktop card has about 124 px for it, "Red / Halfmoon…") */
+.ag-offercard__titletext { min-width: 0; overflow-wrap: anywhere; }
+.ag-offercard__sub { color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); margin-top: 3px; overflow-wrap: anywhere; }
+/* chunk 6 (DES-011): a card stretched to a taller neighbour in its grid row gives the spare height to its rows; the
+   chips keep their own height (a lone chip grew to 53 px) */
+.ag-offercard .pn-chips { align-items: flex-start; align-content: flex-start; }
 
 /* ── offer detail (§7.4) ── */
 .ag-fromnotify { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r-md); color: var(--c-ink); background: color-mix(in srgb, var(--c-aqua) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); font-size: calc(12.5px * var(--text-scale)); }
@@ -68,7 +74,9 @@
 .ag-tilefit { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; max-width: 100%; }
 .ag-tilefit .ag-badge { white-space: normal; text-align: left; }
 .ag-fitbadge { display: inline-flex; flex: none; }
-.ag-btn.ag-btn--buildtank { background: linear-gradient(180deg, color-mix(in srgb, var(--c-gold), var(--c-ink) 35%), var(--c-gold)); color: var(--c-bg); border-color: color-mix(in srgb, var(--c-ink) 25%, transparent); font-weight: 650; box-shadow: 0 8px 26px color-mix(in srgb, var(--c-gold) 25%, transparent), inset 0 1px 0 color-mix(in srgb, var(--c-ink) 45%, transparent); }
+/* chunk 6 (DES-011): the 0.5 screens' gold tint (dark fill, gold border and text), as Operations' buy buttons; it was a solid gold gradient */
+.ag-btn.ag-btn--buildtank { background: var(--c-gold-soft); border-color: color-mix(in srgb, var(--c-gold) 50%, transparent); color: color-mix(in srgb, var(--c-gold) 62%, var(--c-ink)); font-weight: 650; }
+.ag-btn.ag-btn--buildtank:hover:not(:disabled) { background: color-mix(in srgb, var(--c-gold) 22%, transparent); }
 .pn-sheet--phone .pn-callout:has(.ag-coollink) { flex-wrap: wrap; }
 .pn-sheet--phone .pn-callout .ag-coollink { flex-basis: 100%; text-align: left; }
 

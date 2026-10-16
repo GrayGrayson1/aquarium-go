@@ -109,13 +109,17 @@ test.describe('phone 390×844 (touch)', () => {
       const toasts = [...document.querySelectorAll('[data-testid="toast"]')].map((t) => t.getBoundingClientRect());
       const bar = box(document.querySelector('[data-testid="nav-tabbar"]'))!;
       const buy = box(document.querySelector('.pn-buybar'))!;
+      const btn = box(document.querySelector('.pn-buybar .ag-btn'))!;
       const hit = (a: DOMRect, b: DOMRect) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-      return { n: toasts.length, overBar: toasts.some((t) => hit(t, bar)), overBuy: toasts.some((t) => hit(t, buy)), buyAboveBar: buy.bottom <= bar.top + 1 };
+      // chunk 6 (DES-011, 0.5 §17 "Phone sticky footer"): the bar sits at the sheet's foot, under the tab bar, and its
+      // padding keeps its controls above it (it used to float 84 px above the body's own 112 px foot)
+      return { n: toasts.length, overBar: toasts.some((t) => hit(t, bar)), overBuy: toasts.some((t) => hit(t, buy)), atFoot: buy.bottom >= innerHeight - 1, buttonAboveBar: btn.bottom <= bar.top + 1 };
     });
     expect(r.n).toBeGreaterThan(0);
     expect(r.overBar).toBe(false);
     expect(r.overBuy).toBe(false);
-    expect(r.buyAboveBar).toBe(true);
+    expect(r.atFoot).toBe(true);
+    expect(r.buttonAboveBar).toBe(true);
   });
 
   test('a link to a tab at the end of a strip brings it into view (§5.6)', async ({ page }) => {

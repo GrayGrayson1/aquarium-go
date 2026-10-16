@@ -24,7 +24,8 @@
 .ag-notify-row .ag-btn { flex: none; }
 
 /* Alerts drawer footer (§12.4) */
-.ag-alerts-cta { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--c-aqua) 28%, transparent); background: color-mix(in srgb, var(--c-aqua) 7%, transparent); font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; color: var(--c-ink-2); }
+/* chunk 6 (DES-011): a dashed outline with a filled "Turn on", as phone-alerts.png draws it */
+.ag-alerts-cta { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); border: 1px dashed var(--c-line-strong); background: transparent; font-size: calc(12.5px * var(--text-scale)); line-height: 1.4; color: var(--c-ink-2); }
 .ag-alerts-cta svg { flex: none; color: var(--c-aqua); }
 .ag-alerts-cta .ag-btn { flex: none; }
 

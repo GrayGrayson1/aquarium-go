@@ -38,3 +38,49 @@ export function planAiSteps(delta: number, overBudget: boolean, out: AiSteps = {
   }
   return out;
 }
+
+// ───────────── chunk 6 (B-180) — far and hidden tanks ─────────────
+
+/** A far tank (lod 2) takes one AI_MAX_STEP step whenever this much time has accrued (s). */
+export const FAR_PERIOD = AI_MAX_STEP;
+/**
+ * A tank the player can't see (beyond the tank-view radius, SceneRoot) takes the same step a quarter as often:
+ * throttled, never frozen, so its animals are where they should roughly be when it comes back into view.
+ */
+export const HIDDEN_PERIOD = 4 * AI_MAX_STEP;
+
+/** A tank's stable phase in [0, period): far tanks no longer all step on the same frame (B-180). */
+export function farPhase(tankId: string, period = FAR_PERIOD): number {
+  let h = 2166136261;
+  for (let i = 0; i < tankId.length; i++) h = Math.imul(h ^ tankId.charCodeAt(i), 16777619);
+  return (((h >>> 0) % 1000) / 1000) * period;
+}
+
+export interface FarStep {
+  /** Time carried to the next frame (s). */
+  accum: number;
+  /** This frame's step (s): AI_MAX_STEP, or 0 for none. */
+  h: number;
+}
+
+/**
+ * A far or hidden tank's step for a frame of `delta` seconds: one step once `period` has accrued, never more than one
+ * a frame, the carry capped at two periods (a long frame never queues catch-up). Over the AI's frame budget the step
+ * waits until the carry reaches its cap, then takes one step and drops the period it waited: a far tank always moves
+ * at least at half its rate.
+ */
+export function planFarStep(accum: number, delta: number, period: number, overBudget: boolean, out: FarStep = { accum: 0, h: 0 }): FarStep {
+  const dt = Number.isFinite(delta) ? Math.min(Math.max(delta, 0), AI_MAX_FRAME_DT) : 0;
+  const carry = Math.min((Number.isFinite(accum) ? Math.max(0, accum) : 0) + dt, 2 * period);
+  if (carry >= period && !overBudget) {
+    out.h = AI_MAX_STEP;
+    out.accum = carry - period;
+  } else if (overBudget && carry >= 2 * period - 1e-9) {
+    out.h = AI_MAX_STEP; // the waited period is dropped: the animals slow down for a moment, the frame costs one step
+    out.accum = 0;
+  } else {
+    out.h = 0;
+    out.accum = carry;
+  }
+  return out;
+}

@@ -3,12 +3,12 @@
  * lane:core (chunk 6; B-002, ADR-0029 decision 1) — a simulation that keeps failing stops and says so: after three
  * failed ticks in a row (one good tick resets the count) the loop stops ticking, the store keeps the last good world,
  * and the banner reads "Something went wrong — your aquarium is paused. Save and reload." with Save and Reload; another
- * aquarium coming on screen starts the loop again.
+ * aquarium coming on screen starts the loop again. A stopped aquarium doesn't catch up when its tab comes back either.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { runTick } from '@/game/GameLoop';
+import { catchUpOnReturn, runTick } from '@/game/GameLoop';
 import { resetFastMutate } from '@/game/fastMutate';
 import { FAILURES_TO_STOP, resumeSim, setSimFault, simStopped, useSimHealth } from '@/game/simHealth';
 import { loopStats } from '@/game/loopStats';
@@ -79,6 +79,22 @@ describe('a simulation that keeps failing (B-002)', () => {
     expect(simStopped()).toBe(false);
     const hour = useGame.getState().game!.clock.hour;
     runTick(1);
+    expect(useGame.getState().game!.clock.hour).toBeGreaterThan(hour);
+  });
+
+  it('a stopped aquarium doesn’t catch up when its tab comes back (a running one does)', () => {
+    setSimFault(true);
+    for (let i = 0; i < FAILURES_TO_STOP; i++) runTick(1);
+    setSimFault(false);
+    const away = 20 * 60_000;
+    const g = useGame.getState().game!;
+    g.isShowcase = false;
+    g.lastTickRealMs = Date.now() - away; // the tab went dark twenty minutes ago
+    const hour = g.clock.hour;
+    catchUpOnReturn(away);
+    expect(useGame.getState().game!.clock.hour).toBe(hour);
+    resumeSim();
+    catchUpOnReturn(away);
     expect(useGame.getState().game!.clock.hour).toBeGreaterThan(hour);
   });
 

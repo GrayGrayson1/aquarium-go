@@ -6,8 +6,8 @@
  * their tier, and a Map layer change that replaces the address. NAV-023: the room view's Facility map chip. AUTO-030:
  * the Overview by tier. AUTO-036 and AUTO-042: Hold all, the HUD pill, Resume all. AUTO-040: Map selection, each layer's
  * marks, a line's tank and its link, the phone's room sheet. AUTO-044: the bell's tab links before the Operations Desk.
- * AUTO-047: researching the Operations Desk opens Problems. MKT-017: salt in 5, 20 and 40 kg. AUTO-046: the stock budget
- * in $1 steps.
+ * AUTO-047: researching the Operations Desk opens Problems. DES-013: the bell's Add a quarantine tank, bought from its
+ * dialog. MKT-017: salt in 5, 20 and 40 kg. AUTO-046: the stock budget in $1 steps.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { aq, openApp, quickGame, tid } from './helpers';
@@ -35,6 +35,26 @@ async function facility(page: Page, opts: { remove?: string[]; tanks?: number } 
 
 const hash = (page: Page) => page.evaluate(() => location.hash);
 const go = (page: Page, h: string) => page.evaluate((x) => (location.hash = x), h);
+
+/** A betta line: the starter male breeds in the first tank, a female keeps in a new one, two more for raise and quarantine. */
+async function bettaLine(page: Page): Promise<{ extra: string[]; r: { ok: boolean; lineId?: string; message: string } }> {
+  const extra: string[] = [];
+  for (const name of ['Grow-out Tub', 'Quarantine', 'Quiet Corner']) {
+    expect((await aq<{ ok: boolean }>(page, 'act', 'buyTank', 'g20L', 'freshwater_tropical', undefined, { seeded: true, name })).ok).toBe(true);
+    extra.push(await page.evaluate(() => (window as unknown as { __AQ: { game(): { tankOrder: string[] } } }).__AQ.game().tankOrder.at(-1)!));
+  }
+  expect((await aq<{ ok: boolean }>(page, 'dev.spawnSpecies', 'betta', extra[2], { sex: 'female', ageDays: 40 })).ok).toBe(true);
+  const pair = await page.evaluate((keep) => {
+    const g = (window as unknown as { __AQ: { game(): { creatures: Record<string, { id: string; speciesId: string; sex: string; tankId: string | null }> } } }).__AQ.game();
+    const all = Object.values(g.creatures).filter((c) => c.speciesId === 'betta');
+    const f = all.find((c) => c.sex === 'female' && c.tankId === keep)!;
+    const m = all.find((c) => c.sex === 'male')!;
+    return { motherId: f.id, fatherId: m.id, breed: m.tankId! };
+  }, extra[2]);
+  const r = await aq<{ ok: boolean; lineId?: string; message: string }>(page, 'act', 'createLine', { motherId: pair.motherId, fatherId: pair.fatherId, tanks: { breed: pair.breed, raise: extra[0], quarantine: extra[1], keep: extra[2] } });
+  expect(r.ok, r.message).toBe(true);
+  return { extra, r };
+}
 
 test.describe('NAV-020: Operations in the dock, Settings on the gear', () => {
   test('the dock items, Operations right after Build, no dock-settings; the gear opens and closes Settings', async ({ page, browserName }) => {
@@ -152,22 +172,7 @@ test.describe('AUTO-040: the Map', () => {
 
   test('each layer marks the tanks its own way; a line’s grow-out tank shows its places and opens the line', async ({ page }) => {
     const ids = await facility(page);
-    // a betta line: the starter male breeds in the first tank, a female keeps in a new one, two more for raise and quarantine
-    const extra: string[] = [];
-    for (const name of ['Grow-out Tub', 'Quarantine', 'Quiet Corner']) {
-      expect((await aq<{ ok: boolean }>(page, 'act', 'buyTank', 'g20L', 'freshwater_tropical', undefined, { seeded: true, name })).ok).toBe(true);
-      extra.push(await page.evaluate(() => (window as unknown as { __AQ: { game(): { tankOrder: string[] } } }).__AQ.game().tankOrder.at(-1)!));
-    }
-    expect((await aq<{ ok: boolean }>(page, 'dev.spawnSpecies', 'betta', extra[2], { sex: 'female', ageDays: 40 })).ok).toBe(true);
-    const pair = await page.evaluate((keep) => {
-      const g = (window as unknown as { __AQ: { game(): { creatures: Record<string, { id: string; speciesId: string; sex: string; tankId: string | null }> } } }).__AQ.game();
-      const all = Object.values(g.creatures).filter((c) => c.speciesId === 'betta');
-      const f = all.find((c) => c.sex === 'female' && c.tankId === keep)!;
-      const m = all.find((c) => c.sex === 'male')!;
-      return { motherId: f.id, fatherId: m.id, breed: m.tankId! };
-    }, extra[2]);
-    const r = await aq<{ ok: boolean; lineId?: string; message: string }>(page, 'act', 'createLine', { motherId: pair.motherId, fatherId: pair.fatherId, tanks: { breed: pair.breed, raise: extra[0], quarantine: extra[1], keep: extra[2] } });
-    expect(r.ok, r.message).toBe(true);
+    const { extra, r } = await bettaLine(page);
     await go(page, '#/operations/map');
     await tid(page, 'map-layer-water').click();
     await expect(tid(page, `map-tank-${ids[0]}`)).toContainText('gal a day'); // a tank on an Auto Water Changer
@@ -227,6 +232,32 @@ test.describe('AUTO-044: before the Operations Desk', () => {
   });
 });
 
+test.describe('DES-013: the bell with the Operations Desk', () => {
+  test('a held-up line’s “Add a quarantine tank” opens its dialog, which stays open to the press, and buys the tank', async ({ page }) => {
+    await facility(page);
+    const { extra, r } = await bettaLine(page);
+    // the line is held up for a quarantine tank (the line step sets this when every quarantine tank is full)
+    await page.evaluate((id) => (window as unknown as { __AQ: { mutate: (fn: (d: { production: { lines: { id: string; waiting?: boolean }[] } }) => void) => void } }).__AQ.mutate((d) => void (d.production.lines.find((l) => l.id === id)!.waiting = true)), r.lineId!);
+    const tanks = () => page.evaluate(() => (window as unknown as { __AQ: { game(): { tankOrder: string[] } } }).__AQ.game().tankOrder.length);
+    const before = await tanks();
+    await tid(page, 'hud-alerts').click();
+    await tid(page, 'alerts-item-add-qt').click();
+    await expect(tid(page, 'production-add-qt-dialog')).toBeVisible();
+    // a press inside the dialog (it is portalled outside the drawer) used to close the drawer, and the dialog with it
+    // (the drawer's fade-out kept the dialog on screen for a fast click: the bell's own state shows the close at once)
+    await tid(page, 'production-add-qt-seeded').click();
+    await expect(tid(page, 'production-add-qt-seeded')).toHaveAttribute('aria-checked', 'false');
+    await expect(tid(page, 'hud-alerts')).toHaveAttribute('aria-expanded', 'true');
+    await expect(tid(page, 'production-add-qt-dialog')).toBeVisible();
+    await tid(page, 'production-add-qt-buy').click();
+    await expect(tid(page, 'production-add-qt-dialog')).toBeHidden();
+    await expect.poll(tanks).toBe(before + 1);
+    const qt = await page.evaluate((id) => (window as unknown as { __AQ: { game(): { production: { lines: { id: string; tanks: { quarantine: string[] } }[] } } } }).__AQ.game().production.lines.find((l) => l.id === id)!.tanks.quarantine, r.lineId!);
+    expect(qt).toHaveLength(2);
+    expect(qt[0]).toBe(extra[1]);
+  });
+});
+
 test.describe('MKT-017, AUTO-046: Supplies and Staff', () => {
   test('salt in 5, 20 and 40 kg; #/market/supplies/salt outlines the row', async ({ page }) => {
     await facility(page);
@@ -274,7 +305,8 @@ test.describe('NAV-021, NAV-024: phones', () => {
   test('More shows Operations first; the five tabs fit at 390 px', async ({ page }) => {
     await facility(page);
     await tid(page, 'dock-more').tap();
-    const first = page.locator('.ag-more > *:not(.ag-more__head)').first();
+    // (the sheet's grabber, as drawn, sits above its rows: chunk 6, DES-011)
+    const first = page.locator('.ag-more > *:not(.ag-more__head):not(.ag-more__grab)').first();
     await expect(first).toHaveAttribute('data-testid', 'more-operations');
     await tid(page, 'more-operations').tap();
     await expect(tid(page, 'panel-operations')).toBeVisible();

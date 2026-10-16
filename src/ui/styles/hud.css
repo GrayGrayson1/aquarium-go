@@ -101,6 +101,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Alerts popover */
 .ag-alerts-pop { right: 0; top: calc(100% + 10px); width: 390px; max-height: min(72vh, 640px); overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 .ag-alerts-pop__log { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+/* chunk 6 (DES-011): the drawer's title row (0.5 phone-alerts.png, S3-D alerts-*.png) */
+.ag-alerts-pop__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px -4px -6px 0; }
+.ag-alerts-pop__title { margin: 0; font-family: var(--font-display); font-size: calc(20px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
 .ag-alert-ok { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: rgba(74, 222, 128, 0.08); border: 1px solid rgba(74, 222, 128, 0.25); color: var(--c-good); font-size: calc(13px * var(--text-scale)); }
 .ag-alert-list { display: grid; gap: 6px; }
 .ag-alert-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-line); background: var(--c-fill); color: var(--c-ink); text-align: left; cursor: pointer; }
@@ -208,8 +211,8 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-update__icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 9px; background: rgba(94, 234, 212, 0.14); color: var(--c-aqua); flex: none; }
 .ag-update__text { flex: 1; min-width: 0; font-weight: 560; }
 .ag-update .ag-btn { flex: none; }
-.ag-toast { position: relative; display: flex; align-items: center; gap: 9px; max-width: 100%; padding: 7px 4px 7px 7px; border-radius: 14px; background: rgba(6, 15, 21, 0.85); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border: 1px solid var(--c-line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.04); overflow: hidden; font-size: calc(12.5px * var(--text-scale)); line-height: 1.35; color: var(--c-ink); pointer-events: auto; }
-.ag-toast__icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 9px; background: var(--c-fill-2); flex: none; align-self: flex-start; }
+.ag-toast { position: relative; display: flex; align-items: center; gap: 9px; max-width: 100%; padding: 8px 6px 8px 8px; border-radius: 14px; background: rgba(6, 15, 21, 0.85); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); border: 1px solid var(--c-line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.04); overflow: hidden; font-size: calc(12.5px * var(--text-scale)); line-height: 1.35; color: var(--c-ink); pointer-events: auto; }
+.ag-toast__icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: var(--c-fill-2); flex: none; align-self: flex-start; }
 .ag-toast__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ag-toast__label { font-size: calc(10px * var(--text-scale)); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-ink-3); }
 .ag-toast__title { font-weight: 560; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -429,8 +432,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   /* phones: compact single-line toasts under the tank switcher, at most two */
   .ag-toasts { top: calc(var(--edge-t) + var(--topbar-h) + 58px); left: var(--edge-l); right: var(--edge-r); width: auto; align-items: stretch; gap: 5px; }
   .ag-toasts.is-onboarding { top: var(--edge-t); left: var(--edge-l); right: var(--edge-r); }
-  .ag-toast { padding: 5px 2px 5px 6px; border-radius: 12px; gap: 8px; }
-  .ag-toast__icon { width: 22px; height: 22px; border-radius: 7px; align-self: center; }
+  /* chunk 6 (DES-011): §17's toast geometry (p 8 6 8 8, r 14, icon chip 30); phones keep the compact one-line text */
+  .ag-toast { padding: 8px 6px 8px 8px; border-radius: 14px; gap: 8px; }
+  .ag-toast__icon { width: 30px; height: 30px; border-radius: 10px; align-self: center; }
   .ag-toast__text { flex-direction: row; align-items: baseline; gap: 6px; }
   .ag-toast__label { flex: none; }
   .ag-toast__title { flex: 1; min-width: 0; -webkit-line-clamp: 1; }
@@ -507,7 +511,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
    instruction ("… do a 30–50% water change") is the part at the end. */
 @media (min-width: 721px) and (min-height: 501px) {
   .ag-toasts { width: min(360px, calc(100vw - 2 * var(--edge))); gap: 5px; }
-  .ag-toast { padding: 6px 4px 6px 7px; }
+  .ag-toast { padding: 8px 6px 8px 8px; } /* chunk 6 (DES-011): §17 */
   .ag-toast__title { -webkit-line-clamp: 2; }
   /* lane:qa-r3 — four: a purchase receipt followed by its heads-up ("…so an autofeeder can't feed it — feed it by hand")
      lost the instruction at three */

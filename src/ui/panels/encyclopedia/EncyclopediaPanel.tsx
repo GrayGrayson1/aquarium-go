@@ -71,18 +71,17 @@ export function EncyclopediaPanel() {
       subtitle={`${known.size} of ${total} species discovered · ${g.progress.discoveredMorphs.length} ${g.progress.discoveredMorphs.length === 1 ? 'morph' : 'morphs'} seen${(g.progress.prismaticFinds?.length ?? 0) > 0 ? ` · ${g.progress.prismaticFinds!.length} Prismatic` : ''}`}
       scrollKey={`${tab}:${speciesId ?? ''}`}
       toolbar={
-        speciesId ? undefined : (
-          <Seg<Tab>
-            label="Encyclopedia section"
-            tabs
-            value={tab}
-            onChange={switchTab}
-            items={[
-              { id: 'species', label: <><BookOpen size={14} /> Species</> },
-              { id: 'science', label: <><FlaskConical size={14} /> Aquarium science</> },
-            ]}
-          />
-        )
+        // chunk 6 (DES-011): a species page keeps the strip, Species selected, as the 0.5 screens draw it
+        <Seg<Tab>
+          label="Encyclopedia section"
+          tabs
+          value={tab}
+          onChange={switchTab}
+          items={[
+            { id: 'species', label: <><BookOpen size={14} /> Species</> },
+            { id: 'science', label: <><FlaskConical size={14} /> Aquarium science</> },
+          ]}
+        />
       }
     >
       {tab === 'species' && speciesId ? (

@@ -15,12 +15,15 @@
 .ag-auto__hint { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; font-size: calc(11.5px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-3); }
 .ag-auto__hint svg { flex: none; margin-top: 2px; }
 .ag-auto__ctl { grid-column: 3; grid-row: 1; align-self: center; }
-.ag-auto__meals { grid-column: 2 / -1; display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-2); }
+/* chunk 6 (DES-011): "Meals a day" above its control, as the 0.5 and S3-D tank cards draw it */
+.ag-auto__meals { grid-column: 2 / -1; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 4px; font-size: calc(12px * var(--text-scale)); color: var(--c-ink-2); }
 .ag-auto .ag-fitline, .ag-auto .ag-fit { grid-column: 2 / -1; }
-.ag-btn.ag-btn--buygear { background: linear-gradient(180deg, color-mix(in srgb, var(--c-gold), var(--c-ink) 35%), var(--c-gold)); color: var(--c-bg); border-color: color-mix(in srgb, var(--c-ink) 25%, transparent); font-weight: 650; }
+/* chunk 6 (DES-011): the 0.5 screens' gold tint (dark fill, gold border and text), as Operations' buy buttons; it was a solid gold gradient */
+.ag-btn.ag-btn--buygear { background: var(--c-gold-soft); border-color: color-mix(in srgb, var(--c-gold) 50%, transparent); color: color-mix(in srgb, var(--c-gold) 62%, var(--c-ink)); font-weight: 650; }
+.ag-btn.ag-btn--buygear:hover:not(:disabled) { background: color-mix(in srgb, var(--c-gold) 22%, transparent); }
 
-/* Water tab: "Auto-clean is on" (§10.3) */
-.ag-autonote { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0 0; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); background: color-mix(in srgb, var(--c-aqua) 8%, transparent); }
+/* Water tab: "Auto-clean is on" (§10.3); chunk 6 (DES-011): spaced from the next block as desk-card.png draws it */
+.ag-autonote { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0 14px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); background: color-mix(in srgb, var(--c-aqua) 8%, transparent); }
 .ag-autonote svg { flex: none; margin-top: 2px; color: var(--c-aqua); }
 .ag-autonote__title { font-size: calc(13px * var(--text-scale)); font-weight: 620; color: var(--c-ink); }
 .ag-autonote__text { margin-top: 2px; font-size: calc(12px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-2); }

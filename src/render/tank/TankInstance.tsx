@@ -18,7 +18,7 @@ import { TankInteraction } from '../interaction/TankInteraction';
 import { FoodParticles } from '../interaction/FoodParticles';
 import { TankFXProvider } from './TankFXProvider';
 
-export const TankInstance = memo(function TankInstance({ tank, lod, focused }: { tank: Tank; lod: RenderLod; focused: boolean }) {
+export const TankInstance = memo(function TankInstance({ tank, lod, focused, hidden = false }: { tank: Tank; lod: RenderLod; focused: boolean; /** chunk 6 (B-180): beyond the tank-view radius (SceneRoot), so its AI is throttled. */ hidden?: boolean }) {
   const { position, rotY } = tankWorldTransform(tank);
   return (
     <group position={position} rotation={[0, rotY, 0]} name={`tank:${tank.id}`}>
@@ -26,7 +26,7 @@ export const TankInstance = memo(function TankInstance({ tank, lod, focused }: {
       <TankLights tank={tank} lod={lod} />
       <TankDecor tank={tank} lod={lod} />
       <TankEquipment tank={tank} lod={lod} />
-      <TankAI tank={tank} lod={lod} />
+      <TankAI tank={tank} lod={lod} hidden={hidden} />
       <TankCreatures tank={tank} lod={lod} />
       <BreedingVisuals tank={tank} lod={lod} />
       <FoodParticles tank={tank} lod={lod} />

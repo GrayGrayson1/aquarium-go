@@ -218,6 +218,7 @@ Rules: `src/ui/common/notify.ts` (tests: `tests/sim/ui-notify-*.test.ts`). Every
 | `hud-alerts` | Bell: `data-attention` = worst tank (`good\|watch\|danger`), aria-label / title "N tanks need attention · M unread events" |
 | `hud-alerts-count` | Bell number: unread news (toasted events and every warning/danger/death not yet read or cleared), coloured by the worst of the tanks and that news (`is-danger\|is-watch\|is-news`) |
 | `hud-alerts-dot` | Bell dot when tanks need a look but nothing is unread |
+| `alerts-close` | The alerts drawer's close button ("Close alerts"), beside its "Alerts" title (chunk 6, DES-011) |
 | `alerts-mark-read` / `alerts-clear-all` | Drawer: "Mark read" (reads everything) and "Clear all" (reads and hides every event logged so far from the drawer; `notify.logClearedSeq` — nothing is deleted) |
 | `alerts-events` / `alerts-event` / `alerts-events-empty` | Drawer event list, one event, and its empty line ("You're all caught up…" after Clear all) |
 | `alerts-event-link` | Drawer event's "See results" / "Open Research" / "Open the shop" / "View listing" link |
@@ -402,7 +403,7 @@ Index-based cone and jar ids, one id for the Operations tools tile, `staff-budge
 | `room-facility-map` | The room view's "Facility map" chip beside `camera-room-reset` |
 | `panel-operations` · `ops-sub` · `ops-hold-all` | The panel, its sub-line, Hold all (desktop header; the phone Manual mode tile) |
 | `ops-tab-<overview\|water\|feed\|lines\|map>` | The tab strip (Water and Feed from their rooms) |
-| `ops-problems` · `ops-problem-<salt\|eggs\|veg\|live\|fresh\|line>` · `ops-problems-all` · `ops-all-clear` | Overview's Problems (from the Operations Desk), its items, the "All" link, "Everything is running smoothly." |
+| `ops-problems` · `ops-problem-<salt\|eggs\|veg\|live\|fresh\|salt_rate\|fresh_rate\|line>` · `ops-problems-all` · `ops-all-clear` | Overview's Problems (from the Operations Desk), its items, the "All" link, "Everything is running smoothly." |
 | `ops-sys-<water-changes\|water-room\|live-food\|feeding\|lines\|keepers\|manual>` | The Systems tiles (Keepers & stock desktop only; Manual mode phone only) |
 | `ops-week` · `ops-today` · `ops-manual-banner` · `ops-resume-all` | This week, Today (desktop), the manual-mode banner and its Resume all |
 | `ops-assisted` · `ops-early-line` · `ops-ladder` | The early Overview's Assisted care card, its line row, the tier ladder |
@@ -419,13 +420,14 @@ Index-based cone and jar ids, one id for the Operations tools tile, `staff-budge
 | `tank-chip-<auto-feed\|auto-clean\|top-off\|doser\|line>` | Automation chips, inside `tanks-row-<tankId>` and in the tank card's header |
 | `tanks-row-line-<tankId>` | A Tanks row's amber "{Line} paused: …" reason with Why |
 | `tank-auto-feed-held` · `tank-auto-clean-held` · `tank-doser-row` · `tank-doser-buy` · `tank-doser` · `tank-doser-held` | The tank card's held notes and the live-food doser row |
-| `alerts-automation` · `alerts-automation-link` · `alerts-automation-manual` · `alerts-item-<kind>` · `alerts-item-tab-<water\|feed\|lines>` | The alerts drawer's Automation section |
+| `alerts-automation` · `alerts-automation-link` · `alerts-automation-manual` · `alerts-item-<kind>` · `alerts-item-tab-<water\|feed\|lines>` · `alerts-item-add-qt` | The alerts drawer's Automation section (`alerts-item-add-qt`: with the Desk, a held-up line's Add a quarantine tank, chunk 6) |
 | `build-your-facility` · `build-facility-room-<water\|food>` · `build-room-<water\|food>` · `build-room-locked-<water\|food>` · `build-room-back` | Build › Facility's card, rooms and room pages |
 | `build-upgrade-prep` · `build-add-reservoir` · `build-add-cone` · `build-add-jar` | The rooms' upgrades and add-ons |
 | `supplies-row-<foodId\|salt\|brine_shrimp_eggs>` · `supplies-salt-buy-<5\|20\|40>` · `supplies-salt-status` · `supplies-buy-eggs` | Market › Supplies rows (one per food; the deep-link targets) and the salt sizes |
 | `staff-budget` · `staff-budget-status` · `staff-orders` | Visitors › Staff: the $1 budget slider, its status line, the orders switch |
 | `production-ops-link` · `livestock-production-dot` | Production's link row to Operations › Lines, and the Production tab's dot |
 | `notify-cat-auto` | Settings › Notifications' Automation category |
+| `line-listed-<lineId>` · `map-tier2` · `map-slot-<n>` · `tank-row-card-<tankId>` · `production-note-fix` · `staff-duty-<staffId>` | Chunk 6 (DES-013, ADR-0035 decision 3): early Lines' "Listed now {n} · best bid {$}"; the phone's early map Tier 2 row and the early map's locked line slots; the Tanks row's Tank card button (the tank in view); the held-up note's Fix; the stock manager's duty line |
 
 ## 0.5 Social stub (chunk 6: lane social; 0.5 spec §13, §19)
 

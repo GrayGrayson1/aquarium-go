@@ -4,6 +4,32 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.5.3 — 2026-10-15
+
+- **Closer to the 0.5 design on phones and desktops.**
+  - An offer's buy bar sits at the foot of the sheet, just above the tab bar, and offer cards show the animal's whole
+    name.
+  - A scrolled tab strip (Settings' on a phone, for one) shows whole labels, and Settings and the tank card have their
+    grabber on phones.
+  - The alerts drawer has its title and a close button; its "Turn on" is easier to spot.
+  - Operations' header stays on screen on tablets held upright, and messages and prices follow the design's sizes.
+  - Smaller touches: the Genetics Lab card says it reveals hidden carriers in the shop, the Encyclopedia keeps its tabs
+    on a species page, Supplies marks the Auto Water Changer as new, and a notification category reads off until the
+    browser allows notifications.
+- **Operations and production lines.**
+  - "Add a quarantine tank" from the alerts bell now works (its dialog used to close itself).
+  - Operations and Production use their approved wording throughout; Problems shows a long run of days as a range
+    ("Days 39–44").
+  - On the Map, each Autofeeder food has its own tile, and a room you haven't built lists what it needs.
+- **Smoother big facilities.** Tanks out of view move their animals at a quarter of the pace, which leaves more time
+  for the ones you're watching.
+- **Sturdier saves.** A save with a team member, trait, clock or birth date the game can't use is repaired on loading
+  instead of breaking payday; the "Double Long-fin" rename also reaches your Prismatic finds, listings and
+  discoveries.
+- **Smaller fixes.**
+  - A game paused by an error no longer catches up when you come back to its tab.
+  - Switching panels from a bottom sheet moves the keyboard focus to the new panel.
+
 ## 0.5.2 — 2026-10-15
 
 - **Production lines** in Livestock › Production. Pick a breeding pair and the tanks to use, and the line breeds,
@@ -26,8 +52,8 @@ additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if 
 - **Sturdier saves.** A damaged or hand-edited save is repaired on loading (impossible numbers, endless lists,
   unknown names) instead of breaking the game.
 - **Smaller fixes.**
-  - The bristlenose fin look "Long-fin" is now "Double Long-fin", so no two looks share a name, and a morph's rarity
-    follows how often shops stock it.
+  - The bristlenose fin look "Super Long-fin" (two copies of Long-fin) is now "Double Long-fin", so no two looks share
+    a name, and a morph's rarity follows how often shops stock it.
   - The Water room warns when fresh water would run short at the salt mixer's checks in the week ahead.
   - Withdrawing a show entry no longer counts toward the "Enter a show" quest.
   - Settings › About lists what's new in 0.5.

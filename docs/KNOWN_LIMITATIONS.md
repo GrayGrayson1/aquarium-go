@@ -83,6 +83,7 @@ What is simplified, approximated or missing in this build. None of these block p
 - On touch screens, the first tap on the faded (invisible) dock or tool rail only wakes the HUD. The top bar and tank bar act at once, and mouse clicks always act.
 - On a phone held sideways, an open panel or card covers everything but the top bar, so it shows one toast at a time, in its header row beside the close button. The others wait their turn (routine news may expire into the event log), and the "played further in another tab" banner and the update prompt wait until the sheet closes.
 - The iOS focus-zoom (G4-05) and long-press selection (G4-06) fixes are verified by code trace only: Playwright's WebKit emulates neither.
+- **High contrast is the accessible mode over a bright room** (chunk 6, ADR-0035 decision 1; WCAG technique G174). Normal mode keeps the 0.5 design's see-through glass: its text passes WCAG 2.2 AA over a dark room, but grey text over a bright, sunlit room drops to 2.5–4.4:1. High contrast (Settings › Play & access) makes the panels, the top bar and toasts solid and passes AA on any background, and every step on the way to its switch passes AA too.
 
 ## Architecture
 - The AI imports `equipmentLayout` from the decor render module to place equipment colliders (an ai → render dependency).
@@ -92,4 +93,5 @@ What is simplified, approximated or missing in this build. None of these block p
 - **Walkers use a small local planner, not path-finding.** The axolotl picks free headings a short walk ahead. In a very cluttered tank it sometimes gives up on a spot, or swims up and over to open floor.
 - **The archerfish's fly is cosmetic** and never feeds the fish. The mangrove is a soft collider, so crawlers don't climb its roots.
 - **At sustained low frame rates** (≈17–25 fps), swimmers near decor or in schools weave a little more: the scan reads ≈0.5% raw / 0.3% drawn, against 0.05% / 0 at normal frame rates.
+- **Tanks out of view move at a quarter of the pace** (chunk 6, B-180). In tank view, tanks beyond the view radius aren't drawn and their animals' motion is stepped a quarter as often; far tanks in view step at their own moment within the AI's time budget. The simulation itself (health, feeding, breeding) is unaffected.
 - **The drawn pose is smoothed.** A One-Euro filter removes sub-millimetre contact jitter. The AI state underneath can still carry tiny reversals when a body presses against decor (see `npm run qa:motion`).

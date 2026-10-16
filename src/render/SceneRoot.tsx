@@ -4,7 +4,7 @@
  *
  * LOD policy:
  *  - tank view: focused tank = lod 0; other tanks = lod 2 and only drawn when within ~7 m (they glow softly in the
- *    background; hidden ones keep ticking because their group is merely invisible).
+ *    background; hidden ones keep ticking because their group is merely invisible, their AI a quarter as often, B-180).
  *  - facility view: the 4 tanks nearest the camera = lod 1 (full glass/surface materials), the rest lod 2 — with
  *    hysteresis (facilityLods in lod.ts), so dragging the camera does not flip the tanks at the cut-off.
  */
@@ -152,7 +152,7 @@ function TankSlot({ id, lod, focused, near }: { id: string; lod: RenderLod; focu
     // lane:pc-perf — a hidden tank's subtree also skips three's per-frame matrix updates (they ran for every object,
     // visible or not: ~2,400 of the 3,800 objects in the 1,000 gal view)
     <group visible={visible} matrixWorldAutoUpdate={visible}>
-      <TankInstance tank={tank} lod={lod} focused={focused} />
+      <TankInstance tank={tank} lod={lod} focused={focused} hidden={!visible} />
     </group>
   );
 }

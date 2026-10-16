@@ -429,13 +429,13 @@ a.pn-link { text-decoration: none; }
 .pn-desttank__name { font-weight: 650; max-width: 100%; }
 .pn-desttank--new { align-items: center; justify-content: center; border-style: dashed; color: var(--c-ink-3); }
 .pn-desttank--thumb { align-items: center; text-align: center; }
-.pn-buybar { position: sticky; bottom: -28px; margin: 0 calc(var(--pn-pad) * -1) -28px; padding: 12px var(--pn-pad) 16px; display: grid; gap: 8px; background: rgba(5, 13, 19, 0.95); border-top: 1px solid var(--c-line); backdrop-filter: blur(12px); }
+.pn-buybar { position: sticky; bottom: -28px; margin: 0 calc(var(--pn-pad) * -1) -28px; padding: 12px var(--pn-pad) 16px; display: grid; gap: 8px; background: rgba(5, 13, 19, 0.96); border-top: 1px solid var(--c-line); backdrop-filter: blur(12px); }
 .pn-buybar__row { display: flex; gap: 14px; align-items: center; }
 .pn-buybar__sum { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.pn-buybar__price { font-size: calc(24px * var(--text-scale)); line-height: 1.1; }
+.pn-buybar__price { font-size: calc(24px * var(--text-scale)); font-weight: 650; line-height: 1.1; }
+/* chunk 6 (DES-011, 0.5 §17 "Buy bar": price 24/650, phone 22) */
+.pn-sheet--phone .pn-buybar__price { font-size: calc(22px * var(--text-scale)); }
 .pn-buybar__ack { display: flex; justify-content: flex-end; }
-.pn-sheet--phone .pn-buybar__row { flex-wrap: wrap; }
-.pn-sheet--phone .pn-buybar .ag-btn--lg { width: 100%; }
 .pn-sheet--phone .pn-buybar__ack { justify-content: flex-start; }
 .pn-compatwrap { display: block; }
 

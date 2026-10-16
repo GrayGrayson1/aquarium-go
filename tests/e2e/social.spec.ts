@@ -132,6 +132,8 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await tid(page, 'social-club-join-nano-tank').click();
     await expect(tid(page, 'social-club-join-nano-tank')).toHaveText('Joined');
     await expect(toast(page, 'You joined Nano Tank Collective')).toBeVisible();
+    // chunk 6: "Your club" lists it at once (it said "No club yet" until the tab remounted)
+    await expect(page.locator('.so-card--plain [data-testid="social-club-nano-tank"]')).toBeVisible();
     // pasting a code and pressing Enter opens the invite
     await tid(page, 'social-search').fill('HIGHLAND-4821');
     await tid(page, 'social-search').press('Enter');

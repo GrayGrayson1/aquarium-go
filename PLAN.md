@@ -6,13 +6,15 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Build chunk 6** (Social stub, hardening and the last 0.5 release), from a fresh context: the owner's routine is
-   to `/compact` between chunks, then the agent re-reads the docs. `docs/agent/SESSION_HANDOFF.md` gives the order of
-   work, with what chunk 5 left (DES-013, DES-014, B-169, B-170, B-180, B-202).
-2. **Chunk 5 is done** (2026-10-14, on `next`, not released). Every owner question is answered (groups A to E and the
-   chunks' copy, ADR-0024 to ADR-0033). The 45 approved 0.5 screens are in `docs/agent/design/DESIGN-0.5/`.
-3. **Released:** 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases"). Releasing chunks 4
-   and 5 is the owner's call.
+1. **Finish chunk 6** (built 2026-10-15 on `next`): the fresh reviewers' blockers are fixed (`e23b8a2`, `bba00ab`); left are
+   their confirmation passes, two full test passes in a row (REL-013), the owner's play-through on a phone and a
+   desktop (with a VoiceOver pass for ACC-005, OWNER_QUESTIONS F1), then the last 0.5 release (0.5.3) with the owner's
+   go-ahead. `docs/agent/SESSION_HANDOFF.md` has the order.
+2. **Released:** 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15, at the owner's request; 0.5.1 (chunks 2 and
+   3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
+3. Every owner question up to group E is answered (ADR-0024 to ADR-0035); group F (three from chunk 6's review, none
+   blocking 0.5.3) is open in `docs/agent/OWNER_QUESTIONS.md`. The approved screens are in
+   `docs/agent/design/DESIGN-0.5/` and `docs/agent/design/DESIGN-S3D/`.
 
 ## Status
 
@@ -24,11 +26,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
-| 6 | Social stub, hardening and the last 0.5 release | Next; D1 answered (ADR-0028) |
+| 6 | Social stub, hardening and the last 0.5 release | Built 2026-10-15; most of it released in 0.5.2 (2026-10-15). Review, two full passes, the owner's play-through and 0.5.3 to come |
 
-**Last full test run:** the owner's Mac, 2026-10-14, on `baa2234` (chunk 5's last code), in Claude Code from the
-internal-disk clone: typecheck passed; unit 213 files, 2,402 tests passed; build passed; e2e 107 passed
-(9.4 minutes, inside Claude Code's sandbox).
+**Last full test runs:** chunk 6's two passes in a row (REL-013) on `9bff79e`, its final code, the owner's Mac,
+2026-10-15, in Claude Code from the internal-disk clone checked out at that commit: typecheck passed; unit 226 files,
+2,697 tests passed; build passed; e2e 285 of 285 in Chromium and WebKit, dev and production builds (32.0 and 32.4
+minutes), both times. Earlier: `d7560f9` clean (2,696; 281 of 281); `db25042` one failure (`shop-filters.spec.ts:75`, a
+sheet's focus race, fixed in `e23b8a2`).
 
 ## How a chunk runs
 
@@ -58,7 +62,10 @@ cd /Volumes/Dev/Projects/AquariumGo && git push -u origin next && cd ~/LocalTest
 **Known flaky tests** (from the harness's baseline): `boot.spec.ts:17` and `camera-freeze.spec.ts:34` once timed out
 tearing down the browser; `playthrough-starters` can trip Vitest's RPC timeout on a slow machine; `core-gameloop`'s
 20 ms median-tick test depends on machine speed. If one fails, re-run it alone on an idle machine before calling it
-a regression, and never loosen it. The teardown hang is Chromium's graceful `context.close()` on a busy WebGL page
+a regression, and never loosen it on the owner's Mac. (On GitHub Actions and Render's build, `CI` and `RENDER`, every
+wall-clock limit in tests/sim is multiplied by 4 through `tests/sim/support/timeBudget.ts`: those machines measured 2×
+slower on 2026-10-15, and the rest is room for a busy build machine, since a failed Render build blocks a release.)
+The teardown hang is Chromium's graceful `context.close()` on a busy WebGL page
 (headless, Metal): in the owner's run on `3601860` camera-freeze's body passed in 38 s and the close then hung for
 120 s, while closing the browser took 1.4 s. `camera-freeze.spec` now runs in a browser of its own and closes it with
 `browser.close()` (`859858a`); give `boot.spec.ts:17` the same treatment if it hangs again.
@@ -338,6 +345,60 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   and a desktop. Then the release.
 - **Decided:** SOC-010's empty states (ADR-0028, D1): "No trades yet" · "Trades you start or accept appear here." and
   "No friends yet" · "Friends you add appear here."
+- **Built (2026-10-15, `cf9f5bc..` on `next`):**
+  - **Social stub** (`src/social`: the SocialService, the local stub with ADR-0034's sample data, standings;
+    `src/ui/panels/social`), dev mode only (SOC-011): dock, More, dots (B-152), routes and the club invite
+    (`#/social/join/HIGHLAND-4821` signed out → in → joined), the Friday club-show reminder (dev only).
+  - **Hardening:** the failure banner (B-002), Move tank (B-196), the morph data (B-194), save hardening (PERSIST-004,
+    PERSIST-008; B-004, B-010, B-012, B-122, B-198), B-175, "What's new in 0.5" (Settings › About), the TODO check
+    (REL-008), the week-ahead water check (B-202), the tank edits in the sim (B-169), the food and species rules in the
+    data (B-170), far-tank AI cost (B-180), WCAG 2.2 AA through High contrast (ACC-005, B-178; ADR-0035), typecheck and
+    unit tests before publishing on Pages and Render (B-193), silent e2e (the servers Playwright starts build the game
+    with VITE_E2E_MUTE, which the engine treats as Mute; `silent-runs.spec.ts`).
+  - **S3-D copy** (DES-013, ADR-0035 decision 3): the 18 missing strings and the rewordings, pinned with chunk 5's
+    approved strings and every §14 id by `tests/sim/ui-copy-s3d.test.ts`.
+  - **0.5 geometry** (DES-011): §17 measured by `tests/e2e/design-geometry.spec.ts`; toasts and the buy bar's price
+    brought to it.
+  - **Viewports** (DES-012): `tests/e2e/viewports.spec.ts`, every screen at eight sizes in both browsers; it found
+    Operations' header off screen at 721–1000 px portrait, fixed.
+  - **Hardening tests:** the route matrix with Social, Production and Operations (NAV-019), long runs over every dev
+    fixture and the full-feature facility (REL-015, CONST-003, AUTO-029), the mutation boundary (REL-016,
+    `docs/agent/TRUST_BOUNDARY.md`), the debt inventory (REL-017, `docs/agent/DEBT_INVENTORY.md`).
+  - **WebKit** (B-129): every spec runs in Chromium and WebKit; WebKit-only test problems fixed on purpose (Tab focus,
+    clipboard permissions, a loading card faster than a poll, focus return after a mouse click, a sheet's focus race,
+    the ~200 hash changes WebKit allows a page).
+- **Reviewed:** a fresh code reviewer (Opus 5.5, max effort) read `cf9f5bc..db25042` against this brief: 5 blockers
+  (the bell's "Add a quarantine tank" dialog closed itself; a save's unknown staff role threw at payday; the Problems
+  view's out-of-salt card listed every day to the short one; ACC-005 GREEN without its VoiceOver pass; DES-011's and
+  REL-016's notes resting on records that didn't exist) and 14 notes, all fixed or recorded (`bba00ab`; F2 and F3 in
+  OWNER_QUESTIONS). Its REL-017 verdict on the debt inventory: **YELLOW** (the core-owned workarounds and B-190
+  missing, B-167 and B-161 understated; the magnified set otherwise small, known and fixable), fixed in the document.
+  A fresh browser/QA reviewer compared every 0.5 surface with `DESIGN-0.5/screens` at 1440×900 and 390×844:
+  **RED** (the phone buy bar floating mid-sheet, one-line offer titles, phone Clubs running off the screen, smaller
+  style gaps), fixed (`e23b8a2`). The code reviewer's confirmation pass on `db25042..d7560f9`: all five blockers
+  fixed, nothing broken, no new blocker, **REL-017 GREEN**; its three new notes (the panel switcher's focus, staff
+  roles in F3, `alerts-close` untested and unlisted) fixed (`d1c37bd`). The QA reviewer's second pass: **YELLOW** (the
+  three RED items and six of the other seven fixed; left: desktop offer names still cut in two-column cards, the
+  Settings strip clipping its first label, the Genetics Lab card's shop chip, polish, and four screens not captured),
+  fixed (`d1c37bd`); its third pass YELLOW (chips stretched in uneven grid rows), fixed (`9bff79e`); its check on
+  `9bff79e`: **GREEN** (DES-011), measured on the captures, zero console errors.
+- **Requirements:** SOC-001 to SOC-011, DES-010, DES-013, DES-014, NAV-019, AUTO-029, CONST-003, PERF-002,
+  PERSIST-004, PERSIST-008, REL-008, REL-015, REL-016, REL-017, DES-011, DES-012 GREEN; ACC-005 waits for the owner's
+  VoiceOver pass (F1); REL-004 to REL-007, REL-011, REL-013 and REL-014 GREEN on the two passes on `9bff79e` (their
+  harness-era evidence paths, `evidence/S4`, `STATE.json` and the scripts, are retired: PLAN.md records them).
+- **Measured (PERF-002, 2026-10-15, the owner's Mac, headless Chromium with hardware WebGL):** big_facility (15 tanks,
+  356 animals) room view 60 fps (p95 16.7 ms), sim 3.19 ms a tick; the 1,000 gal display 60 fps; 80 schooling fish 60
+  fps; 10× sim 6.08 ms a tick on average (44.7 ms worst), no game time dropped; memory +3.3 MB over 20 tank-view trips
+  (budgets: 30 fps, 12 ms, 40 MB). The maximum-scale save (Grand Hall, 41 tanks, 513 animals, six lines) with every
+  automation system on: 0.67 ms a tick at 1×, 2.82 ms at 10×, a game day in 220 ms (vite-node, one core).
+- **Browser QA (DES-014):** Operations at 1440×900 and 390×844 matches `DESIGN-S3D/screens` apart from chunk 5's "Not as
+  drawn" (the Map's flows as rows, its layer control in the map body).
+- **Not as drawn:** phones keep their compact one-line toasts (tap to expand) at §17's geometry; the decided-line card
+  names a quarantine tank as added only when it is newer than the line; four days or more of out-of-salt water changes
+  read "Days 39–44" (the design's range form; the design draws two days); Social (dev only) shows drawn placeholders for
+  friends' snapshots and a larger club name on phones; Settings keeps its "Save now" footer, which no approved Settings
+  screen draws (OWNER_QUESTIONS F4).
+- **Releases:** 0.5.2 went out mid-chunk at the owner's request (see "Releases"); chunk 6 ends with 0.5.3.
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
@@ -365,6 +426,17 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   `78548a3` (its tree is `6594d21`'s) and pushed. Pages deployed by itself; Render stayed on 0.5.0 and was deployed by
   hand (`render deploys create … --commit 78548a3…`, deploy `dep-db61hn3bc2fs73afp29g`). Both `version.json` files
   read `{"id":"78548a3-…","version":"0.5.1"}`.
+- **0.5.2, released 2026-10-15** at the owner's request in the session ("run the checks and release 0.5.2 if green
+  yeah run all you were going to then release for sure"), before chunk 6 ends: chunks 4 (production lines) and 5
+  (Operations, the Water and Live food rooms) and chunk 6 so far. The four checks passed on `86de7c3` (typecheck; unit
+  222 files, 2,602 tests; build; e2e 257 of 257, Chromium and WebKit) after the first full WebKit runs found five
+  WebKit-only test problems (`3435f27`, `86de7c3`). Merged as `1268783` and pushed, but the Pages deploy (now running
+  typecheck and the unit tests, B-193) failed two wall-clock limits on GitHub's slower runner: `c36efa1` scales the
+  unit tests' time limits on CI and Render (merge `8a8b98e`, Pages deployed). Render's build (also running the tests
+  since ADR-0035) passed every test but failed on Vitest worker RPC timeouts: `6bc1bf8` uses two workers on Render
+  (merge `e527e10`). Pushes go from the internal-disk clone (from the disk image the push hung), after the owner added
+  gh's `workflow` scope (deploy.yml changed). Pages deployed `e527e10` by itself; Render by hand
+  (`dep-db8j6mpsrm7s73eh8f30`). Both `version.json` files read `{"id":"e527e10-…","version":"0.5.2"}`.
 
 ## Product decisions in force
 

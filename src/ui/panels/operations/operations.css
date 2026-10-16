@@ -171,3 +171,8 @@ body:has(.pn-sheet--side[data-panel='operations'].is-max) .ag-toasts > :not(:las
 .ops-line__switch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--c-ink-2); }
 /* chunk 6 (DES-013): the early map's locked line slots in Breeding (§7.5 "Early") */
 .ops-slot--locked { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px dashed var(--c-line-strong); border-radius: 10px; }
+/* chunk 6 (DES-012): Operations wraps its PanelLayout (.ops--map widens the side sheet); the wrapper passes the sheet's
+   height on as the sheet does for every other panel, or the body grew to its content and the sheet scrolled its own
+   header, close button included, off screen (seen in 721–1000 px portrait, where panels are bottom sheets) */
+.ops-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.ops-panel > .pn-layout { flex: 1 1 auto; min-height: 0; height: auto; }
