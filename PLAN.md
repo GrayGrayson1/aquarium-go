@@ -6,14 +6,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Finish chunk 6** (built 2026-10-15 on `next`): the fresh reviewers' blockers are fixed (`e23b8a2`, `bba00ab`); left are
-   their confirmation passes, two full test passes in a row (REL-013), the owner's play-through on a phone and a
-   desktop (with a VoiceOver pass for ACC-005, OWNER_QUESTIONS F1), then the last 0.5 release (0.5.3) with the owner's
-   go-ahead. `docs/agent/SESSION_HANDOFF.md` has the order.
-2. **Released:** 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15, at the owner's request; 0.5.1 (chunks 2 and
-   3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
-3. Every owner question up to group E is answered (ADR-0024 to ADR-0035); group F (three from chunk 6's review, none
-   blocking 0.5.3) is open in `docs/agent/OWNER_QUESTIONS.md`. The approved screens are in
+1. **0.5 is complete.** Chunk 6 is done and released as 0.5.3 (2026-10-15, the owner's go-ahead in the session, before
+   the owner's play-through). Left from it: the owner's play-through on a phone and a desktop, with a VoiceOver pass
+   for ACC-005 (OWNER_QUESTIONS F1), and the owner's answers to F2–F4. What comes after 0.5 (NOTIFY-011 and PLAT-004,
+   the native wrapper, are deferred; REL-002, multiplayer, is for later) is the owner's call.
+2. **Released:** 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2
+   and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
+3. Every owner question up to group E is answered (ADR-0024 to ADR-0035); group F (four from chunk 6's reviews, none
+   blocking a release) is open in `docs/agent/OWNER_QUESTIONS.md`. The approved screens are in
    `docs/agent/design/DESIGN-0.5/` and `docs/agent/design/DESIGN-S3D/`.
 
 ## Status
@@ -26,7 +26,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
-| 6 | Social stub, hardening and the last 0.5 release | Built 2026-10-15; most of it released in 0.5.2 (2026-10-15). Review, two full passes, the owner's play-through and 0.5.3 to come |
+| 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
 
 **Last full test runs:** chunk 6's two passes in a row (REL-013) on `9bff79e`, its final code, the owner's Mac,
 2026-10-15, in Claude Code from the internal-disk clone checked out at that commit: typecheck passed; unit 226 files,
@@ -437,6 +437,15 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   (merge `e527e10`). Pushes go from the internal-disk clone (from the disk image the push hung), after the owner added
   gh's `workflow` scope (deploy.yml changed). Pages deployed `e527e10` by itself; Render by hand
   (`dep-db8j6mpsrm7s73eh8f30`). Both `version.json` files read `{"id":"e527e10-…","version":"0.5.2"}`.
+- **0.5.3, released 2026-10-15** at the owner's go-ahead in the session ("release 0.5.3 if pass 2 is green"): chunk 6's
+  end, after its reviews. Two full passes in a row on `9bff79e` (typecheck; unit 226 files, 2,697 tests; build; e2e
+  285 of 285, Chromium and WebKit, twice); on the release commit `31f8b7b` (version, CHANGELOG and docs only)
+  typecheck, unit 2,697, build and the production-build specs passed. The owner chose to release before the
+  play-through (step 1's "the owner has played it" waived for this release). Merged as `382a637` (its tree is
+  `31f8b7b`'s) and pushed from the internal-disk clone with `next`. Pages deployed `382a637` by itself (its run tests
+  first, B-193; GitHub notes that `deploy-pages@v4` runs on a deprecated Node 20 and that `ubuntu-latest` moves to
+  Ubuntu 26 from 2026-10-19: `deploy.yml` is a core file, left for the owner); Render by hand
+  (`dep-db8o0s7f3r2c73eplvm0`). Both `version.json` files read `{"id":"382a637-…","version":"0.5.3"}`.
 
 ## Product decisions in force
 

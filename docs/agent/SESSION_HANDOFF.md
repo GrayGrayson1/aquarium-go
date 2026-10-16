@@ -7,33 +7,27 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
 
 ## Where things stand
 
-- `next` holds chunks 1 to 6, all tested (PLAN.md, chunk 6: what was built, the requirements met, the measurements).
-  Owner questions up to group E are answered (ADR-0024 to ADR-0035); group F (three from chunk 6's review: the
-  VoiceOver pass, a quest's wording, pinning tables to SCHEMA_VERSION) is open in `docs/agent/OWNER_QUESTIONS.md`.
-- **0.5.2 is the release on `main`** (`e527e10`, Pages and Render, 2026-10-15): chunks 4 and 5 and chunk 6 up to
-  `86de7c3`, released mid-chunk at the owner's request so they could play it. Chunk 6's later work (B-180, the S3-D copy
-  test, the viewport and geometry specs, the 721 px Operations fix, toasts and the buy bar at §17, the long-run and
-  boundary tests, the docs) is on `next` only.
-- Chunk 6's fresh code review (5 blockers, 14 notes, REL-017 YELLOW) and browser/QA review (RED) are fixed
-  (`e23b8a2`, `bba00ab`; PLAN.md, chunk 6, "Reviewed"); the code reviewer's confirmation found them fixed and REL-017
-  GREEN; the QA reviewer's second pass was YELLOW, fixed with the code reviewer's three notes (`d1c37bd`). Left: the
-  QA reviewer's third pass, two full passes in a row (REL-013), the owner's play-through on a phone and a desktop (with
-  VoiceOver for ACC-005, F1), then 0.5.3 with the owner's go-ahead. REQUIREMENTS.json has DES-011, DES-012, ACC-005, REL-004 to REL-007, REL-011, REL-013 and REL-014
-  waiting on those.
+- **0.5 is complete and released.** 0.5.3 is on `main` (`382a637`, 2026-10-15): chunk 6's end, after a fresh code
+  review (5 blockers fixed, REL-017 GREEN on confirmation) and a browser/QA review (RED → GREEN), with two full
+  passes in a row on `9bff79e` (PLAN.md, chunk 6). `next` = `main`'s content (`31f8b7b` plus the post-release notes).
+- Left from chunk 6: the owner's play-through on a phone and a desktop, with a VoiceOver pass for ACC-005 (the one
+  requirement still IN_PROGRESS), and the owner's answers to group F in `docs/agent/OWNER_QUESTIONS.md` (F1
+  VoiceOver, F2 a quest's wording, F3 pinning tables to SCHEMA_VERSION, F4 Settings' "Save now" footer).
+- What comes after 0.5 is the owner's call: NOTIFY-011 and PLAT-004 (the native wrapper) are deferred, REL-002
+  (multiplayer) is for later, and `docs/agent/DEBT_INVENTORY.md` lists what multiplayer would magnify.
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
-   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's brief and record).
-2. **Review:** done (a code reviewer and a browser/QA reviewer, Opus 5.5 at max effort; never Fable). If their
-   confirmation passes aren't recorded in PLAN.md, start fresh reviewers on `git diff db25042..HEAD` with the first
-   reports' findings (PLAN.md lists them), not a summary of the fixes. The QA reviewer needs new captures of the
-   screens it named (phone and desktop).
-3. **Two full passes in a row** of the four checks on the final commit (both e2e browsers; retries stay 0); record
-   them in PLAN.md and set REL-004 to REL-007, REL-011, REL-013, REL-014 GREEN.
-4. **The owner plays it**, then the release: bump to 0.5.3, the CHANGELOG entry (chunk 6's later work), merge `next`
-   into `main` with the owner's go-ahead, push from the internal-disk clone, check both `version.json` files, deploy
-   Render by hand.
+   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's record).
+2. **The owner's play-through and group F:** record what the owner reports (ACC-005's VoiceOver pass, F1) and their
+   answers to F2–F4 verbatim in an ADR, then make the changes they choose (each one tested, a fresh reviewer for
+   anything beyond copy) and release them as 0.5.4 only with the owner's go-ahead.
+3. **After 0.5:** ask the owner what's next; a new chunk gets a brief in PLAN.md, its own fresh reviewer (Opus 5.5 at
+   max effort, never Fable) and two full passes before a release.
+4. **Releasing** (as 0.5.3 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into
+   `main` with the owner's go-ahead (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no checkout), push
+   from the internal-disk clone, watch the Pages run, deploy Render by hand, check both `version.json` files.
 5. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
    `/compact` (an agent can't) and you re-read the docs. Releases (`main`) only when the owner says so in the session.
 
