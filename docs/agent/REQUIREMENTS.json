@@ -398,12 +398,12 @@
         "scripts/agent/capture-evidence.mjs (--review)"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "§17",
         "§16"
       ],
-      "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it. Chunk 5 intake (2026-10-14, INTAKE §12): where DESIGN-S3D changes a 0.5 surface (the desktop dock and top bar, the More sheet, the tank card's Automation section, Settings › Notifications and Production), it is judged against DESIGN-S3D with DES-014's exceptions; A2's \"More top ≈ 48 %\" becomes 334 px (C-58). Chunk 6 (2026-10-15): §17 geometry measured on its screens within ± 2 px (design-geometry.spec, Chromium and WebKit; toasts and the buy bar's price brought to §17); the 0.5 surfaces captured at both sizes with zero console errors and compared with DESIGN-0.5/screens by a fresh reviewer (PLAN.md, chunk 6). The fresh browser/QA review (2026-10-15) was RED: the phone buy bar floating mid-sheet, one-line offer titles, phone Clubs overflowing, and smaller style gaps; fixed in chunk 6, a second review to come. The fresh code review (2026-10-15) noted the sticky footer row unmeasured: design-geometry.spec now measures the phone buy bar's padding-bottom (84 + the safe area)."
+      "note": "Needs owner or reviewer confirmation: the measurement tolerance for §17 values is not stated in the design (only the 64px sheet top carries \"± 2\" in §20.2); a reviewer should set it. Chunk 5 intake (2026-10-14, INTAKE §12): where DESIGN-S3D changes a 0.5 surface (the desktop dock and top bar, the More sheet, the tank card's Automation section, Settings › Notifications and Production), it is judged against DESIGN-S3D with DES-014's exceptions; A2's \"More top ≈ 48 %\" becomes 334 px (C-58). Chunk 6 (2026-10-15): §17 geometry measured on its screens within ± 2 px (design-geometry.spec, Chromium and WebKit; toasts and the buy bar's price brought to §17); the 0.5 surfaces captured at both sizes with zero console errors and compared with DESIGN-0.5/screens by a fresh reviewer (PLAN.md, chunk 6). The fresh browser/QA review (2026-10-15) was RED: the phone buy bar floating mid-sheet, one-line offer titles, phone Clubs overflowing, and smaller style gaps; fixed in chunk 6, a second review to come. The fresh code review (2026-10-15) noted the sticky footer row unmeasured: design-geometry.spec now measures the phone buy bar's padding-bottom (84 + the safe area). The QA reviewer's second pass (2026-10-15) was YELLOW (desktop offer names cut in two-column cards, Settings' strip clipping its first label, the Genetics Lab card's shop chip, polish, four screens uncaptured), fixed in d1c37bd; its third pass YELLOW (chips stretched in uneven grid rows), fixed in 9bff79e; its quick check on 9bff79e GREEN, measured on the captures (chips 23–25 px, footers aligned, the drawer's plain ×, the grabbers above their headers), with zero console errors on the visited screens. Trivia left (no blocker): Supplies' equipment rows have no left icon, the clownfish's \"White expansion (Sn)\" data label, Settings › About's strip flush left on desktop. PLAN.md (chunk 6, \"Reviewed\") records each pass."
     },
     {
       "id": "DES-012",
@@ -422,13 +422,13 @@
         "new: tests/e2e/dock-width.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "§5.2",
         "§5.4",
         "§5.6"
       ],
-      "note": "Needs owner or reviewer confirmation: the viewport list is derived from the design breakpoints (MOBILE_QUERY at 720px, the dock rules at 981-1180px, 1400-1519px and from 1520px) rather than given by the design; a reviewer may extend it. Chunk 6 (2026-10-15): viewports.spec, every screen at 390×844, 844×390, 720, 721, 1180, 1400, 1520 and 1440×900 in Chromium and WebKit: no horizontal scroll, sheets and their close buttons on screen, the tab bar exactly where MOBILE_QUERY matches. It found and fixed Operations' header off screen at 721–1000 px portrait. The browser/QA review found phone Social › Clubs running off the screen (a primary action unreachable), which viewports.spec missed (it checks sheets, not their contents); fixed in chunk 6, a second review to come."
+      "note": "Needs owner or reviewer confirmation: the viewport list is derived from the design breakpoints (MOBILE_QUERY at 720px, the dock rules at 981-1180px, 1400-1519px and from 1520px) rather than given by the design; a reviewer may extend it. Chunk 6 (2026-10-15): viewports.spec, every screen at 390×844, 844×390, 720, 721, 1180, 1400, 1520 and 1440×900 in Chromium and WebKit: no horizontal scroll, sheets and their close buttons on screen, the tab bar exactly where MOBILE_QUERY matches. It found and fixed Operations' header off screen at 721–1000 px portrait. The browser/QA review found phone Social › Clubs running off the screen (a primary action unreachable), which viewports.spec missed (it checks sheets, not their contents); fixed in chunk 6, a second review to come. The phone Clubs overflow is fixed (e23b8a2) and confirmed by the QA reviewer's second pass; viewports.spec now also checks that no sheet's content runs past its edge, through the signed-in Social tabs, at all eight sizes in Chromium and WebKit (passing on 9bff79e)."
     },
     {
       "id": "DES-013",
@@ -5243,8 +5243,9 @@
         "npm run typecheck"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 6: met. Two full passes in a row on 9bff79e (chunk 6's final code), the owner's Mac, 2026-10-15, from the internal-disk clone checked out at that commit with nothing changed: npm run typecheck exit 0 both times. tsconfig*.json last changed in S0 (8a4c6c8) and the typecheck script is unchanged since the baseline. The harness's verify-slice.mjs is retired (ADR-0018): PLAN.md records the runs."
     },
     {
       "id": "REL-005",
@@ -5261,8 +5262,9 @@
         "scripts/agent/test-inventory.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 6: met. Two full passes in a row on 9bff79e (chunk 6's final code), the owner's Mac, 2026-10-15, from the internal-disk clone checked out at that commit with nothing changed: npm test exit 0, 226 files, 2,697 tests, both times. No skip, only, fixme or todo marker in tests/ or src/ (git grep), and the test count has only grown (2,602 at 0.5.2). test-inventory.mjs is retired (ADR-0018)."
     },
     {
       "id": "REL-006",
@@ -5278,10 +5280,11 @@
         "npm run e2e"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§20.2"
-      ]
+      ],
+      "note": "Chunk 6: met. Two full passes in a row on 9bff79e (chunk 6's final code), the owner's Mac, 2026-10-15, from the internal-disk clone checked out at that commit with nothing changed: npm run e2e exit 0, 285 of 285 in Chromium and WebKit, dev and production builds (32.0 and 32.4 minutes). Every spec in tests/e2e runs (playwright.config.ts: forbidOnly, retries 0)."
     },
     {
       "id": "REL-007",
@@ -5297,8 +5300,9 @@
         "npm run build"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 6: met. Two full passes in a row on 9bff79e (chunk 6's final code), the owner's Mac, 2026-10-15, from the internal-disk clone checked out at that commit with nothing changed: npm run build exit 0 both times. base-path.spec (in the e2e runs) checks the production build under GitHub Pages' base path, its service worker at BASE_URL + 'sw.js' included."
     },
     {
       "id": "REL-008",
@@ -5371,9 +5375,9 @@
         "scripts/agent/capture-evidence.mjs (--file, --review)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "requirements-3 R3-M1: A2 used to record limitations in the owner package, which is written at MULTIPLAYER_READINESS_GATE after S4's ACCEPT, so it couldn't be evidenced when the audit requires REL-011 GREEN; it now records them in S4's evidence before ACCEPT, as requirements-2 M1 did for REL-013, REL-015, REL-016 and REL-017."
+      "note": "requirements-3 R3-M1: A2 used to record limitations in the owner package, which is written at MULTIPLAYER_READINESS_GATE after S4's ACCEPT, so it couldn't be evidenced when the audit requires REL-011 GREEN; it now records them in S4's evidence before ACCEPT, as requirements-2 M1 did for REL-013, REL-015, REL-016 and REL-017. Chunk 6: met. No requirement is RED. The fresh code review's 5 blockers are fixed and its confirmation found nothing new (REL-017 GREEN); the browser/QA review went RED → YELLOW → YELLOW → GREEN (PLAN.md, chunk 6, \"Reviewed\"). The harness's LEDGER defects are retired with it (ADR-0018); open BACKLOG rows and known limitations are listed with their impact in docs/agent/DEBT_INVENTORY.md, none blocking. ACC-005 waits only for the owner's VoiceOver pass (OWNER_QUESTIONS F1)."
     },
     {
       "id": "REL-012",
@@ -5409,9 +5413,9 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Needs owner or reviewer confirmation: the number of consecutive runs that counts as \"reliable\" is not set by master §10; 3 is a proposal. requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only."
+      "note": "Needs owner or reviewer confirmation: the number of consecutive runs that counts as \"reliable\" is not set by master §10; 3 is a proposal. requirements-2 M1: rewritten to record into S4's own evidence before S4 is accepted, because the readiness-gate report (REL-018) is written after S4 ACCEPT, in a new session (master §10, §11.1; OPERATIONS.md §4 \"After S4\"). The gate runs on the S4 checkpoint tree (check-state.mjs refuses code changes after the checkpoint), so S4's evidence still holds there, and the report links it instead of producing it. Moving these to ALL beside REL-018 was the alternative; it was not chosen because each question can be answered on the S4 tree, and requirements-audit.mjs enforces numbered slices only. Chunk 6: met with two consecutive full passes, as chunk 6's brief sets (PLAN.md \"### 6.\"; the proposed three was the retired harness's). Two full passes in a row on 9bff79e (chunk 6's final code), the owner's Mac, 2026-10-15, from the internal-disk clone checked out at that commit with nothing changed: typecheck, unit 2,697 of 2,697, build and e2e 285 of 285 both times; Playwright retries 0, nothing skipped, no failure followed by a pass. (Logs: ~/LocalTest/AquariumGo/.agent-runs/checks-9bff79e-pass1.log and -pass2.log.)"
     },
     {
       "id": "REL-014",
@@ -5428,8 +5432,9 @@
         "scripts/agent/check-state.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
-      "designSections": []
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 6: met. The internal-disk clone (remote dev = this repo) was checked out detached at 9bff79e with no local change (package-lock.json unchanged in chunk 6 apart from the version) and passed the four checks twice. History since 0d9fc5a is local commits on next, pushed without rewriting; the harness's checkpoints and STATE.json are retired (ADR-0018)."
     },
     {
       "id": "REL-015",

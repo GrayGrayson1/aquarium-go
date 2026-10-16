@@ -28,10 +28,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Built 2026-10-15; most of it released in 0.5.2 (2026-10-15). Review, two full passes, the owner's play-through and 0.5.3 to come |
 
-**Last full test run:** the owner's Mac, 2026-10-15, on `d7560f9` (chunk 6 after its reviews' first fixes), in Claude
-Code from the internal-disk clone: typecheck passed; unit 226 files, 2,696 tests passed; build passed; e2e 281 of 281
-in Chromium and WebKit, dev and production builds (32.2 minutes). The one before, on `db25042`, had one failure
-(`shop-filters.spec.ts:75`, a sheet's focus race, fixed in `e23b8a2`). The chunk's last full passes are REL-013's.
+**Last full test runs:** chunk 6's two passes in a row (REL-013) on `9bff79e`, its final code, the owner's Mac,
+2026-10-15, in Claude Code from the internal-disk clone checked out at that commit: typecheck passed; unit 226 files,
+2,697 tests passed; build passed; e2e 285 of 285 in Chromium and WebKit, dev and production builds (32.0 and 32.4
+minutes), both times. Earlier: `d7560f9` clean (2,696; 281 of 281); `db25042` one failure (`shop-filters.spec.ts:75`, a
+sheet's focus race, fixed in `e23b8a2`).
 
 ## How a chunk runs
 
@@ -379,12 +380,12 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   roles in F3, `alerts-close` untested and unlisted) fixed (`d1c37bd`). The QA reviewer's second pass: **YELLOW** (the
   three RED items and six of the other seven fixed; left: desktop offer names still cut in two-column cards, the
   Settings strip clipping its first label, the Genetics Lab card's shop chip, polish, and four screens not captured),
-  fixed (`d1c37bd`); its third pass is to come.
+  fixed (`d1c37bd`); its third pass YELLOW (chips stretched in uneven grid rows), fixed (`9bff79e`); its check on
+  `9bff79e`: **GREEN** (DES-011), measured on the captures, zero console errors.
 - **Requirements:** SOC-001 to SOC-011, DES-010, DES-013, DES-014, NAV-019, AUTO-029, CONST-003, PERF-002,
-  PERSIST-004, PERSIST-008, REL-008, REL-015, REL-016, REL-017 GREEN; DES-011 and DES-012 wait for the QA reviewer's
-  second pass, ACC-005 for the owner's VoiceOver pass (F1); REL-004 to REL-007,
-  REL-011, REL-013 and REL-014 wait for the chunk's last passes (their harness-era evidence paths, `evidence/S4`,
-  `STATE.json` and the scripts, are retired: PLAN.md records them).
+  PERSIST-004, PERSIST-008, REL-008, REL-015, REL-016, REL-017, DES-011, DES-012 GREEN; ACC-005 waits for the owner's
+  VoiceOver pass (F1); REL-004 to REL-007, REL-011, REL-013 and REL-014 GREEN on the two passes on `9bff79e` (their
+  harness-era evidence paths, `evidence/S4`, `STATE.json` and the scripts, are retired: PLAN.md records them).
 - **Measured (PERF-002, 2026-10-15, the owner's Mac, headless Chromium with hardware WebGL):** big_facility (15 tanks,
   356 animals) room view 60 fps (p95 16.7 ms), sim 3.19 ms a tick; the 1,000 gal display 60 fps; 80 schooling fish 60
   fps; 10× sim 6.08 ms a tick on average (44.7 ms worst), no game time dropped; memory +3.3 MB over 20 tank-view trips
