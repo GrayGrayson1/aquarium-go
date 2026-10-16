@@ -47,6 +47,7 @@ workarounds and B-190 missing, B-167 and B-161 understated), fixed here.
 | B-156 gate globs miss some files | open | None (harness-era gate). |
 | B-161 tests that check less than their names say | open | **Weighs more** once a server enforces the rules: a server-side check is only as trustworthy as its tests, and these overstate what is checked (the chunk 6 review found another, core-crafted-saves-limits' listings case, fixed). |
 | B-166 the test-id contract isn't enforced | open | None (testing). Chunk 6's copy test checks S3-D's ids against TEST_IDS.md. |
+| B-204 three e2e tests that failed once each under load | open | None (testing). |
 | B-120 S0's architecture guard tests | partly fixed | None; `core-architecture-boundaries` and `core-mutation-boundary` now cover the layers and the store. |
 | B-172 source-text CSS tests | partly fixed | None (testing). |
 

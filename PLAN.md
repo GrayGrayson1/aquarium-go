@@ -411,8 +411,11 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   failing without its change, except save.spec's click step (a clicked tab takes focus itself in Chromium and WebKit).
   The fresh review (Opus 5.5, max) found 2 blockers, both wording (the six categories; the handoff's "`next` =
   `main`"), and 7 notes: fixed, or B-203 for the save values outside the five tables. Its confirmation pass on
-  `f74e9d8`: no blockers; its five wording notes fixed, and B-203 asked as G1. Checks: see the commit that records
-  them.
+  `f74e9d8`: no blockers; its five wording notes fixed, and B-203 asked as G1. Two full passes on `c9445af`: typecheck,
+  unit 2,699, build, all passed twice; e2e 287 of 289 (41.5 min, the machine loaded) and 288 of 289 (32.5 min), three
+  different tests failing once each, none in this change's code (B-204: the route walk's `#/operations/lines` in
+  Chromium; Social's expired codes in WebKit, a 2-minute hang in its set-up; the tutorial in WebKit), each passing in
+  the other pass and 5 of 5 alone on `c9445af`. Not a clean pass: a release needs one (REL-013).
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
