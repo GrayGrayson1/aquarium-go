@@ -28,11 +28,10 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Built 2026-10-15; most of it released in 0.5.2 (2026-10-15). Review, two full passes, the owner's play-through and 0.5.3 to come |
 
-**Last full test run:** the owner's Mac, 2026-10-15, on `db25042` (chunk 6 before its reviews), in Claude Code from
-the internal-disk clone: typecheck passed; unit 226 files, 2,689 tests passed; build passed; e2e 276 of 277, one
-failure (`shop-filters.spec.ts:75` in Chromium, a sheet's focus race, fixed in `e23b8a2`). Not a clean pass. The last
-clean one: `86de7c3` (the 0.5.2 release): typecheck, unit 2,602, build, e2e 257 of 257 in Chromium and WebKit (21.9
-minutes). The chunk's last full passes are REL-013's.
+**Last full test run:** the owner's Mac, 2026-10-15, on `d7560f9` (chunk 6 after its reviews' first fixes), in Claude
+Code from the internal-disk clone: typecheck passed; unit 226 files, 2,696 tests passed; build passed; e2e 281 of 281
+in Chromium and WebKit, dev and production builds (32.2 minutes). The one before, on `db25042`, had one failure
+(`shop-filters.spec.ts:75`, a sheet's focus race, fixed in `e23b8a2`). The chunk's last full passes are REL-013's.
 
 ## How a chunk runs
 
@@ -375,10 +374,15 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   missing, B-167 and B-161 understated; the magnified set otherwise small, known and fixable), fixed in the document.
   A fresh browser/QA reviewer compared every 0.5 surface with `DESIGN-0.5/screens` at 1440×900 and 390×844:
   **RED** (the phone buy bar floating mid-sheet, one-line offer titles, phone Clubs running off the screen, smaller
-  style gaps), fixed (`e23b8a2`). Both confirmation passes are to come.
+  style gaps), fixed (`e23b8a2`). The code reviewer's confirmation pass on `db25042..d7560f9`: all five blockers
+  fixed, nothing broken, no new blocker, **REL-017 GREEN**; its three new notes (the panel switcher's focus, staff
+  roles in F3, `alerts-close` untested and unlisted) fixed (`d1c37bd`). The QA reviewer's second pass: **YELLOW** (the
+  three RED items and six of the other seven fixed; left: desktop offer names still cut in two-column cards, the
+  Settings strip clipping its first label, the Genetics Lab card's shop chip, polish, and four screens not captured),
+  fixed (`d1c37bd`); its third pass is to come.
 - **Requirements:** SOC-001 to SOC-011, DES-010, DES-013, DES-014, NAV-019, AUTO-029, CONST-003, PERF-002,
-  PERSIST-004, PERSIST-008, REL-008, REL-015, REL-016 GREEN; DES-011 and DES-012 wait for the QA reviewer's second pass,
-  ACC-005 for the owner's VoiceOver pass (F1), REL-017 for the code reviewer's confirmation; REL-004 to REL-007,
+  PERSIST-004, PERSIST-008, REL-008, REL-015, REL-016, REL-017 GREEN; DES-011 and DES-012 wait for the QA reviewer's
+  second pass, ACC-005 for the owner's VoiceOver pass (F1); REL-004 to REL-007,
   REL-011, REL-013 and REL-014 wait for the chunk's last passes (their harness-era evidence paths, `evidence/S4`,
   `STATE.json` and the scripts, are retired: PLAN.md records them).
 - **Measured (PERF-002, 2026-10-15, the owner's Mac, headless Chromium with hardware WebGL):** big_facility (15 tanks,
@@ -389,9 +393,10 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 - **Browser QA (DES-014):** Operations at 1440×900 and 390×844 matches `DESIGN-S3D/screens` apart from chunk 5's "Not as
   drawn" (the Map's flows as rows, its layer control in the map body).
 - **Not as drawn:** phones keep their compact one-line toasts (tap to expand) at §17's geometry; the decided-line card
-  names a quarantine tank as added only when it is newer than the line; the Settings and tank card phone sheets have no
-  grabber (they don't resize); a scrolled tab strip can clip its first label; four days or more of out-of-salt water
-  changes read "Days 39–44" (the design's range form; the design draws two days).
+  names a quarantine tank as added only when it is newer than the line; four days or more of out-of-salt water changes
+  read "Days 39–44" (the design's range form; the design draws two days); Social (dev only) shows drawn placeholders for
+  friends' snapshots and a larger club name on phones; Settings keeps its "Save now" footer, which no approved Settings
+  screen draws (OWNER_QUESTIONS F4).
 - **Releases:** 0.5.2 went out mid-chunk at the owner's request (see "Releases"); chunk 6 ends with 0.5.3.
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the

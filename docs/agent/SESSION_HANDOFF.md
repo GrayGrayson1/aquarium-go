@@ -15,10 +15,11 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
   test, the viewport and geometry specs, the 721 px Operations fix, toasts and the buy bar at §17, the long-run and
   boundary tests, the docs) is on `next` only.
 - Chunk 6's fresh code review (5 blockers, 14 notes, REL-017 YELLOW) and browser/QA review (RED) are fixed
-  (`e23b8a2`, `bba00ab`; PLAN.md, chunk 6, "Reviewed"). Left: both reviewers' confirmation passes, two full passes in a row
-  (REL-013), the owner's play-through on a phone and a desktop (with VoiceOver for ACC-005, F1), then 0.5.3 with the
-  owner's go-ahead. REQUIREMENTS.json has DES-011, DES-012, ACC-005, REL-017, REL-004 to REL-007, REL-011, REL-013
-  and REL-014 waiting on those.
+  (`e23b8a2`, `bba00ab`; PLAN.md, chunk 6, "Reviewed"); the code reviewer's confirmation found them fixed and REL-017
+  GREEN; the QA reviewer's second pass was YELLOW, fixed with the code reviewer's three notes (`d1c37bd`). Left: the
+  QA reviewer's third pass, two full passes in a row (REL-013), the owner's play-through on a phone and a desktop (with
+  VoiceOver for ACC-005, F1), then 0.5.3 with the owner's go-ahead. REQUIREMENTS.json has DES-011, DES-012, ACC-005, REL-004 to REL-007, REL-011, REL-013 and REL-014
+  waiting on those.
 
 ## The order of work
 
