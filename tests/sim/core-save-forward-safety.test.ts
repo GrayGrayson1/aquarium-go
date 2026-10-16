@@ -8,6 +8,7 @@
  *  - saveGame, saveGameSync (the pagehide/hidden write), the backup rotation and moving saves between backends leave
  *    it unchanged, in the primary and in the `.backup` key.
  * The species ids and tank sizes known at this SCHEMA_VERSION are pinned below: adding one without raising it fails.
+ * So are the water classes, show tiers, buyer types, staff roles and staff traits (ADR-0036, owner question F3).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { newGame } from '@/sim/newGame';
@@ -33,6 +34,10 @@ import {
 } from '@/persistence';
 import { ALL_SPECIES } from '@/data/species';
 import { TANK_TIERS } from '@/data/catalog/tanks';
+import { CLASS_DEFAULTS } from '@/sim/water/constants';
+import { SHOW_TIERS } from '@/data/shows';
+import { BUYER_ARCHETYPES } from '@/data/buyers';
+import { STAFF_ROLES, STAFF_TRAITS } from '@/data/staff';
 import type { GameState } from '@/types';
 
 const NEWER = SCHEMA_VERSION + 1;
@@ -406,5 +411,37 @@ describe('PERSIST-014 A5 / ADR-0016 decision 2: a new species or tank size raise
     expect(pinned, `pin the species ids and tank tiers known at save format v${SCHEMA_VERSION} in KNOWN_AT`).toBeDefined();
     expect(ALL_SPECIES.map((s) => s.id).sort(), 'a species was added or removed: raise SCHEMA_VERSION (ADR-0016 decision 2)').toEqual([...pinned.species].sort());
     expect(TANK_TIERS.map((t) => t.id).sort(), 'a tank size was added or removed: raise SCHEMA_VERSION (ADR-0016 decision 2)').toEqual([...pinned.tankTiers].sort());
+  });
+});
+
+/**
+ * The keys of the tables a save's values are checked against on load (src/persistence/migrations.ts): a water class
+ * (CLASS_DEFAULTS), a show tier (SHOW_TIERS), a buyer type (BUYER_ARCHETYPES), a staff role (STAFF_ROLES) and a staff
+ * trait (STAFF_TRAITS). A value this build doesn't know is reset or removed on load, so an older build opened after a
+ * rollback would convert those tanks, delete those shows and remove those team members for good; adding a key
+ * therefore raises SCHEMA_VERSION, as a species or a tank size does (ADR-0036, owner question F3), and the older build
+ * refuses the save as too_new instead. Written out literally on purpose; first pinned at save format v2 (v1 had no
+ * pin). Never edit an existing entry to make this pass.
+ */
+const TABLES_AT: Record<number, { waterClasses: string[]; showTiers: string[]; buyerTypes: string[]; staffRoles: string[]; staffTraits: string[] }> = {
+  2: {
+    waterClasses: ['brackish', 'freshwater_cool', 'freshwater_planted', 'freshwater_tropical', 'marine_fowlr', 'marine_live_rock', 'reef'],
+    showTiers: ['club', 'international', 'national', 'regional'],
+    buyerTypes: ['aquascaper', 'bargain_hunter', 'beginner', 'breeder', 'collector', 'conservation', 'experienced_keeper', 'family', 'public_aquarium'],
+    staffRoles: ['aquarist', 'docent', 'stock_manager'],
+    staffTraits: ['algae_hunter', 'early_bird', 'gentle_hands', 'great_with_kids', 'meticulous', 'planner', 'quick_learner', 'reef_minded', 'storyteller', 'thrifty'],
+  },
+};
+
+describe('ADR-0036 (F3): a new water class, show tier, buyer type, staff role or staff trait raises SCHEMA_VERSION', () => {
+  it(`the five tables' keys are exactly the ones pinned for save format v${SCHEMA_VERSION}`, () => {
+    const pinned = TABLES_AT[SCHEMA_VERSION];
+    expect(pinned, `pin the water classes, show tiers, buyer types, staff roles and traits known at save format v${SCHEMA_VERSION} in TABLES_AT`).toBeDefined();
+    const why = (what: string) => `a ${what} was added or removed: raise SCHEMA_VERSION (ADR-0036)`;
+    expect(Object.keys(CLASS_DEFAULTS).sort(), why('water class')).toEqual([...pinned.waterClasses].sort());
+    expect(Object.keys(SHOW_TIERS).sort(), why('show tier')).toEqual([...pinned.showTiers].sort());
+    expect(Object.keys(BUYER_ARCHETYPES).sort(), why('buyer type')).toEqual([...pinned.buyerTypes].sort());
+    expect(Object.keys(STAFF_ROLES).sort(), why('staff role')).toEqual([...pinned.staffRoles].sort());
+    expect(Object.keys(STAFF_TRAITS).sort(), why('staff trait')).toEqual([...pinned.staffTraits].sort());
   });
 });

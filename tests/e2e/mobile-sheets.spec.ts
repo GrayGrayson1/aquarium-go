@@ -76,6 +76,23 @@ test.describe('phone 390×844 (touch)', () => {
     expect(await page.evaluate(() => location.hash)).toBe('#/settings');
   });
 
+  test('Settings › Notifications has no Save now footer, so four of its five categories show before scrolling (ADR-0036)', async ({ page }) => {
+    await phoneGame(page);
+    await goHash(page, '#/settings/notifications');
+    await settled(page, '[data-testid="panel-settings"]');
+    await expect(tid(page, 'settings-tab-notifications')).toHaveAttribute('aria-selected', 'true');
+    await expect(tid(page, 'settings-save')).toHaveCount(0);
+    // what shows before scrolling ends where the body's box does (a footer would end it) or at the tab bar over it;
+    // with the footer, Breeding's switch sat below it (3 of 5); the fifth, Shows, still takes a scroll at 390×844
+    const body = (await rect(page, '[data-testid="panel-settings"] .ag-sheet__body'))!;
+    const bar = (await rect(page, '[data-testid="nav-tabbar"]'))!;
+    const seen = Math.min(body.bottom, bar.top);
+    for (const c of ['rare', 'care', 'market', 'breeding']) {
+      const sw = (await rect(page, `[data-testid="notify-cat-${c}"]`))!;
+      expect(sw.bottom, c).toBeLessThanOrEqual(seen);
+    }
+  });
+
   test('the tank card opens below the tank bar, which stays in view, and the guide steps aside', async ({ page }) => {
     await phoneGame(page, { guide: true });
     await expect(tid(page, 'tutorial-card')).toBeVisible();

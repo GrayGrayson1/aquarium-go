@@ -11,8 +11,8 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
   review (5 blockers fixed, REL-017 GREEN on confirmation) and a browser/QA review (RED → GREEN), with two full
   passes in a row on `9bff79e` (PLAN.md, chunk 6). `next` = `main`'s content (`31f8b7b` plus the post-release notes).
 - Left from chunk 6: the owner's play-through on a phone and a desktop, with a VoiceOver pass for ACC-005 (the one
-  requirement still IN_PROGRESS), and the owner's answers to group F in `docs/agent/OWNER_QUESTIONS.md` (F1
-  VoiceOver, F2 a quest's wording, F3 pinning tables to SCHEMA_VERSION, F4 Settings' "Save now" footer).
+  requirement still IN_PROGRESS, OWNER_QUESTIONS F1). The owner answered F2–F4 on 2026-10-16 (ADR-0036, "lets go
+  with your recommendations"); the changes are on `next` for 0.5.4, which waits for the owner's go-ahead.
 - What comes after 0.5 is the owner's call: NOTIFY-011 and PLAT-004 (the native wrapper) are deferred, REL-002
   (multiplayer) is for later, and `docs/agent/DEBT_INVENTORY.md` lists what multiplayer would magnify.
 
@@ -20,9 +20,9 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
    `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's record).
-2. **The owner's play-through and group F:** record what the owner reports (ACC-005's VoiceOver pass, F1) and their
-   answers to F2–F4 verbatim in an ADR, then make the changes they choose (each one tested, a fresh reviewer for
-   anything beyond copy) and release them as 0.5.4 only with the owner's go-ahead.
+2. **The owner's play-through and F1:** record what the owner reports (ACC-005's VoiceOver pass, F1) verbatim in an
+   ADR and fix what it finds (each fix tested). F2–F4 are built (ADR-0036); release 0.5.4 only with the owner's
+   go-ahead.
 3. **After 0.5:** ask the owner what's next; a new chunk gets a brief in PLAN.md, its own fresh reviewer (Opus 5.5 at
    max effort, never Fable) and two full passes before a release.
 4. **Releasing** (as 0.5.3 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into

@@ -8,12 +8,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 1. **0.5 is complete.** Chunk 6 is done and released as 0.5.3 (2026-10-15, the owner's go-ahead in the session, before
    the owner's play-through). Left from it: the owner's play-through on a phone and a desktop, with a VoiceOver pass
-   for ACC-005 (OWNER_QUESTIONS F1), and the owner's answers to F2–F4. What comes after 0.5 (NOTIFY-011 and PLAT-004,
+   for ACC-005 (OWNER_QUESTIONS F1). The owner's answers to F2–F4 (ADR-0036, 2026-10-16) are built on `next` for 0.5.4
+   ("After 0.5.3" under chunk 6), which waits for the owner's go-ahead. What comes after 0.5 (NOTIFY-011 and PLAT-004,
    the native wrapper, are deferred; REL-002, multiplayer, is for later) is the owner's call.
 2. **Released:** 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2
    and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
-3. Every owner question up to group E is answered (ADR-0024 to ADR-0035); group F (four from chunk 6's reviews, none
-   blocking a release) is open in `docs/agent/OWNER_QUESTIONS.md`. The approved screens are in
+3. Every owner question up to group E is answered (ADR-0024 to ADR-0035), and group F's F2–F4 (ADR-0036); F1, the
+   VoiceOver pass, is open in `docs/agent/OWNER_QUESTIONS.md`. The approved screens are in
    `docs/agent/design/DESIGN-0.5/` and `docs/agent/design/DESIGN-S3D/`.
 
 ## Status
@@ -397,8 +398,15 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   names a quarantine tank as added only when it is newer than the line; four days or more of out-of-salt water changes
   read "Days 39–44" (the design's range form; the design draws two days); Social (dev only) shows drawn placeholders for
   friends' snapshots and a larger club name on phones; Settings keeps its "Save now" footer, which no approved Settings
-  screen draws (OWNER_QUESTIONS F4).
+  screen draws, on General and Saves only since ADR-0036 (OWNER_QUESTIONS F4).
 - **Releases:** 0.5.2 went out mid-chunk at the owner's request (see "Releases"); chunk 6 ends with 0.5.3.
+- **After 0.5.3 (2026-10-16): group F's answers (ADR-0036), on `next` for 0.5.4.** F2: "Best foot forward" reads
+  "Enter a show and see it judged. A healthy, settled adult that trusts you shows best." F3: `core-save-forward-safety`
+  pins the water classes, show tiers, buyer types, staff roles and staff traits per save format (`TABLES_AT`, from
+  v2), so adding one without raising `SCHEMA_VERSION` fails (PERSIST-003 A7). F4: Settings' "Save now" footer shows
+  on General and Saves only (save.spec checks each tab; mobile-sheets.spec checks that Notifications shows 4 of its 5
+  categories before scrolling on a 390×844 phone, 3 with the footer). Each new test was run failing without its
+  change. Checks and review: see the commit that records them.
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
@@ -459,7 +467,8 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   them off (0.5 spec §12.3). One-copy Metallic is unnamed, with a subtle sheen. Locked destinations open a locked
   panel. Several production lines per species. Social is a local stub, reachable only in dev mode (ADR-0001,
   ADR-0005).
-- Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016).
+- Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does a new
+  water class, show tier, buyer type, staff role or staff trait (ADR-0036).
 - Catch-up bid windows stay as they are (ADR-0016).
 - Morph tiers: Legendary below 1 in 10,000 of market stock (ADR-0022, replacing ADR-0005 decision 4's threshold).
 - From the owner's group A answers (ADR-0024): an older build that finds a newer save keeps today's one message

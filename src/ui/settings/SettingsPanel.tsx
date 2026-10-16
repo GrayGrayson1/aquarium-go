@@ -524,8 +524,10 @@ export function SettingsPanel() {
   }, [open, wantTab]);
   useNavTab('settings', open ? tab : null); // lane:ui-shell (chunk 1)
   const close = () => useUI.getState().set({ panel: null });
+  // ADR-0036 (F4): Save now sits where saving belongs, General and Saves; the other tabs show their whole list
+  const saveFooter = inGame && (tab === 'general' || tab === 'saves');
   return (
-    <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={`Saved on this device · ${versionLabel()}`} footer={inGame ? <SaveNowFooter /> : undefined}>
+    <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={`Saved on this device · ${versionLabel()}`} footer={saveFooter ? <SaveNowFooter /> : undefined}>
       <div className="ag-tcard__tabs">
         <Tabs<Tab>
           label="Settings section"
