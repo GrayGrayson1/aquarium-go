@@ -28,6 +28,9 @@
    desktop card has about 124 px for it, "Red / Halfmoon…") */
 .ag-offercard__titletext { min-width: 0; overflow-wrap: anywhere; }
 .ag-offercard__sub { color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); margin-top: 3px; overflow-wrap: anywhere; }
+/* chunk 6 (DES-011): a card stretched to a taller neighbour in its grid row gives the spare height to its rows; the
+   chips keep their own height (a lone chip grew to 53 px) */
+.ag-offercard .pn-chips { align-items: flex-start; align-content: flex-start; }
 
 /* ── offer detail (§7.4) ── */
 .ag-fromnotify { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r-md); color: var(--c-ink); background: color-mix(in srgb, var(--c-aqua) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); font-size: calc(12.5px * var(--text-scale)); }

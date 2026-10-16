@@ -307,7 +307,7 @@ export function AlertsPopover() {
       {/* chunk 6 (DES-011): the drawer's title and close, as the 0.5 and S3-D screens draw it */}
       <div className="ag-alerts-pop__head">
         <h2 className="ag-alerts-pop__title">Alerts</h2>
-        <IconButton label="Close alerts" className="ag-alerts-pop__close" data-testid="alerts-close" onClick={() => useShell.getState().set({ popover: null })}>
+        <IconButton label="Close alerts" className="ag-iconbtn--quiet ag-alerts-pop__close" data-testid="alerts-close" onClick={() => useShell.getState().set({ popover: null })}>
           <X size={18} />
         </IconButton>
       </div>

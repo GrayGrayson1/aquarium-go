@@ -105,8 +105,9 @@
   .ag-sheet.ag-tcard.ag-sheet--bottom, .ag-sheet.ag-tcard.ag-sheet--bottom.is-expanded { top: calc(var(--safe-t) + 118px); max-height: none; }
   .ag-sheet.ag-settings .ag-sheet__handle, .ag-sheet.ag-tcard .ag-sheet__handle { display: none; }
   /* chunk 6 (DES-011): they open at full height, so no resize handle, but the drawn grabber (phone-notif-off.png,
-     phone-card-equip.png), as the panel sheets and More have */
-  .ag-sheet.ag-settings.ag-sheet--bottom::before, .ag-sheet.ag-tcard.ag-sheet--bottom::before { content: ''; flex: none; width: 42px; height: 5px; margin: 8px auto -2px; border-radius: 99px; background: color-mix(in srgb, var(--c-ink-2) 30%, transparent); }
+     phone-card-equip.png), as the panel sheets and More have: first in the column, above the header (::before is the
+     sheet's sheen) */
+  .ag-sheet.ag-settings.ag-sheet--bottom::after, .ag-sheet.ag-tcard.ag-sheet--bottom::after { content: ''; order: -1; flex: none; width: 42px; height: 5px; margin: 8px auto 4px; border-radius: 99px; background: color-mix(in srgb, var(--c-ink-2) 30%, transparent); pointer-events: none; }
   /* chunk 6 (DES-011): Settings' strip at phone-notif-off.png's spacing, so "Play & access · Saves · Notifications ·
      About" fit whole once General scrolls away */
   .ag-sheet.ag-settings .ag-tcard__tabs .ag-tab { padding-inline: 10px; }
