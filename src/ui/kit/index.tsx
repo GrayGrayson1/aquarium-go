@@ -84,14 +84,23 @@ export function IconButton({ label, pressed, className, onClick, children, silen
 
 /**
  * Scroll an overflowing tab strip sideways so `el` is fully in view (a deep link to a tab near the end of a phone's
- * strip, 0.5 spec §5.6). Only the strip scrolls, never the page.
+ * strip, 0.5 spec §5.6). Only the strip scrolls, never the page. chunk 6 (DES-011): it stops where a tab starts, so
+ * every label left in view is whole, as the designs draw a scrolled strip (it used to stop mid-label: "eneral").
  */
 export function revealInStrip(strip: HTMLElement | null, el: HTMLElement | null | undefined): void {
   if (!strip || !el || strip.scrollWidth <= strip.clientWidth + 1) return;
   const s = strip.getBoundingClientRect();
   const r = el.getBoundingClientRect();
-  if (r.left < s.left) strip.scrollLeft -= s.left - r.left + 8;
-  else if (r.right > s.right) strip.scrollLeft += r.right - s.right + 8;
+  const pad = parseFloat(getComputedStyle(strip).paddingLeft) || 0;
+  const at = (e: Element) => e.getBoundingClientRect().left - s.left + strip.scrollLeft - pad; // a tab's start, as a scrollLeft
+  const max = strip.scrollWidth - strip.clientWidth;
+  if (r.left < s.left + pad) strip.scrollLeft = Math.max(0, at(el));
+  else if (r.right > s.right - pad) {
+    const need = r.right - s.right + pad + strip.scrollLeft; // the least scroll that shows all of `el`
+    const tabs = [...strip.children].filter((c) => c instanceof HTMLElement);
+    const start = tabs.map(at).find((x) => x >= need - 0.5 && x <= at(el) + 0.5); // (never past `el`'s own start)
+    strip.scrollLeft = Math.min(max, start ?? need);
+  }
 }
 
 /** The next tab for an arrow / Home / End key (§18: Left and Right move between tabs), or null for other keys. */

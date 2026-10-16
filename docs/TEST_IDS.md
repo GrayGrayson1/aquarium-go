@@ -218,6 +218,7 @@ Rules: `src/ui/common/notify.ts` (tests: `tests/sim/ui-notify-*.test.ts`). Every
 | `hud-alerts` | Bell: `data-attention` = worst tank (`good\|watch\|danger`), aria-label / title "N tanks need attention · M unread events" |
 | `hud-alerts-count` | Bell number: unread news (toasted events and every warning/danger/death not yet read or cleared), coloured by the worst of the tanks and that news (`is-danger\|is-watch\|is-news`) |
 | `hud-alerts-dot` | Bell dot when tanks need a look but nothing is unread |
+| `alerts-close` | The alerts drawer's close button ("Close alerts"), beside its "Alerts" title (chunk 6, DES-011) |
 | `alerts-mark-read` / `alerts-clear-all` | Drawer: "Mark read" (reads everything) and "Clear all" (reads and hides every event logged so far from the drawer; `notify.logClearedSeq` — nothing is deleted) |
 | `alerts-events` / `alerts-event` / `alerts-events-empty` | Drawer event list, one event, and its empty line ("You're all caught up…" after Clear all) |
 | `alerts-event-link` | Drawer event's "See results" / "Open Research" / "Open the shop" / "View listing" link |

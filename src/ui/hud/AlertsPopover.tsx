@@ -256,6 +256,7 @@ function NotifyCta() {
       <span className="ag-grow">Get alerts like these as system notifications, not just in here.</span>
       <Button
         size="sm"
+        variant="primary"
         data-testid="alerts-notify-turn-on"
         onClick={() => {
           sfx('open');

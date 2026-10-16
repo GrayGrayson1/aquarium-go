@@ -22,8 +22,8 @@
 .ag-btn.ag-btn--buygear { background: var(--c-gold-soft); border-color: color-mix(in srgb, var(--c-gold) 50%, transparent); color: color-mix(in srgb, var(--c-gold) 62%, var(--c-ink)); font-weight: 650; }
 .ag-btn.ag-btn--buygear:hover:not(:disabled) { background: color-mix(in srgb, var(--c-gold) 22%, transparent); }
 
-/* Water tab: "Auto-clean is on" (§10.3) */
-.ag-autonote { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0 0; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); background: color-mix(in srgb, var(--c-aqua) 8%, transparent); }
+/* Water tab: "Auto-clean is on" (§10.3); chunk 6 (DES-011): spaced from the next block as desk-card.png draws it */
+.ag-autonote { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0 14px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); background: color-mix(in srgb, var(--c-aqua) 8%, transparent); }
 .ag-autonote svg { flex: none; margin-top: 2px; color: var(--c-aqua); }
 .ag-autonote__title { font-size: calc(13px * var(--text-scale)); font-weight: 620; color: var(--c-ink); }
 .ag-autonote__text { margin-top: 2px; font-size: calc(12px * var(--text-scale)); line-height: 1.45; color: var(--c-ink-2); }

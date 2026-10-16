@@ -229,7 +229,7 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
             {lead && !group && <SexMark c={lead} />}
           </div>
           {lead && (
-            <div className="ag-offercard__sub pn-ellipsis">
+            <div className="ag-offercard__sub">
               {group ? `Group of ${offer.creatures.length} · ${lead.sizeCm.toFixed(1)} cm` : `${SEX_LABEL[lead.sex]} · ${lead.sizeCm.toFixed(1)} cm${firstTrait ? ` · ${PERSONALITY_LABEL[firstTrait] ?? firstTrait}` : ''}`}
             </div>
           )}

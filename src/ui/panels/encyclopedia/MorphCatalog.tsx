@@ -68,7 +68,7 @@ export function GenesLine({ sp }: { sp: SpeciesDefinition }) {
   });
   return (
     <section data-testid="enc-genes">
-      <SectionHead title="Genes" icon={<Dna size={14} />} />
+      <SectionHead title={`Genes · ${sp.genetics.loci.length}`} icon={<Dna size={14} />} /> {/* chunk 6 (DES-011): the count, as desk-catalog.png draws it */}
       <div className="pn-chips">{chips}</div>
       {sp.id === 'betta' && <p className="pn-tiny pn-muted" style={{ margin: '6px 0 0' }}>New in 0.5: Cambodian (recessive, shows on red bettas) and Metallic (additive — one copy adds a sheen, two make it Metallic).</p>}
     </section>
@@ -146,7 +146,7 @@ export function CatalogTree({ sp, groups, total, seenNames, seenTraits, initiall
     <section data-testid="enc-catalog">
       <SectionHead title={`Morph catalog · ${seen}/${total} seen`} icon={<Network size={14} />} />
       <p className="pn-tiny pn-muted" style={{ marginBottom: 6 }}>
-        Every colour and combination these genetics can produce, by base colour, rated by how often sellers stock it.
+        Every colour and combination these genetics can produce, by base colour, rated by how often sellers stock it. Built from the gene table — nothing is typed in by hand.
       </p>
       <div className="pn-catalog">
         {flat ? (

@@ -24,9 +24,10 @@
 
 /* ── offer cards (§7.3) ── */
 .ag-offercard__title { font-size: calc(16.5px * var(--text-scale)); font-weight: 560; min-width: 0; }
-/* chunk 6 (DES-011): the morph name wraps onto a second line, as the 0.5 screens draw it (it was cut to one) */
-.ag-offercard__titletext { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-.ag-offercard__sub { color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); margin-top: 3px; }
+/* chunk 6 (DES-011): the whole name wraps, as the 0.5 screens draw it (it was cut to one line, then two: a two-column
+   desktop card has about 124 px for it, "Red / Halfmoon…") */
+.ag-offercard__titletext { min-width: 0; overflow-wrap: anywhere; }
+.ag-offercard__sub { color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); margin-top: 3px; overflow-wrap: anywhere; }
 
 /* ── offer detail (§7.4) ── */
 .ag-fromnotify { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r-md); color: var(--c-ink); background: color-mix(in srgb, var(--c-aqua) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c-aqua) 30%, transparent); font-size: calc(12.5px * var(--text-scale)); }

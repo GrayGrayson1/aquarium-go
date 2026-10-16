@@ -3,6 +3,7 @@
  * decision 3): a looping bar, since loading can't promise how long it takes, the real time away, and where it goes
  * next. OWNER: lane "ui-shell".
  */
+import { Link2 } from 'lucide-react';
 import { useNav, type NavBoot } from './router';
 import { Wordmark } from '../screens/TitleScreen';
 
@@ -56,7 +57,9 @@ export function BootCardView({ boot }: { boot: NavBoot | null }) {
           <span />
         </div>
         {boot.dest && (
+          // chunk 6 (DES-011): phone-opening.png's link icon (the gap spaces it: the text stays "Then: …")
           <span className="ag-boot__dest" data-testid="boot-deeplink-dest">
+            <Link2 size={13} aria-hidden />
             Then: {boot.dest}
           </span>
         )}

@@ -2,7 +2,8 @@
 /**
  * lane:ui-panels — Market › Shop in 0.5 (chunk 2; spec §7, §9.2, §16; ADR-0020), server-rendered as in ui-copy-05: the
  * filter row and its copy, the empty states, the redesigned cards, the offer detail's section order, Genes and
- * Temperament, the morph line, long verdict labels, the build-a-tank path, the gone offer, and the buy-button table.
+ * Temperament, the morph line, long verdict labels, the build-a-tank path, the gone offer, and the buy-button table;
+ * and the Genetics Lab's research card naming its effect on the shop (desk-research.png).
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { createElement } from 'react';
@@ -16,6 +17,7 @@ import { useNav } from '@/ui/nav/router';
 import { ShopTab } from '@/ui/panels/market/Shop';
 import { useShopFilters } from '@/ui/panels/market/shopFilters';
 import { buyState, type BuyInputs } from '@/ui/panels/market/buyState';
+import { ResearchPanel } from '@/ui/panels/research/ResearchPanel';
 
 const P = { size: 50, color: 50, pattern: 50, structure: 50, fertility: 50, hardiness: 50, temperament: 66, curiosity: 40 };
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
@@ -253,5 +255,18 @@ describe('§7.5 the buy button (first matching row wins)', () => {
     expect(label({ risky: true })).toEqual(['Confirm the risk first', 'Confirm the risk', 'none']);
     expect(label({ risky: true, acknowledged: true })).toEqual(['Buy for $30', 'Buy', 'buy']);
     expect(label({})).toEqual(['Buy for $30', 'Buy', 'buy']);
+  });
+});
+
+describe('the Genetics Lab research card (desk-research.png, §9.1)', () => {
+  it('names its shop effect beside its own unlock: "Shop: hidden carriers in Rare genes"', () => {
+    game();
+    Object.assign(useGame.getInitialState(), useGame.getState());
+    try {
+      const t = text(renderToStaticMarkup(createElement(ResearchPanel)));
+      expect(t).toMatch(/Genetics Lab .*Reveal precise genetics Shop: hidden carriers in Rare genes/);
+    } finally {
+      Object.assign(useGame.getInitialState(), { game: null });
+    }
   });
 });

@@ -5,7 +5,8 @@
  *   focused control showing a ring of at least 2 px; Escape closes one layer at a time (a dialog, then its panel);
  * - the way to Settings › Play & access › High contrast is all keyboard, and the switch says its state;
  * - under High contrast the panel sheet, the HUD and the toasts are solid (no blur, nothing of the room showing
- *   through); toasts are announced (a polite live region).
+ *   through); toasts are announced (a polite live region);
+ * - the alerts drawer's close button and a bottom sheet's panel switcher put focus where §18 says.
  * WebKit moves focus to buttons with Tab only when Safari's "Press Tab to highlight each item" is on; Option+Tab always
  * does, so WebKit presses that.
  */
@@ -119,6 +120,26 @@ test.describe('accessibility (ACC-005)', () => {
     expect(surfaces.pill?.color).toBe(1);
     expect(surfaces.toast?.blur).toBe('none');
     expect(surfaces.toast?.color).toBe(1);
+  });
+
+  test('the alerts drawer’s close button closes it and hands focus back to the bell', async ({ page }) => {
+    await tid(page, 'hud-alerts').click();
+    await expect(tid(page, 'alerts-close')).toBeVisible();
+    await expect(tid(page, 'alerts-close')).toHaveAccessibleName('Close alerts');
+    await tid(page, 'alerts-close').click();
+    await expect(tid(page, 'alerts-close')).toHaveCount(0);
+    await expect(tid(page, 'hud-alerts')).toHaveAttribute('aria-expanded', 'false');
+    await expect.poll(() => focused(page).then((f) => f?.id)).toBe('hud-alerts');
+  });
+
+  test('a bottom sheet’s panel switcher (721–1000 px portrait) moves focus to the new panel’s title (§18)', async ({ page }) => {
+    // chunk 6: the first-focus guard (focus already inside the sheet stays put) left it on the switcher
+    await page.setViewportSize({ width: 900, height: 1100 });
+    await tid(page, 'dock-market').click();
+    await expect(tid(page, 'panel-market')).toHaveAttribute('data-occlude', 'bottom');
+    await tid(page, 'sheet-switch-tanks').click();
+    await expect(tid(page, 'panel-tanks')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => document.activeElement?.matches('[data-testid="panel-tanks"] .pn-head__title') ?? false)).toBe(true);
   });
 
   test('toasts are announced: the toast stack is a polite live region', async ({ page }) => {

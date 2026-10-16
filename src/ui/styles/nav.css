@@ -14,7 +14,7 @@
 .ag-boot__line { margin: 0; color: var(--c-ink-2); font-size: calc(13px * var(--text-scale)); line-height: 1.45; }
 .ag-boot__bar { position: relative; width: 100%; height: 6px; border-radius: var(--r-pill); background: var(--c-fill-2); overflow: hidden; }
 .ag-boot__bar > span { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; border-radius: inherit; background: linear-gradient(90deg, var(--c-aqua-2), var(--c-aqua)); animation: ag-load 1.8s ease-in-out infinite; }
-.ag-boot__dest { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 12px; border-radius: var(--r-pill); background: var(--c-aqua-soft); border: 1px solid var(--c-line-strong); color: var(--c-ink); font-size: calc(12px * var(--text-scale)); font-weight: 600; }
+.ag-boot__dest { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 4px 12px; border-radius: var(--r-pill); background: var(--c-aqua-soft); border: 1px solid var(--c-line-strong); color: var(--c-ink); font-size: calc(12px * var(--text-scale)); font-weight: 600; }
 @keyframes ag-load {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(250%); }
@@ -104,6 +104,12 @@
   .ag-sheet.ag-settings.ag-sheet--bottom, .ag-sheet.ag-settings.ag-sheet--bottom.is-expanded { top: calc(var(--safe-t) + var(--edge) + var(--topbar-h) + 6px); max-height: none; }
   .ag-sheet.ag-tcard.ag-sheet--bottom, .ag-sheet.ag-tcard.ag-sheet--bottom.is-expanded { top: calc(var(--safe-t) + 118px); max-height: none; }
   .ag-sheet.ag-settings .ag-sheet__handle, .ag-sheet.ag-tcard .ag-sheet__handle { display: none; }
+  /* chunk 6 (DES-011): they open at full height, so no resize handle, but the drawn grabber (phone-notif-off.png,
+     phone-card-equip.png), as the panel sheets and More have */
+  .ag-sheet.ag-settings.ag-sheet--bottom::before, .ag-sheet.ag-tcard.ag-sheet--bottom::before { content: ''; flex: none; width: 42px; height: 5px; margin: 8px auto -2px; border-radius: 99px; background: color-mix(in srgb, var(--c-ink-2) 30%, transparent); }
+  /* chunk 6 (DES-011): Settings' strip at phone-notif-off.png's spacing, so "Play & access · Saves · Notifications ·
+     About" fit whole once General scrolls away */
+  .ag-sheet.ag-settings .ag-tcard__tabs .ag-tab { padding-inline: 10px; }
   :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud .ag-hud__coach { opacity: 0; visibility: hidden; }
   /* every open phone sheet moves the toasts to the band above the tab bar (Toasts.tsx measures the exact band;
      this is the first frame). hud.css's own rule (L521–523) is left alone (fix-hud-toasts.test.ts). */

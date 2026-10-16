@@ -221,6 +221,7 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
       <div className="pn-grow">
         <div className="pn-row pn-gap-2 pn-row--wrap">
           <b>{e.name}</b>
+          {e.kind === 'water_changer' && <Chip tone="aqua">New</Chip> /* chunk 6 (DES-011, desk-supplies.png): new in 0.5 */}
           <Chip tone={e.tier === 3 ? 'gold' : e.tier === 2 ? 'aqua' : 'neutral'}>Tier {e.tier}</Chip>
           {installed && (
             <Chip tone="good" icon={<Check size={11} />}>
