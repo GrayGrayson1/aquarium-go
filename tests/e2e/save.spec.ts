@@ -86,6 +86,16 @@ test.describe('save / load / settings', () => {
       await expect(tid(page, 'settings-save'), t).toHaveCount(on ? 1 : 0);
       await expect(foot, t).toHaveCount(on ? 1 : 0);
     }
+    // focus on Save now moves to the new tab as the footer goes, after a click (WebKit doesn't focus a clicked tab) or
+    // a link (Back and Forward), rather than falling to the page
+    await tid(page, 'settings-save').focus();
+    await tid(page, 'settings-tab-display').click();
+    await expect(tid(page, 'settings-tab-display')).toBeFocused();
+    await tid(page, 'settings-tab-general').click();
+    await tid(page, 'settings-save').focus();
+    await page.evaluate(() => void (location.hash = '#/settings/about'));
+    await expect(tid(page, 'settings-tab-about')).toHaveAttribute('aria-selected', 'true');
+    await expect(tid(page, 'settings-tab-about')).toBeFocused();
     // it still saves, from Saves too
     await tid(page, 'settings-tab-saves').click();
     await tid(page, 'settings-save').click();

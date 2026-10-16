@@ -17,8 +17,9 @@ chat, after 0.5.3 shipped:
 2. **F3, the save format.** Since chunk 6 (PERSIST-004 A3) a save's water class, show tier, buyer type, staff role or
    staff trait that the game's tables don't know is reset or removed on load, with a note. ADR-0016 decision 2 makes a
    new species or tank size raise `SCHEMA_VERSION`, so an older build refuses such a save as too new; nothing did the
-   same for these five tables, so an older build opened after a rollback would convert those tanks, delete those show
-   entries (keeping their fees) and remove those team members for good.
+   same for these five tables, so an older build opened after a rollback would convert those tanks, delete those shows
+   (their entries lose their tier and stay "entered", never judged, their fees kept; B-203) and remove those team members
+   for good.
 3. **F4, Settings' footer.** Settings has a "Save now" footer from before 0.5 ("Autosave keeps your progress. Save now
    any time.") on every tab. No approved Settings screen draws it, and on a phone it hides part of Notifications' list.
 
@@ -32,13 +33,27 @@ chat, after 0.5.3 shipped:
    `tests/sim/core-save-forward-safety.test.ts` pins the five tables' keys per save format (`TABLES_AT`, first pinned
    at v2; v1 had no pin) and fails when one is added or removed without the bump. PERSIST-003 gains A7.
 3. **F4:** the "Save now" footer shows on Settings' General and Saves tabs only; Play & access, Notifications and About
-   have none. Saves keeps its own save buttons too.
+   have none. Saves keeps its own save buttons too. Moving to a tab without the footer while Save now has focus (a
+   click in a browser that doesn't focus a clicked tab, or Back and Forward) moves focus to that tab, not to the page
+   (the fresh review's note).
 
-**Found while building decision 3.** The recommended option's description in OWNER_QUESTIONS said Notifications, Play
-& access and About would then "show their whole list". On a 390×844 phone (Chromium and WebKit, the browser's
-notifications blocked, the game's state on a fresh quick game), Notifications shows 4 of its 5 categories before
-scrolling instead of 3; the fifth, Shows, still takes a scroll. The owner was told this when the change was reported.
-`tests/e2e/mobile-sheets.spec.ts` checks the four; `tests/e2e/save.spec.ts` checks the footer tab by tab.
+**Found while building decision 3 (and in its fresh review).** The recommended option's description in
+OWNER_QUESTIONS said Notifications, Play & access and About would then "show their whole list", and the question and the
+agent's message counted Notifications' categories as five. Both were wrong: Notifications has six categories (chunk 5
+added Automation), and none of the three tabs fits a 390×844 phone. Measured there (Chromium and WebKit agree), the
+footer took 67 px (what shows ended at 703 instead of the tab bar's 770); the categories that now show whole before
+scrolling, by the browser's notification state (it sets the status card's height):
+
+| State | Without the footer | With it (before) |
+|---|---|---|
+| none, as in an iPhone Safari tab | 4 of 6 (to Breeding) | 3 of 6 |
+| blocked | 4 of 6 | 3 of 6 |
+| not asked yet | 3 of 6 (to Market) | 2 of 6 |
+| allowed | 3 of 6 | 2 of 6 |
+
+Play & access runs to 959 px and About to 1,194 px, so both still scroll. The owner is told this when the change is
+reported. `tests/e2e/mobile-sheets.spec.ts` checks the first row (no notifications, 4 of 6, and the tab's end clearing
+the tab bar); `tests/e2e/save.spec.ts` checks the footer tab by tab and the focus.
 
 ## Owner approval
 
@@ -87,6 +102,9 @@ The agent's message (verbatim):
 >
 > Give me your picks, or say "go with your recommendations". I'll record them in a decision record, make the changes
 > with tests, and hold the release as 0.5.4 until you say go.
+
+Correction to the message (not to the owner's answer): Notifications has six categories, not five (see "Found while
+building decision 3"); "only 3 of the 5" came from the QA review's count.
 
 The owner's reply (verbatim): **"lets go with your recommendations"**. So: F2 "Change it to …", F3 "Treat adding one
 as a save-format change", F4 "Keep it on the General and Saves tabs only". Not chosen: F2 "Keep it", "Give your own

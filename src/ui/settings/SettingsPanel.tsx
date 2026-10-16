@@ -46,6 +46,8 @@ import { NotificationsTab } from './NotificationsTab'; // lane:notify (chunk 3)
 
 type Tab = 'general' | 'display' | 'saves' | 'notifications' | 'about';
 const TABS: readonly Tab[] = ['general', 'display', 'saves', 'notifications', 'about'];
+/** ADR-0036 (F4): the tabs with the "Save now" footer, where saving belongs; the others get its height back. */
+const SAVE_FOOTER_TABS: readonly Tab[] = ['general', 'saves'];
 
 const QUALITY: { id: QualityLevel; label: string; note: string }[] = [
   { id: 'low', label: 'Low', note: 'Fastest. Simpler water and shadows.' },
@@ -515,17 +517,24 @@ export function SettingsPanel() {
   const inGame = useGame((s) => !!s.game && !s.game.isShowcase);
   const [tab, setTab] = useState<Tab>('general');
   const wantTab = useShell((s) => s.settingsTab);
+  /** Switching to a tab without the footer while Save now has focus (WebKit doesn't focus a clicked tab; Back and
+   *  Forward change the tab too): focus moves to that tab instead of falling to the page as the footer goes. */
+  const showTab = (t: Tab) => {
+    if (!SAVE_FOOTER_TABS.includes(t) && document.activeElement?.closest('[data-testid="panel-settings"] .ag-sheet__foot')) {
+      document.querySelector<HTMLElement>(`[data-testid="settings-tab-${t}"]`)?.focus();
+    }
+    setTab(t);
+  };
   useEffect(() => {
     // the title screen's version badge opens Settings straight on About; a link names any tab
     if (open && wantTab) {
-      setTab(TABS.includes(wantTab as Tab) ? (wantTab as Tab) : 'general');
+      showTab(TABS.includes(wantTab as Tab) ? (wantTab as Tab) : 'general');
       useShell.getState().set({ settingsTab: null });
     }
   }, [open, wantTab]);
   useNavTab('settings', open ? tab : null); // lane:ui-shell (chunk 1)
   const close = () => useUI.getState().set({ panel: null });
-  // ADR-0036 (F4): Save now sits where saving belongs, General and Saves; the other tabs show their whole list
-  const saveFooter = inGame && (tab === 'general' || tab === 'saves');
+  const saveFooter = inGame && SAVE_FOOTER_TABS.includes(tab);
   return (
     <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={`Saved on this device · ${versionLabel()}`} footer={saveFooter ? <SaveNowFooter /> : undefined}>
       <div className="ag-tcard__tabs">
@@ -534,7 +543,7 @@ export function SettingsPanel() {
           testIdPrefix="settings-tab-"
           value={tab}
           onChange={(t) => {
-            setTab(t);
+            showTab(t);
             document.querySelector('[data-testid="panel-settings"] .ag-sheet__body')?.scrollTo({ top: 0 });
           }}
           items={[

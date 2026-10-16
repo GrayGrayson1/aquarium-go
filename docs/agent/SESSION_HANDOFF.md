@@ -9,7 +9,8 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
 
 - **0.5 is complete and released.** 0.5.3 is on `main` (`382a637`, 2026-10-15): chunk 6's end, after a fresh code
   review (5 blockers fixed, REL-017 GREEN on confirmation) and a browser/QA review (RED → GREEN), with two full
-  passes in a row on `9bff79e` (PLAN.md, chunk 6). `next` = `main`'s content (`31f8b7b` plus the post-release notes).
+  passes in a row on `9bff79e` (PLAN.md, chunk 6). `next` = `main` plus the post-release notes and ADR-0036's changes,
+  unreleased (PLAN.md, chunk 6, "After 0.5.3").
 - Left from chunk 6: the owner's play-through on a phone and a desktop, with a VoiceOver pass for ACC-005 (the one
   requirement still IN_PROGRESS, OWNER_QUESTIONS F1). The owner answered F2–F4 on 2026-10-16 (ADR-0036, "lets go
   with your recommendations"); the changes are on `next` for 0.5.4, which waits for the owner's go-ahead.

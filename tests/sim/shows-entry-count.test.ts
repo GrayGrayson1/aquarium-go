@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { enterShow, withdrawEntry } from '@/sim/shows';
 import { advanceWorld } from '@/sim/world';
 import { showGame, starterOf, wellKept, addShow } from './shows-helpers';
+import { QUEST_BY_ID } from '@/data/quests';
 
 const entries = (g: ReturnType<typeof showGame>) => g.progress.counters.show_entries ?? 0;
 
@@ -35,5 +36,11 @@ describe('B-175: a withdrawn show entry is not an entry', () => {
     advanceWorld(g, 12);
     expect(g.shows!.entries.find((e) => e.showId === show.id)?.status).toBe('judged');
     expect(entries(g)).toBe(before + 1);
+  });
+});
+
+describe('ADR-0036 (F2): the quest says the entry must be judged', () => {
+  it('reads as the owner approved', () => {
+    expect(QUEST_BY_ID.q_first_show).toMatchObject({ title: 'Best foot forward', body: 'Enter a show and see it judged. A healthy, settled adult that trusts you shows best.' });
   });
 });

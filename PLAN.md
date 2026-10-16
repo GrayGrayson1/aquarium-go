@@ -404,9 +404,14 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   "Enter a show and see it judged. A healthy, settled adult that trusts you shows best." F3: `core-save-forward-safety`
   pins the water classes, show tiers, buyer types, staff roles and staff traits per save format (`TABLES_AT`, from
   v2), so adding one without raising `SCHEMA_VERSION` fails (PERSIST-003 A7). F4: Settings' "Save now" footer shows
-  on General and Saves only (save.spec checks each tab; mobile-sheets.spec checks that Notifications shows 4 of its 5
-  categories before scrolling on a 390×844 phone, 3 with the footer). Each new test was run failing without its
-  change. Checks and review: see the commit that records them.
+  on General and Saves only, and focus on it moves to the new tab as it goes (save.spec checks each tab and the focus;
+  mobile-sheets.spec that a 390×844 phone with no notifications shows 4 of Notifications' 6 categories before
+  scrolling, 3 with the footer as measured, and that the tab's end clears the tab bar). None of the three tabs fits
+  that phone whole (ADR-0036 corrects the F4 option's "whole list" and its count of five). Each new test was run
+  failing without its change, except save.spec's click step (Playwright's WebKit focuses a clicked tab itself).
+  The fresh review (Opus 5.5, max) found 2 blockers, both wording (the six categories; the handoff's "`next` =
+  `main`"), and 7 notes: fixed, or B-203 for the save values outside the five tables. Checks: see the commit that
+  records them.
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
