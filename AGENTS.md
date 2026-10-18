@@ -51,8 +51,8 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
   `docs/ARCHITECTURE.md` and in `tests/sim/core-architecture-boundaries.test.ts` on purpose.
 - **Saves.** New save fields are optional and validated in `repairState` when present; an absent field leaves
   `stateHash` unchanged. Adding a species or a tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does adding a water
-  class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, more reservoirs or a
-  rare-variant kind (ADR-0037); `core-save-forward-safety` pins them. A save written by a newer build must never be
+  class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, a higher reservoir limit or
+  a rare-variant kind (ADR-0037); `core-save-forward-safety` pins them. A save written by a newer build must never be
   treated as damaged, loaded past or overwritten (PERSIST-014, chunk 1, finishes this). Old saves are best-effort, not
   required (ADR-0005).
 - **Core files** (types, the stores, `world.ts`, persistence, `package.json` scripts, the test configs) may change

@@ -440,23 +440,34 @@ REL-012, REL-018.
   building.
 - **Build:**
   1. **The live site ignores `?dev=1` (B-190).** A production build has no write tools whatever the address says:
-     `window.__AQ` stays read-only, with no dev panel, fixtures, `?showcase=` or `?fixture=`. This changes ADR-0005
-     decision 2 and ADR-0024 A5 ("`?dev=1` as built") for the live site. The dev server keeps `?dev=1` as today. The
-     e2e production build (`.e2e-dist` in `playwright.config.ts`, which `base-path.spec` opens with `?dev=1`) turns
-     the tools on with a build-time flag that `deploy.yml` and `render.yaml` never set (both stay unchanged: core
-     files); `prod-mode.spec` checks the players' build with `?dev=1` added.
+     `window.__AQ` stays read-only, and the dev panel, registry fixtures and fixture autosave (what `?dev=1` gates
+     today) stay off. This changes ADR-0005 decision 2 and ADR-0024 A5 ("`?dev=1` as built") for the live site. The
+     dev server keeps `?dev=1` as today. Also: `?sandbox=` isn't gated at all in production (`src/App.tsx`): gate it
+     the same way. Starter showcases (`?showcase=`, a never-saved demo world) stay unless the owner says otherwise.
+     - The tests: `base-path.spec` needs the tools (it opens the production build with `?dev=1` and calls
+       `__AQ.newGame` and `__AQ.mutate`), and `prod-mode.spec` checks they're absent, on the same `.e2e-dist` build
+       today. So the e2e build that `base-path.spec` opens turns the tools on with a build-time flag that `deploy.yml`
+       and `render.yaml` never set (both stay unchanged: core files), and `prod-mode.spec` gets a second production
+       build without the flag, on its own port and project, and checks it with `?dev=1` added.
   2. **Counter-offers stay under the buyer's ceiling (B-124):** repeated small counters never take a buyer past their
-     private ceiling, and a listing closes when it ends; its loop test in `tests/sim/economy-loops.test.ts`.
+     private ceiling, and a listing closes when it ends; its loop test in `tests/sim/economy-loops.test.ts` (no sale
+     above the buyer's ceiling, however the counters go).
   3. **Admission takings peak inside the slider's range (B-162):** demand keeps falling with price, so takings stop
-     rising before the slider's $40, and the sim refuses an admission the slider can't set. The curve is a balance
-     choice players see: show the owner the takings at a few prices before and after, and ask before building.
-  4. **A loop hunt (B-130):** a seeded test running many short sequences of buying, selling, listing, countering,
-     quick-selling, converting and fragging that fails when a sequence ends with more money plus stock value than it
-     began with, without game time passing or an earned sale. B-124's and B-162's loops are its first cases.
-  5. **Research gates in the rules (B-160):** `buyTank` and `convertWaterClass` refuse marine, reef and brackish
-     without their research, with the screens' own wording; a sim test for each.
-  6. **Cheap items:** B-203's other clause (a show removed on load for an unknown tier: scratch and refund its
-     entries, with a note); B-204 (the three e2e tests wait on the panel or the step, not on fixed delays).
+     rising before the slider's $40, and the sim refuses an admission the slider can't set; its test: a day's takings
+     peak inside $0–40.
+     - Both fixes change what players see. Before building, show the owner B-124's sale prices after a run of
+       counters and B-162's takings at a few prices, before and after, and ask (ADR-0037 decision 3).
+  4. **A loop hunt (B-130):** a seeded test running many short sequences of buying, selling, listing, quick-selling,
+     converting and fragging, with no game time passing, that fails when a sequence ends with more money plus stock
+     value than it began with. B-124 and B-162 involve time and sales, so they keep their own tests (items 2 and 3).
+  5. **Research gates in the rules (B-160):** `buyTank` refuses marine, reef and brackish, and `convertWaterClass`
+     marine and reef (it already refuses brackish, `src/sim/tankOps.ts`), without their research, with the screens'
+     own wording; a sim test for each.
+  6. **Cheap items:**
+     - B-203's other clauses: a show removed on load for an unknown tier scratches and refunds its entries, with a
+       note; the Live food room's cone and jar cap on load (12) and the staff skill range (1–5) are read from their
+       tables; an unknown rare-variant origin stays as is (or is pinned like the kinds).
+     - B-204: the three e2e tests wait on the panel or the step, not on fixed delays.
 - **Done when:** the four checks pass on the final code twice in a row (REL-013); one fresh reviewer (Opus 5.5, max
   effort) reads `git diff <start>..HEAD` against this brief and its blockers are fixed; DEBT_INVENTORY's magnified
   rows and TRUST_BOUNDARY's dev-tools line are brought up to date.

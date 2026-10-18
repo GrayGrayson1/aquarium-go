@@ -7,12 +7,12 @@ additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if 
 ## 0.5.4 — 2026-10-18
 
 - **"Best foot forward" says what it asks:** "Enter a show and see it judged. A healthy, settled adult that trusts you
-  shows best." (Since 0.5.3 the quest completes when your entry is judged.)
+  shows best." (Since 0.5.2 the quest completes when your entry is judged.)
 - **Settings' "Save now" sits on the General and Saves tabs only**, so Play & access, Notifications and About show
   more before you scroll on a phone.
 - **Safer saves across versions.** A future version that adds a water type, show tier, buyer type, staff role or
-  trait, Water room upgrade or kind of rare animal marks its saves as newer. If you then open an older version, it
-  leaves that save alone and asks you to refresh the page instead of changing it.
+  trait, kind of rare animal, Water Prep Station level or reservoir space marks its saves as newer. If you then open an
+  older version, it leaves that save alone and asks you to refresh the page instead of changing it.
 
 ## 0.5.3 — 2026-10-15
 

@@ -1,8 +1,8 @@
-# Session handoff: chunk 6 built, its review and the last 0.5 release next
+# Session handoff: 0.5 released, chunk 7 (hardening for multiplayer) next
 
-For the agent that finishes chunk 6 (Social stub, hardening and the last 0.5 release) on Aquarium Go, after the
-owner's `/compact` or in a new session. Written 2026-10-15 by the session that built chunk 6; it replaces the handoff
-written after chunk 5. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of
+For the agent that builds chunk 7 (hardening for multiplayer, ADR-0037) on Aquarium Go, after the owner's `/compact`
+or in a new session. Written 2026-10-15 by the session that built chunk 6 and brought up to date on 2026-10-18 after
+0.5.4; it replaces the handoff written after chunk 5. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of
 work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
 
 ## Where things stand
@@ -24,8 +24,8 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
    `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's record).
 2. **The owner's play-through and F1:** record what the owner reports (ACC-005's VoiceOver pass, F1) verbatim in an
    ADR and fix what it finds (each fix tested).
-3. **Chunk 7** (PLAN.md's brief): its requirements first (REL-019 onwards), B-162's curve asked of the owner before
-   building, its own fresh reviewer (Opus 5.5 at max effort, never Fable) and two full passes before a release. The
+3. **Chunk 7** (PLAN.md's brief): its requirements first (REL-019 onwards), B-124's and B-162's before and after
+   asked of the owner before building, its own fresh reviewer (Opus 5.5 at max effort, never Fable) and two full passes before a release. The
    multiplayer decision record beside it stays Proposed until the owner approves it.
 4. **Releasing** (as 0.5.3 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into
    `main` with the owner's go-ahead (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no checkout), push
@@ -62,7 +62,7 @@ cd ~/LocalTest/AquariumGo && git fetch -q dev next && git checkout -q --detach <
 for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright npm run $c; echo "=== $c exit $?"; done > $S/checks.log 2>&1
 ```
 
-Unit tests take about 45 s, e2e about 8 minutes (inside Claude Code's sandbox; it works, don't ask to leave it).
+Unit tests take about 45 s, e2e about 32 minutes in Chromium and WebKit (inside Claude Code's sandbox; it works, don't ask to leave it).
 Every e2e run also builds the production site under `/aquarium-go/` for the `base-path` project (about 10 s more).
 `npx vitest run --reporter=json --outputFile=<file>` gives a list of failures to compare before and after a sim change.
 

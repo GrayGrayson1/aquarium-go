@@ -37,7 +37,9 @@ one round.
 2. **0.5.4** carries ADR-0036's three changes and G1's, released together: after one full green pass of the four
    checks on the release commit, merged into `main` and published on GitHub Pages and Render. This answer is the
    owner's go-ahead for that release, including Render. As with 0.5.3, it goes out before the owner's play-through: the
-   chosen option names one full test pass as its condition.
+   chosen option names one full test pass as its condition. (As built: the full pass ran on `50dc443`; the fresh
+   review then found a wrong version in the CHANGELOG, so the release commit adds CHANGELOG and docs changes only on
+   top of it, checked with typecheck, the unit tests, the build and the production-build specs, as 0.5.3's was.)
 3. **Next, a hardening chunk (chunk 7), with the multiplayer decision record drafted beside it.** The chunk makes the
    single-player game ready for other players, as the chosen option lists: turn off `?dev=1` on the live site (B-190;
    this changes ADR-0005 decision 2 and ADR-0024 A5, "`?dev=1` as built", for the live site), fix the two money loops
@@ -49,7 +51,7 @@ one round.
    before building, as earlier chunks did.
 4. **The first players are people the owner knows** (a handful of friends or family). The first multiplayer version
    can trust each player's browser (the server stores what it is sent); the server checks of
-   `docs/agent/TRUST_BOUNDARY.md` and the hardening come before it opens to anyone.
+   `docs/agent/TRUST_BOUNDARY.md` and the hardening come before it opens to the public (the "Anyone" option).
 
 ## Owner approval
 
