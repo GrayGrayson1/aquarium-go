@@ -450,7 +450,7 @@ describe('ADR-0036 (F3): a new water class, show tier, buyer type, staff role or
 });
 
 /**
- * The other limits a save is repaired against (ADR-0037, owner question G1; B-203): the Water room's prep levels and
+ * Two more limits a save is repaired against (ADR-0037, owner question G1; B-203): the Water room's prep levels and
  * reservoir limit (WATER_ROOM, src/data/catalog/machines.ts) and the rare-variant kinds (RARE_VARIANT_KINDS,
  * src/data/rarity.ts). A save past them is reset on load (a paid upgrade back to none, a rare animal made ordinary), so
  * adding a prep level, raising the reservoir limit or adding a kind raises SCHEMA_VERSION too, and an older build
@@ -466,6 +466,8 @@ describe('ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant
     expect(pinned, `pin the Water room's limits and the rare-variant kinds known at save format v${SCHEMA_VERSION} in LIMITS_AT`).toBeDefined();
     const why = (what: string) => `${what}: raise SCHEMA_VERSION (ADR-0037)`;
     expect(WATER_ROOM.prepRates.length, why('the number of prep levels changed')).toBe(pinned.prepLevels);
+    // upgradePrep stops where prepPrices ends and repairState where prepRates does: they must agree (the review's note 7)
+    expect(WATER_ROOM.prepPrices.length, 'each prep level above the first needs a price, and no price may lead past the last rate').toBe(WATER_ROOM.prepRates.length - 1);
     expect(WATER_ROOM.maxReservoirs, why('the reservoir limit changed')).toBe(pinned.maxReservoirs);
     expect(Object.keys(RARE_VARIANT_KINDS).sort(), why('a rare-variant kind was added or removed')).toEqual([...pinned.rareVariantKinds].sort());
   });

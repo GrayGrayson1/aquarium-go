@@ -135,8 +135,9 @@ export function assignPrismatic(
 const ORIGINS: readonly RareVariantOrigin[] = ['shop', 'bred', 'spontaneous'];
 
 /**
- * A loaded `rareVariant`, made safe: a kind RARE_VARIANT_KINDS doesn't list is dropped (undefined), an unknown origin becomes 'shop' and a
- * missing/broken seed is derived from the creature id (deterministic — no RNG, so repeated loads agree).
+ * A loaded `rareVariant`, made safe: a kind RARE_VARIANT_KINDS doesn't list is dropped (undefined), an unknown origin
+ * becomes 'shop' and a missing/broken seed is derived from the creature id (deterministic — no RNG, so repeated loads
+ * agree).
  */
 export function sanitizeRareVariant(v: unknown, creatureId: string): RareVariant | undefined {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;

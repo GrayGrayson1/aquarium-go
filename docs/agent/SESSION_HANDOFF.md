@@ -14,9 +14,11 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
   (PLAN.md, chunk 6, "After 0.5.3"; check PLAN.md's "Releases" for whether it has gone out).
 - Left from chunk 6: the owner's play-through on a phone and a desktop, with a VoiceOver pass for ACC-005 (the one
   requirement still IN_PROGRESS, OWNER_QUESTIONS F1).
-- After 0.5 (ADR-0037): chunk 7, hardening for multiplayer (PLAN.md's brief), with the multiplayer decision record
-  drafted beside it as Proposed. Multiplayer starts with people the owner knows; no backend, account or cloud-save code
-  until the owner approves that record (REL-002). NOTIFY-011 and PLAT-004 (the native wrapper) stay deferred.
+- After 0.5 (ADR-0037): chunk 7, hardening for multiplayer (PLAN.md's brief), then chunk 8, multiplayer stage 1 for
+  people the owner knows (ADR-0038, approved 2026-10-18: a free Supabase project apart from anonyform's,
+  `@supabase/supabase-js`, invite codes, no emails; H1 and H2 to ask with its brief). The Supabase CLI on the owner's
+  Mac is signed in to the owner's account (anonyform's projects too): read only what you need, and ask before any
+  change. NOTIFY-011 and PLAT-004 (the native wrapper) stay deferred.
 
 ## The order of work
 

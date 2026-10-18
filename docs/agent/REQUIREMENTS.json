@@ -36,7 +36,7 @@
         "§3",
         "§21"
       ],
-      "note": "requirements-2 M2: the test now has an owning slice (S1), and S0 is checked with git diff against the baseline. requirements-3 R3-m7: CONST-005 (S1) carries the test, so S1 can't be accepted without it, as PERSIST-014 does for PERSIST-003."
+      "note": "requirements-2 M2: the test now has an owning slice (S1), and S0 is checked with git diff against the baseline. requirements-3 R3-m7: CONST-005 (S1) carries the test, so S1 can't be accepted without it, as PERSIST-014 does for PERSIST-003. 2026-10-18: ADR-0038 records the owner's approval of one dependency, @supabase/supabase-js, installed at an exact version when chunk 8 starts; core-dependencies' recorded list changes then, citing ADR-0038."
     },
     {
       "id": "CONST-002",
@@ -5212,6 +5212,7 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
+      "note": "2026-10-18: ADR-0038 (Accepted for stage 1) is the owner-approved record for stage 1's backend, account and cloud-save code (chunk 8, after chunk 7): a free Supabase project, sign-up by invite code, the server trusting each browser. Stage 2 (players the owner doesn't know) and real trading each need their own record, so REL-002 stays PENDING.",
       "status": "PENDING"
     },
     {

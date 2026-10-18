@@ -6,16 +6,17 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **0.5.4 is being released** (ADR-0037 decision 2, the owner's go-ahead in the session on 2026-10-18): ADR-0036's
-   three changes and G1's (the Water room's limits and the rare-variant kinds pinned to the save format), after one
-   full green pass of the four checks, on GitHub Pages and Render ("After 0.5.3" under chunk 6).
-2. **Then chunk 7, hardening for multiplayer** (brief below), with the multiplayer decision record drafted beside it as
-   Proposed (ADR-0037 decision 3; REL-002's gate). The first multiplayer players are people the owner knows (decision
-   4). Between chunks, the owner's routine: docs current and pruned, push, `/compact`, re-read, then build.
-3. **Released:** 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2
-   and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
-4. Every owner question is answered (ADR-0024 to ADR-0037) except F1, the owner's VoiceOver pass during the
-   play-through on a phone and a desktop (ACC-005), in `docs/agent/OWNER_QUESTIONS.md`. NOTIFY-011 and PLAT-004 (the
+1. **0.5.4 is released** (2026-10-18, ADR-0037 decision 2): ADR-0036's three changes and G1's (the Water room's limits
+   and the rare-variant kinds pinned to the save format), on GitHub Pages and Render (see "Releases").
+2. **Then chunk 7, hardening for multiplayer** (brief below), then **chunk 8, multiplayer stage 1** for people the owner
+   knows (ADR-0038, approved 2026-10-18: accounts, cloud saves and the Social screens on a free Supabase project apart
+   from anonyform's; H1 and H2 to ask with its brief). Between chunks, the owner's routine: docs current and pruned,
+   push, `/compact`, re-read, then build.
+3. **Released:** 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
+   "Releases").
+4. Every owner question is answered (ADR-0024 to ADR-0038) except F1, the owner's VoiceOver pass during the
+   play-through on a phone and a desktop (ACC-005), and H1 and H2 (chunk 8), in `docs/agent/OWNER_QUESTIONS.md`. NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
 
@@ -30,12 +31,15 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
-| 7 | Hardening for multiplayer (ADR-0037) | Planned: after 0.5.4, with the multiplayer decision record drafted beside it |
+| 7 | Hardening for multiplayer (ADR-0037) | Planned: after 0.5.4 |
+| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038) | Approved 2026-10-18; after chunk 7; H1 and H2 to ask with its brief |
 
-**Last full test runs:** chunk 6's two passes in a row (REL-013) on `9bff79e`, its final code, the owner's Mac,
-2026-10-15, in Claude Code from the internal-disk clone checked out at that commit: typecheck passed; unit 226 files,
-2,697 tests passed; build passed; e2e 285 of 285 in Chromium and WebKit, dev and production builds (32.0 and 32.4
-minutes), both times. Earlier: `d7560f9` clean (2,696; 281 of 281); `db25042` one failure (`shop-filters.spec.ts:75`, a
+**Last full test runs:** 0.5.4's release commit `97da6bc`, the owner's Mac, 2026-10-18, from the internal-disk clone
+checked out at that commit: typecheck passed; unit 227 files, 2,702 tests passed; build passed; e2e 289 of 289 in
+Chromium and WebKit, dev and production builds (31.9 minutes). Before it, `50dc443` (the same code; the CHANGELOG's
+version not yet fixed): the same except e2e 288 of 289 (B-204's fourth: a WebKit graphics error on the title screen,
+26 of 26 alone). Chunk 6's two passes in a row (REL-013) on `9bff79e`, 2026-10-15: typecheck, unit 2,697, build, e2e
+285 of 285, both times. Earlier: `d7560f9` clean (2,696; 281 of 281); `db25042` one failure (`shop-filters.spec.ts:75`, a
 sheet's focus race, fixed in `e23b8a2`).
 
 ## How a chunk runs
@@ -426,6 +430,9 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   makes both tables bigger and checks a save at the new limits loads unchanged. All three new tests were run failing
   without the change, and the pin failing with the reservoir limit raised to 4. B-203 partly fixed (its removed-show
   clause goes to chunk 7).
+- **Released as 0.5.4 on 2026-10-18** (see "Releases"). Its fresh review (Opus 5.5, max) on `ce5dcc0..50dc443`: one
+  blocker, the CHANGELOG's "since 0.5.3" for B-175's fix, which shipped in 0.5.2, fixed in `97da6bc` with 11 notes
+  (docs, chunk 7's brief made buildable; the pin test's `prepPrices` check and two comment fixes after the release).
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
@@ -471,11 +478,24 @@ REL-012, REL-018.
 - **Done when:** the four checks pass on the final code twice in a row (REL-013); one fresh reviewer (Opus 5.5, max
   effort) reads `git diff <start>..HEAD` against this brief and its blockers are fixed; DEBT_INVENTORY's magnified
   rows and TRUST_BOUNDARY's dev-tools line are brought up to date.
-- **Beside it:** the multiplayer decision record (REL-002's gate), Proposed, for the owner to approve. It covers the
-  first version for people the owner knows (accounts, cloud saves, clubs and friends' leaderboards through the Social
-  screens' `SocialService`), the backend options with what each costs, and what moves to a server later, and when.
-  No backend, account or cloud-save code until the owner approves it.
+- **Beside it:** the multiplayer decision record, drafted 2026-10-18 and approved for stage 1 the same day (ADR-0038):
+  chunk 8.
 - **Not in this chunk:** a server, accounts, cloud saves, trading, or running the offline catch-up on a server.
+
+### 8. Multiplayer stage 1, for people the owner knows (ADR-0038) — approved, after chunk 7
+
+- **What:** ADR-0038's stage 1: accounts (email and password, sign-up by an invite code the owner shares, no emails,
+  "Delete my account"), one cloud-saved slot (local first, the newer copy offered on another device, the player choosing
+  when both changed, PERSIST-014 kept), and the Social screens out of dev mode for signed-in players (clubs, friend
+  codes, friends' aquariums, friends' leaderboards; trades stay "open later"). The server trusts each browser on
+  purpose; nothing of stage 2 or 3.
+- **Platform:** a free Supabase project in a new Free organization in the owner's account, apart from anonyform's
+  (Pro); `@supabase/supabase-js` at an exact version (approved, CONST-001); tables and access rules as SQL in
+  `supabase/migrations`, sign-in settings in `supabase/config.toml`; the project's address and public key in a
+  committed file (no change to `deploy.yml`, `render.yaml` or Render's settings). Creating the organization and
+  project is a remote change: ask the owner in that session first.
+- **Before building:** write the brief in full here (requirements REL-02x onwards, the Social stub kept for tests and
+  dev mode, e2e against the stub), and ask H1 (the privacy note's wording) and H2 (players under 13).
 
 ## Releases
 
@@ -519,6 +539,15 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   first, B-193; GitHub notes that `deploy-pages@v4` runs on a deprecated Node 20 and that `ubuntu-latest` moves to
   Ubuntu 26 from 2026-10-19: `deploy.yml` is a core file, left for the owner); Render by hand
   (`dep-db8o0s7f3r2c73eplvm0`). Both `version.json` files read `{"id":"382a637-…","version":"0.5.3"}`.
+- **0.5.4, released 2026-10-18** at the owner's go-ahead in the session (ADR-0037 decision 2, "Bundle with G1
+  (Recommended)": one full test pass, then GitHub Pages and Render): ADR-0036's three changes and G1's. The four checks
+  passed on the release commit `97da6bc` (typecheck; unit 227 files, 2,702 tests; build; e2e 289 of 289, Chromium and
+  WebKit, 31.9 min); the pass before, on `50dc443` (the same code; the CHANGELOG's version not yet fixed), had one
+  WebKit failure (B-204). Released before the owner's play-through, as the option allowed. Merged as `63caa8e` (its
+  tree is `97da6bc`'s) and pushed from the internal-disk clone with `next`. The Pages run's first attempt failed after
+  every unit test passed: Vitest's worker RPC timed out on GitHub's runner ("Timeout calling onTaskUpdate", B-205);
+  re-running the failed job passed and deployed. Render by hand (`dep-dbaii3eq1p3s73bqbvvg`). Both `version.json`
+  files read `{"id":"63caa8e-…","version":"0.5.4"}`.
 
 ## Product decisions in force
 
@@ -526,8 +555,9 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   simulation and player state; individual creatures, collection and breeding depth; stable, testable, deterministic
   systems; clear phone and desktop use; extensibility; performance; elegance.
 - Local single-player first. No real multiplayer, accounts or backend without the owner (REL-002); the native
-  wrapper is deferred (ADR-0001). Multiplayer starts with people the owner knows, after chunk 7's hardening and an
-  approved decision record (ADR-0037).
+  wrapper is deferred (ADR-0001). Multiplayer starts with people the owner knows, after chunk 7's hardening (ADR-0037):
+  stage 1 on a free Supabase project, sign-up by invite code, no emails, `@supabase/supabase-js` (ADR-0038). Stage 2
+  (before strangers join) needs its own record.
 - Automation goes deep (ADR-0001, option C): more than Auto-feed and Auto-clean.
 - The Auto Water Changer shares the Autofeeder unlock. Quiet hours are fixed at 10 PM to 8 AM, with a switch to turn
   them off (0.5 spec §12.3). One-copy Metallic is unnamed, with a subtle sheen. Locked destinations open a locked
