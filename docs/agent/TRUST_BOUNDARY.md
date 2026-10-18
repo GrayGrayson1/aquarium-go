@@ -94,6 +94,7 @@ later", ADR-0034), so the game itself is untouched by Social today.
 ## Not for a server
 
 Camera, panels, settings, notification preferences and the alerts drawer's read marks (`markAllRead`, `clearAllEvents`)
-are the device's own. Dev tools (`?dev=1`: `devOpenMarket`, `devAgeCreature`, `devForceBreeding`, `forceBuyerVisit` and
-the dev panel's writes) never ship enabled in a player's build without `?dev=1` (PLAT-005); B-190 records that a
-player's build still accepts `?dev=1`, which a server would simply not trust.
+are the device's own. Dev tools (`devOpenMarket`, `devAgeCreature`, `devForceBreeding`, `forceBuyerVisit`, the dev
+panel's writes and `window.__AQ`'s write calls) are off in a player's build, and since chunk 7 (B-190, REL-019) the live
+site ignores `?dev=1`: only the e2e base-path build, made with `VITE_E2E_DEV_URL=1`, honours it. A player still owns
+their device and its code, so a server (stage 2, ADR-0038) trusts nothing it reports.

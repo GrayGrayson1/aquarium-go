@@ -12,16 +12,17 @@ with other players (an exploit, an imbalance others would feel, or data that gro
 
 ## Summary
 
-Multiplayer would magnify few items, and each is small:
-- **Write tools in every player's build (B-190, decided):** adding `?dev=1` to the address turns on the developer
-  tools in the production build, `window.__AQ`'s `setGame`, `mutate` and save import among them (without it the hook is
-  read-only). Alone it only lets a player edit their own game; with shared markets or leaderboards it is the largest
-  magnifier, so a server would trust nothing the device reports.
-- **Economy rules a player could farm against others:** B-124 (counter-offers can push a buyer to twice their
-  ceiling), B-162 (admission revenue keeps rising with price), B-130 (no test hunts value-creating loops). Today they only
-  shorten one player's game; with shared leaderboards or markets they would decide rankings.
-- **Rules enforced only in the UI:** B-160 (the marine, reef and brackish research gates). A server would check every
-  action anyway (TRUST_BOUNDARY.md), so this becomes part of that work.
+Multiplayer would magnify few items, and each is small. Chunk 7 (2026-10-18, ADR-0037 decision 3) fixed the first
+three:
+- **Write tools in every player's build (B-190): fixed in chunk 7.** The live site ignores `?dev=1`: a production build
+  honours it only when built with `VITE_E2E_DEV_URL=1`, which only the e2e base-path build sets (REL-019). The device
+  is still the player's own, so a server (stage 2, ADR-0038) still trusts nothing it reports.
+- **Economy rules a player could farm against others: fixed in chunk 7.** B-124 (counters no longer pass the buyer's
+  ceiling, and stop when bidding closes), B-162 (admission takings now peak inside the slider's range), B-130 (a seeded
+  loop hunt over the instant actions, and loop tests for both). New loops in later features would still matter more
+  with shared leaderboards or markets.
+- **Rules enforced only in the UI: fixed in chunk 7.** B-160 (the marine, reef and brackish research gates are in
+  `buyTank` and `convertWaterClass`). A server would still check every action (TRUST_BOUNDARY.md).
 - **Time on the device:** offline catch-up (and its grace rules) runs on the player's device. A server would replay or
   cap it.
 - **Saves grow:** sold animals stay in the save, and its budget leaves out listing photos when full. A server would keep
@@ -47,7 +48,7 @@ workarounds and B-190 missing, B-167 and B-161 understated), fixed here.
 | B-156 gate globs miss some files | open | None (harness-era gate). |
 | B-161 tests that check less than their names say | open | **Weighs more** once a server enforces the rules: a server-side check is only as trustworthy as its tests, and these overstate what is checked (the chunk 6 review found another, core-crafted-saves-limits' listings case, fixed). |
 | B-166 the test-id contract isn't enforced | open | None (testing). Chunk 6's copy test checks S3-D's ids against TEST_IDS.md. |
-| B-204 e2e tests that failed once each under load (four so far) | open | None (testing). |
+| B-204 e2e tests that failed once each under load (four so far) | partly fixed (chunk 7: two now wait on what they check) | None (testing). |
 | B-205 Vitest's worker RPC timeout on GitHub's runner (0.5.4's Pages run) | fixed | None (testing). |
 | B-120 S0's architecture guard tests | partly fixed | None; `core-architecture-boundaries` and `core-mutation-boundary` now cover the layers and the store. |
 | B-172 source-text CSS tests | partly fixed | None (testing). |
@@ -60,22 +61,22 @@ workarounds and B-190 missing, B-167 and B-161 understated), fixed here.
 | B-119 the Genetics Lab doesn't reveal alleles for some animals | open | Magnified slightly: hidden genes would matter in trades between players. |
 | B-121 UI and render re-derive sim numbers (admission projection) | open | Server rule: displays must read the authoritative number. |
 | B-123 leaving can drop unsaved play | open | Server rule: a server copy would replace local saves. |
-| B-124 counter-offers push buyers past their ceiling | open | **Magnified**: a farmable money loop. |
+| B-124 counter-offers push buyers past their ceiling | fixed (chunk 7) | None now; it was a farmable money loop. |
 | B-125 equipment failing during offline grace | partly fixed | Server rule: the catch-up's grace would run on the server. |
 | B-157 small copy defects | open | None. |
 | B-158 market timers during catch-up at the saved speed | open | Server rule: market time would be the server's. |
-| B-160 research gates enforced only in the UI | open | **Magnified**: a server must enforce them (TRUST_BOUNDARY.md). |
-| B-162 admission demand floor (revenue rises with price) | open | **Magnified**: a farmable money loop. |
+| B-160 research gates enforced only in the UI | fixed (chunk 7) | Server rule: the rules hold them now; a server would still enforce them (TRUST_BOUNDARY.md). |
+| B-162 admission demand floor (revenue rises with price) | fixed (chunk 7) | None now; it was a farmable money loop. |
 | B-163 closing the welcome-back card overrides a pause | open | None (local). |
 | B-165 settings accept any JSON | open | None (settings stay on the device). |
-| B-130 no test hunts value-creating economy loops | partly fixed | **Magnified**: such loops become exploits between players. |
+| B-130 no test hunts value-creating economy loops | fixed (chunk 7) | Server rule: the hunt covers the instant actions; a later feature's loops would still be exploits between players, so a feature that moves money adds its own loop test. |
 | B-167 the global compatibility cache | open | Server rule: line set-up asks the compatibility engine, and its answers near a threshold depend on what was asked before; a server would compute its own, uncached. |
 | B-181 the portrait cache never evicts | open | None (local memory). |
 | B-182 per-frame allocations | open | None (local performance). |
 | B-183 facility InstancedMeshes never disposed | open | None (local memory). |
 | B-184 TankAI creates its world during render | open | None (presentation). |
-| B-190 developer write tools in production builds behind `?dev=1` (`window.__AQ` is read-only without it) | decided (ADR-0005 decision 2) | **Magnified**: see the summary. |
-| B-203 save values outside ADR-0036's pinned tables that an older build resets after a rollback (water-room upgrades, rare-variant kinds: pinned since ADR-0037); separately, a crafted save's removed show leaves its entries unjudged | partly fixed | Server rule: a server copy of the save would not cross builds on the device; the server would validate against its own tables. |
+| B-190 developer write tools in production builds behind `?dev=1` (`window.__AQ` is read-only without it) | fixed (chunk 7: the live site ignores `?dev=1`) | Server rule: the device is the player's own; a server trusts nothing it reports. |
+| B-203 save values outside ADR-0036's pinned tables that an older build resets after a rollback (water-room upgrades, rare-variant kinds: pinned since ADR-0037; cones, jars, staff skill and rare-variant origins since chunk 7); separately, a crafted save's removed show left its entries unjudged | fixed (chunk 7) | Server rule: a server copy of the save would not cross builds on the device; the server would validate against its own tables. |
 | (no row) a save's unknown staff role threw at payday | fixed in chunk 6 (the review's blocker 2) | Server rule: a server validates every value from a client against its own tables, as `repairState` now does. |
 
 ## Deferred requirements

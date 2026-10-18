@@ -1,6 +1,6 @@
 # ADR-0005 — Owner answers, review rounds 2 and 3 (saves, dev tools, Social, rarity, S3-D, designs, main, backups)
 
-**Status:** Accepted\
+**Status:** Accepted; decision 2 changed for the live site by ADR-0037 decision 3 (chunk 7, 2026-10-18: a production build ignores `?dev=1` unless built with `VITE_E2E_DEV_URL=1`, which only the e2e runs set)\
 **Date:** 2026-10-05\
 **Slice:** ALL\
 **Requirements:** PERSIST-001, PERSIST-003, PLAT-005, SOC-011, GEN-013, AUTO-002, PROD-018, HARNESS-008

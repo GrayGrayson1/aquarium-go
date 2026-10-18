@@ -3,8 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * E2E + perf tests (tests/e2e). OWNER: lane "core".
  * Starts its own Vite server on E2E_PORT (default 4399). A server already listening there is reused only when
- * E2E_REUSE=1 (e.g. a production preview you started on purpose); otherwise a busy port fails loudly, so a server from
- * another checkout or worktree can never be tested by mistake.
+ * E2E_REUSE=1 (e.g. a production preview you started on purpose, built with VITE_E2E_DEV_URL=1, since the specs open
+ * the game with ?dev=1); otherwise a busy port fails loudly, so a server from another checkout or worktree can never be
+ * tested by mistake.
  * lane:core (chunk 3, B-126) — it also builds the game for production under GitHub Pages' base path (/aquarium-go/,
  * into .e2e-dist) and serves it with `vite preview` on E2E_PREVIEW_PORT (default 4398) for the `base-path` project
  * (tests/e2e/base-path.spec.ts): the service worker's scope and the notification icon live under that path.

@@ -1,6 +1,6 @@
 # ADR-0024 — Owner answers, group A: release 0.5.1, rollback saves, WebKit e2e, accessibility level, `?dev=1`, chunk 3's wording, step-size tolerances
 
-**Status:** Accepted\
+**Status:** Accepted; A5 (`?dev=1` as built) changed for the live site by ADR-0037 decision 3 (chunk 7, 2026-10-18: the live site ignores `?dev=1`)\
 **Date:** 2026-10-11\
 **Chunk:** between 3 and 4 (`docs/agent/OWNER_QUESTIONS.md` group A)\
 **Requirements:** PERSIST-014, ACC-005, AUTO-016, NOTIFY-003, DES-007, DES-009; BACKLOG B-129, B-178

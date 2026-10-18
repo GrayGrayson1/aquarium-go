@@ -50,14 +50,14 @@ npm run qa:motion    # creature-vibration scan (DRAWN=1 for the drawn, pose-filt
 
 Visual QA screenshots: start a dev or preview server, then run `npm run qa:shots -- http://127.0.0.1:5173`. The images land in `screenshots/`.
 
-For the most stable e2e run, test a production build: `npx vite build && npx vite preview --host 127.0.0.1 --port 4399 --strictPort`, then `E2E_REUSE=1 E2E_PORT=4399 npm run e2e` in a second terminal. Without `E2E_REUSE=1`, a server already listening on the e2e port makes the run fail instead of testing whatever that server serves.
+For the most stable e2e run, test a production build made with the e2e flag (the tests open the game with `?dev=1`, which a production build honours only with it): `VITE_E2E_DEV_URL=1 npx vite build && npx vite preview --host 127.0.0.1 --port 4399 --strictPort`, then `E2E_REUSE=1 E2E_PORT=4399 npm run e2e` in a second terminal. Without `E2E_REUSE=1`, a server already listening on the e2e port makes the run fail instead of testing whatever that server serves.
 
 Regenerate the species research ledger after editing species data: `npm run docs:research`.
 
 ## Developer tools
 
-- `?dev=1` enables the in-game dev panel: add money, unlock everything, spawn species, age creatures, force breeding, set water parameters, advance time, and inspect AI state and compatibility reasons.
-- `?showcase=<axolotl|betta|pea_puffer|ocellaris_clownfish|lined_seahorse>` jumps straight into a starter tank. `?fixture=<name>` loads any registered dev fixture, and `&view=facility` opens the room view.
+- The dev server (`npm run dev`) has the developer tools; the live site doesn't, and ignores `?dev=1` (only a production build made with `VITE_E2E_DEV_URL=1`, as the e2e runs make one, honours it). Settings › Developer tools turns on the in-game dev panel: add money, unlock everything, spawn species, age creatures, force breeding, set water parameters, advance time, and inspect AI state and compatibility reasons.
+- `?showcase=<axolotl|betta|pea_puffer|ocellaris_clownfish|lined_seahorse>` jumps straight into a starter tank (on the live site too: a demo world, never saved). Where the tools are allowed, `?fixture=<name>` loads any registered dev fixture (`&view=facility` opens the room view) and `?sandbox=<name>` opens a page from `src/dev/sandboxes/`.
 - `?fixture=prismatic_showcase` shows Prismatic animals (betta, axolotl, guppy, cherry shrimp) beside ordinary ones, plus a Prismatic shop offer. In any game, the dev panel can make the selected animal Prismatic, add a Prismatic offer, or make the next shop animal or bred youngster Prismatic.
 - `window.__AQ` in the browser console exposes the stores and dev commands.
 

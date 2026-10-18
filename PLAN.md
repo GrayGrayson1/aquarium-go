@@ -8,15 +8,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 1. **0.5.4 is released** (2026-10-18, ADR-0037 decision 2): ADR-0036's three changes and G1's (the Water room's limits
    and the rare-variant kinds pinned to the save format), on GitHub Pages and Render (see "Releases").
-2. **Then chunk 7, hardening for multiplayer** (brief below), then **chunk 8, multiplayer stage 1** for people the owner
-   knows (ADR-0038, approved 2026-10-18: accounts, cloud saves and the Social screens on a free Supabase project apart
-   from anonyform's; H1 and H2 to ask with its brief). Between chunks, the owner's routine: docs current and pruned,
-   push, `/compact`, re-read, then build.
+2. **Chunk 7, hardening for multiplayer, is built** (2026-10-18, `7b98be8`; brief and status below): its fresh review
+   and two full passes of the four checks come next, then push `next`. Then **chunk 8, multiplayer stage 1** for people
+   the owner knows (ADR-0038, approved 2026-10-18: accounts, cloud saves and the Social screens on a free Supabase
+   project apart from anonyform's; H1 and H2 answered early, ADR-0039). Between chunks, the owner's routine: docs
+   current and pruned, push, `/compact`, re-read, then build.
 3. **Released:** 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-4. Every owner question is answered (ADR-0024 to ADR-0038) except F1, the owner's VoiceOver pass during the
-   play-through on a phone and a desktop (ACC-005), and H1 and H2 (chunk 8), in `docs/agent/OWNER_QUESTIONS.md`. NOTIFY-011 and PLAT-004 (the
+4. Every owner question is answered (ADR-0024 to ADR-0039) except F1, the owner's VoiceOver pass during the
+   play-through on a phone and a desktop (ACC-005), in `docs/agent/OWNER_QUESTIONS.md`. NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
 
@@ -31,8 +32,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
-| 7 | Hardening for multiplayer (ADR-0037) | Planned: after 0.5.4 |
-| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038) | Approved 2026-10-18; after chunk 7; H1 and H2 to ask with its brief |
+| 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Built 2026-10-18 (`7b98be8`); its review and two full passes to come |
+| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038) | Approved 2026-10-18; after chunk 7; H1 and H2 answered (ADR-0039) |
 
 **Last full test runs:** 0.5.4's release commit `97da6bc`, the owner's Mac, 2026-10-18, from the internal-disk clone
 checked out at that commit: typecheck passed; unit 227 files, 2,702 tests passed; build passed; e2e 289 of 289 in
@@ -438,7 +439,7 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
 REL-012, REL-018.
 
-### 7. Hardening for multiplayer (ADR-0037) — planned
+### 7. Hardening for multiplayer (ADR-0037) — built, in review
 
 - **Why:** the owner chose to make the single-player game ready for other players before any backend (ADR-0037
   decisions 3 and 4), starting with `docs/agent/DEBT_INVENTORY.md`'s magnified items. Nothing here adds a server, an
@@ -481,6 +482,34 @@ REL-012, REL-018.
 - **Beside it:** the multiplayer decision record, drafted 2026-10-18 and approved for stage 1 the same day (ADR-0038):
   chunk 8.
 - **Not in this chunk:** a server, accounts, cloud saves, trading, or running the offline catch-up on a server.
+- **The owner's answers before building (ADR-0039, 2026-10-18):** counters capped at the buyer's limit and stopped once
+  bidding closes ("Bidding has closed. Accept an offer or let it expire."); admission demand keeps falling above about
+  twice the fair price, with $40 the rules' cap. The before-and-after numbers came from two throwaway probes
+  (`scripts/_audit/H7/`, git-excluded) and are in the ADR.
+- **As built (`7b98be8`; requirements REL-019 to REL-024):**
+  1. REL-019: `devToolsAtBoot(devBuild, VITE_E2E_DEV_URL, address)` in `src/state/devTools.ts`; `urlSandboxName` gates
+     `?sandbox=`. `playwright.config.ts` builds `.e2e-dist` with the flag (base-path.spec) and `.e2e-dist-prod` without
+     it on E2E_PROD_PORT 4397 (projects `prod`, `webkit-prod`: prod-mode.spec, which also opens `?dev=1`, a registry
+     fixture and a sandbox). `plat-dev-tools` checks the gate's cases and that `deploy.yml` and `render.yaml` never set
+     the flag. A production preview reused with E2E_REUSE=1 must be built with the flag (README).
+  2. REL-020: splits capped at the ceiling, a buyer at their ceiling holds; `holdBidForCounter` and `counterBid` refuse
+     after the listing's end hour. `fix-econ-listings`' hold test now opens the form before bidding closes (at 10× an
+     offer outlives the bidding window).
+  3. REL-021: `admissionDraw` (the line to 1.15 ÷ 0.6 × fair, then the square law) and `MAX_ADMISSION` ($40, the
+     slider's end too).
+  4. REL-022: `tests/sim/economy-loop-hunt.test.ts`: 300 seeded sequences of 10 instant actions on `frags_reef`; worth is
+     money plus what one batch per kind of instant sales would pay (a frag cut from every ready piece included, so a
+     cut only realises growth that has already happened: a bought piece starts below a cut's growth). Checked failing
+     with decor sold back at 105%.
+  5. REL-023: `waterClassLock` in `src/sim/facility/progression.ts` (the screens' rule and wording), used by `buyTank`,
+     `convertWaterClass`, Build and Tanks.
+  6. REL-024: a show removed on load scratches and refunds its pending entries ("This show was called off. The club
+     refunded the fee.", reachable only from a damaged save); `FOOD_ROOM`'s maxima, `STAFF_MAX_SKILL` and
+     `RARE_VARIANT_ORIGINS` read on load and pinned (`ROOM_LIMITS_AT` in `core-save-forward-safety`: ADR-0037's rule
+     applied to the limits its review found); B-204's route walk and tutorial test wait on the router and the guide's
+     step. Left in B-204: `social.spec`'s WebKit hang and the WebKit graphics error (no fixed delay to replace).
+  - Every new sim test was run failing without its change; no seeded test's expectations shifted. Typecheck and the
+    unit tests (229 files, 2,719 tests) passed on the working tree before the commit.
 
 ### 8. Multiplayer stage 1, for people the owner knows (ADR-0038) — approved, after chunk 7
 
@@ -494,8 +523,10 @@ REL-012, REL-018.
   `supabase/migrations`, sign-in settings in `supabase/config.toml`; the project's address and public key in a
   committed file (no change to `deploy.yml`, `render.yaml` or Render's settings). Creating the organization and
   project is a remote change: ask the owner in that session first.
-- **Before building:** write the brief in full here (requirements REL-02x onwards, the Social stub kept for tests and
-  dev mode, e2e against the stub), and ask H1 (the privacy note's wording) and H2 (players under 13).
+- **Before building:** write the brief in full here (requirements REL-025 onwards, the Social stub kept for tests and
+  dev mode, e2e against the stub). H1 and H2 are answered (ADR-0039): the privacy note as quoted there, linked from
+  sign-up, with "Delete my account" in Settings › Account; a required sign-up checkbox, "I'm 13 or older, or I'm a
+  parent or guardian signing up for my child."; the project's region in the United States (the note says so).
 
 ## Releases
 
@@ -565,12 +596,19 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   ADR-0005).
 - Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does a new
   water class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, a higher reservoir
-  limit or a rare-variant kind (ADR-0037).
+  limit or a rare-variant kind (ADR-0037), and more Live food cones or jars, a higher staff skill or a rare-variant
+  origin (chunk 7, ADR-0037's rule).
+- From chunk 7 (ADR-0039): a counter never takes a buyer past their private ceiling, and once bidding closes an offer
+  can be accepted but not countered; admission demand keeps falling above about twice the fair price, and the rules
+  cap admission at $40, the slider's end; the research gates for brackish, marine and reef water are rules.
+- For chunk 8 (ADR-0039): the privacy note approved as drafted; sign-up for 13 and over (a parent signs up for a
+  younger player).
 - Catch-up bid windows stay as they are (ADR-0016).
 - Morph tiers: Legendary below 1 in 10,000 of market stock (ADR-0022, replacing ADR-0005 decision 4's threshold).
 - From the owner's group A answers (ADR-0024): an older build that finds a newer save keeps today's one message
   ("Refresh the page"); e2e gains a WebKit project (chunk 6); accessibility aims at WCAG 2.2 AA with solid
-  high-contrast panels (chunk 6); `?dev=1` as built (chunk 7 turns it off on the live site, ADR-0037); chunk 3's five flagged wordings stay; automation's step-size
+  high-contrast panels (chunk 6); `?dev=1` as built in dev builds, and since chunk 7 the live site ignores it
+  (ADR-0037 decision 3, REL-019); chunk 3's five flagged wordings stay; automation's step-size
   checks are exact for job counts, run hours and stock units and within stated tolerances for water values.
 - From group B (ADR-0025): production lines follow DESIGN-S3D §8.6 and §8.6.1; automation never lists a Prismatic;
   protected animals (keep tanks, Prismatics, favourites) are never moved out, listed or sold by automation; lines can

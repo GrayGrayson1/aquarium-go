@@ -52,7 +52,8 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 - **Saves.** New save fields are optional and validated in `repairState` when present; an absent field leaves
   `stateHash` unchanged. Adding a species or a tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does adding a water
   class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, a higher reservoir
-  limit or a rare-variant kind (ADR-0037); `core-save-forward-safety` pins them. A save written by a newer build must
+  limit or a rare-variant kind (ADR-0037), and more Live food cones or jars, a higher staff skill or a rare-variant
+  origin (chunk 7, ADR-0037's rule); `core-save-forward-safety` pins them. A save written by a newer build must
   never be treated as damaged, loaded past or overwritten (PERSIST-014, chunk 1, finishes this). Old saves are
   best-effort, not required (ADR-0005).
 - **Core files** (types, the stores, `world.ts`, persistence, `package.json` scripts, the test configs) may change
