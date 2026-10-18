@@ -74,6 +74,34 @@ test.describe('save / load / settings', () => {
     expect(await page.evaluate(() => (window as unknown as { __AQ: { settings(): { quality: string } } }).__AQ.settings().quality)).toBe('low');
   });
 
+  test('ADR-0036 (F4): Save now sits on General and Saves only', async ({ page }) => {
+    await openApp(page);
+    await quickGame(page, 'betta');
+    await openPanel(page, 'settings');
+    const foot = tid(page, 'panel-settings').locator('.ag-sheet__foot');
+    const tabs: [string, boolean][] = [['general', true], ['display', false], ['saves', true], ['notifications', false], ['about', false], ['general', true]];
+    for (const [t, on] of tabs) {
+      await tid(page, `settings-tab-${t}`).click();
+      await expect(tid(page, `settings-tab-${t}`)).toHaveAttribute('aria-selected', 'true');
+      await expect(tid(page, 'settings-save'), t).toHaveCount(on ? 1 : 0);
+      await expect(foot, t).toHaveCount(on ? 1 : 0);
+    }
+    // focus on Save now moves to the new tab as the footer goes after a link (Back and Forward), rather than falling to
+    // the page; a clicked tab takes focus itself in Chromium and WebKit (the click step checks that stays so)
+    await tid(page, 'settings-save').focus();
+    await tid(page, 'settings-tab-display').click();
+    await expect(tid(page, 'settings-tab-display')).toBeFocused();
+    await tid(page, 'settings-tab-general').click();
+    await tid(page, 'settings-save').focus();
+    await page.evaluate(() => void (location.hash = '#/settings/about'));
+    await expect(tid(page, 'settings-tab-about')).toHaveAttribute('aria-selected', 'true');
+    await expect(tid(page, 'settings-tab-about')).toBeFocused();
+    // it still saves, from Saves too
+    await tid(page, 'settings-tab-saves').click();
+    await tid(page, 'settings-save').click();
+    await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Game saved' }).first()).toBeVisible();
+  });
+
   test('export → import roundtrip in the browser', async ({ page }) => {
     await openApp(page);
     await quickGame(page, 'lined_seahorse');

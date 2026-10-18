@@ -6,15 +6,18 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **Finish chunk 6** (built 2026-10-15 on `next`): the fresh reviewers' blockers are fixed (`e23b8a2`, `bba00ab`); left are
-   their confirmation passes, two full test passes in a row (REL-013), the owner's play-through on a phone and a
-   desktop (with a VoiceOver pass for ACC-005, OWNER_QUESTIONS F1), then the last 0.5 release (0.5.3) with the owner's
-   go-ahead. `docs/agent/SESSION_HANDOFF.md` has the order.
-2. **Released:** 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15, at the owner's request; 0.5.1 (chunks 2 and
-   3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
-3. Every owner question up to group E is answered (ADR-0024 to ADR-0035); group F (three from chunk 6's review, none
-   blocking 0.5.3) is open in `docs/agent/OWNER_QUESTIONS.md`. The approved screens are in
-   `docs/agent/design/DESIGN-0.5/` and `docs/agent/design/DESIGN-S3D/`.
+1. **0.5.4 is being released** (ADR-0037 decision 2, the owner's go-ahead in the session on 2026-10-18): ADR-0036's
+   three changes and G1's (the Water room's limits and the rare-variant kinds pinned to the save format), after one
+   full green pass of the four checks, on GitHub Pages and Render ("After 0.5.3" under chunk 6).
+2. **Then chunk 7, hardening for multiplayer** (brief below), with the multiplayer decision record drafted beside it as
+   Proposed (ADR-0037 decision 3; REL-002's gate). The first multiplayer players are people the owner knows (decision
+   4). Between chunks, the owner's routine: docs current and pruned, push, `/compact`, re-read, then build.
+3. **Released:** 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2
+   and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
+4. Every owner question is answered (ADR-0024 to ADR-0037) except F1, the owner's VoiceOver pass during the
+   play-through on a phone and a desktop (ACC-005), in `docs/agent/OWNER_QUESTIONS.md`. NOTIFY-011 and PLAT-004 (the
+   native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
+   `docs/agent/design/DESIGN-S3D/`.
 
 ## Status
 
@@ -26,7 +29,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 3 | Automation and notifications | Done 2026-10-11 (released in 0.5.1). Its full run (`aeb7657`): typecheck, unit 2,227, build, e2e 90 of 90; the reviewer found no blockers, and its cheap notes were fixed |
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
-| 6 | Social stub, hardening and the last 0.5 release | Built 2026-10-15; most of it released in 0.5.2 (2026-10-15). Review, two full passes, the owner's play-through and 0.5.3 to come |
+| 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
+| 7 | Hardening for multiplayer (ADR-0037) | Planned: after 0.5.4, with the multiplayer decision record drafted beside it |
 
 **Last full test runs:** chunk 6's two passes in a row (REL-013) on `9bff79e`, its final code, the owner's Mac,
 2026-10-15, in Claude Code from the internal-disk clone checked out at that commit: typecheck passed; unit 226 files,
@@ -397,12 +401,81 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   names a quarantine tank as added only when it is newer than the line; four days or more of out-of-salt water changes
   read "Days 39–44" (the design's range form; the design draws two days); Social (dev only) shows drawn placeholders for
   friends' snapshots and a larger club name on phones; Settings keeps its "Save now" footer, which no approved Settings
-  screen draws (OWNER_QUESTIONS F4).
+  screen draws, on General and Saves only since ADR-0036 (OWNER_QUESTIONS F4).
 - **Releases:** 0.5.2 went out mid-chunk at the owner's request (see "Releases"); chunk 6 ends with 0.5.3.
+- **After 0.5.3 (2026-10-16): group F's answers (ADR-0036), on `next` for 0.5.4.** F2: "Best foot forward" reads
+  "Enter a show and see it judged. A healthy, settled adult that trusts you shows best." F3: `core-save-forward-safety`
+  pins the water classes, show tiers, buyer types, staff roles and staff traits per save format (`TABLES_AT`, from
+  v2), so adding one without raising `SCHEMA_VERSION` fails (PERSIST-003 A7). F4: Settings' "Save now" footer shows
+  on General and Saves only, and focus on it moves to the new tab as it goes (save.spec checks each tab and the focus;
+  mobile-sheets.spec that a 390×844 phone with no notifications shows 4 of Notifications' 6 categories before
+  scrolling, 3 with the footer as measured, and that the tab's end clears the tab bar). None of the three tabs fits
+  that phone whole (ADR-0036 corrects the F4 option's "whole list" and its count of five). Each new test was run
+  failing without its change, except save.spec's click step (a clicked tab takes focus itself in Chromium and WebKit).
+  The fresh review (Opus 5.5, max) found 2 blockers, both wording (the six categories; the handoff's "`next` =
+  `main`"), and 7 notes: fixed, or B-203 for the save values outside the five tables. Its confirmation pass on
+  `f74e9d8`: no blockers; its five wording notes fixed, and B-203 asked as G1. Two full passes on `c9445af`: typecheck,
+  unit 2,699, build, all passed twice; e2e 287 of 289 (41.5 min, the machine loaded) and 288 of 289 (32.5 min), three
+  different tests failing once each, none in this change's code (B-204: the route walk's `#/operations/lines` in
+  Chromium; Social's expired codes in WebKit, a 2-minute hang in its set-up; the tutorial in WebKit), each passing in
+  the other pass and 5 of 5 alone on `c9445af`. Not a clean pass: a release needs one (REL-013).
+- **G1 (ADR-0037, 2026-10-18), on `next` for 0.5.4.** A new Water room prep level, a higher reservoir limit or a new
+  rare-variant kind raises `SCHEMA_VERSION` too: `repairState` reads the two limits from `WATER_ROOM` (they were
+  literals), the kinds are a table (`RARE_VARIANT_KINDS`, `src/data/rarity.ts`) that `sanitizeRareVariant` reads, and
+  `core-save-forward-safety` pins them per save format (`LIMITS_AT`, from v2). `persistence-limits-from-tables.test.ts`
+  makes both tables bigger and checks a save at the new limits loads unchanged. All three new tests were run failing
+  without the change, and the pin failing with the reservoir limit raised to 4. B-203 partly fixed (its removed-show
+  clause goes to chunk 7).
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
 REL-012, REL-018.
+
+### 7. Hardening for multiplayer (ADR-0037) — planned
+
+- **Why:** the owner chose to make the single-player game ready for other players before any backend (ADR-0037
+  decisions 3 and 4), starting with `docs/agent/DEBT_INVENTORY.md`'s magnified items. Nothing here adds a server, an
+  account or a dependency.
+- **Requirements:** add one per item below (REL-019 onwards), with acceptance criteria from this brief, before
+  building.
+- **Build:**
+  1. **The live site ignores `?dev=1` (B-190).** A production build has no write tools whatever the address says:
+     `window.__AQ` stays read-only, and the dev panel, registry fixtures and fixture autosave (what `?dev=1` gates
+     today) stay off. This changes ADR-0005 decision 2 and ADR-0024 A5 ("`?dev=1` as built") for the live site. The
+     dev server keeps `?dev=1` as today. Also: `?sandbox=` isn't gated at all in production (`src/App.tsx`): gate it
+     the same way. Starter showcases (`?showcase=`, a never-saved demo world) stay unless the owner says otherwise.
+     - The tests: `base-path.spec` needs the tools (it opens the production build with `?dev=1` and calls
+       `__AQ.newGame` and `__AQ.mutate`), and `prod-mode.spec` checks they're absent, on the same `.e2e-dist` build
+       today. So the e2e build that `base-path.spec` opens turns the tools on with a build-time flag that `deploy.yml`
+       and `render.yaml` never set (both stay unchanged: core files), and `prod-mode.spec` gets a second production
+       build without the flag, on its own port and project, and checks it with `?dev=1` added.
+  2. **Counter-offers stay under the buyer's ceiling (B-124):** repeated small counters never take a buyer past their
+     private ceiling, and a listing closes when it ends; its loop test in `tests/sim/economy-loops.test.ts` (no sale
+     above the buyer's ceiling, however the counters go).
+  3. **Admission takings peak inside the slider's range (B-162):** demand keeps falling with price, so takings stop
+     rising before the slider's $40, and the sim refuses an admission the slider can't set; its test: a day's takings
+     peak inside $0–40.
+     - Both fixes change what players see. Before building, show the owner B-124's sale prices after a run of
+       counters and B-162's takings at a few prices, before and after, and ask (ADR-0037 decision 3).
+  4. **A loop hunt (B-130):** a seeded test running many short sequences of buying, selling, listing, quick-selling,
+     converting and fragging, with no game time passing, that fails when a sequence ends with more money plus stock
+     value than it began with. B-124 and B-162 involve time and sales, so they keep their own tests (items 2 and 3).
+  5. **Research gates in the rules (B-160):** `buyTank` refuses marine, reef and brackish, and `convertWaterClass`
+     marine and reef (it already refuses brackish, `src/sim/tankOps.ts`), without their research, with the screens'
+     own wording; a sim test for each.
+  6. **Cheap items:**
+     - B-203's other clauses: a show removed on load for an unknown tier scratches and refunds its entries, with a
+       note; the Live food room's cone and jar cap on load (12) and the staff skill range (1–5) are read from their
+       tables; an unknown rare-variant origin stays as is (or is pinned like the kinds).
+     - B-204: the three e2e tests wait on the panel or the step, not on fixed delays.
+- **Done when:** the four checks pass on the final code twice in a row (REL-013); one fresh reviewer (Opus 5.5, max
+  effort) reads `git diff <start>..HEAD` against this brief and its blockers are fixed; DEBT_INVENTORY's magnified
+  rows and TRUST_BOUNDARY's dev-tools line are brought up to date.
+- **Beside it:** the multiplayer decision record (REL-002's gate), Proposed, for the owner to approve. It covers the
+  first version for people the owner knows (accounts, cloud saves, clubs and friends' leaderboards through the Social
+  screens' `SocialService`), the backend options with what each costs, and what moves to a server later, and when.
+  No backend, account or cloud-save code until the owner approves it.
+- **Not in this chunk:** a server, accounts, cloud saves, trading, or running the offline catch-up on a server.
 
 ## Releases
 
@@ -437,6 +510,15 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   (merge `e527e10`). Pushes go from the internal-disk clone (from the disk image the push hung), after the owner added
   gh's `workflow` scope (deploy.yml changed). Pages deployed `e527e10` by itself; Render by hand
   (`dep-db8j6mpsrm7s73eh8f30`). Both `version.json` files read `{"id":"e527e10-…","version":"0.5.2"}`.
+- **0.5.3, released 2026-10-15** at the owner's go-ahead in the session ("release 0.5.3 if pass 2 is green"): chunk 6's
+  end, after its reviews. Two full passes in a row on `9bff79e` (typecheck; unit 226 files, 2,697 tests; build; e2e
+  285 of 285, Chromium and WebKit, twice); on the release commit `31f8b7b` (version, CHANGELOG and docs only)
+  typecheck, unit 2,697, build and the production-build specs passed. The owner chose to release before the
+  play-through (step 1's "the owner has played it" waived for this release). Merged as `382a637` (its tree is
+  `31f8b7b`'s) and pushed from the internal-disk clone with `next`. Pages deployed `382a637` by itself (its run tests
+  first, B-193; GitHub notes that `deploy-pages@v4` runs on a deprecated Node 20 and that `ubuntu-latest` moves to
+  Ubuntu 26 from 2026-10-19: `deploy.yml` is a core file, left for the owner); Render by hand
+  (`dep-db8o0s7f3r2c73eplvm0`). Both `version.json` files read `{"id":"382a637-…","version":"0.5.3"}`.
 
 ## Product decisions in force
 
@@ -444,18 +526,21 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   simulation and player state; individual creatures, collection and breeding depth; stable, testable, deterministic
   systems; clear phone and desktop use; extensibility; performance; elegance.
 - Local single-player first. No real multiplayer, accounts or backend without the owner (REL-002); the native
-  wrapper is deferred (ADR-0001).
+  wrapper is deferred (ADR-0001). Multiplayer starts with people the owner knows, after chunk 7's hardening and an
+  approved decision record (ADR-0037).
 - Automation goes deep (ADR-0001, option C): more than Auto-feed and Auto-clean.
 - The Auto Water Changer shares the Autofeeder unlock. Quiet hours are fixed at 10 PM to 8 AM, with a switch to turn
   them off (0.5 spec §12.3). One-copy Metallic is unnamed, with a subtle sheen. Locked destinations open a locked
   panel. Several production lines per species. Social is a local stub, reachable only in dev mode (ADR-0001,
   ADR-0005).
-- Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016).
+- Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does a new
+  water class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, a higher reservoir
+  limit or a rare-variant kind (ADR-0037).
 - Catch-up bid windows stay as they are (ADR-0016).
 - Morph tiers: Legendary below 1 in 10,000 of market stock (ADR-0022, replacing ADR-0005 decision 4's threshold).
 - From the owner's group A answers (ADR-0024): an older build that finds a newer save keeps today's one message
   ("Refresh the page"); e2e gains a WebKit project (chunk 6); accessibility aims at WCAG 2.2 AA with solid
-  high-contrast panels (chunk 6); `?dev=1` as built; chunk 3's five flagged wordings stay; automation's step-size
+  high-contrast panels (chunk 6); `?dev=1` as built (chunk 7 turns it off on the live site, ADR-0037); chunk 3's five flagged wordings stay; automation's step-size
   checks are exact for job counts, run hours and stock units and within stated tolerances for water values.
 - From group B (ADR-0025): production lines follow DESIGN-S3D §8.6 and §8.6.1; automation never lists a Prismatic;
   protected animals (keep tanks, Prismatics, favourites) are never moved out, listed or sold by automation; lines can

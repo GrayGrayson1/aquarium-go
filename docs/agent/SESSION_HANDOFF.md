@@ -1,39 +1,35 @@
-# Session handoff: chunk 6 built, its review and the last 0.5 release next
+# Session handoff: 0.5 released, chunk 7 (hardening for multiplayer) next
 
-For the agent that finishes chunk 6 (Social stub, hardening and the last 0.5 release) on Aquarium Go, after the
-owner's `/compact` or in a new session. Written 2026-10-15 by the session that built chunk 6; it replaces the handoff
-written after chunk 5. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of
+For the agent that builds chunk 7 (hardening for multiplayer, ADR-0037) on Aquarium Go, after the owner's `/compact`
+or in a new session. Written 2026-10-15 by the session that built chunk 6 and brought up to date on 2026-10-18 after
+0.5.4; it replaces the handoff written after chunk 5. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of
 work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
 
 ## Where things stand
 
-- `next` holds chunks 1 to 6, all tested (PLAN.md, chunk 6: what was built, the requirements met, the measurements).
-  Owner questions up to group E are answered (ADR-0024 to ADR-0035); group F (three from chunk 6's review: the
-  VoiceOver pass, a quest's wording, pinning tables to SCHEMA_VERSION) is open in `docs/agent/OWNER_QUESTIONS.md`.
-- **0.5.2 is the release on `main`** (`e527e10`, Pages and Render, 2026-10-15): chunks 4 and 5 and chunk 6 up to
-  `86de7c3`, released mid-chunk at the owner's request so they could play it. Chunk 6's later work (B-180, the S3-D copy
-  test, the viewport and geometry specs, the 721 px Operations fix, toasts and the buy bar at §17, the long-run and
-  boundary tests, the docs) is on `next` only.
-- Chunk 6's fresh code review (5 blockers, 14 notes, REL-017 YELLOW) and browser/QA review (RED) are fixed
-  (`e23b8a2`, `bba00ab`; PLAN.md, chunk 6, "Reviewed"); the code reviewer's confirmation found them fixed and REL-017
-  GREEN; the QA reviewer's second pass was YELLOW, fixed with the code reviewer's three notes (`d1c37bd`). Left: the
-  QA reviewer's third pass, two full passes in a row (REL-013), the owner's play-through on a phone and a desktop (with
-  VoiceOver for ACC-005, F1), then 0.5.3 with the owner's go-ahead. REQUIREMENTS.json has DES-011, DES-012, ACC-005, REL-004 to REL-007, REL-011, REL-013 and REL-014
-  waiting on those.
+- **0.5 is complete and released.** 0.5.3 is on `main` (`382a637`, 2026-10-15): chunk 6's end, after a fresh code
+  review (5 blockers fixed, REL-017 GREEN on confirmation) and a browser/QA review (RED → GREEN), with two full
+  passes in a row on `9bff79e` (PLAN.md, chunk 6). `next` = `main` plus the post-release notes, ADR-0036's changes
+  and G1's (ADR-0037): 0.5.4, which the owner approved on 2026-10-18 for Pages and Render after one full green pass
+  (PLAN.md, chunk 6, "After 0.5.3"; check PLAN.md's "Releases" for whether it has gone out).
+- Left from chunk 6: the owner's play-through on a phone and a desktop, with a VoiceOver pass for ACC-005 (the one
+  requirement still IN_PROGRESS, OWNER_QUESTIONS F1).
+- After 0.5 (ADR-0037): chunk 7, hardening for multiplayer (PLAN.md's brief), with the multiplayer decision record
+  drafted beside it as Proposed. Multiplayer starts with people the owner knows; no backend, account or cloud-save code
+  until the owner approves that record (REL-002). NOTIFY-011 and PLAT-004 (the native wrapper) stay deferred.
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
-   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's brief and record).
-2. **Review:** done (a code reviewer and a browser/QA reviewer, Opus 5.5 at max effort; never Fable). If their
-   confirmation passes aren't recorded in PLAN.md, start fresh reviewers on `git diff db25042..HEAD` with the first
-   reports' findings (PLAN.md lists them), not a summary of the fixes. The QA reviewer needs new captures of the
-   screens it named (phone and desktop).
-3. **Two full passes in a row** of the four checks on the final commit (both e2e browsers; retries stay 0); record
-   them in PLAN.md and set REL-004 to REL-007, REL-011, REL-013, REL-014 GREEN.
-4. **The owner plays it**, then the release: bump to 0.5.3, the CHANGELOG entry (chunk 6's later work), merge `next`
-   into `main` with the owner's go-ahead, push from the internal-disk clone, check both `version.json` files, deploy
-   Render by hand.
+   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's record).
+2. **The owner's play-through and F1:** record what the owner reports (ACC-005's VoiceOver pass, F1) verbatim in an
+   ADR and fix what it finds (each fix tested).
+3. **Chunk 7** (PLAN.md's brief): its requirements first (REL-019 onwards), B-124's and B-162's before and after
+   asked of the owner before building, its own fresh reviewer (Opus 5.5 at max effort, never Fable) and two full passes before a release. The
+   multiplayer decision record beside it stays Proposed until the owner approves it.
+4. **Releasing** (as 0.5.3 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into
+   `main` with the owner's go-ahead (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no checkout), push
+   from the internal-disk clone, watch the Pages run, deploy Render by hand, check both `version.json` files.
 5. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
    `/compact` (an agent can't) and you re-read the docs. Releases (`main`) only when the owner says so in the session.
 
@@ -66,7 +62,7 @@ cd ~/LocalTest/AquariumGo && git fetch -q dev next && git checkout -q --detach <
 for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright npm run $c; echo "=== $c exit $?"; done > $S/checks.log 2>&1
 ```
 
-Unit tests take about 45 s, e2e about 8 minutes (inside Claude Code's sandbox; it works, don't ask to leave it).
+Unit tests take about 45 s, e2e about 32 minutes in Chromium and WebKit (inside Claude Code's sandbox; it works, don't ask to leave it).
 Every e2e run also builds the production site under `/aquarium-go/` for the `base-path` project (about 10 s more).
 `npx vitest run --reporter=json --outputFile=<file>` gives a list of failures to compare before and after a sim change.
 

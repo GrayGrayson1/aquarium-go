@@ -13,8 +13,8 @@ After each group, record the answers **verbatim** (the question as asked, the op
 ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows below "Answered (ADR-00NN)" and
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
-Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is answered (2026-10-13); **group F is open**
-(2026-10-15). Add new ones as a new group, and record them the same way.
+Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is answered (2026-10-13); group F's F2–F4
+are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5. Add new ones as a new group, and record them the same way.
 
 | Group | Unblocks | Questions |
 |---|---|---|
@@ -29,7 +29,9 @@ Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is an
 | (chunk 5 review) | The review's copy; the salt mixer's day (batches grow with the reservoir, the 60 % rule kept); the Water room warnings and their reserve-size wording | 5 questions in 3 rounds: **answered 2026-10-14 (ADR-0033)** |
 | (chunk 6) | Chunk 6's copy and data the designs leave unworded (Social, B-194, B-202, What's new in 0.5), asked once before building | 8 questions in 2 rounds: **answered 2026-10-14 (ADR-0034)** |
 | (chunk 6, second round) | The accessibility route, Render's build command, S3-D's copy (DES-013) | 4 questions: **answered 2026-10-15 (ADR-0035)** |
-| F (chunk 6 review) | What chunk 6's fresh reviews left to the owner (block nothing in 0.5.3) | F1–F4: **open** (2026-10-15) |
+| F (chunk 6 review) | What chunk 6's fresh reviews left to the owner (block nothing in 0.5.3) | F2–F4: **answered 2026-10-16 (ADR-0036)**; F1: **open** (the owner's play-through) |
+| G (ADR-0036 review) | A backlog row the review of ADR-0036's changes left to the owner (blocks nothing) | G1: **answered 2026-10-18 (ADR-0037)** |
+| (after 0.5) | When 0.5.4 goes out, what comes next, who plays multiplayer first | 3 questions, asked with G1: **answered 2026-10-18 (ADR-0037)** |
 
 ## A. Release and standing decisions
 
@@ -151,13 +153,21 @@ asking; the options below are the agent's proposals.
 Harness-era owner rows (B-132, B-133, B-137) were about the retired harness's gates; propose closing them as "no
 action" (ADR-0018) in the same round as E. → **Answered (ADR-0029): closed as "no action".**
 
-## F. Chunk 6's fresh code review (open)
+## F. Chunk 6's fresh code review (F1 open; F2–F4 answered)
 
 Raised by the chunk 6 reviewer on 2026-10-15. None blocks 0.5.3; ask them with the owner's play-through.
 
 | # | Question | Options (recommended first) | Source |
 |---|---|---|---|
 | F1 | ACC-005 asks for a VoiceOver pass (toasts, Link copied, switch states, form errors). An agent can't run VoiceOver. Who closes it? | **The owner turns on VoiceOver (Cmd-F5) during the 0.5.3 play-through and says what it reads**; the agent records it. · Narrow ACC-005 to the keyboard pass and the roles the tests check (tablist, radiogroup, role=alert, live toasts). | ACC-005; the review's blocker 4 |
-| F2 | The quest "Best foot forward" reads "Enter a show. A healthy, settled adult that trusts you shows best." but since B-175 completes on judging day (a withdrawn entry never counts). New wording? | **"Enter a show and see it judged. A healthy, settled adult that trusts you shows best."** · Keep it. · Different wording. | B-175 (`src/data/quests.ts`); the review's notes |
-| F3 | A save's unknown water class, show tier, buyer archetype, staff role or staff trait is now reset or removed on load. If a later build adds one without bumping SCHEMA_VERSION, an older build opened after a rollback would convert those tanks, delete those shows (keeping their fees) and remove those team members for good. Pin these tables? | **Pin them: adding a water class, show tier, buyer type, staff role or trait bumps SCHEMA_VERSION, as species and tank sizes do (ADR-0016), checked by core-save-forward-safety.** · Keep such entries inert instead of removing them (more code in every system that reads them). · Leave it (old builds are best-effort, ADR-0005). | migrations.ts; the review and its confirmation pass |
-| F4 | Settings has a "Save now" footer from before 0.5 ("Autosave keeps your progress. Save now any time."). No approved Settings screen draws it, and on a phone it covers part of Notifications' list (3 of 5 categories show before scrolling). Keep it? | **Keep it on General and Saves only** (where saving belongs; Notifications, Play & access and About show their whole list). · Keep it on every tab (as today). · Remove it (Saves has its own Save buttons). | the QA review's second pass |
+| F2 | The quest "Best foot forward" reads "Enter a show. A healthy, settled adult that trusts you shows best." but since B-175 completes on judging day (a withdrawn entry never counts). New wording? | **"Enter a show and see it judged. A healthy, settled adult that trusts you shows best."** · Keep it. · Different wording. → **Answered (ADR-0036): the new wording.** | B-175 (`src/data/quests.ts`); the review's notes |
+| F3 | A save's unknown water class, show tier, buyer archetype, staff role or staff trait is now reset or removed on load. If a later build adds one without bumping SCHEMA_VERSION, an older build opened after a rollback would convert those tanks, delete those shows (keeping their fees) and remove those team members for good. Pin these tables? | **Pin them: adding a water class, show tier, buyer type, staff role or trait bumps SCHEMA_VERSION, as species and tank sizes do (ADR-0016), checked by core-save-forward-safety.** · Keep such entries inert instead of removing them (more code in every system that reads them). · Leave it (old builds are best-effort, ADR-0005). → **Answered (ADR-0036): pin them** (`TABLES_AT` in core-save-forward-safety). | migrations.ts; the review and its confirmation pass |
+| F4 | Settings has a "Save now" footer from before 0.5 ("Autosave keeps your progress. Save now any time."). No approved Settings screen draws it, and on a phone it covers part of Notifications' list (3 of 5 categories show before scrolling). Keep it? | **Keep it on General and Saves only** (where saving belongs; Notifications, Play & access and About show their whole list). · Keep it on every tab (as today). · Remove it (Saves has its own Save buttons). → **Answered (ADR-0036): General and Saves only.** Correction, measured after: Notifications has 6 categories (chunk 5's Automation), and on a 390×844 phone 3 or 4 of them show before scrolling by the browser's notification state (2 or 3 with the footer); Play & access and About still scroll too, so none shows its whole list (ADR-0036). | the QA review's second pass |
+
+## G. The fresh review of ADR-0036's changes (answered)
+
+Raised by the review of ADR-0036's changes on 2026-10-16 (B-203). Answered on 2026-10-18 (ADR-0037), in the round that also asked when 0.5.4 goes out, what comes next and who plays multiplayer first.
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| G1 | Beyond ADR-0036's five tables, a save's water-room prep level above 2, reservoir count above 3 and a rare-variant kind other than Prismatic are also reset or dropped on load, so an older build after a rollback would undo paid water-room upgrades or turn a newer rare animal ordinary; and the prep-level and reservoir limits are written out by hand, so a later build that adds a level without editing them would reset them in that same build. Pin these too? | **Pin them: a new prep level, more reservoirs or a new rare-variant kind raises SCHEMA_VERSION (pinned in core-save-forward-safety), and the limits are read from the Water room's table.** · Only read the limits from the table (fixes the same-build case; rollbacks stay best-effort, ADR-0005). · Leave it. → **Answered (ADR-0037): pin them** (`LIMITS_AT` in core-save-forward-safety; `RARE_VARIANT_KINDS`). | B-203; `src/persistence/migrations.ts` (`repairAutomation`), `src/sim/life/rareVariants.ts` |

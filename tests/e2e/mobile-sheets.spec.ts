@@ -76,6 +76,37 @@ test.describe('phone 390×844 (touch)', () => {
     expect(await page.evaluate(() => location.hash)).toBe('#/settings');
   });
 
+  test('Settings › Notifications has no Save now footer, so with no notifications four of its six categories show before scrolling (ADR-0036)', async ({ page }) => {
+    // the status card's height depends on the browser's notification state: pin it to an iPhone Safari tab's (none)
+    await page.addInitScript(() => void delete (window as { Notification?: unknown }).Notification);
+    await phoneGame(page);
+    await goHash(page, '#/settings/notifications');
+    await settled(page, '[data-testid="panel-settings"]');
+    await expect(tid(page, 'settings-tab-notifications')).toHaveAttribute('aria-selected', 'true');
+    await expect(tid(page, 'notify-status')).toHaveAttribute('data-permission', 'unsupported');
+    await expect(tid(page, 'settings-save')).toHaveCount(0);
+    await expect(page.locator('[data-testid^="notify-cat-"]')).toHaveCount(6);
+    // what shows before scrolling ends where the body's box does (a footer ends it) or at the tab bar painted over it.
+    // Measured at 390×844: the rows end at 533, 601, 669, 737 (Breeding), 805 (Shows) and 873 (Automation); the tab
+    // bar starts at 770 and the old footer at 703, so Breeding is the row the footer hid
+    const body = (await rect(page, '[data-testid="panel-settings"] .ag-sheet__body'))!;
+    const bar = (await rect(page, '[data-testid="nav-tabbar"]'))!;
+    const seen = Math.min(body.bottom, bar.top);
+    expect(await page.evaluate(() => document.querySelector('[data-testid="panel-settings"] .ag-sheet__body')!.scrollTop)).toBe(0);
+    for (const c of ['rare', 'care', 'market', 'breeding']) {
+      const row = await page.evaluate((id) => document.querySelector(`[data-testid="notify-cat-${id}"]`)!.closest('.ag-notify-row')!.getBoundingClientRect().bottom, c);
+      expect(row, c).toBeLessThanOrEqual(seen);
+    }
+    // scrolled to the end, the tab's last row clears the tab bar (in-game Settings without a footer is new on phones)
+    const clear = await page.evaluate(() => {
+      const el = document.querySelector('[data-testid="panel-settings"] .ag-sheet__body') as HTMLElement;
+      el.scrollTop = el.scrollHeight;
+      const last = el.querySelector('.ag-tcard__content')!.getBoundingClientRect();
+      return last.bottom <= document.querySelector('[data-testid="nav-tabbar"]')!.getBoundingClientRect().top + 1;
+    });
+    expect(clear).toBe(true);
+  });
+
   test('the tank card opens below the tank bar, which stays in view, and the guide steps aside', async ({ page }) => {
     await phoneGame(page, { guide: true });
     await expect(tid(page, 'tutorial-card')).toBeVisible();
