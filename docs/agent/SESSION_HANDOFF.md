@@ -9,23 +9,24 @@ work and the practical knowledge that makes it go smoothly. Replace or delete it
 
 - **0.5 is complete and released.** 0.5.3 is on `main` (`382a637`, 2026-10-15): chunk 6's end, after a fresh code
   review (5 blockers fixed, REL-017 GREEN on confirmation) and a browser/QA review (RED → GREEN), with two full
-  passes in a row on `9bff79e` (PLAN.md, chunk 6). `next` = `main` plus the post-release notes and ADR-0036's changes,
-  unreleased (PLAN.md, chunk 6, "After 0.5.3").
+  passes in a row on `9bff79e` (PLAN.md, chunk 6). `next` = `main` plus the post-release notes, ADR-0036's changes
+  and G1's (ADR-0037): 0.5.4, which the owner approved on 2026-10-18 for Pages and Render after one full green pass
+  (PLAN.md, chunk 6, "After 0.5.3"; check PLAN.md's "Releases" for whether it has gone out).
 - Left from chunk 6: the owner's play-through on a phone and a desktop, with a VoiceOver pass for ACC-005 (the one
-  requirement still IN_PROGRESS, OWNER_QUESTIONS F1). The owner answered F2–F4 on 2026-10-16 (ADR-0036, "lets go
-  with your recommendations"); the changes are on `next` for 0.5.4, which waits for the owner's go-ahead.
-- What comes after 0.5 is the owner's call: NOTIFY-011 and PLAT-004 (the native wrapper) are deferred, REL-002
-  (multiplayer) is for later, and `docs/agent/DEBT_INVENTORY.md` lists what multiplayer would magnify.
+  requirement still IN_PROGRESS, OWNER_QUESTIONS F1).
+- After 0.5 (ADR-0037): chunk 7, hardening for multiplayer (PLAN.md's brief), with the multiplayer decision record
+  drafted beside it as Proposed. Multiplayer starts with people the owner knows; no backend, account or cloud-save code
+  until the owner approves that record (REL-002). NOTIFY-011 and PLAT-004 (the native wrapper) stay deferred.
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
    `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's record).
 2. **The owner's play-through and F1:** record what the owner reports (ACC-005's VoiceOver pass, F1) verbatim in an
-   ADR and fix what it finds (each fix tested); ask G1 (B-203). F2–F4 are built (ADR-0036); release 0.5.4 only with
-   the owner's go-ahead.
-3. **After 0.5:** ask the owner what's next; a new chunk gets a brief in PLAN.md, its own fresh reviewer (Opus 5.5 at
-   max effort, never Fable) and two full passes before a release.
+   ADR and fix what it finds (each fix tested).
+3. **Chunk 7** (PLAN.md's brief): its requirements first (REL-019 onwards), B-162's curve asked of the owner before
+   building, its own fresh reviewer (Opus 5.5 at max effort, never Fable) and two full passes before a release. The
+   multiplayer decision record beside it stays Proposed until the owner approves it.
 4. **Releasing** (as 0.5.3 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into
    `main` with the owner's go-ahead (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no checkout), push
    from the internal-disk clone, watch the Pages run, deploy Render by hand, check both `version.json` files.

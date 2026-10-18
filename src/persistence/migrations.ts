@@ -32,6 +32,7 @@ import { LOG_CAP } from '@/sim/context';
 import { BUYER_ARCHETYPES } from '@/data/buyers';
 import { SHOW_TIERS } from '@/data/shows';
 import { STAFF_ROLES, STAFF_TRAITS } from '@/data/staff'; // chunk 6 (PERSIST-004 A3)
+import { WATER_ROOM } from '@/data/catalog/machines'; // ADR-0037 (G1)
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1043,8 +1044,9 @@ function repairAutomation(s: Json, repairs: string[]): void {
       repairs.push('facility.water: unreadable, removed');
     } else {
       for (const k of ['fresh', 'salt'] as const) fix(!(finiteNum(w[k]) && w[k] >= 0), `facility.water.${k}: ${String(w[k]).slice(0, 40)} → 0`, () => (w[k] = 0));
-      fix(!(Number.isInteger(w.prepLevel) && w.prepLevel >= 0 && w.prepLevel <= 2), 'facility.water.prepLevel → 0', () => (w.prepLevel = 0));
-      fix(!(Number.isInteger(w.reservoirs) && w.reservoirs >= 0 && w.reservoirs <= 3), 'facility.water.reservoirs → 0', () => (w.reservoirs = 0));
+      // the limits are the Water room's table's (ADR-0037, G1), which core-save-forward-safety pins to the save format
+      fix(!(Number.isInteger(w.prepLevel) && w.prepLevel >= 0 && w.prepLevel <= WATER_ROOM.prepRates.length - 1), 'facility.water.prepLevel → 0', () => (w.prepLevel = 0));
+      fix(!(Number.isInteger(w.reservoirs) && w.reservoirs >= 0 && w.reservoirs <= WATER_ROOM.maxReservoirs), 'facility.water.reservoirs → 0', () => (w.reservoirs = 0));
       fix(!(finiteNum(w.flowHour) && w.flowHour <= hour + 1), `facility.water.flowHour → ${hour}`, () => (w.flowHour = hour));
       fix(w.lastMixHour !== undefined && !(finiteNum(w.lastMixHour) && w.lastMixHour <= hour + 1), 'facility.water.lastMixHour: removed', () => delete w.lastMixHour);
       fix(w.mix !== undefined && w.mix !== null && !(isObj(w.mix) && finiteNum(w.mix.gal) && w.mix.gal >= 0 && finiteNum(w.mix.readyHour)), 'facility.water.mix: unreadable, emptied', () => (w.mix = null));

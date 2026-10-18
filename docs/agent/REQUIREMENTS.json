@@ -4142,7 +4142,7 @@
         "Any SCHEMA_VERSION change ships with its migration, a test that loads the previous version, and a docs entry (master §3.5)",
         "A save written by a newer build under the same SCHEMA_VERSION, carrying equipment, decor, stored and listed frag, research and starter ids this build doesn't know, loads with repairs: [] and every such record exactly as saved, round-trips save → load → save with an equal stateHash and nothing to repair, needs no second repair, and the world steps 24 game hours around it keeping the equipment, decor, frags and starter (core-forward-compat.test.ts: \"PERSIST-003 / PERSIST-011: a newer save keeps the catalog ids this build does not know\"); the research step still closes an active project this build doesn't know (see the note)",
         "A change that adds a species to the species registry (ALL_SPECIES, src/data/species) or a tank size to the tank catalog (TANK_TIERS, src/data/catalog/tanks.ts) also raises SCHEMA_VERSION (src/persistence/schema.ts), with A4's migration, test and docs entry, so an older build treats a save holding the new content as too_new (A1-A2) instead of loading it; older builds don't keep unknown species or tank sizes inert (ADR-0016 decision 2). From S1, core-save-forward-safety.test.ts fails when one is added without the bump (PERSIST-014 A5); until then each slice's reviewers check git diff <last checkpoint, or the baseline>..<candidate> -- src/data/species src/data/catalog/tanks.ts src/persistence/schema.ts",
-        "A change that adds or removes a water class (CLASS_DEFAULTS, src/sim/water/constants.ts), a show tier (SHOW_TIERS, src/data/shows.ts), a buyer type (BUYER_ARCHETYPES, src/data/buyers.ts), a staff role or a staff trait (STAFF_ROLES, STAFF_TRAITS, src/data/staff.ts) also raises SCHEMA_VERSION, with A4's migration, test and docs entry: repairState resets or removes values those tables don't know (PERSIST-004 A3), so an older build must treat such a save as too_new instead of loading it (ADR-0036, owner question F3). core-save-forward-safety.test.ts pins the five tables' keys per save format (TABLES_AT, from v2) and fails when one changes without the bump"
+        "A change that adds or removes a water class (CLASS_DEFAULTS, src/sim/water/constants.ts), a show tier (SHOW_TIERS, src/data/shows.ts), a buyer type (BUYER_ARCHETYPES, src/data/buyers.ts), a staff role or a staff trait (STAFF_ROLES, STAFF_TRAITS, src/data/staff.ts) also raises SCHEMA_VERSION, with A4's migration, test and docs entry: repairState resets or removes values those tables don't know (PERSIST-004 A3), so an older build must treat such a save as too_new instead of loading it (ADR-0036, owner question F3). core-save-forward-safety.test.ts pins the five tables' keys per save format (TABLES_AT, from v2) and fails when one changes without the bump. So does a change to the Water room's prep levels or reservoir limit (WATER_ROOM, src/data/catalog/machines.ts) or to the rare-variant kinds (RARE_VARIANT_KINDS, src/data/rarity.ts), the other limits repairState checks a save against, which it reads from those tables (ADR-0037, owner question G1); core-save-forward-safety pins them too (LIMITS_AT, from v2)"
       ],
       "tasks": [
         "S0-T8"
@@ -4150,11 +4150,13 @@
       "tests": [
         "new: tests/sim/core-save-forward-safety.test.ts (proposed; written in S1 by PERSIST-014: a schemaVersion-2 primary plus a v1 backup on a memory backend, and the species ids and tank sizes of the current SCHEMA_VERSION pinned for A6)",
         "tests/sim/core-forward-compat.test.ts",
-        "tests/sim/core-save-forward-safety.test.ts: \"ADR-0036 (F3): a new water class, show tier, buyer type, staff role or staff trait raises SCHEMA_VERSION\" (A7)"
+        "tests/sim/core-save-forward-safety.test.ts: \"ADR-0036 (F3): a new water class, show tier, buyer type, staff role or staff trait raises SCHEMA_VERSION\" (A7)",
+        "tests/sim/core-save-forward-safety.test.ts: \"ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant kind raises SCHEMA_VERSION\" (A7)",
+        "tests/sim/persistence-limits-from-tables.test.ts (A7: the limits come from the tables)"
       ],
       "evidence": [],
       "status": "ACTIVE",
-      "note": "Chunk 1 (2026-10-06): A1-A2 now hold: PERSIST-014 (commit ee42973) makes a too_new slot final (no fallback past it, no overwrite). 2026-10-16: A7 added by ADR-0036 (owner question F3), with its test."
+      "note": "Chunk 1 (2026-10-06): A1-A2 now hold: PERSIST-014 (commit ee42973) makes a too_new slot final (no fallback past it, no overwrite). 2026-10-16: A7 added by ADR-0036 (owner question F3), with its test. 2026-10-18: A7 widened by ADR-0037 (owner question G1) to the Water room's limits and the rare-variant kinds, with its tests."
     },
     {
       "id": "PERSIST-004",
