@@ -14,19 +14,23 @@ test.describe('core gameplay loop', () => {
       const next = tid(page, 'tutorial-next');
       if ((await next.count()) && /next/i.test((await next.first().textContent()) ?? '')) await next.first().click();
     };
+    // chunk 7 (B-204): each step waits on the guide's own step (or the tool), not on fixed delays — WebKit once
+    // finished 1 of 3 steps after the old waits
+    const tool = () => page.evaluate(() => (window as unknown as { __AQ: { ui(): { tool: string | null } } }).__AQ.ui().tool);
     // camera → Next
     await nextIfPlain();
+    await expect.poll(step).toBeGreaterThanOrEqual(s0 + 1);
     // feed → use the feed tool on the tank
     await tid(page, 'tool-feed').click();
     const option = page.locator('[data-testid^="food-option-"]').first();
     if (await option.isVisible().catch(() => false)) await option.click();
     await clickTank(page);
-    await page.waitForTimeout(600);
+    await expect.poll(step).toBeGreaterThanOrEqual(s0 + 2);
     // water → open the tank card
     const cardToggle = tid(page, 'tank-card-toggle');
     if (await cardToggle.count()) {
       await cardToggle.click();
-      await page.waitForTimeout(400);
+      await expect.poll(step).toBeGreaterThanOrEqual(s0 + 3);
       await cardToggle.click();
     }
     await nextIfPlain();
@@ -36,9 +40,8 @@ test.describe('core gameplay loop', () => {
     const decor = page.locator('[data-testid^="build-decor-"]').first();
     if (await decor.isVisible().catch(() => false)) {
       await decor.click();
-      await page.waitForTimeout(400);
+      await expect.poll(tool).toBe('decor_place'); // the panel has closed onto the tank, ready to place
       await clickTank(page);
-      await page.waitForTimeout(600);
     }
     await page.keyboard.press('Escape');
     await nextIfPlain();

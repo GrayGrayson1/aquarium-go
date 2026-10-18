@@ -186,6 +186,35 @@ describe('A3: values the tables don’t know (B-004, B-010)', () => {
     expect(repairs.some((r) => r.startsWith('shows entry e1: tier galactic removed'))).toBe(true);
   });
 
+  it('chunk 7 (B-203): the pending entries of a show removed for its tier are scratched and their fees refunded, with a note', () => {
+    const g = game();
+    const h = g.clock.hour;
+    const money = g.finance.money;
+    g.shows = {
+      shows: [{ id: 'sh_bad', name: 'Starlight Classic', tier: 'galactic', status: 'open', judgingHour: h + 30, deadlineHour: h + 20, classes: [] }],
+      entries: [
+        { id: 'e1', showId: 'sh_bad', classId: 'c1', kind: 'creature', subjectId: 'x', name: 'Mochi', fee: 25, enteredHour: h, status: 'entered' },
+        { id: 'e2', showId: 'sh_bad', classId: 'c1', kind: 'creature', subjectId: 'y', name: 'Pip', fee: 0, enteredHour: h, status: 'entered' },
+        { id: 'e3', showId: 'sh_bad', classId: 'c1', kind: 'creature', subjectId: 'z', name: 'Old', fee: 40, enteredHour: h - 100, status: 'judged' },
+      ],
+      trophies: [], tankAwards: {}, stats: {}, rng: 1, seq: 0,
+    };
+    const notes = repairState(g);
+    expect(notes).toContain('shows.shows: 1 of an unknown tier removed');
+    expect(notes).toContain('shows entry e1: its show was removed, so it was scratched and refunded');
+    expect(notes).toContain('shows entry e2: its show was removed, so it was scratched');
+    const [e1, e2, e3] = g.shows.entries;
+    for (const e of [e1, e2]) {
+      expect(e.status).toBe('scratched');
+      expect(e.note).toBe('This show was called off. The club refunded the fee.');
+      expect(e.judgedHour).toBe(h);
+    }
+    expect(e3.status).toBe('judged'); // a judged entry keeps its result
+    expect(g.finance.money).toBe(money + 25);
+    expect(g.finance.ledger.at(-1)).toMatchObject({ amount: 25, category: 'other', memo: 'Show fee refund — Starlight Classic' });
+    expect(repairState(g)).toEqual([]); // once only
+  });
+
   it.each(['toString', 'janitor'])('a team member and a candidate of role %j are removed with a note; payday runs', (role) => {
     const g = game() as unknown as GameState;
     g.facility.level = 'aquarium_store';

@@ -12,7 +12,7 @@ import { generateName } from '../life/names';
 import { mulberry32, hashString } from '../rng';
 import { createTank, defaultSubstrate } from '../tanks';
 import { defaultEquipmentFor } from '../water';
-import { isUnlocked, findFreeSpot, bumpCounter } from '../facility';
+import { isUnlocked, findFreeSpot, bumpCounter, waterClassLock } from '../facility';
 import { emitEvent } from '../context';
 import { settleTanks } from '../settle'; // ADR-0026 decision 5 (chunk 5)
 import { findSpecies } from '@/data/species';
@@ -252,6 +252,8 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
   const tier = TANK_TIER_BY_ID[tierId];
   if (!tier) return fail('Unknown tank size.');
   if (!isUnlocked(state, tier.unlock)) return fail(`The ${tier.name} isn't available yet (${unlockHint(tier.unlock)}).`);
+  const waterLock = waterClassLock(state, waterClass); // chunk 7 (B-160): the rule, not only Build's screen
+  if (waterLock) return fail(waterLock);
   let spot: { x: number; z: number; rotY: number } | null = placement ?? null;
   if (!spot) {
     try {

@@ -6,7 +6,7 @@
  * (the max over the aliases other lanes may bump plus what this module derives from the market history and the
  * creature records), so an activity is never rewarded twice even if two lanes both count it.
  */
-import type { GameState, MasteryTrack, QuestState } from '@/types';
+import type { GameState, MasteryTrack, QuestState, WaterClass } from '@/types';
 import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
 import type { Rng } from '../rng';
@@ -29,6 +29,19 @@ import { giftedLayoutShare } from '../aquascape/starters';
 export function isUnlocked(state: GameState, key: string | null | undefined): boolean {
   if (!key) return true;
   return state.progress.unlocked.includes(key);
+}
+
+/**
+ * chunk 7 (B-160, REL-023) — the research a water type needs, as the game's rules (buying a tank, converting one) and
+ * Build's screens all check it: fresh water is open; brackish needs the Brackish Estuaries research; marine needs
+ * Marine Systems, and reef Reef Systems as well. Null when the water is open, else the screens' own line.
+ */
+export function waterClassLock(state: GameState, wc: WaterClass): string | null {
+  if (wc.startsWith('fresh')) return null;
+  if (wc === 'brackish') return isUnlocked(state, 'brackish') ? null : 'Brackish water unlocks with the Brackish Estuaries research.';
+  if (!isUnlocked(state, 'marine_basics')) return wc === 'reef' ? 'Reef tanks unlock with the Reef Systems research (after Marine Systems).' : 'Marine tanks unlock with the Marine Systems research.';
+  if (wc === 'reef' && !isUnlocked(state, 'reef')) return 'Reef tanks unlock with the Reef Systems research (after Marine Systems).';
+  return null;
 }
 
 export function unlockLabel(key: string): string {

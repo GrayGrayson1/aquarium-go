@@ -122,6 +122,20 @@ export function fairAdmission(state: GameState, infos?: ExhibitInfo[]): number {
   return Math.round((2.5 + 3.8 * Math.sqrt(v)) * (1 + 0.14 * lvl) * 2) / 2;
 }
 
+/** chunk 7 (B-162, ADR-0039 decision 2): where today's straight line reached its old 0.05 floor (price ÷ fair). */
+const DRAW_KNEE = 1.15 / 0.6;
+
+/**
+ * How strongly the ticket price draws visitors, from price ÷ fair price: 1.2 when free, 0.6 at the fair price, falling
+ * in a straight line to 0.05 at about 1.92 × fair, then with the square of the price (it used to stay at 0.05, so a
+ * trickle came at any price and takings rose with it). Takings, price × draw, peak at the fair price and only fall
+ * above it.
+ */
+export function admissionDraw(priceOverFair: number): number {
+  const x = Math.max(0, priceOverFair);
+  return x <= DRAW_KNEE ? Math.min(1.2, 1.2 - 0.6 * x) : 0.05 * (DRAW_KNEE / x) ** 2;
+}
+
 /** Facility-wide attraction with repeat-species fatigue: the fifth betta tank adds far less than the first. */
 export function facilityAttraction(infos: ExhibitInfo[]): number {
   const sorted = [...infos].filter((e) => !e.empty).sort((a, b) => b.appeal - a.appeal);
@@ -354,7 +368,7 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
   const rep = state.progress.reputation;
   const repF = 0.25 + 1.75 * (1 - Math.exp(-rep / 250));
   const x = fair > 0 ? fac.admission / fair : 1;
-  const priceF = Math.max(0.05, Math.min(1.2, 1.2 - 0.6 * x));
+  const priceF = admissionDraw(x);
   const day = dayOf(h);
   const dayF = DAY_FACTOR[weekdayOf(day)];
   const span = fac.closeHour > fac.openHour ? fac.closeHour - fac.openHour : 24 - fac.openHour + fac.closeHour;

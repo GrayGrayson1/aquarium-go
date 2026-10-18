@@ -8,7 +8,7 @@
  * card or reloading a save can never reroll it.
  */
 import type { Creature, GameState, RareVariant, RareVariantKind, RareVariantOrigin } from '@/types';
-import { PRISMATIC, RARE_VARIANT_KINDS, type PrismaticConfig } from '@/data/rarity';
+import { PRISMATIC, RARE_VARIANT_KINDS, RARE_VARIANT_ORIGINS, type PrismaticConfig } from '@/data/rarity';
 import { mulberry32, hashString } from '../rng';
 
 export type PrismaticSource = 'shop' | 'bred';
@@ -132,19 +132,17 @@ export function assignPrismatic(
 
 // ───────────────────────────── persistence ─────────────────────────────
 
-const ORIGINS: readonly RareVariantOrigin[] = ['shop', 'bred', 'spontaneous'];
-
 /**
- * A loaded `rareVariant`, made safe: a kind RARE_VARIANT_KINDS doesn't list is dropped (undefined), an unknown origin
- * becomes 'shop' and a missing/broken seed is derived from the creature id (deterministic — no RNG, so repeated loads
- * agree).
+ * A loaded `rareVariant`, made safe: a kind RARE_VARIANT_KINDS doesn't list is dropped (undefined), an origin
+ * RARE_VARIANT_ORIGINS doesn't list becomes 'shop' and a missing/broken seed is derived from the creature id
+ * (deterministic — no RNG, so repeated loads agree).
  */
 export function sanitizeRareVariant(v: unknown, creatureId: string): RareVariant | undefined {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
   const o = v as Record<string, unknown>;
   if (typeof o.kind !== 'string' || !Object.hasOwn(RARE_VARIANT_KINDS, o.kind)) return undefined;
   const kind = o.kind as RareVariantKind;
-  const origin = ORIGINS.includes(o.origin as RareVariantOrigin) ? (o.origin as RareVariantOrigin) : 'shop';
+  const origin = typeof o.origin === 'string' && Object.hasOwn(RARE_VARIANT_ORIGINS, o.origin) ? (o.origin as RareVariantOrigin) : 'shop';
   const raw = typeof o.visualSeed === 'number' && Number.isFinite(o.visualSeed) ? Math.abs(Math.floor(o.visualSeed)) >>> 0 : 0;
   const visualSeed = raw || hashString(`prismatic-seed:${creatureId}`) || 1;
   return { kind, origin, visualSeed };

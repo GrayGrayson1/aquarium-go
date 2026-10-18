@@ -23,6 +23,7 @@ import { orderedTanks, livingInTank, clutchesIn, tankValue, dailyCost, tierOf, w
 import { renameTank, setTankPurpose, convertWaterClass, canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
 import { tankChips, tankLineProblem } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
+import { waterClassLock } from '@/sim/facility'; // chunk 7 (B-160)
 import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
 import { CHIP_ICON } from '@/ui/common/tankChipIcons'; // lane:automation (chunk 5)
 
@@ -259,16 +260,13 @@ function Metric({ label, value, display, icon, tone = 'auto' }: { label: string;
   );
 }
 
-/** lane:w2-ui — the water types Build › Tanks also locks: marine needs Marine basics, reef the Reef unlock, brackish the estuary research. */
+/** lane:w2-ui, chunk 7 (B-160) — the water types the rules lock (waterClassLock: marine, reef, brackish without their research). */
 function wcLocked(g: GameState, w: WaterClass): boolean {
-  const has = (k: string) => g.progress.unlocked.includes(k);
-  if (w.startsWith('fresh')) return false;
-  if (w === 'brackish') return !has('brackish');
-  return !has('marine_basics') || (w === 'reef' && !has('reef'));
+  return waterClassLock(g, w) !== null;
 }
 
-function wcLockHint(w: WaterClass): string {
-  return w === 'brackish' ? 'Brackish water unlocks with the Brackish Estuaries research.' : w === 'reef' ? 'Reef tanks unlock with the Reef Systems research (after Marine Systems).' : 'Marine tanks unlock with the Marine Systems research.';
+function wcLockHint(g: GameState, w: WaterClass): string {
+  return waterClassLock(g, w) ?? '';
 }
 
 /** lane:fix-integrate-ui — what a conversion takes (new bed, salt, gear to storage) before the click (S14-06). */
@@ -381,7 +379,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
           <div className="pn-row pn-gap-2 pn-row--wrap">
             {/* lane:w2-ui — locked water types say so up front (same gates as Build › Tanks) instead of after a failed Convert */}
             <Select<WaterClass> label="Water class" value={wc} onChange={setWc} options={PLAYABLE_WATER_CLASSES.map((w) => ({ id: w, label: wcLocked(g, w) && w !== tank.waterClass ? `${WATER_CLASS_LABEL[w]} (locked)` : WATER_CLASS_LABEL[w] }))} />
-            <Button size="sm" data-testid="tank-convert" disabled={wc === tank.waterClass || (wcLocked(g, wc) && wc !== tank.waterClass)} title={wcLocked(g, wc) && wc !== tank.waterClass ? wcLockHint(wc) : undefined} onClick={() => act((d) => convertWaterClass(d, tank.id, wc), { sound: 'splash' })}>
+            <Button size="sm" data-testid="tank-convert" disabled={wc === tank.waterClass || (wcLocked(g, wc) && wc !== tank.waterClass)} title={wcLocked(g, wc) && wc !== tank.waterClass ? wcLockHint(g, wc) : undefined} onClick={() => act((d) => convertWaterClass(d, tank.id, wc), { sound: 'splash' })}>
               <Droplets size={14} /> Convert
             </Button>
           </div>
@@ -393,7 +391,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
         {convertGate.ok && wc !== tank.waterClass && (wcLocked(g, wc) || wc.startsWith('fresh') !== tank.waterClass.startsWith('fresh')) && (
           <span className="pn-field__hint">
             {/* lane:brackish — one step in salinity keeps most of the filter's cycle */}
-            {wcLocked(g, wc) ? wcLockHint(wc) /* lane:w2-ui */ : wc === 'brackish' || tank.waterClass === 'brackish'
+            {wcLocked(g, wc) ? wcLockHint(g, wc) /* lane:w2-ui */ : wc === 'brackish' || tank.waterClass === 'brackish'
               ? wc === 'brackish' && !g.progress.unlocked.includes('brackish')
                 ? 'Brackish water unlocks with the Brackish Estuaries research.'
                 : 'Changing to or from brackish water means new water, but the filter bacteria adapt and keep most of their cycle.'

@@ -1,8 +1,10 @@
 /**
  * lane:social (chunk 6; ADR-0005 decision 3; SOC-011 A1–A3, SOC-004 A1, NAV-020) — the production build as players get
- * it (the `base-path` project: the Pages build under /aquarium-go/, opened without ?dev=1, so no developer tools): no
- * Social anywhere. The dock has its 10 items and clears the camera chips from 1400 to 1600 px; #/social addresses are
- * broken links, typed in the game or opened in a fresh page; the More sheet has no Social tile.
+ * it (the `prod` projects: the Pages build under /aquarium-go/, built without VITE_E2E_DEV_URL, so no developer
+ * tools): no Social anywhere. The dock has its 10 items and clears the camera chips from 1400 to 1600 px; #/social
+ * addresses are broken links, typed in the game or opened in a fresh page; the More sheet has no Social tile.
+ * chunk 7 (REL-019, ADR-0037 decision 3, B-190) — and ?dev=1 does nothing there: no write calls on window.__AQ, no
+ * registry fixture, no sandbox, no wrench button; a starter showcase still opens.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { dockClear, onboardViaUI, tid } from './helpers';
@@ -66,4 +68,35 @@ test('outside dev mode there is no Social: not in the dock, the More sheet, or a
   await expect(tid(fresh, 'hud-money')).toBeVisible();
   await expect(brokenToast(fresh)).toBeVisible();
   await expect(tid(fresh, 'panel-social')).toHaveCount(0);
+});
+
+test('the live site ignores ?dev=1: no write tools, fixtures or sandboxes; starter showcases still open', async ({ page, baseURL }) => {
+  expect(baseURL).toMatch(/\/aquarium-go\/$/);
+  type Win = { __AQ: Record<string, unknown> & { summary(): { screen: string } } };
+  const keys = () => page.evaluate(() => Object.keys((window as unknown as Win).__AQ));
+
+  await page.goto('./?dev=1', { waitUntil: 'domcontentloaded' });
+  await ready(page);
+  const k = await keys();
+  for (const w of ['newGame', 'mutate', 'setGame', 'setUI', 'dev', 'act', 'advance', 'loadFixture', 'save', 'deleteSave', 'importText']) expect(k, w).not.toContain(w);
+  expect(k).toContain('summary');
+  await onboardViaUI(page, 'betta', 'Prod');
+  await expect(tid(page, 'dev-toggle')).toHaveCount(0);
+
+  // a registry fixture is a developer tool: the title screen instead
+  await page.goto('./?dev=1&fixture=big_facility', { waitUntil: 'domcontentloaded' });
+  await ready(page);
+  await expect(tid(page, 'title-new-game')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as Win).__AQ.summary().screen)).toBe('title');
+
+  // so is a sandbox: the game renders, not the sandbox page
+  await page.goto('./?dev=1&sandbox=audio-lab', { waitUntil: 'domcontentloaded' });
+  await ready(page);
+  await expect(tid(page, 'title-new-game')).toBeVisible();
+  await expect(page.getByText('Loading sandbox')).toHaveCount(0);
+
+  // a starter showcase is a plain demo world, never saved: it still opens
+  await page.goto('./?showcase=betta', { waitUntil: 'domcontentloaded' });
+  await ready(page);
+  await expect(tid(page, 'hud-money')).toBeVisible();
 });

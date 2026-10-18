@@ -10,13 +10,14 @@
 import type { GameState, ExhibitReport } from '@/types';
 import { exhibitReport } from './exhibit';
 
-export { initialFacility, upgradeFacility, setOpenToPublic, setAdmission, setOpenHours, placeTank, findFreeSpot, toggleSignage, validatePlacement, validateFixture, addFixture, removeFixture, facilityUpgradeInfo, SIGN_COST } from './actions';
+export { initialFacility, upgradeFacility, setOpenToPublic, setAdmission, setOpenHours, placeTank, findFreeSpot, toggleSignage, validatePlacement, validateFixture, addFixture, removeFixture, facilityUpgradeInfo, SIGN_COST, MAX_ADMISSION } from './actions';
 export type { FacilityUpgradeInfo } from './actions';
 export {
   initProgress,
   settleStartingProgress,
   stepProgression,
   isUnlocked,
+  waterClassLock,
   unlock,
   unlockLabel,
   bumpCounter,
@@ -41,7 +42,7 @@ export {
   researchList,
 } from './progression';
 export type { TutorialStepView, QuestView, UnlockProgressView, ResearchView, CondStatus } from './progression';
-export { stepVisitors, visitorSummary, fairAdmission, isOpenAt, ARCHETYPES, archetypeLabel, WEEKDAYS, weekdayOf } from './visitors';
+export { stepVisitors, visitorSummary, fairAdmission, admissionDraw, isOpenAt, ARCHETYPES, archetypeLabel, WEEKDAYS, weekdayOf } from './visitors';
 export type { VisitorSummary, VisitorArchetype, ArchetypeDef } from './visitors';
 export { exhibitInfo, sizeFactor, EXHIBIT_WEIGHTS } from './exhibit';
 export type { ExhibitInfo, ExhibitFactorKey } from './exhibit';

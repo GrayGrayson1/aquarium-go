@@ -5,7 +5,7 @@
  * Prismatic is a game-only phenomenon (no real animal shimmers like this): an individual property rolled once, when a
  * seller stocks an animal or it is born in the player's shop, and kept for life (src/sim/life/rareVariants.ts).
  */
-import type { Rarity, RareVariantKind } from '@/types';
+import type { Rarity, RareVariantKind, RareVariantOrigin } from '@/types';
 
 export interface PrismaticConfig {
   enabled: boolean;
@@ -39,6 +39,13 @@ export const PRISMATIC: Readonly<PrismaticConfig> = Object.freeze({
  * dropped. Adding one raises SCHEMA_VERSION (ADR-0037), pinned in tests/sim/core-save-forward-safety.test.ts.
  */
 export const RARE_VARIANT_KINDS: Readonly<Record<RareVariantKind, true>> = Object.freeze({ prismatic: true });
+
+/**
+ * How an ultra-rare individual came to be (`Creature.rareVariant.origin`); a loaded origin not listed here becomes
+ * 'shop' (a damaged save). Adding one raises SCHEMA_VERSION too (chunk 7, B-203, ADR-0037's rule), pinned beside the
+ * kinds, so an older build never meets it in a good save.
+ */
+export const RARE_VARIANT_ORIGINS: Readonly<Record<RareVariantOrigin, true>> = Object.freeze({ shop: true, bred: true, spontaneous: true });
 
 /** Tiers from most to least common (the species `Rarity` vocabulary, reused for morphs and strains). */
 export const RARITY_TIERS: readonly Rarity[] = ['common', 'uncommon', 'rare', 'very_rare', 'legendary'];

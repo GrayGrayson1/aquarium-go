@@ -20,6 +20,7 @@ import {
   STAFF_ROLE_ORDER,
   STAFF_TRAITS,
   STAFF_XP_PER_LEVEL,
+  STAFF_MAX_SKILL,
   STOCK_BUDGET,
   skillStars,
   staffWage,
@@ -364,7 +365,7 @@ export function payStaff(state: GameState): void {
     totals(m).days += 1;
     m.xp = (m.xp ?? 0) + share * (m.trait === 'quick_learner' ? 1.5 : 1);
     const need = STAFF_XP_PER_LEVEL * m.skill;
-    if (m.skill < 5 && m.xp >= need) {
+    if (m.skill < STAFF_MAX_SKILL && m.xp >= need) {
       m.xp -= need;
       m.skill += 1;
       m.wage = staffWage(m.role, m.skill);

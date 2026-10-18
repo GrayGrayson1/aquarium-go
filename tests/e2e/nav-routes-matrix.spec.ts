@@ -104,6 +104,9 @@ async function walk(page: Page, ids: Ids, phone: boolean, routes: [string, Check
   for (const [route, check] of routes) {
     const h = route.replace('{tank}', ids.tank).replace('{creature}', ids.creature).replace('{offer}', ids.offer);
     await goHash(page, '#/');
+    // chunk 7 (B-204): wait for the router to land on the tank view (no panel, its own address write done) before the
+    // next address, so a quick second hash change can't race it (Chromium once dropped #/operations/lines here)
+    await expect.poll(() => page.evaluate(() => ({ hash: location.hash || '#/', panel: (window as unknown as { __AQ: { ui(): { panel: string | null } } }).__AQ.ui().panel }))).toEqual({ hash: '#/', panel: null });
     await goHash(page, h);
     await test.step(h, () => check(page, phone));
   }
