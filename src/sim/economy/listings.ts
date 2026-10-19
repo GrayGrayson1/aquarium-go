@@ -1350,6 +1350,7 @@ function resolveCounters(state: GameState, l: Listing, rng: Rng, end: number): v
     const archetype = b.archetype ?? buyer?.archetype ?? 'experienced_keeper';
     const patience = finite(buyer?.patience, 0.5);
     const ceiling = Math.max(b.amount, finite(b.ceiling ?? b.amount * 1.1, b.amount));
+    b.ceiling ??= ceiling; // chunk 7 (B-124): a bid from an older save with no ceiling keeps the first one, not 1.1 × each new offer
     const counter = finite(b.counterAmount ?? b.amount, b.amount);
     const gap = (counter - ceiling) / Math.max(1, ceiling);
     const bargain = archetype === 'bargain_hunter';

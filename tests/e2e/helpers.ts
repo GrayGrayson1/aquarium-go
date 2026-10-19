@@ -30,8 +30,9 @@ export function collectErrors(page: Page): string[] {
 
 /**
  * `path` with ?dev=1 added (its other query flags and hash kept). The write tools the tests use (newGame, dev.*, act…)
- * exist only in a dev build or a session opened with ?dev=1 (PLAT-005, ADR-0005 decision 2), so with the flag the
- * suite also runs against a production preview (E2E_REUSE=1).
+ * exist only in a dev build, or a session opened with ?dev=1 on a production build made with VITE_E2E_DEV_URL=1
+ * (PLAT-005, ADR-0005 decision 2; chunk 7, REL-019), so with the flag the suite also runs against such a preview
+ * (E2E_REUSE=1). The live site ignores ?dev=1.
  */
 export function devUrl(path = '/'): string {
   const u = new URL(path, 'http://e2e.invalid');

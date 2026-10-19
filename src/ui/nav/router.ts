@@ -34,7 +34,7 @@ import { toastMark, reportLoadFailure } from '../screens/loadFeedback';
 import { useTankCardTab } from '../cards/tankCardTab';
 import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
-import { devToolsAllowed } from '@/state/devTools'; // lane:social (chunk 6)
+import { devToolsAllowed, urlSandboxName } from '@/state/devTools'; // lane:social (chunk 6); chunk 7 (REL-019)
 import {
   formatRoute,
   isNavPanel,
@@ -390,10 +390,9 @@ function captureBoot(): BootCapture {
   } catch {
     /* an older engine: treat it as a link */
   }
-  const q = new URLSearchParams(location.search);
   const hash = location.hash === '#' ? '' : location.hash;
   const returning = type === 'reload' || type === 'back_forward';
-  const urlBoot = !!urlFixtureName(location.search) || q.has('sandbox'); // (a fixture that doesn't boot is an ordinary page)
+  const urlBoot = !!urlFixtureName(location.search) || urlSandboxName(location.search) !== null; // (a fixture or sandbox that doesn't boot is an ordinary page)
   const parsed = hash ? parseNav(hash) : null;
   const loads = !!hash && !urlBoot && (returning || (!!parsed && parsed.route.kind !== 'home'));
   return { hash, returning, urlBoot, loads, used: useUI.getState().screen !== 'boot' };

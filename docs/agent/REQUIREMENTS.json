@@ -3764,7 +3764,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project)."
+      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project). Chunk 7 (REL-019): prod-mode.spec now runs on its own players' build (projects prod and webkit-prod), not the base-path project's."
     },
     {
       "id": "PLAT-001",
@@ -3870,7 +3870,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "Slice S1 chosen by this merge (the platform layer and the ?dev=1 boot are S1 work, NAV-009); ADR-0005 names no slice."
+      "note": "Slice S1 chosen by this merge (the platform layer and the ?dev=1 boot are S1 work, NAV-009); ADR-0005 names no slice. Chunk 7 (2026-10-18, ADR-0037 decision 3, REL-019): the live site ignores ?dev=1; a production build honours it only when built with VITE_E2E_DEV_URL=1 (the e2e base-path build), so the description's \"or when the page was opened with ?dev=1\" now applies to that build alone. QA scripts against a production preview need such a build (README)."
     },
     {
       "id": "ACC-001",
@@ -4152,11 +4152,12 @@
         "tests/sim/core-forward-compat.test.ts",
         "tests/sim/core-save-forward-safety.test.ts: \"ADR-0036 (F3): a new water class, show tier, buyer type, staff role or staff trait raises SCHEMA_VERSION\" (A7)",
         "tests/sim/core-save-forward-safety.test.ts: \"ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant kind raises SCHEMA_VERSION\" (A7)",
-        "tests/sim/persistence-limits-from-tables.test.ts (A7: the limits come from the tables)"
+        "tests/sim/persistence-limits-from-tables.test.ts (A7: the limits come from the tables)",
+        "tests/sim/core-save-forward-safety.test.ts: \"chunk 7 (B-203): more cones or jars, a higher staff skill or a new rare-variant origin raises SCHEMA_VERSION\" (A7)"
       ],
       "evidence": [],
       "status": "ACTIVE",
-      "note": "Chunk 1 (2026-10-06): A1-A2 now hold: PERSIST-014 (commit ee42973) makes a too_new slot final (no fallback past it, no overwrite). 2026-10-16: A7 added by ADR-0036 (owner question F3), with its test. 2026-10-18: A7 widened by ADR-0037 (owner question G1) to the Water room's limits and the rare-variant kinds, with its tests."
+      "note": "Chunk 1 (2026-10-06): A1-A2 now hold: PERSIST-014 (commit ee42973) makes a too_new slot final (no fallback past it, no overwrite). 2026-10-16: A7 added by ADR-0036 (owner question F3), with its test. 2026-10-18: A7 widened by ADR-0037 (owner question G1) to the Water room's limits and the rare-variant kinds, with its tests. 2026-10-18: A7 widened again by ADR-0039 decision 6 (chunk 7, B-203) to the Live food room's cone and jar limits, the staff skill range and the rare-variant origins (ROOM_LIMITS_AT)."
     },
     {
       "id": "PERSIST-004",

@@ -3,8 +3,8 @@
 **Status:** Accepted\
 **Date:** 2026-10-18\
 **Chunk:** 7 (hardening for multiplayer), and chunk 8's two open questions\
-**Requirements:** REL-020, REL-021 (chunk 7); chunk 8's sign-up and privacy requirements (written with its brief);
-BACKLOG B-124, B-162; OWNER_QUESTIONS H1, H2
+**Requirements:** REL-020, REL-021, REL-024 (chunk 7); PERSIST-003 A7; chunk 8's sign-up and privacy requirements
+(written with its brief); BACKLOG B-124, B-162, B-203; OWNER_QUESTIONS H1, H2
 
 ## Context
 
@@ -155,6 +155,41 @@ owner's answers:
    - **Answer: "13 and over (Recommended)".**
 
 No notes were added.
+
+## Second round, after chunk 7's fresh review (2026-10-18)
+
+The fresh review (Opus 5.5, max effort) of `afe46d0..ef76be4` left two things to the owner: a new line players could
+see (B-203's removed-show note, reachable only from a damaged save), and the pinning of three more limits to the save
+format, which goes beyond the brief's "read from their tables". The agent asked both in one round; the questions as
+asked (verbatim; option label, description, and preview where there was one), and the owner's answers:
+
+5. **"One new line players could see: if a save is damaged and has a show the game doesn't recognise, its entries are
+   scratched and the fees refunded. The entry then shows this note in Shows › Results. OK to use it?"** (Show note)
+   - "Approve this line (Recommended)": "Only a damaged or hand-edited save can show it, since normal saves can't hold
+     an unknown show." Preview: `This show was called off. The club refunded the fee.`
+   - "Change it": "Tell me the wording you want in the notes."
+   - **Answer: "Approve this line (Recommended)".**
+6. **"Earlier you chose to treat new water-room levels and new kinds of rare animal as save-format changes, so an older
+   version refuses the save instead of quietly undoing them. Chunk 7 found three more limits like that. Treat them the
+   same way?"** (More limits)
+   - "Count them too (Recommended)": "Already built: more Live food cones or jars, a higher staff skill or a new way a
+     rare animal came about all count as save-format changes, like the water-room levels." Preview:
+     ```
+     Live food room: cones (6) and jars (8)
+     Staff skill: 1 to 5 stars
+     Rare animal origin: shop, bred, spontaneous
+
+     A future version that raises any of these marks
+     its saves as newer, so an older version won't
+     cut cones, lower skill or relabel a rare animal.
+     ```
+   - "Only read from tables": "Keep reading the limits from the game's tables (fixes the same-version mistake), but
+     rolling back to an older version stays best-effort for these three."
+   - **Answer: "Count them too (Recommended)".**
+
+No notes were added. So decision 5: the note stands as built. Decision 6: raising FOOD_ROOM's cone or jar limit or
+STAFF_MAX_SKILL, or adding a rare-variant origin, raises SCHEMA_VERSION (`ROOM_LIMITS_AT` in
+`core-save-forward-safety`), as ADR-0037 decision 1 does for the Water room and the rare-variant kinds.
 
 ## Consequences
 

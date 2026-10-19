@@ -431,7 +431,8 @@ Index-based cone and jar ids, one id for the Operations tools tile, `staff-budge
 
 ## 0.5 Social stub (chunk 6: lane social; 0.5 spec §13, §19)
 
-Social is reachable only in dev mode (ADR-0005 decision 3, SOC-011): a dev build, or a session opened with `?dev=1`.
+Social is reachable only in dev mode (ADR-0005 decision 3, SOC-011): a dev build, or a session opened with `?dev=1` on a
+production build made with `VITE_E2E_DEV_URL=1` (chunk 7: the live site ignores `?dev=1`).
 Outside it none of these exist, and every `#/social` address is a broken link (`prod-mode.spec`).
 
 | test id | element |

@@ -6,9 +6,12 @@
  * After each sequence the world is worth no more than it began with, where "worth" is money plus what the game's own
  * instant sales would pay for everything owned (`liquidated`, on a copy of the world: listings withdrawn, every animal
  * quick-sold, a frag cut from every piece ready for one, every other piece of decor sold back, every frag sold to the
- * store). A sequence that ends worth more
- * fails, named by its seed and its steps. B-124 and B-162 involve time and sales, so they keep their own tests in
- * economy-loops.test.ts.
+ * store). A sequence that ends worth more fails, named by its seed and its steps. B-124 and B-162 involve time and
+ * sales, so they keep their own tests in economy-loops.test.ts.
+ *
+ * What "worth" leaves out: tanks, installed or stored equipment, stored decor and consumables (food, salt, eggs), since
+ * the game has no instant sale for them; an action that made them cheaply would be invisible here. A future instant
+ * sale of any of them joins both the pool below and `liquidated`.
  */
 import { describe, it, expect } from 'vitest';
 import type { GameState, WaterClass } from '@/types';

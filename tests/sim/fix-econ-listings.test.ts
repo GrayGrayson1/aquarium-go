@@ -150,7 +150,8 @@ describe('S03-02 / P2-05 / P5-06 / S03-08 — market windows are real-time promi
         if (!b) continue;
         // The player opens the counter form when the offer has ~1 real minute left at 1× (6 game hours). chunk 7 (B-124,
         // ADR-0039 decision 1): or 6 game hours before bidding closes, if that is sooner — a counter can't be written once
-        // it has (at 10× an offer outlives the listing's bidding window)
+        // it has (at 10× an offer outlives the listing's bidding window, so there the hold opens 6 h before bidding closes
+        // and the closing grace would keep most offers alive even without it; 3× is where the hold still decides)
         devStepEconomy(g, Math.max(0, Math.min(b.expiresHour, l.endsHour) - g.clock.hour - 6));
         if (b.status !== 'open') continue;
         trials++;

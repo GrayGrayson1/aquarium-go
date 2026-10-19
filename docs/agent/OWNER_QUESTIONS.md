@@ -34,6 +34,7 @@ are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pa
 | (after 0.5) | When 0.5.4 goes out, what comes next, who plays multiplayer first | 3 questions, asked with G1: **answered 2026-10-18 (ADR-0037)** |
 | (multiplayer, stage 1) | Stage 1's approval: the plan, the library, sign-up, email | 4 questions: **answered 2026-10-18 (ADR-0038)** |
 | (chunk 7) | Chunk 7's two money-loop fixes, which change sale prices and admission takings, asked before building | 2 questions, asked with H1 and H2: **answered 2026-10-18 (ADR-0039)** |
+| (chunk 7 review) | The review's new line (a removed show's note) and three more limits pinned to the save format | 2 questions: **answered 2026-10-18 (ADR-0039, second round)** |
 | H (multiplayer, stage 1) | Chunk 8 (stage 1): the two items ADR-0038 left | H1, H2: **answered 2026-10-18 (ADR-0039)**, asked early at the owner's request |
 
 ## A. Release and standing decisions

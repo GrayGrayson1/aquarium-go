@@ -75,13 +75,22 @@ test('the live site ignores ?dev=1: no write tools, fixtures or sandboxes; start
   type Win = { __AQ: Record<string, unknown> & { summary(): { screen: string } } };
   const keys = () => page.evaluate(() => Object.keys((window as unknown as Win).__AQ));
 
+  // whatever the stored settings say (PLAT-005 A1): the Developer tools switch is stored as on
+  await page.addInitScript(() => localStorage.setItem('aquarium-go.settings.v1', JSON.stringify({ devMode: true })));
   await page.goto('./?dev=1', { waitUntil: 'domcontentloaded' });
   await ready(page);
   const k = await keys();
   for (const w of ['newGame', 'mutate', 'setGame', 'setUI', 'dev', 'act', 'advance', 'loadFixture', 'save', 'deleteSave', 'importText']) expect(k, w).not.toContain(w);
   expect(k).toContain('summary');
+  expect(await page.evaluate(() => (window as unknown as { __AQ: { settings(): { devMode: boolean } } }).__AQ.settings().devMode)).toBe(true);
   await onboardViaUI(page, 'betta', 'Prod');
+  // no wrench button, and Settings › About has no Developer section
   await expect(tid(page, 'dev-toggle')).toHaveCount(0);
+  await tid(page, 'hud-settings').click();
+  await tid(page, 'settings-tab-about').click();
+  await expect(tid(page, 'settings-version')).toBeVisible();
+  await expect(tid(page, 'panel-settings').getByText('Developer tools')).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   // a registry fixture is a developer tool: the title screen instead
   await page.goto('./?dev=1&fixture=big_facility', { waitUntil: 'domcontentloaded' });

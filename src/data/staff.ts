@@ -106,7 +106,7 @@ export const STAFF_XP_PER_LEVEL = 8;
 
 /**
  * Skill runs from 1 to STAFF_MAX_SKILL (★ to ★★★★★). A save's skill is clamped to this range on load (chunk 7, B-203:
- * read from here, not written out); raising it raises SCHEMA_VERSION (ADR-0037's rule), pinned in
+ * read from here, not written out); raising it raises SCHEMA_VERSION (ADR-0039 decision 6), pinned in
  * tests/sim/core-save-forward-safety.test.ts.
  */
 export const STAFF_MAX_SKILL = 5;

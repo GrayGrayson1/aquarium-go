@@ -10,7 +10,8 @@
  * The species ids and tank sizes known at this SCHEMA_VERSION are pinned below: adding one without raising it fails.
  * So are the water classes, show tiers, buyer types, staff roles and staff traits (ADR-0036, owner question F3), and the
  * Water room's prep levels and reservoir limit and the rare-variant kinds (ADR-0037, owner question G1), and the Live
- * food room's cone and jar limits, the staff skill range and the rare-variant origins (chunk 7, B-203, ADR-0037's rule).
+ * food room's cone and jar limits, the staff skill range and the rare-variant origins (chunk 7, B-203, ADR-0039
+ * decision 6).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { newGame } from '@/sim/newGame';
@@ -475,7 +476,7 @@ describe('ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant
 });
 
 /**
- * chunk 7 (B-203; ADR-0037's rule applied to the limits its review found after G1): a save's Live food room keeps at
+ * chunk 7 (B-203; ADR-0039 decision 6, ADR-0037's rule applied to the limits its review found after G1): a save's Live food room keeps at
  * most FOOD_ROOM's cones and jars, a staff member's skill is clamped to 1–STAFF_MAX_SKILL, and an unknown rare-variant
  * origin becomes 'shop' (src/persistence/migrations.ts, sanitizeRareVariant). More cones or jars, a higher skill or a
  * new origin raises SCHEMA_VERSION, so an older build refuses the save as too_new instead of cutting cones bought,
@@ -490,7 +491,7 @@ describe('chunk 7 (B-203): more cones or jars, a higher staff skill or a new rar
   it(`the Live food room's limits, the staff skill range and the rare-variant origins are the ones pinned for v${SCHEMA_VERSION}`, () => {
     const pinned = ROOM_LIMITS_AT[SCHEMA_VERSION];
     expect(pinned, `pin the Live food room's limits, the staff skill range and the rare-variant origins at save format v${SCHEMA_VERSION} in ROOM_LIMITS_AT`).toBeDefined();
-    const why = (what: string) => `${what}: raise SCHEMA_VERSION (ADR-0037's rule, B-203)`;
+    const why = (what: string) => `${what}: raise SCHEMA_VERSION (ADR-0039 decision 6)`;
     expect(FOOD_ROOM.maxCones, why('the cone limit changed')).toBe(pinned.maxCones);
     expect(FOOD_ROOM.maxJars, why('the jar limit changed')).toBe(pinned.maxJars);
     expect(STAFF_MAX_SKILL, why('the staff skill range changed')).toBe(pinned.staffMaxSkill);

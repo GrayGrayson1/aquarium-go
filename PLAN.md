@@ -506,7 +506,7 @@ REL-012, REL-018.
   6. REL-024: a show removed on load scratches and refunds its pending entries ("This show was called off. The club
      refunded the fee.", reachable only from a damaged save); `FOOD_ROOM`'s maxima, `STAFF_MAX_SKILL` and
      `RARE_VARIANT_ORIGINS` read on load and pinned (`ROOM_LIMITS_AT` in `core-save-forward-safety`: ADR-0037's rule
-     applied to the limits its review found); B-204's route walk and tutorial test wait on the router and the guide's
+     applied to the limits its review found, approved after the review as ADR-0039 decision 6, with the note); B-204's route walk and tutorial test wait on the router and the guide's
      step. Left in B-204: `social.spec`'s WebKit hang and the WebKit graphics error (no fixed delay to replace).
   - Every new sim test was run failing without its change; no seeded test's expectations shifted. Typecheck and the
     unit tests (229 files, 2,719 tests) passed on the working tree before the commit.
@@ -597,7 +597,7 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
 - Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does a new
   water class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, a higher reservoir
   limit or a rare-variant kind (ADR-0037), and more Live food cones or jars, a higher staff skill or a rare-variant
-  origin (chunk 7, ADR-0037's rule).
+  origin (chunk 7, ADR-0039 decision 6).
 - From chunk 7 (ADR-0039): a counter never takes a buyer past their private ceiling, and once bidding closes an offer
   can be accepted but not countered; admission demand keeps falling above about twice the fair price, and the rules
   cap admission at $40, the slider's end; the research gates for brackish, marine and reef water are rules.

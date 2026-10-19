@@ -42,7 +42,7 @@ export const RARE_VARIANT_KINDS: Readonly<Record<RareVariantKind, true>> = Objec
 
 /**
  * How an ultra-rare individual came to be (`Creature.rareVariant.origin`); a loaded origin not listed here becomes
- * 'shop' (a damaged save). Adding one raises SCHEMA_VERSION too (chunk 7, B-203, ADR-0037's rule), pinned beside the
+ * 'shop' (a damaged save). Adding one raises SCHEMA_VERSION too (chunk 7, B-203, ADR-0039 decision 6), pinned beside the
  * kinds, so an older build never meets it in a good save.
  */
 export const RARE_VARIANT_ORIGINS: Readonly<Record<RareVariantOrigin, true>> = Object.freeze({ shop: true, bred: true, spontaneous: true });

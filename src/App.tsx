@@ -24,7 +24,8 @@ const sandboxModules = import.meta.glob('./dev/sandboxes/*.tsx');
 // lane:perf2 — a non-starter ?fixture= needs the lazy registry: start fetching it now and hold __AQ.ready until the
 // boot below has applied it (e2e/QA scripts wait for `ready` and then read the fixture's state).
 // lane:core (PLAT-005, ADR-0005 decision 2) — a registry fixture is a developer tool (a rich world Settings › Saves
-// could keep): it boots only in a dev build or a ?dev=1 session. A starter showcase is a plain demo world, never saved.
+// could keep): it boots only where the tools are allowed (src/state/devTools.ts: a dev build, or a ?dev=1 session of the
+// e2e-flagged production build; never the live site). A starter showcase is a plain demo world, never saved.
 const URL_FIXTURE = typeof location !== 'undefined' ? urlFixtureName() : null;
 const releaseUrlBoot = URL_FIXTURE && !isStarterFixture(URL_FIXTURE) ? holdReady() : null;
 if (releaseUrlBoot) void loadFixtureRegistry().catch(() => undefined);
