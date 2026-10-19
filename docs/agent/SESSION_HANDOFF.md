@@ -6,8 +6,8 @@ practical knowledge that makes it go smoothly. Replace or delete it when it's us
 
 ## Where things stand
 
-- **0.5.4 is released** (2026-10-18: `main` = `63caa8e`). **Chunks 7 and 8 are done on `next`, not released**
-  (PLAN.md; ADR-0039 to ADR-0042). Releasing them (as 0.5.5 or 0.6.0) is the owner's call.
+- **0.5.5 is released** (2026-10-19: `main` = `9ae98b3`, Pages and Render): chunks 7 and 8 (PLAN.md; ADR-0039 to
+  ADR-0042). Aquarium Go online is live for people with an invite.
 - **The Supabase project is live**: the Free organization "Aquarium Go" (`kvqnsqbjufmnkpsrcjbj`), project
   `aquarium-go`, **ref `zkavcxrsxdgdlstravpj`**, us-east-1. Four migrations applied (`supabase/migrations`), the
   security advisors report no issues, the first club "Aquarium Go Friends" exists (its invite code went to the owner
@@ -23,13 +23,10 @@ practical knowledge that makes it go smoothly. Replace or delete it when it's us
 
 ## The order of work
 
-1. **Release (the owner's go-ahead in the session):** the four checks green on `next`, bump `version` and add the
-   CHANGELOG entry (chunks 7 and 8), merge `next` into `main` (`git merge-tree --write-tree`, `commit-tree`,
-   `update-ref`: no checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
-   `version.json` files. The CHANGELOG should tell players Social is online for invited friends.
-2. **The owner's account** (after the release): the owner signs up with the first club's link; with the owner's yes
-   and the email used, run ARCHITECTURE.md's runbook ("The owner's account": `is_owner = true`, the first club's
-   `created_by`). Then the owner sees "Create a club" and every club's invite link.
+1. **Released** (0.5.5, 2026-10-19; PLAN.md "Releases").
+2. **The owner's account:** the owner signs up with the first club's link; with the owner's yes and the email used,
+   run ARCHITECTURE.md's runbook ("The owner's account": `is_owner = true`, the first club's `created_by`). Then the
+   owner sees "Create a club" and every club's invite link. (If the session that released hasn't done it yet.)
 3. **A database change** goes in a new file under `supabase/migrations` (never edit an applied one): check it with
    `scripts/online-db-local/run.sh` (a throwaway local Postgres, Homebrew's postgresql@16), apply it with `supabase db
    query --linked --project-ref <ref> -f <file>`, run `supabase db advisors --linked --project-ref <ref> --type security
