@@ -2,7 +2,9 @@
 
 A living-aquarium tycoon. Choose one remarkable creature (an axolotl, betta, pea puffer, ocellaris clownfish or lined seahorse), learn its personality, and build a beautiful habitat around it. From there you breed distinctive individuals, sell animals or whole aquariums to bidding buyers, and open to paying visitors as a hobby room grows into a grand hall of 1,000-gallon displays. Along the way you can enter your best animals and aquascapes in shows, from the local club to international championships. You can also hire aquarists, a stock manager and docents, propagate coral frags and plant cuttings, and open a brackish estuary chapter with archerfish that spit at flies.
 
-Everything you see and hear is generated in code: procedural creatures, plants, rocks, water, glass and light, plus synthesized sound. The game needs no network connection at runtime.
+Everything you see and hear is generated in code: procedural creatures, plants, rocks, water, glass and light, plus synthesized sound. The game needs no network connection to play.
+
+**Online (stage 1, for people the owner knows):** with an invite link, a player can make an account in Social, keep one save online so it follows them to another device, see friends' aquariums and share leaderboards with friends and club members. It runs on a free Supabase project; the game keeps saving on the device and plays offline as before. How it works, and the owner's runbook, are in `docs/ARCHITECTURE.md` ("Online").
 
 **Play it online:** https://graygrayson1.github.io/aquarium-go/ (built and deployed by GitHub Actions on every push to `main`).
 
@@ -55,6 +57,8 @@ For the most stable e2e run, test a production build made with the e2e flag (the
 Regenerate the species research ledger after editing species data: `npm run docs:research`.
 
 ## Developer tools
+
+- **Social in development** runs on a local stub (sample clubs, friends and leaderboards; the invite code `HIGHLAND-4821`), as does every e2e build (`VITE_SOCIAL_STUB=1`), so no test reaches the real project. To try the real project from the dev server: `VITE_SOCIAL_ONLINE_IN_DEV=1 npm run dev`. The live smoke test, by hand after a database change: `node scripts/online-smoke.mjs` (it makes two throwaway accounts and deletes them).
 
 - The dev server (`npm run dev`) has the developer tools; the live site doesn't, and ignores `?dev=1` (only a production build made with `VITE_E2E_DEV_URL=1`, as the e2e runs make one, honours it). Settings › Developer tools turns on the in-game dev panel: add money, unlock everything, spawn species, age creatures, force breeding, set water parameters, advance time, and inspect AI state and compatibility reasons.
 - `?showcase=<axolotl|betta|pea_puffer|ocellaris_clownfish|lined_seahorse>` jumps straight into a starter tank (on the live site too: a demo world, never saved). Where the tools are allowed, `?fixture=<name>` loads any registered dev fixture (`&view=facility` opens the room view) and `?sandbox=<name>` opens a page from `src/dev/sandboxes/`.

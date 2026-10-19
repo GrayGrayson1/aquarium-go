@@ -3537,7 +3537,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "Chunk 6 (2026-10-15): met: the stub never stores a password (social-stub.test checks localStorage, the save and an export)."
+      "note": "Chunk 6 (2026-10-15): met: the stub never stores a password (social-stub.test checks localStorage, the save and an export). Chunk 8: extended to the Supabase service (social-supabase.test: the real supabase-js on a fake fetch and storage keeps only tokens under aquarium-go.auth.v1) and to sign-up's new fields (social.spec checks localStorage after a sign-up)."
     },
     {
       "id": "SOC-003",
@@ -3715,7 +3715,7 @@
         "§13.6",
         "§15"
       ],
-      "note": "Chunk 6 (2026-10-15): met: src/social/service.ts and createLocalSocialStub with 300–600 ms latency; the UI reaches Social only through the service (core-mutation-boundary.test)."
+      "note": "Chunk 6 (2026-10-15): met: src/social/service.ts and createLocalSocialStub with 300–600 ms latency; the UI reaches Social only through the service (core-mutation-boundary.test). Chunk 8: the interface grew (ONLINE-STAGE1.md §5.1); the stub's stored value adds `owner` and `createdClubs` only when set (A3's list, on purpose); the online save lives under aquarium-go.social.cloud.v1 and the link under aquarium-go.cloud.v1, never in the save (online-sync.test checks stateHash and the save)."
     },
     {
       "id": "SOC-010",
@@ -3763,8 +3763,8 @@
         "new: tests/sim/notify-rules.test.ts"
       ],
       "evidence": [],
-      "status": "GREEN",
-      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project). Chunk 7 (REL-019): prod-mode.spec now runs on its own players' build (projects prod and webkit-prod), not the base-path project's. Chunk 8 (ADR-0038, ADR-0040): Social becomes reachable for players once a project is configured (REL-025); these dev-only criteria are superseded then, on purpose."
+      "status": "SUPERSEDED",
+      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project). Chunk 7 (REL-019): prod-mode.spec now runs on its own players' build (projects prod and webkit-prod), not the base-path project's. Chunk 8 (ADR-0038, ADR-0040): Social becomes reachable for players once a project is configured (REL-025); these dev-only criteria are superseded then, on purpose. Chunk 8 (2026-10-19): superseded by REL-025 on purpose (ADR-0038): Social shows wherever socialAvailable() (the stub in dev mode and every e2e build, the Supabase service in the players' build once a project is configured); with neither, A1 still holds (no Social surface), and A5 holds (the club-show reminder is stub-only)."
     },
     {
       "id": "PLAT-001",
@@ -5672,7 +5672,7 @@
       "designSections": [
         "§5.3"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): src/ui/online/mode.ts (socialModeFor, socialAvailable, useSocialAvailable, startSocialService); the panel host, dock (`needsSocial`), More, parseNav and the router gate on it; the club-show reminder and the dev hint stay stub-only; VITE_SOCIAL_STUB in Playwright's E2E_ENV; @supabase/supabase-js 2.117.2 exactly, one dynamic import (online-mode.test checks no static import). prod-mode.spec checks the players' build's Social (the stub) with no dev hint."
     },
     {
       "id": "REL-026",
@@ -5696,7 +5696,7 @@
       "designSections": [
         "§3"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): the setup steps of ONLINE-STAGE1.md §3; the record (organization, ref, the smoke result) is in PLAN.md's chunk 8 record. The first club's invite code is not written in the repo (the repo is public): it went to the owner in the session."
     },
     {
       "id": "REL-027",
@@ -5718,7 +5718,7 @@
       "designSections": [
         "§4"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): supabase/migrations/20261019000000_stage1.sql; tests/sim/supabase-migration.test.ts (the rules, and 15 mutated copies that must fail); scripts/online-smoke.mjs checks the live project."
     },
     {
       "id": "REL-028",
@@ -5743,7 +5743,7 @@
       "designSections": [
         "§5.2, §7"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): sign-up mode in SocialPanel.tsx (Create account opens it; the code filled from an invite link; the form's own checks, then resolve_invite, then the server's trigger); the approved errors (formErrorOf); PrivacyNote and PrivacyLink (parts.tsx); Settings › Account's Delete my account with its confirmation. SOC-002 extended: social-supabase.test runs the real supabase-js on a fake fetch and storage and finds no stored password."
     },
     {
       "id": "REL-029",
@@ -5770,7 +5770,7 @@
       "designSections": [
         "§6"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): src/ui/online/cloudSync.ts, rules.ts (decideOnline), CloudPrompt.tsx; the link in aquarium-go.cloud.v1 (per account, with when a local save last landed). Load online save keeps this device's copy as \"Previous autosave\" (a same-aquarium copy under a new saveId, since the slot's backup lists only a different aquarium). online-rules, online-sync, online-compress (unit) and online-save.spec (e2e)."
     },
     {
       "id": "REL-030",
@@ -5795,7 +5795,7 @@
       "designSections": [
         "§1, §4.3, §7"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): the Supabase service maps every method onto §4.3 (social-supabase.test); the owner's Create a club and invite links (only where isOwner; the server's create_club refuses others); friend requests with Accept; no likes on real tiles; the trades note and join text as ADR-0040 approved; the Welcome toast's club-show line only for a club with an event; a picture after a send at most every 30 minutes (a 480 px JPEG, refused over 200,000 characters)."
     },
     {
       "id": "REL-031",
@@ -5817,7 +5817,7 @@
       "designSections": [
         "§7"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): src/ui/settings/AccountTab.tsx, the Account tab after Saves where Social exists; #/settings/account in nav-routes (unit) and nav-routes-matrix (e2e); viewports.spec measures it signed in, and the box, at every size; social-ui pins its strings."
     },
     {
       "id": "REL-032",
@@ -5838,7 +5838,7 @@
       "designSections": [
         "§5.4, §8"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): the stub implements the whole interface (sign-up details, the owner, created clubs, friend requests, delete, the standing, the online save) with dev hooks (setOwner, pushFriendRequest, setCloud, cloud, cloudSyncNow, cloudCheck, cloudState); social-stub.test covers them. The runs and the review are in PLAN.md."
     },
     {
       "id": "REL-033",
@@ -5857,7 +5857,7 @@
       "designSections": [
         "§3, §9"
       ],
-      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 8 (2026-10-19): ARCHITECTURE.md \"Online\" (the layers, which service, the database's rule, migrations by db query, the owner's runbook), TRUST_BOUNDARY.md \"Social\" (what stage 1 checks and what stage 2 must), DEBT_INVENTORY.md's summary, KNOWN_LIMITATIONS.md \"Online\", TEST_IDS.md (the new ids and dev hooks), README."
     }
   ]
 }

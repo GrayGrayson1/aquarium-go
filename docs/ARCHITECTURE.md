@@ -24,7 +24,7 @@ src/runtime      per-frame non-persisted registries (creature runtime, food, eve
 src/ai           per-frame creature behaviour (reads sim state, writes runtime; game state only through mutate)
 src/render       Three.js/R3F rendering (reads state + runtime; input handlers change game state only through mutate)
 src/platform     thin seam over browser APIs (notifications, clipboard, share, lifecycle); no runtime imports from persistence, sim, state or ui
-src/social       the SocialService interface and its local stub (0.5 spec §13.6; chunk 6): social data, never in the save; reads a save only for the player's leaderboard row
+src/social       the SocialService interface, its local stub (0.5 spec §13.6; chunk 6) and the Supabase service (chunk 8): social data, never in the save; reads a save only for the player's leaderboard row
 src/ui           React DOM UI (reads state; calls sim mutators through `mutate`)
 src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
@@ -187,6 +187,60 @@ live in localStorage (`aquarium-go.notify.v1`), never the save. `public/sw.js` i
 taps (focus a game window in its scope, or open `?notification=1#<route>`) and has no fetch, cache or push handler,
 so it never serves a page or `version.json`. The platform registers it, with the build's base path as its scope, once
 the player has allowed notifications.
+
+## Online (chunk 8, multiplayer stage 1)
+
+ADR-0038 to ADR-0041; the build plan is `docs/agent/design/ONLINE-STAGE1.md`. Accounts, one online save and Social for
+people the owner knows, on a free Supabase project (the organization "Aquarium Go", apart from anonyform's; the
+project `aquarium-go` in us-east-1). **The server trusts each browser on purpose** (stage 1): it stores what it is
+sent, within size limits; stage 2 needs its own record before strangers join (`docs/agent/TRUST_BOUNDARY.md`).
+
+- **Layers.** `src/social` holds the transport: the `SocialService` interface (`service.ts`), the local stub
+  (`localStub.ts`), the Supabase service (`supabase/service.ts`, which loads `@supabase/supabase-js` with a dynamic
+  import, so the library is its own chunk and the title screen never loads it), the save codec (`codec.ts`: gzip and
+  base64, or plain JSON without CompressionStream) and the project's address (`project.ts`). Everything that touches
+  the save or the game store is in `src/ui/online`: which service runs (`mode.ts`), the online-save loop
+  (`cloudSync.ts`), its pure rules (`rules.ts`) and the which-copy box (`CloudPrompt.tsx`). The UI reaches Social only
+  through `@/social` (core-mutation-boundary).
+- **Which service** (`socialModeFor`): where the developer tools are allowed, the stub (or, built with
+  `VITE_SOCIAL_ONLINE_IN_DEV=1` and a project configured, the real one, for a hands-on check); a build made with
+  `VITE_SOCIAL_STUB=1` (every e2e build, through Playwright's `E2E_ENV`), the stub; otherwise the Supabase service
+  when `ONLINE_PROJECT` is set, and no Social when it isn't. `socialAvailable()` gates the panel, the dock and More
+  items, the routes and Settings › Account. `deploy.yml` and `render.yaml` set neither flag (online-mode.test).
+- **The database's rule** (`supabase/migrations/20261019000000_stage1.sql`): the browser touches no table. Every
+  table has row-level security and no policies, `anon` and `authenticated` hold no table privileges, and the game
+  calls security-definer functions with an empty `search_path` that check `auth.uid()`; EXECUTE is revoked from public
+  and anon on every function and granted back only where the game calls it (`resolve_invite` alone to anon). Sign-up is
+  checked by a trigger on `auth.users` (a club's invite code, the 13-and-over box, a name of 1 to 30 characters) and a
+  second trigger makes the profile and joins the invite's club. `put_save` refuses a stale revision (`conflict`) and
+  never writes over a newer build's save (`too_new`, PERSIST-014 on the server). `supabase-migration.test.ts` checks
+  the SQL; `scripts/online-smoke.mjs` checks the live project by hand. Migrations are applied with
+  `supabase db query --project-ref <ref> -f <file>` (the Management API), not `db push`: later changes go in new files.
+- **The online save** (ONLINE-STAGE1.md §6): the game on screen goes online after a local save lands, at most every 2
+  minutes, and when the tab is hidden; the device's own saves stay the source of truth. This device's link (the online
+  copy it last sent or loaded, per account) and when a local save last landed live in localStorage
+  (`aquarium-go.cloud.v1`), never in the save. Loading the online copy keeps this device's copy in the autosave slot's
+  backup ("Previous autosave"; a copy of the same aquarium is kept under a new `saveId`, since the backup lists only a
+  different aquarium).
+- **Keys.** `src/social/project.ts` holds the project's address and its publishable (anon) key, both public by design.
+  The secret (service_role) key is never printed, saved or committed; nothing in the game needs it.
+- **No emails.** Confirmation is off (`supabase/config.toml`), so a forgotten password is reset by hand.
+
+**The owner's runbook** (each with the owner's yes; every command scoped with `--project-ref <ref>`, the ref in
+PLAN.md's chunk 8 record):
+- *The owner's account:* after the owner signs up with the first club's link, `update public.profiles set is_owner =
+  true where id = (select id from auth.users where email = '<email>')`, and `update public.clubs set created_by =
+  <that id> where name = 'Aquarium Go Friends'`. Then Social › Clubs shows the owner "Create a club" and every club's
+  invite link.
+- *A forgotten password:* `update auth.users set encrypted_password = extensions.crypt('<new>',
+  extensions.gen_salt('bf')) where email = '<email>'`, and tell the player in person.
+- *A paused project* (a free project pauses after a week with no activity; the game then shows the network message
+  and plays offline): the owner presses Restore in the Supabase dashboard.
+- *A displaced online save* (when a player's online save switches aquarium, `saves.previous_*` keeps the one it
+  replaced): restore with SQL on request, swapping `body`, `encoding` and `save_id` with the `previous_*` columns and
+  adding 1 to `revision`.
+- *Invite codes* (a club's code is also its sign-up code): `select name, invite_code from public.clubs`. The codes are
+  WORD-1234, guessable with effort; they are not secrets to rely on beyond stage 1 (KNOWN_LIMITATIONS).
 
 ## Deploy
 

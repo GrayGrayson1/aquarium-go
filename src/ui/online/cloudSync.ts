@@ -28,6 +28,7 @@ import { autosaveAllowed } from '@/game/useAutosave';
 import { currentStanding, decodeSaveBody, encodeSaveBody, isSocialError, MAX_CLOUD_BODY, socialService, type CloudSaveMeta, type StandingReport } from '@/social';
 import { loadSocialUser, refreshSocialNews, useSocial } from '../panels/social/socialStore';
 import { socialMode } from './mode';
+import { SOCIAL_COPY } from '../panels/social/copy';
 import { decideOnline, type CloudLink, type CloudPromptKind, type DeviceCopy } from './rules';
 
 export const CLOUD_LINK_KEY = 'aquarium-go.cloud.v1';
@@ -129,9 +130,10 @@ export function forgetCloudLink(userId: string): void {
 let started = false;
 let inStep = false;
 let blocked = false;
-let checking = false;
+/** The check and the send under way, if any (one of each at a time). */
+let checkP: Promise<void> | null = null;
 let recheck = false;
-let sending = false;
+let sendP: Promise<void> | null = null;
 let sendAgain = false;
 /** The revision the next upload expects (the online copy's, as last seen). */
 let expected = 0;
@@ -190,22 +192,32 @@ function stop(): void {
   useCloud.setState({ prompt: null, choosing: false, status: blocked ? 'blocked' : 'idle', syncedAt: null });
 }
 
-/** Read the online copy and decide (§6). Calls while one runs fold into one more. */
-export async function checkOnline(): Promise<void> {
-  if (!active() || blocked) return;
-  if (checking) {
+/** Read the online copy and decide (§6). A call while one runs folds into one more, after it. */
+export function checkOnline(): Promise<void> {
+  if (!active() || blocked) return Promise.resolve();
+  if (checkP) {
     recheck = true;
-    return;
+    return checkP;
   }
+  checkP = runCheck().finally(() => {
+    checkP = null;
+    if (recheck) {
+      recheck = false;
+      void checkOnline();
+    }
+  });
+  return checkP;
+}
+
+async function runCheck(): Promise<void> {
   const u = user()!;
   const g = syncableGame();
   if (!g) {
     inStep = false;
     return;
   }
-  checking = true;
   lastCheckAt = Date.now();
-  if (!sending) useCloud.setState({ status: 'checking' });
+  if (!sendP) useCloud.setState({ status: 'checking' });
   const device = deviceCopy(g); // what this device holds now, before the network answers
   const link = readLink(u.id);
   useCloud.setState({ syncedAt: link?.sentAt ?? null });
@@ -246,27 +258,31 @@ export async function checkOnline(): Promise<void> {
     inStep = false;
     useCloud.setState({ status: 'unreachable' });
     if (!(isSocialError(e) && e.code === 'network')) console.warn('[aquarium-go] online save check failed', e);
-  } finally {
-    checking = false;
-    if (recheck) {
-      recheck = false;
-      void checkOnline();
-    }
   }
 }
 
-/** Send the game on screen now (in step only). Resolves when the answer is in. */
-export async function sendNow(): Promise<void> {
-  if (!active() || blocked || !inStep || useCloud.getState().prompt) return;
-  if (sending) {
+/** Send the game on screen now (in step only). Resolves when the answer is in; a call while one runs sends once more after it. */
+export function sendNow(): Promise<void> {
+  if (!active() || blocked || !inStep || useCloud.getState().prompt) return Promise.resolve();
+  if (sendP) {
     sendAgain = true;
-    return;
+    return sendP;
   }
   const g = syncableGame();
   const u = user();
-  if (!g || !u) return;
-  sending = true;
+  if (!g || !u) return Promise.resolve();
   sendAgain = false;
+  sendP = runSend(g, u.id).finally(() => {
+    sendP = null;
+    if (sendAgain) {
+      sendAgain = false;
+      scheduleSend();
+    }
+  });
+  return sendP;
+}
+
+async function runSend(g: GameState, userId: string): Promise<void> {
   if (gapTimer) clearTimeout(gapTimer);
   gapTimer = null;
   useCloud.setState({ status: 'saving' });
@@ -279,11 +295,11 @@ export async function sendNow(): Promise<void> {
       return;
     }
     const res = await socialService().cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: dayOf(g), money: g.finance.money, ...body }, expected);
-    if (user()?.id !== u.id) return;
+    if (user()?.id !== userId) return;
     lastSentAt = Date.now();
     if (res.ok) {
       expected = res.revision;
-      writeLink(u.id, { revision: res.revision, saveId: g.saveId, savedAt: g.lastSavedRealMs, sentAt: exportedAt });
+      writeLink(userId, { revision: res.revision, saveId: g.saveId, savedAt: g.lastSavedRealMs, sentAt: exportedAt });
       useCloud.setState({ status: 'idle' });
       void report(g);
     } else if (res.reason === 'too_new') {
@@ -298,12 +314,6 @@ export async function sendNow(): Promise<void> {
   } catch (e) {
     useCloud.setState({ status: 'unreachable' }); // the online copy is as it was: the next save tries again
     if (!(isSocialError(e) && e.code === 'network')) console.warn('[aquarium-go] online save failed', e);
-  } finally {
-    sending = false;
-    if (sendAgain) {
-      sendAgain = false;
-      scheduleSend();
-    }
   }
 }
 
@@ -357,6 +367,9 @@ export async function keepDeviceCopy(): Promise<void> {
   }
 }
 
+/** Settings › Saves' own words for a save that won't load (src/ui/common/saves.ts). */
+const LOAD_FAILED = 'That save could not be loaded — it may be damaged. Try its previous copy or an exported file.';
+
 /** A copy of the game under a new identity, so the slot's backup lists it as "Previous autosave". */
 const keptId = (saveId: string): string => `${saveId.replace(/_kept_[0-9a-z]+$/, '')}_kept_${Date.now().toString(36)}`.slice(0, 200);
 
@@ -381,7 +394,7 @@ export async function loadOnlineCopy(): Promise<boolean> {
     const text = await decodeSaveBody(got);
     const check = await importSaveText(text); // validate first: a refused copy changes nothing on this device
     if (!check.ok || !check.state) {
-      useUI.getState().toast(check.error ?? 'That save could not be loaded.', 'danger');
+      useUI.getState().toast(check.error ?? LOAD_FAILED, 'danger');
       return false;
     }
     // this device's game into the autosave slot, so the import below rotates it into the backup
@@ -397,7 +410,7 @@ export async function loadOnlineCopy(): Promise<boolean> {
       const imported = await importSaveText(text, 'auto');
       if (!imported.ok) {
         writeLink(u.id, previous);
-        useUI.getState().toast(imported.error ?? 'That save could not be loaded.', 'danger');
+        useUI.getState().toast(imported.error ?? LOAD_FAILED, 'danger');
         return false;
       }
       const r = await loadAndResume('auto');
@@ -417,7 +430,7 @@ export async function loadOnlineCopy(): Promise<boolean> {
     useCloud.setState({ prompt: null });
     return true;
   } catch (e) {
-    useUI.getState().toast(isSocialError(e) ? 'Can’t reach Aquarium Go online right now. Your game is fine — try again in a moment.' : 'That save could not be loaded.', 'danger');
+    useUI.getState().toast(isSocialError(e) ? SOCIAL_COPY.errorNetwork : LOAD_FAILED, 'danger');
     return false;
   } finally {
     useCloud.setState({ choosing: false });
@@ -496,10 +509,12 @@ export function startCloudSync(): () => void {
   };
 }
 
-/** Dev hooks and e2e: send now (checking first when not in step). */
+/** Dev hooks and e2e: the game on screen is online when this resolves (after any check or send under way). */
 export async function cloudSyncNow(): Promise<void> {
   await loadSocialUser();
+  if (checkP) await checkP;
   if (!inStep) await checkOnline();
+  if (sendP) await sendP; // the check's own first send, or one already under way
   await sendNow();
 }
 
@@ -507,7 +522,8 @@ export async function cloudSyncNow(): Promise<void> {
 export function resetCloudSync(opts: { storage?: KV | null; snapshot?: () => Promise<string | null> } = {}): void {
   clearTimers();
   started = false;
-  inStep = blocked = checking = recheck = sending = sendAgain = sendOnNextSave = false;
+  inStep = blocked = recheck = sendAgain = sendOnNextSave = false;
+  checkP = sendP = null;
   expected = 0;
   lastSentAt = lastCheckAt = lastSnapshotAt = -Infinity;
   hiddenAt = null;

@@ -85,6 +85,16 @@ What is simplified, approximated or missing in this build. None of these block p
 - The iOS focus-zoom (G4-05) and long-press selection (G4-06) fixes are verified by code trace only: Playwright's WebKit emulates neither.
 - **High contrast is the accessible mode over a bright room** (chunk 6, ADR-0035 decision 1; WCAG technique G174). Normal mode keeps the 0.5 design's see-through glass: its text passes WCAG 2.2 AA over a dark room, but grey text over a bright, sunlit room drops to 2.5–4.4:1. High contrast (Settings › Play & access) makes the panels, the top bar and toasts solid and passes AA on any background, and every step on the way to its switch passes AA too.
 
+## Online (stage 1, chunk 8)
+- **The server trusts each browser** (ADR-0038: people the owner knows). It stores the save and the leaderboard numbers as the game sends them; an edited save goes online as it is, and friends see whatever numbers and picture a player's game reports. Stage 2 checks them before anyone the owner doesn't know joins.
+- **Sign-up needs a club's invite code, and the codes are guessable with effort** (a word and four digits, and anyone may ask whether a code opens a club). Signed in, a player may join any club. Only the owner creates clubs.
+- **No emails:** no confirmation, and a forgotten password is reset by hand ("Forgot your password? Ask whoever invited you.").
+- **No sign-in on the title screen:** a new device starts a game first, then signs in from Social to load the online save.
+- **No likes, trades, leaving a club or club events** yet: trades are "open later", friends' pictures show no likes, and only the stub's sample clubs have events.
+- **One online save per account**, the game on screen. When it differs from what this device last synced, a box asks which copy to keep; the one not kept stays in Settings › Saves as "Previous autosave".
+- **The free project pauses after a week with no activity.** Until the owner restores it, the game says it can't reach Aquarium Go online and plays on.
+- **A body over 4,000,000 characters isn't sent** (a save is far smaller, gzipped; listing photos count).
+
 ## Architecture
 - The AI imports `equipmentLayout` from the decor render module to place equipment colliders (an ai → render dependency).
 

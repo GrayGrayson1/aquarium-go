@@ -32,7 +32,9 @@ export function onlineLine(status: ReturnType<typeof useCloud.getState>['status'
 export function AccountTab() {
   const user = useSocial((s) => s.user);
   const offline = useSocial((s) => s.offline);
-  const inGame = useGame((s) => !!s.game && !s.game.isShowcase) && useUI((s) => s.screen === 'game');
+  const hasGame = useGame((s) => !!s.game && !s.game.isShowcase);
+  const onGameScreen = useUI((s) => s.screen === 'game');
+  const inGame = hasGame && onGameScreen;
   const status = useCloud((s) => s.status);
   const syncedAt = useCloud((s) => s.syncedAt);
   const [confirm, setConfirm] = useState(false);

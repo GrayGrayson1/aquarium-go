@@ -54,7 +54,7 @@ import { navBootPending } from '@/ui/nav/router';
 import { localStub } from '@/social'; // lane:social (chunk 6)
 import { setSimFault } from '@/game/simHealth'; // lane:core (chunk 6, B-002)
 import { loadSocialUser, refreshSocialNews } from '@/ui/panels/social/socialStore';
-import { checkOnline, cloudSyncNow } from '@/ui/online/cloudSync'; // chunk 8 (REL-032)
+import { checkOnline, cloudSyncNow, useCloud } from '@/ui/online/cloudSync'; // chunk 8 (REL-032)
 import { decodeSaveBody, type CloudSaveMeta } from '@/social';
 
 declare global {
@@ -258,6 +258,8 @@ export function debugApi(): Record<string, unknown> {
       },
       cloudSyncNow: () => cloudSyncNow(),
       cloudCheck: () => checkOnline(),
+      /** The loop's state (status, prompt, syncedAt). */
+      cloudState: () => ({ ...useCloud.getState() }),
     },
     fixtures: () => loadFixtureRegistry().then((r) => Object.keys(r)), // lane:perf2 — async (lazy registry)
     newGame: (starterId?: Parameters<typeof dev.newGame>[0], name?: string, seed?: number) => dev.newGame(starterId, name, seed),

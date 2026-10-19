@@ -86,10 +86,29 @@ and the game time (offline catch-up is computed on the device today: a server wo
 
 ## Social
 
-The Social panel (dev mode only, ADR-0005 decision 3) talks to the `SocialService` interface (`src/social/service.ts`),
-served today by a local stub that keeps sample data in the browser. Signing in, joining a club, offering a trade,
-adding a friend and the leaderboards would all be the server's: the stub changes no game state (trades are "open
-later", ADR-0034), so the game itself is untouched by Social today.
+The Social panel talks to the `SocialService` interface (`src/social/service.ts`). Chunk 8 (stage 1, ADR-0038) gives
+it a real server for players: a Supabase project whose database the browser reaches only through security-definer
+functions (`supabase/migrations/20261019000000_stage1.sql`; ARCHITECTURE.md "Online"). Social still changes no game
+state (trades are "open later", ADR-0034), and the online save is a copy of the local one, not a second source of
+truth.
+
+**Stage 1 trusts the browser on purpose** (ADR-0038: people the owner knows). What the server checks today: who is
+calling (every function checks `auth.uid()`), sign-up (a club's invite code, the 13-and-over box, a name), that only
+the owner creates clubs, the online save's revision and that an older build never writes over a newer one's save,
+and the size limits (a save body of 4,000,000 characters, a picture of 200,000, names and blurbs). What it doesn't
+check, and stage 2 must, before anyone the owner doesn't know joins:
+- **The save itself.** `put_save` stores whatever the browser sends: an edited save goes online as it is, and another
+  device would load it (`repairState` still validates every value on load, so a crafted save can't break the game,
+  but it can hold any money or animals). Stage 2: the server checks saves, or receives the actions above instead.
+- **The leaderboard numbers.** `report_standing` takes the browser's collection value, Prismatics and show wins; a
+  player could report any number to their friends and club. Stage 2: the server computes them from a save it checked.
+- **The friends' pictures.** Any embedded JPEG or WebP within the size limit is shown to friends. Stage 2: moderation,
+  or pictures the server renders.
+- **Names and club names** others see, unmoderated (only the owner creates clubs in stage 1).
+- **Rate limits.** Supabase's own limits cover sign-up and sign-in (30 per 5 minutes per address); the functions have
+  none, so a signed-in player could call them as fast as they like, and `resolve_invite` answers anyone. Invite codes
+  are WORD-1234: guessable with effort (KNOWN_LIMITATIONS).
+- **Joining clubs.** Anyone signed in may join any club; the invite code gates only sign-up.
 
 ## Not for a server
 

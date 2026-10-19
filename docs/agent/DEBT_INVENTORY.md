@@ -27,6 +27,12 @@ three:
   cap it.
 - **Saves grow:** sold animals stay in the save, and its budget leaves out listing photos when full. A server would keep
   this data instead.
+- **Stage 1 is live (chunk 8, ADR-0038): the server trusts the browser on purpose.** Accounts, one online save and
+  Social run on a free Supabase project for people the owner knows. The server checks who is calling, sign-up (a club's
+  invite code, the age box, a name), that only the owner makes clubs, the save's revision and build, and sizes; it
+  stores the save and the leaderboard numbers as the browser sends them, so an edited save or a made-up number reaches
+  friends (TRUST_BOUNDARY.md "Social" lists what stage 2 must add). Invite codes are guessable with effort, and the
+  free project pauses after a week with no activity (the game then plays offline).
 Everything else is presentation, local performance, test tooling or the retired harness. The independent reviewer's
 verdict on whether this is small enough is recorded in PLAN.md (chunk 6): YELLOW on the first draft (the core-owned
 workarounds and B-190 missing, B-167 and B-161 understated), fixed here.

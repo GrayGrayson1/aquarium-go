@@ -1,8 +1,12 @@
 /**
  * lane:social (chunk 6; ADR-0005 decision 3; SOC-011 A1–A3, SOC-004 A1, NAV-020) — the production build as players get
  * it (the `prod` projects: the Pages build under /aquarium-go/, built without VITE_E2E_DEV_URL, so no developer
- * tools): no Social anywhere. The dock has its 10 items and clears the camera chips from 1400 to 1600 px; #/social
- * addresses are broken links, typed in the game or opened in a fresh page; the More sheet has no Social tile.
+ * tools). Chunk 8 (ADR-0038, REL-025): Social is for players now, where a project is configured; every e2e build runs
+ * it on the local stub (VITE_SOCIAL_STUB in Playwright's E2E_ENV), so this checks the players' Social without reaching
+ * a server: the dock has its 11 items (Social between Shows and Build) and clears the camera chips from 1400 to
+ * 1600 px; #/social addresses open Social, signed out, with no prototype hint; an invite link opens its invite, typed in
+ * the game or opened in a fresh page; Settings › Account is there; the More sheet has the Social tile. SOC-011's
+ * dev-only checks this file made before are superseded on purpose (REL-025).
  * chunk 7 (REL-019, ADR-0037 decision 3, B-190) — and ?dev=1 does nothing there: no write calls on window.__AQ, no
  * registry fixture, no sandbox, no wrench button; a starter showcase still opens.
  */
@@ -10,9 +14,9 @@ import { test, expect, type Page } from '@playwright/test';
 import { dockClear, onboardViaUI, tid } from './helpers';
 
 const ready = (page: Page) => page.waitForFunction(() => !!(window as unknown as { __AQ?: { ready?: boolean } }).__AQ?.ready, null, { timeout: 60_000 });
-const brokenToast = (page: Page) => page.locator('[data-testid="toast"]').filter({ hasText: 'That link doesn’t go anywhere' });
+const go = (page: Page, h: string) => page.evaluate((x) => void (location.hash = x), h);
 
-test('outside dev mode there is no Social: not in the dock, the More sheet, or any address', async ({ page, context, baseURL }) => {
+test('the players’ build has Social: the dock, the More sheet, its addresses, an invite link and Settings › Account, with no dev hint', async ({ page, context, baseURL }) => {
   expect(baseURL).toMatch(/\/aquarium-go\/$/);
   await page.goto('./', { waitUntil: 'domcontentloaded' });
   await ready(page);
@@ -20,35 +24,50 @@ test('outside dev mode there is no Social: not in the dock, the More sheet, or a
   expect(await page.evaluate(() => typeof (window as unknown as { __AQ: { newGame?: unknown } }).__AQ.newGame)).toBe('undefined');
   await onboardViaUI(page, 'betta', 'Prod');
 
-  // the dock: 10 items, Operations right after Build, clear of the camera chips at every checked width (§5.4)
-  await expect(tid(page, 'dock-social')).toHaveCount(0);
+  // the dock: 11 items, Social between Shows and Build, Operations right after Build, clear of the camera chips (§5.4)
+  await expect(tid(page, 'dock-social')).toBeVisible();
   for (const width of [1400, 1440, 1519, 1520, 1600]) {
     await page.setViewportSize({ width, height: 900 });
     await page.waitForTimeout(150);
     const r = await dockClear(page);
-    expect(r.labels, `${width}px`).toEqual(['Tanks', 'Livestock', 'Market', 'Visitors', 'Shows', 'Build', 'Operations', 'Research', 'Finances', 'Encyclopedia']);
+    expect(r.labels, `${width}px`).toEqual(['Tanks', 'Livestock', 'Market', 'Visitors', 'Shows', 'Social', 'Build', 'Operations', 'Research', 'Finances', 'Encyclopedia']);
     expect(r.gap, `${width}px`).toBeGreaterThan(0);
     expect(r.scrolls, `${width}px`).toBe(false);
   }
+  await page.setViewportSize({ width: 1440, height: 900 });
 
-  // every Social address is a broken link: the toast, and the tank view
-  for (const h of ['#/social', '#/social/clubs', '#/social/leaderboards', '#/social/join/HIGHLAND-4821']) {
-    await page.evaluate((x) => void (location.hash = x), h);
-    await expect(brokenToast(page).first()).toBeVisible();
-    await expect(tid(page, 'panel-social')).toHaveCount(0);
-    await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/');
+  // Social as a signed-out player sees it: the sign-in screen, the forgot-password line, no prototype hint
+  await go(page, '#/social');
+  await expect(tid(page, 'panel-social')).toBeVisible();
+  await expect(tid(page, 'panel-social').getByText('Bring your aquarium online')).toBeVisible();
+  await expect(tid(page, 'social-forgot')).toHaveText('Forgot your password? Ask whoever invited you.');
+  await expect(page.getByText('Prototype: any email with an @')).toHaveCount(0);
+  for (const h of ['#/social/clubs', '#/social/leaderboards']) {
+    await go(page, h);
+    await expect(tid(page, 'panel-social')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(h);
   }
+  // an invite link opens its invite
+  await go(page, '#/social/join/HIGHLAND-4821');
+  await expect(tid(page, 'social-invite-callout')).toContainText('You’re invited to Highland Betta Club');
+  // Settings › Account
+  await go(page, '#/settings/account');
+  await expect(tid(page, 'settings-tab-account')).toHaveAttribute('aria-selected', 'true');
+  await expect(tid(page, 'account-signed-out')).toHaveText('Sign in from Social to save your aquarium online and see friends.');
+  await page.keyboard.press('Escape');
 
-  // the phone More sheet: five tiles, no Social
+  // the phone More sheet: six tiles, Social after Shows
   await page.setViewportSize({ width: 390, height: 844 });
+  await go(page, '#/');
   await tid(page, 'dock-more').click();
-  await expect(tid(page, 'more-sheet').locator('.ag-more__label')).toHaveText(['Visitors', 'Shows', 'Research', 'Finances', 'Encyclopedia']);
-  await expect(tid(page, 'more-social')).toHaveCount(0);
+  await expect(tid(page, 'more-sheet').locator('.ag-more__label')).toHaveText(['Visitors', 'Shows', 'Social', 'Research', 'Finances', 'Encyclopedia']);
+  await expect(tid(page, 'more-social')).toBeVisible();
 
-  // a fresh page opened on an invite link boots to the title with no "Then: Social" pill, then says the link was broken
+  // a fresh page opened on an invite link boots with "Then: Social › Club invite", then shows the invite
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 1440, height: 900 });
   await tid(page, 'hud-settings').click();
+  await tid(page, 'settings-tab-general').click();
   await tid(page, 'settings-save').click(); // a save to continue from (Save now)
   await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Game saved' }).first()).toBeVisible();
   const fresh = await context.newPage();
@@ -62,12 +81,8 @@ test('outside dev mode there is no Social: not in the dock, the More sheet, or a
   });
   await fresh.goto('./#/social/join/HIGHLAND-4821', { waitUntil: 'domcontentloaded' });
   await ready(fresh);
-  await expect(tid(fresh, 'title-continue')).toBeVisible();
-  expect(pills).toEqual([]);
-  await tid(fresh, 'title-continue').click();
-  await expect(tid(fresh, 'hud-money')).toBeVisible();
-  await expect(brokenToast(fresh)).toBeVisible();
-  await expect(tid(fresh, 'panel-social')).toHaveCount(0);
+  await expect(tid(fresh, 'social-invite-callout')).toBeVisible();
+  expect(pills).toContain('Then: Social › Club invite');
 });
 
 test('the live site ignores ?dev=1: no write tools, fixtures or sandboxes; starter showcases still open', async ({ page, baseURL }) => {
