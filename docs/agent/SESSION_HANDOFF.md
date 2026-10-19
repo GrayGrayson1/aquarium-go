@@ -1,44 +1,53 @@
-# Session handoff: chunk 7 done, chunk 8 (multiplayer stage 1) next
+# Session handoff: chunk 8 (multiplayer stage 1), handed to Marshall
 
-For the agent that builds chunk 8 (multiplayer stage 1, ADR-0038) on Aquarium Go, after the owner's `/compact` or in a
-new session. Written 2026-10-15 by the session that built chunk 6, brought up to date on 2026-10-18 after 0.5.4 and
-again after chunk 7. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of
-work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
+For the agent that builds chunk 8 on Aquarium Go: Marshall, on the owner's CNVS canvas, handed the chunk by Chase on
+2026-10-19 at the owner's request ("give marshall in cnvs all it needs to be successful in building out 8"). Written
+2026-10-15 after chunk 6 and kept current since. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule;
+this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when it's
+used up.
 
 ## Where things stand
 
 - **0.5.4 is released** (2026-10-18: `main` = `63caa8e`, Pages and Render). **Chunk 7 (hardening for multiplayer) is
-  done on `next`, not released** (PLAN.md, chunk 7): the live site ignores `?dev=1` (REL-019), counters never pass the
-  buyer's ceiling and stop when bidding closes (REL-020), admission takings peak inside $0–40 (REL-021), a seeded loop
-  hunt (REL-022), the water research gates in the rules (REL-023), and B-203's and B-204's items (REL-024). The owner's
-  answers are ADR-0039 (both rounds). Releasing it as 0.5.5 waits for the owner's say.
-- Left from chunk 6: the owner's play-through on a phone and a desktop, with a VoiceOver pass for ACC-005 (the one
-  requirement still IN_PROGRESS, OWNER_QUESTIONS F1). Every other owner question is answered.
-- **Chunk 8, multiplayer stage 1** for people the owner knows (ADR-0038, approved): a free Supabase project in a new
-  Free organization apart from anonyform's, `@supabase/supabase-js` at an exact version, sign-up by invite code, no
-  emails, one cloud-saved slot, the Social screens out of dev mode for signed-in players. H1 and H2 are answered
-  (ADR-0039): the privacy note as quoted there, the 13-and-over checkbox, a US region. The Supabase CLI on the owner's
-  Mac is signed in to the owner's whole account (anonyform's projects too): read only what you need, and ask before any
-  change; creating the organization and the project is a remote change (ask in that session). NOTIFY-011 and PLAT-004
-  (the native wrapper) stay deferred.
+  done on `next`, not released** (PLAN.md, chunk 7; ADR-0039). Releasing waits for the owner's say.
+- **Chunk 8 starts from `next`.** Its brief is in PLAN.md (chunk 8), its build plan is
+  `docs/agent/design/ONLINE-STAGE1.md` (read it whole: layout, setup, database, client, online save, words, tests,
+  pitfalls), its requirements are REL-025 to REL-033, and the owner's answers are ADR-0038, ADR-0039 and **ADR-0040**
+  (2026-10-19): the agent sets up the Supabase project itself (a Free organization "Aquarium Go", the project
+  `aquarium-go` in `us-east-1`); only the owner creates clubs, and a club's invite code is the sign-up code (the first
+  club "Aquarium Go Friends"); the sign-up, account and online-save wording approved.
+- **Open owner questions:** group I (the strings ONLINE-STAGE1.md §7.3 drafts: ask first, in one round) and F1 (the
+  owner's VoiceOver pass during a play-through, whenever the owner does it).
+- **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`, v2.119.0) is signed in to the owner's whole account,
+  anonyform's Pro organization included. ONLINE-STAGE1.md §3 has the rules: scope every remote command to the Aquarium
+  Go project, never print or save its secret key, never read the CLI's stored sign-in (refused once as credential
+  exploration; don't work around it), and stop and ask if anything would cost money or touch another project.
 
 ## The order of work
 
 1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
-   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 7's record, chunk 8's brief), ADR-0038 and ADR-0039.
-2. **The owner's play-through and F1,** whenever the owner does it: record what the owner reports verbatim in an ADR and
-   fix what it finds (each fix tested).
-3. **Chunk 8:** write its brief in full in PLAN.md first (requirements REL-025 onwards; the Social stub kept for tests
-   and dev mode; e2e against the stub, never the live project), then ask the owner for the go-ahead to create the
-   Supabase organization and project (a remote change), install `@supabase/supabase-js` at an exact version (approved
-   in ADR-0038; `core-dependencies`' list changes citing it), build, run the four checks twice, and one fresh reviewer
-   (Opus 5.5 at max effort, never Fable). Copy players see that the designs and ADR-0039 don't cover (the save-conflict
-   prompt, sign-up errors) goes to the owner before building.
-4. **Releasing** (as 0.5.4 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into
+   `AGENTS.md`, `CLAUDE.md`, PLAN.md (Next step, Status, chunk 8's brief), ADR-0038 to ADR-0040 and ONLINE-STAGE1.md.
+   Chunk 8 starts at `fd0e0fd` (chunk 7's end); its brief's commit follows it, so the review reads `fd0e0fd..HEAD`.
+2. **Ask group I** (one AskUserQuestion round, the exact strings in the previews; if the owner declines the tool, ask
+   the same as plain text, as ADR-0040 did). Record the answers verbatim in ADR-0041, then the index, PLAN.md,
+   REQUIREMENTS.json and OWNER_QUESTIONS.
+3. **Build** in sensible commits (ONLINE-STAGE1.md §2 to §7): install `@supabase/supabase-js@2.117.2` exactly
+   (`npm install --save-exact --package-lock-only @supabase/supabase-js@2.117.2` in the Dev repo, which writes only
+   `package.json` and the lockfile; then `npm ci` in the test clone), the interface and the stub, the
+   Supabase service, the migration and its static test, the mode switch and the gates, the online save, the screens,
+   the tests (§8). Run the unit tests as you go.
+4. **Set up the project** (§3) once the migration and `scripts/online-smoke.mjs` exist: the owner's yes is ADR-0040
+   decision 1; still stop if the organization isn't Free. Record the ref, the first club's code and the smoke result
+   in PLAN.md, and commit `src/social/project.ts`.
+5. **Finish:** the four checks twice in a row on the final code, then one fresh reviewer (Opus 5.5 at max effort:
+   the Agent tool with `model: "opus"`, `effort: "max"`; never Fable) given the brief, ONLINE-STAGE1.md and
+   `git diff <start>..HEAD`, not your summary. Fix its blockers, re-run the checks, update PLAN.md, the requirements
+   and the docs REL-033 lists, commit, push `next`, and tell the owner what to try. Don't release: the owner decides.
+6. **After a release** (the owner's call): the owner signs up with the first club's link; with the owner's yes and
+   that email, set the owner flag (§3 step 10).
+7. **Releasing** (as 0.5.4 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into
    `main` with the owner's go-ahead (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no checkout), push
    from the internal-disk clone, watch the Pages run, deploy Render by hand, check both `version.json` files.
-5. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
-   `/compact` (an agent can't) and you re-read the docs. Releases (`main`) only when the owner says so in the session.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the

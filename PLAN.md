@@ -10,14 +10,15 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    and the rare-variant kinds pinned to the save format), on GitHub Pages and Render (see "Releases").
 2. **Chunk 7, hardening for multiplayer, is done** (2026-10-18, `7b98be8`, `06f80f8`; brief and record below), on
    `next`, not released (0.5.5 waits for the owner). Next, **chunk 8, multiplayer stage 1** for people
-   the owner knows (ADR-0038, approved 2026-10-18: accounts, cloud saves and the Social screens on a free Supabase
-   project apart from anonyform's; H1 and H2 answered early, ADR-0039). Between chunks, the owner's routine: docs
-   current and pruned, push, `/compact`, re-read, then build.
+   the owner knows (ADR-0038; H1 and H2 answered in ADR-0039; the setup's go-ahead, clubs and wording in ADR-0040,
+   2026-10-19). Its brief is below and its design is `docs/agent/design/ONLINE-STAGE1.md`; the owner handed it to
+   Marshall (a fresh agent on the CNVS canvas, so no `/compact` was needed). First step: OWNER_QUESTIONS group I.
 3. **Released:** 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-4. Every owner question is answered (ADR-0024 to ADR-0039) except F1, the owner's VoiceOver pass during the
-   play-through on a phone and a desktop (ACC-005), in `docs/agent/OWNER_QUESTIONS.md`. NOTIFY-011 and PLAT-004 (the
+4. Every owner question is answered (ADR-0024 to ADR-0040) except two, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005), and group I, chunk 8's drafted
+   strings (asked at the chunk's start). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
 
@@ -33,7 +34,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (not released). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
-| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038) | Approved 2026-10-18; after chunk 7; H1 and H2 answered (ADR-0039) |
+| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038, ADR-0040) | Brief and design written 2026-10-19 (REL-025 to REL-033; `docs/agent/design/ONLINE-STAGE1.md`); the setup approved (ADR-0040); group I to ask; building (Marshall) |
 
 **Last full test runs:** chunk 7's final commit `06f80f8`, the owner's Mac, 2026-10-18, from the internal-disk clone,
 twice in a row under `caffeinate -i -s` (passes 4 and 5): typecheck passed; unit 229 files, 2,719 tests passed; build
@@ -530,22 +531,37 @@ REL-012, REL-018.
   Mac idle-sleeping on battery mid-run (`pmset -g log`; one trace shows Vite's client losing its server and reloading
   the page); long runs now hold sleep off with `caffeinate`.
 
-### 8. Multiplayer stage 1, for people the owner knows (ADR-0038) — approved, after chunk 7
+### 8. Multiplayer stage 1, for people the owner knows (ADR-0038, ADR-0040) — brief written 2026-10-19; handed to Marshall
 
-- **What:** ADR-0038's stage 1: accounts (email and password, sign-up by an invite code the owner shares, no emails,
-  "Delete my account"), one cloud-saved slot (local first, the newer copy offered on another device, the player choosing
-  when both changed, PERSIST-014 kept), and the Social screens out of dev mode for signed-in players (clubs, friend
-  codes, friends' aquariums, friends' leaderboards; trades stay "open later"). The server trusts each browser on
-  purpose; nothing of stage 2 or 3.
-- **Platform:** a free Supabase project in a new Free organization in the owner's account, apart from anonyform's
-  (Pro); `@supabase/supabase-js` at an exact version (approved, CONST-001); tables and access rules as SQL in
-  `supabase/migrations`, sign-in settings in `supabase/config.toml`; the project's address and public key in a
-  committed file (no change to `deploy.yml`, `render.yaml` or Render's settings). Creating the organization and
-  project is a remote change: ask the owner in that session first.
-- **Before building:** write the brief in full here (requirements REL-025 onwards, the Social stub kept for tests and
-  dev mode, e2e against the stub). H1 and H2 are answered (ADR-0039): the privacy note as quoted there, linked from
-  sign-up, with "Delete my account" in Settings › Account; a required sign-up checkbox, "I'm 13 or older, or I'm a
-  parent or guardian signing up for my child."; the project's region in the United States (the note says so).
+- **What:** ADR-0038's stage 1: accounts (email and password, sign-up only with a club's invite code, no emails,
+  "Delete my account"), one online save (local first; when the online copy differs, the player picks a copy;
+  PERSIST-014 on the device and the server), and the Social screens for players of the live site on the real service
+  (clubs, friend codes with requests to accept, friends' aquarium pictures, leaderboards among friends and club
+  members; trades stay "open later"). The server trusts each browser on purpose; nothing of stage 2 or 3.
+- **Design:** `docs/agent/design/ONLINE-STAGE1.md`, the build plan: the code layout and layer rules (§2), the setup
+  steps (§3), the database (§4: row-level security on every table, no table access, a small set of security-definer
+  functions), the client (§5), the online save's rules (§6), the screens and words (§7) and the tests (§8).
+- **Owner answers (ADR-0040, 2026-10-19):** the agent sets up the Supabase project with the CLI on the owner's Mac
+  (a Free organization "Aquarium Go", the project `aquarium-go` in `us-east-1`, a random database password nobody
+  keeps; stop if it isn't Free, costs money or would touch anonyform); **only the owner creates clubs, for now**, and
+  a club's invite code is the sign-up code (the first club, "Aquarium Go Friends", made with SQL); the sign-up,
+  account and online-save wording approved as asked; ADR-0039's privacy note and 13-and-over checkbox.
+- **Before building the screens:** ask OWNER_QUESTIONS group I (the strings ONLINE-STAGE1.md §7.3 drafts) in one
+  round; build everything else meanwhile.
+- **Platform:** `@supabase/supabase-js` at exactly 2.117.2 (approved, ADR-0038 decision 2; `core-dependencies`' list
+  changes citing it); SQL in `supabase/migrations`, sign-in settings in `supabase/config.toml`; the project's address
+  and publishable key in `src/social/project.ts`. No change to `deploy.yml`, `render.yaml` or Render's settings.
+  The stub stays for dev mode and every e2e build (`VITE_SOCIAL_STUB=1` in Playwright's `E2E_ENV`); e2e never reaches
+  the live project. Setting up the project (ONLINE-STAGE1.md §3) comes once the migration and the smoke test exist.
+- **Requirements:** REL-025 to REL-033 (`docs/agent/REQUIREMENTS.json`); SOC-011's dev-only criteria superseded on
+  purpose by REL-025; SOC-002 and SOC-009 extended to the real service.
+- **Done when:** the four checks pass twice in a row on the final code (Chromium and WebKit, under `caffeinate`); the
+  live smoke test passes and leaves nothing behind; one fresh reviewer (Opus 5.5, max effort) has read
+  `git diff fd0e0fd..HEAD` against this brief and its blockers are fixed; PLAN.md records the project ref, the first
+  club's code and the runs. Releasing (with chunk 7, as 0.5.5 or 0.6.0) is the owner's call; once released, the owner
+  signs up with the first club's link, and the agent sets the owner flag with the owner's yes (§3 step 10).
+- **Not in chunk 8:** sign-in on the title screen (a new device starts a game first), likes, leaving a club, club
+  events, trades, email.
 
 ## Releases
 

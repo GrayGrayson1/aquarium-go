@@ -3764,7 +3764,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project). Chunk 7 (REL-019): prod-mode.spec now runs on its own players' build (projects prod and webkit-prod), not the base-path project's."
+      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project). Chunk 7 (REL-019): prod-mode.spec now runs on its own players' build (projects prod and webkit-prod), not the base-path project's. Chunk 8 (ADR-0038, ADR-0040): Social becomes reachable for players once a project is configured (REL-025); these dev-only criteria are superseded then, on purpose."
     },
     {
       "id": "PLAT-001",
@@ -5213,7 +5213,7 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
-      "note": "2026-10-18: ADR-0038 (Accepted for stage 1) is the owner-approved record for stage 1's backend, account and cloud-save code (chunk 8, after chunk 7): a free Supabase project, sign-up by invite code, the server trusting each browser. Stage 2 (players the owner doesn't know) and real trading each need their own record, so REL-002 stays PENDING.",
+      "note": "2026-10-18: ADR-0038 (Accepted for stage 1) is the owner-approved record for stage 1's backend, account and cloud-save code (chunk 8, after chunk 7): a free Supabase project, sign-up by invite code, the server trusting each browser. Stage 2 (players the owner doesn't know) and real trading each need their own record, so REL-002 stays PENDING. 2026-10-19: chunk 8 brief written (REL-025 to REL-033; ADR-0040).",
       "status": "PENDING"
     },
     {
@@ -5648,6 +5648,216 @@
         "tests/sim/core-save-forward-safety.test.ts (ROOM_LIMITS_AT: those limits pinned to the save format)",
         "tests/e2e/nav-routes-matrix.spec.ts, tests/e2e/gameplay.spec.ts (B-204: waits on the router and the guide's step)"
       ]
+    },
+    {
+      "id": "REL-025",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §5.3",
+      "description": "Which Social service runs, and where Social shows: the local stub in dev mode and in every e2e build, the Supabase service in the players' build once a project is configured, nothing (as today) without one; Social reachable for players through socialAvailable().",
+      "acceptance": [
+        "socialModeFor(devAllowed, env, project) returns stub, online or off as ONLINE-STAGE1.md §5.3 lists, for every combination (unit test).",
+        "PanelHost, the dock, the More sheet, parseNav and the router gate Social on socialAvailable(), not on dev mode; the club-show reminder and the dev hint stay stub-only.",
+        "Playwright's E2E_ENV sets VITE_SOCIAL_STUB=1, so no e2e test reaches the live project; deploy.yml and render.yaml set neither VITE_SOCIAL_STUB nor VITE_SOCIAL_ONLINE_IN_DEV (unit test).",
+        "prod-mode.spec: the players' build shows Social (the stub, through the e2e flag) with no dev hint; its other checks unchanged. SOC-011's dev-only criteria are superseded on purpose (ADR-0038).",
+        "@supabase/supabase-js is a dependency at exactly 2.117.2, loaded with a dynamic import (its own chunk); core-dependencies' list changes citing ADR-0038 decision 2."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/online-mode.test.ts",
+        "tests/sim/core-dependencies.test.ts",
+        "tests/e2e/prod-mode.spec.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§5.3"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-026",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §3",
+      "description": "The Supabase project's setup with the owner's yes (ADR-0040 decision 1): a Free organization \"Aquarium Go\", the project aquarium-go in us-east-1, the sign-in settings, the migration, the first club and the live smoke test; the address and publishable key committed in src/social/project.ts.",
+      "acceptance": [
+        "The organization is on the Free plan (checked before the project is made); the project is in us-east-1 at the free size; no command touched another organization or project.",
+        "supabase/config.toml: sign-up on, email confirmation off, minimum password 8, phone and external providers off; pushed with the diff read first.",
+        "The migration is applied and `supabase db advisors --type security --level warn` reports nothing.",
+        "The first club \"Aquarium Go Friends\" exists; its code and the project ref are recorded in PLAN.md.",
+        "scripts/online-smoke.mjs passes every check of ONLINE-STAGE1.md §8.3 against the project and leaves no account or row behind.",
+        "No secret key is printed, saved or committed; src/social/project.ts holds only the address and the publishable (anon) key."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: scripts/online-smoke.mjs (by hand; recorded in PLAN.md)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§3"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-027",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §4",
+      "description": "The database's rules: every table has row-level security and no policies or table grants for anon and authenticated; the game reaches data only through security-definer functions that check auth.uid(); sign-up is checked on the server (a club's invite code, the age box, a name).",
+      "acceptance": [
+        "supabase-migration.test.ts checks the SQL: RLS on every public table, no create policy, no table grants to anon or authenticated, every function security definer with set search_path = '' and execute revoked from public (and anon, except resolve_invite) with an explicit grant, both auth.users triggers, the size limits; proved failing on a copy with one removed.",
+        "put_save refuses a lower schema version than the stored one (too_new) and a stale revision (conflict).",
+        "create_club is refused unless the caller is the owner (ADR-0040 decision 2); delete_my_account removes every row of the caller."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/supabase-migration.test.ts",
+        "new: scripts/online-smoke.mjs (by hand)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§4"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-028",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §5.2, §7",
+      "description": "Accounts: sign-up mode (email, password, \"Name friends see\", \"Invite code\", the 13-and-over checkbox, the privacy note), the approved errors, the forgot-password hint, sign-out, and \"Delete my account\".",
+      "acceptance": [
+        "Sign-up needs a working invite code, a name of 1 to 30 characters and the checkbox; each failure shows its approved message (ADR-0040); a code from the invite link fills the field.",
+        "Sign-in with a wrong password says \"That email and password don't match an account.\"; an existing email says \"An account with that email already exists. Sign in instead.\"",
+        "The privacy note (ADR-0039's text verbatim) opens from the sign-up form and from Settings › Account.",
+        "No stored value contains the password, for the stub and the Supabase service (SOC-002 extended).",
+        "Delete my account asks first (the approved body), removes the account on the server, signs out and leaves the game on the device."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/social-ui.test.ts",
+        "new: tests/sim/social-supabase.test.ts",
+        "tests/e2e/social.spec.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§5.2, §7"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-029",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §6",
+      "description": "The online save: the game on screen goes online about every 2 minutes of play and when the tab is hidden; a check on sign-in, on load, on return and after a conflict decides as ONLINE-STAGE1.md §6's table says; the box offers Keep this device's or Load online save; a newer build's save is never sent over or loaded (PERSIST-014).",
+      "acceptance": [
+        "decideOnline matches every row of §6 (unit test).",
+        "At most one send per 2 minutes, one when the tab is hidden, none for a showcase, none while blocked, signed out or with the box open (unit test with fake timers).",
+        "Load online save imports through importSaveText and the Settings › Saves load, keeping this device's copy as \"Previous autosave\"; Keep this device's sends with the online revision expected.",
+        "A newer schema online blocks sending for the session and says so; put_save's too_new and conflict replies are honoured.",
+        "The device's link (aquarium-go.cloud.v1) lives outside the save; no social action changes the save or its stateHash (SOC-009 A3).",
+        "online-save.spec.ts covers the three boxes and the newer-schema case against the stub."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/online-rules.test.ts",
+        "new: tests/sim/online-sync.test.ts",
+        "new: tests/sim/online-compress.test.ts",
+        "new: tests/e2e/online-save.spec.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§6"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-030",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §1, §4.3, §7",
+      "description": "Social on the real service: clubs (only the owner creates them and sees their invite links), joining, friend codes with requests to accept, friends' aquarium pictures, leaderboards among friends and club members, the Social dot from new club members; trades stay \"open later\" with the approved text changes.",
+      "acceptance": [
+        "Every SocialService method maps onto ONLINE-STAGE1.md §4.3 (unit test against a fake client), with every error mapped.",
+        "The owner's controls (create a club, copy its invite link) show only for the owner; the server refuses anyone else.",
+        "Friend requests list who added the player, with Accept; friends' tiles show their picture and gallons, no likes.",
+        "The trades note and the join text read as ADR-0040 approved; the club-show line and the Welcome toast's second line appear only for a club with an event.",
+        "A snapshot is sent at most every 30 minutes, as a small JPEG data URL within 200,000 characters."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/social-supabase.test.ts",
+        "tests/sim/social-ui.test.ts",
+        "tests/e2e/social.spec.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§1, §4.3, §7"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-031",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §7",
+      "description": "Settings › Account (#/settings/account): who is signed in, the name and friend code, the online-save line, Sign out, Delete my account and the privacy note; signed out, the approved line and a way to Social.",
+      "acceptance": [
+        "The route opens the tab (nav-routes test, the route matrix); the tab fits every viewports.spec size.",
+        "Its strings are the approved ones (ADR-0040 and group I), pinned by the copy test."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/nav-routes.test.ts",
+        "tests/e2e/nav-routes-matrix.spec.ts",
+        "tests/e2e/viewports.spec.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§7"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-032",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §5.4, §8",
+      "description": "The stub implements the whole grown interface (sign-up details, owner, friend requests, clubs, delete, the online save) with dev hooks for e2e; the tests of ONLINE-STAGE1.md §8 exist and pass; the four checks pass twice in a row.",
+      "acceptance": [
+        "social-stub.test.ts exercises every new method and hook.",
+        "Two full passes in a row of typecheck, npm test, build and e2e (Chromium and WebKit) on the final code; one fresh reviewer (Opus 5.5, max effort) on the chunk's diff, its blockers fixed."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/social-stub.test.ts",
+        "npm run typecheck / test / build / e2e"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§5.4, §8"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-033",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §3, §9",
+      "description": "Docs: ARCHITECTURE.md's online section (the layers, the service choice, the database's rule and the owner's runbook: a forgotten password, a paused project, the owner flag, a displaced online save), TRUST_BOUNDARY.md and DEBT_INVENTORY.md's stage-1 notes, KNOWN_LIMITATIONS (no title-screen sign-in, no likes, no trades, the server trusting the browser), TEST_IDS for the new test ids, README.",
+      "acceptance": [
+        "Each document above says what chunk 8 built, and PLAN.md records the setup (ref, first club code, smoke result) and the test runs."
+      ],
+      "tasks": [],
+      "tests": [
+        "review"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "§3, §9"
+      ],
+      "note": "Chunk 8 (written 2026-10-19 with its brief; to build)."
     }
   ]
 }
