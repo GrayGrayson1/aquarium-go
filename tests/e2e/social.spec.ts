@@ -238,15 +238,24 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
   test('skeleton rows shimmer while loading, and hold still under reduced motion', async ({ page }) => {
     await go(page, '#/social');
     await signIn(page);
+    // the rows live only while the stub answers (300–600 ms): record each tab's first one as it appears, as WebKit's
+    // polls can miss a transient element (the release pass for 0.5.5 did; SESSION_HANDOFF.md, "WebKit")
+    await page.evaluate(() => {
+      const w = window as unknown as { __skel: Record<string, string> };
+      w.__skel = {};
+      new MutationObserver(() => {
+        for (const el of document.querySelectorAll('.so-skel__row')) {
+          const tab = el.closest('[data-testid="social-friends"], [data-testid="social-trading"]')?.getAttribute('data-testid');
+          if (tab && !(tab in w.__skel)) w.__skel[tab] = getComputedStyle(el).animationName;
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+    const skel = (tab: string) => page.evaluate((t) => (window as unknown as { __skel: Record<string, string> }).__skel[t] ?? null, tab);
     await tid(page, 'social-tab-friends').click();
-    const row = tid(page, 'social-friends').locator('.so-skel__row').first();
-    await expect(row).toBeVisible();
-    expect(await row.evaluate((e) => getComputedStyle(e).animationName)).toBe('so-shimmer');
+    await expect.poll(() => skel('social-friends')).toBe('so-shimmer');
     await page.evaluate(() => document.documentElement.setAttribute('data-reduced-motion', 'true'));
     await tid(page, 'social-tab-trading').click();
-    const still = tid(page, 'social-trading').locator('.so-skel__row').first();
-    await expect(still).toBeVisible();
-    expect(await still.evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    await expect.poll(() => skel('social-trading')).toBe('none');
   });
 
   test('chunk 8: sign-up needs a working code, a name and the age box; the privacy note opens and closes', async ({ page }) => {
