@@ -295,7 +295,11 @@ online right now. Your game is fine — try again in a moment.", used for a paus
 states, the leaderboard. The club-show strip and the "Welcome" toast's club-show line appear only for a club with an
 event (the stub's sample clubs); for real clubs the toast has no second line.
 
-### 7.3 Drafts, not yet approved: ask the owner in one round before building these (OWNER_QUESTIONS group I)
+### 7.3 Drafts, approved as written on 2026-10-19 (OWNER_QUESTIONS group I, ADR-0041)
+
+ADR-0041 also names the privacy note's link by its title ("Your account and your data") and puts "Signed in as
+{email}" (today's Social subtitle) first on Settings › Account.
+
 
 Put the exact strings in the options' previews (AskUserQuestion, recommended first). The owner stopped an earlier
 round with previews; plain text worked (ADR-0040), so offer the round as text if the tool is declined.

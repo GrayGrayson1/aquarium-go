@@ -5723,7 +5723,7 @@
     {
       "id": "REL-028",
       "slice": "ALL",
-      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §5.2, §7",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; ADR-0041; docs/agent/design/ONLINE-STAGE1.md §5.2, §7",
       "description": "Accounts: sign-up mode (email, password, \"Name friends see\", \"Invite code\", the 13-and-over checkbox, the privacy note), the approved errors, the forgot-password hint, sign-out, and \"Delete my account\".",
       "acceptance": [
         "Sign-up needs a working invite code, a name of 1 to 30 characters and the checkbox; each failure shows its approved message (ADR-0040); a code from the invite link fills the field.",
@@ -5748,7 +5748,7 @@
     {
       "id": "REL-029",
       "slice": "ALL",
-      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §6",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; ADR-0041; docs/agent/design/ONLINE-STAGE1.md §6",
       "description": "The online save: the game on screen goes online about every 2 minutes of play and when the tab is hidden; a check on sign-in, on load, on return and after a conflict decides as ONLINE-STAGE1.md §6's table says; the box offers Keep this device's or Load online save; a newer build's save is never sent over or loaded (PERSIST-014).",
       "acceptance": [
         "decideOnline matches every row of §6 (unit test).",
@@ -5775,7 +5775,7 @@
     {
       "id": "REL-030",
       "slice": "ALL",
-      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §1, §4.3, §7",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; ADR-0041; docs/agent/design/ONLINE-STAGE1.md §1, §4.3, §7",
       "description": "Social on the real service: clubs (only the owner creates them and sees their invite links), joining, friend codes with requests to accept, friends' aquarium pictures, leaderboards among friends and club members, the Social dot from new club members; trades stay \"open later\" with the approved text changes.",
       "acceptance": [
         "Every SocialService method maps onto ONLINE-STAGE1.md §4.3 (unit test against a fake client), with every error mapped.",
@@ -5800,11 +5800,11 @@
     {
       "id": "REL-031",
       "slice": "ALL",
-      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §7",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; ADR-0041; docs/agent/design/ONLINE-STAGE1.md §7",
       "description": "Settings › Account (#/settings/account): who is signed in, the name and friend code, the online-save line, Sign out, Delete my account and the privacy note; signed out, the approved line and a way to Social.",
       "acceptance": [
         "The route opens the tab (nav-routes test, the route matrix); the tab fits every viewports.spec size.",
-        "Its strings are the approved ones (ADR-0040 and group I), pinned by the copy test."
+        "Its strings are the approved ones (ADR-0040 and group I, ADR-0041), pinned by the copy test."
       ],
       "tasks": [],
       "tests": [

@@ -14,7 +14,7 @@ ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
 Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is answered (2026-10-13); group F's F2–F4
-are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5; multiplayer stage 1 is approved (ADR-0038); chunk 7's two questions, group H and the two from chunk 7's review are answered (2026-10-18, ADR-0039). Chunk 8's four (the Supabase setup, clubs, the wording) are answered (2026-10-19, ADR-0040); **group I is open** (the strings ADR-0040 left, asked at chunk 8's start). Add new ones as a new group, and record them the same way.
+are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5; multiplayer stage 1 is approved (ADR-0038); chunk 7's two questions, group H and the two from chunk 7's review are answered (2026-10-18, ADR-0039). Chunk 8's four (the Supabase setup, clubs, the wording) are answered (2026-10-19, ADR-0040); group I (the strings ADR-0040 left) is answered (2026-10-19, ADR-0041), so **F1 is the only open question**. Add new ones as a new group, and record them the same way.
 
 | Group | Unblocks | Questions |
 |---|---|---|
@@ -37,7 +37,7 @@ are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pa
 | (chunk 7 review) | The review's new line (a removed show's note) and three more limits pinned to the save format | 2 questions: **answered 2026-10-18 (ADR-0039, second round)** |
 | H (multiplayer, stage 1) | Chunk 8 (stage 1): the two items ADR-0038 left | H1, H2: **answered 2026-10-18 (ADR-0039)**, asked early at the owner's request |
 | (chunk 8) | The Supabase setup's go-ahead, who creates clubs, the sign-up, account and online-save wording | 4 questions, asked as text: **answered 2026-10-19 (ADR-0040)** |
-| I (chunk 8's drafts) | Chunk 8's screens: the strings ADR-0040's message didn't spell out | I1: **open**, asked at chunk 8's start |
+| I (chunk 8's drafts) | Chunk 8's screens: the strings ADR-0040's message didn't spell out | I1 (asked as 4 questions in one round): **answered 2026-10-19 (ADR-0041)** |
 
 ## A. Release and standing decisions
 
@@ -188,7 +188,7 @@ previews.
 | H1 | Signing up sends the player's email, display name, friend code, synced save, aquarium snapshot and leaderboard numbers to Aquarium Go's Supabase project. Approve the short privacy note linked from sign-up (what is stored, why, who sees it, how to delete it)? | **The drafted wording** (written with chunk 8's brief). · Changes (say which). → **Answered (ADR-0039): Approve this wording** (the note is quoted in ADR-0039). | ADR-0038 decision 6 |
 | H2 | Stage 1 asks for an email, and the game suits families. Who may sign up? | **13 and over: sign-up says so, and a parent signs up for a younger player.** · Anyone (the owner knows every player, since sign-up needs an invite code). → **Answered (ADR-0039): 13 and over** (a required checkbox: "I'm 13 or older, or I'm a parent or guardian signing up for my child."). | ADR-0038 decision 6 |
 
-## I. Chunk 8's drafted strings (open)
+## I. Chunk 8's drafted strings (answered 2026-10-19, ADR-0041)
 
 Left by ADR-0040 decision 5 (2026-10-19). Ask in one round before building those screens; build the rest meanwhile.
 Put the exact strings in the previews (`docs/agent/design/ONLINE-STAGE1.md` §7.3 has them). The owner stopped a round
@@ -196,4 +196,4 @@ with previews on 2026-10-18 and answered the same questions as text, so offer th
 
 | # | Question | Options (recommended first) | Source |
 |---|---|---|---|
-| I1 | Approve the remaining chunk 8 wording: the sign-up placeholders and "Back to sign in"; Settings › Account's labels and online-save lines; the delete dialog's title, buttons and toast; the online-save box's cards and note; the owner's create-club and invite-link controls? | **Approve this wording.** · Change some (say which). | ADR-0040 decision 5; ONLINE-STAGE1.md §7.3 |
+| I1 | Approve the remaining chunk 8 wording: the sign-up placeholders and "Back to sign in"; Settings › Account's labels and online-save lines; the delete dialog's title, buttons and toast; the online-save box's cards and note; the owner's create-club and invite-link controls? | **Approve this wording.** · Change some (say which). → **Answered (ADR-0041): Approve as written** (asked as four questions in one AskUserQuestion round, each with its strings in the preview). | ADR-0040 decision 5; ONLINE-STAGE1.md §7.3 |

@@ -12,13 +12,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    `next`, not released (0.5.5 waits for the owner). Next, **chunk 8, multiplayer stage 1** for people
    the owner knows (ADR-0038; H1 and H2 answered in ADR-0039; the setup's go-ahead, clubs and wording in ADR-0040,
    2026-10-19). Its brief is below and its design is `docs/agent/design/ONLINE-STAGE1.md`; the owner handed it to
-   Marshall (a fresh agent on the CNVS canvas, so no `/compact` was needed). First step: OWNER_QUESTIONS group I.
+   Marshall (a fresh agent on the CNVS canvas, so no `/compact` was needed). Group I was asked first and approved as
+   drafted (ADR-0041, 2026-10-19); building.
 3. **Released:** 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-4. Every owner question is answered (ADR-0024 to ADR-0040) except two, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
-   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005), and group I, chunk 8's drafted
-   strings (asked at the chunk's start). NOTIFY-011 and PLAT-004 (the
+4. Every owner question is answered (ADR-0024 to ADR-0041) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
 
@@ -34,7 +34,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (not released). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
-| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038, ADR-0040) | Brief and design written 2026-10-19 (REL-025 to REL-033; `docs/agent/design/ONLINE-STAGE1.md`); the setup approved (ADR-0040); group I to ask; building (Marshall) |
+| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038, ADR-0040) | Brief and design written 2026-10-19 (REL-025 to REL-033; `docs/agent/design/ONLINE-STAGE1.md`); the setup approved (ADR-0040); group I approved (ADR-0041); building (Marshall) |
 
 **Last full test runs:** chunk 7's final commit `06f80f8`, the owner's Mac, 2026-10-18, from the internal-disk clone,
 twice in a row under `caffeinate -i -s` (passes 4 and 5): typecheck passed; unit 229 files, 2,719 tests passed; build
@@ -546,8 +546,9 @@ REL-012, REL-018.
   keeps; stop if it isn't Free, costs money or would touch anonyform); **only the owner creates clubs, for now**, and
   a club's invite code is the sign-up code (the first club, "Aquarium Go Friends", made with SQL); the sign-up,
   account and online-save wording approved as asked; ADR-0039's privacy note and 13-and-over checkbox.
-- **Before building the screens:** ask OWNER_QUESTIONS group I (the strings ONLINE-STAGE1.md §7.3 drafts) in one
-  round; build everything else meanwhile.
+- **Group I (ADR-0041, 2026-10-19):** the strings ONLINE-STAGE1.md §7.3 drafted, asked in one round at the chunk's
+  start, approved as written (with the privacy link named by the note's title and "Signed in as {email}" on Settings ›
+  Account).
 - **Platform:** `@supabase/supabase-js` at exactly 2.117.2 (approved, ADR-0038 decision 2; `core-dependencies`' list
   changes citing it); SQL in `supabase/migrations`, sign-in settings in `supabase/config.toml`; the project's address
   and publishable key in `src/social/project.ts`. No change to `deploy.yml`, `render.yaml` or Render's settings.
