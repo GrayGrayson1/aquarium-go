@@ -37,8 +37,10 @@ export function SocialPanel() {
   const [join, setJoin] = useState<string | null>(null);
   const [focusSearch, setFocusSearch] = useState(false);
 
+  // chunk 8: every time Social opens, ask who is signed in (the online save asked when the game started; the
+  // connection, or the account, may have changed since)
   useEffect(() => {
-    void loadSocialUser();
+    void loadSocialUser(true);
   }, []);
   // Social open and signed in: its trades and club news are seen (the dot goes)
   useEffect(() => {

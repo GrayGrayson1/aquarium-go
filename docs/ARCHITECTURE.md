@@ -214,8 +214,15 @@ sent, within size limits; stage 2 needs its own record before strangers join (`d
   checked by a trigger on `auth.users` (a club's invite code, the 13-and-over box, a name of 1 to 30 characters) and a
   second trigger makes the profile and joins the invite's club. `put_save` refuses a stale revision (`conflict`) and
   never writes over a newer build's save (`too_new`, PERSIST-014 on the server). `supabase-migration.test.ts` checks
-  the SQL; `scripts/online-smoke.mjs` checks the live project by hand. Migrations are applied with
-  `supabase db query --project-ref <ref> -f <file>` (the Management API), not `db push`: later changes go in new files.
+  the SQL's text; `scripts/online-db-local/run.sh` applies the migrations to a throwaway local Postgres with a stand-in
+  for Supabase's auth schema and default privileges and checks every rule as anon, two players and the owner (no
+  Docker needed; Homebrew's postgresql@16); `scripts/online-smoke.mjs` checks the live project by hand. Migrations are applied with
+  `supabase db query --linked --project-ref <ref> -f <file>` (the Management API), not `db push`: later changes go in
+  new files. The second file (`…000100_private_api.sql`) moved the functions the game calls into the schema `private`,
+  which the API doesn't expose, behind SECURITY INVOKER wrappers of the same names in `public`: Supabase's security
+  advisors (`supabase db advisors --linked --project-ref <ref> --type security --level warn`) warn about any
+  SECURITY DEFINER function the API exposes, and now report nothing. Wrong invite codes are capped at 20 per 10
+  minutes per network address (`invite_misses`, by the gateway's `cf-connecting-ip` or `x-forwarded-for`).
 - **The online save** (ONLINE-STAGE1.md §6): the game on screen goes online after a local save lands, at most every 2
   minutes, and when the tab is hidden; the device's own saves stay the source of truth. This device's link (the online
   copy it last sent or loaded, per account) and when a local save last landed live in localStorage
@@ -226,8 +233,8 @@ sent, within size limits; stage 2 needs its own record before strangers join (`d
   The secret (service_role) key is never printed, saved or committed; nothing in the game needs it.
 - **No emails.** Confirmation is off (`supabase/config.toml`), so a forgotten password is reset by hand.
 
-**The owner's runbook** (each with the owner's yes; every command scoped with `--project-ref <ref>`, the ref in
-PLAN.md's chunk 8 record):
+**The owner's runbook** (each with the owner's yes; every command scoped with `--linked --project-ref <ref>`, the ref
+in PLAN.md's chunk 8 record):
 - *The owner's account:* after the owner signs up with the first club's link, `update public.profiles set is_owner =
   true where id = (select id from auth.users where email = '<email>')`, and `update public.clubs set created_by =
   <that id> where name = 'Aquarium Go Friends'`. Then Social › Clubs shows the owner "Create a club" and every club's
@@ -236,11 +243,13 @@ PLAN.md's chunk 8 record):
   extensions.gen_salt('bf')) where email = '<email>'`, and tell the player in person.
 - *A paused project* (a free project pauses after a week with no activity; the game then shows the network message
   and plays offline): the owner presses Restore in the Supabase dashboard.
-- *A displaced online save* (when a player's online save switches aquarium, `saves.previous_*` keeps the one it
-  replaced): restore with SQL on request, swapping `body`, `encoding` and `save_id` with the `previous_*` columns and
-  adding 1 to `revision`.
-- *Invite codes* (a club's code is also its sign-up code): `select name, invite_code from public.clubs`. The codes are
-  WORD-1234, guessable with effort; they are not secrets to rely on beyond stage 1 (KNOWN_LIMITATIONS).
+- *A displaced online save* (when a player's online save switches aquarium, `saves.previous_*` keeps the body it
+  replaced): restore with SQL on request: swap `body`, `encoding` and `save_id` with the `previous_*` columns, set the
+  meta from the restored body (`schema_version`, `saved_at`, `hour`, `shop_name`, `day`, `money`: read them from its
+  export text, decoding `gzip-base64` first), and add 1 to `revision`, so the player's devices see a newer copy and ask.
+- *Invite codes* (a club's code is also its sign-up code): `select name, invite_code from public.clubs`. A code is the
+  club's word and four letters (FRIENDS-KDWX, ADR-0042: 331,776 per word, drawn from a secure source); wrong guesses
+  are capped per address and sign-ups are rate-limited by Supabase Auth. Never write a code in the repo (it is public).
 
 ## Deploy
 

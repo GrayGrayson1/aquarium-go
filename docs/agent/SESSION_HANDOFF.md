@@ -16,7 +16,7 @@ used up.
   (2026-10-19): the agent sets up the Supabase project itself (a Free organization "Aquarium Go", the project
   `aquarium-go` in `us-east-1`); only the owner creates clubs, and a club's invite code is the sign-up code (the first
   club "Aquarium Go Friends"); the sign-up, account and online-save wording approved.
-- **Open owner questions:** group I (the strings ONLINE-STAGE1.md §7.3 drafts: ask first, in one round) and F1 (the
+- **Open owner questions:** group I was asked and approved (ADR-0041, 2026-10-19); open: F1 (the
   owner's VoiceOver pass during a play-through, whenever the owner does it).
 - **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`, v2.119.0) is signed in to the owner's whole account,
   anonyform's Pro organization included. ONLINE-STAGE1.md §3 has the rules: scope every remote command to the Aquarium
@@ -37,8 +37,9 @@ used up.
    Supabase service, the migration and its static test, the mode switch and the gates, the online save, the screens,
    the tests (§8). Run the unit tests as you go.
 4. **Set up the project** (§3) once the migration and `scripts/online-smoke.mjs` exist: the owner's yes is ADR-0040
-   decision 1; still stop if the organization isn't Free. Record the ref, the first club's code and the smoke result
-   in PLAN.md, and commit `src/social/project.ts`.
+   decision 1; still stop if the organization isn't Free. Record the ref and the smoke result in PLAN.md (the first
+   club's code goes to the owner in the session, never in the repo: it is public, ADR-0042), and commit
+   `src/social/project.ts`.
 5. **Finish:** the four checks twice in a row on the final code, then one fresh reviewer (Opus 5.5 at max effort:
    the Agent tool with `model: "opus"`, `effort: "max"`; never Fable) given the brief, ONLINE-STAGE1.md and
    `git diff <start>..HEAD`, not your summary. Fix its blockers, re-run the checks, update PLAN.md, the requirements

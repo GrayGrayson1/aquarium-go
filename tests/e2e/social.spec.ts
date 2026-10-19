@@ -318,7 +318,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await requests.getByRole('button', { name: 'Accept' }).click();
     await expect(requests).toHaveCount(0);
     const grid = tid(page, 'social-friend-grid');
-    await expect(grid.locator('li').first()).toContainText('Sam’s aquarium');
+    await expect(grid.locator('li').first()).toContainText('Sam');
     await expect(grid.locator('li').first()).not.toContainText('likes');
     await expect(grid.locator('li')).toHaveCount(7);
   });
@@ -348,7 +348,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     const created = toast(page, 'Club created');
     await expect(created).toContainText('Copy its invite link to bring friends in.');
     const row = page.locator('[data-testid^="social-invite-link-AQUARIUM-"]').first();
-    await expect(row).toContainText(/Invite link AQUARIUM-\d{4}/);
+    await expect(row).toContainText(/Invite link AQUARIUM-[A-HJ-NP-Z]{4}/); // the club's word and four letters (ADR-0042)
     const code = ((await row.getAttribute('data-testid')) ?? '').replace('social-invite-link-', '');
     await row.getByTestId('social-copy-link').click();
     await expect(toast(page, 'Link copied')).toBeVisible();

@@ -5683,7 +5683,7 @@
         "The organization is on the Free plan (checked before the project is made); the project is in us-east-1 at the free size; no command touched another organization or project.",
         "supabase/config.toml: sign-up on, email confirmation off, minimum password 8, phone and external providers off; pushed with the diff read first.",
         "The migration is applied and `supabase db advisors --type security --level warn` reports nothing.",
-        "The first club \"Aquarium Go Friends\" exists; its code and the project ref are recorded in PLAN.md.",
+        "The first club \"Aquarium Go Friends\" exists; the project ref is recorded in PLAN.md and the club's invite code given to the owner in the session, never written in the repo (it is public; ADR-0042, changed on purpose).",
         "scripts/online-smoke.mjs passes every check of ONLINE-STAGE1.md §8.3 against the project and leaves no account or row behind.",
         "No secret key is printed, saved or committed; src/social/project.ts holds only the address and the publishable (anon) key."
       ],
@@ -5696,7 +5696,7 @@
       "designSections": [
         "§3"
       ],
-      "note": "Chunk 8 (2026-10-19): the setup steps of ONLINE-STAGE1.md §3; the record (organization, ref, the smoke result) is in PLAN.md's chunk 8 record. The first club's invite code is not written in the repo (the repo is public): it went to the owner in the session."
+      "note": "Chunk 8 (2026-10-19): set up as ONLINE-STAGE1.md §3 says (ADR-0040, ADR-0042): the Free organization \"Aquarium Go\", project aquarium-go (ref zkavcxrsxdgdlstravpj, us-east-1); config pushed (sign-in settings only); both migrations applied; the security advisors report no warnings; the first club made (its code to the owner, never in the repo: it is public); the live smoke test 79 of 79, nothing left behind. Record in PLAN.md."
     },
     {
       "id": "REL-027",

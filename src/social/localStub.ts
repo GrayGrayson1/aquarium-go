@@ -19,6 +19,7 @@
 import { CLUBS, FRIENDS, LEADERS, TRADES, VALID_INVITE, snapshot } from './data';
 import {
   CLUB_BLURB_MAX,
+  INVITE_LETTERS,
   looksLikeFriendCode,
   normalizeCode,
   validClubName,
@@ -185,7 +186,7 @@ export function initialsOf(name: string): string {
   return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? 'C').slice(0, 2)) || 'C';
 }
 
-/** chunk 8 — an invite code's word: the club name's first word, letters A–Z, 2 to 10 of them, else CLUB (§4.3). */
+/** chunk 8 — an invite code's word: the club name's first word, letters A–Z, 2 to 10 of them, else CLUB (§4.3); then a dash and four letters (ADR-0042). */
 export function inviteWordOf(name: string): string {
   const w = (name.trim().split(/\s+/)[0] ?? '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10);
   return w.length >= 2 ? w : 'CLUB';
@@ -366,7 +367,7 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
         if (!validClubName(name) || blurb.trim().length > CLUB_BLURB_MAX) throw fail('invalid');
         const taken = new Set([VALID_INVITE, ...(s.createdClubs ?? []).map((c) => c.inviteCode)]);
         let code = '';
-        do code = `${inviteWordOf(name)}-${String(Math.floor(random() * 10000)).padStart(4, '0')}`;
+        do code = `${inviteWordOf(name)}-${Array.from({ length: 4 }, () => INVITE_LETTERS[Math.floor(random() * INVITE_LETTERS.length) % INVITE_LETTERS.length]).join('')}`;
         while (taken.has(code));
         const id = `club-${(s.createdClubs?.length ?? 0) + 1}-${hash(code).toString(36)}`;
         const club: Club = { id, name: name.trim(), initials: initialsOf(name), colors: CLUB_COLORS[hash(name.trim()) % CLUB_COLORS.length], members: 1, blurb: blurb.trim(), inviteCode: code };
@@ -387,7 +388,8 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
         const r = requests.find((x) => x.id === id);
         if (!r) throw fail('invalid');
         requests = requests.filter((x) => x.id !== id);
-        accepted = [{ id: r.id, owner: r.name, title: `${r.name}’s aquarium`, gallons: 20, likes: null, snapshotUrl: snapshot('planted'), updatedAt: r.createdAt }, ...accepted];
+        // the friend's name as the tile's title (the real service sends their shop's name; no new copy for the stub)
+        accepted = [{ id: r.id, owner: r.name, title: r.name, gallons: 20, likes: null, snapshotUrl: snapshot('planted'), updatedAt: r.createdAt }, ...accepted];
       }),
     deleteAccount: () =>
       call(() => {

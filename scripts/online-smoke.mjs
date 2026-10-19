@@ -8,7 +8,8 @@
  * It reads the project's address and publishable key from src/social/project.ts (or SMOKE_URL and SMOKE_KEY), makes
  * two throwaway accounts A and B with the first club's invite code (read with the CLI, never printed), checks the
  * database's rules from the browser's side, deletes both accounts and checks, through `supabase db query
- * --project-ref <ref>` (admin), that no row of either is left in any table. It prints each check's pass or fail and
+ * --linked --project-ref <ref>` (admin), that no row of either is left in any table, Supabase Auth's audit log
+ * included. It also checks the cap on wrong invite codes, and removes this run's misses so the owner isn't capped. It prints each check's pass or fail and
  * exits 1 if any failed. It uses only the publishable key; it never reads or prints the secret key.
  */
 import { createClient } from '@supabase/supabase-js';
@@ -28,7 +29,7 @@ if (!URL_ || !KEY || !REF) {
 
 /** An admin query through the CLI, scoped to this project; returns the rows. */
 function admin(sql) {
-  const out = execFileSync(CLI, ['db', 'query', '--project-ref', REF, '-o', 'json', sql], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  const out = execFileSync(CLI, ['db', 'query', '--linked', '--project-ref', REF, '-o', 'json', sql], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   const start = out.search(/[[{]/);
   const parsed = JSON.parse(out.slice(start));
   return Array.isArray(parsed) ? parsed : (parsed.rows ?? parsed.result ?? parsed.data ?? []);
@@ -126,7 +127,7 @@ try {
     const r = await anon.rpc(fn, args);
     check(`anon can’t call ${fn}`, !!r.error, describe(r));
   }
-  for (const fn of ['require_uid', 'club_json', 'save_meta_json', 'check_signup', 'create_profile', 'random_code', 'new_invite_code', 'invite_word']) {
+  for (const fn of ['require_uid', 'club_json', 'save_meta_json', 'check_signup', 'create_profile', 'random_code', 'new_invite_code', 'invite_word', 'request_ip']) {
     const r = await A.rpc(fn, {});
     check(`A can’t call the helper ${fn}`, !!r.error, describe(r));
   }
@@ -178,6 +179,13 @@ try {
   // 5. only the owner creates clubs
   const club = await B.rpc('create_club', { p_name: 'Smoke Club', p_blurb: '' });
   check('B’s create_club is forbidden', club.error?.message === 'forbidden', describe(club));
+
+  // 6. guessing codes stops working: 20 wrong ones from this address, then not even the right one (cleaned up below)
+  for (let i = 0; i < 20; i++) await anon.rpc('resolve_invite', { p_code: `GUESS-${'ABCDEFGHJKLMNPQRSTUVWXYZ'[i]}AAA` });
+  const capped = await anon.rpc('resolve_invite', { p_code: code });
+  check('after 20 wrong codes the right one gets no answer from this address', !capped.error && capped.data === null, describe(capped));
+  const where = admin(`select ip <> 'unknown' as known, count(*) as n from public.invite_misses where at > to_timestamp(${Math.floor(stamp / 1000)}) group by 1`)[0];
+  check('the cap counts this address (the API passes it), not one shared bucket', where?.known === true || where?.known === 't', JSON.stringify({ known: where?.known, n: where?.n }));
 } catch (e) {
   check('the run finished', false, e instanceof Error ? e.message : String(e));
 } finally {
@@ -188,14 +196,16 @@ try {
     check(`delete_my_account for ${who}`, !del.error, describe(del));
   }
   try {
+    admin(`delete from public.invite_misses where at > to_timestamp(${Math.floor(stamp / 1000)})`); // this run's guesses: the owner's address isn't kept capped
     const left = admin(
       `select (select count(*) from auth.users where email in ('${EMAIL_A}', '${EMAIL_B}')) as users, ` +
         `(select count(*) from public.profiles p where p.display_name like 'Smoke _' and p.created_at > now() - interval '1 hour') as profiles, ` +
         `(select count(*) from public.club_members where user_id in (${[idA, idB].filter(Boolean).map((i) => `'${i}'`).join(', ') || 'null'})) as members, ` +
         `(select count(*) from public.friend_links where from_id in (${[idA, idB].filter(Boolean).map((i) => `'${i}'`).join(', ') || 'null'}) or to_id in (${[idA, idB].filter(Boolean).map((i) => `'${i}'`).join(', ') || 'null'})) as links, ` +
-        `(select count(*) from public.saves where user_id in (${[idA, idB].filter(Boolean).map((i) => `'${i}'`).join(', ') || 'null'})) as saves`,
+        `(select count(*) from public.saves where user_id in (${[idA, idB].filter(Boolean).map((i) => `'${i}'`).join(', ') || 'null'})) as saves, ` +
+        `(select count(*) from auth.audit_log_entries where payload ->> 'actor_id' in (${[idA, idB].filter(Boolean).map((i) => `'${i}'`).join(', ') || 'null'})) as audit`,
     )[0];
-    const total = ['users', 'profiles', 'members', 'links', 'saves'].reduce((n, k) => n + Number(left?.[k] ?? 1), 0);
+    const total = ['users', 'profiles', 'members', 'links', 'saves', 'audit'].reduce((n, k) => n + Number(left?.[k] ?? 1), 0);
     check('nothing of A or B is left in any table', total === 0, JSON.stringify(left));
     if (total !== 0) {
       admin(`delete from auth.users where email in ('${EMAIL_A}', '${EMAIL_B}')`);

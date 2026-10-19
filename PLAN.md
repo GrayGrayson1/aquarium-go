@@ -558,11 +558,67 @@ REL-012, REL-018.
   purpose by REL-025; SOC-002 and SOC-009 extended to the real service.
 - **Done when:** the four checks pass twice in a row on the final code (Chromium and WebKit, under `caffeinate`); the
   live smoke test passes and leaves nothing behind; one fresh reviewer (Opus 5.5, max effort) has read
-  `git diff fd0e0fd..HEAD` against this brief and its blockers are fixed; PLAN.md records the project ref, the first
-  club's code and the runs. Releasing (with chunk 7, as 0.5.5 or 0.6.0) is the owner's call; once released, the owner
+  `git diff fd0e0fd..HEAD` against this brief and its blockers are fixed; PLAN.md records the project ref and the runs
+  (the first club's code goes to the owner in the session, not here: the repo is public, ADR-0042). Releasing (with chunk 7, as 0.5.5 or 0.6.0) is the owner's call; once released, the owner
   signs up with the first club's link, and the agent sets the owner flag with the owner's yes (§3 step 10).
 - **Not in chunk 8:** sign-in on the title screen (a new device starts a game first), likes, leaving a club, club
   events, trades, email.
+- **As built (`ee4998e`, `6f5f724`; REL-025 to REL-033):**
+  1. REL-025: `src/ui/online/mode.ts` (`socialModeFor`, `socialAvailable`); the panel host, the dock (`needsSocial`),
+     More, `parseNav` and the router gate on it, so SOC-011 is superseded on purpose; `VITE_SOCIAL_STUB` in
+     Playwright's `E2E_ENV`; `@supabase/supabase-js` 2.117.2 exactly, one dynamic import.
+  2. REL-027: `supabase/migrations/20261019000000_stage1.sql` (five tables with row-level security, no policies or
+     table grants; security-definer functions with an empty search_path; the sign-up and profile triggers on
+     `auth.users`); `supabase/config.toml`; `tests/sim/supabase-migration.test.ts`; `scripts/online-smoke.mjs`.
+  3. REL-028, REL-030: the grown interface, the stub (with its dev hooks) and the Supabase service; sign-up mode, the
+     privacy note, friend requests, the owner's Create a club and invite links, no likes on real tiles.
+  4. REL-029: `src/ui/online/cloudSync.ts`, `rules.ts`, `CloudPrompt.tsx`. Two choices beyond the design's words:
+     "this device changed since the link" is "a local save of this aquarium landed after the last send" (the
+     device's own clock, `aquarium-go.cloud.v1`), so a hidden tab's send waits for its hidden save to land; and
+     loading the online copy of the *same* aquarium keeps this device's copy under a new `saveId` (`…_kept_…`),
+     because the slot's backup is listed as "Previous autosave" only when it holds a different aquarium.
+  5. REL-031: Settings › Account (`#/settings/account`, after Saves, where Social exists).
+  6. REL-033: ARCHITECTURE.md "Online" with the owner's runbook, TRUST_BOUNDARY.md, DEBT_INVENTORY.md,
+     KNOWN_LIMITATIONS.md, TEST_IDS.md, README.
+  - Also: a friend code may start with one to twelve letters (a two-letter name such as "Al" made a code the stub's
+    shape check refused); the kit's Modal gains `dismissible`.
+  - **The repo is public** (GrayGrayson1/aquarium-go), so the first club's invite code, which is also the sign-up
+    code, isn't written here: it went to the owner in the session, and `select name, invite_code from public.clubs`
+    reads it back (ARCHITECTURE.md's runbook). The owner agreed and chose to keep the repo public (ADR-0042).
+- **The setup (2026-10-19, ADR-0040 decision 1, ADR-0042):** the Free organization "Aquarium Go"
+  (`kvqnsqbjufmnkpsrcjbj`, created with the CLI, no payment method; the owner found it in the dashboard) holds the
+  project `aquarium-go`, **ref `zkavcxrsxdgdlstravpj`**, us-east-1, free size, a random database password nobody
+  keeps. Every remote command named that ref; nothing touched GrayGrayson1 or anonyform. `supabase config push`
+  changed only the five sign-in settings meant (redirect URLs, confirmation off, passwords of 8, the site address),
+  after `supabase/config.toml`'s other settings were matched to the project's. Both migrations applied with
+  `db query --linked --project-ref`; `db advisors --type security --level warn`: no issues (the first file alone
+  drew 18 warnings, one per SECURITY DEFINER function the API exposed: the second file moved them to `private`). The
+  first club "Aquarium Go Friends" made with SQL (code to the owner). `src/social/project.ts` holds the address and
+  the publishable key (`sb_publishable_…`); the secret key was never printed or saved.
+  - Checked before the live run: `scripts/online-db-local/run.sh` (new: a throwaway local Postgres 16 with a stand-in
+    for Supabase's auth schema and default privileges) ran every rule as anon, two players and the owner, all as
+    expected, and caught a planted grant to anon.
+  - **The live smoke test** (`node scripts/online-smoke.mjs` from the internal-disk clone): **79 of 79 checks
+    passed**, and nothing of the two throwaway accounts was left in any table, Supabase Auth's audit log included;
+    it removed its own wrong-code guesses afterwards, so the owner's address isn't capped.
+- **Review (Opus 5.5, max effort) on `fd0e0fd..6f5f724`: 5 blockers, 15 notes.** Fixed: B1 invite codes (the owner's
+  word-and-four-letters format from a secure source, and the cap on wrong codes per address: ADR-0042); B2 the online
+  copy now stores what a local save stores (the welcome-back card's resume speed, not its pause), uploads and the kept
+  copy alike (`stateForSaving`, exported from persistence); B3 Load online save stores the online copy once and
+  resumes that very state (`resumeState`, the second half of `loadAndResume`, exported: a core change), so no retry
+  loop and no autosave between storing and resuming; B4 `supabase-migration.test.ts` reads every migration file,
+  checks the private functions and their wrappers, and catches grants, views, disabled row-level security and
+  EXECUTE to PUBLIC anywhere (27 broken copies, each placed early, must fail); B5 the four docs that said to write the
+  first club's code in PLAN.md. Notes fixed: a failed save of this device's copy stops the load (1); a check waits for
+  a send under way, and an unanswered send that landed counts as this device's own copy (3); a newer build's block is
+  per account (4); a failed send waits out the 2-minute gap (5); Delete removes the account's rows in Supabase Auth's
+  audit log (6); the docs (7); a test title (8); the load uses the save's own identity (9); `--linked --project-ref`
+  everywhere (11); friend-code guessing in TRUST_BOUNDARY (12); `VITE_SOCIAL_STUB=1` in the reuse instructions (13);
+  the stub's accepted friend titled by name (14); Social and Account re-ask who is signed in when opened (15). Left:
+  loading the online copy replaces any older "Previous autosave", as every load does (2, KNOWN_LIMITATIONS); the load's
+  messages reuse Settings › Saves' words (10). Also found by the agent: a tab whose saves another tab refuses sends
+  nothing, and a hidden tab sends only when its hidden save lands; the online-save box no longer re-renders on every
+  simulation tick.
 
 ## Releases
 

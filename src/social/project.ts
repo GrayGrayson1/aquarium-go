@@ -10,4 +10,5 @@ export interface OnlineProject {
   publishableKey: string;
 }
 
-export const ONLINE_PROJECT: OnlineProject | null = null;
+/** The Free organization "Aquarium Go", project `aquarium-go` (ref zkavcxrsxdgdlstravpj, us-east-1), set up 2026-10-19. */
+export const ONLINE_PROJECT: OnlineProject | null = { url: 'https://zkavcxrsxdgdlstravpj.supabase.co', publishableKey: 'sb_publishable_6_05nIKMwdOtelVdC27QHQ_QgNWjagA' };

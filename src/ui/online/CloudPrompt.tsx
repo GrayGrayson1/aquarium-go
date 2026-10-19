@@ -17,17 +17,15 @@ const TITLES = { newer: C.cloudNewer, both: C.cloudBoth, other: C.cloudOther } a
 export function CloudPrompt() {
   const prompt = useCloud((s) => s.prompt);
   const choosing = useCloud((s) => s.choosing);
-  const game = useGame((s) => s.game);
+  // a boolean, not the game: the box mustn't re-render on every simulation tick while it's closed
+  const hasGame = useGame((s) => !!s.game && !s.game.isShowcase);
   const inGame = useUI((s) => s.screen === 'game');
-  const open = !!prompt && inGame && !!game && !game.isShowcase;
+  const open = !!prompt && inGame && hasGame;
   return (
     <Modal open={open} onClose={() => {}} dismissible={false} title={prompt ? TITLES[prompt.kind] : ''} testId="cloud-prompt" width={460}>
-      {prompt && game && (
+      {prompt && open && (
         <div className="cl-prompt">
-          <div className="cl-card" data-testid="cloud-card-device">
-            <Smartphone size={16} aria-hidden className="cl-card__icon" />
-            <span>{C.cardDevice(game.shopName, Math.floor(game.clock.hour / 24) + 1, formatMoney(game.finance.money), timeAgo(game.lastSavedRealMs))}</span>
-          </div>
+          <DeviceCard />
           <div className="cl-card cl-card--online" data-testid="cloud-card-online">
             <Cloud size={16} aria-hidden className="cl-card__icon" />
             <span>{C.cardOnline(prompt.online.shopName, prompt.online.day, formatMoney(prompt.online.money), timeAgo(prompt.online.savedAt))}</span>
@@ -44,5 +42,16 @@ export function CloudPrompt() {
         </div>
       )}
     </Modal>
+  );
+}
+
+/** This device's card: only the fields it shows, so it re-renders when they change (the day, the money, a save). */
+function DeviceCard() {
+  const text = useGame((s) => (s.game ? C.cardDevice(s.game.shopName, Math.floor(s.game.clock.hour / 24) + 1, formatMoney(s.game.finance.money), timeAgo(s.game.lastSavedRealMs)) : ''));
+  return (
+    <div className="cl-card" data-testid="cloud-card-device">
+      <Smartphone size={16} aria-hidden className="cl-card__icon" />
+      <span>{text}</span>
+    </div>
   );
 }

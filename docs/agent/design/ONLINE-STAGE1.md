@@ -78,18 +78,23 @@ Steps (do them once the migration and the smoke test exist, so the project is us
    `enable_signup = true`, `minimum_password_length = 8`; `[auth.email]` `enable_signup = true`,
    `enable_confirmations = false`; phone and every external provider off. `supabase config push --project-ref <ref>`
    shows a diff before it asks: read it, and push only if it changes the sign-in settings you meant.
-6. `supabase db query --linked -f supabase/migrations/20261019000000_stage1.sql` (the Management API, no database
-   password), then `supabase db advisors --linked --type security --level warn`: fix every warning in the migration
-   (a follow-up migration file) and run it again until clean.
-7. The first club, with SQL (`db query --linked`): "Aquarium Go Friends", blurb "Friends and family of Aquarium Go",
-   created_by null, its invite code made by the same function the owner's "Create club" uses (`FRIENDS-` and four
-   digits). Note the code: the owner's invite link is
+6. `supabase db query --linked --project-ref <ref> -f supabase/migrations/20261019000000_stage1.sql` (the Management
+   API, no database password; `--project-ref` needs `--linked`), then `supabase db advisors --linked --project-ref
+   <ref> --type security --level warn`: fix every warning in the migration (a follow-up migration file) and run it
+   again until clean. *As built (2026-10-19):* the advisors warn about every SECURITY DEFINER function the API exposes
+   (lints 0028 and 0029), so `20261019000100_private_api.sql` moves them to the schema `private` behind SECURITY
+   INVOKER wrappers of the same names in `public`; after it, no warnings (six INFO notes: RLS on with no policies,
+   which is this design's rule).
+7. The first club, with SQL (`db query --linked --project-ref <ref>`): "Aquarium Go Friends", blurb "Friends and
+   family of Aquarium Go", created_by null, its invite code made by the same function the owner's "Create club" uses
+   (`FRIENDS-` and four letters without I or O: the owner, 2026-10-19, ADR-0042). Give the code to the owner in the
+   session, never in the repo (it is public): the owner's invite link is
    `https://graygrayson1.github.io/aquarium-go/#/social/join/<CODE>`.
 8. The smoke test (§8.3) against the project, with two throwaway accounts it deletes at the end.
 9. Write the address and the publishable key into `src/social/project.ts` (read with
    `supabase projects api-keys --project-ref <ref> -o json`, filtered in the same pipeline to the publishable or anon
-   key), commit, and record the ref, the first club's code and the smoke test's result in PLAN.md (not the key's
-   value; it is in the committed file).
+   key), commit, and record the ref and the smoke test's result in PLAN.md (not the key's value: it is in the
+   committed file; and not the first club's code: the repo is public, ADR-0042).
 10. After the owner signs up on the live site (after a release, the owner's call): with the owner's yes and the email
     they used, `update public.profiles set is_owner = true` for that account and set the first club's `created_by`
     to it. Until then nobody can create clubs, which is fine.
@@ -153,7 +158,7 @@ the game maps carry fixed messages: `invalid`, `forbidden`, `not_signed_in`.
 | `me()` | `{ id, email, display_name, friend_code, is_owner }` |
 | `my_clubs()` | `{ mine, suggested }`: clubs I'm in (with `joined_at`, and `invite_code` only where `created_by` is me) and every other club; member counts |
 | `join_club(p_club uuid)` | Join (idempotent); `invalid` if no such club |
-| `create_club(p_name, p_blurb)` | `forbidden` unless `is_owner`; makes initials, colours and the invite code (the first word's letters A–Z, 2 to 10 of them, else `CLUB`; a dash; four digits; retried on a clash); the creator joins it |
+| `create_club(p_name, p_blurb)` | `forbidden` unless `is_owner`; makes initials, colours and the invite code (the first word's letters A–Z, 2 to 10 of them, else `CLUB`; a dash; four letters without I or O from a secure source, ADR-0042; retried on a clash); the creator joins it |
 | `add_friend(p_code)` | A link from me to the profile with that friend code; `invalid` for no match or myself; at most 100 links from one player |
 | `friend_requests()` | Profiles linked to me that I haven't linked back: `[{ id, name, created_at }]` |
 | `accept_friend(p_id uuid)` | `invalid` unless `p_id` linked to me; links me back |
@@ -364,7 +369,8 @@ each check's pass or fail:
 4. A adds B's friend code; B sees the request and accepts; each sees the other in `friends_aquariums` and
    `leaderboard`.
 5. B's `create_club` is `forbidden`.
-6. `delete_my_account` for both; then, through `db query --linked` (admin), no row for either in any table.
+6. `delete_my_account` for both; then, through `db query --linked --project-ref <ref>` (admin), no row for either in any table
+   (Supabase Auth's audit log included).
 
 ## 9. Things to know
 

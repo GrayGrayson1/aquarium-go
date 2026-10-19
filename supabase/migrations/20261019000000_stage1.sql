@@ -39,7 +39,8 @@ create table public.clubs (
   initials text not null check (initials ~ '^[A-Z0-9]{1,2}$'),
   color_a text not null,
   color_b text not null,
-  invite_code text not null unique check (invite_code ~ '^[A-Z]{2,10}-[0-9]{4}$'),
+  -- the club's word, a dash, four letters without I or O (the owner, 2026-10-19: "the name of the group plus four letters")
+  invite_code text not null unique check (invite_code ~ '^[A-Z]{2,10}-[A-HJ-NP-Z]{4}$'),
   created_by uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now(),
   -- the avatar gradients (src/social/localStub.ts CLUB_COLORS)
@@ -63,6 +64,15 @@ create table public.friend_links (
   check (from_id <> to_id)
 );
 create index friend_links_to_idx on public.friend_links (to_id);
+
+-- Wrong invite codes asked about, by network address: resolve_invite answers at most 20 of them in 10 minutes from one
+-- address, so codes can't be found by trying them (sign-up itself is limited by Supabase Auth). Rows older than a day
+-- are dropped as new ones come.
+create table public.invite_misses (
+  ip text not null,
+  at timestamptz not null default now()
+);
+create index invite_misses_ip_at_idx on public.invite_misses (ip, at);
 
 create table public.saves (
   user_id uuid primary key references auth.users (id) on delete cascade,
@@ -88,12 +98,14 @@ alter table public.clubs enable row level security;
 alter table public.club_members enable row level security;
 alter table public.friend_links enable row level security;
 alter table public.saves enable row level security;
+alter table public.invite_misses enable row level security;
 
 revoke all on table public.profiles from anon, authenticated;
 revoke all on table public.clubs from anon, authenticated;
 revoke all on table public.club_members from anon, authenticated;
 revoke all on table public.friend_links from anon, authenticated;
 revoke all on table public.saves from anon, authenticated;
+revoke all on table public.invite_misses from anon, authenticated;
 
 -- ───────────────────────────── helpers (called only by the functions below) ─────────────────────────────
 
@@ -117,10 +129,32 @@ language sql volatile security definer set search_path = '' as $$
   from generate_series(1, p_len);
 $$;
 
--- An invite code: the word, a dash, four digits (the first club's word is FRIENDS; create_club passes the name's).
+-- An invite code: the word, a dash, four letters without I or O, from a secure random source (24^4 = 331,776 codes
+-- per word). The first club's word is FRIENDS; create_club passes the name's.
 create function public.new_invite_code(p_word text) returns text
 language sql volatile security definer set search_path = '' as $$
-  select p_word || '-' || lpad(floor(random() * 10000)::integer::text, 4, '0');
+  select p_word || '-' || string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ', 1 + get_byte(r.bytes, i) % 24, 1), '' order by i)
+  from (select extensions.gen_random_bytes(4) as bytes) r, generate_series(0, 3) as i;
+$$;
+
+-- The caller's network address as the API gateway reports it (for invite_misses), or 'unknown'.
+create function public.request_ip() returns text
+language plpgsql stable security definer set search_path = '' as $$
+declare
+  v_h jsonb;
+begin
+  begin
+    v_h := nullif(current_setting('request.headers', true), '')::jsonb;
+  exception when others then
+    v_h := null;
+  end;
+  return left(coalesce(
+    nullif(btrim(v_h ->> 'cf-connecting-ip'), ''),
+    nullif(btrim(split_part(v_h ->> 'x-forwarded-for', ',', 1)), ''),
+    nullif(btrim(v_h ->> 'x-real-ip'), ''),
+    'unknown'
+  ), 64);
+end;
 $$;
 
 -- A club name's invite word: its first word's letters A–Z, 2 to 10 of them, else CLUB (src/social/localStub.ts).
@@ -224,18 +258,25 @@ create trigger aquarium_go_create_profile after insert on auth.users for each ro
 
 -- ───────────────────────────── the functions the game calls (§4.3) ─────────────────────────────
 
--- The club an invite code opens, and whether the caller is in it; null when it opens nothing. Signed out too.
+-- The club an invite code opens, and whether the caller is in it; null when it opens nothing. Signed out too. After 20
+-- wrong codes in 10 minutes from one address, it answers null to that address, right code or wrong, until they age out.
 create function public.resolve_invite(p_code text) returns jsonb
-language plpgsql stable security definer set search_path = '' as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare
   v_uid uuid := auth.uid();
+  v_ip text := public.request_ip();
   v_club public.clubs;
 begin
   if p_code is null or char_length(p_code) > 40 then
     return null;
   end if;
+  if (select count(*) from public.invite_misses m where m.ip = v_ip and m.at > now() - interval '10 minutes') >= 20 then
+    return null;
+  end if;
   select * into v_club from public.clubs c where c.invite_code = upper(btrim(p_code));
   if not found then
+    insert into public.invite_misses (ip) values (v_ip);
+    delete from public.invite_misses m where m.at < now() - interval '1 day';
     return null;
   end if;
   return jsonb_build_object(
@@ -596,12 +637,18 @@ begin
 end;
 $$;
 
--- Delete my account: everything else cascades; clubs I created keep going with created_by null.
+-- Delete my account: everything else cascades; clubs I created keep going with created_by null. Supabase Auth's audit
+-- log names the account too (the privacy note promises all of it goes): its rows go where the role may delete them.
 create function public.delete_my_account() returns void
 language plpgsql security definer set search_path = '' as $$
 declare
   v_uid uuid := public.require_uid();
 begin
+  begin
+    delete from auth.audit_log_entries a where a.payload ->> 'actor_id' = v_uid::text;
+  exception when undefined_table or insufficient_privilege then
+    null; -- no audit log here, or not ours to clean: the account itself still goes
+  end;
   delete from auth.users where id = v_uid;
 end;
 $$;
@@ -611,6 +658,7 @@ $$;
 revoke execute on function public.require_uid() from public, anon, authenticated;
 revoke execute on function public.random_code(integer) from public, anon, authenticated;
 revoke execute on function public.new_invite_code(text) from public, anon, authenticated;
+revoke execute on function public.request_ip() from public, anon, authenticated;
 revoke execute on function public.invite_word(text) from public, anon, authenticated;
 revoke execute on function public.club_json(public.clubs, uuid, boolean) from public, anon, authenticated;
 revoke execute on function public.save_meta_json(public.saves) from public, anon, authenticated;

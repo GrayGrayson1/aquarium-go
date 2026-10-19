@@ -10,11 +10,27 @@ import { newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { SCHEMA_VERSION, createMemoryBackend, exportSaveText, listSaves, resetSaveSession, setStorageBackend, setSyncStore, stateHash } from '@/persistence';
+import { SCHEMA_VERSION, createMemoryBackend, exportSaveText, listSaves, resetSaveSession, setStorageBackend, setSyncStore, stateHash, useResume } from '@/persistence';
 import { provideSocialService, type CloudSaveMeta, type CloudUpload, type SocialService, type SocialUser, type StandingReport } from '@/social';
 import { useSocial } from '@/ui/panels/social/socialStore';
 import { CLOUD_LINK_KEY, SEND_GAP_MS, checkOnline, cloudBlocked, forgetCloudLink, keepDeviceCopy, loadOnlineCopy, readLink, resetCloudSync, startCloudSync, useCloud } from '@/ui/online/cloudSync';
 import type { GameState } from '@/types';
+
+// another tab played an aquarium further (persistence's stale-tab rule): the ids the test marks
+// and a local save that fails (the review's note: nothing loads over a device copy that couldn't be kept)
+const mocks = vi.hoisted(() => ({ stale: new Set<string>(), failSave: false, imports: 0 }));
+vi.mock('@/persistence', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('@/persistence')>();
+  return {
+    ...orig,
+    isStaleGame: (id: string) => mocks.stale.has(id),
+    saveCurrentGame: (...a: Parameters<typeof orig.saveCurrentGame>) => (mocks.failSave ? Promise.resolve({ ok: false, slot: 'auto', message: 'Couldn’t save — browser storage refused the write.' }) : orig.saveCurrentGame(...a)),
+    importSaveText: (...a: Parameters<typeof orig.importSaveText>) => {
+      if (a[1]) mocks.imports++;
+      return orig.importSaveText(...a);
+    },
+  };
+});
 
 // the codec's streams don't mix with fake timers; online-compress.test.ts tests it on its own
 vi.mock('@/social/codec', async (importOriginal) => ({
@@ -69,6 +85,10 @@ function fakeServer() {
     failNext(r: 'too_new' | 'conflict') {
       next = r;
     },
+    /** Another account: no online save (the fake holds one at a time). */
+    clear() {
+      online = null;
+    },
   };
 }
 
@@ -93,6 +113,10 @@ beforeEach(() => {
   doc = Object.assign(new EventTarget(), { visibilityState: 'visible' });
   vi.stubGlobal('document', doc);
   setStorageBackend(createMemoryBackend());
+  mocks.failSave = false;
+  mocks.imports = 0;
+  useResume.setState({ summary: null });
+  useUI.setState({ toasts: [] });
   setSyncStore(memory());
   resetSaveSession();
   links = memory();
@@ -157,7 +181,7 @@ describe('sending (§6 "When it sends")', () => {
     expect(server.uploads).toHaveLength(3); // the gap is long past: at once
   });
 
-  it('sends at once when the tab is hidden, after the hidden save lands (or 3 s later without one)', async () => {
+  it('sends at once when the tab is hidden, when the hidden save lands; none lands, none goes', async () => {
     await signIn();
     localSave();
     await vi.advanceTimersByTimeAsync(1_000);
@@ -165,11 +189,30 @@ describe('sending (§6 "When it sends")', () => {
     setHidden(true);
     localSave(); // the hidden autosave lands
     await vi.advanceTimersByTimeAsync(10);
-    expect(server.uploads).toHaveLength(2);
+    expect(server.uploads).toHaveLength(2); // inside the 2-minute gap, but hidden
     setHidden(false);
-    setHidden(true); // hidden again, and no save lands this time
-    await vi.advanceTimersByTimeAsync(3_100);
-    expect(server.uploads).toHaveLength(3);
+    setHidden(true); // hidden again, and no save lands this time (refused, or failed)
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(server.uploads).toHaveLength(2);
+    localSave(); // a save long after the hidden one isn't the hidden one: the gap applies again
+    await vi.advanceTimersByTimeAsync(10);
+    expect(server.uploads).toHaveLength(2);
+  });
+
+  it('a tab whose saves another tab refuses (it played the aquarium further) sends nothing', async () => {
+    await signIn();
+    expect(server.uploads).toHaveLength(1);
+    mocks.stale.add(useGame.getState().game!.saveId);
+    try {
+      await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
+      localSave();
+      setHidden(true);
+      localSave();
+      await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
+      expect(server.uploads).toHaveLength(1);
+    } finally {
+      mocks.stale.clear();
+    }
   });
 
   it('never sends a showcase world, or with no game on screen', async () => {
@@ -354,5 +397,113 @@ describe('the link lives outside the save (SOC-009 A3)', () => {
     expect(Object.keys(links.dump())).toEqual([CLOUD_LINK_KEY]);
     expect(JSON.stringify(g)).not.toContain(CLOUD_LINK_KEY);
     expect(JSON.stringify(g)).not.toContain(USER.email);
+  });
+});
+
+describe('the review’s fixes (chunk 8 review)', () => {
+  it('B2: with the welcome-back card open, the copy that goes up has the speed the card will resume, not its pause', async () => {
+    useGame.getState().mutate((d) => {
+      d.clock.speed = 0;
+    });
+    useResume.setState({ summary: { resumeSpeed: 3 } as unknown as NonNullable<ReturnType<typeof useResume.getState>['summary']> });
+    await signIn();
+    expect(server.uploads).toHaveLength(1);
+    expect(JSON.parse(server.uploads[0].save.body).state.clock.speed).toBe(3);
+    expect(useGame.getState().game!.clock.speed).toBe(0); // the game on screen is still held by the card
+  });
+
+  it('B3: Load online save stores the online copy once and resumes it once (one catch-up, one paused-game note)', async () => {
+    await signIn();
+    const mine = useGame.getState().game!;
+    const further = structuredClone(mine);
+    further.clock.hour += 40;
+    further.clock.speed = 0;
+    further.lastSavedRealMs = mine.lastSavedRealMs + 5;
+    server.write({}, further);
+    await checkOnline();
+    expect(await loadOnlineCopy()).toBe(true);
+    expect(mocks.imports).toBe(1);
+    expect(useUI.getState().toasts.filter((t) => /paused/.test(t.text))).toHaveLength(1);
+    expect(useGame.getState().game!.clock.hour).toBeGreaterThanOrEqual(further.clock.hour);
+  });
+
+  it('note 1: when this device’s copy can’t be saved first, nothing is loaded over it', async () => {
+    const other = newGame({ starterId: 'axolotl', starterName: 'Pip', seed: 77 });
+    server.write({}, other);
+    await signIn();
+    const mine = useGame.getState().game!;
+    mocks.failSave = true;
+    expect(await loadOnlineCopy()).toBe(false);
+    expect(useGame.getState().game!.saveId).toBe(mine.saveId);
+    expect(mocks.imports).toBe(0);
+    expect(useUI.getState().toasts.at(-1)).toMatchObject({ kind: 'danger', text: 'Couldn’t save — browser storage refused the write.' });
+    expect(useCloud.getState().prompt?.kind).toBe('other'); // the box is still there to choose again
+  });
+
+  it('note 3: a check while a send is under way waits for it, and doesn’t mistake this device’s copy for another’s', async () => {
+    await signIn();
+    let release: () => void = () => {};
+    const slow = vi.mocked(server.service.cloudUpload).getMockImplementation()!;
+    vi.mocked(server.service.cloudUpload).mockImplementationOnce(async (save, expected) => {
+      await new Promise<void>((r) => (release = r));
+      return slow(save, expected);
+    });
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
+    localSave(); // a send starts and waits
+    await vi.advanceTimersByTimeAsync(10);
+    const check = checkOnline();
+    await vi.advanceTimersByTimeAsync(10);
+    release();
+    await check;
+    await vi.advanceTimersByTimeAsync(10);
+    expect(useCloud.getState().prompt).toBeNull();
+    expect(server.online?.meta.revision).toBe(2);
+  });
+
+  it('note 3: a send whose answer never came but which landed is this device’s own copy at the next check', async () => {
+    await signIn();
+    const real = vi.mocked(server.service.cloudUpload).getMockImplementation()!;
+    vi.mocked(server.service.cloudUpload).mockImplementationOnce(async (save, expected) => {
+      await real(save, expected); // it lands…
+      throw { code: 'network' }; // …but the answer is lost
+    });
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
+    localSave();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(useCloud.getState().status).toBe('unreachable');
+    await checkOnline();
+    expect(useCloud.getState().prompt).toBeNull();
+    expect(readLink(USER.id)?.revision).toBe(2);
+  });
+
+  it('note 4: a newer build’s online save blocks only its own account', async () => {
+    const g = useGame.getState().game!;
+    server.write({ schemaVersion: SCHEMA_VERSION + 1 }, g);
+    await signIn();
+    expect(cloudBlocked()).toBe(true);
+    useSocial.setState({ user: null });
+    await vi.advanceTimersByTimeAsync(10);
+    server.clear(); // the second account has no online save
+    useSocial.setState({ user: { ...USER, id: 'user-2', email: 'ola@example.com' } });
+    await vi.advanceTimersByTimeAsync(10);
+    expect(cloudBlocked()).toBe(false);
+    expect(server.uploads).toHaveLength(1);
+  });
+
+  it('note 5: with no connection, a failed send waits out the gap before it tries again', async () => {
+    await signIn();
+    vi.mocked(server.service.cloudUpload).mockRejectedValue({ code: 'network' });
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
+    localSave();
+    await vi.advanceTimersByTimeAsync(10);
+    const tries = vi.mocked(server.service.cloudUpload).mock.calls.length;
+    for (let i = 0; i < 3; i++) {
+      await vi.advanceTimersByTimeAsync(30_000);
+      localSave();
+    }
+    await vi.advanceTimersByTimeAsync(10);
+    expect(vi.mocked(server.service.cloudUpload).mock.calls.length).toBe(tries); // inside the gap: none more
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
+    expect(vi.mocked(server.service.cloudUpload).mock.calls.length).toBe(tries + 1);
   });
 });

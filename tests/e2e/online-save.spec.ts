@@ -120,7 +120,7 @@ test.describe('the online save (the stub, desktop 1440×900)', () => {
     expect(held!.meta.shopName).not.toBe('Other Device');
   });
 
-  test('a different aquarium online has its own title; a new game on this device is that case', async ({ page }) => {
+  test('a different aquarium online has its own title', async ({ page }) => {
     await signIn(page);
     await aq(page, 'social.cloudSyncNow');
     await otherDevice(page, { saveId: 'save_elsewhere_1', shopName: 'Far Away' });

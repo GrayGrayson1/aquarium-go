@@ -143,6 +143,8 @@ describe('invites (§13.3, SOC-006): HIGHLAND-4821 resolves, everything else is 
 
   it('tells an invite code from a club search', () => {
     expect(looksLikeInvite('highland-4821')).toBe(true);
+    expect(looksLikeInvite('friends-kdwx')).toBe(true); // chunk 8: the real codes (ADR-0042)
+    expect(looksLikeInvite('friends-kdw')).toBe(false);
     expect(looksLikeInvite('Highland Betta')).toBe(false);
     expect(looksLikeInvite('reef')).toBe(false);
   });
@@ -374,7 +376,7 @@ describe('chunk 8: the owner’s clubs (ADR-0040 decision 2, ADR-0041 decision 5
     await expect(s.createClub('Reef', 'x'.repeat(81))).rejects.toEqual({ code: 'invalid' });
     const club = await s.createClub(' Aquarium Go Friends ', ' Friends and family of Aquarium Go ');
     expect(club).toMatchObject({ name: 'Aquarium Go Friends', initials: 'AG', members: 1, blurb: 'Friends and family of Aquarium Go', joined: '2026-10' });
-    expect(club.inviteCode).toMatch(/^AQUARIUM-\d{4}$/);
+    expect(club.inviteCode).toMatch(/^AQUARIUM-[A-HJ-NP-Z]{4}$/); // the club's word and four letters (ADR-0042)
     const { mine } = await s.clubs();
     expect(mine.find((c) => c.id === club.id)?.inviteCode).toBe(club.inviteCode);
     expect(mine.find((c) => c.id === HIGHLAND_ID)?.inviteCode).toBeUndefined();
@@ -407,7 +409,7 @@ describe('chunk 8: friend requests (ADR-0040 decision 4)', () => {
     await s.acceptFriend(sam.id);
     expect((await s.friendRequests()).map((r) => r.id)).toEqual([ola.id]);
     const friends = await s.friendsAquariums();
-    expect(friends[0]).toMatchObject({ id: sam.id, owner: 'Sam', title: 'Sam’s aquarium', likes: null });
+    expect(friends[0]).toMatchObject({ id: sam.id, owner: 'Sam', title: 'Sam', likes: null });
     expect(friends[0].snapshotUrl.startsWith('data:image/svg+xml')).toBe(true);
   });
 });

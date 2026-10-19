@@ -43,7 +43,7 @@ export function AccountTab() {
   // "Saved online 2 min ago" moves on while the tab is open
   const [, setTick] = useState(0);
   useEffect(() => {
-    void loadSocialUser();
+    void loadSocialUser(true); // who is signed in now (the connection, or the account, may have changed)
     const t = window.setInterval(() => setTick((n) => n + 1), 30_000);
     return () => window.clearInterval(t);
   }, []);

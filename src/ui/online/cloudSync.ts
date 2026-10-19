@@ -3,7 +3,8 @@
  * save. OWNER: lane "social".
  *
  * While the player is signed in and a game is on screen, the game goes online after a local save lands, at most once
- * every 2 minutes, and at once when the tab is hidden (after the hidden save lands). The device's own saves stay the
+ * every 2 minutes, and at once when the tab is hidden (when the hidden save lands; none lands, none goes). A tab whose
+ * saves are refused because another tab played the aquarium further (the stale-tab rule) sends nothing. The device's own saves stay the
  * source of truth offline; nothing here changes the local save paths. What goes up is the text of an export file
  * (`exportSaveText`), gzipped and base64'd where the browser can (src/social/codec.ts); a body over 4,000,000
  * characters isn't sent, and showcase worlds never are.
@@ -23,7 +24,7 @@ import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { SCHEMA_VERSION, exportSaveText, importSaveText, loadAndResume, saveCurrentGame, saveGame } from '@/persistence';
+import { SCHEMA_VERSION, exportSaveText, importSaveText, isStaleGame, resumeState, saveCurrentGame, saveGame, stateForSaving } from '@/persistence';
 import { autosaveAllowed } from '@/game/useAutosave';
 import { currentStanding, decodeSaveBody, encodeSaveBody, isSocialError, MAX_CLOUD_BODY, socialService, type CloudSaveMeta, type StandingReport } from '@/social';
 import { loadSocialUser, refreshSocialNews, useSocial } from '../panels/social/socialStore';
@@ -38,8 +39,8 @@ export const SEND_GAP_MS = 120_000;
 export const RETURN_CHECK_MS = 120_000;
 /** A new aquarium picture goes up at most this often (REL-030). */
 export const SNAPSHOT_GAP_MS = 30 * 60_000;
-/** After hiding, a send waits this long for the hidden save to land, then goes anyway. */
-const HIDDEN_SEND_WAIT_MS = 3_000;
+/** After hiding, a send waits this long for the hidden save to land (and is dropped if none does). */
+const HIDDEN_SEND_WAIT_MS = 10_000;
 const MAX_SNAPSHOT = 200_000;
 
 export type CloudStatus = 'idle' | 'checking' | 'saving' | 'unreachable' | 'blocked';
@@ -129,7 +130,11 @@ export function forgetCloudLink(userId: string): void {
 
 let started = false;
 let inStep = false;
-let blocked = false;
+/** The account whose online save comes from a newer build: nothing goes up for it this session (PERSIST-014). */
+let blockedFor: string | null = null;
+const isBlocked = (): boolean => !!blockedFor && blockedFor === user()?.id;
+/** What this device last sent (or tried to): an online copy that is exactly it is this device's own, in step. */
+let lastTried: { saveId: string; savedAt: number; hour: number } | null = null;
 /** The check and the send under way, if any (one of each at a time). */
 let checkP: Promise<void> | null = null;
 let recheck = false;
@@ -158,10 +163,13 @@ async function defaultSnapshot(): Promise<string | null> {
 
 const user = () => useSocial.getState().user ?? null;
 
-/** A game this device may put online: on screen, not a showcase, not a dev fixture's (autosave's own rule). */
+/**
+ * A game this device may put online: on screen, not a showcase, not a dev fixture's (autosave's own rule), and not one
+ * another tab played further (its saves are refused, so its copy is behind).
+ */
 function syncableGame(): GameState | null {
   const g = useGame.getState().game;
-  if (!g || g.isShowcase || useUI.getState().screen !== 'game') return null;
+  if (!g || g.isShowcase || useUI.getState().screen !== 'game' || isStaleGame(g.saveId)) return null;
   // autosave off in Settings still lets a manual save go online; a fixture or a showcase never does
   if (!autosaveAllowed() && useSettings.getState().autosave) return null;
   return g;
@@ -189,12 +197,16 @@ function stop(): void {
   sendOnNextSave = false;
   sendAgain = false;
   clearTimers();
-  useCloud.setState({ prompt: null, choosing: false, status: blocked ? 'blocked' : 'idle', syncedAt: null });
+  useCloud.setState({ prompt: null, choosing: false, status: 'idle', syncedAt: null });
 }
 
 /** Read the online copy and decide (§6). A call while one runs folds into one more, after it. */
 export function checkOnline(): Promise<void> {
-  if (!active() || blocked) return Promise.resolve();
+  if (!active()) return Promise.resolve();
+  if (isBlocked()) {
+    useCloud.setState({ status: 'blocked' }); // still blocked for this account (signed out and in again)
+    return Promise.resolve();
+  }
   if (checkP) {
     recheck = true;
     return checkP;
@@ -210,20 +222,28 @@ export function checkOnline(): Promise<void> {
 }
 
 async function runCheck(): Promise<void> {
-  const u = user()!;
+  // a send under way first: its answer moves the link, and a check that read the link before it would mistake this
+  // device's own copy for another device's
+  if (sendP) await sendP;
+  const u = user();
   const g = syncableGame();
-  if (!g) {
+  if (!u || !g) {
     inStep = false;
     return;
   }
   lastCheckAt = Date.now();
-  if (!sendP) useCloud.setState({ status: 'checking' });
+  useCloud.setState({ status: 'checking' });
   const device = deviceCopy(g); // what this device holds now, before the network answers
-  const link = readLink(u.id);
+  let link = readLink(u.id);
   useCloud.setState({ syncedAt: link?.sentAt ?? null });
   try {
     const online = await socialService().cloudMeta();
     if (user()?.id !== u.id) return; // signed out (or in as someone else) meanwhile
+    // a send whose answer never came (a timeout) may still have landed: the copy online is then this device's own
+    if (online && lastTried && online.saveId === lastTried.saveId && online.savedAt === lastTried.savedAt && online.hour === lastTried.hour && online.revision !== link?.revision) {
+      link = { revision: online.revision, saveId: online.saveId, savedAt: online.savedAt, sentAt: link?.sentAt ?? Date.now() };
+      writeLink(u.id, link);
+    }
     const d = decideOnline(online, link, device, SCHEMA_VERSION, Date.now());
     switch (d.kind) {
       case 'wait':
@@ -231,7 +251,7 @@ async function runCheck(): Promise<void> {
         useCloud.setState({ status: 'idle' });
         break;
       case 'blocked':
-        blocked = true;
+        blockedFor = u.id;
         inStep = false;
         useCloud.setState({ status: 'blocked', prompt: null });
         break;
@@ -263,7 +283,7 @@ async function runCheck(): Promise<void> {
 
 /** Send the game on screen now (in step only). Resolves when the answer is in; a call while one runs sends once more after it. */
 export function sendNow(): Promise<void> {
-  if (!active() || blocked || !inStep || useCloud.getState().prompt) return Promise.resolve();
+  if (!active() || isBlocked() || !inStep || useCloud.getState().prompt) return Promise.resolve();
   if (sendP) {
     sendAgain = true;
     return sendP;
@@ -288,12 +308,15 @@ async function runSend(g: GameState, userId: string): Promise<void> {
   useCloud.setState({ status: 'saving' });
   const exportedAt = Date.now();
   try {
-    const body = await encodeSaveBody(exportSaveText(g));
+    // what a local save stores: the speed the welcome-back card will resume, not its pause (R03-03)
+    const body = await encodeSaveBody(exportSaveText(stateForSaving(g)));
     if (body.body.length > MAX_CLOUD_BODY) {
       console.warn(`[aquarium-go] online save not sent: ${body.body.length} characters is over the ${MAX_CLOUD_BODY} limit`);
       useCloud.setState({ status: 'unreachable' });
+      lastSentAt = Date.now(); // not again before the gap is up
       return;
     }
+    lastTried = { saveId: g.saveId, savedAt: g.lastSavedRealMs, hour: g.clock.hour };
     const res = await socialService().cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: dayOf(g), money: g.finance.money, ...body }, expected);
     if (user()?.id !== userId) return;
     lastSentAt = Date.now();
@@ -303,7 +326,7 @@ async function runSend(g: GameState, userId: string): Promise<void> {
       useCloud.setState({ status: 'idle' });
       void report(g);
     } else if (res.reason === 'too_new') {
-      blocked = true;
+      blockedFor = userId;
       inStep = false;
       useCloud.setState({ status: 'blocked' });
     } else {
@@ -312,14 +335,16 @@ async function runSend(g: GameState, userId: string): Promise<void> {
       void checkOnline();
     }
   } catch (e) {
-    useCloud.setState({ status: 'unreachable' }); // the online copy is as it was: the next save tries again
+    // the online copy is as it was (or the send landed unanswered: the next check sees it): try again after the gap
+    lastSentAt = Date.now();
+    useCloud.setState({ status: 'unreachable' });
     if (!(isSocialError(e) && e.code === 'network')) console.warn('[aquarium-go] online save failed', e);
   }
 }
 
 /** A local save landed: send now, or when the 2-minute gap is up. */
 function scheduleSend(): void {
-  if (!active() || blocked) return;
+  if (!active() || isBlocked()) return;
   if (!inStep) {
     // the last check couldn't reach the server: try again, at most once per gap
     if (useCloud.getState().status === 'unreachable' && !useCloud.getState().prompt && Date.now() - lastCheckAt >= SEND_GAP_MS) void checkOnline();
@@ -374,10 +399,11 @@ const LOAD_FAILED = 'That save could not be loaded — it may be damaged. Try it
 const keptId = (saveId: string): string => `${saveId.replace(/_kept_[0-9a-z]+$/, '')}_kept_${Date.now().toString(36)}`.slice(0, 200);
 
 /**
- * "Load online save": download it, import it into the autosave slot (validated, migrated, refused when it's a newer
- * build's) and resume it as Settings › Saves' Load does. This device's game is saved first and stays in the slot's
- * backup, "Previous autosave": when it's the same aquarium it is kept under a new identity, since the backup lists
- * only a different aquarium. Returns whether the online copy is now the game on screen.
+ * "Load online save": download it, check it (validated, migrated, refused when it's a newer build's), store it in the
+ * autosave slot and resume that very state as Settings › Saves' Load does (the offline catch-up, the welcome-back card).
+ * This device's game is saved first and so stays in the slot's backup, "Previous autosave": when it's the same
+ * aquarium it is kept under a new identity, since the backup lists only a different aquarium. If saving this device's
+ * copy fails, nothing is loaded. Returns whether the online copy is now the game on screen.
  */
 export async function loadOnlineCopy(): Promise<boolean> {
   const p = useCloud.getState().prompt;
@@ -397,33 +423,37 @@ export async function loadOnlineCopy(): Promise<boolean> {
       useUI.getState().toast(check.error ?? LOAD_FAILED, 'danger');
       return false;
     }
-    // this device's game into the autosave slot, so the import below rotates it into the backup
+    const incoming = check.state;
+    // this device's game into the autosave slot, so storing the online copy rotates it into the backup
     const g = useGame.getState().game;
     if (g && !g.isShowcase) {
       const saved = await saveCurrentGame('auto', { flush: true, toast: false });
+      // another tab played this aquarium further ('stale'): its copy is the one in the slot, and that one is kept
+      if (!saved.ok && saved.code !== 'stale') {
+        useUI.getState().toast(saved.message, 'danger');
+        return false;
+      }
       const flushed = useGame.getState().game;
-      if (saved.ok && flushed && flushed.saveId === got.meta.saveId) await saveGame({ ...flushed, saveId: keptId(flushed.saveId) }, 'auto');
+      if (saved.ok && flushed && flushed.saveId === incoming.saveId) {
+        const kept = await saveGame({ ...stateForSaving(flushed), saveId: keptId(flushed.saveId) }, 'auto');
+        if (!kept.ok) {
+          useUI.getState().toast(kept.message, 'danger');
+          return false;
+        }
+      }
     }
     const previous = readLink(u.id);
-    writeLink(u.id, { revision: got.meta.revision, saveId: got.meta.saveId, savedAt: got.meta.savedAt, sentAt: Date.now() });
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const imported = await importSaveText(text, 'auto');
-      if (!imported.ok) {
-        writeLink(u.id, previous);
-        useUI.getState().toast(imported.error ?? LOAD_FAILED, 'danger');
-        return false;
-      }
-      const r = await loadAndResume('auto');
-      if (!r.ok || !r.state) {
-        writeLink(u.id, previous);
-        if (r.error) useUI.getState().toast(r.error, 'danger');
-        return false;
-      }
-      // an autosave landing between the import and the load would bring this device's copy back: import again
-      if (r.state.saveId === got.meta.saveId && r.state.lastSavedRealMs === check.state.lastSavedRealMs) break;
+    // the link first: the game's identity changes below, and the check that follows must find it in step
+    writeLink(u.id, { revision: got.meta.revision, saveId: incoming.saveId, savedAt: got.meta.savedAt, sentAt: Date.now() });
+    const imported = await importSaveText(text, 'auto');
+    if (!imported.ok || !imported.state) {
+      writeLink(u.id, previous);
+      useUI.getState().toast(imported.error ?? LOAD_FAILED, 'danger');
+      return false;
     }
+    resumeState(imported.state);
     // the link's time after the game on screen changed, so the change itself doesn't count as this device's play
-    writeLink(u.id, { revision: got.meta.revision, saveId: got.meta.saveId, savedAt: got.meta.savedAt, sentAt: Date.now() });
+    writeLink(u.id, { revision: got.meta.revision, saveId: incoming.saveId, savedAt: got.meta.savedAt, sentAt: Date.now() });
     useUI.getState().set({ hudHidden: false, cameraMode: 'front' });
     expected = got.meta.revision;
     inStep = true;
@@ -486,15 +516,17 @@ export function startCloudSync(): () => void {
       sendOnNextSave = true;
       if (hiddenTimer) clearTimeout(hiddenTimer);
       hiddenTimer = setTimeout(() => {
+        // no hidden save landed (refused, or failed): nothing new to send, and nothing this device didn't keep
         hiddenTimer = null;
-        if (!sendOnNextSave) return;
         sendOnNextSave = false;
-        void sendNow();
       }, HIDDEN_SEND_WAIT_MS);
     } else if (hiddenAt !== null) {
       const away = Date.now() - hiddenAt;
       hiddenAt = null;
-      if (away >= RETURN_CHECK_MS) void checkOnline();
+      if (away < RETURN_CHECK_MS) return;
+      // who is signed in wasn't known for want of a connection: ask again (a sign-in found starts its own check)
+      if (useSocial.getState().offline) void loadSocialUser(true);
+      else void checkOnline();
     }
   };
   if (typeof document !== 'undefined') {
@@ -522,7 +554,9 @@ export async function cloudSyncNow(): Promise<void> {
 export function resetCloudSync(opts: { storage?: KV | null; snapshot?: () => Promise<string | null> } = {}): void {
   clearTimers();
   started = false;
-  inStep = blocked = recheck = sendAgain = sendOnNextSave = false;
+  inStep = recheck = sendAgain = sendOnNextSave = false;
+  blockedFor = null;
+  lastTried = null;
   checkP = sendP = null;
   expected = 0;
   lastSentAt = lastCheckAt = lastSnapshotAt = -Infinity;
@@ -532,5 +566,5 @@ export function resetCloudSync(opts: { storage?: KV | null; snapshot?: () => Pro
   useCloud.setState({ status: 'idle', prompt: null, choosing: false, syncedAt: null });
 }
 
-/** Tests and the Account line: is sending blocked for this session (a newer build's online save)? */
-export const cloudBlocked = (): boolean => blocked;
+/** Tests: is sending blocked for the signed-in account this session (a newer build's online save)? */
+export const cloudBlocked = (): boolean => isBlocked();

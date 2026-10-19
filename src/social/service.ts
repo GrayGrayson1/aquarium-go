@@ -205,8 +205,14 @@ export function validCredentials(email: string, password: string): boolean {
 /** An invite code as typed or pasted, in its canonical form ("highland-4821 " → "HIGHLAND-4821"). */
 export const normalizeCode = (code: string): string => code.trim().toUpperCase();
 
-/** Does this look like an invite code (WORD-1234), as opposed to a club name being searched for? */
-export const looksLikeInvite = (text: string): boolean => /^[A-Z]{2,}-\d{3,}$/.test(normalizeCode(text));
+/**
+ * Does this look like an invite code, as opposed to a club name being searched for? A club's word, a dash, and four
+ * letters (FRIENDS-KDWX: the owner, 2026-10-19, ADR-0042) or, for the stub's sample, digits (HIGHLAND-4821).
+ */
+export const looksLikeInvite = (text: string): boolean => /^[A-Z]{2,10}-(?:[A-Z]{4}|\d{3,})$/.test(normalizeCode(text));
+
+/** chunk 8 — an invite code's four letters: no I or O, so a code read out loud can't be misheard (ADR-0042). */
+export const INVITE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
 /**
  * A friend code's shape (MYAQUA-7Q2): letters and digits, a dash, three letters or digits. Chunk 8: one to twelve
