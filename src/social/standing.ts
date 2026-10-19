@@ -6,13 +6,15 @@
  *   `creatureValue`, plus each tank's hardware and decor at `tankValuation` with no animals (they are already counted).
  * - Prismatics: owned Prismatic animals.
  * - Show wins: class wins (rank 1) judged in the last seven game days.
+ * - Gallons (chunk 8, the friends' tile): every tank's size added up.
  */
 import type { GameState } from '@/types';
 import { creatureValue, tankValuation } from '@/sim/economy/valuation';
 import { isPrismatic } from '@/sim/life/rareVariants';
+import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import type { LeaderboardKind } from './service';
 
-export type PlayerStanding = Record<LeaderboardKind, number> & { name: string };
+export type PlayerStanding = Record<LeaderboardKind, number> & { name: string; gallons?: number };
 
 const WEEK_HOURS = 7 * 24;
 const NO_ANIMALS: ReadonlySet<string> = new Set();
@@ -29,12 +31,14 @@ export function playerStanding(g: GameState): PlayerStanding {
     if (isPrismatic(c)) prismatics++;
   }
   let tanks = 0;
+  let gallons = 0;
   for (const id of g.tankOrder) {
     const v = tankValuation(g, id, { creatureIds: NO_ANIMALS }).expected;
     if (Number.isFinite(v)) tanks += v;
+    gallons += TANK_TIER_BY_ID[g.tanks[id]?.tierId ?? '']?.gallons ?? 0;
   }
   const since = g.clock.hour - WEEK_HOURS;
   let wins = 0;
   for (const e of g.shows?.entries ?? []) if (e.status === 'judged' && e.rank === 1 && (e.judgedHour ?? -Infinity) > since) wins++;
-  return { name: g.shopName || 'My Aquarium', collection_value: Math.round(animals + tanks), prismatics, show_wins: wins };
+  return { name: g.shopName || 'My Aquarium', collection_value: Math.round(animals + tanks), prismatics, show_wins: wins, gallons };
 }

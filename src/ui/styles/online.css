@@ -1,0 +1,14 @@
+/* chunk 8 (ONLINE-STAGE1.md §6, §7; ADR-0040, ADR-0041): the online-save box and Settings › Account */
+.cl-prompt { display: grid; gap: 10px; }
+.cl-card { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: var(--r-md); background: var(--c-fill); border: 1px solid var(--c-line); color: var(--c-ink); font-size: calc(14px * var(--text-scale)); line-height: 1.45; overflow-wrap: anywhere; }
+.cl-card--online { border-color: var(--c-aqua); }
+.cl-card__icon { flex: none; margin-top: 2px; color: var(--c-ink-3); }
+.cl-card--online .cl-card__icon { color: var(--c-aqua); }
+.cl-note { margin: 0; color: var(--c-ink-3); font-size: calc(12.5px * var(--text-scale)); line-height: 1.45; }
+.cl-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 4px; }
+.ac-account { display: grid; gap: 10px; }
+.ac-line { margin: 0; color: var(--c-ink-2); font-size: calc(14px * var(--text-scale)); line-height: 1.45; overflow-wrap: anywhere; }
+.ac-line--strong { color: var(--c-ink); font-weight: 620; }
+.ac-status { margin: 0; color: var(--c-ink-3); font-size: calc(13px * var(--text-scale)); line-height: 1.45; }
+.ac-status--warn { color: var(--c-watch, var(--c-ink-2)); }
+.ac-actions { display: flex; flex-wrap: wrap; gap: 8px; }

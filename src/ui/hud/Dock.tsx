@@ -13,7 +13,8 @@ import { useUI, type PanelId } from '@/state/ui';
 import { useGameSelector, getGame } from '@/state/game';
 import { tutorialStepId } from '@/sim/facility';
 import { safe } from '../common/safe';
-import { useDevMode, useDevTools } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useSocialAvailable } from '../online/mode'; // chunk 8 (REL-025)
 import { sfx } from '@/audio/sfx';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { tutorialFlag } from '../common/actions';
@@ -27,8 +28,11 @@ interface DockItem {
   /** Unlock key that gates it (null = always open). */
   lock?: string | null;
   hint?: string;
-  /** lane:social (chunk 6, ADR-0005 decision 3) — shown only where the developer tools are allowed (dev mode). */
-  devOnly?: boolean;
+  /**
+   * lane:social (chunk 6) — shown only where Social exists: dev mode at first (ADR-0005 decision 3), and from chunk 8
+   * wherever `socialAvailable()` (src/ui/online/mode.ts; the players' build once a project is configured, REL-025).
+   */
+  needsSocial?: boolean;
   /** lane:social (chunk 6, B-152) — an attention dot until first opened (its `opened_<id>` flag), with no unlock key. */
   newUntilOpened?: boolean;
 }
@@ -39,8 +43,8 @@ export const DOCK_ITEMS: DockItem[] = [
   { id: 'market', label: 'Market', icon: Store },
   { id: 'visitors', label: 'Visitors', icon: Users, lock: 'visitors', hint: 'Grow your reputation to open your doors to visitors.' },
   { id: 'shows', label: 'Shows', icon: Trophy, lock: 'shows', hint: 'Finish the guide (or reach 20 reputation) to enter club shows.' }, // lane:shows
-  // lane:social (chunk 6, 0.5 spec §5.4, §13.1) — between Shows and Build; dev mode only until a real backend exists
-  { id: 'social', label: 'Social', icon: Globe, devOnly: true, newUntilOpened: true },
+  // lane:social (chunk 6, 0.5 spec §5.4, §13.1) — between Shows and Build; where Social exists (chunk 8, REL-025)
+  { id: 'social', label: 'Social', icon: Globe, needsSocial: true, newUntilOpened: true },
   { id: 'build', label: 'Build', icon: Hammer },
   // lane:automation (chunk 5, DESIGN-S3D §5.1, ADR-0026 decision 1) — Operations right after Build; Settings left the
   // dock for the gear in the top bar (hud-settings), in every build
@@ -50,9 +54,9 @@ export const DOCK_ITEMS: DockItem[] = [
   { id: 'encyclopedia', label: 'Encyclopedia', icon: BookOpen },
 ];
 
-/** lane:social (chunk 6, SOC-011) — the dock's destinations for this session: Social only in dev mode. */
-export function dockItems(devAllowed: boolean): DockItem[] {
-  return DOCK_ITEMS.filter((it) => !it.devOnly || devAllowed);
+/** lane:social (chunk 6; chunk 8, REL-025) — the dock's destinations for this session: Social only where it exists. */
+export function dockItems(social: boolean): DockItem[] {
+  return DOCK_ITEMS.filter((it) => !it.needsSocial || social);
 }
 
 /** While the guide is on a step that needs a particular panel section, open straight to it. */
@@ -114,7 +118,7 @@ export function Dock() {
   }, [panel, ref]);
   const unlocked = useGameSelector((g) => g.progress.unlocked.join('|'), '');
   const dev = useDevMode();
-  const items = dockItems(useDevTools((s) => s.allowed)); // lane:social (chunk 6)
+  const items = dockItems(useSocialAvailable()); // lane:social (chunk 6; chunk 8, REL-025)
   const isUnlocked = (key?: string | null) => !key || dev || unlocked.split('|').includes(key);
   // lane:notify — attention dots (lane:w2-ui's show-results count badge became one of them)
   const badges = useNavDots(items);

@@ -60,6 +60,8 @@ const ROUTES: [string, Check][] = [
   ['#/settings', (p) => expect(tid(p, 'settings-tab-general')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/play', (p) => expect(tid(p, 'settings-tab-display')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/saves', (p) => expect(tid(p, 'settings-tab-saves')).toHaveAttribute('aria-selected', 'true')],
+  // chunk 8 (REL-031) — Settings › Account (Social exists in the e2e builds: the stub)
+  ['#/settings/account', (p) => expect(tid(p, 'settings-tab-account')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/notifications', (p) => expect(tid(p, 'settings-tab-notifications')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/about', (p) => expect(tid(p, 'settings-tab-about')).toHaveAttribute('aria-selected', 'true')],
   [

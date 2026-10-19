@@ -142,3 +142,21 @@
 /* chunk 6 (DES-011): every one-column Social grid shrinks with the sheet (a grid with no column template grows to
    its widest one-line child, which pushed Clubs past a phone's edge) */
 .so-panel, .so-card, .so-club, .so-noclub, .so-trades, .so-overview:not(.so-overview--two), .so-col, .so-lb__rows, .so-signin, .so-form, .so-field, .so-join, .so-hero { grid-template-columns: minmax(0, 1fr); }
+
+/* chunk 8 (ADR-0039 to ADR-0041): sign-up mode, the privacy note, friend requests, the owner's club controls */
+.so-check { display: flex; align-items: flex-start; gap: 10px; color: var(--c-ink-2); font-size: calc(13.5px * var(--text-scale)); line-height: 1.45; cursor: pointer; }
+.so-check input { flex: none; width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--c-aqua); }
+.so-privacy-link, .so-back { justify-self: start; }
+.so-back { justify-self: center; }
+.so-privacy { display: grid; gap: 10px; color: var(--c-ink-2); font-size: calc(14px * var(--text-scale)); line-height: 1.5; }
+.so-privacy p { margin: 0; }
+.so-privacy ul { display: grid; gap: 4px; margin: 0; padding-left: 20px; }
+.so-requests { display: grid; margin: 0; padding: 0; list-style: none; }
+.so-request { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--c-line); }
+.so-request:first-child { border-top: 0; }
+.so-request__text { flex: 1; min-width: 0; color: var(--c-ink); font-size: calc(14px * var(--text-scale)); overflow-wrap: anywhere; }
+.so-create { justify-items: stretch; }
+.so-create .ag-btn { justify-self: start; }
+.so-strip--invite { flex-wrap: wrap; margin-top: 8px; }
+.so-strip--invite .so-strip__icon { color: var(--c-aqua); }
+.so-strip__url { flex: 1 1 100%; min-width: 0; margin-top: 4px; }

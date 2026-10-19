@@ -21,7 +21,8 @@ import type { PanelId } from '@/state/ui';
 /** The management panels a route can open. Settings has its own kind. Social (chunk 6) opens only in dev mode: the
  *  router turns its addresses away elsewhere (ADR-0005 decision 3, SOC-011). */
 export type NavPanel = Exclude<PanelId, 'settings' | 'dev'>;
-export type SettingsTab = 'general' | 'display' | 'saves' | 'notifications' | 'about';
+// chunk 8 (REL-031) — `account`: Settings › Account, where Social exists
+export type SettingsTab = 'general' | 'display' | 'saves' | 'account' | 'notifications' | 'about';
 export type TankCardTab = 'water' | 'gear' | 'life' | 'value';
 export type EnvFilter = 'all' | 'fits' | 'freshwater' | 'marine' | 'brackish';
 
@@ -96,7 +97,7 @@ const MAP_LAYERS: readonly MapLayer[] = ['water', 'food', 'animals'];
 /** lane:automation (chunk 5) — Build › Facility's room pages. */
 const ROOMS = ['water', 'food'] as const;
 
-const SETTINGS_TABS = tabs(['general', null, 'General'], ['display', 'play', 'Play & access'], ['saves', 'saves', 'Saves'], ['notifications', 'notifications', 'Notifications'], ['about', 'about', 'About']);
+const SETTINGS_TABS = tabs(['general', null, 'General'], ['display', 'play', 'Play & access'], ['saves', 'saves', 'Saves'], ['account', 'account', 'Account'], ['notifications', 'notifications', 'Notifications'], ['about', 'about', 'About']);
 const TANK_TABS = tabs(['water', null, 'Water'], ['gear', 'equipment', 'Equipment'], ['life', 'life', 'Life'], ['value', 'value', 'Value']);
 
 export const NAV_PANELS = Object.keys(PANEL_TABS) as NavPanel[];

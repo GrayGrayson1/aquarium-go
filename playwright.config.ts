@@ -12,8 +12,8 @@ import { defineConfig, devices } from '@playwright/test';
  * Run: `npx playwright test` (all) · `npx playwright test tests/e2e/boot.spec.ts` (one file).
  * That build is made with VITE_E2E_DEV_URL=1, so base-path.spec can open it with ?dev=1 and script it.
  * lane:social (chunk 6), chunk 7 (REL-019) — prod-mode.spec.ts runs on a second production build without that flag,
- * as players get it (into .e2e-dist-prod, served on E2E_PROD_PORT, default 4397, for the `prod` project): no Social
- * (SOC-011), and no developer tools even with ?dev=1. ADR-0024 decision 3 (B-129): every spec also runs in WebKit,
+ * as players get it (into .e2e-dist-prod, served on E2E_PROD_PORT, default 4397, for the `prod` project): no
+ * developer tools even with ?dev=1, and (chunk 8, REL-025) Social as players see it, on the stub. ADR-0024 decision 3 (B-129): every spec also runs in WebKit,
  * Safari's engine (`webkit`, `webkit-base-path`, `webkit-prod`; Playwright's own WebKit build, no npm package).
  * `--project=desktop` runs Chromium alone.
  */
@@ -31,9 +31,11 @@ const PROD_URL = `http://127.0.0.1:${PROD_PORT}${BASE_PATH}`;
 /**
  * chunk 6 — the game these servers serve plays no sound (src/audio/engine.ts): WebKit has no mute switch and played the
  * runs out loud. A build-time flag, so no player's browser is ever muted by it (a server reused with E2E_REUSE=1 keeps
- * whatever it was started with).
+ * whatever it was started with). Chunk 8 (REL-025) — VITE_SOCIAL_STUB: every e2e build's Social runs on the local
+ * stub, so no test ever reaches the live Supabase project (src/ui/online/mode.ts; deploy.yml and render.yaml never
+ * set it).
  */
-const E2E_ENV = { VITE_E2E_MUTE: '1' };
+const E2E_ENV = { VITE_E2E_MUTE: '1', VITE_SOCIAL_STUB: '1' };
 /** chunk 7 (REL-019) — the base-path build honours ?dev=1, so base-path.spec can script it; the players' build never. */
 const E2E_DEV_URL_ENV = { ...E2E_ENV, VITE_E2E_DEV_URL: '1' };
 /** WebKit takes none of Chromium's GPU switches. */

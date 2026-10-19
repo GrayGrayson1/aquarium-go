@@ -1,7 +1,8 @@
 /**
  * Social's signed-in tabs (0.5 spec §13.4–§13.5): Overview (four cards and Sign out), Clubs (search, your club,
  * suggestions), Trading (the coral hero and the trades), Friends (add by code, the snapshot grid) and Leaderboards.
- * OWNER: lane "social".
+ * Chunk 8: Clubs gains the owner's "Create a club" (ADR-0040 decision 2, ADR-0041 decision 5) and Friends the friend
+ * requests to accept (ADR-0040 decision 4). OWNER: lane "social".
  */
 import { useState, type FormEvent } from 'react';
 import clsx from 'clsx';
@@ -9,10 +10,10 @@ import { ArrowLeftRight, Check, Heart, Plus, Search, Sparkles, Users, UserPlus }
 import { Button } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { go } from '@/ui/nav/router';
-import { isSocialError, looksLikeInvite, normalizeCode, socialService, type Club } from '@/social';
+import { CLUB_BLURB_MAX, isSocialError, looksLikeInvite, normalizeCode, socialService, validClubName, type Club } from '@/social';
 import { SOCIAL_COPY as C, count } from './copy';
-import { ClubAvatar, ComingSoon, ErrorNote, FriendGrid, Leaderboard, MemberClub, NetworkError, NoClub, Skeleton, SoCard, TradeList, useFocusOnce } from './parts';
-import { setSocialUser, useSocialQuery } from './socialStore';
+import { ClubAvatar, ComingSoon, ErrorNote, FriendGrid, FriendRequestList, Leaderboard, MemberClub, NetworkError, NoClub, Skeleton, SoCard, TradeList, useFocusOnce } from './parts';
+import { setSocialUser, useSocial, useSocialQuery } from './socialStore';
 
 export type SocialTab = 'overview' | 'clubs' | 'trading' | 'friends' | 'leaderboards';
 export const SOCIAL_TABS: readonly SocialTab[] = ['overview', 'clubs', 'trading', 'friends', 'leaderboards'];
@@ -103,8 +104,10 @@ export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
     }
   };
   const suggested = q.state === 'ok' ? q.data.suggested.filter(matches) : [];
+  const owner = useSocial((s) => !!s.user?.isOwner);
   return (
     <div className="so-tab" data-testid="social-clubs">
+      {owner && <CreateClub onCreated={(c) => patch((d) => ({ ...d, mine: [...d.mine, c] }))} />}
       <form className="so-search" role="search" onSubmit={onSubmit}>
         <Search size={16} aria-hidden className="so-search__icon" />
         <input
@@ -162,6 +165,54 @@ export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
   );
 }
 
+/** chunk 8 (ADR-0041 decision 5) — the owner's "Create a club": a name of 2 to 40 characters and an optional blurb. */
+function CreateClub({ onCreated }: { onCreated: (c: Club) => void }) {
+  const [name, setName] = useState('');
+  const [blurb, setBlurb] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<'name' | 'network' | null>(null);
+  const create = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!validClubName(name)) {
+      setError('name');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const club = await socialService().createClub(name, blurb);
+      onCreated(club);
+      setName('');
+      setBlurb('');
+      useUI.getState().toast(C.toastClubCreated, 'success', { detail: C.toastClubCreatedDetail });
+    } catch (err) {
+      setError(isSocialError(err) && err.code === 'invalid' ? 'name' : 'network');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form className="so-card so-card--plain so-create" onSubmit={create} noValidate data-testid="social-create-club">
+      <h3 className="so-section">
+        <Plus size={14} aria-hidden /> {C.createClubTitle}
+      </h3>
+      {error === 'name' && <ErrorNote>{C.errorClubName}</ErrorNote>}
+      {error === 'network' && <NetworkError />}
+      <label className="so-field">
+        <span className="so-field__label">{C.clubNameLabel}</span>
+        <input className="ag-input so-input" type="text" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" data-testid="social-club-name" />
+      </label>
+      <label className="so-field">
+        <span className="so-field__label">{C.clubAboutLabel}</span>
+        <input className="ag-input so-input" type="text" maxLength={CLUB_BLURB_MAX} value={blurb} onChange={(e) => setBlurb(e.target.value)} autoComplete="off" data-testid="social-club-blurb" />
+      </label>
+      <Button type="submit" variant="primary" disabled={busy} data-testid="social-create-club-submit">
+        <Plus size={15} aria-hidden /> {C.createClub}
+      </Button>
+    </form>
+  );
+}
+
 export function TradingTab() {
   const [trades] = useSocialQuery(() => socialService().trades(), []);
   const [soon, setSoon] = useState(false);
@@ -184,8 +235,35 @@ export function TradingTab() {
   );
 }
 
+/** chunk 8 (ADR-0040 decision 4) — "Friend requests": "{name} added you" with Accept; nothing while there are none. */
+function FriendRequests({ onAccepted }: { onAccepted: () => void }) {
+  const [q, , patch] = useSocialQuery(() => socialService().friendRequests(), []);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  if (q.state !== 'ok' || !q.data.length) return null;
+  const accept = async (id: string) => {
+    setBusy(id);
+    setError(false);
+    try {
+      await socialService().acceptFriend(id);
+      patch((d) => d.filter((r) => r.id !== id));
+      onAccepted();
+    } catch {
+      setError(true);
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <>
+      {error && <NetworkError />}
+      <FriendRequestList requests={q.data} busy={busy} onAccept={(id) => void accept(id)} />
+    </>
+  );
+}
+
 export function FriendsTab() {
-  const [friends] = useSocialQuery(() => socialService().friendsAquariums(), []);
+  const [friends, reloadFriends] = useSocialQuery(() => socialService().friendsAquariums(), []);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<'invalid' | 'network' | null>(null);
@@ -213,6 +291,7 @@ export function FriendsTab() {
       </form>
       {error === 'invalid' && <ErrorNote>{C.errorFriend}</ErrorNote>}
       {error === 'network' && <NetworkError />}
+      <FriendRequests onAccepted={reloadFriends} />
       {friends.state === 'loading' && <Skeleton rows={4} tall />}
       {friends.state === 'error' && <NetworkError />}
       {friends.state === 'ok' && <FriendGrid friends={friends.data} testId="social-friend-grid" />}

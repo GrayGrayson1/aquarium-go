@@ -20,6 +20,9 @@ import { BootCard } from './nav/BootCard';
 import { startRouter, useNav } from './nav/router';
 import { startNotifications } from './notify/deliver'; // lane:notify (chunk 3)
 import { startClubReminder } from './notify/clubReminder'; // lane:social (chunk 6)
+import { startCloudSync } from './online/cloudSync'; // chunk 8 (REL-029)
+import { CloudPrompt } from './online/CloudPrompt';
+import './styles/online.css';
 import { SimFailureBanner } from './common/SimFailureBanner'; // lane:core (chunk 6, B-002)
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';
@@ -59,7 +62,8 @@ export function UIRoot() {
   // lane:ui-shell (chunk 1) — the hash router: links, Back/Forward, and the boot from a link or a reload (§6.4)
   useEffect(() => startRouter(), []);
   useEffect(() => startNotifications(), []); // lane:notify — system notifications while the game is open but not focused
-  useEffect(() => startClubReminder(), []); // lane:social (chunk 6, ADR-0034 decision 4) — dev mode only
+  useEffect(() => startClubReminder(), []); // lane:social (chunk 6, ADR-0034 decision 4) — the stub only
+  useEffect(() => startCloudSync(), []); // chunk 8 (REL-029) — the online save, where Social exists
   const booting = useNav((s) => !!s.boot);
   const screen = useUI((s) => s.screen);
   const reduced = useSettings((s) => s.reducedMotion);
@@ -96,6 +100,10 @@ export function UIRoot() {
         <SimFailureBanner />
         <ErrorBoundary name="settings">
           <SettingsPanel />
+        </ErrorBoundary>
+        {/* chunk 8 — the online-save box, over the game */}
+        <ErrorBoundary name="cloud">
+          <CloudPrompt />
         </ErrorBoundary>
         <ErrorBoundary name="dev">
           {devMode && (
