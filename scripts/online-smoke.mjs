@@ -184,7 +184,8 @@ try {
   // sign-up doesn't ask resolve_invite, so the brake never blocks it, and no network address is kept
   for (let i = 0; i < 100; i++) await anon.rpc('resolve_invite', { p_code: `GUESS-${'ABCDEFGHJKLMNPQRSTUVWXYZ'[i % 24]}${'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(i / 24)]}AA` });
   const braked = await anon.rpc('resolve_invite', { p_code: code });
-  check('after 100 wrong codes the right one gets no answer either (the brake)', !braked.error && braked.data === null, describe(braked));
+  const brakedWrong = await anon.rpc('resolve_invite', { p_code: 'NOPE-ZZZZ' });
+  check('after 100 wrong codes the right one gets "braked", the same as any code (the brake)', braked.data?.braked === true && brakedWrong.data?.braked === true && !('club' in (braked.data ?? {})), describe(braked));
   const cols = admin("select string_agg(column_name, ',') as cols from information_schema.columns where table_schema = 'public' and table_name = 'invite_misses'")[0]?.cols;
   check('the brake keeps only times, no addresses', cols === 'at', String(cols));
   admin(`delete from public.invite_misses where at > to_timestamp(${Math.floor(stamp / 1000)})`);

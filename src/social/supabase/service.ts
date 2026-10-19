@@ -262,6 +262,8 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
       const c = normalizeCode(code);
       if (!c) return null;
       const d = await rpc('resolve_invite', { p_code: c });
+      // the server's brake on wrong codes holds (ADR-0042): not "no such club", so the network message (try again)
+      if (isObj(d) && d.braked === true) throw fail('network');
       if (!isObj(d) || !isObj(d.club)) return null;
       return { club: toClub(d.club), alreadyMember: d.already_member === true };
     },

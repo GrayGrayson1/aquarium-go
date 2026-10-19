@@ -136,7 +136,9 @@ function SignedOut({ invite, offline }: { invite: string | null; offline: boolea
           </div>
         </div>
       )}
-      <SignInForm initialError={offline || (invite && inv.state === 'error' && inv.network) ? 'network' : null} inviteCode={invite && inv.state === 'ok' && inv.data ? invite : null} />
+      {/* chunk 8: an invite that couldn't be checked (no connection, or the server's brake on wrong codes) still fills
+          in the sign-up code: signing up checks it on the server */}
+      <SignInForm initialError={offline || (invite && inv.state === 'error' && inv.network) ? 'network' : null} inviteCode={invite && ((inv.state === 'ok' && inv.data) || inv.state === 'error') ? invite : null} />
     </>
   );
 }

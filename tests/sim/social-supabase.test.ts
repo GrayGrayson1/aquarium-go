@@ -200,6 +200,13 @@ describe('clubs, friends, leaderboards, news (§4.3)', () => {
     ]);
   });
 
+  it('an invite lookup the server’s brake holds is a network error (try again), not “no such club”', async () => {
+    const f = fake({ resolve_invite: { data: { braked: true } } });
+    await expect(service(f).resolveInvite('FRIENDS-KDWX')).rejects.toEqual({ code: 'network' });
+    const g = fake({ resolve_invite: { data: null } });
+    expect(await service(g).resolveInvite('NOPE-ZZZZ')).toBeNull();
+  });
+
   it('createClub checks the name first; the server’s `forbidden` and `invalid` come through', async () => {
     const f = fake({ create_club: { error: { message: 'forbidden', code: 'P0001' } } });
     await expect(service(f).createClub('A', '')).rejects.toEqual({ code: 'invalid' });

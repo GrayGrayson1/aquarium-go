@@ -628,6 +628,11 @@ REL-012, REL-018.
   TRUST_BOUNDARY, KNOWN_LIMITATIONS and the runbook (2); the brake's count under an advisory lock (3); a comment (4);
   KNOWN_LIMITATIONS' wording (5). Pass 2 also showed the sign-in form missed a network error found after it appeared
   (social.spec's network test): fixed.
+- **Its last confirmation pass on `956aa55..4758129`: no blockers, two notes, both fixed in
+  `20261019000300_invite_brake_answer.sql`** (applied live; the advisors still report no issues): a held brake
+  answered null, which showed a friend's real invite link as expired (now `{"braked": true}`, the same for every code:
+  the game shows its network message and keeps the link's code in the sign-up form); and the brake's lock is tried, not
+  waited for, so a flood can't queue calls that each hold a connection.
 
 ## Releases
 

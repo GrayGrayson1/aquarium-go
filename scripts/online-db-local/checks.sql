@@ -48,10 +48,10 @@ select public.resolve_invite(:'invite_code');
 select set_config('request.headers', '{"x-forwarded-for": "203.0.113.7"}', false) \g /dev/null
 select count(public.resolve_invite('GUESS-' || n)) from generate_series(1, 100) as n \g /dev/null
 \echo CASE ok anon-braked
-select case when public.resolve_invite(:'invite_code') is null then 'refused' else (1 / (random() * 0)::int)::text end;
+select case when public.resolve_invite(:'invite_code') = '{"braked": true}'::jsonb then 'braked' else (1 / (random() * 0)::int)::text end;
 select set_config('request.headers', '{"cf-connecting-ip": "198.51.100.9"}', false) \g /dev/null
 \echo CASE ok anon-braked-elsewhere
-select case when public.resolve_invite(:'invite_code') is null then 'refused' else (1 / (random() * 0)::int)::text end;
+select case when public.resolve_invite('NOPE-ZZZZ') = '{"braked": true}'::jsonb then 'braked, the same for any code' else (1 / (random() * 0)::int)::text end;
 reset role;
 \echo CASE ok misses-hold-no-address
 select case when (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'invite_misses') = 1 then 'time only' else (1 / (random() * 0)::int)::text end;

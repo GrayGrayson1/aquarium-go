@@ -222,9 +222,11 @@ sent, within size limits; stage 2 needs its own record before strangers join (`d
   which the API doesn't expose, behind SECURITY INVOKER wrappers of the same names in `public`: Supabase's security
   advisors (`supabase db advisors --linked --project-ref <ref> --type security --level warn`) warn about any
   SECURITY DEFINER function the API exposes, and now report nothing. The third (`…000200_invite_brake.sql`) puts one
-  brake on wrong invite codes: after 100 in 10 minutes, from anyone, `resolve_invite` answers no one until they age
-  out (`invite_misses` keeps only times, 10 minutes; no network addresses, which a caller could forge and the privacy
-  note doesn't cover). Sign-up doesn't ask `resolve_invite`, so the brake never blocks it.
+  brake on wrong invite codes: after 100 in 10 minutes, from anyone, `resolve_invite` answers `{"braked": true}` to
+  every code until they age out (`invite_misses` keeps only times, 10 minutes; no network addresses, which a caller
+  could forge and the privacy note doesn't cover); the fourth (`…000300_invite_brake_answer.sql`) added that answer and
+  tries its lock instead of queueing. The game shows its network message and keeps the link's code in the sign-up form.
+  Sign-up doesn't ask `resolve_invite`, so the brake never blocks it.
 - **The online save** (ONLINE-STAGE1.md §6): the game on screen goes online after a local save lands, at most every 2
   minutes, and when the tab is hidden; the device's own saves stay the source of truth. This device's link (the online
   copy it last sent or loaded, per account) and when a local save last landed live in localStorage
