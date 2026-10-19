@@ -5530,12 +5530,14 @@
       ],
       "description": "The live site's build ignores ?dev=1: a production build has no developer write tools whatever the address says (window.__AQ read-only, no dev panel, no registry fixture, no fixture autosave, no ?sandbox=), while a dev build keeps them; only the e2e build that base-path.spec opens turns ?dev=1 on, with a build-time flag deploy.yml and render.yaml never set.",
       "designSections": [],
-      "evidence": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
       "id": "REL-019",
-      "note": "Chunk 7 (2026-10-18).",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
       "slice": "ALL",
       "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; BACKLOG B-190; changes ADR-0005 decision 2 and ADR-0024 A5 for the live site",
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "tasks": [],
       "tests": [
         "tests/sim/plat-dev-tools.test.ts (the gate's cases; the flag never set by deploy.yml or render.yaml)",
@@ -5550,12 +5552,14 @@
       ],
       "description": "Counter-offers never take a buyer past their private ceiling, and counters stop when bidding closes (ADR-0039 decision 1).",
       "designSections": [],
-      "evidence": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
       "id": "REL-020",
-      "note": "Chunk 7 (2026-10-18).",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
       "slice": "ALL",
       "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; ADR-0039 decision 1; BACKLOG B-124 (M24), B-130",
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "tasks": [],
       "tests": [
         "tests/sim/economy-loops.test.ts (B-124: no sale above the buyer's ceiling, however the counters go; no counter after bidding closes)"
@@ -5568,12 +5572,14 @@
       ],
       "description": "Admission takings peak inside the slider's range: demand keeps falling with price above about twice the fair price, and the sim refuses an admission the slider can't set (ADR-0039 decision 2).",
       "designSections": [],
-      "evidence": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
       "id": "REL-021",
-      "note": "Chunk 7 (2026-10-18).",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
       "slice": "ALL",
       "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; ADR-0039 decision 2; BACKLOG B-162 (M62), B-130",
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "tasks": [],
       "tests": [
         "tests/sim/economy-loops.test.ts (B-162: a day's takings peak inside $0–40)"
@@ -5586,12 +5592,14 @@
       ],
       "description": "A seeded loop hunt: many short sequences of buying, selling, listing, quick-selling, converting and fragging, with no game time passing, never end with more money plus stock value than they began with.",
       "designSections": [],
-      "evidence": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
       "id": "REL-022",
-      "note": "Chunk 7 (2026-10-18).",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
       "slice": "ALL",
       "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; BACKLOG B-130 (M30)",
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "tasks": [],
       "tests": [
         "tests/sim/economy-loop-hunt.test.ts (B-130: 300 seeded sequences of 10 instant actions; money plus what instant sales would pay never rises)"
@@ -5604,12 +5612,14 @@
       ],
       "description": "Water-class research gates hold in the game's rules, not only its screens: buyTank refuses marine, reef and brackish, and convertWaterClass marine and reef (it already refuses brackish), without their research, with the screens' own wording.",
       "designSections": [],
-      "evidence": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
       "id": "REL-023",
-      "note": "Chunk 7 (2026-10-18).",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
       "slice": "ALL",
       "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; BACKLOG B-160 (M60)",
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "tasks": [],
       "tests": [
         "tests/sim/research-gates-in-rules.test.ts"
@@ -5623,12 +5633,14 @@
       ],
       "description": "Chunk 7's cheap items: B-203's other clauses (a show removed on load scratches and refunds its entries with a note; the Live food room's cone and jar cap and the staff skill range read from their tables; an unknown rare-variant origin handled on purpose) and B-204 (the three timing-sensitive e2e tests wait on the panel or the step, not on fixed delays).",
       "designSections": [],
-      "evidence": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
       "id": "REL-024",
-      "note": "Chunk 7 (2026-10-18).",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
       "slice": "ALL",
       "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; BACKLOG B-203, B-204",
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "tasks": [],
       "tests": [
         "tests/sim/core-crafted-saves-limits.test.ts (a removed show's entries scratched and refunded)",

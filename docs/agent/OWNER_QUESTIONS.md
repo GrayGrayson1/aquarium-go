@@ -14,7 +14,7 @@ ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
 Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is answered (2026-10-13); group F's F2–F4
-are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5; multiplayer stage 1 is approved (ADR-0038); chunk 7's two questions and group H are answered (2026-10-18, ADR-0039). Add new ones as a new group, and record them the same way.
+are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5; multiplayer stage 1 is approved (ADR-0038); chunk 7's two questions, group H and the two from chunk 7's review are answered (2026-10-18, ADR-0039). Add new ones as a new group, and record them the same way.
 
 | Group | Unblocks | Questions |
 |---|---|---|

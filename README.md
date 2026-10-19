@@ -50,7 +50,7 @@ npm run qa:motion    # creature-vibration scan (DRAWN=1 for the drawn, pose-filt
 
 Visual QA screenshots: start a dev server (or a preview of a build made with `VITE_E2E_DEV_URL=1`: the shots use the write tools), then run `npm run qa:shots -- http://127.0.0.1:5173`. The images land in `screenshots/`.
 
-For the most stable e2e run, test a production build made with the e2e flag (the tests open the game with `?dev=1`, which a production build honours only with it): `VITE_E2E_DEV_URL=1 npx vite build --outDir .e2e-dist && npx vite preview --outDir .e2e-dist --host 127.0.0.1 --port 4399 --strictPort` (kept out of `dist/`, so a tools-on build is never mistaken for the players' one), then `E2E_REUSE=1 E2E_PORT=4399 npm run e2e` in a second terminal. Without `E2E_REUSE=1`, a server already listening on the e2e port makes the run fail instead of testing whatever that server serves.
+For the most stable e2e run, test a production build made with the e2e flag (the tests open the game with `?dev=1`, which a production build honours only with it): `VITE_E2E_DEV_URL=1 npx vite build --outDir .e2e-dist-reuse && npx vite preview --outDir .e2e-dist-reuse --host 127.0.0.1 --port 4399 --strictPort` (its own folder: not `dist/`, so a tools-on build is never mistaken for the players' one, and not `.e2e-dist`, which the e2e run rebuilds), then `E2E_REUSE=1 E2E_PORT=4399 npm run e2e` in a second terminal. Without `E2E_REUSE=1`, a server already listening on the e2e port makes the run fail instead of testing whatever that server serves.
 
 Regenerate the species research ledger after editing species data: `npm run docs:research`.
 

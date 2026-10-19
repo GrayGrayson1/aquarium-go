@@ -8,8 +8,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 1. **0.5.4 is released** (2026-10-18, ADR-0037 decision 2): ADR-0036's three changes and G1's (the Water room's limits
    and the rare-variant kinds pinned to the save format), on GitHub Pages and Render (see "Releases").
-2. **Chunk 7, hardening for multiplayer, is built** (2026-10-18, `7b98be8`; brief and status below): its fresh review
-   and two full passes of the four checks come next, then push `next`. Then **chunk 8, multiplayer stage 1** for people
+2. **Chunk 7, hardening for multiplayer, is done** (2026-10-18, `7b98be8`, `06f80f8`; brief and record below), on
+   `next`, not released (0.5.5 waits for the owner). Next, **chunk 8, multiplayer stage 1** for people
    the owner knows (ADR-0038, approved 2026-10-18: accounts, cloud saves and the Social screens on a free Supabase
    project apart from anonyform's; H1 and H2 answered early, ADR-0039). Between chunks, the owner's routine: docs
    current and pruned, push, `/compact`, re-read, then build.
@@ -32,10 +32,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
-| 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Built 2026-10-18 (`7b98be8`); its review and two full passes to come |
+| 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (not released). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038) | Approved 2026-10-18; after chunk 7; H1 and H2 answered (ADR-0039) |
 
-**Last full test runs:** 0.5.4's release commit `97da6bc`, the owner's Mac, 2026-10-18, from the internal-disk clone
+**Last full test runs:** chunk 7's final commit `06f80f8`, the owner's Mac, 2026-10-18, from the internal-disk clone,
+twice in a row under `caffeinate -i -s` (passes 4 and 5): typecheck passed; unit 229 files, 2,719 tests passed; build
+passed; e2e 291 of 291 in Chromium and WebKit, dev and both production builds (32.2 and 32.1 minutes). Before them on
+`06f80f8`: pass 2 the same (32.4 min); pass 3 287 of 291, all four failures inside the Mac's idle-sleep windows on
+battery (B-204). Pass 1 on `7b98be8`: 287 of 291 (the tutorial test in both browsers, fixed in `06f80f8`, and two
+WebKit viewports tests inside a sleep window).
+Before chunk 7: 0.5.4's release commit `97da6bc`, the owner's Mac, 2026-10-18, from the internal-disk clone
 checked out at that commit: typecheck passed; unit 227 files, 2,702 tests passed; build passed; e2e 289 of 289 in
 Chromium and WebKit, dev and production builds (31.9 minutes). Before it, `50dc443` (the same code; the CHANGELOG's
 version not yet fixed): the same except e2e 288 of 289 (B-204's fourth: a WebKit graphics error on the title screen,
@@ -439,7 +445,7 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
 REL-012, REL-018.
 
-### 7. Hardening for multiplayer (ADR-0037) — built, in review
+### 7. Hardening for multiplayer (ADR-0037) — done 2026-10-18 (not released)
 
 - **Why:** the owner chose to make the single-player game ready for other players before any backend (ADR-0037
   decisions 3 and 4), starting with `docs/agent/DEBT_INVENTORY.md`'s magnified items. Nothing here adds a server, an
@@ -510,6 +516,19 @@ REL-012, REL-018.
      step. Left in B-204: `social.spec`'s WebKit hang and the WebKit graphics error (no fixed delay to replace).
   - Every new sim test was run failing without its change; no seeded test's expectations shifted. Typecheck and the
     unit tests (229 files, 2,719 tests) passed on the working tree before the commit.
+- **Review (Opus 5.5, max effort) on `afe46d0..ef76be4`:** 3 blockers, 10 notes, fixed in `06f80f8`: the tutorial test
+  now does whatever the guide's current step asks (it had assumed the guide starts on "camera"); the removed-show note
+  and the four extra save-format pins went to the owner (ADR-0039 decisions 5 and 6, both approved); prod-mode.spec
+  stores the Developer tools switch as on and checks no wrench and no Developer section (it fails on the tools-on
+  build). Notes fixed: the router's sandbox check gated, a bid with no ceiling keeps its first one, the loop hunt's
+  limits stated, stale `?dev=1` wording, B-206 logged. Its confirmation pass found one docs blocker (the README's
+  tools-on preview reused `.e2e-dist`, which the e2e run rebuilds: now `.e2e-dist-reuse`) and doc notes, fixed in the
+  chunk's closing docs commit. Left, logged: listings stay open after their end hour until their open offers expire
+  (ADR-0039's "Accept an offer or let it expire"; counters and holds no longer extend them), and a loaded save's
+  admission above $40 is kept (it earns almost nothing).
+- **Tests:** see "Last full test runs". The six e2e failures in passes 1 and 3 that weren't the tutorial test were the
+  Mac idle-sleeping on battery mid-run (`pmset -g log`; one trace shows Vite's client losing its server and reloading
+  the page); long runs now hold sleep off with `caffeinate`.
 
 ### 8. Multiplayer stage 1, for people the owner knows (ADR-0038) — approved, after chunk 7
 

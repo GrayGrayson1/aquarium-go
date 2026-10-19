@@ -198,3 +198,5 @@ STAFF_MAX_SKILL, or adding a rare-variant origin, raises SCHEMA_VERSION (`ROOM_L
   visitors came at more than about twice the fair price, may shift; each change is explained in the commit.
 - OWNER_QUESTIONS: H1 and H2 answered; every owner question is answered except F1 (the VoiceOver pass).
 - Chunk 8's brief carries the note, the checkbox and a US region for the new project.
+- After the review (decisions 5 and 6): the removed-show note stands, and `ROOM_LIMITS_AT` pins the Live food room's
+  limits, the staff skill range and the rare-variant origins; AGENTS.md's Saves rule and PERSIST-003 A7 say so.
