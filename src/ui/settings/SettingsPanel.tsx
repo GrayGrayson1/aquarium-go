@@ -43,9 +43,12 @@ import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
 import { useNavTab } from '../nav/router'; // lane:ui-shell (chunk 1)
 import { NotificationsTab } from './NotificationsTab'; // lane:notify (chunk 3)
+import { AccountTab } from './AccountTab'; // chunk 8 (REL-031)
+import { useSocialAvailable } from '../online/mode';
 
-type Tab = 'general' | 'display' | 'saves' | 'notifications' | 'about';
-const TABS: readonly Tab[] = ['general', 'display', 'saves', 'notifications', 'about'];
+type Tab = 'general' | 'display' | 'saves' | 'account' | 'notifications' | 'about';
+/** chunk 8 (REL-031) — Account only where Social exists (`socialAvailable()`). */
+const TABS: readonly Tab[] = ['general', 'display', 'saves', 'account', 'notifications', 'about'];
 /** ADR-0036 (F4): the tabs with the "Save now" footer, where saving belongs; the others get its height back. */
 const SAVE_FOOTER_TABS: readonly Tab[] = ['general', 'saves'];
 
@@ -517,6 +520,8 @@ export function SettingsPanel() {
   const inGame = useGame((s) => !!s.game && !s.game.isShowcase);
   const [tab, setTab] = useState<Tab>('general');
   const wantTab = useShell((s) => s.settingsTab);
+  const social = useSocialAvailable();
+  const tabs: readonly Tab[] = social ? TABS : TABS.filter((t) => t !== 'account');
   /** A link (Back and Forward) switching to a tab without the footer while Save now has focus: focus moves to that tab
    *  instead of falling to the page as the footer goes. (A clicked tab takes focus itself.) */
   const showTab = (t: Tab) => {
@@ -528,7 +533,7 @@ export function SettingsPanel() {
   useEffect(() => {
     // the title screen's version badge opens Settings straight on About; a link names any tab
     if (open && wantTab) {
-      showTab(TABS.includes(wantTab as Tab) ? (wantTab as Tab) : 'general');
+      showTab(tabs.includes(wantTab as Tab) ? (wantTab as Tab) : 'general');
       useShell.getState().set({ settingsTab: null });
     }
   }, [open, wantTab]);
@@ -550,6 +555,7 @@ export function SettingsPanel() {
             { id: 'general', label: 'General' },
             { id: 'display', label: 'Play & access' },
             { id: 'saves', label: 'Saves' },
+            ...(social ? [{ id: 'account' as const, label: 'Account' }] : []),
             { id: 'notifications', label: 'Notifications' },
             { id: 'about', label: 'About' },
           ]}
@@ -559,6 +565,7 @@ export function SettingsPanel() {
         {tab === 'general' && <GeneralTab />}
         {tab === 'display' && <DisplayTab />}
         {tab === 'saves' && <SavesTab />}
+        {tab === 'account' && social && <AccountTab />}
         {tab === 'notifications' && <NotificationsTab />}
         {tab === 'about' && <AboutTab />}
       </div>

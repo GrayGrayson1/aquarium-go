@@ -46,9 +46,10 @@ export {
   resetSaveSession,
   type SaveSlot,
 } from './slots';
-export { saveCurrentGame, saveCurrentGameSync, slotLabel, type SaveCurrentOptions } from './session';
+export { saveCurrentGame, saveCurrentGameSync, slotLabel, stateForSaving, type SaveCurrentOptions } from './session';
 export {
   loadAndResume,
+  resumeState,
   continueGame,
   simulateOffline,
   offlineHoursFor,

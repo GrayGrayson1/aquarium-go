@@ -104,6 +104,13 @@ export const STAFF_NOTICE_DAYS = 4;
 /** Days of experience to go from skill s to s + 1 is XP_PER_LEVEL × s (so 1→2 takes 8 days, 4→5 takes 32). */
 export const STAFF_XP_PER_LEVEL = 8;
 
+/**
+ * Skill runs from 1 to STAFF_MAX_SKILL (★ to ★★★★★). A save's skill is clamped to this range on load (chunk 7, B-203:
+ * read from here, not written out); raising it raises SCHEMA_VERSION (ADR-0039 decision 6), pinned in
+ * tests/sim/core-save-forward-safety.test.ts.
+ */
+export const STAFF_MAX_SKILL = 5;
+
 /** Default and maximum stock-manager budget ($/day) by facility level. */
 export const STOCK_BUDGET: Record<FacilityLevelId, { default: number; max: number }> = {
   hobby_room: { default: 40, max: 100 },
@@ -116,8 +123,8 @@ export const STOCK_BUDGET: Record<FacilityLevelId, { default: number; max: numbe
 
 export function staffWage(role: StaffRole, skill: number): number {
   const [lo, hi] = STAFF_ROLES[role].wage;
-  const s = Math.max(1, Math.min(5, Math.round(skill)));
-  return Math.round(lo + ((hi - lo) * (s - 1)) / 4);
+  const s = Math.max(1, Math.min(STAFF_MAX_SKILL, Math.round(skill)));
+  return Math.round(lo + ((hi - lo) * (s - 1)) / (STAFF_MAX_SKILL - 1));
 }
 
 /**
@@ -125,7 +132,7 @@ export function staffWage(role: StaffRole, skill: number): number {
  * a 125-gallon ≈ 1.6, the 1,000-gallon display ≈ 3.3 — bigger tanks take longer, but not linearly longer.
  */
 export function aquaristCapacity(skill: number): number {
-  const s = Math.max(1, Math.min(5, Math.round(skill)));
+  const s = Math.max(1, Math.min(STAFF_MAX_SKILL, Math.round(skill)));
   return 4 + 1.5 * (s - 1);
 }
 
@@ -137,7 +144,7 @@ export function tankCareUnits(gallons: number, marine: boolean, trait?: StaffTra
 
 /** Exhibits one docent covers in their talks and floor time. */
 export function docentReach(skill: number): number {
-  return 3 + Math.max(1, Math.min(5, Math.round(skill)));
+  return 3 + Math.max(1, Math.min(STAFF_MAX_SKILL, Math.round(skill)));
 }
 
 // Original, everyday names from many backgrounds (no real people). Combined as "First Last".
@@ -156,6 +163,6 @@ export const STAFF_LAST_NAMES = [
 
 /** Star string for a skill level ("★★★☆☆" or compact "★★★"). */
 export function skillStars(skill: number, full = false): string {
-  const s = Math.max(0, Math.min(5, Math.round(skill)));
-  return full ? '★'.repeat(s) + '☆'.repeat(5 - s) : '★'.repeat(s);
+  const s = Math.max(0, Math.min(STAFF_MAX_SKILL, Math.round(skill)));
+  return full ? '★'.repeat(s) + '☆'.repeat(STAFF_MAX_SKILL - s) : '★'.repeat(s);
 }

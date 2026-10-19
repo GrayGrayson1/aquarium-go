@@ -34,7 +34,8 @@ import { toastMark, reportLoadFailure } from '../screens/loadFeedback';
 import { useTankCardTab } from '../cards/tankCardTab';
 import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
-import { devToolsAllowed } from '@/state/devTools'; // lane:social (chunk 6)
+import { urlSandboxName } from '@/state/devTools'; // chunk 7 (REL-019)
+import { socialAvailable } from '../online/mode'; // lane:social (chunk 6; chunk 8, REL-025)
 import {
   formatRoute,
   isNavPanel,
@@ -85,12 +86,13 @@ const GESTURE_MS = 1500;
 const SESSION_KEY = 'aquarium-go.nav.v1';
 
 /**
- * lane:social (chunk 6, SOC-011) — parse an address for this session: outside dev mode a Social address names nothing
- * (ADR-0005 decision 3), so it boots and lands like a broken link and never shows a "Then: Social" pill.
+ * lane:social (chunk 6, SOC-011) — parse an address for this session: where Social doesn't exist (chunk 8: not
+ * `socialAvailable()`, REL-025) a Social address names nothing, so it boots and lands like a broken link and never
+ * shows a "Then: Social" pill.
  */
 export function parseNav(hash: string): ParsedRoute | null {
   const parsed = parseRoute(hash);
-  return parsed && parsed.route.kind === 'panel' && parsed.route.panel === 'social' && !devToolsAllowed() ? null : parsed;
+  return parsed && parsed.route.kind === 'panel' && parsed.route.panel === 'social' && !socialAvailable() ? null : parsed;
 }
 
 /** §6.5, §16: a link that names nothing. */
@@ -297,9 +299,9 @@ function applyInner(route: Route, filters: ShopFilters | undefined): void {
     }
     case 'panel': {
       const { panel: p, target } = route;
-      if (p === 'social' && !devToolsAllowed()) {
-        // lane:social (chunk 6) — Social is dev-only until a real backend exists (ADR-0005 decision 3, SOC-011): its
-        // addresses name nothing a player can open
+      if (p === 'social' && !socialAvailable()) {
+        // lane:social (chunk 6) — where Social doesn't exist (chunk 8: not `socialAvailable()`, REL-025; dev mode only
+        // before it, ADR-0005 decision 3) its addresses name nothing a player can open
         toast(BROKEN_LINK);
         return applyInner(HOME, undefined);
       }
@@ -390,10 +392,9 @@ function captureBoot(): BootCapture {
   } catch {
     /* an older engine: treat it as a link */
   }
-  const q = new URLSearchParams(location.search);
   const hash = location.hash === '#' ? '' : location.hash;
   const returning = type === 'reload' || type === 'back_forward';
-  const urlBoot = !!urlFixtureName(location.search) || q.has('sandbox'); // (a fixture that doesn't boot is an ordinary page)
+  const urlBoot = !!urlFixtureName(location.search) || urlSandboxName(location.search) !== null; // (a fixture or sandbox that doesn't boot is an ordinary page)
   const parsed = hash ? parseNav(hash) : null;
   const loads = !!hash && !urlBoot && (returning || (!!parsed && parsed.route.kind !== 'home'));
   return { hash, returning, urlBoot, loads, used: useUI.getState().screen !== 'boot' };

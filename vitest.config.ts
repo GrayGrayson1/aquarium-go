@@ -19,7 +19,8 @@ export default defineConfig({
     hookTimeout: 60000,
     // Render's build machine (it runs the tests before publishing, ADR-0035) has few CPUs: six workers starved each
     // other until long simulation tests held a worker past Vitest's 60 s RPC reply timer ("Timeout calling
-    // onTaskUpdate", ADR-0010) in a run where every test passed. Two workers there; six elsewhere.
-    maxWorkers: process.env.RENDER ? 2 : 6,
+    // onTaskUpdate", ADR-0010) in a run where every test passed. GitHub's runner did the same in 0.5.4's Pages run
+    // (B-205). Two workers on both (CI is set on GitHub Actions); six elsewhere.
+    maxWorkers: process.env.RENDER || process.env.CI ? 2 : 6,
   },
 });

@@ -11,7 +11,7 @@ import { creaturesInTank, clutchesInTank } from './life';
 import { spend, SALT_PRICE_PER_KG } from './economy';
 import { saltKgFor, LITRES_PER_GALLON, isSaltClass } from './water/constants'; // the shared salt formula (B-169)
 import { getEquipmentDef } from '@/data/catalog/equipment'; // lane:staff
-import { isUnlocked } from './facility'; // lane:brackish
+import { waterClassLock } from './facility'; // lane:brackish; chunk 7 (B-160)
 import { reseatDecor } from './aquascape'; // lane:staff
 import { getDecorDef } from '@/data/catalog/decor';
 import { getSubstrateDef } from '@/data/catalog/substrates';
@@ -107,8 +107,9 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
   if (!gate.ok) return { ok: false, message: gate.reason ?? 'Not possible' };
   settleTanks(state, [tankId]); // its owed hours run on the old water, then it changes (ADR-0026 decision 5, chunk 5)
   if (t.waterClass === wc) return { ok: true, message: 'No change' };
-  // lane:brackish — brackish water needs the estuary know-how first.
-  if (wc === 'brackish' && !isUnlocked(state, 'brackish')) return { ok: false, message: 'Brackish water unlocks with the Brackish Estuaries research.' };
+  // lane:brackish, chunk 7 (B-160) — brackish, marine and reef water need their research first (the rule, not only the screen).
+  const waterLock = waterClassLock(state, wc);
+  if (waterLock) return { ok: false, message: waterLock };
   const cost = convertWaterClassCost(state, tankId, wc);
   const bill: string[] = [];
   if (cost.substrate > 0) bill.push(`${getSubstrateDef(cost.substrateKind!)?.name.toLowerCase() ?? 'new'} bed $${cost.substrate}`);

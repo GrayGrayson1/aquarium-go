@@ -9,7 +9,7 @@ import { Users, DoorOpen, DoorClosed, Ticket, HandCoins, Smile, Sparkles, Meh, F
 import type { GameState, VisitorReaction } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { setOpenToPublic, setAdmission, toggleSignage, visitorSummary, SIGN_COST, type VisitorSummary } from '@/sim/facility';
+import { setOpenToPublic, setAdmission, toggleSignage, visitorSummary, SIGN_COST, MAX_ADMISSION, type VisitorSummary } from '@/sim/facility';
 import { getFacilityLevel } from '@/data/facilities';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { formatClock } from '@/sim/time';
@@ -220,7 +220,7 @@ function AdmissionCard({ g, fair }: { g: GameState; fair?: number }) {
       <SectionHead title="Admission price" icon={<Ticket size={14} />}>
         <span className="pn-admission__v">{price === 0 ? 'Free' : formatMoney(price)}</span>
       </SectionHead>
-      <Slider value={price} min={0} max={40} step={1} onChange={commit} label="Admission price" />
+      <Slider value={price} min={0} max={MAX_ADMISSION} step={1} onChange={commit} label="Admission price" />
       <div className="pn-row pn-row--between pn-tiny pn-muted" style={{ marginTop: 4 }}>
         <span>Free</span>
         <span>$40</span>

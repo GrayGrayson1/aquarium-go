@@ -6,16 +6,19 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **0.5.4 is being released** (ADR-0037 decision 2, the owner's go-ahead in the session on 2026-10-18): ADR-0036's
-   three changes and G1's (the Water room's limits and the rare-variant kinds pinned to the save format), after one
-   full green pass of the four checks, on GitHub Pages and Render ("After 0.5.3" under chunk 6).
-2. **Then chunk 7, hardening for multiplayer** (brief below), with the multiplayer decision record drafted beside it as
-   Proposed (ADR-0037 decision 3; REL-002's gate). The first multiplayer players are people the owner knows (decision
-   4). Between chunks, the owner's routine: docs current and pruned, push, `/compact`, re-read, then build.
-3. **Released:** 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4 and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2
-   and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see "Releases").
-4. Every owner question is answered (ADR-0024 to ADR-0037) except F1, the owner's VoiceOver pass during the
-   play-through on a phone and a desktop (ACC-005), in `docs/agent/OWNER_QUESTIONS.md`. NOTIFY-011 and PLAT-004 (the
+1. **0.5.4 is released** (2026-10-18, ADR-0037 decision 2): ADR-0036's three changes and G1's (the Water room's limits
+   and the rare-variant kinds pinned to the save format), on GitHub Pages and Render (see "Releases").
+2. **Chunks 7 and 8 are done on `next`, not released.** Chunk 7, hardening for multiplayer (2026-10-18, `7b98be8`,
+   `06f80f8`). **Chunk 8, multiplayer stage 1** for people the owner knows (2026-10-19, `ee4998e` to `53cd7bf`; built
+   by Marshall; ADR-0038 to ADR-0042): accounts by invite code, one online save, Social on the live Supabase project
+   (ref `zkavcxrsxdgdlstravpj`, the Free organization "Aquarium Go"). Next: **the release (the owner's call)**, then
+   the owner signs up with the first club's link and, with the owner's yes, the owner flag is set (ARCHITECTURE.md's
+   runbook). `docs/agent/SESSION_HANDOFF.md` has the order of work.
+3. **Released:** 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
+   "Releases").
+4. Every owner question is answered (ADR-0024 to ADR-0042) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
 
@@ -30,12 +33,27 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
-| 7 | Hardening for multiplayer (ADR-0037) | Planned: after 0.5.4, with the multiplayer decision record drafted beside it |
+| 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (not released). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
+| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (not released). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 
-**Last full test runs:** chunk 6's two passes in a row (REL-013) on `9bff79e`, its final code, the owner's Mac,
-2026-10-15, in Claude Code from the internal-disk clone checked out at that commit: typecheck passed; unit 226 files,
-2,697 tests passed; build passed; e2e 285 of 285 in Chromium and WebKit, dev and production builds (32.0 and 32.4
-minutes), both times. Earlier: `d7560f9` clean (2,696; 281 of 281); `db25042` one failure (`shop-filters.spec.ts:75`, a
+**Last full test runs:** chunk 8's final commit `53cd7bf`, the owner's Mac, 2026-10-19, from the internal-disk clone,
+twice in a row under `caffeinate -i -s` (passes 3 and 4): typecheck passed; unit 235 files, 2,828 tests passed; build
+passed; e2e 307 of 307 in Chromium and WebKit, dev and both production builds (35.7 and 35.2 minutes). Before them:
+pass 1 on `6f5f724` (302 of 307: six Settings tabs and Social's re-ask, both chunk 8 effects then fixed, and one
+WebKit perf timing while another project's e2e and the review ran on the same Mac) and pass 2 on `956aa55` (306 of
+307: the sign-in form's late network error, then fixed). The live smoke test on the project: 80 of 80.
+Before chunk 8: chunk 7's final commit `06f80f8`, the owner's Mac, 2026-10-18, from the internal-disk clone,
+twice in a row under `caffeinate -i -s` (passes 4 and 5): typecheck passed; unit 229 files, 2,719 tests passed; build
+passed; e2e 291 of 291 in Chromium and WebKit, dev and both production builds (32.2 and 32.1 minutes). Before them on
+`06f80f8`: pass 2 the same (32.4 min); pass 3 287 of 291, all four failures inside the Mac's idle-sleep windows on
+battery (B-204). Pass 1 on `7b98be8`: 287 of 291 (the tutorial test in both browsers, fixed in `06f80f8`, and two
+WebKit viewports tests inside a sleep window).
+Before chunk 7: 0.5.4's release commit `97da6bc`, the owner's Mac, 2026-10-18, from the internal-disk clone
+checked out at that commit: typecheck passed; unit 227 files, 2,702 tests passed; build passed; e2e 289 of 289 in
+Chromium and WebKit, dev and production builds (31.9 minutes). Before it, `50dc443` (the same code; the CHANGELOG's
+version not yet fixed): the same except e2e 288 of 289 (B-204's fourth: a WebKit graphics error on the title screen,
+26 of 26 alone). Chunk 6's two passes in a row (REL-013) on `9bff79e`, 2026-10-15: typecheck, unit 2,697, build, e2e
+285 of 285, both times. Earlier: `d7560f9` clean (2,696; 281 of 281); `db25042` one failure (`shop-filters.spec.ts:75`, a
 sheet's focus race, fixed in `e23b8a2`).
 
 ## How a chunk runs
@@ -426,12 +444,15 @@ is done, set its ids to `GREEN` (or `DEFERRED`, with the reason in `note`).
   makes both tables bigger and checks a save at the new limits loads unchanged. All three new tests were run failing
   without the change, and the pin failing with the reservoir limit raised to 4. B-203 partly fixed (its removed-show
   clause goes to chunk 7).
+- **Released as 0.5.4 on 2026-10-18** (see "Releases"). Its fresh review (Opus 5.5, max) on `ce5dcc0..50dc443`: one
+  blocker, the CHANGELOG's "since 0.5.3" for B-175's fix, which shipped in 0.5.2, fixed in `97da6bc` with 11 notes
+  (docs, chunk 7's brief made buildable; the pin test's `prepPrices` check and two comment fixes after the release).
 
 **Deferred:** NOTIFY-011 and PLAT-004 (alerts while the game is closed, the native wrapper: 0.5 phase 6, needs the
 owner). **Retired with the harness:** HARNESS-001 to HARNESS-030, PERF-003, REL-001, REL-003, REL-009, REL-010,
 REL-012, REL-018.
 
-### 7. Hardening for multiplayer (ADR-0037) — planned
+### 7. Hardening for multiplayer (ADR-0037) — done 2026-10-18 (not released)
 
 - **Why:** the owner chose to make the single-player game ready for other players before any backend (ADR-0037
   decisions 3 and 4), starting with `docs/agent/DEBT_INVENTORY.md`'s magnified items. Nothing here adds a server, an
@@ -471,11 +492,153 @@ REL-012, REL-018.
 - **Done when:** the four checks pass on the final code twice in a row (REL-013); one fresh reviewer (Opus 5.5, max
   effort) reads `git diff <start>..HEAD` against this brief and its blockers are fixed; DEBT_INVENTORY's magnified
   rows and TRUST_BOUNDARY's dev-tools line are brought up to date.
-- **Beside it:** the multiplayer decision record (REL-002's gate), Proposed, for the owner to approve. It covers the
-  first version for people the owner knows (accounts, cloud saves, clubs and friends' leaderboards through the Social
-  screens' `SocialService`), the backend options with what each costs, and what moves to a server later, and when.
-  No backend, account or cloud-save code until the owner approves it.
+- **Beside it:** the multiplayer decision record, drafted 2026-10-18 and approved for stage 1 the same day (ADR-0038):
+  chunk 8.
 - **Not in this chunk:** a server, accounts, cloud saves, trading, or running the offline catch-up on a server.
+- **The owner's answers before building (ADR-0039, 2026-10-18):** counters capped at the buyer's limit and stopped once
+  bidding closes ("Bidding has closed. Accept an offer or let it expire."); admission demand keeps falling above about
+  twice the fair price, with $40 the rules' cap. The before-and-after numbers came from two throwaway probes
+  (`scripts/_audit/H7/`, git-excluded) and are in the ADR.
+- **As built (`7b98be8`; requirements REL-019 to REL-024):**
+  1. REL-019: `devToolsAtBoot(devBuild, VITE_E2E_DEV_URL, address)` in `src/state/devTools.ts`; `urlSandboxName` gates
+     `?sandbox=`. `playwright.config.ts` builds `.e2e-dist` with the flag (base-path.spec) and `.e2e-dist-prod` without
+     it on E2E_PROD_PORT 4397 (projects `prod`, `webkit-prod`: prod-mode.spec, which also opens `?dev=1`, a registry
+     fixture and a sandbox). `plat-dev-tools` checks the gate's cases and that `deploy.yml` and `render.yaml` never set
+     the flag. A production preview reused with E2E_REUSE=1 must be built with the flag (README).
+  2. REL-020: splits capped at the ceiling, a buyer at their ceiling holds; `holdBidForCounter` and `counterBid` refuse
+     after the listing's end hour. `fix-econ-listings`' hold test now opens the form before bidding closes (at 10× an
+     offer outlives the bidding window).
+  3. REL-021: `admissionDraw` (the line to 1.15 ÷ 0.6 × fair, then the square law) and `MAX_ADMISSION` ($40, the
+     slider's end too).
+  4. REL-022: `tests/sim/economy-loop-hunt.test.ts`: 300 seeded sequences of 10 instant actions on `frags_reef`; worth is
+     money plus what one batch per kind of instant sales would pay (a frag cut from every ready piece included, so a
+     cut only realises growth that has already happened: a bought piece starts below a cut's growth). Checked failing
+     with decor sold back at 105%.
+  5. REL-023: `waterClassLock` in `src/sim/facility/progression.ts` (the screens' rule and wording), used by `buyTank`,
+     `convertWaterClass`, Build and Tanks.
+  6. REL-024: a show removed on load scratches and refunds its pending entries ("This show was called off. The club
+     refunded the fee.", reachable only from a damaged save); `FOOD_ROOM`'s maxima, `STAFF_MAX_SKILL` and
+     `RARE_VARIANT_ORIGINS` read on load and pinned (`ROOM_LIMITS_AT` in `core-save-forward-safety`: ADR-0037's rule
+     applied to the limits its review found, approved after the review as ADR-0039 decision 6, with the note); B-204's route walk and tutorial test wait on the router and the guide's
+     step. Left in B-204: `social.spec`'s WebKit hang and the WebKit graphics error (no fixed delay to replace).
+  - Every new sim test was run failing without its change; no seeded test's expectations shifted. Typecheck and the
+    unit tests (229 files, 2,719 tests) passed on the working tree before the commit.
+- **Review (Opus 5.5, max effort) on `afe46d0..ef76be4`:** 3 blockers, 10 notes, fixed in `06f80f8`: the tutorial test
+  now does whatever the guide's current step asks (it had assumed the guide starts on "camera"); the removed-show note
+  and the four extra save-format pins went to the owner (ADR-0039 decisions 5 and 6, both approved); prod-mode.spec
+  stores the Developer tools switch as on and checks no wrench and no Developer section (it fails on the tools-on
+  build). Notes fixed: the router's sandbox check gated, a bid with no ceiling keeps its first one, the loop hunt's
+  limits stated, stale `?dev=1` wording, B-206 logged. Its confirmation pass found one docs blocker (the README's
+  tools-on preview reused `.e2e-dist`, which the e2e run rebuilds: now `.e2e-dist-reuse`) and doc notes, fixed in the
+  chunk's closing docs commit. Left, logged: listings stay open after their end hour until their open offers expire
+  (ADR-0039's "Accept an offer or let it expire"; counters and holds no longer extend them), and a loaded save's
+  admission above $40 is kept (it earns almost nothing).
+- **Tests:** see "Last full test runs". The six e2e failures in passes 1 and 3 that weren't the tutorial test were the
+  Mac idle-sleeping on battery mid-run (`pmset -g log`; one trace shows Vite's client losing its server and reloading
+  the page); long runs now hold sleep off with `caffeinate`.
+
+### 8. Multiplayer stage 1, for people the owner knows (ADR-0038, ADR-0040) — brief written 2026-10-19; handed to Marshall
+
+- **What:** ADR-0038's stage 1: accounts (email and password, sign-up only with a club's invite code, no emails,
+  "Delete my account"), one online save (local first; when the online copy differs, the player picks a copy;
+  PERSIST-014 on the device and the server), and the Social screens for players of the live site on the real service
+  (clubs, friend codes with requests to accept, friends' aquarium pictures, leaderboards among friends and club
+  members; trades stay "open later"). The server trusts each browser on purpose; nothing of stage 2 or 3.
+- **Design:** `docs/agent/design/ONLINE-STAGE1.md`, the build plan: the code layout and layer rules (§2), the setup
+  steps (§3), the database (§4: row-level security on every table, no table access, a small set of security-definer
+  functions), the client (§5), the online save's rules (§6), the screens and words (§7) and the tests (§8).
+- **Owner answers (ADR-0040, 2026-10-19):** the agent sets up the Supabase project with the CLI on the owner's Mac
+  (a Free organization "Aquarium Go", the project `aquarium-go` in `us-east-1`, a random database password nobody
+  keeps; stop if it isn't Free, costs money or would touch anonyform); **only the owner creates clubs, for now**, and
+  a club's invite code is the sign-up code (the first club, "Aquarium Go Friends", made with SQL); the sign-up,
+  account and online-save wording approved as asked; ADR-0039's privacy note and 13-and-over checkbox.
+- **Group I (ADR-0041, 2026-10-19):** the strings ONLINE-STAGE1.md §7.3 drafted, asked in one round at the chunk's
+  start, approved as written (with the privacy link named by the note's title and "Signed in as {email}" on Settings ›
+  Account).
+- **Platform:** `@supabase/supabase-js` at exactly 2.117.2 (approved, ADR-0038 decision 2; `core-dependencies`' list
+  changes citing it); SQL in `supabase/migrations`, sign-in settings in `supabase/config.toml`; the project's address
+  and publishable key in `src/social/project.ts`. No change to `deploy.yml`, `render.yaml` or Render's settings.
+  The stub stays for dev mode and every e2e build (`VITE_SOCIAL_STUB=1` in Playwright's `E2E_ENV`); e2e never reaches
+  the live project. Setting up the project (ONLINE-STAGE1.md §3) comes once the migration and the smoke test exist.
+- **Requirements:** REL-025 to REL-033 (`docs/agent/REQUIREMENTS.json`); SOC-011's dev-only criteria superseded on
+  purpose by REL-025; SOC-002 and SOC-009 extended to the real service.
+- **Done when:** the four checks pass twice in a row on the final code (Chromium and WebKit, under `caffeinate`); the
+  live smoke test passes and leaves nothing behind; one fresh reviewer (Opus 5.5, max effort) has read
+  `git diff fd0e0fd..HEAD` against this brief and its blockers are fixed; PLAN.md records the project ref and the runs
+  (the first club's code goes to the owner in the session, not here: the repo is public, ADR-0042). Releasing (with chunk 7, as 0.5.5 or 0.6.0) is the owner's call; once released, the owner
+  signs up with the first club's link, and the agent sets the owner flag with the owner's yes (§3 step 10).
+- **Not in chunk 8:** sign-in on the title screen (a new device starts a game first), likes, leaving a club, club
+  events, trades, email.
+- **As built (`ee4998e`, `6f5f724`; REL-025 to REL-033):**
+  1. REL-025: `src/ui/online/mode.ts` (`socialModeFor`, `socialAvailable`); the panel host, the dock (`needsSocial`),
+     More, `parseNav` and the router gate on it, so SOC-011 is superseded on purpose; `VITE_SOCIAL_STUB` in
+     Playwright's `E2E_ENV`; `@supabase/supabase-js` 2.117.2 exactly, one dynamic import.
+  2. REL-027: `supabase/migrations/20261019000000_stage1.sql` (five tables with row-level security, no policies or
+     table grants; security-definer functions with an empty search_path; the sign-up and profile triggers on
+     `auth.users`); `supabase/config.toml`; `tests/sim/supabase-migration.test.ts`; `scripts/online-smoke.mjs`.
+  3. REL-028, REL-030: the grown interface, the stub (with its dev hooks) and the Supabase service; sign-up mode, the
+     privacy note, friend requests, the owner's Create a club and invite links, no likes on real tiles.
+  4. REL-029: `src/ui/online/cloudSync.ts`, `rules.ts`, `CloudPrompt.tsx`. Two choices beyond the design's words:
+     "this device changed since the link" is "a local save of this aquarium landed after the last send" (the
+     device's own clock, `aquarium-go.cloud.v1`), so a hidden tab's send waits for its hidden save to land; and
+     loading the online copy of the *same* aquarium keeps this device's copy under a new `saveId` (`…_kept_…`),
+     because the slot's backup is listed as "Previous autosave" only when it holds a different aquarium.
+  5. REL-031: Settings › Account (`#/settings/account`, after Saves, where Social exists).
+  6. REL-033: ARCHITECTURE.md "Online" with the owner's runbook, TRUST_BOUNDARY.md, DEBT_INVENTORY.md,
+     KNOWN_LIMITATIONS.md, TEST_IDS.md, README.
+  - Also: a friend code may start with one to twelve letters (a two-letter name such as "Al" made a code the stub's
+    shape check refused); the kit's Modal gains `dismissible`.
+  - **The repo is public** (GrayGrayson1/aquarium-go), so the first club's invite code, which is also the sign-up
+    code, isn't written here: it went to the owner in the session, and `select name, invite_code from public.clubs`
+    reads it back (ARCHITECTURE.md's runbook). The owner agreed and chose to keep the repo public (ADR-0042).
+- **The setup (2026-10-19, ADR-0040 decision 1, ADR-0042):** the Free organization "Aquarium Go"
+  (`kvqnsqbjufmnkpsrcjbj`, created with the CLI, no payment method; the owner found it in the dashboard) holds the
+  project `aquarium-go`, **ref `zkavcxrsxdgdlstravpj`**, us-east-1, free size, a random database password nobody
+  keeps. Every remote command named that ref; nothing touched GrayGrayson1 or anonyform. `supabase config push`
+  changed only the five sign-in settings meant (redirect URLs, confirmation off, passwords of 8, the site address),
+  after `supabase/config.toml`'s other settings were matched to the project's. Both migrations applied with
+  `db query --linked --project-ref`; `db advisors --type security --level warn`: no issues (the first file alone
+  drew 18 warnings, one per SECURITY DEFINER function the API exposed: the second file moved them to `private`). The
+  first club "Aquarium Go Friends" made with SQL (code to the owner). `src/social/project.ts` holds the address and
+  the publishable key (`sb_publishable_…`); the secret key was never printed or saved.
+  - Checked before the live run: `scripts/online-db-local/run.sh` (new: a throwaway local Postgres 16 with a stand-in
+    for Supabase's auth schema and default privileges) ran every rule as anon, two players and the owner, all as
+    expected, and caught a planted grant to anon.
+  - **The live smoke test** (`node scripts/online-smoke.mjs` from the internal-disk clone): **79 of 79 checks
+    passed**, and nothing of the two throwaway accounts was left in any table, Supabase Auth's audit log included;
+    it removed its own wrong-code guesses afterwards, so the owner's address isn't capped.
+- **Review (Opus 5.5, max effort) on `fd0e0fd..6f5f724`: 5 blockers, 15 notes.** Fixed: B1 invite codes (the owner's
+  word-and-four-letters format from a secure source, and the cap on wrong codes per address: ADR-0042); B2 the online
+  copy now stores what a local save stores (the welcome-back card's resume speed, not its pause), uploads and the kept
+  copy alike (`stateForSaving`, exported from persistence); B3 Load online save stores the online copy once and
+  resumes that very state (`resumeState`, the second half of `loadAndResume`, exported: a core change), so no retry
+  loop and no autosave between storing and resuming; B4 `supabase-migration.test.ts` reads every migration file,
+  checks the private functions and their wrappers, and catches grants, views, disabled row-level security and
+  EXECUTE to PUBLIC anywhere (27 broken copies, each placed early, must fail); B5 the four docs that said to write the
+  first club's code in PLAN.md. Notes fixed: a failed save of this device's copy stops the load (1); a check waits for
+  a send under way, and an unanswered send that landed counts as this device's own copy (3); a newer build's block is
+  per account (4); a failed send waits out the 2-minute gap (5); Delete removes the account's rows in Supabase Auth's
+  audit log (6); the docs (7); a test title (8); the load uses the save's own identity (9); `--linked --project-ref`
+  everywhere (11); friend-code guessing in TRUST_BOUNDARY (12); `VITE_SOCIAL_STUB=1` in the reuse instructions (13);
+  the stub's accepted friend titled by name (14); Social and Account re-ask who is signed in when opened (15). Left:
+  loading the online copy replaces any older "Previous autosave", as every load does (2, KNOWN_LIMITATIONS); the load's
+  messages reuse Settings › Saves' words (10). Also found by the agent: a tab whose saves another tab refuses sends
+  nothing, and a hidden tab sends only when its hidden save lands; the online-save box no longer re-renders on every
+  simulation tick.
+- **Its confirmation pass on `6f5f724..956aa55`:** B1–B5 and the notes confirmed fixed; two new blockers in the cap
+  on wrong codes, fixed by `20261019000200_invite_brake.sql`: the cap keyed on a network address a caller can choose
+  (a forwarded header), and keeping addresses would have been data the approved privacy note doesn't cover (ADR-0039
+  decision 3). Now one brake for everyone (100 wrong codes in 10 minutes), only times kept, 10 minutes; sign-up no
+  longer asks `resolve_invite` (the trigger checks the code), so the brake never blocks it. Notes fixed: leaving the
+  tab right after an autosave sends at once (1); sign-up as a slow way to test codes, and replacing a leaked code, in
+  TRUST_BOUNDARY, KNOWN_LIMITATIONS and the runbook (2); the brake's count under an advisory lock (3); a comment (4);
+  KNOWN_LIMITATIONS' wording (5). Pass 2 also showed the sign-in form missed a network error found after it appeared
+  (social.spec's network test): fixed.
+- **Its last confirmation pass on `956aa55..4758129`: no blockers, two notes, both fixed in
+  `20261019000300_invite_brake_answer.sql`** (applied live; the advisors still report no issues): a held brake
+  answered null, which showed a friend's real invite link as expired (now `{"braked": true}`, the same for every code:
+  the game shows its network message and keeps the link's code in the sign-up form); and the brake's lock is tried, not
+  waited for, so a flood can't queue calls that each hold a connection.
 
 ## Releases
 
@@ -519,6 +682,15 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   first, B-193; GitHub notes that `deploy-pages@v4` runs on a deprecated Node 20 and that `ubuntu-latest` moves to
   Ubuntu 26 from 2026-10-19: `deploy.yml` is a core file, left for the owner); Render by hand
   (`dep-db8o0s7f3r2c73eplvm0`). Both `version.json` files read `{"id":"382a637-…","version":"0.5.3"}`.
+- **0.5.4, released 2026-10-18** at the owner's go-ahead in the session (ADR-0037 decision 2, "Bundle with G1
+  (Recommended)": one full test pass, then GitHub Pages and Render): ADR-0036's three changes and G1's. The four checks
+  passed on the release commit `97da6bc` (typecheck; unit 227 files, 2,702 tests; build; e2e 289 of 289, Chromium and
+  WebKit, 31.9 min); the pass before, on `50dc443` (the same code; the CHANGELOG's version not yet fixed), had one
+  WebKit failure (B-204). Released before the owner's play-through, as the option allowed. Merged as `63caa8e` (its
+  tree is `97da6bc`'s) and pushed from the internal-disk clone with `next`. The Pages run's first attempt failed after
+  every unit test passed: Vitest's worker RPC timed out on GitHub's runner ("Timeout calling onTaskUpdate", B-205);
+  re-running the failed job passed and deployed. Render by hand (`dep-dbaii3eq1p3s73bqbvvg`). Both `version.json`
+  files read `{"id":"63caa8e-…","version":"0.5.4"}`.
 
 ## Product decisions in force
 
@@ -526,8 +698,9 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   simulation and player state; individual creatures, collection and breeding depth; stable, testable, deterministic
   systems; clear phone and desktop use; extensibility; performance; elegance.
 - Local single-player first. No real multiplayer, accounts or backend without the owner (REL-002); the native
-  wrapper is deferred (ADR-0001). Multiplayer starts with people the owner knows, after chunk 7's hardening and an
-  approved decision record (ADR-0037).
+  wrapper is deferred (ADR-0001). Multiplayer starts with people the owner knows, after chunk 7's hardening (ADR-0037):
+  stage 1 on a free Supabase project, sign-up by invite code, no emails, `@supabase/supabase-js` (ADR-0038). Stage 2
+  (before strangers join) needs its own record.
 - Automation goes deep (ADR-0001, option C): more than Auto-feed and Auto-clean.
 - The Auto Water Changer shares the Autofeeder unlock. Quiet hours are fixed at 10 PM to 8 AM, with a switch to turn
   them off (0.5 spec §12.3). One-copy Metallic is unnamed, with a subtle sheen. Locked destinations open a locked
@@ -535,12 +708,19 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   ADR-0005).
 - Old saves are best-effort (ADR-0005). A new species or tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does a new
   water class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, a higher reservoir
-  limit or a rare-variant kind (ADR-0037).
+  limit or a rare-variant kind (ADR-0037), and more Live food cones or jars, a higher staff skill or a rare-variant
+  origin (chunk 7, ADR-0039 decision 6).
+- From chunk 7 (ADR-0039): a counter never takes a buyer past their private ceiling, and once bidding closes an offer
+  can be accepted but not countered; admission demand keeps falling above about twice the fair price, and the rules
+  cap admission at $40, the slider's end; the research gates for brackish, marine and reef water are rules.
+- For chunk 8 (ADR-0039): the privacy note approved as drafted; sign-up for 13 and over (a parent signs up for a
+  younger player).
 - Catch-up bid windows stay as they are (ADR-0016).
 - Morph tiers: Legendary below 1 in 10,000 of market stock (ADR-0022, replacing ADR-0005 decision 4's threshold).
 - From the owner's group A answers (ADR-0024): an older build that finds a newer save keeps today's one message
   ("Refresh the page"); e2e gains a WebKit project (chunk 6); accessibility aims at WCAG 2.2 AA with solid
-  high-contrast panels (chunk 6); `?dev=1` as built (chunk 7 turns it off on the live site, ADR-0037); chunk 3's five flagged wordings stay; automation's step-size
+  high-contrast panels (chunk 6); `?dev=1` as built in dev builds, and since chunk 7 the live site ignores it
+  (ADR-0037 decision 3, REL-019); chunk 3's five flagged wordings stay; automation's step-size
   checks are exact for job counts, run hours and stock units and within stated tolerances for water values.
 - From group B (ADR-0025): production lines follow DESIGN-S3D §8.6 and §8.6.1; automation never lists a Prismatic;
   protected animals (keep tanks, Prismatics, favourites) are never moved out, listed or sold by automation; lines can

@@ -1,37 +1,40 @@
-# Session handoff: 0.5 released, chunk 7 (hardening for multiplayer) next
+# Session handoff: after chunk 8 (multiplayer stage 1)
 
-For the agent that builds chunk 7 (hardening for multiplayer, ADR-0037) on Aquarium Go, after the owner's `/compact`
-or in a new session. Written 2026-10-15 by the session that built chunk 6 and brought up to date on 2026-10-18 after
-0.5.4; it replaces the handoff written after chunk 5. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of
-work and the practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
+For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19 (handed over by Chase at the owner's
+request). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of work and the
+practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
 
 ## Where things stand
 
-- **0.5 is complete and released.** 0.5.3 is on `main` (`382a637`, 2026-10-15): chunk 6's end, after a fresh code
-  review (5 blockers fixed, REL-017 GREEN on confirmation) and a browser/QA review (RED → GREEN), with two full
-  passes in a row on `9bff79e` (PLAN.md, chunk 6). `next` = `main` plus the post-release notes, ADR-0036's changes
-  and G1's (ADR-0037): 0.5.4, which the owner approved on 2026-10-18 for Pages and Render after one full green pass
-  (PLAN.md, chunk 6, "After 0.5.3"; check PLAN.md's "Releases" for whether it has gone out).
-- Left from chunk 6: the owner's play-through on a phone and a desktop, with a VoiceOver pass for ACC-005 (the one
-  requirement still IN_PROGRESS, OWNER_QUESTIONS F1).
-- After 0.5 (ADR-0037): chunk 7, hardening for multiplayer (PLAN.md's brief), with the multiplayer decision record
-  drafted beside it as Proposed. Multiplayer starts with people the owner knows; no backend, account or cloud-save code
-  until the owner approves that record (REL-002). NOTIFY-011 and PLAT-004 (the native wrapper) stay deferred.
+- **0.5.4 is released** (2026-10-18: `main` = `63caa8e`). **Chunks 7 and 8 are done on `next`, not released**
+  (PLAN.md; ADR-0039 to ADR-0042). Releasing them (as 0.5.5 or 0.6.0) is the owner's call.
+- **The Supabase project is live**: the Free organization "Aquarium Go" (`kvqnsqbjufmnkpsrcjbj`), project
+  `aquarium-go`, **ref `zkavcxrsxdgdlstravpj`**, us-east-1. Four migrations applied (`supabase/migrations`), the
+  security advisors report no issues, the first club "Aquarium Go Friends" exists (its invite code went to the owner
+  in the session; never write it in the repo, which is public; `select name, invite_code from public.clubs` reads it),
+  the live smoke test passed 80 of 80. `src/social/project.ts` holds the address and publishable key, so the players'
+  build shows Social once `next` is released.
+- **Open owner questions:** F1 (the owner's VoiceOver pass). The "Have an invite?" example is "Invite code, e.g.
+  FRIENDS-KDWX" (ADR-0042, J1).
+- **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`) is signed in to the owner's whole account, anonyform's
+  Pro organization included. Scope every remote command to the project: `--linked --project-ref zkavcxrsxdgdlstravpj`
+  (`db query` takes `--project-ref` only with `--linked`). Never print or save the secret key; never read the CLI's
+  stored sign-in; stop and ask if anything would cost money (the owner: "lets make everything free if we can").
 
 ## The order of work
 
-1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
-   `AGENTS.md`, `CLAUDE.md`, `PLAN.md` (Next step, Status, chunk 6's record).
-2. **The owner's play-through and F1:** record what the owner reports (ACC-005's VoiceOver pass, F1) verbatim in an
-   ADR and fix what it finds (each fix tested).
-3. **Chunk 7** (PLAN.md's brief): its requirements first (REL-019 onwards), B-124's and B-162's before and after
-   asked of the owner before building, its own fresh reviewer (Opus 5.5 at max effort, never Fable) and two full passes before a release. The
-   multiplayer decision record beside it stays Proposed until the owner approves it.
-4. **Releasing** (as 0.5.3 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into
-   `main` with the owner's go-ahead (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no checkout), push
-   from the internal-disk clone, watch the Pages run, deploy Render by hand, check both `version.json` files.
-5. **Between chunks** (the owner's routine): bring the docs up to date and prune them, push, then the owner types
-   `/compact` (an agent can't) and you re-read the docs. Releases (`main`) only when the owner says so in the session.
+1. **Release (the owner's go-ahead in the session):** the four checks green on `next`, bump `version` and add the
+   CHANGELOG entry (chunks 7 and 8), merge `next` into `main` (`git merge-tree --write-tree`, `commit-tree`,
+   `update-ref`: no checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
+   `version.json` files. The CHANGELOG should tell players Social is online for invited friends.
+2. **The owner's account** (after the release): the owner signs up with the first club's link; with the owner's yes
+   and the email used, run ARCHITECTURE.md's runbook ("The owner's account": `is_owner = true`, the first club's
+   `created_by`). Then the owner sees "Create a club" and every club's invite link.
+3. **A database change** goes in a new file under `supabase/migrations` (never edit an applied one): check it with
+   `scripts/online-db-local/run.sh` (a throwaway local Postgres, Homebrew's postgresql@16), apply it with `supabase db
+   query --linked --project-ref <ref> -f <file>`, run `supabase db advisors --linked --project-ref <ref> --type security
+   --level warn` (must say no issues), then `node scripts/online-smoke.mjs` from the internal-disk clone (it has
+   supabase-js; the Dev repo's `node_modules` is an old copy without it).
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the
@@ -62,8 +65,11 @@ cd ~/LocalTest/AquariumGo && git fetch -q dev next && git checkout -q --detach <
 for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright npm run $c; echo "=== $c exit $?"; done > $S/checks.log 2>&1
 ```
 
-Unit tests take about 45 s, e2e about 32 minutes in Chromium and WebKit (inside Claude Code's sandbox; it works, don't ask to leave it).
-Every e2e run also builds the production site under `/aquarium-go/` for the `base-path` project (about 10 s more).
+Unit tests take about 45 s, e2e about 32 to 35 minutes in Chromium and WebKit (inside Claude Code's sandbox; it works,
+don't ask to leave it). **Hold sleep off for a long run:** wrap the checks in `caffeinate -i -s bash -c "…"`. On battery
+and idle, the Mac sleeps mid-run (chunk 7: six e2e failures in two passes, every one inside a `pmset -g log` sleep
+window); the tests stall, and on wake Vite's client loses its server connection and reloads the page. Every e2e run also builds the production site twice under `/aquarium-go/`: `.e2e-dist` with
+`VITE_E2E_DEV_URL=1` for `base-path.spec`, and `.e2e-dist-prod` without it (the players' build) for `prod-mode.spec`.
 `npx vitest run --reporter=json --outputFile=<file>` gives a list of failures to compare before and after a sim change.
 
 **Seeing a screen.** Start `npx vite --port 4455 --strictPort --host 127.0.0.1` in the test clone and drive it with a
@@ -113,6 +119,16 @@ minutes; its completion arrives as a notification, so keep working (docs, tests)
 SendMessage (same agent, context kept) confirm fixes in 10 to 15 minutes, and do find new problems in the fixes:
 chunk 5's first confirmation pass caught a regression the fix had introduced.
 
+**Learned in chunk 7.**
+- *Show the owner numbers before a balance change:* a throwaway probe under the git-excluded `scripts/_audit/` run with
+  `npx vite-node` in the internal-disk clone (today's code, then the fix applied to the clone's working copy and
+  reverted) gave before-and-after tables the owner could choose from (ADR-0039).
+- *A loop hunt needs a fair yardstick:* "worth" counted by the game's own instant sales flagged a frag cut from an
+  already-grown coral as a gain until the measure cut a frag from every ready piece too, and frag prices fall a little
+  with each sale, so the measure sells everything in one batch per kind. Prove such a test fails with a planted loop.
+- *An e2e test that walks the guide* should read the guide's current step and act on it: the betta guide starts on
+  "meet", and a fixed script that assumed "camera" failed in both browsers.
+
 **Tests that pass by day and fail by night.** Notification delivery reads the device clock (quiet hours 22:00–08:00).
 A test that expects a notification turns quiet hours off (e2e: `aquarium-go.notify.v1` in an init script) or pins the
 clock and `timezoneId`.
@@ -130,10 +146,24 @@ is being made, and that code then keeps the original. Operations' caches key on 
 change one of those.
 
 **e2e patterns.** Open the game with `?dev=1` (dev mode unlocks every destination, and counts the Genetics Lab as
-researched). `aq(page, 'dev.setSpeed', 0)` pauses the clock (a restock mid-test changes shop counts). `__AQ.mutate` takes
+researched). Since chunk 7 a production build honours it only when built with `VITE_E2E_DEV_URL=1`; the live site
+never does, so anything that scripts a production preview builds it with the flag (README). `aq(page, 'dev.setSpeed', 0)` pauses the clock (a restock mid-test changes shop counts). `__AQ.mutate` takes
 a function, so call it inside `page.evaluate`. Playwright's `toBeEnabled` counts `aria-disabled` as disabled.
 Notifications are recorded by stubbing `window.Notification` and `ServiceWorkerRegistration.prototype.showNotification`
 (`tests/e2e/notifications.spec.ts`).
+
+**Learned in chunk 8.**
+- *Supabase's advisors* warn about every SECURITY DEFINER function the API exposes (lints 0028, 0029): the functions
+  the game calls live in the schema `private`, behind SECURITY INVOKER wrappers in `public` with the same names.
+- *`config push`* pushes every declared section: match `config.toml`'s non-auth settings to the project's first
+  (`supabase config diff --project-ref <ref>`), so only what you mean changes.
+- *A forwarded address* (`x-forwarded-for`) is the caller's to choose, and keeping addresses is data the privacy note
+  doesn't cover: the brake on wrong invite codes is one for everyone, with only times kept.
+- *In a JavaScript `replace` string, `$$` becomes `$`*: a test mutation of SQL with `$$` needs a replacer function.
+- *The online save's e2e* turns autosave off in its setup, so only the test's own saves count as this device's play;
+  `__AQ.social.cloudSyncNow()` waits for the check and send under way.
+- *Another project's e2e* (another Claude session's) may run on the same Mac at the same time: a wall-clock test (perf)
+  that misses once may be that; look at `pgrep -fl playwright` before calling it a regression.
 
 **Rules that bite.** No new dependencies without asking. Never weaken, skip or delete a test; a changed test is a
 deliberate fix explained in the commit. Push `next` with `export PATH=/opt/homebrew/bin:$PATH` first (git's

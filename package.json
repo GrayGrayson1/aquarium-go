@@ -1,7 +1,7 @@
 {
   "name": "aquarium-go",
   "private": true,
-  "version": "0.5.4",
+  "version": "0.5.5",
   "type": "module",
   "description": "Aquarium Go — a living aquarium tycoon: raise individual creatures, build beautiful ecosystems, breed, sell and exhibit.",
   "scripts": {
@@ -25,6 +25,7 @@
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.8.0",
     "@react-three/postprocessing": "^3.1.2",
+    "@supabase/supabase-js": "2.117.2",
     "clsx": "^2.1.1",
     "idb-keyval": "^6.3.0",
     "immer": "^11.1.18",

@@ -14,7 +14,7 @@ ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
 Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is answered (2026-10-13); group F's F2–F4
-are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5. Add new ones as a new group, and record them the same way.
+are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5; multiplayer stage 1 is approved (ADR-0038); chunk 7's two questions, group H and the two from chunk 7's review are answered (2026-10-18, ADR-0039). Chunk 8's four (the Supabase setup, clubs, the wording) are answered (2026-10-19, ADR-0040); group I (the strings ADR-0040 left) is answered (2026-10-19, ADR-0041), group J (one wording question from the setup) is answered (ADR-0042); **F1 is the only open question**. Add new ones as a new group, and record them the same way.
 
 | Group | Unblocks | Questions |
 |---|---|---|
@@ -32,6 +32,14 @@ are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pa
 | F (chunk 6 review) | What chunk 6's fresh reviews left to the owner (block nothing in 0.5.3) | F2–F4: **answered 2026-10-16 (ADR-0036)**; F1: **open** (the owner's play-through) |
 | G (ADR-0036 review) | A backlog row the review of ADR-0036's changes left to the owner (blocks nothing) | G1: **answered 2026-10-18 (ADR-0037)** |
 | (after 0.5) | When 0.5.4 goes out, what comes next, who plays multiplayer first | 3 questions, asked with G1: **answered 2026-10-18 (ADR-0037)** |
+| (multiplayer, stage 1) | Stage 1's approval: the plan, the library, sign-up, email | 4 questions: **answered 2026-10-18 (ADR-0038)** |
+| (chunk 7) | Chunk 7's two money-loop fixes, which change sale prices and admission takings, asked before building | 2 questions, asked with H1 and H2: **answered 2026-10-18 (ADR-0039)** |
+| (chunk 7 review) | The review's new line (a removed show's note) and three more limits pinned to the save format | 2 questions: **answered 2026-10-18 (ADR-0039, second round)** |
+| H (multiplayer, stage 1) | Chunk 8 (stage 1): the two items ADR-0038 left | H1, H2: **answered 2026-10-18 (ADR-0039)**, asked early at the owner's request |
+| (chunk 8) | The Supabase setup's go-ahead, who creates clubs, the sign-up, account and online-save wording | 4 questions, asked as text: **answered 2026-10-19 (ADR-0040)** |
+| I (chunk 8's drafts) | Chunk 8's screens: the strings ADR-0040's message didn't spell out | I1 (asked as 4 questions in one round): **answered 2026-10-19 (ADR-0041)** |
+| (chunk 8's setup) | The Supabase organization's plan, the invite codes' format, the repo's visibility | 3 questions, asked as text: **answered 2026-10-19 (ADR-0042)** |
+| J (chunk 8's setup) | The "Have an invite?" field's example, now that real codes are a word and four letters | J1: **answered 2026-10-19 (ADR-0042)** |
 
 ## A. Release and standing decisions
 
@@ -171,3 +179,31 @@ Raised by the review of ADR-0036's changes on 2026-10-16 (B-203). Answered on 20
 | # | Question | Options (recommended first) | Source |
 |---|---|---|---|
 | G1 | Beyond ADR-0036's five tables, a save's water-room prep level above 2, reservoir count above 3 and a rare-variant kind other than Prismatic are also reset or dropped on load, so an older build after a rollback would undo paid water-room upgrades or turn a newer rare animal ordinary; and the prep-level and reservoir limits are written out by hand, so a later build that adds a level without editing them would reset them in that same build. Pin these too? | **Pin them: a new prep level, more reservoirs or a new rare-variant kind raises SCHEMA_VERSION (pinned in core-save-forward-safety), and the limits are read from the Water room's table.** · Only read the limits from the table (fixes the same-build case; rollbacks stay best-effort, ADR-0005). · Leave it. → **Answered (ADR-0037): pin them** (`LIMITS_AT` in core-save-forward-safety; `RARE_VARIANT_KINDS`). | B-203; `src/persistence/migrations.ts` (`repairAutomation`), `src/sim/life/rareVariants.ts` |
+
+## H. Multiplayer stage 1, before chunk 8 builds (answered 2026-10-18, ADR-0039)
+
+Left by ADR-0038 (2026-10-18). Ask both with chunk 8's brief, before it builds; put the exact strings in the options'
+previews.
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| H1 | Signing up sends the player's email, display name, friend code, synced save, aquarium snapshot and leaderboard numbers to Aquarium Go's Supabase project. Approve the short privacy note linked from sign-up (what is stored, why, who sees it, how to delete it)? | **The drafted wording** (written with chunk 8's brief). · Changes (say which). → **Answered (ADR-0039): Approve this wording** (the note is quoted in ADR-0039). | ADR-0038 decision 6 |
+| H2 | Stage 1 asks for an email, and the game suits families. Who may sign up? | **13 and over: sign-up says so, and a parent signs up for a younger player.** · Anyone (the owner knows every player, since sign-up needs an invite code). → **Answered (ADR-0039): 13 and over** (a required checkbox: "I'm 13 or older, or I'm a parent or guardian signing up for my child."). | ADR-0038 decision 6 |
+
+## I. Chunk 8's drafted strings (answered 2026-10-19, ADR-0041)
+
+Left by ADR-0040 decision 5 (2026-10-19). Ask in one round before building those screens; build the rest meanwhile.
+Put the exact strings in the previews (`docs/agent/design/ONLINE-STAGE1.md` §7.3 has them). The owner stopped a round
+with previews on 2026-10-18 and answered the same questions as text, so offer them as text if the tool is declined.
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| I1 | Approve the remaining chunk 8 wording: the sign-up placeholders and "Back to sign in"; Settings › Account's labels and online-save lines; the delete dialog's title, buttons and toast; the online-save box's cards and note; the owner's create-club and invite-link controls? | **Approve this wording.** · Change some (say which). → **Answered (ADR-0041): Approve as written** (asked as four questions in one AskUserQuestion round, each with its strings in the preview). | ADR-0040 decision 5; ONLINE-STAGE1.md §7.3 |
+
+## J. Chunk 8's setup (answered 2026-10-19, ADR-0042)
+
+Left by ADR-0042 (2026-10-19), asked in the session as text.
+
+| # | Question | Options (recommended first) | Source |
+|---|---|---|---|
+| J1 | The "Have an invite?" field's example reads "Invite code, e.g. HIGHLAND-4821" (the 0.5 design's), but real codes are now the club's word and four letters. Change it? | **"Invite code, e.g. FRIENDS-KDWX"** · Keep it as is. → **Answered (ADR-0042): "yes change it to FRIENDS-KDWX".** | ADR-0042; `SOCIAL_COPY.invitePlaceholder` |

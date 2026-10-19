@@ -1,10 +1,11 @@
 /**
- * lane:social (chunk 6; 0.5 spec §12.2's club-show reminder; ADR-0034 decision 4) — while Social is reachable (dev mode,
- * ADR-0005 decision 3, SOC-011 A5) and the player belongs to a club with a show coming, a Shows notification on Fridays
+ * lane:social (chunk 6; 0.5 spec §12.2's club-show reminder; ADR-0034 decision 4) — on the local stub only (dev mode,
+ * ADR-0005 decision 3, SOC-011 A5; chunk 8: real clubs have no events, ONLINE-STAGE1.md §5.3) when the player belongs
+ * to a club with a show coming, a Shows notification on Fridays
  * (the device's day): "{Club}" · "Club show on {day}. Entries close Friday.", opening Social › Clubs. At most once per
  * page session; nothing is stored for it. It goes through the usual rules (`deliverPlanned`): Shows is off by default.
  */
-import { devToolsAllowed } from '@/state/devTools';
+import { socialMode } from '../online/mode'; // chunk 8 (REL-025)
 import { useUI } from '@/state/ui';
 import { socialService, type Club } from '@/social';
 import { SOCIAL_COPY } from '../panels/social/copy';
@@ -27,11 +28,11 @@ let done = false;
 let busy = false;
 
 /**
- * One check (the interval's, and tests'): dev mode, a game on screen, Friday, signed in and a member of a club with a
+ * One check (the interval's, and tests'): the stub, a game on screen, Friday, signed in and a member of a club with a
  * show: deliver the reminder, at most once per page session. True when it was shown.
  */
 export async function checkClubReminder(now: Date = new Date()): Promise<boolean> {
-  if (done || busy || !devToolsAllowed() || useUI.getState().screen !== 'game' || now.getDay() !== FRIDAY) return false;
+  if (done || busy || socialMode() !== 'stub' || useUI.getState().screen !== 'game' || now.getDay() !== FRIDAY) return false;
   busy = true;
   try {
     await loadSocialUser(); // once a session: who is signed in (Social may not have been opened yet)

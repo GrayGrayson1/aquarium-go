@@ -36,7 +36,7 @@
         "§3",
         "§21"
       ],
-      "note": "requirements-2 M2: the test now has an owning slice (S1), and S0 is checked with git diff against the baseline. requirements-3 R3-m7: CONST-005 (S1) carries the test, so S1 can't be accepted without it, as PERSIST-014 does for PERSIST-003."
+      "note": "requirements-2 M2: the test now has an owning slice (S1), and S0 is checked with git diff against the baseline. requirements-3 R3-m7: CONST-005 (S1) carries the test, so S1 can't be accepted without it, as PERSIST-014 does for PERSIST-003. 2026-10-18: ADR-0038 records the owner's approval of one dependency, @supabase/supabase-js, installed at an exact version when chunk 8 starts; core-dependencies' recorded list changes then, citing ADR-0038."
     },
     {
       "id": "CONST-002",
@@ -3537,7 +3537,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "Chunk 6 (2026-10-15): met: the stub never stores a password (social-stub.test checks localStorage, the save and an export)."
+      "note": "Chunk 6 (2026-10-15): met: the stub never stores a password (social-stub.test checks localStorage, the save and an export). Chunk 8: extended to the Supabase service (social-supabase.test: the real supabase-js on a fake fetch and storage keeps only tokens under aquarium-go.auth.v1) and to sign-up's new fields (social.spec checks localStorage after a sign-up)."
     },
     {
       "id": "SOC-003",
@@ -3715,7 +3715,7 @@
         "§13.6",
         "§15"
       ],
-      "note": "Chunk 6 (2026-10-15): met: src/social/service.ts and createLocalSocialStub with 300–600 ms latency; the UI reaches Social only through the service (core-mutation-boundary.test)."
+      "note": "Chunk 6 (2026-10-15): met: src/social/service.ts and createLocalSocialStub with 300–600 ms latency; the UI reaches Social only through the service (core-mutation-boundary.test). Chunk 8: the interface grew (ONLINE-STAGE1.md §5.1); the stub's stored value adds `owner` and `createdClubs` only when set (A3's list, on purpose); the online save lives under aquarium-go.social.cloud.v1 and the link under aquarium-go.cloud.v1, never in the save (online-sync.test checks stateHash and the save)."
     },
     {
       "id": "SOC-010",
@@ -3763,8 +3763,8 @@
         "new: tests/sim/notify-rules.test.ts"
       ],
       "evidence": [],
-      "status": "GREEN",
-      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project)."
+      "status": "SUPERSEDED",
+      "note": "The design registry override for this decision is in DESIGN_REGISTRY.json (DESIGN-0.5 overriddenBy, row \"D2, D5 and §13\", added under ADR-0008 §5). requirements-2 m8: A5 follows from A1 (a reminder that opens #/social/clubs outside dev mode would lead nowhere); routing it elsewhere instead (for example #/shows) would change design §12.2 and is an owner decision. Chunk 6 (2026-10-15): met: dev mode only (PLAT-005): no dock item, More tile or route in a production build (prod-mode.spec, base-path project). Chunk 7 (REL-019): prod-mode.spec now runs on its own players' build (projects prod and webkit-prod), not the base-path project's. Chunk 8 (ADR-0038, ADR-0040): Social becomes reachable for players once a project is configured (REL-025); these dev-only criteria are superseded then, on purpose. Chunk 8 (2026-10-19): superseded by REL-025 on purpose (ADR-0038): Social shows wherever socialAvailable() (the stub in dev mode and every e2e build, the Supabase service in the players' build once a project is configured); with neither, A1 still holds (no Social surface), and A5 holds (the club-show reminder is stub-only)."
     },
     {
       "id": "PLAT-001",
@@ -3870,7 +3870,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "Slice S1 chosen by this merge (the platform layer and the ?dev=1 boot are S1 work, NAV-009); ADR-0005 names no slice."
+      "note": "Slice S1 chosen by this merge (the platform layer and the ?dev=1 boot are S1 work, NAV-009); ADR-0005 names no slice. Chunk 7 (2026-10-18, ADR-0037 decision 3, REL-019): the live site ignores ?dev=1; a production build honours it only when built with VITE_E2E_DEV_URL=1 (the e2e base-path build), so the description's \"or when the page was opened with ?dev=1\" now applies to that build alone. QA scripts against a production preview need such a build (README)."
     },
     {
       "id": "ACC-001",
@@ -4152,11 +4152,12 @@
         "tests/sim/core-forward-compat.test.ts",
         "tests/sim/core-save-forward-safety.test.ts: \"ADR-0036 (F3): a new water class, show tier, buyer type, staff role or staff trait raises SCHEMA_VERSION\" (A7)",
         "tests/sim/core-save-forward-safety.test.ts: \"ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant kind raises SCHEMA_VERSION\" (A7)",
-        "tests/sim/persistence-limits-from-tables.test.ts (A7: the limits come from the tables)"
+        "tests/sim/persistence-limits-from-tables.test.ts (A7: the limits come from the tables)",
+        "tests/sim/core-save-forward-safety.test.ts: \"chunk 7 (B-203): more cones or jars, a higher staff skill or a new rare-variant origin raises SCHEMA_VERSION\" (A7)"
       ],
       "evidence": [],
       "status": "ACTIVE",
-      "note": "Chunk 1 (2026-10-06): A1-A2 now hold: PERSIST-014 (commit ee42973) makes a too_new slot final (no fallback past it, no overwrite). 2026-10-16: A7 added by ADR-0036 (owner question F3), with its test. 2026-10-18: A7 widened by ADR-0037 (owner question G1) to the Water room's limits and the rare-variant kinds, with its tests."
+      "note": "Chunk 1 (2026-10-06): A1-A2 now hold: PERSIST-014 (commit ee42973) makes a too_new slot final (no fallback past it, no overwrite). 2026-10-16: A7 added by ADR-0036 (owner question F3), with its test. 2026-10-18: A7 widened by ADR-0037 (owner question G1) to the Water room's limits and the rare-variant kinds, with its tests. 2026-10-18: A7 widened again by ADR-0039 decision 6 (chunk 7, B-203) to the Live food room's cone and jar limits, the staff skill range and the rare-variant origins (ROOM_LIMITS_AT)."
     },
     {
       "id": "PERSIST-004",
@@ -5212,6 +5213,7 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
+      "note": "2026-10-18: ADR-0038 (Accepted for stage 1) is the owner-approved record for stage 1's backend, account and cloud-save code (chunk 8, after chunk 7): a free Supabase project, sign-up by invite code, the server trusting each browser. Stage 2 (players the owner doesn't know) and real trading each need their own record, so REL-002 stays PENDING. 2026-10-19: chunk 8 brief written (REL-025 to REL-033; ADR-0040).",
       "status": "PENDING"
     },
     {
@@ -5518,6 +5520,344 @@
       "status": "SUPERSEDED",
       "designSections": [],
       "note": "Superseded by ADR-0018: the readiness report against the master's §10 is retired with the master; REL-002 still stops real multiplayer until the owner approves it."
+    },
+    {
+      "acceptance": [
+        "A production build without the flag, opened with ?dev=1, has window.__AQ without newGame, mutate, setGame or any other write call; the dev panel and Settings' developer switch are absent; ?fixture=<registry fixture> and ?sandbox=<name> open the title screen instead.",
+        "The gate is one function of (dev build, the build flag, the address); a unit test covers its cases, and a test checks deploy.yml and render.yaml never set the flag.",
+        "Starter showcases (?showcase=<starter>, a never-saved demo world) still open in production.",
+        "prod-mode.spec runs on its own production build without the flag (its own port and Playwright projects, Chromium and WebKit); base-path.spec keeps the flagged build."
+      ],
+      "description": "The live site's build ignores ?dev=1: a production build has no developer write tools whatever the address says (window.__AQ read-only, no dev panel, no registry fixture, no fixture autosave, no ?sandbox=), while a dev build keeps them; only the e2e build that base-path.spec opens turns ?dev=1 on, with a build-time flag deploy.yml and render.yaml never set.",
+      "designSections": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
+      "id": "REL-019",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; BACKLOG B-190; changes ADR-0005 decision 2 and ADR-0024 A5 for the live site",
+      "status": "GREEN",
+      "tasks": [],
+      "tests": [
+        "tests/sim/plat-dev-tools.test.ts (the gate's cases; the flag never set by deploy.yml or render.yaml)",
+        "tests/e2e/prod-mode.spec.ts (?dev=1, ?fixture=, ?sandbox= on the players' build)"
+      ]
+    },
+    {
+      "acceptance": [
+        "However the counters go, no sale through a counter (or an accepted offer after one) is above the buyer's ceiling; a split is capped at the ceiling and a reply at the ceiling holds.",
+        "A counter sent after the listing's end hour is refused with \"Bidding has closed. Accept an offer or let it expire.\"; the best offer can still be accepted.",
+        "A counter at or under the ceiling is answered as before (the S03-03 suggestion test still holds)."
+      ],
+      "description": "Counter-offers never take a buyer past their private ceiling, and counters stop when bidding closes (ADR-0039 decision 1).",
+      "designSections": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
+      "id": "REL-020",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; ADR-0039 decision 1; BACKLOG B-124 (M24), B-130",
+      "status": "GREEN",
+      "tasks": [],
+      "tests": [
+        "tests/sim/economy-loops.test.ts (B-124: no sale above the buyer's ceiling, however the counters go; no counter after bidding closes)"
+      ]
+    },
+    {
+      "acceptance": [
+        "Arrival demand is unchanged up to the point where today's line reached its floor (price ÷ fair = 1.15 ÷ 0.6); above it, demand falls with the square of the price, continuous at that point.",
+        "setAdmission keeps admission within $0–40 (the slider's range); a day's takings at a given facility peak inside $0–40 and fall at every price above the peak that the test checks."
+      ],
+      "description": "Admission takings peak inside the slider's range: demand keeps falling with price above about twice the fair price, and the sim refuses an admission the slider can't set (ADR-0039 decision 2).",
+      "designSections": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
+      "id": "REL-021",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; ADR-0039 decision 2; BACKLOG B-162 (M62), B-130",
+      "status": "GREEN",
+      "tasks": [],
+      "tests": [
+        "tests/sim/economy-loops.test.ts (B-162: a day's takings peak inside $0–40)"
+      ]
+    },
+    {
+      "acceptance": [
+        "The test runs a fixed set of seeded random sequences of the instant economy actions (buy livestock, equipment and tanks; quick-sell; list and withdraw; convert water; frag and quick-sell frags) with no time step between them, and fails, naming the sequence, when money plus the stock's value rises.",
+        "B-124 and B-162 involve time and sales, so they keep their own tests (REL-020, REL-021)."
+      ],
+      "description": "A seeded loop hunt: many short sequences of buying, selling, listing, quick-selling, converting and fragging, with no game time passing, never end with more money plus stock value than they began with.",
+      "designSections": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
+      "id": "REL-022",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; BACKLOG B-130 (M30)",
+      "status": "GREEN",
+      "tasks": [],
+      "tests": [
+        "tests/sim/economy-loop-hunt.test.ts (B-130: 300 seeded sequences of 10 instant actions; money plus what instant sales would pay never rises)"
+      ]
+    },
+    {
+      "acceptance": [
+        "Without the research, buyTank for marine, reef or brackish and convertWaterClass to marine or reef fail with the wording the shop and the convert screen show; with it, they work as before.",
+        "A sim test for each."
+      ],
+      "description": "Water-class research gates hold in the game's rules, not only its screens: buyTank refuses marine, reef and brackish, and convertWaterClass marine and reef (it already refuses brackish), without their research, with the screens' own wording.",
+      "designSections": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
+      "id": "REL-023",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; BACKLOG B-160 (M60)",
+      "status": "GREEN",
+      "tasks": [],
+      "tests": [
+        "tests/sim/research-gates-in-rules.test.ts"
+      ]
+    },
+    {
+      "acceptance": [
+        "A save with a show of an unknown tier loads with that show removed, its entries' animals no longer entered, their fees refunded, and a note.",
+        "repairState's cone and jar cap, the staff skill range and the rare-variant origins come from FOOD_ROOM, STAFF_MAX_SKILL and RARE_VARIANT_ORIGINS; a test makes the tables bigger and checks a save at the new limits loads unchanged; core-save-forward-safety pins them, so raising one raises SCHEMA_VERSION (ADR-0037's rule).",
+        "The route walk and the tutorial test B-204 names wait on a visible condition (the router back on the tank view; the guide's step), not fixed delays; social.spec's hang (a page.evaluate in WebKit) has no fixed delay to replace and stays logged."
+      ],
+      "description": "Chunk 7's cheap items: B-203's other clauses (a show removed on load scratches and refunds its entries with a note; the Live food room's cone and jar cap and the staff skill range read from their tables; an unknown rare-variant origin handled on purpose) and B-204 (the three timing-sensitive e2e tests wait on the panel or the step, not on fixed delays).",
+      "designSections": [],
+      "evidence": [
+        "Two full passes in a row on 06f80f8 (2026-10-18, the owner's Mac, internal-disk clone): typecheck, unit 229 files / 2,719 tests, build, e2e 291 of 291, both times; fresh review (Opus 5.5, max) blockers fixed in 06f80f8."
+      ],
+      "id": "REL-024",
+      "note": "Chunk 7 (2026-10-18). Done 2026-10-18 (7b98be8, 06f80f8).",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 7 (hardening for multiplayer); ADR-0037 decision 3; BACKLOG B-203, B-204",
+      "status": "GREEN",
+      "tasks": [],
+      "tests": [
+        "tests/sim/core-crafted-saves-limits.test.ts (a removed show's entries scratched and refunded)",
+        "tests/sim/persistence-limits-from-tables.test.ts (cones, jars, staff skill and rare-variant origins read from their tables)",
+        "tests/sim/core-save-forward-safety.test.ts (ROOM_LIMITS_AT: those limits pinned to the save format)",
+        "tests/e2e/nav-routes-matrix.spec.ts, tests/e2e/gameplay.spec.ts (B-204: waits on the router and the guide's step)"
+      ]
+    },
+    {
+      "id": "REL-025",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §5.3",
+      "description": "Which Social service runs, and where Social shows: the local stub in dev mode and in every e2e build, the Supabase service in the players' build once a project is configured, nothing (as today) without one; Social reachable for players through socialAvailable().",
+      "acceptance": [
+        "socialModeFor(devAllowed, env, project) returns stub, online or off as ONLINE-STAGE1.md §5.3 lists, for every combination (unit test).",
+        "PanelHost, the dock, the More sheet, parseNav and the router gate Social on socialAvailable(), not on dev mode; the club-show reminder and the dev hint stay stub-only.",
+        "Playwright's E2E_ENV sets VITE_SOCIAL_STUB=1, so no e2e test reaches the live project; deploy.yml and render.yaml set neither VITE_SOCIAL_STUB nor VITE_SOCIAL_ONLINE_IN_DEV (unit test).",
+        "prod-mode.spec: the players' build shows Social (the stub, through the e2e flag) with no dev hint; its other checks unchanged. SOC-011's dev-only criteria are superseded on purpose (ADR-0038).",
+        "@supabase/supabase-js is a dependency at exactly 2.117.2, loaded with a dynamic import (its own chunk); core-dependencies' list changes citing ADR-0038 decision 2."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/online-mode.test.ts",
+        "tests/sim/core-dependencies.test.ts",
+        "tests/e2e/prod-mode.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§5.3"
+      ],
+      "note": "Chunk 8 (2026-10-19): src/ui/online/mode.ts (socialModeFor, socialAvailable, useSocialAvailable, startSocialService); the panel host, dock (`needsSocial`), More, parseNav and the router gate on it; the club-show reminder and the dev hint stay stub-only; VITE_SOCIAL_STUB in Playwright's E2E_ENV; @supabase/supabase-js 2.117.2 exactly, one dynamic import (online-mode.test checks no static import). prod-mode.spec checks the players' build's Social (the stub) with no dev hint."
+    },
+    {
+      "id": "REL-026",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §3",
+      "description": "The Supabase project's setup with the owner's yes (ADR-0040 decision 1): a Free organization \"Aquarium Go\", the project aquarium-go in us-east-1, the sign-in settings, the migration, the first club and the live smoke test; the address and publishable key committed in src/social/project.ts.",
+      "acceptance": [
+        "The organization is on the Free plan (checked before the project is made); the project is in us-east-1 at the free size; no command touched another organization or project.",
+        "supabase/config.toml: sign-up on, email confirmation off, minimum password 8, phone and external providers off; pushed with the diff read first.",
+        "The migration is applied and `supabase db advisors --type security --level warn` reports nothing.",
+        "The first club \"Aquarium Go Friends\" exists; the project ref is recorded in PLAN.md and the club's invite code given to the owner in the session, never written in the repo (it is public; ADR-0042, changed on purpose).",
+        "scripts/online-smoke.mjs passes every check of ONLINE-STAGE1.md §8.3 against the project and leaves no account or row behind.",
+        "No secret key is printed, saved or committed; src/social/project.ts holds only the address and the publishable (anon) key."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: scripts/online-smoke.mjs (by hand; recorded in PLAN.md)"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§3"
+      ],
+      "note": "Chunk 8 (2026-10-19): set up as ONLINE-STAGE1.md §3 says (ADR-0040, ADR-0042): the Free organization \"Aquarium Go\", project aquarium-go (ref zkavcxrsxdgdlstravpj, us-east-1); config pushed (sign-in settings only); both migrations applied; the security advisors report no warnings; the first club made (its code to the owner, never in the repo: it is public); the live smoke test 79 of 79, nothing left behind. Record in PLAN.md."
+    },
+    {
+      "id": "REL-027",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §4",
+      "description": "The database's rules: every table has row-level security and no policies or table grants for anon and authenticated; the game reaches data only through security-definer functions that check auth.uid(); sign-up is checked on the server (a club's invite code, the age box, a name).",
+      "acceptance": [
+        "supabase-migration.test.ts checks the SQL: RLS on every public table, no create policy, no table grants to anon or authenticated, every function security definer with set search_path = '' and execute revoked from public (and anon, except resolve_invite) with an explicit grant, both auth.users triggers, the size limits; proved failing on a copy with one removed.",
+        "put_save refuses a lower schema version than the stored one (too_new) and a stale revision (conflict).",
+        "create_club is refused unless the caller is the owner (ADR-0040 decision 2); delete_my_account removes every row of the caller."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/supabase-migration.test.ts",
+        "new: scripts/online-smoke.mjs (by hand)"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§4"
+      ],
+      "note": "Chunk 8 (2026-10-19): supabase/migrations/20261019000000_stage1.sql; tests/sim/supabase-migration.test.ts (the rules, and 15 mutated copies that must fail); scripts/online-smoke.mjs checks the live project."
+    },
+    {
+      "id": "REL-028",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; ADR-0041; docs/agent/design/ONLINE-STAGE1.md §5.2, §7",
+      "description": "Accounts: sign-up mode (email, password, \"Name friends see\", \"Invite code\", the 13-and-over checkbox, the privacy note), the approved errors, the forgot-password hint, sign-out, and \"Delete my account\".",
+      "acceptance": [
+        "Sign-up needs a working invite code, a name of 1 to 30 characters and the checkbox; each failure shows its approved message (ADR-0040); a code from the invite link fills the field.",
+        "Sign-in with a wrong password says \"That email and password don't match an account.\"; an existing email says \"An account with that email already exists. Sign in instead.\"",
+        "The privacy note (ADR-0039's text verbatim) opens from the sign-up form and from Settings › Account.",
+        "No stored value contains the password, for the stub and the Supabase service (SOC-002 extended).",
+        "Delete my account asks first (the approved body), removes the account on the server, signs out and leaves the game on the device."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/social-ui.test.ts",
+        "new: tests/sim/social-supabase.test.ts",
+        "tests/e2e/social.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§5.2, §7"
+      ],
+      "note": "Chunk 8 (2026-10-19): sign-up mode in SocialPanel.tsx (Create account opens it; the code filled from an invite link; the form's own checks, then resolve_invite, then the server's trigger); the approved errors (formErrorOf); PrivacyNote and PrivacyLink (parts.tsx); Settings › Account's Delete my account with its confirmation. SOC-002 extended: social-supabase.test runs the real supabase-js on a fake fetch and storage and finds no stored password."
+    },
+    {
+      "id": "REL-029",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; ADR-0041; docs/agent/design/ONLINE-STAGE1.md §6",
+      "description": "The online save: the game on screen goes online about every 2 minutes of play and when the tab is hidden; a check on sign-in, on load, on return and after a conflict decides as ONLINE-STAGE1.md §6's table says; the box offers Keep this device's or Load online save; a newer build's save is never sent over or loaded (PERSIST-014).",
+      "acceptance": [
+        "decideOnline matches every row of §6 (unit test).",
+        "At most one send per 2 minutes, one when the tab is hidden, none for a showcase, none while blocked, signed out or with the box open (unit test with fake timers).",
+        "Load online save imports through importSaveText and the Settings › Saves load, keeping this device's copy as \"Previous autosave\"; Keep this device's sends with the online revision expected.",
+        "A newer schema online blocks sending for the session and says so; put_save's too_new and conflict replies are honoured.",
+        "The device's link (aquarium-go.cloud.v1) lives outside the save; no social action changes the save or its stateHash (SOC-009 A3).",
+        "online-save.spec.ts covers the three boxes and the newer-schema case against the stub."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/online-rules.test.ts",
+        "new: tests/sim/online-sync.test.ts",
+        "new: tests/sim/online-compress.test.ts",
+        "new: tests/e2e/online-save.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§6"
+      ],
+      "note": "Chunk 8 (2026-10-19): src/ui/online/cloudSync.ts, rules.ts (decideOnline), CloudPrompt.tsx; the link in aquarium-go.cloud.v1 (per account, with when a local save last landed). Load online save keeps this device's copy as \"Previous autosave\" (a same-aquarium copy under a new saveId, since the slot's backup lists only a different aquarium). online-rules, online-sync, online-compress (unit) and online-save.spec (e2e)."
+    },
+    {
+      "id": "REL-030",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; ADR-0041; docs/agent/design/ONLINE-STAGE1.md §1, §4.3, §7",
+      "description": "Social on the real service: clubs (only the owner creates them and sees their invite links), joining, friend codes with requests to accept, friends' aquarium pictures, leaderboards among friends and club members, the Social dot from new club members; trades stay \"open later\" with the approved text changes.",
+      "acceptance": [
+        "Every SocialService method maps onto ONLINE-STAGE1.md §4.3 (unit test against a fake client), with every error mapped.",
+        "The owner's controls (create a club, copy its invite link) show only for the owner; the server refuses anyone else.",
+        "Friend requests list who added the player, with Accept; friends' tiles show their picture and gallons, no likes.",
+        "The trades note and the join text read as ADR-0040 approved; the club-show line and the Welcome toast's second line appear only for a club with an event.",
+        "A snapshot is sent at most every 30 minutes, as a small JPEG data URL within 200,000 characters."
+      ],
+      "tasks": [],
+      "tests": [
+        "new: tests/sim/social-supabase.test.ts",
+        "tests/sim/social-ui.test.ts",
+        "tests/e2e/social.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§1, §4.3, §7"
+      ],
+      "note": "Chunk 8 (2026-10-19): the Supabase service maps every method onto §4.3 (social-supabase.test); the owner's Create a club and invite links (only where isOwner; the server's create_club refuses others); friend requests with Accept; no likes on real tiles; the trades note and join text as ADR-0040 approved; the Welcome toast's club-show line only for a club with an event; a picture after a send at most every 30 minutes (a 480 px JPEG, refused over 200,000 characters)."
+    },
+    {
+      "id": "REL-031",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; ADR-0041; docs/agent/design/ONLINE-STAGE1.md §7",
+      "description": "Settings › Account (#/settings/account): who is signed in, the name and friend code, the online-save line, Sign out, Delete my account and the privacy note; signed out, the approved line and a way to Social.",
+      "acceptance": [
+        "The route opens the tab (nav-routes test, the route matrix); the tab fits every viewports.spec size.",
+        "Its strings are the approved ones (ADR-0040 and group I, ADR-0041), pinned by the copy test."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/nav-routes.test.ts",
+        "tests/e2e/nav-routes-matrix.spec.ts",
+        "tests/e2e/viewports.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§7"
+      ],
+      "note": "Chunk 8 (2026-10-19): src/ui/settings/AccountTab.tsx, the Account tab after Saves where Social exists; #/settings/account in nav-routes (unit) and nav-routes-matrix (e2e); viewports.spec measures it signed in, and the box, at every size; social-ui pins its strings."
+    },
+    {
+      "id": "REL-032",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §5.4, §8",
+      "description": "The stub implements the whole grown interface (sign-up details, owner, friend requests, clubs, delete, the online save) with dev hooks for e2e; the tests of ONLINE-STAGE1.md §8 exist and pass; the four checks pass twice in a row.",
+      "acceptance": [
+        "social-stub.test.ts exercises every new method and hook.",
+        "Two full passes in a row of typecheck, npm test, build and e2e (Chromium and WebKit) on the final code; one fresh reviewer (Opus 5.5, max effort) on the chunk's diff, its blockers fixed."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/social-stub.test.ts",
+        "npm run typecheck / test / build / e2e"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§5.4, §8"
+      ],
+      "note": "Chunk 8 (2026-10-19): the stub implements the whole interface (sign-up details, the owner, created clubs, friend requests, delete, the standing, the online save) with dev hooks (setOwner, pushFriendRequest, setCloud, cloud, cloudSyncNow, cloudCheck, cloudState); social-stub.test covers them. The runs and the review are in PLAN.md."
+    },
+    {
+      "id": "REL-033",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 8 (multiplayer stage 1); ADR-0038; ADR-0039; ADR-0040; docs/agent/design/ONLINE-STAGE1.md §3, §9",
+      "description": "Docs: ARCHITECTURE.md's online section (the layers, the service choice, the database's rule and the owner's runbook: a forgotten password, a paused project, the owner flag, a displaced online save), TRUST_BOUNDARY.md and DEBT_INVENTORY.md's stage-1 notes, KNOWN_LIMITATIONS (no title-screen sign-in, no likes, no trades, the server trusting the browser), TEST_IDS for the new test ids, README.",
+      "acceptance": [
+        "Each document above says what chunk 8 built, and PLAN.md records the setup (ref, first club code, smoke result) and the test runs."
+      ],
+      "tasks": [],
+      "tests": [
+        "review"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "§3, §9"
+      ],
+      "note": "Chunk 8 (2026-10-19): ARCHITECTURE.md \"Online\" (the layers, which service, the database's rule, migrations by db query, the owner's runbook), TRUST_BOUNDARY.md \"Social\" (what stage 1 checks and what stage 2 must), DEBT_INVENTORY.md's summary, KNOWN_LIMITATIONS.md \"Online\", TEST_IDS.md (the new ids and dev hooks), README."
     }
   ]
 }

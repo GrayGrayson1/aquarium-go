@@ -1060,6 +1060,9 @@ export function declineBid(state: GameState, listingId: string, bidId: string): 
   return { ok: true, message: `Declined ${b.buyerName ? `${b.buyerName.replace(/^The /, 'the ')}’s` : 'the'} offer of ${fmtMoney(b.amount)}.` }; // lane:qa-play: possessive
 }
 
+/** chunk 7 (B-124, ADR-0039 decision 1): once bidding has closed, offers can be accepted but not countered. */
+export const BIDDING_CLOSED_TEXT = 'Bidding has closed. Accept an offer or let it expire.';
+
 export function counterBid(state: GameState, listingId: string, bidId: string, amount: number): ActionResult {
   const l = state.market.listings.find((x) => x.id === listingId);
   if (!l) return fail('Listing not found.');
@@ -1072,6 +1075,7 @@ export function counterBid(state: GameState, listingId: string, bidId: string, a
     b.status = 'expired';
     return fail('That offer has just expired.');
   }
+  if (state.clock.hour >= l.endsHour) return fail(BIDDING_CLOSED_TEXT);
   const amt = Math.round(finite(amount, NaN));
   if (!Number.isFinite(amt) || amt <= 0) return fail('Enter a valid counter-offer.');
   if (amt <= b.amount) return fail('A counter should be higher than their offer — accept it instead.');
@@ -1108,6 +1112,7 @@ export function holdBidForCounter(state: GameState, listingId: string, bidId: st
     b.status = 'expired';
     return fail('That offer has just expired.');
   }
+  if (now >= l.endsHour) return fail(BIDDING_CLOSED_TEXT); // no counter to write once bidding has closed
   const k = marketTimeScale(state);
   // A new hold starts only after the offer has run unheld for a full window (the form was closed and reopened much
   // later); a form kept open can't chain holds, because the capped hold expires the offer with it.
@@ -1345,6 +1350,7 @@ function resolveCounters(state: GameState, l: Listing, rng: Rng, end: number): v
     const archetype = b.archetype ?? buyer?.archetype ?? 'experienced_keeper';
     const patience = finite(buyer?.patience, 0.5);
     const ceiling = Math.max(b.amount, finite(b.ceiling ?? b.amount * 1.1, b.amount));
+    b.ceiling ??= ceiling; // chunk 7 (B-124): a bid from an older save with no ceiling keeps the first one, not 1.1 × each new offer
     const counter = finite(b.counterAmount ?? b.amount, b.amount);
     const gap = (counter - ceiling) / Math.max(1, ceiling);
     const bargain = archetype === 'bargain_hunter';
@@ -1373,9 +1379,13 @@ function resolveCounters(state: GameState, l: Listing, rng: Rng, end: number): v
       }
       return;
     }
+    // chunk 7 (B-124, ADR-0039 decision 1): a split meets halfway but never past the buyer's ceiling, and a buyer
+    // already at their ceiling holds rather than adding a dollar (a split at 1.03 × the ceiling, read back as the
+    // ceiling, compounded over a run of small counters).
+    const mid = Math.min(ceiling, nicePrice(Math.min(ceiling, (b.amount + counter) / 2)));
+    if (outcome === 'split' && mid <= b.amount) outcome = 'hold';
     if (outcome === 'split') {
-      const mid = nicePrice(Math.min(ceiling * 1.03, (b.amount + counter) / 2));
-      b.amount = Math.max(b.amount + 1, Math.min(mid, counter));
+      b.amount = Math.min(mid, counter);
       b.status = 'open';
       // The counter-offer stays open long enough to read and answer (≥ ~2 real minutes at any speed).
       b.expiresHour = end + COUNTER_REPLY_OPEN_HOURS * marketTimeScale(state) + rng.range(0, 12) * patience;

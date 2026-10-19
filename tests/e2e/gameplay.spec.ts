@@ -14,35 +14,35 @@ test.describe('core gameplay loop', () => {
       const next = tid(page, 'tutorial-next');
       if ((await next.count()) && /next/i.test((await next.first().textContent()) ?? '')) await next.first().click();
     };
-    // camera → Next
-    await nextIfPlain();
-    // feed → use the feed tool on the tank
-    await tid(page, 'tool-feed').click();
-    const option = page.locator('[data-testid^="food-option-"]').first();
-    if (await option.isVisible().catch(() => false)) await option.click();
-    await clickTank(page);
-    await page.waitForTimeout(600);
-    // water → open the tank card
-    const cardToggle = tid(page, 'tank-card-toggle');
-    if (await cardToggle.count()) {
-      await cardToggle.click();
-      await page.waitForTimeout(400);
-      await cardToggle.click();
+    // chunk 7 (B-204): do whatever the guide's current step asks, then wait for the guide to move on, instead of a
+    // fixed script with fixed delays (WebKit once finished 1 of 3 steps after the old waits). The betta guide's first
+    // steps, in order (src/data/quests.ts, chainFor): meet and camera (look-around steps: Next), feed, water, habitat.
+    const ORDER = ['meet', 'camera', 'feed', 'water', 'habitat'];
+    const tool = () => page.evaluate(() => (window as unknown as { __AQ: { ui(): { tool: string | null } } }).__AQ.ui().tool);
+    const done: string[] = [];
+    for (let guard = 0; guard < ORDER.length && (await step()) < s0 + 3; guard++) {
+      const cur = await step();
+      const id = ORDER[cur];
+      if (id === 'meet' || id === 'camera') await nextIfPlain();
+      else if (id === 'feed') {
+        await tid(page, 'tool-feed').click();
+        const option = page.locator('[data-testid^="food-option-"]').first();
+        if (await option.isVisible().catch(() => false)) await option.click();
+        await clickTank(page);
+      } else if (id === 'water') await tid(page, 'tank-card-toggle').click();
+      else if (id === 'habitat') {
+        await openPanel(page, 'build');
+        await page.getByText(/^\s*Decor\s*$/).first().click();
+        await page.locator('[data-testid^="build-decor-"]').first().click();
+        await expect.poll(tool).toBe('decor_place'); // the panel has closed onto the tank, ready to place
+        await clickTank(page);
+      }
+      await expect.poll(step, { message: `the guide's "${id ?? cur}" step` }).toBeGreaterThan(cur);
+      if (id === 'water') await tid(page, 'tank-card-toggle').click(); // close the card again
+      if (id === 'feed' || id === 'habitat') await page.keyboard.press('Escape'); // put the tool down
+      done.push(id ?? String(cur));
     }
-    await nextIfPlain();
-    // habitat → place a decor item from Build
-    await openPanel(page, 'build');
-    await page.getByText(/^\s*Decor\s*$/).first().click();
-    const decor = page.locator('[data-testid^="build-decor-"]').first();
-    if (await decor.isVisible().catch(() => false)) {
-      await decor.click();
-      await page.waitForTimeout(400);
-      await clickTank(page);
-      await page.waitForTimeout(600);
-    }
-    await page.keyboard.press('Escape');
-    await nextIfPlain();
-    await expect.poll(step, { timeout: 10_000 }).toBeGreaterThanOrEqual(s0 + 3);
+    expect(await step(), `steps done: ${done.join(', ')}`).toBeGreaterThanOrEqual(s0 + 3);
 
     // Skip the rest (skip asks for confirmation — the confirm button carries the same test id).
     await tid(page, 'tutorial-skip').first().click();

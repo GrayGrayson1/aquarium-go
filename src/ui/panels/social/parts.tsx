@@ -1,15 +1,18 @@
 /**
  * The Social panel's building blocks (0.5 spec §13.4–§13.5; the approved screens desk-social, phone-clubs and
  * phone-leaderboard): avatars, the section card, a club row, trade rows, friend tiles, the leaderboard card, skeleton
- * rows and the coming-soon note. OWNER: lane "social".
+ * rows and the coming-soon note; chunk 8: the privacy note (ADR-0039), and a club's invite link for the owner
+ * (ADR-0041). OWNER: lane "social".
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
-import { ArrowLeftRight, Check, Heart, TriangleAlert, Trophy } from 'lucide-react';
+import { ArrowLeftRight, Check, Copy, Heart, Link2, TriangleAlert, Trophy, UserPlus } from 'lucide-react';
 import { Button, Modal } from '@/ui/kit';
 import { Seg } from '../common/parts';
 import { go } from '@/ui/nav/router';
-import { socialService, type Club, type FriendAquarium, type LeaderboardKind, type LeaderboardRow, type TradeOffer, LEADERBOARD_KINDS, CLUB_SHOW_ENTRIES } from '@/social';
+import { useUI } from '@/state/ui';
+import { platform } from '@/platform';
+import { socialService, type Club, type FriendAquarium, type FriendRequest, type LeaderboardKind, type LeaderboardRow, type TradeOffer, LEADERBOARD_KINDS, CLUB_SHOW_ENTRIES } from '@/social';
 import { SOCIAL_COPY as C, count, lbValue, monthName } from './copy';
 import { useSocialQuery } from './socialStore';
 
@@ -98,7 +101,16 @@ export function NetworkError() {
   return <ErrorNote>{C.errorNetwork}</ErrorNote>;
 }
 
-/** A member's club: avatar, name, "128 members · you joined in October", the Member chip, then the club-show strip. */
+/** chunk 8 (ADR-0040 decision 2) — a club's invite link, which is also its sign-up link. */
+export function inviteUrl(code: string): string {
+  const base = typeof location !== 'undefined' ? `${location.origin}${location.pathname}` : '';
+  return `${base}#/social/join/${encodeURIComponent(code)}`;
+}
+
+/**
+ * A member's club: avatar, name, "128 members · you joined in October", the Member chip, then the club-show strip
+ * (a club with an event: the stub's samples) and, on a club the owner created, its invite link (chunk 8).
+ */
 export function MemberClub({ club }: { club: Club }) {
   return (
     <div className="so-club" data-testid={`social-club-${club.id}`}>
@@ -121,7 +133,77 @@ export function MemberClub({ club }: { club: Club }) {
           </button>
         </div>
       )}
+      {club.inviteCode && <InviteLinkRow code={club.inviteCode} />}
     </div>
+  );
+}
+
+/**
+ * chunk 8 (ADR-0041 decision 5) — "Invite link FRIENDS-4821" and Copy link, on the owner's own clubs. Where the
+ * clipboard refuses (as the offer link does, OfferLink.tsx), the link shows below, selected, to copy by hand.
+ */
+export function InviteLinkRow({ code }: { code: string }) {
+  const [manual, setManual] = useState(false);
+  const url = inviteUrl(code);
+  const copy = async () => {
+    const ok = await platform()
+      .clipboard.write(url)
+      .catch(() => false);
+    if (ok) useUI.getState().toast(C.linkCopied, 'success');
+    setManual(!ok);
+  };
+  return (
+    <div className="so-strip so-strip--invite" data-testid={`social-invite-link-${code}`}>
+      <Link2 size={14} aria-hidden className="so-strip__icon" />
+      <span className="so-strip__text">{C.inviteLink(code)}</span>
+      <button type="button" className="pn-link so-strip__link" onClick={() => void copy()} data-testid="social-copy-link">
+        <Copy size={13} aria-hidden /> {C.copyLink}
+      </button>
+      {manual && <input className="ag-input so-input so-strip__url" readOnly value={url} aria-label={C.inviteLink(code)} onFocus={(e) => e.currentTarget.select()} autoFocus data-testid="social-invite-url" />}
+    </div>
+  );
+}
+
+/** chunk 8 (ADR-0039 decision 3) — "Your account and your data", the approved note, from sign-up and Settings › Account. */
+export function PrivacyNote({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={C.privacyTitle}
+      testId="social-privacy"
+      actions={
+        <Button variant="primary" onClick={onClose} data-testid="social-privacy-close">
+          {C.close}
+        </Button>
+      }
+    >
+      <div className="so-privacy">
+        {C.privacyIntro.map((p) => (
+          <p key={p}>{p}</p>
+        ))}
+        <ul>
+          {C.privacyStores.map((p) => (
+            <li key={p}>{p}</li>
+          ))}
+        </ul>
+        <p>{C.privacyWhy}</p>
+        <p>{C.privacyDelete}</p>
+      </div>
+    </Modal>
+  );
+}
+
+/** chunk 8 — the privacy note's link (its title) and the note itself. */
+export function PrivacyLink({ testId = 'social-privacy-link' }: { testId?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" className="pn-link so-privacy-link" onClick={() => setOpen(true)} data-testid={testId}>
+        {C.privacyTitle}
+      </button>
+      <PrivacyNote open={open} onClose={() => setOpen(false)} />
+    </>
   );
 }
 
@@ -180,17 +262,49 @@ export function TradeList({ trades, onView }: { trades: readonly TradeOffer[]; o
   );
 }
 
-/** A friend's aquarium: the 16:10 snapshot, its title, "1,000 gal · 48 likes" (or "Public aquarium · 31 likes"). */
+/**
+ * A friend's aquarium: the 16:10 snapshot, its title, "1,000 gal · 48 likes" (or "Public aquarium · 31 likes"). Chunk 8
+ * (ADR-0040 decision 4): with no likes (`likes` null, the real service) the tile shows the size alone, without the heart.
+ */
 export function FriendTile({ f }: { f: FriendAquarium }) {
+  const size = f.gallons === null ? C.publicAquarium : C.gallons(count(f.gallons));
   return (
     <li className="so-friend">
       <img className="so-friend__snap" src={f.snapshotUrl} alt="" width={320} height={200} loading="lazy" decoding="async" />
       <div className="so-friend__title">{f.title}</div>
       <div className="so-friend__meta">
-        <Heart size={12} aria-hidden className="so-friend__heart" />
-        {f.gallons === null ? C.publicAquarium : C.gallons(count(f.gallons))} · {C.likes(count(f.likes))}
+        {f.likes === null ? (
+          size
+        ) : (
+          <>
+            <Heart size={12} aria-hidden className="so-friend__heart" />
+            {size} · {C.likes(count(f.likes))}
+          </>
+        )}
       </div>
     </li>
+  );
+}
+
+/** chunk 8 (ADR-0040 decision 4) — "Friend requests": "{name} added you" with Accept. */
+export function FriendRequestList({ requests, busy, onAccept }: { requests: readonly FriendRequest[]; busy: string | null; onAccept: (id: string) => void }) {
+  return (
+    <section className="so-card so-card--plain" data-testid="social-friend-requests">
+      <h3 className="so-section">
+        <UserPlus size={14} aria-hidden /> {C.friendRequests}
+      </h3>
+      <ul className="so-requests">
+        {requests.map((r) => (
+          <li key={r.id} className="so-request" data-testid={`social-request-${r.id}`}>
+            <PersonAvatar name={r.name} size={30} />
+            <span className="so-request__text">{C.requestRow(r.name)}</span>
+            <Button size="sm" disabled={busy === r.id} onClick={() => onAccept(r.id)} data-testid="social-accept">
+              <Check size={14} aria-hidden /> {C.accept}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

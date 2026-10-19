@@ -90,7 +90,8 @@ test.describe('Notifications (desktop 1440×900)', () => {
     await tid(page, 'alerts-notify-turn-on').click();
     await expect.poll(() => hash(page)).toBe('#/settings/notifications');
     expect(await asks(page)).toBe(0); // the footer only opens Settings
-    await expect(page.locator('[data-testid^="settings-tab-"]')).toHaveCount(5);
+    // chunk 8 (REL-031): six tabs, Account after Saves, wherever Social exists (every e2e build: the stub)
+    await expect(page.locator('[data-testid^="settings-tab-"]')).toHaveCount(6);
 
     await expect(tid(page, 'notify-status')).toContainText('Notifications are off');
     for (const c of ['rare', 'care', 'market', 'breeding', 'shows']) {

@@ -378,7 +378,18 @@ export interface ResumeOptions {
 export async function loadAndResume(slot = 'auto', opts: ResumeOptions = {}): Promise<ResumeResult> {
   const res = await loadGameDetailed(slot);
   if (!res.ok || !res.state) return { ...res, slot };
-  let state = res.state;
+  const { state, summary } = resumeState(res.state, opts);
+  return { ...res, state, slot, summary };
+}
+
+/**
+ * The second half of `loadAndResume` for a state already in hand: the bounded offline catch-up on a copy, the
+ * welcome-back card, and (by default) the running game and the game screen. Chunk 8 (ONLINE-STAGE1.md §6): the online
+ * save's "Load online save" stores the online copy in the autosave slot, then resumes that very state, so no autosave
+ * can land between storing it and reading it back.
+ */
+export function resumeState(loaded: GameState, opts: ResumeOptions = {}): { state: GameState; summary?: OfflineSummary } {
+  let state = loaded;
   state.isShowcase = false;
   const now = opts.now ?? Date.now();
   const since = Number.isFinite(state.lastTickRealMs) && state.lastTickRealMs > 0 ? state.lastTickRealMs : state.lastSavedRealMs;
@@ -422,7 +433,7 @@ export async function loadAndResume(slot = 'auto', opts: ResumeOptions = {}): Pr
       }
     }
   }
-  return { ...res, state, slot, summary };
+  return { state, summary };
 }
 
 /**

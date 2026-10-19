@@ -31,8 +31,9 @@ import { CLASS_DEFAULTS } from '@/sim/water/constants'; // chunk 6 (PERSIST-004,
 import { LOG_CAP } from '@/sim/context';
 import { BUYER_ARCHETYPES } from '@/data/buyers';
 import { SHOW_TIERS } from '@/data/shows';
-import { STAFF_ROLES, STAFF_TRAITS } from '@/data/staff'; // chunk 6 (PERSIST-004 A3)
-import { WATER_ROOM } from '@/data/catalog/machines'; // ADR-0037 (G1)
+import { STAFF_ROLES, STAFF_TRAITS, STAFF_MAX_SKILL } from '@/data/staff'; // chunk 6 (PERSIST-004 A3); chunk 7 (B-203)
+import { WATER_ROOM, FOOD_ROOM } from '@/data/catalog/machines'; // ADR-0037 (G1); chunk 7 (B-203)
+import { earn } from '@/sim/economy/finance'; // chunk 7 (B-203): a removed show's fees
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -785,8 +786,21 @@ export function repairState(s: Json): string[] {
     // chunk 6 (PERSIST-004 A3) — a show of a tier the table doesn't know can't be judged (the calendar refills itself);
     // an entry's unknown tier is only a label, so it goes
     const shows = s.shows.shows.length;
-    s.shows.shows = (s.shows.shows as Json[]).filter((x) => isObj(x) && typeof x.tier === 'string' && Object.hasOwn(SHOW_TIERS, x.tier));
+    const removed = (s.shows.shows as Json[]).filter((x) => !(isObj(x) && typeof x.tier === 'string' && Object.hasOwn(SHOW_TIERS, x.tier)));
+    s.shows.shows = (s.shows.shows as Json[]).filter((x) => !removed.includes(x));
     if (s.shows.shows.length !== shows) repairs.push(`shows.shows: ${shows - s.shows.shows.length} of an unknown tier removed`);
+    // chunk 7 (B-203) — a removed show is never judged: its pending entries are scratched and their fees refunded, as
+    // a show-day scratch is (they stayed "entered" for good, fees kept)
+    const gone = new Map(removed.filter((x) => isObj(x) && typeof x.id === 'string').map((x) => [x.id as string, typeof x.name === 'string' ? x.name : 'the show']));
+    for (const e of s.shows.entries as Json[]) {
+      if (!isObj(e) || e.status !== 'entered' || !gone.has(e.showId)) continue;
+      e.status = 'scratched';
+      e.note = 'This show was called off. The club refunded the fee.';
+      e.judgedHour = num(s.clock?.hour, 0);
+      const fee = Math.max(0, num(e.fee, 0));
+      if (fee > 0) earn(s as GameState, fee, 'other', `Show fee refund — ${gone.get(e.showId)}`);
+      repairs.push(`shows entry ${shortId(e.id)}: its show was removed, so it was scratched${fee > 0 ? ' and refunded' : ''}`);
+    }
     for (const e of s.shows.entries as Json[]) {
       if (isObj(e) && e.tier !== undefined && !(typeof e.tier === 'string' && Object.hasOwn(SHOW_TIERS, e.tier))) {
         repairs.push(`shows entry ${shortId(e.id)}: tier ${String(e.tier).slice(0, 24)} removed`);
@@ -819,7 +833,7 @@ export function repairState(s: Json): string[] {
     for (const m of [...s.staff.roster, ...s.staff.candidates] as Json[]) {
       if (!Array.isArray(m.tankIds)) m.tankIds = [];
       m.tankIds = (m.tankIds as unknown[]).filter((id) => hasKey(s.tanks, id));
-      m.skill = Math.max(1, Math.min(5, Math.round(num(m.skill, 1))));
+      m.skill = Math.max(1, Math.min(STAFF_MAX_SKILL, Math.round(num(m.skill, 1)))); // chunk 7 (B-203): the table's range
       m.wage = Math.max(0, num(m.wage, 60));
       m.xp = Math.max(0, num(m.xp, 0));
       m.hiredHour = num(m.hiredHour, num(s.clock?.hour, 0));
@@ -1058,9 +1072,11 @@ function repairAutomation(s: Json, repairs: string[]): void {
       delete fac.food;
       repairs.push('facility.food: unreadable, removed');
     } else {
+      // chunk 7 (B-203): at most what the room holds (FOOD_ROOM's maxima; a bigger room raises SCHEMA_VERSION, ADR-0037)
       for (const k of ['cones', 'jars'] as const) {
         const list = Array.isArray(f[k]) ? f[k] : null;
-        const good = (list ?? []).filter((c: unknown) => isObj(c) && (c.startedHour === null || finiteNum(c.startedHour))).slice(0, 12);
+        const max = k === 'cones' ? FOOD_ROOM.maxCones : FOOD_ROOM.maxJars;
+        const good = (list ?? []).filter((c: unknown) => isObj(c) && (c.startedHour === null || finiteNum(c.startedHour))).slice(0, max);
         fix(!list || good.length !== list.length, `facility.food.${k}: unreadable entries removed`, () => (f[k] = good));
       }
       fix(f.lastHour !== undefined && !(finiteNum(f.lastHour) && f.lastHour <= hour + 1), 'facility.food.lastHour: removed', () => delete f.lastHour);

@@ -1,8 +1,8 @@
 /**
  * Application shell. OWNER: core.
- * URL flags (dev): ?showcase=<starterId> | ?fixture=<name> jump straight into a tank; ?dev=1 allows the developer
- * tools for this session only (src/state/devTools.ts, ADR-0005 decision 2); ?sandbox=<name> renders
- * src/dev/sandboxes/<name>.tsx instead of the game.
+ * URL flags: ?showcase=<starterId> jumps straight into a starter's demo tank (never saved); where the developer tools
+ * are allowed (a dev build; src/state/devTools.ts, ADR-0005 decision 2, REL-019), ?fixture=<name> boots a registry
+ * fixture and ?sandbox=<name> renders src/dev/sandboxes/<name>.tsx instead of the game. The live site ignores ?dev=1.
  */
 import { useEffect, useState, lazy, Suspense, type ComponentType } from 'react';
 import { Scene } from './render/Scene';
@@ -17,13 +17,15 @@ import { loadFixtureRegistry, isStarterFixture, holdReady } from './dev/fixtures
 import type { GameState } from './types';
 import { urlFixtureName } from './game/useAutosave';
 import { ErrorBoundary } from './app/ErrorBoundary';
+import { urlSandboxName } from './state/devTools';
 
 const sandboxModules = import.meta.glob('./dev/sandboxes/*.tsx');
 
 // lane:perf2 — a non-starter ?fixture= needs the lazy registry: start fetching it now and hold __AQ.ready until the
 // boot below has applied it (e2e/QA scripts wait for `ready` and then read the fixture's state).
 // lane:core (PLAT-005, ADR-0005 decision 2) — a registry fixture is a developer tool (a rich world Settings › Saves
-// could keep): it boots only in a dev build or a ?dev=1 session. A starter showcase is a plain demo world, never saved.
+// could keep): it boots only where the tools are allowed (src/state/devTools.ts: a dev build, or a ?dev=1 session of the
+// e2e-flagged production build; never the live site). A starter showcase is a plain demo world, never saved.
 const URL_FIXTURE = typeof location !== 'undefined' ? urlFixtureName() : null;
 const releaseUrlBoot = URL_FIXTURE && !isStarterFixture(URL_FIXTURE) ? holdReady() : null;
 if (releaseUrlBoot) void loadFixtureRegistry().catch(() => undefined);
@@ -65,7 +67,7 @@ function useUrlBoot() {
 
 export default function App() {
   useUrlBoot();
-  const sandbox = new URLSearchParams(location.search).get('sandbox');
+  const sandbox = urlSandboxName(); // chunk 7 (REL-019): a developer tool, so not on the live site
   const [Sandbox, setSandbox] = useState<ComponentType | null>(null);
   useEffect(() => {
     if (!sandbox) return;

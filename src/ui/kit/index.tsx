@@ -237,9 +237,13 @@ export function cycleFocus(root: HTMLElement, e: KeyboardEvent, selector: string
   items[next].focus();
 }
 
-export function Modal({ open, onClose, title, subtitle, children, actions, width, testId }: { open: boolean; onClose: () => void; title?: ReactNode; subtitle?: ReactNode; children: ReactNode; actions?: ReactNode; width?: number; testId?: string }) {
+export function Modal({ open, onClose, title, subtitle, children, actions, width, testId, dismissible = true }: {
+  open: boolean; onClose: () => void; title?: ReactNode; subtitle?: ReactNode; children: ReactNode; actions?: ReactNode; width?: number; testId?: string;
+  /** chunk 8 — false: a choice only (the online-save box): no close button, and Escape or the backdrop does nothing. */
+  dismissible?: boolean;
+}) {
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  closeRef.current = dismissible ? onClose : () => {};
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const titleId = useId(); // lane:ui-shell (B-178) — the dialog is named by its title
   useEffect(() => {
@@ -262,7 +266,7 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
     const t = window.setTimeout(() => {
       const root = wrapRef.current;
       if (!root || root.contains(document.activeElement)) return;
-      const target = root.querySelector<HTMLElement>('input, select, textarea') ?? root.querySelector<HTMLElement>('[aria-label="Close"]');
+      const target = root.querySelector<HTMLElement>('input, select, textarea') ?? root.querySelector<HTMLElement>('[aria-label="Close"]') ?? root.querySelector<HTMLElement>('button');
       target?.focus({ preventScroll: true });
     }, 80);
     return () => {
@@ -284,7 +288,7 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          onPointerDown={(e) => e.target === e.currentTarget && onClose()}
+          onPointerDown={(e) => e.target === e.currentTarget && closeRef.current()}
         >
           <motion.div
             ref={wrapRef}
@@ -298,7 +302,7 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
             aria-modal="true"
             aria-labelledby={title ? titleId : undefined}
           >
-            <Panel className="ag-modal" strong title={title} subtitle={subtitle} onClose={onClose} testId={testId} titleId={titleId}>
+            <Panel className="ag-modal" strong title={title} subtitle={subtitle} onClose={dismissible ? onClose : undefined} testId={testId} titleId={titleId}>
               {children}
               {actions && <div className="ag-row ag-modal__actions">{actions}</div>}
             </Panel>

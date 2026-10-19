@@ -1,6 +1,8 @@
 node_modules
 dist
 .e2e-dist
+.e2e-dist-prod
+.e2e-dist-reuse
 test-results
 playwright-report
 .DS_Store

@@ -29,14 +29,18 @@ interface SocialState {
 
 export const useSocial = create<SocialState>(() => ({ user: undefined, offline: false, news: { trades: 0, clubs: 0 } }));
 
-/** Ask the service who is signed in (once per session unless `force`). */
+/**
+ * Ask the service who is signed in (once per session unless `force`). Chunk 8: with no connection, an account already
+ * known stays signed in on this device (only `offline` says the server can't be reached).
+ */
 export async function loadSocialUser(force = false): Promise<void> {
   if (!force && useSocial.getState().user !== undefined) return;
   try {
     const user = await socialService().currentUser();
     useSocial.setState({ user, offline: false });
   } catch (e) {
-    useSocial.setState({ user: null, offline: isSocialError(e) && e.code === 'network' });
+    const network = isSocialError(e) && e.code === 'network';
+    useSocial.setState((s) => ({ user: network && s.user ? s.user : null, offline: network }));
   }
 }
 

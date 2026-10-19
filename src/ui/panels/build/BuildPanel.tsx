@@ -20,7 +20,7 @@ import { tutorialChain, habitatPicks } from '@/data/quests';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { getFacilityLevel } from '@/data/facilities';
 import { buyTank, tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
-import { findFreeSpot } from '@/sim/facility';
+import { findFreeSpot, waterClassLock } from '@/sim/facility';
 import { removeEquipment, setEquipment, installEquipment, repairEquipment } from '@/sim/care';
 import { removeDecor } from '@/sim/aquascape';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
@@ -158,7 +158,7 @@ export function BuildPanel() {
 function TanksTab({ g }: { g: GameState }) {
   const { close } = useSheet();
   const marineOk = unlocked(g, 'marine_basics');
-  const wcLocked = (w: WaterClass) => (w === 'brackish' ? !unlocked(g, 'brackish') : !w.startsWith('fresh') && (!marineOk || (w === 'reef' && !unlocked(g, 'reef')))); // lane:brackish
+  const wcLocked = (w: WaterClass) => waterClassLock(g, w) !== null; // lane:brackish; chunk 7 (B-160): the rules' own lock
   // lane:fix-panels (P2-03) — arriving from a shop offer's "New tank": start on the water that animal needs
   const [wc, setWc] = useState<WaterClass>(() => {
     const wanted = peekOfferReturn()?.waterClass;

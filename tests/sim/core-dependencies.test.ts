@@ -22,6 +22,9 @@ const DEPENDENCIES: Record<string, string> = {
   '@react-three/drei': '^10.7.8',
   '@react-three/fiber': '^9.8.0',
   '@react-three/postprocessing': '^3.1.2',
+  // chunk 8 — the Supabase client for multiplayer stage 1, approved by the owner (ADR-0038 decision 2), at an exact
+  // version (ONLINE-STAGE1.md §2)
+  '@supabase/supabase-js': '2.117.2',
   clsx: '^2.1.1',
   'idb-keyval': '^6.3.0',
   immer: '^11.1.18',

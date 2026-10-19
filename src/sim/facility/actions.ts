@@ -142,9 +142,12 @@ export function setOpenToPublic(state: GameState, open: boolean): ActionResult {
   return { ok: true, message: 'Open to the public.' };
 }
 
+/** chunk 7 (B-162, ADR-0039 decision 2): the highest admission, the Visitors slider's end; the rules allow no more. */
+export const MAX_ADMISSION = 40;
+
 export function setAdmission(state: GameState, price: number): ActionResult {
   const p = Number.isFinite(price) ? price : 0;
-  state.facility.admission = Math.max(0, Math.min(250, Math.round(p)));
+  state.facility.admission = Math.max(0, Math.min(MAX_ADMISSION, Math.round(p)));
   return { ok: true, message: `Admission set to $${state.facility.admission}.` };
 }
 

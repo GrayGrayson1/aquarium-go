@@ -2,13 +2,14 @@
 /**
  * lane:core (PLAT-005, ADR-0005 decision 2) — developer tools in production builds: read-only diagnostics always;
  * cheats and save editing (window.__AQ's write calls, the dev panel, fixtures that autosave) only in a dev build or a
- * session opened with ?dev=1, which nothing remembers.
+ * session opened with ?dev=1, which nothing remembers. chunk 7 (REL-019, ADR-0037 decision 3, B-190): the live site
+ * ignores ?dev=1; only a production build made with VITE_E2E_DEV_URL=1 (the e2e build base-path.spec opens) honours it.
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { GameState } from '@/types';
-import { useDevTools, urlDevFlag, devModeOn, devToolsAllowed } from '@/state/devTools';
+import { useDevTools, urlDevFlag, devModeOn, devToolsAllowed, devToolsAtBoot, urlSandboxName } from '@/state/devTools';
 import { useSettings } from '@/state/settings';
 import { useGame } from '@/state/game';
 import { newGame } from '@/sim/newGame';
@@ -34,6 +35,39 @@ describe('PLAT-005: who gets the developer tools', () => {
     expect(urlDevFlag('?fixture=big_facility&dev=1')).toBe(true);
     expect(urlDevFlag('?dev=0')).toBe(false);
     expect(urlDevFlag('')).toBe(false);
+  });
+
+  it('REL-019: the live site ignores ?dev=1; a dev build always has the tools, the e2e-flagged build only with ?dev=1', () => {
+    // the players' build (no flag)
+    expect(devToolsAtBoot(false, false, '?dev=1')).toBe(false);
+    expect(devToolsAtBoot(false, false, '?fixture=big_facility&dev=1')).toBe(false);
+    expect(devToolsAtBoot(false, false, '')).toBe(false);
+    // the e2e base-path build (VITE_E2E_DEV_URL=1)
+    expect(devToolsAtBoot(false, true, '?dev=1')).toBe(true);
+    expect(devToolsAtBoot(false, true, '?dev=0')).toBe(false);
+    expect(devToolsAtBoot(false, true, '')).toBe(false);
+    // a dev build
+    expect(devToolsAtBoot(true, false, '')).toBe(true);
+    expect(devToolsAtBoot(true, false, '?dev=0')).toBe(true);
+    // the store starts from that rule and the build's own flag, nothing else
+    expect(src('src/state/devTools.ts')).toMatch(/allowed: devToolsAtBoot\(import\.meta\.env\.DEV, import\.meta\.env\.VITE_E2E_DEV_URL === '1'\)/);
+  });
+
+  it("REL-019: the flag is the e2e runs' alone: neither deploy.yml nor render.yaml sets it, and only the base-path build does", () => {
+    for (const f of ['.github/workflows/deploy.yml', 'render.yaml']) expect(src(f), f).not.toContain('VITE_E2E_DEV_URL');
+    const pw = src('playwright.config.ts');
+    expect(pw.match(/VITE_E2E_DEV_URL: '1'/g)?.length).toBe(1);
+    expect(pw).toMatch(/env: E2E_DEV_URL_ENV,[\s\S]*\.e2e-dist-prod[\s\S]*env: E2E_ENV,/);
+  });
+
+  it('REL-019: ?sandbox= is a developer tool too', () => {
+    expect(urlSandboxName('?sandbox=audio-lab')).toBe('audio-lab');
+    expect(urlSandboxName('')).toBeNull();
+    useDevTools.setState({ allowed: false });
+    expect(urlSandboxName('?sandbox=audio-lab')).toBeNull();
+    expect(urlSandboxName('?sandbox=audio-lab&dev=1')).toBeNull();
+    expect(src('src/App.tsx')).toContain('urlSandboxName()');
+    expect(src('src/App.tsx')).not.toMatch(/get\('sandbox'\)/);
   });
 
   it('a test run is a dev build: the tools are allowed', () => {

@@ -10,7 +10,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ChevronRight, Gauge, Lock, Settings, X } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGameSelector } from '@/state/game';
-import { useDevMode, useDevTools } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useSocialAvailable } from '../online/mode'; // chunk 8 (REL-025)
 import { sfx } from '@/audio/sfx';
 import { useShell } from '../common/shellStore';
 import { useIsMobile } from '../common/safe';
@@ -30,7 +31,8 @@ function closeMore() {
 
 /**
  * The sheet's content: title and close, the tiles, the Settings row (`isLocked`, `dots` from the game). lane:social
- * (chunk 6, §5.3) — `social`: dev mode, where a Social tile follows Shows, with a "New" tag until Social is first opened.
+ * (chunk 6, §5.3) — `social`: where Social exists (chunk 8, REL-025), a Social tile follows Shows, with a "New" tag until
+ * Social is first opened.
  */
 export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (it: (typeof MORE_ITEMS)[number]) => boolean; dots: Record<string, NavDot>; social?: boolean }) {
   const go = (id: (typeof MORE_ITEMS)[number]['id'], target: string | null) => {
@@ -145,8 +147,8 @@ export function MoreSheet() {
   const ref = useRef<HTMLDivElement>(null);
   const unlocked = useGameSelector((g) => g.progress.unlocked.join('|'), '');
   const dev = useDevMode();
-  const devAllowed = useDevTools((s) => s.allowed); // lane:social (chunk 6)
-  const dots = useNavDots(moreItems(devAllowed));
+  const social = useSocialAvailable(); // lane:social (chunk 6; chunk 8, REL-025)
+  const dots = useNavDots(moreItems(social));
   const panel = useUI((s) => s.panel);
   const selected = useUI((s) => s.selectedCreatureId);
   const tankCard = useShell((s) => s.tankCardOpen);
@@ -192,7 +194,7 @@ export function MoreSheet() {
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 34, stiffness: 340 }}
         >
-          <MoreSheetBody isLocked={(it) => !isUnlocked(it.lock)} dots={dots} social={devAllowed} />
+          <MoreSheetBody isLocked={(it) => !isUnlocked(it.lock)} dots={dots} social={social} />
         </motion.div>
       )}
     </AnimatePresence>

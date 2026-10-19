@@ -3,6 +3,10 @@
  * local Social stub: the sign-in rule, HIGHLAND-4821 the only invite that resolves, joining persists (with the month),
  * trades, friends, Add friend, the leaderboards with the player's row computed from a save, the password never stored,
  * the stored value's fields, the one injection point, and no social call touching the save.
+ * Chunk 8 (ONLINE-STAGE1.md §5.4; REL-032): sign-up takes details (a code that opens a club, the name, the age box) and
+ * joins that club; the record keeps `owner` and the clubs the owner created only when set (SOC-009 A3's list grows on
+ * purpose); the owner's clubs and invite codes, friend requests, Delete my account, the standing report and the
+ * online save (revision and newer-build checks), with the dev hooks that play the owner, a friend and another device.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { newGame } from '@/sim/newGame';
@@ -34,6 +38,7 @@ function memory(): KV {
 }
 
 const PASSWORD = 'correct horse battery';
+const DETAILS = { displayName: 'You', inviteCode: VALID_INVITE, ageConfirmed: true };
 const fast = (kv: KV, extra: Parameters<typeof createLocalSocialStub>[0] = {}) => createLocalSocialStub({ storage: kv, latency: [0, 0], ...extra });
 
 describe('the sign-in rule (§13.2): x@y.z and a password of 8+ characters', () => {
@@ -52,7 +57,7 @@ describe('the sign-in rule (§13.2): x@y.z and a password of 8+ characters', () 
     const kv = memory();
     const s = fast(kv);
     await expect(s.signIn('nope', 'short')).rejects.toEqual({ code: 'invalid' });
-    await expect(s.signUp('you@example.com', 'short')).rejects.toEqual({ code: 'invalid' });
+    await expect(s.signUp('you@example.com', 'short', DETAILS)).rejects.toEqual({ code: 'invalid' });
     expect(kv.dump()).toEqual({});
     expect(await s.currentUser()).toBeNull();
   });
@@ -74,7 +79,7 @@ describe('signing in, the stored value and the password (SOC-002, SOC-009 A3)', 
     for (const how of ['signIn', 'signUp'] as const) {
       const kv = memory();
       const s = fast(kv);
-      await s[how]('you@example.com', PASSWORD);
+      await (how === 'signIn' ? s.signIn('you@example.com', PASSWORD) : s.signUp('you@example.com', PASSWORD, DETAILS));
       await s.joinClub(HIGHLAND_ID);
       const everything = JSON.stringify(kv.dump());
       expect(everything).not.toContain(PASSWORD);
@@ -82,13 +87,19 @@ describe('signing in, the stored value and the password (SOC-002, SOC-009 A3)', 
     }
   });
 
-  it('stores only email, displayName, joinedClubIds and joinedMonths', async () => {
+  it('stores only email, displayName, joinedClubIds and joinedMonths (chunk 8: owner and created clubs only when set)', async () => {
     const kv = memory();
     const s = fast(kv, { now: () => new Date(2026, 9, 14) });
-    await s.signUp('you@example.com', PASSWORD);
+    await s.signUp('you@example.com', PASSWORD, DETAILS); // joins the invite's club (chunk 8)
     await s.joinClub(HIGHLAND_ID);
     expect(Object.keys(kv.dump())).toEqual([SOCIAL_STORAGE_KEY]);
-    expect(JSON.parse(kv.getItem(SOCIAL_STORAGE_KEY)!)).toEqual({ email: 'you@example.com', displayName: 'you', joinedClubIds: [HIGHLAND_ID], joinedMonths: { [HIGHLAND_ID]: '2026-10' } });
+    expect(JSON.parse(kv.getItem(SOCIAL_STORAGE_KEY)!)).toEqual({ email: 'you@example.com', displayName: 'You', joinedClubIds: [HIGHLAND_ID], joinedMonths: { [HIGHLAND_ID]: '2026-10' } });
+    s.setOwner(true);
+    const club = await s.createClub('Aquarium Go Friends', 'Friends and family of Aquarium Go');
+    const stored = JSON.parse(kv.getItem(SOCIAL_STORAGE_KEY)!);
+    expect(Object.keys(stored)).toEqual(['email', 'displayName', 'joinedClubIds', 'joinedMonths', 'owner', 'createdClubs']);
+    expect(stored.owner).toBe(true);
+    expect(stored.createdClubs).toEqual([{ id: club.id, name: 'Aquarium Go Friends', initials: 'AG', colors: club.colors, members: 1, blurb: 'Friends and family of Aquarium Go', inviteCode: club.inviteCode }]);
   });
 
   it('reads a damaged or foreign record as no account, and drops unknown clubs and bad months', () => {
@@ -132,6 +143,8 @@ describe('invites (§13.3, SOC-006): HIGHLAND-4821 resolves, everything else is 
 
   it('tells an invite code from a club search', () => {
     expect(looksLikeInvite('highland-4821')).toBe(true);
+    expect(looksLikeInvite('friends-kdwx')).toBe(true); // chunk 8: the real codes (ADR-0042)
+    expect(looksLikeInvite('friends-kdw')).toBe(false);
     expect(looksLikeInvite('Highland Betta')).toBe(false);
     expect(looksLikeInvite('reef')).toBe(false);
   });
@@ -296,9 +309,19 @@ describe('the one injection point (SOC-009 A2) and the save (SOC-009 A3)', () =>
       const before = stateHash(g);
       const json = serializeState(g).json;
       const s = fast(memory(), { standing: () => playerStanding(g) });
-      await s.signUp('you@example.com', PASSWORD);
+      await s.signUp('you@example.com', PASSWORD, DETAILS);
       await s.joinClub(HIGHLAND_ID);
       await s.addFriend('MYAQUA-7Q2');
+      // chunk 8's calls too (SOC-009 A3, REL-029)
+      s.setOwner(true);
+      await s.createClub('Reef Night', '');
+      const r = s.pushFriendRequest('Sam');
+      await s.friendRequests();
+      await s.acceptFriend(r.id);
+      await s.reportStanding({ shopName: g.shopName, gallons: 20, collectionValue: 100, prismatics: 0, showWins: 0 });
+      await s.cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: 1, money: g.finance.money, encoding: 'json', body: '{}' }, 0);
+      await s.cloudMeta();
+      await s.cloudDownload();
       for (const k of LEADERBOARD_KINDS) await s.leaderboard(k);
       await s.trades();
       await s.friendsAquariums();
@@ -308,5 +331,148 @@ describe('the one injection point (SOC-009 A2) and the save (SOC-009 A3)', () =>
       expect(serializeState(g).json).toBe(json);
       expect(json).not.toContain('example.com');
     });
+  });
+});
+
+describe('chunk 8: sign-up details (ADR-0038 decision 3, ADR-0039 decision 4, ADR-0040 decision 2)', () => {
+  it('needs a name of 1 to 30 characters, the age box and a code that opens a club; each failure has its code', async () => {
+    const kv = memory();
+    const s = fast(kv);
+    await expect(s.signUp('you@example.com', PASSWORD, { ...DETAILS, displayName: '  ' })).rejects.toEqual({ code: 'name' });
+    await expect(s.signUp('you@example.com', PASSWORD, { ...DETAILS, displayName: 'x'.repeat(31) })).rejects.toEqual({ code: 'name' });
+    await expect(s.signUp('you@example.com', PASSWORD, { ...DETAILS, ageConfirmed: false })).rejects.toEqual({ code: 'age' });
+    await expect(s.signUp('you@example.com', PASSWORD, { ...DETAILS, inviteCode: 'REEF-1000' })).rejects.toEqual({ code: 'invite' });
+    await expect(s.signUp('you@example.com', PASSWORD, { ...DETAILS, inviteCode: '' })).rejects.toEqual({ code: 'invite' });
+    expect(kv.dump()).toEqual({});
+  });
+
+  it('signs up with the name friends see and joins the invite’s club', async () => {
+    const kv = memory();
+    const s = fast(kv, { now: () => new Date(2026, 9, 19) });
+    const u = await s.signUp(' you@example.com ', PASSWORD, { displayName: '  Sam  ', inviteCode: ' highland-4821 ', ageConfirmed: true });
+    expect(u).toMatchObject({ email: 'you@example.com', displayName: 'Sam' });
+    expect(u.isOwner).toBeUndefined();
+    expect((await s.clubs()).mine.map((c) => [c.id, c.joined])).toEqual([[HIGHLAND_ID, '2026-10']]);
+  });
+
+  it('a friend code may start with one letter or digit, up to twelve', async () => {
+    const s = fast(memory());
+    await s.signIn('al@example.com', PASSWORD);
+    await expect(s.addFriend('BO-7Q2')).resolves.toBeUndefined();
+    await expect(s.addFriend(friendCodeFor('al@example.com'))).rejects.toEqual({ code: 'invalid' }); // your own
+  });
+});
+
+describe('chunk 8: the owner’s clubs (ADR-0040 decision 2, ADR-0041 decision 5)', () => {
+  it('only the owner creates clubs; the creator joins it and sees its invite code, which also signs people up', async () => {
+    const kv = memory();
+    const s = fast(kv, { now: () => new Date(2026, 9, 19), random: () => 0.4821 });
+    await s.signIn('owner@example.com', PASSWORD);
+    await expect(s.createClub('Aquarium Go Friends', '')).rejects.toEqual({ code: 'forbidden' });
+    s.setOwner(true);
+    expect((await s.currentUser())?.isOwner).toBe(true);
+    await expect(s.createClub('A', '')).rejects.toEqual({ code: 'invalid' });
+    await expect(s.createClub('x'.repeat(41), '')).rejects.toEqual({ code: 'invalid' });
+    await expect(s.createClub('Reef', 'x'.repeat(81))).rejects.toEqual({ code: 'invalid' });
+    const club = await s.createClub(' Aquarium Go Friends ', ' Friends and family of Aquarium Go ');
+    expect(club).toMatchObject({ name: 'Aquarium Go Friends', initials: 'AG', members: 1, blurb: 'Friends and family of Aquarium Go', joined: '2026-10' });
+    expect(club.inviteCode).toMatch(/^AQUARIUM-[A-HJ-NP-Z]{4}$/); // the club's word and four letters (ADR-0042)
+    const { mine } = await s.clubs();
+    expect(mine.find((c) => c.id === club.id)?.inviteCode).toBe(club.inviteCode);
+    expect(mine.find((c) => c.id === HIGHLAND_ID)?.inviteCode).toBeUndefined();
+    // its code resolves (without the code in the answer) and signs a new account up on this device's stub
+    const inv = await s.resolveInvite(club.inviteCode!.toLowerCase());
+    expect(inv?.club.id).toBe(club.id);
+    expect(inv?.club.inviteCode).toBeUndefined();
+    expect(inv?.alreadyMember).toBe(true);
+    // a reload keeps the club and its code
+    expect((await fast(kv).clubs()).mine.map((c) => c.name)).toContain('Aquarium Go Friends');
+  });
+
+  it('a club name’s invite word: its first word’s letters, 2 to 10, else CLUB', async () => {
+    const { inviteWordOf, initialsOf } = await import('@/social');
+    expect(['Aquarium Go Friends', 'Reef Night', '7 Seas', 'Ü', 'Supercalifragilistic Club', 'Al’s fish'].map(inviteWordOf)).toEqual(['AQUARIUM', 'REEF', 'CLUB', 'CLUB', 'SUPERCALIF', 'ALS']);
+    expect(['Aquarium Go Friends', 'Reef', 'x'].map(initialsOf)).toEqual(['AG', 'RE', 'X']);
+  });
+});
+
+describe('chunk 8: friend requests (ADR-0040 decision 4)', () => {
+  it('lists who added the player, newest first; Accept adds them back and their aquarium shows (no likes)', async () => {
+    const s = fast(memory());
+    await expect(s.friendRequests()).rejects.toEqual({ code: 'invalid' }); // signed out
+    await s.signIn('you@example.com', PASSWORD);
+    expect(await s.friendRequests()).toEqual([]);
+    const sam = s.pushFriendRequest('Sam');
+    const ola = s.pushFriendRequest('Ola');
+    expect((await s.friendRequests()).map((r) => r.name)).toEqual(['Ola', 'Sam']);
+    await expect(s.acceptFriend('nobody')).rejects.toEqual({ code: 'invalid' });
+    await s.acceptFriend(sam.id);
+    expect((await s.friendRequests()).map((r) => r.id)).toEqual([ola.id]);
+    const friends = await s.friendsAquariums();
+    expect(friends[0]).toMatchObject({ id: sam.id, owner: 'Sam', title: 'Sam', likes: null });
+    expect(friends[0].snapshotUrl.startsWith('data:image/svg+xml')).toBe(true);
+  });
+});
+
+describe('chunk 8: the online save on the stub (ONLINE-STAGE1.md §5.4, §6)', () => {
+  const save = (over: Partial<Parameters<SocialService['cloudUpload']>[0]> = {}) => ({ saveId: 'save_a', schemaVersion: 30, savedAt: 1000, hour: 50, shopName: 'Coral Corner', day: 3, money: 4210, encoding: 'json' as const, body: '{"x":1}', ...over });
+
+  it('needs an account; writes when the revision matches, refuses a stale one (conflict) and a newer build’s copy (too_new)', async () => {
+    const kv = memory();
+    const s = fast(kv);
+    await expect(s.cloudMeta()).rejects.toEqual({ code: 'invalid' });
+    await s.signIn('you@example.com', PASSWORD);
+    expect(await s.cloudMeta()).toBeNull();
+    expect(await s.cloudUpload(save(), 1)).toEqual({ ok: false, reason: 'conflict', meta: null });
+    expect(await s.cloudUpload(save(), 0)).toEqual({ ok: true, revision: 1 });
+    expect(await s.cloudMeta()).toEqual({ revision: 1, saveId: 'save_a', schemaVersion: 30, savedAt: 1000, hour: 50, shopName: 'Coral Corner', day: 3, money: 4210 });
+    expect(await s.cloudUpload(save({ hour: 60 }), 0)).toMatchObject({ ok: false, reason: 'conflict', meta: { revision: 1 } });
+    expect(await s.cloudUpload(save({ hour: 60, schemaVersion: 31 }), 1)).toEqual({ ok: true, revision: 2 });
+    // an older build never writes over a newer build's online save (PERSIST-014 on the server)
+    expect(await s.cloudUpload(save({ hour: 70, schemaVersion: 30 }), 2)).toMatchObject({ ok: false, reason: 'too_new', meta: { revision: 2, schemaVersion: 31 } });
+    expect(await s.cloudDownload()).toEqual({ meta: expect.objectContaining({ revision: 2, hour: 60 }), encoding: 'json', body: '{"x":1}' });
+  });
+
+  it('belongs to the account that wrote it; "another device" writes it with setCloud; Delete clears it and the record', async () => {
+    const kv = memory();
+    const s = fast(kv);
+    await s.signIn('you@example.com', PASSWORD);
+    s.setCloud({ revision: 7, saveId: 'save_b', schemaVersion: 30, savedAt: 5, hour: 9, shopName: 'Elsewhere', day: 1, money: 1 }, '{"state":1}');
+    expect(s.cloud()).toMatchObject({ email: 'you@example.com', meta: { revision: 7 }, encoding: 'json', body: '{"state":1}' });
+    await s.signOut();
+    await s.signIn('other@example.com', PASSWORD);
+    expect(await s.cloudMeta()).toBeNull(); // someone else's
+    await s.signOut();
+    await s.signIn('you@example.com', PASSWORD);
+    expect((await s.cloudMeta())?.revision).toBe(7);
+    await s.deleteAccount();
+    expect(kv.dump()).toEqual({});
+    expect(await s.currentUser()).toBeNull();
+    await expect(s.deleteAccount()).rejects.toEqual({ code: 'invalid' });
+  });
+
+  it('keeps the last standing reported (tests read it); signed out it’s refused', async () => {
+    const s = fast(memory());
+    await expect(s.reportStanding({ shopName: 'x', gallons: 0, collectionValue: 0, prismatics: 0, showWins: 0 })).rejects.toEqual({ code: 'invalid' });
+    await s.signIn('you@example.com', PASSWORD);
+    await s.reportStanding({ shopName: 'Coral Corner', gallons: 40, collectionValue: 5460, prismatics: 1, showWins: 2, snapshot: 'data:image/jpeg;base64,AAAA' });
+    expect(s.lastStanding()).toEqual({ shopName: 'Coral Corner', gallons: 40, collectionValue: 5460, prismatics: 1, showWins: 2, snapshot: 'data:image/jpeg;base64,AAAA' });
+  });
+
+  it('offline, the new calls reject with { code: "network" } too', async () => {
+    const s = fast(memory());
+    await s.signIn('you@example.com', PASSWORD);
+    s.setOffline(true);
+    for (const call of [() => s.cloudMeta(), () => s.cloudDownload(), () => s.cloudUpload(save(), 0), () => s.friendRequests(), () => s.createClub('Reef', ''), () => s.deleteAccount(), () => s.signUp('a@b.c', PASSWORD, DETAILS)])
+      await expect(call()).rejects.toEqual({ code: 'network' });
+  });
+});
+
+describe('chunk 8: the player’s gallons in the standing (the friends’ tile)', () => {
+  it('adds up every tank’s size', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 5 });
+    const st = playerStanding(g);
+    expect(st.gallons).toBeGreaterThan(0);
+    expect(Number.isInteger(st.gallons)).toBe(true);
   });
 });

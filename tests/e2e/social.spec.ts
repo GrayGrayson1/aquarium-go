@@ -4,6 +4,9 @@
  * signed out, then signed in, then joined; expired and already-used invites; the sign-in errors; a boot from the link;
  * the tabs and their routes; the trade note, Add friend, the leaderboards; the network error while the game keeps
  * running; skeletons, still under reduced motion; the dock's dot.
+ * Chunk 8 (ADR-0039 to ADR-0041; REL-028, REL-030; ONLINE-STAGE1.md §8.2): sign-up needs a working code, a name and
+ * the age box, and lands in that club; the privacy note opens and closes; a friend request accepted; the owner creates
+ * a club and copies its invite link (the stub's owner hook); the join text and trades note as approved.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, quickGame, aq, tid, devUrl, collectErrors } from './helpers';
@@ -51,7 +54,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     const card = tid(page, 'social-join-card');
     await expect(card.getByRole('heading', { name: 'Join Highland Betta Club?' })).toBeVisible();
     await expect(card).toContainText('Invite HIGHLAND-4821 · 128 members · club show on Saturday');
-    await expect(card).toContainText('Members share show dates, trade bettas and see each other’s aquariums. You can leave any time.');
+    await expect(card).toContainText('Members see each other’s aquariums and share a leaderboard.'); // chunk 8 (ADR-0040 decision 4)
     await expect(tid(page, 'social-not-now')).toHaveText('Not now');
     await expect(tid(page, 'social-tab-clubs')).toHaveAttribute('aria-selected', 'true');
     expect(await hash(page)).toBe('#/social/join/HIGHLAND-4821');
@@ -145,7 +148,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await tid(page, 'social-offer-trade').click();
     const note = tid(page, 'social-soon');
     await expect(note).toContainText('Trades open later');
-    await expect(note).toContainText('Trading circles need Aquarium Go online, which isn’t here yet. Nothing was offered, and your animals stay in your aquarium.');
+    await expect(note).toContainText('Trading isn’t open yet. Nothing was offered, and your animals stay in your aquarium.'); // chunk 8 (ADR-0040 decision 4)
     await tid(page, 'social-soon-close').click();
     await expect(note).toHaveCount(0);
     await tid(page, 'social-trading').getByRole('button', { name: 'View' }).first().click();
@@ -235,15 +238,135 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
   test('skeleton rows shimmer while loading, and hold still under reduced motion', async ({ page }) => {
     await go(page, '#/social');
     await signIn(page);
+    // the rows live only while the stub answers (300–600 ms): record each tab's first one as it appears, as WebKit's
+    // polls can miss a transient element (the release pass for 0.5.5 did; SESSION_HANDOFF.md, "WebKit")
+    await page.evaluate(() => {
+      const w = window as unknown as { __skel: Record<string, string> };
+      w.__skel = {};
+      new MutationObserver(() => {
+        for (const el of document.querySelectorAll('.so-skel__row')) {
+          const tab = el.closest('[data-testid="social-friends"], [data-testid="social-trading"]')?.getAttribute('data-testid');
+          if (tab && !(tab in w.__skel)) w.__skel[tab] = getComputedStyle(el).animationName;
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+    const skel = (tab: string) => page.evaluate((t) => (window as unknown as { __skel: Record<string, string> }).__skel[t] ?? null, tab);
     await tid(page, 'social-tab-friends').click();
-    const row = tid(page, 'social-friends').locator('.so-skel__row').first();
-    await expect(row).toBeVisible();
-    expect(await row.evaluate((e) => getComputedStyle(e).animationName)).toBe('so-shimmer');
+    await expect.poll(() => skel('social-friends')).toBe('so-shimmer');
     await page.evaluate(() => document.documentElement.setAttribute('data-reduced-motion', 'true'));
     await tid(page, 'social-tab-trading').click();
-    const still = tid(page, 'social-trading').locator('.so-skel__row').first();
-    await expect(still).toBeVisible();
-    expect(await still.evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    await expect.poll(() => skel('social-trading')).toBe('none');
+  });
+
+  test('chunk 8: sign-up needs a working code, a name and the age box; the privacy note opens and closes', async ({ page }) => {
+    const errors = collectErrors(page);
+    await go(page, '#/social/join/HIGHLAND-4821');
+    await expect(tid(page, 'social-invite-callout')).toBeVisible();
+    await expect(tid(page, 'social-forgot')).toHaveText('Forgot your password? Ask whoever invited you.');
+    // "Create account" opens sign-up mode, the invite link's code filled in
+    await tid(page, 'social-signup').click();
+    await expect(tid(page, 'social-signup-form')).toBeVisible();
+    await expect(tid(page, 'social-signup-code')).toHaveValue('HIGHLAND-4821');
+    await expect(tid(page, 'social-name')).toHaveAttribute('placeholder', 'e.g. Sam');
+    await expect(tid(page, 'social-signup-code')).toHaveAttribute('placeholder', 'From your invite link');
+    await expect(tid(page, 'social-signin')).toHaveCount(0);
+    await expect(tid(page, 'social-invite-code')).toHaveCount(0);
+    // Back to sign in, and back again
+    await tid(page, 'social-back-signin').click();
+    await expect(tid(page, 'social-signin')).toBeVisible();
+    await tid(page, 'social-signup').click();
+
+    // each missing piece has its approved message (ADR-0040 decision 3)
+    await tid(page, 'social-email').fill('sam@example.com');
+    await tid(page, 'social-password').fill('password1');
+    await tid(page, 'social-signup-submit').click();
+    await expect(tid(page, 'social-error')).toHaveText('Enter a name of 1 to 30 characters.');
+    await tid(page, 'social-name').fill('Sam');
+    await tid(page, 'social-signup-submit').click();
+    await expect(tid(page, 'social-error')).toHaveText('Tick the box to confirm your age.');
+    await expect(page.getByText('I’m 13 or older, or I’m a parent or guardian signing up for my child.')).toBeVisible();
+    await tid(page, 'social-age').check();
+    await tid(page, 'social-signup-code').fill('NOPE-0000');
+    await tid(page, 'social-signup-submit').click();
+    await expect(tid(page, 'social-error')).toHaveText('That invite code didn’t work. Ask whoever invited you for their link.');
+    await expect(tid(page, 'social-error')).toHaveAttribute('role', 'alert');
+
+    // the privacy note (ADR-0039 decision 3), and Close
+    await tid(page, 'social-privacy-link').click();
+    const note = tid(page, 'social-privacy');
+    await expect(note.getByRole('heading', { name: 'Your account and your data' })).toBeVisible();
+    await expect(note).toContainText('Without an account, nothing leaves your device.');
+    await expect(note).toContainText('Supabase, in the United States');
+    await expect(note.locator('li')).toHaveCount(4);
+    await expect(note).toContainText('Settings › Account › Delete my account removes all of it at once. Questions? Ask whoever invited you.');
+    await tid(page, 'social-privacy-close').click();
+    await expect(note).toHaveCount(0);
+    await expect(tid(page, 'social-signup-form')).toBeVisible(); // the form is as it was
+
+    // the right code: the account is made, in that club, on the Overview
+    await tid(page, 'social-signup-code').fill('highland-4821');
+    await tid(page, 'social-signup-submit').click();
+    await expect(toast(page, 'Account created')).toContainText('sam@example.com');
+    await expect.poll(() => hash(page)).toBe('#/social');
+    await expect(panel(page).getByText('Signed in as sam@example.com')).toBeVisible();
+    await expect(tid(page, 'social-your-club')).toContainText('Highland Betta Club');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('aquarium-go.social.v1') ?? 'null'))).toMatchObject({ email: 'sam@example.com', displayName: 'Sam', joinedClubIds: ['highland-betta'] });
+    // the password is nowhere on the device (SOC-002)
+    expect(await page.evaluate(() => Object.values(localStorage).some((v) => v.includes('password1')))).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  test('chunk 8: a friend request accepted, and the friend’s aquarium shows without likes', async ({ page }) => {
+    await go(page, '#/social');
+    await signIn(page);
+    await aq(page, 'social.pushFriendRequest', 'Sam');
+    await tid(page, 'social-tab-friends').click();
+    const requests = tid(page, 'social-friend-requests');
+    await expect(requests).toContainText('Friend requests');
+    await expect(requests).toContainText('Sam added you');
+    await requests.getByRole('button', { name: 'Accept' }).click();
+    await expect(requests).toHaveCount(0);
+    const grid = tid(page, 'social-friend-grid');
+    await expect(grid.locator('li').first()).toContainText('Sam');
+    await expect(grid.locator('li').first()).not.toContainText('likes');
+    await expect(grid.locator('li')).toHaveCount(7);
+  });
+
+  test('chunk 8: the owner creates a club and copies its invite link', async ({ page, context, browserName }) => {
+    // WebKit grants no clipboard permissions (nav.spec.ts): record what the app writes there
+    if (browserName === 'webkit')
+      await page.evaluate(() => {
+        const w = window as unknown as { __copied?: string };
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: (t: string) => ((w.__copied = t), Promise.resolve()), readText: () => Promise.resolve(w.__copied ?? '') } });
+      });
+    else await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await go(page, '#/social/clubs');
+    await signIn(page);
+    await expect(tid(page, 'social-create-club')).toHaveCount(0); // not the owner
+    await aq(page, 'social.setOwner', true);
+    const form = tid(page, 'social-create-club');
+    await expect(form).toContainText('Create a club');
+    await expect(form).toContainText('Club name');
+    await expect(form).toContainText('What it’s about (optional)');
+    await tid(page, 'social-club-name').fill('A');
+    await tid(page, 'social-create-club-submit').click();
+    await expect(form.getByTestId('social-error')).toHaveText('Enter a club name of 2 to 40 characters.');
+    await tid(page, 'social-club-name').fill('Aquarium Go Friends');
+    await tid(page, 'social-club-blurb').fill('Friends and family of Aquarium Go');
+    await tid(page, 'social-create-club-submit').click();
+    const created = toast(page, 'Club created');
+    await expect(created).toContainText('Copy its invite link to bring friends in.');
+    const row = page.locator('[data-testid^="social-invite-link-AQUARIUM-"]').first();
+    await expect(row).toContainText(/Invite link AQUARIUM-[A-HJ-NP-Z]{4}/); // the club's word and four letters (ADR-0042)
+    const code = ((await row.getAttribute('data-testid')) ?? '').replace('social-invite-link-', '');
+    await row.getByTestId('social-copy-link').click();
+    await expect(toast(page, 'Link copied')).toBeVisible();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toMatch(new RegExp(`/#/social/join/${code}$`));
+    expect(copied).not.toContain('dev=1'); // an invite link never carries the dev flag
+    // the link opens the club's invite (already a member: it's the owner's own)
+    await go(page, `#/social/join/${code}`);
+    await expect(tid(page, 'social-invite-member')).toContainText('You’re in Aquarium Go Friends');
   });
 
   test('the dock’s Social dot: New until first opened, back for new trades', async ({ page }) => {

@@ -60,6 +60,8 @@ const ROUTES: [string, Check][] = [
   ['#/settings', (p) => expect(tid(p, 'settings-tab-general')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/play', (p) => expect(tid(p, 'settings-tab-display')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/saves', (p) => expect(tid(p, 'settings-tab-saves')).toHaveAttribute('aria-selected', 'true')],
+  // chunk 8 (REL-031) — Settings › Account (Social exists in the e2e builds: the stub)
+  ['#/settings/account', (p) => expect(tid(p, 'settings-tab-account')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/notifications', (p) => expect(tid(p, 'settings-tab-notifications')).toHaveAttribute('aria-selected', 'true')],
   ['#/settings/about', (p) => expect(tid(p, 'settings-tab-about')).toHaveAttribute('aria-selected', 'true')],
   [
@@ -104,6 +106,9 @@ async function walk(page: Page, ids: Ids, phone: boolean, routes: [string, Check
   for (const [route, check] of routes) {
     const h = route.replace('{tank}', ids.tank).replace('{creature}', ids.creature).replace('{offer}', ids.offer);
     await goHash(page, '#/');
+    // chunk 7 (B-204): wait for the router to land on the tank view (no panel, its own address write done) before the
+    // next address, so a quick second hash change can't race it (Chromium once dropped #/operations/lines here)
+    await expect.poll(() => page.evaluate(() => ({ hash: location.hash || '#/', panel: (window as unknown as { __AQ: { ui(): { panel: string | null } } }).__AQ.ui().panel }))).toEqual({ hash: '#/', panel: null });
     await goHash(page, h);
     await test.step(h, () => check(page, phone));
   }

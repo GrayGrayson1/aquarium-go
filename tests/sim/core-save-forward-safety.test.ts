@@ -9,7 +9,9 @@
  *    it unchanged, in the primary and in the `.backup` key.
  * The species ids and tank sizes known at this SCHEMA_VERSION are pinned below: adding one without raising it fails.
  * So are the water classes, show tiers, buyer types, staff roles and staff traits (ADR-0036, owner question F3), and the
- * Water room's prep levels and reservoir limit and the rare-variant kinds (ADR-0037, owner question G1).
+ * Water room's prep levels and reservoir limit and the rare-variant kinds (ADR-0037, owner question G1), and the Live
+ * food room's cone and jar limits, the staff skill range and the rare-variant origins (chunk 7, B-203, ADR-0039
+ * decision 6).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { newGame } from '@/sim/newGame';
@@ -38,9 +40,9 @@ import { TANK_TIERS } from '@/data/catalog/tanks';
 import { CLASS_DEFAULTS } from '@/sim/water/constants';
 import { SHOW_TIERS } from '@/data/shows';
 import { BUYER_ARCHETYPES } from '@/data/buyers';
-import { STAFF_ROLES, STAFF_TRAITS } from '@/data/staff';
-import { WATER_ROOM } from '@/data/catalog/machines';
-import { RARE_VARIANT_KINDS } from '@/data/rarity';
+import { STAFF_ROLES, STAFF_TRAITS, STAFF_MAX_SKILL } from '@/data/staff';
+import { WATER_ROOM, FOOD_ROOM } from '@/data/catalog/machines';
+import { RARE_VARIANT_KINDS, RARE_VARIANT_ORIGINS } from '@/data/rarity';
 import type { GameState } from '@/types';
 
 const NEWER = SCHEMA_VERSION + 1;
@@ -450,7 +452,7 @@ describe('ADR-0036 (F3): a new water class, show tier, buyer type, staff role or
 });
 
 /**
- * The other limits a save is repaired against (ADR-0037, owner question G1; B-203): the Water room's prep levels and
+ * Two more limits a save is repaired against (ADR-0037, owner question G1; B-203): the Water room's prep levels and
  * reservoir limit (WATER_ROOM, src/data/catalog/machines.ts) and the rare-variant kinds (RARE_VARIANT_KINDS,
  * src/data/rarity.ts). A save past them is reset on load (a paid upgrade back to none, a rare animal made ordinary), so
  * adding a prep level, raising the reservoir limit or adding a kind raises SCHEMA_VERSION too, and an older build
@@ -466,7 +468,33 @@ describe('ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant
     expect(pinned, `pin the Water room's limits and the rare-variant kinds known at save format v${SCHEMA_VERSION} in LIMITS_AT`).toBeDefined();
     const why = (what: string) => `${what}: raise SCHEMA_VERSION (ADR-0037)`;
     expect(WATER_ROOM.prepRates.length, why('the number of prep levels changed')).toBe(pinned.prepLevels);
+    // upgradePrep stops where prepPrices ends and repairState where prepRates does: they must agree (the review's note 7)
+    expect(WATER_ROOM.prepPrices.length, 'each prep level above the first needs a price, and no price may lead past the last rate').toBe(WATER_ROOM.prepRates.length - 1);
     expect(WATER_ROOM.maxReservoirs, why('the reservoir limit changed')).toBe(pinned.maxReservoirs);
     expect(Object.keys(RARE_VARIANT_KINDS).sort(), why('a rare-variant kind was added or removed')).toEqual([...pinned.rareVariantKinds].sort());
+  });
+});
+
+/**
+ * chunk 7 (B-203; ADR-0039 decision 6, ADR-0037's rule applied to the limits its review found after G1): a save's Live food room keeps at
+ * most FOOD_ROOM's cones and jars, a staff member's skill is clamped to 1–STAFF_MAX_SKILL, and an unknown rare-variant
+ * origin becomes 'shop' (src/persistence/migrations.ts, sanitizeRareVariant). More cones or jars, a higher skill or a
+ * new origin raises SCHEMA_VERSION, so an older build refuses the save as too_new instead of cutting cones bought,
+ * lowering skill earned or relabelling a rare animal. First pinned at save format v2. Never edit an existing entry to
+ * make this pass.
+ */
+const ROOM_LIMITS_AT: Record<number, { maxCones: number; maxJars: number; staffMaxSkill: number; rareVariantOrigins: string[] }> = {
+  2: { maxCones: 6, maxJars: 8, staffMaxSkill: 5, rareVariantOrigins: ['bred', 'shop', 'spontaneous'] },
+};
+
+describe('chunk 7 (B-203): more cones or jars, a higher staff skill or a new rare-variant origin raises SCHEMA_VERSION', () => {
+  it(`the Live food room's limits, the staff skill range and the rare-variant origins are the ones pinned for v${SCHEMA_VERSION}`, () => {
+    const pinned = ROOM_LIMITS_AT[SCHEMA_VERSION];
+    expect(pinned, `pin the Live food room's limits, the staff skill range and the rare-variant origins at save format v${SCHEMA_VERSION} in ROOM_LIMITS_AT`).toBeDefined();
+    const why = (what: string) => `${what}: raise SCHEMA_VERSION (ADR-0039 decision 6)`;
+    expect(FOOD_ROOM.maxCones, why('the cone limit changed')).toBe(pinned.maxCones);
+    expect(FOOD_ROOM.maxJars, why('the jar limit changed')).toBe(pinned.maxJars);
+    expect(STAFF_MAX_SKILL, why('the staff skill range changed')).toBe(pinned.staffMaxSkill);
+    expect(Object.keys(RARE_VARIANT_ORIGINS).sort(), why('a rare-variant origin was added or removed')).toEqual([...pinned.rareVariantOrigins].sort());
   });
 });

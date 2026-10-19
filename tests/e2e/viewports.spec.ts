@@ -4,6 +4,8 @@
  * horizontal page scroll, inside the viewport, its close button and tab strip on screen; and the tab bar replaces the
  * dock exactly where MOBILE_QUERY matches (phones held sideways included). The walk is split per viewport (WebKit
  * drops a page's hash changes after about 200 in quick succession, nav-routes-matrix.spec.ts).
+ * Chunk 8 (REL-029, REL-031): Settings › Account, signed out and in, and the online-save box (its cards and both
+ * buttons on screen).
  */
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, quickGame, aq, tid } from './helpers';
@@ -25,7 +27,7 @@ const VIEWPORTS: { name: string; width: number; height: number; phone: boolean }
 const SCREENS = [
   '#/tanks', '#/tanks/{tank}', '#/livestock', '#/livestock/production', '#/shop', '#/market/supplies', '#/market/listings', '#/build',
   '#/build/facility', '#/visitors', '#/visitors/staff', '#/shows', '#/research', '#/finances', '#/encyclopedia', '#/settings',
-  '#/settings/notifications', '#/operations', '#/operations/map', '#/social', '#/log',
+  '#/settings/notifications', '#/settings/account', '#/operations', '#/operations/map', '#/social', '#/log',
 ];
 
 /** Horizontal overflow of the page, and where the open sheet, its close button and its tab strip sit. */
@@ -120,6 +122,34 @@ for (const vp of VIEWPORTS) {
         if (m.page > m.vw + 1) problems.push(`Social › ${t}: the page scrolls sideways`);
         if (m.inner > 1) problems.push(`Social › ${t}: content ${m.inner} px wider than the sheet`);
       }
+      // chunk 8 — Settings › Account signed in, then the online-save box (another device's aquarium online)
+      await goHash(page, '#/settings/account');
+      await expect(tid(page, 'account-who')).toBeVisible();
+      await page.waitForTimeout(300);
+      const acc = await measure(page);
+      if (acc.page > acc.vw + 1) problems.push('Settings › Account: the page scrolls sideways');
+      if (acc.inner > 1) problems.push(`Settings › Account: content ${acc.inner} px wider than the sheet`);
+      await page.evaluate(async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const A = (window as any).__AQ;
+        const o = JSON.parse(A.exportText());
+        o.state.saveId = o.meta.saveId = 'save_viewports_other';
+        o.state.shopName = o.meta.shopName = 'The Long-Named Reef of Far Away';
+        A.social.setCloud({ revision: 99, saveId: o.state.saveId, schemaVersion: o.state.schemaVersion, savedAt: Date.now(), hour: o.state.clock.hour, shopName: o.state.shopName, day: 12, money: 1234567 }, JSON.stringify(o));
+        await A.social.cloudCheck();
+      });
+      const dlg = tid(page, 'cloud-prompt');
+      await expect(dlg).toBeVisible();
+      await page.waitForTimeout(400); // its opening spring
+      for (const id of ['cloud-prompt', 'cloud-card-device', 'cloud-card-online', 'cloud-keep', 'cloud-load']) {
+        // a short screen scrolls the box's body: each piece must be reachable there
+        await tid(page, id).scrollIntoViewIfNeeded();
+        const b = await tid(page, id).boundingBox();
+        if (!b) problems.push(`the online-save box: ${id} isn't shown`);
+        else if (b.x < -1 || b.x + b.width > vp.width + 1 || b.y < -1 || b.y + b.height > vp.height + 1) problems.push(`the online-save box: ${id} is off screen (${Math.round(b.x)},${Math.round(b.y)} ${Math.round(b.width)}×${Math.round(b.height)})`);
+      }
+      const wide = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
+      if (wide > 1) problems.push(`the online-save box: the page scrolls sideways by ${wide} px`);
       expect(problems).toEqual([]);
     });
   });

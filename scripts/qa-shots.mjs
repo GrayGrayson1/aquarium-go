@@ -59,7 +59,8 @@ async function withPage(viewport, mobile, fn) {
 }
 
 async function ready(page, path = '/') {
-  // ?dev=1: the write tools these shots use exist only in a dev build or a ?dev=1 session (PLAT-005)
+  // ?dev=1: the write tools these shots use exist only in a dev build, or a ?dev=1 session of a production build made
+  // with VITE_E2E_DEV_URL=1 (PLAT-005; chunk 7, REL-019: the live site ignores ?dev=1)
   const u = new URL(path, 'http://qa.invalid');
   u.searchParams.set('dev', '1');
   await page.goto(`${base}${u.pathname}${u.search}${u.hash}`, { waitUntil: 'domcontentloaded' });

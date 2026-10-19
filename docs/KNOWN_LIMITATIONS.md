@@ -85,6 +85,16 @@ What is simplified, approximated or missing in this build. None of these block p
 - The iOS focus-zoom (G4-05) and long-press selection (G4-06) fixes are verified by code trace only: Playwright's WebKit emulates neither.
 - **High contrast is the accessible mode over a bright room** (chunk 6, ADR-0035 decision 1; WCAG technique G174). Normal mode keeps the 0.5 design's see-through glass: its text passes WCAG 2.2 AA over a dark room, but grey text over a bright, sunlit room drops to 2.5–4.4:1. High contrast (Settings › Play & access) makes the panels, the top bar and toasts solid and passes AA on any background, and every step on the way to its switch passes AA too.
 
+## Online (stage 1, chunk 8)
+- **The server trusts each browser** (ADR-0038: people the owner knows). It stores the save and the leaderboard numbers as the game sends them; an edited save goes online as it is, and friends see whatever numbers and picture a player's game reports. Stage 2 checks them before anyone the owner doesn't know joins.
+- **Sign-up needs a club's invite code: the club's word and four letters** (FRIENDS-KDWX, the owner's choice: 331,776 codes per word). Anyone may ask whether a code opens a club, but after 100 wrong codes in 10 minutes nobody gets answers until they age out: invite links then show "Can’t reach Aquarium Go online right now…" with the sign-up form's code filled in, and sign-up still works. Someone could hold the brake for as long as they keep sending wrong codes, and Supabase Auth limits sign-ups, which also test a code, to 30 per 5 minutes per address: someone with many addresses could still find a code in hours. A leaked code can be replaced (ARCHITECTURE.md's runbook). Signed in, a player may join any club. Only the owner creates clubs.
+- **No emails:** no confirmation, and a forgotten password is reset by hand ("Forgot your password? Ask whoever invited you.").
+- **No sign-in on the title screen:** a new device starts a game first, then signs in from Social to load the online save.
+- **No likes, trades, leaving a club or club events** yet: trades are "open later", friends' pictures show no likes, and only the stub's sample clubs have events.
+- **One online save per account**, the game on screen. When it differs from what this device last synced, a box asks which copy to keep. Load online save keeps this device's copy in Settings › Saves as "Previous autosave" (which replaces any older "Previous autosave" there); Keep this device's writes over the online copy (the server keeps the one it replaced only when it was a different aquarium, for a restore by hand). A device that starts a new game while in step puts that game online in place of the old one (kept the same way).
+- **The free project pauses after a week with no activity.** Until the owner restores it, the game says it can't reach Aquarium Go online and plays on.
+- **A body over 4,000,000 characters isn't sent** (a save is far smaller, gzipped; listing photos count).
+
 ## Architecture
 - The AI imports `equipmentLayout` from the decor render module to place equipment colliders (an ai → render dependency).
 

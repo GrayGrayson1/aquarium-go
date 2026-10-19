@@ -2,7 +2,9 @@
 
 A living-aquarium tycoon. Choose one remarkable creature (an axolotl, betta, pea puffer, ocellaris clownfish or lined seahorse), learn its personality, and build a beautiful habitat around it. From there you breed distinctive individuals, sell animals or whole aquariums to bidding buyers, and open to paying visitors as a hobby room grows into a grand hall of 1,000-gallon displays. Along the way you can enter your best animals and aquascapes in shows, from the local club to international championships. You can also hire aquarists, a stock manager and docents, propagate coral frags and plant cuttings, and open a brackish estuary chapter with archerfish that spit at flies.
 
-Everything you see and hear is generated in code: procedural creatures, plants, rocks, water, glass and light, plus synthesized sound. The game needs no network connection at runtime.
+Everything you see and hear is generated in code: procedural creatures, plants, rocks, water, glass and light, plus synthesized sound. The game needs no network connection to play.
+
+**Online (stage 1, for people the owner knows):** with an invite link, a player can make an account in Social, keep one save online so it follows them to another device, see friends' aquariums and share leaderboards with friends and club members. It runs on a free Supabase project; the game keeps saving on the device and plays offline as before. How it works, and the owner's runbook, are in `docs/ARCHITECTURE.md` ("Online").
 
 **Play it online:** https://graygrayson1.github.io/aquarium-go/ (built and deployed by GitHub Actions on every push to `main`).
 
@@ -48,18 +50,20 @@ npm run typecheck
 npm run qa:motion    # creature-vibration scan (DRAWN=1 for the drawn, pose-filtered transform)
 ```
 
-Visual QA screenshots: start a dev or preview server, then run `npm run qa:shots -- http://127.0.0.1:5173`. The images land in `screenshots/`.
+Visual QA screenshots: start a dev server (or a preview of a build made with `VITE_E2E_DEV_URL=1`: the shots use the write tools), then run `npm run qa:shots -- http://127.0.0.1:5173`. The images land in `screenshots/`.
 
-For the most stable e2e run, test a production build: `npx vite build && npx vite preview --host 127.0.0.1 --port 4399 --strictPort`, then `E2E_REUSE=1 E2E_PORT=4399 npm run e2e` in a second terminal. Without `E2E_REUSE=1`, a server already listening on the e2e port makes the run fail instead of testing whatever that server serves.
+For the most stable e2e run, test a production build made with the e2e flag (the tests open the game with `?dev=1`, which a production build honours only with it): `VITE_E2E_DEV_URL=1 VITE_SOCIAL_STUB=1 npx vite build --outDir .e2e-dist-reuse && npx vite preview --outDir .e2e-dist-reuse --host 127.0.0.1 --port 4399 --strictPort` (`VITE_SOCIAL_STUB=1` keeps its Social on the local stub, as every e2e build's, so no test reaches the real project; its own folder: not `dist/`, so a tools-on build is never mistaken for the players' one, and not `.e2e-dist`, which the e2e run rebuilds), then `E2E_REUSE=1 E2E_PORT=4399 npm run e2e` in a second terminal. Without `E2E_REUSE=1`, a server already listening on the e2e port makes the run fail instead of testing whatever that server serves.
 
 Regenerate the species research ledger after editing species data: `npm run docs:research`.
 
 ## Developer tools
 
-- `?dev=1` enables the in-game dev panel: add money, unlock everything, spawn species, age creatures, force breeding, set water parameters, advance time, and inspect AI state and compatibility reasons.
-- `?showcase=<axolotl|betta|pea_puffer|ocellaris_clownfish|lined_seahorse>` jumps straight into a starter tank. `?fixture=<name>` loads any registered dev fixture, and `&view=facility` opens the room view.
+- **Social in development** runs on a local stub (sample clubs, friends and leaderboards; the invite code `HIGHLAND-4821`), as does every e2e build (`VITE_SOCIAL_STUB=1`), so no test reaches the real project. To try the real project from the dev server: `VITE_SOCIAL_ONLINE_IN_DEV=1 npm run dev`. After a database change, check it locally first (`scripts/online-db-local/run.sh`: a throwaway Postgres, Homebrew's `postgresql@16`), then live by hand: `node scripts/online-smoke.mjs` (it makes two throwaway accounts and deletes them).
+
+- The dev server (`npm run dev`) has the developer tools; the live site doesn't, and ignores `?dev=1` (only a production build made with `VITE_E2E_DEV_URL=1`, as the e2e runs make one, honours it). Settings › Developer tools turns on the in-game dev panel: add money, unlock everything, spawn species, age creatures, force breeding, set water parameters, advance time, and inspect AI state and compatibility reasons.
+- `?showcase=<axolotl|betta|pea_puffer|ocellaris_clownfish|lined_seahorse>` jumps straight into a starter tank (on the live site too: a demo world, never saved). Where the tools are allowed, `?fixture=<name>` loads any registered dev fixture (`&view=facility` opens the room view) and `?sandbox=<name>` opens a page from `src/dev/sandboxes/`.
 - `?fixture=prismatic_showcase` shows Prismatic animals (betta, axolotl, guppy, cherry shrimp) beside ordinary ones, plus a Prismatic shop offer. In any game, the dev panel can make the selected animal Prismatic, add a Prismatic offer, or make the next shop animal or bred youngster Prismatic.
-- `window.__AQ` in the browser console exposes the stores and dev commands.
+- `window.__AQ` in the browser console exposes the stores and dev commands where the tools are allowed; on the live site it is read-only (diagnostics).
 
 ## Project docs
 

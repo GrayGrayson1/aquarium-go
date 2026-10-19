@@ -26,7 +26,8 @@ import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { SHORT_LANDSCAPE_QUERY, useIsMobile } from '../common/safe';
 import { edit } from './common/act';
 import { PanelErrorBoundary } from './common/ErrorBoundary';
-import { useDevMode, useDevTools } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
+import { useSocialAvailable } from '../online/mode'; // chunk 8 (REL-025)
 import { DOCK_ITEMS, openPanel } from '../hud/Dock';
 import { AttnDot, useNavDots } from '../hud/AttnDot'; // lane:notify
 import { markResearchSeen, researchSeenStale } from '../common/notify'; // lane:notify
@@ -81,9 +82,9 @@ export function PanelHost() {
   const dragControls = useDragControls();
   const sheetRef = useRef<HTMLElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
-  // lane:social (chunk 6, SOC-011) — Social exists only where the developer tools are allowed
-  const devAllowed = useDevTools((s) => s.allowed);
-  const open = hasGame && isManagedPanel(panel) && (panel !== 'social' || devAllowed);
+  // lane:social (chunk 6, SOC-011) — Social exists only where it is available (dev mode at first; chunk 8, REL-025)
+  const social = useSocialAvailable();
+  const open = hasGame && isManagedPanel(panel) && (panel !== 'social' || social);
 
   const close = useCallback(() => {
     sfx('close');
@@ -229,12 +230,12 @@ export function PanelHost() {
 function PanelSwitcher({ active }: { active: ManagedPanelId }) {
   const unlocked = useGame((s) => s.game?.progress.unlocked.join('|') ?? '');
   const dev = useDevMode();
-  const devAllowed = useDevTools((s) => s.allowed); // lane:social (chunk 6) — Social only in dev mode
+  const social = useSocialAvailable(); // lane:social (chunk 6; chunk 8, REL-025) — Social only where it exists
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     ref.current?.querySelector<HTMLElement>(`[data-testid="sheet-switch-${active}"]`)?.scrollIntoView({ block: 'nearest', inline: 'center' });
   }, [active]);
-  const items = DOCK_ITEMS.filter((it) => it.id !== 'settings' && (!it.devOnly || devAllowed) && (!it.lock || dev || unlocked.split('|').includes(it.lock)));
+  const items = DOCK_ITEMS.filter((it) => it.id !== 'settings' && (!it.needsSocial || social) && (!it.lock || dev || unlocked.split('|').includes(it.lock)));
   const dots = useNavDots(DOCK_ITEMS); // lane:notify — the dock's attention dots (the sheet covers the dock)
   return (
     <nav className="pn-switch" ref={ref} aria-label="Switch panel" data-testid="sheet-switch">

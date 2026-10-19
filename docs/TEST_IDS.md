@@ -255,7 +255,7 @@ The four destination tabs keep the dock's ids, so `helpers.openPanel` works on b
 | `dock-more` | Phone More tab (`aria-expanded` while the sheet is open; highlighted while a More destination is open) |
 | `dock-badge-more` | Attention dot on the More tab (a destination inside More has one) |
 | `more-sheet` | Phone More sheet root (`#/more`) |
-| `more-visitors` · `more-shows` · `more-research` · `more-finances` · `more-encyclopedia` | More tiles (a locked one carries `.ag-more__lock`); `more-badge-<id>` is a tile's attention dot; chunk 6 adds `more-social` in dev mode |
+| `more-visitors` · `more-shows` · `more-research` · `more-finances` · `more-encyclopedia` | More tiles (a locked one carries `.ag-more__lock`); `more-badge-<id>` is a tile's attention dot; chunk 6 adds `more-social` where Social exists (chunk 8) |
 | `more-settings` | More sheet Settings row |
 | `guide-more-bubble` | Phone guide note above the More tab for a step whose target lives in More ("Guide · Research") |
 | `locked-visitors` · `locked-shows` | A locked destination's panel body (0.5 spec §5.7) |
@@ -295,9 +295,9 @@ gone state (ADR-0019 decision 4). Shared links (`shareUrl`) never carry `?dev=1`
 | `#/encyclopedia` | Species list | `tab:species` |
 | `#/encyclopedia/science` *`/:articleId`* | Aquarium science (an article open) | `tab:science` / `science:<id>` |
 | `#/encyclopedia/:speciesId` | Species page | `species:<id>` |
-| `#/social` *`/clubs\|trading\|friends\|leaderboards`* | Social tabs (chunk 6; dev mode only, ADR-0005 decision 3: elsewhere a broken link) | `tab:overview\|clubs\|trading\|friends\|leaderboards` |
+| `#/social` *`/clubs\|trading\|friends\|leaderboards`* | Social tabs (chunk 6; chunk 8: wherever Social exists, `socialAvailable()`: elsewhere a broken link) | `tab:overview\|clubs\|trading\|friends\|leaderboards` |
 | `#/social/join/:code` | Club invite (Clubs highlighted, as the screen phone-join) | `join:<code>` |
-| `#/settings` *`/play\|saves\|notifications\|about`* | Settings tabs (URL word `play` = tab `display`; Notifications from chunk 3) | `useShell.settingsTab` |
+| `#/settings` *`/play\|saves\|account\|notifications\|about`* | Settings tabs (URL word `play` = tab `display`; Notifications from chunk 3; Account from chunk 8, where Social exists) | `useShell.settingsTab` |
 | `#/more` | Phone More sheet (desktop: the tank view) | `useShell.popover: 'more'` |
 | `#/log` | Full event log | `panel: 'log'` |
 
@@ -348,7 +348,7 @@ are locked the same way until the browser allows notifications (`aria-describedb
 | `shop-equip-unlocks-auto_water_changer` | Supplies / Build: "Unlocks the Auto-clean switch on the tank card · upkeep $0.06/day" |
 | `alert-autofeed-paused` | Alerts drawer › Tanks: "{Tank}" · "Auto-feed is paused — feed {name} by hand." · "Fix" (opens `#/tanks/:id/equipment`) |
 | `alerts-notify-cta` · `alerts-notify-turn-on` | Alerts drawer footer (permission not asked yet only); its "Turn on" opens `#/settings/notifications` |
-| `settings-tab-notifications` | Settings › Notifications (five tabs: `settings-tab-<general\|display\|saves\|notifications\|about>`) |
+| `settings-tab-notifications` | Settings › Notifications (five tabs: `settings-tab-<general\|display\|saves\|notifications\|about>`; chunk 8 adds `settings-tab-account` after Saves where Social exists) |
 | `notify-status` | The status callout (`data-permission` default / granted / denied / unsupported) |
 | `notify-turn-on` | "Turn on" (asks the browser; only while not asked) |
 | `notify-test` · `notify-test-line` | "Send test" and its line ("Arrives in a couple of seconds" / "Sent — …" / "Turn notifications on to try this") |
@@ -431,8 +431,10 @@ Index-based cone and jar ids, one id for the Operations tools tile, `staff-budge
 
 ## 0.5 Social stub (chunk 6: lane social; 0.5 spec §13, §19)
 
-Social is reachable only in dev mode (ADR-0005 decision 3, SOC-011): a dev build, or a session opened with `?dev=1`.
-Outside it none of these exist, and every `#/social` address is a broken link (`prod-mode.spec`).
+Chunk 6 made Social reachable only in dev mode (ADR-0005 decision 3, SOC-011). Chunk 8 (REL-025): Social exists wherever
+`socialAvailable()`: the local stub in dev mode and every e2e build (`VITE_SOCIAL_STUB`), the Supabase service in the
+players' build once a project is configured; with neither, none of these exist and every `#/social` address is a broken
+link.
 
 | test id | element |
 |---|---|
@@ -451,3 +453,23 @@ Outside it none of these exist, and every `#/social` address is a broken link (`
 | `social-trading` · `social-offer-trade` · `social-soon` · `social-soon-close` · `social-trades-empty` | Trading, Offer a trade, the coming-soon note (also behind a trade's View) and its Close; the empty list |
 | `social-friends` · `social-friend-code` · `social-add-friend` · `social-friend-grid` · `social-friends-empty` | Friends: Add friend by code, the snapshot grid (3 columns, 2 on phones), the empty list |
 | `social-leaderboards` · `social-lb-<collection_value\|prismatics\|show_wins>` · `social-lb-me` | Leaderboards: the radio group's options and the player's highlighted row |
+| `social-signin-form` · `social-signup-form` · `social-forgot` | Chunk 8: the form in sign-in mode and in sign-up mode; "Forgot your password? Ask whoever invited you." under Sign in |
+| `social-name` · `social-signup-code` · `social-age` · `social-signup-submit` · `social-back-signin` | Chunk 8 sign-up mode ("Create account" opens it): Name friends see, Invite code (filled from an invite link), the 13-and-over box, Create account, Back to sign in |
+| `social-privacy-link` · `social-privacy` · `social-privacy-close` | Chunk 8: "Your account and your data", the privacy note (ADR-0039) and its Close (also from Settings › Account: `account-privacy`) |
+| `social-friend-requests` · `social-request-<id>` · `social-accept` | Chunk 8: Friends' "Friend requests" ("{name} added you") and Accept |
+| `social-create-club` · `social-club-name` · `social-club-blurb` · `social-create-club-submit` | Chunk 8: the owner's Create a club (Social › Clubs, the owner's account only) |
+| `social-invite-link-<CODE>` · `social-copy-link` · `social-invite-url` | Chunk 8: on the owner's own clubs, "Invite link {CODE}" and Copy link; the link, selected, when the clipboard refuses |
+
+## Online save and Settings › Account (chunk 8; ONLINE-STAGE1.md §6, §7; REL-029, REL-031)
+
+| test id | element |
+|---|---|
+| `settings-tab-account` · `settings-account` | Settings › Account (`#/settings/account`, where Social exists) and its body |
+| `account-signed-out` · `account-open-social` | Signed out: "Sign in from Social to save your aquarium online and see friends." and Open Social (in a game only) |
+| `account-who` · `account-name` · `account-online` | Signed in: "Signed in as {email}", "Name friends see: {name} · Friend code {code}", the online-save line (`role="status"`) |
+| `account-signout` · `account-delete` · `account-delete-confirm` · `account-delete-yes` · `account-delete-cancel` · `account-privacy` | Sign out; Delete my account, its confirmation ("Delete your account?") and its buttons; the privacy link |
+| `cloud-prompt` · `cloud-card-device` · `cloud-card-online` · `cloud-keep` · `cloud-load` | The online-save box (no close button; Escape and the backdrop do nothing): its two cards, Keep this device's, Load online save |
+
+`window.__AQ.social` (where the tools are allowed) adds, for the stub: `setOwner(on)`, `pushFriendRequest(name)`,
+`setCloud(meta, text)` (another device writes the online save), `cloud()` (the online save, unpacked),
+`cloudSyncNow()` and `cloudCheck()`.

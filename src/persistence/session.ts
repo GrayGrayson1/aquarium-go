@@ -13,9 +13,9 @@ import type { SaveResult } from './types';
 /**
  * lane:fix3-saves (R03-03) — the welcome-back card pauses the clock only while it is open: a save taken meanwhile
  * (the player glanced and left) stores the speed the card will resume, or the next absence would pass no time at all
- * and come back silently paused.
+ * and come back silently paused. Chunk 8: exported, so the online save stores what a local save stores.
  */
-function forSaving(g: GameState): GameState {
+export function stateForSaving(g: GameState): GameState {
   const resume = useResume.getState().summary?.resumeSpeed;
   if (!resume || g.clock.speed !== 0) return g;
   return { ...g, clock: { ...g.clock, speed: resume as GameState['clock']['speed'] } };
@@ -45,7 +45,7 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
   }
   const g = useGame.getState().game;
   if (!g) return { ok: false, slot, message: 'No game running.' };
-  const res = await saveGame(forSaving(g), slot);
+  const res = await saveGame(stateForSaving(g), slot);
   if (res.ok) {
     // Record the save time in the live state too (not a sim change; keeps "last saved" displays honest).
     useGame.getState().mutate((d) => {
@@ -82,7 +82,7 @@ export function saveCurrentGameSync(slot = 'auto'): boolean {
   const g = useGame.getState().game;
   if (!g) return false;
   try {
-    return saveGameSync(forSaving(g), slot);
+    return saveGameSync(stateForSaving(g), slot);
   } catch (e) {
     if (typeof console !== 'undefined') console.warn('[aquarium-go] emergency save failed', e);
     return false;

@@ -53,7 +53,9 @@ import { facilityOverflow } from '@/render/camera/facilityOverflow';
 import { navBootPending } from '@/ui/nav/router';
 import { localStub } from '@/social'; // lane:social (chunk 6)
 import { setSimFault } from '@/game/simHealth'; // lane:core (chunk 6, B-002)
-import { refreshSocialNews } from '@/ui/panels/social/socialStore';
+import { loadSocialUser, refreshSocialNews } from '@/ui/panels/social/socialStore';
+import { checkOnline, cloudSyncNow, useCloud } from '@/ui/online/cloudSync'; // chunk 8 (REL-032)
+import { decodeSaveBody, type CloudSaveMeta } from '@/social';
 
 declare global {
   interface Window {
@@ -241,6 +243,23 @@ export function debugApi(): Record<string, unknown> {
         localStub()?.pushClubNews();
         return refreshSocialNews();
       },
+      // chunk 8 (ONLINE-STAGE1.md §5.4) — play the owner, a friend and "another device" against the stub
+      setOwner: async (on = true) => {
+        localStub()?.setOwner(on);
+        await loadSocialUser(true);
+      },
+      pushFriendRequest: (name?: string) => localStub()?.pushFriendRequest(name) ?? null,
+      /** Write the online save as another device would: `meta` (revision included) and the save's text. */
+      setCloud: (meta: CloudSaveMeta, text: string) => localStub()?.setCloud(meta, text),
+      /** The online save as the stub holds it: its meta and the save's text (unpacked). */
+      cloud: async () => {
+        const c = localStub()?.cloud() ?? null;
+        return c ? { meta: c.meta, encoding: c.encoding, text: await decodeSaveBody(c) } : null;
+      },
+      cloudSyncNow: () => cloudSyncNow(),
+      cloudCheck: () => checkOnline(),
+      /** The loop's state (status, prompt, syncedAt). */
+      cloudState: () => ({ ...useCloud.getState() }),
     },
     fixtures: () => loadFixtureRegistry().then((r) => Object.keys(r)), // lane:perf2 — async (lazy registry)
     newGame: (starterId?: Parameters<typeof dev.newGame>[0], name?: string, seed?: number) => dev.newGame(starterId, name, seed),

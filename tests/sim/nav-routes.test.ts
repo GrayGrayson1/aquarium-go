@@ -72,6 +72,7 @@ const CANONICAL = [
   '#/settings',
   '#/settings/play',
   '#/settings/saves',
+  '#/settings/account', // chunk 8 (REL-031)
   '#/settings/notifications',
   '#/settings/about',
   '#/more',
@@ -244,6 +245,7 @@ describe('nav routes: the loading card pill (§16)', () => {
     expect(routeLabel(parseRoute('#/livestock/eggs')!.route)).toBe('Livestock › Eggs & fry');
     expect(routeLabel(parseRoute('#/shop')!.route)).toBe('Market › Shop');
     expect(routeLabel(parseRoute('#/settings/about')!.route)).toBe('Settings › About');
+    expect(routeLabel(parseRoute('#/settings/account')!.route)).toBe('Settings › Account'); // chunk 8 (REL-031)
     expect(routeLabel(parseRoute('#/finances')!.route)).toBe('Finances');
     expect(routeLabel(parseRoute('#/social/join/X')!.route)).toBe('Social › Club invite');
     expect(routeLabel({ kind: 'home' })).toBeNull();

@@ -4,6 +4,26 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.5.5 — 2026-10-19
+
+- **Aquarium Go online, for people with an invite.** Open a friend's invite link, or "Create account" in Social, to
+  make an account with your email, a password, the name friends see and the club's invite code (for 13 and over; a
+  parent signs up for a younger player). Your game keeps saving on this device and plays offline as before.
+  - **Your save follows you.** While you're signed in, the game also saves online every couple of minutes and when you
+    leave. On another device, sign in from Social inside a game and pick which copy to keep; the one you don't load
+    stays in Settings › Saves as "Previous autosave".
+  - **Friends and clubs.** Add friends by friend code and accept their requests, see your friends' aquariums, join
+    clubs, and compare collection value, Prismatics and show wins with friends and club members. Trading opens later.
+  - **Settings › Account** shows who you're signed in as and your friend code, signs you out, and deletes your account
+    and everything stored with it. "Your account and your data" says what is stored and why: no ads, no tracking, no
+    emails.
+- **Fairer selling and visitors.** A buyer never pays more than their limit, however you counter, and once bidding
+  closes you can accept an offer but not counter it. Very high admission prices now drive visitors away, and the
+  rules cap admission at $40, like the slider.
+- **Research gates hold everywhere.** Brackish, marine and reef tanks need their research before you can buy or
+  convert them, wherever you try.
+- **The live site ignores `?dev=1`**: the developer tools are only in a developer's own build.
+
 ## 0.5.4 — 2026-10-18
 
 - **"Best foot forward" says what it asks:** "Enter a show and see it judged. A healthy, settled adult that trusts you
