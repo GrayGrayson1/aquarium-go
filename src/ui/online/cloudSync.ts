@@ -3,8 +3,9 @@
  * save. OWNER: lane "social".
  *
  * While the player is signed in and a game is on screen, the game goes online after a local save lands, at most once
- * every 2 minutes, and at once when the tab is hidden (when the hidden save lands; none lands, none goes). A tab whose
- * saves are refused because another tab played the aquarium further (the stale-tab rule) sends nothing. The device's own saves stay the
+ * every 2 minutes, and at once when the tab is hidden (when the hidden save lands, or at once when autosave skips it
+ * because a save landed moments before). A tab whose saves are refused because another tab played the aquarium
+ * further (the stale-tab rule) sends nothing. The device's own saves stay the
  * source of truth offline; nothing here changes the local save paths. What goes up is the text of an export file
  * (`exportSaveText`), gzipped and base64'd where the browser can (src/social/codec.ts); a body over 4,000,000
  * characters isn't sent, and showcase worlds never are.
@@ -25,7 +26,7 @@ import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { SCHEMA_VERSION, exportSaveText, importSaveText, isStaleGame, resumeState, saveCurrentGame, saveGame, stateForSaving } from '@/persistence';
-import { autosaveAllowed } from '@/game/useAutosave';
+import { autosaveAllowed, leaveSaveDue } from '@/game/useAutosave';
 import { currentStanding, decodeSaveBody, encodeSaveBody, isSocialError, MAX_CLOUD_BODY, socialService, type CloudSaveMeta, type StandingReport } from '@/social';
 import { loadSocialUser, refreshSocialNews, useSocial } from '../panels/social/socialStore';
 import { socialMode } from './mode';
@@ -428,7 +429,8 @@ export async function loadOnlineCopy(): Promise<boolean> {
     const g = useGame.getState().game;
     if (g && !g.isShowcase) {
       const saved = await saveCurrentGame('auto', { flush: true, toast: false });
-      // another tab played this aquarium further ('stale'): its copy is the one in the slot, and that one is kept
+      // another tab played this aquarium further ('stale'): loading goes on (that tab still has its copy on screen,
+      // and is asked there); the copy stored here may be written over, as any load from this tab would
       if (!saved.ok && saved.code !== 'stale') {
         useUI.getState().toast(saved.message, 'danger');
         return false;
@@ -512,14 +514,22 @@ export function startCloudSync(): () => void {
       hiddenAt = Date.now();
       const g = syncableGame();
       if (!g || !active() || !inStep || !autosaveAllowed()) return;
+      // autosave skips the hidden save when one landed moments ago (useAutosave's leaveSaveDue): that one is the copy
+      const skipped = !leaveSaveDue();
       noteLocalSave(g.saveId, Date.now()); // the hidden save (autosave's) is landing now
       sendOnNextSave = true;
       if (hiddenTimer) clearTimeout(hiddenTimer);
-      hiddenTimer = setTimeout(() => {
-        // no hidden save landed (refused, or failed): nothing new to send, and nothing this device didn't keep
-        hiddenTimer = null;
-        sendOnNextSave = false;
-      }, HIDDEN_SEND_WAIT_MS);
+      hiddenTimer = setTimeout(
+        () => {
+          hiddenTimer = null;
+          if (!sendOnNextSave) return;
+          sendOnNextSave = false;
+          // no hidden save landed: send anyway when autosave skipped it; when it was refused or failed, keep nothing
+          // online that this device didn't keep
+          if (skipped) void sendNow();
+        },
+        skipped ? 0 : HIDDEN_SEND_WAIT_MS,
+      );
     } else if (hiddenAt !== null) {
       const away = Date.now() - hiddenAt;
       hiddenAt = null;

@@ -9,7 +9,7 @@
  * two throwaway accounts A and B with the first club's invite code (read with the CLI, never printed), checks the
  * database's rules from the browser's side, deletes both accounts and checks, through `supabase db query
  * --linked --project-ref <ref>` (admin), that no row of either is left in any table, Supabase Auth's audit log
- * included. It also checks the cap on wrong invite codes, and removes this run's misses so the owner isn't capped. It prints each check's pass or fail and
+ * included. It also checks the brake on wrong invite codes, and removes this run's misses so nobody stays braked. It prints each check's pass or fail and
  * exits 1 if any failed. It uses only the publishable key; it never reads or prints the secret key.
  */
 import { createClient } from '@supabase/supabase-js';
@@ -180,12 +180,16 @@ try {
   const club = await B.rpc('create_club', { p_name: 'Smoke Club', p_blurb: '' });
   check('B’s create_club is forbidden', club.error?.message === 'forbidden', describe(club));
 
-  // 6. guessing codes stops working: 20 wrong ones from this address, then not even the right one (cleaned up below)
-  for (let i = 0; i < 20; i++) await anon.rpc('resolve_invite', { p_code: `GUESS-${'ABCDEFGHJKLMNPQRSTUVWXYZ'[i]}AAA` });
-  const capped = await anon.rpc('resolve_invite', { p_code: code });
-  check('after 20 wrong codes the right one gets no answer from this address', !capped.error && capped.data === null, describe(capped));
-  const where = admin(`select ip <> 'unknown' as known, count(*) as n from public.invite_misses where at > to_timestamp(${Math.floor(stamp / 1000)}) group by 1`)[0];
-  check('the cap counts this address (the API passes it), not one shared bucket', where?.known === true || where?.known === 't', JSON.stringify({ known: where?.known, n: where?.n }));
+  // 6. guessing codes stops working: 100 wrong ones in 10 minutes, then nobody gets an answer (cleaned up below);
+  // sign-up doesn't ask resolve_invite, so the brake never blocks it, and no network address is kept
+  for (let i = 0; i < 100; i++) await anon.rpc('resolve_invite', { p_code: `GUESS-${'ABCDEFGHJKLMNPQRSTUVWXYZ'[i % 24]}${'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(i / 24)]}AA` });
+  const braked = await anon.rpc('resolve_invite', { p_code: code });
+  check('after 100 wrong codes the right one gets no answer either (the brake)', !braked.error && braked.data === null, describe(braked));
+  const cols = admin("select string_agg(column_name, ',') as cols from information_schema.columns where table_schema = 'public' and table_name = 'invite_misses'")[0]?.cols;
+  check('the brake keeps only times, no addresses', cols === 'at', String(cols));
+  admin(`delete from public.invite_misses where at > to_timestamp(${Math.floor(stamp / 1000)})`);
+  const after = await anon.rpc('resolve_invite', { p_code: code });
+  check('once the misses are gone, the code answers again', after.data?.club?.name === 'Aquarium Go Friends', describe(after));
 } catch (e) {
   check('the run finished', false, e instanceof Error ? e.message : String(e));
 } finally {
@@ -196,7 +200,7 @@ try {
     check(`delete_my_account for ${who}`, !del.error, describe(del));
   }
   try {
-    admin(`delete from public.invite_misses where at > to_timestamp(${Math.floor(stamp / 1000)})`); // this run's guesses: the owner's address isn't kept capped
+    admin(`delete from public.invite_misses where at > to_timestamp(${Math.floor(stamp / 1000)})`); // this run's guesses: nobody stays braked
     const left = admin(
       `select (select count(*) from auth.users where email in ('${EMAIL_A}', '${EMAIL_B}')) as users, ` +
         `(select count(*) from public.profiles p where p.display_name like 'Smoke _' and p.created_at > now() - interval '1 hour') as profiles, ` +

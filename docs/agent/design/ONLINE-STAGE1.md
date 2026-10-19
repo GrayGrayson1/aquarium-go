@@ -193,6 +193,7 @@ the game maps carry fixed messages: `invalid`, `forbidden`, `not_signed_in`.
   password (SOC-002's test covers the real service too, with a fake storage).
 - `signIn`: `auth.signInWithPassword`; `invalid_credentials` → `credentials`; no response or 5xx → `network`.
 - `signUp`: check the form first (age, name, `validCredentials`), then `resolve_invite` (null → `invite`), then
+  *(as built, ADR-0042: no `resolve_invite`, which a brake on wrong codes may hold; the trigger's refusal is `invite`)*
   `auth.signUp({ email, password, options: { data: { invite_code, display_name, age_ok: true } } })`;
   `user_already_exists` / `email_exists` → `taken`; a 500 "Database error saving new user" → `invite` (the server
   refused it). Then `me()`.

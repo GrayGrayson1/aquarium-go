@@ -105,9 +105,11 @@ check, and stage 2 must, before anyone the owner doesn't know joins:
 - **The friends' pictures.** Any embedded JPEG or WebP within the size limit is shown to friends. Stage 2: moderation,
   or pictures the server renders.
 - **Names and club names** others see, unmoderated (only the owner creates clubs in stage 1).
-- **Rate limits.** Supabase's own limits cover sign-up and sign-in (30 per 5 minutes per address), and
-  `resolve_invite`, which answers anyone, stops answering an address after 20 wrong codes in 10 minutes (invite codes
-  are the club's word and four letters: ADR-0042). The other functions have none: a signed-in player could call them
+- **Rate limits.** Supabase's own limits cover sign-up and sign-in (30 per 5 minutes per address; a sign-up tests a
+  code, so someone with many addresses could still find one in hours), and `resolve_invite`, which answers anyone,
+  stops answering everyone after 100 wrong codes in 10 minutes (one brake, no addresses kept; tripping it on purpose
+  makes invite screens show "expired" for those minutes). Invite codes are the club's word and four letters
+  (ADR-0042). The other functions have none: a signed-in player could call them
   as fast as they like, and could try friend codes (NAME-XXX, 32,768 per visible name) through `add_friend` to send
   requests. Stage 2: per-account limits.
 - **Joining clubs.** Anyone signed in may join any club; the invite code gates only sign-up.

@@ -6,8 +6,9 @@
  * touches no table. The client comes from a dynamic `import('@supabase/supabase-js')`, so the library is its own chunk
  * and loads on the first Social call, never on the title screen. supabase-js keeps the session's tokens in
  * localStorage under `aquarium-go.auth.v1`, never the password (SOC-002). Sign-up checks the form first (the email
- * and password, the name, the age box, the invite code through `resolve_invite`), then the server checks the code,
- * the box and the name again (its sign-up trigger). Trades stay "open later" (ADR-0034): `trades()` answers [] without
+ * and password, the name, the age box, a code given), then the server checks the code, the box and the name (its
+ * sign-up trigger; a refusal is `invite`). It doesn't ask `resolve_invite` first: that one stops answering everyone
+ * for a while after many wrong codes (ADR-0042), and sign-up must still work then. Trades stay "open later" (ADR-0034): `trades()` answers [] without
  * a call. A call that gets no answer within 20 s, or a 5xx, is a network error (a paused or unreachable project: the
  * game says so and plays on).
  */
@@ -235,7 +236,7 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
       if (!validDisplayName(details.displayName)) throw fail('name');
       if (!details.ageConfirmed) throw fail('age');
       const code = normalizeCode(details.inviteCode);
-      if (!code || !(await rpc('resolve_invite', { p_code: code }))) throw fail('invite');
+      if (!code) throw fail('invite');
       const c = await client();
       const { data, error } = await timed(c.auth.signUp({ email: email.trim(), password, options: { data: { invite_code: code, display_name: details.displayName.trim(), age_ok: true } } }));
       if (error) throw mapAuthError(error, 'signUp');

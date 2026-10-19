@@ -182,6 +182,10 @@ export function SignInForm({ initialError, inviteCode, startInSignUp = false }: 
   useEffect(() => {
     if (inviteCode) setSignUpCode(inviteCode);
   }, [inviteCode]);
+  // chunk 8: Social re-asks who is signed in each time it opens; a lost connection found then shows here too
+  useEffect(() => {
+    if (initialError) setError(initialError);
+  }, [initialError]);
 
   const submitSignIn = async () => {
     if (!validCredentials(email, password)) {

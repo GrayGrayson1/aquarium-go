@@ -43,9 +43,12 @@ public I'd say if it costs more money. lets make everything free if we can for n
    is `aquarium-go`, ref `zkavcxrsxdgdlstravpj`, in us-east-1 at the free size (created 2026-10-19).
 2. **An invite code is the club's word and four letters, letters only** ("the name of the group plus four letters"):
    the club name's first word (letters A–Z, 2 to 10 of them, else CLUB), a dash, and four letters without I or O, drawn
-   from a secure random source: FRIENDS-KDWX. That is 331,776 codes per word. With it (the agent's addition, free): an
-   address gets no answers from `resolve_invite` after 20 wrong codes in 10 minutes, and Supabase Auth already limits
-   sign-ups to 30 per 5 minutes per address. The stub's sample code HIGHLAND-4821 stays (dev only).
+   from a secure random source: FRIENDS-KDWX. That is 331,776 codes per word. With it (the agent's addition, free):
+   after 100 wrong codes in 10 minutes, from anyone, `resolve_invite` answers no one until they age out, and Supabase
+   Auth already limits sign-ups to 30 per 5 minutes per address. (A first version capped each network address; the
+   review's confirmation pass found a caller can choose the address it is keyed on, and that keeping addresses would
+   be data the approved privacy note doesn't cover, so no address is kept.) The stub's sample code HIGHLAND-4821
+   stays (dev only).
 3. **The repo stays public** ("keep public … if it costs more money"): the first club's invite code is never written
    in the repo; it goes to the owner in the session. PLAN.md, ONLINE-STAGE1.md §3, SESSION_HANDOFF.md and REL-026 say so.
 4. **Everything free for now** ("lets make everything free if we can for now please"): no paid plan, add-on or
@@ -59,6 +62,6 @@ public I'd say if it costs more money. lets make everything free if we can for n
 
 ## Consequences
 
-- `supabase/migrations/20261019000000_stage1.sql` (the code's shape and source, `invite_misses`, `request_ip`, the
-  cap in `resolve_invite`, the audit log in `delete_my_account`) and `20261019000100_private_api.sql`; the stub, the
-  invite-shape check (`looksLikeInvite`) and the tests follow.
+- `supabase/migrations/20261019000000_stage1.sql` (the code's shape and source, the audit log in
+  `delete_my_account`), `20261019000100_private_api.sql` and `20261019000200_invite_brake.sql` (the brake); the stub,
+  the invite-shape check (`looksLikeInvite`), sign-up without `resolve_invite` and the tests follow.

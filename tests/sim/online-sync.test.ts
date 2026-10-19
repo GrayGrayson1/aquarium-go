@@ -18,7 +18,9 @@ import type { GameState } from '@/types';
 
 // another tab played an aquarium further (persistence's stale-tab rule): the ids the test marks
 // and a local save that fails (the review's note: nothing loads over a device copy that couldn't be kept)
-const mocks = vi.hoisted(() => ({ stale: new Set<string>(), failSave: false, imports: 0 }));
+const mocks = vi.hoisted(() => ({ stale: new Set<string>(), failSave: false, imports: 0, leaveSaveDue: true }));
+// and whether autosave would write a save on leaving (it skips one when a save landed moments before)
+vi.mock('@/game/useAutosave', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/game/useAutosave')>()), leaveSaveDue: () => mocks.leaveSaveDue }));
 vi.mock('@/persistence', async (importOriginal) => {
   const orig = await importOriginal<typeof import('@/persistence')>();
   return {
@@ -115,6 +117,7 @@ beforeEach(() => {
   setStorageBackend(createMemoryBackend());
   mocks.failSave = false;
   mocks.imports = 0;
+  mocks.leaveSaveDue = true;
   useResume.setState({ summary: null });
   useUI.setState({ toasts: [] });
   setSyncStore(memory());
@@ -195,6 +198,17 @@ describe('sending (§6 "When it sends")', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(server.uploads).toHaveLength(2);
     localSave(); // a save long after the hidden one isn't the hidden one: the gap applies again
+    await vi.advanceTimersByTimeAsync(10);
+    expect(server.uploads).toHaveLength(2);
+  });
+
+  it('leaving right after an autosave (autosave skips its leaving save) sends at once anyway', async () => {
+    await signIn();
+    localSave();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(server.uploads).toHaveLength(1); // inside the gap
+    mocks.leaveSaveDue = false;
+    setHidden(true);
     await vi.advanceTimersByTimeAsync(10);
     expect(server.uploads).toHaveLength(2);
   });

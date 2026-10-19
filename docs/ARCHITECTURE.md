@@ -221,8 +221,10 @@ sent, within size limits; stage 2 needs its own record before strangers join (`d
   new files. The second file (`…000100_private_api.sql`) moved the functions the game calls into the schema `private`,
   which the API doesn't expose, behind SECURITY INVOKER wrappers of the same names in `public`: Supabase's security
   advisors (`supabase db advisors --linked --project-ref <ref> --type security --level warn`) warn about any
-  SECURITY DEFINER function the API exposes, and now report nothing. Wrong invite codes are capped at 20 per 10
-  minutes per network address (`invite_misses`, by the gateway's `cf-connecting-ip` or `x-forwarded-for`).
+  SECURITY DEFINER function the API exposes, and now report nothing. The third (`…000200_invite_brake.sql`) puts one
+  brake on wrong invite codes: after 100 in 10 minutes, from anyone, `resolve_invite` answers no one until they age
+  out (`invite_misses` keeps only times, 10 minutes; no network addresses, which a caller could forge and the privacy
+  note doesn't cover). Sign-up doesn't ask `resolve_invite`, so the brake never blocks it.
 - **The online save** (ONLINE-STAGE1.md §6): the game on screen goes online after a local save lands, at most every 2
   minutes, and when the tab is hidden; the device's own saves stay the source of truth. This device's link (the online
   copy it last sent or loaded, per account) and when a local save last landed live in localStorage
@@ -248,8 +250,11 @@ in PLAN.md's chunk 8 record):
   meta from the restored body (`schema_version`, `saved_at`, `hour`, `shop_name`, `day`, `money`: read them from its
   export text, decoding `gzip-base64` first), and add 1 to `revision`, so the player's devices see a newer copy and ask.
 - *Invite codes* (a club's code is also its sign-up code): `select name, invite_code from public.clubs`. A code is the
-  club's word and four letters (FRIENDS-KDWX, ADR-0042: 331,776 per word, drawn from a secure source); wrong guesses
-  are capped per address and sign-ups are rate-limited by Supabase Auth. Never write a code in the repo (it is public).
+  club's word and four letters (FRIENDS-KDWX, ADR-0042: 331,776 per word, drawn from a secure source); wrong lookups
+  hit the brake, and sign-ups are rate-limited by Supabase Auth (30 per 5 minutes per address). Never write a code in
+  the repo (it is public).
+- *A leaked code:* `update public.clubs set invite_code = public.new_invite_code('FRIENDS') where name = 'Aquarium Go
+  Friends' returning invite_code` gives the club a new one; the old link stops working (members stay members).
 
 ## Deploy
 

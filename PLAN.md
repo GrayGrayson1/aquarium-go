@@ -619,6 +619,15 @@ REL-012, REL-018.
   messages reuse Settings › Saves' words (10). Also found by the agent: a tab whose saves another tab refuses sends
   nothing, and a hidden tab sends only when its hidden save lands; the online-save box no longer re-renders on every
   simulation tick.
+- **Its confirmation pass on `6f5f724..956aa55`:** B1–B5 and the notes confirmed fixed; two new blockers in the cap
+  on wrong codes, fixed by `20261019000200_invite_brake.sql`: the cap keyed on a network address a caller can choose
+  (a forwarded header), and keeping addresses would have been data the approved privacy note doesn't cover (ADR-0039
+  decision 3). Now one brake for everyone (100 wrong codes in 10 minutes), only times kept, 10 minutes; sign-up no
+  longer asks `resolve_invite` (the trigger checks the code), so the brake never blocks it. Notes fixed: leaving the
+  tab right after an autosave sends at once (1); sign-up as a slow way to test codes, and replacing a leaked code, in
+  TRUST_BOUNDARY, KNOWN_LIMITATIONS and the runbook (2); the brake's count under an advisory lock (3); a comment (4);
+  KNOWN_LIMITATIONS' wording (5). Pass 2 also showed the sign-in form missed a network error found after it appeared
+  (social.spec's network test): fixed.
 
 ## Releases
 

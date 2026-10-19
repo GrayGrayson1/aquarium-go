@@ -44,19 +44,25 @@ select * from public.clubs;
 insert into public.profiles (id, display_name, friend_code) values (gen_random_uuid(), 'x', 'X-AAA');
 \echo CASE ok anon-resolve
 select public.resolve_invite(:'invite_code');
--- 20 wrong codes from one address, then even the right one gets no answer there; another address still does
-select set_config('request.headers', '{"x-forwarded-for": "203.0.113.7, 10.0.0.1"}', false) \g /dev/null
-select count(public.resolve_invite('FRIENDS-' || n)) from generate_series(1, 20) as n \g /dev/null
-\echo CASE ok anon-throttled
+-- 100 wrong codes in 10 minutes, from anyone, then even the right one gets no answer, from anywhere (no addresses kept)
+select set_config('request.headers', '{"x-forwarded-for": "203.0.113.7"}', false) \g /dev/null
+select count(public.resolve_invite('GUESS-' || n)) from generate_series(1, 100) as n \g /dev/null
+\echo CASE ok anon-braked
 select case when public.resolve_invite(:'invite_code') is null then 'refused' else (1 / (random() * 0)::int)::text end;
 select set_config('request.headers', '{"cf-connecting-ip": "198.51.100.9"}', false) \g /dev/null
-\echo CASE ok anon-other-address
+\echo CASE ok anon-braked-elsewhere
+select case when public.resolve_invite(:'invite_code') is null then 'refused' else (1 / (random() * 0)::int)::text end;
+reset role;
+\echo CASE ok misses-hold-no-address
+select case when (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'invite_misses') = 1 then 'time only' else (1 / (random() * 0)::int)::text end;
+delete from public.invite_misses;
+set role anon;
+\echo CASE ok anon-after-brake
 select case when public.resolve_invite(:'invite_code') is not null then 'answered' else (1 / (random() * 0)::int)::text end;
 select set_config('request.headers', '', false) \g /dev/null
 \echo CASE denied anon-read-misses
 select * from public.invite_misses;
-\echo CASE denied anon-request-ip
-select public.request_ip();
+
 \echo CASE denied anon-me
 select public.me();
 \echo CASE denied anon-put-save

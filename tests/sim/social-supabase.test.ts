@@ -86,11 +86,11 @@ describe('accounts', () => {
     await expect(service(h).signIn('sam@example.com', PASSWORD)).rejects.toEqual({ code: 'network' });
   });
 
-  it('signs up: checks the form, then the invite code (resolve_invite), then sends the details as metadata', async () => {
-    const f = fake({ resolve_invite: { data: { club: CLUB, already_member: false } }, me: { data: ME } });
+  it('signs up: checks the form, then sends the details as metadata (the server checks the code: ADR-0042)', async () => {
+    const f = fake({ me: { data: ME } });
     const u = await service(f).signUp('sam@example.com', PASSWORD, DETAILS);
     expect(u.displayName).toBe('Sam');
-    expect(f.calls[0]).toEqual({ fn: 'resolve_invite', args: { p_code: 'FRIENDS-4821' } });
+    expect(f.calls.map((c) => c.fn)).toEqual(['me']); // no resolve_invite: it may be braked (many wrong codes)
     expect(f.authCalls[0]).toEqual({ fn: 'signUp', arg: { email: 'sam@example.com', password: PASSWORD, options: { data: { invite_code: 'FRIENDS-4821', display_name: 'Sam', age_ok: true } } } });
   });
 
@@ -109,25 +109,23 @@ describe('accounts', () => {
     }
   });
 
-  it('a code that opens nothing is `invite` before any account is made; the server refusing it is `invite` too', async () => {
-    const f = fake({ resolve_invite: { data: null } });
-    await expect(service(f).signUp('sam@example.com', PASSWORD, DETAILS)).rejects.toEqual({ code: 'invite' });
-    expect(f.authCalls).toEqual([]);
-    const g = fake({ resolve_invite: { data: { club: CLUB, already_member: false } } });
+  it('the server refusing the code (its sign-up trigger) is `invite`', async () => {
+    const g = fake();
     g.auth.signUpError = { status: 500, code: 'unexpected_failure', message: 'Database error saving new user' };
     await expect(service(g).signUp('sam@example.com', PASSWORD, DETAILS)).rejects.toEqual({ code: 'invite' });
+    expect(g.calls).toEqual([]);
   });
 
   it('an email with an account is `taken` (both of Supabase’s codes)', async () => {
     for (const code of ['user_already_exists', 'email_exists']) {
-      const f = fake({ resolve_invite: { data: { club: CLUB, already_member: false } } });
+      const f = fake();
       f.auth.signUpError = { status: 422, code, message: 'User already registered' };
       await expect(service(f).signUp('sam@example.com', PASSWORD, DETAILS)).rejects.toEqual({ code: 'taken' });
     }
   });
 
   it('a sign-up that returns no session (confirmation on by mistake) signs in as the new account', async () => {
-    const f = fake({ resolve_invite: { data: { club: CLUB, already_member: false } }, me: { data: ME } });
+    const f = fake({ me: { data: ME } });
     f.auth.signUpSession = false;
     await service(f).signUp('sam@example.com', PASSWORD, DETAILS);
     expect(f.authCalls.map((c) => c.fn)).toEqual(['signUp', 'signInWithPassword']);
@@ -350,7 +348,7 @@ describe('SOC-002 on the real client: the password is never stored', () => {
     expect(store.has(AUTH_STORAGE_KEY)).toBe(false);
     await s.signUp('sam@example.com', PASSWORD, DETAILS);
     expect(JSON.stringify([...store.entries()])).not.toContain(PASSWORD);
-    expect(seen.some((u) => u.includes('/rest/v1/rpc/resolve_invite'))).toBe(true);
+    expect(seen.some((u) => u.includes('/auth/v1/signup'))).toBe(true);
     expect(seen.every((u) => u.startsWith(PROJECT.url))).toBe(true); // only the project's own address
   });
 });

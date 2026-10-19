@@ -127,7 +127,13 @@ export function migrationProblems(raw: string): string[] {
   for (const l of LIMITS) if (!l.test(sql)) out.push(`missing limit ${l.source}`);
   if (!/'too_new'/.test(sql) || !/'conflict'/.test(sql)) out.push('put_save lacks too_new or conflict');
   if (!/raise exception 'forbidden'/.test(sql)) out.push('create_club is open to anyone');
-  if (!/m\.at > now\(\) - interval '10 minutes'\) >= 20 then return null;/.test(sql)) out.push('resolve_invite has no cap on wrong codes');
+  // the latest resolve_invite (part 3): a brake for everyone after 100 wrong codes in 10 minutes, no addresses kept
+  const resolve = fns.filter((f) => f.name === 'resolve_invite').at(-1);
+  if (!resolve || resolve.schema !== 'private' || !/\) >= 100 then return null;/.test(resolve.body) || !/insert into public\.invite_misses \(at\) values \(now\(\)\)/.test(resolve.body) || !/pg_advisory_xact_lock/.test(resolve.body)) out.push('resolve_invite has no brake on wrong codes');
+  if (!/alter table public\.invite_misses drop column ip;/.test(sql) || !/drop function public\.request_ip\(\);/.test(sql)) out.push('network addresses are still kept');
+  for (const f of fns.filter((x) => x.schema === 'private')) {
+    if (!/\bsecurity definer\b/.test(f.header) || !f.header.includes("set search_path = ''")) out.push(`private.${f.name}: not security definer with an empty search_path`);
+  }
   if (!/extensions\.gen_random_bytes\(4\)/.test(sql)) out.push('invite codes are not drawn from a secure source');
   return out;
 }
@@ -141,7 +147,7 @@ describe('the stage 1 migrations (REL-027)', () => {
   });
 
   it('keeps every rule, across every file', () => {
-    expect(files).toEqual(['20261019000000_stage1.sql', '20261019000100_private_api.sql']);
+    expect(files).toEqual(['20261019000000_stage1.sql', '20261019000100_private_api.sql', '20261019000200_invite_brake.sql']);
     expect(migrationProblems(sql)).toEqual([]);
   });
 
@@ -190,7 +196,9 @@ describe('the stage 1 migrations (REL-027)', () => {
       ['no sign-up trigger', (s) => s.replace(/create trigger aquarium_go_check_signup[^\n]*\n/, '')],
       ['no size limit', (s) => s.replace('char_length(body) <= 4000000', 'char_length(body) >= 0')],
       ['digits in invite codes', (s) => s.replace("'^[A-Z]{2,10}-[A-HJ-NP-Z]{4}$'", "'^[A-Z]{2,10}-[0-9]{4}$'")],
-      ['no cap on wrong codes', (s) => s.replace("m.at > now() - interval '10 minutes') >= 20 then", "m.at > now() - interval '10 minutes') >= 20000000 then")],
+      ['no brake on wrong codes', (s) => s.replace("m.at > now() - interval '10 minutes') >= 100 then", "m.at > now() - interval '10 minutes') >= 100000000 then")],
+      ['addresses kept', (s) => s.replace('alter table public.invite_misses drop column ip;', '')],
+      ['an invoker replacement', (s) => s.replace('create or replace function private.resolve_invite(p_code text) returns jsonb\nlanguage plpgsql volatile security definer', 'create or replace function private.resolve_invite(p_code text) returns jsonb\nlanguage plpgsql volatile security invoker')],
       // (a replacer function: in a replacement string `$$` would become `$`)
       ['no caller check', (s) => s.replace("create function public.get_save() returns jsonb\nlanguage plpgsql stable security definer set search_path = '' as $$\ndeclare\n  v_uid uuid := public.require_uid();", () => "create function public.get_save() returns jsonb\nlanguage plpgsql stable security definer set search_path = '' as $$\ndeclare\n  v_uid uuid := auth.uid();")],
       ['clubs for anyone', (s) => s.replace(/raise exception 'forbidden';/, 'null;')],

@@ -32,7 +32,7 @@ three:
   invite code, the age box, a name), that only the owner makes clubs, the save's revision and build, and sizes; it
   stores the save and the leaderboard numbers as the browser sends them, so an edited save or a made-up number reaches
   friends (TRUST_BOUNDARY.md "Social" lists what stage 2 must add). Invite codes are a word and four letters, with
-  wrong guesses capped per address; the free project pauses after a week with no activity (the game then plays
+  one brake on wrong lookups (and sign-up rate-limited by Supabase); the free project pauses after a week with no activity (the game then plays
   offline).
 Everything else is presentation, local performance, test tooling or the retired harness. The independent reviewer's
 verdict on whether this is small enough is recorded in PLAN.md (chunk 6): YELLOW on the first draft (the core-owned
