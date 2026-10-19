@@ -19,7 +19,8 @@ export const SOCIAL_COPY = {
   signIn: 'Sign in',
   createAccount: 'Create account',
   haveInvite: 'Have an invite?',
-  invitePlaceholder: 'Invite code, e.g. HIGHLAND-4821',
+  // chunk 8 (the owner, 2026-10-19, ADR-0042 J1): the real codes' shape, a club's word and four letters
+  invitePlaceholder: 'Invite code, e.g. FRIENDS-KDWX',
   joinGroup: 'Join group',
   errorCredentials: 'Enter your email and a password of at least 8 characters.',
   errorInvite: 'That invite code didn’t match a club. Check it and try again.',

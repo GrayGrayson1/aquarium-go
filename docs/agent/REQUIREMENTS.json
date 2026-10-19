@@ -5668,7 +5668,7 @@
         "tests/e2e/prod-mode.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.3"
       ],
@@ -5692,7 +5692,7 @@
         "new: scripts/online-smoke.mjs (by hand; recorded in PLAN.md)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§3"
       ],
@@ -5714,7 +5714,7 @@
         "new: scripts/online-smoke.mjs (by hand)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§4"
       ],
@@ -5739,7 +5739,7 @@
         "tests/e2e/social.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.2, §7"
       ],
@@ -5766,7 +5766,7 @@
         "new: tests/e2e/online-save.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§6"
       ],
@@ -5791,7 +5791,7 @@
         "tests/e2e/social.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§1, §4.3, §7"
       ],
@@ -5813,7 +5813,7 @@
         "tests/e2e/viewports.spec.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§7"
       ],
@@ -5834,7 +5834,7 @@
         "npm run typecheck / test / build / e2e"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§5.4, §8"
       ],
@@ -5853,7 +5853,7 @@
         "review"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [
         "§3, §9"
       ],

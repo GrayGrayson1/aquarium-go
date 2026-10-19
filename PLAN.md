@@ -8,16 +8,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 1. **0.5.4 is released** (2026-10-18, ADR-0037 decision 2): ADR-0036's three changes and G1's (the Water room's limits
    and the rare-variant kinds pinned to the save format), on GitHub Pages and Render (see "Releases").
-2. **Chunk 7, hardening for multiplayer, is done** (2026-10-18, `7b98be8`, `06f80f8`; brief and record below), on
-   `next`, not released (0.5.5 waits for the owner). Next, **chunk 8, multiplayer stage 1** for people
-   the owner knows (ADR-0038; H1 and H2 answered in ADR-0039; the setup's go-ahead, clubs and wording in ADR-0040,
-   2026-10-19). Its brief is below and its design is `docs/agent/design/ONLINE-STAGE1.md`; the owner handed it to
-   Marshall (a fresh agent on the CNVS canvas, so no `/compact` was needed). Group I was asked first and approved as
-   drafted (ADR-0041, 2026-10-19); building.
+2. **Chunks 7 and 8 are done on `next`, not released.** Chunk 7, hardening for multiplayer (2026-10-18, `7b98be8`,
+   `06f80f8`). **Chunk 8, multiplayer stage 1** for people the owner knows (2026-10-19, `ee4998e` to `53cd7bf`; built
+   by Marshall; ADR-0038 to ADR-0042): accounts by invite code, one online save, Social on the live Supabase project
+   (ref `zkavcxrsxdgdlstravpj`, the Free organization "Aquarium Go"). Next: **the release (the owner's call)**, then
+   the owner signs up with the first club's link and, with the owner's yes, the owner flag is set (ARCHITECTURE.md's
+   runbook). `docs/agent/SESSION_HANDOFF.md` has the order of work.
 3. **Released:** 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-4. Every owner question is answered (ADR-0024 to ADR-0041) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+4. Every owner question is answered (ADR-0024 to ADR-0042) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
    owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
@@ -34,9 +34,15 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (not released). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
-| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038, ADR-0040) | Brief and design written 2026-10-19 (REL-025 to REL-033; `docs/agent/design/ONLINE-STAGE1.md`); the setup approved (ADR-0040); group I approved (ADR-0041); building (Marshall) |
+| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (not released). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 
-**Last full test runs:** chunk 7's final commit `06f80f8`, the owner's Mac, 2026-10-18, from the internal-disk clone,
+**Last full test runs:** chunk 8's final commit `53cd7bf`, the owner's Mac, 2026-10-19, from the internal-disk clone,
+twice in a row under `caffeinate -i -s` (passes 3 and 4): typecheck passed; unit 235 files, 2,828 tests passed; build
+passed; e2e 307 of 307 in Chromium and WebKit, dev and both production builds (35.7 and 35.2 minutes). Before them:
+pass 1 on `6f5f724` (302 of 307: six Settings tabs and Social's re-ask, both chunk 8 effects then fixed, and one
+WebKit perf timing while another project's e2e and the review ran on the same Mac) and pass 2 on `956aa55` (306 of
+307: the sign-in form's late network error, then fixed). The live smoke test on the project: 80 of 80.
+Before chunk 8: chunk 7's final commit `06f80f8`, the owner's Mac, 2026-10-18, from the internal-disk clone,
 twice in a row under `caffeinate -i -s` (passes 4 and 5): typecheck passed; unit 229 files, 2,719 tests passed; build
 passed; e2e 291 of 291 in Chromium and WebKit, dev and both production builds (32.2 and 32.1 minutes). Before them on
 `06f80f8`: pass 2 the same (32.4 min); pass 3 287 of 291, all four failures inside the Mac's idle-sleep windows on

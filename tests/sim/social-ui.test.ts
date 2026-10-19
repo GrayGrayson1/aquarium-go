@@ -50,7 +50,7 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect(Object.values(C.tabs)).toEqual(['Overview', 'Clubs', 'Trading', 'Friends', 'Leaderboards']);
     expect(C.signInTitle).toBe('Bring your aquarium online');
     expect(C.signInText).toBe('Your game stays on this device and keeps working offline. An account adds clubs, trading circles, friends’ aquariums and weekly leaderboards.');
-    expect([C.emailPlaceholder, C.passwordPlaceholder, C.signIn, C.createAccount, C.haveInvite, C.invitePlaceholder, C.joinGroup]).toEqual(['you@example.com', 'At least 8 characters', 'Sign in', 'Create account', 'Have an invite?', 'Invite code, e.g. HIGHLAND-4821', 'Join group']);
+    expect([C.emailPlaceholder, C.passwordPlaceholder, C.signIn, C.createAccount, C.haveInvite, C.invitePlaceholder, C.joinGroup]).toEqual(['you@example.com', 'At least 8 characters', 'Sign in', 'Create account', 'Have an invite?', 'Invite code, e.g. FRIENDS-KDWX', 'Join group']); // the example: ADR-0042 J1 (changed on purpose)
     expect(C.errorCredentials).toBe('Enter your email and a password of at least 8 characters.');
     expect(C.errorInvite).toBe('That invite code didn’t match a club. Check it and try again.');
     expect(C.errorNetwork).toBe('Can’t reach Aquarium Go online right now. Your game is fine — try again in a moment.');
@@ -177,7 +177,7 @@ describe('the panel, server-rendered (SOC-003, SOC-005)', () => {
     expect(t).toContain('Sign in');
     expect(t).toContain('Create account');
     expect(t).toContain('Have an invite?');
-    expect(out).toContain('placeholder="Invite code, e.g. HIGHLAND-4821"');
+    expect(out).toContain('placeholder="Invite code, e.g. FRIENDS-KDWX"');
     expect(t).toContain('Join group');
     expect(t).toContain(C.devHint);
     expect(out).not.toContain('role="tablist"'); // no tabs signed out

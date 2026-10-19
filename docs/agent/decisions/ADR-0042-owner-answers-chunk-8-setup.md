@@ -54,11 +54,17 @@ public I'd say if it costs more money. lets make everything free if we can for n
 4. **Everything free for now** ("lets make everything free if we can for now please"): no paid plan, add-on or
    service for stage 1.
 
-## Still open (asked in the same session)
+## Later in the same session (OWNER_QUESTIONS J1)
 
-- The "Have an invite?" field's example still reads "Invite code, e.g. HIGHLAND-4821" (the 0.5 design's), which no
-  longer matches the real codes; the agent proposed "Invite code, e.g. FRIENDS-KDWX" and kept the approved text until
-  the owner answers.
+The agent asked (verbatim): "One wording question: the "Have an invite?" field's example still says "Invite code, e.g.
+HIGHLAND-4821", which no longer matches real codes. OK to change it to "Invite code, e.g. FRIENDS-KDWX"? Until you
+say, I'll leave it as it is."
+
+The owner's answer (verbatim): "yes change it to FRIENDS-KDWX, release when green"
+
+5. **The "Have an invite?" field's example reads "Invite code, e.g. FRIENDS-KDWX"** (`SOCIAL_COPY.invitePlaceholder`).
+6. **Release when green:** the owner's go-ahead, in the session, to release chunks 7 and 8 once the checks pass (the
+   agent named it 0.5.5: Settings › About's "What’s new in 0.5" needs no new words for it).
 
 ## Consequences
 

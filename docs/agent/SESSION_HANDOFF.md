@@ -1,54 +1,40 @@
-# Session handoff: chunk 8 (multiplayer stage 1), handed to Marshall
+# Session handoff: after chunk 8 (multiplayer stage 1)
 
-For the agent that builds chunk 8 on Aquarium Go: Marshall, on the owner's CNVS canvas, handed the chunk by Chase on
-2026-10-19 at the owner's request ("give marshall in cnvs all it needs to be successful in building out 8"). Written
-2026-10-15 after chunk 6 and kept current since. The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule;
-this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when it's
-used up.
+For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19 (handed over by Chase at the owner's
+request). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of work and the
+practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
 
 ## Where things stand
 
-- **0.5.4 is released** (2026-10-18: `main` = `63caa8e`, Pages and Render). **Chunk 7 (hardening for multiplayer) is
-  done on `next`, not released** (PLAN.md, chunk 7; ADR-0039). Releasing waits for the owner's say.
-- **Chunk 8 starts from `next`.** Its brief is in PLAN.md (chunk 8), its build plan is
-  `docs/agent/design/ONLINE-STAGE1.md` (read it whole: layout, setup, database, client, online save, words, tests,
-  pitfalls), its requirements are REL-025 to REL-033, and the owner's answers are ADR-0038, ADR-0039 and **ADR-0040**
-  (2026-10-19): the agent sets up the Supabase project itself (a Free organization "Aquarium Go", the project
-  `aquarium-go` in `us-east-1`); only the owner creates clubs, and a club's invite code is the sign-up code (the first
-  club "Aquarium Go Friends"); the sign-up, account and online-save wording approved.
-- **Open owner questions:** group I was asked and approved (ADR-0041, 2026-10-19); open: F1 (the
-  owner's VoiceOver pass during a play-through, whenever the owner does it).
-- **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`, v2.119.0) is signed in to the owner's whole account,
-  anonyform's Pro organization included. ONLINE-STAGE1.md §3 has the rules: scope every remote command to the Aquarium
-  Go project, never print or save its secret key, never read the CLI's stored sign-in (refused once as credential
-  exploration; don't work around it), and stop and ask if anything would cost money or touch another project.
+- **0.5.4 is released** (2026-10-18: `main` = `63caa8e`). **Chunks 7 and 8 are done on `next`, not released**
+  (PLAN.md; ADR-0039 to ADR-0042). Releasing them (as 0.5.5 or 0.6.0) is the owner's call.
+- **The Supabase project is live**: the Free organization "Aquarium Go" (`kvqnsqbjufmnkpsrcjbj`), project
+  `aquarium-go`, **ref `zkavcxrsxdgdlstravpj`**, us-east-1. Four migrations applied (`supabase/migrations`), the
+  security advisors report no issues, the first club "Aquarium Go Friends" exists (its invite code went to the owner
+  in the session; never write it in the repo, which is public; `select name, invite_code from public.clubs` reads it),
+  the live smoke test passed 80 of 80. `src/social/project.ts` holds the address and publishable key, so the players'
+  build shows Social once `next` is released.
+- **Open owner questions:** F1 (the owner's VoiceOver pass). The "Have an invite?" example is "Invite code, e.g.
+  FRIENDS-KDWX" (ADR-0042, J1).
+- **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`) is signed in to the owner's whole account, anonyform's
+  Pro organization included. Scope every remote command to the project: `--linked --project-ref zkavcxrsxdgdlstravpj`
+  (`db query` takes `--project-ref` only with `--linked`). Never print or save the secret key; never read the CLI's
+  stored sign-in; stop and ask if anything would cost money (the owner: "lets make everything free if we can").
 
 ## The order of work
 
-1. **Check the drive and read.** `/Volumes/Dev` must exist (if not, stop and ask the owner to connect the X9). Read
-   `AGENTS.md`, `CLAUDE.md`, PLAN.md (Next step, Status, chunk 8's brief), ADR-0038 to ADR-0040 and ONLINE-STAGE1.md.
-   Chunk 8 starts at `fd0e0fd` (chunk 7's end); its brief's commit follows it, so the review reads `fd0e0fd..HEAD`.
-2. **Ask group I** (one AskUserQuestion round, the exact strings in the previews; if the owner declines the tool, ask
-   the same as plain text, as ADR-0040 did). Record the answers verbatim in ADR-0041, then the index, PLAN.md,
-   REQUIREMENTS.json and OWNER_QUESTIONS.
-3. **Build** in sensible commits (ONLINE-STAGE1.md §2 to §7): install `@supabase/supabase-js@2.117.2` exactly
-   (`npm install --save-exact --package-lock-only @supabase/supabase-js@2.117.2` in the Dev repo, which writes only
-   `package.json` and the lockfile; then `npm ci` in the test clone), the interface and the stub, the
-   Supabase service, the migration and its static test, the mode switch and the gates, the online save, the screens,
-   the tests (§8). Run the unit tests as you go.
-4. **Set up the project** (§3) once the migration and `scripts/online-smoke.mjs` exist: the owner's yes is ADR-0040
-   decision 1; still stop if the organization isn't Free. Record the ref and the smoke result in PLAN.md (the first
-   club's code goes to the owner in the session, never in the repo: it is public, ADR-0042), and commit
-   `src/social/project.ts`.
-5. **Finish:** the four checks twice in a row on the final code, then one fresh reviewer (Opus 5.5 at max effort:
-   the Agent tool with `model: "opus"`, `effort: "max"`; never Fable) given the brief, ONLINE-STAGE1.md and
-   `git diff <start>..HEAD`, not your summary. Fix its blockers, re-run the checks, update PLAN.md, the requirements
-   and the docs REL-033 lists, commit, push `next`, and tell the owner what to try. Don't release: the owner decides.
-6. **After a release** (the owner's call): the owner signs up with the first club's link; with the owner's yes and
-   that email, set the owner flag (§3 step 10).
-7. **Releasing** (as 0.5.4 went): the four checks green, bump `version` and add the CHANGELOG entry, merge `next` into
-   `main` with the owner's go-ahead (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no checkout), push
-   from the internal-disk clone, watch the Pages run, deploy Render by hand, check both `version.json` files.
+1. **Release (the owner's go-ahead in the session):** the four checks green on `next`, bump `version` and add the
+   CHANGELOG entry (chunks 7 and 8), merge `next` into `main` (`git merge-tree --write-tree`, `commit-tree`,
+   `update-ref`: no checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
+   `version.json` files. The CHANGELOG should tell players Social is online for invited friends.
+2. **The owner's account** (after the release): the owner signs up with the first club's link; with the owner's yes
+   and the email used, run ARCHITECTURE.md's runbook ("The owner's account": `is_owner = true`, the first club's
+   `created_by`). Then the owner sees "Create a club" and every club's invite link.
+3. **A database change** goes in a new file under `supabase/migrations` (never edit an applied one): check it with
+   `scripts/online-db-local/run.sh` (a throwaway local Postgres, Homebrew's postgresql@16), apply it with `supabase db
+   query --linked --project-ref <ref> -f <file>`, run `supabase db advisors --linked --project-ref <ref> --type security
+   --level warn` (must say no issues), then `node scripts/online-smoke.mjs` from the internal-disk clone (it has
+   supabase-js; the Dev repo's `node_modules` is an old copy without it).
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the
@@ -165,6 +151,19 @@ never does, so anything that scripts a production preview builds it with the fla
 a function, so call it inside `page.evaluate`. Playwright's `toBeEnabled` counts `aria-disabled` as disabled.
 Notifications are recorded by stubbing `window.Notification` and `ServiceWorkerRegistration.prototype.showNotification`
 (`tests/e2e/notifications.spec.ts`).
+
+**Learned in chunk 8.**
+- *Supabase's advisors* warn about every SECURITY DEFINER function the API exposes (lints 0028, 0029): the functions
+  the game calls live in the schema `private`, behind SECURITY INVOKER wrappers in `public` with the same names.
+- *`config push`* pushes every declared section: match `config.toml`'s non-auth settings to the project's first
+  (`supabase config diff --project-ref <ref>`), so only what you mean changes.
+- *A forwarded address* (`x-forwarded-for`) is the caller's to choose, and keeping addresses is data the privacy note
+  doesn't cover: the brake on wrong invite codes is one for everyone, with only times kept.
+- *In a JavaScript `replace` string, `$$` becomes `$`*: a test mutation of SQL with `$$` needs a replacer function.
+- *The online save's e2e* turns autosave off in its setup, so only the test's own saves count as this device's play;
+  `__AQ.social.cloudSyncNow()` waits for the check and send under way.
+- *Another project's e2e* (another Claude session's) may run on the same Mac at the same time: a wall-clock test (perf)
+  that misses once may be that; look at `pgrep -fl playwright` before calling it a regression.
 
 **Rules that bite.** No new dependencies without asking. Never weaken, skip or delete a test; a changed test is a
 deliberate fix explained in the commit. Push `next` with `export PATH=/opt/homebrew/bin:$PATH` first (git's
