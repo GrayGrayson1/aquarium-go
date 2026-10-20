@@ -430,6 +430,14 @@ export function layoutSignature(fac: FacilityState, tanks: PlacedTank[]): string
   for (const t of tanks) s += `${t.id}:${t.tierId}:${t.placement.x.toFixed(3)},${t.placement.z.toFixed(3)},${t.placement.rotY.toFixed(3)};`;
   return s;
 }
+/**
+ * Forget the memoised reachability. Its signature rounds positions, so a cache filled at another moment (the interface
+ * reading between steps) could answer for a layout that moved a little; shared shops' step block clears it first
+ * (SHARED-SHOPS.md §3.2 rule 2).
+ */
+export function clearReachCache(): void {
+  reachCache = null;
+}
 export function stateReachability(state: GameState): Reachability {
   const tanks = placedTanks(state);
   const sig = layoutSignature(state.facility, tanks);

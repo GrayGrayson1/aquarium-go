@@ -35,6 +35,9 @@ const DEPENDENCIES: Record<string, string> = {
   'react-dom': '^19.3.0',
   'simplex-noise': '^4.0.3',
   three: '^0.186.0',
+  // chunk 10 — the shared-shop server's WebSocket library (server/ only; the game never imports it), approved by the
+  // owner at this exact version (ADR-0045 decision 2, SHARED-SHOPS.md §5.1)
+  ws: '8.22.0',
   zustand: '^5.0.15',
 };
 

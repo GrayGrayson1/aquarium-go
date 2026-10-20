@@ -24,6 +24,11 @@ import { stepAutomation } from './automation'; // lane:automation (chunk 5; DESI
 
 export interface AdvanceOptions {
   focusTankId?: string | null;
+  /**
+   * Shared shops (SHARED-SHOPS.md §3.2 rule 4): the tanks the members are looking at, every one at full fidelity. The
+   * server names them, so every copy steps the same tanks in full.
+   */
+  focusTankIds?: readonly string[];
   /** Force every tank to full fidelity (tests). */
   forceFull?: boolean;
 }
@@ -34,7 +39,7 @@ const SUMMARY_THRESHOLD_H = 4;
 const REDUCED_TANK_BUDGET = 12;
 
 export function tankLod(state: GameState, tankId: string, opts: AdvanceOptions): SimLod {
-  if (opts.forceFull || tankId === opts.focusTankId) return 'full';
+  if (opts.forceFull || tankId === opts.focusTankId || opts.focusTankIds?.includes(tankId)) return 'full';
   const idx = state.tankOrder.indexOf(tankId);
   return idx < REDUCED_TANK_BUDGET ? 'reduced' : 'summary';
 }
@@ -49,6 +54,16 @@ function enterWorld(state: GameState): void {
   if (state === lastWorld) return;
   lastWorld = state;
   clearCompatCache();
+}
+
+/**
+ * Shared shops' step block (./sharedStep.ts, SHARED-SHOPS.md §3.2 rule 2): make `state` the current world without
+ * clearing anything. The block clears the caches itself, first, so no `enterWorld` inside it clears them again part-way
+ * through, whichever world this process stepped before (a copy just loaded, copied or replaced steps like one that
+ * wasn't).
+ */
+export function pinWorld(state: GameState): void {
+  lastWorld = state;
 }
 
 /** Advance the whole world by `hours` of game time. */

@@ -28,6 +28,7 @@ src/social       the SocialService interface, its local stub (0.5 spec §13.6; c
 src/ui           React DOM UI (reads state; calls sim mutators through `mutate`)
 src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
+server/          the shared-shop server (SHARED-SHOPS.md §5; chunk 10's prototype): Node 22 and `ws`, built into dist-server/
 ```
 
 **Allowed value imports** (S0 architecture lock). A layer may import values from itself and from the layers in its
@@ -53,6 +54,7 @@ Changing a row is a deliberate architecture change: say why in the commit, and t
 | `app` | every layer above |
 | `dev` | every layer above, and app |
 | files at the `src/` root | every layer |
+| `server/` (outside `src`; chunk 10) | types, data, sim and the pure persistence modules (`hash`, `serialize`, `migrations`, `schema`, `types`), never the stores, the game loop, the interface or React; packages: `ws` and Node's own. A test walks everything it reaches (`core-architecture-boundaries`, SHARED-SHOPS.md §5.1) |
 
 Rules:
 - **Species facts live only in `src/data/species`.** UI/render/AI read them through `getSpecies()`.
