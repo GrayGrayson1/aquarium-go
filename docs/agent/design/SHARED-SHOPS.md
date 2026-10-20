@@ -313,8 +313,8 @@ Server to browser:
   site has `autoDeploy: true`, while the server is deployed by hand from `main`. In between, newer browsers see the
   accurate `updating`; once the server is out, older tabs are told to reload and get the new build (Pages may serve a
   cached page for about 10 minutes, so `build` waits for `version.json` to change before offering Reload). Chunk 12
-  writes this into PLAN.md's release procedure. Adding the service to `render.yaml` could create it on a Blueprint
-  sync; chunk 10 checks how this workspace's Blueprint syncs before adding it.
+  writes this into PLAN.md's release procedure. Chunk 10 created the service with the Render CLI (ADR-0046) and left
+  `render.yaml` alone, so a Blueprint sync can't create or change it; the server stays out of `render.yaml`.
 
 ### 5.2 A room's life
 
@@ -394,10 +394,11 @@ assumes everyone may spend, apart from `allowed` itself.
 
 ### 5.8 Render and the key
 
-- A new **free web service**, `aquarium-go-shops`, in the Virginia region (beside Supabase's us-east-1), from this
-  repo: build `npm ci --include=dev --ignore-scripts && npm run build:server` (chunk 10 checks that the build still
-  works without install scripts), start `node dist-server/main.js`, health check `/health`, `NODE_VERSION` 22,
-  deployed by hand. Created only with the owner's yes.
+- A **free web service**, `aquarium-go-shops` (`srv-dbbt6gbncjis73c23br0`, https://aquarium-go-shops.onrender.com,
+  created 2026-10-20 with the owner's yes, ADR-0046), in the Virginia region (beside Supabase's us-east-1), from this
+  repo: build `npm ci --include=dev --ignore-scripts && npm run build:server` (chunk 10: it builds in about 54 seconds
+  without install scripts), start `node dist-server/main.js`, health check `/health`, `NODE_VERSION` 22, auto-deploy
+  off. It builds from `next` while chunk 10's prototype runs on it; chunk 12 switches it to `main`.
 - **Environment:** `SUPABASE_URL` and the publishable key (public), `ALLOWED_ORIGINS`, and **`SUPABASE_SECRET_KEY`,
   which the owner pastes in** (ADR-0045 decision 1), in chunk 12 (chunk 10's test runs on stub storage and needs no
   key): a new secret key made for this server in Supabase's dashboard (Project settings › API keys), so it can be
@@ -407,9 +408,15 @@ assumes everyone may spend, apart from `allowed` itself.
   every player's saves, profiles, clubs and friend links. So chunk 12's migration revokes `service_role`'s rights on
   every table and function in `public` (stage 1's and the new `shared_*` ones), changes the schema's default
   privileges so future tables and functions don't grant it anything, and grants it only `EXECUTE` on the `server_*`
-  functions (§6.3); a test checks every table and function in `public`, and the security advisors run after. Render
-  may expose environment variables to builds, so the build runs no install scripts (above) and chunk 12 checks what the
-  build sees.
+  functions (§6.3); a test checks every table and function in `public`, and the security advisors run after.
+- **The build sees every variable set on the service** (chunk 10 printed the names a build gets: `ALLOWED_ORIGINS`,
+  `SHOPS_*`, `NODE_VERSION` and Render's own), so the key would reach every program a build runs (npm, Vite, the stub
+  shops' fixtures). The build command removes it first (`env -u SUPABASE_SECRET_KEY sh -c '…'`) and runs no install
+  scripts, and chunk 12 checks the build's log for the name.
+- **Closed between tests.** The prototype's byte budget starts again at every wake and the service's address is in this
+  public repo, so after chunk 10's measurements the prototype on Render takes no connections and no replays unless
+  `SHOPS_OPEN=1` is set on the service (it answers `/health` and `/stats` only). Chunk 12's server, with sign-in,
+  replaces it.
 - The game's address for the server goes in `src/social/project.ts` beside the Supabase project (`SHARED_SHOP_SERVER`),
   `null` until the service exists.
 
@@ -628,28 +635,64 @@ the owner says release.
 - **Chunk 13, the screens and the play-test.** §7 and §8 with the approved words, the e2e tests, then a play-test with
   the owner and their daughter on the live server before release (0.6.0, with the owner's go-ahead).
 
-## 11. Costs and limits (estimates until chunk 10 measures them)
+## 11. Costs and limits (measured in chunk 10, 2026-10-20)
+
+Measured on the free web service (§5.8: Virginia, 0.1 CPU, Node 22.23.3 on x86-64) with chunk 10's prototype:
+`scripts/shared-session.ts` (two members in Node on the owner's Mac, a feed every 5 seconds from each in turn, runs
+of 60 to 90 seconds) and `scripts/shared-session-browsers.mjs` (Chromium and WebKit on the Mac). The stub shops: a new
+game (`new_betta`: 1 tank), the 30-day playthroughs (`playthrough_betta`: 3 tanks, 26 animals; `playthrough_axolotl`)
+and the late-game `big_facility` (15 tanks, 337 animals).
+
+| Shop | Speed | Game time kept | Server CPU per real second (the free plan has about 100 ms) | A time step (wall) | A fingerprint | A command's round trip (median) |
+|---|---|---|---|---|---|---|
+| `new_betta` | 10× | 100% | 33 ms | 6 ms | 4 ms | 125 ms |
+| `playthrough_betta` | 10× | 100% | 46 ms | 7 ms | 50 ms | 128 ms |
+| `playthrough_betta` | 1× | 100% | 32 ms | 5 ms | 15 ms | 122 ms |
+| `playthrough_axolotl` | 10× | 100% | 46 ms | 8 ms | 122 ms | 127 ms |
+| `big_facility` | 1× | 84 to 92% | 119 ms | 100 to 160 ms | 750 ms | 220 to 360 ms |
+| `big_facility` | 3× | 76% | over 100 ms | 200 ms | 600 ms | 610 to 650 ms |
+| `big_facility` | 10× | 55% | over 100 ms | 370 ms | 540 ms | 0.7 to 1 s |
+
+Every fingerprint matched in every run, the slow ones too: a shop the server can't keep up with runs slower, never out
+of step.
 
 - **Money: $0.** Render's free web service and Supabase's free project. Nothing paid without the owner's yes.
-- **Data**, as the meter counts it (×1.4 on everything):
-  - steps: about 1.4 MB per player-hour (about 100 bytes once a second, plus command steps of a few hundred bytes to
-    every member, batched over 50 to 100 ms);
-  - a snapshot of 34 to 140 KB per join, reconnect or re-sync;
-  - the shop's saves, every 3 minutes: about 1.4 to 4.6 MB an hour per shop;
+- **CPU.** The free instance runs a new or month-old shop (one to three tanks, up to about 30 animals) at any speed
+  with half its CPU or more to spare. A late-game shop like `big_facility` needs more than the free instance has even
+  at 1× (84 to 92% of real time), and at 10× the game runs at about half speed with commands taking a second. A shared
+  shop starts as a new game (ADR-0045 decision 5), so this bites only when one grows large. What can help, cheapest
+  first (chunk 12 and later): time steps in place instead of on a copy (the copy is 18 to 32% of a step's time on the
+  Mac), a cheaper or rarer fingerprint for big shops (750 ms of wall time each on the free instance), a lower top speed
+  for big shops (new words for the owner), or a paid instance (the owner's call).
+- **Data,** as payload; the meter adds ×1.4 for the WebSocket, TLS and TCP/IP:
+  - steps: about 120 bytes a second per member, whatever the shop's size or speed (time steps batched once a second,
+    commands at once, a fingerprint every 10 seconds): about 0.44 MB per member-hour, 0.6 MB metered;
+  - a command: about 110 bytes to each member;
+  - a snapshot (a join, a reconnect, a re-sync), gzipped: 12 KB (a new game), 34 to 39 KB (the playthroughs), 120 to
+    160 KB (`big_facility`);
+  - the shop's saves (chunk 12, every 3 minutes): about the snapshot each, so 0.25 to 3.2 MB an hour (0.35 to 4.5
+    metered);
   - photos: each written once to the database and fetched once by each member who sees it (10 to 20 KB each).
-  - Two people for an hour: about 5 to 9 MB, so the 2 GB cap is roughly 220 to 400 hours. Ten people, each acting
-    every few seconds: about 40 to 50 MB an hour. The static site and `dascade` share the 5 GB.
+  - Two people for an hour, metered: about 1.6 to 5.7 MB, so the 2 GB cap is about 350 to 1,250 hours, the saves the
+    larger part for a big shop. Ten people, each acting every 3 to 5 seconds (each command goes to every member): about
+    20 to 30 MB an hour. The static site and `dascade` share Render's 5 GB.
 - **Hours:** the server is awake only while someone is there, plus 15 minutes, up to the 400-hour cap; Render's 750
   free hours are shared with `dascade`, and the owner's card shows the server's share. If they ran out, Render would
   suspend both free web services until the next month; the static sites keep working.
-- **CPU:** a free instance has 0.1 CPU. A small shop's steps cost about 1 ms of Mac time per real second; `big_facility`
-  at 10× about 17 ms, which may be a large share of 0.1 CPU, and a 0.1 CPU limit usually means about 10 ms of work in
-  every 100, so a longer step waits; each block also copies the shop (about 0.65 ms for `big_facility` on the Mac),
-  and each shop has its own worker. Chunk 10 measures it on Render; if a shop can't keep up, the server lowers its top
-  speed and says so (new words for the owner), and a paid instance is the owner's call.
-- **Each device** simulates the shop as in solo play, plus up to 4 tanks in full detail instead of 1.
-- **Latency:** an action appears after about a round trip (its zero-hour step goes out at once), plus any throttling
-  on the server.
+- **Waking:** after 15 minutes without a request the free instance sleeps; the next request was answered in 22 seconds
+  (one measurement: Render started the instance after about 10 seconds and the server listened 2 seconds later; Render
+  says up to a minute). Opening a shop then starts its worker: 1 to 3 seconds for a small shop, about 5 for
+  `big_facility`, before the snapshot.
+- **Across machines:** the stub shops built on Render's x86-64 build machine (the playthroughs simulate 30 game days of
+  play) equal the Mac's arm64 builds bit for bit, and the server's step logs replay on the Mac with no mismatch.
+- **Each device** applies the steps as the server does, with up to 4 tanks in full detail: on the Mac, about 1 ms a step
+  for a small shop and 3 to 7 ms for `big_facility`, plus a fingerprint in idle time every 10 seconds. Chromium and
+  WebKit on the Mac, in one shop on the Render service (`playthrough_betta` at 10× for 2 minutes, then `big_facility`
+  at 1×): 1.6 to 2.2 ms a step and 4 ms a fingerprint on the small shop, 5 to 6 ms and 8 to 9 ms on the big one; every
+  fingerprint matched and both ended at the same step with the same copy.
+- **Latency:** an action appears after about a round trip, about 125 ms from the Mac to Virginia (including the
+  server's 50 ms wait to batch commands), more when the server is busy.
+- **The build:** about 54 seconds on Render, without install scripts; it sees every variable set on the service (§5.8).
 
 ## 12. Requirements (to add to REQUIREMENTS.json with each brief)
 

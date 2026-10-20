@@ -45,7 +45,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
-| 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | In progress (started 2026-10-20): one arithmetic in the sim (dmath) done; the step block, the prototype server and client, the replay and the Render measurements next |
+| 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | In progress (started 2026-10-20): dmath, the step block, the prototype server and replica, the lockstep tests and the Render measurements done; the fresh review next. First full pass on `01e854c`: typecheck, unit 2,888, build, e2e 316 of 317 (a WebKit `social.spec` click, B-204, 2 of 2 alone) |
 | 11 | Shared shops, commands (§4, §3.2) | Planned: every player action a serializable command, no player-visible change (one arithmetic moved to chunk 10) |
 | 12 | Shared shops, the server and the database (§5, §6) | Planned: `server/` on a free Render web service, the migration (live with the owner's yes) |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Planned: the owner's words, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
@@ -745,6 +745,26 @@ REL-012, REL-018.
 - **Done when:** the four checks pass on the final code; one fresh reviewer (Opus 5.5, max effort) reads this brief,
   SHARED-SHOPS.md §3, §5 and §10 and `git diff 885e43e..HEAD`, and its blockers are fixed; the Render measurements are
   in SHARED-SHOPS.md §11; PLAN.md and the docs say what changed; `next` pushed.
+- **Built** (2026-10-20, Chase): `017756d` one arithmetic (dmath equals StrictMath bit for bit on 364,200 probe inputs;
+  unit 2,872 of 2,872 after the switch); `01e854c` the step block, `focusTankIds`, the first commands, the prototype
+  server (`server/`, `ws` 8.22.0), the replica and the dev connection, the lockstep tests (unit 2,888; the new e2e spec
+  6 of 6 in Chromium and WebKit). Without the step block's cache clears, `big_facility` drifts and the in-process test
+  fails; with them, a probe replayed 7 cases (4 shops, 1× to 10×, up to a game week) in both browsers with 136
+  fingerprints each and no mismatch.
+- **On Render** (ADR-0046): `aquarium-go-shops` created and deployed from `next`; it builds in about 54 seconds without
+  install scripts. Its x86-64 step logs replay on the Mac's arm64 with no mismatch, and the stub shops it built (30 game
+  days of play for the playthroughs) equal the Mac's. The free instance keeps a new or month-old shop at 10× with half
+  its CPU to spare (33 to 46 ms a second of about 100), commands round trip in about 125 ms; a late-game shop
+  (`big_facility`) can't keep real time even at 1× (84 to 92%), and runs at 55% at 10×, still in step. Data: about 120
+  bytes a second per member for the steps (0.6 MB an hour metered), snapshots 12 to 160 KB, the shop's saves the larger
+  part (SHARED-SHOPS.md §11). A cold wake answered in 22 seconds. Chromium and WebKit on the Mac in one shop there:
+  every fingerprint matched, both ended at the same step with the same copy. A build sees every variable set on the
+  service, so chunk 12's build command removes the key first (§5.8). Afterwards the prototype on Render was closed
+  (no connections or replays unless `SHOPS_OPEN=1`), since its byte budget restarts at every wake and its address is
+  public.
+- **For chunk 12** (from the measurements): time steps in place, not on a copy (18 to 32% of a step); a cheaper or rarer
+  fingerprint and snapshot check for big shops (750 ms and 1.6 s of wall time on the free instance); the key out of the
+  build; and, before big shops matter, the owner's choice between a lower top speed for them and a paid instance.
 
 ## Releases
 

@@ -7,6 +7,11 @@
  * Environment: PORT; ALLOWED_ORIGINS (comma-separated; `http://127.0.0.1:*` allows any local port); SHOPS_DIR;
  * SHOPS_MAX_CONNECTIONS (default 12); SHOPS_BYTE_BUDGET (bytes sent since start, default 300 MB); SHOPS_REPLAY=1
  * enables `/stub/replay` (tests and the measurements).
+ *
+ * On Render (`RENDER` set) the prototype is closed after chunk 10's measurements unless SHOPS_OPEN=1: it takes no
+ * connections and no replays, and answers only `/health` and `/stats`. Its byte budget starts again at every wake and
+ * its address is in this public repo, so an open stub would let anyone spend Render's free data (shared with the
+ * static site and `dascade`). Chunk 12's server, with sign-in, replaces this.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { Worker } from 'node:worker_threads';
@@ -21,7 +26,8 @@ const PORT = Number(process.env.PORT ?? 4396);
 const ORIGINS = (process.env.ALLOWED_ORIGINS ?? 'http://127.0.0.1:*').split(',').map((s) => s.trim()).filter(Boolean);
 const MAX_CONNECTIONS = Number(process.env.SHOPS_MAX_CONNECTIONS ?? 12);
 const BYTE_BUDGET = Number(process.env.SHOPS_BYTE_BUDGET ?? 300e6);
-const REPLAY = process.env.SHOPS_REPLAY === '1';
+const CLOSED = Boolean(process.env.RENDER) && process.env.SHOPS_OPEN !== '1';
+const REPLAY = process.env.SHOPS_REPLAY === '1' && !CLOSED;
 /** Most a member may send (§5.3): 16 KB a message (48 KB is for a listing with a photo, chunk 12). */
 const MAX_MESSAGE = 16 * 1024;
 const MAX_COMMANDS_PER_S = 10;
@@ -233,7 +239,7 @@ const server = createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (req.method === 'OPTIONS') return reply(req, res, 204, {});
   if (req.method !== 'GET') return reply(req, res, 405, { error: 'method' });
-  if (url.pathname === '/health') return reply(req, res, 200, { ok: true, version: VERSION, shops: availableShops(), capped });
+  if (url.pathname === '/health') return reply(req, res, 200, { ok: true, version: VERSION, shops: availableShops(), capped, closed: CLOSED });
   if (url.pathname === '/stats') return void stats().then((s) => reply(req, res, 200, s));
   if (url.pathname === '/stub/replay' && REPLAY) return replay(req, res, url);
   reply(req, res, 404, { error: 'not found' });
@@ -247,6 +253,7 @@ server.on('upgrade', (req, socket, head) => {
     socket.destroy();
   };
   if (url.pathname !== '/shop') return refuse('404 Not Found');
+  if (CLOSED) return refuse('503 Service Unavailable');
   if (!originAllowed(req.headers.origin)) return refuse('403 Forbidden');
   if (conns.size >= MAX_CONNECTIONS) return refuse('503 Service Unavailable');
   wss.handleUpgrade(req, socket, head, (ws) => {
@@ -273,4 +280,4 @@ process.on('SIGTERM', () => {
   setTimeout(() => process.exit(0), 500).unref();
 });
 
-server.listen(PORT, () => console.log(`[server] shared shops (prototype) on :${PORT}; shops: ${availableShops().join(', ') || 'none'}`));
+server.listen(PORT, () => console.log(`[server] shared shops (prototype) on :${PORT}; shops: ${availableShops().join(', ') || 'none'}${CLOSED ? '; closed (set SHOPS_OPEN=1 to open)' : ''}`));
