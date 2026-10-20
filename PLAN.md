@@ -39,6 +39,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
+| 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | In progress (2026-10-19, Chase) |
 
 **Last full test runs:** chunk 8's final commit `53cd7bf`, the owner's Mac, 2026-10-19, from the internal-disk clone,
 twice in a row under `caffeinate -i -s` (passes 3 and 4): typecheck passed; unit 235 files, 2,828 tests passed; build
@@ -643,6 +644,30 @@ REL-012, REL-018.
   answered null, which showed a friend's real invite link as expired (now `{"braked": true}`, the same for every code:
   the game shows its network message and keeps the link's code in the sign-up form); and the brake's lock is tried, not
   waited for, so a flood can't queue calls that each hold a connection.
+
+### 9. 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) — started 2026-10-19 (Chase)
+
+- **What:** fix the five high findings of the audit of `c7c0d34` (2026-10-19; a private report, so security details
+  stay out of this public repo until fixed), with the owner's answers in ADR-0044. The chunk starts at `42effca`.
+  - **A1 (REL-034):** a read-only call to the invite lookup skipped the brake on wrong codes; the friend-code lookup had
+    the same gap. A new migration answers every read-only call with the brake's answer; the local database check and
+    the smoke test gain read-only cases. The three clubs keep their codes (ADR-0044 decision 3).
+  - **B2 (REL-035):** the game follows sign-in changes from other tabs (`onAuthStateChange` and the session's `storage`
+    event), and the save functions take the account the game believes is signed in and refuse any other.
+  - **D1 (REL-036):** tank-sale bonuses apply to the animals and living plants only; hardscape at its base price; a
+    loop test at several sizes (ADR-0044 decision 1). Prices players see change on purpose.
+  - **E1, G1 (REL-037):** a newer copy of the same aquarium is never dropped silently: an older copy written over it
+    keeps it, listed, under a new identity (as the online save's kept copy does); Load offers "Save to Slot N & load"
+    for the same aquarium; Replace says when the slot holds a later copy; Import into a slot that holds a save asks
+    first; both say when the listed previous copy goes. The approved strings are ADR-0044's.
+  - **B1 (REL-038):** Load online save never pushes out an aquarium kept only in the autosave: it saves it to a free
+    slot first, or loads nothing when every slot is full (ADR-0044's two messages).
+- **Live database:** the owner's yes (ADR-0044 decision 2): the local check (`scripts/online-db-local/run.sh`), then
+  `supabase db query --linked --project-ref zkavcxrsxdgdlstravpj -f <file>`, the advisors (no issues), the smoke test.
+- **Not in this chunk:** the audit's other 111 findings (BACKLOG.md's audit row), decisions A4, F5, F3, G2, A6.
+- **Done when:** the four checks pass twice in a row on the final code; one fresh reviewer (Opus 5.5, max effort) reads
+  this brief, ADR-0044 and `git diff 42effca..HEAD`, and its blockers are fixed; the live smoke test passes; PLAN.md,
+  the requirements and the docs say what changed; `next` pushed. Releasing 0.5.6 is the owner's call.
 
 ## Releases
 

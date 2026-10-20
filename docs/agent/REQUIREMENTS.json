@@ -5213,7 +5213,7 @@
         "scripts/agent/requirements-audit.mjs (umbrella rule)"
       ],
       "evidence": [],
-      "note": "2026-10-18: ADR-0038 (Accepted for stage 1) is the owner-approved record for stage 1's backend, account and cloud-save code (chunk 8, after chunk 7): a free Supabase project, sign-up by invite code, the server trusting each browser. Stage 2 (players the owner doesn't know) and real trading each need their own record, so REL-002 stays PENDING. 2026-10-19: chunk 8 brief written (REL-025 to REL-033; ADR-0040).",
+      "note": "2026-10-18: ADR-0038 (Accepted for stage 1) is the owner-approved record for stage 1's backend, account and cloud-save code (chunk 8, after chunk 7): a free Supabase project, sign-up by invite code, the server trusting each browser. Stage 2 (players the owner doesn't know) and real trading each need their own record, so REL-002 stays PENDING. 2026-10-19: chunk 8 brief written (REL-025 to REL-033; ADR-0040). 2026-10-19: chunk 9 (0.5.6, the audit's high findings) brief written (REL-034 to REL-038; ADR-0044).",
       "status": "PENDING"
     },
     {
@@ -5858,6 +5858,101 @@
         "§3, §9"
       ],
       "note": "Chunk 8 (2026-10-19): ARCHITECTURE.md \"Online\" (the layers, which service, the database's rule, migrations by db query, the owner's runbook), TRUST_BOUNDARY.md \"Social\" (what stage 1 checks and what stage 2 must), DEBT_INVENTORY.md's summary, KNOWN_LIMITATIONS.md \"Online\", TEST_IDS.md (the new ids and dev hooks), README."
+    },
+    {
+      "id": "REL-034",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 9 (0.5.6); ADR-0044; the audit of c7c0d34 (2026-10-19), A1",
+      "description": "A read-only call to the invite lookup or the friend-code lookup tells nothing about whether a code exists: it gets the brake's answer for every code, and wrong codes tried any way count toward the brake.",
+      "acceptance": [
+        "A new migration (never an edit of an applied one); resolve_invite in a read-only transaction answers {\"braked\": true} for a right and a wrong code alike; add_friend in one raises the same error for both.",
+        "scripts/online-db-local/checks.sql has the read-only cases and run.sh passes; the smoke test tries a read-only lookup (rpc with { get: true }).",
+        "Applied live with the owner's yes (ADR-0044 decision 2); the security advisors report no issues; the smoke test passes."
+      ],
+      "tasks": [],
+      "tests": [
+        "scripts/online-db-local/run.sh",
+        "scripts/online-smoke.mjs",
+        "tests/sim/supabase-migration.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-035",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 9 (0.5.6); ADR-0044; the audit of c7c0d34 (2026-10-19), B2",
+      "description": "A tab follows sign-in changes made in another tab, and an online save goes only to the account the game believes is signed in.",
+      "acceptance": [
+        "The client listens to auth state changes and to the session key's storage event, and reloads who is signed in when they change.",
+        "save_meta, get_save and put_save take the expected account and refuse another; the client drops any answer for another account (unit test with a fake shared session)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/online-sync.test.ts",
+        "tests/sim/social-supabase.test.ts",
+        "scripts/online-smoke.mjs"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-036",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 9 (0.5.6); ADR-0044; the audit of c7c0d34 (2026-10-19), D1",
+      "description": "Tank-sale bonuses (welfare, compatibility, beauty, the ethical display) scale only the livestock's and living plants' value; hardscape is valued at its base price (ADR-0044 decision 1).",
+      "acceptance": [
+        "A loop test: a kit, decor and one cheap animal never sell for more than they cost, at several tank sizes.",
+        "Seeded tests that shift say why in the commit; a well-stocked tank still earns its bonus on its animals."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/economy-loops.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-037",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 9 (0.5.6); ADR-0044; the audit of c7c0d34 (2026-10-19), E1, G1",
+      "description": "A newer copy of the same aquarium is never dropped silently: written over by an older copy, it stays listed under a new identity; the Load, Replace and Import dialogs say what is kept and what goes, in ADR-0044's approved words.",
+      "acceptance": [
+        "Loading, importing or replacing with an older copy of the running aquarium leaves the newer one listed after any number of autosaves (unit tests on the slot store).",
+        "Load offers \"Save to Slot N & load\" for the same aquarium; Replace says when the slot holds a later copy; Import into a slot that holds a save asks first; both say when the listed previous copy goes."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim (persistence)",
+        "tests/e2e (Settings › Saves)"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+    },
+    {
+      "id": "REL-038",
+      "slice": "ALL",
+      "source": "PLAN.md chunk 9 (0.5.6); ADR-0044; the audit of c7c0d34 (2026-10-19), B1",
+      "description": "Load online save never pushes out an aquarium kept only in the autosave: it is saved to a free slot first, or nothing loads when every slot is full (ADR-0044's messages).",
+      "acceptance": [
+        "A test with another aquarium in the autosave: after Load online save it is in a free slot; with every slot full, nothing changes and the message shows."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/online-sync.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
     }
   ]
 }
