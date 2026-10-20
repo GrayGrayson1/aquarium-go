@@ -119,6 +119,22 @@ you say release." The owner's answer (verbatim): "release when green"
 5. **Release when green:** the owner's go-ahead, in the session, to release 0.5.6 (Pages and Render) once the four
    checks pass twice in a row on the final code and the review's blockers are fixed.
 
+After the review's confirmation pass, the agent asked one more question (AskUserQuestion), verbatim:
+
+> **"Load in Settings can push the autosave's newest copy out of every save in one case: you load a slot from the
+> title screen, then within a minute load another slot in Settings. (0.5.5 loses it too.) The fix saves that copy to a
+> free slot first, with the messages you already approved for Load online save. OK to use the same messages here?"**
+
+- Chosen: **"Yes, same messages (Recommended)"**: "Load in Settings saves a copy kept only in the autosave to a free
+  slot first and says so. With every slot full, nothing loads and it says so. Fixed in 0.5.6." (The preview showed the
+  two messages of question 4, "Reef Corner was only in the autosave, so it was saved to Slot 3 first." and "Reef
+  Corner is only in the autosave and every slot is full. Free a slot in Settings › Saves first.")
+- Not chosen: "Leave it for later".
+
+6. **Settings › Saves' Load uses B1's two messages too:** a copy of the aquarium on screen, or of the one being loaded,
+   kept only in the autosave and further along than both, is saved to a free slot first; with every slot full,
+   nothing loads.
+
 ## Consequences
 
 - PLAN.md gets chunk 9's brief (0.5.6); REQUIREMENTS.json gets REL-034 to REL-038; BACKLOG.md notes the audit (the

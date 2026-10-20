@@ -3,6 +3,8 @@
  * bounded offline catch-up, export/import). Autosave is run by core's GameLoop. OWNER: lane "ui-shell".
  */
 import {
+  baseSaveId,
+  copySave,
   onSavesChanged,
   onBackendChange,
   storageStatus,
@@ -58,11 +60,19 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
  * load dialog says so) instead of being dropped by the loaded copy's next autosaves.
  */
 export async function loadIntoGame(slot: string): Promise<GameState | null> {
+  let parked: string[] = [];
   try {
     // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
     if (autosaveAllowed({ evenIfOff: true })) {
       const g = useGame.getState().game;
       const target = g ? (await listSlots()).find((m) => m.slot === slot) : undefined;
+      // the review's confirmation (B): a further copy of this aquarium kept only in the autosave (a title-screen load
+      // of an earlier one, not yet autosaved) would go with the two writes this load makes: to a slot first
+      if (g && target?.saveId) {
+        const kept = await keepAutosavedCopies([{ saveId: g.saveId, hour: g.clock.hour }, { saveId: target.saveId, hour: target.hour ?? Number.NaN }], { sameAquariumOnly: true, loading: slot });
+        if (!kept) return null;
+        parked = kept;
+      }
       const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: !!(target && g && isSameGame(target, g)) });
       if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
     }
@@ -76,6 +86,7 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
       return null;
     }
     if (r.restoredFromBackup) useUI.getState().toast('That save was damaged — restored from its backup copy.', 'warning');
+    for (const m of parked) useUI.getState().toast(m, 'success');
     useUI.getState().set({ hudHidden: false, cameraMode: 'front' });
     return r.state;
   } catch (e) {
@@ -109,6 +120,47 @@ export function loadKeepAdvice(saves: SaveMeta[], g: GameState | null): { text: 
     freeSlot,
     keptIn: null,
   };
+}
+
+/**
+ * Chunk 9 (B1; the review's confirmation, A and B; ADR-0044 decisions 4 and 6): a load writes the autosave slot (the
+ * game it replaces, then the loaded copy's autosaves), which can push out what is there. A copy kept only there (in
+ * the autosave or its "Previous autosave", in no slot as far along) is saved to a free slot first, unless it is a copy
+ * of an aquarium being written (`written`: the game on screen, the
+ * copy loaded) no further along than each copy of it written now (an older state of it), or, with `sameAquariumOnly`
+ * (Settings › Saves' Load), another aquarium (that goes on a switch, as the dialog says). `loading` is the slot the
+ * load reads, never parked. With every slot full nothing may load, and it says so. Returns null when the load must
+ * stop, else the messages to show once the load is done (the toasts are cleared when the aquarium changes).
+ */
+export async function keepAutosavedCopies(written: { saveId: string; hour: number }[], opts: { sameAquariumOnly?: boolean; loading?: string } = {}): Promise<string[] | null> {
+  const hoursOf = (id: string) => written.filter((w) => baseSaveId(w.saveId) === baseSaveId(id)).map((w) => w.hour);
+  let saves = await listSlots();
+  const manual = () => saves.filter((m) => m.slot !== 'auto' && !m.previousOf);
+  const parked = new Set<string>();
+  const messages: string[] = [];
+  for (const m of saves.filter((x) => (x.slot === 'auto' || x.previousOf === 'auto') && x.slot !== opts.loading)) {
+    if (!m.saveId || parked.has(m.saveId)) continue;
+    const same = hoursOf(m.saveId);
+    if (opts.sameAquariumOnly && !same.length) continue;
+    // a copy of an aquarium being written, no further along than each copy of it written now: an older state of it,
+    // which goes as any "Previous autosave" goes on a switch (an exact copy of the game on screen included)
+    if (same.length && !same.every((h) => typeof m.hour === 'number' && Number.isFinite(h) && m.hour > h + 1e-6)) continue;
+    if (manual().some((k) => k.saveId === m.saveId && (k.hour ?? -Infinity) >= (m.hour ?? Infinity) - 1e-6)) continue;
+    const to = freeSaveSlot(saves); // never over another save: a slot's older copy may be a checkpoint kept on purpose
+    if (!to) {
+      useUI.getState().toast(`${m.shopName} is only in the autosave and every slot is full. Free a slot in Settings › Saves first.`, 'danger');
+      return null;
+    }
+    const r = await copySave(m.slot, to);
+    if (!r.ok) {
+      useUI.getState().toast(r.message, 'danger');
+      return null;
+    }
+    messages.push(`${m.shopName} was only in the autosave, so it was saved to ${slotLabel(to)} first.`);
+    saves = [...saves.filter((k) => k.slot !== to), { ...m, slot: to, previousOf: undefined }];
+    parked.add(m.saveId);
+  }
+  return messages;
 }
 
 /** Chunk 9 (E1): the first manual slot with no save in it, or null. */

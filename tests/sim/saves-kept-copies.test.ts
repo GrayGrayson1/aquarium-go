@@ -306,3 +306,71 @@ describe('the review’s blockers (chunk 9)', () => {
     }
   });
 });
+
+describe('the review’s confirmation (B): a title-screen load, then Load in Settings (ADR-0044 decision 6)', () => {
+  async function setUp() {
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { useSettings } = await import('@/state/settings');
+    const a = aquarium('Reef Corner', 60);
+    expect((await saveGame(onDay(a, 10), 'auto')).ok).toBe(true);
+    expect((await saveGame(onDay(a, 2), 'slot1')).ok).toBe(true);
+    expect((await saveGame(onDay(a, 5), 'slot2')).ok).toBe(true);
+    useSettings.setState({ autosave: true });
+    useUI.setState({ screen: 'game', toasts: [] });
+    useGame.getState().setGame(onDay(a, 2)); // Slot 1, loaded on the title screen; no autosave yet
+    return { a, useGame, useUI };
+  }
+  const done = async () => {
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    useGame.getState().setGame(null);
+    useUI.setState({ screen: 'boot' });
+  };
+
+  it('day 10, only in the autosave, is saved to a free slot first and stays there (before: gone after one autosave)', async () => {
+    const { a, useUI } = await setUp();
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    const { saveCurrentGame } = await import('@/persistence');
+    try {
+      expect((await loadIntoGame('slot2'))?.clock.hour).toBe(4 * 24 + 10);
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Reef Corner was only in the autosave, so it was saved to Slot 3 first.');
+      for (let i = 0; i < 2; i++) await saveCurrentGame('auto');
+      expect((await listSaves()).find((m) => m.slot === 'slot3')).toMatchObject({ day: 10, saveId: a.saveId });
+    } finally {
+      await done();
+    }
+  });
+
+  it('with every slot full nothing loads, and it says so', async () => {
+    const { useGame, useUI } = await setUp();
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    try {
+      expect((await saveGame(aquarium('Filler', 61), 'slot3')).ok).toBe(true);
+      expect(await loadIntoGame('slot2')).toBeNull();
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Reef Corner is only in the autosave and every slot is full. Free a slot in Settings › Saves first.');
+      expect(useGame.getState().game!.clock.hour).toBe(24 + 10);
+      expect((await listSaves()).find((m) => m.slot === 'auto')?.day).toBe(10);
+    } finally {
+      await done();
+    }
+  });
+
+  it('the usual load of an earlier copy parks nothing (the autosave is the game on screen’s own)', async () => {
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    const a = aquarium('Plain', 62);
+    expect((await saveGame(onDay(a, 2), 'slot1')).ok).toBe(true);
+    expect((await saveGame(onDay(a, 9), 'auto')).ok).toBe(true);
+    useUI.setState({ screen: 'game', toasts: [] });
+    useGame.getState().setGame(onDay(a, 10));
+    try {
+      await loadIntoGame('slot1');
+      expect(useUI.getState().toasts.some((t) => t.text.includes('was only in the autosave'))).toBe(false);
+      expect((await listSaves()).filter((m) => m.slot !== 'auto' && !m.previousOf).map((m) => m.slot)).toEqual(['slot1']);
+    } finally {
+      await done();
+    }
+  });
+});

@@ -711,3 +711,42 @@ describe('chunk 9, the review’s blocker 2: a kept copy in the autosave isn’t
     expect((await listSaves()).filter((m) => m.slot !== 'auto' && !m.previousOf)).toEqual([]);
   });
 });
+
+describe('chunk 9, the review’s confirmation: a further copy with the device’s own identity (A), and the message (C)', () => {
+  const toasts = () => useUI.getState().toasts.map((t) => t.text);
+  const atHour = (g: GameState, hour: number) => {
+    const c = structuredClone(g);
+    c.clock.hour = hour;
+    return c;
+  };
+  /** The autosave holds day 10; the title screen loaded an earlier copy (day 2), not yet autosaved. */
+  async function titleLoadedEarlier() {
+    const mine = useGame.getState().game!;
+    expect((await saveGame(atHour(mine, 9 * 24 + 10), 'auto')).ok).toBe(true);
+    useGame.getState().setGame(atHour(mine, 24 + 10));
+    return mine;
+  }
+
+  it('another aquarium online: day 10 is saved to a slot first, and the message shows after the switch', async () => {
+    const mine = await titleLoadedEarlier();
+    const other = newGame({ starterId: 'axolotl', starterName: 'Phone', seed: 93 });
+    other.lastSavedRealMs = Date.now() - 3_600_000;
+    server.write({}, other);
+    await signIn();
+    expect(useCloud.getState().prompt).not.toBeNull();
+    expect(await loadOnlineCopy()).toBe(true);
+    expect(useGame.getState().game!.saveId).toBe(other.saveId);
+    expect(toasts()).toContain(`${mine.shopName} was only in the autosave, so it was saved to Slot 1 first.`);
+    expect((await listSaves()).find((m) => m.slot === 'slot1')?.day).toBe(10);
+  });
+
+  it('the same aquarium online at day 5: day 10 is saved to a slot first', async () => {
+    const mine = await titleLoadedEarlier();
+    await signIn();
+    server.write({ hour: 4 * 24 + 10 }, atHour(mine, 4 * 24 + 10));
+    await checkOnline();
+    expect(await loadOnlineCopy()).toBe(true);
+    expect((await listSaves()).filter((m) => m.saveId?.startsWith(mine.saveId)).map((m) => m.day)).toContain(10);
+    expect(toasts()).toContain(`${mine.shopName} was only in the autosave, so it was saved to Slot 1 first.`);
+  });
+});

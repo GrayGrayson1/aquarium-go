@@ -25,14 +25,14 @@ import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { SCHEMA_VERSION, baseSaveId, copySave, exportSaveText, importSaveText, isStaleGame, listSaves, resumeState, saveCurrentGame, stateForSaving, type SaveMeta } from '@/persistence';
+import { SCHEMA_VERSION, exportSaveText, importSaveText, isStaleGame, resumeState, saveCurrentGame, stateForSaving } from '@/persistence';
 import { autosaveAllowed, leaveSaveDue } from '@/game/useAutosave';
 import { currentStanding, decodeSaveBody, encodeSaveBody, isSocialError, MAX_CLOUD_BODY, socialService, type CloudSaveMeta, type StandingReport } from '@/social';
 import { loadSocialUser, refreshSocialNews, useSocial } from '../panels/social/socialStore';
 import { socialMode } from './mode';
 import { SOCIAL_COPY } from '../panels/social/copy';
 import { decideOnline, type CloudLink, type CloudPromptKind, type DeviceCopy } from './rules';
-import { freeSaveSlot, slotLabel } from '../common/saves';
+import { keepAutosavedCopies } from '../common/saves';
 
 export const CLOUD_LINK_KEY = 'aquarium-go.cloud.v1';
 /** At most one send per this much time (a hidden tab sends at once). */
@@ -410,47 +410,6 @@ export async function keepDeviceCopy(): Promise<void> {
 /** Settings › Saves' own words for a save that won't load (src/ui/common/saves.ts). */
 const LOAD_FAILED = 'That save could not be loaded — it may be damaged. Try its previous copy or an exported file.';
 
-/**
- * Chunk 9 (B1, ADR-0044's messages): loading the online copy writes the autosave slot twice (this device's game, then
- * the online copy), which pushes out what was there. A copy kept only there (in the autosave or its "Previous
- * autosave", in no slot as far along) is first saved to a slot, the one holding an older copy of it, else a free one,
- * unless it is the game on screen, the online copy, or an older state of one of those two (the review's blocker 2: a
- * kept copy of this aquarium further along than both, from an earlier load, is kept too). With every slot full
- * nothing loads. Returns whether the load may go on.
- */
-async function keepAutosavedAquariums(written: GameState[]): Promise<boolean> {
-  const exact = new Set(written.map((g) => g.saveId));
-  const hours = (id: string) => written.filter((g) => baseSaveId(g.saveId) === baseSaveId(id)).map((g) => g.clock.hour);
-  let saves: SaveMeta[];
-  try {
-    saves = await listSaves();
-  } catch {
-    saves = [];
-  }
-  const manual = () => saves.filter((m) => m.slot !== 'auto' && !m.previousOf);
-  for (const m of saves.filter((x) => x.slot === 'auto' || x.previousOf === 'auto')) {
-    if (!m.saveId || exact.has(m.saveId)) continue;
-    const same = hours(m.saveId);
-    // another copy of an aquarium being written, no further along than each copy of it written now: an older state of
-    // it, which goes as any "Previous autosave" goes on a switch
-    if (same.length && !same.every((h) => typeof m.hour === 'number' && m.hour > h + 1e-6)) continue;
-    if (manual().some((k) => k.saveId === m.saveId && (k.hour ?? -Infinity) >= (m.hour ?? Infinity) - 1e-6)) continue;
-    const to = manual().find((k) => k.saveId === m.saveId)?.slot ?? freeSaveSlot(saves);
-    if (!to) {
-      useUI.getState().toast(`${m.shopName} is only in the autosave and every slot is full. Free a slot in Settings › Saves first.`, 'danger');
-      return false;
-    }
-    const r = await copySave(m.slot, to);
-    if (!r.ok) {
-      useUI.getState().toast(r.message, 'danger');
-      return false;
-    }
-    useUI.getState().toast(`${m.shopName} was only in the autosave, so it was saved to ${slotLabel(to)} first.`, 'success');
-    saves = [...saves.filter((k) => k.slot !== to), { ...m, slot: to, previousOf: undefined }];
-    exact.add(m.saveId);
-  }
-  return true;
-}
 
 /**
  * "Load online save": download it, check it (validated, migrated, refused when it's a newer build's), store it in the
@@ -480,7 +439,10 @@ export async function loadOnlineCopy(): Promise<boolean> {
     }
     const incoming = check.state;
     const g = useGame.getState().game;
-    if (!(await keepAutosavedAquariums([incoming, ...(g && !g.isShowcase ? [g] : [])]))) return false;
+    // chunk 9 (B1): what the two writes below would push out of every save goes to a slot first; its messages show once
+    // the load is done (a change of aquarium clears the toasts: the review's confirmation, C)
+    const parked = await keepAutosavedCopies([incoming, ...(g && !g.isShowcase ? [g] : [])].map((x) => ({ saveId: x.saveId, hour: x.clock.hour })));
+    if (!parked) return false;
     if (user()?.id !== u.id) return false;
     // this device's game into the autosave slot, so storing the online copy rotates it into the backup; the same
     // aquarium as a kept copy (chunk 9: one write, not two, so nothing else is pushed out), as the backup lists only
@@ -504,7 +466,9 @@ export async function loadOnlineCopy(): Promise<boolean> {
       useUI.getState().toast(imported.error ?? LOAD_FAILED, 'danger');
       return false;
     }
+    if (user()?.id !== u.id) return false; // the online copy is stored; the game on screen stays this device's
     resumeState(imported.state);
+    for (const m of parked) useUI.getState().toast(m, 'success');
     // the link's time after the game on screen changed, so the change itself doesn't count as this device's play
     writeLink(u.id, { revision: got.meta.revision, saveId: incoming.saveId, savedAt: got.meta.savedAt, sentAt: Date.now() });
     useUI.getState().set({ hudHidden: false, cameraMode: 'front' });

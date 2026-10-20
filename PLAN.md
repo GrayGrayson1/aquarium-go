@@ -668,6 +668,20 @@ REL-012, REL-018.
 - **Done when:** the four checks pass twice in a row on the final code; one fresh reviewer (Opus 5.5, max effort) reads
   this brief, ADR-0044 and `git diff 42effca..HEAD`, and its blockers are fixed; the live smoke test passes; PLAN.md,
   the requirements and the docs say what changed; `next` pushed. Releasing 0.5.6 is the owner's call.
+- **Built** (2026-10-19, Chase): `3a0f314` D1; `7373225` A1 and B2 (the fifth migration, applied live with the owner's
+  yes, the advisors with no database issues); `c51a7f1` E1, G1 and B1; `56e0215` the review's fixes; `827eacd` the
+  release step (0.5.6, the owner's "release when green", ADR-0044 decision 5). The live smoke test: 91 of 91.
+- **The fresh review** (Opus 5.5, max effort) on `42effca..c51a7f1`: the migration, A1/B2's client, D1's arithmetic and
+  the six approved strings sound; four blockers, all in the save paths, each shown by a probe and fixed in `56e0215`
+  with tests that fail without them: a kept-copy save skipped the stale-tab guard (`staleAs`); Load online save
+  dropped a kept copy of the same aquarium further along than both (and the audit's B7 in that case; a second Load
+  can still replace a first's kept copy that is behind, which goes as a switch does); the page-close copy moved into
+  IndexedDB on boot pushed the further copy out (`migrateSlot`); with autosave off, Load saved nothing first. Its notes
+  fixed too: supabase-js no longer loads at boot (the auth events attach on the first real call), the account
+  re-checked during Load online save, a storage clear counts as a sign-out, three small ones, and the smoke test's
+  roll-back check. For the owner (KNOWN_LIMITATIONS, ADR-0044): Load's line for a Previous autosave it replaces, the
+  wording for loading a later copy, the valuation breakdown's rows, D1's extensions (rarity, lineage, a buyer's
+  taste) and its sales near cost.
 
 ## Releases
 
