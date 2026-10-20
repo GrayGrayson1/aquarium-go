@@ -10,6 +10,7 @@ import {
   storageStatus,
   listSaves,
   deleteSave,
+  isStaleGame,
   loadGameDetailed,
   parseSlotRef,
   resumeState,
@@ -67,13 +68,18 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
   let parked: string[] = [];
   const showParked = () => parked.splice(0).forEach((m) => useUI.getState().toast(m, 'success'));
   try {
+    // a tab another tab played further (the stale banner's "load the newer copy") saves nothing first, as before: its
+    // saves are refused, and reading the slot below clears that (the review's last confirmation)
+    const on = useGame.getState().game;
+    const saveFirst = autosaveAllowed({ evenIfOff: true }) && !!on && !isStaleGame(on.saveId);
     const r = await loadGameDetailed(slot);
     if (!r.ok || !r.state) {
       if (r.error) useUI.getState().toast(r.error, 'danger');
       return null;
     }
+    let wrote = false;
     // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
-    if (autosaveAllowed({ evenIfOff: true })) {
+    if (saveFirst) {
       try {
         const g = useGame.getState().game!;
         // the review's confirmation (B): a further copy of this aquarium kept only in the autosave (a title-screen load
@@ -82,13 +88,15 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
         if (!kept) return null;
         parked = kept;
         const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: g.saveId === r.state.saveId });
+        wrote = saved.ok;
         if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
       } catch (e) {
         console.warn('[ui] autosave before load failed', e);
       }
     }
     resumeState(r.state);
-    if (parseSlotRef(slot).slot === 'auto') await saveCurrentGame('auto', { flush: false, toast: false });
+    // the save above wrote the slot this copy came from: store it again at once (a title or Continue load writes nothing)
+    if (wrote && parseSlotRef(slot).slot === 'auto') await saveCurrentGame('auto', { flush: false, toast: false });
     if (r.restoredFromBackup) useUI.getState().toast('That save was damaged — restored from its backup copy.', 'warning');
     showParked();
     useUI.getState().set({ hudHidden: false, cameraMode: 'front' });

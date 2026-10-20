@@ -423,3 +423,52 @@ describe('the review’s second confirmation: Load reads the copy it loads befor
     }
   });
 });
+
+describe('the review’s last confirmation: a stale tab’s Load, and a load with nothing on screen', () => {
+  it('the stale banner’s "load the newer copy" loads it and keeps "Previous autosave" (another aquarium) as it was', async () => {
+    const ls = new Map<string, string>();
+    setSyncStore({ getItem: (k) => ls.get(k) ?? null, setItem: (k, v) => void ls.set(k, v), removeItem: (k) => void ls.delete(k) });
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { useSettings } = await import('@/state/settings');
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    const w = aquarium('Wren', 80);
+    const x = aquarium('Xenia', 81);
+    expect((await saveGame(onDay(w, 6), 'auto')).ok).toBe(true);
+    expect((await saveGame(onDay(x, 8), 'auto')).ok).toBe(true); // Wren is "Previous autosave"
+    // the other tab plays Xenia on to day 12
+    await new Promise((r) => setTimeout(r, 3));
+    const rec = encodeRecord(onDay(x, 12), 'auto');
+    await storage.set('aquarium-go.save.auto', rec.text);
+    await storage.set('aquarium-go.meta.auto', JSON.stringify(rec.header.meta));
+    ls.set('aquarium-go.stamp.auto', JSON.stringify({ savedAt: rec.header.savedAt, saveId: x.saveId, tab: 'other-tab', hour: onDay(x, 12).clock.hour }));
+    expect((await saveGame(onDay(x, 8), 'auto')).code).toBe('stale'); // this tab is refused: the banner shows
+    expect(isStaleGame(x.saveId)).toBe(true);
+    useSettings.setState({ autosave: true });
+    useUI.setState({ screen: 'game' });
+    useGame.getState().setGame(onDay(x, 8));
+    try {
+      expect((await loadIntoGame('auto'))?.clock.hour).toBe(11 * 24 + 10);
+      expect((await listSaves()).find((m) => m.previousOf === 'auto')?.saveId).toBe(w.saveId);
+    } finally {
+      useGame.getState().setGame(null);
+      useUI.setState({ screen: 'boot' });
+    }
+  });
+
+  it('with no game on screen (the title, Continue, a link), a load writes nothing', async () => {
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const a = aquarium('Title', 82);
+    expect((await saveGame(onDay(a, 3), 'auto')).ok).toBe(true);
+    const before = [...map.entries()].filter(([k]) => k.startsWith('aquarium-go.save.')).sort();
+    try {
+      expect((await loadIntoGame('auto'))?.saveId).toBe(a.saveId);
+      expect([...map.entries()].filter(([k]) => k.startsWith('aquarium-go.save.')).sort()).toEqual(before);
+    } finally {
+      useGame.getState().setGame(null);
+      useUI.setState({ screen: 'boot' });
+    }
+  });
+});
