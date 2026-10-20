@@ -155,6 +155,11 @@ export interface TankValuation {
   high: number;
   parts: { label: string; amount: number; note?: string }[];
   modifiers: ValueFactor[];
+  /**
+   * Chunk 9 (ADR-0044 decision 1): the share (0..1) of `expected` that is the tank, equipment, hardscape and substrate
+   * at their plain value. A buyer's taste scales only the rest, the animals and living plants.
+   */
+  plainShare?: number;
 }
 
 export interface BeautyReport {

@@ -3,6 +3,10 @@
  *
  * - B-138 (ADR-0029 decision 3): an empty, freshly dressed tank sells for about what its parts cost; the beauty and
  *   ethical-display bonuses need animals, and a beautiful stocked tank keeps its premium.
+ * - D1 (chunk 9, ADR-0044 decision 1, REL-036): one cheap animal no longer revives B-138. The bonuses about the animals
+ *   (welfare, compatibility, beauty, rarity, lineage, the ethical display) and a buyer's taste scale only the animals'
+ *   and living plants' value, and hardscape is valued at its base price, so a dressed kit with one snail sells for about
+ *   what its parts cost (before: about +30% every round, at every size).
  * - B-139 (ADR-0029 decision 4): one sale counts once however many animals it has, so a quick sale of 25 shrimp
  *   doesn't unlock tank auctions, earn "Trusted Trader" or pay sale XP 25 times; "animals sold" stays its own counter.
  *   An older save's quest baselines (taken when sales counted animals) are rebased so the quest can still complete.
@@ -22,9 +26,12 @@ import { newGame } from '@/sim/newGame';
 import { simRng } from '@/sim/rng';
 import { createCreature, addCreature } from '@/sim/life';
 import { createTank } from '@/sim/tanks';
-import { placeDecor } from '@/sim/aquascape';
-import { refreshTankCache } from '@/sim/world';
-import { buyTank, devOpenMarket, devStepEconomy, quickSell, tankValuation, createListing, previewListing, forceBuyerVisit, counterBid, acceptBid, holdBidForCounter } from '@/sim/economy';
+import { placeDecor, maxScaleFor } from '@/sim/aquascape';
+import { refreshTankCache, advanceWorld } from '@/sim/world';
+import { getDecorDef } from '@/data/catalog/decor';
+import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
+import { findSpecies } from '@/data/species';
+import { buyTank, buyOffer, bestOpenBid, devOpenMarket, devStepEconomy, quickSell, tankValuation, createListing, previewListing, forceBuyerVisit, counterBid, acceptBid, holdBidForCounter } from '@/sim/economy';
 import { BIDDING_CLOSED_TEXT } from '@/sim/economy/listings';
 import { counterValue, isUnlocked, stepProgression, tutorialSkip, stepVisitors, fairAdmission, admissionDraw, setAdmission, MAX_ADMISSION } from '@/sim/facility';
 import { makeContext } from '@/sim/context';
@@ -73,6 +80,82 @@ describe('B-138: an empty dressed tank is worth its parts, not a premium', () =>
     const v = tankValuation(g, t.id);
     expect(v.modifiers.find((m) => m.label === 'Aquascape beauty')!.mult).toBeGreaterThan(1.3);
     expect(v.modifiers.some((m) => m.label === 'Coherent, ethical display')).toBe(true);
+  });
+});
+
+// ───────────────────────────── D1: one cheap animal ─────────────────────────────
+
+/** A kit dressed with hardscape at its largest scale and plants, plus one cheap animal, three days later. */
+function dressedKitWithOneAnimal(tierId: string, seed: number) {
+  const g = newGame({ starterId: 'betta', starterName: 'Flip', seed });
+  devOpenMarket(g);
+  const unlock = TANK_TIER_BY_ID[tierId].unlock;
+  if (unlock && !g.progress.unlocked.includes(unlock)) g.progress.unlocked.push(unlock);
+  g.progress.tutorial.done = true; // no tutorial payouts in the money
+  g.progress.tutorial.skipped = true;
+  g.finance.money = 100_000;
+  advanceWorld(g, 1);
+  const before = g.finance.money;
+  const r = buyTank(g, tierId, 'freshwater_planted', undefined, { seeded: true });
+  expect(r.ok).toBe(true);
+  const t = g.tanks[r.tankId!];
+  let placed = 0;
+  for (const id of ['spider_wood', 'seiryu_stone', 'java_fern', 'anubias_nana', 'amazon_sword', 'dwarf_hairgrass', 'cryptocoryne', 'monte_carlo', 'java_moss']) {
+    const def = getDecorDef(id)!;
+    const scale = Math.min(maxScaleFor(t, def), def.category === 'hardscape' ? 2 : 1.3); // the largest scale is the best case for the seller
+    for (let x = -5; x <= 5; x += 2) for (let z = -2; z <= 2; z += 2) if (placeDecor(g, t.id, id, { x: x * 0.13 + (placed % 3) * 0.02, z: z * 0.09, rotY: placed * 0.7, scale }).ok) placed++;
+  }
+  expect(placed).toBeGreaterThanOrEqual(6);
+  // the one animal: whichever cheap one on sale values the tank highest (the seller's best case, as the audit's probe)
+  let best: { h: GameState; v: number } | null = null;
+  for (const o of g.market.stock) {
+    if (findSpecies(o.speciesId)?.environment !== 'freshwater' || (o.unitPrice ?? o.price) > 40) continue;
+    const h = structuredClone(g);
+    if (!buyOffer(h, o.id, t.id, [0]).ok) continue;
+    refreshTankCache(h, h.tanks[t.id]);
+    const v = tankValuation(h, t.id).expected;
+    if (!best || v > best.v) best = { h, v };
+  }
+  expect(best).not.toBeNull();
+  const h = best!.h;
+  advanceWorld(h, 72); // settled for three days, as the audit's probe: the bills are in what it cost
+  refreshTankCache(h, h.tanks[t.id]);
+  return { g: h, tankId: t.id, spent: before - h.finance.money };
+}
+
+describe('D1 (REL-036): one cheap animal doesn\'t bring back the whole-tank resale loop', () => {
+  it('a dressed kit with one cheap animal is valued at no more than it cost, at every size', () => {
+    for (const [tier, seed] of [['g29', 41], ['g55', 42], ['g125', 43], ['g300', 44]] as const) {
+      const { g, tankId, spent } = dressedKitWithOneAnimal(tier, seed);
+      const v = tankValuation(g, tankId);
+      // the animal bonuses still show, priced on the animal
+      expect(v.modifiers.some((m) => m.label === 'Aquascape beauty'), tier).toBe(true);
+      expect(v.expected, tier).toBeLessThanOrEqual(spent);
+      expect(v.plainShare!, tier).toBeGreaterThan(0); // the plants and the animal carry the bonuses; the rest is plain
+    }
+  });
+
+  it('listed through the real market, it rarely sells, and never at the buy-now loop\'s +30%', () => {
+    let sales = 0;
+    for (const [tier, seed] of [['g29', 51], ['g29', 52], ['g55', 53], ['g55', 54], ['g125', 55]] as const) {
+      const { g, tankId, spent } = dressedKitWithOneAnimal(tier, seed);
+      // the audit's probe: reserve at cost, buy-now at 1.3 × cost; take the best bid at or above cost
+      const r = createListing(g, { kind: 'tank', tankId, reserve: Math.round(spent), buyNow: Math.round(spent * 1.3), durationHours: 120 });
+      expect(r.ok, tier).toBe(true);
+      const l = g.market.listings.find((x) => x.id === r.listingId)!;
+      for (let h = 0; l.status === 'active' && h < 140; h++) {
+        advanceWorld(g, 1);
+        const b = bestOpenBid(l);
+        if (b && (b.amount >= spent * 1.15 || g.clock.hour >= l.endsHour)) acceptBid(g, l.id, b.id);
+      }
+      if (l.status === 'sold') {
+        sales++;
+        // Before the fix every round took the buy-now, 1.3 × cost. Now a keen buyer and the bids' noise can pay a
+        // little over cost now and then (4 of 48 probe rounds, at most 1.2 ×), less than the days of bills it waited.
+        expect(l.soldFor!, `${tier} seed ${seed}`).toBeLessThan(spent * 1.25);
+      }
+    }
+    expect(sales).toBeLessThanOrEqual(2);
   });
 });
 

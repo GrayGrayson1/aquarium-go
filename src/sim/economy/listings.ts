@@ -9,7 +9,7 @@
  * - Creatures in a listing are marked 'listed' (they keep living in their tank); withdraw/expiry restores 'alive'.
  * - Bids are private offers that expire, get withdrawn and are re-priced — they never ratchet upward with time.
  */
-import type { GameState, Listing, ListingKind, Bid, Creature, Tank, BuyerProfile, ListingSnapshot, DecorInstance } from '@/types';
+import type { GameState, Listing, ListingKind, Bid, Creature, Tank, BuyerProfile, ListingSnapshot, DecorInstance, TankValuation } from '@/types';
 import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
 import type { Rng } from '../rng';
@@ -421,14 +421,16 @@ function buildFragSnapshot(state: GameState, frags: DecorInstance[], photo?: str
   return { snapshot, title: fragTitle(frags), profile, appeal };
 }
 
-function currentValuation(state: GameState, l: Listing): number {
+function currentTankValuation(state: GameState, l: Listing): TankValuation | null {
+  if (l.kind !== 'tank' || !l.tankId || !state.tanks[l.tankId]) return null;
+  // Price what the buyer receives: the listed animals, gear and decor (see completeSale — anything added after
+  // listing is handed back to the seller), never the tank's current contents (lane:fix-econ, S03-01).
+  return tankValuation(state, l.tankId, { creatureIds: new Set(l.creatureIds), itemIds: listedItemIds(l.snapshot.signature) ?? undefined, maxBeauty: l.snapshot.beautyScore });
+}
+
+function currentValuation(state: GameState, l: Listing, tank?: TankValuation | null): number {
   if (l.kind === 'frag') return l.fragItems?.length ? fragBundleValue(state, l.fragItems).expected : 0; // lane:frags
-  if (l.kind === 'tank') {
-    if (!l.tankId || !state.tanks[l.tankId]) return 0;
-    // Price what the buyer receives: the listed animals, gear and decor (see completeSale — anything added after
-    // listing is handed back to the seller), never the tank's current contents (lane:fix-econ, S03-01).
-    return tankValuation(state, l.tankId, { creatureIds: new Set(l.creatureIds), itemIds: listedItemIds(l.snapshot.signature) ?? undefined, maxBeauty: l.snapshot.beautyScore }).expected;
-  }
+  if (l.kind === 'tank') return (tank === undefined ? currentTankValuation(state, l) : tank)?.expected ?? 0;
   const creatures = l.creatureIds.map((id) => state.creatures[id]).filter((c): c is Creature => !!c && (c.status === 'listed' || c.status === 'alive'));
   return creatures.length ? bundleValue(state, l.kind, creatures).expected : 0;
 }
@@ -1490,8 +1492,12 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
   const isFrag = l.kind === 'frag'; // lane:frags
   if (isFrag ? !l.fragItems?.length : l.kind !== 'tank' && creatures.length === 0) return;
   const profile = isFrag ? buildFragProfile(state, l.fragItems!) : buildProfile(state, l.kind, creatures, tank);
-  const value = currentValuation(state, l) * (l.changedSinceListing ? 0.96 : 1);
+  const tv = currentTankValuation(state, l);
+  const value = currentValuation(state, l, tv) * (l.changedSinceListing ? 0.96 : 1);
   if (!(value > 0)) return;
+  // Chunk 9 (ADR-0044 decision 1, audit D1): a buyer's taste scales the animals and living plants, not the tank, gear
+  // and hardscape, which every buyer prices alike; else a dressed kit with one cheap animal still resold above cost.
+  const plain = clamp01(finite(tv?.plainShare, 0));
 
   const cooldown = new Set(l.bids.filter((b) => b.status === 'open' || b.status === 'countered' || (b.status === 'declined' && end - b.createdHour < 10) || (b.status === 'withdrawn' && end - b.createdHour < 16)).map((b) => b.buyerId));
   const delegation = maybeDelegation(state, rng, value, l.kind);
@@ -1509,7 +1515,7 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
   const dur = Math.max(1, l.endsHour - l.createdHour);
   const stale = clamp01(age / dur - 0.4);
   const timing = rng.chance(0.08) ? rng.range(1.05, 1.15) : 1 - 0.12 * stale * rng.next();
-  let W = value * fr.fit * Math.exp(rng.gauss() * 0.11) * timing;
+  let W = value * (plain + (1 - plain) * fr.fit) * Math.exp(rng.gauss() * 0.11) * timing;
   let capped = false;
   if (W > buyer.budget) {
     W = buyer.budget;

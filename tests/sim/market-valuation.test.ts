@@ -187,7 +187,11 @@ describe('market: tank valuation', () => {
     expect(bad.modifiers.some((m) => m.label.startsWith('Compatibility') && m.mult < 1)).toBe(true);
   });
 
-  it('a gorgeous, coherent small tank can beat a messy large one', () => {
+  // Chunk 9 (ADR-0044 decision 1): this was "a gorgeous, coherent small tank can beat a messy large one". The animal
+  // bonuses now price only the animals and living plants, so a large tank's glass and gear keep their plain value
+  // however messy it is (the test's 125-gallon outsold the small one on hardware alone). What still holds: beauty and
+  // care earn a premium over the parts, and a messy tank's animals are marked down.
+  it('a gorgeous, coherent tank sells above its parts; a messy one\'s animals are marked down', () => {
     const g = world();
     const small = g.tanks[g.tankOrder[0]];
     small.cache.beauty = 92;
@@ -207,8 +211,15 @@ describe('market: tank valuation', () => {
 
     const s = tankValuation(g, small.id);
     const b = tankValuation(g, big.id);
-    expect(s.expected).toBeGreaterThan(b.expected);
+    const partsOf = (v: typeof s) => v.parts.reduce((a, p) => a + p.amount, 0);
+    const livingOf = (v: typeof s) => v.parts.filter((p) => p.label.startsWith('Livestock') || p.label.startsWith('Plants & corals')).reduce((a, p) => a + p.amount, 0);
+    // what each dollar of the animals and plants, and of everything else, sells for
+    const rates = (v: typeof s) => ({ living: (v.expected * (1 - v.plainShare!)) / livingOf(v), plain: (v.expected * v.plainShare!) / (partsOf(v) - livingOf(v)) });
     expect(s.modifiers.some((m) => m.label === 'Coherent, ethical display')).toBe(true);
+    expect(s.expected).toBeGreaterThan(partsOf(s));
+    expect(rates(s).living).toBeGreaterThan(rates(s).plain);
+    expect(b.expected).toBeLessThan(partsOf(b));
+    expect(rates(b).living).toBeLessThan(rates(b).plain);
   });
 
   it('an unknown tank values to zero without throwing', () => {
