@@ -690,7 +690,9 @@ REL-012, REL-018.
   had written it, so "Previous autosave" loaded right after a title-screen load gave another save; Load now reads first.
   The last (`b5d169f..34292ff`) found that reading first cleared a stale tab's refusal, so the stale banner's "load the
   newer copy" pushed out another aquarium's "Previous autosave": a stale tab saves nothing first again, and a load
-  saves again at once only after its own save-first (a title or Continue load writes nothing, as before).
+  saves again at once only after its own save-first (a title or Continue load writes nothing, as before). The final
+  one (`34292ff..f98c986`) found that this skipped keeping a further copy in a stale tab: that step runs in a stale tab
+  too now; only the save-first waits on the stale flag.
   Left for the owner: whether Settings' Load should also keep another aquarium kept only in the autosave (as 0.5.5,
   it goes; KNOWN_LIMITATIONS).
 

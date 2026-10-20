@@ -472,3 +472,39 @@ describe('the review’s last confirmation: a stale tab’s Load, and a load wit
     }
   });
 });
+
+describe('the review’s final confirmation: a stale tab’s Load still keeps a further copy of what it loads', () => {
+  it('a kept Yarrow day 9 in "Previous autosave", a stale tab loads Yarrow day 3: day 9 goes to a free slot first', async () => {
+    const ls = new Map<string, string>();
+    setSyncStore({ getItem: (k) => ls.get(k) ?? null, setItem: (k, v) => void ls.set(k, v), removeItem: (k) => void ls.delete(k) });
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { useSettings } = await import('@/state/settings');
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    const { saveCurrentGame } = await import('@/persistence');
+    const x = aquarium('Xenia', 90);
+    const y = aquarium('Yarrow', 91);
+    expect((await saveGame({ ...onDay(y, 9), saveId: keptSaveId(y.saveId) }, 'auto')).ok).toBe(true);
+    expect((await saveGame(onDay(x, 8), 'auto')).ok).toBe(true); // the kept Yarrow is "Previous autosave"
+    expect((await saveGame(onDay(y, 3), 'slot2')).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 3));
+    const rec = encodeRecord(onDay(x, 12), 'auto'); // the other tab plays Xenia on to day 12
+    await storage.set('aquarium-go.save.auto', rec.text);
+    await storage.set('aquarium-go.meta.auto', JSON.stringify(rec.header.meta));
+    ls.set('aquarium-go.stamp.auto', JSON.stringify({ savedAt: rec.header.savedAt, saveId: x.saveId, tab: 'other-tab', hour: onDay(x, 12).clock.hour }));
+    expect((await saveGame(onDay(x, 8), 'auto')).code).toBe('stale');
+    useSettings.setState({ autosave: true });
+    useUI.setState({ screen: 'game', toasts: [] });
+    useGame.getState().setGame(onDay(x, 8));
+    try {
+      expect((await loadIntoGame('slot2'))?.saveId).toBe(y.saveId);
+      await saveCurrentGame('auto');
+      const kept = (await listSaves()).filter((m) => m.slot !== 'auto' && !m.previousOf);
+      expect(kept.some((m) => baseSaveId(m.saveId ?? '') === y.saveId && m.day === 9)).toBe(true); // before: in no save
+      expect(useUI.getState().toasts.map((t) => t.text)).toContain('Yarrow was only in the autosave, so it was saved to Slot 3 first.');
+    } finally {
+      useGame.getState().setGame(null);
+      useUI.setState({ screen: 'boot' });
+    }
+  });
+});

@@ -69,27 +69,31 @@ export async function loadIntoGame(slot: string): Promise<GameState | null> {
   const showParked = () => parked.splice(0).forEach((m) => useUI.getState().toast(m, 'success'));
   try {
     // a tab another tab played further (the stale banner's "load the newer copy") saves nothing first, as before: its
-    // saves are refused, and reading the slot below clears that (the review's last confirmation)
+    // saves are refused, and reading the slot below clears that (the review's last confirmation). It still keeps what
+    // this load's writes would push out (its final confirmation).
     const on = useGame.getState().game;
-    const saveFirst = autosaveAllowed({ evenIfOff: true }) && !!on && !isStaleGame(on.saveId);
+    const writable = autosaveAllowed({ evenIfOff: true }) && !!on;
+    const saveFirst = writable && !isStaleGame(on!.saveId);
     const r = await loadGameDetailed(slot);
     if (!r.ok || !r.state) {
       if (r.error) useUI.getState().toast(r.error, 'danger');
       return null;
     }
     let wrote = false;
-    // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
-    if (saveFirst) {
+    if (writable) {
       try {
         const g = useGame.getState().game!;
         // the review's confirmation (B): a further copy of this aquarium kept only in the autosave (a title-screen load
-        // of an earlier one, not yet autosaved) would go with the two writes this load makes: to a slot first
+        // of an earlier one, not yet autosaved) would go with the writes this load makes: to a slot first
         const kept = await keepAutosavedCopies([{ saveId: g.saveId, hour: g.clock.hour }, { saveId: r.state.saveId, hour: r.state.clock.hour }], { sameAquariumOnly: true, loading: slot });
         if (!kept) return null;
         parked = kept;
-        const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: g.saveId === r.state.saveId });
-        wrote = saved.ok;
-        if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
+        // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
+        if (saveFirst) {
+          wrote = true; // tried: even a write that failed part-way may have changed the slot this copy came from
+          const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: g.saveId === r.state.saveId });
+          if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
+        }
       } catch (e) {
         console.warn('[ui] autosave before load failed', e);
       }
