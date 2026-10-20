@@ -15,8 +15,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    owner's yes: the only `is_owner`, and the first club's `created_by`; ARCHITECTURE.md's runbook);
    `docs/agent/SESSION_HANDOFF.md` has the order of work. Stage 2 (before strangers join) needs its own record.
 3. **0.5.6 (chunk 9), the audit's five high findings, is released** (2026-10-20; ADR-0044; see "Releases"). Next:
-   the audit's other findings with the owner (B-207, B-208), or **shared shops**: a separate shop a club plays together, live, up to 10 at once, run by a small server on
-   Render (free first, "with plans to expand"); no design or chunk yet (ADR-0043 lists what the design must cover).
+   **shared shops** (the owner, 2026-10-20: "yes, start with the design and questions"): a separate shop a club plays
+   together, live, up to 10 at once, run by a small free server on Render. The design is
+   `docs/agent/design/SHARED-SHOPS.md` (every browser runs the same steps and the server's copy counts, because Render's
+   free plan includes 5 GB of outbound data a month, and every copy uses the same arithmetic, because Node and the
+   browsers round `Math.exp` and the like differently); the owner's answers, the screens' words included, are ADR-0043
+   and ADR-0045. The design was reviewed (Opus, max effort) and revised. Next: chunk 10, the test (§10: local first,
+   then on Render with the owner's yes; the database key isn't needed until chunk 12). The audit's other findings
+   (B-207, B-208) wait for the owner.
 4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
@@ -39,6 +45,10 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
+| 10 | Shared shops, the test (SHARED-SHOPS.md §10) | Planned: lockstep checked in one process and across Chrome, Safari and Node; the data, CPU and wake time measured, on Render with the owner's yes |
+| 11 | Shared shops, commands (§4, §3.2) | Planned: every player action a serializable command, no player-visible change |
+| 12 | Shared shops, the server and the database (§5, §6) | Planned: `server/` on a free Render web service, the migration (live with the owner's yes) |
+| 13 | Shared shops, the screens and the play-test (§7, §8) | Planned: the owner's words, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
 
 **Last full test runs:** chunk 9's final commit `9266584`, the owner's Mac, 2026-10-20, from the internal-disk clone,
 twice in a row under `caffeinate -i -s`: typecheck passed; unit 236 files, 2,868 tests passed; build passed; e2e 311 of
@@ -783,6 +793,15 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   eventually; pause and speed for the creator and the people the creator chooses; at first every member does
   everything else, with permission tiers later (a group money pool, requests, allowances, one-off grants); empty, it
   pauses and catches up at most 12 game hours on return.
+- Shared shops' design (ADR-0045, SHARED-SHOPS.md): the server saves with its own Supabase key, which the owner pastes
+  into Render (never in the repo); `ws` approved for the server only; a 2 GB monthly data cap; "there" means on screen
+  and used in the last 30 minutes ("Still here?"); a new shop starts like a new game, with no guide; your own game
+  waits, with no catch-up; members' actions in everyone's alerts with their name, big ones pop up; first one wins,
+  and the second sender is told who.
+  Also (ADR-0045 rounds 3 and 4): opened from the club card and, on a device that has opened one, the title screen; the
+  screens' words approved (SHARED-SHOPS.md §8); others' actions read as the game's message with the name in front; not
+  on the leaderboards; listing photos kept, small and seen by everyone, stored once; a break under 5 minutes doesn't
+  count; a 400-hour monthly cap on the server's awake time.
 - Automation goes deep (ADR-0001, option C): more than Auto-feed and Auto-clean.
 - The Auto Water Changer shares the Autofeeder unlock. Quiet hours are fixed at 10 PM to 8 AM, with a switch to turn
   them off (0.5 spec §12.3). One-copy Metallic is unnamed, with a subtle sheen. Locked destinations open a locked

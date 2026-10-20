@@ -14,7 +14,7 @@ ADR-0019 to ADR-0024 do. Add the ADR to `decisions/INDEX.md`, then mark the rows
 update the affected PLAN.md, REQUIREMENTS.json and BACKLOG.md rows. Don't delete a question; mark it answered.
 Groups A, B and C are answered (ADR-0024 to ADR-0027; the DESIGN-S3D approval is ADR-0027, also in `INTAKE.md` §14).
 Groups D and E are answered (ADR-0028, ADR-0029). Everything up to group E is answered (2026-10-13); group F's F2–F4
-are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5; multiplayer stage 1 is approved (ADR-0038); chunk 7's two questions, group H and the two from chunk 7's review are answered (2026-10-18, ADR-0039). Chunk 8's four (the Supabase setup, clubs, the wording) are answered (2026-10-19, ADR-0040); group I (the strings ADR-0040 left) is answered (2026-10-19, ADR-0041), group J (one wording question from the setup) is answered (ADR-0042); **F1 is the only open question**. Add new ones as a new group, and record them the same way.
+are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pass); group G is answered (2026-10-18, ADR-0037), with three questions on what follows 0.5; multiplayer stage 1 is approved (ADR-0038); chunk 7's two questions, group H and the two from chunk 7's review are answered (2026-10-18, ADR-0039). Chunk 8's four (the Supabase setup, clubs, the wording) are answered (2026-10-19, ADR-0040); group I (the strings ADR-0040 left) is answered (2026-10-19, ADR-0041), group J (one wording question from the setup) is answered (ADR-0042); **F1 is the only open question** (shared shops' design questions were answered on 2026-10-20, ADR-0045). Add new ones as a new group, and record them the same way.
 
 | Group | Unblocks | Questions |
 |---|---|---|
@@ -42,6 +42,9 @@ are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pa
 | J (chunk 8's setup) | The "Have an invite?" field's example, now that real codes are a word and four letters | J1: **answered 2026-10-19 (ADR-0042)** |
 | (shared shops) | The owner's idea of working on the same tank: what a group shares, who runs it, who joins, pause, what members do, an empty shop, carry-over, the order, who creates one, how many per club | 12 questions in 3 rounds: **answered 2026-10-19 (ADR-0043)** |
 | (0.5.6, chunk 9) | The audit's high findings: tank-sale bonuses, the live database fix, new invite codes, the save wording; later the release go-ahead and Settings' Load using B1's messages | 4 questions, then two more: **answered 2026-10-19 and 2026-10-20 (ADR-0044)**. Left by the review for the owner (KNOWN_LIMITATIONS, B-207, B-208): Load's line for a "Previous autosave" it replaces, the wording for loading a later copy, the valuation breakdown's rows, D1's extensions, and whether Settings' Load should also keep another aquarium kept only in the autosave |
+| (shared shops, the design) | SHARED-SHOPS.md's choices for the owner: the server's key, the `ws` library, a data cap, who counts as there, how a shop starts, your own game meanwhile, seeing others' actions, two people at once | 8 questions in 2 rounds: **answered 2026-10-20 (ADR-0045)** |
+| (shared shops, the words) | Chunk 13: SHARED-SHOPS.md §8's screens and words, where a shop opens, the activity lines' pattern, leaderboards | 4 questions: **answered 2026-10-20 (ADR-0045, round 3)** |
+| (shared shops, the design's review) | What the review left to the owner: listing photos, short breaks, an hours cap, three more lines | 4 questions: **answered 2026-10-20 (ADR-0045, round 4)** |
 
 ## A. Release and standing decisions
 

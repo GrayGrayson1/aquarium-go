@@ -19,8 +19,14 @@ it's used up.
   leaked-password protection, off), the live smoke test passed 90 of 90. Three clubs, all the owner's ("Aquarium Go
   Friends", "CalliClub", "TheSushiBladesToTheMax"); the clubs keep their codes (ADR-0044 decision 3). Never write a
   code or a player's email in the repo, which is public (`select name, invite_code from public.clubs` reads codes).
-- **Next after 0.5.6: shared shops** (ADR-0043): a whole shop a club plays together on a small server on Render. No
-  design yet; ADR-0043 lists what it must cover.
+- **Next: shared shops** (ADR-0043, ADR-0045): a whole shop a club plays together on a small server on Render. The
+  design is `docs/agent/design/SHARED-SHOPS.md` (2026-10-20): every browser runs the same steps, the server's copy
+  counts, fingerprints catch drift. Render's free plan includes only 5 GB of outbound data a month for the whole
+  workspace (with DAS-Games' `dascade`, a free web service, and the static site), so the server never streams the
+  shop; Render's 750 free instance hours are shared with `dascade` too. Node, Chromium and WebKit round `Math.exp`,
+  `pow` and the other transcendental functions differently (measured 2026-10-20), so every copy must use the same
+  arithmetic (`src/sim/dmath.ts`, chunk 11); the review's probes are in the internal-disk clone's
+  `scripts/_audit/review-shared/`. Every design question is answered (ADR-0045, words included); chunk 10 is next.
 - **Open owner questions:** F1 (the owner's VoiceOver pass); the audit's decisions A4 (the shared Pages origin, B-191),
   F5, F3, G2, A6 and new wording (B-207).
 - **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`) is signed in to the owner's whole account, anonyform's
@@ -48,7 +54,9 @@ it's used up.
    `main` with the owner's go-ahead in the session (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no
    checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
    `version.json` files.
-5. **Then** the audit's remaining findings with the owner (B-207), or shared shops (ADR-0043), as the owner says.
+5. **Shared shops** (the owner chose them, 2026-10-20): chunk 10 (SHARED-SHOPS.md §10), local first; creating the
+   Render service needs the owner's yes in that session; the owner pastes the server's Supabase key in chunk 12. The
+   audit's remaining findings (B-207, B-208) wait for the owner.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the

@@ -15,6 +15,7 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 | The approved 0.5 screens (PNG), what each shows and the later decisions that change them | `docs/agent/design/DESIGN-0.5/` (`SOURCE.md`, `screens/`) |
 | S3-D design (approved 2026-10-11, ADR-0027) and its intake note | `docs/agent/design/DESIGN-S3D/` (`SPEC.md`, `INTAKE.md`, `screens/`) |
 | Online, stage 1 (chunk 8): the build plan for accounts, the online save and Social on Supabase | `docs/agent/design/ONLINE-STAGE1.md` |
+| Shared shops (chunks 10 to 13): a shop a club plays together, live, on a small Render server | `docs/agent/design/SHARED-SHOPS.md` |
 | Requirements checklist (ids, acceptance criteria, status) | `docs/agent/REQUIREMENTS.json` |
 | Known issues and deferred work | `docs/agent/BACKLOG.md`, `docs/KNOWN_LIMITATIONS.md` |
 | What a future server would authorise; the debt multiplayer would magnify | `docs/agent/TRUST_BOUNDARY.md`, `docs/agent/DEBT_INVENTORY.md` |
