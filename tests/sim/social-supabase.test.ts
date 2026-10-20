@@ -268,24 +268,34 @@ describe('clubs, friends, leaderboards, news (§4.3)', () => {
 describe('the online save (§6)', () => {
   const META = { revision: 3, save_id: 'save_a', schema_version: 30, saved_at: 1000, hour: 50.5, shop_name: 'Coral Corner', day: 3, money: 4210.25 };
 
-  it('cloudMeta and cloudDownload: save_meta and get_save mapped; none is null', async () => {
-    const f = fake({ save_meta: { data: META }, get_save: { data: { meta: META, encoding: 'gzip-base64', body: 'H4sI' } } });
+  it('cloudMeta and cloudDownload: save_meta_for and get_save_for, for the account named; none is null', async () => {
+    const f = fake({ save_meta_for: { data: META }, get_save_for: { data: { meta: META, encoding: 'gzip-base64', body: 'H4sI' } } });
     const s = service(f);
-    expect(await s.cloudMeta()).toEqual({ revision: 3, saveId: 'save_a', schemaVersion: 30, savedAt: 1000, hour: 50.5, shopName: 'Coral Corner', day: 3, money: 4210.25 });
-    expect(await s.cloudDownload()).toEqual({ meta: expect.objectContaining({ revision: 3 }), encoding: 'gzip-base64', body: 'H4sI' });
+    expect(await s.cloudMeta('user-1')).toEqual({ revision: 3, saveId: 'save_a', schemaVersion: 30, savedAt: 1000, hour: 50.5, shopName: 'Coral Corner', day: 3, money: 4210.25 });
+    expect(await s.cloudDownload('user-1')).toEqual({ meta: expect.objectContaining({ revision: 3 }), encoding: 'gzip-base64', body: 'H4sI' });
+    expect(f.calls).toEqual([{ fn: 'save_meta_for', args: { p_account: 'user-1' } }, { fn: 'get_save_for', args: { p_account: 'user-1' } }]);
     const g = fake();
-    expect(await service(g).cloudMeta()).toBeNull();
-    expect(await service(g).cloudDownload()).toBeNull();
+    expect(await service(g).cloudMeta('user-1')).toBeNull();
+    expect(await service(g).cloudDownload('user-1')).toBeNull();
+  });
+
+  it('chunk 9 (B2): the server refusing another account’s session is { code: "account" }, for each of the three', async () => {
+    const refused = { error: { message: 'account', code: 'P0001' }, status: 400 };
+    const s = service(fake({ save_meta_for: refused, get_save_for: refused, put_save_for: refused }));
+    const save = { saveId: 'save_a', schemaVersion: 30, savedAt: 1000, hour: 50.5, shopName: 'x', day: 3, money: 1, encoding: 'json' as const, body: '{}' };
+    await expect(s.cloudMeta('user-1')).rejects.toEqual({ code: 'account' });
+    await expect(s.cloudDownload('user-1')).rejects.toEqual({ code: 'account' });
+    await expect(s.cloudUpload(save, 0, 'user-1')).rejects.toEqual({ code: 'account' });
   });
 
   it('cloudUpload: put_save with the expected revision; ok, too_new and conflict come back as they are', async () => {
     const save = { saveId: 'save_a', schemaVersion: 30, savedAt: 1000.4, hour: 50.5, shopName: 'x'.repeat(70), day: 3, money: 4210.25, encoding: 'gzip-base64' as const, body: 'H4sI' };
-    const f = fake({ put_save: (args) => ({ data: args?.p_expected === 3 ? { ok: true, revision: 4 } : args?.p_expected === 9 ? { ok: false, reason: 'too_new', meta: { ...META, schema_version: 31 } } : { ok: false, reason: 'conflict', meta: META } }) });
+    const f = fake({ put_save_for: (args) => ({ data: args?.p_expected === 3 ? { ok: true, revision: 4 } : args?.p_expected === 9 ? { ok: false, reason: 'too_new', meta: { ...META, schema_version: 31 } } : { ok: false, reason: 'conflict', meta: META } }) });
     const s = service(f);
-    expect(await s.cloudUpload(save, 3)).toEqual({ ok: true, revision: 4 });
-    expect(f.calls[0]).toEqual({ fn: 'put_save', args: { p_expected: 3, p_save_id: 'save_a', p_schema_version: 30, p_saved_at: 1000, p_hour: 50.5, p_shop_name: 'x'.repeat(60), p_day: 3, p_money: 4210.25, p_encoding: 'gzip-base64', p_body: 'H4sI' } });
-    expect(await s.cloudUpload(save, 9)).toEqual({ ok: false, reason: 'too_new', meta: expect.objectContaining({ schemaVersion: 31 }) });
-    expect(await s.cloudUpload(save, 1)).toEqual({ ok: false, reason: 'conflict', meta: expect.objectContaining({ revision: 3 }) });
+    expect(await s.cloudUpload(save, 3, 'user-1')).toEqual({ ok: true, revision: 4 });
+    expect(f.calls[0]).toEqual({ fn: 'put_save_for', args: { p_account: 'user-1', p_expected: 3, p_save_id: 'save_a', p_schema_version: 30, p_saved_at: 1000, p_hour: 50.5, p_shop_name: 'x'.repeat(60), p_day: 3, p_money: 4210.25, p_encoding: 'gzip-base64', p_body: 'H4sI' } });
+    expect(await s.cloudUpload(save, 9, 'user-1')).toEqual({ ok: false, reason: 'too_new', meta: expect.objectContaining({ schemaVersion: 31 }) });
+    expect(await s.cloudUpload(save, 1, 'user-1')).toEqual({ ok: false, reason: 'conflict', meta: expect.objectContaining({ revision: 3 }) });
   });
 });
 
@@ -357,5 +367,77 @@ describe('SOC-002 on the real client: the password is never stored', () => {
     expect(JSON.stringify([...store.entries()])).not.toContain(PASSWORD);
     expect(seen.some((u) => u.includes('/auth/v1/signup'))).toBe(true);
     expect(seen.every((u) => u.startsWith(PROJECT.url))).toBe(true); // only the project's own address
+  });
+});
+
+describe('chunk 9 (B2, REL-035): who is signed in, told across tabs', () => {
+  it('on the real client: a sign-in and a sign-out reach onSessionChange with their account', async () => {
+    const store = new Map<string, string>();
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    const user = { id: 'u1', aud: 'authenticated', role: 'authenticated', email: 'sam@example.com', app_metadata: {}, user_metadata: {}, created_at: '2026-10-19T10:00:00Z' };
+    const session = { access_token: 'header.payload.sig', refresh_token: 'refresh-abc', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer', user };
+    const fetchFake = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+      if (url.includes('/auth/v1/token')) return json(session);
+      if (url.includes('/auth/v1/logout')) return new Response(null, { status: 204 });
+      if (url.includes('/rest/v1/rpc/me')) return json(ME);
+      return json({ message: `unexpected ${url}` }, 404);
+    });
+    const client = createClient(PROJECT.url, PROJECT.publishableKey, { auth: { persistSession: true, autoRefreshToken: false, detectSessionInUrl: false, storageKey: AUTH_STORAGE_KEY, storage }, global: { fetch: fetchFake as unknown as typeof fetch } });
+    const s = createSupabaseSocialService(PROJECT, { client: async () => client as unknown as SupabaseLike, storage });
+    const seen: (string | null)[] = [];
+    const off = s.onSessionChange!((a) => seen.push(a));
+    await vi.waitFor(() => expect(seen).toEqual([])); // the client loads; its first event (INITIAL_SESSION) isn't a change
+    await s.signIn('sam@example.com', PASSWORD);
+    await vi.waitFor(() => expect(seen).toContain('u1'));
+    await s.signOut();
+    await vi.waitFor(() => expect(seen.at(-1)).toBeNull());
+    off();
+    const n = seen.length;
+    await s.signIn('sam@example.com', PASSWORD);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(seen).toHaveLength(n); // unsubscribed
+  });
+
+  it('a token refresh isn’t a change; another tab rewriting the stored session is, when its account differs', async () => {
+    const listeners: ((event: string, session: { user?: { id?: unknown } } | null) => void)[] = [];
+    const f = fake();
+    f.client.auth.onAuthStateChange = (cb) => {
+      listeners.push(cb);
+      return { data: { subscription: { unsubscribe: () => void listeners.splice(listeners.indexOf(cb), 1) } } };
+    };
+    const win = new EventTarget();
+    vi.stubGlobal('window', win);
+    try {
+      const seen: (string | null)[] = [];
+      const make = vi.fn(async () => f.client);
+      const s = service(f, { client: make });
+      const off = s.onSessionChange!((a) => seen.push(a));
+      // listening alone never loads supabase-js (the title screen stays light: the review's note 1)
+      await new Promise((r) => setTimeout(r, 5));
+      expect(make).not.toHaveBeenCalled();
+      expect(listeners).toHaveLength(0);
+      await s.currentUser(); // the first real call makes the client, and its events are attached then
+      expect(listeners).toHaveLength(1);
+      listeners[0]('TOKEN_REFRESHED', { user: { id: 'u1' } });
+      listeners[0]('SIGNED_IN', { user: { id: 'u2' } });
+      listeners[0]('SIGNED_OUT', null);
+      expect(seen).toEqual(['u2', null]);
+      const storageEvent = (key: string | null, oldValue: string | null, newValue: string | null) => win.dispatchEvent(Object.assign(new Event('storage'), { key, oldValue, newValue }));
+      const stored = (id: string) => JSON.stringify({ access_token: 'x', user: { id } });
+      storageEvent(AUTH_STORAGE_KEY, stored('u1'), stored('u1')); // a refreshed token, the same account
+      storageEvent('aquarium-go.settings.v1', null, '{}'); // another key
+      storageEvent(AUTH_STORAGE_KEY, stored('u1'), stored('u3')); // signed in as someone else in another tab
+      storageEvent(AUTH_STORAGE_KEY, stored('u3'), null); // signed out there
+      storageEvent(null, null, null); // that tab cleared all storage, the session with it
+      expect(seen).toEqual(['u2', null, 'u3', null, null]);
+      off();
+      storageEvent(AUTH_STORAGE_KEY, null, stored('u4'));
+      listeners[0]('SIGNED_IN', { user: { id: 'u5' } });
+      expect(seen).toHaveLength(5); // unsubscribed from both
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

@@ -402,7 +402,8 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
       living += def.price * grow * health;
       livingCount++;
     } else {
-      hard += def.price * 0.7 * clamp(finite(d.scale, 1), 0.5, 2);
+      // Chunk 9 (ADR-0044 decision 1, audit D1): at its base price whatever its scale, as placing it charges.
+      hard += def.price * 0.7;
       hardCount++;
     }
   }
@@ -423,10 +424,16 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
 
   const subtotal = parts.reduce((a, p) => a + p.amount, 0);
   const hardware = tankPart + eqPart;
+  // Chunk 9 (ADR-0044 decision 1, audit D1): the bonuses about the animals (welfare, compatibility, beauty, rarity,
+  // lineage, the ethical display) scale only the livestock's and living plants' value; the tank, equipment, hardscape
+  // and substrate sell at their plain value, scaled only by the tank's own condition (water, maturity, appeal, care).
+  // Before, one cheap animal switched them on for the whole subtotal, and a dressed kit resold at about +30% a round.
+  const animalBase = (creatures.length > 0 ? roundCents(livestock) : 0) + (livingCount > 0 ? roundCents(living) : 0);
 
   // Modifiers.
   const modifiers: ValueFactor[] = [];
-  let m = 1;
+  let m = 1; // the tank's condition: every part
+  let ma = 1; // the animals and living plants only
   const cache = tank.cache;
   const welfare = clamp(finite(cache?.welfare, 100), 0, 100);
   const beauty = Math.min(clamp(finite(cache?.beauty, 40), 0, 100), finite(scope?.maxBeauty, 100));
@@ -436,10 +443,10 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
   const status = cache?.waterStatus ?? cache?.status ?? 'good';
 
   if (creatures.length > 0) {
-    m *= pushFactor(modifiers, 'Animal welfare', 0.72 + 0.38 * Math.pow(welfare / 100, 1.2), welfare >= 85 ? 'Thriving, calm animals' : welfare >= 60 ? 'Mostly comfortable' : 'Stressed or unwell animals');
+    ma *= pushFactor(modifiers, 'Animal welfare', 0.72 + 0.38 * Math.pow(welfare / 100, 1.2), welfare >= 85 ? 'Thriving, calm animals' : welfare >= 60 ? 'Mostly comfortable' : 'Stressed or unwell animals');
     const speciesCount = new Set(creatures.map((c) => c.speciesId)).size;
     if (creatures.length >= 2 || speciesCount >= 2 || verdict !== 'excellent') {
-      m *= pushFactor(modifiers, `Compatibility: ${COMPAT_LABEL[verdict]}`, COMPAT_MULT[verdict], verdict === 'excellent' || verdict === 'usually_compatible' ? 'A stocking list buyers can trust' : 'Buyers price in the risk of losses');
+      ma *= pushFactor(modifiers, `Compatibility: ${COMPAT_LABEL[verdict]}`, COMPAT_MULT[verdict], verdict === 'excellent' || verdict === 'usually_compatible' ? 'A stocking list buyers can trust' : 'Buyers price in the risk of losses');
     }
   }
   let sm = 0.88 + 0.16 * (stability / 100);
@@ -451,8 +458,9 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
   m *= pushFactor(modifiers, 'System maturity', 0.9 + 0.12 * bio + Math.min(0.04, ageDays / 250), bio >= 0.7 ? `Fully cycled · established ${Math.round(ageDays) === 1 ? '1 day' : `${Math.round(ageDays)} days`}` : bio >= 0.3 ? 'Still cycling' : 'Not yet cycled');
 
   // B-138 (ADR-0029 decision 3): beauty prices a display, so it needs animals. An empty, freshly dressed tank sells for
-  // about what its parts cost (its decor is priced in the parts above); a beautiful stocked tank keeps its premium.
-  if (creatures.length > 0) m *= pushFactor(modifiers, 'Aquascape beauty', 0.72 + 0.85 * Math.pow(beauty / 100, 1.35), beauty >= 80 ? 'A striking, photogenic layout' : beauty >= 55 ? 'An attractive layout' : 'The layout needs work');
+  // about what its parts cost (its decor is priced in the parts above); a beautiful stocked tank keeps its premium, on
+  // its animals and plants (chunk 9).
+  if (creatures.length > 0) ma *= pushFactor(modifiers, 'Aquascape beauty', 0.72 + 0.85 * Math.pow(beauty / 100, 1.35), beauty >= 80 ? 'A striking, photogenic layout' : beauty >= 55 ? 'An attractive layout' : 'The layout needs work');
 
   // Rarity + lineage of livestock.
   if (creatures.length > 0) {
@@ -464,8 +472,8 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
       if ((c.lineage?.generation ?? 0) >= 1 || (c.repro?.totalOffspringRaised ?? 0) > 0) lin++;
     }
     rs /= creatures.length;
-    if (rs > 0.12) m *= pushFactor(modifiers, 'Rare livestock', 1 + 0.25 * clamp01(rs), 'Uncommon species or colour lines');
-    if (lin > 0) m *= pushFactor(modifiers, 'Documented lines', 1 + 0.12 * (lin / creatures.length), `${lin} animal${lin === 1 ? '' : 's'} with breeding records`);
+    if (rs > 0.12) ma *= pushFactor(modifiers, 'Rare livestock', 1 + 0.25 * clamp01(rs), 'Uncommon species or colour lines');
+    if (lin > 0) ma *= pushFactor(modifiers, 'Documented lines', 1 + 0.12 * (lin / creatures.length), `${lin} animal${lin === 1 ? '' : 's'} with breeding records`);
   }
 
   const pop = exhibitPopularity(state, tankId);
@@ -482,11 +490,16 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
 
   // Coherent, ethical display bonus: beauty + welfare + compatibility together.
   if (creatures.length > 0 && beauty >= 70 && welfare >= 80 && compatRank(verdict) <= 1 && status !== 'danger') { // B-138
-    m *= pushFactor(modifiers, 'Coherent, ethical display', 1.1, 'Beautiful, healthy and thoughtfully stocked');
+    ma *= pushFactor(modifiers, 'Coherent, ethical display', 1.1, 'Beautiful, healthy and thoughtfully stocked');
   }
 
-  m = clamp(m, 0.3, 2.6);
-  const expected = Math.max(roundCents(hardware * 0.3), roundCents(subtotal * m));
+  const mPlain = clamp(m, 0.3, 2.6);
+  const mAnimals = clamp(m * ma, 0.3, 2.6);
+  const plainValue = (subtotal - animalBase) * mPlain;
+  const raw = roundCents(plainValue + animalBase * mAnimals);
+  const floor = roundCents(hardware * 0.3);
+  const expected = Math.max(floor, raw);
+  const plainShare = raw >= floor && raw > 0 ? clamp01(plainValue / raw) : 1;
   const rareShare = modifiers.find((f) => f.label === 'Rare livestock') ? 0.06 : 0;
   const u = 0.12 + 0.1 * (1 - stability / 100) + rareShare;
   return {
@@ -495,6 +508,7 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
     high: nicePrice(expected * (1 + u + 0.05)),
     parts,
     modifiers,
+    plainShare,
   };
 }
 

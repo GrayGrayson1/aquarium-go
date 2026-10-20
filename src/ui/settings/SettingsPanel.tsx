@@ -37,7 +37,7 @@ import { sfx } from '@/audio/sfx';
 import { Sheet } from '../common/Sheet';
 import { Button, Row, Segmented, Slider, Tabs, Toggle, Section, Modal } from '../kit';
 import { usePrefs } from '../common/prefs';
-import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, type SaveMeta } from '../common/saves';
+import { listSlots, saveNow, exportCurrent, importFile, loadIntoGame, deleteSlot, SAVE_SLOTS, slotLabel, watchSaves, timeAgo, isSameGame, loadKeepAdvice, freeSaveSlot, type SaveMeta } from '../common/saves';
 import { SaveRow } from '../screens/LoadDialog';
 import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
@@ -199,7 +199,7 @@ function DisplayTab() {
   );
 }
 
-type SaveConfirm = { kind: 'load'; slot: string } | { kind: 'overwrite'; slot: string };
+type SaveConfirm = { kind: 'load'; slot: string } | { kind: 'overwrite'; slot: string } | { kind: 'import'; slot: string; file: File };
 
 /**
  * lane:fix-core (P7-03/S14-05/S06-07) — Load and Overwrite in the save list used to act on one click: the running
@@ -237,6 +237,15 @@ function SavesTab() {
     setBusy(false);
     void refresh();
   };
+  // Chunk 9 (G1): an import keeps what it replaces listed as "Previous copy of …" (the dialog says so)
+  const doImport = async (f: File, slot: string) => {
+    setImportError(null);
+    const r = await importFile(f, slot, { keepReplaced: true });
+    if (r.ok) {
+      useUI.getState().toast(`Imported into ${slotLabel(slot)}.`, 'success');
+      void refresh();
+    } else setImportError(r.error ?? 'Import failed.');
+  };
   // Load in game asks first; from the title there is nothing running to lose.
   const askLoad = (slot: string) => (inGame ? setConfirm({ kind: 'load', slot }) : void doLoad(slot));
 
@@ -244,6 +253,14 @@ function SavesTab() {
   const advice = confirm?.kind === 'load' ? loadKeepAdvice(saves ?? [], game) : null;
   const sameAsRunning = !!(target && game && isSameGame(target, game));
   const describe = (m: SaveMeta | undefined) => (m ? `${m.shopName} (Day ${m.day}, saved ${timeAgo(m.savedAt)})` : '');
+  const runningDay = Math.floor((game?.clock.hour ?? 0) / 24) + 1;
+  // Chunk 9 (ADR-0044's wording): the slot holds a later copy of the aquarium on screen; what a write there keeps
+  const laterCopy = !!(sameAsRunning && target && game && (Number.isFinite(target.hour) ? target.hour! > game.clock.hour + 1e-6 : target.day > runningDay));
+  const parkSlot = confirm?.kind === 'load' ? (sameAsRunning ? freeSaveSlot(saves ?? []) : (advice?.freeSlot ?? null)) : null;
+  const listedPrevious = confirm && confirm.kind !== 'load' ? previousOf(confirm.slot) : undefined;
+  // a write that keeps the replaced copy listed drops the one listed under the slot now (G1): say so
+  const dropsPrevious = !!listedPrevious && (confirm?.kind === 'import' || !sameAsRunning || laterCopy);
+  const droppedLine = dropsPrevious && listedPrevious ? ` “${slotLabel(listedPrevious.slot)}” (${listedPrevious.shopName}, Day ${listedPrevious.day}) is deleted.` : '';
 
   return (
     <>
@@ -322,11 +339,9 @@ function SavesTab() {
               e.target.value = '';
               if (!f) return;
               setImportError(null);
-              const r = await importFile(f, importSlot);
-              if (r.ok) {
-                useUI.getState().toast(`Imported into ${slotLabel(importSlot)}.`, 'success');
-                void refresh();
-              } else setImportError(r.error ?? 'Import failed.');
+              // chunk 9 (E1, G1): a slot that holds a save asks first
+              if (bySlot.get(importSlot)) setConfirm({ kind: 'import', slot: importSlot, file: f });
+              else await doImport(f, importSlot);
             }}
           />
         </div>
@@ -350,18 +365,18 @@ function SavesTab() {
         open={confirm?.kind === 'load'}
         onClose={() => setConfirm(null)}
         title={`Load ${slotLabel(confirm?.slot ?? '')}?`}
-        subtitle={sameAsRunning ? 'This is an earlier copy of the aquarium you are playing. Your current progress is saved to Autosave first.' : 'Your current game is saved to Autosave first.'}
+        subtitle={sameAsRunning ? `This is an earlier copy of the aquarium you are playing. Your current progress (Day ${runningDay}) stays listed as “Previous autosave” until you switch again.` : 'Your current game is saved to Autosave first.'}
         width={540}
         testId="load-confirm"
         actions={
           <>
             <Button variant="ghost" onClick={() => setConfirm(null)}>Cancel</Button>
-            {!sameAsRunning && advice?.freeSlot && (
+            {parkSlot && (
               <Button
                 data-testid="load-confirm-park"
                 onClick={async () => {
                   const slot = confirm!.slot;
-                  const park = advice.freeSlot!;
+                  const park = parkSlot;
                   setConfirm(null);
                   setBusy(true);
                   const ok = await saveNow(park, true);
@@ -370,7 +385,7 @@ function SavesTab() {
                   else void refresh();
                 }}
               >
-                Save to {slotLabel(advice.freeSlot)} &amp; load
+                Save to {slotLabel(parkSlot)} &amp; load
               </Button>
             )}
             <Button
@@ -416,9 +431,42 @@ function SavesTab() {
         }
       >
         <p className="ag-muted" style={{ margin: 0 }}>
-          {sameAsRunning
-            ? `It will be brought up to date with the aquarium you are playing (Day ${Math.floor((game?.clock.hour ?? 0) / 24) + 1}).`
-            : `It will be replaced with ${game?.shopName ?? 'your current game'} (Day ${Math.floor((game?.clock.hour ?? 0) / 24) + 1}). The old copy stays listed as “${slotLabel((confirm?.slot ?? '') + '.backup')}”, so this can be undone.`}
+          {laterCopy
+            ? `It holds a later copy (Day ${target?.day}) than the one you are playing (Day ${runningDay}). The later copy stays listed as “${slotLabel((confirm?.slot ?? '') + '.backup')}”, so this can be undone.`
+            : sameAsRunning
+              ? `It will be brought up to date with the aquarium you are playing (Day ${runningDay}).`
+              : `It will be replaced with ${game?.shopName ?? 'your current game'} (Day ${runningDay}). The old copy stays listed as “${slotLabel((confirm?.slot ?? '') + '.backup')}”, so this can be undone.`}
+          {droppedLine}
+        </p>
+      </Modal>
+      <Modal
+        open={confirm?.kind === 'import'}
+        onClose={() => setConfirm(null)}
+        title={`Replace ${slotLabel(confirm?.slot ?? '')}?`}
+        subtitle={target ? `${slotLabel(target.slot)} holds ${describe(target)}.` : undefined}
+        width={460}
+        testId="import-confirm"
+        actions={
+          <>
+            <Button variant="ghost" onClick={() => setConfirm(null)}>Keep it</Button>
+            <Button
+              variant="danger"
+              data-testid="import-confirm-replace"
+              onClick={() => {
+                if (confirm?.kind !== 'import') return;
+                const { slot, file } = confirm;
+                setConfirm(null);
+                void doImport(file, slot);
+              }}
+            >
+              Replace
+            </Button>
+          </>
+        }
+      >
+        <p className="ag-muted" style={{ margin: 0 }}>
+          {`It will be replaced with the imported save. The old copy stays listed as “${slotLabel((confirm?.slot ?? '') + '.backup')}”, so this can be undone.`}
+          {droppedLine}
         </p>
       </Modal>
     </>

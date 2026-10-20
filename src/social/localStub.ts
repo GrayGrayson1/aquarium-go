@@ -202,6 +202,13 @@ export const CLUB_COLORS: readonly [string, string][] = [
   ['#e0b040', '#a87818'],
 ];
 
+/** chunk 9 — the account in a stored record's text, or null. */
+const accountIn = (raw: string | null | undefined): string | null => {
+  if (!raw) return null;
+  const s = readStored({ getItem: () => raw, setItem: () => {}, removeItem: () => {} });
+  return s ? userOf(s).id : null;
+};
+
 const userOf = (s: StoredSocial): SocialUser => ({ id: `local:${s.email.trim().toLowerCase()}`, email: s.email, displayName: s.displayName, friendCode: friendCodeFor(s.email), ...(s.owner ? { isOwner: true } : {}) });
 
 const monthOf = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -245,6 +252,12 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
   const signedIn = (): StoredSocial => {
     const s = read();
     if (!s) throw fail('invalid');
+    return s;
+  };
+  /** chunk 9 (B2): signed in, and as `account` (another tab may have switched the record to someone else). */
+  const signedInAs = (account: string): StoredSocial => {
+    const s = signedIn();
+    if (userOf(s).id !== account) throw fail('account');
     return s;
   };
   const withJoined = (c: Club, s: StoredSocial | null): Club => (s?.joinedMonths[c.id] ? { ...c, joined: s.joinedMonths[c.id] } : { ...c });
@@ -405,19 +418,20 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
         signedIn();
         standing = { ...r };
       }),
-    cloudMeta: () =>
+    // chunk 9 (B2): as the server's twins, only for the account the game names
+    cloudMeta: (account) =>
       call(() => {
-        const c = readCloud(signedIn().email);
+        const c = readCloud(signedInAs(account).email);
         return c ? { ...c.meta } : null;
       }),
-    cloudDownload: () =>
+    cloudDownload: (account) =>
       call(() => {
-        const c = readCloud(signedIn().email);
+        const c = readCloud(signedInAs(account).email);
         return c ? { meta: { ...c.meta }, encoding: c.encoding, body: c.body } : null;
       }),
-    cloudUpload: (save: CloudUpload, expected: number) =>
+    cloudUpload: (save: CloudUpload, expected: number, account: string) =>
       call((): CloudUploadResult => {
-        const s = signedIn();
+        const s = signedInAs(account);
         const c = readCloud(s.email);
         // PERSIST-014 on the server: a newer build's online save is never written over
         if (c && c.meta.schemaVersion > save.schemaVersion) return { ok: false, reason: 'too_new', meta: { ...c.meta } };
@@ -427,6 +441,19 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
         writeCloud({ email: s.email, meta: { ...meta, revision }, encoding, body });
         return { ok: true, revision };
       }),
+    // chunk 9 (B2): another tab signing out or in rewrites the record, and this tab hears of it (as the real service)
+    onSessionChange: (cb) => {
+      if (kv !== globalThis.localStorage || typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => {};
+      const onStorage = (e: StorageEvent) => {
+        if (e.key === null) return cb(null); // that tab cleared all storage
+        if (e.key !== SOCIAL_STORAGE_KEY) return;
+        const was = accountIn(e.oldValue);
+        const now = accountIn(e.newValue);
+        if (was !== now) cb(now);
+      };
+      window.addEventListener('storage', onStorage);
+      return () => window.removeEventListener('storage', onStorage);
+    },
     setOffline: (on) => {
       offline = on;
     },

@@ -25,13 +25,14 @@ import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { SCHEMA_VERSION, exportSaveText, importSaveText, isStaleGame, resumeState, saveCurrentGame, saveGame, stateForSaving } from '@/persistence';
+import { SCHEMA_VERSION, exportSaveText, importSaveText, isStaleGame, resumeState, saveCurrentGame, stateForSaving } from '@/persistence';
 import { autosaveAllowed, leaveSaveDue } from '@/game/useAutosave';
 import { currentStanding, decodeSaveBody, encodeSaveBody, isSocialError, MAX_CLOUD_BODY, socialService, type CloudSaveMeta, type StandingReport } from '@/social';
 import { loadSocialUser, refreshSocialNews, useSocial } from '../panels/social/socialStore';
 import { socialMode } from './mode';
 import { SOCIAL_COPY } from '../panels/social/copy';
 import { decideOnline, type CloudLink, type CloudPromptKind, type DeviceCopy } from './rules';
+import { keepAutosavedCopies } from '../common/saves';
 
 export const CLOUD_LINK_KEY = 'aquarium-go.cloud.v1';
 /** At most one send per this much time (a hidden tab sends at once). */
@@ -201,6 +202,17 @@ function stop(): void {
   useCloud.setState({ prompt: null, choosing: false, status: 'idle', syncedAt: null });
 }
 
+/**
+ * Chunk 9 (B2): the session is no longer the account this tab shows (another tab signed out, or in as someone else):
+ * stop, and ask who is signed in now; a new account starts its own check (the useSocial subscription below).
+ */
+function accountChanged(): void {
+  stop();
+  void loadSocialUser(true);
+}
+
+const isAccountError = (e: unknown): boolean => isSocialError(e) && e.code === 'account';
+
 /** Read the online copy and decide (§6). A call while one runs folds into one more, after it. */
 export function checkOnline(): Promise<void> {
   if (!active()) return Promise.resolve();
@@ -238,7 +250,7 @@ async function runCheck(): Promise<void> {
   let link = readLink(u.id);
   useCloud.setState({ syncedAt: link?.sentAt ?? null });
   try {
-    const online = await socialService().cloudMeta();
+    const online = await socialService().cloudMeta(u.id);
     if (user()?.id !== u.id) return; // signed out (or in as someone else) meanwhile
     // a send whose answer never came (a timeout) may still have landed: the copy online is then this device's own
     if (online && lastTried && online.saveId === lastTried.saveId && online.savedAt === lastTried.savedAt && online.hour === lastTried.hour && online.revision !== link?.revision) {
@@ -277,6 +289,7 @@ async function runCheck(): Promise<void> {
     void refreshSocialNews();
   } catch (e) {
     inStep = false;
+    if (isAccountError(e)) return accountChanged();
     useCloud.setState({ status: 'unreachable' });
     if (!(isSocialError(e) && e.code === 'network')) console.warn('[aquarium-go] online save check failed', e);
   }
@@ -318,7 +331,7 @@ async function runSend(g: GameState, userId: string): Promise<void> {
       return;
     }
     lastTried = { saveId: g.saveId, savedAt: g.lastSavedRealMs, hour: g.clock.hour };
-    const res = await socialService().cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: dayOf(g), money: g.finance.money, ...body }, expected);
+    const res = await socialService().cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: dayOf(g), money: g.finance.money, ...body }, expected, userId);
     if (user()?.id !== userId) return;
     lastSentAt = Date.now();
     if (res.ok) {
@@ -336,6 +349,7 @@ async function runSend(g: GameState, userId: string): Promise<void> {
       void checkOnline();
     }
   } catch (e) {
+    if (isAccountError(e)) return accountChanged(); // nothing was written: the server refused another account's session
     // the online copy is as it was (or the send landed unanswered: the next check sees it): try again after the gap
     lastSentAt = Date.now();
     useCloud.setState({ status: 'unreachable' });
@@ -396,8 +410,6 @@ export async function keepDeviceCopy(): Promise<void> {
 /** Settings › Saves' own words for a save that won't load (src/ui/common/saves.ts). */
 const LOAD_FAILED = 'That save could not be loaded — it may be damaged. Try its previous copy or an exported file.';
 
-/** A copy of the game under a new identity, so the slot's backup lists it as "Previous autosave". */
-const keptId = (saveId: string): string => `${saveId.replace(/_kept_[0-9a-z]+$/, '')}_kept_${Date.now().toString(36)}`.slice(0, 200);
 
 /**
  * "Load online save": download it, check it (validated, migrated, refused when it's a newer build's), store it in the
@@ -412,7 +424,8 @@ export async function loadOnlineCopy(): Promise<boolean> {
   if (!p || !u || useCloud.getState().choosing) return false;
   useCloud.setState({ choosing: true });
   try {
-    const got = await socialService().cloudDownload();
+    const got = await socialService().cloudDownload(u.id);
+    if (user()?.id !== u.id) return false; // signed out, or in as someone else, meanwhile (the review's note 2)
     if (!got) {
       useCloud.setState({ prompt: null });
       void checkOnline();
@@ -425,35 +438,41 @@ export async function loadOnlineCopy(): Promise<boolean> {
       return false;
     }
     const incoming = check.state;
-    // this device's game into the autosave slot, so storing the online copy rotates it into the backup
     const g = useGame.getState().game;
+    // chunk 9 (B1): what the two writes below would push out of every save goes to a slot first; its messages show once
+    // the load is done (a change of aquarium clears the toasts: the review's confirmation, C)
+    const parked = await keepAutosavedCopies([incoming, ...(g && !g.isShowcase ? [g] : [])].map((x) => ({ saveId: x.saveId, hour: x.clock.hour })));
+    if (!parked) return false;
+    if (user()?.id !== u.id) return false;
+    // this device's game into the autosave slot, so storing the online copy rotates it into the backup; the same
+    // aquarium as a kept copy (chunk 9: one write, not two, so nothing else is pushed out), as the backup lists only
+    // another aquarium
     if (g && !g.isShowcase) {
-      const saved = await saveCurrentGame('auto', { flush: true, toast: false });
+      const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: g.saveId === incoming.saveId });
       // another tab played this aquarium further ('stale'): loading goes on (that tab still has its copy on screen,
       // and is asked there); the copy stored here may be written over, as any load from this tab would
       if (!saved.ok && saved.code !== 'stale') {
         useUI.getState().toast(saved.message, 'danger');
         return false;
       }
-      const flushed = useGame.getState().game;
-      if (saved.ok && flushed && flushed.saveId === incoming.saveId) {
-        const kept = await saveGame({ ...stateForSaving(flushed), saveId: keptId(flushed.saveId) }, 'auto');
-        if (!kept.ok) {
-          useUI.getState().toast(kept.message, 'danger');
-          return false;
-        }
-      }
     }
+    if (user()?.id !== u.id) return false;
     const previous = readLink(u.id);
     // the link first: the game's identity changes below, and the check that follows must find it in step
     writeLink(u.id, { revision: got.meta.revision, saveId: incoming.saveId, savedAt: got.meta.savedAt, sentAt: Date.now() });
     const imported = await importSaveText(text, 'auto');
     if (!imported.ok || !imported.state) {
       writeLink(u.id, previous);
+      parked.forEach((m) => useUI.getState().toast(m, 'success')); // what was saved to a slot, it was
       useUI.getState().toast(imported.error ?? LOAD_FAILED, 'danger');
       return false;
     }
+    if (user()?.id !== u.id) {
+      writeLink(u.id, previous); // the online copy is stored; the game on screen stays this device's, as does its link
+      return false;
+    }
     resumeState(imported.state);
+    for (const m of parked) useUI.getState().toast(m, 'success');
     // the link's time after the game on screen changed, so the change itself doesn't count as this device's play
     writeLink(u.id, { revision: got.meta.revision, saveId: incoming.saveId, savedAt: got.meta.savedAt, sentAt: Date.now() });
     useUI.getState().set({ hudHidden: false, cameraMode: 'front' });
@@ -462,6 +481,10 @@ export async function loadOnlineCopy(): Promise<boolean> {
     useCloud.setState({ prompt: null });
     return true;
   } catch (e) {
+    if (isAccountError(e)) {
+      accountChanged(); // nothing changed on this device; the box closes with the account it was for
+      return false;
+    }
     useUI.getState().toast(isSocialError(e) ? SOCIAL_COPY.errorNetwork : LOAD_FAILED, 'danger');
     return false;
   } finally {
@@ -477,6 +500,11 @@ export function startCloudSync(): () => void {
   started = true;
   const offs: (() => void)[] = [];
   let lastUser = user()?.id ?? null;
+  // chunk 9 (B2): another tab signed out or in; a refocus that repeats the same account changes nothing
+  const offSession = socialService().onSessionChange?.((account) => {
+    if (account !== (user()?.id ?? null)) accountChanged();
+  });
+  if (offSession) offs.push(offSession);
   offs.push(
     useSocial.subscribe((s) => {
       const id = s.user?.id ?? null;

@@ -65,13 +65,17 @@ function bootedFromFixture(): boolean {
   return !(new URLSearchParams(location.search).get('autosave') === '1' && devToolsAllowed());
 }
 
-/** Is autosave currently allowed for the running game? */
-export function autosaveAllowed(): boolean {
+/**
+ * Is autosave currently allowed for the running game? Chunk 9 (the review's blocker 4): `evenIfOff` asks whether the
+ * game may be saved at all (not a showcase or a dev fixture, on screen) whatever Settings' autosave switch says: a
+ * load saves the game it replaces first, as "Save and return to title" does.
+ */
+export function autosaveAllowed(opts: { evenIfOff?: boolean } = {}): boolean {
   const g = useGame.getState().game;
   if (!g || g.isShowcase) return false;
   if (fixtureSaveId && g.saveId === fixtureSaveId) return false;
   if (useUI.getState().screen !== 'game') return false;
-  if (!useSettings.getState().autosave) return false;
+  if (!opts.evenIfOff && !useSettings.getState().autosave) return false;
   return true;
 }
 

@@ -3,18 +3,24 @@
  * bounded offline catch-up, export/import). Autosave is run by core's GameLoop. OWNER: lane "ui-shell".
  */
 import {
+  baseSaveId,
+  copySave,
   onSavesChanged,
   onBackendChange,
   storageStatus,
   listSaves,
   deleteSave,
-  loadAndResume,
+  isStaleGame,
+  loadGameDetailed,
+  parseSlotRef,
+  resumeState,
   saveCurrentGame,
   importSaveFile,
   downloadSave,
   slotLabel as coreSlotLabel,
   SAVE_SLOTS,
   type SaveMeta,
+  type SaveGameOptions,
 } from '@/persistence';
 import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
@@ -52,28 +58,56 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
 /**
  * Load a slot (with bounded offline catch-up) and enter the game.
  * lane:fix-core (P7-03/S14-05) — a game that is running is autosaved first, exactly like "Save and return to title",
- * so browsing saves mid-game can never throw away the last minute of play.
+ * so browsing saves mid-game can never throw away the last minute of play. Chunk 9 (E1): when the slot holds another
+ * copy of the aquarium on screen, it is autosaved as a kept copy, so it stays listed as "Previous autosave" (the
+ * load dialog says so) instead of being dropped by the loaded copy's next autosaves. Chunk 9's review: the copy to
+ * load is read before anything is written (that save writes the autosave slot, which may hold it), and when it came
+ * from the autosave slot it is saved again at once, since its stored copy may just have been written over.
  */
 export async function loadIntoGame(slot: string): Promise<GameState | null> {
+  let parked: string[] = [];
+  const showParked = () => parked.splice(0).forEach((m) => useUI.getState().toast(m, 'success'));
   try {
-    if (autosaveAllowed()) {
-      const saved = await saveCurrentGame('auto', { flush: true, toast: false });
-      if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
-    }
-  } catch (e) {
-    console.warn('[ui] autosave before load failed', e);
-  }
-  try {
-    const r = await loadAndResume(slot);
+    // a tab another tab played further (the stale banner's "load the newer copy") saves nothing first, as before: its
+    // saves are refused, and reading the slot below clears that (the review's last confirmation). It still keeps what
+    // this load's writes would push out (its final confirmation).
+    const on = useGame.getState().game;
+    const writable = autosaveAllowed({ evenIfOff: true }) && !!on;
+    const saveFirst = writable && !isStaleGame(on!.saveId);
+    const r = await loadGameDetailed(slot);
     if (!r.ok || !r.state) {
       if (r.error) useUI.getState().toast(r.error, 'danger');
       return null;
     }
+    let wrote = false;
+    if (writable) {
+      try {
+        const g = useGame.getState().game!;
+        // the review's confirmation (B): a further copy of this aquarium kept only in the autosave (a title-screen load
+        // of an earlier one, not yet autosaved) would go with the writes this load makes: to a slot first
+        const kept = await keepAutosavedCopies([{ saveId: g.saveId, hour: g.clock.hour }, { saveId: r.state.saveId, hour: r.state.clock.hour }], { sameAquariumOnly: true, loading: slot });
+        if (!kept) return null;
+        parked = kept;
+        // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
+        if (saveFirst) {
+          wrote = true; // tried: even a write that failed part-way may have changed the slot this copy came from
+          const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: g.saveId === r.state.saveId });
+          if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
+        }
+      } catch (e) {
+        console.warn('[ui] autosave before load failed', e);
+      }
+    }
+    resumeState(r.state);
+    // the save above wrote the slot this copy came from: store it again at once (a title or Continue load writes nothing)
+    if (wrote && parseSlotRef(slot).slot === 'auto') await saveCurrentGame('auto', { flush: false, toast: false });
     if (r.restoredFromBackup) useUI.getState().toast('That save was damaged — restored from its backup copy.', 'warning');
+    showParked();
     useUI.getState().set({ hudHidden: false, cameraMode: 'front' });
-    return r.state;
+    return useGame.getState().game;
   } catch (e) {
     console.warn('[ui] load failed', e);
+    showParked();
     useUI.getState().toast('That save could not be loaded — it may be damaged. Try its previous copy or an exported file.', 'danger');
     return null;
   }
@@ -105,6 +139,53 @@ export function loadKeepAdvice(saves: SaveMeta[], g: GameState | null): { text: 
   };
 }
 
+/**
+ * Chunk 9 (B1; the review's confirmation, A and B; ADR-0044 decisions 4 and 6): a load writes the autosave slot (the
+ * game it replaces, then the loaded copy's autosaves), which can push out what is there. A copy kept only there (in
+ * the autosave or its "Previous autosave", in no slot as far along) is saved to a free slot first, unless it is a copy
+ * of an aquarium being written (`written`: the game on screen, the
+ * copy loaded) no further along than each copy of it written now (an older state of it), or, with `sameAquariumOnly`
+ * (Settings › Saves' Load), another aquarium (that goes on a switch, as the dialog says). `loading` is the slot the
+ * load reads, never parked. With every slot full nothing may load, and it says so. Returns null when the load must
+ * stop, else the messages to show once the load is done (the toasts are cleared when the aquarium changes).
+ */
+export async function keepAutosavedCopies(written: { saveId: string; hour: number }[], opts: { sameAquariumOnly?: boolean; loading?: string } = {}): Promise<string[] | null> {
+  const hoursOf = (id: string) => written.filter((w) => baseSaveId(w.saveId) === baseSaveId(id)).map((w) => w.hour);
+  let saves = await listSlots();
+  const manual = () => saves.filter((m) => m.slot !== 'auto' && !m.previousOf);
+  const parked = new Set<string>();
+  const messages: string[] = [];
+  for (const m of saves.filter((x) => (x.slot === 'auto' || x.previousOf === 'auto') && x.slot !== opts.loading)) {
+    if (!m.saveId || parked.has(m.saveId)) continue;
+    const same = hoursOf(m.saveId);
+    if (opts.sameAquariumOnly && !same.length) continue;
+    // a copy of an aquarium being written, no further along than each copy of it written now: an older state of it,
+    // which goes as any "Previous autosave" goes on a switch (an exact copy of the game on screen included)
+    if (same.length && !same.every((h) => typeof m.hour === 'number' && Number.isFinite(h) && m.hour > h + 1e-6)) continue;
+    if (manual().some((k) => k.saveId === m.saveId && (k.hour ?? -Infinity) >= (m.hour ?? Infinity) - 1e-6)) continue;
+    const to = freeSaveSlot(saves); // never over another save: a slot's older copy may be a checkpoint kept on purpose
+    if (!to) {
+      useUI.getState().toast(`${m.shopName} is only in the autosave and every slot is full. Free a slot in Settings › Saves first.`, 'danger');
+      return null;
+    }
+    const r = await copySave(m.slot, to);
+    if (!r.ok) {
+      useUI.getState().toast(r.message, 'danger');
+      return null;
+    }
+    messages.push(`${m.shopName} was only in the autosave, so it was saved to ${slotLabel(to)} first.`);
+    saves = [...saves.filter((k) => k.slot !== to), { ...m, slot: to, previousOf: undefined }];
+    parked.add(m.saveId);
+  }
+  return messages;
+}
+
+/** Chunk 9 (E1): the first manual slot with no save in it, or null. */
+export function freeSaveSlot(saves: SaveMeta[]): string | null {
+  const taken = new Set(saves.filter((m) => !m.previousOf).map((m) => m.slot));
+  return SAVE_SLOTS.find((s) => s !== 'auto' && !taken.has(s)) ?? null;
+}
+
 export async function deleteSlot(slot: string): Promise<void> {
   try {
     await deleteSave(slot);
@@ -127,9 +208,9 @@ export function exportCurrent(): boolean {
 }
 
 /** Import an exported file into `slot`. Returns a friendly error on failure. */
-export async function importFile(file: File, slot: string): Promise<{ ok: boolean; error?: string }> {
+export async function importFile(file: File, slot: string, opts: SaveGameOptions = {}): Promise<{ ok: boolean; error?: string }> {
   try {
-    const r = await importSaveFile(file, slot);
+    const r = await importSaveFile(file, slot, opts);
     return r.ok ? { ok: true } : { ok: false, error: r.error ?? 'That file is not an Aquarium Go save.' };
   } catch (e) {
     console.warn('[ui] import failed', e);

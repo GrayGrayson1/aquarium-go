@@ -6,18 +6,21 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 
 ## Next step
 
-1. **0.5.4 is released** (2026-10-18, ADR-0037 decision 2): ADR-0036's three changes and G1's (the Water room's limits
-   and the rare-variant kinds pinned to the save format), on GitHub Pages and Render (see "Releases").
-2. **Chunks 7 and 8 are done on `next`, not released.** Chunk 7, hardening for multiplayer (2026-10-18, `7b98be8`,
+1. **0.5.5 is released** (2026-10-19, ADR-0042 decision 6): chunks 7 and 8, on GitHub Pages and Render (see
+   "Releases"). Aquarium Go online is live for people with an invite.
+2. **Chunks 7 and 8 are done and released (0.5.5).** Chunk 7, hardening for multiplayer (2026-10-18, `7b98be8`,
    `06f80f8`). **Chunk 8, multiplayer stage 1** for people the owner knows (2026-10-19, `ee4998e` to `53cd7bf`; built
    by Marshall; ADR-0038 to ADR-0042): accounts by invite code, one online save, Social on the live Supabase project
-   (ref `zkavcxrsxdgdlstravpj`, the Free organization "Aquarium Go"). Next: **the release (the owner's call)**, then
-   the owner signs up with the first club's link and, with the owner's yes, the owner flag is set (ARCHITECTURE.md's
-   runbook). `docs/agent/SESSION_HANDOFF.md` has the order of work.
-3. **Released:** 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   (ref `zkavcxrsxdgdlstravpj`, the Free organization "Aquarium Go"). The owner's account is set (2026-10-19, with the
+   owner's yes: the only `is_owner`, and the first club's `created_by`; ARCHITECTURE.md's runbook);
+   `docs/agent/SESSION_HANDOFF.md` has the order of work. Stage 2 (before strangers join) needs its own record.
+3. **0.5.6 (chunk 9), the audit's five high findings, is released** (2026-10-20; ADR-0044; see "Releases"). Next:
+   the audit's other findings with the owner (B-207, B-208), or **shared shops**: a separate shop a club plays together, live, up to 10 at once, run by a small server on
+   Render (free first, "with plans to expand"); no design or chunk yet (ADR-0043 lists what the design must cover).
+4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-4. Every owner question is answered (ADR-0024 to ADR-0042) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+5. Every owner question is answered (ADR-0024 to ADR-0044) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
    owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
@@ -33,10 +36,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 4 | Production lines | Done 2026-10-14 (not released). Its full run (`ab03ff1`): typecheck, unit 2,302, build, e2e 93 of 93; the reviewer's 8 blockers fixed (`a342098`) and its confirmation pass's one more (`ab03ff1`) |
 | 5 | Deep automation (S3-D) | Done 2026-10-14 (not released). Its full run (`baa2234`): typecheck, unit 2,402, build, e2e 107 of 107; the reviewer's 3 blockers fixed (`0b316f1`), its confirmation passes' one each (`d917bdd`, `6a36439`), and its third pass's first note (`baa2234`) |
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
-| 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (not released). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
-| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (not released). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
+| 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
+| 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
+| 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
 
-**Last full test runs:** chunk 8's final commit `53cd7bf`, the owner's Mac, 2026-10-19, from the internal-disk clone,
+**Last full test runs:** chunk 9's final commit `9266584`, the owner's Mac, 2026-10-20, from the internal-disk clone,
+twice in a row under `caffeinate -i -s`: typecheck passed; unit 236 files, 2,868 tests passed; build passed; e2e 311 of
+311 in Chromium and WebKit, dev and both production builds (35.7 and 35.6 minutes). Before them, the same four checks
+on `c51a7f1` (unit 2,851, e2e 311 of 311) and `827eacd` (unit 2,858, e2e 311 of 311), both green, each superseded by
+the review's fixes; passes on `b5d169f`, `34292ff` and `f98c986` were stopped part-way when the next fix landed.
+Before chunk 9: chunk 8's final commit `53cd7bf`, the owner's Mac, 2026-10-19, from the internal-disk clone,
 twice in a row under `caffeinate -i -s` (passes 3 and 4): typecheck passed; unit 235 files, 2,828 tests passed; build
 passed; e2e 307 of 307 in Chromium and WebKit, dev and both production builds (35.7 and 35.2 minutes). Before them:
 pass 1 on `6f5f724` (302 of 307: six Settings tabs and Social's re-ask, both chunk 8 effects then fixed, and one
@@ -640,6 +649,57 @@ REL-012, REL-018.
   the game shows its network message and keeps the link's code in the sign-up form); and the brake's lock is tried, not
   waited for, so a flood can't queue calls that each hold a connection.
 
+### 9. 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) — started 2026-10-19 (Chase)
+
+- **What:** fix the five high findings of the audit of `c7c0d34` (2026-10-19; a private report, so security details
+  stay out of this public repo until fixed), with the owner's answers in ADR-0044. The chunk starts at `42effca`.
+  - **A1 (REL-034):** a read-only call to the invite lookup skipped the brake on wrong codes; the friend-code lookup had
+    the same gap. A new migration answers every read-only call with the brake's answer; the local database check and
+    the smoke test gain read-only cases. The three clubs keep their codes (ADR-0044 decision 3).
+  - **B2 (REL-035):** the game follows sign-in changes from other tabs (`onAuthStateChange` and the session's `storage`
+    event), and the save functions take the account the game believes is signed in and refuse any other.
+  - **D1 (REL-036):** tank-sale bonuses apply to the animals and living plants only; hardscape at its base price; a
+    loop test at several sizes (ADR-0044 decision 1). Prices players see change on purpose.
+  - **E1, G1 (REL-037):** a newer copy of the same aquarium is never dropped silently: an older copy written over it
+    keeps it, listed, under a new identity (as the online save's kept copy does); Load offers "Save to Slot N & load"
+    for the same aquarium; Replace says when the slot holds a later copy; Import into a slot that holds a save asks
+    first; both say when the listed previous copy goes. The approved strings are ADR-0044's.
+  - **B1 (REL-038):** Load online save never pushes out an aquarium kept only in the autosave: it saves it to a free
+    slot first, or loads nothing when every slot is full (ADR-0044's two messages).
+- **Live database:** the owner's yes (ADR-0044 decision 2): the local check (`scripts/online-db-local/run.sh`), then
+  `supabase db query --linked --project-ref zkavcxrsxdgdlstravpj -f <file>`, the advisors (no issues), the smoke test.
+- **Not in this chunk:** the audit's other 111 findings (BACKLOG.md's audit row), decisions A4, F5, F3, G2, A6.
+- **Done when:** the four checks pass twice in a row on the final code; one fresh reviewer (Opus 5.5, max effort) reads
+  this brief, ADR-0044 and `git diff 42effca..HEAD`, and its blockers are fixed; the live smoke test passes; PLAN.md,
+  the requirements and the docs say what changed; `next` pushed. Releasing 0.5.6 is the owner's call.
+- **Built** (2026-10-19, Chase): `3a0f314` D1; `7373225` A1 and B2 (the fifth migration, applied live with the owner's
+  yes, the advisors with no database issues); `c51a7f1` E1, G1 and B1; `56e0215` the review's fixes; `827eacd` the
+  release step (0.5.6, the owner's "release when green", ADR-0044 decision 5). The live smoke test: 91 of 91.
+- **The fresh review** (Opus 5.5, max effort) on `42effca..c51a7f1`: the migration, A1/B2's client, D1's arithmetic and
+  the six approved strings sound; four blockers, all in the save paths, each shown by a probe and fixed in `56e0215`
+  with tests that fail without them: a kept-copy save skipped the stale-tab guard (`staleAs`); Load online save
+  dropped a kept copy of the same aquarium further along than both (and the audit's B7 in that case; a second Load
+  can still replace a first's kept copy that is behind, which goes as a switch does); the page-close copy moved into
+  IndexedDB on boot pushed the further copy out (`migrateSlot`); with autosave off, Load saved nothing first. Its notes
+  fixed too: supabase-js no longer loads at boot (the auth events attach on the first real call), the account
+  re-checked during Load online save, a storage clear counts as a sign-out, three small ones, and the smoke test's
+  roll-back check. For the owner (KNOWN_LIMITATIONS, ADR-0044): Load's line for a Previous autosave it replaces, the
+  wording for loading a later copy, the valuation breakdown's rows, D1's extensions (rarity, lineage, a buyer's
+  taste) and its sales near cost.
+- **Its confirmation passes:** the first (`c51a7f1..827eacd`) confirmed the four closed and found three more save paths
+  (present since `c51a7f1`), fixed in `b5d169f`: Load online save's progress check now covers a copy with the device's
+  own identity; Settings' Load first saves a further copy of the aquarium kept only in the autosave to a free slot, with
+  B1's messages (the owner's yes, ADR-0044 decision 6); those messages show after the load. The second
+  (`827eacd..b5d169f`) confirmed them and found one more, fixed next: Settings' Load read its slot after its own save
+  had written it, so "Previous autosave" loaded right after a title-screen load gave another save; Load now reads first.
+  The last (`b5d169f..34292ff`) found that reading first cleared a stale tab's refusal, so the stale banner's "load the
+  newer copy" pushed out another aquarium's "Previous autosave": a stale tab saves nothing first again, and a load
+  saves again at once only after its own save-first (a title or Continue load writes nothing, as before). The final
+  one (`34292ff..f98c986`) found that this skipped keeping a further copy in a stale tab: that step runs in a stale tab
+  too now; only the save-first waits on the stale flag.
+  Left for the owner: whether Settings' Load should also keep another aquarium kept only in the autosave (as 0.5.5,
+  it goes; KNOWN_LIMITATIONS).
+
 ## Releases
 
 `main` is what players get: a push to `main` deploys GitHub Pages. Render doesn't build on a push, though
@@ -682,6 +742,14 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   first, B-193; GitHub notes that `deploy-pages@v4` runs on a deprecated Node 20 and that `ubuntu-latest` moves to
   Ubuntu 26 from 2026-10-19: `deploy.yml` is a core file, left for the owner); Render by hand
   (`dep-db8o0s7f3r2c73eplvm0`). Both `version.json` files read `{"id":"382a637-…","version":"0.5.3"}`.
+- **0.5.5, released 2026-10-19** at the owner's go-ahead in the session (ADR-0042 decisions 5 and 6: "yes change it to
+  FRIENDS-KDWX, release when green", then "0.5.5 is fine, go ahead if we're ready"): chunks 7 and 8. The release
+  commit `1f19426` (version, CHANGELOG, the "Have an invite?" example) passed typecheck, unit 2,828 and build, and e2e
+  306 of 307: social.spec's skeleton test missed its transient rows in WebKit (a known race), fixed on purpose in
+  `82ef975` (a MutationObserver records them), which passed the four checks in full (typecheck; unit 2,828; build;
+  e2e 307 of 307, Chromium and WebKit, 36.3 min). Merged as `9ae98b3` (its tree is `82ef975`'s) and pushed from the
+  internal-disk clone with `next`. Pages deployed `9ae98b3` by itself (its run tests first); Render by hand
+  (`dep-dbb8u8jl550s73fstvcg`). Both `version.json` files read `{"id":"9ae98b3-…","version":"0.5.5"}`.
 - **0.5.4, released 2026-10-18** at the owner's go-ahead in the session (ADR-0037 decision 2, "Bundle with G1
   (Recommended)": one full test pass, then GitHub Pages and Render): ADR-0036's three changes and G1's. The four checks
   passed on the release commit `97da6bc` (typecheck; unit 227 files, 2,702 tests; build; e2e 289 of 289, Chromium and
@@ -701,6 +769,12 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   wrapper is deferred (ADR-0001). Multiplayer starts with people the owner knows, after chunk 7's hardening (ADR-0037):
   stage 1 on a free Supabase project, sign-up by invite code, no emails, `@supabase/supabase-js` (ADR-0038). Stage 2
   (before strangers join) needs its own record.
+- Shared shops (ADR-0043), after 0.5.6: a whole shop a club plays together, separate from each player's own game
+  (nothing carries over); one per club, created by the owner for now; club members join, up to 10 at once; a small
+  server runs it, on Render (free first; paid only with the owner's yes), and the game should run on a server
+  eventually; pause and speed for the creator and the people the creator chooses; at first every member does
+  everything else, with permission tiers later (a group money pool, requests, allowances, one-off grants); empty, it
+  pauses and catches up at most 12 game hours on return.
 - Automation goes deep (ADR-0001, option C): more than Auto-feed and Auto-clean.
 - The Auto Water Changer shares the Autofeeder unlock. Quiet hours are fixed at 10 PM to 8 AM, with a switch to turn
   them off (0.5 spec §12.3). One-copy Metallic is unnamed, with a subtle sheen. Locked destinations open a locked

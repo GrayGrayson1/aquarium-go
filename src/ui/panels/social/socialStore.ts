@@ -35,16 +35,25 @@ export const useSocial = create<SocialState>(() => ({ user: undefined, offline: 
  */
 export async function loadSocialUser(force = false): Promise<void> {
   if (!force && useSocial.getState().user !== undefined) return;
+  const seq = ++userSeq;
   try {
     const user = await socialService().currentUser();
+    if (seq !== userSeq) return; // a newer answer (or a sign-in or sign-out here) came first: it stands
     useSocial.setState({ user, offline: false });
   } catch (e) {
+    if (seq !== userSeq) return;
     const network = isSocialError(e) && e.code === 'network';
     useSocial.setState((s) => ({ user: network && s.user ? s.user : null, offline: network }));
   }
 }
 
-export const setSocialUser = (user: SocialUser | null): void => useSocial.setState({ user, offline: false });
+/** Chunk 9 (B2, the audit's C7): each ask of who is signed in, so an older answer never overwrites a newer one. */
+let userSeq = 0;
+
+export const setSocialUser = (user: SocialUser | null): void => {
+  userSeq++;
+  useSocial.setState({ user, offline: false });
+};
 
 /** Re-read what's new (the Social dot); quiet on failure. */
 export async function refreshSocialNews(): Promise<void> {

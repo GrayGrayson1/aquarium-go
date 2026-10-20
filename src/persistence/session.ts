@@ -4,7 +4,7 @@
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { flushSimDebt } from '@/sim/world';
-import { saveGame, saveGameSync, parseSlotRef } from './slots';
+import { saveGame, saveGameSync, parseSlotRef, keptSaveId } from './slots';
 import { useResume } from './offline';
 import { mutateFast } from '@/game/fastMutate';
 import type { GameState } from '@/types';
@@ -26,6 +26,11 @@ export interface SaveCurrentOptions {
   flush?: boolean;
   /** Toast the outcome (default false — autosave is silent; the Settings "Save" button passes true). */
   toast?: boolean;
+  /**
+   * Chunk 9 (E1, B1): save it as a kept copy (a new identity), so once another copy of this aquarium is written over it
+   * it is listed as "Previous …" (loading an earlier copy, Load online save). The game on screen keeps its identity.
+   */
+  asKept?: boolean;
 }
 
 /** Save the game currently in the store. Showcase worlds are skipped. */
@@ -45,8 +50,9 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
   }
   const g = useGame.getState().game;
   if (!g) return { ok: false, slot, message: 'No game running.' };
-  const res = await saveGame(stateForSaving(g), slot);
-  if (res.ok) {
+  const st = stateForSaving(g);
+  const res = await saveGame(opts.asKept ? { ...st, saveId: keptSaveId(st.saveId) } : st, slot, opts.asKept ? { staleAs: st.saveId } : {});
+  if (res.ok && !opts.asKept) {
     // Record the save time in the live state too (not a sim change; keeps "last saved" displays honest).
     useGame.getState().mutate((d) => {
       d.lastSavedRealMs = Date.now();

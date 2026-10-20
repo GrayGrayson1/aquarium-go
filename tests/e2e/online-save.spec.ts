@@ -5,7 +5,8 @@
  * opens "A newer save is online" and Load makes it the game, this device's copy kept as "Previous autosave"; both
  * changed → Keep this device's puts this device's copy online; a different aquarium has its own title; a newer build's
  * online save blocks sending and the Account line says so; Account signed out and in, Sign out, and Delete my account
- * (the stub is cleared, the game stays). No test here reaches a real server (VITE_SOCIAL_STUB, REL-025).
+ * (the stub is cleared, the game stays). No test here reaches a real server (VITE_SOCIAL_STUB, REL-025). Chunk 9 (B2,
+ * REL-035): a second tab hears of a sign-out and a sign-in as someone else in the first, without a reload.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, quickGame, aq, tid, collectErrors } from './helpers';
@@ -201,5 +202,32 @@ test.describe('Settings › Account (the stub)', () => {
     await expect(tid(page, 'hud-money')).toBeVisible();
     expect(await page.evaluate(() => (window as unknown as { __AQ: { summary(): { hasGame: boolean } } }).__AQ.summary().hasGame)).toBe(true);
     expect(errors).toEqual([]);
+  });
+});
+
+test.describe('chunk 9 (B2, REL-035): two tabs, one device', () => {
+  test('signing out and in as someone else in one tab: the other tab follows, without a reload', async ({ page, context }) => {
+    const errors = collectErrors(page);
+    await openApp(page);
+    await quickGame(page, 'betta');
+    await aq(page, 'autosave');
+    await signIn(page, 'you@example.com');
+    const other = await context.newPage();
+    const otherErrors = collectErrors(other);
+    await openApp(other);
+    expect((await aq<{ ok: boolean }>(other, 'continueGame')).ok).toBe(true); // a second tab on the same aquarium
+    await expect(tid(other, 'hud-money')).toBeVisible();
+    await go(other, '#/settings/account');
+    await expect(tid(other, 'account-who')).toHaveText('Signed in as you@example.com');
+
+    // tab 1: Sign out, then sign in as someone else
+    await go(page, '#/settings/account');
+    await tid(page, 'account-signout').click();
+    await expect(tid(page, 'account-signed-out')).toBeVisible();
+    await expect(tid(other, 'account-signed-out')).toBeVisible(); // tab 2 heard the sign-out
+    await signIn(page, 'kim@example.com');
+    await expect(tid(other, 'account-who')).toHaveText('Signed in as kim@example.com'); // and who is signed in now
+    expect(errors).toEqual([]);
+    expect(otherErrors).toEqual([]);
   });
 });

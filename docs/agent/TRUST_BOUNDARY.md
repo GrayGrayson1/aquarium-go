@@ -110,7 +110,9 @@ check, and stage 2 must, before anyone the owner doesn't know joins:
   stops answering everyone after 100 wrong codes in 10 minutes (one brake, no addresses kept; it answers "braked",
   the same for every code, and the game shows its network message with sign-up still open; anyone can hold it with
   a trickle of wrong codes: stage 2 wants per-caller limits). Invite codes are the club's word and four letters
-  (ADR-0042). The other functions have none: a signed-in player could call them
+  (ADR-0042). Since chunk 9 (the audit's A1) a read-only call (the API runs a GET that way), which couldn't count a
+  wrong code, gets the brake's answer for every code, and `add_friend` answers it the same for a right and a wrong
+  friend code. The other functions have none: a signed-in player could call them
   as fast as they like, and could try friend codes (NAME-XXX, 32,768 per visible name) through `add_friend` to send
   requests. Stage 2: per-account limits.
 - **Joining clubs.** Anyone signed in may join any club; the invite code gates only sign-up.

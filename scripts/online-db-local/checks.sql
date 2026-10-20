@@ -44,6 +44,18 @@ select * from public.clubs;
 insert into public.profiles (id, display_name, friend_code) values (gen_random_uuid(), 'x', 'X-AAA');
 \echo CASE ok anon-resolve
 select public.resolve_invite(:'invite_code');
+-- chunk 9 (A1): a read-only call (an API GET) learns nothing: the brake's answer for the right code and a wrong one, and
+-- nothing counted
+\echo CASE ok anon-readonly-right
+begin read only;
+select case when public.resolve_invite(:'invite_code') = '{"braked": true}'::jsonb then 'braked' else (1 / (random() * 0)::int)::text end;
+commit;
+\echo CASE ok anon-readonly-wrong
+begin read only;
+select case when public.resolve_invite('NOPE-ZZZZ') = '{"braked": true}'::jsonb then 'braked, the same' else (1 / (random() * 0)::int)::text end;
+commit;
+\echo CASE ok anon-readonly-still-answers
+select case when public.resolve_invite(:'invite_code') ? 'club' then 'answered' else (1 / (random() * 0)::int)::text end;
 -- 100 wrong codes in 10 minutes, from anyone, then even the right one gets no answer, from anywhere (no addresses kept)
 select set_config('request.headers', '{"x-forwarded-for": "203.0.113.7"}', false) \g /dev/null
 select count(public.resolve_invite('GUESS-' || n)) from generate_series(1, 100) as n \g /dev/null
@@ -67,6 +79,10 @@ select * from public.invite_misses;
 select public.me();
 \echo CASE denied anon-put-save
 select public.put_save(0, 'x', 1, 0, 0, 'x', 1, 0, 'json', '{}');
+\echo CASE denied anon-put-save-for
+select public.put_save_for(gen_random_uuid(), 0, 'x', 1, 0, 0, 'x', 1, 0, 'json', '{}');
+\echo CASE denied anon-meta-for
+select public.save_meta_for(gen_random_uuid());
 \echo CASE denied anon-helper
 select public.require_uid();
 \echo CASE denied anon-delete
@@ -102,8 +118,51 @@ select public.put_save(2, 'save_other', 7, 1000, 12.5, 'Other', 1, 100, 'json', 
 select public.put_save(3, 'save_other', 7, 1000, 12.5, 'Other', 1, 100, 'json', repeat('x', 4000001));
 \echo CASE ok a-get
 select public.get_save();
+-- chunk 9 (B2): the save functions for the account the game believes is signed in
+\echo CASE ok a-meta-for-self
+select case when (public.save_meta_for(:'a_id') ->> 'revision')::int = 3 then 'revision 3' else (1 / (random() * 0)::int)::text end;
+\echo CASE err a-meta-for-other
+select public.save_meta_for(:'b_id');
+\echo CASE err a-meta-for-null
+select public.save_meta_for(null);
+\echo CASE ok a-get-for-self
+select case when public.get_save_for(:'a_id') ? 'body' then 'body' else (1 / (random() * 0)::int)::text end;
+\echo CASE err a-get-for-other
+select public.get_save_for(:'b_id');
+\echo CASE err a-put-for-other
+select public.put_save_for(:'b_id', 0, 'save_x', 7, 1000, 12.5, 'X', 1, 100, 'json', '{"x":1}');
+\echo CASE ok a-put-for-other-wrote-nothing
+reset role;
+select case when not exists (select 1 from public.saves where user_id = :'b_id') then 'nothing for B' else (1 / (random() * 0)::int)::text end;
+set role authenticated;
+select set_config('request.jwt.claim.sub', :'a_id', false) \g /dev/null
+\echo CASE ok a-put-for-self
+select case when (public.put_save_for(:'a_id', 3, 'save_other', 7, 1000, 13, 'Other', 1, 100, 'json', '{"o":2}') ->> 'ok')::boolean then 'ok' else (1 / (random() * 0)::int)::text end;
 \echo CASE err a-add-self
 select public.add_friend(:'a_friend_code');
+-- chunk 9 (A1): read-only, a right friend code and a wrong one get the same answer
+select set_config('aq.right_code', :'b_friend_code', false) \g /dev/null
+\echo CASE ok a-readonly-add-same-answer
+begin read only;
+do $$
+declare
+  r text;
+  w text;
+begin
+  begin
+    perform public.add_friend(current_setting('aq.right_code'));
+  exception when others then r := sqlerrm;
+  end;
+  begin
+    perform public.add_friend('NOPE-ZZZ');
+  exception when others then w := sqlerrm;
+  end;
+  if r is distinct from w then
+    raise exception 'different answers: % / %', r, w;
+  end if;
+end;
+$$;
+commit;
 \echo CASE ok a-add-b
 select public.add_friend(lower(:'b_friend_code'));
 \echo CASE err a-create-club

@@ -102,6 +102,51 @@ test.describe('save / load / settings', () => {
     await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Game saved' }).first()).toBeVisible();
   });
 
+  test('chunk 9 (E1, G1; REL-037): the save dialogs say what is kept, in ADR-0044’s words, and it is', async ({ page }) => {
+    type Meta = { slot: string; day: number; previousOf?: string; saveId?: string };
+    await openApp(page);
+    await quickGame(page, 'betta');
+    await aq(page, 'save', 'slot1'); // day 1
+    await aq(page, 'advance', 30);
+    await aq(page, 'save', 'slot2'); // day 2
+    const row = (label: string) => page.locator('.ag-saverow', { has: page.locator('.ag-saverow__slot', { hasText: new RegExp(`^${label}$`) }) });
+    const openSaves = async () => {
+      await openPanel(page, 'settings');
+      await tid(page, 'settings-tab-saves').click();
+    };
+
+    // Load an earlier copy of the aquarium on screen: the current progress stays listed, and a slot is offered
+    await openSaves();
+    await row('Slot 1').getByRole('button', { name: 'Load' }).click();
+    await expect(tid(page, 'load-confirm')).toContainText('This is an earlier copy of the aquarium you are playing. Your current progress (Day 2) stays listed as “Previous autosave” until you switch again.');
+    await expect(tid(page, 'load-confirm-park')).toHaveText('Save to Slot 3 & load');
+    await tid(page, 'load-confirm-load').click();
+    await expect.poll(() => probe<number>(page, 'g.clock.hour')).toBeLessThan(24);
+    await aq(page, 'autosave');
+    await aq(page, 'autosave');
+    expect((await aq<Meta[]>(page, 'listSaves')).find((m) => m.previousOf === 'auto')?.day).toBe(2);
+
+    // Replace a slot that holds a later copy: it says so, and the later copy is listed beneath the slot
+    await openSaves();
+    await tid(page, 'save-overwrite-slot2').click();
+    await expect(tid(page, 'overwrite-confirm')).toContainText('It holds a later copy (Day 2) than the one you are playing (Day 1). The later copy stays listed as “Previous copy of Slot 2”, so this can be undone.');
+    await tid(page, 'overwrite-confirm-replace').click();
+    await expect(row('Previous copy of Slot 2')).toBeVisible();
+
+    // Import into a slot that holds a save: it asks first, and says the listed previous copy goes
+    const text = await aq<string>(page, 'exportText');
+    await page.getByRole('radiogroup', { name: 'Import slot' }).getByRole('radio', { name: '#2' }).click();
+    await page.locator('input[type="file"]').setInputFiles({ name: 'aquarium.json', mimeType: 'application/json', buffer: Buffer.from(text) });
+    const imp = tid(page, 'import-confirm');
+    await expect(imp).toContainText('Replace Slot 2?');
+    await expect(imp).toContainText('It will be replaced with the imported save. The old copy stays listed as “Previous copy of Slot 2”, so this can be undone. “Previous copy of Slot 2” (');
+    await expect(imp).toContainText(', Day 2) is deleted.');
+    await tid(page, 'import-confirm-replace').click();
+    await expect(page.locator('[data-testid="toast"]').filter({ hasText: 'Imported into Slot 2.' }).first()).toBeVisible();
+    const saves = await aq<Meta[]>(page, 'listSaves');
+    expect(saves.find((m) => m.previousOf === 'slot2')?.day).toBe(1); // what the import replaced, kept
+  });
+
   test('export → import roundtrip in the browser', async ({ page }) => {
     await openApp(page);
     await quickGame(page, 'lined_seahorse');
