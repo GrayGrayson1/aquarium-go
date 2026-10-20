@@ -742,6 +742,14 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   first, B-193; GitHub notes that `deploy-pages@v4` runs on a deprecated Node 20 and that `ubuntu-latest` moves to
   Ubuntu 26 from 2026-10-19: `deploy.yml` is a core file, left for the owner); Render by hand
   (`dep-db8o0s7f3r2c73eplvm0`). Both `version.json` files read `{"id":"382a637-…","version":"0.5.3"}`.
+- **0.5.6, released 2026-10-20** at the owner's go-ahead in the session (ADR-0044 decision 5, "release when green"):
+  chunk 9, the audit of 0.5.5's five high findings. The release commit `827eacd` (version, CHANGELOG) was followed by
+  the review's confirmation fixes; two full passes in a row on `9266584` (typecheck; unit 236 files, 2,868 tests;
+  build; e2e 311 of 311, Chromium and WebKit, 35.7 and 35.6 min), then a docs-only commit `4c7f7a6`. Merged as
+  `3a0e8ce` (its tree is `4c7f7a6`'s) and pushed from the internal-disk clone with `next`. The Supabase migration was
+  applied before the release (the old functions stay for 0.5.5 tabs until they reload). Pages deployed `3a0e8ce` by
+  itself (its run tests first); Render by hand (`dep-dbbhqbjncjis738q3e4g`). Both `version.json` files read
+  `{"id":"3a0e8ce-…","version":"0.5.6"}` (Render's after a cache-busting read).
 - **0.5.5, released 2026-10-19** at the owner's go-ahead in the session (ADR-0042 decisions 5 and 6: "yes change it to
   FRIENDS-KDWX, release when green", then "0.5.5 is fine, go ahead if we're ready"): chunks 7 and 8. The release
   commit `1f19426` (version, CHANGELOG, the "Have an invite?" example) passed typecheck, unit 2,828 and build, and e2e

@@ -41,6 +41,7 @@ are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pa
 | (chunk 8's setup) | The Supabase organization's plan, the invite codes' format, the repo's visibility | 3 questions, asked as text: **answered 2026-10-19 (ADR-0042)** |
 | J (chunk 8's setup) | The "Have an invite?" field's example, now that real codes are a word and four letters | J1: **answered 2026-10-19 (ADR-0042)** |
 | (shared shops) | The owner's idea of working on the same tank: what a group shares, who runs it, who joins, pause, what members do, an empty shop, carry-over, the order, who creates one, how many per club | 12 questions in 3 rounds: **answered 2026-10-19 (ADR-0043)** |
+| (0.5.6, chunk 9) | The audit's high findings: tank-sale bonuses, the live database fix, new invite codes, the save wording; later the release go-ahead and Settings' Load using B1's messages | 4 questions, then two more: **answered 2026-10-19 and 2026-10-20 (ADR-0044)**. Left by the review for the owner (KNOWN_LIMITATIONS, B-207, B-208): Load's line for a "Previous autosave" it replaces, the wording for loading a later copy, the valuation breakdown's rows, D1's extensions, and whether Settings' Load should also keep another aquarium kept only in the autosave |
 
 ## A. Release and standing decisions
 
