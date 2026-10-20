@@ -6,7 +6,9 @@ actions (`src/ui/panels/common/act.ts`, `src/ui/common/actions.ts`, every `mutat
 (`src/persistence/hash.ts`), the online tables (`supabase/migrations`) and Render's free-plan pages, and after a probe of
 how much a shop changes per second (§2.3). Revised the same day after a fresh review (Opus at max effort, with probes in
 the internal-disk clone's `scripts/_audit/review-shared/`, git-excluded): its two blockers and thirteen major findings
-are folded in below. It turns ADR-0043 (shared shops: what, who, pause, empty, carry-over) and ADR-0045 (the server
+are folded in below, and so are its confirmation pass's one blocker (the save repair deleted photo references) and
+three majors (the step block's identity and atomicity, expectations against one's own commands, the build identity
+and release order). It turns ADR-0043 (shared shops: what, who, pause, empty, carry-over) and ADR-0045 (the server
 key, `ws`, the caps, "there", the start, your own game, activity, first one wins, the words, photos) into a build plan.
 The owner's decisions win over this file; for what the code does today, the code wins. Requirements: SHARE-001 to
 SHARE-018 (§12), added to `REQUIREMENTS.json` with each chunk's brief.
@@ -76,7 +78,8 @@ SHARE-018 (§12), added to `REQUIREMENTS.json` with each chunk's brief.
   `hypot`, `tanh`, `cbrt` and the other transcendental functions its own way, and they do. Measured on 2026-10-20
   (the review's `math-engines.mjs`, re-run by the agent): Node 22 and Chromium 153 differ in the last bit in about 10% of
   `exp` and `pow` results, 16% of `atan2` and 11% of `tanh` and `cbrt`; WebKit differs from both (38% of `hypot`).
-  Only `+ − × ÷` and `Math.sqrt` agree everywhere. `src/sim` and `src/data` use the transcendental functions widely,
+  (Two runs of the probe gave 16 to 18% for `atan2` and 8 to 11% for `cbrt`.) Only `+ − × ÷` and `Math.sqrt` agree
+  everywhere. `src/sim` and `src/data` use the transcendental functions widely,
   and the `**` operator at 16 sites (5 with fractional exponents).
 
 ### 2.2 The offline catch-up
@@ -129,21 +132,27 @@ Each rule applies to shared shops; rule 1 also changes the solo game (its number
 1. **One arithmetic everywhere (`src/sim/dmath.ts`, chunk 11, unconditional).** `exp`, `log`, `log10`, `log2`, `log1p`,
    `expm1`, `pow`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh`, `hypot` and `cbrt`
    are written with `+ − × ÷` and `Math.sqrt`, and `src/sim` and `src/data` use only them; a guard test bans the
-   `Math` versions and the `**` operator there. Every seeded test shifts in the last digits, and each changed
-   expectation says why (AGENTS.md). A cross-engine replay (Node, Chromium and WebKit replaying one step log) runs with
-   the e2e suite and must find no mismatch, since browsers update themselves.
-2. **The step block.** Every copy runs each step as one synchronous block, in this order: clear the compatibility
-   caches and `reachCache`; apply the step's commands in order; advance the step's game hours with the step's
-   full-detail list; apply the server's after-step changes (`post`); take the fingerprint if the step carries one.
-   Clearing costs about 1 to 2 ms per real second on `big_facility` (the review's `perf-cache.ts`).
+   `Math` versions and the `**` operator there. The review ran all 236 test files (2,868 tests) with its
+   pure-arithmetic shim active in every Vitest worker and they passed unchanged, so few seeded tests should shift; any
+   that do say why (AGENTS.md). A cross-engine replay (Node, Chromium and WebKit replaying one step log) runs with the
+   e2e suite and must find no mismatch, since browsers update themselves.
+2. **The step block.** One function in `src/sim` (`runSharedStep`), used by the server's worker and by `sharedLoop`
+   alike, runs each step as one synchronous block on a **working copy**, in this order: pin the world's identity (a
+   `world.ts` helper sets `lastWorld` to this copy, so no later `enterWorld` in the block clears anything) and clear
+   the compatibility caches and `reachCache`; apply the step's commands in order; advance the step's game hours with
+   the step's full-detail list; apply the server's after-step changes (`post`). On success the working copy becomes
+   the copy; if anything throws, the block is discarded whole (§5.2 item 3). Clearing costs about 1 to 2 ms per real
+   second on `big_facility` (the review's `perf-cache.ts`). The fingerprint is taken from the resulting copy: on the
+   server at once; in a browser in idle time after the step is published (`stateHash` takes about 9 ms on
+   `big_facility` on a Mac, more on a phone), and compared with the step's.
 3. **The server sizes every step:** `0.25 s × 0.1 × speed` game hours (as the loop's tick), or zero for a command's
    own step, advanced with `advanceWorld` in its usual sub-steps, whole: no 10 ms early stop, no backlog.
 4. **The server names the full-detail tanks.** `AdvanceOptions` gains `focusTankIds` (a list; `focusTankId` stays for
    solo). The list is the tanks members are looking at, at most 4 (most viewers first, then tank order). It goes in the
    `welcome`, with every snapshot, and in the first step after it changes, so a copy always knows it.
 5. **No smoothing pass** (it depends on a time budget). Background tanks flush at their usual thresholds, and after a
-   catch-up the flushes are staggered over the next steps by a rule that depends only on the state, so they don't all
-   land in one step.
+   catch-up, Hold all, Resume or Hold one the flushes are staggered over the next steps by a rule that depends only on
+   the state, so they don't all land in one step.
 6. **What the loop does outside the step, the server decides and sends.** The starvation guard moves into `src/sim`,
    with its memory held per shop (not in module variables); its slow-down goes in `post`. `lastTickRealMs` is set from
    the server's clock on the server only (it is outside the fingerprint).
@@ -155,10 +164,12 @@ Each rule applies to shared shops; rule 1 also changes the solo game (its number
    effect; one that gates a rule becomes a command.
 9. **The server runs each shop in its own worker thread** (`node:worker_threads`, built into Node), so every
    module-level cache, index and registry belongs to one shop, as on a browser.
-10. **Snapshots and saves are exact.** A shared copy holds no data URLs (photos are references, §4.4), and the server
-    checks after each save that the saved copy's fingerprint matches its live copy's; if not (`serializeState` turns
-    NaN into 0), it replaces its live copy with the saved one, sends everyone a snapshot and logs it as a bug. Keys
-    whose value is `undefined` (which a snapshot drops) are covered by the mid-run joiner tests (§9.1).
+10. **Snapshots and saves are exact.** A shared copy holds no data URLs (photos are references, §4.4). Browsers read a
+    snapshot with plain `JSON.parse` (no migration or repair: the server's copy is already repaired). Whenever the
+    server makes a snapshot or a save, it checks that the serialized copy's fingerprint matches its live copy's; if not
+    (`serializeState` turns NaN into 0), it replaces its live copy with the serialized one, sends everyone a snapshot
+    and logs it as a bug. Keys whose value is `undefined` (which a snapshot drops) are covered by the mid-run joiner
+    tests (§9.1). The server repairs a shop only when it loads it from the database (a wake), before anyone has it.
 11. **The "shared" mark lives outside `GameState`** (in the shared-shop store), so it never enters a fingerprint.
 
 ### 3.3 Messages
@@ -179,15 +190,17 @@ Browser to server:
 | `{t:'token', token}` | A refreshed access token (Supabase refreshes hourly); refused unless it names the same player |
 | `{t:'resync'}` | My fingerprint differs: send the shop again |
 | `{t:'grant', user, pause}` | The owner gives or takes pause and speed (§5.4) |
+| `{t:'photo', hash}` | Send me this listing photo (§4.4) |
 
 Server to browser:
 
 | Message | Meaning |
 |---|---|
 | `{t:'welcome', you, members, n, full, catchUp?}` then a snapshot frame | Joined: who I am and may do, who's there, the step number the snapshot is at, the full-detail list, and the welcome-back summary if the shop just caught up |
-| `{t:'steps', s:[{n, h, full?, cmds?, post?, fp?}]}` | Steps in order. A command's zero-hour step goes out at once; others are batched about once a second |
+| `{t:'steps', s:[{n, h, full?, cmds?, post?, fp?}]}` | Steps in order. Command steps go out within about 50 to 100 ms (several commands in that window share a frame to each member); time steps are batched about once a second |
+| a binary photo frame | A requested photo: its hash, then the image |
 | `{t:'reject', id, why}` | Your command wasn't applied: not allowed (pause without permission), malformed, rate-limited, or it threw on the server (§5.2). A command the game refuses by its rules (no money, already sold) is applied as usual, so every copy gets the same refusal and the sender's own copy says why (§4.3) |
-| `{t:'members', members}` | Who's there, who can pause, what each is looking at; at most one a second |
+| `{t:'members', members}` | Who's there and who can pause (not what each is looking at, which no screen shows); at most one a second |
 | `{t:'closing', why}` | The server is closing this connection: `cap`, `hours`, `full`, `build`, `updating`, `removed`, `elsewhere`, `fault`, `restart`, `outofstep` (§8) |
 
 ## 4. Commands: player actions as data
@@ -233,11 +246,15 @@ Server to browser:
   actions. An action that emits no event today gets one line, on every copy, also tagged. The alerts line is the
   event's own message with the name in front (ADR-0045 decision 11).
 - **First one wins** (decision 8). The game's rules don't refuse most second actions by themselves (`moveCreature`
-  doesn't check where the animal is now; two feeds both apply; settings are last-writer-wins), so **each command
-  carries what its sender saw**: the animal's tank for a move, the offer's, listing's or bid's state, a setting's
-  previous value. A command whose expectation no longer holds is refused on every copy, and when another member's
-  command in the last 30 seconds touched the same thing, the message names them ("Sam already sold that fish.",
-  "Sam already moved that fish."). Each copy keeps that short memory from the steps, so every copy says the same.
+  doesn't check where the animal is now; two feeds both apply), so **buying, selling, moving and taking carry what
+  their sender saw**: the animal's tank for a move, the offer's, listing's or bid's state. A command whose expectation
+  no longer holds is refused on every copy, and the message names the member whose command changed it in the last 30
+  seconds ("Sam already sold that fish.", "Sam already moved that fish."). An expectation ignores changes made by the
+  same sender's own earlier commands (two quick moves of one fish both work). Each copy keeps that short memory of who
+  touched what from the steps, so every copy decides and says the same.
+- **Settings are last-writer-wins** (a slider, a light schedule, a budget): no expectation, so a coalesced control's
+  later values never refuse its earlier ones; when another member changed the same setting in the last 30 seconds, the
+  sender's screen notes it with the same "{name} already …" line.
 - **Flags that rules read become rules:** `hireStaff` raises `hired_staff` itself, and so on for each `{flag}` an
   action passes. Panels' `opened_<panel>` flags, which gate quests and unlocks, become one command (`openedPanel`); the
   server forwards only the first for each flag, so ten members opening the market send one. The guide's own steps don't
@@ -247,12 +264,23 @@ Server to browser:
 
 - In a shared shop a listing photo is taken as today, then shrunk to about 320 pixels wide (WebP where the browser
   supports it, else JPEG, roughly 10 to 20 KB) and sent with `createListing` (that one command may be up to 48 KB).
-- The server stores it once (`shared_photos`, §6.1), keyed by its content's hash, and puts a reference (`p:<hash>`)
-  in the command it forwards, so every copy, the sender's too, holds the reference, never the picture, and the photo's
-  usual boost applies as today (the rules read only that a photo exists). Browsers show it from the server
-  (`GET /photo/<club>/<hash>`, cacheable forever) and fetch it only when it's on screen.
-- When the game prunes a listing's photo (the closed listings keep only the newest few), the server deletes the stored
-  picture at its next save if nothing refers to it.
+- The server checks the image (its first bytes must be a WebP or JPEG; Safari's canvas can hand back a PNG when asked
+  for WebP, so the browser checks what it got and falls back to JPEG), limits each member to about 6 photo listings a
+  minute, stores it once (`shared_photos`, §6.1), keyed by its content's hash, and puts a reference (`p:<hash>`, the
+  hash's exact format) in the command it forwards. So every copy, the sender's too, holds the reference, never the
+  picture, and the photo's usual boost applies as today: the rules read only that a photo exists (the appeal, the
+  tips and the pruning, `listings.ts`).
+- **`repairState` accepts the reference.** Today it deletes any listing photo that isn't a `data:image/` string
+  (`migrations.ts`, PERSIST-004: anything else would reach `<img src>`, the only way a save could make the game fetch a
+  remote URL), which would strip every reference at each wake. It gains exactly one more accepted form, `p:` followed
+  by the hash's format, and nothing else (a core-file change named in chunk 12's brief). The interface never puts a
+  reference in `<img src>`: `Listings.tsx`, the only reader, builds the picture from a blob it fetched itself.
+- **Browsers fetch a photo over the WebSocket** (`{t:'photo', hash}`, answered with a binary frame), only when it's on
+  screen, and keep it for the session; there is no public photo address, so a leaked link can't spend the data cap.
+  Until its database write lands, the server serves a new photo from memory.
+- **Pruning:** when the game prunes a listing's photo (the closed listings keep only the newest few), the stored
+  picture is deleted only after a save that no longer refers to it has been written, by a scan of every stored photo
+  against the saved copy (which also removes photos from listings that were refused).
 
 ## 5. The server
 
@@ -267,19 +295,26 @@ Server to browser:
 - **`ws` 8.22.0** (ADR-0045 decision 2) is its only dependency, installed with chunk 10's test server; the few types it
   needs are declared in `server/ws.d.ts` (no `@types/ws`). Its `maxPayload` is set to 48 KB (the default is 100 MiB).
   Database calls use Node's `fetch` with the server's key; gzip uses `node:zlib`.
-- **Files:** `main.ts` (HTTP: `/health` with CORS for the game's sites, `/photo/…`; the WebSocket upgrade at `/shop`;
+- **Files:** `main.ts` (HTTP: `/health` with CORS for the game's sites; the WebSocket upgrade at `/shop`;
   the origin check; SIGTERM saves every room), `room.ts` (one shop's worker: its copy, steps and members),
   `rooms.ts` (the workers), `auth.ts` (the token check), `store.ts` (the database calls), `usage.ts` (the meters),
   `config.ts` (environment), `stub.ts` (in-memory storage and accounts for tests and dev: `SHOPS_STUB=1`).
-- **The build's identity** is a hash of the simulation's sources (`src/sim`, `src/data`, `src/types`), the
-  `SCHEMA_VERSION` and a protocol number, stamped by a Vite plugin into both the game and the server. Builds that differ
-  only elsewhere (the interface, the docs, a server-only fix) still play together. A browser whose identity differs from
-  the server's is told to reload when the server is newer (`build`) and to try again later when the server is older
-  (`updating`, while a deploy is in flight).
-- **Releases deploy the server first,** then the static sites. Pages deploys on every push to `main` and the Render
-  static site has `autoDeploy: true`, so the server goes out before `main` moves (chunk 12 writes the steps into
-  PLAN.md's release procedure). Adding the service to `render.yaml` could create it on a Blueprint sync; chunk 10 checks
-  how this workspace's Blueprint syncs before adding it.
+- **The build's identity** has two parts, stamped by a Vite plugin into both the game and the server:
+  - a **hash** of everything every copy runs to stay in step: `src/sim`, `src/data` and `src/types` (inside a step the
+    simulation imports nothing else but `@/persistence/schema`), `src/persistence/hash.ts`, `serialize.ts`,
+    `migrations.ts` and `schema.ts` (the fingerprint and the server's repair), and the protocol's message code; files in
+    a fixed order with normalised line endings. The step block itself is `runSharedStep` in `src/sim`, so it is covered.
+  - the **release version** (`package.json`), which says which build is newer.
+
+  Builds with the same hash play together, whatever else differs (the interface, the docs, a server-only fix). A
+  browser whose hash differs is told to reload when its version is older than the server's (`build`) and to try again
+  later when it is newer (`updating`: the server's deploy hasn't landed yet).
+- **Releases push `main` first, then deploy the server.** Pages deploys on every push to `main` and the Render static
+  site has `autoDeploy: true`, while the server is deployed by hand from `main`. In between, newer browsers see the
+  accurate `updating`; once the server is out, older tabs are told to reload and get the new build (Pages may serve a
+  cached page for about 10 minutes, so `build` waits for `version.json` to change before offering Reload). Chunk 12
+  writes this into PLAN.md's release procedure. Adding the service to `render.yaml` could create it on a Blueprint
+  sync; chunk 10 checks how this workspace's Blueprint syncs before adding it.
 
 ### 5.2 A room's life
 
@@ -289,10 +324,11 @@ Server to browser:
    the grace rules (§2.2). The joiners see "Catching up…" meanwhile.
 2. **Running:** while at least one member is there, the worker steps 4 times a second at the shop's speed and runs
    each command in its own zero-hour step at once; every 10 seconds a step carries the fingerprint.
-3. **A failing command:** before a command's step, the worker applies it to a scratch copy (caches cleared before and
-   after). If it throws, it is left out and its sender gets `reject`; nobody else is affected. A failing time step
-   (not a command) is dropped whole and retried next tick; three in a row stop the shop with `closing: fault`, after
-   saving the last good copy.
+3. **A failing block:** every block runs on a working copy (§3.2 rule 2; about 0.65 ms to copy `big_facility` with
+   `fastMutate`'s copier), so a command is applied once, atomically. If a command's block throws, the copy is
+   discarded, the command is left out of the steps, and its sender gets `reject`; nobody else is affected (commands
+   arriving together get a block each). A time step that throws is discarded the same way and retried next tick; three
+   in a row stop the shop with `closing: fault`, after saving the last good copy.
 4. **Saving:** every 3 minutes of play, when the last member leaves, and on SIGTERM; the saved copy is the live copy
    (no flush), serialized and gzipped as the online save is. A Render restart can lose at most the minutes since the
    last save; members are told (`closing: restart`, §8).
@@ -314,9 +350,10 @@ Server to browser:
 - **Limits:** at most 10 connections per shop (the 11th gets `closing: full`); one per player (a second tab takes over;
   the first gets `closing: elsewhere`); messages at most 16 KB (48 KB for a listing with a photo); at most 10 commands
   and 30 messages a second per connection (over that, `reject`, then close); `view` changes count at most one a second.
-- **Snapshot budget:** at most 3 snapshots per connection in 10 minutes, and 6 per member in an hour. Past that, or
-  after 3 re-syncs in a row that didn't hold, the connection closes with `closing: outofstep` (§8), so a copy that
-  can't stay in step can't drain the data cap.
+- **Re-sync budget:** re-syncs (a fingerprint mismatch, or falling behind) are counted apart from joins and
+  reconnects: at most 3 per member in 10 minutes and 6 in an hour. Past that, or after 3 re-syncs in a row that didn't
+  hold, the connection closes with `closing: outofstep` (§8), so a copy that can't stay in step can't drain the data
+  cap. Joins and reconnects (a phone switching apps) have their own, looser limit: at most 20 per member in an hour.
 
 ### 5.4 Who may do what
 
@@ -333,8 +370,8 @@ Server to browser:
   "Still here?" and sends `away` if nobody answers in a minute (§7.5). A command from a member who isn't there brings
   them back.
 - A hidden tab stays connected for 2 minutes (a quick switch to another app costs nothing), then disconnects; showing
-  the tab again reconnects with a snapshot. Commands in flight across a reconnect are dropped and the sender's control
-  shows that nothing changed.
+  the tab again reconnects with a snapshot. A command in flight across a reconnect may or may not have been applied;
+  the snapshot shows which, and its pending result settles from the steps or, if absent, as not applied.
 - The shop runs while at least one member is there. The server never steps for members who aren't.
 
 ### 5.6 Room for permission tiers (later, ADR-0043 decision 5)
@@ -352,6 +389,8 @@ assumes everyone may spend, apart from `allowed` itself.
   running rooms. **At 400 awake hours** (decision 15) it does the same with `closing: hours`. The club card says when
   they open again (§8). Both counts start again on the 1st.
 - The owner's shop card shows the month's data and awake hours (Render's 750 free hours are shared with `dascade`).
+- **Any request wakes Render,** so the club card reads whether shops are closed for the month from Supabase
+  (`club_shared_shops()`, §6.3) and doesn't call the server (`/health`) while they are.
 
 ### 5.8 Render and the key
 
@@ -366,9 +405,11 @@ assumes everyone may spend, apart from `allowed` itself.
 - **The key's reach.** A Supabase secret key acts as `service_role`, which by Supabase's default privileges has every
   right on every table and function in `public` and bypasses row-level security: as it stands it could read and write
   every player's saves, profiles, clubs and friend links. So chunk 12's migration revokes `service_role`'s rights on
-  the stage 1 tables and functions and grants it only `EXECUTE` on the `server_*` functions (§6.3), and the security
-  advisors and a test check it. Render may expose environment variables to builds, so the build runs no install
-  scripts (above) and chunk 12 checks what the build sees.
+  every table and function in `public` (stage 1's and the new `shared_*` ones), changes the schema's default
+  privileges so future tables and functions don't grant it anything, and grants it only `EXECUTE` on the `server_*`
+  functions (§6.3); a test checks every table and function in `public`, and the security advisors run after. Render
+  may expose environment variables to builds, so the build runs no install scripts (above) and chunk 12 checks what the
+  build sees.
 - The game's address for the server goes in `src/social/project.ts` beside the Supabase project (`SHARED_SHOP_SERVER`),
   `null` until the service exists.
 
@@ -397,12 +438,14 @@ refused because another holder has the lease closes the room with `closing: rest
 ### 6.3 Functions
 
 - **For the game** (as in stage 1: `public` wrappers that call `private` functions checking `auth.uid()`):
-  `club_shared_shops()` (for each club I'm in: whether it has a shop, its name, day, money and when it was last played;
-  never the body) and `shared_usage()` (the owner only: this month's data and awake hours, and both caps).
+  `club_shared_shops()` (for each club I'm in: whether it has a shop, its name, day, money and when it was last played,
+  and whether shared shops are closed for the month and until when; never the body) and `shared_usage()` (the owner
+  only: this month's data and awake hours, and both caps).
 - **For the server only** (granted only to `service_role`, after §5.8's revokes): `server_member`, `server_shop_get`,
   `server_shop_create` (the owner only, one per club), `server_shop_put` (checks the lease and the revision),
   `server_shop_take`, `server_shop_release`, `server_set_pausers`, `server_photo_put`, `server_photo_get`,
-  `server_photos_prune`, `server_usage_add`.
+  `server_photo_hashes` and `server_photos_delete` (§4.4's prune), `server_usage_add` (which also records the month as
+  closed when a cap is reached).
 - A save from a newer schema is never loaded past or overwritten (PERSIST-014): the server refuses to load it
   (`closing: updating`) until it runs a build that can.
 
@@ -414,10 +457,12 @@ refused because another holder has the lease closes the room with `closing: rest
 |---|---|
 | `src/sim/dmath.ts` (new) | §3.2 rule 1 |
 | `src/sim/commands/*` (new) | The catalogue, `applyCommand`, `validateCommand` (§4) |
+| `src/sim/sharedStep.ts` (new) | `runSharedStep`, §3.2 rule 2's block, used by the server's worker and `sharedLoop` alike |
 | `src/sim/catchUp.ts` (new) | The catch-up's rules, moved from `src/persistence/offline.ts` (which keeps the store-facing part) |
 | `src/sim/starvation.ts` (new) | The starvation guard's rule, with its memory passed in (§3.2 rule 6); `src/game/starvationGuard.ts` keeps the solo memory |
 | `src/state/game.ts` | The installed dispatcher (§4.2) |
-| `src/game/dispatch.ts`, `src/game/sharedLoop.ts` (new) | The solo dispatcher; applying the server's steps through §3.2's step block, checking fingerprints |
+| `src/game/dispatch.ts`, `src/game/sharedLoop.ts` (new) | The solo dispatcher; applying the server's steps with `runSharedStep` and publishing them, checking fingerprints in idle time |
+| `src/persistence/migrations.ts` | `repairState` accepts a photo reference (§4.4) |
 | `src/social/service.ts`, `localStub.ts`, `supabase/*` | `sharedShops()` and `sharedUsage()` (§6.3), in the stub too |
 | `src/social/project.ts` | `SHARED_SHOP_SERVER` |
 | `src/ui/shared/*` (new) | The connection (the browser's own `WebSocket`, no library) and its store, the club card, the title button, the HUD strip, "Still here?", the members list, the messages |
@@ -520,7 +565,14 @@ Any other player-visible words a chunk needs go to the owner first.
 - **Commands:** for each kind, applying the command gives the same `stateHash` as calling its `src/sim` function
   directly; every command survives `JSON.parse(JSON.stringify(cmd))` unchanged; `validateCommand` refuses wrong
   kinds, types, ranges and sizes; each expectation (§4.3) refuses when it no longer holds and names the earlier
-  member; composite actions are one command; `core-mutation-boundary`'s new rule (§4.2).
+  member, but not after the same sender's own earlier command; settings are last-writer-wins and a coalesced control
+  ends on its last value; composite actions are one command; `core-mutation-boundary`'s new rule (§4.2).
+- **The step block:** `runSharedStep` pins the world's identity, so a cache lookup inside a block is answered the same
+  on a copy that has just been loaded, copied or replaced as on one that hasn't (the review's `scratch-identity.ts`
+  case); a block that throws leaves the copy as it was.
+- **Photos:** `repairState` keeps a well-formed reference and still deletes any other non-image value; the interface
+  never puts a reference in an `<img src>`.
+- **The build identity:** changing any file it covers changes the hash; a file outside it doesn't.
 - **Lockstep in one process:** a server room and two client copies (`sharedLoop`) on `playthrough_betta` and
   `big_facility`, two game weeks at 10×, with commands from both and UI-style reads (the compatibility engine, reports,
   `reachCache` users) between steps on one copy, and joiners from snapshots taken mid-run: every fingerprint matches.
@@ -578,20 +630,21 @@ the owner says release.
 ## 11. Costs and limits (estimates until chunk 10 measures them)
 
 - **Money: $0.** Render's free web service and Supabase's free project. Nothing paid without the owner's yes.
-- **Data**, counted with the 1.4 overhead factor:
-  - steps: about 1.4 MB per player-hour (about 100 bytes, once a second, plus a zero-hour step per command, each a few
-    hundred bytes, to every member);
+- **Data**, as the meter counts it (×1.4 on everything):
+  - steps: about 1.4 MB per player-hour (about 100 bytes once a second, plus command steps of a few hundred bytes to
+    every member, batched over 50 to 100 ms);
   - a snapshot of 34 to 140 KB per join, reconnect or re-sync;
-  - the shop's saves, every 3 minutes: about 1 to 3.3 MB an hour per shop;
-  - photos: each sent once to the server and fetched once by each member who sees it (10 to 20 KB each).
-  - Two people for an hour: about 4 to 7 MB, so the 2 GB cap is roughly 300 to 500 hours. Ten people: about 20 to 40 MB
-    an hour (each command's step goes to ten). The static site and `dascade` share the 5 GB.
+  - the shop's saves, every 3 minutes: about 1.4 to 4.6 MB an hour per shop;
+  - photos: each written once to the database and fetched once by each member who sees it (10 to 20 KB each).
+  - Two people for an hour: about 5 to 9 MB, so the 2 GB cap is roughly 220 to 400 hours. Ten people, each acting
+    every few seconds: about 40 to 50 MB an hour. The static site and `dascade` share the 5 GB.
 - **Hours:** the server is awake only while someone is there, plus 15 minutes, up to the 400-hour cap; Render's 750
   free hours are shared with `dascade`, and the owner's card shows the server's share. If they ran out, Render would
   suspend both free web services until the next month; the static sites keep working.
 - **CPU:** a free instance has 0.1 CPU. A small shop's steps cost about 1 ms of Mac time per real second; `big_facility`
   at 10× about 17 ms, which may be a large share of 0.1 CPU, and a 0.1 CPU limit usually means about 10 ms of work in
-  every 100, so a longer step waits. Chunk 10 measures it on Render; if a shop can't keep up, the server lowers its top
+  every 100, so a longer step waits; each block also copies the shop (about 0.65 ms for `big_facility` on the Mac),
+  and each shop has its own worker. Chunk 10 measures it on Render; if a shop can't keep up, the server lowers its top
   speed and says so (new words for the owner), and a paid instance is the owner's call.
 - **Each device** simulates the shop as in solo play, plus up to 4 tanks in full detail instead of 1.
 - **Latency:** an action appears after about a round trip (its zero-hour step goes out at once), plus any throttling
@@ -616,7 +669,7 @@ the owner says release.
 | SHARE-013 | First one wins: commands carry what their sender saw, and the second sender is told who changed it |
 | SHARE-014 | The 2 GB data cap and the 400-hour cap close shops until the 1st and say so; the owner sees both meters |
 | SHARE-015 | Saves every 3 minutes, on emptying and on shutdown; a restart loses at most that, and says so; the lease keeps one server per shop |
-| SHARE-016 | Builds play together when their simulation, schema and protocol match; otherwise reload or "updating"; a newer schema's shop is never loaded past or overwritten |
+| SHARE-016 | Builds play together when the hash of what every copy runs (§5.1) matches; otherwise the older side reloads or waits ("updating"); releases push `main` before the server; a newer schema's shop is never loaded past or overwritten |
 | SHARE-017 | A failing command affects only its sender; the snapshot budget stops a copy that can't stay in step |
 | SHARE-018 | Listing photos in a shared shop are small, seen by every member, and stored once |
 
