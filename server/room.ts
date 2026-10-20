@@ -23,6 +23,37 @@ const TICKS_PER_FINGERPRINT = 40;
 const MAX_FULL = 4;
 /** Three time steps in a row that throw stop the shop (§5.2 item 3). */
 const MAX_FAILED_TICKS = 3;
+/** Re-syncs per member (§5.3): at most 3 in 10 minutes and 6 in an hour, then the connection closes (`outofstep`). */
+const RESYNCS_PER_10_MIN = 3;
+const RESYNCS_PER_HOUR = 6;
+
+/**
+ * A member's message, as text from the network: parsed and checked here, in the worker. Only the fields each kind
+ * uses are kept; a command's own fields are checked by `validateCommand` when it is applied.
+ */
+export function parseClientMessage(text: string): ClientMessage | null {
+  let x: unknown;
+  try {
+    x = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (x === null || typeof x !== 'object' || Array.isArray(x)) return null;
+  const o = x as Record<string, unknown>;
+  switch (o.t) {
+    case 'cmd':
+      return typeof o.id === 'number' && Number.isSafeInteger(o.id) ? { t: 'cmd', id: o.id, c: o.c as Command } : null;
+    case 'view':
+      return { t: 'view', tank: typeof o.tank === 'string' && o.tank.length <= 80 ? o.tank : null };
+    case 'here':
+    case 'away':
+    case 'input':
+    case 'resync':
+      return { t: o.t };
+    default:
+      return null;
+  }
+}
 
 export type OutKind = 'steps' | 'snapshot' | 'welcome' | 'members' | 'reject' | 'closing';
 
@@ -49,6 +80,8 @@ interface Member {
   here: boolean;
   view: string | null;
   plain: boolean;
+  /** When this member's re-syncs were sent (io.now()). */
+  resyncs: number[];
 }
 
 interface Timing {
@@ -80,6 +113,8 @@ export interface RoomStats {
   failedTicks: number;
   /** The serialized copy's fingerprint differed from the live copy's (§3.2 rule 10). */
   snapshotRepairs: number;
+  /** Members closed for re-syncing too often (§5.3). */
+  outOfStep: number;
 }
 
 const enc = new TextEncoder();
@@ -121,6 +156,7 @@ export class Room {
       rejected: 0,
       failedTicks: 0,
       snapshotRepairs: 0,
+      outOfStep: 0,
     };
   }
 
@@ -137,7 +173,7 @@ export class Room {
   join(id: string, name: string, plain = false): void {
     if (this.stopped) return;
     this.flush(); // steps already made go to the members who were there for them
-    this.members.set(id, { id, name, here: true, view: null, plain });
+    this.members.set(id, { id, name, here: true, view: null, plain, resyncs: [] });
     this.sendSnapshot(id);
     this.broadcastMembers();
   }
@@ -160,7 +196,7 @@ export class Room {
         this.command(member, m.id, m.c);
         break;
       case 'view':
-        member.view = typeof m.tank === 'string' && this.state.tanks[m.tank] ? m.tank : null;
+        member.view = typeof m.tank === 'string' && Object.hasOwn(this.state.tanks, m.tank) ? m.tank : null;
         this.updateFull();
         break;
       case 'here':
@@ -176,10 +212,21 @@ export class Room {
           this.broadcastMembers();
         }
         break;
-      case 'resync':
+      case 'resync': {
+        const now = this.io.now();
+        member.resyncs = member.resyncs.filter((t) => now - t < 3_600_000);
+        const recent = member.resyncs.filter((t) => now - t < 600_000).length;
+        if (recent >= RESYNCS_PER_10_MIN || member.resyncs.length >= RESYNCS_PER_HOUR) {
+          this.stats.outOfStep++;
+          this.out([id], 'closing', JSON.stringify({ t: 'closing', why: 'outofstep' } satisfies ServerMessage));
+          this.leave(id);
+          break;
+        }
+        member.resyncs.push(now);
         this.flush();
         this.sendSnapshot(id);
         break;
+      }
       default:
         break;
     }
@@ -284,7 +331,7 @@ export class Room {
   /** The tanks the members are looking at, most viewers first, then tank order (§3.2 rule 4). */
   private updateFull(): void {
     const count = new Map<string, number>();
-    for (const m of this.members.values()) if (m.view && this.state.tanks[m.view]) count.set(m.view, (count.get(m.view) ?? 0) + 1);
+    for (const m of this.members.values()) if (m.view && Object.hasOwn(this.state.tanks, m.view)) count.set(m.view, (count.get(m.view) ?? 0) + 1);
     const order = this.state.tankOrder;
     const list = [...count.keys()].sort((a, b) => count.get(b)! - count.get(a)! || order.indexOf(a) - order.indexOf(b)).slice(0, MAX_FULL);
     const cur = this.pendingFull ?? this.full;

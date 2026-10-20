@@ -9,7 +9,8 @@ import type { GameState } from '@/types';
 import { FIXTURES } from '@/dev/fixtures';
 import { encodeRecord, decodeRecord } from '@/persistence/serialize';
 import { stateHash } from '@/persistence/hash';
-import { tankLod } from '@/sim/world';
+import { advanceWorld, tankLod } from '@/sim/world';
+import { evaluateTank } from '@/sim/compat';
 import { feedTank, waterChange } from '@/sim/care';
 import { deepClone } from '@/sim/clone';
 import { runSharedStep } from '@/sim/sharedStep';
@@ -50,6 +51,25 @@ describe('chunk 10: the step block', () => {
     const before = stateHash(g);
     expect(() => runSharedStep(g, { n: 1, h: 0, cmds: [{ by: 'm1', c: { k: 'waterChange', tank: 'ghost', fraction: 0.2 } }] }, [], { copy: true })).toThrow();
     expect(stateHash(g)).toBe(before);
+  });
+
+  it('pins the world: a zero-hour block leaves its copy current, so a later advance keeps what the block cached', () => {
+    // A command step advances nothing, so without the pin the next enterWorld (a settle, an advance) would clear the
+    // compatibility cache part-way through a block on one copy and not on another, depending on what the process
+    // stepped before (the review's scratch-identity case, SHARED-SHOPS.md §3.2 rule 2).
+    const g = shop('playthrough_betta');
+    const t = g.tankOrder[0];
+    advanceWorld(deepClone(g), 0); // some other world was current
+    const { state } = runSharedStep(g, { n: 1, h: 0 }, [], { copy: true });
+    const before = evaluateTank(state, t);
+    advanceWorld(state, 0);
+    expect(evaluateTank(state, t)).toBe(before); // served from the cache: nothing cleared it
+    // without a pin, the same sequence clears it (so the check above can fail)
+    const other = deepClone(g);
+    advanceWorld(deepClone(g), 0);
+    const cold = evaluateTank(other, t);
+    advanceWorld(other, 0);
+    expect(evaluateTank(other, t)).not.toBe(cold);
   });
 
   it('steps every tank on the full-detail list at full fidelity (rule 4), and only those', () => {

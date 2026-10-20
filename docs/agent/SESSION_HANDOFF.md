@@ -1,4 +1,4 @@
-# Session handoff: after chunk 9 (0.5.6, the audit's five high findings)
+# Session handoff: chunk 10 (shared shops, the test)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
@@ -25,8 +25,15 @@ it's used up.
   workspace (with DAS-Games' `dascade`, a free web service, and the static site), so the server never streams the
   shop; Render's 750 free instance hours are shared with `dascade` too. Node, Chromium and WebKit round `Math.exp`,
   `pow` and the other transcendental functions differently (measured 2026-10-20), so every copy must use the same
-  arithmetic (`src/sim/dmath.ts`, chunk 11); the review's probes are in the internal-disk clone's
-  `scripts/_audit/review-shared/`. Every design question is answered (ADR-0045, words included); chunk 10 is next.
+  arithmetic (`src/sim/dmath.ts`, switched on in chunk 10); the review's probes are in the internal-disk clone's
+  `scripts/_audit/review-shared/`. Every design question is answered (ADR-0045, words included).
+- **Chunk 10** (2026-10-20, PLAN.md): dmath switched on for the whole simulation, the step block, a prototype server
+  (`server/`, `ws`) and replica, the lockstep tests (in one process, and the cross-engine replay in Chromium and
+  WebKit), and the measurements on Render (SHARED-SHOPS.md §11). The free web service **`aquarium-go-shops`**
+  (`srv-dbbt6gbncjis73c23br0`, created with the owner's yes, ADR-0046) builds from `next` and is deployed by hand
+  (`render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm --wait -o text`); after the
+  measurements the prototype there is closed (no connections or replays unless `SHOPS_OPEN=1`, which the CLI can't set:
+  the dashboard can). The Render CLI can create and deploy services but can't change their environment variables.
 - **Open owner questions:** F1 (the owner's VoiceOver pass); the audit's decisions A4 (the shared Pages origin, B-191),
   F5, F3, G2, A6 and new wording (B-207).
 - **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`) is signed in to the owner's whole account, anonyform's
@@ -54,9 +61,10 @@ it's used up.
    `main` with the owner's go-ahead in the session (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no
    checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
    `version.json` files.
-5. **Shared shops** (the owner chose them, 2026-10-20): chunk 10 (SHARED-SHOPS.md §10), local first; creating the
-   Render service needs the owner's yes in that session; the owner pastes the server's Supabase key in chunk 12. The
-   audit's remaining findings (B-207, B-208) wait for the owner.
+5. **Shared shops** (the owner chose them, 2026-10-20): chunk 10 built and measured (PLAN.md; its review and the
+   final checks are what's left); then chunk 11 (commands, §4) and chunk 12 (the server, the database; the owner pastes
+   the server's Supabase key into Render, and the build command must remove it from the build, §5.8). The audit's
+   remaining findings (B-207, B-208) wait for the owner.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the
@@ -192,3 +200,14 @@ deliberate fix explained in the commit. Push `next` with `export PATH=/opt/homeb
 credential helper is `gh`); never push `main` without the owner's go-ahead in your session; never force-push. Don't
 change permission settings or hooks. Ask the owner once, batched, and never more than needed. Use plain literal paths
 in commands (the owner dislikes approving command after command). Report a test that didn't run as not run.
+
+**Learned in chunk 10.**
+- *Measuring the server:* `scripts/shared-session.ts` (members in Node; Node's WebSocket sends no Origin, so the script
+  presents the dev page's) and `scripts/shared-session-browsers.mjs` (Chromium and WebKit through the test page,
+  `tests/e2e/shared/page.html`, which needs `npx vite --port 4455`). Room stats on `/stats` add up over a room's life:
+  take the difference before and after a run. A free instance sleeps after 15 minutes without requests; the next one
+  waits about 20 seconds.
+- *Java's StrictMath is fdlibm:* the JDK's `lib/src.zip` holds `java/lang/FdLibm.java`, and `javac`/`java` from
+  Homebrew's openjdk@21 compute reference results bit for bit (`scripts/_audit/chunk10/Ref.java` in the internal-disk
+  clone).
+- *zsh doesn't split words:* `for c in "big_facility 1"; do cmd $c; done` passes one argument; use `${=c}`.

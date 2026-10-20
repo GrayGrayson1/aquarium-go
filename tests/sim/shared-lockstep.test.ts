@@ -19,7 +19,7 @@ import { evaluateTank, previewAddition } from '@/sim/compat';
 import { stateReachability } from '@/sim/facility/layout';
 import { beautyScore } from '@/sim/aquascape';
 import { SharedReplica } from '@/game/sharedLoop';
-import { Room, type Outgoing } from '../../server/room';
+import { Room, parseClientMessage, type Outgoing } from '../../server/room';
 import { stepLog } from '../../server/replay';
 
 const shop = (name: string): GameState => decodeRecord(encodeRecord(FIXTURES[name](), 'shared', 0).text).state;
@@ -221,6 +221,41 @@ describe('chunk 10: lockstep in one process (SHARED-SHOPS.md §9.1)', () => {
     expect(g.welcome!.full).toEqual(h.room.full);
     h.tick(8);
     h.settle();
+  });
+
+  it('re-syncs are budgeted (§5.3): the fourth in 10 minutes closes the connection as out of step', () => {
+    const h = harness(shop('playthrough_betta'));
+    const a = h.join('a');
+    const b = h.join('b');
+    for (let i = 0; i < 3; i++) h.room.handle('a', { t: 'resync' });
+    h.deliver();
+    expect(a.got.filter((f) => f.kind === 'snapshot')).toHaveLength(4); // the join and three re-syncs
+    h.room.handle('a', { t: 'resync' });
+    h.deliver();
+    expect(a.got.filter((f) => f.kind === 'snapshot')).toHaveLength(4);
+    expect(a.got.filter((f) => f.kind === 'closing').map((f) => JSON.parse(f.text!))).toEqual([{ t: 'closing', why: 'outofstep' }]);
+    expect(h.room.size).toBe(1);
+    expect(h.room.stats.outOfStep).toBe(1);
+    expect(b.got.filter((f) => f.kind === 'closing')).toEqual([]);
+  });
+
+  it('a member’s message is parsed and checked in the worker: only known kinds and fields, nothing nested kept', () => {
+    const deep = `{"t":"view","tank":${'['.repeat(7000)}${']'.repeat(7000)}}`;
+    expect(parseClientMessage(deep)).toEqual({ t: 'view', tank: null });
+    expect(parseClientMessage('{"t":"view","tank":"tank_1","extra":{"a":1}}')).toEqual({ t: 'view', tank: 'tank_1' });
+    expect(parseClientMessage('{"t":"resync","n":5}')).toEqual({ t: 'resync' });
+    expect(parseClientMessage('{"t":"cmd","id":1.5,"c":{}}')).toBeNull();
+    for (const bad of ['', 'null', '[]', '"view"', '{"t":"hello","club":"x"}', '{"t":"grant"}', '{"t":"view"', '{}']) expect(parseClientMessage(bad), bad).toBeNull();
+    // a view of an inherited name is no tank
+    const h = harness(shop('playthrough_betta'));
+    h.join('a');
+    for (const tank of ['__proto__', 'constructor', 'toString']) {
+      h.room.handle('a', { t: 'view', tank });
+      h.room.handle('a', { t: 'cmd', id: 1, c: { k: 'setSpeed', speed: 1 } });
+      h.room.flush();
+      h.deliver();
+      expect(h.room.full).toEqual([]);
+    }
   });
 
   it("the replay's step log replays to the same fingerprints", () => {

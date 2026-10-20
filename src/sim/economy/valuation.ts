@@ -43,7 +43,8 @@ export function morphRarity(sp: SpeciesDefinition | undefined, c: Creature): num
   if (!sp) return 0;
   const alleles = c.genome?.alleles ?? {};
   let sig = '';
-  for (const k in alleles) sig += `${k}${alleles[k][0]}${alleles[k][1]}`;
+  // separators, so no two genotypes can share a key (an exact cache keeps shared shops' copies in step: chunk 10)
+  for (const k in alleles) sig += `${k}=${alleles[k][0]}/${alleles[k][1]};`;
   const key = `${sp.id}|${c.morphName}|${sig}`;
   const hit = RARITY_CACHE.get(key);
   if (hit !== undefined) return hit;

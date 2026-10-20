@@ -20,11 +20,12 @@ interface ClientView {
   rejects: number;
   rtt: number[];
   hash: string | null;
+  speed: number | null;
 }
 type Win = Window & {
   __shared: {
     ready: boolean;
-    replay(log: StepLog): ReplayReport;
+    replay(log: StepLog, opts?: { reads?: boolean }): ReplayReport;
     connect(url: string, shop: string, name: string): Promise<unknown>;
     stateHash(s: unknown): string;
   };
@@ -44,19 +45,20 @@ async function openTestPage(page: Page): Promise<void> {
   await page.waitForFunction(() => (window as unknown as Win).__shared?.ready === true, null, { timeout: 60_000 });
 }
 
-async function replayLog(page: Page, log: StepLog): Promise<ReplayReport> {
-  return await page.evaluate((l) => (window as unknown as Win).__shared.replay(l), log);
+async function replayLog(page: Page, log: StepLog, reads = false): Promise<ReplayReport> {
+  return await page.evaluate(([l, r]) => (window as unknown as Win).__shared.replay(l, { reads: r }), [log, reads] as const);
 }
 
 test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () => {
   test('the cross-engine replay: the Node server’s steps, replayed here, match every fingerprint', async ({ page, request }) => {
     test.setTimeout(300_000);
     await openTestPage(page);
+    // `reads`: the interface's reads between steps on this copy only (its caches filled, the server's not)
     const cases = [
-      { shop: 'big_facility', speed: 10, hours: 168 },
-      { shop: 'playthrough_betta', speed: 10, hours: 168 },
-      { shop: 'playthrough_axolotl', speed: 10, hours: 168 },
-      { shop: 'playthrough_betta', speed: 1, hours: 24 },
+      { shop: 'big_facility', speed: 10, hours: 168, reads: true },
+      { shop: 'playthrough_betta', speed: 10, hours: 168, reads: true },
+      { shop: 'playthrough_axolotl', speed: 10, hours: 168, reads: false },
+      { shop: 'playthrough_betta', speed: 1, hours: 24, reads: false },
     ];
     for (const c of cases) {
       const res = await request.get(`${SERVER}/stub/replay?shop=${c.shop}&speed=${c.speed}&hours=${c.hours}`, { timeout: 120_000 });
@@ -64,7 +66,7 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
       const log = (await res.json()) as StepLog;
       expect(log.fingerprints, c.shop).toBeGreaterThanOrEqual(16);
       expect(log.steps.some((s) => s.cmds?.length), c.shop).toBe(true);
-      const rep = await replayLog(page, log);
+      const rep = await replayLog(page, log, c.reads);
       expect(rep, `${c.shop} at ${c.speed}×`).toMatchObject({ applied: rep.steps, checks: log.fingerprints, firstMismatch: null, stalled: null });
     }
   });
@@ -117,7 +119,7 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
       p.evaluate((): ClientView => {
         const w = window as unknown as Win;
         const c = w.__client;
-        const s = c.state();
+        const s = c.state() as { clock: { speed: number } } | null;
         return {
           you: c.you,
           n: c.replica.n,
@@ -127,19 +129,72 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
           rejects: c.stats.rejects.length,
           rtt: c.stats.rtt,
           hash: s ? w.__shared.stateHash(s) : null,
+          speed: s ? s.clock.speed : null,
         };
       });
-    await expect.poll(async () => {
-      const [va, vb] = [await view(a), await view(b)];
-      return va.n === vb.n && va.n > 0 ? 'same step' : `${va.n} / ${vb.n}`;
-    }, { timeout: 15_000 }).toBe('same step');
-    await a.waitForTimeout(1500); // nothing more arrives while paused
-    const [va, vb] = [await view(a), await view(b)];
-    expect(va.n).toBe(vb.n);
+    // once both copies have the pause, only the room's fingerprint step can still arrive, between the two reads: read
+    // until both are paused at the same step
+    let va = await view(a);
+    let vb = await view(b);
+    await expect
+      .poll(
+        async () => {
+          [va, vb] = [await view(a), await view(b)];
+          return va.speed === 0 && vb.speed === 0 && va.n === vb.n ? 'paused at the same step' : `${va.n}@${va.speed} / ${vb.n}@${vb.speed}`;
+        },
+        { timeout: 30_000 },
+      )
+      .toBe('paused at the same step');
     expect(va.hash).toBe(vb.hash);
     for (const v of [va, vb]) expect(v, v.you).toMatchObject({ mismatches: 0, outOfStep: 0, rejects: 0 });
     expect(va.rtt.length).toBe(2); // A's own commands came back in steps
     expect(vb.rtt.length).toBe(2);
     for (const p of pages) await p.evaluate(() => (window as unknown as Win).__client.close());
+  });
+
+  test('a hostile message closes at most its own connection, and the server keeps serving', async ({ page, request }) => {
+    await openTestPage(page);
+    const codes = await page.evaluate(async (url) => {
+      const deep = (n: number) => `{"t":"view","tank":${'['.repeat(n)}${']'.repeat(n)}}`;
+      const run = (msgs: string[], hello: boolean) =>
+        new Promise<number | 'open'>((resolve) => {
+          const ws = new WebSocket(url);
+          ws.onclose = (e) => resolve(e.code);
+          ws.onopen = () => {
+            if (hello) ws.send(JSON.stringify({ t: 'hello', build: 'test', club: 'new_betta', name: 'H' }));
+            else for (const m of msgs) ws.send(m);
+          };
+          ws.onmessage = (e) => {
+            if (typeof e.data === 'string' && JSON.parse(e.data).t === 'welcome') {
+              for (const m of msgs) ws.send(m);
+              setTimeout(() => {
+                resolve(ws.readyState === WebSocket.OPEN ? 'open' : ws.readyState);
+                ws.close();
+              }, 1500);
+            }
+          };
+        });
+      return {
+        // nested 7,000 deep (14 KB, under the size limit), after hello: the review's crash
+        nested: await run([deep(7000)], true),
+        // junk after hello, and before it
+        junk: await run(['{"t":"cmd","id":"x","c":{"k":"setSpeed","speed":10}}', '{"t":"view","tank":{"__proto__":1}}'], true),
+        beforeHello: await run([deep(7000)], false),
+      };
+    }, SHOP_URL);
+    expect(codes.nested).toBe('open'); // checked and dropped in the worker
+    expect(codes.junk).toBe('open');
+    expect(codes.beforeHello).toBe(1008);
+    const health = await request.get(`${SERVER}/health`);
+    expect(health.ok()).toBe(true);
+    // and a member still joins
+    const joined = await page.evaluate(async (url) => {
+      const w = window as unknown as Win;
+      const c = (await w.__shared.connect(url, 'new_betta', 'After')) as Win['__client'];
+      const ok = c.state() !== null;
+      c.close();
+      return ok;
+    }, SHOP_URL);
+    expect(joined).toBe(true);
   });
 });

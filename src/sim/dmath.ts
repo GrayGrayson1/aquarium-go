@@ -3,7 +3,7 @@
  * `sin` and the other transcendental functions its own way, and Node, Chromium and WebKit do differ in the last bit
  * (measured 2026-10-20), so two copies of one shop stepped identically would drift apart. These functions use only
  * `+ - * /`, `Math.sqrt`, the exact `Math.floor`/`abs` and the bits of a double, which every engine computes alike, so
- * they return the same double everywhere. `src/sim` uses only these (the guard test `core-dmath` bans the `Math`
+ * they return the same double everywhere. `src/sim` uses only these (`core-determinism-guard` bans the `Math`
  * versions and `**` there); the render layer and the interface keep the engine's own.
  *
  * Ported from fdlibm 5.3 (the algorithms and coefficients of Java's StrictMath), each within 1 ulp of the true value:

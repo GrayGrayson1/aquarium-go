@@ -117,7 +117,9 @@ Render's free plan includes **5 GB of outbound data a month for the whole worksp
   round trip; while the shop is paused, commands still apply this way.
 - **Fingerprints catch any drift.** Every 10 real seconds a step carries the server's `stateHash` after it. A browser
   whose copy differs asks for the shop again (a **snapshot**: the gzipped save, 34 to 140 KB by §2.3) and carries on
-  from it, within a budget (§5.3). A joiner starts from a snapshot.
+  from it, within a budget (§5.3). A joiner starts from a snapshot. What the fingerprint can't see (chunk 10's
+  review): the order of an object's keys, keys whose value is `undefined`, and -0 against 0, so a copy can differ there
+  and still match; rule 10 says what keeps those harmless.
 - **Why this way:** a step message is about 100 bytes, so a player costs about 1 to 2 MB an hour, against 9 to 270 MB
   streaming the changes (§2.3, §11). The review's probes showed it works once every copy uses the same arithmetic: with
   the transcendental functions written in plain arithmetic, Node, Chromium and WebKit matched at all 33 fingerprints over
@@ -168,8 +170,13 @@ Each rule applies to shared shops; rule 1 also changes the solo game (its number
     snapshot with plain `JSON.parse` (no migration or repair: the server's copy is already repaired). Whenever the
     server makes a snapshot or a save, it checks that the serialized copy's fingerprint matches its live copy's; if not
     (`serializeState` turns NaN into 0), it replaces its live copy with the serialized one, sends everyone a snapshot
-    and logs it as a bug. Keys whose value is `undefined` (which a snapshot drops) are covered by the mid-run joiner
-    tests (§9.1). The server repairs a shop only when it loads it from the database (a wake), before anyone has it.
+    and logs it as a bug. That check can't see what the fingerprint can't (§3.1): a JSON snapshot drops
+    keys whose value is `undefined` (common today: `repro.stageEndsHour`, `illness`, `isStarter`, a stock offer's
+    `note`, …) and a joiner adds them back at the end when they're set again, so its keys can come in a different order
+    than the server's. Harmless while no rule reads a key's presence or the order of an object's keys; the mid-run
+    joiner tests cover it (§9.1; chunk 10: 94 joiners over 600 steps on four shops, no divergence). Chunk 11 deletes such
+    keys instead of setting `undefined`, and the lockstep test asserts that no key holds `undefined`. The server
+    repairs a shop only when it loads it from the database (a wake), before anyone has it.
 11. **The "shared" mark lives outside `GameState`** (in the shared-shop store), so it never enters a fingerprint.
 
 ### 3.3 Messages
@@ -382,9 +389,10 @@ assumes everyone may spend, apart from `allowed` itself.
 
 ### 5.7 The caps and the meters
 
-- The server counts the bytes it sends (WebSocket frames, photos and the bodies of its database calls), times 1.4 for
-  the WebSocket, TLS and TCP/IP overhead on small frames, and its awake seconds, per calendar month (UTC), saving them
-  with each save (`server_usage_add`, §6.3).
+- The server counts the bytes it sends (WebSocket frames, photos and its database calls, headers included), times 1.4
+  for the WebSocket, TLS and TCP/IP overhead (nearer 1.6 for the smallest frames, chunk 10's review; chunk 12 checks
+  the factor against Render's own figure), and its awake seconds, per calendar month (UTC), saving them with each save
+  (`server_usage_add`, §6.3).
 - **At 2 GB of data in a month** (ADR-0045 decision 3) it refuses new joins (`closing: cap`) and saves and closes the
   running rooms. **At 400 awake hours** (decision 15) it does the same with `closing: hours`. The club card says when
   they open again (§8). Both counts start again on the 1st.
@@ -581,9 +589,9 @@ Any other player-visible words a chunk needs go to the owner first.
   never puts a reference in an `<img src>`.
 - **The build identity:** changing any file it covers changes the hash; a file outside it doesn't.
 - **Lockstep in one process:** a server room and two client copies (`sharedLoop`) on `playthrough_betta` and
-  `big_facility`, two game weeks at 10×, with commands from both and UI-style reads (the compatibility engine, reports,
-  `reachCache` users) between steps on one copy, and joiners from snapshots taken mid-run: every fingerprint matches.
-  A copy changed by hand is caught at the next fingerprint and re-synced.
+  `big_facility` at 10× (chunk 10: 7 and 2 game days), with commands from both and UI-style reads (the compatibility
+  engine, reports, `reachCache` users) between steps on one copy, and joiners from snapshots taken mid-run: every
+  fingerprint matches. A copy changed by hand is caught at the next fingerprint and re-synced.
 - **The server, in process, with `SHOPS_STUB=1`,** Node's built-in `WebSocket` as clients: join and snapshot (with the
   full-detail list); commands reach every copy; pause refused without permission and allowed after `grant`; first one
   wins with the right name; a throwing command rejected to its sender only; the shop pauses when the last member goes
@@ -664,7 +672,8 @@ of step.
   first (chunk 12 and later): time steps in place instead of on a copy (the copy is 18 to 32% of a step's time on the
   Mac), a cheaper or rarer fingerprint for big shops (750 ms of wall time each on the free instance), a lower top speed
   for big shops (new words for the owner), or a paid instance (the owner's call).
-- **Data,** as payload; the meter adds ×1.4 for the WebSocket, TLS and TCP/IP:
+- **Data,** as payload; the meter adds ×1.4 for the WebSocket, TLS and TCP/IP (maybe nearer ×1.6 for the smallest
+  frames, §5.7):
   - steps: about 120 bytes a second per member, whatever the shop's size or speed (time steps batched once a second,
     commands at once, a fingerprint every 10 seconds): about 0.44 MB per member-hour, 0.6 MB metered;
   - a command: about 110 bytes to each member;

@@ -390,7 +390,7 @@ export function strainsOf(species: SpeciesDefinition, genome: Genome | undefined
   let sig = species.id;
   for (const locus of species.genetics.loci) {
     const p = g.alleles[locus.id];
-    sig += `|${p[0]}${p[1]}`;
+    sig += `|${p[0]}/${p[1]}`; // a separator: no two genotypes share a key (chunk 10)
   }
   const hit = STRAIN_CACHE.get(sig);
   if (hit) return hit;

@@ -1,8 +1,8 @@
 /**
  * The shared-shop server (SHARED-SHOPS.md §5), chunk 10's prototype: HTTP for `/health` and `/stats`, the WebSocket
- * at `/shop`, one worker thread per shop. Stub shops only (./shops.ts): no accounts, no database, no key. For the
- * public test service it also caps connections and the bytes it sends, so a stranger who finds the address can't
- * spend Render's free data.
+ * at `/shop`, one worker thread per shop. Stub shops only (./shops.ts): no accounts, no database, no key. It caps
+ * connections, messages, re-syncs, replays and the bytes it sends since it started, which bounds a run, not a month:
+ * anyone who can reach an open prototype can make it work and send, which is why it is closed on Render (below).
  *
  * Environment: PORT; ALLOWED_ORIGINS (comma-separated; `http://127.0.0.1:*` allows any local port); SHOPS_DIR;
  * SHOPS_MAX_CONNECTIONS (default 12); SHOPS_BYTE_BUDGET (bytes sent since start, default 300 MB); SHOPS_REPLAY=1
@@ -17,7 +17,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { ClientMessage, ClosingReason } from '@/types/shared';
+import type { ClosingReason } from '@/types/shared';
 import { availableShops, loadShopText } from './shops';
 import type { ToWorker } from './roomWorker';
 import type { OutKind } from './room';
@@ -32,6 +32,8 @@ const REPLAY = process.env.SHOPS_REPLAY === '1' && !CLOSED;
 const MAX_MESSAGE = 16 * 1024;
 const MAX_COMMANDS_PER_S = 10;
 const MAX_MESSAGES_PER_S = 30;
+/** A connection that hasn't said `hello` by then is closed, so idle sockets can't hold every slot. */
+const HELLO_WITHIN_MS = 10_000;
 /** An empty room is kept this long, then its worker ends. */
 const EMPTY_ROOM_MS = 5 * 60_000;
 const WORKER = fileURLToPath(new URL('./roomWorker.js', import.meta.url));
@@ -139,6 +141,21 @@ function close(c: Conn | undefined, why: ClosingReason): void {
 // ── connections ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 function onMessage(c: Conn, raw: Buffer, isBinary: boolean): void {
+  try {
+    route(c, raw, isBinary);
+  } catch (e) {
+    // nothing a member sends may take the server down: close that one connection
+    console.log(`[server] ${c.id}: message refused (${e instanceof Error ? e.message : String(e)})`);
+    c.ws.close(1008);
+  }
+}
+
+/**
+ * The main thread reads only what it needs (the kind, and `hello`'s club and name) and hands the worker the text itself:
+ * a string crosses to the worker without the recursive copy a parsed object would need (a deeply nested message
+ * overflowed it, chunk 10's review). The worker parses and checks the rest (./room.ts parseClientMessage).
+ */
+function route(c: Conn, raw: Buffer, isBinary: boolean): void {
   const now = Date.now();
   if (now - c.windowStart >= 1000) {
     c.windowStart = now;
@@ -146,13 +163,9 @@ function onMessage(c: Conn, raw: Buffer, isBinary: boolean): void {
     c.commands = 0;
   }
   if (++c.messages > MAX_MESSAGES_PER_S || isBinary || raw.length > MAX_MESSAGE) return void c.ws.close(1008);
-  let m: ClientMessage;
-  try {
-    m = JSON.parse(raw.toString('utf8')) as ClientMessage;
-  } catch {
-    return void c.ws.close(1008);
-  }
-  if (!m || typeof m !== 'object' || typeof m.t !== 'string') return void c.ws.close(1008);
+  const text = raw.toString('utf8');
+  const m = JSON.parse(text) as Record<string, unknown> | null;
+  if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.t !== 'string') return void c.ws.close(1008);
   if (!c.room) {
     if (m.t !== 'hello') return void c.ws.close(1008);
     if (capped) return close(c, 'cap');
@@ -168,7 +181,7 @@ function onMessage(c: Conn, raw: Buffer, isBinary: boolean): void {
   }
   if (m.t === 'cmd' && ++c.commands > MAX_COMMANDS_PER_S) return void c.ws.close(1008);
   if (m.t === 'hello') return;
-  c.room.worker.postMessage({ t: 'msg', conn: c.id, m } satisfies ToWorker);
+  c.room.worker.postMessage({ t: 'msg', conn: c.id, text } satisfies ToWorker);
 }
 
 function onClose(c: Conn): void {
@@ -222,17 +235,29 @@ async function stats(): Promise<unknown> {
   };
 }
 
+/** One replay at a time: each is a worker with a whole shop (about 180 MB for a big one, chunk 10's review). */
+let replaying = false;
+
 function replay(req: IncomingMessage, res: ServerResponse, url: URL): void {
   const shop = url.searchParams.get('shop') ?? '';
   const speed = Number(url.searchParams.get('speed') ?? 10);
   const hours = Number(url.searchParams.get('hours') ?? 24);
   if (!availableShops().includes(shop) || ![1, 3, 10].includes(speed) || !(hours > 0 && hours <= 24 * 14)) return reply(req, res, 400, { error: 'bad request' });
+  if (replaying) return reply(req, res, 503, { error: 'busy' });
+  replaying = true;
   const worker = new Worker(WORKER, { workerData: { mode: 'replay', text: loadShopText(shop), speed, hours } });
+  const done = () => {
+    replaying = false;
+    void worker.terminate();
+  };
   worker.once('message', (m: { log: unknown; ms: number }) => {
     reply(req, res, 200, { ...(m.log as object), serverMs: m.ms, arch: process.arch, node: process.version });
-    void worker.terminate();
+    done();
   });
-  worker.once('error', (e) => reply(req, res, 500, { error: e instanceof Error ? e.message : String(e) }));
+  worker.once('error', (e) => {
+    reply(req, res, 500, { error: e instanceof Error ? e.message : String(e) });
+    done();
+  });
 }
 
 const server = createServer((req, res) => {
@@ -259,6 +284,9 @@ server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, (ws) => {
     const c: Conn = { id: `c${nextConn++}`, ws, room: null, windowStart: Date.now(), messages: 0, commands: 0, bytesOut: 0 };
     conns.set(c.id, c);
+    setTimeout(() => {
+      if (!c.room && conns.has(c.id)) c.ws.close(1008);
+    }, HELLO_WITHIN_MS).unref();
     ws.on('message', (data, isBinary) => onMessage(c, data, isBinary));
     ws.on('close', () => onClose(c));
     ws.on('error', () => ws.terminate());

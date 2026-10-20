@@ -6,6 +6,9 @@
 import { SharedReplica } from '@/game/sharedLoop';
 import { connectShared } from '@/dev/sharedProto';
 import { stateHash } from '@/persistence/hash';
+import { evaluateTank, previewAddition } from '@/sim/compat';
+import { stateReachability } from '@/sim/facility/layout';
+import { beautyScore } from '@/sim/aquascape';
 import type { GameState } from '@/types';
 import type { StepLog } from '../../../server/replay';
 
@@ -20,7 +23,21 @@ export interface ReplayReport {
   ua: string;
 }
 
-function replay(log: StepLog): ReplayReport {
+/**
+ * What the interface reads between steps (compatibility with hypothetical candidates, reachability, beauty): caches
+ * this copy fills and the server's doesn't, so a cache that isn't exact would show as a mismatch.
+ */
+function interfaceReads(g: GameState): void {
+  for (const id of g.tankOrder.slice(0, 6)) {
+    evaluateTank(g, id);
+    const sp = Object.values(g.creatures).find((c) => c.tankId === id)?.speciesId;
+    if (sp) previewAddition(g, id, { speciesId: sp, count: 2 });
+    beautyScore(g, g.tanks[id]);
+  }
+  stateReachability(g);
+}
+
+function replay(log: StepLog, opts: { reads?: boolean } = {}): ReplayReport {
   const r = new SharedReplica((fn) => fn());
   let firstMismatch: number | null = null;
   r.onCheck = (n, ok) => {
@@ -28,7 +45,12 @@ function replay(log: StepLog): ReplayReport {
   };
   r.load(JSON.parse(log.snapshot) as GameState, log.n, log.full);
   const t0 = performance.now();
-  r.apply(log.steps);
+  if (opts.reads) {
+    for (let i = 0; i < log.steps.length; i++) {
+      r.apply([log.steps[i]]);
+      if (i % 3 === 0 && r.state) interfaceReads(r.state);
+    }
+  } else r.apply(log.steps);
   return {
     applied: r.n,
     steps: log.steps.length ? log.steps[log.steps.length - 1].n : 0,

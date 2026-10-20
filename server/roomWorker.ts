@@ -6,16 +6,15 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import { gzipSync } from 'node:zlib';
 import { performance } from 'node:perf_hooks';
-import { Room, TICK_MS } from './room';
+import { Room, TICK_MS, parseClientMessage } from './room';
 import { stepLog } from './replay';
 import type { GameState } from '@/types';
-import type { ClientMessage } from '@/types/shared';
 import { decodeRecord } from '@/persistence/serialize';
 
 export type ToWorker =
   | { t: 'join'; conn: string; name: string; plain: boolean }
   | { t: 'leave'; conn: string }
-  | { t: 'msg'; conn: string; m: ClientMessage }
+  | { t: 'msg'; conn: string; text: string }
   | { t: 'stats'; id: number }
   | { t: 'stop'; why: 'cap' | 'restart' };
 
@@ -54,9 +53,11 @@ if (data.mode === 'replay') {
       case 'leave':
         room.leave(m.conn);
         break;
-      case 'msg':
-        room.handle(m.conn, m.m);
+      case 'msg': {
+        const msg = parseClientMessage(m.text);
+        if (msg) room.handle(m.conn, msg);
         break;
+      }
       case 'stats':
         port.postMessage({ t: 'stats', id: m.id, stats: room.snapshotStats(), cpu: process.cpuUsage() });
         break;

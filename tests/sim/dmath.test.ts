@@ -1,9 +1,10 @@
 // @vitest-environment node
 /**
  * SHARE-002 (SHARED-SHOPS.md §3.2 rule 1): `src/sim/dmath.ts`, the one arithmetic every engine shares. Its results
- * equal fdlibm's bit for bit: `fixtures/dmath-fdlibm.txt` holds 2,193 inputs (special values, subnormals, huge
- * arguments) with the results of Java's StrictMath, which is fdlibm, computed on 2026-10-20 (a line is the function,
- * the input's bits, a second input's bits for `pow`, `atan2` and `hypot`, then the result's bits). They also stay within
+ * equal fdlibm's bit for bit: `fixtures/dmath-fdlibm.txt` holds 2,593 inputs (special values, subnormals, huge
+ * arguments, and 400 at the code's branch boundaries from chunk 10's review, which reach every block of dmath that
+ * 687,826 targeted inputs reach) with the results of Java's StrictMath, which is fdlibm, computed on 2026-10-20 (a line
+ * is the function, the input's bits, a second input's bits for `pow`, `atan2` and `hypot`, then the result's bits). They also stay within
  * 1 ulp of the engine's own Math (2 for `hypot`), give the special values ECMAScript defines for Math, and keep the
  * exact cases exact. The cross-engine replay (e2e) checks that browsers compute the same.
  */
@@ -82,9 +83,9 @@ function inputs(seed: number) {
 }
 
 describe('SHARE-002: dmath, one arithmetic for every engine', () => {
-  it('equals fdlibm (Java StrictMath) bit for bit on 2,193 inputs', () => {
+  it('equals fdlibm (Java StrictMath) bit for bit on 2,593 inputs', () => {
     const lines = readFileSync(join(__dirname, 'fixtures', 'dmath-fdlibm.txt'), 'utf8').trim().split('\n');
-    expect(lines.length).toBe(2193);
+    expect(lines.length).toBe(2593);
     const bad: string[] = [];
     const seen = new Set<string>();
     for (const line of lines) {

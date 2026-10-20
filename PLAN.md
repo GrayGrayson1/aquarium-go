@@ -762,6 +762,19 @@ REL-012, REL-018.
   service, so chunk 12's build command removes the key first (§5.8). Afterwards the prototype on Render was closed
   (no connections or replays unless `SHOPS_OPEN=1`), since its byte budget restarts at every wake and its address is
   public.
+- **The fresh review** (Opus 5.5, max effort) on `885e43e..e778ba5`: dmath sound (line by line against FdLibm.java;
+  687,826 targeted inputs equal to StrictMath; bit-identical in Node, Chromium and WebKit, whose own Math differ on
+  tens of thousands of them), the switch faithful (solo play after 14 game days: money, animals and the random
+  stream identical), the protocol sound. One blocker, fixed: a deeply nested message (6 KB) crashed the server, since
+  the main thread copied the parsed object to the worker; it now hands the worker the text, which the worker parses and
+  checks (`parseClientMessage`), and any error closes only that connection. Its notes, fixed: re-syncs budgeted as §5.3
+  says (3 in 10 minutes, 6 an hour, then `outofstep`), one replay at a time, connections closed if they don't say
+  `hello` within 10 seconds, the header's claim corrected; a test that the step block pins the world (it failed
+  without the pin); the dmath reference file grown to 2,593 inputs, which reach every block the review's inputs reach;
+  the browser replay does the interface's reads between steps; separators in two cache keys; inherited names refused
+  as a tank; the paused two-browser check reads until both agree; the docs (the meter's factor, what fingerprints can't
+  see). Left for chunk 11: keys holding `undefined`, which a snapshot drops and a joiner re-adds in another order
+  (harmless today; SHARED-SHOPS.md §3.2 rule 10).
 - **For chunk 12** (from the measurements): time steps in place, not on a copy (18 to 32% of a step); a cheaper or rarer
   fingerprint and snapshot check for big shops (750 ms and 1.6 s of wall time on the free instance); the key out of the
   build; and, before big shops matter, the owner's choice between a lower top speed for them and a paid instance.
