@@ -48,6 +48,7 @@ import { keeperOf } from '../staff/common'; // lane:fit — a keeper's hand-feed
 import { noteFoodSpend } from '../production/costs'; // lane:production
 import { isHeld } from '../automation/hold'; // lane:automation (chunk 5) — manual mode
 import { drawFresh } from '../automation/reserve'; // lane:automation (chunk 5) — top-offs from the Water room's fresh reserve
+import * as dmath from '../dmath';
 
 /** Repair NaN / out-of-range values (old saves, other lanes' writes). */
 export function sanitizeWater(tank: Tank): void {
@@ -130,8 +131,8 @@ function stepEquipmentWear(state: GameState, tank: Tank, dt: number, ctx: SimCon
     inst.condition = clamp(finite(inst.condition, 1) - (wear * dt) / 24, 0, 1);
     const base = def.stats.failureRate ?? 0;
     if (base <= 0) continue;
-    const pDay = clamp(base * (1 + 6 * Math.pow(1 - inst.condition, 2)), 0, 0.5);
-    const p = 1 - Math.pow(1 - pDay, dt / 24);
+    const pDay = clamp(base * (1 + 6 * dmath.pow(1 - inst.condition, 2)), 0, 0.5);
+    const p = 1 - dmath.pow(1 - pDay, dt / 24);
     if (!ctx.rng.chance(p)) continue;
     // lane:core (S0 review) — the offline-grace contract (src/persistence/offline.ts): equipment doesn't fail while
     // catching up. The roll above still draws, so the random stream only differs where a failure would have happened.
@@ -295,7 +296,7 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   const lightHeat = inp.lightOn ? 0.5 * Math.min(1.2, s.par) * inp.lightIntensity : 0;
   const ambient = roomTempAt(inp.hour) - s.fanCool + lightHeat;
   const tau = env.tau * (s.fans > 0 ? 0.8 : 1);
-  let T = ambient + (w.tempC - ambient) * Math.exp(-h / tau);
+  let T = ambient + (w.tempC - ambient) * dmath.exp(-h / tau);
   const perW = (h * 0.86) / Math.max(1, L); // °C per watt over this substep
   for (const e of s.stuckHeaters) T += (e.def.stats.power ?? 0) * perW;
   const heat = () => {
@@ -338,7 +339,7 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
     const k = age < 0.75 ? 0 : 0.35 * clamp(q10(T, 25, 1.9), 0.4, 1.6);
     if (k > 0) {
       const before = w.foodInWater;
-      scaleFood(tank, Math.exp(-k * h));
+      scaleFood(tank, dmath.exp(-k * h));
       const decayed = Math.max(0, before - w.foodInWater);
       foodTan = decayed * (lab.foodWaste ?? 0.1);
     }
@@ -372,19 +373,19 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   const fO2 = clamp(w.oxygen / 0.45, 0.15, 1);
   // lane:w2-sim — the colony acclimates to the tank's temperature over ~2 days (cool-water filters still work).
   const accT = finite(lab.bioTempC, T);
-  lab.bioTempC = accT + (T - accT) * (1 - Math.exp(-h / BIO_ACCLIMATION_H));
+  lab.bioTempC = accT + (T - accT) * (1 - dmath.exp(-h / BIO_ACCLIMATION_H));
   const fBioT = nitrifierTempFactor(T, accT);
   const env1 = colony * fBioT * fPH * fO2;
   const C1 = tan / L;
   const vmax1 = capMg * aob * env1;
-  const ox1 = tan * (1 - Math.exp(-(vmax1 / (0.08 + C1) / L) * h));
+  const ox1 = tan * (1 - dmath.exp(-(vmax1 / (0.08 + C1) / L) * h));
   tan -= ox1;
   no2 += ox1 * N_TO_NO2;
   const C2 = no2 / L;
   // Once established, nitrite oxidisers out-pace the ammonia oxidisers, so a mature filter holds nitrite below
   // ammonia; nitrite spikes belong to cycling (nob lags aob above). lane:w2-sim: 1.1 → 1.5.
   const vmax2 = capMg * N_TO_NO2 * nob * env1 * 1.5;
-  const ox2 = no2 * (1 - Math.exp(-(vmax2 / (0.12 + C2) / L) * h));
+  const ox2 = no2 * (1 - dmath.exp(-(vmax2 / (0.12 + C2) / L) * h));
   no2 -= ox2;
   no3 += ox2 * NO2_TO_NO3;
   // Plant nitrate uptake and plant oxygen are applied by the aquascape lane's stepTankDecor (growth-aware), so they
@@ -403,7 +404,7 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   const rockExp = tank.waterClass === 'marine_live_rock' || tank.waterClass === 'reef' ? 0.0015 * m : 0;
   const dsbExp = tank.substrate?.depthCm >= 8 && (tank.substrate.kind === 'sand' || tank.substrate.kind === 'fine_sand' || tank.substrate.kind === 'aragonite') ? 0.001 : 0;
   const algaeExp = (w.algae / 100) * 0.004 * (inp.lightOn ? 1 : 0.3);
-  no3 *= Math.exp(-(refExp + skimExp + rockExp + dsbExp + algaeExp) * h);
+  no3 *= dmath.exp(-(refExp + skimExp + rockExp + dsbExp + algaeExp) * h);
 
   // ── 6. Biofilter growth & colony adaptation ──
   const filterRunning = s.activeFilters.length > 0;
@@ -414,14 +415,14 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
     const grow = r * supply * Math.max(m, 0.03) * (1 - m) * h;
     w.bioMaturity = clamp(m + grow, 0, 1);
   } else {
-    w.bioMaturity = clamp(m * Math.exp(-0.003 * h), 0, 1);
+    w.bioMaturity = clamp(m * dmath.exp(-0.003 * h), 0, 1);
   }
-  if (!filterRunning && s.filters.length > 0) w.bioMaturity = clamp(w.bioMaturity * Math.exp(-0.006 * h), 0, 1);
+  if (!filterRunning && s.filters.length > 0) w.bioMaturity = clamp(w.bioMaturity * dmath.exp(-0.006 * h), 0, 1);
   // A cool colony needs more biomass for the same load (lane:w2-sim: temperature-aware target).
   const capNow = Math.max(1e-6, capMg * aob * fBioT);
   const target = clamp(0.3 + 2.5 * (wasteRate / capNow) + (C1 > 0.2 ? 0.3 : 0), 0.3, 1);
   const rate = target > colony ? 0.06 : 0.01;
-  lab.colony = clamp(colony + (target - colony) * (1 - Math.exp(-rate * h)), 0.25, 1);
+  lab.colony = clamp(colony + (target - colony) * (1 - dmath.exp(-rate * h)), 0.25, 1);
 
   // ── 7. Oxygen & CO₂ ──
   const sg = w.salinitySG;
@@ -451,7 +452,7 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   // ── 8. KH, pH ──
   const soil = tank.substrate?.kind === 'planted_soil';
   const aragonite = tank.substrate?.kind === 'aragonite';
-  if (soil) w.kh += (3 - w.kh) * (1 - Math.exp(-0.004 * h)) * (w.kh > 3 ? 1 : 0);
+  if (soil) w.kh += (3 - w.kh) * (1 - dmath.exp(-0.004 * h)) * (w.kh > 3 ? 1 : 0);
   if (aragonite && w.kh < (marine ? 7.5 : 9)) w.kh += 0.0015 * h;
   if (marine && env.corals > 0) {
     const c = env.habitat.corals;
@@ -464,7 +465,7 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   const organicCo2 = brackish ? 3.0 - 2.8 * saltFrac : marine ? 0.2 : soil ? 4.5 : 3.0;
   let pHeq = (brackish ? equilibriumPH(w.kh, lab.co2 + organicCo2, false, saltFrac) : equilibriumPH(w.kh, lab.co2 + organicCo2, marine)) - 0.0015 * w.detritus - (soil ? 0.15 : 0);
   if (w.kh < 0.6) pHeq = Math.min(pHeq, 6.2 + w.kh); // buffer exhausted: acids win
-  w.pH = clamp(w.pH + (pHeq - w.pH) * (1 - Math.exp(-h / 1.2)), 4.5, 9.6);
+  w.pH = clamp(w.pH + (pHeq - w.pH) * (1 - dmath.exp(-h / 1.2)), 4.5, 9.6);
 
   // ── 9. Algae, clarity, pods, consumables ──
   const par = inp.lightOn ? Math.min(1.5, s.par) * inp.lightIntensity : 0;
@@ -476,7 +477,7 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
     const r = 0.045 * par * nutrient * (1 - comp) * (1 - 0.4 * s.uvExport) * clamp(q10(T, 25, 1.6), 0.5, 1.4);
     w.algae = clamp(w.algae + r * (1.5 + w.algae) * (1 - w.algae / 100) * h, 0, 100);
   }
-  if (nutrient < 0.08) w.algae = clamp(w.algae * Math.exp(-0.004 * h), 0, 100);
+  if (nutrient < 0.08) w.algae = clamp(w.algae * dmath.exp(-0.004 * h), 0, 100);
 
   const C1b = tan / L;
   const bloom = w.bioMaturity < 0.45 && C1b > 0.15 ? (0.45 - w.bioMaturity) * 0.8 * Math.min(1, C1b) : 0;
@@ -484,7 +485,7 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   const foodCloud = Math.min(0.3, (w.foodInWater / Math.max(1, L)) * 0.4);
   const clarityTarget = clamp(1 - w.detritus * 0.0035 - bloom * (1 - 0.7 * s.uvExport) - green - foodCloud, 0.05, 1);
   const cRate = clarityTarget > w.clarity ? 0.25 + s.mech * 0.5 + s.uvExport * 0.5 : 0.4;
-  w.clarity = clamp(w.clarity + (clarityTarget - w.clarity) * (1 - Math.exp(-cRate * h)), 0, 1);
+  w.clarity = clamp(w.clarity + (clarityTarget - w.clarity) * (1 - dmath.exp(-cRate * h)), 0, 1);
 
   const podCap = clamp(
     (tank.waterClass === 'marine_live_rock' || tank.waterClass === 'reef' ? 0.45 + 0.4 * w.bioMaturity : tank.waterClass === 'freshwater_planted' ? 0.35 : 0.1) +
@@ -495,13 +496,13 @@ function substep(tank: Tank, env: TankEnv, h: number, inp: StepInputs): { tanIn:
   const pods = lab.pods ?? 0;
   lab.pods = clamp01(pods + (0.015 * Math.max(pods, 0.01) * (1 - pods / podCap)) * h);
 
-  lab.fertilizer = clamp01(fert * Math.exp(-h / 40));
+  lab.fertilizer = clamp01(fert * dmath.exp(-h / 40));
 
   // ── 10. Evaporation, ATO, salinity ──
   const evap =
     0.00035 *
     clamp(1 + 0.05 * (T - 22), 0.4, 2) *
-    Math.pow(12 / Math.max(8, env.heightIn), 0.7) *
+    dmath.pow(12 / Math.max(8, env.heightIn), 0.7) *
     (s.lid ? 0.33 : 1) *
     (1 + s.fans * 1.5) *
     (1 + 0.3 * Math.min(2, s.agitation));
@@ -564,7 +565,7 @@ export function stepTankWaterImpl(state: GameState, tank: Tank, dt: number, ctx:
 
   // Smoothed waste input (mg/h) drives colony adaptation and the "filter overloaded" report.
   const instRate = tanIn / dt;
-  lab.wasteRate = (lab.wasteRate ?? 0) + (instRate - (lab.wasteRate ?? 0)) * (1 - Math.exp(-dt / 6));
+  lab.wasteRate = (lab.wasteRate ?? 0) + (instRate - (lab.wasteRate ?? 0)) * (1 - dmath.exp(-dt / 6));
 
   // Target-fed portions are released to everyone after about an hour.
   if (w.targetFeed && ctx.hour + dt - w.targetFeed.hour > 1) delete w.targetFeed;
@@ -586,7 +587,7 @@ export function stepTankWaterImpl(state: GameState, tank: Tank, dt: number, ctx:
   const tox = w.ammonia * ammoniaToxicityWeight(w.pH, w.tempC) + w.nitrite * (env.salt ? 0.25 : 1);
   let v = clamp(rT / 0.6 + rPH / 0.08 + rSG / 0.0004 + Math.min(0.5, tox * 0.6), 0, 1);
   if (env.summary.conflict) v = Math.max(v, 0.65);
-  lab.swing = clamp01((lab.swing ?? 0) + (v - (lab.swing ?? 0)) * (1 - Math.exp(-dt / 12)));
+  lab.swing = clamp01((lab.swing ?? 0) + (v - (lab.swing ?? 0)) * (1 - dmath.exp(-dt / 12)));
   lab.conflict = env.summary.conflict;
   lab.prevTemp = w.tempC;
   lab.prevPH = w.pH;

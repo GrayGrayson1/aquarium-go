@@ -79,7 +79,8 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
 
 - **Reproducible.** The same `GameState` plus the same ordered calls (the `advanceWorld` slice sizes, the focused tank
   and `forceFull`, the points where sim debt is flushed, and the player's actions) produce an identical `stateHash`,
-  in one process and locale. Tests pin the call sequence to check it.
+  in one process and locale, and since chunk 10 in every engine (Node, Chromium, WebKit: SHARE-002, the arithmetic
+  below). Tests pin the call sequence to check it.
 - **Live play is not replayable.** Wall-clock tick slicing, which tank is focused (its LOD), autosave flushes and speed
   changes all change the call sequence, so two live sessions diverge. That is accepted; it is not a determinism bug.
   Known consequence: the focused tank changes how draws on the main stream interleave.
@@ -92,6 +93,12 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
   or locale-dependent formatting or sorting in `src/sim` or `src/data`. Accepted entropy: the new-game seed
   (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none (`src/persistence/migrations.ts`).
   `tests/sim/core-determinism-guard.test.ts` enforces this.
+- **One arithmetic (chunk 10, SHARE-002).** Engines round `Math.exp`, `pow`, `log`, `sin`, `cos`, `atan2`, `hypot` and
+  the other transcendental functions differently in the last bit, and a shared shop's copies must step identically
+  (SHARED-SHOPS.md §3.2). So `src/sim` and `src/data` never call them, nor use `**`: `src/sim/dmath.ts` has them in
+  plain arithmetic (fdlibm's algorithms, equal to Java's StrictMath bit for bit). `+ − × ÷`, `Math.sqrt`, `floor`,
+  `round`, `abs`, `min`, `max` and `imul` are exact in every engine and stay. The determinism guard enforces it;
+  `tests/sim/dmath.test.ts` checks the functions.
 - **RNG-stream changes.** A change that adds, removes or reorders draws on an existing stream (for example new betta
   loci) shifts every seeded test after it. Run the seeded suites before and after, explain each changed expectation
   in the commit, and never retune data or thresholds to absorb the shift. New randomness prefers its own keyed or

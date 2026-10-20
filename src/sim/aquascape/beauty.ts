@@ -12,6 +12,7 @@ import { getTankTier } from '@/data/catalog/tanks';
 import { findSpecies } from '@/data/species';
 import { isUnlocked } from '../facility';
 import { residentsOf } from '../residents'; // lane:perf2
+import * as dmath from '../dmath';
 
 interface Item {
   inst: DecorInstance;
@@ -166,7 +167,7 @@ function openWater(tank: Tank, items: Item[]): { free: number; lane: number } {
         for (const it of inCol) {
           const cy = it.floating ? d.waterY - it.h / 2 : it.inst.y + it.h / 2;
           const ry = Math.max(0.005, it.h / 2);
-          const q = ((x - it.inst.x) / Math.max(0.005, it.rx)) ** 2 + ((y - cy) / ry) ** 2 + ((z - it.inst.z) / Math.max(0.005, it.rz)) ** 2;
+          const q = dmath.pow((x - it.inst.x) / Math.max(0.005, it.rx), 2) + dmath.pow((y - cy) / ry, 2) + dmath.pow((z - it.inst.z) / Math.max(0.005, it.rz), 2);
           if (q < 1) {
             blocked = true;
             break;
@@ -236,7 +237,7 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
   if (bed.length) {
     const hs = bed.map((i) => i.h / col);
     const mean = hs.reduce((a, b) => a + b, 0) / hs.length;
-    const sd = Math.sqrt(hs.reduce((a, b) => a + (b - mean) ** 2, 0) / hs.length);
+    const sd = Math.sqrt(hs.reduce((a, b) => a + dmath.pow(b - mean, 2), 0) / hs.length);
     const maxH = Math.max(...hs);
     height = 0.55 * clamp01(maxH / 0.55) + 0.45 * clamp01(sd / 0.16);
   }
@@ -371,7 +372,7 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
   // 8b. maturity: a freshly planted scape is lovely; a grown-in one is breathtaking
   let maturity = 0;
   if (living.length) {
-    maturity = living.reduce((s, i) => s + Math.min(1, i.inst.growth ?? 0.5) ** 1.6, 0) / living.length;
+    maturity = living.reduce((s, i) => s + dmath.pow(Math.min(1, i.inst.growth ?? 0.5), 1.6), 0) / living.length;
     if (maturity < 0.75) tips.push({ p: W.maturity * (1 - maturity), text: 'Give it time — as the plants grow in, the layout will fill out and soften. Good light and a little nitrate speed it up.' });
   }
   add('Maturity', maturity, living.length ? `${Math.round(maturity * 100)}% grown in` : undefined);
@@ -388,7 +389,7 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
   // 8d. variety of living things (collecting rewards)
   const kinds = new Set(living.map((i) => i.def.id)).size;
   const varietyTarget = tank.waterClass === 'reef' ? 7 : tank.environment === 'marine' ? 3 : 6;
-  const variety = clamp01(kinds / varietyTarget) ** 1.3;
+  const variety = dmath.pow(clamp01(kinds / varietyTarget), 1.3);
   add('Variety', variety, `${kinds} kind${kinds === 1 ? '' : 's'} of living decor`);
 
   // 9. clarity / algae
@@ -545,7 +546,7 @@ export function scapeCritique(tank: Tank, report: BeautyReport = beautyScoreImpl
   if (bed.length) {
     const hs = bed.map((i) => i.h / col);
     const mean = hs.reduce((a, b) => a + b, 0) / hs.length;
-    const sd = Math.sqrt(hs.reduce((a, b) => a + (b - mean) ** 2, 0) / hs.length);
+    const sd = Math.sqrt(hs.reduce((a, b) => a + dmath.pow(b - mean, 2), 0) / hs.length);
     const tiers = new Set(hs.map((h) => (h < 0.18 ? 0 : h < 0.5 ? 1 : 2))).size;
     height = 0.45 * clamp01((Math.max(...hs) - 0.35) / 0.4) + 0.35 * clamp01(sd / 0.24) + 0.2 * (tiers >= 3 ? 1 : tiers === 2 ? 0.5 : 0);
   }

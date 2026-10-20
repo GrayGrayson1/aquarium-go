@@ -22,6 +22,7 @@ import { propagationFor } from '@/data/catalog/propagation'; // lane:frags
 import { showValueFactors } from '../shows/titles'; // lane:shows
 import { saleWarnings } from './warnings'; // lane:fix-econ
 import { clamp, clamp01, finite, roundCents, normSeverity, exhibitPopularity, RARITY_SCORE, DIFFICULTY_INDEX, DIFFICULTY_LABEL, difficultyIndex, speciesPlural, nicePrice } from './util';
+import * as dmath from '../dmath';
 
 const NEUTRAL_EPS = 0.01;
 
@@ -135,7 +136,7 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
 
   // 2. Health & condition.
   const health = clamp(finite(c.stats?.health, 100), 0, 100);
-  let hm = 0.3 + 0.7 * Math.pow(health / 100, 1.4);
+  let hm = 0.3 + 0.7 * dmath.pow(health / 100, 1.4);
   let hNote = health >= 90 ? 'Healthy and settled' : health >= 65 ? 'In fair condition' : 'In poor condition — buyers discount heavily';
   if (c.illness) {
     const sev = normSeverity(c.illness.severity);
@@ -165,7 +166,7 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
   let pNoteQ = '';
   if (p) {
     const q = 0.3 * finite(p.color, 50) + 0.25 * finite(p.pattern, 50) + 0.3 * finite(p.structure, 50) + 0.15 * finite(p.size, 50);
-    pm = 0.8 + 0.4 * Math.pow(clamp01(q / 100), 1.1);
+    pm = 0.8 + 0.4 * dmath.pow(clamp01(q / 100), 1.1);
     const notable: string[] = [];
     const bands: [string, number][] = [
       ['colour', p.color],
@@ -443,7 +444,7 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
   const status = cache?.waterStatus ?? cache?.status ?? 'good';
 
   if (creatures.length > 0) {
-    ma *= pushFactor(modifiers, 'Animal welfare', 0.72 + 0.38 * Math.pow(welfare / 100, 1.2), welfare >= 85 ? 'Thriving, calm animals' : welfare >= 60 ? 'Mostly comfortable' : 'Stressed or unwell animals');
+    ma *= pushFactor(modifiers, 'Animal welfare', 0.72 + 0.38 * dmath.pow(welfare / 100, 1.2), welfare >= 85 ? 'Thriving, calm animals' : welfare >= 60 ? 'Mostly comfortable' : 'Stressed or unwell animals');
     const speciesCount = new Set(creatures.map((c) => c.speciesId)).size;
     if (creatures.length >= 2 || speciesCount >= 2 || verdict !== 'excellent') {
       ma *= pushFactor(modifiers, `Compatibility: ${COMPAT_LABEL[verdict]}`, COMPAT_MULT[verdict], verdict === 'excellent' || verdict === 'usually_compatible' ? 'A stocking list buyers can trust' : 'Buyers price in the risk of losses');
@@ -460,7 +461,7 @@ export function tankValuation(state: GameState, tankId: string, scope?: TankValu
   // B-138 (ADR-0029 decision 3): beauty prices a display, so it needs animals. An empty, freshly dressed tank sells for
   // about what its parts cost (its decor is priced in the parts above); a beautiful stocked tank keeps its premium, on
   // its animals and plants (chunk 9).
-  if (creatures.length > 0) ma *= pushFactor(modifiers, 'Aquascape beauty', 0.72 + 0.85 * Math.pow(beauty / 100, 1.35), beauty >= 80 ? 'A striking, photogenic layout' : beauty >= 55 ? 'An attractive layout' : 'The layout needs work');
+  if (creatures.length > 0) ma *= pushFactor(modifiers, 'Aquascape beauty', 0.72 + 0.85 * dmath.pow(beauty / 100, 1.35), beauty >= 80 ? 'A striking, photogenic layout' : beauty >= 55 ? 'An attractive layout' : 'The layout needs work');
 
   // Rarity + lineage of livestock.
   if (creatures.length > 0) {
@@ -624,7 +625,7 @@ export function fragValue(state: GameState, item: DecorInstance): FragValue {
   if (coral) m *= pushFactor(factors, healed ? 'Healed on its plug' : 'Fresh cut', healed ? 1.2 : 0.95, healed ? 'Established and safe to ship' : 'Still healing, so buyers pay a little less');
   else if (healed) m *= pushFactor(factors, 'Rooted', 1.1, 'Already growing new roots');
   const health = clamp(finite(item.health, 90), 0, 100) / 100;
-  m *= pushFactor(factors, 'Condition', 0.35 + 0.65 * Math.pow(health, 1.5), health >= 0.85 ? 'Healthy colour and tissue' : health >= 0.6 ? 'A little pale' : 'Stressed — it may not survive shipping');
+  m *= pushFactor(factors, 'Condition', 0.35 + 0.65 * dmath.pow(health, 1.5), health >= 0.85 ? 'Healthy colour and tissue' : health >= 0.6 ? 'A little pale' : 'Stressed — it may not survive shipping');
   if ((item.frag?.generation ?? 1) >= 2) m *= pushFactor(factors, 'Grown in your system', 1.1, 'A second-generation frag with a local track record');
   // A gentle, deterministic weekly swing per item type (no RNG draw): some weeks hammers are hot, others not.
   const week = Math.floor(finite(state.clock?.hour, 0) / 72);

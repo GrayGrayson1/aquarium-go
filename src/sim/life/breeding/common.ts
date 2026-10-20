@@ -31,6 +31,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getTankTier } from '@/data/catalog/tanks';
 import type { TankInfo } from './types';
 import { residentsOf } from '../../residents'; // lane:perf2
+import * as dmath from '../../dmath';
 
 // ───────────────────────────── numbers ─────────────────────────────
 
@@ -228,7 +229,7 @@ export function throttleTankBackoff(tank: Tank, key: string, hour: number, every
   if (!env.warned) env.warned = {};
   const last = env.warned[key];
   const n = env.warned[`${key}#n`] ?? 0;
-  if (last !== undefined && hour - last < everyH * Math.pow(2, Math.min(4, n))) return false;
+  if (last !== undefined && hour - last < everyH * dmath.pow(2, Math.min(4, n))) return false;
   env.warned[key] = hour;
   env.warned[`${key}#n`] = n + (last !== undefined ? 1 : 0);
   return true;
@@ -849,7 +850,7 @@ export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, 
 export function updateReadiness(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, dt: number, info: TankInfo): void {
   const cur = Number.isFinite(c.stats.breedingReadiness) ? c.stats.breedingReadiness : 0;
   const target = readinessTarget(tank, c, sp, hour, info);
-  const k = target > cur ? 1 - Math.exp(-dt / 10) : 1 - Math.exp(-dt / 4);
+  const k = target > cur ? 1 - dmath.exp(-dt / 10) : 1 - dmath.exp(-dt / 4);
   c.stats.breedingReadiness = clamp(cur + (target - cur) * k, 0, 100);
 }
 

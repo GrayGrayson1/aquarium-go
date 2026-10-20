@@ -29,6 +29,7 @@ import {
   type SpeciesWaterView,
   type TankEnv,
 } from './welfare';
+import * as dmath from '../dmath';
 
 // ───────────────────────────────── constants ─────────────────────────────────
 
@@ -75,8 +76,8 @@ export const CONDITIONING_TAGS: FoodTag[] = ['bloodworm', 'brine_shrimp', 'mysis
 export const LIVE_TAGS: FoodTag[] = ['copepod_live', 'snail_live', 'daphnia', 'earthworm', 'baby_brine', 'infusoria'];
 
 const clamp = (v: number, lo: number, hi: number) => (Number.isFinite(v) ? (v < lo ? lo : v > hi ? hi : v) : lo);
-const approach = (cur: number, target: number, h: number, tau: number) => cur + (target - cur) * (1 - Math.exp(-h / Math.max(0.01, tau)));
-const perStep = (perDay: number, h: number) => 1 - Math.pow(1 - clamp(perDay, 0, 0.999), h / 24);
+const approach = (cur: number, target: number, h: number, tau: number) => cur + (target - cur) * (1 - dmath.exp(-h / Math.max(0.01, tau)));
+const perStep = (perDay: number, h: number) => 1 - dmath.pow(1 - clamp(perDay, 0, 0.999), h / 24);
 
 // ───────────────────────────────── small helpers ─────────────────────────────────
 
@@ -298,7 +299,7 @@ function feedTankSubstep(state: GameState, env: TankEnv, list: { c: Creature; sp
     const wantHunger = Math.min(hunger, 100 * mealsPerHour * h);
     const appetite = appetiteOf(c, sp);
     let weight =
-      Math.pow(Math.max(0.02, sp.feedingSpeed), 1.2) *
+      dmath.pow(Math.max(0.02, sp.feedingSpeed), 1.2) *
       (0.5 + sp.feedingAggression) *
       feedingPersonalityMul(c.personality) *
       (0.35 + hunger / 100) *
@@ -312,8 +313,8 @@ function feedTankSubstep(state: GameState, env: TankEnv, list: { c: Creature; sp
   eaters.sort((a, b) => b.weight - a.weight || (a.c.id < b.c.id ? -1 : 1));
   const wMax = eaters[0].weight || 1;
   const passes: ((e: Eater) => number)[] = [
-    (e) => 0.6 * Math.pow(e.weight / wMax, 0.8),
-    (e) => 0.8 * Math.pow(e.weight / wMax, 0.5),
+    (e) => 0.6 * dmath.pow(e.weight / wMax, 0.8),
+    (e) => 0.8 * dmath.pow(e.weight / wMax, 0.5),
     () => 1,
   ];
   // Last pass: the hungriest go first. A fish that has been missing out gets bolder about leftovers, so a tank fed
@@ -911,7 +912,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
 
   // Diet memory & conditioning decay
   if (m.recentDiet) {
-    const k = Math.exp(-h / 48);
+    const k = dmath.exp(-h / 48);
     for (const key of Object.keys(m.recentDiet) as FoodTag[]) {
       const v = (m.recentDiet[key] ?? 0) * k;
       if (v < 0.05) delete m.recentDiet[key];
@@ -964,7 +965,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   }
   let total = 0;
   if (!m.damage) m.damage = {};
-  const decay = Math.exp(-h / 24);
+  const decay = dmath.exp(-h / 24);
   for (const k of Object.keys(m.damage)) {
     m.damage[k] *= decay;
     if (m.damage[k] < 0.01) delete m.damage[k];
@@ -1020,7 +1021,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   const target = sizeAtAge(sp, c.genome, age);
   if (c.sizeCm < target) {
     const cond = (s.hunger < 70 ? 1 : s.hunger < 90 ? 0.4 : 0) * (0.5 + s.comfort / 200) * (c.illness ? 0.5 : 1);
-    if (cond > 0) c.sizeCm += (target - c.sizeCm) * (1 - Math.exp(-h * 0.25 * cond));
+    if (cond > 0) c.sizeCm += (target - c.sizeCm) * (1 - dmath.exp(-h * 0.25 * cond));
   }
 
   // ── Ageing, stage changes, sex reveal (reveal toasts are merged per group by flushReveals)
@@ -1089,7 +1090,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   // ── Natural end of life (rare, gentle)
   const life = Math.max(1, sp.lifecycle.lifespanDays);
   if (age > life * 0.9 && !state.offlineGrace) {
-    const pDay = clamp(0.01 * Math.exp((age / life - 0.9) * 25) * (1.3 - 0.6 * hardy), 0, 0.9);
+    const pDay = clamp(0.01 * dmath.exp((age / life - 0.9) * 25) * (1.3 - 0.6 * hardy), 0, 0.9);
     if (ctx.rng.chance(perStep(pDay, h))) {
       m.damage.age = (m.damage.age ?? 0) + 1000;
       killCreature(state, c, explainDeath(state, env, c, sp, hour), hour, ctx.emit);

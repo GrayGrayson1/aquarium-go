@@ -4,6 +4,7 @@
  * Rendering/AI may use `Math.random` or `visualRng` freely (cosmetic only).
  */
 import type { GameState } from '@/types';
+import * as dmath from './dmath';
 
 export interface Rng {
   /** float in [0,1) */
@@ -50,7 +51,7 @@ export function mulberry32(seed: number): Rng {
       let v = 0;
       while (u === 0) u = next();
       while (v === 0) v = next();
-      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      return Math.sqrt(-2 * dmath.log(u)) * dmath.cos(2 * Math.PI * v);
     },
     shuffle: (arr) => {
       for (let i = arr.length - 1; i > 0; i--) {

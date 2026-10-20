@@ -16,6 +16,7 @@ import { incidentRisks } from '../compat';
 import { simRng, type Rng } from '../rng';
 import { emitEvent } from '../context';
 import { fragGrowthFactor, stepFragGrowOut } from './frags'; // lane:frags
+import * as dmath from '../dmath';
 
 /**
  * Coral-nipping fish (compat `coral_nip` incidents): roll per step and damage a coral colony a little.
@@ -39,7 +40,7 @@ function applyCoralNipping(state: GameState, tank: Tank, dt: number, stepRng?: R
   // rolls were correlated). Callers outside a step (none today) still get the world stream.
   const rng = stepRng ?? simRng(state);
   for (const risk of risks) {
-    const p = 1 - Math.pow(1 - Math.min(0.95, Math.max(0, risk.perDay)), dt / 24);
+    const p = 1 - dmath.pow(1 - Math.min(0.95, Math.max(0, risk.perDay)), dt / 24);
     if (!rng.chance(p)) continue;
     const pick = rng.weighted(corals, (c) => {
       const t = getDecorDef(c.defId)?.coralType;
@@ -242,7 +243,7 @@ export function stepTankDecorImpl(state: GameState, tank: Tank, dt: number, star
       if (inst.health < 25) g -= 0.0015 * h; // melting / receding
       inst.growth = clamp(g, 0.05, 1);
       if (def.category === 'plant') {
-        const v = vitality(inst, def) * Math.max(0.2, inst.scale) ** 1.5;
+        const v = vitality(inst, def) * dmath.pow(Math.max(0.2, inst.scale), 1.5);
         uptake += def.habitat.nitrateUptake * v * (inst.growth < 0.999 ? 1 : 0.6);
         oxygen += def.habitat.oxygen * v;
       }

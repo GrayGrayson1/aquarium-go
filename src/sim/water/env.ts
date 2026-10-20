@@ -12,6 +12,7 @@ import { tankHabitat, type TankHabitat } from '../aquascape';
 import { clamp, nitrifierTempFactor } from './chem';
 import { LITRES_PER_GALLON, ROOM_TEMP_C, isSaltClass } from './constants';
 import { residentsOf } from '../residents'; // lane:perf2
+import * as dmath from '../dmath';
 
 export interface EqEntry {
   inst: EquipmentInstance;
@@ -294,7 +295,7 @@ export function thermalTau(gallons: number, lid: boolean): number {
 /** Room temperature at a game hour: 22 °C with a gentle ±0.8 °C daily cycle (warmest mid-afternoon). */
 export function roomTempAt(hour: number): number {
   const h = ((hour % 24) + 24) % 24;
-  return ROOM_TEMP_C + 0.8 * Math.sin(((h - 9) / 24) * Math.PI * 2);
+  return ROOM_TEMP_C + 0.8 * dmath.sin(((h - 9) / 24) * Math.PI * 2);
 }
 
 /** Where the thermostat equipment will hold this tank (°C), ignoring short swings. */

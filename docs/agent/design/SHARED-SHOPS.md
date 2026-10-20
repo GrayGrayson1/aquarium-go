@@ -129,7 +129,7 @@ Render's free plan includes **5 GB of outbound data a month for the whole worksp
 
 Each rule applies to shared shops; rule 1 also changes the solo game (its numbers move in the last digits).
 
-1. **One arithmetic everywhere (`src/sim/dmath.ts`, chunk 11, unconditional).** `exp`, `log`, `log10`, `log2`, `log1p`,
+1. **One arithmetic everywhere (`src/sim/dmath.ts`, chunk 10, unconditional).** `exp`, `log`, `log10`, `log2`, `log1p`,
    `expm1`, `pow`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh`, `hypot` and `cbrt`
    are written with `+ − × ÷` and `Math.sqrt`, and `src/sim` and `src/data` use only them; a guard test bans the
    `Math` versions and the `**` operator there. The review ran all 236 test files (2,868 tests) with its
@@ -611,16 +611,17 @@ Each chunk follows CLAUDE.md: built on `next`, the four checks on the final code
 effort) with the brief and the diff, its blockers fixed, PLAN.md updated, `next` pushed. Nothing reaches players until
 the owner says release.
 
-- **Chunk 10, the test.** Local first: `dmath` written for real, the step block, and a throwaway room and `sharedLoop`
-  prototype, to check §3.2 in one process; the cross-engine replay in Node, Chromium and WebKit for a game week at
+- **Chunk 10, the test.** Local first: `dmath` written for real and switched on for the whole simulation (§3.2 rule 1,
+  moved here from chunk 11 so the test measures the real arithmetic), the step block, and a prototype room and
+  `sharedLoop`, to check §3.2 in one process; the cross-engine replay in Node, Chromium and WebKit for a game week at
   10× on several fixtures (expected: no mismatch); bytes per player-hour, per command and per save; the worker's time
   per step. Then, **with the owner's yes, on Render:** create the free service (stub storage, no database key) and
   deploy the prototype; measure the wake time, the time per step on 0.1 CPU (on Render's x86-64, also confirming the
   replay there) and a real two-browser session; check the build without install scripts and what Render exposes to
   builds. Installs `ws`. Writes the numbers into §11. No player-visible change.
-- **Chunk 11, one arithmetic and commands.** §3.2 rule 1 for the whole game (every seeded test's shift explained), §4,
-  and §3.2's other sim changes (`focusTankIds`, the step block, `catchUp.ts`, the starvation rule, the flags), with no
-  other player-visible change; the full test pass guards the solo game. Can ship alone (0.5.7) if the owner wants.
+- **Chunk 11, commands.** §4, and §3.2's other sim changes (`catchUp.ts`, the starvation rule, the flags; chunk 10
+  brings `focusTankIds` and the step block), with no player-visible change; the full test pass guards the solo game.
+  Can ship alone (0.5.7) if the owner wants.
 - **Chunk 12, the server and the database.** §5 and §6: `server/`, the migration with the `service_role` revokes
   (applied live with the owner's yes), the owner's key pasted into Render, the stub, the server's tests, the deploy, the
   release order written into PLAN.md, and the live smoke.

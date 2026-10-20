@@ -5,6 +5,7 @@
  */
 import type { Tank, DecorInstance, DecorDef, DecorAnchorTemplate } from '@/types';
 import { getTankTier } from '@/data/catalog/tanks';
+import * as dmath from './dmath';
 
 export const IN_TO_M = 0.0254;
 /** Gap between water surface and the top rim (metres). */
@@ -72,8 +73,8 @@ export interface DecorCollider {
 
 /** Transform a decor anchor template into tank-local coordinates. */
 export function decorAnchors(inst: DecorInstance, def: DecorDef): WorldAnchor[] {
-  const c = Math.cos(inst.rotY);
-  const s = Math.sin(inst.rotY);
+  const c = dmath.cos(inst.rotY);
+  const s = dmath.sin(inst.rotY);
   return def.anchors.map((a) => {
     const [ox, oy, oz] = a.offset;
     const x = inst.x + (ox * c + oz * s) * inst.scale;
@@ -88,8 +89,8 @@ export function decorCollider(inst: DecorInstance, def: DecorDef): DecorCollider
   const d = def.size.d * inst.scale;
   const h = def.size.h * inst.scale;
   // rotate footprint: use the max half-extent for x/z when rotated
-  const c = Math.abs(Math.cos(inst.rotY));
-  const s = Math.abs(Math.sin(inst.rotY));
+  const c = Math.abs(dmath.cos(inst.rotY));
+  const s = Math.abs(dmath.sin(inst.rotY));
   const rx = (w * c + d * s) / 2;
   const rz = (w * s + d * c) / 2;
   return { decorId: inst.id, center: [inst.x, inst.y + h / 2, inst.z], radius: [rx, h / 2, rz] };

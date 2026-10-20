@@ -38,14 +38,15 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
   passed that didn't run.
 - **Never weaken, skip or delete a test to get green**, and don't quietly drop scope. If a test is wrong (the design
   changed, or the test missed a real case), fix it on purpose and say why in the commit.
-- **Deterministic simulation** (the full contract is in `docs/ARCHITECTURE.md`, "Determinism contract"). In
-  `src/sim` and `src/data`, randomness comes only from `ctx.rng` / `simRng(state)` (inside a tank step, the step's
-  `ctx.rng`, never a second `simRng(state)`), a subsystem's own persisted stream (`staff.rng`, `shows.rng`) or a keyed
-  stream (`mulberry32(hashString(key))`). Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto`,
-  `Intl` or locale-dependent formatting or sorting there; the only accepted entropy is the new-game seed
-  (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none. The guard tests `tests/sim/core-*`
-  enforce most of this. A change that adds or reorders draws on an existing stream shifts seeded tests: run them
-  before and after and explain each changed expectation; never retune data to hide the shift.
+- **Deterministic simulation** (the full contract is in `docs/ARCHITECTURE.md`, "Determinism contract"). In `src/sim`
+  and `src/data`, randomness comes only from `ctx.rng` / `simRng(state)` (inside a tank step, the step's `ctx.rng`,
+  never a second `simRng(state)`), a subsystem's own persisted stream (`staff.rng`, `shows.rng`) or a keyed stream
+  (`mulberry32(hashString(key))`). Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto`, `Intl` or
+  locale-dependent formatting or sorting there, nor the engine's `Math.exp`, `pow`, `sin` and the other transcendental
+  functions or `**` (use `src/sim/dmath.ts`, the same in every engine); the only accepted entropy is the new-game seed
+  (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none. The guard tests `tests/sim/core-*` enforce
+  most of this. A change that adds or reorders draws on an existing stream shifts seeded tests: run them before and
+  after and explain each changed expectation; never retune data to hide the shift.
 - **The store boundary.** Game state changes only through `useGame.mutate` (player actions from the UI, the render
   layer's input handlers and the AI's tutorial hook), `mutateFast` (the game loop, the hidden-tab catch-up, the flush
   before a save or a manual-mode change, dev commands) and `setGame` (replacing the whole world). The render frame

@@ -45,8 +45,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
-| 10 | Shared shops, the test (SHARED-SHOPS.md §10) | Planned: lockstep checked in one process and across Chrome, Safari and Node; the data, CPU and wake time measured, on Render with the owner's yes |
-| 11 | Shared shops, commands (§4, §3.2) | Planned: every player action a serializable command, no player-visible change |
+| 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | In progress (started 2026-10-20): one arithmetic in the sim (dmath) done; the step block, the prototype server and client, the replay and the Render measurements next |
+| 11 | Shared shops, commands (§4, §3.2) | Planned: every player action a serializable command, no player-visible change (one arithmetic moved to chunk 10) |
 | 12 | Shared shops, the server and the database (§5, §6) | Planned: `server/` on a free Render web service, the migration (live with the owner's yes) |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Planned: the owner's words, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
 
@@ -709,6 +709,42 @@ REL-012, REL-018.
   too now; only the save-first waits on the stale flag.
   Left for the owner: whether Settings' Load should also keep another aquarium kept only in the autosave (as 0.5.5,
   it goes; KNOWN_LIMITATIONS).
+
+### 10. Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) — started 2026-10-20 (Chase)
+
+- **What:** check the design's lockstep (§3) before chunks 11 to 13 build on it, and measure what it costs. The chunk
+  starts at `885e43e`. No player-visible change.
+  - **One arithmetic (SHARE-002, §3.2 rule 1):** `src/sim/dmath.ts`, fdlibm's functions in plain arithmetic (equal to
+    Java's StrictMath bit for bit), and every transcendental `Math` call and `**` in `src/sim` switched to it; the
+    determinism guard bans the engine's versions in `src/sim` and `src/data`. Moved here from chunk 11 so the test
+    measures the real arithmetic, not a shim; every seeded test that shifts says why (none did: 2,872 of 2,872).
+  - **The step block (§3.2 rules 2 to 4):** `runSharedStep` in `src/sim/sharedStep.ts` on a working copy (the world's
+    identity pinned, the compatibility caches and `reachCache` cleared, commands, the advance with the full-detail
+    list, `post`; discarded whole if it throws), `focusTankIds` beside `focusTankId`, the copier moved to
+    `src/sim/clone.ts`; a first command set (`src/sim/commands/`: speed, feeding, a water change) that chunk 11 grows to
+    the whole catalogue.
+  - **A prototype server** (`server/`, Node 22, `ws` 8.22.0, built by the repo's Vite into `dist-server/`): §3.3's
+    messages without accounts or the database; stub shops built from the dev fixtures at build time; one worker thread
+    per shop; time steps batched once a second, command steps at once, fingerprints every 10 seconds, snapshots for
+    joins and re-syncs; meters for bytes and CPU (`/stats`); a step-log endpoint for the replay; a connection cap and a
+    byte budget for the public test service.
+  - **A prototype client:** the replica (`src/game/sharedLoop.ts`: applies steps in order, fingerprints in idle time,
+    asks for a re-sync on a mismatch) and a dev-only connection (`src/dev/sharedProto.ts`, `__AQ.shared`), headless:
+    it doesn't show the shop (chunk 13 does).
+  - **Tests:** dmath against fdlibm, the engine's Math and ECMAScript's special values; the step block; lockstep in one
+    process (a room, two replicas, joiners from mid-run snapshots, a copy changed by hand caught); e2e: the cross-engine
+    replay (the Node server's step log replayed in Chromium and WebKit, a game week at 10× on `big_facility` and a
+    playthrough) and two browser contexts in one shop.
+  - **Measured, into §11:** bytes per player-hour, per command, per snapshot and per save; the server's time per step;
+    then on Render (ADR-0046): the wake time, the time per step on 0.1 CPU, the replay on x86-64, a two-browser
+    session from the Mac, the build without install scripts, what Render shows a build.
+- **Render:** the owner's yes (ADR-0046): the agent creates the free web service `aquarium-go-shops` (Virginia, from
+  `next`, deployed by hand, stub shops, no key) and deploys the prototype; afterwards it sleeps, for chunk 12.
+- **Not in this chunk:** the rest of the command catalogue and first one wins (chunk 11), accounts, the database, the
+  caps, the lease and the build identity (chunk 12), the screens and every player-visible word (chunk 13).
+- **Done when:** the four checks pass on the final code; one fresh reviewer (Opus 5.5, max effort) reads this brief,
+  SHARED-SHOPS.md §3, §5 and §10 and `git diff 885e43e..HEAD`, and its blockers are fixed; the Render measurements are
+  in SHARED-SHOPS.md §11; PLAN.md and the docs say what changed; `next` pushed.
 
 ## Releases
 

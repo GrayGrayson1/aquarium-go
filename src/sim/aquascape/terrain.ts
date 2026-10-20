@@ -10,6 +10,7 @@
 import type { Tank, DecorInstance, DecorDef } from '@/types';
 import { tankDims } from '../tankSpace';
 import { getDecorDef } from '@/data/catalog/decor';
+import * as dmath from '../dmath';
 
 type TankLike = Pick<Tank, 'id' | 'tierId' | 'substrate'> & { water?: { level: number } };
 
@@ -67,8 +68,8 @@ export function substrateHeightAt(tank: TankLike, x: number, z: number): number 
 /** How high an epiphyte/coral can attach on top of a hardscape item at (x, z); -Infinity if not over it. */
 export function hardscapeTopAt(inst: DecorInstance, def: DecorDef, x: number, z: number): number {
   if (def.category !== 'hardscape' && def.category !== 'ornament' && def.category !== 'substrate_feature') return -Infinity;
-  const c = Math.cos(inst.rotY);
-  const s = Math.sin(inst.rotY);
+  const c = dmath.cos(inst.rotY);
+  const s = dmath.sin(inst.rotY);
   const dx = x - inst.x;
   const dz = z - inst.z;
   // into decor-local (inverse of rotation.y)
@@ -78,7 +79,7 @@ export function hardscapeTopAt(inst: DecorInstance, def: DecorDef, x: number, z:
   const rz = def.size.d / 2;
   // lane:frags — a frag rack is a flat acrylic shelf: plugs sit level on it, right out to its corners
   if (def.visual === 'frag_rack') return Math.abs(lx) < rx * 0.97 && Math.abs(lz) < rz * 0.97 ? inst.y + def.size.h * inst.scale : -Infinity;
-  const r2 = (lx / rx) ** 2 + (lz / rz) ** 2;
+  const r2 = dmath.pow(lx / rx, 2) + dmath.pow(lz / rz, 2);
   if (r2 >= 1) return -Infinity;
   const h = def.size.h * inst.scale;
   const v = def.visual;

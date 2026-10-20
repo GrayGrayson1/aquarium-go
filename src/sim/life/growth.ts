@@ -9,6 +9,7 @@
  */
 import type { Creature, Genome, LifeStage, ReproRole, Sex, SpeciesDefinition } from '@/types';
 import { HOURS_PER_DAY } from '../time';
+import * as dmath from '../dmath';
 
 export const ELDER_FRACTION = 0.8;
 
@@ -40,7 +41,7 @@ export function growthFraction(species: SpeciesDefinition, ageDays: number): num
   const lc = species.lifecycle;
   const full = Math.max(1, lc.adultDays || lc.juvenileDays || 10);
   const k = 3 / full; // ~95% by adultDays
-  return clamp(1 - Math.exp(-k * Math.max(0, ageDays)), 0, 1);
+  return clamp(1 - dmath.exp(-k * Math.max(0, ageDays)), 0, 1);
 }
 
 /** Expected size (cm) at an age for this genome, with ideal feeding. */
@@ -85,5 +86,5 @@ export function observableSex(species: SpeciesDefinition, role: ReproRole, ageDa
 /** Gallons this individual needs right now (scales with current size; adults need the species minimum). */
 export function gallonsNeededNow(species: SpeciesDefinition, sizeCm: number): number {
   const frac = clamp(sizeCm / Math.max(0.1, species.adultSizeCm), 0.05, 1.3);
-  return species.recommendedMinTankGallons * clamp(Math.pow(frac, 1.5), 0.15, 1);
+  return species.recommendedMinTankGallons * clamp(dmath.pow(frac, 1.5), 0.15, 1);
 }

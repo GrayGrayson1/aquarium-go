@@ -11,6 +11,7 @@ import { nextId } from '../ids';
 import { simRng, type Rng } from '../rng';
 import { tankDims } from '../tankSpace';
 import { checkPlacement, placementLimits, resolveBaseY, initialLivingState } from './placement';
+import * as dmath from '../dmath';
 
 interface Spec {
   id: string;
@@ -222,7 +223,7 @@ export function starterAquascapeImpl(state: GameState, starterId: string, tank: 
         z: round4(placed.z),
         rotY: round4(placed.rotY),
         scale: round4(placed.scale),
-        seed: rng.int(1, 2 ** 31 - 2),
+        seed: rng.int(1, 0x7ffffffe),
         ...living,
       };
       if (living.growth !== undefined) inst.growth = spec.g ?? 0.8;
@@ -291,7 +292,7 @@ export function giftedLayoutShare(state: Pick<GameState, 'starterId'>, tank: Tan
     const tz = Math.max(-lim.maxZ, Math.min(lim.maxZ, spec.z * sz));
     const cands = decor.filter((inst) => {
       if (inst.defId !== spec.id) return false;
-      const turn = Math.abs(Math.atan2(Math.sin(inst.rotY - tr), Math.cos(inst.rotY - tr)));
+      const turn = Math.abs(dmath.atan2(dmath.sin(inst.rotY - tr), dmath.cos(inst.rotY - tr)));
       // (smaller is fine: starter pieces are shrunk to fit under the surface; bigger means the player resized it)
       return turn <= GIFTED_MATCH_RAD && inst.scale <= ts * GIFTED_MATCH_SCALE;
     });
@@ -304,7 +305,7 @@ export function giftedLayoutShare(state: Pick<GameState, 'starterId'>, tank: Tan
     let near: DecorInstance | null = null;
     let nd = Infinity;
     for (const inst of sp.cands) {
-      const dist = Math.hypot(inst.x - sp.tx, inst.z - sp.tz);
+      const dist = dmath.hypot(inst.x - sp.tx, inst.z - sp.tz);
       if (dist < nd) {
         nd = dist;
         near = inst;
@@ -324,7 +325,7 @@ export function giftedLayoutShare(state: Pick<GameState, 'starterId'>, tank: Tan
     let bestD = radius;
     for (const inst of sp.cands) {
       if (taken.has(inst.id)) continue;
-      const dist = Math.hypot(inst.x - ox - sp.tx, inst.z - oz - sp.tz);
+      const dist = dmath.hypot(inst.x - ox - sp.tx, inst.z - oz - sp.tz);
       if (dist <= bestD) {
         bestD = dist;
         best = inst;

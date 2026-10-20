@@ -53,6 +53,7 @@ import {
   breedNotice,
   clutchParentName,
 } from './common';
+import * as dmath from '../../dmath';
 
 export type LossCause = keyof NonNullable<Clutch['losses']>;
 
@@ -237,7 +238,7 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
     const actors = living.filter((c) => c.speciesId === r.actorSpeciesId);
     if (!actors.length) continue;
     const perDay = clamp01(r.perDay);
-    keep *= 1 - Math.min(0.97, 1 - Math.pow(1 - perDay, hrs / 24));
+    keep *= 1 - Math.min(0.97, 1 - dmath.pow(1 - perDay, hrs / 24));
     out.others.set(r.actorSpeciesId, actors);
   }
   out.p = clamp((1 - keep) * (1 - plan.coverShelter * clamp01(info.habitat().cover)), 0, 0.995);
@@ -256,7 +257,7 @@ function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition
   // predation (+ planktonic loss in a display tank)
   let p = pred.p;
   if (plan.planktonic && !eggs && !isNurseryFor(state, tank, hour)) p = 1 - (1 - p) * (1 - PLANKTONIC_LOSS);
-  if (p > 0) out.predation = -Math.log(1 - Math.min(0.995, p)) / hrs;
+  if (p > 0) out.predation = -dmath.log(1 - Math.min(0.995, p)) / hrs;
 
   // starvation
   if (!eggs) {
@@ -267,8 +268,8 @@ function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition
     const offered = ph ? foodRecency(tank, ph.foods, hour, 10, 14) : 1;
     const target = yolk ? 1 : Math.max(offered, ph ? naturalFood(state, tank, ph.natural, info) : 1);
     const fed = cl.fed ?? 0.5;
-    cl.fed = clamp01(fed + (target - fed) * (1 - Math.exp(-dt / 5)));
-    if (!yolk) out.starvation = (plan.starveSeverity * 3) / Math.max(24, b.fryRearingHours) * Math.pow(1 - cl.fed, 2);
+    cl.fed = clamp01(fed + (target - fed) * (1 - dmath.exp(-dt / 5)));
+    if (!yolk) out.starvation = (plan.starveSeverity * 3) / Math.max(24, b.fryRearingHours) * dmath.pow(1 - cl.fed, 2);
     // the young actually eat a little of what was offered
     if (!yolk && ph && offered > 0.5 && cl.count > 0) {
       try {
@@ -301,7 +302,7 @@ function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition
     const tended = isAlive(g) && g.tankId === cl.tankId;
     if (!tended) {
       const pf = hasEquipment(tank, 'airstone') ? 0.25 : 0.5;
-      out.fungus = -Math.log(1 - pf) / hrs;
+      out.fungus = -dmath.log(1 - pf) / hrs;
     }
   }
   return out;
@@ -415,7 +416,7 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
   const init = cl.initialCount ?? cl.count;
   if (total > 0 && init > 0) {
     const before = init * cl.survival;
-    cl.survival = clamp01(cl.survival * Math.exp(-total * dt));
+    cl.survival = clamp01(cl.survival * dmath.exp(-total * dt));
     const lost = before - init * cl.survival;
     if (!cl.losses) cl.losses = { predation: 0, starvation: 0, water: 0, crowding: 0, fungus: 0 };
     for (const k of Object.keys(hz) as LossCause[]) if (hz[k] > 0) cl.losses[k] += (lost * hz[k]) / total;

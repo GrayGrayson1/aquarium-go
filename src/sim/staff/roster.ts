@@ -57,7 +57,7 @@ function makeCandidate(state: GameState, rng: Rng, role: StaffRole, hour: number
     skill,
     trait,
     wage: staffWage(role, skill),
-    avatarSeed: rng.int(1, 2 ** 30),
+    avatarSeed: rng.int(1, 0x40000000),
     hiredHour: hour,
     xp: 0,
     tankIds: [],

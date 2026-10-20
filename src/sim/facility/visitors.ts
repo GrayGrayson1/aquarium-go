@@ -27,6 +27,7 @@ import { pickLine, pushReaction, FRIEND_NAMES, NEIGHBOUR_NAMES, type ReactionCon
 import { addMastery, addReputation, bumpCounter, isUnlocked, tutorialStepId } from './progression';
 import { theTank } from '../economy/util';
 import { docentEffect, type DocentEffect } from '../staff'; // lane:staff
+import * as dmath from '../dmath';
 
 // ───────────────────────────── archetypes ─────────────────────────────
 
@@ -117,7 +118,7 @@ function displayInfos(state: GameState): ExhibitInfo[] {
 export function fairAdmission(state: GameState, infos?: ExhibitInfo[]): number {
   const list = infos ?? displayInfos(state);
   let v = 0;
-  for (const e of list) if (!e.empty) v += Math.pow(e.score / 100, 1.3) * (0.7 + 0.3 * e.factors.size);
+  for (const e of list) if (!e.empty) v += dmath.pow(e.score / 100, 1.3) * (0.7 + 0.3 * e.factors.size);
   const lvl = facilityLevelIndex(state.facility.level);
   return Math.round((2.5 + 3.8 * Math.sqrt(v)) * (1 + 0.14 * lvl) * 2) / 2;
 }
@@ -133,7 +134,7 @@ const DRAW_KNEE = 1.15 / 0.6;
  */
 export function admissionDraw(priceOverFair: number): number {
   const x = Math.max(0, priceOverFair);
-  return x <= DRAW_KNEE ? Math.min(1.2, 1.2 - 0.6 * x) : 0.05 * (DRAW_KNEE / x) ** 2;
+  return x <= DRAW_KNEE ? Math.min(1.2, 1.2 - 0.6 * x) : 0.05 * dmath.pow(DRAW_KNEE / x, 2);
 }
 
 /** Facility-wide attraction with repeat-species fatigue: the fifth betta tank adds far less than the first. */
@@ -147,7 +148,7 @@ export function facilityAttraction(infos: ExhibitInfo[]): number {
     const g = (e.mainSpeciesId && findSpecies(e.mainSpeciesId)?.group) || s;
     const rs = species.get(s) ?? 0;
     const rg = groups.get(g) ?? 0;
-    total += e.appeal * Math.pow(0.55, rs) * Math.pow(0.85, Math.max(0, rg - rs));
+    total += e.appeal * dmath.pow(0.55, rs) * dmath.pow(0.85, Math.max(0, rg - rs));
     species.set(s, rs + 1);
     groups.set(g, rg + 1);
   }
@@ -366,14 +367,14 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
   infos.sort((a, b) => (reach.distance[a.tankId] ?? 0) - (reach.distance[b.tankId] ?? 0));
   const fair = fairAdmission(state, infos);
   const rep = state.progress.reputation;
-  const repF = 0.25 + 1.75 * (1 - Math.exp(-rep / 250));
+  const repF = 0.25 + 1.75 * (1 - dmath.exp(-rep / 250));
   const x = fair > 0 ? fac.admission / fair : 1;
   const priceF = admissionDraw(x);
   const day = dayOf(h);
   const dayF = DAY_FACTOR[weekdayOf(day)];
   const span = fac.closeHour > fac.openHour ? fac.closeHour - fac.openHour : 24 - fac.openHour + fac.closeHour;
   const into = (hourOfDay(h) - fac.openHour + 24) % 24;
-  const hourF = Math.max(0.3, 0.45 + 0.75 * Math.sin(Math.PI * Math.min(1, Math.max(0, into / Math.max(1, span)))));
+  const hourF = Math.max(0.3, 0.45 + 0.75 * dmath.sin(Math.PI * Math.min(1, Math.max(0, into / Math.max(1, span)))));
   const attraction = facilityAttraction(infos);
   // lane:staff — docents: talks and guided visits get talked about (a small, bounded draw; see docentEffect)
   const docent = state.staff?.roster.length ? docentEffect(state, h) : null;
@@ -385,7 +386,7 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
   // lane:w2-sim — occupancy counts real people: those still inside after this step's departures (mean stay = dwell)
   // plus this step's admitted arrivals that haven't left yet. It can never exceed the day's arrivals (Little's law
   // still holds on average: occupancy ≈ arrival rate × dwell).
-  const stay = Math.exp(-dt / dwell);
+  const stay = dmath.exp(-dt / dwell);
   live.occupancy = Math.max(0, live.occupancy * stay);
   const settle = () => {
     live.occupancy = Math.max(0, Math.min(cap, live.occupancy, state.visitors.today.count));
@@ -701,7 +702,7 @@ export function stepVisitors(state: GameState, dt: number, ctx: SimContext): voi
     if (isOpenAt(state, h)) {
       publicStep(state, sdt, h, ctx.rng);
     } else {
-      live.occupancy *= Math.exp(-sdt / 0.5);
+      live.occupancy *= dmath.exp(-sdt / 0.5);
       if (live.occupancy < 0.05) live.occupancy = 0;
       live.arrivalRate = 0;
       live.crowding = 0;

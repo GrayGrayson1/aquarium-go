@@ -5954,6 +5954,28 @@
       "status": "GREEN",
       "designSections": [],
       "note": "Chunk 9 (c51a7f1, 56e0215, b5d169f): keepAutosavedCopies (ui/common/saves.ts) parks into a free slot only, every copy through the progress check, the messages after the load; with every slot full nothing loads. online-sync's B1 and confirmation tests."
+    },
+    {
+      "id": "SHARE-002",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §3.2 rule 1, §9.1, §9.2; PLAN.md chunk 10; ADR-0045, ADR-0046",
+      "description": "One arithmetic: copies of a shop stepped by the same steps and commands keep identical fingerprints in Node, Chromium and WebKit, with no mismatch. src/sim uses only src/sim/dmath.ts for the transcendental functions and no `**`.",
+      "acceptance": [
+        "dmath equals fdlibm (Java's StrictMath) bit for bit on a fixed set of inputs, stays within 1 ulp of the engine's Math (2 for hypot) and gives ECMAScript's special values.",
+        "The determinism guard finds no transcendental Math call and no `**` in src/sim or src/data.",
+        "The cross-engine replay (e2e): a step log from the Node server replayed in Chromium and WebKit, a game week at 10x on big_facility and a playthrough, matches every fingerprint."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/dmath.test.ts",
+        "tests/sim/core-determinism-guard.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §3.2"
+      ],
+      "note": "Chunk 10: dmath and the switch done (unit 2,872 of 2,872); the replay next."
     }
   ]
 }

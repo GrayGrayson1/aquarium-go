@@ -13,6 +13,7 @@ import { nextId } from '../ids';
 import { withArticle } from '../economy/util'; // lane:w2-ui
 import { simRng } from '../rng';
 import { substrateHeightAt, surfaceHeightAt } from './terrain';
+import * as dmath from '../dmath';
 
 export interface PlacementPos {
   x: number;
@@ -59,8 +60,8 @@ const EDIT_SCALE_RATIO = 1.1;
 function footprint(def: DecorDef, scale: number, rotY: number): { rx: number; rz: number } {
   const w = def.size.w * scale;
   const d = def.size.d * scale;
-  const c = Math.abs(Math.cos(rotY));
-  const s = Math.abs(Math.sin(rotY));
+  const c = Math.abs(dmath.cos(rotY));
+  const s = Math.abs(dmath.sin(rotY));
   return { rx: (w * c + d * s) / 2, rz: (w * s + d * c) / 2 };
 }
 
@@ -168,7 +169,7 @@ export function checkPlacement(
     const oLiving = isLiving(od);
     if (living !== oLiving && !floating) continue; // plants/corals may grow on or against hardscape
     const of = footprint(od, other.scale, other.rotY);
-    const dist = Math.hypot(pos.x - other.x, pos.z - other.z);
+    const dist = dmath.hypot(pos.x - other.x, pos.z - other.z);
     const reach = (rx + rz) / 2 + (of.rx + of.rz) / 2;
     const overlap = 1 - dist / Math.max(1e-4, reach);
     // vertical separation (e.g. a coral on top of rock above another coral) relaxes the rule
@@ -222,7 +223,7 @@ export function placeDecorImpl(state: GameState, tankId: string, defId: string, 
     z: round4(pos.z),
     rotY: round4(check.rotY),
     scale: round4(check.scale),
-    seed: fromInventory?.seed ?? rng.int(1, 2 ** 31 - 2),
+    seed: fromInventory?.seed ?? rng.int(1, 0x7ffffffe),
   };
   tank.decor.push(inst);
   bumpCounter(state, scapeEditsKey(tankId));
@@ -255,14 +256,14 @@ export function moveDecorImpl(state: GameState, tankId: string, decorId: string,
       if (!od || !isEpiphyte(od)) continue;
       const dx = o.x - inst.x;
       const dz = o.z - inst.z;
-      if ((dx / rx) ** 2 + (dz / rz) ** 2 > 1 || o.y < sub(o) + 0.004) continue;
+      if (dmath.pow(dx / rx, 2) + dmath.pow(dz / rz, 2) > 1 || o.y < sub(o) + 0.004) continue;
       riders.push({ o, lx: dx, lz: dz, dy: o.y - inst.y });
     }
   }
   const dRot = check.rotY - inst.rotY;
   const sRatio = check.scale / inst.scale;
-  const moved = Math.hypot(pos.x - inst.x, pos.z - inst.z);
-  const turned = Math.abs(Math.atan2(Math.sin(dRot), Math.cos(dRot)));
+  const moved = dmath.hypot(pos.x - inst.x, pos.z - inst.z);
+  const turned = Math.abs(dmath.atan2(dmath.sin(dRot), dmath.cos(dRot)));
   const resized = Math.max(sRatio, 1 / Math.max(1e-6, sRatio));
   const realEdit = moved >= EDIT_MOVE_M || turned >= EDIT_TURN_RAD || resized >= EDIT_SCALE_RATIO;
   inst.x = round4(pos.x);
@@ -270,8 +271,8 @@ export function moveDecorImpl(state: GameState, tankId: string, decorId: string,
   inst.y = round4(check.y);
   inst.rotY = round4(check.rotY);
   inst.scale = round4(check.scale);
-  const c = Math.cos(dRot);
-  const s = Math.sin(dRot);
+  const c = dmath.cos(dRot);
+  const s = dmath.sin(dRot);
   const host = footprint(def, inst.scale, inst.rotY);
   for (const r of riders) {
     const od = getDecorDef(r.o.defId)!;
@@ -283,7 +284,7 @@ export function moveDecorImpl(state: GameState, tankId: string, decorId: string,
     const lim = placementLimits(tank, od, r.o.scale, rot);
     const cx = clamp(nx, -lim.maxX, lim.maxX);
     const cz = clamp(nz, -lim.maxZ, lim.maxZ);
-    if (((cx - inst.x) / Math.max(1e-4, host.rx)) ** 2 + ((cz - inst.z) / Math.max(1e-4, host.rz)) ** 2 <= 1) {
+    if (dmath.pow((cx - inst.x) / Math.max(1e-4, host.rx), 2) + dmath.pow((cz - inst.z) / Math.max(1e-4, host.rz), 2) <= 1) {
       r.o.x = round4(cx);
       r.o.z = round4(cz);
       r.o.rotY = round4(rot);

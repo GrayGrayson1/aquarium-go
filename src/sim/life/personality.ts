@@ -7,6 +7,7 @@
 import type { Creature, Genome, PersonalityTag, SpeciesDefinition } from '@/types';
 import type { Rng } from '../rng';
 import { findSpecies } from '@/data/species';
+import * as dmath from '../dmath';
 
 export const ALL_TAGS: PersonalityTag[] = [
   'bold',
@@ -137,7 +138,7 @@ function tagWeight(tag: PersonalityTag, t: number, c: number, species: SpeciesDe
     case 'shy':
       return (2 - tn) * (2 - tn);
     case 'easily_startled':
-      return Math.pow(2 - tn, 1.5) * 0.8;
+      return dmath.pow(2 - tn, 1.5) * 0.8;
     case 'showoff':
       return tn * 1.1 * (0.5 + species.territoriality);
     case 'competitive_feeder':

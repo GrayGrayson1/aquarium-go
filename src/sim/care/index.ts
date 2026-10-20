@@ -27,6 +27,7 @@ import { installedFit, type FitVerdict } from './fit'; // lane:fit
 import { FOOD_TAG_WORDS, groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase)
 import { noteFoodSpend } from '../production/costs'; // lane:production
 import { noteLiveFoodUsed } from '../automation/reserve'; // lane:automation (chunk 5)
+import * as dmath from '../dmath';
 
 export interface ActionResult {
   ok: boolean;
@@ -484,7 +485,7 @@ export function installEquipment(
   // Mature media seeds the tank.
   if (def.kind === 'filter' && inst.bio) {
     const age = Math.max(0, hour - inst.bio.sinceHour);
-    const seed = inst.bio.maturity * Math.exp(-age / 48);
+    const seed = inst.bio.maturity * dmath.exp(-age / 48);
     const s = equipmentSummary(tank);
     const share = (def.stats.bioCapacity ?? 0) / Math.max(1, s.bioCapUnits + (def.stats.bioCapacity ?? 0));
     const m0 = tank.water.bioMaturity;
