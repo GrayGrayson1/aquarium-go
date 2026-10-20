@@ -14,10 +14,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    (ref `zkavcxrsxdgdlstravpj`, the Free organization "Aquarium Go"). The owner's account is set (2026-10-19, with the
    owner's yes: the only `is_owner`, and the first club's `created_by`; ARCHITECTURE.md's runbook);
    `docs/agent/SESSION_HANDOFF.md` has the order of work. Stage 2 (before strangers join) needs its own record.
-3. **Released:** 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+3. **Next: 0.5.6, the audit's fixes, then shared shops** (the owner, 2026-10-19, ADR-0043). The audit of `c7c0d34`
+   (2026-10-19, seven auditors: 116 findings, 5 high) is fixed first, asking the owner about the fixes that need them.
+   Then **shared shops**: a separate shop a club plays together, live, up to 10 at once, run by a small server on
+   Render (free first, "with plans to expand"); no design or chunk yet (ADR-0043 lists what the design must cover).
+4. **Released:** 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-4. Every owner question is answered (ADR-0024 to ADR-0042) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+5. Every owner question is answered (ADR-0024 to ADR-0043) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
    owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
@@ -709,6 +713,12 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   wrapper is deferred (ADR-0001). Multiplayer starts with people the owner knows, after chunk 7's hardening (ADR-0037):
   stage 1 on a free Supabase project, sign-up by invite code, no emails, `@supabase/supabase-js` (ADR-0038). Stage 2
   (before strangers join) needs its own record.
+- Shared shops (ADR-0043), after 0.5.6: a whole shop a club plays together, separate from each player's own game
+  (nothing carries over); one per club, created by the owner for now; club members join, up to 10 at once; a small
+  server runs it, on Render (free first; paid only with the owner's yes), and the game should run on a server
+  eventually; pause and speed for the creator and the people the creator chooses; at first every member does
+  everything else, with permission tiers later (a group money pool, requests, allowances, one-off grants); empty, it
+  pauses and catches up at most 12 game hours on return.
 - Automation goes deep (ADR-0001, option C): more than Auto-feed and Auto-clean.
 - The Auto Water Changer shares the Autofeeder unlock. Quiet hours are fixed at 10 PM to 8 AM, with a switch to turn
   them off (0.5 spec §12.3). One-copy Metallic is unnamed, with a subtle sheen. Locked destinations open a locked

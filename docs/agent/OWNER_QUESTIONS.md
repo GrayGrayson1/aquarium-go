@@ -40,6 +40,7 @@ are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pa
 | I (chunk 8's drafts) | Chunk 8's screens: the strings ADR-0040's message didn't spell out | I1 (asked as 4 questions in one round): **answered 2026-10-19 (ADR-0041)** |
 | (chunk 8's setup) | The Supabase organization's plan, the invite codes' format, the repo's visibility | 3 questions, asked as text: **answered 2026-10-19 (ADR-0042)** |
 | J (chunk 8's setup) | The "Have an invite?" field's example, now that real codes are a word and four letters | J1: **answered 2026-10-19 (ADR-0042)** |
+| (shared shops) | The owner's idea of working on the same tank: what a group shares, who runs it, who joins, pause, what members do, an empty shop, carry-over, the order, who creates one, how many per club | 12 questions in 3 rounds: **answered 2026-10-19 (ADR-0043)** |
 
 ## A. Release and standing decisions
 
