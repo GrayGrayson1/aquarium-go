@@ -4,6 +4,21 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.5.6 — 2026-10-19
+
+- **Your saves keep your newest progress.** Loading, replacing or importing an older copy of the aquarium you're
+  playing no longer loses the newer one: it stays in Settings › Saves as "Previous autosave" or "Previous copy of …".
+  Load saves the game you're playing first, even with autosave off; Import into a slot that holds a save asks first;
+  and the dialogs say what is kept and what goes.
+- **Load online save keeps your other aquariums.** An aquarium kept only in the autosave is saved to a free slot
+  first. With every slot full, nothing loads and the game says so.
+- **Two tabs, two accounts.** Signing out, or in as someone else, in one tab is noticed in your other tabs, and the
+  online save only ever goes to the account a tab shows.
+- **Tank sales are priced on what's alive.** Welfare, compatibility, beauty and the display bonus raise the value of a
+  tank's animals and plants, not its glass and equipment, and decor is valued at its normal price: one cheap animal no
+  longer makes a freshly dressed kit sell for a profit.
+- **Safer invite codes.** A code can't be tested faster than the limit on wrong guesses allows.
+
 ## 0.5.5 — 2026-10-19
 
 - **Aquarium Go online, for people with an invite.** Open a friend's invite link, or "Create account" in Social, to
