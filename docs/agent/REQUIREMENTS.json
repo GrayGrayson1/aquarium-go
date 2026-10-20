@@ -5906,7 +5906,8 @@
       "source": "PLAN.md chunk 9 (0.5.6); ADR-0044; the audit of c7c0d34 (2026-10-19), D1",
       "description": "Tank-sale bonuses (welfare, compatibility, beauty, the ethical display) scale only the livestock's and living plants' value; hardscape is valued at its base price (ADR-0044 decision 1).",
       "acceptance": [
-        "A loop test: a kit, decor and one cheap animal never sell for more than they cost, at several tank sizes.",
+        "A loop test: a kit, decor and one cheap animal (the seller’s best) are valued at no more than they cost, at four tank sizes.",
+        "Through the real market at three sizes they rarely sell and never at the old buy-now profit (about +30% every round); a sale stays under 1.25× cost.",
         "Seeded tests that shift say why in the commit; a well-stocked tank still earns its bonus on its animals."
       ],
       "tasks": [],

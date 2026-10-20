@@ -59,7 +59,8 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
  */
 export async function loadIntoGame(slot: string): Promise<GameState | null> {
   try {
-    if (autosaveAllowed()) {
+    // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
+    if (autosaveAllowed({ evenIfOff: true })) {
       const g = useGame.getState().game;
       const target = g ? (await listSlots()).find((m) => m.slot === slot) : undefined;
       const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: !!(target && g && isSameGame(target, g)) });

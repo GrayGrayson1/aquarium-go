@@ -12,6 +12,8 @@ import { newGame } from '@/sim/newGame';
 import {
   saveGame,
   saveGameSync,
+  storage,
+  isStaleGame,
   loadGameDetailed,
   listSaves,
   setStorageBackend,
@@ -21,6 +23,7 @@ import {
   resetSaveReconciliation,
   resetSaveSession,
   encodeRecord,
+  reconcileSaves,
   baseSaveId,
   keptSaveId,
   copySave,
@@ -202,6 +205,102 @@ describe('Settings › Saves’ Load (loadIntoGame): an earlier copy of the aqua
       const prev = (await listSaves()).find((m) => m.previousOf === 'auto');
       expect(prev).toMatchObject({ day: 2, money: 777 });
     } finally {
+      useGame.getState().setGame(null);
+      useUI.setState({ screen: 'boot' });
+    }
+  });
+});
+
+describe('the review’s blockers (chunk 9)', () => {
+  const fakeLS = () => {
+    const ls = new Map<string, string>();
+    return { ls, store: { getItem: (k: string) => ls.get(k) ?? null, setItem: (k: string, v: string) => void ls.set(k, v), removeItem: (k: string) => void ls.delete(k) } };
+  };
+  /** Another tab writes `g` into the autosave a moment later (its own stamp and a newer record), as fix-core-saves does. */
+  const otherTabWrites = async (g: GameState, ls: Map<string, string>) => {
+    await new Promise((r) => setTimeout(r, 3));
+    const rec = encodeRecord(g, 'auto');
+    await storage.set('aquarium-go.save.auto', rec.text);
+    await storage.set('aquarium-go.meta.auto', JSON.stringify(rec.header.meta)); // the listing reads the meta
+    ls.set('aquarium-go.stamp.auto', JSON.stringify({ savedAt: rec.header.savedAt, saveId: g.saveId, tab: 'other-tab', hour: g.clock.hour }));
+  };
+
+  it('1: a kept copy is refused by the stale-tab guard as its aquarium would be (staleAs)', async () => {
+    const { ls, store } = fakeLS();
+    setSyncStore(store);
+    const a = aquarium('Two Tabs', 50);
+    expect((await saveGame(onDay(a, 8), 'auto')).ok).toBe(true);
+    await otherTabWrites(onDay(a, 12), ls);
+    const r = await saveGame({ ...onDay(a, 8), saveId: keptSaveId(a.saveId) }, 'auto', { staleAs: a.saveId });
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe('stale');
+    expect((await loadGameDetailed('auto')).state!.clock.hour).toBe(11 * 24 + 10); // the other tab's day 12 stays
+  });
+
+  it('1: a tab that is behind loads an earlier copy: the other tab’s further copy survives its autosaves', async () => {
+    const { ls, store } = fakeLS();
+    setSyncStore(store);
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { useSettings } = await import('@/state/settings');
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    const { saveCurrentGame } = await import('@/persistence');
+    const a = aquarium('Behind', 51);
+    expect((await saveGame(onDay(a, 2), 'slot1')).ok).toBe(true);
+    expect((await saveGame(onDay(a, 8), 'auto')).ok).toBe(true);
+    useSettings.setState({ autosave: true });
+    useUI.setState({ screen: 'game' });
+    useGame.getState().setGame(onDay(a, 8));
+    try {
+      await otherTabWrites(onDay(a, 12), ls); // played on to day 12 there, then closed
+      expect(isStaleGame(a.saveId)).toBe(false);
+      await loadIntoGame('slot1');
+      for (let i = 0; i < 2; i++) await saveCurrentGame('auto');
+      const days = (await listSaves()).filter((m) => baseSaveId(m.saveId ?? '') === a.saveId).map((m) => m.day);
+      expect(days).toContain(12);
+    } finally {
+      useGame.getState().setGame(null);
+      useUI.setState({ screen: 'boot' });
+    }
+  });
+
+  it('3: the page-close copy of an earlier one, moved into IndexedDB on the next boot, keeps the further copy listed', async () => {
+    const idbMap = new Map<string, string>();
+    const { ls, store } = fakeLS();
+    setSyncStore(store);
+    const IDB = named('indexeddb', idbMap);
+    const LS = named('localstorage', ls);
+    setStorageBackend(IDB, [LS], [LS]);
+    const a = aquarium('Title Load', 52);
+    expect((await saveGame(onDay(a, 10), 'auto')).ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 3));
+    expect(saveGameSync(onDay(a, 2), 'auto')).toBe(true); // an earlier copy loaded on the title screen, the tab closed
+    // next boot
+    resetSaveReconciliation();
+    resetSaveSession();
+    setStorageBackend(IDB, [LS], [LS]);
+    await reconcileSaves();
+    expect(await lines()).toEqual(['auto.backup: Title Load day 10 (previous of auto)', 'auto: Title Load day 2']);
+    expect((await saveGame(onDay(a, 2, 5), 'auto')).ok).toBe(true);
+    expect((await listSaves()).find((m) => m.previousOf === 'auto')?.day).toBe(10);
+  });
+
+  it('4: with Settings’ autosave off, Load still keeps the current progress listed (the dialog promises it)', async () => {
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { useSettings } = await import('@/state/settings');
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    const a = aquarium('Autosave Off', 53);
+    expect((await saveGame(onDay(a, 5), 'auto')).ok).toBe(true);
+    expect((await saveGame(onDay(a, 2), 'slot1')).ok).toBe(true);
+    useSettings.setState({ autosave: false });
+    useUI.setState({ screen: 'game' });
+    useGame.getState().setGame(onDay(a, 10));
+    try {
+      await loadIntoGame('slot1');
+      expect((await listSaves()).filter((m) => baseSaveId(m.saveId ?? '') === a.saveId).map((m) => m.day)).toContain(10);
+    } finally {
+      useSettings.setState({ autosave: true });
       useGame.getState().setGame(null);
       useUI.setState({ screen: 'boot' });
     }

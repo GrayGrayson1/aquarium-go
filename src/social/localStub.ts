@@ -445,9 +445,10 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
     onSessionChange: (cb) => {
       if (kv !== globalThis.localStorage || typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => {};
       const onStorage = (e: StorageEvent) => {
-        if (e.key !== null && e.key !== SOCIAL_STORAGE_KEY) return;
+        if (e.key === null) return cb(null); // that tab cleared all storage
+        if (e.key !== SOCIAL_STORAGE_KEY) return;
         const was = accountIn(e.oldValue);
-        const now = e.key === null ? null : accountIn(e.newValue);
+        const now = accountIn(e.newValue);
         if (was !== now) cb(now);
       };
       window.addEventListener('storage', onStorage);

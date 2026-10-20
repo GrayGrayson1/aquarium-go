@@ -411,8 +411,15 @@ describe('chunk 9 (B2, REL-035): who is signed in, told across tabs', () => {
     vi.stubGlobal('window', win);
     try {
       const seen: (string | null)[] = [];
-      const off = service(f).onSessionChange!((a) => seen.push(a));
-      await vi.waitFor(() => expect(listeners).toHaveLength(1));
+      const make = vi.fn(async () => f.client);
+      const s = service(f, { client: make });
+      const off = s.onSessionChange!((a) => seen.push(a));
+      // listening alone never loads supabase-js (the title screen stays light: the review's note 1)
+      await new Promise((r) => setTimeout(r, 5));
+      expect(make).not.toHaveBeenCalled();
+      expect(listeners).toHaveLength(0);
+      await s.currentUser(); // the first real call makes the client, and its events are attached then
+      expect(listeners).toHaveLength(1);
       listeners[0]('TOKEN_REFRESHED', { user: { id: 'u1' } });
       listeners[0]('SIGNED_IN', { user: { id: 'u2' } });
       listeners[0]('SIGNED_OUT', null);
@@ -423,12 +430,12 @@ describe('chunk 9 (B2, REL-035): who is signed in, told across tabs', () => {
       storageEvent('aquarium-go.settings.v1', null, '{}'); // another key
       storageEvent(AUTH_STORAGE_KEY, stored('u1'), stored('u3')); // signed in as someone else in another tab
       storageEvent(AUTH_STORAGE_KEY, stored('u3'), null); // signed out there
-      storageEvent(null, null, null); // that tab cleared all storage
-      expect(seen).toEqual(['u2', null, 'u3', null]);
+      storageEvent(null, null, null); // that tab cleared all storage, the session with it
+      expect(seen).toEqual(['u2', null, 'u3', null, null]);
       off();
-      expect(listeners).toHaveLength(0);
       storageEvent(AUTH_STORAGE_KEY, null, stored('u4'));
-      expect(seen).toHaveLength(4);
+      listeners[0]('SIGNED_IN', { user: { id: 'u5' } });
+      expect(seen).toHaveLength(5); // unsubscribed from both
     } finally {
       vi.unstubAllGlobals();
     }

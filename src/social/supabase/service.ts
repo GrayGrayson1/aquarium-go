@@ -153,8 +153,21 @@ const toRow = (v: unknown): LeaderboardRow | null => (isObj(v) ? { rank: num(v.r
 export function createSupabaseSocialService(project: OnlineProject, opts: SupabaseServiceOptions = {}): SocialService {
   const timeoutMs = opts.timeoutMs ?? TIMEOUT_MS;
   let clientP: Promise<SupabaseLike> | null = null;
+  // chunk 9 (B2): who hears of sign-ins and sign-outs (onSessionChange); supabase-js's own events are attached when a
+  // real call first makes the client, so listening alone never loads the library on the title screen (the review's note 1)
+  const sessionCbs = new Set<(account: string | null) => void>();
+  let authAttached = false;
+  const attachAuth = (c: SupabaseLike): SupabaseLike => {
+    if (authAttached || !c.auth.onAuthStateChange) return c;
+    authAttached = true;
+    // a refocus repeats SIGNED_IN with the same account, which the listener ignores
+    c.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') for (const cb of [...sessionCbs]) cb(sessionAccount(session));
+    });
+    return c;
+  };
   const client = (): Promise<SupabaseLike> => {
-    clientP ??= (opts.client ?? (() => loadSupabaseClient(project, opts.storage)))().catch((e) => {
+    clientP ??= (opts.client ?? (() => loadSupabaseClient(project, opts.storage)))().then(attachAuth).catch((e) => {
       clientP = null; // the chunk didn't load (offline): try again next time
       throw e;
     });
@@ -355,35 +368,24 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
       return { ok: false, reason, meta: toMeta(d.meta) } satisfies CloudUploadResult;
     },
     onSessionChange: (cb) => {
-      let off = false;
-      const offs: (() => void)[] = [];
-      // supabase-js tells every tab of a sign-in or sign-out (its events cross tabs); a refocus repeats SIGNED_IN with
-      // the same account, which the caller ignores
-      void client()
-        .then((c) => {
-          if (off || !c.auth.onAuthStateChange) return;
-          const { data } = c.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') cb(sessionAccount(session));
-          });
-          offs.push(() => data.subscription.unsubscribe());
-        })
-        .catch(() => {
-          /* no client (offline): the next sign-in check finds out */
-        });
-      // and the session's own key, which another tab rewrites (a storage event fires only in the other tabs)
+      // supabase-js tells every tab of a sign-in or sign-out (its events cross tabs), once a call has made the client
+      sessionCbs.add(cb);
+      // and the session's own key, which another tab rewrites (a storage event fires only in the other tabs; a key of
+      // null is that tab clearing all storage, the session with it)
+      let onStorage: ((e: StorageEvent) => void) | null = null;
       if (!opts.storage && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-        const onStorage = (e: StorageEvent) => {
-          if (e.key !== null && e.key !== AUTH_STORAGE_KEY) return;
+        onStorage = (e: StorageEvent) => {
+          if (e.key === null) return cb(null);
+          if (e.key !== AUTH_STORAGE_KEY) return;
           const was = storedAccount(e.oldValue);
-          const now = e.key === null ? null : storedAccount(e.newValue);
+          const now = storedAccount(e.newValue);
           if (was !== now) cb(now);
         };
         window.addEventListener('storage', onStorage);
-        offs.push(() => window.removeEventListener('storage', onStorage));
       }
       return () => {
-        off = true;
-        offs.splice(0).forEach((f) => f());
+        sessionCbs.delete(cb);
+        if (onStorage) window.removeEventListener('storage', onStorage);
       };
     },
   };

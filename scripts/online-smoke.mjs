@@ -132,6 +132,10 @@ try {
   const getRight = await anon.rpc('resolve_invite', { p_code: code }, { get: true });
   const getWrong = await anon.rpc('resolve_invite', { p_code: 'NOPE-ZZZZ' }, { get: true });
   check('a read-only lookup (GET) gets "braked" for the right code and a wrong one alike', getRight.data?.braked === true && getWrong.data?.braked === true && !('club' in (getRight.data ?? {})), `${describe(getRight)} / ${describe(getWrong)}`);
+  // chunk 9 (the review's note 10): a POST asking to be rolled back would undo a miss too; the API must not honour it
+  const rb = await fetch(`${URL_}/rest/v1/rpc/resolve_invite`, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json', Prefer: 'tx=rollback' }, body: JSON.stringify({ p_code: 'NOPE-ZZZZ' }) });
+  const applied = rb.headers.get('preference-applied') ?? '';
+  check('a lookup that asks to be rolled back (Prefer: tx=rollback) isn’t, so its miss still counts', rb.ok && !/tx=rollback/.test(applied), `${rb.status} ${applied}`);
   for (const [fn, args] of Object.entries(FUNCTIONS)) {
     const r = await anon.rpc(fn, args);
     check(`anon can’t call ${fn}`, !!r.error, describe(r));

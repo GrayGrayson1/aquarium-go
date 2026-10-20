@@ -412,12 +412,15 @@ const LOAD_FAILED = 'That save could not be loaded — it may be damaged. Try it
 
 /**
  * Chunk 9 (B1, ADR-0044's messages): loading the online copy writes the autosave slot twice (this device's game, then
- * the online copy), which pushes out what was there. An aquarium kept only there (in the autosave or its "Previous
- * autosave"; not this device's, not the online one, in no slot as far along) is first saved to a slot: the one holding
- * an older copy of it, else a free one. With every slot full nothing loads. Returns whether the load may go on.
+ * the online copy), which pushes out what was there. A copy kept only there (in the autosave or its "Previous
+ * autosave", in no slot as far along) is first saved to a slot, the one holding an older copy of it, else a free one,
+ * unless it is the game on screen, the online copy, or an older state of one of those two (the review's blocker 2: a
+ * kept copy of this aquarium further along than both, from an earlier load, is kept too). With every slot full
+ * nothing loads. Returns whether the load may go on.
  */
-async function keepAutosavedAquariums(ids: string[]): Promise<boolean> {
-  const mine = new Set(ids.map(baseSaveId));
+async function keepAutosavedAquariums(written: GameState[]): Promise<boolean> {
+  const exact = new Set(written.map((g) => g.saveId));
+  const hours = (id: string) => written.filter((g) => baseSaveId(g.saveId) === baseSaveId(id)).map((g) => g.clock.hour);
   let saves: SaveMeta[];
   try {
     saves = await listSaves();
@@ -426,7 +429,11 @@ async function keepAutosavedAquariums(ids: string[]): Promise<boolean> {
   }
   const manual = () => saves.filter((m) => m.slot !== 'auto' && !m.previousOf);
   for (const m of saves.filter((x) => x.slot === 'auto' || x.previousOf === 'auto')) {
-    if (!m.saveId || mine.has(baseSaveId(m.saveId))) continue;
+    if (!m.saveId || exact.has(m.saveId)) continue;
+    const same = hours(m.saveId);
+    // another copy of an aquarium being written, no further along than each copy of it written now: an older state of
+    // it, which goes as any "Previous autosave" goes on a switch
+    if (same.length && !same.every((h) => typeof m.hour === 'number' && m.hour > h + 1e-6)) continue;
     if (manual().some((k) => k.saveId === m.saveId && (k.hour ?? -Infinity) >= (m.hour ?? Infinity) - 1e-6)) continue;
     const to = manual().find((k) => k.saveId === m.saveId)?.slot ?? freeSaveSlot(saves);
     if (!to) {
@@ -440,7 +447,7 @@ async function keepAutosavedAquariums(ids: string[]): Promise<boolean> {
     }
     useUI.getState().toast(`${m.shopName} was only in the autosave, so it was saved to ${slotLabel(to)} first.`, 'success');
     saves = [...saves.filter((k) => k.slot !== to), { ...m, slot: to, previousOf: undefined }];
-    mine.add(baseSaveId(m.saveId));
+    exact.add(m.saveId);
   }
   return true;
 }
@@ -459,6 +466,7 @@ export async function loadOnlineCopy(): Promise<boolean> {
   useCloud.setState({ choosing: true });
   try {
     const got = await socialService().cloudDownload(u.id);
+    if (user()?.id !== u.id) return false; // signed out, or in as someone else, meanwhile (the review's note 2)
     if (!got) {
       useCloud.setState({ prompt: null });
       void checkOnline();
@@ -472,7 +480,8 @@ export async function loadOnlineCopy(): Promise<boolean> {
     }
     const incoming = check.state;
     const g = useGame.getState().game;
-    if (!(await keepAutosavedAquariums([incoming.saveId, ...(g && !g.isShowcase ? [g.saveId] : [])]))) return false;
+    if (!(await keepAutosavedAquariums([incoming, ...(g && !g.isShowcase ? [g] : [])]))) return false;
+    if (user()?.id !== u.id) return false;
     // this device's game into the autosave slot, so storing the online copy rotates it into the backup; the same
     // aquarium as a kept copy (chunk 9: one write, not two, so nothing else is pushed out), as the backup lists only
     // another aquarium
@@ -485,6 +494,7 @@ export async function loadOnlineCopy(): Promise<boolean> {
         return false;
       }
     }
+    if (user()?.id !== u.id) return false;
     const previous = readLink(u.id);
     // the link first: the game's identity changes below, and the check that follows must find it in step
     writeLink(u.id, { revision: got.meta.revision, saveId: incoming.saveId, savedAt: got.meta.savedAt, sentAt: Date.now() });

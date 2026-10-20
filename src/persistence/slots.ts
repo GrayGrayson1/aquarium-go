@@ -275,10 +275,11 @@ export const baseSaveId = (saveId: string): string => saveId.replace(/_kept_[0-9
  * Chunk 9 (E1, B1): a new identity for a kept copy of an aquarium, so a slot's backup lists it as "Previous …" (the
  * listing shows only a backup that is another aquarium). Moved here from the online save, which made the first ones.
  */
-export const keptSaveId = (saveId: string): string => `${baseSaveId(saveId)}_kept_${Date.now().toString(36)}`.slice(0, 200);
+export const keptSaveId = (saveId: string): string => `${baseSaveId(saveId).slice(0, 180)}_kept_${Date.now().toString(36)}`;
 
-/** Is a stored copy at game hour `stored` further along than `state`? */
-const furtherAlong = (stored: number | undefined, state: GameState): boolean => Number.isFinite(stored) && Number.isFinite(state.clock?.hour) && stored! > state.clock.hour + PROGRESS_EPS_HOURS;
+/** Is a stored copy at game hour `stored` further along than one at `hour`? */
+const aheadOf = (stored: unknown, hour: unknown): boolean => typeof stored === 'number' && typeof hour === 'number' && Number.isFinite(stored) && Number.isFinite(hour) && stored > hour + PROGRESS_EPS_HOURS;
+const furtherAlong = (stored: number | undefined, state: GameState): boolean => aheadOf(stored, state.clock?.hour);
 
 /** A stored record re-encoded as a kept copy (its time unchanged), or null when it can't be read back. */
 function keptRecord(raw: unknown, slot: string, savedAt: number | undefined): { text: string; saveId: string } | null {
@@ -294,6 +295,12 @@ function keptRecord(raw: unknown, slot: string, savedAt: number | undefined): { 
 export interface SaveGameOptions {
   /** Chunk 9 (G1): keep the record this write replaces listed as "Previous …", even when it is behind (an import). */
   keepReplaced?: boolean;
+  /**
+   * Chunk 9 (the review's blocker 1): the aquarium a kept copy is of (its own `saveId` is new), so the stale-tab guard
+   * refuses it exactly as it would refuse a plain save of that aquarium: a tab that is behind never pushes another
+   * tab's further copy out.
+   */
+  staleAs?: string;
 }
 
 /**
@@ -306,9 +313,11 @@ export async function saveGame(state: GameState, slot = 'auto', opts: SaveGameOp
   if (!state) return { ok: false, slot, message: 'Nothing to save.' };
   if (state.isShowcase) return { ok: false, slot, message: 'Showcase worlds are not saved.' };
   checkSlot(slot);
+  // the stale-tab guard asks about the aquarium itself, a kept copy's too
+  const guarded = opts.staleAs && opts.staleAs !== state.saveId ? { ...state, saveId: opts.staleAs } : state;
   return enqueue(slot, async () => {
     const stamp = readStamp(slot);
-    if (stamp && refuseStale(state, slot, stamp.savedAt, stamp.saveId, stamp.tab, stamp.hour)) {
+    if (stamp && refuseStale(guarded, slot, stamp.savedAt, stamp.saveId, stamp.tab, stamp.hour)) {
       return { ok: false, slot, code: 'stale', message: STALE_MESSAGE };
     }
     // lane:core (PERSIST-014) — a newer build wrote the slot last (its stamp), maybe into a store this write never reads
@@ -321,7 +330,7 @@ export async function saveGame(state: GameState, slot = 'auto', opts: SaveGameOp
     try {
       const prev = await storage.get(saveKey(slot));
       const ph = readHeader(prev);
-      if (ph && refuseStale(state, slot, ph.savedAt, ph.meta?.saveId, undefined, ph.meta?.hour)) {
+      if (ph && refuseStale(guarded, slot, ph.savedAt, ph.meta?.saveId, undefined, ph.meta?.hour)) {
         return { ok: false, slot, code: 'stale', message: STALE_MESSAGE };
       }
       // lane:core (PERSIST-014) — a newer build's record is never overwritten or rotated out of the primary.
@@ -419,7 +428,8 @@ export function saveGameSync(state: GameState, slot = 'auto'): boolean {
     const kept = prev && prevId && prevId === state.saveId && furtherAlong(ph?.meta?.hour, state) && isIntact(prev) ? keptRecord(prev, slot, ph?.savedAt) : null;
     if (kept) {
       if (newerVersion(syncStore.get(backupKey(slot)))) return false;
-      if (syncStore.set(backupKey(slot), kept.text)) backupIds.set(slot, kept.saveId);
+      if (!syncStore.set(backupKey(slot), kept.text)) return false; // the further copy didn't fit: keep it where it is
+      backupIds.set(slot, kept.saveId);
     } else if (prev && prevId && prevId !== state.saveId && isIntact(prev)) {
       // lane:core (PERSIST-014) — a newer build's record in the backup isn't rotated over, and writing without the
       // rotation would lose the other aquarium: refused.
@@ -571,7 +581,7 @@ export async function loadGameDetailed(ref = 'auto'): Promise<LoadResult> {
  */
 export async function copySave(fromRef: string, toSlot: string): Promise<SaveResult> {
   const r = await loadGameDetailed(fromRef);
-  if (!r.ok || !r.state) return { ok: false, slot: toSlot, message: r.error ?? 'That save could not be read.' };
+  if (!r.ok || !r.state) return { ok: false, slot: toSlot, message: r.error ?? 'No save in this slot.' };
   return saveGame(r.state, toSlot);
 }
 
@@ -812,7 +822,15 @@ async function migrateSlot(slot: string, src: KVBackend, target: KVBackend): Pro
     // holds a different (displaced) one — that is the "Previous …" save the player was promised.
     const bestId = copyId(srcBest);
     const keepsDisplaced = !!tgtBackup?.intact && !!bestId && copyId(olderForBackup) === bestId && !!copyId(tgtBackup) && copyId(tgtBackup) !== bestId;
-    if (olderForBackup && !keepsDisplaced && (!tgtBackup?.intact || olderForBackup.savedAt >= tgtBackup.savedAt)) {
+    // Chunk 9 (E1; the review's blocker 3): as saveGame, the target's own copy of the same aquarium that is further along
+    // (the page-close copy of an earlier one, loaded on the title screen) becomes the backup as a kept copy, listed
+    const tgtHeader = tgtPrimary?.intact ? readHeader(tgtPrimary.raw) : null;
+    const keepTarget = olderForBackup === tgtPrimary && !!bestId && copyId(tgtPrimary) === bestId && aheadOf(tgtHeader?.meta?.hour, readHeader(srcBest.raw)?.meta?.hour ?? srcBest.decoded?.state.clock?.hour);
+    const kept = keepTarget && tgtPrimary ? keptRecord(tgtPrimary.raw, slot, tgtHeader?.savedAt) : null;
+    if (kept) {
+      await storage.set(backupKey(slot), kept.text);
+      backupIds.set(slot, kept.saveId);
+    } else if (olderForBackup && !keepsDisplaced && (!tgtBackup?.intact || olderForBackup.savedAt >= tgtBackup.savedAt)) {
       await storage.set(backupKey(slot), str(olderForBackup.raw));
       backupIds.delete(slot);
     }

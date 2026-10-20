@@ -94,9 +94,14 @@ ones first, as 0.5.6 (ADR-0043 decision 8), and said "Yes, start". The five:
 
 1. **Tank-sale bonuses apply to the animals only** (D1): the welfare, compatibility, beauty and "Coherent, ethical
    display" multipliers scale the livestock's and living plants' value, not the tank, equipment or hardscape;
-   hardscape is valued at its base price (scale 1), as placing it charges. A loop test pins it: a kit, decor and one
-   cheap animal never sell for more than they cost, at several sizes. This changes tank-sale prices players see, on
-   purpose; seeded tests that shift say why.
+   hardscape is valued at its base price (scale 1), as placing it charges. Loop tests pin it (corrected after the
+   chunk's review, which found the first wording too strong): a kit, decor and one cheap animal are valued at no more
+   than they cost at four sizes, and through the real market they rarely sell and never at the old buy-now profit
+   (about +30% every round); a keen buyer can still pay a little over cost now and then (1.03–1.2× in 4 of 48 probe
+   rounds), "about what its parts are worth". Following from it (the agent's reading, for the owner to confirm):
+   rarity and lineage, which are about the animals, scale only the animals too, and a buyer's taste scales only the
+   animal-and-plant share of a tank listing. This changes tank-sale prices players see, on purpose; seeded tests that
+   shift say why.
 2. **The live database fix may be applied** (A1, B2), after the local database check passes; then the security
    advisors (no issues) and the live smoke test. A1: a read-only call to the invite or friend lookup gets the brake's
    answer for every code. B2: the save functions take the account the game believes is signed in and refuse any
@@ -104,6 +109,15 @@ ones first, as 0.5.6 (ADR-0043 decision 8), and said "Yes, start". The five:
 3. **The three clubs keep their invite codes.**
 4. **The save wording is approved as previewed** (E1, B1, G1): the strings above, with names, days and slots filled in
    (`describe()`'s "Name (Day N, saved …)" where a slot is described).
+
+## Later in the same session
+
+While the chunk's first full test pass and its review ran, the agent wrote: "I'll carry on when they finish: fix
+whatever the review finds, run the second full pass, then send you a summary and what to try. Nothing goes live until
+you say release." The owner's answer (verbatim): "release when green"
+
+5. **Release when green:** the owner's go-ahead, in the session, to release 0.5.6 (Pages and Render) once the four
+   checks pass twice in a row on the final code and the review's blockers are fixed.
 
 ## Consequences
 

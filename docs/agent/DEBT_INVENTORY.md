@@ -19,8 +19,10 @@ three:
   is still the player's own, so a server (stage 2, ADR-0038) still trusts nothing it reports.
 - **Economy rules a player could farm against others: fixed in chunk 7.** B-124 (counters no longer pass the buyer's
   ceiling, and stop when bidding closes), B-162 (admission takings now peak inside the slider's range), B-130 (a seeded
-  loop hunt over the instant actions, and loop tests for both). New loops in later features would still matter more
-  with shared leaderboards or markets.
+  loop hunt over the instant actions, and loop tests for both). The audit of 0.5.5 found one more (D1: a dressed kit
+  with one cheap animal resold at +30%), fixed in chunk 9: the animal bonuses and a buyer's taste price only the
+  animals and living plants (ADR-0044). New loops in later features would still matter more with shared leaderboards
+  or markets.
 - **Rules enforced only in the UI: fixed in chunk 7.** B-160 (the marine, reef and brackish research gates are in
   `buyTank` and `convertWaterClass`). A server would still check every action (TRUST_BOUNDARY.md).
 - **Time on the device:** offline catch-up (and its grace rules) runs on the player's device. A server would replay or

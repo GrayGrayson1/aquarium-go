@@ -1,25 +1,33 @@
-# Session handoff: after chunk 8 (multiplayer stage 1)
+# Session handoff: chunk 9 (0.5.6, the audit's five high findings)
 
-For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19 (handed over by Chase at the owner's
-request). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md` rule; this file is the order of work and the
-practical knowledge that makes it go smoothly. Replace or delete it when it's used up.
+For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
+owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
+rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
+it's used up.
 
 ## Where things stand
 
 - **0.5.5 is released** (2026-10-19: `main` = `9ae98b3`, Pages and Render): chunks 7 and 8 (PLAN.md; ADR-0039 to
   ADR-0042). Aquarium Go online is live for people with an invite.
+- **Chunk 9 (0.5.6) is on `next`, not released** (PLAN.md chunk 9; ADR-0044): the audit of `c7c0d34`'s five high
+  findings, A1, B1, B2, D1 and E1 (with G1 and C7). The audit's report is private (an artifact for the owner); BACKLOG
+  B-207 says what's left of it. Releasing 0.5.6 is the owner's call.
 - **The Supabase project is live**: the Free organization "Aquarium Go" (`kvqnsqbjufmnkpsrcjbj`), project
-  `aquarium-go`, **ref `zkavcxrsxdgdlstravpj`**, us-east-1. Four migrations applied (`supabase/migrations`), the
-  security advisors report no issues, the first club "Aquarium Go Friends" exists (its invite code went to the owner
-  in the session; never write it in the repo, which is public; `select name, invite_code from public.clubs` reads it),
-  the live smoke test passed 80 of 80. `src/social/project.ts` holds the address and publishable key, so the players'
-  build shows Social once `next` is released.
-- **Open owner questions:** F1 (the owner's VoiceOver pass). The "Have an invite?" example is "Invite code, e.g.
-  FRIENDS-KDWX" (ADR-0042, J1).
+  `aquarium-go`, **ref `zkavcxrsxdgdlstravpj`**, us-east-1. Five migrations applied (`supabase/migrations`; the fifth,
+  chunk 9's, on 2026-10-19 with the owner's yes), the advisors report no database issues (one Auth warning:
+  leaked-password protection, off), the live smoke test passed 90 of 90. Three clubs, all the owner's ("Aquarium Go
+  Friends", "CalliClub", "TheSushiBladesToTheMax"); the clubs keep their codes (ADR-0044 decision 3). Never write a
+  code or a player's email in the repo, which is public (`select name, invite_code from public.clubs` reads codes).
+- **Next after 0.5.6: shared shops** (ADR-0043): a whole shop a club plays together on a small server on Render. No
+  design yet; ADR-0043 lists what it must cover.
+- **Open owner questions:** F1 (the owner's VoiceOver pass); the audit's decisions A4 (the shared Pages origin, B-191),
+  F5, F3, G2, A6 and new wording (B-207).
 - **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`) is signed in to the owner's whole account, anonyform's
   Pro organization included. Scope every remote command to the project: `--linked --project-ref zkavcxrsxdgdlstravpj`
   (`db query` takes `--project-ref` only with `--linked`). Never print or save the secret key; never read the CLI's
-  stored sign-in; stop and ask if anything would cost money (the owner: "lets make everything free if we can").
+  stored sign-in; stop and ask if anything would cost money (the owner: "lets make everything free if we can"). A
+  query that would print another player's email is refused by Claude Code's auto mode (PII): count, or match the
+  owner's own email, instead.
 
 ## The order of work
 
@@ -31,8 +39,15 @@ practical knowledge that makes it go smoothly. Replace or delete it when it's us
 3. **A database change** goes in a new file under `supabase/migrations` (never edit an applied one): check it with
    `scripts/online-db-local/run.sh` (a throwaway local Postgres, Homebrew's postgresql@16), apply it with `supabase db
    query --linked --project-ref <ref> -f <file>`, run `supabase db advisors --linked --project-ref <ref> --type security
-   --level warn` (must say no issues), then `node scripts/online-smoke.mjs` from the internal-disk clone (it has
-   supabase-js; the Dev repo's `node_modules` is an old copy without it).
+   --level warn` (no database issues; Auth's leaked-password warning is known), then `node scripts/online-smoke.mjs`
+   from the internal-disk clone (it has supabase-js; the Dev repo's `node_modules` is an old copy without it; for the
+   few seconds it runs, its 100 wrong guesses brake real invite screens).
+4. **Releasing 0.5.6** (the owner's call), as 0.5.4 and 0.5.5 went: the four checks green on the final code, bump
+   `version` to 0.5.6 and add the CHANGELOG entry (the D1 price change is player-visible: say so), merge `next` into
+   `main` with the owner's go-ahead in the session (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no
+   checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
+   `version.json` files.
+5. **Then** the audit's remaining findings with the owner (B-207), or shared shops (ADR-0043), as the owner says.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the

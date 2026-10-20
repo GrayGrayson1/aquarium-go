@@ -12,7 +12,7 @@ import { newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { SCHEMA_VERSION, createMemoryBackend, exportSaveText, listSaves, resetSaveSession, saveGame, setStorageBackend, setSyncStore, stateHash, useResume } from '@/persistence';
+import { SCHEMA_VERSION, createMemoryBackend, exportSaveText, keptSaveId, listSaves, resetSaveSession, saveGame, setStorageBackend, setSyncStore, stateHash, useResume } from '@/persistence';
 import { provideSocialService, type CloudSaveMeta, type CloudUpload, type SocialService, type SocialUser, type StandingReport } from '@/social';
 import { useSocial } from '@/ui/panels/social/socialStore';
 import { CLOUD_LINK_KEY, SEND_GAP_MS, checkOnline, cloudBlocked, forgetCloudLink, keepDeviceCopy, loadOnlineCopy, readLink, resetCloudSync, startCloudSync, useCloud } from '@/ui/online/cloudSync';
@@ -655,5 +655,59 @@ describe('chunk 9 (B1, REL-038): Load online save never pushes out an aquarium k
     expect(toasts().some((t) => t.includes('was only in the autosave'))).toBe(false);
     const saves = await listSaves();
     expect(saves.filter((m) => m.saveId === w.saveId).map((m) => m.slot)).toEqual(['slot3']); // the autosave's copy went, as a switch does
+  });
+});
+
+describe('chunk 9, the review’s blocker 2: a kept copy in the autosave isn’t dropped by Load online save', () => {
+  const toasts = () => useUI.getState().toasts.map((t) => t.text);
+  const atHour = (g: GameState, hour: number) => {
+    const c = structuredClone(g);
+    c.clock.hour = hour;
+    return c;
+  };
+
+  it('"Previous autosave" holds a kept copy further along than both: it is saved to a slot first', async () => {
+    const mine = useGame.getState().game!;
+    // an earlier local load left the day-10 progress as a kept copy in "Previous autosave"; the device is at day 2
+    expect((await saveGame({ ...atHour(mine, 9 * 24 + 10), saveId: keptSaveId(mine.saveId) }, 'auto')).ok).toBe(true);
+    useGame.getState().setGame(atHour(mine, 24 + 10));
+    expect((await saveGame(useGame.getState().game!, 'auto')).ok).toBe(true);
+    expect((await listSaves()).find((m) => m.previousOf === 'auto')?.day).toBe(10);
+    await signIn();
+    server.write({ hour: 4 * 24 + 10 }, atHour(mine, 4 * 24 + 10)); // the same aquarium, day 5, from another device
+    await checkOnline();
+    expect(useCloud.getState().prompt).not.toBeNull();
+    expect(await loadOnlineCopy()).toBe(true);
+    expect(toasts()).toContain(`${mine.shopName} was only in the autosave, so it was saved to Slot 1 first.`);
+    expect((await listSaves()).find((m) => m.slot === 'slot1')?.day).toBe(10);
+  });
+
+  it('B7: a second Load after the box reopens keeps the first one’s kept copy', async () => {
+    await signIn();
+    const mine = useGame.getState().game!;
+    useGame.getState().setGame(atHour(mine, 9 * 24 + 10)); // this device: day 10
+    server.write({ hour: 4 * 24 + 10 }, atHour(mine, 4 * 24 + 10)); // online: day 5, both changed
+    await checkOnline();
+    expect(await loadOnlineCopy()).toBe(true);
+    expect((await listSaves()).find((m) => m.previousOf === 'auto')?.day).toBe(10);
+    server.write({ hour: 5 * 24 + 10 }, atHour(mine, 5 * 24 + 10)); // the other device again: day 6
+    await checkOnline();
+    expect(useCloud.getState().prompt).not.toBeNull();
+    expect(await loadOnlineCopy()).toBe(true);
+    const saves = await listSaves();
+    expect(saves.filter((m) => m.saveId?.startsWith(mine.saveId)).map((m) => m.day)).toContain(10); // day 10 is still somewhere
+  });
+
+  it('an older kept copy of the aquarium, behind both, goes as any "Previous autosave" does (no slot used)', async () => {
+    const mine = useGame.getState().game!;
+    expect((await saveGame({ ...atHour(mine, 10), saveId: keptSaveId(mine.saveId) }, 'auto')).ok).toBe(true);
+    useGame.getState().setGame(atHour(mine, 3 * 24 + 10));
+    expect((await saveGame(useGame.getState().game!, 'auto')).ok).toBe(true);
+    await signIn();
+    server.write({ hour: 4 * 24 + 10 }, atHour(mine, 4 * 24 + 10));
+    await checkOnline();
+    expect(await loadOnlineCopy()).toBe(true);
+    expect(toasts().some((t) => t.includes('was only in the autosave'))).toBe(false);
+    expect((await listSaves()).filter((m) => m.slot !== 'auto' && !m.previousOf)).toEqual([]);
   });
 });

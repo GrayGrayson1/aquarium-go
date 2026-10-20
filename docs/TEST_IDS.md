@@ -194,7 +194,8 @@ Dev/QA (with `?perf=1` or in dev): `window.__AQ_PERF()` → `{ tier, dpr, scale,
 | `breed-prismatic-odds` | Creature card › Breeding: the Prismatic chance line for the chosen pair |
 | `save-here-<slot>` / `save-overwrite-<slot>` | Settings › Saves: "Save here" on an empty manual slot / "Overwrite with current game" on a filled one (asks first) |
 | `overwrite-confirm` / `overwrite-confirm-replace` | The "Replace <slot>?" modal and its Replace button |
-| `load-confirm` / `load-confirm-load` / `load-confirm-park` | The "Load <slot>?" modal, its Load button, and "Save to <free slot> & load" (shown when a manual slot is free) |
+| `load-confirm` / `load-confirm-load` / `load-confirm-park` | The "Load <slot>?" modal, its Load button, and "Save to <free slot> & load" (shown when a manual slot is free; since chunk 9 for another copy of the aquarium on screen too) |
+| `import-confirm` / `import-confirm-replace` | Chunk 9: the "Replace <slot>?" modal before Import into a slot that holds a save, and its Replace button |
 | `save-delete-promotes` | Note in a save's delete confirm (title screen › Load and Settings › Saves) naming the "Previous …" aquarium that takes the slot |
 | `stale-tab-banner` / `stale-tab-load` / `stale-tab-keep` | "Played further in another tab" banner (rendered at the head of the toast column, above the update prompt) and its two actions: load the newer copy, or keep this tab's copy and save it |
 | `update-prompt` / `update-reload` | "A new version is ready" prompt at the head of the toast column, and its Reload button (saves first) |

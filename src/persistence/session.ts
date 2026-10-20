@@ -51,7 +51,7 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
   const g = useGame.getState().game;
   if (!g) return { ok: false, slot, message: 'No game running.' };
   const st = stateForSaving(g);
-  const res = await saveGame(opts.asKept ? { ...st, saveId: keptSaveId(st.saveId) } : st, slot);
+  const res = await saveGame(opts.asKept ? { ...st, saveId: keptSaveId(st.saveId) } : st, slot, opts.asKept ? { staleAs: st.saveId } : {});
   if (res.ok && !opts.asKept) {
     // Record the save time in the live state too (not a sim change; keeps "last saved" displays honest).
     useGame.getState().mutate((d) => {
