@@ -463,10 +463,14 @@ export async function loadOnlineCopy(): Promise<boolean> {
     const imported = await importSaveText(text, 'auto');
     if (!imported.ok || !imported.state) {
       writeLink(u.id, previous);
+      parked.forEach((m) => useUI.getState().toast(m, 'success')); // what was saved to a slot, it was
       useUI.getState().toast(imported.error ?? LOAD_FAILED, 'danger');
       return false;
     }
-    if (user()?.id !== u.id) return false; // the online copy is stored; the game on screen stays this device's
+    if (user()?.id !== u.id) {
+      writeLink(u.id, previous); // the online copy is stored; the game on screen stays this device's, as does its link
+      return false;
+    }
     resumeState(imported.state);
     for (const m of parked) useUI.getState().toast(m, 'success');
     // the link's time after the game on screen changed, so the change itself doesn't count as this device's play

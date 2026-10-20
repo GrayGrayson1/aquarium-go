@@ -374,3 +374,52 @@ describe('the review’s confirmation (B): a title-screen load, then Load in Set
     }
   });
 });
+
+describe('the review’s second confirmation: Load reads the copy it loads before it writes anything', () => {
+  async function env() {
+    const { useGame } = await import('@/state/game');
+    const { useUI } = await import('@/state/ui');
+    const { useSettings } = await import('@/state/settings');
+    const { loadIntoGame } = await import('@/ui/common/saves');
+    useSettings.setState({ autosave: true });
+    useUI.setState({ screen: 'game', toasts: [] });
+    return { useGame, useUI, loadIntoGame, done: () => (useGame.getState().setGame(null), useUI.setState({ screen: 'boot' })) };
+  }
+
+  it('"Previous autosave" (another aquarium) loaded right after a title-screen load is the one loaded, and nothing is lost', async () => {
+    const { useGame, loadIntoGame, done } = await env();
+    const w = aquarium('Wren', 70);
+    const x = aquarium('Xenia', 71);
+    expect((await saveGame(onDay(w, 6), 'auto')).ok).toBe(true);
+    expect((await saveGame(onDay(x, 10), 'auto')).ok).toBe(true); // Wren is "Previous autosave"
+    expect((await saveGame(onDay(x, 2), 'slot1')).ok).toBe(true);
+    useGame.getState().setGame(onDay(x, 2)); // Slot 1, loaded on the title screen
+    try {
+      const g = await loadIntoGame('auto.backup');
+      expect(g?.saveId).toBe(w.saveId); // before: Xenia's day 10, and Wren gone
+      const saves = await listSaves();
+      expect(saves.find((m) => m.slot === 'auto')?.saveId).toBe(w.saveId);
+      expect(saves.find((m) => m.slot === 'slot2')).toMatchObject({ saveId: x.saveId, day: 10 }); // parked first
+      expect(saves.filter((m) => m.saveId === x.saveId || baseSaveId(m.saveId ?? '') === x.saveId).map((m) => m.day).sort()).toEqual([10, 2, 2].sort());
+    } finally {
+      done();
+    }
+  });
+
+  it('a kept branch of the same aquarium in "Previous autosave" loads as itself', async () => {
+    const { useGame, loadIntoGame, done } = await env();
+    const a = aquarium('Branches', 72);
+    expect((await saveGame({ ...onDay(a, 4, 444), saveId: keptSaveId(a.saveId) }, 'auto')).ok).toBe(true);
+    expect((await saveGame(onDay(a, 10), 'auto')).ok).toBe(true); // the day-4 branch is "Previous autosave"
+    expect((await saveGame(onDay(a, 2), 'slot1')).ok).toBe(true);
+    useGame.getState().setGame(onDay(a, 2));
+    try {
+      const g = await loadIntoGame('auto.backup');
+      expect(g?.finance.money).toBe(444);
+      expect(Math.floor(g!.clock.hour / 24) + 1).toBeGreaterThanOrEqual(4);
+      expect((await listSaves()).some((m) => m.day === 10)).toBe(true);
+    } finally {
+      done();
+    }
+  });
+});

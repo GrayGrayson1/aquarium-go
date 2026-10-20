@@ -10,7 +10,9 @@ import {
   storageStatus,
   listSaves,
   deleteSave,
-  loadAndResume,
+  loadGameDetailed,
+  parseSlotRef,
+  resumeState,
   saveCurrentGame,
   importSaveFile,
   downloadSave,
@@ -57,40 +59,43 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
  * lane:fix-core (P7-03/S14-05) — a game that is running is autosaved first, exactly like "Save and return to title",
  * so browsing saves mid-game can never throw away the last minute of play. Chunk 9 (E1): when the slot holds another
  * copy of the aquarium on screen, it is autosaved as a kept copy, so it stays listed as "Previous autosave" (the
- * load dialog says so) instead of being dropped by the loaded copy's next autosaves.
+ * load dialog says so) instead of being dropped by the loaded copy's next autosaves. Chunk 9's review: the copy to
+ * load is read before anything is written (that save writes the autosave slot, which may hold it), and when it came
+ * from the autosave slot it is saved again at once, since its stored copy may just have been written over.
  */
 export async function loadIntoGame(slot: string): Promise<GameState | null> {
   let parked: string[] = [];
+  const showParked = () => parked.splice(0).forEach((m) => useUI.getState().toast(m, 'success'));
   try {
-    // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
-    if (autosaveAllowed({ evenIfOff: true })) {
-      const g = useGame.getState().game;
-      const target = g ? (await listSlots()).find((m) => m.slot === slot) : undefined;
-      // the review's confirmation (B): a further copy of this aquarium kept only in the autosave (a title-screen load
-      // of an earlier one, not yet autosaved) would go with the two writes this load makes: to a slot first
-      if (g && target?.saveId) {
-        const kept = await keepAutosavedCopies([{ saveId: g.saveId, hour: g.clock.hour }, { saveId: target.saveId, hour: target.hour ?? Number.NaN }], { sameAquariumOnly: true, loading: slot });
-        if (!kept) return null;
-        parked = kept;
-      }
-      const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: !!(target && g && isSameGame(target, g)) });
-      if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
-    }
-  } catch (e) {
-    console.warn('[ui] autosave before load failed', e);
-  }
-  try {
-    const r = await loadAndResume(slot);
+    const r = await loadGameDetailed(slot);
     if (!r.ok || !r.state) {
       if (r.error) useUI.getState().toast(r.error, 'danger');
       return null;
     }
+    // with Settings' autosave off too (the review's blocker 4): the dialog promises the current progress is kept
+    if (autosaveAllowed({ evenIfOff: true })) {
+      try {
+        const g = useGame.getState().game!;
+        // the review's confirmation (B): a further copy of this aquarium kept only in the autosave (a title-screen load
+        // of an earlier one, not yet autosaved) would go with the two writes this load makes: to a slot first
+        const kept = await keepAutosavedCopies([{ saveId: g.saveId, hour: g.clock.hour }, { saveId: r.state.saveId, hour: r.state.clock.hour }], { sameAquariumOnly: true, loading: slot });
+        if (!kept) return null;
+        parked = kept;
+        const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: g.saveId === r.state.saveId });
+        if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
+      } catch (e) {
+        console.warn('[ui] autosave before load failed', e);
+      }
+    }
+    resumeState(r.state);
+    if (parseSlotRef(slot).slot === 'auto') await saveCurrentGame('auto', { flush: false, toast: false });
     if (r.restoredFromBackup) useUI.getState().toast('That save was damaged — restored from its backup copy.', 'warning');
-    for (const m of parked) useUI.getState().toast(m, 'success');
+    showParked();
     useUI.getState().set({ hudHidden: false, cameraMode: 'front' });
-    return r.state;
+    return useGame.getState().game;
   } catch (e) {
     console.warn('[ui] load failed', e);
+    showParked();
     useUI.getState().toast('That save could not be loaded — it may be damaged. Try its previous copy or an exported file.', 'danger');
     return null;
   }

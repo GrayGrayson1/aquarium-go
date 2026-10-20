@@ -682,6 +682,14 @@ REL-012, REL-018.
   roll-back check. For the owner (KNOWN_LIMITATIONS, ADR-0044): Load's line for a Previous autosave it replaces, the
   wording for loading a later copy, the valuation breakdown's rows, D1's extensions (rarity, lineage, a buyer's
   taste) and its sales near cost.
+- **Its confirmation passes:** the first (`c51a7f1..827eacd`) confirmed the four closed and found three more save paths
+  (present since `c51a7f1`), fixed in `b5d169f`: Load online save's progress check now covers a copy with the device's
+  own identity; Settings' Load first saves a further copy of the aquarium kept only in the autosave to a free slot, with
+  B1's messages (the owner's yes, ADR-0044 decision 6); those messages show after the load. The second
+  (`827eacd..b5d169f`) confirmed them and found one more, fixed next: Settings' Load read its slot after its own save
+  had written it, so "Previous autosave" loaded right after a title-screen load gave another save; Load now reads first.
+  Left for the owner: whether Settings' Load should also keep another aquarium kept only in the autosave (as 0.5.5,
+  it goes; KNOWN_LIMITATIONS).
 
 ## Releases
 
