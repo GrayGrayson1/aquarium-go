@@ -775,6 +775,14 @@ REL-012, REL-018.
   as a tank; the paused two-browser check reads until both agree; the docs (the meter's factor, what fingerprints can't
   see). Left for chunk 11: keys holding `undefined`, which a snapshot drops and a joiner re-adds in another order
   (harmless today; SHARED-SHOPS.md §3.2 rule 10).
+- **Its confirmation pass** (`e778ba5..668a57d`): every item above confirmed; one more blocker of the same kind, there
+  since `01e854c`, fixed next: a request whose target isn't a URL (`GET //`) crashed the server, even closed on Render,
+  since both handlers parsed it unguarded. Both now parse it guarded (400) and catch whatever their bodies throw, the
+  stats call included; the hostile-message e2e sends `//` and `/\` as requests and upgrades. Its notes, fixed too:
+  the browser replay's reads include an animal's rarity and strains (the caches the step block doesn't clear); a
+  socket that never says `hello` is dropped at once; a replay worker that ends without answering frees the slot. For
+  chunk 12: the re-sync budget is per connection and joins are unlimited, so it belongs to the player, with §5.3's
+  join limit.
 - **For chunk 12** (from the measurements): time steps in place, not on a copy (18 to 32% of a step); a cheaper or rarer
   fingerprint and snapshot check for big shops (750 ms and 1.6 s of wall time on the free instance); the key out of the
   build; and, before big shops matter, the owner's choice between a lower top speed for them and a paid instance.

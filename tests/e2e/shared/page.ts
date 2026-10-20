@@ -9,6 +9,9 @@ import { stateHash } from '@/persistence/hash';
 import { evaluateTank, previewAddition } from '@/sim/compat';
 import { stateReachability } from '@/sim/facility/layout';
 import { beautyScore } from '@/sim/aquascape';
+import { morphRarity } from '@/sim/economy/valuation';
+import { strainsOf } from '@/sim/life/morphCatalog';
+import { findSpecies } from '@/data/species';
 import type { GameState } from '@/types';
 import type { StepLog } from '../../../server/replay';
 
@@ -24,15 +27,22 @@ export interface ReplayReport {
 }
 
 /**
- * What the interface reads between steps (compatibility with hypothetical candidates, reachability, beauty): caches
- * this copy fills and the server's doesn't, so a cache that isn't exact would show as a mismatch.
+ * What the interface reads between steps (compatibility with hypothetical candidates, reachability, beauty, an
+ * animal's rarity and strains): caches this copy fills and the server's doesn't, so a cache that isn't exact (or one the
+ * step block should clear and doesn't) would show as a mismatch.
  */
 function interfaceReads(g: GameState): void {
   for (const id of g.tankOrder.slice(0, 6)) {
     evaluateTank(g, id);
-    const sp = Object.values(g.creatures).find((c) => c.tankId === id)?.speciesId;
+    const residents = Object.values(g.creatures).filter((c) => c.tankId === id).slice(0, 8);
+    const sp = residents[0]?.speciesId;
     if (sp) previewAddition(g, id, { speciesId: sp, count: 2 });
     beautyScore(g, g.tanks[id]);
+    for (const c of residents) {
+      const species = findSpecies(c.speciesId);
+      morphRarity(species, c);
+      if (species) strainsOf(species, c.genome);
+    }
   }
   stateReachability(g);
 }

@@ -14,6 +14,7 @@
  * static site and `dascade`). Chunk 12's server, with sign-in, replaces this.
  */
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import type { Duplex } from 'node:stream';
 import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
@@ -258,25 +259,68 @@ function replay(req: IncomingMessage, res: ServerResponse, url: URL): void {
     reply(req, res, 500, { error: e instanceof Error ? e.message : String(e) });
     done();
   });
+  worker.once('exit', () => {
+    // a worker that ends without answering (the answer resets `replaying` itself, before this runs)
+    if (res.headersSent) return;
+    replaying = false;
+    reply(req, res, 500, { error: 'replay ended' });
+  });
 }
 
-const server = createServer((req, res) => {
-  const url = new URL(req.url ?? '/', 'http://localhost');
+/** The request's target as a URL, or null when it isn't one (`//`, `/\\`): a request's text must never throw. */
+function urlOf(req: IncomingMessage): URL | null {
+  try {
+    return new URL(req.url ?? '/', 'http://localhost');
+  } catch {
+    return null;
+  }
+}
+
+function onRequest(req: IncomingMessage, res: ServerResponse): void {
+  const url = urlOf(req);
+  if (!url) return reply(req, res, 400, { error: 'bad request' });
   if (req.method === 'OPTIONS') return reply(req, res, 204, {});
   if (req.method !== 'GET') return reply(req, res, 405, { error: 'method' });
   if (url.pathname === '/health') return reply(req, res, 200, { ok: true, version: VERSION, shops: availableShops(), capped, closed: CLOSED });
-  if (url.pathname === '/stats') return void stats().then((s) => reply(req, res, 200, s));
+  if (url.pathname === '/stats') {
+    stats().then(
+      (st) => reply(req, res, 200, st),
+      () => reply(req, res, 500, { error: 'stats' }),
+    );
+    return;
+  }
   if (url.pathname === '/stub/replay' && REPLAY) return replay(req, res, url);
   reply(req, res, 404, { error: 'not found' });
+}
+
+// Nothing a request or a message carries may take the server down (chunk 10's review): each handler catches its own.
+const server = createServer((req, res) => {
+  try {
+    onRequest(req, res);
+  } catch (e) {
+    console.log(`[server] request refused (${e instanceof Error ? e.message : String(e)})`);
+    if (!res.headersSent) reply(req, res, 500, { error: 'server' });
+    else res.destroy();
+  }
 });
 
 const wss = new WebSocketServer({ noServer: true, maxPayload: 48 * 1024, perMessageDeflate: false });
 server.on('upgrade', (req, socket, head) => {
-  const url = new URL(req.url ?? '/', 'http://localhost');
+  try {
+    onUpgrade(req, socket, head);
+  } catch (e) {
+    console.log(`[server] upgrade refused (${e instanceof Error ? e.message : String(e)})`);
+    socket.destroy();
+  }
+});
+
+function onUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer): void {
   const refuse = (status: string) => {
     socket.write(`HTTP/1.1 ${status}\r\nConnection: close\r\n\r\n`);
     socket.destroy();
   };
+  const url = urlOf(req);
+  if (!url) return refuse('400 Bad Request');
   if (url.pathname !== '/shop') return refuse('404 Not Found');
   if (CLOSED) return refuse('503 Service Unavailable');
   if (!originAllowed(req.headers.origin)) return refuse('403 Forbidden');
@@ -285,13 +329,13 @@ server.on('upgrade', (req, socket, head) => {
     const c: Conn = { id: `c${nextConn++}`, ws, room: null, windowStart: Date.now(), messages: 0, commands: 0, bytesOut: 0 };
     conns.set(c.id, c);
     setTimeout(() => {
-      if (!c.room && conns.has(c.id)) c.ws.close(1008);
+      if (!c.room && conns.has(c.id)) c.ws.terminate(); // at once: a peer that ignores a close frame keeps no slot
     }, HELLO_WITHIN_MS).unref();
     ws.on('message', (data, isBinary) => onMessage(c, data, isBinary));
     ws.on('close', () => onClose(c));
     ws.on('error', () => ws.terminate());
   });
-});
+}
 
 // Keep connections alive through proxies while a shop is paused and quiet.
 setInterval(() => {

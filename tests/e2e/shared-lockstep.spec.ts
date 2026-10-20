@@ -5,6 +5,7 @@
  * every fingerprint the server sent.
  */
 import { test, expect, type Page } from '@playwright/test';
+import { request as httpRequest } from 'node:http';
 import type { ReplayReport } from './shared/page';
 import type { StepLog } from '../../server/replay';
 
@@ -185,6 +186,26 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
     expect(codes.nested).toBe('open'); // checked and dropped in the worker
     expect(codes.junk).toBe('open');
     expect(codes.beforeHello).toBe(1008);
+    // targets that aren't URLs, on a plain request and on an upgrade (the review's second crash)
+    const raw = (path: string, upgrade: boolean) =>
+      new Promise<number | string>((resolve) => {
+        const headers: Record<string, string> = upgrade
+          ? { connection: 'Upgrade', upgrade: 'websocket', 'sec-websocket-version': '13', 'sec-websocket-key': 'dGhlIHNhbXBsZSBub25jZQ==', origin: 'http://127.0.0.1:4399' }
+          : {};
+        const r = httpRequest({ host: '127.0.0.1', port: Number(new URL(SERVER).port), path, headers }, (res) => {
+          resolve(res.statusCode ?? 0);
+          res.resume();
+        });
+        r.on('upgrade', (res, socket) => {
+          resolve(res.statusCode ?? 101);
+          socket.destroy();
+        });
+        r.on('error', (e) => resolve(e.message));
+        r.end();
+      });
+    expect(await raw('//', false)).toBe(400);
+    expect(await raw('/\\', false)).toBe(400);
+    for (const path of ['//', '/\\']) expect(['socket hang up', 400]).toContain(await raw(path, true));
     const health = await request.get(`${SERVER}/health`);
     expect(health.ok()).toBe(true);
     // and a member still joins
