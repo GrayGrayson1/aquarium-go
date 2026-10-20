@@ -201,6 +201,17 @@ function stop(): void {
   useCloud.setState({ prompt: null, choosing: false, status: 'idle', syncedAt: null });
 }
 
+/**
+ * Chunk 9 (B2): the session is no longer the account this tab shows (another tab signed out, or in as someone else):
+ * stop, and ask who is signed in now; a new account starts its own check (the useSocial subscription below).
+ */
+function accountChanged(): void {
+  stop();
+  void loadSocialUser(true);
+}
+
+const isAccountError = (e: unknown): boolean => isSocialError(e) && e.code === 'account';
+
 /** Read the online copy and decide (§6). A call while one runs folds into one more, after it. */
 export function checkOnline(): Promise<void> {
   if (!active()) return Promise.resolve();
@@ -238,7 +249,7 @@ async function runCheck(): Promise<void> {
   let link = readLink(u.id);
   useCloud.setState({ syncedAt: link?.sentAt ?? null });
   try {
-    const online = await socialService().cloudMeta();
+    const online = await socialService().cloudMeta(u.id);
     if (user()?.id !== u.id) return; // signed out (or in as someone else) meanwhile
     // a send whose answer never came (a timeout) may still have landed: the copy online is then this device's own
     if (online && lastTried && online.saveId === lastTried.saveId && online.savedAt === lastTried.savedAt && online.hour === lastTried.hour && online.revision !== link?.revision) {
@@ -277,6 +288,7 @@ async function runCheck(): Promise<void> {
     void refreshSocialNews();
   } catch (e) {
     inStep = false;
+    if (isAccountError(e)) return accountChanged();
     useCloud.setState({ status: 'unreachable' });
     if (!(isSocialError(e) && e.code === 'network')) console.warn('[aquarium-go] online save check failed', e);
   }
@@ -318,7 +330,7 @@ async function runSend(g: GameState, userId: string): Promise<void> {
       return;
     }
     lastTried = { saveId: g.saveId, savedAt: g.lastSavedRealMs, hour: g.clock.hour };
-    const res = await socialService().cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: dayOf(g), money: g.finance.money, ...body }, expected);
+    const res = await socialService().cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: dayOf(g), money: g.finance.money, ...body }, expected, userId);
     if (user()?.id !== userId) return;
     lastSentAt = Date.now();
     if (res.ok) {
@@ -336,6 +348,7 @@ async function runSend(g: GameState, userId: string): Promise<void> {
       void checkOnline();
     }
   } catch (e) {
+    if (isAccountError(e)) return accountChanged(); // nothing was written: the server refused another account's session
     // the online copy is as it was (or the send landed unanswered: the next check sees it): try again after the gap
     lastSentAt = Date.now();
     useCloud.setState({ status: 'unreachable' });
@@ -412,7 +425,7 @@ export async function loadOnlineCopy(): Promise<boolean> {
   if (!p || !u || useCloud.getState().choosing) return false;
   useCloud.setState({ choosing: true });
   try {
-    const got = await socialService().cloudDownload();
+    const got = await socialService().cloudDownload(u.id);
     if (!got) {
       useCloud.setState({ prompt: null });
       void checkOnline();
@@ -462,6 +475,10 @@ export async function loadOnlineCopy(): Promise<boolean> {
     useCloud.setState({ prompt: null });
     return true;
   } catch (e) {
+    if (isAccountError(e)) {
+      accountChanged(); // nothing changed on this device; the box closes with the account it was for
+      return false;
+    }
     useUI.getState().toast(isSocialError(e) ? SOCIAL_COPY.errorNetwork : LOAD_FAILED, 'danger');
     return false;
   } finally {
@@ -477,6 +494,11 @@ export function startCloudSync(): () => void {
   started = true;
   const offs: (() => void)[] = [];
   let lastUser = user()?.id ?? null;
+  // chunk 9 (B2): another tab signed out or in; a refocus that repeats the same account changes nothing
+  const offSession = socialService().onSessionChange?.((account) => {
+    if (account !== (user()?.id ?? null)) accountChanged();
+  });
+  if (offSession) offs.push(offSession);
   offs.push(
     useSocial.subscribe((s) => {
       const id = s.user?.id ?? null;

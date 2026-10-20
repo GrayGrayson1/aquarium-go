@@ -4,6 +4,8 @@
  * (after the hidden save lands), never a showcase, a conflict → a check → the box, a newer build's copy → blocked and
  * nothing sent, both of the box's choices (loading keeps this device's copy as "Previous autosave"), sign-out and
  * Delete stopping it, and the link kept outside the save (no social action changes the save or its stateHash).
+ * Chunk 9 (B2, REL-035): every call names the account this tab shows; when another tab switched the session to someone
+ * else, the server refuses ('account'), nothing is written, and this tab asks who is signed in now.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { newGame } from '@/sim/newGame';
@@ -42,6 +44,7 @@ vi.mock('@/social/codec', async (importOriginal) => ({
 }));
 
 const USER: SocialUser = { id: 'user-1', email: 'sam@example.com', displayName: 'Sam', friendCode: 'SAM-7Q2' };
+const USER_B: SocialUser = { id: 'user-2', email: 'kim@example.com', displayName: 'Kim', friendCode: 'KIM-7Q2' };
 
 type KV = { getItem(k: string): string | null; setItem(k: string, v: string): void; removeItem(k: string): void; dump(): Record<string, string> };
 function memory(): KV {
@@ -49,47 +52,83 @@ function memory(): KV {
   return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => void m.set(k, v), removeItem: (k) => void m.delete(k), dump: () => Object.fromEntries(m) };
 }
 
-/** A server holding one online save, recording every upload. */
+/**
+ * A server holding an online save per account (USER's is `online`), recording every upload. The session is the one
+ * account the server's calls run as (chunk 9: another tab can switch it); a call naming another account is refused.
+ */
 function fakeServer() {
-  let online: { meta: CloudSaveMeta; body: string } | null = null;
-  const uploads: { save: CloudUpload; expected: number }[] = [];
+  const saves = new Map<string, { meta: CloudSaveMeta; body: string }>();
+  let session: string | null = USER.id;
+  const uploads: { save: CloudUpload; expected: number; account: string }[] = [];
   const reports: StandingReport[] = [];
   let next: 'ok' | 'too_new' | 'conflict' | null = null;
+  let sessionCb: ((account: string | null) => void) | null = null;
+  /** As the server's twins: only for the session's account. */
+  const as = (account: string) => {
+    if (account !== session) throw { code: 'account' };
+    return saves.get(account) ?? null;
+  };
   const service = {
-    currentUser: async () => USER,
-    cloudMeta: vi.fn(async () => (online ? { ...online.meta } : null)),
-    cloudDownload: vi.fn(async () => (online ? { meta: { ...online.meta }, encoding: 'json' as const, body: online.body } : null)),
-    cloudUpload: vi.fn(async (save: CloudUpload, expected: number) => {
-      uploads.push({ save, expected });
+    currentUser: vi.fn(async () => [USER, USER_B].find((u) => u.id === session) ?? null),
+    cloudMeta: vi.fn(async (account: string) => {
+      const online = as(account);
+      return online ? { ...online.meta } : null;
+    }),
+    cloudDownload: vi.fn(async (account: string) => {
+      const online = as(account);
+      return online ? { meta: { ...online.meta }, encoding: 'json' as const, body: online.body } : null;
+    }),
+    cloudUpload: vi.fn(async (save: CloudUpload, expected: number, account: string) => {
+      uploads.push({ save, expected, account });
+      const online = as(account);
       const forced = next;
       next = null;
       if (forced === 'too_new' || (online && online.meta.schemaVersion > save.schemaVersion)) return { ok: false as const, reason: 'too_new' as const, meta: online ? { ...online.meta } : null };
       if (forced === 'conflict' || (online?.meta.revision ?? 0) !== expected) return { ok: false as const, reason: 'conflict' as const, meta: online ? { ...online.meta } : null };
       const { encoding: _e, body, ...meta } = save;
-      online = { meta: { ...meta, revision: (online?.meta.revision ?? 0) + 1 }, body };
-      return { ok: true as const, revision: online.meta.revision };
+      saves.set(account, { meta: { ...meta, revision: (online?.meta.revision ?? 0) + 1 }, body });
+      return { ok: true as const, revision: saves.get(account)!.meta.revision };
     }),
     reportStanding: vi.fn(async (r: StandingReport) => void reports.push(r)),
     news: async () => ({ trades: 0, clubs: 0 }),
+    onSessionChange: vi.fn((cb: (account: string | null) => void) => {
+      sessionCb = cb;
+      return () => {
+        sessionCb = null;
+      };
+    }),
   } as unknown as SocialService;
   return {
     service,
     uploads,
     reports,
     get online() {
-      return online;
+      return saves.get(USER.id) ?? null;
+    },
+    /** Another account's online save, as stored. */
+    saveOf(account: string) {
+      return saves.get(account) ?? null;
+    },
+    /** Another tab signs out (null) or in as `account`; `tell` the tabs, as supabase-js does (or not). */
+    switchSession(account: string | null, tell = false) {
+      session = account;
+      if (tell) sessionCb?.(account);
+    },
+    /** Another account writes its own online save. */
+    writeFor(account: string, meta: Partial<CloudSaveMeta>, state: GameState) {
+      saves.set(account, { meta: { revision: 1, saveId: state.saveId, schemaVersion: SCHEMA_VERSION, savedAt: state.lastSavedRealMs, hour: state.clock.hour, shopName: state.shopName, day: 1, money: state.finance.money, ...meta }, body: exportSaveText(state) });
     },
     /** Another device writes the online save. */
     write(meta: Partial<CloudSaveMeta>, state: GameState) {
-      const m: CloudSaveMeta = { revision: (online?.meta.revision ?? 0) + 1, saveId: state.saveId, schemaVersion: SCHEMA_VERSION, savedAt: state.lastSavedRealMs, hour: state.clock.hour, shopName: state.shopName, day: 1, money: state.finance.money, ...meta };
-      online = { meta: m, body: exportSaveText(state) };
+      const m: CloudSaveMeta = { revision: (saves.get(USER.id)?.meta.revision ?? 0) + 1, saveId: state.saveId, schemaVersion: SCHEMA_VERSION, savedAt: state.lastSavedRealMs, hour: state.clock.hour, shopName: state.shopName, day: 1, money: state.finance.money, ...meta };
+      saves.set(USER.id, { meta: m, body: exportSaveText(state) });
     },
     failNext(r: 'too_new' | 'conflict') {
       next = r;
     },
     /** Another account: no online save (the fake holds one at a time). */
     clear() {
-      online = null;
+      saves.delete(USER.id);
     },
   };
 }
@@ -458,9 +497,9 @@ describe('the review’s fixes (chunk 8 review)', () => {
     await signIn();
     let release: () => void = () => {};
     const slow = vi.mocked(server.service.cloudUpload).getMockImplementation()!;
-    vi.mocked(server.service.cloudUpload).mockImplementationOnce(async (save, expected) => {
+    vi.mocked(server.service.cloudUpload).mockImplementationOnce(async (save, expected, account) => {
       await new Promise<void>((r) => (release = r));
-      return slow(save, expected);
+      return slow(save, expected, account);
     });
     await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
     localSave(); // a send starts and waits
@@ -477,8 +516,8 @@ describe('the review’s fixes (chunk 8 review)', () => {
   it('note 3: a send whose answer never came but which landed is this device’s own copy at the next check', async () => {
     await signIn();
     const real = vi.mocked(server.service.cloudUpload).getMockImplementation()!;
-    vi.mocked(server.service.cloudUpload).mockImplementationOnce(async (save, expected) => {
-      await real(save, expected); // it lands…
+    vi.mocked(server.service.cloudUpload).mockImplementationOnce(async (save, expected, account) => {
+      await real(save, expected, account); // it lands…
       throw { code: 'network' }; // …but the answer is lost
     });
     await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
@@ -498,6 +537,7 @@ describe('the review’s fixes (chunk 8 review)', () => {
     useSocial.setState({ user: null });
     await vi.advanceTimersByTimeAsync(10);
     server.clear(); // the second account has no online save
+    server.switchSession('user-2'); // chunk 9: signing in moves the session too (the fake now checks it)
     useSocial.setState({ user: { ...USER, id: 'user-2', email: 'ola@example.com' } });
     await vi.advanceTimersByTimeAsync(10);
     expect(cloudBlocked()).toBe(false);
@@ -519,5 +559,49 @@ describe('the review’s fixes (chunk 8 review)', () => {
     expect(vi.mocked(server.service.cloudUpload).mock.calls.length).toBe(tries); // inside the gap: none more
     await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
     expect(vi.mocked(server.service.cloudUpload).mock.calls.length).toBe(tries + 1);
+  });
+});
+
+describe('chunk 9 (B2, REL-035): another tab switched the account', () => {
+  it('every call names the account this tab shows', async () => {
+    await signIn();
+    expect(server.uploads.map((u) => u.account)).toEqual([USER.id]);
+    expect(vi.mocked(server.service.cloudMeta).mock.calls.every((c) => c[0] === USER.id)).toBe(true);
+  });
+
+  it('signed in as someone else in another tab: the send is refused, nothing written, and this tab finds out who', async () => {
+    await signIn();
+    const b = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed: 7 });
+    server.writeFor(USER_B.id, { revision: 5, shopName: 'Kim’s Reef' }, b);
+    server.switchSession(USER_B.id); // tab 1: Sign out, then sign in as B (this tab isn't told)
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS);
+    localSave();
+    await vi.advanceTimersByTimeAsync(10);
+    // the audit's B2: this tab's aquarium went into B's online save; now the server refuses and nothing changes
+    expect(server.uploads.at(-1)).toMatchObject({ account: USER.id });
+    expect(server.saveOf(USER_B.id)?.meta).toMatchObject({ revision: 5, shopName: 'Kim’s Reef' });
+    expect(server.online?.meta.revision).toBe(1); // A's, as it was
+    // this tab now shows B, and B's online copy is a different aquarium: the box asks, nothing is sent over it
+    expect(useSocial.getState().user?.id).toBe(USER_B.id);
+    expect(useCloud.getState().prompt).not.toBeNull();
+    expect(server.uploads.filter((u) => u.account === USER_B.id)).toEqual([]);
+    expect(readLink(USER.id)?.revision).toBe(1); // A's link isn't rewritten with B's numbers
+  });
+
+  it('told by the session (supabase-js tells every tab): stops and asks; the same account again changes nothing', async () => {
+    await signIn();
+    const asks = () => vi.mocked(server.service.currentUser).mock.calls.length;
+    const before = asks();
+    server.switchSession(USER.id, true); // a refocus repeats SIGNED_IN for the same account
+    await vi.advanceTimersByTimeAsync(10);
+    expect(asks()).toBe(before);
+    server.switchSession(null, true); // signed out in another tab
+    await vi.advanceTimersByTimeAsync(10);
+    expect(asks()).toBe(before + 1);
+    expect(useSocial.getState().user).toBeNull();
+    const sent = server.uploads.length;
+    localSave();
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS + 10);
+    expect(server.uploads).toHaveLength(sent); // signed out: nothing more goes online
   });
 });

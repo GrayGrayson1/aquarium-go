@@ -71,13 +71,14 @@ export interface LeaderboardRow {
  * Why a call failed: bad input ('invalid') or no connection ('network'; the stub can fake it). Chunk 8 (§5.1): a wrong
  * email or password ('credentials'), an email that has an account ('taken'), an invite code that opens nothing
  * ('invite'), the age box not ticked ('age'), a name that isn't 1 to 30 characters ('name'), and a call only the owner
- * may make ('forbidden').
+ * may make ('forbidden'). Chunk 9 (B2): the session belongs to another account than the one the game named
+ * ('account': another tab signed out and in as someone else).
  */
 export interface SocialError {
   code: SocialErrorCode;
 }
 
-export const SOCIAL_ERROR_CODES = ['invalid', 'network', 'credentials', 'taken', 'invite', 'age', 'name', 'forbidden'] as const;
+export const SOCIAL_ERROR_CODES = ['invalid', 'network', 'credentials', 'taken', 'invite', 'age', 'name', 'forbidden', 'account'] as const;
 export type SocialErrorCode = (typeof SOCIAL_ERROR_CODES)[number];
 
 export const isSocialError = (e: unknown): e is SocialError => !!e && typeof e === 'object' && (SOCIAL_ERROR_CODES as readonly unknown[]).includes((e as SocialError).code);
@@ -174,12 +175,20 @@ export interface SocialService {
   deleteAccount(): Promise<void>;
   /** chunk 8 — send the player's own numbers (and maybe a new picture). */
   reportStanding(r: StandingReport): Promise<void>;
-  /** chunk 8 (§6) — the online save's meta, or null when the account has none. */
-  cloudMeta(): Promise<CloudSaveMeta | null>;
+  /**
+   * chunk 8 (§6) — the online save's meta, or null when the account has none. Chunk 9 (B2): the three online-save calls
+   * name the account the game believes is signed in, and reject with `account` when the session is someone else's.
+   */
+  cloudMeta(account: string): Promise<CloudSaveMeta | null>;
   /** chunk 8 — the online save with its body, or null. */
-  cloudDownload(): Promise<(CloudBody & { meta: CloudSaveMeta }) | null>;
+  cloudDownload(account: string): Promise<(CloudBody & { meta: CloudSaveMeta }) | null>;
   /** chunk 8 — write the online save if its revision is still `expected` (0: none yet). */
-  cloudUpload(save: CloudUpload, expected: number): Promise<CloudUploadResult>;
+  cloudUpload(save: CloudUpload, expected: number, account: string): Promise<CloudUploadResult>;
+  /**
+   * chunk 9 (B2) — call `cb` with the account now signed in on this device (null: none) when that may have changed
+   * outside this tab's own calls, as when another tab signs out or in. Returns the unsubscribe.
+   */
+  onSessionChange?(cb: (account: string | null) => void): () => void;
 }
 
 /** chunk 8 — the name rule (sign-up, the server's check): 1 to 30 characters after trimming. */

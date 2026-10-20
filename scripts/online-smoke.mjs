@@ -9,7 +9,9 @@
  * two throwaway accounts A and B with the first club's invite code (read with the CLI, never printed), checks the
  * database's rules from the browser's side, deletes both accounts and checks, through `supabase db query
  * --linked --project-ref <ref>` (admin), that no row of either is left in any table, Supabase Auth's audit log
- * included. It also checks the brake on wrong invite codes, and removes this run's misses so nobody stays braked. It prints each check's pass or fail and
+ * included. It also checks the brake on wrong invite codes, and removes this run's misses so nobody stays braked. Chunk 9
+ * (ADR-0044 decision 2): a read-only lookup (a GET) learns nothing, and the save functions' twins refuse another
+ * account. It prints each check's pass or fail and
  * exits 1 if any failed. It uses only the publishable key; it never reads or prints the secret key.
  */
 import { createClient } from '@supabase/supabase-js';
@@ -65,6 +67,9 @@ const FUNCTIONS = {
   save_meta: {},
   get_save: {},
   put_save: { p_expected: 0, p_save_id: 'x', p_schema_version: 1, p_saved_at: 0, p_hour: 0, p_shop_name: 'x', p_day: 1, p_money: 0, p_encoding: 'json', p_body: '{}' },
+  save_meta_for: { p_account: '00000000-0000-0000-0000-000000000000' },
+  get_save_for: { p_account: '00000000-0000-0000-0000-000000000000' },
+  put_save_for: { p_account: '00000000-0000-0000-0000-000000000000', p_expected: 0, p_save_id: 'x', p_schema_version: 1, p_saved_at: 0, p_hour: 0, p_shop_name: 'x', p_day: 1, p_money: 0, p_encoding: 'json', p_body: '{}' },
   delete_my_account: {},
 };
 const putSave = (c, expected, schema, body, saveId = `save_smoke_${stamp}`) =>
@@ -123,6 +128,10 @@ try {
   check('anon can resolve the invite (the signed-out invite screen)', inv.data?.club?.name === 'Aquarium Go Friends' && inv.data?.already_member === false && !('invite_code' in (inv.data?.club ?? {})), describe(inv));
   const none = await anon.rpc('resolve_invite', { p_code: 'NOPE-0000' });
   check('anon gets null for a code that opens nothing', !none.error && none.data === null, describe(none));
+  // chunk 9 (A1): a GET runs read-only; it can't count a wrong code, so it learns nothing, right code or wrong
+  const getRight = await anon.rpc('resolve_invite', { p_code: code }, { get: true });
+  const getWrong = await anon.rpc('resolve_invite', { p_code: 'NOPE-ZZZZ' }, { get: true });
+  check('a read-only lookup (GET) gets "braked" for the right code and a wrong one alike', getRight.data?.braked === true && getWrong.data?.braked === true && !('club' in (getRight.data ?? {})), `${describe(getRight)} / ${describe(getWrong)}`);
   for (const [fn, args] of Object.entries(FUNCTIONS)) {
     const r = await anon.rpc(fn, args);
     check(`anon can’t call ${fn}`, !!r.error, describe(r));
@@ -150,10 +159,29 @@ try {
   check('a body over 4,000,000 characters is refused', !!big.error || big.data?.ok !== true, describe(big));
   const other = await putSave(A, 2, SCHEMA + 5, '{"other":1}', `save_other_${stamp}`);
   check('another aquarium replaces it (revision 3), the old one kept as previous', other.data?.ok === true && admin(`select previous_save_id from public.saves where user_id = '${idA}'`)[0]?.previous_save_id === `save_smoke_${stamp}`, describe(other));
+  // chunk 9 (B2): the twins, for the account the game names; another account's session is refused, nothing written
+  const forArgs = (account, expected) => ({ p_account: account, p_expected: expected, p_save_id: `save_other_${stamp}`, p_schema_version: SCHEMA + 5, p_saved_at: Date.now(), p_hour: 13, p_shop_name: 'Smoke Reef', p_day: 1, p_money: 100, p_encoding: 'json', p_body: '{"other":2}' });
+  const metaFor = await A.rpc('save_meta_for', { p_account: idA });
+  check('save_meta_for A, as A, is A’s (revision 3)', metaFor.data?.revision === 3, describe(metaFor));
+  const metaOther = await A.rpc('save_meta_for', { p_account: idB });
+  check('save_meta_for B, as A, is refused (account)', metaOther.error?.message === 'account', describe(metaOther));
+  const getOther = await A.rpc('get_save_for', { p_account: idB });
+  check('get_save_for B, as A, is refused (account)', getOther.error?.message === 'account', describe(getOther));
+  const putOther = await A.rpc('put_save_for', forArgs(idB, 3));
+  const bStill = await B.rpc('get_save_for', { p_account: idB });
+  const aStill = await A.rpc('save_meta_for', { p_account: idA });
+  check('put_save_for B, as A, is refused and writes nothing', putOther.error?.message === 'account' && !bStill.error && bStill.data === null && aStill.data?.revision === 3, `${describe(putOther)} / ${describe(bStill)}`);
+  const putFor = await A.rpc('put_save_for', forArgs(idA, 3));
+  const getFor = await A.rpc('get_save_for', { p_account: idA });
+  check('put_save_for A, as A, is written (revision 4) and get_save_for has it', putFor.data?.ok === true && putFor.data?.revision === 4 && getFor.data?.body === '{"other":2}', `${describe(putFor)} / ${describe(getFor)}`);
 
   // 4. friends: A adds B's code, B sees the request and accepts, each sees the other
   const self = await A.rpc('add_friend', { p_code: meA.data?.friend_code });
   check('A can’t add itself', !!self.error, describe(self));
+  // chunk 9 (A1): read-only (GET), a right friend code and a wrong one get the same answer, and nothing is added
+  const getAddRight = await A.rpc('add_friend', { p_code: meB.data?.friend_code }, { get: true });
+  const getAddWrong = await A.rpc('add_friend', { p_code: 'NOBODY-ZZZ' }, { get: true });
+  check('a read-only add_friend (GET) answers a right code as it does a wrong one', !!getAddRight.error && !!getAddWrong.error && getAddRight.error.message === getAddWrong.error.message, `${describe(getAddRight)} / ${describe(getAddWrong)}`);
   const add = await A.rpc('add_friend', { p_code: meB.data?.friend_code?.toLowerCase() });
   check('A adds B’s friend code', !add.error, describe(add));
   const reqs = await B.rpc('friend_requests');

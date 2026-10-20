@@ -309,7 +309,7 @@ describe('the one injection point (SOC-009 A2) and the save (SOC-009 A3)', () =>
       const before = stateHash(g);
       const json = serializeState(g).json;
       const s = fast(memory(), { standing: () => playerStanding(g) });
-      await s.signUp('you@example.com', PASSWORD, DETAILS);
+      const me = await s.signUp('you@example.com', PASSWORD, DETAILS);
       await s.joinClub(HIGHLAND_ID);
       await s.addFriend('MYAQUA-7Q2');
       // chunk 8's calls too (SOC-009 A3, REL-029)
@@ -319,9 +319,9 @@ describe('the one injection point (SOC-009 A2) and the save (SOC-009 A3)', () =>
       await s.friendRequests();
       await s.acceptFriend(r.id);
       await s.reportStanding({ shopName: g.shopName, gallons: 20, collectionValue: 100, prismatics: 0, showWins: 0 });
-      await s.cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: 1, money: g.finance.money, encoding: 'json', body: '{}' }, 0);
-      await s.cloudMeta();
-      await s.cloudDownload();
+      await s.cloudUpload({ saveId: g.saveId, schemaVersion: g.schemaVersion, savedAt: g.lastSavedRealMs, hour: g.clock.hour, shopName: g.shopName, day: 1, money: g.finance.money, encoding: 'json', body: '{}' }, 0, me.id);
+      await s.cloudMeta(me.id);
+      await s.cloudDownload(me.id);
       for (const k of LEADERBOARD_KINDS) await s.leaderboard(k);
       await s.trades();
       await s.friendsAquariums();
@@ -417,20 +417,32 @@ describe('chunk 8: friend requests (ADR-0040 decision 4)', () => {
 describe('chunk 8: the online save on the stub (ONLINE-STAGE1.md §5.4, §6)', () => {
   const save = (over: Partial<Parameters<SocialService['cloudUpload']>[0]> = {}) => ({ saveId: 'save_a', schemaVersion: 30, savedAt: 1000, hour: 50, shopName: 'Coral Corner', day: 3, money: 4210, encoding: 'json' as const, body: '{"x":1}', ...over });
 
+  const ME = 'local:you@example.com';
+
   it('needs an account; writes when the revision matches, refuses a stale one (conflict) and a newer build’s copy (too_new)', async () => {
     const kv = memory();
     const s = fast(kv);
-    await expect(s.cloudMeta()).rejects.toEqual({ code: 'invalid' });
-    await s.signIn('you@example.com', PASSWORD);
-    expect(await s.cloudMeta()).toBeNull();
-    expect(await s.cloudUpload(save(), 1)).toEqual({ ok: false, reason: 'conflict', meta: null });
-    expect(await s.cloudUpload(save(), 0)).toEqual({ ok: true, revision: 1 });
-    expect(await s.cloudMeta()).toEqual({ revision: 1, saveId: 'save_a', schemaVersion: 30, savedAt: 1000, hour: 50, shopName: 'Coral Corner', day: 3, money: 4210 });
-    expect(await s.cloudUpload(save({ hour: 60 }), 0)).toMatchObject({ ok: false, reason: 'conflict', meta: { revision: 1 } });
-    expect(await s.cloudUpload(save({ hour: 60, schemaVersion: 31 }), 1)).toEqual({ ok: true, revision: 2 });
+    await expect(s.cloudMeta(ME)).rejects.toEqual({ code: 'invalid' });
+    expect((await s.signIn('you@example.com', PASSWORD)).id).toBe(ME);
+    expect(await s.cloudMeta(ME)).toBeNull();
+    expect(await s.cloudUpload(save(), 1, ME)).toEqual({ ok: false, reason: 'conflict', meta: null });
+    expect(await s.cloudUpload(save(), 0, ME)).toEqual({ ok: true, revision: 1 });
+    expect(await s.cloudMeta(ME)).toEqual({ revision: 1, saveId: 'save_a', schemaVersion: 30, savedAt: 1000, hour: 50, shopName: 'Coral Corner', day: 3, money: 4210 });
+    expect(await s.cloudUpload(save({ hour: 60 }), 0, ME)).toMatchObject({ ok: false, reason: 'conflict', meta: { revision: 1 } });
+    expect(await s.cloudUpload(save({ hour: 60, schemaVersion: 31 }), 1, ME)).toEqual({ ok: true, revision: 2 });
     // an older build never writes over a newer build's online save (PERSIST-014 on the server)
-    expect(await s.cloudUpload(save({ hour: 70, schemaVersion: 30 }), 2)).toMatchObject({ ok: false, reason: 'too_new', meta: { revision: 2, schemaVersion: 31 } });
-    expect(await s.cloudDownload()).toEqual({ meta: expect.objectContaining({ revision: 2, hour: 60 }), encoding: 'json', body: '{"x":1}' });
+    expect(await s.cloudUpload(save({ hour: 70, schemaVersion: 30 }), 2, ME)).toMatchObject({ ok: false, reason: 'too_new', meta: { revision: 2, schemaVersion: 31 } });
+    expect(await s.cloudDownload(ME)).toEqual({ meta: expect.objectContaining({ revision: 2, hour: 60 }), encoding: 'json', body: '{"x":1}' });
+  });
+
+  it('chunk 9 (B2): refuses a call for an account that isn’t the one signed in (another tab switched it), writing nothing', async () => {
+    const s = fast(memory());
+    await s.signIn('other@example.com', PASSWORD);
+    await expect(s.cloudMeta(ME)).rejects.toEqual({ code: 'account' });
+    await expect(s.cloudDownload(ME)).rejects.toEqual({ code: 'account' });
+    await expect(s.cloudUpload(save(), 0, ME)).rejects.toEqual({ code: 'account' });
+    expect(s.cloud()).toBeNull();
+    expect(await s.cloudUpload(save(), 0, 'local:other@example.com')).toEqual({ ok: true, revision: 1 });
   });
 
   it('belongs to the account that wrote it; "another device" writes it with setCloud; Delete clears it and the record', async () => {
@@ -441,10 +453,10 @@ describe('chunk 8: the online save on the stub (ONLINE-STAGE1.md §5.4, §6)', (
     expect(s.cloud()).toMatchObject({ email: 'you@example.com', meta: { revision: 7 }, encoding: 'json', body: '{"state":1}' });
     await s.signOut();
     await s.signIn('other@example.com', PASSWORD);
-    expect(await s.cloudMeta()).toBeNull(); // someone else's
+    expect(await s.cloudMeta('local:other@example.com')).toBeNull(); // someone else's
     await s.signOut();
     await s.signIn('you@example.com', PASSWORD);
-    expect((await s.cloudMeta())?.revision).toBe(7);
+    expect((await s.cloudMeta(ME))?.revision).toBe(7);
     await s.deleteAccount();
     expect(kv.dump()).toEqual({});
     expect(await s.currentUser()).toBeNull();
@@ -463,7 +475,7 @@ describe('chunk 8: the online save on the stub (ONLINE-STAGE1.md §5.4, §6)', (
     const s = fast(memory());
     await s.signIn('you@example.com', PASSWORD);
     s.setOffline(true);
-    for (const call of [() => s.cloudMeta(), () => s.cloudDownload(), () => s.cloudUpload(save(), 0), () => s.friendRequests(), () => s.createClub('Reef', ''), () => s.deleteAccount(), () => s.signUp('a@b.c', PASSWORD, DETAILS)])
+    for (const call of [() => s.cloudMeta(ME), () => s.cloudDownload(ME), () => s.cloudUpload(save(), 0, ME), () => s.friendRequests(), () => s.createClub('Reef', ''), () => s.deleteAccount(), () => s.signUp('a@b.c', PASSWORD, DETAILS)])
       await expect(call()).rejects.toEqual({ code: 'network' });
   });
 });

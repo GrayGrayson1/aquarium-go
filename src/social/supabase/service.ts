@@ -15,6 +15,7 @@
 import { snapshot } from '../data';
 import {
   CLUB_BLURB_MAX,
+  isSocialError,
   normalizeCode,
   validClubName,
   validCredentials,
@@ -51,6 +52,8 @@ export interface SupabaseLike {
     signInWithPassword(c: { email: string; password: string }): Promise<{ data: unknown; error: SupabaseErrorLike | null }>;
     signUp(c: { email: string; password: string; options: { data: Record<string, unknown> } }): Promise<{ data: { session: unknown | null } | null; error: SupabaseErrorLike | null }>;
     signOut(o: { scope: 'local' }): Promise<{ error: SupabaseErrorLike | null }>;
+    /** chunk 9 (B2): supabase-js's auth events, which reach every tab of the site. */
+    onAuthStateChange?(cb: (event: string, session: { user?: { id?: unknown } } | null) => void): { data: { subscription: { unsubscribe(): void } } };
   };
   rpc(fn: string, args?: Record<string, unknown>): PromiseLike<{ data: unknown; error: SupabaseErrorLike | null; status?: number }>;
 }
@@ -102,6 +105,7 @@ export function mapAuthError(e: SupabaseErrorLike, during: 'signIn' | 'signUp'):
 export function mapRpcError(e: SupabaseErrorLike, status?: number): SocialError {
   const msg = (e.message ?? '').trim();
   if (msg === 'forbidden') return fail('forbidden');
+  if (msg === 'account') return fail('account'); // chunk 9 (B2): the session is another account's
   if (msg === 'invalid' || msg === 'not_signed_in') return fail('invalid');
   if (isNetworkFailure(e, status)) return fail('network');
   // a bad uuid (22P02), a refused call (42501), a missing function: the request itself was wrong
@@ -170,7 +174,7 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
         },
         (e) => {
           clearTimeout(t);
-          reject(isObj(e) && 'code' in e && typeof e.code === 'string' && ['invalid', 'network', 'credentials', 'taken', 'invite', 'age', 'name', 'forbidden'].includes(e.code) ? e : fail('network'));
+          reject(isSocialError(e) ? e : fail('network'));
         },
       );
     });
@@ -321,17 +325,19 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
         p_snapshot: r.snapshot ?? null,
       });
     },
-    cloudMeta: async () => toMeta(await rpc('save_meta')),
-    cloudDownload: async () => {
-      const d = await rpc('get_save');
+    // chunk 9 (B2): the twins that refuse any account but the one the game names
+    cloudMeta: async (account) => toMeta(await rpc('save_meta_for', { p_account: account })),
+    cloudDownload: async (account) => {
+      const d = await rpc('get_save_for', { p_account: account });
       if (!isObj(d)) return null;
       const meta = toMeta(d.meta);
       const encoding = d.encoding === 'gzip-base64' || d.encoding === 'json' ? d.encoding : null;
       if (!meta || !encoding || typeof d.body !== 'string') return null;
       return { meta, encoding, body: d.body };
     },
-    cloudUpload: async (save, expected) => {
-      const d = await rpc('put_save', {
+    cloudUpload: async (save, expected, account) => {
+      const d = await rpc('put_save_for', {
+        p_account: account,
         p_expected: expected,
         p_save_id: save.saveId,
         p_schema_version: save.schemaVersion,
@@ -348,5 +354,53 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
       const reason = d.reason === 'too_new' ? 'too_new' : 'conflict';
       return { ok: false, reason, meta: toMeta(d.meta) } satisfies CloudUploadResult;
     },
+    onSessionChange: (cb) => {
+      let off = false;
+      const offs: (() => void)[] = [];
+      // supabase-js tells every tab of a sign-in or sign-out (its events cross tabs); a refocus repeats SIGNED_IN with
+      // the same account, which the caller ignores
+      void client()
+        .then((c) => {
+          if (off || !c.auth.onAuthStateChange) return;
+          const { data } = c.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') cb(sessionAccount(session));
+          });
+          offs.push(() => data.subscription.unsubscribe());
+        })
+        .catch(() => {
+          /* no client (offline): the next sign-in check finds out */
+        });
+      // and the session's own key, which another tab rewrites (a storage event fires only in the other tabs)
+      if (!opts.storage && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+        const onStorage = (e: StorageEvent) => {
+          if (e.key !== null && e.key !== AUTH_STORAGE_KEY) return;
+          const was = storedAccount(e.oldValue);
+          const now = e.key === null ? null : storedAccount(e.newValue);
+          if (was !== now) cb(now);
+        };
+        window.addEventListener('storage', onStorage);
+        offs.push(() => window.removeEventListener('storage', onStorage));
+      }
+      return () => {
+        off = true;
+        offs.splice(0).forEach((f) => f());
+      };
+    },
   };
+}
+
+/** The account a supabase-js session belongs to, or null. */
+const sessionAccount = (session: unknown): string | null => {
+  const user = isObj(session) ? session.user : null;
+  return isObj(user) && typeof user.id === 'string' ? user.id : null;
+};
+
+/** The account in a stored session (supabase-js keeps it as JSON under AUTH_STORAGE_KEY), or null. */
+function storedAccount(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  try {
+    return sessionAccount(JSON.parse(raw));
+  } catch {
+    return null;
+  }
 }
