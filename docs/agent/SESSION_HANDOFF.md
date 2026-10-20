@@ -24,9 +24,10 @@ practical knowledge that makes it go smoothly. Replace or delete it when it's us
 ## The order of work
 
 1. **Released** (0.5.5, 2026-10-19; PLAN.md "Releases").
-2. **The owner's account:** the owner signs up with the first club's link; with the owner's yes and the email used,
-   run ARCHITECTURE.md's runbook ("The owner's account": `is_owner = true`, the first club's `created_by`). Then the
-   owner sees "Create a club" and every club's invite link. (If the session that released hasn't done it yet.)
+2. **The owner's account: done** (2026-10-19, by Chase with the owner's yes). The owner signed up with the first
+   club's link; ARCHITECTURE.md's runbook set `is_owner = true` (the only owner) and the first club's `created_by`.
+   Sign-up sends no email (confirmations are off), so a player won't get one. Never write the owner's email in the
+   repo.
 3. **A database change** goes in a new file under `supabase/migrations` (never edit an applied one): check it with
    `scripts/online-db-local/run.sh` (a throwaway local Postgres, Homebrew's postgresql@16), apply it with `supabase db
    query --linked --project-ref <ref> -f <file>`, run `supabase db advisors --linked --project-ref <ref> --type security

@@ -11,8 +11,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 2. **Chunks 7 and 8 are done and released (0.5.5).** Chunk 7, hardening for multiplayer (2026-10-18, `7b98be8`,
    `06f80f8`). **Chunk 8, multiplayer stage 1** for people the owner knows (2026-10-19, `ee4998e` to `53cd7bf`; built
    by Marshall; ADR-0038 to ADR-0042): accounts by invite code, one online save, Social on the live Supabase project
-   (ref `zkavcxrsxdgdlstravpj`, the Free organization "Aquarium Go"). Next: the owner signs up with the first club's
-   link and, with the owner's yes and that email, the owner flag is set (ARCHITECTURE.md's runbook);
+   (ref `zkavcxrsxdgdlstravpj`, the Free organization "Aquarium Go"). The owner's account is set (2026-10-19, with the
+   owner's yes: the only `is_owner`, and the first club's `created_by`; ARCHITECTURE.md's runbook);
    `docs/agent/SESSION_HANDOFF.md` has the order of work. Stage 2 (before strangers join) needs its own record.
 3. **Released:** 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
