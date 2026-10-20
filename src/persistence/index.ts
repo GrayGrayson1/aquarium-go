@@ -44,7 +44,11 @@ export {
   parseSlotRef,
   isBackupRef,
   resetSaveSession,
+  baseSaveId,
+  keptSaveId,
+  copySave,
   type SaveSlot,
+  type SaveGameOptions,
 } from './slots';
 export { saveCurrentGame, saveCurrentGameSync, slotLabel, stateForSaving, type SaveCurrentOptions } from './session';
 export {

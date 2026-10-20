@@ -20,6 +20,10 @@
  *  - Displaced aquariums (P5-03/S06-03/S06-07): when a slot's `.backup` holds a DIFFERENT aquarium than its primary
  *    (a load or overwrite replaced it), same-game writes keep that backup instead of rotating over it, and listings
  *    show it as a loadable "Previous …" entry (`<slot>.backup`) so nothing is lost by one click.
+ *  - Chunk 9 (ADR-0044, the audit's E1): an older copy of the same aquarium written over a newer one (a load, an
+ *    overwrite or an import) never drops the newer one silently: it goes into the backup as a kept copy (a new identity,
+ *    `keptSaveId`), so it is listed as "Previous …" like a displaced aquarium. `keepReplaced` keeps the replaced copy
+ *    that way whatever its progress (Import into a slot).
  *
  * lane:core (PERSIST-014; ADR-0005 decision 1, ADR-0016 decision 2) — forward safety: a record written by a newer build
  * (header or body schemaVersion above SCHEMA_VERSION, `too_new`) is final here. A load stops at it and reports too_new
@@ -264,12 +268,41 @@ function newerVersion(raw: unknown): number {
 /** A write refused because the slot holds a newer build's record (format `v`): nothing was changed. */
 const tooNewRefusal = (slot: string, v: number): SaveResult => ({ ok: false, slot, code: 'too_new', message: tooNewMessage(v) });
 
+/** Chunk 9 (E1): the aquarium a kept copy came from (a kept copy's identity is its aquarium's plus `_kept_…`). */
+export const baseSaveId = (saveId: string): string => saveId.replace(/_kept_[0-9a-z]+$/, '');
+
+/**
+ * Chunk 9 (E1, B1): a new identity for a kept copy of an aquarium, so a slot's backup lists it as "Previous …" (the
+ * listing shows only a backup that is another aquarium). Moved here from the online save, which made the first ones.
+ */
+export const keptSaveId = (saveId: string): string => `${baseSaveId(saveId)}_kept_${Date.now().toString(36)}`.slice(0, 200);
+
+/** Is a stored copy at game hour `stored` further along than `state`? */
+const furtherAlong = (stored: number | undefined, state: GameState): boolean => Number.isFinite(stored) && Number.isFinite(state.clock?.hour) && stored! > state.clock.hour + PROGRESS_EPS_HOURS;
+
+/** A stored record re-encoded as a kept copy (its time unchanged), or null when it can't be read back. */
+function keptRecord(raw: unknown, slot: string, savedAt: number | undefined): { text: string; saveId: string } | null {
+  try {
+    const d = decodeRecord(raw);
+    const saveId = keptSaveId(d.state.saveId);
+    return { text: encodeRecord({ ...d.state, saveId }, slot, Number.isFinite(savedAt) ? savedAt : d.state.lastSavedRealMs).text, saveId };
+  } catch {
+    return null;
+  }
+}
+
+export interface SaveGameOptions {
+  /** Chunk 9 (G1): keep the record this write replaces listed as "Previous …", even when it is behind (an import). */
+  keepReplaced?: boolean;
+}
+
 /**
  * Save a game state into a slot. Showcase worlds are never saved.
  * The previous record (if it is intact) is copied to `<slot>.backup` first — unless that backup holds a different
- * aquarium this one displaced (see the header), which stays until the player loads or deletes it.
+ * aquarium this one displaced (see the header), which stays until the player loads or deletes it. Chunk 9: a previous
+ * record of this aquarium that is further along (or any, with `keepReplaced`) goes there as a kept copy, listed.
  */
-export async function saveGame(state: GameState, slot = 'auto'): Promise<SaveResult> {
+export async function saveGame(state: GameState, slot = 'auto', opts: SaveGameOptions = {}): Promise<SaveResult> {
   if (!state) return { ok: false, slot, message: 'Nothing to save.' };
   if (state.isShowcase) return { ok: false, slot, message: 'Showcase worlds are not saved.' };
   checkSlot(slot);
@@ -295,10 +328,20 @@ export async function saveGame(state: GameState, slot = 'auto'): Promise<SaveRes
       const prevNewer = newerVersion(prev);
       if (prevNewer) return tooNewRefusal(slot, prevNewer);
       // Only rotate an intact record into the backup; a damaged one must never overwrite a good backup.
-      if (prev !== undefined && prev !== null && isIntact(prev)) {
-        const prevId = ph?.meta?.saveId ?? null;
+      const prevId = ph?.meta?.saveId ?? null;
+      // Chunk 9 (E1): this aquarium's record here is further along than what's written (an older copy loaded, put in a
+      // slot or imported), or the write asks to keep it: it becomes the backup as a kept copy, listed "Previous …"
+      const keepPrev = prev !== undefined && prev !== null && isIntact(prev) && !!prevId && prevId === state.saveId && (opts.keepReplaced === true || furtherAlong(ph?.meta?.hour, state));
+      const kept = keepPrev ? keptRecord(prev, slot, ph?.savedAt) : null;
+      if (kept) {
+        // lane:core (PERSIST-014) — never over a newer build's record in the backup, nor dropping this copy instead
+        const backupNewer = newerVersion(await storage.get(backupKey(slot)));
+        if (backupNewer) return tooNewRefusal(slot, backupNewer);
+        await storage.set(backupKey(slot), kept.text);
+        backupIds.set(slot, kept.saveId);
+      } else if (prev !== undefined && prev !== null && isIntact(prev)) {
         let keepBackup = false;
-        if (prevId && prevId === state.saveId) {
+        if (prevId && prevId === state.saveId && !keepPrev) {
           const bid = await backupSaveId(slot);
           keepBackup = !!bid && bid !== state.saveId;
         }
@@ -370,8 +413,14 @@ export function saveGameSync(state: GameState, slot = 'auto'): boolean {
   // lane:fix3-saves (R03-02) — when localStorage IS the save store, this write replaces the primary for good: a
   // different aquarium there is rotated into the backup first (as saveGame would), so it stays "Previous …".
   if (syncStore.isActive()) {
-    const prevId = prev ? (readHeader(prev)?.meta?.saveId ?? null) : null;
-    if (prev && prevId && prevId !== state.saveId && isIntact(prev)) {
+    const ph = prev ? readHeader(prev) : null;
+    const prevId = ph?.meta?.saveId ?? null;
+    // Chunk 9 (E1): as saveGame, a further-along copy of this aquarium here becomes the backup as a kept copy
+    const kept = prev && prevId && prevId === state.saveId && furtherAlong(ph?.meta?.hour, state) && isIntact(prev) ? keptRecord(prev, slot, ph?.savedAt) : null;
+    if (kept) {
+      if (newerVersion(syncStore.get(backupKey(slot)))) return false;
+      if (syncStore.set(backupKey(slot), kept.text)) backupIds.set(slot, kept.saveId);
+    } else if (prev && prevId && prevId !== state.saveId && isIntact(prev)) {
       // lane:core (PERSIST-014) — a newer build's record in the backup isn't rotated over, and writing without the
       // rotation would lose the other aquarium: refused.
       if (newerVersion(syncStore.get(backupKey(slot)))) return false;
@@ -514,6 +563,16 @@ export async function loadGameDetailed(ref = 'auto'): Promise<LoadResult> {
   }
   if (readError) return { ok: false, code: 'storage', error: "Couldn't read browser storage." };
   return { ok: false, code: 'empty', error: 'No save in this slot.' };
+}
+
+/**
+ * Chunk 9 (B1): put the stored copy `fromRef` (a slot, or `<slot>.backup`) into `toSlot`, so it outlives what's about to
+ * be written over it (Load online save parks an aquarium kept only in the autosave).
+ */
+export async function copySave(fromRef: string, toSlot: string): Promise<SaveResult> {
+  const r = await loadGameDetailed(fromRef);
+  if (!r.ok || !r.state) return { ok: false, slot: toSlot, message: r.error ?? 'That save could not be read.' };
+  return saveGame(r.state, toSlot);
 }
 
 /** Mark a result as restored from the backup (callers — the UI's loadIntoGame — tell the player). */

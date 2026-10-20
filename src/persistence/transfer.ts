@@ -7,7 +7,7 @@
 import type { GameState } from '@/types';
 import { SAVE_FORMAT, MAX_IMPORT_BYTES, serializeState, makeMeta, decodeRecord } from './serialize';
 import { SaveError, type SaveMeta, type SaveErrorCode } from './types';
-import { saveGame } from './slots';
+import { saveGame, type SaveGameOptions } from './slots';
 
 export interface ImportResult {
   ok: boolean;
@@ -53,7 +53,7 @@ export function downloadSave(state: GameState, fileName = exportFileName(state))
 }
 
 /** Validate + migrate an export file's text. Optionally store it into `slot`. */
-export async function importSaveText(text: string, slot?: string): Promise<ImportResult> {
+export async function importSaveText(text: string, slot?: string, opts: SaveGameOptions = {}): Promise<ImportResult> {
   if (typeof text !== 'string' || !text.trim()) return { ok: false, code: 'empty', error: 'That file is empty.' };
   if (text.length > MAX_IMPORT_BYTES) return { ok: false, code: 'too_large', error: 'That file is too large to be an Aquarium Go save.' };
   const trimmed = text.trimStart();
@@ -64,7 +64,7 @@ export async function importSaveText(text: string, slot?: string): Promise<Impor
     state.isShowcase = false;
     const res: ImportResult = { ok: true, state, meta: makeMeta(state, slot ?? 'import', state.lastSavedRealMs), migratedFrom: d.fromVersion };
     if (slot) {
-      const saved = await saveGame(state, slot);
+      const saved = await saveGame(state, slot, opts); // chunk 9 (G1): Import keeps what it replaces listed
       if (!saved.ok) return { ok: false, code: 'storage', error: saved.message };
       res.slot = slot;
     }
@@ -79,7 +79,7 @@ export async function importSaveText(text: string, slot?: string): Promise<Impor
 }
 
 /** Read a user-picked File and import it. */
-export async function importSaveFile(file: File, slot?: string): Promise<ImportResult> {
+export async function importSaveFile(file: File, slot?: string, opts: SaveGameOptions = {}): Promise<ImportResult> {
   if (file.size > MAX_IMPORT_BYTES) return { ok: false, code: 'too_large', error: 'That file is too large to be an Aquarium Go save.' };
   let text: string;
   try {
@@ -87,5 +87,5 @@ export async function importSaveFile(file: File, slot?: string): Promise<ImportR
   } catch {
     return { ok: false, code: 'invalid', error: "That file couldn't be read." };
   }
-  return importSaveText(text, slot);
+  return importSaveText(text, slot, opts);
 }

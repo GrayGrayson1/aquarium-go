@@ -15,6 +15,7 @@ import {
   slotLabel as coreSlotLabel,
   SAVE_SLOTS,
   type SaveMeta,
+  type SaveGameOptions,
 } from '@/persistence';
 import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
@@ -52,12 +53,16 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
 /**
  * Load a slot (with bounded offline catch-up) and enter the game.
  * lane:fix-core (P7-03/S14-05) — a game that is running is autosaved first, exactly like "Save and return to title",
- * so browsing saves mid-game can never throw away the last minute of play.
+ * so browsing saves mid-game can never throw away the last minute of play. Chunk 9 (E1): when the slot holds another
+ * copy of the aquarium on screen, it is autosaved as a kept copy, so it stays listed as "Previous autosave" (the
+ * load dialog says so) instead of being dropped by the loaded copy's next autosaves.
  */
 export async function loadIntoGame(slot: string): Promise<GameState | null> {
   try {
     if (autosaveAllowed()) {
-      const saved = await saveCurrentGame('auto', { flush: true, toast: false });
+      const g = useGame.getState().game;
+      const target = g ? (await listSlots()).find((m) => m.slot === slot) : undefined;
+      const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: !!(target && g && isSameGame(target, g)) });
       if (!saved.ok && saved.code !== 'stale') console.warn('[ui] autosave before load failed:', saved.message);
     }
   } catch (e) {
@@ -105,6 +110,12 @@ export function loadKeepAdvice(saves: SaveMeta[], g: GameState | null): { text: 
   };
 }
 
+/** Chunk 9 (E1): the first manual slot with no save in it, or null. */
+export function freeSaveSlot(saves: SaveMeta[]): string | null {
+  const taken = new Set(saves.filter((m) => !m.previousOf).map((m) => m.slot));
+  return SAVE_SLOTS.find((s) => s !== 'auto' && !taken.has(s)) ?? null;
+}
+
 export async function deleteSlot(slot: string): Promise<void> {
   try {
     await deleteSave(slot);
@@ -127,9 +138,9 @@ export function exportCurrent(): boolean {
 }
 
 /** Import an exported file into `slot`. Returns a friendly error on failure. */
-export async function importFile(file: File, slot: string): Promise<{ ok: boolean; error?: string }> {
+export async function importFile(file: File, slot: string, opts: SaveGameOptions = {}): Promise<{ ok: boolean; error?: string }> {
   try {
-    const r = await importSaveFile(file, slot);
+    const r = await importSaveFile(file, slot, opts);
     return r.ok ? { ok: true } : { ok: false, error: r.error ?? 'That file is not an Aquarium Go save.' };
   } catch (e) {
     console.warn('[ui] import failed', e);

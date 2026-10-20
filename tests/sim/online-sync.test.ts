@@ -12,7 +12,7 @@ import { newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { SCHEMA_VERSION, createMemoryBackend, exportSaveText, listSaves, resetSaveSession, setStorageBackend, setSyncStore, stateHash, useResume } from '@/persistence';
+import { SCHEMA_VERSION, createMemoryBackend, exportSaveText, listSaves, resetSaveSession, saveGame, setStorageBackend, setSyncStore, stateHash, useResume } from '@/persistence';
 import { provideSocialService, type CloudSaveMeta, type CloudUpload, type SocialService, type SocialUser, type StandingReport } from '@/social';
 import { useSocial } from '@/ui/panels/social/socialStore';
 import { CLOUD_LINK_KEY, SEND_GAP_MS, checkOnline, cloudBlocked, forgetCloudLink, keepDeviceCopy, loadOnlineCopy, readLink, resetCloudSync, startCloudSync, useCloud } from '@/ui/online/cloudSync';
@@ -603,5 +603,57 @@ describe('chunk 9 (B2, REL-035): another tab switched the account', () => {
     localSave();
     await vi.advanceTimersByTimeAsync(SEND_GAP_MS + 10);
     expect(server.uploads).toHaveLength(sent); // signed out: nothing more goes online
+  });
+});
+
+describe('chunk 9 (B1, REL-038): Load online save never pushes out an aquarium kept only in the autosave', () => {
+  /** The audit's B1: W lives only in the autosave; this device loaded X from Slot 2; X was played further elsewhere. */
+  async function setUp() {
+    const w = newGame({ starterId: 'axolotl', starterName: 'Wren', seed: 90 });
+    w.shopName = 'Reef Corner';
+    expect((await saveGame(w, 'auto')).ok).toBe(true);
+    const mine = useGame.getState().game!;
+    expect((await saveGame(mine, 'slot2')).ok).toBe(true);
+    await signIn();
+    const further = structuredClone(mine);
+    further.clock.hour += 40;
+    further.lastSavedRealMs = mine.lastSavedRealMs + 5;
+    server.write({}, further);
+    await checkOnline();
+    expect(useCloud.getState().prompt?.kind).toBe('newer');
+    return { w, mine };
+  }
+  const toasts = () => useUI.getState().toasts.map((t) => t.text);
+
+  it('saves it to a free slot first, says so, then loads the online copy (before: it was gone from every save)', async () => {
+    const { w, mine } = await setUp();
+    expect(await loadOnlineCopy()).toBe(true);
+    expect(toasts()).toContain('Reef Corner was only in the autosave, so it was saved to Slot 1 first.');
+    const saves = await listSaves();
+    expect(saves.find((m) => m.slot === 'slot1')?.saveId).toBe(w.saveId);
+    expect(saves.find((m) => m.slot === 'auto')?.saveId).toBe(mine.saveId); // the online copy, now on screen
+    expect(saves.find((m) => m.previousOf === 'auto')?.saveId).toMatch(new RegExp(`^${mine.saveId}_kept_`)); // this device's
+    expect(saves.find((m) => m.slot === 'slot2')?.saveId).toBe(mine.saveId);
+    expect(useGame.getState().game!.clock.hour).toBeGreaterThanOrEqual(mine.clock.hour + 40);
+  });
+
+  it('with every slot full, nothing loads and it says so', async () => {
+    const { w, mine } = await setUp();
+    for (const [slot, seed] of [['slot1', 91], ['slot3', 92]] as const) expect((await saveGame(newGame({ starterId: 'betta', starterName: 'Fill', seed }), slot)).ok).toBe(true);
+    const hour = useGame.getState().game!.clock.hour;
+    expect(await loadOnlineCopy()).toBe(false);
+    expect(toasts()).toContain('Reef Corner is only in the autosave and every slot is full. Free a slot in Settings › Saves first.');
+    expect(useGame.getState().game!.clock.hour).toBe(hour); // still this device's game
+    expect((await listSaves()).find((m) => m.slot === 'auto')?.saveId).toBe(w.saveId);
+    expect(useGame.getState().game!.saveId).toBe(mine.saveId);
+  });
+
+  it('one already in a slot, as far along, is left where it is', async () => {
+    const { w } = await setUp();
+    expect((await saveGame(w, 'slot3')).ok).toBe(true);
+    expect(await loadOnlineCopy()).toBe(true);
+    expect(toasts().some((t) => t.includes('was only in the autosave'))).toBe(false);
+    const saves = await listSaves();
+    expect(saves.filter((m) => m.saveId === w.saveId).map((m) => m.slot)).toEqual(['slot3']); // the autosave's copy went, as a switch does
   });
 });
