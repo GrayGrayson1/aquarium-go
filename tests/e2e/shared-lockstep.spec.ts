@@ -85,7 +85,8 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
 
   test('two browsers in one shop: commands reach both, and both stay in step', async ({ browser }) => {
     test.setTimeout(180_000);
-    const pages = await Promise.all([0, 1].map(async () => (await browser.newContext()).newPage()));
+    const contexts = await Promise.all([0, 1].map(() => browser.newContext()));
+    const pages = await Promise.all(contexts.map((c) => c.newPage()));
     for (const p of pages) await openTestPage(p);
     const [a, b] = pages;
     for (const [p, name] of [
@@ -151,6 +152,8 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
     expect(va.rtt.length).toBe(2); // A's own commands came back in steps
     expect(vb.rtt.length).toBe(2);
     for (const p of pages) await p.evaluate(() => (window as unknown as Win).__client.close());
+    // contexts this test made are its own to close (left open, they slowed the WebKit tests after this file)
+    for (const c of contexts) await c.close();
   });
 
   test('a hostile message closes at most its own connection, and the server keeps serving', async ({ page, request }) => {

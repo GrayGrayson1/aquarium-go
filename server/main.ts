@@ -197,6 +197,7 @@ function onClose(c: Conn): void {
 // ── HTTP ─────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 function reply(req: IncomingMessage, res: ServerResponse, status: number, body: unknown): void {
+  if (res.headersSent) return; // one answer per request, whatever answers second
   const text = JSON.stringify(body);
   const origin = req.headers.origin;
   const headers: Record<string, string> = { 'content-type': 'application/json', 'cache-control': 'no-store' };
@@ -245,8 +246,13 @@ function replay(req: IncomingMessage, res: ServerResponse, url: URL): void {
   const hours = Number(url.searchParams.get('hours') ?? 24);
   if (!availableShops().includes(shop) || ![1, 3, 10].includes(speed) || !(hours > 0 && hours <= 24 * 14)) return reply(req, res, 400, { error: 'bad request' });
   if (replaying) return reply(req, res, 503, { error: 'busy' });
-  replaying = true;
-  const worker = new Worker(WORKER, { workerData: { mode: 'replay', text: loadShopText(shop), speed, hours } });
+  let worker: Worker;
+  try {
+    worker = new Worker(WORKER, { workerData: { mode: 'replay', text: loadShopText(shop), speed, hours } });
+  } catch (e) {
+    return reply(req, res, 500, { error: e instanceof Error ? e.message : String(e) });
+  }
+  replaying = true; // only once the worker exists, so a failure to start one can't hold the slot
   const done = () => {
     replaying = false;
     void worker.terminate();
@@ -283,10 +289,12 @@ function onRequest(req: IncomingMessage, res: ServerResponse): void {
   if (req.method !== 'GET') return reply(req, res, 405, { error: 'method' });
   if (url.pathname === '/health') return reply(req, res, 200, { ok: true, version: VERSION, shops: availableShops(), capped, closed: CLOSED });
   if (url.pathname === '/stats') {
-    stats().then(
-      (st) => reply(req, res, 200, st),
-      () => reply(req, res, 500, { error: 'stats' }),
-    );
+    stats()
+      .then(
+        (st) => reply(req, res, 200, st),
+        () => reply(req, res, 500, { error: 'stats' }),
+      )
+      .catch(() => res.destroy());
     return;
   }
   if (url.pathname === '/stub/replay' && REPLAY) return replay(req, res, url);

@@ -782,7 +782,13 @@ REL-012, REL-018.
   the browser replay's reads include an animal's rarity and strains (the caches the step block doesn't clear); a
   socket that never says `hello` is dropped at once; a replay worker that ends without answering frees the slot. For
   chunk 12: the re-sync budget is per connection and joins are unlimited, so it belongs to the player, with §5.3's
-  join limit.
+  join limit. Its final pass (`668a57d..51eb240`): no blockers, nothing else on the main thread that a request, message
+  or worker event can make throw; its three small notes fixed (the replay slot is taken only once a worker exists, one
+  answer per request, the stats call's last catch). For chunk 11: `validateCommand` must check ids as own properties
+  (a command on `__proto__` is refused today only because the water code throws first).
+- **The full passes:** `01e854c` and `51eb240`: typecheck, unit (2,888, then 2,891), build passed; e2e 316 of 317, then
+  318 of 319, the one failure both times a WebKit `social.spec` timeout caused by `shared-lockstep.spec` leaving two
+  browser contexts open (fixed: it closes them; those four specs together in WebKit, 22 of 22). FINAL_PASS
 - **For chunk 12** (from the measurements): time steps in place, not on a copy (18 to 32% of a step); a cheaper or rarer
   fingerprint and snapshot check for big shops (750 ms and 1.6 s of wall time on the free instance); the key out of the
   build; and, before big shops matter, the owner's choice between a lower top speed for them and a paid instance.
