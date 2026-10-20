@@ -5876,9 +5876,9 @@
         "tests/sim/supabase-migration.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 9 (2026-10-19, 7373225): supabase/migrations/20261019000400_readonly_and_account.sql, applied live with the owner's yes; resolve_invite and add_friend answer a read-only call first, the same for every code. run.sh's read-only cases fail without it; the live smoke test (91 of 91) tries GET lookups and a POST asking to be rolled back (not honoured). The clubs keep their codes (ADR-0044 decision 3)."
     },
     {
       "id": "REL-035",
@@ -5896,9 +5896,9 @@
         "scripts/online-smoke.mjs"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 9 (7373225, 56e0215): save_meta_for, get_save_for and put_save_for refuse another account; the service interface's calls name the account; onSessionChange (supabase-js's auth events, attached on the first real call, and the session key's storage event); cloudSync stops and asks on 'account' or a session change; loadSocialUser keeps the newest answer (C7). online-sync's B2 tests and online-save.spec's two tabs (Chromium and WebKit) fail without them."
     },
     {
       "id": "REL-036",
@@ -5915,9 +5915,9 @@
         "tests/sim/economy-loops.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 9 (3a0f314): valuation.ts applies the animal bonuses (and rarity, lineage) to the animals and living plants only, hardscape at base price; listings.ts applies a buyer's taste to the animal-and-plant share (plainShare). economy-loops' D1 tests fail on the old code; market-valuation's gorgeous-vs-messy test rewritten on purpose (commit message)."
     },
     {
       "id": "REL-037",
@@ -5934,9 +5934,9 @@
         "tests/e2e (Settings › Saves)"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 9 (c51a7f1 and the review's fixes 56e0215, b5d169f, 34292ff, f98c986, 9266584): kept copies in saveGame, saveGameSync and migrateSlot (staleAs for the stale-tab guard); Settings' Load reads first, keeps the game on screen as a kept copy, saves first with autosave off, parks a further copy kept only in the autosave (ADR-0044 decision 6); Replace, Import and Load dialogs in ADR-0044's words. saves-kept-copies (27 cases) and save.spec's dialogs."
     },
     {
       "id": "REL-038",
@@ -5951,9 +5951,9 @@
         "tests/sim/online-sync.test.ts"
       ],
       "evidence": [],
-      "status": "PENDING",
+      "status": "GREEN",
       "designSections": [],
-      "note": "Chunk 9 (written 2026-10-19 with its brief; to build)."
+      "note": "Chunk 9 (c51a7f1, 56e0215, b5d169f): keepAutosavedCopies (ui/common/saves.ts) parks into a free slot only, every copy through the progress check, the messages after the load; with every slot full nothing loads. online-sync's B1 and confirmation tests."
     }
   ]
 }

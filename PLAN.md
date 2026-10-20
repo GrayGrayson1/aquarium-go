@@ -14,14 +14,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    (ref `zkavcxrsxdgdlstravpj`, the Free organization "Aquarium Go"). The owner's account is set (2026-10-19, with the
    owner's yes: the only `is_owner`, and the first club's `created_by`; ARCHITECTURE.md's runbook);
    `docs/agent/SESSION_HANDOFF.md` has the order of work. Stage 2 (before strangers join) needs its own record.
-3. **Next: 0.5.6, the audit's fixes, then shared shops** (the owner, 2026-10-19, ADR-0043). The audit of `c7c0d34`
-   (2026-10-19, seven auditors: 116 findings, 5 high) is fixed first, asking the owner about the fixes that need them.
-   Then **shared shops**: a separate shop a club plays together, live, up to 10 at once, run by a small server on
+3. **0.5.6 (chunk 9), the audit's five high findings, is released** (2026-10-20; ADR-0044; see "Releases"). Next:
+   the audit's other findings with the owner (B-207, B-208), or **shared shops**: a separate shop a club plays together, live, up to 10 at once, run by a small server on
    Render (free first, "with plans to expand"); no design or chunk yet (ADR-0043 lists what the design must cover).
-4. **Released:** 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-5. Every owner question is answered (ADR-0024 to ADR-0043) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+5. Every owner question is answered (ADR-0024 to ADR-0044) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
    owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
@@ -39,9 +38,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 6 | Social stub, hardening and the last 0.5 release | Done 2026-10-15 (released in 0.5.2 and 0.5.3). Its two full passes (`9bff79e`): typecheck, unit 2,697, build, e2e 285 of 285, twice; the code reviewer's 5 blockers fixed (`bba00ab`) and its confirmation's 3 notes (`d1c37bd`); the QA reviewer RED → GREEN (`e23b8a2`, `d1c37bd`, `9bff79e`). The owner's play-through (with VoiceOver, F1) to come |
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
-| 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | In progress (2026-10-19, Chase) |
+| 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
 
-**Last full test runs:** chunk 8's final commit `53cd7bf`, the owner's Mac, 2026-10-19, from the internal-disk clone,
+**Last full test runs:** chunk 9's final commit `9266584`, the owner's Mac, 2026-10-20, from the internal-disk clone,
+twice in a row under `caffeinate -i -s`: typecheck passed; unit 236 files, 2,868 tests passed; build passed; e2e 311 of
+311 in Chromium and WebKit, dev and both production builds (35.7 and 35.6 minutes). Before them, the same four checks
+on `c51a7f1` (unit 2,851, e2e 311 of 311) and `827eacd` (unit 2,858, e2e 311 of 311), both green, each superseded by
+the review's fixes; passes on `b5d169f`, `34292ff` and `f98c986` were stopped part-way when the next fix landed.
+Before chunk 9: chunk 8's final commit `53cd7bf`, the owner's Mac, 2026-10-19, from the internal-disk clone,
 twice in a row under `caffeinate -i -s` (passes 3 and 4): typecheck passed; unit 235 files, 2,828 tests passed; build
 passed; e2e 307 of 307 in Chromium and WebKit, dev and both production builds (35.7 and 35.2 minutes). Before them:
 pass 1 on `6f5f724` (302 of 307: six Settings tabs and Social's re-ask, both chunk 8 effects then fixed, and one
