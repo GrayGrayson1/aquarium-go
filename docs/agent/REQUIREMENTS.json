@@ -6010,6 +6010,328 @@
         "SHARED-SHOPS.md §3.2"
       ],
       "note": "Chunk 10: dmath and the switch (017756d); the step block, the prototype server and replica, the lockstep tests in one process and the cross-engine replay in Chromium and WebKit (01e854c, review fixes to e0f14de); Render's x86-64 server's step logs replay on the Mac's arm64 with no mismatch, and the stub shops it built equal the Mac's. Full pass on e0f14de: unit 2,891, e2e 319 of 319."
+    },
+    {
+      "id": "SHARE-003",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "The server is the only writer of a shared shop; the browser touches no table; the server's key never enters the repo and reaches only the server_* functions (ADR-0045 decision 1, ADR-0047).",
+      "acceptance": [
+        "The shared_* tables have row-level security on and no privileges for anon, authenticated or service_role (the migration text test, the local database check).",
+        "Each server_* function refuses (forbidden) unless given the server's password, whose SHA-256 is the one stored fingerprint; only anon may execute their wrappers; no signed-in player may (the local database check).",
+        "service_role reaches no table or function in public or private, and this role's default privileges grant it nothing (the migration's own check; verified live).",
+        "The password is never printed, logged or passed as an argument (scripts/shared-server-key.mjs), never reaches a room's worker (empty environment) or a build (the build command removes it)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/supabase-migration.test.ts",
+        "scripts/online-db-local/checks.sql"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.8",
+        "SHARED-SHOPS.md §6"
+      ],
+      "note": "Chunk 12: the migration is live (2026-10-21, ADR-0047 decision 1); the password and the deploy follow."
+    },
+    {
+      "id": "SHARE-004",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "One shop per club, created by the owner, named, with a starter; normal money; no guide.",
+      "acceptance": [
+        "Only the owner (profiles.is_owner, a member of the club) creates; a second create joins the shop that exists.",
+        "The new shop is a new game with the starter previewed (the seed), the guide finished, its id shared_<club>."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-server.test.ts",
+        "tests/sim/supabase-migration.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §1",
+        "SHARED-SHOPS.md §7.2"
+      ],
+      "note": "Chunk 12 built the server's side; the create screens are chunk 13."
+    },
+    {
+      "id": "SHARE-005",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Club members join, at most 10 at once, one connection each; others are refused.",
+      "acceptance": [
+        "A non-member is refused (removed); an 11th member is told full; a second tab takes over (elsewhere); a member taken out of the club is closed at the next check (15 minutes)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-server.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.3"
+      ],
+      "note": "Chunk 12: the server (server/app.ts)."
+    },
+    {
+      "id": "SHARE-006",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Pause and speed only for the owner and the chosen members; the owner grants and removes it.",
+      "acceptance": [
+        "setSpeed from a member without permission is rejected (forbidden) and changes nothing; after the owner's grant it goes through; the grant is stored (server_set_pausers)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-server.test.ts",
+        "tests/sim/shared-room.test.ts",
+        "tests/e2e/shared-lockstep.spec.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.4"
+      ],
+      "note": "Chunk 12 built the server's side; the members list and its switch are chunk 13."
+    },
+    {
+      "id": "SHARE-007",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Every other action is open to every member (first version) through one permission function.",
+      "acceptance": [
+        "allowed(member, cmd) decides: setSpeed for the owner and the chosen, the guide's own steps for nobody, everything else for everyone."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-room.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.4",
+        "SHARED-SHOPS.md §5.6"
+      ],
+      "note": "Chunk 12: server/room.ts allowed()."
+    },
+    {
+      "id": "SHARE-008",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "\"There\": visible and used in the last 30 minutes, with \"Still here?\"; the shop runs only while someone is there.",
+      "acceptance": [
+        "The room steps only while a member is there; here, away and input move a member; 31 minutes without input count as away (the browser's \"Still here?\" first); a command brings its sender back."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-lockstep.test.ts",
+        "tests/sim/shared-server.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.5",
+        "SHARED-SHOPS.md §7.5"
+      ],
+      "note": "Chunk 12 built the server's side; \"Still here?\" is chunk 13."
+    },
+    {
+      "id": "SHARE-009",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Empty and back: no catch-up under 5 minutes or if paused, at most 12 game hours under grace otherwise.",
+      "acceptance": [
+        "A wake catches up from left_at (or saved_at after a crash): none under 5 minutes or while paused, else 12 game hours at most; the same for someone back into a still-loaded room, whose members all get the shop again with the summary."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-server.test.ts",
+        "tests/sim/shared-room.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.2"
+      ],
+      "note": "Chunk 12: server/host.ts, server/room.ts catchUp."
+    },
+    {
+      "id": "SHARE-010",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Your own game is saved on opening and resumes unchanged, with no catch-up for the time away, even after the browser closed inside the shared shop.",
+      "acceptance": [
+        "(Chunk 13.)"
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "SHARED-SHOPS.md §7.2"
+      ],
+      "note": "Chunk 13."
+    },
+    {
+      "id": "SHARE-011",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Nothing saves a shared shop on the device or online as a player's save; nothing carries over; not on the leaderboards.",
+      "acceptance": [
+        "(Chunk 13.)"
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "SHARED-SHOPS.md §7.3"
+      ],
+      "note": "Chunk 13."
+    },
+    {
+      "id": "SHARE-012",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Every member's action appears in everyone's alerts as its own message with their name; big ones pop up for the others.",
+      "acceptance": [
+        "(Chunk 13; the tagging is chunk 11's.)"
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [
+        "SHARED-SHOPS.md §4.3",
+        "SHARED-SHOPS.md §8"
+      ],
+      "note": "Chunk 13."
+    },
+    {
+      "id": "SHARE-013",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "First one wins: commands carry what their sender saw, and the second sender is told who changed it.",
+      "acceptance": [
+        "(Chunk 11 built the rule; chunk 13 the words.)"
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/commands-shared.test.ts",
+        "tests/sim/shared-lockstep.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §4.3"
+      ],
+      "note": "Chunk 11: src/sim/commands/shared.ts; the words wait for group L (chunk 13)."
+    },
+    {
+      "id": "SHARE-014",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "The 2 GB data cap and the 400-hour cap close shops until the 1st and say so; the owner sees both meters.",
+      "acceptance": [
+        "The server meters bytes sent (frames, HTTP, database calls, headers included) ×1.4 and awake seconds per UTC month into shared_usage; at either cap rooms save and close (cap or hours, with the 1st) and joins are refused; club_shared_shops() and shared_usage() say so without waking the server."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-server.test.ts",
+        "tests/sim/supabase-migration.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.7"
+      ],
+      "note": "Chunk 12 built the meters and the caps; the owner's card is chunk 13."
+    },
+    {
+      "id": "SHARE-015",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Saves every 3 minutes, on emptying and on shutdown; a restart loses at most that, and says so; the lease keeps one server per shop.",
+      "acceptance": [
+        "Saves every 3 minutes of play, on emptying (with left_at) and on SIGTERM (restart, with the save's time); the lease is taken in one statement on the database's clock and renewed every 30 seconds for 90; a second server finds it held (updating); a room whose lease another server took stops without saving."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-server.test.ts",
+        "tests/sim/supabase-migration.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.2",
+        "SHARED-SHOPS.md §6.2"
+      ],
+      "note": "Chunk 12: server/host.ts."
+    },
+    {
+      "id": "SHARE-016",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Builds play together when the hash of what every copy runs (§5.1) matches; otherwise the older side reloads or waits (\"updating\"); releases push main before the server; a newer schema's shop is never loaded past or overwritten.",
+      "acceptance": [
+        "vite.sharedBuild.ts hashes src/sim, src/data, src/types and the pure persistence files (line endings normalised) into the game and the server; a covered file changes the hash, others don't; an older build is told build, a newer one updating; a shop saved by a newer schema is refused (updating) and never written."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-room.test.ts",
+        "tests/sim/shared-server.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.1"
+      ],
+      "note": "Chunk 12 built the identity and the server's answers; the Reload offer is chunk 13."
+    },
+    {
+      "id": "SHARE-017",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "A failing command affects only its sender; the snapshot budget stops a copy that can't stay in step.",
+      "acceptance": [
+        "A command whose block throws is rejected to its sender only; a time step that throws is undone from the checkpoint and never sent, three in a row stop the shop (fault) after saving the last good copy; re-syncs are budgeted per player (3 in 10 minutes, 6 an hour) and joins at 20 an hour (outofstep)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-lockstep.test.ts",
+        "tests/sim/shared-room.test.ts",
+        "tests/sim/shared-server.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.2",
+        "SHARED-SHOPS.md §5.3"
+      ],
+      "note": "Chunk 12: server/room.ts, server/app.ts."
+    },
+    {
+      "id": "SHARE-018",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §12; PLAN.md chunk 12",
+      "description": "Listing photos in a shared shop are small, seen by every member, and stored once.",
+      "acceptance": [
+        "The server takes only a JPEG or WebP (by its bytes, at most 47,000), stores it once per club by its SHA-256 and forwards p:<hash>; serves it over the socket only for a listing of the shop; prunes stored photos no saved listing refers to; validateCommand and repairState accept exactly the reference; the interface never puts one in <img src>."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-room.test.ts",
+        "tests/sim/shared-server.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §4.4"
+      ],
+      "note": "Chunk 12 built the server's side; shrinking and showing the photo are chunk 13."
     }
   ]
 }

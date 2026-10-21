@@ -989,6 +989,30 @@ REL-012, REL-018.
   numbers; PLAN.md, SHARED-SHOPS.md §11, TRUST_BOUNDARY.md and DEBT_INVENTORY.md (§13's shared-shops sections) say what
   changed; `next` pushed. SHARE-003, SHARE-005, SHARE-007, SHARE-009, SHARE-015 and SHARE-017 GREEN; the server's side
   of SHARE-004, SHARE-006, SHARE-014, SHARE-016 and SHARE-018 done, GREEN with chunk 13.
+- **The owner's answers** (2026-10-21, ADR-0047): the migration live once its local check passes; the real server
+  deployed from `next` once tested, with the live smoke; **a server password instead of a Supabase secret key**, which
+  could reach accounts (players' emails, deleting accounts) through Supabase Auth's admin tools.
+- **Built** (2026-10-21, Marshall): `a4989d8`. The server (`server/app.ts`, `host.ts`, `room.ts`, `rooms.ts`,
+  `protocol.ts`, `store.ts`, `auth.ts`, `stub.ts`, `usage.ts`, `photos.ts`, `config.ts`); the migration (a helper agent
+  wrote it and its 181 new local cases against a fixed interface; the author read it line by line); the build identity
+  (`vite.sharedBuild.ts`); the photo reference in `validateCommand` and `repairState`; rule 5's stagger (a shared shop's
+  background tanks flush most-owed first, at most as many a step as flush on average); `sharedShops()` and
+  `sharedUsage()`; `scripts/shared-smoke.ts` (the live smoke, and `--measure` for K1). Tests: `shared-server` (28: the
+  server in process on the stub, members on Node's WebSocket), `shared-room` (19), the lockstep and e2e specs updated on
+  purpose (a clock that moves 250 ms a tick, members with permissions, stub tokens), an e2e case with two shops at once
+  in their own workers; the local database check 253 cases as expected. Found by the new tests: every save was refused
+  by the room-call gate (it compared a save's object with the club), fixed before the commit.
+- **Live** (2026-10-21, ADR-0047 decision 1): a read-only preflight first (the CLI runs as `postgres`; `service_role`
+  isn't a member of `anon`; everything it reached was ours), then the migration applied; afterwards `service_role`
+  reaches 0 tables and 0 functions in `public` and `private`, the 12 server functions refuse (no password yet), the
+  security advisors report only Auth's known leaked-password warning, and the stage 1 smoke passed 91 of 91.
+- **For chunk 13** (what the server does that the client must meet): send `hello` (or the owner's `create`, with the
+  starter's name and the preview seed) and wait for the welcome before anything else; `you.id` is the account's id, the
+  `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; a close
+  4000 (`away`) means reconnect only when the player is back, 1008 `sign-in` means refresh the session (send `token`
+  hourly); a `post` of `setSpeed 1` is the starvation guard (show its toast from your own copy); photo frames are tag
+  3, the hash, a type byte, the bytes; `gone` needs its words (§8); joining the welcome's `catchUp` shows the
+  welcome-back card; every snapshot after the first (a catch-up, a re-sync) replaces the copy.
 
 ## Releases
 
@@ -999,7 +1023,12 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
 1. a full green run of the four checks on `next`, and the owner has played it;
 2. bump `version` in `package.json` and add the `CHANGELOG.md` entry (patch for fixes, minor for features;
    `tests/sim/version.test.ts` checks that the newest entry matches);
-3. with the owner's go-ahead, merge `next` into `main` and push `main`.
+3. with the owner's go-ahead, merge `next` into `main` and push `main`;
+4. (from 0.6.0, SHARED-SHOPS.md §5.1) **the shared-shop server after `main`, never before:** once Pages has deployed,
+   deploy `aquarium-go-shops` by hand from `main` (`render deploys create srv-dbbt6gbncjis73c23br0 --commit <main's full
+   sha> --confirm --wait -o text`; the 0.6.0 release first switches the service's branch to `main` with `render services
+   update`), then check that its `/health` `build` equals the game's build hash and both `version.json` files read the
+   release. In between, newer tabs are told the shop is updating; afterwards older tabs are told to reload.
 
 - **0.5.0, released 2026-10-06** at the owner's request ("push to github prod and make sure it's on render"), from
   `next` after chunk 1: chunk 1, S0's stability fixes (the planned 0.4.1) and chunk 0. The owner chose to release

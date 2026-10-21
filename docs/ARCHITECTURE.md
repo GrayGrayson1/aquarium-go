@@ -28,7 +28,7 @@ src/social       the SocialService interface, its local stub (0.5 spec §13.6; c
 src/ui           React DOM UI (reads state; sends player actions as commands through the store's dispatcher)
 src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
-server/          the shared-shop server (SHARED-SHOPS.md §5; chunk 10's prototype): Node 22 and `ws`, built into dist-server/
+server/          the shared-shop server (SHARED-SHOPS.md §5; chunk 12): Node 22 and `ws`, built into dist-server/
 ```
 
 **Allowed value imports** (S0 architecture lock). A layer may import values from itself and from the layers in its
@@ -54,7 +54,7 @@ Changing a row is a deliberate architecture change: say why in the commit, and t
 | `app` | every layer above |
 | `dev` | every layer above, and app |
 | files at the `src/` root | every layer |
-| `server/` (outside `src`; chunk 10) | types, data, sim and the pure persistence modules (`hash`, `serialize`, `migrations`, `schema`, `types`), never the stores, the game loop, the interface or React; packages: `ws` and Node's own. A test walks everything it reaches (`core-architecture-boundaries`, SHARED-SHOPS.md §5.1) |
+| `server/` (outside `src`; chunk 10) | types, data, sim and the pure persistence modules (`hash`, `serialize`, `migrations`, `schema`, `types`), and (chunk 12) `social/project.ts`, the project's public settings, which imports nothing; never the stores, the game loop, the interface or React; packages: `ws` and Node's own. A test walks everything it reaches (`core-architecture-boundaries`, SHARED-SHOPS.md §5.1) |
 
 Rules:
 - **Species facts live only in `src/data/species`.** UI/render/AI read them through `getSpecies()`.
@@ -259,6 +259,23 @@ sent, within size limits; stage 2 needs its own record before strangers join (`d
   The secret (service_role) key is never printed, saved or committed; nothing in the game needs it.
 - **No emails.** Confirmation is off (`supabase/config.toml`), so a forgotten password is reset by hand.
 
+**Shared shops** (chunk 12; SHARED-SHOPS.md §5, §6; ADR-0043, ADR-0045, ADR-0047). A club's shop runs on the free
+Render web service `aquarium-go-shops` (`srv-dbbt6gbncjis73c23br0`, `SHARED_SHOP_SERVER` in `src/social/project.ts`), whose
+copy counts; every member's browser applies the same steps (§3).
+- **The server** (`server/`): `main.ts` (the entry: Supabase, or the stub with `SHOPS_STUB=1`), `app.ts` (HTTP `/health`
+  and `/stats`, the socket at `/shop`, sign-in, one connection per player, the limits, the only database caller),
+  `rooms.ts` and `roomWorker.ts` (a room per shop in its own worker thread, started with an empty environment),
+  `host.ts` (a room's life: the lease, load and repair, the catch-up, saves, photos, grants, through the main thread),
+  `room.ts` (the steps, the members, permissions, photos, the checkpoint), `store.ts`, `auth.ts`, `stub.ts`, `usage.ts`
+  (the caps), `photos.ts`, `protocol.ts`, `config.ts`. Its build: `npm run build:server` (`vite.server.config.ts`);
+  Render's build command removes the password first (`env -u SHOPS_SERVER_KEY sh -c 'npm ci --include=dev
+  --ignore-scripts && npm run build:server'`). The build identity (`vite.sharedBuild.ts`) is stamped into the game and
+  the server alike.
+- **The database** (`supabase/migrations/20261021000000_shared_shops.sql`, the sixth file, applied 2026-10-21):
+  `shared_shops`, `shared_photos`, `shared_usage` (no access for the browser), the server's `server_*` functions, which
+  refuse without its password (`private.require_server`: the SHA-256 in `private.server_key`), and the game's
+  `club_shared_shops()` and `shared_usage()`. `service_role` reaches nothing in `public` or `private`.
+
 **The owner's runbook** (each with the owner's yes; every command scoped with `--linked --project-ref <ref>`, the ref
 in PLAN.md's chunk 8 record):
 - *The owner's account:* after the owner signs up with the first club's link, `update public.profiles set is_owner =
@@ -277,6 +294,12 @@ in PLAN.md's chunk 8 record):
   club's word and four letters (FRIENDS-KDWX, ADR-0042: 331,776 per word, drawn from a secure source); wrong lookups
   hit the brake, and sign-ups are rate-limited by Supabase Auth (30 per 5 minutes per address). Never write a code in
   the repo (it is public).
+- *The shared-shop server's password* (ADR-0047): `node scripts/shared-server-key.mjs --yes` from a clone linked to the
+  project stores a new password's fingerprint and leaves the password on the clipboard (never printed); paste it into
+  the Render service's environment as `SHOPS_SERVER_KEY` and save (Render restarts the service). The old one stops
+  working at once, so the server refuses everything until the new one is pasted. Run it again if it may have leaked.
+- *Deleting a club's shared shop* (on request; the game can't): `delete from public.shared_shops where club_id =
+  '<club id>'` (its photos go with it). A room still loaded on the server finds it gone at its next save and closes.
 - *A leaked code:* `update public.clubs set invite_code = public.new_invite_code('FRIENDS') where name = 'Aquarium Go
   Friends' returning invite_code` gives the club a new one; the old link stops working (members stay members).
 

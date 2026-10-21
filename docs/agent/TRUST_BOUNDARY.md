@@ -123,6 +123,39 @@ check, and stage 2 must, before anyone the owner doesn't know joins:
   requests. Stage 2: per-account limits.
 - **Joining clubs.** Anyone signed in may join any club; the invite code gates only sign-up.
 
+## Shared shops (chunk 12, SHARED-SHOPS.md §5, §6; ADR-0043, ADR-0045, ADR-0047)
+
+A club's shared shop is the first state a server owns: the server's copy counts, every member's browser applies the
+same steps to its own copy, and nothing a browser does changes the shop except a command the server receives,
+validates (`validateCommand`), permits (`allowed`: pause and speed for the owner and the chosen, everything else for
+every member at first, ADR-0043 decision 5) and applies with the game's own rules on its copy. First one wins and who
+did it are rules of the shop's state (chunk 11). So for shared shops the checks in the tables above are the game's own
+rules, run where it counts; stage 2's model (ADR-0038), ahead of the solo game.
+
+- **Who.** A member signs in with their Supabase access token, which the server asks Supabase Auth about; the server
+  asks the database (`server_member`) whether they're in the club, their name, whether they're the owner and whether
+  they may pause, and asks again every 15 minutes (a member taken out is closed). One connection per player, 10 per
+  shop.
+- **The server's reach (ADR-0047).** It uses no Supabase key: a secret key acts as `service_role` and also opens Supabase
+  Auth's admin tools (players' emails, deleting accounts), which no database rule can limit. It calls its own functions
+  through the API as `anon`, each refusing unless given its password, whose SHA-256 is the one row of
+  `private.server_key` (made by `scripts/shared-server-key.mjs`, pasted into Render by the owner; never in the repo, a log
+  or a build, never in a room's worker thread). With the password, someone could read and rewrite any club's shared
+  shop and its photos, read club membership with members' names, and add to the usage meter: never a player's own
+  save, profile, email or account. Running the script again replaces it at once. `service_role` reaches no table or
+  function in `public` or `private` (revoked, checked by the migration itself), so the project's own secret keys can't
+  read players' data through the API either.
+- **What it still trusts.** Club members, with everything but pause (ADR-0043): a member can spend the shop's money or
+  sell its animals. Permission tiers and the money pool come later (§5.6). A member's browser computes nothing the
+  server keeps, but it shows what its own copy computes; a copy that drifts is caught by the fingerprint and re-synced.
+- **Limits.** Messages of at most 16 KB (48 KB for a listing with its photo), 10 commands and 30 messages a second, joins
+  and reconnects at 20 an hour per player, re-syncs at 3 in 10 minutes and 6 an hour per player, photo listings at 6 a
+  minute and photo requests at 60, only the game's two sites as origins. The month's data (2 GB) and awake hours (400)
+  cap every club together.
+- **Photos.** A member's listing photo must be a JPEG or WebP by its bytes (at most 47,000); the server stores it once
+  per club by its hash and every copy holds only the reference (`p:` and the hash), which `repairState` keeps and the
+  interface never puts in an `<img src>`; it is served only over the socket, only for a listing of the shop.
+
 ## Not for a server
 
 Camera, panels, settings, notification preferences and the alerts drawer's read marks (`markAllRead`, `clearAllEvents`)

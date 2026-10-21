@@ -192,14 +192,15 @@ Each rule applies to shared shops; rule 1 also changes the solo game (its number
 ### 3.3 Messages
 
 JSON text frames, except snapshots (a binary frame: the gzipped save JSON; a browser without `DecompressionStream`,
-such as an older Safari, says so in `hello` and gets plain JSON). Names are short because they repeat.
+such as an older Safari, says so in `hello` and gets plain JSON) and photos. Names are short because they repeat. The
+types are `src/types/shared.ts` (chunk 12 built the whole table below).
 
 Browser to server:
 
 | Message | Meaning |
 |---|---|
-| `{t:'hello', token, build, club, plain?}` | Join: the player's Supabase access token, the build's identity (§5.1), the club |
-| `{t:'create', token, build, club, name, starter}` | The owner creates the club's shop (refused for anyone else, or if the club has one), then joins it |
+| `{t:'hello', token, build, club, plain?}` | Join: the player's Supabase access token, the build's identity (§5.1: `{hash, version}`), the club. Nothing else is read until it's checked (later messages wait, at most 20) |
+| `{t:'create', token, build, club, name, starter, starterName, seed?}` | The owner creates the club's shop (the shop's name, the starter, its name and the seed it was previewed with, so the starter is the one the owner saw), then joins it; a create for a club that has one joins that one; anyone else is closed (1008) |
 | `{t:'cmd', id, c}` | A command (§4), with the browser's own id for it |
 | `{t:'view', tank}` | The tank this player is looking at (or `null`): feeds §3.2 rule 4 |
 | `{t:'here'}`, `{t:'away'}` | The tab became visible, or hidden or idle (§5.5) |
@@ -207,18 +208,18 @@ Browser to server:
 | `{t:'token', token}` | A refreshed access token (Supabase refreshes hourly); refused unless it names the same player |
 | `{t:'resync'}` | My fingerprint differs: send the shop again |
 | `{t:'grant', user, pause}` | The owner gives or takes pause and speed (§5.4) |
-| `{t:'photo', hash}` | Send me this listing photo (§4.4) |
+| `{t:'photo', hash}` | Send me this listing photo (§4.4): only one a listing of the shop refers to, at most 60 a minute |
 
 Server to browser:
 
 | Message | Meaning |
 |---|---|
-| `{t:'welcome', you, members, n, full, catchUp?}` then a snapshot frame | Joined: who I am and may do, who's there, the step number the snapshot is at, the full-detail list, and the welcome-back summary if the shop just caught up |
+| `{t:'welcome', you, shop, members, n, full, catchUp?}` then a snapshot frame | Joined: who I am and may do (`{id, name, owner, pause}`: the id is the account's), the shop (`{club, name}`), who's there (`{id, name, here, pause}`), the step number the snapshot is at, the full-detail list, and the welcome-back summary if the shop caught up in the last 2 minutes. After a catch-up into a loaded room every member gets a welcome and a snapshot again |
 | `{t:'steps', s:[{n, h, full?, cmds?, post?, fp?}]}` | Steps in order; each command in `cmds` is `{by, who, id, at, c}`: the sender's id and name, their own id for it, the server's time it arrived (first one wins' 30 seconds, §4.3), and the command. Command steps go out within about 50 to 100 ms (several commands in that window share a frame to each member); time steps are batched about once a second |
-| a binary photo frame | A requested photo: its hash, then the image |
-| `{t:'reject', id, why}` | Your command wasn't applied: not allowed (pause without permission), malformed, rate-limited, or it threw on the server (§5.2). A command the game refuses by its rules (no money, already sold) is applied as usual, so every copy gets the same refusal and the sender's own copy says why (§4.3) |
+| a binary photo frame | A requested photo: the tag 3, the hash's 64 hex characters, a type byte (1 WebP, 2 JPEG), then the image |
+| `{t:'reject', id, why}` | Your command wasn't applied: `forbidden` (pause without permission, or the guide's own steps, §5.4), `malformed`, `rate` (over 10 commands a second, or 6 photo listings a minute), or `failed` (it threw on the server, §5.2). A command the game refuses by its rules (no money, already sold) is applied as usual, so every copy gets the same refusal and the sender's own copy says why (§4.3). A `raiseFlag` whose flag the shop already has is dropped without a reply (§4.3) |
 | `{t:'members', members}` | Who's there and who can pause (not what each is looking at, which no screen shows); at most one a second |
-| `{t:'closing', why}` | The server is closing this connection: `cap`, `hours`, `full`, `build`, `updating`, `removed`, `elsewhere`, `fault`, `restart`, `outofstep` (§8) |
+| `{t:'closing', why, until?, savedAt?}` | The server is closing this connection: `cap`, `hours` (with `until`, the 1st it opens again), `full`, `build`, `updating`, `removed`, `elsewhere`, `fault`, `restart` (with `savedAt`, the last save), `outofstep`, `gone` (the club has no shop; words for chunk 13, §8) (§8). Without a `closing`: 1008 for a malformed message or a sign-in the server can't check (the reason `sign-in`), 1011 when the database didn't answer, 4000 (`away`) for a member away 10 minutes, whose browser reconnects when they're back |
 
 ## 4. Commands: player actions as data
 
@@ -324,10 +325,15 @@ Server to browser:
 - **`ws` 8.22.0** (ADR-0045 decision 2) is its only dependency, installed with chunk 10's test server; the few types it
   needs are declared in `server/ws.d.ts` (no `@types/ws`). Its `maxPayload` is set to 48 KB (the default is 100 MiB).
   Database calls use Node's `fetch` with the server's key; gzip uses `node:zlib`.
-- **Files:** `main.ts` (HTTP: `/health` with CORS for the game's sites; the WebSocket upgrade at `/shop`;
-  the origin check; SIGTERM saves every room), `room.ts` (one shop's worker: its copy, steps and members),
-  `rooms.ts` (the workers), `auth.ts` (the token check), `store.ts` (the database calls), `usage.ts` (the meters),
-  `config.ts` (environment), `stub.ts` (in-memory storage and accounts for tests and dev: `SHOPS_STUB=1`).
+- **Files** (as built in chunk 12): `main.ts` (the entry: the database or the stub; SIGTERM saves every room), `app.ts`
+  (HTTP: `/health` with CORS for the game's sites, `/stats`; the WebSocket upgrade at `/shop`; the origin check, sign-in,
+  one connection per player, the limits; the only database caller), `rooms.ts` and `roomWorker.ts` (one worker per shop,
+  started with an empty environment, or in-thread for the unit tests), `host.ts` (a room's life: the lease, load and
+  repair, the catch-up, saves, photos, grants; it reaches the database through the main thread, `protocol.ts`, and only
+  for its own club), `room.ts` (the copy, steps, members, permissions, photos), `auth.ts` (the token check), `store.ts`
+  (the database calls), `usage.ts` (the meters and caps), `photos.ts` (a photo's checks), `config.ts` (environment),
+  `stub.ts` (in-memory storage and accounts for tests and dev: `SHOPS_STUB=1`), `replay.ts` and `shops.ts` (the stub shops
+  and the cross-engine replay's step log, stub only).
 - **The build's identity** has two parts, stamped by a Vite plugin into both the game and the server:
   - a **hash** of everything every copy runs to stay in step: `src/sim`, `src/data` and `src/types` (inside a step the
     simulation imports nothing else but `@/persistence/schema`), `src/persistence/hash.ts`, `serialize.ts`,
@@ -353,8 +359,10 @@ Server to browser:
    the grace rules (§2.2). The joiners see "Catching up…" meanwhile.
 2. **Running:** while at least one member is there, the worker steps 4 times a second at the shop's speed and runs
    each command in its own zero-hour step at once; every 10 seconds a step carries the fingerprint.
-3. **A failing block:** every block runs on a working copy (§3.2 rule 2; about 0.65 ms to copy `big_facility` with
-   `fastMutate`'s copier), so a command is applied once, atomically. If a command's block throws, the copy is
+3. **A failing block:** every command's block runs on a working copy (§3.2 rule 2; about 0.65 ms to copy `big_facility`
+   with `fastMutate`'s copier), so a command is applied once, atomically. Time steps run in place (chunk 12, §11: the
+   copy was 18 to 32% of a step): the room keeps a copy taken at each fingerprint and the steps since, and a time step
+   that throws is undone by replaying from that copy, never sent. If a command's block throws, the copy is
    discarded, the command is left out of the steps, and its sender gets `reject`; nobody else is affected (commands
    arriving together get a block each). A time step that throws is discarded the same way and retried next tick; three
    in a row stop the shop with `closing: fault`, after saving the last good copy.
@@ -623,6 +631,7 @@ and nothing shows them before then). The first-one-wins lines are the catalogue'
 | A setting another member just changed (the sender's note) | "{name} already changed that." |
 | An action with no message of its own (no alerts line today) | Pause and speed use the approved pop-ups. A favourite, watching or following an animal, a photo's story line, a tap on the glass, a bid held while a counter is typed and the guide's flags add no line, and a value changed again and again (a slider dragged, an amount typed) keeps one line per member, with its newest message, while they keep at it; switches and choices get a line each time. Hold all, Resume and one system: "{name} put automation on hold." · "{name} resumed all automation." · "{name} held {system}." / "{name} resumed {system}." |
 | `reject`: too many actions | "Slow down a little: that was a lot of actions at once." |
+| Closing: `gone` (chunk 12: the club has no shared shop now, after the agent removed it on request, or a race) | "{club} has no shared shop any more." |
 | `reject`: failed on the server, or malformed | "That didn’t work, and nothing was changed. Please try again." (the game's own words for a failed action) |
 | Settings › Saves, in a shared shop | "This is {club}'s shared shop: it saves on the server. Your own aquarium is saved and waits for you." [Back to my aquarium] |
 | Save, Load, Import or Export tried in a shared shop | "The shared shop saves itself on the server." |

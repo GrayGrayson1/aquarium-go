@@ -172,6 +172,39 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
     for (const p of pages) await p.evaluate(() => (window as unknown as Win).__client.close());
   });
 
+  test('chunk 12: two shops at once, each in its own worker, both stay in step (§3.2 rule 9)', async ({ browser }) => {
+    test.setTimeout(180_000);
+    const contexts = await Promise.all([0, 1].map(() => browser.newContext()));
+    ownContexts.push(...contexts);
+    const pages = await Promise.all(contexts.map((c) => c.newPage()));
+    for (const p of pages) await openTestPage(p);
+    const shops = ['new_betta', 'playthrough_betta'];
+    await Promise.all(
+      pages.map((p, i) =>
+        p.evaluate(
+          async ([url, shop, token]) => {
+            const w = window as unknown as Win;
+            w.__client = (await w.__shared.connect(url, shop, token)) as Win['__client'];
+            const s = w.__client.state() as { tankOrder: string[] };
+            w.__client.view(s.tankOrder[0]);
+            w.__client.send({ k: 'setSpeed', speed: 10 });
+          },
+          [SHOP_URL, shops[i], `stub:w${i}:Owner${i}:owner`] as const,
+        ),
+      ),
+    );
+    const checks = (p: Page) => p.evaluate(() => (window as unknown as Win).__client.replica.stats.checks);
+    await expect.poll(async () => Math.min(...(await Promise.all(pages.map(checks)))), { timeout: 90_000, intervals: [1000] }).toBeGreaterThanOrEqual(2);
+    for (const p of pages) {
+      const v = await p.evaluate(() => {
+        const c = (window as unknown as Win).__client;
+        return { mismatches: c.replica.stats.mismatches, outOfStep: c.stats.outOfStep.length, rejects: c.stats.rejects.length };
+      });
+      expect(v).toEqual({ mismatches: 0, outOfStep: 0, rejects: 0 });
+      await p.evaluate(() => (window as unknown as Win).__client.close());
+    }
+  });
+
   test('a hostile message closes at most its own connection, and the server keeps serving', async ({ page, request }) => {
     await openTestPage(page);
     const codes = await page.evaluate(async (url) => {
