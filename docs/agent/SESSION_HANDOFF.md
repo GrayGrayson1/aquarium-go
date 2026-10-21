@@ -49,6 +49,55 @@ it's used up.
   query that would print another player's email is refused by Claude Code's auto mode (PII): count, or match the
   owner's own email, instead.
 
+## Handoff to Marshall: chunks 12 and 13 (from Chase, 2026-10-21, at the owner's request)
+
+The owner: "Within CNVS Canvas go ahead and have Marshall build everything out and give it everything it needs to be
+100% successful." So Marshall builds chunk 12 (the server and the database) and chunk 13 (the screens and the
+play-test), each as a chunk (CLAUDE.md's routine), through to the 0.6.0 release on the owner's go-ahead. `next` is at
+`e0721fb` (chunk 11 done, pushed); `main` is 0.5.6 (`3a0e8ce`). Chase is on the same canvas (the terminal "Chase") if a
+question about chunks 10 and 11 comes up.
+
+**Read first, in this order:** `AGENTS.md`, `CLAUDE.md`, PLAN.md's "Next step", chunk 10's and chunk 11's briefs and
+their "For chunk 12" and "For chunk 13" lists (the work the earlier chunks left on purpose), the whole of
+`docs/agent/design/SHARED-SHOPS.md` (§5 and §6 for chunk 12, §7 and §8 for chunk 13, §9 the tests, §11 the costs, §13
+the owner's steps), ADR-0043, ADR-0045 and ADR-0046, `docs/agent/design/ONLINE-STAGE1.md` and ARCHITECTURE.md's
+"Online" runbook (how chunk 8 set up and changes the Supabase project), `docs/agent/TRUST_BOUNDARY.md`, then the rest of
+this file (the practical knowledge, "Learned in chunk 11" last).
+
+**The owner's gates.** Ask once per round with AskUserQuestion (recommended option first), record the answers verbatim
+in a new ADR (ADR-0047 onward), and wait for each yes in the session that needs it:
+1. *Chunk 12, before anything live:* (a) a yes to apply the new migration to the live project, after the local
+   database check passes (`scripts/online-db-local/run.sh`); (b) a yes to deploy the real server (sign-in and the
+   database) to `aquarium-go-shops` from `next` for chunk 12's live smoke and chunk 13's play-test. ADR-0046 covered
+   only chunk 10's prototype with stub shops and no key; switch the service to `main` at the 0.6.0 release, with that
+   release's go-ahead; (c) the owner's one dashboard visit, walked through step by step (SHARED-SHOPS.md §5.8): in
+   Supabase (Project settings › API keys) a new secret key just for this server, pasted into the Render service's
+   environment as `SUPABASE_SECRET_KEY`, and chunk 10's test variables deleted (`SHOPS_REPLAY`, `ALLOWED_ORIGINS`,
+   `SHOPS_BYTE_BUDGET`, `SHOPS_MAX_CONNECTIONS`, unless the new server reads one on purpose). The Render CLI changes the
+   branch and the build command (`render services update srv-dbbt6gbncjis73c23br0 --build-command '…'`) but not the
+   environment. The build command removes the key from the build (`env -u SUPABASE_SECRET_KEY sh -c '…'`, §5.8); check
+   the build's log for the name. (d) OWNER_QUESTIONS K1 (big shops on the free server) with chunk 12's own numbers.
+2. *Chunk 13, first:* OWNER_QUESTIONS group L, the words SHARED-SHOPS.md §8 lists as "Words still to approve" (drafts
+   there and in `conflictText`, `src/sim/commands/shared.ts`), in one round before building the screens.
+3. *Chunk 13, at the end:* the play-test with the owner and their daughter on the live server (she signs up with the
+   club's invite link; a parent signs up for a player under 13, ADR-0039 decision 4), then the 0.6.0 release, only on
+   the owner's go-ahead in that session: `main` first, the server deployed by hand from `main` after (§5.1), both
+   `version.json` files checked.
+
+**The owner's standing rules** (verbatim where quoted):
+- "anything that's going to cost anything extra needs to be run by me first"; "lets make everything free if we can for
+  now please". Render's free web service and Supabase's free project only; nothing paid without a yes.
+- Never push `main` or deploy players' builds without the owner's yes in the session; never force-push or rewrite
+  pushed history; push from the internal-disk clone (`git push origin "${N}:refs/heads/next"`).
+- Supabase: scope every remote command `--linked --project-ref zkavcxrsxdgdlstravpj`; never print or save the secret
+  key; never read the CLI's stored sign-in; the agent never sees the server's key (the owner pastes it into Render), and
+  it never enters the repo. Never write invite codes or players' emails in the repo (it is public).
+- Reviewers (the chunk's fresh reviewer and its confirmation passes) run on Opus 5.5 at max effort (the Agent tool:
+  `model: "opus"`, `effort: "max"`), never Fable.
+- No new dependencies without asking (`ws` 8.22.0 is approved, server only, no `@types/ws`). Never weaken, skip or delete
+  a test; don't change permission settings, hooks or push guards; don't end a turn while tests or a reviewer you started
+  are still running; never count a test that didn't run.
+
 ## The order of work
 
 1. **Released** (0.5.5, 2026-10-19; PLAN.md "Releases").
@@ -220,3 +269,34 @@ in commands (the owner dislikes approving command after command). Report a test 
 - *zsh doesn't split words:* `for c in "big_facility 1"; do cmd $c; done` passes one argument; use `${=c}`.
 - *A test's own browser contexts:* close them in an `afterEach`; left open in WebKit they slowed the specs after them
   until those timed out, which looked like a flake in someone else's spec.
+
+**Learned in chunk 11.**
+- *A new player action is a new command:* its kind in `src/sim/commands/kinds.ts`, its call in `apply.ts`, its fields in
+  `validate.ts`'s `SCHEMA` (TypeScript checks every field has one), and a case in `tests/sim/commands-catalogue.test.ts`
+  whose sample changes the game (or is a pinned refusal the wrong mapping would turn into a change). If it buys,
+  sells, moves or takes, it gets an expectation in `shared.ts` (`staleOf`, `touchesOf`, `markOf`); a setting gets a
+  `settingKey`; a new guide flag on an action goes in `ACTION_FLAGS`. The interface sends it with `act(cmd, opts)` and
+  reads the result in `opts.after`, never from the return.
+- *What chunk 13's shared dispatcher has to do:* `useGame.getState().installDispatch(fn)` while a shop is open, put
+  the solo one (`soloDispatch`, `src/game/dispatch.ts`) back after. Send the command with its id; when the step with
+  that `{by, id}` arrives and the replica has applied it, call `done` with that command's result (`runSharedStep`
+  returns the results in `cmds` order); a rejected or lost command settles as not applied. Coalesce sliders
+  (§4.2). The "seen" marks have one home, `src/ui/common/marks.ts`: keep them per player there. Others' feeds and taps
+  should draw from applied commands (today the sender's `after` draws them). Today's 640-pixel listing photo is
+  larger than a command may be (48 KB): shrink it first (§4.4), and `validateCommand`'s photo field and `repairState`
+  gain the `p:<hash>` reference in chunk 12.
+- *Mutants find the tests that can't fail.* The review swapped one mapping at a time in a copy of a module
+  (`scripts/_audit/review-chunk11/mut/`: `make-mutant.mjs`, `vitest.mut.config.ts`, `confirm.mjs`;
+  `scripts/_audit/chunk11/mut/run.sh` is the author's). A sample that changes nothing can't tell a right mapping from
+  a wrong one.
+- *Syncing to the test clone:* `~/LocalTest/AquariumGo/scripts/_audit/sync-from-dev.sh` copies the Dev repo's sources
+  into the clone (no git there). **Never while an e2e pass runs in the clone:** its Vite server serves `src` live,
+  so later specs test the new files and the pass no longer tests its commit (a pass on `2202c45` had to be thrown
+  away). Check the clone out at the commit for a counted pass: `git checkout -q -- . && git clean -q -fd src server
+  tests docs && git fetch -q dev next && git checkout -q --detach FETCH_HEAD`.
+- *The reviewer can work during a pass* if its commands run with `nice -n 19`, vitest with `--maxWorkers=1`, and no
+  browsers or builds: the e2e pass stayed 319 of 319 while it probed.
+- *First one wins needs a mark:* a member's own earlier change is excused only while the thing is as their command left
+  it (each touch keeps one); otherwise the game's own later change would be overridden. Offers and the last stored
+  piece have no mark on purpose.
+
