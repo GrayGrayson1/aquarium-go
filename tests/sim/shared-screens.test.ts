@@ -104,6 +104,9 @@ describe('chunk 13: the words (§8, ADR-0045, ADR-0048)', () => {
       gone: /^CalliClub has no shared shop any more\.$/,
     };
     for (const [why, re] of Object.entries(expected)) expect(closingText(why as ClosingReason, o)).toMatch(re);
+    // ADR-0049
+    expect(closingText('signedOut', o)).toBe('You need to be signed in to play the shared shop. Sign in from Social and open it again.');
+    expect(SHARED_WORDS.notAllowed('')).toBe('Only the owner and the people they choose can pause or change the speed.');
     expect(reopenDate('2026-11-01')).toMatch(/1/);
     expect(reopenDate(undefined)).toBe('the 1st');
   });

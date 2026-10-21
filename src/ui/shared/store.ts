@@ -21,7 +21,8 @@ export type SharedPhase = 'idle' | 'saving' | 'waking' | 'joining' | 'open' | 'r
 export const onScreen = (p: SharedPhase): boolean => p === 'open' || p === 'reconnecting' || p === 'rejoining';
 
 export interface SharedClosing {
-  why: ClosingReason;
+  /** The server's reason (§8), or `signedOut`: this player's sign-in couldn't be had (ADR-0049). */
+  why: ClosingReason | 'signedOut';
   until?: string;
   savedAt?: number;
 }

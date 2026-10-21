@@ -1,6 +1,6 @@
 /**
  * chunk 13 — shared shops' words, exactly as the owner approved them (SHARED-SHOPS.md §8: ADR-0045 decisions 10 and 15,
- * ADR-0048 for group L). Any other player-visible words go to the owner first. The first-one-wins lines are the
+ * ADR-0048 for group L, ADR-0049 for two more). Any other player-visible words go to the owner first. The first-one-wins lines are the
  * catalogue's (`conflictText`, src/sim/commands/shared.ts). OWNER: lane "social".
  */
 import type { ClosingReason } from '@/types/shared';
@@ -29,7 +29,8 @@ export const SHARED_WORDS = {
   // inside
   strip: (shop: string, names: string[]) => `Shared · ${shop} · Here: ${names.join(', ')}`,
   back: 'Back to my aquarium',
-  notAllowed: (owner: string) => `Only ${owner} and the people they choose can pause or change the speed.`,
+  /** ADR-0049: "the owner" when the game doesn't know the owner's name. */
+  notAllowed: (owner: string) => `Only ${owner.trim() || 'the owner'} and the people they choose can pause or change the speed.`,
   canPause: 'Can pause and change speed',
   paused: (name: string) => `${name} paused the shop.`,
   speed: (name: string, speed: number) => `${name} set the speed to ${speed}×.`,
@@ -47,9 +48,14 @@ export const SHARED_WORDS = {
   reload: 'Reload',
 } as const;
 
+/** Why a visit ended: the server's closings (§8), or this player's sign-in (ADR-0049). */
+export type VisitEnd = ClosingReason | 'signedOut';
+
 /** What a `closing` says (§8), with the day shops open again, the last save and the club filled in. */
-export function closingText(why: ClosingReason, o: { club: string; until?: string; savedAt?: number; now?: number }): string {
+export function closingText(why: VisitEnd, o: { club: string; until?: string; savedAt?: number; now?: number }): string {
   switch (why) {
+    case 'signedOut':
+      return 'You need to be signed in to play the shared shop. Sign in from Social and open it again.';
     case 'cap':
       return `Shared shops have used this month’s free data (2 GB). They open again on ${reopenDate(o.until)}.`;
     case 'hours':
@@ -76,7 +82,7 @@ export function closingText(why: ClosingReason, o: { club: string; until?: strin
 }
 
 /** The closings that offer Reload (§8). */
-export const RELOAD_CLOSINGS: ReadonlySet<ClosingReason> = new Set(['build', 'outofstep']);
+export const RELOAD_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['build', 'outofstep']);
 
 /** "1 November" from `YYYY-MM-DD` (the server's day, UTC). */
 export function reopenDate(until: string | undefined): string {

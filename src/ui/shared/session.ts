@@ -235,7 +235,7 @@ export async function openSharedShop(club: { id: string; name: string }, opts: O
       reject: (id, why) => v.disp.reject(id, why),
       members: (members) => patchShared({ members }),
       closing: (m) => void closed(m),
-      signedOut: () => void leaveSharedShop(),
+      signedOut: () => void leaveSharedShop({ closing: { why: 'signedOut' } }),
       photo: photoArrived,
       notice: (n) => patchShared({ notice: n }),
       stillHere: (on) => patchShared({ stillHere: on }),
