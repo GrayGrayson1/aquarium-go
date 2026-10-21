@@ -205,10 +205,14 @@ try {
     check('the photo is stored once in the database', (await until(() => Number(admin(`select count(*) as n from public.shared_photos where club_id = ${lit(club)} and hash = ${lit(hash)}`)[0]?.n) === 1, 15_000)));
 
     // 5. tokens: a wrong one is refused; a refreshed one for the same player keeps the connection
+    const before = ((await stats()) as unknown as { connections: number }).connections;
     const bad = connect('not-a-token', club);
-    // through Render's proxy the server's close frame doesn't arrive: the `bye` message says why
+    // through Render's proxy the server's close frame doesn't arrive (and the proxy keeps the browser's end open about
+    // 20 seconds): the `bye` message says why, and the browser closes the socket itself
     check('a wrong token is refused (bye: sign-in)', await until(() => bad.texts.some((m) => m.t === 'bye' && m.why === 'sign-in'), 15_000), JSON.stringify(bad.texts));
-    check('…and its socket ends within a few seconds', await until(() => bad.closed !== null, 10_000), JSON.stringify(bad.closed));
+    let after = -1;
+    check('…and the server drops it within a few seconds', await until(() => (void stats().then((st) => (after = (st as unknown as { connections: number }).connections)), after >= 0 && after <= before), 10_000), `${before} → ${after}`);
+    bad.ws.close();
     c.ws.send(JSON.stringify({ t: 'token', token }));
     await sleep(1500);
     check('a refreshed token for the same player keeps the connection', c.closed === null);
