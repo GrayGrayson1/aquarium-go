@@ -80,7 +80,7 @@ in a new ADR (ADR-0047 onward), and wait for each yes in the session that needs 
    the name. (d) OWNER_QUESTIONS K1 (big shops on the free server) with chunk 12's own numbers. **Asked 2026-10-21
    (ADR-0047):** (a) yes once the local check passes, (b) yes once the server's tests pass, and the server password
    instead of a Supabase key; (c) and (d) are still to come.
-2. *Chunk 13, first:* OWNER_QUESTIONS group L, the words SHARED-SHOPS.md §8 lists as "Words still to approve" (drafts
+2. *Chunk 13, first:* **answered 2026-10-21 (ADR-0048, every line approved as drafted).** OWNER_QUESTIONS group L, the words SHARED-SHOPS.md §8 lists as "Words still to approve" (drafts
    there and in `conflictText`, `src/sim/commands/shared.ts`), in one round before building the screens.
 3. *Chunk 13, at the end:* the play-test with the owner and their daughter on the live server (she signs up with the
    club's invite link; a parent signs up for a player under 13, ADR-0039 decision 4), then the 0.6.0 release, only on

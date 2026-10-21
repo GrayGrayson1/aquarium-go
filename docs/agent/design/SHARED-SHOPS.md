@@ -620,9 +620,10 @@ in from the game.
 
 Any other player-visible words a chunk needs go to the owner first.
 
-**Words still to approve** (chunk 11's exact list; chunk 13 asks the owner in one round before building the screens,
-and nothing shows them before then). The first-one-wins lines are the catalogue's (`conflictText` in
-`src/sim/commands/shared.ts`, drafts there): what the earlier member did, and to what.
+**Group L's words, approved as drafted** (2026-10-21, ADR-0048: chunk 11's list and chunk 12's `gone`). The
+first-one-wins lines are the catalogue's (`conflictText` in `src/sim/commands/shared.ts`): what the earlier member did,
+and to what. The hold lines name the system in lower case (water changes, salt mixing, live food, autofeeders,
+production lines).
 
 | Where | Draft words |
 |---|---|
