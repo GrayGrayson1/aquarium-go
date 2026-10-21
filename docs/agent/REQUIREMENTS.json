@@ -5975,15 +5975,16 @@
         "tests/sim/core-mutation-boundary.test.ts",
         "tests/sim/shared-lockstep.test.ts",
         "tests/sim/ui-mutate-atomic.test.ts",
-        "tests/sim/guide-feedback.test.ts"
+        "tests/sim/guide-feedback.test.ts",
+        "tests/sim/shared-rule10.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §4",
         "SHARED-SHOPS.md §3.2"
       ],
-      "note": "Chunk 11 (03b3f4b): the catalogue (80 kinds), the solo dispatcher, the act helpers and every call site, who did it and first one wins, rule 10, catchUp.ts and starvation.ts. GREEN once the full pass and the fresh review are done."
+      "note": "Chunk 11 (03b3f4b, f77d7f4, 2202c45, e692066): the catalogue (80 kinds), the solo dispatcher, the act helpers and every call site, who did it and first one wins (with each touch's mark, purchases by id, the last stored piece), rule 10, catchUp.ts and starvation.ts. The fresh review's 4 blockers and its confirmation's notes fixed; 45 mutants of the review and 20 of the author's caught (one equivalent). Final pass on e692066: unit 3,037, e2e 319 of 319."
     },
     {
       "id": "SHARE-002",

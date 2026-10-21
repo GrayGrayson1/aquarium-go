@@ -22,14 +22,17 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    browsers round `Math.exp` and the like differently); the owner's answers, the screens' words included, are ADR-0043
    and ADR-0045. The design was reviewed (Opus, max effort) and revised. **Chunk 10, the test, is done** (2026-10-20,
    below): the lockstep holds in Node, Chromium and WebKit and on Render's x86-64 free instance, which keeps small
-   shops at 10× but not a late-game one (SHARED-SHOPS.md §11). Next: chunk 11, commands (§4). The audit's other
-   findings (B-207, B-208) wait for the owner.
+   shops at 10× but not a late-game one (SHARED-SHOPS.md §11). **Chunk 11, commands, is done** (2026-10-20, below):
+   every player action is a command the server can pass on, and the solo game is unchanged. Next: chunk 12, the server
+   and the database (§5, §6; the owner's yes for the migration and one Render dashboard visit), then chunk 13 (ask
+   OWNER_QUESTIONS L's words first). The audit's other findings (B-207, B-208) wait for the owner.
 4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
 5. Every owner question is answered (ADR-0024 to ADR-0046) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
-   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005); and K1, not yet asked (big shared
-   shops on the free server, for chunk 12 or 13). NOTIFY-011 and PLAT-004 (the
+   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005); K1, not yet asked (big shared
+   shops on the free server, for chunk 12 or 13); and L, not yet asked (the words chunk 13 needs, drafted from chunk
+   11). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
 
@@ -48,11 +51,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
 | 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (not released; nothing players see). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
-| 11 | Shared shops, commands (§4, §3.2) | Planned: every player action a serializable command, no player-visible change (one arithmetic moved to chunk 10) |
+| 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (not released; nothing players see). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
 | 12 | Shared shops, the server and the database (§5, §6) | Planned: `server/` on a free Render web service, the migration (live with the owner's yes) |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Planned: the owner's words, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
 
-**Last full test runs:** chunk 10's final commit `e0f14de`, the owner's Mac, 2026-10-20, from the internal-disk clone
+**Last full test runs:** chunk 11's final commit `e692066`, the owner's Mac, 2026-10-20, from the internal-disk clone
+under `caffeinate -i -s`: typecheck passed; unit 243 files, 3,037 tests passed; build passed; e2e 319 of 319 in
+Chromium and WebKit, dev and both production builds (36.7 minutes). Before it: `03b3f4b` the same four green (unit
+2,998, e2e 319 of 319, 37.1 minutes); a pass on `2202c45` was stopped part-way (its unit 3,028 and build green) when
+files were copied into the clone during its e2e, and isn't counted.
+Before chunk 11: chunk 10's final commit `e0f14de`, the owner's Mac, 2026-10-20, from the internal-disk clone
 under `caffeinate -i -s`: typecheck passed; unit 239 files, 2,891 tests passed; build passed; e2e 319 of 319 in Chromium
 and WebKit, dev and both production builds (37.2 minutes). Before it: `01e854c` 316 of 317 and `51eb240` 318 of 319
 (both a WebKit `social.spec` timeout caused by `shared-lockstep.spec`'s open contexts, then fixed), `1d1f7ed` 316 of
@@ -811,7 +819,7 @@ REL-012, REL-018.
   still needed (chunk 11 writes the exact list). The play-test needs an account for the owner's daughter (her own
   sign-up with the club's invite link; a parent signs up for a player under 13, §13).
 
-### 11. Shared shops, commands (SHARED-SHOPS.md §4, §3.2) — started 2026-10-20 (Chase)
+### 11. Shared shops, commands (SHARED-SHOPS.md §4, §3.2) — done 2026-10-20 (Chase)
 
 - **What:** every player action becomes a command, with no player-visible change; the solo game must behave exactly as
   before, and the full test pass guards it. The chunk starts at `a3a177d`.
@@ -853,7 +861,8 @@ REL-012, REL-018.
   `commands-shared`, `commands-dispatch`, the lockstep runs with conflicts from three members and a joiner (the room
   counts them: `stats.conflicts`); `ui-mutate-atomic` and `guide-feedback` rewritten on purpose for commands. No seeded
   test shifted.
-- **The full pass on `03b3f4b`:** typecheck, unit 2,998 of 2,998 (242 files), build, e2e 319 of 319 (37.1 minutes).
+- **The full passes:** `03b3f4b`: typecheck, unit 2,998 of 2,998 (242 files), build, e2e 319 of 319 (37.1 minutes).
+  The final, on `e692066`: typecheck, unit 3,037 of 3,037 (243 files), build, e2e 319 of 319 (36.7 minutes).
 - **The fresh review** (Opus 5.5, max effort) on `a3a177d..03b3f4b`, with probes and mutants
   (`scripts/_audit/review-chunk11/` in the internal-disk clone): four blockers, all fixed.
   - **B1:** `raiseFlag`'s own field was `flag`, the guide flag every command carries, so the dispatcher raised it
