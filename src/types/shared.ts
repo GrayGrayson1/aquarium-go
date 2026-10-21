@@ -101,8 +101,10 @@ export interface ClosingMessage {
 }
 
 export type ServerMessage =
-  | { t: 'welcome'; you: SharedYou; shop: { club: string; name: string }; members: SharedMember[]; n: number; full: string[]; catchUp?: OfflineSummary }
-  | { t: 'steps'; s: SharedStep[] }
+  /** chunk 13: `shop.owner`, the owner's name (the approved "Only {owner} and the people they choose…"). */
+  | { t: 'welcome'; you: SharedYou; shop: { club: string; name: string; owner?: string }; members: SharedMember[]; n: number; full: string[]; catchUp?: OfflineSummary }
+  /** chunk 13: `at`, the server's clock (real ms) when it sent them, so a browser can tell it has fallen behind (§7.6). */
+  | { t: 'steps'; s: SharedStep[]; at?: number }
   | { t: 'reject'; id: number; why: RejectReason }
   | { t: 'members'; members: SharedMember[] }
   | ClosingMessage

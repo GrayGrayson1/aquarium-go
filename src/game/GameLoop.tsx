@@ -26,6 +26,7 @@ import { mutateFast } from './fastMutate';
 import { catchUpAfterHidden } from '@/persistence/offline';
 import { checkStarvation, starvationSlowdownText } from './starvationGuard';
 import { checkSimFault, noteTickFailed, noteTickOk, simStopped } from './simHealth';
+import { inSharedShop } from '@/state/sharedMode';
 
 export const TICK_MS = 250;
 /** Real milliseconds of sim work allowed per tick before carrying the rest over. */
@@ -83,6 +84,7 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
   const ui = useUI.getState();
   if (ui.screen !== 'game' && !game.isShowcase) return 0;
   if (game.clock.speed === 0) return 0;
+  if (inSharedShop()) return 0; // chunk 13 (§7.3): the server's steps move a shared shop (src/game/sharedLoop.ts), never this loop
   if (simStopped()) return 0; // a step kept failing: the banner is up (B-002)
   const want = Math.max(0, realDtSeconds) * GAME_HOURS_PER_REAL_SECOND * game.clock.speed + backlogHours;
   const opts: AdvanceOptions = { focusTankId: ui.view === 'tank' ? ui.focusedTankId : null };

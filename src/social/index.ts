@@ -12,10 +12,10 @@ import type { PlayerStanding } from './standing';
 
 export * from './service';
 export { playerStanding, type PlayerStanding } from './standing';
-export { createLocalSocialStub, SOCIAL_STORAGE_KEY, SOCIAL_CLOUD_KEY, friendCodeFor, initialsOf, inviteWordOf, CLUB_COLORS, readStored, type LocalSocialStub, type StoredSocial, type StoredCloud } from './localStub';
+export { createLocalSocialStub, STUB_SHOP_SERVER, stubTokenFor, stubPlayerId, SOCIAL_STORAGE_KEY, SOCIAL_CLOUD_KEY, friendCodeFor, initialsOf, inviteWordOf, CLUB_COLORS, readStored, type LocalSocialStub, type StoredSocial, type StoredCloud } from './localStub';
 export { VALID_INVITE, HIGHLAND_ID, CLUB_SHOW_ENTRIES } from './data';
 export { encodeSaveBody, decodeSaveBody, canCompress, MAX_CLOUD_BODY } from './codec';
-export { ONLINE_PROJECT, type OnlineProject } from './project';
+export { ONLINE_PROJECT, SHARED_SHOP_SERVER, type OnlineProject } from './project';
 export { createSupabaseSocialService, AUTH_STORAGE_KEY, type SupabaseLike, type SupabaseServiceOptions } from './supabase/service';
 
 let current: SocialService | null = null;

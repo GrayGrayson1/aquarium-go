@@ -6,12 +6,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { create } from 'zustand';
 import { useGame } from '@/state/game';
+import { isSharedShop } from '@/persistence';
 import { isSocialError, playerStanding, setStandingSource, socialService, type SocialNews, type SocialUser } from '@/social';
 
 // the stub's "me" row reads the aquarium on screen (a showcase has no player to rank)
 setStandingSource(() => {
   const g = useGame.getState().game;
-  if (!g || g.isShowcase) return null;
+  if (!g || g.isShowcase || isSharedShop(g)) return null; // chunk 13: a shared shop isn't on the leaderboards (ADR-0045 decision 12)
   try {
     return playerStanding(g);
   } catch {

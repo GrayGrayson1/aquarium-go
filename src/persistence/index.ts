@@ -71,6 +71,7 @@ export {
   type SimulateOfflineOptions,
 } from './offline';
 export { exportSaveText, exportFileName, downloadSave, importSaveText, importSaveFile, type ImportResult } from './transfer';
+export { isSharedShop, markSharedAway, sharedAwayHeartbeat, readSharedAway, clearSharedAway, takeSharedAwayMs, SHARED_SAVE_REFUSED, SHARED_SAVE_PREFIX, SHARED_AWAY_KEY, type SharedAway } from './sharedAway'; // chunk 13
 export { migrateSave, repairState, validateSaveShape, detectVersion, MIGRATIONS, type Migration, type MigrateResult } from './migrations';
 export { serializeState, encodeRecord, decodeRecord, makeMeta, cyrb53, MAX_INLINE_DATA_URL, SAVE_FORMAT, SAVE_BUDGET_CHARS } from './serialize';
 export { stateHash, canonicalState } from './hash';

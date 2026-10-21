@@ -25,7 +25,7 @@ import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { SCHEMA_VERSION, exportSaveText, importSaveText, isStaleGame, resumeState, saveCurrentGame, stateForSaving } from '@/persistence';
+import { SCHEMA_VERSION, exportSaveText, importSaveText, isSharedShop, isStaleGame, resumeState, saveCurrentGame, stateForSaving } from '@/persistence';
 import { autosaveAllowed, leaveSaveDue } from '@/game/useAutosave';
 import { currentStanding, decodeSaveBody, encodeSaveBody, isSocialError, MAX_CLOUD_BODY, socialService, type CloudSaveMeta, type StandingReport } from '@/social';
 import { loadSocialUser, refreshSocialNews, useSocial } from '../panels/social/socialStore';
@@ -172,6 +172,7 @@ const user = () => useSocial.getState().user ?? null;
 function syncableGame(): GameState | null {
   const g = useGame.getState().game;
   if (!g || g.isShowcase || useUI.getState().screen !== 'game' || isStaleGame(g.saveId)) return null;
+  if (isSharedShop(g)) return null; // chunk 13 (SHARE-011): a shared shop is never anyone's online save
   // autosave off in Settings still lets a manual save go online; a fixture or a showcase never does
   if (!autosaveAllowed() && useSettings.getState().autosave) return null;
   return g;
@@ -375,6 +376,7 @@ function scheduleSend(): void {
 
 /** The player's numbers, and a new picture when one is due (after a successful send). */
 async function report(g: GameState): Promise<void> {
+  if (isSharedShop(g) || isSharedShop(useGame.getState().game)) return; // chunk 13 (SHARE-011): not on the leaderboards
   const st = currentStanding();
   if (!st) return;
   const r: StandingReport = { shopName: st.name, gallons: st.gallons ?? 0, collectionValue: st.collection_value, prismatics: st.prismatics, showWins: st.show_wins };
@@ -396,6 +398,7 @@ async function report(g: GameState): Promise<void> {
 export async function keepDeviceCopy(): Promise<void> {
   const p = useCloud.getState().prompt;
   if (!p || useCloud.getState().choosing) return;
+  if (isSharedShop(useGame.getState().game)) return; // chunk 13 (SHARE-011)
   useCloud.setState({ choosing: true });
   expected = p.online.revision;
   inStep = true;
@@ -422,6 +425,7 @@ export async function loadOnlineCopy(): Promise<boolean> {
   const p = useCloud.getState().prompt;
   const u = user();
   if (!p || !u || useCloud.getState().choosing) return false;
+  if (isSharedShop(useGame.getState().game)) return false; // chunk 13 (SHARE-011): loads nothing over a shared shop
   useCloud.setState({ choosing: true });
   try {
     const got = await socialService().cloudDownload(u.id);

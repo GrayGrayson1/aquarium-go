@@ -217,6 +217,13 @@ export interface SocialService {
   /** chunk 12 — this month's data and awake hours (the owner only: `forbidden` for anyone else). */
   sharedUsage(): Promise<SharedUsage>;
   /**
+   * chunk 13 (SHARED-SHOPS.md §5.3) — the signed-in player's access token, which the shared-shop server checks with
+   * Supabase (null: signed out); `refresh` asks for a new one first. The local stub's is `stub:<id>:<name>`.
+   */
+  accessToken?(opts?: { refresh?: boolean }): Promise<string | null>;
+  /** chunk 13 — call `cb` with each new access token (Supabase refreshes it hourly). Returns the unsubscribe. */
+  onAccessToken?(cb: (token: string) => void): () => void;
+  /**
    * chunk 9 (B2) — call `cb` with the account now signed in on this device (null: none) when that may have changed
    * outside this tab's own calls, as when another tab signs out or in. Returns the unsubscribe.
    */

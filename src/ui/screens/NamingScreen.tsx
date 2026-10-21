@@ -11,6 +11,8 @@ import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { sfx } from '@/audio/sfx';
 import { useOnboarding } from './onboarding';
+import { openSharedShop } from '../shared/session'; // chunk 13
+import { SHARED_WORDS } from '../shared/words';
 import { Portrait } from '../common/Portrait';
 import { personalityLabel, sexRoleText } from '../common/format';
 import { aOrAn } from '@/sim/economy/util'; // lane:qa-play
@@ -62,7 +64,7 @@ function warmLine(name: string, speciesId: string, personality: string[], morph:
 }
 
 export function NamingScreen() {
-  const { starterId, previews, seed, name, shopName, set } = useOnboarding();
+  const { starterId, previews, seed, name, shopName, set, shared } = useOnboarding();
   const inputRef = useRef<HTMLInputElement>(null);
   const [starting, setStarting] = useState(false);
   const mobile = useIsMobile();
@@ -83,6 +85,14 @@ export function NamingScreen() {
     if (starting) return;
     setStarting(true);
     sfx('celebrate');
+    if (shared) {
+      // chunk 13 (SHARED-SHOPS.md §8 "Creating"): the server makes the shop from these choices; the seed makes its
+      // starter the one previewed here
+      const shop = (shopName.trim() || shared.name).slice(0, 60);
+      await openSharedShop(shared, { from: 'game', saved: true, shopName: shop, create: { kind: 'create', name: shop, starter: starterId, starterName: finalName, seed } });
+      setStarting(false);
+      return;
+    }
     const g = safe(
       'newGame',
       () => newGame({ starterId, starterName: finalName, shopName: shopName.trim() || undefined, seed, starterCreature: preview }),
@@ -129,7 +139,7 @@ export function NamingScreen() {
         <div className="ag-naming__hero">
           <Portrait subject={preview ?? { speciesId: starterId }} shape="circle" className="ag-naming__art" size={256} />
           <div className="ag-grow">
-            <div className="ag-overline">{sp.starterIdentity}</div>
+            <div className="ag-overline">{shared ? SHARED_WORDS.newShop : sp.starterIdentity}</div>
             <h1 className="ag-naming__title">
               Name your <em>{sp.commonName.toLowerCase()}</em>
             </h1>
@@ -179,7 +189,7 @@ export function NamingScreen() {
                 <Store size={12} aria-hidden style={{ verticalAlign: '-2px' }} /> Your aquarium’s name
               </>
             }
-            placeholder="My Aquarium"
+            placeholder={shared ? shared.name : 'My Aquarium'}
             value={shopName}
             maxLength={32}
             autoComplete="off"

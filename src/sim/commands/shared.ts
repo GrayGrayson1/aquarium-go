@@ -322,8 +322,8 @@ function prune(state: GameState, at: number): void {
 }
 
 /**
- * The refusal's words. DRAFT, for the owner (SHARED-SHOPS.md §8 lists them): §8 approves "{name} already sold that
- * fish." and the pattern ("moved that fish", "bought that offer"); the rest are the agent's, unshown until chunk 13.
+ * The refusal's words, approved (ADR-0048; SHARED-SHOPS.md §8): "{name} already sold that fish." and the rest of the
+ * pattern, and "That fish has changed since you looked." when nobody is named.
  */
 export function conflictText(name: string | undefined, verb: string | undefined, noun: Noun): string {
   if (name && verb) return verb === 'let go' ? `${name} already let that keeper go.` : `${name} already ${verb} that ${noun}.`;

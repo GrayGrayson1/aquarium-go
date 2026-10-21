@@ -19,6 +19,8 @@ import { useSheet } from '../common/PanelLayout';
 import { livingInTank } from '../common/derive';
 import { ARCHETYPE_LABEL, LISTING_KIND_LABEL, untilTime, relTime, plural, realIn, realAgo, speedNote, nameList } from '../common/format';
 import { FragListingVisual } from './FragListing'; // lane:frags
+import { PHOTO_REF } from '@/types/shared'; // chunk 13
+import { useSharedPhoto } from '@/ui/shared/photos';
 
 export function ListingsTab({ g, focusId, onCreate }: { g: GameState; focusId: string | null; onCreate: () => void }) {
   const active = g.market.listings.filter((l) => l.status === 'active').sort((a, b) => openBids(b) - openBids(a) || a.endsHour - b.endsHour);
@@ -96,10 +98,18 @@ function interestWord(v: number): string {
   return 'Quiet';
 }
 
+/** chunk 13 (§4.4): a shared shop's stored photo, drawn from the picture fetched over the connection (until then, a frame). */
+function SharedListingPhoto({ l, size }: { l: Listing; size: number }) {
+  const url = useSharedPhoto(l.snapshot.photo);
+  if (!url) return <span className="pn-listing__thumb pn-listing__thumb--empty" style={{ width: size * 1.4, height: size }} data-testid="listing-photo-waiting"><Tag size={22} /></span>;
+  return <img className="pn-listing__photo" src={url} alt={`Photo of ${l.title}`} style={{ width: size * 1.4, height: size }} data-testid="listing-photo-shared" />;
+}
+
 function ListingVisual({ g, l, size = 92 }: { g: GameState; l: Listing; size?: number }) {
   // chunk 12 (SHARED-SHOPS.md §4.4): only an embedded image goes in <img src>, never a shared shop's stored-photo
   // reference (`p:` and its hash), which chunk 13 draws from a picture it fetched itself
   if (l.snapshot.photo?.startsWith('data:image/')) return <img className="pn-listing__photo" src={l.snapshot.photo} alt={`Photo of ${l.title}`} style={{ width: size * 1.4, height: size }} />;
+  if (l.snapshot.photo && PHOTO_REF.test(l.snapshot.photo)) return <SharedListingPhoto l={l} size={size} />;
   if (l.kind === 'frag' && l.fragItems?.length) return <FragListingVisual l={l} size={size} />; // lane:frags
   if (l.kind === 'tank' && l.tankId && g.tanks[l.tankId]) {
     return (

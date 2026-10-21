@@ -22,7 +22,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { useTankCardTab } from '../cards/TankCard';
 import { EventIcon } from './eventIcons';
 import { Chip, IconButton, formatMoney } from '../kit';
-import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, gearFitItems } from '../common/notify'; // lane:notify
+import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, eventLine, gearFitItems } from '../common/notify'; // lane:notify
 import { mark } from '../common/marks';
 import { Button } from '../kit';
 import { go } from '../nav/router'; // lane:notify (chunk 3)
@@ -359,7 +359,7 @@ export function AlertsPopover() {
               <li key={e.id} className={clsx('ag-event', `ag-event--${e.kind}`, !e.read && 'is-unread')} data-testid="alerts-event">
                 <EventIcon kind={e.kind} />
                 <div className="ag-grow">
-                  <div className="ag-event__text">{e.text}</div>
+                  <div className="ag-event__text">{eventLine(e)}</div>
                   <div className="ag-event__meta">
                     {agoText(e.hour, game.clock.hour)}
                     {e.tankId && game.tanks[e.tankId] && (

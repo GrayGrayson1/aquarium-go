@@ -51,11 +51,13 @@ export interface SupabaseErrorLike {
 export interface SupabaseLike {
   auth: {
     getSession(): Promise<{ data: { session: unknown | null }; error: SupabaseErrorLike | null }>;
+    /** chunk 13: a new access token now (the shared-shop server refused the one it had). */
+    refreshSession?(): Promise<{ data: { session: unknown | null }; error: SupabaseErrorLike | null }>;
     signInWithPassword(c: { email: string; password: string }): Promise<{ data: unknown; error: SupabaseErrorLike | null }>;
     signUp(c: { email: string; password: string; options: { data: Record<string, unknown> } }): Promise<{ data: { session: unknown | null } | null; error: SupabaseErrorLike | null }>;
     signOut(o: { scope: 'local' }): Promise<{ error: SupabaseErrorLike | null }>;
     /** chunk 9 (B2): supabase-js's auth events, which reach every tab of the site. */
-    onAuthStateChange?(cb: (event: string, session: { user?: { id?: unknown } } | null) => void): { data: { subscription: { unsubscribe(): void } } };
+    onAuthStateChange?(cb: (event: string, session: { user?: { id?: unknown }; access_token?: unknown } | null) => void): { data: { subscription: { unsubscribe(): void } } };
   };
   rpc(fn: string, args?: Record<string, unknown>): PromiseLike<{ data: unknown; error: SupabaseErrorLike | null; status?: number }>;
 }
@@ -150,6 +152,9 @@ export function toMeta(v: unknown): CloudSaveMeta | null {
   return { revision: num(v.revision), saveId: str(v.save_id), schemaVersion: num(v.schema_version), savedAt: num(v.saved_at), hour: num(v.hour), shopName: str(v.shop_name), day: num(v.day), money: num(v.money) };
 }
 
+/** chunk 13 — a session's access token, or null. */
+const accessTokenOf = (session: unknown): string | null => (isObj(session) && typeof session.access_token === 'string' && session.access_token ? session.access_token : null);
+
 const toRow = (v: unknown): LeaderboardRow | null => (isObj(v) ? { rank: num(v.rank), name: str(v.name), value: num(v.value), ...(v.me === true ? { me: true } : {}) } : null);
 
 export function createSupabaseSocialService(project: OnlineProject, opts: SupabaseServiceOptions = {}): SocialService {
@@ -158,6 +163,8 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
   // chunk 9 (B2): who hears of sign-ins and sign-outs (onSessionChange); supabase-js's own events are attached when a
   // real call first makes the client, so listening alone never loads the library on the title screen (the review's note 1)
   const sessionCbs = new Set<(account: string | null) => void>();
+  // chunk 13: who hears of each new access token (the shared-shop connection sends it on, SHARED-SHOPS.md §3.3)
+  const tokenCbs = new Set<(token: string) => void>();
   let authAttached = false;
   const attachAuth = (c: SupabaseLike): SupabaseLike => {
     if (authAttached || !c.auth.onAuthStateChange) return c;
@@ -165,6 +172,8 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
     // a refocus repeats SIGNED_IN with the same account, which the listener ignores
     c.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') for (const cb of [...sessionCbs]) cb(sessionAccount(session));
+      const token = accessTokenOf(session);
+      if (token && (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN')) for (const cb of [...tokenCbs]) cb(token);
     });
     return c;
   };
@@ -378,6 +387,23 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
         shops: list(d.shops).map((x) => ({ club: str(x.club), name: str(x.name), day: num(x.day), money: num(x.money), playedAt: num(x.played_at) })),
         closed,
         reopens: closed && typeof d.reopens === 'string' ? d.reopens : null,
+      };
+    },
+    accessToken: async (o) => {
+      const c = await client();
+      const refresh = o?.refresh && c.auth.refreshSession;
+      const { data, error } = await timed(refresh ? c.auth.refreshSession!() : c.auth.getSession());
+      if (error) {
+        if (isNetworkFailure(error)) throw fail('network');
+        return null;
+      }
+      return accessTokenOf(data.session);
+    },
+    onAccessToken: (cb) => {
+      tokenCbs.add(cb);
+      void client().catch(() => {}); // supabase-js's events come once the client exists
+      return () => {
+        tokenCbs.delete(cb);
       };
     },
     sharedUsage: async (): Promise<SharedUsage> => {

@@ -3,7 +3,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Play, Sparkles, FolderOpen, Settings as SettingsIcon, ChevronRight, TriangleAlert } from 'lucide-react';
+import { Play, Sparkles, FolderOpen, Settings as SettingsIcon, ChevronRight, TriangleAlert, Store } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
@@ -18,6 +18,8 @@ import { useWarmup } from '@/render/shared/warmup';
 import { toastMark, reportLoadFailure } from './loadFeedback'; // lane:guide
 import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
+import { openSharedShop, openedShops, sharedServerBase } from '../shared/session'; // chunk 13
+import { SHARED_WORDS } from '../shared/words';
 
 type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
@@ -152,6 +154,14 @@ export function TitleScreen() {
     else startNew();
   };
 
+  const sharedShop = sharedServerBase() ? (openedShops()[0] ?? null) : null;
+  const onShared = () => {
+    if (!sharedShop || busy) return;
+    unlockAudio();
+    sfx('confirm');
+    void openSharedShop({ id: sharedShop.club, name: sharedShop.clubName }, { from: 'title', shopName: sharedShop.shop });
+  };
+
   const onContinue = async () => {
     if (!latest || busy) return;
     unlockAudio();
@@ -191,6 +201,16 @@ export function TitleScreen() {
                   {latest.shopName}
                   {latest.starterName ? ` · ${latest.starterName}` : ''} · Day {latest.day} · {timeAgo(latest.savedAt)}
                 </span>
+              </span>
+              <ChevronRight size={18} className="ag-menubtn__chev" aria-hidden />
+            </motion.button>
+          )}
+          {sharedShop && (
+            // chunk 13 (SHARED-SHOPS.md §8, ADR-0045 decision 9): the shared shop this device opened last, under Continue
+            <motion.button {...item(0)} type="button" className="ag-menubtn" data-testid="title-shared-shop" onClick={onShared} disabled={busy}>
+              <Store size={18} aria-hidden />
+              <span className="ag-menubtn__text">
+                <span>{SHARED_WORDS.titleButton(sharedShop.shop)}</span>
               </span>
               <ChevronRight size={18} className="ag-menubtn__chev" aria-hidden />
             </motion.button>

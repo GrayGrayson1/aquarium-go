@@ -12,6 +12,8 @@ import { useUI } from '@/state/ui';
 import type { CommandOf } from '@/sim/commands';
 import { suggestPricing, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
 import { capturePhoto } from '@/render/camera/photo';
+import { inSharedShop } from '@/state/sharedMode'; // chunk 13
+import { captureSharedPhoto } from '@/ui/shared/photos';
 import { isPrismatic } from '@/sim/life'; // lane:genetics
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
@@ -348,7 +350,9 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
               onClick={async () => {
                 // lane:fix-panels — a card-sized JPEG (~40–90 KB) instead of a 960px PNG (~800 KB), which the save
                 // stripped: no listing photo ever survived a reload
-                const url = await capturePhoto({ width: 640, hideUI: true, format: 'image/jpeg', quality: 0.82 }).catch(() => null);
+                // chunk 13 (SHARED-SHOPS.md §4.4): in a shared shop a small one (about 320 px, WebP or JPEG), so the
+                // listing fits in one command; every member sees it
+                const url = inSharedShop() ? await captureSharedPhoto() : await capturePhoto({ width: 640, hideUI: true, format: 'image/jpeg', quality: 0.82 }).catch(() => null);
                 if (url) {
                   setPhoto(url);
                   import('@/audio/sfx').then((m) => m.sfx('camera'));

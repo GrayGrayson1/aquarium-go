@@ -16,6 +16,7 @@ import { orderedTanks } from '../common/derive';
 import { LOG_KIND_LABEL, relTime, dayOfHour } from '../common/format';
 import { formatClock } from '@/sim/time';
 import { eventLink } from '@/ui/hud/eventLinks'; // lane:notify
+import { eventLine } from '@/ui/common/notify'; // chunk 13: the member's name in a shared shop
 
 type KindFilter = 'all' | 'alerts' | 'breeding' | 'market' | 'visitor' | 'milestones' | 'info';
 
@@ -131,7 +132,7 @@ export function LogPanel() {
                         <span className="pn-sr">{LOG_KIND_LABEL[e.kind]}: </span>
                       </span>
                       <div className="pn-grow">
-                        <div className="pn-logrow__text">{e.text}</div>
+                        <div className="pn-logrow__text">{eventLine(e)}</div>
                         <div className="pn-tiny pn-muted pn-row pn-gap-2 pn-row--wrap" style={{ marginTop: 3 }}>
                           <span>
                             {formatClock(e.hour)} · {relTime(e.hour, g.clock.hour)}

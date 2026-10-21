@@ -34,6 +34,7 @@ import { loadGameDetailed, latestSaveSlot, isStaleGame, noteCatchUp } from './sl
 import { mutateFast } from '@/game/fastMutate';
 import '@/game/dispatch'; // installs the solo dispatcher (the welcome-back card's resume is a command)
 import type { LoadResult } from './types';
+import { isSharedShop, takeSharedAwayMs } from './sharedAway'; // chunk 13 (SHARE-010, §7.3)
 
 // chunk 11: the catch-up's rules live in the sim (a shared shop's server runs them too); re-exported for this file's
 // callers and tests
@@ -128,8 +129,10 @@ export function resumeState(loaded: GameState, opts: ResumeOptions = {}): { stat
   let state = loaded;
   state.isShowcase = false;
   const now = opts.now ?? Date.now();
-  const since = Number.isFinite(state.lastTickRealMs) && state.lastTickRealMs > 0 ? state.lastTickRealMs : state.lastSavedRealMs;
-  const elapsed = Math.max(0, now - (Number.isFinite(since) ? since : now));
+  const since0 = Number.isFinite(state.lastTickRealMs) && state.lastTickRealMs > 0 ? state.lastTickRealMs : state.lastSavedRealMs;
+  // chunk 13 (SHARE-010): the time this save waited while its player was in a shared shop is no time away
+  const since = (Number.isFinite(since0) ? since0 : now) + takeSharedAwayMs(state.saveId);
+  const elapsed = Math.max(0, now - since);
   let summary: OfflineSummary | undefined;
   try {
     // lane:core (B-001, security-data-1 SD-10) — catch up on a copy: a catch-up that throws part-way must never become
@@ -181,6 +184,7 @@ export function catchUpAfterHidden(hiddenMs: number): OfflineSummary | null {
   if (!(hiddenMs >= OFFLINE_HIDDEN_MIN_MS)) return null;
   const g = useGame.getState().game;
   if (!g || g.isShowcase || g.clock.speed === 0) return null;
+  if (isSharedShop(g)) return null; // chunk 13 (§7.3): the server catches a shared shop up, never a browser
   if (useUI.getState().screen !== 'game') return null;
   if (isStaleGame(g.saveId)) return null; // another tab owns this aquarium; its world is the one moving on
   // lane:core (S0 review) — the world may have caught up during the hidden spell already (a load that finished while

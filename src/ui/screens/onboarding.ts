@@ -19,7 +19,11 @@ interface OnboardingState {
   shopName: string;
   /** Starter shown behind the title screen. */
   titleStarter: StarterId;
+  /** chunk 13 — the owner is making this club's shared shop (the screens say "New shared shop"); null: a new game. */
+  shared: { id: string; name: string } | null;
   begin: () => void;
+  /** chunk 13 — the new-game screens for a club's shared shop (SHARED-SHOPS.md §8 "Creating"). */
+  beginShared: (club: { id: string; name: string }) => void;
   choose: (id: StarterId) => void;
   set: (p: Partial<Pick<OnboardingState, 'name' | 'shopName'>>) => void;
 }
@@ -63,10 +67,15 @@ export const useOnboarding = create<OnboardingState>((set, get) => ({
   name: '',
   shopName: '',
   titleStarter: nextTitleStarter(),
+  shared: null,
   begin: () => {
     const { seed, previews } = prepared ?? makePreviews();
     prepared = null;
-    set({ seed, previews, starterId: null, name: '', shopName: '' });
+    set({ seed, previews, starterId: null, name: '', shopName: '', shared: null });
+  },
+  beginShared: (club) => {
+    get().begin();
+    set({ shared: club, shopName: club.name.slice(0, 32) });
   },
   choose: (id) => {
     set({ starterId: id, name: get().starterId === id ? get().name : '' });

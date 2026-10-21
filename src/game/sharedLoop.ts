@@ -2,9 +2,11 @@
  * A browser's copy of a shared shop (SHARED-SHOPS.md §3.1, §3.2): it applies the server's steps in order through the
  * same step block as the server (src/sim/sharedStep.ts) and compares the server's fingerprints with its own in idle
  * time, so a drift is caught within one fingerprint. Chunk 10's replica is headless (the dev connection,
- * src/dev/sharedProto.ts, drives it, and the replay test); chunk 13 publishes it to the game store.
+ * src/dev/sharedProto.ts, drives it, and the replay test); chunk 13's connection (src/ui/shared/connection.ts) shows
+ * its copy in the game store and settles commands from `onApplied`.
  */
 import type { GameState } from '@/types';
+import type { CommandResult } from '@/sim/commands';
 import { runSharedStep, type SharedStep } from '@/sim/sharedStep';
 import { deepClone } from '@/sim/clone';
 import { stateHash } from '@/persistence/hash';
@@ -46,6 +48,11 @@ export class SharedReplica {
   onOutOfStep: (why: OutOfStep, detail: string) => void = () => {};
   /** Called after each fingerprint check (tests and the measurements). */
   onCheck: (n: number, ok: boolean) => void = () => {};
+  /**
+   * chunk 13 — called after each step is applied, with its commands' results in `cmds` order: the shared dispatcher
+   * settles its own commands from them (§4.2), and the screen shows what the others did.
+   */
+  onApplied: (step: SharedStep, results: CommandResult[]) => void = () => {};
   /** Bumped by each snapshot, so a check queued before it is dropped. */
   private generation = 0;
 
@@ -68,8 +75,9 @@ export class SharedReplica {
       if (step.n !== this.n + 1) return this.fail('gap', `expected step ${this.n + 1}, got ${step.n}`);
       if (step.full) this.full = [...step.full];
       const t0 = now();
+      let results: CommandResult[];
       try {
-        runSharedStep(this.state, step, this.full);
+        results = runSharedStep(this.state, step, this.full).results;
       } catch (e) {
         return this.fail('error', `step ${step.n}: ${e instanceof Error ? e.message : String(e)}`);
       }
@@ -79,6 +87,7 @@ export class SharedReplica {
       this.stats.maxStepMs = Math.max(this.stats.maxStepMs, ms);
       this.n = step.n;
       if (step.fp) this.check(step.n, step.fp);
+      this.onApplied(step, results);
     }
   }
 

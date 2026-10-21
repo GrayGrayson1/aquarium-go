@@ -45,6 +45,10 @@ import { useNavTab } from '../nav/router'; // lane:ui-shell (chunk 1)
 import { NotificationsTab } from './NotificationsTab'; // lane:notify (chunk 3)
 import { AccountTab } from './AccountTab'; // chunk 8 (REL-031)
 import { useSocialAvailable } from '../online/mode';
+import { useSharedMode } from '@/state/sharedMode'; // chunk 13
+import { useShared } from '../shared/store';
+import { leaveSharedShop } from '../shared/session';
+import { SHARED_WORDS } from '../shared/words';
 
 type Tab = 'general' | 'display' | 'saves' | 'account' | 'notifications' | 'about';
 /** chunk 8 (REL-031) — Account only where Social exists (`socialAvailable()`). */
@@ -207,7 +211,27 @@ type SaveConfirm = { kind: 'load'; slot: string } | { kind: 'overwrite'; slot: s
  * modal that says what happens to the current game; loading autosaves it first (loadIntoGame) and can park it in a
  * free slot; a displaced slot's previous copy is listed as "Previous …" so an overwrite can be undone.
  */
+/** chunk 13 (SHARED-SHOPS.md §8, ADR-0048): Settings › Saves in a shared shop, which saves itself on the server. */
+function SharedSavesTab({ club }: { club: string }) {
+  return (
+    <Section title="Save slots">
+      <p className="ag-muted" style={{ margin: '0 0 10px' }} data-testid="settings-shared-saves">
+        {SHARED_WORDS.savesHere(club)}
+      </p>
+      <Button size="sm" variant="primary" onClick={() => void leaveSharedShop().then(() => useUI.getState().set({ panel: null }))} data-testid="settings-shared-back">
+        {SHARED_WORDS.back}
+      </Button>
+    </Section>
+  );
+}
+
 function SavesTab() {
+  const sharedClub = useShared((s) => (s.phase === 'open' || s.phase === 'reconnecting' ? (s.club?.name ?? null) : null));
+  if (sharedClub !== null) return <SharedSavesTab club={sharedClub} />;
+  return <SoloSavesTab />;
+}
+
+function SoloSavesTab() {
   const game = useGame((s) => s.game);
   const inGame = !!game && !game.isShowcase;
   const [saves, setSaves] = useState<SaveMeta[] | null>(null);
@@ -587,7 +611,8 @@ export function SettingsPanel() {
   }, [open, wantTab]);
   useNavTab('settings', open ? tab : null); // lane:ui-shell (chunk 1)
   const close = () => useUI.getState().set({ panel: null });
-  const saveFooter = inGame && SAVE_FOOTER_TABS.includes(tab);
+  const shared = useSharedMode((s) => s.club !== null); // chunk 13: a shared shop has no save button
+  const saveFooter = inGame && !shared && SAVE_FOOTER_TABS.includes(tab);
   return (
     <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={`Saved on this device · ${versionLabel()}`} footer={saveFooter ? <SaveNowFooter /> : undefined}>
       <div className="ag-tcard__tabs">

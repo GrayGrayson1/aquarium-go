@@ -15,6 +15,7 @@ import { platform } from '@/platform';
 import { socialService, type Club, type FriendAquarium, type FriendRequest, type LeaderboardKind, type LeaderboardRow, type TradeOffer, LEADERBOARD_KINDS, CLUB_SHOW_ENTRIES } from '@/social';
 import { SOCIAL_COPY as C, count, lbValue, monthName } from './copy';
 import { useSocialQuery } from './socialStore';
+import { SharedClubSection } from '../../shared/SharedClubSection'; // chunk 13
 
 /** A person's avatar: their initial on a gradient picked from their name (the screens' violet, teal, coral, blue …). */
 const PERSON_GRADIENTS: [string, string][] = [
@@ -134,6 +135,8 @@ export function MemberClub({ club }: { club: Club }) {
         </div>
       )}
       {club.inviteCode && <InviteLinkRow code={club.inviteCode} />}
+      {/* chunk 13 (SHARED-SHOPS.md §8): the club's shared shop */}
+      <SharedClubSection club={club} />
     </div>
   );
 }

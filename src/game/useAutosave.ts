@@ -12,6 +12,7 @@ import { useSettings } from '@/state/settings';
 import { devToolsAllowed } from '@/state/devTools';
 import { STARTER_IDS } from '@/data/species';
 import { saveCurrentGame, saveCurrentGameSync } from '@/persistence/session';
+import { isSharedShop } from '@/persistence/sharedAway';
 import { loopStats } from './loopStats';
 
 export const AUTOSAVE_INTERVAL_MS = 60_000;
@@ -73,6 +74,7 @@ function bootedFromFixture(): boolean {
 export function autosaveAllowed(opts: { evenIfOff?: boolean } = {}): boolean {
   const g = useGame.getState().game;
   if (!g || g.isShowcase) return false;
+  if (isSharedShop(g)) return false; // chunk 13 (SHARE-011): the server saves a shared shop
   if (fixtureSaveId && g.saveId === fixtureSaveId) return false;
   if (useUI.getState().screen !== 'game') return false;
   if (!opts.evenIfOff && !useSettings.getState().autosave) return false;

@@ -24,6 +24,8 @@ import { startCloudSync } from './online/cloudSync'; // chunk 8 (REL-029)
 import { CloudPrompt } from './online/CloudPrompt';
 import './styles/online.css';
 import { SimFailureBanner } from './common/SimFailureBanner'; // lane:core (chunk 6, B-002)
+import { SharedClosingCard, SharedFirstTime, SharedNotices, SharedOpening, SharedStillHere } from './shared/SharedScreens'; // chunk 13
+import { useSharedMode } from '@/state/sharedMode';
 import { applyPlatformStorage } from './platformBoot';
 import './styles/shell.css';
 import './styles/screens.css';
@@ -68,6 +70,7 @@ export function UIRoot() {
   const screen = useUI((s) => s.screen);
   const reduced = useSettings((s) => s.reducedMotion);
   const devMode = useDevMode(); // lane:core (PLAT-005) — only where the developer tools are allowed
+  const shared = useSharedMode((s) => s.club !== null); // chunk 13 (§7.3): no dev panel writes in a shared shop
   return (
     <MotionConfig reducedMotion={reduced ? 'always' : 'user'}>
       <div className="ag-ui" data-screen={screen}>
@@ -105,8 +108,16 @@ export function UIRoot() {
         <ErrorBoundary name="cloud">
           <CloudPrompt />
         </ErrorBoundary>
+        {/* chunk 13 (SHARED-SHOPS.md §8) — a shared shop's opening card, its lines, "Still here?" and its closings */}
+        <ErrorBoundary name="shared">
+          <SharedOpening />
+          <SharedNotices />
+          <SharedStillHere />
+          <SharedFirstTime />
+          <SharedClosingCard />
+        </ErrorBoundary>
         <ErrorBoundary name="dev">
-          {devMode && (
+          {devMode && !shared && (
             <Suspense fallback={null}>
               <DevPanel />
             </Suspense>

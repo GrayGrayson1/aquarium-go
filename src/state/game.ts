@@ -34,7 +34,11 @@ export interface GameStore {
    */
   actions: number;
   mutate: (recipe: (draft: GameState) => void) => void;
-  setGame: (g: GameState | null) => void;
+  /**
+   * Replace the world. chunk 13: `actions` also counts it as a player action (a shared shop's copy published with a
+   * member's command in it), so views cached per game hour show it while the clock is paused, as `mutate`'s do.
+   */
+  setGame: (g: GameState | null, opts?: { actions?: boolean }) => void;
   /** chunk 11 — the installed dispatcher: player actions go through it as commands (§4.2). */
   dispatch: Dispatch;
   /** Install a dispatcher: src/game/dispatch.ts's solo one at boot; a shared shop's while one is open (chunk 13). */
@@ -53,7 +57,7 @@ export const useGame = create<GameStore>((set, get) => ({
     });
     if (next !== g) set({ game: next, version: get().version + 1, actions: get().actions + 1 });
   },
-  setGame: (g) => set({ game: g, version: get().version + 1 }),
+  setGame: (g, opts) => set({ game: g, version: get().version + 1, ...(opts?.actions ? { actions: get().actions + 1 } : {}) }),
   dispatch: notInstalled,
   installDispatch: (d) => set({ dispatch: d }),
 }));
