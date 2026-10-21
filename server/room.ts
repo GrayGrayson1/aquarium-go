@@ -749,7 +749,6 @@ export class Room {
     member.photoRequests = member.photoRequests.filter((t) => now - t < 60_000);
     if (member.photoRequests.length >= PHOTO_REQUESTS_PER_MIN || member.photosSent.has(hash) || !this.photoRefs().has(hash)) return;
     member.photoRequests.push(now);
-    member.photosSent.add(hash);
     const send = (p: { mime: string; bytes: Uint8Array }) => {
       const type = PHOTO_TYPES.indexOf(p.mime as (typeof PHOTO_TYPES)[number]);
       if (type <= 0 || !this.members.has(member.id)) return;
@@ -759,6 +758,7 @@ export class Room {
       bin[65] = type;
       bin.set(p.bytes, 66);
       this.stats.photosServed++;
+      member.photosSent.add(hash); // when it goes out, not when asked
       this.out([member.id], 'photo', undefined, bin);
     };
     const have = this.photos.get(hash);

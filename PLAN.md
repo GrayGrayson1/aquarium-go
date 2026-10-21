@@ -1036,6 +1036,16 @@ REL-012, REL-018.
     never a half-applied step; the replica (`src/game/sharedLoop.ts`) is in the build identity; tests for the stagger in
     the step block, its most-owed-first order and the fingerprint spacing; the docs (default privileges and PUBLIC, what
     only binds browsers, `shared_usage.closed`, the re-sync budget as built, replacing the password).
+- **Its confirmation pass** (`38bfbda..1689c46`): the three blockers and the notes confirmed fixed, and the new tests
+  catch the old mutants; one new blocker in note 1's fix, fixed next: past 8 MB queued, `send()` ended the connection
+  through `end()`, whose `bye` came back through `send()` until the stack ran out (the other members lost their frames,
+  and one malformed message from that member crashed the server). Now the socket is dropped at once, never through
+  `end()`; a test forces a member's buffer past the limit (it fails against the old code). Its notes, fixed: a photo is
+  marked sent when it goes out (none are skipped for a busy member any more; the 8 MB limit guards memory); a worker that
+  fails releases its room's lease from the main thread, so a member back at once needn't wait 90 seconds; tests for the
+  emptying save's minimum interval and the save backoff. Left, covered by the review's probes (`vt/c1` to `c4`,
+  `vt/p2`, `p4` in the internal clone's `scripts/_audit/review-chunk12/`) rather than the suite: the per-room lease
+  holder, a room ending while opening, the undo's fallback to the checkpoint, and the prune's saved-copy references.
 - **For chunk 13** (what the server does that the client must meet): send `hello` (or the owner's `create`, with the
   starter's name and the preview seed) and wait for the welcome before anything else; `you.id` is the account's id, the
   `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; through

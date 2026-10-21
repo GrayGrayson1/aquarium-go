@@ -224,6 +224,38 @@ describe('chunk 12: the review’s blockers', () => {
     expect(x.world.clubs.get(CLUB)!.shop!.meta.left_at).not.toBeNull();
   });
 
+  it('B2: emptying saves come at most once a minute, however often the shop empties', async () => {
+    const x = await shop();
+    const o = await x.join(OWNER, CLUB);
+    o.send({ t: 'cmd', id: 1, c: { k: 'raiseFlag', name: 'opened_market' } });
+    await pump(x.time, () => o.commands().length > 0, { step: 50 });
+    const puts = () => x.world.calls.shopPut ?? 0;
+    o.send({ t: 'away' });
+    await sleep(20);
+    await pass(x.time, 65_000, 5_000);
+    expect(puts()).toBe(1);
+    o.send({ t: 'here' });
+    await sleep(20);
+    o.send({ t: 'away' });
+    await sleep(20);
+    await pass(x.time, 30_000, 5_000);
+    expect(puts()).toBe(1); // a minute hasn't passed since the last save
+    await pass(x.time, 35_000, 5_000);
+    expect(puts()).toBe(2);
+  });
+
+  it('a failing save backs off (5 s, doubling) instead of trying every tick', async () => {
+    const x = await shop({ savedAgo: SAVE_EVERY_MS });
+    const o = await x.join(OWNER, CLUB);
+    x.world.failing.add('shopPut');
+    o.send({ t: 'cmd', id: 1, c: { k: 'setSpeed', speed: 1 } });
+    await pass(x.time, 60_000, 1_000);
+    const tries = x.world.calls.shopPut ?? 0;
+    expect(tries).toBeGreaterThanOrEqual(3); // 0, 5, 15, 35 s…
+    expect(tries).toBeLessThanOrEqual(6); // not 240
+    expect(o.closed).toBeNull();
+  });
+
   it('B3a: a room may call only its own calls, about its own club', () => {
     expect(roomCallAllowed('shopGet', ['c1'], 'c1')).toBe(true);
     expect(roomCallAllowed('shopGet', ['c2'], 'c1')).toBe(false);

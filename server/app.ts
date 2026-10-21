@@ -49,8 +49,7 @@ const MAX_CONNECTIONS = 120;
 export const CLOSE_AWAY = 4000;
 /** A closed socket is ended this long after its close frame, answered or not (a proxy may eat the handshake). */
 export const BYE_GRACE_MS = 2000;
-/** Bytes waiting to go to one member: past PHOTO_BUFFERED no photo is sent, past MAX_BUFFERED the connection ends. */
-export const PHOTO_BUFFERED = 1_000_000;
+/** Bytes waiting to go to one member: past this the connection is dropped (each photo goes once per connection anyway). */
 export const MAX_BUFFERED = 8_000_000;
 /** A sign-in that expired this long ago without a fresh `token` ends the connection (`bye: sign-in`). */
 export const TOKEN_GRACE_MS = 10 * 60_000;
@@ -118,6 +117,8 @@ interface Conn {
 
 interface RoomHandle {
   club: string;
+  /** This room's lease holder: released from here when its worker fails, so the next room needn't wait it out. */
+  holder: string;
   /** Settles `opened` (once; later calls do nothing). */
   settleOpened: (v: { ok: true } | { ok: false; why: ClosingReason }) => void;
   runner: RoomRunner;
@@ -173,9 +174,9 @@ export function createShopServer(deps: AppDeps): ShopServer {
 
   function send(c: Conn, kind: string, data: string | Uint8Array): void {
     if (c.ws.readyState !== 1) return;
-    // a member who doesn't read (the review's note 1): no photo while much is queued, and the connection ends past a limit
-    if (c.ws.bufferedAmount > MAX_BUFFERED) return end(c, 1008);
-    if (kind === 'photo' && c.ws.bufferedAmount > PHOTO_BUFFERED) return;
+    // a member who doesn't read (the review's note 1): past the limit the socket is dropped at once. Never through end(),
+    // whose `bye` would come back here (the confirmation pass's blocker: the two called each other until the stack ran out)
+    if (c.ws.bufferedAmount > MAX_BUFFERED) return void c.ws.terminate();
     const n = typeof data === 'string' ? Buffer.byteLength(data) : data.length;
     c.ws.send(data);
     usage.count(kind, n + frameHeader(n));
@@ -197,6 +198,7 @@ export function createShopServer(deps: AppDeps): ShopServer {
     if (c.ws.readyState !== 1) return c.ws.terminate();
     const why: ByeReason | null = code === CLOSE_AWAY ? 'away' : reason === 'sign-in' ? 'sign-in' : code === 1008 ? 'protocol' : code === 1011 ? 'server' : null;
     if (why) send(c, 'bye', JSON.stringify({ t: 'bye', why } satisfies ServerMessage));
+    if (c.ws.readyState !== 1) return; // send() dropped it
     c.ws.close(code, reason);
     const ws = c.ws;
     clocks.after(BYE_GRACE_MS, () => {
@@ -211,6 +213,7 @@ export function createShopServer(deps: AppDeps): ShopServer {
     let resolveOpened!: (v: { ok: true } | { ok: false; why: ClosingReason }) => void;
     let resolveStopped!: () => void;
     const r: RoomHandle = {
+      holder: `${holder}:${++roomSeq}`,
       settleOpened: (v) => resolveOpened(v),
       club,
       runner,
@@ -233,10 +236,12 @@ export function createShopServer(deps: AppDeps): ShopServer {
       log(`room ${club.slice(0, 8)} failed: ${e.message}`);
       resolveOpened({ ok: false, why: 'fault' });
       for (const c of r.users.values()) closing(c, 'fault');
+      // its lease, so a member back at once gets a new room instead of `updating` for 90 seconds (the confirmation's note 3)
+      store.shopRelease(club, r.holder).catch(() => {});
       finish(r, resolveStopped);
     });
     // a holder per room, not per process: a second room for one shop in this process finds the lease held (the review's B1)
-    runner.send({ t: 'open', club, holder: `${holder}:${++roomSeq}`, build: build.hash, ...mode });
+    runner.send({ t: 'open', club, holder: r.holder, build: build.hash, ...mode });
     return r;
   }
 
