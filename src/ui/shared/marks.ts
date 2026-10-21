@@ -111,12 +111,22 @@ const readEvents = new WeakMap<GameEvent, GameEvent>();
  * when nothing in it changes), so the screens re-render only for what changed.
  */
 export function overlayMarks(g: GameState, m: SharedMarks): GameState {
-  const readSeq = m.readSeq ?? -1;
-  let log = g.log;
+  const log = overlayLog(g.log, m.readSeq ?? -1);
+  const notify = overlayNotify(g.notify, m);
+  const shows = overlayShows(g.shows, m);
+  if (log === g.log && notify === g.notify && shows === g.shows) return g;
+  return { ...g, log, notify, shows };
+}
+
+let lastLog: { log: GameEvent[]; readSeq: number; out: GameEvent[] } | null = null;
+
+function overlayLog(src: GameEvent[], readSeq: number): GameEvent[] {
+  if (lastLog && lastLog.log === src && lastLog.readSeq === readSeq) return lastLog.out;
+  let log = src;
   if (readSeq >= 0) {
     let out: GameEvent[] | null = null;
-    for (let i = 0; i < g.log.length; i++) {
-      const e = g.log[i];
+    for (let i = 0; i < src.length; i++) {
+      const e = src[i];
       const s = eventSeq(e.id);
       if (e.read || s === null || s > readSeq) {
         if (out) out[i] = e;
@@ -127,15 +137,13 @@ export function overlayMarks(g: GameState, m: SharedMarks): GameState {
         r = { ...e, read: true };
         readEvents.set(e, r);
       }
-      out ??= g.log.slice(0, i);
+      out ??= src.slice(0, i);
       out[i] = r;
     }
     if (out) log = out;
   }
-  const notify = overlayNotify(g.notify, m);
-  const shows = overlayShows(g.shows, m);
-  if (log === g.log && notify === g.notify && shows === g.shows) return g;
-  return { ...g, log, notify, shows };
+  lastLog = { log: src, readSeq, out: log };
+  return log;
 }
 
 let lastNotify: { n: GameState['notify']; m: SharedMarks; out: GameState['notify'] } | null = null;

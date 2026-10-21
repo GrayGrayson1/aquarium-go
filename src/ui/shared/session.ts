@@ -15,6 +15,7 @@ import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { inSharedShop, setSharedMode } from '@/state/sharedMode';
+import { devToolsAllowed } from '@/state/devTools';
 import { soloDispatch } from '@/game/dispatch';
 import { share } from '@/game/fastMutate';
 import { defaultFocus } from '@/sim/catchUp';
@@ -38,14 +39,22 @@ import { SharedDispatcher } from './dispatch';
 import { SharedActivity, toastPopup } from './activity';
 import { overlayMarks, readMarks, recordMark, type SharedMarks } from './marks';
 import { clearSharedPhotos, photoArrived, setPhotoRequester } from './photos';
+import { forgetSharedShops } from './shopsCache';
 import { INITIAL_VISIT, mayPause, patchShared, useShared, type SharedClosing } from './store';
 import { SHARED_WORDS as W } from './words';
 
 const HEARTBEAT_MS = 10_000;
 
-/** The shared-shop server this session pairs with: the live one online, the stub one beside the local Social stub. */
+/**
+ * The shared-shop server this session pairs with: the live one online, the stub one beside the local Social stub
+ * (where the developer tools are allowed, `?shops=http://127.0.0.1:<port>` names another stub server: e2e's restart).
+ */
 export function sharedServerBase(): string | null {
-  return socialMode() === 'online' ? SHARED_SHOP_SERVER : socialMode() === 'stub' ? STUB_SHOP_SERVER : null;
+  const mode = socialMode();
+  if (mode === 'online') return SHARED_SHOP_SERVER;
+  if (mode !== 'stub') return null;
+  const other = devToolsAllowed() && typeof location !== 'undefined' ? new URLSearchParams(location.search).get('shops') : null;
+  return other && /^http:\/\/127\.0\.0\.1:\d{2,5}$/.test(other) ? other : STUB_SHOP_SERVER;
 }
 
 // ── the shops this device has opened (the title screen's button, the first-time card) ─────────────────────────────
@@ -348,6 +357,7 @@ export async function leaveSharedShop(o: { closing?: SharedClosing } = {}): Prom
     for (const off of v.offs) off();
   }
   sharedAwayHeartbeat();
+  forgetSharedShops(); // the club cards show the shop's new day and money
   setSharedMarkHandler(null);
   setPhotoRequester(null);
   clearSharedPhotos();
@@ -387,6 +397,11 @@ export function stillHere(): void {
 /** The owner gives or takes pause and speed (§5.4). */
 export function grantPause(user: string, pause: boolean): void {
   visit?.conn.grant(user, pause);
+}
+
+/** Tests and the dev tools: as if the player had been quiet for `ms` ("Still here?", §7.5). */
+export function devQuiet(ms: number): void {
+  visit?.conn.quiet(ms);
 }
 
 /** Is a visit under way (opening or open)? */

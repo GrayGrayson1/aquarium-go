@@ -13,6 +13,7 @@ import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { Compass, ChevronDown, ChevronUp, X, ArrowRight, Hand, Check, FastForward, Sparkles, FlaskConical } from 'lucide-react';
 import type { GameSpeed, GameState } from '@/types';
+import { inSharedShop } from '@/state/sharedMode';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
@@ -61,6 +62,7 @@ function fill(t: string, name: string, species: string, fine: boolean, g?: GameS
 
 export function currentCoachStep(g: GameState | null, fine = false): CoachStep | null {
   if (!g || g.isShowcase) return null;
+  if (inSharedShop()) return null; // chunk 13 (ADR-0045 decision 5): a shared shop has no guide
   const tut = g.progress?.tutorial;
   if (!tut || tut.done || tut.skipped) return null;
   const chain = safe('tutorialChain', () => tutorialChain(tut.starterId || g.starterId), []);

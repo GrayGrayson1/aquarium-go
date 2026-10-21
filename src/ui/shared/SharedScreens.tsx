@@ -8,8 +8,8 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, Users } from 'lucide-react';
 import { useSharedMode } from '@/state/sharedMode';
 import { Button, Modal, Toggle } from '../kit';
-import { useIsMobile } from '../common/safe';
 import { Wordmark } from '../screens/TitleScreen';
+import { BUILD_ID, parseBuildId, versionUrl } from '../hud/updateCheck';
 import { useShared } from './store';
 import { dismissClosing, grantPause, leaveSharedShop, stillHere } from './session';
 import { RELOAD_CLOSINGS, SHARED_WORDS as W, closingText } from './words';
@@ -57,13 +57,12 @@ export function SharedStrip() {
   const shop = useShared((s) => s.shopName);
   const members = useShared((s) => s.members);
   const owner = useShared((s) => !!s.you?.owner);
-  const mobile = useIsMobile();
   const [open, setOpen] = useState(false);
   if (!shared || (phase !== 'open' && phase !== 'reconnecting')) return null;
   const here = members.filter((m) => m.here).map((m) => m.name);
   const text = W.strip(shop, here);
   return (
-    <div className={`ag-shared-strip${mobile ? ' ag-shared-strip--low' : ''}`} data-testid="shared-strip">
+    <div className="ag-shared-strip" data-testid="shared-strip">
       {owner ? (
         <button type="button" className="ag-shared-strip__text is-button" aria-expanded={open} onClick={() => setOpen((o) => !o)} data-testid="shared-strip-members">
           <Users size={13} aria-hidden /> <span>{text}</span>
@@ -93,6 +92,7 @@ function MembersList({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   const others = members.filter((m) => m.id !== you?.id);
+  if (!others.length) return null;
   return (
     <ul className="ag-shared-members" data-testid="shared-members">
       {others.map((m) => (
@@ -150,11 +150,39 @@ export function SharedFirstTime() {
   );
 }
 
+/**
+ * §5.1: after a release the server can be newer than the page this tab loaded, and Pages may serve the old page for a
+ * few minutes more, so `build` offers Reload once the site's version.json names a build other than this one.
+ */
+function useNewBuildOut(watch: boolean): boolean {
+  const [out, setOut] = useState(BUILD_ID === 'dev');
+  useEffect(() => {
+    if (!watch || out) return;
+    let live = true;
+    const look = () =>
+      fetch(versionUrl(import.meta.env.BASE_URL ?? '/', Date.now()), { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((b) => {
+          const id = parseBuildId(b);
+          if (live && id && id !== BUILD_ID) setOut(true);
+        })
+        .catch(() => {});
+    void look();
+    const t = window.setInterval(look, 15_000);
+    return () => {
+      live = false;
+      window.clearInterval(t);
+    };
+  }, [watch, out]);
+  return out;
+}
+
 /** Why the visit ended (§8 "Closing: …"), over wherever the player went back to; `build` and `outofstep` offer Reload. */
 export function SharedClosingCard() {
   const closing = useShared((s) => s.closing);
   const club = useShared((s) => s.club?.name ?? '');
   const [now] = useState(() => Date.now());
+  const newBuild = useNewBuildOut(closing?.why === 'build');
   if (!closing) return null;
   const reload = RELOAD_CLOSINGS.has(closing.why);
   return (
@@ -164,7 +192,7 @@ export function SharedClosingCard() {
       testId="shared-closing"
       actions={
         reload ? (
-          <Button variant="primary" onClick={() => location.reload()} data-testid="shared-closing-reload">
+          <Button variant="primary" disabled={closing.why === 'build' && !newBuild} onClick={() => location.reload()} data-testid="shared-closing-reload">
             {W.reload}
           </Button>
         ) : undefined

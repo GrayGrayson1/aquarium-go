@@ -7,33 +7,16 @@
 import { useEffect, useState } from 'react';
 import { Store } from 'lucide-react';
 import { useSharedMode } from '@/state/sharedMode';
-import { socialService, type Club, type SharedShops, type SharedUsage } from '@/social';
+import { socialService, type Club } from '@/social';
 import { Button } from '../kit';
 import { useSocial } from '../panels/social/socialStore';
 import { useOnboarding } from '../screens/onboarding';
 import { useUI } from '@/state/ui';
 import { beginCreate, openSharedShop, sharedServerBase } from './session';
 import { useShared } from './store';
+import { cachedShops, cachedUsage, forgetSharedShops } from './shopsCache';
 import { SHARED_WORDS as W, closingText, formatBytes, formatHours } from './words';
 
-/** One answer for every card on screen, asked again after a while (a shop made a moment ago shows). */
-const FRESH_MS = 20_000;
-let shopsCache: { at: number; p: Promise<SharedShops> } | null = null;
-let usageCache: { at: number; p: Promise<SharedUsage> } | null = null;
-
-function cached<T>(c: { at: number; p: Promise<T> } | null, load: () => Promise<T>, set: (v: { at: number; p: Promise<T> } | null) => void): Promise<T> {
-  if (c && Date.now() - c.at < FRESH_MS) return c.p;
-  const p = load();
-  set({ at: Date.now(), p });
-  p.catch(() => set(null));
-  return p;
-}
-
-/** The club cards' answers are stale (a shop was just made or opened). */
-export function forgetSharedShops(): void {
-  shopsCache = null;
-  usageCache = null;
-}
 
 function useAnswer<T>(load: (() => Promise<T>) | null, deps: readonly unknown[]): T | null {
   const [v, setV] = useState<T | null>(null);
@@ -56,8 +39,8 @@ export function SharedClubSection({ club }: { club: Club }) {
   const inShop = useSharedMode((s) => s.club !== null);
   const busy = useShared((s) => s.phase !== 'idle' && s.phase !== 'closed');
   const available = !!sharedServerBase();
-  const shops = useAnswer(available ? () => cached(shopsCache, () => socialService().sharedShops(), (v) => (shopsCache = v)) : null, [available]);
-  const usage = useAnswer(available && owner ? () => cached(usageCache, () => socialService().sharedUsage(), (v) => (usageCache = v)) : null, [available, owner]);
+  const shops = useAnswer(available ? () => cachedShops(() => socialService().sharedShops()) : null, [available]);
+  const usage = useAnswer(available && owner ? () => cachedUsage(() => socialService().sharedUsage()) : null, [available, owner]);
   const [starting, setStarting] = useState(false);
   if (!available || !shops) return null;
   const shop = shops.shops.find((s) => s.club === club.id);

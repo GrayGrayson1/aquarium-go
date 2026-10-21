@@ -244,6 +244,12 @@ export class SharedConnection {
     }
   }
 
+  /** Tests and the dev tools: as if the player had been quiet for `ms` more, then the idle check now. */
+  quiet(ms: number): void {
+    this.lastInputAt -= ms;
+    this.idleCheck();
+  }
+
   /** The tab was shown or hidden (§5.5). */
   visibility(hidden: boolean): void {
     if (this.ended) return;

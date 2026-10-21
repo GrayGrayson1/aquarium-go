@@ -59,7 +59,7 @@ import { decodeSaveBody, type CloudSaveMeta } from '@/social';
 import type { Command, CommandResult } from '@/sim/commands';
 import { inSharedShop } from '@/state/sharedMode'; // chunk 13
 import { useShared } from '@/ui/shared/store';
-import { leaveSharedShop, openSharedShop } from '@/ui/shared/session';
+import { devQuiet, leaveSharedShop, openSharedShop } from '@/ui/shared/session';
 
 /** chunk 13 (SHARED-SHOPS.md §7.3): the developer tools write nothing in a shared shop (only commands reach it). */
 function noSharedWrites<F extends (...a: never[]) => unknown>(fn: F): F {
@@ -249,6 +249,8 @@ export function debugApi(): Record<string, unknown> {
       visit: () => JSON.parse(JSON.stringify(useShared.getState())),
       open: (club: { id: string; name: string }, from: 'game' | 'title' = 'game') => openSharedShop(club, { from }),
       leave: () => leaveSharedShop(),
+      /** As if the player had been quiet for `ms` ("Still here?", §7.5), without waiting half an hour. */
+      quiet: (ms: number) => devQuiet(ms),
     },
     ui: () => useUI.getState(),
     setUI: (p: Parameters<ReturnType<typeof useUI.getState>['set']>[0]) => useUI.getState().set(p),

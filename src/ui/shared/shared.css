@@ -3,15 +3,20 @@
 .ag-shared-open { z-index: 60; pointer-events: auto; background: rgba(4, 14, 22, 0.35); }
 .ag-shared-open .ag-boot__card { pointer-events: auto; }
 
-/* the strip: under the top bar on wide screens, above the tab bar on phones */
+/* the strip: just above the dock (phones: the tab bar), clear of the top bar, the tank bar and the tool rail */
 .ag-shared-strip {
-  position: absolute; top: calc(var(--edge) + var(--topbar-h) + 10px); left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: calc(var(--dock-h) + var(--edge) * 2); left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 6px; max-width: min(560px, calc(100vw - 2 * var(--edge)));
   padding: 4px 4px 4px 12px; border-radius: var(--r-pill); background: var(--c-glass); backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur); border: 1px solid var(--c-line); box-shadow: var(--shadow-1); color: var(--c-ink);
   pointer-events: auto; z-index: 4;
 }
-.ag-shared-strip--low { top: auto; bottom: calc(var(--dock-h) + var(--edge) * 2); }
+/* phones (the HUD's own breakpoint): the tool row sits above the tab bar, so the strip goes under the tank bar */
+@media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
+  .ag-shared-strip { bottom: auto; top: calc(var(--edge) + var(--topbar-h) + 58px); left: var(--edge); right: var(--edge); transform: none; max-width: none; justify-content: space-between; }
+  .ag-shared-strip .ag-shared-members { bottom: auto; top: calc(100% + 8px); }
+  .ag-shared-still { bottom: calc(var(--dock-h) + var(--edge) * 3 + 64px); left: var(--edge); right: var(--edge); transform: none; max-width: none; }
+}
 .ag-shared-strip__text { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--c-ink-2); }
 .ag-shared-strip__text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ag-shared-strip__text.is-button { border: 0; background: transparent; padding: 6px 4px; font: inherit; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--c-ink-2); cursor: pointer; border-radius: var(--r-pill); }
@@ -19,11 +24,10 @@
 .ag-shared-strip__back { flex: none; }
 
 .ag-shared-members {
-  position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: min(360px, calc(100vw - 2 * var(--edge)));
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: min(360px, calc(100vw - 2 * var(--edge)));
   margin: 0; padding: 8px; list-style: none; display: grid; gap: 4px; border-radius: var(--r-lg); background: var(--c-glass-strong);
   backdrop-filter: var(--blur-strong); -webkit-backdrop-filter: var(--blur-strong); border: 1px solid var(--c-line-strong); box-shadow: var(--shadow-2);
 }
-.ag-shared-strip--low .ag-shared-members { top: auto; bottom: calc(100% + 8px); }
 .ag-shared-members__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 8px; border-radius: var(--r-md); }
 .ag-shared-members__name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ag-shared-members__switch { display: inline-flex; align-items: center; gap: 8px; flex: none; }
@@ -36,7 +40,7 @@
 }
 
 .ag-shared-still {
-  position: fixed; left: 50%; bottom: calc(var(--dock-h) + var(--edge) * 3); transform: translateX(-50%); z-index: 70;
+  position: fixed; left: 50%; bottom: calc(var(--dock-h) + var(--edge) * 3 + 52px); transform: translateX(-50%); z-index: 70;
   display: flex; align-items: center; gap: 12px; max-width: min(460px, calc(100vw - 2 * var(--edge))); padding: 12px 12px 12px 16px;
   border-radius: var(--r-lg); background: var(--c-glass-strong); backdrop-filter: var(--blur-strong); -webkit-backdrop-filter: var(--blur-strong);
   border: 1px solid var(--c-line-strong); box-shadow: var(--shadow-2); pointer-events: auto;
