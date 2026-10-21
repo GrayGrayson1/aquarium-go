@@ -4,7 +4,7 @@
  * server's steps through the same step block on the test page (tests/e2e/shared/page.html, no game) and must match
  * every fingerprint the server sent.
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { request as httpRequest } from 'node:http';
 import type { ReplayReport } from './shared/page';
 import type { StepLog } from '../../server/replay';
@@ -50,6 +50,15 @@ async function replayLog(page: Page, log: StepLog, reads = false): Promise<Repla
   return await page.evaluate(([l, r]) => (window as unknown as Win).__shared.replay(l, { reads: r }), [log, reads] as const);
 }
 
+/**
+ * Browser contexts a test makes itself are closed after it, pass or fail: left open, they slowed the WebKit tests after
+ * this file until those timed out (chunk 10's full passes).
+ */
+const ownContexts: BrowserContext[] = [];
+test.afterEach(async () => {
+  for (const c of ownContexts.splice(0)) await c.close();
+});
+
 test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () => {
   test('the cross-engine replay: the Node server’s steps, replayed here, match every fingerprint', async ({ page, request }) => {
     test.setTimeout(300_000);
@@ -86,6 +95,7 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
   test('two browsers in one shop: commands reach both, and both stay in step', async ({ browser }) => {
     test.setTimeout(180_000);
     const contexts = await Promise.all([0, 1].map(() => browser.newContext()));
+    ownContexts.push(...contexts);
     const pages = await Promise.all(contexts.map((c) => c.newPage()));
     for (const p of pages) await openTestPage(p);
     const [a, b] = pages;
@@ -152,8 +162,6 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
     expect(va.rtt.length).toBe(2); // A's own commands came back in steps
     expect(vb.rtt.length).toBe(2);
     for (const p of pages) await p.evaluate(() => (window as unknown as Win).__client.close());
-    // contexts this test made are its own to close (left open, they slowed the WebKit tests after this file)
-    for (const c of contexts) await c.close();
   });
 
   test('a hostile message closes at most its own connection, and the server keeps serving', async ({ page, request }) => {
