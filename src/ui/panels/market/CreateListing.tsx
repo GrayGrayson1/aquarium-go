@@ -9,7 +9,8 @@ import { Fish, Users, Heart, Baby, Layers, Check, ChevronRight, Camera, RefreshC
 import type { Creature, GameState, ListingKind, Tank } from '@/types';
 import { Button, Money, formatMoney, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { createListing, suggestPricing, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
+import type { CommandOf } from '@/sim/commands';
+import { suggestPricing, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
 import { capturePhoto } from '@/render/camera/photo';
 import { isPrismatic } from '@/sim/life'; // lane:genetics
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -185,22 +186,14 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
 
   const confirm = () => {
     if (!kind) return;
-    const r = act(
-      (d) =>
-        createListing(d, {
-          kind,
-          creatureIds: kind === 'tank' || kind === 'frag' ? undefined : ids,
-          tankId: kind === 'tank' ? tankId ?? undefined : undefined,
-          fragIds: kind === 'frag' ? fragIds : undefined, // lane:frags
-          reserve: Math.round(reserve),
-          buyNow: buyNowOn ? Math.round(buyNow) : undefined,
-          durationHours: duration,
-          title: title.trim() || autoTitle,
-          photo: photo ?? undefined,
-        }),
-      { sound: 'bid', successText: 'Listed! Buyers will start bidding soon.' },
-    );
-    if (r?.ok) onDone(r.listingId);
+    // a command holds no `undefined` fields: each one is there or left out (SHARED-SHOPS.md §3.2 rule 10)
+    const cmd: CommandOf<'createListing'> = { k: 'createListing', kind, reserve: Math.round(reserve), hours: duration, title: title.trim() || autoTitle };
+    if (kind !== 'tank' && kind !== 'frag') cmd.creatures = ids;
+    if (kind === 'tank' && tankId != null) cmd.tank = tankId;
+    if (kind === 'frag') cmd.frags = fragIds; // lane:frags
+    if (buyNowOn) cmd.buyNow = Math.round(buyNow);
+    if (photo != null) cmd.photo = photo;
+    act(cmd, { sound: 'bid', successText: 'Listed! Buyers will start bidding soon.', after: (r) => r?.ok && onDone(r.listingId) });
   };
 
   return (

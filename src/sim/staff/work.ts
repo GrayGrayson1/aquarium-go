@@ -208,7 +208,7 @@ export function pickStaffFood(state: GameState, sp: SpeciesDefinition, tankSpeci
 function recordFeed(state: GameState, m: StaffMember, tank: Tank, foodId: string, servings: number, hour: number, targetCreatureId?: string): void {
   const st = ensureStaff(state);
   st.seq = (st.seq ?? 0) + 1;
-  st.feeds.push({ seq: st.seq, hour, tankId: tank.id, foodId, staffId: m.id, servings, targetCreatureId });
+  st.feeds.push({ seq: st.seq, hour, tankId: tank.id, foodId, staffId: m.id, servings, ...(targetCreatureId !== undefined ? { targetCreatureId } : {}) }); // §3.2 rule 10
   if (st.feeds.length > FEED_RING) st.feeds.splice(0, st.feeds.length - FEED_RING);
   const care = (st.care[tank.id] ??= {});
   care.lastFed = hour;

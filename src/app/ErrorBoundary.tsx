@@ -7,6 +7,7 @@
  */
 import { Component, type ReactNode } from 'react';
 import { useGame } from '@/state/game';
+import '@/game/dispatch'; // installs the solo dispatcher
 import { saveCurrentGame } from '@/persistence/session';
 
 interface Props {
@@ -28,9 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
     // Don't let the aquarium run unattended behind a broken interface.
     if (this.props.name === 'interface') {
       try {
-        useGame.getState().mutate((d) => {
-          if (d.clock.speed !== 0) d.clock.speed = 0;
-        });
+        if (useGame.getState().game?.clock.speed !== 0) useGame.getState().dispatch({ k: 'setSpeed', speed: 0 });
       } catch {
         /* the store itself may be what broke */
       }

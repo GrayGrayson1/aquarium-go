@@ -350,7 +350,7 @@ export function loseClutch(state: GameState, cl: Clutch, sp: SpeciesDefinition, 
 function releaseParents(state: GameState, cl: Clutch): void {
   for (const id of [cl.motherId, cl.fatherId, cl.guardedById]) {
     const p = id ? state.creatures[id] : undefined;
-    if (p && p.repro.clutchId === cl.id) p.repro.clutchId = undefined;
+    if (p && p.repro.clutchId === cl.id) delete p.repro.clutchId;
   }
 }
 
@@ -389,7 +389,7 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
     const mother = cl.motherId ? state.creatures[cl.motherId] : undefined;
     const gone = !mother || (mother.status !== 'alive' && mother.status !== 'listed');
     if (gone) {
-      cl.pendingEggs = undefined;
+      delete cl.pendingEggs;
       if (cl.count <= 0) {
         const who = mother?.name ?? 'The mother';
         if (mother?.status === 'sold') loseClutch(state, cl, sp, ctx, `${who} left for a new home before laying any eggs — there is no clutch to raise.`, 'info');
@@ -509,9 +509,9 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   }
   const wasBerried = cl.visual === 'berried';
   setPhase(cl, ph, sp, hour);
-  if (!plan.guardYoung && !wasBerried) cl.guardedById = undefined;
+  if (!plan.guardYoung && !wasBerried) delete cl.guardedById;
   if (wasBerried) {
-    cl.guardedById = undefined;
+    delete cl.guardedById;
     cl.anchor = pickSite(tank, 'plants_low', `${cl.id}:hatch`).anchor;
   } else if (ph.visual === 'fry_cloud' && cl.anchor) {
     cl.anchor = { ...cl.anchor };
@@ -554,7 +554,7 @@ function advancePhase(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefin
 /** Begin the rearing phases for a carried brood that has just been released (seahorse birth, mouthbrooder release). */
 export function releaseCarried(cl: Clutch, tank: Tank, sp: SpeciesDefinition, mod: BreedingModule, hour: number): void {
   const ph = mod.plan.phases[0];
-  cl.guardedById = undefined;
+  delete cl.guardedById;
   if (ph) setPhase(cl, ph, sp, hour);
   else {
     cl.stage = 'fry';

@@ -10,9 +10,8 @@ import type { GameEvent } from '@/types';
 import { useUI } from '@/state/ui';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { usePanelGame } from '../common/hooks';
-import { edit } from '../common/act';
+import { mark } from '@/ui/common/marks';
 import { Chip, Select, EmptyState } from '../common/parts';
-import { markLogRead } from '../common/tankOps';
 import { orderedTanks } from '../common/derive';
 import { LOG_KIND_LABEL, relTime, dayOfHour } from '../common/format';
 import { formatClock } from '@/sim/time';
@@ -51,7 +50,7 @@ export function LogPanel() {
   // Mark everything read when the log is opened (and as new events arrive while it is open).
   const unread = g?.log.some((e) => !e.read) ?? false;
   useEffect(() => {
-    if (unread) edit((d) => markLogRead(d));
+    if (unread) mark('logRead');
   }, [unread]);
 
   const groups = useMemo(() => {

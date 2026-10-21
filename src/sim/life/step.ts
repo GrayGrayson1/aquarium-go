@@ -999,7 +999,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
       const text = `${c.name} has recovered from ${name}.`;
       pushHistory(c, { hour, kind: 'recovered', text });
       ctx.emit({ kind: 'celebrate', text, tankId: env.tank.id, creatureId: c.id });
-      c.illness = undefined;
+      delete c.illness;
     }
   } else if (s.stress > 40 || wv.comfort < 85 || (m.injury ?? 0) > 0 || s.hunger > 85 || ingestionHazard(env, sp)) {
     const risk = illnessRisk(env, c, sp);

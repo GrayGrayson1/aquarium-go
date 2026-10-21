@@ -8,7 +8,7 @@ import clsx from 'clsx';
 import { Gavel, Plus, Clock, TriangleAlert, OctagonAlert, PartyPopper, Undo2, Check, X, MessageSquareQuote, Hourglass, ChevronDown, Tag, Flame, Eye, Sparkles } from 'lucide-react';
 import type { Bid, BuyerProfile, GameState, Listing } from '@/types';
 import { Button, Money, Modal, formatMoney } from '@/ui/kit';
-import { acceptBid, declineBid, counterBid, withdrawListing, holdBidForCounter, saleWarnings, suggestCounter } from '@/sim/economy';
+import { saleWarnings, suggestCounter } from '@/sim/economy';
 import { act, edit } from '../common/act';
 import { safe } from '../common/hooks';
 import { Chip, EmptyState, Bar, Callout, SectionHead, NumberField } from '../common/parts';
@@ -311,7 +311,7 @@ function ListingCard({ g, l, defaultOpen, focus }: { g: GameState; l: Listing; d
             <Button
               variant="danger"
               onClick={() => {
-                act((d) => withdrawListing(d, l.id), { sound: 'close', kind: 'info' });
+                act({ k: 'withdrawListing', listing: l.id }, { sound: 'close', kind: 'info' });
                 setWithdraw(false);
               }}
             >
@@ -335,19 +335,16 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
   // Opening the counter form asks the buyer to wait (sim: holdBidForCounter — no expiry, no change of heart for
   // ≈ 2 real minutes). Every (re-)open renews the hold; while the form stays open it is quietly topped up.
   const setCountering = (on: boolean) => {
-    if (on) {
-      const r = act((d) => holdBidForCounter(d, l.id, b.id), { quiet: true, sound: null });
-      if (!r?.ok) return;
-    }
-    setCounteringRaw(on);
+    if (on) act({ k: 'holdBid', listing: l.id, bid: b.id }, { quiet: true, sound: null, after: (r) => r?.ok && setCounteringRaw(true) });
+    else setCounteringRaw(false);
   };
   const speed = g.clock.speed;
   // The hold is measured in game hours scaled by the speed at the time it was set, so a jump from 1× to 10× would
   // shrink it tenfold in real time: renew it on every speed change as well as every 15 s.
   useEffect(() => {
     if (!countering) return;
-    edit((d) => void holdBidForCounter(d, l.id, b.id));
-    const id = window.setInterval(() => edit((d) => void holdBidForCounter(d, l.id, b.id)), 15_000);
+    edit({ k: 'holdBid', listing: l.id, bid: b.id });
+    const id = window.setInterval(() => edit({ k: 'holdBid', listing: l.id, bid: b.id }), 15_000);
     return () => window.clearInterval(id);
   }, [countering, l.id, b.id, speed]);
   const cap = l.buyNow && l.buyNow > 0 ? l.buyNow : Math.max(l.reserve, l.snapshot.valuation) * 1.25;
@@ -368,7 +365,7 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
   const warnings = isOpen ? safe(() => saleWarnings(g, l.kind === 'tank' && l.tankId ? livingInTank(g, l.tankId).map((c) => c.id) : l.creatureIds), []).filter((w) => !/first animal/i.test(w)) : [];
   const serious = warnings.filter((w) => !/favourite|unwell/i.test(w));
   const weighty = !!starter || l.kind === 'tank' || belowReserve || over <= -0.15 || serious.length > 0;
-  const accept = () => act((d) => acceptBid(d, l.id, b.id), { sound: 'sold', quiet: true });
+  const accept = () => act({ k: 'acceptBid', listing: l.id, bid: b.id }, { sound: 'sold', quiet: true });
 
   const details = (
     <>
@@ -428,7 +425,7 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
           <Button size="sm" data-testid="bid-counter" onClick={() => { setCounter(suggested); setCountering(true); }}>
             <Gavel size={14} /> Counter
           </Button>
-          <Button size="sm" variant="ghost" data-testid="bid-decline" silent onClick={() => act((d) => declineBid(d, l.id, b.id), { sound: 'close', kind: 'info' })}>
+          <Button size="sm" variant="ghost" data-testid="bid-decline" silent onClick={() => act({ k: 'declineBid', listing: l.id, bid: b.id }, { sound: 'close', kind: 'info' })}>
             <X size={14} /> Decline
           </Button>
         </div>
@@ -451,8 +448,7 @@ function BidRow({ g, l, b, buyer }: { g: GameState; l: Listing; b: Bid; buyer?: 
               variant="primary"
               silent
               onClick={() => {
-                const r = act((d) => counterBid(d, l.id, b.id, Math.round(counter)), { sound: 'bid' });
-                if (r?.ok) setCountering(false);
+                act({ k: 'counterBid', listing: l.id, bid: b.id, amount: Math.round(counter) }, { sound: 'bid', after: (r) => r?.ok && setCountering(false) });
               }}
             >
               <Gavel size={14} /> Send {formatMoney(counter)}

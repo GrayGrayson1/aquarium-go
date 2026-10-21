@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import { ChevronDown, ChevronRight, CircleSlash, Hourglass, Trophy, Undo2, ClipboardList } from 'lucide-react';
 import type { GameState, ShowEntry } from '@/types';
 import { SHOW_CLASS_BY_ID, SHOW_TIERS } from '@/data/shows';
-import { recentResults, withdrawEntry, placeWord, TITLE_LABEL } from '@/sim/shows';
+import { recentResults, placeWord, TITLE_LABEL } from '@/sim/shows';
 import { Button } from '@/ui/kit';
 import { Card, Chip, EmptyState } from '../common/parts';
 import { act } from '../common/act';
@@ -50,7 +50,7 @@ export function EntriesTab({ g, onBrowse }: { g: GameState; onBrowse: () => void
                     <span className="pn-small pn-muted"> · {SHOW_CLASS_BY_ID[e.classId]?.short ?? e.classId} · fee {money(e.fee)}</span>
                   </span>
                   {open ? (
-                    <Button size="sm" variant="ghost" data-testid={`show-withdraw-${e.id}`} onClick={() => act((d) => withdrawEntry(d, e.id), { sound: 'click', kind: 'info' })}>
+                    <Button size="sm" variant="ghost" data-testid={`show-withdraw-${e.id}`} onClick={() => act({ k: 'withdrawEntry', entry: e.id }, { sound: 'click', kind: 'info' })}>
                       <Undo2 size={13} aria-hidden /> Withdraw
                     </Button>
                   ) : (

@@ -47,11 +47,12 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
   (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none. The guard tests `tests/sim/core-*` enforce
   most of this. A change that adds or reorders draws on an existing stream shifts seeded tests: run them before and
   after and explain each changed expectation; never retune data to hide the shift.
-- **The store boundary.** Game state changes only through `useGame.mutate` (player actions from the UI, the render
-  layer's input handlers and the AI's tutorial hook), `mutateFast` (the game loop, the hidden-tab catch-up, the flush
-  before a save or a manual-mode change, dev commands) and `setGame` (replacing the whole world). The render frame
-  loop never writes game state. A new top-level `src/` folder is a new layer: add it to the layer table in
-  `docs/ARCHITECTURE.md` and in `tests/sim/core-architecture-boundaries.test.ts` on purpose.
+- **The store boundary.** Game state changes only through `useGame.mutate`, `mutateFast` (the game loop, the
+  hidden-tab catch-up, the flush before a save or a manual-mode change, dev commands) and `setGame` (replacing the whole
+  world). Player actions (from the UI, the render layer's input handlers and the AI's tutorial hook) reach `mutate` only
+  as commands (`src/sim/commands`, chunk 11) through `useGame.getState().dispatch`: a new action is a new command kind,
+  not a closure. The render frame loop never writes game state. A new top-level `src/` folder is a new layer: add it
+  to the layer table in `docs/ARCHITECTURE.md` and in `tests/sim/core-architecture-boundaries.test.ts` on purpose.
 - **Saves.** New save fields are optional and validated in `repairState` when present; an absent field leaves
   `stateHash` unchanged. Adding a species or a tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does adding a water
   class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, a higher reservoir

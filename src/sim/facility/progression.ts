@@ -905,8 +905,9 @@ function refillBoard(state: GameState, rng: Rng, cache: CondCache): void {
     status: 'active',
     progress: 0,
     startedHour: now,
-    baseline: rk ? counterValue(state, rk) : undefined,
-    target: def.objective.type === 'counter' ? scaledTarget(def, times) : undefined,
+    // §3.2 rule 10: a key is left out, never set to undefined
+    ...(rk ? { baseline: counterValue(state, rk) } : {}),
+    ...(def.objective.type === 'counter' ? { target: scaledTarget(def, times) } : {}),
   });
   // one new quest at a time, a short breather between draws
   scan.boardRefreshHour = now + 1;
@@ -1021,7 +1022,7 @@ export function cancelResearch(state: GameState): ActionResult {
   const def = r.activeId ? RESEARCH_BY_ID[r.activeId] : undefined;
   if (!def) return { ok: false, message: 'No research in progress.' };
   const paid = paidForActive(state, def);
-  r.activeId = undefined;
+  delete r.activeId;
   r.progressHours = 0;
   delete state.progress.counters[RESEARCH_PAID_KEY];
   const refund = Math.round(paid / 2);
@@ -1042,7 +1043,7 @@ function stepResearch(state: GameState, dt: number): void {
     const paid = paidForActive(state, def);
     const frac = def.hours > 0 ? Math.max(0, Math.min(1, r.progressHours / def.hours)) : 1;
     markResearchOwned(state, def);
-    r.activeId = undefined;
+    delete r.activeId;
     r.progressHours = 0;
     delete state.progress.counters[RESEARCH_PAID_KEY];
     if (frac > 0) addMastery(state, def.track, Math.round(def.xp * frac));
@@ -1055,7 +1056,7 @@ function stepResearch(state: GameState, dt: number): void {
   r.progressHours += dt;
   if (r.progressHours + 1e-9 < def.hours) return;
   r.completed.push(def.id);
-  r.activeId = undefined;
+  delete r.activeId;
   r.progressHours = 0;
   delete state.progress.counters[RESEARCH_PAID_KEY];
   bumpCounter(state, 'research_done');

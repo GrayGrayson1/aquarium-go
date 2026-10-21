@@ -144,7 +144,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                         <Lock size={11} /> {f.unlock ? UNLOCK_KEYS[f.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : 'Locked'}
                       </span>
                     ) : (
-                      <Button size="sm" silent onClick={() => act((d) => buyFood(d, f.id, 1), { sound: 'coin' })} disabled={g.finance.money < f.price}>
+                      <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: f.id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
                         Buy · {formatMoney(f.price)}
                       </Button>
                     )}
@@ -215,7 +215,7 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
   const fit = useMemo(() => safeFit(() => equipmentFit(g, tankId, e.id)), [g, tankId, e.id]);
   const poor = !!fit && !fit.soft && (fit.level === 'useless' || fit.level === 'harmful'); // lane:qa-r3 — "Already fitted" is no warning
   // lane:qa-r3 — buyEquipment keeps the install's heads-up after the receipt (a caution result toasts as a warning)
-  const buy = () => act((d) => buyEquipment(d, tankId, e.id), { sound: 'coin' });
+  const buy = () => act({ k: 'buyEquipment', tank: tankId, def: e.id }, { sound: 'coin' });
   return (
     <div className={clsx('pn-supply', poor && 'is-poorfit', fit?.level === 'harmful' && 'is-harmful')} data-testid={`shop-equip-${e.id}`} data-fit={fit?.level}>
       <div className="pn-grow">

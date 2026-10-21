@@ -11,10 +11,11 @@ import { Clock, Droplets, Hand, Lock, Syringe, Zap } from 'lucide-react';
 import type { EquipmentInstance, GameState, Tank } from '@/types';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getFoodDef } from '@/data/catalog/foods';
-import { setEquipment } from '@/sim/care';
-import { canAutofeed, pickAutofeedFood } from '@/sim/care/autofeed';
+import { autoFeedOn, autoFeedPatch, canAutofeed, mealsOf, pickAutofeedFood } from '@/sim/care/autofeed';
+
+export { autoFeedOn, autoFeedPatch, mealsOf }; // chunk 11: moved to the sim (the setAutoFeed command reads them)
 import { type FitVerdict } from '@/sim/care/fit';
-import { buyEquipment } from '@/sim/economy';
+import { WATER_CHANGER_ID } from '@/sim/commands';
 import { isUnlocked } from '@/sim/facility';
 import { recommendedServings } from '@/sim/water';
 import { inhabitantsOf } from '@/sim/water/env';
@@ -31,30 +32,12 @@ import { FitLine } from '../common/FitNote';
 import { Button, Section, Segmented, Toggle, formatMoney } from '../kit';
 
 export const AUTOFEEDER_ID = 'autofeeder';
-export const WATER_CHANGER_ID = 'auto_water_changer';
+export { WATER_CHANGER_ID }; // chunk 11: the buyAutoClean command's
 /** §10.2: the hint while the Autofeeder (and so the Auto Water Changer, which shares its unlock) is locked. */
 export const AUTOMATION_LOCK_HINT = 'Research Better Life Support, or build husbandry mastery with regular care.';
 
 const kindOf = (e: EquipmentInstance) => getEquipmentDef(e.defId)?.kind;
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-
-/** The meals a day an Autofeeder is set to (0 = paused; a legacy `setting: 0` reads as off). */
-export function mealsOf(e: EquipmentInstance): number {
-  const v = typeof e.setting === 'number' && Number.isFinite(e.setting) ? e.setting : (getEquipmentDef(e.defId)?.stats.defaultSetting ?? 2);
-  return Math.max(0, Math.min(4, Math.round(v)));
-}
-
-/** Is Auto-feed on: the Autofeeder switched on with at least one meal a day (§10.2's "installed, on")? */
-export const autoFeedOn = (e: EquipmentInstance): boolean => e.on && mealsOf(e) > 0;
-
-/**
- * B-149: the Auto-feed switch turned on from a legacy `setting: 0` also restores the def's default meals (2);
- * `setEquipment` itself is unchanged.
- */
-export function autoFeedPatch(e: EquipmentInstance, on: boolean): { on: boolean; setting?: number } {
-  if (!on) return { on: false };
-  return mealsOf(e) > 0 ? { on: true } : { on: true, setting: getEquipmentDef(e.defId)?.stats.defaultSetting ?? 2 };
-}
 
 /**
  * What the Auto-feed subline says about food: "{food} · {n} servings left · about {d} days" (§10.2). Null when nobody
@@ -102,7 +85,7 @@ function AutoFeedRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdi
           {unlocked ? (
             <div className="ag-auto__need" id={`autofeed-need-${tank.id}`}>
               <span>Needs an Autofeeder</span>
-              <Button size="sm" className="ag-btn--buygear" data-testid="tank-auto-feed-buy" onClick={() => act((d) => buyEquipment(d, tank.id, AUTOFEEDER_ID), { sound: 'coin', flag: 'changed_equipment' })}>
+              <Button size="sm" className="ag-btn--buygear" data-testid="tank-auto-feed-buy" onClick={() => act({ k: 'buyEquipment', tank: tank.id, def: AUTOFEEDER_ID }, { sound: 'coin', flag: 'changed_equipment' })}>
                 Buy · {formatMoney(def?.price ?? 35)}
               </Button>
             </div>
@@ -154,10 +137,7 @@ function AutoFeedRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdi
           checked={autoFeedOn(dev)}
           // the patch reads the live device, not this card's throttled snapshot (a legacy 0 may have just loaded)
           onChange={(v) =>
-            act((d) => {
-              const live = d.tanks[tank.id]?.equipment.find((e) => e.id === dev.id);
-              return setEquipment(d, tank.id, dev.id, live ? autoFeedPatch(live, v) : { on: v });
-            }, { sound: 'click', flag: 'changed_equipment' })
+            act({ k: 'setAutoFeed', tank: tank.id, equip: dev.id, on: v }, { sound: 'click', flag: 'changed_equipment' })
           }
         />
       </div>
@@ -169,7 +149,7 @@ function AutoFeedRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdi
             label={`Meals a day for ${tank.name}`}
             testIdPrefix="tank-auto-feed-meals-"
             value={mealsOf(dev)}
-            onChange={(n) => act((d) => setEquipment(d, tank.id, dev.id, { setting: n }), { toast: 'caution', cautionKey: `meals:${dev.id}`, sound: 'click', flag: 'changed_equipment' })}
+            onChange={(n) => act({ k: 'setEquipment', tank: tank.id, equip: dev.id, setting: n }, { toast: 'caution', cautionKey: `meals:${dev.id}`, sound: 'click', flag: 'changed_equipment' })}
             items={[1, 2, 3, 4].map((n) => ({ id: n, label: String(n) }))}
           />
         </div>
@@ -183,7 +163,6 @@ function AutoFeedRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdi
 export function buyAutoClean(tankId: string): void {
   const ui = useUI.getState();
   const def = getEquipmentDef(WATER_CHANGER_ID);
-  const tank = (g: GameState) => g.tanks[tankId];
   const price = def?.price ?? 120;
   const money = useGame.getState().game?.finance.money ?? 0;
   if (money < price) {
@@ -191,24 +170,22 @@ export function buyAutoClean(tankId: string): void {
     ui.toast(`The Auto Water Changer costs ${formatMoney(price)}.`, 'warning', { label: 'Not enough money' });
     return;
   }
-  let name = '';
-  const r = act(
-    (d) => {
-      const res = buyEquipment(d, tankId, WATER_CHANGER_ID);
-      if (!res.ok) return res;
-      const inst = tank(d)?.equipment.find((e) => e.defId === WATER_CHANGER_ID);
-      if (inst && !inst.on) setEquipment(d, tankId, inst.id, { on: true });
-      name = tank(d)?.name ?? '';
-      return res;
+  act(
+    { k: 'buyAutoClean', tank: tankId },
+    {
+      toast: false,
+      sound: 'coin',
+      flag: 'changed_equipment',
+      after: (r) => {
+        if (!r) return;
+        if (!r.ok) {
+          ui.toast(r.message, 'warning');
+          return;
+        }
+        ui.toast(`Auto Water Changer on ${r.tankName ?? ''}`, 'celebrate', { label: 'Installed', detail: 'Auto-clean is on. Switch it off any time on the tank card.' });
+      },
     },
-    { toast: false, sound: 'coin', flag: 'changed_equipment' },
   );
-  if (!r) return;
-  if (!r.ok) {
-    ui.toast(r.message, 'warning');
-    return;
-  }
-  ui.toast(`Auto Water Changer on ${name}`, 'celebrate', { label: 'Installed', detail: 'Auto-clean is on. Switch it off any time on the tank card.' });
 }
 
 function AutoCleanRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerdict | null | undefined }) {
@@ -266,7 +243,7 @@ function AutoCleanRow({ g, tank, fit }: { g: GameState; tank: Tank; fit: FitVerd
         )}
       </div>
       <div className="ag-auto__ctl">
-        <Toggle label={label} testId="tank-auto-clean" checked={dev.on} onChange={(v) => act((d) => setEquipment(d, tank.id, dev.id, { on: v }), { sound: 'click', flag: 'changed_equipment' })} />
+        <Toggle label={label} testId="tank-auto-clean" checked={dev.on} onChange={(v) => act({ k: 'setEquipment', tank: tank.id, equip: dev.id, on: v }, { sound: 'click', flag: 'changed_equipment' })} />
       </div>
       {fit && <FitLine verdict={fit} testId="tank-auto-clean-fit" />}
     </div>
@@ -319,9 +296,18 @@ function DoserRow({ g, tank }: { g: GameState; tank: Tank }) {
               className="ag-btn--buygear"
               data-testid="tank-doser-buy"
               onClick={() => {
-                const r = act((d) => buyEquipment(d, tank.id, DOSER_ID), { toast: false, sound: 'coin', flag: 'changed_equipment' });
-                if (r?.ok) useUI.getState().toast(`Live-food doser on ${tank.name}`, 'celebrate', { label: 'Installed' });
-                else if (r) useUI.getState().toast(r.message, 'warning');
+                act(
+                  { k: 'buyEquipment', tank: tank.id, def: DOSER_ID },
+                  {
+                    toast: false,
+                    sound: 'coin',
+                    flag: 'changed_equipment',
+                    after: (r) => {
+                      if (r?.ok) useUI.getState().toast(`Live-food doser on ${tank.name}`, 'celebrate', { label: 'Installed' });
+                      else if (r) useUI.getState().toast(r.message, 'warning');
+                    },
+                  },
+                );
               }}
             >
               Buy · {formatMoney(def?.price ?? 45)}
@@ -345,7 +331,7 @@ function DoserRow({ g, tank }: { g: GameState; tank: Tank }) {
         )}
       </div>
       <div className="ag-auto__ctl">
-        <Toggle label={`Live-food doser for ${tank.name}`} testId="tank-doser" checked={dev.on} onChange={(v) => act((d) => setEquipment(d, tank.id, dev.id, { on: v }), { sound: 'click', flag: 'changed_equipment' })} />
+        <Toggle label={`Live-food doser for ${tank.name}`} testId="tank-doser" checked={dev.on} onChange={(v) => act({ k: 'setEquipment', tank: tank.id, equip: dev.id, on: v }, { sound: 'click', flag: 'changed_equipment' })} />
       </div>
     </div>
   );

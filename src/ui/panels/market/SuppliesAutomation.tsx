@@ -14,7 +14,7 @@ import { go } from '@/ui/nav/router';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getFoodDef } from '@/data/catalog/foods';
 import { BRINE, EGGS_SUPPLY, FOOD_ROOM, INFUSORIA, SALT_BAGS, SALT_SUPPLY_ID, VEGETABLES } from '@/data/catalog/machines';
-import { buyFood, SALT_PRICE_PER_KG } from '@/sim/economy';
+import { SALT_PRICE_PER_KG } from '@/sim/economy';
 import { pickAutofeedFood } from '@/sim/care/autofeed';
 import { inhabitantsOf } from '@/sim/water/env';
 import { formatClock, dayOf } from '@/sim/time';
@@ -80,7 +80,7 @@ export function LiveFoodSection({ g, flash }: { g: GameState; flash: string | nu
                 Hatchery <ChevronRight size={12} aria-hidden />
               </button>
             )}
-            <Button size="sm" silent onClick={() => act((d) => buyFood(d, foodId, 1), { sound: 'coin' })} disabled={g.finance.money < f.price}>
+            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: foodId, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
               Buy · {formatMoney(f.price)}
             </Button>
           </>
@@ -150,7 +150,7 @@ export function CulturesSection({ g, flash }: { g: GameState; flash: string | nu
           id={VEGETABLES}
           flash={flash}
           side={
-            <Button size="sm" silent onClick={() => act((d) => buyFood(d, VEGETABLES, 1), { sound: 'coin' })} disabled={g.finance.money < veg.price}>
+            <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: VEGETABLES, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < veg.price}>
               Buy · {formatMoney(veg.price)}
             </Button>
           }
@@ -182,7 +182,7 @@ export function DryFoodSection({ g, flash }: { g: GameState; flash: string | nul
               side={
                 <>
                   <span className="pn-tiny pn-muted pn-num-t">{have} servings</span>
-                  <Button size="sm" silent onClick={() => act((d) => buyFood(d, id, 1), { sound: 'coin' })} disabled={g.finance.money < f.price}>
+                  <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
                     Buy · {formatMoney(f.price)}
                   </Button>
                 </>

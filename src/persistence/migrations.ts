@@ -770,6 +770,17 @@ export function repairState(s: Json): string[] {
     repairs.push(`log: ${s.log.length - LOG_CAP} oldest events removed`);
     s.log.splice(0, s.log.length - LOG_CAP);
   }
+  // chunk 11 (SHARED-SHOPS.md §4.3) — a shared shop's event names the member who did it; a tag that isn't a short
+  // string is dropped (the event stays)
+  for (const e of s.log as Json[]) {
+    for (const k of ['by', 'byName'] as const) {
+      if (e[k] !== undefined && !(typeof e[k] === 'string' && e[k].length > 0 && e[k].length <= 80)) {
+        delete e[k];
+        repairs.push(`log: an event's ${k} removed`);
+      }
+    }
+  }
+  repairTouches(s, repairs);
   // lane:shows — optional; an unreadable shows block is dropped (src/sim/shows re-creates it lazily), arrays repaired.
   if (s.shows !== undefined && !isObj(s.shows)) {
     delete s.shows;
@@ -1043,6 +1054,20 @@ const HOLD_KEYS = ['water', 'salt', 'food', 'feeders', 'lines'] as const;
  * stock, manual mode, the Operations records and the stock manager's orders switch. Notes only what it changed (a valid
  * save loads with no repairs and an unchanged hash); never creates a room or stock.
  */
+/**
+ * chunk 11 (SHARED-SHOPS.md §4.3) — a shared shop's memory of who changed what in the last 30 seconds: optional (never
+ * in a solo save), at most 200 well-formed entries; an unreadable one is dropped, an empty list removed.
+ */
+function repairTouches(s: Json, repairs: string[]): void {
+  if (s.touches === undefined) return;
+  const str = (v: unknown, max: number) => typeof v === 'string' && v.length > 0 && v.length <= max;
+  const list = Array.isArray(s.touches) ? (s.touches as Json[]) : [];
+  const good = list.filter((t) => isObj(t) && str(t.key, 200) && str(t.by, 80) && str(t.name, 80) && str(t.verb, 40) && finiteNum(t.at)).slice(-200);
+  if (!Array.isArray(s.touches) || good.length !== list.length) repairs.push('touches: unreadable entries removed');
+  if (good.length) s.touches = good;
+  else delete s.touches;
+}
+
 function repairAutomation(s: Json, repairs: string[]): void {
   const hour = num(s.clock?.hour, 0);
   const fac = s.facility;

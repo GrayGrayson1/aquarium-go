@@ -35,3 +35,13 @@ export function deepClone<T>(v: T): T {
   }
   return out as T;
 }
+
+/**
+ * Chunk 11 (SHARED-SHOPS.md §3.2 rule 10): delete the object's own keys that hold `undefined`, so a value built from
+ * optional parts holds only what it has. A snapshot (JSON) drops such keys and a joiner would add them back in another
+ * order. Shallow; returns the same object.
+ */
+export function compact<T extends object>(o: T): T {
+  for (const k of Object.keys(o)) if ((o as Obj)[k] === undefined) delete (o as Obj)[k];
+  return o;
+}

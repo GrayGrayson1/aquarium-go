@@ -12,19 +12,13 @@ import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { STAFF_NOTICE_DAYS, STAFF_ROLES, STAFF_ROLE_ORDER, STAFF_TRAITS, STAFF_XP_PER_LEVEL, STOCK_BUDGET, skillStars } from '@/data/staff';
 import { getFacilityLevel, nextFacilityLevelDef } from '@/data/facilities';
 import { dayOf, formatClock } from '@/sim/time';
-import { setStockOrders } from '@/sim/automation'; // lane:automation (chunk 5)
 import { planPurchases, plannedOrders, stockCheckHours } from '@/sim/staff/work'; // lane:automation (chunk 5)
 import { opsMemo, opsSnapshot } from '@/ui/common/ops'; // lane:automation (chunk 5, PERF-004)
 import { SALT_PRICE_PER_KG } from '@/sim/economy'; // lane:automation (chunk 5)
 import {
-  assignTank,
-  autoAssignAll,
   canHire,
-  fireStaff,
-  hireStaff,
   keeperOf,
   nextDuty,
-  setStockBudget,
   staffCapacity,
   staffLoad,
   staffWagesPerDay,
@@ -38,7 +32,6 @@ import { Requirements, reqsFor } from '../common/Requirements';
 import { orderedTanks, unlocked } from '../common/derive';
 import { poolWhen } from '../common/format';
 import { StaffAvatar } from './StaffAvatar';
-import { tutorialAdvance } from '@/sim/facility'; // lane:w2-ui
 import './staff.css';
 
 const ROLE_ICON: Record<StaffRole, typeof Fish> = { aquarist: Fish, stock_manager: Package, docent: Presentation };
@@ -46,21 +39,13 @@ const first = (m: Pick<StaffMember, 'name'>) => m.name.split(' ')[0];
 
 /**
  * lane:w2-ui — the "Hire your first staff member" quest (q_first_staff) completes on the 'hired_staff' progress flag.
- * Raised when a hire succeeds, and synced once for saves (or fixtures) that already have a team.
+ * A hire raises it itself (the `hireStaff` command, chunk 11); this syncs it once for saves (or fixtures) that
+ * already have a team.
  */
-function hiredFlag(d: GameState) {
-  if (d.progress.tutorial.flags?.hired_staff) return;
-  try {
-    tutorialAdvance(d, 'hired_staff');
-  } catch {
-    /* progression mid-edit */
-  }
-}
-
 function HiredFlagSync({ g }: { g: GameState }) {
   const need = (g.staff?.roster.length ?? 0) > 0 && !g.progress.tutorial.flags?.hired_staff && !g.isShowcase;
   useEffect(() => {
-    if (need) edit((d) => hiredFlag(d));
+    if (need) edit({ k: 'raiseFlag', flag: 'hired_staff' });
   }, [need]);
   return null;
 }
@@ -113,7 +98,7 @@ export function StaffTab({ g }: { g: GameState }) {
       <section>
         <SectionHead title="Your team" icon={<Users size={14} />}>
           {roster.some((m) => m.role !== 'stock_manager') && (
-            <Button size="sm" variant="ghost" data-testid="staff-autoassign" onClick={() => act((d) => autoAssignAll(d), { sound: 'click' })}>
+            <Button size="sm" variant="ghost" data-testid="staff-autoassign" onClick={() => act({ k: 'autoAssignAll' }, { sound: 'click' })}>
               <Shuffle size={14} aria-hidden /> Share out tanks
             </Button>
           )}
@@ -316,7 +301,7 @@ function FireButton({ m }: { m: StaffMember }) {
           timer.current = window.setTimeout(() => setArmed(false), 4000);
           return;
         }
-        act((d) => fireStaff(d, m.id), { sound: 'close', kind: 'info' });
+        act({ k: 'fireStaff', staff: m.id }, { sound: 'close', kind: 'info' });
       }}
     >
       {armed ? 'Confirm' : 'Let go'}
@@ -366,7 +351,7 @@ function Assignments({ g, m, editing, setEditing }: { g: GameState; m: StaffMemb
                   data-testid={`staff-assign-${m.id}-${t.id}`}
                   title={aquarist ? `${t.name} · ${units.toFixed(1)} units${other && other.id !== m.id ? ` · now with ${first(other)}` : ''}` : t.name}
                   // lane:guide — quiet for a plain toggle, but say so when the tank is taken from another aquarist
-                  onClick={() => act((d) => assignTank(d, m.id, t.id, !on), { sound: 'click', quiet: !(!on && other && other.id !== m.id) })}
+                  onClick={() => act({ k: 'assignTank', staff: m.id, tank: t.id, on: !on }, { sound: 'click', quiet: !(!on && other && other.id !== m.id) })}
                 >
                   {on && <CircleCheck size={12} aria-hidden />}
                   {t.name}
@@ -397,7 +382,7 @@ function BudgetControl({ g, m }: { g: GameState; m: StaffMember }) {
     pending.current = true;
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
-      edit((d) => void setStockBudget(d, x));
+      edit({ k: 'setStockBudget', amount: x });
       pending.current = false;
     }, 300);
   };
@@ -413,7 +398,7 @@ function BudgetControl({ g, m }: { g: GameState; m: StaffMember }) {
         <span className="pn-small">
           Daily stock budget <b className="st-budget__v">{v === 0 ? 'Paused' : `${formatMoney(v)}/day`}</b>
         </span>
-        <Toggle checked={!st.ordersOff} onChange={(on) => edit((d) => void setStockOrders(d, on))} label={`${first(m)}’s orders`} testId="staff-orders" />
+        <Toggle checked={!st.ordersOff} onChange={(on) => edit({ k: 'setStockOrders', on })} label={`${first(m)}’s orders`} testId="staff-orders" />
       </div>
       <Slider value={v} min={0} max={max} step={1} onChange={commit} label={`${m.name}’s daily stock budget`} />
       <span className="pn-tiny pn-muted">
@@ -472,7 +457,7 @@ function CandidateCard({ g, c }: { g: GameState; c: StaffMember }) {
             <span className="st-wage">{formatMoney(c.wage)}/day</span>
           </div>
         </div>
-        <Button size="sm" variant="primary" disabled={!check.ok} title={check.ok ? `Hire ${first(c)}` : check.reason} data-testid={`staff-hire-${c.id}`} onClick={() => act((d) => { const r = hireStaff(d, c.id); if (r.ok) hiredFlag(d); return r; }, { sound: 'confirm', kind: 'success' })}>
+        <Button size="sm" variant="primary" disabled={!check.ok} title={check.ok ? `Hire ${first(c)}` : check.reason} data-testid={`staff-hire-${c.id}`} onClick={() => act({ k: 'hireStaff', candidate: c.id }, { sound: 'confirm', kind: 'success' })}>
           <UserPlus size={14} aria-hidden /> Hire
         </Button>
       </div>

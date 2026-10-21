@@ -9,6 +9,7 @@
  * - Creatures in a listing are marked 'listed' (they keep living in their tank); withdraw/expiry restores 'alive'.
  * - Bids are private offers that expire, get withdrawn and are re-priced — they never ratchet upward with time.
  */
+import { compact } from '../clone'; // chunk 11 (§3.2 rule 10)
 import type { GameState, Listing, ListingKind, Bid, Creature, Tank, BuyerProfile, ListingSnapshot, DecorInstance, TankValuation } from '@/types';
 import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
@@ -547,6 +548,8 @@ export function createListing(state: GameState, spec: ListingSpec): ActionResult
     lastValuation: built.snapshot.valuation,
     alerts: [],
   };
+  compact(listing); // §3.2 rule 10: no key holds undefined
+  compact(listing.snapshot);
   for (const c of contents.creatures) {
     c.status = 'listed';
     pushCapped(c.history, { hour: now, kind: 'listed', text: `Listed for sale: "${title}".` }, 40);

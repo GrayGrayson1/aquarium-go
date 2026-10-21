@@ -584,7 +584,7 @@ export function setLinePair(state: GameState, lineId: string, aId: string, bId: 
   }
   line.pair = { motherId: mother.id, fatherId: father.id, ...(keeper ? { restTankId: mother.tankId && mother.tankId !== line.tanks.breed ? mother.tankId : line.tanks.keep } : {}) };
   claimParents(state, [mother.id, father.id]);
-  line.routed = undefined;
+  delete line.routed;
   line.sortedThroughHour = state.clock.hour;
   clearBroken(line);
   return ok('');
@@ -956,7 +956,8 @@ function routeBroods(state: GameState, line: ProductionLine, sp: SpeciesDefiniti
   }
   // Keep only broods that still exist.
   const live = [...routed].filter((id) => !!state.clutches[id]);
-  line.routed = live.length ? live : undefined;
+  if (live.length) line.routed = live;
+  else delete line.routed;
 }
 
 /** Sort: the pair's newly raised young (one sort per brood) — keepers to the keep tank, the rest a batch (PROD-013). */

@@ -559,7 +559,7 @@ const FRIEND_WORRIED_TOAST_EVERY_H = 20;
 
 function friendStep(state: GameState, h: number, rng: Rng): void {
   const live = ensureLive(state);
-  if (live.friend && h >= live.friend.untilHour) live.friend = undefined;
+  if (live.friend && h >= live.friend.untilHour) delete live.friend;
   if (live.friend) return;
   const stepId = tutorialStepId(state);
   const firstMoney = stepId === 'first_money';
@@ -693,7 +693,7 @@ export function stepVisitors(state: GameState, dt: number, ctx: SimContext): voi
   if (state.isShowcase) return;
   const live = ensureLive(state);
   // stale references (tank sold/removed while visitors were viewing it)
-  if (live.friend && !state.tanks[live.friend.tankId]) live.friend = undefined;
+  if (live.friend && !state.tanks[live.friend.tankId]) delete live.friend;
   let t = 0;
   while (t < dt - 1e-9) {
     const sdt = Math.min(0.5, dt - t);

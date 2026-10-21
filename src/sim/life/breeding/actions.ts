@@ -131,7 +131,7 @@ export function separateCreature(state: GameState, creatureId: string, toTankId:
     if (stage === 'spent') startResting(c, hour, cooldownH);
     msg = `${c.name} is safe in ${tank.name} and can recover in peace.`;
   } else if (stage === 'guarding' && clutch && !isCarried(clutch)) {
-    if (clutch.guardedById === c.id) clutch.guardedById = undefined;
+    if (clutch.guardedById === c.id) delete clutch.guardedById;
     startResting(c, hour, cooldownH * 0.5);
     msg =
       clutch.stage === 'fry'
@@ -186,11 +186,12 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
   const from = state.tanks[cl.tankId];
   cl.tankId = toTankId;
   const guardian = cl.guardedById ? state.creatures[cl.guardedById] : undefined;
-  if (guardian && guardian.tankId !== toTankId) cl.guardedById = undefined;
+  if (guardian && guardian.tankId !== toTankId) delete cl.guardedById;
   if (cl.visual === 'bubble_nest') cl.visual = cl.stage === 'eggs' || cl.stage === 'larvae' ? 'eggs_scattered' : 'fry_cloud';
   const site = pickSite(tank, cl.stage === 'eggs' ? (cl.visual === 'eggs_adhesive' ? 'rock' : 'plants_low') : 'midwater', `${cl.id}:moved:${hour.toFixed(1)}`, cl.extraAnchors?.length ?? 0);
   cl.anchor = site.anchor;
-  cl.extraAnchors = site.extra.length ? site.extra : undefined;
+  if (site.extra.length) cl.extraAnchors = site.extra;
+  else delete cl.extraAnchors; // §3.2 rule 10
   if (!cl.flags) cl.flags = [];
   if (!cl.flags.includes('moved')) cl.flags.push('moved');
   bumpCounter(state, 'clutchesMoved');

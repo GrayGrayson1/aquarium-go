@@ -21,11 +21,11 @@ src/state        Zustand stores: game (persistent), ui (transient), settings (lo
 src/persistence  IndexedDB save slots, versioned schema + migrations, offline cap
 src/game         real-time loop driving sim ticks
 src/runtime      per-frame non-persisted registries (creature runtime, food, events, audio-reactive)
-src/ai           per-frame creature behaviour (reads sim state, writes runtime; game state only through mutate)
-src/render       Three.js/R3F rendering (reads state + runtime; input handlers change game state only through mutate)
+src/ai           per-frame creature behaviour (reads sim state, writes runtime; game state only through a command)
+src/render       Three.js/R3F rendering (reads state + runtime; input handlers change game state only through commands)
 src/platform     thin seam over browser APIs (notifications, clipboard, share, lifecycle); no runtime imports from persistence, sim, state or ui
 src/social       the SocialService interface, its local stub (0.5 spec §13.6; chunk 6) and the Supabase service (chunk 8): social data, never in the save; reads a save only for the player's leaderboard row
-src/ui           React DOM UI (reads state; calls sim mutators through `mutate`)
+src/ui           React DOM UI (reads state; sends player actions as commands through the store's dispatcher)
 src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
 server/          the shared-shop server (SHARED-SHOPS.md §5; chunk 10's prototype): Node 22 and `ws`, built into dist-server/
@@ -60,11 +60,11 @@ Rules:
 - **Species facts live only in `src/data/species`.** UI/render/AI read them through `getSpecies()`.
 - **The simulation is the source of truth.** Rendering and AI only present it. Example: feeding adds food to `tank.water.foodInWater`. The sim shares it out by feeding speed and competition, so a seahorse really does lose out to fast feeders. The AI animates particles being eaten, but the numbers come from the sim.
 - **All game-state changes go through the store boundary**, by exactly three paths. Domain mutators live in `src/sim/**`.
-  - `useGame.getState().mutate(draft => domainFn(draft, …))` for player actions, wherever they start: the UI, and the render layer's input handlers (glass taps in `render/interaction/TankInteraction.tsx`, the decor editor, tank placement). The AI's tutorial "observed" hook (`ai/TankAI.tsx`) also uses it.
+  - `useGame.getState().mutate(draft => domainFn(draft, …))`, which since chunk 11 (SHARED-SHOPS.md §4) player actions reach only as **commands**: plain objects (`src/sim/commands`, 80 kinds, one per action) sent through the store's installed dispatcher, `useGame.getState().dispatch(cmd, done?)`, wherever they start: the UI's `act`/`edit` helpers, the render layer's input handlers (glass taps in `render/interaction/TankInteraction.tsx`, the decor editor, tank placement) and the AI's tutorial "observed" hook (`ai/TankAI.tsx`). The solo dispatcher (`src/game/dispatch.ts`, installed when the `act` helpers are imported) applies a command at once with `applyCommand` in one `mutate`, its guide flag in another; a shared shop's (chunk 13) sends it to the server and settles it when its step arrives. Each player's own "seen" marks go through `src/ui/common/marks.ts`; dev tools write directly. `core-mutation-boundary.test.ts` checks that nothing else calls `mutate` or `mutateFast`.
   - `mutateFast` (`src/game/fastMutate.ts`: a plain working copy published with structural sharing, about 15× cheaper than an Immer draft for a whole-world step) for the game loop, the hidden-tab catch-up, the flush before a save (`persistence/session.ts`), the flush before a manual-mode change (`flushBackgroundTanks`, chunk 5) and dev commands. It is atomic (a recipe that throws publishes nothing, and after any failure, in the recipe or in the publish, the next call starts from the store) and not re-entrant. A store write made while a recipe runs (`mutate` or `setGame` from inside it) is reported and kept, and that recipe's work is dropped (B-177).
   - `setGame` to replace the whole world: loading a save (whose catch-up runs on the decoded copy first), starting a new game, the showcase and fixture boot (`App.tsx`, `ui/screens/onboarding.ts`) and dev tools.
 
-  The render frame loop (`useFrame`, render selectors) never writes game state. The AI's frame step writes only the `src/runtime` registries, with one exception: while the tutorial runs, its throttled "observed" hook advances the tutorial through `mutate`.
+  The render frame loop (`useFrame`, render selectors) never writes game state. The AI's frame step writes only the `src/runtime` registries, with one exception: while the tutorial runs, its throttled "observed" hook advances the tutorial with a command (`raiseFlag`).
 - **Determinism:** the sim draws randomness only from `simRng(state)` / `ctx.rng`, which persists `rngState`; from a subsystem's own persisted stream (`shows.rng`, `staff.rng`); or from a keyed stream, `mulberry32(hashString(key))`, seeded from a stable key (creature names, breeding anchors, the morph catalog), which persists nothing and gives the same draws for the same key. Cosmetic randomness in render and AI uses `visualRng`/`Math.random`. What "deterministic" promises, and what it doesn't, is defined under "Determinism contract" below.
 
 ## Time

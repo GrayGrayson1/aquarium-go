@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import type { GameState } from '@/types';
 import type { ServerMessage } from '@/types/shared';
+import type { Command } from '@/sim/commands';
 import { FIXTURES } from '@/dev/fixtures';
 import { encodeRecord, decodeRecord } from '@/persistence/serialize';
 import { stateHash } from '@/persistence/hash';
@@ -106,6 +107,33 @@ function food(g: GameState): string | undefined {
   return Object.keys(g.inventory.foods).find((f) => (g.inventory.foods[f] ?? 0) >= 1);
 }
 
+/** A move a member could make (chunk 11): a living animal, not the starter, to another tank of its water class. */
+function aMove(g: GameState, nth: number): Command | null {
+  const movers = Object.values(g.creatures).filter((c) => c.status === 'alive' && c.tankId && !c.isStarter);
+  for (let i = 0; i < movers.length; i++) {
+    const c = movers[(nth + i) % movers.length];
+    const to = g.tankOrder.find((id) => id !== c.tankId && g.tanks[id].waterClass === g.tanks[c.tankId!].waterClass);
+    if (to) return { k: 'moveCreature', creature: c.id, to, from: c.tankId! };
+  }
+  return null;
+}
+
+/**
+ * Paths of keys holding `undefined` (ids folded to `*`): a snapshot drops them and a joiner adds them back at the end,
+ * so chunk 11 deletes such keys (SHARED-SHOPS.md §3.2 rule 10) and every shared copy must hold none.
+ */
+function undefinedKeys(o: unknown, path = '', out: string[] = []): string[] {
+  if (o === null || typeof o !== 'object' || out.length > 20) return out;
+  if (Array.isArray(o)) o.forEach((v) => undefinedKeys(v, `${path}[]`, out));
+  else
+    for (const [k, v] of Object.entries(o)) {
+      const p = `${path}.${/^[a-z]+_[0-9a-z]+$/.test(k) ? '*' : k}`;
+      if (v === undefined) out.push(p);
+      else undefinedKeys(v, p, out);
+    }
+  return out;
+}
+
 describe('chunk 10: lockstep in one process (SHARED-SHOPS.md §9.1)', () => {
   for (const [name, days] of [
     ['playthrough_betta', 7],
@@ -125,6 +153,16 @@ describe('chunk 10: lockstep in one process (SHARED-SHOPS.md §9.1)', () => {
         const f = food(h.room.state);
         if (i % 23 === 0 && f) h.room.handle('a', { t: 'cmd', id: i, c: { k: 'feedTank', tank: order[0], food: f } });
         if (i % 59 === 0) h.room.handle(h.peers.has('b') ? 'b' : 'a', { t: 'cmd', id: i, c: { k: 'waterChange', tank: order[1] ?? order[0], fraction: 0.05 } });
+        // chunk 11: settings from two members (last-writer-wins), and two members moving one fish in the same moment
+        // (first one wins: the second is refused on every copy, naming the first), the joiner among them
+        if (i % 31 === 0) h.room.handle(i % 62 === 0 || !h.peers.has('b') ? 'a' : 'b', { t: 'cmd', id: i, c: { k: 'setLighting', tank: order[0], intensity: 0.5 + (i % 5) / 10 } });
+        if (i % 71 === 0) {
+          const mv = aMove(h.room.state, i);
+          if (mv) {
+            h.room.handle('a', { t: 'cmd', id: i, c: mv });
+            h.room.handle(c ? 'c' : h.peers.has('b') ? 'b' : 'a', { t: 'cmd', id: i + 1, c: mv });
+          }
+        }
         if (i === Math.floor(ticks / 3)) c = h.join('c'); // a joiner from a mid-run snapshot
         if (i === Math.floor(ticks / 2)) h.leave('b');
         if (i === Math.floor((ticks * 2) / 3)) h.room.handle('c', { t: 'view', tank: order[2] ?? order[0] });
@@ -139,6 +177,11 @@ describe('chunk 10: lockstep in one process (SHARED-SHOPS.md §9.1)', () => {
       expect([a, c!].map((p) => p.replica.stalled)).toEqual([null, null]);
       expect(h.room.stats.rejected).toBe(0);
       expect(h.room.stats.snapshotRepairs).toBe(0);
+      // chunk 11: the members' commands were tagged on every copy; refusals named the first mover
+      expect(h.room.state.log.some((e) => e.byName === 'A')).toBe(true);
+      expect(h.room.stats.conflicts).toBeGreaterThan(0);
+      expect(undefinedKeys(h.room.state)).toEqual([]);
+      for (const p of [a, c!]) expect(undefinedKeys(p.replica.state)).toEqual([]);
     }, 120_000);
   }
 

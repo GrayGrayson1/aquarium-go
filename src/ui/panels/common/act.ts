@@ -1,21 +1,15 @@
 /**
- * Run a player action through the game store, toast the result and play a sound. OWNER: lane "ui-panels".
+ * Run a player action (a command) through the game store's dispatcher, toast the result and play a sound. OWNER: lane
+ * "ui-panels". The result comes to `opts.after` (at once in a solo game; when its step arrives in a shared shop).
  *
- *   act((d) => buyOffer(d, offerId, tankId), { sound: 'coin' })
+ *   act({ k: 'buyOffer', offer: offerId, tank: tankId }, { sound: 'coin' })
  */
-import type { GameState } from '@/types';
+import type { Command, CommandResult } from '@/sim/commands';
 import { useGame } from '@/state/game';
 import { useUI, type Toast } from '@/state/ui';
 import { sfx, type SfxId } from '@/audio/sfx';
 import { markUrgent } from './hooks';
 import { toastCaution } from '@/ui/common/actions'; // lane:qa-r3
-
-export interface ActResult {
-  ok: boolean;
-  message: string;
-  /** lane:qa-r3 — it worked, but the message is a warning worth seeing even when `quiet` (see ActionResult.caution). */
-  caution?: boolean;
-}
 
 export interface ActOptions {
   /** Sound on success (default 'confirm'). */
@@ -28,55 +22,57 @@ export interface ActOptions {
   quiet?: boolean;
   /** lane:qa-r3 — debounce caution toasts per control (a slider drag ends in one toast; see toastCaution). */
   cautionKey?: string;
+  /** chunk 11 — what to do with the result once it's in (after the toast). Null: it failed, or no game was loaded. */
+  after?: (r: CommandResult | null) => void;
 }
 
-export function act<R extends ActResult>(fn: (d: GameState) => R | void, opts: ActOptions = {}): R | null {
-  const out: { res: R | null; err: unknown } = { res: null, err: null };
+export function act(cmd: Command, opts: ActOptions = {}): void {
+  const settle = (res: CommandResult | null, err: unknown): void => {
+    const ui = useUI.getState();
+    if (err || !res) {
+      if (err && import.meta.env.DEV) console.warn('[panels] action failed', err);
+      ui.toast(useGame.getState().game ? 'That didn’t work — please try again.' : 'No game loaded.', 'warning');
+      sfx('error');
+      opts.after?.(null);
+      return;
+    }
+    // an action that returns nothing (a toggle) reads as an empty success, as its closure's did
+    const r: CommandResult = res.noResult ? { ...res, message: '' } : res;
+    if (r.ok) {
+      if (opts.sound !== null) sfx(opts.sound ?? 'confirm');
+      // lane:qa-r3 — a result with a caution always shows its own message as a warning, even from a quiet control
+      if (r.caution && r.message) toastCaution(r.message, opts.cautionKey);
+      else {
+        if (opts.cautionKey) toastCaution(null, opts.cautionKey);
+        const text = opts.successText ?? r.message;
+        if (!opts.quiet && text) ui.toast(text, opts.kind ?? 'success');
+      }
+    } else {
+      sfx('error');
+      ui.toast(r.message || 'Not possible right now.', 'warning');
+    }
+    opts.after?.(r);
+  };
   markUrgent(true);
   try {
-    // Errors propagate out of immer's produce so a half-applied action is discarded, never committed.
-    useGame.getState().mutate((d) => {
-      const r = fn(d);
-      out.res = (r ?? { ok: true, message: '' }) as R;
-    });
+    // Errors propagate out of the store's write so a half-applied action is discarded, never committed.
+    useGame.getState().dispatch(cmd, (res) => settle(res, null));
   } catch (e) {
-    out.err = e;
+    settle(null, e);
   } finally {
     markUrgent(false);
   }
-  const ui = useUI.getState();
-  if (out.err || !out.res) {
-    if (out.err && import.meta.env.DEV) console.warn('[panels] action failed', out.err);
-    ui.toast(useGame.getState().game ? 'That didn’t work — please try again.' : 'No game loaded.', 'warning');
-    sfx('error');
-    return null;
-  }
-  const r = out.res;
-  if (r.ok) {
-    if (opts.sound !== null) sfx(opts.sound ?? 'confirm');
-    // lane:qa-r3 — a result with a caution always shows its own message as a warning, even from a quiet control
-    if (r.caution && r.message) toastCaution(r.message, opts.cautionKey);
-    else {
-      if (opts.cautionKey) toastCaution(null, opts.cautionKey);
-      const text = opts.successText ?? r.message;
-      if (!opts.quiet && text) ui.toast(text, opts.kind ?? 'success');
-    }
-  } else {
-    sfx('error');
-    ui.toast(r.message || 'Not possible right now.', 'warning');
-  }
-  return r;
 }
 
 /**
- * Silent state edit (no toast/sound) — for simple UI-owned toggles like names or read flags. lane:ui-shell (B-179) — a
- * recipe that throws is discarded whole (immer) and logged, never thrown at the caller (an interval would rethrow it
+ * A silent player action (no toast or sound) — for simple settings like names, budgets or a bid's hold. lane:ui-shell
+ * (B-179) — one that throws is discarded whole and logged, never thrown at the caller (an interval would rethrow it
  * every 15 s).
  */
-export function edit(fn: (d: GameState) => void): void {
+export function edit(cmd: Command): void {
   markUrgent(true);
   try {
-    useGame.getState().mutate(fn);
+    useGame.getState().dispatch(cmd);
   } catch (e) {
     console.warn('[panels] edit failed; nothing was changed', e);
   } finally {

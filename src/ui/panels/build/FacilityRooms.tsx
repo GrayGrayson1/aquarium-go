@@ -12,7 +12,7 @@ import { getFacilityLevel, nextFacilityLevelDef } from '@/data/facilities';
 import { STOCK_BUDGET } from '@/data/staff';
 import { BRINE, FOOD_ROOM, INFUSORIA, WATER_ROOM } from '@/data/catalog/machines';
 import { dayOf } from '@/sim/time';
-import { addCulture, addReservoir, batchGal, doserOf, freshCap, isHeld, prepRate, saltCap, saltWaterNeeded, upgradePrep } from '@/sim/automation';
+import { batchGal, doserOf, freshCap, isHeld, prepRate, saltCap, saltWaterNeeded } from '@/sim/automation';
 import { lineSlots, productionLines } from '@/sim/production';
 import { tierLadder } from '@/ui/common/ops';
 import { act } from '../common/act';
@@ -154,7 +154,7 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
             sub={`${prepRate(w)} gal an hour · $${WATER_ROOM.prepUpkeep.toFixed(2)}/day`}
             action={
               nextPrep !== undefined ? (
-                <Button size="sm" data-testid="build-upgrade-prep" onClick={() => act((d) => upgradePrep(d))}>
+                <Button size="sm" data-testid="build-upgrade-prep" onClick={() => act({ k: 'upgradePrep' })}>
                   Faster · {formatMoney(nextPrep)}
                 </Button>
               ) : (
@@ -168,7 +168,7 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
             sub={`${freshCap(w)} gal fresh · ${saltCap(w)} gal salt`}
             action={
               w.reservoirs < WATER_ROOM.maxReservoirs ? (
-                <Button size="sm" data-testid="build-add-reservoir" onClick={() => act((d) => addReservoir(d))}>
+                <Button size="sm" data-testid="build-add-reservoir" onClick={() => act({ k: 'addReservoir' })}>
                   +{WATER_ROOM.reservoirFresh} gal · {formatMoney(WATER_ROOM.reservoirPrice)}
                 </Button>
               ) : (
@@ -215,7 +215,7 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
           sub={`${f.cones.length} ${f.cones.length === 1 ? 'cone' : 'cones'} · ${brine} servings a day`}
           action={
             f.cones.length < FOOD_ROOM.maxCones ? (
-              <Button size="sm" data-testid="build-add-cone" onClick={() => act((d) => addCulture(d, 'cone'))}>
+              <Button size="sm" data-testid="build-add-cone" onClick={() => act({ k: 'addCulture', kind: 'cone' })}>
                 Add a cone · {formatMoney(FOOD_ROOM.conePrice)}
               </Button>
             ) : undefined
@@ -227,7 +227,7 @@ export function RoomPage({ g, room, onBack }: { g: GameState; room: RoomId; onBa
           sub={`${f.jars.length} ${f.jars.length === 1 ? 'jar' : 'jars'} · ${inf} servings a day`}
           action={
             f.jars.length < FOOD_ROOM.maxJars ? (
-              <Button size="sm" data-testid="build-add-jar" onClick={() => act((d) => addCulture(d, 'jar'))}>
+              <Button size="sm" data-testid="build-add-jar" onClick={() => act({ k: 'addCulture', kind: 'jar' })}>
                 Add a jar · {formatMoney(FOOD_ROOM.jarPrice)}
               </Button>
             ) : undefined

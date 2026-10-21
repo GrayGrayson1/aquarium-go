@@ -9,7 +9,7 @@ import { Check, CircleSlash, Lock, Sparkles, Heart } from 'lucide-react';
 import type { GameState, Show } from '@/types';
 import { SHOW_CLASS_BY_ID, SHOW_TIERS, CRITERION_LABEL, type ShowCriterionKey } from '@/data/shows';
 import { findSpecies } from '@/data/species';
-import { classCandidates, classEligibleCounts, enterShow, showClosedReason, type EntryCandidate } from '@/sim/shows';
+import { classCandidates, classEligibleCounts, showClosedReason, type EntryCandidate } from '@/sim/shows';
 import { Button } from '@/ui/kit';
 import { Callout, Chip, EmptyState, SectionHead } from '../common/parts';
 import { SubView } from '../common/PanelLayout';
@@ -74,8 +74,7 @@ export function EnterFlow({ g, show, initialClass, onBack, onDone }: { g: GameSt
 
   const submit = () => {
     if (!chosen) return;
-    const r = act((d) => enterShow(d, show.id, classId, chosen.id), { sound: 'confirm', kind: 'success' });
-    if (r?.ok) onDone();
+    act({ k: 'enterShow', show: show.id, cls: classId, subject: chosen.id }, { sound: 'confirm', kind: 'success', after: (r) => r?.ok && onDone() });
   };
 
   return (

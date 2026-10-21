@@ -286,7 +286,7 @@ export function generateOffer(state: GameState, rng: Rng, speciesId: string, opt
     price,
     seller: seller.name,
     expiresHour: opts.expiresHour,
-    note,
+    ...(note !== undefined ? { note } : {}), // §3.2 rule 10: no key holds undefined
     tier,
     label,
     unitPrice: creatures.length > 1 ? Math.max(1, nicePrice((price / creatures.length) * 1.12)) : price,

@@ -154,16 +154,24 @@ Each rule applies to shared shops; rule 1 also changes the solo game (its number
    `welcome`, with every snapshot, and in the first step after it changes, so a copy always knows it.
 5. **No smoothing pass** (it depends on a time budget). Background tanks flush at their usual thresholds, and after a
    catch-up, Hold all, Resume or Hold one the flushes are staggered over the next steps by a rule that depends only on
-   the state, so they don't all land in one step.
+   the state, so they don't all land in one step. (Chunk 11 left the stagger to chunk 12: it changes no copy's
+   agreement, only the server's busiest steps, so it is built and measured with the server's other speed work, §11.)
 6. **What the loop does outside the step, the server decides and sends.** The starvation guard moves into `src/sim`,
-   with its memory held per shop (not in module variables); its slow-down goes in `post`. `lastTickRealMs` is set from
+   with its memory held per shop (not in module variables); its slow-down goes in `post`. (Chunk 11:
+   `src/sim/starvation.ts`, `checkStarvation(state, memory)`; the solo loop keeps its memory in
+   `src/game/starvationGuard.ts`.) `lastTickRealMs` is set from
    the server's clock on the server only (it is outside the fingerprint).
 7. **No other write reaches the shared copy.** In a shared shop, saving and autosave stop before their flush, the hold
    actions' flush runs inside their command on every copy, `mutateFast` is used only by the loop and `sharedLoop`, and
-   the error boundary doesn't pause (§7.3). Interface flags that rules read become rules or commands (§4.3).
+   the error boundary doesn't pause (§7.3). Interface flags that rules read become rules or commands (§4.3). (Chunk 11:
+   the hold functions already settle the background tanks themselves, ADR-0026 decision 5; the solo dispatcher's
+   flush before them is only a speed-up on the plain copy, which a shared dispatcher skips.
+   `core-mutation-boundary` checks the writers, §4.2.)
 8. **Each player's own marks stay off the shared copy:** the alerts' read marks and "Clear all", the notification
    settings (`notify.*`) and the shows' results-seen hour (§7.4). Chunk 11 lists every other "seen" write and its
-   effect; one that gates a rule becomes a command.
+   effect; one that gates a rule becomes a command. (Chunk 11: `src/ui/common/marks.ts` is the only way the interface
+   writes them, with the list: the log's read mark and Research's "seen" join them, and none gates a rule; the panels'
+   `opened_<panel>` flags and `hired_staff` do, so they're commands.)
 9. **The server runs each shop in its own worker thread** (`node:worker_threads`, built into Node), so every
    module-level cache, index and registry belongs to one shop, as on a browser.
 10. **Snapshots and saves are exact.** A shared copy holds no data URLs (photos are references, §4.4). Browsers read a
@@ -175,7 +183,9 @@ Each rule applies to shared shops; rule 1 also changes the solo game (its number
     `note`, …) and a joiner adds them back at the end when they're set again, so its keys can come in a different order
     than the server's. Harmless while no rule reads a key's presence or the order of an object's keys; the mid-run
     joiner tests cover it (§9.1; chunk 10: 94 joiners over 600 steps on four shops, no divergence). Chunk 11 deletes such
-    keys instead of setting `undefined`, and the lockstep test asserts that no key holds `undefined`. The server
+    keys instead of setting `undefined` (about 30 places, and `compact` for values built from optional parts: an event,
+    a listing), and the lockstep test and the catalogue test assert that no key holds `undefined` after any step or
+    command (ten fixtures, 4 to 14 game days, checked by a probe too). The server
     repairs a shop only when it loads it from the database (a wake), before anyone has it.
 11. **The "shared" mark lives outside `GameState`** (in the shared-shop store), so it never enters a fingerprint.
 
@@ -204,7 +214,7 @@ Server to browser:
 | Message | Meaning |
 |---|---|
 | `{t:'welcome', you, members, n, full, catchUp?}` then a snapshot frame | Joined: who I am and may do, who's there, the step number the snapshot is at, the full-detail list, and the welcome-back summary if the shop just caught up |
-| `{t:'steps', s:[{n, h, full?, cmds?, post?, fp?}]}` | Steps in order. Command steps go out within about 50 to 100 ms (several commands in that window share a frame to each member); time steps are batched about once a second |
+| `{t:'steps', s:[{n, h, full?, cmds?, post?, fp?}]}` | Steps in order; each command in `cmds` is `{by, who, id, at, c}`: the sender's id and name, their own id for it, the server's time it arrived (first one wins' 30 seconds, §4.3), and the command. Command steps go out within about 50 to 100 ms (several commands in that window share a frame to each member); time steps are batched about once a second |
 | a binary photo frame | A requested photo: its hash, then the image |
 | `{t:'reject', id, why}` | Your command wasn't applied: not allowed (pause without permission), malformed, rate-limited, or it threw on the server (§5.2). A command the game refuses by its rules (no money, already sold) is applied as usual, so every copy gets the same refusal and the sender's own copy says why (§4.3) |
 | `{t:'members', members}` | Who's there and who can pause (not what each is looking at, which no screen shows); at most one a second |
@@ -215,9 +225,11 @@ Server to browser:
 ### 4.1 The catalogue
 
 - `src/sim/commands/` (new, in the `sim` layer): `type Command` is a union of plain objects, one kind for each player
-  action (about 70: `{k:'buyOffer', offer, tank}`, `{k:'feedTank', tank, food, zone?, target?}`, `{k:'setSpeed',
-  speed}`, …), and `applyCommand(state, cmd, actor?) → CommandResult`, which calls the same `src/sim` function the
-  closure called. `CommandResult` is the `ActionResult` plus what callers read afterwards today (`tankId`,
+  action (80 in chunk 11, `kinds.ts`: `{k:'buyOffer', offer, tank, picks?}`, `{k:'feedTank', tank, food, zone?,
+  target?}`, `{k:'setSpeed', speed}`, …, each with an optional guide `flag`), and `applyCommand(state, cmd, actor?) →
+  CommandResult` (`apply.ts`), which calls the same `src/sim` function the closure called. Actions the interface
+  doesn't call (`setManualMode`, `setOpenHours`, `renameLine`, the facility's fixtures, `sellFragsToStore`) aren't
+  commands until a screen uses them. `CommandResult` is the `ActionResult` plus what callers read afterwards today (`tankId`,
   `servingsUsed`, the storage counts), so no caller reads the game right after an action.
 - **Arguments are only ids, numbers, strings, booleans and small plain objects** (a placement `{x, z, rotY, scale}`).
   What an action used to read from the UI goes in its arguments (`buyTank`'s `seeded`); what it read from the game is
@@ -235,12 +247,13 @@ Server to browser:
   dispatcher lives on the game store: `useGame.getState().dispatch(cmd, opts)`, installed at boot by `src/game`
   (solo) and swapped by `src/ui/shared` (a shared shop), the way `registerSettler` is installed. The transport lives in
   `src/ui/shared`; `sharedLoop` in `src/game` receives steps through a registered function, not an import of `ui`.
-- **Solo stays synchronous:** `dispatch` runs `mutate((d) => applyCommand(d, cmd))` at once and returns the result, as
-  `act` does today. **Shared** returns a pending result that settles when the step that applied it arrives and this
-  copy has applied it; the `act` helpers' toasts, sounds and guide flags follow the result in both.
+- **Solo stays synchronous:** `dispatch(cmd, done?)` runs `mutate((d) => applyAction(d, cmd))` at once, then the guide
+  flag in a write of its own (B-179), calls `done` and returns the result, as `act` did (`src/game/dispatch.ts`).
+  **Shared** returns `undefined` and calls `done` when the step that applied it arrives and this copy has applied it;
+  the `act` helpers' toasts, sounds and callers' follow-ups (`after`) wait for the result in both.
 - **Controls that send many values** (the equipment slider "fires per pixel", the stock budget) are coalesced per
   control: at most about 4 a second, plus the value on release, with the control showing its local value until the step
-  lands.
+  lands. (The shared dispatcher's job, chunk 13: solo applies every value at once, as today.)
 - `core-mutation-boundary.test.ts` grows: outside the dispatcher, the loop, `sharedLoop`, persistence's load and save,
   and `src/dev`, nothing calls `mutate` or `mutateFast`.
 - The solo game must behave as before: chunk 11 changes no player-visible behaviour, and its tests prove each command
@@ -258,13 +271,16 @@ Server to browser:
   no longer holds is refused on every copy, and the message names the member whose command changed it in the last 30
   seconds ("Sam already sold that fish.", "Sam already moved that fish."). An expectation ignores changes made by the
   same sender's own earlier commands (two quick moves of one fish both work). Each copy keeps that short memory of who
-  touched what from the steps, so every copy decides and says the same.
+  touched what from the steps, so every copy decides and says the same. (Chunk 11: the memory is the shop's state,
+  `GameState.touches`, timed by the server's `at` on each command, so a joiner's snapshot carries it;
+  `src/sim/commands/shared.ts`.)
 - **Settings are last-writer-wins** (a slider, a light schedule, a budget): no expectation, so a coalesced control's
   later values never refuse its earlier ones; when another member changed the same setting in the last 30 seconds, the
   sender's screen notes it with the same "{name} already …" line.
 - **Flags that rules read become rules:** `hireStaff` raises `hired_staff` itself, and so on for each `{flag}` an
-  action passes. Panels' `opened_<panel>` flags, which gate quests and unlocks, become one command (`openedPanel`); the
-  server forwards only the first for each flag, so ten members opening the market send one. The guide's own steps don't
+  action passes. Panels' `opened_<panel>` flags, which gate quests and unlocks, become one command (chunk 11: `raiseFlag`, for
+  every guide flag the interface raises); the server forwards only the first for each flag, so ten members opening the
+  market send one. The guide's own steps don't
   run (no guide, ADR-0045 decision 5).
 
 ### 4.4 Listing photos (ADR-0045 decision 13)
@@ -484,6 +500,7 @@ refused because another holder has the lease closes the room with `closing: rest
 | `src/sim/starvation.ts` (new) | The starvation guard's rule, with its memory passed in (§3.2 rule 6); `src/game/starvationGuard.ts` keeps the solo memory |
 | `src/state/game.ts` | The installed dispatcher (§4.2) |
 | `src/game/dispatch.ts`, `src/game/sharedLoop.ts` (new) | The solo dispatcher; applying the server's steps with `runSharedStep` and publishing them, checking fingerprints in idle time |
+| `src/ui/common/marks.ts` (new, chunk 11) | Each player's own "seen" marks, the only way the interface writes them (§3.2 rule 8) |
 | `src/persistence/migrations.ts` | `repairState` accepts a photo reference (§4.4) |
 | `src/social/service.ts`, `localStub.ts`, `supabase/*` | `sharedShops()` and `sharedUsage()` (§6.3), in the stub too |
 | `src/social/project.ts` | `SHARED_SHOP_SERVER` |
@@ -576,11 +593,23 @@ in from the game.
 | Catching up (a snapshot) | "Catching up with the shared shop…" |
 | A slow device | "Your device can't keep up with the shared shop at this speed, so it keeps catching up. Someone who can change the speed could slow it down." |
 
-Any other player-visible words a chunk needs go to the owner first. Known to need them (chunk 11 lists them exactly;
-chunk 13 asks in one round before building the screens): the other first-one-wins lines (one per command with an
-expectation, §4.3), the settings' "{name} already …" note (§4.3), an alerts line for each action that emits no event
-today (§4.3), `reject`'s reasons other than pause (rate-limited; failed on the server), Settings › Saves' line in a
-shared shop (§7.3), and whatever the save guards show (§7.3).
+Any other player-visible words a chunk needs go to the owner first.
+
+**Words still to approve** (chunk 11's exact list; chunk 13 asks the owner in one round before building the screens,
+and nothing shows them before then). The first-one-wins lines are the catalogue's (`conflictText` in
+`src/sim/commands/shared.ts`, drafts there): what the earlier member did, and to what.
+
+| Where | Draft words |
+|---|---|
+| First one wins, an animal | "{name} already moved that fish." and "{name} already sold that fish." (both approved) · "{name} already listed that fish." |
+| First one wins, the rest | "{name} already bought that offer." (approved) · "{name} already moved that clutch." · "{name} already sold that listing." · "{name} already withdrew that listing." · "{name} already accepted that bid." · "{name} already declined that bid." · "{name} already answered that bid." (a counter-offer) · "{name} already took a frag from that decoration." · "{name} already moved that decoration." · "{name} already sold that decoration." · "{name} already removed that decoration." · "{name} already listed that frag." · "{name} already planted that frag." · "{name} already sold that frag." · "{name} already removed that equipment." · "{name} already repaired that equipment." · "{name} already installed that equipment." · "{name} already hired that candidate." · "{name} already let that keeper go." · "{name} already ended that line." |
+| First one wins, nobody named (the game changed it, or over 30 seconds ago) | "That fish has changed since you looked." (and the same with clutch, offer, listing, bid, frag, decoration, equipment, candidate, keeper, line, tank) |
+| A setting another member just changed (the sender's note) | "{name} already changed that." |
+| An action with no message of its own (no alerts line today) | Pause and speed use the approved pop-ups. A favourite, watching or following an animal, a photo's story line, a tap on the glass and the guide's flags add no line. Hold all, Resume and one system: "{name} put automation on hold." · "{name} resumed all automation." · "{name} held {system}." / "{name} resumed {system}." |
+| `reject`: too many actions | "Slow down a little: that was a lot of actions at once." |
+| `reject`: failed on the server, or malformed | "That didn’t work, and nothing was changed. Please try again." (the game's own words for a failed action) |
+| Settings › Saves, in a shared shop | "This is {club}'s shared shop: it saves on the server. Your own aquarium is saved and waits for you." [Back to my aquarium] |
+| Save, Load, Import or Export tried in a shared shop | "The shared shop saves itself on the server." |
 
 ## 9. Tests
 

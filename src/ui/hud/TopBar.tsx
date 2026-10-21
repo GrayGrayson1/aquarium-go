@@ -29,9 +29,7 @@ export function setSpeed(s: GameSpeed) {
   if (!g) return;
   if (s !== 0) useShell.getState().set({ lastSpeed: s });
   else if (g.clock.speed !== 0) useShell.getState().set({ lastSpeed: g.clock.speed as Exclude<GameSpeed, 0> });
-  useGame.getState().mutate((d) => {
-    d.clock.speed = s;
-  });
+  useGame.getState().dispatch({ k: 'setSpeed', speed: s });
 }
 
 export function togglePause() {

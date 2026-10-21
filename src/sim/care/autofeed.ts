@@ -299,3 +299,21 @@ export function autofeedPause(
   else if (inhabitants.some((i) => canAutofeed(i.species)) && !pickAutofeedFood(stock, inhabitants.map((i) => i.species))) reason = 'empty';
   return reason ? { reason, creatureId: hungry.creature.id, name: hungry.creature.name } : null;
 }
+
+/** The meals a day an Autofeeder is set to (0 = paused; a legacy `setting: 0` reads as off). */
+export function mealsOf(e: EquipmentInstance): number {
+  const v = typeof e.setting === 'number' && Number.isFinite(e.setting) ? e.setting : (getEquipmentDef(e.defId)?.stats.defaultSetting ?? 2);
+  return Math.max(0, Math.min(4, Math.round(v)));
+}
+
+/** Is Auto-feed on: the Autofeeder switched on with at least one meal a day (§10.2's "installed, on")? */
+export const autoFeedOn = (e: EquipmentInstance): boolean => e.on && mealsOf(e) > 0;
+
+/**
+ * B-149: the Auto-feed switch turned on from a legacy `setting: 0` also restores the def's default meals (2);
+ * `setEquipment` itself is unchanged. (Moved here from the tank card in chunk 11: the `setAutoFeed` command reads it.)
+ */
+export function autoFeedPatch(e: EquipmentInstance, on: boolean): { on: boolean; setting?: number } {
+  if (!on) return { on: false };
+  return mealsOf(e) > 0 ? { on: true } : { on: true, setting: getEquipmentDef(e.defId)?.stats.defaultSetting ?? 2 };
+}

@@ -89,7 +89,7 @@ export function createTank(state: GameState, tierId: string, waterClass: WaterCl
         installedHour: state.clock.hour,
         condition: 1,
         on: true,
-        setting: def?.stats.defaultSetting,
+        ...(def?.stats.defaultSetting !== undefined ? { setting: def.stats.defaultSetting } : {}), // §3.2 rule 10
       });
     }
   }

@@ -7,7 +7,7 @@
  * Chunk 10's prototype: no accounts (a member is a connection), no pause permission, no database (chunk 12).
  */
 import type { GameState } from '@/types';
-import { runSharedStep, type SharedStep } from '@/sim/sharedStep';
+import { runSharedStep, type SharedStep, type StepCommand } from '@/sim/sharedStep';
 import { validateCommand, type Command } from '@/sim/commands';
 import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
 import { stateHash } from '@/persistence/hash';
@@ -110,6 +110,8 @@ export interface RoomStats {
   bytes: Record<OutKind, number>;
   frames: Record<OutKind, number>;
   rejected: number;
+  /** Commands the game refused because what their sender saw had changed (first one wins, §4.3). */
+  conflicts: number;
   failedTicks: number;
   /** The serialized copy's fingerprint differed from the live copy's (§3.2 rule 10). */
   snapshotRepairs: number;
@@ -154,6 +156,7 @@ export class Room {
       bytes: { ...zero },
       frames: { ...zero },
       rejected: 0,
+      conflicts: 0,
       failedTicks: 0,
       snapshotRepairs: 0,
       outOfStep: 0,
@@ -276,14 +279,16 @@ export class Room {
   // ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
   /** Make one step and apply it; false if its block threw (nothing changed). */
-  private step(h: number, cmd?: { by: string; id: number; c: Command }): boolean {
+  private step(h: number, cmd?: StepCommand): boolean {
     const step: SharedStep = { n: this.n + 1, h };
     const full = this.pendingFull ?? this.full;
     if (this.pendingFull) step.full = this.pendingFull;
     if (cmd) step.cmds = [cmd];
     const t0 = this.io.now();
     try {
-      this.state = runSharedStep(this.state, step, full, { copy: true }).state;
+      const out = runSharedStep(this.state, step, full, { copy: true });
+      this.state = out.state;
+      for (const r of out.results) if (r.conflict) this.stats.conflicts++;
     } catch (e) {
       this.io.log?.(`step ${step.n} threw: ${e instanceof Error ? e.message : String(e)}`);
       return false;
@@ -305,7 +310,8 @@ export class Room {
       member.here = true; // a command brings its sender back (§5.5)
       this.broadcastMembers();
     }
-    if (!this.step(0, { by: member.id, id: cid, c })) return this.reject(member.id, cid, 'failed');
+    // the sender's name and the server's wall clock travel with the command, for first one wins (§4.3)
+    if (!this.step(0, { by: member.id, who: member.name, id: cid, at: Date.now(), c })) return this.reject(member.id, cid, 'failed');
     if (!this.flushSoon) {
       this.flushSoon = true;
       this.io.later(50, () => this.flushSoon && this.flush());

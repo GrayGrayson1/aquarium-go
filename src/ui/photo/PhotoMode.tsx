@@ -17,7 +17,6 @@ import { useShell } from '../common/shellStore';
 import { isTextEntry, safe } from '../common/safe';
 import { downloadDataUrl } from '../common/saves';
 import { tutorialFlag } from '../common/actions';
-import { notePhoto } from './story';
 import { Modal, Button, Slider, Chip } from '../kit';
 
 type Store = { getState: () => Record<string, unknown>; setState: (p: Record<string, unknown>) => void; subscribe: (cb: () => void) => () => void };
@@ -67,19 +66,17 @@ export async function takePhoto(): Promise<void> {
     }
     const creatureId = ui.followCreatureId ?? ui.selectedCreatureId;
     const g = useGame.getState().game;
-    let added = false;
+    const show = (added: boolean) => useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId, added } });
     if (creatureId && g && g.creatures[creatureId]) {
       // lane:ui-shell (B-179) — the story line is optional: a throw discards it whole, and the photo still shows
       try {
-        useGame.getState().mutate((d) => {
-          added = notePhoto(d, creatureId);
-        });
+        useGame.getState().dispatch({ k: 'notePhoto', creature: creatureId }, (r) => show(!!r?.added));
       } catch (e) {
         console.warn('[photo] story line failed', e);
+        show(false);
       }
-    }
+    } else show(false);
     tutorialFlag('photo_taken');
-    useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId, added } });
   } finally {
     capturing = false;
   }

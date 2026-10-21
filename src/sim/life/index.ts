@@ -118,7 +118,7 @@ export function createCreature(state: GameState, rng: Rng, speciesId: string, op
     history,
     visitorWows: 0,
     geneticsRevealed: 0,
-    isStarter: opts.isStarter,
+    ...(opts.isStarter !== undefined ? { isStarter: opts.isStarter } : {}), // §3.2 rule 10: no key holds undefined
     life: opts.isStarter ? { bond: 25 } : {},
   };
   return creature;

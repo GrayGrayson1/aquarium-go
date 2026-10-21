@@ -144,7 +144,8 @@ export function setStage(c: Creature, stage: string, hour: number, endsHour?: nu
   c.repro.stage = stage;
   c.repro.stageSinceHour = hour;
   c.repro.progress = 0;
-  c.repro.stageEndsHour = endsHour;
+  if (endsHour === undefined) delete c.repro.stageEndsHour; // §3.2 rule 10: deleted, never set to undefined
+  else c.repro.stageEndsHour = endsHour;
 }
 
 /** 0..1 progress of a timed stage (uses stageEndsHour or carryingUntilHour). */
@@ -162,8 +163,8 @@ export function stageDue(c: Creature, hour: number): boolean {
 
 export function startResting(c: Creature, hour: number, hours: number): void {
   setStage(c, 'resting', hour, hour + Math.max(1, hours));
-  c.repro.clutchId = undefined;
-  c.repro.carryingUntilHour = undefined;
+  delete c.repro.clutchId;
+  delete c.repro.carryingUntilHour;
 }
 
 export const isResting = (c: Creature, hour: number) => c.repro.stage === 'resting' && (c.repro.stageEndsHour ?? 0) > hour;

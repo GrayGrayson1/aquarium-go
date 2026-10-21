@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { produce } from 'immer';
 import { FIXTURES } from '@/dev/fixtures';
 import { pushHistory } from '@/sim/life/step';
-import { notePhoto } from '@/ui/photo/story';
+import { notePhoto } from '@/sim/life/actions';
 import type { GameState } from '@/types';
 
 function subject(g: GameState) {

@@ -62,7 +62,6 @@ import {
   oneInLabel,
 } from '@/sim/life';
 import { PrismaticBadge, MorphTierBadge, StrainBadge } from '../common/Prismatic'; // lane:genetics
-import { renameCreature, toggleFavorite, noteInteraction, startBreeding } from '@/sim/life/actions';
 import { illnessDef } from '@/sim/life/illness'; // lane:guide
 import { creatureValue } from '@/sim/economy';
 import { speciesWaterComfort } from '@/sim/water';
@@ -96,7 +95,6 @@ import { MoveCreatureModal } from './MoveCreatureModal';
 import { CreatureRibbons } from '../panels/shows/Ribbons'; // lane:shows
 import { creatureFoodChoice } from '../common/foodStock'; // lane:w2-ui
 import { targetFeedNow } from '../hud/ToolRail'; // lane:w2-ui
-import { buyFood } from '@/sim/economy'; // lane:w2-ui
 
 // lane:genetics — where this Prismatic's shimmer came from
 const PRISMATIC_ORIGIN: Record<NonNullable<Creature['rareVariant']>['origin'], string> = {
@@ -151,7 +149,7 @@ function NameEditor({ c, readOnly }: { c: Creature; readOnly: boolean }) {
   const commit = () => {
     setEditing(false);
     const v = val.trim();
-    if (v && v !== c.name) act((d) => renameCreature(d, c.id, v), { flag: 'named', sound: 'confirm' });
+    if (v && v !== c.name) act({ k: 'renameCreature', creature: c.id, name: v }, { flag: 'named', sound: 'confirm' });
   };
   if (editing && !readOnly)
     return (
@@ -447,7 +445,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
                 size="sm"
                 variant={check.ok ? 'primary' : 'default'}
                 disabled={!check.ok}
-                onClick={() => act((d) => startBreeding(d, c.id, partner!, c.tankId ?? undefined), { kind: 'celebrate', sound: 'celebrate', flag: 'started_breeding' })}
+                onClick={() => act(c.tankId ? { k: 'startBreeding', a: c.id, b: partner!, tank: c.tankId } : { k: 'startBreeding', a: c.id, b: partner! }, { kind: 'celebrate', sound: 'celebrate', flag: 'started_breeding' })}
               >
                 <Egg size={14} /> Start breeding
               </Button>
@@ -502,7 +500,7 @@ export function CreatureCard() {
 
 function noteObserved(id: string) {
   // Observing an animal counts as an interaction (bond + quests); lifecycle lane decides what it means.
-  act((d) => noteInteraction(d, id, 'observe'), { toast: false, sound: 'hover' });
+  act({ k: 'noteInteraction', creature: id, kind: 'observe' }, { toast: false, sound: 'hover' });
 }
 
 function CardHeader({ c, game }: { c: Creature; game: GameState }) {
@@ -571,7 +569,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           }
         }} />
         <ActionBtn icon={<Camera size={17} />} label="Photo" onClick={() => { sfx('camera'); enterCinematic('photo', { followCreatureId: c.id }); tutorialFlag('opened_photo'); }} />
-        <ActionBtn icon={<Star size={17} fill={c.favorite ? 'currentColor' : 'none'} />} label={c.favorite ? 'Favourite' : 'Favourite'} active={!!c.favorite} disabled={readOnly} onClick={() => act((d) => { toggleFavorite(d, c.id); }, { toast: false, sound: 'click' })} />
+        <ActionBtn icon={<Star size={17} fill={c.favorite ? 'currentColor' : 'none'} />} label={c.favorite ? 'Favourite' : 'Favourite'} active={!!c.favorite} disabled={readOnly} onClick={() => act({ k: 'setFavorite', creature: c.id, on: !c.favorite }, { toast: false, sound: 'click' })} />
         <ActionBtn icon={<ArrowRightLeft size={17} />} label="Move" disabled={readOnly || c.status !== 'alive'} title={c.status === 'listed' ? `${c.name} is listed for sale. Withdraw the listing in Market › My listings to move ${c.name}.` : c.status !== 'alive' ? `${c.name} is no longer in your care.` : undefined} onClick={() => { sfx('open'); useShell.getState().set({ moveCreatureId: c.id }); }} />
         {/* lane:guide — Sell always leads somewhere useful: the listing if already listed, the local shop's quick sale
             before the marketplace opens (the wizard used to stop there with no way to sell), else the listing wizard */}
@@ -805,8 +803,7 @@ function FeedRow({ c, game }: { c: Creature; game: GameState }) {
   const buyAndFeed = () => {
     if (!choice.restockId) return;
     const id = choice.restockId;
-    const r = act((d) => buyFood(d, id, 1), { toast: false, sound: 'coin' });
-    if (r?.ok) offer(id);
+    act({ k: 'buyFood', food: id, packs: 1 }, { toast: false, sound: 'coin', after: (r) => r?.ok && offer(id) });
   };
   return (
     <div className={clsx('ag-cfeed', hungry && 'is-hungry', fed > 0 && 'is-fed')} data-testid="creature-feed">

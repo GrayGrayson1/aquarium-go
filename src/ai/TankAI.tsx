@@ -16,7 +16,6 @@ import { audioReactive } from '@/runtime/audioReactive';
 import { findSpecies } from '@/data/species';
 import { getDecorDef } from '@/data/catalog/decor';
 import { personalityModifiers } from '@/sim/life';
-import { tutorialAdvance } from '@/sim/facility';
 import { createWorld, disposeWorld, stepWorld, syncWorld, type AIWorld } from './core/world';
 import { AI_FRAME_BUDGET_MS, FAR_PERIOD, HIDDEN_PERIOD, farPhase, planAiSteps, planFarStep, type AiSteps, type FarStep } from './core/steps';
 import { indexByTank, type TankIndex } from './core/tankIndex';
@@ -70,7 +69,7 @@ function makeHooks(tankId: string, world: () => AIWorld | null) {
       const ui = useUI.getState();
       if (ui.focusedTankId !== tankId || !world()) return;
       try {
-        useGame.getState().mutate((d) => tutorialAdvance(d, `observed:${name}`));
+        useGame.getState().dispatch({ k: 'raiseFlag', flag: `observed:${name}` });
       } catch (e) {
         console.warn('tutorialAdvance failed', e);
       }

@@ -13,6 +13,12 @@ through the `SocialService` and the browser's notifications, clipboard and share
 each action below is already a single call a server could receive instead; what it would add is the checks in the
 right-hand column, done on its side.
 
+**Since chunk 11 (2026-10-20, SHARED-SHOPS.md §4) every player action is a command:** a plain object
+(`src/sim/commands/kinds.ts`, about 80 kinds) that the interface sends through the store's dispatcher, and
+`applyCommand` calls the function below with the command's arguments (`src/sim/commands/apply.ts`). `validateCommand`
+checks a command from the network (a known kind, each argument's type and range, its size, no inherited ids). A shared
+shop's server (chunk 12) receives these and applies them on its own copy; the solo game applies them at once.
+
 **What a server would always check:** the player's money and stock (no spending what isn't there), that the player owns
 what the action names (tank, creature, listing, line), the price from its own catalog and market, never the client's,
 and the game time (offline catch-up is computed on the device today: a server would replay or cap it).
@@ -80,7 +86,7 @@ and the game time (offline catch-up is computed on the device today: a server wo
 | `setOpenToPublic`, `setOpenHours`, `setAdmission`, `toggleSignage` | visitors and takings | ranges |
 | `moveCreature`, `separateCreature`, `moveClutch`, `startBreeding`, `renameCreature`, `toggleFavorite` | animals and broods | ownership |
 | `takeFrag`, `plantFrag`, `dose`, `waterChange`, `topOff`, `cleanTank`, `feedTank` | tanks and animals | ownership; stock for what they use |
-| `noteInteraction`, `registerGlassTap` (watching, photos, target feeding, a tap on the glass) | an animal's bond, enrichment and stress; quest progress | rates (the bond counts toward a show's deportment score; the device's diminishing returns would be the server's) |
+| `noteInteraction`, `notePhoto`, `registerGlassTap` (watching, photos, target feeding, a tap on the glass) | an animal's bond, enrichment and stress; quest progress | rates (the bond counts toward a show's deportment score; the device's diminishing returns would be the server's) |
 | `renameTank`, `setTankPurpose`, `setBackdrop`, `setLighting` | a tank's name, purpose, backdrop and light hours | ownership |
 | `setManualMode`, `holdAll`, `resumeAll`, `setHold` | automation on or off | none beyond ownership |
 

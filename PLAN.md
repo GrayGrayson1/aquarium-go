@@ -811,6 +811,38 @@ REL-012, REL-018.
   still needed (chunk 11 writes the exact list). The play-test needs an account for the owner's daughter (her own
   sign-up with the club's invite link; a parent signs up for a player under 13, §13).
 
+### 11. Shared shops, commands (SHARED-SHOPS.md §4, §3.2) — started 2026-10-20 (Chase)
+
+- **What:** every player action becomes a command, with no player-visible change; the solo game must behave exactly as
+  before, and the full test pass guards it. The chunk starts at `a3a177d`.
+  - **The catalogue (SHARE-001, §4.1):** `src/sim/commands/`: one kind per player action (every `act(`, `edit(` and
+    direct `mutate` in `src/ui`, `src/render` and `src/ai`), `applyCommand(state, cmd, actor?)` calling the same `src/sim`
+    function the closure called, a `CommandResult` that carries what callers read afterwards, and `validateCommand`
+    (a known kind, each argument's type and range, the size; ids that aren't own properties refused, chunk 10's note).
+  - **Dispatch (§4.2):** `useGame.getState().dispatch(cmd, then?)`, installed at boot by `src/game/dispatch.ts`: solo
+    runs it at once, as `act` does, and calls `then` before returning; a shared shop (chunk 13) settles it when its step
+    lands. The `act` helpers send commands; callers that read the result use `then`. The device-only marks (the alerts'
+    read marks and Clear all, the log's read mark, the shows' and research's "seen") go through one UI module, so chunk
+    13 can keep them per player. `core-mutation-boundary` grows: outside the dispatcher, that module, the loop,
+    `sharedLoop`, persistence's load and save, and the dev tools, nothing calls `mutate` or `mutateFast`.
+  - **Who did it, first one wins, flags (§4.3):** with an actor (a shared shop only), the events a command emits are
+    tagged with who sent it, an action with no event gets one line (its own message), buying, selling, moving and taking
+    carry what their sender saw and are refused on every copy when it no longer holds (naming the member who changed it
+    in the last 30 seconds, never refusing the sender's own earlier change), and settings are last-writer-wins with a
+    note. The memory of who touched what lives in the shop's state, so a joiner decides the same. A command's guide flag
+    rides in the command; `hireStaff` raises `hired_staff` itself.
+  - **§3.2's other sim changes:** the catch-up's rules into `src/sim/catchUp.ts` (rule 1's server needs them), the
+    starvation guard's rule into `src/sim/starvation.ts` with its memory passed in (rule 6), the hold actions' flush
+    inside their command (rule 7), the list of "seen" writes (rule 8), keys deleted instead of set to `undefined`
+    and the lockstep test asserting none (rule 10).
+  - **The words for chunk 13:** the exact list of player-visible lines this catalogue needs that §8 doesn't approve
+    (written into SHARED-SHOPS.md §8 for the owner).
+- **Not in this chunk:** the server's accounts, database, caps and coalescing on the wire (chunk 12), the screens, the
+  transport's pending results and every new word on screen (chunk 13). Photos stay data URLs in solo (§4.4 is chunk 12).
+- **Done when:** the four checks pass on the final code (no seeded test shifts: chunk 11 changes no rule); one fresh
+  reviewer (Opus 5.5, max effort) reads this brief, SHARED-SHOPS.md §3.2, §4 and §9.1 and `git diff a3a177d..HEAD`, and
+  its blockers are fixed; PLAN.md and the docs say what changed; `next` pushed. SHARE-001 GREEN.
+
 ## Releases
 
 `main` is what players get: a push to `main` deploys GitHub Pages. Render doesn't build on a push, though

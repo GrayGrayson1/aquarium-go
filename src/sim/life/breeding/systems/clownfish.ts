@@ -100,7 +100,7 @@ export const clownfishModule: BreedingModule = {
       if (c.repro.stage !== 'guarding') continue;
       const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
       if (!cl || cl.tankId !== c.tankId || cl.guardedById !== c.id || cl.stage !== 'eggs') {
-        if (cl && cl.guardedById === c.id) cl.guardedById = undefined;
+        if (cl && cl.guardedById === c.id) delete cl.guardedById;
         startResting(c, hour, sp.breeding.cooldownDays * 24 * 0.5);
       }
     }

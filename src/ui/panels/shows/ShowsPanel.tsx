@@ -10,13 +10,13 @@ import { useEffect, useState } from 'react';
 import clsx from 'clsx';
 import { Trophy } from 'lucide-react';
 import { useUI } from '@/state/ui';
-import { unseenResults, markShowResultsSeen } from '@/sim/shows';
+import { unseenResults } from '@/sim/shows';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe, useIsPhone } from '../common/hooks';
 import { Seg } from '../common/parts';
 import { LockedDestination, useDestinationLocked } from '../common/Locked'; // lane:ui-shell (chunk 1)
 import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
-import { edit } from '../common/act';
+import { mark } from '@/ui/common/marks';
 import { UpcomingTab } from './Upcoming';
 import { EnterFlow } from './EnterFlow';
 import { EntriesTab, ResultsTab } from './Results';
@@ -67,7 +67,7 @@ export function ShowsPanel() {
     if (unseen === 0) return;
     const before = g?.shows?.resultsSeenHour ?? -Infinity;
     setNewSince((cur) => (cur === null ? before : Math.min(cur, before)));
-    edit((d) => markShowResultsSeen(d));
+    mark('showResultsSeen');
   }, [tab, unseen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useNavTab('shows', tab); // lane:ui-shell (chunk 1)

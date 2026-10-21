@@ -138,37 +138,55 @@ describe('guide: actions say what happened', () => {
 });
 
 describe('guide: act() never commits half an action', () => {
+  // chunk 11: act() sends a command through the store's dispatcher (SHARED-SHOPS.md §4.2); these install a test
+  // dispatcher for the action's half (a write that throws part-way, a fixed result) and put the solo one back
+  const solo = useGame.getState().dispatch;
   beforeEach(() => {
     useUI.setState({ toasts: [] });
+    useGame.getState().installDispatch(solo);
   });
 
-  it('a mutator that throws midway leaves the game unchanged and says so', () => {
+  it('an action that throws midway leaves the game unchanged and says so', () => {
     const s = world();
     useGame.getState().setGame(s);
     const before = useGame.getState().game!.finance.money;
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const r = act((d) => {
-      d.finance.money -= 100;
-      throw new Error('boom');
+    useGame.getState().installDispatch(() => {
+      useGame.getState().mutate((d) => {
+        d.finance.money -= 100;
+        throw new Error('boom');
+      });
+      return null;
     });
+    let r: { ok: boolean } | null | undefined;
+    act({ k: 'buySalt', kg: 5 }, { after: (x) => (r = x) });
     expect(r?.ok).toBe(false);
     expect(useGame.getState().game!.finance.money).toBe(before);
     expect(useUI.getState().toasts.at(-1)?.text).toMatch(/nothing was changed/);
     warn.mockRestore();
+    useGame.getState().installDispatch(solo);
     useGame.getState().setGame(null);
   });
 
   it('with no aquarium loaded it explains instead of doing nothing', () => {
     useGame.getState().setGame(null);
-    expect(act(() => ({ ok: true, message: 'x' }))).toBeNull();
+    let r: unknown = 'not called';
+    act({ k: 'buySalt', kg: 5 }, { after: (x) => (r = x) });
+    expect(r).toBeNull();
     expect(useUI.getState().toasts.at(-1)?.text).toMatch(/No aquarium is loaded/);
   });
 
   it('kindFor picks the toast kind from the result', () => {
     const s = world();
     useGame.getState().setGame(s);
-    act(() => ({ ok: true, message: 'Moved. Heads up: small tank.' }), { kindFor: (r) => (/Heads up/.test(r.message) ? 'warning' : 'success') });
+    useGame.getState().installDispatch((_cmd, done) => {
+      const r = { ok: true, message: 'Moved. Heads up: small tank.' };
+      done?.(r);
+      return r;
+    });
+    act({ k: 'buySalt', kg: 5 }, { kindFor: (r) => (/Heads up/.test(r.message) ? 'warning' : 'success') });
     expect(useUI.getState().toasts.at(-1)?.kind).toBe('warning');
+    useGame.getState().installDispatch(solo);
     useGame.getState().setGame(null);
   });
 });

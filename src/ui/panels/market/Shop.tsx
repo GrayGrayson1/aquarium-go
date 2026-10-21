@@ -10,7 +10,7 @@ import { Clock, BadgeCheck, ShoppingBag, Store, Lock, Mars, Venus, CircleDashed,
 import type { CompatVerdict, Creature, GameState, ShopOffer, Tank, CompatReport, SpeciesDefinition } from '@/types';
 import { Button, Money, StatusBadge, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { buyOffer, offerPickPrice } from '@/sim/economy';
+import { offerPickPrice } from '@/sim/economy';
 import { describePersonality, isPrismatic, isLotOffer, oneInLabel, morphDisplayName, catalogEntry, geneticsRevealLevel } from '@/sim/life';
 import { PRISMATIC } from '@/data/rarity'; // lane:genetics
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
@@ -372,12 +372,18 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
     const idx = offer.kind === 'group' && picked.size !== offer.creatures.length ? [...picked].sort((a, b) => a - b) : undefined;
     const prismatic = chosen.some((c) => isPrismatic(c));
     const name = safe(() => morphDisplayName(sp, (chosen.find((c) => isPrismatic(c)) ?? chosen[0] ?? lead).morphName), sp.commonName);
-    const r = act((d) => buyOffer(d, offer.id, tank.id, idx), { sound: 'coin', quiet: true });
-    if (r?.ok) {
-      // 0.5 §7.5 item 6 — back to the tank view on the new home, with the find named
-      useUI.getState().set({ panel: null, panelTarget: null, focusedTankId: tank.id });
-      useUI.getState().toast(`${name} is settling into ${tank.name}`, prismatic ? 'celebrate' : 'success', { label: prismatic ? 'Prismatic find' : 'Bought', detail: 'Find them in Livestock.' });
-    }
+    const tankId = tank.id;
+    const tankName = tank.name;
+    act(idx !== undefined ? { k: 'buyOffer', offer: offer.id, tank: tankId, picks: idx } : { k: 'buyOffer', offer: offer.id, tank: tankId }, {
+      sound: 'coin',
+      quiet: true,
+      after: (r) => {
+        if (!r?.ok) return;
+        // 0.5 §7.5 item 6 — back to the tank view on the new home, with the find named
+        useUI.getState().set({ panel: null, panelTarget: null, focusedTankId: tankId });
+        useUI.getState().toast(`${name} is settling into ${tankName}`, prismatic ? 'celebrate' : 'success', { label: prismatic ? 'Prismatic find' : 'Bought', detail: 'Find them in Livestock.' });
+      },
+    });
   };
 
   /** ACC-003 — the destination tiles are one radio group: arrow keys move the choice. */

@@ -7,12 +7,11 @@ import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Wrench, Coins, LockOpen, Clock, Fish, Droplets, Bot, Scale, FlaskConical, Egg, Hourglass, Store, Sparkles } from 'lucide-react';
 import { devOpenMarket, forceBuyerVisit } from '@/sim/economy';
-import { act } from '../common/actions';
-import type { GameSpeed, WaterState } from '@/types';
+import type { GameSpeed, GameState, WaterState } from '@/types';
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
-import { sfx } from '@/audio/sfx';
+import { sfx, type SfxId } from '@/audio/sfx';
 import { dev } from '@/dev/commands';
 import { ALL_SPECIES } from '@/data/species';
 import { evaluateTank } from '@/sim/compat';
@@ -24,6 +23,19 @@ import { safe, useGameThrottled, useInterval } from '../common/safe';
 import { Button, Chip, Section, Segmented, formatMoney } from '../kit';
 
 type Result = { ok?: boolean; message?: string } | Record<string, unknown> | void | null | undefined;
+
+/**
+ * chunk 11 — dev tools aren't player actions (SHARED-SHOPS.md §4.1): they write the game directly, never as commands,
+ * and are off in a shared shop.
+ */
+function devWrite<R>(fn: (d: GameState) => R, sound: SfxId): R | undefined {
+  const out: { r?: R } = {};
+  useGame.getState().mutate((d) => {
+    out.r = fn(d);
+  });
+  sfx(sound);
+  return out.r;
+}
 
 function useOutput() {
   const [out, setOut] = useState<string[]>([]);
@@ -164,7 +176,7 @@ export function DevPanel() {
                   size="sm"
                   onClick={() =>
                     run('Open market', () => {
-                      act((d) => { devOpenMarket(d); }, { toast: false, sound: 'unlock' });
+                      devWrite((d) => devOpenMarket(d), 'unlock');
                       return { message: 'Listings + tank auctions unlocked' };
                     })
                   }
@@ -186,7 +198,7 @@ export function DevPanel() {
                     <Chip
                       key={l.id}
                       size="sm"
-                      onClick={() => run(`Buyer visit: ${l.title}`, () => act((d) => forceBuyerVisit(d, l.id), { sound: 'bid' }) ?? undefined)}
+                      onClick={() => run(`Buyer visit: ${l.title}`, () => devWrite((d) => forceBuyerVisit(d, l.id), 'bid'))}
                     >
                       Buyer → {l.title}
                     </Chip>

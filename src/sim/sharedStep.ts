@@ -11,10 +11,15 @@ import { clearReachCache } from './facility/layout';
 import { deepClone } from './clone';
 import { applyCommand, type Command, type CommandResult } from './commands';
 
-/** A member's command inside a step: who sent it, the sender's own id for it, and the command. */
+/**
+ * A member's command inside a step: who sent it (their id and name), the sender's own id for it, when the server
+ * received it (real ms: first one wins' 30 seconds, §4.3), and the command.
+ */
 export interface StepCommand {
   by: string;
+  who?: string;
   id?: number;
+  at?: number;
   c: Command;
 }
 
@@ -53,7 +58,7 @@ export function runSharedStep(state: GameState, step: SharedStep, full: readonly
   clearCompatCache();
   clearReachCache();
   const results: CommandResult[] = [];
-  for (const sc of step.cmds ?? []) results.push(applyCommand(s, sc.c));
+  for (const sc of step.cmds ?? []) results.push(applyCommand(s, sc.c, { id: sc.by, name: sc.who ?? sc.by, at: sc.at ?? 0 }));
   if (step.h > 0) advanceWorld(s, step.h, { focusTankIds: full });
   for (const c of step.post ?? []) applyCommand(s, c);
   return { state: s, results };

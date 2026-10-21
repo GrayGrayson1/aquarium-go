@@ -473,7 +473,7 @@ export function installEquipment(
   }
   const hour = state.clock.hour;
   if (!inst) {
-    inst = { id: nextId(state, 'eq'), defId, installedHour: hour, condition: 1, on: true, setting: def.stats.defaultSetting };
+    inst = { id: nextId(state, 'eq'), defId, installedHour: hour, condition: 1, on: true, ...(def.stats.defaultSetting !== undefined ? { setting: def.stats.defaultSetting } : {}) }; // §3.2 rule 10
   }
   inst.installedHour = hour;
   inst.on = true;
