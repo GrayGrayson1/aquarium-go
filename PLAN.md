@@ -1015,6 +1015,27 @@ REL-012, REL-018.
 - **K1** (ADR-0047 round 2): measured on the free instance (SHARED-SHOPS.md §11, "Chunk 12"): small shops on a fifth of
   its CPU; `big_facility` keeps 93%, 95% and 88% of real time at 1×, 3× and 10× (chunk 10: 84 to 92%, 76%, 55%). The
   owner chose to keep it free with no change.
+- **The fresh review** (Opus 5.5, max effort) on `eef5b74..38bfbda`, with probes in the internal clone's
+  `scripts/_audit/review-chunk12/`: the migration, the password model, the lockstep core and the core-file changes sound
+  (253 local database cases; the live `/health` hash equal to the local one). Three blockers, fixed:
+  - **B1:** another spelling of a club's id (upper case, no hyphens: Postgres reads them as the same UUID) opened a
+    second room for one shop, and with one lease holder per process both rooms ran, so a member could fork the shop and
+    roll back everyone's play. Outside the stub a club is now its canonical lowercase UUID, and each room has its own
+    lease holder.
+  - **B2:** flipping `away` and `here` saved the whole shop each time, queued without limit (about 440 KB/s for a new
+    shop). Saves now coalesce (one in flight, at most one more), and the save on emptying waits 10 seconds and comes at
+    most once a minute.
+  - **B3:** the room-call gate and a save the database refuses had no test that could fail: `roomCallAllowed` is tested,
+    and a save refused for the lease, a newer revision and a newer build each stop the room (`restart`, `updating`) with
+    nothing more saved.
+  - **Notes, fixed:** each photo once per connection, and no photo while much is queued for a member (the connection ends
+    past 8 MB); a failing save backs off (5 seconds, doubling, at most 2 minutes); a room that ends while opening releases
+    its joiners and tells anyone left (`restart`); the fingerprint's own step carries a waiting full-detail list; an
+    expired sign-in nobody refreshed ends the connection (`bye: sign-in`, 10 minutes' grace); the prune keeps exactly the
+    saved copy's photos, and a photo listed again after a prune is stored again; an undo that throws leaves the checkpoint,
+    never a half-applied step; the replica (`src/game/sharedLoop.ts`) is in the build identity; tests for the stagger in
+    the step block, its most-owed-first order and the fingerprint spacing; the docs (default privileges and PUBLIC, what
+    only binds browsers, `shared_usage.closed`, the re-sync budget as built, replacing the password).
 - **For chunk 13** (what the server does that the client must meet): send `hello` (or the owner's `create`, with the
   starter's name and the preview seed) and wait for the welcome before anything else; `you.id` is the account's id, the
   `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; through

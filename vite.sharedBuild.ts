@@ -13,7 +13,15 @@ import type { Plugin } from 'vite';
 
 /** Folders covered whole, and single files, relative to the repo. */
 export const SHARED_BUILD_DIRS = ['src/sim', 'src/data', 'src/types'];
-export const SHARED_BUILD_FILES = ['src/persistence/hash.ts', 'src/persistence/serialize.ts', 'src/persistence/migrations.ts', 'src/persistence/schema.ts', 'src/persistence/types.ts'];
+export const SHARED_BUILD_FILES = [
+  'src/persistence/hash.ts',
+  'src/persistence/serialize.ts',
+  'src/persistence/migrations.ts',
+  'src/persistence/schema.ts',
+  'src/persistence/types.ts',
+  // the replica decides which steps apply and which full-detail list is in force (chunk 12's review, note 11)
+  'src/game/sharedLoop.ts',
+];
 
 const SOURCE = /\.(ts|tsx|json)$/;
 const TEST = /\.test\.tsx?$/;

@@ -389,9 +389,10 @@ Server to browser:
   the first gets `closing: elsewhere`); messages at most 16 KB (48 KB for a listing with a photo); at most 10 commands
   and 30 messages a second per connection (over that, `reject`, then close); `view` changes count at most one a second.
 - **Re-sync budget:** re-syncs (a fingerprint mismatch, or falling behind) are counted apart from joins and
-  reconnects: at most 3 per member in 10 minutes and 6 in an hour. Past that, or after 3 re-syncs in a row that didn't
-  hold, the connection closes with `closing: outofstep` (§8), so a copy that can't stay in step can't drain the data
-  cap. Joins and reconnects (a phone switching apps) have their own, looser limit: at most 20 per member in an hour.
+  reconnects: at most 3 per member in 10 minutes and 6 in an hour (counted per player, across reconnects, while the room
+  lives). Past that the connection closes with `closing: outofstep` (§8), so a copy that can't stay in step can't drain
+  the data cap. Joins and reconnects (a phone switching apps) have their own, looser limit: at most 20 per member in an
+  hour, `outofstep` past it (a browser that waits after `updating` should wait minutes, not retry at once).
 
 ### 5.4 Who may do what
 
@@ -455,7 +456,9 @@ assumes everyone may spend, apart from `allowed` itself.
   table and function in `public` and bypasses row-level security, so any of the project's secret keys could read and
   write every player's saves, profiles, clubs and friend links. Nothing uses that role, so chunk 12's migration revokes
   its rights on every table and function in `public` (stage 1's and the new `shared_*` ones) and changes the schema's
-  default privileges so future tables and functions don't grant it anything; a test checks every table and function in
+  default privileges so future tables and functions don't grant it anything of their own (a function made later in
+  `public` still gets EXECUTE through PUBLIC, as every Postgres function does, until its migration revokes that: every
+  migration here does, and the text test checks it; chunk 12's review); a test checks every table and function in
   `public`, and the security advisors run after.
 - **The build sees every variable set on the service** (chunk 10 printed the names a build gets: `ALLOWED_ORIGINS`,
   `SHOPS_*`, `NODE_VERSION` and Render's own), so the password would reach every program a build runs (npm, Vite, the
@@ -488,7 +491,8 @@ database check (`scripts/online-db-local`) passes; then the security advisors an
   characters, as the online save), `lease_holder`, `lease_until`, `updated_at`.
 - **`shared_photos`**: `club_id`, `hash` (primary key with the club), `mime` (`image/webp` or `image/jpeg`), `data`
   (base64, at most 64,000 characters), `created_at`; cascade with the shop.
-- **`shared_usage`**: `month` (`YYYY-MM`, primary key), `bytes_out`, `awake_seconds`, `updated_at`.
+- **`shared_usage`**: `month` (`YYYY-MM`, primary key), `bytes_out`, `awake_seconds`, `closed` (`cap` or `hours` once
+  a cap closed the month), `updated_at`.
 
 ### 6.2 The lease
 

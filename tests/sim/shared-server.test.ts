@@ -13,10 +13,10 @@ import { SHARED_BUILD, FRAME_PHOTO } from '@/types/shared';
 import { SCHEMA_VERSION } from '@/persistence/schema';
 import { decodeRecord } from '@/persistence/serialize';
 import { StubWorld } from '../../server/stub';
-import { buildVerdict, olderVersion, JOINS_PER_HOUR, MAX_MEMBERS, EMPTY_ROOM_MS, MEMBER_CHECK_MS } from '../../server/app';
+import { buildVerdict, olderVersion, roomCallAllowed, JOINS_PER_HOUR, MAX_MEMBERS, EMPTY_ROOM_MS, MEMBER_CHECK_MS, TOKEN_GRACE_MS } from '../../server/app';
 import { BYTES_CAP, WIRE_FACTOR, monthOf, reopensOn } from '../../server/usage';
-import { LEASE_RENEW_MS, SAVE_EVERY_MS, unpackBody } from '../../server/host';
-import { Member, ORIGIN, pump, rig, shopText, sleep, type Rig } from './support/sharedServer';
+import { EMPTY_SAVE_DELAY_MS, LEASE_RENEW_MS, SAVE_EVERY_MS, unpackBody } from '../../server/host';
+import { Member, ORIGIN, pass, pump, rig, shopText, sleep, type Rig } from './support/sharedServer';
 
 const OWNER = 'stub:o:Owner:owner';
 const A = 'stub:a:Ann';
@@ -182,6 +182,103 @@ describe('chunk 12: joining (§5.3)', () => {
   });
 });
 
+describe('chunk 12: the review’s blockers', () => {
+  it('B1: on Render a club is its canonical UUID; another spelling of the same club is refused, never a second room', async () => {
+    const world = new StubWorld();
+    const x = (r = await rig({ world, stub: false }));
+    const id = '0c1ab2cd-3e4f-4a5b-8c6d-7e8f9a0b1c2d';
+    world.addClub(id, ['u_a', 'u_b'], { text: shopText() });
+    const a = await x.join(A, id);
+    expect(a.closed).toBeNull();
+    for (const alias of [id.toUpperCase(), id.replace(/-/g, ''), `{${id}}`, 'not-a-uuid']) {
+      const m = await Member.connect(x.port);
+      m.hello(B, alias);
+      await pump(x.time, () => m.closed !== null, { step: 50, what: alias });
+      expect(m.texts('bye'), alias).toEqual([{ t: 'bye', why: 'protocol' }]);
+    }
+    expect(x.app.rooms()).toEqual([id]);
+  });
+
+  it('B2: flipping away and back saves nothing; the shop saves once when it stays empty a while', async () => {
+    const x = await shop();
+    const o = await x.join(OWNER, CLUB);
+    o.send({ t: 'cmd', id: 1, c: { k: 'raiseFlag', name: 'opened_market' } });
+    await pump(x.time, () => o.commands().length > 0, { step: 50 });
+    const puts = () => x.world.calls.shopPut ?? 0;
+    for (let i = 0; i < 15; i++) {
+      o.send({ t: 'away' });
+      o.send({ t: 'here' });
+      await sleep(5);
+      x.time.advance(500);
+    }
+    await sleep(30);
+    x.time.advance(EMPTY_SAVE_DELAY_MS + 1000);
+    await sleep(30);
+    expect(puts()).toBe(0);
+    o.send({ t: 'away' });
+    await sleep(30);
+    x.time.advance(EMPTY_SAVE_DELAY_MS + 1000);
+    await pump(x.time, () => puts() === 1, { step: 200, what: 'the emptying save' });
+    await pass(x.time, 120_000);
+    expect(puts()).toBe(1);
+    expect(x.world.clubs.get(CLUB)!.shop!.meta.left_at).not.toBeNull();
+  });
+
+  it('B3a: a room may call only its own calls, about its own club', () => {
+    expect(roomCallAllowed('shopGet', ['c1'], 'c1')).toBe(true);
+    expect(roomCallAllowed('shopGet', ['c2'], 'c1')).toBe(false);
+    expect(roomCallAllowed('shopPut', [{ club: 'c1' }], 'c1')).toBe(true);
+    expect(roomCallAllowed('shopPut', [{ club: 'c2' }], 'c1')).toBe(false);
+    expect(roomCallAllowed('shopPut', ['c1'], 'c1')).toBe(false);
+    expect(roomCallAllowed('member', ['u', 'c1'], 'c1')).toBe(false);
+    expect(roomCallAllowed('usageAdd', ['2026-10', 0, 0], 'c1')).toBe(false);
+  });
+
+  for (const [what, edit, why] of [
+    ['another server took the lease', (row: { lease: { holder: string; until: number } | null }, t: number) => (row.lease = { holder: 'someone-else', until: t + 90_000 }), 'restart'],
+    ['another server wrote a newer revision', (row: { meta: { revision: number } }) => (row.meta.revision += 5), 'restart'],
+    ['a newer build saved it', (row: { meta: { schema_version: number } }) => (row.meta.schema_version = SCHEMA_VERSION + 1), 'updating'],
+  ] as const) {
+    it(`B3b: a save the database refuses (${what}) stops the room as ${why}, and nothing more is saved`, async () => {
+      const x = await shop();
+      const o = await x.join(OWNER, CLUB);
+      o.send({ t: 'cmd', id: 1, c: { k: 'raiseFlag', name: 'opened_market' } });
+      await pump(x.time, () => o.commands().length > 0, { step: 50 });
+      const row = x.world.clubs.get(CLUB)!.shop!;
+      (edit as (row: unknown, t: number) => void)(row, x.time.wall());
+      const body = row.body;
+      o.send({ t: 'away' });
+      await sleep(30);
+      x.time.advance(EMPTY_SAVE_DELAY_MS + 1000);
+      await pump(x.time, () => o.closed !== null, { step: 200, what: 'the room to stop' });
+      expect(closingOf(o)?.why).toBe(why);
+      expect(row.body).toBe(body);
+      const puts = x.world.calls.shopPut ?? 0;
+      x.time.advance(10 * 60_000);
+      await sleep(30);
+      expect(x.world.calls.shopPut ?? 0).toBe(puts);
+    });
+  }
+
+  it('a sign-in nobody refreshed ends the connection (bye: sign-in); a refreshed one keeps it', async () => {
+    const x = await shop();
+    const a = await x.join(A, CLUB);
+    const b = await x.join(B, CLUB);
+    // both keep playing (input every 20 minutes keeps them there); only b refreshes its sign-in
+    for (let i = 0; i < 4; i++) {
+      await pass(x.time, 20 * 60_000);
+      a.send({ t: 'input' });
+      b.send({ t: 'input' });
+      if (i === 2) b.send({ t: 'token', token: B }); // the stub's tokens last an hour from now
+      await sleep(30);
+    }
+    await pass(x.time, TOKEN_GRACE_MS - 15 * 60_000 + 60_000);
+    await pump(x.time, () => a.closed !== null, { step: 1000, what: 'the expiry' });
+    expect(a.texts('bye')).toEqual([{ t: 'bye', why: 'sign-in' }]);
+    expect(b.closed).toBeNull();
+  });
+});
+
 describe('chunk 12: who may do what (§5.4)', () => {
   it('pause refused without permission, allowed once the owner grants it, and the grant is stored', async () => {
     const x = await shop();
@@ -279,14 +376,14 @@ describe('chunk 12: a room’s life (§5.2)', () => {
     o.send({ t: 'away' });
     a.send({ t: 'away' });
     await sleep(20);
-    x.time.advance(3 * 60_000);
+    await pass(x.time, 3 * 60_000);
     a.send({ t: 'here' });
     await sleep(30);
     x.time.advance(500);
     expect(a.texts('welcome')).toHaveLength(1); // no catch-up
     a.send({ t: 'away' });
     await sleep(20);
-    x.time.advance(7 * 60_000); // over 5 minutes, under the 10 an away member stays connected
+    await pass(x.time, 6 * 60_000); // over 5 minutes; with the 3 before, still under the 10 an away member stays connected
     a.send({ t: 'input' });
     await pump(x.time, () => a.texts('welcome').length === 2 && o.texts('welcome').length === 2, { step: 50, what: 'the catch-up snapshots' });
     expect(a.texts('welcome')[1].catchUp).toMatchObject({ hours: 12, capped: true });
@@ -377,10 +474,14 @@ describe('chunk 12: photos (§4.4; SHARE-018)', () => {
     expect(Buffer.from(f.subarray(1, 65)).toString('ascii')).toBe(hash);
     expect(f[65]).toBe(2); // image/jpeg
     expect(Buffer.from(f.subarray(66)).equals(jpeg)).toBe(true);
-    // a hash no listing refers to gets nothing
+    // once per connection: the browser keeps it for the session (the review's note 1)
+    o.send({ t: 'photo', hash });
+    // a photo the database holds that no listing refers to gets nothing (the review's mutant m2)
+    x.world.clubs.get(CLUB)!.photos.set('f'.repeat(64), { mime: 'image/jpeg', data: jpeg.toString('base64'), at: x.time.wall() });
     o.send({ t: 'photo', hash: 'f'.repeat(64) });
     await sleep(30);
     x.time.advance(200);
+    await sleep(30);
     expect(o.bins(FRAME_PHOTO)).toHaveLength(1);
   });
 

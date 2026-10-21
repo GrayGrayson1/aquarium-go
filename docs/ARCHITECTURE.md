@@ -297,7 +297,9 @@ in PLAN.md's chunk 8 record):
 - *The shared-shop server's password* (ADR-0047): `node scripts/shared-server-key.mjs --yes` from a clone linked to the
   project stores a new password's fingerprint and leaves the password on the clipboard (never printed); paste it into
   the Render service's environment as `SHOPS_SERVER_KEY` and save (Render restarts the service). The old one stops
-  working at once, so the server refuses everything until the new one is pasted. Run it again if it may have leaked.
+  working at once, so the server refuses everything until the new one is pasted: running rooms can't save and close
+  within about 90 seconds (their lease lapses), losing up to 3 minutes of play. Replace it when nobody is playing, and
+  again if it may have leaked.
 - *Deleting a club's shared shop* (on request; the game can't): `delete from public.shared_shops where club_id =
   '<club id>'` (its photos go with it). A room still loaded on the server finds it gone at its next save and closes.
 - *A leaked code:* `update public.clubs set invite_code = public.new_invite_code('FRIENDS') where name = 'Aquarium Go

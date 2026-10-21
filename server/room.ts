@@ -173,6 +173,8 @@ interface Member extends SharedYou {
   awaySince: number | null;
   photoListings: number[];
   photoRequests: number[];
+  /** Photos already sent on this connection: each once (the review's note 1; the browser keeps them for the session). */
+  photosSent: Set<string>;
 }
 
 interface Timing {
@@ -371,6 +373,7 @@ export class Room {
       awaySince: null,
       photoListings: had?.photoListings ?? [],
       photoRequests: had?.photoRequests ?? [],
+      photosSent: new Set(),
     };
     if (you.pause && !you.owner) this.pausers.add(you.id); // the database says so (`server_member`)
     this.cameBack(); // before the joiner is a member: a catch-up then reaches them in their welcome
@@ -680,7 +683,10 @@ export class Room {
       this.state = state;
       this.starvation.starving = mem.starving;
     } catch (e) {
+      // the checkpoint itself is a good copy (older): the host saves that, never the half-applied step (the review's note 7)
       this.io.log?.(`undo from step ${cp.n} threw: ${e instanceof Error ? e.message : String(e)}`);
+      this.state = deepClone(cp.state);
+      this.starvation.starving = new Set(cp.starving);
       this.halted = true;
     }
   }
@@ -711,11 +717,10 @@ export class Room {
       if (member.photoListings.length >= PHOTO_LISTINGS_PER_MIN) return this.reject(member.id, cid, 'rate');
       member.photoListings.push(now);
       const hash = createHash('sha256').update(p.bytes).digest('hex');
-      if (!this.photos.has(hash)) {
-        this.cachePhoto(hash, p.mime, p.bytes);
-        this.stats.photosStored++;
-        this.io.photoPut?.(hash, p.mime, p.base64);
-      }
+      if (!this.photos.has(hash)) this.stats.photosStored++;
+      this.cachePhoto(hash, p.mime, p.bytes);
+      // always: the host knows whether the database still holds it (a photo listed again after a prune is stored again)
+      this.io.photoPut?.(hash, p.mime, p.base64);
       c = { ...c, photo: `p:${hash}` };
     }
     if (!member.here) {
@@ -742,8 +747,9 @@ export class Room {
   private photo(member: Member, hash: string): void {
     const now = this.io.now();
     member.photoRequests = member.photoRequests.filter((t) => now - t < 60_000);
-    if (member.photoRequests.length >= PHOTO_REQUESTS_PER_MIN || !this.photoRefs().has(hash)) return;
+    if (member.photoRequests.length >= PHOTO_REQUESTS_PER_MIN || member.photosSent.has(hash) || !this.photoRefs().has(hash)) return;
     member.photoRequests.push(now);
+    member.photosSent.add(hash);
     const send = (p: { mime: string; bytes: Uint8Array }) => {
       const type = PHOTO_TYPES.indexOf(p.mime as (typeof PHOTO_TYPES)[number]);
       if (type <= 0 || !this.members.has(member.id)) return;
@@ -770,13 +776,16 @@ export class Room {
     if (this.stepsSinceFp === 0) return;
     // every step so far has gone out: a step of its own, which changes nothing, carries it
     if (!this.outbox.length) {
+      // it carries a full-detail list that's waiting, as any step does (the review's note 4)
+      const full = this.pendingFull ?? this.full;
       const empty: SharedStep = { n: this.n + 1, h: 0 };
+      if (this.pendingFull) empty.full = this.pendingFull;
       try {
-        runSharedStep(this.state, empty, this.full);
+        runSharedStep(this.state, empty, full);
       } catch {
         return;
       }
-      this.accept(empty, this.full);
+      this.accept(empty, full);
     }
     const t0 = this.io.now();
     this.outbox[this.outbox.length - 1].fp = stateHash(this.state);
