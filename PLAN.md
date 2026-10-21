@@ -23,9 +23,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    and ADR-0045. The design was reviewed (Opus, max effort) and revised. **Chunk 10, the test, is done** (2026-10-20,
    below): the lockstep holds in Node, Chromium and WebKit and on Render's x86-64 free instance, which keeps small
    shops at 10× but not a late-game one (SHARED-SHOPS.md §11). **Chunk 11, commands, is done** (2026-10-20, below):
-   every player action is a command the server can pass on, and the solo game is unchanged. Next: chunk 12, the server
-   and the database (§5, §6; the owner's yes for the migration and one Render dashboard visit), then chunk 13 (ask
-   OWNER_QUESTIONS L's words first). The audit's other findings (B-207, B-208) wait for the owner.
+   every player action is a command the server can pass on, and the solo game is unchanged. **Chunk 12, the server and
+   the database, is done** (2026-10-21, Marshall, below; ADR-0047): the real server runs on the free Render service from
+   `next` behind sign-in and a server password, the migration is live, the live smoke passes. **Next: chunk 13** (the
+   screens and the play-test, then 0.6.0), handed to Chase at the owner's request (SESSION_HANDOFF.md "Handoff to
+   Chase"); group L's words are approved (ADR-0048) and K1 is answered. The audit's other findings (B-207, B-208) wait
+   for the owner.
 4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
@@ -52,10 +55,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
 | 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (not released; nothing players see). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
 | 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (not released; nothing players see). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
-| 12 | Shared shops, the server and the database (§5, §6) | Brief written 2026-10-21 (Marshall, at the owner's request): `server/` on the free Render web service, the migration (live with the owner's yes) |
+| 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (not released; nothing players see). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Planned: the owner's words, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
 
-**Last full test runs:** chunk 11's final commit `e692066`, the owner's Mac, 2026-10-20, from the internal-disk clone
+**Last full test runs:** chunk 12's final code `aa7b184`, the owner's Mac, 2026-10-21, from the internal-disk clone under
+`caffeinate -i -s`: typecheck passed; unit 246 files, 3,103 tests passed; build passed; e2e 321 of 321 in Chromium and
+WebKit, dev and both production builds (38.0 minutes); then `8b65dbf` (one test and PLAN.md more): typecheck and unit
+3,104 passed. Before it: `cdc5387` the same four green (unit 3,085, e2e 321 of 321, 37.8 minutes); a pass on `1689c46`
+was stopped at 160 e2e tests without a failure (typecheck, unit 3,100 and build green) when the confirmation's fix
+landed.
+Before chunk 12: chunk 11's final commit `e692066`, the owner's Mac, 2026-10-20, from the internal-disk clone
 under `caffeinate -i -s`: typecheck passed; unit 243 files, 3,037 tests passed; build passed; e2e 319 of 319 in
 Chromium and WebKit, dev and both production builds (36.7 minutes). Before it: `03b3f4b` the same four green (unit
 2,998, e2e 319 of 319, 37.1 minutes); a pass on `2202c45` was stopped part-way (its unit 3,028 and build green) when
@@ -909,7 +918,7 @@ REL-012, REL-018.
   kept per player (`src/ui/common/marks.ts` is the one place), the visuals of others' feeds and taps from applied
   commands (today the sender's `after` draws them), and group L's words first.
 
-### 12. Shared shops, the server and the database (SHARED-SHOPS.md §5, §6) — brief written 2026-10-21 (Marshall)
+### 12. Shared shops, the server and the database (SHARED-SHOPS.md §5, §6) — done 2026-10-21 (Marshall)
 
 - **What:** the real server and its database: a club's shop lives in Supabase and runs on the free Render service
   behind sign-in. Still nothing players see (the screens and every word are chunk 13). The chunk starts at `eef5b74`.

@@ -6028,12 +6028,12 @@
         "scripts/online-db-local/checks.sql"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.8",
         "SHARED-SHOPS.md §6"
       ],
-      "note": "Chunk 12: the migration is live (2026-10-21, ADR-0047 decision 1); the password and the deploy follow."
+      "note": "Chunk 12 (2026-10-21): the migration live, service_role reaching nothing; the server password set on Render (ADR-0047), never in the repo, a log, a build or a worker; the live smoke 23 of 23."
     },
     {
       "id": "SHARE-004",
@@ -6070,11 +6070,11 @@
         "tests/sim/shared-server.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.3"
       ],
-      "note": "Chunk 12: the server (server/app.ts)."
+      "note": "Chunk 12: the server (server/app.ts); the live smoke."
     },
     {
       "id": "SHARE-006",
@@ -6110,12 +6110,12 @@
         "tests/sim/shared-room.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.4",
         "SHARED-SHOPS.md §5.6"
       ],
-      "note": "Chunk 12: server/room.ts allowed()."
+      "note": "Chunk 12: allowed() in server/room.ts."
     },
     {
       "id": "SHARE-008",
@@ -6152,11 +6152,11 @@
         "tests/sim/shared-room.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.2"
       ],
-      "note": "Chunk 12: server/host.ts, server/room.ts catchUp."
+      "note": "Chunk 12: server/host.ts and room.ts catchUp."
     },
     {
       "id": "SHARE-010",
@@ -6264,12 +6264,12 @@
         "tests/sim/supabase-migration.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.2",
         "SHARED-SHOPS.md §6.2"
       ],
-      "note": "Chunk 12: server/host.ts."
+      "note": "Chunk 12: server/host.ts (saves coalesced and debounced after the review), the lease per room."
     },
     {
       "id": "SHARE-016",
@@ -6306,12 +6306,12 @@
         "tests/sim/shared-server.test.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.2",
         "SHARED-SHOPS.md §5.3"
       ],
-      "note": "Chunk 12: server/room.ts, server/app.ts."
+      "note": "Chunk 12: room.ts (undo, faults), app.ts (re-sync and join budgets)."
     },
     {
       "id": "SHARE-018",
