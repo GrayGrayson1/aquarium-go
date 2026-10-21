@@ -65,6 +65,9 @@ const firstFood = (g: GameState) => Object.keys(g.inventory.foods).find((f) => (
 const activeListing = (g: GameState) => g.market.listings.find((l) => l.status === 'active' && (l.bids ?? []).some((b) => b.status === 'open'))!;
 const openBid = (g: GameState) => activeListing(g).bids!.find((b) => b.status === 'open')!;
 const line = (g: GameState) => g.production!.lines[0];
+/** A decoration the game lets you take a frag from (found on a copy). */
+const fraggable = (g: GameState): Command & { k: 'takeFrag' } =>
+  g.tankOrder.flatMap((t) => g.tanks[t].decor.map((d): Command & { k: 'takeFrag' } => ({ k: 'takeFrag', tank: t, decor: d.id }))).find((c) => applyCommand(deepClone(g), c).ok)!;
 
 interface Case {
   w: World;
@@ -178,9 +181,21 @@ const C: Record<CommandKind, Case> = {
     ok: true,
   },
   removeDecor: { w: 'big', cmd: (g) => ({ k: 'removeDecor', tank: g.tankOrder[0], decor: g.tanks[g.tankOrder[0]].decor[0].id, sell: true }), direct: (d, c: Command & { k: 'removeDecor' }) => removeDecor(d, c.tank, c.decor, true), ok: true },
-  takeFrag: { w: 'big', cmd: (g) => ({ k: 'takeFrag', tank: g.tankOrder[0], decor: g.tanks[g.tankOrder[0]].decor[0].id }), direct: (d, c: Command & { k: 'takeFrag' }) => takeFrag(d, c.tank, c.decor), ok: false },
-  plantFrag: { w: 'big', cmd: (g) => ({ k: 'plantFrag', tank: g.tankOrder[0], frag: 'no_such_frag', rack: true }), direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, undefined, { rackOnly: true }), ok: false },
-  quickSellFrags: { w: 'big', cmd: () => ({ k: 'quickSellFrags', frags: ['no_such_frag'] }), direct: (d) => quickSellFrags(d, ['no_such_frag']), ok: false },
+  takeFrag: { w: 'big', cmd: (g) => fraggable(g), direct: (d, c: Command & { k: 'takeFrag' }) => takeFrag(d, c.tank, c.decor), ok: true },
+  plantFrag: {
+    w: 'big',
+    prep: (g) => void applyCommand(g, fraggable(g)),
+    cmd: (g) => ({ k: 'plantFrag', tank: fraggable(g).tank, frag: g.inventory.frags![0].id, x: 0.02, z: -0.02, rotY: 0 }),
+    direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, { x: 0.02, z: -0.02, rotY: 0 }, {}),
+    ok: true,
+  },
+  quickSellFrags: {
+    w: 'big',
+    prep: (g) => void applyCommand(g, fraggable(g)),
+    cmd: (g) => ({ k: 'quickSellFrags', frags: [g.inventory.frags![0].id] }),
+    direct: (d, c: Command & { k: 'quickSellFrags' }) => quickSellFrags(d, c.frags),
+    ok: true,
+  },
   glassTap: { w: 'big', cmd: (g) => ({ k: 'glassTap', tank: g.tankOrder[0], intensity: 0.5 }), direct: (d, c: Command & { k: 'glassTap' }) => registerGlassTap(d, c.tank, 0.5), ok: true },
   noteInteraction: { w: 'big', cmd: (g) => ({ k: 'noteInteraction', creature: fishIn(g).id, kind: 'observe' }), direct: (d, c: Command & { k: 'noteInteraction' }) => noteInteraction(d, c.creature, 'observe'), ok: true },
   notePhoto: { w: 'big', cmd: (g) => ({ k: 'notePhoto', creature: fishIn(g).id }), direct: (d, c: Command & { k: 'notePhoto' }) => notePhoto(d, c.creature), ok: true },
@@ -223,9 +238,10 @@ const C: Record<CommandKind, Case> = {
   quickSell: { w: 'big', cmd: (g) => ({ k: 'quickSell', creatures: [fishIn(g).id] }), direct: (d, c: Command & { k: 'quickSell' }) => quickSell(d, c.creatures), ok: true },
   buyOffer: {
     w: 'big',
-    cmd: (g) => ({ k: 'buyOffer', offer: g.market.stock[0].id, tank: g.tankOrder.at(-1)! }),
+    // an offer and a tank the game lets you buy it into (found on a copy)
+    cmd: (g) => g.market.stock.flatMap((o) => g.tankOrder.map((tank): Command => ({ k: 'buyOffer', offer: o.id, tank }))).find((x) => applyCommand(deepClone(g), x).ok)!,
     direct: (d, c: Command & { k: 'buyOffer' }) => buyOffer(d, c.offer, c.tank, undefined),
-    ok: false,
+    ok: true,
   },
   buyFood: { w: 'big', cmd: (g) => ({ k: 'buyFood', food: firstFood(g), packs: 1 }), direct: (d, c: Command & { k: 'buyFood' }) => buyFood(d, c.food, 1), ok: true },
   buySalt: { w: 'big', cmd: () => ({ k: 'buySalt', kg: 5 }), direct: (d) => buySalt(d, 5), ok: true },
@@ -247,9 +263,9 @@ const C: Record<CommandKind, Case> = {
   },
   holdBid: { w: 'panels', cmd: (g) => ({ k: 'holdBid', listing: activeListing(g).id, bid: openBid(g).id }), direct: (d, c: Command & { k: 'holdBid' }) => holdBidForCounter(d, c.listing, c.bid), ok: true },
   upgradeFacility: { w: 'panels', cmd: () => ({ k: 'upgradeFacility' }), direct: (d) => upgradeFacility(d), ok: false },
-  upgradePrep: { w: 'big', cmd: () => ({ k: 'upgradePrep' }), direct: (d) => upgradePrep(d), ok: false },
-  addReservoir: { w: 'big', cmd: () => ({ k: 'addReservoir' }), direct: (d) => addReservoir(d), ok: false },
-  addCulture: { w: 'big', cmd: () => ({ k: 'addCulture', kind: 'cone' }), direct: (d) => addCulture(d, 'cone'), ok: false },
+  upgradePrep: { w: 'shows', cmd: () => ({ k: 'upgradePrep' }), direct: (d) => upgradePrep(d), ok: true },
+  addReservoir: { w: 'shows', cmd: () => ({ k: 'addReservoir' }), direct: (d) => addReservoir(d), ok: true },
+  addCulture: { w: 'shows', cmd: () => ({ k: 'addCulture', kind: 'cone' }), direct: (d) => addCulture(d, 'cone'), ok: true },
   setOpenToPublic: { w: 'big', cmd: (g) => ({ k: 'setOpenToPublic', open: !g.facility.openToPublic }), direct: (d) => setOpenToPublic(d, !d.facility.openToPublic), ok: true },
   setAdmission: { w: 'big', cmd: () => ({ k: 'setAdmission', price: 12 }), direct: (d) => setAdmission(d, 12), ok: true },
   hireStaff: {
@@ -321,7 +337,7 @@ const C: Record<CommandKind, Case> = {
   cancelResearch: { w: 'panels', cmd: () => ({ k: 'cancelResearch' }), direct: (d) => cancelResearch(d), ok: true },
   claimQuest: { w: 'panels', cmd: (g) => ({ k: 'claimQuest', quest: g.progress.quests[0].id }), direct: (d, c: Command & { k: 'claimQuest' }) => claimQuest(d, c.quest), ok: true },
   enterShow: { w: 'shows', cmd: (g) => ({ k: 'enterShow', show: 'no_such_show', cls: 'no_class', subject: fishIn(g).id }), direct: (d, c: Command & { k: 'enterShow' }) => enterShow(d, c.show, c.cls, c.subject), ok: false },
-  withdrawEntry: { w: 'shows', cmd: (g) => ({ k: 'withdrawEntry', entry: g.shows!.entries[0].id }), direct: (d, c: Command & { k: 'withdrawEntry' }) => withdrawEntry(d, c.entry), ok: false },
+  withdrawEntry: { w: 'shows', cmd: (g) => ({ k: 'withdrawEntry', entry: g.shows!.entries.find((e) => e.status === 'entered')!.id }), direct: (d, c: Command & { k: 'withdrawEntry' }) => withdrawEntry(d, c.entry), ok: true },
   setSpeed: {
     w: 'big',
     cmd: () => ({ k: 'setSpeed', speed: 3 }),

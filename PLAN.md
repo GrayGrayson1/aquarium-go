@@ -842,6 +842,28 @@ REL-012, REL-018.
 - **Done when:** the four checks pass on the final code (no seeded test shifts: chunk 11 changes no rule); one fresh
   reviewer (Opus 5.5, max effort) reads this brief, SHARED-SHOPS.md §3.2, §4 and §9.1 and `git diff a3a177d..HEAD`, and
   its blockers are fixed; PLAN.md and the docs say what changed; `next` pushed. SHARE-001 GREEN.
+- **Built** (2026-10-20, Chase): `03b3f4b`. The catalogue: 80 kinds (`kinds.ts`), `applyCommand` (`apply.ts`),
+  `validateCommand` (`validate.ts`), who did it and first one wins (`shared.ts`). The solo dispatcher
+  (`src/game/dispatch.ts`, installed by the `act` helpers), every interface write converted (about 170 sites in 50
+  files; callers that read the result use `after`), the marks module (`src/ui/common/marks.ts`), the photo story line
+  and the Auto-feed patch moved into the sim. `src/sim/catchUp.ts` and `src/sim/starvation.ts`. Rule 10: about 30
+  places delete a key instead of setting `undefined`, and `compact` covers events and listings; a probe ran ten
+  fixtures 4 to 14 game days with none left. Tests: `commands-catalogue` (each kind's `stateHash` equals the old
+  closure's on four real worlds; 76 of the 80 samples succeed, the other 4 are the game's own refusals, pinned),
+  `commands-shared`, `commands-dispatch`, the lockstep runs with conflicts from three members and a joiner (the room
+  counts them: `stats.conflicts`); `ui-mutate-atomic` and `guide-feedback` rewritten on purpose for commands. No seeded
+  test shifted.
+- **Left on purpose:** §3.2 rule 5's stagger (chunk 12: it changes only the server's busiest steps, so it is built and
+  measured with the server's speed work); coalescing a control's many values and the pending results' transport
+  (chunk 13, the shared dispatcher); actions the interface doesn't call (`setManualMode`, `setOpenHours`,
+  `renameLine`, the fixtures, `sellFragsToStore`) aren't commands until a screen uses them; the words the screens
+  will need are drafted in SHARED-SHOPS.md §8 for the owner (OWNER_QUESTIONS L, chunk 13).
+- **For chunk 12:** the room puts the starvation guard's slow-down in `post` (`checkStarvation(state, memory)` with a
+  memory per room) and runs `simulateOffline` from `src/sim/catchUp.ts` on a wake; `allowed(member, cmd)` gates
+  `setSpeed`; the server forwards only the first `raiseFlag` for each flag (§4.3).
+- **For chunk 13:** the shared dispatcher (send, settle `done` from the step's results; coalesce sliders), the marks
+  kept per player (`src/ui/common/marks.ts` is the one place), the visuals of others' feeds and taps from applied
+  commands (today the sender's `after` draws them), and group L's words first.
 
 ## Releases
 

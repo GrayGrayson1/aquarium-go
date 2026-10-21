@@ -5956,6 +5956,36 @@
       "note": "Chunk 9 (c51a7f1, 56e0215, b5d169f): keepAutosavedCopies (ui/common/saves.ts) parks into a free slot only, every copy through the progress check, the messages after the load; with every slot full nothing loads. online-sync's B1 and confirmation tests."
     },
     {
+      "id": "SHARE-001",
+      "slice": "ALL",
+      "source": "SHARED-SHOPS.md §4, §3.2, §9.1; PLAN.md chunk 11",
+      "description": "Every player action is a serializable command applied through the store's dispatcher; the solo game behaves as before.",
+      "acceptance": [
+        "Each command kind applied gives the same stateHash as the sim function its interface closure called, on real worlds; every command survives JSON and validateCommand unchanged.",
+        "validateCommand refuses unknown kinds, missing or mistyped fields, values out of range, ids that name what every object inherits, inherited fields, oversized commands and malformed guide flags.",
+        "Outside the dispatcher, the marks module, the loop, the shared replica, persistence and the dev tools, nothing writes the game store (core-mutation-boundary).",
+        "With an actor: what a command logs is tagged; a stale buy, sale, move or take is refused on every copy naming who changed it in the last 30 seconds, never the sender's own earlier change; settings are last-writer-wins with a note; every copy, a joiner too, decides the same.",
+        "No key in a shared copy holds undefined after any step or command (§3.2 rule 10)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/commands-catalogue.test.ts",
+        "tests/sim/commands-shared.test.ts",
+        "tests/sim/commands-dispatch.test.ts",
+        "tests/sim/core-mutation-boundary.test.ts",
+        "tests/sim/shared-lockstep.test.ts",
+        "tests/sim/ui-mutate-atomic.test.ts",
+        "tests/sim/guide-feedback.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §4",
+        "SHARED-SHOPS.md §3.2"
+      ],
+      "note": "Chunk 11 (03b3f4b): the catalogue (80 kinds), the solo dispatcher, the act helpers and every call site, who did it and first one wins, rule 10, catchUp.ts and starvation.ts. GREEN once the full pass and the fresh review are done."
+    },
+    {
       "id": "SHARE-002",
       "slice": "ALL",
       "source": "SHARED-SHOPS.md §3.2 rule 1, §9.1, §9.2; PLAN.md chunk 10; ADR-0045, ADR-0046",

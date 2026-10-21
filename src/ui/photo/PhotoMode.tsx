@@ -66,7 +66,11 @@ export async function takePhoto(): Promise<void> {
     }
     const creatureId = ui.followCreatureId ?? ui.selectedCreatureId;
     const g = useGame.getState().game;
-    const show = (added: boolean) => useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId, added } });
+    // the guide's flag, then the preview (saying whether the story line was added), once the story line is in
+    const show = (added: boolean) => {
+      tutorialFlag('photo_taken');
+      useShell.getState().set({ photo: { url, creatureId: creatureId ?? null, tankId: ui.focusedTankId, added } });
+    };
     if (creatureId && g && g.creatures[creatureId]) {
       // lane:ui-shell (B-179) — the story line is optional: a throw discards it whole, and the photo still shows
       try {
@@ -76,7 +80,6 @@ export async function takePhoto(): Promise<void> {
         show(false);
       }
     } else show(false);
-    tutorialFlag('photo_taken');
   } finally {
     capturing = false;
   }

@@ -1,4 +1,4 @@
-# Session handoff: after chunk 10 (shared shops, the test)
+# Session handoff: after chunk 11 (shared shops, commands)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
@@ -34,8 +34,14 @@ it's used up.
   (`render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm --wait -o text`); after the
   measurements the prototype there is closed (no connections or replays unless `SHOPS_OPEN=1`, which the CLI can't set:
   the dashboard can). The Render CLI can create and deploy services but can't change their environment variables.
-- **Open owner questions:** F1 (the owner's VoiceOver pass); the audit's decisions A4 (the shared Pages origin, B-191),
-  F5, F3, G2, A6 and new wording (B-207).
+- **Chunk 11** (2026-10-20, PLAN.md): every player action is a command (`src/sim/commands`, 80 kinds) sent through
+  `useGame.getState().dispatch`; the solo dispatcher (`src/game/dispatch.ts`) applies it at once, so the solo game is
+  unchanged. With an actor (a shared shop), commands are tagged, first one wins and settings are last-writer-wins
+  (`src/sim/commands/shared.ts`, the memory in `GameState.touches`). A new player action is a new command kind
+  (`kinds.ts`, `apply.ts`, `validate.ts`, and a case in `tests/sim/commands-catalogue.test.ts`), never a closure.
+- **Open owner questions:** F1 (the owner's VoiceOver pass); K1 (big shops on the free server, for chunk 12 or 13);
+  L (the words chunk 13 still needs, drafts in SHARED-SHOPS.md §8); the audit's decisions A4 (the shared Pages origin,
+  B-191), F5, F3, G2, A6 and new wording (B-207).
 - **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`) is signed in to the owner's whole account, anonyform's
   Pro organization included. Scope every remote command to the project: `--linked --project-ref zkavcxrsxdgdlstravpj`
   (`db query` takes `--project-ref` only with `--linked`). Never print or save the secret key; never read the CLI's
@@ -61,11 +67,11 @@ it's used up.
    `main` with the owner's go-ahead in the session (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no
    checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
    `version.json` files.
-5. **Shared shops** (the owner chose them, 2026-10-20): chunk 10 is done (PLAN.md: the review's two blockers fixed, the
-   final pass 319 of 319). Next chunk 11 (commands, §4; PLAN.md's "For chunk 11"), then chunk 12 (the server, the
-   database; the owner pastes the server's Supabase key into Render, and the build command must remove it from the
-   build, §5.8; PLAN.md's "For chunk 12"). OWNER_QUESTIONS K1 (big shops on the free server) waits for chunk 12's
-   numbers. The audit's remaining findings (B-207, B-208) wait for the owner.
+5. **Shared shops** (the owner chose them, 2026-10-20; "We need to build chunk 11, chunk 12, and chunk 13 however soon
+   we can"): chunks 10 and 11 are done (PLAN.md). Next chunk 12 (the server, the database; PLAN.md's "For chunk 12":
+   the owner's one Render dashboard visit pastes the key and deletes chunk 10's test variables, and the build command
+   removes the key from the build, §5.8), then chunk 13 (ask group L's words first). OWNER_QUESTIONS K1 (big shops on
+   the free server) waits for chunk 12's numbers. The audit's remaining findings (B-207, B-208) wait for the owner.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the

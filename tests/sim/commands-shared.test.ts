@@ -155,6 +155,92 @@ describe('chunk 11: first one wins (§4.3)', () => {
   });
 });
 
+describe('chunk 11: first one wins for the rest of what can be bought, sold, moved or taken (§4.3)', () => {
+  type W = 'big_facility' | 'panels';
+  const cases: { name: string; w: W; prep?: (g: GameState) => void; first: (g: GameState) => Command; second: (g: GameState) => Command; says: string }[] = [
+    {
+      name: 'a decoration sold, then moved',
+      w: 'big_facility',
+      first: (g) => ({ k: 'removeDecor', tank: g.tankOrder[0], decor: g.tanks[g.tankOrder[0]].decor[0].id, sell: true }),
+      second: (g) => ({ k: 'moveDecor', tank: g.tankOrder[0], decor: g.tanks[g.tankOrder[0]].decor[0].id, x: 0, z: 0 }),
+      says: 'Sam already sold that decoration.',
+    },
+    {
+      name: 'equipment removed, then repaired',
+      w: 'big_facility',
+      first: (g) => ({ k: 'removeEquipment', tank: g.tankOrder[0], equip: g.tanks[g.tankOrder[0]].equipment.at(-1)!.id }),
+      second: (g) => ({ k: 'repairEquipment', tank: g.tankOrder[0], equip: g.tanks[g.tankOrder[0]].equipment.at(-1)!.id }),
+      says: 'Sam already removed that equipment.',
+    },
+    {
+      name: 'a candidate hired twice',
+      w: 'big_facility',
+      prep: (g) => void applyCommand(g, { k: 'fireStaff', staff: g.staff!.roster[0].id }),
+      first: (g) => ({ k: 'hireStaff', candidate: g.staff!.candidates[0].id }),
+      second: (g) => ({ k: 'hireStaff', candidate: g.staff!.candidates[0].id }),
+      says: 'Sam already hired that candidate.',
+    },
+    {
+      name: 'a keeper let go twice',
+      w: 'big_facility',
+      first: (g) => ({ k: 'fireStaff', staff: g.staff!.roster[0].id }),
+      second: (g) => ({ k: 'fireStaff', staff: g.staff!.roster[0].id }),
+      says: 'Sam already let that keeper go.',
+    },
+    {
+      name: 'a listing withdrawn, then its bid accepted',
+      w: 'panels',
+      first: (g) => ({ k: 'withdrawListing', listing: g.market.listings.find((l) => l.status === 'active' && (l.bids ?? []).some((b) => b.status === 'open'))!.id }),
+      second: (g) => {
+        const l = g.market.listings.find((x) => x.status === 'active' && (x.bids ?? []).some((b) => b.status === 'open'))!;
+        return { k: 'acceptBid', listing: l.id, bid: l.bids!.find((b) => b.status === 'open')!.id };
+      },
+      says: 'Sam already withdrew that listing.',
+    },
+    {
+      name: 'a clutch moved twice from where it was',
+      w: 'panels',
+      first: (g) => {
+        const cl = Object.values(g.clutches)[0];
+        return { k: 'moveClutch', clutch: cl.id, to: sameWater(g, cl.tankId)[0], from: cl.tankId };
+      },
+      second: (g) => {
+        const cl = Object.values(g.clutches)[0];
+        return { k: 'moveClutch', clutch: cl.id, to: sameWater(g, cl.tankId)[0], from: cl.tankId };
+      },
+      says: 'Sam already moved that clutch.',
+    },
+    {
+      name: 'a fish listed, then sold to the store',
+      w: 'panels',
+      first: (g) => ({ k: 'createListing', kind: 'creature', creatures: [Object.values(g.creatures).find((c) => c.status === 'alive' && c.tankId && !c.isStarter)!.id], reserve: 10, hours: 24 }),
+      second: (g) => ({ k: 'quickSell', creatures: [Object.values(g.creatures).find((c) => c.status === 'alive' && c.tankId && !c.isStarter)!.id] }),
+      says: 'Sam already listed that fish.',
+    },
+  ];
+  for (const c of cases)
+    it(c.name, () => {
+      const g = world(c.w);
+      c.prep?.(g);
+      // both members sent theirs from the same view: the commands are built before either applies
+      const first = c.first(g);
+      const second = c.second(g);
+      expect(applyCommand(g, first, sam(1000)).ok, c.name).toBe(true);
+      const hash = stateHash(g);
+      const r = applyCommand(g, second, ana(1400));
+      expect(r.ok).toBe(false);
+      expect(r.message).toBe(c.says);
+      expect(stateHash(g)).toBe(hash);
+      // the same member's own second command is never refused by their first (the game's own rules still decide)
+      const h = world(c.w);
+      c.prep?.(h);
+      const f2 = c.first(h);
+      const s2 = c.second(h);
+      applyCommand(h, f2, sam(1000));
+      expect(applyCommand(h, s2, sam(1400)).conflict).toBeUndefined();
+    });
+});
+
 describe('chunk 11: settings are last-writer-wins, with a note (§4.3)', () => {
   it('a later setting applies, and says who changed it just before', () => {
     const g = world();
