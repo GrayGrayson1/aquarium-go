@@ -1,4 +1,4 @@
-# Session handoff: chunk 10 (shared shops, the test)
+# Session handoff: after chunk 10 (shared shops, the test)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
@@ -61,10 +61,11 @@ it's used up.
    `main` with the owner's go-ahead in the session (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no
    checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
    `version.json` files.
-5. **Shared shops** (the owner chose them, 2026-10-20): chunk 10 built and measured (PLAN.md; its review and the
-   final checks are what's left); then chunk 11 (commands, §4) and chunk 12 (the server, the database; the owner pastes
-   the server's Supabase key into Render, and the build command must remove it from the build, §5.8). The audit's
-   remaining findings (B-207, B-208) wait for the owner.
+5. **Shared shops** (the owner chose them, 2026-10-20): chunk 10 is done (PLAN.md: the review's two blockers fixed, the
+   final pass 319 of 319). Next chunk 11 (commands, §4; PLAN.md's "For chunk 11"), then chunk 12 (the server, the
+   database; the owner pastes the server's Supabase key into Render, and the build command must remove it from the
+   build, §5.8; PLAN.md's "For chunk 12"). OWNER_QUESTIONS K1 (big shops on the free server) waits for chunk 12's
+   numbers. The audit's remaining findings (B-207, B-208) wait for the owner.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the
@@ -211,3 +212,5 @@ in commands (the owner dislikes approving command after command). Report a test 
   Homebrew's openjdk@21 compute reference results bit for bit (`scripts/_audit/chunk10/Ref.java` in the internal-disk
   clone).
 - *zsh doesn't split words:* `for c in "big_facility 1"; do cmd $c; done` passes one argument; use `${=c}`.
+- *A test's own browser contexts:* close them in an `afterEach`; left open in WebKit they slowed the specs after them
+  until those timed out, which looked like a flake in someone else's spec.

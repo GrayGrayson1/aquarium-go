@@ -45,6 +45,8 @@ are answered (2026-10-16, ADR-0036) and **F1 is open** (the owner's VoiceOver pa
 | (shared shops, the design) | SHARED-SHOPS.md's choices for the owner: the server's key, the `ws` library, a data cap, who counts as there, how a shop starts, your own game meanwhile, seeing others' actions, two people at once | 8 questions in 2 rounds: **answered 2026-10-20 (ADR-0045)** |
 | (shared shops, the words) | Chunk 13: SHARED-SHOPS.md §8's screens and words, where a shop opens, the activity lines' pattern, leaderboards | 4 questions: **answered 2026-10-20 (ADR-0045, round 3)** |
 | (shared shops, the design's review) | What the review left to the owner: listing photos, short breaks, an hours cap, three more lines | 4 questions: **answered 2026-10-20 (ADR-0045, round 4)** |
+| (chunk 10) | The free Render test service | 1 question: **answered 2026-10-20 (ADR-0046)** |
+| K (shared shops, later) | Big shops on the free server: chunk 10 measured that the free instance keeps a new or month-old shop at any speed, but a late-game shop (15 tanks, 337 animals) runs slower than real time even at 1× (SHARED-SHOPS.md §11). When a shared shop grows that big: lower its top speed (new words), or a paid instance (Render's Starter, about $7 a month)? Chunk 12 first makes the server cheaper per step | K1: **open, not yet asked** (blocks nothing until a shop is that big; ask in chunk 12 or 13 with the numbers then) |
 
 ## A. Release and standing decisions
 

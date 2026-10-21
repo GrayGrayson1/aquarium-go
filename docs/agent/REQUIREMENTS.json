@@ -5974,11 +5974,11 @@
         "tests/e2e/shared-lockstep.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §3.2"
       ],
-      "note": "Chunk 10: dmath and the switch (017756d); the step block, the prototype server and replica, the lockstep tests in one process and the cross-engine replay in Chromium and WebKit (01e854c); Render's x86-64 server's step logs replay on the Mac's arm64 with no mismatch, and the stub shops it built equal the Mac's."
+      "note": "Chunk 10: dmath and the switch (017756d); the step block, the prototype server and replica, the lockstep tests in one process and the cross-engine replay in Chromium and WebKit (01e854c, review fixes to e0f14de); Render's x86-64 server's step logs replay on the Mac's arm64 with no mismatch, and the stub shops it built equal the Mac's. Full pass on e0f14de: unit 2,891, e2e 319 of 319."
     }
   ]
 }

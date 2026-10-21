@@ -20,14 +20,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    `docs/agent/design/SHARED-SHOPS.md` (every browser runs the same steps and the server's copy counts, because Render's
    free plan includes 5 GB of outbound data a month, and every copy uses the same arithmetic, because Node and the
    browsers round `Math.exp` and the like differently); the owner's answers, the screens' words included, are ADR-0043
-   and ADR-0045. The design was reviewed (Opus, max effort) and revised. Next: chunk 10, the test (§10: local first,
-   then on Render with the owner's yes; the database key isn't needed until chunk 12). The audit's other findings
-   (B-207, B-208) wait for the owner.
+   and ADR-0045. The design was reviewed (Opus, max effort) and revised. **Chunk 10, the test, is done** (2026-10-20,
+   below): the lockstep holds in Node, Chromium and WebKit and on Render's x86-64 free instance, which keeps small
+   shops at 10× but not a late-game one (SHARED-SHOPS.md §11). Next: chunk 11, commands (§4). The audit's other
+   findings (B-207, B-208) wait for the owner.
 4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-5. Every owner question is answered (ADR-0024 to ADR-0044) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
-   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
+5. Every owner question is answered (ADR-0024 to ADR-0046) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005); and K1, not yet asked (big shared
+   shops on the free server, for chunk 12 or 13). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
 
@@ -45,12 +47,17 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
-| 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | In progress (started 2026-10-20): dmath, the step block, the prototype server and replica, the lockstep tests and the Render measurements done; the fresh review next. First full pass on `01e854c`: typecheck, unit 2,888, build, e2e 316 of 317 (a WebKit `social.spec` click, B-204, 2 of 2 alone) |
+| 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (not released; nothing players see). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
 | 11 | Shared shops, commands (§4, §3.2) | Planned: every player action a serializable command, no player-visible change (one arithmetic moved to chunk 10) |
 | 12 | Shared shops, the server and the database (§5, §6) | Planned: `server/` on a free Render web service, the migration (live with the owner's yes) |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Planned: the owner's words, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
 
-**Last full test runs:** chunk 9's final commit `9266584`, the owner's Mac, 2026-10-20, from the internal-disk clone,
+**Last full test runs:** chunk 10's final commit `e0f14de`, the owner's Mac, 2026-10-20, from the internal-disk clone
+under `caffeinate -i -s`: typecheck passed; unit 239 files, 2,891 tests passed; build passed; e2e 319 of 319 in Chromium
+and WebKit, dev and both production builds (37.2 minutes). Before it: `01e854c` 316 of 317 and `51eb240` 318 of 319
+(both a WebKit `social.spec` timeout caused by `shared-lockstep.spec`'s open contexts, then fixed), `1d1f7ed` 316 of
+319 (WebKit perf under load, 8 of 8 alone).
+Before chunk 10: chunk 9's final commit `9266584`, the owner's Mac, 2026-10-20, from the internal-disk clone,
 twice in a row under `caffeinate -i -s`: typecheck passed; unit 236 files, 2,868 tests passed; build passed; e2e 311 of
 311 in Chromium and WebKit, dev and both production builds (35.7 and 35.6 minutes). Before them, the same four checks
 on `c51a7f1` (unit 2,851, e2e 311 of 311) and `827eacd` (unit 2,858, e2e 311 of 311), both green, each superseded by
@@ -710,7 +717,7 @@ REL-012, REL-018.
   Left for the owner: whether Settings' Load should also keep another aquarium kept only in the autosave (as 0.5.5,
   it goes; KNOWN_LIMITATIONS).
 
-### 10. Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) — started 2026-10-20 (Chase)
+### 10. Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) — done 2026-10-20 (Chase)
 
 - **What:** check the design's lockstep (§3) before chunks 11 to 13 build on it, and measure what it costs. The chunk
   starts at `885e43e`. No player-visible change.
@@ -788,7 +795,12 @@ REL-012, REL-018.
   (a command on `__proto__` is refused today only because the water code throws first).
 - **The full passes:** `01e854c` and `51eb240`: typecheck, unit (2,888, then 2,891), build passed; e2e 316 of 317, then
   318 of 319, the one failure both times a WebKit `social.spec` timeout caused by `shared-lockstep.spec` leaving two
-  browser contexts open (fixed: it closes them; those four specs together in WebKit, 22 of 22). FINAL_PASS
+  browser contexts open (fixed: it closes them; those four specs together in WebKit, 22 of 22). The final pass, on
+  `e0f14de` (the contexts closed in an `afterEach`, the review's last note): typecheck, unit 2,891, build, e2e 319 of
+  319 (37.2 minutes). Between, `1d1f7ed`'s pass had 316 of 319: three WebKit `perf.spec` frame-rate checks (22.8 fps
+  against 30) while other apps held about two cores, 8 of 8 alone.
+- **For chunk 11** (from the review): delete keys instead of setting `undefined` and assert none in the lockstep test
+  (§3.2 rule 10); `validateCommand` checks ids as own properties.
 - **For chunk 12** (from the measurements): time steps in place, not on a copy (18 to 32% of a step); a cheaper or rarer
   fingerprint and snapshot check for big shops (750 ms and 1.6 s of wall time on the free instance); the key out of the
   build; and, before big shops matter, the owner's choice between a lower top speed for them and a paid instance.
