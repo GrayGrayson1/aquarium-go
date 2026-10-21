@@ -38,7 +38,7 @@ import { SharedConnection, type ConnectionDeps, type JoinAs, type Welcome } from
 import { SharedDispatcher } from './dispatch';
 import { SharedActivity, toastPopup } from './activity';
 import { overlayMarks, readMarks, recordMark, type SharedMarks } from './marks';
-import { clearSharedPhotos, photoArrived, setPhotoRequester } from './photos';
+import { clearSharedPhotos, photoArrived, photosReconnected, setPhotoRequester } from './photos';
 import { forgetSharedShops } from './shopsCache';
 import { INITIAL_VISIT, mayPause, patchShared, useShared, type SharedClosing } from './store';
 import { SHARED_WORDS as W } from './words';
@@ -110,6 +110,8 @@ interface Visit {
   base: GameState | null;
   marks: SharedMarks;
   created: boolean;
+  /** The welcome-back summary already shown this visit (a welcome repeats it for 2 minutes). */
+  catchUp: string | null;
   offs: (() => void)[];
 }
 
@@ -255,7 +257,7 @@ export async function openSharedShop(club: { id: string; name: string }, opts: O
     popup: toastPopup,
     focusedTank: () => (useUI.getState().view === 'tank' ? useUI.getState().focusedTankId : null),
   });
-  v = { conn, disp, activity, base: null, marks: {}, created: !!opts.create, offs: [] };
+  v = { conn, disp, activity, base: null, marks: {}, created: !!opts.create, catchUp: null, offs: [] };
   visit = v;
   useGame.getState().installDispatch(disp.dispatch);
   setPhotoRequester((hash) => {
@@ -312,7 +314,12 @@ function welcomed(v: Visit, w: Welcome, first: boolean): void {
   publish(v, true);
   const ownerName = w.shop.owner ?? (you.owner ? you.name : useShared.getState().ownerName);
   patchShared({ you, members: w.members, shopName: w.shop.name || useShared.getState().shopName, ownerName, creating: false });
-  if (w.catchUp && w.catchUp.hours > 0) useResume.setState({ summary: w.catchUp });
+  const summary = w.catchUp && w.catchUp.hours > 0 ? JSON.stringify(w.catchUp) : null;
+  if (summary && summary !== v.catchUp) {
+    v.catchUp = summary;
+    useResume.setState({ summary: w.catchUp });
+  }
+  photosReconnected();
   if (!first) return;
   const g = v.conn.replica.state!;
   useUI.getState().set({

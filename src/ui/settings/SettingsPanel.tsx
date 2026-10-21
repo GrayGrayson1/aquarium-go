@@ -46,7 +46,7 @@ import { NotificationsTab } from './NotificationsTab'; // lane:notify (chunk 3)
 import { AccountTab } from './AccountTab'; // chunk 8 (REL-031)
 import { useSocialAvailable } from '../online/mode';
 import { useSharedMode } from '@/state/sharedMode'; // chunk 13
-import { useShared } from '../shared/store';
+import { onScreen, useShared } from '../shared/store';
 import { leaveSharedShop } from '../shared/session';
 import { SHARED_WORDS } from '../shared/words';
 
@@ -226,7 +226,7 @@ function SharedSavesTab({ club }: { club: string }) {
 }
 
 function SavesTab() {
-  const sharedClub = useShared((s) => (s.phase === 'open' || s.phase === 'reconnecting' ? (s.club?.name ?? null) : null));
+  const sharedClub = useShared((s) => (onScreen(s.phase) ? (s.club?.name ?? null) : null));
   if (sharedClub !== null) return <SharedSavesTab club={sharedClub} />;
   return <SoloSavesTab />;
 }

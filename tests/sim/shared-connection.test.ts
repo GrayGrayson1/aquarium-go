@@ -317,10 +317,13 @@ describe('chunk 13: being there (§5.5, §7.5)', () => {
     await flush();
     expect(r.sockets).toHaveLength(1);
     r.hidden.v = false;
+    const mark = r.log.length;
     r.conn.visibility(false);
     r.clock.advance(0);
     await flush();
     expect(r.sockets).toHaveLength(2);
+    // coming back is quiet ("Catching up…"), not a lost connection or the opening card; the shop stays on screen
+    expect(r.log.slice(mark).filter((l) => l.startsWith('phase'))).toEqual(['phase "rejoining"', 'phase "rejoining"']);
   });
 
   it('a quick switch away and back says away then here, and keeps the connection', async () => {

@@ -77,7 +77,7 @@ export interface ConnectionDeps {
 
 export interface ConnectionEvents {
   /** The phase the screens show. */
-  phase?(p: 'waking' | 'joining' | 'open' | 'reconnecting'): void;
+  phase?(p: 'waking' | 'joining' | 'open' | 'reconnecting' | 'rejoining'): void;
   /** A welcome and its snapshot are in: the replica holds the shop (`first`: the visit's first). */
   welcome?(w: Welcome, first: boolean): void;
   /** One `steps` message applied (a batch): publish the copy. */
@@ -131,6 +131,8 @@ export class SharedConnection {
   /** The tab hid long enough that this disconnected on purpose. */
   private hiddenDropped = false;
   private signInRetried = false;
+  /** Reconnecting because the player came back (a hidden tab, away too long), not because the connection failed. */
+  private rejoin = false;
   private welcomed = false;
   private everWelcomed = false;
   private pendingWelcome: Welcome | null = null;
@@ -228,6 +230,7 @@ export class SharedConnection {
     if (this.stillHereUp) this.setStillHere(false);
     if (this.awayDropped && !this.deps.hidden()) {
       this.awayDropped = false;
+      this.rejoin = true;
       this.reconnectSoon(0);
       return;
     }
@@ -269,6 +272,7 @@ export class SharedConnection {
     this.cancelHidden = null;
     this.lastInputAt = this.deps.now();
     if (this.hiddenDropped || this.awayDropped || (!this.ws && !this.cancelRetry)) {
+      this.rejoin = this.hiddenDropped || this.awayDropped;
       this.hiddenDropped = false;
       this.awayDropped = false;
       this.reconnectSoon(0);
@@ -282,8 +286,13 @@ export class SharedConnection {
 
   // ── joining ──────────────────────────────────────────────────────────────────────────────────────────────────
 
+  /** The phase while (re)joining: the opening card's first time, then a lost or a quiet reconnect over the shop. */
+  private joiningPhase(first: 'waking' | 'joining'): 'waking' | 'joining' | 'reconnecting' | 'rejoining' {
+    return this.everWelcomed ? (this.rejoin ? 'rejoining' : 'reconnecting') : first;
+  }
+
   private async wake(): Promise<void> {
-    this.events.phase?.('waking');
+    this.events.phase?.(this.joiningPhase('waking'));
     const h = await this.deps.health(`${this.deps.base.replace(/\/+$/, '')}/health`).catch(() => null);
     if (this.ended) return;
     if (!h) {
@@ -300,7 +309,7 @@ export class SharedConnection {
 
   private async connect(refresh = false): Promise<void> {
     if (this.ended) return;
-    this.events.phase?.(this.everWelcomed ? 'reconnecting' : 'joining');
+    this.events.phase?.(this.joiningPhase('joining'));
     const token = await this.deps.token({ refresh }).catch(() => null);
     if (this.ended) return;
     if (!token) return this.signedOut();
@@ -359,6 +368,7 @@ export class SharedConnection {
       this.everWelcomed = true;
       this.retryMs = RECONNECT_FIRST_MS;
       this.signInRetried = false;
+      this.rejoin = false;
       this.events.welcome?.(w, first);
       this.events.phase?.('open');
       // the tank on screen and whether the tab is visible, for this connection
@@ -449,9 +459,8 @@ export class SharedConnection {
         void this.connect(true);
         return;
       case 'away':
-        // away too long: back when the player is
+        // away too long: back when the player is (the shop stays on screen, still)
         this.awayDropped = true;
-        this.events.phase?.('reconnecting');
         return;
       default:
         // protocol or server: the usual waits
@@ -463,6 +472,7 @@ export class SharedConnection {
   private lost(): void {
     this.ws = null;
     this.welcomed = false;
+    this.rejoin = false;
     this.events.dropped?.();
     if (this.ended || this.hiddenDropped || this.awayDropped) return;
     this.events.phase?.('reconnecting');

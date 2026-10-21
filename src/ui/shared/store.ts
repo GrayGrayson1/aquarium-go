@@ -12,9 +12,13 @@ import type { ClosingReason, SharedMember, SharedYou } from '@/types/shared';
  * - `joining`: connected, waiting for the shop (the server may be catching it up);
  * - `open`: the shop is on screen;
  * - `reconnecting`: the connection dropped and is being made again (the shop stays on screen, frozen);
+ * - `rejoining`: the player came back (a hidden tab, away too long) and the shop is being fetched again;
  * - `closed`: the server closed it for a reason the player is told (`closed`).
  */
-export type SharedPhase = 'idle' | 'saving' | 'waking' | 'joining' | 'open' | 'reconnecting' | 'closed';
+export type SharedPhase = 'idle' | 'saving' | 'waking' | 'joining' | 'open' | 'reconnecting' | 'rejoining' | 'closed';
+
+/** The shop is on screen (connected, or getting the connection back). */
+export const onScreen = (p: SharedPhase): boolean => p === 'open' || p === 'reconnecting' || p === 'rejoining';
 
 export interface SharedClosing {
   why: ClosingReason;

@@ -47,7 +47,12 @@ let requester: ((hash: string) => boolean) | null = null;
 /** The session's connection asks the server for a photo (true when it was sent). */
 export function setPhotoRequester(r: ((hash: string) => boolean) | null): void {
   requester = r;
-  // a new connection: the ones not yet in can be asked for again
+  photosReconnected();
+}
+
+/** A new connection (the server sends each photo once per connection): ask again for those on screen and not yet in. */
+export function photosReconnected(): void {
+  const r = requester;
   if (r) for (const [hash, e] of pictures) if (!e.url && e.listeners.size) e.asked = r(hash);
 }
 

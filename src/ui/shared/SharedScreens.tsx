@@ -10,7 +10,7 @@ import { useSharedMode } from '@/state/sharedMode';
 import { Button, Modal, Toggle } from '../kit';
 import { Wordmark } from '../screens/TitleScreen';
 import { BUILD_ID, parseBuildId, versionUrl } from '../hud/updateCheck';
-import { useShared } from './store';
+import { onScreen, useShared } from './store';
 import { dismissClosing, grantPause, leaveSharedShop, stillHere } from './session';
 import { RELOAD_CLOSINGS, SHARED_WORDS as W, closingText } from './words';
 import './shared.css';
@@ -58,7 +58,7 @@ export function SharedStrip() {
   const members = useShared((s) => s.members);
   const owner = useShared((s) => !!s.you?.owner);
   const [open, setOpen] = useState(false);
-  if (!shared || (phase !== 'open' && phase !== 'reconnecting')) return null;
+  if (!shared || !onScreen(phase)) return null;
   const here = members.filter((m) => m.here).map((m) => m.name);
   const text = W.strip(shop, here);
   return (
@@ -116,10 +116,10 @@ export function SharedNotices() {
   const phase = useShared((s) => s.phase);
   const notice = useShared((s) => s.notice);
   if (!shared) return null;
-  const line = phase === 'reconnecting' ? W.lost : notice === 'slow' ? W.slow : notice === 'catchingUp' ? W.catchingUp : null;
+  const line = phase === 'reconnecting' ? W.lost : notice === 'slow' ? W.slow : notice === 'catchingUp' || phase === 'rejoining' ? W.catchingUp : null;
   if (!line) return null;
   return (
-    <div className="ag-shared-notice" role="status" aria-live="polite" data-testid="shared-notice" data-kind={phase === 'reconnecting' ? 'lost' : notice ?? ''}>
+    <div className="ag-shared-notice" role="status" aria-live="polite" data-testid="shared-notice" data-kind={phase === 'reconnecting' ? 'lost' : phase === 'rejoining' ? 'catchingUp' : (notice ?? '')}>
       {line}
     </div>
   );
