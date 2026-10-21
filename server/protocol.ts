@@ -32,7 +32,8 @@ export type FromRoom =
   | { t: 'log'; line: string };
 
 /** The store calls a room may make, each about its own club (the first argument). */
-export const ROOM_CALLS = ['shopGet', 'shopCreate', 'shopPut', 'shopTake', 'shopRelease', 'setPausers', 'photoPut', 'photoGet', 'photoHashes', 'photosDelete'] as const satisfies readonly (keyof Store)[];
+/** chunk 13: `member`, so a room can name its owner (welcome.shop.owner), for its own club only (the club is its second argument). */
+export const ROOM_CALLS = ['shopGet', 'shopCreate', 'shopPut', 'shopTake', 'shopRelease', 'setPausers', 'photoPut', 'photoGet', 'photoHashes', 'photosDelete', 'member'] as const satisfies readonly (keyof Store)[];
 export type RoomCall = (typeof ROOM_CALLS)[number];
 
 export interface RoomPort {

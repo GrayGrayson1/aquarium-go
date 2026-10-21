@@ -72,7 +72,7 @@ function portStore(port: RoomPort, pending: Map<number, { resolve: (v: unknown) 
       });
   const refused = () => Promise.reject(new Error('not for a room'));
   return {
-    member: refused,
+    member: call('member'), // chunk 13: the owner's name, for this room's club only (the main thread checks)
     usageAdd: refused,
     shopGet: call('shopGet'),
     shopCreate: call('shopCreate'),
@@ -226,7 +226,7 @@ export class RoomHost {
     }
     this.revision = row.meta.revision;
     this.savedAt = row.meta.saved_at;
-    const room = this.makeRoom(state, row.meta.pausers);
+    const room = this.makeRoom(state, row.meta.pausers, await this.ownerName(row.meta.created_by));
     // the time since it emptied, or since its last save after a crash (none under 5 minutes, or while paused)
     const since = row.meta.left_at ?? row.meta.saved_at;
     const summary = room.catchUp(Math.max(0, this.clock.wall() - since));
@@ -250,12 +250,25 @@ export class RoomHost {
     this.leaseOkAt = this.clock.now();
     this.revision = made.revision;
     this.savedAt = enc.savedAt;
-    const room = this.makeRoom(state, []);
+    const room = this.makeRoom(state, [], await this.ownerName(m.user));
     this.start();
     return { room, pausers: [] };
   }
 
-  private makeRoom(state: GameState, pausers: string[]): Room {
+  /**
+   * chunk 13 — the shop's owner's name, for the approved "Only {owner} and the people they choose…" (the welcome says
+   * it); nothing when the shop has no recorded owner or the lookup fails (the game then says "the owner", ADR-0049).
+   */
+  private async ownerName(user: string | null | undefined): Promise<string | undefined> {
+    if (!user) return undefined;
+    try {
+      return (await this.store.member(user, this.club))?.name || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private makeRoom(state: GameState, pausers: string[], owner?: string): Room {
     const room = new Room(
       state,
       {
@@ -281,7 +294,7 @@ export class RoomHost {
         drop: (user) => this.post({ t: 'drop', user }),
         fault: () => void this.stop('fault'),
       },
-      { club: this.club, pausers },
+      { club: this.club, pausers, ...(owner ? { owner } : {}) },
     );
     this.room = room;
     this.savedN = room.n;

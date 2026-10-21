@@ -38,6 +38,12 @@ export class StubWorld {
   readonly failing = new Set<string>();
   bytesCap = STUB_BYTES_CAP;
   secondsCap = STUB_SECONDS_CAP;
+  /**
+   * chunk 13 — a club nobody added counts as one open to every stub player, with no shop until the owner makes one: the
+   * game's local Social stub has its own clubs (`highland-betta` …, and the ones its owner creates), and dev and e2e
+   * play their shops here (server/main.ts turns it on; the unit tests add their clubs).
+   */
+  openClubs = false;
   /** The database's clock (real ms); tests may move it. */
   now: () => number = Date.now;
 
@@ -73,6 +79,23 @@ export class StubWorld {
     };
   }
 
+  /** chunk 13 — every club with a shop, as the game's club cards show it (`GET /stub/shops`). */
+  listShops(): { club: string; name: string; day: number; money: number; playedAt: number }[] {
+    const out: { club: string; name: string; day: number; money: number; playedAt: number }[] = [];
+    for (const [club, c] of this.clubs) if (c.shop) out.push({ club, name: c.shop.meta.shop_name, day: c.shop.meta.day, money: c.shop.meta.money, playedAt: c.shop.meta.saved_at });
+    return out;
+  }
+
+  /** The club, or (`openClubs`) a new one open to every stub player. */
+  private clubOf(club: string): StubClub | undefined {
+    let c = this.clubs.get(club);
+    if (!c && this.openClubs && /^[A-Za-z0-9_-]{1,80}$/.test(club)) {
+      c = { members: null, shop: null, photos: new Map() };
+      this.clubs.set(club, c);
+    }
+    return c;
+  }
+
   /** The stub shops (dev fixtures) as clubs open to every stub player. */
   addStubShops(dir?: string): string[] {
     const names = availableShops(dir);
@@ -99,7 +122,7 @@ export class StubWorld {
   readonly store: Store = {
     member: async (user, club): Promise<MemberInfo | null> => {
       this.call('member');
-      const c = this.clubs.get(club);
+      const c = this.clubOf(club);
       const u = this.users.get(user);
       if (!c || !u || (c.members && !c.members.has(user))) return null;
       return { name: u.name, owner: u.owner, pause: u.owner || Boolean(c.shop?.meta.pausers.includes(user)), shop: Boolean(c.shop) };
@@ -111,7 +134,7 @@ export class StubWorld {
     },
     shopCreate: async (club, user, s): Promise<CreateResult> => {
       this.call('shopCreate');
-      const c = this.clubs.get(club);
+      const c = this.clubOf(club);
       const u = this.users.get(user);
       if (!c || !u?.owner || (c.members && !c.members.has(user))) throw new Error('server_shop_create: forbidden');
       if (c.shop) return { ok: false, reason: 'exists' };

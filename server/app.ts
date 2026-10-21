@@ -60,7 +60,8 @@ export const TOKEN_GRACE_MS = 10 * 60_000;
  */
 export function roomCallAllowed(fn: string, args: readonly unknown[], club: string): boolean {
   if (!(ROOM_CALLS as readonly string[]).includes(fn)) return false;
-  const named = fn === 'shopPut' ? (args[0] as { club?: unknown } | null)?.club : args[0];
+  // a save names its club inside; a membership lookup second (who, then where); every other call first
+  const named = fn === 'shopPut' ? (args[0] as { club?: unknown } | null)?.club : fn === 'member' ? args[1] : args[0];
   return named === club;
 }
 
@@ -98,6 +99,8 @@ export interface AppDeps {
   build?: SharedBuild;
   /** The stub shops' folder (the replay). */
   shopsDir?: string;
+  /** chunk 13 — the stub's shops (`GET /stub/shops`, for the local Social stub's club cards); absent outside the stub. */
+  stubShops?: () => { club: string; name: string; day: number; money: number; playedAt: number }[];
   log?: (line: string) => void;
 }
 
@@ -580,6 +583,7 @@ export function createShopServer(deps: AppDeps): ShopServer {
       return;
     }
     if (url.pathname === '/stub/replay' && config.replay) return replay(req, res, url);
+    if (url.pathname === '/stub/shops' && config.stub && deps.stubShops) return reply(req, res, 200, deps.stubShops());
     reply(req, res, 404, { error: 'not found' });
   }
 

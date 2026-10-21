@@ -250,6 +250,8 @@ export interface RoomOptions {
   /** The club the shop belongs to, and who may pause besides the owner (the shop's row). */
   club: string;
   pausers?: readonly string[];
+  /** chunk 13 — the owner's name, for the welcome (the pause refusal names them). */
+  owner?: string;
 }
 
 export class Room {
@@ -259,6 +261,8 @@ export class Room {
   /** The full-detail list in force. */
   full: string[] = [];
   readonly club: string;
+  /** chunk 13 — the owner's name (the welcome names them). */
+  private readonly owner: string | undefined;
   private pendingFull: string[] | null = null;
   private readonly members = new Map<string, Member>();
   /** Re-syncs by player, kept across reconnects while the room lives (§5.3). */
@@ -294,6 +298,7 @@ export class Room {
   ) {
     this.state = state;
     this.club = opts.club;
+    this.owner = opts.owner;
     this.pausers = new Set(opts.pausers ?? []);
     this.idleSince = this.wall();
     this.lastFpAt = io.now();
@@ -468,7 +473,8 @@ export class Room {
   flush(): void {
     this.flushSoon = false;
     if (!this.outbox.length) return;
-    const msg: ServerMessage = { t: 'steps', s: this.outbox };
+    // chunk 13: the server's clock with them, so a browser can tell it has fallen behind (§7.6)
+    const msg: ServerMessage = { t: 'steps', s: this.outbox, at: this.wall() };
     this.outbox = [];
     this.out([...this.members.keys()], 'steps', JSON.stringify(msg));
   }
@@ -832,7 +838,7 @@ export class Room {
     const welcome: ServerMessage = {
       t: 'welcome',
       you: { id: member.id, name: member.name, owner: member.owner, pause: this.mayPause(member) },
-      shop: { club: this.club, name: this.state.shopName ?? '' },
+      shop: { club: this.club, name: this.state.shopName ?? '', ...(this.owner ? { owner: this.owner } : {}) },
       members: this.memberList(),
       n: this.n,
       full: [...this.full],

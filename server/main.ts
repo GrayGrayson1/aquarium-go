@@ -15,8 +15,11 @@ const config = readConfig();
 let meter: (bytes: number) => void = () => {};
 let store: Store;
 let auth;
+let stubShops: (() => ReturnType<StubWorld['listShops']>) | undefined;
 if (config.stub) {
   const world = new StubWorld();
+  world.openClubs = true; // the game's local Social stub has clubs of its own (chunk 13)
+  stubShops = () => world.listShops();
   const shops = world.addStubShops(shopDir());
   store = world.store;
   auth = world.auth;
@@ -32,7 +35,7 @@ if (config.stub) {
   console.log('[server] SHOPS_SERVER_KEY is not set: shared shops stay closed');
 }
 
-const app = createShopServer({ config, store, auth, shopsDir: shopDir() });
+const app = createShopServer({ config, store, auth, shopsDir: shopDir(), stubShops });
 meter = (b) => app.usage.count('db', b);
 
 const port = await app.listen();

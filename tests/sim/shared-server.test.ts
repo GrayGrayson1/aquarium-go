@@ -262,7 +262,10 @@ describe('chunk 12: the review’s blockers', () => {
     expect(roomCallAllowed('shopPut', [{ club: 'c1' }], 'c1')).toBe(true);
     expect(roomCallAllowed('shopPut', [{ club: 'c2' }], 'c1')).toBe(false);
     expect(roomCallAllowed('shopPut', ['c1'], 'c1')).toBe(false);
-    expect(roomCallAllowed('member', ['u', 'c1'], 'c1')).toBe(false);
+    // chunk 13: a room looks up its own club's owner by name (welcome.shop.owner), never another club's members
+    expect(roomCallAllowed('member', ['u', 'c1'], 'c1')).toBe(true);
+    expect(roomCallAllowed('member', ['u', 'c2'], 'c1')).toBe(false);
+    expect(roomCallAllowed('member', ['c1', 'c2'], 'c1')).toBe(false);
     expect(roomCallAllowed('usageAdd', ['2026-10', 0, 0], 'c1')).toBe(false);
   });
 
