@@ -49,6 +49,97 @@ it's used up.
   query that would print another player's email is refused by Claude Code's auto mode (PII): count, or match the
   owner's own email, instead.
 
+## Handoff to Chase: chunk 13 and the 0.6.0 release (from Marshall, 2026-10-21, at the owner's request)
+
+The owner (verbatim): "In CNVS have Chase the agents, Claude agents, build out the next portion. Give it everything it
+absolutely needs. If it needs to read your repo, go ahead and tell it to do so if it'd be helpful, or not your repo, your
+conversation, the terminal conversation. Just make sure it has everything it needs to be entirely successful." So Chase
+builds **chunk 13** (the screens and the play-test, SHARED-SHOPS.md §7 and §8) as a full chunk (CLAUDE.md's routine:
+brief in PLAN.md, the four checks on the final code from the internal-disk clone, one fresh Opus 5.5 max-effort reviewer
+plus confirmation passes, its blockers fixed, PLAN.md updated, `next` pushed), then the play-test and the **0.6.0
+release** on the owner's go-ahead. Marshall is the terminal "Marshall" on this canvas: ask it about chunk 12 with
+`cnvs_prompt_agent`, or read its terminal (`cnvs_read_terminal`, target "Marshall") for the session's detail.
+
+**Where chunk 12 stands** (PLAN.md chunk 12 has the record; read all of it, "For chunk 13" twice):
+- Built and committed on `next` (`a4989d8` … `3890c74`), pushed up to `38bfbda`: the real server (`server/`), the
+  migration, the build identity, photos, the stagger, `sharedShops()`/`sharedUsage()`, the live smoke and measurement
+  script (`scripts/shared-smoke.ts`), docs, SHARE-003 to SHARE-018.
+- Live: the migration (2026-10-21); the server password set on Render (ADR-0047: no Supabase key; a browser-capable
+  Claude pasted it, see "Learned in chunk 12"); `aquarium-go-shops` deployed from `next` (`7c0e68d`); the live smoke 23 of
+  23. K1 answered (big shops stay free, unchanged). **Group L answered** (ADR-0048): every word chunk 13 needs is
+  approved (SHARED-SHOPS.md §8, all of it); any other player-visible words go to the owner first.
+- **Still Marshall's:** chunk 12's fresh review (Opus 5.5, max effort) is running in Marshall's session. Marshall fixes
+  its blockers (in `server/`, `supabase/`, `scripts/shared-*`, `tests/sim/shared-server*`, `shared-room*`,
+  `supabase-migration*`, maybe `src/types/shared.ts`), re-runs the four checks, records it in PLAN.md, pushes `next` and
+  messages Chase "chunk 12 done" through CNVS (and a canvas memory). A server fix that changes the protocol will be
+  written in that message.
+
+**How to work while chunk 12 finishes** (so two agents never edit one working tree):
+- Build in the git worktree **`/Volumes/Dev/Projects/AquariumGo-chunk13`**, branch **`chunk13`**, made from `next` at
+  this handoff's commit (Marshall made it; run `npm ci` there once for typecheck and unit tests, slow on the disk image).
+  Commit there freely; don't push `chunk13` to GitHub.
+- Leave Marshall's files alone until "chunk 12 done" (list above). If chunk 13 needs a server change, message Marshall.
+- The internal-disk test clone `~/LocalTest/AquariumGo` is Marshall's until "chunk 12 done" (its review probes and the
+  final passes run there). Until then run typecheck and unit tests in the worktree (slow but fine), no e2e.
+- After "chunk 12 done": in the worktree `git merge next` (no rebase of anything pushed), keep building, and from then
+  on use the test clone as usual (`git fetch dev chunk13 && git checkout --detach FETCH_HEAD`: the clone's remote `dev`
+  is the Dev repo, which shares the worktree's branches). When chunk 13 is done, fast-forward `next` to it
+  (`git -C /Volumes/Dev/Projects/AquariumGo merge --ff-only chunk13` on `next`) and push `next` from the internal clone.
+
+**What chunk 13 builds** (SHARED-SHOPS.md §7, §8, §9.2; PLAN.md chunk 11's and chunk 12's "For chunk 13"):
+- The connection (`src/ui/shared/*`, the browser's own `WebSocket`): wake with `GET /health` (CORS for the game's
+  sites), then `hello` (or the owner's `create`) with the player's Supabase access token, `SHARED_BUILD` and the club;
+  wait for `welcome` + the snapshot frame (gzip unless `plain`); the replica (`src/game/sharedLoop.ts`, already built)
+  publishes to the game store; `view`, `here`/`away`/`input` (at most once a minute), `token` hourly, `resync` on a
+  mismatch, `grant`, `photo`. `src/dev/sharedProto.ts` is a working headless reference (it's what e2e drives today).
+- The shared dispatcher: `useGame.getState().installDispatch(fn)` while a shop is open, `soloDispatch`
+  (`src/game/dispatch.ts`) back after. Send `cmd` with its id; settle `done` when the step with your `{by, id}` arrives
+  and the replica applied it (`runSharedStep` returns results in `cmds` order); a `reject`, or a step lost across a
+  reconnect, settles as not applied; a `raiseFlag` the shop already has gets **no step and no reply** (settle it at
+  once); coalesce sliders (§4.2). Others' feeds and taps draw from applied commands.
+- **Render's proxy eats the server's close frames** (measured): act on the `closing` and `bye` messages and close the
+  socket yourself (`bye`: `sign-in` → refresh the session and retry once; `away` → reconnect only when the player is
+  back; `protocol`/`server` → "Lost the connection to the shared shop. Reconnecting…" with growing waits). A hidden tab
+  disconnects after 2 minutes; "Still here?" at 30 minutes (the server's own idle check is 31).
+- Screens and words (§8, all approved): the club card (owner: create, the meters from `sharedUsage()`; member: open;
+  closed-for-the-month from `sharedShops()`, which never wakes the server), the title button, the opening steps, the HUD
+  strip, the members list with the owner's switch, the pop-ups and the alerts lines (the name in front; first one wins
+  from the command's result), "Still here?", every `closing` (incl. `gone`: "{club} has no shared shop any more."),
+  Settings › Saves and the save buttons in a shared shop, the starvation toast from a `post` of `setSpeed 1`.
+- Your own game waits (§7.2, SHARE-010): saved first, no catch-up for the time away (move its `lastTickRealMs` on by the
+  time in the shop), even after the browser closed inside the shop. Nothing saves a shared shop on the device or online
+  (SHARE-011): autosave, Save, Load, Import, Export, the online save and the leaderboard report each refuse it first.
+- Photos (§4.4): shrink a listing photo to about 320 px (WebP, falling back to JPEG when the browser hands back a PNG)
+  before `createListing` (a command may be 48 KB); draw a `p:` reference from a blob fetched over the socket
+  (`FRAME_PHOTO`: tag 3, 64 hex, type byte, bytes), never in `<img src>` (`Listings.tsx` already refuses it).
+- The marks per player (`src/ui/common/marks.ts`), no guide, no dev panel writes, the error boundary leaves the shop.
+- `SocialService` needs the player's access token for `hello` (add it: supabase-js's `getSession()`; the local stub
+  gives a stub token, `stub:<id>:<name>` with `:owner` for the owner). `sharedShops()` on the local stub returns none
+  today: e2e needs shops there, and the stub server (`server/stub.ts`, `SHOPS_STUB=1`, started by `playwright.config.ts`
+  on port 4396) knows only the stub shops' clubs (`new_betta` …), while the game's stub clubs are `highland-betta` etc.:
+  make them meet (for instance stub clubs open to every stub player, created by the owner on demand). Coordinate the
+  `server/stub.ts` change with Marshall until "chunk 12 done".
+- e2e (§9.2): two browser contexts in one shop (a purchase appears in the other; pause refused then granted; the
+  activity line and pop-up; first one wins; a listing photo on both; leaving brings your own game back unchanged;
+  "Still here?"; a reconnect after the server restarts). The cross-engine replay stays.
+
+**The owner's gates left** (AskUserQuestion, recommended option first, answers verbatim in a new ADR from ADR-0049):
+1. Any player-visible words beyond §8.
+2. **The play-test** with the owner and their daughter on the live server: deploy `aquarium-go-shops` from `next` (ADR-0047
+   decision 2 covers deploys from `next`: `render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm
+   --wait -o text`, then `npx vite-node scripts/shared-smoke.ts` from the internal clone); the game itself must reach
+   the players for that, so how the play-test build reaches them (a release candidate on `main`, or a preview) is the
+   owner's call: ask. Her account: she signs up with the club's invite link; under 13 a parent signs up for her
+   (ADR-0039 decision 4).
+3. **The 0.6.0 release**, only on the owner's go-ahead in that session: PLAN.md "Releases" (step 4 is new: `main` first,
+   Pages deployed, then `render services update srv-dbbt6gbncjis73c23br0 --branch main` and a deploy from `main`; check
+   `/health`'s `build` equals the game's hash and both `version.json` files).
+
+**Standing rules** (on top of the ones in Marshall's handoff below, which all still hold): the server's password is never
+asked for or shown in chat; if it must change, `node scripts/shared-server-key.mjs --yes` from the internal clone and the
+browser-Claude prompt flow in "Learned in chunk 12" (the agent can't set Render variables). Never run a build or install
+command to "check" it. The owner prefers agents to do everything they can themselves and to be asked once, batched.
+
 ## Handoff to Marshall: chunks 12 and 13 (from Chase, 2026-10-21, at the owner's request)
 
 The owner: "Within CNVS Canvas go ahead and have Marshall build everything out and give it everything it needs to be
