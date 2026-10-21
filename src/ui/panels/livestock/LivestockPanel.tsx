@@ -2,6 +2,7 @@
  * Livestock panel — every animal with filters/sorting, portraits, personality, health, value, tank, listed badge;
  * eggs & fry with stage + ETA and move-to-nursery; bulk list / quick sell. OWNER: lane "ui-panels".
  */
+import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { SlidersHorizontal, Fish, Search, Star, Tag, Egg, HandCoins, Heart, Mars, Venus, CircleDashed, ArrowRightLeft, Sparkles, X, Baby, HeartPulse, Check } from 'lucide-react';
@@ -412,7 +413,7 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
               aria-pressed={!!c.favorite}
               aria-label={c.favorite ? `Unfavourite ${c.name}` : `Favourite ${c.name}`}
               title={c.favorite ? 'Favourite' : 'Mark as favourite'}
-              onClick={() => edit({ k: 'setFavorite', creature: c.id, on: !c.favorite })}
+              onClick={() => edit({ k: 'setFavorite', creature: c.id, on: !useGame.getState().game?.creatures[c.id]?.favorite })}
             >
               <Star size={17} />
             </button>

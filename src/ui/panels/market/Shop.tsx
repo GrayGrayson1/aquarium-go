@@ -374,7 +374,9 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
     const name = safe(() => morphDisplayName(sp, (chosen.find((c) => isPrismatic(c)) ?? chosen[0] ?? lead).morphName), sp.commonName);
     const tankId = tank.id;
     const tankName = tank.name;
-    act(idx !== undefined ? { k: 'buyOffer', offer: offer.id, tank: tankId, picks: idx } : { k: 'buyOffer', offer: offer.id, tank: tankId }, {
+    // the animals as this screen shows them: a member who bought part of the offer first reorders the rest (§4.3)
+    const saw = (idx ?? offer.creatures.map((_, i) => i)).map((i) => offer.creatures[i].id);
+    act(idx !== undefined ? { k: 'buyOffer', offer: offer.id, tank: tankId, picks: idx, saw } : { k: 'buyOffer', offer: offer.id, tank: tankId, saw }, {
       sound: 'coin',
       quiet: true,
       after: (r) => {

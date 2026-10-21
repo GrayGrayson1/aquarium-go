@@ -125,7 +125,7 @@ export const clownfishModule: BreedingModule = {
     // The breeding pair.
     if (females.length === 1) pairLoop(env, females[0], ranked);
     for (const c of ranked) {
-      if (c.reproRole !== 'female' && c.repro.stage === 'idle' && c.repro.partnerId && !ranked.some((x) => x.id === c.repro.partnerId)) c.repro.partnerId = undefined;
+      if (c.reproRole !== 'female' && c.repro.stage === 'idle' && c.repro.partnerId && !ranked.some((x) => x.id === c.repro.partnerId)) delete c.repro.partnerId; // §3.2 rule 10
     }
   },
 

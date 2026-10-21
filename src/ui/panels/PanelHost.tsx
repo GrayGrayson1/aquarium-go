@@ -99,7 +99,7 @@ export function PanelHost() {
     const flag = `opened_${panel}`;
     const g = useGame.getState().game;
     if (g && (!g.progress.tutorial.flags[flag] || tutorialWants(g, flag))) {
-      edit({ k: 'raiseFlag', flag }); // gates quests and unlocks (§4.3): a command, not a mark
+      edit({ k: 'raiseFlag', name: flag }); // gates quests and unlocks (§4.3): a command, not a mark
     }
     if (!lastFocus.current) lastFocus.current = document.activeElement as HTMLElement | null;
     // lane:ui-shell (chunk 1, §18) — focus goes to the panel's title (the sheet itself while the panel is loading),

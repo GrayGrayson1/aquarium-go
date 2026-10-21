@@ -64,7 +64,7 @@ describe('REL-016: the mutation boundary and the trust boundary', () => {
   it('the render frame loop never writes game state (input handlers may)', () => {
     const bad = SOURCES.filter((f) => f.path.startsWith('src/render/') || f.path.startsWith('src/ai/')).flatMap((f) =>
       useFrameBodies(code(f.text))
-        .filter((b) => /\b(mutate|mutateFast|setGame)\(/.test(b))
+        .filter((b) => /\b(mutate|mutateFast|setGame|dispatch)\(/.test(b))
         .map((b) => `${f.path}: ${b.slice(0, 80)}`),
     );
     expect(bad).toEqual([]);
@@ -78,11 +78,14 @@ describe('REL-016: the mutation boundary and the trust boundary', () => {
       p === 'src/game/GameLoop.tsx' ||
       p === 'src/game/fastMutate.ts' ||
       p === 'src/game/sharedLoop.ts' ||
-      p.startsWith('src/persistence/') || // load, save and the offline catch-up
+      p === 'src/persistence/session.ts' || // load, and the flush before a save
+      p === 'src/persistence/offline.ts' || // the hidden-tab catch-up (mutateFast only: checked below)
       p.startsWith('src/dev/') ||
       p.startsWith('src/ui/dev/') || // dev tools aren't commands (§4.1)
       p.startsWith('src/sim/'); // takes the state as an argument; can't reach the store
     expect(hits(/\.mutate\b|\bmutateGame\b|\bmutateFast\b/, writers)).toEqual([]);
+    // the catch-up's file writes only through mutateFast: the welcome-back card's resume is a command
+    expect(hits(/\.mutate\b|\bmutateGame\b/, (p) => p !== 'src/persistence/offline.ts')).toEqual([]);
   });
 
   it('the UI reaches Social only through the SocialService (src/social/index.ts)', () => {

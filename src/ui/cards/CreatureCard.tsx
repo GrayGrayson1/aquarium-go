@@ -3,6 +3,7 @@
  * breeding, care facts and history — plus follow / photo / favourite / move / list actions.
  * Side sheet on desktop, bottom sheet on phones. OWNER: lane "ui-shell".
  */
+import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 import {
@@ -569,7 +570,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           }
         }} />
         <ActionBtn icon={<Camera size={17} />} label="Photo" onClick={() => { sfx('camera'); enterCinematic('photo', { followCreatureId: c.id }); tutorialFlag('opened_photo'); }} />
-        <ActionBtn icon={<Star size={17} fill={c.favorite ? 'currentColor' : 'none'} />} label={c.favorite ? 'Favourite' : 'Favourite'} active={!!c.favorite} disabled={readOnly} onClick={() => act({ k: 'setFavorite', creature: c.id, on: !c.favorite }, { toast: false, sound: 'click' })} />
+        <ActionBtn icon={<Star size={17} fill={c.favorite ? 'currentColor' : 'none'} />} label={c.favorite ? 'Favourite' : 'Favourite'} active={!!c.favorite} disabled={readOnly} onClick={() => act({ k: 'setFavorite', creature: c.id, on: !useGame.getState().game?.creatures[c.id]?.favorite }, { toast: false, sound: 'click' })} />
         <ActionBtn icon={<ArrowRightLeft size={17} />} label="Move" disabled={readOnly || c.status !== 'alive'} title={c.status === 'listed' ? `${c.name} is listed for sale. Withdraw the listing in Market › My listings to move ${c.name}.` : c.status !== 'alive' ? `${c.name} is no longer in your care.` : undefined} onClick={() => { sfx('open'); useShell.getState().set({ moveCreatureId: c.id }); }} />
         {/* lane:guide — Sell always leads somewhere useful: the listing if already listed, the local shop's quick sale
             before the marketplace opens (the wizard used to stop there with no way to sell), else the listing wizard */}
@@ -798,7 +799,7 @@ function FeedRow({ c, game }: { c: Creature; game: GameState }) {
   const price = choice.restockPrice;
   const poor = game.finance.money < price;
   const offer = (foodId: string) => {
-    if (targetFeedNow(foodId, c.id)) setFed((n) => n + 1);
+    targetFeedNow(foodId, c.id, () => setFed((n) => n + 1));
   };
   const buyAndFeed = () => {
     if (!choice.restockId) return;

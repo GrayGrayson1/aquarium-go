@@ -3,6 +3,7 @@
  * quick care actions, equipment + lighting, stocking, compatibility, beauty, exhibit, running cost, valuation.
  * Left side sheet on desktop, bottom sheet on phones. OWNER: lane "ui-shell".
  */
+import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { useTankCardTab, type TankCardTabId } from './tankCardTab';
@@ -84,6 +85,9 @@ import { FitLine } from '../common/FitNote'; // lane:fit
 import { AutomationSection, AutoCleanNote } from './Automation'; // lane:ui-shell (chunk 3, 0.5 §10)
 import { tankChips } from '../common/tankChips'; // lane:automation (chunk 5)
 import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5, AUTO-041)
+
+/** A switch flips what the game holds now, not this card's throttled copy (a quick second click turns it back, as before). */
+const liveSignage = (tankId: string): boolean => !!useGame.getState().game?.tanks[tankId]?.signage;
 
 type TabId = TankCardTabId;
 
@@ -596,7 +600,7 @@ function ValueTab({ game, tank }: { game: GameState; tank: Tank }) {
         <Section title={<><Signpost size={12} aria-hidden /> Visitors</>}>
           <div className="ag-row">
             <span className="ag-grow ag-small">Educational sign — visitors learn about the animals (and enjoy it more).</span>
-            <Toggle label="Educational sign" checked={tank.signage} onChange={() => act({ k: 'setSignage', tank: tank.id, on: !tank.signage }, { sound: 'place' }) /* lane:qa-r3 — it costs money: say so */} />
+            <Toggle label="Educational sign" checked={tank.signage} onChange={() => act({ k: 'setSignage', tank: tank.id, on: !liveSignage(tank.id) }, { sound: 'place' }) /* lane:qa-r3 — it costs money: say so */} />
           </div>
         </Section>
       )}

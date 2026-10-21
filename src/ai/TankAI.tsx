@@ -69,7 +69,7 @@ function makeHooks(tankId: string, world: () => AIWorld | null) {
       const ui = useUI.getState();
       if (ui.focusedTankId !== tankId || !world()) return;
       try {
-        useGame.getState().dispatch({ k: 'raiseFlag', flag: `observed:${name}` });
+        useGame.getState().dispatch({ k: 'raiseFlag', name: `observed:${name}` });
       } catch (e) {
         console.warn('tutorialAdvance failed', e);
       }

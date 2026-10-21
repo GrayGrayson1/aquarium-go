@@ -1004,6 +1004,8 @@ export interface SharedTouch {
   at: number;
   /** What they did ("sold", "moved", "changed"). */
   verb: string;
+  /** What the thing looked like right after (its tank, its status): tells the member's own change from a later one. */
+  mark?: string;
 }
 
 /** lane:automation (chunk 5, DESIGN-S3D §9.7) — the five systems Hold all stops. */

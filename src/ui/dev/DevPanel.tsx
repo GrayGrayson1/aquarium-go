@@ -198,7 +198,11 @@ export function DevPanel() {
                     <Chip
                       key={l.id}
                       size="sm"
-                      onClick={() => run(`Buyer visit: ${l.title}`, () => devWrite((d) => forceBuyerVisit(d, l.id), 'bid'))}
+                      onClick={() => run(`Buyer visit: ${l.title}`, () => {
+                        const r = devWrite((d) => forceBuyerVisit(d, l.id), 'bid');
+                        if (r?.message) useUI.getState().toast(r.message, r.ok ? 'success' : 'warning');
+                        return r;
+                      })}
                     >
                       Buyer → {l.title}
                     </Chip>

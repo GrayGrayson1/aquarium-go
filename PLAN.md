@@ -849,10 +849,36 @@ REL-012, REL-018.
   and the Auto-feed patch moved into the sim. `src/sim/catchUp.ts` and `src/sim/starvation.ts`. Rule 10: about 30
   places delete a key instead of setting `undefined`, and `compact` covers events and listings; a probe ran ten
   fixtures 4 to 14 game days with none left. Tests: `commands-catalogue` (each kind's `stateHash` equals the old
-  closure's on four real worlds; 76 of the 80 samples succeed, the other 4 are the game's own refusals, pinned),
+  closure's on five real worlds, 97 samples; after the review, every one changes the game or is a refusal the wrong mapping would turn into a change),
   `commands-shared`, `commands-dispatch`, the lockstep runs with conflicts from three members and a joiner (the room
   counts them: `stats.conflicts`); `ui-mutate-atomic` and `guide-feedback` rewritten on purpose for commands. No seeded
   test shifted.
+- **The full pass on `03b3f4b`:** typecheck, unit 2,998 of 2,998 (242 files), build, e2e 319 of 319 (37.1 minutes).
+- **The fresh review** (Opus 5.5, max effort) on `a3a177d..03b3f4b`, with probes and mutants
+  (`scripts/_audit/review-chunk11/` in the internal-disk clone): four blockers, all fixed.
+  - **B1:** `raiseFlag`'s own field was `flag`, the guide flag every command carries, so the dispatcher raised it
+    twice and the solo guide skipped a step (feed, then open the tank card: the water step done at once). Its field
+    is `name` now, and the catalogue's guide samples run on a new game whose guide is running.
+  - **B2:** `validateCommand` let any string through as a listing photo (a remote address would reach every member's
+    `<img>`) and refused the holding container's empty `from`. Photos are image data only (chunk 12 adds the
+    reference), `from` may be `''`, a command carries only the guide flags actions raise (`ACTION_FLAGS`, checked
+    against the interface's sources), `raiseFlag` names no inherited key, -0 becomes 0, names refuse control and
+    text-direction characters, a substrate colour is a hex colour, and two ranges are tighter.
+  - **B3:** first one wins missed partial purchases (a member got animals they didn't pick, since a partial sale
+    shifts the rest) and the last stored piece (the second member's "from storage" bought a new one). A purchase now
+    carries the animals' ids (`saw`) and buys them by id; `placeDecor` carries `fromStorage`.
+  - **B4:** 18 catalogue samples changed nothing and 12 mapping mutants survived. Every sample now changes the game
+    (or is a refusal pinned on purpose, where the wrong mapping would succeed), with second samples for the optional
+    arguments (target feeds, picks, the rack, a tank or frag listing, `replace`, a line's rules, sort and morph, the
+    breeding tank); all 14 mutants and a canary now fail the tests (`scripts/_audit/chunk11/mut/run.sh`).
+  - **Notes, fixed:** rule 10's last three places (and a test that walks every step of five shops and the actions that
+    end a guard or a pair); the sign and favourite switches read the live game, so a quick second click undoes the
+    first as before; an `after` that throws is no longer reported as a failed action (and not called twice); the
+    fallback alerts line skips quiet kinds and repeats (one line per member and setting in 30 seconds); the same-sender
+    exception holds only while the thing is as the sender's command left it (each touch keeps a mark); the
+    welcome-back card's resume is a command and the store-writer test names persistence's two files; the five helpers
+    that returned a result take a callback; the tagging and install tests can fail now; the room's `at` comes from
+    its clock (`io.wall`); the dev panel's buyer visit toasts again.
 - **Left on purpose:** §3.2 rule 5's stagger (chunk 12: it changes only the server's busiest steps, so it is built and
   measured with the server's speed work); coalescing a control's many values and the pending results' transport
   (chunk 13, the shared dispatcher); actions the interface doesn't call (`setManualMode`, `setOpenHours`,
@@ -861,7 +887,8 @@ REL-012, REL-018.
 - **For chunk 12:** the room puts the starvation guard's slow-down in `post` (`checkStarvation(state, memory)` with a
   memory per room) and runs `simulateOffline` from `src/sim/catchUp.ts` on a wake; `allowed(member, cmd)` gates
   `setSpeed`; the server forwards only the first `raiseFlag` for each flag (§4.3).
-- **For chunk 13:** the shared dispatcher (send, settle `done` from the step's results; coalesce sliders), the marks
+- **For chunk 13:** a listing photo must be shrunk before it's sent (§4.4): today's 640-pixel JPEG is larger than a
+  command may be (48 KB). The shared dispatcher (send, settle `done` from the step's results; coalesce sliders), the marks
   kept per player (`src/ui/common/marks.ts` is the one place), the visuals of others' feeds and taps from applied
   commands (today the sender's `after` draws them), and group L's words first.
 

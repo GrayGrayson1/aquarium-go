@@ -38,7 +38,8 @@ type Kinds =
   | { k: 'setBackdrop'; tank: string; backdrop: BackdropKind }
   | { k: 'buyTank'; tier: string; wc: WaterClass; seeded: boolean; x?: number; z?: number; rotY?: number }
   | { k: 'placeTank'; tank: string; x: number; z: number; rotY: number }
-  | { k: 'placeDecor'; tank: string; def: string; x: number; z: number; rotY?: number; scale?: number }
+  // `fromStorage`: the sender saw a piece in storage (it's placed from there, else bought; first one wins on the last)
+  | { k: 'placeDecor'; tank: string; def: string; x: number; z: number; rotY?: number; scale?: number; fromStorage?: boolean }
   | { k: 'moveDecor'; tank: string; decor: string; x: number; z: number; rotY?: number; scale?: number }
   | { k: 'removeDecor'; tank: string; decor: string; sell: boolean }
   | { k: 'takeFrag'; tank: string; decor: string }
@@ -56,7 +57,8 @@ type Kinds =
   | { k: 'setFavorite'; creature: string; on: boolean }
   | { k: 'quickSell'; creatures: string[] }
   // ── the shop and supplies ──
-  | { k: 'buyOffer'; offer: string; tank: string; picks?: number[] }
+  // `saw`: the ids of the animals bought, as the sender saw the offer (a partial sale reorders what's left)
+  | { k: 'buyOffer'; offer: string; tank: string; picks?: number[]; saw?: string[] }
   | { k: 'buyFood'; food: string; packs: number }
   | { k: 'buySalt'; kg: number }
   | { k: 'buyEggs'; tins: number }
@@ -128,7 +130,8 @@ type Kinds =
   | { k: 'withdrawEntry'; entry: string }
   // ── the clock and the guide ──
   | { k: 'setSpeed'; speed: GameSpeed }
-  | { k: 'raiseFlag'; flag: string }
+  // its own field isn't `flag`: that is the guide flag every kind may carry, raised once more after the action
+  | { k: 'raiseFlag'; name: string }
   | { k: 'tutorialNext' }
   | { k: 'tutorialSkip' };
 

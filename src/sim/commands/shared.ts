@@ -31,7 +31,7 @@ export const TOUCH_MS = 30_000;
 export const MAX_TOUCHES = 200;
 
 /** What a touched thing is called in a refusal. */
-type Noun = 'fish' | 'clutch' | 'offer' | 'listing' | 'bid' | 'frag' | 'decoration' | 'equipment' | 'candidate' | 'keeper' | 'line' | 'tank';
+type Noun = 'fish' | 'clutch' | 'offer' | 'listing' | 'bid' | 'frag' | 'decoration' | 'stored piece' | 'equipment' | 'candidate' | 'keeper' | 'line' | 'tank';
 
 /** One thing a command found changed: its memory key and its noun. */
 interface Stale {
@@ -82,8 +82,19 @@ export function staleOf(state: GameState, cmd: Command): Stale | null {
       }
       if (cmd.tank !== undefined && !own(state.tanks, cmd.tank)) return { key: `t:${cmd.tank}`, noun: 'tank' };
       return null;
-    case 'buyOffer':
-      return state.market.stock.some((o) => o.id === cmd.offer) ? null : { key: `o:${cmd.offer}`, noun: 'offer' };
+    case 'buyOffer': {
+      // the offer, and the animals the sender saw: each still in it (apply.ts buys them by id, wherever a partial sale
+      // moved them), and all of it when they bought it whole
+      const o = state.market.stock.find((x) => x.id === cmd.offer);
+      const stale: Stale = { key: `o:${cmd.offer}`, noun: 'offer' };
+      if (!o) return stale;
+      if (cmd.saw === undefined) return null;
+      if (!cmd.picks && o.creatures.length !== cmd.saw.length) return stale;
+      return cmd.saw.every((id) => o.creatures.some((c) => c.id === id)) ? null : stale;
+    }
+    case 'placeDecor':
+      // the sender saw one in storage: the last one may have been placed since (then it would buy a new one)
+      return cmd.fromStorage && !state.inventory.decor.some((d) => d.defId === cmd.def) ? { key: `ds:${cmd.def}`, noun: 'stored piece' } : null;
     case 'withdrawListing':
       return listing(cmd.listing);
     case 'acceptBid':
@@ -119,8 +130,10 @@ export function staleOf(state: GameState, cmd: Command): Stale | null {
 }
 
 /** What a successful command did to which things, for the memory: [key, verb]. */
-function touchesOf(state: GameState, cmd: Command): [string, string][] {
+function touchesOf(state: GameState, cmd: Command, res: CommandResult): [string, string][] {
   switch (cmd.k) {
+    case 'placeDecor':
+      return res.fromStorage ? [[`ds:${cmd.def}`, 'placed']] : [];
     case 'moveCreature':
     case 'separateCreature':
       return [[`c:${cmd.creature}`, 'moved']];
@@ -217,6 +230,48 @@ export function settingKey(cmd: Command): string | null {
   }
 }
 
+/**
+ * What a thing looks like now, as far as first one wins cares (its tank, its status, whether it's still there): a
+ * touch keeps the mark its command left, so the sender's own earlier change is told apart from a change made after it
+ * (by the game itself, which leaves no touch).
+ */
+function markOf(state: GameState, key: string): string {
+  const i = key.indexOf(':');
+  const kind = key.slice(0, i);
+  const id = key.slice(i + 1);
+  switch (kind) {
+    case 'c': {
+      const c = own(state.creatures, id);
+      return c ? `${c.status}|${c.tankId ?? ''}` : '-';
+    }
+    case 'cl':
+      return own(state.clutches, id)?.tankId ?? '-';
+    case 'o':
+      return state.market.stock.find((o) => o.id === id)?.creatures.map((c) => c.id).join(',') ?? '-';
+    case 'l':
+      return state.market.listings.find((l) => l.id === id)?.status ?? '-';
+    case 'b':
+      for (const l of state.market.listings) for (const b of l.bids ?? []) if (b.id === id) return b.status;
+      return '-';
+    case 'd':
+      return state.tankOrder.find((t) => state.tanks[t]?.decor.some((d) => d.id === id)) ?? '-';
+    case 'f':
+      return (state.inventory.frags ?? []).some((f) => f.id === id) ? 'stored' : '-';
+    case 'e':
+      return state.tankOrder.find((t) => state.tanks[t]?.equipment.some((e) => e.id === id)) ?? (state.inventory.equipment.some((e) => e.id === id) ? 'stored' : '-');
+    case 's':
+      return (state.staff?.candidates ?? []).some((c) => c.id === id) ? 'candidate' : (state.staff?.roster ?? []).some((m) => m.id === id) ? 'roster' : '-';
+    case 'ln':
+      return (state.production?.lines ?? []).some((l) => l.id === id) ? 'line' : '-';
+    case 'ds':
+      return String(state.inventory.decor.filter((d) => d.defId === id).length);
+    case 't':
+      return own(state.tanks, id) ? 'tank' : '-';
+    default:
+      return '';
+  }
+}
+
 /** The latest touch of `key` still inside the window at `at`. */
 function lastTouch(state: GameState, key: string, at: number): SharedTouch | undefined {
   const list = state.touches ?? [];
@@ -229,7 +284,10 @@ function lastTouch(state: GameState, key: string, at: number): SharedTouch | und
 
 function remember(state: GameState, key: string, verb: string, actor: Actor): void {
   const list = (state.touches ??= []);
-  list.push({ key, by: actor.id, name: actor.name, at: actor.at, verb });
+  const t: SharedTouch = { key, by: actor.id, name: actor.name, at: actor.at, verb };
+  // a setting has no mark; nor has the last stored piece, whose placing never excuses the sender's own next one
+  if (!key.startsWith('set:') && !key.startsWith('ds:')) t.mark = markOf(state, key);
+  list.push(t);
   if (list.length > MAX_TOUCHES) list.splice(0, list.length - MAX_TOUCHES);
 }
 
@@ -253,6 +311,12 @@ export function conflictText(name: string | undefined, verb: string | undefined,
 }
 
 /**
+ * Kinds that never add a line of their own when they log nothing: quiet or repeated by nature (a bid held while the
+ * counter form is open, watching, taps, the guide), or with lines of their own on screen (pause and speed, §8).
+ */
+const NO_LINE: ReadonlySet<string> = new Set(['holdBid', 'glassTap', 'noteInteraction', 'notePhoto', 'raiseFlag', 'tutorialNext', 'tutorialSkip', 'setSpeed']);
+
+/**
  * Run a shared shop's command for its sender: the expectation first (refused on every copy when it fails), then the
  * action through `run`, then the memory, the setting note and the tags.
  */
@@ -261,16 +325,24 @@ export function applyAsActor(state: GameState, cmd: Command, actor: Actor, run: 
   const stale = staleOf(state, cmd);
   if (stale) {
     const t = lastTouch(state, stale.key, actor.at);
-    if (!t || t.by !== actor.id) return { ok: false, message: conflictText(t?.name, t?.verb, stale.noun), conflict: t ? { by: t.by, name: t.name } : {} };
+    // the sender's own earlier change doesn't count, unless something changed it again since (the mark differs)
+    const mine = !!t && t.by === actor.id && t.mark !== undefined && t.mark === markOf(state, stale.key);
+    if (!mine) {
+      const other = t && t.by !== actor.id ? t : undefined;
+      return { ok: false, message: conflictText(other?.name, other?.verb, stale.noun), conflict: other ? { by: other.by, name: other.name } : {} };
+    }
   }
   const seq0 = state.idCounter;
   const res = run();
   if (!res.ok) return res;
-  for (const [key, verb] of touchesOf(state, cmd)) remember(state, key, verb, actor);
+  for (const [key, verb] of touchesOf(state, cmd, res)) remember(state, key, verb, actor);
   const sk = settingKey(cmd);
+  // a slider dragged or a budget typed sends many values: one line per member and setting in the window, not each
+  let repeat = false;
   if (sk) {
     const t = lastTouch(state, sk, actor.at);
     if (t && t.by !== actor.id) res.noteBy = t.name;
+    repeat = !!t && t.by === actor.id;
     remember(state, sk, 'changed', actor);
   }
   // tag what this command logged (ids come from one counter that only grows, so they're the ones above seq0)
@@ -283,7 +355,7 @@ export function applyAsActor(state: GameState, cmd: Command, actor: Actor, run: 
     e.byName = actor.name;
     tagged = true;
   }
-  if (!tagged && res.message) {
+  if (!tagged && res.message && !repeat && !NO_LINE.has(cmd.k)) {
     const e = emitEvent(state, { kind: 'info', text: res.message });
     e.by = actor.id;
     e.byName = actor.name;

@@ -45,7 +45,7 @@ const first = (m: Pick<StaffMember, 'name'>) => m.name.split(' ')[0];
 function HiredFlagSync({ g }: { g: GameState }) {
   const need = (g.staff?.roster.length ?? 0) > 0 && !g.progress.tutorial.flags?.hired_staff && !g.isShowcase;
   useEffect(() => {
-    if (need) edit({ k: 'raiseFlag', flag: 'hired_staff' });
+    if (need) edit({ k: 'raiseFlag', name: 'hired_staff' });
   }, [need]);
   return null;
 }

@@ -42,6 +42,9 @@ import { soloDispatch } from '@/game/dispatch';
 import { act as uiAct } from '@/ui/common/actions';
 import { act as panelAct } from '@/ui/panels/common/act';
 
+/** What the imports alone installed, before any test installs anything. */
+const installedByImports = useGame.getState().dispatch;
+
 beforeEach(() => {
   flush.calls = 0;
   boom.on = false;
@@ -52,7 +55,7 @@ beforeEach(() => {
 
 describe('chunk 11: the solo dispatcher (§4.2)', () => {
   it('is installed by importing the act helpers', () => {
-    expect(useGame.getState().dispatch).toBe(soloDispatch);
+    expect(installedByImports).toBe(soloDispatch);
   });
 
   it('applies a command at once: the result comes to `done` before dispatch returns it', () => {

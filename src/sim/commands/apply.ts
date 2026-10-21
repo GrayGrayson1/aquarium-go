@@ -49,8 +49,9 @@ export interface CommandResult extends ActionResult {
   servingsUsed?: number;
   /** `notePhoto`: a story line was added. */
   added?: boolean;
-  /** `placeDecor`: copies of that piece still in storage. */
+  /** `placeDecor`: copies of that piece still in storage, and whether this one came from there. */
   left?: number;
+  fromStorage?: boolean;
   /** A shared shop's setting another member changed in the last 30 seconds (§4.3): who, for the sender's note. */
   noteBy?: string;
   /** A shared shop's refusal because what the sender saw has changed (first one wins, §4.3), and who changed it. */
@@ -124,7 +125,7 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
     case 'setSignage': {
       // a setting, so two members switching it don't undo each other (§4.3): it toggles only when it differs
       const t = own(state.tanks, cmd.tank);
-      if (t && !!t.signage === cmd.on) return { ok: true, message: '' };
+      if (t && !!t.signage === cmd.on) return done();
       return toggleSignage(state, cmd.tank);
     }
     case 'renameTank':
@@ -151,6 +152,7 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       if (cmd.scale !== undefined) pos.scale = cmd.scale;
       const res: CommandResult = { ...placeDecor(state, cmd.tank, cmd.def, pos, owned) };
       res.left = owned ? state.inventory.decor.filter((d) => d.defId === cmd.def).length : 0;
+      res.fromStorage = owned;
       return res;
     }
     case 'moveDecor': {
@@ -196,8 +198,17 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
     case 'quickSell':
       return quickSell(state, cmd.creatures);
     // ── the shop and supplies ──
-    case 'buyOffer':
-      return buyOffer(state, cmd.offer, cmd.tank, cmd.picks);
+    case 'buyOffer': {
+      // the picks by the animals the sender saw (`saw`): a member who bought part of the offer first moved the rest
+      // up the list; in a solo game they're where they were
+      let picks = cmd.picks;
+      const o = picks && cmd.saw ? state.market.stock.find((x) => x.id === cmd.offer) : undefined;
+      if (o && cmd.saw) {
+        const at = cmd.saw.map((id) => o.creatures.findIndex((c) => c.id === id));
+        if (at.every((i) => i >= 0)) picks = at;
+      }
+      return buyOffer(state, cmd.offer, cmd.tank, picks);
+    }
     case 'buyFood':
       return buyFood(state, cmd.food, cmd.packs);
     case 'buySalt':
@@ -319,7 +330,7 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       state.clock.speed = cmd.speed;
       return done();
     case 'raiseFlag':
-      tutorialAdvance(state, cmd.flag);
+      tutorialAdvance(state, cmd.name);
       return done();
     case 'tutorialNext':
       tutorialAdvance(state);

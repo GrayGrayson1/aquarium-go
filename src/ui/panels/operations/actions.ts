@@ -13,16 +13,15 @@ import { act } from '../common/act';
 
 const toast = (label: string, text: string, detail?: string, kind: 'success' | 'info' = 'success') => useUI.getState().toast(text, kind, { label, ...(detail ? { detail } : {}) });
 
-/** Buy a bag of marine salt mix: "Bought · $15" / "5 kg of marine salt mix" / "{kg} kg in stock · enough for {n} batch(es)." (40 kg: "The salt mixer can start its next batch.") */
-export function buySaltBag(kg: number): boolean {
-  let ok = false;
+/** Buy a bag of marine salt mix (`onDone` hears whether it worked, once the result is in): "Bought · $15" / "5 kg of marine salt mix" / "{kg} kg in stock · enough for {n} batch(es)." (40 kg: "The salt mixer can start its next batch.") */
+export function buySaltBag(kg: number, onDone?: (ok: boolean) => void): void {
   act(
     { k: 'buySalt', kg },
     {
       quiet: true,
       after: (r) => {
+        onDone?.(!!r?.ok);
         if (!r?.ok) return;
-        ok = true;
         const g = useGame.getState().game!;
         const stock = Math.round(g.inventory.salt * 10) / 10;
         const per = g.facility.water ? batchSaltKg(batchGal(g.facility.water)) : 4.1;
@@ -33,32 +32,27 @@ export function buySaltBag(kg: number): boolean {
       },
     },
   );
-  return ok;
 }
 
 /** Buy a tin of brine shrimp eggs (the toast is ADR-0032 decision 2). */
-export function buyEggTin(): boolean {
-  let ok = false;
+export function buyEggTin(onDone?: (ok: boolean) => void): void {
   act(
     { k: 'buyEggs', tins: 1 },
     {
       quiet: true,
       after: (r) => {
+        onDone?.(!!r?.ok);
         if (!r?.ok) return;
-        ok = true;
         const g = useGame.getState().game!;
         toast(`Bought · $${EGGS_SUPPLY.price}`, 'A tin of brine shrimp eggs', `${g.inventory.brineShrimpEggs ?? 0} scoops in stock.`);
       },
     },
   );
-  return ok;
 }
 
 /** Buy a pack of Blanched Vegetables (the jars' food). */
-export function buyVegPack(): boolean {
-  let ok = false;
-  act({ k: 'buyFood', food: VEGETABLES, packs: 1 }, { after: (r) => (ok = !!r?.ok) });
-  return ok;
+export function buyVegPack(onDone?: (ok: boolean) => void): void {
+  act({ k: 'buyFood', food: VEGETABLES, packs: 1 }, { after: (r) => onDone?.(!!r?.ok) });
 }
 
 /** Hold all (immediate, no confirm): the toast, then the panel opens Manual mode (§7.7). */

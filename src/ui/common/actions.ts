@@ -76,11 +76,25 @@ export function act(cmd: Command, opts: ActOptions = {}): void {
   // committed; lane:ui-shell (B-179) — its guide flag is raised in a write of its own once the action has committed
   // (src/game/dispatch.ts)
   const c: Command = opts.flag ? { ...cmd, flag: opts.flag } : cmd;
+  // only an error thrown before the result came back is the action's: one thrown by the toasts or `after` isn't
+  const sync: { got: boolean; res: CommandResult | null } = { got: false, res: null };
+  let inDispatch = true;
   try {
-    store.dispatch(c, (res) => settle(res, null));
+    store.dispatch(c, (res) => {
+      if (inDispatch) {
+        sync.got = true;
+        sync.res = res;
+      } else settle(res, null);
+    });
   } catch (e) {
-    settle(null, e);
+    if (!sync.got) {
+      inDispatch = false;
+      settle(null, e);
+      return;
+    }
   }
+  inDispatch = false;
+  if (sync.got) settle(sync.res, null);
 }
 
 const cautionTimers = new Map<string, number>();
@@ -127,7 +141,7 @@ export function tutorialFlag(flag: string): void {
   firedFlags.add(key);
   // lane:ui-shell (B-179) — a throw discards the guide's half-made changes (the dispatcher's write is atomic)
   try {
-    useGame.getState().dispatch({ k: 'raiseFlag', flag });
+    useGame.getState().dispatch({ k: 'raiseFlag', name: flag });
   } catch {
     /* the guide is optional */
   }

@@ -147,7 +147,7 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
               {eggs} scoops · about {room.cones.length ? Math.floor(eggs / room.cones.length) : 0} days · {EGGS_SUPPLY.scoops} scoops a tin
             </span>
           </div>
-          <Button size="sm" className="ops-buy" data-testid="feed-buy-eggs" onClick={buyEggTin}>
+          <Button size="sm" className="ops-buy" data-testid="feed-buy-eggs" onClick={() => buyEggTin()}>
             Buy · {formatMoney(EGGS_SUPPLY.price)}
           </Button>
         </div>
@@ -158,7 +158,7 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
               {veg} servings · about {room.jars.length ? Math.floor((veg * 3) / room.jars.length) : 0} days
             </span>
           </div>
-          <Button size="sm" className="ops-buy" data-testid="feed-buy-veg" onClick={buyVegPack}>
+          <Button size="sm" className="ops-buy" data-testid="feed-buy-veg" onClick={() => buyVegPack()}>
             Buy · {formatMoney(vegDef?.price ?? 3)}
           </Button>
         </div>

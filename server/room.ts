@@ -71,6 +71,8 @@ export interface RoomIo {
   /** Run `fn` once, `ms` from now (the quick flush after a command). */
   later(ms: number, fn: () => void): void;
   now(): number;
+  /** Wall-clock ms for first one wins' 30 seconds, stamped on each command (default `Date.now`; tests drive it). */
+  wall?(): number;
   log?(line: string): void;
 }
 
@@ -311,7 +313,7 @@ export class Room {
       this.broadcastMembers();
     }
     // the sender's name and the server's wall clock travel with the command, for first one wins (§4.3)
-    if (!this.step(0, { by: member.id, who: member.name, id: cid, at: Date.now(), c })) return this.reject(member.id, cid, 'failed');
+    if (!this.step(0, { by: member.id, who: member.name, id: cid, at: this.io.wall?.() ?? Date.now(), c })) return this.reject(member.id, cid, 'failed');
     if (!this.flushSoon) {
       this.flushSoon = true;
       this.io.later(50, () => this.flushSoon && this.flush());

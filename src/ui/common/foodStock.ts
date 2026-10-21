@@ -37,11 +37,9 @@ export function tankFoodLevel(g: GameState, tankId: string): 'ok' | 'low' | 'out
   return g.tanks[tankId]?.cache.foodLevel ?? 'ok';
 }
 
-/** Buy one pack right away (feed picker shortcut). Returns true on success. */
-export function buyFoodPack(foodId: string): boolean {
-  let ok = false;
-  act({ k: 'buyFood', food: foodId, packs: 1 }, { sound: 'coin', after: (r) => (ok = !!r?.ok) });
-  return ok;
+/** Buy one pack right away (feed picker shortcut); `onDone` hears whether it worked, once the result is in. */
+export function buyFoodPack(foodId: string, onDone?: (ok: boolean) => void): void {
+  act({ k: 'buyFood', food: foodId, packs: 1 }, { sound: 'coin', after: (r) => onDone?.(!!r?.ok) });
 }
 
 /** Open Market › Supplies scrolled to this food. */

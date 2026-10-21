@@ -843,7 +843,8 @@ function countSales(state: GameState, line: ProductionLine): void {
         line.stats.totalRevenue = roundCents(line.stats.totalRevenue + v);
       }
     }
-    b.listingIds = open.length ? open : undefined;
+    if (open.length) b.listingIds = open;
+    else delete b.listingIds; // §3.2 rule 10
   }
   // A batch is done once its hold ended and none of its listings is still open.
   if (line.batches) {

@@ -279,13 +279,11 @@ export function feedNow(foodId: string) {
  * lane:qa-play — keyboard / small-animal alternative to clicking the animal in Target feed: offer the food to the
  * animal whose card is open (a hitched seahorse is a tiny target). Mirrors the 3D click in TankInteraction.
  */
-export function targetFeedNow(foodId: string, creatureId: string): boolean {
-  const ui = useUI.getState();
+export function targetFeedNow(foodId: string, creatureId: string, onFed?: () => void): void {
   const g = useGame.getState().game;
   const c = g?.creatures[creatureId];
-  if (!g || !c?.tankId || !g.tanks[c.tankId]) return false;
+  if (!g || !c?.tankId || !g.tanks[c.tankId]) return;
   const tankId = c.tankId;
-  let fed = false;
   act(
     { k: 'feedTank', tank: tankId, food: foodId, target: creatureId },
     {
@@ -294,12 +292,11 @@ export function targetFeedNow(foodId: string, creatureId: string): boolean {
       toast: false,
       after: (r) => {
         if (!r?.ok) return; // lane:w2-ui — act() already toasts the reason on failure (this used to toast it a second time)
-        fed = true;
         targetFedShow(g, tankId, foodId, c.name, creatureId, r);
+        onFed?.(); // lane:w2-ui — the creature card's Feed row animates on success
       },
     },
   );
-  return fed; // lane:w2-ui — the creature card's Feed row animates on success (a shared shop's result comes later: false)
 }
 
 /** The target feed worked: the tongs' food in front of the snout, and the toast. */

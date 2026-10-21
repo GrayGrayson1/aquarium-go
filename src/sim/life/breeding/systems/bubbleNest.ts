@@ -131,7 +131,7 @@ export const bubbleNestModule: BreedingModule = {
         case 'guarding': {
           const cl = r.clutchId ? state.clutches[r.clutchId] : undefined;
           if (!cl || cl.tankId !== m.tankId || cl.guardedById !== m.id) {
-            if (cl && cl.guardedById === m.id) cl.guardedById = undefined;
+            if (cl && cl.guardedById === m.id) delete cl.guardedById; // §3.2 rule 10
             startResting(m, hour, b.cooldownDays * 24 * 0.6);
             r.nestProgress = 0.2;
           }

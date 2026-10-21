@@ -2,6 +2,7 @@
  * Visitors — open-to-public toggle (gated), admission price with projected effect, today's numbers, live reactions
  * feed, exhibit popularity ranking, signage per tank and the facility upgrade CTA. OWNER: lane "ui-panels".
  */
+import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
@@ -395,7 +396,7 @@ function Popularity({ g, canSign, sum }: { g: GameState; canSign: boolean; sum: 
               <span className="pn-tiny">{t.signage ? 'Sign' : `Sign · ${formatMoney(SIGN_COST)}`}</span>
               {canSign ? (
                 <span data-testid={`signage-${t.id}`}>
-                  <Toggle checked={t.signage} onChange={() => act({ k: 'setSignage', tank: t.id, on: !t.signage }, { sound: 'click' }) /* lane:guide — toast the cost / no refund */} label={`Educational sign for ${t.name}`} />
+                  <Toggle checked={t.signage} onChange={() => act({ k: 'setSignage', tank: t.id, on: !useGame.getState().game?.tanks[t.id]?.signage }, { sound: 'click' }) /* lane:guide — toast the cost / no refund */} label={`Educational sign for ${t.name}`} />
                 </span>
               ) : (
                 <Lock size={13} aria-label="Locked" />

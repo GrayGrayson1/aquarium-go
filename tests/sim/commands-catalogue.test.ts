@@ -29,9 +29,17 @@ import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from 
 import { addQuarantineTank, createLine, endLine, setKeepRules, setLinePair, setLineRule, setLineRunning, setLineTank } from '@/sim/production';
 import { enterShow, withdrawEntry } from '@/sim/shows';
 import { lineFarm } from './support/production';
+import { newGame } from '@/sim/newGame';
+import { classCandidates } from '@/sim/shows';
 
-type World = 'panels' | 'big' | 'line' | 'shows';
+type World = 'panels' | 'big' | 'line' | 'shows' | 'new';
 const BUILD: Record<World, () => GameState> = {
+  // a new game with its guide running, paused (the guide's steps count flags and record when they came)
+  new: () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Guide', seed: 11 });
+    g.clock.speed = 0;
+    return g;
+  },
   panels: () => FIXTURES.panels(),
   big: () => FIXTURES.big_facility(),
   line: () => lineFarm().g,
@@ -70,20 +78,58 @@ const fraggable = (g: GameState): Command & { k: 'takeFrag' } =>
   g.tankOrder.flatMap((t) => g.tanks[t].decor.map((d): Command & { k: 'takeFrag' } => ({ k: 'takeFrag', tank: t, decor: d.id }))).find((c) => applyCommand(deepClone(g), c).ok)!;
 
 interface Case {
+  /** What this sample shows, when a kind has more than one (its optional arguments). */
+  what?: string;
   w: World;
   /** Set the world up the same way before both runs (a spare piece in storage, a frag to plant). */
   prep?: (g: GameState) => void;
   cmd: (g: GameState) => Command;
   /** The interface's old closure, written out: `act((d) => buyTank(d, …))`. */
   direct: (d: GameState, c: never) => unknown;
-  /** Did the sample's action work (true), or did the game refuse it by its own rule (false)? */
+  /**
+   * Did the sample's action work and change the game (true), or did the game refuse it by its own rule (false)? A
+   * sample that changes nothing couldn't tell a right mapping from a wrong one, so it isn't allowed.
+   */
   ok: boolean;
 }
 
-const C: Record<CommandKind, Case> = {
-  feedTank: { w: 'big', cmd: (g) => ({ k: 'feedTank', tank: fishIn(g).tankId!, food: firstFood(g), zone: 'surface' }), direct: (d, c: Command & { k: 'feedTank' }) => feedTank(d, c.tank, c.food, { zone: c.zone }), ok: true },
-  waterChange: { w: 'big', cmd: (g) => ({ k: 'waterChange', tank: g.tankOrder[0], fraction: 0.25, coolBy: 5 }), direct: (d, c: Command & { k: 'waterChange' }) => waterChange(d, c.tank, 0.25, { newWaterTempC: Math.max(4, (d.tanks[c.tank]?.water.tempC ?? 18) - 5) }), ok: true },
-  topOff: { w: 'big', cmd: (g) => ({ k: 'topOff', tank: g.tankOrder[1] }), direct: (d, c: Command & { k: 'topOff' }) => topOff(d, c.tank), ok: true },
+/** A command the game accepts, found on a copy of the world (the first of `options` that works). */
+const firstThatWorks = <T extends Command>(g: GameState, options: T[]): T => options.find((c) => applyCommand(deepClone(g), c).ok)!;
+/** A pair the game lets start breeding in their own tank. */
+const breedable = (g: GameState): Command & { k: 'startBreeding' } => {
+  const cs = Object.values(g.creatures).filter((c) => c.status === 'alive' && c.tankId);
+  return firstThatWorks(
+    g,
+    cs.flatMap((a) => cs.filter((b) => b.id !== a.id && b.speciesId === a.speciesId && b.sex !== a.sex).map((b): Command & { k: 'startBreeding' } => ({ k: 'startBreeding', a: a.id, b: b.id, tank: a.tankId! }))),
+  );
+};
+
+const C: Record<CommandKind, Case | Case[]> = {
+  feedTank: [
+    { w: 'big', cmd: (g) => ({ k: 'feedTank', tank: fishIn(g).tankId!, food: firstFood(g), zone: 'surface' }), direct: (d, c: Command & { k: 'feedTank' }) => feedTank(d, c.tank, c.food, { zone: c.zone }), ok: true },
+    {
+      what: 'a target feed (and its interaction)',
+      w: 'big',
+      cmd: (g) =>
+        firstThatWorks(
+          g,
+          Object.values(g.creatures)
+            .filter((c) => c.status === 'alive' && c.tankId)
+            .flatMap((c) => Object.keys(g.inventory.foods).map((food): Command & { k: 'feedTank' } => ({ k: 'feedTank', tank: c.tankId!, food, target: c.id }))),
+        ),
+      direct: (d, c: Command & { k: 'feedTank' }) => {
+        const res = feedTank(d, c.tank, c.food, { targetCreatureId: c.target });
+        if (res.ok) noteInteraction(d, c.target!, 'target_fed');
+        return res;
+      },
+      ok: true,
+    },
+  ],
+  waterChange: [
+    { what: 'cooler water', w: 'big', cmd: (g) => ({ k: 'waterChange', tank: g.tankOrder[0], fraction: 0.25, coolBy: 5 }), direct: (d, c: Command & { k: 'waterChange' }) => waterChange(d, c.tank, 0.25, { newWaterTempC: Math.max(4, (d.tanks[c.tank]?.water.tempC ?? 18) - 5) }), ok: true },
+    { w: 'big', cmd: (g) => ({ k: 'waterChange', tank: g.tankOrder[1], fraction: 0.1 }), direct: (d, c: Command & { k: 'waterChange' }) => waterChange(d, c.tank, 0.1), ok: true },
+  ],
+  topOff: { w: 'big', prep: (g) => void (g.tanks[g.tankOrder[1]].water.level = 0.8), cmd: (g) => ({ k: 'topOff', tank: g.tankOrder[1] }), direct: (d, c: Command & { k: 'topOff' }) => topOff(d, c.tank), ok: true },
   cleanTank: { w: 'big', cmd: (g) => ({ k: 'cleanTank', tank: g.tankOrder[2], what: 'glass' }), direct: (d, c: Command & { k: 'cleanTank' }) => cleanTank(d, c.tank, 'glass'), ok: true },
   dose: { w: 'big', cmd: (g) => ({ k: 'dose', tank: g.tankOrder[0], additive: 'conditioner' }), direct: (d, c: Command & { k: 'dose' }) => dose(d, c.tank, 'conditioner'), ok: true },
   setEquipment: {
@@ -149,7 +195,12 @@ const C: Record<CommandKind, Case> = {
     ok: true,
   },
   changeSubstrate: { w: 'big', cmd: (g) => ({ k: 'changeSubstrate', tank: g.tankOrder[0], kind: 'sand' }), direct: (d, c: Command & { k: 'changeSubstrate' }) => changeSubstrate(d, c.tank, 'sand', undefined), ok: true },
-  setBackdrop: { w: 'big', cmd: (g) => ({ k: 'setBackdrop', tank: g.tankOrder[0], backdrop: 'deep_blue' }), direct: (d, c: Command & { k: 'setBackdrop' }) => setBackdrop(d, c.tank, 'deep_blue'), ok: true },
+  setBackdrop: {
+    w: 'big',
+    cmd: (g) => ({ k: 'setBackdrop', tank: g.tankOrder[0], backdrop: g.tanks[g.tankOrder[0]].backdrop === 'frosted' ? 'black' : 'frosted' }),
+    direct: (d, c: Command & { k: 'setBackdrop' }) => setBackdrop(d, c.tank, c.backdrop),
+    ok: true,
+  },
   buyTank: {
     w: 'line',
     cmd: (g) => {
@@ -182,13 +233,35 @@ const C: Record<CommandKind, Case> = {
   },
   removeDecor: { w: 'big', cmd: (g) => ({ k: 'removeDecor', tank: g.tankOrder[0], decor: g.tanks[g.tankOrder[0]].decor[0].id, sell: true }), direct: (d, c: Command & { k: 'removeDecor' }) => removeDecor(d, c.tank, c.decor, true), ok: true },
   takeFrag: { w: 'big', cmd: (g) => fraggable(g), direct: (d, c: Command & { k: 'takeFrag' }) => takeFrag(d, c.tank, c.decor), ok: true },
-  plantFrag: {
-    w: 'big',
-    prep: (g) => void applyCommand(g, fraggable(g)),
-    cmd: (g) => ({ k: 'plantFrag', tank: fraggable(g).tank, frag: g.inventory.frags![0].id, x: 0.02, z: -0.02, rotY: 0 }),
-    direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, { x: 0.02, z: -0.02, rotY: 0 }, {}),
-    ok: true,
-  },
+  plantFrag: [
+    {
+      w: 'big',
+      prep: (g) => void applyCommand(g, fraggable(g)),
+      cmd: (g) => ({ k: 'plantFrag', tank: fraggable(g).tank, frag: g.inventory.frags![0].id, x: 0.02, z: -0.02, rotY: 0 }),
+      direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, { x: 0.02, z: -0.02, rotY: 0 }, {}),
+      ok: true,
+    },
+    {
+      what: 'on the frag rack',
+      w: 'big',
+      prep: (g) => void applyCommand(g, fraggable(g)),
+      cmd: (g) => firstThatWorks(g, g.tankOrder.map((tank): Command & { k: 'plantFrag' } => ({ k: 'plantFrag', tank, frag: g.inventory.frags![0].id, rack: true }))),
+      direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, undefined, { rackOnly: true }),
+      ok: true,
+    },
+    {
+      what: 'rack only, in a tank with no free hole (refused; anywhere else would plant it)',
+      w: 'big',
+      prep: (g) => void applyCommand(g, fraggable(g)),
+      cmd: (g) => {
+        const frag = g.inventory.frags![0].id;
+        const tank = g.tankOrder.find((t) => !applyCommand(deepClone(g), { k: 'plantFrag', tank: t, frag, rack: true }).ok && applyCommand(deepClone(g), { k: 'plantFrag', tank: t, frag }).ok)!;
+        return { k: 'plantFrag', tank, frag, rack: true };
+      },
+      direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, undefined, { rackOnly: true }),
+      ok: false,
+    },
+  ],
   quickSellFrags: {
     w: 'big',
     prep: (g) => void applyCommand(g, fraggable(g)),
@@ -227,31 +300,68 @@ const C: Record<CommandKind, Case> = {
     direct: (d, c: Command & { k: 'moveClutch' }) => moveClutch(d, c.clutch, c.to),
     ok: true,
   },
-  startBreeding: {
-    w: 'line',
-    cmd: (g) => ({ k: 'startBreeding', a: line(g).pair.motherId, b: line(g).pair.fatherId }),
-    direct: (d, c: Command & { k: 'startBreeding' }) => startBreeding(d, c.a, c.b, undefined),
-    ok: false,
-  },
+  startBreeding: [
+    { w: 'panels', cmd: (g) => breedable(g), direct: (d, c: Command & { k: 'startBreeding' }) => startBreeding(d, c.a, c.b, c.tank), ok: true },
+    {
+      what: 'in another tank (refused there; without the tank it would start)',
+      w: 'panels',
+      cmd: (g) => {
+        const c = breedable(g);
+        return { ...c, tank: g.tankOrder.find((t) => t !== c.tank)! };
+      },
+      direct: (d, c: Command & { k: 'startBreeding' }) => startBreeding(d, c.a, c.b, c.tank),
+      ok: false,
+    },
+  ],
   renameCreature: { w: 'big', cmd: (g) => ({ k: 'renameCreature', creature: fishIn(g).id, name: 'Probe' }), direct: (d, c: Command & { k: 'renameCreature' }) => renameCreature(d, c.creature, 'Probe'), ok: true },
   setFavorite: { w: 'big', cmd: (g) => ({ k: 'setFavorite', creature: fishIn(g).id, on: !fishIn(g).favorite }), direct: (d, c: Command & { k: 'setFavorite' }) => toggleFavorite(d, c.creature), ok: true },
   quickSell: { w: 'big', cmd: (g) => ({ k: 'quickSell', creatures: [fishIn(g).id] }), direct: (d, c: Command & { k: 'quickSell' }) => quickSell(d, c.creatures), ok: true },
-  buyOffer: {
-    w: 'big',
-    // an offer and a tank the game lets you buy it into (found on a copy)
-    cmd: (g) => g.market.stock.flatMap((o) => g.tankOrder.map((tank): Command => ({ k: 'buyOffer', offer: o.id, tank }))).find((x) => applyCommand(deepClone(g), x).ok)!,
-    direct: (d, c: Command & { k: 'buyOffer' }) => buyOffer(d, c.offer, c.tank, undefined),
-    ok: true,
-  },
+  buyOffer: [
+    {
+      w: 'big',
+      // an offer and a tank the game lets you buy it into (found on a copy), with what the buyer saw
+      cmd: (g) => firstThatWorks(g, g.market.stock.flatMap((o) => g.tankOrder.map((tank): Command & { k: 'buyOffer' } => ({ k: 'buyOffer', offer: o.id, tank, saw: o.creatures.map((c) => c.id) })))),
+      direct: (d, c: Command & { k: 'buyOffer' }) => buyOffer(d, c.offer, c.tank, undefined),
+      ok: true,
+    },
+    {
+      what: 'part of a group',
+      w: 'big',
+      cmd: (g) =>
+        firstThatWorks(
+          g,
+          g.market.stock.filter((o) => o.creatures.length > 1).flatMap((o) => g.tankOrder.map((tank): Command & { k: 'buyOffer' } => ({ k: 'buyOffer', offer: o.id, tank, picks: [1], saw: [o.creatures[1].id] }))),
+        ),
+      direct: (d, c: Command & { k: 'buyOffer' }) => buyOffer(d, c.offer, c.tank, [1]),
+      ok: true,
+    },
+  ],
   buyFood: { w: 'big', cmd: (g) => ({ k: 'buyFood', food: firstFood(g), packs: 1 }), direct: (d, c: Command & { k: 'buyFood' }) => buyFood(d, c.food, 1), ok: true },
   buySalt: { w: 'big', cmd: () => ({ k: 'buySalt', kg: 5 }), direct: (d) => buySalt(d, 5), ok: true },
   buyEggs: { w: 'line', cmd: () => ({ k: 'buyEggs', tins: 1 }), direct: (d) => buyEggs(d, 1), ok: true },
-  createListing: {
-    w: 'line',
-    cmd: (g) => ({ k: 'createListing', kind: 'creature', creatures: [fishIn(g).id], reserve: 10, hours: 24, title: 'Probe' }),
-    direct: (d, c: Command & { k: 'createListing' }) => createListing(d, { kind: 'creature', creatureIds: c.creatures, tankId: undefined, fragIds: undefined, reserve: 10, buyNow: undefined, durationHours: 24, title: 'Probe', photo: undefined }),
-    ok: true,
-  },
+  createListing: [
+    {
+      w: 'line',
+      cmd: (g) => ({ k: 'createListing', kind: 'creature', creatures: [fishIn(g).id], reserve: 10, hours: 24, title: 'Probe' }),
+      direct: (d, c: Command & { k: 'createListing' }) => createListing(d, { kind: 'creature', creatureIds: c.creatures, tankId: undefined, fragIds: undefined, reserve: 10, buyNow: undefined, durationHours: 24, title: 'Probe', photo: undefined }),
+      ok: true,
+    },
+    {
+      what: 'a whole tank, with a buy-now price and a photo',
+      w: 'line',
+      cmd: (g) => firstThatWorks(g, g.tankOrder.map((tank): Command & { k: 'createListing' } => ({ k: 'createListing', kind: 'tank', tank, reserve: 40, buyNow: 90, hours: 48, title: 'A whole tank', photo: 'data:image/jpeg;base64,AAAA' }))),
+      direct: (d, c: Command & { k: 'createListing' }) => createListing(d, { kind: 'tank', creatureIds: undefined, tankId: c.tank, fragIds: undefined, reserve: 40, buyNow: 90, durationHours: 48, title: 'A whole tank', photo: 'data:image/jpeg;base64,AAAA' }),
+      ok: true,
+    },
+    {
+      what: 'frags',
+      w: 'big',
+      prep: (g) => void applyCommand(g, fraggable(g)),
+      cmd: (g) => ({ k: 'createListing', kind: 'frag', frags: [g.inventory.frags![0].id], reserve: 5, hours: 24, title: 'A frag' }),
+      direct: (d, c: Command & { k: 'createListing' }) => createListing(d, { kind: 'frag', creatureIds: undefined, tankId: undefined, fragIds: c.frags, reserve: 5, buyNow: undefined, durationHours: 24, title: 'A frag', photo: undefined }),
+      ok: true,
+    },
+  ],
   withdrawListing: { w: 'panels', cmd: (g) => ({ k: 'withdrawListing', listing: activeListing(g).id }), direct: (d, c: Command & { k: 'withdrawListing' }) => withdrawListing(d, c.listing), ok: true },
   acceptBid: { w: 'panels', cmd: (g) => ({ k: 'acceptBid', listing: activeListing(g).id, bid: openBid(g).id }), direct: (d, c: Command & { k: 'acceptBid' }) => acceptBid(d, c.listing, c.bid), ok: true },
   declineBid: { w: 'panels', cmd: (g) => ({ k: 'declineBid', listing: activeListing(g).id, bid: openBid(g).id }), direct: (d, c: Command & { k: 'declineBid' }) => declineBid(d, c.listing, c.bid), ok: true },
@@ -262,7 +372,7 @@ const C: Record<CommandKind, Case> = {
     ok: true,
   },
   holdBid: { w: 'panels', cmd: (g) => ({ k: 'holdBid', listing: activeListing(g).id, bid: openBid(g).id }), direct: (d, c: Command & { k: 'holdBid' }) => holdBidForCounter(d, c.listing, c.bid), ok: true },
-  upgradeFacility: { w: 'panels', cmd: () => ({ k: 'upgradeFacility' }), direct: (d) => upgradeFacility(d), ok: false },
+  upgradeFacility: { w: 'shows', prep: (g) => void (g.finance.money = 1e7), cmd: () => ({ k: 'upgradeFacility' }), direct: (d) => upgradeFacility(d), ok: true },
   upgradePrep: { w: 'shows', cmd: () => ({ k: 'upgradePrep' }), direct: (d) => upgradePrep(d), ok: true },
   addReservoir: { w: 'shows', cmd: () => ({ k: 'addReservoir' }), direct: (d) => addReservoir(d), ok: true },
   addCulture: { w: 'shows', cmd: () => ({ k: 'addCulture', kind: 'cone' }), direct: (d) => addCulture(d, 'cone'), ok: true },
@@ -289,25 +399,28 @@ const C: Record<CommandKind, Case> = {
     direct: (d, c: Command & { k: 'assignTank' }) => assignTank(d, c.staff, c.tank, true),
     ok: true,
   },
-  autoAssignAll: { w: 'big', cmd: () => ({ k: 'autoAssignAll' }), direct: (d) => autoAssignAll(d), ok: true },
+  autoAssignAll: { w: 'big', prep: (g) => g.staff!.roster.forEach((m) => (m.tankIds = [])), cmd: () => ({ k: 'autoAssignAll' }), direct: (d) => autoAssignAll(d), ok: true },
   setStockBudget: { w: 'big', cmd: () => ({ k: 'setStockBudget', amount: 50 }), direct: (d) => setStockBudget(d, 50), ok: true },
   setStockOrders: { w: 'big', cmd: () => ({ k: 'setStockOrders', on: false }), direct: (d) => setStockOrders(d, false), ok: true },
   createLine: {
     w: 'line',
-    cmd: (g) => {
-      const l = line(g);
-      return { k: 'createLine', mother: l.pair.motherId, father: l.pair.fatherId, breed: l.tanks.breed, raise: l.tanks.raise, quarantine: l.tanks.quarantine[0], keep: l.tanks.keep, name: 'Probe line', rules: { autoList: false }, sort: [] };
+    // the farm's own line ended first: the same pair and tanks, with every option the setup screen sends
+    prep: (g) => void applyCommand(g, { k: 'endLine', line: line(g).id }),
+    cmd: () => {
+      const l = line(world('line')); // the ended line, from an untouched copy of the farm
+      return { k: 'createLine', mother: l.pair.motherId, father: l.pair.fatherId, breed: l.tanks.breed, raise: l.tanks.raise, quarantine: l.tanks.quarantine[0], keep: l.tanks.keep, breedFor: 'Probe morph', name: 'Probe line', rules: { autoList: false, pauseWhenFull: true }, sort: [{ traits: ['probe_trait'], count: 3 }] };
     },
-    direct: (d, c: Command & { k: 'createLine' }) => createLine(d, { motherId: c.mother, fatherId: c.father, tanks: { breed: c.breed, raise: c.raise, quarantine: c.quarantine, keep: c.keep }, name: 'Probe line', rules: { autoList: false, keep: [] } }),
-    ok: false,
+    direct: (d, c: Command & { k: 'createLine' }) =>
+      createLine(d, { motherId: c.mother, fatherId: c.father, tanks: { breed: c.breed, raise: c.raise, quarantine: c.quarantine, keep: c.keep }, breedFor: 'Probe morph', name: 'Probe line', rules: { autoList: false, pauseWhenFull: true, keep: [{ traitIds: ['probe_trait'], count: 3 }] } }),
+    ok: true,
   },
   endLine: { w: 'line', cmd: (g) => ({ k: 'endLine', line: line(g).id }), direct: (d, c: Command & { k: 'endLine' }) => endLine(d, c.line), ok: true },
   setLineRunning: { w: 'line', cmd: (g) => ({ k: 'setLineRunning', line: line(g).id, on: false }), direct: (d, c: Command & { k: 'setLineRunning' }) => setLineRunning(d, c.line, false), ok: true },
   setLineRule: { w: 'line', cmd: (g) => ({ k: 'setLineRule', line: line(g).id, rule: 'autoList', on: false }), direct: (d, c: Command & { k: 'setLineRule' }) => setLineRule(d, c.line, 'autoList', false), ok: true },
   setKeepRules: {
     w: 'line',
-    cmd: (g) => ({ k: 'setKeepRules', line: line(g).id, rules: [{ traits: [], count: 2 }] }),
-    direct: (d, c: Command & { k: 'setKeepRules' }) => setKeepRules(d, c.line, [{ traitIds: [], count: 2 }]),
+    cmd: (g) => ({ k: 'setKeepRules', line: line(g).id, rules: [{ traits: ['probe_trait'], count: 2 }] }),
+    direct: (d, c: Command & { k: 'setKeepRules' }) => setKeepRules(d, c.line, [{ traitIds: ['probe_trait'], count: 2 }]),
     ok: true,
   },
   setLinePair: {
@@ -316,12 +429,23 @@ const C: Record<CommandKind, Case> = {
     direct: (d, c: Command & { k: 'setLinePair' }) => setLinePair(d, c.line, c.a, c.b),
     ok: true,
   },
-  setLineTank: {
-    w: 'line',
-    cmd: (g) => ({ k: 'setLineTank', line: line(g).id, stage: 'keep', tank: line(g).tanks.keep }),
-    direct: (d, c: Command & { k: 'setLineTank' }) => setLineTank(d, c.line, 'keep', c.tank, undefined),
-    ok: true,
-  },
+  setLineTank: [
+    {
+      w: 'line',
+      prep: (g) => void buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true }),
+      cmd: (g) => ({ k: 'setLineTank', line: line(g).id, stage: 'keep', tank: g.tankOrder.at(-1)! }),
+      direct: (d, c: Command & { k: 'setLineTank' }) => setLineTank(d, c.line, 'keep', c.tank, undefined),
+      ok: true,
+    },
+    {
+      what: 'one quarantine tank replaced',
+      w: 'line',
+      prep: (g) => void buyTank(g, 'g10', 'freshwater_tropical', undefined, { seeded: true }),
+      cmd: (g) => ({ k: 'setLineTank', line: line(g).id, stage: 'quarantine', tank: g.tankOrder.at(-1)!, replace: line(g).tanks.quarantine[0] }),
+      direct: (d, c: Command & { k: 'setLineTank' }) => setLineTank(d, c.line, 'quarantine', c.tank, c.replace),
+      ok: true,
+    },
+  ],
   addQuarantineTank: { w: 'line', cmd: (g) => ({ k: 'addQuarantineTank', line: line(g).id, seeded: true }), direct: (d, c: Command & { k: 'addQuarantineTank' }) => addQuarantineTank(d, c.line, true), ok: true },
   waitForLine: { w: 'line', cmd: (g) => ({ k: 'waitForLine', line: line(g).id }), direct: (d, c: Command & { k: 'waitForLine' }) => waitForLine(d, c.line), ok: true },
   holdAll: { w: 'line', cmd: () => ({ k: 'holdAll' }), direct: (d) => holdAll(d), ok: true },
@@ -336,7 +460,16 @@ const C: Record<CommandKind, Case> = {
   },
   cancelResearch: { w: 'panels', cmd: () => ({ k: 'cancelResearch' }), direct: (d) => cancelResearch(d), ok: true },
   claimQuest: { w: 'panels', cmd: (g) => ({ k: 'claimQuest', quest: g.progress.quests[0].id }), direct: (d, c: Command & { k: 'claimQuest' }) => claimQuest(d, c.quest), ok: true },
-  enterShow: { w: 'shows', cmd: (g) => ({ k: 'enterShow', show: 'no_such_show', cls: 'no_class', subject: fishIn(g).id }), direct: (d, c: Command & { k: 'enterShow' }) => enterShow(d, c.show, c.cls, c.subject), ok: false },
+  enterShow: {
+    w: 'shows',
+    cmd: (g) =>
+      firstThatWorks(
+        g,
+        g.shows!.shows.flatMap((show) => show.classes.flatMap((cl) => classCandidates(g, show, cl.classId).map((cand): Command & { k: 'enterShow' } => ({ k: 'enterShow', show: show.id, cls: cl.classId, subject: cand.id })))),
+      ),
+    direct: (d, c: Command & { k: 'enterShow' }) => enterShow(d, c.show, c.cls, c.subject),
+    ok: true,
+  },
   withdrawEntry: { w: 'shows', cmd: (g) => ({ k: 'withdrawEntry', entry: g.shows!.entries.find((e) => e.status === 'entered')!.id }), direct: (d, c: Command & { k: 'withdrawEntry' }) => withdrawEntry(d, c.entry), ok: true },
   setSpeed: {
     w: 'big',
@@ -346,8 +479,9 @@ const C: Record<CommandKind, Case> = {
     },
     ok: true,
   },
-  raiseFlag: { w: 'panels', cmd: () => ({ k: 'raiseFlag', flag: 'opened_market' }), direct: (d) => tutorialAdvance(d, 'opened_market'), ok: true },
-  tutorialNext: { w: 'panels', cmd: () => ({ k: 'tutorialNext' }), direct: (d) => tutorialAdvance(d), ok: true },
+  // raised once, as the interface's flag was (the fresh review's B1: it once advanced the guide twice)
+  raiseFlag: { w: 'new', cmd: () => ({ k: 'raiseFlag', name: 'opened_tank_card' }), direct: (d) => tutorialAdvance(d, 'opened_tank_card'), ok: true },
+  tutorialNext: { w: 'new', cmd: () => ({ k: 'tutorialNext' }), direct: (d) => tutorialAdvance(d), ok: true },
   tutorialSkip: { w: 'panels', cmd: () => ({ k: 'tutorialSkip' }), direct: (d) => tutorialSkip(d), ok: true },
 };
 
@@ -357,13 +491,15 @@ describe('chunk 11: the command catalogue (SHARE-001, SHARED-SHOPS.md §4.1)', (
     expect(COMMAND_KINDS.length).toBeGreaterThanOrEqual(80);
   });
 
-  for (const kind of COMMAND_KINDS) {
-    it(`${kind}: the command does what the closure did, and survives the network`, () => {
-      const c = C[kind];
+  for (const kind of COMMAND_KINDS)
+    for (const c of [C[kind]].flat())
+    it(`${kind}${c.what ? ` (${c.what})` : ''}: the command does what the closure did, and survives the network`, () => {
       const a = world(c.w);
       c.prep?.(a);
       const b = deepClone(a);
+      const before = stateHash(a);
       const cmd = c.cmd(a);
+      expect(cmd, 'the sample found a command the game takes').toBeDefined();
       // the wire: plain JSON, and the checks every value from the network goes through
       const wire = JSON.parse(JSON.stringify(cmd));
       expect(wire).toEqual(cmd);
@@ -372,10 +508,11 @@ describe('chunk 11: the command catalogue (SHARE-001, SHARED-SHOPS.md §4.1)', (
       const ok = c.direct(b, cmd as never) as { ok?: boolean } | undefined;
       expect(stateHash(a)).toBe(stateHash(b));
       expect(res.ok, `${kind}: ${res.message}`).toBe(c.ok);
+      // a sample that changes nothing can't tell a right mapping from a wrong one
+      if (c.ok) expect(stateHash(a), `${kind} changed the game`).not.toBe(before);
       expect(undefinedKeys(a), kind).toEqual([]);
       if (ok && typeof ok === 'object' && 'ok' in ok) expect(ok.ok).toBe(res.ok);
     });
-  }
 
   it("a command's guide flag is raised once its action works, not when the game refuses it", () => {
     const g = world('big');
@@ -393,7 +530,8 @@ describe('chunk 11: validateCommand refuses what the catalogue does not allow (�
     expect(validateCommand(good)).toEqual(good);
     expect(validateCommand({ ...good, by: 'someone else', extra: 1 })).toEqual(good);
     expect(validateCommand({ k: 'holdAll' })).toEqual({ k: 'holdAll' });
-    expect(validateCommand({ k: 'buySalt', kg: 5, flag: 'read_param:temp' })).toEqual({ k: 'buySalt', kg: 5, flag: 'read_param:temp' });
+    expect(validateCommand({ k: 'buySalt', kg: 5, flag: 'water_change' })).toEqual({ k: 'buySalt', kg: 5, flag: 'water_change' });
+    expect(validateCommand({ k: 'raiseFlag', name: 'read_param:temp' })).toEqual({ k: 'raiseFlag', name: 'read_param:temp' });
   });
 
   it('refuses unknown kinds, missing or mistyped fields and values out of range', () => {
@@ -441,8 +579,43 @@ describe('chunk 11: validateCommand refuses what the catalogue does not allow (�
     expect(validateCommand(inherited)).toBeNull();
   });
 
+  it('the fresh review’s cases: photos only as image data, the holding container, guide flags, -0, hidden characters', () => {
+    const listing = { k: 'createListing', kind: 'creature', creatures: ['cr_1'], reserve: 1, hours: 24 };
+    for (const photo of ['https://tracker.example/p.gif', 'javascript:alert(1)', 'data:text/html;base64,PHNjcmlwdD4=', 'data:image/svg+xml;base64,PHN2Zz4=', 'p:abc'])
+      expect(validateCommand({ ...listing, photo }), photo).toBeNull();
+    expect(validateCommand({ ...listing, photo: 'data:image/webp;base64,UklGRg==' })).not.toBeNull();
+    // an animal in the holding container (B-174) has no tank: its move says so with ''
+    expect(validateCommand({ k: 'moveCreature', creature: 'cr_1', to: 'tank_2', from: '' })).toEqual({ k: 'moveCreature', creature: 'cr_1', to: 'tank_2', from: '' });
+    // a command carries only the flags actions raise; raiseFlag names no inherited key
+    for (const flag of ['hired_staff', 'opened_market', 'constructor']) expect(validateCommand({ k: 'buySalt', kg: 5, flag }), flag).toBeNull();
+    for (const name of ['constructor', '__proto__', 'toString:x']) expect(validateCommand({ k: 'raiseFlag', name }), name).toBeNull();
+    // -0 as 0: JSON writes -0 as 0, so every copy gets 0
+    expect(Object.is((validateCommand(JSON.parse('{"k":"setAdmission","price":-0}')) as { price: number }).price, 0)).toBe(true);
+    // names reach every member's screen: no control or text-direction characters
+    for (const n of ['A\u0007B', 'Evil\u202eedoc', 'x\u2066y']) expect(validateCommand({ k: 'renameTank', tank: 't', name: n }), n).toBeNull();
+    expect(validateCommand({ k: 'changeSubstrate', tank: 't', kind: 'sand', color: 'url(#x)' })).toBeNull();
+    expect(validateCommand({ k: 'changeSubstrate', tank: 't', kind: 'sand', color: '#c2ab84' })).not.toBeNull();
+    expect(validateCommand({ k: 'glassTap', tank: 't', intensity: 2 })).toBeNull();
+  });
+
+  it('every guide flag the interface puts on an action is one a command may carry', async () => {
+    const { ACTION_FLAGS } = await import('@/sim/commands/validate');
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const walk = (d: string): string[] => readdirSync(d).flatMap((e) => (statSync(join(d, e)).isDirectory() ? walk(join(d, e)) : /\.tsx?$/.test(e) ? [join(d, e)] : []));
+    const used = new Set<string>();
+    for (const dir of ['src/ui', 'src/render', 'src/ai'])
+      for (const f of walk(join(__dirname, '..', '..', dir))) {
+        const text = readFileSync(f, 'utf8');
+        for (const m of text.matchAll(/\bflag: '([a-z_]+)'/g)) used.add(m[1]);
+        for (const m of text.matchAll(/\bcare\(\{[^}]*\}, '([a-z_]+)'/g)) used.add(m[1]);
+      }
+    expect(used.size).toBeGreaterThan(8);
+    expect([...used].filter((f) => !ACTION_FLAGS.includes(f)).sort()).toEqual([]);
+  });
+
   it('a command that is too big is refused, a listing with its photo may be larger', () => {
     expect(validateCommand({ k: 'quickSell', creatures: Array.from({ length: 450 }, (_, i) => `creature_with_a_long_id_${'x'.repeat(30)}_${i}`) })).toBeNull();
-    expect(validateCommand({ k: 'createListing', kind: 'creature', creatures: ['cr_1'], reserve: 1, hours: 24, photo: 'x'.repeat(40_000) })).not.toBeNull();
+    expect(validateCommand({ k: 'createListing', kind: 'creature', creatures: ['cr_1'], reserve: 1, hours: 24, photo: `data:image/jpeg;base64,${'A'.repeat(40_000)}` })).not.toBeNull();
   });
 });

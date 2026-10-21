@@ -53,15 +53,27 @@ export function act(cmd: Command, opts: ActOptions = {}): void {
     }
     opts.after?.(r);
   };
+  // Errors propagate out of the store's write so a half-applied action is discarded, never committed. Only an error
+  // thrown before the result came back is the action's: one thrown by the toast or `after` isn't.
+  const sync: { got: boolean; res: CommandResult | null } = { got: false, res: null };
+  let inDispatch = true;
+  let err: unknown = null;
   markUrgent(true);
   try {
-    // Errors propagate out of the store's write so a half-applied action is discarded, never committed.
-    useGame.getState().dispatch(cmd, (res) => settle(res, null));
+    useGame.getState().dispatch(cmd, (res) => {
+      if (inDispatch) {
+        sync.got = true;
+        sync.res = res;
+      } else settle(res, null);
+    });
   } catch (e) {
-    settle(null, e);
+    if (!sync.got) err = e ?? new Error('action failed');
   } finally {
+    inDispatch = false;
     markUrgent(false);
   }
+  if (err) settle(null, err);
+  else if (sync.got) settle(sync.res, null);
 }
 
 /**

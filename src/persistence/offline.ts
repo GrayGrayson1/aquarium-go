@@ -32,6 +32,7 @@ import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { loadGameDetailed, latestSaveSlot, isStaleGame, noteCatchUp } from './slots';
 import { mutateFast } from '@/game/fastMutate';
+import '@/game/dispatch'; // installs the solo dispatcher (the welcome-back card's resume is a command)
 import type { LoadResult } from './types';
 
 // chunk 11: the catch-up's rules live in the sim (a shared shop's server runs them too); re-exported for this file's
@@ -83,11 +84,8 @@ export const useResume = create<{ summary: OfflineSummary | null; clear: () => v
     set({ summary: null });
     // Dismissing the card resumes the clock the card paused (if the player has not already pressed play).
     const speed = s?.resumeSpeed;
-    if (speed && speed > 0) {
-      useGame.getState().mutate((d) => {
-        if (d.clock.speed === 0) d.clock.speed = speed as 0 | 1 | 3 | 10;
-      });
-    }
+    // chunk 11: a player action, so a command (persistence may write the store directly only to load, save and catch up)
+    if (speed && speed > 0 && useGame.getState().game?.clock.speed === 0) useGame.getState().dispatch({ k: 'setSpeed', speed: speed as 1 | 3 | 10 });
   },
 }));
 

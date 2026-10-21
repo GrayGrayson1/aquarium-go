@@ -265,7 +265,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     }
     // the command places a piece from storage when one is there, else buys it (its result says how many are left)
     const owned = !!getGame()?.inventory.decor.some((d) => d.defId === def.id);
-    useGame.getState().dispatch({ k: 'placeDecor', tank: tank.id, def: def.id, x, z, rotY, scale }, (r) => {
+    useGame.getState().dispatch({ k: 'placeDecor', tank: tank.id, def: def.id, x, z, rotY, scale, fromStorage: owned }, (r) => {
       const res = r ?? { ok: false, message: '' };
       useUI.getState().toast(res.message, res.ok ? 'success' : 'warning');
       try {

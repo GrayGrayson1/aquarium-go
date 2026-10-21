@@ -1050,11 +1050,6 @@ const finiteNum = (v: unknown): v is number => typeof v === 'number' && Number.i
 const HOLD_KEYS = ['water', 'salt', 'food', 'feeders', 'lines'] as const;
 
 /**
- * lane:automation (chunk 5, PERSIST-016) — the S3-D fields, when present: the Water room, the Live food room, the egg
- * stock, manual mode, the Operations records and the stock manager's orders switch. Notes only what it changed (a valid
- * save loads with no repairs and an unchanged hash); never creates a room or stock.
- */
-/**
  * chunk 11 (SHARED-SHOPS.md §4.3) — a shared shop's memory of who changed what in the last 30 seconds: optional (never
  * in a solo save), at most 200 well-formed entries; an unreadable one is dropped, an empty list removed.
  */
@@ -1062,12 +1057,17 @@ function repairTouches(s: Json, repairs: string[]): void {
   if (s.touches === undefined) return;
   const str = (v: unknown, max: number) => typeof v === 'string' && v.length > 0 && v.length <= max;
   const list = Array.isArray(s.touches) ? (s.touches as Json[]) : [];
-  const good = list.filter((t) => isObj(t) && str(t.key, 200) && str(t.by, 80) && str(t.name, 80) && str(t.verb, 40) && finiteNum(t.at)).slice(-200);
+  const good = list.filter((t) => isObj(t) && str(t.key, 200) && str(t.by, 80) && str(t.name, 80) && str(t.verb, 40) && finiteNum(t.at) && (t.mark === undefined || (typeof t.mark === 'string' && t.mark.length <= 4000))).slice(-200);
   if (!Array.isArray(s.touches) || good.length !== list.length) repairs.push('touches: unreadable entries removed');
   if (good.length) s.touches = good;
   else delete s.touches;
 }
 
+/**
+ * lane:automation (chunk 5, PERSIST-016) — the S3-D fields, when present: the Water room, the Live food room, the egg
+ * stock, manual mode, the Operations records and the stock manager's orders switch. Notes only what it changed (a valid
+ * save loads with no repairs and an unchanged hash); never creates a room or stock.
+ */
 function repairAutomation(s: Json, repairs: string[]): void {
   const hour = num(s.clock?.hour, 0);
   const fac = s.facility;

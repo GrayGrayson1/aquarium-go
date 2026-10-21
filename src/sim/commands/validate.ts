@@ -9,6 +9,10 @@ import type { Command, CommandKind } from './kinds';
 
 type Field =
   | { t: 'id' }
+  | { t: 'from' }
+  | { t: 'text'; max: number }
+  | { t: 'photo' }
+  | { t: 'color' }
   | { t: 'ids'; max: number }
   | { t: 'str'; max: number }
   | { t: 'bool' }
@@ -43,7 +47,10 @@ const LINE_RULES = ['pauseWhenFull', 'keepPrismatic', 'autoList'] as const;
 
 const id: Field = { t: 'id' };
 const bool: Field = { t: 'bool' };
-const name: Field = { t: 'str', max: 120 };
+/** A name the player typed: no control or text-direction characters (they'd reach every member's screen). */
+const name: Field = { t: 'text', max: 120 };
+/** The tank an animal was in as its sender saw it: '' for the holding container (B-174). */
+const from: Field = { t: 'from' };
 const coord: Field = { t: 'num', min: -COORD, max: COORD };
 const opt = <F extends Field>(f: F): F & { opt: true } => ({ ...f, opt: true });
 const en = (of: readonly string[]): Field => ({ t: 'enum', of });
@@ -52,7 +59,7 @@ const hour: Field = { t: 'num', min: 0, max: 24 };
 
 const SCHEMA: Schema = {
   feedTank: { tank: id, food: id, zone: opt(en(ZONES)), target: opt(id) },
-  waterChange: { tank: id, fraction: { t: 'num', min: 0.000001, max: 1 }, coolBy: opt({ t: 'num', min: 0, max: 40 }) },
+  waterChange: { tank: id, fraction: { t: 'num', min: 0.000001, max: 1 }, coolBy: opt({ t: 'num', min: 0, max: 10 }) },
   topOff: { tank: id },
   cleanTank: { tank: id, what: en(['gravel', 'glass', 'filter']) },
   dose: { tank: id, additive: en(['bacteria', 'conditioner', 'salt', 'buffer', 'fertilizer', 'coral_supplement']) },
@@ -75,27 +82,27 @@ const SCHEMA: Schema = {
   renameTank: { tank: id, name },
   setTankPurpose: { tank: id, purpose: en(['display', 'nursery', 'quarantine', 'breeding']) },
   convertWaterClass: { tank: id, wc: en(WATER_CLASSES) },
-  changeSubstrate: { tank: id, kind: en(['bare', 'fine_sand', 'sand', 'fine_gravel', 'gravel', 'aragonite', 'planted_soil', 'large_pebbles']), color: opt({ t: 'str', max: 32 }) },
+  changeSubstrate: { tank: id, kind: en(['bare', 'fine_sand', 'sand', 'fine_gravel', 'gravel', 'aragonite', 'planted_soil', 'large_pebbles']), color: opt({ t: 'color' }) },
   setBackdrop: { tank: id, backdrop: en(['black', 'deep_blue', 'frosted', 'none', 'rock_3d']) },
   buyTank: { tier: id, wc: en(WATER_CLASSES), seeded: bool, x: opt(coord), z: opt(coord), rotY: opt(coord) },
   placeTank: { tank: id, x: coord, z: coord, rotY: coord },
-  placeDecor: { tank: id, def: id, x: coord, z: coord, rotY: opt(coord), scale: opt({ t: 'num', min: 0, max: 100 }) },
+  placeDecor: { tank: id, def: id, x: coord, z: coord, rotY: opt(coord), scale: opt({ t: 'num', min: 0, max: 100 }), fromStorage: opt(bool) },
   moveDecor: { tank: id, decor: id, x: coord, z: coord, rotY: opt(coord), scale: opt({ t: 'num', min: 0, max: 100 }) },
   removeDecor: { tank: id, decor: id, sell: bool },
   takeFrag: { tank: id, decor: id },
   plantFrag: { tank: id, frag: id, x: opt(coord), z: opt(coord), rotY: opt(coord), rack: opt(bool) },
   quickSellFrags: { frags: { t: 'ids', max: MAX_LIST } },
-  glassTap: { tank: id, intensity: { t: 'num', min: 0, max: 10 } },
+  glassTap: { tank: id, intensity: { t: 'num', min: 0, max: 1.5 } },
   noteInteraction: { creature: id, kind: en(['observe', 'follow']) },
   notePhoto: { creature: id },
-  moveCreature: { creature: id, to: id, from: opt(id) },
-  separateCreature: { creature: id, to: id, from: opt(id) },
-  moveClutch: { clutch: id, to: id, from: opt(id) },
+  moveCreature: { creature: id, to: id, from: opt(from) },
+  separateCreature: { creature: id, to: id, from: opt(from) },
+  moveClutch: { clutch: id, to: id, from: opt(from) },
   startBreeding: { a: id, b: id, tank: opt(id) },
   renameCreature: { creature: id, name },
   setFavorite: { creature: id, on: bool },
   quickSell: { creatures: { t: 'ids', max: MAX_LIST } },
-  buyOffer: { offer: id, tank: id, picks: opt({ t: 'ints', max: MAX_LIST, lo: 0, hi: 10_000 }) },
+  buyOffer: { offer: id, tank: id, picks: opt({ t: 'ints', max: MAX_LIST, lo: 0, hi: 10_000 }), saw: opt({ t: 'ids', max: MAX_LIST }) },
   buyFood: { food: id, packs: { t: 'int', min: 1, max: 1000 } },
   buySalt: { kg: { t: 'num', min: 0, max: 10_000 } },
   buyEggs: { tins: { t: 'int', min: 1, max: 1000 } },
@@ -108,7 +115,7 @@ const SCHEMA: Schema = {
     buyNow: opt(money),
     hours: { t: 'num', min: 0, max: 10_000 },
     title: opt(name),
-    photo: opt({ t: 'str', max: MAX_LISTING_CHARS }),
+    photo: opt({ t: 'photo' }),
   },
   withdrawListing: { listing: id },
   acceptBid: { listing: id, bid: id },
@@ -145,7 +152,7 @@ const SCHEMA: Schema = {
   enterShow: { show: id, cls: id, subject: id },
   withdrawEntry: { entry: id },
   setSpeed: { speed: { t: 'speed' } },
-  raiseFlag: { flag: { t: 'str', max: 64 } },
+  raiseFlag: { name: { t: 'str', max: 81 } },
   tutorialNext: {},
   tutorialSkip: {},
 };
@@ -153,8 +160,23 @@ const SCHEMA: Schema = {
 /** The kinds the catalogue knows (tests walk them). */
 export const COMMAND_KINDS = Object.keys(SCHEMA) as CommandKind[];
 
-/** A guide flag: a short word with an optional `:detail` (`opened_market`, `read_param:temp`, `observed:schooling`). */
+/**
+ * A guide flag `raiseFlag` raises: a short word with an optional `:detail` (`opened_market`, `read_param:temp`,
+ * `observed:spit_shot`), never a name every object inherits (it becomes a key of `progress.tutorial.flags`).
+ */
 const FLAG = /^[A-Za-z0-9_]{1,40}(:[A-Za-z0-9_ .-]{1,40})?$/;
+const isFlag = (v: unknown): v is string => typeof v === 'string' && FLAG.test(v) && !(v.split(':')[0] in Object.prototype);
+/**
+ * The guide flags an action raises after it works (`act(…, { flag })`): only these ride on a command, so a member's
+ * command can't raise a flag a rule pays on (`hired_staff` is the hire's own, and `raiseFlag`'s).
+ */
+export const ACTION_FLAGS: readonly string[] = ['water_change', 'topped_off', 'cleaned_tank', 'dosed', 'changed_equipment', 'changed_lights', 'fed', 'target_fed', 'named', 'started_breeding', 'moved_creature'];
+/** Characters that mustn't be in a name: control characters and the text-direction overrides. */
+const HIDDEN = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
+/** A listing photo: an image as data (a shared shop stores a reference instead, chunk 12, §4.4). */
+const PHOTO = /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/]+={0,2}$/;
+/** A substrate colour from the catalogue: a hex colour. */
+const COLOR = /^#[0-9a-fA-F]{6}$/;
 
 /** Is this an id the game could hold, and not a name every object inherits? */
 export function isSafeId(v: unknown): v is string {
@@ -171,6 +193,14 @@ function check(f: Field, v: unknown): unknown {
   switch (f.t) {
     case 'id':
       return isSafeId(v) ? v : BAD;
+    case 'from':
+      return v === '' || isSafeId(v) ? v : BAD;
+    case 'text':
+      return typeof v === 'string' && v.length <= f.max && !HIDDEN.test(v) ? v : BAD;
+    case 'photo':
+      return typeof v === 'string' && v.length <= MAX_LISTING_CHARS && PHOTO.test(v) ? v : BAD;
+    case 'color':
+      return typeof v === 'string' && COLOR.test(v) ? v : BAD;
     case 'ids':
       return Array.isArray(v) && v.length <= f.max && v.every(isSafeId) ? [...v] : BAD;
     case 'str':
@@ -178,11 +208,12 @@ function check(f: Field, v: unknown): unknown {
     case 'bool':
       return typeof v === 'boolean' ? v : BAD;
     case 'num':
-      return isNum(v) && v >= f.min && v <= f.max ? v : BAD;
+      // -0 becomes 0: JSON writes -0 as 0, so the copies that get the command from the server would see 0
+      return isNum(v) && v >= f.min && v <= f.max ? (v === 0 ? 0 : v) : BAD;
     case 'int':
-      return Number.isInteger(v) && (v as number) >= f.min && (v as number) <= f.max ? v : BAD;
+      return Number.isInteger(v) && (v as number) >= f.min && (v as number) <= f.max ? (v === 0 ? 0 : v) : BAD;
     case 'ints':
-      return Array.isArray(v) && v.length <= f.max && v.every((x) => Number.isInteger(x) && x >= f.lo && x <= f.hi) ? [...v] : BAD;
+      return Array.isArray(v) && v.length <= f.max && v.every((x) => Number.isInteger(x) && x >= f.lo && x <= f.hi) ? v.map((x: number) => (x === 0 ? 0 : x)) : BAD;
     case 'enum':
       return typeof v === 'string' && f.of.includes(v) ? v : BAD;
     case 'speed':
@@ -227,10 +258,10 @@ export function validateCommand(x: unknown): Command | null {
     if (c === BAD) return null;
     out[name] = c;
   }
-  if (k === 'raiseFlag' && !FLAG.test(out.flag as string)) return null;
+  if (k === 'raiseFlag' && !isFlag(out.name)) return null;
   const flag = get(x, 'flag');
   if (flag !== undefined) {
-    if (typeof flag !== 'string' || !FLAG.test(flag)) return null;
+    if (typeof flag !== 'string' || !ACTION_FLAGS.includes(flag)) return null;
     out.flag = flag;
   }
   if (JSON.stringify(out).length > (k === 'createListing' ? MAX_LISTING_CHARS : MAX_COMMAND_CHARS)) return null;

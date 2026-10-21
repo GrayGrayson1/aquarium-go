@@ -39,6 +39,15 @@ describe('chunk 11: who did it (§4.3)', () => {
     expect(g.log.slice(0, before).some((e) => e.by)).toBe(false);
   });
 
+  it('tags only what the command logged: an event logged just before it keeps no tag', async () => {
+    const { emitEvent } = await import('@/sim/context');
+    const g = world();
+    const before = emitEvent(g, { kind: 'info', text: 'the game itself, just before' });
+    applyCommand(g, { k: 'renameTank', tank: g.tankOrder[0], name: 'Corner' }, sam(1000));
+    expect(before.by).toBeUndefined();
+    expect(g.log.at(-1)?.byName).toBe('Sam');
+  });
+
   it('an action that logs nothing gets one line, its own message, also tagged', () => {
     const g = world();
     const t = g.tankOrder[0];
@@ -239,6 +248,81 @@ describe('chunk 11: first one wins for the rest of what can be bought, sold, mov
       applyCommand(h, f2, sam(1000));
       expect(applyCommand(h, s2, sam(1400)).conflict).toBeUndefined();
     });
+});
+
+describe('chunk 11: first one wins, the fresh review’s cases (B3, notes 4 and 5)', () => {
+  /** A group offer in the late-game shop and a tank the game lets you buy all of it into. */
+  function groupBuy(g: GameState): { offer: string; tank: string; ids: string[] } {
+    for (const o of g.market.stock.filter((x) => x.creatures.length > 2))
+      for (const tank of g.tankOrder) if (applyCommand(deepClone(g), { k: 'buyOffer', offer: o.id, tank }).ok) return { offer: o.id, tank, ids: o.creatures.map((c) => c.id) };
+    throw new Error('no group offer to buy');
+  }
+
+  it('a partial purchase buys the animals its sender saw, wherever an earlier purchase moved them', () => {
+    const g = world();
+    const { offer, tank, ids } = groupBuy(g);
+    // both picked from the same view: Sam the first animal, Ana the second
+    const samsPick: Command = { k: 'buyOffer', offer, tank, picks: [0], saw: [ids[0]] };
+    const anasPick: Command = { k: 'buyOffer', offer, tank, picks: [1], saw: [ids[1]] };
+    expect(applyCommand(g, samsPick, sam(1000)).ok).toBe(true);
+    expect(applyCommand(g, anasPick, ana(1100)).ok).toBe(true);
+    expect(g.creatures[ids[1]]?.tankId).toBe(tank); // Ana got the animal she picked, now first in the offer
+    expect(g.creatures[ids[2]]).toBeUndefined();
+    // the one Sam already bought is refused to Ana, naming him
+    const h = world();
+    const b = groupBuy(h);
+    applyCommand(h, { k: 'buyOffer', offer: b.offer, tank: b.tank, picks: [1], saw: [b.ids[1]] }, sam(1000));
+    expect(applyCommand(h, { k: 'buyOffer', offer: b.offer, tank: b.tank, picks: [1], saw: [b.ids[1]] }, ana(1100)).message).toBe('Sam already bought that offer.');
+    // and buying "all of it" after a part has gone is refused too
+    expect(applyCommand(h, { k: 'buyOffer', offer: b.offer, tank: b.tank, saw: b.ids }, ana(1200)).ok).toBe(false);
+  });
+
+  it('the last piece in storage, placed by one member, is never bought anew for the other', () => {
+    const g = world();
+    const t = g.tankOrder[0];
+    const piece = g.tanks[t].decor[0];
+    expect(applyCommand(g, { k: 'removeDecor', tank: t, decor: piece.id, sell: false }).ok).toBe(true); // into storage
+    const place = (x: number): Command => ({ k: 'placeDecor', tank: t, def: piece.defId, x, z: 0, fromStorage: true });
+    const samCmd = place(0.01);
+    const anaCmd = place(-0.01);
+    expect(applyCommand(g, samCmd, sam(1000)).ok).toBe(true);
+    const money = g.finance.money;
+    const r = applyCommand(g, anaCmd, ana(1100));
+    expect(r.ok).toBe(false);
+    expect(r.message).toBe('Sam already placed that stored piece.');
+    expect(g.finance.money).toBe(money);
+    // nor for the same member's own second click from a screen that still showed one
+    expect(applyCommand(g, place(0.03), sam(1200)).ok).toBe(false);
+  });
+
+  it("the sender's own earlier change is excused only while the thing is as it left it (the game may change it since)", () => {
+    const g = world();
+    const c = fish(g)[0];
+    const home = c.tankId!;
+    const [t1, t2] = sameWater(g, home);
+    expect(applyCommand(g, move(g, c.id, t1), sam(1000)).ok).toBe(true);
+    g.creatures[c.id].tankId = t2; // the game moved it on (a line's sort, say): no member's touch
+    const r = applyCommand(g, { k: 'moveCreature', creature: c.id, to: home, from: home }, sam(1100));
+    expect(r.ok).toBe(false);
+    expect(r.message).toBe('That fish has changed since you looked.');
+  });
+
+  it('quiet or repeated actions add no line of their own: one per member and setting in 30 seconds', () => {
+    const g = world();
+    const lines = () => g.log.filter((e) => e.by && e.kind === 'info').length;
+    const n = lines();
+    for (let i = 0; i < 5; i++) applyCommand(g, { k: 'setAdmission', price: 10 + i }, sam(1000 + i * 100)); // a slider dragged
+    expect(lines()).toBe(n + 1);
+    applyCommand(g, { k: 'setAdmission', price: 20 }, ana(2000));
+    expect(lines()).toBe(n + 2);
+    applyCommand(g, { k: 'setAdmission', price: 21 }, sam(1000 + TOUCH_MS + 1)); // a new window
+    expect(lines()).toBe(n + 3);
+    const quiet = lines();
+    const c = fish(g)[0];
+    applyCommand(g, { k: 'noteInteraction', creature: c.id, kind: 'observe' }, ana(40_000));
+    applyCommand(g, { k: 'glassTap', tank: c.tankId!, intensity: 0.5 }, ana(40_100));
+    expect(lines()).toBe(quiet);
+  });
 });
 
 describe('chunk 11: settings are last-writer-wins, with a note (§4.3)', () => {

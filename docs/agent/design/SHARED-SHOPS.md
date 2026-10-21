@@ -232,8 +232,10 @@ Server to browser:
   commands until a screen uses them. `CommandResult` is the `ActionResult` plus what callers read afterwards today (`tankId`,
   `servingsUsed`, the storage counts), so no caller reads the game right after an action.
 - **Arguments are only ids, numbers, strings, booleans and small plain objects** (a placement `{x, z, rotY, scale}`).
-  What an action used to read from the UI goes in its arguments (`buyTank`'s `seeded`); what it read from the game is
-  worked out again when it applies (DecorEditor's `owned`, `defaultWaterClass`), since the game may have moved on.
+  What an action used to read from the UI goes in its arguments (`buyTank`'s `seeded`, and its water class, which
+  `defaultWaterClass` takes from the placement tool); what it read from the game is worked out again when it applies
+  (DecorEditor's `owned`, the cooler water change, the Auto-feed patch), since the game may have moved on, and what the
+  sender saw goes along when it matters (`placeDecor`'s `fromStorage`, `buyOffer`'s `saw`, a move's `from`).
 - **Composite actions are one command each:** a target feed and its `noteInteraction`; a hire and its flag; an action
   and its guide flag.
 - `validateCommand(x)` checks a value from the network: a known kind, each argument's type and range, the total size.
@@ -273,7 +275,11 @@ Server to browser:
   same sender's own earlier commands (two quick moves of one fish both work). Each copy keeps that short memory of who
   touched what from the steps, so every copy decides and says the same. (Chunk 11: the memory is the shop's state,
   `GameState.touches`, timed by the server's `at` on each command, so a joiner's snapshot carries it;
-  `src/sim/commands/shared.ts`.)
+  `src/sim/commands/shared.ts`. Each touch keeps a mark of what the thing looked like after it, its tank or status,
+  so the sender's own change is excused only while the thing is still as it left it: a change the game made since,
+  which leaves no touch, still refuses. A partial purchase names its animals by id (`saw`), so a member who bought
+  part of a group first doesn't shift what the next one gets; placing from storage says so (`fromStorage`), so the
+  last piece is never bought anew for whoever comes second.)
 - **Settings are last-writer-wins** (a slider, a light schedule, a budget): no expectation, so a coalesced control's
   later values never refuse its earlier ones; when another member changed the same setting in the last 30 seconds, the
   sender's screen notes it with the same "{name} already …" line.
@@ -602,10 +608,10 @@ and nothing shows them before then). The first-one-wins lines are the catalogue'
 | Where | Draft words |
 |---|---|
 | First one wins, an animal | "{name} already moved that fish." and "{name} already sold that fish." (both approved) · "{name} already listed that fish." |
-| First one wins, the rest | "{name} already bought that offer." (approved) · "{name} already moved that clutch." · "{name} already sold that listing." · "{name} already withdrew that listing." · "{name} already accepted that bid." · "{name} already declined that bid." · "{name} already answered that bid." (a counter-offer) · "{name} already took a frag from that decoration." · "{name} already moved that decoration." · "{name} already sold that decoration." · "{name} already removed that decoration." · "{name} already listed that frag." · "{name} already planted that frag." · "{name} already sold that frag." · "{name} already removed that equipment." · "{name} already repaired that equipment." · "{name} already installed that equipment." · "{name} already hired that candidate." · "{name} already let that keeper go." · "{name} already ended that line." |
-| First one wins, nobody named (the game changed it, or over 30 seconds ago) | "That fish has changed since you looked." (and the same with clutch, offer, listing, bid, frag, decoration, equipment, candidate, keeper, line, tank) |
+| First one wins, the rest | "{name} already bought that offer." (approved) · "{name} already placed that stored piece." (the last one in storage) · "{name} already moved that clutch." · "{name} already sold that listing." · "{name} already withdrew that listing." · "{name} already accepted that bid." · "{name} already declined that bid." · "{name} already answered that bid." (a counter-offer) · "{name} already took a frag from that decoration." · "{name} already moved that decoration." · "{name} already sold that decoration." · "{name} already removed that decoration." · "{name} already listed that frag." · "{name} already planted that frag." · "{name} already sold that frag." · "{name} already removed that equipment." · "{name} already repaired that equipment." · "{name} already installed that equipment." · "{name} already hired that candidate." · "{name} already let that keeper go." · "{name} already ended that line." |
+| First one wins, nobody named (the game changed it, or over 30 seconds ago) | "That fish has changed since you looked." (and the same with clutch, offer, listing, bid, frag, decoration, stored piece, equipment, candidate, keeper, line, tank) |
 | A setting another member just changed (the sender's note) | "{name} already changed that." |
-| An action with no message of its own (no alerts line today) | Pause and speed use the approved pop-ups. A favourite, watching or following an animal, a photo's story line, a tap on the glass and the guide's flags add no line. Hold all, Resume and one system: "{name} put automation on hold." · "{name} resumed all automation." · "{name} held {system}." / "{name} resumed {system}." |
+| An action with no message of its own (no alerts line today) | Pause and speed use the approved pop-ups. A favourite, watching or following an animal, a photo's story line, a tap on the glass, a bid held while a counter is typed and the guide's flags add no line, and a setting changed again and again (a slider dragged) adds one line per member and setting in 30 seconds. Hold all, Resume and one system: "{name} put automation on hold." · "{name} resumed all automation." · "{name} held {system}." / "{name} resumed {system}." |
 | `reject`: too many actions | "Slow down a little: that was a lot of actions at once." |
 | `reject`: failed on the server, or malformed | "That didn’t work, and nothing was changed. Please try again." (the game's own words for a failed action) |
 | Settings › Saves, in a shared shop | "This is {club}'s shared shop: it saves on the server. Your own aquarium is saved and waits for you." [Back to my aquarium] |
