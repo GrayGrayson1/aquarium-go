@@ -1046,6 +1046,9 @@ REL-012, REL-018.
   emptying save's minimum interval and the save backoff. Left, covered by the review's probes (`vt/c1` to `c4`,
   `vt/p2`, `p4` in the internal clone's `scripts/_audit/review-chunk12/`) rather than the suite: the per-room lease
   holder, a room ending while opening, the undo's fallback to the checkpoint, and the prune's saved-copy references.
+- **Its second confirmation pass** (`1689c46..aa7b184`): no blockers; the send/end blocker and the three notes confirmed
+  fixed, nothing new broken (its probes and mutants at `aa7b184`). Its one test gap, closed in a test-only commit: a
+  photo asked for but not delivered (the database failed) can be asked for again.
 - **For chunk 13** (what the server does that the client must meet): send `hello` (or the owner's `create`, with the
   starter's name and the preview seed) and wait for the welcome before anything else; `you.id` is the account's id, the
   `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; through

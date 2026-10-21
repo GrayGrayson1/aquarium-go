@@ -329,6 +329,24 @@ describe('chunk 12: listing photos (§4.4)', () => {
     expect(m.replica.state!.market.listings.some((l) => l.snapshot.photo?.startsWith('p:'))).toBe(true);
   });
 
+  it('a photo asked for but not delivered can be asked for again (marked sent only when it goes out)', () => {
+    const g = shop('playthrough_betta');
+    g.market.listings[0] ??= JSON.parse(JSON.stringify(shop('big_facility').market.listings[0]));
+    const hash = 'ab'.repeat(32);
+    g.market.listings[0].snapshot.photo = `p:${hash}`;
+    let answer: { mime: string; bytes: Uint8Array } | null = null; // the database fails the first time
+    const h = harness(g, { photoGet: (_, reply) => reply(answer) });
+    const m = h.join(MEMBER);
+    h.room.handle('m', { t: 'photo', hash });
+    h.deliver();
+    expect(m.got.filter((f) => f.kind === 'photo')).toHaveLength(0);
+    answer = { mime: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, 1]) };
+    h.room.handle('m', { t: 'photo', hash });
+    h.room.handle('m', { t: 'photo', hash }); // once delivered, once per connection
+    h.deliver();
+    expect(m.got.filter((f) => f.kind === 'photo')).toHaveLength(1);
+  });
+
   it('validateCommand and repairState accept exactly the reference', () => {
     const ref = `p:${'0123456789abcdef'.repeat(4)}`;
     const listing = { k: 'createListing', kind: 'creature', creatures: ['c1'], reserve: 1, hours: 24 };
