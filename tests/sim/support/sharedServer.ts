@@ -61,6 +61,17 @@ export class FakeTime implements HostClock, HostTimers {
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Let `ms` of fake time pass in steps, letting the rooms' database calls finish between them, as they would in real
+ * time (one big jump fires every lease renewal before any of them reaches the database, so the lease looks lapsed).
+ */
+export async function pass(time: FakeTime, ms: number, step = 10_000): Promise<void> {
+  for (let done = 0; done < ms; done += step) {
+    time.advance(Math.min(step, ms - done));
+    await sleep(2);
+  }
+}
+
 /** Wait (real time) until `cond` holds, moving the fake clock on by `step` ms between looks. */
 export async function pump(time: FakeTime, cond: () => boolean, opts: { step?: number; timeout?: number; what?: string } = {}): Promise<void> {
   const until = Date.now() + (opts.timeout ?? 5000);
@@ -149,13 +160,14 @@ export interface Rig {
   stop(): Promise<void>;
 }
 
-export async function rig(opts: { build?: SharedBuild; world?: StubWorld; time?: FakeTime } = {}): Promise<Rig> {
+/** `stub: false` runs the server as on Render (clubs are canonical UUIDs) with the stub's store and accounts. */
+export async function rig(opts: { build?: SharedBuild; world?: StubWorld; time?: FakeTime; stub?: boolean } = {}): Promise<Rig> {
   const time = opts.time ?? new FakeTime();
   const world = opts.world ?? new StubWorld();
   world.now = time.wall;
   const logs: string[] = [];
   const app = createShopServer({
-    config: { ...readConfig({}), stub: true, port: 0 },
+    config: { ...readConfig({}), stub: opts.stub ?? true, port: 0 },
     store: world.store,
     auth: world.auth,
     inline: { clock: time, timers: time },

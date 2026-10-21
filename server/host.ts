@@ -25,6 +25,15 @@ export const SAVE_EVERY_MS = 3 * 60_000;
 /** The lease: renewed every 30 seconds for 90 (§6.2). */
 export const LEASE_SECONDS = 90;
 export const LEASE_RENEW_MS = 30_000;
+/**
+ * A save when the shop empties waits a little (someone back at once needs none) and comes at most once a minute, so a
+ * member flipping away and back can't make the server save the whole shop again and again (the review's B2).
+ */
+export const EMPTY_SAVE_DELAY_MS = 10_000;
+export const EMPTY_SAVE_EVERY_MS = 60_000;
+/** After a failed save the next try waits: 5 seconds, doubling, at most 2 minutes (the review's note 2). */
+export const SAVE_RETRY_MS = 5_000;
+export const SAVE_RETRY_MAX_MS = 120_000;
 /** Photos are pruned after every few saves (§4.4). */
 const PRUNE_EVERY_SAVES = 5;
 /** A stored photo younger than this is never pruned: its listing may not be in a save yet. */
@@ -98,6 +107,14 @@ export class RoomHost {
   private savedN = -1;
   private savedLeftAt: number | null = null;
   private saving: Promise<void> | null = null;
+  /** Another save was asked for while one was in flight: one more follows it, however many were asked for. */
+  private saveAgain = false;
+  private failures = 0;
+  private retryAt = 0;
+  /** When the emptying save is due (real ms), or null. */
+  private emptySaveAt: number | null = null;
+  /** Photos the database is known to hold (a photo put again after a prune is stored again). */
+  private readonly storedPhotos = new Set<string>();
   private saves = 0;
   private stopTick: (() => void) | null = null;
   private stopLease: (() => void) | null = null;
@@ -252,11 +269,13 @@ export class RoomHost {
         photoGet: (hash, reply) => void this.fetchPhoto(hash, reply),
         grant: (list) => void this.grant(list),
         emptied: () => {
-          this.leftAt = this.clock.wall();
-          void this.save();
+          const wall = this.clock.wall();
+          this.leftAt = wall;
+          this.emptySaveAt ??= Math.max(wall + EMPTY_SAVE_DELAY_MS, this.savedAt + EMPTY_SAVE_EVERY_MS);
         },
         returned: (away) => {
           this.leftAt = null;
+          this.emptySaveAt = null;
           room.catchUp(away);
         },
         drop: (user) => this.post({ t: 'drop', user }),
@@ -284,7 +303,18 @@ export class RoomHost {
       void this.stop('fault');
       return;
     }
-    if (room.running && this.clock.wall() - this.savedAt >= SAVE_EVERY_MS && !this.saving) void this.save();
+    const wall = this.clock.wall();
+    if (this.saving || wall < this.retryAt) return;
+    if (room.running && wall - this.savedAt >= SAVE_EVERY_MS) void this.save();
+    else if (!room.running && this.emptySaveAt !== null && wall >= this.emptySaveAt) {
+      this.emptySaveAt = null;
+      if (this.dirty()) void this.save();
+    }
+  }
+
+  /** The copy, or when it emptied, differs from the last save. */
+  private dirty(): boolean {
+    return !!this.room && (this.room.n !== this.savedN || this.leftAt !== this.savedLeftAt);
   }
 
   /** §6.2: renewed on its own timer; a lease another server took closes the room (`restart`, nothing saved). */
@@ -318,9 +348,15 @@ export class RoomHost {
     };
   }
 
-  /** §5.2 item 4: the live copy as it is (no flush), one save at a time. */
+  /**
+   * §5.2 item 4: the live copy as it is (no flush), one save at a time; asked again while one is in flight, exactly one
+   * more follows it.
+   */
   save(): Promise<void> {
-    if (this.saving) return this.saving.then(() => this.save());
+    if (this.saving) {
+      this.saveAgain = true;
+      return this.saving;
+    }
     const room = this.room;
     if (!room) return Promise.resolve();
     this.saving = (async () => {
@@ -328,6 +364,8 @@ export class RoomHost {
         room.ensureExact();
         const savedAt = this.clock.wall();
         const n = room.n;
+        // the photos this saved copy refers to: the prune keeps exactly these (§4.4)
+        const refs = room.photoRefs();
         const enc = this.encode(room.state, savedAt);
         const save: ShopSave = { club: this.club, holder: this.holder, expected: this.revision, shopName: enc.shopName || room.state.shopName || 'Shared shop', schemaVersion: enc.schemaVersion, build: this.build, savedAt, leftAt: this.leftAt, hour: enc.hour, day: enc.day, money: enc.money, encoding: enc.encoding, body: enc.body };
         const leftAt = this.leftAt;
@@ -337,7 +375,9 @@ export class RoomHost {
           this.savedAt = savedAt;
           this.savedN = n;
           this.savedLeftAt = leftAt;
-          if (++this.saves % PRUNE_EVERY_SAVES === 0) void this.prune(savedAt);
+          this.failures = 0;
+          this.retryAt = 0;
+          if (++this.saves % PRUNE_EVERY_SAVES === 0) void this.prune(savedAt, refs);
           await this.retryPhotos();
           return;
         }
@@ -346,18 +386,26 @@ export class RoomHost {
         if (!this.stopping) void this.stop(r.reason === 'too_new' ? 'updating' : 'restart', undefined, { save: false });
       } catch (e) {
         this.log(`save failed: ${e instanceof Error ? e.message : String(e)}`);
+        this.failures++;
+        this.retryAt = this.clock.wall() + Math.min(SAVE_RETRY_MAX_MS, SAVE_RETRY_MS * 2 ** Math.min(10, this.failures - 1));
       } finally {
         this.saving = null;
+        if (this.saveAgain && !this.stopping) {
+          this.saveAgain = false;
+          void this.save();
+        }
       }
     })();
     return this.saving;
   }
 
   private async storePhoto(hash: string, mime: string, data: string): Promise<void> {
+    if (this.storedPhotos.has(hash)) return;
     this.unstored.set(hash, { mime, data });
     try {
       await this.store.photoPut(this.club, hash, mime, data);
       this.unstored.delete(hash);
+      this.storedPhotos.add(hash);
     } catch (e) {
       this.log(`photo not stored yet: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -378,17 +426,15 @@ export class RoomHost {
   }
 
   /**
-   * §4.4's prune: stored photos no listing in the saved copy refers to, older than PRUNE_GRACE_MS before that save,
-   * are deleted (pruned listings' photos, and photos of listings that never came to be).
+   * §4.4's prune: stored photos no listing in the saved copy (`refs`, taken as it was saved) refers to, older than
+   * PRUNE_GRACE_MS before that save, are deleted (pruned listings' photos, and photos of listings that never came to be).
    */
-  private async prune(savedAt: number): Promise<void> {
-    const room = this.room;
-    if (!room) return;
+  private async prune(savedAt: number, refs: ReadonlySet<string>): Promise<void> {
     try {
-      const refs = room.photoRefs();
       const stored = await this.store.photoHashes(this.club);
-      const old = stored.filter((p) => !refs.has(p.hash) && p.at < savedAt - PRUNE_GRACE_MS && !this.unstored.has(p.hash)).map((p) => p.hash);
-      if (old.length) await this.store.photosDelete(this.club, old.slice(0, 1000));
+      const old = stored.filter((p) => !refs.has(p.hash) && p.at < savedAt - PRUNE_GRACE_MS && !this.unstored.has(p.hash)).map((p) => p.hash).slice(0, 1000);
+      if (old.length) await this.store.photosDelete(this.club, old);
+      for (const h of old) this.storedPhotos.delete(h);
     } catch (e) {
       this.log(`prune failed: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -428,7 +474,9 @@ export class RoomHost {
     this.stopTick?.();
     this.stopLease?.();
     const room = this.room;
-    if (room && opts.save !== false && (room.n !== this.savedN || this.leftAt !== this.savedLeftAt)) await this.save();
+    this.saveAgain = false;
+    while (this.saving) await this.saving;
+    if (room && opts.save !== false && this.dirty()) await this.save();
     if (room && why !== 'idle') room.stop(why, why === 'cap' || why === 'hours' ? { until } : { savedAt: this.savedAt });
     if (opts.save !== false) await this.release();
     this.post({ t: 'stopped' });

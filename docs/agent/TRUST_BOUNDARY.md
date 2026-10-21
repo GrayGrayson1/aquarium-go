@@ -152,6 +152,12 @@ rules, run where it counts; stage 2's model (ADR-0038), ahead of the solo game.
   and reconnects at 20 an hour per player, re-syncs at 3 in 10 minutes and 6 an hour per player, photo listings at 6 a
   minute and photo requests at 60, only the game's two sites as origins. The month's data (2 GB) and awake hours (400)
   cap every club together.
+- **What only binds browsers** (chunk 12's review, note 10): the origin check (anyone can send any Origin header), so
+  anyone can open up to the connection limit's sockets (closed after 10 seconds without a `hello`), have the server
+  answer WebSocket pings (not metered), and call `/health` and `/stats` (public, metered: about 300 bytes a call, so
+  millions of calls to reach the 2 GB cap). A determined stranger could fill the slots or spend the month's data; the
+  caps then close shops until the 1st and Render's own limits apply. Rate limits per address need a proxy in front
+  (later, with stage 2).
 - **Photos.** A member's listing photo must be a JPEG or WebP by its bytes (at most 47,000); the server stores it once
   per club by its hash and every copy holds only the reference (`p:` and the hash), which `repairState` keeps and the
   interface never puts in an `<img src>`; it is served only over the socket, only for a listing of the shop.

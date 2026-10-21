@@ -23,9 +23,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    and ADR-0045. The design was reviewed (Opus, max effort) and revised. **Chunk 10, the test, is done** (2026-10-20,
    below): the lockstep holds in Node, Chromium and WebKit and on Render's x86-64 free instance, which keeps small
    shops at 10× but not a late-game one (SHARED-SHOPS.md §11). **Chunk 11, commands, is done** (2026-10-20, below):
-   every player action is a command the server can pass on, and the solo game is unchanged. Next: chunk 12, the server
-   and the database (§5, §6; the owner's yes for the migration and one Render dashboard visit), then chunk 13 (ask
-   OWNER_QUESTIONS L's words first). The audit's other findings (B-207, B-208) wait for the owner.
+   every player action is a command the server can pass on, and the solo game is unchanged. **Chunk 12, the server and
+   the database, is done** (2026-10-21, Marshall, below; ADR-0047): the real server runs on the free Render service from
+   `next` behind sign-in and a server password, the migration is live, the live smoke passes. **Next: chunk 13** (the
+   screens and the play-test, then 0.6.0), handed to Chase at the owner's request (SESSION_HANDOFF.md "Handoff to
+   Chase"); group L's words are approved (ADR-0048) and K1 is answered. The audit's other findings (B-207, B-208) wait
+   for the owner.
 4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
@@ -52,10 +55,16 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
 | 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (not released; nothing players see). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
 | 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (not released; nothing players see). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
-| 12 | Shared shops, the server and the database (§5, §6) | Brief written 2026-10-21 (Marshall, at the owner's request): `server/` on the free Render web service, the migration (live with the owner's yes) |
-| 13 | Shared shops, the screens and the play-test (§7, §8) | Brief written 2026-10-21 (Chase, at the owner's request; the words approved, ADR-0048): the connection, the shared dispatcher, the screens, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
+| 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (not released; nothing players see). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
+| 13 | Shared shops, the screens and the play-test (§7, §8) | Brief written 2026-10-21 (Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049): the connection, the shared dispatcher, the screens, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
 
-**Last full test runs:** chunk 11's final commit `e692066`, the owner's Mac, 2026-10-20, from the internal-disk clone
+**Last full test runs:** chunk 12's final code `aa7b184`, the owner's Mac, 2026-10-21, from the internal-disk clone under
+`caffeinate -i -s`: typecheck passed; unit 246 files, 3,103 tests passed; build passed; e2e 321 of 321 in Chromium and
+WebKit, dev and both production builds (38.0 minutes); then `8b65dbf` (one test and PLAN.md more): typecheck and unit
+3,104 passed. Before it: `cdc5387` the same four green (unit 3,085, e2e 321 of 321, 37.8 minutes); a pass on `1689c46`
+was stopped at 160 e2e tests without a failure (typecheck, unit 3,100 and build green) when the confirmation's fix
+landed.
+Before chunk 12: chunk 11's final commit `e692066`, the owner's Mac, 2026-10-20, from the internal-disk clone
 under `caffeinate -i -s`: typecheck passed; unit 243 files, 3,037 tests passed; build passed; e2e 319 of 319 in
 Chromium and WebKit, dev and both production builds (36.7 minutes). Before it: `03b3f4b` the same four green (unit
 2,998, e2e 319 of 319, 37.1 minutes); a pass on `2202c45` was stopped part-way (its unit 3,028 and build green) when
@@ -909,7 +918,7 @@ REL-012, REL-018.
   kept per player (`src/ui/common/marks.ts` is the one place), the visuals of others' feeds and taps from applied
   commands (today the sender's `after` draws them), and group L's words first.
 
-### 12. Shared shops, the server and the database (SHARED-SHOPS.md §5, §6) — brief written 2026-10-21 (Marshall)
+### 12. Shared shops, the server and the database (SHARED-SHOPS.md §5, §6) — done 2026-10-21 (Marshall)
 
 - **What:** the real server and its database: a club's shop lives in Supabase and runs on the free Render service
   behind sign-in. Still nothing players see (the screens and every word are chunk 13). The chunk starts at `eef5b74`.
@@ -1015,6 +1024,40 @@ REL-012, REL-018.
 - **K1** (ADR-0047 round 2): measured on the free instance (SHARED-SHOPS.md §11, "Chunk 12"): small shops on a fifth of
   its CPU; `big_facility` keeps 93%, 95% and 88% of real time at 1×, 3× and 10× (chunk 10: 84 to 92%, 76%, 55%). The
   owner chose to keep it free with no change.
+- **The fresh review** (Opus 5.5, max effort) on `eef5b74..38bfbda`, with probes in the internal clone's
+  `scripts/_audit/review-chunk12/`: the migration, the password model, the lockstep core and the core-file changes sound
+  (253 local database cases; the live `/health` hash equal to the local one). Three blockers, fixed:
+  - **B1:** another spelling of a club's id (upper case, no hyphens: Postgres reads them as the same UUID) opened a
+    second room for one shop, and with one lease holder per process both rooms ran, so a member could fork the shop and
+    roll back everyone's play. Outside the stub a club is now its canonical lowercase UUID, and each room has its own
+    lease holder.
+  - **B2:** flipping `away` and `here` saved the whole shop each time, queued without limit (about 440 KB/s for a new
+    shop). Saves now coalesce (one in flight, at most one more), and the save on emptying waits 10 seconds and comes at
+    most once a minute.
+  - **B3:** the room-call gate and a save the database refuses had no test that could fail: `roomCallAllowed` is tested,
+    and a save refused for the lease, a newer revision and a newer build each stop the room (`restart`, `updating`) with
+    nothing more saved.
+  - **Notes, fixed:** each photo once per connection, and no photo while much is queued for a member (the connection ends
+    past 8 MB); a failing save backs off (5 seconds, doubling, at most 2 minutes); a room that ends while opening releases
+    its joiners and tells anyone left (`restart`); the fingerprint's own step carries a waiting full-detail list; an
+    expired sign-in nobody refreshed ends the connection (`bye: sign-in`, 10 minutes' grace); the prune keeps exactly the
+    saved copy's photos, and a photo listed again after a prune is stored again; an undo that throws leaves the checkpoint,
+    never a half-applied step; the replica (`src/game/sharedLoop.ts`) is in the build identity; tests for the stagger in
+    the step block, its most-owed-first order and the fingerprint spacing; the docs (default privileges and PUBLIC, what
+    only binds browsers, `shared_usage.closed`, the re-sync budget as built, replacing the password).
+- **Its confirmation pass** (`38bfbda..1689c46`): the three blockers and the notes confirmed fixed, and the new tests
+  catch the old mutants; one new blocker in note 1's fix, fixed next: past 8 MB queued, `send()` ended the connection
+  through `end()`, whose `bye` came back through `send()` until the stack ran out (the other members lost their frames,
+  and one malformed message from that member crashed the server). Now the socket is dropped at once, never through
+  `end()`; a test forces a member's buffer past the limit (it fails against the old code). Its notes, fixed: a photo is
+  marked sent when it goes out (none are skipped for a busy member any more; the 8 MB limit guards memory); a worker that
+  fails releases its room's lease from the main thread, so a member back at once needn't wait 90 seconds; tests for the
+  emptying save's minimum interval and the save backoff. Left, covered by the review's probes (`vt/c1` to `c4`,
+  `vt/p2`, `p4` in the internal clone's `scripts/_audit/review-chunk12/`) rather than the suite: the per-room lease
+  holder, a room ending while opening, the undo's fallback to the checkpoint, and the prune's saved-copy references.
+- **Its second confirmation pass** (`1689c46..aa7b184`): no blockers; the send/end blocker and the three notes confirmed
+  fixed, nothing new broken (its probes and mutants at `aa7b184`). Its one test gap, closed in a test-only commit: a
+  photo asked for but not delivered (the database failed) can be asked for again.
 - **For chunk 13** (what the server does that the client must meet): send `hello` (or the owner's `create`, with the
   starter's name and the preview seed) and wait for the welcome before anything else; `you.id` is the account's id, the
   `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; through

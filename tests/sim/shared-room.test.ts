@@ -17,6 +17,7 @@ import { encodeRecord, decodeRecord } from '@/persistence/serialize';
 import { stateHash } from '@/persistence/hash';
 import { validateCommand, type Command } from '@/sim/commands';
 import { advanceWorld, flushSimDebt } from '@/sim/world';
+import { runSharedStep } from '@/sim/sharedStep';
 import { SharedReplica } from '@/game/sharedLoop';
 import { Room, allowed, jsonExact, fingerprintEvery, type Outgoing, type RoomIo } from '../../server/room';
 import { parsePhoto, photoType, MAX_PHOTO_BYTES } from '../../server/photos';
@@ -241,6 +242,34 @@ describe('chunk 12: fingerprints and snapshots cost less (§11)', () => {
     expect(fingerprintEvery(5000)).toBe(60_000);
   });
 
+  it('the room spaces its fingerprints by what one costs', () => {
+    // a clock that moves 300 ms on every read: every fingerprint "takes" 300 ms, so the next comes 15 s later
+    let t = 0;
+    const frames: Outgoing[] = [];
+    const g = shop('playthrough_betta');
+    g.clock.speed = 1;
+    const room = new Room(g, { send: (o) => frames.push(o), gzip: (x) => gzipSync(x), later: (_, fn) => fn(), now: () => (t += 300) }, { club: 'c1' });
+    room.join(OWNER);
+    for (let i = 0; i < 80; i++) room.tick();
+    expect(room.snapshotStats().fingerprintEveryMs).toBe(15_000);
+  });
+
+  it('the fingerprint’s own step carries a full-detail list that was waiting (the review’s note 4)', () => {
+    const g = shop('playthrough_betta');
+    g.clock.speed = 0;
+    const h = harness(g);
+    const o = h.join(OWNER);
+    h.cmd('o', { k: 'raiseFlag', name: 'opened_shows' }); // a step since the last fingerprint
+    h.room.handle('o', { t: 'view', tank: g.tankOrder[0] });
+    h.tick(41); // paused: the next step is the fingerprint's own
+    const last = h.steps('o').at(-1)!;
+    expect(last.fp).toBeDefined();
+    expect(last.full).toEqual([g.tankOrder[0]]);
+    expect(h.room.full).toEqual([g.tankOrder[0]]);
+    expect(o.replica.full).toEqual([g.tankOrder[0]]);
+    h.settle();
+  });
+
   it('the exactness check: plain JSON passes; what JSON would change does not', () => {
     expect(jsonExact(shop('playthrough_betta'))).toBe(true);
     for (const bad of [{ a: NaN }, { a: [1, Infinity] }, { a: new Map() }, { a: new Date(0) }, { a: () => 1 }]) expect(jsonExact(bad)).toBe(false);
@@ -291,11 +320,31 @@ describe('chunk 12: listing photos (§4.4)', () => {
     const listed = h.steps('o').flatMap((s) => s.cmds ?? []).filter((c) => c.c.k === 'createListing');
     expect(listed).toHaveLength(6);
     for (const c of listed) expect((c.c as { photo: string }).photo).toMatch(/^p:[0-9a-f]{64}$/);
-    expect(stored).toHaveLength(1); // stored once: the same picture
+    // the room tells the host each time (the host skips a photo the database already holds, and stores one again after
+    // a prune: the review's note 6); every listing carries the one picture's reference
+    expect(new Set(stored).size).toBe(1);
     expect(h.rejects('m')).toEqual([{ t: 'reject', id: 16, why: 'rate' }]);
     expect(h.room.photoRefs().size).toBeGreaterThan(0);
     h.settle();
     expect(m.replica.state!.market.listings.some((l) => l.snapshot.photo?.startsWith('p:'))).toBe(true);
+  });
+
+  it('a photo asked for but not delivered can be asked for again (marked sent only when it goes out)', () => {
+    const g = shop('playthrough_betta');
+    g.market.listings[0] ??= JSON.parse(JSON.stringify(shop('big_facility').market.listings[0]));
+    const hash = 'ab'.repeat(32);
+    g.market.listings[0].snapshot.photo = `p:${hash}`;
+    let answer: { mime: string; bytes: Uint8Array } | null = null; // the database fails the first time
+    const h = harness(g, { photoGet: (_, reply) => reply(answer) });
+    const m = h.join(MEMBER);
+    h.room.handle('m', { t: 'photo', hash });
+    h.deliver();
+    expect(m.got.filter((f) => f.kind === 'photo')).toHaveLength(0);
+    answer = { mime: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, 1]) };
+    h.room.handle('m', { t: 'photo', hash });
+    h.room.handle('m', { t: 'photo', hash }); // once delivered, once per connection
+    h.deliver();
+    expect(m.got.filter((f) => f.kind === 'photo')).toHaveLength(1);
   });
 
   it('validateCommand and repairState accept exactly the reference', () => {
@@ -338,6 +387,38 @@ describe('chunk 12: §3.2 rule 5, the stagger', () => {
     return out;
   }
 
+  it('the step block runs it (every copy steps a shared shop with it)', () => {
+    const run = (how: 'block' | 'on' | 'off') => {
+      const g = shop('big_facility');
+      flushSimDebt(g);
+      const full = [g.tankOrder[0]];
+      for (let i = 0; i < 8; i++) {
+        if (how === 'block') runSharedStep(g, { n: i + 1, h: 0.25 }, full);
+        else advanceWorld(g, 0.25, { focusTankIds: full, stagger: how === 'on' });
+      }
+      return stateHash(g);
+    };
+    const block = run('block');
+    expect(block).toBe(run('on'));
+    expect(block).not.toBe(run('off'));
+  });
+
+  it('most-owed first: when more are due than may flush, the ones owed most go, then tank order', () => {
+    const g = shop('big_facility');
+    flushSimDebt(g);
+    const bg = g.tankOrder.slice(1);
+    // every background tank due, each owed a different amount (more than any threshold)
+    const step = bg.length % 11 === 0 ? 13 : 11; // coprime with the count: every amount different
+    bg.forEach((id, i) => (g.tanks[id].simDebtHours = 5 + ((i * step) % bg.length) / 10));
+    const before = new Map(bg.map((id) => [id, g.tanks[id].simDebtHours!]));
+    advanceWorld(g, 0.25, { focusTankIds: [g.tankOrder[0]], stagger: true });
+    const flushed = bg.filter((id) => (g.tanks[id].simDebtHours ?? 0) === 0);
+    expect(flushed.length).toBeGreaterThan(0);
+    expect(flushed.length).toBeLessThan(bg.length);
+    const kept = bg.filter((id) => !flushed.includes(id));
+    expect(Math.min(...flushed.map((id) => before.get(id)!))).toBeGreaterThan(Math.max(...kept.map((id) => before.get(id)!)));
+  });
+
   it('tanks that came due together flush over the next steps, a few at a time, instead of all in one', () => {
     const plain = flushesPerStep(false);
     const spread = flushesPerStep(true);
@@ -355,7 +436,8 @@ describe('chunk 12: the build identity (§5.1; SHARE-016)', () => {
     expect(files).toContain('src/sim/sharedStep.ts');
     expect(files).toContain('src/types/shared.ts');
     expect(files).toContain('src/persistence/migrations.ts');
-    expect(files.every((f) => /^src\/(sim|data|types)\//.test(f) || /^src\/persistence\/(hash|serialize|migrations|schema|types)\.ts$/.test(f))).toBe(true);
+    expect(files).toContain('src/game/sharedLoop.ts');
+    expect(files.every((f) => /^src\/(sim|data|types)\//.test(f) || /^src\/persistence\/(hash|serialize|migrations|schema|types)\.ts$/.test(f) || f === 'src/game/sharedLoop.ts')).toBe(true);
     expect(files.some((f) => f.endsWith('.test.ts'))).toBe(false);
   });
 

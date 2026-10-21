@@ -49,6 +49,20 @@ const MAX_CONNECTIONS = 120;
 export const CLOSE_AWAY = 4000;
 /** A closed socket is ended this long after its close frame, answered or not (a proxy may eat the handshake). */
 export const BYE_GRACE_MS = 2000;
+/** Bytes waiting to go to one member: past this the connection is dropped (each photo goes once per connection anyway). */
+export const MAX_BUFFERED = 8_000_000;
+/** A sign-in that expired this long ago without a fresh `token` ends the connection (`bye: sign-in`). */
+export const TOKEN_GRACE_MS = 10 * 60_000;
+
+/**
+ * The calls a room may make through the main thread (protocol.ts ROOM_CALLS), each about its own club only: a save names
+ * its club inside, every other call names it first.
+ */
+export function roomCallAllowed(fn: string, args: readonly unknown[], club: string): boolean {
+  if (!(ROOM_CALLS as readonly string[]).includes(fn)) return false;
+  const named = fn === 'shopPut' ? (args[0] as { club?: unknown } | null)?.club : args[0];
+  return named === club;
+}
 
 /** Is `a` an older release than `b`? (`x.y.z`, numbers only; anything unreadable counts as older.) */
 export function olderVersion(a: string, b: string): boolean {
@@ -103,6 +117,10 @@ interface Conn {
 
 interface RoomHandle {
   club: string;
+  /** This room's lease holder: released from here when its worker fails, so the next room needn't wait it out. */
+  holder: string;
+  /** Settles `opened` (once; later calls do nothing). */
+  settleOpened: (v: { ok: true } | { ok: false; why: ClosingReason }) => void;
   runner: RoomRunner;
   opened: Promise<{ ok: true } | { ok: false; why: ClosingReason }>;
   /** Each player's connection. */
@@ -137,6 +155,7 @@ export function createShopServer(deps: AppDeps): ShopServer {
   const joins = new Map<string, number[]>();
   let nextConn = 1;
   let nextStats = 1;
+  let roomSeq = 0;
   let capClosed = false;
   let shuttingDown = false;
   const timers: (() => void)[] = [];
@@ -155,6 +174,9 @@ export function createShopServer(deps: AppDeps): ShopServer {
 
   function send(c: Conn, kind: string, data: string | Uint8Array): void {
     if (c.ws.readyState !== 1) return;
+    // a member who doesn't read (the review's note 1): past the limit the socket is dropped at once. Never through end(),
+    // whose `bye` would come back here (the confirmation pass's blocker: the two called each other until the stack ran out)
+    if (c.ws.bufferedAmount > MAX_BUFFERED) return void c.ws.terminate();
     const n = typeof data === 'string' ? Buffer.byteLength(data) : data.length;
     c.ws.send(data);
     usage.count(kind, n + frameHeader(n));
@@ -176,6 +198,7 @@ export function createShopServer(deps: AppDeps): ShopServer {
     if (c.ws.readyState !== 1) return c.ws.terminate();
     const why: ByeReason | null = code === CLOSE_AWAY ? 'away' : reason === 'sign-in' ? 'sign-in' : code === 1008 ? 'protocol' : code === 1011 ? 'server' : null;
     if (why) send(c, 'bye', JSON.stringify({ t: 'bye', why } satisfies ServerMessage));
+    if (c.ws.readyState !== 1) return; // send() dropped it
     c.ws.close(code, reason);
     const ws = c.ws;
     clocks.after(BYE_GRACE_MS, () => {
@@ -190,6 +213,8 @@ export function createShopServer(deps: AppDeps): ShopServer {
     let resolveOpened!: (v: { ok: true } | { ok: false; why: ClosingReason }) => void;
     let resolveStopped!: () => void;
     const r: RoomHandle = {
+      holder: `${holder}:${++roomSeq}`,
+      settleOpened: (v) => resolveOpened(v),
       club,
       runner,
       opened: new Promise((res) => (resolveOpened = res)),
@@ -211,17 +236,22 @@ export function createShopServer(deps: AppDeps): ShopServer {
       log(`room ${club.slice(0, 8)} failed: ${e.message}`);
       resolveOpened({ ok: false, why: 'fault' });
       for (const c of r.users.values()) closing(c, 'fault');
+      // its lease, so a member back at once gets a new room instead of `updating` for 90 seconds (the confirmation's note 3)
+      store.shopRelease(club, r.holder).catch(() => {});
       finish(r, resolveStopped);
     });
-    runner.send({ t: 'open', club, holder, build: build.hash, ...mode });
+    // a holder per room, not per process: a second room for one shop in this process finds the lease held (the review's B1)
+    runner.send({ t: 'open', club, holder: r.holder, build: build.hash, ...mode });
     return r;
   }
 
   function finish(r: RoomHandle, resolveStopped: () => void): void {
     r.stopping = true;
+    // a room that ends while still opening releases its joiners (the review's note 3), and anyone left is told
+    r.settleOpened({ ok: false, why: 'restart' });
     if (rooms.get(r.club) === r) rooms.delete(r.club);
     r.runner.terminate();
-    for (const c of r.users.values()) end(c, 1000);
+    for (const c of r.users.values()) closing(c, 'restart');
     r.users.clear();
     resolveStopped();
   }
@@ -267,9 +297,7 @@ export function createShopServer(deps: AppDeps): ShopServer {
   /** A room's database call: only the calls rooms make, and only about its own club. */
   async function roomCall(r: RoomHandle, id: number, fn: string, args: unknown[]): Promise<void> {
     let reply: { ok: boolean; value?: unknown; error?: string };
-    // a save names its club inside; every other call names it first
-    const club = fn === 'shopPut' ? (args[0] as { club?: unknown } | null)?.club : args[0];
-    if (!(ROOM_CALLS as readonly string[]).includes(fn) || club !== r.club) reply = { ok: false, error: 'refused' };
+    if (!roomCallAllowed(fn, args, r.club)) reply = { ok: false, error: 'refused' };
     else {
       try {
         const value = await (store[fn as keyof Store] as (...a: unknown[]) => Promise<unknown>)(...args);
@@ -360,7 +388,11 @@ export function createShopServer(deps: AppDeps): ShopServer {
 
   /** The connection closed while a `hello` waited (read through a call: TypeScript can't see the wait change it). */
   const gone = (c: Conn): boolean => c.phase === 'closed';
-  const CLUB = /^[A-Za-z0-9_-]{1,80}$/;
+  /**
+   * A club: its canonical lowercase UUID, as the database stores it (the review's B1: Postgres reads other spellings, upper
+   * case or without hyphens, as the same club, which opened a second room for one shop). The stub's clubs are names.
+   */
+  const CLUB = config.stub ? /^[A-Za-z0-9_-]{1,80}$/ : /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
   const HIDDEN = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/;
   const nameOk = (v: unknown, max: number): v is string => typeof v === 'string' && v.trim().length >= 1 && v.length <= max && !HIDDEN.test(v);
 
@@ -617,6 +649,11 @@ export function createShopServer(deps: AppDeps): ShopServer {
     const t = now();
     for (const r of rooms.values()) if (!r.stopping && r.users.size === 0 && r.emptySince !== null && t - r.emptySince >= EMPTY_ROOM_MS) void stopRoom(r, 'idle');
     for (const c of conns.values()) {
+      // a sign-in nobody refreshed (send `token` when Supabase refreshes the session): the review's note 5
+      if (c.phase === 'joined' && c.tokenExp + TOKEN_GRACE_MS < t) {
+        end(c, 1008, 'sign-in');
+        continue;
+      }
       if (c.phase !== 'joined' || !c.room || t - c.checkedAt < MEMBER_CHECK_MS) continue;
       c.checkedAt = t;
       const r = c.room;
