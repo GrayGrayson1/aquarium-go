@@ -89,6 +89,8 @@ describe('chunk 12: joining (§5.3)', () => {
     bad.hello('not-a-token', CLUB);
     await pump(x.time, () => bad.closed !== null, { step: 50 });
     expect(bad.closed).toMatchObject({ code: 1008 });
+    // said in a message first: Render's proxy doesn't pass the server's close frames on (measured on the live service)
+    expect(bad.texts('bye')).toEqual([{ t: 'bye', why: 'sign-in' }]);
     const outsider = await x.join(B, CLUB);
     expect(closingOf(outsider)?.why).toBe('removed');
     x.world.addClub('club_2', ['u_a']);
@@ -157,6 +159,17 @@ describe('chunk 12: joining (§5.3)', () => {
     a.send({ t: 'token', token: B });
     await pump(x.time, () => a.closed !== null, { step: 50 });
     expect(a.closed).toMatchObject({ code: 1008 });
+  });
+
+  it('a member away 10 minutes is told so and disconnected (the browser reconnects when they’re back)', async () => {
+    const x = await shop();
+    const a = await x.join(A, CLUB);
+    a.send({ t: 'away' });
+    await sleep(20);
+    x.time.advance(10 * 60_000 + 2000);
+    await pump(x.time, () => a.closed !== null, { step: 500, what: 'the drop' });
+    expect(a.texts('bye')).toEqual([{ t: 'bye', why: 'away' }]);
+    expect(a.closed).toMatchObject({ code: 4000 });
   });
 
   it('a member taken out of the club is closed at the next check', async () => {

@@ -1008,9 +1008,10 @@ REL-012, REL-018.
   security advisors report only Auth's known leaked-password warning, and the stage 1 smoke passed 91 of 91.
 - **For chunk 13** (what the server does that the client must meet): send `hello` (or the owner's `create`, with the
   starter's name and the preview seed) and wait for the welcome before anything else; `you.id` is the account's id, the
-  `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; a close
-  4000 (`away`) means reconnect only when the player is back, 1008 `sign-in` means refresh the session (send `token`
-  hourly); a `post` of `setSpeed 1` is the starvation guard (show its toast from your own copy); photo frames are tag
+  `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; through
+  Render's proxy the server's close frames never arrive (1006 about 20 seconds later), so act on the `closing` and `bye`
+  messages and close the socket yourself: `bye` `away` means reconnect only when the player is back, `sign-in` means
+  refresh the session (and send `token` hourly); a `post` of `setSpeed 1` is the starvation guard (show its toast from your own copy); photo frames are tag
   3, the hash, a type byte, the bytes; `gone` needs its words (§8); joining the welcome's `catchUp` shows the
   welcome-back card; every snapshot after the first (a catch-up, a re-sync) replaces the copy.
 

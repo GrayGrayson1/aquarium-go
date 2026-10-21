@@ -206,7 +206,9 @@ try {
 
     // 5. tokens: a wrong one is refused; a refreshed one for the same player keeps the connection
     const bad = connect('not-a-token', club);
-    check('a wrong token is refused', await until(() => bad.closed !== null, 15_000) && bad.closed?.code === 1008, JSON.stringify(bad.closed));
+    // through Render's proxy the server's close frame doesn't arrive: the `bye` message says why
+    check('a wrong token is refused (bye: sign-in)', await until(() => bad.texts.some((m) => m.t === 'bye' && m.why === 'sign-in'), 15_000), JSON.stringify(bad.texts));
+    check('…and its socket ends within a few seconds', await until(() => bad.closed !== null, 10_000), JSON.stringify(bad.closed));
     c.ws.send(JSON.stringify({ t: 'token', token }));
     await sleep(1500);
     check('a refreshed token for the same player keeps the connection', c.closed === null);

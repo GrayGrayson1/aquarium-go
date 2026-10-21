@@ -83,6 +83,14 @@ export type ClosingReason = 'cap' | 'hours' | 'full' | 'build' | 'updating' | 'r
  */
 export type RejectReason = 'forbidden' | 'malformed' | 'rate' | 'failed';
 
+/**
+ * Why the server ends a connection with no words to show (chunk 12): `sign-in`, the token can't be checked (refresh the
+ * session and try again); `away`, away 10 minutes (reconnect when the player is back); `protocol`, a message the server
+ * refuses (a bug); `server`, the database didn't answer (reconnect with the usual waits). It comes as a message because
+ * Render's proxy doesn't pass the server's close frames on.
+ */
+export type ByeReason = 'sign-in' | 'away' | 'protocol' | 'server';
+
 export interface ClosingMessage {
   t: 'closing';
   why: ClosingReason;
@@ -97,4 +105,5 @@ export type ServerMessage =
   | { t: 'steps'; s: SharedStep[] }
   | { t: 'reject'; id: number; why: RejectReason }
   | { t: 'members'; members: SharedMember[] }
-  | ClosingMessage;
+  | ClosingMessage
+  | { t: 'bye'; why: ByeReason };

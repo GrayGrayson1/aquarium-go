@@ -14,7 +14,7 @@ import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { SHARED_BUILD, type ClosingMessage, type ClosingReason, type RejectReason, type ServerMessage, type SharedBuild } from '@/types/shared';
+import { SHARED_BUILD, type ByeReason, type ClosingMessage, type ClosingReason, type RejectReason, type ServerMessage, type SharedBuild } from '@/types/shared';
 import { originAllowed, type ServerConfig } from './config';
 import type { Auth } from './auth';
 import type { Store } from './store';
@@ -47,6 +47,8 @@ const HTTP_HEADER_BYTES = 220;
 const MAX_CONNECTIONS = 120;
 /** A close that tells the browser it was away too long (it reconnects when the player is back). */
 export const CLOSE_AWAY = 4000;
+/** A closed socket is ended this long after its close frame, answered or not (a proxy may eat the handshake). */
+export const BYE_GRACE_MS = 2000;
 
 /** Is `a` an older release than `b`? (`x.y.z`, numbers only; anything unreadable counts as older.) */
 export function olderVersion(a: string, b: string): boolean {
@@ -163,10 +165,22 @@ export function createShopServer(deps: AppDeps): ShopServer {
     end(c, 1000);
   }
 
+  /**
+   * Close a connection. Through Render's proxy a server's close frame never reaches the browser (measured 2026-10-21:
+   * the `closing` message arrived, the close code didn't, and the socket dropped as 1006 about 20 seconds later), so a
+   * close the browser must act on says why first: a `closing` message (closing()) or, for the ones with no words to
+   * show, `bye`. Then the socket ends at once if the browser answers the close, and in BYE_GRACE_MS either way.
+   */
   function end(c: Conn, code: number, reason?: string): void {
     if (c.phase === 'closed') return;
-    if (c.ws.readyState === 1) c.ws.close(code, reason);
-    else c.ws.terminate();
+    if (c.ws.readyState !== 1) return c.ws.terminate();
+    const why: ByeReason | null = code === CLOSE_AWAY ? 'away' : reason === 'sign-in' ? 'sign-in' : code === 1008 ? 'protocol' : code === 1011 ? 'server' : null;
+    if (why) send(c, 'bye', JSON.stringify({ t: 'bye', why } satisfies ServerMessage));
+    c.ws.close(code, reason);
+    const ws = c.ws;
+    clocks.after(BYE_GRACE_MS, () => {
+      if (ws.readyState !== 3) ws.terminate();
+    });
   }
 
   // ── rooms ──────────────────────────────────────────────────────────────────────────────────────────────────────
