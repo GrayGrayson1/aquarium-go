@@ -107,6 +107,7 @@ const breedable = (g: GameState): Command & { k: 'startBreeding' } => {
 const C: Record<CommandKind, Case | Case[]> = {
   feedTank: [
     { w: 'big', cmd: (g) => ({ k: 'feedTank', tank: fishIn(g).tankId!, food: firstFood(g), zone: 'surface' }), direct: (d, c: Command & { k: 'feedTank' }) => feedTank(d, c.tank, c.food, { zone: c.zone }), ok: true },
+    { what: 'at the bottom', w: 'big', cmd: (g) => ({ k: 'feedTank', tank: fishIn(g).tankId!, food: firstFood(g), zone: 'bottom' }), direct: (d, c: Command & { k: 'feedTank' }) => feedTank(d, c.tank, c.food, { zone: 'bottom' }), ok: true },
     {
       what: 'a target feed (and its interaction)',
       w: 'big',
@@ -132,24 +133,60 @@ const C: Record<CommandKind, Case | Case[]> = {
   topOff: { w: 'big', prep: (g) => void (g.tanks[g.tankOrder[1]].water.level = 0.8), cmd: (g) => ({ k: 'topOff', tank: g.tankOrder[1] }), direct: (d, c: Command & { k: 'topOff' }) => topOff(d, c.tank), ok: true },
   cleanTank: { w: 'big', cmd: (g) => ({ k: 'cleanTank', tank: g.tankOrder[2], what: 'glass' }), direct: (d, c: Command & { k: 'cleanTank' }) => cleanTank(d, c.tank, 'glass'), ok: true },
   dose: { w: 'big', cmd: (g) => ({ k: 'dose', tank: g.tankOrder[0], additive: 'conditioner' }), direct: (d, c: Command & { k: 'dose' }) => dose(d, c.tank, 'conditioner'), ok: true },
-  setEquipment: {
-    w: 'big',
+  setEquipment: [
+    {
+      what: 'a setting (a slider or a stepper)',
+      w: 'big',
+      // a piece and a value the game takes and that changes something (found on a copy)
+      cmd: (g) =>
+        g.tankOrder
+          .flatMap((t) => g.tanks[t].equipment.flatMap((e) => [24, 26, 2, 0.5, 1].map((setting): Command & { k: 'setEquipment' } => ({ k: 'setEquipment', tank: t, equip: e.id, setting }))))
+          .find((c) => {
+            const x = deepClone(g);
+            return applyCommand(x, c).ok && stateHash(x) !== stateHash(g);
+          })!,
+      direct: (d, c: Command & { k: 'setEquipment' }) => setEquipment(d, c.tank, c.equip, { setting: c.setting }),
+      ok: true,
+    },
+    {
+      w: 'big',
     cmd: (g) => ({ k: 'setEquipment', tank: g.tankOrder[0], equip: g.tanks[g.tankOrder[0]].equipment[0].id, on: false }),
     direct: (d, c: Command & { k: 'setEquipment' }) => setEquipment(d, c.tank, c.equip, { on: false }),
     ok: true,
-  },
-  setAutoFeed: {
-    w: 'line',
-    cmd: (g) => {
-      const t = tankWith(g, (x) => x.equipment.some((e) => e.defId === 'autofeeder'));
-      return { k: 'setAutoFeed', tank: t.id, equip: t.equipment.find((e) => e.defId === 'autofeeder')!.id, on: false };
     },
-    direct: (d, c: Command & { k: 'setAutoFeed' }) => {
-      const live = d.tanks[c.tank]?.equipment.find((e) => e.id === c.equip);
-      return setEquipment(d, c.tank, c.equip, live ? autoFeedPatch(live, false) : { on: false });
+  ],
+  setAutoFeed: [
+    {
+      w: 'line',
+      cmd: (g) => {
+        const t = tankWith(g, (x) => x.equipment.some((e) => e.defId === 'autofeeder'));
+        return { k: 'setAutoFeed', tank: t.id, equip: t.equipment.find((e) => e.defId === 'autofeeder')!.id, on: false };
+      },
+      direct: (d, c: Command & { k: 'setAutoFeed' }) => {
+        const live = d.tanks[c.tank]?.equipment.find((e) => e.id === c.equip);
+        return setEquipment(d, c.tank, c.equip, live ? autoFeedPatch(live, false) : { on: false });
+      },
+      ok: true,
     },
-    ok: true,
-  },
+    {
+      what: 'on again from a legacy 0 meals (B-149: the default meals come back)',
+      w: 'line',
+      prep: (g) => {
+        const e = tankWith(g, (x) => x.equipment.some((y) => y.defId === 'autofeeder')).equipment.find((y) => y.defId === 'autofeeder')!;
+        e.on = false;
+        e.setting = 0;
+      },
+      cmd: (g) => {
+        const t = tankWith(g, (x) => x.equipment.some((e) => e.defId === 'autofeeder'));
+        return { k: 'setAutoFeed', tank: t.id, equip: t.equipment.find((e) => e.defId === 'autofeeder')!.id, on: true };
+      },
+      direct: (d, c: Command & { k: 'setAutoFeed' }) => {
+        const live = d.tanks[c.tank]?.equipment.find((e) => e.id === c.equip);
+        return setEquipment(d, c.tank, c.equip, live ? autoFeedPatch(live, true) : { on: true });
+      },
+      ok: true,
+    },
+  ],
   buyEquipment: { w: 'big', cmd: (g) => ({ k: 'buyEquipment', tank: g.tankOrder[0], def: 'autofeeder' }), direct: (d, c: Command & { k: 'buyEquipment' }) => buyEquipment(d, c.tank, 'autofeeder'), ok: true },
   buyAutoClean: {
     w: 'big',
@@ -183,7 +220,19 @@ const C: Record<CommandKind, Case | Case[]> = {
     direct: (d, c: Command & { k: 'removeEquipment' }) => removeEquipment(d, c.tank, c.equip),
     ok: true,
   },
-  setLighting: { w: 'big', cmd: (g) => ({ k: 'setLighting', tank: g.tankOrder[0], preset: 'warm', intensity: 0.8 }), direct: (d, c: Command & { k: 'setLighting' }) => setLighting(d, c.tank, { preset: 'warm', intensity: 0.8 }), ok: true },
+  setLighting: [
+    { w: 'big', cmd: (g) => ({ k: 'setLighting', tank: g.tankOrder[0], preset: 'warm', intensity: 0.8 }), direct: (d, c: Command & { k: 'setLighting' }) => setLighting(d, c.tank, { preset: 'warm', intensity: 0.8 }), ok: true },
+    {
+      what: 'the hours and the moonlight',
+      w: 'big',
+      cmd: (g) => {
+        const L = g.tanks[g.tankOrder[1]].lighting;
+        return { k: 'setLighting', tank: g.tankOrder[1], onHour: L.onHour === 7 ? 8 : 7, offHour: L.offHour === 21 ? 20 : 21, moonlight: !L.moonlight };
+      },
+      direct: (d, c: Command & { k: 'setLighting' }) => setLighting(d, c.tank, { onHour: c.onHour, offHour: c.offHour, moonlight: c.moonlight }),
+      ok: true,
+    },
+  ],
   setSignage: { w: 'big', cmd: (g) => ({ k: 'setSignage', tank: g.tankOrder[0], on: !g.tanks[g.tankOrder[0]].signage }), direct: (d, c: Command & { k: 'setSignage' }) => toggleSignage(d, c.tank), ok: true },
   renameTank: { w: 'big', cmd: (g) => ({ k: 'renameTank', tank: g.tankOrder[0], name: 'Probe' }), direct: (d, c: Command & { k: 'renameTank' }) => renameTank(d, c.tank, 'Probe'), ok: true },
   setTankPurpose: { w: 'big', cmd: (g) => ({ k: 'setTankPurpose', tank: g.tankOrder[0], purpose: 'nursery' }), direct: (d, c: Command & { k: 'setTankPurpose' }) => setTankPurpose(d, c.tank, 'nursery'), ok: true },
@@ -390,15 +439,27 @@ const C: Record<CommandKind, Case | Case[]> = {
     ok: true,
   },
   fireStaff: { w: 'big', cmd: (g) => ({ k: 'fireStaff', staff: g.staff!.roster[0].id }), direct: (d, c: Command & { k: 'fireStaff' }) => fireStaff(d, c.staff), ok: true },
-  assignTank: {
-    w: 'big',
-    cmd: (g) => {
-      const m = g.staff!.roster.find((x) => x.role === 'aquarist')!;
-      return { k: 'assignTank', staff: m.id, tank: g.tankOrder.find((t) => !m.tankIds.includes(t))!, on: true };
+  assignTank: [
+    {
+      w: 'big',
+      cmd: (g) => {
+        const m = g.staff!.roster.find((x) => x.role === 'aquarist')!;
+        return { k: 'assignTank', staff: m.id, tank: g.tankOrder.find((t) => !m.tankIds.includes(t))!, on: true };
+      },
+      direct: (d, c: Command & { k: 'assignTank' }) => assignTank(d, c.staff, c.tank, true),
+      ok: true,
     },
-    direct: (d, c: Command & { k: 'assignTank' }) => assignTank(d, c.staff, c.tank, true),
-    ok: true,
-  },
+    {
+      what: 'taken off a tank',
+      w: 'big',
+      cmd: (g) => {
+        const m = g.staff!.roster.find((x) => x.role === 'aquarist' && x.tankIds.length > 0)!;
+        return { k: 'assignTank', staff: m.id, tank: m.tankIds[0], on: false };
+      },
+      direct: (d, c: Command & { k: 'assignTank' }) => assignTank(d, c.staff, c.tank, false),
+      ok: true,
+    },
+  ],
   autoAssignAll: { w: 'big', prep: (g) => g.staff!.roster.forEach((m) => (m.tankIds = [])), cmd: () => ({ k: 'autoAssignAll' }), direct: (d) => autoAssignAll(d), ok: true },
   setStockBudget: { w: 'big', cmd: () => ({ k: 'setStockBudget', amount: 50 }), direct: (d) => setStockBudget(d, 50), ok: true },
   setStockOrders: { w: 'big', cmd: () => ({ k: 'setStockOrders', on: false }), direct: (d) => setStockOrders(d, false), ok: true },

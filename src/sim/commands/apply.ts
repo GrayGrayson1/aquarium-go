@@ -330,6 +330,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       state.clock.speed = cmd.speed;
       return done();
     case 'raiseFlag':
+      // `hired_staff` pays a quest: raised only by a shop that has a team (the staff tab's sync for older saves)
+      if (cmd.name === 'hired_staff' && !state.staff?.roster.length) return done();
       tutorialAdvance(state, cmd.name);
       return done();
     case 'tutorialNext':

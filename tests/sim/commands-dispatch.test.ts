@@ -104,6 +104,27 @@ describe('chunk 11: the solo dispatcher (§4.2)', () => {
   });
 });
 
+describe('chunk 11: the guide advances once per flag (the fresh review’s B1)', () => {
+  it('feed by tapping the tank, then open the tank card: the water step starts and waits, as before', async () => {
+    const { currentTutorialStep, tutorialAdvance } = await import('@/sim/facility');
+    const { deepClone } = await import('@/sim/clone');
+    const step = () => currentTutorialStep(useGame.getState().game!)?.id;
+    const g = newGame({ starterId: 'betta', starterName: 'Probe', seed: 7 });
+    for (let i = 0; i < 20 && currentTutorialStep(g)?.id !== 'feed'; i++) tutorialAdvance(g);
+    expect(currentTutorialStep(g)?.id).toBe('feed');
+    g.clock.speed = 0;
+    useGame.getState().setGame(g);
+    const tank = g.tankOrder[0];
+    const food = Object.keys(g.inventory.foods).find((f) => (g.inventory.foods[f] ?? 0) >= 1)!;
+    expect(useGame.getState().dispatch({ k: 'feedTank', tank, food, zone: 'surface' })?.ok).toBe(true); // a tap: no flag
+    const old = deepClone(useGame.getState().game!);
+    tutorialAdvance(old, 'opened_tank_card'); // what tutorialFlag('opened_tank_card') did
+    useGame.getState().dispatch({ k: 'raiseFlag', name: 'opened_tank_card' });
+    expect(step()).toBe('water');
+    expect(stateHash(useGame.getState().game!)).toBe(stateHash(old));
+  });
+});
+
 describe('chunk 11: the act helpers wait for a dispatcher that settles later (a shared shop, chunk 13)', () => {
   /** A stand-in for chunk 13's: it holds each command until `settle` is called, then applies it the solo way. */
   function deferred(): { dispatch: Dispatch; settle: () => void } {

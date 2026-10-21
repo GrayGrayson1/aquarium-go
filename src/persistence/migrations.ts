@@ -1057,7 +1057,7 @@ function repairTouches(s: Json, repairs: string[]): void {
   if (s.touches === undefined) return;
   const str = (v: unknown, max: number) => typeof v === 'string' && v.length > 0 && v.length <= max;
   const list = Array.isArray(s.touches) ? (s.touches as Json[]) : [];
-  const good = list.filter((t) => isObj(t) && str(t.key, 200) && str(t.by, 80) && str(t.name, 80) && str(t.verb, 40) && finiteNum(t.at) && (t.mark === undefined || (typeof t.mark === 'string' && t.mark.length <= 4000))).slice(-200);
+  const good = list.filter((t) => isObj(t) && str(t.key, 200) && str(t.by, 80) && str(t.name, 80) && str(t.verb, 40) && finiteNum(t.at) && (t.mark === undefined || (typeof t.mark === 'string' && t.mark.length <= 4000)) && (t.ev === undefined || str(t.ev, 80))).slice(-200);
   if (!Array.isArray(s.touches) || good.length !== list.length) repairs.push('touches: unreadable entries removed');
   if (good.length) s.touches = good;
   else delete s.touches;

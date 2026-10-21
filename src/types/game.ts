@@ -1006,6 +1006,8 @@ export interface SharedTouch {
   verb: string;
   /** What the thing looked like right after (its tank, its status): tells the member's own change from a later one. */
   mark?: string;
+  /** A setting's alerts line, kept current while the same member keeps changing it (a slider). */
+  ev?: string;
 }
 
 /** lane:automation (chunk 5, DESIGN-S3D §9.7) — the five systems Hold all stops. */

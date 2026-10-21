@@ -307,21 +307,57 @@ describe('chunk 11: first one wins, the fresh review’s cases (B3, notes 4 and 
     expect(r.message).toBe('That fish has changed since you looked.');
   });
 
-  it('quiet or repeated actions add no line of their own: one per member and setting in 30 seconds', () => {
+  it("a slider's many values keep one line current; a switch turned back gets a line each time", () => {
     const g = world();
-    const lines = () => g.log.filter((e) => e.by && e.kind === 'info').length;
-    const n = lines();
-    for (let i = 0; i < 5; i++) applyCommand(g, { k: 'setAdmission', price: 10 + i }, sam(1000 + i * 100)); // a slider dragged
-    expect(lines()).toBe(n + 1);
+    const mine = () => g.log.filter((e) => e.by && e.kind === 'info');
+    const n = mine().length;
+    let last = '';
+    for (let i = 0; i < 5; i++) last = applyCommand(g, { k: 'setAdmission', price: 10 + i }, sam(1000 + i * 100)).message; // a slider dragged
+    expect(mine().length).toBe(n + 1);
+    expect(mine().at(-1)?.text).toBe(last); // the newest value, not the first
     applyCommand(g, { k: 'setAdmission', price: 20 }, ana(2000));
-    expect(lines()).toBe(n + 2);
-    applyCommand(g, { k: 'setAdmission', price: 21 }, sam(1000 + TOUCH_MS + 1)); // a new window
-    expect(lines()).toBe(n + 3);
+    expect(mine().length).toBe(n + 2);
+    // a switch: on, then off again by the same member at once, is two lines
+    const t = g.tankOrder.find((id) => !g.tanks[id].signage)!;
+    applyCommand(g, { k: 'setSignage', tank: t, on: true }, sam(3000));
+    applyCommand(g, { k: 'setSignage', tank: t, on: false }, sam(3100));
+    expect(mine().length).toBe(n + 4);
+  });
+
+  it('quiet kinds add no line of their own: watching, a tap, a bid held while a counter is typed', () => {
+    const g = world('panels');
+    const lines = () => g.log.filter((e) => e.by && e.kind === 'info').length;
     const quiet = lines();
-    const c = fish(g)[0];
+    const c = Object.values(g.creatures).find((x) => x.status === 'alive' && x.tankId)!;
     applyCommand(g, { k: 'noteInteraction', creature: c.id, kind: 'observe' }, ana(40_000));
     applyCommand(g, { k: 'glassTap', tank: c.tankId!, intensity: 0.5 }, ana(40_100));
+    const l = g.market.listings.find((x) => x.status === 'active' && (x.bids ?? []).some((b) => b.status === 'open'))!;
+    const b = l.bids!.find((x) => x.status === 'open')!;
+    for (let i = 0; i < 3; i++) expect(applyCommand(g, { k: 'holdBid', listing: l.id, bid: b.id }, ana(41_000 + i * 15_000)).ok).toBe(true);
     expect(lines()).toBe(quiet);
+  });
+
+  it("the sender's own quick second Buy of an animal they already bought is refused, not swapped for another", () => {
+    const g = world();
+    const { offer, tank, ids } = groupBuy(g);
+    const buy: Command = { k: 'buyOffer', offer, tank, picks: [0], saw: [ids[0]] };
+    expect(applyCommand(g, buy, sam(1000)).ok).toBe(true);
+    const r = applyCommand(g, buy, sam(1100)); // the panel still showed it
+    expect(r.ok).toBe(false);
+    expect(g.creatures[ids[1]]).toBeUndefined();
+  });
+});
+
+describe('chunk 11: a flag a quest pays on is raised only with what earns it (the confirmation pass, note 6)', () => {
+  it('raiseFlag hired_staff does nothing without a team, and works once there is one (the staff tab’s sync)', () => {
+    const none = world('panels');
+    expect(none.staff?.roster.length ?? 0).toBe(0);
+    applyCommand(none, { k: 'raiseFlag', name: 'hired_staff' }, sam(1000));
+    expect(none.progress.tutorial.flags.hired_staff).toBeUndefined();
+    const team = world();
+    delete team.progress.tutorial.flags.hired_staff;
+    applyCommand(team, { k: 'raiseFlag', name: 'hired_staff' }, sam(1000));
+    expect(team.progress.tutorial.flags.hired_staff).toBe(true);
   });
 });
 

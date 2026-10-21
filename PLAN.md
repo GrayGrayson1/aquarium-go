@@ -879,6 +879,14 @@ REL-012, REL-018.
     welcome-back card's resume is a command and the store-writer test names persistence's two files; the five helpers
     that returned a result take a callback; the tagging and install tests can fail now; the room's `at` comes from
     its clock (`io.wall`); the dev panel's buyer visit toasts again.
+- **Its confirmation pass** (`03b3f4b..2202c45`): every blocker and note confirmed fixed, no blockers, 45 mutants
+  run (all caught but nine, now fixed or explained). Its notes, fixed: a slider's repeated values keep one alerts
+  line current (its newest message; the first fix kept the first value) and switches always get a line; the sender's
+  own quick second Buy of an animal they already bought is refused (an offer's touch has no mark); B1's scenario is a
+  test (feed by tapping, open the tank card: the water step waits); samples for the light hours and moonlight, an
+  equipment setting, a keeper taken off a tank and Auto-feed on from a legacy 0; the quiet kinds tested with a bid's
+  renewals; `raiseFlag hired_staff` does nothing without a team; a redundant check dropped. The feed zone's mutant is
+  equivalent: the sim doesn't read the zone (it's for the visuals).
 - **Left on purpose:** §3.2 rule 5's stagger (chunk 12: it changes only the server's busiest steps, so it is built and
   measured with the server's speed work); coalescing a control's many values and the pending results' transport
   (chunk 13, the shared dispatcher); actions the interface doesn't call (`setManualMode`, `setOpenHours`,

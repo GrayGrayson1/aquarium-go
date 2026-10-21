@@ -13,7 +13,7 @@
  * The memory of who touched what (`GameState.touches`) is part of the shop's state, so a member who joins from a
  * snapshot decides exactly as the others do. Its times are the server's clock, stamped on each command (`at`).
  */
-import type { Creature, GameState, SharedTouch } from '@/types';
+import type { Creature, GameEvent, GameState, SharedTouch } from '@/types';
 import { emitEvent } from '../context';
 import type { Command } from './kinds';
 import type { CommandResult } from './apply';
@@ -89,7 +89,6 @@ export function staleOf(state: GameState, cmd: Command): Stale | null {
       const stale: Stale = { key: `o:${cmd.offer}`, noun: 'offer' };
       if (!o) return stale;
       if (cmd.saw === undefined) return null;
-      if (!cmd.picks && o.creatures.length !== cmd.saw.length) return stale;
       return cmd.saw.every((id) => o.creatures.some((c) => c.id === id)) ? null : stale;
     }
     case 'placeDecor':
@@ -282,13 +281,34 @@ function lastTouch(state: GameState, key: string, at: number): SharedTouch | und
   return undefined;
 }
 
-function remember(state: GameState, key: string, verb: string, actor: Actor): void {
+function remember(state: GameState, key: string, verb: string, actor: Actor): SharedTouch {
   const list = (state.touches ??= []);
   const t: SharedTouch = { key, by: actor.id, name: actor.name, at: actor.at, verb };
-  // a setting has no mark; nor has the last stored piece, whose placing never excuses the sender's own next one
-  if (!key.startsWith('set:') && !key.startsWith('ds:')) t.mark = markOf(state, key);
+  // a setting has no mark; nor has an offer (an animal the sender bought is gone for their own second Buy too) or the
+  // last stored piece (its placing never excuses the sender's own next one)
+  if (!key.startsWith('set:') && !key.startsWith('ds:') && !key.startsWith('o:')) t.mark = markOf(state, key);
   list.push(t);
   if (list.length > MAX_TOUCHES) list.splice(0, list.length - MAX_TOUCHES);
+  return t;
+}
+
+/**
+ * A setting changed by a continuous control (a slider, a typed amount): its values come many at once, so a member's
+ * line about it is kept current (one line, its newest message) rather than repeated. Switches and choices aren't
+ * continuous: each change gets its own line.
+ */
+function continuous(cmd: Command): boolean {
+  switch (cmd.k) {
+    case 'setAdmission':
+    case 'setStockBudget':
+      return true;
+    case 'setEquipment':
+      return cmd.setting !== undefined && cmd.on === undefined;
+    case 'setLighting':
+      return cmd.preset === undefined && cmd.moonlight === undefined;
+    default:
+      return false;
+  }
 }
 
 /** Forget touches older than the window (so the memory stays small and the same on every copy). */
@@ -337,13 +357,14 @@ export function applyAsActor(state: GameState, cmd: Command, actor: Actor, run: 
   if (!res.ok) return res;
   for (const [key, verb] of touchesOf(state, cmd, res)) remember(state, key, verb, actor);
   const sk = settingKey(cmd);
-  // a slider dragged or a budget typed sends many values: one line per member and setting in the window, not each
-  let repeat = false;
+  // a slider dragged or a budget typed sends many values: the member's line about it is kept current, not repeated
+  let line: SharedTouch | undefined;
+  let earlier: GameEvent | undefined;
   if (sk) {
     const t = lastTouch(state, sk, actor.at);
     if (t && t.by !== actor.id) res.noteBy = t.name;
-    repeat = !!t && t.by === actor.id;
-    remember(state, sk, 'changed', actor);
+    if (t && t.by === actor.id && t.ev && continuous(cmd)) earlier = state.log.find((e) => e.id === t.ev);
+    line = remember(state, sk, 'changed', actor);
   }
   // tag what this command logged (ids come from one counter that only grows, so they're the ones above seq0)
   let tagged = false;
@@ -355,10 +376,14 @@ export function applyAsActor(state: GameState, cmd: Command, actor: Actor, run: 
     e.byName = actor.name;
     tagged = true;
   }
-  if (!tagged && res.message && !repeat && !NO_LINE.has(cmd.k)) {
-    const e = emitEvent(state, { kind: 'info', text: res.message });
-    e.by = actor.id;
-    e.byName = actor.name;
+  if (!tagged && res.message && !NO_LINE.has(cmd.k)) {
+    if (earlier) earlier.text = res.message;
+    else {
+      earlier = emitEvent(state, { kind: 'info', text: res.message });
+      earlier.by = actor.id;
+      earlier.byName = actor.name;
+    }
+    if (line) line.ev = earlier.id;
   }
   return res;
 }
