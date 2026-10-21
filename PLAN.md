@@ -803,7 +803,13 @@ REL-012, REL-018.
   (§3.2 rule 10); `validateCommand` checks ids as own properties.
 - **For chunk 12** (from the measurements): time steps in place, not on a copy (18 to 32% of a step); a cheaper or rarer
   fingerprint and snapshot check for big shops (750 ms and 1.6 s of wall time on the free instance); the key out of the
-  build; and, before big shops matter, the owner's choice between a lower top speed for them and a paid instance.
+  build; and, before big shops matter, the owner's choice between a lower top speed for them and a paid instance. From
+  the review: the re-sync budget per player, not per connection, with §5.3's join limit; the meter counts headers. The
+  owner's part: one dashboard visit (the key pasted, chunk 10's test variables deleted) and a yes to switch the service
+  to `main` (SHARED-SHOPS.md §5.8), since the Render CLI can't change environment variables.
+- **For chunk 13:** ask the owner, in one round before building the screens, for the words SHARED-SHOPS.md §8 lists as
+  still needed (chunk 11 writes the exact list). The play-test needs an account for the owner's daughter (her own
+  sign-up with the club's invite link; a parent signs up for a player under 13, §13).
 
 ## Releases
 

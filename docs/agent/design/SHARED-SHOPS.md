@@ -421,6 +421,13 @@ assumes everyone may spend, apart from `allowed` itself.
   `SHOPS_*`, `NODE_VERSION` and Render's own), so the key would reach every program a build runs (npm, Vite, the stub
   shops' fixtures). The build command removes it first (`env -u SUPABASE_SECRET_KEY sh -c '…'`) and runs no install
   scripts, and chunk 12 checks the build's log for the name.
+- **What the owner sets, once (chunk 12).** The Render CLI (v2.28) changes a service's branch, build and start
+  commands (`render services update`) but not its environment variables, so the server's public settings live in code
+  (the Supabase URL and publishable key from `src/social/project.ts`; the game's two sites as the allowed origins when
+  `RENDER` is set), and the owner's one dashboard visit pastes `SUPABASE_SECRET_KEY` and deletes chunk 10's test
+  variables (`SHOPS_REPLAY`, `ALLOWED_ORIGINS`, which allows only `127.0.0.1`; `SHOPS_BYTE_BUDGET`,
+  `SHOPS_MAX_CONNECTIONS`, unless chunk 12's server reads them on purpose). With the owner's yes in that session, the
+  agent switches the branch to `main` and sets the build command with the CLI.
 - **Closed between tests.** The prototype's byte budget starts again at every wake and the service's address is in this
   public repo, so after chunk 10's measurements the prototype on Render takes no connections and no replays unless
   `SHOPS_OPEN=1` is set on the service (it answers `/health` and `/stats` only). Chunk 12's server, with sign-in,
@@ -569,7 +576,11 @@ in from the game.
 | Catching up (a snapshot) | "Catching up with the shared shop…" |
 | A slow device | "Your device can't keep up with the shared shop at this speed, so it keeps catching up. Someone who can change the speed could slow it down." |
 
-Any other player-visible words a chunk needs go to the owner first.
+Any other player-visible words a chunk needs go to the owner first. Known to need them (chunk 11 lists them exactly;
+chunk 13 asks in one round before building the screens): the other first-one-wins lines (one per command with an
+expectation, §4.3), the settings' "{name} already …" note (§4.3), an alerts line for each action that emits no event
+today (§4.3), `reject`'s reasons other than pause (rate-limited; failed on the server), Settings › Saves' line in a
+shared shop (§7.3), and whatever the save guards show (§7.3).
 
 ## 9. Tests
 
@@ -729,7 +740,8 @@ of step.
 ## 13. Things to know
 
 - **The owner's steps** (each when its chunk needs it): a yes to create the Render service (chunk 10); a yes to apply
-  the migration live and the secret key pasted into Render (chunk 12, about 2 minutes, walked through); the release
+  the migration live and to switch the service to `main`, and one dashboard visit: the secret key pasted into Render
+  and chunk 10's test variables deleted (chunk 12, about 3 minutes, walked through, §5.8); the release
   (after the play-test). The owner's daughter needs an account: she signs up with the club's invite link; sign-up is
   for 13 and over, and a parent signs up for a younger player (ADR-0039 decision 4).
 - **Trust and the stages:** the first version trusts club members to do anything a member may (ADR-0043), but no
