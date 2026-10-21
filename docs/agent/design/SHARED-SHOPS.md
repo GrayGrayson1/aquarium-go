@@ -429,24 +429,33 @@ assumes everyone may spend, apart from `allowed` itself.
   repo: build `npm ci --include=dev --ignore-scripts && npm run build:server` (chunk 10: it builds in about 54 seconds
   without install scripts), start `node dist-server/main.js`, health check `/health`, `NODE_VERSION` 22, auto-deploy
   off. It builds from `next` while chunk 10's prototype runs on it; chunk 12 switches it to `main`.
-- **Environment:** `SUPABASE_URL` and the publishable key (public), `ALLOWED_ORIGINS`, and **`SUPABASE_SECRET_KEY`,
-  which the owner pastes in** (ADR-0045 decision 1), in chunk 12 (chunk 10's test runs on stub storage and needs no
-  key): a new secret key made for this server in Supabase's dashboard (Project settings › API keys), so it can be
-  switched off alone. The agent never sees, prints or saves it, and it never enters the repo.
-- **The key's reach.** A Supabase secret key acts as `service_role`, which by Supabase's default privileges has every
-  right on every table and function in `public` and bypasses row-level security: as it stands it could read and write
-  every player's saves, profiles, clubs and friend links. So chunk 12's migration revokes `service_role`'s rights on
-  every table and function in `public` (stage 1's and the new `shared_*` ones), changes the schema's default
-  privileges so future tables and functions don't grant it anything, and grants it only `EXECUTE` on the `server_*`
-  functions (§6.3); a test checks every table and function in `public`, and the security advisors run after.
+- **Environment:** the server's public settings (the Supabase URL and publishable key, the allowed origins) live in
+  code, and **`SHOPS_SERVER_KEY`, the server's password, which the owner pastes in** (ADR-0047 decision 3, replacing
+  ADR-0045 decision 1's Supabase secret key), in chunk 12 (chunk 10's test runs on stub storage and needs no key). The
+  agent never sees, prints or saves it, and it never enters the repo, a log or a build.
+- **The password's reach (ADR-0047).** A Supabase secret key acts as `service_role` and also opens Supabase Auth's
+  admin tools (listing players' emails, deleting accounts), which no database rule can limit. So the server uses no
+  Supabase key: it calls its functions (§6.3) through the API with the publishable key, as `anon`, and each refuses
+  (`forbidden`) unless the SHA-256 of the password it is given equals the one fingerprint stored in
+  `private.server_key`. `scripts/shared-server-key.mjs` makes a random 256-bit password, stores only its fingerprint
+  (through the Supabase CLI, scoped to the project) and puts the password on the owner's clipboard without printing
+  it; running it again replaces the password at once. A leaked password reaches only shared shops, their photos, the
+  usage meter and club membership (names), never players' saves, profiles, emails or accounts. The password travels in
+  the body of a POST (never a URL or a header, which logs may keep).
+- **`service_role`'s reach, all the same.** By Supabase's default privileges `service_role` has every right on every
+  table and function in `public` and bypasses row-level security, so any of the project's secret keys could read and
+  write every player's saves, profiles, clubs and friend links. Nothing uses that role, so chunk 12's migration revokes
+  its rights on every table and function in `public` (stage 1's and the new `shared_*` ones) and changes the schema's
+  default privileges so future tables and functions don't grant it anything; a test checks every table and function in
+  `public`, and the security advisors run after.
 - **The build sees every variable set on the service** (chunk 10 printed the names a build gets: `ALLOWED_ORIGINS`,
-  `SHOPS_*`, `NODE_VERSION` and Render's own), so the key would reach every program a build runs (npm, Vite, the stub
-  shops' fixtures). The build command removes it first (`env -u SUPABASE_SECRET_KEY sh -c '…'`) and runs no install
+  `SHOPS_*`, `NODE_VERSION` and Render's own), so the password would reach every program a build runs (npm, Vite, the
+  stub shops' fixtures). The build command removes it first (`env -u SHOPS_SERVER_KEY sh -c '…'`) and runs no install
   scripts, and chunk 12 checks the build's log for the name.
 - **What the owner sets, once (chunk 12).** The Render CLI (v2.28) changes a service's branch, build and start
   commands (`render services update`) but not its environment variables, so the server's public settings live in code
   (the Supabase URL and publishable key from `src/social/project.ts`; the game's two sites as the allowed origins when
-  `RENDER` is set), and the owner's one dashboard visit pastes `SUPABASE_SECRET_KEY` and deletes chunk 10's test
+  `RENDER` is set), and the owner's one dashboard visit pastes `SHOPS_SERVER_KEY` and deletes chunk 10's test
   variables (`SHOPS_REPLAY`, `ALLOWED_ORIGINS`, which allows only `127.0.0.1`; `SHOPS_BYTE_BUDGET`,
   `SHOPS_MAX_CONNECTIONS`, unless chunk 12's server reads them on purpose). With the owner's yes in that session, the
   agent switches the branch to `main` and sets the build command with the CLI.
@@ -485,7 +494,8 @@ refused because another holder has the lease closes the room with `closing: rest
   `club_shared_shops()` (for each club I'm in: whether it has a shop, its name, day, money and when it was last played,
   and whether shared shops are closed for the month and until when; never the body) and `shared_usage()` (the owner
   only: this month's data and awake hours, and both caps).
-- **For the server only** (granted only to `service_role`, after §5.8's revokes): `server_member`, `server_shop_get`,
+- **For the server only** (each takes the server's password first and refuses without it, §5.8; `private` functions
+  behind `public` wrappers that only `anon` may call, as the server calls with the publishable key): `server_member`, `server_shop_get`,
   `server_shop_create` (the owner only, one per club), `server_shop_put` (checks the lease and the revision),
   `server_shop_take`, `server_shop_release`, `server_set_pausers`, `server_photo_put`, `server_photo_get`,
   `server_photo_hashes` and `server_photos_delete` (§4.4's prune), `server_usage_add` (which also records the month as
@@ -775,8 +785,9 @@ of step.
 ## 13. Things to know
 
 - **The owner's steps** (each when its chunk needs it): a yes to create the Render service (chunk 10); a yes to apply
-  the migration live and to switch the service to `main`, and one dashboard visit: the secret key pasted into Render
-  and chunk 10's test variables deleted (chunk 12, about 3 minutes, walked through, §5.8); the release
+  the migration live and to deploy the real server (chunk 12, ADR-0047), and one Render dashboard visit: the server's
+  password pasted and chunk 10's test variables deleted (chunk 12, about 2 minutes, walked through, §5.8); the switch
+  to `main` with the release
   (after the play-test). The owner's daughter needs an account: she signs up with the club's invite link; sign-up is
   for 13 and over, and a parent signs up for a younger player (ADR-0039 decision 4).
 - **Trust and the stages:** the first version trusts club members to do anything a member may (ADR-0043), but no

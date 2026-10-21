@@ -70,13 +70,16 @@ in a new ADR (ADR-0047 onward), and wait for each yes in the session that needs 
    database check passes (`scripts/online-db-local/run.sh`); (b) a yes to deploy the real server (sign-in and the
    database) to `aquarium-go-shops` from `next` for chunk 12's live smoke and chunk 13's play-test. ADR-0046 covered
    only chunk 10's prototype with stub shops and no key; switch the service to `main` at the 0.6.0 release, with that
-   release's go-ahead; (c) the owner's one dashboard visit, walked through step by step (SHARED-SHOPS.md §5.8): in
-   Supabase (Project settings › API keys) a new secret key just for this server, pasted into the Render service's
-   environment as `SUPABASE_SECRET_KEY`, and chunk 10's test variables deleted (`SHOPS_REPLAY`, `ALLOWED_ORIGINS`,
-   `SHOPS_BYTE_BUDGET`, `SHOPS_MAX_CONNECTIONS`, unless the new server reads one on purpose). The Render CLI changes the
-   branch and the build command (`render services update srv-dbbt6gbncjis73c23br0 --build-command '…'`) but not the
-   environment. The build command removes the key from the build (`env -u SUPABASE_SECRET_KEY sh -c '…'`, §5.8); check
-   the build's log for the name. (d) OWNER_QUESTIONS K1 (big shops on the free server) with chunk 12's own numbers.
+   release's go-ahead; (c) the owner's one dashboard visit, walked through step by step (SHARED-SHOPS.md §5.8): the
+   server's password, which `scripts/shared-server-key.mjs` leaves on the owner's clipboard (ADR-0047 decision 3: no
+   Supabase secret key, which could reach accounts), pasted into the Render service's environment as
+   `SHOPS_SERVER_KEY`, and chunk 10's test variables deleted (`SHOPS_REPLAY`, `ALLOWED_ORIGINS`, `SHOPS_BYTE_BUDGET`,
+   `SHOPS_MAX_CONNECTIONS`, unless the new server reads one on purpose). The Render CLI changes the branch and the build
+   command (`render services update srv-dbbt6gbncjis73c23br0 --build-command '…'`) but not the environment. The build
+   command removes the password from the build (`env -u SHOPS_SERVER_KEY sh -c '…'`, §5.8); check the build's log for
+   the name. (d) OWNER_QUESTIONS K1 (big shops on the free server) with chunk 12's own numbers. **Asked 2026-10-21
+   (ADR-0047):** (a) yes once the local check passes, (b) yes once the server's tests pass, and the server password
+   instead of a Supabase key; (c) and (d) are still to come.
 2. *Chunk 13, first:* OWNER_QUESTIONS group L, the words SHARED-SHOPS.md §8 lists as "Words still to approve" (drafts
    there and in `conflictText`, `src/sim/commands/shared.ts`), in one round before building the screens.
 3. *Chunk 13, at the end:* the play-test with the owner and their daughter on the live server (she signs up with the

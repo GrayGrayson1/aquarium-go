@@ -52,7 +52,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
 | 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (not released; nothing players see). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
 | 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (not released; nothing players see). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
-| 12 | Shared shops, the server and the database (§5, §6) | Planned: `server/` on a free Render web service, the migration (live with the owner's yes) |
+| 12 | Shared shops, the server and the database (§5, §6) | Brief written 2026-10-21 (Marshall, at the owner's request): `server/` on the free Render web service, the migration (live with the owner's yes) |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Planned: the owner's words, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
 
 **Last full test runs:** chunk 11's final commit `e692066`, the owner's Mac, 2026-10-20, from the internal-disk clone
@@ -908,6 +908,87 @@ REL-012, REL-018.
   command may be (48 KB). The shared dispatcher (send, settle `done` from the step's results; coalesce sliders), the marks
   kept per player (`src/ui/common/marks.ts` is the one place), the visuals of others' feeds and taps from applied
   commands (today the sender's `after` draws them), and group L's words first.
+
+### 12. Shared shops, the server and the database (SHARED-SHOPS.md §5, §6) — brief written 2026-10-21 (Marshall)
+
+- **What:** the real server and its database: a club's shop lives in Supabase and runs on the free Render service
+  behind sign-in. Still nothing players see (the screens and every word are chunk 13). The chunk starts at `eef5b74`.
+  - **The migration (§6, §5.8; SHARE-003):** a new file under `supabase/migrations` (never an edit of an applied one):
+    `shared_shops`, `shared_photos` and `shared_usage` (row-level security on, no access for `anon` or
+    `authenticated`); the server's functions (`server_member`; `server_shop_get`; `server_shop_create`, the owner only,
+    one per club; `server_shop_put`, which checks the lease and the revision and never writes over a newer schema's
+    shop, PERSIST-014; `server_shop_take` and `server_shop_release`, the lease in one statement on the database's clock;
+    `server_set_pausers`; `server_photo_put`, `server_photo_get`, `server_photo_hashes`, `server_photos_delete`;
+    `server_usage_add`, which records the month as closed at a cap), reachable only with the server's password
+    (ADR-0047: `private` functions behind `public` wrappers that `anon` may call, each refusing unless the password's
+    SHA-256 equals the one fingerprint stored; `scripts/shared-server-key.mjs` makes the password and stores it);
+    the game's two (`club_shared_shops()`, `shared_usage()` for the owner) as stage 1's are, `private` behind `public`
+    wrappers. `service_role`'s rights on every table and function in `public` revoked and the schema's default
+    privileges changed so nothing new grants it any. Checked by `scripts/online-db-local/run.sh` (new cases as `anon`,
+    two players, the owner and the server), then applied live with the owner's yes, then the security advisors and the
+    stage 1 smoke (`scripts/online-smoke.mjs`).
+  - **The server (§5; SHARE-004 to SHARE-009 and SHARE-014 to SHARE-017, their server side):** chunk 10's prototype
+    becomes the server. `auth.ts` (the player's token asked of Supabase Auth with the publishable key, cached until it
+    expires; membership through `server_member`, checked again every 15 minutes: `removed`), `store.ts` (the database
+    through Node's `fetch` with the publishable key and the password from `SHOPS_SERVER_KEY`, never logged),
+    `stub.ts` (in-memory storage and accounts, `SHOPS_STUB=1`, for the tests and e2e; the replay endpoint stays
+    stub-only), `usage.ts` (bytes sent, headers
+    included, ×1.4, and awake seconds, per UTC month; the 2 GB and 400-hour caps close rooms and refuse joins),
+    `config.ts` (the public settings in code: the project's address and publishable key from `src/social/project.ts`,
+    the game's two sites as the origins when `RENDER` is set). A room's life (§5.2): wake (the lease, load and repair,
+    `simulateOffline` from `left_at`, or `saved_at` after a crash: nothing under 5 minutes or if paused, at most 12 game
+    hours under grace), running only while someone is there, saved every 3 minutes, on emptying and on SIGTERM, the lease
+    renewed every 30 seconds for 90, the room kept 15 minutes empty. `create` (the owner only: a new game with the
+    shop's name and starter, normal money, the guide finished, ADR-0045 decision 5). The limits (§5.3): 10 per shop
+    (`full`), one connection per player (`elsewhere`), 16 KB messages (48 KB for a listing with a photo), 10 commands and
+    30 messages a second, the re-sync budget per player rather than per connection, and 20 joins an hour.
+    `allowed(member, cmd, shop)` gates `setSpeed` (the owner and `pausers`), `grant` is the owner's; only the first
+    `raiseFlag` for each flag is forwarded; the starvation guard's slow-down goes in `post` with a memory per room;
+    `token` refreshes the sign-in (the same player only).
+  - **The build identity (§5.1; SHARE-016):** a Vite plugin hashes what every copy runs (`src/sim`, `src/data`,
+    `src/types`, the four pure persistence files) in a fixed order with normalised line endings, and stamps the hash and
+    the release version into the game and the server; a different hash is told `build` (older) or `updating` (newer).
+  - **Photos (§4.4; SHARE-018, the server's side):** `createListing`'s photo checked (WebP or JPEG by its first bytes,
+    at most 48 KB), stored once per club by its SHA-256 and forwarded as the reference `p:<hash>`; `{t:'photo'}`
+    answered with a binary frame; about 6 photo listings a minute per member; a stored photo deleted only after a save
+    that no longer refers to it. `validateCommand` and `repairState` accept exactly that reference and nothing more
+    (a core-file change, named in the commit); the interface never puts one in `<img src>` (chunk 13 draws it).
+  - **Speed (§11, for K1):** time steps in place (the copy was 18 to 32% of a step), with a checkpoint copy at each
+    fingerprint and the steps since, so a step that throws is undone by replaying from the checkpoint and never sent;
+    the fingerprint's interval scaled to what it costs (`big_facility`'s took 750 ms on the free instance); a cheaper
+    snapshot check than two fingerprints (§3.2 rule 10); rule 5's stagger after a catch-up, Hold all, Resume and Hold
+    one. Measured again on Render (the stub shops at 1×, 3× and 10×) into §11; those numbers go to the owner as K1.
+  - **The game's side, no screens:** `sharedShops()` and `sharedUsage()` in `SocialService`, the stub and the Supabase
+    service; `SHARED_SHOP_SERVER` in `src/social/project.ts`.
+  - **The release order (§5.1):** PLAN.md's "Releases" gains it: `main` first, then the server by hand from `main`;
+    both `version.json` files and the server's `/health` checked.
+- **Render and the owner's steps (ADR-0046, ADR-0047):** the migration live once its local check passes (ADR-0047
+  decision 1); then the owner's one dashboard visit, walked through: the server's password, which
+  `scripts/shared-server-key.mjs` leaves on the owner's clipboard, pasted as `SHOPS_SERVER_KEY`, and chunk 10's
+  `SHOPS_REPLAY`, `ALLOWED_ORIGINS`, `SHOPS_BYTE_BUDGET` and `SHOPS_MAX_CONNECTIONS` deleted; then, once the server's
+  tests pass (decision 2), the agent sets the build command so the password never reaches the build (`env -u
+  SHOPS_SERVER_KEY sh -c 'npm ci --include=dev --ignore-scripts && npm run build:server'`, the build's log checked for
+  the name) and deploys from `next`. The service stays on `next` for chunk 13's play-test; the 0.6.0 release switches
+  it to `main`.
+- **The live smoke (§9.3):** `scripts/shared-smoke.mjs`: a throwaway club, shop and account made through the CLI
+  (scoped to the project), the account joins on the live server, sends commands, checks fingerprints, a photo and a
+  refused pause; then everything is removed and checked gone. Run with the owner's yes in the session.
+- **Not in this chunk:** the connection in the game, the screens, the shared dispatcher and every player-visible word
+  (chunk 13); permission tiers and the money pool (later, §5.6).
+- **Tests (§9.1):** the server in process with `SHOPS_STUB=1` and Node's own `WebSocket` as members, every case §9.1
+  lists (join and snapshot, commands everywhere, pause refused then granted, first one wins named, a throwing command
+  rejected to its sender only, empty and back with and without a catch-up, 10 and the 11th, a second tab, wrong build,
+  origin, token or user, removed, both caps, the meters, the re-sync budget, the lease and its renewal, SIGTERM saves,
+  a newer schema refused, two rooms with their own caches, photos stored, served and pruned, a step that throws
+  undone); the migration's rules in `supabase-migration.test.ts` and the local database check; the build identity
+  (a covered file changes the hash, another doesn't); `repairState`'s reference; the boundary test (the server reaches
+  only `ws`, Node's modules and the pure layers). e2e: the cross-engine replay runs on the stub server.
+- **Done when:** the four checks pass on the final code; one fresh reviewer (Opus 5.5, max effort) reads this brief,
+  SHARED-SHOPS.md §3.3, §4.4, §5, §6, §9 and §11 and `git diff eef5b74..HEAD`, and its blockers are fixed; the
+  migration is live with the advisors clean; the server is deployed and the live smoke passes; K1 is asked with the new
+  numbers; PLAN.md, SHARED-SHOPS.md §11, TRUST_BOUNDARY.md and DEBT_INVENTORY.md (§13's shared-shops sections) say what
+  changed; `next` pushed. SHARE-003, SHARE-005, SHARE-007, SHARE-009, SHARE-015 and SHARE-017 GREEN; the server's side
+  of SHARE-004, SHARE-006, SHARE-014, SHARE-016 and SHARE-018 done, GREEN with chunk 13.
 
 ## Releases
 
