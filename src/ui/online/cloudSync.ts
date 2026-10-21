@@ -525,6 +525,7 @@ export function startCloudSync(): () => void {
       const prev = lastGame;
       lastGame = g;
       if (!g || g.isShowcase) return;
+      if (isSharedShop(g)) return; // chunk 13: a shared shop's saves are the server's, never this device's (SHARE-011)
       if (!prev || prev.saveId !== g.saveId) {
         // a game started or loaded: who is signed in (once a session), then the check
         void loadSocialUser().then(() => checkOnline());
