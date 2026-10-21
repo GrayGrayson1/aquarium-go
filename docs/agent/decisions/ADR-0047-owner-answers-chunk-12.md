@@ -1,9 +1,9 @@
-# ADR-0047 — Owner answers, chunk 12: the migration live when its check passes, the real server deployed from `next` when tested, a server password instead of a Supabase secret key
+# ADR-0047 — Owner answers, chunk 12: the migration live when its check passes, the real server deployed from `next` when tested, a server password instead of a Supabase secret key; big shops stay free (K1)
 
 **Status:** Accepted\
 **Date:** 2026-10-21\
 **Chunk:** 12 (shared shops, the server and the database; SHARED-SHOPS.md §5, §6)\
-**Requirements:** SHARE-003; ADR-0045 decision 1 (changed here), ADR-0046
+**Requirements:** SHARE-003; ADR-0045 decision 1 (changed here), ADR-0046; OWNER_QUESTIONS K1
 
 ## Context
 
@@ -54,6 +54,24 @@ Supabase key: the server's functions check a password whose fingerprint is store
 
 No notes were added.
 
+### Round 2 (K1, with chunk 12's numbers)
+
+After the deploy the agent measured the stub shops on the real server on Render's free instance (SHARED-SHOPS.md §11,
+"Chunk 12"): a new or month-old shop at full speed on about a fifth of the instance; the late-game `big_facility` at 93%
+of real time at 1×, 95% at 3× and 88% at 10× (chunk 10: 84 to 92%, 76% and 55%), every fingerprint matching.
+
+1. **"K1, big shared shops on the free server. Measured today: new and month-old shops run at full speed using a fifth of
+   the free server. A late-game shop (15 tanks, 337 animals) now keeps 88 to 95% of real time at any speed (it was 55% at
+   10×). So a big shop just runs a little slow, never out of step. What should happen when a shop gets that big?"** (Big
+   shops)
+   - Chosen: **"Keep it free, no change (Recommended)"**: "Big shops run 5 to 12% slower than real time (at 1×, a game day
+     takes about 4.3 minutes instead of 4). Nobody sees a message; nothing to build. $0. We can revisit if a real shop
+     gets bigger than the test one."
+   - Not chosen: "Cap their speed" ("Above a size, the shop's top speed is 3× (new words for the speed buttons, to
+     approve). It helps little: the test shop keeps 95% at 3× and 88% at 10×. $0."); "Paid server when needed" ("Move
+     the shop server to Render's Starter plan (about $7 a month, 0.5 CPU) once a shop gets that big: full speed for big
+     shops. Only with your yes at that time.").
+
 ## Decisions
 
 1. **The migration goes live once `scripts/online-db-local/run.sh` passes**, applied by the agent with the Supabase CLI
@@ -75,6 +93,10 @@ No notes were added.
 4. **`service_role`'s rights on every table and function in `public` are still revoked**, with the schema's default
    privileges changed (SHARED-SHOPS.md §5.8): nothing uses that role, and the project's own secret keys then can't
    read or write players' data through the API either.
+
+5. **Big shops stay on the free server, unchanged (K1):** a late-game shop simply runs a little slower than real time
+   (5 to 12% measured), with no message and no speed cap. Revisit only if a real shop grows past the test one; a paid
+   instance would still wait for the owner's yes.
 
 ## Consequences
 

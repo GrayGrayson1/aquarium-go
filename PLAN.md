@@ -1006,6 +1006,15 @@ REL-012, REL-018.
   isn't a member of `anon`; everything it reached was ours), then the migration applied; afterwards `service_role`
   reaches 0 tables and 0 functions in `public` and `private`, the 12 server functions refuse (no password yet), the
   security advisors report only Auth's known leaked-password warning, and the stage 1 smoke passed 91 of 91.
+- **On Render** (2026-10-21, ADR-0047 decisions 2 and 3): the build command now removes the password first; the owner's
+  browser-capable Claude pasted the password (made by the script, clipboard only; one the owner had pasted into the chat
+  was replaced) and deleted chunk 10's test variables; deployed from `next` (`cdc5387`, then `7c0e68d`,
+  `dep-dbcgnonavr4c73cjr7q0`). The build's variable names show no `SHOPS_SERVER_KEY` and no `SHOPS_*` left; the server
+  started with its password. The live smoke (`npx vite-node scripts/shared-smoke.ts`) passed 23 of 23 after it found
+  that Render's proxy eats the server's close frames (fixed with `bye`, `7c0e68d`).
+- **K1** (ADR-0047 round 2): measured on the free instance (SHARED-SHOPS.md §11, "Chunk 12"): small shops on a fifth of
+  its CPU; `big_facility` keeps 93%, 95% and 88% of real time at 1×, 3× and 10× (chunk 10: 84 to 92%, 76%, 55%). The
+  owner chose to keep it free with no change.
 - **For chunk 13** (what the server does that the client must meet): send `hello` (or the owner's `create`, with the
   starter's name and the preview seed) and wait for the welcome before anything else; `you.id` is the account's id, the
   `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; through

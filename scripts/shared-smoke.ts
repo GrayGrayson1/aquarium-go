@@ -131,7 +131,7 @@ async function until(cond: () => boolean, ms: number): Promise<boolean> {
   while (!cond() && Date.now() < end) await sleep(100);
   return cond();
 }
-const stats = async () => (await (await fetch(`${SERVER}/stats`)).json()) as { cpu: { user: number; system: number }; uptimeS: number; rooms: { stats: Record<string, unknown> | null }[]; sent: Record<string, number> };
+const stats = async () => (await (await fetch(`${SERVER}/stats`)).json()) as { cpu: { user: number; system: number }; uptimeS: number; rooms: { members?: number; stats: Record<string, unknown> | null }[]; sent: Record<string, number> };
 
 const sb = createClient(ONLINE_PROJECT.url, ONLINE_PROJECT.publishableKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 let user: string | null = null;
@@ -236,6 +236,8 @@ try {
     for (const [name, make, speeds] of runs) {
       const g = make();
       g.clock.speed = 0;
+      // every animal fed at the start, so the starvation guard doesn't slow a run to 1× (§3.2 rule 6) and hide the server's pace
+      for (const c of Object.values(g.creatures)) if (c.status === 'alive' || c.status === 'listed') c.stats.hunger = 0;
       const club = makeClub(user, g, true);
       clubs.push(club);
       const c = connect(token, club);
@@ -264,14 +266,16 @@ try {
         const realS = (Date.now() - w0) / 1000;
         const kept = (c.replica.state!.clock.hour - h0) / (realS * 0.1 * speed);
         const cpuMs = (s1.cpu.user + s1.cpu.system - s0.cpu.user - s0.cpu.system) / 1000 / realS;
-        type RoomStats = { timeSteps: { count: number; ms: number; max: number }; fingerprints: { count: number; ms: number; max: number }; fingerprintEveryMs: number };
-        const r0 = s0.rooms.find((r) => r.stats)?.stats as RoomStats | undefined;
-        const room = s1.rooms.find((r) => r.stats)?.stats as RoomStats | undefined;
+        type RoomStats = { timeSteps: { count: number; ms: number; max: number }; fingerprints: { count: number; ms: number; max: number }; fingerprintEveryMs: number; slowdowns: number; speed: number };
+        // the room this account is in (earlier runs' rooms stay loaded, empty, for 15 minutes)
+        const r0 = s0.rooms.find((r) => (r.members ?? 0) > 0 && r.stats)?.stats as RoomStats | undefined;
+        const room = s1.rooms.find((r) => (r.members ?? 0) > 0 && r.stats)?.stats as RoomStats | undefined;
         // this run's steps: the room's counts are since it started
         const stepMean = room && r0 ? (room.timeSteps.ms - r0.timeSteps.ms) / Math.max(1, room.timeSteps.count - r0.timeSteps.count) : NaN;
         const fpMean = room && r0 ? (room.fingerprints.ms - r0.fingerprints.ms) / Math.max(1, room.fingerprints.count - r0.fingerprints.count) : NaN;
         const med = [...c.rtt].sort((a, b) => a - b)[Math.floor(c.rtt.length / 2)] ?? NaN;
-        rows.push(`| ${name} | ${speed}× | ${(kept * 100).toFixed(0)}% | ${cpuMs.toFixed(0)} ms | ${stepMean.toFixed(1)} ms (max ${room?.timeSteps.max.toFixed(0)}) | ${fpMean.toFixed(0)} ms, every ${room ? (room.fingerprintEveryMs / 1000).toFixed(0) : '?'} s | ${med.toFixed(0)} ms | ${c.replica.stats.mismatches} |`);
+        const slowed = room && r0 ? room.slowdowns - r0.slowdowns : 0;
+        rows.push(`| ${name} | ${speed}× | ${(kept * 100).toFixed(0)}%${slowed ? ` (slowed to 1× ${slowed}×)` : ''} | ${cpuMs.toFixed(0)} ms | ${stepMean.toFixed(1)} ms (max ${room?.timeSteps.max.toFixed(0)}) | ${fpMean.toFixed(0)} ms, every ${room ? (room.fingerprintEveryMs / 1000).toFixed(0) : '?'} s | ${med.toFixed(0)} ms | ${c.replica.stats.mismatches} |`);
         console.log(rows.at(-1));
       }
       c.ws.close();

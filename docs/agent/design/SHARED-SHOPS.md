@@ -730,6 +730,25 @@ and the late-game `big_facility` (15 tanks, 337 animals).
 Every fingerprint matched in every run, the slow ones too: a shop the server can't keep up with runs slower, never out
 of step.
 
+**Chunk 12 (2026-10-21), the real server** (sign-in, the database) with chunk 12's speed work (time steps in place with
+a checkpoint, fingerprints spaced by their cost, rule 5's stagger), on the same free instance: one member from the
+Mac, a feed every 5 seconds, every animal fed at the start, 60 seconds a row (`npx vite-node scripts/shared-smoke.ts
+--measure`; a throwaway club and account, removed after). CPU is the whole process's per real second (the free instance
+gets about 100 ms and bursts a little above); a step's time is wall time, which the 0.1 CPU quota stretches.
+
+| Shop | Speed | Game time kept | Server CPU per real second | A time step (wall, mean, max) | A fingerprint, its interval | A command's round trip (median) |
+|---|---|---|---|---|---|---|
+| `new_betta` | 10× | 100% | 18 ms (chunk 10: 33) | 1.9 ms, 200 | 3 ms, 10 s | 123 ms |
+| `playthrough_betta` | 1× | 100% | 27 ms (32) | 3.6 ms, 90 | 107 ms, 10 s | 126 ms |
+| `playthrough_betta` | 10× | 63%: the starvation guard slowed it to 1× once (§3.2 rule 6), not the server | 19 ms (46) | 3.0 ms, 97 | 65 ms, 10 s | 125 ms |
+| `big_facility` | 1× | 93% (84 to 92%) | 113 ms (119) | 113 ms, 700 | 551 ms, 20 s | 238 ms |
+| `big_facility` | 3× | 95% (76%) | 100 ms | 86 ms, 700 | 562 ms, 26 s | 240 ms |
+| `big_facility` | 10× | 88% (55%) | 119 ms | 150 ms, 804 | 647 ms, 30 s | 372 ms (0.7 to 1 s) |
+
+Every fingerprint matched. So the free instance now keeps a late-game shop within about 5 to 12% of real time at any
+speed (a game day at 1× takes about 4.3 real minutes instead of 4), and small shops use a fifth of its CPU. The data,
+including the throwaway shops' saves and snapshots: about 2.7 MB metered for the whole session of measurements.
+
 - **Money: $0.** Render's free web service and Supabase's free project. Nothing paid without the owner's yes.
 - **CPU.** The free instance runs a new or month-old shop (one to three tanks, up to about 30 animals) at any speed
   with half its CPU or more to spare. A late-game shop like `big_facility` needs more than the free instance has even
