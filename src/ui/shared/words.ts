@@ -57,9 +57,9 @@ export function closingText(why: VisitEnd, o: { club: string; until?: string; sa
     case 'signedOut':
       return 'You need to be signed in to play the shared shop. Sign in from Social and open it again.';
     case 'cap':
-      return `Shared shops have used this month’s free data (2 GB). They open again on ${reopenDate(o.until)}.`;
+      return `Shared shops have used this month’s free data (2 GB). They open again on ${reopenDate(o.until, o.now)}.`;
     case 'hours':
-      return `Shared shops have used this month’s free server hours. They open again on ${reopenDate(o.until)}.`;
+      return `Shared shops have used this month’s free server hours. They open again on ${reopenDate(o.until, o.now)}.`;
     case 'full':
       return 'The shared shop is full (10 people). Try again soon.';
     case 'build':
@@ -84,11 +84,11 @@ export function closingText(why: VisitEnd, o: { club: string; until?: string; sa
 /** The closings that offer Reload (§8). */
 export const RELOAD_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['build', 'outofstep']);
 
-/** "1 November" from `YYYY-MM-DD` (the server's day, UTC). */
-export function reopenDate(until: string | undefined): string {
+/** "1 November" from `YYYY-MM-DD` (the server's day, UTC); without one, the 1st of next month (when caps reset). */
+export function reopenDate(until: string | undefined, now = Date.now()): string {
   const m = until ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(until) : null;
-  if (!m) return 'the 1st';
-  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  const today = new Date(now);
+  const d = m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))) : new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', timeZone: 'UTC' });
 }
 

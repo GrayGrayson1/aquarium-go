@@ -144,8 +144,8 @@ export function SharedFirstTime() {
   const on = useShared((s) => s.firstTime && s.phase === 'open');
   const club = useShared((s) => s.club?.name ?? '');
   return (
-    <Modal open={on} onClose={() => useShared.setState({ firstTime: false })} testId="shared-first-time" dismissible={false} actions={<Button variant="primary" onClick={() => useShared.setState({ firstTime: false })} data-testid="shared-first-time-ok">{W.gotIt}</Button>}>
-      <p className="ag-shared-first">{W.firstTime(club)}</p>
+    <Modal open={on} onClose={() => useShared.setState({ firstTime: false })} testId="shared-first-time" dismissible={false} labelledBy="shared-first-time-text" actions={<Button variant="primary" onClick={() => useShared.setState({ firstTime: false })} data-testid="shared-first-time-ok">{W.gotIt}</Button>}>
+      <p className="ag-shared-first" id="shared-first-time-text">{W.firstTime(club)}</p>
     </Modal>
   );
 }
@@ -190,6 +190,7 @@ export function SharedClosingCard() {
       open
       onClose={dismissClosing}
       testId="shared-closing"
+      labelledBy="shared-closing-text"
       actions={
         reload ? (
           <Button variant="primary" disabled={closing.why === 'build' && !newBuild} onClick={() => location.reload()} data-testid="shared-closing-reload">
@@ -198,7 +199,7 @@ export function SharedClosingCard() {
         ) : undefined
       }
     >
-      <p className="ag-shared-first" data-why={closing.why} data-testid="shared-closing-text">
+      <p className="ag-shared-first" id="shared-closing-text" data-why={closing.why} data-testid="shared-closing-text">
         {closingText(closing.why, { club, until: closing.until, savedAt: closing.savedAt, now })}
       </p>
     </Modal>

@@ -8,6 +8,7 @@ import { CloudDownload, Smartphone, Cloud, Upload } from 'lucide-react';
 import { Button, Modal, formatMoney } from '@/ui/kit';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
+import { useSharedMode } from '@/state/sharedMode';
 import { SOCIAL_COPY as C } from '../panels/social/copy';
 import { timeAgo } from '../common/saves';
 import { keepDeviceCopy, loadOnlineCopy, useCloud } from './cloudSync';
@@ -20,7 +21,9 @@ export function CloudPrompt() {
   // a boolean, not the game: the box mustn't re-render on every simulation tick while it's closed
   const hasGame = useGame((s) => !!s.game && !s.game.isShowcase);
   const inGame = useUI((s) => s.screen === 'game');
-  const open = !!prompt && inGame && hasGame;
+  // chunk 13: never over a shared shop (a check that answered after it opened; both choices refuse in one)
+  const shared = useSharedMode((s) => s.club !== null);
+  const open = !!prompt && inGame && hasGame && !shared;
   return (
     <Modal open={open} onClose={() => {}} dismissible={false} title={prompt ? TITLES[prompt.kind] : ''} testId="cloud-prompt" width={460}>
       {prompt && open && (

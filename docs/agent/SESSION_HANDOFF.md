@@ -1,4 +1,4 @@
-# Session handoff: after chunk 11 (shared shops, commands)
+# Session handoff: chunk 13 (shared shops, the screens and the play-test)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
@@ -48,6 +48,27 @@ it's used up.
   stored sign-in; stop and ask if anything would cost money (the owner: "lets make everything free if we can"). A
   query that would print another player's email is refused by Claude Code's auto mode (PII): count, or match the
   owner's own email, instead.
+
+## Chunk 13 and the play-test: where it stands (Chase, 2026-10-21)
+
+- **Built** on the branch `chunk13` (worktree `/Volumes/Dev/Projects/AquariumGo-chunk13`; `next` merged in at chunk 12's
+  end, `e1666ed`): PLAN.md chunk 13 has the record. The owner's answers are ADR-0049: two more lines, and **the
+  play-test on the Render address first**.
+- **The play-test, step by step** (ADR-0049 decision 3; after the four checks and the review are through and `next` is
+  fast-forwarded to `chunk13` and pushed from the internal clone):
+  1. The shop server from that commit: `render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm
+     --wait -o text` (ADR-0047 decision 2), then `npx vite-node scripts/shared-smoke.ts` from the internal clone.
+  2. The game from the same commit on the Render static site only (`srv-dath0mfavr4c73dgk3j0`, which tracks `main`):
+     `render deploys create srv-dath0mfavr4c73dgk3j0 --commit <full sha> --confirm --wait -o text`; if Render refuses a
+     commit that isn't on `main`, `render services update srv-dath0mfavr4c73dgk3j0 --branch next`, deploy, and switch
+     it back to `main` at the release (ADR-0049). Check `https://aquarium-go.onrender.com/version.json` and that the
+     server's `/health` `build` equals the shared build hash of that commit (`sharedBuildHash` in vite.sharedBuild.ts).
+  3. The owner and their daughter play on https://aquarium-go.onrender.com (its saves are that address's own: on
+     signing in, the online-save box may ask; "Load online save" brings the owner's real aquarium there). The owner:
+     Social › Clubs › the club › Create shared shop. Their daughter: her own account through the club's invite link
+     (copied on the Render address; a parent signs up for a player under 13, ADR-0039 decision 4), then the club card ›
+     Open shared shop.
+  4. Then the 0.6.0 release, only on the owner's go-ahead in that session (PLAN.md "Releases", step 4).
 
 ## Handoff to Chase: chunk 13 and the 0.6.0 release (from Marshall, 2026-10-21, at the owner's request)
 
@@ -415,3 +436,19 @@ in commands (the owner dislikes approving command after command). Report a test 
   never go out.
 - *The simulation shrugs off most broken data* (a null `water` or `market` steps fine): to make a step throw in a test,
   null `finance`, `progress`, a creature's `stats` or a tank's `decor`.
+
+**Learned in chunk 13.**
+- *A woken shop keeps the id it was saved with* (only `create` sets `shared_<club>`; the stub's fixture shops have their
+  fixtures' ids): the client goes by the shared mode (`src/state/sharedMode.ts`), and the `shared_` id is only a second
+  guard (the slot layer refuses it whoever asks).
+- *The game's own guards meet a shared shop in odd places:* the guide card (a stub shop whose guide wasn't done), the
+  online save's store listener (the server's saves bump `lastSavedRealMs`), the welcome-back card repeating on every
+  welcome for 2 minutes, a hidden tab's return showing the opening card. Look at the screens, not just the tests:
+  `scripts/_audit/chunk13/look.mjs` and `two.mjs` (git-excluded) screenshot them against a local stub server.
+- *Ports:* the e2e suite uses 4395 (the restart test's own stub server) to 4399; a look-around runs its own stub server
+  and Vite elsewhere (4391, 4392), so a pass in the test clone is never disturbed.
+- *The e2e stub server lives for the whole run* (Chromium, then WebKit): each browser project plays its own club, and a
+  test that sells or lists a fish buys one first.
+- *`expect.poll` stops at the first exception* its callback throws: read possibly-missing values null-safely
+  (`(await gameOf(page))?.saveId ?? null`).
+- *An owner question can take hours to come back:* ask it while there's other work to do, not at the end.

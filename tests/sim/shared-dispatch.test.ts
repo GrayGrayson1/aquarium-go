@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { Command, CommandResult } from '@/sim/commands';
 import { newGame } from '@/sim/newGame';
 import { useGame } from '@/state/game';
-import { COALESCE_MS, SharedDispatcher, coalesceKey } from '@/ui/shared/dispatch';
+import { APPLIED_UNSEEN, COALESCE_MS, SharedDispatcher, coalesceKey } from '@/ui/shared/dispatch';
 import { SHARED_WORDS } from '@/ui/shared/words';
 
 class Rig {
@@ -163,6 +163,51 @@ describe('chunk 13: the shared dispatcher', () => {
     r.advance(1000);
     r.dispatch({ k: 'setStockBudget', amount: 20 });
     expect(r.sent).toHaveLength(3);
+  });
+
+  it('the review’s B2: what was sent before a re-sync settles when its snapshot lands (its steps were skipped here)', () => {
+    const r = new Rig();
+    const before = r.dispatch({ k: 'renameTank', tank: 't1', name: 'A' });
+    r.disp.resyncAsked();
+    const after = r.dispatch({ k: 'renameTank', tank: 't2', name: 'B' });
+    r.disp.resynced();
+    expect(before.got).toEqual(APPLIED_UNSEEN);
+    expect(after.got).toBeUndefined(); // sent after the request: its step follows the snapshot
+    r.disp.settleStep({ n: 9, h: 0, cmds: [{ by: 'u_a', id: r.sent[1].id, c: r.sent[1].c }] }, [ok('B')]);
+    expect(after.got).toEqual(ok('B'));
+    // a snapshot with no re-sync asked settles nothing
+    const third = r.dispatch({ k: 'renameTank', tank: 't3', name: 'C' });
+    r.disp.resynced();
+    expect(third.got).toBeUndefined();
+  });
+
+  it('a follow-up that throws doesn’t keep the others from their result', () => {
+    const r = new Rig();
+    const got: string[] = [];
+    r.disp.dispatch({ k: 'renameTank', tank: 't1', name: 'A' }, () => {
+      throw new Error('a broken follow-up');
+    });
+    r.disp.dispatch({ k: 'renameTank', tank: 't2', name: 'B' }, (res) => got.push(res!.message));
+    const warn = console.warn;
+    console.warn = () => {};
+    try {
+      r.disp.settleStep({ n: 1, h: 0, cmds: r.sent.map((x) => ({ by: 'u_a', id: x.id, c: x.c })) }, [ok('a'), ok('b')]);
+    } finally {
+      console.warn = warn;
+    }
+    expect(got).toEqual(['b']);
+  });
+
+  it('a dropped connection also settles the values a control held back', () => {
+    const r = new Rig();
+    const first = r.dispatch({ k: 'setStockBudget', amount: 10 });
+    const held = r.dispatch({ k: 'setStockBudget', amount: 11 });
+    expect(r.sent).toHaveLength(1);
+    r.disp.dropped();
+    expect(first.got).toBeNull();
+    expect(held.got).toBeNull();
+    r.advance(COALESCE_MS * 2);
+    expect(r.sent).toHaveLength(1); // nothing sent later for a dropped connection
   });
 
   it('only continuous controls are coalesced, one key per control', () => {

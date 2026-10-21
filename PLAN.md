@@ -1182,6 +1182,43 @@ REL-012, REL-018.
   fast-forwarded to `chunk13` and pushed from the internal-disk clone. SHARE-004, SHARE-006, SHARE-008, SHARE-010 to
   SHARE-014, SHARE-016 and SHARE-018 GREEN (with chunk 12's server side). Then the play-test and the release, each on
   the owner's yes.
+- **The owner's answers** (2026-10-21, ADR-0049): two more lines approved as written ("You need to be signed in to play
+  the shared shop. Sign in from Social and open it again."; the pause refusal with "the owner" when the game doesn't
+  know the owner's name); **the play-test on the Render address first**: the chunk's final commit on the Render static
+  site `aquarium-go` (https://aquarium-go.onrender.com) by hand, the shop server from the same commit, GitHub Pages
+  staying 0.5.6 until the owner says release.
+- **Built** (2026-10-21, Chase; `666127a` … `d6c7926`, `next` merged at chunk 12's end `e1666ed`):
+  - *The client* (`src/ui/shared/`): `connection.ts` (wake, `hello`/`create` with the access token and `SHARED_BUILD`,
+    the replica, `view`, `here`/`away`, `input` once a minute, "Still here?" at 30 minutes and `away` at 31, `token` on
+    each refresh and every 45 minutes, `resync` out of step or more than 10 seconds behind the server's clock, `closing`
+    and `bye` acted on with the socket closed here, reconnects at 1 to 30 seconds never while hidden, a hidden tab
+    disconnected after 2 minutes and rejoined quietly when shown), `dispatch.ts` (commands settle from their own step's
+    results, rejects with §8's words, a drop settles what it carried, known flags and refused pauses never sent, sliders
+    at most 4 values a second ending on the last, "{name} already changed that."), `session.ts` (your own aquarium saved
+    and recorded first, the shared mode, the copy published with `share` and `setGame(…, { actions })`, the marks over
+    it, leaving back to your own save or the title, the closings), `marks.ts`, `photos.ts` (320-pixel WebP or JPEG; a
+    `p:` reference drawn from bytes fetched once per connection), `activity.ts` (others' pop-ups, feeds and taps, the
+    starvation toast), `words.ts` (§8 and ADR-0049), and the screens (the club card's section, the opening card, the
+    strip with the owner's members list, the notices, "Still here?", the first-time and closing cards).
+  - *Elsewhere in the game:* `src/state/sharedMode.ts`; `src/persistence/sharedAway.ts` and the guards in `session.ts`,
+    `slots.ts` and `offline.ts` (core files: a shared shop is never saved on the device, a slot never takes a `shared_`
+    id, the time in a shop is no time away, no hidden-tab catch-up); `setGame`'s `actions` (core: `src/state/game.ts`);
+    the loop and autosave stand still; Save, Load, Import, Export, the online save and the leaderboard refuse; the
+    error boundary leaves a shared shop running and offers the way back; no guide, no dev writes; the title button; the
+    new-game screens titled "New shared shop"; Settings › Saves; the speed refusal; the alerts line's name; the Social
+    service's access token (Supabase, the local stub's stub token) and the local stub's shop list.
+  - *The server's side* (after "chunk 12 done"): the welcome names the owner (a room may look up its own club's members
+    only), steps carry the server's clock, the stub opens the local Social stub's clubs to every stub player and lists
+    its shops (`GET /stub/shops`, the stub only). Two optional protocol fields (`src/types/shared.ts`).
+  - *Tests:* unit `shared-client` (the client against the server in process: join, commands both ways, pause refused
+    then granted, a known flag, first one wins named, the setting note, a drop and the reconnect), `shared-connection`
+    (17 timer cases on a fake socket), `shared-dispatch` (8), `shared-own-game` (8: your own game waits; every save
+    path refuses), `shared-screens` (12), `shared-social` (5), `shared-server-chunk13` (6); B3a's gate line changed on
+    purpose (a room may now look up its own club's members). e2e `shared-shop.spec.ts` (4 tests in each browser, 9 of 9
+    with the warm-up in Chromium and WebKit on `aa9fab4`). Found while building: a shop woken from storage keeps its
+    stored id (only `create` sets `shared_<club>`), so the guards go by the shared mode first; the guide card showed in
+    a stub shop whose guide wasn't done (hidden in every shared shop now); the HUD strip moved above the dock (under the
+    tank bar on phones) after screenshots at 1280 × 720 showed it over the tool rail.
 
 ## Releases
 

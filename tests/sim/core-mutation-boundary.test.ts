@@ -88,6 +88,20 @@ describe('REL-016: the mutation boundary and the trust boundary', () => {
     expect(hits(/\.mutate\b|\bmutateGame\b/, (p) => p !== 'src/persistence/offline.ts')).toEqual([]);
   });
 
+  it('chunk 13 (SHARED-SHOPS.md §7.3): a shared shop reaches the store only as the replica\'s published copy (session.ts) and through the installed dispatcher', () => {
+    const shared = SOURCES.filter((f) => f.path.startsWith('src/ui/shared/'));
+    expect(shared.length).toBeGreaterThan(5);
+    const writes = shared.flatMap((f) =>
+      code(f.text)
+        .split('\n')
+        .filter((l) => /\bsetGame\(|\.mutate\b|\bmutateFast\b|\bmutateGame\b/.test(l))
+        .map(() => f.path),
+    );
+    expect([...new Set(writes)]).toEqual(['src/ui/shared/session.ts']);
+    const session = shared.find((f) => f.path === 'src/ui/shared/session.ts')!;
+    expect(code(session.text)).not.toMatch(/\.mutate\b|\bmutateFast\b/);
+  });
+
   it('the UI reaches Social only through the SocialService (src/social/index.ts)', () => {
     expect(hits(/from ['"]@\/social\/(?!index)/, (p) => p.startsWith('src/social/'))).toEqual([]);
   });

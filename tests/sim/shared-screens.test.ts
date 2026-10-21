@@ -20,7 +20,7 @@ import { setSharedMode } from '@/state/sharedMode';
 import { eventLine } from '@/ui/common/notify';
 import { SHARED_MARKS_KEY, overlayMarks, readMarks, recordMark } from '@/ui/shared/marks';
 import { SHARED_WORDS, closingText, formatBytes, formatHours, reopenDate } from '@/ui/shared/words';
-import { SharedActivity } from '@/ui/shared/activity';
+import { SharedActivity, othersEvent } from '@/ui/shared/activity';
 import { SHARED_PHOTO_MAX_CHARS, captureSharedPhoto } from '@/ui/shared/photos';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import type { ClosingReason } from '@/types/shared';
@@ -108,7 +108,8 @@ describe('chunk 13: the words (§8, ADR-0045, ADR-0048)', () => {
     expect(closingText('signedOut', o)).toBe('You need to be signed in to play the shared shop. Sign in from Social and open it again.');
     expect(SHARED_WORDS.notAllowed('')).toBe('Only the owner and the people they choose can pause or change the speed.');
     expect(reopenDate('2026-11-01')).toMatch(/1/);
-    expect(reopenDate(undefined)).toBe('the 1st');
+    // no day given: the 1st of next month (no words of its own)
+    expect(reopenDate(undefined, Date.UTC(2026, 9, 21))).toBe(reopenDate('2026-11-01'));
   });
 
   it("the club card's, the strip's and the opening's lines", () => {
@@ -152,7 +153,19 @@ describe("chunk 13: others' actions (SHARE-012)", () => {
     g.finance.money -= 36;
     a.step({ n: 2, h: 0, cmds: [{ by: 'u_b', who: 'Sam', id: 2, c: { k: 'buyFood', food: 'f', packs: 1 } }] }, [{ ok: true, message: 'Bought food for $36.' }]);
     a.step({ n: 3, h: 0, cmds: [{ by: 'u_b', who: 'Sam', id: 3, c: { k: 'quickSell', creatures: ['c2'] } }] }, [{ ok: false, message: 'Ann already sold that fish.' }]);
-    expect(popups).toEqual(['Sam: Sold the clownfish pair for $240.']);
+    // the review's note 11: any purchase over $100 (a new decoration), but not a reward
+    g.finance.money -= 150;
+    a.step({ n: 4, h: 0, cmds: [{ by: 'u_b', who: 'Sam', id: 4, c: { k: 'placeDecor', tank: 't', def: 'd', x: 0, z: 0, rotY: 0, scale: 1 } as never }] }, [{ ok: true, message: 'Placed a driftwood arch for $150.' }]);
+    g.finance.money += 500;
+    a.step({ n: 5, h: 0, cmds: [{ by: 'u_b', who: 'Sam', id: 5, c: { k: 'claimQuest', quest: 'q' } as never }] }, [{ ok: true, message: 'Reward claimed: $500.' }]);
+    expect(popups).toEqual(['Sam: Sold the clownfish pair for $240.', 'Sam: Placed a driftwood arch for $150.']);
+  });
+
+  it("another member's routine events don't pop up here (Toasts): one's own and a solo game's do", () => {
+    expect(othersEvent({ by: 'u_b' }, 'u_a')).toBe(true);
+    expect(othersEvent({ by: 'u_a' }, 'u_a')).toBe(false);
+    expect(othersEvent({}, 'u_a')).toBe(false);
+    expect(othersEvent({}, undefined)).toBe(false);
   });
 
   it("the starvation guard's slow-down (a step's post) is said from this copy", () => {

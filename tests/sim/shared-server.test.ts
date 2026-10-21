@@ -11,6 +11,7 @@ import { gunzipSync } from 'node:zlib';
 import type { GameState } from '@/types';
 import { SHARED_BUILD, FRAME_PHOTO } from '@/types/shared';
 import { SCHEMA_VERSION } from '@/persistence/schema';
+import { previewStarters } from '@/sim/newGame';
 import { decodeRecord } from '@/persistence/serialize';
 import { StubWorld } from '../../server/stub';
 import { buildVerdict, olderVersion, roomCallAllowed, JOINS_PER_HOUR, MAX_MEMBERS, EMPTY_ROOM_MS, MEMBER_CHECK_MS, TOKEN_GRACE_MS } from '../../server/app';
@@ -348,6 +349,10 @@ describe('chunk 12: who may do what (§5.4)', () => {
     expect(g.saveId).toBe('shared_club_new');
     expect(g.progress.tutorial).toMatchObject({ done: true, skipped: true });
     expect(Object.values(g.creatures).find((c) => c.isStarter)).toMatchObject({ speciesId: 'axolotl', name: 'Pip' });
+    // chunk 13 (the review's B1): the very animal previewed with that seed, not only its species
+    const seen = previewStarters(7).axolotl;
+    const got = Object.values(g.creatures).find((c) => c.isStarter)!;
+    expect({ morph: got.morphName, personality: got.personality, sex: got.sex, genome: got.genome }).toEqual({ morph: seen.morphName, personality: seen.personality, sex: seen.sex, genome: seen.genome });
     expect(world.clubs.get('club_new')!.shop!.meta).toMatchObject({ shop_name: 'Reef Friends', created_by: 'u_o', revision: 1 });
     // a second create joins the shop that exists
     const again = await Member.connect(x.port);

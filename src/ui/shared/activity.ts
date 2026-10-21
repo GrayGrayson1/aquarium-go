@@ -21,25 +21,15 @@ import { pushVisualEvent, nowSeconds } from '@/runtime/tankRuntime';
 import { useUI } from '@/state/ui';
 import { SHARED_WORDS as W } from './words';
 
-/** Buying and selling: a pop-up for the others when the money moves by more than $100 (§8). */
-const DEALS: ReadonlySet<string> = new Set([
-  'buyOffer',
-  'buyTank',
-  'buyEquipment',
-  'buyAutoClean',
-  'buyFood',
-  'buySalt',
-  'buyEggs',
-  'quickSell',
-  'quickSellFrags',
-  'acceptBid',
-  'removeDecor',
-  'upgradeFacility',
-  'upgradePrep',
-  'addReservoir',
-  'addCulture',
-]);
+/**
+ * A sale or a purchase over $100 pops up for the others (§8): any command whose own step moves the money by more than
+ * that, but a reward or a refund (a quest's prize, a cancelled project, a withdrawn entry or listing, a keeper let go).
+ */
+const NOT_DEALS: ReadonlySet<string> = new Set(['claimQuest', 'cancelResearch', 'withdrawEntry', 'withdrawListing', 'fireStaff', 'setSpeed']);
 export const BIG_DEAL = 100;
+
+/** Another member's routine event: in their alerts with their name, but not a pop-up here (the big ones are). */
+export const othersEvent = (e: { by?: string }, you: string | undefined): boolean => !!e.by && e.by !== you;
 
 export interface ActivityDeps {
   you: () => string;
@@ -79,7 +69,7 @@ export class SharedActivity {
         return;
       }
       // one command per command step: the money moved by this command alone
-      if (DEALS.has(c.k) && before !== null && step.cmds!.length === 1 && Math.abs(g.finance.money - before) > BIG_DEAL && res.message) {
+      if (!NOT_DEALS.has(c.k) && before !== null && step.h === 0 && step.cmds!.length === 1 && Math.abs(g.finance.money - before) > BIG_DEAL && res.message) {
         this.deps.popup(W.bigDeal(name, res.message), 'success');
         return;
       }

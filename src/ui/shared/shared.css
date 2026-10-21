@@ -16,6 +16,7 @@
   .ag-shared-strip { bottom: auto; top: calc(var(--edge) + var(--topbar-h) + 58px); left: var(--edge); right: var(--edge); transform: none; max-width: none; justify-content: space-between; }
   .ag-shared-strip .ag-shared-members { bottom: auto; top: calc(100% + 8px); }
   .ag-shared-still { bottom: calc(var(--dock-h) + var(--edge) * 3 + 64px); left: var(--edge); right: var(--edge); transform: none; max-width: none; }
+  .ag-shared-notice { top: calc(var(--edge) + var(--topbar-h) + 108px); }
 }
 .ag-shared-strip__text { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--c-ink-2); }
 .ag-shared-strip__text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

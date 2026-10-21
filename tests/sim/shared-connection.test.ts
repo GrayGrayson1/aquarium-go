@@ -18,6 +18,7 @@ import {
   HIDDEN_DISCONNECT_MS,
   INPUT_EVERY_MS,
   RECONNECT_MAX_MS,
+  SLOW_LINE_MS,
   STILL_HERE_ANSWER_MS,
   STILL_HERE_MS,
   SharedConnection,
@@ -118,6 +119,7 @@ interface Rig {
   tokens: { refresh?: boolean }[];
   tokenCbs: ((t: string) => void)[];
   health: { answer: { closed: 'cap' | 'hours' | null; until: string | null } | null };
+  tokenAnswer: { value: string | null | Error };
   gunzip: { hold: boolean; waiting: (() => void)[] };
   sock(): FakeSocket;
 }
@@ -131,6 +133,7 @@ function make(opts: { canGunzip?: boolean; joinAs?: JoinAs; events?: Partial<Con
   const tokenCbs: ((t: string) => void)[] = [];
   const health: Rig['health'] = { answer: { closed: null, until: null } };
   const gz: Rig['gunzip'] = { hold: false, waiting: [] };
+  const tokenAnswer: Rig['tokenAnswer'] = { value: 'tok' };
   const deps: ConnectionDeps = {
     base: 'https://shops.example',
     club: 'club_1',
@@ -142,7 +145,8 @@ function make(opts: { canGunzip?: boolean; joinAs?: JoinAs; events?: Partial<Con
     health: async () => health.answer,
     token: async (o) => {
       tokens.push(o ?? {});
-      return 'tok';
+      if (tokenAnswer.value instanceof Error) throw tokenAnswer.value;
+      return tokenAnswer.value;
     },
     onToken: (cb) => {
       tokenCbs.push(cb);
@@ -173,11 +177,12 @@ function make(opts: { canGunzip?: boolean; joinAs?: JoinAs; events?: Partial<Con
       stillHere: ev('stillHere'),
       photo: (hash, mime, bytes) => log.push(`photo ${hash.slice(0, 4)} ${mime} ${bytes.length}`),
       dropped: () => log.push('dropped'),
+      resync: () => log.push('resync'),
       ...opts.events,
     },
     opts.joinAs,
   );
-  return { clock, sockets, conn, log, hidden, tokens, tokenCbs, health, gunzip: gz, sock: () => sockets[sockets.length - 1] };
+  return { clock, sockets, conn, log, hidden, tokens, tokenCbs, health, tokenAnswer, gunzip: gz, sock: () => sockets[sockets.length - 1] };
 }
 
 /** Start, open the socket, and deliver a welcome with its snapshot. */
@@ -448,3 +453,132 @@ describe('chunk 13: closings and reconnecting (§3.3, §7.6)', () => {
     expect(views().at(-1)).toEqual({ t: 'view', tank: 'c' });
   });
 });
+
+describe('chunk 13: the review’s cases', () => {
+  it('bye protocol and bye server reconnect with the usual waits', async () => {
+    for (const why of ['protocol', 'server'] as const) {
+      const r = await joined();
+      r.sock().deliver({ t: 'bye', why });
+      await flush();
+      expect(r.sock().closedByUs).toBe(true);
+      r.clock.advance(999);
+      await flush();
+      expect(r.sockets).toHaveLength(1);
+      r.clock.advance(1);
+      await flush();
+      expect(r.sockets).toHaveLength(2);
+      expect(r.log).toContain('phase "reconnecting"');
+      r.conn.close();
+    }
+  });
+
+  it('a connection that drops while the tab is hidden waits until it is shown', async () => {
+    const r = await joined();
+    r.hidden.v = true;
+    r.sock().drop();
+    await flush();
+    r.clock.advance(5 * 60_000);
+    await flush();
+    expect(r.sockets).toHaveLength(1);
+    r.hidden.v = false;
+    r.conn.visibility(false);
+    r.clock.advance(0);
+    await flush();
+    expect(r.sockets).toHaveLength(2);
+  });
+
+  it('a server that doesn’t answer /health is asked again with growing waits, and never from a hidden tab', async () => {
+    const r = make();
+    let asked = 0;
+    r.health.answer = null;
+    const health = (r.conn as unknown as { deps: ConnectionDeps }).deps;
+    const real = health.health;
+    health.health = async (u) => {
+      asked++;
+      return real(u);
+    };
+    await r.conn.start();
+    await flush();
+    const at: number[] = [];
+    for (let t = 0; t < 40_000; t += 500) {
+      const before = asked;
+      r.clock.advance(500);
+      await flush();
+      if (asked > before) at.push(r.clock.t);
+    }
+    expect(at.slice(0, 4)).toEqual([1000, 3000, 7000, 15000]);
+    r.hidden.v = true;
+    const n = asked;
+    r.clock.advance(5 * 60_000);
+    await flush();
+    expect(asked).toBe(n);
+  });
+
+  it('a network failure fetching the token is a lost connection, not a sign-out; no session is the sign-in line', async () => {
+    const r = await joined();
+    r.tokenAnswer.value = new Error('network');
+    r.sock().drop();
+    r.clock.advance(1000);
+    await flush();
+    expect(r.log).not.toContain('signedOut');
+    r.tokenAnswer.value = null;
+    r.clock.advance(2000);
+    await flush();
+    expect(r.log).toContain('signedOut');
+  });
+
+  it('a drop before the first welcome keeps the opening card (the shop was never on screen)', async () => {
+    const r = make();
+    await r.conn.start();
+    await flush();
+    r.sock().open();
+    r.sock().drop();
+    await flush();
+    expect(r.log.filter((l) => l.startsWith('phase'))).not.toContain('phase "reconnecting"');
+    expect(r.log.at(-1)).toBe('phase "joining"');
+  });
+
+  it('out of step or behind: the copy says it asked for the shop again (the dispatcher settles what it sent before)', async () => {
+    const r = await joined();
+    r.sock().deliver({ t: 'steps', s: [{ n: 9, h: 0 }] }); // a gap: 6 was due
+    await flush();
+    expect(r.log).toContain('resync');
+    expect(kinds(r.sock())).toContain('resync');
+  });
+
+  it("a slow device's line stays a while after its snapshot, then goes", async () => {
+    const r = await joined();
+    const at0 = 1_700_000_000_000;
+    r.sock().deliver({ t: 'steps', s: [{ n: 6, h: 0 }], at: at0 });
+    await flush();
+    r.clock.advance(BEHIND_MS + 1000);
+    r.sock().deliver({ t: 'steps', s: [{ n: 7, h: 0 }], at: at0 });
+    await flush();
+    r.sock().deliver(welcomeMsg(20));
+    r.sock().deliver(plainSnapshot(shopState()));
+    await flush();
+    expect(r.log.filter((l) => l.startsWith('notice')).at(-1)).toBe('notice "slow"');
+    r.clock.advance(SLOW_LINE_MS);
+    expect(r.log.filter((l) => l.startsWith('notice')).at(-1)).toBe('notice null');
+  });
+
+  it('steps read while the tab was hidden never count as falling behind', async () => {
+    const r = await joined();
+    const at0 = 1_700_000_000_000;
+    r.sock().deliver({ t: 'steps', s: [{ n: 6, h: 0 }], at: at0 });
+    await flush();
+    r.hidden.v = true;
+    r.conn.visibility(true);
+    r.clock.advance(60_000);
+    r.sock().deliver({ t: 'steps', s: [{ n: 7, h: 0 }], at: at0 + 1000 });
+    await flush();
+    r.hidden.v = false;
+    r.conn.visibility(false);
+    // the backlog arrives with old clocks just after the tab is shown
+    r.sock().deliver({ t: 'steps', s: [{ n: 8, h: 0 }], at: at0 + 2000 });
+    await flush();
+    expect(kinds(r.sock())).not.toContain('resync');
+    expect(r.log).not.toContain('notice "slow"');
+  });
+});
+

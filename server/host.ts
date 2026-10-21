@@ -9,7 +9,7 @@
  */
 import { gzipSync, gunzipSync } from 'node:zlib';
 import type { GameState } from '@/types';
-import { newGame } from '@/sim/newGame';
+import { newGame, previewStarters } from '@/sim/newGame';
 import { tutorialSkip } from '@/sim/facility';
 import { STARTER_IDS, type StarterId } from '@/data/species';
 import { decodeRecord, encodeRecord } from '@/persistence/serialize';
@@ -239,7 +239,10 @@ export class RoomHost {
   /** The owner's new shop (ADR-0045 decision 5): a new game with no guide, stored, then its lease. */
   private async create(m: Extract<OpenMode, { mode: 'create' }>): Promise<{ room: Room; pausers: string[] } | ClosingReason> {
     if (!(STARTER_IDS as readonly string[]).includes(m.starter)) return 'fault';
-    const state = newGame({ starterId: m.starter as StarterId, starterName: m.starterName, shopName: m.name, seed: m.seed });
+    // chunk 13 (the review's B1): the starter the owner saw on the new-game screens, previewed with this seed; without it
+    // newGame rolls another from the world's own stream
+    const starterCreature = typeof m.seed === 'number' ? previewStarters(m.seed)[m.starter as StarterId] : undefined;
+    const state = newGame({ starterId: m.starter as StarterId, starterName: m.starterName, shopName: m.name, seed: m.seed, ...(starterCreature ? { starterCreature } : {}) });
     tutorialSkip(state); // the guide teaches one player; in a shared shop it would pop up for everyone
     state.saveId = `shared_${this.club}`; // never a local slot's
     const enc = this.encode(state, this.clock.wall());

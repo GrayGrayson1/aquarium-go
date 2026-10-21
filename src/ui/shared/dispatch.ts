@@ -8,6 +8,8 @@
  *   without permission);
  * - a command no step settled when its connection dropped settles as not applied (a fresh snapshot shows the shop as it
  *   is), as does one sent while the shop isn't connected;
+ * - a command sent before this copy asked for the shop again (out of step, or behind) was applied in the steps that
+ *   snapshot covers, which this copy skipped: it settles when the snapshot lands, as done with no result of its own;
  * - a `raiseFlag` the shop already has settles at once and isn't sent (the server would answer nothing);
  * - pause and speed without permission aren't sent;
  * - a control that sends many values (a slider dragged, an amount typed) sends at most about 4 a second, the last one
@@ -72,11 +74,27 @@ export function coalesceKey(cmd: Command): string | null {
 
 const notApplied = (message: string): CommandResult => ({ ok: false, message });
 
+/** Applied in steps this copy skipped (a re-sync's snapshot holds it), so its own result isn't known here. */
+export const APPLIED_UNSEEN: CommandResult = { ok: true, message: '', noResult: true };
+
+/** Call each `done`; one that throws doesn't keep the rest from their result. */
+function settleAll(dones: readonly Done[], res: CommandResult | null): void {
+  for (const d of dones) {
+    try {
+      d(res);
+    } catch (e) {
+      console.warn('[shared] a follow-up failed', e);
+    }
+  }
+}
+
 export class SharedDispatcher {
   /** Commands sent and not yet settled, by id; each with the held-back values it stands for. */
   private readonly pending = new Map<number, Done[]>();
   /** Per control: when it last sent, and the newest value waiting to go. */
   private readonly controls = new Map<string, { sentAt: number; waiting: { cmd: Command; done: Done[] } | null; cancel: (() => void) | null }>();
+  /** Commands pending when this copy asked for the shop again: the snapshot that answers it holds them. */
+  private beforeResync: Set<number> | null = null;
 
   constructor(private readonly deps: SharedDispatchDeps) {}
 
@@ -113,8 +131,26 @@ export class SharedDispatcher {
       this.pending.delete(sc.id);
       const res = results[i] ?? null;
       if (res?.ok && res.noteBy) this.deps.note(W.changedThat(res.noteBy));
-      for (const d of dones) d(res);
+      settleAll(dones, res);
     });
+  }
+
+  /** This copy asked for the shop again: everything sent so far reaches the server before that request. */
+  resyncAsked(): void {
+    this.beforeResync = new Set([...(this.beforeResync ?? []), ...this.pending.keys()]);
+  }
+
+  /** A snapshot replaced the copy: what was sent before the re-sync is in it, its steps skipped here. */
+  resynced(): void {
+    const ids = this.beforeResync;
+    this.beforeResync = null;
+    if (!ids) return;
+    for (const id of ids) {
+      const dones = this.pending.get(id);
+      if (!dones) continue;
+      this.pending.delete(id);
+      settleAll(dones, APPLIED_UNSEEN);
+    }
   }
 
   /** The server didn't apply one of this player's commands (§3.3). */
@@ -123,7 +159,7 @@ export class SharedDispatcher {
     if (!dones) return;
     this.pending.delete(id);
     const message = why === 'rate' ? W.tooFast : why === 'forbidden' ? W.notAllowed(this.deps.ownerName()) : W.failed;
-    for (const d of dones) d(notApplied(message));
+    settleAll(dones, notApplied(message));
   }
 
   /** The connection dropped: what it carried and no step settled may or may not have happened; it settles as not applied. */
@@ -135,7 +171,8 @@ export class SharedDispatcher {
       if (c.waiting) all.push(...c.waiting.done);
     }
     this.controls.clear();
-    for (const d of all) d(null);
+    this.beforeResync = null;
+    settleAll(all, null);
   }
 
   /** Leaving the shop: nothing more will settle. */
@@ -146,7 +183,7 @@ export class SharedDispatcher {
   private sendNow(cmd: Command, dones: Done[]): void {
     const id = this.deps.sender()?.send(cmd) ?? null;
     if (id === null) {
-      for (const d of dones) d(null);
+      settleAll(dones, null);
       return;
     }
     this.pending.set(id, dones);

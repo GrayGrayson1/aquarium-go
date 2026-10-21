@@ -614,7 +614,7 @@ export function SettingsPanel() {
   const shared = useSharedMode((s) => s.club !== null); // chunk 13: a shared shop has no save button
   const saveFooter = inGame && !shared && SAVE_FOOTER_TABS.includes(tab);
   return (
-    <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={`Saved on this device · ${versionLabel()}`} footer={saveFooter ? <SaveNowFooter /> : undefined}>
+    <Sheet open={open} onClose={close} side="right" testId="panel-settings" label="Settings" className="ag-settings" title="Settings" subtitle={shared ? versionLabel() : `Saved on this device · ${versionLabel()}`} footer={saveFooter ? <SaveNowFooter /> : undefined}>
       <div className="ag-tcard__tabs">
         <Tabs<Tab>
           label="Settings section"

@@ -98,6 +98,8 @@ export interface ConnectionEvents {
   stillHere?(on: boolean): void;
   /** A connection ended: commands sent on it that no step settled are lost. */
   dropped?(): void;
+  /** This copy asked the server for the shop again (out of step, or behind): what it sent so far lands in that snapshot. */
+  resync?(): void;
 }
 
 /** §5.5, §7.5: the waits, in ms. */
@@ -112,7 +114,8 @@ export const RECONNECT_MAX_MS = 30_000;
 /** Ask for a fresh token this often anyway (Supabase's lasts an hour; the server allows 10 minutes' grace). */
 export const TOKEN_EVERY_MS = 45 * 60_000;
 const IDLE_CHECK_MS = 15_000;
-const HEALTH_RETRY_MS = 5_000;
+/** How long the slow device's line stays up after the snapshot it asked for (§7.6). */
+export const SLOW_LINE_MS = 12_000;
 
 /** `https://host` → `wss://host/shop`. */
 export function shopSocketUrl(base: string): string {
@@ -151,6 +154,9 @@ export class SharedConnection {
   /** The smallest (local − server) clock difference seen since the last snapshot: lag is measured above it. */
   private minSkew = Infinity;
   private resyncing = false;
+  /** The last re-sync was for falling behind: its line stays a while after the snapshot. */
+  private slowAsked = false;
+  private cancelSlow: (() => void) | null = null;
   private nextId = 1;
   private viewSent: string | null | undefined = undefined;
   private viewWanted: string | null = null;
@@ -187,7 +193,7 @@ export class SharedConnection {
   close(): void {
     if (this.ended) return;
     this.ended = true;
-    for (const c of [this.cancelRetry, this.cancelHidden, this.cancelIdle, this.cancelToken, this.cancelView, this.offToken]) c?.();
+    for (const c of [this.cancelRetry, this.cancelHidden, this.cancelIdle, this.cancelToken, this.cancelView, this.cancelSlow, this.offToken]) c?.();
     this.dropSocket();
   }
 
@@ -271,6 +277,8 @@ export class SharedConnection {
     this.cancelHidden?.();
     this.cancelHidden = null;
     this.lastInputAt = this.deps.now();
+    // steps that waited while the tab was hidden carry old clocks: not a sign of a slow device (the review's note 14)
+    this.minSkew = Infinity;
     if (this.hiddenDropped || this.awayDropped || (!this.ws && !this.cancelRetry)) {
       this.rejoin = this.hiddenDropped || this.awayDropped;
       this.hiddenDropped = false;
@@ -296,11 +304,10 @@ export class SharedConnection {
     const h = await this.deps.health(`${this.deps.base.replace(/\/+$/, '')}/health`).catch(() => null);
     if (this.ended) return;
     if (!h) {
-      // asleep, or unreachable: keep knocking while the player waits ("Waking the shared shop…")
-      this.cancelRetry = this.deps.after(HEALTH_RETRY_MS, () => {
-        this.cancelRetry = null;
-        void this.wake();
-      });
+      // asleep, or unreachable: keep knocking, with the usual growing waits and never from a hidden tab
+      const wait = this.retryMs;
+      this.retryMs = Math.min(RECONNECT_MAX_MS, this.retryMs * 2);
+      this.reconnectSoon(wait);
       return;
     }
     if (h.closed) return this.closed({ t: 'closing', why: h.closed, until: h.until ?? undefined });
@@ -310,8 +317,13 @@ export class SharedConnection {
   private async connect(refresh = false): Promise<void> {
     if (this.ended) return;
     this.events.phase?.(this.joiningPhase('joining'));
-    const token = await this.deps.token({ refresh }).catch(() => null);
+    // no session is the sign-in line (ADR-0049); a network failure fetching it is only a lost connection
+    const token = await this.deps.token({ refresh }).then(
+      (t) => t,
+      () => undefined,
+    );
     if (this.ended) return;
+    if (token === undefined) return this.lost();
     if (!token) return this.signedOut();
     const first: ClientMessage =
       this.joinAs.kind === 'create'
@@ -362,7 +374,16 @@ export class SharedConnection {
       this.replica.load(JSON.parse(json) as GameState, w.n, w.full);
       this.minSkew = Infinity;
       this.resyncing = false;
-      this.events.notice?.(null);
+      this.cancelSlow?.();
+      this.cancelSlow = null;
+      if (this.slowAsked) {
+        // a slow device's line stays a while: it says why the shop just jumped (§7.6)
+        this.slowAsked = false;
+        this.cancelSlow = this.deps.after(SLOW_LINE_MS, () => {
+          this.cancelSlow = null;
+          this.events.notice?.(null);
+        });
+      } else this.events.notice?.(null);
       const first = !this.everWelcomed;
       this.welcomed = true;
       this.everWelcomed = true;
@@ -422,18 +443,25 @@ export class SharedConnection {
    * further this clock has moved than the server's since the closest they came (re-based at every snapshot).
    */
   private checkBehind(at: number): void {
+    if (this.deps.hidden()) return;
     const skew = this.deps.wall() - at;
     if (skew < this.minSkew) this.minSkew = skew;
     if (this.resyncing || skew - this.minSkew <= BEHIND_MS) return;
     this.resyncing = true;
+    this.slowAsked = true;
     this.events.notice?.('slow');
-    this.tell({ t: 'resync' });
+    this.askResync();
   }
 
   private outOfStep(why: OutOfStep): void {
     void why;
     this.resyncing = true;
     this.events.notice?.('catchingUp');
+    this.askResync();
+  }
+
+  private askResync(): void {
+    this.events.resync?.();
     this.tell({ t: 'resync' });
   }
 
@@ -475,7 +503,8 @@ export class SharedConnection {
     this.rejoin = false;
     this.events.dropped?.();
     if (this.ended || this.hiddenDropped || this.awayDropped) return;
-    this.events.phase?.('reconnecting');
+    // before the first welcome the opening card stays (the shop isn't on screen yet: the review's note 2)
+    this.events.phase?.(this.joiningPhase('joining'));
     const wait = this.retryMs;
     this.retryMs = Math.min(RECONNECT_MAX_MS, this.retryMs * 2);
     this.reconnectSoon(wait);

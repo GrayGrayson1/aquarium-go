@@ -293,8 +293,8 @@ export function debugApi(): Record<string, unknown> {
       cloudState: () => ({ ...useCloud.getState() }),
     },
     fixtures: () => loadFixtureRegistry().then((r) => Object.keys(r)), // lane:perf2 — async (lazy registry)
-    newGame: (starterId?: Parameters<typeof dev.newGame>[0], name?: string, seed?: number) => dev.newGame(starterId, name, seed),
-    loadFixture: (name: string, view?: 'tank' | 'facility') => dev.loadFixture(name, view),
+    newGame: noSharedWrites((starterId?: Parameters<typeof dev.newGame>[0], name?: string, seed?: number) => dev.newGame(starterId, name, seed)),
+    loadFixture: noSharedWrites((name: string, view?: 'tank' | 'facility') => dev.loadFixture(name, view)),
     focusLargestTank: () => {
       const g = useGame.getState().game;
       const id = g ? largestTankId(g) : null;
@@ -304,7 +304,7 @@ export function debugApi(): Record<string, unknown> {
     state: () => useGame.getState().game,
     summary,
     getMoney: () => useGame.getState().game?.finance.money ?? null,
-    advance: (hours: number) => dev.advanceTime(hours),
+    advance: noSharedWrites((hours: number) => dev.advanceTime(hours)),
     listCreatures: (tankId?: string) => {
       const g = useGame.getState().game;
       if (!g) return [];
@@ -331,23 +331,23 @@ export function debugApi(): Record<string, unknown> {
     // persistence
     save: (slot = 'slot1') => saveCurrentGame(slot, { toast: false }),
     autosave: () => autosaveNow('dev'),
-    loadAndResume: (slot = 'auto') => loadAndResume(slot).then((r) => ({ ok: r.ok, error: r.error, summary: r.summary ?? null, restoredFromBackup: !!r.restoredFromBackup, migratedFrom: r.migratedFrom })),
-    continueGame: () => continueGame().then((r) => ({ ok: r.ok, slot: r.slot, error: r.error, summary: r.summary ?? null })),
+    loadAndResume: noSharedWrites((slot = 'auto') => loadAndResume(slot).then((r) => ({ ok: r.ok, error: r.error, summary: r.summary ?? null, restoredFromBackup: !!r.restoredFromBackup, migratedFrom: r.migratedFrom }))),
+    continueGame: noSharedWrites(() => continueGame().then((r) => ({ ok: r.ok, slot: r.slot, error: r.error, summary: r.summary ?? null }))),
     listSaves: () => listSaves(),
     /** Test helper: pretend a stored save was last played `ms` ago (the running game always stamps "now"). */
-    backdateSave: async (slot: string, ms: number) => {
+    backdateSave: noSharedWrites(async (slot: string, ms: number) => {
       const g = await loadGame(slot);
       if (!g) return false;
       g.lastTickRealMs = Date.now() - ms;
       g.lastSavedRealMs = g.lastTickRealMs;
       return (await saveGame(g, slot)).ok;
-    },
-    deleteSave: (slot: string) => deleteSave(slot),
+    }),
+    deleteSave: noSharedWrites((slot: string) => deleteSave(slot)),
     exportText: () => {
       const g = useGame.getState().game;
       return g ? exportSaveText(g) : null;
     },
-    importText: (text: string, slot?: string) => importSaveText(text, slot).then((r) => ({ ok: r.ok, error: r.error, slot: r.slot })),
+    importText: noSharedWrites((text: string, slot?: string) => importSaveText(text, slot).then((r) => ({ ok: r.ok, error: r.error, slot: r.slot }))),
     storageBackend: () => storage.backendName(),
     resumeSummary: () => useResume.getState().summary,
     stateHash: () => {

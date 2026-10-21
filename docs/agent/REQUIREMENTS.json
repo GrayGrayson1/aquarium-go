@@ -6047,7 +6047,9 @@
       "tasks": [],
       "tests": [
         "tests/sim/shared-server.test.ts",
-        "tests/sim/supabase-migration.test.ts"
+        "tests/sim/supabase-migration.test.ts",
+        "tests/e2e/shared-shop.spec.ts",
+        "tests/sim/shared-server-chunk13.test.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
@@ -6055,7 +6057,8 @@
         "SHARED-SHOPS.md §1",
         "SHARED-SHOPS.md §7.2"
       ],
-      "note": "Chunk 12 built the server's side; the create screens are chunk 13."
+      "note": "Chunk 13: the owner's Create shared shop on the club card, the new-game screens titled \"New shared shop\" (the starter previewed with the seed `create` sends), no guide in a shared shop; e2e creates it from the card in Chromium and WebKit.",
+      "_pending_green": true
     },
     {
       "id": "SHARE-005",
@@ -6088,14 +6091,18 @@
       "tests": [
         "tests/sim/shared-server.test.ts",
         "tests/sim/shared-room.test.ts",
-        "tests/e2e/shared-lockstep.spec.ts"
+        "tests/e2e/shared-lockstep.spec.ts",
+        "tests/sim/shared-client.test.ts",
+        "tests/sim/shared-dispatch.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
         "SHARED-SHOPS.md §5.4"
       ],
-      "note": "Chunk 12 built the server's side; the members list and its switch are chunk 13."
+      "note": "Chunk 13: the owner's members list with \"Can pause and change speed\" (grant), the refusal named for the owner (welcome.shop.owner; ADR-0049's \"the owner\" otherwise); unit and e2e: refused, granted, then allowed.",
+      "_pending_green": true
     },
     {
       "id": "SHARE-007",
@@ -6128,7 +6135,9 @@
       "tasks": [],
       "tests": [
         "tests/sim/shared-lockstep.test.ts",
-        "tests/sim/shared-server.test.ts"
+        "tests/sim/shared-server.test.ts",
+        "tests/sim/shared-connection.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
@@ -6136,7 +6145,8 @@
         "SHARED-SHOPS.md §5.5",
         "SHARED-SHOPS.md §7.5"
       ],
-      "note": "Chunk 12 built the server's side; \"Still here?\" is chunk 13."
+      "note": "Chunk 13: here/away with the tab, input once a minute, \"Still here?\" at 30 minutes and away at 31, a hidden tab disconnected after 2 minutes and rejoined when shown.",
+      "_pending_green": true
     },
     {
       "id": "SHARE-009",
@@ -6167,13 +6177,17 @@
         "(Chunk 13.)"
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/shared-own-game.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
+      ],
       "evidence": [],
       "status": "PENDING",
       "designSections": [
         "SHARED-SHOPS.md §7.2"
       ],
-      "note": "Chunk 13."
+      "note": "Chunk 13: src/persistence/sharedAway.ts: your own game saved and recorded on opening; resuming it leaves out the time in the shop (also after the browser closed inside it); e2e: back unchanged after 15 s in the shop.",
+      "_pending_green": true
     },
     {
       "id": "SHARE-011",
@@ -6184,13 +6198,17 @@
         "(Chunk 13.)"
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/shared-own-game.test.ts",
+        "tests/sim/shared-screens.test.ts"
+      ],
       "evidence": [],
       "status": "PENDING",
       "designSections": [
         "SHARED-SHOPS.md §7.3"
       ],
-      "note": "Chunk 13."
+      "note": "Chunk 13: the shared mode (src/state/sharedMode.ts) and isSharedShop: every save path (autosave, Save, Load, Import, Export, the online save, the leaderboard) refuses before its flush; a slot never takes a shared_ id; Settings › Saves' line.",
+      "_pending_green": true
     },
     {
       "id": "SHARE-012",
@@ -6201,14 +6219,19 @@
         "(Chunk 13; the tagging is chunk 11's.)"
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/shared-screens.test.ts",
+        "tests/sim/shared-client.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
+      ],
       "evidence": [],
       "status": "PENDING",
       "designSections": [
         "SHARED-SHOPS.md §4.3",
         "SHARED-SHOPS.md §8"
       ],
-      "note": "Chunk 13."
+      "note": "Chunk 13: the alerts line with the name in front (eventLine); pop-ups for pause, speed and a deal over $100, never one's own; others' feeds and taps drawn; e2e: \"Ola: Bought …\" in the other browser.",
+      "_pending_green": true
     },
     {
       "id": "SHARE-013",
@@ -6221,14 +6244,17 @@
       "tasks": [],
       "tests": [
         "tests/sim/commands-shared.test.ts",
-        "tests/sim/shared-lockstep.test.ts"
+        "tests/sim/shared-lockstep.test.ts",
+        "tests/sim/shared-client.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
         "SHARED-SHOPS.md §4.3"
       ],
-      "note": "Chunk 11: src/sim/commands/shared.ts; the words wait for group L (chunk 13)."
+      "note": "Chunk 13: the second sender is told who (\"Ann already sold that fish.\") from the command's result, a setting's note \"{name} already changed that.\"; conflictText approved (ADR-0048).",
+      "_pending_green": true
     },
     {
       "id": "SHARE-014",
@@ -6241,14 +6267,16 @@
       "tasks": [],
       "tests": [
         "tests/sim/shared-server.test.ts",
-        "tests/sim/supabase-migration.test.ts"
+        "tests/sim/supabase-migration.test.ts",
+        "tests/sim/shared-screens.test.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
         "SHARED-SHOPS.md §5.7"
       ],
-      "note": "Chunk 12 built the meters and the caps; the owner's card is chunk 13."
+      "note": "Chunk 13: the owner's meter and the closed-for-the-month lines on the club card, from sharedShops()/sharedUsage() (the server never woken for them); the cap and hours closings' words.",
+      "_pending_green": true
     },
     {
       "id": "SHARE-015",
@@ -6282,14 +6310,17 @@
       "tasks": [],
       "tests": [
         "tests/sim/shared-room.test.ts",
-        "tests/sim/shared-server.test.ts"
+        "tests/sim/shared-server.test.ts",
+        "tests/sim/shared-connection.test.ts",
+        "tests/sim/shared-screens.test.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
         "SHARED-SHOPS.md §5.1"
       ],
-      "note": "Chunk 12 built the identity and the server's answers; the Reload offer is chunk 13."
+      "note": "Chunk 13: hello carries SHARED_BUILD; `build` offers Reload once version.json names a newer build, `updating` says try again.",
+      "_pending_green": true
     },
     {
       "id": "SHARE-017",
@@ -6324,14 +6355,18 @@
       "tasks": [],
       "tests": [
         "tests/sim/shared-room.test.ts",
-        "tests/sim/shared-server.test.ts"
+        "tests/sim/shared-server.test.ts",
+        "tests/sim/shared-screens.test.ts",
+        "tests/sim/shared-connection.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
         "SHARED-SHOPS.md §4.4"
       ],
-      "note": "Chunk 12 built the server's side; shrinking and showing the photo are chunk 13."
+      "note": "Chunk 13: listing photos shrunk to about 320 px (WebP, JPEG when the browser hands back something else) and drawn from the bytes fetched over the connection (never a reference in <img src>); e2e: the photo on both screens.",
+      "_pending_green": true
     }
   ]
 }

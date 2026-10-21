@@ -113,7 +113,14 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     const ola = await player(browser, 'Ola', club, { owner: true });
     await test.step('the owner creates the shop from the club card', async () => {
       await openClubCard(ola, club);
-      await expect(tid(ola, `shared-card-${club}`)).toContainText('Play one aquarium together, live, with up to 10 club members.');
+      const card = tid(ola, `shared-card-${club}`);
+      // a stub server reused from an earlier run (E2E_REUSE=1) has the shop already: open it instead
+      await expect(card.getByTestId('shared-create').or(card.getByTestId('shared-open'))).toBeVisible({ timeout: 30_000 });
+      if (await card.getByTestId('shared-open').isVisible()) {
+        await openShop(ola, club);
+        return;
+      }
+      await expect(card).toContainText('Play one aquarium together, live, with up to 10 club members.');
       await createShop(ola, club);
       await expect(tid(ola, 'shared-strip')).toContainText('Shared · ');
       await expect(ola.getByText('Your club can open it from Social.')).toBeVisible();
@@ -184,9 +191,13 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     test.setTimeout(240_000);
     const club = clubFor(info);
     const ben = await player(browser, 'Ben', club);
-    const before = await gameOf(ben); // running at 1×: 0.1 game hours a real second
+    await openClubCard(ben, club);
+    const open = tid(ben, `shared-card-${club}`).getByTestId('shared-open');
+    await expect(open).toBeVisible({ timeout: 30_000 });
+    const before = await gameOf(ben); // running at 1×: 0.1 game hours a real second; read just before opening
     expect(before.clock.speed).toBe(1);
-    await openShop(ben, club);
+    await open.click();
+    await inShop(ben);
     await ben.waitForTimeout(15_000); // caught up, these 15 seconds would be 1.5 game hours
     await tid(ben, 'shared-back').click();
     await expect(tid(ben, 'shared-strip')).toBeHidden();
@@ -195,7 +206,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     const after = await gameOf(ben);
     expect(after.finance.money).toBe(before.finance.money);
     // only the moments before the save and after the return ran here
-    expect(after.clock.hour - before.clock.hour).toBeLessThan(0.7);
+    expect(after.clock.hour - before.clock.hour).toBeLessThan(0.5);
     await expect(tid(ben, 'welcome-back')).toHaveCount(0);
   });
 

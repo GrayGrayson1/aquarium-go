@@ -12,6 +12,8 @@
  * the starter screens show, and naming it opens the shop with `create`. OWNER: lane "social".
  */
 import type { GameState } from '@/types';
+import type { CommandResult } from '@/sim/commands';
+import type { SharedStep } from '@/sim/sharedStep';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { inSharedShop, setSharedMode } from '@/state/sharedMode';
@@ -22,6 +24,7 @@ import { defaultFocus } from '@/sim/catchUp';
 import {
   clearSharedAway,
   isSharedShop,
+  listSaves,
   loadAndResume,
   markSharedAway,
   readSharedAway,
@@ -32,14 +35,14 @@ import {
 import { SHARED_SHOP_SERVER, STUB_SHOP_SERVER, socialService } from '@/social';
 import type { ClosingMessage } from '@/types/shared';
 import { socialMode } from '../online/mode';
-import { useCloud } from '../online/cloudSync';
+import { sendNow, useCloud } from '../online/cloudSync';
 import { setSharedMarkHandler, type Mark } from '../common/marks';
 import { SharedConnection, type ConnectionDeps, type JoinAs, type Welcome } from './connection';
 import { SharedDispatcher } from './dispatch';
 import { SharedActivity, toastPopup } from './activity';
 import { overlayMarks, readMarks, recordMark, type SharedMarks } from './marks';
 import { clearSharedPhotos, photoArrived, photosReconnected, setPhotoRequester } from './photos';
-import { forgetSharedShops } from './shopsCache';
+import { cachedShops, forgetSharedShops } from './shopsCache';
 import { INITIAL_VISIT, mayPause, patchShared, useShared, type SharedClosing } from './store';
 import { SHARED_WORDS as W } from './words';
 
@@ -112,10 +115,18 @@ interface Visit {
   created: boolean;
   /** The welcome-back summary already shown this visit (a welcome repeats it for 2 minutes). */
   catchUp: string | null;
+  /** The batch being applied carried a command (its publish counts as a player action; a time step's doesn't). */
+  hadCommand: boolean;
+  /** This batch's steps, settled once its copy is on screen (follow-ups read the store, as in a solo game). */
+  toSettle: { step: SharedStep; results: CommandResult[] }[];
   offs: (() => void)[];
 }
 
 let visit: Visit | null = null;
+/** This visit wrote the device's record of your own aquarium waiting (opening from the title writes none). */
+let awayRecorded = false;
+/** A leave under way: a second one (a closing as Back is pressed) waits for it rather than starting again. */
+let leaving: Promise<void> | null = null;
 
 export interface OpenOptions {
   from: 'game' | 'title';
@@ -155,17 +166,36 @@ async function health(url: string): Promise<{ closed: 'cap' | 'hours' | null; un
 /** Save your own aquarium and record that it waits (§7.2). False (with the save's own words) when it couldn't be. */
 async function parkOwnGame(club: string, from: 'game' | 'title'): Promise<boolean> {
   const g = useGame.getState().game;
-  if (from === 'title' || !g || g.isShowcase || isSharedShop(g)) {
-    markSharedAway(club, null, 'title');
-    return true;
-  }
+  // from the title there's no aquarium to keep, and a record left by a browser closed inside a shop stays for its save
+  if (from === 'title' || !g || g.isShowcase || isSharedShop(g)) return true;
   const res = await saveCurrentGame('auto', { flush: true, toast: false });
   if (!res.ok) {
     useUI.getState().toast(res.message, 'danger');
     return false;
   }
   markSharedAway(club, g.saveId, 'game');
+  awayRecorded = true;
+  void sendNow().catch(() => {}); // with its online copy, as any save (the 2-minute gap would fall inside the shop)
   return true;
+}
+
+/**
+ * Before anything wakes the server (§5.7: any request does, and closed shops mustn't): a player signed out, or shops
+ * closed for the month, get the line at once. A visit that parked your own aquarium already (the owner's create) goes
+ * back to it. True when the visit may go on.
+ */
+async function mayOpen(club: { id: string; name: string }, from: 'game' | 'title', parked: boolean): Promise<boolean> {
+  const svc = socialService();
+  const token = svc.accessToken ? await svc.accessToken().then((t) => t, () => undefined) : null;
+  let closing: SharedClosing | null = token === null ? { why: 'signedOut' } : null;
+  if (!closing) {
+    const shops = await cachedShops(() => svc.sharedShops()).catch(() => null);
+    if (shops?.closed) closing = { why: shops.closed, ...(shops.reopens ? { until: shops.reopens } : {}) };
+  }
+  if (!closing) return true;
+  patchShared({ ...INITIAL_VISIT, club, from, closing, phase: 'closed' });
+  if (parked) await returnToOwnGame(from);
+  return false;
 }
 
 /**
@@ -195,6 +225,8 @@ export async function openSharedShop(club: { id: string; name: string }, opts: O
   if (visit) return;
   const base = sharedServerBase();
   if (!base) return;
+  if (!(await mayOpen(club, opts.from, !!opts.saved))) return;
+  if (visit) return;
   patchShared({ ...INITIAL_VISIT, phase: 'saving', club, from: opts.from, shopName: opts.shopName ?? '', creating: !!opts.create });
   if (!opts.saved && !(await parkOwnGame(club.id, opts.from))) {
     patchShared({ ...INITIAL_VISIT });
@@ -227,11 +259,18 @@ export async function openSharedShop(club: { id: string; name: string }, opts: O
     {
       phase: (p) => patchShared({ phase: p }),
       welcome: (w, first) => welcomed(v, w, first),
-      applied: () => publish(v, true),
-      step: (step, results) => {
-        v.disp.settleStep(step, results);
-        v.activity.step(step, results);
+      applied: () => {
+        // the copy first, then the results: a follow-up reads the store, which then holds what its command did
+        publish(v, v.hadCommand);
+        v.hadCommand = false;
+        for (const { step, results } of v.toSettle.splice(0)) v.disp.settleStep(step, results);
       },
+      step: (step, results) => {
+        if (step.cmds?.length || step.post?.length) v.hadCommand = true;
+        if (step.cmds?.length) v.toSettle.push({ step, results });
+        v.activity.step(step, results); // the pop-ups read this step's own copy (money before and after)
+      },
+      resync: () => v.disp.resyncAsked(),
       reject: (id, why) => v.disp.reject(id, why),
       members: (members) => patchShared({ members }),
       closing: (m) => void closed(m),
@@ -257,7 +296,7 @@ export async function openSharedShop(club: { id: string; name: string }, opts: O
     popup: toastPopup,
     focusedTank: () => (useUI.getState().view === 'tank' ? useUI.getState().focusedTankId : null),
   });
-  v = { conn, disp, activity, base: null, marks: {}, created: !!opts.create, catchUp: null, offs: [] };
+  v = { conn, disp, activity, base: null, marks: {}, created: !!opts.create, catchUp: null, hadCommand: false, toSettle: [], offs: [] };
   visit = v;
   useGame.getState().installDispatch(disp.dispatch);
   setPhotoRequester((hash) => {
@@ -279,7 +318,7 @@ function wire(v: Visit): void {
   const offView = useUI.subscribe((s, p) => {
     if (s.focusedTankId !== p.focusedTankId || s.view !== p.view) v.conn.view(s.view === 'tank' ? s.focusedTankId : null);
   });
-  const beat = setInterval(() => sharedAwayHeartbeat(), HEARTBEAT_MS);
+  const beat = setInterval(() => awayRecorded && sharedAwayHeartbeat(), HEARTBEAT_MS);
   v.offs.push(
     () => {
       for (const ev of ['pointerdown', 'keydown', 'wheel'] as const) window.removeEventListener(ev, onInput, { capture: true });
@@ -311,7 +350,10 @@ function welcomed(v: Visit, w: Welcome, first: boolean): void {
   });
   v.base = null; // a snapshot replaces the whole copy
   v.activity.reset();
+  v.toSettle = [];
   publish(v, true);
+  // what this copy sent before asking for the shop again is in this snapshot; its steps were skipped here
+  if (!first) v.disp.resynced();
   const ownerName = w.shop.owner ?? (you.owner ? you.name : useShared.getState().ownerName);
   patchShared({ you, members: w.members, shopName: w.shop.name || useShared.getState().shopName, ownerName, creating: false });
   const summary = w.catchUp && w.catchUp.hours > 0 ? JSON.stringify(w.catchUp) : null;
@@ -345,7 +387,7 @@ function welcomed(v: Visit, w: Welcome, first: boolean): void {
 async function closed(m: ClosingMessage): Promise<void> {
   const closing: SharedClosing = { why: m.why, ...(m.until ? { until: m.until } : {}), ...(m.savedAt !== undefined ? { savedAt: m.savedAt } : {}) };
   const club = useShared.getState().club;
-  if (m.why === 'gone' && club) forgetOpened(club.id);
+  if ((m.why === 'gone' || m.why === 'removed') && club) forgetOpened(club.id); // off the title screen
   await leaveSharedShop({ closing });
 }
 
@@ -353,7 +395,17 @@ async function closed(m: ClosingMessage): Promise<void> {
  * Leave the shop: the connection closes, the solo dispatcher comes back, and your own aquarium loads with no catch-up
  * for the time away (or the title screen, when you came from there). `closing`: the server's reason, shown after.
  */
-export async function leaveSharedShop(o: { closing?: SharedClosing } = {}): Promise<void> {
+export function leaveSharedShop(o: { closing?: SharedClosing } = {}): Promise<void> {
+  if (leaving) return leaving;
+  // nothing to leave (a second Back after a closing took the player back already)
+  if (!visit && !inSharedShop()) return Promise.resolve();
+  leaving = leave(o).finally(() => {
+    leaving = null;
+  });
+  return leaving;
+}
+
+async function leave(o: { closing?: SharedClosing }): Promise<void> {
   const v = visit;
   const from = useShared.getState().from;
   const club = useShared.getState().club;
@@ -363,7 +415,7 @@ export async function leaveSharedShop(o: { closing?: SharedClosing } = {}): Prom
     v.disp.close();
     for (const off of v.offs) off();
   }
-  sharedAwayHeartbeat();
+  if (awayRecorded) sharedAwayHeartbeat();
   forgetSharedShops(); // the club cards show the shop's new day and money
   setSharedMarkHandler(null);
   setPhotoRequester(null);
@@ -377,13 +429,18 @@ export async function leaveSharedShop(o: { closing?: SharedClosing } = {}): Prom
 
 /** Your own aquarium again, as it was when you left it (or the title screen). */
 async function returnToOwnGame(from: 'game' | 'title'): Promise<void> {
-  const away = readSharedAway();
+  const ours = awayRecorded;
+  awayRecorded = false;
+  const away = ours ? readSharedAway() : null;
   if (from === 'title' || !away?.saveId) {
-    clearSharedAway();
+    if (ours) clearSharedAway();
     useUI.getState().set({ screen: 'title', panel: null });
     return;
   }
-  const r = await loadAndResume('auto').catch(() => null);
+  // the save that waited, wherever it is now (another tab may have autosaved another aquarium meanwhile)
+  const saves = await listSaves().catch(() => []);
+  const slot = saves.filter((m) => m.saveId === away.saveId && !m.previousOf).sort((a, b) => b.savedAt - a.savedAt)[0]?.slot ?? 'auto';
+  const r = await loadAndResume(slot).catch(() => null);
   if (!r?.ok) {
     if (r?.error) useUI.getState().toast(r.error, 'danger');
     useUI.getState().set({ screen: 'title', panel: null });

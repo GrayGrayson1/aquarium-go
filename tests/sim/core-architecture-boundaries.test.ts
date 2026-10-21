@@ -218,3 +218,17 @@ describe('chunk 10: the shared-shop server reaches only what every copy runs (SH
     expect(serverPackages).toContain('ws');
   }, 300_000);
 });
+
+describe('chunk 13: the shared mode, on purpose (SHARED-SHOPS.md §3.2 rule 11)', () => {
+  it('is a state module importing nothing but zustand, so persistence and the loop can read it', async () => {
+    const code = await readFile(join(SRC, 'state', 'sharedMode.ts'), 'utf8');
+    const specs = [...code.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)].map((m) => m[1]);
+    expect(specs).toEqual(['zustand']);
+  });
+
+  it('persistence, the loop and autosave read it from state (never from the interface)', async () => {
+    for (const f of ['persistence/sharedAway.ts', 'game/GameLoop.tsx']) expect(await readFile(join(SRC, f), 'utf8'), f).toMatch(/from '@\/state\/sharedMode'/);
+    expect(await readFile(join(SRC, 'game', 'useAutosave.ts'), 'utf8')).toMatch(/from '@\/persistence\/sharedAway'/);
+  });
+});
+
