@@ -10,6 +10,7 @@
  * `http://127.0.0.1:*` for any local port; off Render only); SHOPS_DIR (the stub shops' folder).
  */
 import { ONLINE_PROJECT } from '@/social/project';
+import { SHARED_BUILD } from '@/types/shared';
 
 /** The game's sites (§5.3): GitHub Pages and the Render static site. */
 export const GAME_ORIGINS = ['https://graygrayson1.github.io', 'https://aquarium-go.onrender.com'] as const;
@@ -43,7 +44,8 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     replay: stub && env.SHOPS_REPLAY === '1',
     project: ONLINE_PROJECT ? { url: ONLINE_PROJECT.url, publishableKey: ONLINE_PROJECT.publishableKey } : null,
     key,
-    version: env.npm_package_version ?? '0.0.0',
+    // the release, as the build stamped it (vite.sharedBuild.ts); `env` is a parameter, which a build's define can't reach
+    version: SHARED_BUILD.version,
   };
 }
 

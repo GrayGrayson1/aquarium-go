@@ -303,3 +303,24 @@ in commands (the owner dislikes approving command after command). Report a test 
   it (each touch keeps one); otherwise the game's own later change would be overridden. Offers and the last stored
   piece have no mark on purpose.
 
+
+**Learned in chunk 12.**
+- *The server's password, not a Supabase key* (ADR-0047): a secret key also opens Supabase Auth's admin tools, which no
+  database rule limits. `node scripts/shared-server-key.mjs --yes` (from the internal-disk clone, which is linked to the
+  project) stores a new password's SHA-256 and leaves the password on the clipboard only; the old one stops at once.
+  The agent can't put it into Render (the CLI can't set environment variables; reading the CLI's sign-in to use the API
+  is blocked by Claude Code's safety check). What worked: a prompt for a browser-capable Claude in the owner's Chrome
+  profile, which stops before pasting; the owner says "make it", the agent runs the script, the owner says "go". Copying
+  the prompt overwrites the clipboard, so the password is made last. Never ask for the password in chat: one pasted
+  there had to be replaced. Check it took from the build log (`render logs --resources srv-dbbt6gbncjis73c23br0 --text
+  "env names"`: the names only; `SHOPS_SERVER_KEY` must be absent) and the server's start-up line (no "not set").
+- *Never run a build command to "check" it:* piping `npm ci && …` into `head` ran `npm ci` in the Dev repo before the
+  pipe closed and left its `node_modules` half-installed (reinstalled afterwards). Test a command's quoting with `echo`.
+- *A preflight before a live migration:* a read-only query (who runs it, role memberships, what `service_role` reaches,
+  whose default privileges) told in advance that the migration's own final check would pass.
+- *Rooms in the unit tests run in-thread* (`inline` in `server/rooms.ts`) with one fake clock for the rooms, the server's
+  jobs and the stub database (`tests/sim/support/sharedServer.ts`); real workers are covered by e2e against the built
+  server. A test that waits on the server must move the fake clock (`pump`), or command steps (flushed 50 ms later)
+  never go out.
+- *The simulation shrugs off most broken data* (a null `water` or `market` steps fine): to make a step throw in a test,
+  null `finance`, `progress`, a creature's `stats` or a tank's `decor`.

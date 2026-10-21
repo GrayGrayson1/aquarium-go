@@ -15,7 +15,6 @@ export default defineConfig({
   // the build identity every copy of a shop checks (§5.1), as the game's build stamps it
   plugins: [sharedBuild(fileURLToPath(new URL('.', import.meta.url)), APP_VERSION)],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  define: { 'process.env.npm_package_version': JSON.stringify(APP_VERSION) },
   publicDir: false,
   build: {
     ssr: true,
