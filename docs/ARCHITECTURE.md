@@ -275,6 +275,16 @@ copy counts; every member's browser applies the same steps (§3).
   `shared_shops`, `shared_photos`, `shared_usage` (no access for the browser), the server's `server_*` functions, which
   refuse without its password (`private.require_server`: the SHA-256 in `private.server_key`), and the game's
   `club_shared_shops()` and `shared_usage()`. `service_role` reaches nothing in `public` or `private`.
+- **The game's side** (chunk 13; SHARED-SHOPS.md §7, §8). `src/ui/shared`: the connection (`connection.ts`, the
+  browser's own WebSocket: it wakes the server, joins with the player's access token from `SocialService.accessToken`,
+  feeds the replica the server's steps, and keeps the player "there"), the shared dispatcher (`dispatch.ts`, installed
+  on the game store while a shop is open: a command settles when its step lands), the visit (`session.ts`: your own
+  aquarium saved and recorded first, the copy published to the store with `share` and `setGame`, each player's marks laid
+  over it, leaving back to your own save with no catch-up), and the screens. Whether a shop is open is one flag in
+  `src/state/sharedMode.ts`, which persistence (`isSharedShop` in `sharedAway.ts`: every save path refuses a shared shop
+  before its flush), the game loop (it doesn't tick one) and the hidden-tab catch-up read. A shop's own id is
+  `shared_<club>` when it was made by `create`; the slot layer never writes one, whoever asks. Dev and e2e pair the
+  local Social stub with the stub server (`STUB_SHOP_SERVER`, port 4396, or `VITE_SHARED_SHOP_SERVER`).
 
 **The owner's runbook** (each with the owner's yes; every command scoped with `--linked --project-ref <ref>`, the ref
 in PLAN.md's chunk 8 record):

@@ -162,6 +162,11 @@ rules, run where it counts; stage 2's model (ADR-0038), ahead of the solo game.
   per club by its hash and every copy holds only the reference (`p:` and the hash), which `repairState` keeps and the
   interface never puts in an `<img src>`; it is served only over the socket, only for a listing of the shop.
 
+- **The game's side (chunk 13).** In a shared shop the browser changes nothing itself: player actions go to the server
+  as commands (the shared dispatcher), each player's "seen" marks stay on the device (`src/ui/shared/marks.ts`), the dev
+  tools and `window.__AQ`'s writes refuse, and nothing saves the shop on the device or online. The welcome names the
+  shop's owner (a room looks up its own club's members only, `roomCallAllowed`).
+
 ## Not for a server
 
 Camera, panels, settings, notification preferences and the alerts drawer's read marks (`markAllRead`, `clearAllEvents`)

@@ -190,7 +190,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     await ben.waitForTimeout(15_000); // caught up, these 15 seconds would be 1.5 game hours
     await tid(ben, 'shared-back').click();
     await expect(tid(ben, 'shared-strip')).toBeHidden();
-    await expect.poll(async () => (await gameOf(ben)).saveId, { timeout: 20_000 }).toBe(before.saveId);
+    await expect.poll(async () => (await gameOf(ben))?.saveId ?? null, { timeout: 20_000 }).toBe(before.saveId);
     await aq(ben, 'dev.setSpeed', 0);
     const after = await gameOf(ben);
     expect(after.finance.money).toBe(before.finance.money);

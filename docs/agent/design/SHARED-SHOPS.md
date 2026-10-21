@@ -214,8 +214,8 @@ Server to browser:
 
 | Message | Meaning |
 |---|---|
-| `{t:'welcome', you, shop, members, n, full, catchUp?}` then a snapshot frame | Joined: who I am and may do (`{id, name, owner, pause}`: the id is the account's), the shop (`{club, name}`), who's there (`{id, name, here, pause}`), the step number the snapshot is at, the full-detail list, and the welcome-back summary if the shop caught up in the last 2 minutes. After a catch-up into a loaded room every member gets a welcome and a snapshot again |
-| `{t:'steps', s:[{n, h, full?, cmds?, post?, fp?}]}` | Steps in order; each command in `cmds` is `{by, who, id, at, c}`: the sender's id and name, their own id for it, the server's time it arrived (first one wins' 30 seconds, §4.3), and the command. Command steps go out within about 50 to 100 ms (several commands in that window share a frame to each member); time steps are batched about once a second |
+| `{t:'welcome', you, shop, members, n, full, catchUp?}` then a snapshot frame | Joined: who I am and may do (`{id, name, owner, pause}`: the id is the account's), the shop (`{club, name, owner?}`; chunk 13: `owner`, the owner's name, for the pause refusal, when the shop has a recorded owner), who's there (`{id, name, here, pause}`), the step number the snapshot is at, the full-detail list, and the welcome-back summary if the shop caught up in the last 2 minutes. After a catch-up into a loaded room every member gets a welcome and a snapshot again |
+| `{t:'steps', s:[{n, h, full?, cmds?, post?, fp?}], at?}` | Steps in order; each command in `cmds` is `{by, who, id, at, c}`: the sender's id and name, their own id for it, the server's time it arrived (first one wins' 30 seconds, §4.3), and the command. Command steps go out within about 50 to 100 ms (several commands in that window share a frame to each member); time steps are batched about once a second. Chunk 13: `at`, the server's clock when it sent them; a browser whose own clock has moved more than 10 seconds further since the closest the two came is behind (§7.6) |
 | a binary photo frame | A requested photo: the tag 3, the hash's 64 hex characters, a type byte (1 WebP, 2 JPEG), then the image |
 | `{t:'reject', id, why}` | Your command wasn't applied: `forbidden` (pause without permission, or the guide's own steps, §5.4), `malformed`, `rate` (over 10 commands a second, or 6 photo listings a minute), or `failed` (it threw on the server, §5.2). A command the game refuses by its rules (no money, already sold) is applied as usual, so every copy gets the same refusal and the sender's own copy says why (§4.3). A `raiseFlag` whose flag the shop already has is dropped without a reply (§4.3) |
 | `{t:'members', members}` | Who's there and who can pause (not what each is looking at, which no screen shows); at most one a second |
@@ -533,7 +533,9 @@ refused because another holder has the lease closes the room with `closing: rest
 | `src/persistence/migrations.ts` | `repairState` accepts a photo reference (§4.4) |
 | `src/social/service.ts`, `localStub.ts`, `supabase/*` | `sharedShops()` and `sharedUsage()` (§6.3), in the stub too |
 | `src/social/project.ts` | `SHARED_SHOP_SERVER` |
-| `src/ui/shared/*` (new) | The connection (the browser's own `WebSocket`, no library) and its store, the club card, the title button, the HUD strip, "Still here?", the members list, the messages |
+| `src/ui/shared/*` (new) | The connection (the browser's own `WebSocket`, no library) and its store, the club card, the title button, the HUD strip, "Still here?", the members list, the messages. As built in chunk 13: `connection.ts` (wake, join, the replica, `here`/`away`/`input`, "Still here?", `token`, `resync`, falling behind, the waits, `closing` and `bye`), `dispatch.ts` (the shared dispatcher), `session.ts` (opening, your own game waiting, leaving, publishing the copy), `store.ts`, `marks.ts` (each player's marks over the copy), `photos.ts`, `activity.ts` (others' pop-ups, feeds and taps, the starvation toast), `words.ts` (§8's words), `shopsCache.ts`, `SharedScreens.tsx`, `SharedClubSection.tsx`, `shared.css` |
+| `src/state/sharedMode.ts` (new, chunk 13) | The one flag every layer reads: a shared shop is open (persistence and the loop refuse it, §3.2 rule 11) |
+| `src/persistence/sharedAway.ts` (new, chunk 13) | Your own game's record while you're away in a shop, and `isSharedShop`, the save paths' guard (§7.2, §7.3) |
 | `server/*` (new) | §5 |
 
 The connection lives in `src/ui` (it touches the store and the save), like the online save; `social` stays free of the
@@ -642,6 +644,13 @@ production lines).
 | Settings › Saves, in a shared shop | "This is {club}'s shared shop: it saves on the server. Your own aquarium is saved and waits for you." [Back to my aquarium] |
 | Save, Load, Import or Export tried in a shared shop | "The shared shop saves itself on the server." |
 
+**Two more, approved as written** (2026-10-21, ADR-0049, chunk 13):
+
+| Where | Words |
+|---|---|
+| Signed out, or the sign-in ended (the visit can't sign the player in; back to their own aquarium or the title) | "You need to be signed in to play the shared shop. Sign in from Social and open it again." |
+| Pause refused when the game doesn't know the owner's name | "Only the owner and the people they choose can pause or change the speed." |
+
 ## 9. Tests
 
 ### 9.1 Unit (`npm test`)
@@ -680,7 +689,13 @@ production lines).
 
 Playwright starts the stub server beside Vite. Two browser contexts in one shop: a purchase in one appears in the other;
 pause refused, then granted; the activity line and pop-up; first one wins; a listing photo shows on both; leaving
-brings your own game back unchanged, with no catch-up; "Still here?"; reconnect after the server restarts. **The
+brings your own game back unchanged, with no catch-up; "Still here?"; reconnect after the server restarts. (Chunk 13,
+`tests/e2e/shared-shop.spec.ts`: the owner creates the shop from the club card through the new-game screens and the
+member opens it from the card, each browser project in a club of its own (the stub opens the local Social stub's clubs
+to every stub player); the restart is a stub server the spec starts, kills and starts again, the game pointed at it with
+the dev-only `?shops=`. The unit side: `shared-client` runs the game's connection and dispatcher against the server in
+process, `shared-connection` the timers on a fake socket, `shared-dispatch`, `shared-own-game` (the save guards and your
+own game waiting), `shared-screens`, and `shared-server-chunk13` the server's additions.) **The
 cross-engine replay** (§3.2 rule 1): one step log replayed in Node, a Chromium page and a WebKit page on `big_facility`
 and a playthrough at 1× and 10×: no mismatch. Firefox isn't in the suite; `dmath` makes it the same arithmetic.
 
