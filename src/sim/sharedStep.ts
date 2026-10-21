@@ -2,7 +2,8 @@
  * Shared shops' step block (SHARED-SHOPS.md §3.2 rule 2). The server's room and every browser's replica run each step
  * through this one function, so every copy does the same things in the same order with the same arithmetic
  * (./dmath.ts): pin the world's identity, clear the caches that answer by a rounded signature, apply the step's
- * commands, advance its game hours with the full-detail list, then apply the server's after-step changes.
+ * commands, advance its game hours with the full-detail list (background tanks' flushes staggered, rule 5), then
+ * apply the server's after-step changes.
  */
 import type { GameState } from '@/types';
 import { advanceWorld, pinWorld } from './world';
@@ -59,7 +60,7 @@ export function runSharedStep(state: GameState, step: SharedStep, full: readonly
   clearReachCache();
   const results: CommandResult[] = [];
   for (const sc of step.cmds ?? []) results.push(applyCommand(s, sc.c, { id: sc.by, name: sc.who ?? sc.by, at: sc.at ?? 0 }));
-  if (step.h > 0) advanceWorld(s, step.h, { focusTankIds: full });
+  if (step.h > 0) advanceWorld(s, step.h, { focusTankIds: full, stagger: true });
   for (const c of step.post ?? []) applyCommand(s, c);
   return { state: s, results };
 }

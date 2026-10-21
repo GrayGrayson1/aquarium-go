@@ -27,6 +27,7 @@ import { renamedMorphs, resolveMorph } from '@/sim/life/genetics';
 import { sanitizeRareVariant } from '@/sim/life/rareVariants'; // lane:genetics
 import { backfillFinds } from '@/sim/life/discovery'; // lane:genetics
 import { emptyShowsState } from '@/sim/shows/state'; // B-168
+import { PHOTO_REF } from '@/types/shared'; // chunk 12: a shared shop's listing photo
 import { CLASS_DEFAULTS } from '@/sim/water/constants'; // chunk 6 (PERSIST-004, B-004)
 import { LOG_CAP } from '@/sim/context';
 import { BUYER_ARCHETYPES } from '@/data/buyers';
@@ -691,8 +692,10 @@ export function repairState(s: Json): string[] {
     l.creatureIds = strings(l.creatureIds).filter(isSafeKey);
     if (!isObj(l.snapshot)) l.snapshot = { valuation: 0, healthScore: 0, beautyScore: 0, careDifficulty: '', lineageSummary: '', summary: '', creatureIds: l.creatureIds };
     // lane:core (S0 review, PERSIST-004) — a listing photo is an embedded image (capturePhoto's data URL). Anything else
-    // would be rendered as <img src>, the only way a save could make the game fetch a remote URL.
-    if (l.snapshot.photo !== undefined && !(typeof l.snapshot.photo === 'string' && l.snapshot.photo.startsWith('data:image/'))) {
+    // would be rendered as <img src>, the only way a save could make the game fetch a remote URL. Chunk 12
+    // (SHARED-SHOPS.md §4.4): a shared shop's photo is a stored photo's reference, `p:` and its hash (PHOTO_REF), which
+    // the interface never puts in <img src>; that one form, and nothing else, is kept too.
+    if (l.snapshot.photo !== undefined && !(typeof l.snapshot.photo === 'string' && (l.snapshot.photo.startsWith('data:image/') || PHOTO_REF.test(l.snapshot.photo)))) {
       delete l.snapshot.photo;
       repairs.push(`listing ${String(l.id).slice(0, 40)}: photo was not an embedded image, removed`);
     }

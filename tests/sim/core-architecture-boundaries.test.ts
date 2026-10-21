@@ -163,6 +163,12 @@ describe('CONST-004: architecture lock: layer import directions', () => {
  */
 const SERVER_LAYERS = new Set(['types', 'data', 'sim']);
 const SERVER_PERSISTENCE = new Set(['hash.ts', 'serialize.ts', 'migrations.ts', 'schema.ts', 'types.ts']);
+/**
+ * Chunk 12 (SHARED-SHOPS.md §5.8): the server's public settings live in code, so it reads the Supabase project's address
+ * and publishable key from the one file that holds them (and the shop server's address beside them). That file imports
+ * nothing (checked below), so allowing it brings nothing else with it.
+ */
+const SERVER_ALSO = new Set(['social/project.ts']);
 
 async function serverClosure(): Promise<{ reached: string[]; serverPackages: string[] }> {
   const srcFiles = await allFiles(SRC);
@@ -194,12 +200,17 @@ describe('chunk 10: the shared-shop server reaches only what every copy runs (SH
     expect(reached.length).toBeGreaterThan(50);
     expect(reached).toContain('sim/sharedStep.ts');
     const outside = reached.filter((r) => {
+      if (SERVER_ALSO.has(r)) return false;
       const [layer, ...rest] = r.split('/');
       if (SERVER_LAYERS.has(layer)) return false;
       return !(layer === 'persistence' && rest.length === 1 && SERVER_PERSISTENCE.has(rest[0]));
     });
     expect(outside).toEqual([]);
   }, 300_000);
+
+  it('chunk 12: the settings file it may also read imports nothing', async () => {
+    for (const f of SERVER_ALSO) expect(await readFile(join(SRC, f), 'utf8'), f).not.toMatch(/^\s*(import|export\s.*\sfrom)\s/m);
+  });
 
   it('its own packages are ws and Node’s modules', async () => {
     const { serverPackages } = await serverClosure();

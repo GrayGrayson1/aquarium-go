@@ -17,8 +17,8 @@ import { defineConfig, devices } from '@playwright/test';
  * developer tools even with ?dev=1, and (chunk 8, REL-025) Social as players see it, on the stub. ADR-0024 decision 3 (B-129): every spec also runs in WebKit,
  * Safari's engine (`webkit`, `webkit-base-path`, `webkit-prod`; Playwright's own WebKit build, no npm package).
  * `--project=desktop` runs Chromium alone.
- * Chunk 10 (SHARE-002) — it also builds and starts the shared-shop prototype server (server/, stub shops) on
- * E2E_SHOPS_PORT (default 4396) for shared-lockstep.spec.ts.
+ * Chunk 10 (SHARE-002) — it also builds and starts the shared-shop server (server/; chunk 12: on its stub accounts and
+ * storage, with the stub shops) on E2E_SHOPS_PORT (default 4396) for shared-lockstep.spec.ts.
  */
 const PORT = Number(process.env.E2E_PORT ?? 4399);
 const PREVIEW_PORT = Number(process.env.E2E_PREVIEW_PORT ?? 4398);
@@ -90,12 +90,13 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // chunk 10 (SHARE-002) — built as Render builds it, with the replay's step-log endpoint on; local origins only
+      // chunk 10 (SHARE-002) — built as Render builds it, with the replay's step-log endpoint on; local origins only.
+      // Chunk 12: the real server on its stub accounts and storage (never the live database)
       command: `npm run build:server && node dist-server/main.js`,
       url: `http://127.0.0.1:${SHOPS_PORT}/health`,
       reuseExistingServer: false,
       timeout: 180_000,
-      env: { PORT: String(SHOPS_PORT), SHOPS_REPLAY: '1', ALLOWED_ORIGINS: 'http://127.0.0.1:*' },
+      env: { PORT: String(SHOPS_PORT), SHOPS_STUB: '1', SHOPS_REPLAY: '1', ALLOWED_ORIGINS: 'http://127.0.0.1:*' },
     },
     {
       command: `npx vite --host 127.0.0.1 --port ${PORT} --strictPort`,

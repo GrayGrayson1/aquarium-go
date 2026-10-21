@@ -6,6 +6,7 @@
  * review). Returns a fresh object holding only the known fields, or null.
  */
 import type { Command, CommandKind } from './kinds';
+import { PHOTO_REF } from '@/types/shared';
 
 type Field =
   | { t: 'id' }
@@ -173,7 +174,10 @@ const isFlag = (v: unknown): v is string => typeof v === 'string' && FLAG.test(v
 export const ACTION_FLAGS: readonly string[] = ['water_change', 'topped_off', 'cleaned_tank', 'dosed', 'changed_equipment', 'changed_lights', 'fed', 'target_fed', 'named', 'started_breeding', 'moved_creature'];
 /** Characters that mustn't be in a name: control characters and the text-direction overrides. */
 const HIDDEN = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
-/** A listing photo: an image as data (a shared shop stores a reference instead, chunk 12, §4.4). */
+/**
+ * A listing photo: an image as data, or (chunk 12, §4.4) a shared shop's stored photo, `p:` and its hash (PHOTO_REF):
+ * the server stores the image a member sends and forwards the reference, so every copy holds that, never the picture.
+ */
 const PHOTO = /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/]+={0,2}$/;
 /** A substrate colour from the catalogue: a hex colour. */
 const COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -198,7 +202,7 @@ function check(f: Field, v: unknown): unknown {
     case 'text':
       return typeof v === 'string' && v.length <= f.max && !HIDDEN.test(v) ? v : BAD;
     case 'photo':
-      return typeof v === 'string' && v.length <= MAX_LISTING_CHARS && PHOTO.test(v) ? v : BAD;
+      return typeof v === 'string' && v.length <= MAX_LISTING_CHARS && (PHOTO.test(v) || PHOTO_REF.test(v)) ? v : BAD;
     case 'color':
       return typeof v === 'string' && COLOR.test(v) ? v : BAD;
     case 'ids':

@@ -37,7 +37,9 @@ interface Peer {
 function harness(state: GameState) {
   const frames: Outgoing[] = [];
   const later: (() => void)[] = [];
-  const room = new Room(state, { send: (o) => frames.push(o), gzip: (s) => gzipSync(s), later: (_, fn) => void later.push(fn), now: () => performance.now() });
+  // chunk 12: the room's clock moves 250 ms a tick (its fingerprints are timed, and spaced by their cost)
+  let t = 0;
+  const room = new Room(state, { send: (o) => frames.push(o), gzip: (s) => gzipSync(s), later: (_, fn) => void later.push(fn), now: () => t });
   const peers = new Map<string, Peer>();
   const deliver = () => {
     while (later.length) later.shift()!();
@@ -56,7 +58,8 @@ function harness(state: GameState) {
       }
     }
   };
-  const join = (id: string, plain = false) => {
+  /** Chunk 12: members are players; `a` is the owner (pause and speed), the others may pause only when given it. */
+  const join = (id: string, plain = false, may: { pause?: boolean } = {}) => {
     const p: Peer = { replica: new SharedReplica((fn) => fn()), welcome: null, got: [], mismatches: 0, checks: 0 };
     p.replica.onCheck = (_, ok) => {
       p.checks++;
@@ -64,7 +67,7 @@ function harness(state: GameState) {
     };
     p.replica.onOutOfStep = () => room.handle(id, { t: 'resync' });
     peers.set(id, p);
-    room.join(id, id.toUpperCase(), plain);
+    room.join({ id, name: id.toUpperCase(), owner: id === 'a', pause: id === 'a' || may.pause === true }, plain);
     deliver();
     return p;
   };
@@ -75,6 +78,7 @@ function harness(state: GameState) {
   };
   const tick = (n = 1) => {
     for (let i = 0; i < n; i++) {
+      t += 250;
       room.tick();
       deliver();
     }
@@ -228,7 +232,7 @@ describe('chunk 10: lockstep in one process (SHARED-SHOPS.md §9.1)', () => {
   it('runs only while someone is there; commands still apply while it is paused', () => {
     const h = harness(shop('playthrough_betta'));
     h.join('a');
-    h.join('b');
+    h.join('b', false, { pause: true }); // chunk 12: b sets the speed below, so the owner chose b (§5.4)
     h.room.handle('a', { t: 'cmd', id: 1, c: { k: 'setSpeed', speed: 10 } });
     h.tick(8);
     const hour = h.room.state.clock.hour;

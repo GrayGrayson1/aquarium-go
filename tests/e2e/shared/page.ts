@@ -1,11 +1,13 @@
 /**
  * Chunk 10's test page (served by the e2e Vite server at /tests/e2e/shared/page.html): the shared-shop replica and the
  * dev connection on `window.__shared`, without the game. `replay` applies a server's step log through the replica
- * (fingerprints checked at once) and reports; `connect` joins a shop on a server.
+ * (fingerprints checked at once) and reports; `connect` joins a shop on a server (chunk 12: with a stub sign-in token), and
+ * `build` is this build's identity for a raw `hello`.
  */
 import { SharedReplica } from '@/game/sharedLoop';
 import { connectShared } from '@/dev/sharedProto';
 import { stateHash } from '@/persistence/hash';
+import { SHARED_BUILD } from '@/types/shared';
 import { evaluateTank, previewAddition } from '@/sim/compat';
 import { stateReachability } from '@/sim/facility/layout';
 import { beautyScore } from '@/sim/aquascape';
@@ -72,4 +74,4 @@ function replay(log: StepLog, opts: { reads?: boolean } = {}): ReplayReport {
   };
 }
 
-(window as unknown as { __shared: unknown }).__shared = { replay, connect: connectShared, stateHash, ready: true };
+(window as unknown as { __shared: unknown }).__shared = { replay, connect: connectShared, stateHash, build: SHARED_BUILD, ready: true };

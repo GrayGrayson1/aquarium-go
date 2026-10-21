@@ -441,6 +441,17 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
         writeCloud({ email: s.email, meta: { ...meta, revision }, encoding, body });
         return { ok: true, revision };
       }),
+    // chunk 12 (SHARED-SHOPS.md §6.3): the stub's clubs have no shared shop yet (chunk 13's screens add them)
+    sharedShops: () =>
+      call(() => {
+        signedIn();
+        return { shops: [], closed: null, reopens: null };
+      }),
+    sharedUsage: () =>
+      call(() => {
+        if (!signedIn().owner) throw fail('forbidden');
+        return { month: monthOf(now()), bytesOut: 0, awakeSeconds: 0, closed: null, bytesCap: 2_000_000_000, secondsCap: 1_440_000 };
+      }),
     // chunk 9 (B2): another tab signing out or in rewrites the record, and this tab hears of it (as the real service)
     onSessionChange: (cb) => {
       if (kv !== globalThis.localStorage || typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => {};

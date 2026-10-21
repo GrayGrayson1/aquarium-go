@@ -1,5 +1,6 @@
 /**
- * Chunk 10's dev-only connection to a shared-shop server (SHARED-SHOPS.md §3.3): it joins a stub shop, feeds the
+ * Chunk 10's dev-only connection to a shared-shop server (SHARED-SHOPS.md §3.3): it joins a shop (chunk 12: with a
+ * sign-in token, a stub one on the stub server, and the build's identity), feeds the
  * server's steps to a headless replica (src/game/sharedLoop.ts), asks for a snapshot when the replica falls out of
  * step, and counts what it receives. The e2e tests (tests/e2e/shared/) and scripts/shared-measure.ts drive it from a
  * page; the game itself never imports it. Chunk 13 replaces it with the real connection in src/ui/shared.
@@ -7,7 +8,7 @@
 import type { GameState } from '@/types';
 import type { Command } from '@/sim/commands';
 import { SharedReplica, type OutOfStep } from '@/game/sharedLoop';
-import { FRAME_SNAPSHOT_GZIP, type ClientMessage, type ServerMessage, type SharedMember } from '@/types/shared';
+import { FRAME_SNAPSHOT_GZIP, SHARED_BUILD, type ClientMessage, type ServerMessage, type SharedMember } from '@/types/shared';
 
 export interface SharedClientStats {
   /** Bytes and frames received, by message (`snapshot` for the binary frames). */
@@ -32,6 +33,8 @@ export interface SharedClient {
   /** Send a command; its id. */
   send(c: Command): number;
   view(tank: string | null): void;
+  /** The owner gives or takes pause and speed (§5.4). */
+  grant(user: string, pause: boolean): void;
   here(): void;
   away(): void;
   close(): void;
@@ -46,8 +49,8 @@ async function gunzip(bytes: Uint8Array): Promise<string> {
 
 const textBytes = (s: string) => new TextEncoder().encode(s).length;
 
-/** Join `shop` on the server at `url` (ws:// or wss://…/shop); resolves once the first snapshot is loaded. */
-export function connectShared(url: string, shop: string, name: string, opts: { plain?: boolean } = {}): Promise<SharedClient> {
+/** Join `club`'s shop on the server at `url` (ws:// or wss://…/shop) as `token`'s player; resolves once the first snapshot is loaded. */
+export function connectShared(url: string, club: string, token: string, opts: { plain?: boolean } = {}): Promise<SharedClient> {
   const ws = new WebSocket(url);
   ws.binaryType = 'arraybuffer';
   const replica = new SharedReplica();
@@ -72,6 +75,7 @@ export function connectShared(url: string, shop: string, name: string, opts: { p
       return id;
     },
     view: (tank) => tell({ t: 'view', tank }),
+    grant: (user, pause) => tell({ t: 'grant', user, pause }),
     here: () => tell({ t: 'here' }),
     away: () => tell({ t: 'away' }),
     close: () => ws.close(),
@@ -88,7 +92,7 @@ export function connectShared(url: string, shop: string, name: string, opts: { p
   };
   return new Promise((resolve, reject) => {
     let ready = false;
-    ws.onopen = () => tell({ t: 'hello', build: 'proto', club: shop, name, plain: opts.plain });
+    ws.onopen = () => tell({ t: 'hello', token, build: SHARED_BUILD, club, plain: opts.plain });
     ws.onerror = () => {
       if (!ready) reject(new Error(`could not connect to ${url}`));
     };
@@ -119,7 +123,7 @@ export function connectShared(url: string, shop: string, name: string, opts: { p
         switch (m.t) {
           case 'welcome':
             pendingWelcome = m;
-            client.you = m.you;
+            client.you = m.you.id;
             client.members = m.members;
             break;
           case 'members':

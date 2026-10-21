@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'node:url';
 import { readFileSync } from 'node:fs';
+import { sharedBuild } from './vite.sharedBuild';
 
 /**
  * The shared-shop server's build (SHARED-SHOPS.md §5.1): `npm run build:server` bundles server/main.ts and the room
@@ -11,6 +12,8 @@ import { readFileSync } from 'node:fs';
 const APP_VERSION: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
 
 export default defineConfig({
+  // the build identity every copy of a shop checks (§5.1), as the game's build stamps it
+  plugins: [sharedBuild(fileURLToPath(new URL('.', import.meta.url)), APP_VERSION)],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   define: { 'process.env.npm_package_version': JSON.stringify(APP_VERSION) },
   publicDir: false,

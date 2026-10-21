@@ -5,7 +5,8 @@
 -- A stand-in for what Supabase provides: roles, the auth schema, auth.uid(), default privileges, pgcrypto.
 create role anon nologin;
 create role authenticated nologin;
-create role service_role nologin;
+-- chunk 12: like Supabase's, service_role bypasses row-level security, so only its privileges keep it out (§5.8)
+create role service_role nologin bypassrls;
 create role supabase_auth_admin nologin;
 create schema auth;
 create table auth.users (id uuid primary key default gen_random_uuid(), email text unique, encrypted_password text, raw_user_meta_data jsonb, created_at timestamptz default now());

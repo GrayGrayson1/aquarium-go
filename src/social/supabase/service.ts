@@ -29,6 +29,8 @@ import {
   type SocialError,
   type SocialService,
   type SocialUser,
+  type SharedShops,
+  type SharedUsage,
 } from '../service';
 import type { OnlineProject } from '../project';
 import type { PlayerStanding } from '../standing';
@@ -366,6 +368,29 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
       if (d.ok === true) return { ok: true, revision: num(d.revision) };
       const reason = d.reason === 'too_new' ? 'too_new' : 'conflict';
       return { ok: false, reason, meta: toMeta(d.meta) } satisfies CloudUploadResult;
+    },
+    // chunk 12 (SHARED-SHOPS.md §6.3): read from the database, so the club card never wakes the server
+    sharedShops: async (): Promise<SharedShops> => {
+      const d = await rpc('club_shared_shops');
+      if (!isObj(d)) throw fail('invalid');
+      const closed = d.closed === 'cap' || d.closed === 'hours' ? d.closed : null;
+      return {
+        shops: list(d.shops).map((x) => ({ club: str(x.club), name: str(x.name), day: num(x.day), money: num(x.money), playedAt: num(x.played_at) })),
+        closed,
+        reopens: closed && typeof d.reopens === 'string' ? d.reopens : null,
+      };
+    },
+    sharedUsage: async (): Promise<SharedUsage> => {
+      const d = await rpc('shared_usage');
+      if (!isObj(d)) throw fail('invalid');
+      return {
+        month: str(d.month),
+        bytesOut: num(d.bytes_out),
+        awakeSeconds: num(d.awake_seconds),
+        closed: d.closed === 'cap' || d.closed === 'hours' ? d.closed : null,
+        bytesCap: num(d.bytes_cap),
+        secondsCap: num(d.seconds_cap),
+      };
     },
     onSessionChange: (cb) => {
       // supabase-js tells every tab of a sign-in or sign-out (its events cross tabs), once a call has made the client

@@ -35,16 +35,17 @@ function scripted(state: GameState, tick: number, tanks: string[]): Command | nu
 export function stepLog(state: GameState, opts: { speed: 1 | 3 | 10; hours: number; commands?: boolean }): StepLog {
   state.clock.speed = opts.speed;
   const got: Outgoing[] = [];
+  let t = 0; // the room's clock: 250 ms a tick, so its fingerprints come every 10 seconds as on the server
   const room = new Room(state, {
     send: (o) => {
       if (o.to.includes('a')) got.push(o);
     },
     gzip: () => new Uint8Array(0),
     later: () => {},
-    now: () => 0,
+    now: () => t,
   });
-  room.join('a', 'A', true);
-  room.join('b', 'B', true);
+  room.join({ id: 'a', name: 'A', owner: true, pause: true }, true);
+  room.join({ id: 'b', name: 'B', owner: false, pause: false }, true);
   const tanks = state.tankOrder.slice(0, 2);
   room.handle('a', { t: 'view', tank: tanks[0] ?? null });
   room.handle('b', { t: 'view', tank: tanks[1] ?? tanks[0] ?? null });
@@ -55,6 +56,7 @@ export function stepLog(state: GameState, opts: { speed: 1 | 3 | 10; hours: numb
   for (let i = 1; i <= ticks; i++) {
     const c = opts.commands === false ? null : scripted(room.state, i, tanks);
     if (c) room.handle(i % 2 ? 'a' : 'b', { t: 'cmd', id: i, c });
+    t += TICK_MS;
     room.tick();
   }
   room.flush();

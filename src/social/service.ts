@@ -138,6 +138,34 @@ export type CloudUpload = Omit<CloudSaveMeta, 'revision'> & CloudBody;
 /** chunk 8 — the answer to an upload: written, or refused because the online copy is newer-built or moved on. */
 export type CloudUploadResult = { ok: true; revision: number } | { ok: false; reason: 'too_new' | 'conflict'; meta: CloudSaveMeta | null };
 
+/** chunk 12 (SHARED-SHOPS.md §6.3) — a club's shared shop as its card shows it (never the shop itself). */
+export interface SharedShopInfo {
+  club: string;
+  name: string;
+  day: number;
+  money: number;
+  /** When it was last saved, so last played (real ms). */
+  playedAt: number;
+}
+
+/** chunk 12 — the shops of the clubs the player is in, and whether shared shops are closed for the month (§5.7). */
+export interface SharedShops {
+  shops: SharedShopInfo[];
+  closed: 'cap' | 'hours' | null;
+  /** `YYYY-MM-DD`: the day closed shops open again. */
+  reopens: string | null;
+}
+
+/** chunk 12 — this month's meters, for the owner's card (§5.7, ADR-0045 decisions 3 and 15). */
+export interface SharedUsage {
+  month: string;
+  bytesOut: number;
+  awakeSeconds: number;
+  closed: 'cap' | 'hours' | null;
+  bytesCap: number;
+  secondsCap: number;
+}
+
 export interface SocialNews {
   /** Trades the player hasn't seen yet. */
   trades: number;
@@ -184,6 +212,10 @@ export interface SocialService {
   cloudDownload(account: string): Promise<(CloudBody & { meta: CloudSaveMeta }) | null>;
   /** chunk 8 — write the online save if its revision is still `expected` (0: none yet). */
   cloudUpload(save: CloudUpload, expected: number, account: string): Promise<CloudUploadResult>;
+  /** chunk 12 (§6.3) — the clubs' shared shops and whether they're closed for the month; reads the database, never the server. */
+  sharedShops(): Promise<SharedShops>;
+  /** chunk 12 — this month's data and awake hours (the owner only: `forbidden` for anyone else). */
+  sharedUsage(): Promise<SharedUsage>;
   /**
    * chunk 9 (B2) — call `cb` with the account now signed in on this device (null: none) when that may have changed
    * outside this tab's own calls, as when another tab signs out or in. Returns the unsubscribe.

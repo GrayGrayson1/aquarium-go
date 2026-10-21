@@ -2,7 +2,9 @@
  * Chunk 10 (SHARE-002, SHARED-SHOPS.md §3.2 rule 1, §9.2): shared shops' lockstep across engines. The prototype server
  * runs in Node (started by playwright.config.ts with its stub shops); this browser, Chromium or WebKit, applies the
  * server's steps through the same step block on the test page (tests/e2e/shared/page.html, no game) and must match
- * every fingerprint the server sent.
+ * every fingerprint the server sent. Chunk 12: the server is the real one on its stub accounts and storage
+ * (`SHOPS_STUB=1`): members sign in with stub tokens (`stub:<id>:<name>`, `:owner` for the game's owner) and say this
+ * build's identity, and only the owner, or a member the owner chose, may pause.
  */
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { request as httpRequest } from 'node:http';
@@ -27,8 +29,9 @@ type Win = Window & {
   __shared: {
     ready: boolean;
     replay(log: StepLog, opts?: { reads?: boolean }): ReplayReport;
-    connect(url: string, shop: string, name: string): Promise<unknown>;
+    connect(url: string, shop: string, token: string): Promise<unknown>;
     stateHash(s: unknown): string;
+    build: { hash: string; version: string };
   };
   __client: {
     you: string;
@@ -36,6 +39,8 @@ type Win = Window & {
     stats: { outOfStep: unknown[]; rejects: unknown[]; rtt: number[] };
     send(c: unknown): number;
     view(t: string | null): void;
+    grant(user: string, pause: boolean): void;
+    members: { id: string; pause: boolean }[];
     state(): unknown;
     close(): void;
   };
@@ -99,16 +104,16 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
     const pages = await Promise.all(contexts.map((c) => c.newPage()));
     for (const p of pages) await openTestPage(p);
     const [a, b] = pages;
-    for (const [p, name] of [
-      [a, 'A'],
-      [b, 'B'],
+    for (const [p, token] of [
+      [a, 'stub:a:A:owner'],
+      [b, 'stub:b:B'],
     ] as const) {
       await p.evaluate(
         async ([url, who]) => {
           const w = window as unknown as Win;
           w.__client = (await w.__shared.connect(url, 'new_betta', who)) as Win['__client'];
         },
-        [SHOP_URL, name] as const,
+        [SHOP_URL, token] as const,
       );
     }
     const tank = await a.evaluate(() => {
@@ -125,6 +130,9 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
     // two fingerprints (one every 10 real seconds) on both
     const checks = (p: Page) => p.evaluate(() => (window as unknown as Win).__client.replica.stats.checks);
     await expect.poll(async () => Math.min(await checks(a), await checks(b)), { timeout: 60_000, intervals: [1000] }).toBeGreaterThanOrEqual(2);
+    // chunk 12 (§5.4): B may pause once the owner, A, chooses B
+    await a.evaluate(() => (window as unknown as Win).__client.grant('u_b', true));
+    await expect.poll(() => b.evaluate(() => (window as unknown as Win).__client.members.find((m) => m.id === 'u_b')?.pause), { timeout: 10_000 }).toBe(true);
     // pause, let both reach the same step, and compare the copies directly
     await b.evaluate(() => (window as unknown as Win).__client.send({ k: 'setSpeed', speed: 0 }));
     const view = (p: Page) =>
@@ -167,13 +175,14 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
   test('a hostile message closes at most its own connection, and the server keeps serving', async ({ page, request }) => {
     await openTestPage(page);
     const codes = await page.evaluate(async (url) => {
+      const build = (window as unknown as Win).__shared.build;
       const deep = (n: number) => `{"t":"view","tank":${'['.repeat(n)}${']'.repeat(n)}}`;
       const run = (msgs: string[], hello: boolean) =>
         new Promise<number | 'open'>((resolve) => {
           const ws = new WebSocket(url);
           ws.onclose = (e) => resolve(e.code);
           ws.onopen = () => {
-            if (hello) ws.send(JSON.stringify({ t: 'hello', build: 'test', club: 'new_betta', name: 'H' }));
+            if (hello) ws.send(JSON.stringify({ t: 'hello', token: 'stub:h:H', build, club: 'new_betta' }));
             else for (const m of msgs) ws.send(m);
           };
           ws.onmessage = (e) => {
@@ -222,7 +231,7 @@ test.describe('shared shops: lockstep across engines (chunk 10, SHARE-002)', () 
     // and a member still joins
     const joined = await page.evaluate(async (url) => {
       const w = window as unknown as Win;
-      const c = (await w.__shared.connect(url, 'new_betta', 'After')) as Win['__client'];
+      const c = (await w.__shared.connect(url, 'new_betta', 'stub:after:After')) as Win['__client'];
       const ok = c.state() !== null;
       c.close();
       return ok;

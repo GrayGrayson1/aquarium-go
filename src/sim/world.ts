@@ -29,6 +29,11 @@ export interface AdvanceOptions {
    * server names them, so every copy steps the same tanks in full.
    */
   focusTankIds?: readonly string[];
+  /**
+   * Shared shops (§3.2 rule 5): spread background tanks' flushes over the steps, a rule of the state alone, so tanks
+   * that came due together (after a catch-up, Hold all, Resume, or bought together) don't all step in one step.
+   */
+  stagger?: boolean;
   /** Force every tank to full fidelity (tests). */
   forceFull?: boolean;
 }
@@ -104,18 +109,20 @@ function stepOnce(state: GameState, dt: number, opts: AdvanceOptions): void {
   const outerEnd = stepEndHour;
   stepEndHour = endHour; // B-127: a move during this step settles its tanks to the step's end
   try {
-    for (const tankId of [...state.tankOrder]) {
-      const tank = state.tanks[tankId];
-      if (!tank) continue;
-      const lod = tankLod(state, tankId, opts);
-      tank.simDebtHours = (tank.simDebtHours ?? 0) + dt;
-      const threshold = lod === 'full' ? 0 : lod === 'reduced' ? REDUCED_THRESHOLD_H : SUMMARY_THRESHOLD_H;
-      if (tank.simDebtHours + 1e-9 >= threshold) {
-        const tdt = tank.simDebtHours;
-        tank.simDebtHours = 0;
-        stepTank(state, tank, tdt, lod, endHour);
+    if (opts.stagger) stepTanksStaggered(state, dt, opts, endHour);
+    else
+      for (const tankId of [...state.tankOrder]) {
+        const tank = state.tanks[tankId];
+        if (!tank) continue;
+        const lod = tankLod(state, tankId, opts);
+        tank.simDebtHours = (tank.simDebtHours ?? 0) + dt;
+        const threshold = lod === 'full' ? 0 : lod === 'reduced' ? REDUCED_THRESHOLD_H : SUMMARY_THRESHOLD_H;
+        if (tank.simDebtHours + 1e-9 >= threshold) {
+          const tdt = tank.simDebtHours;
+          tank.simDebtHours = 0;
+          stepTank(state, tank, tdt, lod, endHour);
+        }
       }
-    }
     // lane:production — once per game hour crossed (0.5 §11.3). Before the world context: a line's moves settle tanks,
     // whose steps draw from the stream (the chunk 4 review), so the world systems' generator starts after them.
     stepProduction(state, state.clock.hour, endHour);
@@ -129,6 +136,42 @@ function stepOnce(state: GameState, dt: number, opts: AdvanceOptions): void {
     stepEndHour = outerEnd;
   }
   state.clock.hour += dt;
+}
+
+/**
+ * Shared shops' tank pass (§3.2 rule 5; chunk 12): full-detail tanks step every time, as above; background tanks that
+ * are due flush most-owed first (then in tank order), at most as many in one step as flush per step on average
+ * (Σ dt ÷ threshold over the background tanks, rounded up), and the rest wait a step or two with their hours owed. Tanks
+ * that came due together drift apart, so the server's busiest steps shrink. Every copy of a shop runs the same rule
+ * on the same state, so they still step identically; the solo game never runs it.
+ */
+function stepTanksStaggered(state: GameState, dt: number, opts: AdvanceOptions, endHour: number): void {
+  const due: { tank: Tank; lod: SimLod; idx: number }[] = [];
+  let share = 0;
+  const order = [...state.tankOrder];
+  for (let idx = 0; idx < order.length; idx++) {
+    const tank = state.tanks[order[idx]];
+    if (!tank) continue;
+    const lod = tankLod(state, tank.id, opts);
+    tank.simDebtHours = (tank.simDebtHours ?? 0) + dt;
+    if (lod === 'full') {
+      const tdt = tank.simDebtHours;
+      tank.simDebtHours = 0;
+      stepTank(state, tank, tdt, lod, endHour);
+      continue;
+    }
+    const threshold = lod === 'reduced' ? REDUCED_THRESHOLD_H : SUMMARY_THRESHOLD_H;
+    share += dt / threshold;
+    if (tank.simDebtHours + 1e-9 >= threshold) due.push({ tank, lod, idx });
+  }
+  if (!due.length) return;
+  due.sort((a, b) => b.tank.simDebtHours! - a.tank.simDebtHours! || a.idx - b.idx);
+  const most = Math.max(1, Math.ceil(share - 1e-9));
+  for (const { tank, lod } of due.slice(0, most)) {
+    const tdt = tank.simDebtHours!;
+    tank.simDebtHours = 0;
+    stepTank(state, tank, tdt, lod, endHour);
+  }
 }
 
 function stepWorldSystems(state: GameState, dt: number, ctx: ReturnType<typeof makeContext>): void {

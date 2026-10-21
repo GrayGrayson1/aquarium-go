@@ -97,7 +97,9 @@ function interestWord(v: number): string {
 }
 
 function ListingVisual({ g, l, size = 92 }: { g: GameState; l: Listing; size?: number }) {
-  if (l.snapshot.photo) return <img className="pn-listing__photo" src={l.snapshot.photo} alt={`Photo of ${l.title}`} style={{ width: size * 1.4, height: size }} />;
+  // chunk 12 (SHARED-SHOPS.md §4.4): only an embedded image goes in <img src>, never a shared shop's stored-photo
+  // reference (`p:` and its hash), which chunk 13 draws from a picture it fetched itself
+  if (l.snapshot.photo?.startsWith('data:image/')) return <img className="pn-listing__photo" src={l.snapshot.photo} alt={`Photo of ${l.title}`} style={{ width: size * 1.4, height: size }} />;
   if (l.kind === 'frag' && l.fragItems?.length) return <FragListingVisual l={l} size={size} />; // lane:frags
   if (l.kind === 'tank' && l.tankId && g.tanks[l.tankId]) {
     return (
