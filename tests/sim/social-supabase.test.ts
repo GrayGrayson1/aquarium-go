@@ -299,6 +299,33 @@ describe('the online save (§6)', () => {
   });
 });
 
+describe('chunk 12: shared shops’ card (SHARED-SHOPS.md §6.3)', () => {
+  it('sharedShops: club_shared_shops mapped; closed and reopens only when a cap closed the month', async () => {
+    const shop = { club: 'c1', name: 'Reef Friends', day: 12, money: 1240.5, played_at: 1700000000000 };
+    const f = fake({ club_shared_shops: { data: { shops: [shop, { nonsense: true }], closed: null, reopens: null } } });
+    expect(await service(f).sharedShops()).toEqual({
+      shops: [
+        { club: 'c1', name: 'Reef Friends', day: 12, money: 1240.5, playedAt: 1700000000000 },
+        { club: '', name: '', day: 0, money: 0, playedAt: 0 },
+      ],
+      closed: null,
+      reopens: null,
+    });
+    expect(f.calls).toEqual([{ fn: 'club_shared_shops', args: undefined }]);
+    const capped = fake({ club_shared_shops: { data: { shops: [], closed: 'cap', reopens: '2026-11-01' } } });
+    expect(await service(capped).sharedShops()).toEqual({ shops: [], closed: 'cap', reopens: '2026-11-01' });
+    const odd = fake({ club_shared_shops: { data: { shops: [], closed: 'sometimes', reopens: '2026-11-01' } } });
+    expect(await service(odd).sharedShops()).toEqual({ shops: [], closed: null, reopens: null });
+  });
+
+  it('sharedUsage: the owner’s meters; anyone else’s is the server’s forbidden', async () => {
+    const f = fake({ shared_usage: { data: { month: '2026-10', bytes_out: 120_000_000, awake_seconds: 32400, closed: null, bytes_cap: 2_000_000_000, seconds_cap: 1_440_000 } } });
+    expect(await service(f).sharedUsage()).toEqual({ month: '2026-10', bytesOut: 120_000_000, awakeSeconds: 32400, closed: null, bytesCap: 2_000_000_000, secondsCap: 1_440_000 });
+    const refused = fake({ shared_usage: { error: { message: 'forbidden', code: 'P0001' }, status: 400 } });
+    await expect(service(refused).sharedUsage()).rejects.toEqual({ code: 'forbidden' });
+  });
+});
+
 describe('error mapping', () => {
   it('network: no answer, a gateway or server error, a rate limit, the browsers’ fetch-failure words, a timeout', async () => {
     expect(isNetworkFailure({ status: 0 })).toBe(true);

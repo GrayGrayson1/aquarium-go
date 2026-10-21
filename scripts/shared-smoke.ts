@@ -226,14 +226,15 @@ try {
     check('the shop saved when it emptied (a new revision, left_at set)', saved);
   } else {
     // K1 (§11): each shop at its speeds for a minute, the account allowed to change the speed
-    const runs: [string, number[]][] = [
-      ['new_betta', [10]],
-      ['playthrough_betta', [1, 10]],
-      ['big_facility', [1, 3, 10]],
+    // the stub shops chunk 10 measured (scripts/shared-stub-shops.ts): a new game, a month-old shop, a late-game one
+    const runs: [string, () => GameState, number[]][] = [
+      ['new_betta', () => newGame({ seed: 20261020, starterId: 'betta', starterName: '', shopName: 'Shared shop (test)' }), [10]],
+      ['playthrough_betta', () => FIXTURES.playthrough_betta(), [1, 10]],
+      ['big_facility', () => FIXTURES.big_facility(), [1, 3, 10]],
     ];
     const rows: string[] = [];
-    for (const [name, speeds] of runs) {
-      const g = FIXTURES[name]();
+    for (const [name, make, speeds] of runs) {
+      const g = make();
       g.clock.speed = 0;
       const club = makeClub(user, g, true);
       clubs.push(club);
