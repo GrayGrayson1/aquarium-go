@@ -16,6 +16,8 @@ import { SHARED_WORDS as W } from './words';
 
 /** The allowance the members list offers before the owner types one (the preview's). */
 export const DEFAULT_ALLOWANCE = 200;
+/** A press on a choice and the amount field's blur it causes come within this (ms); a press long before isn't one. */
+const CHOOSING_MS = 600;
 
 /** Whole dollars as typed ("$5,000", "5000"): 1 to 10,000,000, else null. */
 export function parseDollars(text: string): number | null {
@@ -219,8 +221,9 @@ export function MemberSpending({ id, name }: { id: string; name: string }) {
   const [typed, setTyped] = useState(false);
   // what was sent last, until the shop shows it: a blur and a click on a choice in one gesture send it once
   const sent = useRef<string | null>(null);
-  // a press on a choice is on its way: leaving the amount field for it leaves the choice to say what to send
-  const choosing = useRef(false);
+  // when a choice was last pressed: leaving the amount field for it (within a moment) leaves the choice to say what to
+  // send; a press that never became a click (a scroll, a long press) is forgotten after that moment
+  const choosing = useRef(0);
   useEffect(() => {
     if (rec?.allowance !== undefined) setAmount(String(rec.allowance));
   }, [rec?.allowance]);
@@ -233,10 +236,14 @@ export function MemberSpending({ id, name }: { id: string; name: string }) {
   const send = (key: string, t: PoolTier, a?: number) => {
     if (sent.current === key) return;
     sent.current = key;
-    act(t === 'allowance' ? { k: 'setSpending', member: id, name, tier: t, allowance: a! } : { k: 'setSpending', member: id, name, tier: t });
+    // one that didn't go through (refused, or sent while reconnecting) can be sent again
+    const after = (r: { ok: boolean } | null) => {
+      if (!r?.ok && sent.current === key) sent.current = null;
+    };
+    act(t === 'allowance' ? { k: 'setSpending', member: id, name, tier: t, allowance: a! } : { k: 'setSpending', member: id, name, tier: t }, { after });
   };
   const set = (t: PoolTier) => {
-    choosing.current = false;
+    choosing.current = 0;
     if (t === 'allowance') {
       if (allowance === null) return;
       setTyped(false);
@@ -245,7 +252,7 @@ export function MemberSpending({ id, name }: { id: string; name: string }) {
     } else if (t !== tier) send(t, t);
   };
   const radio = (t: PoolTier, label: string) => (
-    <label className="ag-shared-tier__choice" data-testid={`shared-tier-${id}-${t}`} onPointerDown={() => (choosing.current = true)}>
+    <label className="ag-shared-tier__choice" data-testid={`shared-tier-${id}-${t}`} onPointerDown={() => (choosing.current = performance.now())}>
       {/* a click too: a press on the choice already made still sends an amount typed beside it (sent once either way) */}
       <input type="radio" name={group} checked={tier === t} onChange={() => set(t)} onClick={() => set(t)} />
       <span>{label}</span>
@@ -269,8 +276,8 @@ export function MemberSpending({ id, name }: { id: string; name: string }) {
               setTyped(true);
             }}
             onBlur={() => {
-              const skip = choosing.current;
-              choosing.current = false;
+              const skip = performance.now() - choosing.current < CHOOSING_MS;
+              choosing.current = 0;
               if (typed && !skip) set('allowance');
             }}
             onKeyDown={(e) => {

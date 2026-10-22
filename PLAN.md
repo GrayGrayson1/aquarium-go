@@ -1354,6 +1354,31 @@ REL-012, REL-018.
 - **Core files:** `src/types/game.ts` (`GameState.pool`), `src/persistence/migrations.ts` (`repairState`),
   `src/types/shared.ts` (the reject), `src/sim/sharedStep.ts` (the owner flag): the reviewer checks them closely. The
   shared build hash changes, so 0.7.0's site and server go out together (step 4 of "Releases").
+- **Built** (`84799bc`, Marshall, 2026-10-21): `src/sim/pool.ts` (the tiers, the spend measured per command, the six
+  commands, the approved lines), the commands' catalogue and first one wins for requests, `repairPool`, the server's
+  `allowed` and spend refusal, the screens (`src/ui/shared/SharedMoney.tsx`: the Money button and sheet, the owner's
+  spending row; the pop-ups in `activity.ts`; the refusals in `dispatch.ts`), the live smoke's pool checks. A look in
+  both browsers at desktop and phone sizes (`scripts/_audit/chunk14/look.mjs` in the internal clone, git-excluded) found
+  two things, fixed before the commit: on a phone a tap on "Allowance" landed in its amount field (the field now sits
+  beside the choice), and a long Money label squeezed who's here out of the strip (it gets its own row on phones). The
+  toast stack shows a few at a time and lets routine ones lapse behind the game's own news, so a pool pop-up can go
+  unseen in a busy shop; its line is in the alerts list either way (the game's toast rules, unchanged).
+- **The fresh review** (Opus 5.5, max effort, on `9359894..84799bc`): one blocker, a test that couldn't fail (care that
+  costs money was never sent by a member who can't spend; two mutants survived); its notes: caps the save keeps but the
+  commands didn't (approved money, open requests in all), a double-clicked Approve's words, the allowance field sending
+  twice, gifts to made-up ids, the refusal reading "costs $300, and you can spend $300", and test gaps. All fixed in
+  `5843bb0` (the care test fails without the exemption). Left on purpose, for the owner: care is never refused or
+  counted, as decided (a dose for a big reef tank costs up to about $400 from the pool); approvers can give each other
+  money (by design: the owner chooses them); gifts go only to members who don't spend freely (as the screen offers).
+- **The full pass on `84799bc`:** typecheck passed; unit 257 files, 3,237 tests passed; build passed; e2e 328 of 329
+  (39.3 min): the money test's pop-up check in Chromium, the toast stack above; the test now records pop-ups as raised.
+- **The confirmation pass** (the same reviewer, `84799bc..5843bb0`): no blockers; each fix checked (its mutants caught,
+  its fuzz of 4 × 400 actions clean). Its notes, fixed after: in the owner's spending row a send that didn't go through
+  couldn't be retried with the same choice, and a press on a choice that never became a click could swallow the next
+  typed amount (now honoured only within 600 ms); the two-day test's joiner never joined; a gift to a member whose
+  record spends freely wasn't covered by a test; the drafted live money test called a dev hook the players' build
+  doesn't have (it now buys through Market › Supplies and reads the pop-ups from the toast record); ADR-0050 decision
+  8's reading of the request's refusal labelled as the agent's.
 
 ## Releases
 

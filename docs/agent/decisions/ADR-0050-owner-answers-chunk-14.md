@@ -234,8 +234,9 @@ The previews' example names were "Mia" and "Sam" (made up) and the owner's own f
    database change.
 8. **Round 2:** the implied forms are approved as previewed; the opening card's back button from the title screen keeps
    "Title"; **0.7.0 is released once the four checks are green and the fresh review is clean** (the owner's go-ahead,
-   given in the session), then the live tests run. "That request has changed since you looked." is ADR-0048's approved
-   first-one-wins pattern ("the first-one-wins lines for everything") with the request as its noun.
+   given in the session), then the live tests run. (The agent's reading, not asked in round 2: "That request has changed
+   since you looked." is ADR-0048's approved first-one-wins pattern, which that ADR extended to everything, with the
+   request as its noun.)
 
 ## Consequences
 

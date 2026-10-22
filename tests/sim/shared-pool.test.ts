@@ -355,7 +355,12 @@ describe('chunk 14: asking for money (ADR-0050 decision 4)', () => {
     const h = three({ tier: 'ask' });
     expect(h.cmd('o', { k: 'giveMoney', member: 's', name: 'Sam', amount: 5 }).res).toMatchObject({ ok: false, message: POOL_FAILED_TEXT });
     expect(h.cmd('o', { k: 'giveMoney', member: 'nobody_123', name: 'Nobody', amount: 5 }).res).toMatchObject({ ok: false });
-    expect(Object.keys(h.room.state.pool!.members!)).toEqual(['m']);
+    // a record that spends freely (an approver): no gift either
+    h.cmd('o', { k: 'setApprover', member: 's', name: 'Sam', on: true });
+    expect(poolMember(h.room.state, 's')).toEqual({ name: 'Sam', tier: 'free', approve: true });
+    expect(h.cmd('o', { k: 'giveMoney', member: 's', name: 'Sam', amount: 5 }).res).toMatchObject({ ok: false, message: POOL_FAILED_TEXT });
+    expect(poolMember(h.room.state, 's')!.extra).toBeUndefined();
+    expect(Object.keys(h.room.state.pool!.members!).sort()).toEqual(['m', 's']);
     h.settle();
   });
 
@@ -479,10 +484,11 @@ describe('chunk 14: the lockstep holds with the pool (SHARE-024)', () => {
       const ask = h.room.state.pool?.asks?.[0];
       if (ask && i % 3 === 0) h.cmd(i % 2 ? 's' : 'o', { k: 'answerAsk', ask: ask.id, yes: i % 4 !== 0 });
       if (i % 7 === 0) h.cmd('s', { k: 'giveMoney', member: 'm', name: 'Mia', amount: 3 });
-      if (i === 20) h.join({ id: 'l', name: 'Lee', owner: false, pause: false });
+      if (i === 5) h.join({ id: 'l', name: 'Lee', owner: false, pause: false });
       h.tick(10);
     }
     expect(refused).toBeGreaterThan(0);
+    expect(h.peers.has('l')).toBe(true);
     h.tick(48);
     h.settle();
     for (const p of h.peers.values()) expect(p.replica.stats.checks).toBeGreaterThan(0);
