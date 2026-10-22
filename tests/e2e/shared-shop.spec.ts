@@ -195,6 +195,19 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     await openShop(ola, club);
     const ben = await player(browser, 'Ben', club);
     await openShop(ben, club);
+    // the pop-ups as they're raised: the toast stack shows a few at a time and, in a busy shop (bids, a fish growing
+    // up), lets routine ones lapse behind the game's own news, so what's on screen at a given moment is no measure
+    const recordPopups = (page: Page) =>
+      page.evaluate(() => {
+        const w = window as unknown as { __popups?: string[]; __AQ: { ui(): { toasts: { text: string }[] } } };
+        w.__popups = [];
+        setInterval(() => {
+          for (const t of w.__AQ.ui().toasts) if (!w.__popups!.includes(t.text)) w.__popups!.push(t.text);
+        }, 50);
+      });
+    const popups = (page: Page) => page.evaluate(() => (window as unknown as { __popups: string[] }).__popups);
+    await recordPopups(ola);
+    await recordPopups(ben);
     const benId = (await visit(ben)).you!.id;
     await expect.poll(async () => (await visit(ola)).members.find((m) => m.id === benId)?.here, { timeout: 20_000 }).toBe(true);
     const tierOf = async (page: Page) => (await gameOf(page)).pool?.members?.[benId]?.tier ?? 'free';
@@ -207,7 +220,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await expect.poll(() => tierOf(ben), { timeout: 10_000 }).toBe('ask');
       await tid(ola, 'shared-strip-members').click();
       await expect(tid(ben, 'shared-money')).toHaveText(/Money: \$0 to spend/);
-      await expect(ben.getByText('Ola: Set Ben to ask first.')).toBeVisible();
+      await expect.poll(() => popups(ben), { timeout: 10_000 }).toContain('Ola: Set Ben to ask first.');
     });
     const food = Object.keys((await gameOf(ben)).inventory.foods)[0];
     await test.step('a purchase is refused with what it costs and what the member can spend; nothing changes anywhere', async () => {
@@ -229,7 +242,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await tid(ben, 'shared-ask-send').click();
       await expect(tid(ben, 'shared-money-sheet')).toContainText(`$${amount}: Food · Waiting`);
       await ben.keyboard.press('Escape');
-      await expect(ola.getByText(`Ben asks for $${amount}: Food.`)).toBeVisible({ timeout: 10_000 });
+      await expect.poll(() => popups(ola), { timeout: 10_000 }).toContain(`Ben asks for $${amount}: Food.`);
       await expect(tid(ola, 'shared-money')).toHaveText(/Money \(1\)/);
     });
     await test.step('the owner approves; the member hears, and can spend the approved money', async () => {
@@ -239,7 +252,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await tid(ola, `shared-approve-${askId}`).click();
       await expect(tid(ola, `shared-request-${askId}`)).toHaveCount(0, { timeout: 10_000 });
       await ola.keyboard.press('Escape');
-      await expect(ben.getByText(`Ola approved your $${amount}.`)).toBeVisible({ timeout: 10_000 });
+      await expect.poll(() => popups(ben), { timeout: 10_000 }).toContain(`Ola approved your $${amount}.`);
       await expect(tid(ben, 'shared-money')).toHaveText(new RegExp(`Money: \\$${amount} to spend`));
       await expect(tid(ola, 'shared-money')).toHaveText(/^\s*Money\s*$/);
     });

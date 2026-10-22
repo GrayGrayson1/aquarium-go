@@ -57,6 +57,8 @@ describe('chunk 14: the words, as approved (ADR-0050 decision 6)', () => {
   it('the refusals, the pop-ups, the strip and the sheet', () => {
     expect(W.overspend(300, 120)).toBe('That costs $300, and you can spend $120. Ask for more in Money.');
     expect(W.overspend(4.5, 0)).toBe('That costs $4.50, and you can spend $0. Ask for more in Money.');
+    // whole dollars from $100: never "costs $300, and you can spend $300"
+    expect(W.overspend(300.75, 300.5)).toBe('That costs $301, and you can spend $300. Ask for more in Money.');
     expect(RUNNING_COST_TEXT).toBe('Staff and the stock budget keep spending the pool, so only members who spend freely can change them.');
     expect(W.asksPopup('Mia', 5000, 'Prismatic betta')).toBe('Mia asks for $5,000: Prismatic betta.');
     expect(W.approvedYour('Olive', 5000)).toBe('Olive approved your $5,000.');
@@ -122,6 +124,42 @@ describe('chunk 14: the shared dispatcher’s refusals', () => {
     const buy = r.send({ k: 'buyFood', food: 'flakes', packs: 1 });
     r.disp.reject(r.sent[0].id, 'spend', { cost: 300, can: 120 });
     expect(buy.got).toEqual({ ok: false, message: 'That costs $300, and you can spend $120. Ask for more in Money.' });
+  });
+
+  it('the stock budget dragged by a member who doesn’t spend freely: every value held back settles with the refusal', () => {
+    let t = 0;
+    const timers: { at: number; fn: () => void; live: boolean }[] = [];
+    const sent: { id: number; c: Command }[] = [];
+    let next = 1;
+    const disp = new SharedDispatcher({
+      sender: () => ({ you: 'm', send: (c) => (sent.push({ id: next, c }), next++) }),
+      mayPause: () => false,
+      ownerName: () => 'Olive',
+      note: () => {},
+      now: () => t,
+      after: (ms, fn) => {
+        const x = { at: t + ms, fn, live: true };
+        timers.push(x);
+        return () => void (x.live = false);
+      },
+    });
+    useGame.getState().setGame(shop());
+    const got: (CommandResult | null)[] = [];
+    for (const amount of [100, 200, 300, 400]) {
+      disp.dispatch({ k: 'setStockBudget', amount }, (r) => got.push(r));
+      t += 50;
+    }
+    for (const x of timers.filter((x) => x.live && x.at <= t + 500)) {
+      t = Math.max(t, x.at);
+      x.live = false;
+      x.fn();
+    }
+    // the first value went at once, the last after the wait; the two between rode on the last
+    expect(sent.map((s) => (s.c as { amount: number }).amount)).toEqual([100, 400]);
+    const refused: CommandResult = { ok: false, message: RUNNING_COST_TEXT };
+    for (const s of sent) disp.settleStep({ n: s.id, h: 0, cmds: [{ by: 'm', who: 'Mia', id: s.id, c: s.c }] }, [refused]);
+    expect(got).toHaveLength(4);
+    for (const r of got) expect(r).toEqual(refused);
   });
 
   it('a pool command refused as forbidden fails with chunk 13’s words; pause and speed keep theirs', () => {

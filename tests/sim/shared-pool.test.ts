@@ -23,7 +23,7 @@ import { repairState } from '@/persistence/migrations';
 import { deepClone } from '@/sim/clone';
 import { dayIndex } from '@/sim/economy/util';
 import { applyCommand, COMMAND_KINDS, type Command, type CommandResult } from '@/sim/commands';
-import { allowanceLeft, canSpend, poolMember, CARE_KINDS, POOL_FAILED_TEXT, RUNNING_COST_KINDS, RUNNING_COST_TEXT } from '@/sim/pool';
+import { allowanceLeft, canSpend, poolMember, CARE_KINDS, MAX_ASKS, MAX_EXTRA, POOL_FAILED_TEXT, RUNNING_COST_KINDS, RUNNING_COST_TEXT } from '@/sim/pool';
 import { SharedReplica } from '@/game/sharedLoop';
 import { Room, allowed, type Outgoing, type RoomIo } from '../../server/room';
 
@@ -116,9 +116,10 @@ function foodPack(g: GameState): { food: string; price: number } {
 }
 
 /** Owner, Mia and Sam in a room; Mia set to a tier by the owner. */
-function three(tier?: { tier: 'allowance'; allowance: number } | { tier: 'ask' | 'free' }) {
+function three(tier?: { tier: 'allowance'; allowance: number } | { tier: 'ask' | 'free' }, prep?: (g: GameState) => void) {
   const g = shop();
   g.finance.money = 50_000;
+  prep?.(g);
   const h = harness(g);
   h.join(OWNER);
   h.join(MIA);
@@ -214,12 +215,41 @@ describe('chunk 14: spending the pool (ADR-0050 decisions 2, 3)', () => {
     for (const id of ['o', 'm', 's']) expect(stateHash(h.copy(id))).toBe(hash);
   });
 
-  it('care is for every tier, whatever it costs; staff and the stock budget only for members who spend freely', () => {
-    const h = three({ tier: 'ask' });
+  it('care is for every tier, whatever it costs (a dose, a repair), and comes from the pool, not the member’s money', () => {
+    // a worn heater to repair, in the shop as stored
+    const worn = { tank: '', equip: '' };
+    const h = three({ tier: 'ask' }, (g) => {
+      for (const t of g.tankOrder)
+        for (const e of g.tanks[t].equipment)
+          if (!worn.equip) {
+            e.condition = 0.3;
+            Object.assign(worn, { tank: t, equip: e.id });
+          }
+    });
+    expect(worn.equip).not.toBe('');
+    expect([...CARE_KINDS].sort()).toEqual(['cleanTank', 'dose', 'feedTank', 'repairEquipment', 'topOff', 'waterChange']);
     const tank = h.room.state.tankOrder[0];
+    const record = () => JSON.stringify(poolMember(h.room.state, 'm'));
+    const mine = record();
+    for (const c of [
+      { k: 'dose', tank, additive: 'bacteria' },
+      { k: 'dose', tank, additive: 'conditioner' },
+      { k: 'repairEquipment', tank: worn.tank, equip: worn.equip },
+    ] as Command[]) {
+      const m0 = h.room.state.finance.money;
+      const r = h.cmd('m', c);
+      expect(r.reject, c.k).toBeUndefined();
+      expect(r.res?.ok, `${c.k}: ${r.res?.message}`).toBe(true);
+      expect(h.room.state.finance.money, c.k).toBeLessThan(m0);
+      expect(record(), c.k).toBe(mine);
+    }
     expect(h.cmd('m', { k: 'waterChange', tank, fraction: 0.2 }).res?.ok).toBe(true);
     expect(h.cmd('m', { k: 'cleanTank', tank, what: 'glass' }).res?.ok).toBe(true);
-    for (const k of CARE_KINDS) expect(['feedTank', 'waterChange', 'topOff', 'cleanTank', 'dose', 'repairEquipment']).toContain(k);
+    h.settle();
+  });
+
+  it('staff and the stock budget only for members who spend freely', () => {
+    const h = three({ tier: 'ask' });
     const before = stateHash(h.room.state);
     for (const c of [
       { k: 'setStockBudget', amount: 900 },
@@ -290,6 +320,42 @@ describe('chunk 14: asking for money (ADR-0050 decision 4)', () => {
     h.cmd('o', { k: 'setApprover', member: 'm', name: 'Mia', on: true });
     expect(h.cmd('m', { k: 'answerAsk', ask: mine[1], yes: true }).res).toMatchObject({ ok: false, message: POOL_FAILED_TEXT });
     expect(h.cmd('s', { k: 'askMoney', amount: 10 }).res).toMatchObject({ ok: false, message: POOL_FAILED_TEXT });
+    h.settle();
+  });
+
+  it('a second click on Approve: the request has changed since they looked; the money comes once', () => {
+    const h = three({ tier: 'ask' });
+    h.cmd('m', { k: 'askMoney', amount: 90 });
+    const id = h.room.state.pool!.asks![0].id;
+    expect(h.cmd('o', { k: 'answerAsk', ask: id, yes: true }).res?.ok).toBe(true);
+    expect(h.cmd('o', { k: 'answerAsk', ask: id, yes: true }).res).toMatchObject({ ok: false, message: 'That request has changed since you looked.' });
+    expect(poolMember(h.room.state, 'm')!.extra).toBe(90);
+    h.settle();
+  });
+
+  it('the caps the save keeps: approved money tops out, and so do the open requests in all', () => {
+    const h = three({ tier: 'ask' }, (g) => {
+      g.pool = { members: { m: { name: 'Mia', tier: 'ask', extra: MAX_EXTRA - 10 } } };
+    });
+    h.cmd('m', { k: 'askMoney', amount: 11 });
+    const id = h.room.state.pool!.asks![0].id;
+    expect(h.cmd('o', { k: 'answerAsk', ask: id, yes: true }).res).toMatchObject({ ok: false, message: POOL_FAILED_TEXT });
+    expect(h.cmd('o', { k: 'giveMoney', member: 'm', name: 'Mia', amount: 11 }).res).toMatchObject({ ok: false });
+    expect(h.cmd('o', { k: 'giveMoney', member: 'm', name: 'Mia', amount: 10 }).res?.ok).toBe(true);
+    expect(poolMember(h.room.state, 'm')!.extra).toBe(MAX_EXTRA);
+    h.settle();
+    // 100 open requests in all: the next is refused, whoever asks
+    const g = shop();
+    g.pool = { members: { x: { name: 'X', tier: 'ask' } }, asks: Array.from({ length: MAX_ASKS }, (_, i) => ({ id: `ask_${i}`, by: `u${i}`, name: `U${i}`, amount: 1, hour: 1 })) };
+    expect(applyCommand(g, { k: 'askMoney', amount: 5 }, { id: 'x', name: 'X', at: 0 })).toMatchObject({ ok: false, message: POOL_FAILED_TEXT });
+    expect(repairState(JSON.parse(JSON.stringify(g)))).toEqual([]);
+  });
+
+  it('a gift goes only to a member who doesn’t spend freely (as the screen offers), never to a made-up id', () => {
+    const h = three({ tier: 'ask' });
+    expect(h.cmd('o', { k: 'giveMoney', member: 's', name: 'Sam', amount: 5 }).res).toMatchObject({ ok: false, message: POOL_FAILED_TEXT });
+    expect(h.cmd('o', { k: 'giveMoney', member: 'nobody_123', name: 'Nobody', amount: 5 }).res).toMatchObject({ ok: false });
+    expect(Object.keys(h.room.state.pool!.members!)).toEqual(['m']);
     h.settle();
   });
 
@@ -398,6 +464,29 @@ describe('chunk 14: the lockstep holds with the pool (SHARE-024)', () => {
     const fps = h.peers.get('l')!.got.filter((f) => f.kind === 'steps').flatMap((f) => (JSON.parse(f.text!) as Steps).s).filter((s) => s.fp);
     expect(fps.length).toBeGreaterThan(0);
   });
+
+  it('two game days at 10× with the pool in play: allowances topped up, requests, gifts, a second joiner; every fingerprint matches', () => {
+    const h = three({ tier: 'allowance', allowance: 60 });
+    const { food } = foodPack(h.room.state);
+    h.cmd('o', { k: 'setApprover', member: 's', name: 'Sam', on: true });
+    h.cmd('o', { k: 'setSpeed', speed: 10 });
+    const day0 = dayIndex(h.room.state.clock.hour);
+    let refused = 0;
+    for (let i = 0; dayIndex(h.room.state.clock.hour) < day0 + 2; i++) {
+      const r = h.cmd('m', { k: 'buyFood', food, packs: 1 });
+      if (r.reject?.why === 'spend') refused++;
+      if (i % 5 === 0) h.cmd('m', { k: 'askMoney', amount: 7 });
+      const ask = h.room.state.pool?.asks?.[0];
+      if (ask && i % 3 === 0) h.cmd(i % 2 ? 's' : 'o', { k: 'answerAsk', ask: ask.id, yes: i % 4 !== 0 });
+      if (i % 7 === 0) h.cmd('s', { k: 'giveMoney', member: 'm', name: 'Mia', amount: 3 });
+      if (i === 20) h.join({ id: 'l', name: 'Lee', owner: false, pause: false });
+      h.tick(10);
+    }
+    expect(refused).toBeGreaterThan(0);
+    h.tick(48);
+    h.settle();
+    for (const p of h.peers.values()) expect(p.replica.stats.checks).toBeGreaterThan(0);
+  });
 });
 
 describe('chunk 14: the pool in a save (repairState)', () => {
@@ -422,6 +511,7 @@ describe('chunk 14: the pool in a save (repairState)', () => {
         badTier: { name: 'B', tier: 'boss' },
         noAmount: { name: 'C', tier: 'allowance' },
         stray: { name: 'D', tier: 'free', approve: 'yes', left: 4, colour: 'red' },
+        over: { name: 'F', tier: 'allowance', allowance: 50, left: 80, day: 2 },
         __proto__x: { name: 'E', tier: 'ask', left: 10 },
       },
       asks: [1, 2, 3, 4].map((i) => ({ id: `ask_${i}`, by: 'good', name: 'Ann', amount: i, hour: 1 })).concat([{ id: 'bad', by: 'good', name: 'Ann', amount: 0, hour: 1 }]),
@@ -430,8 +520,10 @@ describe('chunk 14: the pool in a save (repairState)', () => {
     const notes = repairState(s);
     expect(notes.length).toBeGreaterThan(0);
     const pool = s.pool as GameState['pool'];
-    expect(Object.keys(pool!.members!).sort()).toEqual(['__proto__x', 'good', 'stray']);
+    expect(Object.keys(pool!.members!).sort()).toEqual(['__proto__x', 'good', 'over', 'stray']);
     expect(pool!.members!.stray).toEqual({ name: 'D', tier: 'free' });
+    // more left than the allowance: the day's record goes, so the next read is the whole allowance
+    expect(pool!.members!.over).toEqual({ name: 'F', tier: 'allowance', allowance: 50 });
     expect(pool!.members!.__proto__x).toEqual({ name: 'E', tier: 'ask' });
     expect(pool!.asks!.map((a) => a.id)).toEqual(['ask_1', 'ask_2', 'ask_3']);
     expect((pool as Record<string, unknown>).extra).toBeUndefined();

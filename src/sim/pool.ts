@@ -20,14 +20,17 @@ import { dayIndex, fmtMoney, roundCents } from './economy/util';
 import { nextId } from './ids';
 import type { Command } from './commands/kinds';
 import type { CommandResult } from './commands/apply';
-import type { Actor } from './commands/shared';
+import { conflictText, type Actor } from './commands/shared';
 
 /** Requests and gifts, and an allowance: whole dollars up to this. */
 export const POOL_AMOUNT_MAX = 10_000_000;
 /** A request's "What for?" (optional). */
 export const ASK_NOTE_MAX = 60;
-/** Open requests per member (ADR-0050 decision 4). */
+/** Open requests per member (ADR-0050 decision 4), and in all (the save keeps no more). */
 export const MAX_ASKS_EACH = 3;
+export const MAX_ASKS = 100;
+/** A member's approved money tops out here (the save keeps no more). */
+export const MAX_EXTRA = 1e9;
 
 /** The pool's own commands (they need an actor: a shared shop). */
 export const POOL_KINDS: ReadonlySet<string> = new Set(['askMoney', 'cancelAsk', 'answerAsk', 'giveMoney', 'setSpending', 'setApprover']);
@@ -136,6 +139,8 @@ type PoolCommand = Extract<Command, { k: 'askMoney' | 'cancelAsk' | 'answerAsk' 
 export const isPoolCommand = (cmd: Command): cmd is PoolCommand => POOL_KINDS.has(cmd.k);
 
 const fail = (): CommandResult => ({ ok: false, message: POOL_FAILED_TEXT });
+/** A request already answered or cancelled (a second click on Approve, say): first one wins' words, nobody named. */
+const gone = (): CommandResult => ({ ok: false, message: conflictText(undefined, undefined, 'request'), conflict: {} });
 const okAmount = (n: number): boolean => Number.isInteger(n) && n >= 1 && n <= POOL_AMOUNT_MAX;
 const money = (n: number): string => fmtMoney(n);
 /** "Prismatic betta" → "Prismatic betta."; a note that ends a sentence itself keeps its own mark. */
@@ -187,7 +192,7 @@ function removeAsk(state: GameState, askId: string): PoolAsk | undefined {
 export function applyPoolCommand(state: GameState, cmd: PoolCommand, actor: Actor): CommandResult {
   switch (cmd.k) {
     case 'askMoney': {
-      if (spendsFreely(state, actor) || !okAmount(cmd.amount) || openAsks(state, actor.id).length >= MAX_ASKS_EACH) return fail();
+      if (spendsFreely(state, actor) || !okAmount(cmd.amount) || openAsks(state, actor.id).length >= MAX_ASKS_EACH || openAsks(state).length >= MAX_ASKS) return fail();
       const note = (cmd.note ?? '').trim().slice(0, ASK_NOTE_MAX);
       const ask: PoolAsk = { id: nextId(state, 'ask'), by: actor.id, name: actor.name, amount: cmd.amount, hour: state.clock.hour };
       if (note) ask.note = note;
@@ -196,14 +201,17 @@ export function applyPoolCommand(state: GameState, cmd: PoolCommand, actor: Acto
     }
     case 'cancelAsk': {
       const a = openAsks(state).find((x) => x.id === cmd.ask);
-      if (!a || a.by !== actor.id) return fail();
+      if (!a) return gone();
+      if (a.by !== actor.id) return fail();
       removeAsk(state, a.id);
       tidy(state);
       return { ok: true, message: POOL_LINES.cancelled(a.amount), pool: { member: a.by, amount: a.amount } };
     }
     case 'answerAsk': {
       const a = openAsks(state).find((x) => x.id === cmd.ask);
-      if (!a || a.by === actor.id || !mayApprove(state, actor)) return fail();
+      if (!a) return gone();
+      if (a.by === actor.id || !mayApprove(state, actor)) return fail();
+      if (cmd.yes && (poolMember(state, a.by)?.extra ?? 0) + a.amount > MAX_EXTRA) return fail();
       removeAsk(state, a.id);
       if (cmd.yes) {
         const m = recordOf(state, a.by, a.name);
@@ -214,8 +222,11 @@ export function applyPoolCommand(state: GameState, cmd: PoolCommand, actor: Acto
       return { ok: true, message, pool: { member: a.by, amount: a.amount, yes: cmd.yes } };
     }
     case 'giveMoney': {
-      if (cmd.member === actor.id || !mayApprove(state, actor) || !okAmount(cmd.amount) || !cmd.name.trim()) return fail();
-      const m = recordOf(state, cmd.member, cmd.name);
+      // to a member who doesn't spend freely (as the screen offers): a gift to anyone else would change nothing they
+      // can do, and a made-up id would only grow the save
+      const m = poolMember(state, cmd.member);
+      if (cmd.member === actor.id || !mayApprove(state, actor) || !okAmount(cmd.amount) || !cmd.name.trim() || !m || m.tier === 'free') return fail();
+      if ((m.extra ?? 0) + cmd.amount > MAX_EXTRA) return fail();
       m.name = cmd.name;
       m.extra = roundCents((m.extra ?? 0) + cmd.amount);
       return { ok: true, message: POOL_LINES.gave(cmd.name, cmd.amount), pool: { member: cmd.member, amount: cmd.amount } };

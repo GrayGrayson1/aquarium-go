@@ -677,7 +677,7 @@ production lines).
 | Pop-ups | "{name} asks for {amount}: {note}." (to approvers) · "{owner} approved your {amount}." · "{owner} declined your request for {amount}." · "{owner} gave you {amount} to spend." · a tier change's alerts line (to the member it's about) · "{n} requests are waiting in Money." (an approver opening the shop) |
 | Alerts list lines (the name in front) | "Asked for {amount}: {note}." · "Approved {name}'s {amount}." · "Declined {name}'s request for {amount}." · "Gave {name} {amount} to spend." · "Cancelled the request for {amount}." · "Set {name} to spend freely." · "Set {name}'s allowance to {amount} a game day." · "Set {name} to ask first." · "Let {name} approve requests." · "{name} can no longer approve requests." |
 | First one wins, a request | "{name} already answered that request." · "That request has changed since you looked." |
-| Forms the previews imply (to confirm with the release) | A request with no note: "Asked for {amount}.", "{name} asks for {amount}.", "{amount} · Waiting"; one request waiting: "1 request is waiting in Money."; an approver who doesn't spend freely: "Money: {can} to spend ({n})" |
+| Forms the previews imply (approved, ADR-0050 round 2) | A request with no note: "Asked for {amount}.", "{name} asks for {amount}.", "{amount} · Waiting"; one request waiting: "1 request is waiting in Money."; an approver who doesn't spend freely: "Money: {can} to spend ({n})" |
 
 ## 9. Tests
 

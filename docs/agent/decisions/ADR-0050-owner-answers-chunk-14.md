@@ -166,6 +166,46 @@ The previews' example names were "Mia" and "Sam" (made up) and the owner's own f
      back. During it, 0.6.0 tabs see 'The shared shop is updating', and the Render address plays the test build (Pages
      is unaffected).").
 
+## Round 2 (2026-10-22, asked while the chunk's checks and review ran)
+
+1. **"Chunk 14 is built and its tests pass so far. A few lines follow from the words you approved but weren't shown in
+   the previews (a request with no note, one request waiting, an approver who also has a limit). Approve these as
+   written?"** (Words)
+   - Chosen: **"Approve as written (Recommended)"**: "Used exactly as in the preview, next to the lines you already
+     approved." Its preview, verbatim:
+
+     ```
+     A request with no "What for?":
+       Alerts:  Mia: Asked for $5,000.
+       Pop-up:  Mia asks for $5,000.
+       Sheet:   $5,000 · Waiting
+                Mia asks for $5,000  [Approve] [Decline]
+
+     One request waiting (an approver opening the shop):
+       1 request is waiting in Money.
+
+     An approver who also has a limit, 2 waiting:
+       [Money: $320 to spend (2)]
+
+     A note that ends a sentence keeps its own mark:
+       Mia: Asked for $5,000: For the Prismatic!
+     ```
+   - Not chosen: "Change some" ("Say which and how in the notes.").
+2. **"From chunk 13: on the shared shop's opening card, opened from the title screen, the back button reuses the
+   existing word \"Title\" (from the game's own start screens). Keep it?"** (Back button)
+   - Chosen: **"Keep \"Title\" (Recommended)"**: "The card says \"Waking the shared shop…\" with a [← Title] button that
+     takes you back to the title screen; from inside your aquarium the same button says \"Back to my aquarium\"."
+   - Not chosen: "Use \"Back\"" ("[← Back] from the title screen instead.").
+3. **"When chunk 14's four checks are green and the fresh Opus review is clean, may I release 0.7.0? (You picked live
+   tests right after the release.)"** (Release)
+   - Chosen: **"Yes, release when clean (Recommended)"**: "I bump to 0.7.0, add the changelog entry, merge next into
+     main and push; GitHub Pages deploys, then I deploy the Render site and the shop server from main, and run the live
+     smoke and the two-browser money test on the real server with throwaway accounts (removed after). Open 0.6.0 tabs
+     of the shared shop see \"A new version of Aquarium Go is out. Reload to join the shared shop.\" Everyone starts at
+     Spends freely, so your shop plays as before until you set someone's tier."
+   - Not chosen: "Wait until I've tried it" ("I push next (it deploys nothing) and tell you how to try it; I release
+     only when you say so."), "Not yet" ("I finish, push next and stop.").
+
 ## Decisions
 
 1. **Three spending tiers per member:** Spends freely, Allowance (an amount each game day) and Asks first, set by the
@@ -192,6 +232,10 @@ The previews' example names were "Mia" and "Sam" (made up) and the owner's own f
    address until 0.7.0 is released on the owner's go-ahead; right after the release, the live smoke and the
    two-browser live test run on the real server, and anything they find is fixed at once. No new service and no
    database change.
+8. **Round 2:** the implied forms are approved as previewed; the opening card's back button from the title screen keeps
+   "Title"; **0.7.0 is released once the four checks are green and the fresh review is clean** (the owner's go-ahead,
+   given in the session), then the live tests run. "That request has changed since you looked." is ADR-0048's approved
+   first-one-wins pattern ("the first-one-wins lines for everything") with the request as its noun.
 
 ## Consequences
 
@@ -200,5 +244,5 @@ The previews' example names were "Mia" and "Sam" (made up) and the owner's own f
   only by new commands; `allowed()` reads them; a spending command's cost is measured on the server's copy of its step,
   and every copy takes it from the member's allowance and approved money in that step.
 - The shared build hash changes, so 0.7.0's server and site go out together (PLAN.md "Releases", step 4).
-- Releasing 0.7.0 still needs the owner's go-ahead in the session. The one word unconfirmed from chunk 13 (the opening
-  card's back button from the title screen reuses "Title") is asked with that go-ahead.
+- Releasing 0.7.0: the owner's go-ahead was given in round 2, on the condition that the checks are green and the review
+  is clean; "Title" is confirmed.

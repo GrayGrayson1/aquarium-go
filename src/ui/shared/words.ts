@@ -75,7 +75,8 @@ export const SHARED_WORDS = {
   eachGameDay: 'each game day',
   asksFirst: 'Asks first',
   canApprove: 'Can approve requests and give money',
-  overspend: (cost: number, can: number) => `That costs ${$(cost)}, and you can spend ${$(can)}. Ask for more in Money.`,
+  // whole dollars from $100 (as the game writes money): the cost rounds up and what's left down, so they never read alike
+  overspend: (cost: number, can: number) => `That costs ${$(cost >= 100 ? Math.ceil(cost) : cost)}, and you can spend ${$(can)}. Ask for more in Money.`,
   asksPopup: (name: string, amount: number, note?: string) => (note ? `${name} asks for ${$(amount)}: ${sentence(note)}` : `${name} asks for ${$(amount)}.`),
   approvedYour: (name: string, amount: number) => `${name} approved your ${$(amount)}.`,
   declinedYour: (name: string, amount: number) => `${name} declined your request for ${$(amount)}.`,

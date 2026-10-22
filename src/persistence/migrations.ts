@@ -1109,6 +1109,7 @@ function repairPool(s: Json, repairs: string[]): void {
         if (m.left !== undefined && !(finiteNum(m.left) && m.left >= 0 && m.left <= m.allowance)) drop('left');
         if (m.day !== undefined && !(Number.isInteger(m.day) && m.day >= 0)) drop('day');
         if ((m.left === undefined) !== (m.day === undefined)) for (const f of ['left', 'day']) if (m[f] !== undefined) drop(f);
+        // MAX_EXTRA in src/sim/pool.ts: the commands never go past it
         if (m.extra !== undefined && !(finiteNum(m.extra) && m.extra > 0 && m.extra <= 1e9)) drop('extra');
         if (m.approve !== undefined && m.approve !== true) drop('approve');
       }
@@ -1124,7 +1125,7 @@ function repairPool(s: Json, repairs: string[]): void {
       const n = (each.get(a.by) ?? 0) + 1;
       each.set(a.by, n);
       return n <= 3;
-    }).slice(0, 100);
+    }).slice(0, 100); // MAX_ASKS in src/sim/pool.ts
     if (!Array.isArray(p.asks) || good.length !== list.length) repairs.push('pool.asks: unreadable entries removed');
     if (good.length) p.asks = good;
     else delete p.asks;

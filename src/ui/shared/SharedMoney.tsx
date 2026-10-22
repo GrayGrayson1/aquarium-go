@@ -4,7 +4,7 @@
  * answer and Give money), and the owner's per-member spending row in the members list. Every action is a command
  * (src/sim/pool.ts); every copy shows the same pool. OWNER: lane "social".
  */
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Wallet } from 'lucide-react';
 import type { GameState, PoolTier } from '@/types';
 import { useGame } from '@/state/game';
@@ -217,23 +217,37 @@ export function MemberSpending({ id, name }: { id: string; name: string }) {
   const tier: PoolTier = rec?.tier ?? 'free';
   const [amount, setAmount] = useState(String(rec?.allowance ?? DEFAULT_ALLOWANCE));
   const [typed, setTyped] = useState(false);
+  // what was sent last, until the shop shows it: a blur and a click on a choice in one gesture send it once
+  const sent = useRef<string | null>(null);
+  // a press on a choice is on its way: leaving the amount field for it leaves the choice to say what to send
+  const choosing = useRef(false);
   useEffect(() => {
     if (rec?.allowance !== undefined) setAmount(String(rec.allowance));
   }, [rec?.allowance]);
+  useEffect(() => {
+    sent.current = null;
+  }, [tier, rec?.allowance]);
   const group = useId();
   if (!g) return null;
   const allowance = parseDollars(amount);
+  const send = (key: string, t: PoolTier, a?: number) => {
+    if (sent.current === key) return;
+    sent.current = key;
+    act(t === 'allowance' ? { k: 'setSpending', member: id, name, tier: t, allowance: a! } : { k: 'setSpending', member: id, name, tier: t });
+  };
   const set = (t: PoolTier) => {
+    choosing.current = false;
     if (t === 'allowance') {
       if (allowance === null) return;
       setTyped(false);
       if (tier === 'allowance' && rec?.allowance === allowance) return;
-      act({ k: 'setSpending', member: id, name, tier: 'allowance', allowance });
-    } else if (t !== tier) act({ k: 'setSpending', member: id, name, tier: t });
+      send(`allowance:${allowance}`, 'allowance', allowance);
+    } else if (t !== tier) send(t, t);
   };
   const radio = (t: PoolTier, label: string) => (
-    <label className="ag-shared-tier__choice" data-testid={`shared-tier-${id}-${t}`}>
-      <input type="radio" name={group} checked={tier === t} onChange={() => set(t)} />
+    <label className="ag-shared-tier__choice" data-testid={`shared-tier-${id}-${t}`} onPointerDown={() => (choosing.current = true)}>
+      {/* a click too: a press on the choice already made still sends an amount typed beside it (sent once either way) */}
+      <input type="radio" name={group} checked={tier === t} onChange={() => set(t)} onClick={() => set(t)} />
       <span>{label}</span>
     </label>
   );
@@ -254,7 +268,11 @@ export function MemberSpending({ id, name }: { id: string; name: string }) {
               setAmount(e.target.value);
               setTyped(true);
             }}
-            onBlur={() => typed && set('allowance')}
+            onBlur={() => {
+              const skip = choosing.current;
+              choosing.current = false;
+              if (typed && !skip) set('allowance');
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') set('allowance');
             }}
