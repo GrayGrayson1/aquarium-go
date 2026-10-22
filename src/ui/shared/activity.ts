@@ -6,12 +6,14 @@
  * - pop-ups for a pause, a speed change, and a sale or a purchase over $100 ("{name}: Sold the clownfish pair for
  *   $240."), never for this player's own;
  * - their feeds and taps show here as ours do (food falling, the startle wave) on a screen looking at that tank;
- * - the starvation guard's slow-down (a time step's `post`), said from this copy as the solo game says it.
+ * - the starvation guard's slow-down (a time step's `post`), said from this copy as the solo game says it;
+ * - chunk 14: a request to those who can answer it, and an answer, a gift or a tier change to the member it's about.
  *
  * OWNER: lane "social".
  */
 import type { GameState } from '@/types';
-import type { CommandResult } from '@/sim/commands';
+import type { Command, CommandResult } from '@/sim/commands';
+import { ASK_NOTE_MAX, isPoolCommand, mayApprove } from '@/sim/pool';
 import type { SharedStep } from '@/sim/sharedStep';
 import { isStarving } from '@/sim/life/step';
 import { tankDims } from '@/sim/tankSpace';
@@ -33,6 +35,8 @@ export const othersEvent = (e: { by?: string }, you: string | undefined): boolea
 
 export interface ActivityDeps {
   you: () => string;
+  /** chunk 14 — is this player the shop's owner (approves every request)? */
+  owner?: () => boolean;
   /** The copy after the step (the replica's). */
   state: () => GameState | null;
   /** Show a pop-up. */
@@ -68,6 +72,7 @@ export class SharedActivity {
         this.deps.popup(c.speed === 0 ? W.paused(name) : W.speed(name, c.speed), 'info');
         return;
       }
+      if (this.pool(g, you, name, c, res)) return;
       // one command per command step: the money moved by this command alone
       if (!NOT_DEALS.has(c.k) && before !== null && step.h === 0 && step.cmds!.length === 1 && Math.abs(g.finance.money - before) > BIG_DEAL && res.message) {
         this.deps.popup(W.bigDeal(name, res.message), 'success');
@@ -82,6 +87,33 @@ export class SharedActivity {
         .map((c) => c.name);
       if (names.length) this.deps.popup(starvationSlowdownText(names), 'warning');
     }
+  }
+
+  /**
+   * chunk 14 (ADR-0050) — the pool's pop-ups: a request to the members who can answer it; an answer, a gift or a tier
+   * change to the member it's about (the tier change as its alerts line). True when the command was the pool's.
+   */
+  private pool(g: GameState, you: string, name: string, c: Command, res: CommandResult): boolean {
+    if (!isPoolCommand(c)) return false;
+    const about = res.pool?.member === you;
+    switch (c.k) {
+      case 'askMoney':
+        if (mayApprove(g, { id: you, owner: this.deps.owner?.() ?? false })) this.deps.popup(W.asksPopup(name, c.amount, (c.note ?? '').trim().slice(0, ASK_NOTE_MAX) || undefined), 'info');
+        break;
+      case 'answerAsk':
+        if (about) this.deps.popup(c.yes ? W.approvedYour(name, res.pool!.amount ?? 0) : W.declinedYour(name, res.pool!.amount ?? 0), c.yes ? 'success' : 'info');
+        break;
+      case 'giveMoney':
+        if (about) this.deps.popup(W.gaveYou(name, c.amount), 'success');
+        break;
+      case 'setSpending':
+      case 'setApprover':
+        if (about && res.message) this.deps.popup(W.alertsLine(name, res.message), 'info');
+        break;
+      default:
+        break;
+    }
+    return true;
   }
 
   /** Another member's feed: the food falls in on this screen too, at the front, as a tap there would. */

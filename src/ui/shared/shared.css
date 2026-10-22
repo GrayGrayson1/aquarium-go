@@ -17,6 +17,11 @@
   .ag-shared-strip .ag-shared-members { bottom: auto; top: calc(100% + 8px); }
   .ag-shared-still { bottom: calc(var(--dock-h) + var(--edge) * 3 + 64px); left: var(--edge); right: var(--edge); transform: none; max-width: none; }
   .ag-shared-notice { top: calc(var(--edge) + var(--topbar-h) + 108px); }
+  /* chunk 14: "Money: {can} to spend" and the way back fill a phone's row, so who's here gets a row of its own */
+  .ag-shared-strip { flex-wrap: wrap; row-gap: 2px; column-gap: 2px; padding: 4px 4px 4px 10px; border-radius: var(--r-lg); }
+  .ag-shared-strip > .ag-shared-strip__text { flex: 1 0 100%; }
+  .ag-shared-strip > .ag-btn { padding-inline: 8px; }
+  .ag-shared-notice { top: calc(var(--edge) + var(--topbar-h) + 140px); }
 }
 .ag-shared-strip__text { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: calc(12px * var(--text-scale)); font-weight: 600; color: var(--c-ink-2); }
 .ag-shared-strip__text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -33,6 +38,32 @@
 .ag-shared-members__name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ag-shared-members__switch { display: inline-flex; align-items: center; gap: 8px; flex: none; }
 .ag-shared-members__label { font-size: calc(11px * var(--text-scale)); color: var(--c-ink-3); }
+
+/* chunk 14 — the members list's spending rows, the strip's Money button and the Shop money sheet (ADR-0050) */
+.ag-shared-members { max-height: min(70vh, 560px); overflow-y: auto; width: min(420px, calc(100vw - 2 * var(--edge))); }
+.ag-shared-members__row { flex-wrap: wrap; align-items: flex-start; }
+.ag-shared-members__row > .ag-shared-members__name { flex: 1 0 100%; }
+.ag-shared-members__money { display: grid; gap: 6px; flex: 1 1 100%; }
+.ag-shared-tiers { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.ag-shared-tiers legend { padding: 0; margin-bottom: 2px; }
+.ag-shared-tier { display: flex; align-items: center; gap: 8px; min-height: 28px; font-size: calc(12px * var(--text-scale)); }
+.ag-shared-tier__choice { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; padding: 2px 0; }
+.ag-shared-tier input[type='radio'] { width: 16px; height: 16px; margin: 0; accent-color: var(--c-aqua, #2fc4b2); }
+.ag-shared-tier__amount.ag-input { width: 84px; min-height: 32px; padding: 2px 8px; font-size: calc(13px * var(--text-scale)); }
+@media (pointer: coarse) { .ag-shared-tier__amount.ag-input, .ag-shared-tier__choice { min-height: 44px; } }
+.ag-shared-strip__money { flex: none; }
+.ag-shared-money { display: grid; gap: 12px; }
+.ag-shared-money p { margin: 0; line-height: 1.45; }
+.ag-shared-money__pool { font-weight: 600; }
+.ag-shared-money__you { display: grid; gap: 6px; justify-items: start; }
+.ag-shared-money__sub { padding-left: 12px; color: var(--c-ink-2); font-size: calc(13px * var(--text-scale)); }
+.ag-shared-money__form { display: grid; gap: 8px; width: 100%; }
+.ag-shared-money__list { display: grid; gap: 6px; }
+.ag-shared-money__head { margin: 0; font-size: calc(12px * var(--text-scale)); font-weight: 700; color: var(--c-ink-2); text-transform: none; }
+.ag-shared-money__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 6px 8px; border-radius: var(--r-md); background: var(--c-fill-1, rgba(255, 255, 255, 0.04)); }
+.ag-shared-money__give { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ag-shared-money__give select { flex: 1 1 140px; min-width: 0; }
+.ag-shared-money__amount { width: 110px; }
 
 .ag-shared-notice {
   position: fixed; top: calc(var(--edge-t, var(--edge)) + var(--topbar-h) + 56px); left: 50%; transform: translateX(-50%); z-index: 55;

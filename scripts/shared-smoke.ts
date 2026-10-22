@@ -9,9 +9,10 @@
  * It makes a throwaway account (the first club's invite code, read with the CLI, never printed) and a throwaway club
  * with a shared shop (through `supabase db query --linked --project-ref <ref>`, scoped to the project), plays the shop
  * on the live server as that account — sign-in, the build's identity, commands, fingerprints, a refused pause, a photo,
- * a wrong token, a refreshed one, the save when it empties — then removes the club (its shop and photos go with it)
- * and the account, and checks nothing of either is left. It never reads or prints the server's password or any key
- * but the publishable one.
+ * a wrong token, a refreshed one, the save when it empties, and (chunk 14) the money pool: the account on Asks first
+ * with some money approved, spending it, refused past it, asking, refused a tier and an answer — then removes the club
+ * (its shop and photos go with it) and the account, and checks nothing of either is left. It never reads or prints the
+ * server's password or any key but the publishable one.
  */
 import { createClient } from '@supabase/supabase-js';
 import { execFileSync } from 'node:child_process';
@@ -27,6 +28,9 @@ import { tutorialSkip } from '@/sim/facility';
 import { encodeRecord } from '@/persistence/serialize';
 import { SharedReplica } from '@/game/sharedLoop';
 import { FIXTURES } from '@/dev/fixtures';
+import { applyCommand } from '@/sim/commands';
+import { deepClone } from '@/sim/clone';
+import { roundCents } from '@/sim/economy/util';
 
 const CLI = process.env.SUPABASE_CLI ?? `${process.env.HOME}/.local/bin/supabase`;
 const REF = /^https:\/\/([a-z0-9]+)\.supabase\.co\/?$/.exec(ONLINE_PROJECT?.url ?? '')?.[1];
@@ -171,6 +175,13 @@ try {
     const g = newGame({ starterId: 'betta', starterName: 'Smoke', shopName: 'Smoke Reef', seed: stamp >>> 0 });
     tutorialSkip(g);
     g.clock.speed = 10;
+    // chunk 14 (ADR-0050): the account asks first, with a pack and a half of food approved for it
+    const buyable = Object.keys(g.inventory.foods).find((f) => applyCommand(deepClone(g), { k: 'buyFood', food: f, packs: 1 }).ok)!;
+    const probe = deepClone(g);
+    applyCommand(probe, { k: 'buyFood', food: buyable, packs: 1 });
+    const price = roundCents(g.finance.money - probe.finance.money);
+    const approved = roundCents(price * 1.5);
+    g.pool = { members: { [user]: { name: 'Smoke Shop', tier: 'ask', extra: approved } } };
     const club = makeClub(user, g, false);
     clubs.push(club);
     const shopsRead = await sb.rpc('club_shared_shops');
@@ -190,6 +201,24 @@ try {
     check('a command comes back in a step, sent by this player', await until(() => c.texts.some((m) => m.t === 'steps' && m.s.some((s) => s.cmds?.some((x) => x.id === fed && x.by === user))), 10_000));
     const paused = cmd(c, { k: 'setSpeed', speed: 0 });
     check('a pause without permission is refused', await until(() => c.texts.some((m) => m.t === 'reject' && m.id === paused && m.why === 'forbidden'), 10_000));
+
+    // 3b. chunk 14, the money pool: the approved money spent, a purchase over it refused, a request, the owner's commands
+    const inStep = (id: number) => c.texts.some((m) => m.t === 'steps' && m.s.some((s) => s.cmds?.some((x) => x.id === id)));
+    const rejected = (id: number) => c.texts.find((m): m is Extract<ServerMessage, { t: 'reject' }> => m.t === 'reject' && m.id === id);
+    const extra = () => c.replica.state?.pool?.members?.[user!]?.extra;
+    const bought = cmd(c, { k: 'buyFood', food: buyable, packs: 1 });
+    check('a purchase within the approved money goes through, and the approved money drops by its price', (await until(() => inStep(bought), 10_000)) && (await until(() => extra() === roundCents(approved - price), 5000)), `extra ${extra()}`);
+    const over = cmd(c, { k: 'buyFood', food: buyable, packs: 1 });
+    check('a purchase over it is refused (spend), with what it cost and what the account had', await until(() => {
+      const r = rejected(over);
+      return r?.why === 'spend' && r.cost === price && r.can === roundCents(approved - price);
+    }, 10_000), JSON.stringify(rejected(over)));
+    const asked = cmd(c, { k: 'askMoney', amount: 100, note: 'Smoke test' });
+    check('a request for money comes back in a step and waits in the pool', (await until(() => inStep(asked), 10_000)) && c.replica.state?.pool?.asks?.[0]?.amount === 100);
+    const askId = c.replica.state?.pool?.asks?.[0]?.id ?? 'ask_none';
+    const tierCmd = cmd(c, { k: 'setSpending', member: user, name: 'Smoke Shop', tier: 'free' });
+    const answerCmd = cmd(c, { k: 'answerAsk', ask: askId, yes: true });
+    check('a tier and an answer without the permission are refused (forbidden)', await until(() => rejected(tierCmd)?.why === 'forbidden' && rejected(answerCmd)?.why === 'forbidden', 10_000));
     check('two fingerprints, both matching', await until(() => c.replica.stats.checks >= 2, 40_000) && c.replica.stats.mismatches === 0, JSON.stringify(c.replica.stats));
 
     // 4. a listing photo: stored once, forwarded as its reference, served back

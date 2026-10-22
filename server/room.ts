@@ -14,6 +14,7 @@ import { createHash } from 'node:crypto';
 import type { GameState } from '@/types';
 import { runSharedStep, type SharedStep, type StepCommand } from '@/sim/sharedStep';
 import { validateCommand, type Command } from '@/sim/commands';
+import { mayApprove } from '@/sim/pool';
 import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
 import { checkStarvation, newStarvationMemory, type StarvationMemory } from '@/sim/starvation';
 import { simulateOffline, defaultFocus, OFFLINE_HIDDEN_MIN_MS, type OfflineSummary } from '@/sim/catchUp';
@@ -107,16 +108,25 @@ export function parseClientMessage(text: string): ClientMessage | null {
 
 /**
  * Who may send a command (§5.4): pause and speed for the owner and the members the owner chose; the guide's own
- * steps for nobody (a shared shop has no guide, ADR-0045 decision 5); everything else for every member (ADR-0043
- * decision 5). The one place permission tiers (§5.6) will change.
+ * steps for nobody (a shared shop has no guide, ADR-0045 decision 5); chunk 14's tiers and approvers for the owner
+ * alone, and answering requests and giving money for the owner and the members they let approve (ADR-0050 decisions
+ * 1 and 4); everything else for every member. What a member may spend is the step's to say (src/sim/pool.ts): it is
+ * known only once the command has run on the copy (`overspend`), and staff and the stock budget are refused on every
+ * copy, with words.
  */
-export function allowed(member: { owner: boolean; pause: boolean }, cmd: Command): boolean {
+export function allowed(member: { id: string; owner: boolean; pause: boolean }, cmd: Command, state: GameState): boolean {
   switch (cmd.k) {
     case 'setSpeed':
       return member.owner || member.pause;
     case 'tutorialNext':
     case 'tutorialSkip':
       return false;
+    case 'setSpending':
+    case 'setApprover':
+      return member.owner;
+    case 'answerAsk':
+    case 'giveMoney':
+      return mayApprove(state, member);
     default:
       return true;
   }
@@ -208,6 +218,8 @@ export interface RoomStats {
   rejected: number;
   /** Commands the game refused because what their sender saw had changed (first one wins, §4.3). */
   conflicts: number;
+  /** chunk 14 — purchases refused because they cost more than their sender may spend (src/sim/pool.ts). */
+  overspends: number;
   /** Guide flags the shop already had, not forwarded (§4.3). */
   flagsDropped: number;
   failedTicks: number;
@@ -319,6 +331,7 @@ export class Room {
       frames: { ...zero },
       rejected: 0,
       conflicts: 0,
+      overspends: 0,
       flagsDropped: 0,
       failedTicks: 0,
       undone: 0,
@@ -642,23 +655,31 @@ export class Room {
     return true;
   }
 
-  /** A command's own step, on a copy (§5.2 item 3): a block that throws leaves the shop as it was. */
-  private commandStep(cmd: StepCommand): boolean {
+  /**
+   * A command's own step, on a copy (§5.2 item 3): a block that throws leaves the shop as it was, and so does (chunk 14)
+   * a purchase that cost more than its sender may spend (`overspend`: no copy ever sees it).
+   */
+  private commandStep(cmd: StepCommand): 'ok' | 'failed' | { overspend: { cost: number; can: number } } {
     const step: SharedStep = { n: this.n + 1, h: 0, cmds: [cmd] };
     const full = this.pendingFull ?? this.full;
     if (this.pendingFull) step.full = this.pendingFull;
     const t0 = this.io.now();
     try {
       const out = runSharedStep(this.state, step, full, { copy: true });
+      const over = out.results[0]?.overspend;
+      if (over) {
+        this.stats.overspends++;
+        return { overspend: over };
+      }
       this.state = out.state;
       for (const r of out.results) if (r.conflict) this.stats.conflicts++;
     } catch (e) {
       this.io.log?.(`step ${step.n} threw: ${e instanceof Error ? e.message : String(e)}`);
-      return false;
+      return 'failed';
     }
     note(this.stats.commandSteps, this.io.now() - t0);
     this.accept(step, full);
-    return true;
+    return 'ok';
   }
 
   private accept(step: SharedStep, full: string[]): void {
@@ -708,7 +729,7 @@ export class Room {
     const cid = typeof id === 'number' && Number.isSafeInteger(id) ? id : -1;
     let c = validateCommand(raw);
     if (!c) return this.reject(member.id, cid, 'malformed');
-    if (!allowed({ owner: member.owner, pause: this.mayPause(member) }, c)) return this.reject(member.id, cid, 'forbidden');
+    if (!allowed({ id: member.id, owner: member.owner, pause: this.mayPause(member) }, c, this.state)) return this.reject(member.id, cid, 'forbidden');
     // §4.3: the shop raises each guide flag once; ten members opening the market send one
     if (c.k === 'raiseFlag' && Object.hasOwn(this.state.progress.tutorial.flags, c.name)) {
       this.stats.flagsDropped++;
@@ -736,17 +757,27 @@ export class Room {
       this.cameBack();
       this.membersChanged();
     }
-    // the sender's name and the server's wall clock travel with the command, for first one wins (§4.3)
-    if (!this.commandStep({ by: member.id, who: member.name, id: cid, at: this.wall(), c })) return this.reject(member.id, cid, 'failed');
+    // the sender's name and the server's wall clock travel with the command, for first one wins (§4.3); chunk 14: and
+    // whether the sender is the owner, which only the server knows (src/sim/pool.ts)
+    const sc: StepCommand = { by: member.id, who: member.name, id: cid, at: this.wall(), c };
+    if (member.owner) sc.owner = true;
+    const run = this.commandStep(sc);
+    if (run === 'failed') return this.reject(member.id, cid, 'failed');
+    if (run !== 'ok') return this.reject(member.id, cid, 'spend', run.overspend);
     if (!this.flushSoon) {
       this.flushSoon = true;
       this.io.later(50, () => this.flushSoon && this.flush());
     }
   }
 
-  private reject(to: string, id: number, why: RejectReason): void {
+  private reject(to: string, id: number, why: RejectReason, spend?: { cost: number; can: number }): void {
     this.stats.rejected++;
-    this.out([to], 'reject', JSON.stringify({ t: 'reject', id, why } satisfies ServerMessage));
+    const msg: ServerMessage = { t: 'reject', id, why };
+    if (spend) {
+      msg.cost = spend.cost;
+      msg.can = spend.can;
+    }
+    this.out([to], 'reject', JSON.stringify(msg));
   }
 
   /** A photo a member asked for (§4.4): only one the shop's listings refer to, a few a minute. */

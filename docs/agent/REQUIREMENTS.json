@@ -6357,6 +6357,130 @@
         "SHARED-SHOPS.md §4.4"
       ],
       "note": "Chunk 13: listing photos shrunk to about 320 px (WebP, JPEG when the browser hands back something else) and drawn from the bytes fetched over the connection (never a reference in <img src>); e2e: the photo on both screens."
+    },
+    {
+      "id": "SHARE-019",
+      "slice": "ALL",
+      "source": "ADR-0050; PLAN.md chunk 14",
+      "description": "A shared shop's members each have a spending tier the owner sets: Spends freely, Allowance or Asks first; everyone starts free.",
+      "acceptance": [
+        "The owner sets each member's tier and whether they may approve requests and give money; nobody else can (allowed() refuses it as forbidden, and every copy refuses it without the owner flag the server puts on the owner's steps); a member with no record spends freely, so a 0.6.0 shop plays as before; staff and the stock budget are refused on every copy for a member who doesn't spend freely, with the approved words; care is for every tier."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-pool.test.ts",
+        "tests/sim/shared-pool-screens.test.ts",
+        "tests/e2e/shared-shop.spec.ts",
+        "tests/sim/shared-room.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.4",
+        "SHARED-SHOPS.md §5.6"
+      ],
+      "note": "Chunk 14: src/sim/pool.ts, server/room.ts allowed()."
+    },
+    {
+      "id": "SHARE-020",
+      "slice": "ALL",
+      "source": "ADR-0050; PLAN.md chunk 14",
+      "description": "The pool is the shop's money: a member who doesn't spend freely spends only their allowance and approved money, and a purchase over it is refused before any copy sees it.",
+      "acceptance": [
+        "A command's spend is the money it took from the pool (care and the pool's own commands aside), taken from the allowance left today, then the approved money, in the command's step on every copy; the server's copy of the step finds an overspend and refuses it (reject spend, with cost and can), leaving every copy unchanged; the screen says \"That costs {cost}, and you can spend {can}. Ask for more in Money.\"; a sale is never spending."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-pool.test.ts",
+        "tests/sim/shared-pool-screens.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.6",
+        "SHARED-SHOPS.md §3.3"
+      ],
+      "note": "Chunk 14."
+    },
+    {
+      "id": "SHARE-021",
+      "slice": "ALL",
+      "source": "ADR-0050; PLAN.md chunk 14",
+      "description": "Members ask the pool for an amount; the owner and the approvers answer, and the first answer wins.",
+      "acceptance": [
+        "A request carries an amount (whole dollars) and an optional note (60 characters), at most 3 open a member; approvers get a pop-up and a count on Money; an approved amount is the member's to spend until spent; a decline gives nothing; the asker can cancel; nobody answers their own; two answers at once: the second is told \"{name} already answered that request.\" on every copy."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-pool.test.ts",
+        "tests/sim/shared-pool-screens.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.6"
+      ],
+      "note": "Chunk 14."
+    },
+    {
+      "id": "SHARE-022",
+      "slice": "ALL",
+      "source": "ADR-0050; PLAN.md chunk 14",
+      "description": "An allowance is topped up each game day, and approvers can give a member money (the one-off grant).",
+      "acceptance": [
+        "The allowance left today reads as the whole allowance on any later game day (never piled up); a purchase uses the allowance first, then approved or given money; a gift is kept until spent; nobody gives to themselves."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-pool.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §5.6"
+      ],
+      "note": "Chunk 14: the top-up is lazy (the record keeps what was left on which day)."
+    },
+    {
+      "id": "SHARE-023",
+      "slice": "ALL",
+      "source": "ADR-0050; PLAN.md chunk 14",
+      "description": "The money pool's screens and words, as ADR-0050 approved them.",
+      "acceptance": [
+        "The strip's Money button (\"Money\", \"Money: {can} to spend\", \"Money ({n})\"); the Shop money sheet (the pool, what the member can spend, Ask for money, Your requests, Requests, Give money); the owner's members list with each member's tier, allowance and the approver switch; the pop-ups and alerts lines exactly as previewed."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-pool-screens.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §8"
+      ],
+      "note": "Chunk 14: forms the previews imply (no note, one request) go to the owner with the release question."
+    },
+    {
+      "id": "SHARE-024",
+      "slice": "ALL",
+      "source": "ADR-0050; PLAN.md chunk 14",
+      "description": "The lockstep holds with the pool in play.",
+      "acceptance": [
+        "GameState.pool is optional and validated in repairState (unreadable entries dropped, an empty pool removed; absent, stateHash is unchanged); every replica matches the room's fingerprint through requests, answers, gifts, tier changes and purchases, and a member who joins mid-way gets the pool in the snapshot."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-pool.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "SHARED-SHOPS.md §3.2"
+      ],
+      "note": "Chunk 14."
     }
   ]
 }

@@ -992,6 +992,49 @@ export interface GameState {
    * (SHARED-SHOPS.md §4.3, src/sim/commands/shared.ts). Never present in a solo game.
    */
   touches?: SharedTouch[];
+  /**
+   * chunk 14 — a shared shop's money pool (ADR-0050, src/sim/pool.ts): how each member may spend the shop's money, and
+   * the open requests. The pool itself is `finance.money`; this holds only the limits. Never present in a solo game.
+   */
+  pool?: PoolState;
+}
+
+/** chunk 14 — how a member may spend the pool (ADR-0050 decision 1). A member with no record spends freely. */
+export type PoolTier = 'free' | 'allowance' | 'ask';
+
+export interface PoolState {
+  /** By account id. */
+  members?: Record<Id, PoolMember>;
+  /** The open requests, oldest first (an answered or cancelled one leaves; its story stays in the log). */
+  asks?: PoolAsk[];
+}
+
+export interface PoolMember {
+  /** Their name when the owner last set them (or gave or approved them money). */
+  name: string;
+  tier: PoolTier;
+  /** `allowance`: whole dollars each game day, topped up (never piled up) on each new day (decision 5). */
+  allowance?: number;
+  /** The allowance left on game day `day`; any later day reads as the whole allowance. */
+  left?: number;
+  day?: number;
+  /** Approved and given money: theirs to spend, after the allowance, until spent. */
+  extra?: number;
+  /** May answer requests and give money. */
+  approve?: boolean;
+}
+
+export interface PoolAsk {
+  id: Id;
+  /** The asker's account id and name. */
+  by: string;
+  name: string;
+  /** Whole dollars. */
+  amount: number;
+  /** What for (optional, at most 60 characters). */
+  note?: string;
+  /** The game hour it was asked. */
+  hour: number;
 }
 
 /** chunk 11 — one member's change to one thing (`c:<creature>`, `o:<offer>`, `set:light:<tank>`…), at the server's time. */

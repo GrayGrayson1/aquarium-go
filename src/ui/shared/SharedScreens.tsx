@@ -7,12 +7,14 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, Users } from 'lucide-react';
 import { useSharedMode } from '@/state/sharedMode';
+import { useGame } from '@/state/game';
 import { Button, Modal, Toggle } from '../kit';
 import { Wordmark } from '../screens/TitleScreen';
 import { BUILD_ID, parseBuildId, versionUrl } from '../hud/updateCheck';
 import { onScreen, useShared } from './store';
 import { dismissClosing, grantPause, leaveSharedShop, stillHere } from './session';
 import { RELOAD_CLOSINGS, SHARED_WORDS as W, closingText } from './words';
+import { MemberSpending, SharedMoneyButton, SharedMoneySheet } from './SharedMoney';
 import './shared.css';
 
 /** How long the server may take between the socket opening and the shop before the card says it's catching up. */
@@ -58,6 +60,7 @@ export function SharedStrip() {
   const members = useShared((s) => s.members);
   const owner = useShared((s) => !!s.you?.owner);
   const [open, setOpen] = useState(false);
+  const [money, setMoney] = useState(false);
   if (!shared || !onScreen(phase)) return null;
   const here = members.filter((m) => m.here).map((m) => m.name);
   const text = W.strip(shop, here);
@@ -72,18 +75,25 @@ export function SharedStrip() {
           <Users size={13} aria-hidden /> <span>{text}</span>
         </span>
       )}
+      <SharedMoneyButton onOpen={() => setMoney(true)} />
       <Button size="sm" variant="ghost" className="ag-shared-strip__back" onClick={() => void leaveSharedShop()} data-testid="shared-back">
         {W.back}
       </Button>
       {owner && open && <MembersList onClose={() => setOpen(false)} />}
+      <SharedMoneySheet open={money} onClose={() => setMoney(false)} />
     </div>
   );
 }
 
-/** §8 "Members list (the owner)": each member there, with a switch "Can pause and change speed". */
+/**
+ * §8 "Members list (the owner)": each member there, with a switch "Can pause and change speed"; chunk 14 (ADR-0050):
+ * and each one's spending tier and "Can approve requests and give money", for anyone the pool has a record of too
+ * (their tier holds while they're away; who may pause is known only for the members there).
+ */
 function MembersList({ onClose }: { onClose: () => void }) {
   const members = useShared((s) => s.members);
   const you = useShared((s) => s.you);
+  const records = useGame((s) => s.game?.pool?.members);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -91,19 +101,23 @@ function MembersList({ onClose }: { onClose: () => void }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  const others = members.filter((m) => m.id !== you?.id);
+  const others: { id: string; name: string; pause?: boolean }[] = members.filter((m) => m.id !== you?.id);
+  for (const [id, r] of Object.entries(records ?? {})) if (id !== you?.id && !others.some((m) => m.id === id)) others.push({ id, name: r.name });
   if (!others.length) return null;
   return (
     <ul className="ag-shared-members" data-testid="shared-members">
       {others.map((m) => (
         <li key={m.id} className="ag-shared-members__row" data-testid={`shared-member-${m.id}`}>
           <span className="ag-shared-members__name">{m.name}</span>
-          <span className="ag-shared-members__switch">
-            <span className="ag-shared-members__label" aria-hidden>
-              {W.canPause}
+          <MemberSpending id={m.id} name={m.name} />
+          {m.pause !== undefined && (
+            <span className="ag-shared-members__switch">
+              <span className="ag-shared-members__label" aria-hidden>
+                {W.canPause}
+              </span>
+              <Toggle checked={m.pause} onChange={(on) => grantPause(m.id, on)} label={`${m.name}: ${W.canPause}`} testId={`shared-grant-${m.id}`} />
             </span>
-            <Toggle checked={m.pause} onChange={(on) => grantPause(m.id, on)} label={`${m.name}: ${W.canPause}`} testId={`shared-grant-${m.id}`} />
-          </span>
+          )}
         </li>
       ))}
     </ul>

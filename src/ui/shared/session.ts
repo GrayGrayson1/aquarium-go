@@ -40,6 +40,7 @@ import { setSharedMarkHandler, type Mark } from '../common/marks';
 import { SharedConnection, type ConnectionDeps, type JoinAs, type Welcome } from './connection';
 import { SharedDispatcher } from './dispatch';
 import { SharedActivity, toastPopup } from './activity';
+import { asksFor } from '@/sim/pool';
 import { overlayMarks, readMarks, recordMark, type SharedMarks } from './marks';
 import { clearSharedPhotos, photoArrived, photosReconnected, setPhotoRequester } from './photos';
 import { cachedShops, forgetSharedShops } from './shopsCache';
@@ -294,7 +295,7 @@ async function open(club: { id: string; name: string }, opts: OpenOptions, base:
         v.activity.step(step, results); // the pop-ups read this step's own copy (money before and after)
       },
       resync: () => v.disp.resyncAsked(),
-      reject: (id, why) => v.disp.reject(id, why),
+      reject: (id, why, spend) => v.disp.reject(id, why, spend),
       members: (members) => patchShared({ members }),
       closing: (m) => void closed(m),
       signedOut: () => void leaveSharedShop({ closing: { why: 'signedOut' } }),
@@ -315,6 +316,7 @@ async function open(club: { id: string; name: string }, opts: OpenOptions, base:
   });
   const activity = new SharedActivity({
     you: () => conn.you,
+    owner: () => !!useShared.getState().you?.owner,
     state: () => conn.replica.state,
     popup: toastPopup,
     focusedTank: () => (useUI.getState().view === 'tank' ? useUI.getState().focusedTankId : null),
@@ -406,6 +408,9 @@ function welcomed(v: Visit, w: Welcome, first: boolean): void {
   const firstTime = noteOpened(club.id, club.name, w.shop.name);
   patchShared({ firstTime });
   if (v.created) useUI.getState().toast(W.created, 'success');
+  // chunk 14 (ADR-0050): an approver opening the shop hears about the requests waiting for them
+  const waiting = asksFor(g, { id: you.id, owner: you.owner }).length;
+  if (waiting) useUI.getState().toast(W.waitingInMoney(waiting), 'info');
 }
 
 /** The server closed the visit: back where the player came from, and say why (§8). */

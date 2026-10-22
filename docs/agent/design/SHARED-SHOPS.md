@@ -21,7 +21,8 @@ SHARE-018 (§12), added to `REQUIREMENTS.json` with each chunk's brief.
 - **One per club, created by the owner** (ADR-0043 decision 3), who names it and picks its starter animal; normal
   starting money; no guide steps (ADR-0045 decision 5).
 - **Club members join, up to 10 at once.** Every member can do everything except pause and speed (ADR-0043 decision
-  5); **pause and speed** belong to the owner and the members the owner chooses (decision 4).
+  5); **pause and speed** belong to the owner and the members the owner chooses (decision 4). Since chunk 14, each
+  member spends the shop's money within the tier the owner sets (ADR-0050, §5.6).
 - **There, or not:** a member counts as there while the shop is on their screen and they've used it in the last 30
   minutes (ADR-0045 decision 4). With nobody there it pauses. When someone comes back after under 5 minutes it simply
   resumes; after longer it catches up at most 12 game hours, under the grace rules (ADR-0043 decision 6, ADR-0045
@@ -39,7 +40,7 @@ SHARE-018 (§12), added to `REQUIREMENTS.json` with each chunk's brief.
 - **A small server on Render runs it** (ADR-0043 decision 2): free first, "with plans to expand", within a 2 GB monthly
   data cap and a 400-hour monthly cap on its awake time (ADR-0045 decisions 3, 15). Paid plans, add-ons and new
   services wait for the owner's yes.
-- **Not in the first version:** permission tiers and the money pool (ADR-0043 decision 5 keeps room for them, §5.6),
+- **Not in the first version:** permission tiers and the money pool (ADR-0043 decision 5; built in chunk 14, §5.6),
   more than one shop per club, members creating shops, deleting a shop from the game (the agent does it with SQL on the
   owner's request), trading between a shared shop and anyone's own game.
 
@@ -217,7 +218,7 @@ Server to browser:
 | `{t:'welcome', you, shop, members, n, full, catchUp?}` then a snapshot frame | Joined: who I am and may do (`{id, name, owner, pause}`: the id is the account's), the shop (`{club, name, owner?}`; chunk 13: `owner`, the owner's name, for the pause refusal, when the shop has a recorded owner), who's there (`{id, name, here, pause}`), the step number the snapshot is at, the full-detail list, and the welcome-back summary if the shop caught up in the last 2 minutes. After a catch-up into a loaded room every member gets a welcome and a snapshot again |
 | `{t:'steps', s:[{n, h, full?, cmds?, post?, fp?}], at?}` | Steps in order; each command in `cmds` is `{by, who, id, at, c}`: the sender's id and name, their own id for it, the server's time it arrived (first one wins' 30 seconds, §4.3), and the command. Command steps go out within about 50 to 100 ms (several commands in that window share a frame to each member); time steps are batched about once a second. Chunk 13: `at`, the server's clock when it sent them; a browser whose own clock has moved more than 10 seconds further since the closest the two came is behind (§7.6) |
 | a binary photo frame | A requested photo: the tag 3, the hash's 64 hex characters, a type byte (1 WebP, 2 JPEG), then the image |
-| `{t:'reject', id, why}` | Your command wasn't applied: `forbidden` (pause without permission, or the guide's own steps, §5.4), `malformed`, `rate` (over 10 commands a second, or 6 photo listings a minute), or `failed` (it threw on the server, §5.2). A command the game refuses by its rules (no money, already sold) is applied as usual, so every copy gets the same refusal and the sender's own copy says why (§4.3). A `raiseFlag` whose flag the shop already has is dropped without a reply (§4.3) |
+| `{t:'reject', id, why, cost?, can?}` | Your command wasn't applied: `forbidden` (pause without permission, the guide's own steps, or chunk 14's tiers and answers without the permission, §5.4), `malformed`, `rate` (over 10 commands a second, or 6 photo listings a minute), `failed` (it threw on the server, §5.2), or `spend` (chunk 14, §5.6: it cost `cost`, more than the `can` its sender may spend). A command the game refuses by its rules (no money, already sold) is applied as usual, so every copy gets the same refusal and the sender's own copy says why (§4.3). A `raiseFlag` whose flag the shop already has is dropped without a reply (§4.3) |
 | `{t:'members', members}` | Who's there and who can pause (not what each is looking at, which no screen shows); at most one a second |
 | `{t:'closing', why, until?, savedAt?}` | The server is closing this connection: `cap`, `hours` (with `until`, the 1st it opens again), `full`, `build`, `updating`, `removed`, `elsewhere`, `fault`, `restart` (with `savedAt`, the last save), `outofstep`, `gone` (the club has no shop; words for chunk 13, §8) (§8). Every close of the server's own says why in a message first, because Render's proxy doesn't pass the server's close frames on (chunk 12, measured: the message arrives, the close code doesn't, and the socket drops as 1006 about 20 seconds later); the server ends the socket 2 seconds after its close frame |
 | `{t:'bye', why}` | A close with no words to show (chunk 12): `sign-in` (the token can't be checked: refresh the session and try again; close 1008), `away` (away 10 minutes: reconnect when the player is back; close 4000), `protocol` (a message the server refuses, a bug; close 1008), `server` (the database didn't answer: reconnect with the usual waits; close 1011) |
@@ -400,7 +401,10 @@ Server to browser:
 - **Pause and speed** (`setSpeed`): the owner (the shop's creator; only the owner creates shops, ADR-0043 decision 3)
   and the members in the shop's `pausers` list.
 - **`grant`:** the owner only. The list is saved with the shop.
-- One function, `allowed(member, cmd, shop)`, decides, so §5.6's tiers can come later without touching the rest.
+- **Chunk 14 (§5.6):** tiers and approvers (`setSpending`, `setApprover`) for the owner only; answering requests and
+  giving money (`answerAsk`, `giveMoney`) for the owner and the members they let approve. What a member may spend is
+  the step's to say.
+- One function, `allowed(member, cmd, shop)`, decides.
 
 ### 5.5 Who's there
 
@@ -413,11 +417,20 @@ Server to browser:
   the snapshot shows which, and its pending result settles from the steps or, if absent, as not applied.
 - The shop runs while at least one member is there. The server never steps for members who aren't.
 
-### 5.6 Room for permission tiers (later, ADR-0043 decision 5)
+### 5.6 Permission tiers and the money pool (chunk 14, ADR-0043 decision 5, ADR-0050)
 
-The shop row's `pausers` becomes a per-member permissions object (`{pause, spend: 'all' | 'request' | 'allowance',
-allowance}`), the money pool and requests become commands, and `allowed` reads them. Nothing in the first version
-assumes everyone may spend, apart from `allowed` itself.
+Built in chunk 14 (PLAN.md chunk 14; `src/sim/pool.ts`). The pool is the shop's own money; `GameState.pool` (optional,
+only in a shared shop) holds each member's spending tier (Spends freely, Allowance a game day, Asks first), their
+allowance left today and the money approved or given to them, who may approve, and the open requests, so every copy
+shows the same thing and no message or database change was needed. Pause and speed stay on the shop's row (`pausers`).
+Six commands change it (`askMoney`, `cancelAsk`, `answerAsk`, `giveMoney`, `setSpending`, `setApprover`); the server
+marks the owner's commands on the step (`StepCommand.owner`), so every copy knows who may set tiers. `allowed` refuses
+the owner's and approvers' kinds to anyone else. A member's spend is the money a command took from the pool (care and
+the pool's own commands aside), taken from their allowance, then their approved money, in that command's step on
+every copy; more than they have is known on the server's copy of the step (`overspend`) and refused before any copy
+sees it (`reject` `spend`, with `cost` and `can`). Staff and the stock budget are refused on every copy for a member
+who doesn't spend freely. The allowance tops up lazily: a record keeps what was left on which game day, and a later
+day reads as the whole allowance.
 
 ### 5.7 The caps and the meters
 
@@ -650,6 +663,21 @@ production lines).
 |---|---|
 | Signed out, or the sign-in ended (the visit can't sign the player in; back to their own aquarium or the title) | "You need to be signed in to play the shared shop. Sign in from Social and open it again." |
 | Pause refused when the game doesn't know the owner's name | "Only the owner and the people they choose can pause or change the speed." |
+
+**The money pool's words, approved as previewed** (2026-10-21, ADR-0050 decision 6, chunk 14). `{amount}`, `{can}`,
+`{cost}`, `{left}`, `{allowance}`, `{extra}`, `{note}`, `{n}` fill in from the game (money as the game writes it).
+
+| Where | Words |
+|---|---|
+| HUD strip, everyone | [Money] · "Money: {can} to spend" (a member who doesn't spend freely) · "Money ({n})" (an approver, {n} requests waiting) |
+| Shop money sheet | **Shop money** — "Pool: {money}. Everything the shop earns goes here." · "You can spend {can}." · "Allowance: {left} of {allowance} left today." · "Approved for you: {extra}." · [Ask for money]: "How much?", "What for? (optional)", [Send request] [Cancel] · **Your requests**: "{amount}: {note} · Waiting" [Cancel] · **Requests** (approvers): "{name} asks for {amount}: {note}" [Approve] [Decline] · **Give money** (approvers): a member, an amount, [Give] |
+| Members list (the owner) | Each member: "Spending:" (•) Spends freely ( ) Allowance [amount] each game day ( ) Asks first · "Can approve requests and give money" · "Can pause and change speed" (as before) |
+| A purchase over what the member can spend (`reject` `spend`) | "That costs {cost}, and you can spend {can}. Ask for more in Money." |
+| Staff or the stock budget without Spends freely | "Staff and the stock budget keep spending the pool, so only members who spend freely can change them." |
+| Pop-ups | "{name} asks for {amount}: {note}." (to approvers) · "{owner} approved your {amount}." · "{owner} declined your request for {amount}." · "{owner} gave you {amount} to spend." · a tier change's alerts line (to the member it's about) · "{n} requests are waiting in Money." (an approver opening the shop) |
+| Alerts list lines (the name in front) | "Asked for {amount}: {note}." · "Approved {name}'s {amount}." · "Declined {name}'s request for {amount}." · "Gave {name} {amount} to spend." · "Cancelled the request for {amount}." · "Set {name} to spend freely." · "Set {name}'s allowance to {amount} a game day." · "Set {name} to ask first." · "Let {name} approve requests." · "{name} can no longer approve requests." |
+| First one wins, a request | "{name} already answered that request." · "That request has changed since you looked." |
+| Forms the previews imply (to confirm with the release) | A request with no note: "Asked for {amount}.", "{name} asks for {amount}.", "{amount} · Waiting"; one request waiting: "1 request is waiting in Money."; an approver who doesn't spend freely: "Money: {can} to spend ({n})" |
 
 ## 9. Tests
 

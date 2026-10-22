@@ -10,6 +10,7 @@
 import type { GameState } from '@/types';
 import { applyAction, applyFlag, type CommandResult } from './apply';
 import { applyAsActor, type Actor } from './shared';
+import { applyPoolCommand, isPoolCommand, spendAs, tierRefusal } from '../pool';
 import type { Command } from './kinds';
 
 export type { Command, CommandKind, CommandOf, FeedZone, Additive, CleanWhat, LineRule } from './kinds';
@@ -29,5 +30,8 @@ export function applyCommand(state: GameState, cmd: Command, actor?: Actor): Com
     if (res.ok && cmd.flag) applyFlag(state, cmd.flag);
     return res;
   };
-  return actor ? applyAsActor(state, cmd, actor, run) : run();
+  if (!actor) return run();
+  // chunk 14: the pool's own commands, and everything else within the member's spending tier (src/sim/pool.ts)
+  if (isPoolCommand(cmd)) return applyAsActor(state, cmd, actor, () => applyPoolCommand(state, cmd, actor));
+  return tierRefusal(state, cmd, actor) ?? applyAsActor(state, cmd, actor, () => spendAs(state, cmd, actor, run));
 }

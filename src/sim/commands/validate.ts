@@ -7,6 +7,7 @@
  */
 import type { Command, CommandKind } from './kinds';
 import { PHOTO_REF } from '@/types/shared';
+import { ASK_NOTE_MAX, POOL_AMOUNT_MAX } from '../pool';
 
 type Field =
   | { t: 'id' }
@@ -57,6 +58,8 @@ const opt = <F extends Field>(f: F): F & { opt: true } => ({ ...f, opt: true });
 const en = (of: readonly string[]): Field => ({ t: 'enum', of });
 const money: Field = { t: 'num', min: 0, max: MONEY };
 const hour: Field = { t: 'num', min: 0, max: 24 };
+/** chunk 14 — a request, a gift or an allowance: whole dollars (src/sim/pool.ts). */
+const poolAmount: Field = { t: 'int', min: 1, max: POOL_AMOUNT_MAX };
 
 const SCHEMA: Schema = {
   feedTank: { tank: id, food: id, zone: opt(en(ZONES)), target: opt(id) },
@@ -152,6 +155,12 @@ const SCHEMA: Schema = {
   claimQuest: { quest: id },
   enterShow: { show: id, cls: id, subject: id },
   withdrawEntry: { entry: id },
+  askMoney: { amount: poolAmount, note: opt({ t: 'text', max: ASK_NOTE_MAX }) },
+  cancelAsk: { ask: id },
+  answerAsk: { ask: id, yes: bool },
+  giveMoney: { member: id, name, amount: poolAmount },
+  setSpending: { member: id, name, tier: en(['free', 'allowance', 'ask']), allowance: opt(poolAmount) },
+  setApprover: { member: id, name, on: bool },
   setSpeed: { speed: { t: 'speed' } },
   raiseFlag: { name: { t: 'str', max: 81 } },
   tutorialNext: {},

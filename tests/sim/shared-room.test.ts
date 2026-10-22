@@ -90,12 +90,14 @@ function harness(state: GameState, extra: Partial<RoomIo> = {}) {
 
 describe('chunk 12: who may do what (§5.4)', () => {
   it('pause and speed for the owner and the chosen; the guide’s own steps for nobody; the rest for everyone', () => {
-    const member = { owner: false, pause: false };
-    expect(allowed(member, { k: 'setSpeed', speed: 0 })).toBe(false);
-    expect(allowed({ owner: false, pause: true }, { k: 'setSpeed', speed: 3 })).toBe(true);
-    expect(allowed({ owner: true, pause: false }, { k: 'setSpeed', speed: 10 })).toBe(true);
-    for (const k of ['tutorialNext', 'tutorialSkip'] as const) expect(allowed({ owner: true, pause: true }, { k } as Command)).toBe(false);
-    expect(allowed(member, { k: 'raiseFlag', name: 'opened_market' })).toBe(true);
+    // chunk 14: allowed() takes the member's id and the shop (its approvers, src/sim/pool.ts)
+    const g = shop('playthrough_betta');
+    const member = { id: 'm', owner: false, pause: false };
+    expect(allowed(member, { k: 'setSpeed', speed: 0 }, g)).toBe(false);
+    expect(allowed({ id: 'm', owner: false, pause: true }, { k: 'setSpeed', speed: 3 }, g)).toBe(true);
+    expect(allowed({ id: 'o', owner: true, pause: false }, { k: 'setSpeed', speed: 10 }, g)).toBe(true);
+    for (const k of ['tutorialNext', 'tutorialSkip'] as const) expect(allowed({ id: 'o', owner: true, pause: true }, { k } as Command, g)).toBe(false);
+    expect(allowed(member, { k: 'raiseFlag', name: 'opened_market' }, g)).toBe(true);
   });
 
   it('a refused pause changes nothing anywhere; after the grant it goes through', () => {

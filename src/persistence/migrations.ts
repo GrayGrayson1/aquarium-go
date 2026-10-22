@@ -784,6 +784,7 @@ export function repairState(s: Json): string[] {
     }
   }
   repairTouches(s, repairs);
+  repairPool(s, repairs);
   // lane:shows — optional; an unreadable shows block is dropped (src/sim/shows re-creates it lazily), arrays repaired.
   if (s.shows !== undefined && !isObj(s.shows)) {
     delete s.shows;
@@ -1064,6 +1065,74 @@ function repairTouches(s: Json, repairs: string[]): void {
   if (!Array.isArray(s.touches) || good.length !== list.length) repairs.push('touches: unreadable entries removed');
   if (good.length) s.touches = good;
   else delete s.touches;
+}
+
+/**
+ * chunk 14 (ADR-0050, src/sim/pool.ts) — a shared shop's money pool, when present: each member's record well formed
+ * (an unreadable one is dropped, so that member spends freely as one with no record does; a stray or broken field is
+ * removed), at most 3 open requests a member and 100 in all, and an empty pool removed. Never in a solo save.
+ */
+function repairPool(s: Json, repairs: string[]): void {
+  if (s.pool === undefined) return;
+  if (!isObj(s.pool)) {
+    delete s.pool;
+    repairs.push('pool: unreadable, removed');
+    return;
+  }
+  const p = s.pool;
+  const key = (k: string) => k.length > 0 && k.length <= 80 && !(k in Object.prototype) && k !== '__proto__' && !/[\u0000-\u001f]/.test(k);
+  const text = (v: unknown, max: number) => typeof v === 'string' && v.length > 0 && v.length <= max;
+  const whole = (v: unknown) => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 10_000_000;
+  for (const k of Object.keys(p)) {
+    if (k !== 'members' && k !== 'asks') {
+      delete p[k];
+      repairs.push(`pool.${k.slice(0, 40)}: unknown, removed`);
+    }
+  }
+  if (p.members !== undefined) {
+    if (!isObj(p.members)) {
+      delete p.members;
+      repairs.push('pool.members: unreadable, removed');
+    } else {
+      for (const [id, m] of Object.entries(p.members) as [string, Json][]) {
+        if (!key(id) || !isObj(m) || !text(m.name, 120) || !['free', 'allowance', 'ask'].includes(m.tier) || (m.tier === 'allowance' && !whole(m.allowance))) {
+          delete p.members[id];
+          repairs.push(`pool member ${id.slice(0, 80)}: unreadable, removed`);
+          continue;
+        }
+        const drop = (f: string) => {
+          delete m[f];
+          repairs.push(`pool member ${id}.${f}: removed`);
+        };
+        for (const f of Object.keys(m)) if (!['name', 'tier', 'allowance', 'left', 'day', 'extra', 'approve'].includes(f)) drop(f);
+        if (m.tier !== 'allowance') for (const f of ['allowance', 'left', 'day']) if (m[f] !== undefined) drop(f);
+        if (m.left !== undefined && !(finiteNum(m.left) && m.left >= 0 && m.left <= m.allowance)) drop('left');
+        if (m.day !== undefined && !(Number.isInteger(m.day) && m.day >= 0)) drop('day');
+        if ((m.left === undefined) !== (m.day === undefined)) for (const f of ['left', 'day']) if (m[f] !== undefined) drop(f);
+        if (m.extra !== undefined && !(finiteNum(m.extra) && m.extra > 0 && m.extra <= 1e9)) drop('extra');
+        if (m.approve !== undefined && m.approve !== true) drop('approve');
+      }
+      if (!Object.keys(p.members).length) delete p.members;
+    }
+  }
+  if (p.asks !== undefined) {
+    const list = Array.isArray(p.asks) ? (p.asks as Json[]) : [];
+    const each = new Map<string, number>();
+    const good = list.filter((a) => {
+      const ok = isObj(a) && text(a.id, 80) && text(a.by, 80) && key(a.by) && text(a.name, 120) && whole(a.amount) && (a.note === undefined || text(a.note, 60)) && finiteNum(a.hour) && Object.keys(a).every((f) => ['id', 'by', 'name', 'amount', 'note', 'hour'].includes(f));
+      if (!ok) return false;
+      const n = (each.get(a.by) ?? 0) + 1;
+      each.set(a.by, n);
+      return n <= 3;
+    }).slice(0, 100);
+    if (!Array.isArray(p.asks) || good.length !== list.length) repairs.push('pool.asks: unreadable entries removed');
+    if (good.length) p.asks = good;
+    else delete p.asks;
+  }
+  if (p.members === undefined && p.asks === undefined) {
+    delete s.pool;
+    repairs.push('pool: empty, removed');
+  }
 }
 
 /**

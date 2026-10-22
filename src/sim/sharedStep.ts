@@ -21,6 +21,8 @@ export interface StepCommand {
   who?: string;
   id?: number;
   at?: number;
+  /** chunk 14 — the sender is the shop's owner (the server's knowledge, from the club: src/sim/pool.ts). */
+  owner?: boolean;
   c: Command;
 }
 
@@ -59,7 +61,7 @@ export function runSharedStep(state: GameState, step: SharedStep, full: readonly
   clearCompatCache();
   clearReachCache();
   const results: CommandResult[] = [];
-  for (const sc of step.cmds ?? []) results.push(applyCommand(s, sc.c, { id: sc.by, name: sc.who ?? sc.by, at: sc.at ?? 0 }));
+  for (const sc of step.cmds ?? []) results.push(applyCommand(s, sc.c, { id: sc.by, name: sc.who ?? sc.by, at: sc.at ?? 0, ...(sc.owner === true ? { owner: true } : {}) }));
   if (step.h > 0) advanceWorld(s, step.h, { focusTankIds: full, stagger: true });
   for (const c of step.post ?? []) applyCommand(s, c);
   return { state: s, results };

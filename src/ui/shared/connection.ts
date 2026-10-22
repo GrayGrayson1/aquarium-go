@@ -84,7 +84,8 @@ export interface ConnectionEvents {
   applied?(): void;
   /** Each step, with its commands' results in order (the shared dispatcher settles its own). */
   step?(step: SharedStep, results: CommandResult[]): void;
-  reject?(id: number, why: RejectReason): void;
+  /** chunk 14: `spend` carries what the command cost and what the member could spend. */
+  reject?(id: number, why: RejectReason, spend?: { cost: number; can: number }): void;
   members?(members: SharedMember[]): void;
   /** The server closed the visit with words to show (§8). The connection is over. */
   closing?(m: ClosingMessage): void;
@@ -420,7 +421,7 @@ export class SharedConnection {
         if (typeof m.at === 'number') this.checkBehind(m.at);
         break;
       case 'reject':
-        this.events.reject?.(m.id, m.why);
+        this.events.reject?.(m.id, m.why, m.why === 'spend' && typeof m.cost === 'number' && typeof m.can === 'number' ? { cost: m.cost, can: m.can } : undefined);
         break;
       case 'members':
         this.events.members?.(m.members);

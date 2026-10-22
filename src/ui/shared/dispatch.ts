@@ -5,7 +5,7 @@
  * been applied to this copy, the same result every copy computed. Also:
  *
  * - a `reject` settles as not applied, with its words (§8: too many actions, a failure on the server, or pause and speed
- *   without permission);
+ *   without permission; chunk 14: more than the member can spend, with what it cost and what they had);
  * - a command no step settled when its connection dropped settles as not applied (a fresh snapshot shows the shop as it
  *   is), as does one sent while the shop isn't connected;
  * - a command sent before this copy asked for the shop again (out of step, or behind) was applied in the steps that
@@ -21,6 +21,7 @@
  */
 import type { Command, CommandResult } from '@/sim/commands';
 import { settingKey } from '@/sim/commands';
+import { POOL_KINDS } from '@/sim/pool';
 import type { Dispatch } from '@/state/game';
 import { useGame } from '@/state/game';
 import type { RejectReason } from '@/types/shared';
@@ -91,6 +92,8 @@ function settleAll(dones: readonly Done[], res: CommandResult | null): void {
 export class SharedDispatcher {
   /** Commands sent and not yet settled, by id; each with the held-back values it stands for. */
   private readonly pending = new Map<number, Done[]>();
+  /** chunk 14 — each pending command's kind: a refusal's words depend on it. */
+  private readonly kinds = new Map<number, string>();
   /** Per control: when it last sent, and the newest value waiting to go. */
   private readonly controls = new Map<string, { sentAt: number; waiting: { cmd: Command; done: Done[] } | null; cancel: (() => void) | null }>();
   /** Commands pending when this copy asked for the shop again: the snapshot that answers it holds them. */
@@ -129,6 +132,7 @@ export class SharedDispatcher {
       const dones = this.pending.get(sc.id);
       if (!dones) return;
       this.pending.delete(sc.id);
+      this.kinds.delete(sc.id);
       const res = results[i] ?? null;
       if (res?.ok && res.noteBy) this.deps.note(W.changedThat(res.noteBy));
       settleAll(dones, res);
@@ -149,16 +153,29 @@ export class SharedDispatcher {
       const dones = this.pending.get(id);
       if (!dones) continue;
       this.pending.delete(id);
+      this.kinds.delete(id);
       settleAll(dones, APPLIED_UNSEEN);
     }
   }
 
-  /** The server didn't apply one of this player's commands (§3.3). */
-  reject(id: number, why: RejectReason): void {
+  /**
+   * The server didn't apply one of this player's commands (§3.3). chunk 14: `spend` says what it cost and what they
+   * could spend; a pool command `forbidden` (a tier or an answer the screens didn't offer) is a failure.
+   */
+  reject(id: number, why: RejectReason, spend?: { cost: number; can: number }): void {
     const dones = this.pending.get(id);
     if (!dones) return;
+    const kind = this.kinds.get(id);
     this.pending.delete(id);
-    const message = why === 'rate' ? W.tooFast : why === 'forbidden' ? W.notAllowed(this.deps.ownerName()) : W.failed;
+    this.kinds.delete(id);
+    const message =
+      why === 'rate'
+        ? W.tooFast
+        : why === 'spend' && spend
+          ? W.overspend(spend.cost, spend.can)
+          : why === 'forbidden' && !(kind !== undefined && POOL_KINDS.has(kind))
+            ? W.notAllowed(this.deps.ownerName())
+            : W.failed;
     settleAll(dones, notApplied(message));
   }
 
@@ -166,6 +183,7 @@ export class SharedDispatcher {
   dropped(): void {
     const all = [...this.pending.values()].flat();
     this.pending.clear();
+    this.kinds.clear();
     for (const c of this.controls.values()) {
       c.cancel?.();
       if (c.waiting) all.push(...c.waiting.done);
@@ -187,6 +205,7 @@ export class SharedDispatcher {
       return;
     }
     this.pending.set(id, dones);
+    this.kinds.set(id, cmd.k);
   }
 
   private coalesce(key: string, cmd: Command, done: Done): void {

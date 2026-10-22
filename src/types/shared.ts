@@ -78,10 +78,12 @@ export type ClientMessage =
 export type ClosingReason = 'cap' | 'hours' | 'full' | 'build' | 'updating' | 'removed' | 'elsewhere' | 'fault' | 'restart' | 'outofstep' | 'gone';
 
 /**
- * Why a command wasn't applied (§3.3): `forbidden`, pause or speed without permission (§5.4); `malformed`, it failed
- * `validateCommand` or the server's own checks; `rate`, too many actions; `failed`, it threw on the server.
+ * Why a command wasn't applied (§3.3): `forbidden`, pause or speed without permission (§5.4), or (chunk 14) a tier or
+ * an answer only the owner or an approver may give; `malformed`, it failed `validateCommand` or the server's own checks;
+ * `rate`, too many actions; `failed`, it threw on the server; `spend` (chunk 14, ADR-0050), it cost more than a member
+ * who doesn't spend freely can spend (the message says what it cost and what they had).
  */
-export type RejectReason = 'forbidden' | 'malformed' | 'rate' | 'failed';
+export type RejectReason = 'forbidden' | 'malformed' | 'rate' | 'failed' | 'spend';
 
 /**
  * Why the server ends a connection with no words to show (chunk 12): `sign-in`, the token can't be checked (refresh the
@@ -105,7 +107,8 @@ export type ServerMessage =
   | { t: 'welcome'; you: SharedYou; shop: { club: string; name: string; owner?: string }; members: SharedMember[]; n: number; full: string[]; catchUp?: OfflineSummary }
   /** chunk 13: `at`, the server's clock (real ms) when it sent them, so a browser can tell it has fallen behind (§7.6). */
   | { t: 'steps'; s: SharedStep[]; at?: number }
-  | { t: 'reject'; id: number; why: RejectReason }
+  /** chunk 14: `cost` and `can` with `spend`: what the command cost and what the member could spend (dollars). */
+  | { t: 'reject'; id: number; why: RejectReason; cost?: number; can?: number }
   | { t: 'members'; members: SharedMember[] }
   | ClosingMessage
   | { t: 'bye'; why: ByeReason };

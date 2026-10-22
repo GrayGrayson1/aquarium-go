@@ -4,6 +4,7 @@
  * catalogue's (`conflictText`, src/sim/commands/shared.ts). OWNER: lane "social".
  */
 import type { ClosingReason } from '@/types/shared';
+import { fmtMoney as $ } from '@/sim/economy/util';
 import { formatMoney } from '../kit';
 
 export const SHARED_WORDS = {
@@ -46,7 +47,46 @@ export const SHARED_WORDS = {
   failed: 'That didn’t work, and nothing was changed. Please try again.',
   savesHere: (club: string) => `This is ${club}’s shared shop: it saves on the server. Your own aquarium is saved and waits for you.`,
   reload: 'Reload',
+  // chunk 14 — the money pool and its tiers (ADR-0050 decision 6: as previewed). Money as the game writes it (fmtMoney).
+  money: 'Money',
+  moneyToSpend: (can: number) => `Money: ${$(can)} to spend`,
+  moneyWaiting: (label: string, n: number) => `${label} (${n})`,
+  moneyTitle: 'Shop money',
+  pool: (money: number) => `Pool: ${$(money)}. Everything the shop earns goes here.`,
+  youCanSpend: (can: number) => `You can spend ${$(can)}.`,
+  allowanceLeft: (left: number, allowance: number) => `Allowance: ${$(left)} of ${$(allowance)} left today.`,
+  approvedForYou: (extra: number) => `Approved for you: ${$(extra)}.`,
+  askForMoney: 'Ask for money',
+  howMuch: 'How much?',
+  whatFor: 'What for? (optional)',
+  sendRequest: 'Send request',
+  cancel: 'Cancel',
+  yourRequests: 'Your requests',
+  waiting: (amount: number, note?: string) => (note ? `${$(amount)}: ${note} · Waiting` : `${$(amount)} · Waiting`),
+  requests: 'Requests',
+  asks: (name: string, amount: number, note?: string) => (note ? `${name} asks for ${$(amount)}: ${note}` : `${name} asks for ${$(amount)}`),
+  approve: 'Approve',
+  decline: 'Decline',
+  giveMoney: 'Give money',
+  give: 'Give',
+  spending: 'Spending:',
+  spendsFreely: 'Spends freely',
+  allowance: 'Allowance',
+  eachGameDay: 'each game day',
+  asksFirst: 'Asks first',
+  canApprove: 'Can approve requests and give money',
+  overspend: (cost: number, can: number) => `That costs ${$(cost)}, and you can spend ${$(can)}. Ask for more in Money.`,
+  asksPopup: (name: string, amount: number, note?: string) => (note ? `${name} asks for ${$(amount)}: ${sentence(note)}` : `${name} asks for ${$(amount)}.`),
+  approvedYour: (name: string, amount: number) => `${name} approved your ${$(amount)}.`,
+  declinedYour: (name: string, amount: number) => `${name} declined your request for ${$(amount)}.`,
+  gaveYou: (name: string, amount: number) => `${name} gave you ${$(amount)} to spend.`,
+  waitingInMoney: (n: number) => (n === 1 ? '1 request is waiting in Money.' : `${n} requests are waiting in Money.`),
 } as const;
+
+/** "Prismatic betta" → "Prismatic betta."; a note that ends a sentence itself keeps its own mark (as the alerts line). */
+function sentence(s: string): string {
+  return /[.!?…]$/.test(s) ? s : `${s}.`;
+}
 
 /** Why a visit ended: the server's closings (§8), or this player's sign-in (ADR-0049). */
 export type VisitEnd = ClosingReason | 'signedOut';
