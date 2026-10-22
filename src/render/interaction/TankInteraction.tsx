@@ -14,9 +14,7 @@ import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { runtime, pushVisualEvent, nowSeconds } from '@/runtime/tankRuntime';
 import { tankDims } from '@/sim/tankSpace';
-import { feedTank, type ActionResult } from '@/sim/care';
 import { toastCaution } from '@/ui/common/actions'; // lane:qa-r3
-import { registerGlassTap, noteInteraction } from '@/sim/life/actions';
 import { findSpecies } from '@/data/species';
 import { eatsFood, getFoodDef } from '@/data/catalog/foods';
 import { sfx } from '@/audio/sfx';
@@ -236,7 +234,7 @@ export function TankInteraction({ tank }: { tank: Tank }) {
       const face = glassPoint(x, y, _p);
       const d = tankDims(t);
       const tool = ui.tool;
-      const mutate = useGame.getState().mutate;
+      const dispatch = useGame.getState().dispatch;
       const game = useGame.getState().game;
       if (!game) return;
 
@@ -249,26 +247,24 @@ export function TankInteraction({ tank }: { tank: Tank }) {
         }
         const def = getFoodDef(foodId);
         const zone: 'surface' | 'middle' | 'bottom' = !def || def.delivery === 'floating' ? 'surface' : _p.y < d.waterY * 0.35 ? 'bottom' : 'middle';
-        let res: ActionResult = { ok: false, message: 'Could not feed' };
-        const had = game.inventory.foods[foodId] ?? 0;
-        mutate((dr) => {
-          res = feedTank(dr, t.id, foodId, { zone });
-        });
-        if (!res.ok) {
-          ui.toast(res.message, 'warning');
-          return;
-        }
-        // lane:qa-r3 — a feed that worked but nothing eats, overfed or emptied the bag says so (one toast per burst of taps)
-        if (res.caution) toastCaution(res.message, `feed:${t.id}`);
         // food goes in from the top, above where you tapped
         const z = face === 'front' ? d.W / 2 - d.W * 0.28 : _p.z;
         const local: [number, number, number] = [_p.x, d.waterY - 0.002, z];
-        // lane:tankrender — the sim portions the feed for the whole tank (8–9 servings for a stocked one): drop that many
-        // servings' worth of particles, not a single serving's pinch (the servings used = what left the inventory)
-        const servings = Math.max(1, had - (useGame.getState().game?.inventory.foods[foodId] ?? 0));
-        aiFeed(t.id, foodId, local, { servings });
-        pushVisualEvent({ kind: 'feed', tankId: t.id, pos: local, t: nowSeconds(), strength: 0.6 });
-        sfx('feed');
+        dispatch({ k: 'feedTank', tank: t.id, food: foodId, zone }, (r) => {
+          const res = r ?? { ok: false, message: 'Could not feed' };
+          if (!res.ok) {
+            ui.toast(res.message, 'warning');
+            return;
+          }
+          // lane:qa-r3 — a feed that worked but nothing eats, overfed or emptied the bag says so (one toast per burst of taps)
+          if (res.caution) toastCaution(res.message, `feed:${t.id}`);
+          // lane:tankrender — the sim portions the feed for the whole tank (8–9 servings for a stocked one): drop that
+          // many servings' worth of particles, not a single serving's pinch (the servings used = what left the inventory)
+          const servings = Math.max(1, r?.servingsUsed ?? 0);
+          aiFeed(t.id, foodId, local, { servings });
+          pushVisualEvent({ kind: 'feed', tankId: t.id, pos: local, t: nowSeconds(), strength: 0.6 });
+          sfx('feed');
+        });
         return;
       }
 
@@ -286,32 +282,15 @@ export function TankInteraction({ tank }: { tank: Tank }) {
           ui.toast('Choose a food first.', 'info');
           return;
         }
-        let res: ActionResult = { ok: false, message: 'Could not feed' };
-        mutate((dr) => {
-          res = feedTank(dr, t.id, foodId, { targetCreatureId: id });
-          if (res.ok) noteInteraction(dr, id, 'target_fed');
+        dispatch({ k: 'feedTank', tank: t.id, food: foodId, target: id }, (r) => {
+          const res = r ?? { ok: false, message: 'Could not feed' };
+          if (!res.ok) {
+            ui.toast(res.message, 'warning');
+            return;
+          }
+          if (res.caution) toastCaution(res.message, `feed:${t.id}`); // lane:qa-r3
+          targetFedShow(t.id, foodId, id, d);
         });
-        if (!res.ok) {
-          ui.toast(res.message, 'warning');
-          return;
-        }
-        if (res.caution) toastCaution(res.message, `feed:${t.id}`); // lane:qa-r3
-        const rt = runtime.creatures.get(id);
-        if (rt) {
-          // tongs / pipette: just in front of the snout
-          const cp = Math.cos(rt.pitch);
-          const fx = cp * Math.cos(rt.yaw);
-          const fz = -cp * Math.sin(rt.yaw);
-          const reach = rt.lengthM * (rt.speciesId.includes('seahorse') ? 0.55 : 0.8);
-          const local: [number, number, number] = [
-            Math.max(-d.L / 2 + 0.01, Math.min(d.L / 2 - 0.01, rt.pos.x + fx * reach)),
-            Math.max(d.substrateY + 0.01, Math.min(d.waterY - 0.01, rt.pos.y + Math.sin(rt.pitch) * reach + rt.lengthM * (rt.speciesId.includes('seahorse') ? 0.3 : 0.05))),
-            Math.max(-d.W / 2 + 0.01, Math.min(d.W / 2 - 0.01, rt.pos.z + fz * reach)),
-          ];
-          aiFeed(t.id, foodId, local, { targetCreatureId: id });
-          pushVisualEvent({ kind: 'feed', tankId: t.id, pos: local, creatureId: id, t: nowSeconds(), strength: 0.3 });
-        }
-        sfx('feed', { volume: 0.5 });
         return;
       }
 
@@ -326,13 +305,13 @@ export function TankInteraction({ tank }: { tank: Tank }) {
       if (id) {
         if (lastClick.id === id && now - lastClick.t < DOUBLE_MS) {
           ui.set({ selectedCreatureId: id, cameraMode: 'follow', followCreatureId: id });
-          mutate((dr) => noteInteraction(dr, id, 'follow'));
+          dispatch({ k: 'noteInteraction', creature: id, kind: 'follow' });
           lastClick = { t: -1e9, id: null };
           return;
         }
         lastClick = { t: now, id };
         ui.set({ selectedCreatureId: id });
-        mutate((dr) => noteInteraction(dr, id, 'observe'));
+        dispatch({ k: 'noteInteraction', creature: id, kind: 'observe' });
         sfx('click', { volume: 0.4 });
         return;
       }
@@ -362,6 +341,25 @@ export function TankInteraction({ tank }: { tank: Tank }) {
   return <group ref={group} name={`interaction:${tank.id}`} />;
 }
 
+/** lane:tankrender — the target feed worked: tongs or a pipette just in front of the snout. */
+function targetFedShow(tankId: string, foodId: string, id: string, d: ReturnType<typeof tankDims>): void {
+  const rt = runtime.creatures.get(id);
+  if (rt) {
+    const cp = Math.cos(rt.pitch);
+    const fx = cp * Math.cos(rt.yaw);
+    const fz = -cp * Math.sin(rt.yaw);
+    const reach = rt.lengthM * (rt.speciesId.includes('seahorse') ? 0.55 : 0.8);
+    const local: [number, number, number] = [
+      Math.max(-d.L / 2 + 0.01, Math.min(d.L / 2 - 0.01, rt.pos.x + fx * reach)),
+      Math.max(d.substrateY + 0.01, Math.min(d.waterY - 0.01, rt.pos.y + Math.sin(rt.pitch) * reach + rt.lengthM * (rt.speciesId.includes('seahorse') ? 0.3 : 0.05))),
+      Math.max(-d.W / 2 + 0.01, Math.min(d.W / 2 - 0.01, rt.pos.z + fz * reach)),
+    ];
+    aiFeed(tankId, foodId, local, { targetCreatureId: id });
+    pushVisualEvent({ kind: 'feed', tankId, pos: local, creatureId: id, t: nowSeconds(), strength: 0.3 });
+  }
+  sfx('feed', { volume: 0.5 });
+}
+
 /**
  * A glass tap: startle wave in the AI, visual + sound, sim tap pressure, and a gentle warning on repeated taps.
  * `gentle` (a plain click that missed every animal): no sim stress unless the clicks add up to spamming.
@@ -373,7 +371,7 @@ export function tapGlass(tankId: string, local: [number, number, number], streng
   aiTap(tankId, local, s, spam);
   pushVisualEvent({ kind: 'tap', tankId, pos: local, t: now, strength: s });
   sfx('tap_glass', { volume: Math.min(1, 0.35 + 0.45 * s) });
-  if (spam || !opts.gentle) useGame.getState().mutate((d) => registerGlassTap(d, tankId, spam ? 1.5 : strength * 0.5));
+  if (spam || !opts.gentle) useGame.getState().dispatch({ k: 'glassTap', tank: tankId, intensity: spam ? 1.5 : strength * 0.5 });
   if (spam && now - lastSpamToast > TOAST_THROTTLE_S) {
     lastSpamToast = now;
     useUI.getState().toast('Give them a moment — repeated tapping stresses fish.', 'warning');

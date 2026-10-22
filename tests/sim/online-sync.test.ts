@@ -15,7 +15,8 @@ import { useSettings } from '@/state/settings';
 import { SCHEMA_VERSION, createMemoryBackend, exportSaveText, keptSaveId, listSaves, resetSaveSession, saveGame, setStorageBackend, setSyncStore, stateHash, useResume } from '@/persistence';
 import { provideSocialService, type CloudSaveMeta, type CloudUpload, type SocialService, type SocialUser, type StandingReport } from '@/social';
 import { useSocial } from '@/ui/panels/social/socialStore';
-import { CLOUD_LINK_KEY, SEND_GAP_MS, checkOnline, cloudBlocked, forgetCloudLink, keepDeviceCopy, loadOnlineCopy, readLink, resetCloudSync, startCloudSync, useCloud } from '@/ui/online/cloudSync';
+import { CLOUD_LINK_KEY, SEND_GAP_MS, checkOnline, cloudBlocked, cloudSyncNow, forgetCloudLink, keepDeviceCopy, loadOnlineCopy, readLink, resetCloudSync, startCloudSync, useCloud } from '@/ui/online/cloudSync';
+import { setSharedMode } from '@/state/sharedMode';
 import type { GameState } from '@/types';
 
 // another tab played an aquarium further (persistence's stale-tab rule): the ids the test marks
@@ -173,6 +174,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  setSharedMode(null);
   stop();
   resetCloudSync();
   provideSocialService(null);
@@ -750,3 +752,59 @@ describe('chunk 9, the review’s confirmation: a further copy with the device�
     expect(toasts()).toContain(`${mine.shopName} was only in the autosave, so it was saved to Slot 1 first.`);
   });
 });
+
+describe('chunk 13: a shared shop is never anyone’s online save (SHARE-011)', () => {
+  it('with one open, signing in, saving, hiding the tab and sending now upload nothing and report no numbers', async () => {
+    setSharedMode('club_1');
+    await signIn();
+    localSave();
+    setHidden(true);
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS * 2);
+    await cloudSyncNow();
+    expect(server.uploads).toHaveLength(0);
+    expect(server.service.cloudMeta).not.toHaveBeenCalled();
+    expect(server.reports).toHaveLength(0);
+    // back in the player's own game, sending works again
+    setHidden(false);
+    setSharedMode(null);
+    await cloudSyncNow();
+    expect(server.uploads.length).toBeGreaterThan(0);
+  });
+
+  it("a shop's server-side saves are never this device's: the listener leaves the link alone", async () => {
+    await signIn();
+    const sent = server.uploads.length;
+    const link = readLink(USER.id);
+    setSharedMode('club_1');
+    localSave(); // the shared copy's save time moved (the server saved it)
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS * 2);
+    expect(server.uploads).toHaveLength(sent);
+    expect(readLink(USER.id)).toEqual(link);
+  });
+
+  it("the box's two choices do nothing over a shared shop", async () => {
+    const other = newGame({ starterId: 'axolotl', starterName: 'Pip', seed: 77 });
+    server.write({}, other);
+    await signIn();
+    expect(useCloud.getState().prompt?.kind).toBe('other');
+    const shop = useGame.getState().game!;
+    setSharedMode('club_1');
+    await keepDeviceCopy();
+    expect(await loadOnlineCopy()).toBe(false);
+    expect(server.uploads).toHaveLength(0);
+    expect(server.service.cloudDownload).not.toHaveBeenCalled();
+    expect(useGame.getState().game).toBe(shop);
+  });
+
+  it('with autosave off in Settings too (then the shared shop is the only reason not to send)', async () => {
+    useSettings.setState({ autosave: false });
+    setSharedMode('club_1');
+    await signIn();
+    localSave();
+    await cloudSyncNow();
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS * 2);
+    expect(server.uploads).toHaveLength(0);
+    expect(server.reports).toHaveLength(0);
+  });
+});
+

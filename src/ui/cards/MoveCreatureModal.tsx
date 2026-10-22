@@ -10,7 +10,6 @@ import { useUI } from '@/state/ui';
 import { findSpecies } from '@/data/species';
 import { getTankTier } from '@/data/catalog/tanks';
 import { previewAddition, environmentGate } from '@/sim/compat';
-import { moveCreature, separateCreature } from '@/sim/life/actions';
 import { creaturesInTank, breedingStatus } from '@/sim/life';
 import { useShell } from '../common/shellStore';
 import { CompatView, VerdictBadge } from '../common/CompatView';
@@ -53,14 +52,16 @@ export function MoveCreatureModal() {
     const toId = sel.t.id;
     // lane:guide — show the sim's own message: it names the tank and carries the warnings that matter (an adult
     // needs a bigger tank, eggs left without a parent, courtship interrupted), which a fixed "moved" text used to hide
-    const r = act((d) => (inBreeding ? separateCreature(d, c.id, toId) : moveCreature(d, c.id, toId)), {
+    const from = c.tankId ?? '';
+    act(inBreeding ? { k: 'separateCreature', creature: c.id, to: toId, from } : { k: 'moveCreature', creature: c.id, to: toId, from }, {
       flag: 'moved_creature',
       kindFor: (res) => (/Heads up|fungus|fall from the nest|stay behind|interrupted/i.test(res.message) ? 'warning' : 'success'),
+      after: (r) => {
+        if (!r?.ok) return;
+        close();
+        useUI.getState().set({ focusedTankId: toId, selectedCreatureId: c.id });
+      },
     });
-    if (r?.ok) {
-      close();
-      useUI.getState().set({ focusedTankId: toId, selectedCreatureId: c.id });
-    }
   };
 
   return (

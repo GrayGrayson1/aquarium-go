@@ -34,13 +34,11 @@ import { getSpecies, findSpecies } from '@/data/species';
 import { eatsFood, getFoodDef } from '@/data/catalog/foods';
 import { getDecorDef, isEpiphyte, isFloating } from '@/data/catalog/decor';
 import { creaturesInTank } from '@/sim/life';
-import { setLighting, feedTank } from '@/sim/care';
 import { tankDims } from '@/sim/tankSpace';
 import { tutorialWants, counterValue } from '@/sim/facility/progression';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks'; // lane:qa-r3
 import { tutorialChain } from '@/data/quests';
 import { pushVisualEvent, runtime, nowSeconds } from '@/runtime/tankRuntime';
-import { noteInteraction } from '@/sim/life/actions'; // lane:qa-play
 import { aiFeed } from '@/ai/registry'; // lane:qa-play
 import { CAMERA_USER_EVENT } from '@/render/camera/cameraFX';
 import { clearPlaceAgain, placeAnother, PLACE_AGAIN_MS, usePlaceAgain } from '@/render/decor/placeAgain';
@@ -260,35 +258,50 @@ export function feedNow(foodId: string) {
     ui.toast('Pick a tank to feed first.', 'info');
     return;
   }
-  const r = act((d) => feedTank(d, tankId, foodId, { zone: 'surface' }), { flag: 'fed', sound: 'feed', toast: false });
-  if (r?.ok) {
-    const d = safe('tankDims', () => tankDims(g.tanks[tankId]), null);
-    if (d) pushVisualEvent({ kind: 'feed', tankId, pos: [0, d.waterY, d.W * 0.2], t: performance.now() / 1000 });
-    // lane:qa-r3 — a feed nothing eats (or into an empty tank, or too much) is a warning, not a success
-    ui.toast(r.message && r.message !== 'Fed' ? r.message : `Dropped ${foodName(foodId).toLowerCase()} at the surface.`, r.caution ? 'warning' : 'success');
-  }
+  act(
+    { k: 'feedTank', tank: tankId, food: foodId, zone: 'surface' },
+    {
+      flag: 'fed',
+      sound: 'feed',
+      toast: false,
+      after: (r) => {
+        if (!r?.ok) return;
+        const d = safe('tankDims', () => tankDims(g.tanks[tankId]), null);
+        if (d) pushVisualEvent({ kind: 'feed', tankId, pos: [0, d.waterY, d.W * 0.2], t: performance.now() / 1000 });
+        // lane:qa-r3 — a feed nothing eats (or into an empty tank, or too much) is a warning, not a success
+        ui.toast(r.message && r.message !== 'Fed' ? r.message : `Dropped ${foodName(foodId).toLowerCase()} at the surface.`, r.caution ? 'warning' : 'success');
+      },
+    },
+  );
 }
 
 /**
  * lane:qa-play — keyboard / small-animal alternative to clicking the animal in Target feed: offer the food to the
  * animal whose card is open (a hitched seahorse is a tiny target). Mirrors the 3D click in TankInteraction.
  */
-export function targetFeedNow(foodId: string, creatureId: string): boolean {
-  const ui = useUI.getState();
+export function targetFeedNow(foodId: string, creatureId: string, onFed?: () => void): void {
   const g = useGame.getState().game;
   const c = g?.creatures[creatureId];
-  if (!g || !c?.tankId || !g.tanks[c.tankId]) return false;
+  if (!g || !c?.tankId || !g.tanks[c.tankId]) return;
   const tankId = c.tankId;
-  const r = act(
-    (d) => {
-      const res = feedTank(d, tankId, foodId, { targetCreatureId: creatureId });
-      if (res.ok) noteInteraction(d, creatureId, 'target_fed');
-      return res;
+  act(
+    { k: 'feedTank', tank: tankId, food: foodId, target: creatureId },
+    {
+      flag: 'target_fed',
+      sound: 'feed',
+      toast: false,
+      after: (r) => {
+        if (!r?.ok) return; // lane:w2-ui — act() already toasts the reason on failure (this used to toast it a second time)
+        targetFedShow(g, tankId, foodId, c.name, creatureId, r);
+        onFed?.(); // lane:w2-ui — the creature card's Feed row animates on success
+      },
     },
-    { flag: 'target_fed', sound: 'feed', toast: false },
   );
-  // lane:w2-ui — act() already toasts the reason on failure (this used to toast it a second time)
-  if (!r?.ok) return false;
+}
+
+/** The target feed worked: the tongs' food in front of the snout, and the toast. */
+function targetFedShow(g: GameState, tankId: string, foodId: string, name: string, creatureId: string, r: { message: string; caution?: boolean }): void {
+  const ui = useUI.getState();
   const rt = runtime.creatures.get(creatureId);
   const d = safe('tankDims', () => tankDims(g.tanks[tankId]), null);
   if (rt && d) {
@@ -302,8 +315,7 @@ export function targetFeedNow(foodId: string, creatureId: string): boolean {
     safe('aiFeed', () => aiFeed(tankId, foodId, local, { targetCreatureId: creatureId }), 0);
     pushVisualEvent({ kind: 'feed', tankId, pos: local, creatureId, t: nowSeconds(), strength: 0.3 });
   }
-  ui.toast(r.message && r.message !== 'Done' ? r.message : `Offered ${c.name} ${foodName(foodId).toLowerCase()}.`, r.caution ? 'warning' : 'success'); // lane:qa-r3
-  return true; // lane:w2-ui — the creature card's Feed row animates on success
+  ui.toast(r.message && r.message !== 'Done' ? r.message : `Offered ${name} ${foodName(foodId).toLowerCase()}.`, r.caution ? 'warning' : 'success'); // lane:qa-r3
 }
 
 function LightsPopover() {
@@ -312,7 +324,7 @@ function LightsPopover() {
   const presets = lightPresetsFor(tank.waterClass);
   const L = tank.lighting;
   // lane:qa-r3 — quiet, unless the new schedule feeds algae or starves plants (debounced per tank, as on the tank card)
-  const set = (patch: Parameters<typeof setLighting>[2]) => act((d) => setLighting(d, tank.id, patch), { toast: 'caution', cautionKey: `lights:${tank.id}`, sound: 'click', flag: 'changed_lights' });
+  const set = (patch: Partial<{ preset: LightPreset; intensity: number; onHour: number; offHour: number; moonlight: boolean }>) => act({ k: 'setLighting', tank: tank.id, ...patch }, { toast: 'caution', cautionKey: `lights:${tank.id}`, sound: 'click', flag: 'changed_lights' });
   return (
     <motion.div className="ag-popover ag-toolpop" role="dialog" aria-label="Lighting" initial={{ opacity: 0, x: 10, scale: 0.98 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, x: 8, scale: 0.98 }} transition={{ duration: 0.18 }}>
       <div className="ag-popover__title">Lighting</div>

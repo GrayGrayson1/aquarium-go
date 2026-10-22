@@ -184,7 +184,7 @@ function stepPairs(env: StepEnv, cfg: PairSpawnerConfig, mod: BreedingModule): v
       continue;
     }
     if (!cl || cl.tankId !== g.tankId || cl.guardedById !== g.id) {
-      if (cl && cl.guardedById === g.id) cl.guardedById = undefined;
+      if (cl && cl.guardedById === g.id) delete cl.guardedById; // §3.2 rule 10
       startResting(g, hour, b.cooldownDays * 24 * cfg.maleRestFrac);
     }
   }

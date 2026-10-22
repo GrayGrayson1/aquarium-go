@@ -271,7 +271,7 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
   const tank = createTank(state, tierId, waterClass, { cycled: false, placement: spot, name: opts.name?.trim() || undefined, withDefaultEquipment: false });
   for (const defId of gear.ids) {
     const def = getEquipmentDef(defId);
-    tank.equipment.push({ id: nextId(state, 'eq'), defId, installedHour: state.clock.hour, condition: 1, on: true, setting: def?.stats.defaultSetting });
+    tank.equipment.push({ id: nextId(state, 'eq'), defId, installedHour: state.clock.hour, condition: 1, on: true, ...(def?.stats.defaultSetting !== undefined ? { setting: def.stats.defaultSetting } : {}) }); // §3.2 rule 10
   }
   if (opts.seeded) tank.water.bioMaturity = Math.max(tank.water.bioMaturity, 0.6);
   bumpCounter(state, 'tanksBought');

@@ -13,6 +13,12 @@ through the `SocialService` and the browser's notifications, clipboard and share
 each action below is already a single call a server could receive instead; what it would add is the checks in the
 right-hand column, done on its side.
 
+**Since chunk 11 (2026-10-20, SHARED-SHOPS.md §4) every player action is a command:** a plain object
+(`src/sim/commands/kinds.ts`, about 80 kinds) that the interface sends through the store's dispatcher, and
+`applyCommand` calls the function below with the command's arguments (`src/sim/commands/apply.ts`). `validateCommand`
+checks a command from the network (a known kind, each argument's type and range, its size, no inherited ids). A shared
+shop's server (chunk 12) receives these and applies them on its own copy; the solo game applies them at once.
+
 **What a server would always check:** the player's money and stock (no spending what isn't there), that the player owns
 what the action names (tank, creature, listing, line), the price from its own catalog and market, never the client's,
 and the game time (offline catch-up is computed on the device today: a server would replay or cap it).
@@ -80,7 +86,7 @@ and the game time (offline catch-up is computed on the device today: a server wo
 | `setOpenToPublic`, `setOpenHours`, `setAdmission`, `toggleSignage` | visitors and takings | ranges |
 | `moveCreature`, `separateCreature`, `moveClutch`, `startBreeding`, `renameCreature`, `toggleFavorite` | animals and broods | ownership |
 | `takeFrag`, `plantFrag`, `dose`, `waterChange`, `topOff`, `cleanTank`, `feedTank` | tanks and animals | ownership; stock for what they use |
-| `noteInteraction`, `registerGlassTap` (watching, photos, target feeding, a tap on the glass) | an animal's bond, enrichment and stress; quest progress | rates (the bond counts toward a show's deportment score; the device's diminishing returns would be the server's) |
+| `noteInteraction`, `notePhoto`, `registerGlassTap` (watching, photos, target feeding, a tap on the glass) | an animal's bond, enrichment and stress; quest progress | rates (the bond counts toward a show's deportment score; the device's diminishing returns would be the server's) |
 | `renameTank`, `setTankPurpose`, `setBackdrop`, `setLighting` | a tank's name, purpose, backdrop and light hours | ownership |
 | `setManualMode`, `holdAll`, `resumeAll`, `setHold` | automation on or off | none beyond ownership |
 
@@ -116,6 +122,50 @@ check, and stage 2 must, before anyone the owner doesn't know joins:
   as fast as they like, and could try friend codes (NAME-XXX, 32,768 per visible name) through `add_friend` to send
   requests. Stage 2: per-account limits.
 - **Joining clubs.** Anyone signed in may join any club; the invite code gates only sign-up.
+
+## Shared shops (chunk 12, SHARED-SHOPS.md §5, §6; ADR-0043, ADR-0045, ADR-0047)
+
+A club's shared shop is the first state a server owns: the server's copy counts, every member's browser applies the
+same steps to its own copy, and nothing a browser does changes the shop except a command the server receives,
+validates (`validateCommand`), permits (`allowed`: pause and speed for the owner and the chosen, everything else for
+every member at first, ADR-0043 decision 5) and applies with the game's own rules on its copy. First one wins and who
+did it are rules of the shop's state (chunk 11). So for shared shops the checks in the tables above are the game's own
+rules, run where it counts; stage 2's model (ADR-0038), ahead of the solo game.
+
+- **Who.** A member signs in with their Supabase access token, which the server asks Supabase Auth about; the server
+  asks the database (`server_member`) whether they're in the club, their name, whether they're the owner and whether
+  they may pause, and asks again every 15 minutes (a member taken out is closed). One connection per player, 10 per
+  shop.
+- **The server's reach (ADR-0047).** It uses no Supabase key: a secret key acts as `service_role` and also opens Supabase
+  Auth's admin tools (players' emails, deleting accounts), which no database rule can limit. It calls its own functions
+  through the API as `anon`, each refusing unless given its password, whose SHA-256 is the one row of
+  `private.server_key` (made by `scripts/shared-server-key.mjs`, pasted into Render by the owner; never in the repo, a log
+  or a build, never in a room's worker thread). With the password, someone could read and rewrite any club's shared
+  shop and its photos, read club membership with members' names, and add to the usage meter: never a player's own
+  save, profile, email or account. Running the script again replaces it at once. `service_role` reaches no table or
+  function in `public` or `private` (revoked, checked by the migration itself), so the project's own secret keys can't
+  read players' data through the API either.
+- **What it still trusts.** Club members, with everything but pause (ADR-0043): a member can spend the shop's money or
+  sell its animals. Permission tiers and the money pool come later (§5.6). A member's browser computes nothing the
+  server keeps, but it shows what its own copy computes; a copy that drifts is caught by the fingerprint and re-synced.
+- **Limits.** Messages of at most 16 KB (48 KB for a listing with its photo), 10 commands and 30 messages a second, joins
+  and reconnects at 20 an hour per player, re-syncs at 3 in 10 minutes and 6 an hour per player, photo listings at 6 a
+  minute and photo requests at 60, only the game's two sites as origins. The month's data (2 GB) and awake hours (400)
+  cap every club together.
+- **What only binds browsers** (chunk 12's review, note 10): the origin check (anyone can send any Origin header), so
+  anyone can open up to the connection limit's sockets (closed after 10 seconds without a `hello`), have the server
+  answer WebSocket pings (not metered), and call `/health` and `/stats` (public, metered: about 300 bytes a call, so
+  millions of calls to reach the 2 GB cap). A determined stranger could fill the slots or spend the month's data; the
+  caps then close shops until the 1st and Render's own limits apply. Rate limits per address need a proxy in front
+  (later, with stage 2).
+- **Photos.** A member's listing photo must be a JPEG or WebP by its bytes (at most 47,000); the server stores it once
+  per club by its hash and every copy holds only the reference (`p:` and the hash), which `repairState` keeps and the
+  interface never puts in an `<img src>`; it is served only over the socket, only for a listing of the shop.
+
+- **The game's side (chunk 13).** In a shared shop the browser changes nothing itself: player actions go to the server
+  as commands (the shared dispatcher), each player's "seen" marks stay on the device (`src/ui/shared/marks.ts`), the dev
+  tools and `window.__AQ`'s writes refuse, and nothing saves the shop on the device or online. The welcome names the
+  shop's owner (a room looks up its own club's members only, `roomCallAllowed`).
 
 ## Not for a server
 

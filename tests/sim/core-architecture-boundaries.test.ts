@@ -11,6 +11,8 @@ import { dirname, join, relative, resolve } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..');
 const SRC = join(ROOT, 'src');
+/** Chunk 10 (SHARED-SHOPS.md §5.1): the shared-shop server, a top-level folder outside src. */
+const SERVER = join(ROOT, 'server');
 
 /** layer → layers it may import values from (itself is always allowed). */
 const ALLOWED: Record<string, string[]> = {
@@ -152,3 +154,81 @@ describe('CONST-004: architecture lock: layer import directions', () => {
     expect(BASELINE.filter((v) => !now.includes(v)), 'remove fixed entries from BASELINE').toEqual([]);
   });
 });
+
+/**
+ * Chunk 10 (SHARED-SHOPS.md §5.1): the server runs the simulation in Node, so everything it reaches through value
+ * imports must be the types, the data, the simulation or the pure persistence modules (the fingerprint, the save's
+ * encoding, migrations and repair, the schema): never the stores, the game loop, the interface or React. Its packages:
+ * `ws` (ADR-0045 decision 2) and Node's own; the simulation's own packages come with it.
+ */
+const SERVER_LAYERS = new Set(['types', 'data', 'sim']);
+const SERVER_PERSISTENCE = new Set(['hash.ts', 'serialize.ts', 'migrations.ts', 'schema.ts', 'types.ts']);
+/**
+ * Chunk 12 (SHARED-SHOPS.md §5.8): the server's public settings live in code, so it reads the Supabase project's address
+ * and publishable key from the one file that holds them (and the shop server's address beside them). That file imports
+ * nothing (checked below), so allowing it brings nothing else with it.
+ */
+const SERVER_ALSO = new Set(['social/project.ts']);
+
+async function serverClosure(): Promise<{ reached: string[]; serverPackages: string[] }> {
+  const srcFiles = await allFiles(SRC);
+  const serverFiles = (await allFiles(SERVER)).filter((f) => /\.ts$/.test(f) && !/\.d\.ts$/.test(f));
+  const known = new Set([...srcFiles, ...serverFiles]);
+  const seen = new Set<string>();
+  const serverPackages = new Set<string>();
+  const queue = [...serverFiles];
+  while (queue.length) {
+    const f = queue.pop()!;
+    if (seen.has(f)) continue;
+    seen.add(f);
+    const code = (await readFile(f, 'utf8')).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+    for (const spec of valueImports(code)) {
+      if (!spec.startsWith('@/') && !spec.startsWith('.')) {
+        if (f.startsWith(SERVER)) serverPackages.add(spec);
+        continue;
+      }
+      const t = resolveSpec(known, f, spec);
+      if (t && known.has(t) && /\.tsx?$/.test(t)) queue.push(t);
+    }
+  }
+  return { reached: [...seen].filter((f) => f.startsWith(SRC)).map((f) => relative(SRC, f).split('\\').join('/')), serverPackages: [...serverPackages].sort() };
+}
+
+describe('chunk 10: the shared-shop server reaches only what every copy runs (SHARED-SHOPS.md §5.1)', () => {
+  it('only the types, the data, the simulation and the pure persistence modules', async () => {
+    const { reached } = await serverClosure();
+    expect(reached.length).toBeGreaterThan(50);
+    expect(reached).toContain('sim/sharedStep.ts');
+    const outside = reached.filter((r) => {
+      if (SERVER_ALSO.has(r)) return false;
+      const [layer, ...rest] = r.split('/');
+      if (SERVER_LAYERS.has(layer)) return false;
+      return !(layer === 'persistence' && rest.length === 1 && SERVER_PERSISTENCE.has(rest[0]));
+    });
+    expect(outside).toEqual([]);
+  }, 300_000);
+
+  it('chunk 12: the settings file it may also read imports nothing', async () => {
+    for (const f of SERVER_ALSO) expect(await readFile(join(SRC, f), 'utf8'), f).not.toMatch(/^\s*(import|export\s.*\sfrom)\s/m);
+  });
+
+  it('its own packages are ws and Node’s modules', async () => {
+    const { serverPackages } = await serverClosure();
+    expect(serverPackages.filter((p) => p !== 'ws' && !p.startsWith('node:'))).toEqual([]);
+    expect(serverPackages).toContain('ws');
+  }, 300_000);
+});
+
+describe('chunk 13: the shared mode, on purpose (SHARED-SHOPS.md §3.2 rule 11)', () => {
+  it('is a state module importing nothing but zustand, so persistence and the loop can read it', async () => {
+    const code = await readFile(join(SRC, 'state', 'sharedMode.ts'), 'utf8');
+    const specs = [...code.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)].map((m) => m[1]);
+    expect(specs).toEqual(['zustand']);
+  });
+
+  it('persistence, the loop and autosave read it from state (never from the interface)', async () => {
+    for (const f of ['persistence/sharedAway.ts', 'game/GameLoop.tsx']) expect(await readFile(join(SRC, f), 'utf8'), f).toMatch(/from '@\/state\/sharedMode'/);
+    expect(await readFile(join(SRC, 'game', 'useAutosave.ts'), 'utf8')).toMatch(/from '@\/persistence\/sharedAway'/);
+  });
+});
+

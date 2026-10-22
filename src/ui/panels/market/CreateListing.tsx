@@ -9,8 +9,11 @@ import { Fish, Users, Heart, Baby, Layers, Check, ChevronRight, Camera, RefreshC
 import type { Creature, GameState, ListingKind, Tank } from '@/types';
 import { Button, Money, formatMoney, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { createListing, suggestPricing, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
+import type { CommandOf } from '@/sim/commands';
+import { suggestPricing, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
 import { capturePhoto } from '@/render/camera/photo';
+import { inSharedShop } from '@/state/sharedMode'; // chunk 13
+import { captureSharedPhoto } from '@/ui/shared/photos';
 import { isPrismatic } from '@/sim/life'; // lane:genetics
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
@@ -185,22 +188,14 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
 
   const confirm = () => {
     if (!kind) return;
-    const r = act(
-      (d) =>
-        createListing(d, {
-          kind,
-          creatureIds: kind === 'tank' || kind === 'frag' ? undefined : ids,
-          tankId: kind === 'tank' ? tankId ?? undefined : undefined,
-          fragIds: kind === 'frag' ? fragIds : undefined, // lane:frags
-          reserve: Math.round(reserve),
-          buyNow: buyNowOn ? Math.round(buyNow) : undefined,
-          durationHours: duration,
-          title: title.trim() || autoTitle,
-          photo: photo ?? undefined,
-        }),
-      { sound: 'bid', successText: 'Listed! Buyers will start bidding soon.' },
-    );
-    if (r?.ok) onDone(r.listingId);
+    // a command holds no `undefined` fields: each one is there or left out (SHARED-SHOPS.md §3.2 rule 10)
+    const cmd: CommandOf<'createListing'> = { k: 'createListing', kind, reserve: Math.round(reserve), hours: duration, title: title.trim() || autoTitle };
+    if (kind !== 'tank' && kind !== 'frag') cmd.creatures = ids;
+    if (kind === 'tank' && tankId != null) cmd.tank = tankId;
+    if (kind === 'frag') cmd.frags = fragIds; // lane:frags
+    if (buyNowOn) cmd.buyNow = Math.round(buyNow);
+    if (photo != null) cmd.photo = photo;
+    act(cmd, { sound: 'bid', successText: 'Listed! Buyers will start bidding soon.', after: (r) => r?.ok && onDone(r.listingId) });
   };
 
   return (
@@ -355,7 +350,9 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
               onClick={async () => {
                 // lane:fix-panels — a card-sized JPEG (~40–90 KB) instead of a 960px PNG (~800 KB), which the save
                 // stripped: no listing photo ever survived a reload
-                const url = await capturePhoto({ width: 640, hideUI: true, format: 'image/jpeg', quality: 0.82 }).catch(() => null);
+                // chunk 13 (SHARED-SHOPS.md §4.4): in a shared shop a small one (about 320 px, WebP or JPEG), so the
+                // listing fits in one command; every member sees it
+                const url = inSharedShop() ? await captureSharedPhoto() : await capturePhoto({ width: 640, hideUI: true, format: 'image/jpeg', quality: 0.82 }).catch(() => null);
                 if (url) {
                   setPhoto(url);
                   import('@/audio/sfx').then((m) => m.sfx('camera'));

@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { sharedBuild } from './vite.sharedBuild';
 
 /** The release version players see (title screen, Settings › About). Bump it in package.json for every deploy. */
 const APP_VERSION: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
@@ -51,7 +52,8 @@ function buildStamp(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), buildStamp()],
+  // chunk 12: the shared-shop build identity (vite.sharedBuild.ts), also stamped into the server
+  plugins: [react(), buildStamp(), sharedBuild(fileURLToPath(new URL('.', import.meta.url)))],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     dedupe: ['react', 'react-dom', 'three', '@react-three/fiber'],

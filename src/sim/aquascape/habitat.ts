@@ -5,6 +5,7 @@
 import type { GameState, Tank, DecorDef, DecorInstance } from '@/types';
 import { getDecorDef, isLiving, isFloating } from '@/data/catalog/decor';
 import { getTankTier } from '@/data/catalog/tanks';
+import * as dmath from '../dmath';
 
 export interface TankHabitat {
   hides: number;
@@ -79,7 +80,7 @@ export function vitality(inst: DecorInstance, def: DecorDef): number {
   return Math.max(0, (0.35 + 0.65 * g) * (0.3 + 0.7 * h));
 }
 
-const sizeFactor = (scale: number) => Math.max(0.2, scale) ** 1.5;
+const sizeFactor = (scale: number) => dmath.pow(Math.max(0.2, scale), 1.5);
 
 /** Aggregate habitat features of a tank's decor + substrate (compat, welfare, breeding all use this). */
 export function tankHabitat(state: GameState | null, tank: Tank): TankHabitat {
@@ -112,7 +113,7 @@ export function tankHabitat(state: GameState | null, tank: Tank): TankHabitat {
     out.nitrateUptake += hb.nitrateUptake * sf * v;
     out.oxygen += hb.oxygen * sf * v;
     if (isFloating(def)) surface += hb.cover * sf * v;
-    volume += def.size.w * def.size.d * def.size.h * inst.scale ** 3;
+    volume += def.size.w * def.size.d * def.size.h * dmath.pow(inst.scale, 3);
     for (const an of def.anchors) {
       if (an.kind === 'host') out.hasHost = true;
       if (an.kind === 'nest_site') out.nestSites += an.capacity;

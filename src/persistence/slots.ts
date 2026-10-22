@@ -37,6 +37,7 @@ import { encodeRecord, decodeRecord, readHeader, makeMeta, cyrb53, SAVE_FORMAT, 
 import { detectVersion, tooNewMessage } from './migrations'; // lane:core (PERSIST-014)
 import { SCHEMA_VERSION } from './schema'; // lane:core (PERSIST-014)
 import { SaveError, type SaveMeta, type SaveResult, type LoadResult } from './types';
+import { SHARED_SAVE_PREFIX, SHARED_SAVE_REFUSED } from './sharedAway'; // chunk 13 (SHARE-011)
 
 export const SAVE_PREFIX = 'aquarium-go.save.';
 export const META_PREFIX = 'aquarium-go.meta.';
@@ -312,6 +313,8 @@ export interface SaveGameOptions {
 export async function saveGame(state: GameState, slot = 'auto', opts: SaveGameOptions = {}): Promise<SaveResult> {
   if (!state) return { ok: false, slot, message: 'Nothing to save.' };
   if (state.isShowcase) return { ok: false, slot, message: 'Showcase worlds are not saved.' };
+  // chunk 13 (SHARE-011): a shared shop (its id) is never written to a slot, whoever asks
+  if (state.saveId?.startsWith(SHARED_SAVE_PREFIX)) return { ok: false, slot, message: SHARED_SAVE_REFUSED };
   checkSlot(slot);
   // the stale-tab guard asks about the aquarium itself, a kept copy's too
   const guarded = opts.staleAs && opts.staleAs !== state.saveId ? { ...state, saveId: opts.staleAs } : state;
@@ -405,7 +408,7 @@ function clearMirror(slot: string, writtenAt: number): void {
  * newest copy wins, so this lands even when the regular write does not. Returns whether it was written.
  */
 export function saveGameSync(state: GameState, slot = 'auto'): boolean {
-  if (!state || state.isShowcase) return false;
+  if (!state || state.isShowcase || state.saveId?.startsWith(SHARED_SAVE_PREFIX)) return false;
   if (!SLOT_RE.test(slot)) return false;
   const stamp = readStamp(slot);
   if (stamp && refuseStale(state, slot, stamp.savedAt, stamp.saveId, stamp.tab, stamp.hour)) return false;

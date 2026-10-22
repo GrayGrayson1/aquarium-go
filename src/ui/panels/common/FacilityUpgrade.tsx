@@ -6,7 +6,7 @@ import { Building2, ArrowRight, Users, Ruler, Coins, Sparkles } from 'lucide-rea
 import type { GameState } from '@/types';
 import { Button, Money, formatMoney } from '@/ui/kit';
 import { getFacilityLevel } from '@/data/facilities';
-import { upgradeFacility, facilityUpgradeInfo, type FacilityUpgradeInfo } from '@/sim/facility';
+import { facilityUpgradeInfo, type FacilityUpgradeInfo } from '@/sim/facility';
 import { act } from './act';
 import { useUI } from '@/state/ui'; // lane:qa-play
 import { Chip } from './parts';
@@ -82,9 +82,8 @@ export function FacilityUpgradeCard({ g }: { g: GameState }) {
           </div>
         </div>
         <Button variant="primary" disabled={!info?.canUpgrade} silent onClick={() => {
-            const r = act((d) => upgradeFacility(d), { sound: 'celebrate', quiet: true });
             // lane:qa-play — show off the new venue: the move used to leave the player in tank view behind the panel
-            if (r?.ok) useUI.getState().set({ view: 'facility', panel: null, panelTarget: null, selectedCreatureId: null });
+            act({ k: 'upgradeFacility' }, { sound: 'celebrate', quiet: true, after: (r) => r?.ok && useUI.getState().set({ view: 'facility', panel: null, panelTarget: null, selectedCreatureId: null }) });
           }}>
           <Building2 size={15} /> {info?.canUpgrade ? `Move to ${next.name}` : !afford && reqs.every((r) => r.met) ? `Need ${formatMoney(next.upgradeCost - g.finance.money)} more` : 'Requirements not met'}
         </Button>

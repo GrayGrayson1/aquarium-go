@@ -15,14 +15,10 @@ import { spPlural } from '@/sim/life/breeding/common';
 import {
   breedForOptions,
   candidatePairs,
-  createLine,
   lineSlots,
   morphLineName,
   pairTraits,
   productionLines,
-  setKeepRules,
-  setLinePair,
-  setLineTank,
   speciesLineName,
   tankFitFor,
   type LineStage,
@@ -221,7 +217,7 @@ export function SortSheet({ g, line, draft, onClose }: { g: GameState; line: Pic
   const rules = line.rules.keep;
   const save = (next: ProductionKeepRule[]) => {
     if (draft) draft(next);
-    else if (line.id) act((d) => setKeepRules(d, line.id!, next), { quiet: true });
+    else if (line.id) act({ k: 'setKeepRules', line: line.id, rules: next.map((r) => ({ traits: r.traitIds, count: r.count })) }, { quiet: true });
   };
   return (
     <Modal open onClose={onClose} title="Sort" testId="production-sort" actions={<Button variant="primary" onClick={onClose}>Done</Button>}>
@@ -270,7 +266,7 @@ export function PairPicker({ g, line, onClose }: { g: GameState; line: Productio
       title="Choose another pair"
       testId="production-fix-pair-dialog"
       actions={
-        <Button variant="primary" disabled={!picked} onClick={() => picked && act((d) => setLinePair(d, line.id, picked.motherId, picked.fatherId), { quiet: true })?.ok && onClose()}>
+        <Button variant="primary" disabled={!picked} onClick={() => picked && act({ k: 'setLinePair', line: line.id, a: picked.motherId, b: picked.fatherId }, { quiet: true, after: (r) => r?.ok && onClose() })}>
           Done
         </Button>
       }
@@ -286,7 +282,7 @@ export function TankPicker({ g, line, stage, replace, onClose }: { g: GameState;
   delete chosen[stage];
   return (
     <Modal open onClose={onClose} title="Choose another tank" testId="production-fix-tank-dialog">
-      <TankChoices g={g} speciesId={line.speciesId} stage={stage} chosen={chosen} pair={line.pair} ignoreLineId={line.id} onPick={(id) => act((d) => setLineTank(d, line.id, stage, id, replace), { quiet: true })?.ok && onClose()} />
+      <TankChoices g={g} speciesId={line.speciesId} stage={stage} chosen={chosen} pair={line.pair} ignoreLineId={line.id} onPick={(id) => act(replace !== undefined ? { k: 'setLineTank', line: line.id, stage, tank: id, replace } : { k: 'setLineTank', line: line.id, stage, tank: id }, { quiet: true, after: (r) => r?.ok && onClose() })} />
     </Modal>
   );
 }
@@ -320,8 +316,10 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
   ];
   const start = () => {
     if (!pair || !tanksOk) return;
-    const r = act((d) => createLine(d, { motherId: pair.motherId, fatherId: pair.fatherId, tanks: { breed: tanks.breed!, raise: tanks.raise!, quarantine: tanks.quarantine!, keep: tanks.keep! }, breedFor: morph, name: lineName, rules }));
-    if (r?.ok && r.lineId) onStarted(r.lineId);
+    act(
+      { k: 'createLine', mother: pair.motherId, father: pair.fatherId, breed: tanks.breed!, raise: tanks.raise!, quarantine: tanks.quarantine!, keep: tanks.keep!, ...(morph !== undefined ? { breedFor: morph } : {}), ...(lineName !== undefined ? { name: lineName } : {}), rules: { pauseWhenFull: rules.pauseWhenFull, keepPrismatic: rules.keepPrismatic, autoList: rules.autoList }, sort: rules.keep.map((r) => ({ traits: r.traitIds, count: r.count })) },
+      { after: (r) => r?.ok && r.lineId && onStarted(r.lineId) },
+    );
   };
   return (
     <div className="pr-new">

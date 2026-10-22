@@ -9,6 +9,7 @@ import { useResume } from './offline';
 import { mutateFast } from '@/game/fastMutate';
 import type { GameState } from '@/types';
 import type { SaveResult } from './types';
+import { SHARED_SAVE_REFUSED, isSharedShop } from './sharedAway';
 
 /**
  * lane:fix3-saves (R03-03) — the welcome-back card pauses the clock only while it is open: a save taken meanwhile
@@ -38,6 +39,8 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
   const { game } = useGame.getState();
   if (!game) return { ok: false, slot, message: 'No game running.' };
   if (game.isShowcase) return { ok: false, slot, message: 'Showcase worlds are not saved.' };
+  // chunk 13 (SHARE-011): a shared shop saves itself on the server; refused before the flush, which would write it
+  if (isSharedShop(game)) return { ok: false, slot, message: SHARED_SAVE_REFUSED };
   if (opts.flush !== false) {
     try {
       mutateFast((d) => {
@@ -76,7 +79,7 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
  */
 export function saveCurrentGameSync(slot = 'auto'): boolean {
   const { game } = useGame.getState();
-  if (!game || game.isShowcase) return false;
+  if (!game || game.isShowcase || isSharedShop(game)) return false;
   try {
     mutateFast((d) => {
       flushSimDebt(d);

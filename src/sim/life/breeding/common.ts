@@ -31,6 +31,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getTankTier } from '@/data/catalog/tanks';
 import type { TankInfo } from './types';
 import { residentsOf } from '../../residents'; // lane:perf2
+import * as dmath from '../../dmath';
 
 // ───────────────────────────── numbers ─────────────────────────────
 
@@ -143,7 +144,8 @@ export function setStage(c: Creature, stage: string, hour: number, endsHour?: nu
   c.repro.stage = stage;
   c.repro.stageSinceHour = hour;
   c.repro.progress = 0;
-  c.repro.stageEndsHour = endsHour;
+  if (endsHour === undefined) delete c.repro.stageEndsHour; // §3.2 rule 10: deleted, never set to undefined
+  else c.repro.stageEndsHour = endsHour;
 }
 
 /** 0..1 progress of a timed stage (uses stageEndsHour or carryingUntilHour). */
@@ -161,8 +163,8 @@ export function stageDue(c: Creature, hour: number): boolean {
 
 export function startResting(c: Creature, hour: number, hours: number): void {
   setStage(c, 'resting', hour, hour + Math.max(1, hours));
-  c.repro.clutchId = undefined;
-  c.repro.carryingUntilHour = undefined;
+  delete c.repro.clutchId;
+  delete c.repro.carryingUntilHour;
 }
 
 export const isResting = (c: Creature, hour: number) => c.repro.stage === 'resting' && (c.repro.stageEndsHour ?? 0) > hour;
@@ -228,7 +230,7 @@ export function throttleTankBackoff(tank: Tank, key: string, hour: number, every
   if (!env.warned) env.warned = {};
   const last = env.warned[key];
   const n = env.warned[`${key}#n`] ?? 0;
-  if (last !== undefined && hour - last < everyH * Math.pow(2, Math.min(4, n))) return false;
+  if (last !== undefined && hour - last < everyH * dmath.pow(2, Math.min(4, n))) return false;
   env.warned[key] = hour;
   env.warned[`${key}#n`] = n + (last !== undefined ? 1 : 0);
   return true;
@@ -849,7 +851,7 @@ export function readinessTarget(tank: Tank, c: Creature, sp: SpeciesDefinition, 
 export function updateReadiness(tank: Tank, c: Creature, sp: SpeciesDefinition, hour: number, dt: number, info: TankInfo): void {
   const cur = Number.isFinite(c.stats.breedingReadiness) ? c.stats.breedingReadiness : 0;
   const target = readinessTarget(tank, c, sp, hour, info);
-  const k = target > cur ? 1 - Math.exp(-dt / 10) : 1 - Math.exp(-dt / 4);
+  const k = target > cur ? 1 - dmath.exp(-dt / 10) : 1 - dmath.exp(-dt / 4);
   c.stats.breedingReadiness = clamp(cur + (target - cur) * k, 0, 100);
 }
 

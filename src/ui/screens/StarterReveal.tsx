@@ -13,6 +13,8 @@ import { dietGuide, listWords } from '@/data/species/guide'; // lane:guide
 import { useUI } from '@/state/ui';
 import { sfx } from '@/audio/sfx';
 import { useOnboarding } from './onboarding';
+import { cancelCreate } from '../shared/session'; // chunk 13
+import { SHARED_WORDS } from '../shared/words';
 import { Portrait } from '../common/Portrait';
 import { DIFFICULTY_LABEL, WATER_CLASS_LABEL, personalityLabel, personalityLine, sexRoleText } from '../common/format';
 import { Button, Chip } from '../kit';
@@ -167,8 +169,15 @@ function StarterDetail({ id, preview }: { id: StarterId; preview?: Creature }) {
   );
 }
 
+/** chunk 13 — back out of the new-game screens: to the title, or (the owner's shared shop) back to their own aquarium. */
+function leaveStarters(): void {
+  sfx('close');
+  if (useOnboarding.getState().shared) void cancelCreate();
+  else useUI.getState().set({ screen: 'title' });
+}
+
 export function StarterReveal() {
-  const { previews, starterId, choose } = useOnboarding();
+  const { previews, starterId, choose, shared } = useOnboarding();
   const mobile = useIsMobile();
   // a phone held sideways keeps the desktop arrangement (left column + low rail; screens.css)
   const sideways = useMedia(SHORT_LANDSCAPE_QUERY);
@@ -192,7 +201,7 @@ export function StarterReveal() {
       } else if (e.key === 'Enter' && cur && !(e.target as HTMLElement)?.closest?.('button, a, input')) {
         confirm();
       } else if (e.key === 'Escape') {
-        useUI.getState().set({ screen: 'title' });
+        leaveStarters();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -220,11 +229,11 @@ export function StarterReveal() {
       {/* camera framing: details (left; phones: bottom), card rail (bottom); on phones the title is a top band (on wider
           screens it sits above the detail column, which already covers that side) */}
       <header className="ag-reveal__head" data-occlude={band ? 'top' : 'left'}>
-        <button type="button" className="ag-backlink" onClick={() => { sfx('close'); useUI.getState().set({ screen: 'title' }); }}>
-          <ArrowLeft size={16} aria-hidden /> Title
+        <button type="button" className="ag-backlink" onClick={leaveStarters}>
+          <ArrowLeft size={16} aria-hidden /> {shared ? SHARED_WORDS.back : 'Title'}
         </button>
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-          <div className="ag-overline">Chapter one</div>
+          <div className="ag-overline">{shared ? SHARED_WORDS.newShop : 'Chapter one'}</div>
           <h1 className="ag-reveal__title">Choose your first companion</h1>
           {!mobile && <p className="ag-reveal__sub">Five animals, five very different first chapters. You can welcome the others later.</p>}
         </motion.div>

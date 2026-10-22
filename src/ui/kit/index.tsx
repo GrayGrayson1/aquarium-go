@@ -237,8 +237,10 @@ export function cycleFocus(root: HTMLElement, e: KeyboardEvent, selector: string
   items[next].focus();
 }
 
-export function Modal({ open, onClose, title, subtitle, children, actions, width, testId, dismissible = true }: {
+export function Modal({ open, onClose, title, subtitle, children, actions, width, testId, dismissible = true, labelledBy }: {
   open: boolean; onClose: () => void; title?: ReactNode; subtitle?: ReactNode; children: ReactNode; actions?: ReactNode; width?: number; testId?: string;
+  /** chunk 13 — a dialog with no title is named by this element of its own content (its id). */
+  labelledBy?: string;
   /** chunk 8 — false: a choice only (the online-save box): no close button, and Escape or the backdrop does nothing. */
   dismissible?: boolean;
 }) {
@@ -300,7 +302,7 @@ export function Modal({ open, onClose, title, subtitle, children, actions, width
             transition={{ type: 'spring', stiffness: 380, damping: 32 }}
             role="dialog"
             aria-modal="true"
-            aria-labelledby={title ? titleId : undefined}
+            aria-labelledby={title ? titleId : labelledBy}
           >
             <Panel className="ag-modal" strong title={title} subtitle={subtitle} onClose={dismissible ? onClose : undefined} testId={testId} titleId={titleId}>
               {children}

@@ -11,6 +11,7 @@ import { getTankTier } from '@/data/catalog/tanks';
 import { creaturesInTank, isPrismatic } from '../life';
 import { hourOfDay, lightsOn } from '../time';
 import { showsExhibitBoost } from '../shows/titles'; // lane:shows
+import * as dmath from '../dmath';
 
 export type ExhibitFactorKey = 'beauty' | 'welfare' | 'activity' | 'charisma' | 'rarity' | 'variety' | 'behaviour' | 'signage' | 'clarity' | 'size';
 
@@ -78,7 +79,7 @@ export interface ExhibitInfo {
 
 /** Diminishing-returns size curve: 5 gal ≈ 0.12, 20 ≈ 0.35, 55 ≈ 0.52, 125 ≈ 0.65, 300 ≈ 0.8, 1000 = 1. */
 export function sizeFactor(gallons: number): number {
-  return clamp01(Math.log(Math.max(2.5, gallons) / 2.5) / Math.log(400));
+  return clamp01(dmath.log(Math.max(2.5, gallons) / 2.5) / dmath.log(400));
 }
 
 /**
@@ -223,7 +224,7 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
   welfare = clamp01(welfare);
 
   const beauty = clamp01((tank.cache?.beauty ?? 40) / 100);
-  const activity = empty ? 0 : clamp01(1 - Math.exp(-(visSum + 0.3) / 1.5));
+  const activity = empty ? 0 : clamp01(1 - dmath.exp(-(visSum + 0.3) / 1.5));
   // lane:shows — award-winning animals and a prize-winning layout draw a little more interest.
   const award = empty ? { boost: 0, note: undefined } : showsExhibitBoost(state, tank.id, creatures);
   const charisma = empty ? 0 : clamp01(appealMax * 0.65 + (appealSum / n) * 0.35 + award.boost);
@@ -272,7 +273,7 @@ export function exhibitInfo(state: GameState, tank: Tank): ExhibitInfo {
   }
 
   const education = clamp01((tank.signage ? 0.7 : 0.15) + (conservation > 0.5 ? 0.2 : 0) + (s > 1 ? 0.1 : 0));
-  const appeal = empty ? 0.05 : Math.pow(score / 100, 1.6) * (0.55 + 0.45 * size) * 4;
+  const appeal = empty ? 0.05 : dmath.pow(score / 100, 1.6) * (0.55 + 0.45 * size) * 4;
 
   return {
     tankId: tank.id,

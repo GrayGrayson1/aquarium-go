@@ -53,6 +53,7 @@ import {
   breedNotice,
   clutchParentName,
 } from './common';
+import * as dmath from '../../dmath';
 
 export type LossCause = keyof NonNullable<Clutch['losses']>;
 
@@ -237,7 +238,7 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
     const actors = living.filter((c) => c.speciesId === r.actorSpeciesId);
     if (!actors.length) continue;
     const perDay = clamp01(r.perDay);
-    keep *= 1 - Math.min(0.97, 1 - Math.pow(1 - perDay, hrs / 24));
+    keep *= 1 - Math.min(0.97, 1 - dmath.pow(1 - perDay, hrs / 24));
     out.others.set(r.actorSpeciesId, actors);
   }
   out.p = clamp((1 - keep) * (1 - plan.coverShelter * clamp01(info.habitat().cover)), 0, 0.995);
@@ -256,7 +257,7 @@ function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition
   // predation (+ planktonic loss in a display tank)
   let p = pred.p;
   if (plan.planktonic && !eggs && !isNurseryFor(state, tank, hour)) p = 1 - (1 - p) * (1 - PLANKTONIC_LOSS);
-  if (p > 0) out.predation = -Math.log(1 - Math.min(0.995, p)) / hrs;
+  if (p > 0) out.predation = -dmath.log(1 - Math.min(0.995, p)) / hrs;
 
   // starvation
   if (!eggs) {
@@ -267,8 +268,8 @@ function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition
     const offered = ph ? foodRecency(tank, ph.foods, hour, 10, 14) : 1;
     const target = yolk ? 1 : Math.max(offered, ph ? naturalFood(state, tank, ph.natural, info) : 1);
     const fed = cl.fed ?? 0.5;
-    cl.fed = clamp01(fed + (target - fed) * (1 - Math.exp(-dt / 5)));
-    if (!yolk) out.starvation = (plan.starveSeverity * 3) / Math.max(24, b.fryRearingHours) * Math.pow(1 - cl.fed, 2);
+    cl.fed = clamp01(fed + (target - fed) * (1 - dmath.exp(-dt / 5)));
+    if (!yolk) out.starvation = (plan.starveSeverity * 3) / Math.max(24, b.fryRearingHours) * dmath.pow(1 - cl.fed, 2);
     // the young actually eat a little of what was offered
     if (!yolk && ph && offered > 0.5 && cl.count > 0) {
       try {
@@ -301,7 +302,7 @@ function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition
     const tended = isAlive(g) && g.tankId === cl.tankId;
     if (!tended) {
       const pf = hasEquipment(tank, 'airstone') ? 0.25 : 0.5;
-      out.fungus = -Math.log(1 - pf) / hrs;
+      out.fungus = -dmath.log(1 - pf) / hrs;
     }
   }
   return out;
@@ -349,7 +350,7 @@ export function loseClutch(state: GameState, cl: Clutch, sp: SpeciesDefinition, 
 function releaseParents(state: GameState, cl: Clutch): void {
   for (const id of [cl.motherId, cl.fatherId, cl.guardedById]) {
     const p = id ? state.creatures[id] : undefined;
-    if (p && p.repro.clutchId === cl.id) p.repro.clutchId = undefined;
+    if (p && p.repro.clutchId === cl.id) delete p.repro.clutchId;
   }
 }
 
@@ -388,7 +389,7 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
     const mother = cl.motherId ? state.creatures[cl.motherId] : undefined;
     const gone = !mother || (mother.status !== 'alive' && mother.status !== 'listed');
     if (gone) {
-      cl.pendingEggs = undefined;
+      delete cl.pendingEggs;
       if (cl.count <= 0) {
         const who = mother?.name ?? 'The mother';
         if (mother?.status === 'sold') loseClutch(state, cl, sp, ctx, `${who} left for a new home before laying any eggs — there is no clutch to raise.`, 'info');
@@ -415,7 +416,7 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
   const init = cl.initialCount ?? cl.count;
   if (total > 0 && init > 0) {
     const before = init * cl.survival;
-    cl.survival = clamp01(cl.survival * Math.exp(-total * dt));
+    cl.survival = clamp01(cl.survival * dmath.exp(-total * dt));
     const lost = before - init * cl.survival;
     if (!cl.losses) cl.losses = { predation: 0, starvation: 0, water: 0, crowding: 0, fungus: 0 };
     for (const k of Object.keys(hz) as LossCause[]) if (hz[k] > 0) cl.losses[k] += (lost * hz[k]) / total;
@@ -508,9 +509,9 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   }
   const wasBerried = cl.visual === 'berried';
   setPhase(cl, ph, sp, hour);
-  if (!plan.guardYoung && !wasBerried) cl.guardedById = undefined;
+  if (!plan.guardYoung && !wasBerried) delete cl.guardedById;
   if (wasBerried) {
-    cl.guardedById = undefined;
+    delete cl.guardedById;
     cl.anchor = pickSite(tank, 'plants_low', `${cl.id}:hatch`).anchor;
   } else if (ph.visual === 'fry_cloud' && cl.anchor) {
     cl.anchor = { ...cl.anchor };
@@ -553,7 +554,7 @@ function advancePhase(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefin
 /** Begin the rearing phases for a carried brood that has just been released (seahorse birth, mouthbrooder release). */
 export function releaseCarried(cl: Clutch, tank: Tank, sp: SpeciesDefinition, mod: BreedingModule, hour: number): void {
   const ph = mod.plan.phases[0];
-  cl.guardedById = undefined;
+  delete cl.guardedById;
   if (ph) setPhase(cl, ph, sp, hour);
   else {
     cl.stage = 'fry';

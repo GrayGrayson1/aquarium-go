@@ -34,6 +34,7 @@ import {
   type FriendRequest,
   type LeaderboardKind,
   type LeaderboardRow,
+  type SharedShopInfo,
   type SignUpDetails,
   type SocialError,
   type SocialNews,
@@ -80,6 +81,35 @@ export interface LocalStubOptions {
   standing?: () => PlayerStanding | null;
   /** The device's clock, for the month a club is joined (default: now). */
   now?: () => Date;
+  /** chunk 13 — the stub shared-shop server whose shops the club cards list (default STUB_SHOP_SERVER; null: none). */
+  sharedServer?: string | null;
+  /** chunk 13 — how it's asked (default the global fetch). */
+  fetch?: typeof fetch;
+}
+
+/**
+ * chunk 13 — the stub shared-shop server (server/, `SHOPS_STUB=1`) that dev and e2e pair with this stub: Playwright
+ * starts one on port 4396 (VITE_SHARED_SHOP_SERVER names another). It knows the stub's clubs and its stub tokens.
+ */
+export const STUB_SHOP_SERVER: string = (import.meta.env?.VITE_SHARED_SHOP_SERVER as string | undefined) || 'http://127.0.0.1:4396';
+
+/** A stub token's player id: letters and digits only (`stub:<id>:<name>`), the same for the same account. */
+export function stubPlayerId(email: string): string {
+  const e = email.trim().toLowerCase();
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < e.length; i++) {
+    const c = e.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ c, 0x5bd1e995) >>> 0;
+  }
+  return `l${h1.toString(16).padStart(8, '0')}${h2.toString(16).padStart(8, '0')}`;
+}
+
+/** chunk 13 — the stub's access token for the shared-shop server: `stub:<id>:<name>`, `:owner` for the owner. */
+export function stubTokenFor(s: Pick<StoredSocial, 'email' | 'displayName' | 'owner'>): string {
+  const name = s.displayName.replace(/:/g, ' ').trim().slice(0, 30) || 'Player';
+  return `stub:${stubPlayerId(s.email)}:${name}${s.owner ? ':owner' : ''}`;
 }
 
 export interface LocalSocialStub extends SocialService {
@@ -244,6 +274,23 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
   }
 
   const read = () => readStored(kv);
+  const sharedServer = opts.sharedServer === undefined ? STUB_SHOP_SERVER : opts.sharedServer;
+  /** The stub server's shops (it may not be running: none). */
+  async function stubServerShops(): Promise<SharedShopInfo[]> {
+    const f = opts.fetch ?? (typeof fetch === 'function' ? fetch : null);
+    if (!sharedServer || !f) return [];
+    try {
+      const res = await f(`${sharedServer.replace(/\/+$/, '')}/stub/shops`, { cache: 'no-store' });
+      const rows = res.ok ? ((await res.json()) as unknown) : [];
+      if (!Array.isArray(rows)) return [];
+      const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+      return rows
+        .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object' && typeof (r as { club?: unknown }).club === 'string')
+        .map((r) => ({ club: r.club as string, name: typeof r.name === 'string' ? r.name : '', day: num(r.day), money: num(r.money), playedAt: num(r.playedAt) }));
+    } catch {
+      return [];
+    }
+  }
   const write = (s: StoredSocial) =>
     kv.setItem(
       SOCIAL_STORAGE_KEY,
@@ -440,6 +487,20 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
         const revision = (c?.meta.revision ?? 0) + 1;
         writeCloud({ email: s.email, meta: { ...meta, revision }, encoding, body });
         return { ok: true, revision };
+      }),
+    // chunk 12 (SHARED-SHOPS.md §6.3); chunk 13: the stub server's shops of the clubs the player is in
+    sharedShops: async () => {
+      const s = await call(() => signedIn());
+      const mine = new Set([...s.joinedClubIds, ...(s.createdClubs ?? []).map((c) => c.id)]);
+      const shops = (await stubServerShops()).filter((x) => mine.has(x.club));
+      return { shops, closed: null, reopens: null };
+    },
+    accessToken: () => call(() => (read() ? stubTokenFor(read()!) : null)),
+    onAccessToken: () => () => {}, // a stub token never runs out
+    sharedUsage: () =>
+      call(() => {
+        if (!signedIn().owner) throw fail('forbidden');
+        return { month: monthOf(now()), bytesOut: 0, awakeSeconds: 0, closed: null, bytesCap: 2_000_000_000, secondsCap: 1_440_000 };
       }),
     // chunk 9 (B2): another tab signing out or in rewrites the record, and this tab hears of it (as the real service)
     onSessionChange: (cb) => {

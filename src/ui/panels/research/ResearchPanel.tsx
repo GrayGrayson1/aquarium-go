@@ -12,7 +12,7 @@ import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { RESEARCH } from '@/data/research';
 import { ACHIEVEMENTS } from '@/data/achievements';
 import type { Reward } from '@/data/quests';
-import { startResearch, cancelResearch, claimQuest, researchList, activeQuests, unlockProgress, masteryLevel, unlockLabel, evalCond, currentTutorialStep, type ResearchView, type QuestView, type UnlockProgressView } from '@/sim/facility';
+import { researchList, activeQuests, unlockProgress, masteryLevel, unlockLabel, evalCond, currentTutorialStep, type ResearchView, type QuestView, type UnlockProgressView } from '@/sim/facility';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe, useIsPhone } from '../common/hooks';
 import { act } from '../common/act';
@@ -177,7 +177,7 @@ function ResearchTab({ g }: { g: GameState }) {
         actions={
           <>
             <Button onClick={() => setConfirmCancel(false)}>Keep studying</Button>
-            <Button variant="danger" onClick={() => { act((d) => cancelResearch(d), { sound: 'close', kind: 'info' }); setConfirmCancel(false); }}>
+            <Button variant="danger" onClick={() => { act({ k: 'cancelResearch' }, { sound: 'close', kind: 'info' }); setConfirmCancel(false); }}>
               Stop research
             </Button>
           </>
@@ -267,7 +267,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
             data-testid={`research-start-${d.id}`}
             // lane:guide — a disabled Start says why
             title={busy ? 'Only one project runs at a time. Finish or stop the current one first.' : !r.affordable ? `You need ${formatMoney(Math.max(0, cost - g.finance.money))} more to start this.` : undefined}
-            onClick={() => act((dd) => startResearch(dd, d.id), { sound: 'confirm' })}
+            onClick={() => act({ k: 'startResearch', project: d.id }, { sound: 'confirm' })}
           >
             {busy ? 'One at a time' : !r.affordable ? 'Can’t afford' : 'Start'}
           </Button>
@@ -456,7 +456,7 @@ function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
                 <RewardChips r={q.reward} />
               </div>
               {q.status === 'complete' && (
-                <Button variant="primary" silent onClick={() => act((d) => claimQuest(d, q.id), { sound: 'celebrate', kind: 'celebrate' })}>
+                <Button variant="primary" silent onClick={() => act({ k: 'claimQuest', quest: q.id }, { sound: 'celebrate', kind: 'celebrate' })}>
                   <Gift size={15} /> Claim
                 </Button>
               )}

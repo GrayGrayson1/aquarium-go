@@ -25,6 +25,7 @@ import { morphRarity, primeWindow } from '../economy/valuation';
 import { ageDaysOf } from '../life/growth';
 import { tankGallons } from './eligibility';
 import type { Rng } from '../rng';
+import * as dmath from '../dmath';
 
 /** Spread of the judge's eye (points). */
 export const JUDGE_SD = 2.2;
@@ -205,7 +206,7 @@ export function assessTank(state: GameState, tank: Tank, def: ShowClassDef): Ent
   // with is a club-level entry however pretty it is.
   const critique = scapeCritique(tank, report);
   const gifted = giftedLayoutShare(state, tank);
-  const craft = Math.pow(clamp01((critique.composition - 0.58) / 0.38), 2);
+  const craft = dmath.pow(clamp01((critique.composition - 0.58) / 0.38), 2);
   q.composition = craft * (SCAPER_HAND_FLOOR + (1 - SCAPER_HAND_FLOOR) * (1 - gifted));
   const lifeHealth = factor('Plant & coral health');
   const maturity = factor('Maturity');
@@ -355,7 +356,7 @@ export function judgeEye(rng: Rng): number {
 /** Normal CDF (Abramowitz–Stegun erf approximation). */
 export function normCdf(x: number): number {
   const t = 1 / (1 + 0.3275911 * Math.abs(x) / Math.SQRT2);
-  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(x * x) / 2);
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * dmath.exp(-(x * x) / 2);
   return x >= 0 ? 0.5 * (1 + y) : 0.5 * (1 - y);
 }
 
@@ -368,13 +369,13 @@ export function fieldChances(tier: ShowTier, expected: number, field: number): {
   const sd = Math.sqrt(t.npcSd * t.npcSd + JUDGE_SD * JUDGE_SD);
   const p = normCdf((expected - t.npcMean) / sd); // chance one rival scores lower
   const n = Math.max(0, Math.round(field));
-  const win = Math.pow(p, n);
+  const win = dmath.pow(p, n);
   // P(at most 2 rivals beat it)
   let ribbon = 0;
   let comb = 1;
   for (let k = 0; k <= Math.min(2, n); k++) {
     if (k > 0) comb = (comb * (n - k + 1)) / k;
-    ribbon += comb * Math.pow(1 - p, k) * Math.pow(p, n - k);
+    ribbon += comb * dmath.pow(1 - p, k) * dmath.pow(p, n - k);
   }
   return { win: clamp01(win), ribbon: clamp01(ribbon) };
 }

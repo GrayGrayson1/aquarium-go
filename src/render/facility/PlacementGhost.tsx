@@ -17,9 +17,10 @@ import { getGame, useGame, useGameSelector } from '@/state/game';
 import { findSpecies } from '@/data/species';
 import { getTankTier } from '@/data/catalog/tanks';
 import { standHeight } from '@/sim/tankSpace';
-import { buyTank, canAfford, tankKitPrice } from '@/sim/economy';
+import { canAfford, tankKitPrice } from '@/sim/economy';
+import type { Command } from '@/sim/commands';
 import { fmtMoney } from '@/sim/economy/util';
-import { placeTank, validatePlacement } from '@/sim/facility';
+import { validatePlacement } from '@/sim/facility';
 import { tankFootprint, tankOuterSize, WALL_MARGIN_M, FRONT_CLEARANCE_M } from '@/sim/facility/layout';
 import { cameraInput, wasCameraDrag } from '../camera/cameraFX';
 import { usePlacementStore } from './placementStore';
@@ -248,38 +249,26 @@ export function PlacementGhost() {
         useUI.getState().toast(at.reason || 'That spot doesn’t work.', 'warning');
         return;
       }
-      const placement = { x: at.x, z: at.z, rotY: at.rotY };
-      let msg = '';
-      let ok = false;
-      let newId: string | undefined;
-      // lane:ui-shell (B-179) — the catch sits outside the recipe: buyTank spends before it creates the tank, so a throw
-      // must discard the whole draft (it used to commit the money with no tank)
+      const finish = (ok: boolean, msg: string, newId?: string) => {
+        const ui = useUI.getState();
+        ui.toast(msg || (ok ? 'Placed.' : 'That spot doesn’t work.'), ok ? 'success' : 'warning');
+        if (ok) {
+          ui.set({ tool: 'none', placingTankTierId: null, movingTankId: null, ...(newId ? { focusedTankId: newId } : {}) });
+          usePlacementStore.getState().reset();
+          ghostRef.current = null;
+          setGhost(null);
+        }
+      };
+      // lane:ui-shell (B-179) — the catch sits outside the store's write: buyTank spends before it creates the tank, so a
+      // throw must discard the whole draft (it used to commit the money with no tank)
       try {
-        useGame.getState().mutate((d) => {
-          if (moveId) {
-            const r = placeTank(d, moveId, placement.x, placement.z, placement.rotY);
-            ok = r.ok;
-            msg = r.message;
-          } else {
-            const r = buyTank(d, tierId, defaultWaterClass(d), placement, { seeded: useUI.getState().placingSeeded });
-            ok = r.ok;
-            msg = r.message;
-            newId = r.tankId;
-          }
-        });
+        const cmd: Command = moveId
+          ? { k: 'placeTank', tank: moveId, x: at.x, z: at.z, rotY: at.rotY }
+          : { k: 'buyTank', tier: tierId, wc: defaultWaterClass(g), seeded: useUI.getState().placingSeeded, x: at.x, z: at.z, rotY: at.rotY };
+        useGame.getState().dispatch(cmd, (r) => finish(!!r?.ok, r?.message ?? '', r?.tankId));
       } catch (err) {
-        ok = false;
-        newId = undefined;
-        msg = 'Could not place the tank.';
         console.warn('placement failed', err);
-      }
-      const ui = useUI.getState();
-      ui.toast(msg || (ok ? 'Placed.' : 'That spot doesn’t work.'), ok ? 'success' : 'warning');
-      if (ok) {
-        ui.set({ tool: 'none', placingTankTierId: null, movingTankId: null, ...(newId ? { focusedTankId: newId } : {}) });
-        usePlacementStore.getState().reset();
-        ghostRef.current = null;
-        setGhost(null);
+        finish(false, 'Could not place the tank.');
       }
     },
     [tierId, moveId],

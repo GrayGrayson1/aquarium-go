@@ -14,8 +14,6 @@ import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { spPlural } from '@/sim/life/breeding/common';
 import { morphDisplayName } from '@/sim/life/genetics';
 import {
-  addQuarantineTank,
-  endLine,
   facilityLevelName,
   findLine,
   lineNoticeText,
@@ -24,8 +22,6 @@ import {
   pairTraits,
   productionLines,
   quarantineKit,
-  setLineRule,
-  setLineRunning,
   type LineStage,
 } from '@/sim/production';
 import { lineColour, lineView, slotsCaption, type LineView, type StageId } from '@/sim/production/view';
@@ -197,8 +193,8 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
   const fixPair = broken && (broken.ref === 'mother' || broken.ref === 'father');
 
   const toggleRunning = (on: boolean) => {
-    const r = act((d) => setLineRunning(d, line.id, on), { quiet: true });
-    if (r?.ok && !on) useUI.getState().toast(`${line.name} paused`, 'info', { detail: 'Animals stay where they are; nothing new is bred or listed.' });
+    const name = line.name;
+    act({ k: 'setLineRunning', line: line.id, on }, { quiet: true, after: (r) => r?.ok && !on && useUI.getState().toast(`${name} paused`, 'info', { detail: 'Animals stay where they are; nothing new is bred or listed.' }) });
   };
 
   const next = (() => {
@@ -350,9 +346,9 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
 
       <section className="pr-rules" aria-label="Line rules">
         <h4 className="pr-section">Line rules</h4>
-        <Rule title="Pause when a tank is full" sub={`Stops spawning when ${raiseName} reaches its stocking limit.`} checked={line.rules.pauseWhenFull} testId="production-rule-pauseWhenFull" lineName={line.name} onChange={(on) => act((d) => setLineRule(d, line.id, 'pauseWhenFull', on), { quiet: true })} />
-        <Rule title="Never sell Prismatic animals" sub={`A Prismatic youngster always moves to ${keepName} instead.`} checked={line.rules.keepPrismatic} testId="production-rule-keepPrismatic" lineName={line.name} onChange={(on) => act((d) => setLineRule(d, line.id, 'keepPrismatic', on), { quiet: true })} />
-        <Rule title="List automatically" sub="Juveniles go to auction the day quarantine ends." checked={line.rules.autoList} testId="production-rule-autoList" lineName={line.name} onChange={(on) => act((d) => setLineRule(d, line.id, 'autoList', on), { quiet: true })} />
+        <Rule title="Pause when a tank is full" sub={`Stops spawning when ${raiseName} reaches its stocking limit.`} checked={line.rules.pauseWhenFull} testId="production-rule-pauseWhenFull" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'pauseWhenFull', on }, { quiet: true })} />
+        <Rule title="Never sell Prismatic animals" sub={`A Prismatic youngster always moves to ${keepName} instead.`} checked={line.rules.keepPrismatic} testId="production-rule-keepPrismatic" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'keepPrismatic', on }, { quiet: true })} />
+        <Rule title="List automatically" sub="Juveniles go to auction the day quarantine ends." checked={line.rules.autoList} testId="production-rule-autoList" lineName={line.name} onChange={(on) => act({ k: 'setLineRule', line: line.id, rule: 'autoList', on }, { quiet: true })} />
       </section>
 
       <Modal
@@ -371,11 +367,17 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
               onClick={() => {
                 const name = line.name;
                 setEnding(false);
-                const r = act((d) => endLine(d, line.id), { quiet: true });
-                if (r?.ok) {
-                  useUI.getState().toast(`${name} ended`, 'info', { detail: 'Its animals stay where they are.' });
-                  onEnded?.(); // the address leaves the ended line (a reload would find nothing there)
-                }
+                act(
+                  { k: 'endLine', line: line.id },
+                  {
+                    quiet: true,
+                    after: (r) => {
+                      if (!r?.ok) return;
+                      useUI.getState().toast(`${name} ended`, 'info', { detail: 'Its animals stay where they are.' });
+                      onEnded?.(); // the address leaves the ended line (a reload would find nothing there)
+                    },
+                  },
+                );
               }}
             >
               End line
@@ -494,14 +496,21 @@ export function AddQuarantine({ g, line, onClose, onAdded }: { g: GameState; lin
             variant="primary"
             data-testid="production-add-qt-buy"
             onClick={() => {
-              const r = act((d) => addQuarantineTank(d, line.id, seeded), { quiet: true });
-              if (!r?.ok) return;
-              onAdded?.();
-              onClose();
-              useUI.getState().toast(`${r.tankName} · ${r.tierName}`, 'success', {
-                label: `Set up · ${formatMoney(r.price ?? total)}`,
-                detail: r.restartDay ? `The ${short} juveniles move in on Day ${r.restartDay} and the line restarts.` : 'The juveniles move in once it has cycled.',
-              });
+              act(
+                { k: 'addQuarantineTank', line: line.id, seeded },
+                {
+                  quiet: true,
+                  after: (r) => {
+                    if (!r?.ok) return;
+                    onAdded?.();
+                    onClose();
+                    useUI.getState().toast(`${r.tankName} · ${r.tierName}`, 'success', {
+                      label: `Set up · ${formatMoney(r.price ?? total)}`,
+                      detail: r.restartDay ? `The ${short} juveniles move in on Day ${r.restartDay} and the line restarts.` : 'The juveniles move in once it has cycled.',
+                    });
+                  },
+                },
+              );
             }}
           >
             Set up · {formatMoney(total)}

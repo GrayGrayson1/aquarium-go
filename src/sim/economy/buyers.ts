@@ -20,6 +20,7 @@ import { clamp, clamp01, finite, RARITY_SCORE, difficultyIndex, exhibitPopularit
 import { morphRarity } from './valuation';
 import { isPrismatic } from '../life/rareVariants'; // lane:genetics
 import { PRISMATIC } from '@/data/rarity'; // lane:genetics
+import * as dmath from '../dmath';
 
 export const BUYER_POOL_SIZE = 18;
 
@@ -76,7 +77,7 @@ export function makeBuyer(state: GameState, rng: Rng, archetype?: BuyerArchetype
     price: jitter(def.prefs.price),
   };
   const [bl, bh] = def.budget;
-  const budget = Math.round(Math.exp(rng.range(Math.log(bl), Math.log(bh))) * budgetScale(state, arch));
+  const budget = Math.round(dmath.exp(rng.range(dmath.log(bl), dmath.log(bh))) * budgetScale(state, arch));
   const favs: string[] = [];
   const pool = def.favouritePool.filter((id) => findSpecies(id)) as string[];
   const nFav = pool.length ? rng.int(1, Math.min(3, pool.length)) : 0;
@@ -200,7 +201,7 @@ export function buildProfile(state: GameState, kind: ListingKind, creatures: Cre
     const water = tank.cache?.waterStatus ?? tank.cache?.status;
     const statusPen = water === 'danger' ? 0.3 : water === 'watch' ? 0.08 : 0;
     attrs.health = clamp01((creatures.length ? 0.45 * attrs.health + 0.35 * welfare : 0.8 * welfare) + 0.2 * stab - statusPen);
-    attrs.size = clamp01(Math.log(Math.max(5, gallons) / 5) / Math.log(200));
+    attrs.size = clamp01(dmath.log(Math.max(5, gallons) / 5) / dmath.log(200));
     const pop = exhibitPopularity(state, tank.id);
     const exhibit = clamp01(finite(tank.cache?.exhibitScore, 30) / 100);
     attrs.visitorAppeal = clamp01(0.45 * attrs.visitorAppeal + 0.45 * exhibit + 0.05 + 0.8 * pop);

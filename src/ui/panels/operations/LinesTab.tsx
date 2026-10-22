@@ -18,6 +18,7 @@ import { EmptyState } from '../common/parts';
 import { RouteStrip, StatusWord } from '../livestock/Production';
 import { Status, Kicker } from './parts';
 import { doLineSwitch } from './actions';
+import { eventLine } from '@/ui/common/notify'; // chunk 13: the member's name in a shared shop
 
 const STAGES: { id: StageId; label: string }[] = [
   { id: 'breed', label: 'Breed' },
@@ -238,7 +239,7 @@ function ComingUp({ g, lines }: { g: GameState; lines: ProductionLine[] }) {
             <span className="ops-num" style={{ minWidth: 64, fontWeight: 620 }}>
               Day {e.day}
             </span>
-            <span className="ops-row__main">{e.text}</span>
+            <span className="ops-row__main">{eventLine(e)}</span>
           </div>
         ))}
         {!events.length && <span className="ops-muted">Nothing dated yet.</span>}

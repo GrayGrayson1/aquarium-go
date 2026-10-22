@@ -1,14 +1,27 @@
 /**
  * Game store. OWNER: core.
- * The ONLY way to change persistent game state is `mutate(draft => domainFn(draft, ...))`.
+ * The ONLY way to change persistent game state is `mutate(draft => domainFn(draft, ...))`; player actions reach it as
+ * commands through `dispatch` (chunk 11, SHARED-SHOPS.md §4.2).
  * Domain mutators live in src/sim/** and take `(state: GameState, ...args)` — they mutate the immer draft.
  * Never mutate `useGame.getState().game` directly from UI/AI/render code.
  */
 import { create } from 'zustand';
 import { produce, setAutoFreeze } from 'immer';
 import type { GameState } from '@/types';
+import type { Command, CommandResult } from '@/sim/commands';
 
 setAutoFreeze(false);
+
+/**
+ * chunk 11 (SHARED-SHOPS.md §4.2) — apply a player action. `done` gets the result: at once in a solo game (before
+ * `dispatch` returns, which also returns it), or when the step that applied it arrives in a shared shop (then
+ * `dispatch` returns undefined). Null: no game. An action that throws throws out of a solo `dispatch`, as `mutate` does.
+ */
+export type Dispatch = (cmd: Command, done?: (r: CommandResult | null) => void) => CommandResult | null | undefined;
+
+const notInstalled: Dispatch = () => {
+  throw new Error('No dispatcher is installed (src/game/dispatch.ts installs the solo one when imported).');
+};
 
 export interface GameStore {
   game: GameState | null;
@@ -21,7 +34,15 @@ export interface GameStore {
    */
   actions: number;
   mutate: (recipe: (draft: GameState) => void) => void;
-  setGame: (g: GameState | null) => void;
+  /**
+   * Replace the world. chunk 13: `actions` also counts it as a player action (a shared shop's copy published with a
+   * member's command in it), so views cached per game hour show it while the clock is paused, as `mutate`'s do.
+   */
+  setGame: (g: GameState | null, opts?: { actions?: boolean }) => void;
+  /** chunk 11 — the installed dispatcher: player actions go through it as commands (§4.2). */
+  dispatch: Dispatch;
+  /** Install a dispatcher: src/game/dispatch.ts's solo one at boot; a shared shop's while one is open (chunk 13). */
+  installDispatch: (d: Dispatch) => void;
 }
 
 export const useGame = create<GameStore>((set, get) => ({
@@ -36,7 +57,9 @@ export const useGame = create<GameStore>((set, get) => ({
     });
     if (next !== g) set({ game: next, version: get().version + 1, actions: get().actions + 1 });
   },
-  setGame: (g) => set({ game: g, version: get().version + 1 }),
+  setGame: (g, opts) => set({ game: g, version: get().version + 1, ...(opts?.actions ? { actions: get().actions + 1 } : {}) }),
+  dispatch: notInstalled,
+  installDispatch: (d) => set({ dispatch: d }),
 }));
 
 /** Non-React access (AI/render loops, dev tools). */

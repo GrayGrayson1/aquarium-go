@@ -214,7 +214,7 @@ function layEggs(state: GameState, tank: Tank, env: StepEnv, f: Creature, dt: nu
   const n = hour + dt >= end ? pending : Math.min(pending, Math.ceil((pending * dt) / remainingH));
   addEggs(cl, n);
   if ((cl.pendingEggs ?? 0) <= 0) {
-    cl.pendingEggs = undefined;
+    delete cl.pendingEggs;
     startResting(f, hour, sp.breeding.cooldownDays * 24);
     addHistory(f, 'bred', `Laid ${plural(cl.initialCount ?? cl.count, 'egg')}.`, hour);
     // lane:notify — the clutch's one Breeding notification: laying takes hours, and only now is the count known

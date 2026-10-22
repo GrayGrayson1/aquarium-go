@@ -285,6 +285,18 @@ describe('leaderboards (§13.5, SOC-008 A3): the top four, and the player comput
   });
 });
 
+describe('chunk 12: shared shops on the stub (SHARED-SHOPS.md §6.3)', () => {
+  it('no shared shop yet and nothing closed; the meters are the owner’s only', async () => {
+    const s = fast(memory());
+    await expect(s.sharedShops()).rejects.toEqual({ code: 'invalid' }); // signed out
+    await s.signIn('you@example.com', PASSWORD);
+    expect(await s.sharedShops()).toEqual({ shops: [], closed: null, reopens: null });
+    await expect(s.sharedUsage()).rejects.toEqual({ code: 'forbidden' });
+    s.setOwner(true);
+    expect(await s.sharedUsage()).toMatchObject({ bytesOut: 0, awakeSeconds: 0, closed: null, bytesCap: 2_000_000_000, secondsCap: 1_440_000 });
+  });
+});
+
 describe('the one injection point (SOC-009 A2) and the save (SOC-009 A3)', () => {
   afterEach(() => {
     provideSocialService(null);

@@ -21,13 +21,14 @@ src/state        Zustand stores: game (persistent), ui (transient), settings (lo
 src/persistence  IndexedDB save slots, versioned schema + migrations, offline cap
 src/game         real-time loop driving sim ticks
 src/runtime      per-frame non-persisted registries (creature runtime, food, events, audio-reactive)
-src/ai           per-frame creature behaviour (reads sim state, writes runtime; game state only through mutate)
-src/render       Three.js/R3F rendering (reads state + runtime; input handlers change game state only through mutate)
+src/ai           per-frame creature behaviour (reads sim state, writes runtime; game state only through a command)
+src/render       Three.js/R3F rendering (reads state + runtime; input handlers change game state only through commands)
 src/platform     thin seam over browser APIs (notifications, clipboard, share, lifecycle); no runtime imports from persistence, sim, state or ui
 src/social       the SocialService interface, its local stub (0.5 spec §13.6; chunk 6) and the Supabase service (chunk 8): social data, never in the save; reads a save only for the player's leaderboard row
-src/ui           React DOM UI (reads state; calls sim mutators through `mutate`)
+src/ui           React DOM UI (reads state; sends player actions as commands through the store's dispatcher)
 src/audio        procedural Web Audio engine
 src/dev          fixtures, sandboxes, debug commands
+server/          the shared-shop server (SHARED-SHOPS.md §5; chunk 12): Node 22 and `ws`, built into dist-server/
 ```
 
 **Allowed value imports** (S0 architecture lock). A layer may import values from itself and from the layers in its
@@ -53,16 +54,17 @@ Changing a row is a deliberate architecture change: say why in the commit, and t
 | `app` | every layer above |
 | `dev` | every layer above, and app |
 | files at the `src/` root | every layer |
+| `server/` (outside `src`; chunk 10) | types, data, sim and the pure persistence modules (`hash`, `serialize`, `migrations`, `schema`, `types`), and (chunk 12) `social/project.ts`, the project's public settings, which imports nothing; never the stores, the game loop, the interface or React; packages: `ws` and Node's own. A test walks everything it reaches (`core-architecture-boundaries`, SHARED-SHOPS.md §5.1) |
 
 Rules:
 - **Species facts live only in `src/data/species`.** UI/render/AI read them through `getSpecies()`.
 - **The simulation is the source of truth.** Rendering and AI only present it. Example: feeding adds food to `tank.water.foodInWater`. The sim shares it out by feeding speed and competition, so a seahorse really does lose out to fast feeders. The AI animates particles being eaten, but the numbers come from the sim.
 - **All game-state changes go through the store boundary**, by exactly three paths. Domain mutators live in `src/sim/**`.
-  - `useGame.getState().mutate(draft => domainFn(draft, …))` for player actions, wherever they start: the UI, and the render layer's input handlers (glass taps in `render/interaction/TankInteraction.tsx`, the decor editor, tank placement). The AI's tutorial "observed" hook (`ai/TankAI.tsx`) also uses it.
+  - `useGame.getState().mutate(draft => domainFn(draft, …))`, which since chunk 11 (SHARED-SHOPS.md §4) player actions reach only as **commands**: plain objects (`src/sim/commands`, 80 kinds, one per action) sent through the store's installed dispatcher, `useGame.getState().dispatch(cmd, done?)`, wherever they start: the UI's `act`/`edit` helpers, the render layer's input handlers (glass taps in `render/interaction/TankInteraction.tsx`, the decor editor, tank placement) and the AI's tutorial "observed" hook (`ai/TankAI.tsx`). The solo dispatcher (`src/game/dispatch.ts`, installed when the `act` helpers are imported) applies a command at once with `applyCommand` in one `mutate`, its guide flag in another; a shared shop's (chunk 13) sends it to the server and settles it when its step arrives. Each player's own "seen" marks go through `src/ui/common/marks.ts`; dev tools write directly. `core-mutation-boundary.test.ts` checks that nothing else calls `mutate` or `mutateFast`: only the store, the dispatcher, the marks, the game loop and `fastMutate`'s flush, the shared replica, persistence's load and save (`session.ts`) and its catch-up (`offline.ts`, through `mutateFast` only), and the dev tools.
   - `mutateFast` (`src/game/fastMutate.ts`: a plain working copy published with structural sharing, about 15× cheaper than an Immer draft for a whole-world step) for the game loop, the hidden-tab catch-up, the flush before a save (`persistence/session.ts`), the flush before a manual-mode change (`flushBackgroundTanks`, chunk 5) and dev commands. It is atomic (a recipe that throws publishes nothing, and after any failure, in the recipe or in the publish, the next call starts from the store) and not re-entrant. A store write made while a recipe runs (`mutate` or `setGame` from inside it) is reported and kept, and that recipe's work is dropped (B-177).
   - `setGame` to replace the whole world: loading a save (whose catch-up runs on the decoded copy first), starting a new game, the showcase and fixture boot (`App.tsx`, `ui/screens/onboarding.ts`) and dev tools.
 
-  The render frame loop (`useFrame`, render selectors) never writes game state. The AI's frame step writes only the `src/runtime` registries, with one exception: while the tutorial runs, its throttled "observed" hook advances the tutorial through `mutate`.
+  The render frame loop (`useFrame`, render selectors) never writes game state. The AI's frame step writes only the `src/runtime` registries, with one exception: while the tutorial runs, its throttled "observed" hook advances the tutorial with a command (`raiseFlag`).
 - **Determinism:** the sim draws randomness only from `simRng(state)` / `ctx.rng`, which persists `rngState`; from a subsystem's own persisted stream (`shows.rng`, `staff.rng`); or from a keyed stream, `mulberry32(hashString(key))`, seeded from a stable key (creature names, breeding anchors, the morph catalog), which persists nothing and gives the same draws for the same key. Cosmetic randomness in render and AI uses `visualRng`/`Math.random`. What "deterministic" promises, and what it doesn't, is defined under "Determinism contract" below.
 
 ## Time
@@ -79,7 +81,8 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
 
 - **Reproducible.** The same `GameState` plus the same ordered calls (the `advanceWorld` slice sizes, the focused tank
   and `forceFull`, the points where sim debt is flushed, and the player's actions) produce an identical `stateHash`,
-  in one process and locale. Tests pin the call sequence to check it.
+  in one process and locale, and since chunk 10 in every engine (Node, Chromium, WebKit: SHARE-002, the arithmetic
+  below). Tests pin the call sequence to check it.
 - **Live play is not replayable.** Wall-clock tick slicing, which tank is focused (its LOD), autosave flushes and speed
   changes all change the call sequence, so two live sessions diverge. That is accepted; it is not a determinism bug.
   Known consequence: the focused tank changes how draws on the main stream interleave.
@@ -92,6 +95,12 @@ Market windows (bid lifetimes, counter holds, closing grace, counter replies) ar
   or locale-dependent formatting or sorting in `src/sim` or `src/data`. Accepted entropy: the new-game seed
   (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none (`src/persistence/migrations.ts`).
   `tests/sim/core-determinism-guard.test.ts` enforces this.
+- **One arithmetic (chunk 10, SHARE-002).** Engines round `Math.exp`, `pow`, `log`, `sin`, `cos`, `atan2`, `hypot` and
+  the other transcendental functions differently in the last bit, and a shared shop's copies must step identically
+  (SHARED-SHOPS.md §3.2). So `src/sim` and `src/data` never call them, nor use `**`: `src/sim/dmath.ts` has them in
+  plain arithmetic (fdlibm's algorithms, equal to Java's StrictMath bit for bit). `+ − × ÷`, `Math.sqrt`, `floor`,
+  `round`, `abs`, `min`, `max` and `imul` are exact in every engine and stay. The determinism guard enforces it;
+  `tests/sim/dmath.test.ts` checks the functions.
 - **RNG-stream changes.** A change that adds, removes or reorders draws on an existing stream (for example new betta
   loci) shifts every seeded test after it. Run the seeded suites before and after, explain each changed expectation
   in the commit, and never retune data or thresholds to absorb the shift. New randomness prefers its own keyed or
@@ -250,6 +259,33 @@ sent, within size limits; stage 2 needs its own record before strangers join (`d
   The secret (service_role) key is never printed, saved or committed; nothing in the game needs it.
 - **No emails.** Confirmation is off (`supabase/config.toml`), so a forgotten password is reset by hand.
 
+**Shared shops** (chunk 12; SHARED-SHOPS.md §5, §6; ADR-0043, ADR-0045, ADR-0047). A club's shop runs on the free
+Render web service `aquarium-go-shops` (`srv-dbbt6gbncjis73c23br0`, `SHARED_SHOP_SERVER` in `src/social/project.ts`), whose
+copy counts; every member's browser applies the same steps (§3).
+- **The server** (`server/`): `main.ts` (the entry: Supabase, or the stub with `SHOPS_STUB=1`), `app.ts` (HTTP `/health`
+  and `/stats`, the socket at `/shop`, sign-in, one connection per player, the limits, the only database caller),
+  `rooms.ts` and `roomWorker.ts` (a room per shop in its own worker thread, started with an empty environment),
+  `host.ts` (a room's life: the lease, load and repair, the catch-up, saves, photos, grants, through the main thread),
+  `room.ts` (the steps, the members, permissions, photos, the checkpoint), `store.ts`, `auth.ts`, `stub.ts`, `usage.ts`
+  (the caps), `photos.ts`, `protocol.ts`, `config.ts`. Its build: `npm run build:server` (`vite.server.config.ts`);
+  Render's build command removes the password first (`env -u SHOPS_SERVER_KEY sh -c 'npm ci --include=dev
+  --ignore-scripts && npm run build:server'`). The build identity (`vite.sharedBuild.ts`) is stamped into the game and
+  the server alike.
+- **The database** (`supabase/migrations/20261021000000_shared_shops.sql`, the sixth file, applied 2026-10-21):
+  `shared_shops`, `shared_photos`, `shared_usage` (no access for the browser), the server's `server_*` functions, which
+  refuse without its password (`private.require_server`: the SHA-256 in `private.server_key`), and the game's
+  `club_shared_shops()` and `shared_usage()`. `service_role` reaches nothing in `public` or `private`.
+- **The game's side** (chunk 13; SHARED-SHOPS.md §7, §8). `src/ui/shared`: the connection (`connection.ts`, the
+  browser's own WebSocket: it wakes the server, joins with the player's access token from `SocialService.accessToken`,
+  feeds the replica the server's steps, and keeps the player "there"), the shared dispatcher (`dispatch.ts`, installed
+  on the game store while a shop is open: a command settles when its step lands), the visit (`session.ts`: your own
+  aquarium saved and recorded first, the copy published to the store with `share` and `setGame`, each player's marks laid
+  over it, leaving back to your own save with no catch-up), and the screens. Whether a shop is open is one flag in
+  `src/state/sharedMode.ts`, which persistence (`isSharedShop` in `sharedAway.ts`: every save path refuses a shared shop
+  before its flush), the game loop (it doesn't tick one) and the hidden-tab catch-up read. A shop's own id is
+  `shared_<club>` when it was made by `create`; the slot layer never writes one, whoever asks. Dev and e2e pair the
+  local Social stub with the stub server (`STUB_SHOP_SERVER`, port 4396, or `VITE_SHARED_SHOP_SERVER`).
+
 **The owner's runbook** (each with the owner's yes; every command scoped with `--linked --project-ref <ref>`, the ref
 in PLAN.md's chunk 8 record):
 - *The owner's account:* after the owner signs up with the first club's link, `update public.profiles set is_owner =
@@ -268,6 +304,14 @@ in PLAN.md's chunk 8 record):
   club's word and four letters (FRIENDS-KDWX, ADR-0042: 331,776 per word, drawn from a secure source); wrong lookups
   hit the brake, and sign-ups are rate-limited by Supabase Auth (30 per 5 minutes per address). Never write a code in
   the repo (it is public).
+- *The shared-shop server's password* (ADR-0047): `node scripts/shared-server-key.mjs --yes` from a clone linked to the
+  project stores a new password's fingerprint and leaves the password on the clipboard (never printed); paste it into
+  the Render service's environment as `SHOPS_SERVER_KEY` and save (Render restarts the service). The old one stops
+  working at once, so the server refuses everything until the new one is pasted: running rooms can't save and close
+  within about 90 seconds (their lease lapses), losing up to 3 minutes of play. Replace it when nobody is playing, and
+  again if it may have leaked.
+- *Deleting a club's shared shop* (on request; the game can't): `delete from public.shared_shops where club_id =
+  '<club id>'` (its photos go with it). A room still loaded on the server finds it gone at its next save and closes.
 - *A leaked code:* `update public.clubs set invite_code = public.new_invite_code('FRIENDS') where name = 'Aquarium Go
   Friends' returning invite_code` gives the club a new one; the old link stops working (members stay members).
 

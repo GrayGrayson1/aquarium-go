@@ -100,7 +100,7 @@ export const clownfishModule: BreedingModule = {
       if (c.repro.stage !== 'guarding') continue;
       const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
       if (!cl || cl.tankId !== c.tankId || cl.guardedById !== c.id || cl.stage !== 'eggs') {
-        if (cl && cl.guardedById === c.id) cl.guardedById = undefined;
+        if (cl && cl.guardedById === c.id) delete cl.guardedById;
         startResting(c, hour, sp.breeding.cooldownDays * 24 * 0.5);
       }
     }
@@ -125,7 +125,7 @@ export const clownfishModule: BreedingModule = {
     // The breeding pair.
     if (females.length === 1) pairLoop(env, females[0], ranked);
     for (const c of ranked) {
-      if (c.reproRole !== 'female' && c.repro.stage === 'idle' && c.repro.partnerId && !ranked.some((x) => x.id === c.repro.partnerId)) c.repro.partnerId = undefined;
+      if (c.reproRole !== 'female' && c.repro.stage === 'idle' && c.repro.partnerId && !ranked.some((x) => x.id === c.repro.partnerId)) delete c.repro.partnerId; // §3.2 rule 10
     }
   },
 

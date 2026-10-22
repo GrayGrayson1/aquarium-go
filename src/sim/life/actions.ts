@@ -59,7 +59,7 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   c.stats.stress = clamp(c.stats.stress + 16 * mul, 0, 100);
   const m = lifeMeta(c);
   m.settledSinceHour = hour;
-  m.targetFedUntil = undefined;
+  delete m.targetFedUntil;
   pushHistory(c, { hour, kind: 'moved', text: `Moved from ${from} to ${tank.name}.` });
   const need = gallonsNeededNow(sp, sp.adultSizeCm);
   const small = tankGallons(tank) < need;
@@ -165,3 +165,24 @@ export function devAgeCreature(state: GameState, creatureId: string, days: numbe
 }
 
 export { startBreeding, separateCreature, moveClutch, devForceBreeding } from './breeding/actions';
+
+/**
+ * A photo's story line on its subject (moved here from src/ui/photo/story.ts in chunk 11: the `notePhoto` command
+ * runs it). noteInteraction writes one throttled "photo" story line (6 game hours): keep that throttle, just give the
+ * line it wrote the tank's name instead of adding a second entry for every shutter press. The history is capped (its
+ * length stops growing) and a bond milestone can follow the line, so the new line is found by this hour, not by
+ * position. Returns whether a line was added (the preview only says "Added to their story" when one was). It lets
+ * errors escape (the caller's store write discards the draft whole, B-179).
+ */
+export function notePhoto(d: GameState, creatureId: string): boolean {
+  const c = d.creatures[creatureId];
+  if (!c) return false;
+  const hour = d.clock.hour;
+  const isNew = (e: (typeof c.history)[number]) => e.kind === 'photo' && e.hour === hour;
+  const had = (c.history ?? []).some(isNew);
+  noteInteraction(d, creatureId, 'photo');
+  const line = had ? undefined : c.history?.find(isNew);
+  if (!line) return false;
+  line.text = `Posed for a portrait in ${d.tanks[c.tankId ?? '']?.name ?? 'the aquarium'}.`;
+  return true;
+}

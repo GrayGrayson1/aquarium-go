@@ -4,6 +4,27 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.6.0 — 2026-10-21
+
+- **Shared shops: one aquarium a club plays together, live.** A club's shared shop has its own money, tanks, animals,
+  staff, research and shows, separate from everyone's own game: nothing carries over either way, and it isn't on the
+  leaderboards. Up to 10 club members play it at once, each on their own device.
+  - **Opening one.** The club's owner creates it from the club's card in Social, choosing its starter and its name; any
+    member opens it from the same card, or from the title screen once they've opened it before. The first visit after a
+    quiet spell takes up to a minute while the shop's server wakes.
+  - **Your own aquarium waits.** It's saved before you go in, and "Back to my aquarium" brings it back as you left it,
+    with no time passed while you were in the shared shop.
+  - **Playing together.** Everyone sees everything as it happens. Your alerts show what the others did, with their
+    names, and big moments pop up: a pause, a speed change, a sale or purchase over $100. When two people go for the
+    same thing at once, the first one wins and the second is told who. The owner, and the members the owner chooses,
+    can pause and change the speed. Listing photos show for everyone.
+  - **Fair use.** The shop runs while someone is playing and pauses when nobody is ("Still here?" asks after half an
+    hour without a tap). When it has been empty a while, it catches up at most 12 game hours, with nothing dying. It
+    runs on a free server, so shared shops close for the rest of a month that uses up its free data or hours, and say
+    when they open again.
+- **Steadier numbers under the hood.** The game's arithmetic is now the same on every browser, so shared shops stay in
+  step everywhere (your own game's numbers may differ from before in the last decimal places).
+
 ## 0.5.6 — 2026-10-20
 
 - **Your saves keep your newest progress.** Loading, replacing or importing an older copy of the aquarium you're

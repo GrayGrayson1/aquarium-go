@@ -3,6 +3,7 @@
  * quick care actions, equipment + lighting, stocking, compatibility, beauty, exhibit, running cost, valuation.
  * Left side sheet on desktop, bottom sheet on phones. OWNER: lane "ui-shell".
  */
+import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { useTankCardTab, type TankCardTabId } from './tankCardTab';
@@ -46,11 +47,11 @@ import { getTankTier } from '@/data/catalog/tanks';
 import { findSpecies } from '@/data/species'; // lane:qa-play
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
-import { waterChange, topOff, cleanTank, dose, setEquipment, setLighting } from '@/sim/care';
+import type { Command } from '@/sim/commands';
 import { evaluateTank } from '@/sim/compat';
 import { beautyScore } from '@/sim/aquascape';
-import { exhibitScore, isUnlocked, toggleSignage } from '@/sim/facility';
-import { tankValuation, buySalt, SALT_PRICE_PER_KG } from '@/sim/economy'; // lane:qa-play: buySalt
+import { exhibitScore, isUnlocked } from '@/sim/facility';
+import { tankValuation, SALT_PRICE_PER_KG } from '@/sim/economy';
 import { creaturesInTank } from '@/sim/life';
 import { HandFeedNote } from '../panels/encyclopedia/SpeciesGuide'; // lane:guide
 import { Sheet } from '../common/Sheet';
@@ -84,6 +85,9 @@ import { FitLine } from '../common/FitNote'; // lane:fit
 import { AutomationSection, AutoCleanNote } from './Automation'; // lane:ui-shell (chunk 3, 0.5 §10)
 import { tankChips } from '../common/tankChips'; // lane:automation (chunk 5)
 import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5, AUTO-041)
+
+/** A switch flips what the game holds now, not this card's throttled copy (a quick second click turns it back, as before). */
+const liveSignage = (tankId: string): boolean => !!useGame.getState().game?.tanks[tankId]?.signage;
 
 type TabId = TankCardTabId;
 
@@ -162,7 +166,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
   if (!report) return <Empty>Water data unavailable.</Empty>;
   const HeadIcon = STATUS_ICON[report.status] ?? CircleCheck;
   const ordered = [...report.params].sort((a, b) => ['danger', 'watch', 'good'].indexOf(a.status) - ['danger', 'watch', 'good'].indexOf(b.status));
-  const care = (fn: (d: GameState) => ReturnType<typeof waterChange>, flag: string, sound: Parameters<typeof sfx>[0] = 'splash') => act(fn, { flag, sound });
+  const care = (cmd: Command, flag: string, sound: Parameters<typeof sfx>[0] = 'splash') => act(cmd, { flag, sound });
   // lane:qa-play — residents that spawn on a "first cool rains" chill (axolotls, corydoras, goldfish): the breeding
   // hint asks for a cooler water change, so offer one. 25% with water ~5 °C cooler drops the tank ~1.2 °C — under the
   // 1.4 °C sudden-change stress line — and two of them give the ~2 °C drop the breeding cue looks for.
@@ -242,15 +246,15 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
               <Droplets size={15} aria-hidden /> Water change
             </div>
             <div className="ag-row" style={{ gap: 6 }}>
-              <Button size="sm" data-testid="action-water-change-10" onClick={() => care((d) => waterChange(d, tank.id, 0.1), 'water_change')}>10%</Button>
-              <Button size="sm" variant="primary" data-testid="action-water-change" onClick={() => care((d) => waterChange(d, tank.id, 0.25), 'water_change')}>25%</Button>
-              <Button size="sm" data-testid="action-water-change-50" onClick={() => care((d) => waterChange(d, tank.id, 0.5), 'water_change')}>50%</Button>
+              <Button size="sm" data-testid="action-water-change-10" onClick={() => care({ k: 'waterChange', tank: tank.id, fraction: 0.1 }, 'water_change')}>10%</Button>
+              <Button size="sm" variant="primary" data-testid="action-water-change" onClick={() => care({ k: 'waterChange', tank: tank.id, fraction: 0.25 }, 'water_change')}>25%</Button>
+              <Button size="sm" data-testid="action-water-change-50" onClick={() => care({ k: 'waterChange', tank: tank.id, fraction: 0.5 }, 'water_change')}>50%</Button>
               {coolCue && (
                 <Button
                   size="sm"
                   data-testid="action-water-change-cool"
                   title="Replace 25% with water about 5 °C cooler (about −1 °C, gentle). Two of these give the “first cool rains” chill axolotls, corydoras and goldfish spawn on."
-                  onClick={() => care((d) => waterChange(d, tank.id, 0.25, { newWaterTempC: Math.max(4, (d.tanks[tank.id]?.water.tempC ?? 18) - 5) }), 'water_change')}
+                  onClick={() => care({ k: 'waterChange', tank: tank.id, fraction: 0.25, coolBy: 5 }, 'water_change')}
                 >
                   <Snowflake size={13} aria-hidden /> Cool 25%
                 </Button>
@@ -258,29 +262,29 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
             </div>
           </div>
           <div className="ag-carebtns">
-            <CareBtn icon={Droplet} label="Top off" hint={`Level ${Math.round(tank.water.level * 100)}%`} testId="action-top-off" onClick={() => care((d) => topOff(d, tank.id), 'topped_off', 'bubble')} />
-            <CareBtn icon={Brush} label="Clean glass" hint={`Algae ${Math.round(tank.water.algae)}%`} testId="action-clean-glass" onClick={() => care((d) => cleanTank(d, tank.id, 'glass'), 'cleaned_tank', 'bubble')} />
-            <CareBtn icon={Sparkles} label="Vacuum gravel" hint={`Detritus ${Math.round(tank.water.detritus)}%`} testId="action-clean-gravel" onClick={() => care((d) => cleanTank(d, tank.id, 'gravel'), 'cleaned_tank', 'bubble')} />
-            <CareBtn icon={FilterIcon} label="Rinse filter" testId="action-clean-filter" onClick={() => care((d) => cleanTank(d, tank.id, 'filter'), 'cleaned_tank', 'bubble')} />
+            <CareBtn icon={Droplet} label="Top off" hint={`Level ${Math.round(tank.water.level * 100)}%`} testId="action-top-off" onClick={() => care({ k: 'topOff', tank: tank.id }, 'topped_off', 'bubble')} />
+            <CareBtn icon={Brush} label="Clean glass" hint={`Algae ${Math.round(tank.water.algae)}%`} testId="action-clean-glass" onClick={() => care({ k: 'cleanTank', tank: tank.id, what: 'glass' }, 'cleaned_tank', 'bubble')} />
+            <CareBtn icon={Sparkles} label="Vacuum gravel" hint={`Detritus ${Math.round(tank.water.detritus)}%`} testId="action-clean-gravel" onClick={() => care({ k: 'cleanTank', tank: tank.id, what: 'gravel' }, 'cleaned_tank', 'bubble')} />
+            <CareBtn icon={FilterIcon} label="Rinse filter" testId="action-clean-filter" onClick={() => care({ k: 'cleanTank', tank: tank.id, what: 'filter' }, 'cleaned_tank', 'bubble')} />
           </div>
           <div className="ag-careblock">
             <div className="ag-careblock__label">
               <FlaskConical size={15} aria-hidden /> Dose
             </div>
             <div className="ag-row ag-wrap" style={{ gap: 6 }}>
-              <Chip size="sm" onClick={() => care((d) => dose(d, tank.id, 'conditioner'), 'dosed', 'bubble')}>Conditioner</Chip>
-              <Chip size="sm" onClick={() => care((d) => dose(d, tank.id, 'bacteria'), 'dosed', 'bubble')}>Bottled bacteria</Chip>
-              {salty && <Chip size="sm" onClick={() => care((d) => dose(d, tank.id, 'salt'), 'dosed', 'bubble')}>Salt mix</Chip>}
-              <Chip size="sm" onClick={() => care((d) => dose(d, tank.id, 'buffer'), 'dosed', 'bubble')}>Buffer</Chip>
-              {planted && <Chip size="sm" onClick={() => care((d) => dose(d, tank.id, 'fertilizer'), 'dosed', 'bubble')}>Fertilizer</Chip>}
-              {reef && <Chip size="sm" onClick={() => care((d) => dose(d, tank.id, 'coral_supplement'), 'dosed', 'bubble')}>Coral supplement</Chip>}
+              <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'conditioner' }, 'dosed', 'bubble')}>Conditioner</Chip>
+              <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'bacteria' }, 'dosed', 'bubble')}>Bottled bacteria</Chip>
+              {salty && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'salt' }, 'dosed', 'bubble')}>Salt mix</Chip>}
+              <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'buffer' }, 'dosed', 'bubble')}>Buffer</Chip>
+              {planted && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'fertilizer' }, 'dosed', 'bubble')}>Fertilizer</Chip>}
+              {reef && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'coral_supplement' }, 'dosed', 'bubble')}>Coral supplement</Chip>}
             </div>
             {salty && (
               <div className="ag-row ag-wrap" style={{ gap: 6, alignItems: 'center' }}>
                 <span className="ag-small ag-muted">Salt in stock: {game.inventory.salt.toFixed(1)} kg</span>
                 {/* lane:qa-play — a water change with no salt only said "buy salt first"; restock right here */}
                 {game.inventory.salt < 5 && (
-                  <Chip size="sm" onClick={() => act((d) => buySalt(d, 10), { sound: 'coin' })}>
+                  <Chip size="sm" onClick={() => act({ k: 'buySalt', kg: 10 }, { sound: 'coin' })}>
                     Buy 10 kg · {formatMoney(10 * SALT_PRICE_PER_KG)}
                   </Chip>
                 )}
@@ -320,7 +324,7 @@ function EquipmentRow({ tank, e, readOnly, fit }: { tank: Tank; e: EquipmentInst
   // lane:qa-r3 — the power toggle toasts the sim's own message (it carries warnings: filter off, a clash, gear that
   // can't help these animals); setpoint and flow changes stay quiet unless the final setting needs a warning
   const set = (patch: { on?: boolean; setting?: number }, toggle = false) =>
-    act((d) => setEquipment(d, tank.id, e.id, patch), toggle ? { sound: 'click', flag: 'changed_equipment' } : { toast: 'caution', cautionKey: `equip:${e.id}`, sound: 'click', flag: 'changed_equipment' });
+    act({ k: 'setEquipment', tank: tank.id, equip: e.id, ...patch }, toggle ? { sound: 'click', flag: 'changed_equipment' } : { toast: 'caution', cautionKey: `equip:${e.id}`, sound: 'click', flag: 'changed_equipment' });
   const cond = Math.round((e.condition ?? 1) * 100);
   const isTemp = kind === 'heater' || kind === 'chiller';
   const setting = e.setting ?? def?.stats.defaultSetting ?? (isTemp ? tank.water.tempC : 0.66);
@@ -384,7 +388,7 @@ function LightingBlock({ tank, readOnly }: { tank: Tank; readOnly: boolean }) {
       if (sound) lastClick.current = now;
     }
     // lane:qa-r3 — quiet, unless the new schedule feeds algae or starves plants (debounced per tank)
-    act((d) => setLighting(d, tank.id, patch), { toast: 'caution', cautionKey: `lights:${tank.id}`, sound, flag: 'changed_lights' });
+    act({ k: 'setLighting', tank: tank.id, ...patch }, { toast: 'caution', cautionKey: `lights:${tank.id}`, sound, flag: 'changed_lights' });
   };
   return (
     <div className="ag-lighting">
@@ -596,7 +600,7 @@ function ValueTab({ game, tank }: { game: GameState; tank: Tank }) {
         <Section title={<><Signpost size={12} aria-hidden /> Visitors</>}>
           <div className="ag-row">
             <span className="ag-grow ag-small">Educational sign — visitors learn about the animals (and enjoy it more).</span>
-            <Toggle label="Educational sign" checked={tank.signage} onChange={() => act((d) => toggleSignage(d, tank.id), { sound: 'place' }) /* lane:qa-r3 — it costs money: say so */} />
+            <Toggle label="Educational sign" checked={tank.signage} onChange={() => act({ k: 'setSignage', tank: tank.id, on: !liveSignage(tank.id) }, { sound: 'place' }) /* lane:qa-r3 — it costs money: say so */} />
           </div>
         </Section>
       )}

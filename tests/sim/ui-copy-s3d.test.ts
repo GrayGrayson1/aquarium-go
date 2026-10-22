@@ -264,11 +264,15 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
   it('the 40 kg sack\'s toast: "The salt mixer can start its next batch." (A154; SPEC §11 "Toasts")', () => {
     const g = saltLow().g;
     use(g);
-    expect(buySaltBag(40)).toBe(true);
+    let ok: boolean | undefined;
+    buySaltBag(40, (x) => (ok = x));
+    expect(ok).toBe(true);
     const last = useUI.getState().toasts.at(-1)!;
     expect(last).toMatchObject({ text: '40 kg of marine salt mix', detail: 'The salt mixer can start its next batch.' });
     expect(last.label).toBe('Bought · $120');
-    expect(buySaltBag(5)).toBe(true);
+    ok = undefined;
+    buySaltBag(5, (x) => (ok = x));
+    expect(ok).toBe(true);
     expect(useUI.getState().toasts.at(-1)!.detail).toMatch(/^[\d.]+ kg in stock · enough for \d+ batch(es)?\.$/);
   });
 

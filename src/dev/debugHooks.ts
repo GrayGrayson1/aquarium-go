@@ -56,6 +56,25 @@ import { setSimFault } from '@/game/simHealth'; // lane:core (chunk 6, B-002)
 import { loadSocialUser, refreshSocialNews } from '@/ui/panels/social/socialStore';
 import { checkOnline, cloudSyncNow, useCloud } from '@/ui/online/cloudSync'; // chunk 8 (REL-032)
 import { decodeSaveBody, type CloudSaveMeta } from '@/social';
+import type { Command, CommandResult } from '@/sim/commands';
+import { inSharedShop } from '@/state/sharedMode'; // chunk 13
+import { useShared } from '@/ui/shared/store';
+import { devQuiet, leaveSharedShop, openSharedShop } from '@/ui/shared/session';
+
+/** chunk 13 (SHARED-SHOPS.md §7.3): the developer tools write nothing in a shared shop (only commands reach it). */
+function noSharedWrites<F extends (...a: never[]) => unknown>(fn: F): F {
+  return ((...a: Parameters<F>) => {
+    if (inSharedShop()) throw new Error('The developer tools change nothing in a shared shop.');
+    return fn(...a);
+  }) as F;
+}
+
+/** Every function of `o`, refusing in a shared shop. */
+function guardAll<T extends Record<string, unknown>>(o: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(o)) out[k] = typeof v === 'function' ? noSharedWrites(v as (...a: never[]) => unknown) : v;
+  return out as T;
+}
 
 declare global {
   interface Window {
@@ -138,6 +157,7 @@ const QUERIES: Record<string, AnyFn> = {
 };
 
 function act(name: string, ...args: unknown[]): unknown {
+  if (inSharedShop()) throw new Error('The developer tools change nothing in a shared shop.');
   const fn = ACTIONS[name];
   if (!fn) throw new Error(`__AQ.act: unknown action ${name}. Known: ${Object.keys(ACTIONS).join(', ')}`);
   let out: unknown;
@@ -219,8 +239,19 @@ export function debugApi(): Record<string, unknown> {
   return {
     // stores (original hooks)
     game: () => useGame.getState().game,
-    mutate: useGame.getState().mutate,
-    setGame: useGame.getState().setGame,
+    mutate: noSharedWrites(useGame.getState().mutate),
+    setGame: noSharedWrites(useGame.getState().setGame),
+    // chunk 13 — a player action as the interface sends it (a command through the installed dispatcher: the solo one,
+    // or a shared shop's); resolves with its result once it has settled
+    cmd: (c: Command) => new Promise<CommandResult | null>((resolve) => useGame.getState().dispatch(c, (r) => resolve(r ? JSON.parse(JSON.stringify(r)) : r))),
+    // chunk 13 — a shared shop's visit (e2e): what the screens show, and opening or leaving it as the cards do
+    shared: {
+      visit: () => JSON.parse(JSON.stringify(useShared.getState())),
+      open: (club: { id: string; name: string }, from: 'game' | 'title' = 'game') => openSharedShop(club, { from }),
+      leave: () => leaveSharedShop(),
+      /** As if the player had been quiet for `ms` ("Still here?", §7.5), without waiting half an hour. */
+      quiet: (ms: number) => devQuiet(ms),
+    },
     ui: () => useUI.getState(),
     setUI: (p: Parameters<ReturnType<typeof useUI.getState>['set']>[0]) => useUI.getState().set(p),
     settings: () => useSettings.getState(),
@@ -229,7 +260,7 @@ export function debugApi(): Record<string, unknown> {
     runtime,
     // e2e helpers
     // `ready` is defined below as a getter (lane:perf2)
-    dev,
+    dev: guardAll(dev as unknown as Record<string, unknown>),
     // lane:core (chunk 6, B-002) — make every tick fail (the banner after three in a row)
     failSim: (on: boolean) => setSimFault(on),
     // lane:social (chunk 6) — the local Social stub's test hooks: go offline (SOC-010), something new arrives (SOC-004 A5)
@@ -262,8 +293,8 @@ export function debugApi(): Record<string, unknown> {
       cloudState: () => ({ ...useCloud.getState() }),
     },
     fixtures: () => loadFixtureRegistry().then((r) => Object.keys(r)), // lane:perf2 — async (lazy registry)
-    newGame: (starterId?: Parameters<typeof dev.newGame>[0], name?: string, seed?: number) => dev.newGame(starterId, name, seed),
-    loadFixture: (name: string, view?: 'tank' | 'facility') => dev.loadFixture(name, view),
+    newGame: noSharedWrites((starterId?: Parameters<typeof dev.newGame>[0], name?: string, seed?: number) => dev.newGame(starterId, name, seed)),
+    loadFixture: noSharedWrites((name: string, view?: 'tank' | 'facility') => dev.loadFixture(name, view)),
     focusLargestTank: () => {
       const g = useGame.getState().game;
       const id = g ? largestTankId(g) : null;
@@ -273,7 +304,7 @@ export function debugApi(): Record<string, unknown> {
     state: () => useGame.getState().game,
     summary,
     getMoney: () => useGame.getState().game?.finance.money ?? null,
-    advance: (hours: number) => dev.advanceTime(hours),
+    advance: noSharedWrites((hours: number) => dev.advanceTime(hours)),
     listCreatures: (tankId?: string) => {
       const g = useGame.getState().game;
       if (!g) return [];
@@ -300,23 +331,23 @@ export function debugApi(): Record<string, unknown> {
     // persistence
     save: (slot = 'slot1') => saveCurrentGame(slot, { toast: false }),
     autosave: () => autosaveNow('dev'),
-    loadAndResume: (slot = 'auto') => loadAndResume(slot).then((r) => ({ ok: r.ok, error: r.error, summary: r.summary ?? null, restoredFromBackup: !!r.restoredFromBackup, migratedFrom: r.migratedFrom })),
-    continueGame: () => continueGame().then((r) => ({ ok: r.ok, slot: r.slot, error: r.error, summary: r.summary ?? null })),
+    loadAndResume: noSharedWrites((slot = 'auto') => loadAndResume(slot).then((r) => ({ ok: r.ok, error: r.error, summary: r.summary ?? null, restoredFromBackup: !!r.restoredFromBackup, migratedFrom: r.migratedFrom }))),
+    continueGame: noSharedWrites(() => continueGame().then((r) => ({ ok: r.ok, slot: r.slot, error: r.error, summary: r.summary ?? null }))),
     listSaves: () => listSaves(),
     /** Test helper: pretend a stored save was last played `ms` ago (the running game always stamps "now"). */
-    backdateSave: async (slot: string, ms: number) => {
+    backdateSave: noSharedWrites(async (slot: string, ms: number) => {
       const g = await loadGame(slot);
       if (!g) return false;
       g.lastTickRealMs = Date.now() - ms;
       g.lastSavedRealMs = g.lastTickRealMs;
       return (await saveGame(g, slot)).ok;
-    },
-    deleteSave: (slot: string) => deleteSave(slot),
+    }),
+    deleteSave: noSharedWrites((slot: string) => deleteSave(slot)),
     exportText: () => {
       const g = useGame.getState().game;
       return g ? exportSaveText(g) : null;
     },
-    importText: (text: string, slot?: string) => importSaveText(text, slot).then((r) => ({ ok: r.ok, error: r.error, slot: r.slot })),
+    importText: noSharedWrites((text: string, slot?: string) => importSaveText(text, slot).then((r) => ({ ok: r.ok, error: r.error, slot: r.slot }))),
     storageBackend: () => storage.backendName(),
     resumeSummary: () => useResume.getState().summary,
     stateHash: () => {

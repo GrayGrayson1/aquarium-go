@@ -23,7 +23,7 @@ import { getDecorDef } from '@/data/catalog/decor';
 import { useUI } from '@/state/ui';
 import { offerPlaceAgain } from './placeAgain';
 import { useGame, getGame } from '@/state/game';
-import { checkPlacement, placementLimits, maxScaleFor, placeDecor, moveDecor, removeDecor, SELL_BACK_FRACTION, takeFrag, plantFrag, fragEligibility, fragLabel } from '@/sim/aquascape';
+import { checkPlacement, placementLimits, maxScaleFor, SELL_BACK_FRACTION, fragEligibility, fragLabel } from '@/sim/aquascape';
 import { tankDims } from '@/sim/tankSpace';
 import { fragStoreOffer } from '@/sim/economy'; // lane:frags
 import { sfx } from '@/audio/sfx';
@@ -247,57 +247,58 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     if (!def) return;
     // use the latest pointer hit (a finger tap has no hover, so the React ghost may not exist yet)
     if (!state.current.hitOk && !updateGhost()) return;
-    let res = { ok: false, message: '' } as { ok: boolean; message: string };
     const frag = fragItem();
+    const { lastX: x, lastZ: z, rotY, scale } = state.current;
     if (frag) {
       // lane:frags — plant the stored frag here, then leave the tool (it's been used up)
-      useGame.getState().mutate((d) => {
-        res = plantFrag(d, tank.id, frag.id, { x: state.current.lastX, z: state.current.lastZ, rotY: state.current.rotY });
+      useGame.getState().dispatch({ k: 'plantFrag', tank: tank.id, frag: frag.id, x, z, rotY }, (r) => {
+        const res = r ?? { ok: false, message: '' };
+        useUI.getState().toast(res.message, res.ok ? 'success' : 'warning');
+        try {
+          sfx(res.ok ? 'place' : 'error');
+        } catch {
+          /* audio optional */
+        }
+        if (res.ok) useUI.getState().set({ tool: 'none', placingDecorDefId: null, placingFragId: null });
       });
+      return;
+    }
+    // the command places a piece from storage when one is there, else buys it (its result says how many are left)
+    const owned = !!getGame()?.inventory.decor.some((d) => d.defId === def.id);
+    useGame.getState().dispatch({ k: 'placeDecor', tank: tank.id, def: def.id, x, z, rotY, scale, fromStorage: owned }, (r) => {
+      const res = r ?? { ok: false, message: '' };
       useUI.getState().toast(res.message, res.ok ? 'success' : 'warning');
       try {
         sfx(res.ok ? 'place' : 'error');
       } catch {
         /* audio optional */
       }
-      if (res.ok) useUI.getState().set({ tool: 'none', placingDecorDefId: null, placingFragId: null });
-      return;
-    }
-    const owned = !!getGame()?.inventory.decor.some((d) => d.defId === def.id);
-    useGame.getState().mutate((d) => {
-      res = placeDecor(d, tank.id, def.id, { x: state.current.lastX, z: state.current.lastZ, rotY: state.current.rotY, scale: state.current.scale }, owned);
+      // lane:tankrender — a placed purchase ends the tool, so the next click on the tank (an animal, the guide's next
+      // step) never silently buys another copy; Shift+click keeps placing, and so do further copies waiting in storage
+      const moreInStorage = (r?.left ?? 0) > 0;
+      if (res.ok && !more && !moreInStorage) {
+        useUI.getState().set({ tool: 'none', placingDecorDefId: null });
+        // …and the tool hint offers "Place another" for a few seconds (the touch way to plant a group)
+        if (!owned) offerPlaceAgain(def.id, tank.id);
+        return;
+      }
+      requestAnimationFrame(updateGhost);
     });
-    useUI.getState().toast(res.message, res.ok ? 'success' : 'warning');
-    try {
-      sfx(res.ok ? 'place' : 'error');
-    } catch {
-      /* audio optional */
-    }
-    // lane:tankrender — a placed purchase ends the tool, so the next click on the tank (an animal, the guide's next
-    // step) never silently buys another copy; Shift+click keeps placing, and so do further copies waiting in storage
-    const moreInStorage = owned && !!getGame()?.inventory.decor.some((d) => d.defId === def.id);
-    if (res.ok && !more && !moreInStorage) {
-      useUI.getState().set({ tool: 'none', placingDecorDefId: null });
-      // …and the tool hint offers "Place another" for a few seconds (the touch way to plant a group)
-      if (!owned) offerPlaceAgain(def.id, tank.id);
-      return;
-    }
-    requestAnimationFrame(updateGhost);
   };
 
   const doMoveEnd = () => {
     const id = heldId;
     if (!id) return;
-    let res = { ok: false, message: '' } as { ok: boolean; message: string };
-    useGame.getState().mutate((d) => {
-      res = moveDecor(d, tank.id, id, { x: state.current.lastX, z: state.current.lastZ, rotY: state.current.rotY, scale: state.current.scale });
+    const { lastX: x, lastZ: z, rotY, scale } = state.current;
+    useGame.getState().dispatch({ k: 'moveDecor', tank: tank.id, decor: id, x, z, rotY, scale }, (r) => {
+      const res = r ?? { ok: false, message: '' };
+      if (!res.ok) useUI.getState().toast(res.message, 'warning');
+      try {
+        sfx(res.ok ? 'place' : 'error');
+      } catch {
+        /* audio optional */
+      }
     });
-    if (!res.ok) useUI.getState().toast(res.message, 'warning');
-    try {
-      sfx(res.ok ? 'place' : 'error');
-    } catch {
-      /* audio optional */
-    }
     setHeldId(null);
     setEditingDecor(null);
     setGhost(null);
@@ -306,16 +307,15 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
   const doSell = (id: string) => {
     const inst = tankRef.current.decor.find((d) => d.id === id);
     const def = inst ? getDecorDef(inst.defId) : undefined;
-    let res = { ok: false, message: '' } as { ok: boolean; message: string };
-    useGame.getState().mutate((d) => {
-      res = removeDecor(d, tank.id, id, true);
+    useGame.getState().dispatch({ k: 'removeDecor', tank: tank.id, decor: id, sell: true }, (r) => {
+      const res = r ?? { ok: false, message: '' };
+      useUI.getState().toast(res.ok ? res.message : res.message || `Couldn't remove ${def?.name ?? 'item'}`, res.ok ? 'info' : 'warning');
+      try {
+        sfx(res.ok ? 'coin' : 'error');
+      } catch {
+        /* audio optional */
+      }
     });
-    useUI.getState().toast(res.ok ? res.message : res.message || `Couldn't remove ${def?.name ?? 'item'}`, res.ok ? 'info' : 'warning');
-    try {
-      sfx(res.ok ? 'coin' : 'error');
-    } catch {
-      /* audio optional */
-    }
     setHeldId(null);
     setHoverId(null);
     setSellArm(null);
@@ -474,16 +474,15 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
         // lane:frags — F takes a frag/cutting from the hovered (or held) piece
         const id = heldId ?? hoverId;
         if (id) {
-          let res = { ok: false, message: '' } as { ok: boolean; message: string };
-          useGame.getState().mutate((d) => {
-            res = takeFrag(d, tank.id, id);
+          useGame.getState().dispatch({ k: 'takeFrag', tank: tank.id, decor: id }, (r) => {
+            const res = r ?? { ok: false, message: '' };
+            useUI.getState().toast(res.message, res.ok ? 'success' : 'info');
+            try {
+              sfx(res.ok ? 'place' : 'error');
+            } catch {
+              /* audio optional */
+            }
           });
-          useUI.getState().toast(res.message, res.ok ? 'success' : 'info');
-          try {
-            sfx(res.ok ? 'place' : 'error');
-          } catch {
-            /* audio optional */
-          }
         }
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && tool === 'decor_move') {
         // lane:tankrender — the held piece sells at once; a merely hovered one needs a second press (Backspace is a

@@ -64,10 +64,42 @@ describe('REL-016: the mutation boundary and the trust boundary', () => {
   it('the render frame loop never writes game state (input handlers may)', () => {
     const bad = SOURCES.filter((f) => f.path.startsWith('src/render/') || f.path.startsWith('src/ai/')).flatMap((f) =>
       useFrameBodies(code(f.text))
-        .filter((b) => /\b(mutate|mutateFast|setGame)\(/.test(b))
+        .filter((b) => /\b(mutate|mutateFast|setGame|dispatch)\(/.test(b))
         .map((b) => `${f.path}: ${b.slice(0, 80)}`),
     );
     expect(bad).toEqual([]);
+  });
+
+  it('chunk 11 (SHARED-SHOPS.md §4.2): player actions are commands; outside the dispatcher, the marks, the loop, the shared replica, persistence and the dev tools nothing writes the store', () => {
+    const writers = (p: string) =>
+      p === 'src/state/game.ts' || // the store itself
+      p === 'src/game/dispatch.ts' || // the solo dispatcher: every player action, as a command
+      p === 'src/ui/common/marks.ts' || // each player's own "seen" marks (§3.2 rule 8)
+      p === 'src/game/GameLoop.tsx' ||
+      p === 'src/game/fastMutate.ts' ||
+      p === 'src/game/sharedLoop.ts' ||
+      p === 'src/persistence/session.ts' || // load, and the flush before a save
+      p === 'src/persistence/offline.ts' || // the hidden-tab catch-up (mutateFast only: checked below)
+      p.startsWith('src/dev/') ||
+      p.startsWith('src/ui/dev/') || // dev tools aren't commands (§4.1)
+      p.startsWith('src/sim/'); // takes the state as an argument; can't reach the store
+    expect(hits(/\.mutate\b|\bmutateGame\b|\bmutateFast\b/, writers)).toEqual([]);
+    // the catch-up's file writes only through mutateFast: the welcome-back card's resume is a command
+    expect(hits(/\.mutate\b|\bmutateGame\b/, (p) => p !== 'src/persistence/offline.ts')).toEqual([]);
+  });
+
+  it('chunk 13 (SHARED-SHOPS.md §7.3): a shared shop reaches the store only as the replica\'s published copy (session.ts) and through the installed dispatcher', () => {
+    const shared = SOURCES.filter((f) => f.path.startsWith('src/ui/shared/'));
+    expect(shared.length).toBeGreaterThan(5);
+    const writes = shared.flatMap((f) =>
+      code(f.text)
+        .split('\n')
+        .filter((l) => /\bsetGame\(|\.mutate\b|\bmutateFast\b|\bmutateGame\b/.test(l))
+        .map(() => f.path),
+    );
+    expect([...new Set(writes)]).toEqual(['src/ui/shared/session.ts']);
+    const session = shared.find((f) => f.path === 'src/ui/shared/session.ts')!;
+    expect(code(session.text)).not.toMatch(/\.mutate\b|\bmutateFast\b/);
   });
 
   it('the UI reaches Social only through the SocialService (src/social/index.ts)', () => {
@@ -83,18 +115,19 @@ describe('REL-016: the mutation boundary and the trust boundary', () => {
     expect(/useGame\.setState\(/.test('useGame.setState({ game: g })')).toBe(true);
     expect(/(getGame\(\)!?|useGame\.getState\(\)\.game!?)(\.[\w$]+|\[[^\]]+\])+\s*(=(?!=)|\+=|-=|\*=|\/=|\+\+|--)/.test('getGame()!.finance.money += 5')).toBe(true);
     expect(useFrameBodies('useFrame((s, d) => { if (x) useGame.getState().mutate((g) => g); }, -1); foo()')[0]).toMatch(/mutate\(/);
+    expect(/\.mutate\b|\bmutateGame\b|\bmutateFast\b/.test('const mutate = useGame.getState().mutate;')).toBe(true);
   });
 
   it('docs/agent/TRUST_BOUNDARY.md lists the state changes a future server would authorise', () => {
     const doc = readFileSync(join(ROOT, 'docs', 'agent', 'TRUST_BOUNDARY.md'), 'utf8');
     for (const heading of ['Purchases', 'Sales and listings', 'Production lines', 'Staff', 'Research', 'Shows', 'Social']) expect(doc).toContain(`## ${heading}`);
-    // every sim function the UI, render and AI layers call through the store (`act((d) => buyTank(d, …))`,
-    // `mutate((d) => feedTank(d, …))`) is named there (the fresh review found four missing; the wrappers aren't actions)
-    const WRAPPERS = new Set(['fn', 'domainFn', 'flushSimDebt']);
+    // every sim function a player action calls is named there (the fresh review found four missing). Since chunk 11
+    // every player action is a command (SHARED-SHOPS.md §4.1), and applyAction (src/sim/commands/apply.ts) makes each
+    // of those calls, `fn(state, …)`
+    const apply = SOURCES.find((f) => f.path === 'src/sim/commands/apply.ts')!;
     const called = new Set<string>();
-    const outside = SOURCES.filter((f) => !/^src\/(sim|data|dev)\//.test(f.path));
-    for (const f of outside) for (const m of code(f.text).matchAll(/\b(?:act|mutate|mutateFast)\(\s*\(?\s*(\w+)\s*\)?\s*=>\s*\{?\s*(?:return\s+)?(?:const \w+ = )?(\w+)\(\s*\1\b/g)) called.add(m[2]);
-    expect(called.size).toBeGreaterThan(40);
-    expect([...called].filter((n) => !WRAPPERS.has(n) && !doc.includes(`\`${n}\``)).sort()).toEqual([]);
+    for (const m of code(apply.text).matchAll(/\b(\w+)\(state[,)]/g)) called.add(m[1]);
+    expect(called.size).toBeGreaterThan(70);
+    expect([...called].filter((n) => !doc.includes(`\`${n}\``)).sort()).toEqual([]);
   });
 });

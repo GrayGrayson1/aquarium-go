@@ -13,12 +13,13 @@ import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { Compass, ChevronDown, ChevronUp, X, ArrowRight, Hand, Check, FastForward, Sparkles, FlaskConical } from 'lucide-react';
 import type { GameSpeed, GameState } from '@/types';
+import { inSharedShop } from '@/state/sharedMode';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { sfx } from '@/audio/sfx';
 import { tutorialChain, type TutorialStepDef, type Objective } from '@/data/quests';
-import { tutorialAdvance, tutorialSkip, currentTutorialStep } from '@/sim/facility';
+import { currentTutorialStep } from '@/sim/facility';
 import { interpolate } from '@/sim/facility/progression';
 import { findSpecies } from '@/data/species';
 import { useShell } from '../common/shellStore';
@@ -61,6 +62,7 @@ function fill(t: string, name: string, species: string, fine: boolean, g?: GameS
 
 export function currentCoachStep(g: GameState | null, fine = false): CoachStep | null {
   if (!g || g.isShowcase) return null;
+  if (inSharedShop()) return null; // chunk 13 (ADR-0045 decision 5): a shared shop has no guide
   const tut = g.progress?.tutorial;
   if (!tut || tut.done || tut.skipped) return null;
   const chain = safe('tutorialChain', () => tutorialChain(tut.starterId || g.starterId), []);
@@ -493,7 +495,7 @@ export function TutorialCoach() {
                       variant="danger"
                       data-testid="tutorial-skip"
                       onClick={() => {
-                        safe('tutorialSkip', () => useGame.getState().mutate((d) => tutorialSkip(d)), undefined); // lane:ui-shell (B-179): a throw discards the draft
+                        safe('tutorialSkip', () => void useGame.getState().dispatch({ k: 'tutorialSkip' }), undefined); // lane:ui-shell (B-179): a throw discards the draft
                         setConfirmSkip(false);
                       }}
                     >
@@ -510,7 +512,7 @@ export function TutorialCoach() {
                         size="sm"
                         variant="ghost"
                         data-testid="tutorial-next"
-                        onClick={() => safe('tutorialAdvance', () => useGame.getState().mutate((d) => tutorialAdvance(d)), undefined) /* lane:ui-shell (B-179) */}
+                        onClick={() => safe('tutorialAdvance', () => void useGame.getState().dispatch({ k: 'tutorialNext' }), undefined) /* lane:ui-shell (B-179) */}
                       >
                         Next <ArrowRight size={14} />
                       </Button>

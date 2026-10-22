@@ -867,6 +867,10 @@ export interface GameEvent {
   read?: boolean;
   /** Toast it immediately. */
   toast?: boolean;
+  /** chunk 11 — in a shared shop, the member whose command logged it (SHARED-SHOPS.md §4.3); absent in a solo game. */
+  by?: string;
+  /** chunk 11 — that member's name when they did it (the alerts line puts it in front of the text). */
+  byName?: string;
 }
 
 /**
@@ -983,6 +987,27 @@ export interface GameState {
   production?: ProductionState;
   /** lane:automation (chunk 5) — manual mode, the per-day records Operations reads, shortage throttles. Absent = none yet. */
   automation?: AutomationState;
+  /**
+   * chunk 11 — a shared shop's memory of which member changed what in the last 30 seconds, for first one wins
+   * (SHARED-SHOPS.md §4.3, src/sim/commands/shared.ts). Never present in a solo game.
+   */
+  touches?: SharedTouch[];
+}
+
+/** chunk 11 — one member's change to one thing (`c:<creature>`, `o:<offer>`, `set:light:<tank>`…), at the server's time. */
+export interface SharedTouch {
+  key: string;
+  /** The member's id and their name then. */
+  by: string;
+  name: string;
+  /** Real ms, the server's clock. */
+  at: number;
+  /** What they did ("sold", "moved", "changed"). */
+  verb: string;
+  /** What the thing looked like right after (its tank, its status): tells the member's own change from a later one. */
+  mark?: string;
+  /** A setting's alerts line, kept current while the same member keeps changing it (a slider). */
+  ev?: string;
 }
 
 /** lane:automation (chunk 5, DESIGN-S3D §9.7) — the five systems Hold all stops. */

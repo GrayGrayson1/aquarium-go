@@ -15,6 +15,7 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
 | The approved 0.5 screens (PNG), what each shows and the later decisions that change them | `docs/agent/design/DESIGN-0.5/` (`SOURCE.md`, `screens/`) |
 | S3-D design (approved 2026-10-11, ADR-0027) and its intake note | `docs/agent/design/DESIGN-S3D/` (`SPEC.md`, `INTAKE.md`, `screens/`) |
 | Online, stage 1 (chunk 8): the build plan for accounts, the online save and Social on Supabase | `docs/agent/design/ONLINE-STAGE1.md` |
+| Shared shops (chunks 10 to 13): a shop a club plays together, live, on a small Render server | `docs/agent/design/SHARED-SHOPS.md` |
 | Requirements checklist (ids, acceptance criteria, status) | `docs/agent/REQUIREMENTS.json` |
 | Known issues and deferred work | `docs/agent/BACKLOG.md`, `docs/KNOWN_LIMITATIONS.md` |
 | What a future server would authorise; the debt multiplayer would magnify | `docs/agent/TRUST_BOUNDARY.md`, `docs/agent/DEBT_INVENTORY.md` |
@@ -37,19 +38,21 @@ retired on 2026-10-06 (`docs/agent/decisions/ADR-0018-retire-the-harness.md`); i
   passed that didn't run.
 - **Never weaken, skip or delete a test to get green**, and don't quietly drop scope. If a test is wrong (the design
   changed, or the test missed a real case), fix it on purpose and say why in the commit.
-- **Deterministic simulation** (the full contract is in `docs/ARCHITECTURE.md`, "Determinism contract"). In
-  `src/sim` and `src/data`, randomness comes only from `ctx.rng` / `simRng(state)` (inside a tank step, the step's
-  `ctx.rng`, never a second `simRng(state)`), a subsystem's own persisted stream (`staff.rng`, `shows.rng`) or a keyed
-  stream (`mulberry32(hashString(key))`). Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto`,
-  `Intl` or locale-dependent formatting or sorting there; the only accepted entropy is the new-game seed
-  (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none. The guard tests `tests/sim/core-*`
-  enforce most of this. A change that adds or reorders draws on an existing stream shifts seeded tests: run them
-  before and after and explain each changed expectation; never retune data to hide the shift.
-- **The store boundary.** Game state changes only through `useGame.mutate` (player actions from the UI, the render
-  layer's input handlers and the AI's tutorial hook), `mutateFast` (the game loop, the hidden-tab catch-up, the flush
-  before a save or a manual-mode change, dev commands) and `setGame` (replacing the whole world). The render frame
-  loop never writes game state. A new top-level `src/` folder is a new layer: add it to the layer table in
-  `docs/ARCHITECTURE.md` and in `tests/sim/core-architecture-boundaries.test.ts` on purpose.
+- **Deterministic simulation** (the full contract is in `docs/ARCHITECTURE.md`, "Determinism contract"). In `src/sim`
+  and `src/data`, randomness comes only from `ctx.rng` / `simRng(state)` (inside a tank step, the step's `ctx.rng`,
+  never a second `simRng(state)`), a subsystem's own persisted stream (`staff.rng`, `shows.rng`) or a keyed stream
+  (`mulberry32(hashString(key))`). Never `Math.random`, `Date.now`, `performance.now`, `new Date`, `crypto`, `Intl` or
+  locale-dependent formatting or sorting there, nor the engine's `Math.exp`, `pow`, `sin` and the other transcendental
+  functions or `**` (use `src/sim/dmath.ts`, the same in every engine); the only accepted entropy is the new-game seed
+  (`src/sim/newGame.ts`) and the id `repairState` gives a save that has none. The guard tests `tests/sim/core-*` enforce
+  most of this. A change that adds or reorders draws on an existing stream shifts seeded tests: run them before and
+  after and explain each changed expectation; never retune data to hide the shift.
+- **The store boundary.** Game state changes only through `useGame.mutate`, `mutateFast` (the game loop, the
+  hidden-tab catch-up, the flush before a save or a manual-mode change, dev commands) and `setGame` (replacing the whole
+  world). Player actions (from the UI, the render layer's input handlers and the AI's tutorial hook) reach `mutate` only
+  as commands (`src/sim/commands`, chunk 11) through `useGame.getState().dispatch`: a new action is a new command kind,
+  not a closure. The render frame loop never writes game state. A new top-level `src/` folder is a new layer: add it
+  to the layer table in `docs/ARCHITECTURE.md` and in `tests/sim/core-architecture-boundaries.test.ts` on purpose.
 - **Saves.** New save fields are optional and validated in `repairState` when present; an absent field leaves
   `stateHash` unchanged. Adding a species or a tank size bumps `SCHEMA_VERSION` (ADR-0016), and so does adding a water
   class, show tier, buyer type, staff role or staff trait (ADR-0036), a Water room prep level, a higher reservoir

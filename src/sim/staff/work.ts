@@ -38,6 +38,7 @@ import { SALT_KG_PER_GAL, batchSaltKg, changerOf, saltDaysLeft, saltWaterPerDay 
 import { batchGal } from '../automation/reserve'; // lane:automation (chunk 5)
 import { asStaff, clamp, dayRecord, displayTankIds, ensureStaff, firstName, fmt$, noteIssue, totals, FEED_RING, TALK_RING } from './common';
 import { dayOf } from '../time';
+import * as dmath from '../dmath';
 
 // ───────────────────────────── schedule ─────────────────────────────
 
@@ -195,7 +196,7 @@ export function pickStaffFood(state: GameState, sp: SpeciesDefinition, tankSpeci
     // and a food with a large share of tags the species doesn't eat (big pellets for small fish) ranks lower.
     const tagFit = f.tags.filter((t) => sp.foods.includes(t)).length / Math.max(1, f.tags.length);
     const wrongKind = (madeForOtherWater(f, env) ? 3 : 0) + (madeForOtherSpecies(f, sp.id) ? 2 : 0); // the catalog's madeFor (B-170)
-    const score = staple + Math.min(2, Math.log10(1 + n)) - stolen - clash - Math.min(2, perUnit * 40) - 2 * (1 - tagFit) - wrongKind;
+    const score = staple + Math.min(2, dmath.log10(1 + n)) - stolen - clash - Math.min(2, perUnit * 40) - 2 * (1 - tagFit) - wrongKind;
     if (score > bestScore) {
       bestScore = score;
       best = f;
@@ -207,7 +208,7 @@ export function pickStaffFood(state: GameState, sp: SpeciesDefinition, tankSpeci
 function recordFeed(state: GameState, m: StaffMember, tank: Tank, foodId: string, servings: number, hour: number, targetCreatureId?: string): void {
   const st = ensureStaff(state);
   st.seq = (st.seq ?? 0) + 1;
-  st.feeds.push({ seq: st.seq, hour, tankId: tank.id, foodId, staffId: m.id, servings, targetCreatureId });
+  st.feeds.push({ seq: st.seq, hour, tankId: tank.id, foodId, staffId: m.id, servings, ...(targetCreatureId !== undefined ? { targetCreatureId } : {}) }); // §3.2 rule 10
   if (st.feeds.length > FEED_RING) st.feeds.splice(0, st.feeds.length - FEED_RING);
   const care = (st.care[tank.id] ??= {});
   care.lastFed = hour;
@@ -234,7 +235,7 @@ function grazerNeedsFeeding(c: GameState['creatures'][string], hour: number): bo
 }
 
 /** Who reaches the food first: the life sim's feeding weight for a species (speed × boldness, before personality). */
-const feedWeight = (sp: SpeciesDefinition) => Math.pow(Math.max(0.02, sp.feedingSpeed), 1.2) * (0.5 + sp.feedingAggression);
+const feedWeight = (sp: SpeciesDefinition) => dmath.pow(Math.max(0.02, sp.feedingSpeed), 1.2) * (0.5 + sp.feedingAggression);
 
 /** Food units a meal takes for this animal right now (the default portion's sizing). */
 const mealUnits = (r: Resident) => effectiveBioload(r.sp, r.c.sizeCm) * Math.max(20, r.c.stats.hunger);

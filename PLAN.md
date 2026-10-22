@@ -15,12 +15,26 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    owner's yes: the only `is_owner`, and the first club's `created_by`; ARCHITECTURE.md's runbook);
    `docs/agent/SESSION_HANDOFF.md` has the order of work. Stage 2 (before strangers join) needs its own record.
 3. **0.5.6 (chunk 9), the audit's five high findings, is released** (2026-10-20; ADR-0044; see "Releases"). Next:
-   the audit's other findings with the owner (B-207, B-208), or **shared shops**: a separate shop a club plays together, live, up to 10 at once, run by a small server on
-   Render (free first, "with plans to expand"); no design or chunk yet (ADR-0043 lists what the design must cover).
+   **shared shops** (the owner, 2026-10-20: "yes, start with the design and questions"): a separate shop a club plays
+   together, live, up to 10 at once, run by a small free server on Render. The design is
+   `docs/agent/design/SHARED-SHOPS.md` (every browser runs the same steps and the server's copy counts, because Render's
+   free plan includes 5 GB of outbound data a month, and every copy uses the same arithmetic, because Node and the
+   browsers round `Math.exp` and the like differently); the owner's answers, the screens' words included, are ADR-0043
+   and ADR-0045. The design was reviewed (Opus, max effort) and revised. **Chunk 10, the test, is done** (2026-10-20,
+   below): the lockstep holds in Node, Chromium and WebKit and on Render's x86-64 free instance, which keeps small
+   shops at 10× but not a late-game one (SHARED-SHOPS.md §11). **Chunk 11, commands, is done** (2026-10-20, below):
+   every player action is a command the server can pass on, and the solo game is unchanged. **Chunk 12, the server and
+   the database, is done** (2026-10-21, Marshall, below; ADR-0047): the real server runs on the free Render service from
+   `next` behind sign-in and a server password, the migration is live, the live smoke passes. **Chunk 13, the screens,
+   is built** (2026-10-21, Chase, below; ADR-0048, ADR-0049): a club's shared shop opens from its card in Social or the
+   title screen, your own aquarium waits, and nothing saves a shared shop on the device. **Next: the play-test** with the
+   owner and their daughter on the Render address (ADR-0049: https://aquarium-go.onrender.com, the shop server from the
+   same commit; GitHub Pages stays 0.5.6), **then 0.6.0** on the owner's go-ahead (SESSION_HANDOFF.md has the steps).
+   The audit's other findings (B-207, B-208) wait for the owner.
 4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-5. Every owner question is answered (ADR-0024 to ADR-0044) except one, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
    owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
@@ -39,8 +53,33 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
+| 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (not released; nothing players see). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
+| 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (not released; nothing players see). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
+| 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (not released; nothing players see). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
+| 13 | Shared shops, the screens and the play-test (§7, §8) | Built 2026-10-21 (Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049; not released). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. Next: the play-test on the Render address (ADR-0049), then 0.6.0 on the owner's go-ahead |
 
-**Last full test runs:** chunk 9's final commit `9266584`, the owner's Mac, 2026-10-20, from the internal-disk clone,
+**Last full test runs:** chunk 13's final code `c063c6e`, the owner's Mac, 2026-10-21, from the internal-disk clone under
+`caffeinate -i -s`: typecheck passed; unit 255 files, 3,202 tests passed; build passed; e2e 329 of 329 in Chromium and
+WebKit, dev and both production builds (39.4 minutes). Before it: `d6c7926` (unit 3,166, e2e 329 of 329) and `882c06c`
+(unit 3,192, e2e 329 of 329), both green, each followed by the review's fixes; a pass on `7e44242` was stopped in its e2e
+(its typecheck, unit 3,198 and build green) when the second confirmation's fix landed.
+Before chunk 13: chunk 12's final code `aa7b184`, the owner's Mac, 2026-10-21, from the internal-disk clone under
+`caffeinate -i -s`: typecheck passed; unit 246 files, 3,103 tests passed; build passed; e2e 321 of 321 in Chromium and
+WebKit, dev and both production builds (38.0 minutes); then `8b65dbf` (one test and PLAN.md more): typecheck and unit
+3,104 passed. Before it: `cdc5387` the same four green (unit 3,085, e2e 321 of 321, 37.8 minutes); a pass on `1689c46`
+was stopped at 160 e2e tests without a failure (typecheck, unit 3,100 and build green) when the confirmation's fix
+landed.
+Before chunk 12: chunk 11's final commit `e692066`, the owner's Mac, 2026-10-20, from the internal-disk clone
+under `caffeinate -i -s`: typecheck passed; unit 243 files, 3,037 tests passed; build passed; e2e 319 of 319 in
+Chromium and WebKit, dev and both production builds (36.7 minutes). Before it: `03b3f4b` the same four green (unit
+2,998, e2e 319 of 319, 37.1 minutes); a pass on `2202c45` was stopped part-way (its unit 3,028 and build green) when
+files were copied into the clone during its e2e, and isn't counted.
+Before chunk 11: chunk 10's final commit `e0f14de`, the owner's Mac, 2026-10-20, from the internal-disk clone
+under `caffeinate -i -s`: typecheck passed; unit 239 files, 2,891 tests passed; build passed; e2e 319 of 319 in Chromium
+and WebKit, dev and both production builds (37.2 minutes). Before it: `01e854c` 316 of 317 and `51eb240` 318 of 319
+(both a WebKit `social.spec` timeout caused by `shared-lockstep.spec`'s open contexts, then fixed), `1d1f7ed` 316 of
+319 (WebKit perf under load, 8 of 8 alone).
+Before chunk 10: chunk 9's final commit `9266584`, the owner's Mac, 2026-10-20, from the internal-disk clone,
 twice in a row under `caffeinate -i -s`: typecheck passed; unit 236 files, 2,868 tests passed; build passed; e2e 311 of
 311 in Chromium and WebKit, dev and both production builds (35.7 and 35.6 minutes). Before them, the same four checks
 on `c51a7f1` (unit 2,851, e2e 311 of 311) and `827eacd` (unit 2,858, e2e 311 of 311), both green, each superseded by
@@ -700,6 +739,538 @@ REL-012, REL-018.
   Left for the owner: whether Settings' Load should also keep another aquarium kept only in the autosave (as 0.5.5,
   it goes; KNOWN_LIMITATIONS).
 
+### 10. Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) — done 2026-10-20 (Chase)
+
+- **What:** check the design's lockstep (§3) before chunks 11 to 13 build on it, and measure what it costs. The chunk
+  starts at `885e43e`. No player-visible change.
+  - **One arithmetic (SHARE-002, §3.2 rule 1):** `src/sim/dmath.ts`, fdlibm's functions in plain arithmetic (equal to
+    Java's StrictMath bit for bit), and every transcendental `Math` call and `**` in `src/sim` switched to it; the
+    determinism guard bans the engine's versions in `src/sim` and `src/data`. Moved here from chunk 11 so the test
+    measures the real arithmetic, not a shim; every seeded test that shifts says why (none did: 2,872 of 2,872).
+  - **The step block (§3.2 rules 2 to 4):** `runSharedStep` in `src/sim/sharedStep.ts` on a working copy (the world's
+    identity pinned, the compatibility caches and `reachCache` cleared, commands, the advance with the full-detail
+    list, `post`; discarded whole if it throws), `focusTankIds` beside `focusTankId`, the copier moved to
+    `src/sim/clone.ts`; a first command set (`src/sim/commands/`: speed, feeding, a water change) that chunk 11 grows to
+    the whole catalogue.
+  - **A prototype server** (`server/`, Node 22, `ws` 8.22.0, built by the repo's Vite into `dist-server/`): §3.3's
+    messages without accounts or the database; stub shops built from the dev fixtures at build time; one worker thread
+    per shop; time steps batched once a second, command steps at once, fingerprints every 10 seconds, snapshots for
+    joins and re-syncs; meters for bytes and CPU (`/stats`); a step-log endpoint for the replay; a connection cap and a
+    byte budget for the public test service.
+  - **A prototype client:** the replica (`src/game/sharedLoop.ts`: applies steps in order, fingerprints in idle time,
+    asks for a re-sync on a mismatch) and a dev-only connection (`src/dev/sharedProto.ts`, `__AQ.shared`), headless:
+    it doesn't show the shop (chunk 13 does).
+  - **Tests:** dmath against fdlibm, the engine's Math and ECMAScript's special values; the step block; lockstep in one
+    process (a room, two replicas, joiners from mid-run snapshots, a copy changed by hand caught); e2e: the cross-engine
+    replay (the Node server's step log replayed in Chromium and WebKit, a game week at 10× on `big_facility` and a
+    playthrough) and two browser contexts in one shop.
+  - **Measured, into §11:** bytes per player-hour, per command, per snapshot and per save; the server's time per step;
+    then on Render (ADR-0046): the wake time, the time per step on 0.1 CPU, the replay on x86-64, a two-browser
+    session from the Mac, the build without install scripts, what Render shows a build.
+- **Render:** the owner's yes (ADR-0046): the agent creates the free web service `aquarium-go-shops` (Virginia, from
+  `next`, deployed by hand, stub shops, no key) and deploys the prototype; afterwards it sleeps, for chunk 12.
+- **Not in this chunk:** the rest of the command catalogue and first one wins (chunk 11), accounts, the database, the
+  caps, the lease and the build identity (chunk 12), the screens and every player-visible word (chunk 13).
+- **Done when:** the four checks pass on the final code; one fresh reviewer (Opus 5.5, max effort) reads this brief,
+  SHARED-SHOPS.md §3, §5 and §10 and `git diff 885e43e..HEAD`, and its blockers are fixed; the Render measurements are
+  in SHARED-SHOPS.md §11; PLAN.md and the docs say what changed; `next` pushed.
+- **Built** (2026-10-20, Chase): `017756d` one arithmetic (dmath equals StrictMath bit for bit on 364,200 probe inputs;
+  unit 2,872 of 2,872 after the switch); `01e854c` the step block, `focusTankIds`, the first commands, the prototype
+  server (`server/`, `ws` 8.22.0), the replica and the dev connection, the lockstep tests (unit 2,888; the new e2e spec
+  6 of 6 in Chromium and WebKit). Without the step block's cache clears, `big_facility` drifts and the in-process test
+  fails; with them, a probe replayed 7 cases (4 shops, 1× to 10×, up to a game week) in both browsers with 136
+  fingerprints each and no mismatch.
+- **On Render** (ADR-0046): `aquarium-go-shops` created and deployed from `next`; it builds in about 54 seconds without
+  install scripts. Its x86-64 step logs replay on the Mac's arm64 with no mismatch, and the stub shops it built (30 game
+  days of play for the playthroughs) equal the Mac's. The free instance keeps a new or month-old shop at 10× with half
+  its CPU to spare (33 to 46 ms a second of about 100), commands round trip in about 125 ms; a late-game shop
+  (`big_facility`) can't keep real time even at 1× (84 to 92%), and runs at 55% at 10×, still in step. Data: about 120
+  bytes a second per member for the steps (0.6 MB an hour metered), snapshots 12 to 160 KB, the shop's saves the larger
+  part (SHARED-SHOPS.md §11). A cold wake answered in 22 seconds. Chromium and WebKit on the Mac in one shop there:
+  every fingerprint matched, both ended at the same step with the same copy. A build sees every variable set on the
+  service, so chunk 12's build command removes the key first (§5.8). Afterwards the prototype on Render was closed
+  (no connections or replays unless `SHOPS_OPEN=1`), since its byte budget restarts at every wake and its address is
+  public.
+- **The fresh review** (Opus 5.5, max effort) on `885e43e..e778ba5`: dmath sound (line by line against FdLibm.java;
+  687,826 targeted inputs equal to StrictMath; bit-identical in Node, Chromium and WebKit, whose own Math differ on
+  tens of thousands of them), the switch faithful (solo play after 14 game days: money, animals and the random
+  stream identical), the protocol sound. One blocker, fixed: a deeply nested message (6 KB) crashed the server, since
+  the main thread copied the parsed object to the worker; it now hands the worker the text, which the worker parses and
+  checks (`parseClientMessage`), and any error closes only that connection. Its notes, fixed: re-syncs budgeted as §5.3
+  says (3 in 10 minutes, 6 an hour, then `outofstep`), one replay at a time, connections closed if they don't say
+  `hello` within 10 seconds, the header's claim corrected; a test that the step block pins the world (it failed
+  without the pin); the dmath reference file grown to 2,593 inputs, which reach every block the review's inputs reach;
+  the browser replay does the interface's reads between steps; separators in two cache keys; inherited names refused
+  as a tank; the paused two-browser check reads until both agree; the docs (the meter's factor, what fingerprints can't
+  see). Left for chunk 11: keys holding `undefined`, which a snapshot drops and a joiner re-adds in another order
+  (harmless today; SHARED-SHOPS.md §3.2 rule 10).
+- **Its confirmation pass** (`e778ba5..668a57d`): every item above confirmed; one more blocker of the same kind, there
+  since `01e854c`, fixed next: a request whose target isn't a URL (`GET //`) crashed the server, even closed on Render,
+  since both handlers parsed it unguarded. Both now parse it guarded (400) and catch whatever their bodies throw, the
+  stats call included; the hostile-message e2e sends `//` and `/\` as requests and upgrades. Its notes, fixed too:
+  the browser replay's reads include an animal's rarity and strains (the caches the step block doesn't clear); a
+  socket that never says `hello` is dropped at once; a replay worker that ends without answering frees the slot. For
+  chunk 12: the re-sync budget is per connection and joins are unlimited, so it belongs to the player, with §5.3's
+  join limit. Its final pass (`668a57d..51eb240`): no blockers, nothing else on the main thread that a request, message
+  or worker event can make throw; its three small notes fixed (the replay slot is taken only once a worker exists, one
+  answer per request, the stats call's last catch). For chunk 11: `validateCommand` must check ids as own properties
+  (a command on `__proto__` is refused today only because the water code throws first).
+- **The full passes:** `01e854c` and `51eb240`: typecheck, unit (2,888, then 2,891), build passed; e2e 316 of 317, then
+  318 of 319, the one failure both times a WebKit `social.spec` timeout caused by `shared-lockstep.spec` leaving two
+  browser contexts open (fixed: it closes them; those four specs together in WebKit, 22 of 22). The final pass, on
+  `e0f14de` (the contexts closed in an `afterEach`, the review's last note): typecheck, unit 2,891, build, e2e 319 of
+  319 (37.2 minutes). Between, `1d1f7ed`'s pass had 316 of 319: three WebKit `perf.spec` frame-rate checks (22.8 fps
+  against 30) while other apps held about two cores, 8 of 8 alone.
+- **For chunk 11** (from the review): delete keys instead of setting `undefined` and assert none in the lockstep test
+  (§3.2 rule 10); `validateCommand` checks ids as own properties.
+- **For chunk 12** (from the measurements): time steps in place, not on a copy (18 to 32% of a step); a cheaper or rarer
+  fingerprint and snapshot check for big shops (750 ms and 1.6 s of wall time on the free instance); the key out of the
+  build; and, before big shops matter, the owner's choice between a lower top speed for them and a paid instance. From
+  the review: the re-sync budget per player, not per connection, with §5.3's join limit; the meter counts headers. The
+  owner's part: one dashboard visit (the key pasted, chunk 10's test variables deleted) and a yes to switch the service
+  to `main` (SHARED-SHOPS.md §5.8), since the Render CLI can't change environment variables.
+- **For chunk 13:** ask the owner, in one round before building the screens, for the words SHARED-SHOPS.md §8 lists as
+  still needed (chunk 11 writes the exact list). The play-test needs an account for the owner's daughter (her own
+  sign-up with the club's invite link; a parent signs up for a player under 13, §13).
+
+### 11. Shared shops, commands (SHARED-SHOPS.md §4, §3.2) — done 2026-10-20 (Chase)
+
+- **What:** every player action becomes a command, with no player-visible change; the solo game must behave exactly as
+  before, and the full test pass guards it. The chunk starts at `a3a177d`.
+  - **The catalogue (SHARE-001, §4.1):** `src/sim/commands/`: one kind per player action (every `act(`, `edit(` and
+    direct `mutate` in `src/ui`, `src/render` and `src/ai`), `applyCommand(state, cmd, actor?)` calling the same `src/sim`
+    function the closure called, a `CommandResult` that carries what callers read afterwards, and `validateCommand`
+    (a known kind, each argument's type and range, the size; ids that aren't own properties refused, chunk 10's note).
+  - **Dispatch (§4.2):** `useGame.getState().dispatch(cmd, then?)`, installed at boot by `src/game/dispatch.ts`: solo
+    runs it at once, as `act` does, and calls `then` before returning; a shared shop (chunk 13) settles it when its step
+    lands. The `act` helpers send commands; callers that read the result use `then`. The device-only marks (the alerts'
+    read marks and Clear all, the log's read mark, the shows' and research's "seen") go through one UI module, so chunk
+    13 can keep them per player. `core-mutation-boundary` grows: outside the dispatcher, that module, the loop,
+    `sharedLoop`, persistence's load and save, and the dev tools, nothing calls `mutate` or `mutateFast`.
+  - **Who did it, first one wins, flags (§4.3):** with an actor (a shared shop only), the events a command emits are
+    tagged with who sent it, an action with no event gets one line (its own message), buying, selling, moving and taking
+    carry what their sender saw and are refused on every copy when it no longer holds (naming the member who changed it
+    in the last 30 seconds, never refusing the sender's own earlier change), and settings are last-writer-wins with a
+    note. The memory of who touched what lives in the shop's state, so a joiner decides the same. A command's guide flag
+    rides in the command; `hireStaff` raises `hired_staff` itself.
+  - **§3.2's other sim changes:** the catch-up's rules into `src/sim/catchUp.ts` (rule 1's server needs them), the
+    starvation guard's rule into `src/sim/starvation.ts` with its memory passed in (rule 6), the hold actions' flush
+    inside their command (rule 7), the list of "seen" writes (rule 8), keys deleted instead of set to `undefined`
+    and the lockstep test asserting none (rule 10).
+  - **The words for chunk 13:** the exact list of player-visible lines this catalogue needs that §8 doesn't approve
+    (written into SHARED-SHOPS.md §8 for the owner).
+- **Not in this chunk:** the server's accounts, database, caps and coalescing on the wire (chunk 12), the screens, the
+  transport's pending results and every new word on screen (chunk 13). Photos stay data URLs in solo (§4.4 is chunk 12).
+- **Done when:** the four checks pass on the final code (no seeded test shifts: chunk 11 changes no rule); one fresh
+  reviewer (Opus 5.5, max effort) reads this brief, SHARED-SHOPS.md §3.2, §4 and §9.1 and `git diff a3a177d..HEAD`, and
+  its blockers are fixed; PLAN.md and the docs say what changed; `next` pushed. SHARE-001 GREEN.
+- **Built** (2026-10-20, Chase): `03b3f4b`. The catalogue: 80 kinds (`kinds.ts`), `applyCommand` (`apply.ts`),
+  `validateCommand` (`validate.ts`), who did it and first one wins (`shared.ts`). The solo dispatcher
+  (`src/game/dispatch.ts`, installed by the `act` helpers), every interface write converted (about 170 sites in 50
+  files; callers that read the result use `after`), the marks module (`src/ui/common/marks.ts`), the photo story line
+  and the Auto-feed patch moved into the sim. `src/sim/catchUp.ts` and `src/sim/starvation.ts`. Rule 10: about 30
+  places delete a key instead of setting `undefined`, and `compact` covers events and listings; a probe ran ten
+  fixtures 4 to 14 game days with none left. Tests: `commands-catalogue` (each kind's `stateHash` equals the old
+  closure's on five real worlds, 97 samples; after the review, every one changes the game or is a refusal the wrong mapping would turn into a change),
+  `commands-shared`, `commands-dispatch`, the lockstep runs with conflicts from three members and a joiner (the room
+  counts them: `stats.conflicts`); `ui-mutate-atomic` and `guide-feedback` rewritten on purpose for commands. No seeded
+  test shifted.
+- **The full passes:** `03b3f4b`: typecheck, unit 2,998 of 2,998 (242 files), build, e2e 319 of 319 (37.1 minutes).
+  The final, on `e692066`: typecheck, unit 3,037 of 3,037 (243 files), build, e2e 319 of 319 (36.7 minutes).
+- **The fresh review** (Opus 5.5, max effort) on `a3a177d..03b3f4b`, with probes and mutants
+  (`scripts/_audit/review-chunk11/` in the internal-disk clone): four blockers, all fixed.
+  - **B1:** `raiseFlag`'s own field was `flag`, the guide flag every command carries, so the dispatcher raised it
+    twice and the solo guide skipped a step (feed, then open the tank card: the water step done at once). Its field
+    is `name` now, and the catalogue's guide samples run on a new game whose guide is running.
+  - **B2:** `validateCommand` let any string through as a listing photo (a remote address would reach every member's
+    `<img>`) and refused the holding container's empty `from`. Photos are image data only (chunk 12 adds the
+    reference), `from` may be `''`, a command carries only the guide flags actions raise (`ACTION_FLAGS`, checked
+    against the interface's sources), `raiseFlag` names no inherited key, -0 becomes 0, names refuse control and
+    text-direction characters, a substrate colour is a hex colour, and two ranges are tighter.
+  - **B3:** first one wins missed partial purchases (a member got animals they didn't pick, since a partial sale
+    shifts the rest) and the last stored piece (the second member's "from storage" bought a new one). A purchase now
+    carries the animals' ids (`saw`) and buys them by id; `placeDecor` carries `fromStorage`.
+  - **B4:** 18 catalogue samples changed nothing and 12 mapping mutants survived. Every sample now changes the game
+    (or is a refusal pinned on purpose, where the wrong mapping would succeed), with second samples for the optional
+    arguments (target feeds, picks, the rack, a tank or frag listing, `replace`, a line's rules, sort and morph, the
+    breeding tank); all 14 mutants and a canary now fail the tests (`scripts/_audit/chunk11/mut/run.sh`).
+  - **Notes, fixed:** rule 10's last three places (and a test that walks every step of five shops and the actions that
+    end a guard or a pair); the sign and favourite switches read the live game, so a quick second click undoes the
+    first as before; an `after` that throws is no longer reported as a failed action (and not called twice); the
+    fallback alerts line skips quiet kinds and repeats (one line per member and setting in 30 seconds); the same-sender
+    exception holds only while the thing is as the sender's command left it (each touch keeps a mark); the
+    welcome-back card's resume is a command and the store-writer test names persistence's two files; the five helpers
+    that returned a result take a callback; the tagging and install tests can fail now; the room's `at` comes from
+    its clock (`io.wall`); the dev panel's buyer visit toasts again.
+- **Its confirmation pass** (`03b3f4b..2202c45`): every blocker and note confirmed fixed, no blockers, 45 mutants
+  run (all caught but nine, now fixed or explained). Its notes, fixed: a slider's repeated values keep one alerts
+  line current (its newest message; the first fix kept the first value) and switches always get a line; the sender's
+  own quick second Buy of an animal they already bought is refused (an offer's touch has no mark); B1's scenario is a
+  test (feed by tapping, open the tank card: the water step waits); samples for the light hours and moonlight, an
+  equipment setting, a keeper taken off a tank and Auto-feed on from a legacy 0; the quiet kinds tested with a bid's
+  renewals; `raiseFlag hired_staff` does nothing without a team; a redundant check dropped. The feed zone's mutant is
+  equivalent: the sim doesn't read the zone (it's for the visuals).
+- **Left on purpose:** §3.2 rule 5's stagger (chunk 12: it changes only the server's busiest steps, so it is built and
+  measured with the server's speed work); coalescing a control's many values and the pending results' transport
+  (chunk 13, the shared dispatcher); actions the interface doesn't call (`setManualMode`, `setOpenHours`,
+  `renameLine`, the fixtures, `sellFragsToStore`) aren't commands until a screen uses them; the words the screens
+  will need are drafted in SHARED-SHOPS.md §8 for the owner (OWNER_QUESTIONS L, chunk 13).
+- **For chunk 12:** the room puts the starvation guard's slow-down in `post` (`checkStarvation(state, memory)` with a
+  memory per room) and runs `simulateOffline` from `src/sim/catchUp.ts` on a wake; `allowed(member, cmd)` gates
+  `setSpeed`; the server forwards only the first `raiseFlag` for each flag (§4.3).
+- **For chunk 13:** a listing photo must be shrunk before it's sent (§4.4): today's 640-pixel JPEG is larger than a
+  command may be (48 KB). The shared dispatcher (send, settle `done` from the step's results; coalesce sliders), the marks
+  kept per player (`src/ui/common/marks.ts` is the one place), the visuals of others' feeds and taps from applied
+  commands (today the sender's `after` draws them), and group L's words first.
+
+### 12. Shared shops, the server and the database (SHARED-SHOPS.md §5, §6) — done 2026-10-21 (Marshall)
+
+- **What:** the real server and its database: a club's shop lives in Supabase and runs on the free Render service
+  behind sign-in. Still nothing players see (the screens and every word are chunk 13). The chunk starts at `eef5b74`.
+  - **The migration (§6, §5.8; SHARE-003):** a new file under `supabase/migrations` (never an edit of an applied one):
+    `shared_shops`, `shared_photos` and `shared_usage` (row-level security on, no access for `anon` or
+    `authenticated`); the server's functions (`server_member`; `server_shop_get`; `server_shop_create`, the owner only,
+    one per club; `server_shop_put`, which checks the lease and the revision and never writes over a newer schema's
+    shop, PERSIST-014; `server_shop_take` and `server_shop_release`, the lease in one statement on the database's clock;
+    `server_set_pausers`; `server_photo_put`, `server_photo_get`, `server_photo_hashes`, `server_photos_delete`;
+    `server_usage_add`, which records the month as closed at a cap), reachable only with the server's password
+    (ADR-0047: `private` functions behind `public` wrappers that `anon` may call, each refusing unless the password's
+    SHA-256 equals the one fingerprint stored; `scripts/shared-server-key.mjs` makes the password and stores it);
+    the game's two (`club_shared_shops()`, `shared_usage()` for the owner) as stage 1's are, `private` behind `public`
+    wrappers. `service_role`'s rights on every table and function in `public` revoked and the schema's default
+    privileges changed so nothing new grants it any. Checked by `scripts/online-db-local/run.sh` (new cases as `anon`,
+    two players, the owner and the server), then applied live with the owner's yes, then the security advisors and the
+    stage 1 smoke (`scripts/online-smoke.mjs`).
+  - **The server (§5; SHARE-004 to SHARE-009 and SHARE-014 to SHARE-017, their server side):** chunk 10's prototype
+    becomes the server. `auth.ts` (the player's token asked of Supabase Auth with the publishable key, cached until it
+    expires; membership through `server_member`, checked again every 15 minutes: `removed`), `store.ts` (the database
+    through Node's `fetch` with the publishable key and the password from `SHOPS_SERVER_KEY`, never logged),
+    `stub.ts` (in-memory storage and accounts, `SHOPS_STUB=1`, for the tests and e2e; the replay endpoint stays
+    stub-only), `usage.ts` (bytes sent, headers
+    included, ×1.4, and awake seconds, per UTC month; the 2 GB and 400-hour caps close rooms and refuse joins),
+    `config.ts` (the public settings in code: the project's address and publishable key from `src/social/project.ts`,
+    the game's two sites as the origins when `RENDER` is set). A room's life (§5.2): wake (the lease, load and repair,
+    `simulateOffline` from `left_at`, or `saved_at` after a crash: nothing under 5 minutes or if paused, at most 12 game
+    hours under grace), running only while someone is there, saved every 3 minutes, on emptying and on SIGTERM, the lease
+    renewed every 30 seconds for 90, the room kept 15 minutes empty. `create` (the owner only: a new game with the
+    shop's name and starter, normal money, the guide finished, ADR-0045 decision 5). The limits (§5.3): 10 per shop
+    (`full`), one connection per player (`elsewhere`), 16 KB messages (48 KB for a listing with a photo), 10 commands and
+    30 messages a second, the re-sync budget per player rather than per connection, and 20 joins an hour.
+    `allowed(member, cmd, shop)` gates `setSpeed` (the owner and `pausers`), `grant` is the owner's; only the first
+    `raiseFlag` for each flag is forwarded; the starvation guard's slow-down goes in `post` with a memory per room;
+    `token` refreshes the sign-in (the same player only).
+  - **The build identity (§5.1; SHARE-016):** a Vite plugin hashes what every copy runs (`src/sim`, `src/data`,
+    `src/types`, the four pure persistence files) in a fixed order with normalised line endings, and stamps the hash and
+    the release version into the game and the server; a different hash is told `build` (older) or `updating` (newer).
+  - **Photos (§4.4; SHARE-018, the server's side):** `createListing`'s photo checked (WebP or JPEG by its first bytes,
+    at most 48 KB), stored once per club by its SHA-256 and forwarded as the reference `p:<hash>`; `{t:'photo'}`
+    answered with a binary frame; about 6 photo listings a minute per member; a stored photo deleted only after a save
+    that no longer refers to it. `validateCommand` and `repairState` accept exactly that reference and nothing more
+    (a core-file change, named in the commit); the interface never puts one in `<img src>` (chunk 13 draws it).
+  - **Speed (§11, for K1):** time steps in place (the copy was 18 to 32% of a step), with a checkpoint copy at each
+    fingerprint and the steps since, so a step that throws is undone by replaying from the checkpoint and never sent;
+    the fingerprint's interval scaled to what it costs (`big_facility`'s took 750 ms on the free instance); a cheaper
+    snapshot check than two fingerprints (§3.2 rule 10); rule 5's stagger after a catch-up, Hold all, Resume and Hold
+    one. Measured again on Render (the stub shops at 1×, 3× and 10×) into §11; those numbers go to the owner as K1.
+  - **The game's side, no screens:** `sharedShops()` and `sharedUsage()` in `SocialService`, the stub and the Supabase
+    service; `SHARED_SHOP_SERVER` in `src/social/project.ts`.
+  - **The release order (§5.1):** PLAN.md's "Releases" gains it: `main` first, then the server by hand from `main`;
+    both `version.json` files and the server's `/health` checked.
+- **Render and the owner's steps (ADR-0046, ADR-0047):** the migration live once its local check passes (ADR-0047
+  decision 1); then the owner's one dashboard visit, walked through: the server's password, which
+  `scripts/shared-server-key.mjs` leaves on the owner's clipboard, pasted as `SHOPS_SERVER_KEY`, and chunk 10's
+  `SHOPS_REPLAY`, `ALLOWED_ORIGINS`, `SHOPS_BYTE_BUDGET` and `SHOPS_MAX_CONNECTIONS` deleted; then, once the server's
+  tests pass (decision 2), the agent sets the build command so the password never reaches the build (`env -u
+  SHOPS_SERVER_KEY sh -c 'npm ci --include=dev --ignore-scripts && npm run build:server'`, the build's log checked for
+  the name) and deploys from `next`. The service stays on `next` for chunk 13's play-test; the 0.6.0 release switches
+  it to `main`.
+- **The live smoke (§9.3):** `scripts/shared-smoke.mjs`: a throwaway club, shop and account made through the CLI
+  (scoped to the project), the account joins on the live server, sends commands, checks fingerprints, a photo and a
+  refused pause; then everything is removed and checked gone. Run with the owner's yes in the session.
+- **Not in this chunk:** the connection in the game, the screens, the shared dispatcher and every player-visible word
+  (chunk 13); permission tiers and the money pool (later, §5.6).
+- **Tests (§9.1):** the server in process with `SHOPS_STUB=1` and Node's own `WebSocket` as members, every case §9.1
+  lists (join and snapshot, commands everywhere, pause refused then granted, first one wins named, a throwing command
+  rejected to its sender only, empty and back with and without a catch-up, 10 and the 11th, a second tab, wrong build,
+  origin, token or user, removed, both caps, the meters, the re-sync budget, the lease and its renewal, SIGTERM saves,
+  a newer schema refused, two rooms with their own caches, photos stored, served and pruned, a step that throws
+  undone); the migration's rules in `supabase-migration.test.ts` and the local database check; the build identity
+  (a covered file changes the hash, another doesn't); `repairState`'s reference; the boundary test (the server reaches
+  only `ws`, Node's modules and the pure layers). e2e: the cross-engine replay runs on the stub server.
+- **Done when:** the four checks pass on the final code; one fresh reviewer (Opus 5.5, max effort) reads this brief,
+  SHARED-SHOPS.md §3.3, §4.4, §5, §6, §9 and §11 and `git diff eef5b74..HEAD`, and its blockers are fixed; the
+  migration is live with the advisors clean; the server is deployed and the live smoke passes; K1 is asked with the new
+  numbers; PLAN.md, SHARED-SHOPS.md §11, TRUST_BOUNDARY.md and DEBT_INVENTORY.md (§13's shared-shops sections) say what
+  changed; `next` pushed. SHARE-003, SHARE-005, SHARE-007, SHARE-009, SHARE-015 and SHARE-017 GREEN; the server's side
+  of SHARE-004, SHARE-006, SHARE-014, SHARE-016 and SHARE-018 done, GREEN with chunk 13.
+- **The owner's answers** (2026-10-21, ADR-0047): the migration live once its local check passes; the real server
+  deployed from `next` once tested, with the live smoke; **a server password instead of a Supabase secret key**, which
+  could reach accounts (players' emails, deleting accounts) through Supabase Auth's admin tools.
+- **Built** (2026-10-21, Marshall): `a4989d8`. The server (`server/app.ts`, `host.ts`, `room.ts`, `rooms.ts`,
+  `protocol.ts`, `store.ts`, `auth.ts`, `stub.ts`, `usage.ts`, `photos.ts`, `config.ts`); the migration (a helper agent
+  wrote it and its 181 new local cases against a fixed interface; the author read it line by line); the build identity
+  (`vite.sharedBuild.ts`); the photo reference in `validateCommand` and `repairState`; rule 5's stagger (a shared shop's
+  background tanks flush most-owed first, at most as many a step as flush on average); `sharedShops()` and
+  `sharedUsage()`; `scripts/shared-smoke.ts` (the live smoke, and `--measure` for K1). Tests: `shared-server` (28: the
+  server in process on the stub, members on Node's WebSocket), `shared-room` (19), the lockstep and e2e specs updated on
+  purpose (a clock that moves 250 ms a tick, members with permissions, stub tokens), an e2e case with two shops at once
+  in their own workers; the local database check 253 cases as expected. Found by the new tests: every save was refused
+  by the room-call gate (it compared a save's object with the club), fixed before the commit.
+- **Live** (2026-10-21, ADR-0047 decision 1): a read-only preflight first (the CLI runs as `postgres`; `service_role`
+  isn't a member of `anon`; everything it reached was ours), then the migration applied; afterwards `service_role`
+  reaches 0 tables and 0 functions in `public` and `private`, the 12 server functions refuse (no password yet), the
+  security advisors report only Auth's known leaked-password warning, and the stage 1 smoke passed 91 of 91.
+- **On Render** (2026-10-21, ADR-0047 decisions 2 and 3): the build command now removes the password first; the owner's
+  browser-capable Claude pasted the password (made by the script, clipboard only; one the owner had pasted into the chat
+  was replaced) and deleted chunk 10's test variables; deployed from `next` (`cdc5387`, then `7c0e68d`,
+  `dep-dbcgnonavr4c73cjr7q0`). The build's variable names show no `SHOPS_SERVER_KEY` and no `SHOPS_*` left; the server
+  started with its password. The live smoke (`npx vite-node scripts/shared-smoke.ts`) passed 23 of 23 after it found
+  that Render's proxy eats the server's close frames (fixed with `bye`, `7c0e68d`).
+- **K1** (ADR-0047 round 2): measured on the free instance (SHARED-SHOPS.md §11, "Chunk 12"): small shops on a fifth of
+  its CPU; `big_facility` keeps 93%, 95% and 88% of real time at 1×, 3× and 10× (chunk 10: 84 to 92%, 76%, 55%). The
+  owner chose to keep it free with no change.
+- **The fresh review** (Opus 5.5, max effort) on `eef5b74..38bfbda`, with probes in the internal clone's
+  `scripts/_audit/review-chunk12/`: the migration, the password model, the lockstep core and the core-file changes sound
+  (253 local database cases; the live `/health` hash equal to the local one). Three blockers, fixed:
+  - **B1:** another spelling of a club's id (upper case, no hyphens: Postgres reads them as the same UUID) opened a
+    second room for one shop, and with one lease holder per process both rooms ran, so a member could fork the shop and
+    roll back everyone's play. Outside the stub a club is now its canonical lowercase UUID, and each room has its own
+    lease holder.
+  - **B2:** flipping `away` and `here` saved the whole shop each time, queued without limit (about 440 KB/s for a new
+    shop). Saves now coalesce (one in flight, at most one more), and the save on emptying waits 10 seconds and comes at
+    most once a minute.
+  - **B3:** the room-call gate and a save the database refuses had no test that could fail: `roomCallAllowed` is tested,
+    and a save refused for the lease, a newer revision and a newer build each stop the room (`restart`, `updating`) with
+    nothing more saved.
+  - **Notes, fixed:** each photo once per connection, and no photo while much is queued for a member (the connection ends
+    past 8 MB); a failing save backs off (5 seconds, doubling, at most 2 minutes); a room that ends while opening releases
+    its joiners and tells anyone left (`restart`); the fingerprint's own step carries a waiting full-detail list; an
+    expired sign-in nobody refreshed ends the connection (`bye: sign-in`, 10 minutes' grace); the prune keeps exactly the
+    saved copy's photos, and a photo listed again after a prune is stored again; an undo that throws leaves the checkpoint,
+    never a half-applied step; the replica (`src/game/sharedLoop.ts`) is in the build identity; tests for the stagger in
+    the step block, its most-owed-first order and the fingerprint spacing; the docs (default privileges and PUBLIC, what
+    only binds browsers, `shared_usage.closed`, the re-sync budget as built, replacing the password).
+- **Its confirmation pass** (`38bfbda..1689c46`): the three blockers and the notes confirmed fixed, and the new tests
+  catch the old mutants; one new blocker in note 1's fix, fixed next: past 8 MB queued, `send()` ended the connection
+  through `end()`, whose `bye` came back through `send()` until the stack ran out (the other members lost their frames,
+  and one malformed message from that member crashed the server). Now the socket is dropped at once, never through
+  `end()`; a test forces a member's buffer past the limit (it fails against the old code). Its notes, fixed: a photo is
+  marked sent when it goes out (none are skipped for a busy member any more; the 8 MB limit guards memory); a worker that
+  fails releases its room's lease from the main thread, so a member back at once needn't wait 90 seconds; tests for the
+  emptying save's minimum interval and the save backoff. Left, covered by the review's probes (`vt/c1` to `c4`,
+  `vt/p2`, `p4` in the internal clone's `scripts/_audit/review-chunk12/`) rather than the suite: the per-room lease
+  holder, a room ending while opening, the undo's fallback to the checkpoint, and the prune's saved-copy references.
+- **Its second confirmation pass** (`1689c46..aa7b184`): no blockers; the send/end blocker and the three notes confirmed
+  fixed, nothing new broken (its probes and mutants at `aa7b184`). Its one test gap, closed in a test-only commit: a
+  photo asked for but not delivered (the database failed) can be asked for again.
+- **For chunk 13** (what the server does that the client must meet): send `hello` (or the owner's `create`, with the
+  starter's name and the preview seed) and wait for the welcome before anything else; `you.id` is the account's id, the
+  `by` of your own commands; a `raiseFlag` the shop already has gets no step and no reply, so settle it at once; through
+  Render's proxy the server's close frames never arrive (1006 about 20 seconds later), so act on the `closing` and `bye`
+  messages and close the socket yourself: `bye` `away` means reconnect only when the player is back, `sign-in` means
+  refresh the session (and send `token` hourly); a `post` of `setSpeed 1` is the starvation guard (show its toast from your own copy); photo frames are tag
+  3, the hash, a type byte, the bytes; `gone` needs its words (§8); joining the welcome's `catchUp` shows the
+  welcome-back card; every snapshot after the first (a catch-up, a re-sync) replaces the copy.
+
+### 13. Shared shops, the screens and the play-test (SHARED-SHOPS.md §7, §8) — built 2026-10-21 (Chase); the play-test next
+
+- **What:** the game opens a club's shared shop: the connection, the shared dispatcher, the screens with §8's approved
+  words (ADR-0045, ADR-0048), your own game waiting, the save guards and photos; then a play-test with the owner and
+  their daughter on the live server, and the 0.6.0 release with the owner's go-ahead. The chunk starts at `64e86e3`, on
+  the branch `chunk13` in the worktree `/Volumes/Dev/Projects/AquariumGo-chunk13` (at the owner's request, SESSION_HANDOFF.md
+  "Handoff to Chase"); until Marshall's "chunk 12 done" it leaves `server/`, `supabase/`, `scripts/shared-*` and chunk
+  12's tests alone and runs no e2e, then merges `next` in.
+  - **The connection** (`src/ui/shared/connection.ts`, the browser's own `WebSocket`; SHARE-005, SHARE-008, SHARE-016,
+    SHARE-017; §3.3, §5.3, §5.5, §7.6): `GET {SHARED_SHOP_SERVER}/health` to wake the server (never while
+    `sharedShops()` says shops are closed for the month, §5.7), then `wss://…/shop` and `hello` (or the owner's
+    `create`) with the player's access token, `SHARED_BUILD`, the club, and `plain` where `DecompressionStream` is
+    missing; nothing else until the `welcome` and its snapshot frame. The replica (`SharedReplica`) applies the steps
+    and the game store shows its copy (published with `share`, fastMutate's structural sharing, through `setGame`, never
+    aliasing the replica's copy); every snapshot after the first replaces it. `view` (the focused tank), `here` and
+    `away` (the tab shown or hidden), `input` (at most once a minute), `token` hourly and whenever supabase-js refreshes
+    the session, `resync` when the replica falls out of step, and a snapshot with the slow-device line when it is more
+    than 10 seconds behind. Render's proxy eats the server's close frames, so the client acts on `closing` and `bye` and
+    closes the socket itself: `bye sign-in` refreshes the session and tries once more; `bye away` reconnects only when the
+    player is back; `bye protocol` or `server`, or a dropped socket: "Lost the connection to the shared shop.
+    Reconnecting…", with waits growing from 1 to 30 seconds, never while the tab is hidden. A hidden tab disconnects
+    after 2 minutes and reconnects, with a snapshot, when shown.
+  - **The shop's store** (`src/ui/shared/store.ts`; §3.2 rule 11): the "shared" mark lives outside `GameState`: the club,
+    the shop's name, `you`, the members, the connection's phase (waking, joining, catching up, open, reconnecting,
+    closed and why) and the pending commands. Persistence and the game loop can't import `src/ui`, so whether a shared
+    shop is open is one small flag every layer may read (in `src/state`), set only by `src/ui/shared`.
+  - **The shared dispatcher** (`src/ui/shared/dispatch.ts`; §4.2): installed with `installDispatch` while a shop is open,
+    `soloDispatch` put back after. It sends `{t:'cmd', id, c}` and returns `undefined`, and settles `done` with that
+    command's result once the step carrying `{by: you.id, id}` has been applied here (`runSharedStep`'s results come in
+    `cmds` order, so `SharedReplica` hands them on: a change to `src/game/sharedLoop.ts`). A `reject` settles it as not
+    applied, with its words (`rate`: "Slow down a little: that was a lot of actions at once."; `failed` or `malformed`:
+    "That didn’t work, and nothing was changed. Please try again."); a `raiseFlag` the shop already has settles at once
+    and isn't sent (the server would send no step and no reply); a command in flight across a reconnect settles from
+    the snapshot's later steps, or as not applied. Controls that send many values (the equipment slider, the stock
+    budget, any amount typed or dragged) are coalesced per control: at most about 4 a second plus the value on release,
+    the control showing its own value until the step lands. Pause and speed without permission aren't sent: "Only
+    {owner} and the people they choose can pause or change the speed."
+  - **Opening and leaving** (`src/ui/shared/session.ts`; §7.2; SHARE-010): opening saves your own game to its slot
+    first ("Saving your aquarium…", with its online copy as any save), and records on the device which save it was
+    and, while the shop is open, a heartbeat of the time (`localStorage`, wrapped in try/catch). Inside, the game loop
+    doesn't tick, and the hidden-tab catch-up and the welcome-back card's own pause don't run. Leaving ("Back to my
+    aquarium", or a closing that ends the visit) loads your own save with its `lastTickRealMs` moved on by the time in
+    the shop, so nothing catches up, or goes back to the title screen when you came from there; the next load of that
+    save after the browser closed inside the shop leaves out the recorded time the same way. The shop's id is
+    `shared_<club>` (the server sets it), never a slot's.
+  - **Nothing saves a shared shop** (SHARE-011; §7.3): autosave (its timer and the saves on hiding and closing the tab),
+    Save, Load, Import, Export, the online save and the leaderboard report each refuse a shared shop before anything
+    else, flush included, each with a test. The guards in persistence are a core-file change, named in their commit.
+    Settings › Saves shows "This is {club}'s shared shop: it saves on the server. Your own aquarium is saved and waits
+    for you." [Back to my aquarium]; a save button tried: "The shared shop saves itself on the server."
+  - **The screens** (§8, every word approved; SHARE-004, SHARE-006, SHARE-008, SHARE-014, SHARE-016): the club card in
+    Social (the owner with no shop: **Shared shop** and [Create shared shop]; a member: "No shared shop yet."; a shop:
+    **{shop}**, "Day {day} · {money}", [Open shared shop]; the owner's meter from `sharedUsage()`; closed for the month:
+    the cap or hours line with its date, from `sharedShops()`, which never wakes the server); the title screen's "Shared
+    shop: {shop}" under Continue, on a device that has opened that shop; creating: the new-game naming and starter
+    screens titled "New shared shop" (the starter previewed with a seed that `create` sends, so the shop gets the one the
+    owner saw), then "Your club can open it from Social."; the opening steps ("Saving your aquarium…", "Waking the shared
+    shop…", "Catching up on the time nobody was here…"); "First time in", once per shop on the device; the HUD strip
+    "Shared · {shop} · Here: {name}, {name}" [Back to my aquarium]; the owner's members list, each with "Can pause and
+    change speed" (`grant`); "Still here?" after 30 minutes without input in a visible tab, `away` a minute later if
+    unanswered; every `closing` (`gone`: "{club} has no shared shop any more.", back to where the player came from;
+    `build` and `outofstep` offer [Reload], and `build` waits for `version.json` to change first, §5.1); "Catching up
+    with the shared shop…"; the slow-device line; the welcome-back card from the welcome's `catchUp`; the starvation
+    guard's toast from a `post` of `setSpeed 1`, shown from the player's own copy.
+  - **Others' actions** (SHARE-012, SHARE-013; §4.3): an alerts line is the event's own message with "{name}: " in front
+    (the events are tagged `by`); pop-ups for a pause, a speed change, and a sale or purchase over $100, never for your
+    own; first one wins and "{name} already changed that." on the sender's screen, from the command's result.
+    `conflictText`'s DRAFT note becomes "approved (ADR-0048)" (`src/sim`, so it changes the shared build's hash: the
+    server is deployed from the same commit as the game it plays with). Others' feeds, taps and decor changes fire the
+    same visual hooks (`aiFeed`, `aiTap`) from applied commands on every screen looking at that tank (today the
+    sender's `after` draws them).
+  - **Each player's own marks** (§3.2 rule 8, §7.4): in a shared shop `mark()` (`src/ui/common/marks.ts`) keeps the
+    alerts' read marks and Clear all, the log's read mark and Research's and the shows' "seen" per player and shop in
+    `localStorage`, and their readers read them over the shared copy; so do the notification settings (`notify.*`).
+  - **Photos** (§4.4; SHARE-018): a listing photo is shrunk to about 320 pixels wide before `createListing` (WebP; JPEG
+    when the browser hands back a PNG or anything else; under the command's 48 KB). A `p:` reference is drawn from a
+    blob fetched over the socket (`{t:'photo', hash}`, answered with a `FRAME_PHOTO` frame), only when it's on screen,
+    kept for the session, and never put in `<img src>` as such (an object URL made from the blob is the picture).
+  - **The rest:** no guide (the coach hidden); the dev panel and `?dev=1` write nothing in a shared shop; the interface's
+    error boundary doesn't pause a shared shop (it would pause everyone's) and offers [Back to my aquarium] where a solo
+    game offers "Save & reload"; `SocialService` gains the access token (supabase-js `getSession()`; the local stub's
+    `stub:<id>:<name>`, with `:owner` for the owner); the local stub's `sharedShops()` returns its clubs' shops, and the
+    stub server (`server/stub.ts`) knows the game's stub clubs (`highland-betta` …), the owner creating a shop on demand,
+    agreed with Marshall while chunk 12 finishes.
+- **Words:** §8's only. Any other player-visible words the screens turn out to need (a label, an accessible name, a
+  button) go to the owner in one batched round (AskUserQuestion, recommended option first), recorded verbatim in a new
+  ADR from ADR-0049.
+- **The owner's gates** (SESSION_HANDOFF.md): (1) any words beyond §8; (2) the play-test with the owner and their
+  daughter on the live server: `aquarium-go-shops` deployed from `next` at the chunk's final commit (ADR-0047 decision
+  2) and the shared smoke run after (`npx vite-node scripts/shared-smoke.ts` from the internal-disk clone). The server
+  accepts only the game's two sites as origins, so how the game itself reaches the players for it is the owner's call,
+  asked once. Her account comes from the club's invite link (a parent signs up for a player under 13, ADR-0039 decision
+  4). (3) The 0.6.0 release, only on the owner's go-ahead in that session ("Releases", step 4: `main` first, then the
+  server switched to `main` and deployed by hand; `/health`'s `build` and both `version.json` files checked).
+- **Not in this chunk:** permission tiers and the money pool (§5.6), more than one shop per club, members creating
+  shops, deleting a shop from the game, trading between a shared shop and anyone's own game, Firefox in the suite.
+- **Tests (§9):** unit: the dispatcher (settled from the step by `{by, id}` in `cmds` order; a reject; a command lost
+  across a reconnect; `raiseFlag` at once; a coalesced control ends on its last value); the connection's phases on a
+  fake socket (the welcome and snapshot, each `closing` and `bye`, the growing waits, a hidden tab's 2 minutes, `token`,
+  `input` at most once a minute, falling behind); every save path refuses a shared shop before its flush; your own game
+  resumes with no catch-up, also after the browser closed inside the shop; the marks per player; the photo's shrink and
+  its fallback; the alerts line's name and the pop-up's rules; the error boundary leaves a shared shop running;
+  `core-mutation-boundary` and the layer test take the new files on purpose. e2e (`tests/e2e/shared-shop.spec.ts`,
+  Chromium and WebKit, the stub server, never the live one): the owner creates a shop from the club card; two browser
+  contexts in one shop: a purchase in one appears in the other; pause refused, then granted; the activity line and the
+  pop-up; first one wins, named; a listing photo on both; leaving brings your own game back unchanged with no catch-up;
+  "Still here?"; a reconnect after the server restarts (a stub server the spec starts and stops itself). The
+  cross-engine replay stays.
+- **Done when:** the four checks pass on the final code, from the internal-disk clone; one fresh reviewer (Opus 5.5,
+  max effort) reads this brief, SHARED-SHOPS.md §3.3, §4.2 to §4.4, §5.3, §5.5, §7, §8 and §9 and chunk 13's own diff
+  (`git diff next...chunk13` after the last merge of `next`), and its blockers and its confirmation passes' are fixed;
+  PLAN.md, SHARED-SHOPS.md (as built), ARCHITECTURE.md, TRUST_BOUNDARY.md and REQUIREMENTS.json say what changed; `next`
+  fast-forwarded to `chunk13` and pushed from the internal-disk clone. SHARE-004, SHARE-006, SHARE-008, SHARE-010 to
+  SHARE-014, SHARE-016 and SHARE-018 GREEN (with chunk 12's server side). Then the play-test and the release, each on
+  the owner's yes.
+- **The owner's answers** (2026-10-21, ADR-0049): two more lines approved as written ("You need to be signed in to play
+  the shared shop. Sign in from Social and open it again."; the pause refusal with "the owner" when the game doesn't
+  know the owner's name); **the play-test on the Render address first**: the chunk's final commit on the Render static
+  site `aquarium-go` (https://aquarium-go.onrender.com) by hand, the shop server from the same commit, GitHub Pages
+  staying 0.5.6 until the owner says release.
+- **Built** (2026-10-21, Chase; `666127a` … `d6c7926`, `next` merged at chunk 12's end `e1666ed`):
+  - *The client* (`src/ui/shared/`): `connection.ts` (wake, `hello`/`create` with the access token and `SHARED_BUILD`,
+    the replica, `view`, `here`/`away`, `input` once a minute, "Still here?" at 30 minutes and `away` at 31, `token` on
+    each refresh and every 45 minutes, `resync` out of step or more than 10 seconds behind the server's clock, `closing`
+    and `bye` acted on with the socket closed here, reconnects at 1 to 30 seconds never while hidden, a hidden tab
+    disconnected after 2 minutes and rejoined quietly when shown), `dispatch.ts` (commands settle from their own step's
+    results, rejects with §8's words, a drop settles what it carried, known flags and refused pauses never sent, sliders
+    at most 4 values a second ending on the last, "{name} already changed that."), `session.ts` (your own aquarium saved
+    and recorded first, the shared mode, the copy published with `share` and `setGame(…, { actions })`, the marks over
+    it, leaving back to your own save or the title, the closings), `marks.ts`, `photos.ts` (320-pixel WebP or JPEG; a
+    `p:` reference drawn from bytes fetched once per connection), `activity.ts` (others' pop-ups, feeds and taps, the
+    starvation toast), `words.ts` (§8 and ADR-0049), and the screens (the club card's section, the opening card, the
+    strip with the owner's members list, the notices, "Still here?", the first-time and closing cards).
+  - *Elsewhere in the game:* `src/state/sharedMode.ts`; `src/persistence/sharedAway.ts` and the guards in `session.ts`,
+    `slots.ts` and `offline.ts` (core files: a shared shop is never saved on the device, a slot never takes a `shared_`
+    id, the time in a shop is no time away, no hidden-tab catch-up); `setGame`'s `actions` (core: `src/state/game.ts`);
+    the loop and autosave stand still; Save, Load, Import, Export, the online save and the leaderboard refuse; the
+    error boundary leaves a shared shop running and offers the way back; no guide, no dev writes; the title button; the
+    new-game screens titled "New shared shop"; Settings › Saves; the speed refusal; the alerts line's name; the Social
+    service's access token (Supabase, the local stub's stub token) and the local stub's shop list.
+  - *The server's side* (after "chunk 12 done"): the welcome names the owner (a room may look up its own club's members
+    only), steps carry the server's clock, the stub opens the local Social stub's clubs to every stub player and lists
+    its shops (`GET /stub/shops`, the stub only). Two optional protocol fields (`src/types/shared.ts`).
+  - *Tests:* unit `shared-client` (the client against the server in process: join, commands both ways, pause refused
+    then granted, a known flag, first one wins named, the setting note, a drop and the reconnect), `shared-connection`
+    (17 timer cases on a fake socket), `shared-dispatch` (8), `shared-own-game` (8: your own game waits; every save
+    path refuses), `shared-screens` (12), `shared-social` (5), `shared-server-chunk13` (6); B3a's gate line changed on
+    purpose (a room may now look up its own club's members). e2e `shared-shop.spec.ts` (4 tests in each browser, 9 of 9
+    with the warm-up in Chromium and WebKit on `aa9fab4`). Found while building: a shop woken from storage keeps its
+    stored id (only `create` sets `shared_<club>`), so the guards go by the shared mode first; the guide card showed in
+    a stub shop whose guide wasn't done (hidden in every shared shop now); the HUD strip moved above the dock (under the
+    tank bar on phones) after screenshots at 1280 × 720 showed it over the tool rail.
+- **The first full pass** on `d6c7926` (2026-10-21, the internal-disk clone, under `caffeinate -i -s`): typecheck passed;
+  unit 253 files, 3,166 tests passed; build passed; e2e 329 of 329 in Chromium and WebKit (39.1 minutes).
+- **The final pass** on `c063c6e` (after the review and its three confirmations): typecheck passed; unit 255 files, 3,202
+  tests passed; build passed; e2e 329 of 329 in Chromium and WebKit (39.4 minutes).
+- **The play-test build** (2026-10-21, ADR-0047 decision 2, ADR-0049 decision 3): `next` = `30a699f` pushed (Claude Code's
+  auto mode refused the agent's first push; the owner gave permission in the session and the agent pushed);
+  `aquarium-go-shops` deployed from it (`dep-dbcmsq2vcj2c73f6mok0`; `/health` `build` `681ac8b023eeaca7`, this commit's
+  shared build hash; no `SHOPS_SERVER_KEY` in the build's variables); the live smoke 23 of 23; the Render static site
+  `aquarium-go` deployed from the same commit (`dep-dbcmugi9lscs73eerrtg`, no branch switch needed: Render took a
+  commit from `next`), its `version.json` `30a699f-…`; GitHub Pages still 0.5.6 (`3a0e8ce`).
+- **The fresh review** (Opus 5.5, max effort) on `next...chunk13` at `d6c7926`, with probes and mutants
+  (`scripts/_audit/review-chunk13/`, git-excluded): five blockers, all fixed in `882c06c`.
+  - **B1:** the created shop's starter wasn't the animal the owner previewed (the server rolled its own from the world's
+    stream; 0 of 30 seeds matched). `create` now passes `previewStarters(seed)[starter]`; chunk 12's create test compares
+    the whole animal.
+  - **B2:** a command in flight when the copy fell out of step never settled (its step was skipped, the snapshot replaced
+    the copy). The dispatcher now settles what was pending when the copy asked for the shop again once that snapshot
+    lands, as applied with its result unseen (the server reads the socket in order, so it is in the snapshot).
+  - **B3:** follow-ups ran before the copy holding their result was published (salt and egg stock lines, "Manual mode
+    off"). A batch is published first, then its commands settle; one follow-up that throws no longer skips the rest.
+  - **B4:** the online save's refusals had no test: tests in `online-sync.test.ts`.
+  - **B5:** the title button woke the server even when shops were closed for the month. Before anything wakes it, a
+    signed-out player and closed shops get their line at once.
+  - **Notes, fixed:** the /health retry uses the growing waits and never runs hidden; a drop before the first welcome
+    keeps the opening card; a network failure fetching the token is a lost connection, not a sign-out; the slow line
+    stays a while, and steps read while hidden don't count as behind; one leave at a time; opening from the title leaves
+    a waiting save's record alone; the waiting save loads from whichever slot holds it; the parked game's online copy
+    goes at once; the remaining dev writers refuse; the online-save box never shows over a shared shop; any purchase or
+    sale over $100 pops up (not rewards or refunds); the dialogs are named by their own line; Settings' subtitle;
+    `removed` forgets the title button; the phone notice; the date fallback; the boundary tests name the new files; the
+    e2e leaving test's margin; tests for the mutants that survived (`bye protocol`/`server`, a drop while hidden, held-back
+    values on a drop, the Toasts filter) and a session test with a fake connection (`shared-session`).
+  - **Left on purpose:** a guide flag the server drops as a repeat while this copy doesn't show it yet stays pending
+    until a drop (harmless: `edit()` asks for no result); the opening card's back button from the title screen reuses the
+    starter screen's existing "Title" (to put to the owner with the release question).
+- **Its confirmation passes.** The first (`d6c7926..882c06c`): B1 to B5 confirmed, B2's reasoning checked against the
+  server, and one new blocker from B5's fix: two quick clicks on Open started two visits while the checks ran. Fixed in
+  `7e44242` (one opening at a time, a busy phase before the first wait), with its notes: a result unseen across a
+  re-sync plays no sound or toast, a publish that throws still settles its batch, `bye sign-in` keeps asking for a fresh
+  token after a network failure, and tests for the re-sync wiring, the online copy sent on parking and the online save
+  with autosave off. The second (`882c06c..7e44242`): one small blocker, Open dead after Back until the first `/health`
+  answered; fixed in `c063c6e` (the guard ends once the visit exists), with the other action helper quiet for an unseen
+  result and the checks in a quiet `checking` phase. The third (`7e44242..c063c6e`): clean, no blockers. Its two notes,
+  left: a late-finishing earlier open could clear a newer one's guard (not reachable by a click: the buttons are busy
+  meanwhile; only `__AQ.shared.open` gets through), and the opening's `catch` resets only the visit's store (nothing
+  between the mode going on and the visit existing can throw).
+
 ## Releases
 
 `main` is what players get: a push to `main` deploys GitHub Pages. Render doesn't build on a push, though
@@ -709,7 +1280,12 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
 1. a full green run of the four checks on `next`, and the owner has played it;
 2. bump `version` in `package.json` and add the `CHANGELOG.md` entry (patch for fixes, minor for features;
    `tests/sim/version.test.ts` checks that the newest entry matches);
-3. with the owner's go-ahead, merge `next` into `main` and push `main`.
+3. with the owner's go-ahead, merge `next` into `main` and push `main`;
+4. (from 0.6.0, SHARED-SHOPS.md §5.1) **the shared-shop server after `main`, never before:** once Pages has deployed,
+   deploy `aquarium-go-shops` by hand from `main` (`render deploys create srv-dbbt6gbncjis73c23br0 --commit <main's full
+   sha> --confirm --wait -o text`; the 0.6.0 release first switches the service's branch to `main` with `render services
+   update`), then check that its `/health` `build` equals the game's build hash and both `version.json` files read the
+   release. In between, newer tabs are told the shop is updating; afterwards older tabs are told to reload.
 
 - **0.5.0, released 2026-10-06** at the owner's request ("push to github prod and make sure it's on render"), from
   `next` after chunk 1: chunk 1, S0's stability fixes (the planned 0.4.1) and chunk 0. The owner chose to release
@@ -742,6 +1318,14 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   first, B-193; GitHub notes that `deploy-pages@v4` runs on a deprecated Node 20 and that `ubuntu-latest` moves to
   Ubuntu 26 from 2026-10-19: `deploy.yml` is a core file, left for the owner); Render by hand
   (`dep-db8o0s7f3r2c73eplvm0`). Both `version.json` files read `{"id":"382a637-…","version":"0.5.3"}`.
+- **0.5.6, released 2026-10-20** at the owner's go-ahead in the session (ADR-0044 decision 5, "release when green"):
+  chunk 9, the audit of 0.5.5's five high findings. The release commit `827eacd` (version, CHANGELOG) was followed by
+  the review's confirmation fixes; two full passes in a row on `9266584` (typecheck; unit 236 files, 2,868 tests;
+  build; e2e 311 of 311, Chromium and WebKit, 35.7 and 35.6 min), then a docs-only commit `4c7f7a6`. Merged as
+  `3a0e8ce` (its tree is `4c7f7a6`'s) and pushed from the internal-disk clone with `next`. The Supabase migration was
+  applied before the release (the old functions stay for 0.5.5 tabs until they reload). Pages deployed `3a0e8ce` by
+  itself (its run tests first); Render by hand (`dep-dbbhqbjncjis738q3e4g`). Both `version.json` files read
+  `{"id":"3a0e8ce-…","version":"0.5.6"}` (Render's after a cache-busting read).
 - **0.5.5, released 2026-10-19** at the owner's go-ahead in the session (ADR-0042 decisions 5 and 6: "yes change it to
   FRIENDS-KDWX, release when green", then "0.5.5 is fine, go ahead if we're ready"): chunks 7 and 8. The release
   commit `1f19426` (version, CHANGELOG, the "Have an invite?" example) passed typecheck, unit 2,828 and build, and e2e
@@ -775,6 +1359,15 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   eventually; pause and speed for the creator and the people the creator chooses; at first every member does
   everything else, with permission tiers later (a group money pool, requests, allowances, one-off grants); empty, it
   pauses and catches up at most 12 game hours on return.
+- Shared shops' design (ADR-0045, SHARED-SHOPS.md): the server saves with its own Supabase key, which the owner pastes
+  into Render (never in the repo); `ws` approved for the server only; a 2 GB monthly data cap; "there" means on screen
+  and used in the last 30 minutes ("Still here?"); a new shop starts like a new game, with no guide; your own game
+  waits, with no catch-up; members' actions in everyone's alerts with their name, big ones pop up; first one wins,
+  and the second sender is told who.
+  Also (ADR-0045 rounds 3 and 4): opened from the club card and, on a device that has opened one, the title screen; the
+  screens' words approved (SHARED-SHOPS.md §8); others' actions read as the game's message with the name in front; not
+  on the leaderboards; listing photos kept, small and seen by everyone, stored once; a break under 5 minutes doesn't
+  count; a 400-hour monthly cap on the server's awake time.
 - Automation goes deep (ADR-0001, option C): more than Auto-feed and Auto-clean.
 - The Auto Water Changer shares the Autofeeder unlock. Quiet hours are fixed at 10 PM to 8 AM, with a switch to turn
   them off (0.5 spec §12.3). One-copy Metallic is unnamed, with a subtle sheen. Locked destinations open a locked

@@ -17,6 +17,7 @@ import { creatureValue, morphRarity } from './valuation';
 import { hourOfDay } from '../time';
 import { clamp, dayIndex, finite, fmtMoney, nicePrice, pluralName, capitalise, morphTitle } from './util';
 import { HAREM_TRIO_CHANCE, OFFER_TIER_WEIGHTS, PAIR_OFFER_CHANCE, PICK_MAX_ANIMALS, PICK_ROLLS, SPECIAL_PICKED_CHANCE } from '@/data/stocking'; // B-194
+import * as dmath from '../dmath';
 
 // ───────────────────────────── availability ─────────────────────────────
 
@@ -285,7 +286,7 @@ export function generateOffer(state: GameState, rng: Rng, speciesId: string, opt
     price,
     seller: seller.name,
     expiresHour: opts.expiresHour,
-    note,
+    ...(note !== undefined ? { note } : {}), // §3.2 rule 10: no key holds undefined
     tier,
     label,
     unitPrice: creatures.length > 1 ? Math.max(1, nicePrice((price / creatures.length) * 1.12)) : price,
@@ -396,7 +397,7 @@ export function maybeSpecial(state: GameState, rng: Rng, start: number, dt: numb
   if (hod < 11 || hod >= 17) return;
   const day = dayIndex(start);
   if ((m.lastSpecialDay ?? -1) >= day) return;
-  if (!rng.chance(1 - Math.exp(-0.12 * dt))) return;
+  if (!rng.chance(1 - dmath.exp(-0.12 * dt))) return;
   m.lastSpecialDay = day;
   const avail = availableSpecies(state);
   if (avail.length === 0) return;

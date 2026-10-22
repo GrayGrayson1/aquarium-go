@@ -17,6 +17,7 @@ import { tapSensitivityMul } from './personality';
 import { illnessDef } from './illness';
 import { fitsEnvironment } from '../compat/salinity'; // lane:brackish
 import { residentsOf } from '../residents'; // lane:perf2
+import * as dmath from '../dmath';
 
 const clamp = (v: number, lo: number, hi: number) => (Number.isFinite(v) ? (v < lo ? lo : v > hi ? hi : v) : lo);
 
@@ -40,7 +41,7 @@ export interface SpeciesWaterView {
 export const PH_TOLERANCE = 0.3;
 
 export function harmRateToHp(harm: number): number {
-  return 6 * Math.pow(clamp(harm, 0, 1), 1.25);
+  return 6 * dmath.pow(clamp(harm, 0, 1), 1.25);
 }
 
 /** "X is suffering from …" style sentence for a water problem (null when the water is fine). */
@@ -174,11 +175,11 @@ export function fallbackWater(sp: SpeciesDefinition, tank: Tank): SpeciesWaterVi
   // it harm ramps up from zero, so a heater failure at room temperature doesn't mark every marine fish DANGER.
   if (temp > sp.tempC.max) {
     const over = temp - sp.tempC.max;
-    if (over > TEMP_TOLERANCE_C) note('too_warm', 0.25 * Math.pow(over - TEMP_TOLERANCE_C, 1.4), `water that is too warm (${temp.toFixed(1)} °C) — ${plural} need ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`);
+    if (over > TEMP_TOLERANCE_C) note('too_warm', 0.25 * dmath.pow(over - TEMP_TOLERANCE_C, 1.4), `water that is too warm (${temp.toFixed(1)} °C) — ${plural} need ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`);
     penalty += 35 + over * 8;
   } else if (temp < sp.tempC.min) {
     const under = sp.tempC.min - temp;
-    if (under > TEMP_TOLERANCE_C) note('too_cold', 0.2 * Math.pow(under - TEMP_TOLERANCE_C, 1.4), `water that is too cold (${temp.toFixed(1)} °C) — ${plural} need ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`);
+    if (under > TEMP_TOLERANCE_C) note('too_cold', 0.2 * dmath.pow(under - TEMP_TOLERANCE_C, 1.4), `water that is too cold (${temp.toFixed(1)} °C) — ${plural} need ${sp.tempC.idealMin}–${sp.tempC.idealMax} °C`);
     penalty += 35 + under * 8;
   } else if (temp > sp.tempC.idealMax) {
     penalty += Math.min(30, ((temp - sp.tempC.idealMax) / Math.max(0.5, sp.tempC.max - sp.tempC.idealMax)) * 28);

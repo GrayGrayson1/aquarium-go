@@ -11,6 +11,7 @@ import { getTankTier } from '@/data/catalog/tanks';
 import { FIXTURE_DEFS, getFacilityLevel, type FacilityPropDef, type FixtureKind } from '@/data/facilities';
 import { IN_TO_M } from '../tankSpace';
 import { theTank } from '../economy/util';
+import * as dmath from '../dmath';
 
 export interface Placement {
   x: number;
@@ -87,8 +88,8 @@ export function tankFootprint(tierId: string, p: Placement): OBB {
 /** Zone in front of the glass that must stay walkable for viewing. */
 export function tankFrontZone(tierId: string, p: Placement, depth = FRONT_CLEARANCE_M): OBB {
   const f = tankFootprint(tierId, p);
-  const fx = Math.sin(p.rotY);
-  const fz = Math.cos(p.rotY);
+  const fx = dmath.sin(p.rotY);
+  const fz = dmath.cos(p.rotY);
   const off = f.hz + depth / 2;
   return { cx: p.x + fx * off, cz: p.z + fz * off, hx: f.hx * 0.9, hz: depth / 2, rot: p.rotY };
 }
@@ -96,12 +97,12 @@ export function tankFrontZone(tierId: string, p: Placement, depth = FRONT_CLEARA
 /** Where a visitor stands to look into the tank (world metres). */
 export function viewingPoint(tierId: string, p: Placement, dist = 0.55): { x: number; z: number } {
   const f = tankFootprint(tierId, p);
-  return { x: p.x + Math.sin(p.rotY) * (f.hz + dist), z: p.z + Math.cos(p.rotY) * (f.hz + dist) };
+  return { x: p.x + dmath.sin(p.rotY) * (f.hz + dist), z: p.z + dmath.cos(p.rotY) * (f.hz + dist) };
 }
 
 function axes(o: OBB): [number, number, number, number] {
-  const c = Math.cos(o.rot);
-  const s = Math.sin(o.rot);
+  const c = dmath.cos(o.rot);
+  const s = dmath.sin(o.rot);
   // u = local x in world, v = local z in world
   return [c, -s, s, c];
 }
@@ -346,14 +347,14 @@ export function bfs(g: NavGrid, start: number): Int32Array {
  */
 export function viewingCells(g: NavGrid, t: PlacedTank, blockers: OBB[] = []): number[] {
   const f = tankFootprint(t.tierId, t.placement);
-  const fx = Math.sin(t.placement.rotY);
-  const fz = Math.cos(t.placement.rotY);
-  const lx = Math.cos(t.placement.rotY);
-  const lz = -Math.sin(t.placement.rotY);
+  const fx = dmath.sin(t.placement.rotY);
+  const fz = dmath.cos(t.placement.rotY);
+  const lx = dmath.cos(t.placement.rotY);
+  const lz = -dmath.sin(t.placement.rotY);
   const out: { idx: number; score: number }[] = [];
   const seen = new Set<number>();
   const half = Math.max(0.15, f.hx * 0.8);
-  const near = blockers.filter((b) => Math.hypot(b.cx - t.placement.x, b.cz - t.placement.z) < f.hx + f.hz + FRONT_CLEARANCE_M + b.hx + b.hz + 0.5);
+  const near = blockers.filter((b) => dmath.hypot(b.cx - t.placement.x, b.cz - t.placement.z) < f.hx + f.hz + FRONT_CLEARANCE_M + b.hx + b.hz + 0.5);
   for (let d = AGENT_RADIUS_M + 0.05; d <= FRONT_CLEARANCE_M + 0.1; d += g.cell * 0.7) {
     for (let s = -half; s <= half + 1e-6; s += g.cell * 0.7) {
       const gx = t.placement.x + fx * f.hz + lx * s;
@@ -428,6 +429,14 @@ export function layoutSignature(fac: FacilityState, tanks: PlacedTank[]): string
   s += '|';
   for (const t of tanks) s += `${t.id}:${t.tierId}:${t.placement.x.toFixed(3)},${t.placement.z.toFixed(3)},${t.placement.rotY.toFixed(3)};`;
   return s;
+}
+/**
+ * Forget the memoised reachability. Its signature rounds positions, so a cache filled at another moment (the interface
+ * reading between steps) could answer for a layout that moved a little; shared shops' step block clears it first
+ * (SHARED-SHOPS.md §3.2 rule 2).
+ */
+export function clearReachCache(): void {
+  reachCache = null;
 }
 export function stateReachability(state: GameState): Reachability {
   const tanks = placedTanks(state);
@@ -732,7 +741,7 @@ export function findPath(g: NavGrid, from: { x: number; z: number }, to: { x: nu
 export function lineOfSight(g: NavGrid, a: { x: number; z: number }, b: { x: number; z: number }): boolean {
   const dx = b.x - a.x;
   const dz = b.z - a.z;
-  const len = Math.hypot(dx, dz);
+  const len = dmath.hypot(dx, dz);
   const steps = Math.ceil(len / (g.cell * 0.5));
   for (let k = 1; k < steps; k++) {
     const t = k / steps;

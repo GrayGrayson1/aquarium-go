@@ -14,8 +14,8 @@ import { Button, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { getDecorDef } from '@/data/catalog/decor';
 import { propagationFor } from '@/data/catalog/propagation';
-import { takeFrag, plantFrag, fragEligibility, freeRackSlots, fragLabel, isCoralDef, onFragRack } from '@/sim/aquascape';
-import { fragValue, fragStoreOffer, quickSellFrags, marketAccess, FRAG_HEALED_HOURS } from '@/sim/economy';
+import { fragEligibility, freeRackSlots, fragLabel, isCoralDef, onFragRack } from '@/sim/aquascape';
+import { fragValue, fragStoreOffer, marketAccess, FRAG_HEALED_HOURS } from '@/sim/economy';
 import { act } from '../common/act';
 import { safe } from '../common/hooks';
 import { Chip, SectionHead } from '../common/parts';
@@ -268,7 +268,7 @@ export function FragTake({ g, tank, inst }: { g: GameState; tank: Tank; inst: De
         className="fr-take"
         data-testid={`frag-take-${inst.id}`}
         title={rule.how}
-        onClick={() => act((d) => takeFrag(d, tank.id, inst.id), { sound: 'place' })}
+        onClick={() => act({ k: 'takeFrag', tank: tank.id, decor: inst.id }, { sound: 'place' })}
       >
         <Scissors size={13} aria-hidden /> {rule.action}
       </button>
@@ -373,7 +373,7 @@ export function FragStorage({ g, tankId }: { g: GameState; tankId: string }) {
                   <MapPin size={13} /> {ok ? 'Plant' : coral ? 'Needs a reef' : 'Wrong water'}
                 </Button>
                 {rack && (
-                  <Button size="sm" title={`Seat it in a free hole on the frag rack (${plural(racks, 'free hole')})`} data-testid={`frag-rack-${f.id}`} onClick={() => act((d) => plantFrag(d, tankId, f.id, undefined, { rackOnly: true }), { sound: 'place' })}>
+                  <Button size="sm" title={`Seat it in a free hole on the frag rack (${plural(racks, 'free hole')})`} data-testid={`frag-rack-${f.id}`} onClick={() => act({ k: 'plantFrag', tank: tankId, frag: f.id, rack: true }, { sound: 'place' })}>
                     <LayoutGrid size={13} /> Rack
                   </Button>
                 )}
@@ -382,7 +382,7 @@ export function FragStorage({ g, tankId }: { g: GameState; tankId: string }) {
                     <Tag size={13} /> List
                   </Button>
                 )}
-                <Button size="sm" variant="ghost" silent title="Sell it to the local fish store right now (less than a listing fetches)" data-testid={`frag-sell-${f.id}`} onClick={() => act((d) => quickSellFrags(d, [f.id]), { sound: 'coin' })}>
+                <Button size="sm" variant="ghost" silent title="Sell it to the local fish store right now (less than a listing fetches)" data-testid={`frag-sell-${f.id}`} onClick={() => act({ k: 'quickSellFrags', frags: [f.id] }, { sound: 'coin' })}>
                   <Store size={13} /> Sell · {formatMoney(offer)}
                 </Button>
               </div>

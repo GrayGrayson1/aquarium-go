@@ -19,7 +19,7 @@ import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/r
 import { useUI, type PanelId } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { sfx } from '@/audio/sfx';
-import { tutorialAdvance, tutorialWants } from '@/sim/facility';
+import { tutorialWants } from '@/sim/facility';
 import { SheetContext } from './common/PanelLayout';
 import { useIsPhone, useMedia, useReducedMotion } from './common/hooks';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
@@ -30,7 +30,8 @@ import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { useSocialAvailable } from '../online/mode'; // chunk 8 (REL-025)
 import { DOCK_ITEMS, openPanel } from '../hud/Dock';
 import { AttnDot, useNavDots } from '../hud/AttnDot'; // lane:notify
-import { markResearchSeen, researchSeenStale } from '../common/notify'; // lane:notify
+import { researchSeenStale } from '../common/notify'; // lane:notify
+import { mark } from '../common/marks';
 import { TanksPanel } from './tanks/TanksPanel';
 import { LivestockPanel } from './livestock/LivestockPanel';
 import { MarketPanel } from './market/MarketPanel';
@@ -98,11 +99,7 @@ export function PanelHost() {
     const flag = `opened_${panel}`;
     const g = useGame.getState().game;
     if (g && (!g.progress.tutorial.flags[flag] || tutorialWants(g, flag))) {
-      try {
-        edit((d) => tutorialAdvance(d, flag));
-      } catch {
-        /* tutorial is optional */
-      }
+      edit({ k: 'raiseFlag', name: flag }); // gates quests and unlocks (§4.3): a command, not a mark
     }
     if (!lastFocus.current) lastFocus.current = document.activeElement as HTMLElement | null;
     // lane:ui-shell (chunk 1, §18) — focus goes to the panel's title (the sheet itself while the panel is loading),
@@ -122,11 +119,7 @@ export function PanelHost() {
   const researchStale = useGame((s) => (open && panel === 'research' && !!s.game && !s.game.isShowcase ? researchSeenStale(s.game) : false));
   useEffect(() => {
     if (!researchStale) return;
-    try {
-      edit((d) => markResearchSeen(d));
-    } catch {
-      /* bookkeeping only */
-    }
+    mark('researchSeen'); // bookkeeping only (src/ui/common/marks.ts)
   }, [researchStale]);
 
   useEffect(() => {

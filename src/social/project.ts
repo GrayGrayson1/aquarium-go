@@ -12,3 +12,10 @@ export interface OnlineProject {
 
 /** The Free organization "Aquarium Go", project `aquarium-go` (ref zkavcxrsxdgdlstravpj, us-east-1), set up 2026-10-19. */
 export const ONLINE_PROJECT: OnlineProject | null = { url: 'https://zkavcxrsxdgdlstravpj.supabase.co', publishableKey: 'sb_publishable_6_05nIKMwdOtelVdC27QHQ_QgNWjagA' };
+
+/**
+ * chunk 12 (SHARED-SHOPS.md §5.8) — the shared-shop server: the free Render web service `aquarium-go-shops`
+ * (srv-dbbt6gbncjis73c23br0, ADR-0046), which wakes on `/health` and plays shops at `/shop`. Public, like the project's
+ * address. Chunk 13's screens connect to it.
+ */
+export const SHARED_SHOP_SERVER: string | null = 'https://aquarium-go-shops.onrender.com';

@@ -8,7 +8,6 @@ import { findSpecies } from '@/data/species'; // lane:qa-play
 import { FOODS, getFoodDef, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods'; // lane:qa-play
 import { moduleFor } from '@/sim/life/breeding/registry'; // lane:qa-play
 import { currentPhase } from '@/sim/life/breeding/clutch'; // lane:qa-play
-import { buyFood } from '@/sim/economy';
 import { useUI } from '@/state/ui';
 import { safe } from './safe';
 import { foodFit, type FoodFit } from '@/sim/care/fit'; // lane:fit
@@ -38,10 +37,9 @@ export function tankFoodLevel(g: GameState, tankId: string): 'ok' | 'low' | 'out
   return g.tanks[tankId]?.cache.foodLevel ?? 'ok';
 }
 
-/** Buy one pack right away (feed picker shortcut). Returns true on success. */
-export function buyFoodPack(foodId: string): boolean {
-  const r = act((d) => buyFood(d, foodId, 1), { sound: 'coin' });
-  return !!r?.ok;
+/** Buy one pack right away (feed picker shortcut); `onDone` hears whether it worked, once the result is in. */
+export function buyFoodPack(foodId: string, onDone?: (ok: boolean) => void): void {
+  act({ k: 'buyFood', food: foodId, packs: 1 }, { sound: 'coin', after: (r) => onDone?.(!!r?.ok) });
 }
 
 /** Open Market › Supplies scrolled to this food. */

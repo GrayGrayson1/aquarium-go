@@ -2,6 +2,7 @@
  * Visitors — open-to-public toggle (gated), admission price with projected effect, today's numbers, live reactions
  * feed, exhibit popularity ranking, signage per tank and the facility upgrade CTA. OWNER: lane "ui-panels".
  */
+import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
@@ -9,7 +10,7 @@ import { Users, DoorOpen, DoorClosed, Ticket, HandCoins, Smile, Sparkles, Meh, F
 import type { GameState, VisitorReaction } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { setOpenToPublic, setAdmission, toggleSignage, visitorSummary, SIGN_COST, MAX_ADMISSION, type VisitorSummary } from '@/sim/facility';
+import { visitorSummary, SIGN_COST, MAX_ADMISSION, type VisitorSummary } from '@/sim/facility';
 import { getFacilityLevel } from '@/data/facilities';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { formatClock } from '@/sim/time';
@@ -196,7 +197,7 @@ function DoorsCard({ g, canOpen, sum }: { g: GameState; canOpen: boolean; sum: V
           </div>
         </div>
         <span data-testid="visitors-open-toggle" className="pn-doors__toggle">
-          <Toggle checked={open} onChange={(v) => act((d) => setOpenToPublic(d, v), { sound: v ? 'visitor_wow' : 'close', kind: 'info', quiet: v })} label="Open to the public" />
+          <Toggle checked={open} onChange={(v) => act({ k: 'setOpenToPublic', open: v }, { sound: v ? 'visitor_wow' : 'close', kind: 'info', quiet: v })} label="Open to the public" />
         </span>
       </div>
     </div>
@@ -210,7 +211,7 @@ function AdmissionCard({ g, fair }: { g: GameState; fair?: number }) {
   const commit = (v: number) => {
     setPrice(v);
     if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => edit((d) => setAdmission(d, v)), 350);
+    timer.current = window.setTimeout(() => edit({ k: 'setAdmission', price: v }), 350);
   };
   const proj = useMemo(() => project(g, price, fair), [g, price, fair]);
   const cur = useMemo(() => project(g, g.facility.admission, fair), [g, fair]);
@@ -395,7 +396,7 @@ function Popularity({ g, canSign, sum }: { g: GameState; canSign: boolean; sum: 
               <span className="pn-tiny">{t.signage ? 'Sign' : `Sign · ${formatMoney(SIGN_COST)}`}</span>
               {canSign ? (
                 <span data-testid={`signage-${t.id}`}>
-                  <Toggle checked={t.signage} onChange={() => act((d) => toggleSignage(d, t.id), { sound: 'click' }) /* lane:guide — toast the cost / no refund */} label={`Educational sign for ${t.name}`} />
+                  <Toggle checked={t.signage} onChange={() => act({ k: 'setSignage', tank: t.id, on: !useGame.getState().game?.tanks[t.id]?.signage }, { sound: 'click' }) /* lane:guide — toast the cost / no refund */} label={`Educational sign for ${t.name}`} />
                 </span>
               ) : (
                 <Lock size={13} aria-label="Locked" />

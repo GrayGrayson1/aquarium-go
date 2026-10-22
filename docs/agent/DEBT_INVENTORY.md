@@ -36,6 +36,14 @@ three:
   friends (TRUST_BOUNDARY.md "Social" lists what stage 2 must add). Invite codes are a word and four letters, with
   one brake on wrong lookups (and sign-up rate-limited by Supabase); the free project pauses after a week with no activity (the game then plays
   offline).
+- **Shared shops (chunk 12, SHARED-SHOPS.md, ADR-0047): the server's copy counts.** A club's shop runs on a small free
+  Render server, which applies members' commands with the game's own rules on its copy and saves it with a password of
+  its own (no Supabase key: only its `server_*` functions accept the password, and `service_role` reaches nothing). So
+  no member's browser can change the shared shop except through commands the server checks (TRUST_BOUNDARY.md "Shared
+  shops"). What it magnifies: a rule that can be farmed (any member can do anything but pause, ADR-0043 decision 5,
+  so a loop costs the whole club's shop, not one player's); a slow late-game shop on the free instance (§11, K1); the
+  monthly caps (2 GB, 400 hours) shared by every club; Render restarting the free instance at any time (at most 3
+  minutes lost, said so); saves that grow (a big shop's snapshot about 140 KB gzipped, every join and every 3 minutes).
 Everything else is presentation, local performance, test tooling or the retired harness. The independent reviewer's
 verdict on whether this is small enough is recorded in PLAN.md (chunk 6): YELLOW on the first draft (the core-owned
 workarounds and B-190 missing, B-167 and B-161 understated), fixed here.

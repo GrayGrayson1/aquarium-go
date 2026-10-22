@@ -9,6 +9,7 @@
  * - Creatures in a listing are marked 'listed' (they keep living in their tank); withdraw/expiry restores 'alive'.
  * - Bids are private offers that expire, get withdrawn and are re-priced — they never ratchet upward with time.
  */
+import { compact } from '../clone'; // chunk 11 (§3.2 rule 10)
 import type { GameState, Listing, ListingKind, Bid, Creature, Tank, BuyerProfile, ListingSnapshot, DecorInstance, TankValuation } from '@/types';
 import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
@@ -37,6 +38,7 @@ import { touchResidents } from '../residents'; // lane:perf2
 import { computeTankEnv, effectiveBioload } from '../water'; // B-174
 import { settleTanks } from '../settle'; // B-127
 import { saleWarnings } from './warnings'; // lane:fix-econ
+import * as dmath from '../dmath';
 
 export interface ListingSpec {
   kind: ListingKind;
@@ -546,6 +548,8 @@ export function createListing(state: GameState, spec: ListingSpec): ActionResult
     lastValuation: built.snapshot.valuation,
     alerts: [],
   };
+  compact(listing); // §3.2 rule 10: no key holds undefined
+  compact(listing.snapshot);
   for (const c of contents.creatures) {
     c.status = 'listed';
     pushCapped(c.history, { hour: now, kind: 'listed', text: `Listed for sale: "${title}".` }, 40);
@@ -1455,7 +1459,7 @@ function expireAndDrift(state: GameState, l: Listing, rng: Rng, dt: number, end:
     // Buyers occasionally change their minds (waiting is never risk-free) — per real second, so 10× is no riskier.
     const buyer = state.market.buyers.find((x) => x.id === b.buyerId);
     const hazard = (0.015 * (1 - finite(buyer?.patience, 0.5))) / marketTimeScale(state);
-    if (rng.chance(1 - Math.exp(-hazard * dt))) {
+    if (rng.chance(1 - dmath.exp(-hazard * dt))) {
       b.status = 'withdrawn';
       b.note = withdrawMessage(rng, b.archetype ?? buyer?.archetype ?? 'experienced_keeper', 'lost_interest', msgVars(state, l, b.buyerName, orgOf(buyer)));
     }
@@ -1471,12 +1475,12 @@ function avgDemand(state: GameState, l: Listing): number {
 function updateInterest(state: GameState, l: Listing, rng: Rng, dt: number, end: number): void {
   const age = Math.max(0, end - l.createdHour);
   const appeal = finite(l.appeal ?? 0.5, 0.5);
-  const fresh = 0.55 + 0.45 * Math.exp(-age / 18);
+  const fresh = 0.55 + 0.45 * dmath.exp(-age / 18);
   const ending = end < l.endsHour && l.endsHour - end < 6 ? 0.1 : 0;
   const val = finite(l.lastValuation ?? l.snapshot.valuation, 1);
   const reservePen = val > 0 && l.reserve > val * 1.1 ? clamp(1 - (l.reserve / val - 1.1) * 0.8, 0.35, 1) : 1;
-  const target = clamp01(appeal * fresh * Math.pow(avgDemand(state, l), 0.7) * repFactor(state) * reservePen * (l.changedSinceListing ? 0.85 : 1) + ending);
-  const k = 1 - Math.exp(-dt / 5);
+  const target = clamp01(appeal * fresh * dmath.pow(avgDemand(state, l), 0.7) * repFactor(state) * reservePen * (l.changedSinceListing ? 0.85 : 1) + ending);
+  const k = 1 - dmath.exp(-dt / 5);
   l.interest = clamp(finite(l.interest, 0.3) + (target - finite(l.interest, 0.3)) * k + rng.gauss() * 0.015 * Math.sqrt(Math.max(0, dt)), 0.02, 1);
 }
 
@@ -1485,7 +1489,7 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
   const activity = hod < 7 ? 0.2 : hod < 9 ? 0.6 : hod < 21 ? 1 : 0.55;
   const base = l.kind === 'tank' ? 0.42 : 0.55;
   const lambda = base * (0.35 + l.interest) * activity * repFactor(state) * (DEPTH[state.facility.level] ?? 1);
-  if (!force && !rng.chance(1 - Math.exp(-lambda * dt))) return;
+  if (!force && !rng.chance(1 - dmath.exp(-lambda * dt))) return;
 
   const creatures = listingCreatures(state, l);
   const tank = l.kind === 'tank' && l.tankId ? state.tanks[l.tankId] : undefined;
@@ -1515,7 +1519,7 @@ function arrivals(state: GameState, l: Listing, rng: Rng, dt: number, end: numbe
   const dur = Math.max(1, l.endsHour - l.createdHour);
   const stale = clamp01(age / dur - 0.4);
   const timing = rng.chance(0.08) ? rng.range(1.05, 1.15) : 1 - 0.12 * stale * rng.next();
-  let W = value * (plain + (1 - plain) * fr.fit) * Math.exp(rng.gauss() * 0.11) * timing;
+  let W = value * (plain + (1 - plain) * fr.fit) * dmath.exp(rng.gauss() * 0.11) * timing;
   let capped = false;
   if (W > buyer.budget) {
     W = buyer.budget;

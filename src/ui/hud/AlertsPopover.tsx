@@ -22,7 +22,8 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { useTankCardTab } from '../cards/TankCard';
 import { EventIcon } from './eventIcons';
 import { Chip, IconButton, formatMoney } from '../kit';
-import { attentionSummary, autofeedPaused, autofeedPausedText, clearAllEvents, drawerEvents, gearFitItems, markAllRead } from '../common/notify'; // lane:notify
+import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, eventLine, gearFitItems } from '../common/notify'; // lane:notify
+import { mark } from '../common/marks';
 import { Button } from '../kit';
 import { go } from '../nav/router'; // lane:notify (chunk 3)
 import { useNotifyPermission } from '../notify/deliver'; // lane:notify (chunk 3)
@@ -277,7 +278,7 @@ export function AlertsPopover() {
   useEffect(
     () => () => {
       const g = useGame.getState().game;
-      if (g && g.log.some((e) => !e.read)) useGame.getState().mutate((d) => markAllRead(d));
+      if (g && g.log.some((e) => !e.read)) mark('allRead');
     },
     [],
   );
@@ -320,7 +321,7 @@ export function AlertsPopover() {
         <div className="ag-row" style={{ gap: 8 }}>
           <div className="ag-popover__title ag-grow">Recent events</div>
           {unread > 0 && (
-            <button type="button" className="ag-linkbtn" data-testid="alerts-mark-read" title="Mark every event as read (they stay in this list)" onClick={() => useGame.getState().mutate((d) => markAllRead(d))}>
+            <button type="button" className="ag-linkbtn" data-testid="alerts-mark-read" title="Mark every event as read (they stay in this list)" onClick={() => mark('allRead')}>
               <CheckCheck size={14} aria-hidden /> Mark read
             </button>
           )}
@@ -332,7 +333,7 @@ export function AlertsPopover() {
               title="Clear these events from this list (the full log keeps them). Tank alerts above clear themselves once the problem is fixed."
               onClick={() => {
                 sfx('click');
-                useGame.getState().mutate((d) => clearAllEvents(d));
+                mark('clearAll');
               }}
             >
               <Eraser size={14} aria-hidden /> Clear all
@@ -358,7 +359,7 @@ export function AlertsPopover() {
               <li key={e.id} className={clsx('ag-event', `ag-event--${e.kind}`, !e.read && 'is-unread')} data-testid="alerts-event">
                 <EventIcon kind={e.kind} />
                 <div className="ag-grow">
-                  <div className="ag-event__text">{e.text}</div>
+                  <div className="ag-event__text">{eventLine(e)}</div>
                   <div className="ag-event__meta">
                     {agoText(e.hour, game.clock.hour)}
                     {e.tankId && game.tanks[e.tankId] && (

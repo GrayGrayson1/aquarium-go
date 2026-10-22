@@ -357,6 +357,12 @@ export function drawerEvents(g: GameState, kinds: GameEvent['kind'][] | null = n
 
 const ALERT_KINDS: GameEvent['kind'][] = ['warning', 'danger', 'death'];
 /** News worth a number on the bell: anything that was toasted, and every warning / danger / death. */
+/**
+ * chunk 13 (SHARED-SHOPS.md §8 "Alerts list line", ADR-0045 decision 11): in a shared shop an action's line is its own
+ * message with the member's name in front ("Sam: Bought 3 neon tetras for $36."); a solo game's events carry no name.
+ */
+export const eventLine = (e: Pick<GameEvent, 'text' | 'byName'>): string => (e.byName ? `${e.byName}: ${e.text}` : e.text);
+
 export const isNews = (e: GameEvent): boolean => !!e.toast || ALERT_KINDS.includes(e.kind);
 
 export interface UnreadNews {

@@ -15,6 +15,7 @@ import { MORPH_TIER_MIN_SHARE, RARITY_TIERS } from '@/data/rarity';
 import { composeMorphName, lookRarity, matchRules, normalizeGenome, predictOffspringPhenotypes, ruleMatch, rulesRarity, selectRules, type RuleMatches } from './genetics';
 import { HAREM_TRIO_CHANCE, OFFER_TIER_WEIGHTS, PICK_ROLLS, SPECIAL_OFFER_SHARE, SPECIAL_PICKED_CHANCE } from '@/data/stocking'; // B-194
 import { mulberry32, hashString } from '../rng';
+import * as dmath from '../dmath';
 
 // ───────────────────────────── tiers ─────────────────────────────
 
@@ -155,7 +156,7 @@ function stockShares(species: SpeciesDefinition, phenotypes: readonly CatalogPhe
     const g = groups.get(r)!;
     const f = g.reduce((s, x) => s + x.f, 0);
     const top = Math.min(1, below + f);
-    const best = top ** PICK_ROLLS - below ** PICK_ROLLS; // the most striking of the rolls is in this group
+    const best = dmath.pow(top, PICK_ROLLS) - dmath.pow(below, PICK_ROLLS); // the most striking of the rolls is in this group
     for (const x of g) out.set(x.ph.key, (1 - picked) * x.f + picked * (f > 0 ? (best * x.f) / f : 0));
     below = top;
   }
@@ -389,7 +390,7 @@ export function strainsOf(species: SpeciesDefinition, genome: Genome | undefined
   let sig = species.id;
   for (const locus of species.genetics.loci) {
     const p = g.alleles[locus.id];
-    sig += `|${p[0]}${p[1]}`;
+    sig += `|${p[0]}/${p[1]}`; // a separator: no two genotypes share a key (chunk 10)
   }
   const hit = STRAIN_CACHE.get(sig);
   if (hit) return hit;

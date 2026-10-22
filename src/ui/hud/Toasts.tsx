@@ -34,6 +34,8 @@ import { convertTempText } from '../common/format';
 import { isExpired, pickShown, prio, ttlOf, PREEMPT_AFTER_MS, URGENT_PRIO } from './toastQueue';
 import { UpdatePrompt, useNewBuildAvailable } from './UpdatePrompt';
 import { StaleTabBanner, useStaleBanner } from '@/game/StaleTabBanner';
+import { useShared } from '../shared/store'; // chunk 13
+import { othersEvent } from '../shared/activity';
 
 interface Entry {
   key: string;
@@ -190,6 +192,8 @@ function useLogToasts(push: (e: GameEvent) => void, reset: () => void) {
         // lane:qa-play — the offline summary always comes with the "While you were away" card (loadAndResume); loading
         // a slot of the running game used to toast the same line on top of it
         if (e.kind === 'info' && e.text.startsWith('While you were away')) continue;
+        // chunk 13 (SHARED-SHOPS.md §8): another member's action pops up only when it's a big one (src/ui/shared/activity.ts)
+        if (othersEvent(e, useShared.getState().you?.id)) continue;
         if (e.toast) push(e);
       }
       if (cur.ids.size > 600) cur.ids = new Set(game.log.map((e) => e.id));

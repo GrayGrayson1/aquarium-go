@@ -28,6 +28,7 @@ import { isUnlocked, bumpCounter, addMastery, scapeEditsKey } from '../facility'
 import { checkPlacement, maxScaleFor, placementLimits } from './placement';
 import { hardscapeTopAt, substrateHeightAt, surfaceHeightAt } from './terrain';
 import { beautyScoreImpl } from './beauty';
+import * as dmath from '../dmath';
 
 /** Frags waiting in storage at most (a holding system has limited room; keeps saves small). */
 export const MAX_STORED_FRAGS = 40;
@@ -186,8 +187,8 @@ export function takeFrag(state: GameState, tankId: string, decorId: string): Act
 
 /** Hole positions on a frag rack, in tank-local metres (2 rows × 5, rotated/scaled with the rack). */
 export function fragRackSlots(rack: DecorInstance): { x: number; z: number }[] {
-  const c = Math.cos(rack.rotY);
-  const s = Math.sin(rack.rotY);
+  const c = dmath.cos(rack.rotY);
+  const s = dmath.sin(rack.rotY);
   const out: { x: number; z: number }[] = [];
   for (const lz of [0.018, -0.018]) {
     for (const lx of [-0.064, -0.032, 0, 0.032, 0.064]) {
@@ -221,7 +222,7 @@ export function freeRackSlots(tank: Tank): { x: number; z: number; rackId: strin
       const taken = tank.decor.some((d) => {
         if (d.id === r.id) return false;
         const dd = getDecorDef(d.defId);
-        return !!dd && isLiving(dd) && Math.hypot(d.x - s.x, d.z - s.z) < 0.014 * r.scale;
+        return !!dd && isLiving(dd) && dmath.hypot(d.x - s.x, d.z - s.z) < 0.014 * r.scale;
       });
       if (!taken) out.push({ ...s, rackId: r.id });
     }
@@ -260,7 +261,7 @@ export function autoFragSpot(state: GameState, tank: Tank, item: DecorInstance, 
       const top = surfaceHeightAt(tank, x, z);
       const onRock = top > sub + 0.01;
       // corals & epiphytes prefer rock; rooted plants need open substrate in front of the back glass
-      const dist = Math.hypot(x - cx, z - cz);
+      const dist = dmath.hypot(x - cx, z - cz);
       let score = dist + (dist < pR * 0.9 ? 0.25 : 0);
       if (attaches) score += onRock ? 0 : 0.12;
       else if (onRock) continue;

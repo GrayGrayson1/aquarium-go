@@ -9,6 +9,7 @@ import { CLASS_DEFAULTS, ROOM_TEMP_C, TEMP_TOLERANCE_C } from './constants';
 import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC } from './env';
 import { tankDailyCostImpl } from './kits';
 import { lightsPastClose, photoperiodTooLong } from '../time';
+import * as dmath from '../dmath';
 
 const RANK: Record<StatusLevel, number> = { good: 0, watch: 1, danger: 2 };
 const worst = (a: StatusLevel, b: StatusLevel): StatusLevel => (RANK[a] >= RANK[b] ? a : b);
@@ -939,7 +940,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
 function stabilityScore(tank: Tank, env: TankEnv, params: ParamStatus[]): number {
   const w = tank.water;
   const s = env.summary;
-  const volume = clamp(8 * Math.log2(Math.max(1, env.gallons)) - 8, 5, 40);
+  const volume = clamp(8 * dmath.log2(Math.max(1, env.gallons)) - 8, 5, 40);
   const maturity = 25 * clamp(w.bioMaturity, 0, 1) * (0.6 + 0.4 * clamp(w.lab?.colony ?? 0.6, 0, 1));
   let equip = 0;
   if (s.activeFilters.length >= 2 || s.activeFilters.some((e) => e.def.id === 'filter_sump')) equip += 7;

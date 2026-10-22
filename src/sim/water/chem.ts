@@ -1,6 +1,7 @@
 /**
  * Pure chemistry helpers (no state). OWNER: lane "waterlab".
  */
+import * as dmath from '../dmath';
 
 export const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 export const clamp01 = (v: number) => clamp(v, 0, 1);
@@ -16,7 +17,7 @@ export const smoothstep = (x: number) => {
  */
 export function freeAmmoniaFraction(pH: number, tempC: number): number {
   const pKa = 0.09018 + 2729.92 / (tempC + 273.15);
-  return 1 / (1 + Math.pow(10, pKa - pH));
+  return 1 / (1 + dmath.pow(10, pKa - pH));
 }
 
 /** Reference free-NH₃ fraction (pH 7.5, 25 °C) used to weight ammonia toxicity for status thresholds. */
@@ -42,7 +43,7 @@ export function oxygenSaturation(tempC: number, sg: number): number {
 export const oxygenRef = (sg: number) => oxygenSaturation(20, sg);
 
 /** Metabolic Q10-ish multiplier (≈ doubles every 10 °C). */
-export const q10 = (tempC: number, base = 25, factor = 2) => Math.pow(factor, (tempC - base) / 10);
+export const q10 = (tempC: number, base = 25, factor = 2) => dmath.pow(factor, (tempC - base) / 10);
 
 /**
  * lane:w2-sim — nitrifying-bacteria activity vs a 25 °C colony (game abstraction of real biofilter behaviour).
@@ -67,7 +68,7 @@ export function equilibriumPH(kh: number, co2MgL: number, marine: boolean, saltF
   const c = Math.max(0.15, co2MgL);
   // lane:brackish — optional salinity blend (0 = fresh, 1 = full sea water) for brackish tanks.
   const base = saltFrac !== undefined && Number.isFinite(saltFrac) ? 7.477 - 0.347 * Math.max(0, Math.min(1, saltFrac)) : marine ? 7.13 : 7.477;
-  return base + Math.log10(k / c);
+  return base + dmath.log10(k / c);
 }
 
 /** Nitrate status thresholds [good below, watch below] by context. */

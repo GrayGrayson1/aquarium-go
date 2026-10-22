@@ -29,8 +29,9 @@ export function setSpeed(s: GameSpeed) {
   if (!g) return;
   if (s !== 0) useShell.getState().set({ lastSpeed: s });
   else if (g.clock.speed !== 0) useShell.getState().set({ lastSpeed: g.clock.speed as Exclude<GameSpeed, 0> });
-  useGame.getState().mutate((d) => {
-    d.clock.speed = s;
+  // chunk 13: in a shared shop the speed may be someone else's to change, and the refusal says whose (§8)
+  useGame.getState().dispatch({ k: 'setSpeed', speed: s }, (r) => {
+    if (r && !r.ok && r.message) useUI.getState().toast(r.message, 'warning');
   });
 }
 

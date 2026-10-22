@@ -45,6 +45,7 @@ import { TankCard } from '../cards/TankCard';
 import { TutorialCoach } from '../tutorial/TutorialCoach';
 import { PartyBanner } from '../photo/PartyBanner';
 import { WelcomeBack } from './WelcomeBack';
+import { SharedStrip } from '../shared/SharedScreens'; // chunk 13
 import { usePrefs } from '../common/prefs';
 import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
@@ -347,6 +348,10 @@ export function GameHUD() {
       >
         <ErrorBoundary name="topbar">
           <TopBar compact={mobile} />
+        </ErrorBoundary>
+        {/* chunk 13 (SHARED-SHOPS.md §8 "HUD strip") — in a shared shop: its name, who's there, the way back */}
+        <ErrorBoundary name="shared-strip">
+          <SharedStrip />
         </ErrorBoundary>
         <ErrorBoundary name="tankbar">
           <TankBar />

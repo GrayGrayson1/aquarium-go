@@ -11,7 +11,7 @@ import { formatClock, crossings } from '@/sim/time';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { WATER_ROOM } from '@/data/catalog/machines';
 import { act } from '../common/act';
-import { HOLD_SYSTEMS, changerOf, heldSystems, isHeld, manualSince, setStockOrders } from '@/sim/automation';
+import { HOLD_SYSTEMS, changerOf, heldSystems, isHeld, manualSince } from '@/sim/automation';
 import { stockManager } from '@/sim/staff/work';
 import type { OpsSnapshot } from '@/ui/common/ops';
 import { Status, Kicker } from './parts';
@@ -143,7 +143,7 @@ export function ManualView({ g, snap, nav }: { g: GameState; snap: OpsSnapshot; 
                     <span className="ops-row__title">{rosa.name.split(' ')[0]}’s orders</span>
                     <span className="ops-row__sub">Food and salt keep coming within the budget</span>
                   </div>
-                  <Toggle checked={!g.staff?.ordersOff} onChange={(v) => act((d) => setStockOrders(d, v), { quiet: true })} label={`${rosa.name.split(' ')[0]}’s orders`} testId="manual-rosa-toggle" />
+                  <Toggle checked={!g.staff?.ordersOff} onChange={(v) => act({ k: 'setStockOrders', on: v }, { quiet: true })} label={`${rosa.name.split(' ')[0]}’s orders`} testId="manual-rosa-toggle" />
                 </div>
               )}
             </div>

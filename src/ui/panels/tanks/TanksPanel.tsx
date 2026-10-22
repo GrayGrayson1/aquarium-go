@@ -20,7 +20,7 @@ import { Chip, Seg, Select, Card, EmptyState, Tile, Bar, Callout } from '../comm
 import { TankThumb } from '../common/TankThumb';
 import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, tankValue, dailyCost, tierOf, waterReport } from '../common/derive';
-import { renameTank, setTankPurpose, convertWaterClass, canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
+import { canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
 import { tankChips, tankLineProblem } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
 import { waterClassLock } from '@/sim/facility'; // chunk 7 (B-160)
@@ -307,8 +307,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
             className="pn-row pn-gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              const r = act((d) => renameTank(d, tank.id, name), { sound: 'confirm' });
-              if (r?.ok) setEditing(false);
+              act({ k: 'renameTank', tank: tank.id, name }, { sound: 'confirm', after: (r) => r?.ok && setEditing(false) });
             }}
           >
             <input className="pn-input" value={name} maxLength={32} autoFocus onChange={(e) => setName(e.target.value)} aria-label="Tank name" />
@@ -335,7 +334,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
           label="Tank purpose"
           size="sm"
           value={tank.purpose}
-          onChange={(p) => act((d) => setTankPurpose(d, tank.id, p), { sound: 'click' })}
+          onChange={(p) => act({ k: 'setTankPurpose', tank: tank.id, purpose: p }, { sound: 'click' })}
           items={(['display', 'nursery', 'quarantine', 'breeding'] as TankPurpose[]).map((p) => ({ id: p, label: PURPOSE_LABEL[p] }))}
         />
         <span className="pn-field__hint">{PURPOSE_HINT[tank.purpose]}</span>
@@ -379,7 +378,7 @@ function TankManage({ g, tank, residents, lastTank, starterHere, listed }: { g: 
           <div className="pn-row pn-gap-2 pn-row--wrap">
             {/* lane:w2-ui — locked water types say so up front (same gates as Build › Tanks) instead of after a failed Convert */}
             <Select<WaterClass> label="Water class" value={wc} onChange={setWc} options={PLAYABLE_WATER_CLASSES.map((w) => ({ id: w, label: wcLocked(g, w) && w !== tank.waterClass ? `${WATER_CLASS_LABEL[w]} (locked)` : WATER_CLASS_LABEL[w] }))} />
-            <Button size="sm" data-testid="tank-convert" disabled={wc === tank.waterClass || (wcLocked(g, wc) && wc !== tank.waterClass)} title={wcLocked(g, wc) && wc !== tank.waterClass ? wcLockHint(g, wc) : undefined} onClick={() => act((d) => convertWaterClass(d, tank.id, wc), { sound: 'splash' })}>
+            <Button size="sm" data-testid="tank-convert" disabled={wc === tank.waterClass || (wcLocked(g, wc) && wc !== tank.waterClass)} title={wcLocked(g, wc) && wc !== tank.waterClass ? wcLockHint(g, wc) : undefined} onClick={() => act({ k: 'convertWaterClass', tank: tank.id, wc }, { sound: 'splash' })}>
               <Droplets size={14} /> Convert
             </Button>
           </div>

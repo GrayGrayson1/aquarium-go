@@ -2,6 +2,7 @@
 import type { GameEvent, GameState } from '@/types';
 import { simRng, type Rng } from './rng';
 import { nextId } from './ids';
+import { compact } from './clone';
 
 export type SimLod = 'full' | 'reduced' | 'summary';
 
@@ -18,7 +19,8 @@ export interface SimContext {
 export const LOG_CAP = 300;
 
 export function emitEvent(state: GameState, e: Omit<GameEvent, 'id' | 'hour'>, hour = state.clock.hour): GameEvent {
-  const ev: GameEvent = { ...e, id: nextId(state, 'ev'), hour };
+  // §3.2 rule 10: an event's optional parts (`tankId: c.tankId ?? undefined`) are left out, never held as undefined
+  const ev: GameEvent = compact({ ...e, id: nextId(state, 'ev'), hour });
   state.log.push(ev);
   if (state.log.length > LOG_CAP) state.log.splice(0, state.log.length - LOG_CAP);
   return ev;

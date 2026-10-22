@@ -19,10 +19,9 @@ import { findSpecies } from '@/data/species';
 import { tutorialChain, habitatPicks } from '@/data/quests';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { getFacilityLevel } from '@/data/facilities';
-import { buyTank, tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
+import type { CommandOf } from '@/sim/commands';
+import { tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
 import { findFreeSpot, waterClassLock } from '@/sim/facility';
-import { removeEquipment, setEquipment, installEquipment, repairEquipment } from '@/sim/care';
-import { removeDecor } from '@/sim/aquascape';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { formatTemp } from '@/ui/common/format';
 import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
@@ -33,7 +32,7 @@ import { EquipRow } from '../market/Supplies';
 import { takeOfferReturn, clearOfferReturn, peekOfferReturn } from '../market/offerReturn'; // lane:qa-play
 import { getGame } from '@/state/game'; // lane:qa-play
 import { orderedTanks, gallonsOf, unlocked, livingInTank } from '../common/derive';
-import { setBackdrop, changeSubstrate, substrateCost } from '../common/tankOps';
+import { substrateCost } from '../common/tankOps';
 import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
 import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
 import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
@@ -175,17 +174,22 @@ function TanksTab({ g }: { g: GameState }) {
   };
   const quick = (tier: TankTier) => {
     const spot = safe(() => findFreeSpot(g, tier.id), null);
-    const r = act((d) => buyTank(d, tier.id, wc, spot ?? undefined, { seeded }), { sound: 'coin', kind: 'celebrate' });
-    if (r?.ok && r.tankId) {
-      // lane:qa-play — came here from a shop offer's "New tank": go back to that offer, new tank as destination
-      const back = takeOfferReturn();
-      if (back && getGame()?.market.stock.some((o) => o.id === back)) {
-        useUI.getState().set({ focusedTankId: r.tankId, panel: 'market', panelTarget: `offer:${back}` });
-        return;
-      }
-      useUI.getState().set({ focusedTankId: r.tankId });
-      close();
-    }
+    const cmd: CommandOf<'buyTank'> = spot ? { k: 'buyTank', tier: tier.id, wc, seeded, x: spot.x, z: spot.z, rotY: spot.rotY } : { k: 'buyTank', tier: tier.id, wc, seeded };
+    act(cmd, {
+      sound: 'coin',
+      kind: 'celebrate',
+      after: (r) => {
+        if (!r?.ok || !r.tankId) return;
+        // lane:qa-play — came here from a shop offer's "New tank": go back to that offer, new tank as destination
+        const back = takeOfferReturn();
+        if (back && getGame()?.market.stock.some((o) => o.id === back)) {
+          useUI.getState().set({ focusedTankId: r.tankId, panel: 'market', panelTarget: `offer:${back}` });
+          return;
+        }
+        useUI.getState().set({ focusedTankId: r.tankId });
+        close();
+      },
+    });
   };
 
   return (
@@ -470,10 +474,10 @@ function DecorTab({ g, tankId, cat: catIn, setCat }: { g: GameState; tankId: str
                     <FragTag g={g} tank={tank} inst={inst} />
                     <FragTake g={g} tank={tank} inst={inst} />
                   </span>
-                  <Button size="sm" variant="ghost" onClick={() => act((d) => removeDecor(d, tankId, inst.id, false), { sound: 'place' })}>
+                  <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeDecor', tank: tankId, decor: inst.id, sell: false }, { sound: 'place' })}>
                     To storage
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => act((d) => removeDecor(d, tankId, inst.id, true), { sound: 'coin' })}>
+                  <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeDecor', tank: tankId, decor: inst.id, sell: true }, { sound: 'coin' })}>
                     Sell
                   </Button>
                 </li>
@@ -697,7 +701,7 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
                       </div>
                       <FitLine verdict={gearFit.get(inst.id)} testId={`build-equip-fit-${inst.id}`} />
                     </div>
-                    <Toggle checked={inst.on} onChange={(v) => act((d) => setEquipment(d, tankId, inst.id, { on: v }), { sound: 'click', quiet: true }) /* lane:qa-r3: a caution (gear that can't help, filter off) still toasts */} label={`${def?.name ?? 'Equipment'} power`} />
+                    <Toggle checked={inst.on} onChange={(v) => act({ k: 'setEquipment', tank: tankId, equip: inst.id, on: v }, { sound: 'click', quiet: true }) /* lane:qa-r3: a caution (gear that can't help, filter off) still toasts */} label={`${def?.name ?? 'Equipment'} power`} />
                   </div>
                   <div className="pn-equip__row">
                     <div className="pn-metric pn-grow">
@@ -713,15 +717,15 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
                           <span>{meta.label}</span>
                           <span className="pn-metric__val">{meta.fmt(inst.setting, tempUnit)}</span>
                         </div>
-                        <Slider value={inst.setting} min={meta.min} max={meta.max} step={meta.step} onChange={(v) => act((d) => setEquipment(d, tankId, inst.id, { setting: v }), { sound: null, quiet: true, cautionKey: `equip:${inst.id}` })} label={`${def?.name} ${meta.label}`} />
+                        <Slider value={inst.setting} min={meta.min} max={meta.max} step={meta.step} onChange={(v) => act({ k: 'setEquipment', tank: tankId, equip: inst.id, setting: v }, { sound: null, quiet: true, cautionKey: `equip:${inst.id}` })} label={`${def?.name} ${meta.label}`} />
                       </div>
                     )}
                     {(inst.failed || inst.condition < 0.6) && def && (
-                      <Button size="sm" variant={inst.failed ? 'coral' : 'default'} silent onClick={() => act((d) => repairEquipment(d, tankId, inst.id), { sound: 'confirm' })}>
+                      <Button size="sm" variant={inst.failed ? 'coral' : 'default'} silent onClick={() => act({ k: 'repairEquipment', tank: tankId, equip: inst.id }, { sound: 'confirm' })}>
                         <Wrench size={14} /> Repair · {formatMoney(Math.max(5, Math.round(def.price * 0.35)))}
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => act((d) => removeEquipment(d, tankId, inst.id), { sound: 'place' })}>
+                    <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeEquipment', tank: tankId, equip: inst.id }, { sound: 'place' })}>
                       <Trash2 size={14} /> Remove
                     </Button>
                   </div>
@@ -749,7 +753,7 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
                     <div className="pn-tiny pn-muted">Condition {Math.round(e.condition * 100)}%</div>
                     <FitLine verdict={fit} />
                   </div>
-                  <Button size="sm" disabled={!!fit?.blocked} title={fit?.blocked ? fit.text : undefined} onClick={() => act((d) => installEquipment(d, tankId, e.defId, { instanceId: e.id, fromInventory: true }), { sound: 'place', kind: fit && fit.level !== 'ok' && !fit.general && !fit.soft ? 'warning' : undefined })}>
+                  <Button size="sm" disabled={!!fit?.blocked} title={fit?.blocked ? fit.text : undefined} onClick={() => act({ k: 'installEquipment', tank: tankId, def: e.defId, instance: e.id }, { sound: 'place', kind: fit && fit.level !== 'ok' && !fit.general && !fit.soft ? 'warning' : undefined })}>
                     <Check size={14} /> {fit?.blocked ? fit.label : 'Install'}
                   </Button>
                 </div>
@@ -832,7 +836,7 @@ function SubstrateTab({ g, tankId }: { g: GameState; tankId: string }) {
                         style={{ background: grainBackground(col, s.grainMm) }}
                         aria-label={`${s.name} in ${col}`}
                         disabled={locked || (!current && g.finance.money < cost)}
-                        onClick={() => act((d) => changeSubstrate(d, tankId, s.kind, col), { sound: 'splash' })}
+                        onClick={() => act({ k: 'changeSubstrate', tank: tankId, kind: s.kind, color: col }, { sound: 'splash' })}
                       />
                     ))}
                   </div>
@@ -860,7 +864,7 @@ function SubstrateTab({ g, tankId }: { g: GameState; tankId: string }) {
         <SectionHead title="Backdrop" icon={<Layers size={14} />} />
         <div className="pn-backdrops" role="radiogroup" aria-label="Backdrop">
           {BACKDROPS.map((b) => (
-            <button key={b.id} type="button" role="radio" aria-checked={tank.backdrop === b.id} className={clsx('pn-backdrop', tank.backdrop === b.id && 'is-on')} onClick={() => act((d) => setBackdrop(d, tankId, b.id), { sound: 'click', quiet: true })}>
+            <button key={b.id} type="button" role="radio" aria-checked={tank.backdrop === b.id} className={clsx('pn-backdrop', tank.backdrop === b.id && 'is-on')} onClick={() => act({ k: 'setBackdrop', tank: tankId, backdrop: b.id }, { sound: 'click', quiet: true })}>
               <span className="pn-backdrop__sw" style={{ background: b.css }} aria-hidden />
               <span className="pn-small">{b.label}</span>
             </button>

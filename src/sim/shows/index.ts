@@ -416,7 +416,7 @@ function addTrophy(s: ShowsState, show: Show, def: ShowClassDef, e: ShowEntry, r
     kind: trophyKind(show, def, rank, !!e.bestInShow),
     tier: show.tier,
     place: rank as 1 | 2 | 3 | 4,
-    bestInShow: e.bestInShow || undefined,
+    ...(e.bestInShow ? { bestInShow: true } : {}), // §3.2 rule 10: no key holds undefined
     showName: show.name,
     className: def.short,
     subject: e.name,
@@ -451,7 +451,7 @@ function recordCreature(state: GameState, show: Show, def: ShowClassDef, e: Show
   const rank = e.rank ?? 99;
   if (rank <= 4) {
     a.placings = (a.placings ?? 0) + 1;
-    const r: CreatureRibbon = { hour: show.judgingHour, showId: show.id, showName: show.name, tier: show.tier, classId: def.id, className: def.short, place: rank as 1 | 2 | 3 | 4, bestInShow: e.bestInShow || undefined, score: e.score ?? 0 };
+    const r: CreatureRibbon = { hour: show.judgingHour, showId: show.id, showName: show.name, tier: show.tier, classId: def.id, className: def.short, place: rank as 1 | 2 | 3 | 4, ...(e.bestInShow ? { bestInShow: true } : {}), score: e.score ?? 0 };
     a.ribbons.push(r);
     if (a.ribbons.length > RIBBONS_KEPT) {
       // keep the best (wins, Best in Show) when trimming: drop the oldest non-win first

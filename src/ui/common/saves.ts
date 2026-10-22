@@ -19,6 +19,8 @@ import {
   downloadSave,
   slotLabel as coreSlotLabel,
   SAVE_SLOTS,
+  isSharedShop,
+  SHARED_SAVE_REFUSED,
   type SaveMeta,
   type SaveGameOptions,
 } from '@/persistence';
@@ -41,10 +43,21 @@ export async function listSlots(): Promise<SaveMeta[]> {
   }
 }
 
+/**
+ * chunk 13 (SHARE-011, SHARED-SHOPS.md §7.3) — Save, Load, Import and Export refuse a shared shop before doing
+ * anything: it saves itself on the server. Says so (ADR-0048's words) unless `quiet`.
+ */
+export function refusedInSharedShop(toast = true): boolean {
+  if (!isSharedShop(useGame.getState().game)) return false;
+  if (toast) useUI.getState().toast(SHARED_SAVE_REFUSED, 'info');
+  return true;
+}
+
 /** Manual save of the running game into `slot` (toasts the outcome). */
 export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
   const g = useGame.getState().game;
   if (!g || g.isShowcase) return false;
+  if (refusedInSharedShop(toast)) return false;
   try {
     const r = await saveCurrentGame(slot, { toast });
     return r.ok;
@@ -65,6 +78,7 @@ export async function saveNow(slot = 'auto', toast = true): Promise<boolean> {
  * from the autosave slot it is saved again at once, since its stored copy may just have been written over.
  */
 export async function loadIntoGame(slot: string): Promise<GameState | null> {
+  if (refusedInSharedShop()) return null;
   let parked: string[] = [];
   const showParked = () => parked.splice(0).forEach((m) => useUI.getState().toast(m, 'success'));
   try {
@@ -198,6 +212,7 @@ export async function deleteSlot(slot: string): Promise<void> {
 export function exportCurrent(): boolean {
   const g = useGame.getState().game;
   if (!g || g.isShowcase) return false;
+  if (refusedInSharedShop()) return false;
   try {
     downloadSave(g);
     return true;
@@ -209,6 +224,7 @@ export function exportCurrent(): boolean {
 
 /** Import an exported file into `slot`. Returns a friendly error on failure. */
 export async function importFile(file: File, slot: string, opts: SaveGameOptions = {}): Promise<{ ok: boolean; error?: string }> {
+  if (isSharedShop(useGame.getState().game)) return { ok: false, error: SHARED_SAVE_REFUSED };
   try {
     const r = await importSaveFile(file, slot, opts);
     return r.ok ? { ok: true } : { ok: false, error: r.error ?? 'That file is not an Aquarium Go save.' };

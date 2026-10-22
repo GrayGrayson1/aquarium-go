@@ -1,13 +1,15 @@
 /**
- * Glue for calling sim mutators from UI: run through `mutate`, toast the ActionResult, play a sound, and fire
- * tutorial flags. OWNER: lane "ui-shell".
+ * Glue for player actions from the UI: send the action as a command through the store's dispatcher (chunk 11,
+ * SHARED-SHOPS.md §4.2), then toast its result, play a sound, and raise its tutorial flag. OWNER: lane "ui-shell".
  */
-import type { GameState } from '@/types';
+import type { Command, CommandResult } from '@/sim/commands';
 import type { ActionResult } from '@/sim/care';
 import { useGame } from '@/state/game';
 import { useUI, type Toast } from '@/state/ui';
 import { sfx, type SfxId } from '@/audio/sfx';
-import { tutorialAdvance, tutorialWants } from '@/sim/facility';
+import { tutorialWants } from '@/sim/facility';
+import '@/game/dispatch'; // installs the solo dispatcher
+import { APPLIED_UNSEEN } from '@/ui/shared/dispatch'; // chunk 13
 
 export interface ActOptions {
   /**
@@ -26,65 +28,79 @@ export interface ActOptions {
   sound?: SfxId | null;
   /** Override the success message. */
   message?: string;
-  /** Tutorial flag to fire on success. */
+  /** Tutorial flag to fire on success (it rides in the command). */
   flag?: string;
   /** lane:guide — pick the success toast's kind from the result (a move that worked but left eggs behind is a warning). */
   kindFor?: (r: ActionResult) => Toast['kind'] | undefined;
+  /**
+   * chunk 11 — what to do with the result once it's in (after the toasts): at once in a solo game, when its step
+   * arrives in a shared shop. Null: no aquarium was loaded.
+   */
+  after?: (r: CommandResult | null) => void;
 }
 
-/** Run a domain action through `mutate`. Returns its result (or null when there is no game). */
-export function act(fn: (d: GameState) => ActionResult | void | undefined, opts: ActOptions = {}): ActionResult | null {
+/** Run a player action (a command). The result comes to `opts.after`; nothing is returned (§4.2). */
+export function act(cmd: Command, opts: ActOptions = {}): void {
   const store = useGame.getState();
   const ui = useUI.getState();
   if (!store.game) {
     // lane:guide — never a silent no-op: say why nothing happened
     ui.toast('No aquarium is loaded right now.', 'warning');
-    return null;
+    opts.after?.(null);
+    return;
   }
-  let result: ActionResult | null = null;
-  let error: unknown = null;
+  const settle = (res: CommandResult | null, error: unknown): void => {
+    if (error || !res) {
+      console.warn('[ui] action failed', error);
+      ui.toast('That didn’t work, and nothing was changed. Please try again.', 'danger');
+      sfx('error');
+      opts.after?.({ ok: false, message: 'Error' });
+      return;
+    }
+    // chunk 13: applied in steps a re-synced shared copy skipped, its own result unseen: no sound or toast to claim one
+    if (res === APPLIED_UNSEEN) {
+      opts.after?.(res);
+      return;
+    }
+    // an action that returns nothing (a toggle) reads as done, as its closure's empty result did
+    const r: CommandResult = res.noResult ? { ...res, message: opts.message ?? 'Done' } : res;
+    if (r.ok) {
+      // lane:qa-r3 — a result with a caution always shows its own message (never the caller's override) as a warning
+      if (r.caution && opts.toast !== false) toastCaution(r.message, opts.cautionKey);
+      else {
+        if (opts.cautionKey) toastCaution(null, opts.cautionKey);
+        if (opts.toast !== false && opts.toast !== 'caution') ui.toast(opts.message ?? r.message, opts.kindFor?.(r) ?? opts.kind ?? 'success');
+      }
+      if (opts.sound !== null) sfx(opts.sound ?? 'confirm');
+    } else {
+      ui.toast(r.message || 'Not possible right now.', 'warning');
+      sfx('error');
+    }
+    opts.after?.(r);
+  };
+  // lane:guide — the action's errors escape the store's write, so a half-applied action is discarded rather than
+  // committed; lane:ui-shell (B-179) — its guide flag is raised in a write of its own once the action has committed
+  // (src/game/dispatch.ts)
+  const c: Command = opts.flag ? { ...cmd, flag: opts.flag } : cmd;
+  // only an error thrown before the result came back is the action's: one thrown by the toasts or `after` isn't
+  const sync: { got: boolean; res: CommandResult | null } = { got: false, res: null };
+  let inDispatch = true;
   try {
-    // lane:guide — the action's errors escape immer's produce, so a half-applied action is discarded rather than
-    // committed (it used to be caught inside the recipe, saving partial changes — a retry could pay twice).
-    store.mutate((d) => {
-      const r = fn(d);
-      result = r ?? { ok: true, message: opts.message ?? 'Done' };
+    store.dispatch(c, (res) => {
+      if (inDispatch) {
+        sync.got = true;
+        sync.res = res;
+      } else settle(res, null);
     });
   } catch (e) {
-    error = e;
-  }
-  // lane:ui-shell (B-179) — the guide's step runs in its own mutate once the action has committed: a throw there
-  // discards only the guide's half-made changes (it used to be caught inside the action's recipe and committed).
-  const flag = opts.flag;
-  if (!error && (result as ActionResult | null)?.ok && flag) {
-    try {
-      store.mutate((d) => {
-        if (!d.isShowcase) tutorialAdvance(d, flag);
-      });
-    } catch {
-      /* the guide is optional */
+    if (!sync.got) {
+      inDispatch = false;
+      settle(null, e);
+      return;
     }
   }
-  if (error || !result) {
-    console.warn('[ui] action failed', error);
-    ui.toast('That didn’t work, and nothing was changed. Please try again.', 'danger');
-    sfx('error');
-    return { ok: false, message: 'Error' };
-  }
-  const r = result as ActionResult;
-  if (r.ok) {
-    // lane:qa-r3 — a result with a caution always shows its own message (never the caller's override) as a warning
-    if (r.caution && opts.toast !== false) toastCaution(r.message, opts.cautionKey);
-    else {
-      if (opts.cautionKey) toastCaution(null, opts.cautionKey);
-      if (opts.toast !== false && opts.toast !== 'caution') ui.toast(opts.message ?? r.message, opts.kindFor?.(r) ?? opts.kind ?? 'success');
-    }
-    if (opts.sound !== null) sfx(opts.sound ?? 'confirm');
-  } else {
-    ui.toast(r.message || 'Not possible right now.', 'warning');
-    sfx('error');
-  }
-  return r;
+  inDispatch = false;
+  if (sync.got) settle(sync.res, null);
 }
 
 const cautionTimers = new Map<string, number>();
@@ -129,9 +145,9 @@ export function tutorialFlag(flag: string): void {
   const key = `${g.saveId}:${flag}`;
   if (!wanted && (firedFlags.has(key) || g.progress?.tutorial?.flags?.[flag])) return;
   firedFlags.add(key);
-  // lane:ui-shell (B-179) — the try sits outside the recipe: a throw discards the guide's half-made changes
+  // lane:ui-shell (B-179) — a throw discards the guide's half-made changes (the dispatcher's write is atomic)
   try {
-    useGame.getState().mutate((d) => tutorialAdvance(d, flag));
+    useGame.getState().dispatch({ k: 'raiseFlag', name: flag });
   } catch {
     /* the guide is optional */
   }

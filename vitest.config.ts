@@ -1,7 +1,10 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath, URL } from 'node:url';
+import { sharedBuild } from './vite.sharedBuild';
 
 export default defineConfig({
+  // chunk 12: the shared-shop build identity, as the game's and the server's builds stamp it (the version stays unstamped)
+  plugins: [sharedBuild(fileURLToPath(new URL('.', import.meta.url)))],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

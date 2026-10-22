@@ -2,17 +2,17 @@
  * Livestock panel — every animal with filters/sorting, portraits, personality, health, value, tank, listed badge;
  * eggs & fry with stage + ETA and move-to-nursery; bulk list / quick sell. OWNER: lane "ui-panels".
  */
+import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { SlidersHorizontal, Fish, Search, Star, Tag, Egg, HandCoins, Heart, Mars, Venus, CircleDashed, ArrowRightLeft, Sparkles, X, Baby, HeartPulse, Check } from 'lucide-react';
 import type { Creature, GameState } from '@/types';
 import { Button, Money, Modal, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
-import { quickSell, quickSellQuote, saleWarnings } from '@/sim/economy';
+import { quickSellQuote, saleWarnings } from '@/sim/economy';
 import { breedingStatus, isPrismatic } from '@/sim/life';
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { isCarried } from '@/sim/life/breeding/clutch';
-import { toggleFavorite, moveClutch } from '@/sim/life/actions';
 import { useShell } from '../../common/shellStore';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { usePanelGame, safe } from '../common/hooks';
@@ -271,8 +271,7 @@ export function LivestockPanel() {
               disabled={pickedList.length === 0}
               onClick={() => {
                 const ids = pickedList.map((c) => c.id);
-                const r = act((d) => quickSell(d, ids), { sound: 'coin' });
-                if (r?.ok) setPicked(new Set());
+                act({ k: 'quickSell', creatures: ids }, { sound: 'coin', after: (r) => r?.ok && setPicked(new Set()) });
                 setConfirmSell(false);
               }}
             >
@@ -414,7 +413,7 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
               aria-pressed={!!c.favorite}
               aria-label={c.favorite ? `Unfavourite ${c.name}` : `Favourite ${c.name}`}
               title={c.favorite ? 'Favourite' : 'Mark as favourite'}
-              onClick={() => edit((d) => toggleFavorite(d, c.id))}
+              onClick={() => edit({ k: 'setFavorite', creature: c.id, on: !useGame.getState().game?.creatures[c.id]?.favorite })}
             >
               <Star size={17} />
             </button>
@@ -607,14 +606,14 @@ function YoungView({ g }: { g: GameState }) {
                           {nurseries.length > 0 ? ' · or move them to:' : '.'}
                         </span>
                         {nurseries.slice(0, 2).map((t) => (
-                          <Button key={t.id} size="sm" onClick={() => act((d) => moveClutch(d, cl.id, t.id), { sound: 'splash' })}>
+                          <Button key={t.id} size="sm" onClick={() => act({ k: 'moveClutch', clutch: cl.id, to: t.id, from: cl.tankId }, { sound: 'splash' })}>
                             <ArrowRightLeft size={14} /> {t.name}
                           </Button>
                         ))}
                       </>
                     ) : nurseries.length > 0 ? (
                       nurseries.slice(0, 3).map((t) => (
-                        <Button key={t.id} size="sm" variant="primary" onClick={() => act((d) => moveClutch(d, cl.id, t.id), { sound: 'splash' })}>
+                        <Button key={t.id} size="sm" variant="primary" onClick={() => act({ k: 'moveClutch', clutch: cl.id, to: t.id, from: cl.tankId }, { sound: 'splash' })}>
                           <ArrowRightLeft size={14} /> Move to {t.name}
                         </Button>
                       ))
@@ -625,7 +624,7 @@ function YoungView({ g }: { g: GameState }) {
                     )}
                     {!carried && !inNursery && nurseries.length === 0 &&
                       others.slice(0, 2).map((t) => (
-                        <Button key={t.id} size="sm" onClick={() => act((d) => moveClutch(d, cl.id, t.id), { sound: 'splash' })}>
+                        <Button key={t.id} size="sm" onClick={() => act({ k: 'moveClutch', clutch: cl.id, to: t.id, from: cl.tankId }, { sound: 'splash' })}>
                           <ArrowRightLeft size={14} /> {t.name}
                         </Button>
                       ))}

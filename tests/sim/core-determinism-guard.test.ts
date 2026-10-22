@@ -2,7 +2,9 @@
 /**
  * lane:core (S0 review; the determinism contract in docs/ARCHITECTURE.md) — a static guard: the simulation and the
  * game data never read the wall clock, an unseeded random source, crypto, or the player's locale. The only accepted
- * entropy is the new-game seed and creation time in src/sim/newGame.ts. Comments are ignored.
+ * entropy is the new-game seed and creation time in src/sim/newGame.ts. Since chunk 10 (SHARE-002, SHARED-SHOPS.md
+ * §3.2 rule 1) they also use none of the engine's transcendental Math functions and no `**`, which engines round
+ * differently: `src/sim/dmath.ts` has them in one arithmetic. Comments are ignored.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readdir, readFile } from 'node:fs/promises';
@@ -23,6 +25,12 @@ const FORBIDDEN: { name: string; re: RegExp }[] = [
   { name: 'Intl', re: /\bIntl\b/g },
   // Any toLocale…() whose first argument isn't a string-literal locale (none, undefined, a variable).
   { name: 'toLocale…() without a literal locale', re: /\.toLocale\w*\(\s*(?!['"`])/g },
+  // SHARE-002: the engine's own rounding (src/sim/dmath.ts has every one of these, the same in every engine).
+  {
+    name: 'Math transcendental (use dmath)',
+    re: /\bMath\s*\??\.\s*(?:exp|expm1|log|log10|log2|log1p|pow|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|asinh|acosh|atanh|hypot|cbrt)\b/g,
+  },
+  { name: '** (use dmath.pow)', re: /\*\*/g },
 ];
 
 /** file → pattern name → allowed count. */
@@ -191,6 +199,10 @@ describe('CONST-004: determinism guard: src/sim and src/data', () => {
     expect(hits('n.toLocaleString(undefined, { maximumFractionDigits: 1 })')).toEqual(['toLocale…() without a literal locale']);
     expect(hits('s.toLocaleUpperCase()')).toEqual(['toLocale…() without a literal locale']);
     expect(hits("n.toLocaleString('en-US')")).toEqual([]);
+    expect(hits('const e = Math.exp(-k * t);')).toEqual(['Math transcendental (use dmath)']);
+    expect(hits('const f = Math?.atan2;')).toEqual(['Math transcendental (use dmath)']);
+    expect(hits('a ** 2 + (b **= 3)')).toEqual(['** (use dmath.pow)']);
+    expect(hits('Math.sqrt(x) + Math.floor(y) + Math.abs(z) + dmath.exp(w)')).toEqual([]);
     expect(localeCompareArgs("a.localeCompare(String(b), undefined, { numeric: true })")).toEqual([['String(b)', 'undefined', '{ numeric: true }']]);
   });
 
@@ -198,7 +210,7 @@ describe('CONST-004: determinism guard: src/sim and src/data', () => {
     expect(sources.length).toBeGreaterThan(100);
   });
 
-  it('use no wall clock, unseeded randomness, crypto or locale-dependent formatting and sorting', () => {
+  it('use no wall clock, unseeded randomness, crypto, locale-dependent formatting and sorting, or engine rounding', () => {
     const problems: string[] = [];
     for (const { rel, code } of sources) {
       for (const { name, re } of FORBIDDEN) {

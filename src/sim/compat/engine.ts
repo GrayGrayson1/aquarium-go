@@ -31,6 +31,7 @@ import { preyFits, preyReachCm } from './predation';
 import { youngKindOf } from '@/data/species';
 import { withArticle } from '../economy/util'; // lane:w2-ui ("An ocellaris clownfish was stung…")
 import { fitsEnvironment, offIdealEnvironmentNote, sharedEnvironments, waterNeedPhrase } from './salinity'; // lane:brackish
+import * as dmath from '../dmath';
 
 // ───────────────────────────── contracts ─────────────────────────────
 
@@ -135,7 +136,7 @@ const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi 
 const clamp01 = (v: number) => clamp(v, 0, 1);
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
 /** Per-day probability → chance of at least one incident per game-week. */
-const weekly = (pDay: number) => 1 - Math.pow(1 - clamp(pDay, 0, 0.99), 7);
+const weekly = (pDay: number) => 1 - dmath.pow(1 - clamp(pDay, 0, 0.99), 7);
 
 const YOUNG_TAGS = ['fry', 'eggs', 'shrimp_fry', 'amphibian_larva'];
 const FLOW_NAMES = ['very gentle', 'gentle', 'moderate', 'strong'];
