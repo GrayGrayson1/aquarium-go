@@ -9,6 +9,7 @@ import { useUI, type Toast } from '@/state/ui';
 import { sfx, type SfxId } from '@/audio/sfx';
 import { tutorialWants } from '@/sim/facility';
 import '@/game/dispatch'; // installs the solo dispatcher
+import { APPLIED_UNSEEN } from '@/ui/shared/dispatch'; // chunk 13
 
 export interface ActOptions {
   /**
@@ -54,6 +55,11 @@ export function act(cmd: Command, opts: ActOptions = {}): void {
       ui.toast('That didn’t work, and nothing was changed. Please try again.', 'danger');
       sfx('error');
       opts.after?.({ ok: false, message: 'Error' });
+      return;
+    }
+    // chunk 13: applied in steps a re-synced shared copy skipped, its own result unseen: no sound or toast to claim one
+    if (res === APPLIED_UNSEEN) {
+      opts.after?.(res);
       return;
     }
     // an action that returns nothing (a toggle) reads as done, as its closure's empty result did

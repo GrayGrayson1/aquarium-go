@@ -34,7 +34,7 @@ interface Fake {
   closed: boolean;
   sent: { id: number; c: unknown }[];
 }
-const fakes = vi.hoisted(() => ({ conns: [] as unknown[], sends: 0 }));
+const fakes = vi.hoisted(() => ({ conns: [] as unknown[], sends: 0, hangStart: false }));
 // the online save's send right after parking your own aquarium (the review's note 10), counted
 vi.mock('@/ui/online/cloudSync', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/ui/online/cloudSync')>()),
@@ -59,6 +59,8 @@ vi.mock('@/ui/shared/connection', async (importOriginal) => {
     }
     async start() {
       this.started = true;
+      // a sleeping server: the first /health takes up to a minute
+      if (fakes.hangStart) await new Promise(() => {});
     }
     close() {
       this.closed = true;
@@ -121,6 +123,7 @@ async function ownGame(): Promise<GameState> {
 beforeEach(() => {
   fakes.conns.length = 0;
   fakes.sends = 0;
+  fakes.hangStart = false;
   setStorageBackend(createMemoryBackend());
   setSyncStore(memory());
   (globalThis as { localStorage?: unknown }).localStorage = memory();
@@ -254,7 +257,8 @@ describe('chunk 13: a visit', () => {
     provideSocialService(service());
     await ownGame();
     const a = openSharedShop(CLUB, { from: 'game' });
-    expect(useShared.getState().phase).toBe('saving'); // before any wait: the card's and the title's buttons go busy
+    // before any wait the phase is busy (the quiet checks: no card yet), so the card's and the title's buttons disable
+    expect(useShared.getState().phase).toBe('checking');
     const b = openSharedShop(CLUB, { from: 'game' });
     await Promise.all([a, b]);
     expect(fakes.conns).toHaveLength(1);
@@ -305,4 +309,31 @@ describe('chunk 13: a visit', () => {
     }
     expect(got).toEqual({ ok: true, message: 'Renamed.' });
   });
+
+  it('the second confirmation’s blocker: Back while the server wakes, and Open works again at once', async () => {
+    provideSocialService(service());
+    await ownGame();
+    fakes.hangStart = true;
+    void openSharedShop(CLUB, { from: 'game' });
+    await vi.waitFor(() => expect(fakes.conns).toHaveLength(1));
+    await leaveSharedShop();
+    fakes.hangStart = false;
+    await openSharedShop(CLUB, { from: 'game' });
+    expect(fakes.conns).toHaveLength(2);
+    expect(conn().started).toBe(true);
+  });
+
+  it('a batch a snapshot overtook (its publish never ran) settles with its own results', async () => {
+    provideSocialService(service());
+    await ownGame();
+    await openSharedShop(CLUB, { from: 'game' });
+    const f = conn();
+    const shop = arrive(f);
+    let got: CommandResult | null | undefined;
+    useGame.getState().dispatch({ k: 'renameTank', tank: shop.tankOrder[0], name: 'Z' }, (res) => (got = res));
+    f.events.step?.({ n: 4, h: 0, cmds: [{ by: 'u_a', who: 'Ann', id: f.sent[0].id, c: f.sent[0].c as never }] }, [{ ok: true, message: 'Renamed.' }]);
+    f.events.welcome?.(welcome(), false);
+    expect(got).toEqual({ ok: true, message: 'Renamed.' });
+  });
 });
+

@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { ClosingReason, SharedMember, SharedYou } from '@/types/shared';
 
 /**
+ * - `checking`: signed in, and shops open this month? (nothing on screen but busy buttons; nothing woken yet);
  * - `saving`: your own aquarium is being saved first;
  * - `waking`: the server is waking (its `/health`);
  * - `joining`: connected, waiting for the shop (the server may be catching it up);
@@ -15,7 +16,7 @@ import type { ClosingReason, SharedMember, SharedYou } from '@/types/shared';
  * - `rejoining`: the player came back (a hidden tab, away too long) and the shop is being fetched again;
  * - `closed`: the server closed it for a reason the player is told (`closed`).
  */
-export type SharedPhase = 'idle' | 'saving' | 'waking' | 'joining' | 'open' | 'reconnecting' | 'rejoining' | 'closed';
+export type SharedPhase = 'idle' | 'checking' | 'saving' | 'waking' | 'joining' | 'open' | 'reconnecting' | 'rejoining' | 'closed';
 
 /** The shop is on screen (connected, or getting the connection back). */
 export const onScreen = (p: SharedPhase): boolean => p === 'open' || p === 'reconnecting' || p === 'rejoining';

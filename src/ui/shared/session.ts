@@ -235,15 +235,19 @@ export async function openSharedShop(club: { id: string; name: string }, opts: O
   opening = true;
   try {
     await open(club, opts, base);
+  } catch (e) {
+    console.warn('[shared] opening failed', e);
+    if (!visit) patchShared({ ...INITIAL_VISIT });
   } finally {
     opening = false;
   }
 }
 
 async function open(club: { id: string; name: string }, opts: OpenOptions, base: string): Promise<void> {
-  // the phase first, before any wait: the cards' and the title's buttons go busy at once
-  patchShared({ ...INITIAL_VISIT, phase: 'saving', club, from: opts.from, shopName: opts.shopName ?? '', creating: !!opts.create });
+  // a phase first, before any wait: the cards' and the title's buttons go busy at once (no card for the checks)
+  patchShared({ ...INITIAL_VISIT, phase: 'checking', club, from: opts.from, shopName: opts.shopName ?? '', creating: !!opts.create });
   if (!(await mayOpen(club, opts.from, !!opts.saved))) return;
+  patchShared({ phase: 'saving' });
   if (!opts.saved && !(await parkOwnGame(club.id, opts.from))) {
     patchShared({ ...INITIAL_VISIT });
     return;
@@ -317,6 +321,7 @@ async function open(club: { id: string; name: string }, opts: OpenOptions, base:
   });
   v = { conn, disp, activity, base: null, marks: {}, created: !!opts.create, catchUp: null, hadCommand: false, toSettle: [], offs: [] };
   visit = v;
+  opening = false; // from here `visit` guards; Back during the wake must let Open start again at once
   useGame.getState().installDispatch(disp.dispatch);
   setPhotoRequester((hash) => {
     if (!conn.open) return false;
