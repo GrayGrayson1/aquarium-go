@@ -31,7 +31,10 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    released** (2026-10-21, the owner: "test it and then release"; see "Releases"): GitHub Pages, the Render address and
    the shop server, all from `main`. **Next:** the owner and their daughter play a shared shop (the owner: "I'll have to
    test in a sec"); the opening card's back button from the title screen reuses the existing "Title" (not yet confirmed
-   by the owner). What comes after is the owner's call; the audit's other findings (B-207, B-208) wait for them.
+   by the owner). **Then chunk 14, shared shops' permission tiers and money pool** (the owner, 2026-10-21: "Within CNVS make Marshall do
+   it … as close to one-to-one as we talked about, as far as being a finished product"; ADR-0043 decision 5): Marshall
+   builds it, the owner's questions first (ADR-0050); SESSION_HANDOFF.md's top section has the handoff. The audit's
+   other findings (B-207, B-208) wait for the owner.
 4. **Released:** 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
