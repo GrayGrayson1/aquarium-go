@@ -19,7 +19,7 @@ import { SharedConnection, type ConnectionDeps, type ConnectionEvents, type Sock
 import { SharedDispatcher } from '@/ui/shared/dispatch';
 import { SHARED_WORDS } from '@/ui/shared/words';
 import type { SharedMember } from '@/types/shared';
-import { ORIGIN, pump, rig, shopText, type Rig } from './support/sharedServer';
+import { ORIGIN, pump, rig, shopText, sleep, type Rig } from './support/sharedServer';
 
 const OWNER = 'stub:o:Owner:owner';
 const ANN = 'stub:a:Ann';
@@ -214,10 +214,18 @@ describe('chunk 13: the connection against the server', () => {
     const ben = await join(x, BEN);
     const g = ann.conn.replica.state!;
     const fish = Object.values(g.creatures).find((c) => c.status === 'alive' && !c.isStarter) ?? Object.values(g.creatures).find((c) => c.status === 'alive')!;
-    // both send before either sees the other's step: the server applies Ann's first
+    // both send before either sees the other's step: the server applies Ann's first. Two sockets don't keep an order,
+    // so Ben sends once the room has applied Ann's (its step goes out only after 50 ms of the test's clock, still held)
     const got: Record<string, CommandResult | null> = {};
+    const commandSteps = async () => ((await x.app.stats()) as { rooms: { stats: { commandSteps: { count: number } } }[] }).rooms[0].stats.commandSteps.count;
+    const before = await commandSteps();
     useGame.getState().setGame(ann.conn.replica.state);
     ann.disp.dispatch({ k: 'quickSell', creatures: [fish.id] }, (res) => (got.ann = res));
+    for (let i = 0; (await commandSteps()) === before; i++) {
+      if (i > 400) throw new Error("Ann's sale never reached the room");
+      await sleep(5);
+    }
+    expect('ann' in got).toBe(false);
     useGame.getState().setGame(ben.conn.replica.state);
     ben.disp.dispatch({ k: 'quickSell', creatures: [fish.id] }, (res) => (got.ben = res));
     await pump(x.time, () => 'ann' in got && 'ben' in got, { step: 50, what: 'both sales to settle' });
