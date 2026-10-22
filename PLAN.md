@@ -1282,6 +1282,77 @@ REL-012, REL-018.
   meanwhile; only `__AQ.shared.open` gets through), and the opening's `catch` resets only the visit's store (nothing
   between the mode going on and the visit existing can throw).
 
+### 14. Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) — started 2026-10-21 (Marshall)
+
+- **What:** the owner's tiers of permission and group pool, as close to their own words as the game allows (ADR-0043
+  round 2 question 2; ADR-0050 has the answers, the previews and the words, verbatim): each member spends the pool
+  freely, from an allowance topped up each game day, or only with money asked for and approved; members ask for an
+  amount; the owner and the members they let approve answer and can give money (the one-off grant, the Prismatic
+  case); staff and the stock budget only for members who spend freely. Finished enough to release as 0.7.0 on the
+  owner's go-ahead. The chunk starts at `9359894` on `next` (SESSION_HANDOFF.md "Handoff to Marshall: chunk 14").
+- **Where the state lives: the shop's `GameState`** (ADR-0050's "no database change"). `GameState.pool?` (new, optional,
+  only in a shared shop): `members` (by account id: `name`, `tier` `free` | `allowance` | `ask`, `allowance` a game day,
+  `left` and `day` (the allowance left on game day `day`; a later day reads as the whole allowance, so the top-up needs
+  no step of its own), `extra` (approved and given money, kept until spent), `approve`) and `asks` (the open requests:
+  `id`, `by`, `name`, `amount`, `note?`, `hour`; an answered or cancelled one leaves the list, its story stays in the
+  log). Validated in `repairState` when present (an unreadable entry dropped, an empty pool removed); absent, the shop
+  plays as 0.6.0 and `stateHash` is unchanged. A member with no record spends freely (decision 1). Pause and speed stay
+  on the shop's row (`pausers`), as in 0.6.0. Every copy reads the same pool, so the screens agree without new messages.
+- **Commands** (six new kinds, `src/sim/commands` + `src/sim/pool.ts`; each in `kinds.ts`, `apply.ts`/`index.ts`,
+  `validate.ts` and the catalogue test): `askMoney {amount, note?}`, `cancelAsk {ask}`, `answerAsk {ask, yes}`,
+  `giveMoney {member, name, amount}`, `setSpending {member, name, tier, allowance?}`, `setApprover {member, name, on}`.
+  They need an actor (a shared shop); in a solo game they're refused and change nothing. Amounts are whole dollars, 1
+  to 10,000,000; a note at most 60 characters; at most 3 open requests a member; nobody answers, gives to or changes
+  themselves; only the owner changes tiers and approvers; only the owner and approvers answer and give. **The owner
+  flag rides on the step:** the server marks the owner's commands (`StepCommand.owner`, from `server_member`, never
+  from the browser), so every copy knows who the owner is and refuses the same things.
+- **Spending** (decision 3): a member's spend is the pool's money before a command minus after it, for every kind but
+  care (`feedTank`, `waterChange`, `topOff`, `cleanTank`, `dose`, `repairEquipment`: every tier cares for the animals,
+  decision 2) and the pool's own. For a member on Allowance or Asks first, every copy takes it from the allowance left
+  today first, then the approved money, in the command's own step. **More than they can spend:** the server's copy of
+  the step (it already runs each command's step on a copy) says so (`overspend: {cost, can}` on the result), and the
+  server refuses the command (`reject` `spend`, with `cost` and `can`) before any copy sees it: "That costs {cost}, and
+  you can spend {can}. Ask for more in Money." **Running costs** (`hireStaff`, `fireStaff`, `setStockBudget`,
+  `setStockOrders`) are refused on every copy for a member who doesn't spend freely: "Staff and the stock budget keep
+  spending the pool, so only members who spend freely can change them." The pool is never split or reserved: it drops
+  only when something is bought, and the game's own "Not enough money" still applies to it.
+- **The server** (`server/room.ts`): `allowed(member, cmd, state)` adds the owner-only and approver-only kinds (refused
+  as `forbidden`; the screens never offer them to anyone else); the owner flag on the owner's step commands; the
+  `spend` refusal. `src/types/shared.ts`: `RejectReason` gains `spend`, the `reject` message `cost` and `can`.
+- **The screens** (`src/ui/shared`; every word from ADR-0050's previews): the strip's **Money** button for everyone
+  ("Money"; "Money: {can} to spend" for a member who doesn't spend freely; "Money ({n})" for an approver with {n}
+  requests waiting); the **Shop money** sheet ("Pool: {money}. Everything the shop earns goes here."; "You can spend
+  {can}."; "Allowance: {left} of {allowance} left today."; "Approved for you: {extra}."; Ask for money with "How
+  much?", "What for? (optional)", Send request and Cancel; Your requests, "{amount}: {note} · Waiting" with Cancel;
+  for approvers, Requests, "{name} asks for {amount}: {note}" with Approve and Decline, and Give money with a member, an
+  amount and Give); the owner's **members list** gains each member's Spending (Spends freely, Allowance [amount] each
+  game day, Asks first) and "Can approve requests and give money", beside "Can pause and change speed", for the members
+  there and anyone with a record. **Pop-ups** (never for one's own action): "{name} asks for {amount}: {note}." to
+  approvers; "{owner} approved your {amount}.", "{owner} declined your request for {amount}.", "{owner} gave you
+  {amount} to spend." to the member; a tier change's alerts line to the member it's about; "{n} requests are waiting in
+  Money." to an approver opening the shop. **Alerts** (everyone, the name in front, the game's own tagging): "Asked for
+  {amount}: {note}.", "Approved {name}'s {amount}.", "Declined {name}'s request for {amount}.", "Gave {name} {amount} to
+  spend.", "Cancelled the request for {amount}.", "Set {name} to spend freely.", "Set {name}'s allowance to {amount} a
+  game day.", "Set {name} to ask first.", "Let {name} approve requests.", "{name} can no longer approve requests."
+  **First one wins:** "Sam already answered that request." (ADR-0048's pattern; "That request has changed since you
+  looked." when nobody is named). Forms the previews imply but don't show (a request with no note, one request
+  waiting) go to the owner with the release question.
+- **Tests** (SESSION_HANDOFF.md "Testing it yourself afterwards"): unit, `allowed` for every tier and kind; a refused
+  purchase leaves every copy unchanged; a request asked, approved, declined, cancelled and spent; the allowance topped
+  up on a new game day and used before the approved money; an allowance running out across quick purchases; a gift
+  used once; two approvers on one request (the first wins); the coalesced controls refused for a member who doesn't
+  spend freely; `repairState`; the lockstep tests match fingerprints with the pool in play. e2e
+  (`tests/e2e/shared-shop.spec.ts`, two players on the stub server, Chromium and WebKit): a member on Asks first is
+  refused with the approved words, asks, the owner approves, the member buys, and the pool and the member's money
+  update on both screens. Live, right after the release (decision 7): `scripts/shared-smoke.ts` and the two-browser
+  test extended to the money flows. The four checks; one fresh reviewer (Opus 5.5, max effort) on `git diff
+  9359894..HEAD`, then confirmation passes until clean.
+- **Requirements:** SHARE-019 (tiers), SHARE-020 (the pool and spending), SHARE-021 (requests), SHARE-022
+  (allowances and gifts), SHARE-023 (the screens and words), SHARE-024 (the lockstep holds with the pool).
+- **Core files:** `src/types/game.ts` (`GameState.pool`), `src/persistence/migrations.ts` (`repairState`),
+  `src/types/shared.ts` (the reject), `src/sim/sharedStep.ts` (the owner flag): the reviewer checks them closely. The
+  shared build hash changes, so 0.7.0's site and server go out together (step 4 of "Releases").
+
 ## Releases
 
 `main` is what players get: a push to `main` deploys GitHub Pages. Render doesn't build on a push, though
