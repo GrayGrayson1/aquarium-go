@@ -23,6 +23,8 @@ export interface Actor {
   id: string;
   name: string;
   at: number;
+  /** chunk 14 — the shop's owner (the server says so on the step, never the browser): spends freely, approves, sets tiers. */
+  owner?: boolean;
 }
 
 /** How long a touch names its member (§4.3). */
@@ -31,7 +33,7 @@ export const TOUCH_MS = 30_000;
 export const MAX_TOUCHES = 200;
 
 /** What a touched thing is called in a refusal. */
-type Noun = 'fish' | 'clutch' | 'offer' | 'listing' | 'bid' | 'frag' | 'decoration' | 'stored piece' | 'equipment' | 'candidate' | 'keeper' | 'line' | 'tank';
+type Noun = 'fish' | 'clutch' | 'offer' | 'listing' | 'bid' | 'frag' | 'decoration' | 'stored piece' | 'equipment' | 'candidate' | 'keeper' | 'line' | 'tank' | 'request';
 
 /** One thing a command found changed: its memory key and its noun. */
 interface Stale {
@@ -123,6 +125,10 @@ export function staleOf(state: GameState, cmd: Command): Stale | null {
       return (state.staff?.roster ?? []).some((m) => m.id === cmd.staff) ? null : { key: `s:${cmd.staff}`, noun: 'keeper' };
     case 'endLine':
       return (state.production?.lines ?? []).some((l) => l.id === cmd.line) ? null : { key: `ln:${cmd.line}`, noun: 'line' };
+    case 'answerAsk':
+    case 'cancelAsk':
+      // chunk 14: a request still open ("Sam already answered that request.", ADR-0050)
+      return (state.pool?.asks ?? []).some((a) => a.id === cmd.ask) ? null : { key: `a:${cmd.ask}`, noun: 'request' };
     default:
       return null;
   }
@@ -176,6 +182,9 @@ function touchesOf(state: GameState, cmd: Command, res: CommandResult): [string,
       return [[`s:${cmd.staff}`, 'let go']];
     case 'endLine':
       return [[`ln:${cmd.line}`, 'ended']];
+    case 'answerAsk':
+      // a cancel leaves no touch: an approver a moment late is told the request has changed, not who cancelled it
+      return [[`a:${cmd.ask}`, 'answered']];
     default:
       return [];
   }
@@ -224,6 +233,10 @@ export function settingKey(cmd: Command): string | null {
       return `set:hold:${cmd.sys}`;
     case 'setSpeed':
       return 'set:speed';
+    case 'setSpending':
+      return `set:spend:${cmd.member}`;
+    case 'setApprover':
+      return `set:approve:${cmd.member}`;
     default:
       return null;
   }
@@ -266,6 +279,8 @@ function markOf(state: GameState, key: string): string {
       return String(state.inventory.decor.filter((d) => d.defId === id).length);
     case 't':
       return own(state.tanks, id) ? 'tank' : '-';
+    case 'a':
+      return (state.pool?.asks ?? []).some((a) => a.id === id) ? 'open' : '-';
     default:
       return '';
   }

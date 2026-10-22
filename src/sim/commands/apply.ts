@@ -22,6 +22,7 @@ import { holdAll, resumeAll, setHold } from '../automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '../staff/roster';
 import { addQuarantineTank, createLine, endLine, setKeepRules, setLinePair, setLineRule, setLineRunning, setLineTank } from '../production';
 import { enterShow, withdrawEntry } from '../shows';
+import { POOL_FAILED_TEXT } from '../pool';
 import type { Command } from './kinds';
 
 /** The Auto Water Changer's equipment id (`buyAutoClean`). */
@@ -56,6 +57,13 @@ export interface CommandResult extends ActionResult {
   noteBy?: string;
   /** A shared shop's refusal because what the sender saw has changed (first one wins, §4.3), and who changed it. */
   conflict?: { by?: string; name?: string };
+  /**
+   * chunk 14 — a member who doesn't spend freely bought more than they can spend (src/sim/pool.ts): what it cost and
+   * what they had. The server refuses such a command, so no copy keeps it.
+   */
+  overspend?: { cost: number; can: number };
+  /** chunk 14 — a pool command: the member it's about (the asker, the one given money, the one whose tier changed). */
+  pool?: { member: string; amount?: number; yes?: boolean };
 }
 
 const done = (): CommandResult => ({ ok: true, message: '', noResult: true });
@@ -325,6 +333,14 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       return enterShow(state, cmd.show, cmd.cls, cmd.subject);
     case 'withdrawEntry':
       return withdrawEntry(state, cmd.entry);
+    // ── the money pool: only a shared shop's member has one (applyCommand runs them with the actor) ──
+    case 'askMoney':
+    case 'cancelAsk':
+    case 'answerAsk':
+    case 'giveMoney':
+    case 'setSpending':
+    case 'setApprover':
+      return { ok: false, message: POOL_FAILED_TEXT };
     // ── the clock and the guide ──
     case 'setSpeed':
       state.clock.speed = cmd.speed;

@@ -1,9 +1,100 @@
-# Session handoff: chunk 13 (shared shops, the screens and the play-test)
+# Session handoff: after 0.6.0 (shared shops released)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Handoff to Marshall: chunk 14, permission tiers and the money pool (from Chase, 2026-10-21, at the owner's request)
+
+**The owner's request** (verbatim, to Chase, after Chase listed what could come next and recommended the money pool):
+"Within CNVS make Marshall do it. Give it everything it absolutely possibly needs to be able to be successful in
+building this next portion. If you've done your own testing then you're fine but have it do its own testing after the
+fact. We want this as close to one-to-one as we talked about, as far as being a finished product."
+
+So Marshall builds **chunk 14: shared shops' permission tiers and money pool**, as a full chunk (CLAUDE.md's routine),
+as close as possible to the owner's own words, finished enough to release. Chase tested 0.6.0 (PLAN.md "Releases");
+Marshall tests chunk 14 itself afterwards, in full (below). Chase isn't editing the repo or the test clone from here
+on: both are Marshall's. If the owner meant a different "next portion", the first question round finds out.
+
+**What "as we talked about" is.** The owner's answer, verbatim, in ADR-0043 (round 2, question 2; read the whole ADR):
+"I think anybody should be able to do #1. Everything else, with permission, I believe. Otherwise I think there should be
+tiers of permission. At the beginning we should probably just have it be that everybody can do everything else with...
+We also probably want there to be a group pool where pretty much all the money just goes into the group and then you
+can request money. I think, unless you're given permission to just use the money, which we'll probably go with in the
+beginning just to make it simpler (with the idea of adding that later), other people should be able to withdraw
+requested money to buy things. Maybe we can even set an amount that people can have that they can just draw from,
+especially depending on the situation. If there's a prismatic or something that you can buy, maybe you're just granted
+permissions, that kind of thing, but that could be later." ADR-0043 decision 5 reads it as: tiers of permission; a
+group pool the shop's money goes into; members request money, and someone with the permission approves it (or
+withdraws it); people given the permission spend directly; an allowance a member can draw from; a one-off grant for a
+special purchase (a Prismatic). 0.6.0 shipped the "at the beginning" version: everyone spends the shop's one balance
+freely; only pause and speed are restricted (the owner, plus the people the owner switches on).
+
+**What it touches today** (the design left room for exactly this, SHARED-SHOPS.md §5.4 and §5.6):
+- `allowed()` at `server/room.ts:113` is the one permission check, run before a command's step. The shop row's
+  `pausers` (migration `supabase/migrations/20261021000000_shared_shops.sql`; `server/{room,host,store,protocol,stub}.ts`;
+  the `grant` message in `src/types/shared.ts`) was planned to become a per-member permissions object (`{pause, spend:
+  'all' | 'request' | 'allowance', allowance}`), with the pool and the requests as commands.
+- A command's money is known only once it runs. The room already runs each command step on a copy
+  (`commandStep`, `runSharedStep(..., { copy: true })`), so a spending check can compare the money before and after
+  and reject before accepting the step. Decide which of the 80 command kinds (`src/sim/commands`) count as spending; a
+  sale, care and a refund don't.
+- Where the new state lives decides the rest. Anything every copy must agree on (a request's status, an allowance
+  balance the screens show) either goes in `GameState` (an optional save field validated in `repairState`; absent, it
+  leaves `stateHash` unchanged; a new command kind in `kinds.ts`, `apply.ts`, `validate.ts` and
+  `tests/sim/commands-catalogue.test.ts`) or stays on the server's shop row and reaches the browsers in `members` /
+  `welcome`. Either way the determinism contract holds. A change under `src/sim`, `src/data`, `src/types`, the pure
+  persistence files or `src/game/sharedLoop.ts` changes the shared build hash.
+- The client: `src/ui/shared/dispatch.ts` maps a `reject` (today `forbidden` always gets the pause words; spending needs
+  its own), `SharedScreens.tsx` (the members list and the owner's switch), `words.ts`, `activity.ts` (pop-ups),
+  `SharedClubSection.tsx`. A database change is a new migration file, checked with `scripts/online-db-local/run.sh`.
+
+**The owner's gate, first** (before building; AskUserQuestion, at most 4 questions a round, recommended option first,
+each description giving the context, exact words and ASCII mock-ups in the previews, since no design screens cover
+this; the answers verbatim in **ADR-0050**). At least:
+1. The tiers: how many, their names, and what each may do (spend freely; spend from an allowance; only request; care
+   and sell only; pause and speed; approve requests; grant). "Anybody should be able to do #1" and "everything else,
+   with permission": ask what each member starts with, and whether existing shops keep 0.6.0's "everyone spends".
+2. Requests: who approves (the owner only, or chosen people too), what a request carries (an amount, a reason or a
+   purchase), how others hear about it (an alert, a pop-up, a badge), what happens if nobody answers, and whether an
+   approved request is money the member then spends ("withdraw requested money to buy things").
+3. Allowances and one-off grants: a set amount, refilled or not (per game day? per real week? never?); a one-off grant
+   tied to one purchase (the Prismatic case) or to an amount.
+4. Every new player-visible line (AGENTS.md: copy too), and the release (0.7.0 when it's done and green, on the owner's
+   go-ahead). Fold in the one word still unconfirmed from chunk 13: the opening card's back button from the title
+   screen reuses "Title".
+5. **How to test it live before release** (new, see below).
+
+**Production now (new since 0.6.0, important).** `aquarium-go-shops` and https://aquarium-go.onrender.com both serve
+players (the owner and their daughter) from `main` = `298b3ff`. ADR-0047 decision 2's "deploy from `next`" was for
+before players existed: **don't deploy `next` to either without the owner's yes in the session.** A server with a new
+shared build hash tells 0.6.0 tabs the shop is updating; a play-test build on the Render address replaces the game
+there. Ask with the gate's round. The options: (a) build and test everything on the stub server and locally, then do
+the live tests right after the release (no extra service); (b) a second free Render web service for pre-release tests
+(free, but it shares the 750 instance hours and the 5 GB outbound with the others; creating it needs the owner's yes,
+as ADR-0046 did); (c) a short announced window on the real server. The live migration needs the owner's yes too.
+
+**Testing it yourself afterwards** (the owner: "have it do its own testing after the fact"):
+- The four checks on the final code from the internal clone under `caffeinate -i -s` (typecheck, unit, build, e2e in
+  Chromium and WebKit); report the pass and fail lines; never count a test that didn't run.
+- Unit: `allowed` for every tier and command kind; a refused purchase leaves every copy unchanged; a request approved,
+  declined, and spent; an allowance running out mid-drag (the coalesced controls); a one-off grant used once; first one
+  wins between two spenders on one allowance; the lockstep tests still match fingerprints.
+- e2e (`tests/e2e/shared-shop.spec.ts`, two contexts on the stub server): a member without permission is refused with
+  the approved words; asks; the owner approves; the member buys; the allowance and the pool update on both screens.
+- Live, when the owner's answer allows: `scripts/shared-smoke.ts` extended to the new commands and permissions, and
+  Chase's two-browser test `scripts/_audit/chunk13/live.ts` in the internal clone (git-excluded; `LIVE_SITE=<url>`
+  picks the site; throwaway accounts and club, removed and checked gone) extended to the money flows.
+- One fresh reviewer (Opus 5.5, `effort: "max"`) on `git diff <chunk start>..HEAD` against the brief, then
+  confirmation passes until clean; fix the blockers.
+
+**Know before you start:** PLAN.md chunks 12 and 13 and "Releases" (0.6.0); "Learned in chunk 12" and "Learned in
+chunk 13" below; ADR-0043, ADR-0045, ADR-0047 to ADR-0049; SHARED-SHOPS.md §3 to §5 and §8. From 0.6.0's release: the
+Pages run runs typecheck and the unit tests on a slower machine (two sockets keep no order between them; a test that
+assumed one failed there, `3d7d2cc`); merge a release in the internal clone onto a freshly fetched `origin/main` (the
+Dev repo's `main` lagged and its merge was refused); the shop server goes after Pages, never before (PLAN.md
+"Releases", step 4). The owner hasn't played 0.6.0 yet: if they report a problem with it, that comes first.
 
 ## Where things stand
 
@@ -19,7 +110,7 @@ it's used up.
   leaked-password protection, off), the live smoke test passed 90 of 90. Three clubs, all the owner's ("Aquarium Go
   Friends", "CalliClub", "TheSushiBladesToTheMax"); the clubs keep their codes (ADR-0044 decision 3). Never write a
   code or a player's email in the repo, which is public (`select name, invite_code from public.clubs` reads codes).
-- **Next: shared shops** (ADR-0043, ADR-0045): a whole shop a club plays together on a small server on Render. The
+- **Shared shops, released in 0.6.0** (ADR-0043, ADR-0045): a whole shop a club plays together on a small server on Render. The
   design is `docs/agent/design/SHARED-SHOPS.md` (2026-10-20): every browser runs the same steps, the server's copy
   counts, fingerprints catch drift. Render's free plan includes only 5 GB of outbound data a month for the whole
   workspace (with DAS-Games' `dascade`, a free web service, and the static site), so the server never streams the
@@ -39,9 +130,8 @@ it's used up.
   unchanged. With an actor (a shared shop), commands are tagged, first one wins and settings are last-writer-wins
   (`src/sim/commands/shared.ts`, the memory in `GameState.touches`). A new player action is a new command kind
   (`kinds.ts`, `apply.ts`, `validate.ts`, and a case in `tests/sim/commands-catalogue.test.ts`), never a closure.
-- **Open owner questions:** F1 (the owner's VoiceOver pass); K1 (big shops on the free server, for chunk 12 or 13);
-  L (the words chunk 13 still needs, drafts in SHARED-SHOPS.md §8); the audit's decisions A4 (the shared Pages origin,
-  B-191), F5, F3, G2, A6 and new wording (B-207).
+- **Open owner questions:** F1 (the owner's VoiceOver pass); the audit's decisions A4 (the shared Pages origin,
+  B-191), F5, F3, G2, A6 and new wording (B-207). K1 and group L are answered (ADR-0047, ADR-0048).
 - **The Supabase CLI** (`/Users/brianbean/.local/bin/supabase`) is signed in to the owner's whole account, anonyform's
   Pro organization included. Scope every remote command to the project: `--linked --project-ref zkavcxrsxdgdlstravpj`
   (`db query` takes `--project-ref` only with `--linked`). Never print or save the secret key; never read the CLI's
@@ -49,159 +139,29 @@ it's used up.
   query that would print another player's email is refused by Claude Code's auto mode (PII): count, or match the
   owner's own email, instead.
 
-## Chunk 13 and the play-test: where it stands (Chase, 2026-10-21)
+## 0.6.0, shared shops: released (Chase, 2026-10-21)
 
-- **Built and reviewed** (PLAN.md chunk 13 has the record): the fresh review's 5 blockers and its confirmations' 2 more
-  fixed, the third confirmation clean; the final pass on `c063c6e` green (unit 3,202, e2e 329 of 329); `next`
-  fast-forwarded to `chunk13` (the worktree's branch, which can now go) and pushed. The owner's answers are ADR-0049:
-  two more lines, and **the play-test on the Render address first**. Still to ask the owner, with the release: the
-  opening card's back button from the title screen reuses the existing "Title".
-- **The play-test, step by step** (ADR-0049 decision 3; after the four checks and the review are through and `next` is
-  fast-forwarded to `chunk13` and pushed from the internal clone):
-  1. The shop server from that commit: `render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm
-     --wait -o text` (ADR-0047 decision 2), then `npx vite-node scripts/shared-smoke.ts` from the internal clone.
-  2. The game from the same commit on the Render static site only (`srv-dath0mfavr4c73dgk3j0`, which tracks `main`):
-     `render deploys create srv-dath0mfavr4c73dgk3j0 --commit <full sha> --confirm --wait -o text`; if Render refuses a
-     commit that isn't on `main`, `render services update srv-dath0mfavr4c73dgk3j0 --branch next`, deploy, and switch
-     it back to `main` at the release (ADR-0049). Check `https://aquarium-go.onrender.com/version.json` and that the
-     server's `/health` `build` equals the shared build hash of that commit (`sharedBuildHash` in vite.sharedBuild.ts).
-  3. The owner and their daughter play on https://aquarium-go.onrender.com (its saves are that address's own: on
-     signing in, the online-save box may ask; "Load online save" brings the owner's real aquarium there). The owner:
-     Social › Clubs › the club › Create shared shop. Their daughter: her own account through the club's invite link
-     (copied on the Render address; a parent signs up for a player under 13, ADR-0039 decision 4), then the club card ›
-     Open shared shop.
-  4. Then the 0.6.0 release, only on the owner's go-ahead in that session (PLAN.md "Releases", step 4).
+- **Released** at the owner's go-ahead ("test it and then release. I'll have to test in a sec"; PLAN.md "Releases"):
+  `main` = `298b3ff`, `next` = its tree. GitHub Pages, the Render static site and the shop server `aquarium-go-shops`
+  (now on branch `main`, deployed by hand) are all from `298b3ff`; `/health` `build` `681ac8b023eeaca7` equals the
+  game's shared build hash. The live smoke 23 of 23; the agent's live two-browser test 18 of 18 on the Render address
+  before the release and on Pages after. The first Pages run failed a racy unit test (fixed in `3d7d2cc`, test only).
+- **Still with the owner:** their own play-test with their daughter (on Pages or the Render address; each address has
+  its own device saves, and "Load online save" brings the owner's real aquarium to either). The owner: Social › Clubs ›
+  the club › Create shared shop. Their daughter: her own account through the club's invite link (a parent signs up for
+  a player under 13, ADR-0039 decision 4), then the club card › Open shared shop. Also to confirm with the owner: the
+  opening card's back button from the title screen reuses the existing word "Title".
+- **From now on, the shop server goes after `main`, never before** (PLAN.md "Releases", step 4): push `main`, wait for
+  Pages, then `render deploys create srv-dbbt6gbncjis73c23br0 --commit <main's full sha> --confirm --wait -o text`, the
+  static site the same way (`srv-dath0mfavr4c73dgk3j0`), then `npx vite-node scripts/shared-smoke.ts` from the internal
+  clone, and check `/health`'s `build` and both `version.json` files. A change that leaves src/sim, src/data, src/types
+  and the pure persistence files alone keeps the shared build hash, so the server needn't change with it.
+- The chunk 13 worktree (`/Volumes/Dev/Projects/AquariumGo-chunk13`, branch `chunk13`) is used up and can go.
+- **Next:** chunk 14, permission tiers and the money pool (Marshall, the top section). Still open after it: F1 (the
+  owner's VoiceOver pass), the audit's other findings (B-207, B-208), online stage 2 (before strangers join).
 
-## Handoff to Chase: chunk 13 and the 0.6.0 release (from Marshall, 2026-10-21, at the owner's request)
+## The owner's standing rules (from the shared-shop chunks; verbatim where quoted)
 
-The owner (verbatim): "In CNVS have Chase the agents, Claude agents, build out the next portion. Give it everything it
-absolutely needs. If it needs to read your repo, go ahead and tell it to do so if it'd be helpful, or not your repo, your
-conversation, the terminal conversation. Just make sure it has everything it needs to be entirely successful." So Chase
-builds **chunk 13** (the screens and the play-test, SHARED-SHOPS.md §7 and §8) as a full chunk (CLAUDE.md's routine:
-brief in PLAN.md, the four checks on the final code from the internal-disk clone, one fresh Opus 5.5 max-effort reviewer
-plus confirmation passes, its blockers fixed, PLAN.md updated, `next` pushed), then the play-test and the **0.6.0
-release** on the owner's go-ahead. Marshall is the terminal "Marshall" on this canvas: ask it about chunk 12 with
-`cnvs_prompt_agent`, or read its terminal (`cnvs_read_terminal`, target "Marshall") for the session's detail.
-
-**Where chunk 12 stands** (PLAN.md chunk 12 has the record; read all of it, "For chunk 13" twice):
-- Built and committed on `next` (`a4989d8` … `3890c74`), pushed up to `38bfbda`: the real server (`server/`), the
-  migration, the build identity, photos, the stagger, `sharedShops()`/`sharedUsage()`, the live smoke and measurement
-  script (`scripts/shared-smoke.ts`), docs, SHARE-003 to SHARE-018.
-- Live: the migration (2026-10-21); the server password set on Render (ADR-0047: no Supabase key; a browser-capable
-  Claude pasted it, see "Learned in chunk 12"); `aquarium-go-shops` deployed from `next` (`7c0e68d`); the live smoke 23 of
-  23. K1 answered (big shops stay free, unchanged). **Group L answered** (ADR-0048): every word chunk 13 needs is
-  approved (SHARED-SHOPS.md §8, all of it); any other player-visible words go to the owner first.
-- **Still Marshall's:** chunk 12's fresh review (Opus 5.5, max effort) is running in Marshall's session. Marshall fixes
-  its blockers (in `server/`, `supabase/`, `scripts/shared-*`, `tests/sim/shared-server*`, `shared-room*`,
-  `supabase-migration*`, maybe `src/types/shared.ts`), re-runs the four checks, records it in PLAN.md, pushes `next` and
-  messages Chase "chunk 12 done" through CNVS (and a canvas memory). A server fix that changes the protocol will be
-  written in that message.
-
-**How to work while chunk 12 finishes** (so two agents never edit one working tree):
-- Build in the git worktree **`/Volumes/Dev/Projects/AquariumGo-chunk13`**, branch **`chunk13`**, made from `next` at
-  this handoff's commit (Marshall made it; run `npm ci` there once for typecheck and unit tests, slow on the disk image).
-  Commit there freely; don't push `chunk13` to GitHub.
-- Leave Marshall's files alone until "chunk 12 done" (list above). If chunk 13 needs a server change, message Marshall.
-- The internal-disk test clone `~/LocalTest/AquariumGo` is Marshall's until "chunk 12 done" (its review probes and the
-  final passes run there). Until then run typecheck and unit tests in the worktree (slow but fine), no e2e.
-- After "chunk 12 done": in the worktree `git merge next` (no rebase of anything pushed), keep building, and from then
-  on use the test clone as usual (`git fetch dev chunk13 && git checkout --detach FETCH_HEAD`: the clone's remote `dev`
-  is the Dev repo, which shares the worktree's branches). When chunk 13 is done, fast-forward `next` to it
-  (`git -C /Volumes/Dev/Projects/AquariumGo merge --ff-only chunk13` on `next`) and push `next` from the internal clone.
-
-**What chunk 13 builds** (SHARED-SHOPS.md §7, §8, §9.2; PLAN.md chunk 11's and chunk 12's "For chunk 13"):
-- The connection (`src/ui/shared/*`, the browser's own `WebSocket`): wake with `GET /health` (CORS for the game's
-  sites), then `hello` (or the owner's `create`) with the player's Supabase access token, `SHARED_BUILD` and the club;
-  wait for `welcome` + the snapshot frame (gzip unless `plain`); the replica (`src/game/sharedLoop.ts`, already built)
-  publishes to the game store; `view`, `here`/`away`/`input` (at most once a minute), `token` hourly, `resync` on a
-  mismatch, `grant`, `photo`. `src/dev/sharedProto.ts` is a working headless reference (it's what e2e drives today).
-- The shared dispatcher: `useGame.getState().installDispatch(fn)` while a shop is open, `soloDispatch`
-  (`src/game/dispatch.ts`) back after. Send `cmd` with its id; settle `done` when the step with your `{by, id}` arrives
-  and the replica applied it (`runSharedStep` returns results in `cmds` order); a `reject`, or a step lost across a
-  reconnect, settles as not applied; a `raiseFlag` the shop already has gets **no step and no reply** (settle it at
-  once); coalesce sliders (§4.2). Others' feeds and taps draw from applied commands.
-- **Render's proxy eats the server's close frames** (measured): act on the `closing` and `bye` messages and close the
-  socket yourself (`bye`: `sign-in` → refresh the session and retry once; `away` → reconnect only when the player is
-  back; `protocol`/`server` → "Lost the connection to the shared shop. Reconnecting…" with growing waits). A hidden tab
-  disconnects after 2 minutes; "Still here?" at 30 minutes (the server's own idle check is 31).
-- Screens and words (§8, all approved): the club card (owner: create, the meters from `sharedUsage()`; member: open;
-  closed-for-the-month from `sharedShops()`, which never wakes the server), the title button, the opening steps, the HUD
-  strip, the members list with the owner's switch, the pop-ups and the alerts lines (the name in front; first one wins
-  from the command's result), "Still here?", every `closing` (incl. `gone`: "{club} has no shared shop any more."),
-  Settings › Saves and the save buttons in a shared shop, the starvation toast from a `post` of `setSpeed 1`.
-- Your own game waits (§7.2, SHARE-010): saved first, no catch-up for the time away (move its `lastTickRealMs` on by the
-  time in the shop), even after the browser closed inside the shop. Nothing saves a shared shop on the device or online
-  (SHARE-011): autosave, Save, Load, Import, Export, the online save and the leaderboard report each refuse it first.
-- Photos (§4.4): shrink a listing photo to about 320 px (WebP, falling back to JPEG when the browser hands back a PNG)
-  before `createListing` (a command may be 48 KB); draw a `p:` reference from a blob fetched over the socket
-  (`FRAME_PHOTO`: tag 3, 64 hex, type byte, bytes), never in `<img src>` (`Listings.tsx` already refuses it).
-- The marks per player (`src/ui/common/marks.ts`), no guide, no dev panel writes, the error boundary leaves the shop.
-- `SocialService` needs the player's access token for `hello` (add it: supabase-js's `getSession()`; the local stub
-  gives a stub token, `stub:<id>:<name>` with `:owner` for the owner). `sharedShops()` on the local stub returns none
-  today: e2e needs shops there, and the stub server (`server/stub.ts`, `SHOPS_STUB=1`, started by `playwright.config.ts`
-  on port 4396) knows only the stub shops' clubs (`new_betta` …), while the game's stub clubs are `highland-betta` etc.:
-  make them meet (for instance stub clubs open to every stub player, created by the owner on demand). Coordinate the
-  `server/stub.ts` change with Marshall until "chunk 12 done".
-- e2e (§9.2): two browser contexts in one shop (a purchase appears in the other; pause refused then granted; the
-  activity line and pop-up; first one wins; a listing photo on both; leaving brings your own game back unchanged;
-  "Still here?"; a reconnect after the server restarts). The cross-engine replay stays.
-
-**The owner's gates left** (AskUserQuestion, recommended option first, answers verbatim in a new ADR from ADR-0049):
-1. Any player-visible words beyond §8.
-2. **The play-test** with the owner and their daughter on the live server: deploy `aquarium-go-shops` from `next` (ADR-0047
-   decision 2 covers deploys from `next`: `render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm
-   --wait -o text`, then `npx vite-node scripts/shared-smoke.ts` from the internal clone); the game itself must reach
-   the players for that, so how the play-test build reaches them (a release candidate on `main`, or a preview) is the
-   owner's call: ask. Her account: she signs up with the club's invite link; under 13 a parent signs up for her
-   (ADR-0039 decision 4).
-3. **The 0.6.0 release**, only on the owner's go-ahead in that session: PLAN.md "Releases" (step 4 is new: `main` first,
-   Pages deployed, then `render services update srv-dbbt6gbncjis73c23br0 --branch main` and a deploy from `main`; check
-   `/health`'s `build` equals the game's hash and both `version.json` files).
-
-**Standing rules** (on top of the ones in Marshall's handoff below, which all still hold): the server's password is never
-asked for or shown in chat; if it must change, `node scripts/shared-server-key.mjs --yes` from the internal clone and the
-browser-Claude prompt flow in "Learned in chunk 12" (the agent can't set Render variables). Never run a build or install
-command to "check" it. The owner prefers agents to do everything they can themselves and to be asked once, batched.
-
-## Handoff to Marshall: chunks 12 and 13 (from Chase, 2026-10-21, at the owner's request)
-
-The owner: "Within CNVS Canvas go ahead and have Marshall build everything out and give it everything it needs to be
-100% successful." So Marshall builds chunk 12 (the server and the database) and chunk 13 (the screens and the
-play-test), each as a chunk (CLAUDE.md's routine), through to the 0.6.0 release on the owner's go-ahead. `next` is at
-`e0721fb` (chunk 11 done, pushed); `main` is 0.5.6 (`3a0e8ce`). Chase is on the same canvas (the terminal "Chase") if a
-question about chunks 10 and 11 comes up.
-
-**Read first, in this order:** `AGENTS.md`, `CLAUDE.md`, PLAN.md's "Next step", chunk 10's and chunk 11's briefs and
-their "For chunk 12" and "For chunk 13" lists (the work the earlier chunks left on purpose), the whole of
-`docs/agent/design/SHARED-SHOPS.md` (§5 and §6 for chunk 12, §7 and §8 for chunk 13, §9 the tests, §11 the costs, §13
-the owner's steps), ADR-0043, ADR-0045 and ADR-0046, `docs/agent/design/ONLINE-STAGE1.md` and ARCHITECTURE.md's
-"Online" runbook (how chunk 8 set up and changes the Supabase project), `docs/agent/TRUST_BOUNDARY.md`, then the rest of
-this file (the practical knowledge, "Learned in chunk 11" last).
-
-**The owner's gates.** Ask once per round with AskUserQuestion (recommended option first), record the answers verbatim
-in a new ADR (ADR-0047 onward), and wait for each yes in the session that needs it:
-1. *Chunk 12, before anything live:* (a) a yes to apply the new migration to the live project, after the local
-   database check passes (`scripts/online-db-local/run.sh`); (b) a yes to deploy the real server (sign-in and the
-   database) to `aquarium-go-shops` from `next` for chunk 12's live smoke and chunk 13's play-test. ADR-0046 covered
-   only chunk 10's prototype with stub shops and no key; switch the service to `main` at the 0.6.0 release, with that
-   release's go-ahead; (c) the owner's one dashboard visit, walked through step by step (SHARED-SHOPS.md §5.8): the
-   server's password, which `scripts/shared-server-key.mjs` leaves on the owner's clipboard (ADR-0047 decision 3: no
-   Supabase secret key, which could reach accounts), pasted into the Render service's environment as
-   `SHOPS_SERVER_KEY`, and chunk 10's test variables deleted (`SHOPS_REPLAY`, `ALLOWED_ORIGINS`, `SHOPS_BYTE_BUDGET`,
-   `SHOPS_MAX_CONNECTIONS`, unless the new server reads one on purpose). The Render CLI changes the branch and the build
-   command (`render services update srv-dbbt6gbncjis73c23br0 --build-command '…'`) but not the environment. The build
-   command removes the password from the build (`env -u SHOPS_SERVER_KEY sh -c '…'`, §5.8); check the build's log for
-   the name. (d) OWNER_QUESTIONS K1 (big shops on the free server) with chunk 12's own numbers. **Asked 2026-10-21
-   (ADR-0047):** (a) yes once the local check passes, (b) yes once the server's tests pass, and the server password
-   instead of a Supabase key; (c) and (d) are still to come.
-2. *Chunk 13, first:* **answered 2026-10-21 (ADR-0048, every line approved as drafted).** OWNER_QUESTIONS group L, the words SHARED-SHOPS.md §8 lists as "Words still to approve" (drafts
-   there and in `conflictText`, `src/sim/commands/shared.ts`), in one round before building the screens.
-3. *Chunk 13, at the end:* the play-test with the owner and their daughter on the live server (she signs up with the
-   club's invite link; a parent signs up for a player under 13, ADR-0039 decision 4), then the 0.6.0 release, only on
-   the owner's go-ahead in that session: `main` first, the server deployed by hand from `main` after (§5.1), both
-   `version.json` files checked.
-
-**The owner's standing rules** (verbatim where quoted):
 - "anything that's going to cost anything extra needs to be run by me first"; "lets make everything free if we can for
   now please". Render's free web service and Supabase's free project only; nothing paid without a yes.
 - Never push `main` or deploy players' builds without the owner's yes in the session; never force-push or rewrite
@@ -209,6 +169,11 @@ in a new ADR (ADR-0047 onward), and wait for each yes in the session that needs 
 - Supabase: scope every remote command `--linked --project-ref zkavcxrsxdgdlstravpj`; never print or save the secret
   key; never read the CLI's stored sign-in; the agent never sees the server's key (the owner pastes it into Render), and
   it never enters the repo. Never write invite codes or players' emails in the repo (it is public).
+- The shop server's password is never asked for or shown in chat. If it must change: `node scripts/shared-server-key.mjs
+  --yes` from the internal clone, then the browser-Claude prompt flow in "Learned in chunk 12" (the agent can't set
+  Render variables). Never run a build or install command to "check" it.
+- The owner prefers agents to do everything they can themselves and to ask once, batched (AskUserQuestion, recommended
+  option first, the answers verbatim in a new ADR, the next is ADR-0050).
 - Reviewers (the chunk's fresh reviewer and its confirmation passes) run on Opus 5.5 at max effort (the Agent tool:
   `model: "opus"`, `effort: "max"`), never Fable.
 - No new dependencies without asking (`ws` 8.22.0 is approved, server only, no `@types/ws`). Never weaken, skip or delete
@@ -228,16 +193,15 @@ in a new ADR (ADR-0047 onward), and wait for each yes in the session that needs 
    --level warn` (no database issues; Auth's leaked-password warning is known), then `node scripts/online-smoke.mjs`
    from the internal-disk clone (it has supabase-js; the Dev repo's `node_modules` is an old copy without it; for the
    few seconds it runs, its 100 wrong guesses brake real invite screens).
-4. **Released 0.5.6** (2026-10-20; PLAN.md "Releases"). The next release goes as 0.5.4 to 0.5.6 went: the four checks green on the final code, bump
-   `version` and add the CHANGELOG entry, merge `next` into
-   `main` with the owner's go-ahead in the session (`git merge-tree --write-tree`, `commit-tree`, `update-ref`: no
-   checkout), push from the internal-disk clone, watch the Pages run, deploy Render by hand, check both
-   `version.json` files.
-5. **Shared shops** (the owner chose them, 2026-10-20; "We need to build chunk 11, chunk 12, and chunk 13 however soon
-   we can"): chunks 10 and 11 are done (PLAN.md). Next chunk 12 (the server, the database; PLAN.md's "For chunk 12":
-   the owner's one Render dashboard visit pastes the key and deletes chunk 10's test variables, and the build command
-   removes the key from the build, §5.8), then chunk 13 (ask group L's words first). OWNER_QUESTIONS K1 (big shops on
-   the free server) waits for chunk 12's numbers. The audit's remaining findings (B-207, B-208) wait for the owner.
+4. **Released 0.6.0** (2026-10-21; PLAN.md "Releases"). The next release goes as 0.5.4 to 0.6.0 went: the four checks
+   green on the final code, bump `version` and add the CHANGELOG entry, merge `next` into GitHub's `main` with the
+   owner's go-ahead in the session (in the internal-disk clone, `git fetch origin` first and merge onto `origin/main`:
+   the Dev repo's local `main` can lag, and a merge made on it is refused as not a fast-forward), push from the
+   internal-disk clone, watch the Pages run (it runs typecheck and the unit tests first; a test that fails only there
+   is usually a race or a time limit), then the shop server and the Render static site by hand from `main`'s full sha,
+   the live smoke, and both `version.json` files.
+5. **Shared shops: done and released** (chunks 10 to 13, 0.6.0). Next, chunk 14: permission tiers and the money pool
+   (Marshall; the top section). The audit's remaining findings (B-207, B-208) wait for the owner.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the

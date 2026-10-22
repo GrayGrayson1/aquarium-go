@@ -187,6 +187,101 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     });
   });
 
+  // chunk 14 (ADR-0050; SHARE-019 to SHARE-023): the money pool between two players, every word as approved
+  test('the money pool: a member on Asks first is refused, asks, the owner approves, the member buys, and both screens agree', async ({ browser }, info) => {
+    test.setTimeout(300_000);
+    const club = clubFor(info);
+    const ola = await player(browser, 'Ola', club, { owner: true });
+    await openShop(ola, club);
+    const ben = await player(browser, 'Ben', club);
+    await openShop(ben, club);
+    // the pop-ups as they're raised: the toast stack shows a few at a time and, in a busy shop (bids, a fish growing
+    // up), lets routine ones lapse behind the game's own news, so what's on screen at a given moment is no measure
+    const recordPopups = (page: Page) =>
+      page.evaluate(() => {
+        const w = window as unknown as { __popups?: string[]; __AQ: { ui(): { toasts: { text: string }[] } } };
+        w.__popups = [];
+        setInterval(() => {
+          for (const t of w.__AQ.ui().toasts) if (!w.__popups!.includes(t.text)) w.__popups!.push(t.text);
+        }, 50);
+      });
+    const popups = (page: Page) => page.evaluate(() => (window as unknown as { __popups: string[] }).__popups);
+    await recordPopups(ola);
+    await recordPopups(ben);
+    const benId = (await visit(ben)).you!.id;
+    await expect.poll(async () => (await visit(ola)).members.find((m) => m.id === benId)?.here, { timeout: 20_000 }).toBe(true);
+    const tierOf = async (page: Page) => (await gameOf(page)).pool?.members?.[benId]?.tier ?? 'free';
+    await test.step('the owner sets the member to Asks first in the members list; the member sees what they can spend', async () => {
+      await tid(ola, 'shared-strip-members').click();
+      const row = tid(ola, `shared-member-${benId}`);
+      await expect(row).toContainText('Spending:');
+      await expect(row).toContainText('Can approve requests and give money');
+      await tid(ola, `shared-tier-${benId}-ask`).click();
+      await expect.poll(() => tierOf(ben), { timeout: 10_000 }).toBe('ask');
+      await tid(ola, 'shared-strip-members').click();
+      await expect(tid(ben, 'shared-money')).toHaveText(/Money: \$0 to spend/);
+      await expect.poll(() => popups(ben), { timeout: 10_000 }).toContain('Ola: Set Ben to ask first.');
+    });
+    const food = Object.keys((await gameOf(ben)).inventory.foods)[0];
+    await test.step('a purchase is refused with what it costs and what the member can spend; nothing changes anywhere', async () => {
+      const before = (await gameOf(ola)).finance.money;
+      const res = await cmd(ben, { k: 'buyFood', food, packs: 1 });
+      expect(res.ok).toBe(false);
+      expect(res.message).toMatch(/^That costs \$[\d,.]+, and you can spend \$0\. Ask for more in Money\.$/);
+      expect((await gameOf(ola)).finance.money).toBe(before);
+    });
+    const amount = 200;
+    await test.step('the member asks for money in the Shop money sheet; the owner hears and sees the count', async () => {
+      await tid(ben, 'shared-money').click();
+      await expect(tid(ben, 'shared-money-sheet')).toContainText('Shop money');
+      await expect(tid(ben, 'shared-money-pool')).toHaveText(/^Pool: \$[\d,.]+\. Everything the shop earns goes here\.$/);
+      await expect(tid(ben, 'shared-money-can')).toHaveText('You can spend $0.');
+      await tid(ben, 'shared-ask-open').click();
+      await tid(ben, 'shared-ask-amount').fill(String(amount));
+      await tid(ben, 'shared-ask-note').fill('Food');
+      await tid(ben, 'shared-ask-send').click();
+      await expect(tid(ben, 'shared-money-sheet')).toContainText(`$${amount}: Food · Waiting`);
+      await ben.keyboard.press('Escape');
+      await expect.poll(() => popups(ola), { timeout: 10_000 }).toContain(`Ben asks for $${amount}: Food.`);
+      await expect(tid(ola, 'shared-money')).toHaveText(/Money \(1\)/);
+    });
+    await test.step('the owner approves; the member hears, and can spend the approved money', async () => {
+      const askId = (await gameOf(ola)).pool.asks[0].id as string;
+      await tid(ola, 'shared-money').click();
+      await expect(tid(ola, `shared-request-${askId}`)).toHaveText(new RegExp(`^Ben asks for \\$${amount}: Food`));
+      await tid(ola, `shared-approve-${askId}`).click();
+      await expect(tid(ola, `shared-request-${askId}`)).toHaveCount(0, { timeout: 10_000 });
+      await ola.keyboard.press('Escape');
+      await expect.poll(() => popups(ben), { timeout: 10_000 }).toContain(`Ola approved your $${amount}.`);
+      await expect(tid(ben, 'shared-money')).toHaveText(new RegExp(`Money: \\$${amount} to spend`));
+      await expect(tid(ola, 'shared-money')).toHaveText(/^\s*Money\s*$/);
+    });
+    await test.step('the member buys: the pool and the member’s money update on both screens', async () => {
+      const before = (await gameOf(ola)).finance.money;
+      const res = await cmd(ben, { k: 'buyFood', food, packs: 1 });
+      expect(res.ok, res.message).toBe(true);
+      await expect.poll(async () => (await gameOf(ola)).finance.money, { timeout: 10_000 }).toBeLessThan(before);
+      const pool = (await gameOf(ola)).finance.money;
+      const price = Math.round((before - pool) * 100) / 100;
+      for (const page of [ola, ben]) {
+        await expect.poll(async () => (await gameOf(page)).finance.money, { timeout: 10_000 }).toBe(pool);
+        await expect.poll(async () => (await gameOf(page)).pool?.members?.[benId]?.extra, { timeout: 10_000 }).toBeCloseTo(amount - price, 2);
+      }
+      await expect(tid(ben, 'shared-money')).not.toHaveText(new RegExp(`Money: \\$${amount} to spend`));
+      await tid(ben, 'shared-money').click();
+      await expect(tid(ben, 'shared-money-extra')).toHaveText(/^Approved for you: \$[\d,.]+\.$/);
+      await ben.keyboard.press('Escape');
+    });
+    await test.step('back to Spends freely: the member buys from the pool again', async () => {
+      await tid(ola, 'shared-strip-members').click();
+      await tid(ola, `shared-tier-${benId}-free`).click();
+      await expect.poll(() => tierOf(ben), { timeout: 10_000 }).toBe('free');
+      await tid(ola, 'shared-strip-members').click();
+      await expect(tid(ben, 'shared-money')).toHaveText(/^\s*Money\s*$/);
+      expect((await cmd(ben, { k: 'buyFood', food, packs: 1 })).ok).toBe(true);
+    });
+  });
+
   test('leaving brings your own aquarium back as it was, with no catch-up for the time away', async ({ browser }, info) => {
     test.setTimeout(240_000);
     const club = clubFor(info);

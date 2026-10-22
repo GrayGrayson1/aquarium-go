@@ -26,12 +26,17 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    every player action is a command the server can pass on, and the solo game is unchanged. **Chunk 12, the server and
    the database, is done** (2026-10-21, Marshall, below; ADR-0047): the real server runs on the free Render service from
    `next` behind sign-in and a server password, the migration is live, the live smoke passes. **Chunk 13, the screens,
-   is built** (2026-10-21, Chase, below; ADR-0048, ADR-0049): a club's shared shop opens from its card in Social or the
-   title screen, your own aquarium waits, and nothing saves a shared shop on the device. **Next: the play-test** with the
-   owner and their daughter on the Render address (ADR-0049: https://aquarium-go.onrender.com, the shop server from the
-   same commit; GitHub Pages stays 0.5.6), **then 0.6.0** on the owner's go-ahead (SESSION_HANDOFF.md has the steps).
-   The audit's other findings (B-207, B-208) wait for the owner.
-4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   is done** (2026-10-21, Chase, below; ADR-0048, ADR-0049): a club's shared shop opens from its card in Social or the
+   title screen, your own aquarium waits, and nothing saves a shared shop on the device. **0.6.0, shared shops, is
+   released** (2026-10-21, the owner: "test it and then release"; see "Releases"): GitHub Pages, the Render address and
+   the shop server, all from `main`. **Next:** the owner and their daughter play a shared shop (the owner: "I'll have to
+   test in a sec"); the opening card's back button from the title screen reuses the existing "Title" (not yet confirmed
+   by the owner). **Chunk 14, shared shops' permission tiers and money pool** (the owner, 2026-10-21: "Within CNVS make Marshall do
+   it … as close to one-to-one as we talked about, as far as being a finished product"; ADR-0043 decision 5): built by
+   Marshall (below), the owner's answers in ADR-0050; its checks and review under way, then 0.7.0 on the owner's
+   go-ahead and the live tests right after. The audit's
+   other findings (B-207, B-208) wait for the owner.
+4. **Released:** 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
 5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
@@ -53,10 +58,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 7 | Hardening for multiplayer (ADR-0037, ADR-0039) | Done 2026-10-18 (released in 0.5.5). Two full passes in a row on `06f80f8`: typecheck, unit 2,719, build, e2e 291 of 291, both times; the reviewer's 3 blockers fixed (`06f80f8`) and its confirmation's one (docs) |
 | 8 | Multiplayer stage 1, for people the owner knows (ADR-0038 to ADR-0042) | Done 2026-10-19 (released in 0.5.5). The Supabase project set up (ref `zkavcxrsxdgdlstravpj`), the live smoke test 80 of 80; the reviewer's 5 blockers fixed and its confirmations' 2 more, then clean; two full passes in a row on `53cd7bf` (passes 3 and 4): typecheck, unit 2,828, build, e2e 307 of 307, both times |
 | 9 | 0.5.6: the audit's five high findings (ADR-0043, ADR-0044) | Done 2026-10-20 (released in 0.5.6). The fifth migration applied live, the smoke test 91 of 91; the reviewer's 4 blockers fixed and its four confirmation passes' 6 more, the last clean; two full passes in a row on `9266584`: typecheck, unit 2,868, build, e2e 311 of 311, both times |
-| 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (not released; nothing players see). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
-| 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (not released; nothing players see). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
-| 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (not released; nothing players see). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
-| 13 | Shared shops, the screens and the play-test (§7, §8) | Built 2026-10-21 (Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049; not released). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. Next: the play-test on the Render address (ADR-0049), then 0.6.0 on the owner's go-ahead |
+| 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (released in 0.6.0). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
+| 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (released in 0.6.0). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
+| 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (released in 0.6.0). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
+| 13 | Shared shops, the screens and the play-test (§7, §8) | Done 2026-10-21 (released in 0.6.0; Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. The play-test build on the Render address, the agent's live two-browser test 18 of 18 there and again on Pages after the release; the owner's own play-test next |
+| 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Built 2026-10-21 (Marshall; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; unit 3,237 and the shared-shop e2e 11 of 11 in both browsers on the build; the full pass on `84799bc` and the fresh review under way |
 
 **Last full test runs:** chunk 13's final code `c063c6e`, the owner's Mac, 2026-10-21, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 255 files, 3,202 tests passed; build passed; e2e 329 of 329 in Chromium and
@@ -1234,6 +1240,13 @@ REL-012, REL-018.
   shared build hash; no `SHOPS_SERVER_KEY` in the build's variables); the live smoke 23 of 23; the Render static site
   `aquarium-go` deployed from the same commit (`dep-dbcmugi9lscs73eerrtg`, no branch switch needed: Render took a
   commit from `next`), its `version.json` `30a699f-…`; GitHub Pages still 0.5.6 (`3a0e8ce`).
+- **The agent's live test of that build** (the owner, 2026-10-21: "test it and then release"): two throwaway members,
+  one in Chromium and one in WebKit, played a throwaway club's shared shop on https://aquarium-go.onrender.com and the
+  live server through the real interface (both open it from the club card, the strips name both, the member's pause
+  refused with "the owner", the owner's pause and speed on both copies with their pop-ups, Settings › Saves in a shop,
+  Back to my aquarium, no page errors), then the club, the shop and both accounts were removed and checked gone: 18 of
+  18 (`scripts/_audit/chunk13/live.ts` in the internal clone, git-excluded). Run again on GitHub Pages after the
+  release: 18 of 18.
 - **The fresh review** (Opus 5.5, max effort) on `next...chunk13` at `d6c7926`, with probes and mutants
   (`scripts/_audit/review-chunk13/`, git-excluded): five blockers, all fixed in `882c06c`.
   - **B1:** the created shop's starter wasn't the animal the owner previewed (the server rolled its own from the world's
@@ -1270,6 +1283,102 @@ REL-012, REL-018.
   left: a late-finishing earlier open could clear a newer one's guard (not reachable by a click: the buttons are busy
   meanwhile; only `__AQ.shared.open` gets through), and the opening's `catch` resets only the visit's store (nothing
   between the mode going on and the visit existing can throw).
+
+### 14. Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) — started 2026-10-21 (Marshall)
+
+- **What:** the owner's tiers of permission and group pool, as close to their own words as the game allows (ADR-0043
+  round 2 question 2; ADR-0050 has the answers, the previews and the words, verbatim): each member spends the pool
+  freely, from an allowance topped up each game day, or only with money asked for and approved; members ask for an
+  amount; the owner and the members they let approve answer and can give money (the one-off grant, the Prismatic
+  case); staff and the stock budget only for members who spend freely. Finished enough to release as 0.7.0 on the
+  owner's go-ahead. The chunk starts at `9359894` on `next` (SESSION_HANDOFF.md "Handoff to Marshall: chunk 14").
+- **Where the state lives: the shop's `GameState`** (ADR-0050's "no database change"). `GameState.pool?` (new, optional,
+  only in a shared shop): `members` (by account id: `name`, `tier` `free` | `allowance` | `ask`, `allowance` a game day,
+  `left` and `day` (the allowance left on game day `day`; a later day reads as the whole allowance, so the top-up needs
+  no step of its own), `extra` (approved and given money, kept until spent), `approve`) and `asks` (the open requests:
+  `id`, `by`, `name`, `amount`, `note?`, `hour`; an answered or cancelled one leaves the list, its story stays in the
+  log). Validated in `repairState` when present (an unreadable entry dropped, an empty pool removed); absent, the shop
+  plays as 0.6.0 and `stateHash` is unchanged. A member with no record spends freely (decision 1). Pause and speed stay
+  on the shop's row (`pausers`), as in 0.6.0. Every copy reads the same pool, so the screens agree without new messages.
+- **Commands** (six new kinds, `src/sim/commands` + `src/sim/pool.ts`; each in `kinds.ts`, `apply.ts`/`index.ts`,
+  `validate.ts` and the catalogue test): `askMoney {amount, note?}`, `cancelAsk {ask}`, `answerAsk {ask, yes}`,
+  `giveMoney {member, name, amount}`, `setSpending {member, name, tier, allowance?}`, `setApprover {member, name, on}`.
+  They need an actor (a shared shop); in a solo game they're refused and change nothing. Amounts are whole dollars, 1
+  to 10,000,000; a note at most 60 characters; at most 3 open requests a member; nobody answers, gives to or changes
+  themselves; only the owner changes tiers and approvers; only the owner and approvers answer and give. **The owner
+  flag rides on the step:** the server marks the owner's commands (`StepCommand.owner`, from `server_member`, never
+  from the browser), so every copy knows who the owner is and refuses the same things.
+- **Spending** (decision 3): a member's spend is the pool's money before a command minus after it, for every kind but
+  care (`feedTank`, `waterChange`, `topOff`, `cleanTank`, `dose`, `repairEquipment`: every tier cares for the animals,
+  decision 2) and the pool's own. For a member on Allowance or Asks first, every copy takes it from the allowance left
+  today first, then the approved money, in the command's own step. **More than they can spend:** the server's copy of
+  the step (it already runs each command's step on a copy) says so (`overspend: {cost, can}` on the result), and the
+  server refuses the command (`reject` `spend`, with `cost` and `can`) before any copy sees it: "That costs {cost}, and
+  you can spend {can}. Ask for more in Money." **Running costs** (`hireStaff`, `fireStaff`, `setStockBudget`,
+  `setStockOrders`) are refused on every copy for a member who doesn't spend freely: "Staff and the stock budget keep
+  spending the pool, so only members who spend freely can change them." The pool is never split or reserved: it drops
+  only when something is bought, and the game's own "Not enough money" still applies to it.
+- **The server** (`server/room.ts`): `allowed(member, cmd, state)` adds the owner-only and approver-only kinds (refused
+  as `forbidden`; the screens never offer them to anyone else); the owner flag on the owner's step commands; the
+  `spend` refusal. `src/types/shared.ts`: `RejectReason` gains `spend`, the `reject` message `cost` and `can`.
+- **The screens** (`src/ui/shared`; every word from ADR-0050's previews): the strip's **Money** button for everyone
+  ("Money"; "Money: {can} to spend" for a member who doesn't spend freely; "Money ({n})" for an approver with {n}
+  requests waiting); the **Shop money** sheet ("Pool: {money}. Everything the shop earns goes here."; "You can spend
+  {can}."; "Allowance: {left} of {allowance} left today."; "Approved for you: {extra}."; Ask for money with "How
+  much?", "What for? (optional)", Send request and Cancel; Your requests, "{amount}: {note} · Waiting" with Cancel;
+  for approvers, Requests, "{name} asks for {amount}: {note}" with Approve and Decline, and Give money with a member, an
+  amount and Give); the owner's **members list** gains each member's Spending (Spends freely, Allowance [amount] each
+  game day, Asks first) and "Can approve requests and give money", beside "Can pause and change speed", for the members
+  there and anyone with a record. **Pop-ups** (never for one's own action): "{name} asks for {amount}: {note}." to
+  approvers; "{owner} approved your {amount}.", "{owner} declined your request for {amount}.", "{owner} gave you
+  {amount} to spend." to the member; a tier change's alerts line to the member it's about; "{n} requests are waiting in
+  Money." to an approver opening the shop. **Alerts** (everyone, the name in front, the game's own tagging): "Asked for
+  {amount}: {note}.", "Approved {name}'s {amount}.", "Declined {name}'s request for {amount}.", "Gave {name} {amount} to
+  spend.", "Cancelled the request for {amount}.", "Set {name} to spend freely.", "Set {name}'s allowance to {amount} a
+  game day.", "Set {name} to ask first.", "Let {name} approve requests.", "{name} can no longer approve requests."
+  **First one wins:** "Sam already answered that request." (ADR-0048's pattern; "That request has changed since you
+  looked." when nobody is named). Forms the previews imply but don't show (a request with no note, one request
+  waiting) go to the owner with the release question.
+- **Tests** (SESSION_HANDOFF.md "Testing it yourself afterwards"): unit, `allowed` for every tier and kind; a refused
+  purchase leaves every copy unchanged; a request asked, approved, declined, cancelled and spent; the allowance topped
+  up on a new game day and used before the approved money; an allowance running out across quick purchases; a gift
+  used once; two approvers on one request (the first wins); the coalesced controls refused for a member who doesn't
+  spend freely; `repairState`; the lockstep tests match fingerprints with the pool in play. e2e
+  (`tests/e2e/shared-shop.spec.ts`, two players on the stub server, Chromium and WebKit): a member on Asks first is
+  refused with the approved words, asks, the owner approves, the member buys, and the pool and the member's money
+  update on both screens. Live, right after the release (decision 7): `scripts/shared-smoke.ts` and the two-browser
+  test extended to the money flows. The four checks; one fresh reviewer (Opus 5.5, max effort) on `git diff
+  9359894..HEAD`, then confirmation passes until clean.
+- **Requirements:** SHARE-019 (tiers), SHARE-020 (the pool and spending), SHARE-021 (requests), SHARE-022
+  (allowances and gifts), SHARE-023 (the screens and words), SHARE-024 (the lockstep holds with the pool).
+- **Core files:** `src/types/game.ts` (`GameState.pool`), `src/persistence/migrations.ts` (`repairState`),
+  `src/types/shared.ts` (the reject), `src/sim/sharedStep.ts` (the owner flag): the reviewer checks them closely. The
+  shared build hash changes, so 0.7.0's site and server go out together (step 4 of "Releases").
+- **Built** (`84799bc`, Marshall, 2026-10-21): `src/sim/pool.ts` (the tiers, the spend measured per command, the six
+  commands, the approved lines), the commands' catalogue and first one wins for requests, `repairPool`, the server's
+  `allowed` and spend refusal, the screens (`src/ui/shared/SharedMoney.tsx`: the Money button and sheet, the owner's
+  spending row; the pop-ups in `activity.ts`; the refusals in `dispatch.ts`), the live smoke's pool checks. A look in
+  both browsers at desktop and phone sizes (`scripts/_audit/chunk14/look.mjs` in the internal clone, git-excluded) found
+  two things, fixed before the commit: on a phone a tap on "Allowance" landed in its amount field (the field now sits
+  beside the choice), and a long Money label squeezed who's here out of the strip (it gets its own row on phones). The
+  toast stack shows a few at a time and lets routine ones lapse behind the game's own news, so a pool pop-up can go
+  unseen in a busy shop; its line is in the alerts list either way (the game's toast rules, unchanged).
+- **The fresh review** (Opus 5.5, max effort, on `9359894..84799bc`): one blocker, a test that couldn't fail (care that
+  costs money was never sent by a member who can't spend; two mutants survived); its notes: caps the save keeps but the
+  commands didn't (approved money, open requests in all), a double-clicked Approve's words, the allowance field sending
+  twice, gifts to made-up ids, the refusal reading "costs $300, and you can spend $300", and test gaps. All fixed in
+  `5843bb0` (the care test fails without the exemption). Left on purpose, for the owner: care is never refused or
+  counted, as decided (a dose for a big reef tank costs up to about $400 from the pool); approvers can give each other
+  money (by design: the owner chooses them); gifts go only to members who don't spend freely (as the screen offers).
+- **The full pass on `84799bc`:** typecheck passed; unit 257 files, 3,237 tests passed; build passed; e2e 328 of 329
+  (39.3 min): the money test's pop-up check in Chromium, the toast stack above; the test now records pop-ups as raised.
+- **The confirmation pass** (the same reviewer, `84799bc..5843bb0`): no blockers; each fix checked (its mutants caught,
+  its fuzz of 4 × 400 actions clean). Its notes, fixed after: in the owner's spending row a send that didn't go through
+  couldn't be retried with the same choice, and a press on a choice that never became a click could swallow the next
+  typed amount (now honoured only within 600 ms); the two-day test's joiner never joined; a gift to a member whose
+  record spends freely wasn't covered by a test; the drafted live money test called a dev hook the players' build
+  doesn't have (it now buys through Market › Supplies and reads the pop-ups from the toast record); ADR-0050 decision
+  8's reading of the request's refusal labelled as the agent's.
 
 ## Releases
 
@@ -1318,6 +1427,22 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   first, B-193; GitHub notes that `deploy-pages@v4` runs on a deprecated Node 20 and that `ubuntu-latest` moves to
   Ubuntu 26 from 2026-10-19: `deploy.yml` is a core file, left for the owner); Render by hand
   (`dep-db8o0s7f3r2c73eplvm0`). Both `version.json` files read `{"id":"382a637-…","version":"0.5.3"}`.
+- **0.6.0, released 2026-10-21** at the owner's go-ahead in the session ("test it and then release. I'll have to test
+  in a sec"): chunks 10 to 13, shared shops. The four checks passed on chunk 13's final code `c063c6e` (typecheck; unit
+  255 files, 3,202 tests; build; e2e 329 of 329, Chromium and WebKit, 39.4 min); the release commit `d8e83e7` (version,
+  CHANGELOG, docs) passed typecheck, unit 3,202, build and 19 of 19 e2e (the production-build, base-path, shared-shop
+  and boot specs). The agent's live two-browser test on the play-test build: 18 of 18 (chunk 13's record). Merged as
+  `289bea8` and pushed with `next`, but the Pages run failed one unit test on GitHub's runner: shared-client's first one
+  wins test assumed Ann's sale reached the server before Ben's over two sockets, which keep no order between them. Fixed
+  on purpose in `3d7d2cc` (Ben sends once the room has applied Ann's; test only; the file 8 of 8 runs, typecheck, unit
+  3,202), merged as `298b3ff` (its tree is `3d7d2cc`'s) and pushed from the internal-disk clone. (The Dev repo's first
+  merge of the fix was made on its old local `main`; GitHub refused it as not a fast-forward, it was never pushed, and
+  the merge was made again in the clone on `289bea8`.) Pages deployed `298b3ff` by itself (run `39714062207`, its tests
+  first). Then, §5.1's order, the shop server: `aquarium-go-shops` switched to `main` (`render services update
+  srv-dbbt6gbncjis73c23br0 --branch main`) and deployed from `298b3ff` (`dep-dbcnuivb9u1s73cani10`); `/health` reads
+  `{"version":"0.6.0","build":"681ac8b023eeaca7","stub":false}`, the game's shared build hash; the live smoke 23 of 23.
+  The Render static site from the same commit (`dep-dbcnuivb9u1s73canhng`). Both `version.json` files read
+  `{"id":"298b3ff-…","version":"0.6.0"}`. The live two-browser test again on GitHub Pages after the release: 18 of 18.
 - **0.5.6, released 2026-10-20** at the owner's go-ahead in the session (ADR-0044 decision 5, "release when green"):
   chunk 9, the audit of 0.5.5's five high findings. The release commit `827eacd` (version, CHANGELOG) was followed by
   the review's confirmation fixes; two full passes in a row on `9266584` (typecheck; unit 236 files, 2,868 tests;

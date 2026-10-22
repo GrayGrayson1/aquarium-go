@@ -532,6 +532,14 @@ const C: Record<CommandKind, Case | Case[]> = {
     ok: true,
   },
   withdrawEntry: { w: 'shows', cmd: (g) => ({ k: 'withdrawEntry', entry: g.shows!.entries.find((e) => e.status === 'entered')!.id }), direct: (d, c: Command & { k: 'withdrawEntry' }) => withdrawEntry(d, c.entry), ok: true },
+  // chunk 14: the money pool's commands need a shared shop's member (an actor), so a solo game refuses them and changes
+  // nothing; tests/sim/shared-pool.test.ts runs each one as members, with the server's room
+  askMoney: { w: 'panels', cmd: () => ({ k: 'askMoney', amount: 5000, note: 'Prismatic betta' }), direct: () => ({ ok: false }), ok: false },
+  cancelAsk: { w: 'panels', cmd: () => ({ k: 'cancelAsk', ask: 'ask_1' }), direct: () => ({ ok: false }), ok: false },
+  answerAsk: { w: 'panels', cmd: () => ({ k: 'answerAsk', ask: 'ask_1', yes: true }), direct: () => ({ ok: false }), ok: false },
+  giveMoney: { w: 'panels', cmd: () => ({ k: 'giveMoney', member: 'member_1', name: 'Mia', amount: 500 }), direct: () => ({ ok: false }), ok: false },
+  setSpending: { w: 'panels', cmd: () => ({ k: 'setSpending', member: 'member_1', name: 'Mia', tier: 'allowance', allowance: 200 }), direct: () => ({ ok: false }), ok: false },
+  setApprover: { w: 'panels', cmd: () => ({ k: 'setApprover', member: 'member_1', name: 'Mia', on: true }), direct: () => ({ ok: false }), ok: false },
   setSpeed: {
     w: 'big',
     cmd: () => ({ k: 'setSpeed', speed: 3 }),

@@ -7,7 +7,7 @@
  * Fields named `from` are what the sender saw (first one wins, §4.3): the tank an animal or a clutch was in. In a solo
  * game they are ignored; in a shared shop a command whose expectation no longer holds is refused on every copy.
  */
-import type { BackdropKind, GameSpeed, HoldSystem, LightPreset, ListingKind, SubstrateKind, TankPurpose, WaterClass } from '@/types';
+import type { BackdropKind, GameSpeed, HoldSystem, LightPreset, ListingKind, PoolTier, SubstrateKind, TankPurpose, WaterClass } from '@/types';
 import type { LineStage } from '../production';
 
 export type FeedZone = 'surface' | 'middle' | 'bottom';
@@ -128,6 +128,14 @@ type Kinds =
   // ── shows ──
   | { k: 'enterShow'; show: string; cls: string; subject: string }
   | { k: 'withdrawEntry'; entry: string }
+  // ── the money pool (chunk 14, ADR-0050; a shared shop only: src/sim/pool.ts) ──
+  | { k: 'askMoney'; amount: number; note?: string }
+  | { k: 'cancelAsk'; ask: string }
+  | { k: 'answerAsk'; ask: string; yes: boolean }
+  // `member`: the account id; `name`: the member's name as the sender saw it (the alerts line)
+  | { k: 'giveMoney'; member: string; name: string; amount: number }
+  | { k: 'setSpending'; member: string; name: string; tier: PoolTier; allowance?: number }
+  | { k: 'setApprover'; member: string; name: string; on: boolean }
   // ── the clock and the guide ──
   | { k: 'setSpeed'; speed: GameSpeed }
   // its own field isn't `flag`: that is the guide flag every kind may carry, raised once more after the action

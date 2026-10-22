@@ -4,6 +4,23 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.7.0 — 2026-10-22
+
+- **Shared shops: the money pool and spending tiers.** Everything a shared shop earns goes into one pool, and the
+  shop's owner decides how each member may spend it, in the members list (the strip's "Here:" line):
+  - **Three tiers.** Spends freely (everyone starts here, so a shop plays as before), Allowance (an amount each game
+    day, filled back up when a new day starts; what isn't spent doesn't pile up) and Asks first. The owner can also let
+    chosen members approve requests and give money, beside the switch for pause and speed.
+  - **Asking for money.** The strip's Money button shows what a member can spend, and Shop money shows the pool. A
+    member asks for an amount there, saying what for if they like; the owner and the approvers get a pop-up and a count
+    on Money, and approve or decline. Approved money is the member's to spend, after their allowance, until it's spent.
+    Approvers can also give a member money without being asked, for something special like a Prismatic. The pool only
+    drops when something is bought.
+  - **The limits.** A purchase over what a member can spend is refused, saying what it costs and what they can spend.
+    Caring for the animals is open to everyone; staff and the stock budget need Spends freely, because they keep
+    spending.
+- **Phones:** the shared shop's strip gives who's here a row of its own.
+
 ## 0.6.0 — 2026-10-21
 
 - **Shared shops: one aquarium a club plays together, live.** A club's shared shop has its own money, tanks, animals,
