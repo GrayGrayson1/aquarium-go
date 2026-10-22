@@ -31,12 +31,12 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    released** (2026-10-21, the owner: "test it and then release"; see "Releases"): GitHub Pages, the Render address and
    the shop server, all from `main`. **Next:** the owner and their daughter play a shared shop (the owner: "I'll have to
    test in a sec"); the opening card's back button from the title screen reuses the existing "Title" (not yet confirmed
-   by the owner). **Chunk 14, shared shops' permission tiers and money pool** (the owner, 2026-10-21: "Within CNVS make Marshall do
-   it … as close to one-to-one as we talked about, as far as being a finished product"; ADR-0043 decision 5): built by
-   Marshall (below), the owner's answers in ADR-0050; its checks and review under way, then 0.7.0 on the owner's
-   go-ahead and the live tests right after. The audit's
+   by the owner). **Chunk 14, shared shops' permission tiers and money pool, is done and released as 0.7.0** (2026-10-22; the owner:
+   "Within CNVS make Marshall do it … as close to one-to-one as we talked about, as far as being a finished product";
+   ADR-0043 decision 5, ADR-0050; see "Releases"). **Next:** the owner and their daughter play a shared shop (the owner
+   sets each member's spending in the members list); the questions chunk 14 left for the owner (SESSION_HANDOFF.md). The audit's
    other findings (B-207, B-208) wait for the owner.
-4. **Released:** 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+4. **Released:** 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
 5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
@@ -62,9 +62,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (released in 0.6.0). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
 | 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (released in 0.6.0). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Done 2026-10-21 (released in 0.6.0; Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. The play-test build on the Render address, the agent's live two-browser test 18 of 18 there and again on Pages after the release; the owner's own play-test next |
-| 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Built 2026-10-21 (Marshall; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; unit 3,237 and the shared-shop e2e 11 of 11 in both browsers on the build; the full pass on `84799bc` and the fresh review under way |
+| 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Done 2026-10-22 (released in 0.7.0; Marshall, at the owner's request; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; the review's blocker and its confirmations' notes fixed, the second confirmation clean; the final pass on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331; live: the smoke 27 of 27, the two-browser money test 29 of 29 on Pages and on the Render address |
 
-**Last full test runs:** chunk 13's final code `c063c6e`, the owner's Mac, 2026-10-21, from the internal-disk clone under
+**Last full test runs:** chunk 14's release commit `d16dd72`, the owner's Mac, 2026-10-22, from the internal-disk clone
+under `caffeinate -i -s`: typecheck passed; unit 257 files, 3,243 tests passed; build passed; e2e 331 of 331 in Chromium
+and WebKit, dev and both production builds (39.9 minutes). Before it: `5843bb0` the same four green (unit 3,243, e2e 331
+of 331, 40.4 minutes), followed by the confirmation's notes (`a8131b1`); `84799bc` typecheck, unit 3,237 and build green,
+e2e 328 of 329 (the money test's pop-up check in Chromium, a toast the stack held back; the test fixed on purpose).
+Before chunk 14: chunk 13's final code `c063c6e`, the owner's Mac, 2026-10-21, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 255 files, 3,202 tests passed; build passed; e2e 329 of 329 in Chromium and
 WebKit, dev and both production builds (39.4 minutes). Before it: `d6c7926` (unit 3,166, e2e 329 of 329) and `882c06c`
 (unit 3,192, e2e 329 of 329), both green, each followed by the review's fixes; a pass on `7e44242` was stopped in its e2e
@@ -1284,7 +1289,7 @@ REL-012, REL-018.
   meanwhile; only `__AQ.shared.open` gets through), and the opening's `catch` resets only the visit's store (nothing
   between the mode going on and the visit existing can throw).
 
-### 14. Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) — started 2026-10-21 (Marshall)
+### 14. Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) — done 2026-10-22 (Marshall; released in 0.7.0)
 
 - **What:** the owner's tiers of permission and group pool, as close to their own words as the game allows (ADR-0043
   round 2 question 2; ADR-0050 has the answers, the previews and the words, verbatim): each member spends the pool
@@ -1378,7 +1383,19 @@ REL-012, REL-018.
   typed amount (now honoured only within 600 ms); the two-day test's joiner never joined; a gift to a member whose
   record spends freely wasn't covered by a test; the drafted live money test called a dev hook the players' build
   doesn't have (it now buys through Market › Supplies and reads the pop-ups from the toast record); ADR-0050 decision
-  8's reading of the request's refusal labelled as the agent's.
+  8's reading of the request's refusal labelled as the agent's. The second confirmation (`5843bb0..d16dd72`): clean
+  (the release commit checked against ADR-0050 too). Its one residue, cosmetic: on a touch screen a press on a choice
+  held over 600 ms right after typing an amount can still send the amount and then the choice (two lines).
+- **The final pass** on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331 (39.9 min).
+- **Released as 0.7.0** (2026-10-22, the owner's go-ahead in ADR-0050 round 2; "Releases"). Live, after the deploys:
+  `scripts/shared-smoke.ts` 27 of 27 (with the pool's four checks), and the two-browser money test
+  (`scripts/_audit/chunk14/live.ts` in the internal clone, git-excluded: a throwaway club whose stored shop makes one
+  throwaway member an approver and the other Asks first, since no throwaway is the game's owner) 29 of 29 on Pages and
+  29 of 29 on the Render address, the accounts and the club removed and checked gone.
+- **Left for the owner** (SESSION_HANDOFF.md): care is never counted or refused, as decided, so a member on Asks first
+  can still spend the pool on doses (up to about $400 a dose for a 1,000-gallon reef tank); approvers can give each
+  other money (by design); a pool pop-up can lapse behind the game's own news in a busy shop (the toast stack's rules;
+  the line is in the alerts list).
 
 ## Releases
 
@@ -1468,6 +1485,16 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   every unit test passed: Vitest's worker RPC timed out on GitHub's runner ("Timeout calling onTaskUpdate", B-205);
   re-running the failed job passed and deployed. Render by hand (`dep-dbaii3eq1p3s73bqbvvg`). Both `version.json`
   files read `{"id":"63caa8e-…","version":"0.5.4"}`.
+- **0.7.0, released 2026-10-22** at the owner's go-ahead in the session (ADR-0050 round 2: "Yes, release when clean"):
+  chunk 14, shared shops' money pool and spending tiers. Step 1's "the owner has played it" was waived by that answer
+  (live tests right after the release, ADR-0050 decision 7). The four checks passed on the release commit `d16dd72`
+  (version, CHANGELOG; typecheck; unit 257 files, 3,243 tests; build; e2e 331 of 331, 39.9 min) and the review's second
+  confirmation was clean. Merged in the internal clone onto a freshly fetched `origin/main` as `a704e63` (its tree is
+  `d16dd72`'s) and pushed with `next`. Pages deployed `a704e63` (run `39825698067`, its tests first); then the shop
+  server from `main` (`dep-dbd4rsfavr4c73cdn2l0`; `/health` `version` 0.7.0, `build` `74779d9a30306b9c`, the game's
+  shared build hash) and the Render static site (`dep-dbd4sc67bikc73f3pn7g`). Both `version.json` files read
+  `{"id":"a704e63-…","version":"0.7.0"}`. The live smoke 27 of 27; the two-browser money test 29 of 29 on Pages and on
+  the Render address.
 
 ## Product decisions in force
 

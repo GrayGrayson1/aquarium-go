@@ -6373,8 +6373,10 @@
         "tests/e2e/shared-shop.spec.ts",
         "tests/sim/shared-room.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.4",
         "SHARED-SHOPS.md §5.6"
@@ -6395,8 +6397,10 @@
         "tests/sim/shared-pool-screens.test.ts",
         "tests/e2e/shared-shop.spec.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.6",
         "SHARED-SHOPS.md §3.3"
@@ -6417,8 +6421,10 @@
         "tests/sim/shared-pool-screens.test.ts",
         "tests/e2e/shared-shop.spec.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.6"
       ],
@@ -6436,8 +6442,10 @@
       "tests": [
         "tests/sim/shared-pool.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.6"
       ],
@@ -6456,8 +6464,10 @@
         "tests/sim/shared-pool-screens.test.ts",
         "tests/e2e/shared-shop.spec.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §8"
       ],
@@ -6475,8 +6485,10 @@
       "tests": [
         "tests/sim/shared-pool.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §3.2"
       ],

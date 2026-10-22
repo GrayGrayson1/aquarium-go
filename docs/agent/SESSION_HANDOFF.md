@@ -1,100 +1,55 @@
-# Session handoff: after 0.6.0 (shared shops released)
+# Session handoff: after 0.7.0 (shared shops' money pool released)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
 
-## Handoff to Marshall: chunk 14, permission tiers and the money pool (from Chase, 2026-10-21, at the owner's request)
+## 0.7.0, the money pool: released (Marshall, 2026-10-22)
 
-**The owner's request** (verbatim, to Chase, after Chase listed what could come next and recommended the money pool):
-"Within CNVS make Marshall do it. Give it everything it absolutely possibly needs to be able to be successful in
-building this next portion. If you've done your own testing then you're fine but have it do its own testing after the
-fact. We want this as close to one-to-one as we talked about, as far as being a finished product."
+- **Chunk 14 is done and released** (PLAN.md chunk 14 and "Releases"; ADR-0050). Built as the owner asked ("Within CNVS
+  make Marshall do it … as close to one-to-one as we talked about, as far as being a finished product"), from their
+  words in ADR-0043: each shared-shop member spends the shop's money (the pool) within a tier the owner sets in the
+  members list (Spends freely, everyone's start; Allowance, topped up each game day; Asks first), members ask for an
+  amount in the Shop money sheet, the owner and the members they let approve answer or give money, and staff and the
+  stock budget need Spends freely. The state is in the shop's `GameState.pool` (`src/sim/pool.ts`): no database
+  change. `main` = `a704e63` on GitHub Pages, the Render address and `aquarium-go-shops` (`/health` `build`
+  `74779d9a30306b9c`); `next` = the release commit `d16dd72` plus docs.
+- **Tested:** the four checks on the release commit (unit 3,243, e2e 331 of 331); a fresh Opus review (one blocker, a
+  test that couldn't fail) and two confirmations, the last clean; live after the release, the smoke 27 of 27 and the
+  two-browser money test 29 of 29 on both sites.
+- **For the owner, when they've played it** (not asked yet; ask only if it matters to them):
+  - Care is never counted or refused (ADR-0050 decision 2), so a member on Asks first can still spend the pool on
+    doses and repairs: up to about $400 a dose for a 1,000-gallon reef tank, at most 10 actions a second. Counting care
+    against an allowance (never refusing it) or capping it would be a new decision.
+  - Approvers can give each other money (by design: the owner picks them).
+  - A pool pop-up can lapse behind the game's own news in a busy shop (the toast stack shows 3 at a time); the line is
+    always in the alerts list.
+  - On a touch screen, a press on a tier held over 600 ms right after typing an allowance can send the amount and then
+    the tier (two alerts lines; cosmetic).
+- **Still open after it:** F1 (the owner's VoiceOver pass), the audit's other findings (B-207, B-208), online stage 2
+  (before strangers join). The owner hasn't played 0.6.0 or 0.7.0 yet: a problem they report comes first.
 
-So Marshall builds **chunk 14: shared shops' permission tiers and money pool**, as a full chunk (CLAUDE.md's routine),
-as close as possible to the owner's own words, finished enough to release. Chase tested 0.6.0 (PLAN.md "Releases");
-Marshall tests chunk 14 itself afterwards, in full (below). Chase isn't editing the repo or the test clone from here
-on: both are Marshall's. If the owner meant a different "next portion", the first question round finds out.
-
-**What "as we talked about" is.** The owner's answer, verbatim, in ADR-0043 (round 2, question 2; read the whole ADR):
-"I think anybody should be able to do #1. Everything else, with permission, I believe. Otherwise I think there should be
-tiers of permission. At the beginning we should probably just have it be that everybody can do everything else with...
-We also probably want there to be a group pool where pretty much all the money just goes into the group and then you
-can request money. I think, unless you're given permission to just use the money, which we'll probably go with in the
-beginning just to make it simpler (with the idea of adding that later), other people should be able to withdraw
-requested money to buy things. Maybe we can even set an amount that people can have that they can just draw from,
-especially depending on the situation. If there's a prismatic or something that you can buy, maybe you're just granted
-permissions, that kind of thing, but that could be later." ADR-0043 decision 5 reads it as: tiers of permission; a
-group pool the shop's money goes into; members request money, and someone with the permission approves it (or
-withdraws it); people given the permission spend directly; an allowance a member can draw from; a one-off grant for a
-special purchase (a Prismatic). 0.6.0 shipped the "at the beginning" version: everyone spends the shop's one balance
-freely; only pause and speed are restricted (the owner, plus the people the owner switches on).
-
-**What it touches today** (the design left room for exactly this, SHARED-SHOPS.md §5.4 and §5.6):
-- `allowed()` at `server/room.ts:113` is the one permission check, run before a command's step. The shop row's
-  `pausers` (migration `supabase/migrations/20261021000000_shared_shops.sql`; `server/{room,host,store,protocol,stub}.ts`;
-  the `grant` message in `src/types/shared.ts`) was planned to become a per-member permissions object (`{pause, spend:
-  'all' | 'request' | 'allowance', allowance}`), with the pool and the requests as commands.
-- A command's money is known only once it runs. The room already runs each command step on a copy
-  (`commandStep`, `runSharedStep(..., { copy: true })`), so a spending check can compare the money before and after
-  and reject before accepting the step. Decide which of the 80 command kinds (`src/sim/commands`) count as spending; a
-  sale, care and a refund don't.
-- Where the new state lives decides the rest. Anything every copy must agree on (a request's status, an allowance
-  balance the screens show) either goes in `GameState` (an optional save field validated in `repairState`; absent, it
-  leaves `stateHash` unchanged; a new command kind in `kinds.ts`, `apply.ts`, `validate.ts` and
-  `tests/sim/commands-catalogue.test.ts`) or stays on the server's shop row and reaches the browsers in `members` /
-  `welcome`. Either way the determinism contract holds. A change under `src/sim`, `src/data`, `src/types`, the pure
-  persistence files or `src/game/sharedLoop.ts` changes the shared build hash.
-- The client: `src/ui/shared/dispatch.ts` maps a `reject` (today `forbidden` always gets the pause words; spending needs
-  its own), `SharedScreens.tsx` (the members list and the owner's switch), `words.ts`, `activity.ts` (pop-ups),
-  `SharedClubSection.tsx`. A database change is a new migration file, checked with `scripts/online-db-local/run.sh`.
-
-**The owner's gate, first** (before building; AskUserQuestion, at most 4 questions a round, recommended option first,
-each description giving the context, exact words and ASCII mock-ups in the previews, since no design screens cover
-this; the answers verbatim in **ADR-0050**). At least:
-1. The tiers: how many, their names, and what each may do (spend freely; spend from an allowance; only request; care
-   and sell only; pause and speed; approve requests; grant). "Anybody should be able to do #1" and "everything else,
-   with permission": ask what each member starts with, and whether existing shops keep 0.6.0's "everyone spends".
-2. Requests: who approves (the owner only, or chosen people too), what a request carries (an amount, a reason or a
-   purchase), how others hear about it (an alert, a pop-up, a badge), what happens if nobody answers, and whether an
-   approved request is money the member then spends ("withdraw requested money to buy things").
-3. Allowances and one-off grants: a set amount, refilled or not (per game day? per real week? never?); a one-off grant
-   tied to one purchase (the Prismatic case) or to an amount.
-4. Every new player-visible line (AGENTS.md: copy too), and the release (0.7.0 when it's done and green, on the owner's
-   go-ahead). Fold in the one word still unconfirmed from chunk 13: the opening card's back button from the title
-   screen reuses "Title".
-5. **How to test it live before release** (new, see below).
-
-**Production now (new since 0.6.0, important).** `aquarium-go-shops` and https://aquarium-go.onrender.com both serve
-players (the owner and their daughter) from `main` = `298b3ff`. ADR-0047 decision 2's "deploy from `next`" was for
-before players existed: **don't deploy `next` to either without the owner's yes in the session.** A server with a new
-shared build hash tells 0.6.0 tabs the shop is updating; a play-test build on the Render address replaces the game
-there. Ask with the gate's round. The options: (a) build and test everything on the stub server and locally, then do
-the live tests right after the release (no extra service); (b) a second free Render web service for pre-release tests
-(free, but it shares the 750 instance hours and the 5 GB outbound with the others; creating it needs the owner's yes,
-as ADR-0046 did); (c) a short announced window on the real server. The live migration needs the owner's yes too.
-
-**Testing it yourself afterwards** (the owner: "have it do its own testing after the fact"):
-- The four checks on the final code from the internal clone under `caffeinate -i -s` (typecheck, unit, build, e2e in
-  Chromium and WebKit); report the pass and fail lines; never count a test that didn't run.
-- Unit: `allowed` for every tier and command kind; a refused purchase leaves every copy unchanged; a request approved,
-  declined, and spent; an allowance running out mid-drag (the coalesced controls); a one-off grant used once; first one
-  wins between two spenders on one allowance; the lockstep tests still match fingerprints.
-- e2e (`tests/e2e/shared-shop.spec.ts`, two contexts on the stub server): a member without permission is refused with
-  the approved words; asks; the owner approves; the member buys; the allowance and the pool update on both screens.
-- Live, when the owner's answer allows: `scripts/shared-smoke.ts` extended to the new commands and permissions, and
-  Chase's two-browser test `scripts/_audit/chunk13/live.ts` in the internal clone (git-excluded; `LIVE_SITE=<url>`
-  picks the site; throwaway accounts and club, removed and checked gone) extended to the money flows.
-- One fresh reviewer (Opus 5.5, `effort: "max"`) on `git diff <chunk start>..HEAD` against the brief, then
-  confirmation passes until clean; fix the blockers.
-
-**Know before you start:** PLAN.md chunks 12 and 13 and "Releases" (0.6.0); "Learned in chunk 12" and "Learned in
-chunk 13" below; ADR-0043, ADR-0045, ADR-0047 to ADR-0049; SHARED-SHOPS.md §3 to §5 and §8. From 0.6.0's release: the
-Pages run runs typecheck and the unit tests on a slower machine (two sockets keep no order between them; a test that
-assumed one failed there, `3d7d2cc`); merge a release in the internal clone onto a freshly fetched `origin/main` (the
-Dev repo's `main` lagged and its merge was refused); the shop server goes after Pages, never before (PLAN.md
-"Releases", step 4). The owner hasn't played 0.6.0 yet: if they report a problem with it, that comes first.
+**Learned in chunk 14.**
+- *Syncing work into the internal clone without discarding anything:* Claude Code's auto-mode classifier refuses `git
+  checkout -- . && git clean` in the clone ("Irreversible Local Destruction"). What worked: write the Dev repo's
+  `git diff HEAD --binary` to a patch, reverse-apply the previously applied patch in the clone, `git checkout --detach`
+  the base, apply the new one; to test a commit, reverse-apply and check it out. The scripts are in the internal
+  clone's git-excluded `scripts/_audit/`: `patch-sync.sh` (the Dev repo's uncommitted work onto its HEAD) and
+  `patch-at.sh <sha>` (the clone at a commit); they keep the applied patch in `scripts/_audit/.patches/`. The clone
+  was left detached at `a704e63` with no patch applied.
+- *The toast stack is no measure of a pop-up:* it shows 3 at a time (2 on a phone) and lets routine ones lapse behind
+  the game's own news (a bid, a fish's sex). An e2e that checks a pop-up records `__AQ.ui().toasts` every 50 ms from the
+  start; checking what's on screen failed once in Chromium.
+- *A look-around against a stub server* needs `VITE_SHARED_SHOP_SERVER` set on its Vite (the club cards ask that server
+  whether the club has a shop; `?shops=` only moves the connection), and the calm HUD (`aquarium-go.ui-prefs.v1`
+  `{"calmHud":false}`) off, or an idle player's strip is hidden. `scripts/_audit/chunk14/look.mjs` in the internal clone
+  screenshots the money screens at desktop and phone sizes in both browsers.
+- *The live site's `__AQ` is read-only* (`game()`, `ui()` and the other `READ_ONLY_KEYS`): a live test acts through the
+  interface (Market › Supplies' Buy button), never `__AQ.cmd`. No throwaway account is the game's owner, so a live
+  test seeds owner-only state (tiers, approvers) in the stored shop.
+- *A test that measures money must send what costs money:* the review's mutants found the care exemption untested
+  because the sample care cost nothing. Prove each exemption with a mutant.
 
 ## Where things stand
 
@@ -110,6 +65,8 @@ Dev repo's `main` lagged and its merge was refused); the shop server goes after 
   leaked-password protection, off), the live smoke test passed 90 of 90. Three clubs, all the owner's ("Aquarium Go
   Friends", "CalliClub", "TheSushiBladesToTheMax"); the clubs keep their codes (ADR-0044 decision 3). Never write a
   code or a player's email in the repo, which is public (`select name, invite_code from public.clubs` reads codes).
+- **0.7.0 is released** (2026-10-22: `main` = `a704e63`, Pages, the Render address and the shop server): chunk 14, the
+  money pool and spending tiers (ADR-0050; the top section).
 - **Shared shops, released in 0.6.0** (ADR-0043, ADR-0045): a whole shop a club plays together on a small server on Render. The
   design is `docs/agent/design/SHARED-SHOPS.md` (2026-10-20): every browser runs the same steps, the server's copy
   counts, fingerprints catch drift. Render's free plan includes only 5 GB of outbound data a month for the whole
@@ -157,8 +114,7 @@ Dev repo's `main` lagged and its merge was refused); the shop server goes after 
   clone, and check `/health`'s `build` and both `version.json` files. A change that leaves src/sim, src/data, src/types
   and the pure persistence files alone keeps the shared build hash, so the server needn't change with it.
 - The chunk 13 worktree (`/Volumes/Dev/Projects/AquariumGo-chunk13`, branch `chunk13`) is used up and can go.
-- **Next:** chunk 14, permission tiers and the money pool (Marshall, the top section). Still open after it: F1 (the
-  owner's VoiceOver pass), the audit's other findings (B-207, B-208), online stage 2 (before strangers join).
+- **Next:** chunk 14, permission tiers and the money pool: done and released as 0.7.0 (the top section).
 
 ## The owner's standing rules (from the shared-shop chunks; verbatim where quoted)
 
@@ -173,7 +129,7 @@ Dev repo's `main` lagged and its merge was refused); the shop server goes after 
   --yes` from the internal clone, then the browser-Claude prompt flow in "Learned in chunk 12" (the agent can't set
   Render variables). Never run a build or install command to "check" it.
 - The owner prefers agents to do everything they can themselves and to ask once, batched (AskUserQuestion, recommended
-  option first, the answers verbatim in a new ADR, the next is ADR-0050).
+  option first, the answers verbatim in a new ADR, the next is ADR-0051).
 - Reviewers (the chunk's fresh reviewer and its confirmation passes) run on Opus 5.5 at max effort (the Agent tool:
   `model: "opus"`, `effort: "max"`), never Fable.
 - No new dependencies without asking (`ws` 8.22.0 is approved, server only, no `@types/ws`). Never weaken, skip or delete
@@ -200,8 +156,8 @@ Dev repo's `main` lagged and its merge was refused); the shop server goes after 
    internal-disk clone, watch the Pages run (it runs typecheck and the unit tests first; a test that fails only there
    is usually a race or a time limit), then the shop server and the Render static site by hand from `main`'s full sha,
    the live smoke, and both `version.json` files.
-5. **Shared shops: done and released** (chunks 10 to 13, 0.6.0). Next, chunk 14: permission tiers and the money pool
-   (Marshall; the top section). The audit's remaining findings (B-207, B-208) wait for the owner.
+5. **Shared shops: done and released** (chunks 10 to 13, 0.6.0), and their money pool and spending tiers (chunk 14,
+   0.7.0; the top section). The audit's remaining findings (B-207, B-208) wait for the owner.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the
