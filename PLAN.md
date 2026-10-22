@@ -1228,6 +1228,12 @@ REL-012, REL-018.
   unit 253 files, 3,166 tests passed; build passed; e2e 329 of 329 in Chromium and WebKit (39.1 minutes).
 - **The final pass** on `c063c6e` (after the review and its three confirmations): typecheck passed; unit 255 files, 3,202
   tests passed; build passed; e2e 329 of 329 in Chromium and WebKit (39.4 minutes).
+- **The play-test build** (2026-10-21, ADR-0047 decision 2, ADR-0049 decision 3): `next` = `30a699f` pushed (Claude Code's
+  auto mode refused the agent's first push; the owner gave permission in the session and the agent pushed);
+  `aquarium-go-shops` deployed from it (`dep-dbcmsq2vcj2c73f6mok0`; `/health` `build` `681ac8b023eeaca7`, this commit's
+  shared build hash; no `SHOPS_SERVER_KEY` in the build's variables); the live smoke 23 of 23; the Render static site
+  `aquarium-go` deployed from the same commit (`dep-dbcmugi9lscs73eerrtg`, no branch switch needed: Render took a
+  commit from `next`), its `version.json` `30a699f-…`; GitHub Pages still 0.5.6 (`3a0e8ce`).
 - **The fresh review** (Opus 5.5, max effort) on `next...chunk13` at `d6c7926`, with probes and mutants
   (`scripts/_audit/review-chunk13/`, git-excluded): five blockers, all fixed in `882c06c`.
   - **B1:** the created shop's starter wasn't the animal the owner previewed (the server rolled its own from the world's
