@@ -795,4 +795,16 @@ describe('chunk 13: a shared shop is never anyone’s online save (SHARE-011)', 
     expect(server.service.cloudDownload).not.toHaveBeenCalled();
     expect(useGame.getState().game).toBe(shop);
   });
+
+  it('with autosave off in Settings too (then the shared shop is the only reason not to send)', async () => {
+    useSettings.setState({ autosave: false });
+    setSharedMode('club_1');
+    await signIn();
+    localSave();
+    await cloudSyncNow();
+    await vi.advanceTimersByTimeAsync(SEND_GAP_MS * 2);
+    expect(server.uploads).toHaveLength(0);
+    expect(server.reports).toHaveLength(0);
+  });
 });
+

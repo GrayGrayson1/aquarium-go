@@ -134,6 +134,8 @@ export class SharedConnection {
   /** The tab hid long enough that this disconnected on purpose. */
   private hiddenDropped = false;
   private signInRetried = false;
+  /** The next join asks for a fresh token (after `bye sign-in`), until one is had. */
+  private refreshNext = false;
   /** Reconnecting because the player came back (a hidden tab, away too long), not because the connection failed. */
   private rejoin = false;
   private welcomed = false;
@@ -314,8 +316,9 @@ export class SharedConnection {
     await this.connect();
   }
 
-  private async connect(refresh = false): Promise<void> {
+  private async connect(): Promise<void> {
     if (this.ended) return;
+    const refresh = this.refreshNext;
     this.events.phase?.(this.joiningPhase('joining'));
     // no session is the sign-in line (ADR-0049); a network failure fetching it is only a lost connection
     const token = await this.deps.token({ refresh }).then(
@@ -325,6 +328,7 @@ export class SharedConnection {
     if (this.ended) return;
     if (token === undefined) return this.lost();
     if (!token) return this.signedOut();
+    this.refreshNext = false;
     const first: ClientMessage =
       this.joinAs.kind === 'create'
         ? { t: 'create', token, build: SHARED_BUILD, club: this.deps.club, name: this.joinAs.name, starter: this.joinAs.starter, starterName: this.joinAs.starterName, seed: this.joinAs.seed, ...(this.deps.canGunzip ? {} : { plain: true }) }
@@ -481,10 +485,11 @@ export class SharedConnection {
     this.dropSocket();
     switch (why) {
       case 'sign-in':
-        // the token can't be checked: a fresh one, once; failing again, the visit is over
-        if (this.signInRetried) return this.signedOut();
+        // the token can't be checked: a fresh one, once (asked again after a network failure); refused again, it's over
+        if (this.signInRetried && !this.refreshNext) return this.signedOut();
         this.signInRetried = true;
-        void this.connect(true);
+        this.refreshNext = true;
+        void this.connect();
         return;
       case 'away':
         // away too long: back when the player is (the shop stays on screen, still)

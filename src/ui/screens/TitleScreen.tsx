@@ -20,6 +20,7 @@ import { useShell } from '../common/shellStore';
 import { buildDetail, versionLabel } from '../common/version';
 import { openSharedShop, openedShops, sharedServerBase } from '../shared/session'; // chunk 13
 import { SHARED_WORDS } from '../shared/words';
+import { useShared } from '../shared/store';
 
 type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
@@ -155,6 +156,7 @@ export function TitleScreen() {
   };
 
   const sharedShop = sharedServerBase() ? (openedShops()[0] ?? null) : null;
+  const sharedBusy = useShared((s) => s.phase !== 'idle' && s.phase !== 'closed');
   const onShared = () => {
     if (!sharedShop || busy) return;
     unlockAudio();
@@ -207,7 +209,7 @@ export function TitleScreen() {
           )}
           {sharedShop && (
             // chunk 13 (SHARED-SHOPS.md §8, ADR-0045 decision 9): the shared shop this device opened last, under Continue
-            <motion.button {...item(0)} type="button" className="ag-menubtn" data-testid="title-shared-shop" onClick={onShared} disabled={busy}>
+            <motion.button {...item(0)} type="button" className="ag-menubtn" data-testid="title-shared-shop" onClick={onShared} disabled={busy || sharedBusy}>
               <Store size={18} aria-hidden />
               <span className="ag-menubtn__text">
                 <span>{SHARED_WORDS.titleButton(sharedShop.shop)}</span>

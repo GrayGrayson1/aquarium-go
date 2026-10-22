@@ -1219,6 +1219,33 @@ REL-012, REL-018.
     stored id (only `create` sets `shared_<club>`), so the guards go by the shared mode first; the guide card showed in
     a stub shop whose guide wasn't done (hidden in every shared shop now); the HUD strip moved above the dock (under the
     tank bar on phones) after screenshots at 1280 × 720 showed it over the tool rail.
+- **The first full pass** on `d6c7926` (2026-10-21, the internal-disk clone, under `caffeinate -i -s`): typecheck passed;
+  unit 253 files, 3,166 tests passed; build passed; e2e 329 of 329 in Chromium and WebKit (39.1 minutes).
+- **The fresh review** (Opus 5.5, max effort) on `next...chunk13` at `d6c7926`, with probes and mutants
+  (`scripts/_audit/review-chunk13/`, git-excluded): five blockers, all fixed in `882c06c`.
+  - **B1:** the created shop's starter wasn't the animal the owner previewed (the server rolled its own from the world's
+    stream; 0 of 30 seeds matched). `create` now passes `previewStarters(seed)[starter]`; chunk 12's create test compares
+    the whole animal.
+  - **B2:** a command in flight when the copy fell out of step never settled (its step was skipped, the snapshot replaced
+    the copy). The dispatcher now settles what was pending when the copy asked for the shop again once that snapshot
+    lands, as applied with its result unseen (the server reads the socket in order, so it is in the snapshot).
+  - **B3:** follow-ups ran before the copy holding their result was published (salt and egg stock lines, "Manual mode
+    off"). A batch is published first, then its commands settle; one follow-up that throws no longer skips the rest.
+  - **B4:** the online save's refusals had no test: tests in `online-sync.test.ts`.
+  - **B5:** the title button woke the server even when shops were closed for the month. Before anything wakes it, a
+    signed-out player and closed shops get their line at once.
+  - **Notes, fixed:** the /health retry uses the growing waits and never runs hidden; a drop before the first welcome
+    keeps the opening card; a network failure fetching the token is a lost connection, not a sign-out; the slow line
+    stays a while, and steps read while hidden don't count as behind; one leave at a time; opening from the title leaves
+    a waiting save's record alone; the waiting save loads from whichever slot holds it; the parked game's online copy
+    goes at once; the remaining dev writers refuse; the online-save box never shows over a shared shop; any purchase or
+    sale over $100 pops up (not rewards or refunds); the dialogs are named by their own line; Settings' subtitle;
+    `removed` forgets the title button; the phone notice; the date fallback; the boundary tests name the new files; the
+    e2e leaving test's margin; tests for the mutants that survived (`bye protocol`/`server`, a drop while hidden, held-back
+    values on a drop, the Toasts filter) and a session test with a fake connection (`shared-session`).
+  - **Left on purpose:** a guide flag the server drops as a repeat while this copy doesn't show it yet stays pending
+    until a drop (harmless: `edit()` asks for no result); the opening card's back button from the title screen reuses the
+    starter screen's existing "Title".
 
 ## Releases
 

@@ -127,6 +127,8 @@ let visit: Visit | null = null;
 let awayRecorded = false;
 /** A leave under way: a second one (a closing as Back is pressed) waits for it rather than starting again. */
 let leaving: Promise<void> | null = null;
+/** An opening under way (its checks, the save): a second click starts nothing (the confirmation pass's blocker). */
+let opening = false;
 
 export interface OpenOptions {
   from: 'game' | 'title';
@@ -203,14 +205,19 @@ async function mayOpen(club: { id: string; name: string }, from: 'game' | 'title
  * (src/ui/screens: the onboarding's `shared`), whose last step calls `openSharedShop` with `create`.
  */
 export async function beginCreate(club: { id: string; name: string }): Promise<boolean> {
-  if (visit || inSharedShop()) return false;
-  patchShared({ ...INITIAL_VISIT, phase: 'saving', club, from: 'game', creating: true });
-  if (!(await parkOwnGame(club.id, 'game'))) {
-    patchShared({ ...INITIAL_VISIT });
-    return false;
+  if (visit || opening || inSharedShop()) return false;
+  opening = true;
+  try {
+    patchShared({ ...INITIAL_VISIT, phase: 'saving', club, from: 'game', creating: true });
+    if (!(await parkOwnGame(club.id, 'game'))) {
+      patchShared({ ...INITIAL_VISIT });
+      return false;
+    }
+    patchShared({ phase: 'idle' });
+    return true;
+  } finally {
+    opening = false;
   }
-  patchShared({ phase: 'idle' });
-  return true;
 }
 
 /** The owner backed out of the new-game screens: back to their own aquarium, as it was. */
@@ -222,12 +229,21 @@ export async function cancelCreate(): Promise<void> {
 
 /** Open a club's shared shop. */
 export async function openSharedShop(club: { id: string; name: string }, opts: OpenOptions): Promise<void> {
-  if (visit) return;
+  if (visit || opening) return;
   const base = sharedServerBase();
   if (!base) return;
-  if (!(await mayOpen(club, opts.from, !!opts.saved))) return;
-  if (visit) return;
+  opening = true;
+  try {
+    await open(club, opts, base);
+  } finally {
+    opening = false;
+  }
+}
+
+async function open(club: { id: string; name: string }, opts: OpenOptions, base: string): Promise<void> {
+  // the phase first, before any wait: the cards' and the title's buttons go busy at once
   patchShared({ ...INITIAL_VISIT, phase: 'saving', club, from: opts.from, shopName: opts.shopName ?? '', creating: !!opts.create });
+  if (!(await mayOpen(club, opts.from, !!opts.saved))) return;
   if (!opts.saved && !(await parkOwnGame(club.id, opts.from))) {
     patchShared({ ...INITIAL_VISIT });
     return;
@@ -261,9 +277,12 @@ export async function openSharedShop(club: { id: string; name: string }, opts: O
       welcome: (w, first) => welcomed(v, w, first),
       applied: () => {
         // the copy first, then the results: a follow-up reads the store, which then holds what its command did
-        publish(v, v.hadCommand);
-        v.hadCommand = false;
-        for (const { step, results } of v.toSettle.splice(0)) v.disp.settleStep(step, results);
+        try {
+          publish(v, v.hadCommand);
+        } finally {
+          v.hadCommand = false;
+          for (const { step, results } of v.toSettle.splice(0)) v.disp.settleStep(step, results);
+        }
       },
       step: (step, results) => {
         if (step.cmds?.length || step.post?.length) v.hadCommand = true;
@@ -350,8 +369,9 @@ function welcomed(v: Visit, w: Welcome, first: boolean): void {
   });
   v.base = null; // a snapshot replaces the whole copy
   v.activity.reset();
-  v.toSettle = [];
   publish(v, true);
+  // steps applied before this snapshot whose batch never settled (a publish that threw) settle with their results
+  for (const { step, results } of v.toSettle.splice(0)) v.disp.settleStep(step, results);
   // what this copy sent before asking for the shop again is in this snapshot; its steps were skipped here
   if (!first) v.disp.resynced();
   const ownerName = w.shop.owner ?? (you.owner ? you.name : useShared.getState().ownerName);

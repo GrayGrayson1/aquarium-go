@@ -10,6 +10,7 @@ import { useUI, type Toast } from '@/state/ui';
 import { sfx, type SfxId } from '@/audio/sfx';
 import { markUrgent } from './hooks';
 import { toastCaution } from '@/ui/common/actions'; // lane:qa-r3
+import { APPLIED_UNSEEN } from '@/ui/shared/dispatch';
 
 export interface ActOptions {
   /** Sound on success (default 'confirm'). */
@@ -34,6 +35,11 @@ export function act(cmd: Command, opts: ActOptions = {}): void {
       ui.toast(useGame.getState().game ? 'That didn’t work — please try again.' : 'No game loaded.', 'warning');
       sfx('error');
       opts.after?.(null);
+      return;
+    }
+    // chunk 13: applied in steps a re-synced shared copy skipped, its own result unseen: no sound or toast to claim one
+    if (res === APPLIED_UNSEEN) {
+      opts.after?.(res);
       return;
     }
     // an action that returns nothing (a toggle) reads as an empty success, as its closure's did

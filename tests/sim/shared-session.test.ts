@@ -20,6 +20,7 @@ import { createMemoryBackend, listSaves, markSharedAway, readSharedAway, saveGam
 import { provideSocialService, type SharedShops, type SocialService } from '@/social';
 import type { ConnectionDeps, ConnectionEvents, Welcome } from '@/ui/shared/connection';
 import { useShared } from '@/ui/shared/store';
+import { APPLIED_UNSEEN } from '@/ui/shared/dispatch';
 import { leaveSharedShop, openSharedShop } from '@/ui/shared/session';
 import { forgetSharedShops } from '@/ui/shared/shopsCache';
 
@@ -33,7 +34,14 @@ interface Fake {
   closed: boolean;
   sent: { id: number; c: unknown }[];
 }
-const fakes = vi.hoisted(() => ({ conns: [] as unknown[] }));
+const fakes = vi.hoisted(() => ({ conns: [] as unknown[], sends: 0 }));
+// the online save's send right after parking your own aquarium (the review's note 10), counted
+vi.mock('@/ui/online/cloudSync', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/ui/online/cloudSync')>()),
+  sendNow: async () => {
+    fakes.sends++;
+  },
+}));
 vi.mock('@/ui/shared/connection', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/ui/shared/connection')>();
   class FakeConnection {
@@ -112,6 +120,7 @@ async function ownGame(): Promise<GameState> {
 
 beforeEach(() => {
   fakes.conns.length = 0;
+  fakes.sends = 0;
   setStorageBackend(createMemoryBackend());
   setSyncStore(memory());
   (globalThis as { localStorage?: unknown }).localStorage = memory();
@@ -239,5 +248,61 @@ describe('chunk 13: a visit', () => {
     expect(readSharedAway()).toMatchObject({ saveId: 'save_waiting', enteredAt: 1000, heartbeat: 1000 });
     expect(useUI.getState().screen).toBe('title');
     expect(useGame.getState().game).toBeNull();
+  });
+
+  it('the confirmation’s blocker: two quick clicks on Open start one visit; the buttons are busy at once', async () => {
+    provideSocialService(service());
+    await ownGame();
+    const a = openSharedShop(CLUB, { from: 'game' });
+    expect(useShared.getState().phase).toBe('saving'); // before any wait: the card's and the title's buttons go busy
+    const b = openSharedShop(CLUB, { from: 'game' });
+    await Promise.all([a, b]);
+    expect(fakes.conns).toHaveLength(1);
+  });
+
+  it('your own aquarium’s online copy goes as it is parked (not after the visit); none from the title', async () => {
+    provideSocialService(service());
+    await ownGame();
+    await openSharedShop(CLUB, { from: 'game' });
+    expect(fakes.sends).toBe(1);
+    await leaveSharedShop();
+    useGame.getState().setGame(null);
+    useUI.getState().set({ screen: 'title' });
+    await openSharedShop(CLUB, { from: 'title' });
+    expect(fakes.sends).toBe(1);
+  });
+
+  it('B2 through the session: what was sent before the copy asked for the shop again settles at the next snapshot', async () => {
+    provideSocialService(service());
+    await ownGame();
+    await openSharedShop(CLUB, { from: 'game' });
+    const f = conn();
+    arrive(f);
+    let got: CommandResult | null | undefined;
+    useGame.getState().dispatch({ k: 'renameTank', tank: f.replica.state!.tankOrder[0], name: 'X' }, (res) => (got = res));
+    f.events.resync?.();
+    expect(got).toBeUndefined();
+    f.events.welcome?.(welcome(), false);
+    expect(got).toBe(APPLIED_UNSEEN);
+  });
+
+  it('a publish that throws still settles its batch', async () => {
+    provideSocialService(service());
+    await ownGame();
+    await openSharedShop(CLUB, { from: 'game' });
+    const f = conn();
+    const shop = arrive(f);
+    let got: CommandResult | null | undefined;
+    useGame.getState().dispatch({ k: 'renameTank', tank: shop.tankOrder[0], name: 'Y' }, (res) => (got = res));
+    const off = useGame.subscribe(() => {
+      throw new Error('a subscriber that throws');
+    });
+    try {
+      f.events.step?.({ n: 4, h: 0, cmds: [{ by: 'u_a', who: 'Ann', id: f.sent[0].id, c: f.sent[0].c as never }] }, [{ ok: true, message: 'Renamed.' }]);
+      expect(() => f.events.applied?.()).toThrow('a subscriber that throws');
+    } finally {
+      off();
+    }
+    expect(got).toEqual({ ok: true, message: 'Renamed.' });
   });
 });

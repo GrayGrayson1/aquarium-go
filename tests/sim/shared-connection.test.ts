@@ -580,5 +580,20 @@ describe('chunk 13: the review’s cases', () => {
     expect(kinds(r.sock())).not.toContain('resync');
     expect(r.log).not.toContain('notice "slow"');
   });
+
+  it('bye sign-in whose fresh token failed on the network asks for a fresh one again, not the old one', async () => {
+    const r = await joined();
+    r.tokenAnswer.value = new Error('network');
+    r.sock().deliver({ t: 'bye', why: 'sign-in' });
+    await flush();
+    expect(r.tokens.at(-1)).toEqual({ refresh: true });
+    r.tokenAnswer.value = 'fresh';
+    r.clock.advance(1000);
+    await flush();
+    expect(r.tokens.at(-1)).toEqual({ refresh: true });
+    r.sock().open();
+    expect(r.sock().sent[0]).toMatchObject({ t: 'hello', token: 'fresh' });
+    expect(r.log).not.toContain('signedOut');
+  });
 });
 
