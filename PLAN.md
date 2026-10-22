@@ -25,17 +25,17 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    shops at 10× but not a late-game one (SHARED-SHOPS.md §11). **Chunk 11, commands, is done** (2026-10-20, below):
    every player action is a command the server can pass on, and the solo game is unchanged. **Chunk 12, the server and
    the database, is done** (2026-10-21, Marshall, below; ADR-0047): the real server runs on the free Render service from
-   `next` behind sign-in and a server password, the migration is live, the live smoke passes. **Next: chunk 13** (the
-   screens and the play-test, then 0.6.0), handed to Chase at the owner's request (SESSION_HANDOFF.md "Handoff to
-   Chase"); group L's words are approved (ADR-0048) and K1 is answered. The audit's other findings (B-207, B-208) wait
-   for the owner.
+   `next` behind sign-in and a server password, the migration is live, the live smoke passes. **Chunk 13, the screens,
+   is built** (2026-10-21, Chase, below; ADR-0048, ADR-0049): a club's shared shop opens from its card in Social or the
+   title screen, your own aquarium waits, and nothing saves a shared shop on the device. **Next: the play-test** with the
+   owner and their daughter on the Render address (ADR-0049: https://aquarium-go.onrender.com, the shop server from the
+   same commit; GitHub Pages stays 0.5.6), **then 0.6.0** on the owner's go-ahead (SESSION_HANDOFF.md has the steps).
+   The audit's other findings (B-207, B-208) wait for the owner.
 4. **Released:** 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
-5. Every owner question is answered (ADR-0024 to ADR-0046) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
-   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005); K1, not yet asked (big shared
-   shops on the free server, for chunk 12 or 13); and L, not yet asked (the words chunk 13 needs, drafted from chunk
-   11). NOTIFY-011 and PLAT-004 (the
+5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
+   owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
 
@@ -56,9 +56,14 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 10 | Shared shops, the test (SHARED-SHOPS.md §10, ADR-0046) | Done 2026-10-20 (not released; nothing players see). One arithmetic, the step block, the prototype server on the free Render service; the review's 2 blockers fixed and its notes; the final pass on `e0f14de`: typecheck, unit 2,891, build, e2e 319 of 319 |
 | 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (not released; nothing players see). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
 | 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (not released; nothing players see). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
-| 13 | Shared shops, the screens and the play-test (§7, §8) | Brief written 2026-10-21 (Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049): the connection, the shared dispatcher, the screens, e2e with two browsers, a play-test with the owner and their daughter, then release with the owner's go-ahead |
+| 13 | Shared shops, the screens and the play-test (§7, §8) | Built 2026-10-21 (Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049; not released). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. Next: the play-test on the Render address (ADR-0049), then 0.6.0 on the owner's go-ahead |
 
-**Last full test runs:** chunk 12's final code `aa7b184`, the owner's Mac, 2026-10-21, from the internal-disk clone under
+**Last full test runs:** chunk 13's final code `c063c6e`, the owner's Mac, 2026-10-21, from the internal-disk clone under
+`caffeinate -i -s`: typecheck passed; unit 255 files, 3,202 tests passed; build passed; e2e 329 of 329 in Chromium and
+WebKit, dev and both production builds (39.4 minutes). Before it: `d6c7926` (unit 3,166, e2e 329 of 329) and `882c06c`
+(unit 3,192, e2e 329 of 329), both green, each followed by the review's fixes; a pass on `7e44242` was stopped in its e2e
+(its typecheck, unit 3,198 and build green) when the second confirmation's fix landed.
+Before chunk 13: chunk 12's final code `aa7b184`, the owner's Mac, 2026-10-21, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 246 files, 3,103 tests passed; build passed; e2e 321 of 321 in Chromium and
 WebKit, dev and both production builds (38.0 minutes); then `8b65dbf` (one test and PLAN.md more): typecheck and unit
 3,104 passed. Before it: `cdc5387` the same four green (unit 3,085, e2e 321 of 321, 37.8 minutes); a pass on `1689c46`
@@ -1067,7 +1072,7 @@ REL-012, REL-018.
   3, the hash, a type byte, the bytes; `gone` needs its words (§8); joining the welcome's `catchUp` shows the
   welcome-back card; every snapshot after the first (a catch-up, a re-sync) replaces the copy.
 
-### 13. Shared shops, the screens and the play-test (SHARED-SHOPS.md §7, §8) — brief written 2026-10-21 (Chase)
+### 13. Shared shops, the screens and the play-test (SHARED-SHOPS.md §7, §8) — built 2026-10-21 (Chase); the play-test next
 
 - **What:** the game opens a club's shared shop: the connection, the shared dispatcher, the screens with §8's approved
   words (ADR-0045, ADR-0048), your own game waiting, the save guards and photos; then a play-test with the owner and
@@ -1221,6 +1226,8 @@ REL-012, REL-018.
     tank bar on phones) after screenshots at 1280 × 720 showed it over the tool rail.
 - **The first full pass** on `d6c7926` (2026-10-21, the internal-disk clone, under `caffeinate -i -s`): typecheck passed;
   unit 253 files, 3,166 tests passed; build passed; e2e 329 of 329 in Chromium and WebKit (39.1 minutes).
+- **The final pass** on `c063c6e` (after the review and its three confirmations): typecheck passed; unit 255 files, 3,202
+  tests passed; build passed; e2e 329 of 329 in Chromium and WebKit (39.4 minutes).
 - **The fresh review** (Opus 5.5, max effort) on `next...chunk13` at `d6c7926`, with probes and mutants
   (`scripts/_audit/review-chunk13/`, git-excluded): five blockers, all fixed in `882c06c`.
   - **B1:** the created shop's starter wasn't the animal the owner previewed (the server rolled its own from the world's
@@ -1245,7 +1252,18 @@ REL-012, REL-018.
     values on a drop, the Toasts filter) and a session test with a fake connection (`shared-session`).
   - **Left on purpose:** a guide flag the server drops as a repeat while this copy doesn't show it yet stays pending
     until a drop (harmless: `edit()` asks for no result); the opening card's back button from the title screen reuses the
-    starter screen's existing "Title".
+    starter screen's existing "Title" (to put to the owner with the release question).
+- **Its confirmation passes.** The first (`d6c7926..882c06c`): B1 to B5 confirmed, B2's reasoning checked against the
+  server, and one new blocker from B5's fix: two quick clicks on Open started two visits while the checks ran. Fixed in
+  `7e44242` (one opening at a time, a busy phase before the first wait), with its notes: a result unseen across a
+  re-sync plays no sound or toast, a publish that throws still settles its batch, `bye sign-in` keeps asking for a fresh
+  token after a network failure, and tests for the re-sync wiring, the online copy sent on parking and the online save
+  with autosave off. The second (`882c06c..7e44242`): one small blocker, Open dead after Back until the first `/health`
+  answered; fixed in `c063c6e` (the guard ends once the visit exists), with the other action helper quiet for an unseen
+  result and the checks in a quiet `checking` phase. The third (`7e44242..c063c6e`): clean, no blockers. Its two notes,
+  left: a late-finishing earlier open could clear a newer one's guard (not reachable by a click: the buttons are busy
+  meanwhile; only `__AQ.shared.open` gets through), and the opening's `catch` resets only the visit's store (nothing
+  between the mode going on and the visit existing can throw).
 
 ## Releases
 

@@ -51,9 +51,11 @@ it's used up.
 
 ## Chunk 13 and the play-test: where it stands (Chase, 2026-10-21)
 
-- **Built** on the branch `chunk13` (worktree `/Volumes/Dev/Projects/AquariumGo-chunk13`; `next` merged in at chunk 12's
-  end, `e1666ed`): PLAN.md chunk 13 has the record. The owner's answers are ADR-0049: two more lines, and **the
-  play-test on the Render address first**.
+- **Built and reviewed** (PLAN.md chunk 13 has the record): the fresh review's 5 blockers and its confirmations' 2 more
+  fixed, the third confirmation clean; the final pass on `c063c6e` green (unit 3,202, e2e 329 of 329); `next`
+  fast-forwarded to `chunk13` (the worktree's branch, which can now go) and pushed. The owner's answers are ADR-0049:
+  two more lines, and **the play-test on the Render address first**. Still to ask the owner, with the release: the
+  opening card's back button from the title screen reuses the existing "Title".
 - **The play-test, step by step** (ADR-0049 decision 3; after the four checks and the review are through and `next` is
   fast-forwarded to `chunk13` and pushed from the internal clone):
   1. The shop server from that commit: `render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm
