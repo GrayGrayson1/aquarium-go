@@ -1459,6 +1459,39 @@ REL-012, REL-018.
   the gate), `src/state/lab.ts` (new store), `src/game/useAutosave.ts` (`neverAutosave`), `src/App.tsx`,
   `src/ui/nav/router.ts` (a scenario address boots like a fixture): the reviewer checks them closely. No new
   dependency; no save field; `SCHEMA_VERSION` unchanged.
+- **Built** (`0bdc84c`, Chase, 2026-10-23): everything above. The lab's chunks are left out of the players' build
+  altogether (`LAB_BUILD`, a build-time constant, guards every `import()` of them; checked in a built bundle), on top of
+  the runtime gate. Copying goes through `src/platform` (the clipboard has no read, so the JSON box takes a paste
+  directly). Found and fixed on the way: `Toasts.tsx` dismissed UI toasts inside a state updater (a dev-only React
+  warning the lab's world switches brought out in WebKit). The look-around (`scripts/_audit/chunk15/look2.mjs` in the
+  internal clone, git-excluded): every preset and a recipe of my own built through the screen in Chromium and WebKit at
+  1440×900 and 390×844, played 12 game hours (the betta pair laid 77 eggs, the shrimp berried), exported, re-imported
+  and reopened from a link after a reload, with no page errors; it moved the in-game badge clear of the tank bar and
+  the tool rail.
+- **The full pass on `0bdc84c`:** typecheck passed; unit 260 files, 3,341 tests passed; build passed; e2e 335 of 335
+  (40.5 min).
+- **The fresh review** (Opus 5.5, max effort, on `117aca9..0bdc84c`): four blockers, all fixed in `765b6b6`: (0) a
+  build used up a Prismatic forced from the dev panel (set aside and restored now); (1) "Save now", "Save and return to
+  title", the error screens and the page-close save wrote a scenario over the player's autosave (the save path itself
+  now refuses slot `auto` for a scenario, `src/persistence/session.ts`; Build and play and the fixture picker save the
+  player's own game first, as Load does); (2) Start again on a `current` base stacked the recipe onto the scenario (the
+  scenario keeps the game it was built from); (3) the "nothing non-finite" test couldn't fail (the builder reports
+  such numbers now). Its notes, fixed too: capture lost duplicate equipment and hidden or sex-changing roles; a named
+  sex for a sex-changing species; `unlocks: "none"` undone by research; checks skipped silently; names like
+  "constructor"; patches that threw; unclamped inputs; untested session paths and script (the script's logic is now
+  `src/dev/scenario/cli.ts`). Every mutant the review and the fixes tried is caught. Outside the lab: `illnessDef` read
+  a plain object (a save whose illness kind was "constructor" crashed every step); BACKLOG B-210 records two crafted
+  save shapes `repairState` passes that crash a step.
+- **The confirmation pass** (the same reviewer, `0bdc84c..765b6b6`): each blocker fixed and its test failing without
+  the fix. Two more, fixed after: the patch's play-test stepped a copy of the world in the lab's trial builds too, and
+  stepping any world clears the sim's shared caches, so checking a patched recipe changed the game on screen (now no
+  trial build steps a world; a test plays two game days beside the lab's checking and compares hashes); and the
+  play-test stepped no tank, so a tank's or an animal's patch that crashes the game got through (now the finished
+  world is played once with every tank stepped, and one the game can't play is rebuilt without the patches). Its
+  notes, fixed too: a scenario could still go online with Settings › Autosave off (`syncableGame` refuses it); a
+  non-number in a `current` base is reported (tested); an exact piece's impossible failure is named. A pass on
+  `765b6b6` was stopped part-way when these fixes landed (typecheck, unit 3,360 and build green; 83 e2e tests run,
+  none failed).
 
 ## Releases
 

@@ -406,11 +406,19 @@ describe('LAB-002: the fresh review\u2019s notes', () => {
       expect(b!.repairs, JSON.stringify(patch)).toEqual([]); // the world it returns is already what the save path loads
       expect(() => advanceWorld(b!.state, 1, {}), JSON.stringify(patch)).not.toThrow();
     }
-    // one the save path loads but the game can't play (its first step would throw) is refused
-    for (const patch of [{ visitors: { live: 5 } }, { facility: { fixtures: 'none' } }]) {
-      const b = buildScenario(R({ name: 'Crash', shop: { facility: 'specialty_shop' }, tanks: [{ name: 'T' }], patch }));
-      expect(errors(b).map((i) => i.at), JSON.stringify(patch)).toEqual(['patch']);
-      expect(() => advanceWorld(b.state, 1, {})).not.toThrow();
+    // one the save path loads but the game can't play (its first step would throw) is built without the patches:
+    // the game's own, a tank's or an animal's
+    const crashers: ScenarioRecipe[] = [
+      R({ name: 'Crash', shop: { facility: 'specialty_shop' }, tanks: [{ name: 'T' }], patch: { visitors: { live: 5 } } }),
+      R({ name: 'Crash', shop: { facility: 'specialty_shop' }, tanks: [{ name: 'T' }], patch: { facility: { fixtures: 'none' } } }),
+      R({ name: 'Crash', tanks: [{ name: 'T', patch: { water: { lab: 5 } }, animals: [{ species: 'neon_tetra' }] }] }),
+      R({ name: 'Crash', tanks: [{ name: 'T', animals: [{ species: 'neon_tetra', patch: { life: 7 } }] }] }),
+    ];
+    for (const recipe of crashers) {
+      const b = buildScenario(recipe);
+      expect(errors(b).map((i) => i.at), JSON.stringify(recipe)).toEqual(['patch']);
+      expect(() => advanceWorld(b.state, 1, { forceFull: true })).not.toThrow();
+      expect(b.state.tankOrder).toHaveLength(1);
     }
     // a clock taken away comes back as the save path's
     expect(buildScenario(R({ name: 'C', patch: { clock: null } })).state.clock).toMatchObject({ hour: expect.any(Number), speed: 0 });
@@ -460,5 +468,34 @@ describe('LAB-002: the fresh review\u2019s notes', () => {
     expect(b.state.market.stock[0].price).toBe(777);
     // set water is how the water is: no sudden swing the animals feel on the first step
     expect(b.state.tanks[b.tanks.T].water.lab).toMatchObject({ prevTemp: 26, bioTempC: 26 });
+  });
+});
+
+describe('LAB-002: the confirmation pass\u2019s findings', () => {
+  it('the lab\u2019s checking never changes the game on screen (a trial build steps no world)', () => {
+    const recipe = R({ name: 'Patched', tanks: [{ name: 'T', patch: { notes: 'x' }, animals: [{ species: 'neon_tetra', count: 4, patch: { favorite: true } }] }], patch: { progress: { reputation: 5 } } });
+    // a tank in view (full detail, so the sim's shared caches are in use), two game days, the lab checking every 6 h
+    const play = (withLab: boolean) => {
+      const g = buildScenario(presetById('staffed-store')!.recipe).state;
+      for (let h = 0; h < 48; h++) {
+        advanceWorld(g, 1, { focusTankId: g.tankOrder[0] });
+        if (withLab && h % 6 === 0) validateRecipe(recipe, { current: g });
+      }
+      return stateHash(g);
+    };
+    expect(play(true)).toBe(play(false));
+  });
+
+  it('a number in "the game on screen" the save would write as 0 is reported', () => {
+    const current = buildScenario(R({ name: 'Base', tanks: [{ name: 'T' }] })).state;
+    current.tanks[current.tankOrder[0]].water.nitrate = NaN;
+    const b = buildScenario(R({ name: 'On it', base: 'current' }), { current });
+    expect(b.issues).toContainEqual(expect.objectContaining({ level: 'warning', at: 'save', message: expect.stringContaining('water.nitrate') }));
+  });
+
+  it('an exact piece of equipment says when its failure can\u2019t be', () => {
+    const b = buildScenario(R({ name: 'Eq', tanks: [{ name: 'T', bareEquipment: true, equipment: [{ id: 'filter_hob_small', failed: 'stuck_on', exact: true }, { id: 'heater_100w', failed: 'stuck_on', exact: true }] }] }));
+    expect(errors(b).map((i) => i.at)).toEqual(['tanks[0].equipment[0].failed']);
+    expect(b.state.tanks[b.tanks.T].equipment.find((e) => e.defId === 'heater_100w')).toMatchObject({ failed: true, failMode: 'stuck_on' });
   });
 });

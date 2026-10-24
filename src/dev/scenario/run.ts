@@ -12,7 +12,8 @@ import type { CheckRecipe, Range, ScenarioRecipe } from './recipe';
 
 export interface CheckResult {
   name: string;
-  afterHours: number;
+  /** null when the check gave no usable hour. */
+  afterHours: number | null;
   /** Game hours into the run when it was judged (null: it couldn't be, and fails). */
   atHours: number | null;
   pass: boolean;
@@ -150,7 +151,7 @@ export function runScenario(built: BuildResult, recipe: ScenarioRecipe, hours: n
   const results: CheckResult[] = new Array(all.length);
   // a check that can't be judged fails, so a mistyped one never passes quietly
   for (const { c, i } of all)
-    if (!judgeable({ c })) results[i] = { name: (c && typeof c === 'object' && typeof c.name === 'string' && c.name) || `check ${i + 1}`, afterHours: NaN, atHours: null, pass: false, lines: [`afterHours must be game hours from 0 to ${MAX_RUN_HOURS}`] };
+    if (!judgeable({ c })) results[i] = { name: (c && typeof c === 'object' && typeof c.name === 'string' && c.name) || `check ${i + 1}`, afterHours: null, atHours: null, pass: false, lines: [`afterHours must be game hours from 0 to ${MAX_RUN_HOURS}`] };
   const due = [...checks].sort((x, y) => x.c.afterHours - y.c.afterHours);
   const focusTankId = built.focusTankId ?? undefined;
   let elapsed = 0;

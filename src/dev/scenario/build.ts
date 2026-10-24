@@ -745,6 +745,7 @@ class Builder {
         const unit: EquipmentInstance = { id: nextId(g, 'eq'), defId: def.id, installedHour: g.clock.hour, condition: num(spec.condition) ? clamp(spec.condition, 0, 1) : 1, on: spec.on !== false };
         if (num(spec.setting)) unit.setting = spec.setting;
         if (spec.failed === 'off' || (spec.failed === 'stuck_on' && def.kind === 'heater')) Object.assign(unit, { failed: true, failMode: spec.failed });
+        else if (spec.failed !== undefined) this.issue('error', `${where}.failed`, spec.failed === 'stuck_on' ? 'Only a heater sticks on; use "off" for anything else.' : 'failed must be "off" or "stuck_on".');
         tank.equipment.push(unit);
         claimed.add(unit);
         return;
@@ -1175,8 +1176,9 @@ class Builder {
   }
 
   /**
-   * The patch, tried on a copy first: a world the save path can't load, or the game can't step, is refused (the
-   * world is built without the patch, and the error says why).
+   * The patch, tried on a copy first: a world the save path can't load is refused (built without the patch, and the
+   * error says why); what the save path repairs is reported. Whether the game can play it is tested once, on the
+   * finished world (build()).
    */
   patch(): void {
     if (this.r.patch === undefined) return;
@@ -1186,11 +1188,8 @@ class Builder {
     let loaded: ReturnType<typeof decodeRecord>;
     try {
       loaded = decodeRecord(encodeRecord(trial, 'scenario').text, 'This scenario');
-      const probe = structuredClone(loaded.state);
-      for (const id of probe.tankOrder) refreshTankCache(probe, probe.tanks[id]);
-      advanceWorld(probe, 0.25, {});
     } catch (e) {
-      this.issue('error', 'patch', `The patch makes a world the game can't load or play (${(e as Error).message}); built without it.`);
+      this.issue('error', 'patch', `The patch makes a world the game can't load (${(e as Error).message}); built without it.`);
       return;
     }
     // the world as the save path loads it: what that had to repair is said here
@@ -1302,5 +1301,37 @@ function build(input: unknown, env: BuildEnv): BuildResult {
   // the real save path: what a save of this world would load
   const decoded = decodeRecord(encodeRecord(b.g, 'scenario', b.g.lastSavedRealMs).text, 'This scenario');
   for (const r of decoded.repairs) b.issue('warning', 'save', `The save check repaired: ${r}`);
+  // a patched world is played for a moment, every tank at full detail (a copy; never in a trial build, since stepping
+  // any world clears the sim's shared caches, and the lab's trial builds run beside the game on screen): one the game
+  // can't play is built again without the patches
+  if (!env.trial && usesPatch(recipe)) {
+    try {
+      const probe = structuredClone(decoded.state);
+      advanceWorld(probe, 0.25, { forceFull: true });
+    } catch (e) {
+      const again = build(withoutPatches(recipe), env);
+      again.issues.unshift({ level: 'error', at: 'patch', message: `A patch makes a world the game can't play (${(e as Error).message}); built without the patches.` });
+      return again;
+    }
+  }
   return { state: decoded.state, issues: b.issues, tanks: b.tanks, animals: b.animals, ...open, hoursRun: b.hoursRun, repairs: decoded.repairs };
+}
+
+const hasPatch = (o: unknown) => isPlainObject(o) && o.patch !== undefined;
+
+/** Does the recipe patch the game, a tank or an animal anywhere? */
+function usesPatch(r: ScenarioRecipe): boolean {
+  return hasPatch(r) || (Array.isArray(r.tanks) && r.tanks.some((t) => hasPatch(t) || (isPlainObject(t) && Array.isArray(t.animals) && t.animals.some(hasPatch))));
+}
+
+/** The recipe with every patch taken out. */
+function withoutPatches(r: ScenarioRecipe): ScenarioRecipe {
+  const copy = structuredClone(r);
+  delete copy.patch;
+  for (const t of Array.isArray(copy.tanks) ? copy.tanks : []) {
+    if (!isPlainObject(t)) continue;
+    delete t.patch;
+    for (const a of Array.isArray(t.animals) ? t.animals : []) if (isPlainObject(a)) delete a.patch;
+  }
+  return copy;
 }

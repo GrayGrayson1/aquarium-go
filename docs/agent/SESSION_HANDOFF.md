@@ -1,11 +1,53 @@
-# Session handoff: after 0.7.0; chunk 15 (the scenario lab) handed to Chase
+# Session handoff: after 0.7.0; chunk 15 (the scenario lab) built
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
 
+## Chunk 15, the scenario lab: built (Chase, 2026-10-23)
+
+- **Done** (PLAN.md chunk 15; ADR-0051 has the owner's answers, verbatim). The owner asked for dev tools to build any
+  aquarium or setup and play it without playing up to it; they chose: on this Mac, solo; all four areas plus
+  "basically what the game has to offer but it's an unlocked dev version sandbox"; presets, files and links; opens
+  paused; every preset group. Their question "what else can we have here that would be useful?" is answered in
+  ADR-0051 decision 5 (Start again, Capture, fixtures as bases, checks, a warm-up, the game's own verdicts while
+  editing), all built.
+- **For the owner to try:** `cd ~/LocalTest/AquariumGo && npm run lab` (the clone is left at `next`), or ask an agent
+  in CNVS to run it. docs/SCENARIOS.md is the guide and the recipe reference (hand it to any agent: "make me a
+  scenario with …"). `npm run scenario -- ammonia-crisis` runs one without a browser.
+- **State of things:** `next` = NEXT_HEAD (pushed); `main` = `a704e63` (0.7.0), unchanged: a dev-only tool needs no
+  release, and nothing was deployed. The internal clone is at `next`'s head with no patch applied.
+- **Tested:** CHECKS_LINE. The fresh review (Opus 5.5, max effort) found four blockers, the worst that "Save now" and
+  "Save and return to title" wrote a scenario over the player's autosave; all fixed in `765b6b6` with its notes;
+  CONFIRM_LINE.
+- **Still open after it:** F1 (the owner's VoiceOver pass), the audit's other findings (B-207, B-208), B-210 (two crafted
+  save shapes that crash a step; before stage 2), online stage 2 (before strangers join). The owner hasn't played 0.6.0
+  or 0.7.0 yet: a problem they report comes first.
+
+**Learned in chunk 15.**
+- *Building a world by hand:* set the clock before making anything (moving it forward never trips `repairState`; a
+  future-dated `*Hour` does). A blank shop is `newGame` with its starter tank, animal, log and discoveries removed, then
+  `initMarket` again once the facility and unlocks are set (`seenUnlocks = -1` restocks silently).
+  `settleStartingProgress` last, so unlock rules and achievements don't toast on the first step.
+- *Module-level dev state leaks into builds:* `forcePrismatic` counters are consumed by the base's own market roll;
+  the builder sets them aside and puts them back. A test of that needs a recipe with no Prismatic of its own (the
+  first version of the test couldn't fail: a mutant survived).
+- *Keeping dev code out of the players' build:* a lazy chunk is still emitted unless the `import()` sits behind a
+  build-time constant (`import.meta.env.DEV || import.meta.env.VITE_E2E_DEV_URL === '1'`, inlined in each file);
+  Rollup then drops it. The dev panel, the fixtures and the sandboxes still ship as unfetched chunks (as before).
+- *A dev world must not reach the player's autosave through any door:* the timed autosave is one; "Save now", "Save and
+  return to title", the error screens, the page-close save and the online save are the others. The refusal lives in
+  `saveCurrentGame`/`saveCurrentGameSync` (`autosaveRefused`), so every door checks it. URL `?fixture=` boots still use
+  the older `fixtureSaveId` rule (only the timed autosave), unchanged.
+- *Clipboard and other browser APIs go through `src/platform`* (`tests/sim/platform-web.test.ts` and
+  `core-mutation-boundary` scan for direct `navigator.clipboard`); the platform has no clipboard read.
+- *`Toasts.tsx` dismissed UI toasts inside a state updater* (a store write mid-render; a dev-only React warning that
+  frequent world switches brought out in WebKit). Fixed in this chunk.
+
 ## Handoff to Chase: chunk 15, the scenario lab (Marshall, 2026-10-23)
+
+*Used up: chunk 15 is built (above). Kept for the owner's words and the gate.*
 
 **The owner's words, verbatim (2026-10-23):** "What would it take to have Chase in CNVS Canvas, the app that we're
 currently working on, Build some dev tools in order to make what I want. If I want to make a specific kind of aquarium

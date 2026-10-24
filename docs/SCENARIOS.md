@@ -127,7 +127,7 @@ animals are referred to **by name** elsewhere in the recipe (a listing, a show e
 | `warmupHours` | Run the world forward this many game hours before it opens (at most 30 days) |
 | `open` | `{ "tank": "<name>", "view": "tank" \| "facility", "speed": 0 \| 1 \| 3 \| 10 }` (default: the first tank, paused) |
 | `checks` | What should be true after some hours (below) |
-| `patch` | Anything else: a deep merge into the built game (objects merge, other values replace, `null` deletes). The patched world is loaded through the save path and played for a moment first: what the save path repairs is reported, and a patch that makes a world the game can't load or play is refused (the world is built without it) |
+| `patch` | Anything else: a deep merge into the built game (objects merge, other values replace, `null` deletes). The patched world is loaded through the save path first (what it repairs is reported; a world it can't load is built without the patch), and when it's built to play or run, played for a moment with every tank stepped: a world the game can't play is built without the patches (tanks' and animals' too) |
 
 ### `shop`
 

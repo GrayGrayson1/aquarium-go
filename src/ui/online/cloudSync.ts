@@ -25,7 +25,7 @@ import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
-import { SCHEMA_VERSION, exportSaveText, importSaveText, isSharedShop, isStaleGame, resumeState, saveCurrentGame, stateForSaving } from '@/persistence';
+import { SCHEMA_VERSION, autosaveRefused, exportSaveText, importSaveText, isSharedShop, isStaleGame, resumeState, saveCurrentGame, stateForSaving } from '@/persistence';
 import { autosaveAllowed, leaveSaveDue } from '@/game/useAutosave';
 import { currentStanding, decodeSaveBody, encodeSaveBody, isSocialError, MAX_CLOUD_BODY, socialService, type CloudSaveMeta, type StandingReport } from '@/social';
 import { loadSocialUser, refreshSocialNews, useSocial } from '../panels/social/socialStore';
@@ -173,6 +173,7 @@ function syncableGame(): GameState | null {
   const g = useGame.getState().game;
   if (!g || g.isShowcase || useUI.getState().screen !== 'game' || isStaleGame(g.saveId)) return null;
   if (isSharedShop(g)) return null; // chunk 13 (SHARE-011): a shared shop is never anyone's online save
+  if (autosaveRefused(g.saveId)) return null; // chunk 15: nor a scenario lab world, whatever the autosave switch says
   // autosave off in Settings still lets a manual save go online; a fixture or a showcase never does
   if (!autosaveAllowed() && useSettings.getState().autosave) return null;
   return g;
