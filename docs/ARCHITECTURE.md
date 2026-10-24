@@ -27,7 +27,7 @@ src/platform     thin seam over browser APIs (notifications, clipboard, share, l
 src/social       the SocialService interface, its local stub (0.5 spec §13.6; chunk 6) and the Supabase service (chunk 8): social data, never in the save; reads a save only for the player's leaderboard row
 src/ui           React DOM UI (reads state; sends player actions as commands through the store's dispatcher)
 src/audio        procedural Web Audio engine
-src/dev          fixtures, sandboxes, debug commands
+src/dev          fixtures, sandboxes, debug commands, the scenario lab (scenario/, lab/; docs/SCENARIOS.md)
 server/          the shared-shop server (SHARED-SHOPS.md §5; chunk 12): Node 22 and `ws`, built into dist-server/
 ```
 

@@ -14,6 +14,8 @@
  *   __AQ.fps(ms) / frameStats(ms)           rAF frame sampler
  *   __AQ.stats()                            game-loop diagnostics; memory() → performance.memory
  *   __AQ.dev.*                              all dev commands (src/dev/commands.ts)
+ *   __AQ.scenario.*                         the scenario lab (chunk 15; docs/SCENARIOS.md): presets(), recipe(id),
+ *                                           validate(r), play(r | name), restart(), capture(), run(r, hours), open()
  */
 import type { GameState } from '@/types';
 import { useGame } from '@/state/game';
@@ -60,6 +62,67 @@ import type { Command, CommandResult } from '@/sim/commands';
 import { inSharedShop } from '@/state/sharedMode'; // chunk 13
 import { useShared } from '@/ui/shared/store';
 import { devQuiet, leaveSharedShop, openSharedShop } from '@/ui/shared/session';
+import { openLab, closeLab, useLab } from '@/state/lab'; // chunk 15
+
+/**
+ * chunk 15 (ADR-0051) — the scenario lab for agents and e2e. Every call loads the lab's code on first use (its own
+ * chunks, kept out of the main bundle) and resolves with plain data.
+ */
+function scenarioApi(): Record<string, unknown> {
+  // the players' build leaves the lab's code out (LAB_BUILD is false there at build time; App.tsx)
+  const LAB_BUILD = import.meta.env.DEV || import.meta.env.VITE_E2E_DEV_URL === '1';
+  const missing = () => Promise.reject(new Error('The scenario lab is not in this build.'));
+  const engine = () => (LAB_BUILD ? import('./scenario') : missing());
+  const session = () => (LAB_BUILD ? import('./lab/session') : missing());
+  const plain = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+  const recipeOf = async (r: unknown) => (typeof r === 'string' ? (await session()).recipeByName(r) : r);
+  return {
+    /** The built-in presets: id, group and name. */
+    presets: async () => (await engine()).PRESETS.map((p) => ({ id: p.id, group: p.group, name: p.recipe.name })),
+    /** A built-in or kept preset's recipe, by id or name. */
+    recipe: async (name: string) => plain((await session()).recipeByName(name)),
+    /** The problems and the game's verdicts for a recipe (a trial build; nothing changes). */
+    validate: async (r: unknown) => {
+      const [e, s] = [await engine(), await session()];
+      const recipe = await recipeOf(r);
+      return plain(e.validateRecipe(recipe, await s.buildEnv(recipe, { trial: true })));
+    },
+    /** Build a recipe (or a preset by name) and play it; resolves with the build's problems and names. */
+    play: async (r: unknown) => {
+      const s = await session();
+      const recipe = await recipeOf(r);
+      if (!recipe) return { ok: false, issues: [{ level: 'error', at: 'recipe', message: `There's no scenario called "${String(r)}".` }] };
+      const b = await s.playRecipe(recipe);
+      return { ok: true, issues: b.issues, tanks: b.tanks, animals: b.animals, focusTankId: b.focusTankId, saveId: b.state.saveId, hoursRun: b.hoursRun, repairs: b.repairs };
+    },
+    /** Start the scenario on screen again. */
+    restart: async () => {
+      const b = await (await session()).restartScenario();
+      return b ? { ok: true, saveId: b.state.saveId } : { ok: false };
+    },
+    /** The game on screen as a recipe. */
+    capture: async (name?: string) => {
+      const g = useGame.getState().game;
+      return g ? plain((await engine()).captureRecipe(g, name)) : null;
+    },
+    /** Build a recipe headlessly (the game on screen is untouched), run it `hours` and report (checks judged). */
+    run: async (r: unknown, hours = 24) => {
+      const [e, s] = [await engine(), await session()];
+      const recipe = await recipeOf(r);
+      const built = e.buildScenario(recipe, await s.buildEnv(recipe));
+      return plain({ issues: built.issues, report: e.runScenario(built, recipe as Parameters<typeof e.runScenario>[1], hours) });
+    },
+    /** A link that opens the recipe (or a preset by name) in a dev build. */
+    link: async (r: unknown) => {
+      if (typeof r === 'string') return `${location.origin}${location.pathname}?scenario=${encodeURIComponent(r)}`;
+      return `${location.origin}${location.pathname}?recipe=${(await engine()).encodeRecipeParam(JSON.stringify(r))}`;
+    },
+    /** The scenario on screen (name, save id, recipe) or null. */
+    current: () => plain(useLab.getState().scenario),
+    open: () => openLab(),
+    close: () => closeLab(),
+  };
+}
 
 /** chunk 13 (SHARED-SHOPS.md §7.3): the developer tools write nothing in a shared shop (only commands reach it). */
 function noSharedWrites<F extends (...a: never[]) => unknown>(fn: F): F {
@@ -261,6 +324,8 @@ export function debugApi(): Record<string, unknown> {
     // e2e helpers
     // `ready` is defined below as a getter (lane:perf2)
     dev: guardAll(dev as unknown as Record<string, unknown>),
+    // chunk 15 (ADR-0051) — the scenario lab (refused in a shared shop, as the dev tools are)
+    scenario: guardAll(scenarioApi()),
     // lane:core (chunk 6, B-002) — make every tick fail (the banner after three in a row)
     failSim: (on: boolean) => setSimFault(on),
     // lane:social (chunk 6) — the local Social stub's test hooks: go offline (SOC-010), something new arrives (SOC-004 A5)

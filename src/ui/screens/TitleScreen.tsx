@@ -3,7 +3,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Play, Sparkles, FolderOpen, Settings as SettingsIcon, ChevronRight, TriangleAlert, Store } from 'lucide-react';
+import { Play, Sparkles, FolderOpen, Settings as SettingsIcon, ChevronRight, TriangleAlert, Store, FlaskConical } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
@@ -21,6 +21,11 @@ import { buildDetail, versionLabel } from '../common/version';
 import { openSharedShop, openedShops, sharedServerBase } from '../shared/session'; // chunk 13
 import { SHARED_WORDS } from '../shared/words';
 import { useShared } from '../shared/store';
+import { useDevMode } from '@/state/devTools'; // chunk 15 (ADR-0051)
+import { openLab } from '@/state/lab';
+
+/** chunk 15 — the scenario lab's button, left out of the players' build altogether (as App.tsx leaves out the lab). */
+const LAB_BUILD = import.meta.env.DEV || import.meta.env.VITE_E2E_DEV_URL === '1';
 
 type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
@@ -92,6 +97,7 @@ export function TitleScreen() {
   const [loadOpen, setLoadOpen] = useState(false);
   const [confirmNew, setConfirmNew] = useState(false);
   const [busy, setBusy] = useState(false);
+  const devMode = useDevMode(); // chunk 15
   const mobile = useIsMobile();
   const sideways = useMedia(SHORT_LANDSCAPE_QUERY); // a phone held sideways: the menu is a left column again
   const [notice, setNotice] = useState(() => storageNotice());
@@ -238,6 +244,16 @@ export function TitleScreen() {
               <span>Settings</span>
             </span>
           </motion.button>
+          {LAB_BUILD && devMode && (
+            // chunk 15 (ADR-0051): the scenario lab, a developer tool (Settings › About › Developer tools, in a dev build)
+            <motion.button {...item(4)} type="button" className="ag-menubtn" data-testid="title-lab" onClick={() => { sfx('open'); openLab(); }}>
+              <FlaskConical size={18} aria-hidden />
+              <span className="ag-menubtn__text">
+                <span>Scenario lab</span>
+                <span className="ag-menubtn__sub">Developer tool</span>
+              </span>
+            </motion.button>
+          )}
         </nav>
         {notice && (
           <p className={`ag-title__notice is-${notice.tone}`} role="status" data-testid="storage-notice">

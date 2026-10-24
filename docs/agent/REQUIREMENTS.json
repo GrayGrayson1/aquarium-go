@@ -6493,6 +6493,146 @@
         "SHARED-SHOPS.md §3.2"
       ],
       "note": "Chunk 14."
+    },
+    {
+      "id": "LAB-001",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "A scenario recipe: a versioned, documented JSON description of a setup.",
+      "acceptance": [
+        "A recipe (format aquarium-go-scenario, version 1) sets the base (blank, a starter, a fixture or the game on screen), the seed, the shop (money, clock, facility, unlocks, research, reputation, mastery, guide, inventory, rooms, manual mode), tanks (size, water class, purpose, cycled, age, water values, equipment and its failures, substrate, decor, lights, backdrop), animals (species, count, sex, age or stage, names, genes or a morph, potentials, Prismatic, stats, illness, injury, breeding), eggs and fry, staff, the market (offers, listings with bids, demand), shows, production lines, a warm-up, how it opens, checks and a patch; docs/SCENARIOS.md documents every field."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-build.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-002",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "buildScenario and validateRecipe: pure, deterministic, never refusing a bad setup.",
+      "acceptance": [
+        "The same recipe and seed give the same stateHash; a bad recipe still builds and each problem is named by its path (an error skips that part); validateRecipe warns with the game's own compatibility verdict and never refuses; the patch refuses prototype keys."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-build.test.ts",
+        "tests/sim/scenario-validate.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-003",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "Every built world is a legal save.",
+      "acceptance": [
+        "Every preset, every species, every water class and tank tier build into a world whose save loads with no repair and nothing non-finite, loads again in a fresh session and steps a game day; capture then build gives a legal world."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-presets.test.ts",
+        "tests/sim/scenario-build.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-004",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "The scenario lab screen.",
+      "acceptance": [
+        "Presets (built in, and kept in this browser: save, duplicate, delete), the editor, the JSON (copy, paste, import and export a file, capture), the problems while editing and Build and play; a built scenario opens paused, shows its badge with Start again, and is never autosaved over the player's game; refused in a shared shop."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/scenario-lab.spec.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-005",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "The lab's addresses and hooks, behind the developer-tools gate.",
+      "acceptance": [
+        "?lab=1, ?scenario=<preset> and ?recipe=<text> work in a dev build and are ignored by the players' build; a scenario address boots like a fixture (the router never loads the player's save over it); __AQ.scenario; the dev panel's lab section and fixture picker; the title screen's Scenario lab with Developer tools on."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/scenario-lab.spec.ts",
+        "tests/e2e/prod-mode.spec.ts",
+        "tests/sim/plat-dev-tools.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-006",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "The scenario lab without a browser.",
+      "acceptance": [
+        "npm run scenario -- <recipe | preset> builds, runs N game hours, prints the report (money, births, deaths with causes, each tank, the log, the checks) and exits 1 on build errors or a failed check; --json and --save."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-run.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-007",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "Ready-made presets.",
+      "acceptance": [
+        "Sandbox and the owner's four groups (Problems, Breeding, Showpieces, Running a business; ADR-0051 decision 4), each building with no error and no repair."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-presets.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-008",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "npm run lab and the docs.",
+      "acceptance": [
+        "npm run lab starts the dev server and opens the lab; docs/SCENARIOS.md lets the owner ask any agent for a scenario; an e2e spec builds a recipe through the screen and plays it."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/scenario-lab.spec.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 15."
     }
   ]
 }

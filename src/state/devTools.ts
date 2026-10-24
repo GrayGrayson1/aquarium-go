@@ -43,6 +43,28 @@ export function urlSandboxName(search: string = typeof location !== 'undefined' 
   }
 }
 
+/**
+ * Chunk 15 (ADR-0051) — the scenario lab's addresses, read only where the tools are allowed (the live site ignores
+ * them): `?lab=1` opens the lab, `?scenario=<preset>` builds a preset and `?recipe=<text>` a recipe carried in the
+ * address (base64url JSON, decoded by src/dev/scenario/link.ts).
+ */
+export function urlLabParams(search: string = typeof location !== 'undefined' ? location.search : ''): { lab: boolean; scenario: string | null; recipe: string | null } | null {
+  if (!devToolsAllowed()) return null;
+  try {
+    const q = new URLSearchParams(search);
+    const p = { lab: q.get('lab') === '1', scenario: q.get('scenario') || null, recipe: q.get('recipe') || null };
+    return p.lab || p.scenario || p.recipe ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Does this address build a scenario at boot (a preset or a recipe; not the lab alone)? */
+export function urlScenarioBoot(search?: string): boolean {
+  const p = urlLabParams(search);
+  return !!(p && (p.scenario || p.recipe));
+}
+
 /** The dev panel and its buttons are on: the tools are allowed and the Settings switch is on. */
 export const devModeOn = (): boolean => devToolsAllowed() && useSettings.getState().devMode;
 

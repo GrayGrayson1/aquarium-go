@@ -8,7 +8,8 @@
  * the game or opened in a fresh page; Settings › Account is there; the More sheet has the Social tile. SOC-011's
  * dev-only checks this file made before are superseded on purpose (REL-025).
  * chunk 7 (REL-019, ADR-0037 decision 3, B-190) — and ?dev=1 does nothing there: no write calls on window.__AQ, no
- * registry fixture, no sandbox, no wrench button; a starter showcase still opens.
+ * registry fixture, no sandbox, no wrench button; a starter showcase still opens. Chunk 15 (ADR-0051): nor the scenario
+ * lab (?lab=1, ?scenario=, ?recipe=), whose code is never even fetched.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { dockClear, onboardViaUI, tid } from './helpers';
@@ -95,7 +96,7 @@ test('the live site ignores ?dev=1: no write tools, fixtures or sandboxes; start
   await page.goto('./?dev=1', { waitUntil: 'domcontentloaded' });
   await ready(page);
   const k = await keys();
-  for (const w of ['newGame', 'mutate', 'setGame', 'setUI', 'dev', 'act', 'advance', 'loadFixture', 'save', 'deleteSave', 'importText']) expect(k, w).not.toContain(w);
+  for (const w of ['newGame', 'mutate', 'setGame', 'setUI', 'dev', 'act', 'advance', 'loadFixture', 'save', 'deleteSave', 'importText', 'scenario']) expect(k, w).not.toContain(w);
   expect(k).toContain('summary');
   expect(await page.evaluate(() => (window as unknown as { __AQ: { settings(): { devMode: boolean } } }).__AQ.settings().devMode)).toBe(true);
   await onboardViaUI(page, 'betta', 'Prod');
@@ -118,6 +119,19 @@ test('the live site ignores ?dev=1: no write tools, fixtures or sandboxes; start
   await ready(page);
   await expect(tid(page, 'title-new-game')).toBeVisible();
   await expect(page.getByText('Loading sandbox')).toHaveCount(0);
+
+  // chunk 15 (ADR-0051): the scenario lab is a developer tool: its addresses open the title screen, with no lab
+  const recipe = Buffer.from(JSON.stringify({ version: 1, name: 'Nope', tanks: [{ name: 'T' }] })).toString('base64url');
+  for (const q of ['./?dev=1&lab=1', './?dev=1&scenario=sandbox', `./?dev=1&recipe=${recipe}`]) {
+    await page.goto(q, { waitUntil: 'domcontentloaded' });
+    await ready(page);
+    await expect(tid(page, 'title-new-game'), q).toBeVisible();
+    expect(await page.evaluate(() => (window as unknown as Win).__AQ.summary().screen), q).toBe('title');
+    await expect(tid(page, 'lab-root')).toHaveCount(0);
+    await expect(tid(page, 'title-lab')).toHaveCount(0); // the stored Developer tools switch is on, and still no lab
+  }
+  const fetched = await page.evaluate(() => performance.getEntriesByType('resource').map((e) => e.name));
+  expect(fetched.filter((n) => /LabRoot|ScenarioLab|scenario/i.test(n))).toEqual([]);
 
   // a starter showcase is a plain demo world, never saved: it still opens
   await page.goto('./?showcase=betta', { waitUntil: 'domcontentloaded' });

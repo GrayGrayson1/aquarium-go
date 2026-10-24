@@ -1399,6 +1399,67 @@ REL-012, REL-018.
   other money (by design); a pool pop-up can lapse behind the game's own news in a busy shop (the toast stack's rules;
   the line is in the alerts list).
 
+### 15. The scenario lab (ADR-0051) — started 2026-10-23 (Chase)
+
+- **What:** developer tools to build any aquarium or setup and play it without playing up to it (the owner,
+  2026-10-23, verbatim in ADR-0051). The owner describes a setup (tanks, water, animals with genes, Prismatic, age and
+  health, gear, decor, eggs and fry, and the shop around them: money, time, facility, unlocks, research, staff, shows,
+  the market) and plays it in seconds; keeps it, loads it again, exports or imports it, and hands it to an agent or a
+  test. A developer tool on the owner's Mac (ADR-0051 decision 1): never in the players' build, no new service, and
+  ADR-0037 decision 3 unchanged (the live site ignores `?dev=1`, `?lab=`, `?scenario=` and `?recipe=`; where the tools
+  are allowed Social is the local stub). Solo games only. The chunk starts at `117aca9` on `next`
+  (SESSION_HANDOFF.md "Handoff to Chase: chunk 15").
+- **The recipe** (`src/dev/scenario/recipe.ts`, documented in `docs/SCENARIOS.md`): versioned JSON (`format`
+  `aquarium-go-scenario`, `version` 1). A base (`blank`: an empty shop, everything unlocked and researched, the guide
+  finished, $50,000 and plenty of food, ADR-0051 decision 2; `starter:<id>`; `fixture:<name>`; `current`, the game on
+  screen), a seed, the shop, tanks (tier or gallons, water class, purpose, cycled, age, exact water values, equipment
+  added or broken, substrate, decor automatic, none, listed or both, lights, backdrop), animals per tank (species,
+  count, sex plan, age or stage, names, genes or a morph by name, potentials, Prismatic, stats, illness, injury,
+  breeding `ready` or `spawned`), eggs, larvae or fry, staff, the stock budget, the market (offers incl. Prismatic,
+  listings with bids, demand), shows (entries, show day), production lines, a warm-up, how it opens (tank, view,
+  speed; paused by default, ADR-0051 decision 3), checks (what should be true after N hours) and a `patch` (a deep
+  merge for anything else, prototype keys refused).
+- **The builder** (`src/dev/scenario/build.ts`, pure): `buildScenario(recipe, env)` builds through the game's own
+  functions (`newGame`, `createTank`, `createCreature`, `installEquipment`, `placeDecor`, `devForceBreeding`,
+  `createClutch`, `addStaffDirect`, `createListing`, `forceBuyerVisit`, `enterShow`, `createLine` …), sets the clock
+  before it makes anything, never throws on a bad recipe (each problem named, by path: an error skips that part, a
+  warning or note builds it) and is deterministic (same recipe and seed, same `stateHash`). Every built world goes
+  through the real save path (`encodeRecord` → `decodeRecord`, so `repairState` runs) and the loaded copy is what's
+  returned; a repair it needed is reported. `validateRecipe` is a trial build plus the game's own compatibility
+  verdict per tank (warned, never refused). `captureRecipe` turns the game on screen into a recipe. `runScenario` runs
+  a built world forward and judges the checks.
+- **The screen** (`src/dev/lab/`, its own chunks, mounted by `App.tsx` only where the tools are allowed): presets
+  (built in, and the owner's own kept in this browser: save, duplicate, delete), an editor (Setup, Tanks with animals
+  and young, Shop & market, JSON with copy, paste into it, import and export a file, and capture), the problems and verdicts
+  while editing, Copy link, Build and play. While a scenario plays, a badge ("Scenario: … · not saved") with Start again
+  and Lab. A scenario never autosaves over the player's game (`neverAutosave`, `src/game/useAutosave.ts`). Refused in
+  a shared shop. Opened by `npm run lab` (`?lab=1`), the title screen's Scenario lab (with Developer tools on), the dev
+  panel (which also gains a fixture picker for the 46 fixtures, loaded never autosaved) and `__AQ.scenario.open()`.
+- **Addresses and hooks:** `?lab=1`, `?scenario=<preset>`, `?recipe=<base64url JSON>` behind the gate
+  (`urlLabParams`/`urlScenarioBoot` in `src/state/devTools.ts`; the router treats a scenario address like a fixture
+  boot); `__AQ.scenario` (presets, recipe, validate, play, restart, capture, run, link, current, open, close).
+- **Headless:** `npm run scenario -- <recipe.json | preset> [--hours N] [--json] [--save out.json] [--force]`
+  (`scripts/scenario.ts`): builds, runs, prints the report (money, births, deaths with causes, each tank's animals and
+  water, the game's own log lines, the checks), exits 1 on build errors or a failed check.
+- **Presets** (ADR-0051 decision 4, `src/dev/scenario/presets.ts`): Sandbox; Problems (ammonia crisis, broke shop
+  with hungry fish, crowded and aggressive tank, heater stuck on); Breeding (betta pair ready, clownfish pair with
+  eggs, a tank of fry); Showpieces (reef with a Prismatic clownfish, late-game grand hall); Running a business (staffed
+  store, show day, market with bids).
+- **Tests:** unit (`tests/sim/scenario-*.test.ts`): every preset builds with no error and no repair, nothing
+  non-finite, the same `stateHash` twice, loads again through the save path and steps a day; every species at least
+  once; every water class and tank tier; bad recipes name their problems and still build; the patch refuses prototype
+  keys; morphs by name; capture → build; checks pass and fail; the gate (`urlLabParams` null in production). e2e
+  (`tests/e2e/scenario-lab.spec.ts`): build a recipe through the screen and play it (paused, the badge, Start again,
+  nothing autosaved), and `prod-mode.spec` checks the players' build ignores `?lab=1`, `?scenario=` and `?recipe=`. The
+  four checks; one fresh reviewer (Opus 5.5, max effort) on `git diff 117aca9..HEAD`; then testing it as the owner
+  would (a look script with screenshots at desktop and phone widths).
+- **Requirements:** LAB-001 (the recipe), LAB-002 (the builder), LAB-003 (legal saves), LAB-004 (the screen), LAB-005
+  (addresses and hooks), LAB-006 (headless), LAB-007 (presets), LAB-008 (`npm run lab`, the docs, the e2e).
+- **Core files:** `package.json` (scripts `lab` and `scenario`), `src/state/devTools.ts` (the lab's addresses behind
+  the gate), `src/state/lab.ts` (new store), `src/game/useAutosave.ts` (`neverAutosave`), `src/App.tsx`,
+  `src/ui/nav/router.ts` (a scenario address boots like a fixture): the reviewer checks them closely. No new
+  dependency; no save field; `SCHEMA_VERSION` unchanged.
+
 ## Releases
 
 `main` is what players get: a push to `main` deploys GitHub Pages. Render doesn't build on a push, though

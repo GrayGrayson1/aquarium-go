@@ -296,6 +296,11 @@ function useSheetBand(active: boolean, landscape: boolean): SheetBand | null {
   return active ? band : null;
 }
 
+/** Dismiss the ui.toast() toasts behind these entries (never from inside a state updater: see entriesRef). */
+function dismissUi(list: readonly Entry[]): void {
+  for (const e of list) for (const id of e.uiIds) useUI.getState().dismissToast(id);
+}
+
 export function Toasts() {
   const screen = useUI((s) => s.screen);
   // Cinematic modes stay clean: only urgent news breaks through.
@@ -313,6 +318,11 @@ export function Toasts() {
   const stale = useStaleBanner();
 
   const [entries, setEntries] = useState<Entry[]>([]);
+  // chunk 15 — what's queued now, so the UI toasts are dismissed outside the state updaters: an updater runs while Toasts
+  // renders, and a store write there updated the top bar mid-render (React's "Cannot update a component while
+  // rendering a different component"; the scenario lab's world switches brought it out)
+  const entriesRef = useRef<Entry[]>(entries);
+  entriesRef.current = entries;
   const seq = useRef(0);
   /** When each key first went on screen (never dropped as stale; expires after its lifetime once off screen). */
   const shownAt = useRef(new Map<string, number>());
@@ -355,10 +365,8 @@ export function Toasts() {
     [add],
   );
   const resetForGame = useCallback(() => {
-    setEntries((list) => {
-      for (const e of list) for (const id of e.uiIds) useUI.getState().dismissToast(id);
-      return list.length ? [] : list;
-    });
+    dismissUi(entriesRef.current);
+    setEntries((list) => (list.length ? [] : list));
   }, []);
   useLogToasts(pushLog, resetForGame);
 
@@ -379,18 +387,13 @@ export function Toasts() {
 
   useEffect(() => {
     if (!drawer) return;
-    setEntries((list) => {
-      for (const e of list) for (const id of e.uiIds) useUI.getState().dismissToast(id);
-      return [];
-    });
+    dismissUi(entriesRef.current);
+    setEntries([]);
   }, [drawer]);
 
   const dismiss = useCallback((key: string) => {
-    setEntries((list) => {
-      const e = list.find((x) => x.key === key);
-      if (e) for (const id of e.uiIds) useUI.getState().dismissToast(id);
-      return list.filter((x) => x.key !== key);
-    });
+    dismissUi(entriesRef.current.filter((x) => x.key === key));
+    setEntries((list) => list.filter((x) => x.key !== key));
   }, []);
 
   // Choose what is on screen: what is already up stays up, free slots go by priority (see toastQueue.ts).

@@ -3,9 +3,9 @@
  * AI state and compatibility introspection. Gated away from normal play behind a floating wrench.
  * OWNER: lane "ui-shell".
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Wrench, Coins, LockOpen, Clock, Fish, Droplets, Bot, Scale, FlaskConical, Egg, Hourglass, Store, Sparkles } from 'lucide-react';
+import { Wrench, Coins, LockOpen, Clock, Fish, Droplets, Bot, Scale, FlaskConical, Egg, Hourglass, Store, Sparkles, RotateCcw } from 'lucide-react';
 import { devOpenMarket, forceBuyerVisit } from '@/sim/economy';
 import type { GameSpeed, GameState, WaterState } from '@/types';
 import { useUI } from '@/state/ui';
@@ -13,6 +13,10 @@ import { useGame } from '@/state/game';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { sfx, type SfxId } from '@/audio/sfx';
 import { dev } from '@/dev/commands';
+import { loadFixtureRegistry } from '@/dev/fixtures/lazy'; // chunk 15: the fixture picker
+import { useLab, openLab } from '@/state/lab';
+import { getGame } from '@/state/game';
+import { neverAutosave } from '@/game/useAutosave';
 import { ALL_SPECIES } from '@/data/species';
 import { evaluateTank } from '@/sim/compat';
 import { getAIDebug } from '@/ai/debug';
@@ -23,6 +27,10 @@ import { safe, useGameThrottled, useInterval } from '../common/safe';
 import { Button, Chip, Section, Segmented, formatMoney } from '../kit';
 
 type Result = { ok?: boolean; message?: string } | Record<string, unknown> | void | null | undefined;
+
+/** chunk 15 — Start again, loaded with the lab (the players' build leaves the lab's code out). */
+const LAB_BUILD = import.meta.env.DEV || import.meta.env.VITE_E2E_DEV_URL === '1';
+const restartScenario = () => (LAB_BUILD ? import('@/dev/lab/session').then((m) => m.restartScenario()) : Promise.resolve(null));
 
 /**
  * chunk 11 — dev tools aren't player actions (SHARED-SHOPS.md §4.1): they write the game directly, never as commands,
@@ -138,6 +146,16 @@ export function DevPanel() {
   const [sex, setSex] = useState<'any' | 'male' | 'female'>('any');
   const [count, setCount] = useState(1);
   const [age, setAge] = useState(30);
+  // chunk 15 — the fixtures, listed once the panel opens (the registry is its own chunk)
+  const [fixtures, setFixtures] = useState<string[]>([]);
+  const [fixture, setFixture] = useState('');
+  const scenario = useLab((s) => s.scenario);
+  useEffect(() => {
+    if (!open || fixtures.length) return;
+    loadFixtureRegistry()
+      .then((reg) => setFixtures(Object.keys(reg).sort()))
+      .catch(() => undefined);
+  }, [open, fixtures.length]);
   if (!devMode) return null;
   const tankId = spTank || focused || game?.tankOrder[0] || '';
   const compat = game && focused ? safe('evaluateTank', () => evaluateTank(game, focused), null) : null;
@@ -159,6 +177,48 @@ export function DevPanel() {
                 ))}
               </ul>
             )}
+            <Section title={<><FlaskConical size={12} /> Scenarios &amp; fixtures</>}>
+              <div className="ag-row ag-wrap" style={{ gap: 6 }}>
+                <Button size="sm" onClick={() => { sfx('open'); openLab(); }} data-testid="dev-lab-open">
+                  <FlaskConical size={14} /> Scenario lab
+                </Button>
+                {scenario && game.saveId === scenario.saveId && (
+                  <Button size="sm" onClick={() => run('Start again', () => void restartScenario())} data-testid="dev-lab-restart">
+                    <RotateCcw size={14} /> Start “{scenario.name}” again
+                  </Button>
+                )}
+              </div>
+              <div className="ag-devgrid">
+                <label className="ag-devfield">
+                  <span>Fixture ({fixtures.length})</span>
+                  <select value={fixture} onChange={(e) => setFixture(e.target.value)} data-testid="dev-fixture-select">
+                    <option value="">Choose…</option>
+                    {fixtures.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="ag-devfield">
+                  <span>&nbsp;</span>
+                  <Button
+                    size="sm"
+                    disabled={!fixture}
+                    onClick={() =>
+                      run(`Load ${fixture}`, () => {
+                        // a fixture is a test scene: never autosaved over the player's game (as a ?fixture= boot)
+                        void dev.loadFixture(fixture).then(() => {
+                          const g = getGame();
+                          if (g) neverAutosave(g.saveId);
+                        });
+                      })
+                    }
+                    data-testid="dev-fixture-load"
+                  >
+                    Load fixture
+                  </Button>
+                </div>
+              </div>
+            </Section>
             <Section title={<><Coins size={12} /> Economy &amp; unlocks</>}>
               <div className="ag-row ag-wrap" style={{ gap: 6 }}>
                 {[100, 1000, 10000].map((n) => (
