@@ -11,7 +11,8 @@ import type { Clutch, Creature, EquipmentInstance, GameState, Genome, Show, Shop
 import { newGame, previewStarters } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
 import { addCreature, assignPrismatic, createCreature, forcePrismatic, recordFinds, registerDiscovery, rollGenome } from '@/sim/life';
-import { eligibleIllnesses, illnessDef } from '@/sim/life/illness';
+import { forcedPrismaticPending } from '@/sim/life/rareVariants';
+import { eligibleIllnesses, illnessDef, ILLNESSES } from '@/sim/life/illness';
 import { moduleFor } from '@/sim/life/breeding/registry';
 import { createClutch } from '@/sim/life/breeding/clutch';
 import { pickSite, type SiteKind } from '@/sim/life/breeding/common';
@@ -47,6 +48,7 @@ import { STAFF_CAPACITY, STAFF_ROLES, STAFF_TRAITS, STOCK_BUDGET, STAFF_MAX_SKIL
 import { SHOW_CLASSES, SHOW_TIERS } from '@/data/shows';
 import { decorateTank, ensureFacility, matchWaterToStock, dominantSpecies, placeOrGrow, sexFor, tierForGallons } from '../fixtures/core-helpers';
 import { deepMerge, isPlainObject } from './patch';
+import { findNonFinite } from '../fixtures/core-testkit';
 import { genesForMorph, morphNames } from './genes';
 import type { AnimalRecipe, EquipmentRecipe, ScenarioRecipe, TankRecipe, YoungRecipe } from './recipe';
 import { RECIPE_FORMAT, RECIPE_VERSION } from './recipe';
@@ -91,6 +93,9 @@ export interface BuildEnv {
 export const MAX_WARMUP_HOURS = 24 * 30;
 export const MAX_SPAWN_HOURS = 72;
 const MAX_ANIMALS_PER_ENTRY = 200;
+/** The furthest day a recipe can start on, and the most money (either way) it can set. */
+const MAX_DAY = 36_500;
+const MAX_MONEY = 1e12;
 const NEUTRAL_POTENTIALS = { size: 50, color: 50, pattern: 50, structure: 50, fertility: 50, hardiness: 50, temperament: 50, curiosity: 50 };
 const STAFF_NAMES = ['Rosa Duarte', 'Sam Okafor', 'Mei Lin', 'Theo Grant', 'Ava Silva', 'Jonah Reyes', 'Priya Nair', 'Leo Brandt', 'Ines Moreau', 'Kofi Mensah'];
 
@@ -135,6 +140,14 @@ const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinit
 const str = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 
+/** The sex a plan names for the `k`th animal (male, female, or alternating for a pair or mix), else null. */
+function namedSex(plan: string, k: number): 'male' | 'female' | null {
+  if (plan === 'male' || plan === 'female') return plan;
+  if (plan === 'females') return 'female';
+  if (plan === 'pair' || plan === 'mixed') return k % 2 === 0 ? 'male' : 'female';
+  return null;
+}
+
 /** A short id-safe form of a name (the scenario's save id). */
 export function slugOf(name: string): string {
   return (
@@ -148,9 +161,10 @@ export function slugOf(name: string): string {
 
 class Builder {
   readonly issues: BuildIssue[] = [];
-  readonly tanks: Record<string, string> = {};
-  readonly animals: Record<string, string> = {};
-  readonly g: GameState;
+  // no prototype: a tank or animal called "constructor" or "toString" is just a name
+  readonly tanks: Record<string, string> = Object.create(null) as Record<string, string>;
+  readonly animals: Record<string, string> = Object.create(null) as Record<string, string>;
+  g: GameState;
   private readonly breedQueue: { at: string; ids: string[]; mode: 'ready' | 'spawned' }[] = [];
   hoursRun = 0;
 
@@ -258,7 +272,8 @@ class Builder {
     // the clock first: everything made afterwards is stamped with the scenario's own hour
     let moved = false;
     if (s.day !== undefined || s.hour !== undefined) {
-      const day = num(s.day) ? Math.max(1, Math.floor(s.day)) : dayOf(g.clock.hour);
+      if (num(s.day) && (s.day < 1 || s.day > MAX_DAY)) this.issue('warning', `${at}.day`, `day is kept between 1 and ${MAX_DAY}.`);
+      const day = num(s.day) ? clamp(Math.floor(s.day), 1, MAX_DAY) : dayOf(g.clock.hour);
       const hod = num(s.hour) ? clamp(s.hour, 0, 23.99) : this.blank ? 9 : hourOfDay(g.clock.hour);
       const target = (day - 1) * 24 + hod;
       if (target + 1e-9 < g.clock.hour) this.issue('warning', `${at}.day`, `The game is already at day ${dayOf(g.clock.hour)}; the clock can't go back, so it stays.`);
@@ -294,7 +309,8 @@ class Builder {
       }
     } else if (unlocks !== undefined) this.issue('error', `${at}.unlocks`, 'unlocks must be "all", "none" or a list of unlock keys.');
 
-    const research = s.research ?? (this.blank ? 'all' : undefined);
+    // a blank shop finishes all research only when it unlocks everything (research grants unlocks of its own)
+    const research = s.research ?? (this.blank && (unlocks === 'all' || unlocks === undefined) ? 'all' : undefined);
     const ids = research === 'all' ? RESEARCH.map((d) => d.id) : Array.isArray(research) ? research : [];
     if (research !== undefined && research !== 'all' && !Array.isArray(research)) this.issue('error', `${at}.research`, 'research must be "all" or a list of project ids.');
     for (const id of ids) this.finishResearch(id, `${at}.research`);
@@ -334,9 +350,11 @@ class Builder {
     else if (guide === 'on' && g.progress.tutorial.done) this.issue('warning', `${at}.guide`, 'The guide is already finished in this base; start from a starter (base "starter:<id>") to play it.');
     else if (guide !== undefined && guide !== 'done' && guide !== 'on') this.issue('error', `${at}.guide`, 'guide must be "done" or "on".');
 
-    const money = s.money ?? (this.blank ? 50_000 : undefined);
+    let money = s.money ?? (this.blank ? 50_000 : undefined);
     if (money !== undefined) {
       if (num(money)) {
+        if (money !== clamp(money, -MAX_MONEY, MAX_MONEY)) this.issue('warning', `${at}.money`, `money is kept between -$${MAX_MONEY.toLocaleString('en-US')} and $${MAX_MONEY.toLocaleString('en-US')}.`);
+        money = clamp(money, -MAX_MONEY, MAX_MONEY);
         g.finance.money = Math.round(money * 100) / 100;
         if (money < 0) g.finance.debtSinceHour ??= g.clock.hour;
         else delete g.finance.debtSinceHour;
@@ -542,11 +560,11 @@ class Builder {
           ...initialLivingState(def),
           id: nextId(g, 'dc'),
           defId: def.id,
-          x: num(spec.x) ? spec.x : 0,
-          y: num(spec.y) ? spec.y : 0,
-          z: num(spec.z) ? spec.z : 0,
+          x: num(spec.x) ? clamp(spec.x, -L / 2, L / 2) : 0,
+          y: num(spec.y) ? clamp(spec.y, 0, tier.dimsIn.h * 0.0254) : 0,
+          z: num(spec.z) ? clamp(spec.z, -W / 2, W / 2) : 0,
           rotY: num(spec.rotY) ? spec.rotY : 0,
-          scale: num(spec.scale) ? spec.scale : 1,
+          scale: num(spec.scale) ? clamp(spec.scale, 0.1, 5) : 1,
           seed: 1 + Math.floor(rng.next() * 0x7ffffffe),
         });
         return;
@@ -596,23 +614,7 @@ class Builder {
         this.issue('error', `${at}.morph`, `${sp.commonName} have no morph called "${String(a.morph)}"${near.length ? ` (like: ${near.join('; ')})` : ''}.`);
       }
     }
-    if (a.genes !== undefined) {
-      if (!isPlainObject(a.genes)) this.issue('error', `${at}.genes`, 'genes must be locus → [allele, allele].');
-      else
-        for (const [locusId, pair] of Object.entries(a.genes)) {
-          const locus = sp.genetics.loci.find((l) => l.id === locusId);
-          if (!locus) {
-            this.issue('error', `${at}.genes.${locusId}`, `${sp.commonName} have no gene "${locusId}" (${sp.genetics.loci.map((l) => l.id).join(', ')}).`);
-            continue;
-          }
-          const ok = Array.isArray(pair) && pair.length === 2 && pair.every((x) => locus.alleles.some((al) => al.id === x));
-          if (!ok) {
-            this.issue('error', `${at}.genes.${locusId}`, `"${locusId}" takes two of: ${locus.alleles.map((al) => al.id).join(', ')}.`);
-            continue;
-          }
-          pinned = { ...(pinned ?? {}), [locusId]: [pair[0], pair[1]] };
-        }
-    }
+    if (a.genes !== undefined) pinned = { ...(pinned ?? {}), ...this.genes(sp, a.genes, `${at}.genes`) };
     const pots = isPlainObject(a.potentials) ? a.potentials : null;
     if (a.potentials !== undefined && !pots) this.issue('error', `${at}.potentials`, 'potentials must be numbers by name (size, color, pattern …).');
     const nPrism = a.prismatic === true ? count : num(a.prismatic) ? clamp(Math.floor(a.prismatic), 0, count) : 0;
@@ -636,6 +638,12 @@ class Builder {
         tankId: tank.id,
       });
       addCreature(g, c, tank.id);
+      // a sex-changing species decides for itself, unless the recipe names a sex (a bonded clownfish pair, a capture)
+      const asked = SEX_PLANS.includes(sexPlan) && (sp.sexSystem === 'protandrous' || sp.sexSystem === 'protogynous') ? namedSex(sexPlan, k) : null;
+      if (asked) {
+        c.sex = asked;
+        c.reproRole = asked;
+      }
       // scenario animals are settled residents, not new arrivals (shows want 24 h in the tank)
       c.acquiredHour = Math.max(c.bornHour, g.clock.hour - 72);
       registerDiscovery(g, c);
@@ -658,6 +666,29 @@ class Builder {
     }
   }
 
+  /** Pinned genes, checked against the species' loci and alleles (a wrong one is named and left out). */
+  private genes(sp: NonNullable<ReturnType<typeof findSpecies>>, genes: unknown, at: string): Genome['alleles'] {
+    const out: Genome['alleles'] = {};
+    if (!isPlainObject(genes)) {
+      this.issue('error', at, 'genes must be locus → [allele, allele].');
+      return out;
+    }
+    for (const [locusId, pair] of Object.entries(genes)) {
+      const locus = sp.genetics.loci.find((l) => l.id === locusId);
+      if (!locus) {
+        this.issue('error', `${at}.${locusId}`, `${sp.commonName} have no gene "${locusId}" (${sp.genetics.loci.map((l) => l.id).join(', ')}).`);
+        continue;
+      }
+      const ok = Array.isArray(pair) && pair.length === 2 && pair.every((x) => locus.alleles.some((al) => al.id === x));
+      if (!ok) {
+        this.issue('error', `${at}.${locusId}`, `"${locusId}" takes two of: ${locus.alleles.map((al) => al.id).join(', ')}.`);
+        continue;
+      }
+      out[locusId] = [pair[0], pair[1]];
+    }
+    return out;
+  }
+
   private condition(c: Creature, a: AnimalRecipe, at: string, sp: NonNullable<ReturnType<typeof findSpecies>>): void {
     if (a.stats !== undefined) {
       if (!isPlainObject(a.stats)) this.issue('error', `${at}.stats`, 'stats must be numbers by name (health, hunger …).');
@@ -669,7 +700,7 @@ class Builder {
     }
     if (a.illness !== undefined) {
       const kind = isPlainObject(a.illness) ? a.illness.kind : undefined;
-      if (!str(kind) || !illnessDef(kind)) this.issue('error', `${at}.illness`, 'illness.kind is one of ich, fin_rot, fungus, swim_bladder, stress_coloration, impaction.');
+      if (!str(kind) || !Object.hasOwn(ILLNESSES, kind) || !illnessDef(kind)) this.issue('error', `${at}.illness`, 'illness.kind is one of ich, fin_rot, fungus, swim_bladder, stress_coloration, impaction.');
       else {
         if (!(eligibleIllnesses(sp) as string[]).includes(kind)) this.issue('warning', `${at}.illness`, `${sp.commonName} don't normally get ${kind} in the game.`);
         c.illness = { kind, severity: num(a.illness.severity) ? clamp(a.illness.severity, 1, 100) : 40, sinceHour: this.hour };
@@ -696,6 +727,7 @@ class Builder {
       const fits = EQUIPMENT.filter((d) => d.kind === id && d.environments.includes(tank.environment));
       return fits.find((d) => gallons >= d.gallonsRange.min && gallons <= d.gallonsRange.max) ?? fits[0];
     };
+    const claimed = new Set<EquipmentInstance>();
     list.forEach((raw, k) => {
       const spec: EquipmentRecipe | null = typeof raw === 'string' ? { id: raw } : isPlainObject(raw) && str(raw.id) ? raw : null;
       const where = `${at}.equipment[${k}]`;
@@ -704,7 +736,20 @@ class Builder {
         return;
       }
       const def = defFor(spec.id);
-      const own = (e: EquipmentInstance) => e.defId === spec.id || getEquipmentDef(e.defId)?.kind === spec.id;
+      if (spec.exact) {
+        // as captured: the unit itself, even where the game's own kit has more than a hand install allows
+        if (!def || def.id !== spec.id) {
+          this.issue('error', where, `Unknown equipment "${spec.id}" (an exact piece needs its catalogue id).`);
+          return;
+        }
+        const unit: EquipmentInstance = { id: nextId(g, 'eq'), defId: def.id, installedHour: g.clock.hour, condition: num(spec.condition) ? clamp(spec.condition, 0, 1) : 1, on: spec.on !== false };
+        if (num(spec.setting)) unit.setting = spec.setting;
+        if (spec.failed === 'off' || (spec.failed === 'stuck_on' && def.kind === 'heater')) Object.assign(unit, { failed: true, failMode: spec.failed });
+        tank.equipment.push(unit);
+        claimed.add(unit);
+        return;
+      }
+      const own = (e: EquipmentInstance) => !claimed.has(e) && (e.defId === spec.id || getEquipmentDef(e.defId)?.kind === spec.id);
       const changes = spec.failed !== undefined || spec.condition !== undefined || spec.on !== undefined || spec.setting !== undefined || spec.remove;
       let inst = changes ? tank.equipment.find(own) : undefined;
       if (spec.remove) {
@@ -724,6 +769,7 @@ class Builder {
         }
         inst = tank.equipment[tank.equipment.length - 1];
       }
+      claimed.add(inst);
       if (spec.condition !== undefined) {
         if (num(spec.condition)) inst.condition = clamp(spec.condition, 0, 1);
         else this.issue('error', `${where}.condition`, 'condition must be 0 (worn out) to 1 (new).');
@@ -960,9 +1006,11 @@ class Builder {
     const rng = simRng(g);
     const count = num(o.count) ? clamp(Math.floor(o.count), 1, 50) : 1;
     const creatures: Creature[] = [];
+    const pinned = o.genes !== undefined ? this.genes(sp, o.genes, `${at}.genes`) : null;
+    const ageDays = num(o.ageDays) ? clamp(o.ageDays, 0.1, sp.lifecycle.lifespanDays * 1.2) : undefined;
     for (let k = 0; k < count; k++) {
-      const genome = isPlainObject(o.genes) ? { alleles: { ...(o.genes as Genome['alleles']) }, potentials: { ...NEUTRAL_POTENTIALS } } : undefined;
-      creatures.push(createCreature(g, rng, sp.id, { ...(o.sex ? { sex: o.sex } : {}), ...(num(o.ageDays) ? { ageDays: o.ageDays } : {}), captiveBred: true, ...(genome ? { genome } : {}) }));
+      const genome = pinned ? { alleles: { ...pinned }, potentials: { ...NEUTRAL_POTENTIALS } } : undefined;
+      creatures.push(createCreature(g, rng, sp.id, { ...(o.sex === 'male' || o.sex === 'female' ? { sex: o.sex } : {}), ...(ageDays !== undefined ? { ageDays } : {}), captiveBred: true, ...(genome ? { genome } : {}) }));
     }
     if (o.prismatic) {
       forcePrismatic('shop', 1);
@@ -1126,9 +1174,28 @@ class Builder {
     });
   }
 
+  /**
+   * The patch, tried on a copy first: a world the save path can't load, or the game can't step, is refused (the
+   * world is built without the patch, and the error says why).
+   */
   patch(): void {
     if (this.r.patch === undefined) return;
-    for (const p of deepMerge(this.g as unknown as Record<string, unknown>, this.r.patch, 'patch')) this.issue('error', 'patch', p);
+    const trial = structuredClone(this.g);
+    const problems = deepMerge(trial as unknown as Record<string, unknown>, this.r.patch, 'patch');
+    for (const p of problems) this.issue('error', 'patch', p);
+    let loaded: ReturnType<typeof decodeRecord>;
+    try {
+      loaded = decodeRecord(encodeRecord(trial, 'scenario').text, 'This scenario');
+      const probe = structuredClone(loaded.state);
+      for (const id of probe.tankOrder) refreshTankCache(probe, probe.tanks[id]);
+      advanceWorld(probe, 0.25, {});
+    } catch (e) {
+      this.issue('error', 'patch', `The patch makes a world the game can't load or play (${(e as Error).message}); built without it.`);
+      return;
+    }
+    // the world as the save path loads it: what that had to repair is said here
+    for (const r of loaded.repairs) this.issue('warning', 'patch', `The save check repaired what the patch did: ${r}`);
+    this.g = loaded.state;
   }
 
   warmup(): void {
@@ -1175,8 +1242,6 @@ class Builder {
     g.lastSavedRealMs = now;
     g.lastTickRealMs = now;
     g.saveId = `scenario_${slugOf(this.r.name)}_${this.seed().toString(36)}_${now.toString(36)}`;
-    forcePrismatic('shop', 0);
-    forcePrismatic('bred', 0);
   }
 }
 
@@ -1191,6 +1256,20 @@ export function recipeProblem(input: unknown): string | null {
 
 /** Build a recipe into a game. Never throws for a bad recipe: what it couldn't do is in `issues`. */
 export function buildScenario(input: unknown, env: BuildEnv = {}): BuildResult {
+  // a Prismatic forced from the dev panel is for the game on screen: set it aside, so it neither lands in this world
+  // (the base's market rolls its stock) nor is used up by it, and put it back after
+  const pending = { shop: forcedPrismaticPending('shop'), bred: forcedPrismaticPending('bred') };
+  forcePrismatic('shop', 0);
+  forcePrismatic('bred', 0);
+  try {
+    return build(input, env);
+  } finally {
+    forcePrismatic('shop', pending.shop);
+    forcePrismatic('bred', pending.bred);
+  }
+}
+
+function build(input: unknown, env: BuildEnv): BuildResult {
   const problem = recipeProblem(input);
   const recipe: ScenarioRecipe = problem ? { version: RECIPE_VERSION, name: 'Scenario' } : (input as ScenarioRecipe);
   const b = new Builder(recipe, env);
@@ -1215,8 +1294,11 @@ export function buildScenario(input: unknown, env: BuildEnv = {}): BuildResult {
     step('breed', () => b.spawnRuns());
     step('warmup', () => b.warmup());
   }
-  const open = b.focus();
+  let open: ReturnType<Builder['focus']> = { focusTankId: null, view: 'tank' };
+  step('open', () => (open = b.focus()));
   b.finish();
+  // the save writes a number that isn't one as 0: say where, rather than quietly
+  for (const path of findNonFinite(b.g, '$', [], 10)) b.issue('warning', 'save', `${path.replace(/^\$\./, '').replace(/ = .*$/, '')} isn't a number; the save writes 0.`);
   // the real save path: what a save of this world would load
   const decoded = decodeRecord(encodeRecord(b.g, 'scenario', b.g.lastSavedRealMs).text, 'This scenario');
   for (const r of decoded.repairs) b.issue('warning', 'save', `The save check repaired: ${r}`);

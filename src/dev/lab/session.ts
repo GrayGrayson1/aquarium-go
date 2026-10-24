@@ -8,7 +8,8 @@ import { useGame, getGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useLab } from '@/state/lab';
 import { inSharedShop } from '@/state/sharedMode';
-import { neverAutosave } from '@/game/useAutosave';
+import { neverAutosave, saveCurrentGame } from '@/persistence/session';
+import { autosaveAllowed } from '@/game/useAutosave';
 import { loadFixtureRegistry, type FixtureRegistry } from '../fixtures/lazy';
 import { buildScenario, type BuildEnv, type BuildResult } from '../scenario/build';
 import { presetById } from '../scenario/presets';
@@ -40,24 +41,42 @@ function copies(reg: FixtureRegistry): Record<string, () => GameState> {
 
 const usesFixture = (input: unknown) => isPlainObject(input) && typeof input.base === 'string' && input.base.startsWith('fixture:');
 
+const usesCurrent = (input: unknown) => isPlainObject(input) && input.base === 'current';
+
+/**
+ * "The game on screen" for a `current` base: the game itself, or, while a scenario built on it plays, the game it was
+ * built from (so Start again and a rebuild don't stack the recipe onto the scenario).
+ */
+export function currentBase(): GameState | null {
+  const g = getGame();
+  const s = useLab.getState().scenario;
+  return g && s?.base && s.saveId === g.saveId ? s.base : g;
+}
+
 /** The fixtures (loaded on first use) and the game on screen, for a build. */
 export async function buildEnv(input: unknown, opts: { trial?: boolean } = {}): Promise<BuildEnv> {
   if (usesFixture(input) && !fixtureCopies) fixtureCopies = copies(await loadFixtureRegistry());
-  return { ...(fixtureCopies ? { fixtures: fixtureCopies } : {}), current: getGame(), ...(opts.trial ? { trial: true } : {}) };
+  return { ...(fixtureCopies ? { fixtures: fixtureCopies } : {}), current: currentBase(), ...(opts.trial ? { trial: true } : {}) };
 }
 
 /** The fixtures already loaded, for a build that can't wait (the lab's warnings while typing). */
 export const loadedFixtures = (): Record<string, () => GameState> | undefined => fixtureCopies ?? undefined;
 
-/** Build a recipe and play it: the game opens on it, paused (unless the recipe says a speed). */
+/**
+ * Build a recipe and play it: the game opens on it, paused (unless the recipe says a speed). The player's own game on
+ * screen is saved first, as Load does (chunk 9), so the last minute of play isn't lost.
+ */
 export async function playRecipe(input: unknown): Promise<BuildResult> {
   if (inSharedShop()) throw new Error(SHARED_REFUSAL);
-  const built = buildScenario(input, await buildEnv(input));
+  if (autosaveAllowed({ evenIfOff: true })) await saveCurrentGame('auto', { flush: true, toast: false });
+  const env = await buildEnv(input);
+  const built = buildScenario(input, env);
   const name = isPlainObject(input) && typeof input.name === 'string' ? input.name : 'Scenario';
   neverAutosave(built.state.saveId);
   useGame.getState().setGame(built.state);
   useUI.getState().set({ screen: 'game', view: built.view, focusedTankId: built.focusTankId, panel: null, tool: 'none' });
-  useLab.setState({ open: false, scenario: { name, saveId: built.state.saveId, recipe: structuredClone(input) } });
+  const base = usesCurrent(input) && env.current ? { base: structuredClone(env.current) } : {};
+  useLab.setState({ open: false, scenario: { name, saveId: built.state.saveId, recipe: structuredClone(input), ...base } });
   const errors = built.issues.filter((i) => i.level === 'error').length;
   const paused = built.state.clock.speed === 0;
   useUI.getState().toast(`Scenario: ${name}${paused ? ' · paused' : ''}${errors ? ` · ${errors} part${errors === 1 ? '' : 's'} skipped (see the lab)` : ''}`, errors ? 'warning' : 'info');

@@ -6521,8 +6521,7 @@
       ],
       "tasks": [],
       "tests": [
-        "tests/sim/scenario-build.test.ts",
-        "tests/sim/scenario-validate.test.ts"
+        "tests/sim/scenario-build.test.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
@@ -6557,7 +6556,8 @@
       ],
       "tasks": [],
       "tests": [
-        "tests/e2e/scenario-lab.spec.ts"
+        "tests/e2e/scenario-lab.spec.ts",
+        "tests/sim/scenario-session.test.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",
@@ -6576,7 +6576,8 @@
       "tests": [
         "tests/e2e/scenario-lab.spec.ts",
         "tests/e2e/prod-mode.spec.ts",
-        "tests/sim/plat-dev-tools.test.ts"
+        "tests/sim/plat-dev-tools.test.ts",
+        "tests/sim/scenario-session.test.ts"
       ],
       "evidence": [],
       "status": "IN_PROGRESS",

@@ -6,6 +6,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { buildScenario, formatReport, presetById, runScenario, type ScenarioRecipe } from '@/dev/scenario';
+import { scenarioCli } from '@/dev/scenario/cli';
+import { decodeRecord } from '@/persistence';
 
 describe('LAB-006: running a scenario forward', () => {
   it('the ammonia crisis left alone: its own checks pass, and the report says why the fish died', () => {
@@ -49,13 +51,75 @@ describe('LAB-006: running a scenario forward', () => {
     expect(formatReport(r)).toContain('Some checks failed.');
   });
 
-  it('births, sales and money are counted from the start of the run', () => {
-    const recipe = presetById('fry-tank')!.recipe;
-    const built = buildScenario(recipe);
-    const before = Object.keys(built.state.creatures).length;
-    const r = runScenario(built, { ...recipe, checks: [{ afterHours: 0, births: { max: 0 } }] }, 24 * 8);
-    expect(r.checks[0].pass).toBe(true); // judged at the start, before anything was born
-    expect(r.births).toBe(Object.keys(built.state.creatures).length - before);
+  it('births are counted from the start of the run, and each check is judged at its own hour', () => {
+    const recipe: ScenarioRecipe = {
+      ...presetById('fry-tank')!.recipe,
+      checks: [
+        { name: 'none yet', afterHours: 0, births: { max: 0 } },
+        { name: 'the fry grew up', afterHours: 72, births: { min: 10 } },
+        { name: 'at 5 h', afterHours: 5, births: { max: 0 } },
+      ],
+    };
+    const r = runScenario(buildScenario(recipe), recipe, 0);
+    expect(r.checks.map((c) => [c.name, c.atHours, c.pass])).toEqual([
+      ['none yet', 0, true],
+      ['the fry grew up', 72, true],
+      ['at 5 h', 5, true],
+    ]);
+    expect(r.births).toBeGreaterThanOrEqual(10);
     expect(r.money.start).toBe(50_000);
+  });
+
+  it('a check that can\u2019t be judged fails rather than disappearing', () => {
+    const recipe = { version: 1, name: 'Broken checks', tanks: [{ name: 'T' }], checks: [{ name: 'no hour', alive: { min: 0 } }, { name: 'text hour', afterHours: 'soon', alive: { min: 0 } }, { name: 'too late', afterHours: 1e9, alive: { min: 0 } }, { afterHours: 1, alive: { min: 0 } }] } as unknown as ScenarioRecipe;
+    const r = runScenario(buildScenario(recipe), recipe, 1);
+    expect(r.checks.map((c) => [c.name, c.pass, c.atHours])).toEqual([
+      ['no hour', false, null],
+      ['text hour', false, null],
+      ['too late', false, null],
+      ['check 4', true, 1],
+    ]);
+    expect(r.passed).toBe(false);
+    expect(formatReport(r)).toContain('FAIL  no hour (not judged)');
+  });
+});
+
+describe('LAB-006: npm run scenario', () => {
+  const files = new Map<string, string>();
+  const run = (...args: string[]) => {
+    const out: string[] = [];
+    const code = scenarioCli(args, { read: (p) => { const t = files.get(p); if (t === undefined) throw new Error('no such file'); return t; }, write: (p, t) => void files.set(p, t), print: (l) => void out.push(l) });
+    return { code, out: out.join('\n') };
+  };
+
+  it('a preset with passing checks exits 0 and prints the report', () => {
+    const r = run('ammonia-crisis');
+    expect(r.code).toBe(0);
+    expect(r.out).toContain('All checks passed.');
+  });
+
+  it('a failed check, a build error (unless --force) or an unreadable file exits 1', () => {
+    files.set('fail.json', JSON.stringify({ version: 1, name: 'F', tanks: [{ name: 'T', animals: [{ species: 'neon_tetra', count: 3 }] }], checks: [{ afterHours: 1, tank: 'T', alive: { min: 50 } }] }));
+    expect(run('fail.json').code).toBe(1);
+    files.set('bad.json', JSON.stringify({ version: 1, name: 'B', tanks: [{ name: 'T', animals: [{ species: 'shark' }] }] }));
+    const bad = run('bad.json', '--hours', '1');
+    expect(bad.code).toBe(1);
+    expect(bad.out).toContain('Not run: the build has 1 error');
+    expect(run('bad.json', '--hours', '1', '--force').code).toBe(0);
+    expect(run('missing.json').code).toBe(1);
+    expect(run('ammonia-crisis', '--hours', '-3').code).toBe(1);
+    expect(run().code).toBe(1);
+    expect(run('--list').code).toBe(0);
+  });
+
+  it('--json is the issues and the report; --save writes a save file the game loads', () => {
+    const j = run('show-day', '--hours', '2', '--json');
+    const parsed = JSON.parse(j.out) as { issues: unknown[]; report: { hours: number } };
+    expect(parsed.report.hours).toBe(2);
+    files.set('wrap.json', JSON.stringify({ recipe: { version: 1, name: 'Wrapped', tanks: [{ name: 'W' }] } })); // a lab export may wrap it
+    expect(run('wrap.json', '--hours', '0', '--save', 'out.json').code).toBe(0);
+    const imported = decodeRecord(files.get('out.json')!);
+    expect(imported.repairs).toEqual([]);
+    expect(imported.state.tankOrder.map((id) => imported.state.tanks[id].name)).toEqual(['W']);
   });
 });

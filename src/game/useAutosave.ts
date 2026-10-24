@@ -2,7 +2,7 @@
  * Autosave: every AUTOSAVE_INTERVAL_MS of visible real time while in the game, plus when the tab is hidden and on
  * pagehide. Skips showcase worlds, worlds booted from a `?fixture=` / `?showcase=` URL (so dev fixtures and QA runs
  * never overwrite the player's autosave; add `&autosave=1` to opt in, in a dev build or a `?dev=1` session) and the
- * scenario lab's worlds (`neverAutosave`, chunk 15).
+ * scenario lab's worlds (`neverAutosave` in src/persistence/session.ts, chunk 15).
  * Respects settings.autosave.
  * OWNER: lane "core".
  */
@@ -12,7 +12,7 @@ import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { devToolsAllowed } from '@/state/devTools';
 import { STARTER_IDS } from '@/data/species';
-import { saveCurrentGame, saveCurrentGameSync } from '@/persistence/session';
+import { saveCurrentGame, saveCurrentGameSync, autosaveRefused } from '@/persistence/session';
 import { isSharedShop } from '@/persistence/sharedAway';
 import { loopStats } from './loopStats';
 
@@ -28,13 +28,6 @@ const SAVE_WATCHDOG_MS = 30_000;
 const WARN_AFTER_FAILURES = 2;
 
 let fixtureSaveId: string | null = null;
-/** Chunk 15 (ADR-0051 decision 3): worlds the scenario lab built, never autosaved over the player's game. */
-const neverSaved = new Set<string>();
-
-/** Never autosave the world with this save id (a scenario; a manual save to a slot still works). */
-export function neverAutosave(saveId: string): void {
-  neverSaved.add(saveId);
-}
 let saving = false;
 /** Which autosave call currently owns the `saving` flag (a watchdog-released call must not clear a newer one's). */
 let saveSeq = 0;
@@ -84,7 +77,7 @@ export function autosaveAllowed(opts: { evenIfOff?: boolean } = {}): boolean {
   if (!g || g.isShowcase) return false;
   if (isSharedShop(g)) return false; // chunk 13 (SHARE-011): the server saves a shared shop
   if (fixtureSaveId && g.saveId === fixtureSaveId) return false;
-  if (neverSaved.has(g.saveId)) return false;
+  if (autosaveRefused(g.saveId)) return false; // chunk 15: a scenario (src/persistence/session.ts)
   if (useUI.getState().screen !== 'game') return false;
   if (!opts.evenIfOff && !useSettings.getState().autosave) return false;
   return true;

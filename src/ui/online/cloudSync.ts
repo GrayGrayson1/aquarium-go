@@ -455,7 +455,8 @@ export async function loadOnlineCopy(): Promise<boolean> {
       const saved = await saveCurrentGame('auto', { flush: true, toast: false, asKept: g.saveId === incoming.saveId });
       // another tab played this aquarium further ('stale'): loading goes on (that tab still has its copy on screen,
       // and is asked there); the copy stored here may be written over, as any load from this tab would
-      if (!saved.ok && saved.code !== 'stale') {
+      // chunk 15: a scenario lab world isn't kept (never saved over the autosave), so loading goes on too
+      if (!saved.ok && saved.code !== 'stale' && saved.code !== 'scenario') {
         useUI.getState().toast(saved.message, 'danger');
         return false;
       }

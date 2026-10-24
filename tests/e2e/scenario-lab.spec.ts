@@ -64,6 +64,8 @@ test('build a recipe through the lab, play it paused and unsaved, start again, k
   const first = await aq<Scenario>(page, 'scenario.current');
   expect(first?.name).toBe('E2E scenario');
   expect(await aq<boolean>(page, 'autosave')).toBe(false);
+  // nor does any save to the autosave slot ("Save now", "Save and return to title" save there)
+  expect(await aq<{ ok: boolean; code?: string }>(page, 'save', 'auto')).toMatchObject({ ok: false, code: 'scenario' });
   expect((await aq<{ slot: string; saveId?: string }[]>(page, 'listSaves')).some((m) => m.saveId === first?.saveId)).toBe(false);
 
   // play changes it; Start again builds it fresh from its recipe

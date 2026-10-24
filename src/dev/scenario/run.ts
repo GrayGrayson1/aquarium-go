@@ -13,6 +13,8 @@ import type { CheckRecipe, Range, ScenarioRecipe } from './recipe';
 export interface CheckResult {
   name: string;
   afterHours: number;
+  /** Game hours into the run when it was judged (null: it couldn't be, and fails). */
+  atHours: number | null;
   pass: boolean;
   /** Each measured value and its range, e.g. "ammonia 0.12 (max 0.5) ok". */
   lines: string[];
@@ -100,7 +102,7 @@ function measure(g: GameState, b: Baseline, built: BuildResult, check: CheckReci
   }
 }
 
-function judge(g: GameState, b: Baseline, built: BuildResult, check: CheckRecipe, i: number): CheckResult {
+function judge(g: GameState, b: Baseline, built: BuildResult, check: CheckRecipe, i: number, atHours: number): CheckResult {
   const lines: string[] = [];
   let pass = true;
   let any = false;
@@ -122,8 +124,11 @@ function judge(g: GameState, b: Baseline, built: BuildResult, check: CheckRecipe
     pass = false;
     lines.push(`nothing to check (${METRICS.join(', ')})`);
   }
-  return { name: check.name ?? `check ${i + 1}`, afterHours: check.afterHours, pass, lines };
+  return { name: check.name ?? `check ${i + 1}`, afterHours: check.afterHours, atHours, pass, lines };
 }
+
+/** The longest a run goes (a year). */
+export const MAX_RUN_HOURS = 24 * 365;
 
 /**
  * Run `built` (its state is changed in place) forward `hours` game hours in one-hour steps, or longer if a check asks
@@ -131,8 +136,10 @@ function judge(g: GameState, b: Baseline, built: BuildResult, check: CheckRecipe
  */
 export function runScenario(built: BuildResult, recipe: ScenarioRecipe, hours: number): RunReport {
   const g = built.state;
-  const checks = (Array.isArray(recipe.checks) ? recipe.checks : []).map((c, i) => ({ c, i })).filter(({ c }) => c && typeof c.afterHours === 'number' && Number.isFinite(c.afterHours) && c.afterHours >= 0);
-  const total = Math.min(24 * 365, Math.max(Number.isFinite(hours) ? Math.max(0, hours) : 0, ...checks.map(({ c }) => c.afterHours)));
+  const all = (Array.isArray(recipe.checks) ? recipe.checks : []).map((c, i) => ({ c, i }));
+  const judgeable = ({ c }: { c: CheckRecipe }) => !!c && typeof c === 'object' && typeof c.afterHours === 'number' && Number.isFinite(c.afterHours) && c.afterHours >= 0 && c.afterHours <= MAX_RUN_HOURS;
+  const checks = all.filter(judgeable);
+  const total = Math.min(MAX_RUN_HOURS, Math.max(Number.isFinite(hours) ? Math.max(0, hours) : 0, ...checks.map(({ c }) => c.afterHours)));
   const b: Baseline = {
     startHour: g.clock.hour,
     ids: new Set(Object.keys(g.creatures)),
@@ -140,7 +147,10 @@ export function runScenario(built: BuildResult, recipe: ScenarioRecipe, hours: n
   };
   const startMoney = g.finance.money;
   const logStart = new Set(g.log.map((e) => e.id));
-  const results: CheckResult[] = new Array(checks.length);
+  const results: CheckResult[] = new Array(all.length);
+  // a check that can't be judged fails, so a mistyped one never passes quietly
+  for (const { c, i } of all)
+    if (!judgeable({ c })) results[i] = { name: (c && typeof c === 'object' && typeof c.name === 'string' && c.name) || `check ${i + 1}`, afterHours: NaN, atHours: null, pass: false, lines: [`afterHours must be game hours from 0 to ${MAX_RUN_HOURS}`] };
   const due = [...checks].sort((x, y) => x.c.afterHours - y.c.afterHours);
   const focusTankId = built.focusTankId ?? undefined;
   let elapsed = 0;
@@ -148,7 +158,7 @@ export function runScenario(built: BuildResult, recipe: ScenarioRecipe, hours: n
     while (due.length && due[0].c.afterHours <= elapsed + 1e-9) {
       flushSimDebt(g);
       const { c, i } = due.shift()!;
-      results[i] = judge(g, b, built, c, i);
+      results[i] = judge(g, b, built, c, i, Math.round((g.clock.hour - b.startHour) * 100) / 100); // the hours really played
     }
   };
   judgeDue();
@@ -219,7 +229,7 @@ export function formatReport(r: RunReport): string {
   if (r.checks.length) {
     out.push('Checks:');
     for (const c of r.checks) {
-      out.push(`  ${c.pass ? 'PASS' : 'FAIL'}  ${c.name} (after ${c.afterHours} h)`);
+      out.push(`  ${c.pass ? 'PASS' : 'FAIL'}  ${c.name} (${c.atHours === null ? 'not judged' : `after ${c.afterHours} h`})`);
       for (const l of c.lines) out.push(`        ${l}`);
     }
     out.push(r.passed ? 'All checks passed.' : 'Some checks failed.');

@@ -7,11 +7,16 @@
 import type { GameState } from '@/types';
 import { ageDaysOf } from '@/sim/life/growth';
 import { RESEARCH } from '@/data/research';
+import { findSpecies } from '@/data/species';
 import { dayOf, hourOfDay } from '@/sim/time';
 import { RECIPE_FORMAT, RECIPE_VERSION, type AnimalRecipe, type ScenarioRecipe, type TankRecipe, type WaterValues } from './recipe';
 import { WATER_RANGES } from './build';
 
 const r2 = (v: number, places = 3) => Math.round(v * 10 ** places) / 10 ** places;
+const isSexChanging = (speciesId: string) => {
+  const sys = findSpecies(speciesId)?.sexSystem;
+  return sys === 'protandrous' || sys === 'protogynous';
+};
 
 export function captureRecipe(g: GameState, name = `${g.shopName} (captured)`): ScenarioRecipe {
   const animalsIn = (tankId: string): AnimalRecipe[] =>
@@ -30,6 +35,8 @@ export function captureRecipe(g: GameState, name = `${g.shopName} (captured)`): 
         ...(c.life?.injury ? { injury: r2(c.life.injury, 1) } : {}),
         ...(c.favorite ? { favorite: true } : {}),
         ...(!c.captiveBred ? { wild: true } : {}),
+        // the hidden role when the sex doesn't show yet, or a sex-changing species' role as it stands
+        ...(c.sex === 'unknown' || isSexChanging(c.speciesId) ? { patch: { reproRole: c.reproRole } } : {}),
       }));
   const tanks: TankRecipe[] = g.tankOrder
     .map((id) => g.tanks[id])
@@ -58,6 +65,7 @@ export function captureRecipe(g: GameState, name = `${g.shopName} (captured)`): 
           on: e.on,
           ...(e.setting !== undefined ? { setting: e.setting } : {}),
           ...(e.failed && e.failMode ? { failed: e.failMode } : {}),
+          exact: true,
         })),
         substrate: { kind: t.substrate.kind, depthCm: t.substrate.depthCm, color: t.substrate.color },
         backdrop: t.backdrop,

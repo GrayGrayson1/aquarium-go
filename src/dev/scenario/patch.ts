@@ -24,7 +24,11 @@ function copyJson(v: unknown, path: string, problems: string[]): unknown {
     }
     return out;
   }
-  return typeof v === 'number' && !Number.isFinite(v) ? 0 : v;
+  if (typeof v === 'number' && !Number.isFinite(v)) {
+    problems.push(`${path}: ${v} isn't a number the game can keep; set to 0.`);
+    return 0;
+  }
+  return v;
 }
 
 /**

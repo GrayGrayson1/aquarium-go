@@ -29,6 +29,7 @@ import {
   markSharedAway,
   readSharedAway,
   saveCurrentGame,
+  autosaveRefused,
   sharedAwayHeartbeat,
   useResume,
 } from '@/persistence';
@@ -170,7 +171,8 @@ async function health(url: string): Promise<{ closed: 'cap' | 'hours' | null; un
 async function parkOwnGame(club: string, from: 'game' | 'title'): Promise<boolean> {
   const g = useGame.getState().game;
   // from the title there's no aquarium to keep, and a record left by a browser closed inside a shop stays for its save
-  if (from === 'title' || !g || g.isShowcase || isSharedShop(g)) return true;
+  // chunk 15: nor in a scenario lab world (never saved over the player's autosave; the player's own game is in it already)
+  if (from === 'title' || !g || g.isShowcase || isSharedShop(g) || autosaveRefused(g.saveId)) return true;
   const res = await saveCurrentGame('auto', { flush: true, toast: false });
   if (!res.ok) {
     useUI.getState().toast(res.message, 'danger');

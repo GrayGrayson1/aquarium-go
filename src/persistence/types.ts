@@ -61,8 +61,9 @@ export interface SaveResult {
   /**
    * lane:fix-core — 'stale': another tab saved this aquarium more recently, so this tab's copy was not written.
    * lane:core (PERSIST-014) — 'too_new': a newer version of the game wrote this slot; nothing was written.
+   * chunk 15 (ADR-0051) — 'scenario': a scenario lab world is never saved over the player's autosave; nothing written.
    */
-  code?: 'stale' | 'too_new';
+  code?: 'stale' | 'too_new' | 'scenario';
   /** lane:fix-core — the write only reached the in-memory backend (lost when the tab closes); `message` says so. */
   degraded?: boolean;
 }

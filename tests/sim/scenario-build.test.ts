@@ -13,6 +13,8 @@ import { savedPresets, savePreset, deletePreset, loadDraft, saveDraft, LAB_STORA
 import { encodeRecord, decodeRecord } from '@/persistence';
 import { stateHash } from '@/persistence/hash';
 import { advanceWorld } from '@/sim/world';
+import { forcePrismatic } from '@/sim/life';
+import { forcedPrismaticPending } from '@/sim/life/rareVariants';
 import { dayOf, hourOfDay } from '@/sim/time';
 import { ALL_SPECIES, getSpecies } from '@/data/species';
 import { TANK_TIERS } from '@/data/catalog/tanks';
@@ -36,6 +38,7 @@ describe('LAB-003: every species, water class and tank size makes a legal game',
     const sp = getSpecies(id);
     const b = buildScenario(R({ name: id, tanks: [{ name: 'T', water: sp.waterClasses[0], animals: [{ species: id, count: 2, sex: 'pair' }] }] }));
     expect(errors(b)).toEqual([]);
+    expect(b.issues.filter((i) => i.at === 'save')).toEqual([]); // nothing the save had to write as 0
     expect(b.repairs).toEqual([]);
     expect(alive(b.state).map((c) => c.speciesId)).toEqual([id, id]);
     expect(legal(b.state)).toEqual({ repairs: [], nonFinite: [], same: true });
@@ -59,6 +62,21 @@ describe('LAB-002: the same recipe and seed give the same world', () => {
     const b = buildScenario(structuredClone(recipe));
     expect(stateHash(a.state)).toBe(stateHash(b.state));
     expect(stateHash(buildScenario({ ...recipe, seed: 78 }).state)).not.toBe(stateHash(a.state));
+  });
+
+  it('a Prismatic forced from the dev panel neither lands in the build nor is used up by it', () => {
+    // no Prismatic of its own (its own would reset the count): the base's shop stock is what a pending force would hit
+    const ordinary = R({ name: 'Ordinary', base: 'starter:betta', tanks: [{ name: 'A', animals: [{ species: 'neon_tetra', count: 4 }] }] });
+    const plain = stateHash(buildScenario(ordinary).state);
+    forcePrismatic('shop', 2);
+    try {
+      const forced = buildScenario(ordinary).state;
+      expect(forced.market.stock.flatMap((o) => o.creatures).some((c) => c.rareVariant)).toBe(false);
+      expect(stateHash(forced)).toBe(plain);
+      expect(forcedPrismaticPending('shop')).toBe(2);
+    } finally {
+      forcePrismatic('shop', 0);
+    }
   });
 
   it('leaves no Prismatic forced for the game afterwards', () => {
@@ -277,9 +295,9 @@ describe('LAB-002: a bad recipe still builds and says what it skipped', () => {
     expect(({} as Record<string, unknown>).x).toBeUndefined();
     expect(errors(b).map((i) => i.message)).toEqual(expect.arrayContaining([expect.stringContaining('__proto__'), expect.stringContaining('constructor')]));
     const broken = buildScenario(R({ name: 'Broken', patch: { clock: { hour: -5 } } }));
-    expect(broken.repairs.length).toBeGreaterThan(0);
-    expect(broken.issues.some((i) => i.at === 'save' && i.level === 'warning')).toBe(true);
-    expect(broken.state.clock.hour).toBeGreaterThanOrEqual(0); // the loaded copy is the repaired one
+    expect(broken.issues.some((i) => i.at === 'patch' && i.level === 'warning' && i.message.includes('repaired'))).toBe(true);
+    expect(broken.repairs).toEqual([]); // the world returned is the repaired one
+    expect(broken.state.clock.hour).toBeGreaterThanOrEqual(0);
   });
 
   it('validateRecipe warns about a bad pairing with the game’s own verdict, and builds it anyway', () => {
@@ -294,12 +312,19 @@ describe('LAB-002: a bad recipe still builds and says what it skipped', () => {
 
 describe('LAB-001: capture, links and the browser store', () => {
   it('capture → build gives the same tanks, animals, morphs, Prismatic and young, legally', () => {
-    for (const id of ['prismatic-reef', 'fry-tank', 'heater-stuck', 'staffed-store']) {
+    for (const id of ['prismatic-reef', 'fry-tank', 'heater-stuck', 'staffed-store', 'grand-hall', 'clownfish-eggs']) {
       const a = buildScenario(presetById(id)!.recipe).state;
       const cap = captureRecipe(a, 'Captured');
       const b = buildScenario(JSON.parse(JSON.stringify(cap)));
       expect(b.issues.filter((i) => i.level !== 'note'), id).toEqual([]);
-      const view = (g: GameState) => g.tankOrder.map((t) => [g.tanks[t].name, g.tanks[t].tierId, alive(g, t).map((c) => `${c.name}:${c.speciesId}:${c.morphName}:${!!c.rareVariant}`).sort(), Object.values(g.clutches).filter((cl) => cl.tankId === t).map((cl) => `${cl.speciesId}:${cl.stage}:${cl.count}`)]);
+      const view = (g: GameState) =>
+        g.tankOrder.map((t) => [
+          g.tanks[t].name,
+          g.tanks[t].tierId,
+          alive(g, t).map((c) => `${c.name}:${c.speciesId}:${c.morphName}:${c.sex}:${c.reproRole}:${!!c.rareVariant}`).sort(),
+          Object.values(g.clutches).filter((cl) => cl.tankId === t).map((cl) => `${cl.speciesId}:${cl.stage}:${cl.count}`),
+          g.tanks[t].equipment.map((e) => `${e.defId}:${e.failMode ?? 'ok'}`).sort(),
+        ]);
       expect(view(b.state), id).toEqual(view(a));
       expect(b.state.tankOrder.map((t) => b.state.tanks[t].water.ammonia)).toEqual(a.tankOrder.map((t) => Math.round(a.tanks[t].water.ammonia * 1e4) / 1e4));
       expect(b.state.staff?.roster.length ?? 0).toBe(a.staff?.roster.length ?? 0);
@@ -338,5 +363,102 @@ describe('LAB-001: capture, links and the browser store', () => {
     } finally {
       g.localStorage = before;
     }
+  });
+});
+
+describe('LAB-002: the fresh review\u2019s notes', () => {
+  it('a number the game can\u2019t keep is reported, not quietly written as 0', () => {
+    const b = buildScenario(R({ name: 'Inf', patch: { finance: { money: Infinity }, progress: { reputation: NaN } } }));
+    const said = b.issues.filter((i) => i.at === 'patch').map((i) => i.message);
+    expect(said).toEqual(expect.arrayContaining([expect.stringContaining('patch.finance.money'), expect.stringContaining('patch.progress.reputation')]));
+    expect(b.state.finance.money).toBe(0);
+  });
+
+  it('unlocks "none" on a blank shop: research doesn\u2019t unlock everything again', () => {
+    const g = buildScenario(R({ name: 'None', shop: { unlocks: 'none' } })).state;
+    expect(g.progress.unlocked).not.toContain('reef');
+    expect(g.progress.unlocked.length).toBeLessThan(10);
+    expect(g.progress.research.completed).toEqual([]);
+  });
+
+  it('names like "constructor" are just names; an illness of that name is refused', () => {
+    const b = buildScenario(
+      R({
+        name: 'Proto',
+        shop: { facility: 'specialty_shop' },
+        tanks: [{ name: 'constructor', animals: [{ species: 'betta', sex: 'male', name: 'toString' }, { species: 'neon_tetra', illness: { kind: 'constructor' } }] }],
+        market: { listings: [{ animals: ['toString'], bids: 1 }] },
+        open: { tank: 'valueOf' },
+      }),
+    );
+    expect(errors(b).map((i) => i.at).sort()).toEqual(['open.tank', 'tanks[0].animals[1].illness']);
+    expect(b.tanks.constructor).toBe(b.state.tankOrder[0]);
+    expect(b.state.market.listings).toHaveLength(1);
+    expect(b.issues.some((i) => i.message.includes('Two animals'))).toBe(false);
+    expect(() => advanceWorld(b.state, 2, {})).not.toThrow();
+  });
+
+  it('a patch never makes the build throw: the save path repairs it (and says so), or it is refused', () => {
+    for (const patch of [{ clock: null }, { tankOrder: null }, { creatures: null }, { progress: null }, { tanks: 'none' }, { facility: null }]) {
+      const recipe = R({ name: 'P', tanks: [{ name: 'T', animals: [{ species: 'neon_tetra', count: 2 }] }], patch: patch as Record<string, unknown> });
+      let b: ReturnType<typeof buildScenario> | undefined;
+      expect(() => (b = buildScenario(recipe)), JSON.stringify(patch)).not.toThrow();
+      expect(b!.repairs, JSON.stringify(patch)).toEqual([]); // the world it returns is already what the save path loads
+      expect(() => advanceWorld(b!.state, 1, {}), JSON.stringify(patch)).not.toThrow();
+    }
+    // one the save path loads but the game can't play (its first step would throw) is refused
+    for (const patch of [{ visitors: { live: 5 } }, { facility: { fixtures: 'none' } }]) {
+      const b = buildScenario(R({ name: 'Crash', shop: { facility: 'specialty_shop' }, tanks: [{ name: 'T' }], patch }));
+      expect(errors(b).map((i) => i.at), JSON.stringify(patch)).toEqual(['patch']);
+      expect(() => advanceWorld(b.state, 1, {})).not.toThrow();
+    }
+    // a clock taken away comes back as the save path's
+    expect(buildScenario(R({ name: 'C', patch: { clock: null } })).state.clock).toMatchObject({ hour: expect.any(Number), speed: 0 });
+  });
+
+  it('out-of-range values are kept in range and said so', () => {
+    const b = buildScenario(
+      R({
+        name: 'Ranges',
+        shop: { day: 1e15, money: 1e307 },
+        tanks: [{ name: 'T', size: 'g20L', decor: [{ id: 'stone_cave', x: 1e9, z: -1e9, scale: -3, exact: true }] }],
+        market: { offers: [{ species: 'betta', ageDays: -50 }, { species: 'betta', genes: { nope: ['a', 'b'] } }] },
+      }),
+    );
+    expect(dayOf(b.state.clock.hour)).toBeLessThanOrEqual(36_500);
+    expect(b.state.finance.money).toBe(1e12);
+    expect(b.issues.map((i) => i.at)).toEqual(expect.arrayContaining(['shop.day', 'shop.money', 'market.offers[1].genes.nope']));
+    const d = b.state.tanks[b.tanks.T].decor[0];
+    expect(Math.abs(d.x)).toBeLessThan(0.5);
+    expect(d.scale).toBeGreaterThan(0);
+    expect(b.state.market.stock[0].creatures[0].bornHour).toBeLessThanOrEqual(b.state.clock.hour);
+    const before = b.state.clock.hour;
+    advanceWorld(b.state, 1, {});
+    expect(b.state.clock.hour).toBeGreaterThan(before); // the clock still runs
+  });
+
+  it('two pieces of the same equipment stay two; a kit piece is changed before another is added', () => {
+    const b = buildScenario(R({ name: 'Eq', tanks: [{ name: 'A', size: 'g125', bareEquipment: true, equipment: [{ id: 'heater_300w', condition: 0.5 }, { id: 'heater_300w', condition: 0.4 }] }, { name: 'B', size: 'g29', equipment: [{ id: 'heater', failed: 'off' }, { id: 'heater', condition: 0.3 }] }] }));
+    expect(b.state.tanks[b.tanks.A].equipment.map((e) => [e.defId, e.condition])).toEqual([
+      ['heater_300w', 0.5],
+      ['heater_300w', 0.4],
+    ]);
+    const heaters = b.state.tanks[b.tanks.B].equipment.filter((e) => e.defId.startsWith('heater'));
+    expect(heaters).toHaveLength(2);
+    expect(heaters[0]).toMatchObject({ failed: true, failMode: 'off' });
+  });
+
+  it('a named sex holds for a sex-changing species: a bonded clownfish pair', () => {
+    const b = buildScenario(R({ name: 'Clowns', tanks: [{ name: 'C', water: 'reef', animals: [{ species: 'ocellaris_clownfish', count: 2, sex: 'pair' }] }] }));
+    expect(alive(b.state).map((c) => `${c.sex}/${c.reproRole}`)).toEqual(['male/male', 'female/female']);
+  });
+
+  it('stage, demand, an offer\u2019s price and the first step\u2019s water: what the recipe says', () => {
+    const b = buildScenario(R({ name: 'Misc', tanks: [{ name: 'T', water: 'freshwater_cool', values: { tempC: 26 }, animals: [{ species: 'axolotl', stage: 'elder' }] }], market: { demand: { axolotl: 1.5 }, offers: [{ species: 'axolotl', price: 777 }] } }));
+    expect(alive(b.state)[0].lifeStage).toBe('elder');
+    expect(b.state.market.demand.axolotl).toBe(1.5);
+    expect(b.state.market.stock[0].price).toBe(777);
+    // set water is how the water is: no sudden swing the animals feel on the first step
+    expect(b.state.tanks[b.tanks.T].water.lab).toMatchObject({ prevTemp: 26, bioTempC: 26 });
   });
 });

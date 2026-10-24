@@ -16,7 +16,8 @@ import { dev } from '@/dev/commands';
 import { loadFixtureRegistry } from '@/dev/fixtures/lazy'; // chunk 15: the fixture picker
 import { useLab, openLab } from '@/state/lab';
 import { getGame } from '@/state/game';
-import { neverAutosave } from '@/game/useAutosave';
+import { neverAutosave, saveCurrentGame } from '@/persistence/session';
+import { autosaveAllowed } from '@/game/useAutosave';
 import { ALL_SPECIES } from '@/data/species';
 import { evaluateTank } from '@/sim/compat';
 import { getAIDebug } from '@/ai/debug';
@@ -205,10 +206,12 @@ export function DevPanel() {
                     disabled={!fixture}
                     onClick={() =>
                       run(`Load ${fixture}`, () => {
-                        // a fixture is a test scene: never autosaved over the player's game (as a ?fixture= boot)
-                        void dev.loadFixture(fixture).then(() => {
+                        // a fixture is a test scene: the player's own game is saved first (as Load does), and the
+                        // fixture is never autosaved over it
+                        const first = autosaveAllowed({ evenIfOff: true }) ? saveCurrentGame('auto', { flush: true, toast: false }) : Promise.resolve(null);
+                        void first.then(() => dev.loadFixture(fixture)).then((r) => {
                           const g = getGame();
-                          if (g) neverAutosave(g.saveId);
+                          if (r.ok && g) neverAutosave(g.saveId);
                         });
                       })
                     }

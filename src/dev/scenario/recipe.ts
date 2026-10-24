@@ -57,6 +57,8 @@ export interface EquipmentRecipe {
   setting?: number;
   /** Take it out of the tank instead. */
   remove?: boolean;
+  /** Add it as given, without the game's install checks (a captured tank uses this). */
+  exact?: boolean;
 }
 
 /** A decor piece placed by hand (tank-local metres; the centre of the floor is 0, 0). */
