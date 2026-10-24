@@ -1295,25 +1295,23 @@ function build(input: unknown, env: BuildEnv): BuildResult {
   }
   let open: ReturnType<Builder['focus']> = { focusTankId: null, view: 'tank' };
   step('open', () => (open = b.focus()));
-  b.finish();
-  // the save writes a number that isn't one as 0: say where, rather than quietly
-  for (const path of findNonFinite(b.g, '$', [], 10)) b.issue('warning', 'save', `${path.replace(/^\$\./, '').replace(/ = .*$/, '')} isn't a number; the save writes 0.`);
-  // the real save path: what a save of this world would load
-  const decoded = decodeRecord(encodeRecord(b.g, 'scenario', b.g.lastSavedRealMs).text, 'This scenario');
-  for (const r of decoded.repairs) b.issue('warning', 'save', `The save check repaired: ${r}`);
-  // a patched world is played for a moment, every tank at full detail (a copy; never in a trial build, since stepping
-  // any world clears the sim's shared caches, and the lab's trial builds run beside the game on screen): one the game
-  // can't play is built again without the patches
-  if (!env.trial && usesPatch(recipe)) {
-    try {
-      const probe = structuredClone(decoded.state);
-      advanceWorld(probe, 0.25, { forceFull: true });
-    } catch (e) {
-      const again = build(withoutPatches(recipe), env);
-      again.issues.unshift({ level: 'error', at: 'patch', message: `A patch makes a world the game can't play (${(e as Error).message}); built without the patches.` });
-      return again;
-    }
+  // finishing, the save path and, for a patched world, a moment of play (every tank at full detail, on a copy; never
+  // in a trial build, since stepping any world clears the sim's shared caches and the lab's trial builds run beside the
+  // game on screen): a patched world that fails any of them is built again without the patches
+  let decoded: ReturnType<typeof decodeRecord>;
+  try {
+    b.finish();
+    // the save writes a number that isn't one as 0: say where, rather than quietly
+    for (const path of findNonFinite(b.g, '$', [], 10)) b.issue('warning', 'save', `${path.replace(/^\$\./, '').replace(/ = .*$/, '')} isn't a number; the save writes 0.`);
+    decoded = decodeRecord(encodeRecord(b.g, 'scenario', b.g.lastSavedRealMs).text, 'This scenario');
+    if (!env.trial && usesPatch(recipe)) advanceWorld(structuredClone(decoded.state), 0.25, { forceFull: true });
+  } catch (e) {
+    if (!usesPatch(recipe)) throw e;
+    const again = build(withoutPatches(recipe), env);
+    again.issues.unshift({ level: 'error', at: 'patch', message: `A patch makes a world the game can't finish, load or play (${(e as Error).message}); built without the patches.` });
+    return again;
   }
+  for (const r of decoded.repairs) b.issue('warning', 'save', `The save check repaired: ${r}`);
   return { state: decoded.state, issues: b.issues, tanks: b.tanks, animals: b.animals, ...open, hoursRun: b.hoursRun, repairs: decoded.repairs };
 }
 

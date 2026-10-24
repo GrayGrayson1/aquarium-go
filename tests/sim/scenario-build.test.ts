@@ -413,6 +413,7 @@ describe('LAB-002: the fresh review\u2019s notes', () => {
       R({ name: 'Crash', shop: { facility: 'specialty_shop' }, tanks: [{ name: 'T' }], patch: { facility: { fixtures: 'none' } } }),
       R({ name: 'Crash', tanks: [{ name: 'T', patch: { water: { lab: 5 } }, animals: [{ species: 'neon_tetra' }] }] }),
       R({ name: 'Crash', tanks: [{ name: 'T', animals: [{ species: 'neon_tetra', patch: { life: 7 } }] }] }),
+      R({ name: 'Crash', tanks: [{ name: 'T', patch: { tierId: 'nope' } }] }), // the build itself can't finish it
     ];
     for (const recipe of crashers) {
       const b = buildScenario(recipe);

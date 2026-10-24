@@ -52,7 +52,13 @@ export function scenarioCli(args: string[], io: CliIo): number {
     io.print('--hours must be a number of game hours, 0 or more.');
     return 1;
   }
-  const built = buildScenario(recipe, { fixtures: io.fixtures });
+  let built: ReturnType<typeof buildScenario>;
+  try {
+    built = buildScenario(recipe, { fixtures: io.fixtures });
+  } catch (e) {
+    io.print(`The build failed: ${(e as Error).message}`);
+    return 1;
+  }
   const errors = built.issues.filter((i) => i.level === 'error');
   const stop = errors.length > 0 && !flag('--force');
   const report = stop ? null : runScenario(built, recipe, hours);
