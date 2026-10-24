@@ -6506,8 +6506,10 @@
       "tests": [
         "tests/sim/scenario-build.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
     },
@@ -6523,8 +6525,10 @@
       "tests": [
         "tests/sim/scenario-build.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
     },
@@ -6541,8 +6545,10 @@
         "tests/sim/scenario-presets.test.ts",
         "tests/sim/scenario-build.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
     },
@@ -6559,8 +6565,10 @@
         "tests/e2e/scenario-lab.spec.ts",
         "tests/sim/scenario-session.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
     },
@@ -6579,8 +6587,10 @@
         "tests/sim/plat-dev-tools.test.ts",
         "tests/sim/scenario-session.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
     },
@@ -6596,8 +6606,10 @@
       "tests": [
         "tests/sim/scenario-run.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
     },
@@ -6613,8 +6625,10 @@
       "tests": [
         "tests/sim/scenario-presets.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
     },
@@ -6630,8 +6644,10 @@
       "tests": [
         "tests/e2e/scenario-lab.spec.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
     }

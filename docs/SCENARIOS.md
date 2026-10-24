@@ -54,8 +54,8 @@ what happened: money, births, deaths and why, each tank's animals and water, the
 **checks**. It exits with 1 when the build has errors (add `--force` to run what it built) or a check fails, so a
 recipe with checks is a test an agent can run.
 
-In the console: `await __AQ.scenario.run(recipeOrPresetName, hours)` does the same without touching the game on
-screen; `await __AQ.scenario.play(recipeOrPresetName)` builds and plays it; `await __AQ.scenario.validate(recipe)`
+In the console: `await __AQ.scenario.run(recipeOrPresetName, hours)` does the same in a world of its own (the game on
+screen keeps its state, though its next steps start with the sim's caches cold, as after a load); `await __AQ.scenario.play(recipeOrPresetName)` builds and plays it; `await __AQ.scenario.validate(recipe)`
 lists its problems; `await __AQ.scenario.capture()` returns the game on screen as a recipe.
 
 ## The built-in presets

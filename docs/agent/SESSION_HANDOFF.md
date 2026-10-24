@@ -16,11 +16,13 @@ it's used up.
 - **For the owner to try:** `cd ~/LocalTest/AquariumGo && npm run lab` (the clone is left at `next`), or ask an agent
   in CNVS to run it. docs/SCENARIOS.md is the guide and the recipe reference (hand it to any agent: "make me a
   scenario with …"). `npm run scenario -- ammonia-crisis` runs one without a browser.
-- **State of things:** `next` = NEXT_HEAD (pushed); `main` = `a704e63` (0.7.0), unchanged: a dev-only tool needs no
+- **State of things:** `next` = chunk 15's last commit (pushed); `main` = `a704e63` (0.7.0), unchanged: a dev-only tool needs no
   release, and nothing was deployed. The internal clone is at `next`'s head with no patch applied.
-- **Tested:** CHECKS_LINE. The fresh review (Opus 5.5, max effort) found four blockers, the worst that "Save now" and
+- **Tested:** the four checks on the final code `f9c62ab` (unit 3,363, e2e 335 of 335, 40.0 min); before it `0bdc84c` green
+  too (unit 3,341, e2e 335 of 335). The fresh review (Opus 5.5, max effort) found four blockers, the worst that "Save now" and
   "Save and return to title" wrote a scenario over the player's autosave; all fixed in `765b6b6` with its notes;
-  CONFIRM_LINE.
+  its first confirmation found two more (the lab's checking stepped a world, which changed the game on screen; the
+  patch play-test stepped no tank), fixed in `f9c62ab`; the second was clean.
 - **Still open after it:** F1 (the owner's VoiceOver pass), the audit's other findings (B-207, B-208), B-210 (two crafted
   save shapes that crash a step; before stage 2), online stage 2 (before strangers join). The owner hasn't played 0.6.0
   or 0.7.0 yet: a problem they report comes first.
