@@ -18,7 +18,8 @@ it's used up.
   scenario with …"). `npm run scenario -- ammonia-crisis` runs one without a browser.
 - **State of things:** `next` = chunk 15's last commit (pushed); `main` = `a704e63` (0.7.0), unchanged: a dev-only tool needs no
   release, and nothing was deployed. The internal clone is at `next`'s head with no patch applied.
-- **Tested:** the four checks on the final code `f9c62ab` (unit 3,363, e2e 335 of 335, 40.0 min); before it `0bdc84c` green
+- **Tested:** the four checks on the final code `aae0922` (unit 3,363, e2e 335 of 335, 39.9 min) and on `f9c62ab`
+  (the same); before it `0bdc84c` green
   too (unit 3,341, e2e 335 of 335). The fresh review (Opus 5.5, max effort) found four blockers, the worst that "Save now" and
   "Save and return to title" wrote a scenario over the player's autosave; all fixed in `765b6b6` with its notes;
   its first confirmation found two more (the lab's checking stepped a world, which changed the game on screen; the

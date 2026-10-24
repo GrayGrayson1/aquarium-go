@@ -64,12 +64,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (released in 0.6.0). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
 | 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (released in 0.6.0). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Done 2026-10-21 (released in 0.6.0; Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. The play-test build on the Render address, the agent's live two-browser test 18 of 18 there and again on Pages after the release; the owner's own play-test next |
-| 15 | The scenario lab (ADR-0051) | Done 2026-10-23 (Chase, at the owner's request; not released: a developer tool). Recipes, the builder, 13 presets, the lab screen, the addresses and `__AQ.scenario`, `npm run lab` and `npm run scenario`, docs/SCENARIOS.md; the review's 4 blockers fixed, its first confirmation's 2, the second clean; the final pass on `f9c62ab`: typecheck, unit 3,363, build, e2e 335 of 335 |
+| 15 | The scenario lab (ADR-0051) | Done 2026-10-23 (Chase, at the owner's request; not released: a developer tool). Recipes, the builder, 13 presets, the lab screen, the addresses and `__AQ.scenario`, `npm run lab` and `npm run scenario`, docs/SCENARIOS.md; the review's 4 blockers fixed, its first confirmation's 2, the second clean; the final pass on `aae0922`: typecheck, unit 3,363, build, e2e 335 of 335 |
 | 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Done 2026-10-22 (released in 0.7.0; Marshall, at the owner's request; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; the review's blocker and its confirmations' notes fixed, the second confirmation clean; the final pass on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331; live: the smoke 27 of 27, the two-browser money test 29 of 29 on Pages and on the Render address |
 
-**Last full test runs:** chunk 15's final code `f9c62ab`, the owner's Mac, 2026-10-23, from the internal-disk clone under
+**Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
-WebKit, dev and both production builds (40.0 minutes). Before it: `0bdc84c` the same four green (unit 3,341, e2e 335 of
+WebKit, dev and both production builds (39.9 minutes). Before it: `f9c62ab` the same four green (e2e 335 of 335, 40.0
+minutes); `0bdc84c` the same four green (unit 3,341, e2e 335 of
 335, 40.5 minutes), followed by the review's fixes; a pass on `765b6b6` was stopped part-way when the confirmation's
 fixes landed.
 Before chunk 15: chunk 14's release commit `d16dd72`, the owner's Mac, 2026-10-22, from the internal-disk clone
@@ -1499,11 +1500,13 @@ REL-012, REL-018.
   `765b6b6` was stopped part-way when these fixes landed (typecheck, unit 3,360 and build green; 83 e2e tests run,
   none failed).
 - **The second confirmation** (`765b6b6..f9c62ab`): clean. Its notes: a tank patch naming a tank size that doesn't
-  exist still made the build throw (fixed after, in a follow-up commit with its own full pass); the online-save line
+  exist still made the build throw (fixed after, in `aae0922`, with its own full pass); the online-save line
   has no test (it matters only on the dev stub); `__AQ.scenario.run` leaves the game on screen's state alone but
   starts its caches cold, as a load does (SCENARIOS.md says so now).
 - **The final pass** on `f9c62ab`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335
-  (40.0 min). Pushed to `next`; nothing deployed (a developer tool needs no release; ADR-0051 decision 1).
+  (40.0 min), pushed to `next` (`ba1227d`). The follow-up `aae0922` (a patch the build can't finish is caught too): the
+  four checks again, typecheck, unit 3,363, build, e2e 335 of 335 (39.9 min), pushed. Nothing deployed (a developer tool
+  needs no release; ADR-0051 decision 1).
 
 ## Releases
 
