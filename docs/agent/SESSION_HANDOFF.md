@@ -1,9 +1,49 @@
-# Session handoff: after 0.7.0; chunk 15 (the scenario lab) built
+# Session handoff: after 0.7.0; chunk 15 (the scenario lab) built; chunk 16 (31 new species) next
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Handoff: chunk 16, 31 new species (Chase, 2026-10-24)
+
+**Start here.** Read PLAN.md's chunk 16 brief and ADR-0052 (the owner's answers, verbatim). The owner's words
+(2026-10-24): "add all 12 missing species as the next chunk and what other species should we be adding? how will this
+work for variations?" Their answers: add the maroon clownfish; add the reef and freshwater favourites too (31 species,
+48 → 79); build young and male/female colours; every new species buyable from the start. It began with a friend's
+210-gallon reef the owner had built in the lab; **the repo is public, so the friend's name and photo stay out of it**
+(the stand-in recipe is `docs/agent/design/CHUNK-16/friends-reef-standins.json`, the aquascape described in the
+brief).
+
+**State of things.** `next` = the commit that adds this handoff (pushed); `main` = `a704e63` (0.7.0), unchanged. The
+internal clone `~/LocalTest/AquariumGo` is at `c7ade07` with no patch applied (its git-excluded `scripts/_audit/` has
+the sync helpers `patch-sync.sh` and `patch-at.sh`, and throwaway probes from 2026-10-24). A lab dev server
+may still be running on port 5173 in CNVS's "Skye" terminal (started from the clone); e2e uses its own port (4399).
+
+**Order of work.**
+1. `git checkout next && git pull`; note the start commit.
+2. Study one species end to end before writing any: `kole_tang` (a plain fish), `ocellaris_clownfish` (named forms,
+   protandry), `coral_beauty` (protogynous), `betta` and `bristlenose_pleco` (male and female art via `isFemale`),
+   `nerite_snail` and `hermit_crab` (special art), `cherry_shrimp` (forms, colony breeding). The brief's "Where a
+   species is wired" lists every file to touch.
+3. Wave A (the friend's reef's 13) with the lab preset "A friend's reef"; the four checks; commit and push. Then wave
+   B (reef favourites), then C (freshwater). Each species: its data with sources, its genetics (real forms only), its
+   art (young and sex colours where the wild ones differ), its behaviour, its tests.
+4. The seeded tests shift (new day-one species change the shop's draws): run them before and after each wave and
+   explain each change in the commit (AGENTS.md); never retune data to hide it.
+5. `SCHEMA_VERSION` 3 with the first wave; load a 0.7.0 save to prove it.
+6. The fresh reviewer (Opus 5.5, `effort: "max"`, never Fable) on the brief and the whole diff; fix its blockers; your
+   own look-around (every new species in the lab at desktop and phone widths, young and adult, male and female); then
+   ask the owner about the 0.8.0 release (never push `main` without their yes in the session).
+
+**Tips.**
+- `npm run scenario -- <recipe> --hours N` runs a recipe headless; add an `autofeeder` to a tank for runs past a day
+  (nobody feeds in a headless run). `npm run report:rarity` lists the forms per rarity tier.
+- CNVS's browser screenshots only save inside the project folder, the Desktop or a temp folder: use the git-excluded
+  `scripts/_audit/` and delete them after.
+- A 180-gallon tank's default kit already has two reef lights (four is the most a tank takes); a recipe that wants
+  exactly three uses `bareEquipment` and lists the kit.
+- The ocellaris had no red form, so the friend's "crimson" clowns are maroons (ADR-0052, answer 1).
 
 ## Chunk 15, the scenario lab: built (Chase, 2026-10-23)
 

@@ -37,7 +37,10 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    sets each member's spending in the members list); the questions chunk 14 left for the owner (SESSION_HANDOFF.md). The audit's
    other findings (B-207, B-208) wait for the owner. **Chunk 15, the scenario lab** (dev tools to build any aquarium or
    setup and play it without playing up to it; the owner, 2026-10-23), is done (2026-10-23, Chase; ADR-0051): `npm run lab`
-   from `~/LocalTest/AquariumGo`, and docs/SCENARIOS.md. A developer tool: nothing to release.
+   from `~/LocalTest/AquariumGo`, and docs/SCENARIOS.md. A developer tool: nothing to release. **Next: chunk 16, 31 new
+   species** (the owner, 2026-10-24; ADR-0052; the brief below): a friend's reef's missing 12, the maroon clownfish, 9
+   reef and 9 freshwater favourites, with real colour forms, young and male/female colours, buyable from the start.
+   It starts in a fresh context; it ends in 0.8.0 only with the owner's go-ahead.
 4. **Released:** 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
@@ -66,6 +69,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Done 2026-10-21 (released in 0.6.0; Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. The play-test build on the Render address, the agent's live two-browser test 18 of 18 there and again on Pages after the release; the owner's own play-test next |
 | 15 | The scenario lab (ADR-0051) | Done 2026-10-23 (Chase, at the owner's request; not released: a developer tool). Recipes, the builder, 13 presets, the lab screen, the addresses and `__AQ.scenario`, `npm run lab` and `npm run scenario`, docs/SCENARIOS.md; the review's 4 blockers fixed, its first confirmation's 2, the second clean; the final pass on `aae0922`: typecheck, unit 3,363, build, e2e 335 of 335 |
 | 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Done 2026-10-22 (released in 0.7.0; Marshall, at the owner's request; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; the review's blocker and its confirmations' notes fixed, the second confirmation clean; the final pass on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331; live: the smoke 27 of 27, the two-browser money test 29 of 29 on Pages and on the Render address |
+| 16 | 31 new species (ADR-0052) | Brief written 2026-10-24 (Chase, at the owner's request); not started. A friend's reef's 12 missing animals and the maroon clownfish, 9 reef and 9 freshwater favourites; real colour forms; young and male/female colours; buyable from the start; `SCHEMA_VERSION` 3; ends in 0.8.0 with the owner's go-ahead |
 
 **Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
@@ -1507,6 +1511,83 @@ REL-012, REL-018.
   (40.0 min), pushed to `next` (`ba1227d`). The follow-up `aae0922` (a patch the build can't finish is caught too): the
   four checks again, typecheck, unit 3,363, build, e2e 335 of 335 (39.9 min), pushed. Nothing deployed (a developer tool
   needs no release; ADR-0051 decision 1).
+
+### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); not started
+
+- **What:** the owner's words, verbatim (2026-10-24): "add all 12 missing species as the next chunk and what other
+  species should we be adding? how will this work for variations?" It began with a friend's 210-gallon reef the owner
+  asked to recreate in the scenario lab ("can you create me a 210 (or closest) tank with these animals and the style of
+  the tank decorations?"): the game lacked 12 of its animals. The owner's answers (ADR-0052, verbatim): add the maroon
+  clownfish too; add the reef and freshwater favourites as well; build young and male/female colours; every new species
+  buyable from the start. **31 species, 48 → 79.** A player-facing change: it ends in a release (0.8.0) only with the
+  owner's go-ahead in the session. The chunk starts at the commit that adds this brief (SESSION_HANDOFF.md "Handoff:
+  chunk 16, 31 new species").
+- **The species, in three waves** (land and test each wave before the next; scientific names to check against the
+  sources):
+  - *A, the friend's reef (13):* emperor angelfish (*Pomacanthus imperator*; young: dark blue with white rings, adult:
+    yellow and blue stripes; needs a big tank), sailfin tang (*Zebrasoma veliferum*; banded; the Red Sea sailfin, *Z.
+    desjardinii*, is a separate species now, so a "Red Sea form" only if the sources support it), chocolate tang
+    (*Acanthurus pyroferus*; young copy a yellow dwarf angel), lyretail anthias (*Pseudanthias squamipinnis*; orange
+    females, magenta males with a long dorsal ray; protogynous; a group of females with one male), melanurus wrasse
+    (*Halichoeres melanurus*; protogynous; males brighter; buries in the sand at night, so it needs sand), elegant
+    starfish (*Fromia* sp.; red and orange forms; hard to keep: starves without film algae), fighting conch (*Strombus
+    alatus*; a sand-sifter), Mexican turbo snail (*Turbo fluctuosus*), Nassarius snail (*Nassarius* sp.; buried, comes
+    up at feeding), Astraea snail (*Lithopoma tectum*; cone shell; can't right itself), Cerith snail (*Cerithium* sp.;
+    spire shell), scarlet reef hermit crab (*Paguristes cadenati*), maroon clownfish (*Premnas biaculeatus*; White
+    Stripe, Gold Stripe, Lightning; protandrous like the ocellaris, the female much bigger; hosts the bubble-tip).
+  - *B, reef favourites (9):* flame angelfish (*Centropyge loricula*), six-line wrasse (*Pseudocheilinus hexataenia*),
+    lawnmower blenny (*Salarias fasciatus*; perches, grazes), flame hawkfish (*Neocirrhitus armatus*; perches; eats
+    small shrimp), yellowtail damselfish (*Chrysiptera parasema*), emerald crab (*Mithraculus sculptus*; eats bubble
+    algae), tuxedo urchin (*Mespilia globulus*; carries debris on its spines), sand-sifting starfish (*Astropecten
+    polyacanthus*; buries; starves in small tanks), bubble-tip anemone as a living animal (*Entacmaea quadricolor*;
+    green, rose and rainbow forms; wanders until it settles, needs strong light, splits; the clownfish host it as they
+    host the decor piece today, which stays for old saves).
+  - *C, freshwater favourites (9):* freshwater angelfish (*Pterophyllum scalare*; the hobby's real genes: marble, zebra,
+    gold, smokey, stripeless, veil; pairs and guards eggs), German blue ram (*Mikrogeophagus ramirezi*; electric blue,
+    gold, balloon; females with a pink belly; warm water), harlequin rasbora (*Trigonostigma heteromorpha*), zebra
+    danio (*Danio rerio*; long-fin, leopard, golden; no GloFish, a trademarked GM line), platy (*Xiphophorus
+    maculatus*; many colour and tail-spot forms; livebearer), swordtail (*Xiphophorus hellerii*; only males have the
+    sword; red, green, black, lyretail), dwarf gourami (*Trichogaster lalius*; powder blue, flame; males bright, females
+    silver; builds a bubble nest), ghost shrimp (*Palaemonetes paludosus*; clear body), ramshorn snail (*Planorbella*
+    sp.; red, blue and leopard; breeds readily).
+- **Variations** (ADR-0052 decision 2): each species' `genetics` (loci, phenotypes, `baseVisual`, `variation`) as the
+  existing species do: named forms only where the hobby has them, the intensity locus ("Richly coloured") where it has
+  none (`intensityLocus`, `intensityOverlay`), and Prismatic comes for free. Check them with `npm run report:rarity`,
+  the morph catalogue's own checks (`morphCatalog`) and `tests/sim/morph-data.test.ts`.
+- **Young and sex colours** (decision 3): the art gets the creature (`args.creature`: `stage`, `sex`, `reproRole`;
+  `isJuvenile`, `isFemale` in `src/render/creatures/fish/common.ts`). Today `juvenile()` changes only proportions. Add
+  per-species young colours (and male/female colours) in each species' plan, with the plan's cache `key` including the
+  look, so an animal changes when it grows or changes sex. Anthias and the melanurus wrasse are `protogynous` (the
+  coral beauty, clown goby and grouper are the existing examples).
+- **Where a species is wired** (from `kole_tang`, `nerite_snail` and `cherry_shrimp`): its file in
+  `src/data/species/{marine,freshwater}/` and that folder's `index.ts`; `src/data/species/roster.ts` (the fixed ids);
+  `src/types/species.ts` (a new `behaviorSet` id goes in its union); the art, `src/render/creatures/fish/<id>.ts` and
+  `fish/index.ts`, or `src/render/creatures/special/` (snail, hermit, shrimp, frog, seahorse, axolotl today, with
+  `looks.ts`); the behaviour (`src/ai/core/brain.ts`, `acts.ts`, `cosmetics.ts`' night colours); the UI portrait plan
+  (`src/ui/panels/common/Portrait.tsx`: fish, longfin, seahorse, axolotl, shrimp, snail, crab, frog, coral, anemone,
+  eel, flat); `src/data/buyers.ts` (specialties); `src/data/shows.ts` where it names species; the research
+  (`docs/research/{marine,freshwater}.md`, `docs/RESEARCH_SOURCES.md`); the tests that pin species
+  (`tests/sim/core-save-forward-safety.test.ts`, `tests/sim/fixtures/food-rules-pin.json`, `species-marine`,
+  `species-fw`, `morph-data`, `guide-species`, `render/creatures/creatures.test.ts`). New art needed: starfish (two
+  species), urchin, conch, crab (the emerald crab; the hermit exists), a living anemone, five snail shells (turbo,
+  Nassarius, Astraea cone, Cerith spire, ramshorn coil), the ghost shrimp, and every fish plan.
+- **Buyable from the start** (decision 4): `unlock.requires: []` on each new species (`requiredUnlocks`,
+  `isSpeciesAvailable` in `src/sim/economy/shop.ts`); tanks, water and gear keep their unlocks. **Seeded tests will
+  shift:** the shop draws from the available species, so new day-one species change seeded stock. Run the seeded tests
+  before and after, explain each changed expectation, and never retune data to hide a shift (AGENTS.md).
+- **Saves** (decision 5): `SCHEMA_VERSION` 2 → 3 (`src/persistence/schema.ts`, a migration in `migrations.ts`,
+  ADR-0016), the forward-safety pin updated; a save from 0.7.0 loads; a new save is "too new" for 0.7.0.
+- **The lab** (decision 6): a built-in preset "A friend's reef" from `docs/agent/design/CHUNK-16/friends-reef-standins.json`
+  with the real stock (5 anthias, 5 chromis, 2 maroons, the wrasse, a living bubble-tip, the chocolate and sailfin tangs,
+  the emperor, the starfish, the conch, 10 turbo, 20 Nassarius, 3 Astraea and 4 Cerith snails, 2 blue-leg and 1
+  scarlet hermit, the foxface) and the same aquascape; its check: no deaths in 48 game hours. A second preset showing
+  every new species, for the look-around.
+- **Done means** the four checks on the final code, one fresh reviewer (Opus 5.5, max effort) on the brief and
+  `git diff <start>..HEAD`, its blockers fixed; then your own testing as the owner would: each new species in the lab
+  at desktop and phone widths (young and adult, male and female, a few forms each), the friend's reef next to the
+  photo's description (a long live-rock ridge with an arch and a tall centre pile, aragonite sand, red macroalgae along
+  the front, the anemone, deep actinic blue), a week of play headless with an autofeeder, a 0.7.0 save loaded.
+- **Requirements:** SPC-001 to SPC-010 (`docs/agent/REQUIREMENTS.json`).
 
 ## Releases
 

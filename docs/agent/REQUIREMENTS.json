@@ -6650,6 +6650,156 @@
       "status": "GREEN",
       "designSections": [],
       "note": "Chunk 15."
+    },
+    {
+      "id": "SPC-001",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "The friend's reef's 13: emperor angelfish, sailfin tang, chocolate tang, lyretail anthias, melanurus wrasse, elegant starfish, fighting conch, Mexican turbo, Nassarius, Astraea and Cerith snails, scarlet reef hermit crab, maroon clownfish.",
+      "acceptance": [
+        "Each is a full species (data with research sources, genetics, art, behaviour, encyclopedia, tests) like the existing ones; the scientific names and care values checked against docs/RESEARCH_SOURCES.md."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-002",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Nine reef favourites: flame angelfish, six-line wrasse, lawnmower blenny, flame hawkfish, yellowtail damselfish, emerald crab, tuxedo urchin, sand-sifting starfish, and the bubble-tip anemone as a living animal.",
+      "acceptance": [
+        "Each is a full species as SPC-001; the living anemone wanders until it settles, needs strong light, can split, and clownfish host it; the decor anemone stays for old saves."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-003",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Nine freshwater favourites: freshwater angelfish, German blue ram, harlequin rasbora, zebra danio, platy, swordtail, dwarf gourami, ghost shrimp, ramshorn snail.",
+      "acceptance": [
+        "Each is a full species as SPC-001."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-004",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Variations: real-world colour forms only, through the existing genetics.",
+      "acceptance": [
+        "Named forms only where the hobby has them (genes and phenotypes), the intensity grade where it has none, potentials, individual variation and Prismatic on every new species; the morph catalogue's checks and morph-data pass; no invented forms, no GloFish."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-005",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Young and male/female colours.",
+      "acceptance": [
+        "Species whose wild young differ (the emperor angel, the chocolate tang, any others the research finds) are drawn in their young colours and change as they grow; males and females differ where they do in the wild; anthias and the melanurus wrasse change sex female to male (protogynous)."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-006",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Every new species drawn and behaving like itself.",
+      "acceptance": [
+        "New art where no body plan fits (starfish, urchin, conch, crab, living anemone, five snail shells, the ghost shrimp) and a fish plan per fish; a UI portrait for each; behaviours (perching, burying, sand-sifting, hosting) through the AI's behaviour sets."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-007",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Buyable from the start, and part of the economy.",
+      "acceptance": [
+        "No unlock key on any new species (tanks, water and gear keep theirs); they appear in the shop, buyers' specialties, shows and production lines like existing species; the seeded tests' changes are explained, never hidden by retuning."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-008",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Saves: SCHEMA_VERSION 3.",
+      "acceptance": [
+        "SCHEMA_VERSION 2 → 3 with its migration (ADR-0016); core-save-forward-safety pins the new ids; a 0.7.0 save loads; a new save is too new for 0.7.0 (PERSIST-014)."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-009",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "The friend's reef in the scenario lab.",
+      "acceptance": [
+        "A built-in preset with the real stock and the stand-in recipe's aquascape (docs/agent/design/CHUNK-16/friends-reef-standins.json), no deaths in 48 game hours; a preset with every new species for the look-around."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-010",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Tested and released with the owner's go-ahead.",
+      "acceptance": [
+        "The four checks on the final code; one fresh reviewer (Opus 5.5, max effort) on the brief and the diff, its blockers fixed; the agent's own look-around at desktop and phone widths; 0.8.0 released only with the owner's yes in the session."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 16."
     }
   ]
 }
