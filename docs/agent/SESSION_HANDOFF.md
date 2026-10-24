@@ -1,9 +1,132 @@
-# Session handoff: after 0.7.0 (shared shops' money pool released)
+# Session handoff: after 0.7.0; chunk 15 (the scenario lab) handed to Chase
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Handoff to Chase: chunk 15, the scenario lab (Marshall, 2026-10-23)
+
+**The owner's words, verbatim (2026-10-23):** "What would it take to have Chase in CNVS Canvas, the app that we're
+currently working on, Build some dev tools in order to make what I want. If I want to make a specific kind of aquarium
+or setup, I would be able to just do that without having to play through the game, just to test certain scenarios. If
+that's something that we can one-shot, go ahead and do the required research. It needs to be successful and then give
+Chase in CNVS the prompt to build it all out and all the information that possibly needs to be successful."
+
+**The goal.** The owner describes a setup (a tank, its water, its animals, the shop around it) and is playing it in
+seconds, without playing up to it; they can keep it, load it again, and hand it to an agent or a test. A developer
+tool: never in the players' build (ADR-0037 decision 3, below).
+
+**What exists already (read these; build on them, don't rebuild them).**
+- `src/dev/commands.ts` (`dev`, 423 lines): addMoney, unlockAll, spawnSpecies (species, tank, sex, count, age; makes a
+  suitable tank if none), ageCreature, forceBreeding, setWater, advanceTime (≤6 h steps, then `flushSimDebt`),
+  hireStaff, setSpeed, fillTestFacility, newGame (skips onboarding), playthrough (the balance bot, N days), loadFixture,
+  focusTank, addShopOffer (incl. Prismatic and pinned alleles), makePrismatic, forcePrismatic, killCreature,
+  setAllStats. Writes go through `mutateGame`/`mutateFast`; every call no-ops with no game.
+- `src/dev/fixtures/core-helpers.ts`: the scene-building kit: `ensureFacility(state, level)`, `unlockEverything`,
+  `addPlacedTank(state, tierId, waterClass, name?, placement?)`, `placeOrGrow`/`findTankSpot`, `tierForGallons`,
+  `stockTank(state, tankId, StockEntry[])` (species, count, sex plan incl. 'pair' | 'mixed' | 'females' | 'auto', age),
+  `scatterDecor`/`decorateTank`, `matchWaterToStock`, `finishTank`, `speciesForClass`. `core-testkit.ts`:
+  `richSaveState`, `manyTankWorld`, `findNonFinite`.
+- 46 named fixtures in `src/dev/fixtures/index.ts` (lazy registry, `./lazy.ts`): the 5 starter showcases, big_facility,
+  community_fw, marine_reef, stress_school, offline_test, core_legacy_v0, panels(_live), facility_* (6 levels),
+  breeding_* (5), behavior-* (5), playthrough_<starter> (5, the bot, 30 days), brackish_* (3), frags_* (3), staff_*
+  (3), shows-demo, shows-hall, prismatic_showcase. Today they load only by `?fixture=<name>` or `__AQ.loadFixture`:
+  there's no picker.
+- `src/ui/dev/DevPanel.tsx` (the wrench in the top bar; Settings › Developer tools turns it on): money, unlock all,
+  +10 test tanks, the market (open it, Prismatic offers, a buyer for a listing), time (speed, +1 h to +7 d), spawn,
+  the selected animal (age, force breeding, Prismatic), the focused tank's water editor and presets (ammonia spike,
+  heatwave, neglected, pristine), AI and compatibility views. Its writes are direct, never commands, and it's off in
+  a shared shop (`devWrite`; `src/dev/debugHooks.ts` wraps every write in `noSharedWrites`).
+- `src/dev/debugHooks.ts`: `window.__AQ` (e2e, QA, the console): `dev.*`, `loadFixture`, `fixtures()`, `newGame`,
+  `advance`, `setGame`, `mutate`, `hash`, `autosave`; production keeps only `READ_ONLY_KEYS`.
+- `src/game/useAutosave.ts`: a world booted from `?fixture=`/`?showcase=` is never autosaved (`fixtureSaveId`), so a
+  test scene can't overwrite the player's autosave.
+- The catalogue a builder offers (counted on `a704e63`): 48 species (freshwater, marine, brackish); 7 water classes
+  (freshwater_cool, freshwater_tropical, freshwater_planted, marine_fowlr, marine_live_rock, reef, brackish); 16 tank
+  tiers (`TANK_TIERS`), 30 equipment, 50 decor, 8 substrates, 21 foods (`src/data/catalog/`); 23 research projects, 6
+  facility levels, 3 staff roles, 4 show tiers and 16 show classes, 56 unlock keys (`src/data/`). Top-level
+  `GameState`: clock, tanks/tankOrder, creatures, clutches, inventory, facility, market, finance, progress (reputation,
+  mastery, unlocked, research, quests, tutorial, counters, discoveries), visitors, staff, shows, notify, production,
+  automation.
+
+**The gate (don't change it without the owner).** `src/state/devTools.ts`: the write tools exist only in a dev build
+(`npm run dev`), or in a production build made with `VITE_E2E_DEV_URL=1` and opened with `?dev=1` (the e2e base-path
+build only); the live site ignores `?dev=1` (ADR-0037 decision 3; B-190; tests `tests/sim/plat-dev-tools.test.ts`,
+`tests/e2e/prod-mode.spec.ts`). Where the tools are allowed, Social is the local stub (`src/ui/online/mode.ts`) unless
+built with `VITE_SOCIAL_ONLINE_IN_DEV=1`, so nothing made in the lab reaches the live project, the owner's online
+save or the leaderboard. Keep it that way: never set that flag for the lab. A dev build at http://127.0.0.1:5173 also
+keeps its own browser storage, apart from the live sites' saves.
+
+**A suggested shape (yours to improve; the owner's answers rule).**
+1. *A recipe:* a versioned, documented JSON `ScenarioRecipe` (`src/dev/scenario/`): a base (blank shop, a starter,
+   any fixture, or a copy of the game on screen), a seed, the shop (money, day and hour, speed, facility level, unlocks
+   and research, reputation, the guide finished), tanks (tier, water class, name, water values, equipment, substrate,
+   decor or "auto", lights) and their animals (species, count, sex plan, age, name, genes or morph, Prismatic, stats
+   such as hunger or health, breeding state), staff, shows, and the market (offers, listings, bids). One pure
+   `buildScenario(recipe) → GameState` made from the helpers above; `validateRecipe` that names each problem (an
+   unknown species, a tank too small) and warns, without refusing, about a bad pairing, since bad setups are what the
+   owner wants to test. Same recipe and seed, same world.
+2. *Every built world is a legal save:* it goes through the real save path (serialise, load, `repairState`) with
+   nothing repaired, no non-finite numbers (`findNonFinite`), and loads again in a fresh session. Unit tests for that
+   on a set of sample recipes and on every species at least once.
+3. *The screen:* a "Scenario lab" in the dev tools (its own lazily loaded chunk): start from, the shop, a tank list
+   with an animals editor per tank, presets (save, load, duplicate, delete, kept in this browser), the recipe as JSON
+   (copy, paste, import and export a file), and "Build and play". Plus a fixture picker in the dev panel for the 46
+   fixtures. It refuses inside a shared shop, as the dev panel does.
+4. *Addresses and scripts:* `?scenario=<preset>` (and perhaps a recipe in the address) behind the same gate as
+   `?fixture=` and never autosaved over the player's save; `__AQ.scenario.*` for agents and e2e; a vite-node script
+   (`scripts/scenario.ts <recipe.json> --hours N`) that builds a recipe headlessly, runs time forward and prints a
+   report (births, deaths, water, money), so a scenario can be tested without a browser.
+5. *Ready-made presets* the owner can start from (ask which they want first): an ammonia crisis, a breeding-ready
+   pair, a reef with a Prismatic clownfish, a crowded or aggressive tank, a broke shop with hungry fish, a staffed
+   store, show day, a market with bids, a late-game grand hall.
+6. *A doc* (`docs/SCENARIOS.md`) for the recipe format, so the owner can ask any agent "make me a scenario with …" and
+   paste the result; and `npm run lab` (a `package.json` script, a core file: say so in the commit) that starts the dev
+   server and opens the lab. Run it from `~/LocalTest/AquariumGo`: Vite on the `/Volumes/Dev` image is very slow.
+
+**Ask the owner first, in one batched AskUserQuestion round** (recommended option first, ASCII mock-ups in previews;
+their answers verbatim in ADR-0051, the next free number), at least:
+- *Where they use it:* (recommended) on this Mac, started with one command or by asking an agent in CNVS (no new
+  service, ADR-0037 untouched); or a private "lab" site on Render's free plan, built with the dev tools and the local
+  stub. That second one is a new remote service and a reversal of part of ADR-0037 decision 3: it needs their
+  explicit yes, and it may never touch the live Supabase project or the shop server.
+- *What it must set up first* (multi-select): tanks and water; animals (genes, Prismatic, age, health); equipment and
+  decor; the shop (money, time, facility, unlocks, research, staff, shows, market); breeding (pairs, eggs, fry);
+  problems (water crises, sick or starving animals, broken equipment).
+- *Saving:* named presets in the browser, a JSON file to export and import, and a link (recommended: all three).
+- *Which ready-made presets*, and whether the lab should open its scenario paused.
+- *Shared shops:* recommended out of scope (the lab is solo; a shared shop runs on the server). A local-stub shared
+  shop seeded from a recipe (`server/stub.ts`, `scripts/shared-stub-shops.ts` show how stub shops are made) would be
+  a later chunk.
+
+**How to run it.** A full chunk per `CLAUDE.md` and `PLAN.md` "How a chunk runs": write chunk 15's brief into
+`PLAN.md` (requirement ids too, `docs/agent/REQUIREMENTS.json`), build on `next` (`f05d8e5` plus this handoff's docs
+commit), the four checks from `~/LocalTest/AquariumGo` under `caffeinate -i -s` with
+`PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`, one fresh reviewer (Opus 5.5, `model: "opus"`, `effort: "max"`,
+never Fable) given the brief and `git diff <start>..HEAD`, its blockers fixed, `PLAN.md` and this file updated, push
+`next`. Then test it yourself as the owner would: start the lab, build each preset and a recipe of your own through
+the screen (a Playwright look script with screenshots at desktop and phone widths, like chunk 14's
+`scripts/_audit/chunk14/look.mjs` in the clone), play one forward, export, import, reload, and check the players'
+build still has none of it (`prod-mode.spec`, and `?scenario=` ignored there). e2e: one spec that builds a recipe
+through the screen and plays it. Nothing here deploys: a dev-only tool needs no release, and `main`, Render and the
+shop server stay untouched without the owner's yes in your session. No new dependencies without asking.
+
+**State of things.** `main` = `a704e63` (0.7.0, live on GitHub Pages, aquarium-go.onrender.com and the shop server;
+they serve players: the owner, their daughter and, since 2026-10-22, a third player). `next` = `f05d8e5` plus this
+handoff. The internal clone `~/LocalTest/AquariumGo` is detached at `a704e63`, nothing running, no patch applied; its
+`scripts/_audit/` holds Marshall's git-excluded scripts (`patch-sync.sh`, `patch-at.sh`, `chunk14/`,
+`catalog-counts.ts`). Marshall isn't editing the repo or the clone.
+
+**Also from 2026-10-22, in case the owner raises it:** the third player (Windows, Edge, signed up through
+CalliClub's invite) sat on "Waking the shared shop…", which stays up only while the browser's `GET /health` to
+`aquarium-go-shops.onrender.com` fails (a socket that fails shows "Catching up…" instead; a refusal shows its own
+words, and no refusal was sent). Both sites point at the right server and its CORS allows both, so it's most likely
+their network or browser; the owner has the steps to give them (open `/health` in a tab; a blocker or antivirus web
+shield; F12 › Console). Not confirmed yet. The server logs no joins or refusals at the door; `/stats` counters (per
+room `frames.welcome`, `sent.closing` in bytes) and the `saves` row's time (opening a shop saves the player's own
+game first) are how to read a visit. A paused shared shop stays paused for a joiner who may not pause (the DND Aq.
+Co. shop was left paused).
 
 ## 0.7.0, the money pool: released (Marshall, 2026-10-22)
 

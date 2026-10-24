@@ -35,7 +35,9 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    "Within CNVS make Marshall do it … as close to one-to-one as we talked about, as far as being a finished product";
    ADR-0043 decision 5, ADR-0050; see "Releases"). **Next:** the owner and their daughter play a shared shop (the owner
    sets each member's spending in the members list); the questions chunk 14 left for the owner (SESSION_HANDOFF.md). The audit's
-   other findings (B-207, B-208) wait for the owner.
+   other findings (B-207, B-208) wait for the owner. **Chunk 15, the scenario lab** (dev tools to build any aquarium or
+   setup and play it without playing up to it; the owner, 2026-10-23), is handed to Chase: `SESSION_HANDOFF.md`'s top
+   section has the owner's words, what exists, the gate and the questions to ask first.
 4. **Released:** 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
