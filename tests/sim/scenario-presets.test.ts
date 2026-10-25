@@ -37,7 +37,11 @@ describe('LAB-007: the built-in presets', () => {
 
   it.each(PRESETS.map((p) => p.id))('%s: a legal world, the same twice, paused, and it plays a day', (id) => {
     const b = build(id);
-    expect(b.issues.filter((i) => i.level !== 'note')).toEqual([]);
+    // chunk 16 (ADR-0052 decision 6): the friend's real reef is a 210 (built here in the 180 that shares its footprint)
+    // and keeps an emperor angelfish, which the sources want in 220 gallons or more once adult. The lab says so, as the
+    // game would to a player: the one warning a built-in preset carries.
+    const expected = id === 'friends-reef' ? [{ level: 'warning', at: 'tanks[0].animals[6].species', message: 'Emperor Angelfish need at least 220 gallons; "The 210" holds 180.' }] : [];
+    expect(b.issues.filter((i) => i.level !== 'note')).toEqual(expected);
     expect(b.repairs).toEqual([]);
     expect(findNonFinite(b.state)).toEqual([]);
     expect(b.state.clock.speed).toBe(0);
