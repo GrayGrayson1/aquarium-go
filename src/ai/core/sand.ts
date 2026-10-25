@@ -95,8 +95,12 @@ function takenSpot(a: Agent, w: AIWorld, x: number, z: number): boolean {
   return false;
 }
 
-/** How deep (below the sand line) a buried swimmer's body centre lies. */
-const buriedDepth = (a: Agent) => a.L * 0.62;
+/**
+ * How deep (below the sand line `fy`) a buried swimmer's body centre lies: 0.62 body lengths, or as deep as the bed lets
+ * it, the centre held 0.06 lengths above the floor glass (tank-local y 0, as the render's floor clamp holds it): in a
+ * thin bed it lies only partly covered, and stays in sight.
+ */
+const buriedDepth = (a: Agent, fy: number) => Math.max(0, Math.min(a.L * 0.62, fy - a.L * 0.06));
 
 /**
  * A swimmer going into the sand (wrasse): `a.actData` holds the spot on the sand surface. Phase 0: swims over it, low
@@ -139,7 +143,8 @@ export function sandBuryTick(a: Agent, w: AIWorld, urgent: boolean): boolean {
   }
   if (a.actPhase === 1) {
     // head first, steeply nose-down, the body following the head into the sand
-    _a.set(spot.x + a.fwd.x * L * 0.2, floorAt(env, spot.x, spot.z) - buriedDepth(a), spot.z + a.fwd.z * L * 0.2);
+    const sfy = floorAt(env, spot.x, spot.z);
+    _a.set(spot.x + a.fwd.x * L * 0.2, sfy - buriedDepth(a, sfy), spot.z + a.fwd.z * L * 0.2);
     c.goal.copy(_a);
     c.hasGoal = true;
     c.speedBL = Math.max(a.sp.behaviorTraits.burstSpeed * (urgent ? 0.7 : 0.45), a.sp.behaviorTraits.cruiseSpeed * 1.5);
@@ -153,7 +158,8 @@ export function sandBuryTick(a: Agent, w: AIWorld, urgent: boolean): boolean {
     a.pose = 'hiding';
     if (a.buried > 0.985 || pos.y < _a.y + L * 0.06 || w.time - a.actTimer > 2.5) {
       a.actPhase = 2;
-      spot.set(pos.x, floorAt(env, pos.x, pos.z) - buriedDepth(a), pos.z);
+      const pfy = floorAt(env, pos.x, pos.z);
+      spot.set(pos.x, pfy - buriedDepth(a, pfy), pos.z);
     }
     return false;
   }

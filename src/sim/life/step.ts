@@ -1039,7 +1039,15 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   const target = sizeAtAge(sp, c.genome, age, c.reproRole);
   if (c.sizeCm < target) {
     const cond = (s.hunger < 70 ? 1 : s.hunger < 90 ? 0.4 : 0) * (0.5 + s.comfort / 200) * (c.illness ? 0.5 : 1);
-    if (cond > 0) c.sizeCm += (target - c.sizeCm) * (1 - dmath.exp(-h * 0.25 * cond));
+    // chunk 16: a male that becomes the female of a species whose females are bigger (special.maleSizeFactor) catches
+    // up quickly only to its size as a male, then grows into hers at the growth curve's own pace (about 95 % in
+    // adultDays), not in the few hours a stunted fish catches up in
+    const asMale = (sp.special?.maleSizeFactor ?? 1) < 1 && (c.reproRole === 'female' || c.reproRole === 'transitioning_female') ? sizeAtAge(sp, c.genome, age, 'male') : target;
+    if (cond > 0 && c.sizeCm < asMale) c.sizeCm += (asMale - c.sizeCm) * (1 - dmath.exp(-h * 0.25 * cond));
+    if (cond > 0 && asMale < target && c.sizeCm < target) {
+      const days = Math.max(1, sp.lifecycle.adultDays || sp.lifecycle.juvenileDays || 10);
+      c.sizeCm += (target - c.sizeCm) * (1 - dmath.exp(-(h / 24) * (3 / days) * cond));
+    }
   }
 
   // ── Ageing, stage changes, sex reveal (reveal toasts are merged per group by flushReveals)
@@ -1052,7 +1060,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   }
 
   // ── Tank size warnings (a juvenile growing beyond its tank)
-  const need = gallonsNeededNow(sp, c.sizeCm);
+  const need = gallonsNeededNow(sp, c.sizeCm, c.reproRole);
   if (env.gallons < need && throttleGroup(state, ids, 'tank_small', hour, 48)) {
     const adultNeed = sp.recommendedMinTankGallons;
     const text =

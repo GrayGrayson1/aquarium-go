@@ -143,7 +143,7 @@ export function youngSizeCm(state: GameState, line: ProductionLine, sp: SpeciesD
   const mother = state.creatures[line.pair.motherId] ?? state.creatures[line.pair.fatherId];
   const ageDays = Math.max(0.5, Math.min((sp.breeding.incubationHours + sp.breeding.fryRearingHours) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8)));
   try {
-    return mother ? sizeAtAge(sp, mother.genome, ageDays) : sp.adultSizeCm * 0.5;
+    return mother ? sizeAtAge(sp, mother.genome, ageDays, 'undifferentiated') : sp.adultSizeCm * 0.5; // a young one's (chunk 16)
   } catch {
     return sp.adultSizeCm * 0.5;
   }

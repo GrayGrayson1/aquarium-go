@@ -85,6 +85,19 @@ describe('melanurus wrasse (wrasse)', () => {
     expect(Math.hypot(p.rt.pos.x - q.rt.pos.x, p.rt.pos.z - q.rt.pos.z)).toBeGreaterThan(p.L * 0.6);
   });
 
+  it('in a thin bed it digs only as deep as the sand: its centre never goes under the floor glass', () => {
+    const tank = reef('wr_thin');
+    tank.substrate = { ...tank.substrate, kind: 'sand', depthCm: 2 };
+    const w = makeTestWorld(tank, crew(WRASSE, tank.id, 2), 23, {}, species);
+    expect(w.env.sandBed).toBe(true);
+    let lowest = Infinity;
+    run(w, 100, () => {
+      for (const a of w.agents) lowest = Math.min(lowest, a.rt.pos.y - a.L * 0.06);
+    });
+    for (const a of w.agents) expect(a.act, a.behavior).toBe('sleep');
+    expect(lowest).toBeGreaterThan(-1e-3); // tank-local y 0 is the glass under the bed
+  });
+
   it('by day it is always in sight, busy low over rock and sand, pecking, never inside decor', () => {
     const tank = reef('wr_day');
     const w = makeTestWorld(tank, crew(WRASSE, tank.id, 1), 12, {}, species);

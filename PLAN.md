@@ -1612,9 +1612,8 @@ REL-012, REL-018.
     commits). Two real bugs found on the way were fixed with regression tests: a harassment death named the wrong
     cause, and a hardy harassed female could linger at 1.4 health for good (S02-08). MKT-016's test asserted more than
     the minimum the owner accepted (ADR-0016 decision 3) and now asserts that minimum at 1×, 3× and 10× (about 68,
-    148 and 176 real seconds); the catch-up bid windows stay as they are (a change built here was reverted on review;
-    the 1× figure is a question for the owner). The first hour's toast cap is now 100 (the owner, ADR-0052 decision
-    10).
+    148 and 176 real seconds); the catch-up bid windows stay as they are (a change built here was reverted on review,
+    and the owner kept them, decision 13). The first hour's toast cap is now 100 (the owner, ADR-0052 decision 10).
   - *Lab:* "A friend's reef" (the 180, the real stock, a living bubble-tip, marine pellets four times a day: a week
     with no deaths, one anthias turns male on day 4) and "Every new species" (a showroom with three tanks and
     autofeeders). The lab warns that the friend's emperor needs 220 gallons as an adult (LAB-007 expects that one
@@ -1629,11 +1628,19 @@ REL-012, REL-018.
     says (`special.maleSizeFactor` 0.45: a male and a young one grow to under half her size, and the male that
     becomes the female grows into it; Fishes of Australia: females 2–3× the males); a young barred angelfish shows
     seven bars, the adult four (FishBase); the flame angel's "Blood red" is "Richly coloured" (decision 2); a digging
-    animal never goes through the floor glass under a thin sand bed.
+    animal's body centre stays above the floor glass under a thin sand bed (the render's floor clamp).
+  - *After the confirmation review* (Opus 5.5, max effort, on `5068399..10a96ab`): the pairwise sting rule is skipped
+    only when the tank's stinging count already covers it, so moving an anemone in from another tank still warns, and
+    a listed anemone still stings once (`livingAnemones` counts listed ones, as the tank's members do); a male that
+    becomes the female grows into her size at the growth curve's pace (about two weeks), not in hours; an adult male
+    maroon is judged by a male's size (`adultSizeOf`: the tank he needs, a show's size points, the shop's "young"
+    check); a young one's size estimate uses the young's curve; the AI buries a swimmer only as deep as the bed allows,
+    so in a thin bed it lies partly covered and in sight.
   - *Done differently from the brief, on purpose:* the elegant starfish has Red and Red & Black, not an orange form:
     no source names one (Quality Marine's "red to orangish red" is individual variation), and decision 2 allows no
-    invented forms (a question for the owner). The Astraea's "can't right itself" is a data tag only: nothing in the
-    game turns a snail over.
+    invented forms (told to the owner in round 4). The Astraea's "can't right itself" is a data tag only: nothing in
+    the game turns a snail over. Under the rarity rule the platy has no Common form (224 forms; like the fancy guppy),
+    so a beginner's platies mostly show as Uncommon to Very rare.
   - *The owner's round 4* (ADR-0052 decisions 11–14): the new wording approved, with the living anemone's breeding
     card reading "Splits by itself"; the autofeeder weighs each animal's vote by its feeding need and passes over a
     food made for another species or water while a fitting one is in stock (B-211); catch-up bids as ADR-0016 keeps

@@ -62,7 +62,8 @@ describe('fit: one source of truth for autofeeder food', () => {
     const anthias = getSpecies('lyretail_anthias');
     const nassarius = getSpecies('nassarius_snail');
     const turbo = getSpecies('mexican_turbo_snail');
-    const reef = [...Array(5).fill(anthias), ...Array(20).fill(nassarius), ...Array(10).fill(turbo)];
+    const hermit = getSpecies('hermit_crab');
+    const reef = [...Array(5).fill(anthias), ...Array(20).fill(nassarius), ...Array(10).fill(turbo), ...Array(10).fill(hermit)];
     // chunk 16's friend's reef: by head count the snails' sinking pellets won and the anthias starved
     expect(pickAutofeedFood({ sinking_pellets: 10, flake_tropical: 10 }, reef)).toBe('flake_tropical');
     // with every food in stock a reef got axolotl pellets: never while a fitting food is there…

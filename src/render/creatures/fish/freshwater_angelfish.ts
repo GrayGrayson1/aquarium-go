@@ -6,7 +6,7 @@
  * appearance: 'bands' = the wild silver's four bold black bars (through the eye, from the dorsal origin, mid-body and the
  * tail base), 'bars' = zebra (extra bars), 'marble' = marble and koi, 'mottled' = smokey (the bars in front, the rear half dark), 'solid' =
  * stripeless, gold, platinum and black. The young of the barred forms show seven bars, the adults four (FishBase): a
- * young fish gets three fainter bars between the four, which fade as it grows (the plan key gains `|juv`).
+ * young fish gets three fainter bars between the four, gone once it is grown (the plan key gains `|juv`).
  * OWNER: lane "fishart".
  */
 import type { PlanFn } from './common';

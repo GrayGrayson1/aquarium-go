@@ -9,6 +9,7 @@ import { computeTankEnv, expectedTempC, decorCategoryCount } from '../water/env'
 import type { TankHabitat } from '../aquascape';
 import { memberFrom, type CompatContext, type CompatMember, type MemberIndividual } from './engine';
 import { residentsOf } from '../residents'; // lane:perf2
+import { adultSizeOf } from '../life/growth';
 
 const isAdult = (c: Creature, sp: SpeciesDefinition) => c.lifeStage === 'adult' || c.lifeStage === 'elder' || (c.sizeCm ?? 0) >= sp.adultSizeCm * 0.75;
 
@@ -48,7 +49,9 @@ export function candidateIndividuals(state: GameState, cand: CandidateAddition, 
   const n = Math.max(1, Math.min(100, Math.round(cand.count ?? 1)));
   const size = cand.sizeCm ?? sp.adultSizeCm * 0.8;
   const inds: MemberIndividual[] = [];
-  for (let i = 0; i < n; i++) inds.push({ id: `candidate:${sp.id}:${i}`, sizeCm: size, sex: cand.sex ?? 'unknown', adult: size >= sp.adultSizeCm * 0.75 });
+  // chunk 16: grown for its sex (an adult male maroon is under half a female's size: special.maleSizeFactor)
+  const grown = adultSizeOf(sp, cand.sex ?? 'unknown') * 0.75;
+  for (let i = 0; i < n; i++) inds.push({ id: `candidate:${sp.id}:${i}`, sizeCm: size, sex: cand.sex ?? 'unknown', adult: size >= grown });
   return inds;
 }
 
@@ -92,11 +95,11 @@ export function tankContext(state: GameState, tank: Tank): CompatContext {
 
 const STINGING_VISUAL = /hammer|torch|frogspawn|euphyllia|elegance|catalaphyllia|fire|galaxea/i;
 
-/** chunk 16 — living anemones (creatures of category 'anemone') in a tank. */
+/** chunk 16 — living anemones (creatures of category 'anemone') in a tank: alive or listed for sale, as tankMembers counts. */
 export function livingAnemones(state: GameState, tank: Tank): number {
   let n = 0;
   for (const c of Object.values(state.creatures ?? {})) {
-    if (c.tankId === tank.id && c.status === 'alive' && findSpecies(c.speciesId)?.category === 'anemone') n++;
+    if (c.tankId === tank.id && (c.status === 'alive' || c.status === 'listed') && findSpecies(c.speciesId)?.category === 'anemone') n++;
   }
   return n;
 }

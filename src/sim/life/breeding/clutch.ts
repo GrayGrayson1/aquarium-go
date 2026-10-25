@@ -605,7 +605,7 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   const newStrains = new Map<string, MorphStrain>(); // lane:genetics — creature id → first-time strain
   let estSize = sp.adultSizeCm * 0.5;
   try {
-    estSize = sizeAtAge(sp, mg, ageDays);
+    estSize = sizeAtAge(sp, mg, ageDays, 'undifferentiated'); // a young one's size (chunk 16: the maroon's young grow as males)
   } catch {
     /* lifecycle growth unavailable */
   }

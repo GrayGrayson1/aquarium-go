@@ -22,7 +22,7 @@ import { CRITERION_LABEL, SHOW_TIERS, type ShowClassDef, type ShowCriterionKey }
 import type { ShowTier } from '@/types';
 import { beautyScore, giftedLayoutShare, scapeCritique } from '../aquascape';
 import { morphRarity, primeWindow } from '../economy/valuation';
-import { ageDaysOf } from '../life/growth';
+import { adultSizeOf, ageDaysOf } from '../life/growth';
 import { tankGallons } from './eligibility';
 import type { Rng } from '../rng';
 import * as dmath from '../dmath';
@@ -111,7 +111,7 @@ export function assessCreature(state: GameState, c: Creature, def: ShowClassDef)
   q.form = (num(pot?.structure, 50) / 100) * (1 - clamp01(injury / 150)) * (0.9 + 0.1 * prime.f);
   q.colour = (num(pot?.color, 50) / 100) * (0.78 + 0.22 * vigour) * (0.92 + 0.08 * prime.f);
   q.pattern = num(pot?.pattern, 50) / 100;
-  const topAdult = Math.max(0.1, (sp?.adultSizeCm ?? c.sizeCm) * 1.18);
+  const topAdult = Math.max(0.1, (sp ? adultSizeOf(sp, c.reproRole) : c.sizeCm) * 1.18); // chunk 16: its own sex's size (the maroon's small male)
   q.size = clamp01((num(c.sizeCm, 0) / topAdult - 0.7) / 0.3);
   q.condition = 0.45 * (health / 100) + 0.2 * (1 - stress / 100) + 0.15 * clamp01(conditioning / 100) + 0.1 * (1 - clamp01(injury / 100)) + 0.1 * (1 - clamp01(Math.max(0, hunger - 30) / 70));
   let poise = 0.5 + (num(pot?.temperament, 50) - 50) / 100;

@@ -22,6 +22,9 @@ import { makeContext } from '@/sim/context';
 import { fissionBlocker, fissionModule } from '@/sim/life/breeding/systems/fission';
 import { clearCompatCache, incidentRisks, previewAddition } from '@/sim/compat';
 import { breedingStatus } from '@/sim/life/breeding';
+import { gallonsNeededNow } from '@/sim/life';
+import { assessCreature } from '@/sim/shows/judging';
+import { SHOW_CLASS_BY_ID } from '@/data/shows';
 
 const NEW_IDS = ROSTER.filter((r) => r.unlock === 'open').map((r) => r.id);
 const WATER: WaterClass[] = ['freshwater_cool', 'freshwater_tropical', 'freshwater_planted', 'marine_fowlr', 'marine_live_rock', 'reef', 'brackish'];
@@ -256,9 +259,49 @@ describe('chunk 16: a living anemone stings as the decor piece does, once', () =
     const byAnemone = onSeahorse.filter((i) => i.actorSpeciesId === 'bubbletip_anemone');
     expect(byAnemone.every((i) => i.kind === 'predation' && i.youngOnly)).toBe(true);
   });
+
+  it('moving an anemone in from another tank still warns, and a listed one still stings once', () => {
+    const g = game('ocellaris_clownfish', 11);
+    const home = createTank(g, 'g75', 'reef', { cycled: true, placement: { x: 0, z: 2, rotY: 0 }, name: 'Home' });
+    const sea = createTank(g, 'g75', 'reef', { cycled: true, placement: { x: 2, z: 2, rotY: 0 }, name: 'Seahorses' });
+    const rng = simRng(g);
+    addCreature(g, createCreature(g, rng, 'lined_seahorse', { ageDays: 200 }), sea.id);
+    const anemone = addCreature(g, createCreature(g, rng, 'bubbletip_anemone', { ageDays: 60 }), home.id);
+    clearCompatCache();
+    // the move dialog's preview (MoveCreatureModal: creatureIds of the animal being moved)
+    const move = previewAddition(g, sea.id, { speciesId: 'bubbletip_anemone', creatureIds: [anemone.id] });
+    expect(move.reasons.some((r) => /burn seahorse skin/.test(r.text)), 'moving one in warns').toBe(true);
+    // listed for sale but still in the seahorses' tank: it stings, once
+    g.creatures[anemone.id].tankId = sea.id;
+    g.creatures[anemone.id].status = 'listed';
+    clearCompatCache();
+    const stings = incidentRisks(g, sea.id).filter((i) => i.targetSpeciesId === 'lined_seahorse' && (i.kind === 'sting' || i.actorSpeciesId === 'bubbletip_anemone') && !i.youngOnly);
+    expect(stings.map((i) => i.kind)).toEqual(['sting']);
+  });
 });
 
 describe('chunk 16 brief: the maroon clownfish female is much bigger than the male', () => {
+  it('a grown male is judged as a grown male: full tank need, full size points, no "young" warning in the shop', () => {
+    const g = game('ocellaris_clownfish', 12);
+    const t = createTank(g, 'g75', 'marine_fowlr', { cycled: true, placement: { x: 0, z: 2, rotY: 0 }, name: 'Pair' });
+    const sp = findSpecies('maroon_clownfish')!;
+    const rng = simRng(g);
+    const female = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 80, sex: 'female' }), t.id);
+    const male = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 80, genome: structuredClone(female.genome) }), t.id);
+    expect(male.reproRole).toBe('male');
+    // the tank it needs: the species minimum, as for her
+    expect(gallonsNeededNow(sp, male.sizeCm, male.reproRole)).toBeCloseTo(sp.recommendedMinTankGallons, 0);
+    // a show's size points: about the same as hers (same genes), not zero
+    const size = (c: typeof male) => assessCreature(g, c, SHOW_CLASS_BY_ID.open_marine).criteria.find((x) => x.key === 'size')!;
+    expect(size(female).q).toBeGreaterThan(0.2);
+    expect(size(male).q).toBeGreaterThan(size(female).q * 0.8);
+    // the shop's preview of two grown males: not "young"
+    clearCompatCache();
+    const r = previewAddition(g, createTank(g, 'g75', 'marine_fowlr', { cycled: true, placement: { x: 2, z: 2, rotY: 0 }, name: 'Empty' }).id, { speciesId: 'maroon_clownfish', count: 2, sex: 'male', sizeCm: male.sizeCm });
+    expect(r.reasons.some((x) => /Young maroon/.test(x.text))).toBe(false);
+  });
+
+
   it('a male stays under half her size, and the male that becomes the female grows into it', () => {
     const g = game('ocellaris_clownfish', 9);
     const t = createTank(g, 'g75', 'marine_fowlr', { cycled: true, placement: { x: 0, z: 2, rotY: 0 }, name: 'Pair' });
@@ -274,10 +317,21 @@ describe('chunk 16 brief: the maroon clownfish female is much bigger than the ma
     const fed = () => { for (const c of [male, third]) if (g.creatures[c.id].status === 'alive') g.creatures[c.id].stats.hunger = 10; };
     delete g.creatures[female.id];
     const was = { [male.id]: male.sizeCm, [third.id]: third.sizeCm };
-    for (let h = 0; h < 20 * 24; h++) { fed(); advanceWorld(g, 1, {}); }
+    let changedAt = -1;
+    let halfDayOn = 0;
+    for (let h = 0; h < 20 * 24; h++) {
+      fed();
+      advanceWorld(g, 1, {});
+      const changing = [g.creatures[male.id], g.creatures[third.id]].find((c) => c.reproRole === 'transitioning_female' || c.reproRole === 'female');
+      if (changing && changedAt < 0) changedAt = h;
+      if (changing && h === changedAt + 12) halfDayOn = changing.sizeCm / was[changing.id];
+    }
     const now = [g.creatures[male.id], g.creatures[third.id]];
     const newFemale = now.find((c) => c.reproRole === 'female')!;
     expect(newFemale, 'one of them became the female').toBeDefined();
+    // she grows into her size over days, at the growth curve's pace, not in hours
+    expect(halfDayOn, 'half a day into the change').toBeGreaterThan(0);
+    expect(halfDayOn).toBeLessThan(1.15);
     expect(newFemale.sizeCm).toBeGreaterThan(was[newFemale.id] * 1.6);
     const stillMale = now.find((c) => c.id !== newFemale.id)!;
     expect(stillMale.reproRole).toBe('male');

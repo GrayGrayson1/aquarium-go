@@ -50,8 +50,11 @@ ADR-0008, cited in several notes, was approved by the owner and committed in `1a
 | needs-slice | 24 | 18 | 1 | 0 | 0 | 5 | 0 |
 | owner-decision | 23 | 13 | 0 | 6 | 0 | 0 | 4 |
 | record-only | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
-| outside the review | 28 | 15 | 1 | 0 | 0 | 11 | 1 |
-| **total** | **129** | **62** | **9** | **6** | **0** | **43** | **9** |
+| outside the review | 32 | 15 | 1 | 0 | 0 | 15 | 1 |
+| **total** | **133** | **62** | **9** | **6** | **0** | **47** | **9** |
+
+Recounted from the rows on 2026-10-25 (chunk 16): "outside the review" had lost four rows from its count; its open
+items include B-207 (in progress).
 
 Fixed or partly fixed by these commits: `3e00a32`, `58ae313`, `9edfa12`, `6347c5d`, `d98731d`, `16233a1`, `c774d38`,
 `2ef1ff7`, `d8fb896`, `7c0dbf4`, `5ae85a3`, `62df438`, `9e1bf66`. `dfc0a13` was reverted by `f999618` (B-158).

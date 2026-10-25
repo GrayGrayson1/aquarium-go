@@ -14,7 +14,7 @@
  * - airstone    aeration/agitation only.
  * - ato         keeps the level topped with fresh water (salinity stays stable).
  * - autofeeder  `setting` = dry-food feedings per day. It dispenses DRY food only (isAutofeederFood in foods.ts) — one
- *               food per feeding, the one in stock that the most animals in the tank eat (src/sim/care/autofeed.ts).
+ *               food per feeding, the one in stock that feeds the most need in the tank (pickAutofeedFood, src/sim/care/autofeed.ts).
  * - water_changer  `setting` = share of the water changed each morning (lane:automation, 0.5 §10.3): at the tank's
  *               lights-on hour it swaps that share for conditioned new water (marine and brackish tanks use salt from
  *               stock) and scrapes the glass once a week (src/sim/water/step.ts runWaterChanger).
