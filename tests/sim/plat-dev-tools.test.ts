@@ -9,7 +9,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { GameState } from '@/types';
-import { useDevTools, urlDevFlag, devModeOn, devToolsAllowed, devToolsAtBoot, urlSandboxName } from '@/state/devTools';
+import { useDevTools, urlDevFlag, devModeOn, devToolsAllowed, devToolsAtBoot, urlSandboxName, urlLabParams, urlScenarioBoot } from '@/state/devTools';
 import { useSettings } from '@/state/settings';
 import { useGame } from '@/state/game';
 import { newGame } from '@/sim/newGame';
@@ -21,7 +21,7 @@ const ROOT = join(__dirname, '..', '..');
 const src = (p: string) => readFileSync(join(ROOT, p), 'utf8');
 
 /** Calls that change the game, the settings or a save (or load another world). */
-const WRITE_KEYS = ['mutate', 'setGame', 'setUI', 'dev', 'newGame', 'loadFixture', 'focusLargestTank', 'advance', 'act', 'save', 'autosave', 'loadAndResume', 'continueGame', 'backdateSave', 'deleteSave', 'importText'];
+const WRITE_KEYS = ['mutate', 'setGame', 'setUI', 'dev', 'newGame', 'loadFixture', 'focusLargestTank', 'advance', 'act', 'save', 'autosave', 'loadAndResume', 'continueGame', 'backdateSave', 'deleteSave', 'importText', 'scenario'];
 
 afterEach(() => {
   useDevTools.setState({ allowed: true });
@@ -68,6 +68,28 @@ describe('PLAT-005: who gets the developer tools', () => {
     expect(urlSandboxName('?sandbox=audio-lab&dev=1')).toBeNull();
     expect(src('src/App.tsx')).toContain('urlSandboxName()');
     expect(src('src/App.tsx')).not.toMatch(/get\('sandbox'\)/);
+  });
+
+  it('chunk 15 (ADR-0051): the scenario lab\u2019s addresses are a developer tool too (one rule for App and the router)', () => {
+    expect(urlLabParams('?lab=1')).toEqual({ lab: true, scenario: null, recipe: null });
+    expect(urlLabParams('?scenario=ammonia-crisis')).toEqual({ lab: false, scenario: 'ammonia-crisis', recipe: null });
+    expect(urlScenarioBoot('?recipe=e30')).toBe(true);
+    expect(urlScenarioBoot('?scenario=sandbox')).toBe(true);
+    expect(urlScenarioBoot('?lab=1')).toBe(false); // the lab alone builds nothing at boot
+    expect(urlLabParams('')).toBeNull();
+    expect(urlLabParams('?fixture=big_facility')).toBeNull();
+    useDevTools.setState({ allowed: false });
+    for (const q of ['?lab=1', '?scenario=sandbox', '?recipe=e30', '?lab=1&dev=1', '?scenario=sandbox&dev=1']) {
+      expect(urlLabParams(q), q).toBeNull();
+      expect(urlScenarioBoot(q), q).toBe(false);
+    }
+    expect(src('src/App.tsx')).toContain('urlLabParams()');
+    // and the players' build leaves the lab's code out at build time
+    expect(src('src/App.tsx')).toMatch(/const LAB_BUILD = import\.meta\.env\.DEV \|\| import\.meta\.env\.VITE_E2E_DEV_URL === '1';/);
+    expect(src('src/App.tsx')).toMatch(/const LAB = LAB_BUILD && typeof location !== 'undefined' && devToolsAllowed\(\);/);
+    expect(src('src/App.tsx')).toMatch(/const LabRoot = LAB_BUILD \? lazy\(/);
+    expect(src('src/App.tsx')).not.toMatch(/get\('(lab|scenario|recipe)'\)/);
+    expect(src('src/ui/nav/router.ts')).toContain('urlScenarioBoot(location.search)');
   });
 
   it('a test run is a dev build: the tools are allowed', () => {

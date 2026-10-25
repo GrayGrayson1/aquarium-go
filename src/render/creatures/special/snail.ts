@@ -1,5 +1,6 @@
 /**
- * Snails — mystery/apple snail (Pomacea diffusa), nerite (Neritina natalensis) and trochus (Trochus sp.).
+ * Snails — mystery/apple snail (Pomacea diffusa), nerite (Neritina natalensis) and trochus (Trochus sp.); chunk 16
+ * adds the Mexican turbo, Astraea, Cerith and Nassarius shells (sculpture, patterns 3–6).
  *
  * Shells are true logarithmic helicospirals: an elliptical generating curve swept around the coiling axis with
  * exponential growth (per-species whorl expansion, spire height and aperture shape), shaded with growth lines,
@@ -61,6 +62,20 @@ export interface SnailSpec {
   /** Nerite-style shell: a smooth low dome (length, width, height) whose sunken spire sits at the rear; the body
    * whorl's growth lines fan out from the apex. Replaces the helicospiral when set. */
   dome?: { len: number; wid: number; height: number; apexBack: number };
+  /** Angular whorl profile with a flat base (trochus, Astraea). Default: only kind 2. */
+  angular?: boolean;
+  /**
+   * Shell sculpture (chunk 16): `ribs` are axial ribs (n per whorl), `cords` spiral cords (n around the whorl); with
+   * `bead` the two multiply into rows of beads (Cerith, Nassarius); `periph` keeps the ribs on the outer face, as the
+   * knobbed folds of an Astraea's shoulder; `shoulder` (a section angle, 0 = outward, π/2 = toward the apex) keeps
+   * them to a narrow band there instead, as a conch's knobs. `amp` swells the whorl's section (fraction of its radius);
+   * `sharp` narrows each rib.
+   */
+  sculpt?: { ribs?: { n: number; amp: number; sharp?: number }; cords?: { n: number; amp: number; sharp?: number }; bead?: boolean; periph?: boolean; shoulder?: number };
+  /** The siphon is a long tube held up from the front of the shell (Nassarius), not the apple snail's breathing tube. */
+  siphonFront?: boolean;
+  /** Flared outer lip (a conch's wing): how far the outer half of the last part of the body whorl spreads. */
+  flare?: number;
 }
 
 export const SNAIL_SPECS: Record<string, SnailSpec> = {
@@ -69,6 +84,17 @@ export const SNAIL_SPECS: Record<string, SnailSpec> = {
   // nerite: a low, smooth, rounded dome — rapidly expanding whorls, sunken spire at the rear, closed flat base
   nerite_snail: { id: 'nerite_snail', kind: 1, W: 9, whorls: 2.2, spire: 0.28, apA: 0.78, apB: 0.95, size: 0.25, tentacle: 0.2, siphon: false, apex: [-1, 0.32, 0.18], opening: [0.05, -1, -0.05], apCenter: [0.02, -0.1, 0.0], foot: 0.85, footTail: -0.26, place: [-0.03, -0.165, 0.0], dome: { len: 0.6, wid: 0.48, height: 0.22, apexBack: 0.68 } },
   trochus_snail: { id: 'trochus_snail', kind: 2, W: 1.72, whorls: 6.2, spire: 1.85, apA: 0.66, apB: 0.72, size: 0.2, tentacle: 0.24, siphon: false, apex: [-0.16, 1, -0.05], opening: [1, 0, 0.15], apCenter: [0.08, -0.06, 0.03], footTail: -0.3, place: [-0.02, -0.16, 0.0] },
+  // chunk 16 — Mexican turbo: a heavy turban, rounded whorls under a short conic spire, coarse spiral cords and a
+  // knobbed shoulder
+  mexican_turbo_snail: { id: 'mexican_turbo_snail', kind: 3, W: 2.0, whorls: 5, spire: 1.8, apA: 0.8, apB: 0.84, size: 0.19, tentacle: 0.26, siphon: false, apex: [-0.5, 0.85, 0.1], opening: [0.3, -0.92, -0.2], apCenter: [0.05, -0.05, -0.01], footTail: -0.32, place: [-0.03, -0.16, 0.0], sculpt: { ribs: { n: 14, amp: 0.09, sharp: 4 }, shoulder: 0.85, cords: { n: 7, amp: 0.045, sharp: 3 } } },
+  // Astraea: a flat-based, straight-sided cone with knobbed folds along each whorl's shoulder
+  astraea_snail: { id: 'astraea_snail', kind: 4, angular: true, W: 1.68, whorls: 6, spire: 1.65, apA: 0.62, apB: 0.64, size: 0.205, tentacle: 0.22, siphon: false, apex: [-0.12, 1, -0.04], opening: [1, 0, 0.15], apCenter: [0.08, -0.06, 0.03], footTail: -0.3, place: [-0.02, -0.16, 0.0], sculpt: { ribs: { n: 11, amp: 0.2, sharp: 4 }, periph: true } },
+  // Cerith: a tall, slender, many-whorled spire carried trailing back, beaded spiral cords
+  cerith_snail: { id: 'cerith_snail', kind: 5, W: 1.3, whorls: 10, spire: 3.3, apA: 0.7, apB: 0.74, size: 0.13, tentacle: 0.2, siphon: false, apex: [-0.92, 0.38, 0.02], opening: [0.25, -1, -0.3], apCenter: [0.06, -0.08, 0.0], footTail: -0.3, place: [-0.1, -0.165, 0.0], sculpt: { ribs: { n: 15, amp: 0.1, sharp: 3 }, cords: { n: 5, amp: 0, sharp: 3 }, bead: true } },
+  // Nassarius: a small, plump, latticed shell; its long siphon held up from the front
+  // Ramshorn: a flat (planispiral) coil carried upright on its edge, rounded whorls, glossy
+  ramshorn_snail: { id: 'ramshorn_snail', kind: 7, W: 2.3, whorls: 4.2, spire: 0.0, apA: 0.86, apB: 0.9, size: 0.21, tentacle: 0.36, siphon: false, apex: [0.05, 0.08, 1], opening: [0.55, -0.85, 0], apCenter: [0.05, -0.06, 0.0], footTail: -0.3, place: [-0.04, -0.16, 0.0] },
+  nassarius_snail: { id: 'nassarius_snail', kind: 6, W: 1.95, whorls: 5.6, spire: 2.1, apA: 0.62, apB: 0.82, size: 0.19, tentacle: 0.22, siphon: true, siphonFront: true, apex: [-0.6, 0.8, 0.05], opening: [0.2, -1, -0.3], apCenter: [0.06, -0.06, 0.0], footTail: -0.3, place: [-0.06, -0.16, 0.0], sculpt: { ribs: { n: 12, amp: 0.08, sharp: 2.5 }, cords: { n: 14, amp: 0.025, sharp: 3 } } },
 };
 
 const GROUND = 0.2;
@@ -128,7 +154,9 @@ function shellPoint(spec: SnailSpec, f: ShellFrame, th: number, phi: number, out
   const b = spec.apB * r;
   let cphi = Math.cos(phi);
   let sphi = Math.sin(phi);
-  if (spec.kind === 2) {
+  let sw = sculpture(spec, th, cphi, phi);
+  if (spec.flare) sw *= 1 + spec.flare * smoothstep(f.thMax - 1.1, f.thMax, th) * Math.pow(Math.max(0, cphi), 0.7) * (0.6 + 0.4 * Math.max(0, sphi));
+  if (spec.kind === 2 || spec.angular) {
     // trochus: angular whorl profile, flat base
     const pr = 1 / Math.max(Math.abs(cphi) ** 3 + Math.abs(sphi) ** 3, 1e-6) ** (1 / 3);
     cphi *= pr * 0.92;
@@ -136,14 +164,25 @@ function shellPoint(spec: SnailSpec, f: ShellFrame, th: number, phi: number, out
   }
   // closed base: stretch the inner (axis-facing) half of the section so it meets the coiling axis
   const aIn = spec.closedBase && cphi < 0 ? Math.max(a, r * 1.02) : a;
-  const rr = r + aIn * cphi;
-  out.set(rr * Math.cos(th), rr * Math.sin(th), zc + b * sphi).sub(f.center);
+  const rr = r + aIn * cphi * sw;
+  out.set(rr * Math.cos(th), rr * Math.sin(th), zc + b * sphi * sw).sub(f.center);
   // growth-line ribs
   const rib = spec.kind === 2 ? 0.012 * Math.max(0, Math.cos(phi - 0.4)) * Math.pow(Math.abs(Math.sin(th * 5)), 8) * r : 0;
   out.multiplyScalar(1 + rib);
   out.applyQuaternion(f.q);
   if (spec.squash) out.sub(f.sqC).multiply(f.sqV).add(f.sqC);
   return out.add(f.shift);
+}
+
+/** How much the sculpture swells the whorl's section at (th, phi): 1 = smooth. */
+function sculpture(spec: SnailSpec, th: number, cphi: number, phi: number): number {
+  const sc = spec.sculpt;
+  if (!sc) return 1;
+  const rib = sc.ribs ? Math.pow(0.5 + 0.5 * Math.cos(th * sc.ribs.n), sc.ribs.sharp ?? 2) : 1;
+  const cord = sc.cords ? Math.pow(0.5 + 0.5 * Math.cos(phi * sc.cords.n), sc.cords.sharp ?? 2) : 1;
+  const out = sc.shoulder !== undefined ? Math.pow(Math.max(0, Math.cos(phi - sc.shoulder)), 4) : sc.periph ? Math.pow(Math.max(0, cphi), 1.5) : 1;
+  if (sc.bead) return 1 + (sc.ribs?.amp ?? 0) * rib * cord * out;
+  return 1 + (sc.ribs ? sc.ribs.amp * rib * out : 0) + (sc.cords ? sc.cords.amp * cord : 0);
 }
 
 /**
@@ -403,18 +442,29 @@ function buildSnail(spec: SnailSpec, lod: RenderLod): SnailTemplate {
       });
     }
   }
-  // siphon (apple snail): folded along the left side, extends up to breathe
+  // siphon (apple snail): folded along the left side, extends up to breathe; a Nassarius holds its long siphon up and
+  // forward from the front of the shell, tasting the water for food (all that shows of it while it is buried)
   if (spec.siphon) {
-    const sb = new THREE.Vector3(aperture.x + 0.04, -0.07, -0.07);
-    const pts: V3[] = [
-      [sb.x, sb.y, sb.z],
-      [sb.x + 0.05, sb.y - 0.005, sb.z - 0.035],
-      [sb.x + 0.1, sb.y - 0.005, sb.z - 0.05],
-    ];
+    const sb = spec.siphonFront ? new THREE.Vector3(aperture.x + 0.06, aperture.y + 0.03, aperture.z * 0.5) : new THREE.Vector3(aperture.x + 0.04, -0.07, -0.07);
+    const pts: V3[] = spec.siphonFront
+      ? [
+          // long enough to stand well clear of the shell top: all that shows of a buried Nassarius (the AI keeps it
+          // with the top of the shell flush with the sand)
+          [sb.x, sb.y, sb.z],
+          [sb.x + 0.07, sb.y + 0.08, sb.z],
+          [sb.x + 0.11, sb.y + 0.2, sb.z + 0.01],
+          [sb.x + 0.12, sb.y + 0.33, sb.z + 0.02],
+          [sb.x + 0.11, sb.y + 0.42, sb.z + 0.02],
+        ]
+      : [
+          [sb.x, sb.y, sb.z],
+          [sb.x + 0.05, sb.y - 0.005, sb.z - 0.035],
+          [sb.x + 0.1, sb.y - 0.005, sb.z - 0.05],
+        ];
     tube(g, {
       path: resamplePath(pts, lod === 0 ? 12 : 6),
       nv: lod === 0 ? 12 : 7,
-      radius: (t) => lerp(0.028, 0.02, t),
+      radius: (t) => (spec.siphonFront ? lerp(0.017, 0.011, t) : lerp(0.028, 0.02, t)),
       capEnd: 0.05,
       capRows: 3,
       skin: () => skin1(shellB),
@@ -502,6 +552,55 @@ void agcSurface(inout AgcSurf s){
       col = mix(col, shell2 * 0.8, (1.0 - apexFade) * 0.5);
       s.rough = 0.28;
       s.clear = 0.8;
+    } else if (kind > 2.5) {
+      // chunk 16 shells: the sculpture (axial ribs n = uAgcF0.y per whorl, spiral cords n = uAgcF0.z) recomputed here
+      float rib = uAgcF0.y > 0.5 ? 0.5 + 0.5 * cos(th * uAgcF0.y) : 0.0;
+      float cord = uAgcF0.z > 0.5 ? 0.5 + 0.5 * cos(phi * uAgcF0.z) : 0.0;
+      float apex = 1.0 - smoothstep(0.0, 0.16, u);
+      float mott = agcFbm(vec3(th * 1.7, cs * 2.4 + seed * 1.3));
+      if (kind < 3.5) {
+        // Mexican turbo: mottled olive-brown over the wavy folds, spiral rows of dark and pale dashes
+        col = mix(col, shell2, smoothstep(0.35, 0.7, mott) * 0.6);
+        float dash = smoothstep(0.1, 0.6, sin(th * 34.0 * pscale + agcVn(vec3(th * 4.0, cs * 3.0 + seed)) * 2.5));
+        float row = smoothstep(0.82, 0.98, sin(phi * 6.0 + 0.4)) * smoothstep(0.35, 0.65, agcVn(vec3(th * 2.0, cs * 2.0 + seed * 2.0)));
+        col = mix(col, mix(band, vec3(0.82, 0.8, 0.72), dash), row * contrast * 0.4);
+        col *= 0.88 + 0.2 * rib;
+        s.rough = 0.5;
+        s.clear = 0.3;
+      } else if (kind < 4.5) {
+        // Astraea: grey-olive cone, paler knobbed folds on the shoulder, a film of algae and coralline crust
+        col = mix(col, mix(shell, vec3(0.82, 0.8, 0.7), 0.45), pow(rib, 3.0) * smoothstep(-0.2, 0.6, cs.x) * 0.6);
+        col = mix(col, band, smoothstep(0.6, 0.78, agcFbm(P * 26.0 + seed)) * contrast * 0.45);
+        col = mix(col, vec3(0.62, 0.42, 0.5), smoothstep(0.7, 0.82, agcFbm(P * 41.0 + seed * 3.0)) * 0.35);
+        s.rough = 0.62;
+        s.clear = 0.15;
+      } else if (kind < 5.5) {
+        // Cerith: dark mottled spire; the beads of each spiral cord pale
+        float bead = pow(rib * cord, 1.6);
+        col = mix(col, shell2 * 0.7, smoothstep(0.45, 0.7, mott) * 0.5);
+        col = mix(col, band, bead * contrast * 0.8);
+        col = mix(col, vec3(0.08, 0.06, 0.05), smoothstep(0.66, 0.8, agcVn(vec3(th * 6.0, cs * 6.0 + seed))) * 0.35);
+        s.rough = 0.5;
+        s.clear = 0.25;
+      } else if (kind > 6.5) {
+        // ramshorn: smooth and glossy, faint growth lines; spotted (leopard) when the appearance carries spots
+        col = mix(col, shell2, smoothstep(0.4, 0.8, mott) * 0.35);
+        vec3 lc = agcCell(vec3(th * 3.0, cs * 3.0 + seed));
+        float spot = (1.0 - smoothstep(0.18, 0.32, lc.x)) * step(1.5, uAgcPat.x) * step(uAgcPat.x, 2.5);
+        col = mix(col, band, spot * contrast);
+        s.rough = 0.2;
+        s.clear = 0.95;
+      } else {
+        // Nassarius: grey-brown latticed shell, a dark band under each suture, the glossy callus at the lip
+        float lattice = max(rib, cord);
+        col = mix(col, band, smoothstep(0.55, 0.95, sin(phi + 1.2)) * contrast * 0.7);
+        col = mix(col, vec3(0.8, 0.76, 0.68), pow(lattice, 4.0) * 0.35);
+        float callus = smoothstep(0.93, 1.0, u) * smoothstep(0.2, -0.6, cs.x);
+        col = mix(col, vec3(0.88, 0.84, 0.74), callus * 0.7);
+        s.rough = mix(0.45, 0.2, callus);
+        s.clear = mix(0.4, 0.9, callus);
+      }
+      col = mix(col, shell2 * 0.6, apex * 0.4);
     } else {
       // trochus: oblique reddish stripes + spiral cords, nacre glimpses at the worn apex
       float ob = smoothstep(0.2, 0.7, sin(th * 5.0 * pscale + phi * 1.5 + agcVn(vec3(th, cs * 1.4 + seed)) * 1.5));
@@ -571,7 +670,7 @@ function makeSnailFactory(spec: SnailSpec): CreatureFactory {
     for (const b of rigI.roots) inner.add(b);
     const u = createCritterUniforms(fx);
     applyAppearance(u, ap, args.creature);
-    u.uAgcF0.value.set(spec.kind, 0, 0, 0);
+    u.uAgcF0.value.set(spec.kind, spec.sculpt?.ribs?.n ?? 0, spec.sculpt?.cords?.n ?? 0, 0);
     u.uAgcV1.value.set(tpl.aperture.x, tpl.aperture.y, tpl.aperture.z, 0);
     const mat = createCritterMaterial({
       name: 'snail',
@@ -611,7 +710,8 @@ function makeSnailFactory(spec: SnailSpec): CreatureFactory {
       st.retract = damp(st.retract, retreat ? 1 : 0, retreat ? 5 : 0.9, dt);
       st.glide = damp(st.glide, speed > 0.01 ? 1 : 0, 3, dt);
       st.glidePh += dt * TAU * (0.6 + speed * 4) * st.glide;
-      st.siphon = damp(st.siphon, spec.siphon && pose === 'surface_breath' ? 1 : 0, 2, dt);
+      // the apple snail's siphon reaches up to breathe; a Nassarius sways its siphon as it tastes the water (rt.appendage)
+      st.siphon = damp(st.siphon, spec.siphonFront ? clamp(rt.appendage ?? 0.2) * 0.25 : spec.siphon && pose === 'surface_breath' ? 1 : 0, 2, dt);
       u.uAgcV0.value.set(st.retract, st.glide, st.siphon, st.glidePh);
       // shell sways as the foot waves; settles onto the substrate when retracted
       const bob = Math.sin(st.glidePh) * 0.01 * st.glide;
@@ -644,6 +744,11 @@ function makeSnailFactory(spec: SnailSpec): CreatureFactory {
 export const createMysterySnail = makeSnailFactory(SNAIL_SPECS.mystery_snail);
 export const createNeriteSnail = makeSnailFactory(SNAIL_SPECS.nerite_snail);
 export const createTrochusSnail = makeSnailFactory(SNAIL_SPECS.trochus_snail);
+export const createMexicanTurboSnail = makeSnailFactory(SNAIL_SPECS.mexican_turbo_snail);
+export const createAstraeaSnail = makeSnailFactory(SNAIL_SPECS.astraea_snail);
+export const createCerithSnail = makeSnailFactory(SNAIL_SPECS.cerith_snail);
+export const createNassariusSnail = makeSnailFactory(SNAIL_SPECS.nassarius_snail);
+export const createRamshornSnail = makeSnailFactory(SNAIL_SPECS.ramshorn_snail);
 
 void color;
 void noise1;

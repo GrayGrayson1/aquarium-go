@@ -1,100 +1,291 @@
-# Session handoff: after 0.6.0 (shared shops released)
+# Session handoff: after 0.7.0; chunk 15 (the scenario lab) built; chunk 16 (31 new species) next
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
 
-## Handoff to Marshall: chunk 14, permission tiers and the money pool (from Chase, 2026-10-21, at the owner's request)
+## Handoff: chunk 16, 31 new species (Chase, 2026-10-24)
 
-**The owner's request** (verbatim, to Chase, after Chase listed what could come next and recommended the money pool):
-"Within CNVS make Marshall do it. Give it everything it absolutely possibly needs to be able to be successful in
-building this next portion. If you've done your own testing then you're fine but have it do its own testing after the
-fact. We want this as close to one-to-one as we talked about, as far as being a finished product."
+**Start here.** Read PLAN.md's chunk 16 brief and ADR-0052 (the owner's answers, verbatim). The owner's words
+(2026-10-24): "add all 12 missing species as the next chunk and what other species should we be adding? how will this
+work for variations?" Their answers: add the maroon clownfish; add the reef and freshwater favourites too (31 species,
+48 → 79); build young and male/female colours; every new species buyable from the start. It began with a friend's
+210-gallon reef the owner had built in the lab; **the repo is public, so the friend's name and photo stay out of it**
+(the stand-in recipe is `docs/agent/design/CHUNK-16/friends-reef-standins.json`, the aquascape described in the
+brief).
 
-So Marshall builds **chunk 14: shared shops' permission tiers and money pool**, as a full chunk (CLAUDE.md's routine),
-as close as possible to the owner's own words, finished enough to release. Chase tested 0.6.0 (PLAN.md "Releases");
-Marshall tests chunk 14 itself afterwards, in full (below). Chase isn't editing the repo or the test clone from here
-on: both are Marshall's. If the owner meant a different "next portion", the first question round finds out.
+**State of things.** `next` = the commit that adds this handoff (pushed); `main` = `a704e63` (0.7.0), unchanged. The
+internal clone `~/LocalTest/AquariumGo` is at `c7ade07` with no patch applied (its git-excluded `scripts/_audit/` has
+the sync helpers `patch-sync.sh` and `patch-at.sh`, and throwaway probes from 2026-10-24). A lab dev server
+may still be running on port 5173 in CNVS's "Skye" terminal (started from the clone); e2e uses its own port (4399).
 
-**What "as we talked about" is.** The owner's answer, verbatim, in ADR-0043 (round 2, question 2; read the whole ADR):
-"I think anybody should be able to do #1. Everything else, with permission, I believe. Otherwise I think there should be
-tiers of permission. At the beginning we should probably just have it be that everybody can do everything else with...
-We also probably want there to be a group pool where pretty much all the money just goes into the group and then you
-can request money. I think, unless you're given permission to just use the money, which we'll probably go with in the
-beginning just to make it simpler (with the idea of adding that later), other people should be able to withdraw
-requested money to buy things. Maybe we can even set an amount that people can have that they can just draw from,
-especially depending on the situation. If there's a prismatic or something that you can buy, maybe you're just granted
-permissions, that kind of thing, but that could be later." ADR-0043 decision 5 reads it as: tiers of permission; a
-group pool the shop's money goes into; members request money, and someone with the permission approves it (or
-withdraws it); people given the permission spend directly; an allowance a member can draw from; a one-off grant for a
-special purchase (a Prismatic). 0.6.0 shipped the "at the beginning" version: everyone spends the shop's one balance
-freely; only pause and speed are restricted (the owner, plus the people the owner switches on).
+**Progress (Chase, 2026-10-24/25, in this session; the chunk started at `1b929a7`).** All three waves are built and
+committed on `next` (not pushed): `efe420c` data/sim/saves, `e487495` art, `556ba33` behaviour, `b9b527f` lab
+presets, `e232b04` seeded tests + three sim fixes, `5068399` docs (each message explains its changes); PLAN.md chunk
+16's "Built" notes say what and how. **Running when this note was written (2026-10-25):** the four checks on `5068399`
+in `~/LocalTest/AquariumGo` (typecheck, unit, build, e2e under caffeinate; logs `chk-*.log` in the session
+scratchpad; don't sync files into the clone until e2e ends), and the fresh reviewer (Opus 5.5, max effort) on
+`git diff 1b929a7..5068399` (its brief `reviewer-brief.md`, report `review-c16.md`, both in the scratchpad). **Next:**
+fix the reviewer's blockers (and rerun the checks if code changes), mark SPC-001..009 GREEN with the evidence
+(`req-update.py` in the scratchpad does it; SPC-010 stays IN_PROGRESS), push `next` from the clone, then ask the owner
+the questions below and about 0.8.0. The owner answered one more question during the chunk (ADR-0052 round 3,
+decision 10: the first hour's toast cap is 100).
+- *Own testing done:* every new fish in the art gallery (`?sandbox=fishart-gallery&only=<id>`; young, male and female,
+  the forms) and every critter in `critterart-gallery.html`; the two lab presets in the tank view at 1600×1000 and
+  390×844 (day and night); a game week headless for both presets with autofeeders (`npm run scenario -- <preset>
+  --hours 168`: the friend's reef has no deaths and one anthias turns male on day 4; the new-species preset loses
+  three small snails to the flame hawkfish and the sand-sifting star, as their data says); two 0.7.0 saves (built
+  with `a704e63`) load with no repairs, play two days and re-save clean, and a new save is refused by 0.7.0 as "too
+  new" (save format v3).
+- *For the owner before release (new player-visible copy the designs don't cover):* the activity labels "asleep in
+  the sand", "resting in the sand", "hiding in the sand", "buried in the sand", "chasing off an intruder", "looking for
+  a place to settle", "settled"; the breeding messages "<name> stuck a little jelly clutch of <n> eggs to the glass."
+  (ramshorn) and "<name> has split in two! The new bubble-tip anemone, <name>, is its clone." (fission) with its
+  explanation; the species hints ("Available from the start." and "Needs no research of its own: it comes into the
+  shop once you research Marine Systems."). Also: the pea-puffer balance test's shop-opening floor (the triage's
+  numbers), and B-211's autofeeder rule.
+- *Release:* 0.8.0 bumps the save format, so the shared-shop server on Render (`server/host.ts` reads
+  `SCHEMA_VERSION`) must be deployed with it.
 
-**What it touches today** (the design left room for exactly this, SHARED-SHOPS.md §5.4 and §5.6):
-- `allowed()` at `server/room.ts:113` is the one permission check, run before a command's step. The shop row's
-  `pausers` (migration `supabase/migrations/20261021000000_shared_shops.sql`; `server/{room,host,store,protocol,stub}.ts`;
-  the `grant` message in `src/types/shared.ts`) was planned to become a per-member permissions object (`{pause, spend:
-  'all' | 'request' | 'allowance', allowance}`), with the pool and the requests as commands.
-- A command's money is known only once it runs. The room already runs each command step on a copy
-  (`commandStep`, `runSharedStep(..., { copy: true })`), so a spending check can compare the money before and after
-  and reject before accepting the step. Decide which of the 80 command kinds (`src/sim/commands`) count as spending; a
-  sale, care and a refund don't.
-- Where the new state lives decides the rest. Anything every copy must agree on (a request's status, an allowance
-  balance the screens show) either goes in `GameState` (an optional save field validated in `repairState`; absent, it
-  leaves `stateHash` unchanged; a new command kind in `kinds.ts`, `apply.ts`, `validate.ts` and
-  `tests/sim/commands-catalogue.test.ts`) or stays on the server's shop row and reaches the browsers in `members` /
-  `welcome`. Either way the determinism contract holds. A change under `src/sim`, `src/data`, `src/types`, the pure
-  persistence files or `src/game/sharedLoop.ts` changes the shared build hash.
-- The client: `src/ui/shared/dispatch.ts` maps a `reject` (today `forbidden` always gets the pause words; spending needs
-  its own), `SharedScreens.tsx` (the members list and the owner's switch), `words.ts`, `activity.ts` (pop-ups),
-  `SharedClubSection.tsx`. A database change is a new migration file, checked with `scripts/online-db-local/run.sh`.
+**Order of work.**
+1. `git checkout next && git pull`; note the start commit.
+2. Study one species end to end before writing any: `kole_tang` (a plain fish), `ocellaris_clownfish` (named forms,
+   protandry), `coral_beauty` (protogynous), `betta` and `bristlenose_pleco` (male and female art via `isFemale`),
+   `nerite_snail` and `hermit_crab` (special art), `cherry_shrimp` (forms, colony breeding). The brief's "Where a
+   species is wired" lists every file to touch.
+3. Wave A (the friend's reef's 13) with the lab preset "A friend's reef"; the four checks; commit and push. Then wave
+   B (reef favourites), then C (freshwater). Each species: its data with sources, its genetics (real forms only), its
+   art (young and sex colours where the wild ones differ), its behaviour, its tests.
+4. The seeded tests shift (new day-one species change the shop's draws): run them before and after each wave and
+   explain each change in the commit (AGENTS.md); never retune data to hide it.
+5. `SCHEMA_VERSION` 3 with the first wave; load a 0.7.0 save to prove it.
+6. The fresh reviewer (Opus 5.5, `effort: "max"`, never Fable) on the brief and the whole diff; fix its blockers; your
+   own look-around (every new species in the lab at desktop and phone widths, young and adult, male and female); then
+   ask the owner about the 0.8.0 release (never push `main` without their yes in the session).
 
-**The owner's gate, first** (before building; AskUserQuestion, at most 4 questions a round, recommended option first,
-each description giving the context, exact words and ASCII mock-ups in the previews, since no design screens cover
-this; the answers verbatim in **ADR-0050**). At least:
-1. The tiers: how many, their names, and what each may do (spend freely; spend from an allowance; only request; care
-   and sell only; pause and speed; approve requests; grant). "Anybody should be able to do #1" and "everything else,
-   with permission": ask what each member starts with, and whether existing shops keep 0.6.0's "everyone spends".
-2. Requests: who approves (the owner only, or chosen people too), what a request carries (an amount, a reason or a
-   purchase), how others hear about it (an alert, a pop-up, a badge), what happens if nobody answers, and whether an
-   approved request is money the member then spends ("withdraw requested money to buy things").
-3. Allowances and one-off grants: a set amount, refilled or not (per game day? per real week? never?); a one-off grant
-   tied to one purchase (the Prismatic case) or to an amount.
-4. Every new player-visible line (AGENTS.md: copy too), and the release (0.7.0 when it's done and green, on the owner's
-   go-ahead). Fold in the one word still unconfirmed from chunk 13: the opening card's back button from the title
-   screen reuses "Title".
-5. **How to test it live before release** (new, see below).
+**Tips.**
+- `npm run scenario -- <recipe> --hours N` runs a recipe headless; add an `autofeeder` to a tank for runs past a day
+  (nobody feeds in a headless run). `npm run report:rarity` lists the forms per rarity tier.
+- CNVS's browser screenshots only save inside the project folder, the Desktop or a temp folder: use the git-excluded
+  `scripts/_audit/` and delete them after.
+- A 180-gallon tank's default kit already has two reef lights (four is the most a tank takes); a recipe that wants
+  exactly three uses `bareEquipment` and lists the kit.
+- The ocellaris had no red form, so the friend's "crimson" clowns are maroons (ADR-0052, answer 1).
 
-**Production now (new since 0.6.0, important).** `aquarium-go-shops` and https://aquarium-go.onrender.com both serve
-players (the owner and their daughter) from `main` = `298b3ff`. ADR-0047 decision 2's "deploy from `next`" was for
-before players existed: **don't deploy `next` to either without the owner's yes in the session.** A server with a new
-shared build hash tells 0.6.0 tabs the shop is updating; a play-test build on the Render address replaces the game
-there. Ask with the gate's round. The options: (a) build and test everything on the stub server and locally, then do
-the live tests right after the release (no extra service); (b) a second free Render web service for pre-release tests
-(free, but it shares the 750 instance hours and the 5 GB outbound with the others; creating it needs the owner's yes,
-as ADR-0046 did); (c) a short announced window on the real server. The live migration needs the owner's yes too.
+## Chunk 15, the scenario lab: built (Chase, 2026-10-23)
 
-**Testing it yourself afterwards** (the owner: "have it do its own testing after the fact"):
-- The four checks on the final code from the internal clone under `caffeinate -i -s` (typecheck, unit, build, e2e in
-  Chromium and WebKit); report the pass and fail lines; never count a test that didn't run.
-- Unit: `allowed` for every tier and command kind; a refused purchase leaves every copy unchanged; a request approved,
-  declined, and spent; an allowance running out mid-drag (the coalesced controls); a one-off grant used once; first one
-  wins between two spenders on one allowance; the lockstep tests still match fingerprints.
-- e2e (`tests/e2e/shared-shop.spec.ts`, two contexts on the stub server): a member without permission is refused with
-  the approved words; asks; the owner approves; the member buys; the allowance and the pool update on both screens.
-- Live, when the owner's answer allows: `scripts/shared-smoke.ts` extended to the new commands and permissions, and
-  Chase's two-browser test `scripts/_audit/chunk13/live.ts` in the internal clone (git-excluded; `LIVE_SITE=<url>`
-  picks the site; throwaway accounts and club, removed and checked gone) extended to the money flows.
-- One fresh reviewer (Opus 5.5, `effort: "max"`) on `git diff <chunk start>..HEAD` against the brief, then
-  confirmation passes until clean; fix the blockers.
+- **Done** (PLAN.md chunk 15; ADR-0051 has the owner's answers, verbatim). The owner asked for dev tools to build any
+  aquarium or setup and play it without playing up to it; they chose: on this Mac, solo; all four areas plus
+  "basically what the game has to offer but it's an unlocked dev version sandbox"; presets, files and links; opens
+  paused; every preset group. Their question "what else can we have here that would be useful?" is answered in
+  ADR-0051 decision 5 (Start again, Capture, fixtures as bases, checks, a warm-up, the game's own verdicts while
+  editing), all built.
+- **For the owner to try:** `cd ~/LocalTest/AquariumGo && npm run lab` (the clone is left at `next`), or ask an agent
+  in CNVS to run it. docs/SCENARIOS.md is the guide and the recipe reference (hand it to any agent: "make me a
+  scenario with …"). `npm run scenario -- ammonia-crisis` runs one without a browser.
+- **State of things:** `next` = chunk 15's last commit (pushed); `main` = `a704e63` (0.7.0), unchanged: a dev-only tool needs no
+  release, and nothing was deployed. The internal clone is at `next`'s head with no patch applied.
+- **Tested:** the four checks on the final code `aae0922` (unit 3,363, e2e 335 of 335, 39.9 min) and on `f9c62ab`
+  (the same); before it `0bdc84c` green
+  too (unit 3,341, e2e 335 of 335). The fresh review (Opus 5.5, max effort) found four blockers, the worst that "Save now" and
+  "Save and return to title" wrote a scenario over the player's autosave; all fixed in `765b6b6` with its notes;
+  its first confirmation found two more (the lab's checking stepped a world, which changed the game on screen; the
+  patch play-test stepped no tank), fixed in `f9c62ab`; the second was clean.
+- **Still open after it:** F1 (the owner's VoiceOver pass), the audit's other findings (B-207, B-208), B-210 (two crafted
+  save shapes that crash a step; before stage 2), online stage 2 (before strangers join). The owner hasn't played 0.6.0
+  or 0.7.0 yet: a problem they report comes first.
 
-**Know before you start:** PLAN.md chunks 12 and 13 and "Releases" (0.6.0); "Learned in chunk 12" and "Learned in
-chunk 13" below; ADR-0043, ADR-0045, ADR-0047 to ADR-0049; SHARED-SHOPS.md §3 to §5 and §8. From 0.6.0's release: the
-Pages run runs typecheck and the unit tests on a slower machine (two sockets keep no order between them; a test that
-assumed one failed there, `3d7d2cc`); merge a release in the internal clone onto a freshly fetched `origin/main` (the
-Dev repo's `main` lagged and its merge was refused); the shop server goes after Pages, never before (PLAN.md
-"Releases", step 4). The owner hasn't played 0.6.0 yet: if they report a problem with it, that comes first.
+**Learned in chunk 15.**
+- *Building a world by hand:* set the clock before making anything (moving it forward never trips `repairState`; a
+  future-dated `*Hour` does). A blank shop is `newGame` with its starter tank, animal, log and discoveries removed, then
+  `initMarket` again once the facility and unlocks are set (`seenUnlocks = -1` restocks silently).
+  `settleStartingProgress` last, so unlock rules and achievements don't toast on the first step.
+- *Module-level dev state leaks into builds:* `forcePrismatic` counters are consumed by the base's own market roll;
+  the builder sets them aside and puts them back. A test of that needs a recipe with no Prismatic of its own (the
+  first version of the test couldn't fail: a mutant survived).
+- *Keeping dev code out of the players' build:* a lazy chunk is still emitted unless the `import()` sits behind a
+  build-time constant (`import.meta.env.DEV || import.meta.env.VITE_E2E_DEV_URL === '1'`, inlined in each file);
+  Rollup then drops it. The dev panel, the fixtures and the sandboxes still ship as unfetched chunks (as before).
+- *A dev world must not reach the player's autosave through any door:* the timed autosave is one; "Save now", "Save and
+  return to title", the error screens, the page-close save and the online save are the others. The refusal lives in
+  `saveCurrentGame`/`saveCurrentGameSync` (`autosaveRefused`), so every door checks it. URL `?fixture=` boots still use
+  the older `fixtureSaveId` rule (only the timed autosave), unchanged.
+- *Clipboard and other browser APIs go through `src/platform`* (`tests/sim/platform-web.test.ts` and
+  `core-mutation-boundary` scan for direct `navigator.clipboard`); the platform has no clipboard read.
+- *`Toasts.tsx` dismissed UI toasts inside a state updater* (a store write mid-render; a dev-only React warning that
+  frequent world switches brought out in WebKit). Fixed in this chunk.
+
+## Handoff to Chase: chunk 15, the scenario lab (Marshall, 2026-10-23)
+
+*Used up: chunk 15 is built (above). Kept for the owner's words and the gate.*
+
+**The owner's words, verbatim (2026-10-23):** "What would it take to have Chase in CNVS Canvas, the app that we're
+currently working on, Build some dev tools in order to make what I want. If I want to make a specific kind of aquarium
+or setup, I would be able to just do that without having to play through the game, just to test certain scenarios. If
+that's something that we can one-shot, go ahead and do the required research. It needs to be successful and then give
+Chase in CNVS the prompt to build it all out and all the information that possibly needs to be successful."
+
+**The goal.** The owner describes a setup (a tank, its water, its animals, the shop around it) and is playing it in
+seconds, without playing up to it; they can keep it, load it again, and hand it to an agent or a test. A developer
+tool: never in the players' build (ADR-0037 decision 3, below).
+
+**What exists already (read these; build on them, don't rebuild them).**
+- `src/dev/commands.ts` (`dev`, 423 lines): addMoney, unlockAll, spawnSpecies (species, tank, sex, count, age; makes a
+  suitable tank if none), ageCreature, forceBreeding, setWater, advanceTime (≤6 h steps, then `flushSimDebt`),
+  hireStaff, setSpeed, fillTestFacility, newGame (skips onboarding), playthrough (the balance bot, N days), loadFixture,
+  focusTank, addShopOffer (incl. Prismatic and pinned alleles), makePrismatic, forcePrismatic, killCreature,
+  setAllStats. Writes go through `mutateGame`/`mutateFast`; every call no-ops with no game.
+- `src/dev/fixtures/core-helpers.ts`: the scene-building kit: `ensureFacility(state, level)`, `unlockEverything`,
+  `addPlacedTank(state, tierId, waterClass, name?, placement?)`, `placeOrGrow`/`findTankSpot`, `tierForGallons`,
+  `stockTank(state, tankId, StockEntry[])` (species, count, sex plan incl. 'pair' | 'mixed' | 'females' | 'auto', age),
+  `scatterDecor`/`decorateTank`, `matchWaterToStock`, `finishTank`, `speciesForClass`. `core-testkit.ts`:
+  `richSaveState`, `manyTankWorld`, `findNonFinite`.
+- 46 named fixtures in `src/dev/fixtures/index.ts` (lazy registry, `./lazy.ts`): the 5 starter showcases, big_facility,
+  community_fw, marine_reef, stress_school, offline_test, core_legacy_v0, panels(_live), facility_* (6 levels),
+  breeding_* (5), behavior-* (5), playthrough_<starter> (5, the bot, 30 days), brackish_* (3), frags_* (3), staff_*
+  (3), shows-demo, shows-hall, prismatic_showcase. Today they load only by `?fixture=<name>` or `__AQ.loadFixture`:
+  there's no picker.
+- `src/ui/dev/DevPanel.tsx` (the wrench in the top bar; Settings › Developer tools turns it on): money, unlock all,
+  +10 test tanks, the market (open it, Prismatic offers, a buyer for a listing), time (speed, +1 h to +7 d), spawn,
+  the selected animal (age, force breeding, Prismatic), the focused tank's water editor and presets (ammonia spike,
+  heatwave, neglected, pristine), AI and compatibility views. Its writes are direct, never commands, and it's off in
+  a shared shop (`devWrite`; `src/dev/debugHooks.ts` wraps every write in `noSharedWrites`).
+- `src/dev/debugHooks.ts`: `window.__AQ` (e2e, QA, the console): `dev.*`, `loadFixture`, `fixtures()`, `newGame`,
+  `advance`, `setGame`, `mutate`, `hash`, `autosave`; production keeps only `READ_ONLY_KEYS`.
+- `src/game/useAutosave.ts`: a world booted from `?fixture=`/`?showcase=` is never autosaved (`fixtureSaveId`), so a
+  test scene can't overwrite the player's autosave.
+- The catalogue a builder offers (counted on `a704e63`): 48 species (freshwater, marine, brackish); 7 water classes
+  (freshwater_cool, freshwater_tropical, freshwater_planted, marine_fowlr, marine_live_rock, reef, brackish); 16 tank
+  tiers (`TANK_TIERS`), 30 equipment, 50 decor, 8 substrates, 21 foods (`src/data/catalog/`); 23 research projects, 6
+  facility levels, 3 staff roles, 4 show tiers and 16 show classes, 56 unlock keys (`src/data/`). Top-level
+  `GameState`: clock, tanks/tankOrder, creatures, clutches, inventory, facility, market, finance, progress (reputation,
+  mastery, unlocked, research, quests, tutorial, counters, discoveries), visitors, staff, shows, notify, production,
+  automation.
+
+**The gate (don't change it without the owner).** `src/state/devTools.ts`: the write tools exist only in a dev build
+(`npm run dev`), or in a production build made with `VITE_E2E_DEV_URL=1` and opened with `?dev=1` (the e2e base-path
+build only); the live site ignores `?dev=1` (ADR-0037 decision 3; B-190; tests `tests/sim/plat-dev-tools.test.ts`,
+`tests/e2e/prod-mode.spec.ts`). Where the tools are allowed, Social is the local stub (`src/ui/online/mode.ts`) unless
+built with `VITE_SOCIAL_ONLINE_IN_DEV=1`, so nothing made in the lab reaches the live project, the owner's online
+save or the leaderboard. Keep it that way: never set that flag for the lab. A dev build at http://127.0.0.1:5173 also
+keeps its own browser storage, apart from the live sites' saves.
+
+**A suggested shape (yours to improve; the owner's answers rule).**
+1. *A recipe:* a versioned, documented JSON `ScenarioRecipe` (`src/dev/scenario/`): a base (blank shop, a starter,
+   any fixture, or a copy of the game on screen), a seed, the shop (money, day and hour, speed, facility level, unlocks
+   and research, reputation, the guide finished), tanks (tier, water class, name, water values, equipment, substrate,
+   decor or "auto", lights) and their animals (species, count, sex plan, age, name, genes or morph, Prismatic, stats
+   such as hunger or health, breeding state), staff, shows, and the market (offers, listings, bids). One pure
+   `buildScenario(recipe) → GameState` made from the helpers above; `validateRecipe` that names each problem (an
+   unknown species, a tank too small) and warns, without refusing, about a bad pairing, since bad setups are what the
+   owner wants to test. Same recipe and seed, same world.
+2. *Every built world is a legal save:* it goes through the real save path (serialise, load, `repairState`) with
+   nothing repaired, no non-finite numbers (`findNonFinite`), and loads again in a fresh session. Unit tests for that
+   on a set of sample recipes and on every species at least once.
+3. *The screen:* a "Scenario lab" in the dev tools (its own lazily loaded chunk): start from, the shop, a tank list
+   with an animals editor per tank, presets (save, load, duplicate, delete, kept in this browser), the recipe as JSON
+   (copy, paste, import and export a file), and "Build and play". Plus a fixture picker in the dev panel for the 46
+   fixtures. It refuses inside a shared shop, as the dev panel does.
+4. *Addresses and scripts:* `?scenario=<preset>` (and perhaps a recipe in the address) behind the same gate as
+   `?fixture=` and never autosaved over the player's save; `__AQ.scenario.*` for agents and e2e; a vite-node script
+   (`scripts/scenario.ts <recipe.json> --hours N`) that builds a recipe headlessly, runs time forward and prints a
+   report (births, deaths, water, money), so a scenario can be tested without a browser.
+5. *Ready-made presets* the owner can start from (ask which they want first): an ammonia crisis, a breeding-ready
+   pair, a reef with a Prismatic clownfish, a crowded or aggressive tank, a broke shop with hungry fish, a staffed
+   store, show day, a market with bids, a late-game grand hall.
+6. *A doc* (`docs/SCENARIOS.md`) for the recipe format, so the owner can ask any agent "make me a scenario with …" and
+   paste the result; and `npm run lab` (a `package.json` script, a core file: say so in the commit) that starts the dev
+   server and opens the lab. Run it from `~/LocalTest/AquariumGo`: Vite on the `/Volumes/Dev` image is very slow.
+
+**Ask the owner first, in one batched AskUserQuestion round** (recommended option first, ASCII mock-ups in previews;
+their answers verbatim in ADR-0051, the next free number), at least:
+- *Where they use it:* (recommended) on this Mac, started with one command or by asking an agent in CNVS (no new
+  service, ADR-0037 untouched); or a private "lab" site on Render's free plan, built with the dev tools and the local
+  stub. That second one is a new remote service and a reversal of part of ADR-0037 decision 3: it needs their
+  explicit yes, and it may never touch the live Supabase project or the shop server.
+- *What it must set up first* (multi-select): tanks and water; animals (genes, Prismatic, age, health); equipment and
+  decor; the shop (money, time, facility, unlocks, research, staff, shows, market); breeding (pairs, eggs, fry);
+  problems (water crises, sick or starving animals, broken equipment).
+- *Saving:* named presets in the browser, a JSON file to export and import, and a link (recommended: all three).
+- *Which ready-made presets*, and whether the lab should open its scenario paused.
+- *Shared shops:* recommended out of scope (the lab is solo; a shared shop runs on the server). A local-stub shared
+  shop seeded from a recipe (`server/stub.ts`, `scripts/shared-stub-shops.ts` show how stub shops are made) would be
+  a later chunk.
+
+**How to run it.** A full chunk per `CLAUDE.md` and `PLAN.md` "How a chunk runs": write chunk 15's brief into
+`PLAN.md` (requirement ids too, `docs/agent/REQUIREMENTS.json`), build on `next` (`f05d8e5` plus this handoff's docs
+commit), the four checks from `~/LocalTest/AquariumGo` under `caffeinate -i -s` with
+`PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`, one fresh reviewer (Opus 5.5, `model: "opus"`, `effort: "max"`,
+never Fable) given the brief and `git diff <start>..HEAD`, its blockers fixed, `PLAN.md` and this file updated, push
+`next`. Then test it yourself as the owner would: start the lab, build each preset and a recipe of your own through
+the screen (a Playwright look script with screenshots at desktop and phone widths, like chunk 14's
+`scripts/_audit/chunk14/look.mjs` in the clone), play one forward, export, import, reload, and check the players'
+build still has none of it (`prod-mode.spec`, and `?scenario=` ignored there). e2e: one spec that builds a recipe
+through the screen and plays it. Nothing here deploys: a dev-only tool needs no release, and `main`, Render and the
+shop server stay untouched without the owner's yes in your session. No new dependencies without asking.
+
+**State of things.** `main` = `a704e63` (0.7.0, live on GitHub Pages, aquarium-go.onrender.com and the shop server;
+they serve players: the owner, their daughter and, since 2026-10-22, a third player). `next` = `f05d8e5` plus this
+handoff. The internal clone `~/LocalTest/AquariumGo` is detached at `a704e63`, nothing running, no patch applied; its
+`scripts/_audit/` holds Marshall's git-excluded scripts (`patch-sync.sh`, `patch-at.sh`, `chunk14/`,
+`catalog-counts.ts`). Marshall isn't editing the repo or the clone.
+
+**Also from 2026-10-22, in case the owner raises it:** the third player (Windows, Edge, signed up through
+CalliClub's invite) sat on "Waking the shared shop…", which stays up only while the browser's `GET /health` to
+`aquarium-go-shops.onrender.com` fails (a socket that fails shows "Catching up…" instead; a refusal shows its own
+words, and no refusal was sent). Both sites point at the right server and its CORS allows both, so it's most likely
+their network or browser; the owner has the steps to give them (open `/health` in a tab; a blocker or antivirus web
+shield; F12 › Console). Not confirmed yet. The server logs no joins or refusals at the door; `/stats` counters (per
+room `frames.welcome`, `sent.closing` in bytes) and the `saves` row's time (opening a shop saves the player's own
+game first) are how to read a visit. A paused shared shop stays paused for a joiner who may not pause (the DND Aq.
+Co. shop was left paused).
+
+## 0.7.0, the money pool: released (Marshall, 2026-10-22)
+
+- **Chunk 14 is done and released** (PLAN.md chunk 14 and "Releases"; ADR-0050). Built as the owner asked ("Within CNVS
+  make Marshall do it … as close to one-to-one as we talked about, as far as being a finished product"), from their
+  words in ADR-0043: each shared-shop member spends the shop's money (the pool) within a tier the owner sets in the
+  members list (Spends freely, everyone's start; Allowance, topped up each game day; Asks first), members ask for an
+  amount in the Shop money sheet, the owner and the members they let approve answer or give money, and staff and the
+  stock budget need Spends freely. The state is in the shop's `GameState.pool` (`src/sim/pool.ts`): no database
+  change. `main` = `a704e63` on GitHub Pages, the Render address and `aquarium-go-shops` (`/health` `build`
+  `74779d9a30306b9c`); `next` = the release commit `d16dd72` plus docs.
+- **Tested:** the four checks on the release commit (unit 3,243, e2e 331 of 331); a fresh Opus review (one blocker, a
+  test that couldn't fail) and two confirmations, the last clean; live after the release, the smoke 27 of 27 and the
+  two-browser money test 29 of 29 on both sites.
+- **For the owner, when they've played it** (not asked yet; ask only if it matters to them):
+  - Care is never counted or refused (ADR-0050 decision 2), so a member on Asks first can still spend the pool on
+    doses and repairs: up to about $400 a dose for a 1,000-gallon reef tank, at most 10 actions a second. Counting care
+    against an allowance (never refusing it) or capping it would be a new decision.
+  - Approvers can give each other money (by design: the owner picks them).
+  - A pool pop-up can lapse behind the game's own news in a busy shop (the toast stack shows 3 at a time); the line is
+    always in the alerts list.
+  - On a touch screen, a press on a tier held over 600 ms right after typing an allowance can send the amount and then
+    the tier (two alerts lines; cosmetic).
+- **Still open after it:** F1 (the owner's VoiceOver pass), the audit's other findings (B-207, B-208), online stage 2
+  (before strangers join). The owner hasn't played 0.6.0 or 0.7.0 yet: a problem they report comes first.
+
+**Learned in chunk 14.**
+- *Syncing work into the internal clone without discarding anything:* Claude Code's auto-mode classifier refuses `git
+  checkout -- . && git clean` in the clone ("Irreversible Local Destruction"). What worked: write the Dev repo's
+  `git diff HEAD --binary` to a patch, reverse-apply the previously applied patch in the clone, `git checkout --detach`
+  the base, apply the new one; to test a commit, reverse-apply and check it out. The scripts are in the internal
+  clone's git-excluded `scripts/_audit/`: `patch-sync.sh` (the Dev repo's uncommitted work onto its HEAD) and
+  `patch-at.sh <sha>` (the clone at a commit); they keep the applied patch in `scripts/_audit/.patches/`. The clone
+  was left detached at `a704e63` with no patch applied.
+- *The toast stack is no measure of a pop-up:* it shows 3 at a time (2 on a phone) and lets routine ones lapse behind
+  the game's own news (a bid, a fish's sex). An e2e that checks a pop-up records `__AQ.ui().toasts` every 50 ms from the
+  start; checking what's on screen failed once in Chromium.
+- *A look-around against a stub server* needs `VITE_SHARED_SHOP_SERVER` set on its Vite (the club cards ask that server
+  whether the club has a shop; `?shops=` only moves the connection), and the calm HUD (`aquarium-go.ui-prefs.v1`
+  `{"calmHud":false}`) off, or an idle player's strip is hidden. `scripts/_audit/chunk14/look.mjs` in the internal clone
+  screenshots the money screens at desktop and phone sizes in both browsers.
+- *The live site's `__AQ` is read-only* (`game()`, `ui()` and the other `READ_ONLY_KEYS`): a live test acts through the
+  interface (Market › Supplies' Buy button), never `__AQ.cmd`. No throwaway account is the game's owner, so a live
+  test seeds owner-only state (tiers, approvers) in the stored shop.
+- *A test that measures money must send what costs money:* the review's mutants found the care exemption untested
+  because the sample care cost nothing. Prove each exemption with a mutant.
 
 ## Where things stand
 
@@ -110,6 +301,8 @@ Dev repo's `main` lagged and its merge was refused); the shop server goes after 
   leaked-password protection, off), the live smoke test passed 90 of 90. Three clubs, all the owner's ("Aquarium Go
   Friends", "CalliClub", "TheSushiBladesToTheMax"); the clubs keep their codes (ADR-0044 decision 3). Never write a
   code or a player's email in the repo, which is public (`select name, invite_code from public.clubs` reads codes).
+- **0.7.0 is released** (2026-10-22: `main` = `a704e63`, Pages, the Render address and the shop server): chunk 14, the
+  money pool and spending tiers (ADR-0050; the top section).
 - **Shared shops, released in 0.6.0** (ADR-0043, ADR-0045): a whole shop a club plays together on a small server on Render. The
   design is `docs/agent/design/SHARED-SHOPS.md` (2026-10-20): every browser runs the same steps, the server's copy
   counts, fingerprints catch drift. Render's free plan includes only 5 GB of outbound data a month for the whole
@@ -157,8 +350,7 @@ Dev repo's `main` lagged and its merge was refused); the shop server goes after 
   clone, and check `/health`'s `build` and both `version.json` files. A change that leaves src/sim, src/data, src/types
   and the pure persistence files alone keeps the shared build hash, so the server needn't change with it.
 - The chunk 13 worktree (`/Volumes/Dev/Projects/AquariumGo-chunk13`, branch `chunk13`) is used up and can go.
-- **Next:** chunk 14, permission tiers and the money pool (Marshall, the top section). Still open after it: F1 (the
-  owner's VoiceOver pass), the audit's other findings (B-207, B-208), online stage 2 (before strangers join).
+- **Next:** chunk 14, permission tiers and the money pool: done and released as 0.7.0 (the top section).
 
 ## The owner's standing rules (from the shared-shop chunks; verbatim where quoted)
 
@@ -173,7 +365,7 @@ Dev repo's `main` lagged and its merge was refused); the shop server goes after 
   --yes` from the internal clone, then the browser-Claude prompt flow in "Learned in chunk 12" (the agent can't set
   Render variables). Never run a build or install command to "check" it.
 - The owner prefers agents to do everything they can themselves and to ask once, batched (AskUserQuestion, recommended
-  option first, the answers verbatim in a new ADR, the next is ADR-0050).
+  option first, the answers verbatim in a new ADR, the next is ADR-0051).
 - Reviewers (the chunk's fresh reviewer and its confirmation passes) run on Opus 5.5 at max effort (the Agent tool:
   `model: "opus"`, `effort: "max"`), never Fable.
 - No new dependencies without asking (`ws` 8.22.0 is approved, server only, no `@types/ws`). Never weaken, skip or delete
@@ -200,8 +392,8 @@ Dev repo's `main` lagged and its merge was refused); the shop server goes after 
    internal-disk clone, watch the Pages run (it runs typecheck and the unit tests first; a test that fails only there
    is usually a race or a time limit), then the shop server and the Render static site by hand from `main`'s full sha,
    the live smoke, and both `version.json` files.
-5. **Shared shops: done and released** (chunks 10 to 13, 0.6.0). Next, chunk 14: permission tiers and the money pool
-   (Marshall; the top section). The audit's remaining findings (B-207, B-208) wait for the owner.
+5. **Shared shops: done and released** (chunks 10 to 13, 0.6.0), and their money pool and spending tiers (chunk 14,
+   0.7.0; the top section). The audit's remaining findings (B-207, B-208) wait for the owner.
 
 **Asking the owner** (how groups A to E and chunks 4 and 5 went): AskUserQuestion, at most 4 questions per round,
 recommended option first and labelled "(Recommended)", each description giving the context needed to choose; put the

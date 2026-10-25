@@ -64,6 +64,8 @@ export interface PairSpawnerConfig {
   guardStage: string;
   visual: Clutch['visual'];
   site: SiteKind;
+  /** chunk 16 — where one species lays when it differs from the module's site and visual (ramshorn snails lay under water). */
+  layOf?(sp: SpeciesDefinition): { site: SiteKind; visual: Clutch['visual'] } | null;
   /** Extra anchors for scattered eggs. */
   extraSites: number;
   /** Clutch carried by the guardian (mouthbrooder): stage 'in_pouch', released by this module. */
@@ -232,7 +234,8 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
   const guardian = guardianOf(sp, m, f);
   const infertile = cfg.infertile?.(sp, tank) ?? null;
   const carried = !!cfg.carried && !!guardian;
-  const site = carried ? null : pickSite(tank, infertile ? 'rock' : cfg.site, `${f.id}:${hour.toFixed(1)}`, infertile ? 5 : cfg.extraSites);
+  const lay = cfg.layOf?.(sp) ?? null;
+  const site = carried ? null : pickSite(tank, infertile ? 'rock' : (lay?.site ?? cfg.site), `${f.id}:${hour.toFixed(1)}`, infertile ? 5 : cfg.extraSites);
   const cl = createClutch(state, {
     sp,
     tank,
@@ -241,7 +244,7 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
     hour,
     stage: carried ? 'in_pouch' : 'eggs',
     count: n,
-    visual: carried ? 'pouch' : infertile ? 'eggs_adhesive' : cfg.visual,
+    visual: carried ? 'pouch' : infertile ? 'eggs_adhesive' : (lay?.visual ?? cfg.visual),
     nextStageHour: hour + (infertile ? Math.max(48, b.incubationHours * 3) : b.incubationHours),
     anchor: site?.anchor,
     extraAnchors: site?.extra,

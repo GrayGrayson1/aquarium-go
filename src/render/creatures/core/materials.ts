@@ -95,7 +95,7 @@ export interface FishUniforms {
 
 const IRID_MODE = { body: 0, stripe: 1, scales: 2, back: 3 } as const;
 const SCALE_KIND = { cycloid: 0, fine: 1, ctenoid: 2, skin: 3, plates: 4 } as const;
-const MARK_MODE = { ellipse: 0, ring: 1, band_t: 2, band_y: 3, stripe: 4 } as const;
+const MARK_MODE = { ellipse: 0, ring: 1, band_t: 2, band_y: 3, stripe: 4, ring_thin: 5, wedge: 6 } as const;
 
 /** Build the per-individual uniform set from a plan + appearance. */
 export function createFishUniforms(plan: FishPlan, sampler: BodySampler, a: CreatureVisualParams): FishUniforms {

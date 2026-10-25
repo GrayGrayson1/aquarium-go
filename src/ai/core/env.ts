@@ -7,7 +7,9 @@ import type { Tank, DecorDef, Clutch, DecorAnchorTemplate } from '@/types';
 import { tankDims, decorAnchors, decorCollider, type TankDims } from '@/sim/tankSpace';
 import { hourOfDay } from '@/sim/time';
 import { substrateHeightAt } from '@/sim/aquascape/terrain';
-import { clamp, clamp01 } from './math';
+import { getSubstrateDef } from '@/data/catalog/substrates';
+import { clamp, clamp01, hashString } from './math';
+import { meshGap, rockShapeOf, type RockShape } from './rockshape'; // chunk 16
 
 export type AnchorKind = DecorAnchorTemplate['kind'];
 
@@ -31,6 +33,8 @@ export interface Collider {
   rise: number;
   /** Stands on the substrate: there is no way out underneath (see colliderSdfGrounded). */
   grounded: boolean;
+  /** chunk 16 — the rock as drawn inside this box (rockshape.ts), for the visuals that are modelled. */
+  shape?: RockShape;
 }
 
 // ───────────────────────────── decor solidity ─────────────────────────────
@@ -123,6 +127,9 @@ export interface Anchor {
   /** Where the decor puts it, before the clamp under the water surface: a level change re-clamps from this, so the
    * anchors of floating plants come back up when the tank is topped off. */
   base?: THREE.Vector3;
+  /** chunk 16 — carried by a living animal (its creature id; also the anchor's decorId): the 'host' anchor at a living
+   * anemone's crown, which moves with it. Kept in env.byKind only, not env.anchors (see anemone.ts syncLiveHosts). */
+  live?: string;
 }
 
 export interface ClutchInfo {
@@ -165,6 +172,14 @@ export interface TankEnv {
   daylight: number;
   /** Hour-of-day the tank lights come on. */
   dawnHour: number;
+  /** chunk 16 — hour-of-day the tank lights go off (NaN: no light schedule, it is always day). */
+  duskHour: number;
+  /** chunk 16 — the bed is sand an animal can bury itself in (fine grains, a couple of centimetres deep): wrasses
+   * sleep in it, conchs half-bury, Nassarius lie under it. Bare bottoms, gravel, pebbles and soil are not. */
+  sandBed: boolean;
+  /** chunk 16 — horizontal unit direction the tank's main current flows toward (along the length; fish that hold
+   * station face into it). The equipment layout is a render concern, so it is fixed per tank from its id. */
+  currentDir: THREE.Vector3;
   /** 0..1 water movement. */
   flow: number;
   oxygen: number;
@@ -218,6 +233,9 @@ export function createEnv(tankId: string): TankEnv {
     hourOfDay: 12,
     daylight: 1,
     dawnHour: 7,
+    duskHour: 22,
+    sandBed: false,
+    currentDir: new THREE.Vector3((hashString(tankId) & 1) === 0 ? 1 : -1, 0, 0),
     flow: 0.3,
     oxygen: 1,
     foodInWater: 0,
@@ -282,6 +300,7 @@ export function syncEnvStatic(env: TankEnv, tank: Tank, resolveDecor: DecorResol
   env.floorY = dims.substrateY;
   env.surfaceY = dims.waterY;
   env.environment = tank.environment;
+  env.sandBed = isSandBed(tank.substrate);
   buildHeightfield(env, tank);
   env.colliders.length = 0;
   env.anchors.length = 0;
@@ -315,6 +334,7 @@ export function syncEnvStatic(env: TankEnv, tank: Tank, resolveDecor: DecorResol
       rise: cy + hy - ground,
       grounded: cy - hy <= ground + 0.01,
     };
+    if (!soft) c.shape = rockShapeOf(inst, def) ?? undefined;
     env.colliders.push(c);
     if (sol.base) {
       // the solid crown / rhizome at the foot of a leafy plant (on the substrate, or on the rock/wood it grows on)
@@ -353,6 +373,18 @@ export function syncEnvStatic(env: TankEnv, tank: Tank, resolveDecor: DecorResol
   addExtras(env, tank, extras);
   env.hasHost = env.byKind.host.length > 0;
   return true;
+}
+
+/** Grains up to this size (mm) are sand an animal can dig into (fine sand, river sand, aragonite; not fine gravel). */
+const SAND_GRAIN_MAX_MM = 1.5;
+/** The thinnest bed (cm) a fish or snail can bury itself in. */
+const SAND_MIN_DEPTH_CM = 2;
+
+/** chunk 16 — is this substrate a sand bed an animal can bury itself in? */
+export function isSandBed(sub: Tank['substrate'] | undefined): boolean {
+  if (!sub || !(sub.depthCm >= SAND_MIN_DEPTH_CM)) return false;
+  const g = getSubstrateDef(sub.kind)?.grainMm;
+  return g !== undefined && g > 0 && g <= SAND_GRAIN_MAX_MM;
 }
 
 /** Append the equipment solids (and their holdfast points) after the decor colliders / anchors. */
@@ -488,6 +520,7 @@ export function syncEnvDynamic(
   const l = tank.lighting;
   env.daylight = l ? daylightAt(l.onHour, l.offHour, hour) : 1;
   env.dawnHour = l?.onHour ?? 7;
+  env.duskHour = l ? l.offHour : NaN;
   env.flow = clamp01(flowOf(tank));
   env.oxygen = Number.isFinite(tank.water?.oxygen) ? tank.water.oxygen : 1;
   env.foodInWater = Math.max(0, tank.water?.foodInWater ?? 0);
@@ -796,6 +829,73 @@ export function groundHeightAt(env: TankEnv, x: number, z: number, includeDecor:
 export function pointFree(env: TankEnv, x: number, y: number, z: number, rad: number): boolean {
   for (const c of env.colliders) {
     if (!c.hard) continue;
+    if (colliderSdf(c, x, y, z) < rad) return false;
+  }
+  return true;
+}
+
+/**
+ * chunk 16 — how far inside its box, behind the box-surface point p (outward normal n), the rock as drawn begins: 0 for
+ * decor that fills its box, Infinity where there is no drawn rock behind p (over the open middle of an arch, off the
+ * flank of a dome). See rockshape.ts.
+ */
+export function surfaceGap(c: Collider, px: number, py: number, pz: number, nx: number, ny: number, nz: number): number {
+  if (!c.shape) return 0;
+  return meshGap(c.shape, px, py, pz, nx, ny, nz, 2 * Math.max(c.hx, c.hy, c.hz));
+}
+
+/**
+ * chunk 16 — surfaceGap for something resting on the box surface at p with a foot (or belly) `footR` wide: Infinity
+ * unless there is drawn rock behind p and behind four points round it (a foot over the edge of a dome, or half over the
+ * open middle of an arch, finds no hold), and the rock behind them is about as deep as behind p (within `tol`).
+ */
+export function restingGap(c: Collider, px: number, py: number, pz: number, nx: number, ny: number, nz: number, footR: number, tol: number): number {
+  const g = surfaceGap(c, px, py, pz, nx, ny, nz);
+  if (!c.shape || !Number.isFinite(g)) return g;
+  // two tangents of the surface
+  let tx = -nz;
+  let ty = 0;
+  let tz = nx;
+  let tl = Math.hypot(tx, tz);
+  if (tl < 1e-3) {
+    tx = 1;
+    tz = 0;
+    tl = 1;
+  }
+  tx /= tl;
+  tz /= tl;
+  const bx = ny * tz - nz * ty;
+  const by = nz * tx - nx * tz;
+  const bz = nx * ty - ny * tx;
+  for (let k = 0; k < 4; k++) {
+    const sa = k === 0 ? 1 : k === 1 ? -1 : 0;
+    const sb = k === 2 ? 1 : k === 3 ? -1 : 0;
+    const qx = px + (tx * sa + bx * sb) * footR;
+    const qy = py + (ty * sa + by * sb) * footR;
+    const qz = pz + (tz * sa + bz * sb) * footR;
+    const gk = surfaceGap(c, qx, qy, qz, nx, ny, nz);
+    if (!Number.isFinite(gk) || Math.abs(gk - g) > tol) return Infinity;
+  }
+  return g;
+}
+
+const _dn = new THREE.Vector3();
+
+/**
+ * chunk 16 — how much deeper than its collider box, under the point p, the rock as drawn begins (along the box's normal
+ * from the box surface point nearest p): 0 for decor that fills its box, Infinity where no drawn rock lies behind it.
+ */
+export function drawnDepth(c: Collider, px: number, py: number, pz: number): number {
+  if (!c.shape) return 0;
+  const d = colliderSdfGrounded(c, px, py, pz);
+  colliderNormalGrounded(c, px, py, pz, _dn);
+  return surfaceGap(c, px - _dn.x * d, py - _dn.y * d, pz - _dn.z * d, _dn.x, _dn.y, _dn.z);
+}
+
+/** pointFree, not counting the hard decor `except` (the rock something rests on, inside its box: rockshape.ts). */
+export function pointFreeExcept(env: TankEnv, x: number, y: number, z: number, rad: number, except: string | null): boolean {
+  for (const c of env.colliders) {
+    if (!c.hard || c.decorId === except) continue;
     if (colliderSdf(c, x, y, z) < rad) return false;
   }
   return true;

@@ -54,6 +54,8 @@ export const SHRIMP_SPECS: Record<string, ShrimpSpec> = {
   cleaner_shrimp: { id: 'cleaner_shrimp', kind: 2, antLen: 1.55, legLen: 1.35, rostrum: 0.12, hump: 0.65, translucent: false, bodyH: 0.88 },
   peppermint_shrimp: { id: 'peppermint_shrimp', kind: 3, antLen: 1.3, legLen: 1.25, rostrum: 0.11, hump: 0.72, translucent: true, bodyH: 0.88 },
   dwarf_crayfish: { id: 'dwarf_crayfish', kind: 4, antLen: 0.8, legLen: 0.72, rostrum: 0.07, hump: 0.25, translucent: false, bodyH: 0.95, bodyW: 1.35, claw: 0.32, eye: 0.9, stalk: 0.8, scale: 0.8 },
+  // chunk 16 — ghost shrimp: the glassy kind, slimmer and longer-snouted, near-invisible with sparse dots
+  ghost_shrimp: { id: 'ghost_shrimp', kind: 1, antLen: 1.1, legLen: 1.05, rostrum: 0.15, hump: 0.55, translucent: true, bodyH: 0.82 },
   peacock_mantis_shrimp: { id: 'peacock_mantis_shrimp', kind: 5, antLen: 0.42, legLen: 0.45, rostrum: 0.03, hump: 0.08, translucent: false, bodyH: 0.62, bodyW: 1.55, raptorial: true, eye: 1.25, stalk: 2.1, scale: 1.9 },
 };
 
@@ -897,6 +899,7 @@ export const createCleanerShrimp = makeShrimpFactory(SHRIMP_SPECS.cleaner_shrimp
 export const createPeppermintShrimp = makeShrimpFactory(SHRIMP_SPECS.peppermint_shrimp);
 export const createDwarfCrayfish = makeShrimpFactory(SHRIMP_SPECS.dwarf_crayfish);
 export const createMantisShrimp = makeShrimpFactory(SHRIMP_SPECS.peacock_mantis_shrimp);
+export const createGhostShrimp = makeShrimpFactory(SHRIMP_SPECS.ghost_shrimp);
 
 void color;
 void (null as unknown as Mask);

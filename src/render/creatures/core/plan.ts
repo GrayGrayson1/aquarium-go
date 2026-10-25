@@ -10,7 +10,7 @@
  * `yn` is the normalised height on the flank: −1 = belly edge, 0 = body axis, +1 = back.
  */
 import type { Curve } from './math';
-import type { PatternKind } from '@/types';
+import type { CreatureVisualParams, PatternKind } from '@/types';
 
 /** Colour reference: a slot from the creature's appearance, a named constant, or a literal CSS colour. */
 export type ColorRef =
@@ -106,7 +106,11 @@ export interface MotionSpec {
   flick?: number;
 }
 
-export type MarkMode = 'ellipse' | 'ring' | 'band_t' | 'band_y' | 'stripe';
+/**
+ * 'wedge' (chunk 16): a triangle whose front edge spans the full height at t − rt and narrows to a point at t + rt; its
+ * `rot` slot is the point's height instead of a rotation (−1..1 of ryn), as for the harlequin rasbora's black wedge.
+ */
+export type MarkMode = 'ellipse' | 'ring' | 'band_t' | 'band_y' | 'stripe' | 'ring_thin' | 'wedge';
 
 /** A soft elliptical colour mark in body space (t, yn), e.g. eye mask, peduncle spot, face stripe. */
 export interface Mark {
@@ -330,4 +334,10 @@ export interface FishPlan {
   motion: MotionSpec;
   look: LookSpec;
   pickRadius?: number;
+  /**
+   * chunk 16 — colours this individual wears instead of its genetic ones (young colours, a sex's colours): merged
+   * over the appearance when the fish is built. TankCreatures and the portraits rebuild on a change of life stage or
+   * sex, so a fish changes colour as it grows up or changes sex.
+   */
+  recolor?: Partial<CreatureVisualParams>;
 }

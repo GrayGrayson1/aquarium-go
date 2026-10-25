@@ -471,7 +471,13 @@ describe('chunk 14: the lockstep holds with the pool (SHARE-024)', () => {
   });
 
   it('two game days at 10× with the pool in play: allowances topped up, requests, gifts, a second joiner; every fingerprint matches', () => {
-    const h = three({ tier: 'allowance', allowance: 60 });
+    // The loop always holds one whole game day (it runs until the second day boundary). At 10× that day is 9 or 10
+    // rounds of an $8 pack (at least $72), and the whole run (at most 20 rounds) approves and gives at most $37 (asks
+    // of $7 every fifth round, $3 gifts every seventh), so an allowance of $30 must run out in it. With $60 the two
+    // sides were within a few dollars, and a refusal came only if the fixture's unfed animals began starving late in the
+    // loop (the room drops to 1× for that, so a few more rounds): before chunk 16 one did, after it none did and nothing
+    // was refused. At 1× a day holds ten times the rounds, each still $8 against under $2 of asks and gifts.
+    const h = three({ tier: 'allowance', allowance: 30 });
     const { food } = foodPack(h.room.state);
     h.cmd('o', { k: 'setApprover', member: 's', name: 'Sam', on: true });
     h.cmd('o', { k: 'setSpeed', speed: 10 });

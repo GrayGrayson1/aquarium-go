@@ -167,6 +167,22 @@ void agcSurface(inout AgcSurf s){
     return;
   }
   vec3 col = legs;
+  // chunk 16 — the scarlet reef hermit (uAgcF1.x = 1): plain red legs, deep red antennae, yellow eyestalks and face
+  float scarlet = uAgcF1.x;
+  if (scarlet > 0.5) {
+    float q = vAgcMask.y;
+    if (part > 4.5 && part < 5.5) col = mix(mix(legs, legs2, q * 0.5), vec3(0.06), smoothstep(0.93, 0.98, q));
+    else if (part > 3.5 && part < 4.5) col = mix(mix(legs, legs2, 0.3), legs2 * 0.6, smoothstep(0.84, 0.96, q));
+    else if (part > 2.5 && part < 3.5) col = legs2;
+    else if (part > 1.5 && part < 2.5) col = orange;
+    else col = mix(orange, legs, 0.45);
+    s.albedo = col;
+    s.rough = 0.4;
+    s.clear = 0.6;
+    s.sss = 0.2;
+    s.sssCol = legs;
+    return;
+  }
   if (part > 4.5 && part < 5.5) {
     // blue legs, white + orange bands at the joints
     float q = vAgcMask.y;
@@ -195,26 +211,28 @@ void agcSurface(inout AgcSurf s){
 }
 `;
 
-export const createHermitCrab: CreatureFactory = (args) => {
+/** chunk 16 — the scarlet reef hermit uses the same crab and shell in its own colours. */
+const makeHermitFactory = (style: { scarlet: boolean; name: string }): CreatureFactory => (args) => {
   const { appearance: ap, fx, lod } = args;
   const key = `hermit|${lod}`;
   const tpl = acquire(key, () => buildHermit(lod), (t) => t.geo.dispose());
   const eyeGeo = acquireEyeGeometry(lod);
   const root = new THREE.Group();
-  root.name = 'hermit_crab';
+  root.name = style.name;
   const inner = new THREE.Group();
   root.add(inner);
   const rigI = instantiateRig(tpl.rig);
   for (const b of rigI.roots) inner.add(b);
   const u = createCritterUniforms(fx);
   applyAppearance(u, ap, args.creature);
+  u.uAgcF1.value.set(style.scarlet ? 1 : 0, 0, 0, 0);
   u.uAgcV1.value.set(tpl.aperture.x - 0.03, tpl.aperture.y, tpl.aperture.z, 0);
   const mat = createCritterMaterial({ name: 'hermit', fx, u, surface: HERMIT_SURFACE, vertex: HERMIT_VERTEX, params: { side: THREE.DoubleSide, roughness: 0.5, clearcoat: 0.5, clearcoatRoughness: 0.3 } });
   const mesh = makeSkinned(tpl.geo, mat, rigI, 1.8);
   mesh.castShadow = lod === 0;
   mesh.receiveShadow = lod < 2;
   inner.add(mesh);
-  const eyeMat = createEyeMaterial(fx, u, { iris: new THREE.Color(0.02, 0.02, 0.02), pupil: new THREE.Color(0, 0, 0), sclera: new THREE.Color(0.03, 0.03, 0.03), ring: new THREE.Color(0.1, 0.1, 0.12), irisAngle: 1.3, pupilAngle: 0.5, catchlight: 1.2 });
+  const eyeMat = createEyeMaterial(fx, u, { iris: style.scarlet ? new THREE.Color(0.35, 0.42, 0.08) : new THREE.Color(0.02, 0.02, 0.02), pupil: new THREE.Color(0, 0, 0), sclera: new THREE.Color(0.03, 0.03, 0.03), ring: new THREE.Color(0.1, 0.1, 0.12), irisAngle: 1.3, pupilAngle: 0.5, catchlight: 1.2 });
   const crab = rigI.byName.crab;
   const crabRest = new THREE.Vector3(...tpl.rig.bones[2].pos);
   const eyeScale = 0.017;
@@ -232,7 +250,7 @@ export const createHermitCrab: CreatureFactory = (args) => {
     if (eg) for (const e of eyes) e.geometry = eg;
   }, true);
   root.userData.groundOffset = GROUND;
-  root.userData.speciesVisual = 'hermit_crab';
+  root.userData.speciesVisual = style.name;
   const B = rigI.byName;
   const seed = ((ap.patternSeed ?? 13) % 1000) / 1000;
   const st = { walk: 0, walkW: 0, pick: 0, pickW: 0, retreat: 0 };
@@ -279,3 +297,6 @@ export const createHermitCrab: CreatureFactory = (args) => {
     },
   } satisfies CreatureObject;
 };
+
+export const createHermitCrab = makeHermitFactory({ scarlet: false, name: 'hermit_crab' });
+export const createScarletHermitCrab = makeHermitFactory({ scarlet: true, name: 'scarlet_hermit_crab' });

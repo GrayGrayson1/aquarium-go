@@ -22,6 +22,25 @@ export function stateForSaving(g: GameState): GameState {
   return { ...g, clock: { ...g.clock, speed: resume as GameState['clock']['speed'] } };
 }
 
+/**
+ * Chunk 15 (ADR-0051 decision 3) — worlds the scenario lab built (and fixtures picked in the dev panel): never written
+ * over the player's autosave, by the timed autosave or any button that saves to it ("Save now", "Save and return to
+ * title", the error screens, opening a shared shop, the online save). A save to a numbered slot still works. In memory
+ * only: a reload starts a new session, whose scenario gets a new save id.
+ */
+const autoRefused = new Set<string>();
+export const SCENARIO_AUTOSAVE_REFUSED = 'A scenario is never saved over your autosave. Save it to a slot in Settings › Saves, or keep its recipe in the lab.';
+
+/** Never write the world with this save id to the autosave slot. */
+export function neverAutosave(saveId: string): void {
+  autoRefused.add(saveId);
+}
+
+/** Is this world kept out of the autosave slot (a scenario)? */
+export function autosaveRefused(saveId: string | undefined): boolean {
+  return !!saveId && autoRefused.has(saveId);
+}
+
 export interface SaveCurrentOptions {
   /** Resolve background tanks' pending sim debt first so the save reflects "now" (default true). */
   flush?: boolean;
@@ -41,6 +60,10 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
   if (game.isShowcase) return { ok: false, slot, message: 'Showcase worlds are not saved.' };
   // chunk 13 (SHARE-011): a shared shop saves itself on the server; refused before the flush, which would write it
   if (isSharedShop(game)) return { ok: false, slot, message: SHARED_SAVE_REFUSED };
+  if (parseSlotRef(slot).slot === 'auto' && autosaveRefused(game.saveId)) {
+    if (opts.toast) useUI.getState().toast(SCENARIO_AUTOSAVE_REFUSED, 'info');
+    return { ok: false, slot, code: 'scenario', message: SCENARIO_AUTOSAVE_REFUSED };
+  }
   if (opts.flush !== false) {
     try {
       mutateFast((d) => {
@@ -80,6 +103,7 @@ export async function saveCurrentGame(slot = 'auto', opts: SaveCurrentOptions = 
 export function saveCurrentGameSync(slot = 'auto'): boolean {
   const { game } = useGame.getState();
   if (!game || game.isShowcase || isSharedShop(game)) return false;
+  if (parseSlotRef(slot).slot === 'auto' && autosaveRefused(game.saveId)) return false; // chunk 15: a scenario
   try {
     mutateFast((d) => {
       flushSimDebt(d);

@@ -5,15 +5,20 @@
 import * as THREE from 'three';
 import type { Agent } from './agent';
 import type { AIWorld } from './world';
-import { TAU, basisToEuler, clamp, clamp01, damp, rdur, rnd, rrange, wrapAngle } from './math';
+import { TAU, basisToEuler, clamp, clamp01, damp, rdur, rnd, rrange, smoothstep, wrapAngle } from './math';
+import { anemoneCosmetics } from './anemone'; // chunk 16, wave B
+import { rockSleep } from './sand'; // chunk 16, wave B
 
 const _f = new THREE.Vector3();
 const _u = new THREE.Vector3();
 const E = { yaw: 0, pitch: 0, roll: 0 };
 
-const INDEPENDENT_EYES = new Set(['pea_puffer', 'seahorse', 'mantis_shrimp', 'dragonet', 'goby_burrow']);
-/** Species that visibly fade into night colours while asleep (neon/cardinal stripes, foxface mottling, discus). */
-const NIGHT_FADE = new Set(['schooling_small', 'rabbitfish', 'cichlid_discus', 'chromis', 'tang', 'angelfish_dwarf']);
+// (chunk 16: wrasses swivel each eye on its own while they pick over the rock and sand; so do a perched blenny and a
+// watching hawkfish)
+const INDEPENDENT_EYES = new Set(['pea_puffer', 'seahorse', 'mantis_shrimp', 'dragonet', 'goby_burrow', 'wrasse', 'blenny', 'hawkfish']);
+/** Species that visibly fade into night colours while asleep (neon/cardinal stripes, foxface mottling, discus; a wrasse
+ * sleeping in the rockwork of a tank without sand). */
+const NIGHT_FADE = new Set(['schooling_small', 'rabbitfish', 'cichlid_discus', 'chromis', 'tang', 'angelfish_dwarf', 'wrasse', 'damsel', 'cichlid_dwarf']);
 
 export function cosmetics(a: Agent, w: AIWorld, dt: number): void {
   const rt = a.rt;
@@ -45,6 +50,12 @@ export function cosmetics(a: Agent, w: AIWorld, dt: number): void {
     // tail-beat frequency grows with speed (≈ U / 0.7L) — small fish beat faster than big ones
     const sizeK = clamp(0.06 / Math.max(L, 0.01), 0.6, 1.5);
     f = (0.55 + 1.35 * speedBL) * set.tailFreq * Math.sqrt(sizeK);
+    if (set.labriform) {
+      // chunk 16 — rowing on the pectorals: at cruise the tail hardly beats; it takes over only in a burst
+      const drive = tailDrive(a);
+      f *= 0.3 + 0.7 * drive;
+      rt.ai.tailDrive = drive;
+    }
   }
   f = Math.min(f, 11) * (1 + party * 0.25);
   rt.swimPhase = (rt.swimPhase + TAU * f * dt) % (TAU * 512);
@@ -89,6 +100,7 @@ export function cosmetics(a: Agent, w: AIWorld, dt: number): void {
   else if (act === 'guard') flareT = 0.45;
   else if (act === 'visit_cleaner' && a.actPhase >= 1) flareT = 0.7;
   else if (act === 'startle') flareT = 0.6;
+  else if (act === 'chase') flareT = 1; // chunk 16 — fins up as it drives an intruder off
   else if (act === 'hunt' && a.setId === 'lionfish') flareT = 1;
   if (a.setId === 'dartfish' && Math.sin(t * 2.3 + a.noiseOff) > 0.93) flareT = 0.9; // firefish dorsal flick
   if (act === 'sleep') flareT *= 0.4;
@@ -101,6 +113,8 @@ export function cosmetics(a: Agent, w: AIWorld, dt: number): void {
   if (a.setId === 'pea_puffer') flutT = Math.max(flutT, 0.65);
   if (a.loco === 'upright') flutT = a.pose === 'hitched' ? 0.35 : 0.9;
   if (act === 'guard') flutT = 1;
+  // chunk 16 — a labriform swimmer rows with its pectorals: they beat hardest at cruise, and fold in a tail-driven burst
+  if (set.labriform && a.loco === 'swim') flutT = Math.max(flutT, clamp01((0.45 + 0.5 * Math.min(1, speedBL / Math.max(0.2, a.sp.behaviorTraits.cruiseSpeed))) * (1 - 0.7 * tailDrive(a))));
   if (act === 'sleep' || act === 'rest') flutT *= 0.4;
   if (a.grounded && a.loco !== 'upright') flutT *= 0.5;
   a.flutter = damp(a.flutter, clamp01(flutT), 5, dt);
@@ -167,7 +181,8 @@ export function cosmetics(a: Agent, w: AIWorld, dt: number): void {
 
   // ── appendages (shrimp picking, claws, feelers, raptorial strike) ──
   a.appendage = Math.max(0, a.appendage - dt * 3.5);
-  if ((a.setId === 'crayfish' || a.setId === 'hermit_crab') && t >= a.appendageNext) {
+  // (chunk 16: a conch's eyestalks twitch about the same way)
+  if ((a.setId === 'crayfish' || a.setId === 'hermit_crab' || a.setId === 'conch' || a.setId === 'crab') && t >= a.appendageNext) {
     a.appendage = Math.max(a.appendage, 0.7);
     a.appendageNext = t + rdur(a, 9, 0.6);
   }
@@ -190,8 +205,40 @@ export function cosmetics(a: Agent, w: AIWorld, dt: number): void {
   a.color = damp(a.color, a.dead ? 0.3 : clamp(col, 0.25, 1), 1.5, dt);
   rt.colorIntensity = a.color;
 
+  // chunk 16 — a lurching crawler's vault (0 between vaults, 1 at the top of one)
+  if (set.lurch) rt.ai.lurch = a.lurch;
+  // ── chunk 16, wave B ──
+  if (set.anemone) anemoneCosmetics(a, w, dt);
+  if (a.setId === 'urchin') {
+    // the debris it holds on its spines: a fixed amount for each individual (a few carry nothing), held up higher in
+    // bright light (urchins cover up against it), changing over minutes
+    const k = (a.noiseOff * 6.13) % 1;
+    const want = k < 0.2 ? 0 : (0.45 + 0.55 * k) * (0.6 + 0.4 * env.daylight);
+    a.carry = a.carry < 0 ? want : damp(a.carry, want, 0.02, dt);
+    rt.ai.carry = a.carry;
+  }
+  if (a.setId === 'crab') rt.ai.sideways = a.side * a.sideSign;
+  if (a.setId === 'cichlid_dwarf') {
+    a.sift = Math.max(0, a.sift - dt * 2.5);
+    rt.ai.sift = a.sift;
+  }
+  if (a.setId === 'wrasse' && rockSleep(a)) {
+    // a six-line wrasse asleep in the rock wraps itself in a mucus cocoon (it takes a while; gone soon after it wakes)
+    const inRock = act === 'sleep' && a.actPhase >= 1 && !a.sandMode;
+    a.cocoon = inRock ? Math.min(1, a.cocoon + dt / 40) : Math.max(0, a.cocoon - dt * 0.25);
+    rt.ai.cocoon = a.cocoon;
+  }
+
   rt.pose = a.pose;
   rt.behavior = a.behavior;
+}
+
+/** 0..1 how much of a labriform swimmer's thrust comes from its tail: none at cruise, all of it in a full burst. */
+function tailDrive(a: Agent): number {
+  const tr = a.sp.behaviorTraits;
+  const cruise = Math.max(0.05, tr.cruiseSpeed);
+  const burst = Math.max(cruise * 1.5, tr.burstSpeed);
+  return clamp01(((a.speed + a.drift.length() * 0.6) / Math.max(a.L, 1e-3) - cruise * 1.3) / Math.max(0.1, burst * 0.6 - cruise * 1.3));
 }
 
 /** Final orientation (yaw/pitch/roll) from the agent's basis. */
@@ -209,10 +256,20 @@ export function writeOrientation(a: Agent, w: AIWorld, dt: number): void {
     _f.copy(a.fwd).addScaledVector(_u, -a.fwd.dot(_u));
     if (_f.lengthSq() < 1e-8) _f.copy(a.fwd);
     _f.normalize();
+    // chunk 16 — an emerald crab in a hurry scuttles sideways: the body turns a quarter round to the way it goes
+    if (a.setId === 'crab') {
+      const cruise = Math.max(0.05, a.sp.behaviorTraits.cruiseSpeed);
+      const want = a.dead ? 0 : smoothstep(cruise * 1.15, cruise * 1.9, a.speed / Math.max(a.L, 1e-3));
+      // (which side leads is chosen as a dash starts and kept to its end)
+      if (want > 0.05 && a.sideSign === 0) a.sideSign = rnd(a) < 0.5 ? 1 : -1;
+      else if (want <= 0.05 && a.side < 0.02) a.sideSign = 0;
+      a.side = damp(a.side, want, want > a.side ? 7 : 2.5, dt);
+      if (a.side > 1e-3 && a.sideSign !== 0) _f.applyAxisAngle(_u, a.side * a.sideSign * Math.PI * 0.5);
+    }
     basisToEuler(_f, _u, rt.yaw, E);
     rt.yaw = E.yaw;
-    // crawlers lift the head a little when inspecting / walking on the floor
-    const lift = a.loco === 'walk' || a.ctrl.burrow > 0 ? a.ctrl.pitchBias : 0;
+    // crawlers lift the head a little when inspecting / walking on the floor (a conch's shell tips up as it vaults)
+    const lift = (a.loco === 'walk' || a.ctrl.burrow > 0 ? a.ctrl.pitchBias : 0) + a.lurch * 0.14;
     rt.pitch = E.pitch + lift;
     // curious axolotl head tilt at the glass
     const tilt = a.setId === 'axolotl' && a.act === 'inspect_glass' && a.actPhase >= 1 ? Math.sin(w.time * 0.9 + a.noiseOff) * 0.22 : 0;

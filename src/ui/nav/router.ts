@@ -34,7 +34,7 @@ import { toastMark, reportLoadFailure } from '../screens/loadFeedback';
 import { useTankCardTab } from '../cards/tankCardTab';
 import { urlFixtureName } from '@/game/useAutosave';
 import { useShopFilters } from '../panels/market/shopFilters';
-import { urlSandboxName } from '@/state/devTools'; // chunk 7 (REL-019)
+import { urlSandboxName, urlScenarioBoot } from '@/state/devTools'; // chunk 7 (REL-019); chunk 15 (the scenario lab)
 import { socialAvailable } from '../online/mode'; // lane:social (chunk 6; chunk 8, REL-025)
 import {
   formatRoute,
@@ -394,7 +394,8 @@ function captureBoot(): BootCapture {
   }
   const hash = location.hash === '#' ? '' : location.hash;
   const returning = type === 'reload' || type === 'back_forward';
-  const urlBoot = !!urlFixtureName(location.search) || urlSandboxName(location.search) !== null; // (a fixture or sandbox that doesn't boot is an ordinary page)
+  // (a fixture or sandbox that doesn't boot is an ordinary page; chunk 15: so is a scenario address on the live site)
+  const urlBoot = !!urlFixtureName(location.search) || urlSandboxName(location.search) !== null || urlScenarioBoot(location.search);
   const parsed = hash ? parseNav(hash) : null;
   const loads = !!hash && !urlBoot && (returning || (!!parsed && parsed.route.kind !== 'home'));
   return { hash, returning, urlBoot, loads, used: useUI.getState().screen !== 'boot' };

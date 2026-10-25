@@ -1,11 +1,13 @@
 {
   "name": "aquarium-go",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "description": "Aquarium Go — a living aquarium tycoon: raise individual creatures, build beautiful ecosystems, breed, sell and exhibit.",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
+    "lab": "vite --host 127.0.0.1 --port 5173 --open /?lab=1",
+    "scenario": "vite-node scripts/scenario.ts",
     "build": "tsc -b && vite build",
     "build:server": "vite build --config vite.server.config.ts && vite-node scripts/shared-stub-shops.ts",
     "server": "node dist-server/main.js",

@@ -9,6 +9,7 @@ import { livebearerModule } from './systems/livebearer';
 import { shrimpBerriedModule, shrimpLarvalMarineModule } from './systems/shrimp';
 import { eggScatterModule, substrateSpawnerModule, caveSpawnerModule, mouthbrooderModule, snailClutchModule, genericEggLayerModule } from './systems/spawners';
 import { fragmentationModule, notInGameModule } from './systems/inert';
+import { fissionModule } from './systems/fission';
 
 let MODULES: Record<BreedingSystemId, BreedingModule> | null = null;
 
@@ -29,6 +30,7 @@ function modules(): Record<BreedingSystemId, BreedingModule> {
       mouthbrooder: mouthbrooderModule,
       egg_layer_generic: genericEggLayerModule,
       fragmentation: fragmentationModule,
+      fission: fissionModule,
       not_in_game: notInGameModule,
     };
   }

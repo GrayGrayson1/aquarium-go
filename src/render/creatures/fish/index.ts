@@ -37,6 +37,26 @@ import { plan as foxface_rabbitfish } from './foxface_rabbitfish';
 import { plan as mandarin_dragonet } from './mandarin_dragonet';
 import { plan as dwarf_lionfish } from './dwarf_lionfish';
 import { plan as miniatus_grouper } from './miniatus_grouper';
+// chunk 16 wave A: a friend's reef
+import { plan as emperor_angelfish } from './emperor_angelfish';
+import { plan as sailfin_tang } from './sailfin_tang';
+import { plan as chocolate_tang } from './chocolate_tang';
+import { plan as lyretail_anthias } from './lyretail_anthias';
+import { plan as melanurus_wrasse } from './melanurus_wrasse';
+import { plan as maroon_clownfish } from './maroon_clownfish';
+// chunk 16 wave B: reef favourites
+import { plan as flame_angelfish } from './flame_angelfish';
+import { plan as sixline_wrasse } from './sixline_wrasse';
+import { plan as lawnmower_blenny } from './lawnmower_blenny';
+import { plan as flame_hawkfish } from './flame_hawkfish';
+import { plan as yellowtail_damselfish } from './yellowtail_damselfish';
+// chunk 16 wave C: freshwater favourites
+import { plan as freshwater_angelfish } from './freshwater_angelfish';
+import { plan as dwarf_gourami } from './dwarf_gourami';
+import { platyPlan, swordtailPlan } from './xiphophorus';
+import { plan as german_blue_ram } from './german_blue_ram';
+import { plan as zebra_danio } from './zebra_danio';
+import { plan as harlequin_rasbora } from './harlequin_rasbora';
 // lane:brackish — estuary species
 import { figureEightPufferPlan } from './figure_eight_puffer';
 import { plan as bumblebee_goby } from './bumblebee_goby';
@@ -76,6 +96,27 @@ reg('foxface_rabbitfish', foxface_rabbitfish);
 reg('mandarin_dragonet', mandarin_dragonet);
 reg('dwarf_lionfish', dwarf_lionfish);
 reg('miniatus_grouper', miniatus_grouper);
+// chunk 16 wave A
+reg('emperor_angelfish', emperor_angelfish);
+reg('sailfin_tang', sailfin_tang);
+reg('chocolate_tang', chocolate_tang);
+reg('lyretail_anthias', lyretail_anthias);
+reg('melanurus_wrasse', melanurus_wrasse);
+reg('maroon_clownfish', maroon_clownfish);
+// chunk 16 wave B
+reg('flame_angelfish', flame_angelfish);
+reg('sixline_wrasse', sixline_wrasse);
+reg('lawnmower_blenny', lawnmower_blenny);
+reg('flame_hawkfish', flame_hawkfish);
+reg('yellowtail_damselfish', yellowtail_damselfish);
+// chunk 16 wave C
+reg('freshwater_angelfish', freshwater_angelfish);
+reg('dwarf_gourami', dwarf_gourami);
+reg('platy', platyPlan);
+reg('swordtail', swordtailPlan);
+reg('german_blue_ram', german_blue_ram);
+reg('zebra_danio', zebra_danio);
+reg('harlequin_rasbora', harlequin_rasbora);
 // lane:brackish
 reg('figure_eight_puffer', figureEightPufferPlan);
 reg('bumblebee_goby', bumblebee_goby);

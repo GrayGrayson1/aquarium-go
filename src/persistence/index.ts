@@ -50,7 +50,7 @@ export {
   type SaveSlot,
   type SaveGameOptions,
 } from './slots';
-export { saveCurrentGame, saveCurrentGameSync, slotLabel, stateForSaving, type SaveCurrentOptions } from './session';
+export { saveCurrentGame, saveCurrentGameSync, slotLabel, stateForSaving, neverAutosave, autosaveRefused, SCENARIO_AUTOSAVE_REFUSED, type SaveCurrentOptions } from './session';
 export {
   loadAndResume,
   resumeState,

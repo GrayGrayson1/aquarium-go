@@ -146,7 +146,12 @@ describe('breeding: clownfish protandrous hierarchy', () => {
   }
 
   it('exactly one female emerges; when she is removed the top-ranked male transitions', () => {
-    const { state, home, coral, nemo, fish } = clownState(801);
+    const { state, home, tango, coral, nemo, fish } = clownState(801);
+    // Rank follows size, temperament and age. Tango (the starter, younger and set to 8 cm) used to outgrow Nemo (8.5 cm)
+    // over the first five days on whatever size and temperament potentials the stream gave them, and then took the
+    // female's place instead (12 of 30 seeds after chunk 16). With the same potentials and age, Nemo stays the larger.
+    for (const f of fish) Object.assign(f.genome.potentials, { size: 50, temperament: 50 });
+    tango.bornHour = nemo.bornHour;
     const temps = { [home.id]: 26 };
     run(state, 24 * 5, { temps });
     expect(fish.filter((f) => f.reproRole === 'female')).toHaveLength(1);

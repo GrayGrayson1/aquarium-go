@@ -474,3 +474,27 @@ link.
 `window.__AQ.social` (where the tools are allowed) adds, for the stub: `setOwner(on)`, `pushFriendRequest(name)`,
 `setCloud(meta, text)` (another device writes the online save), `cloud()` (the online save, unpacked),
 `cloudSyncNow()` and `cloudCheck()`.
+
+## The scenario lab (chunk 15; ADR-0051; docs/SCENARIOS.md; LAB-004, LAB-005)
+
+| test id | element |
+|---|---|
+| `lab-root` · `lab-close` | The lab (a developer tool, only where the tools are allowed) and its close button |
+| `lab-preset-<id>` · `lab-mine-<slug>` | A built-in preset (`ammonia-crisis` …) and one kept in this browser (its name as a slug) |
+| `lab-save` · `lab-duplicate` · `lab-delete` | Keep the recipe under its name; a copy to edit; delete a kept one |
+| `lab-tab-setup` · `lab-tab-tanks` · `lab-tab-business` · `lab-tab-json` | The editor's tabs |
+| `lab-name` · `lab-base` · `lab-money` · `lab-facility` · `lab-warmup` · `lab-speed-<0\|1\|3\|10>` | Setup's fields |
+| `lab-unlocks` · `lab-research` · `lab-guide` · `lab-food` · `lab-open-public` · `lab-foodroom` · `lab-manual` | Setup's switches |
+| `lab-add-tank` · `lab-tank-<i>` · `lab-tank-<i>-name` · `-size` · `-water` · `-cycled` · `-remove` · `-water-<value>` · `-problem-<kind>-<off\|stuck_on>` · `-add-animal` · `-add-young` | The tank list and a tank's editor |
+| `lab-tank-<i>-animal-<k>` · `-species` · `-count` · `-morph` · `-prismatic` · `-hunger` · `-breed` · `-names` | An animal group in a tank |
+| `lab-add-staff` · `lab-add-offer` · `lab-add-listing` · `lab-listing-<i>-animals` | Shop & market |
+| `lab-json` · `lab-json-error` · `lab-json-copy` · `lab-import` (the file input) · `lab-export` · `lab-capture` | The JSON tab |
+| `lab-counts` · `lab-issues` · `lab-issue` (`data-level` error, warning or note) | What it builds and the problems |
+| `lab-msg` · `lab-copy-link` · `lab-build` | The footer: its message line, Copy link, Build and play |
+| `lab-badge` · `lab-restart` · `lab-badge-open` | In the game while a scenario plays: the badge, Start again, back to the lab |
+| `title-lab` | The title screen's Scenario lab (with Developer tools on) |
+| `dev-lab-open` · `dev-lab-restart` · `dev-fixture-select` · `dev-fixture-load` | The dev panel's Scenarios & fixtures |
+
+`window.__AQ.scenario` (where the tools are allowed; each call resolves): `presets()`, `recipe(name)`,
+`validate(recipe)`, `play(recipe | name)`, `restart()`, `capture(name?)`, `run(recipe | name, hours)`,
+`link(recipe | name)`, `current()`, `open()`, `close()`.

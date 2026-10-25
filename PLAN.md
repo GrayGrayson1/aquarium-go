@@ -31,12 +31,17 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    released** (2026-10-21, the owner: "test it and then release"; see "Releases"): GitHub Pages, the Render address and
    the shop server, all from `main`. **Next:** the owner and their daughter play a shared shop (the owner: "I'll have to
    test in a sec"); the opening card's back button from the title screen reuses the existing "Title" (not yet confirmed
-   by the owner). **Chunk 14, shared shops' permission tiers and money pool** (the owner, 2026-10-21: "Within CNVS make Marshall do
-   it … as close to one-to-one as we talked about, as far as being a finished product"; ADR-0043 decision 5): built by
-   Marshall (below), the owner's answers in ADR-0050; its checks and review under way, then 0.7.0 on the owner's
-   go-ahead and the live tests right after. The audit's
-   other findings (B-207, B-208) wait for the owner.
-4. **Released:** 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   by the owner). **Chunk 14, shared shops' permission tiers and money pool, is done and released as 0.7.0** (2026-10-22; the owner:
+   "Within CNVS make Marshall do it … as close to one-to-one as we talked about, as far as being a finished product";
+   ADR-0043 decision 5, ADR-0050; see "Releases"). **Next:** the owner and their daughter play a shared shop (the owner
+   sets each member's spending in the members list); the questions chunk 14 left for the owner (SESSION_HANDOFF.md). The audit's
+   other findings (B-207, B-208) wait for the owner. **Chunk 15, the scenario lab** (dev tools to build any aquarium or
+   setup and play it without playing up to it; the owner, 2026-10-23), is done (2026-10-23, Chase; ADR-0051): `npm run lab`
+   from `~/LocalTest/AquariumGo`, and docs/SCENARIOS.md. A developer tool: nothing to release. **Next: chunk 16, 31 new
+   species** (the owner, 2026-10-24; ADR-0052; the brief below): a friend's reef's missing 12, the maroon clownfish, 9
+   reef and 9 freshwater favourites, with real colour forms, young and male/female colours, buyable from the start.
+   It starts in a fresh context; it ends in 0.8.0 only with the owner's go-ahead.
+4. **Released:** 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
 5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
@@ -62,9 +67,22 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 11 | Shared shops, commands (§4, §3.2) | Done 2026-10-20 (released in 0.6.0). Every player action a command (80 kinds), the solo dispatcher, who did it and first one wins, rule 10; the review's 4 blockers fixed and its confirmation's notes; the final pass on `e692066`: typecheck, unit 3,037, build, e2e 319 of 319 |
 | 12 | Shared shops, the server and the database (§5, §6) | Done 2026-10-21 (released in 0.6.0). The real server on the free Render service and the migration live (ADR-0047: a server password, no Supabase key); the review's 3 blockers fixed and its first confirmation's one, the second clean; the final pass on `aa7b184`: typecheck, unit 3,103, build, e2e 321 of 321; the live smoke 23 of 23 on `8b65dbf` |
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Done 2026-10-21 (released in 0.6.0; Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. The play-test build on the Render address, the agent's live two-browser test 18 of 18 there and again on Pages after the release; the owner's own play-test next |
-| 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Built 2026-10-21 (Marshall; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; unit 3,237 and the shared-shop e2e 11 of 11 in both browsers on the build; the full pass on `84799bc` and the fresh review under way |
+| 15 | The scenario lab (ADR-0051) | Done 2026-10-23 (Chase, at the owner's request; not released: a developer tool). Recipes, the builder, 13 presets, the lab screen, the addresses and `__AQ.scenario`, `npm run lab` and `npm run scenario`, docs/SCENARIOS.md; the review's 4 blockers fixed, its first confirmation's 2, the second clean; the final pass on `aae0922`: typecheck, unit 3,363, build, e2e 335 of 335 |
+| 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Done 2026-10-22 (released in 0.7.0; Marshall, at the owner's request; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; the review's blocker and its confirmations' notes fixed, the second confirmation clean; the final pass on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331; live: the smoke 27 of 27, the two-browser money test 29 of 29 on Pages and on the Render address |
+| 16 | 31 new species (ADR-0052) | Brief written 2026-10-24 (Chase, at the owner's request); not started. A friend's reef's 12 missing animals and the maroon clownfish, 9 reef and 9 freshwater favourites; real colour forms; young and male/female colours; buyable from the start; `SCHEMA_VERSION` 3; ends in 0.8.0 with the owner's go-ahead |
 
-**Last full test runs:** chunk 13's final code `c063c6e`, the owner's Mac, 2026-10-21, from the internal-disk clone under
+**Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
+`caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
+WebKit, dev and both production builds (39.9 minutes). Before it: `f9c62ab` the same four green (e2e 335 of 335, 40.0
+minutes); `0bdc84c` the same four green (unit 3,341, e2e 335 of
+335, 40.5 minutes), followed by the review's fixes; a pass on `765b6b6` was stopped part-way when the confirmation's
+fixes landed.
+Before chunk 15: chunk 14's release commit `d16dd72`, the owner's Mac, 2026-10-22, from the internal-disk clone
+under `caffeinate -i -s`: typecheck passed; unit 257 files, 3,243 tests passed; build passed; e2e 331 of 331 in Chromium
+and WebKit, dev and both production builds (39.9 minutes). Before it: `5843bb0` the same four green (unit 3,243, e2e 331
+of 331, 40.4 minutes), followed by the confirmation's notes (`a8131b1`); `84799bc` typecheck, unit 3,237 and build green,
+e2e 328 of 329 (the money test's pop-up check in Chromium, a toast the stack held back; the test fixed on purpose).
+Before chunk 14: chunk 13's final code `c063c6e`, the owner's Mac, 2026-10-21, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 255 files, 3,202 tests passed; build passed; e2e 329 of 329 in Chromium and
 WebKit, dev and both production builds (39.4 minutes). Before it: `d6c7926` (unit 3,166, e2e 329 of 329) and `882c06c`
 (unit 3,192, e2e 329 of 329), both green, each followed by the review's fixes; a pass on `7e44242` was stopped in its e2e
@@ -1284,7 +1302,7 @@ REL-012, REL-018.
   meanwhile; only `__AQ.shared.open` gets through), and the opening's `catch` resets only the visit's store (nothing
   between the mode going on and the visit existing can throw).
 
-### 14. Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) — started 2026-10-21 (Marshall)
+### 14. Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) — done 2026-10-22 (Marshall; released in 0.7.0)
 
 - **What:** the owner's tiers of permission and group pool, as close to their own words as the game allows (ADR-0043
   round 2 question 2; ADR-0050 has the answers, the previews and the words, verbatim): each member spends the pool
@@ -1378,7 +1396,256 @@ REL-012, REL-018.
   typed amount (now honoured only within 600 ms); the two-day test's joiner never joined; a gift to a member whose
   record spends freely wasn't covered by a test; the drafted live money test called a dev hook the players' build
   doesn't have (it now buys through Market › Supplies and reads the pop-ups from the toast record); ADR-0050 decision
-  8's reading of the request's refusal labelled as the agent's.
+  8's reading of the request's refusal labelled as the agent's. The second confirmation (`5843bb0..d16dd72`): clean
+  (the release commit checked against ADR-0050 too). Its one residue, cosmetic: on a touch screen a press on a choice
+  held over 600 ms right after typing an amount can still send the amount and then the choice (two lines).
+- **The final pass** on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331 (39.9 min).
+- **Released as 0.7.0** (2026-10-22, the owner's go-ahead in ADR-0050 round 2; "Releases"). Live, after the deploys:
+  `scripts/shared-smoke.ts` 27 of 27 (with the pool's four checks), and the two-browser money test
+  (`scripts/_audit/chunk14/live.ts` in the internal clone, git-excluded: a throwaway club whose stored shop makes one
+  throwaway member an approver and the other Asks first, since no throwaway is the game's owner) 29 of 29 on Pages and
+  29 of 29 on the Render address, the accounts and the club removed and checked gone.
+- **Left for the owner** (SESSION_HANDOFF.md): care is never counted or refused, as decided, so a member on Asks first
+  can still spend the pool on doses (up to about $400 a dose for a 1,000-gallon reef tank); approvers can give each
+  other money (by design); a pool pop-up can lapse behind the game's own news in a busy shop (the toast stack's rules;
+  the line is in the alerts list).
+
+### 15. The scenario lab (ADR-0051) — done 2026-10-23 (Chase)
+
+- **What:** developer tools to build any aquarium or setup and play it without playing up to it (the owner,
+  2026-10-23, verbatim in ADR-0051). The owner describes a setup (tanks, water, animals with genes, Prismatic, age and
+  health, gear, decor, eggs and fry, and the shop around them: money, time, facility, unlocks, research, staff, shows,
+  the market) and plays it in seconds; keeps it, loads it again, exports or imports it, and hands it to an agent or a
+  test. A developer tool on the owner's Mac (ADR-0051 decision 1): never in the players' build, no new service, and
+  ADR-0037 decision 3 unchanged (the live site ignores `?dev=1`, `?lab=`, `?scenario=` and `?recipe=`; where the tools
+  are allowed Social is the local stub). Solo games only. The chunk starts at `117aca9` on `next`
+  (SESSION_HANDOFF.md "Handoff to Chase: chunk 15").
+- **The recipe** (`src/dev/scenario/recipe.ts`, documented in `docs/SCENARIOS.md`): versioned JSON (`format`
+  `aquarium-go-scenario`, `version` 1). A base (`blank`: an empty shop, everything unlocked and researched, the guide
+  finished, $50,000 and plenty of food, ADR-0051 decision 2; `starter:<id>`; `fixture:<name>`; `current`, the game on
+  screen), a seed, the shop, tanks (tier or gallons, water class, purpose, cycled, age, exact water values, equipment
+  added or broken, substrate, decor automatic, none, listed or both, lights, backdrop), animals per tank (species,
+  count, sex plan, age or stage, names, genes or a morph by name, potentials, Prismatic, stats, illness, injury,
+  breeding `ready` or `spawned`), eggs, larvae or fry, staff, the stock budget, the market (offers incl. Prismatic,
+  listings with bids, demand), shows (entries, show day), production lines, a warm-up, how it opens (tank, view,
+  speed; paused by default, ADR-0051 decision 3), checks (what should be true after N hours) and a `patch` (a deep
+  merge for anything else, prototype keys refused).
+- **The builder** (`src/dev/scenario/build.ts`, pure): `buildScenario(recipe, env)` builds through the game's own
+  functions (`newGame`, `createTank`, `createCreature`, `installEquipment`, `placeDecor`, `devForceBreeding`,
+  `createClutch`, `addStaffDirect`, `createListing`, `forceBuyerVisit`, `enterShow`, `createLine` …), sets the clock
+  before it makes anything, never throws on a bad recipe (each problem named, by path: an error skips that part, a
+  warning or note builds it) and is deterministic (same recipe and seed, same `stateHash`). Every built world goes
+  through the real save path (`encodeRecord` → `decodeRecord`, so `repairState` runs) and the loaded copy is what's
+  returned; a repair it needed is reported. `validateRecipe` is a trial build plus the game's own compatibility
+  verdict per tank (warned, never refused). `captureRecipe` turns the game on screen into a recipe. `runScenario` runs
+  a built world forward and judges the checks.
+- **The screen** (`src/dev/lab/`, its own chunks, mounted by `App.tsx` only where the tools are allowed): presets
+  (built in, and the owner's own kept in this browser: save, duplicate, delete), an editor (Setup, Tanks with animals
+  and young, Shop & market, JSON with copy, paste into it, import and export a file, and capture), the problems and verdicts
+  while editing, Copy link, Build and play. While a scenario plays, a badge ("Scenario: … · not saved") with Start again
+  and Lab. A scenario never autosaves over the player's game (`neverAutosave`, `src/game/useAutosave.ts`). Refused in
+  a shared shop. Opened by `npm run lab` (`?lab=1`), the title screen's Scenario lab (with Developer tools on), the dev
+  panel (which also gains a fixture picker for the 46 fixtures, loaded never autosaved) and `__AQ.scenario.open()`.
+- **Addresses and hooks:** `?lab=1`, `?scenario=<preset>`, `?recipe=<base64url JSON>` behind the gate
+  (`urlLabParams`/`urlScenarioBoot` in `src/state/devTools.ts`; the router treats a scenario address like a fixture
+  boot); `__AQ.scenario` (presets, recipe, validate, play, restart, capture, run, link, current, open, close).
+- **Headless:** `npm run scenario -- <recipe.json | preset> [--hours N] [--json] [--save out.json] [--force]`
+  (`scripts/scenario.ts`): builds, runs, prints the report (money, births, deaths with causes, each tank's animals and
+  water, the game's own log lines, the checks), exits 1 on build errors or a failed check.
+- **Presets** (ADR-0051 decision 4, `src/dev/scenario/presets.ts`): Sandbox; Problems (ammonia crisis, broke shop
+  with hungry fish, crowded and aggressive tank, heater stuck on); Breeding (betta pair ready, clownfish pair with
+  eggs, a tank of fry); Showpieces (reef with a Prismatic clownfish, late-game grand hall); Running a business (staffed
+  store, show day, market with bids).
+- **Tests:** unit (`tests/sim/scenario-*.test.ts`): every preset builds with no error and no repair, nothing
+  non-finite, the same `stateHash` twice, loads again through the save path and steps a day; every species at least
+  once; every water class and tank tier; bad recipes name their problems and still build; the patch refuses prototype
+  keys; morphs by name; capture → build; checks pass and fail; the gate (`urlLabParams` null in production). e2e
+  (`tests/e2e/scenario-lab.spec.ts`): build a recipe through the screen and play it (paused, the badge, Start again,
+  nothing autosaved), and `prod-mode.spec` checks the players' build ignores `?lab=1`, `?scenario=` and `?recipe=`. The
+  four checks; one fresh reviewer (Opus 5.5, max effort) on `git diff 117aca9..HEAD`; then testing it as the owner
+  would (a look script with screenshots at desktop and phone widths).
+- **Requirements:** LAB-001 (the recipe), LAB-002 (the builder), LAB-003 (legal saves), LAB-004 (the screen), LAB-005
+  (addresses and hooks), LAB-006 (headless), LAB-007 (presets), LAB-008 (`npm run lab`, the docs, the e2e).
+- **Core files:** `package.json` (scripts `lab` and `scenario`), `src/state/devTools.ts` (the lab's addresses behind
+  the gate), `src/state/lab.ts` (new store), `src/game/useAutosave.ts` (`neverAutosave`), `src/App.tsx`,
+  `src/ui/nav/router.ts` (a scenario address boots like a fixture): the reviewer checks them closely. No new
+  dependency; no save field; `SCHEMA_VERSION` unchanged.
+- **Built** (`0bdc84c`, Chase, 2026-10-23): everything above. The lab's chunks are left out of the players' build
+  altogether (`LAB_BUILD`, a build-time constant, guards every `import()` of them; checked in a built bundle), on top of
+  the runtime gate. Copying goes through `src/platform` (the clipboard has no read, so the JSON box takes a paste
+  directly). Found and fixed on the way: `Toasts.tsx` dismissed UI toasts inside a state updater (a dev-only React
+  warning the lab's world switches brought out in WebKit). The look-around (`scripts/_audit/chunk15/look2.mjs` in the
+  internal clone, git-excluded): every preset and a recipe of my own built through the screen in Chromium and WebKit at
+  1440×900 and 390×844, played 12 game hours (the betta pair laid 77 eggs, the shrimp berried), exported, re-imported
+  and reopened from a link after a reload, with no page errors; it moved the in-game badge clear of the tank bar and
+  the tool rail.
+- **The full pass on `0bdc84c`:** typecheck passed; unit 260 files, 3,341 tests passed; build passed; e2e 335 of 335
+  (40.5 min).
+- **The fresh review** (Opus 5.5, max effort, on `117aca9..0bdc84c`): four blockers, all fixed in `765b6b6`: (0) a
+  build used up a Prismatic forced from the dev panel (set aside and restored now); (1) "Save now", "Save and return to
+  title", the error screens and the page-close save wrote a scenario over the player's autosave (the save path itself
+  now refuses slot `auto` for a scenario, `src/persistence/session.ts`; Build and play and the fixture picker save the
+  player's own game first, as Load does); (2) Start again on a `current` base stacked the recipe onto the scenario (the
+  scenario keeps the game it was built from); (3) the "nothing non-finite" test couldn't fail (the builder reports
+  such numbers now). Its notes, fixed too: capture lost duplicate equipment and hidden or sex-changing roles; a named
+  sex for a sex-changing species; `unlocks: "none"` undone by research; checks skipped silently; names like
+  "constructor"; patches that threw; unclamped inputs; untested session paths and script (the script's logic is now
+  `src/dev/scenario/cli.ts`). Every mutant the review and the fixes tried is caught. Outside the lab: `illnessDef` read
+  a plain object (a save whose illness kind was "constructor" crashed every step); BACKLOG B-210 records two crafted
+  save shapes `repairState` passes that crash a step.
+- **The confirmation pass** (the same reviewer, `0bdc84c..765b6b6`): each blocker fixed and its test failing without
+  the fix. Two more, fixed after: the patch's play-test stepped a copy of the world in the lab's trial builds too, and
+  stepping any world clears the sim's shared caches, so checking a patched recipe changed the game on screen (now no
+  trial build steps a world; a test plays two game days beside the lab's checking and compares hashes); and the
+  play-test stepped no tank, so a tank's or an animal's patch that crashes the game got through (now the finished
+  world is played once with every tank stepped, and one the game can't play is rebuilt without the patches). Its
+  notes, fixed too: a scenario could still go online with Settings › Autosave off (`syncableGame` refuses it); a
+  non-number in a `current` base is reported (tested); an exact piece's impossible failure is named. A pass on
+  `765b6b6` was stopped part-way when these fixes landed (typecheck, unit 3,360 and build green; 83 e2e tests run,
+  none failed).
+- **The second confirmation** (`765b6b6..f9c62ab`): clean. Its notes: a tank patch naming a tank size that doesn't
+  exist still made the build throw (fixed after, in `aae0922`, with its own full pass); the online-save line
+  has no test (it matters only on the dev stub); `__AQ.scenario.run` leaves the game on screen's state alone but
+  starts its caches cold, as a load does (SCENARIOS.md says so now).
+- **The final pass** on `f9c62ab`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335
+  (40.0 min), pushed to `next` (`ba1227d`). The follow-up `aae0922` (a patch the build can't finish is caught too): the
+  four checks again, typecheck, unit 3,363, build, e2e 335 of 335 (39.9 min), pushed. Nothing deployed (a developer tool
+  needs no release; ADR-0051 decision 1).
+
+### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24; done 2026-10-25 (`66e4a37`), released as 0.8.0
+
+- **What:** the owner's words, verbatim (2026-10-24): "add all 12 missing species as the next chunk and what other
+  species should we be adding? how will this work for variations?" It began with a friend's 210-gallon reef the owner
+  asked to recreate in the scenario lab ("can you create me a 210 (or closest) tank with these animals and the style of
+  the tank decorations?"): the game lacked 12 of its animals. The owner's answers (ADR-0052, verbatim): add the maroon
+  clownfish too; add the reef and freshwater favourites as well; build young and male/female colours; every new species
+  buyable from the start. **31 species, 48 → 79.** A player-facing change: it ends in a release (0.8.0) only with the
+  owner's go-ahead in the session. The chunk starts at the commit that adds this brief (SESSION_HANDOFF.md "Handoff:
+  chunk 16, 31 new species").
+- **The species, in three waves** (land and test each wave before the next; scientific names to check against the
+  sources):
+  - *A, the friend's reef (13):* emperor angelfish (*Pomacanthus imperator*; young: dark blue with white rings, adult:
+    yellow and blue stripes; needs a big tank), sailfin tang (*Zebrasoma veliferum*; banded; the Red Sea sailfin, *Z.
+    desjardinii*, is a separate species now, so a "Red Sea form" only if the sources support it), chocolate tang
+    (*Acanthurus pyroferus*; young copy a yellow dwarf angel), lyretail anthias (*Pseudanthias squamipinnis*; orange
+    females, magenta males with a long dorsal ray; protogynous; a group of females with one male), melanurus wrasse
+    (*Halichoeres melanurus*; protogynous; males brighter; buries in the sand at night, so it needs sand), elegant
+    starfish (*Fromia* sp.; red and orange forms; hard to keep: starves without film algae), fighting conch (*Strombus
+    alatus*; a sand-sifter), Mexican turbo snail (*Turbo fluctuosus*), Nassarius snail (*Nassarius* sp.; buried, comes
+    up at feeding), Astraea snail (*Lithopoma tectum*; cone shell; can't right itself), Cerith snail (*Cerithium* sp.;
+    spire shell), scarlet reef hermit crab (*Paguristes cadenati*), maroon clownfish (*Premnas biaculeatus*; White
+    Stripe, Gold Stripe, Lightning; protandrous like the ocellaris, the female much bigger; hosts the bubble-tip).
+  - *B, reef favourites (9):* flame angelfish (*Centropyge loricula*), six-line wrasse (*Pseudocheilinus hexataenia*),
+    lawnmower blenny (*Salarias fasciatus*; perches, grazes), flame hawkfish (*Neocirrhitus armatus*; perches; eats
+    small shrimp), yellowtail damselfish (*Chrysiptera parasema*), emerald crab (*Mithraculus sculptus*; eats bubble
+    algae), tuxedo urchin (*Mespilia globulus*; carries debris on its spines), sand-sifting starfish (*Astropecten
+    polyacanthus*; buries; starves in small tanks), bubble-tip anemone as a living animal (*Entacmaea quadricolor*;
+    green, rose and rainbow forms; wanders until it settles, needs strong light, splits; the clownfish host it as they
+    host the decor piece today, which stays for old saves).
+  - *C, freshwater favourites (9):* freshwater angelfish (*Pterophyllum scalare*; the hobby's real genes: marble, zebra,
+    gold, smokey, stripeless, veil; pairs and guards eggs), German blue ram (*Mikrogeophagus ramirezi*; electric blue,
+    gold, balloon; females with a pink belly; warm water), harlequin rasbora (*Trigonostigma heteromorpha*), zebra
+    danio (*Danio rerio*; long-fin, leopard, golden; no GloFish, a trademarked GM line), platy (*Xiphophorus
+    maculatus*; many colour and tail-spot forms; livebearer), swordtail (*Xiphophorus hellerii*; only males have the
+    sword; red, green, black, lyretail), dwarf gourami (*Trichogaster lalius*; powder blue, flame; males bright, females
+    silver; builds a bubble nest), ghost shrimp (*Palaemonetes paludosus*; clear body), ramshorn snail (*Planorbella*
+    sp.; red, blue and leopard; breeds readily).
+- **Variations** (ADR-0052 decision 2): each species' `genetics` (loci, phenotypes, `baseVisual`, `variation`) as the
+  existing species do: named forms only where the hobby has them, the intensity locus ("Richly coloured") where it has
+  none (`intensityLocus`, `intensityOverlay`), and Prismatic comes for free. Check them with `npm run report:rarity`,
+  the morph catalogue's own checks (`morphCatalog`) and `tests/sim/morph-data.test.ts`.
+- **Young and sex colours** (decision 3): the art gets the creature (`args.creature`: `stage`, `sex`, `reproRole`;
+  `isJuvenile`, `isFemale` in `src/render/creatures/fish/common.ts`). Today `juvenile()` changes only proportions. Add
+  per-species young colours (and male/female colours) in each species' plan, with the plan's cache `key` including the
+  look, so an animal changes when it grows or changes sex. Anthias and the melanurus wrasse are `protogynous` (the
+  coral beauty, clown goby and grouper are the existing examples).
+- **Where a species is wired** (from `kole_tang`, `nerite_snail` and `cherry_shrimp`): its file in
+  `src/data/species/{marine,freshwater}/` and that folder's `index.ts`; `src/data/species/roster.ts` (the fixed ids);
+  `src/types/species.ts` (a new `behaviorSet` id goes in its union); the art, `src/render/creatures/fish/<id>.ts` and
+  `fish/index.ts`, or `src/render/creatures/special/` (snail, hermit, shrimp, frog, seahorse, axolotl today, with
+  `looks.ts`); the behaviour (`src/ai/core/brain.ts`, `acts.ts`, `cosmetics.ts`' night colours); the UI portrait plan
+  (`src/ui/panels/common/Portrait.tsx`: fish, longfin, seahorse, axolotl, shrimp, snail, crab, frog, coral, anemone,
+  eel, flat); `src/data/buyers.ts` (specialties); `src/data/shows.ts` where it names species; the research
+  (`docs/research/{marine,freshwater}.md`, `docs/RESEARCH_SOURCES.md`); the tests that pin species
+  (`tests/sim/core-save-forward-safety.test.ts`, `tests/sim/fixtures/food-rules-pin.json`, `species-marine`,
+  `species-fw`, `morph-data`, `guide-species`, `render/creatures/creatures.test.ts`). New art needed: starfish (two
+  species), urchin, conch, crab (the emerald crab; the hermit exists), a living anemone, five snail shells (turbo,
+  Nassarius, Astraea cone, Cerith spire, ramshorn coil), the ghost shrimp, and every fish plan.
+- **Buyable from the start** (decision 4): `unlock.requires: []` on each new species (`requiredUnlocks`,
+  `isSpeciesAvailable` in `src/sim/economy/shop.ts`); tanks, water and gear keep their unlocks. **Seeded tests will
+  shift:** the shop draws from the available species, so new day-one species change seeded stock. Run the seeded tests
+  before and after, explain each changed expectation, and never retune data to hide a shift (AGENTS.md).
+- **Saves** (decision 5): `SCHEMA_VERSION` 2 → 3 (`src/persistence/schema.ts`, a migration in `migrations.ts`,
+  ADR-0016), the forward-safety pin updated; a save from 0.7.0 loads; a new save is "too new" for 0.7.0.
+- **The lab** (decision 6): a built-in preset "A friend's reef" from `docs/agent/design/CHUNK-16/friends-reef-standins.json`
+  with the real stock (5 anthias, 5 chromis, 2 maroons, the wrasse, a living bubble-tip, the chocolate and sailfin tangs,
+  the emperor, the starfish, the conch, 10 turbo, 20 Nassarius, 3 Astraea and 4 Cerith snails, 2 blue-leg and 1
+  scarlet hermit, the foxface) and the same aquascape; its check: no deaths in 48 game hours. A second preset showing
+  every new species, for the look-around.
+- **Done means** the four checks on the final code, one fresh reviewer (Opus 5.5, max effort) on the brief and
+  `git diff <start>..HEAD`, its blockers fixed; then your own testing as the owner would: each new species in the lab
+  at desktop and phone widths (young and adult, male and female, a few forms each), the friend's reef next to the
+  photo's description (a long live-rock ridge with an arch and a tall centre pile, aragonite sand, red macroalgae along
+  the front, the anemone, deep actinic blue), a week of play headless with an autofeeder, a 0.7.0 save loaded.
+- **Requirements:** SPC-001 to SPC-010 (`docs/agent/REQUIREMENTS.json`).
+- **Built (2026-10-24, Chase), all three waves** (31 species, 48 → 79; `SCHEMA_VERSION` 3):
+  - *Names checked against the sources* (ADR-0052 decision 1 asked for corrections here): the sailfin tang is
+    *Zebrasoma velifer*, the maroon *Amphiprion biaculeatus* (Premnas is now a synonym), the elegant starfish *Fromia
+    milleporella*, the fighting conch *Strombus pugilis* (the West Indian fighting conch of the trade), the Nassarius
+    *Phrontis vibex*, the Cerith *Cerithium atratum*, the flame angel *Centropyge loriculus*, the flame hawkfish
+    *Neocirrhites armatus*, the ghost shrimp *Palaemon paludosus* (formerly Palaemonetes) and the ramshorn *Planorbella
+    duryi*; the dwarf gourami stays *Trichogaster lalius* (Catalog of Fishes has treated it as *T. fasciata* since 2022;
+    the data says so). The living anemone's id is `bubbletip_anemone` (the decor piece keeps `bubble_tip_anemone`).
+  - *Round 2* (ADR-0052 decision 9): a new species needs no research, but the shop stocks it only once its water type
+    is researched (`requiredUnlocks` falls back to `waterClassKeys`), and restocks the moment that research completes.
+  - *Behaviour:* twelve new AI sets (wrasse, starfish, conch, snail_sand; urchin, starfish_sand, crab, blenny,
+    hawkfish, damsel, cichlid_dwarf, anemone) and the six-line's rock sleep in a mucus cocoon; sand burying
+    (`rt.ai.buried`, the floor clamp lets a digging animal down); clownfish host a living anemone, which wanders until
+    it settles; social sex change in four species the game doesn't breed (`special.socialSexChange`).
+  - *Breeding:* the bubble-tip splits in two (new system `fission`); the ramshorn lays jelly clutches under water (the
+    snail module's `layOf`); the ghost shrimp is berried with a short larval week; others as their data says.
+  - *Art:* a fish plan per fish with young and male/female colours (`FishPlan.recolor`, the plan key carries the look),
+    new marks `ring_thin` and `wedge`, the platy's tail spots (`tailSpot`) and tuxedo (`bodyMark`); new critters: two
+    starfish, urchin, conch, crab, living anemone, five snail shells, ghost shrimp, scarlet hermit.
+  - *Seeded tests:* the new species shift the shared stream (the shop draws from the species available). Every failing
+    seeded test passed with the 31 hidden; each was made independent of the stream rather than re-pinned (see the
+    commits). Two real bugs found on the way were fixed with regression tests: a harassment death named the wrong
+    cause, and a hardy harassed female could linger at 1.4 health for good (S02-08). MKT-016's test asserted more than
+    the minimum the owner accepted (ADR-0016 decision 3) and now asserts that minimum at 1×, 3× and 10× (about 68,
+    148 and 176 real seconds); the catch-up bid windows stay as they are (a change built here was reverted on review,
+    and the owner kept them, decision 13). The first hour's toast cap is now 100 (the owner, ADR-0052 decision 10).
+  - *Lab:* "A friend's reef" (the 180, the real stock, a living bubble-tip, marine pellets four times a day: a week
+    with no deaths, one anthias turns male on day 4) and "Every new species" (a showroom with three tanks and
+    autofeeders). The lab warns that the friend's emperor needs 220 gallons as an adult (LAB-007 expects that one
+    warning).
+  - *Rock as drawn:* the AI's rock surfaces now follow the drawn rock (`src/ai/core/rockshape.ts`) instead of the
+    collider box: the anemone was settling on a box top that stood up to 16 cm above the rock. Older crawlers
+    (algae grazers, hillstream loaches, dwarf and cleaner shrimp, snails, hermit crabs) use it too, so they now sit on
+    the rock rather than hovering above it: a visible change to released species.
+  - *After the fresh review* (Opus 5.5, max effort, on `1b929a7..5068399`): the split works inside a command's Immer
+    draft (`deepClone`, not `structuredClone`); a living anemone stings a seahorse once, as the decor piece does (the
+    pairwise sting rule is only for an anemone not yet in the tank); the maroon's female is much bigger, as the brief
+    says (`special.maleSizeFactor` 0.45: a male and a young one grow to under half her size, and the male that
+    becomes the female grows into it; Fishes of Australia: females 2–3× the males); a young barred angelfish shows
+    seven bars, the adult four (FishBase); the flame angel's "Blood red" is "Richly coloured" (decision 2); a digging
+    animal's body centre stays above the floor glass under a thin sand bed (the render's floor clamp).
+  - *After the confirmation review* (Opus 5.5, max effort, on `5068399..10a96ab`): the pairwise sting rule is skipped
+    only when the tank's stinging count already covers it, so moving an anemone in from another tank still warns, and
+    a listed anemone still stings once (`livingAnemones` counts listed ones, as the tank's members do); a male that
+    becomes the female grows into her size at the growth curve's pace (about two weeks), not in hours; an adult male
+    maroon is judged by a male's size (`adultSizeOf`: the tank he needs, a show's size points, the shop's "young"
+    check); a young one's size estimate uses the young's curve; the AI buries a swimmer only as deep as the bed allows,
+    so in a thin bed it lies partly covered and in sight.
+  - *Done differently from the brief, on purpose:* the elegant starfish has Red and Red & Black, not an orange form:
+    no source names one (Quality Marine's "red to orangish red" is individual variation), and decision 2 allows no
+    invented forms (told to the owner in round 4). The Astraea's "can't right itself" is a data tag only: nothing in
+    the game turns a snail over. Under the rarity rule the platy has no Common form (224 forms; like the fancy guppy),
+    so a beginner's platies mostly show as Uncommon to Very rare.
+  - *The owner's round 4* (ADR-0052 decisions 11–14): the new wording approved, with the living anemone's breeding
+    card reading "Splits by itself"; the autofeeder weighs each animal's vote by its feeding need and passes over a
+    food made for another species or water while a fitting one is in stock (B-211); catch-up bids as ADR-0016 keeps
+    them; release 0.8.0 once green.
+  - *Backlog:* B-211 to B-216 (B-211, the autofeeder's vote, and B-213, the anemone's split, built).
 
 ## Releases
 
@@ -1468,6 +1735,16 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   every unit test passed: Vitest's worker RPC timed out on GitHub's runner ("Timeout calling onTaskUpdate", B-205);
   re-running the failed job passed and deployed. Render by hand (`dep-dbaii3eq1p3s73bqbvvg`). Both `version.json`
   files read `{"id":"63caa8e-…","version":"0.5.4"}`.
+- **0.7.0, released 2026-10-22** at the owner's go-ahead in the session (ADR-0050 round 2: "Yes, release when clean"):
+  chunk 14, shared shops' money pool and spending tiers. Step 1's "the owner has played it" was waived by that answer
+  (live tests right after the release, ADR-0050 decision 7). The four checks passed on the release commit `d16dd72`
+  (version, CHANGELOG; typecheck; unit 257 files, 3,243 tests; build; e2e 331 of 331, 39.9 min) and the review's second
+  confirmation was clean. Merged in the internal clone onto a freshly fetched `origin/main` as `a704e63` (its tree is
+  `d16dd72`'s) and pushed with `next`. Pages deployed `a704e63` (run `39825698067`, its tests first); then the shop
+  server from `main` (`dep-dbd4rsfavr4c73cdn2l0`; `/health` `version` 0.7.0, `build` `74779d9a30306b9c`, the game's
+  shared build hash) and the Render static site (`dep-dbd4sc67bikc73f3pn7g`). Both `version.json` files read
+  `{"id":"a704e63-…","version":"0.7.0"}`. The live smoke 27 of 27; the two-browser money test 29 of 29 on Pages and on
+  the Render address.
 
 ## Product decisions in force
 

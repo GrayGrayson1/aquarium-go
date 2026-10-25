@@ -420,6 +420,15 @@ export function habitatOf(state: GameState, tank: Tank): TankHabitat {
       if (a.kind === 'nest_site' || a.kind === 'cave' || a.kind === 'host') nestSites += 1;
     }
   }
+  // chunk 16: a living anemone in the tank is a host too
+  if (!hasHost) {
+    for (const c of Object.values(state.creatures ?? {})) {
+      if (c.tankId === tank.id && c.status === 'alive' && findSpecies(c.speciesId)?.category === 'anemone') {
+        hasHost = true;
+        break;
+      }
+    }
+  }
   return {
     ...h,
     cover: clamp01(Math.max(h.cover ?? 0, cover)),

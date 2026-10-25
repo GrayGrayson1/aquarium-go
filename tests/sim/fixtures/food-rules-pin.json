@@ -2545,5 +2545,1647 @@
    "competitive_feeder",
    "decor_inspector"
   ]
+ },
+ "emperor_angelfish": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "meaty_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "marine_pellets",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "mysis_frozen",
+   "brine_frozen",
+   "marine_pellets",
+   "micro_pellets",
+   "meaty_frozen",
+   "flake_tropical",
+   "nori_sheet",
+   "algae_wafers",
+   "blanched_veg",
+   "gel_food",
+   "goldfish_pellets",
+   "axolotl_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "emperor angelfish fry",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "decor_inspector",
+   "showoff",
+   "glass_curious",
+   "food_obsessed",
+   "homebody"
+  ]
+ },
+ "sailfin_tang": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "marine_pellets",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "blanched_veg",
+   "gel_food",
+   "flake_tropical",
+   "marine_pellets",
+   "micro_pellets",
+   "mysis_frozen",
+   "brine_frozen",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "sailfin tang fry",
+  "personality": [
+   "explorer",
+   "bold",
+   "competitive_feeder",
+   "food_obsessed",
+   "showoff",
+   "glass_curious"
+  ]
+ },
+ "chocolate_tang": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "mysis_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "marine_pellets",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "blanched_veg",
+   "gel_food",
+   "flake_tropical",
+   "marine_pellets",
+   "micro_pellets",
+   "mysis_frozen",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "chocolate tang fry",
+  "personality": [
+   "explorer",
+   "bold",
+   "competitive_feeder",
+   "food_obsessed",
+   "showoff",
+   "glass_curious"
+  ]
+ },
+ "lyretail_anthias": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "marine_pellets",
+   "live_copepods",
+   "baby_brine_live"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "mysis_frozen",
+   "brine_frozen",
+   "baby_brine_live",
+   "live_copepods",
+   "flake_tropical",
+   "marine_pellets",
+   "micro_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "lyretail anthias fry",
+  "personality": [
+   "social",
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "easily_startled",
+   "competitive_feeder",
+   "glass_curious"
+  ]
+ },
+ "melanurus_wrasse": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "sinking_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "marine_pellets",
+   "live_copepods",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "mysis_frozen",
+   "brine_frozen",
+   "marine_pellets",
+   "micro_pellets",
+   "gel_food",
+   "sinking_pellets",
+   "flake_tropical",
+   "live_copepods",
+   "goldfish_pellets",
+   "axolotl_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "melanurus wrasse fry",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "glass_curious",
+   "nest_builder",
+   "homebody",
+   "social",
+   "solitary",
+   "showoff",
+   "easily_startled",
+   "patient_feeder",
+   "competitive_feeder",
+   "decor_inspector"
+  ]
+ },
+ "maroon_clownfish": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "meaty_frozen",
+   "nori_sheet",
+   "marine_pellets"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "marine_pellets",
+   "micro_pellets",
+   "meaty_frozen",
+   "mysis_frozen",
+   "brine_frozen",
+   "flake_tropical",
+   "nori_sheet",
+   "goldfish_pellets",
+   "axolotl_pellets"
+  ],
+  "cardRestock": "nori_sheet",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "maroon clownfish fry",
+  "personality": [
+   "bold",
+   "shy",
+   "homebody",
+   "glass_curious",
+   "explorer",
+   "food_obsessed",
+   "competitive_feeder",
+   "nest_builder",
+   "social",
+   "showoff"
+  ]
+ },
+ "elegant_starfish": {
+  "suited": [
+   "flake_tropical",
+   "sinking_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "sinking_pellets"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "flake_tropical",
+   "sinking_pellets",
+   "mysis_frozen",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "gel_food",
+   "sinking_pellets",
+   "mysis_frozen",
+   "flake_tropical",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "young elegant starfish",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "homebody",
+   "decor_inspector"
+  ]
+ },
+ "fighting_conch": {
+  "suited": [
+   "sinking_pellets",
+   "algae_wafers"
+  ],
+  "buy": [
+   "nori_sheet",
+   "algae_wafers"
+  ],
+  "staff": {
+   "marine": "sinking_pellets",
+   "none": "sinking_pellets"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "sinking_pellets",
+   "algae_wafers",
+   "nori_sheet",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "gel_food",
+   "sinking_pellets",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "nori_sheet",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "baby fighting conches",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "homebody",
+   "decor_inspector"
+  ]
+ },
+ "scarlet_hermit_crab": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "algae_wafers",
+   "nori_sheet",
+   "marine_pellets",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "gel_food",
+   "flake_tropical",
+   "marine_pellets",
+   "micro_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "nori_sheet",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "young scarlet reef hermit crabs",
+  "personality": [
+   "explorer",
+   "homebody",
+   "food_obsessed",
+   "night_owl",
+   "decor_inspector",
+   "bold",
+   "shy"
+  ]
+ },
+ "mexican_turbo_snail": {
+  "suited": [
+   "algae_wafers",
+   "nori_sheet"
+  ],
+  "buy": [
+   "nori_sheet",
+   "algae_wafers"
+  ],
+  "staff": {
+   "marine": "algae_wafers",
+   "none": "algae_wafers"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "algae_wafers",
+   "nori_sheet",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "gel_food",
+   "blanched_veg"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "baby mexican turbo snails",
+  "personality": [
+   "explorer",
+   "homebody",
+   "food_obsessed",
+   "night_owl",
+   "decor_inspector",
+   "shy"
+  ]
+ },
+ "nassarius_snail": {
+  "suited": [
+   "micro_pellets",
+   "sinking_pellets"
+  ],
+  "buy": [
+   "micro_pellets",
+   "sinking_pellets"
+  ],
+  "staff": {
+   "marine": "micro_pellets",
+   "none": "micro_pellets"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "micro_pellets",
+   "sinking_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "mysis_frozen",
+   "marine_pellets",
+   "gel_food"
+  ],
+  "restock": "micro_pellets",
+  "cardList": [
+   "gel_food",
+   "sinking_pellets",
+   "marine_pellets",
+   "micro_pellets",
+   "mysis_frozen",
+   "brine_frozen",
+   "bloodworm_frozen",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "brine_frozen",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "baby nassarius snails",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "homebody",
+   "decor_inspector"
+  ]
+ },
+ "astraea_snail": {
+  "suited": [
+   "algae_wafers",
+   "nori_sheet"
+  ],
+  "buy": [
+   "nori_sheet",
+   "algae_wafers"
+  ],
+  "staff": {
+   "marine": "algae_wafers",
+   "none": "algae_wafers"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "algae_wafers",
+   "nori_sheet",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "algae_wafers",
+   "gel_food",
+   "nori_sheet",
+   "blanched_veg"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "baby astraea snails",
+  "personality": [
+   "explorer",
+   "homebody",
+   "food_obsessed",
+   "night_owl",
+   "decor_inspector",
+   "shy"
+  ]
+ },
+ "cerith_snail": {
+  "suited": [
+   "sinking_pellets",
+   "algae_wafers"
+  ],
+  "buy": [
+   "algae_wafers",
+   "sinking_pellets"
+  ],
+  "staff": {
+   "marine": "sinking_pellets",
+   "none": "sinking_pellets"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "sinking_pellets",
+   "algae_wafers",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "gel_food",
+   "sinking_pellets",
+   "algae_wafers",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "algae_wafers",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "baby cerith snails",
+  "personality": [
+   "explorer",
+   "homebody",
+   "food_obsessed",
+   "night_owl",
+   "decor_inspector",
+   "shy"
+  ]
+ },
+ "freshwater_angelfish": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "mysis_frozen",
+   "daphnia_frozen",
+   "goldfish_pellets"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "daphnia_frozen",
+   "mysis_frozen",
+   "goldfish_pellets",
+   "marine_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "freshwater angelfish fry",
+  "personality": [
+   "shy",
+   "bold",
+   "social",
+   "showoff",
+   "nest_builder",
+   "patient_feeder",
+   "glass_curious",
+   "easily_startled",
+   "food_obsessed"
+  ]
+ },
+ "german_blue_ram": {
+  "suited": [
+   "flake_tropical",
+   "sinking_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "sinking_pellets"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": null
+  },
+  "menu": [
+   "flake_tropical",
+   "sinking_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "mysis_frozen",
+   "daphnia_frozen",
+   "live_copepods",
+   "goldfish_pellets",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "gel_food",
+   "sinking_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "daphnia_frozen",
+   "mysis_frozen",
+   "live_copepods",
+   "flake_tropical",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "daphnia_frozen",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "german blue ram fry",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "glass_curious",
+   "nest_builder",
+   "homebody",
+   "social",
+   "solitary",
+   "showoff",
+   "easily_startled",
+   "patient_feeder",
+   "competitive_feeder",
+   "decor_inspector"
+  ]
+ },
+ "harlequin_rasbora": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "daphnia_frozen",
+   "goldfish_pellets"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "daphnia_frozen",
+   "brine_frozen",
+   "goldfish_pellets",
+   "marine_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "harlequin rasbora fry",
+  "personality": [
+   "social",
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "easily_startled",
+   "competitive_feeder",
+   "patient_feeder",
+   "glass_curious"
+  ]
+ },
+ "zebra_danio": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "daphnia_frozen",
+   "goldfish_pellets"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "daphnia_frozen",
+   "brine_frozen",
+   "goldfish_pellets",
+   "marine_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "zebra danio fry",
+  "personality": [
+   "social",
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "easily_startled",
+   "competitive_feeder",
+   "patient_feeder",
+   "glass_curious"
+  ]
+ },
+ "platy": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "daphnia_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "blanched_veg",
+   "goldfish_pellets",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "daphnia_frozen",
+   "algae_wafers",
+   "blanched_veg",
+   "gel_food",
+   "nori_sheet",
+   "goldfish_pellets",
+   "marine_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "platy fry",
+  "personality": [
+   "social",
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "competitive_feeder",
+   "showoff",
+   "glass_curious"
+  ]
+ },
+ "swordtail": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "mysis_frozen",
+   "daphnia_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "blanched_veg",
+   "goldfish_pellets",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "daphnia_frozen",
+   "mysis_frozen",
+   "algae_wafers",
+   "blanched_veg",
+   "gel_food",
+   "nori_sheet",
+   "goldfish_pellets",
+   "marine_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "swordtail fry",
+  "personality": [
+   "social",
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "competitive_feeder",
+   "showoff",
+   "glass_curious"
+  ]
+ },
+ "dwarf_gourami": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "brine_frozen",
+   "daphnia_frozen",
+   "goldfish_pellets"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "flake_tropical",
+   "micro_pellets",
+   "bloodworm_frozen",
+   "daphnia_frozen",
+   "brine_frozen",
+   "goldfish_pellets",
+   "marine_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "dwarf gourami fry",
+  "personality": [
+   "showoff",
+   "nest_builder",
+   "shy",
+   "bold",
+   "glass_curious",
+   "explorer",
+   "patient_feeder",
+   "food_obsessed"
+  ]
+ },
+ "ghost_shrimp": {
+  "suited": [
+   "flake_tropical",
+   "sinking_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "algae_wafers"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": null
+  },
+  "menu": [
+   "flake_tropical",
+   "sinking_pellets",
+   "bloodworm_frozen",
+   "algae_wafers",
+   "goldfish_pellets",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "algae_wafers",
+   "gel_food",
+   "sinking_pellets",
+   "flake_tropical",
+   "bloodworm_frozen",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "young ghost shrimp",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "homebody",
+   "decor_inspector"
+  ]
+ },
+ "ramshorn_snail": {
+  "suited": [
+   "flake_tropical",
+   "sinking_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "freshwater": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "freshwater": null
+  },
+  "menu": [
+   "flake_tropical",
+   "sinking_pellets",
+   "algae_wafers",
+   "nori_sheet",
+   "blanched_veg",
+   "goldfish_pellets",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "algae_wafers",
+   "gel_food",
+   "blanched_veg",
+   "nori_sheet",
+   "sinking_pellets",
+   "flake_tropical",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "baby ramshorn snails",
+  "personality": [
+   "explorer",
+   "homebody",
+   "food_obsessed",
+   "night_owl",
+   "decor_inspector",
+   "shy"
+  ]
+ },
+ "flame_angelfish": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "marine_pellets",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "gel_food",
+   "blanched_veg",
+   "mysis_frozen",
+   "brine_frozen",
+   "marine_pellets",
+   "micro_pellets",
+   "flake_tropical",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "flame angelfish fry",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "decor_inspector",
+   "showoff",
+   "glass_curious",
+   "food_obsessed",
+   "homebody"
+  ]
+ },
+ "sixline_wrasse": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "marine_pellets",
+   "live_copepods"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "mysis_frozen",
+   "brine_frozen",
+   "live_copepods",
+   "marine_pellets",
+   "micro_pellets",
+   "flake_tropical",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "six-line wrasse fry",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "glass_curious",
+   "nest_builder",
+   "homebody",
+   "solitary",
+   "showoff",
+   "easily_startled",
+   "patient_feeder",
+   "competitive_feeder",
+   "decor_inspector"
+  ]
+ },
+ "lawnmower_blenny": {
+  "suited": [
+   "micro_pellets",
+   "algae_wafers"
+  ],
+  "buy": [
+   "nori_sheet",
+   "algae_wafers"
+  ],
+  "staff": {
+   "marine": "micro_pellets",
+   "none": "micro_pellets"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "micro_pellets",
+   "mysis_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "marine_pellets",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "gel_food",
+   "blanched_veg",
+   "mysis_frozen",
+   "marine_pellets",
+   "micro_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "lawnmower blenny fry",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "glass_curious",
+   "nest_builder",
+   "homebody",
+   "solitary",
+   "showoff",
+   "easily_startled",
+   "patient_feeder",
+   "competitive_feeder",
+   "decor_inspector"
+  ]
+ },
+ "flame_hawkfish": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "sinking_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "marine_pellets",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "mysis_frozen",
+   "brine_frozen",
+   "marine_pellets",
+   "micro_pellets",
+   "gel_food",
+   "sinking_pellets",
+   "flake_tropical",
+   "goldfish_pellets",
+   "axolotl_pellets"
+  ],
+  "cardRestock": "flake_tropical",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "flame hawkfish fry",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "glass_curious",
+   "nest_builder",
+   "homebody",
+   "solitary",
+   "showoff",
+   "easily_startled",
+   "patient_feeder",
+   "competitive_feeder",
+   "decor_inspector"
+  ]
+ },
+ "yellowtail_damselfish": {
+  "suited": [
+   "flake_tropical",
+   "micro_pellets"
+  ],
+  "buy": [
+   "nori_sheet",
+   "flake_tropical"
+  ],
+  "staff": {
+   "marine": "flake_tropical",
+   "none": "flake_tropical"
+  },
+  "staffPelletsOnly": {
+   "marine": "micro_pellets"
+  },
+  "menu": [
+   "flake_tropical",
+   "micro_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "marine_pellets",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": "flake_tropical",
+  "cardList": [
+   "flake_tropical",
+   "marine_pellets",
+   "micro_pellets",
+   "mysis_frozen",
+   "brine_frozen",
+   "nori_sheet",
+   "algae_wafers",
+   "blanched_veg",
+   "gel_food",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration",
+   "ich",
+   "fin_rot",
+   "fungus"
+  ],
+  "youngNoun": "yellowtail damselfish fry",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "glass_curious",
+   "nest_builder",
+   "homebody",
+   "social",
+   "showoff",
+   "easily_startled",
+   "patient_feeder",
+   "competitive_feeder",
+   "decor_inspector"
+  ]
+ },
+ "emerald_crab": {
+  "suited": [
+   "sinking_pellets",
+   "algae_wafers"
+  ],
+  "buy": [
+   "nori_sheet",
+   "algae_wafers"
+  ],
+  "staff": {
+   "marine": "sinking_pellets",
+   "none": "sinking_pellets"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "sinking_pellets",
+   "brine_frozen",
+   "mysis_frozen",
+   "algae_wafers",
+   "nori_sheet",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "gel_food",
+   "sinking_pellets",
+   "mysis_frozen",
+   "brine_frozen",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "nori_sheet",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "young emerald crabs",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "homebody",
+   "decor_inspector"
+  ]
+ },
+ "tuxedo_urchin": {
+  "suited": [
+   "algae_wafers",
+   "nori_sheet"
+  ],
+  "buy": [
+   "nori_sheet",
+   "algae_wafers"
+  ],
+  "staff": {
+   "marine": "algae_wafers",
+   "none": "algae_wafers"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "algae_wafers",
+   "nori_sheet",
+   "blanched_veg",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "nori_sheet",
+   "algae_wafers",
+   "gel_food",
+   "blanched_veg"
+  ],
+  "cardRestock": "blanched_veg",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "young tuxedo urchins",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "homebody",
+   "decor_inspector"
+  ]
+ },
+ "sand_sifting_starfish": {
+  "suited": [
+   "sinking_pellets"
+  ],
+  "buy": [
+   "sinking_pellets",
+   "goldfish_pellets"
+  ],
+  "staff": {
+   "marine": "sinking_pellets",
+   "none": "sinking_pellets"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "sinking_pellets",
+   "mysis_frozen",
+   "live_copepods",
+   "gel_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "live_copepods",
+   "mysis_frozen",
+   "gel_food",
+   "sinking_pellets",
+   "axolotl_pellets",
+   "goldfish_pellets"
+  ],
+  "cardRestock": "sinking_pellets",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "young sand-sifting starfish",
+  "personality": [
+   "bold",
+   "shy",
+   "explorer",
+   "food_obsessed",
+   "homebody",
+   "decor_inspector"
+  ]
+ },
+ "bubbletip_anemone": {
+  "suited": [],
+  "buy": [],
+  "staff": {
+   "marine": "mysis_frozen",
+   "none": "mysis_frozen"
+  },
+  "staffPelletsOnly": {
+   "marine": null
+  },
+  "menu": [
+   "brine_frozen",
+   "mysis_frozen",
+   "coral_food"
+  ],
+  "restock": null,
+  "cardList": [
+   "coral_food",
+   "mysis_frozen",
+   "brine_frozen"
+  ],
+  "cardRestock": "brine_frozen",
+  "illnesses": [
+   "stress_coloration"
+  ],
+  "youngNoun": "bubble-tip anemone fry",
+  "personality": [
+   "homebody"
+  ]
  }
 }

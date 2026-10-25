@@ -1697,10 +1697,10 @@
       "id": "MKT-016",
       "slice": "S0",
       "source": "S0 adversarial review F8; docs/ARCHITECTURE.md (market windows are promises in real time); ADR-0002 decision 2; commits dfc0a13 (ran the catch-up market at 1x, wrong) and f999618 (its revert); code-architecture-game-2 m3; ADR-0016 decision 3",
-      "description": "The offline catch-up keeps the saved market speed (marketTimeScale is not forced to 1x during the grace), so a bid made while the player was away keeps most of its window, which is set in real time at the saved speed (at least BID_MIN_OPEN_HOURS, about 3 real minutes), once play resumes at that speed. Catch-up time uses up part of the window: a bid the least patient buyer makes early in the 12-game-hour catch-up has about 2.5 real minutes left at 3x and about 3 at 10x, which the owner accepted as it is (ADR-0016 decision 3).",
+      "description": "The offline catch-up keeps the saved market speed (marketTimeScale is not forced to 1x during the grace), so a bid made while the player was away keeps most of its window, which is set in real time at the saved speed (at least BID_MIN_OPEN_HOURS, about 3 real minutes), once play resumes at that speed. Catch-up time uses up part of the window: a bid the least patient buyer makes early in the 12-game-hour catch-up has about 1 real minute left at 1x, 2.5 at 3x and 3 at 10x, which the owner accepted as it is (ADR-0016 decision 3, ADR-0052 decision 13).",
       "acceptance": [
         "marketTimeScale returns the saved speed while offlineGrace is set",
-        "For games saved at 3x and 10x, after six real hours away (a 12-game-hour catch-up), every bid created during the catch-up and still open on return has at least the minimum the code guarantees left at the saved speed: about 2.5 real minutes at 3x and about 3 at 10x (worst cases about 148 s and 176 s: a 0.1-patience buyer's bid made at the start of the catch-up; ADR-0016 decision 3), and the check sees real buyer activity"
+        "For games saved at 1x, 3x and 10x, after six real hours away (a 12-game-hour catch-up), every bid created during the catch-up and still open on return has at least the minimum the code guarantees left at the saved speed: about 1 real minute at 1x, 2.5 at 3x and 3 at 10x (worst cases about 68 s, 148 s and 176 s: a 0.1-patience buyer's bid made at the start of the catch-up; ADR-0016 decision 3, ADR-0052 decision 13), and the check sees real buyer activity"
       ],
       "tasks": [
         "S0-T8"
@@ -1710,7 +1710,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "code-architecture-game-2 m3: tests/sim/fix-econ-offline-market-speed.test.ts asserts at least 171 real seconds (180 × 0.95) at both speeds, more than the code guarantees at 3x (about 148 s); it passes on its seeds 11-15, and the review found seed 116 failing it. ADR-0016 decision 3 allows aligning that 3x check with the documented minimum as a reviewed test change (it must assert what the code guarantees, never less); until then the test is stricter than A2. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
+      "note": "code-architecture-game-2 m3: tests/sim/fix-econ-offline-market-speed.test.ts asserted at least 171 real seconds (180 × 0.95) at 3x and 10x, more than the code guarantees at 3x (about 148 s); it passed on its seeds 11-15, and the review found seed 116 failing it. ADR-0016 decision 3 allowed aligning that check with the documented minimum as a reviewed test change (it must assert what the code guarantees, never less). Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked. Chunk 16 (2026-10-25): as decision 3 allows, the test asserts what the code guarantees: the least patient buyer's shortest window less the catch-up's own hours, about 148 real seconds at 3x and 176 at 10x, and 68 at 1x (now checked too), never less; the behaviour is unchanged (a change that started every such bid's full window on the return was reverted in review, since decision 3 keeps the windows as they are)."
     },
     {
       "id": "MKT-017",
@@ -6373,8 +6373,10 @@
         "tests/e2e/shared-shop.spec.ts",
         "tests/sim/shared-room.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.4",
         "SHARED-SHOPS.md §5.6"
@@ -6395,8 +6397,10 @@
         "tests/sim/shared-pool-screens.test.ts",
         "tests/e2e/shared-shop.spec.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.6",
         "SHARED-SHOPS.md §3.3"
@@ -6417,8 +6421,10 @@
         "tests/sim/shared-pool-screens.test.ts",
         "tests/e2e/shared-shop.spec.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.6"
       ],
@@ -6436,8 +6442,10 @@
       "tests": [
         "tests/sim/shared-pool.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §5.6"
       ],
@@ -6456,8 +6464,10 @@
         "tests/sim/shared-pool-screens.test.ts",
         "tests/e2e/shared-shop.spec.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §8"
       ],
@@ -6475,12 +6485,382 @@
       "tests": [
         "tests/sim/shared-pool.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Final pass on d16dd72 (2026-10-22): typecheck, unit 3,243, build, e2e 331/331; live after the 0.7.0 release: shared-smoke 27/27, the two-browser money test 29/29 on Pages and on the Render address."
+      ],
+      "status": "GREEN",
       "designSections": [
         "SHARED-SHOPS.md §3.2"
       ],
       "note": "Chunk 14."
+    },
+    {
+      "id": "LAB-001",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "A scenario recipe: a versioned, documented JSON description of a setup.",
+      "acceptance": [
+        "A recipe (format aquarium-go-scenario, version 1) sets the base (blank, a starter, a fixture or the game on screen), the seed, the shop (money, clock, facility, unlocks, research, reputation, mastery, guide, inventory, rooms, manual mode), tanks (size, water class, purpose, cycled, age, water values, equipment and its failures, substrate, decor, lights, backdrop), animals (species, count, sex, age or stage, names, genes or a morph, potentials, Prismatic, stats, illness, injury, breeding), eggs and fry, staff, the market (offers, listings with bids, demand), shows, production lines, a warm-up, how it opens, checks and a patch; docs/SCENARIOS.md documents every field."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-build.test.ts"
+      ],
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-002",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "buildScenario and validateRecipe: pure, deterministic, never refusing a bad setup.",
+      "acceptance": [
+        "The same recipe and seed give the same stateHash; a bad recipe still builds and each problem is named by its path (an error skips that part); validateRecipe warns with the game's own compatibility verdict and never refuses; the patch refuses prototype keys."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-build.test.ts"
+      ],
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-003",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "Every built world is a legal save.",
+      "acceptance": [
+        "Every preset, every species, every water class and tank tier build into a world whose save loads with no repair and nothing non-finite, loads again in a fresh session and steps a game day; capture then build gives a legal world."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-presets.test.ts",
+        "tests/sim/scenario-build.test.ts"
+      ],
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-004",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "The scenario lab screen.",
+      "acceptance": [
+        "Presets (built in, and kept in this browser: save, duplicate, delete), the editor, the JSON (copy, paste, import and export a file, capture), the problems while editing and Build and play; a built scenario opens paused, shows its badge with Start again, and is never autosaved over the player's game; refused in a shared shop."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/scenario-lab.spec.ts",
+        "tests/sim/scenario-session.test.ts"
+      ],
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-005",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "The lab's addresses and hooks, behind the developer-tools gate.",
+      "acceptance": [
+        "?lab=1, ?scenario=<preset> and ?recipe=<text> work in a dev build and are ignored by the players' build; a scenario address boots like a fixture (the router never loads the player's save over it); __AQ.scenario; the dev panel's lab section and fixture picker; the title screen's Scenario lab with Developer tools on."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/scenario-lab.spec.ts",
+        "tests/e2e/prod-mode.spec.ts",
+        "tests/sim/plat-dev-tools.test.ts",
+        "tests/sim/scenario-session.test.ts"
+      ],
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-006",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "The scenario lab without a browser.",
+      "acceptance": [
+        "npm run scenario -- <recipe | preset> builds, runs N game hours, prints the report (money, births, deaths with causes, each tank, the log, the checks) and exits 1 on build errors or a failed check; --json and --save."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-run.test.ts"
+      ],
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-007",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "Ready-made presets.",
+      "acceptance": [
+        "Sandbox and the owner's four groups (Problems, Breeding, Showpieces, Running a business; ADR-0051 decision 4), each building with no error and no repair."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-presets.test.ts"
+      ],
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "LAB-008",
+      "slice": "ALL",
+      "source": "ADR-0051; PLAN.md chunk 15",
+      "description": "npm run lab and the docs.",
+      "acceptance": [
+        "npm run lab starts the dev server and opens the lab; docs/SCENARIOS.md lets the owner ask any agent for a scenario; an e2e spec builds a recipe through the screen and plays it."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/scenario-lab.spec.ts"
+      ],
+      "evidence": [
+        "Final pass on f9c62ab (2026-10-23): typecheck, unit 3,363, build, e2e 335/335; the fresh review (Opus 5.5, max effort) and two confirmations, the last clean; the look-around in Chromium and WebKit at desktop and phone sizes."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 15."
+    },
+    {
+      "id": "SPC-001",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "The friend's reef's 13: emperor angelfish, sailfin tang, chocolate tang, lyretail anthias, melanurus wrasse, elegant starfish, fighting conch, Mexican turbo, Nassarius, Astraea and Cerith snails, scarlet reef hermit crab, maroon clownfish.",
+      "acceptance": [
+        "Each is a full species (data with research sources, genetics, art, behaviour, encyclopedia, tests) like the existing ones; the scientific names and care values checked against docs/RESEARCH_SOURCES.md."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-marine.test.ts",
+        "tests/sim/species-chunk16.test.ts",
+        "tests/sim/morph-data.test.ts",
+        "src/ai/core/sets16.test.ts",
+        "src/ai/core/sand.test.ts",
+        "src/ai/core/starfish.test.ts",
+        "src/render/creatures/creatures.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-002",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Nine reef favourites: flame angelfish, six-line wrasse, lawnmower blenny, flame hawkfish, yellowtail damselfish, emerald crab, tuxedo urchin, sand-sifting starfish, and the bubble-tip anemone as a living animal.",
+      "acceptance": [
+        "Each is a full species as SPC-001; the living anemone wanders until it settles, needs strong light, can split, and clownfish host it; the decor anemone stays for old saves."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-marine.test.ts",
+        "tests/sim/species-chunk16.test.ts (fission)",
+        "src/ai/core/reef16.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-003",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Nine freshwater favourites: freshwater angelfish, German blue ram, harlequin rasbora, zebra danio, platy, swordtail, dwarf gourami, ghost shrimp, ramshorn snail.",
+      "acceptance": [
+        "Each is a full species as SPC-001."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-fw.test.ts",
+        "tests/sim/species-chunk16.test.ts",
+        "src/render/creatures/creatures.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-004",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Variations: real-world colour forms only, through the existing genetics.",
+      "acceptance": [
+        "Named forms only where the hobby has them (genes and phenotypes), the intensity grade where it has none, potentials, individual variation and Prismatic on every new species; the morph catalogue's checks and morph-data pass; no invented forms, no GloFish."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/morph-data.test.ts",
+        "tests/sim/morph-catalog.test.ts",
+        "tests/sim/genetics-expansion.test.ts",
+        "tests/sim/fix-panels-b-morphs.test.ts",
+        "tests/sim/offer-genes.test.ts",
+        "tests/sim/report-rarity.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-005",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Young and male/female colours.",
+      "acceptance": [
+        "Species whose wild young differ (the emperor angel, the chocolate tang, any others the research finds) are drawn in their young colours and change as they grow; males and females differ where they do in the wild; anthias and the melanurus wrasse change sex female to male (protogynous)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk16.test.ts (social sex change)",
+        "src/render/creatures/creatures.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-006",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Every new species drawn and behaving like itself.",
+      "acceptance": [
+        "New art where no body plan fits (starfish, urchin, conch, crab, living anemone, five snail shells, the ghost shrimp) and a fish plan per fish; a UI portrait for each; behaviours (perching, burying, sand-sifting, hosting) through the AI's behaviour sets."
+      ],
+      "tasks": [],
+      "tests": [
+        "src/ai/core/sets16.test.ts",
+        "src/ai/core/reef16.test.ts",
+        "src/ai/core/sand.test.ts",
+        "src/ai/core/starfish.test.ts",
+        "src/render/creatures/creatures.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-007",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Buyable from the start, and part of the economy.",
+      "acceptance": [
+        "No unlock key on any new species (tanks, water and gear keep theirs); they appear in the shop, buyers' specialties, shows and production lines like existing species; the seeded tests' changes are explained, never hidden by retuning."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk16.test.ts (decision 9)",
+        "the seeded suites (commit e232b04)"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-008",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Saves: SCHEMA_VERSION 3.",
+      "acceptance": [
+        "SCHEMA_VERSION 2 → 3 with its migration (ADR-0016); core-save-forward-safety pins the new ids; a 0.7.0 save loads; a new save is too new for 0.7.0 (PERSIST-014)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/core-save-forward-safety.test.ts",
+        "tests/sim/persistence-05.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-009",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "The friend's reef in the scenario lab.",
+      "acceptance": [
+        "A built-in preset with the real stock and the stand-in recipe's aquascape (docs/agent/design/CHUNK-16/friends-reef-standins.json), no deaths in 48 game hours; a preset with every new species for the look-around."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/scenario-presets.test.ts",
+        "tests/sim/scenario-run.test.ts (the friend's reef, 48 h)"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
+      "designSections": [],
+      "note": "Chunk 16."
+    },
+    {
+      "id": "SPC-010",
+      "slice": "ALL",
+      "source": "ADR-0052; PLAN.md chunk 16",
+      "description": "Tested and released with the owner's go-ahead.",
+      "acceptance": [
+        "The four checks on the final code; one fresh reviewer (Opus 5.5, max effort) on the brief and the diff, its blockers fixed; the agent's own look-around at desktop and phone widths; 0.8.0 released only with the owner's yes in the session."
+      ],
+      "tasks": [],
+      "tests": [],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves). The owner said release once green (ADR-0052 decision 14); 0.8.0 follows."
+      ],
+      "status": "IN_PROGRESS",
+      "designSections": [],
+      "note": "Chunk 16."
     }
   ]
 }

@@ -2,7 +2,8 @@
  * Application shell. OWNER: core.
  * URL flags: ?showcase=<starterId> jumps straight into a starter's demo tank (never saved); where the developer tools
  * are allowed (a dev build; src/state/devTools.ts, ADR-0005 decision 2, REL-019), ?fixture=<name> boots a registry
- * fixture and ?sandbox=<name> renders src/dev/sandboxes/<name>.tsx instead of the game. The live site ignores ?dev=1.
+ * fixture and ?sandbox=<name> renders src/dev/sandboxes/<name>.tsx instead of the game; chunk 15 (ADR-0051): ?lab=1 opens
+ * the scenario lab, ?scenario=<preset> and ?recipe=<text> build a scenario. The live site ignores ?dev=1 and all of these.
  */
 import { useEffect, useState, lazy, Suspense, type ComponentType } from 'react';
 import { Scene } from './render/Scene';
@@ -17,7 +18,8 @@ import { loadFixtureRegistry, isStarterFixture, holdReady } from './dev/fixtures
 import type { GameState } from './types';
 import { urlFixtureName } from './game/useAutosave';
 import { ErrorBoundary } from './app/ErrorBoundary';
-import { urlSandboxName } from './state/devTools';
+import { devToolsAllowed, urlLabParams, urlSandboxName } from './state/devTools';
+import { useLab } from './state/lab';
 
 const sandboxModules = import.meta.glob('./dev/sandboxes/*.tsx');
 
@@ -29,6 +31,16 @@ const sandboxModules = import.meta.glob('./dev/sandboxes/*.tsx');
 const URL_FIXTURE = typeof location !== 'undefined' ? urlFixtureName() : null;
 const releaseUrlBoot = URL_FIXTURE && !isStarterFixture(URL_FIXTURE) ? holdReady() : null;
 if (releaseUrlBoot) void loadFixtureRegistry().catch(() => undefined);
+
+// chunk 15 (ADR-0051) — the scenario lab, only where the developer tools are allowed: its addresses, and the lab itself
+// (its own chunk, with the scenario's badge in the game). A scenario address holds __AQ.ready like a fixture. The
+// players' build (no VITE_E2E_DEV_URL) leaves the lab's code out altogether: LAB_BUILD is false there at build time.
+const LAB_BUILD = import.meta.env.DEV || import.meta.env.VITE_E2E_DEV_URL === '1';
+const URL_LAB = LAB_BUILD && typeof location !== 'undefined' ? urlLabParams() : null;
+const URL_SCENARIO = !!(URL_LAB && (URL_LAB.scenario || URL_LAB.recipe));
+const releaseLabBoot = URL_SCENARIO ? holdReady() : null;
+const LAB = LAB_BUILD && typeof location !== 'undefined' && devToolsAllowed();
+const LabRoot = LAB_BUILD ? lazy(() => import('./dev/lab/LabRoot')) : () => null;
 
 function useUrlBoot() {
   useEffect(() => {
@@ -43,6 +55,20 @@ function useUrlBoot() {
       const view = (q.get('view') as 'tank' | 'facility') ?? 'tank';
       useUI.getState().set({ screen: 'game', view, focusedTankId: g.tankOrder[0] ?? null });
     };
+    if (LAB_BUILD && URL_LAB && URL_SCENARIO) {
+      import('./dev/lab/session')
+        .then((m) => m.bootFromAddress(URL_LAB))
+        .then((ok) => {
+          if (!ok) toTitle();
+        })
+        .catch((e: unknown) => {
+          console.error('[aquarium-go] could not build the scenario:', e);
+          toTitle();
+        })
+        .finally(() => releaseLabBoot?.());
+      return;
+    }
+    if (URL_LAB?.lab) useLab.setState({ open: true });
     if (fx && isStarterFixture(fx)) {
       boot(makeShowcase(fx));
       return;
@@ -87,6 +113,13 @@ export default function App() {
       <ErrorBoundary name="audio" fallback={null}>
         <AudioRoot />
       </ErrorBoundary>
+      {LAB && (
+        <ErrorBoundary name="scenario lab" fallback={null}>
+          <Suspense fallback={null}>
+            <LabRoot />
+          </Suspense>
+        </ErrorBoundary>
+      )}
     </div>
   );
 }

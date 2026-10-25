@@ -133,8 +133,13 @@ export const mouthbrooderModule = makePairSpawner({
 
 const cap = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);
 const isNerite = (genus: string, name: string) => /neritina|vittina|clithon/i.test(genus) || /nerite/i.test(name);
+/** chunk 16 — ramshorn snails (Planorbidae) lay clear jelly clutches on the glass and plants under water. */
+const isRamshorn = (genus: string) => /planorb|helisoma/i.test(genus);
 
-/** Mystery snails lay a pink clutch in the air gap above the waterline (needs a lid); nerite eggs never hatch in freshwater. */
+/**
+ * Mystery snails lay a pink clutch in the air gap above the waterline (needs a lid); nerite eggs never hatch in
+ * freshwater; ramshorns lay under water, so they need neither.
+ */
 export const snailClutchModule = makePairSpawner({
   id: 'snail_egg_clutch',
   plan: basePlan({
@@ -153,10 +158,11 @@ export const snailClutchModule = makePairSpawner({
   guardStage: 'guarding',
   visual: 'snail_clutch',
   site: 'above_water',
+  layOf: (sp) => (isRamshorn(sp.genus) ? { site: 'glass', visual: 'eggs_adhesive' } : null),
   extraSites: 0,
   maleRestFrac: 0.3,
   gate(state, tank: Tank, sp) {
-    if (isNerite(sp.genus, sp.commonName)) return { ok: true };
+    if (isNerite(sp.genus, sp.commonName) || isRamshorn(sp.genus)) return { ok: true };
     // The rim leaves an air gap above the waterline; a lid keeps it humid (and the snails inside).
     if (hasLid(tank) && tank.water.level >= 0.6) return { ok: true };
     return {
@@ -176,7 +182,9 @@ export const snailClutchModule = makePairSpawner({
     spawn: (m, f, sp, n, tank, guardian) =>
       isNerite(sp.genus, sp.commonName)
         ? `${f.name} has dotted the decor with tiny white eggs.`
-        : `${f.name} crawled above the waterline and laid a bright pink clutch of ${plural(n, 'egg')} under the lid! Keep the air gap humid until they hatch.`,
+        : isRamshorn(sp.genus)
+          ? `${f.name} stuck a little jelly clutch of ${plural(n, 'egg')} to the glass.`
+          : `${f.name} crawled above the waterline and laid a bright pink clutch of ${plural(n, 'egg')} under the lid! Keep the air gap humid until they hatch.`,
   },
 });
 

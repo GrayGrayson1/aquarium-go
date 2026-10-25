@@ -1,7 +1,8 @@
 /**
  * Autosave: every AUTOSAVE_INTERVAL_MS of visible real time while in the game, plus when the tab is hidden and on
- * pagehide. Skips showcase worlds and worlds booted from a `?fixture=` / `?showcase=` URL (so dev fixtures and QA runs
- * never overwrite the player's autosave; add `&autosave=1` to opt in, in a dev build or a `?dev=1` session).
+ * pagehide. Skips showcase worlds, worlds booted from a `?fixture=` / `?showcase=` URL (so dev fixtures and QA runs
+ * never overwrite the player's autosave; add `&autosave=1` to opt in, in a dev build or a `?dev=1` session) and the
+ * scenario lab's worlds (`neverAutosave` in src/persistence/session.ts, chunk 15).
  * Respects settings.autosave.
  * OWNER: lane "core".
  */
@@ -11,7 +12,7 @@ import { useUI } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { devToolsAllowed } from '@/state/devTools';
 import { STARTER_IDS } from '@/data/species';
-import { saveCurrentGame, saveCurrentGameSync } from '@/persistence/session';
+import { saveCurrentGame, saveCurrentGameSync, autosaveRefused } from '@/persistence/session';
 import { isSharedShop } from '@/persistence/sharedAway';
 import { loopStats } from './loopStats';
 
@@ -76,6 +77,7 @@ export function autosaveAllowed(opts: { evenIfOff?: boolean } = {}): boolean {
   if (!g || g.isShowcase) return false;
   if (isSharedShop(g)) return false; // chunk 13 (SHARE-011): the server saves a shared shop
   if (fixtureSaveId && g.saveId === fixtureSaveId) return false;
+  if (autosaveRefused(g.saveId)) return false; // chunk 15: a scenario (src/persistence/session.ts)
   if (useUI.getState().screen !== 'game') return false;
   if (!opts.evenIfOff && !useSettings.getState().autosave) return false;
   return true;

@@ -160,7 +160,7 @@ function autofeederFit(c: FitCtx): FitVerdict {
   const cannot = c.groups.filter((g) => !canAutofeed(g.sp));
   const dry = c.groups.filter((g) => canAutofeed(g.sp));
   if (!dry.length) return v('useless', cannotAutofeedText(cannot), { who: whoOf(cannot), attention: true });
-  // What it drops from the food you own (the hopper holds one food: the one most animals here eat); with no dry food
+  // What it drops from the food you own (the hopper holds one food: the one that feeds the most need here, pickAutofeedFood); with no dry food
   // they eat on the shelf, what it would drop once you buy some.
   const owned = planAutofeed(c.state.inventory.foods, species);
   const plan = owned.foodId ? owned : planAutofeed(Object.fromEntries(autofeederFoods().map((f) => [f.id, 1e9])), species);

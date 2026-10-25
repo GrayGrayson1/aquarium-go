@@ -30,7 +30,8 @@ const X = new THREE.Vector3(1, 0, 0);
 const LONG_FIN_HANG = 0.12;
 
 export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject {
-  const { appearance: a, lod, quality, fx } = args;
+  const { lod, quality, fx } = args;
+  const a = plan.recolor ? { ...args.appearance, ...plan.recolor } : args.appearance;
   const geo = acquireFishGeometry(plan, lod, quality);
   const S = geo.sampler;
   const u = createFishUniforms(plan, S, a);
@@ -53,6 +54,26 @@ export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject
   if (geo.bodyBottomY - geo.finsBottomY > LONG_FIN_HANG && !zones.includes('bottom') && !zones.includes('substrate')) {
     root.userData.groundOffset = clamp(-geo.finsBottomY * Math.max(1, a.bodyDepth ?? 1) - 0.02, 0.05, 0.6);
   }
+
+  // chunk 16 — a six-line wrasse asleep in the rock wraps itself in a mucus cocoon (rt.ai.cocoon 0..1); built on first use
+  let cocoon: THREE.Mesh<THREE.SphereGeometry, THREE.MeshPhysicalMaterial> | null = null;
+  const showCocoon = (k: number) => {
+    if (!cocoon) {
+      const len = plan.body.length;
+      cocoon = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 20, 14),
+        new THREE.MeshPhysicalMaterial({ color: '#e4ecef', transparent: true, opacity: 0, roughness: 0.12, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide }),
+      );
+      cocoon.name = 'cocoon';
+      // the whole fish, tail included: centred a little behind mid-body
+      cocoon.position.set(plan.body.noseX - len * 0.6, 0, 0);
+      cocoon.scale.set(len * 0.72, Math.max(0.08, geo.topY * 1.25), Math.max(0.06, len * 0.16));
+      cocoon.renderOrder = 3;
+      inner.add(cocoon);
+    }
+    cocoon.visible = k > 0.01;
+    cocoon.material.opacity = 0.24 * k;
+  };
 
   const body = new THREE.Mesh(geo.body, mats.body);
   body.name = 'body';
@@ -177,7 +198,10 @@ export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject
       st.lastAIPhase = rt.swimPhase;
       st.phase += adv;
       if (st.phase > 1e4) st.phase -= Math.PI * 2 * 1000;
-      const targetAmp = m.idleAmp + (m.amp - m.idleAmp) * smoothstep(0.05, 1.4, st.speed);
+      // chunk 16: a labriform swimmer (the wrasses) rows with its pectorals and keeps the tail for bursts — the AI says
+      // how much of the thrust is the tail's (rt.ai.tailDrive, 0 cruising, 1 bursting)
+      const tailDrive = typeof rt.ai?.tailDrive === 'number' ? clamp01(rt.ai.tailDrive as number) : 1;
+      const targetAmp = (m.idleAmp + (m.amp - m.idleAmp) * smoothstep(0.05, 1.4, st.speed)) * (0.3 + 0.7 * tailDrive);
       st.amp = approach(st.amp, dead ? 0 : targetAmp * (1 - sleep * 0.6), dead ? 1 : 4, d);
       st.bend = approach(st.bend, clamp(rt.bend || 0, -1, 1), 7, d);
       st.lag = approach(st.lag, st.bend, 2.2, d);
@@ -185,6 +209,8 @@ export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject
       st.puff = approach(st.puff, clamp01(rt.puff || 0), rt.puff > st.puff ? 5 : 1.2, d);
       st.belly = approach(st.belly, clamp01(rt.belly || 0), 1.5, d);
       st.mouth = approach(st.mouth, clamp01(rt.mouthOpen || 0), 16, d);
+      const coc = typeof rt.ai?.cocoon === 'number' ? clamp01(rt.ai.cocoon as number) : 0;
+      if (coc > 0.01 || cocoon) showCocoon(coc);
       const hoverFlutter = m.idleFlutter * (1 - sp01 * 0.6) * (1 - sleep * 0.7);
       st.flutter = approach(st.flutter, Math.max(clamp01(rt.flutter || 0), hoverFlutter), 5, d);
       const ci = rt.colorIntensity === undefined || Number.isNaN(rt.colorIntensity) ? 0.85 : clamp01(rt.colorIntensity);
@@ -251,6 +277,10 @@ export function buildFish(plan: FishPlan, args: CreatureFactoryArgs): FishObject
       mats.fins.dispose();
       mats.eye.dispose();
       depthMat?.dispose();
+      if (cocoon) {
+        cocoon.geometry.dispose();
+        cocoon.material.dispose();
+      }
       for (const g of tierGeo) if (g) releaseFishGeometry(g);
       root.removeFromParent();
     },

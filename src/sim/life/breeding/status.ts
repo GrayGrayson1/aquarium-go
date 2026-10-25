@@ -31,7 +31,8 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
   if (!sp) return null;
   const mod = moduleFor(sp);
   const hour = state.clock.hour;
-  if (!mod.breedable) return { label: 'Not bred here', detail: mod.explain?.(sp) };
+  // an animal that breeds alone (the living anemone splitting) does reproduce: the owner's wording (ADR-0052 decision 11)
+  if (!mod.breedable) return { label: mod.asexual ? 'Splits by itself' : 'Not bred here', detail: mod.explain?.(sp) };
   if (!isMature(c, sp, hour)) {
     const age = ageDaysAt(c, hour);
     return { label: 'Too young to breed', detail: `Matures in ${approxDuration((sp.breeding.maturityDays - age) * 24)}`, progress: clamp01(age / Math.max(1, sp.breeding.maturityDays)) };

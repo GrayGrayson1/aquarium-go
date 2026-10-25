@@ -57,11 +57,11 @@ export function speciesName(id: string): string {
 /**
  * Plural of a name, keeping its capitalisation ("Banggai cardinalfish", "Otocinclus", "Watchman gobies").
  * Invariant plurals: -fish, -shrimp, fry, species, and Latin-style -us / -is / -ss names (otocinclus, chromis,
- * discus, corydoras) — never "otocincluss" or "chromiss".
+ * discus, corydoras, anthias) — never "otocincluss", "chromiss" or "anthiass".
  */
 export function pluralPhrase(name: string): string {
   const n = name;
-  if (/(fish|shrimp|fry|species|us|is|ss|corydoras|sheep)$/i.test(n)) return n;
+  if (/(fish|shrimp|fry|species|us|is|ss|corydoras|anthias|sheep)$/i.test(n)) return n;
   if (/(ch|sh|x|z)$/i.test(n)) return `${n}es`;
   if (/[^aeiou]y$/i.test(n)) return `${n.slice(0, -1)}ies`;
   return `${n}s`;

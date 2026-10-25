@@ -61,7 +61,7 @@ export function createCreature(state: GameState, rng: Rng, speciesId: string, op
   const { visual, morphName } = resolvePhenotypeImpl(sp, genome, patternSeed);
   const role = initialReproRole(sp, opts.sex, ageDays, rng.next());
   const sex = observableSex(sp, role, ageDays);
-  const sizeCm = clamp(sizeAtAge(sp, genome, ageDays) * (0.96 + rng.next() * 0.06), 0.05, sp.adultSizeCm * 1.3);
+  const sizeCm = clamp(sizeAtAge(sp, genome, ageDays, role) * (0.96 + rng.next() * 0.06), 0.05, sp.adultSizeCm * 1.3);
   const personality = rollPersonalityTags(sp, genome, rng);
   // lane:w2-sim — the id comes first so the name can be drawn from the creature's own generator (never the sim RNG):
   // names are cosmetic, and changing them must not shift the simulation. Sex-matched when the sex is visible.
@@ -181,7 +181,7 @@ export type { CatalogEntry, CatalogGroup, MorphCatalog } from './morphCatalog';
 export { recordFinds } from './discovery';
 export { PERSONALITY_INFO, allowedTags as allowedPersonalityTags } from './personality';
 export { generateName, suggestNames, nameMoodsFor } from './names';
-export { ageDaysOf, lifeStageFor, sizeAtAge, adultSizeFor, sizePotentialFactor, gallonsNeededNow } from './growth';
+export { ageDaysOf, lifeStageFor, sizeAtAge, adultSizeFor, adultSizeOf, sizePotentialFactor, gallonsNeededNow } from './growth';
 export { appetiteOf, breedingReadinessTarget, pushHistory, killCreature, HUNGER_PER_HUNGER_HOURS, CONDITIONING_TAGS, STARVING_HUNGER, STARVING_HEALTH, isStarving } from './step';
 export { ILLNESSES, illnessDef } from './illness';
 export { stressFactors, habitatFit, speciesWaterView } from './welfare';

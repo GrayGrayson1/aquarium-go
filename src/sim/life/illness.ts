@@ -95,7 +95,9 @@ export const ILLNESSES: Record<IllnessKind, IllnessDef> = {
 };
 
 export function illnessDef(kind: string): IllnessDef | undefined {
-  return (ILLNESSES as Record<string, IllnessDef>)[kind];
+  // chunk 15 — own kinds only: a save's "constructor" or "toString" must find nothing, not an Object property (every
+  // step then crashed on it)
+  return Object.hasOwn(ILLNESSES, kind) ? ILLNESSES[kind as IllnessKind] : undefined;
 }
 
 /** Which illnesses a species can plausibly get. */

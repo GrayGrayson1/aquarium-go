@@ -50,6 +50,10 @@ export interface Control {
   noseAbove: number;
   /** Crawlers standing still (no goal) turn to face `look` (a mantis scanning from its burrow). Swimmers always do when slow. */
   faceLook: boolean;
+  /** chunk 16 — crawlers on a sand bed: how deep to dig in, in body half-heights (see SetProfile.bury; 0 = on top). */
+  sink: number;
+  /** chunk 16 — digging-in rate for this frame (half-heights/s; 0 = the set's own). A scared Nassarius digs fast. */
+  sinkRate: number;
 }
 
 export interface Agent {
@@ -185,6 +189,67 @@ export interface Agent {
   /** Settling at a spot: closest distance so far (-1 = not tracking) and when it last got closer (see acts settleIfBlocked). */
   settleBest: number;
   settleT: number;
+  // ── chunk 16: sand ──
+  /** 0..1 how much of the body is below the sand line (0 = on or above it, 1 = all of it under). */
+  buried: number;
+  /** Crawlers: how deep the body is dug in now (body half-heights; follows ctrl.sink at the set's dig/rise rates). */
+  sink: number;
+  /** Swimmers coming up out of the sand: how far below the floor the body may still be (ctrl.burrow units), let go of
+   * gradually so the fish rises out of the sand instead of being pushed out of it in one frame. */
+  sandAllow: number;
+  /** Lurching gait (conch): in a vault now, and when the vault or pause ends. */
+  gaitOn: boolean;
+  gaitT: number;
+  /** 0..1 progress through the current vault (0 between vaults). */
+  lurch: number;
+  /** The current rest / hide is in the sand bed (a wrasse going in or buried; see sand.ts). */
+  sandMode: boolean;
+  // ── chunk 16, wave B ──
+  /** Living anemone: it has found a spot it likes and stays there for good (anemone.ts). */
+  settled: boolean;
+  /** Living anemone: the spot it is making for (body centre), that surface's normal, whether one is chosen, how many
+   * it has given up on. */
+  site: THREE.Vector3;
+  siteN: THREE.Vector3;
+  hasSite: boolean;
+  siteTries: number;
+  /** Living anemone: 0 open … 1 shut (the crown pulled in), 0..1 deflated, when the next deflation starts and how far
+   * into the current one it is (seconds; < 0 none). */
+  closed: number;
+  deflate: number;
+  deflateT: number;
+  deflatePh: number;
+  /** Urchin: how much debris it holds on its spines (0..1; < 0 not set yet). */
+  carry: number;
+  /** Emerald crab: 0..1 how far the body is turned to scuttle sideways, and toward which side (±1; 0 between dashes). */
+  side: number;
+  sideSign: number;
+  /** Territorial fish: when it last chased an intruder off, and the one it is about to chase (read by the chase act);
+   * any fish: when it was last chased off one (it then darts off but does not go and hide). */
+  lastChaseT: number;
+  chaseId: string | null;
+  chasedT: number;
+  /** Perching fish (blenny, hawkfish): the perch surface's normal, which way along a steep face it faces (±1), the
+   * favourite perch's normal (the perch itself is `home`), hops left in this perching bout. */
+  perchN: THREE.Vector3;
+  perchSide: number;
+  homeN: THREE.Vector3;
+  hops: number;
+  /** Damsel: the rock its patch is on (it ducks into it); hawkfish: the rock of its favourite perch. */
+  patchDecor: string | null;
+  /** Crawler making for a crevice: other crevices tried after the first proved out of reach (see acts creviceTick). */
+  crevTries: number;
+  /** Crawler that clings to the rock as drawn (SetProfile.meshCling): how far inside its rock's collider box it rests
+   * (the box is bigger than the rock: rockshape.ts). */
+  embed: number;
+  /** The rock a fish's current perch or grazing spot lies inside the collider box of (on the rock as drawn): its box is
+   * let through on the last of the way in and while there (null: the spot is outside every box). */
+  throughDecor: string | null;
+  /** Six-line wrasse asleep in the rock: 0..1 how far its mucus cocoon has formed. */
+  cocoon: number;
+  /** Ram: 0..1 pulse as it spits out a mouthful of sand, and when it spits the one in its mouth out (0: none). */
+  sift: number;
+  siftT: number;
   // ── cosmetic channels ──
   flare: number;
   gill: number;
@@ -240,6 +305,8 @@ function makeControl(): Control {
     pitchCap: 0,
     noseAbove: 0,
     faceLook: false,
+    sink: 0,
+    sinkRate: 0,
   };
 }
 
@@ -262,6 +329,8 @@ export function resetControl(c: Control): void {
   c.pitchCap = 0;
   c.noseAbove = 0;
   c.faceLook = false;
+  c.sink = 0;
+  c.sinkRate = 0;
 }
 
 const DEFAULT_MODS: PersonalityModifiers = {
@@ -417,6 +486,39 @@ export function createAgent(c: Creature, sp: SpeciesDefinition, rt: CreatureRunt
     snoutHoldSign: 0,
     settleBest: -1,
     settleT: 0,
+    buried: 0,
+    sink: 0,
+    sandAllow: 0,
+    gaitOn: false,
+    gaitT: 0,
+    lurch: 0,
+    sandMode: false,
+    settled: false,
+    site: new THREE.Vector3(),
+    siteN: new THREE.Vector3(0, 1, 0),
+    hasSite: false,
+    siteTries: 0,
+    closed: 0,
+    deflate: 0,
+    deflateT: 0,
+    deflatePh: -1,
+    carry: -1,
+    side: 0,
+    sideSign: 0,
+    lastChaseT: -1e9,
+    chaseId: null,
+    chasedT: -1e9,
+    perchN: new THREE.Vector3(0, 1, 0),
+    perchSide: 1,
+    homeN: new THREE.Vector3(0, 1, 0),
+    hops: 0,
+    patchDecor: null,
+    crevTries: 0,
+    embed: 0,
+    throughDecor: null,
+    cocoon: 0,
+    sift: 0,
+    siftT: 0,
     flare: 0,
     gill: 0,
     gillNext: 0,

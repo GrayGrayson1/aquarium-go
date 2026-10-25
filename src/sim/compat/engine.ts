@@ -786,6 +786,10 @@ function applyExceptionRules(A: CompatMember, B: CompatMember, ctx: CompatContex
     if (rule.other === a.id && a.id !== b.id) continue; // conspecific rules handled elsewhere
     const tag = ruleMatches(rule, b);
     if (!tag) continue;
+    // chunk 16: when the tank's stinging count is above 0 (a living anemone in it is counted there) the sting is the
+    // environmental 'sting' incident above, so this pairwise rule would sting a second time, as 'harassment'; it stays
+    // for an anemone the tank doesn't count yet (a purchase, a move from another tank, a species check)
+    if (rule.other === 'tag:stinging_cnidarian' && (ctx.stinging ?? ctx.anemones) > 0) continue;
     let kind: IncidentRisk['kind'];
     let actor = A;
     let target = B;

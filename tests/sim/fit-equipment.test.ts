@@ -14,7 +14,7 @@ import { createCreature, addCreature } from '@/sim/life';
 import { starterAquascape } from '@/sim/aquascape';
 import { installEquipment, setEquipment, feedTank } from '@/sim/care';
 import { equipmentFit, installedFit, tankGearIssues, foodFit, canAutofeed, cannotAutofeedText, groupEaters, autofeederFoods, planAutofeed, pickAutofeedFood, FIT_TONE } from '@/sim/care/fit';
-import { FOODS, isAutofeederFood, foodForm } from '@/data/catalog/foods';
+import { FOODS, isAutofeederFood, foodForm, eatsFood } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { ALL_SPECIES, getSpecies } from '@/data/species';
 import { simRng } from '@/sim/rng';
@@ -56,6 +56,25 @@ describe('fit: one source of truth for autofeeder food', () => {
     expect(pickAutofeedFood({ flake_tropical: 10, sinking_pellets: 10 }, [neon, neon, neon, cory])).toBe('flake_tropical');
     expect(pickAutofeedFood({ flake_tropical: 10, sinking_pellets: 10 }, [neon, cory, cory, cory])).toBe('sinking_pellets');
     expect(pickAutofeedFood({ mysis_frozen: 50 }, [getSpecies('lined_seahorse')])).toBeNull();
+  });
+
+  it('B-211 (the owner, ADR-0052 decision 12): votes weigh by need, and a food made for someone else waits while a fitting one is in stock', () => {
+    const anthias = getSpecies('lyretail_anthias');
+    const nassarius = getSpecies('nassarius_snail');
+    const turbo = getSpecies('mexican_turbo_snail');
+    const hermit = getSpecies('hermit_crab');
+    const reef = [...Array(5).fill(anthias), ...Array(20).fill(nassarius), ...Array(10).fill(turbo), ...Array(10).fill(hermit)];
+    // chunk 16's friend's reef: by head count the snails' sinking pellets won and the anthias starved
+    expect(pickAutofeedFood({ sinking_pellets: 10, flake_tropical: 10 }, reef)).toBe('flake_tropical');
+    // with every food in stock a reef got axolotl pellets: never while a fitting food is there…
+    const every = Object.fromEntries(autofeederFoods().map((f) => [f.id, 10]));
+    const pick = pickAutofeedFood(every, reef)!;
+    expect(['axolotl_pellets', 'goldfish_pellets']).not.toContain(pick);
+    expect(reef.filter((sp) => eatsFood(sp, FOODS.find((f) => f.id === pick)!)).length).toBeGreaterThan(0);
+    // …but when it is all there is, it is still dropped rather than nothing
+    const pleco = getSpecies('bristlenose_pleco');
+    expect(pickAutofeedFood({ axolotl_pellets: 10 }, [pleco])).toBe('axolotl_pellets');
+    expect(pickAutofeedFood({ axolotl_pellets: 10, algae_wafers: 10 }, [pleco, pleco])).toBe('algae_wafers');
   });
 
   it('species notes are true to the diet', () => {

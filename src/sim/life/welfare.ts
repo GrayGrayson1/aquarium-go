@@ -445,7 +445,7 @@ export function stressFactors(state: GameState, env: TankEnv, c: Creature, sp: S
   add('comfort', comfortLabel, (100 - c.stats.comfort) * 0.55);
   const load = num(env.tank.cache?.stockingLoad, 0);
   if (load > 1) add('crowding', 'the tank is overstocked', Math.min(35, (load - 1) * 35));
-  const need = gallonsNeededNow(sp, c.sizeCm);
+  const need = gallonsNeededNow(sp, c.sizeCm, c.reproRole);
   if (env.gallons < need) add('tank_size', `the tank is too small (needs ~${Math.ceil(need)} gal)`, (1 - env.gallons / need) * 45);
   const tap = num(env.tank.tapPressure, 0);
   if (tap > 0) add('tapping', 'glass tapping', tap * 2.5 * tapSensitivityMul(c.personality) * (1 + num(c.life?.tapSensitivity, 0) * 0.25));

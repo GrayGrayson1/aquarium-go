@@ -29,6 +29,8 @@ const BEHAVIOR_SETS: Record<BehaviorSetId, true> = {
   cichlid_discus: true, reef_basslet: true, dartfish: true, goby_burrow: true, goby_perch: true, cardinal_hover: true,
   chromis: true, tang: true, angelfish_dwarf: true, rabbitfish: true, dragonet: true, hermit_crab: true,
   mantis_shrimp: true, lionfish: true, grouper: true, sessile: true, archerfish: true, // lane:brackish
+  wrasse: true, starfish: true, conch: true, snail_sand: true, urchin: true, starfish_sand: true, crab: true, blenny: true, // chunk 16
+  hawkfish: true, damsel: true, cichlid_dwarf: true, anemone: true,
 };
 const FOOD_TAGS: Record<FoodTag, true> = {
   flake: true, pellet_small: true, pellet_sinking: true, pellet_large: true, bloodworm: true, brine_shrimp: true,
@@ -109,8 +111,13 @@ describe.each(MARINE_ALL.map((s) => [s.id, s] as const))('%s', (id, s) => {
     expect(BEHAVIOR_SETS[s.behaviorSet as BehaviorSetId], `behaviorSet ${s.behaviorSet}`).toBe(true);
     expect(s.visualLane).toBe(roster.visual);
     const key = rosterUnlockKey(roster.unlock);
-    expect(key in UNLOCK_KEYS, `unknown unlock key ${key}`).toBe(true);
-    expect(s.unlock.requires).toEqual([key]);
+    if (key === 'open') {
+      // chunk 16 (ADR-0052 decision 4): the owner chose every new species buyable from the start
+      expect(s.unlock.requires).toEqual([]);
+    } else {
+      expect(key in UNLOCK_KEYS, `unknown unlock key ${key}`).toBe(true);
+      expect(s.unlock.requires).toEqual([key]);
+    }
     expect(s.unlock.hint.length).toBeGreaterThan(5);
     expect(s.isStarter).toBe(roster.unlock.startsWith('starter'));
   });

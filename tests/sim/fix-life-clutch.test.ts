@@ -14,6 +14,7 @@ import { quickSell } from '@/sim/economy';
 import { createClutch, mintJuveniles } from '@/sim/life/breeding/clutch';
 import { moduleFor } from '@/sim/life/breeding/registry';
 import { isMature } from '@/sim/life/breeding/common';
+import { adultSizeFor } from '@/sim/life/growth';
 import { ALL_SPECIES } from '@/data/species';
 
 vi.setConfig({ testTimeout: 240_000 });
@@ -26,7 +27,12 @@ function tend(g: GameState): void {
   }
 }
 
-/** New axolotl game with a pair; advance until the female is laying with eggs still pending. */
+/**
+ * New axolotl game with a pair; advance until the female is laying with eggs still pending. In steps of 0.1 h, each a
+ * single sub-step: the sub-step in which she begins laying places no egg (her eggs come from the next one on), so the
+ * step that first finds her laying always has none placed yet. Hour steps are two sub-steps, and whether the second
+ * placed eggs depended on where in the hour the seed's draws put the start (about half the seeds, chunk 16).
+ */
 function layingAxolotl(seed: number): { g: GameState; motherId: string; clutchId: string } {
   const preview = previewStarters(seed).axolotl;
   const g = newGame({ starterId: 'axolotl', starterName: preview.name, seed, starterCreature: preview });
@@ -34,9 +40,9 @@ function layingAxolotl(seed: number): { g: GameState; motherId: string; clutchId
   const s = Object.values(g.creatures).find((c) => c.isStarter)!;
   addCreature(g, createCreature(g, simRng(g), 'axolotl', { sex: s.sex === 'male' ? 'female' : 'male', ageDays: 26, name: 'Axel' }), s.tankId!);
   devForceBreeding(g, s.id);
-  for (let h = 0; h < 80; h++) {
+  for (let i = 0; i < 800; i++) {
     tend(g);
-    advanceWorld(g, 1, { forceFull: true });
+    advanceWorld(g, 0.1, { forceFull: true });
     const f = Object.values(g.creatures).find((c) => c.repro.stage === 'laying');
     if (f?.repro.clutchId && (g.clutches[f.repro.clutchId]?.pendingEggs ?? 0) > 0) return { g, motherId: f.id, clutchId: f.repro.clutchId };
   }
@@ -106,7 +112,12 @@ describe('S02-06 — minted young are always juveniles', () => {
       if (!kid) continue;
       expect(kid.lifeStage, sp.id).toBe('juvenile');
       expect(isMature(kid, sp, g.clock.hour), sp.id).toBe(false);
-      expect(kid.sizeCm / sp.adultSizeCm, sp.id).toBeLessThan(0.9);
+      // Still growing: under 95% of its own genetic adult size. The bound was 0.9 of the species' average adult size,
+      // which only small-genome draws met: the age cap leaves a bumblebee goby 91% along its growth curve, so a young
+      // one with a large size potential came out at up to 0.97 of the average (over 0.9 on 22 of 30 seeds in a chunk 16
+      // probe; this seed passed or failed on its draws). Against its own adult size the worst is the curve's 0.909
+      // times the creation noise's 1.02, plus the hatch size: 0.934; 0.933 was measured over 40 seeds on three streams.
+      expect(kid.sizeCm / adultSizeFor(sp, kid.genome), sp.id).toBeLessThan(0.95);
     }
   });
 });

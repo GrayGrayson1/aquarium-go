@@ -211,16 +211,21 @@ export function killCreature(state: GameState, c: Creature, info: DeathInfo, hou
   return true;
 }
 
-function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDefinition, hour: number): DeathInfo {
-  const dmg = c.life?.damage ?? {};
-  let top: string = 'unknown';
+/** The harm that did the most damage so far (the creature's damage tally), or 'unknown' when none is recorded. */
+function topDamage(c: Creature): string {
+  let top = 'unknown';
   let best = 0;
-  for (const [k, v] of Object.entries(dmg)) {
+  for (const [k, v] of Object.entries(c.life?.damage ?? {})) {
     if (v > best) {
       best = v;
       top = k;
     }
   }
+  return top;
+}
+
+function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDefinition, hour: number): DeathInfo {
+  const top = topDamage(c);
   const name = c.name;
   const spName = lc(sp.commonName);
   switch (top) {
@@ -522,7 +527,8 @@ function aliveOf(list: { c: Creature; sp: SpeciesDefinition }[], speciesId: stri
   return list.filter((x) => x.c.status !== 'dead' && x.c.speciesId === speciesId && (!ids || !ids.length || ids.includes(x.c.id)));
 }
 
-function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: SpeciesDefinition }[], risk: IncidentRisk, hour: number, ctx: SimContext): void {
+/** One incident of `risk` in a tank, now (the creature step rolls whether it happens; exported for the tests). */
+export function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: SpeciesDefinition }[], risk: IncidentRisk, hour: number, ctx: SimContext): void {
   const actors = aliveOf(list, risk.actorSpeciesId, risk.actorIds);
   if (risk.kind === 'sting' && !actors.length) {
     // Environmental sting from anemone/stinging-coral decor (orchestrator integration of waterlab incidents).
@@ -657,10 +663,19 @@ function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: 
     pushHistory(v, { hour, kind: 'note', text: `Hurt by ${actorLabel} (${risk.kind.replace('_', ' ')}).` });
   }
   if (v.stats.health <= 0) {
+    // The cause is what did most of the harm, the rule a death from accumulated harm follows (explainDeath), not
+    // whichever blow happened to land last: a betta female worn down by the male's harassment after spawning dies of
+    // harassment even when one of his chases is the final step (S02-08). Only when injuries from tank mates lead (or
+    // nothing is recorded) does the incident name its actor.
+    const top = topDamage(v);
+    const info: DeathInfo =
+      top !== 'injury' && top !== 'unknown'
+        ? explainDeath(state, env, v, victim.sp, hour)
+        : { kind: 'injury', cause: `injuries from ${actorLabel}`, text: `${v.name} has passed away from injuries caused by ${actorLabel}. ${risk.text ?? ''}`.trim() };
     const died = killCreature(
       state,
       v,
-      { kind: 'injury', cause: `injuries from ${actorLabel}`, text: `${v.name} has passed away from injuries caused by ${actorLabel}. ${risk.text ?? ''}`.trim() },
+      info,
       hour,
       ctx.emit,
       graceHealth,
@@ -734,7 +749,7 @@ export function applyAgeing(state: GameState, c: Creature, sp: SpeciesDefinition
     }
   }
   if (opts.snapSize) {
-    const target = sizeAtAge(sp, c.genome, age);
+    const target = sizeAtAge(sp, c.genome, age, c.reproRole);
     if (c.sizeCm < target) c.sizeCm = target;
   }
   return revealed;
@@ -948,8 +963,11 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   if (c.lifeStage === 'elder') energyTarget -= 8;
   s.energy = approach(s.energy, clamp(energyTarget, 5, 100), h, 4);
 
-  // Injuries heal
-  if (m.injury && m.injury > 0) m.injury = Math.max(0, m.injury - h * (0.8 + 1.2 * hardy) * (s.stress < 60 ? 1 : 0.4));
+  // Injuries heal, except while a breeding partner keeps chasing and biting (as for health, below). The male's
+  // harassment holds a bubble-nester female at a low floor and its bites add injury; when a hardy one's injuries healed
+  // faster than he added them, the drain that should finish her faded and she lingered "in critical condition" for good,
+  // so whether S02-08's ignored female died depended on her drawn hardiness (chunk 16).
+  if (m.injury && m.injury > 0 && (c.repro?.harassment ?? 0) < 0.5) m.injury = Math.max(0, m.injury - h * (0.8 + 1.2 * hardy) * (s.stress < 60 ? 1 : 0.4));
 
   // ── Health
   const dmgMul = 1.35 - 0.7 * hardy;
@@ -1018,10 +1036,18 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   }
 
   // ── Growth: approach the genetic size curve when fed and comfortable (stunted when not)
-  const target = sizeAtAge(sp, c.genome, age);
+  const target = sizeAtAge(sp, c.genome, age, c.reproRole);
   if (c.sizeCm < target) {
     const cond = (s.hunger < 70 ? 1 : s.hunger < 90 ? 0.4 : 0) * (0.5 + s.comfort / 200) * (c.illness ? 0.5 : 1);
-    if (cond > 0) c.sizeCm += (target - c.sizeCm) * (1 - dmath.exp(-h * 0.25 * cond));
+    // chunk 16: a male that becomes the female of a species whose females are bigger (special.maleSizeFactor) catches
+    // up quickly only to its size as a male, then grows into hers at the growth curve's own pace (about 95 % in
+    // adultDays), not in the few hours a stunted fish catches up in
+    const asMale = (sp.special?.maleSizeFactor ?? 1) < 1 && (c.reproRole === 'female' || c.reproRole === 'transitioning_female') ? sizeAtAge(sp, c.genome, age, 'male') : target;
+    if (cond > 0 && c.sizeCm < asMale) c.sizeCm += (asMale - c.sizeCm) * (1 - dmath.exp(-h * 0.25 * cond));
+    if (cond > 0 && asMale < target && c.sizeCm < target) {
+      const days = Math.max(1, sp.lifecycle.adultDays || sp.lifecycle.juvenileDays || 10);
+      c.sizeCm += (target - c.sizeCm) * (1 - dmath.exp(-(h / 24) * (3 / days) * cond));
+    }
   }
 
   // ── Ageing, stage changes, sex reveal (reveal toasts are merged per group by flushReveals)
@@ -1034,7 +1060,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   }
 
   // ── Tank size warnings (a juvenile growing beyond its tank)
-  const need = gallonsNeededNow(sp, c.sizeCm);
+  const need = gallonsNeededNow(sp, c.sizeCm, c.reproRole);
   if (env.gallons < need && throttleGroup(state, ids, 'tank_small', hour, 48)) {
     const adultNeed = sp.recommendedMinTankGallons;
     const text =

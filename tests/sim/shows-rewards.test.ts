@@ -6,19 +6,33 @@ import { describe, it, expect } from 'vitest';
 import { enterShow, topTitle, showValueFactors } from '@/sim/shows';
 import { creatureValue } from '@/sim/economy';
 import { exhibitInfo } from '@/sim/facility';
-import { advanceWorld } from '@/sim/world';
+import { advanceWorld, flushSimDebt, refreshTankCache } from '@/sim/world';
 import { PRIZE_SPLIT, SHOW_TIERS } from '@/data/shows';
 import type { GameState, Creature } from '@/types';
 import { showGame, starterOf, wellKept, addAdult, addShow, TOP } from './shows-helpers';
 
-/** Enter `c` alone in a fresh open-freshwater class at `tier` and judge it (weak field so a top animal wins). */
-function showAndJudge(g: GameState, c: Creature, tier: 'club' | 'regional' | 'national' | 'international', field = 3): ReturnType<typeof addShow> {
+/**
+ * Enter `c` alone in a fresh open-freshwater class at `tier` and judge it (weak field so a top animal wins).
+ * `showMorning`: the keeper looks the entrant and its tank over just before the judges do, so the entry is judged
+ * whatever the ten game hours in the tank drew (see the first test).
+ */
+function showAndJudge(g: GameState, c: Creature, tier: 'club' | 'regional' | 'national' | 'international', field = 3, showMorning = false): ReturnType<typeof addShow> {
   wellKept(c, { bond: 95, conditioning: 90, stress: 5 });
   if (c.awards) c.awards.lastShowHour = undefined;
+  const start = g.clock.hour;
   const show = addShow(g, tier, ['open_fw'], { field, purse: SHOW_TIERS[tier].purse[1], fee: 10 });
   const r = enterShow(g, show.id, 'open_fw', c.id);
   expect(r.ok, r.message).toBe(true);
-  advanceWorld(g, 10.5);
+  if (showMorning) {
+    advanceWorld(g, show.judgingHour - 0.01 - g.clock.hour);
+    flushSimDebt(g); // a background tank runs its owed hours in one go: bring it up to now before the look-over
+    wellKept(c, { bond: 95, conditioning: 90, stress: 5 });
+    const tank = g.tanks[c.tankId!];
+    for (const eq of tank.equipment) eq.failed = false;
+    refreshTankCache(g, tank);
+    advanceWorld(g, 0.01 + 1e-6); // the step that reaches the judging is too short for anything to change
+  }
+  advanceWorld(g, start + 10.5 - g.clock.hour);
   return show;
 }
 
@@ -29,7 +43,12 @@ describe('show rewards', () => {
     const money = g.finance.money;
     const rep = g.progress.reputation;
     const xp = g.progress.mastery.breeding;
-    const show = showAndJudge(g, c, 'regional', 0);
+    // A lone neon in the betta's warm tank, for ten game hours: its stress climbs toward the stay-home limit, the warm
+    // water keeps its illness roll live, the betta may nip it and a heater may fail. Each is a draw on the shared
+    // stream, and chunk 16's new species moved the stream so the entry stayed home on some seeds (stress 52 on this
+    // one). This test is about the rewards of a win, so the keeper readies the entrant on show morning; the show-day
+    // welfare check is shows-eligibility.test.ts's.
+    const show = showAndJudge(g, c, 'regional', 0, true);
     const e = g.shows!.entries.find((x) => x.showId === show.id)!;
     expect(e.status, e.note).toBe('judged');
     expect(e.rank).toBe(1);

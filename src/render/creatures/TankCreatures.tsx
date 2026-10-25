@@ -453,7 +453,11 @@ export function TankCreatures({ tank, lod }: { tank: Tank; lod: RenderLod }) {
       // sloped substrate (aquascape terrain) + the creature's own foot/sole offset so bottom dwellers stand on the sand
       const ground = substrateHeightAt(tank, px, pz);
       const footOffset = typeof e.obj.root.userData.groundOffset === 'number' ? (e.obj.root.userData.groundOffset as number) : 0.05;
-      _box.minY = ground + L * footOffset;
+      // chunk 16 — an animal digging into the sand (rt.ai.buried > 0: a wrasse diving in, a conch or Nassarius sinking)
+      // is placed by the AI where it really is; the sand hides what is under it, so the floor clamp lets it down
+      const buried = typeof rt.ai?.buried === 'number' ? (rt.ai.buried as number) : 0;
+      // …but never through the floor glass under the bed (tank-local y 0): in a thin bed it stays half in the sand
+      _box.minY = buried > 0 ? Math.max(Math.min(ground, L * 0.06), ground + L * footOffset - L * 1.2) : ground + L * footOffset;
       // …and the top of the body (dorsal fin, seahorse coronet) under the surface; surface-breathers still get close
       const topOffset = typeof e.obj.root.userData.topOffset === 'number' ? (e.obj.root.userData.topOffset as number) : 0.08;
       const spitch = Math.abs(Math.sin(f.pitch));

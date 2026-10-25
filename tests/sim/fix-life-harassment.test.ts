@@ -10,6 +10,13 @@ import { advanceWorld } from '@/sim/world';
 import { feedTank } from '@/sim/care';
 import { devForceBreeding, separateCreature } from '@/sim/life/breeding/actions';
 import { noteBreedingFood } from '@/sim/life/breeding';
+import { createCreature, addCreature } from '@/sim/life';
+import { simRng } from '@/sim/rng';
+import { applyIncident } from '@/sim/life/step';
+import { buildTankEnv } from '@/sim/life/welfare';
+import { incidentRisks } from '@/sim/compat';
+import { makeContext } from '@/sim/context';
+import { getSpecies } from '@/data/species';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -57,6 +64,43 @@ describe('S02-08 — betta female left with the male', () => {
     expect(female.deathCause).toBe('harassment by a tank mate');
     const warnings = g.log.filter((e) => e.creatureId === female.id && e.kind === 'danger');
     expect(warnings.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('hardy or not, she dies: her injuries do not heal while he keeps biting', () => {
+    // A hardy female's injuries used to heal faster than his bites added them, so the drain that should finish her
+    // faded and she lingered at the harassment floor "in critical condition" (this seed's female after chunk 16). Her
+    // hardiness is set here, at both ends, so the outcome no longer rests on what her genome drew.
+    for (const hardiness of [0, 100]) {
+      const { g, female } = spawnedPair(5150);
+      female.genome.potentials.hardiness = hardiness;
+      keep(g, 6, () => female.status !== 'alive');
+      expect(female.status, `hardiness ${hardiness}`).toBe('dead');
+      expect(female.deathCause, `hardiness ${hardiness}`).toBe('harassment by a tank mate');
+    }
+  });
+
+  it('when one of his chases lands the last blow, she still dies of harassment; an animal worn by attacks names its attacker', () => {
+    // A death names the harm that did the most damage, whichever path deals the last point: the slow decline or an
+    // incident (the male's "harassing the female" chase). Until the chunk 16 fix an incident's last blow always said
+    // "injuries from <the male>". The incident is applied directly here, so no draw decides which path kills.
+    const cases: [Record<string, number>, string][] = [
+      [{ harassment: 40, injury: 1 }, 'harassment by a tank mate'],
+      [{ injury: 30 }, 'injuries from Ember the betta'],
+    ];
+    for (const [damage, cause] of cases) {
+      const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 5 });
+      const male = Object.values(g.creatures).find((c) => c.isStarter)!;
+      const female = addCreature(g, createCreature(g, simRng(g), 'betta', { sex: 'female', ageDays: 60, name: 'Worn' }), male.tankId!);
+      female.life = { ...(female.life ?? {}), damage: { ...damage } };
+      female.stats.health = 0.4; // below the least a harassment incident takes (0.5)
+      const tank = g.tanks[male.tankId!];
+      const risk = incidentRisks(g, tank.id).find((r) => r.kind === 'harassment' && r.targetIds?.includes(female.id))!;
+      expect(risk).toBeDefined();
+      const list = [male, female].map((c) => ({ c, sp: getSpecies('betta') }));
+      applyIncident(g, buildTankEnv(g, tank, [male, female], g.clock.hour), list, risk, g.clock.hour, makeContext(g, 1));
+      expect(female.status, cause).toBe('dead');
+      expect(female.deathCause).toBe(cause);
+    }
   });
 
   it('recovers once separated', () => {

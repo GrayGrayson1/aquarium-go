@@ -31,9 +31,23 @@ export function sizePotentialFactor(potentialSize: number): number {
   return 0.82 + 0.36 * clamp(potentialSize, 0, 100) / 100;
 }
 
-/** This individual's genetic adult size (cm). */
-export function adultSizeFor(species: SpeciesDefinition, genome: Genome): number {
-  return species.adultSizeCm * sizePotentialFactor(genome.potentials?.size ?? 50);
+/**
+ * Chunk 16: a species whose females are bigger (`special.maleSizeFactor`) gives anyone not female or becoming female the
+ * male's size: the young grow as males and stay small until one becomes the female. No role or sex given: the female's.
+ */
+function sexSizeFactor(species: SpeciesDefinition, role?: ReproRole | Sex): number {
+  if (role === undefined || role === 'female' || role === 'transitioning_female') return 1;
+  return clamp(species.special?.maleSizeFactor ?? 1, 0.1, 1);
+}
+
+/** The species' adult size (cm, at the average size potential) for this role or sex (see sexSizeFactor). */
+export function adultSizeOf(species: SpeciesDefinition, role?: ReproRole | Sex): number {
+  return species.adultSizeCm * sexSizeFactor(species, role);
+}
+
+/** This individual's genetic adult size (cm), for its role (see sexSizeFactor). */
+export function adultSizeFor(species: SpeciesDefinition, genome: Genome, role?: ReproRole): number {
+  return adultSizeOf(species, role) * sizePotentialFactor(genome.potentials?.size ?? 50);
 }
 
 /** Growth curve fraction 0..1 at an age. */
@@ -44,10 +58,10 @@ export function growthFraction(species: SpeciesDefinition, ageDays: number): num
   return clamp(1 - dmath.exp(-k * Math.max(0, ageDays)), 0, 1);
 }
 
-/** Expected size (cm) at an age for this genome, with ideal feeding. */
-export function sizeAtAge(species: SpeciesDefinition, genome: Genome, ageDays: number): number {
+/** Expected size (cm) at an age for this genome (and role, see adultSizeFor), with ideal feeding. */
+export function sizeAtAge(species: SpeciesDefinition, genome: Genome, ageDays: number, role?: ReproRole): number {
   const hatch = Math.max(0.05, species.lifecycle.hatchSizeCm || species.adultSizeCm * 0.05);
-  const adult = adultSizeFor(species, genome);
+  const adult = adultSizeFor(species, genome, role);
   return hatch + (Math.max(hatch, adult) - hatch) * growthFraction(species, ageDays);
 }
 
@@ -83,8 +97,8 @@ export function observableSex(species: SpeciesDefinition, role: ReproRole, ageDa
   return 'unknown';
 }
 
-/** Gallons this individual needs right now (scales with current size; adults need the species minimum). */
-export function gallonsNeededNow(species: SpeciesDefinition, sizeCm: number): number {
-  const frac = clamp(sizeCm / Math.max(0.1, species.adultSizeCm), 0.05, 1.3);
+/** Gallons this individual needs right now (scales with current size against its sex's adult size; adults need the species minimum). */
+export function gallonsNeededNow(species: SpeciesDefinition, sizeCm: number, role?: ReproRole | Sex): number {
+  const frac = clamp(sizeCm / Math.max(0.1, adultSizeOf(species, role)), 0.05, 1.3);
   return species.recommendedMinTankGallons * clamp(dmath.pow(frac, 1.5), 0.15, 1);
 }

@@ -195,7 +195,8 @@ export interface StockEntry {
   potentialsBias?: number;
 }
 
-function sexFor(plan: SexPlan, i: number, speciesId: string): Sex | undefined {
+/** The sex the `i`th animal of a stocking entry gets (undefined: the species decides, e.g. clownfish start male). */
+export function sexFor(plan: SexPlan, i: number, speciesId: string): Sex | undefined {
   const sp = findSpecies(speciesId);
   if (sp && (sp.sexSystem === 'protandrous' || sp.sexSystem === 'protogynous' || sp.sexSystem === 'not_applicable')) return undefined;
   switch (plan) {

@@ -53,7 +53,9 @@ function check(r: PlaythroughResult, id: StarterId, seed: number): void {
   }
   // The first real hour carries the tutorial and the early unlock burst; after that the pace settles.
   const inHour = (h: number, toast: boolean) => r.events.filter((e) => (!toast || e.toast) && e.hour - START >= h * REAL_HOUR && e.hour - START < (h + 1) * REAL_HOUR).length;
-  expect(inHour(0, true), `${tag} toasts in the first real hour`).toBeLessThanOrEqual(90);
+  // ADR-0052 decision 10 (the owner, 2026-10-25): 100, above the most a seed has shown (97 of 63 seeds before and
+  // after chunk 16; median 76); 90 failed on 1–3 % of seeds by the stream's luck
+  expect(inHour(0, true), `${tag} toasts in the first real hour`).toBeLessThanOrEqual(100);
   for (const h of [1, 2]) {
     expect(inHour(h, true), `${tag} toasts in real hour ${h + 1}`).toBeLessThanOrEqual(70);
     expect(inHour(h, false), `${tag} events in real hour ${h + 1}`).toBeLessThanOrEqual(110);
