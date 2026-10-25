@@ -1512,7 +1512,7 @@ REL-012, REL-018.
   four checks again, typecheck, unit 3,363, build, e2e 335 of 335 (39.9 min), pushed. Nothing deployed (a developer tool
   needs no release; ADR-0051 decision 1).
 
-### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); not started
+### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24, in review
 
 - **What:** the owner's words, verbatim (2026-10-24): "add all 12 missing species as the next chunk and what other
   species should we be adding? how will this work for variations?" It began with a friend's 210-gallon reef the owner
@@ -1588,6 +1588,40 @@ REL-012, REL-018.
   photo's description (a long live-rock ridge with an arch and a tall centre pile, aragonite sand, red macroalgae along
   the front, the anemone, deep actinic blue), a week of play headless with an autofeeder, a 0.7.0 save loaded.
 - **Requirements:** SPC-001 to SPC-010 (`docs/agent/REQUIREMENTS.json`).
+- **Built (2026-10-24, Chase), all three waves** (31 species, 48 → 79; `SCHEMA_VERSION` 3):
+  - *Names checked against the sources* (ADR-0052 decision 1 asked for corrections here): the sailfin tang is
+    *Zebrasoma velifer*, the maroon *Amphiprion biaculeatus* (Premnas is now a synonym), the elegant starfish *Fromia
+    milleporella*, the fighting conch *Strombus pugilis* (the West Indian fighting conch of the trade), the Nassarius
+    *Phrontis vibex*, the Cerith *Cerithium atratum*, the flame angel *Centropyge loriculus*, the flame hawkfish
+    *Neocirrhites armatus*, the ghost shrimp *Palaemon paludosus* (formerly Palaemonetes) and the ramshorn *Planorbella
+    duryi*; the dwarf gourami stays *Trichogaster lalius* (Catalog of Fishes has treated it as *T. fasciata* since 2022;
+    the data says so). The living anemone's id is `bubbletip_anemone` (the decor piece keeps `bubble_tip_anemone`).
+  - *Round 2* (ADR-0052 decision 9): a new species needs no research, but the shop stocks it only once its water type
+    is researched (`requiredUnlocks` falls back to `waterClassKeys`), and restocks the moment that research completes.
+  - *Behaviour:* twelve new AI sets (wrasse, starfish, conch, snail_sand; urchin, starfish_sand, crab, blenny,
+    hawkfish, damsel, cichlid_dwarf, anemone) and the six-line's rock sleep in a mucus cocoon; sand burying
+    (`rt.ai.buried`, the floor clamp lets a digging animal down); clownfish host a living anemone, which wanders until
+    it settles; social sex change in four species the game doesn't breed (`special.socialSexChange`).
+  - *Breeding:* the bubble-tip splits in two (new system `fission`); the ramshorn lays jelly clutches under water (the
+    snail module's `layOf`); the ghost shrimp is berried with a short larval week; others as their data says.
+  - *Art:* a fish plan per fish with young and male/female colours (`FishPlan.recolor`, the plan key carries the look),
+    new marks `ring_thin` and `wedge`, the platy's tail spots (`tailSpot`) and tuxedo (`bodyMark`); new critters: two
+    starfish, urchin, conch, crab, living anemone, five snail shells, ghost shrimp, scarlet hermit.
+  - *Seeded tests:* the new species shift the shared stream (the shop draws from the species available). Every failing
+    seeded test passed with the 31 hidden; each was made independent of the stream rather than re-pinned (see the
+    commits). Three real bugs found on the way were fixed with regression tests: a harassment death named the wrong
+    cause and a hardy harassed female could linger at 1.4 health for good (S02-08), and bids made during the offline
+    catch-up came back with less than their window (MKT-016). The first hour's toast cap is now 100 (the owner,
+    ADR-0052 decision 10).
+  - *Lab:* "A friend's reef" (the 180, the real stock, a living bubble-tip, marine pellets four times a day: a week
+    with no deaths, one anthias turns male on day 4) and "Every new species" (a showroom with three tanks and
+    autofeeders). The lab warns that the friend's emperor needs 220 gallons as an adult (LAB-007 expects that one
+    warning).
+  - *Rock as drawn:* the AI's rock surfaces now follow the drawn rock (`src/ai/core/rockshape.ts`) instead of the
+    collider box: the anemone was settling on a box top that stood up to 16 cm above the rock. Older crawlers
+    (algae grazers, hillstream loaches, dwarf and cleaner shrimp, snails, hermit crabs) use it too, so they now sit on
+    the rock rather than hovering above it: a visible change to released species.
+  - *Backlog:* B-211 to B-216.
 
 ## Releases
 

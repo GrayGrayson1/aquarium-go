@@ -110,3 +110,61 @@ The friend's name in the first question is replaced by "[a friend]" here.
 8. **Process** (the owner asked "do we need to give this to a new agent or compact this convo?"): Chase wrote this
    record, chunk 16's brief and the handoff and pushed `next`; the chunk starts in a fresh context (the owner's
    `/compact`, or a new agent), reading the docs first.
+
+## Round 2 (2026-10-24, during wave A): stocking what the player can keep
+
+**Why it was asked.** Building wave A showed a side effect of decision 4: with every new species available from day
+one, a freshwater starter's first shop had 1–5 of its 6 random slots filled with marine animals they could not keep
+yet (marine tanks still need the Marine Systems research), and after all 31 species about 40% of such a shop would be
+marine; a clownfish starter could be offered an emperor angel (220 gallons) on day one. A probe over three seeds for
+each starter is the evidence.
+
+**The question as asked:** "You chose every new species buyable from the start. Testing shows a side effect: a
+freshwater starter's first shop now has 1–5 of its 6 random slots filled with marine animals they can't keep yet
+(marine tanks still need Marine Systems research), and after all 31 species about 40% of their shop would be marine.
+A clownfish starter can be offered an emperor angel (needs 220 gal) on day one. How should the shop stock the new
+species?" (Day-one shop)
+- Chosen: **"Stock what you can keep (Recommended)"**: "No research needed for any new species, but the shop only
+  stocks one once you have its water type: freshwater ones for everyone, marine ones once Marine Systems is researched,
+  reef-only ones once Reef Systems is. Big fish still show their tank-size warning." Its preview, verbatim:
+
+  ```
+  Betta starter, day 1 shop:
+    betta, guppy, honey gourami,
+    platy, zebra danio, ghost shrimp
+    (no marine animals yet)
+
+  After Marine Systems research:
+    + maroon, anthias, snails, conch,
+      emperor angel ... all at once
+  ```
+- Not chosen: "Keep it as chosen" ("Every new species can turn up in any shop from day one, including animals the
+  player has no tank for yet."); "Like the real hobby" ("The option you passed on before: clean-up crew with Beginner
+  marine, anthias and wrasse with Reef, the big tangs and the emperor with Large marine, the starfish with Advanced
+  marine; freshwater ones from the start.").
+
+**Decision 9 (amends decision 4).** A new species keeps `unlock.requires: []` (no research of its own); the game
+treats the research its easiest water type needs as its keys (`requiredUnlocks` in `src/sim/economy/shop.ts`, from
+`waterClassKeys` in `src/sim/facility/progression.ts`, the same rule as `waterClassLock`): freshwater species are in
+the shop from the start, marine ones from Marine Systems, reef-only ones from Reef Systems. When that research
+completes, the shop restocks them at once (`stockNewUnlocks`). The Shop and the Encyclopedia read the same rule, and
+each species' hint says so. Existing species are unchanged.
+
+## Round 3 (2026-10-25, before the chunk's checks): the first hour's toast cap
+
+The new species shift the game's shared random stream, and one balance test seed went over a cap. Asked with the
+AskUserQuestion tool (one question):
+
+- **"A balance test caps the pop-up toasts a new player sees in their first real hour at 90. With the new species, one
+  test seed (betta 77) now shows 92: two spawns, two sales and other ordinary events, no repeating message. Over 63
+  seeds the median is 76 and the 95th percentile 87. Before this chunk, one seed already reached 97. The cap fails on
+  1–3 % of seeds by luck either way. How should the test hold that promise?"** (Toast cap)
+  - Chosen: **"Raise the cap to 100 (Recommended)"** ("Keep the per-seed check, with the cap above the most ever seen
+    (97 in 63 seeds, before and after the chunk). A quick change; it still catches real toast spam.")
+  - Not chosen: "Test a sweep instead" ("Keep 90 but check it over many seeds (e.g. 95 % of seeds at or under 90;
+    today 87). A truer promise, but a slower test and a bigger change to it."); "Cut toasts in the game" ("Keep 90 and
+    make the first hour quieter (fold more events into the log instead of toasts). Players would see the change; I'd
+    ask you which events before building it.").
+
+**Decision 10.** `tests/sim/playthrough-starters.test.ts` caps the first real hour's toasts at 100 per seed (was 90);
+the later hours' cap (70) is unchanged.

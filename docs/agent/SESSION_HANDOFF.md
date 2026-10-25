@@ -20,6 +20,27 @@ internal clone `~/LocalTest/AquariumGo` is at `c7ade07` with no patch applied (i
 the sync helpers `patch-sync.sh` and `patch-at.sh`, and throwaway probes from 2026-10-24). A lab dev server
 may still be running on port 5173 in CNVS's "Skye" terminal (started from the clone); e2e uses its own port (4399).
 
+**Progress (Chase, 2026-10-24, in this session; the chunk started at `1b929a7`).** All three waves are built; PLAN.md
+chunk 16's "Built" notes say what and how. Still to do when this note was written: the four checks on the final code,
+the fresh reviewer and its blockers, the commits, `PLAN.md`/`REQUIREMENTS.json` status, the push of `next`, and the
+owner's questions (below).
+- *Own testing done:* every new fish in the art gallery (`?sandbox=fishart-gallery&only=<id>`; young, male and female,
+  the forms) and every critter in `critterart-gallery.html`; the two lab presets in the tank view at 1600×1000 and
+  390×844 (day and night); a game week headless for both presets with autofeeders (`npm run scenario -- <preset>
+  --hours 168`: the friend's reef has no deaths and one anthias turns male on day 4; the new-species preset loses
+  three small snails to the flame hawkfish and the sand-sifting star, as their data says); two 0.7.0 saves (built
+  with `a704e63`) load with no repairs, play two days and re-save clean, and a new save is refused by 0.7.0 as "too
+  new" (save format v3).
+- *For the owner before release (new player-visible copy the designs don't cover):* the activity labels "asleep in
+  the sand", "resting in the sand", "hiding in the sand", "buried in the sand", "chasing off an intruder", "looking for
+  a place to settle", "settled"; the breeding messages "<name> stuck a little jelly clutch of <n> eggs to the glass."
+  (ramshorn) and "<name> has split in two! The new bubble-tip anemone, <name>, is its clone." (fission) with its
+  explanation; the species hints ("Available from the start." and "Needs no research of its own: it comes into the
+  shop once you research Marine Systems."). Also: the pea-puffer balance test's shop-opening floor (the triage's
+  numbers), and B-211's autofeeder rule.
+- *Release:* 0.8.0 bumps the save format, so the shared-shop server on Render (`server/host.ts` reads
+  `SCHEMA_VERSION`) must be deployed with it.
+
 **Order of work.**
 1. `git checkout next && git pull`; note the start commit.
 2. Study one species end to end before writing any: `kole_tang` (a plain fish), `ocellaris_clownfish` (named forms,
