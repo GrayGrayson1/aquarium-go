@@ -4,6 +4,32 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.8.0 — 2026-10-25
+
+- **31 new species (48 → 79).** Each has its own look, behaviour, colours and care, and all are in the shop from the
+  start: the freshwater ones on day one, the marine ones once you've researched Marine Systems.
+  - **A friend's reef:** emperor angelfish, sailfin and chocolate tangs, lyretail anthias, melanurus wrasse, maroon
+    clownfish, elegant starfish, fighting conch, scarlet reef hermit crab, and the Mexican turbo, Nassarius, Astraea
+    and Cerith snails.
+  - **Reef favourites:** flame angelfish, six-line wrasse, lawnmower blenny, flame hawkfish, yellowtail damselfish,
+    emerald crab, tuxedo urchin, sand-sifting starfish, and the bubble-tip anemone as a living animal.
+  - **Freshwater favourites:** freshwater angelfish, German blue ram, harlequin rasbora, zebra danio, platy, swordtail,
+    dwarf gourami, ghost shrimp and ramshorn snail.
+- **The hobby's real colour forms,** such as the angelfish's marble, zebra, koi and veil, the platy's Mickey Mouse and
+  wagtail, and the maroon's Lightning and Gold Nugget. A species with no named forms has "Richly coloured" ones.
+- **Young and male/female colours.** A young emperor angelfish is dark blue with white rings, male anthias turn
+  magenta, female and young dwarf gouramis are silver, and a maroon clownfish's female is much bigger than her male.
+- **New behaviours.** Wrasses, sea stars and Nassarius snails bury themselves in the sand. The six-line wrasse sleeps
+  in a mucus cocoon in the rock. A group of anthias or melanurus wrasses turns one female into its male. The tuxedo
+  urchin carries bits of debris, and hawkfish perch on the rock. A living anemone wanders until it settles, hosts your
+  clownfish, and now and then splits in two.
+- **Autofeeders** now drop the food the tank most needs, so a big clean-up crew no longer outvotes the fish. They also
+  pass over food made for other animals (axolotl pellets in a reef) while something that suits is in stock.
+- **Snails, shrimp, loaches and hermit crabs** now sit on the rock as it's drawn, not just above it.
+- **Fixes:** a death from injuries now names the animal that did the most harm, and a fish harassed without a break no
+  longer lingers near death for good.
+- **Saves** use a new format. An older copy of the game asks you to refresh rather than open them.
+
 ## 0.7.0 — 2026-10-22
 
 - **Shared shops: the money pool and spending tiers.** Everything a shared shop earns goes into one pool, and the
