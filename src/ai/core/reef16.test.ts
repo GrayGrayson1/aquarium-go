@@ -580,7 +580,9 @@ describe('German blue ram (cichlid_dwarf)', () => {
     let together = 0;
     let sifts = 0;
     let lastSift = 0;
-    run(w, 240, () => {
+    // ten minutes: the pair settles its home in the first few, and a chase can take it off for a while (over four
+    // minutes the share near home ran from 0.47 to 0.88 on nudged starts, over ten from 0.75 to 0.95)
+    run(w, 600, () => {
       for (const r of [m, f]) {
         n++;
         if (r.rt.pos.y - floorAt(w.env, r.rt.pos.x, r.rt.pos.z) < H * 0.3) low++;

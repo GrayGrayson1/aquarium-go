@@ -557,9 +557,13 @@ export const ACTS: Record<ActId, ActDef> = {
       if (a.actPhase === 0 && a.rt.pos.y > clearY - a.L * 0.25) a.actPhase = 1;
       const flat = Math.hypot(a.rt.pos.x - a.actData.x, a.rt.pos.z - a.actData.z);
       if (a.actPhase === 1 && flat < a.L * 0.35) {
-        // over the spot: turn to the heading that fits there, then settle (the brain lands walkers once it ends)
-        if (a.fwd.x * a.actNormal.x + a.fwd.z * a.actNormal.z > 0.94 || a.actT > 10) return false;
-        go(a, _a.set(a.actData.x, a.rt.pos.y, a.actData.z), cruiseBL(a) * 0.4, a.L * 0.6);
+        // over the spot: turn to the heading that fits there and come down to it, then settle — the brain lands walkers
+        // once it ends, within reach of the floor (chunk 16: ending its clear height up, it was carried off swimming
+        // by the next act, and a walker refused a landing was sent here again and again)
+        const down = a.rt.pos.y - a.actData.y < a.L * 0.3;
+        if ((down && a.fwd.x * a.actNormal.x + a.fwd.z * a.actNormal.z > 0.94) || a.actT > 10) return false;
+        go(a, _a.set(a.actData.x, a.actData.y, a.actData.z), cruiseBL(a) * 0.4, a.L * 0.3);
+        a.ctrl.allowFloor = true;
         look(a, _b.copy(a.rt.pos).addScaledVector(a.actNormal, a.L * 3));
         return true;
       }
@@ -677,10 +681,15 @@ export const ACTS: Record<ActId, ActDef> = {
       const dash = a.set.startle === 'shelter' || rockSleep(a);
       // a C-start: a startled darter whose cover lies behind it flips round toward it at once, level (the ordinary turn
       // turns round horizontally first, so a blenny perched head up over its hole only backed away: chunk 16)
+      // (only with the cover some way off: right beside it the way round is arbitrary, and a flip read as a snap)
       if (dash && a.actPhase === 0 && a.actT < 0.05 && a.loco === 'swim') {
         _a.subVectors(a.actData, a.rt.pos);
+        const behind = a.fwd.dot(_a) < 0;
         _a.y = 0;
-        if (_a.lengthSq() > 1e-8 && a.fwd.x * _a.x + a.fwd.z * _a.z + a.fwd.y * (a.actData.y - a.rt.pos.y) < 0) a.fwd.copy(_a.normalize());
+        if (behind && _a.lengthSq() > a.L * a.L * 0.64) {
+          a.fwd.copy(_a.normalize());
+          a.aim.copy(a.fwd);
+        }
       }
       a.ctrl.urgency = a.actPhase === 0 ? (dash ? 1 : 0.6) : 0;
       const r = hideTick(a, w, 1.6, dash && a.actT < 4 ? burstBL(a) * 0.8 : 0);

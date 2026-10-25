@@ -1656,10 +1656,14 @@ REL-012, REL-018.
     16 solid as drawn) as drawn, so a shrimp at a live rock's face no longer counts as inside it. The blenny's dart was
     measured a second after the tap, when it is often over, and could catch a chase's burst; it is now measured from a
     calm tap, and a startled darter whose cover is behind it flips round to it (a C-start: perched head up it only
-    backed away). Over the 96 paths: the collider test 5 with a brief nose or tail in decor (5 to 7 before the chunk;
-    B-217), the blenny's dart 0.
-  - *Backlog:* B-211 to B-217 (B-211, the autofeeder's vote, and B-213, the anemone's split, built; B-217 the rare
-    brief collisions above).
+    backed away; only with its cover some way off, or the flip read as a snap). `reposition` now comes down to its free
+    spot before it ends, so the walker lands there. A sweep of every AI test over nudged starts (B-218) found two more
+    chunk-16 tests that held by luck, now measured properly: the ram's home-keeping over ten minutes (the pair settles
+    its home in the first few), the wrasse's never digging in by day over every frame (a last frame caught a peck).
+    Over 30 nudged starts every AI test passes but the collider test on 2 (a brief nose or tail in decor, about its
+    rate before the chunk: B-217).
+  - *Backlog:* B-211 to B-219 (B-211, the autofeeder's vote, B-213, the anemone's split, and B-218, the tests that
+    held by luck, done; B-217 the rare brief collisions above; B-219 the steering case behind the C-start).
 
 ## Releases
 
