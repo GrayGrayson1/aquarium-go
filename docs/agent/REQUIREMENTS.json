@@ -1697,7 +1697,7 @@
       "id": "MKT-016",
       "slice": "S0",
       "source": "S0 adversarial review F8; docs/ARCHITECTURE.md (market windows are promises in real time); ADR-0002 decision 2; commits dfc0a13 (ran the catch-up market at 1x, wrong) and f999618 (its revert); code-architecture-game-2 m3; ADR-0016 decision 3",
-      "description": "The offline catch-up keeps the saved market speed (marketTimeScale is not forced to 1x during the grace), so a bid made while the player was away keeps most of its window, which is set in real time at the saved speed (at least BID_MIN_OPEN_HOURS, about 3 real minutes), once play resumes at that speed. Catch-up time uses up part of the window: a bid the least patient buyer makes early in the 12-game-hour catch-up has about 2.5 real minutes left at 3x and about 3 at 10x, which the owner accepted as it is (ADR-0016 decision 3).",
+      "description": "The offline catch-up keeps the saved market speed (marketTimeScale is not forced to 1x during the grace), so a bid made while the player was away keeps most of its window, which is set in real time at the saved speed (at least BID_MIN_OPEN_HOURS, about 3 real minutes), once play resumes at that speed. Catch-up time uses up part of the window: a bid the least patient buyer makes early in the 12-game-hour catch-up has about 1 real minute left at 1x, 2.5 at 3x and 3 at 10x, which the owner accepted as it is (ADR-0016 decision 3, ADR-0052 decision 13).",
       "acceptance": [
         "marketTimeScale returns the saved speed while offlineGrace is set",
         "For games saved at 1x, 3x and 10x, after six real hours away (a 12-game-hour catch-up), every bid created during the catch-up and still open on return has at least the minimum the code guarantees left at the saved speed: about 1 real minute at 1x, 2.5 at 3x and 3 at 10x (worst cases about 68 s, 148 s and 176 s: a 0.1-patience buyer's bid made at the start of the catch-up; ADR-0016 decision 3, ADR-0052 decision 13), and the check sees real buyer activity"
@@ -6660,9 +6660,19 @@
         "Each is a full species (data with research sources, genetics, art, behaviour, encyclopedia, tests) like the existing ones; the scientific names and care values checked against docs/RESEARCH_SOURCES.md."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "tests/sim/species-marine.test.ts",
+        "tests/sim/species-chunk16.test.ts",
+        "tests/sim/morph-data.test.ts",
+        "src/ai/core/sets16.test.ts",
+        "src/ai/core/sand.test.ts",
+        "src/ai/core/starfish.test.ts",
+        "src/render/creatures/creatures.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6675,9 +6685,15 @@
         "Each is a full species as SPC-001; the living anemone wanders until it settles, needs strong light, can split, and clownfish host it; the decor anemone stays for old saves."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "tests/sim/species-marine.test.ts",
+        "tests/sim/species-chunk16.test.ts (fission)",
+        "src/ai/core/reef16.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6690,9 +6706,15 @@
         "Each is a full species as SPC-001."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "tests/sim/species-fw.test.ts",
+        "tests/sim/species-chunk16.test.ts",
+        "src/render/creatures/creatures.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6705,9 +6727,18 @@
         "Named forms only where the hobby has them (genes and phenotypes), the intensity grade where it has none, potentials, individual variation and Prismatic on every new species; the morph catalogue's checks and morph-data pass; no invented forms, no GloFish."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "tests/sim/morph-data.test.ts",
+        "tests/sim/morph-catalog.test.ts",
+        "tests/sim/genetics-expansion.test.ts",
+        "tests/sim/fix-panels-b-morphs.test.ts",
+        "tests/sim/offer-genes.test.ts",
+        "tests/sim/report-rarity.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6720,9 +6751,14 @@
         "Species whose wild young differ (the emperor angel, the chocolate tang, any others the research finds) are drawn in their young colours and change as they grow; males and females differ where they do in the wild; anthias and the melanurus wrasse change sex female to male (protogynous)."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "tests/sim/species-chunk16.test.ts (social sex change)",
+        "src/render/creatures/creatures.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6735,9 +6771,17 @@
         "New art where no body plan fits (starfish, urchin, conch, crab, living anemone, five snail shells, the ghost shrimp) and a fish plan per fish; a UI portrait for each; behaviours (perching, burying, sand-sifting, hosting) through the AI's behaviour sets."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "src/ai/core/sets16.test.ts",
+        "src/ai/core/reef16.test.ts",
+        "src/ai/core/sand.test.ts",
+        "src/ai/core/starfish.test.ts",
+        "src/render/creatures/creatures.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6750,9 +6794,14 @@
         "No unlock key on any new species (tanks, water and gear keep theirs); they appear in the shop, buyers' specialties, shows and production lines like existing species; the seeded tests' changes are explained, never hidden by retuning."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "tests/sim/species-chunk16.test.ts (decision 9)",
+        "the seeded suites (commit e232b04)"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6765,9 +6814,14 @@
         "SCHEMA_VERSION 2 → 3 with its migration (ADR-0016); core-save-forward-safety pins the new ids; a 0.7.0 save loads; a new save is too new for 0.7.0 (PERSIST-014)."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "tests/sim/core-save-forward-safety.test.ts",
+        "tests/sim/persistence-05.test.ts"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6780,9 +6834,14 @@
         "A built-in preset with the real stock and the stand-in recipe's aquascape (docs/agent/design/CHUNK-16/friends-reef-standins.json), no deaths in 48 game hours; a preset with every new species for the look-around."
       ],
       "tasks": [],
-      "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "tests": [
+        "tests/sim/scenario-presets.test.ts",
+        "tests/sim/scenario-run.test.ts (the friend's reef, 48 h)"
+      ],
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves)."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     },
@@ -6796,8 +6855,10 @@
       ],
       "tasks": [],
       "tests": [],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves). The owner said release once green (ADR-0052 decision 14); 0.8.0 follows."
+      ],
+      "status": "IN_PROGRESS",
       "designSections": [],
       "note": "Chunk 16."
     }

@@ -1512,7 +1512,7 @@ REL-012, REL-018.
   four checks again, typecheck, unit 3,363, build, e2e 335 of 335 (39.9 min), pushed. Nothing deployed (a developer tool
   needs no release; ADR-0051 decision 1).
 
-### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24, in review
+### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24; done 2026-10-25 (`66e4a37`), released as 0.8.0
 
 - **What:** the owner's words, verbatim (2026-10-24): "add all 12 missing species as the next chunk and what other
   species should we be adding? how will this work for variations?" It began with a friend's 210-gallon reef the owner
