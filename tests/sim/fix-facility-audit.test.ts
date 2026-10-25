@@ -122,17 +122,27 @@ describe('S04-01 / G1-04: visitor arrivals do not depend on the sim step size', 
   it('an early arrival stays a debt: the carry is never forgiven', () => {
     const g = shop(3, 1);
     let sawDebt = false;
+    let expected = 0;
+    let arrived = 0;
     for (let i = 0; i < 400; i++) {
       const before = g.visitors.live?.carry ?? 0;
       const n0 = g.visitors.totalVisitors;
       F.stepVisitors(g, 0.025, makeContext(g, 0.025));
       g.clock.hour += 0.025;
       const live = g.visitors.live!;
+      expected += live.arrivalRate * 0.025;
+      arrived += g.visitors.totalVisitors - n0;
+      // The books: every arrival so far plus what is still owed (a debt) or due (a fraction) is the expected count.
+      expect(arrived + live.carry).toBeCloseTo(expected, 9);
       if (before < 0) {
         sawDebt = true;
         // a negative carry can only rise by this step's expected arrivals, never jump to a fresh positive fraction
         expect(live.carry).toBeLessThanOrEqual(before + live.arrivalRate * 0.025 + 1e-9);
-        expect(g.visitors.totalVisitors).toBe(n0);
+        // and nobody is admitted while the debt isn't paid off. (This said "a step that starts in debt admits nobody",
+        // which is wrong once a step's expected arrivals exceed the debt: the remainder is a fair chance. Whether a
+        // seed's draws ever met that case decided the test: 16 of 40 seeds did after chunk 16, this one after the
+        // sellers' specialties changed.)
+        if (before + live.arrivalRate * 0.025 <= 0) expect(g.visitors.totalVisitors).toBe(n0);
       }
     }
     expect(sawDebt).toBe(true);

@@ -36,6 +36,7 @@ import { encodeRecord, decodeRecord, stateHash } from '@/persistence';
 import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
 import { stepProduction } from '@/sim/production';
 import { lineFarm, lineRecord } from './support/production';
+import { withoutBreakdowns } from './support/breakdowns';
 import { facility, run } from './support/automation'; // chunk 5
 import { stepAutomation, waterRoom } from '@/sim/automation';
 import { createClutch } from '@/sim/life/breeding/clutch';
@@ -247,6 +248,12 @@ describe('production lines: AUTO-016, AUTO-017, AUTO-018, AUTO-025 (chunk 4)', (
   const SPAN = 24 * 9; // the brood is moved, raised, sorted, quarantined 168 h and listed
 
   it('AUTO-016: random step sizes make the same moves, sorts and listings: counts exact, hours within one game hour', () => {
+    // Other partitions walk the shared stream differently, so a breakdown (a jammed Autofeeder starving a batch, a
+    // stuck heater killing the male) could strike one run and not another; they are no part of what this compares.
+    withoutBreakdowns(() => randomPartitions());
+  });
+
+  function randomPartitions(): void {
     const ref = lineFarm(17);
     advanceWorld(ref.g, SPAN, { forceFull: true });
     const want = lineRecord(ref.g);
@@ -270,12 +277,14 @@ describe('production lines: AUTO-016, AUTO-017, AUTO-018, AUTO-025 (chunk 4)', (
       });
       got.batches.forEach((b, i) => expect(Math.abs((b.quarantinedHour ?? 0) - (want.batches[i].quarantinedHour ?? 0))).toBeLessThanOrEqual(1 + 1e-9));
     }
-  });
+  }
 
   it('AUTO-016: the offline catch-up does what live play does over the same span', () => {
     const live = lineFarm(19);
     const away = clonePlain(live.g);
-    advanceWorld(live.g, 12, {});
+    // Equipment never breaks during the catch-up (the grace period), so live play runs without breakdowns too: one
+    // there would be a difference this comparison isn't about.
+    withoutBreakdowns(() => advanceWorld(live.g, 12, {}));
     simulateOffline(away, (12 / GAME_HOURS_PER_REAL_SECOND) * 1000);
     const a = lineRecord(live.g);
     const b = lineRecord(away);
@@ -299,7 +308,11 @@ describe('production lines: AUTO-016, AUTO-017, AUTO-018, AUTO-025 (chunk 4)', (
 
   it('AUTO-018, AUTO-025: an hour stepped again does nothing more; a quarantine ends in exactly one listing', () => {
     const { g } = lineFarm(23);
-    advanceWorld(g, SPAN, { forceFull: true });
+    // The farm runs nine days on its own, with nobody repairing anything. A breakdown (a roll on the shared stream) can
+    // jam the quarantine tank's Autofeeder, so the batch starves and its listing is cancelled (this seed after chunk
+    // 16), or leave the breed tank's heater stuck on, so the male dies and the line pauses before it lists (seed 1).
+    // This test is about what the line lists, so the farm runs without breakdowns.
+    withoutBreakdowns(() => advanceWorld(g, SPAN, { forceFull: true }));
     const listings = g.market.listings.length;
     const h = g.production!.lastHour!;
     const hash = stateHash(g);

@@ -53,6 +53,7 @@ export {
   holdBidForCounter,
   suggestCounter, // lane:fix-econ
   marketTimeScale, // lane:fix-econ
+  holdBidsMadeWhileAway, // MKT-016
   MAX_NEGOTIATION_HOLD_HOURS, // lane:fix-econ
   quickSell,
   suggestPricing,

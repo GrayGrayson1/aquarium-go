@@ -19,7 +19,7 @@ import { acceptBid, counterBid, createListing, declineBid, holdBidForCounter, qu
 import { findFreeSpot, placeTank, setAdmission, setOpenToPublic, toggleSignage, upgradeFacility } from '@/sim/facility';
 import { cancelResearch, claimQuest, startResearch, tutorialAdvance, tutorialSkip } from '@/sim/facility/progression';
 import { changeSubstrate, convertWaterClass, renameTank, setBackdrop, setTankPurpose } from '@/sim/tankOps';
-import { moveDecor, placeDecor, removeDecor } from '@/sim/aquascape';
+import { checkPlacement, moveDecor, placeDecor, removeDecor } from '@/sim/aquascape';
 import { plantFrag, takeFrag } from '@/sim/aquascape/frags';
 import { moveCreature, notePhoto, noteInteraction, registerGlassTap, renameCreature, toggleFavorite } from '@/sim/life/actions';
 import { moveClutch, separateCreature, startBreeding } from '@/sim/life/breeding/actions';
@@ -74,6 +74,29 @@ const activeListing = (g: GameState) => g.market.listings.find((l) => l.status =
 const openBid = (g: GameState) => activeListing(g).bids!.find((b) => b.status === 'open')!;
 const line = (g: GameState) => g.production!.lines[0];
 /** A decoration the game lets you take a frag from (found on a copy). */
+/**
+ * The spot nearest `want` (on a 0.02 grid) where a tank takes a piece of `defId`: a spot picked by hand can land on a
+ * piece the fixture's seeded scaping put there (after chunk 16 the big facility's frag rack stood at 0.08, 0.05, and
+ * 0.01, 0.01 overlapped it). `want` itself comes first, so where it is free the sample is as it was.
+ */
+function decorSpot(g: GameState, tankId: string, defId: string, want: { x: number; z: number }, rotY: number, opts: { excludeId?: string; purchase: 'buy' | 'owned' | 'none' }, scale = 1): { x: number; z: number } {
+  const tank = g.tanks[tankId];
+  const spots: { x: number; z: number; d: number }[] = [];
+  for (let i = -60; i <= 60; i++) for (let j = -25; j <= 25; j++) spots.push({ x: want.x + i * 0.02, z: want.z + j * 0.02, d: Math.hypot(i, j) });
+  spots.sort((a, b) => a.d - b.d || a.x - b.x || a.z - b.z);
+  return spots.find((p) => checkPlacement(g, tank, defId, { x: p.x, z: p.z, rotY, scale }, opts).ok) ?? want;
+}
+
+/** Take a frag into storage; the tank it came from gets a frag rack if its seeded scaping has none (none after chunk 16's seller change). */
+function takeFragWithRack(g: GameState): void {
+  const take = fraggable(g);
+  applyCommand(g, take);
+  const t = g.tanks[take.tank];
+  if (t.decor.some((d) => d.defId === 'frag_rack')) return;
+  const at = decorSpot(g, take.tank, 'frag_rack', { x: 0, z: 0 }, 0, { purchase: 'buy' });
+  expect(placeDecor(g, take.tank, 'frag_rack', { ...at, rotY: 0, scale: 1 }).ok).toBe(true);
+}
+
 const fraggable = (g: GameState): Command & { k: 'takeFrag' } =>
   g.tankOrder.flatMap((t) => g.tanks[t].decor.map((d): Command & { k: 'takeFrag' } => ({ k: 'takeFrag', tank: t, decor: d.id }))).find((c) => applyCommand(deepClone(g), c).ok)!;
 
@@ -270,14 +293,22 @@ const C: Record<CommandKind, Case | Case[]> = {
   },
   placeDecor: {
     w: 'big',
-    cmd: (g) => ({ k: 'placeDecor', tank: g.tankOrder[0], def: g.tanks[g.tankOrder[0]].decor[0].defId, x: 0.01, z: 0.01, rotY: 0.3, scale: 1 }),
-    direct: (d, c: Command & { k: 'placeDecor' }) => placeDecor(d, c.tank, c.def, { x: 0.01, z: 0.01, rotY: 0.3, scale: 1 }, d.inventory.decor.some((x) => x.defId === c.def)),
+    cmd: (g) => {
+      const def = g.tanks[g.tankOrder[0]].decor[0].defId;
+      const at = decorSpot(g, g.tankOrder[0], def, { x: 0.01, z: 0.01 }, 0.3, { purchase: g.inventory.decor.some((x) => x.defId === def) ? 'owned' : 'buy' });
+      return { k: 'placeDecor', tank: g.tankOrder[0], def, x: at.x, z: at.z, rotY: 0.3, scale: 1 };
+    },
+    direct: (d, c: Command & { k: 'placeDecor' }) => placeDecor(d, c.tank, c.def, { x: c.x, z: c.z, rotY: 0.3, scale: 1 }, d.inventory.decor.some((x) => x.defId === c.def)),
     ok: true,
   },
   moveDecor: {
     w: 'big',
-    cmd: (g) => ({ k: 'moveDecor', tank: g.tankOrder[0], decor: g.tanks[g.tankOrder[0]].decor[0].id, x: -0.02, z: 0.02, rotY: 0, scale: 1 }),
-    direct: (d, c: Command & { k: 'moveDecor' }) => moveDecor(d, c.tank, c.decor, { x: -0.02, z: 0.02, rotY: 0, scale: 1 }),
+    cmd: (g) => {
+      const piece = g.tanks[g.tankOrder[0]].decor[0];
+      const at = decorSpot(g, g.tankOrder[0], piece.defId, { x: -0.02, z: 0.02 }, 0, { excludeId: piece.id, purchase: 'none' });
+      return { k: 'moveDecor', tank: g.tankOrder[0], decor: piece.id, x: at.x, z: at.z, rotY: 0, scale: 1 };
+    },
+    direct: (d, c: Command & { k: 'moveDecor' }) => moveDecor(d, c.tank, c.decor, { x: c.x, z: c.z, rotY: 0, scale: 1 }),
     ok: true,
   },
   removeDecor: { w: 'big', cmd: (g) => ({ k: 'removeDecor', tank: g.tankOrder[0], decor: g.tanks[g.tankOrder[0]].decor[0].id, sell: true }), direct: (d, c: Command & { k: 'removeDecor' }) => removeDecor(d, c.tank, c.decor, true), ok: true },
@@ -286,14 +317,19 @@ const C: Record<CommandKind, Case | Case[]> = {
     {
       w: 'big',
       prep: (g) => void applyCommand(g, fraggable(g)),
-      cmd: (g) => ({ k: 'plantFrag', tank: fraggable(g).tank, frag: g.inventory.frags![0].id, x: 0.02, z: -0.02, rotY: 0 }),
-      direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, { x: 0.02, z: -0.02, rotY: 0 }, {}),
+      cmd: (g) => {
+        const tank = fraggable(g).tank;
+        const frag = g.inventory.frags![0];
+        const at = decorSpot(g, tank, frag.defId, { x: 0.02, z: -0.02 }, 0, { purchase: 'none' }, frag.scale);
+        return { k: 'plantFrag', tank, frag: frag.id, x: at.x, z: at.z, rotY: 0 };
+      },
+      direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, { x: c.x!, z: c.z!, rotY: 0 }, {}),
       ok: true,
     },
     {
       what: 'on the frag rack',
       w: 'big',
-      prep: (g) => void applyCommand(g, fraggable(g)),
+      prep: takeFragWithRack,
       cmd: (g) => firstThatWorks(g, g.tankOrder.map((tank): Command & { k: 'plantFrag' } => ({ k: 'plantFrag', tank, frag: g.inventory.frags![0].id, rack: true }))),
       direct: (d, c: Command & { k: 'plantFrag' }) => plantFrag(d, c.tank, c.frag, undefined, { rackOnly: true }),
       ok: true,

@@ -211,16 +211,21 @@ export function killCreature(state: GameState, c: Creature, info: DeathInfo, hou
   return true;
 }
 
-function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDefinition, hour: number): DeathInfo {
-  const dmg = c.life?.damage ?? {};
-  let top: string = 'unknown';
+/** The harm that did the most damage so far (the creature's damage tally), or 'unknown' when none is recorded. */
+function topDamage(c: Creature): string {
+  let top = 'unknown';
   let best = 0;
-  for (const [k, v] of Object.entries(dmg)) {
+  for (const [k, v] of Object.entries(c.life?.damage ?? {})) {
     if (v > best) {
       best = v;
       top = k;
     }
   }
+  return top;
+}
+
+function explainDeath(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDefinition, hour: number): DeathInfo {
+  const top = topDamage(c);
   const name = c.name;
   const spName = lc(sp.commonName);
   switch (top) {
@@ -522,7 +527,8 @@ function aliveOf(list: { c: Creature; sp: SpeciesDefinition }[], speciesId: stri
   return list.filter((x) => x.c.status !== 'dead' && x.c.speciesId === speciesId && (!ids || !ids.length || ids.includes(x.c.id)));
 }
 
-function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: SpeciesDefinition }[], risk: IncidentRisk, hour: number, ctx: SimContext): void {
+/** One incident of `risk` in a tank, now (the creature step rolls whether it happens; exported for the tests). */
+export function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: SpeciesDefinition }[], risk: IncidentRisk, hour: number, ctx: SimContext): void {
   const actors = aliveOf(list, risk.actorSpeciesId, risk.actorIds);
   if (risk.kind === 'sting' && !actors.length) {
     // Environmental sting from anemone/stinging-coral decor (orchestrator integration of waterlab incidents).
@@ -657,10 +663,19 @@ function applyIncident(state: GameState, env: TankEnv, list: { c: Creature; sp: 
     pushHistory(v, { hour, kind: 'note', text: `Hurt by ${actorLabel} (${risk.kind.replace('_', ' ')}).` });
   }
   if (v.stats.health <= 0) {
+    // The cause is what did most of the harm, the rule a death from accumulated harm follows (explainDeath), not
+    // whichever blow happened to land last: a betta female worn down by the male's harassment after spawning dies of
+    // harassment even when one of his chases is the final step (S02-08). Only when injuries from tank mates lead (or
+    // nothing is recorded) does the incident name its actor.
+    const top = topDamage(v);
+    const info: DeathInfo =
+      top !== 'injury' && top !== 'unknown'
+        ? explainDeath(state, env, v, victim.sp, hour)
+        : { kind: 'injury', cause: `injuries from ${actorLabel}`, text: `${v.name} has passed away from injuries caused by ${actorLabel}. ${risk.text ?? ''}`.trim() };
     const died = killCreature(
       state,
       v,
-      { kind: 'injury', cause: `injuries from ${actorLabel}`, text: `${v.name} has passed away from injuries caused by ${actorLabel}. ${risk.text ?? ''}`.trim() },
+      info,
       hour,
       ctx.emit,
       graceHealth,
@@ -948,8 +963,11 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   if (c.lifeStage === 'elder') energyTarget -= 8;
   s.energy = approach(s.energy, clamp(energyTarget, 5, 100), h, 4);
 
-  // Injuries heal
-  if (m.injury && m.injury > 0) m.injury = Math.max(0, m.injury - h * (0.8 + 1.2 * hardy) * (s.stress < 60 ? 1 : 0.4));
+  // Injuries heal, except while a breeding partner keeps chasing and biting (as for health, below). The male's
+  // harassment holds a bubble-nester female at a low floor and its bites add injury; when a hardy one's injuries healed
+  // faster than he added them, the drain that should finish her faded and she lingered "in critical condition" for good,
+  // so whether S02-08's ignored female died depended on her drawn hardiness (chunk 16).
+  if (m.injury && m.injury > 0 && (c.repro?.harassment ?? 0) < 0.5) m.injury = Math.max(0, m.injury - h * (0.8 + 1.2 * hardy) * (s.stress < 60 ? 1 : 0.4));
 
   // ── Health
   const dmgMul = 1.35 - 0.7 * hardy;

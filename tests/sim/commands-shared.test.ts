@@ -12,6 +12,9 @@ import { deepClone } from '@/sim/clone';
 import { stateHash } from '@/persistence/hash';
 import { applyCommand, TOUCH_MS, type Actor, type Command } from '@/sim/commands';
 import { runSharedStep } from '@/sim/sharedStep';
+import { generateOffer } from '@/sim/economy';
+import { isLotOffer } from '@/sim/life';
+import { simRng } from '@/sim/rng';
 
 const BASES = new Map<string, GameState>();
 /** A late-game shop (15 tanks: room to move a fish twice), or `panels` for its listings and bids. */
@@ -251,10 +254,20 @@ describe('chunk 11: first one wins for the rest of what can be bought, sold, mov
 });
 
 describe('chunk 11: first one wins, the fresh review’s cases (B3, notes 4 and 5)', () => {
-  /** A group offer in the late-game shop and a tank the game lets you buy all of it into. */
+  /**
+   * A group offer in the late-game shop and a tank the game lets you buy all of it into. The offer is made here (three of
+   * a species the shop already keeps) rather than looked for in the day's stock: whether the stock held a group of
+   * three or more that a tank had room for was the random stream's choice, and after chunk 16's new species it held none.
+   */
   function groupBuy(g: GameState): { offer: string; tank: string; ids: string[] } {
-    for (const o of g.market.stock.filter((x) => x.creatures.length > 2))
+    const kept = [...new Set(Object.values(g.creatures).filter((c) => c.status === 'alive' && c.tankId).map((c) => c.speciesId))];
+    for (const speciesId of kept) {
+      const o = generateOffer(g, simRng(g), speciesId, { expiresHour: g.clock.hour + 48, sexes: [undefined, undefined, undefined] });
+      if (!o || isLotOffer(o)) continue; // a group with a Prismatic is sold only whole
+      g.market.stock.push(o);
       for (const tank of g.tankOrder) if (applyCommand(deepClone(g), { k: 'buyOffer', offer: o.id, tank }).ok) return { offer: o.id, tank, ids: o.creatures.map((c) => c.id) };
+      g.market.stock = g.market.stock.filter((x) => x !== o);
+    }
     throw new Error('no group offer to buy');
   }
 
@@ -282,9 +295,11 @@ describe('chunk 11: first one wins, the fresh review’s cases (B3, notes 4 and 
     const t = g.tankOrder[0];
     const piece = g.tanks[t].decor[0];
     expect(applyCommand(g, { k: 'removeDecor', tank: t, decor: piece.id, sell: false }).ok).toBe(true); // into storage
-    const place = (x: number): Command => ({ k: 'placeDecor', tank: t, def: piece.defId, x, z: 0, fromStorage: true });
-    const samCmd = place(0.01);
-    const anaCmd = place(-0.01);
+    // Sam puts it back where it stood (a spot it is known to fit: after chunk 16 the fixture's frag rack sat at the tank's
+    // middle, where this used to place it); Ana and Sam's second click aim a little either side of it.
+    const place = (dx: number): Command => ({ k: 'placeDecor', tank: t, def: piece.defId, x: piece.x + dx, z: piece.z, fromStorage: true });
+    const samCmd = place(0);
+    const anaCmd = place(-0.02);
     expect(applyCommand(g, samCmd, sam(1000)).ok).toBe(true);
     const money = g.finance.money;
     const r = applyCommand(g, anaCmd, ana(1100));
@@ -292,7 +307,7 @@ describe('chunk 11: first one wins, the fresh review’s cases (B3, notes 4 and 
     expect(r.message).toBe('Sam already placed that stored piece.');
     expect(g.finance.money).toBe(money);
     // nor for the same member's own second click from a screen that still showed one
-    expect(applyCommand(g, place(0.03), sam(1200)).ok).toBe(false);
+    expect(applyCommand(g, place(0.02), sam(1200)).ok).toBe(false);
   });
 
   it("the sender's own earlier change is excused only while the thing is as it left it (the game may change it since)", () => {

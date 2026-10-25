@@ -559,8 +559,9 @@ describe('PROD-001, PROD-002, AUTO-020, AUTO-021: two lines of one species', () 
     expect(g.production).toBeUndefined();
     expect(stateHash(g)).toBe(stateHash({ ...g, production: undefined }));
     // PROD-002 A2 reads "unchanged by the production field" since chunk 5 raised the version once for the S3-D state
-    // (INTAKE C-44, PERSIST-016): still the version chunk 5 set, with nothing more for production lines.
-    expect(SCHEMA_VERSION).toBe(2);
+    // (INTAKE C-44, PERSIST-016), and chunk 16 once more for its new species (ADR-0052 decision 5): nothing for
+    // production lines.
+    expect(SCHEMA_VERSION).toBe(3);
   });
 });
 
@@ -570,7 +571,14 @@ describe('PROD-016: deterministic, and the same at any step size', () => {
     const g = f.g;
     start(f);
     brood(f, 'fry', 30, 6);
-    run(g, QUARANTINE_HOURS + 24, step);
+    // care() every 6 game hours in both runs. Run every step (run()'s way) it tended the 1-hour run six times as often,
+    // so the two runs differed (a hungrier fish is likelier to start a squabble) and drew the shared stream differently
+    // from the first day on; the market's demand walk, and with it a listing's reserve, then differed on some seeds (3
+    // of 30 in a chunk 16 probe). Tended alike, the two runs are the same world.
+    for (let t = 0; t < QUARANTINE_HOURS + 24 - 1e-9; t += step) {
+      if (t % 6 === 0) care(g);
+      advanceWorld(g, step, { forceFull: true });
+    }
     return g;
   }
   it('two identical runs end with an equal stateHash', () => {
@@ -579,8 +587,7 @@ describe('PROD-016: deterministic, and the same at any step size', () => {
   it('1-hour and 6-hour steps make the same moves, sorts and listings at the same hours', () => {
     const a = scenario(1);
     const b = scenario(6);
-    // Ids are left out: this harness's care() runs every step, so the two runs log a different number of events and
-    // the shared id counter shifts; the hours, counts, reserves and money are what the line decides.
+    // What the line decides: the hours, counts, reserves and money (and, tended alike, the whole world is the same).
     const lines = (g: GameState) =>
       JSON.stringify(
         g.production!.lines.map((l) => ({
@@ -594,6 +601,7 @@ describe('PROD-016: deterministic, and the same at any step size', () => {
     const listings = (g: GameState) => JSON.stringify(g.market.listings.map((l) => [l.kind, l.createdHour, l.reserve, l.creatureIds.length]));
     expect(listings(b)).toBe(listings(a));
     expect(a.market.listings.length).toBeGreaterThan(0);
+    expect(stateHash(b)).toBe(stateHash(a));
   });
 });
 

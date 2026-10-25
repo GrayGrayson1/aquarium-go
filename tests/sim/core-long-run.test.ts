@@ -27,6 +27,7 @@ import { starterAquascape } from '@/sim/aquascape';
 import { addStaffDirect } from '@/sim/staff';
 import { installFoodRoom, installWaterRoom } from '@/sim/automation';
 import { BRINE, INFUSORIA } from '@/data/catalog/machines';
+import { withoutBreakdowns } from './support/breakdowns';
 import { lineFarm } from './support/production';
 
 const HOUR_STEPS = (g: GameState, hours: number) => {
@@ -106,18 +107,26 @@ describe('CONST-003, AUTO-029: the full-feature facility over thirty days', () =
   });
 
   it('random step sizes (15 minutes to 4 hours) give the same scheduled work each day', () => {
-    const hourly = fullFeature(31);
-    HOUR_STEPS(hourly, DAYS * 24);
-    const random = fullFeature(31);
-    const r = mulberry32(99);
-    let left = DAYS * 24;
-    while (left > 1e-9) {
-      const dt = Math.min(left, 0.25 + Math.floor(r.next() * 16) * 0.25);
-      advanceWorld(random, dt, {});
-      left -= dt;
-    }
-    expect(random.clock.hour).toBeCloseTo(hourly.clock.hour, 6);
-    expect(scheduled(random)).toEqual(scheduled(hourly));
-    expect(findNonFinite(random)).toEqual([]);
+    // A water changer that breaks down stops its tank's changes. Breakdowns are rolls on the shared random stream, which
+    // the two runs walk differently (the "rest" this file's header leaves out), so a changer could break in one run and
+    // not the other, or on another day: in chunk 16 seeds 6 and 8 lost one on day 22 of the hourly run only, and with
+    // all 31 new species this seed's Community changer broke in both runs, days apart. The changers' breakdowns stay
+    // out of the comparison; what a failed changer does is automation-water-changer.test.ts's ("off or failed, it does
+    // nothing").
+    withoutBreakdowns(() => {
+      const hourly = fullFeature(31);
+      HOUR_STEPS(hourly, DAYS * 24);
+      const random = fullFeature(31);
+      const r = mulberry32(99);
+      let left = DAYS * 24;
+      while (left > 1e-9) {
+        const dt = Math.min(left, 0.25 + Math.floor(r.next() * 16) * 0.25);
+        advanceWorld(random, dt, {});
+        left -= dt;
+      }
+      expect(random.clock.hour).toBeCloseTo(hourly.clock.hour, 6);
+      expect(scheduled(random)).toEqual(scheduled(hourly));
+      expect(findNonFinite(random)).toEqual([]);
+    }, ['auto_water_changer']);
   });
 });

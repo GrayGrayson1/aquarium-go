@@ -33,6 +33,7 @@ import {
   todayLine,
 } from '@/sim/staff';
 import { STAFF_NOTICE_DAYS, staffWage } from '@/data/staff';
+import { withoutBreakdowns } from './support/breakdowns';
 
 const alive = (g: GameState) => Object.values(g.creatures).filter((c) => c.status === 'alive');
 const deadIds = (g: GameState) => new Set(Object.values(g.creatures).filter((c) => c.status === 'dead').map((c) => c.id));
@@ -238,16 +239,22 @@ describe('staff: stock manager', () => {
 
 describe('staff: docents', () => {
   it('lift satisfaction, donations and talk at exhibits, within bounds', () => {
-    const run = (docent: boolean) => {
-      const g = staffStoreWorld(88);
-      addStaffDirect(g, { name: 'Maya Okafor', role: 'aquarist', skill: 5, trait: 'meticulous' });
-      addStaffDirect(g, { name: 'Theo Lindqvist', role: 'aquarist', skill: 3, trait: 'gentle_hands' });
-      if (docent) addStaffDirect(g, { name: 'Jonah Mensah', role: 'docent', skill: 3, trait: 'great_with_kids' });
-      autoAssignAll(g);
-      days(g, 6);
-      const hist = g.visitors.history.slice(-5);
-      return { g, sat: hist.reduce((a, h) => a + h.avgSatisfaction, 0) / Math.max(1, hist.length) };
-    };
+    // Two stores, with and without the docent, compared over five days. They walk the shared random stream differently
+    // from the first visitor on (a docent draws a few more of them), so a breakdown can strike one store and not the
+    // other: a tank in danger until the evening's repair worries that day's visitors far more than a docent's ~3 points
+    // lift them, and the comparison passed or failed on which store drew one (seed 88 after chunk 16: +1.9). The two
+    // stores run without breakdowns (the keepers' tests above still run with them).
+    const run = (docent: boolean) =>
+      withoutBreakdowns(() => {
+        const g = staffStoreWorld(88);
+        addStaffDirect(g, { name: 'Maya Okafor', role: 'aquarist', skill: 5, trait: 'meticulous' });
+        addStaffDirect(g, { name: 'Theo Lindqvist', role: 'aquarist', skill: 3, trait: 'gentle_hands' });
+        if (docent) addStaffDirect(g, { name: 'Jonah Mensah', role: 'docent', skill: 3, trait: 'great_with_kids' });
+        autoAssignAll(g);
+        days(g, 6);
+        const hist = g.visitors.history.slice(-5);
+        return { g, sat: hist.reduce((a, h) => a + h.avgSatisfaction, 0) / Math.max(1, hist.length) };
+      });
     const without = run(false);
     const withDocent = run(true);
     expect(withDocent.sat).toBeGreaterThan(without.sat + 2);

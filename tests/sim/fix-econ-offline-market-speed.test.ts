@@ -35,7 +35,10 @@ describe('MKT-016: bids made during the offline catch-up last their promised rea
     expect(marketTimeScale(g)).toBe(10);
   });
 
-  it.each([3, 10] as GameSpeed[])('a game saved at %ix: every bid still open on return lasts at least ~3 real minutes', (speed) => {
+  // 1× too (chunk 16): the catch-up's own game hours (up to 12) used to come off a bid's window, so at 1× nearly every
+  // bid made early in the catch-up came back with under 3 real minutes, and at 3× an impatient buyer's sometimes did
+  // (holdBidsMadeWhileAway now starts the minimum at the return).
+  it.each([1, 3, 10] as GameSpeed[])('a game saved at %ix: every bid still open on return lasts at least ~3 real minutes', (speed) => {
     let checked = 0;
     for (const seed of [11, 12, 13, 14, 15]) {
       const g = world(seed, speed);

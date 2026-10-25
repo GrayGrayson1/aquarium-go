@@ -11,6 +11,7 @@
  */
 import type { GameEvent, GameState } from '@/types';
 import { advanceWorld, flushSimDebt } from './world';
+import { holdBidsMadeWhileAway } from './economy';
 import { emitEvent } from './context';
 import { touchResidents } from './residents'; // lane:perf2
 import { GAME_HOURS_PER_REAL_SECOND, OFFLINE_CAP_HOURS, formatDuration } from './time';
@@ -231,6 +232,7 @@ export function simulateOffline(state: GameState, realElapsedMs: number, opts: S
       flushSimDebt(state);
       deathsPrevented += reviveGraceDeaths(state, wereAlive, logIdsBefore, floors);
       graceFloor(state, floors);
+      holdBidsMadeWhileAway(state, startHour); // MKT-016: their minimum window starts when the player is back
     } finally {
       delete state.offlineGrace;
     }
