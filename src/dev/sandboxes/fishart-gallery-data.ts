@@ -63,12 +63,12 @@ export function morph(sp: SpeciesDefinition, ids: string[], extra: Partial<Creat
   return { ...v, ...extra };
 }
 
-function fakeCreature(sp: SpeciesDefinition, id: string, sex: Creature['sex'] = 'male'): Creature {
-  return { id, speciesId: sp.id, sex, reproRole: sex === 'female' ? 'female' : 'male', lifeStage: 'adult', sizeCm: sp.adultSizeCm } as unknown as Creature;
+function fakeCreature(sp: SpeciesDefinition, id: string, sex: Creature['sex'] = 'male', stage: Creature['lifeStage'] = 'adult'): Creature {
+  return { id, speciesId: sp.id, sex, reproRole: sex === 'female' ? 'female' : 'male', lifeStage: stage, sizeCm: sp.adultSizeCm } as unknown as Creature;
 }
 
 /** Curated morph variants per species (ids from each species' phenotype rules). Unknown ids are ignored. */
-const VARIANTS: Record<string, { label: string; ids: string[]; extra?: Partial<CreatureVisualParams>; sex?: Creature['sex']; puff?: number }[]> = {
+const VARIANTS: Record<string, { label: string; ids: string[]; extra?: Partial<CreatureVisualParams>; sex?: Creature['sex']; puff?: number; stage?: Creature['lifeStage'] }[]> = {
   betta: [
     { label: 'Red Veiltail', ids: ['red', 'veil'] },
     { label: 'Royal Blue Halfmoon', ids: ['royal', 'halfmoon'] },
@@ -125,6 +125,108 @@ const VARIANTS: Record<string, { label: string; ids: string[]; extra?: Partial<C
     { label: 'Banded', ids: ['wild'] },
     { label: 'Bold-banded', ids: ['wild', 'rich_colour'] },
   ],
+  // chunk 16 — young and sex colours
+  emperor_angelfish: [
+    { label: 'Adult', ids: [] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  sailfin_tang: [
+    { label: 'Adult', ids: [] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  chocolate_tang: [
+    { label: 'Adult', ids: [] },
+    { label: 'Juvenile (yellow mimic)', ids: [], stage: 'juvenile' },
+  ],
+  lyretail_anthias: [
+    { label: 'Female', ids: [], sex: 'female' },
+    { label: 'Male', ids: [], sex: 'male' },
+    { label: 'Juvenile', ids: [], sex: 'female', stage: 'juvenile' },
+  ],
+  melanurus_wrasse: [
+    { label: 'Female', ids: [], sex: 'female' },
+    { label: 'Male', ids: [], sex: 'male' },
+    { label: 'Juvenile', ids: [], sex: 'female', stage: 'juvenile' },
+  ],
+  maroon_clownfish: [
+    { label: 'White Stripe', ids: ['white_stripe'], sex: 'male' },
+    { label: 'Gold Stripe', ids: ['gold_stripe'], sex: 'male' },
+    { label: 'Lightning', ids: ['lightning'], sex: 'male' },
+    { label: 'Female', ids: ['white_stripe'], sex: 'female' },
+    { label: 'Juvenile', ids: ['white_stripe'], stage: 'juvenile' },
+  ],
+  // chunk 16, wave C — the freshwater forms, sexes and young
+  freshwater_angelfish: [
+    { label: 'Silver', ids: [] },
+    { label: 'Marble', ids: ['marble'] },
+    { label: 'Koi', ids: ['gold_marble', 'blushing', 'koi_white'] },
+    { label: 'Black Lace', ids: ['black_lace'] },
+    { label: 'Black', ids: ['black'] },
+    { label: 'Gold', ids: ['gold'] },
+    { label: 'Zebra', ids: ['zebra'] },
+    { label: 'Smokey', ids: ['smokey'] },
+    { label: 'Clown', ids: ['clown'] },
+    { label: 'Veil', ids: ['veil'] },
+    { label: 'Superveil', ids: ['superveil'] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  german_blue_ram: [
+    { label: 'Male', ids: [] },
+    { label: 'Female', ids: [], sex: 'female' },
+    { label: 'Electric Blue', ids: ['electric_blue'] },
+    { label: 'Gold', ids: ['gold'] },
+    { label: 'Balloon', ids: ['balloon'] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  harlequin_rasbora: [
+    { label: 'Male', ids: [] },
+    { label: 'Female', ids: [], sex: 'female' },
+    { label: 'Golden', ids: ['golden'] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  zebra_danio: [
+    { label: 'Wild', ids: [] },
+    { label: 'Female', ids: [], sex: 'female' },
+    { label: 'Leopard', ids: ['leopard'] },
+    { label: 'Long-fin', ids: ['longfin'] },
+    { label: 'Long-fin Leopard', ids: ['leopard', 'longfin'] },
+    { label: 'Golden', ids: ['golden'] },
+  ],
+  platy: [
+    { label: 'Red Mickey Mouse', ids: ['red', 'mickey'] },
+    { label: 'Red Mickey Mouse female', ids: ['red', 'mickey'], sex: 'female' },
+    { label: 'Gold Wagtail', ids: ['gold', 'wagtail'] },
+    { label: 'Blue Moon', ids: ['blue', 'moon'] },
+    { label: 'Red Tuxedo', ids: ['red', 'tuxedo'] },
+    { label: 'Gold Comet', ids: ['gold', 'comet'] },
+    { label: 'Red Crescent', ids: ['red', 'crescent'] },
+    { label: 'Gold Twin-spot', ids: ['gold', 'twin'] },
+    { label: 'Salt-and-pepper', ids: ['salt_pepper'] },
+    { label: 'Red Hi-fin', ids: ['red', 'hifin'] },
+    { label: 'Wild Grey', ids: [] },
+    { label: 'Juvenile', ids: ['red'], stage: 'juvenile' },
+  ],
+  swordtail: [
+    { label: 'Green male', ids: [] },
+    { label: 'Green female', ids: [], sex: 'female' },
+    { label: 'Red male', ids: ['red'] },
+    { label: 'Black', ids: ['black'] },
+    { label: 'Red Tuxedo', ids: ['red', 'tuxedo'] },
+    { label: 'Red Wagtail', ids: ['red', 'wagtail'] },
+    { label: 'Albino', ids: ['albino'] },
+    { label: 'Red Lyretail female', ids: ['red', 'lyretail'], sex: 'female' },
+    { label: 'Red Hi-fin', ids: ['red', 'hifin'] },
+    { label: 'Red Hi-fin Lyretail female', ids: ['red', 'hifin_lyre'], sex: 'female' },
+    { label: 'Juvenile', ids: ['red'], stage: 'juvenile' },
+  ],
+  dwarf_gourami: [
+    { label: 'Wild male', ids: [] },
+    { label: 'Female', ids: [], sex: 'female' },
+    { label: 'Powder Blue', ids: ['powder_blue'] },
+    { label: 'Flame', ids: ['flame'] },
+    { label: 'Neon Blue', ids: ['neon'] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
 };
 
 export function galleryEntries(only: string[] | null): GalleryEntry[] {
@@ -142,7 +244,7 @@ export function galleryEntries(only: string[] | null): GalleryEntry[] {
       for (const v of list) {
         n++;
         const app = morph(sp, v.ids, { patternSeed: 101 + n * 37, ...(v.extra ?? {}) });
-        out.push({ key: `${r.id}:${v.label}`, label: `${sp.commonName} · ${v.label}`, species: sp, creature: fakeCreature(sp, `${r.id}-${n}`, v.sex ?? 'male'), appearance: app, phase: n * 1.37, scale, puff: v.puff });
+        out.push({ key: `${r.id}:${v.label}`, label: `${sp.commonName} · ${v.label}`, species: sp, creature: fakeCreature(sp, `${r.id}-${n}`, v.sex ?? 'male', v.stage), appearance: app, phase: n * 1.37, scale, puff: v.puff });
       }
     } else {
       // species morphs from its own phenotype list: every base rule, then every overlay applied on the first base

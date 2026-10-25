@@ -94,6 +94,8 @@ export function appearanceHash(a: CreatureVisualParams | undefined): string {
     a.gillFullness?.toFixed(2),
     a.gillColor ?? '',
     a.glow?.toFixed(2) ?? '',
+    a.tailSpot ?? '',
+    a.bodyMark ?? '',
   ].join('|');
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {

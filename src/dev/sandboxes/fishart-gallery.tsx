@@ -44,6 +44,8 @@ function Fish({ entry, pos, clock, opts }: { entry: GalleryEntry; pos: [number, 
     rt.finFlare = opts.flare;
     rt.puff = entry.puff ?? opts.puff;
     rt.flutter = entry.flutter ?? 0;
+    // chunk 16: `&cocoon=1` shows a six-line wrasse's sleeping mucus cocoon (rt.ai.cocoon 0..1)
+    if (q.has('cocoon')) rt.ai.cocoon = num('cocoon', 0);
     rt.eyeL = Math.sin(t * 0.9 + entry.phase) * 0.5;
     rt.eyeR = Math.sin(t * 1.3 + entry.phase + 2) * 0.5;
     rt.mouthOpen = Math.max(0, Math.sin(t * 1.7 + entry.phase)) * opts.mouth;

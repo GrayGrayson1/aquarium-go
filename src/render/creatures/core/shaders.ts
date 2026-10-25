@@ -307,7 +307,9 @@ float fsMark(int i, float t, float yn){
   vec4 a = uMarkA[i]; vec4 c = uMarkC[i];
   float mode = c.y;
   vec2 d = vec2(t - a.x, yn - a.y);
-  float cr = cos(c.z), sr = sin(c.z);
+  // a wedge reads its rotation slot as the height of its point instead
+  float rotA = mode > 5.5 ? 0.0 : c.z;
+  float cr = cos(rotA), sr = sin(rotA);
   d = vec2(cr * d.x - sr * d.y, sr * d.x + cr * d.y);
   d /= max(a.zw, vec2(1e-4));
   float dist;
@@ -315,7 +317,13 @@ float fsMark(int i, float t, float yn){
   else if (mode < 1.5) dist = abs(length(d) - 1.0) - 0.22;
   else if (mode < 2.5) dist = max(abs(d.x) - 1.0, abs(d.y) - 1.0);
   else if (mode < 3.5) dist = abs(d.y) - 1.0;
-  else dist = max(abs(d.y) - 1.0, abs(d.x) - 1.0);
+  else if (mode < 4.5) dist = max(abs(d.y) - 1.0, abs(d.x) - 1.0);
+  else if (mode < 5.5) dist = abs(length(d) - 1.0) - 0.06; // chunk 16: a thin ring (the emperor angel juvenile's rings)
+  else {
+    // chunk 16: a wedge — full height at the front (d.x = -1), narrowing to a point at height c.z at the back (d.x = 1)
+    float u = clamp((d.x + 1.0) * 0.5, 0.0, 1.0);
+    dist = max(abs(d.x) - 1.0, abs(d.y - c.z * u) - (1.0 - u));
+  }
   float soft = max(0.02, c.x);
   float n = snoise(vec3(t * 23.0, yn * 7.0, uSeed.x + float(i))) * 0.12 * soft;
   return 1.0 - smoothstep(-soft, soft * 0.5, dist + n);

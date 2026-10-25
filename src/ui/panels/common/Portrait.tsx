@@ -12,7 +12,7 @@ import { WATER_CLASS_TINT } from './format';
 import { isPrismatic } from '@/sim/life/rareVariants'; // lane:genetics
 import { PrismaticGlints } from '@/ui/common/Prismatic'; // lane:genetics
 
-type Plan = 'fish' | 'longfin' | 'seahorse' | 'axolotl' | 'shrimp' | 'snail' | 'crab' | 'frog' | 'coral' | 'anemone' | 'eel' | 'flat';
+type Plan = 'fish' | 'longfin' | 'seahorse' | 'axolotl' | 'shrimp' | 'snail' | 'crab' | 'frog' | 'coral' | 'anemone' | 'eel' | 'flat' | 'star' | 'urchin';
 
 function planFor(sp: SpeciesDefinition | undefined, vis?: CreatureVisualParams): Plan {
   if (!sp) return 'fish';
@@ -26,9 +26,19 @@ function planFor(sp: SpeciesDefinition | undefined, vis?: CreatureVisualParams):
     case 'mantis_shrimp':
       return 'shrimp';
     case 'snail':
+    case 'snail_sand':
+    case 'conch':
       return 'snail';
+    case 'starfish':
+    case 'starfish_sand':
+      return 'star';
+    case 'urchin':
+      return 'urchin';
+    case 'anemone':
+      return 'anemone';
     case 'hermit_crab':
     case 'crayfish':
+    case 'crab':
       return 'crab';
     case 'frog_aquatic':
       return 'frog';
@@ -275,6 +285,33 @@ export const CreatureGlyph = memo(function CreatureGlyph({ speciesId, appearance
         <path d="M34 48 L 26 38 M 66 48 L 74 38" stroke={body2} strokeWidth={2.4} strokeLinecap="round" />
         {eyeDot(42, 44, 2.2)}
         {eyeDot(58, 44, 2.2)}
+      </g>
+    );
+  } else if (plan === 'star') {
+    // five tapering arms around a small disc (chunk 16: the sea stars)
+    const pts = Array.from({ length: 10 }, (_, i) => {
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      const r = i % 2 ? 11 : 34;
+      return `${(50 + Math.cos(a) * r).toFixed(1)} ${(52 + Math.sin(a) * r).toFixed(1)}`;
+    });
+    art = (
+      <g>
+        <path d={`M${pts.join(' L ')} Z`} fill={`url(#${bodyGrad})`} stroke={stroke} strokeWidth={0.8} strokeLinejoin="round" />
+        {!silhouette && <circle cx={50} cy={52} r={6} fill={body2} opacity={0.5} />}
+      </g>
+    );
+  } else if (plan === 'urchin') {
+    // a round test bristling with short spines (chunk 16: the tuxedo urchin)
+    art = (
+      <g>
+        <g stroke={silhouette ? '#0b1920' : body2} strokeWidth={1.6} strokeLinecap="round">
+          {Array.from({ length: 18 }).map((_, i) => {
+            const a = (i / 18) * Math.PI * 2;
+            return <path key={i} d={`M${(50 + Math.cos(a) * 20).toFixed(1)} ${(54 + Math.sin(a) * 18).toFixed(1)} L ${(50 + Math.cos(a) * 30).toFixed(1)} ${(54 + Math.sin(a) * 27).toFixed(1)}`} />;
+          })}
+        </g>
+        <ellipse cx={50} cy={54} rx={22} ry={20} fill={`url(#${bodyGrad})`} stroke={stroke} strokeWidth={0.8} />
+        {!silhouette && <path d="M30 50 C 40 44, 60 44, 70 50 M 32 60 C 42 66, 58 66, 68 60" stroke={accent} strokeWidth={2.2} fill="none" opacity={0.7} />}
       </g>
     );
   } else if (plan === 'anemone') {
