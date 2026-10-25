@@ -420,11 +420,14 @@ describe('lawnmower blenny (blenny)', () => {
     expect(fled).toBeGreaterThan(2);
     was = new Map();
     const a = w.agents[0];
-    // a dart needs a way to go: tap once it is out over open water, a body length or more from the rockwork (where the
-    // run happens to leave it differs between machines: next to a hole it would only slip in)
+    // a dart needs a way to go and a calm start: tap once it is out over open water, a body length or more from the
+    // rockwork, and not chasing or fleeing (where the run happens to leave it differs between machines: next to a hole
+    // it would only slip in, and a chase's burst would pass for a dart)
     const fromRock = () => Math.min(...w.env.colliders.filter((c) => c.hard).map((c) => colliderSdf(c, a.rt.pos.x, a.rt.pos.y, a.rt.pos.z)));
-    for (let t = 0; t < 120 && fromRock() < a.L; t += 0.1) run(w, 0.1);
+    const busy = () => a.act === 'chase' || a.act === 'startle' || a.act === 'retreat' || a.speed > 2 * a.sp.behaviorTraits.cruiseSpeed * a.L;
+    for (let t = 0; t < 120 && (fromRock() < a.L || busy()); t += 0.1) run(w, 0.1);
     expect(fromRock(), 'out in the open before the tap').toBeGreaterThanOrEqual(a.L);
+    expect(busy(), 'calm before the tap').toBe(false);
     addStimulus(w, 'tap', new THREE.Vector3(a.rt.pos.x, a.rt.pos.y, w.env.maxZ), 1, true);
     // its speed from the tap on, over quarter-second spans (the dart is often over within the first second, and a
     // one-frame push off the rock is not a dart)

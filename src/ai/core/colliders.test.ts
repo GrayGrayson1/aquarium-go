@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { getDecorDef } from '@/data/catalog/decor';
 import { findSpecies } from '@/data/species';
 import type { Creature, DecorInstance } from '@/types';
-import { colliderSdf, colliderSdfXZ, decorSolidity, drawnDepth, floorAt } from './env';
+import { colliderSdf, colliderSdfGrounded, colliderSdfXZ, decorSolidity, drawnDepth, floorAt } from './env';
 import { stepWorld, syncWorld, type AIWorld } from './world';
 import { makeTestCreature, makeTestTank, makeTestWorld, decor } from './testkit';
 
@@ -76,7 +76,8 @@ function penetrations(w: AIWorld, tol = 0.004, endTol = 0.006): string[] {
           const d = colliderSdfXZ(c, x, z) + drawnDepth(c, x, y, z);
           if (d < -(k === 0 ? tol : endTol)) bad.push(`${a.speciesId} ${k} in ${c.decorId}/${c.part} d=${d.toFixed(4)} act=${a.act}`);
         } else {
-          const d = colliderSdf(c, x, y, z) + drawnDepth(c, x, y, z);
+          // (drawnDepth is measured from the grounded box surface, so a drawn rock's depth uses the same distance)
+          const d = (c.shape ? colliderSdfGrounded(c, x, y, z) : colliderSdf(c, x, y, z)) + drawnDepth(c, x, y, z);
           if (d < -(k === 0 ? tol : endTol)) bad.push(`${a.speciesId} ${k} in ${c.decorId}/${c.part} d=${d.toFixed(4)} act=${a.act}`);
         }
       }

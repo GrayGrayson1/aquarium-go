@@ -1647,13 +1647,17 @@ REL-012, REL-018.
     them; release 0.8.0 once green.
   - *0.8.0's first Pages build failed* (run `40237089954`, on `main` `0289eaf`; nothing deployed, the Render static
     site's deploy was cancelled): two AI tests that pass on the Mac failed on GitHub's x64 Node, which takes a
-    different path through a long AI run. One was a real case chunk 16 made about twice as common: an axolotl resting
-    with its centre in a java fern's crown for good, wedged against the back glass (the way out it chose led into the
-    glass); it now walks out sideways (`chooseWedgeExit` counts the nose and tail against the glass), and a swimming
-    walker lands only where its body fits. The test now measures a drawn rock as drawn (river stones are smaller than
-    their boxes since chunk 16). The other, the blenny's dart, measured speed a second after the tap, when the dart is
-    often over; it now measures from the tap. Over 96 nudged paths the collider test's rate is back to before the
-    chunk (6 against 5 with a brief nose or tail in decor; B-217), the blenny's 0 of 96.
+    different path through a long AI run. The collider test caught an axolotl's centre in a java fern's crown for one
+    sample, at rest: it had come down onto the crown. A probe (the test's body on 96 start positions nudged by up to
+    10 µm) found the kinds on the Mac too, among them one that stays for good: an axolotl wedged between a crown and
+    the back glass, whose way out led into the glass. Fixed: the way out counts the nose and tail against the glass;
+    a swimming walker lands only where its body fits, and after a moment refused swims to open floor that fits
+    (`reposition`). The collider tests measure a rock drawn smaller than its box (river stones, live rock: since chunk
+    16 solid as drawn) as drawn, so a shrimp at a live rock's face no longer counts as inside it. The blenny's dart was
+    measured a second after the tap, when it is often over, and could catch a chase's burst; it is now measured from a
+    calm tap, and a startled darter whose cover is behind it flips round to it (a C-start: perched head up it only
+    backed away). Over the 96 paths: the collider test 5 with a brief nose or tail in decor (5 to 7 before the chunk;
+    B-217), the blenny's dart 0.
   - *Backlog:* B-211 to B-217 (B-211, the autofeeder's vote, and B-213, the anemone's split, built; B-217 the rare
     brief collisions above).
 
