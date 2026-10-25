@@ -21,6 +21,7 @@ import { unlock, waterClassKeys, waterClassLock } from '@/sim/facility';
 import { makeContext } from '@/sim/context';
 import { fissionBlocker, fissionModule } from '@/sim/life/breeding/systems/fission';
 import { clearCompatCache, incidentRisks, previewAddition } from '@/sim/compat';
+import { breedingStatus } from '@/sim/life/breeding';
 
 const NEW_IDS = ROSTER.filter((r) => r.unlock === 'open').map((r) => r.id);
 const WATER: WaterClass[] = ['freshwater_cool', 'freshwater_tropical', 'freshwater_planted', 'marine_fowlr', 'marine_live_rock', 'reef', 'brackish'];
@@ -216,6 +217,14 @@ describe('ADR-0052 / SPC-002: a settled, well-fed bubble-tip splits in two (fiss
     const clone = now.find((c) => c.id !== id)!;
     expect(clone.genome).toEqual(next.creatures[id].genome);
     expect(clone.genome).not.toBe(next.creatures[id].genome);
+  });
+
+  it("its card reads 'Splits by itself' (the owner, ADR-0052 decision 11), not 'Not bred here'", () => {
+    const g = game('ocellaris_clownfish', 10);
+    const { t, anemones } = reef(g, 'g180', 1);
+    expect(breedingStatus(g, anemones[0].id)).toEqual({ label: 'Splits by itself', detail: fissionModule.explain!(findSpecies('bubbletip_anemone')!) });
+    const emperor = addCreature(g, createCreature(g, simRng(g), 'emperor_angelfish', { ageDays: 60 }), t.id);
+    expect(breedingStatus(g, emperor.id)?.label).toBe('Not bred here');
   });
 
   it('a hungry one never splits, and a small tank holds only one', () => {

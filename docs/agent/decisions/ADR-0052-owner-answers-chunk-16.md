@@ -168,3 +168,49 @@ AskUserQuestion tool (one question):
 
 **Decision 10.** `tests/sim/playthrough-starters.test.ts` caps the first real hour's toasts at 100 per seed (was 90);
 the later hours' cap (70) is unchanged.
+
+## Round 4 (2026-10-25, after the fresh review): the new wording, catch-up bids, the autofeeder, the release
+
+After the fresh review, the new player-visible wording was listed in the session (the split, sex-change and ramshorn
+toasts, the split history lines, the anemone's breeding card and pair check, six activity labels, the shop hints and
+the form names), with notes the owner needn't answer (the coral beauty still doesn't change sex; each social sex change
+gives +15 breeding mastery; a living anemone eats any fish's fry; older crawlers now sit on the rock as drawn; the
+elegant starfish has no orange form, since no source names one). Asked with the AskUserQuestion tool (four questions):
+
+- **"Is the new wording above OK for players? (The anemone's breeding card is the one I'd change.)"** (Wording)
+  - Chosen: **"OK; anemone card 'Splits by itself' (Recommended)"** ("Everything as written, except the living
+    anemone's breeding card reads 'Splits by itself' instead of 'Not bred here', since it does reproduce.")
+  - Not chosen: "OK exactly as written" ("Keep every line, including 'Not bred here' on the anemone's card."); "I'll
+    send changes" ("Tell me which lines to change (use the notes box or Other).").
+- **"A bid made while you're away loses some of its window to the catch-up. You were told about 2.5 minutes at 3× and
+  3 at 10× (ADR-0016). At 1× it can come back with about 1 minute left. Change that?"** (Bids at 1×)
+  - Chosen: **"Keep as decided (Recommended)"** ("No change: ADR-0016 stands, and the docs and tests now state the 1×
+    minimum (about 68 seconds).")
+  - Not chosen: "Full 3 minutes on return" ("Every bid made while you were away gets its full minimum window from when
+    you come back, at every speed (shared shops too, since their server catches up the same way).").
+- **"The autofeeder drops the dry food most animals in the tank eat, so 20 snails can outvote the fish (they got sinking
+  pellets and the anthias starved), or a reef can get axolotl pellets. How should it choose? (B-211)"** (Autofeeder)
+  - Chosen: **"Skip wrong foods, weigh by need (Recommended)"** ("Never drop a food made for another species or water
+    while a fitting one is in stock, and weigh the vote by how much each animal needs feeding, so fish aren't outvoted
+    by snails.")
+  - Not chosen: "Only skip wrong foods" ("Keep the head-count vote, but never pick a food made for another species or
+    water while a fitting one is in stock."); "Leave it for now" ("Keep today's rule; the hint already lists who goes
+    unfed. Stays in the backlog.").
+- **"Once the checks and the confirmation review are green, release 0.8.0? That merges next into main (GitHub Pages)
+  and then deploys the shared-shop server, because the save format changes to v3."** (Release)
+  - Chosen: **"Release once green (Recommended)"** ("Bump to 0.8.0 with a CHANGELOG entry, merge into main and push,
+    then deploy aquarium-go-shops from main and check both versions.")
+  - Not chosen: "I'll play it first" ("Push next only. I give you a local link to try the new species, and release
+    when you say."); "Not yet" ("Push next only; no release.").
+
+**Decision 11.** The chunk's new wording is approved as listed; a species that breeds alone (the living anemone) shows
+"Splits by itself" on its breeding card instead of "Not bred here".
+
+**Decision 12.** The autofeeder (B-211, `pickAutofeedFood`) weighs each animal's vote by its feeding need (bioload over
+`hungerHours`), and a food made for another species or water counts for nobody while a fitting dry food is in stock.
+
+**Decision 13.** Catch-up bid windows stay as ADR-0016 decision 3 keeps them; MKT-016's test asserts the documented
+minimum at 1×, 3× and 10×.
+
+**Decision 14.** Release 0.8.0 once the four checks and the confirmation review are green: the version and CHANGELOG,
+`next` merged into `main` and pushed, then the shared-shop server deployed from `main` (PLAN.md "Releases" step 4).

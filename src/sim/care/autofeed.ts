@@ -4,7 +4,7 @@
  * Real aquarium autofeeders dispense DRY food only (flakes, pellets, wafers, dried seaweed — `isAutofeederFood` in
  * src/data/catalog/foods.ts). Frozen food must be thawed and live food must stay alive, so animals that eat only those
  * (seahorses, pea puffers, bumblebee gobies…) always need feeding by hand. The feeder has one hopper: each feeding it
- * drops the dry food in stock that the most animals in the tank eat.
+ * drops the dry food in stock that does the most good — see pickAutofeedFood.
  *
  * Pure functions over catalog data only (no game state, no RNG), so the water sim (`runAutofeeder` in
  * src/sim/water/step.ts), the fit verdicts (./fit.ts) and any UI can share them without import cycles.
@@ -85,25 +85,38 @@ export function handFoodPhrase(sp: Pick<SpeciesDefinition, 'foods'>, maxExamples
   return ex.length ? `${kinds} (${ex.join(', ')})` : kinds;
 }
 
+/** How much feeding an animal of this species needs: a well-fed adult's food per game hour (bioload over hungerHours). */
+const feedNeed = (sp: Pick<SpeciesDefinition, 'bioload' | 'hungerHours'>) =>
+  Math.max(0.001, Number.isFinite(sp.bioload) ? sp.bioload : 1) / Math.max(1, Number.isFinite(sp.hungerHours) ? sp.hungerHours : 24);
+
 /**
- * The food the autofeeder drops next: the dry food in stock that the most of `eaters` eat (one entry per animal, so a
- * school outweighs a single fish; ties keep catalog order). Null when no dry food in stock suits anyone.
+ * The food the autofeeder drops next: the dry food in stock that feeds the most need among `eaters` (one entry per
+ * animal, so a school outweighs a single fish). B-211, the owner (ADR-0052 decision 12): each animal's vote is weighed
+ * by how much feeding it needs (feedNeed), so twenty small snails can't outvote the fish; and a food made for another
+ * animal or water (axolotl pellets in a reef) counts for nobody while a fitting dry food is in stock, and is dropped
+ * only when nothing else suits. Ties keep catalog order. Null when no dry food in stock suits anyone.
  * This IS the sim's pick — src/sim/water/step.ts calls it.
  */
-export function pickAutofeedFood(stock: Readonly<Record<string, number | undefined>>, eaters: readonly Pick<SpeciesDefinition, 'foods'>[]): string | null {
-  let best: string | null = null;
-  let bestScore = 0;
-  for (const f of FOODS) {
-    if (!isAutofeederFood(f)) continue;
-    if ((stock[f.id] ?? 0) < 1) continue;
-    let score = 0;
-    for (const sp of eaters) if (eatsFood(sp, f)) score += 1;
-    if (score > bestScore) {
-      bestScore = score;
-      best = f.id;
+export function pickAutofeedFood(
+  stock: Readonly<Record<string, number | undefined>>,
+  eaters: readonly Pick<SpeciesDefinition, 'id' | 'foods' | 'environment' | 'bioload' | 'hungerHours'>[],
+): string | null {
+  const pick = (fittingOnly: boolean): string | null => {
+    let best: string | null = null;
+    let bestScore = 0;
+    for (const f of FOODS) {
+      if (!isAutofeederFood(f)) continue;
+      if ((stock[f.id] ?? 0) < 1) continue;
+      let score = 0;
+      for (const sp of eaters) if (eatsFood(sp, f) && !(fittingOnly && wrongKind(f, sp))) score += feedNeed(sp);
+      if (score > bestScore + 1e-12) {
+        bestScore = score;
+        best = f.id;
+      }
     }
-  }
-  return best;
+    return best;
+  };
+  return pick(true) ?? pick(false);
 }
 
 export interface AutofeedPlan {

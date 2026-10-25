@@ -204,9 +204,8 @@ export const PRESETS: Preset[] = [
       notes: 'A 210-gallon reef (built in the 180, the same footprint): a long live-rock ridge with an arch, aragonite sand, red macroalgae along the front, a bubble-tip anemone and deep actinic light. The five anthias are all female; the group turns one into its male within a few days. The emperor will outgrow it: the sources want 220 gallons for an adult, and the lab warns so.',
       seed: 210,
       base: 'blank',
-      // marine pellets for the autofeeder, four small meals a day for the anthias (its one hopper takes the dry food
-      // most of the tank eats, so sinking pellets would win on the snails' votes and starve the fish; left blank it
-      // found only axolotl pellets), frozen foods by hand
+      // marine pellets for the autofeeder, four small meals a day for the anthias (the friend's own food; since B-211
+      // the hopper would also pass over the snails' sinking pellets and any axolotl pellets), frozen foods by hand
       shop: { inventory: { foods: { marine_pellets: 1000, mysis_frozen: 60, brine_frozen: 40, coral_food: 30 } } },
       tanks: [
         {

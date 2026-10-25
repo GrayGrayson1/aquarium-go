@@ -1634,7 +1634,11 @@ REL-012, REL-018.
     no source names one (Quality Marine's "red to orangish red" is individual variation), and decision 2 allows no
     invented forms (a question for the owner). The Astraea's "can't right itself" is a data tag only: nothing in the
     game turns a snail over.
-  - *Backlog:* B-211 to B-216 (B-213, the anemone's split, built).
+  - *The owner's round 4* (ADR-0052 decisions 11–14): the new wording approved, with the living anemone's breeding
+    card reading "Splits by itself"; the autofeeder weighs each animal's vote by its feeding need and passes over a
+    food made for another species or water while a fitting one is in stock (B-211); catch-up bids as ADR-0016 keeps
+    them; release 0.8.0 once green.
+  - *Backlog:* B-211 to B-216 (B-211, the autofeeder's vote, and B-213, the anemone's split, built).
 
 ## Releases
 
