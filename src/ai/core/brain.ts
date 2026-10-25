@@ -15,6 +15,9 @@ import { clamp, clamp01, lerp, rchance, rdur, rnd, rrange, safeNormalize } from 
 import { SURF_FLOOR, floorAt, nearestSurface, pointFree } from './env';
 import { bodyHY, bodySide, findParticle, randomSurfacePoint, randomSwimPoint } from './nav';
 import { consumeSpitRequest, spitRequested, spitWeight } from './spit'; // lane:brackish
+import { buries, rockSleep, sandEmerge, sandHold, updateBuried } from './sand'; // chunk 16
+import { intruder, mateOf } from './reef'; // chunk 16, wave B
+import { anemonePlace } from './anemone'; // chunk 16, wave B
 
 const SWIM_ACTS = new Set<ActId>(['cruise', 'breathe', 'startle', 'cleaning', 'dead', 'gasp', 'reposition']);
 const STICKY = new Set<ActId>(['school', 'hitch', 'host', 'graze', 'burrow', 'perch', 'clean_station', 'still', 'patrol']);
@@ -29,6 +32,18 @@ function updateActiveness(a: Agent, w: AIWorld): void {
   const noct = clamp01(tr.nocturnal + a.mods.nocturnal * 0.35 + (a.tags.has('night_owl') ? 0.35 : 0));
   const day = env.daylight;
   let act = lerp(day, 0.35 + 0.65 * (1 - day), noct);
+  // chunk 16 — an early sleeper (wrasse) turns in a little before the lights go off and gets up a little after they
+  // come on (each individual a little earlier or later than the next)
+  const bt = a.set.bedtime;
+  if (bt && Number.isFinite(env.duskHour)) {
+    const k = 0.75 + ((a.noiseOff * 2.9) % 1) * 0.5;
+    const sinceOn = (((env.hourOfDay - env.dawnHour) % 24) + 24) % 24;
+    const dayLen = (((env.duskHour - env.dawnHour) % 24) + 24) % 24 || 24;
+    if (sinceOn < dayLen && (sinceOn < bt.late * k || dayLen - sinceOn < bt.early * k)) act = Math.min(act, 0.1);
+  }
+  // chunk 16 — out only at night (emerald crab, sand-sifting star): asleep in shelter while the lights are up, each
+  // coming out at its own point of the dusk
+  if (a.set.nightOnly && day > 0.2 + ((a.noiseOff * 4.7) % 1) * 0.25) act = Math.min(act, 0.12);
   act = Math.max(act, 0.06);
   act *= 1 - a.ill * 0.55;
   act *= 0.65 + 0.35 * a.energy;
@@ -58,6 +73,11 @@ export function plan(a: Agent, w: AIWorld): void {
   }
   const b = breedingActFor(a, w);
   if (b && startAct(a, w, b)) return;
+  // chunk 16 — a living anemone: on its way to a spot it likes, or settled there for good
+  if (a.set.anemone) {
+    if (!startAct(a, w, a.settled ? 'still' : 'wander')) startAct(a, w, 'still');
+    return;
+  }
   for (const k in a.set.acts) addW(k as ActId, a.set.acts[k as ActId] ?? 0);
   const env = w.env;
   const t = a.tags;
@@ -87,6 +107,23 @@ export function plan(a: Agent, w: AIWorld): void {
     delete WEIGHTS.forage;
   }
   if (a.sp.specialBehaviors?.includes('territory_flare') && a.c.sex === 'male' && !a.juvenile) addW('display', 0.3);
+  // chunk 16 — Nassarius: after a meal it wanders a little before it digs back in; some roam the sand at night
+  if (a.setId === 'snail_sand') {
+    if (w.time - a.lastFedT < 25) addW('crawl_explore', 5);
+    if (env.daylight < 0.3 && ((a.noiseOff * 5.3) % 1) < 0.55) addW('crawl_explore', 4);
+  }
+  // chunk 16 — a fighting conch spends much of the day resting half-buried, and is up and about at night
+  if (a.setId === 'conch' && env.daylight > 0.5) addW('rest', 3);
+  // chunk 16, wave B — an urchin is more often parked (or in a crevice) by day and grazes more at night; a ram keeps
+  // close to its mate; a six-line wrasse ducks into the rockwork and out again
+  if (a.setId === 'urchin') {
+    if (env.daylight > 0.5) {
+      addW('rest', 2);
+      addW('hide', 0.8);
+    } else addW('graze', 2.5);
+  }
+  if (a.setId === 'cichlid_dwarf' && mateOf(a, w)) addW('pair_follow', a.c.sex === 'female' ? 2.2 : 0.8);
+  if (rockSleep(a)) addW('hide', 1.1);
   // modulation
   const active = 0.25 + a.activeness;
   const lazy = 1 + (1 - a.activeness) * 3 + a.ill * 3 + (1 - a.energy) * 1.5;
@@ -215,10 +252,23 @@ function think(a: Agent, w: AIWorld): void {
   }
   // night
   const sleepy = a.activeness < 0.3 - ((a.noiseOff * 3.1) % 1) * 0.08;
-  if (sleepy && cur < 35 && a.act !== 'sleep' && a.act !== 'hitch' && a.act !== 'burrow' && a.loco !== 'sessile') {
+  if (sleepy && cur < 35 && a.act !== 'sleep' && a.act !== 'hitch' && a.act !== 'burrow' && a.loco !== 'sessile' && !a.set.anemone) {
     if (startAct(a, w, 'sleep')) {
       a.lastInterrupt = 'night';
       return;
+    }
+  }
+  // chunk 16 — a territorial fish (blenny, damsel, ram) chases an intruder off its home patch
+  if (a.set.chases && cur < 28 && a.act !== 'chase' && !a.juvenile && a.activeness > 0.45 && w.time > a.lastChaseT + 6) {
+    const o = intruder(a, w);
+    // (a yellowtail damsel is one of the milder damsels: it lets more go)
+    if (o && rchance(a, a.setId === 'damsel' ? 0.25 : a.setId === 'cichlid_dwarf' ? 0.4 : 0.6)) {
+      a.chaseId = o.id;
+      if (startAct(a, w, 'chase')) {
+        a.lastInterrupt = 'intruder';
+        return;
+      }
+      a.lastChaseT = w.time;
     }
   }
   // the player's finger at the glass
@@ -249,7 +299,7 @@ function think(a: Agent, w: AIWorld): void {
     return;
   }
   // stress: hide or (a stress sign, never a reward) glass surfing
-  if (a.stress > 0.62 && cur < 20 && rchance(a, 0.06)) {
+  if (a.stress > 0.62 && cur < 20 && !a.set.anemone && rchance(a, 0.06)) {
     const gs = a.sp.behaviorTraits.glassSurfing;
     if (startAct(a, w, gs > 0.03 && rchance(a, gs * 4) ? 'glass_surf' : 'hide')) {
       a.lastInterrupt = 'stress';
@@ -302,8 +352,30 @@ function react(a: Agent, w: AIWorld, s: Stimulus, d: number): void {
     a.puff = 1;
     a.lastPuffT = w.time;
   }
+  // chunk 16 — a blenny, a damsel, an emerald crab dash straight into cover; so does a six-line wrasse on a hard fright
+  // (it lives in the rock: it never goes into the sand)
+  const rockSleeper = a.set.startle === 'sand' && rockSleep(a);
+  if (a.set.startle === 'shelter' || (rockSleeper && I > 0.5)) {
+    if (a.act === 'retreat' && a.actT < 1) return;
+    if (startAct(a, w, 'retreat')) {
+      if (I > 0.5 && w.hooks.event) w.hooks.event('startle', a.rt.pos, a.id, I);
+      return;
+    }
+  }
+  // chunk 16 — a wrasse: already in the sand, it stays there (a little longer); a hard fright sends it into the sand
+  if (a.set.startle === 'sand' && !rockSleeper) {
+    if (a.sandMode && a.buried > 0.6 && (a.act === 'sand_dive' || a.act === 'sleep' || a.act === 'rest')) {
+      if (a.act === 'sand_dive' && a.actCount > 0) a.actTimer = Math.max(a.actTimer, w.time + rrange(a, 3, 10));
+      return;
+    }
+    if (I > 0.5 && env.sandBed && (s.spam || rchance(a, 0.35 + (I - 0.5) * 1.3)) && startAct(a, w, 'sand_dive')) {
+      if (w.hooks.event) w.hooks.event('startle', a.rt.pos, a.id, I);
+      return;
+    }
+  }
+  const darter = a.set.startle === 'dart' || a.set.startle === 'sand';
   const bold = a.mods.boldness > 0.62 || a.tags.has('bold');
-  if (!s.spam && bold && I < 0.75 && a.set.startle === 'dart' && a.act !== 'feed' && rchance(a, 0.75)) {
+  if (!s.spam && bold && I < 0.75 && darter && a.act !== 'feed' && rchance(a, 0.75)) {
     startAct(a, w, 'inspect_tap');
     return;
   }
@@ -329,8 +401,12 @@ export function initialPlacement(a: Agent, w: AIWorld, keepExisting: boolean): v
   const env = w.env;
   const pos = a.rt.pos;
   const side = bodySide(a);
+  // (chunk 16: a living anemone on a remounted tank stays where it was — it holds a rock or a pane, closer to it than
+  // the generic test allows)
+  const keptAnemone = !!a.set.anemone && keepExisting && Number.isFinite(pos.x + pos.y + pos.z) && a.rt.ai.settled !== undefined;
   const valid =
-    keepExisting &&
+    keptAnemone ||
+    (keepExisting &&
     Number.isFinite(pos.x + pos.y + pos.z) &&
     pos.x > env.minX + side &&
     pos.x < env.maxX - side &&
@@ -338,12 +414,12 @@ export function initialPlacement(a: Agent, w: AIWorld, keepExisting: boolean): v
     pos.z < env.maxZ - side &&
     pos.y > floorAt(env, pos.x, pos.z) &&
     pos.y < env.surfaceY &&
-    pointFree(env, pos.x, pos.y, pos.z, side * 0.8);
+    pointFree(env, pos.x, pos.y, pos.z, side * 0.8));
   a.loco = a.set.loco;
   a.aim.set(0, 0, 0);
   const ang = rrange(a, 0, Math.PI * 2);
   a.fwd.set(Math.cos(ang), 0, Math.sin(ang) * 0.5).normalize();
-  if (!valid || !bodyFits(a, w, pos, a.fwd)) {
+  if (!valid || (!keptAnemone && !bodyFits(a, w, pos, a.fwd))) {
     // try several spots and headings until the whole body (nose to tail) fits
     for (let i = 0; i < 40; i++) {
       if (a.set.loco === 'crawl' || a.set.loco === 'walk' || a.set.loco === 'sessile') {
@@ -372,6 +448,8 @@ export function initialPlacement(a: Agent, w: AIWorld, keepExisting: boolean): v
     a.fwd.addScaledVector(a.surfN, -a.fwd.dot(a.surfN));
     safeNormalize(a.fwd, _v.set(1, 0, 0));
   }
+  // chunk 16 — where a living anemone is to settle (it may be put straight there: anemone.ts)
+  if (a.set.anemone) anemonePlace(a, w, keptAnemone);
   a.loco = a.set.loco;
   a.rt.yaw = Math.atan2(-a.fwd.z, a.fwd.x);
   a.rt.pitch = 0;
@@ -422,8 +500,9 @@ export function stepAgent(a: Agent, w: AIWorld, dt: number): void {
   if (a.actT >= a.actDur) {
     if (a.act === 'startle' && !a.dead) {
       // after a startle: shy animals take cover, bold ones resume
-      const shy = a.mods.boldness < 0.45 || a.tags.has('shy') || a.fright > 0.7;
-      if (!(shy && a.set.startle === 'dart' && startAct(a, w, 'retreat'))) plan(a, w);
+      // (chunk 16: one that was only chased off a territory swims on)
+      const shy = (a.mods.boldness < 0.45 || a.tags.has('shy') || a.fright > 0.7) && w.time - a.chasedT > 3;
+      if (!(shy && (a.set.startle === 'dart' || a.set.startle === 'sand') && startAct(a, w, 'retreat'))) plan(a, w);
     } else plan(a, w);
   }
   if (!ACTS[a.act].tick(a, w, dt)) {
@@ -474,7 +553,14 @@ export function stepAgent(a: Agent, w: AIWorld, dt: number): void {
   }
   // party mode: gentle bobbing on beats (cosmetic; seahorses and crawlers only sway)
   if (env.party > 0 && env.beat > 0.55 && a.loco === 'swim' && !a.dead) a.drift.y += env.beat * env.party * a.L * 0.35 * dt * 8;
+  // chunk 16 — a wrasse whose activity no longer holds it in the sand comes up out of it gradually
+  const sandy = buries(a);
+  if (sandy && a.loco === 'swim') sandEmerge(a, w, dt);
   locomote(a, w, dt);
+  if (sandy) {
+    if (a.loco === 'swim') sandHold(a, w);
+    updateBuried(a, w);
+  }
   writeOrientation(a, w, dt);
   cosmetics(a, w, dt);
   a.rt.target = a.ctrl.hasGoal ? a.ctrl.goal : undefined;

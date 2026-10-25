@@ -2,7 +2,7 @@
  * Headless helpers for building AI worlds without the game store (tests, sandboxes, benchmarks).
  * OWNER: lane "behavior".
  */
-import type { Creature, DecorDef, DecorInstance, Tank, WaterClass } from '@/types';
+import type { Creature, DecorDef, DecorInstance, SpeciesDefinition, SubstrateKind, Tank, WaterClass } from '@/types';
 import { findSpecies } from '@/data/species';
 import { getDecorDef } from '@/data/catalog/decor';
 import { personalityModifiers } from '@/sim/life';
@@ -84,7 +84,7 @@ export const TEST_DECOR: Record<string, DecorDef> = {
 
 export const resolveTestDecor = (id: string): DecorDef | undefined => TEST_DECOR[id] ?? getDecorDef(id);
 
-export function makeTestTank(opts: { id?: string; tierId?: string; waterClass?: WaterClass; decor?: DecorInstance[]; substrateCm?: number; hourOn?: number; hourOff?: number } = {}): Tank {
+export function makeTestTank(opts: { id?: string; tierId?: string; waterClass?: WaterClass; decor?: DecorInstance[]; substrateCm?: number; substrate?: SubstrateKind; hourOn?: number; hourOff?: number } = {}): Tank {
   const wc = opts.waterClass ?? 'freshwater_planted';
   const marine = wc.startsWith('marine') || wc === 'reef';
   return {
@@ -115,7 +115,7 @@ export function makeTestTank(opts: { id?: string; tierId?: string; waterClass?: 
     },
     equipment: [],
     decor: opts.decor ?? [],
-    substrate: { kind: 'sand', depthCm: opts.substrateCm ?? 4, color: '#ccbb99' },
+    substrate: { kind: opts.substrate ?? 'sand', depthCm: opts.substrateCm ?? (opts.substrate === 'bare' ? 0 : 4), color: '#ccbb99' },
     backdrop: 'black',
     lighting: { preset: 'daylight', intensity: 1, onHour: opts.hourOn ?? 7, offHour: opts.hourOff ?? 22, moonlight: true },
     createdHour: 0,
@@ -127,8 +127,9 @@ export function makeTestTank(opts: { id?: string; tierId?: string; waterClass?: 
 }
 
 let seq = 0;
-export function makeTestCreature(speciesId: string, tankId: string, over: Partial<Creature> & { temperament?: number; curiosity?: number } = {}): Creature {
-  const sp = findSpecies(speciesId);
+/** `species`: a stub definition for a species the roster does not have (see stubSpecies). */
+export function makeTestCreature(speciesId: string, tankId: string, over: Partial<Creature> & { temperament?: number; curiosity?: number; species?: SpeciesDefinition } = {}): Creature {
+  const sp = over.species ?? findSpecies(speciesId);
   const id = over.id ?? `cr_test_${speciesId}_${++seq}`;
   const t = over.temperament ?? 50;
   const cu = over.curiosity ?? 50;
@@ -156,10 +157,28 @@ export function makeTestCreature(speciesId: string, tankId: string, over: Partia
     history: [],
     visitorWows: 0,
   };
-  return { ...c, ...over, id, genome: c.genome } as Creature;
+  const { species: _sp, ...rest } = over;
+  void _sp;
+  return { ...c, ...rest, id, genome: c.genome } as Creature;
 }
 
-export function makeTestWorld(tank: Tank, creatures: Creature[], hour = 12, hooks: AIHooks = {}): AIWorld {
+/**
+ * A species definition for tests: an existing one (`baseId`) with fields replaced — a new behaviour set, its traits.
+ * (Behaviour tests use these so they do not depend on the species data being written at the same time.)
+ */
+export function stubSpecies(baseId: string, over: Omit<Partial<SpeciesDefinition>, 'behaviorTraits'> & { id: string; behaviorTraits?: Partial<SpeciesDefinition['behaviorTraits']> }): SpeciesDefinition {
+  const base = findSpecies(baseId);
+  if (!base) throw new Error(`stubSpecies: no species ${baseId}`);
+  return { ...base, ...over, behaviorTraits: { ...base.behaviorTraits, ...(over.behaviorTraits ?? {}) } } as SpeciesDefinition;
+}
+
+/** A species lookup that knows the given stubs first, then the roster. */
+export function speciesWith(stubs: SpeciesDefinition[]): (id: string) => SpeciesDefinition | undefined {
+  const m = new Map(stubs.map((s) => [s.id, s]));
+  return (id) => m.get(id) ?? findSpecies(id);
+}
+
+export function makeTestWorld(tank: Tank, creatures: Creature[], hour = 12, hooks: AIHooks = {}, species: (id: string) => SpeciesDefinition | undefined = findSpecies): AIWorld {
   const w = createWorld(tank.id, {
     resolveDecor: resolveTestDecor,
     personality: (c) => {
@@ -169,7 +188,7 @@ export function makeTestWorld(tank: Tank, creatures: Creature[], hour = 12, hook
         return null;
       }
     },
-    species: findSpecies,
+    species,
     hooks,
   });
   syncWorld(w, { tank, creatures, clutches: [], hour, refreshInfo: true });

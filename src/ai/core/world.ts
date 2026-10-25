@@ -13,6 +13,7 @@ import { bodySide, computeZoneBand, releaseAnchor } from './nav';
 import { initialPlacement, stepAgent } from './brain';
 import { stepFood, type FoodState, makeFoodState } from './food';
 import { stepArcherShot } from './spit'; // lane:brackish
+import { anemoneLayoutChanged, syncLiveHosts, updateLiveHosts } from './anemone'; // chunk 16
 import { setStepDt } from './stepRate'; // lane:pc-perf
 
 export interface AIHooks {
@@ -61,6 +62,9 @@ export interface AIWorld {
   foodState: FoodState;
   hooks: AIHooks;
   virtualAnchors: Anchor[];
+  /** chunk 16 — the living anemones (not dead) and the host anchors at their crowns (also in env.byKind.host). */
+  anemones: Agent[];
+  liveAnchors: Anchor[];
   resolveDecor: DecorResolver;
   extras?: ExtraResolver;
   flowOf: FlowResolver;
@@ -104,6 +108,8 @@ export function createWorld(tankId: string, deps: WorldDeps): AIWorld {
     foodState: makeFoodState(),
     hooks: deps.hooks ?? {},
     virtualAnchors: [],
+    anemones: [],
+    liveAnchors: [],
     resolveDecor: deps.resolveDecor,
     extras: deps.extras,
     flowOf: deps.flowOf ?? (() => 0.3),
@@ -131,6 +137,8 @@ export function syncWorld(w: AIWorld, input: SyncInput): void {
   const surfaceBefore = w.env.surfaceY;
   const decorChanged = syncEnvStatic(w.env, tank, w.resolveDecor, w.extras);
   syncEnvDynamic(w.env, tank, input.hour, input.clutches, w.flowOf);
+  // chunk 16 — the living anemones' host anchors go back among the tank's (a decor rebuild empties them)
+  if (w.anemones.length || w.liveAnchors.length) syncLiveHosts(w);
   if (!decorChanged && w.env.surfaceY !== surfaceBefore) {
     // the water level moved (evaporation / a top-off): swimming bands follow the surface; nobody replans
     for (const a of w.agents) computeZoneBand(a, w);
@@ -145,13 +153,14 @@ export function syncWorld(w: AIWorld, input: SyncInput): void {
     w.virtualAnchors.length = 0;
     const byKey = new Map<string, Anchor>();
     for (const an of env.anchors) byKey.set(an.key, an);
+    for (const an of w.liveAnchors) byKey.set(an.key, an); // chunk 16 (they move with their anemone)
     const solidIds = new Set<string>();
     for (const c of env.colliders) solidIds.add(c.decorId);
     w.claims.clear();
     for (const a of w.agents) {
       let disturbed = false;
       const an = a.anchorKey ? byKey.get(a.anchorKey) : undefined;
-      if (an && an.pos.distanceToSquared(a.anchorPos) < 1e-4) {
+      if (an && (an.live !== undefined || an.pos.distanceToSquared(a.anchorPos) < 1e-4)) {
         w.claims.set(an.key, (w.claims.get(an.key) ?? 0) + 1);
       } else if (a.anchorKey) {
         a.anchorKey = null;
@@ -160,7 +169,8 @@ export function syncWorld(w: AIWorld, input: SyncInput): void {
       }
       if (a.hasHome) {
         // a home on decor stays only with its anchor; a home spot in the open only while nothing solid landed on it
-        const homeOk = a.homeDecor ? !!an && a.anchorKey !== null && solidIds.has(a.homeDecor) : pointFree(env, a.home.x, a.home.y, a.home.z, bodySide(a) * 0.5);
+        // (chunk 16: a living anemone is no decor; its anchor is kept while it lives)
+        const homeOk = a.homeDecor ? an !== undefined && a.anchorKey !== null && (solidIds.has(a.homeDecor) || an.live === a.homeDecor) : pointFree(env, a.home.x, a.home.y, a.home.z, bodySide(a) * 0.5);
         if (!homeOk) {
           a.hasHome = false;
           disturbed = true;
@@ -172,6 +182,7 @@ export function syncWorld(w: AIWorld, input: SyncInput): void {
       a.laidToRest = false; // a body at rest settles again around the new layout
       computeZoneBand(a, w);
       if (disturbed) a.actDur = Math.min(a.actDur, a.actT + 0.1); // replan soon with the new layout
+      if (a.set.anemone) anemoneLayoutChanged(a, w); // chunk 16 — is its spot still one it likes?
     }
     w.hash.configure(env.minX, env.floorY - 0.05, env.minZ, env.maxX, env.surfaceY + 0.05, env.maxZ, Math.max(0.06, Math.min(0.2, (env.maxX - env.minX) / 12)));
   }
@@ -214,6 +225,8 @@ export function syncWorld(w: AIWorld, input: SyncInput): void {
   }
   w.useHash = w.agents.length > 30;
   if (w.nbuf.length < w.agents.length) w.nbuf = new Int32Array(w.agents.length * 2);
+  // chunk 16 — anemones that came, went or died since the last sync
+  syncLiveHosts(w);
 }
 
 function removeAgent(w: AIWorld, i: number): void {
@@ -296,6 +309,7 @@ export function stepWorld(w: AIWorld, dtIn: number): void {
     if (a.dead) settleDead(a, w, dt);
   }
   stepArcherShot(w, dt); // lane:brackish — the archerfish's fly and jet
+  if (w.liveAnchors.length) updateLiveHosts(w); // chunk 16 — the living hosts' anchors follow their anemones
 }
 
 function stepSchools(w: AIWorld, dt: number): void {

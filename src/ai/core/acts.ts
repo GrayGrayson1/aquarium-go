@@ -9,7 +9,7 @@ import type { Agent } from './agent';
 import type { AIWorld } from './world';
 import { ACT_DURATION, type ActId } from './sets';
 import { V, clamp, clamp01, rchance, rdur, rnd, rrange, safeNormalize, noise3 } from './math';
-import { SURF_DECOR, SURF_FLOOR, colliderNormalGrounded, colliderSdf, floorAt, nearestSurface, pointFree, type Anchor, type AnchorKind } from './env';
+import { SURF_DECOR, SURF_FLOOR, colliderNormalGrounded, colliderSdf, drawnDepth, floorAt, makeHit, nearestSurface, pointFree, pointFreeExcept, restingGap, surfaceById, type Anchor, type AnchorKind } from './env';
 import {
   bodyHX,
   bodyHY,
@@ -26,6 +26,9 @@ import {
 import { bodyFits, takeOff } from './loco';
 import { biteParticle, particleTags } from './food';
 import { spitEnter, spitTick } from './spit'; // lane:brackish
+import { buryProfile, frightBuriedTime, onSand, pickSandSpot, rockSleep, sandBuryTick } from './sand'; // chunk 16
+import { choosePatch, findPerch, mateOf, perchGap, perchTaken, type PerchOpts } from './reef'; // chunk 16, wave B
+import { crownPos, crownR, freeLiveHost, liveHostPos, wanderTick } from './anemone'; // chunk 16, wave B
 import { perStep, stepRate } from './stepRate'; // lane:pc-perf — frame-rate independent per-step constants
 
 export interface ActDef {
@@ -266,6 +269,13 @@ const LIVE = (p: FoodParticle) => p.motion === 'crawl' || p.motion === 'jitter' 
 export function chooseFood(a: Agent, w: AIWorld): FoodParticle | null {
   if (!w.food.length || a.dead || a.loco === 'sessile') return null;
   if (a.stage === 'brooding') return null; // mouthbrooding males do not eat
+  // chunk 16 — a wrasse in the sand for the night (or hiding there from a fright) does not come out for food
+  if (a.sandMode && a.buried > 0.3 && (a.act === 'sleep' || a.act === 'rest' || a.act === 'sand_dive')) return null;
+  // chunk 16 — a sand-sifting star under the sand for the day stays there; a hawkfish that has just pounced goes back to
+  // its perch before it pounces again; an anemone only takes what comes within reach of its tentacles
+  if (a.set.nightOnly && a.buried > 0.5 && a.activeness < 0.3) return null;
+  if (a.setId === 'hawkfish' && a.act === 'perch' && a.actPhase === 0 && w.time - a.lastFedT < 5) return null;
+  if (a.set.anemone) return anemoneFood(a, w);
   const drive = appetite(a);
   if (drive < 0.18) return null;
   // full animals ignore food — but one offered by hand (tongs / pipette) still gets a bite or two
@@ -278,8 +288,10 @@ export function chooseFood(a: Agent, w: AIWorld): FoodParticle | null {
   const fs = a.sp.feedingStyle;
   const bottomOk = crawler || a.set.bottomHugger || fs === 'bottom' || fs === 'scavenger' || fs === 'grazer' || fs === 'hunter' || fs === 'picker' || fs === 'ambush' || a.zoneY0 < env.floorY + H * 0.3 || a.hunger > 0.65;
   const surfaceOk = !crawler && !a.set.bottomHugger && (a.zoneY1 > env.floorY + H * 0.62 || fs === 'surface' || fs === 'midwater' || a.hunger > 0.7);
-  // perception: seahorses & target feeders only notice food close by; crawlers smell it within ~35 cm
-  const R = a.setId === 'seahorse' ? L * 4 : crawler ? 0.35 : 3;
+  // perception: seahorses & target feeders only notice food close by; crawlers smell it within ~35 cm (a Nassarius
+  // smells it anywhere on the floor, a few seconds after it lands — the farther, the later)
+  const smells = !!a.set.smellsFood;
+  const R = a.setId === 'seahorse' ? L * 4 : smells ? Infinity : crawler ? 0.35 : 3;
   const m = mouthPos(a, _a);
   let best: FoodParticle | null = null;
   let bestScore = Infinity;
@@ -295,6 +307,7 @@ export function chooseFood(a: Agent, w: AIWorld): FoodParticle | null {
     if (!edible(a, particleTags(w, p))) continue;
     const h = p.pos.y - floorAt(env, p.pos.x, p.pos.z);
     if (crawler && h > L * 0.8 + 0.012 && p.targetCreatureId !== a.id) continue;
+    if (smells && p.targetCreatureId !== a.id && p.age < 1 + d * 6 + ((a.noiseOff * 7.7) % 1) * 2.5) continue;
     if (p.motion === 'float' && !surfaceOk && p.targetCreatureId !== a.id) continue;
     // settled food: bottom feeders take it anywhere; others only if it rests on decor up in their own zone
     if (p.settled && !bottomOk && p.pos.y < a.zoneY0 - H * 0.12) continue;
@@ -312,9 +325,30 @@ export function chooseFood(a: Agent, w: AIWorld): FoodParticle | null {
   return best;
 }
 
-type FeedStyle = 'rush' | 'snick' | 'strike' | 'pick';
+/** chunk 16 — the food within reach of a living anemone's tentacles (the nearest; null: none). */
+function anemoneFood(a: Agent, w: AIWorld): FoodParticle | null {
+  crownPos(a, _a);
+  const reach = crownR(a) * 1.1;
+  let best: FoodParticle | null = null;
+  let bestD = Infinity;
+  for (const p of w.food) {
+    if (p.amount <= 0 || (p.fade && p.fade > 0) || isBadFood(a, p.id, w.time)) continue;
+    if (p.targetCreatureId && p.targetCreatureId !== a.id) continue;
+    if (!edible(a, particleTags(w, p))) continue;
+    const d = _a.distanceTo(p.pos) - (p.size ?? 0.003);
+    if (d < reach && d < bestD) {
+      bestD = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
+/** 'pounce' (chunk 16): watches from a perch and takes food in a quick short dart (flame hawkfish). */
+type FeedStyle = 'rush' | 'snick' | 'strike' | 'pick' | 'pounce';
 function feedStyle(a: Agent): FeedStyle {
   if (a.setId === 'seahorse') return 'snick';
+  if (a.setId === 'hawkfish') return 'pounce';
   if (a.setId === 'axolotl' || a.setId === 'frog_aquatic') return 'strike';
   if (isCrawler(a) && a.loco !== 'swim') return 'pick';
   return 'rush';
@@ -401,6 +435,7 @@ export const ACTS: Record<ActId, ActDef> = {
     },
     tick(a, w) {
       const s = w.schools.get(a.speciesId);
+      if (hoverShoal(a)) return hoverShoalTick(a, w, s);
       if (!s || s.count < 3) {
         // a lone schooling fish: nervous, hugs cover, loose wandering
         if (dist(a, a.actData) < a.L * 2 || a.actT < 0.05) randomSwimPoint(a, w, a.actData, { zPref: -0.3 });
@@ -465,7 +500,7 @@ export const ACTS: Record<ActId, ActDef> = {
     tick(a, w) {
       go(a, a.actData, cruiseBL(a) * 1.05, 0.001);
       a.ctrl.wander = 0.18;
-      if (Math.abs(a.rt.pos.x - a.actData.x) < a.L * 2.5) {
+      if (Math.abs(a.rt.pos.x - a.actData.x) < patrolTurn(a, w)) {
         a.actPhase = 1 - a.actPhase;
         a.actCount--;
         if (a.actCount <= 0) return false;
@@ -546,6 +581,16 @@ export const ACTS: Record<ActId, ActDef> = {
       a.actCount = 2 + Math.floor(rnd(a) * 3);
       a.actTimer = w.time + rdur(a, 2.2);
       a.actPhase = 0;
+      // chunk 16 — a sea star (or an urchin) glides on without pauses, and needs minutes to get anywhere
+      if (a.setId === 'starfish' || a.setId === 'urchin') {
+        a.actDur = rdur(a, 150);
+        a.actCount = 1 + Math.floor(rnd(a) * 2);
+        a.actTimer = Infinity;
+      }
+      // chunk 16 — a Nassarius out of the sand: a short wander after a meal, a longer roam at night
+      if (a.setId === 'snail_sand') a.actDur = rdur(a, w.time - a.lastFedT < 25 ? 18 : 55);
+      // chunk 16 — a sand-sifting star roams the sand bed a good while at a time
+      if (a.setId === 'starfish_sand') a.actDur = rdur(a, 45);
       return true;
     },
     tick(a, w) {
@@ -562,6 +607,8 @@ export const ACTS: Record<ActId, ActDef> = {
       }
       go(a, a.actData, cruiseBL(a) * 1.1, a.L * 1.2);
       a.ctrl.wander = 0.4;
+      // (Nassarius out on the sand jostle past one another rather than steer round each other)
+      if (a.setId === 'snail_sand') a.ctrl.sep = 0.5;
       if (a.setId === 'axolotl' && a.loco === 'walk' && a.speed > a.L * 0.05) observe(a, w, 'walk');
       if (dist(a, a.actData) < reachR(a, w, 1.3)) {
         if (--a.actCount <= 0) return false;
@@ -577,6 +624,10 @@ export const ACTS: Record<ActId, ActDef> = {
     label: 'resting',
     pose: 'rest',
     enter(a, w) {
+      // chunk 16 — a conch spends much of the day half-buried: its rests are long by day (an urchin's too, parked or in
+      // a crevice)
+      if (a.setId === 'conch') a.actDur *= w.env.daylight > 0.5 ? 4 : 1.3;
+      if (a.setId === 'urchin') a.actDur *= w.env.daylight > 0.5 ? 3 : 1.2;
       return chooseRestSpot(a, w);
     },
     tick(a, w) {
@@ -604,6 +655,8 @@ export const ACTS: Record<ActId, ActDef> = {
     label: 'hiding',
     pose: 'hiding',
     enter(a, w) {
+      // chunk 16 — a six-line wrasse darts into the rockwork and out again
+      if (rockSleep(a)) a.actDur = rdur(a, 4);
       return chooseHideSpot(a, w);
     },
     tick(a, w) {
@@ -620,8 +673,12 @@ export const ACTS: Record<ActId, ActDef> = {
       return chooseHideSpot(a, w);
     },
     tick(a, w) {
-      a.ctrl.urgency = a.actPhase === 0 ? 0.6 : 0;
-      return hideTick(a, w, 1.6);
+      // chunk 16 — a fright sends a blenny, a damsel or an emerald crab straight into cover at full speed
+      const dash = a.set.startle === 'shelter' || rockSleep(a);
+      a.ctrl.urgency = a.actPhase === 0 ? (dash ? 1 : 0.6) : 0;
+      const r = hideTick(a, w, 1.6, dash && a.actT < 4 ? burstBL(a) * 0.8 : 0);
+      if (dash && a.actPhase === 0 && a.actT < 0.5) a.pose = 'startle';
+      return r;
     },
   },
 
@@ -762,12 +819,20 @@ export const ACTS: Record<ActId, ActDef> = {
     label: 'foraging',
     pose: 'feed',
     enter(a, w) {
+      if (a.set.picker && a.loco === 'swim') {
+        // chunk 16 — a wrasse's foraging bout: many short stops low over rock and sand
+        pickPeckSpot(a, w, false);
+        a.actTimer = 0;
+        a.actCount = 4 + Math.floor(rnd(a) * 6);
+        return true;
+      }
       pickForageSpot(a, w);
       a.actTimer = 0;
       a.actCount = 2 + Math.floor(rnd(a) * 4);
       return true;
     },
     tick(a, w) {
+      if (a.set.picker && a.loco === 'swim') return peckTick(a, w);
       const env = w.env;
       const crawler = a.loco === 'crawl' || a.loco === 'walk';
       const surfaceForager = a.setId === 'surface_dweller';
@@ -780,23 +845,40 @@ export const ACTS: Record<ActId, ActDef> = {
         if (!crawler && a.rt.pos.y < floorAt(env, a.rt.pos.x, a.rt.pos.z) + a.L * 1.5) a.ctrl.pitchBias = -0.35;
         if (dist(a, a.actData) < a.L * 0.9) {
           a.actPhase = 1;
-          a.actTimer = w.time + rdur(a, crawler ? 1.6 : 2.6);
+          // (chunk 16: a sand-sifting star digs in a while at each spot; a ram's stops are short)
+          a.actTimer = w.time + rdur(a, a.setId === 'starfish_sand' ? 12 : a.setId === 'cichlid_dwarf' ? 1.8 : crawler ? 1.6 : 2.6);
         }
         return true;
       }
       // sifting / picking in place
       a.ctrl.allowFloor = !surfaceForager;
       a.ctrl.allowSurface = surfaceForager;
+      // chunk 16 — a sand-sifting star digs its arms and disc into the sand to feed
+      if (a.setId === 'starfish_sand' && crawler) {
+        const bp = buryProfile(a);
+        if (bp && onSand(a, w)) a.ctrl.sink = bp.depth * 0.45;
+      }
+      // chunk 16 — a ram takes a mouthful of sand, works it a moment and spits it out
+      if (a.setId === 'cichlid_dwarf') {
+        if (a.siftT > 0 && w.time >= a.siftT) {
+          a.siftT = 0;
+          a.sift = 1;
+          a.mouthPulse = Math.max(a.mouthPulse, 0.8);
+        } else if (a.siftT === 0 && rnd(a) < 0.035 * stepRate.k) {
+          a.mouthPulse = 1;
+          a.siftT = w.time + rrange(a, 0.5, 0.9);
+        }
+      }
       if (!crawler) {
         _a.copy(a.actData).addScaledVector(a.fwd, a.L * 0.05 * Math.sin(w.time * 1.3 + a.noiseOff));
         go(a, _a, cruiseBL(a) * 0.4, a.L * 1.2);
         // nose-down to pick at the bottom, but no head-stands (corys and goldfish tip ~30–35°, not vertical)
-        a.ctrl.pitchBias = surfaceForager ? 0.35 : a.set.bottomHugger || a.setId === 'goldfish' ? -0.42 : -0.3;
+        a.ctrl.pitchBias = surfaceForager ? 0.35 : hoverShoal(a) ? 0.1 : a.set.bottomHugger || a.setId === 'goldfish' ? -0.42 : -0.3;
         a.ctrl.avoid = 0.4;
       } else {
         a.ctrl.hasGoal = false;
       }
-      if (rnd(a) < 0.12 * stepRate.k) {
+      if (a.setId !== 'cichlid_dwarf' && rnd(a) < 0.12 * stepRate.k) {
         a.mouthPulse = Math.max(a.mouthPulse, 0.6 + rnd(a) * 0.4);
         if (crawler) a.appendage = Math.max(a.appendage, 0.8);
       }
@@ -814,37 +896,71 @@ export const ACTS: Record<ActId, ActDef> = {
     label: 'grazing',
     pose: 'feed',
     enter(a, w) {
-      if (!isCrawler(a)) return false;
-      randomSurfacePoint(a, w, a.set.crawlMask || SURF_FLOOR, a.actData, a.actNormal, a.rt.pos, a.setId === 'snail' ? 0.25 : 0.12);
-      a.actTimer = w.time + rdur(a, 1.4);
-      a.actCount = 3 + Math.floor(rnd(a) * 5);
+      if (!isCrawler(a)) {
+        // chunk 16 — a lawnmower blenny grazes film algae off the rock and glass, face to the surface, in bouts
+        if (!a.set.surfaceGrazer) return false;
+        blennyGrazeSpot(a, w, false);
+        a.actTimer = 0;
+        a.actCount = 3 + Math.floor(rnd(a) * 4);
+        return true;
+      }
+      grazePatch(a, w);
+      const star = slowGrazer(a);
+      // (a sea star starts on the patch it is on: long stays, slow drifts between them — the act runs on its count)
+      if (star) {
+        a.actPhase = 1;
+        a.actDur = 1e9;
+      }
+      a.actTimer = w.time + (star ? rdur(a, 18) : rdur(a, 1.4));
+      a.actCount = star ? 2 + Math.floor(rnd(a) * 3) : 3 + Math.floor(rnd(a) * 5);
+      // (chunk 16: by day an urchin grazes a patch or two and parks again)
+      if (a.setId === 'urchin' && w.env.daylight > 0.5) a.actCount = Math.max(1, a.actCount - 2);
       return true;
     },
     tick(a, w) {
+      if (!isCrawler(a)) return peckTick(a, w);
       const t = w.time;
       const snail = a.setId === 'snail';
       if (!snail && t > a.actTimer) {
         a.actPhase = a.actPhase === 0 ? 1 : 0;
-        a.actTimer = t + (a.actPhase === 0 ? rdur(a, a.setId === 'algae_grazer' || a.setId === 'hillstream' ? 0.5 : 1.3) : rdur(a, 2.2));
+        // chunk 16 — a sea star (an urchin) stays a long while on each patch and drifts slowly to the next; a conch
+        // sifts a little longer at each stop than a shrimp picks
+        const star = slowGrazer(a);
+        // (a sea star drifts on until it gets there: a couple of minutes at most)
+        const move = star ? 120 : rdur(a, a.setId === 'algae_grazer' || a.setId === 'hillstream' ? 0.5 : 1.3);
+        const stay = star ? rdur(a, 24) : rdur(a, a.setId === 'conch' ? 3.2 : a.setId === 'crab' ? 4 : 2.2);
+        a.actTimer = t + (a.actPhase === 0 ? move : stay);
+        if (star && a.actPhase === 0 && --a.actCount <= 0) return false;
       }
       if (a.actPhase === 1) {
-        // picking in place: shrimp chelipeds flick ~3–4 Hz, otos rasp
+        // picking in place: shrimp chelipeds flick ~3–4 Hz, otos rasp (chunk 16: an emerald crab picks at the algae
+        // with its spoon-tipped claws, ~2 strokes a second, and passes each pinch to its mouth)
         a.ctrl.hasGoal = false;
         a.ctrl.speedBL = 0;
         if (a.setId.startsWith('shrimp')) a.appendage = Math.max(a.appendage, 0.45 + 0.55 * Math.abs(Math.sin(t * 11 + a.noiseOff)));
-        else a.mouthPulse = Math.max(a.mouthPulse, 0.35 + 0.3 * Math.abs(Math.sin(t * 6)));
+        else if (a.setId === 'crab') {
+          a.appendage = Math.max(a.appendage, 0.4 + 0.6 * Math.abs(Math.sin(t * 6.5 + a.noiseOff)));
+          a.mouthPulse = Math.max(a.mouthPulse, 0.3 * Math.abs(Math.sin(t * 6.5 + a.noiseOff + 1.2)));
+        } else a.mouthPulse = Math.max(a.mouthPulse, 0.35 + 0.3 * Math.abs(Math.sin(t * 6)));
         if (a.loco !== 'swim') observe(a, w, 'graze');
         return true;
       }
-      go(a, a.actData, cruiseBL(a) * (snail ? 1 : 0.9), a.L * 1.2);
+      go(a, a.actData, cruiseBL(a) * (snail ? 1 : 0.9), a.L * (slowGrazer(a) ? 0.4 : 1.2));
       a.ctrl.wander = snail ? 0.25 : 0.15;
       if (snail) {
         a.mouthPulse = Math.max(a.mouthPulse, 0.25 + 0.2 * Math.sin(t * 2.2 + a.noiseOff)); // radula rasping while gliding
         if (a.loco !== 'swim' && a.actT > 3) observe(a, w, 'graze');
       }
-      if (dist(a, a.actData) < a.L * 1.2) {
+      if (dist(a, a.actData) < a.L * (slowGrazer(a) ? 0.5 : 1.2)) {
+        if (slowGrazer(a)) {
+          // on the new patch: settle down to graze it
+          a.actPhase = 1;
+          a.actTimer = t + rdur(a, 24);
+          grazePatch(a, w);
+          return true;
+        }
         if (--a.actCount <= 0) return false;
-        randomSurfacePoint(a, w, a.set.crawlMask || SURF_FLOOR, a.actData, a.actNormal, a.rt.pos, snail ? 0.25 : 0.12);
+        grazePatch(a, w);
       }
       return true;
     },
@@ -919,6 +1035,8 @@ export const ACTS: Record<ActId, ActDef> = {
           return true;
         case 'freeze':
           a.actDur = rrange(a, 2, 4.5);
+          // chunk 16 — a sea star just stops where it is (an urchin stops too, its spines stiff: pose 'startle')
+          if (isCrawler(a) && a.setId !== 'urchin') a.pose = 'rest';
           return true;
         case 'burrow':
           a.actDur = 0.01; // handled by the burrow activity (dive)
@@ -952,6 +1070,8 @@ export const ACTS: Record<ActId, ActDef> = {
       switch (a.set.startle) {
         case 'retract':
         case 'freeze':
+          // (a conch pulled into its shell stays as deep in the sand as it was)
+          if (a.sink > 0) a.ctrl.sink = a.sink;
           a.ctrl.hasGoal = a.act === 'startle' && a.loco !== 'crawl' && a.loco !== 'walk';
           if (a.ctrl.hasGoal) {
             a.ctrl.goal.copy(a.rt.pos);
@@ -1198,7 +1318,8 @@ export const ACTS: Record<ActId, ActDef> = {
     label: 'swimming with its partner',
     pose: 'swim',
     enter(a, w) {
-      const p = partnerOf(a, w) ?? (a.setId === 'clownfish' ? dominantOf(a, w) : null);
+      // (chunk 16: a ram keeps close to its mate)
+      const p = partnerOf(a, w) ?? (a.setId === 'clownfish' ? dominantOf(a, w) : a.setId === 'cichlid_dwarf' ? mateOf(a, w) : null);
       if (!p || p === a) return false;
       a.actTarget = p.id;
       a.actNormal.x = rnd(a) < 0.5 ? 1 : -1;
@@ -1356,9 +1477,12 @@ export const ACTS: Record<ActId, ActDef> = {
     label: 'perched',
     pose: 'hover',
     enter(a, w) {
+      // chunk 16 — a lawnmower blenny or a flame hawkfish sits on the rock (or the glass) itself
+      if (a.setId === 'blenny' || a.setId === 'hawkfish') return chooseRockPerch(a, w);
       return choosePerch(a, w);
     },
     tick(a, w) {
+      if (a.setId === 'blenny' || a.setId === 'hawkfish') return rockPerchTick(a, w);
       return perchTick(a, w);
     },
   },
@@ -1368,6 +1492,14 @@ export const ACTS: Record<ActId, ActDef> = {
     label: 'at its burrow',
     pose: 'hover',
     enter(a, w) {
+      if (buryProfile(a) && isCrawler(a)) {
+        // chunk 16 — a Nassarius digs in where it is (no burrow of its own) and waits under the sand
+        a.actDur = rdur(a, w.env.daylight > 0.5 ? 150 : 70);
+        if (a.fright > 0.3 && w.time - a.lastStartleT < 1) a.actPhase = 2;
+        a.pose = 'rest';
+        a.behavior = 'buried in the sand';
+        return true;
+      }
       ensureBurrow(a, w);
       a.actDur = rdur(a, 30);
       if (a.fright > 0.3 && w.time - a.lastStartleT < 1) a.actPhase = 2;
@@ -1436,6 +1568,82 @@ export const ACTS: Record<ActId, ActDef> = {
     },
   },
 
+  // chunk 16 — a badly frightened wrasse dives into the sand bed and stays buried a few seconds to a minute
+  sand_dive: {
+    prio: 65,
+    label: 'hiding in the sand',
+    pose: 'hiding',
+    enter(a, w) {
+      if (isCrawler(a) || !w.env.sandBed || rockSleep(a)) return false;
+      a.actDur = 1e9;
+      a.sandMode = true;
+      if (a.buried > 0.9) {
+        a.actPhase = 2;
+        a.actData.set(a.rt.pos.x, a.rt.pos.y, a.rt.pos.z);
+        return true;
+      }
+      // straight down into the sand near where it is
+      return pickSandSpot(a, w, a.actData, a.rt.pos, a.L * 2.5);
+    },
+    tick(a, w, dt) {
+      if (!w.env.sandBed) return false;
+      if (!sandBuryTick(a, w, true)) return true;
+      if (a.actCount === 0) {
+        a.actCount = 1;
+        a.actTimer = w.time + frightBuriedTime(a);
+      }
+      if (w.time < a.actTimer || a.fright > 0.15) return true;
+      // night fell while it hid: it stays in for the night
+      if (a.activeness < 0.3 && startAct(a, w, 'sleep')) return ACTS.sleep.tick(a, w, dt);
+      return false;
+    },
+  },
+
+  // chunk 16 — a territorial fish darts at an intruder near its home (it takes the hint and flees), then swims back
+  chase: {
+    prio: 28,
+    label: 'chasing off an intruder',
+    pose: 'display',
+    enter(a, w) {
+      const o = a.chaseId ? w.byId.get(a.chaseId) : undefined;
+      a.chaseId = null;
+      if (!o || o.dead || o === a) return false;
+      a.actTarget = o.id;
+      a.actDur = 9;
+      a.actTimer = w.time + rrange(a, 0.9, 1.6);
+      a.lastChaseT = w.time + rrange(a, 0, a.setId === 'damsel' ? 12 : 6);
+      // the intruder takes the hint (it darts off, and then goes about its business: no hiding after it)
+      if (o.loco === 'swim' && ACTS[o.act].prio < 30) {
+        o.fright = Math.max(o.fright, 0.45);
+        o.frightFrom.copy(a.rt.pos);
+        o.lastStartleT = w.time;
+        o.chasedT = w.time;
+        startAct(o, w, 'startle');
+      }
+      return true;
+    },
+    tick(a, w) {
+      return chaseTick(a, w);
+    },
+  },
+
+  // chunk 16 — a living anemone creeps toward a spot it likes, in bouts; there, it settles for good (anemone.ts)
+  wander: {
+    prio: 8,
+    label: 'looking for a place to settle',
+    pose: 'rest',
+    enter(a) {
+      if (!a.set.anemone || a.settled) return false;
+      a.actPhase = 1; // (the first tick starts a bout on the move)
+      a.actTimer = 0;
+      a.actCount = 0;
+      return true;
+    },
+    tick(a, w, dt) {
+      return wanderTick(a, w, dt);
+    },
+  },
+
   still: {
     prio: 5,
     label: 'settled',
@@ -1490,7 +1698,11 @@ export function startAct(a: Agent, w: AIWorld, act: ActId): boolean {
   a.actDur = rdur(a, ACT_DURATION[act] ?? 10);
   a.pose = def.pose;
   a.behavior = def.label;
+  // (chunk 16: only a rest, a sleep or a fright dive is spent in the sand; their enter decides)
+  const sandMode = a.sandMode;
+  if (act !== 'rest' && act !== 'sleep' && act !== 'sand_dive') a.sandMode = false;
   if (def.enter && !def.enter(a, w)) {
+    a.sandMode = sandMode;
     a.act = prev;
     a.pose = ACTS[prev].pose;
     a.behavior = ACTS[prev].label;
@@ -1533,9 +1745,16 @@ function pickCruiseGoal(a: Agent, w: AIWorld): void {
   randomSwimPoint(a, w, a.actData, explorer ? { zPref: a.zBias * 0.5 } : { near: a.rt.pos, radius: Math.max(0.12, (w.env.maxX - w.env.minX) * 0.45) });
 }
 
+/**
+ * How near its turning point a patrolling fish turns back, and how far that point keeps from the end glass: 2.5 body
+ * lengths, but never more than an eighth of the tank's length. (chunk 16: a 35 cm sailfin tang in a 6-ft tank only
+ * patrolled the middle few centimetres, and in a 4-ft one the "far end" of its lap lay on the near side.)
+ */
+const patrolTurn = (a: Agent, w: AIWorld) => Math.min(a.L * 2.5, (w.env.maxX - w.env.minX) * 0.125);
+
 function setPatrolEnd(a: Agent, w: AIWorld): void {
   const env = w.env;
-  const margin = bodyHX(a) + a.L * 2.5 + 0.02;
+  const margin = bodyHX(a) + patrolTurn(a, w) + 0.02;
   const x = a.actPhase === 0 ? env.maxX - margin : env.minX + margin;
   a.actData.set(x, rrange(a, a.zoneY0, a.zoneY1), rrange(a, env.minZ + (env.maxZ - env.minZ) * 0.3, env.maxZ - (env.maxZ - env.minZ) * 0.2));
   if (!pointFree(env, a.actData.x, a.actData.y, a.actData.z, bodySide(a) + 0.01)) randomSwimPoint(a, w, a.actData, { near: a.actData, radius: 0.1 });
@@ -1549,7 +1768,11 @@ function pickExploreSpot(a: Agent, w: AIWorld, radius: number): void {
     return;
   }
   const mask = a.set.loco === 'walk' ? SURF_FLOOR : a.set.crawlMask;
-  randomSurfacePoint(a, w, mask, a.actData, a.actNormal, a.rt.pos, radius);
+  // (chunk 16: one that clings to the rock as drawn makes for a spot where there is rock as drawn — rockshape.ts)
+  for (let k = 0; k < (a.set.meshCling ? 4 : 1); k++) {
+    randomSurfacePoint(a, w, mask, a.actData, a.actNormal, a.rt.pos, radius);
+    if (!a.set.meshCling || onDrawnRock(a, w, a.actData)) return;
+  }
 }
 
 /**
@@ -1617,7 +1840,8 @@ function pickForageSpot(a: Agent, w: AIWorld, near = false): void {
     randomSwimPoint(a, w, a.actData, { y0: env.surfaceY - bodySide(a) - 0.012, y1: env.surfaceY - bodySide(a) - 0.004, near: near ? a.rt.pos : undefined, radius: a.L * 5 });
     return;
   }
-  if ((a.setId === 'chromis' || a.setId === 'schooling_small') && rnd(a) < 0.5) {
+  // (chunk 16: a fish that holds station in the current — anthias — picks plankton out of the water, not off the bottom)
+  if (((a.setId === 'chromis' || a.setId === 'schooling_small') && rnd(a) < 0.5) || hoverShoal(a)) {
     randomSwimPoint(a, w, a.actData, { near: a.rt.pos, radius: a.L * 5 });
     return;
   }
@@ -1626,6 +1850,8 @@ function pickForageSpot(a: Agent, w: AIWorld, near = false): void {
   }
   // corydoras-style: pick a spot near a group member
   let ref = a.rt.pos;
+  // (chunk 16: a ram sifts the bed about its home)
+  if (a.setId === 'cichlid_dwarf' && a.hasHome && a.rt.pos.distanceTo(a.home) > (a.set.territoryBL ?? 5) * a.L * 0.6) ref = a.home;
   if (a.set.shoal && a.set.bottomHugger) {
     const n = neighbors(w, a.rt.pos, 0.3, a);
     for (let i = 0; i < n; i++) {
@@ -1650,6 +1876,198 @@ function pickForageSpot(a: Agent, w: AIWorld, near = false): void {
   randomSwimPoint(a, w, a.actData, { y0: env.floorY + hy, y1: env.floorY + hy + a.L });
 }
 
+/** The next spot a grazing crawler moves on to (a sea star: mostly a nearby patch of the surface it is on). */
+function grazePatch(a: Agent, w: AIWorld): void {
+  // (chunk 16: one that clings to the rock as drawn looks for a patch where there is rock as drawn — rockshape.ts)
+  for (let k = 0; k < (a.set.meshCling ? 4 : 1); k++) {
+    grazePatchOnce(a, w);
+    if (!a.set.meshCling || onDrawnRock(a, w, a.actData)) return;
+  }
+}
+
+/**
+ * chunk 16 — is a crawler's body-centre spot `p` over rock as drawn, if it is on a modelled rock at all (rockshape.ts)?
+ * False when it is on such a rock's collider box where the drawn rock is not behind it (over an arch's open middle,
+ * past the flank of a dome).
+ */
+function onDrawnRock(a: Agent, w: AIWorld, p: THREE.Vector3): boolean {
+  const near = bodyHY(a) + 0.02;
+  for (const c of w.env.colliders) {
+    if (!c.hard || !c.shape) continue;
+    if (Math.abs(p.x - c.cx) > c.hx + near || Math.abs(p.y - c.cy) > c.hy + near || Math.abs(p.z - c.cz) > c.hz + near) continue;
+    if (colliderSdf(c, p.x, p.y, p.z) > near) continue;
+    if (!Number.isFinite(drawnDepth(c, p.x, p.y, p.z))) return false;
+  }
+  return true;
+}
+
+function grazePatchOnce(a: Agent, w: AIWorld): void {
+  if (a.setId === 'starfish' && rnd(a) < 0.75 && patchOnSurface(a, w, a.actData, a.actNormal, a.L * 0.5, a.L * 1.6)) return;
+  // chunk 16 — an urchin rasps the coralline off the rock more than the glass; an emerald crab picks at the rock
+  if (a.setId === 'urchin' && rnd(a) < 0.55 && patchOnSurface(a, w, a.actData, a.actNormal, a.L * 0.5, a.L * 1.6)) return;
+  if ((a.setId === 'urchin' || a.setId === 'crab') && rnd(a) < 0.7 && pointNearDecor(a, w, a.actData, a.actNormal, bodyHY(a), { preferNear: a.rt.pos }) >= 0) return;
+  randomSurfacePoint(a, w, a.set.crawlMask || SURF_FLOOR, a.actData, a.actNormal, a.rt.pos, a.setId === 'snail' ? 0.25 : 0.12);
+}
+
+/**
+ * chunk 16 — a spot on the very surface the crawler is on (floor, a pane of glass, a rock), `minR`–`maxR` away along it:
+ * a step sideways in the surface's plane, put back onto it. False when it is on no surface or the spot falls outside.
+ */
+function patchOnSurface(a: Agent, w: AIWorld, out: THREE.Vector3, nOut: THREE.Vector3, minR: number, maxR: number): boolean {
+  const env = w.env;
+  if (a.surfId === -1 || a.loco !== 'crawl') return false;
+  const n = a.surfN;
+  const reach = Math.max(a.set.body.hx, a.set.body.hz) * a.L + 0.004;
+  const standoff = bodyHY(a);
+  for (let i = 0; i < 6; i++) {
+    // a random direction in the surface's plane
+    _b.set(rrange(a, -1, 1), rrange(a, -1, 1), rrange(a, -1, 1)).addScaledVector(n, -_b.dot(n));
+    if (_b.lengthSq() < 1e-4) continue;
+    _b.normalize();
+    out.copy(a.rt.pos).addScaledVector(_b, rrange(a, minR, maxR));
+    if (!surfaceById(env, out, a.surfId, a.set.crawlMask || SURF_FLOOR, _patchHit)) return false;
+    out.addScaledVector(_patchHit.n, standoff - _patchHit.d);
+    if (out.x < env.minX + reach || out.x > env.maxX - reach || out.z < env.minZ + reach || out.z > env.maxZ - reach) continue;
+    if (out.y < floorAt(env, out.x, out.z) + standoff * 0.9 || out.y > env.surfaceY - reach - a.L * 0.3) continue;
+    nOut.copy(_patchHit.n);
+    return true;
+  }
+  return false;
+}
+const _patchHit = makeHit();
+
+/**
+ * chunk 16 — the next stop of a picker's foraging bout (wrasse): a spot on a rock face low in the tank, or just above
+ * the sand, near where it is (`near`: a short hop on). Writes the body position (`actData`) and the surface normal
+ * (`actNormal`) it pecks along.
+ */
+function pickPeckSpot(a: Agent, w: AIWorld, near: boolean): void {
+  const env = w.env;
+  const L = a.L;
+  const standoff = bodyHX(a) * 0.9 + 0.004;
+  const radius = near ? L * rrange(a, 1.5, 4) : L * 6;
+  a.settleBest = -1;
+  a.actTarget = null;
+  a.throughDecor = null;
+  // (a six-line wrasse works the rock faces far more than the sand)
+  if (rnd(a) < (rockSleep(a) ? 0.85 : 0.5)) {
+    const idx = pointNearDecor(a, w, a.actData, a.actNormal, standoff, { preferNear: a.rt.pos, maxY: env.floorY + col(w) * 0.5 });
+    if (idx >= 0 && dist(a, a.actData) < radius * 2.5 && toDrawnRock(a, w, idx, a.actData, a.actNormal, standoff, L * 0.1)) {
+      a.actTarget = env.colliders[idx].decorId;
+      fitInWater(a, w, a.actData);
+      return;
+    }
+  }
+  const lift = bodySide(a) + L * 0.18;
+  for (let i = 0; i < 10; i++) {
+    const r = radius * Math.sqrt(rnd(a));
+    const th = rnd(a) * Math.PI * 2;
+    const x = clamp(a.rt.pos.x + Math.cos(th) * r, env.minX + bodyHX(a) + 0.01, env.maxX - bodyHX(a) - 0.01);
+    const z = clamp(a.rt.pos.z + Math.sin(th) * r * 0.7, env.minZ + bodyHX(a) * 0.7 + 0.01, env.maxZ - bodyHX(a) * 0.7 - 0.01);
+    const y = floorAt(env, x, z) + lift;
+    if (!pointFree(env, x, y, z, bodySide(a) + 0.004)) continue;
+    a.actData.set(x, y, z);
+    a.actNormal.set(0, 1, 0);
+    return;
+  }
+  pickForageSpot(a, w, near);
+  a.actNormal.set(0, 1, 0);
+}
+
+/**
+ * chunk 16 — a picker's foraging bout: row over to the next stop, hold there a second or so pecking at the rock or the
+ * sand (quick little darts of the snout), hop on to the next.
+ */
+function peckTick(a: Agent, w: AIWorld): boolean {
+  const L = a.L;
+  const sand = a.actNormal.y > 0.7;
+  const c = a.ctrl;
+  if (a.actPhase === 0) {
+    go(a, a.actData, cruiseBL(a) * 0.95, L * 0.8);
+    c.wander = 0.08;
+    c.allowFloor = sand;
+    const d = dist(a, a.actData);
+    if (d < L * 2) c.avoid = 0.4;
+    // (the last of the way in to a spot on the rock as drawn, inside its collider box: toDrawnRock)
+    if (d < L && a.throughDecor) c.ignoreDecor = a.throughDecor;
+    a.pose = 'swim';
+    if (a.settleBest < 0 || d < a.settleBest - L * 0.05) {
+      a.settleBest = d;
+      a.settleT = w.time;
+    } else if (w.time - a.settleT > 4) nextPeckSpot(a, w); // no way through to it: another spot
+    if (d < L * 0.45) {
+      a.actPhase = 1;
+      // (a blenny scrapes a while at each patch; a wrasse pecks and moves on)
+      a.actTimer = w.time + (a.set.surfaceGrazer ? rdur(a, 2.6, 0.45) : rdur(a, 0.9, 0.5));
+    }
+    return true;
+  }
+  // the surface point it pecks at (just under its snout)
+  _a.copy(a.actData).addScaledVector(a.actNormal, -(bodyHX(a) * 0.9 + 0.004));
+  if (sand) _a.addScaledVector(a.fwd, L * 0.3);
+  look(a, _a);
+  if (rnd(a) < (a.set.surfaceGrazer ? 0.07 : 0.03) * stepRate.k) a.mouthPulse = 1;
+  // a peck: a quick dart of the snout at the surface, then back
+  _b.copy(a.actData).addScaledVector(a.actNormal, -L * 0.1 * a.mouthPulse);
+  go(a, _b, cruiseBL(a) * 0.6, L * 0.5);
+  c.allowFloor = sand;
+  c.avoid = 0.3;
+  if (a.throughDecor) c.ignoreDecor = a.throughDecor;
+  if (sand) c.pitchBias = -0.5;
+  a.pose = 'feed';
+  if (w.time > a.actTimer) {
+    if (--a.actCount <= 0) return false;
+    nextPeckSpot(a, w);
+    a.actPhase = 0;
+  }
+  return true;
+}
+
+/**
+ * chunk 16 — a spot `standoff` off a rock's collider box moved in onto the rock as drawn (rockshape.ts; the box is let
+ * through while the animal works there: peckTick). False when the model finds no rock behind the spot (the flank of a
+ * dome, the open middle of an arch): look elsewhere.
+ */
+function toDrawnRock(a: Agent, w: AIWorld, idx: number, spot: THREE.Vector3, n: THREE.Vector3, standoff: number, footR: number): boolean {
+  const c = w.env.colliders[idx];
+  const g = restingGap(c, spot.x - n.x * standoff, spot.y - n.y * standoff, spot.z - n.z * standoff, n.x, n.y, n.z, footR, footR * 0.8 + 0.005);
+  if (!Number.isFinite(g)) return false;
+  spot.addScaledVector(n, -g);
+  a.throughDecor = g > 0.002 ? c.decorId : null;
+  return true;
+}
+
+/** The next stop of a picking or grazing bout: a wrasse's (rock and sand), a blenny's (rock and glass). */
+function nextPeckSpot(a: Agent, w: AIWorld): void {
+  if (a.set.surfaceGrazer) blennyGrazeSpot(a, w, true);
+  else pickPeckSpot(a, w, true);
+}
+
+/**
+ * chunk 16 — the next patch a lawnmower blenny grazes: a spot on a rock face or top in the lower two thirds of the tank,
+ * or on the back or end glass, near where it is (`near`) or about its home. Writes the body position (its snout to the
+ * surface: `actData`) and the surface normal (`actNormal`), as pickPeckSpot does.
+ */
+function blennyGrazeSpot(a: Agent, w: AIWorld, near: boolean): void {
+  const env = w.env;
+  const standoff = bodyHX(a) * 0.9 + 0.004;
+  a.settleBest = -1;
+  a.actTarget = null;
+  a.throughDecor = null;
+  const ref = near || !a.hasHome ? a.rt.pos : a.home;
+  if (rnd(a) < 0.72) {
+    const idx = pointNearDecor(a, w, a.actData, a.actNormal, standoff, { preferNear: ref, maxY: env.floorY + col(w) * 0.66 });
+    if (idx >= 0 && a.actData.distanceTo(ref) < a.L * (near ? 6 : 12) && toDrawnRock(a, w, idx, a.actData, a.actNormal, standoff, a.L * 0.12)) {
+      a.actTarget = env.colliders[idx].decorId;
+      // (on a flat top it leans over the patch rather than standing on its snout)
+      if (a.actNormal.y > 0.7) a.actData.addScaledVector(a.actNormal, bodySide(a) + a.L * 0.18 - standoff);
+      fitInWater(a, w, a.actData);
+      return;
+    }
+  }
+  glassGrazeSpot(a, w, standoff);
+}
+
 /** How far the fins hang below the body centre (long-finned betta males trail a lot; most fish little). */
 function finDrop(a: Agent): number {
   const fl = a.c.appearance?.finLength;
@@ -1661,10 +2079,38 @@ function finDrop(a: Agent): number {
 
 function chooseRestSpot(a: Agent, w: AIWorld): boolean {
   const env = w.env;
-  const style = a.set.rest;
+  let style = a.set.rest;
   a.actPhase = 0;
+  a.crevTries = 0;
+  a.sandMode = false;
   if (a.loco === 'sessile') return true;
+  // chunk 16 — a six-line wrasse sleeps in the rockwork (in a mucus cocoon), never in the sand
+  if (style === 'sand' && rockSleep(a)) style = 'cave';
+  if (style === 'sand' && !isCrawler(a)) {
+    // chunk 16 — a wrasse sleeps buried in the sand bed (already in it after a fright: it stays where it is)
+    if (a.buried > 0.9 && env.sandBed) {
+      a.sandMode = true;
+      a.actPhase = 2;
+      a.actData.set(a.rt.pos.x, a.rt.pos.y, a.rt.pos.z);
+      return true;
+    }
+    if (pickSandSpot(a, w, a.actData, a.rt.pos, a.L * 5)) {
+      a.sandMode = true;
+      return true;
+    }
+    // no sand bed (bare bottom, gravel, pebbles) or no open sand: wedged into the rockwork instead
+    style = 'cave';
+  }
   if (isCrawler(a) && a.loco !== 'swim') {
+    // chunk 16 — one that rests wedged into the rock makes for a crevice (an urchin about half the time: else it parks)
+    if (a.set.creviceRest && (a.setId !== 'urchin' || rnd(a) < 0.6)) {
+      const an = claimCrevice(a, w, ['cave', 'hide'], a.rt.pos, Math.max(0.35, a.L * 8), null);
+      if (an) {
+        a.actData.copy(an.pos);
+        a.actTarget = an.decorId;
+        return true;
+      }
+    }
     // crawlers settle where they are (snails, shrimp) or on the floor (axolotl)
     a.actData.copy(a.rt.pos);
     a.actPhase = 1;
@@ -1707,6 +2153,17 @@ function chooseRestSpot(a: Agent, w: AIWorld): boolean {
       return true;
     }
   }
+  // chunk 16 — a ram sleeps low over the bed by its home
+  if (a.setId === 'cichlid_dwarf' && a.hasHome) {
+    for (let i = 0; i < 10; i++) {
+      const x = clamp(a.home.x + rrange(a, -1.5, 1.5) * a.L, env.minX + bodyHX(a) + 0.01, env.maxX - bodyHX(a) - 0.01);
+      const z = clamp(a.home.z + rrange(a, -1, 1) * a.L, env.minZ + bodyHX(a) * 0.7 + 0.01, env.maxZ - bodyHX(a) * 0.7 - 0.01);
+      const y = floorAt(env, x, z) + bodySide(a) + a.L * 0.05;
+      if (!pointFree(env, x, y, z, bodySide(a) + 0.003)) continue;
+      a.actData.set(x, y, z);
+      return true;
+    }
+  }
   if (style === 'bottom' || a.set.bottomHugger || a.sp.behaviorTraits.restOnBottom > 0.5) {
     pickForageSpot(a, w);
     a.actData.y = floorAt(env, a.actData.x, a.actData.z) + bodyHY(a) * 0.95;
@@ -1723,13 +2180,38 @@ function restTick(a: Agent, w: AIWorld, sleeping: boolean): boolean {
   const env = w.env;
   if (a.loco === 'sessile') return true;
   if (isCrawler(a) && a.loco !== 'swim') {
+    // chunk 16 — wedged into its crevice (an emerald crab out of sight there all day)
+    if (a.set.creviceRest && a.actTarget !== null) {
+      creviceTick(a, w, a.setId === 'crab' ? 'hiding' : 'rest', false);
+      if (a.setId === 'crab') a.behavior = ACTS.hide.label;
+      return true;
+    }
     a.ctrl.hasGoal = false;
     a.ctrl.speedBL = 0;
     a.pose = 'rest';
+    // chunk 16 — a sand dweller resting on the sand bed digs itself in (a conch to half its height; a sand-sifting star
+    // or a Nassarius all the way under)
+    const bp = buryProfile(a);
+    if (bp && onSand(a, w)) {
+      a.ctrl.sink = bp.depth;
+      if (bp.depth >= 2 && a.sink > 1) a.behavior = 'buried in the sand';
+    }
+    return true;
+  }
+  if (a.sandMode) {
+    // (the sand was taken out from under it — the bed changed to gravel or bare glass: it comes up and settles anew)
+    if (!env.sandBed) return false;
+    // chunk 16 — a wrasse: over to its spot, head first into the sand, still and out of sight till morning
+    if (sandBuryTick(a, w, false)) {
+      a.pose = 'rest';
+      a.behavior = sleeping ? 'asleep in the sand' : 'resting in the sand';
+    }
     return true;
   }
   a.ctrl.ignoreDecor = a.actTarget;
   if (a.setId === 'seahorse') return hitchTick(a, w);
+  // chunk 16 — a clownfish resting in a living anemone stays with it as it moves
+  if (a.actTarget) liveHostPos(w, a.actTarget, a.actData);
   const onBottom = a.actData.y < floorAt(env, a.actData.x, a.actData.z) + bodyHY(a) * 1.5;
   if (a.actPhase === 0) {
     go(a, a.actData, cruiseBL(a) * 0.7, a.L * 1.2);
@@ -1747,7 +2229,8 @@ function restTick(a: Agent, w: AIWorld, sleeping: boolean): boolean {
   a.ctrl.allowFloor = onBottom;
   a.ctrl.sep = 0.4;
   a.ctrl.avoid = 0.3;
-  a.pose = onBottom || a.set.rest === 'leaf' ? 'rest' : 'hover';
+  // (chunk 16: a blenny or a hawkfish lies on the rock of its crevice, propped on its fins)
+  a.pose = onBottom || a.set.rest === 'leaf' || a.setId === 'blenny' || a.setId === 'hawkfish' ? 'rest' : 'hover';
   if (a.actTarget) faceAwayFrom(a, w, a.actTarget);
   else if (!sleeping && a.actT > 3) lookAround(a, w, a.rt.pos, 5);
   return true;
@@ -1767,7 +2250,10 @@ function faceAwayFrom(a: Agent, w: AIWorld, decorId: string): void {
 function chooseHideSpot(a: Agent, w: AIWorld): boolean {
   const env = w.env;
   a.actPhase = 0;
-  const an = claimAnchor(a, w, ['hide', 'cave', 'burrow'], { near: a.rt.pos });
+  a.crevTries = 0;
+  // (chunk 16: a damsel dives into its own patch)
+  const near = a.setId === 'damsel' && a.hasHome ? a.home : a.rt.pos;
+  const an = a.set.meshCling ? claimCrevice(a, w, ['hide', 'cave', 'burrow'], near, undefined, null) : claimAnchor(a, w, ['hide', 'cave', 'burrow'], { near });
   if (an) {
     a.actData.copy(an.pos);
     a.actTarget = an.decorId;
@@ -1806,7 +2292,10 @@ function chooseHideSpot(a: Agent, w: AIWorld): boolean {
   return true;
 }
 
-function hideTick(a: Agent, w: AIWorld, speedMul = 1): boolean {
+/** `dashBL` (chunk 16): run for the cover at this speed (body lengths / s) instead. */
+function hideTick(a: Agent, w: AIWorld, speedMul = 1, dashBL = 0): boolean {
+  // chunk 16 — a crawler that lives in the rock's crevices (emerald crab, urchin) makes for one and wedges in
+  if (a.set.creviceRest && isCrawler(a) && a.loco !== 'swim') return creviceTick(a, w, 'hiding', dashBL > 0);
   a.ctrl.ignoreDecor = a.actTarget;
   if (isCrawler(a) && a.loco !== 'swim') {
     // lane:brackish — a crawler that can get no closer (pressed against a plant crown or a stone on the way) settles
@@ -1826,7 +2315,7 @@ function hideTick(a: Agent, w: AIWorld, speedMul = 1): boolean {
     return true;
   }
   if (a.actPhase === 0) {
-    go(a, a.actData, cruiseBL(a) * speedMul * 1.1, a.L * 1.2);
+    go(a, a.actData, dashBL > 0 ? dashBL : cruiseBL(a) * speedMul * 1.1, a.L * 1.2);
     a.ctrl.avoid = 0.5;
     a.ctrl.allowFloor = true;
     a.pose = 'swim';
@@ -1842,6 +2331,74 @@ function hideTick(a: Agent, w: AIWorld, speedMul = 1): boolean {
   // peer out toward the room
   _a.set(a.rt.pos.x + Math.sin(w.time * 0.2 + a.noiseOff) * 0.2, a.rt.pos.y, w.env.maxZ + 0.4);
   look(a, _a);
+  return true;
+}
+
+/**
+ * chunk 16 — a crevice for a crawler: claimAnchor, but for one that clings to the rock as drawn (SetProfile.meshCling)
+ * never an anchor inside a modelled rock's collider box (under an arch's bridge, say: open water as drawn, but the box
+ * is solid to a crawler, which would sit on top of it over nothing — rockshape.ts).
+ */
+function claimCrevice(a: Agent, w: AIWorld, kinds: readonly AnchorKind[], near: THREE.Vector3, maxDist: number | undefined, avoidKey: string | null): Anchor | null {
+  if (!a.set.meshCling) return claimAnchor(a, w, kinds, { near, maxDist, avoidKey });
+  const cs = w.env.colliders;
+  let best: Anchor | null = null;
+  let bestScore = -Infinity;
+  for (const k of kinds) {
+    for (const an of w.env.byKind[k] ?? []) {
+      if (an.key === avoidKey || an.live || (an.key !== a.anchorKey && (w.claims.get(an.key) ?? 0) >= an.capacity)) continue;
+      const d = an.pos.distanceTo(near);
+      if (maxDist !== undefined && d > maxDist) continue;
+      let inBox = false;
+      for (const c of cs) if (c.hard && c.shape && colliderSdf(c, an.pos.x, an.pos.y, an.pos.z) < -0.003) inBox = true;
+      if (inBox) continue;
+      const sc = -d * 4 + rnd(a) * 1.2 + (an.key === a.anchorKey ? 0.8 : 0);
+      if (sc > bestScore) {
+        bestScore = sc;
+        best = an;
+      }
+    }
+  }
+  return best ? claimAnchor(a, w, [best.kind], { near: best.pos, maxDist: 1e-4 }) : null;
+}
+
+/**
+ * chunk 16 — a crawler making for a crevice in the rock (an anchor at the rock's foot or in a cave) and wedged into it:
+ * it walks there, then stays (`pose`); one that can get no closer for a while (the gap is tighter than its body, a
+ * neighbour lies there) stays where it is. `dash`: running for cover at full speed (a frightened emerald crab).
+ * (It holds on to the rock's surface: the crevice's rock is never let through as hideTick lets swimmers through.)
+ */
+function creviceTick(a: Agent, w: AIWorld, pose: CreaturePose, dash: boolean): boolean {
+  const c = a.ctrl;
+  const d = dist(a, a.actData);
+  if (a.actPhase === 0) {
+    const spd = dash ? burstBL(a) : cruiseBL(a);
+    // (patience in proportion to its pace: an urchin covers a tenth of a body length in a quarter of a minute)
+    const patience = Math.max(3, (a.L * 0.5) / Math.max(1e-4, spd * a.L));
+    if (a.settleBest < 0 || d < a.settleBest - a.L * 0.05) {
+      a.settleBest = d;
+      a.settleT = w.time;
+    } else if (w.time - a.settleT > patience) {
+      // no way to that crevice (round the far side of a rock it cannot get over): another one near, then where it is
+      const an = d > a.L * 1.5 && a.crevTries < 2 ? claimCrevice(a, w, ['cave', 'hide'], a.rt.pos, Math.max(0.35, a.L * 8), a.anchorKey) : null;
+      if (an) {
+        a.crevTries++;
+        a.actData.copy(an.pos);
+        a.actTarget = an.decorId;
+        a.settleBest = -1;
+      } else a.actPhase = 1;
+    }
+    if (d < a.L * 0.7) a.actPhase = 1;
+    if (a.actPhase === 0) {
+      go(a, a.actData, spd, a.L * 0.5);
+      c.urgency = dash ? 1 : 0;
+      a.pose = dash ? 'startle' : 'swim';
+      return true;
+    }
+  }
+  c.hasGoal = false;
+  c.speedBL = 0;
+  a.pose = pose;
   return true;
 }
 
@@ -1978,7 +2535,13 @@ function chooseNestSite(a: Agent, w: AIWorld): void {
     a.actNormal.set(na.x, na.y, na.z);
   } else {
     const an = claimAnchor(a, w, bubble ? ['nest_site', 'leaf_rest', 'rest'] : ['nest_site', 'host', 'cave', 'rest'], { near: a.hasHome ? a.home : a.rt.pos });
-    if (an) a.actNormal.copy(an.pos);
+    const live = an?.live ? w.byId.get(an.live) : undefined;
+    if (live) {
+      // chunk 16 — beside a living anemone: on the rock (or glass) at its foot, just clear of the crown
+      a.actNormal.set(-live.upVis.z, 0, live.upVis.x);
+      if (a.actNormal.lengthSq() < 1e-6) a.actNormal.set(1, 0, 0);
+      a.actNormal.normalize().multiplyScalar(crownR(live) * 0.9).add(live.rt.pos).addScaledVector(live.upVis, -live.set.body.hy * live.L * 0.8);
+    } else if (an) a.actNormal.copy(an.pos);
     else if (bubble) a.actNormal.set(rnd(a) < 0.5 ? env.minX + 0.05 : env.maxX - 0.05, env.surfaceY, env.minZ + (env.maxZ - env.minZ) * 0.3);
     else if (a.hasHome) a.actNormal.copy(a.home);
     else randomSwimPoint(a, w, a.actNormal, { y0: env.floorY, y1: env.floorY + col(w) * 0.3 });
@@ -2078,6 +2641,11 @@ function guardTick(a: Agent, w: AIWorld): boolean {
 
 function ensureHome(a: Agent, w: AIWorld): void {
   if (a.hasHome) return;
+  // chunk 16 — a damsel's patch of rock, a ram's home on the bed
+  if (a.setId === 'damsel' || a.setId === 'cichlid_dwarf') {
+    patchHome(a, w);
+    return;
+  }
   const env = w.env;
   // a partner shares the dominant fish's home
   const dom = a.setId === 'clownfish' ? dominantOf(a, w) : null;
@@ -2087,7 +2655,8 @@ function ensureHome(a: Agent, w: AIWorld): void {
     a.hasHome = true;
     return;
   }
-  const host = a.sp.anemoneRelationship === 'host_seeker' ? claimAnchor(a, w, ['host'], {}) : null;
+  // (chunk 16: two clownfish species share no anemone — a maroon pair and an ocellaris pair each want their own)
+  const host = a.sp.anemoneRelationship === 'host_seeker' ? claimAnchor(a, w, ['host'], { avoidDecor: otherClownHost(a, w) }) : null;
   const an = host ?? claimAnchor(a, w, ['nest_site', 'cave', 'hide', 'perch', 'rest'], { near: a.rt.pos });
   if (an) {
     a.home.copy(an.pos);
@@ -2104,7 +2673,23 @@ function ensureHome(a: Agent, w: AIWorld): void {
   a.hasHome = true;
 }
 
+/** chunk 16 — the anemone a clownfish of another species already calls home (null: none). */
+function otherClownHost(a: Agent, w: AIWorld): string | null {
+  if (a.setId !== 'clownfish') return null;
+  for (const o of w.agents) if (o !== a && !o.dead && o.setId === 'clownfish' && o.speciesId !== a.speciesId && o.hasHome && o.homeDecor) return o.homeDecor;
+  return null;
+}
+
 function hostTick(a: Agent, w: AIWorld): boolean {
+  // chunk 16 — a damsel over its patch of rock, a ram about its home on the bed
+  if (a.setId === 'damsel' || a.setId === 'cichlid_dwarf') return patchTick(a, w);
+  // chunk 16 — a living anemone moves: its clownfish keep to its crown; one with no anemone of its own takes up one
+  // that has come into the tank
+  if (a.homeDecor) liveHostPos(w, a.homeDecor, a.home);
+  else if (a.sp.anemoneRelationship === 'host_seeker' && w.liveAnchors.length && w.time > a.actTimer && freeLiveHost(a, w, otherClownHost(a, w))) {
+    a.hasHome = false;
+    ensureHome(a, w);
+  }
   const hosted = !!a.homeDecor;
   if (w.time > a.actTimer) {
     a.actPhase = hosted && a.actPhase !== 2 && rnd(a) < 0.6 ? 2 : 1;
@@ -2282,6 +2867,62 @@ function choosePerch(a: Agent, w: AIWorld): boolean {
   return true;
 }
 
+/** chunk 16 — species that hold station in a loose group in open water, facing into the current (lyretail anthias). */
+const hoverShoal = (a: Agent) => !!a.sp.specialBehaviors?.includes('hover_in_current');
+
+/**
+ * chunk 16 — a hover shoal (lyretail anthias): each fish holds its own station in a loose cloud over the reef, all of
+ * them facing into the current, darting out now and then to snap at plankton and drifting back; alarmed, the cloud
+ * draws in. The cloud's centre moves rarely (the school state's goal).
+ */
+function hoverShoalTick(a: Agent, w: AIWorld, s: ReturnType<AIWorld['schools']['get']>): boolean {
+  const env = w.env;
+  const L = a.L;
+  const c = a.ctrl;
+  if (s && w.time > s.nextChange) {
+    randomSwimPoint(a, w, s.goal, { zPref: 0.1 });
+    s.nextChange = w.time + rdur(a, s.alarm > 0.2 ? 6 : 45, 0.4);
+  }
+  if (!s && a.actT < 0.05) randomSwimPoint(a, w, a.actNormal, { near: a.rt.pos, radius: L * 4 });
+  const alarm = s ? s.alarm : 0;
+  const loose = clamp(1.4 - a.sp.behaviorTraits.schoolingTightness, 0.4, 1.4) * (1 - 0.6 * clamp01(alarm * 2));
+  // its own station in the cloud (fixed per fish, drifting slowly)
+  const th = ((a.noiseOff * 13.37) % 1) * Math.PI * 2;
+  const r = L * (1.2 + 3 * ((a.noiseOff * 5.71) % 1)) * loose;
+  const t = w.time * 0.05;
+  _a.copy(s ? (alarm > 0.25 ? s.center : s.goal) : a.actNormal);
+  _a.x += Math.cos(th) * r + noise3(t, a.noiseOff, 1.7) * L * 1.2;
+  _a.z += Math.sin(th) * r * 0.6 + noise3(4.1, t, a.noiseOff) * L * 0.8;
+  _a.y += (((a.noiseOff * 3.31) % 1) - 0.5) * L * 3 * loose + noise3(a.noiseOff, 2.3, t) * L * 0.6;
+  fitInWater(a, w, _a);
+  if (!pointFree(env, _a.x, _a.y, _a.z, bodySide(a) + 0.004)) _a.y = Math.min(env.surfaceY - bodySide(a) - 0.004, _a.y + L * 1.5);
+  // now and then a dart out into the current to snap at plankton, then back
+  if (a.actPhase === 0 && w.time > a.actTimer) {
+    if (a.actTimer > 0) {
+      a.actPhase = 1;
+      a.actCount = w.time + 0.8;
+      a.actData.copy(a.rt.pos).addScaledVector(env.currentDir, -L * rrange(a, 1, 2));
+      a.actData.y += L * rrange(a, -0.3, 0.8);
+      fitInWater(a, w, a.actData);
+    }
+    a.actTimer = w.time + rdur(a, 5);
+  }
+  if (a.actPhase === 1) {
+    go(a, a.actData, burstBL(a) * 0.35, L * 0.4);
+    if (dist(a, a.actData) < L * 0.5 || w.time > a.actCount) {
+      a.mouthPulse = 1;
+      a.actPhase = 0;
+    }
+  } else go(a, _a, cruiseBL(a) * (0.6 + alarm), L * 2);
+  // facing into the current
+  look(a, _b.copy(a.rt.pos).addScaledVector(env.currentDir, -L * 6));
+  c.wander = 0.04;
+  c.sep = 1.1;
+  c.urgency = alarm * 0.6;
+  a.pose = a.actPhase === 1 ? 'feed' : 'hover';
+  return true;
+}
+
 /** lane:brackish — species that hop from perch to perch (bumblebee goby). */
 const hops = (a: Agent) => !!a.sp.specialBehaviors?.includes('hop');
 /** lane:brackish — species that rasp algae and biofilm off every surface (mollies). */
@@ -2376,6 +3017,261 @@ function perchTick(a: Agent, w: AIWorld): boolean {
   return true;
 }
 
+// ── chunk 16, wave B: perching, patches, chases ──
+
+/** Grazers that stay a long while on each patch and drift slowly to the next (sea star, urchin). */
+const slowGrazer = (a: Agent) => a.setId === 'starfish' || a.setId === 'urchin';
+
+/** Where a perching fish looks for a perch: a hawkfish high on the tops and rims of the rock; a blenny low, on rock or
+ * glass, about its home. `hop`: the next perch of a bout, a short swim on. */
+function perchOpts(a: Agent, near: THREE.Vector3, hop: boolean): PerchOpts {
+  if (a.setId === 'hawkfish') return { minNy: 0.55, near, radius: hop ? a.L * 8 : 0.35, minDist: hop ? a.L * 2 : 0, glass: 0, high: 1.4, edge: 0.9, tries: 24 };
+  return { minNy: -0.1, near, radius: hop ? a.L * 6 : a.L * 8, minDist: hop ? a.L * 1.5 : 0, glass: 0.3, high: -0.8, edge: 0, tries: 20 };
+}
+
+/**
+ * A perching bout (lawnmower blenny, flame hawkfish): a perch on the rock (a blenny also on the glass), a few hops from
+ * one to the next. A hawkfish goes back to its favourite perch (its home) most of the time; with no rock at all it sits
+ * on the bed. The bout runs on its hops (a.hops), each stay timed by a.actCount.
+ */
+function chooseRockPerch(a: Agent, w: AIWorld): boolean {
+  const env = w.env;
+  const hawk = a.setId === 'hawkfish';
+  a.actPhase = 0;
+  a.actTarget = null;
+  a.actDur = 1e9;
+  a.settleBest = -1;
+  a.hops = hawk ? (rnd(a) < 0.3 ? 2 : 1) : 2 + Math.floor(rnd(a) * 4);
+  if (hawk && a.hasHome && rnd(a) < 0.7 && !perchTaken(a, w, a.home) && pointFreeExcept(env, a.home.x, a.home.y, a.home.z, bodySide(a) * 0.85, a.patchDecor)) {
+    a.actData.copy(a.home);
+    a.perchN.copy(a.homeN);
+    a.actTarget = a.patchDecor;
+    // (its favourite perch lies inside its rock's box when it was found there: the box let through)
+    a.throughDecor = a.patchDecor && !pointFreeExcept(env, a.home.x, a.home.y, a.home.z, bodySide(a) * 0.85, null) ? a.patchDecor : null;
+  } else {
+    a.throughDecor = null;
+    const id = findPerch(a, w, a.actData, a.perchN, perchOpts(a, !hawk && a.hasHome ? a.home : a.rt.pos, false));
+    if (id !== null) {
+      a.actTarget = id || null;
+      if (id && perchGap > 0.002) a.throughDecor = id;
+    } else if (hawk && floorPerch(a, w)) {
+      a.actData.y = floorAt(env, a.actData.x, a.actData.z) + bodySide(a) + 0.002;
+      a.perchN.set(0, 1, 0);
+    } else return false;
+  }
+  a.perchSide = rnd(a) < 0.5 ? 1 : -1;
+  if (!a.hasHome) {
+    a.home.copy(a.actData);
+    a.homeN.copy(a.perchN);
+    a.patchDecor = a.actTarget;
+    a.hasHome = true;
+  }
+  return true;
+}
+
+/** The next perch of a bout, a short hop on. False: none. */
+function nextRockPerch(a: Agent, w: AIWorld): boolean {
+  const id = findPerch(a, w, a.actData, a.perchN, perchOpts(a, a.rt.pos, true));
+  if (id === null) return false;
+  a.actTarget = id || null;
+  a.throughDecor = id && perchGap > 0.002 ? id : null;
+  a.actPhase = 0;
+  a.perchSide = rnd(a) < 0.5 ? 1 : -1;
+  a.settleBest = -1;
+  return true;
+}
+
+/**
+ * Perched on the rock (or the glass): a short swim to the perch (a blenny's a burst and a glide), then still on its fins
+ * looking about — on a top lying along it, head raised; on a steep face or the glass head-up along it, belly to it — then
+ * a hop to the next perch, or the bout ends. (A hawkfish's pounces are the feed act; it comes back here after.)
+ */
+function rockPerchTick(a: Agent, w: AIWorld): boolean {
+  const L = a.L;
+  const c = a.ctrl;
+  const hawk = a.setId === 'hawkfish';
+  const n = a.perchN;
+  const d = dist(a, a.actData);
+  if (a.actPhase === 0) {
+    const burst = hawk || Math.sin(w.time * 4.5 + a.noiseOff) > 0.1;
+    go(a, a.actData, cruiseBL(a) * (hawk ? 1.4 : burst ? 1.8 : 0.7), L * 0.5);
+    c.avoid = d < L * 2.5 ? 0.25 : 1;
+    c.allowFloor = true;
+    c.sep = 0.4;
+    a.pose = 'swim';
+    if (a.settleBest < 0 || d < a.settleBest - L * 0.05) {
+      a.settleBest = d;
+      a.settleT = w.time;
+    } else if (w.time - a.settleT > 3) {
+      // no way through to it: it sits where it is if that is close, else it tries another perch
+      a.settleBest = -1;
+      if (d < L * 1.2) a.actData.copy(a.rt.pos);
+      else if (!nextRockPerch(a, w)) return false;
+      return true;
+    }
+    if (d < L * 0.45) {
+      a.actPhase = 1;
+      a.actCount = w.time + (hawk ? rdur(a, 26) : rdur(a, 7));
+      a.settleBest = -1;
+    }
+    // (the last of the way in, to a perch inside the rock's collider box)
+    if (d < L * 0.8 && a.throughDecor) c.ignoreDecor = a.throughDecor;
+    return true;
+  }
+  settleIfBlocked(a, w, a.actData);
+  go(a, a.actData, 0.15, L);
+  c.attach = 0.7;
+  c.allowFloor = true;
+  c.avoid = 0.2;
+  c.sep = 0.2;
+  // (on the rock as drawn, inside the collider box round it: the box is let through — findPerch)
+  if (a.throughDecor) c.ignoreDecor = a.throughDecor;
+  a.pose = 'rest';
+  if (n.y < 0.6) {
+    // head up along the face, belly to it, looking out along it
+    c.wantUp.copy(n);
+    c.hasWantUp = true;
+    _b.set(-n.z, 0, n.x);
+    if (_b.lengthSq() < 1e-6) _b.set(1, 0, 0);
+    _b.normalize().multiplyScalar(a.perchSide);
+    look(a, _c.copy(a.rt.pos).addScaledVector(_b, L * 3));
+    c.pitchBias = 0.95;
+    c.pitchCap = 1.15;
+  } else {
+    lookAround(a, w, a.rt.pos, hawk ? 2.4 : 1.6);
+    c.look.y = a.rt.pos.y + L * 0.1;
+    c.pitchBias = hawk ? 0.12 : 0.3;
+    c.pitchCap = 0.5;
+  }
+  if (w.time > a.actCount) {
+    if (--a.hops <= 0) return false;
+    if (!nextRockPerch(a, w)) return false;
+  }
+  return true;
+}
+
+/**
+ * The chase: a dart at the intruder (a second or so, or until it is a nip away, or it has left the territory), then
+ * back to the patch (a blenny's next perch is the planner's).
+ */
+function chaseTick(a: Agent, w: AIWorld): boolean {
+  const L = a.L;
+  const c = a.ctrl;
+  const o = a.actTarget ? w.byId.get(a.actTarget) : undefined;
+  const R = (a.set.territoryBL ?? 4) * L;
+  if (a.actPhase === 0) {
+    if (!o || o.dead || w.time > a.actTimer || (a.hasHome && o.rt.pos.distanceTo(a.home) > R * 1.8)) a.actPhase = 1;
+    else {
+      go(a, o.rt.pos, burstBL(a) * 0.75, 0.001);
+      c.urgency = 0.8;
+      c.sep = 0.2;
+      c.avoid = 0.7;
+      look(a, o.rt.pos);
+      if (dist(a, o.rt.pos) < (L + o.L) * 0.6) {
+        a.mouthPulse = 1; // a nip
+        a.actPhase = 1;
+      }
+      a.pose = 'display';
+      return true;
+    }
+  }
+  if (!a.hasHome || a.setId === 'blenny') return false;
+  _a.copy(a.home);
+  if (a.setId === 'damsel') _a.y += L * 0.8;
+  else _a.y = Math.max(_a.y, floorAt(w.env, _a.x, _a.z) + bodySide(a) + L * 0.25);
+  fitInWater(a, w, _a);
+  go(a, _a, cruiseBL(a) * 1.3, L);
+  a.pose = 'swim';
+  return dist(a, _a) > L * 1.5 && a.actT < 7;
+}
+
+/**
+ * A home patch (damsel: a cave or hide in the rock, away from the other damsels' patches; ram: a flat stone or a cave
+ * low on the bed — its mate shares it). Without a free anchor: a spot by a rock (damsel) or on open bed (ram).
+ */
+function patchHome(a: Agent, w: AIWorld): void {
+  const env = w.env;
+  const ram = a.setId === 'cichlid_dwarf';
+  a.homeDecor = null;
+  if (ram) {
+    const m = mateOf(a, w);
+    if (m && m.hasHome) {
+      a.home.copy(m.home);
+      a.patchDecor = m.patchDecor;
+      a.hasHome = true;
+      return;
+    }
+  }
+  const best = choosePatch(a, w, ram ? ['rest', 'cave', 'nest_site', 'hide'] : ['cave', 'hide', 'rest', 'perch']);
+  const an = best ? claimAnchor(a, w, [best.kind], { near: best.pos, maxDist: 1e-4 }) : null;
+  a.hasHome = true;
+  if (an) {
+    a.patchDecor = an.decorId || null;
+    a.home.copy(an.pos);
+    // (a ram's home is the water just over its stone)
+    if (ram) a.home.y = Math.max(a.home.y, floorAt(env, a.home.x, a.home.z)) + bodySide(a) + a.L * 0.2;
+    fitInWater(a, w, a.home);
+    return;
+  }
+  a.patchDecor = null;
+  if (ram) {
+    pickForageSpot(a, w);
+    a.home.copy(a.actData);
+    return;
+  }
+  const idx = pointNearDecor(a, w, a.home, a.actNormal, bodyHX(a) + a.L * 0.8, { maxY: env.floorY + col(w) * 0.6 });
+  if (idx >= 0) a.patchDecor = env.colliders[idx].decorId;
+  else randomSwimPoint(a, w, a.home, { y0: env.floorY + col(w) * 0.2, y1: env.floorY + col(w) * 0.5 });
+}
+
+/**
+ * At home on its patch (the 'host' act's label, "at home"): a damsel hovers over its rock — a new spot every few
+ * seconds, now and then a quick duck into the rock and out; a ram glides low over the bed about its stone, stopping
+ * and going. (Intruders are the chase act's: brain think.)
+ */
+function patchTick(a: Agent, w: AIWorld): boolean {
+  const env = w.env;
+  const L = a.L;
+  const c = a.ctrl;
+  const ram = a.setId === 'cichlid_dwarf';
+  const R = (a.set.territoryBL ?? 4) * L;
+  if (!a.hasHome) ensureHome(a, w);
+  if (w.time > a.actTimer) {
+    if (!ram && a.patchDecor && rnd(a) < 0.22) {
+      a.actPhase = 3;
+      a.actTimer = w.time + rrange(a, 0.8, 2.2);
+    } else {
+      a.actPhase = 1;
+      a.actTimer = w.time + (ram ? rdur(a, 2.2) : rdur(a, 4));
+      if (ram) a.actNormal.set(rrange(a, -1, 1) * R * 0.5, 0, rrange(a, -1, 1) * R * 0.35);
+      else a.actNormal.set(rrange(a, -1, 1) * R * 0.3, rrange(a, 0.5, 1.8) * L, rrange(a, -0.2, 1) * R * 0.25);
+    }
+  }
+  if (a.actPhase === 3) {
+    go(a, a.home, cruiseBL(a) * 1.5, L * 0.5);
+    c.ignoreDecor = a.patchDecor;
+    c.allowFloor = true;
+    c.avoid = 0.3;
+    a.pose = 'hiding';
+    return true;
+  }
+  _a.copy(a.home).add(a.actNormal);
+  if (ram) _a.y = floorAt(env, _a.x, _a.z) + bodySide(a) + L * 0.25;
+  fitInWater(a, w, _a);
+  if (!pointFree(env, _a.x, _a.y, _a.z, bodySide(a) + 0.003)) {
+    _a.copy(a.home);
+    if (!ram) _a.y += L;
+    fitInWater(a, w, _a);
+  }
+  go(a, _a, cruiseBL(a) * (ram ? 0.9 : 0.6), L * (ram ? 0.6 : 1.5));
+  c.wander = ram ? 0.04 : 0.15;
+  c.allowFloor = ram;
+  if (ram) c.pitchBias = -0.12;
+  else look(a, _b.set(a.home.x + Math.sin(w.time * 0.2 + a.noiseOff) * 0.2, a.rt.pos.y, env.maxZ + 0.4));
+  a.pose = 'hover';
+  return true;
+}
+
 function ensureBurrow(a: Agent, w: AIWorld): void {
   if (a.hasHome) return;
   const env = w.env;
@@ -2406,7 +3302,32 @@ function ensureBurrow(a: Agent, w: AIWorld): void {
   a.hasHome = true;
 }
 
+/**
+ * chunk 16 — a buried sand dweller (Nassarius): dug into the sand where it is, shell under, siphon up and swaying,
+ * tasting the water; scared (phase 2) it digs in fast. On a bed it cannot dig into it just sits.
+ */
+function sandBurrowTick(a: Agent, w: AIWorld): boolean {
+  const c = a.ctrl;
+  const bp = buryProfile(a)!;
+  c.hasGoal = false;
+  c.speedBL = 0;
+  if (!onSand(a, w)) {
+    a.pose = a.actPhase === 2 ? 'hiding' : 'rest';
+    return true;
+  }
+  c.sink = bp.depth;
+  if (a.actPhase === 2) {
+    c.sinkRate = bp.dig * 3;
+    if (a.sink >= bp.depth - 0.05) a.actPhase = 1;
+  }
+  a.pose = a.actPhase === 2 ? 'hiding' : 'rest';
+  // the siphon sways, tasting the water for food (a Nassarius's)
+  if (a.sink > 0.5 && a.setId === 'snail_sand') a.appendage = Math.max(a.appendage, 0.3 + 0.25 * Math.sin(w.time * 0.8 + a.noiseOff));
+  return true;
+}
+
 function burrowTick(a: Agent, w: AIWorld): boolean {
+  if (buryProfile(a) && isCrawler(a)) return sandBurrowTick(a, w);
   const env = w.env;
   const home = a.home;
   const mantis = a.setId === 'mantis_shrimp';
@@ -2526,6 +3447,7 @@ function feedTick(a: Agent, w: AIWorld): boolean {
   }
   if (!wantsMore(a, p)) return false;
   p.claimedBy = a.id;
+  if (a.set.anemone) return anemoneFeedTick(a, w, p);
   const style = feedStyle(a);
   const env = w.env;
   const m = mouthPos(a, _a);
@@ -2556,7 +3478,11 @@ function feedTick(a: Agent, w: AIWorld): boolean {
     a.ctrl.goal.copy(a.rt.pos);
     a.ctrl.speedBL = 0.2;
     if (rnd(a) < 0.15 * stepRate.k) a.mouthPulse = Math.max(a.mouthPulse, 0.4);
-    if (w.time > a.actTimer) a.actPhase = 0;
+    if (w.time > a.actTimer) {
+      // (chunk 16: a hawkfish goes back to a perch after each pounce — the perch act; it pounces again from there)
+      if (style === 'pounce') return false;
+      a.actPhase = 0;
+    }
     return true;
   }
   look(a, p.pos);
@@ -2633,12 +3559,45 @@ function feedTick(a: Agent, w: AIWorld): boolean {
       }
       return true;
     }
+    case 'pounce': {
+      // chunk 16 — flame hawkfish: a piece within a short dart is pounced on at full speed; one that is still coming
+      // down farther off it watches from its perch (unless hungry); one lying farther off it swims over to
+      const reachP = Math.max(L * 7, 0.14);
+      _b.subVectors(p.pos, a.rt.pos);
+      const dc = _b.length();
+      _c.copy(p.pos);
+      if (dc > 1e-5) _c.addScaledVector(_b, -Math.min(dc, bodyHX(a) * 0.9) / dc);
+      a.pose = 'feed';
+      if (d < reachP) {
+        go(a, _c, burstBL(a) * 0.9, L * 0.25);
+        a.ctrl.urgency = 1;
+        a.ctrl.avoid = 0.3;
+        a.ctrl.sep = 0.2;
+        if (d < L * 2) a.mouthPulse = Math.max(a.mouthPulse, 0.6);
+      } else if (a.hasHome && !p.settled && a.hunger < 0.6 && a.home.distanceTo(p.pos) < reachP * 2.5) {
+        go(a, a.home, 0.2, L);
+        a.ctrl.attach = 0.6;
+        a.ctrl.allowFloor = true;
+        a.pose = 'rest';
+        // (waiting for it to come is not a pursuit stalled)
+        a.settleBest = d;
+        a.settleT = w.time;
+      } else go(a, _c, cruiseBL(a) * 1.3, L * 0.7);
+      if (d < L * 0.3 + size + 0.003) {
+        emit(w, 'bite', p.pos, a.id, 0.7);
+        eat(a, w, p, 'rush');
+        a.actPhase = 1;
+        a.actTimer = w.time + rrange(a, 0.3, 0.7);
+      }
+      return true;
+    }
     case 'pick': {
       if (a.loco === 'swim') {
         go(a, p.pos, cruiseBL(a), L);
         return true;
       }
-      go(a, p.pos, cruiseBL(a) * 1.3, L * 0.8);
+      // (a Nassarius races to food — fast, for a snail)
+      go(a, p.pos, a.set.smellsFood ? Math.max(cruiseBL(a) * 1.3, burstBL(a) * 0.85) : cruiseBL(a) * 1.3, L * 0.8);
       if (d < L * 0.5 + size) {
         a.ctrl.hasGoal = false;
         a.ctrl.speedBL = 0;
@@ -2670,6 +3629,20 @@ function feedTick(a: Agent, w: AIWorld): boolean {
       return true;
     }
   }
+}
+
+/** chunk 16 — a living anemone takes a piece that came within reach: its tentacles close round it and pass it in. */
+function anemoneFeedTick(a: Agent, w: AIWorld, p: FoodParticle): boolean {
+  a.ctrl.hasGoal = false;
+  a.ctrl.speedBL = 0;
+  crownPos(a, _a);
+  if (_a.distanceTo(p.pos) - (p.size ?? 0.003) > crownR(a) * 1.25) return false;
+  if (a.actTimer === 0) a.actTimer = w.time + rrange(a, 0.6, 1.4);
+  else if (w.time > a.actTimer) {
+    eat(a, w, p, 'pick');
+    a.actTimer = w.time + rrange(a, 1.2, 2.5);
+  }
+  return true;
 }
 
 function huntTick(a: Agent, w: AIWorld): boolean {

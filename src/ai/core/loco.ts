@@ -9,9 +9,10 @@
 import * as THREE from 'three';
 import type { Agent } from './agent';
 import type { AIWorld } from './world';
-import { colliderExitXZ, colliderNormal, colliderNormalGrounded, colliderSdf, colliderSdfGrounded, colliderSdfXZ, floorAt, freeExit, freeExitXZ, makeHit, nearestSurface, surfaceById, surfaceId, SURF_DECOR, SURF_FLOOR, SURF_GLASS, type Collider, type TankEnv } from './env';
-import { V, approach, clamp, damp, isFiniteVec, noise3, rotateToward, safeNormalize, smoothstep, transport } from './math';
+import { colliderExitXZ, colliderNormal, colliderNormalGrounded, colliderSdf, colliderSdfGrounded, colliderSdfXZ, drawnDepth, floorAt, floorNormalAt, freeExit, freeExitXZ, makeHit, nearestSurface, surfaceById, surfaceGap, surfaceId, SURF_DECOR, SURF_FLOOR, SURF_GLASS, type Collider, type SurfaceHit, type TankEnv } from './env';
+import { V, approach, clamp, clamp01, damp, isFiniteVec, noise3, rotateToward, rrange, safeNormalize, smoothstep, transport } from './math';
 import { neighbors } from './nav';
+import { buryProfile, onSand } from './sand'; // chunk 16
 
 const UP = new THREE.Vector3(0, 1, 0);
 const X1 = new THREE.Vector3(1, 0, 0);
@@ -41,7 +42,8 @@ let _dt = 1 / 60;
 const EASE_OUT_SPEED = 0.3;
 
 export function locomote(a: Agent, w: AIWorld, dt: number): void {
-  if (a.loco === 'sessile') {
+  // (chunk 16: a living anemone that has settled holds its spot for good — nothing moves it until the layout changes)
+  if (a.loco === 'sessile' || (a.set.anemone && a.settled && !a.dead)) {
     a.speed = 0;
     a.drift.set(0, 0, 0);
     a.rt.vel.set(0, 0, 0);
@@ -112,6 +114,8 @@ function separation(a: Agent, w: AIWorld, out: THREE.Vector3): THREE.Vector3 {
     const o = w.agents[w.nbuf[k]];
     // fish ignore crawling inverts and vice versa (they share space at different heights)
     if (a.set.ignoreFish !== o.set.ignoreFish && (a.loco === 'crawl' || o.loco === 'crawl')) continue;
+    // (an animal down in the sand takes no room in the water: chunk 16)
+    if (o.buried > 0.9) continue;
     const rr = (a.L + o.L) * 0.55 + 0.004;
     _tmp.subVectors(pos, o.rt.pos);
     const d = _tmp.length();
@@ -136,7 +140,7 @@ function bodySpacing(a: Agent, w: AIWorld, flat: boolean): void {
   for (let k = 0; k < n; k++) {
     const o = w.agents[w.nbuf[k]];
     if (o.dead || o.set.ignoreFish !== a.set.ignoreFish || o.L < a.L * 0.35 || a.L < o.L * 0.35) continue;
-    if (o.loco === 'sessile' || o.loco === 'crawl') continue;
+    if (o.loco === 'sessile' || o.loco === 'crawl' || o.buried > 0.9) continue;
     const dmin = 0.32 * (a.L + o.L);
     _tmp.subVectors(pos, o.rt.pos);
     if (flat) _tmp.y = 0;
@@ -243,7 +247,25 @@ function avoidance(a: Agent, w: AIWorld, out: THREE.Vector3, strength: number): 
       out.addScaledVector(_n, Math.min(4, (m + band * 0.5 - dC) / (band * 0.5)) * 1.5 * k);
     }
   }
+  // chunk 16 — a living anemone stings: fish other than the clownfish that host in it keep a little way off its crown
+  if (w.anemones.length && a.sp.category === 'fish' && a.sp.anemoneRelationship !== 'host_seeker') stingAvoid(a, w, out, side);
   return out.multiplyScalar(strength * ctrl.avoid);
+}
+
+const _sting = new THREE.Vector3();
+/** Push (added to `out`) away from any living anemone's crown within a short band (see anemone.ts). */
+function stingAvoid(a: Agent, w: AIWorld, out: THREE.Vector3, side: number): void {
+  const pos = a.rt.pos;
+  const band = a.L * 0.9 + 0.02;
+  for (const o of w.anemones) {
+    // (the crown: the oral disc a little above the foot, as wide as the anemone)
+    _sting.copy(pos).sub(o.rt.pos).addScaledVector(o.upVis, -o.L * 0.1);
+    const dl = _sting.length();
+    const d = dl - Math.max(o.set.body.hx, o.set.body.hz) * o.L - side;
+    if (d >= band || dl < 1e-6) continue;
+    const q = (band - d) / band;
+    out.addScaledVector(_sting, Math.min(4, q * q * 2.5) / dl);
+  }
 }
 
 /**
@@ -668,7 +690,16 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
   // floor's normal would slide the body sideways every frame (and decor would push it back — a vibration)
   pos.y -= a.liftApplied;
   a.liftApplied = 0;
-  const standoff = a.set.body.hy * L * (1 - ctrl.burrow * 0.9);
+  // chunk 16 — a sand dweller digs in (or comes back up) gradually: a.sink follows ctrl.sink on the sand bed
+  const bp = buryProfile(a);
+  if (bp || a.sink > 0) {
+    const want = bp && ctrl.sink > 0 && onSand(a, w) ? Math.min(ctrl.sink, bp.depth + 0.3) : 0;
+    const rate = ctrl.sinkRate > 0 ? ctrl.sinkRate : want > a.sink ? (bp?.dig ?? 1) : (bp?.rise ?? 2);
+    a.sink = approach(a.sink, want, rate * dt);
+  }
+  const standoff = a.set.body.hy * L * (1 - ctrl.burrow * 0.9 - a.sink);
+  // chunk 16 — one that clings to the rock as drawn rests inside the rock's collider box, on the rock (rockshape.ts)
+  if (a.set.meshCling) updateEmbed(a, w, dt);
   const side = a.set.body.hz * L;
   const n = a.surfN;
   // floor walkers (axolotl) step over decor lower than about their own body height and walk around the rest
@@ -689,6 +720,8 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
   } else if (ctrl.speedBL > 0) {
     spd = ctrl.speedBL * L;
   }
+  // (dug into the sand it cannot move off until it has come up out of it)
+  if (a.sink > 0.4) spd *= clamp(1 - (a.sink - 0.4) / 0.6, 0, 1);
   // standing still with something to watch: turn to face it (along the surface it stands on)
   if (ctrl.faceLook && ctrl.hasLook && spd === 0) {
     _tmp.subVectors(ctrl.look, pos);
@@ -702,7 +735,7 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
   }
   // floor walkers that mean to go somewhere pick a free heading with a small local planner (walkerPlan) instead of
   // the reactive steering below
-  const planner = a.loco === 'walk' && spd > 1e-4 && !(ctrl.attach > 0);
+  const planner = floorWalker(a) && spd > 1e-4 && !(ctrl.attach > 0);
   // obstacle anticipation for surfaces we may NOT crawl on
   _p.copy(pos).addScaledVector(a.fwd, a.set.body.hx * L + L * 0.4);
   const m = side + 0.004;
@@ -771,7 +804,8 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
     if (pNew > 1e-4 && pNew > endPenetration(a, env, climbH, _prevFwd, hx, r) + 1e-5) a.fwd.copy(_prevFwd);
   }
   const maxSpd = Math.max(tr.cruiseSpeed * 1.5, tr.burstSpeed) * L;
-  a.speed = approach(a.speed, Math.min(spd, maxSpd), (maxSpd * 2 + 0.01) * dt);
+  if (a.set.lurch) a.speed = lurchSpeed(a, w, spd);
+  else a.speed = approach(a.speed, Math.min(spd, maxSpd), (maxSpd * 2 + 0.01) * dt);
   if (ctrl.attach > 0 && ctrl.hasGoal) {
     pos.lerp(goal, 1 - Math.exp(-ctrl.attach * 5 * dt));
     a.speed = damp(a.speed, 0, 5, dt);
@@ -790,41 +824,9 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
   // walks onto it. In a corner (floor and rock face, rock and glass) both are about equally near: taking whichever
   // won each frame turned the body between the two every frame.
   const ign = ctrl.ignoreDecor ?? undefined;
-  let hit = nearestSurface(env, pos, mask, a.hit, ign);
-  if (hit.kind !== 'none' && Number.isFinite(hit.d)) {
-    let id = surfaceId(hit);
-    if (a.surfId !== -1 && surfaceById(env, pos, a.surfId, mask, _curHit, ign)) {
-      // walking into another kind of surface within reach — from the sand onto a rock face or the glass, down a rock
-      // onto the sand — steps onto it even while it is not the nearest (a broad snail on the sand is held off the glass
-      // by its half-width, so the glass never came nearer than the sand beneath it); never straight back onto the
-      // surface it has just left
-      const other = nearestSurface(env, pos, mask & ~surfaceKind(a.surfId), _altHit, ign);
-      const otherId = other.kind === 'none' ? -1 : surfaceId(other);
-      const onto =
-        otherId !== -1 && a.fwd.dot(other.n) < -0.3 && other.d < Math.max(standoff, side) * 1.25 && !(otherId === a.surfPrev && w.time - a.surfT < 0.5);
-      if (onto) {
-        hit = other;
-        id = otherId;
-      } else if (id !== a.surfId && _curHit.d < hit.d + Math.max(0.0015, standoff * 0.35)) {
-        // otherwise keep to the surface it is on unless another is clearly nearer
-        hit = _curHit;
-        id = a.surfId;
-      }
-    }
-    if (id !== a.surfId) {
-      a.surfPrev = a.surfId;
-      a.surfId = id;
-      a.surfT = w.time;
-    }
-    if (hit.n.dot(n) < 0.9995) {
-      transport(a.fwd, n, hit.n);
-      n.copy(hit.n);
-    }
-    // just onto a new surface, the body settles against it over a few frames rather than snapping across the gap
-    let settle = standoff - hit.d;
-    if (settle < 0 && w.time - a.surfT < 0.5) settle = Math.max(settle, -(0.03 + a.speed) * dt);
-    pos.addScaledVector(hit.n, settle);
-  }
+  // chunk 16 — a flat, wide body (sea star) bends round the corner between two surfaces instead
+  if (a.set.flatBody) projectFlat(a, w, mask, standoff, Math.max(a.set.body.hx, a.set.body.hz) * L, dt);
+  else reproject(a, w, mask, standoff, side, ign, dt);
   a.fwd.addScaledVector(n, -a.fwd.dot(n));
   if (a.fwd.lengthSq() < 1e-8) {
     // pick any tangent
@@ -834,11 +836,15 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
   }
   a.fwd.normalize();
   // glass/bounds clamp (respect standoff on the wall we are on)
-  const rx = Math.abs(n.x) > 0.7 ? standoff * 0.98 : side;
-  const rz = Math.abs(n.z) > 0.7 ? standoff * 0.98 : side;
-  pos.x = clamp(pos.x, env.minX + rx, env.maxX - rx);
-  pos.z = clamp(pos.z, env.minZ + rz, env.maxZ - rz);
-  pos.y = clamp(pos.y, floorAt(env, pos.x, pos.z) + (n.y > 0.7 ? standoff * 0.98 : side * (1 - ctrl.burrow)), env.surfaceY - side);
+  // (98 % of the standoff as ever; for one below zero — a snail dug into the sand — 102 %, so the clamp never lifts it)
+  const so = standoff - Math.abs(standoff) * 0.02;
+  if (!a.set.flatBody) {
+    const rx = Math.abs(n.x) > 0.7 ? so : side;
+    const rz = Math.abs(n.z) > 0.7 ? so : side;
+    pos.x = clamp(pos.x, env.minX + rx, env.maxX - rx);
+    pos.z = clamp(pos.z, env.minZ + rz, env.maxZ - rz);
+    pos.y = clamp(pos.y, floorAt(env, pos.x, pos.z) + (n.y > 0.7 ? so : side * (1 - ctrl.burrow)), env.surfaceY - side);
+  }
   if (a.loco === 'walk') bodySpacing(a, w, true);
   // hard decor we cannot crawl on: walk around it (pushes are horizontal — walkers never get lifted into the water)
   let deep = 0;
@@ -880,15 +886,294 @@ function stepCrawl(a: Agent, w: AIWorld, dt: number): void {
       pos.y = Math.min(pos.y + a.stepLift, env.surfaceY - side);
       a.liftApplied = pos.y - y0;
     }
+    // chunk 16 — a conch's vault lifts the shell a little off the sand (taken off again before the next re-projection)
+    if (a.lurch > 0) {
+      const y0 = pos.y;
+      pos.y = Math.min(pos.y + a.lurch * L * 0.07, env.surfaceY - side);
+      a.liftApplied += pos.y - y0;
+    }
     // squeezed into a gap the body does not fit (decor right against the glass): walk out of it
     resolveWedge(a, env, climbH, dt);
   }
-  // visual up follows the surface smoothly
-  const k = 1 - Math.exp(-9 * dt);
-  a.upVis.lerp(n, k);
-  safeNormalize(a.upVis, UP);
+  // visual up follows the surface smoothly (a flat body's normal already turns smoothly: the disc is drawn as placed)
+  if (a.set.flatBody) a.upVis.copy(n);
+  else {
+    const k = 1 - Math.exp(-9 * dt);
+    a.upVis.lerp(n, k);
+    safeNormalize(a.upVis, UP);
+  }
   a.grounded = true;
 }
+
+// ───────────────────────────── chunk 16: lurching and flat bodies ─────────────────────────────
+
+/**
+ * A lurching gait (fighting conch): instead of a steady glide toward its goal the foot vaults the shell a few
+ * centimetres at a time — `a.lurch` runs 0 → 1 → 0 (a sine of the vault's progress) — with a pause between vaults so
+ * that on average it goes at the speed asked of it (the species' crawl speed sets the pace; a hurry shortens the
+ * pauses, down to the gait's shortest). A vault once begun is finished. Returns this frame's speed (m/s).
+ */
+function lurchSpeed(a: Agent, w: AIWorld, spd: number): number {
+  const lu = a.set.lurch!;
+  const t = w.time;
+  if (a.gaitOn && t >= a.gaitT) {
+    a.gaitOn = false;
+    const pause = clamp((lu.dist * a.L) / Math.max(spd, 1e-5) - lu.hop, lu.pause[0], lu.pause[1] * 2.5);
+    a.gaitT = t + pause * rrange(a, 0.75, 1.25);
+  }
+  if (!a.gaitOn) {
+    a.lurch = 0;
+    if (spd <= 1e-5 || t < a.gaitT) return 0;
+    a.gaitOn = true;
+    a.gaitT = t + lu.hop;
+  }
+  const ph = clamp01(1 - (a.gaitT - t) / lu.hop);
+  a.lurch = Math.sin(Math.PI * ph);
+  return ((lu.dist * a.L * Math.PI) / (2 * lu.hop)) * a.lurch;
+}
+
+/**
+ * How fast (rad/s) a flat body's normal turns to a new surface: with its crawl (the rim rolls round the corner about as
+ * fast as the body crawls), never slower than a right angle in ~13 s nor faster than one in ~1 s.
+ */
+const FLAT_TURN_MIN = 0.12;
+const FLAT_TURN_MAX = 1.6;
+const _flatHit = makeHit();
+const _nPrev = new THREE.Vector3();
+const _fn2 = new THREE.Vector3();
+
+/** How far a flat disc (unit normal n, radius R, half-thickness s) reaches toward a plane with unit normal m. */
+function discReach(n: THREE.Vector3, mx: number, my: number, mz: number, s: number, R: number): number {
+  const c = n.x * mx + n.y * my + n.z * mz;
+  return s * Math.abs(c) + R * Math.sqrt(Math.max(0, 1 - c * c));
+}
+
+/**
+ * The crawl surface (other than `skip`) whose gap to the disc's rim is smallest — the distance from the centre less the
+ * disc's reach toward it. Writes that surface into `out` (its distance from the centre and normal) and returns the gap
+ * (Infinity: none).
+ */
+function flatNearest(env: TankEnv, pos: THREE.Vector3, n: THREE.Vector3, s: number, R: number, mask: number, skip: number, ign: string | undefined, out: SurfaceHit): number {
+  let best = Infinity;
+  out.kind = 'none';
+  out.d = Infinity;
+  out.collider = -1;
+  if (mask & SURF_FLOOR && skip !== -2) {
+    floorNormalAt(env, pos.x, pos.z, _fn2);
+    const d = (pos.y - floorAt(env, pos.x, pos.z)) * _fn2.y;
+    const g = d - discReach(n, _fn2.x, _fn2.y, _fn2.z, s, R);
+    if (g < best) {
+      best = g;
+      out.d = d;
+      out.n.copy(_fn2);
+      out.kind = 'floor';
+    }
+  }
+  if (mask & SURF_GLASS) {
+    for (let i = 0; i < 4; i++) {
+      if (-3 - i === skip) continue;
+      const nx = i === 0 ? 1 : i === 1 ? -1 : 0;
+      const nz = i === 2 ? 1 : i === 3 ? -1 : 0;
+      const d = i === 0 ? pos.x - env.minX : i === 1 ? env.maxX - pos.x : i === 2 ? pos.z - env.minZ : env.maxZ - pos.z;
+      const g = d - discReach(n, nx, 0, nz, s, R);
+      if (g < best) {
+        best = g;
+        out.d = d;
+        out.n.set(nx, 0, nz);
+        out.kind = 'glass';
+      }
+    }
+  }
+  if (mask & SURF_DECOR) {
+    const cs = env.colliders;
+    const m = R * 1.5;
+    for (let i = 0; i < cs.length; i++) {
+      const c = cs[i];
+      if (!c.hard || c.decorId === ign || i === skip) continue;
+      if (Math.abs(pos.x - c.cx) > c.hx + m || Math.abs(pos.y - c.cy) > c.hy + m || Math.abs(pos.z - c.cz) > c.hz + m) continue;
+      const d = colliderSdfGrounded(c, pos.x, pos.y, pos.z);
+      colliderNormalGrounded(c, pos.x, pos.y, pos.z, _fn2);
+      const g = d - discReach(n, _fn2.x, _fn2.y, _fn2.z, s, R);
+      if (g < best) {
+        best = g;
+        out.d = d;
+        out.n.copy(_fn2);
+        out.kind = 'decor';
+        out.collider = i;
+      }
+    }
+  }
+  return best;
+}
+
+/**
+ * A flat, wide crawler (sea star, an arm-span disc) on its surface. It keeps to the surface it is on; walking into
+ * another one (from the sand onto the glass or a rock, up a rock onto its top) it steps onto it once its rim touches,
+ * and its normal turns toward the new surface (at about its crawl) while the centre is held at the disc's reach from both —
+ * so the body rolls round the corner, arm tips just clear of either surface, instead of jumping across it. Nothing of
+ * the disc goes through the floor, the glass, the water surface or a rock.
+ */
+function projectFlat(a: Agent, w: AIWorld, mask: number, s: number, R: number, dt: number): void {
+  const env = w.env;
+  const pos = a.rt.pos;
+  const n = a.surfN;
+  const ign = a.ctrl.ignoreDecor ?? undefined;
+  let tgt: SurfaceHit;
+  let id: number;
+  if (a.surfId !== -1 && surfaceById(env, pos, a.surfId, mask, _curHit, ign)) {
+    tgt = _curHit;
+    id = a.surfId;
+    const curGap = _curHit.d - discReach(n, _curHit.n.x, _curHit.n.y, _curHit.n.z, s, R);
+    const oGap = flatNearest(env, pos, n, s, R, mask, a.surfId, ign, _flatHit);
+    if (_flatHit.kind !== 'none') {
+      const oid = surfaceId(_flatHit);
+      const into = a.fwd.dot(_flatHit.n) < -0.2;
+      const back = oid === a.surfPrev && w.time - a.surfT < 1.5;
+      if ((into && oGap < s * 0.6 + 0.0015 && !back) || curGap > R * 0.6) {
+        tgt = _flatHit;
+        id = oid;
+      }
+    }
+  } else {
+    const g = flatNearest(env, pos, n, s, R, mask, -99, ign, _flatHit);
+    if (_flatHit.kind === 'none' || !Number.isFinite(g)) return;
+    tgt = _flatHit;
+    id = surfaceId(_flatHit);
+    // (first contact — just placed: it lies flat on it at once)
+    if (a.surfId === -1) {
+      transport(a.fwd, n, tgt.n);
+      n.copy(tgt.n);
+    }
+  }
+  if (id !== a.surfId) {
+    a.surfPrev = a.surfId;
+    a.surfId = id;
+    a.surfT = w.time;
+  }
+  _nPrev.copy(n);
+  rotateToward(n, tgt.n, clamp((2.5 * a.speed) / Math.max(R, 1e-3), FLAT_TURN_MIN, FLAT_TURN_MAX) * dt, a.fwd);
+  transport(a.fwd, _nPrev, n);
+  // rest on it: the rim's reach from it — eased in while the disc is still off it, out at once when pressed into it
+  let settle = discReach(n, tgt.n.x, tgt.n.y, tgt.n.z, s, R) - tgt.d;
+  // (chunk 16: on a rock, down to the rock as drawn inside its box — a.embed; and out of a modelled rock's box a clinging
+  // crawler is eased too, as the box is not the rock: stepping onto one from the glass it may start well inside it)
+  if (tgt.kind === 'decor') settle -= a.embed;
+  if (settle < 0) settle = Math.max(settle, -(0.02 + a.speed) * dt);
+  else if (a.set.meshCling && tgt.kind === 'decor' && tgt.collider >= 0 && env.colliders[tgt.collider]?.shape) settle = Math.min(settle, (0.02 + Math.abs(a.speed) * 2) * dt);
+  pos.addScaledVector(tgt.n, settle);
+  flatConstrain(a, env, s, R, ign, dt);
+}
+
+/** Keep every part of a flat disc out of the floor, the glass, the water surface and hard decor (rocks last eased). */
+function flatConstrain(a: Agent, env: TankEnv, s: number, R: number, ign: string | undefined, dt: number): void {
+  const pos = a.rt.pos;
+  const n = a.surfN;
+  const cs = env.colliders;
+  const m = R * 1.5;
+  for (let iter = 0; iter < 2; iter++) {
+    for (let i = 0; i < cs.length; i++) {
+      const c = cs[i];
+      if (!c.hard || c.decorId === ign) continue;
+      if (Math.abs(pos.x - c.cx) > c.hx + m || Math.abs(pos.y - c.cy) > c.hy + m || Math.abs(pos.z - c.cz) > c.hz + m) continue;
+      const d = colliderSdfGrounded(c, pos.x, pos.y, pos.z);
+      colliderNormalGrounded(c, pos.x, pos.y, pos.z, _fn2);
+      // (the rock it rests on lets it in as far as the rock as drawn: a.embed; a clinging crawler counts its other
+      // neighbours as drawn too — rockshape.ts)
+      let deeper = i === a.surfId ? a.embed : 0;
+      if (a.set.meshCling && i !== a.surfId && c.shape) {
+        deeper = Math.min(drawnDepth(c, pos.x, pos.y, pos.z), MAX_EMBED);
+        if (!Number.isFinite(deeper)) continue;
+      }
+      const need = discReach(n, _fn2.x, _fn2.y, _fn2.z, s, R) - deeper;
+      // (out of a modelled rock a clinging crawler is eased, at its own pace: what it is pressed into there is the
+      // rock as drawn, which a step or a turn can change by a lot from one frame to the next)
+      const cap = a.set.meshCling && c.shape ? (0.02 + Math.abs(a.speed) * 2) * dt : R * 0.25 + EASE_OUT_SPEED * dt;
+      if (d < need) pos.addScaledVector(_fn2, Math.min(need - d, cap));
+    }
+    floorNormalAt(env, pos.x, pos.z, _fn2);
+    const lo = floorAt(env, pos.x, pos.z) + discReach(n, _fn2.x, _fn2.y, _fn2.z, s, R) / Math.max(0.5, _fn2.y);
+    if (pos.y < lo) pos.y = lo;
+    const rx = discReach(n, 1, 0, 0, s, R);
+    const rz = discReach(n, 0, 0, 1, s, R);
+    pos.x = env.maxX - env.minX > 2 * rx ? clamp(pos.x, env.minX + rx, env.maxX - rx) : (env.minX + env.maxX) / 2;
+    pos.z = env.maxZ - env.minZ > 2 * rz ? clamp(pos.z, env.minZ + rz, env.maxZ - rz) : (env.minZ + env.maxZ) / 2;
+    pos.y = Math.min(pos.y, env.surfaceY - discReach(n, 0, 1, 0, s, R) - 0.002);
+  }
+}
+
+/** Re-project a crawler onto its surface (see stepCrawl): the one it is on, or one it walks onto, or the nearest. */
+function reproject(a: Agent, w: AIWorld, mask: number, standoff: number, side: number, ign: string | undefined, dt: number): void {
+  const env = w.env;
+  const pos = a.rt.pos;
+  const n = a.surfN;
+  let hit = nearestSurface(env, pos, mask, a.hit, ign);
+  if (hit.kind === 'none' || !Number.isFinite(hit.d)) return;
+  let id = surfaceId(hit);
+  if (a.surfId !== -1 && surfaceById(env, pos, a.surfId, mask, _curHit, ign)) {
+    // walking into another kind of surface within reach — from the sand onto a rock face or the glass, down a rock
+    // onto the sand — steps onto it even while it is not the nearest (a broad snail on the sand is held off the glass
+    // by its half-width, so the glass never came nearer than the sand beneath it); never straight back onto the
+    // surface it has just left
+    const other = nearestSurface(env, pos, mask & ~surfaceKind(a.surfId), _altHit, ign);
+    const otherId = other.kind === 'none' ? -1 : surfaceId(other);
+    const onto =
+      otherId !== -1 && a.fwd.dot(other.n) < -0.3 && other.d < Math.max(standoff, side) * 1.25 && !(otherId === a.surfPrev && w.time - a.surfT < 0.5);
+    if (onto) {
+      hit = other;
+      id = otherId;
+    } else if (id !== a.surfId && _curHit.d < hit.d + Math.max(0.0015, standoff * 0.35)) {
+      // otherwise keep to the surface it is on unless another is clearly nearer
+      hit = _curHit;
+      id = a.surfId;
+    }
+  }
+  if (id !== a.surfId) {
+    a.surfPrev = a.surfId;
+    a.surfId = id;
+    a.surfT = w.time;
+  }
+  if (hit.n.dot(n) < 0.9995) {
+    transport(a.fwd, n, hit.n);
+    n.copy(hit.n);
+  }
+  // just onto a new surface, the body settles against it over a few frames rather than snapping across the gap
+  // (chunk 16: on a rock, down to the rock as drawn inside its box when the crawler clings to it — a.embed)
+  let settle = standoff - (hit.kind === 'decor' ? a.embed : 0) - hit.d;
+  if (settle < 0 && w.time - a.surfT < 0.5) settle = Math.max(settle, -(0.03 + a.speed) * dt);
+  pos.addScaledVector(hit.n, settle);
+}
+
+/** Deepest a clinging crawler goes into a rock's collider box (m). */
+const MAX_EMBED = 0.2;
+const _en = new THREE.Vector3();
+
+/**
+ * chunk 16 — how far inside the collider box of the rock it is on a clinging crawler rests (a.embed): the depth of the
+ * rock as drawn behind the box surface under it (rockshape.ts), eased as it moves; held where the model finds no rock
+ * behind the box (crossing the open top of an arch), let go of off the rock.
+ */
+function updateEmbed(a: Agent, w: AIWorld, dt: number): void {
+  const env = w.env;
+  const pos = a.rt.pos;
+  let target = 0;
+  const id = a.surfId;
+  if (id >= 0 && id < env.colliders.length) {
+    const c = env.colliders[id];
+    if (c.hard && c.shape) {
+      const d = colliderSdfGrounded(c, pos.x, pos.y, pos.z);
+      colliderNormalGrounded(c, pos.x, pos.y, pos.z, _en);
+      const g = surfaceGap(c, pos.x - _en.x * d, pos.y - _en.y * d, pos.z - _en.z * d, _en.x, _en.y, _en.z);
+      target = Number.isFinite(g) ? Math.min(g, MAX_EMBED) : a.embed;
+    }
+  }
+  a.embed = approach(a.embed, target, (0.02 + Math.abs(a.speed) * 2) * dt);
+}
+
+/**
+ * A body that walks the floor only and goes round decor rather than over it: the floor walkers (axolotl) and, chunk 16,
+ * the crawlers that keep to the sand (conch, Nassarius) — the same local planner and footprint constraints for both.
+ */
+const floorWalker = (a: Agent) => a.loco === 'walk' || (a.loco === 'crawl' && (a.set.crawlMask & SURF_DECOR) === 0);
 
 /** The surface-mask bit of a surface id (see env surfaceId). */
 const surfaceKind = (id: number) => (id === -2 ? SURF_FLOOR : id <= -3 ? SURF_GLASS : id >= 0 ? SURF_DECOR : 0);
@@ -940,7 +1225,7 @@ function constrainCrawlBody(a: Agent, w: AIWorld, mask: number, prevFwd: THREE.V
   const L = a.L;
   const hx = a.set.body.hx * L;
   const side = Math.max(a.set.body.hz, a.set.body.hy) * L;
-  const walk = a.loco === 'walk';
+  const walk = floorWalker(a);
   const climbH = mask & SURF_DECOR ? 0 : climbHeight(a);
   for (let iter = 0; iter < 2; iter++) {
     let moved = false;
@@ -1330,7 +1615,7 @@ function easeOutOfDecor(a: Agent, env: TankEnv, pos: THREE.Vector3, side: number
 /** Deepest penetration (r − distance) of the nose/tail points into non-climbable hard decor for a heading. */
 function endPenetration(a: Agent, env: TankEnv, climbH: number, fwd: THREE.Vector3, hx: number, r: number): number {
   const pos = a.rt.pos;
-  const walk = a.loco === 'walk';
+  const walk = floorWalker(a);
   let worst = 0;
   for (let s = 1; s <= 2; s++) {
     const k = s === 1 ? hx * 0.92 : -hx * 0.88;
@@ -1387,7 +1672,7 @@ export function bodyFits(a: Agent, w: AIWorld, pos: THREE.Vector3, fwd: THREE.Ve
   const hx = a.loco === 'upright' ? a.set.body.hy * L : a.set.body.hx * L;
   const side = Math.max(a.set.body.hy, a.set.body.hz) * L;
   const crawlsDecor = (a.set.loco === 'crawl' && (a.set.crawlMask & SURF_DECOR) !== 0) || a.set.loco === 'sessile';
-  const walker = a.set.loco === 'walk' && a.loco !== 'upright';
+  const walker = (a.set.loco === 'walk' || (a.set.loco === 'crawl' && (a.set.crawlMask & SURF_DECOR) === 0)) && a.loco !== 'upright';
   const climbH = walker ? climbHeight(a) : 0;
   for (let s = 0; s < 3; s++) {
     const k = s === 0 ? 0 : s === 1 ? hx * 0.9 : -hx * 0.9;

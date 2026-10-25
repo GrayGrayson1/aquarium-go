@@ -32,6 +32,8 @@ export function getAIDebug(creatureId: string): Record<string, unknown> | null {
       illness: r2(a.ill),
       visualSatiety: r2(a.satiety),
       fright: r2(a.fright),
+      buried: a.buried > 0 ? r2(a.buried) : null, // chunk 16 — how much of it is down in the sand
+      settled: a.set.anemone ? a.settled : null, // chunk 16 — a living anemone has found its spot
       reproStage: a.stage,
       home: a.hasHome ? v3(a.home) : null,
       anchor: a.anchorKey,
