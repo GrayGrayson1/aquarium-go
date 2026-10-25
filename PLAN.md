@@ -1609,10 +1609,12 @@ REL-012, REL-018.
     starfish, urchin, conch, crab, living anemone, five snail shells, ghost shrimp, scarlet hermit.
   - *Seeded tests:* the new species shift the shared stream (the shop draws from the species available). Every failing
     seeded test passed with the 31 hidden; each was made independent of the stream rather than re-pinned (see the
-    commits). Three real bugs found on the way were fixed with regression tests: a harassment death named the wrong
-    cause and a hardy harassed female could linger at 1.4 health for good (S02-08), and bids made during the offline
-    catch-up came back with less than their window (MKT-016). The first hour's toast cap is now 100 (the owner,
-    ADR-0052 decision 10).
+    commits). Two real bugs found on the way were fixed with regression tests: a harassment death named the wrong
+    cause, and a hardy harassed female could linger at 1.4 health for good (S02-08). MKT-016's test asserted more than
+    the minimum the owner accepted (ADR-0016 decision 3) and now asserts that minimum at 1×, 3× and 10× (about 68,
+    148 and 176 real seconds); the catch-up bid windows stay as they are (a change built here was reverted on review;
+    the 1× figure is a question for the owner). The first hour's toast cap is now 100 (the owner, ADR-0052 decision
+    10).
   - *Lab:* "A friend's reef" (the 180, the real stock, a living bubble-tip, marine pellets four times a day: a week
     with no deaths, one anthias turns male on day 4) and "Every new species" (a showroom with three tanks and
     autofeeders). The lab warns that the friend's emperor needs 220 gallons as an adult (LAB-007 expects that one
@@ -1621,7 +1623,18 @@ REL-012, REL-018.
     collider box: the anemone was settling on a box top that stood up to 16 cm above the rock. Older crawlers
     (algae grazers, hillstream loaches, dwarf and cleaner shrimp, snails, hermit crabs) use it too, so they now sit on
     the rock rather than hovering above it: a visible change to released species.
-  - *Backlog:* B-211 to B-216.
+  - *After the fresh review* (Opus 5.5, max effort, on `1b929a7..5068399`): the split works inside a command's Immer
+    draft (`deepClone`, not `structuredClone`); a living anemone stings a seahorse once, as the decor piece does (the
+    pairwise sting rule is only for an anemone not yet in the tank); the maroon's female is much bigger, as the brief
+    says (`special.maleSizeFactor` 0.45: a male and a young one grow to under half her size, and the male that
+    becomes the female grows into it; Fishes of Australia: females 2–3× the males); a young barred angelfish shows
+    seven bars, the adult four (FishBase); the flame angel's "Blood red" is "Richly coloured" (decision 2); a digging
+    animal never goes through the floor glass under a thin sand bed.
+  - *Done differently from the brief, on purpose:* the elegant starfish has Red and Red & Black, not an orange form:
+    no source names one (Quality Marine's "red to orangish red" is individual variation), and decision 2 allows no
+    invented forms (a question for the owner). The Astraea's "can't right itself" is a data tag only: nothing in the
+    game turns a snail over.
+  - *Backlog:* B-211 to B-216 (B-213, the anemone's split, built).
 
 ## Releases
 

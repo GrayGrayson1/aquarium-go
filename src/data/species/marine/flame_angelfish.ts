@@ -120,7 +120,7 @@ export const flameAngelfish: SpeciesDefinition = {
     phenotypes: [
       { id: 'marquesan', name: 'Marquesan Flame Angel', layer: 'base', rarity: 0.55, when: [{ locus: 'bars', allele: 'm', count: 'hom' }], visual: { patternContrast: 0.15 } },
       { id: 'wild', name: 'Flame Angelfish', layer: 'base', rarity: 0, when: [], visual: {} },
-      { id: 'rich_colour', name: 'Blood red', layer: 'overlay', rarity: 0.1, when: [{ locus: 'intensity', allele: 'rich', count: 'hom' }], visual: { bodyColor: '#d61c0e', bodyColor2: '#f04a14' }, note: 'Individual variation, not a named trade morph.' },
+      { id: 'rich_colour', name: 'Richly coloured', layer: 'overlay', rarity: 0.1, when: [{ locus: 'intensity', allele: 'rich', count: 'hom' }], visual: { bodyColor: '#d61c0e', bodyColor2: '#f04a14' }, note: 'Individual variation, not a named trade morph.' },
     ],
     baseVisual: {
       bodyColor: '#e8340f',

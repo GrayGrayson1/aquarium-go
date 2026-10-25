@@ -7,6 +7,7 @@
  *  - SPC-002: the living bubble-tip anemone splits in two by itself once settled and well fed (fission).
  */
 import { describe, expect, it } from 'vitest';
+import { produce } from 'immer';
 import type { GameState, WaterClass } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
@@ -17,6 +18,9 @@ import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { ROSTER } from '@/data/species/roster';
 import { isSpeciesAvailable, requiredUnlocks, stockNewUnlocks } from '@/sim/economy/shop';
 import { unlock, waterClassKeys, waterClassLock } from '@/sim/facility';
+import { makeContext } from '@/sim/context';
+import { fissionBlocker, fissionModule } from '@/sim/life/breeding/systems/fission';
+import { clearCompatCache, incidentRisks, previewAddition } from '@/sim/compat';
 
 const NEW_IDS = ROSTER.filter((r) => r.unlock === 'open').map((r) => r.id);
 const WATER: WaterClass[] = ['freshwater_cool', 'freshwater_tropical', 'freshwater_planted', 'marine_fowlr', 'marine_live_rock', 'reef', 'brackish'];
@@ -188,9 +192,30 @@ describe('ADR-0052 / SPC-002: a settled, well-fed bubble-tip splits in two (fiss
   it('rests between splits: one parent splits at most once in its cooldown', () => {
     const g = game('ocellaris_clownfish', 4);
     const { anemones } = reef(g, 'g180', 1);
-    run(g, 30 * 24, 10);
+    // 60 days: a 20-day rest after each split and about 6 days' wait once ready, so two splits whatever the stream
+    run(g, 60 * 24, 10);
     const splits = (g.creatures[anemones[0].id].history ?? []).filter((e) => e.kind === 'bred' && e.text.startsWith('Split')).map((e) => e.hour);
+    expect(splits.length, 'at least two splits, so the rest between them is tested').toBeGreaterThanOrEqual(2);
     for (let i = 1; i < splits.length; i++) expect(splits[i] - splits[i - 1]).toBeGreaterThanOrEqual(findSpecies('bubbletip_anemone')!.breeding.cooldownDays * 24);
+  });
+
+  it('splits inside an Immer draft too (a solo command settles the tanks inside useGame.mutate)', () => {
+    const g = game('ocellaris_clownfish', 7);
+    const { t, anemones } = reef(g, 'g180', 1);
+    keep(g, 10);
+    const sp = findSpecies('bubbletip_anemone')!;
+    const id = anemones[0].id;
+    expect(fissionBlocker(g, g.tanks[t.id], sp, g.creatures[id], g.clock.hour)).toBeNull();
+    const next = produce(g, (d) => {
+      const ctx = makeContext(d, 1);
+      ctx.rng = { ...ctx.rng, next: () => 0 }; // the split's roll comes up; names and the rest draw as usual
+      fissionModule.step({ state: d, tank: d.tanks[t.id], species: sp, members: [d.creatures[id]], hour: d.clock.hour, dt: 1, ctx, info: undefined as never });
+    });
+    const now = anemonesIn(next, t.id);
+    expect(now).toHaveLength(2);
+    const clone = now.find((c) => c.id !== id)!;
+    expect(clone.genome).toEqual(next.creatures[id].genome);
+    expect(clone.genome).not.toBe(next.creatures[id].genome);
   });
 
   it('a hungry one never splits, and a small tank holds only one', () => {
@@ -202,5 +227,51 @@ describe('ADR-0052 / SPC-002: a settled, well-fed bubble-tip splits in two (fiss
     const small = reef(h, 'g29', 1);
     run(h, 30 * 24, 10);
     expect(anemonesIn(h, small.t.id)).toHaveLength(1);
+  });
+});
+
+describe('chunk 16: a living anemone stings as the decor piece does, once', () => {
+  it('a seahorse with a living bubble-tip gets one sting (not a second one as harassment), and buying one still warns', () => {
+    const g = game('ocellaris_clownfish', 8);
+    const t = createTank(g, 'g75', 'reef', { cycled: true, placement: { x: 0, z: 2, rotY: 0 }, name: 'Reef' });
+    const rng = simRng(g);
+    addCreature(g, createCreature(g, rng, 'lined_seahorse', { ageDays: 200 }), t.id);
+    clearCompatCache();
+    const before = previewAddition(g, t.id, { speciesId: 'bubbletip_anemone', count: 1 });
+    expect(before.reasons.some((r) => /burn seahorse skin/.test(r.text)), 'buying an anemone into a seahorse tank warns').toBe(true);
+    addCreature(g, createCreature(g, rng, 'bubbletip_anemone', { ageDays: 60 }), t.id);
+    clearCompatCache();
+    const onSeahorse = incidentRisks(g, t.id).filter((i) => i.targetSpeciesId === 'lined_seahorse');
+    expect(onSeahorse.filter((i) => i.kind === 'sting')).toHaveLength(1);
+    // the anemone's own rule (it eats fry: predatorTags) still stands, for the young only; no second, adult incident
+    const byAnemone = onSeahorse.filter((i) => i.actorSpeciesId === 'bubbletip_anemone');
+    expect(byAnemone.every((i) => i.kind === 'predation' && i.youngOnly)).toBe(true);
+  });
+});
+
+describe('chunk 16 brief: the maroon clownfish female is much bigger than the male', () => {
+  it('a male stays under half her size, and the male that becomes the female grows into it', () => {
+    const g = game('ocellaris_clownfish', 9);
+    const t = createTank(g, 'g75', 'marine_fowlr', { cycled: true, placement: { x: 0, z: 2, rotY: 0 }, name: 'Pair' });
+    const rng = simRng(g);
+    const female = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 60, sex: 'female' }), t.id);
+    const male = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 60, genome: structuredClone(female.genome) }), t.id);
+    const third = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 60 }), t.id);
+    expect(female.reproRole).toBe('female');
+    expect(male.reproRole).toBe('male');
+    expect(female.sizeCm).toBeGreaterThan(findSpecies('maroon_clownfish')!.adultSizeCm * 0.75);
+    expect(male.sizeCm / female.sizeCm).toBeLessThan(0.5); // same genes: only the sex differs
+    // the female leaves; the bigger male becomes the female and grows
+    const fed = () => { for (const c of [male, third]) if (g.creatures[c.id].status === 'alive') g.creatures[c.id].stats.hunger = 10; };
+    delete g.creatures[female.id];
+    const was = { [male.id]: male.sizeCm, [third.id]: third.sizeCm };
+    for (let h = 0; h < 20 * 24; h++) { fed(); advanceWorld(g, 1, {}); }
+    const now = [g.creatures[male.id], g.creatures[third.id]];
+    const newFemale = now.find((c) => c.reproRole === 'female')!;
+    expect(newFemale, 'one of them became the female').toBeDefined();
+    expect(newFemale.sizeCm).toBeGreaterThan(was[newFemale.id] * 1.6);
+    const stillMale = now.find((c) => c.id !== newFemale.id)!;
+    expect(stillMale.reproRole).toBe('male');
+    expect(stillMale.sizeCm).toBeLessThan(newFemale.sizeCm * 0.6);
   });
 });

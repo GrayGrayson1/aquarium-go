@@ -5,7 +5,8 @@
  * upper and lower rays (veil and super veil forms: everything longer, through finLength). Patterns come from the
  * appearance: 'bands' = the wild silver's four bold black bars (through the eye, from the dorsal origin, mid-body and the
  * tail base), 'bars' = zebra (extra bars), 'marble' = marble and koi, 'mottled' = smokey (the bars in front, the rear half dark), 'solid' =
- * stripeless, gold, platinum and black.
+ * stripeless, gold, platinum and black. The young of the barred forms show seven bars, the adults four (FishBase): a
+ * young fish gets three fainter bars between the four, which fade as it grows (the plan key gains `|juv`).
  * OWNER: lane "fishart".
  */
 import type { PlanFn } from './common';
@@ -13,7 +14,7 @@ import type { FishPlan, Mark } from '../core/plan';
 import { curve, smoothstep } from '../core/math';
 import { BodySampler } from '../core/body';
 import { caudal, dorsal, anal, pectoral, thread } from '../core/fins';
-import { motion, look, eye, fin, finScale, bucket } from './common';
+import { motion, look, eye, fin, finScale, bucket, isJuvenile } from './common';
 
 export const plan: PlanFn = (args) => {
   const a = args.appearance;
@@ -43,6 +44,10 @@ export const plan: PlanFn = (args) => {
     // the wild silver's four black bars: through the eye, from the dorsal origin, mid-body, and across the tail base
     for (const [t, w] of [[0.12, 0.022], [0.32, 0.032], [0.58, 0.03], [0.9, 0.022]] as const) {
       marks.push({ t, yn: 0.05, rt: w, ryn: 1.3, color: 'accent', strength: 0.92 * pc, soft: 0.35, mode: 'band_t', onFins: 0.9 });
+    }
+    // a young fish's three extra, fainter bars between them (seven in all)
+    if (isJuvenile(args)) {
+      for (const t of [0.22, 0.45, 0.74]) marks.push({ t, yn: 0.05, rt: 0.018, ryn: 1.2, color: 'accent', strength: 0.6 * pc, soft: 0.4, mode: 'band_t', onFins: 0.7 });
     }
   }
   if (pat === 'mottled') marks.push({ t: 0.84, yn: 0, rt: 0.36, ryn: 1.5, color: 'body2', strength: 0.97, soft: 0.4, mode: 'band_t', onFins: 1.2 });

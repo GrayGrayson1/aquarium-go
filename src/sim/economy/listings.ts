@@ -89,21 +89,6 @@ export function marketTimeScale(state: GameState): number {
   return speed > 1 ? speed : 1;
 }
 
-/**
- * MKT-016 — the end of an offline catch-up: a bid made while the player was away is first seen on their return, so its
- * promised minimum (BID_MIN_OPEN_HOURS, ≈3 real minutes at the speed play resumes at) counts from then. Scaling the
- * window at creation wasn't enough: the catch-up's own game hours (up to 12) came off it, so at 1× a bid made early in
- * the catch-up had under 1.5 real minutes left, and at 3× an impatient buyer's about 2.6. A window already longer is
- * left as it is; bids made before `sinceHour` too. No RNG.
- */
-export function holdBidsMadeWhileAway(state: GameState, sinceHour: number): void {
-  const until = state.clock.hour + BID_MIN_OPEN_HOURS * marketTimeScale(state);
-  for (const l of state.market?.listings ?? []) {
-    if (l.status !== 'active') continue;
-    for (const b of l.bids) if (b.status === 'open' && b.createdHour >= sinceHour - 1e-9 && b.expiresHour < until) b.expiresHour = until;
-  }
-}
-
 /** Real minutes a span of game hours lasts at 1× speed. */
 export function realMinutesAt1x(gameHours: number): number {
   return gameHours / GAME_HOURS_PER_REAL_MINUTE;

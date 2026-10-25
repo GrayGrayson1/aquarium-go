@@ -26,6 +26,15 @@ describe('LAB-006: running a scenario forward', () => {
     expect(text).toContain('All checks passed.');
   });
 
+  it("chunk 16 (SPC-009): a friend's reef plays two days with everyone alive, its own check", () => {
+    const recipe = presetById('friends-reef')!.recipe;
+    const report = runScenario(buildScenario(recipe), recipe, 0); // the check sets the length (48 h)
+    expect(report.hours).toBe(48);
+    expect(report.checks.map((c) => [c.name, c.pass])).toEqual([['everyone alive after two days', true]]);
+    expect(report.deaths).toEqual([]);
+    expect(report.passed).toBe(true);
+  });
+
   it('a check that fails says which number missed, and one about a tank that isn’t there fails', () => {
     const recipe: ScenarioRecipe = {
       version: 1,

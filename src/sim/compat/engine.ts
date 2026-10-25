@@ -786,6 +786,9 @@ function applyExceptionRules(A: CompatMember, B: CompatMember, ctx: CompatContex
     if (rule.other === a.id && a.id !== b.id) continue; // conspecific rules handled elsewhere
     const tag = ruleMatches(rule, b);
     if (!tag) continue;
+    // chunk 16: a living anemone in the tank is counted in ctx.stinging, so its sting is the 'sting' incident above;
+    // here only one not yet in the tank (a purchase, a species check) is warned of, or it would sting twice as 'harassment'
+    if (rule.other === 'tag:stinging_cnidarian' && B.creatureIds.length > 0) continue;
     let kind: IncidentRisk['kind'];
     let actor = A;
     let target = B;

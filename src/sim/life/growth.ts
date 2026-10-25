@@ -31,9 +31,14 @@ export function sizePotentialFactor(potentialSize: number): number {
   return 0.82 + 0.36 * clamp(potentialSize, 0, 100) / 100;
 }
 
-/** This individual's genetic adult size (cm). */
-export function adultSizeFor(species: SpeciesDefinition, genome: Genome): number {
-  return species.adultSizeCm * sizePotentialFactor(genome.potentials?.size ?? 50);
+/**
+ * This individual's genetic adult size (cm). With `role`, a species whose females are bigger (`special.maleSizeFactor`,
+ * chunk 16) gives anyone not female or becoming female the male's size: the young grow as males and stay small until
+ * one becomes the female. Without `role` (estimates for animals not yet born), the female's.
+ */
+export function adultSizeFor(species: SpeciesDefinition, genome: Genome, role?: ReproRole): number {
+  const f = role === undefined || role === 'female' || role === 'transitioning_female' ? 1 : species.special?.maleSizeFactor ?? 1;
+  return species.adultSizeCm * sizePotentialFactor(genome.potentials?.size ?? 50) * clamp(f, 0.1, 1);
 }
 
 /** Growth curve fraction 0..1 at an age. */
@@ -44,10 +49,10 @@ export function growthFraction(species: SpeciesDefinition, ageDays: number): num
   return clamp(1 - dmath.exp(-k * Math.max(0, ageDays)), 0, 1);
 }
 
-/** Expected size (cm) at an age for this genome, with ideal feeding. */
-export function sizeAtAge(species: SpeciesDefinition, genome: Genome, ageDays: number): number {
+/** Expected size (cm) at an age for this genome (and role, see adultSizeFor), with ideal feeding. */
+export function sizeAtAge(species: SpeciesDefinition, genome: Genome, ageDays: number, role?: ReproRole): number {
   const hatch = Math.max(0.05, species.lifecycle.hatchSizeCm || species.adultSizeCm * 0.05);
-  const adult = adultSizeFor(species, genome);
+  const adult = adultSizeFor(species, genome, role);
   return hatch + (Math.max(hatch, adult) - hatch) * growthFraction(species, ageDays);
 }
 

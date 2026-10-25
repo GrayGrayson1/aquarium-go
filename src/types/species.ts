@@ -564,4 +564,10 @@ export interface SpeciesSpecialNeeds {
    * social, not breeding, so it runs without a breeding module. Absent = only breedable species change sex.
    */
   socialSexChange?: boolean;
+  /**
+   * Chunk 16: the sexes differ in size. A male's adult size (and a young one's, before its sex is settled) as a
+   * fraction of a female's `adultSizeCm`: in the maroon clownfish the female is two to three times the male, and the one
+   * that becomes the female grows into her size. Absent = 1, both sexes the same.
+   */
+  maleSizeFactor?: number;
 }

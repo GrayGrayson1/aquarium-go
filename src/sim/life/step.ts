@@ -749,7 +749,7 @@ export function applyAgeing(state: GameState, c: Creature, sp: SpeciesDefinition
     }
   }
   if (opts.snapSize) {
-    const target = sizeAtAge(sp, c.genome, age);
+    const target = sizeAtAge(sp, c.genome, age, c.reproRole);
     if (c.sizeCm < target) c.sizeCm = target;
   }
   return revealed;
@@ -1036,7 +1036,7 @@ function stepCreature(state: GameState, env: TankEnv, c: Creature, sp: SpeciesDe
   }
 
   // ── Growth: approach the genetic size curve when fed and comfortable (stunted when not)
-  const target = sizeAtAge(sp, c.genome, age);
+  const target = sizeAtAge(sp, c.genome, age, c.reproRole);
   if (c.sizeCm < target) {
     const cond = (s.hunger < 70 ? 1 : s.hunger < 90 ? 0.4 : 0) * (0.5 + s.comfort / 200) * (c.illness ? 0.5 : 1);
     if (cond > 0) c.sizeCm += (target - c.sizeCm) * (1 - dmath.exp(-h * 0.25 * cond));

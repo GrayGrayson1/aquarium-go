@@ -442,7 +442,7 @@ Chunk 16's wave A: the 13 marine species in a friend's reef. None needs research
 | [CORAL — Lightning updates 2014](https://www.coralmagazine.com/2014/06/24/lightning-maroon-updates/) | 2 | wild mutation from Fisherman Island, PNG; **Lightning × normal gave ~50% Lightning twice**; not sex-linked; Morse Code is a sibling phenotype, not a line |
 
 **Modelled as:**
-- 16 cm (the big female), 30 gal and a 36×12 in footprint; `bodyDepth 1.05`
+- 16 cm (the big female; a male grows to 0.45 of her, `maleSizeFactor`, from Fishes of Australia's 2–3×, and the male that becomes the female grows into her size), 30 gal and a 36×12 in footprint; `bodyDepth 1.05`
 - a `pair_hierarchy` with female–female "lethal"; `host_seeker` with a hostNote (no anemone needed)
 - high-risk rules against the ocellaris and the seahorse
 - the only one of these 13 that breeds: `clownfish_substrate` like the ocellaris, protandrous, with male care, a 64-hour incubation, a nursery and up to 12 raised per clutch
@@ -607,7 +607,7 @@ Chunk 16's wave B: nine popular reef animals the game lacked. As with wave A, no
 - protogynous with `socialSexChange`; breeding `not_in_game` (reared only by the Oceanic Institute and Biota); lifespan 240 game-days
 - two loci:
   - `bars`: the Marquesan form (bars faint) as a rare recessive
-  - `intensity`: its "Blood red" overlay stands for the redder locality fish
+  - `intensity`: its "Richly coloured" overlay stands for the redder locality fish (no trade name: ADR-0052 decision 2)
 - the `angelfish_dwarf` behaviour set: it darts between caves and pecks at the rock; the art gives males more blue in the rear fins
 
 **Conflicts:** WoRMS and the Catalog of Fishes spell it *loriculus*, while the trade and ADR-0052 write *loricula*. The size is 15 cm (FishBase), about 10 cm (Australian Museum) or 3.5–4 in in tanks; the game uses 10. Tanks run from 55 gal (Animal-World, seen only; the site is gone) to 70, and the game uses 70. Protogyny is documented across *Centropyge* (Hioki 2002; Sakai et al. 2003; Lutnesky 1996) but not yet for this species. LiveAquaria's locality colours (redder Marshall Islands fish, thin-barred Christmas Island fish, blurry Cebu bars, blood-red Tahiti fish) are only individual variation in the game. Only the Marquesan form is named, and its inheritance is unknown. No juvenile colours were found, so the young look like the adults. The 5–7+ year lifespan is weakly sourced, and captive breeding at Bali Aquarich could not be verified.
@@ -866,10 +866,10 @@ Chunk 16's wave B: nine popular reef animals the game lacked. As with wave A, no
   - Only the maroon clownfish breeds, as the ocellaris does.
   - Some have been reared outside home tanks, but not in them: the emperor (commercially, Bali Aquarich), the anthias (in trials, ORA and Marineland Antibes), the wrasse (in research, University of Florida and Rising Tide) and the conch (in aquaculture, Harbor Branch).
   - The anthias and the wrasse still change sex without breeding (`socialSexChange`).
-  - Wave B adds eight more `not_in_game` species: the flame angelfish, six-line wrasse, lawnmower blenny, flame hawkfish, emerald crab, tuxedo urchin, sand-sifting starfish and bubble-tip anemone.
+  - Wave B adds seven more `not_in_game` species: the flame angelfish, six-line wrasse, lawnmower blenny, flame hawkfish, emerald crab, tuxedo urchin and sand-sifting starfish.
     - Some have been reared outside home tanks: the flame angel (the Oceanic Institute in 2002, then small Biota lots), the lawnmower blenny (Biota, since 2023), the tuxedo urchin (ORA, since 2019, and as a lab animal) and the emerald crab (larvae reared by Rhyne et al. 2006).
     - The six-line and the hawkfish have spawned in captivity but have never been raised.
-    - The bubble-tip anemone splits in tanks, but the game does not yet clone anemones.
+  - The bubble-tip anemone splits in tanks, and in the game too (`fission`): a settled, well-fed one splits in two now and then, each half a clone of the other.
   - The yellowtail damselfish breeds (`egg_layer_generic`), but it is hard (difficulty 0.75): ORA's first success raised about 60 fish from three spawns.
   - The flame angelfish and flame hawkfish change sex without breeding too (`socialSexChange`). The six-line wrasse is protogynous but has no `socialSexChange`.
 - **Morph genetics** are simplified wherever the real inheritance is unpublished: clownfish white expansion, seahorse colour, red mandarin, grey watchman and high-orange coral beauty. Chunk 16 adds:

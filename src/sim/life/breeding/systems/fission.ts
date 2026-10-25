@@ -11,6 +11,7 @@ import type { BreedingModule, RearingPlan, StepEnv } from '../types';
 import { createCreature, addCreature } from '@/sim/life';
 import { addHistory, gallonsOf, isMature, livingIn, plannedUnits, say, spName, stockingOf } from '../common';
 import { findSpecies } from '@/data/species';
+import { deepClone } from '@/sim/clone';
 
 const NONE: RearingPlan = {
   phases: [],
@@ -71,7 +72,7 @@ function split(env: StepEnv, parent: Creature): void {
     sex: parent.sex,
     // the new half is small and grows back: the game ages it as a half-grown young anemone (size follows age)
     ageDays: sp.lifecycle.juvenileDays * 0.6,
-    genome: structuredClone(parent.genome),
+    genome: deepClone(parent.genome), // not structuredClone: a solo command's settle runs this inside an Immer draft
     tankId: tank.id,
     captiveBred: true,
     motherId: parent.id,

@@ -1710,7 +1710,7 @@
       ],
       "evidence": [],
       "status": "GREEN",
-      "note": "code-architecture-game-2 m3: tests/sim/fix-econ-offline-market-speed.test.ts asserts at least 171 real seconds (180 × 0.95) at both speeds, more than the code guarantees at 3x (about 148 s); it passes on its seeds 11-15, and the review found seed 116 failing it. ADR-0016 decision 3 allows aligning that 3x check with the documented minimum as a reviewed test change (it must assert what the code guarantees, never less); until then the test is stricter than A2. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked."
+      "note": "code-architecture-game-2 m3: tests/sim/fix-econ-offline-market-speed.test.ts asserts at least 171 real seconds (180 × 0.95) at both speeds, more than the code guarantees at 3x (about 148 s); it passes on its seeds 11-15, and the review found seed 116 failing it. ADR-0016 decision 3 allows aligning that 3x check with the documented minimum as a reviewed test change (it must assert what the code guarantees, never less); until then the test is stricter than A2. Chunk 1 (2026-10-06): chunk 1's reviewer read S0's game diff (git diff 0d9fc5a 19928b8 -- src) once, as PLAN.md asked. Chunk 16 (2026-10-25): as decision 3 allows, the test asserts what the code guarantees: the least patient buyer's shortest window less the catch-up's own hours, about 148 real seconds at 3x and 176 at 10x, and 68 at 1x (now checked too), never less; the behaviour is unchanged (a change that started every such bid's full window on the return was reverted in review, since decision 3 keeps the windows as they are)."
     },
     {
       "id": "MKT-017",

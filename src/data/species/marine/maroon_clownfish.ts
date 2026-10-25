@@ -206,6 +206,7 @@ export const maroonClownfish: SpeciesDefinition = {
     { other: 'lined_seahorse', verdictFloor: 'high_risk', reason: 'A big, territorial, fast-feeding clownfish harasses slow seahorses and takes their food.', incidentRisk: 0.08 },
   ],
   special: {
+    maleSizeFactor: 0.45, // Fishes of Australia: females 2–3× the size of males; the female is the 16 cm adult
     hostNote: 'No anemone is needed. In the wild it hosts almost only the bubble-tip anemone; in a tank it will also claim a rock, coral or powerhead.',
   },
   visualLane: 'fish',
