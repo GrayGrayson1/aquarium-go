@@ -1512,7 +1512,7 @@ REL-012, REL-018.
   four checks again, typecheck, unit 3,363, build, e2e 335 of 335 (39.9 min), pushed. Nothing deployed (a developer tool
   needs no release; ADR-0051 decision 1).
 
-### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24; done 2026-10-25 (`66e4a37`), released as 0.8.0
+### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24; done 2026-10-25 (`66e4a37`); 0.8.0 being released
 
 - **What:** the owner's words, verbatim (2026-10-24): "add all 12 missing species as the next chunk and what other
   species should we be adding? how will this work for variations?" It began with a friend's 210-gallon reef the owner
@@ -1645,7 +1645,17 @@ REL-012, REL-018.
     card reading "Splits by itself"; the autofeeder weighs each animal's vote by its feeding need and passes over a
     food made for another species or water while a fitting one is in stock (B-211); catch-up bids as ADR-0016 keeps
     them; release 0.8.0 once green.
-  - *Backlog:* B-211 to B-216 (B-211, the autofeeder's vote, and B-213, the anemone's split, built).
+  - *0.8.0's first Pages build failed* (run `40237089954`, on `main` `0289eaf`; nothing deployed, the Render static
+    site's deploy was cancelled): two AI tests that pass on the Mac failed on GitHub's x64 Node, which takes a
+    different path through a long AI run. One was a real case chunk 16 made about twice as common: an axolotl resting
+    with its centre in a java fern's crown for good, wedged against the back glass (the way out it chose led into the
+    glass); it now walks out sideways (`chooseWedgeExit` counts the nose and tail against the glass), and a swimming
+    walker lands only where its body fits. The test now measures a drawn rock as drawn (river stones are smaller than
+    their boxes since chunk 16). The other, the blenny's dart, measured speed a second after the tap, when the dart is
+    often over; it now measures from the tap. Over 96 nudged paths the collider test's rate is back to before the
+    chunk (6 against 5 with a brief nose or tail in decor; B-217), the blenny's 0 of 96.
+  - *Backlog:* B-211 to B-217 (B-211, the autofeeder's vote, and B-213, the anemone's split, built; B-217 the rare
+    brief collisions above).
 
 ## Releases
 
