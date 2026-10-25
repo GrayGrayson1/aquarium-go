@@ -20,10 +20,17 @@ internal clone `~/LocalTest/AquariumGo` is at `c7ade07` with no patch applied (i
 the sync helpers `patch-sync.sh` and `patch-at.sh`, and throwaway probes from 2026-10-24). A lab dev server
 may still be running on port 5173 in CNVS's "Skye" terminal (started from the clone); e2e uses its own port (4399).
 
-**Progress (Chase, 2026-10-24, in this session; the chunk started at `1b929a7`).** All three waves are built; PLAN.md
-chunk 16's "Built" notes say what and how. Still to do when this note was written: the four checks on the final code,
-the fresh reviewer and its blockers, the commits, `PLAN.md`/`REQUIREMENTS.json` status, the push of `next`, and the
-owner's questions (below).
+**Progress (Chase, 2026-10-24/25, in this session; the chunk started at `1b929a7`).** All three waves are built and
+committed on `next` (not pushed): `efe420c` data/sim/saves, `e487495` art, `556ba33` behaviour, `b9b527f` lab
+presets, `e232b04` seeded tests + three sim fixes, `5068399` docs (each message explains its changes); PLAN.md chunk
+16's "Built" notes say what and how. **Running when this note was written (2026-10-25):** the four checks on `5068399`
+in `~/LocalTest/AquariumGo` (typecheck, unit, build, e2e under caffeinate; logs `chk-*.log` in the session
+scratchpad; don't sync files into the clone until e2e ends), and the fresh reviewer (Opus 5.5, max effort) on
+`git diff 1b929a7..5068399` (its brief `reviewer-brief.md`, report `review-c16.md`, both in the scratchpad). **Next:**
+fix the reviewer's blockers (and rerun the checks if code changes), mark SPC-001..009 GREEN with the evidence
+(`req-update.py` in the scratchpad does it; SPC-010 stays IN_PROGRESS), push `next` from the clone, then ask the owner
+the questions below and about 0.8.0. The owner answered one more question during the chunk (ADR-0052 round 3,
+decision 10: the first hour's toast cap is 100).
 - *Own testing done:* every new fish in the art gallery (`?sandbox=fishart-gallery&only=<id>`; young, male and female,
   the forms) and every critter in `critterart-gallery.html`; the two lab presets in the tank view at 1600×1000 and
   390×844 (day and night); a game week headless for both presets with autofeeders (`npm run scenario -- <preset>
