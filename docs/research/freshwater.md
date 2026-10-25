@@ -1,19 +1,19 @@
 # Freshwater species research — lane species-fw
 
-This document is the research record behind every freshwater `SpeciesDefinition` in Aquarium Go: the three freshwater starters (`src/data/species/axolotl.ts`, `betta.ts`, `pea_puffer.ts`) and the 21 roster species in `src/data/species/freshwater/`. For each species it lists the sources used, the key values encoded, explicit compatibility rules, and confidence and conflicts. It ends with the cross-cutting **Conflicts & uncertainty** and the **Visual notes for render lanes**.
+This document is the research record behind every freshwater `SpeciesDefinition` in Aquarium Go: the three freshwater starters (`src/data/species/axolotl.ts`, `betta.ts`, `pea_puffer.ts`) and the 30 roster species in `src/data/species/freshwater/`, nine of them added in chunk 16 (ADR-0052). For each species it lists the sources used, the key values encoded, explicit compatibility rules, and confidence and conflicts. It ends with the cross-cutting **Conflicts & uncertainty** and the **Visual notes for render lanes**.
 
 The per-species sections are generated from the species data files, so they always match the game values. The data files are the source of truth; update this document when they change.
 
 ## Method
 
-- **Research date:** September 2026. There were four parallel literature passes (invertebrates; cool-water fish; tropical fish; bottom-dwellers and the frog), followed by direct verification of the starter records and of every URL cited.
+- **Research date:** September 2026. There were four parallel literature passes (invertebrates; cool-water fish; tropical fish; bottom-dwellers and the frog), followed by direct verification of the starter records and of every URL cited. Chunk 16's nine species were researched in October 2026 in two passes (five fish; the livebearers and the two invertebrates).
 - **Sources cited are ones that were actually opened.** Two exceptions are flagged where they occur. The axolotl copper paper (Tyrp1) was verified only by its title in a search listing, because the full text sits behind a login redirect. Any hex colours suggested by researchers are approximations chosen by this lane; no source gives hex values.
 - **Source tiers:**
-  - **Tier 1:** university husbandry programmes (University of Kentucky AGSC), FishBase, Animal Diversity Web, government and extension sources (USGS NAS, USFWS ecological risk screenings, UF/IFAS, NIES Japan, CDC, WDFW), and peer-reviewed papers.
-  - **Tier 2:** veterinarian-written care sheets (PetMD), long-established references (Seriously Fish, Practical Fishkeeping, TFH, Amazonas), and major retailers used for practical parameters (Aquarium Co-Op, LiveAquaria, Aquatic Arts, The Shrimp Farm, PetSmart).
+  - **Tier 1:** university husbandry programmes (University of Kentucky AGSC, the Xiphophorus Genetic Stock Center), FishBase, Animal Diversity Web, WoRMS, the Catalog of Fishes, government and extension sources (USGS NAS, USFWS ecological risk screenings, UF/IFAS, NIES Japan, CDC, WDFW, FAO), and peer-reviewed papers.
+  - **Tier 2:** veterinarian-written care sheets (PetMD), long-established references (Seriously Fish, Practical Fishkeeping, TFH, Amazonas, Tetra), hobby societies and magazines with breeding data (The Angelfish Society; Norton's FAMA articles), and major retailers and wholesalers used for practical parameters (Aquarium Co-Op, LiveAquaria, Aquatic Arts, The Shrimp Farm, PetSmart, Aquarium Glaser, Aquariadise).
   - **Tier 3:** breeder, club and hobbyist sources, used only for morph descriptions and edge cases.
 - **Compatibility-critical rules have at least two sources** where possible. These are the `exceptionRules` with a `high_risk` or `incompatible` floor, and the test suite enforces the two-source minimum. Uncertainty is recorded in `confidenceNotes` rather than hidden.
-- **Brackish handling:** axolotls are strictly freshwater (AGSC adds salts only to restore hardness). No species here is classified as brackish. Amano and nerite larvae need brackish water, so their reproduction does not complete in freshwater tanks.
+- **Brackish handling:** axolotls are strictly freshwater (AGSC adds salts only to restore hardness). No species here is classified as brackish. Amano and nerite larvae need brackish water, so their reproduction does not complete in freshwater tanks. Ghost shrimp larvae (chunk 16) need none (Dobkin, FAO), so the ghost shrimp breeds in freshwater.
 - **Time compression** follows the conventions of the starter records:
   - Incubation or gestation in game-hours ≈ real days × 8.
   - `maturityDays` ≈ 6–20; fast breeders get low values.
@@ -25,7 +25,7 @@ The per-species sections are generated from the species data files, so they alwa
   - `baseValue` is a 2026 US retail price for an ordinary captive-bred adult.
   - `visitorAppeal` rates charisma, colour and behaviour.
 - **Market allele frequencies** in `genetics.loci` are game-tuned so that random market stock roughly resembles real trade prevalence (for example, most cherry shrimp are red and most mystery snails are gold). They are not measured population frequencies.
-- **Unlocks:** every non-starter species requires its roster group key. The freshwater starters require `fw_coldwater` (axolotl) or `fw_basic` (betta, pea puffer) *unless chosen as the starter*. See the report to the orchestrator.
+- **Unlocks:** every non-starter species requires its roster group key. The freshwater starters require `fw_coldwater` (axolotl) or `fw_basic` (betta, pea puffer) *unless chosen as the starter*. See the report to the orchestrator. Chunk 16's nine species are the exception: they have no unlock key and are in the shop from the start (ADR-0052 decisions 4 and 9).
 
 ## Species
 
@@ -566,23 +566,256 @@ The per-species sections are generated from the species data files, so they alwa
 - Strain genetics are simplified from breeder experience (blue diamond recessive, pigeon blood dominant).
 - Compressed time: ~2.5 day hatch ≈ 20 game-hours; ~10 year lifespan ≈ 400 game-days.
 
+### Chunk 16: freshwater favourites (ADR-0052)
+
+Chunk 16's wave C: nine freshwater species, researched October 2026. None needs research or an unlock key of its own, so each is in the shop from the start (ADR-0052 decisions 4 and 9). The data files are the source of truth for every number. Where they differ from ADR-0052's list (an accepted name), the data wins and the section says why. As for the other species, the key values, sources, rules and the first confidence bullets are generated from each data file (its `confidenceNotes`). The bullets after them come from the research briefs and the data files' comments. Each anchor line above a heading matches the link in that species' data file.
+
+<a id="freshwater-angelfish"></a>
+### Freshwater Angelfish — *Pterophyllum scalare* (`freshwater_angelfish`)
+
+**Key values used:** adult 15 cm · min tank 30 gal · 23–30 °C (ideal 25–28) · pH 6–8 (ideal 6.5–7.4) · GH 1–15 · KH 1–10 · group group (min 1, ideal 5) · breeding `substrate_spawner` · classes freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Least Concern (IUCN Red List, assessed 2020).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase — Pterophyllum scalare (Freshwater angelfish)](https://www.fishbase.se/summary/Pterophyllum-scalare.html) | 1 | 15 cm TL (size field 10.5); 24–30 °C, pH 6.0–8.0, dH 5–13; swamps with dense vegetation; 7 bars in young, 4 in adults; IUCN Least Concern (2020); both parents guard |
+| [Seriously Fish — Pterophyllum scalare](https://www.seriouslyfish.com/species/pterophyllum-scalare/) | 2 | 150 mm SL, 20 cm tall; 100×40×50 cm tank; eats small fish; eggs on vertical surfaces; easy; farm-bred |
+| [Aquarium Co-Op — Angelfish care guide](https://www.aquariumcoop.com/blogs/aquarium/angelfish-care-guide) | 2 | 29 gal for 4 adults; avoid nano fish and dwarf shrimp; up to 1,000 eggs; 8–12 years; $5–20 |
+| [Practical Fishkeeping — Keeping and breeding angelfish](https://www.practicalfishkeeping.co.uk/features/keeping-and-breeding-angelfish-in-the-aquarium/) | 2 | tank 50 cm tall; hatch within 48 h at 27–28 °C; free-swimming about day 7; baby brine for ~3 weeks |
+| [The Angelfish Society — Phenotype library (2007)](https://www.theangelfishsociety.org/phenotype_library_2007/Dark_Intro.html) | 2 | Dark series D > M > Gm > g; zebra, stripeless, smokey, veil; koi = gold marble blushing; gold hides smokey |
+| [Norton (1982) Angelfish genetics, part I. FAMA (reprinted at finarama.com)](https://www.finarama.com/genetics/1982prt1.htm) | 2 | crossing counts; black lace one dose, black two; zebra same in one or two doses; smokey 1:1 |
+
+**Explicit compatibility rules:**
+- `neon_tetra` → floor `high_risk`, incident risk 0.12/day: Adult angelfish hunt neon tetras and other fish small enough to swallow.
+- `tag:shrimp_dwarf` → floor `high_risk`, incident risk 0.15/day: Angelfish eat dwarf shrimp.
+
+**Confidence & conflicts:**
+- The colour genetics rest on Joanne Norton’s crossing experiments in FAMA (hobby magazine, not peer-reviewed), as summarised by TAS; no peer-reviewed paper was found.
+- Sources disagree on leopard (TAS: chocolate with zebra; Norton: zebra with smokey, and only under short days); the game names no leopard form.
+- Stripeless is partly dominant in Norton and TAS but called recessive in the Finarama timeline; the game follows Norton.
+- Aquarium angelfish may carry genes from more than one wild Pterophyllum species.
+- In the game the zebra, stripeless and smokey genes show only on fish with the wild bars (silver and black lace). TAS records gold hiding smokey; hiding them on marble and black fish too is the game's simplification. Halfblack, pearlscale, albino, streaked and platinum are left out.
+- Compressed time: 6–12 month maturity = 22 game-days; ~2 day hatch ≈ 18 game-hours; 8–12 year lifespan ≈ 400 game-days.
+
+<a id="german-blue-ram"></a>
+### German Blue Ram — *Mikrogeophagus ramirezi* (`german_blue_ram`)
+
+**Key values used:** adult 5.5 cm · min tank 20 gal · 25–31 °C (ideal 27–30) · pH 4.5–7.5 (ideal 5.5–6.8) · GH 1–10 · KH 0–8 · group pair (min 1, ideal 2) · breeding `substrate_spawner` · classes freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Least Concern (IUCN Red List, assessed 2020).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase — Mikrogeophagus ramirezi (Ram)](https://www.fishbase.se/summary/Mikrogeophagus-ramirezi.html) | 1 | 4.2 cm SL; Orinoco llanos; 27–30 °C, pH 5.0–6.0; IUCN Least Concern (2020) |
+| [Seriously Fish — Mikrogeophagus ramirezi](https://www.seriouslyfish.com/species/mikrogeophagus-ramirezi/) | 2 | 60×30 cm for a pair; 27–30 °C, pH 4–7, 1–10 dGH; sifts substrate; both parents guard; strains gold, electric blue, balloon; never add to an immature tank |
+| [Aquarium Co-Op — Ram cichlids](https://aquariumcoop.com/blogs/aquarium/ram-cichlids) | 2 | ideally 29–30 °C; pair in a 20 gal; up to 4 years; females have blue spangles in the black spot; new pairs eat first spawns |
+| [Practical Fishkeeping — How to breed the ram](https://www.practicalfishkeeping.co.uk/features/how-to-breed-the-ram-mikrogeophagus-ramirezi/) | 2 | about 200 eggs; free-swimming about 8 days after spawning; males with extended 3rd–4th dorsal rays; pink belly in females |
+| [Tetra — Ram cichlid](https://blog.tetra.net/en-en/ram-cichlid-mikrogeophagus-ramirezi/) | 2 | black eye bar, black flank spot; orange head shading to blue; lower water, in pairs; up to 3 years |
+
+**Explicit compatibility rules:**
+- `tag:cichlid` → floor `conditional`, incident risk 0.04/day: Other cichlids compete for the floor and can bully a pair of rams.
+
+**Confidence & conflicts:**
+- No published inheritance for the colour strains; electric blue and gold follow forum claims, simplified.
+- Sources disagree on brood care (both parents in Seriously Fish and PFK, the female in FishBase); the game has both guard.
+- Advised temperatures run from 22–26 °C (LiveAquaria) to 29–30 °C (Aquarium Co-Op); the game follows FishBase and Seriously Fish (27–30 °C).
+- No age at maturity was found; the balloon form's inheritance is unpublished too (modelled as recessive).
+- Compressed time: a 2–3 day hatch ≈ 16 game-hours; a 3–4 year lifespan ≈ 140 game-days.
+
+<a id="harlequin-rasbora"></a>
+### Harlequin Rasbora — *Trigonostigma heteromorpha* (`harlequin_rasbora`)
+
+**Key values used:** adult 4.5 cm · min tank 10 gal · 21–28 °C (ideal 23–26.5) · pH 5–7.5 (ideal 5.8–7) · GH 1–12 · KH 1–10 · group shoal (min 6, ideal 10) · breeding `egg_scatter_cover` · classes freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Least Concern (IUCN Red List, assessed 2019).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase — Trigonostigma heteromorpha (Harlequin rasbora)](https://www.fishbase.se/summary/Trigonostigma-heteromorpha.html) | 1 | 5 cm TL; 22–25 °C, pH 5.0–7.0, dH 5–12; eggs under leaves; IUCN Least Concern (2019) |
+| [Tan (2020) Trigonostigma truncata, a new species, and the harlequin’s colours. Raffles Bulletin of Zoology 68:421–433](https://lkcnhm.nus.edu.sg/app/uploads/2020/01/RBZ-2020-0058.pdf) | 1 | 35 mm SL; range; live colours; the black “axine”; T. truncata split off |
+| [Seriously Fish — Trigonostigma heteromorpha](https://www.seriouslyfish.com/species/trigonostigma-heteromorpha/) | 2 | 60×30 cm for 8–10; 21–28 °C, pH 5.0–7.5; spawns under broad leaves; golden, blue and black strains |
+| [LiveAquaria — Harlequin Rasbora](https://www.liveaquaria.com/products/harlequin-rasbora) | 2 | 10 gal; schools of 8–10; males copper-orange, females more golden; easy |
+
+**Confidence & conflicts:**
+- Some fish sold as harlequins may be Trigonostigma truncata (split off in 2020), whose wedge stops short of the tail.
+- Lifespan (5–8 years) comes from an uncited Wikipedia figure.
+- Golden strain inheritance is unpublished; modelled as recessive.
+- The game breeds it with its `egg_scatter_cover` system (eggs need cover; no parental care), though harlequins stick their eggs under broad leaves rather than scattering them.
+- Compressed time: a 1–2 day hatch ≈ 10 game-hours; a 5–8 year lifespan ≈ 200 game-days.
+
+<a id="zebra-danio"></a>
+### Zebra Danio — *Danio rerio* (`zebra_danio`)
+
+**Key values used:** adult 5 cm · min tank 20 gal · 16–28 °C (ideal 19–24) · pH 6–8 (ideal 6.5–7.5) · GH 5–20 · KH 3–12 · group school (min 6, ideal 10) · breeding `egg_scatter_cover` · classes freshwater_cool, freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Least Concern (IUCN Red List, assessed 2009).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase — Danio rerio (Zebra danio)](https://www.fishbase.se/summary/Danio-rerio.html) | 1 | 3.8 cm SL; five stripes onto the tail; two pairs of barbels; 18–24 °C, pH 6.0–8.0; average 3.5 years, oldest 5.5; IUCN Least Concern (2009) |
+| [Seriously Fish — Danio rerio](https://www.seriouslyfish.com/species/danio-rerio/) | 2 | 90×30 cm; 18–25 °C; groups of 8–10; leopard is D. rerio; eggs non-adhesive; GloFish excluded |
+| [Aquarium Co-Op — Zebra danio](https://www.aquariumcoop.com/blogs/aquarium/zebra-danio) | 2 | 20 gal long; may nip if the school is small; avoid bettas; 100+ eggs |
+| [Stewart et al. (2021) Long-fin is a dominant gain of function in kcnh2a. Development 148](https://pmc.ncbi.nlm.nih.gov/articles/PMC8217709) | 1 | long-fin dominant; hobbyist origin |
+| [Watanabe et al. (2006) The leopard gene is connexin 41.8. EMBO Reports 7:893](https://pmc.ncbi.nlm.nih.gov/articles/PMC1559663) | 1 | leopard recessive null allele; spots in homozygotes |
+| [Lamason et al. (2005) SLC24A5 and the golden zebrafish. Science 310:1782](https://www.bio.davidson.edu/genomics/309redesigned/papers_current/sequencing/genomes/2005ionchannel_pigmentation.pdf) | 1 | golden recessive; lighter stripes |
+| [Lessman (2014) Zebrafish clutch size and spawning interval](https://digitalcommons.memphis.edu/facpubs/504) | 1 | 39.6 embryos per clutch; every 2.86 days |
+
+**Explicit compatibility rules:**
+- `tag:long_fins` → floor `conditional`, incident risk 0.04/day: Zebra danios nip slow, long-finned fish, especially in small groups; a shoal of eight or more mostly keeps to itself.
+
+**Confidence & conflicts:**
+- Whether the trade’s leopard and golden danios carry the same alleles as the lab lines is likely but not proven.
+- Albino danios exist but the art cannot yet show the pink eye, so the game leaves the albino out.
+- Clutch size: lab pairs average about 40 eggs every three days (Lessman 2014), while Aquarium Co-Op says 100 or more; the game uses 30–120. Whether two long-fin copies grow longer fins is unverified.
+- Compressed time: a 24–36 h hatch ≈ 10 game-hours; a 3.5-year average (5.5 at most) lifespan ≈ 160 game-days.
+
+<a id="platy"></a>
+### Platy — *Xiphophorus maculatus* (`platy`)
+
+**Key values used:** adult 5 cm · min tank 15 gal · 18–28 °C (ideal 22–26) · pH 6.8–8.5 (ideal 7.2–8.2) · GH 9–30 · KH 4–20 · group group (min 3, ideal 6) · breeding `livebearer` · classes freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Data Deficient (IUCN Red List, assessed 2018).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase — Xiphophorus maculatus (Southern platyfish)](https://www.fishbase.se/summary/Xiphophorus-maculatus.html) | 1 | males 4 cm, females 6 cm TL; 18–25 °C, pH 7.0–8.0; gestation 24–30 days, 20–80 young; mature 3–4 months; IUCN Data Deficient (2018) |
+| [Seriously Fish — Xiphophorus maculatus](https://www.seriouslyfish.com/species/xiphophorus-maculatus/) | 2 | 60×30 cm; 20–26 °C, hard water; very peaceful; hybrid ancestry |
+| [Aquarium Co-Op — Care guide for platy fish](https://www.aquariumcoop.com/blogs/aquarium/platy-care-guide) | 2 | 10–20 gal; 2 females per male; 3–4 years; $2–4 |
+| [Kallman & Atz (1967) The tail-spot patterns of the platyfish. Zoologica 51:107–135](https://archive.org/stream/biostor-194013/biostor-194013_djvu.txt) | 1 | one allelic series of dominant tail-spot alleles; at most two patterns per fish |
+| [Gordon (1946) Comet and the E modifier in swordtails and platies. Zoologica 31:77–88](https://archive.org/stream/biostor-194281/biostor-194281_djvu.txt) | 1 | wagtail = comet + E; golden st recessive |
+| [Xiphophorus Genetic Stock Center (Texas State University) — stock list](https://imls.txst.edu/stocks.html) | 1 | sex-linked pigment genes; W, X and Y sex chromosomes |
+| [Wiedermann — Practical Platy Genetics (hobby guide)](https://ephieslivebearers.weebly.com/uploads/5/7/7/9/57793349/practical_platy_genetics_1.0.pdf) | 3 | tuxedo = nigra on gold; hi-fin dominant; Mickey Mouse = moon + twin |
+
+**Confidence & conflicts:**
+- Many platy colour genes are sex-linked in wild stocks; the game treats them as ordinary genes, as it does for the guppy.
+- The genetics of trade red, tuxedo, salt-and-pepper, hi-fin and Mickey Mouse come from a hobby guide; Mickey Mouse is “moon complete” to one breeder and moon plus twin to the guide (the game uses the guide).
+- Platies and swordtails hybridise freely; the game does not cross species.
+- Temperature: 18–25 °C (FishBase), 20–26 °C (Seriously Fish) and 21–28 °C (Aquarium Co-Op); the game tolerates 18–28 °C with 22–26 °C ideal. Broods are 20–80 (FishBase, Seriously Fish) or 20–40 (Wikipedia). No KH figure was found.
+- Compressed time: a ~28 day gestation = 224 game-hours; 3–4 month maturity = 10 game-days; a 3–4 year lifespan ≈ 140 game-days.
+
+<a id="swordtail"></a>
+### Swordtail — *Xiphophorus hellerii* (`swordtail`)
+
+**Key values used:** adult 11 cm · min tank 30 gal · 18–28 °C (ideal 22–26) · pH 7–8.5 (ideal 7.2–8.2) · GH 10–30 · KH 5–20 · group harem (min 3, ideal 4) · breeding `livebearer` · classes freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Least Concern (IUCN Red List, assessed 2018).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase — Xiphophorus hellerii (Green swordtail)](https://www.fishbase.se/summary/Xiphophorus-hellerii.html) | 1 | males 14 cm, females 16 cm TL; 22–28 °C, pH 7.0–8.0; gestation 24–30 days, 20–200 young; one male to several females; IUCN Least Concern (2018) |
+| [Seriously Fish — Xiphophorus hellerii](https://www.seriouslyfish.com/species/xiphophorus-hellerii/) | 2 | 120×30 cm; fast rocky streams; sword is the lower caudal lobe, males only; males form hierarchies |
+| [Tetra — Swordtail](https://blog.tetra.net/en-en/swordtail-xiphophorus-helleri/) | 2 | males about 10 cm without the sword; strong jumpers; up to 5 years |
+| [Texas State University (2021) — How the swordtail grows its sword (kcnh8)](https://news.txst.edu/research-and-innovation/2021/swordtail-fish-genetics.html) | 1 | sword grows at puberty; females prefer long swords; Darwin |
+| [Gordon (1946) Comet and the E modifier in swordtails and platies. Zoologica 31:77–88](https://archive.org/stream/biostor-194281/biostor-194281_djvu.txt) | 1 | wagtail = comet + E, backcrossed into swordtails |
+| [Aquarium Glaser — Xiphophorus hellerii Wien Lyra](https://www.aquariumglaser.de/en/fish-archives/xiphophorus_hellerii_wien_lyra_en) | 2 | lyretail males’ gonopodium too long to use; part of each brood lyretail |
+
+**Explicit compatibility rules:**
+- `tag:shrimp_dwarf` → floor `conditional`, incident risk 0.04/day: Adult swordtails eat shrimplets and can catch small adult shrimp.
+
+**Confidence & conflicts:**
+- The colour genes are simplified: in wild stocks sword colour and some red patterns are sex-linked (XGSC).
+- Maturity is given as about 3 months (Wikipedia) and 8–12 months (FishBase); the game uses about 4 months.
+- Female-to-male sex change is reported in some conditions (FishBase); the game does not model it.
+- Swordtails and platies hybridise freely; the game does not cross species.
+- Tank: 80 cm minimum (FishBase) against 120 cm (Seriously Fish); the game uses 30 gal with a 36 in footprint. Whether trade red came from crosses with platies is unverified, and the black and tuxedo histories (Aquarium Glaser) are uncorroborated. No source gives the sword's length in mm.
+- Compressed time: a ~28 day gestation = 224 game-hours; maturity = 14 game-days; a 3–5 year lifespan ≈ 160 game-days.
+
+<a id="dwarf-gourami"></a>
+### Dwarf Gourami — *Trichogaster lalius* (`dwarf_gourami`)
+
+**Key values used:** adult 7 cm · min tank 15 gal · 22–29 °C (ideal 24–28) · pH 6–8 (ideal 6.5–7.5) · GH 2–18 · KH 4–10 · group solitary_or_pair (min 1, ideal 1) · breeding `bubble_nest` · classes freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Least Concern (IUCN Red List, assessed 2010).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase — Trichogaster lalius (Dwarf gourami)](https://www.fishbase.se/summary/Trichogaster-lalius.html) | 1 | 9.5 cm TL; 25–28 °C, pH 6.0–8.0; about 600 floating eggs; hatch 12–24 h; IUCN Least Concern (2010); 2022 synonymy note |
+| [USFWS — Ecological Risk Screening Summary: Dwarf Gourami](https://www.fws.gov/sites/default/files/documents/Ecological-Risk-Screening-Summary-Dwarf-Gourami.pdf) | 1 | male colours (Dorn 1916); DGIV in imports; sold in bottles in Calcutta |
+| [Seriously Fish — Trichogaster lalius](https://www.seriouslyfish.com/species/trichogaster-lalius/) | 2 | 60×30×30 cm for a pair; 22–27 °C; two males fight; bubble nest up to 700 eggs; DGIV untreatable; colour forms |
+| [Aquarium Co-Op — Dwarf gourami](https://www.aquariumcoop.com/blogs/aquarium/dwarf-gourami) | 2 | 10 gal; males are territorial bullies; eats cherry shrimp; powder blue, flame; 2–4 years |
+| [Practical Fishkeeping — Let’s hear it for the dwarf gourami](https://www.practicalfishkeeping.co.uk/features/lets-hear-it-for-the-dwarf-gourami/) | 2 | DGIV invariably fatal; swims at all levels |
+
+**Explicit compatibility rules:**
+- `betta` → floor `high_risk`, incident risk 0.12/day: Two territorial labyrinth fish that claim the surface: a male betta and a dwarf gourami often fight.
+- `honey_gourami` → floor `conditional`, incident risk 0.06/day: A male dwarf gourami bullies other gouramis.
+- `fancy_guppy` → floor `conditional`, incident risk 0.04/day: Dwarf gourami males can pick on showy, colourful fish like male guppies.
+
+**Confidence & conflicts:**
+- Its scientific name is disputed: Catalog of Fishes and FishBase have treated it as Trichogaster fasciata since 2022, others keep T. lalius; the game uses T. lalius.
+- Colour-form inheritance is unpublished; the ladder is a playable simplification.
+- Sources disagree on shrimp: Seriously Fish lists cherry shrimp as tankmates, Aquarium Co-Op says it eats them; the game says caution.
+- Lifespan: 2–4 years (Aquarium Co-Op) against 4–6 (Wikipedia).
+- Size: 9.5 cm TL (FishBase) against "attains 5 cm" (the IUCN text in the USFWS summary); the game uses 7 cm. No age at maturity was found. The dwarf gourami iridovirus (DGIV) is not modelled as a disease.
+- Compressed time: a 12–36 h hatch ≈ 8 game-hours; a 2–4 year lifespan ≈ 140 game-days.
+
+<a id="ghost-shrimp"></a>
+### Ghost Shrimp — *Palaemon paludosus* (`ghost_shrimp`)
+
+**Key values used:** adult 4 cm · min tank 5 gal · 15–30 °C (ideal 20–26) · pH 6.5–8.2 (ideal 7–8) · GH 3–15 · KH 3–15 · group colony (min 1, ideal 6) · breeding `shrimp_berried` · classes freshwater_cool, freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Least Concern (IUCN Red List).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [Animal Diversity Web (University of Michigan) — Palaemonetes paludosus](https://animaldiversity.org/accounts/Palaemonetes_paludosus/) | 1 | adults under 50 mm; Atlantic coastal plain; 8–85 eggs; incubation 12–14 days; matures in 2–3 months; lives 6–13 months |
+| [WoRMS — Palaemon paludosus (Gibbes, 1850)](https://www.marinespecies.org/rest/AphiaRecordByAphiaID/932400) | 1 | accepted name Palaemon paludosus; Palaemonetes paludosus unaccepted |
+| [Dobkin — Abbreviated larval development in caridean shrimps (FAO)](https://www.fao.org/4/AC741T/AC741T24.htm) | 1 | three zoeal stages; postlarva in 5–10 days without food; no brackish water needed |
+| [The Shrimp Farm — Ghost shrimp care sheet](https://www.theshrimpfarm.com/posts/shrimp-caresheet-ghost-shrimp-palaemonetes-sp/) | 2 | 18–27.5 °C, pH 6.5–8.0; 10 gal, ~3 per gallon; more aggressive than dwarf shrimp; sponge filter; 1–1.5 years |
+| [Aquariadise — Ghost shrimp care](https://aquariadise.com/ghost-shrimp-palaemonetes-care-info/) | 2 | 5 gal; males ~4 cm, females ~5 cm; green ovary saddle; $1–3 |
+
+**Confidence & conflicts:**
+- Shops sell several animals as “ghost shrimp”, including the larger, aggressive whisker shrimp (Macrobrachium); the game models Palaemon paludosus.
+- Sizes conflict (2.5 cm in Wikipedia, up to 5 cm in ADW) and so does the egg-carrying time (12–14 days against about 3 weeks).
+- WoRMS moved it to *Palaemon* (De Grave & Ashelby 2013); ADW and the USFWS still say *Palaemonetes*, and ADR-0052 listed it as *Palaemonetes paludosus*. The egg colour is green (The Shrimp Farm) or brown (a hobby profile); the game uses green. The IUCN year was not confirmed.
+- In the game the young hatch as larvae but need no brackish water (unlike the amano's); the larval week is counted as part of rearing.
+- Compressed time: about 2½ weeks carrying eggs ≈ 140 game-hours; the 5–10 day larval stage sits inside the 96 rearing hours; a 1–1.5 year lifespan ≈ 50 game-days.
+
+<a id="ramshorn-snail"></a>
+### Ramshorn Snail — *Planorbella duryi* (`ramshorn_snail`)
+
+**Key values used:** adult 1.5 cm · min tank 5 gal · 12–32 °C (ideal 22–27) · pH 6.5–8.4 (ideal 7–8.2) · GH 6–18 · KH 3–15 · group colony (min 1, ideal 5) · breeding `snail_egg_clutch` · classes freshwater_cool, freshwater_tropical, freshwater_planted · unlock none (in the shop from the start; ADR-0052 decision 9) · conservation: Not evaluated (IUCN global); NatureServe G5 (secure).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [Lucid key, Australian Freshwater Molluscs — Planorbella duryi](https://keys.lucidcentral.org/keys/v3/freshwater_molluscs/key/australian_freshwater_molluscs/Media/Html/entities/planorbella_duryi.htm) | 1 | up to 25 mm; sinistral, biconcave shell; jelly egg masses, direct development; algae and detritus |
+| [Freshwater Gastropods of North America (Dillon) — Helisoma scalare duryi](https://fwgna.org/species/planorbidae/h_scalaris_duryi.html) | 1 | Florida range; self-fertilises with a delay; stores sperm ~150 days; red (albino) domestic form; floats on an air pocket |
+| [USFWS — Ecological Risk Screening Summary: Seminole Ramshorn (2025)](https://www.fws.gov/sites/default/files/documents/2025-01/ecological-risk-screening-summary-seminole-ramshorn.pdf) | 1 | valid name Planorbella duryi; adults ~20 mm; best growth at 26 °C, survives 33 °C; no laying below 12 °C |
+| [The Shrimp Farm — Ramshorn snail care](https://www.theshrimpfarm.com/posts/ramshorn-snail-care/) | 2 | 22–28 °C, pH 6.5–8.0; colour forms; safe with shrimp; booms when overfed; about 1 year |
+| [Aquarium Glaser — Planorbella duryi](https://aquariumglaser.de/en/fisharchive/planorbella-duryi-2) | 2 | clutches up to 15 eggs, hatch in 10–12 days; one snail can start a colony; leaves healthy plants alone |
+
+**Confidence & conflicts:**
+- Colour-form inheritance is unpublished for this snail; red, blue and leopard are modelled as recessive.
+- Egg counts per clutch differ (up to 15 in Aquarium Glaser; about 21–26 averaged from Milward-de-Andrade et al. 1978).
+- Some UK “red ramshorns” are the great ramshorn Planorbarius corneus instead.
+- ADR-0052 listed it as *Planorbella* sp.; the trade's red, blue and leopard ramshorns are mostly *P. duryi*, which FWGNA treats as *Helisoma scalare duryi*. Aquarium Glaser calls it the "Californian" ramshorn, but it is native to Florida. Whorl counts differ (3–3.5 against 4.5), and no age at maturity was verified.
+- In the game it lays its jelly clutches on the glass under water, so, unlike the mystery snail, it needs no lid. A clutch needs two adult snails; self-fertilisation is not modelled.
+- Compressed time: a 10–12 day hatch at 25–27 °C ≈ 80 game-hours; a 1–2 year lifespan ≈ 50 game-days.
+
 ## Conflicts & uncertainty
 
 1. **Aquarium temperature bands differ widely between sources.** Goldfish recommendations run 10–21, 18–24 or 22–24 °C. Panda cory advice runs from 65–68 °F to 72–79 °F. Hillstream loach ceilings are 24 °C versus 27 °C.
    - The game uses a conservative middle band for `idealMin`–`idealMax`.
    - `min`/`max` are husbandry tolerance bands, not lethal limits. Goldfish, for example, survive 0–41 °C.
+   - Chunk 16:
+     - German blue ram: 22–26 °C (LiveAquaria) or 24–28 °C (Tetra) up to "ideally 29–30 °C" (Aquarium Co-Op). The game follows FishBase and Seriously Fish (ideal 27–30 °C), because warmth is the key to keeping it.
+     - Platy: 18–25, 20–26 or 21–28 °C; swordtail: 16–28, 20–27 or 22–28 °C. Both use 22–26 °C ideal.
+     - Zebra danio: aquarium advice is 18–25 °C, but wild fish were found in July water of 24.6–38.6 °C (Seriously Fish). The game keeps the aquarium band (ideal 19–24 °C).
 2. **Tank sizes are the most disputed husbandry number.**
    - Comet goldfish: retail says 20 gal, care sources say 50–75 gal plus about 40 per extra fish or a pond. The game uses 75 gal and says honestly that comets are pond fish.
    - Fancy goldfish: 20 or 30 gal. Discus: 50–90 gal. Corydoras: 11–30 gal.
+   - Chunk 16:
+     - Freshwater angelfish: a 20 gal high for one pair (Aquarium Co-Op) up to about 53 gal for a group (Seriously Fish). The game uses 30 gal and asks for a tall tank.
+     - German blue ram: 14–15 gal for a pair (Seriously Fish, PFK) to 30 gal (LiveAquaria's quick stats). The game uses 20.
+     - Zebra danio: 10 gal (LiveAquaria) to a 20 gal long (Aquarium Co-Op). The game uses 20, because it is a fast swimmer.
+     - Swordtail: 80 cm (FishBase) against 120 cm (Seriously Fish). The game uses 30 gal.
+     - Dwarf gourami: 10 gal (Aquarium Co-Op, LiveAquaria) to 15 gal for a pair (Seriously Fish). The game uses 15.
 3. **Life history data is sparse for several species.**
    - No reliable figure exists for kuhli breeding, hillstream loach incubation, ADF clutch size, or lifespan and maturity for otocinclus, kuhli, hillstream and panda cory. These values are marked as estimates in each record.
    - Warm-lab studies (cherry shrimp, medaka) run faster than hobby reports. The game sits between the two.
+   - Chunk 16:
+     - No age at maturity was found for the ram, the dwarf gourami or the ramshorn (Wikipedia's 4–6 weeks for the ramshorn is uncited).
+     - Lifespans are weak for the harlequin (an uncited 5–8 years) and conflict for the dwarf gourami (2–4 against 4–6 years).
+     - Swordtail maturity is about 3 months (Wikipedia) or 8–12 months (FishBase).
+     - Ghost shrimp size (2.5 cm against up to 5 cm) and egg-carrying time (12–14 days against about 3 weeks) conflict. So do ramshorn eggs per clutch (up to 15 against an average of about 21–26).
+     - Sizes: the angelfish is 10.5 or 15 cm TL in FishBase's own page, and the harlequin is 35 mm SL wild (Tan 2020) but up to 45 mm SL in tanks (Seriously Fish).
 4. **Genetics are playable simplifications.**
    - **Documented genes are followed:** axolotl d/a/m/ax/c; medaka b and r; goldfish nacreous T (incomplete dominance); betta double tail (recessive); guppy tuxedo and snakeskin (dominant); mystery snail body, ground colour and banding.
+     - Chunk 16 adds the zebra danio's long-fin (dominant, *kcnh2a*), leopard (recessive, *connexin 41.8*) and golden (recessive, *slc24a5*), all from peer-reviewed papers. It is likely, but not proven, that the trade fish carry the lab alleles.
+     - It also adds the platy's tail-spot series (Kallman & Atz 1967), its gold *st* (recessive) and the wagtail (comet plus the modifier E, Gordon 1946).
+     - The freshwater angelfish's Dark series (D > M > Gm > wild > g), zebra/stripeless, smokey and veil follow Norton's crossing counts as summarised by TAS. Those were published in a hobby magazine, not a peer-reviewed journal.
    - **Undocumented traits are modelled as recessive**, so they stay rare and must be line-bred: neon forms, honey gourami colour forms, bristlenose colours, and the ADF blonde.
-   - **Real guppy colour is heavily Y-linked.** The game treats it as autosomal.
+     - Chunk 16: the harlequin's golden, the ram's gold and balloon, the swordtail's albino, and the ramshorn's red, blue and leopard. A recessive red is plausible for the ramshorn: in the related *Biomphalaria* pigment is a single dominant gene, so albino is recessive (Knight et al. 1999).
+     - Some chunk 16 traits are modelled as dominant instead, following hobby or regional sources: the ram's electric blue (forums say incompletely dominant), the platy's tuxedo (nigra), hi-fin and salt-and-pepper, and the swordtail's red, black, tuxedo, wagtail, lyretail and hi-fin. Hi-fin is reportedly lethal with two copies, which the game does not model.
+     - The dwarf gourami's wild, neon, powder blue and flame forms are a ladder, like the honey gourami's.
+   - **Real guppy colour is heavily Y-linked.** The game treats it as autosomal. Platy and swordtail colour genes are often sex-linked in wild stocks too (the Xiphophorus Genetic Stock Center), and the game treats them the same way.
    - **Neocaridina colour lines are mostly separate recessives in reality.** The game keeps red dominant, so ordinary cherry stock breeds true, while all other lines revert to wild type when mixed.
    - **No fictional variants were added.** Parasite-induced "gold/platinum" cardinals are excluded. There is no albino ADF, because every albino "dwarf frog" is a Xenopus.
+     - Chunk 16 leaves out GloFish, a trademarked, genetically modified line (ADR-0052 decision 2). It also leaves out the albino danio, because the art cannot yet show its pink eye, and the angelfish's leopard, where TAS and Norton disagree. The angelfish's halfblack, pearlscale, albino, streaked and platinum genes are left out too, and so are the harlequin's blue and black strains.
 5. **Taxonomy is in flux.**
    - *Corydoras panda* is now *Hoplisoma panda*, and *Neritina natalensis* is now *Vittina natalensis*.
    - Trade kuhlis are *Pangio semicincta*.
@@ -591,6 +824,13 @@ The per-species sections are generated from the species data files, so they alwa
    - Pet ADFs are a diploid lineage distinct from wild tetraploid *H. boettgeri*.
    - *Tanichthys albonubes* may be a cryptic species complex.
    - Discus have 3–5 recognised species depending on the author.
+   - Chunk 16:
+     - The dwarf gourami's name has been disputed since 2022. The Catalog of Fishes and FishBase follow Knight et al. (2022) and treat *Trichogaster lalius* as a synonym of *T. fasciata*. Aquarium Glaser argues the 1801 description doesn't fit. The game keeps *T. lalius*.
+     - The ghost shrimp is *Palaemon paludosus* (WoRMS; De Grave & Ashelby 2013), where ADR-0052 listed *Palaemonetes paludosus*. "Ghost shrimp" is a loose trade name that also covers *Macrobrachium* and the look-alike *Palaemonetes kadiakensis*.
+     - The ramshorn is *Planorbella duryi*, where ADR-0052 listed *Planorbella* sp. FWGNA treats it as *Helisoma scalare duryi*, and some UK red ramshorns are *Planorbarius corneus*.
+     - Some trade harlequins may be *Trigonostigma truncata* (Tan 2020).
+     - Aquarium angelfish may carry genes from more than one wild *Pterophyllum* species.
+     - Most trade platies and swordtails have each other's genes. The game keeps them apart and does not cross species.
    - Roster ids and scientific names are kept stable; the notes explain these points.
 6. **Compatibility disputes are encoded as probabilities, not certainties.**
    - Pea puffer vs dwarf shrimp: Seriously Fish says some shrimp work, while Co-Op and keepers report hunting. Encoded as `high_risk`, mitigated by cover.
@@ -599,6 +839,12 @@ The per-species sections are generated from the species data files, so they alwa
    - Betta vs shrimp: `conditional`.
    - White clouds with fancy goldfish: PetMD says yes, Co-Op warns about speed. Encoded as `conditional`.
    - Endler × guppy hybridisation: `conditional`, with zero incident risk. It is a breeding-purity warning, not a welfare risk.
+   - Chunk 16:
+     - Dwarf gourami vs shrimp: Seriously Fish lists cherry shrimp as tankmates, while Aquarium Co-Op says it eats them. Encoded as `shrimpSafe 'caution'`.
+     - Dwarf gourami vs betta: `high_risk`. Against the honey gourami and fancy guppy males: `conditional`.
+     - Angelfish vs neon tetras: Tier 2 pages warn about small fish, "small fish such as tetras" and nano fish, but name the neon only in forum consensus. Encoded as `high_risk`, mitigated by cover.
+     - Shrimp safety for the ram and the harlequin is not covered by any source. Encoded as `mostly_safe` (shrimplets at risk).
+     - Zebra danios nip long-finned fish mainly in small groups: `conditional` against `tag:long_fins`.
 7. **Required rules implemented as data:**
    - **Goldfish vs `tag:shrimp_dwarf`:** floor `high_risk`, "Goldfish may eat these shrimp …". Shrimplets are covered by a separate `tag:shrimp_fry` rule at 0.8 per day. Cover mitigates but never removes the risk.
    - **Goldfish flags:** `heavyWaste`, `coolWater` and `outgrowsSmallTanks`.
@@ -613,10 +859,22 @@ The per-species sections are generated from the species data files, so they alwa
    - **Discus:** advanced, warm, soft water, kept in groups.
    - **Cardinal vs neon:** cardinals are warmer (ideal 24–28 vs 22–25 °C) and softer or more acidic (ideal pH 5.0–6.5 vs 6.0–7.0).
    - **White clouds** are cool-water and tagged `fish_tiny`, so the axolotl's `tag:fish_tiny` rule catches them.
+   - **Chunk 16:**
+     - **German blue ram:** warm (ideal 27–30 °C) and soft, a mature tank (`requiresMatureDays` 30) and `needsSinkingFood`. It is a `substrate_spawner` with both parents guarding.
+     - **Freshwater angelfish:** a `substrate_spawner` pair with both parents guarding, and a tall tank.
+     - **Platy and swordtail:** `livebearer`, with broods about every four weeks.
+     - **Dwarf gourami:** `bubble_nest` with male care.
+     - **Harlequin rasbora and zebra danio:** `egg_scatter_cover`.
+     - **Ghost shrimp:** `shrimp_berried`. The larvae need no brackish water, and the larval week counts as rearing.
+     - **Ramshorn snail:** `snail_egg_clutch`. It lays under water on the glass, so it needs no lid, unlike the mystery snail.
 8. **Starter unlocks are a design decision.**
    - The roster encodes starters as `starter|<group>`. The records therefore require the group key, and the player's chosen starter must be granted by new-game setup.
    - This is flagged for the orchestrator.
+   - Chunk 16's nine species have no unlock key (`unlock.requires: []`), so they are in the shop from the start (ADR-0052 decisions 4 and 9).
 9. **Search limits.** A few primary papers (Kwon/Zhang betta genetics, Tyrp1 copper full text) could not be opened. Claims that depended on them were either dropped or labelled.
+   - In chunk 16, FishLore and cichlidae.com returned 403, and so did the PubMed, IUCN, Springer and Nature pages.
+   - The Angelfish Society's site has a broken HTTPS certificate, so its pages were read over http.
+   - IUCN years are FishBase's assessment dates. Wikipedia often gives the publication year instead (ram 2020 against 2022; harlequin 2019 against 2020).
 
 ## Visual notes for render lanes
 
@@ -662,6 +920,13 @@ The **fish** lane draws these body plans:
 - `hillstream`: flat disc-like body with broad fanned paired fins forming a suction disc. `bodyDepth` is 0.8.
 - `gourami`: honey gourami, a compressed oval body with long thread-like pelvic "feelers".
 - `discus`: tall, round, laterally compressed disc with red eyes on wild types. `bodyDepth` is 1.15.
+- Chunk 16: each new fish has its own plan in `src/render/creatures/fish/` (the platy and swordtail share `xiphophorus.ts`, with two builds). There, `standard` means the plan's own body, and the other strings are forms the plan reads:
+  - Freshwater angelfish: `standard`, `veil` and `superveil` (`finLength` 1.4 and 1.75: every fin longer).
+  - German blue ram: `standard` and `balloon` (a short, high, round body; `bodyDepth` 1.15).
+  - Harlequin rasbora: `standard`.
+  - Zebra danio: `standard` and `longfin` (`finLength` 1.6: long flowing fins and tail).
+  - Platy: `standard` and `hifin` (a tall, flag-like dorsal). Swordtail: `standard`, `hifin`, `lyretail` (long upper and lower tail rays) and `hifin_lyretail` (both). Two new appearance fields go with them: `tailSpot` (`mickey`, `moon`, `crescent`, `comet`, `twin`) and `bodyMark` (`tuxedo`, the black rear half).
+  - Dwarf gourami: `gourami`, the honey gourami's labyrinth build, deeper and with longer dorsal and anal fins.
 
 The **special** lane draws these:
 
@@ -671,6 +936,9 @@ The **special** lane draws these:
 - `snail_nerite`: low, rounded, smooth shell with an operculum.
 - `crayfish`: CPO crayfish.
 - `frog`: ADF. Webbed front and hind feet, eyes on the sides of the head, rough skin.
+- Chunk 16:
+  - `shrimp`: the ghost shrimp has its own spec, slimmer and longer-snouted than the dwarf shrimps and nearly clear.
+  - `snail_ramshorn`: ramshorn snail. A flat, coiled (planispiral) shell carried upright on its edge, smooth and glossy, with no operculum.
 
 ### Patterns and morphs per species
 
@@ -700,6 +968,15 @@ The **special** lane draws these:
 | `cardinal_tetra` | fish | `tetra` | `lateral_stripe` | Albino, Orinoco form, Cardinal |
 | `dwarf_crayfish` | special | `crayfish` | `marble`, `mottled` | Wild Brown, Orange, Heavily Marbled |
 | `discus` | fish | `discus` | `bars`, `solid`, `reticulated`, `speckled`, `lined`, `spots` | Marlboro Red, Checkerboard, Pigeon Blood, Golden, Blue Diamond, Alenquer Red, Red Turquoise, Turquoise, Brown (Wild-type), Snakeskin, Leopard |
+| `freshwater_angelfish` | fish | `standard`, `veil`, `superveil` | `bands`, `solid`, `marble`, `bars`, `spots`, `mottled` | Black, Black Lace, Hybrid Black, Silver Marble, Marble, Silver Gold Marble, Gold Marble, Gold, Silver, Clown, Zebra, Ghost, Blushing, Smokey, Chocolate, Veil, Superveil; strains Koi and Zebra Lace |
+| `german_blue_ram` | fish | `standard`, `balloon` | `speckled` | Electric Blue Ram, Gold Ram, German Blue Ram, Balloon |
+| `harlequin_rasbora` | fish | `standard` | `solid` | Golden Harlequin, Harlequin Rasbora, Richly coloured |
+| `zebra_danio` | fish | `standard`, `longfin` | `lined`, `spots` | Golden, Wild Type, Leopard, Long-fin |
+| `platy` | fish | `standard`, `hifin` | `solid`, `speckled` | Red, Blue, Gold, Wild Grey, Mickey Mouse, Moon, Wagtail, Comet, Crescent, Twin-spot, Tuxedo, Salt-and-pepper, Hi-fin |
+| `swordtail` | fish | `standard`, `hifin`, `lyretail`, `hifin_lyretail` | `solid` | Albino, Black, Red, Green, Tuxedo, Wagtail, Hi-fin Lyretail, Lyretail, Hi-fin |
+| `dwarf_gourami` | fish | `gourami` | `bars` | Wild Dwarf Gourami, Neon Blue, Powder Blue, Flame |
+| `ghost_shrimp` | special | `shrimp` | `lined` | Ghost Shrimp, Richly coloured |
+| `ramshorn_snail` | special | `snail_ramshorn` | `solid`, `spots` | Red, Blue, Brown, Leopard |
 
 ### Field mapping by body plan (where it differs from the fish default)
 
@@ -772,6 +1049,37 @@ The **special** lane draws these:
 - `accentColor` is the pale spots on brown fish, or the dark patches on calico.
 - Albino eyes are red; blue-eye lemon eyes are `#4f7fb8`.
 
+**Freshwater angelfish** (chunk 16):
+- `bodyColor`/`bellyColor` are the silver ground. `bodyColor2` is the crown on top of the head (gold to orange on gold and koi forms) and the olive sheen on the back.
+- `accentColor` is the bars and marbling. `finColor` is the sheer fins; `finColor2` is their dark edges and striations. `eyeColor` is the iris, red in wild-type fish.
+- Pattern values: `bands` = the wild silver's four bars, `bars` = zebra, `marble` = marble and koi, `mottled` = smokey and chocolate, `spots` = clown, `solid` = stripeless, gold and black.
+
+**German blue ram** (chunk 16):
+- `bodyColor` is the violet-grey to yellow-green flank; `bodyColor2` is the golden-orange head and chest.
+- `accentColor` is the electric-blue spangles over the body and fins.
+- `finColor` is the fins; `finColor2` is their red edges and the pelvic fins.
+- `eyeColor` is the red iris. The art draws the black eye bar, the black flank blotch and the black first dorsal spines on every form.
+
+**Harlequin rasbora** (chunk 16):
+- `bodyColor` is the coppery orange flank; `bodyColor2` is the purplish sheen on the front body.
+- `accentColor` is the velvety black wedge (Tan 2020's "axine") from below the dorsal fin to the tail base.
+- `finColor` is the orange-red dorsal and tail; `finColor2` is their clear tips. `eyeColor` is the orange iris.
+
+**Zebra danio** (chunk 16):
+- `bodyColor` is the gold-silver stripes between the blue ones.
+- `accentColor` is the five blue-black horizontal stripes, which run on through the tail and anal fin (rows of spots on leopards).
+- `finColor` is the fins; `finColor2` is their stripes.
+
+**Platy and swordtail** (chunk 16, one plan):
+- `bodyColor`/`bodyColor2` are the flank and back (olive-green with a darker back on the wild swordtail).
+- `finColor` is the fins. `finColor2` is their edges: black on wagtails, and on the swordtail the sword's bright upper edge (the art adds its black lower edge).
+- `accentColor` is the salt-and-pepper speckles on the platy and the red-brown zigzag flank line on the swordtail.
+- `tailSpot` is the tail-base marking and `bodyMark` `tuxedo` is the black rear flank.
+
+**Dwarf gourami** (chunk 16), male colours:
+- `bodyColor` is the steel-blue body; `accentColor` is the slanting red-orange bars, which run on into the fins.
+- `finColor` is the orange fins with red spots; `finColor2` is their blue edges and the turquoise throat.
+
 **Shrimp** (`cherry_shrimp`, `amano_shrimp`):
 - Base fields:
   - `bodyColor`/`bodyColor2` are the carapace and abdomen; `bellyColor` is the underside.
@@ -783,12 +1091,17 @@ The **special** lane draws these:
 - **Amano shrimp:**
   - `finColor2` is the pale dorsal stripe.
   - `accentColor` is the reddish-brown side markings: long dashes on **females**, round dots on **males**.
+- **Ghost shrimp** (chunk 16):
+  - `bodyColor`/`bodyColor2`/`bellyColor` are the nearly clear body (`translucency` 0.85); the gut shows through.
+  - `finColor2` is the orange bands on the antennae and front claws; `accentColor` is the speckles and the red dots on the tail fan.
+  - `gillColor` is the green eggs under a berried female's tail.
 
 **Snails** (`mystery_snail`, `nerite_snail`):
 - `bodyColor`/`bodyColor2` are the shell.
 - `accentColor` is the shell bands or zigzag stripes: `bands` are spiral bands on the apple snail; `bars` are zigzags following the nerite's growth lines.
 - `finColor` is the soft body (foot, head, tentacles); `bellyColor` is the foot sole.
 - Mystery snail "blue" and "jade" come from a dark soft body under a pale or yellow shell, so draw the body colour through a slightly translucent shell.
+- **Ramshorn snail** (chunk 16): `bodyColor`/`bodyColor2` are the flat, coiled shell (pale translucent brown in wild snails); `accentColor` is the leopard spots. A red snail's red body shows through its golden shell.
 
 **Crayfish:**
 - `bodyColor` is the carapace and tail.
@@ -817,3 +1130,11 @@ The **special** lane draws these:
 | African dwarf frog | small gland behind each front leg | larger, pear-shaped |
 | Axolotl | swollen cloaca when mature | rounder body |
 | Goldfish | white breeding tubercles on the gill covers in season | rounder |
+| Dwarf gourami (chunk 16) | as phenotype | silvery grey-blue with faint bars (the young look like females) |
+| German blue ram (chunk 16) | larger, a taller dorsal with longer front rays | smaller, a rose-pink belly, a shorter dorsal |
+| Harlequin rasbora (chunk 16) | a sharper-cornered wedge reaching further down | a rounder wedge; slightly larger and rounder |
+| Zebra danio (chunk 16) | slimmer | deeper-bellied, slightly larger |
+| Platy, swordtail (chunk 16) | smaller, with a gonopodium; swordtail males grow the sword | rounder, with a gravid spot; the young look like females |
+| Freshwater angelfish (chunk 16) | alike | alike (they differ only in the breeding papilla at spawning time) |
+| Ghost shrimp (chunk 16) | about 4 cm | about 5 cm; green eggs under the tail when berried |
+| Ramshorn snail (chunk 16) | — | — (a hermaphrodite; all alike) |

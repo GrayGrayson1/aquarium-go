@@ -10,7 +10,7 @@ export interface RosterEntry {
   env: 'freshwater' | 'marine' | 'brackish'; // lane:brackish: + 'brackish'
   lane: 'species-fw' | 'species-marine' | 'brackish'; // lane:brackish: + 'brackish'
   visual: 'fish' | 'special';
-  unlock: string; // group unlock key (see src/data/unlockKeys.ts); 'starter' for the five starters
+  unlock: string; // group unlock key (see src/data/unlockKeys.ts); 'starter' for the five starters; 'open' = buyable from the start (chunk 16, ADR-0052 decision 4)
   behaviorSet: string;
 }
 
@@ -43,6 +43,16 @@ export const ROSTER: RosterEntry[] = [
   { id: 'comet_goldfish', commonName: 'Comet Goldfish', scientificName: 'Carassius auratus', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'fw_coldwater', behaviorSet: 'goldfish' },
   { id: 'dwarf_crayfish', commonName: 'Dwarf Orange Crayfish', scientificName: 'Cambarellus patzcuarensis', env: 'freshwater', lane: 'species-fw', visual: 'special', unlock: 'fw_intermediate', behaviorSet: 'crayfish' },
   { id: 'discus', commonName: 'Discus', scientificName: 'Symphysodon aequifasciatus', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'fw_advanced', behaviorSet: 'cichlid_discus' },
+  // Freshwater, chunk 16 wave C: freshwater favourites (ADR-0052; buyable from the start)
+  { id: 'freshwater_angelfish', commonName: 'Freshwater Angelfish', scientificName: 'Pterophyllum scalare', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'open', behaviorSet: 'cichlid_discus' },
+  { id: 'german_blue_ram', commonName: 'German Blue Ram', scientificName: 'Mikrogeophagus ramirezi', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'open', behaviorSet: 'cichlid_dwarf' },
+  { id: 'harlequin_rasbora', commonName: 'Harlequin Rasbora', scientificName: 'Trigonostigma heteromorpha', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'open', behaviorSet: 'schooling_small' },
+  { id: 'zebra_danio', commonName: 'Zebra Danio', scientificName: 'Danio rerio', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'open', behaviorSet: 'schooling_small' },
+  { id: 'platy', commonName: 'Platy', scientificName: 'Xiphophorus maculatus', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'open', behaviorSet: 'livebearer' },
+  { id: 'swordtail', commonName: 'Swordtail', scientificName: 'Xiphophorus hellerii', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'open', behaviorSet: 'livebearer' },
+  { id: 'dwarf_gourami', commonName: 'Dwarf Gourami', scientificName: 'Trichogaster lalius', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'open', behaviorSet: 'gourami' },
+  { id: 'ghost_shrimp', commonName: 'Ghost Shrimp', scientificName: 'Palaemon paludosus', env: 'freshwater', lane: 'species-fw', visual: 'special', unlock: 'open', behaviorSet: 'shrimp_dwarf' },
+  { id: 'ramshorn_snail', commonName: 'Ramshorn Snail', scientificName: 'Planorbella duryi', env: 'freshwater', lane: 'species-fw', visual: 'special', unlock: 'open', behaviorSet: 'snail' },
   // Marine
   { id: 'royal_gramma', commonName: 'Royal Gramma', scientificName: 'Gramma loreto', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'marine_basics', behaviorSet: 'reef_basslet' },
   { id: 'firefish', commonName: 'Firefish', scientificName: 'Nemateleotris magnifica', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'marine_basics', behaviorSet: 'dartfish' },
@@ -62,6 +72,30 @@ export const ROSTER: RosterEntry[] = [
   { id: 'peacock_mantis_shrimp', commonName: 'Peacock Mantis Shrimp', scientificName: 'Odontodactylus scyllarus', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'predators', behaviorSet: 'mantis_shrimp' },
   { id: 'dwarf_lionfish', commonName: 'Fuzzy Dwarf Lionfish', scientificName: 'Dendrochirus brachypterus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'predators', behaviorSet: 'lionfish' },
   { id: 'miniatus_grouper', commonName: 'Miniatus Grouper', scientificName: 'Cephalopholis miniata', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'predators', behaviorSet: 'grouper' },
+  // Marine, chunk 16 wave A: a friend's reef (ADR-0052; buyable from the start)
+  { id: 'emperor_angelfish', commonName: 'Emperor Angelfish', scientificName: 'Pomacanthus imperator', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'angelfish_dwarf' },
+  { id: 'sailfin_tang', commonName: 'Sailfin Tang', scientificName: 'Zebrasoma velifer', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'tang' },
+  { id: 'chocolate_tang', commonName: 'Chocolate Tang', scientificName: 'Acanthurus pyroferus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'tang' },
+  { id: 'lyretail_anthias', commonName: 'Lyretail Anthias', scientificName: 'Pseudanthias squamipinnis', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'chromis' },
+  { id: 'melanurus_wrasse', commonName: 'Melanurus Wrasse', scientificName: 'Halichoeres melanurus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'wrasse' },
+  { id: 'maroon_clownfish', commonName: 'Maroon Clownfish', scientificName: 'Amphiprion biaculeatus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'clownfish' },
+  { id: 'elegant_starfish', commonName: 'Elegant Starfish', scientificName: 'Fromia milleporella', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'starfish' },
+  { id: 'fighting_conch', commonName: 'Fighting Conch', scientificName: 'Strombus pugilis', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'conch' },
+  { id: 'scarlet_hermit_crab', commonName: 'Scarlet Reef Hermit Crab', scientificName: 'Paguristes cadenati', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'hermit_crab' },
+  { id: 'mexican_turbo_snail', commonName: 'Mexican Turbo Snail', scientificName: 'Turbo fluctuosus', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'snail' },
+  { id: 'nassarius_snail', commonName: 'Nassarius Snail', scientificName: 'Phrontis vibex', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'snail_sand' },
+  { id: 'astraea_snail', commonName: 'Astraea Snail', scientificName: 'Lithopoma tectum', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'snail' },
+  { id: 'cerith_snail', commonName: 'Cerith Snail', scientificName: 'Cerithium atratum', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'snail' },
+  // Marine, chunk 16 wave B: reef favourites (ADR-0052; buyable once Marine Systems is researched, decision 9)
+  { id: 'flame_angelfish', commonName: 'Flame Angelfish', scientificName: 'Centropyge loriculus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'angelfish_dwarf' },
+  { id: 'sixline_wrasse', commonName: 'Six-line Wrasse', scientificName: 'Pseudocheilinus hexataenia', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'wrasse' },
+  { id: 'lawnmower_blenny', commonName: 'Lawnmower Blenny', scientificName: 'Salarias fasciatus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'blenny' },
+  { id: 'flame_hawkfish', commonName: 'Flame Hawkfish', scientificName: 'Neocirrhites armatus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'hawkfish' },
+  { id: 'yellowtail_damselfish', commonName: 'Yellowtail Damselfish', scientificName: 'Chrysiptera parasema', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'open', behaviorSet: 'damsel' },
+  { id: 'emerald_crab', commonName: 'Emerald Crab', scientificName: 'Mithraculus sculptus', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'crab' },
+  { id: 'tuxedo_urchin', commonName: 'Tuxedo Urchin', scientificName: 'Mespilia globulus', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'urchin' },
+  { id: 'sand_sifting_starfish', commonName: 'Sand-sifting Starfish', scientificName: 'Astropecten polyacanthus', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'starfish_sand' },
+  { id: 'bubbletip_anemone', commonName: 'Bubble-tip Anemone', scientificName: 'Entacmaea quadricolor', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'anemone' },
   // Brackish (lane:brackish — the estuary chapter)
   { id: 'figure_eight_puffer', commonName: 'Figure-eight Puffer', scientificName: 'Dichotomyctere ocellatus', env: 'brackish', lane: 'brackish', visual: 'fish', unlock: 'brackish', behaviorSet: 'pea_puffer' },
   { id: 'bumblebee_goby', commonName: 'Bumblebee Goby', scientificName: 'Brachygobius doriae', env: 'brackish', lane: 'brackish', visual: 'fish', unlock: 'brackish', behaviorSet: 'goby_perch' },

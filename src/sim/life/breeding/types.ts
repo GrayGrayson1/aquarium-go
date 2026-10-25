@@ -113,6 +113,8 @@ export interface BreedingModule {
   id: BreedingSystemId;
   /** False for systems that cannot be bred in this build (explanations only). */
   breedable: boolean;
+  /** chunk 16 — breeds on its own with no pairing (anemone fission): its step runs although it isn't pair-breedable. */
+  asexual?: boolean;
   plan: RearingPlan;
   /** The keeper introduces the partner with Start breeding (betta) — co-location is not required beforehand. */
   introducedByKeeper?: boolean;

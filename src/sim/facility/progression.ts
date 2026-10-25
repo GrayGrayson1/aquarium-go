@@ -44,6 +44,16 @@ export function waterClassLock(state: GameState, wc: WaterClass): string | null 
   return null;
 }
 
+/**
+ * chunk 16 (ADR-0052, round 2) — the research keys a water type needs: the same rule as waterClassLock (fresh water
+ * open; brackish the Brackish Estuaries research; marine Marine Systems; reef Marine Systems and Reef Systems).
+ */
+export function waterClassKeys(wc: WaterClass): string[] {
+  if (wc.startsWith('fresh')) return [];
+  if (wc === 'brackish') return ['brackish'];
+  return wc === 'reef' ? ['marine_basics', 'reef'] : ['marine_basics'];
+}
+
 export function unlockLabel(key: string): string {
   return (UNLOCK_KEYS as Record<string, string>)[key] ?? key.replace(/_/g, ' ');
 }

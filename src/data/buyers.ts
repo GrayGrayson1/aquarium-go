@@ -273,16 +273,16 @@ export interface SellerDef {
 export const SELLERS: SellerDef[] = [
   { name: 'Bayou Axolotl Co.', specialties: ['axolotl'], lineFlavour: 'line' },
   { name: 'Siamese Silk Bettas', specialties: ['betta'], lineFlavour: 'show line' },
-  { name: 'Tidepool Breeders', specialties: ['ocellaris_clownfish', 'banggai_cardinalfish', 'royal_gramma', 'firefish'], lineFlavour: 'aquacultured line' },
+  { name: 'Tidepool Breeders', specialties: ['ocellaris_clownfish', 'banggai_cardinalfish', 'royal_gramma', 'firefish', 'maroon_clownfish' /* chunk 16 */], lineFlavour: 'aquacultured line' },
   { name: 'Seagrass Seahorse Farm', specialties: ['lined_seahorse'], lineFlavour: 'captive-bred line' },
-  { name: 'Riverbend Aquatics', specialties: ['neon_tetra', 'cardinal_tetra', 'panda_corydoras', 'otocinclus', 'kuhli_loach', 'honey_gourami'], lineFlavour: 'farm line' },
-  { name: 'Glasshouse Guppies', specialties: ['fancy_guppy', 'endlers_livebearer', 'medaka'], lineFlavour: 'strain' },
-  { name: 'Little Cherry Shrimpery', specialties: ['cherry_shrimp', 'amano_shrimp', 'mystery_snail', 'nerite_snail', 'dwarf_crayfish'], lineFlavour: 'colony' },
+  { name: 'Riverbend Aquatics', specialties: ['neon_tetra', 'cardinal_tetra', 'panda_corydoras', 'otocinclus', 'kuhli_loach', 'honey_gourami', 'harlequin_rasbora', 'zebra_danio', 'dwarf_gourami' /* chunk 16 */], lineFlavour: 'farm line' },
+  { name: 'Glasshouse Guppies', specialties: ['fancy_guppy', 'endlers_livebearer', 'medaka', 'platy', 'swordtail' /* chunk 16 */], lineFlavour: 'strain' },
+  { name: 'Little Cherry Shrimpery', specialties: ['cherry_shrimp', 'amano_shrimp', 'mystery_snail', 'nerite_snail', 'dwarf_crayfish', 'ghost_shrimp', 'ramshorn_snail' /* chunk 16 */], lineFlavour: 'colony' },
   { name: 'Western Ghats Puffer Room', specialties: ['pea_puffer'], lineFlavour: 'tank-bred line' },
   { name: 'Coldwater Koi & Goldfish', specialties: ['fancy_goldfish', 'comet_goldfish', 'white_cloud_minnow'], lineFlavour: 'line' },
-  { name: 'Coral Loft Aquaculture', specialties: ['clown_goby', 'watchman_goby', 'green_chromis', 'cleaner_shrimp', 'peppermint_shrimp', 'trochus_snail', 'hermit_crab'], lineFlavour: 'aquacultured line' },
-  { name: 'Deep Reef Specialists', specialties: ['mandarin_dragonet', 'coral_beauty', 'yellow_tang', 'kole_tang', 'foxface_rabbitfish', 'dwarf_lionfish', 'miniatus_grouper', 'peacock_mantis_shrimp'], lineFlavour: 'selected stock' },
-  { name: 'Amazon Gold Discus', specialties: ['discus', 'bristlenose_pleco', 'hillstream_loach', 'african_dwarf_frog'], lineFlavour: 'strain' },
+  { name: 'Coral Loft Aquaculture', specialties: ['clown_goby', 'watchman_goby', 'green_chromis', 'cleaner_shrimp', 'peppermint_shrimp', 'trochus_snail', 'hermit_crab', 'yellowtail_damselfish', 'tuxedo_urchin', 'bubbletip_anemone' /* chunk 16 */], lineFlavour: 'aquacultured line' },
+  { name: 'Deep Reef Specialists', specialties: ['mandarin_dragonet', 'coral_beauty', 'yellow_tang', 'kole_tang', 'foxface_rabbitfish', 'dwarf_lionfish', 'miniatus_grouper', 'peacock_mantis_shrimp', /* chunk 16 */ 'emperor_angelfish', 'sailfin_tang', 'chocolate_tang', 'lyretail_anthias', 'melanurus_wrasse', 'elegant_starfish', 'flame_angelfish', 'sixline_wrasse', 'flame_hawkfish', 'lawnmower_blenny', 'emerald_crab', 'sand_sifting_starfish'], lineFlavour: 'selected stock' },
+  { name: 'Amazon Gold Discus', specialties: ['discus', 'bristlenose_pleco', 'hillstream_loach', 'african_dwarf_frog', 'freshwater_angelfish', 'german_blue_ram' /* chunk 16 */], lineFlavour: 'strain' },
   { name: 'Mangrove Coast Aquatics', specialties: ['figure_eight_puffer', 'bumblebee_goby', 'sailfin_molly', 'banded_archerfish'], lineFlavour: 'estuary stock' }, // lane:brackish
   { name: 'Harbor Street Aquatics', specialties: [], lineFlavour: 'stock' },
 ];

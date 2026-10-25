@@ -18,6 +18,30 @@ import { mandarinDragonet } from './mandarin_dragonet';
 import { peacockMantisShrimp } from './peacock_mantis_shrimp';
 import { dwarfLionfish } from './dwarf_lionfish';
 import { miniatusGrouper } from './miniatus_grouper';
+// chunk 16 wave A: a friend's reef (ADR-0052)
+import { emperorAngelfish } from './emperor_angelfish';
+import { sailfinTang } from './sailfin_tang';
+import { chocolateTang } from './chocolate_tang';
+import { lyretailAnthias } from './lyretail_anthias';
+import { melanurusWrasse } from './melanurus_wrasse';
+import { maroonClownfish } from './maroon_clownfish';
+import { elegantStarfish } from './elegant_starfish';
+import { fightingConch } from './fighting_conch';
+import { scarletHermitCrab } from './scarlet_hermit_crab';
+import { mexicanTurboSnail } from './mexican_turbo_snail';
+import { nassariusSnail } from './nassarius_snail';
+import { astraeaSnail } from './astraea_snail';
+import { cerithSnail } from './cerith_snail';
+// chunk 16 wave B: reef favourites
+import { flameAngelfish } from './flame_angelfish';
+import { sixlineWrasse } from './sixline_wrasse';
+import { lawnmowerBlenny } from './lawnmower_blenny';
+import { flameHawkfish } from './flame_hawkfish';
+import { yellowtailDamselfish } from './yellowtail_damselfish';
+import { emeraldCrab } from './emerald_crab';
+import { tuxedoUrchin } from './tuxedo_urchin';
+import { sandSiftingStarfish } from './sand_sifting_starfish';
+import { bubbletipAnemone } from './bubbletip_anemone';
 
 export {
   cleanerShrimp,
@@ -38,6 +62,28 @@ export {
   peacockMantisShrimp,
   dwarfLionfish,
   miniatusGrouper,
+  emperorAngelfish,
+  sailfinTang,
+  chocolateTang,
+  lyretailAnthias,
+  melanurusWrasse,
+  maroonClownfish,
+  elegantStarfish,
+  fightingConch,
+  scarletHermitCrab,
+  mexicanTurboSnail,
+  nassariusSnail,
+  astraeaSnail,
+  cerithSnail,
+  flameAngelfish,
+  sixlineWrasse,
+  lawnmowerBlenny,
+  flameHawkfish,
+  yellowtailDamselfish,
+  emeraldCrab,
+  tuxedoUrchin,
+  sandSiftingStarfish,
+  bubbletipAnemone,
 };
 
 /** Non-starter marine species, in roster priority order. The marine starters live in ../ocellaris_clownfish.ts and ../lined_seahorse.ts. */
@@ -60,4 +106,26 @@ export const MARINE_SPECIES: SpeciesDefinition[] = [
   peacockMantisShrimp,
   dwarfLionfish,
   miniatusGrouper,
+  emperorAngelfish,
+  sailfinTang,
+  chocolateTang,
+  lyretailAnthias,
+  melanurusWrasse,
+  maroonClownfish,
+  elegantStarfish,
+  fightingConch,
+  scarletHermitCrab,
+  mexicanTurboSnail,
+  nassariusSnail,
+  astraeaSnail,
+  cerithSnail,
+  flameAngelfish,
+  sixlineWrasse,
+  lawnmowerBlenny,
+  flameHawkfish,
+  yellowtailDamselfish,
+  emeraldCrab,
+  tuxedoUrchin,
+  sandSiftingStarfish,
+  bubbletipAnemone,
 ];

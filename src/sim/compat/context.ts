@@ -78,18 +78,28 @@ export function tankContext(state: GameState, tank: Tank): CompatContext {
     bioMaturity: tank.water?.bioMaturity ?? 0,
     pods: tank.water?.lab?.pods ?? 0,
     algae: tank.water?.algae ?? 0,
-    anemones: typeof h.anemones === 'number' ? h.anemones : decorCategoryCount(tank, 'anemone'),
+    // chunk 16: a living anemone (the bubble-tip as an animal) hosts and stings as the decor piece does
+    anemones: (typeof h.anemones === 'number' ? h.anemones : decorCategoryCount(tank, 'anemone')) + livingAnemones(state, tank),
     corals: env.corals,
     spaceCapUnits: env.spaceCapUnits,
     processCapUnits: env.processCapUnits,
     clutchSpecies: Object.values(state.clutches ?? {}).filter((c) => c.tankId === tank.id).map((c) => c.speciesId),
-    stinging: stingingCount(tank),
+    stinging: stingingCount(tank) + livingAnemones(state, tank),
     glassMm: tierInfo(tank)?.glassMm,
     material: tierInfo(tank)?.material,
   };
 }
 
 const STINGING_VISUAL = /hammer|torch|frogspawn|euphyllia|elegance|catalaphyllia|fire|galaxea/i;
+
+/** chunk 16 — living anemones (creatures of category 'anemone') in a tank. */
+export function livingAnemones(state: GameState, tank: Tank): number {
+  let n = 0;
+  for (const c of Object.values(state.creatures ?? {})) {
+    if (c.tankId === tank.id && c.status === 'alive' && findSpecies(c.speciesId)?.category === 'anemone') n++;
+  }
+  return n;
+}
 
 /** Anemones plus strongly stinging corals (Euphyllia-type LPS, fire coral) in the tank's decor. */
 export function stingingCount(tank: Tank): number {

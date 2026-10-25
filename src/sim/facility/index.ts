@@ -18,6 +18,7 @@ export {
   stepProgression,
   isUnlocked,
   waterClassLock,
+  waterClassKeys,
   unlock,
   unlockLabel,
   bumpCounter,

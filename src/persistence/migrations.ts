@@ -186,6 +186,17 @@ export const MIGRATIONS: Migration[] = [
       return s;
     },
   },
+  {
+    from: 2,
+    to: 3,
+    // chunk 16 (ADR-0052 decision 5, ADR-0016) — the 31 new species need nothing filled in; the version goes up so an
+    // older build reports a save holding one as newer (too_new) instead of dropping animals it doesn't know.
+    description: 'Chunk 16: 31 new species (a friend\'s reef, the maroon clownfish, reef and freshwater favourites)',
+    up: (s: Json) => {
+      s.schemaVersion = 3;
+      return s;
+    },
+  },
 ];
 
 /** Version stored in a raw save (0 when absent = legacy prototype). */

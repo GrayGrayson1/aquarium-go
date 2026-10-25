@@ -45,7 +45,14 @@ describe('rule summaries', () => {
   it('"only shows on …" only where every rule that shows the gene needs that other trait', () => {
     const conditional: string[] = [];
     for (const sp of listSpecies((s) => s.genetics.loci.length > 0)) for (const l of sp.genetics.loci) for (const a of l.alleles) if (ruleSummary(sp, l, a.id).includes('only shows on')) conditional.push(`${sp.id}:${l.id}`);
-    expect([...new Set(conditional)]).toEqual(['betta:cambodian']);
+    // chunk 16 adds three genes that really do need another trait: the platy's E only shows on comet fish (the
+    // wagtail), and an albino swordtail shows neither its black forms nor its wagtail
+    expect([...new Set(conditional)].sort()).toEqual(['betta:cambodian', 'platy:spread', 'swordtail:melanin', 'swordtail:wagtail']);
+    const platy = getSpecies('platy');
+    const sword = getSpecies('swordtail');
+    expect(ruleSummary(platy, locus(platy, 'spread'), 'E')).toBe('Dominant over every other version · only shows on comet platies');
+    expect(ruleSummary(sword, locus(sword, 'melanin'), 'Tx')).toBe('Recessive to Black · only shows on pigmented swordtails');
+    expect(ruleSummary(sword, locus(sword, 'wagtail'), 'Wg')).toBe('Dominant over every other fin type · only shows on pigmented swordtails');
   });
 
   it('every shop species gets a row per locus, in data order', () => {

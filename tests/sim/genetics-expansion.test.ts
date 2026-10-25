@@ -26,7 +26,9 @@ const G = (alleles: Record<string, [string, string]>): Genome => ({ alleles, pot
 const name = (alleles: Record<string, [string, string]>) => morphDisplayName(betta, resolveMorph(betta, G(alleles)).morphName);
 
 describe('rare allele flags (GEN-002)', () => {
-  it('exactly nine alleles are flagged rare, across every species', () => {
+  // chunk 16 (ADR-0052): the maroon clownfish's Lightning and Gold Nugget genes and the Marquesan flame angel are the
+  // collector-sought additions
+  it('exactly twelve alleles are flagged rare, across every species', () => {
     const rare: string[] = [];
     for (const sp of listSpecies()) for (const l of sp.genetics.loci) for (const a of l.alleles) if (a.rare) rare.push(`${sp.id}:${l.id}:${a.id}`);
     expect(rare.sort()).toEqual(
@@ -40,6 +42,9 @@ describe('rare allele flags (GEN-002)', () => {
         'lined_seahorse:pinto:p',
         'axolotl:axanthic:ax',
         'axolotl:copper:c',
+        'maroon_clownfish:lightning:L',
+        'maroon_clownfish:nugget:G',
+        'flame_angelfish:bars:m',
       ].sort(),
     );
   });

@@ -126,7 +126,30 @@ function stepOnce(state: GameState, tank: Tank, hour: number, dt: number, ctx: S
     const sp = findSpecies(spId);
     if (!sp) continue;
     const mod = moduleFor(sp);
-    if (!mod.breedable) continue;
+    if (!mod.breedable) {
+      // chunk 16: a social sex change still happens in a species the game doesn't breed (anthias, melanurus wrasse)
+      if (sp.sexSystem === 'protogynous' && sp.special?.socialSexChange) {
+        for (const c of members) {
+          normalizeRepro(c, hour);
+          ensureRole(c, sp, hour);
+        }
+        try {
+          stepProtogynous(state, tank, sp, members, hour, ctx, false);
+        } catch (e) {
+          if (typeof console !== 'undefined') console.warn(`sex change step failed for ${spId}`, e);
+        }
+      }
+      // chunk 16: an animal that breeds alone (a living anemone splitting) runs its own step
+      if (mod.asexual) {
+        for (const c of members) normalizeRepro(c, hour);
+        try {
+          mod.step({ state, tank, species: sp, members, hour, dt, ctx, info });
+        } catch (e) {
+          if (typeof console !== 'undefined') console.warn(`${mod.id} step failed for ${spId}`, e);
+        }
+      }
+      continue;
+    }
     for (const c of members) {
       normalizeRepro(c, hour);
       if (sp.sexSystem !== 'protandrous') ensureRole(c, sp, hour);

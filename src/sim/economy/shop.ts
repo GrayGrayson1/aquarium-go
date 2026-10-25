@@ -9,7 +9,7 @@ import { emitEvent } from '../context';
 import { findSpecies, listSpecies } from '@/data/species';
 import { ROSTER } from '@/data/species/roster';
 import { SELLERS, type SellerDef } from '@/data/buyers';
-import { isUnlocked } from '../facility';
+import { isUnlocked, waterClassKeys } from '../facility';
 import { createCreature, assignPrismatic, isPrismatic, isLotOffer } from '../life';
 import { generateName, takenNames } from '../life/names';
 import { mulberry32, hashString } from '../rng';
@@ -28,7 +28,14 @@ export function requiredUnlocks(sp: SpeciesDefinition): string[] {
     const r = ROSTER.find((e) => e.id === sp.id);
     if (r) return r.unlock.split('|').filter((k) => k && k !== 'starter');
   }
-  return [];
+  // chunk 16 (ADR-0052, round 2): a species with no research of its own (the new ones, "buyable from the start") comes
+  // into the shop once the player can keep one of its water types, so its keys are that water's research
+  let best: string[] | null = null;
+  for (const wc of sp.waterClasses ?? []) {
+    const keys = waterClassKeys(wc);
+    if (!best || keys.length < best.length) best = keys;
+  }
+  return best ?? [];
 }
 
 /** A species is buyable when every required unlock is unlocked. The player's own starter species always is. */

@@ -5,7 +5,7 @@
 import type { Creature, GameState, Tank, TankTier, SpeciesDefinition, CompatReport, ValueBreakdown, TankValuation } from '@/types';
 import { findSpecies } from '@/data/species';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
-import { creatureValue, tankValuation } from '@/sim/economy';
+import { creatureValue, tankValuation, requiredUnlocks } from '@/sim/economy';
 import { tankDailyCost, getWaterReport } from '@/sim/water';
 import { isUnlocked } from '@/sim/facility';
 import { creaturesInTank, clutchesInTank, creatureWellbeing, morphDisplayName, type CreatureWellbeing } from '@/sim/life';
@@ -60,7 +60,8 @@ export function unlocked(g: GameState, key: string | null | undefined): boolean 
 }
 
 export function speciesUnlocked(g: GameState, sp: SpeciesDefinition): boolean {
-  return (sp.unlock?.requires ?? []).every((k) => unlocked(g, k));
+  // the sim's rule (chunk 16: a species with no research of its own waits for its water type's research)
+  return safe(() => requiredUnlocks(sp), sp.unlock?.requires ?? []).every((k) => unlocked(g, k));
 }
 
 /**

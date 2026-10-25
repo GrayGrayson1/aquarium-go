@@ -17,7 +17,9 @@ function dominance(c: Creature, hour: number): number {
   return c.sizeCm * 10 + (c.genome?.potentials?.temperament ?? 50) * 0.08 + Math.min(40, ageDaysAt(c, hour)) * 0.15;
 }
 
-export function stepProtogynous(state: GameState, tank: Tank, sp: SpeciesDefinition, members: Creature[], hour: number, ctx: SimContext): void {
+/** `breeds` false: a species the game doesn't breed (chunk 16, `special.socialSexChange`) — the same change, without the
+ * promise that the pair can now breed. */
+export function stepProtogynous(state: GameState, tank: Tank, sp: SpeciesDefinition, members: Creature[], hour: number, ctx: SimContext, breeds = true): void {
   if (sp.sexSystem !== 'protogynous') return;
   const adults = members.filter((c) => isMature(c, sp, hour));
   const males = adults.filter((c) => c.reproRole === 'male');
@@ -37,7 +39,8 @@ export function stepProtogynous(state: GameState, tank: Tank, sp: SpeciesDefinit
     addHistory(t, 'sex_change', 'Became the dominant fish of the group and changed into a male.', hour);
     bumpCounter(state, 'sexChanges');
     addMastery(state, 'breeding', 15);
-    say(state, ctx, { kind: 'breeding', text: `${t.name} has become the male of the group — the ${sp.commonName.toLowerCase()} pair can breed now.`, tankId: tank.id, creatureId: t.id, toast: true });
+    const text = breeds ? `${t.name} has become the male of the group — the ${sp.commonName.toLowerCase()} pair can breed now.` : `${t.name} has become the male of the ${sp.commonName.toLowerCase()} group.`;
+    say(state, ctx, { kind: 'breeding', text, tankId: tank.id, creatureId: t.id, toast: true });
     return; // one change per tank per step
   }
   if (males.length || changing.length || adults.length < 2) return;

@@ -409,6 +409,48 @@ const KNOWN_AT: Record<number, { species: string[]; tankTiers: string[] }> = {
 };
 // v2 (chunk 5, INTAKE C-44): the S3-D state (the Water and Live food rooms, manual mode); no species or tank size changed.
 KNOWN_AT[2] = { species: [...KNOWN_AT[1].species], tankTiers: [...KNOWN_AT[1].tankTiers] };
+// v3 (chunk 16, ADR-0052 decision 5): the new species. Unreleased until chunk 16 ships (0.8.0), so this entry grows
+// with each of the chunk's three waves; once released it is fixed like the others.
+KNOWN_AT[3] = {
+  species: [
+    ...KNOWN_AT[2].species,
+    // wave A: a friend's reef
+    'astraea_snail',
+    'cerith_snail',
+    'chocolate_tang',
+    'elegant_starfish',
+    'emperor_angelfish',
+    'fighting_conch',
+    'lyretail_anthias',
+    'maroon_clownfish',
+    'melanurus_wrasse',
+    'mexican_turbo_snail',
+    'nassarius_snail',
+    'sailfin_tang',
+    'scarlet_hermit_crab',
+    // wave B: reef favourites
+    'bubbletip_anemone',
+    'emerald_crab',
+    'flame_angelfish',
+    'flame_hawkfish',
+    'lawnmower_blenny',
+    'sand_sifting_starfish',
+    'sixline_wrasse',
+    'tuxedo_urchin',
+    'yellowtail_damselfish',
+    // wave C: freshwater favourites
+    'dwarf_gourami',
+    'freshwater_angelfish',
+    'german_blue_ram',
+    'ghost_shrimp',
+    'harlequin_rasbora',
+    'platy',
+    'ramshorn_snail',
+    'swordtail',
+    'zebra_danio',
+  ],
+  tankTiers: [...KNOWN_AT[2].tankTiers],
+};
 
 describe('PERSIST-014 A5 / ADR-0016 decision 2: a new species or tank size raises SCHEMA_VERSION', () => {
   it(`the species and tank sizes are exactly the ones pinned for save format v${SCHEMA_VERSION}`, () => {
@@ -437,6 +479,8 @@ const TABLES_AT: Record<number, { waterClasses: string[]; showTiers: string[]; b
     staffTraits: ['algae_hunter', 'early_bird', 'gentle_hands', 'great_with_kids', 'meticulous', 'planner', 'quick_learner', 'reef_minded', 'storyteller', 'thrifty'],
   },
 };
+// v3 (chunk 16): new species only; these tables are unchanged.
+TABLES_AT[3] = TABLES_AT[2];
 
 describe('ADR-0036 (F3): a new water class, show tier, buyer type, staff role or staff trait raises SCHEMA_VERSION', () => {
   it(`the five tables' keys are exactly the ones pinned for save format v${SCHEMA_VERSION}`, () => {
@@ -461,6 +505,7 @@ describe('ADR-0036 (F3): a new water class, show tier, buyer type, staff role or
 const LIMITS_AT: Record<number, { prepLevels: number; maxReservoirs: number; rareVariantKinds: string[] }> = {
   2: { prepLevels: 3, maxReservoirs: 3, rareVariantKinds: ['prismatic'] },
 };
+LIMITS_AT[3] = LIMITS_AT[2]; // v3 (chunk 16): unchanged
 
 describe('ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant kind raises SCHEMA_VERSION', () => {
   it(`the Water room's limits and the rare-variant kinds are the ones pinned for save format v${SCHEMA_VERSION}`, () => {
@@ -486,6 +531,7 @@ describe('ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant
 const ROOM_LIMITS_AT: Record<number, { maxCones: number; maxJars: number; staffMaxSkill: number; rareVariantOrigins: string[] }> = {
   2: { maxCones: 6, maxJars: 8, staffMaxSkill: 5, rareVariantOrigins: ['bred', 'shop', 'spontaneous'] },
 };
+ROOM_LIMITS_AT[3] = ROOM_LIMITS_AT[2]; // v3 (chunk 16): unchanged
 
 describe('chunk 7 (B-203): more cones or jars, a higher staff skill or a new rare-variant origin raises SCHEMA_VERSION', () => {
   it(`the Live food room's limits, the staff skill range and the rare-variant origins are the ones pinned for v${SCHEMA_VERSION}`, () => {

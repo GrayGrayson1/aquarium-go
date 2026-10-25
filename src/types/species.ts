@@ -122,6 +122,7 @@ export type BreedingSystemId =
   | 'mouthbrooder' // banggai cardinal (male mouthbrooding)
   | 'egg_layer_generic'
   | 'fragmentation' // corals
+  | 'fission' // chunk 16: a living anemone splits in two by itself (no partner)
   | 'not_in_game'; // documented but not breedable in first build
 
 export interface BreedingProfile {
@@ -225,6 +226,13 @@ export interface CreatureVisualParams {
   gillColor?: string;
   /** Only for clearly-labelled fictional cosmetic variants. */
   glow?: number;
+  /**
+   * chunk 16 — a species-specific tail-base marking the fish art draws (the platy's and swordtail's tail spots:
+   * 'mickey', 'moon', 'crescent', 'comet', 'twin'). Its own field so a tail-spot gene combines with the others.
+   */
+  tailSpot?: string;
+  /** chunk 16 — a species-specific body marking ('tuxedo': the black rear half of a platy or swordtail). */
+  bodyMark?: string;
 }
 
 export interface LocusDefinition {
@@ -330,6 +338,18 @@ export type BehaviorSetId =
   | 'lionfish'
   | 'grouper'
   | 'archerfish' // lane:brackish — surface-cruising shoal that spits water jets at insects above the surface
+  | 'wrasse' // chunk 16 — sand-sleeping wrasse (melanurus): forages over rock and sand by day, sleeps buried in the sand
+  | 'starfish' // chunk 16 — slow surface crawler on glass and rock (elegant starfish)
+  | 'conch' // chunk 16 — sand-bed grazer that hops on its operculum and half-buries (fighting conch)
+  | 'snail_sand' // chunk 16 — buried scavenger snail that surfaces for food (Nassarius)
+  | 'urchin' // chunk 16 — slow spiny grazer on rock and glass that carries debris (tuxedo urchin)
+  | 'starfish_sand' // chunk 16 — sand-sifting star: buried by day, roams the sand bed at night
+  | 'crab' // chunk 16 — true crab that hides in rockwork by day and forages at night (emerald crab)
+  | 'blenny' // chunk 16 — rock-perching grazer that hops between perches (lawnmower blenny)
+  | 'hawkfish' // chunk 16 — perches on rock tops and pounces on food (flame hawkfish)
+  | 'damsel' // chunk 16 — hovers over its own patch of rock and chases intruders (yellowtail damsel)
+  | 'cichlid_dwarf' // chunk 16 — dwarf cichlid that hovers low and sifts the substrate in pairs (German blue ram)
+  | 'anemone' // chunk 16 — a living anemone: wanders until it settles in the light, closes at night, hosts clownfish
   | 'sessile'; // corals/anemones
 
 export interface BehaviorTraits {
@@ -538,4 +558,10 @@ export interface SpeciesSpecialNeeds {
    * young are young shrimp). Read it through youngKindOf in src/data/species/index.ts.
    */
   youngKind?: 'shrimp' | 'snail';
+  /**
+   * chunk 16 (ADR-0052 decision 3) — a protogynous species the game doesn't breed whose dominant female still turns
+   * male in a group of two or more adult females with no male (lyretail anthias, melanurus wrasse): the change is
+   * social, not breeding, so it runs without a breeding module. Absent = only breedable species change sex.
+   */
+  socialSexChange?: boolean;
 }
