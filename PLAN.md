@@ -1656,8 +1656,8 @@ REL-012, REL-018.
     16 solid as drawn) as drawn, so a shrimp at a live rock's face no longer counts as inside it. The blenny's dart was
     measured a second after the tap, when it is often over, and could catch a chase's burst; it is now measured from a
     calm tap, and a startled darter whose cover is behind it flips round to it (a C-start: perched head up it only
-    backed away; only with its cover some way off, or the flip read as a snap). `reposition` now comes down to its free
-    spot before it ends, so the walker lands there. A sweep of every AI test over nudged starts (B-218) found two more
+    backed away; only with its cover 0.8 body lengths or more away, or the flip read as a snap). A sweep of every AI
+    test over nudged starts (B-218) found two more
     chunk-16 tests that held by luck, now measured properly: the ram's home-keeping over ten minutes (the pair settles
     its home in the first few), the wrasse's never digging in by day over every frame (a last frame caught a peck).
     Over 30 nudged starts every AI test passes but the collider test on 2 (a brief nose or tail in decor, about its

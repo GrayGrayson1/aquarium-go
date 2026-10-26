@@ -597,7 +597,7 @@ describe('German blue ram (cichlid_dwarf)', () => {
     expect(nearHome / n).toBeGreaterThan(0.7);
     expect(together / (n / 2)).toBeGreaterThan(0.6);
     expect(m.home.distanceTo(f.home)).toBeLessThan(1e-6);
-    expect(sifts).toBeGreaterThan(5);
+    expect(sifts).toBeGreaterThan(12); // (the old 5 in four minutes, over ten)
     // it sleeps low by its home
     syncWorld(w, { tank, creatures, clutches: [], hour: 23, refreshInfo: true });
     run(w, 60);

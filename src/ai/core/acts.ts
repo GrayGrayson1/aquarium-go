@@ -557,13 +557,9 @@ export const ACTS: Record<ActId, ActDef> = {
       if (a.actPhase === 0 && a.rt.pos.y > clearY - a.L * 0.25) a.actPhase = 1;
       const flat = Math.hypot(a.rt.pos.x - a.actData.x, a.rt.pos.z - a.actData.z);
       if (a.actPhase === 1 && flat < a.L * 0.35) {
-        // over the spot: turn to the heading that fits there and come down to it, then settle — the brain lands walkers
-        // once it ends, within reach of the floor (chunk 16: ending its clear height up, it was carried off swimming
-        // by the next act, and a walker refused a landing was sent here again and again)
-        const down = a.rt.pos.y - a.actData.y < a.L * 0.3;
-        if ((down && a.fwd.x * a.actNormal.x + a.fwd.z * a.actNormal.z > 0.94) || a.actT > 10) return false;
-        go(a, _a.set(a.actData.x, a.actData.y, a.actData.z), cruiseBL(a) * 0.4, a.L * 0.3);
-        a.ctrl.allowFloor = true;
+        // over the spot: turn to the heading that fits there, then settle (the brain lands walkers once it ends)
+        if (a.fwd.x * a.actNormal.x + a.fwd.z * a.actNormal.z > 0.94 || a.actT > 10) return false;
+        go(a, _a.set(a.actData.x, a.rt.pos.y, a.actData.z), cruiseBL(a) * 0.4, a.L * 0.6);
         look(a, _b.copy(a.rt.pos).addScaledVector(a.actNormal, a.L * 3));
         return true;
       }
@@ -684,9 +680,10 @@ export const ACTS: Record<ActId, ActDef> = {
       // (only with the cover some way off: right beside it the way round is arbitrary, and a flip read as a snap)
       if (dash && a.actPhase === 0 && a.actT < 0.05 && a.loco === 'swim') {
         _a.subVectors(a.actData, a.rt.pos);
-        const behind = a.fwd.dot(_a) < 0;
-        _a.y = 0;
-        if (behind && _a.lengthSq() > a.L * a.L * 0.64) {
+        // (the distance in 3D: a hole right below a head-up blenny is far enough; level when the cover lies off to the
+        // side, nose down at it when it lies below — the pitch cap then holds the dive in range)
+        if (a.fwd.dot(_a) < 0 && _a.lengthSq() > a.L * a.L * 0.64) {
+          if (Math.hypot(_a.x, _a.z) > a.L * 0.3) _a.y = 0;
           a.fwd.copy(_a.normalize());
           a.aim.copy(a.fwd);
         }
