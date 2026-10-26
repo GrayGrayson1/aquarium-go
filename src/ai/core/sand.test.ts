@@ -112,8 +112,12 @@ describe('melanurus wrasse (wrasse)', () => {
     const bad: string[] = [];
     const prev = a.rt.pos.clone();
     const H = w.env.surfaceY - w.env.floorY;
+    // by day it may touch the sand with its nose as it pecks, but never digs in (asserted over every frame: a check of
+    // the last frame alone failed when a run ended mid-peck)
+    let maxBuried = 0;
     run(w, 180, () => {
       frames++;
+      maxBuried = Math.max(maxBuried, a.rt.ai.buried as number);
       if (!a.rt.visible) hidden++;
       if (a.rt.pos.y < w.env.floorY + H * 0.5) low++;
       path += a.rt.pos.distanceTo(prev);
@@ -132,7 +136,7 @@ describe('melanurus wrasse (wrasse)', () => {
     expect(low / frames).toBeGreaterThan(0.6);
     expect(path).toBeGreaterThan(a.L * 20);
     expect(pecks).toBeGreaterThan(20);
-    expect(a.rt.ai.buried).toBe(0);
+    expect(maxBuried).toBeLessThan(0.2);
   });
 
   it('turns in before the other fish and gets up after them; comes up out of the sand smoothly', () => {

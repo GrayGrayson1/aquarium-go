@@ -512,7 +512,9 @@ export function stepAgent(a: Agent, w: AIWorld, dt: number): void {
   }
   // crawlers/walkers that swam (short swim, gulp, tail flip) settle back onto a surface
   // (a walker after sinking food keeps swimming for it; once the piece lies near the bottom it comes down to it)
-  if (a.loco === 'swim' && (a.set.loco === 'crawl' || a.set.loco === 'walk') && !SWIM_ACTS.has(a.act) && !(a.act === 'feed' && a.set.loco === 'walk' && foodHigh(a, w))) {
+  const landing = a.loco === 'swim' && (a.set.loco === 'crawl' || a.set.loco === 'walk') && !SWIM_ACTS.has(a.act) && !(a.act === 'feed' && a.set.loco === 'walk' && foodHigh(a, w));
+  if (!landing) a.landRefusedSince = -1; // (chunk 16: a refused landing counts only while it is coming down to land)
+  if (landing) {
     const c = a.ctrl;
     c.allowFloor = true;
     c.avoid = Math.min(c.avoid, 0.4);

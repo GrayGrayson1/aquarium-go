@@ -1541,6 +1541,9 @@ function chooseWedgeExit(a: Agent, env: TankEnv, climbH: number, over0: number, 
   fz /= fl;
   let best = Infinity;
   out.set(0, 0, 0);
+  // chunk 16: the nose and tail count against the glass as well as the centre — a long body (an axolotl) wedged
+  // between a plant's crown and the back glass picked "backwards", which the glass then held still, for good
+  const glass0 = walkerGlassPen(a, env, pos.x, pos.z, fx, fz);
   // candidates: forward, backward (a walk along the body axis looks natural) and the four glass-parallel axes
   for (let i = 0; i < 6; i++) {
     const dx = i === 0 ? fx : i === 1 ? -fx : WEDGE_DIRS[i - 2][0];
@@ -1551,6 +1554,7 @@ function chooseWedgeExit(a: Agent, env: TankEnv, climbH: number, over0: number, 
       const x = pos.x + dx * s;
       const z = pos.z + dz * s;
       if (x < env.minX + rc || x > env.maxX - rc || z < env.minZ + rc || z > env.maxZ - rc) break;
+      if (walkerGlassPen(a, env, x, z, fx, fz) > glass0 + 1e-4) break;
       const ov = walkerOverlap(a, env, climbH, x, z);
       if (ov > over0 + rc * 0.15) break;
       if (ov < rc * 0.1) {
@@ -1711,6 +1715,8 @@ export function takeOff(a: Agent): void {
   }
 }
 
+const _landAt = new THREE.Vector3();
+const _landFwd = new THREE.Vector3();
 /** Crawler in swim mode lands when close to an allowed surface. Returns true when landed. */
 export function tryLand(a: Agent, w: AIWorld, force = false): boolean {
   if (a.loco !== 'swim' || a.set.loco === 'swim' || a.set.loco === 'upright') return false;
@@ -1718,6 +1724,24 @@ export function tryLand(a: Agent, w: AIWorld, force = false): boolean {
   const hit = nearestSurface(w.env, a.rt.pos, mask, a.hit);
   const standoff = a.set.body.hy * a.L;
   if (force || hit.d < standoff + a.L * 0.35) {
+    // chunk 16: a floor walker comes down only where its whole body fits on the floor — not over a plant's crown or a
+    // hide too tall to step onto, which it would then sink into. Its goal may lie there (a rest spot over a crown): a
+    // moment refused, it swims to open floor that fits (reposition, through the brain's wedgeSwim) and lands there
+    if (!force && a.set.loco === 'walk') {
+      _landAt.set(a.rt.pos.x, floorAt(w.env, a.rt.pos.x, a.rt.pos.z) + standoff, a.rt.pos.z);
+      _landFwd.set(a.fwd.x, 0, a.fwd.z);
+      if (_landFwd.lengthSq() < 1e-8) _landFwd.set(1, 0, 0);
+      _landFwd.normalize();
+      if (!bodyFits(a, w, _landAt, _landFwd)) {
+        if (a.landRefusedSince < 0) a.landRefusedSince = w.time;
+        else if (w.time - a.landRefusedSince > 1.2) {
+          a.landRefusedSince = -1;
+          a.wedgeSwim = a.set.canSwim;
+        }
+        return false;
+      }
+    }
+    a.landRefusedSince = -1;
     a.loco = a.set.loco;
     a.surfId = -1;
     a.aim.set(0, 0, 0);
@@ -1726,6 +1750,7 @@ export function tryLand(a: Agent, w: AIWorld, force = false): boolean {
     safeNormalize(a.fwd, X1);
     return true;
   }
+  a.landRefusedSince = -1; // (not down at the floor yet: nothing refused)
   return false;
 }
 

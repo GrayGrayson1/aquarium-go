@@ -675,6 +675,19 @@ export const ACTS: Record<ActId, ActDef> = {
     tick(a, w) {
       // chunk 16 — a fright sends a blenny, a damsel or an emerald crab straight into cover at full speed
       const dash = a.set.startle === 'shelter' || rockSleep(a);
+      // a C-start: a startled darter whose cover lies behind it flips round toward it at once, level (the ordinary turn
+      // turns round horizontally first, so a blenny perched head up over its hole only backed away: chunk 16)
+      // (only with the cover some way off: right beside it the way round is arbitrary, and a flip read as a snap)
+      if (dash && a.actPhase === 0 && a.actT < 0.05 && a.loco === 'swim') {
+        _a.subVectors(a.actData, a.rt.pos);
+        // (the distance in 3D: a hole right below a head-up blenny is far enough; level when the cover lies off to the
+        // side, nose down at it when it lies below — the pitch cap then holds the dive in range)
+        if (a.fwd.dot(_a) < 0 && _a.lengthSq() > a.L * a.L * 0.64) {
+          if (Math.hypot(_a.x, _a.z) > a.L * 0.3) _a.y = 0;
+          a.fwd.copy(_a.normalize());
+          a.aim.copy(a.fwd);
+        }
+      }
       a.ctrl.urgency = a.actPhase === 0 ? (dash ? 1 : 0.6) : 0;
       const r = hideTick(a, w, 1.6, dash && a.actT < 4 ? burstBL(a) * 0.8 : 0);
       if (dash && a.actPhase === 0 && a.actT < 0.5) a.pose = 'startle';

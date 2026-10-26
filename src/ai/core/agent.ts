@@ -164,6 +164,8 @@ export interface Agent {
   wedgeDir: THREE.Vector3;
   /** Walker boxed in with no walkable way out: the brain sends it for a short swim. */
   wedgeSwim: boolean;
+  /** chunk 16 — swimming floor walker: when it was first refused a landing (no room for its body below it), or -1. */
+  landRefusedSince: number;
   /** Walkers: time spent unable to take a step toward the current goal (the brain re-plans after a moment). */
   blockedT: number;
   /** Walkers: recent times it got stuck (a second one soon after sends it for a short swim). */
@@ -470,6 +472,7 @@ export function createAgent(c: Creature, sp: SpeciesDefinition, rt: CreatureRunt
     stuckT: 0,
     wedgeDir: new THREE.Vector3(),
     wedgeSwim: false,
+    landRefusedSince: -1,
     blockedT: 0,
     blockedHits: 0,
     lastBlockedAt: -1e9,

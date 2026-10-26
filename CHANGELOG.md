@@ -27,7 +27,8 @@ additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if 
   pass over food made for other animals (axolotl pellets in a reef) while something that suits is in stock.
 - **Snails, shrimp, loaches and hermit crabs** now sit on the rock as it's drawn, not just above it.
 - **Fixes:** a death from injuries now names the animal that did the most harm, and a fish harassed without a break no
-  longer lingers near death for good.
+  longer lingers near death for good. An axolotl no longer settles inside a plant's crown or stays wedged between a
+  plant and the glass: it lands where it fits.
 - **Saves** use a new format. An older copy of the game asks you to refresh rather than open them.
 
 ## 0.7.0 — 2026-10-22

@@ -420,18 +420,37 @@ describe('lawnmower blenny (blenny)', () => {
     expect(fled).toBeGreaterThan(2);
     was = new Map();
     const a = w.agents[0];
+    // a dart needs a way to go and a calm start: tap once it is out over open water, a body length or more from the
+    // rockwork, and not chasing or fleeing (where the run happens to leave it differs between machines: next to a hole
+    // it would only slip in, and a chase's burst would pass for a dart)
+    const fromRock = () => Math.min(...w.env.colliders.filter((c) => c.hard).map((c) => colliderSdf(c, a.rt.pos.x, a.rt.pos.y, a.rt.pos.z)));
+    const busy = () => a.act === 'chase' || a.act === 'startle' || a.act === 'retreat' || a.speed > 2 * a.sp.behaviorTraits.cruiseSpeed * a.L;
+    for (let t = 0; t < 120 && (fromRock() < a.L || busy()); t += 0.1) run(w, 0.1);
+    expect(fromRock(), 'out in the open before the tap').toBeGreaterThanOrEqual(a.L);
+    expect(busy(), 'calm before the tap').toBe(false);
     addStimulus(w, 'tap', new THREE.Vector3(a.rt.pos.x, a.rt.pos.y, w.env.maxZ), 1, true);
-    run(w, 1);
+    // its speed from the tap on, over quarter-second spans (the dart is often over within the first second, and a
+    // one-frame push off the rock is not a dart)
+    let dash = 0;
+    const trail: THREE.Vector3[] = [];
+    const track = () => {
+      trail.push(a.rt.pos.clone());
+      if (trail.length > 15) dash = Math.max(dash, trail[trail.length - 1].distanceTo(trail[trail.length - 16]) / (15 * DT) / a.L);
+    };
+    run(w, 1, track);
     expect(a.act).toBe('retreat');
     let inHole = false;
-    let dash = 0;
+    let hole: string | null = null; // (the rock it hid in: it may be out again by the end)
     run(w, 3, () => {
-      dash = Math.max(dash, a.speed / a.L);
-      if (a.act === 'retreat' && a.rt.pose === 'hiding' && a.actTarget && a.rt.pos.distanceTo(a.actData) < a.L) inHole = true;
+      track();
+      if (a.act === 'retreat' && a.rt.pose === 'hiding' && a.actTarget && a.rt.pos.distanceTo(a.actData) < a.L) {
+        inHole = true;
+        hole ??= a.actTarget;
+      }
     });
     expect(inHole).toBe(true);
     expect(dash).toBeGreaterThan(1.5); // (a dart: three times its cruise)
-    expect([`${tank.id}_rock`, `${tank.id}_rock2`]).toContain(a.actTarget);
+    expect([`${tank.id}_rock`, `${tank.id}_rock2`]).toContain(hole);
   });
 
   it('sleeps wedged in a rock crevice', () => {
@@ -561,7 +580,9 @@ describe('German blue ram (cichlid_dwarf)', () => {
     let together = 0;
     let sifts = 0;
     let lastSift = 0;
-    run(w, 240, () => {
+    // ten minutes: the pair settles its home in the first few, and a chase can take it off for a while (over four
+    // minutes the share near home ran from 0.47 to 0.88 on nudged starts, over ten from 0.75 to 0.95)
+    run(w, 600, () => {
       for (const r of [m, f]) {
         n++;
         if (r.rt.pos.y - floorAt(w.env, r.rt.pos.x, r.rt.pos.z) < H * 0.3) low++;
@@ -576,7 +597,7 @@ describe('German blue ram (cichlid_dwarf)', () => {
     expect(nearHome / n).toBeGreaterThan(0.7);
     expect(together / (n / 2)).toBeGreaterThan(0.6);
     expect(m.home.distanceTo(f.home)).toBeLessThan(1e-6);
-    expect(sifts).toBeGreaterThan(5);
+    expect(sifts).toBeGreaterThan(12); // (the old 5 in four minutes, over ten)
     // it sleeps low by its home
     syncWorld(w, { tank, creatures, clutches: [], hour: 23, refreshInfo: true });
     run(w, 60);

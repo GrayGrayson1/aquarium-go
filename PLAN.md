@@ -1512,7 +1512,7 @@ REL-012, REL-018.
   four checks again, typecheck, unit 3,363, build, e2e 335 of 335 (39.9 min), pushed. Nothing deployed (a developer tool
   needs no release; ADR-0051 decision 1).
 
-### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24; done 2026-10-25 (`66e4a37`), released as 0.8.0
+### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24; done 2026-10-25 (`66e4a37`); 0.8.0 being released
 
 - **What:** the owner's words, verbatim (2026-10-24): "add all 12 missing species as the next chunk and what other
   species should we be adding? how will this work for variations?" It began with a friend's 210-gallon reef the owner
@@ -1645,7 +1645,25 @@ REL-012, REL-018.
     card reading "Splits by itself"; the autofeeder weighs each animal's vote by its feeding need and passes over a
     food made for another species or water while a fitting one is in stock (B-211); catch-up bids as ADR-0016 keeps
     them; release 0.8.0 once green.
-  - *Backlog:* B-211 to B-216 (B-211, the autofeeder's vote, and B-213, the anemone's split, built).
+  - *0.8.0's first Pages build failed* (run `40237089954`, on `main` `0289eaf`; nothing deployed, the Render static
+    site's deploy was cancelled): two AI tests that pass on the Mac failed on GitHub's x64 Node, which takes a
+    different path through a long AI run. The collider test caught an axolotl's centre in a java fern's crown for one
+    sample, at rest: it had come down onto the crown. A probe (the test's body on 96 start positions nudged by up to
+    10 µm) found the kinds on the Mac too, among them one that stays for good: an axolotl wedged between a crown and
+    the back glass, whose way out led into the glass. Fixed: the way out counts the nose and tail against the glass;
+    a swimming walker lands only where its body fits, and after a moment refused swims to open floor that fits
+    (`reposition`). The collider tests measure a rock drawn smaller than its box (river stones, live rock: since chunk
+    16 solid as drawn) as drawn, so a shrimp at a live rock's face no longer counts as inside it. The blenny's dart was
+    measured a second after the tap, when it is often over, and could catch a chase's burst; it is now measured from a
+    calm tap, and a startled darter whose cover is behind it flips round to it (a C-start: perched head up it only
+    backed away; only with its cover 0.8 body lengths or more away, or the flip read as a snap). A sweep of every AI
+    test over nudged starts (B-218) found two more
+    chunk-16 tests that held by luck, now measured properly: the ram's home-keeping over ten minutes (the pair settles
+    its home in the first few), the wrasse's never digging in by day over every frame (a last frame caught a peck).
+    Over 30 nudged starts every AI test passes but the collider test on 2 (a brief nose or tail in decor, about its
+    rate before the chunk: B-217).
+  - *Backlog:* B-211 to B-219 (B-211, the autofeeder's vote, B-213, the anemone's split, and B-218, the tests that
+    held by luck, done; B-217 the rare brief collisions above; B-219 the steering case behind the C-start).
 
 ## Releases
 

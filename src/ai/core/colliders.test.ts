@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { getDecorDef } from '@/data/catalog/decor';
 import { findSpecies } from '@/data/species';
 import type { Creature, DecorInstance } from '@/types';
-import { colliderSdf, colliderSdfXZ, decorSolidity, floorAt } from './env';
+import { colliderSdf, colliderSdfGrounded, colliderSdfXZ, decorSolidity, drawnDepth, floorAt } from './env';
 import { stepWorld, syncWorld, type AIWorld } from './world';
 import { makeTestCreature, makeTestTank, makeTestWorld, decor } from './testkit';
 
@@ -51,7 +51,11 @@ function crew(tankId: string): Creature[] {
   return out;
 }
 
-/** Body points of every agent inside solid (non-exempt, non-climbable-for-walkers) decor, beyond a small tolerance. */
+/**
+ * Body points of every agent inside solid (non-exempt, non-climbable-for-walkers) decor, beyond a small tolerance. A rock
+ * drawn smaller than its collider box (chunk 16, rockshape.ts: river stones) is solid as drawn: a point inside the box but
+ * short of the drawn rock is not inside it (drawnDepth: how far in from the box surface the rock begins).
+ */
 function penetrations(w: AIWorld, tol = 0.004, endTol = 0.006): string[] {
   const bad: string[] = [];
   const e = w.env;
@@ -69,10 +73,11 @@ function penetrations(w: AIWorld, tol = 0.004, endTol = 0.006): string[] {
         if (walker) {
           if (c.rise <= climbH) continue;
           if (y < c.cy - c.hy || y > c.top) continue;
-          const d = colliderSdfXZ(c, x, z);
+          const d = colliderSdfXZ(c, x, z) + drawnDepth(c, x, y, z);
           if (d < -(k === 0 ? tol : endTol)) bad.push(`${a.speciesId} ${k} in ${c.decorId}/${c.part} d=${d.toFixed(4)} act=${a.act}`);
         } else {
-          const d = colliderSdf(c, x, y, z);
+          // (drawnDepth is measured from the grounded box surface, so a drawn rock's depth uses the same distance)
+          const d = (c.shape ? colliderSdfGrounded(c, x, y, z) : colliderSdf(c, x, y, z)) + drawnDepth(c, x, y, z);
           if (d < -(k === 0 ? tol : endTol)) bad.push(`${a.speciesId} ${k} in ${c.decorId}/${c.part} d=${d.toFixed(4)} act=${a.act}`);
         }
       }
