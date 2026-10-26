@@ -37,11 +37,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    sets each member's spending in the members list); the questions chunk 14 left for the owner (SESSION_HANDOFF.md). The audit's
    other findings (B-207, B-208) wait for the owner. **Chunk 15, the scenario lab** (dev tools to build any aquarium or
    setup and play it without playing up to it; the owner, 2026-10-23), is done (2026-10-23, Chase; ADR-0051): `npm run lab`
-   from `~/LocalTest/AquariumGo`, and docs/SCENARIOS.md. A developer tool: nothing to release. **Next: chunk 16, 31 new
-   species** (the owner, 2026-10-24; ADR-0052; the brief below): a friend's reef's missing 12, the maroon clownfish, 9
-   reef and 9 freshwater favourites, with real colour forms, young and male/female colours, buyable from the start.
-   It starts in a fresh context; it ends in 0.8.0 only with the owner's go-ahead.
-4. **Released:** 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   from `~/LocalTest/AquariumGo`, and docs/SCENARIOS.md. A developer tool: nothing to release. **Chunk 16, 31 new
+   species, is done and released as 0.8.0** (2026-10-25; the owner: "Release once green", ADR-0052 decision 14; the
+   brief below, "Releases"): a friend's reef's missing 12, the maroon clownfish, 9 reef and 9 freshwater favourites,
+   with real colour forms, young and male/female colours, in the shop once their water is researched. **Next:** not
+   chosen; the owner plays 0.6.0 to 0.8.0 (a problem they report comes first); the backlog's chunk-16 rows (B-212,
+   B-214 to B-217, B-219).
+4. **Released:** 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
 5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
@@ -69,7 +71,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 13 | Shared shops, the screens and the play-test (§7, §8) | Done 2026-10-21 (released in 0.6.0; Chase, at the owner's request; the words approved, ADR-0048 and ADR-0049). The connection, the shared dispatcher, the screens, your own game waiting, the save guards, photos; the review's 5 blockers fixed and its confirmations' 2 more, the third clean; the final pass on `c063c6e`: typecheck, unit 3,202, build, e2e 329 of 329. The play-test build on the Render address, the agent's live two-browser test 18 of 18 there and again on Pages after the release; the owner's own play-test next |
 | 15 | The scenario lab (ADR-0051) | Done 2026-10-23 (Chase, at the owner's request; not released: a developer tool). Recipes, the builder, 13 presets, the lab screen, the addresses and `__AQ.scenario`, `npm run lab` and `npm run scenario`, docs/SCENARIOS.md; the review's 4 blockers fixed, its first confirmation's 2, the second clean; the final pass on `aae0922`: typecheck, unit 3,363, build, e2e 335 of 335 |
 | 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Done 2026-10-22 (released in 0.7.0; Marshall, at the owner's request; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; the review's blocker and its confirmations' notes fixed, the second confirmation clean; the final pass on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331; live: the smoke 27 of 27, the two-browser money test 29 of 29 on Pages and on the Render address |
-| 16 | 31 new species (ADR-0052) | Brief written 2026-10-24 (Chase, at the owner's request); not started. A friend's reef's 12 missing animals and the maroon clownfish, 9 reef and 9 freshwater favourites; real colour forms; young and male/female colours; buyable from the start; `SCHEMA_VERSION` 3; ends in 0.8.0 with the owner's go-ahead |
+| 16 | 31 new species (ADR-0052) | Done 2026-10-25 (released in 0.8.0; Chase, at the owner's request; the owner's answers, ADR-0052 rounds 1–4). 31 species (48 → 79) in three waves with real colour forms, young and male/female colours, their own behaviour and art; save format v3; the lab's "A friend's reef". Its full run (`96c950c`): typecheck, unit 3,814, build, e2e 335 of 335; the fresh review's, the confirmation's and the AI fixes' reviews' blockers fixed |
 
 **Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
@@ -1512,7 +1514,7 @@ REL-012, REL-018.
   four checks again, typecheck, unit 3,363, build, e2e 335 of 335 (39.9 min), pushed. Nothing deployed (a developer tool
   needs no release; ADR-0051 decision 1).
 
-### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24; done 2026-10-25 (`66e4a37`); 0.8.0 being released
+### 16. 31 new species (ADR-0052) — brief written 2026-10-24 (Chase); built 2026-10-24; done and released as 0.8.0 on 2026-10-25 (`96c950c`)
 
 - **What:** the owner's words, verbatim (2026-10-24): "add all 12 missing species as the next chunk and what other
   species should we be adding? how will this work for variations?" It began with a friend's 210-gallon reef the owner
@@ -1763,6 +1765,19 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   shared build hash) and the Render static site (`dep-dbd4sc67bikc73f3pn7g`). Both `version.json` files read
   `{"id":"a704e63-…","version":"0.7.0"}`. The live smoke 27 of 27; the two-browser money test 29 of 29 on Pages and on
   the Render address.
+- **0.8.0, released 2026-10-25** at the owner's go-ahead in the session (ADR-0052 round 4, decision 14: "Release once
+  green"): chunk 16, 31 new species. Step 1's "the owner has played it" was waived by that answer (they chose it over
+  "I'll play it first"). The four checks passed on `66e4a37` and the confirmation review was clean; the release commit
+  `8ed00eb` (version, CHANGELOG; typecheck, unit 3,814, build) was merged as `0289eaf` and pushed, but its Pages run
+  (`40237089954`) failed two AI tests that pass on the Mac (GitHub's x64 Node takes another path through a long AI
+  run), so nothing deployed; the Render static site's deploy, started alongside, was cancelled. The fixes (`4ff2f66`
+  to `96c950c`, each reviewed, with three re-checks) passed the four checks on `96c950c` (typecheck; unit 266 files,
+  3,814 tests; build; e2e 335 of 335, 40.6 min) and were merged in the internal clone onto a freshly fetched
+  `origin/main` as `2935a54` (its tree is `96c950c`'s) and pushed with `next`. Pages deployed `2935a54` (run
+  `40253358674`, its tests first); then the shop server from `main` (`dep-dbfapgks728c73eo17vg`; `/health` `version`
+  0.8.0, `build` `87e2d967e8d95f40`, the game's shared build hash, also in the deployed bundle) and the Render static
+  site (`dep-dbfap88m7kps738d36mg`). Both `version.json` files read `{"id":"2935a54-…","version":"0.8.0"}`. The live
+  smoke 27 of 27.
 
 ## Product decisions in force
 

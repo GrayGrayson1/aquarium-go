@@ -6856,9 +6856,9 @@
       "tasks": [],
       "tests": [],
       "evidence": [
-        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves). The owner said release once green (ADR-0052 decision 14); 0.8.0 follows."
+        "Released as 0.8.0 on 2026-10-25 at the owner's go-ahead (ADR-0052 decision 14, \"Release once green\"). The first Pages build (0289eaf) failed two AI tests that pass on the Mac; the fixes (4ff2f66 to 96c950c, each reviewed) pass the four checks on 96c950c in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 266 files, 3,814 tests; build exit 0; e2e 335 of 335 (40.6 min). main 2935a54 (its tree is 96c950c's): Pages run 40253358674 deployed it; the shop server dep-dbfapgks728c73eo17vg (/health version 0.8.0, build 87e2d967e8d95f40, the game's shared build hash) and the Render static site dep-dbfap88m7kps738d36mg; both version.json files read 2935a54, 0.8.0; the live smoke 27 of 27."
       ],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
     }

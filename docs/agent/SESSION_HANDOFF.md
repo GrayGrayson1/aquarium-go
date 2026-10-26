@@ -1,68 +1,49 @@
-# Session handoff: after 0.7.0; chunk 15 (the scenario lab) built; chunk 16 (31 new species) next
+# Session handoff: after 0.8.0 (chunk 16, 31 new species, released); the next chunk isn't chosen yet
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
 
-## Handoff: chunk 16, 31 new species (Chase, 2026-10-24)
+## Chunk 16, 31 new species: done and released as 0.8.0 (Chase, 2026-10-25)
 
-**Start here.** Read PLAN.md's chunk 16 brief and ADR-0052 (the owner's answers, verbatim). The owner's words
-(2026-10-24): "add all 12 missing species as the next chunk and what other species should we be adding? how will this
-work for variations?" Their answers: add the maroon clownfish; add the reef and freshwater favourites too (31 species,
-48 → 79); build young and male/female colours; every new species buyable from the start. It began with a friend's
-210-gallon reef the owner had built in the lab; **the repo is public, so the friend's name and photo stay out of it**
-(the stand-in recipe is `docs/agent/design/CHUNK-16/friends-reef-standins.json`, the aquascape described in the
-brief).
+- **Done** (PLAN.md chunk 16; ADR-0052 has the owner's answers, rounds 1–4 verbatim). 48 → 79 species, save format
+  v3. The owner approved the new wording (round 4, decision 11: the living anemone's breeding card reads "Splits by
+  itself"), chose the autofeeder's new vote (decision 12, B-211), kept the catch-up bid windows (decision 13) and said
+  release once green (decision 14).
+- **Released:** 0.8.0 on 2026-10-25: `main` = `2935a54` (merge of `next` `96c950c`), Pages, the Render static site and
+  the shared-shop server (see PLAN.md "Releases"). The first Pages build (on `0289eaf`) failed two AI tests that
+  passed on the Mac; nothing deployed until the fixes (below) were in.
+- **Tested:** the four checks on `96c950c` (typecheck; unit 266 files, 3,814 tests; build; e2e 335 of 335, 40.6 min); the fresh
+  review of the chunk, a confirmation review, and a fresh review of the AI fixes with three re-checks, each blocker
+  fixed and each re-check clean.
+- **Still open from the chunk:** B-212, B-214 to B-217, B-219 (B-217: rare brief AI collisions, about the rate before
+  the chunk; B-219: a steering case only darters' C-start covers). Older: F1 (the owner's VoiceOver pass), B-207 and
+  B-208 (the audit), B-210 (two crafted save shapes; before stage 2), online stage 2. The owner hasn't played 0.6.0 to
+  0.8.0 yet: a problem they report comes first.
 
-**State of things.** `next` = the commit that adds this handoff (pushed); `main` = `a704e63` (0.7.0), unchanged. The
-internal clone `~/LocalTest/AquariumGo` is at `c7ade07` with no patch applied (its git-excluded `scripts/_audit/` has
-the sync helpers `patch-sync.sh` and `patch-at.sh`, and throwaway probes from 2026-10-24). A lab dev server
-may still be running on port 5173 in CNVS's "Skye" terminal (started from the clone); e2e uses its own port (4399).
-
-**Progress (Chase, 2026-10-24/25, in this session; the chunk started at `1b929a7`).** All three waves are built and
-committed on `next` (not pushed): `efe420c` data/sim/saves, `e487495` art, `556ba33` behaviour, `b9b527f` lab
-presets, `e232b04` seeded tests + three sim fixes, `5068399` docs (each message explains its changes); PLAN.md chunk
-16's "Built" notes say what and how. **Running when this note was written (2026-10-25):** the four checks on `5068399`
-in `~/LocalTest/AquariumGo` (typecheck, unit, build, e2e under caffeinate; logs `chk-*.log` in the session
-scratchpad; don't sync files into the clone until e2e ends), and the fresh reviewer (Opus 5.5, max effort) on
-`git diff 1b929a7..5068399` (its brief `reviewer-brief.md`, report `review-c16.md`, both in the scratchpad). **Next:**
-fix the reviewer's blockers (and rerun the checks if code changes), mark SPC-001..009 GREEN with the evidence
-(`req-update.py` in the scratchpad does it; SPC-010 stays IN_PROGRESS), push `next` from the clone, then ask the owner
-the questions below and about 0.8.0. The owner answered one more question during the chunk (ADR-0052 round 3,
-decision 10: the first hour's toast cap is 100).
-- *Own testing done:* every new fish in the art gallery (`?sandbox=fishart-gallery&only=<id>`; young, male and female,
-  the forms) and every critter in `critterart-gallery.html`; the two lab presets in the tank view at 1600×1000 and
-  390×844 (day and night); a game week headless for both presets with autofeeders (`npm run scenario -- <preset>
-  --hours 168`: the friend's reef has no deaths and one anthias turns male on day 4; the new-species preset loses
-  three small snails to the flame hawkfish and the sand-sifting star, as their data says); two 0.7.0 saves (built
-  with `a704e63`) load with no repairs, play two days and re-save clean, and a new save is refused by 0.7.0 as "too
-  new" (save format v3).
-- *For the owner before release (new player-visible copy the designs don't cover):* the activity labels "asleep in
-  the sand", "resting in the sand", "hiding in the sand", "buried in the sand", "chasing off an intruder", "looking for
-  a place to settle", "settled"; the breeding messages "<name> stuck a little jelly clutch of <n> eggs to the glass."
-  (ramshorn) and "<name> has split in two! The new bubble-tip anemone, <name>, is its clone." (fission) with its
-  explanation; the species hints ("Available from the start." and "Needs no research of its own: it comes into the
-  shop once you research Marine Systems."). Also: the pea-puffer balance test's shop-opening floor (the triage's
-  numbers), and B-211's autofeeder rule.
-- *Release:* 0.8.0 bumps the save format, so the shared-shop server on Render (`server/host.ts` reads
-  `SCHEMA_VERSION`) must be deployed with it.
-
-**Order of work.**
-1. `git checkout next && git pull`; note the start commit.
-2. Study one species end to end before writing any: `kole_tang` (a plain fish), `ocellaris_clownfish` (named forms,
-   protandry), `coral_beauty` (protogynous), `betta` and `bristlenose_pleco` (male and female art via `isFemale`),
-   `nerite_snail` and `hermit_crab` (special art), `cherry_shrimp` (forms, colony breeding). The brief's "Where a
-   species is wired" lists every file to touch.
-3. Wave A (the friend's reef's 13) with the lab preset "A friend's reef"; the four checks; commit and push. Then wave
-   B (reef favourites), then C (freshwater). Each species: its data with sources, its genetics (real forms only), its
-   art (young and sex colours where the wild ones differ), its behaviour, its tests.
-4. The seeded tests shift (new day-one species change the shop's draws): run them before and after each wave and
-   explain each change in the commit (AGENTS.md); never retune data to hide it.
-5. `SCHEMA_VERSION` 3 with the first wave; load a 0.7.0 save to prove it.
-6. The fresh reviewer (Opus 5.5, `effort: "max"`, never Fable) on the brief and the whole diff; fix its blockers; your
-   own look-around (every new species in the lab at desktop and phone widths, young and adult, male and female); then
-   ask the owner about the 0.8.0 release (never push `main` without their yes in the session).
+**Learned in chunk 16.**
+- *The Pages build takes another path through a long AI run* (GitHub's Linux x64 Node against the Mac's arm64): an
+  AI test that passes here can fail there, and a rerun repeats it. Before a release that touches `src/ai`, sweep the
+  AI tests over nudged starts: a throwaway edit to `makeTestWorld` (`src/ai/core/testkit.ts`) adding
+  `p × 1e-7 × ((j % 3) − 1)` to each agent's x from an env var, then `PROBE_P=$p npx vitest run src/ai` for p =
+  1..30 (about 7 s each); never commit it. A test that fails on some nudges holds by luck: fix the behaviour or what
+  it measures, never loosen it (B-217, B-218).
+- *Watch the Pages run before deploying Render*: the static site's build runs the tests too, and a Render deploy
+  started alongside a failing Pages run can be cancelled (`render deploys cancel <service> <deploy> --confirm`).
+- *Seeded tests shift with new species* (the shop draws from the species available): prove a failure passes with the
+  new species hidden (filter `ALL_SPECIES` by the roster's `open` ids in the clone), then make the fixture independent
+  of the stream; check owner decisions before changing a game rule a test exposes (the triage changed MKT-016 against
+  ADR-0016; the review caught it).
+- *Mendelian `count: 'any'` means expressed*, not carried: use `het`/`hom` for carriers. `composeMorphName` drops a
+  catch-all "Wild Type" base when overlays exist and slots simple overlays before a species noun.
+- *`structuredClone` throws on an Immer draft*: use `deepClone` (`src/sim/clone.ts`) in sim code that a command's settle
+  can reach.
+- *A compat change needs a move preview and a listed animal in its test*, not only a purchase (`previewAddition` with
+  `creatureIds`; `residentsOf` counts listed animals).
+- *Size by sex:* `special.maleSizeFactor` (the maroon); compare a creature's size with `adultSizeOf(sp, role)`, not
+  `sp.adultSizeCm`, wherever "grown" matters.
+- *Fish shader marks* top out at `MAX_MARKS` 8: a young barred angelfish uses all of them.
 
 **Tips.**
 - `npm run scenario -- <recipe> --hours N` runs a recipe headless; add an `autofeeder` to a tank for runs past a day
