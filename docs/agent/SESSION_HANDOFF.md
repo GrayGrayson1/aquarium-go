@@ -1,9 +1,46 @@
-# Session handoff: after 0.8.0 (chunk 16, 31 new species, released); the next chunk isn't chosen yet
+# Session handoff: chunk 17 (big-tank species) designed and handed to Skye
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Handoff to Skye: chunk 17, big-tank species (Marshall, 2026-10-30)
+
+**The owner's words, verbatim** (2026-10-30): "Well it's at the Koi as well, and then everything else that you see
+here. I'm going to have you actually build out the entire schematic and plan for this, including all the variations
+that need to be implemented for these extra species and everything else in between (including all of the instructions
+on what can work together and what won't work together). We shouldn't be able to purchase these in the market until we
+have it available to ourselves: all the things, everything that needs to be considered. Go through the codebase and
+make sure that you understand it and then I'm going to have you go ahead and give SKYE the build. You're going to have
+SKYE, within Canvas CN VS, build out what you discover." And: "make sure we hand off the build to skye in cnvs".
+
+**Read, in this order:** ADR-0053 (the context, the three answers, the decisions); PLAN.md chunk 17 (the brief and
+BIG-001 to BIG-012); `docs/agent/design/CHUNK-17/BIG-TANKS.md` (the design: everything below in full); PLAN.md chunk
+16 and this file's "Learned in chunk 16" (the last species chunk: where a species is wired, the seeded-test triage, the
+Pages AI path); `AGENTS.md` and `CLAUDE.md`.
+
+**Order of work.**
+1. **Round 3 of the owner's questions** (design §16; rounds 1 and 2 are in ADR-0053), before building: one batched
+   AskUserQuestion, recommended option first, previews with the exact words; answers verbatim in ADR-0053.
+2. **Wave 0, the tank gate** for every species, alone; the seeded triage (design §3).
+3. **Waves A to D**, the species (design §15), each landed and tested before the next; `SCHEMA_VERSION` 4 with wave A.
+4. **Wave E**: the lab presets, sellers and the show; the final wording round.
+5. **The chunk's end**: the four checks, the fresh reviewer (Opus 5.5, max effort), its blockers, the nudged-start AI
+   sweep, your own testing as the owner would play it (design §15); PLAN.md, this file and REQUIREMENTS.json updated;
+   push `next` from the internal clone. Ask the owner about releasing 0.9.0; never push `main` or deploy without their
+   yes in your session.
+
+**State of things.** `main` = 0.8.0 (`2935a54`) on GitHub Pages, aquarium-go.onrender.com and the shop server
+aquarium-go-shops, all serving players: no deploy without the owner's yes. `next` has this brief, the design and
+ADR-0053 (docs only). The test clone `~/LocalTest/AquariumGo` is detached at `27f9d55` with nothing running; its
+git-excluded `scripts/_audit/chunk17/gate.ts` computes the tank gate's table (design §3). The repo and the clone are
+yours for this chunk; Marshall and Chase aren't editing either.
+
+**Rules that bite here.** Real colour forms only (ADR-0052 decision 2). Every new player-visible line goes to the owner
+first. No new dependencies without asking. The repo is public: no friends' names or photos. Reviewers are Opus 5.5 at
+max effort, never Fable. Run checks from the internal clone under `caffeinate -i -s`; never copy files into it while
+its e2e runs. Pushes from `/Volumes/Dev` hang: push from the clone.
 
 ## Chunk 16, 31 new species: done and released as 0.8.0 (Chase, 2026-10-25)
 

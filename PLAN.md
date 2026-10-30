@@ -40,9 +40,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    from `~/LocalTest/AquariumGo`, and docs/SCENARIOS.md. A developer tool: nothing to release. **Chunk 16, 31 new
    species, is done and released as 0.8.0** (2026-10-25; the owner: "Release once green", ADR-0052 decision 14; the
    brief below, "Releases"): a friend's reef's missing 12, the maroon clownfish, 9 reef and 9 freshwater favourites,
-   with real colour forms, young and male/female colours, in the shop once their water is researched. **Next:** not
-   chosen; the owner plays 0.6.0 to 0.8.0 (a problem they report comes first); the backlog's chunk-16 rows (B-212,
-   B-214 to B-217, B-219).
+   with real colour forms, young and male/female colours, in the shop once their water is researched. **Chunk 17,
+   big-tank species** (the owner, 2026-10-30; ADR-0053): koi, sharks, a ray and fifteen more for the 240- to
+   1,000-gallon tanks (79 → 97), and the shop stocks every species only once a tank that holds an adult is unlocked.
+   Designed by Marshall (`docs/agent/design/CHUNK-17/BIG-TANKS.md`), **handed to Skye** to build
+   (SESSION_HANDOFF.md "Handoff to Skye: chunk 17"). A problem the owner reports with 0.8.0 still comes first.
 4. **Released:** 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
@@ -72,6 +74,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 15 | The scenario lab (ADR-0051) | Done 2026-10-23 (Chase, at the owner's request; not released: a developer tool). Recipes, the builder, 13 presets, the lab screen, the addresses and `__AQ.scenario`, `npm run lab` and `npm run scenario`, docs/SCENARIOS.md; the review's 4 blockers fixed, its first confirmation's 2, the second clean; the final pass on `aae0922`: typecheck, unit 3,363, build, e2e 335 of 335 |
 | 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Done 2026-10-22 (released in 0.7.0; Marshall, at the owner's request; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; the review's blocker and its confirmations' notes fixed, the second confirmation clean; the final pass on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331; live: the smoke 27 of 27, the two-browser money test 29 of 29 on Pages and on the Render address |
 | 16 | 31 new species (ADR-0052) | Done 2026-10-25 (released in 0.8.0; Chase, at the owner's request; the owner's answers, ADR-0052 rounds 1–4). 31 species (48 → 79) in three waves with real colour forms, young and male/female colours, their own behaviour and art; save format v3; the lab's "A friend's reef". Its full run (`96c950c`): typecheck, unit 3,814, build, e2e 335 of 335; the fresh review's, the confirmation's and the AI fixes' reviews' blockers fixed |
+| 17 | Big-tank species, and no animal in the shop before its tank (ADR-0053) | Brief and design written 2026-10-30 (Marshall, at the owner's request; `docs/agent/design/CHUNK-17/BIG-TANKS.md`); handed to Skye to build |
 
 **Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
@@ -1666,6 +1669,50 @@ REL-012, REL-018.
     rate before the chunk: B-217).
   - *Backlog:* B-211 to B-219 (B-211, the autofeeder's vote, B-213, the anemone's split, and B-218, the tests that
     held by luck, done; B-217 the rare brief collisions above; B-219 the steering case behind the C-start).
+
+### 17. Big-tank species, and no animal in the shop before its tank (ADR-0053) — brief written 2026-10-30 (Marshall); handed to Skye
+
+- **What:** the owner's words, verbatim (2026-10-30), after asking which species need tanks bigger than any species
+  uses today and whether koi fit 1,000 gallons: "Well it's at the Koi as well, and then everything else that you see
+  here. I'm going to have you actually build out the entire schematic and plan for this, including all the variations
+  that need to be implemented for these extra species and everything else in between (including all of the
+  instructions on what can work together and what won't work together). We shouldn't be able to purchase these in the
+  market until we have it available to ourselves: all the things, everything that needs to be considered. … give SKYE
+  the build." ("it's at the Koi" was dictated: "add the koi".) Their answers (ADR-0053): the tank rule for **every**
+  species, the 79 already in the game included; "available" means the tank size is unlocked; new foods appear with the
+  animals that eat them. **18 species, 79 → 97.** A player-facing change: it ends in a release (0.9.0) only with the
+  owner's go-ahead in the session. The chunk starts at the commit that adds this brief.
+- **The design is `docs/agent/design/CHUNK-17/BIG-TANKS.md`** (Marshall, 2026-10-30): the tank gate and who it
+  changes, the research, foods, breeding, behaviour and art, a sheet per species (facts, forms, young and sex colours,
+  breeding, behaviour, tank), the compatibility matrix, sellers and a show, saves, the lab presets, the waves, the
+  owner's questions and the risks. Its research drafts (`CHUNK-17/research/`) were written from fetched sources for
+  the design: check each number against its source, move them into `docs/research/`, delete the drafts.
+- **The species:** fresh: oscar, clown loach, black ghost knifefish, fahaka puffer, ornate bichir, silver arowana, koi,
+  motoro stingray; brackish: silver mono, spotted scat; marine: blue tang, naso tang, queen angelfish, clown
+  triggerfish, panther grouper, coral catshark, epaulette shark, brown-banded bamboo shark. Not in this chunk: tanks
+  above 1,000 gallons, ponds, fish that outgrow even 1,000 gallons, fish that rarely survive in captivity, the Asian
+  arowana.
+- **The tank gate** (ADR-0053 decision 4; design §3): `requiredUnlocks` adds the unlock of the smallest tank tier that
+  holds an adult (gallons and footprint); 32 of the 79 existing species gain a key (the design's table); hints are
+  generated from what's missing (words: the owner's); offers already stocked for a now-gated species are dropped in the
+  v4 migration; owned animals are untouched. Built first, alone, because it shifts seeded tests.
+- **New systems:** two research projects (Big-water Freshwater, Shark & Ray Husbandry; names, blurbs and costs the
+  owner's), foods sold with their animals (`FoodDef.soldWith`), two breeding systems (`egg_case` for the sharks,
+  `ray_viviparous` for the ray; the oscar, koi and bichir use existing ones), eight new behaviour sets, the ray's art,
+  `SCHEMA_VERSION` 4.
+- **Owner questions** (design §16): rounds 1 and 2 are answered (ADR-0053: the gate, foods, egg-case timing, the
+  bamboo shark, the arowana and motoro, the rare forms). Skye's round 3 before building (research words and costs, the
+  hint wording, foods, sellers, a koi show); round 4 at the end for every new player-visible line. One batched
+  AskUserQuestion per round, recommended option first, previews with the exact words; answers verbatim in ADR-0053.
+- **Done means** the design §15: the four checks on the final code, one fresh reviewer (Opus 5.5, max effort) on the
+  brief and `git diff <start>..HEAD`, its blockers fixed, the AI tests swept over nudged starts, then your own testing
+  as the owner would play it.
+- **Requirements:** BIG-001 to BIG-012 (`docs/agent/REQUIREMENTS.json`, added by the builder): BIG-001 the big
+  freshwater six; BIG-002 koi and its variety model; BIG-003 the motoro stingray; BIG-004 mono and scat; BIG-005 the
+  big marine five; BIG-006 the three sharks; BIG-007 the tank gate for every species (hints, stale offers, arrivals);
+  BIG-008 the two research projects; BIG-009 foods sold with their animals; BIG-010 breeding (egg cases, live young,
+  the oscar and koi on existing systems); BIG-011 compatibility (data, exception rules, the matrix's tested rows);
+  BIG-012 saves v4, the lab presets, sellers and the show.
 
 ## Releases
 
