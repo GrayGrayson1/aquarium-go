@@ -129,3 +129,69 @@ AskUserQuestion round:
    need 180 gallons, not 240; no minimum is raised to make a fish "big"); koi need 800 gallons for a group of three;
    the "blonde naso", the "pearl" ray and the silver scat are separate species, not forms; leather koi, ghost koi and
    Kumonryu are left out.
+
+## Round 3 (2026-10-30, Skye, before building)
+
+One AskUserQuestion round (design §16: research, hints, foods, sellers and a show). The owner chose the recommended
+option each time; the previews they saw are quoted.
+
+1. **"Chunk 17 adds two research projects for the big-tank animals. Are these names, shop words and costs right?
+   (Existing for scale: Big-water Marine is $4,000 / 72 h; Predator Husbandry $5,000 / 96 h.)"** (Research)
+   - Chosen: **"As proposed (Recommended)"**: "Big-water Freshwater $3,000 / 60 h (needs intermediate freshwater + the
+     125-gallon tank); Shark & Ray Husbandry $8,000 / 96 h (needs a public showroom + the 300-gallon tank)." The
+     preview: Big-water Freshwater, $3,000 · 60 h, needs intermediate freshwater and the 125 Gallon: "River giants need
+     long tanks, big filters and a heavy lid. Opens oscars, clown loaches, black ghost knifefish, fahaka puffers, ornate
+     bichirs, silver arowanas and, with Cool-water Systems, koi." Shark & Ray Husbandry, $8,000 · 96 h, needs a public
+     showroom and the 300 Gallon: "Soft sand, no copper, a tight lid and iodine-rich seafood for animals built of
+     cartilage. Opens the motoro stingray, coral catshark, epaulette shark and brown-banded bamboo shark."
+   - Not chosen: "Same words, cheaper" ($2,000 / 40 h; $6,000 / 72 h); "Same words, dearer" ($4,000 / 72 h; $10,000 /
+     120 h).
+2. **"Locked animals show a hand-written hint (shop and encyclopedia), and 32 of them go wrong once the shop waits for
+   the tank (e.g. the emperor angelfish's says it comes 'once you research Marine Systems'). Heads-up: right after
+   Marine Systems, 13 small marine animals (royal gramma, green chromis, maroon clown…) now also wait for the 40 Gallon
+   Breeder. What should a locked card say?"** (Hints)
+   - Chosen: **"Say what's missing (Recommended)"**: "Built from whatever is still locked (the research's hint, then
+     the tank's), for every species, so no hint can go stale again. The hand-written hints retire." The preview:
+     emperor angelfish before Marine Systems: "Research Marine Systems (or reach 150 reputation as a seasoned keeper).
+     It also waits for the 240 Gallon: open a public showroom and reach 360 reputation."; after Marine Systems: "Comes
+     into the shop with the 240 Gallon: open a public showroom and reach 360 reputation."; royal gramma after Marine
+     Systems: "Comes into the shop with the 40 Gallon Breeder: reach 25 reputation or raise a clutch."; silver arowana,
+     nothing done yet: "Research Big-water Freshwater. It also waits for the 500 Gallon Showpiece: research Acrylic
+     Engineering, or grow into a destination aquarium."
+   - Not chosen: "What's missing + the old reason" (the generated hint, then the true part of the old line); "Fix only
+     the 32 by hand".
+3. **"The big animals need foods the shop doesn't sell. Each appears in the shop once you can buy an animal that eats
+   it. Are these names, descriptions and prices right? (For scale: Frozen Krill & Silversides is $12 for 40 servings;
+   Goldfish Pellets $7 for 120.)"** (New foods)
+   - Chosen: **"Five foods (Recommended)"**: "Koi Sticks, Floating Carnivore Sticks, Frozen Squid, Prawn & Mussel,
+     Frozen Shell-on Shellfish, Live Crickets. Krill & Silversides stays as it is." The preview:
+     - Koi Sticks, $10 · 100 servings · dry, floats: "Big floating sticks for koi, which feed at the surface and come
+       up to beg. Fits an autofeeder." With: koi.
+     - Floating Carnivore Sticks, $14 · 80 · dry, floats: "High-protein sticks for surface hunters like arowanas and
+       oscars. Fits an autofeeder." With: silver arowana, oscar.
+     - Frozen Squid, Prawn & Mussel, $16 · 40 · frozen: "Bite-size seafood for sharks, rays and big carnivores. Never
+       beef heart or chicken: big fish can't digest the fat." With: sharks, motoro, oscar, bichir, arowana, black
+       ghost, panther grouper.
+     - Frozen Shell-on Shellfish, $14 · 30 · frozen: "Crab legs, cockles and crayfish in the shell. Puffer and
+       triggerfish teeth never stop growing; crunching shells wears them down." With: fahaka puffer, clown
+       triggerfish.
+     - Live Crickets, $8 · 20 · live: "Gut-loaded crickets on the surface: a treat big surface hunters take as they
+       would in the wild." With: silver arowana, oscar, fahaka.
+   - Not chosen: "Four, no crickets"; "Three, one floating stick".
+4. **"Two new fictional sellers stock the new animals (koi go to Coldwater Koi & Goldfish, the marine five to Deep Reef
+   Specialists, mono and scat to Mangrove Coast Aquatics). And should koi get their own show class?"** (Sellers)
+   - Chosen: **"These names + a Koi show (Recommended)"**: "Blackwater River Imports (the big freshwater six + the
+     motoro), Mermaid's Purse Shark Hatchery (the three sharks; a mermaid's purse is a shark egg case), and a Koi class
+     from club shows up." The preview: "Blackwater River Imports" (oscar, clown loach, black ghost, fahaka, bichir,
+     arowana, motoro; lines read "… river stock"); "Mermaid's Purse Shark Hatchery" (coral catshark, epaulette, bamboo
+     shark; lines read "… hatchery line"); show class "Koi": "Body shape, clean white skin, deep even colour and a
+     crisp, balanced pattern. A big koi is a prize." Body 25 · Colour 25 · Pattern 20 · Size 15 · Condition 15.
+   - Not chosen: "These names, no Koi show" (koi in "Open freshwater & brackish"); "Plainer names + a Koi show"
+     (Amazon Basin Aquatics, Coral Lagoon Sharks).
+
+9. **Round 3's decisions.** The two research projects as proposed (names, needs, blurbs, $3,000 / 60 h and $8,000 /
+   96 h). Locked cards say what's still missing, generated from the unlock rules' hints (research first, then the
+   tank: "It also waits for the {tank}: …" when research is missing too, "Comes into the shop with the {tank}: …" when
+   only the tank is), for every species; the hand-written species hints retire from the locked cards. The five foods
+   with the words and prices above, each sold once an animal listed with it can be bought. The two sellers and their
+   line words, and a Koi show class (a class in the existing tiers: data, not a new tier).
