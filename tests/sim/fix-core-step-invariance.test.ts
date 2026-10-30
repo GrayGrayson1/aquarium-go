@@ -68,10 +68,17 @@ function visitorsAt(snap: string, dt: number, days: number) {
   return { visitors: visitors / SEEDS, revenue: revenue / SEEDS, rep: rep / SEEDS };
 }
 
+/**
+ * chunk 17 — the market's sales are a handful of events per run (about 4 of 6 listings), so four seeds measured the
+ * stream as much as the step size: the tank gate's shift took the sold spread from under 0.25 to 0.256 with nothing
+ * changed in the market. Sixteen seeds measure the step size (spread under 0.18 on six streams, the gate on and off).
+ */
+const MARKET_SEEDS = 16;
+
 function bidsAt(snap: string, dt: number, hours: number) {
   let bids = 0;
   let sold = 0;
-  for (let s = 0; s < SEEDS; s++) {
+  for (let s = 0; s < MARKET_SEEDS; s++) {
     const g = withSeed(snap, s);
     const end = g.clock.hour + hours;
     while (g.clock.hour < end - 1e-9) {
@@ -84,7 +91,7 @@ function bidsAt(snap: string, dt: number, hours: number) {
       if (l.status === 'sold') sold++;
     }
   }
-  return { bids: bids / SEEDS, sold: sold / SEEDS };
+  return { bids: bids / MARKET_SEEDS, sold: sold / MARKET_SEEDS };
 }
 
 describe('step-size invariance', () => {

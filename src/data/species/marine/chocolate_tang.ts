@@ -96,7 +96,7 @@ export const chocolateTang: SpeciesDefinition = {
   baseValue: 110,
   rarity: 'uncommon',
   visitorAppeal: 0.75,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems — and it needs a six-foot tank of 125 gallons or more.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected (Fiji among the sources). Sold young as the "yellow" or "halfblack" mimic and grown as the chocolate tang.',
   conservation: {

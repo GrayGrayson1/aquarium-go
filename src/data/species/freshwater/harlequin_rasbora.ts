@@ -90,7 +90,7 @@ export const harlequinRasbora: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.55,
-  unlock: { requires: [], hint: 'Available from the start.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Mass-farmed in South-East Asia; farmed fish often lack the wild colour.',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2019)', note: 'Least Concern, though its peat-swamp home is shrinking. Never release aquarium fish.' },

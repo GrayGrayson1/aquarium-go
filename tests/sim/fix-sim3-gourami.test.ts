@@ -35,6 +35,14 @@ function tend(g: GameState, hours: number, each?: (h: number) => void): void {
     for (const t of Object.values(g.tanks)) {
       t.water.ammonia = 0;
       t.water.nitrite = 0;
+      // chunk 17 — a tended tank's keeper also mends failed kit: on another random stream (the tank gate's) a heater
+      // stuck ON at hour 31 and cooked the pair, which says nothing about harassment
+      for (const e of t.equipment ?? []) {
+        if (!e.failed) continue;
+        e.failed = false;
+        delete e.failMode;
+      }
+      if (t.name === 'Community') t.water.tempC = 26;
     }
     if (h % 12 === 0) {
       g.inventory.foods['flake_tropical'] = 50;

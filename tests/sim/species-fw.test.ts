@@ -20,6 +20,8 @@ import { axolotl } from '@/data/species/axolotl';
 import { betta } from '@/data/species/betta';
 import { peaPuffer } from '@/data/species/pea_puffer';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
+import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
+import { requiredUnlocks } from '@/sim/economy';
 
 // Exhaustive runtime mirrors of union types. `Record<Union, true>` makes TypeScript flag missing or extra keys,
 // so these lists cannot silently drift from src/types/species.ts.
@@ -143,7 +145,8 @@ describe.each(FW_ALL.map((s) => [s.id, s] as const))('%s', (id, s) => {
       expect(key in UNLOCK_KEYS, `unknown unlock key ${key}`).toBe(true);
       expect(s.unlock.requires).toEqual([key]);
     }
-    expect(s.unlock.hint.length).toBeGreaterThan(5);
+    // chunk 17 (ADR-0053 round 3): the hand-written hint retired; a locked card's words come from each key's rule
+    for (const k of requiredUnlocks(s)) expect(UNLOCK_RULE_BY_KEY[k]?.hint.length ?? 0, `hint for ${k}`).toBeGreaterThan(5);
     expect(s.isStarter).toBe(roster.unlock.startsWith('starter'));
   });
 

@@ -98,7 +98,7 @@ export const axolotl: SpeciesDefinition = {
   baseValue: 60,
   rarity: 'common',
   visitorAppeal: 0.9,
-  unlock: { requires: ['fw_coldwater'], hint: 'Starter species — otherwise research Cool-water Systems, or reach 90 reputation with solid husbandry.' },
+  unlock: { requires: ['fw_coldwater'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Critically Endangered (IUCN)',

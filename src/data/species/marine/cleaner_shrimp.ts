@@ -98,7 +98,7 @@ export const cleanerShrimp: SpeciesDefinition = {
   baseValue: 40,
   rarity: 'common',
   visitorAppeal: 0.85,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish and clean-up crew.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Almost all skunk cleaner shrimp in the trade are wild-collected: the 5–6 month larval stage defeats most commercial hatcheries.',
   conservation: {

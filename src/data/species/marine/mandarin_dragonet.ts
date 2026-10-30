@@ -95,7 +95,7 @@ export const mandarinDragonet: SpeciesDefinition = {
   baseValue: 55,
   rarity: 'rare',
   visitorAppeal: 0.95,
-  unlock: { requires: ['marine_advanced'], hint: 'Research Refugiums & Copepods — it needs a mature, copepod-rich reef.' },
+  unlock: { requires: ['marine_advanced'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Wild-caught mandarins usually refuse anything but live copepods and often starve. Many captive-bred ORA/Biota mandarins learn frozen foods, but not all, and copepods stay their staple.',
   conservation: {

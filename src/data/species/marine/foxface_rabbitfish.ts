@@ -96,7 +96,7 @@ export const foxfaceRabbitfish: SpeciesDefinition = {
   baseValue: 105,
   rarity: 'uncommon',
   visitorAppeal: 0.85,
-  unlock: { requires: ['marine_large'], hint: 'Research Big-water Marine — it needs a six-foot tank.' },
+  unlock: { requires: ['marine_large'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'All foxface in the trade are wild-collected (mainly Indonesia and the Philippines).',
   conservation: {

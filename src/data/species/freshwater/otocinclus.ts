@@ -85,7 +85,7 @@ export const otocinclus: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'common',
   visitorAppeal: 0.4,
-  unlock: { requires: ['fw_intermediate'], hint: 'Keep freshwater tanks healthy: reach 70 reputation and 200 husbandry mastery.' },
+  unlock: { requires: ['fw_intermediate'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Almost all otos are wild-caught and many die after import from starvation and stress; tank-bred otos are now sold and are much hardier.',
   conservation: {

@@ -95,7 +95,7 @@ export const swordtail: SpeciesDefinition = {
   baseValue: 4,
   rarity: 'common',
   visitorAppeal: 0.65,
-  unlock: { requires: [], hint: 'Available from the start.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2018)', note: 'Common in the wild and feral on every continent but Antarctica. Never release aquarium fish.' },
 

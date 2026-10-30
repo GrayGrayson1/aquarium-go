@@ -87,7 +87,7 @@ export const discus: SpeciesDefinition = {
   baseValue: 60,
   rarity: 'uncommon',
   visitorAppeal: 0.95,
-  unlock: { requires: ['fw_advanced'], hint: 'Unlocks with advanced freshwater: research Discus Husbandry (opens once intermediate freshwater is unlocked).' },
+  unlock: { requires: ['fw_advanced'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Wild discus are still imported, but the trade is dominated by domestic strains farmed in South-East Asia.',
   conservation: {

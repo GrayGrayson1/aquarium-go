@@ -89,7 +89,7 @@ export const elegantStarfish: SpeciesDefinition = {
   baseValue: 30,
   rarity: 'uncommon',
   visitorAppeal: 0.7,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems — and it needs a big, long-established tank to find enough food.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'All are wild-collected, mostly from Melanesia and South and East Asia.',
   conservation: {

@@ -90,7 +90,7 @@ export const emeraldCrab: SpeciesDefinition = {
   baseValue: 12,
   rarity: 'common',
   visitorAppeal: 0.45,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected in Florida and the Caribbean; one of the most traded crabs in the hobby.',
   conservation: { status: 'Not evaluated (IUCN)', note: 'Not assessed. Collected in large numbers for clean-up crews.' },

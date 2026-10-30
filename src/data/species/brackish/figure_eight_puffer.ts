@@ -105,7 +105,7 @@ export const figureEightPuffer: SpeciesDefinition = {
   baseValue: 14,
   rarity: 'uncommon',
   visitorAppeal: 0.88,
-  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research (after intermediate freshwater).' },
+  unlock: { requires: ['brackish'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Not bred in captivity, so every figure-eight puffer in the trade is wild-collected. Choose settled fish that are already eating.',
   conservation: {

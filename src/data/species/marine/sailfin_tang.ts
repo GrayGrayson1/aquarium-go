@@ -96,7 +96,7 @@ export const sailfinTang: SpeciesDefinition = {
   baseValue: 85,
   rarity: 'common',
   visitorAppeal: 0.85,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems — and it needs a six-foot tank of 180 gallons or more.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected, mostly in Indonesia, the Philippines and Fiji.',
   conservation: {

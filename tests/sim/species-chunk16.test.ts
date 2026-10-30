@@ -17,7 +17,7 @@ import { advanceWorld } from '@/sim/world';
 import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { ROSTER } from '@/data/species/roster';
 import { isSpeciesAvailable, requiredUnlocks, stockNewUnlocks } from '@/sim/economy/shop';
-import { unlock, waterClassKeys, waterClassLock } from '@/sim/facility';
+import { tankKeyFor, unlock, waterClassKeys, waterClassLock } from '@/sim/facility';
 import { makeContext } from '@/sim/context';
 import { fissionBlocker, fissionModule } from '@/sim/life/breeding/systems/fission';
 import { clearCompatCache, incidentRisks, previewAddition } from '@/sim/compat';
@@ -42,13 +42,14 @@ describe('ADR-0052 decision 9: a new species comes into the shop with its water 
     }
   });
 
-  it('every new species has no research of its own and keys only from its water', () => {
+  it('every new species has no research of its own and keys only from its water (and, chunk 17, its tank)', () => {
     expect(NEW_IDS.length).toBeGreaterThan(0);
     for (const id of NEW_IDS) {
       const sp = findSpecies(id)!;
       expect(sp.unlock.requires, id).toEqual([]);
       const easiest = Math.min(...sp.waterClasses.map((wc) => waterClassKeys(wc).length));
-      expect(requiredUnlocks(sp).length, id).toBe(easiest);
+      // ADR-0053 decision 4: the shop also waits for the smallest tank that holds an adult
+      expect(requiredUnlocks(sp).length, id).toBe(easiest + (tankKeyFor(sp) ? 1 : 0));
     }
   });
 
@@ -69,7 +70,9 @@ describe('ADR-0052 decision 9: a new species comes into the shop with its water 
     const g = game('betta', 3);
     const marine = NEW_IDS.filter((id) => findSpecies(id)!.environment === 'marine' && findSpecies(id)!.waterClasses.some((wc) => wc !== 'reef'));
     unlock(g, 'marine_basics', { silent: true });
-    for (const id of marine) expect(isSpeciesAvailable(g, id), id).toBe(true);
+    // chunk 17 (ADR-0053 decision 4): those whose adults need a bigger tank than the open sizes wait for it
+    for (const id of marine) expect(isSpeciesAvailable(g, id), id).toBe(tankKeyFor(findSpecies(id)!) === null);
+    expect(marine.filter((id) => tankKeyFor(findSpecies(id)!) === null).length).toBeGreaterThan(0);
     const before = new Set(g.market.stock.map((o) => o.speciesId));
     stockNewUnlocks(g, simRng(g), g.clock.hour, false);
     const fresh = g.market.stock.map((o) => o.speciesId).filter((id) => !before.has(id));

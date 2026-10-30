@@ -85,7 +85,7 @@ export const mysterySnail: SpeciesDefinition = {
   baseValue: 4,
   rarity: 'common',
   visitorAppeal: 0.55,
-  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Not evaluated; established invasive populations outside its range',

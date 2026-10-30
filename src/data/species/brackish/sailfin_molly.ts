@@ -103,7 +103,7 @@ export const sailfinMolly: SpeciesDefinition = {
   baseValue: 6,
   rarity: 'common',
   visitorAppeal: 0.72,
-  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research (after intermediate freshwater).' },
+  unlock: { requires: ['brackish'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2019)',

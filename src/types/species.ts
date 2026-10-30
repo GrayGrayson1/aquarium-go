@@ -174,8 +174,8 @@ export interface Lifecycle {
 export interface UnlockRequirement {
   /** Unlock ids (progress.unlocked must include all). Empty = available from start. */
   requires: string[];
-  /** Human-readable hint shown on locked cards. */
-  hint: string;
+  // chunk 17 (ADR-0053 round 3): no hand-written hint any more; a locked card says what is still missing, built from
+  // the unlock rules' hints (`speciesLockHint` in src/sim/economy/shop.ts), so it can't go stale
 }
 
 /** Visual parameters consumed by creature renderers & portraits. Colors are CSS hex strings. */

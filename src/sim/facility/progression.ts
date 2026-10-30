@@ -6,7 +6,7 @@
  * (the max over the aliases other lanes may bump plus what this module derives from the market history and the
  * creature records), so an activity is never rewarded twice even if two lanes both count it.
  */
-import type { GameState, MasteryTrack, QuestState, WaterClass } from '@/types';
+import type { GameState, MasteryTrack, QuestState, SpeciesDefinition, TankTier, WaterClass } from '@/types';
 import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
 import type { Rng } from '../rng';
@@ -20,7 +20,7 @@ import { QUESTS, QUEST_BY_ID, QUEST_BOARD_SIZE, TUTORIAL_QUEST_REWARD, tutorialC
 import { ACHIEVEMENTS } from '@/data/achievements';
 import { FACILITY_LEVEL_ORDER, getFacilityLevel } from '@/data/facilities';
 import { findSpecies } from '@/data/species';
-import { getTankTier } from '@/data/catalog/tanks';
+import { getTankTier, TANK_TIERS } from '@/data/catalog/tanks';
 import { withArticle } from '../economy/util'; // lane:w2-ui
 import { giftedLayoutShare } from '../aquascape/starters';
 
@@ -52,6 +52,27 @@ export function waterClassKeys(wc: WaterClass): string[] {
   if (wc.startsWith('fresh')) return [];
   if (wc === 'brackish') return ['brackish'];
   return wc === 'reef' ? ['marine_basics', 'reef'] : ['marine_basics'];
+}
+
+/** Tank tiers by size, smallest first (the order the tank gate searches). */
+const TIERS_BY_SIZE: readonly TankTier[] = [...TANK_TIERS].sort((a, b) => a.gallons - b.gallons);
+
+/**
+ * chunk 17 (ADR-0053 decision 4) — the smallest tank tier that holds an adult of this species: at least its
+ * `recommendedMinTankGallons`, and as long and as deep as its footprint (with the compat engine's 0.5 in tolerance,
+ * src/sim/compat/engine.ts "Size vs tank"). Undefined when no tier is big enough (a data error: a test fails on it).
+ */
+export function tankTierFor(sp: Pick<SpeciesDefinition, 'recommendedMinTankGallons' | 'recommendedFootprint'>): TankTier | undefined {
+  const fp = sp.recommendedFootprint;
+  return TIERS_BY_SIZE.find((t) => t.gallons >= sp.recommendedMinTankGallons && (!fp || (t.dimsIn.l >= fp.minLengthIn - 0.5 && t.dimsIn.w >= fp.minWidthIn - 0.5)));
+}
+
+/**
+ * chunk 17 (ADR-0053 decision 4) — the tank key the shop waits for before it stocks a species: the unlock of the
+ * smallest tier that holds an adult (`tankTierFor`). Null when that tier needs no unlock (5, 10, 20 long, 29).
+ */
+export function tankKeyFor(sp: Pick<SpeciesDefinition, 'recommendedMinTankGallons' | 'recommendedFootprint'>): string | null {
+  return tankTierFor(sp)?.unlock ?? null;
 }
 
 export function unlockLabel(key: string): string {

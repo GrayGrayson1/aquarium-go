@@ -106,7 +106,7 @@ export const bumblebeeGoby: SpeciesDefinition = {
   baseValue: 6,
   rarity: 'common',
   visitorAppeal: 0.72,
-  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research (after intermediate freshwater).' },
+  unlock: { requires: ['brackish'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Much of the trade is still wild-collected; aquarium-bred fish are sold by hobby breeders.',
   conservation: {

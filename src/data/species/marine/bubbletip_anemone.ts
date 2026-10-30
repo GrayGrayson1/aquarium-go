@@ -92,7 +92,7 @@ export const bubbletipAnemone: SpeciesDefinition = {
   baseValue: 60,
   rarity: 'uncommon',
   visitorAppeal: 0.85,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems — and it needs strong light.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Captive-propagated clones are widespread; wild ones are still collected.',
   conservation: { status: 'Not evaluated (IUCN)', note: 'Not assessed. Choose aquacultured clones — they settle better and spare wild reefs.' },

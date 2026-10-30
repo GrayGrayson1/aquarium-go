@@ -97,7 +97,7 @@ export const banggaiCardinalfish: SpeciesDefinition = {
   baseValue: 35,
   rarity: 'uncommon',
   visitorAppeal: 0.8,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Endangered (IUCN Red List, 2007); Threatened under the US Endangered Species Act (2016)',

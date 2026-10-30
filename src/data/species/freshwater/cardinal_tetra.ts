@@ -86,7 +86,7 @@ export const cardinalTetra: SpeciesDefinition = {
   baseValue: 4,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species: keep tanks healthy to reach 70 reputation and 200 husbandry mastery.' },
+  unlock: { requires: ['fw_intermediate'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Much of the trade is still wild-harvested from the Rio Negro by community fisheries such as Project Piaba ("Buy a Fish, Save a Tree") — a livelihood that gives local people a reason to protect the forest.',
   conservation: {

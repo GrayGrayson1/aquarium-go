@@ -89,7 +89,7 @@ export const flameAngelfish: SpeciesDefinition = {
   baseValue: 110,
   rarity: 'uncommon',
   visitorAppeal: 0.9,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most are wild-collected and frequently exported; Biota occasionally sells captive-bred ones (about $275).',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2009)', note: 'Least Concern. Locality forms differ in colour, but the populations show no genetic split even 5,700 km apart.' },

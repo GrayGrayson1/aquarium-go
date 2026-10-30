@@ -106,7 +106,7 @@ export const bandedArcherfish: SpeciesDefinition = {
   baseValue: 45,
   rarity: 'rare',
   visitorAppeal: 0.97,
-  unlock: { requires: ['brackish'], hint: 'Unlocks with Brackish Estuaries research (after intermediate freshwater). Needs a 125-gallon tank.' },
+  unlock: { requires: ['brackish'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Not bred for the trade: every archerfish sold is wild-collected. Choose settled fish that already take floating foods.',
   conservation: {

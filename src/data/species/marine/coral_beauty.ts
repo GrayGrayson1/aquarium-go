@@ -94,7 +94,7 @@ export const coralBeauty: SpeciesDefinition = {
   baseValue: 90,
   rarity: 'uncommon',
   visitorAppeal: 0.85,
-  unlock: { requires: ['reef'], hint: 'Research Reef Systems — a colourful fish that needs careful coral choices.' },
+  unlock: { requires: ['reef'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Wild-collected fish (~$60) are still common; captive-bred ORA and Biota coral beauties (~$90) adapt better and eat prepared foods.',
   conservation: {

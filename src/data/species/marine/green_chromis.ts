@@ -96,7 +96,7 @@ export const greenChromis: SpeciesDefinition = {
   baseValue: 12,
   rarity: 'common',
   visitorAppeal: 0.6,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'The single most-imported marine aquarium fish, and essentially all wild-caught; captive rearing has only succeeded experimentally (Rising Tide Conservation, 2013; University of Florida).',
   conservation: {

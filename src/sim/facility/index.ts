@@ -19,6 +19,8 @@ export {
   isUnlocked,
   waterClassLock,
   waterClassKeys,
+  tankTierFor,
+  tankKeyFor,
   unlock,
   unlockLabel,
   bumpCounter,

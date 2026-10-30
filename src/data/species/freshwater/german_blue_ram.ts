@@ -90,7 +90,7 @@ export const germanBlueRam: SpeciesDefinition = {
   baseValue: 12,
   rarity: 'common',
   visitorAppeal: 0.8,
-  unlock: { requires: [], hint: 'Available from the start — it needs warm, soft water and a mature tank.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Mass-bred in large numbers (sometimes with hormones); wild fish are rarely sold.',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2020)', note: 'Least Concern in the wild; trade strains are farm-bred and often weak. Never release aquarium fish.' },

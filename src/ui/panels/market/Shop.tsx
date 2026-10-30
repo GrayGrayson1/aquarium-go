@@ -32,7 +32,7 @@ import { Chip, Card, EmptyState, Callout, SectionHead, Checkbox } from '../commo
 import { CreaturePortrait } from '../common/Portrait';
 import { CompatPreview } from '../common/CompatPreview';
 import { PotentialBands, CareChips } from '../common/Profile';
-import { orderedTanks, speciesOf, livingInTank, gallonsOf, EMPTY_COMPAT, speciesUnlocked } from '../common/derive';
+import { orderedTanks, speciesOf, livingInTank, gallonsOf, EMPTY_COMPAT, speciesUnlocked, lockHintOf } from '../common/derive';
 import { PERSONALITY_LABEL, PERSONALITY_TONE, WATER_CLASS_LABEL, ENV_LABEL, untilTime, plural, SEX_LABEL, RARITY_LABEL, RARITY_TONE, VERDICT_RANK, VERDICT_LABEL, verdictStatus } from '../common/format';
 import './offer-genes.css';
 
@@ -624,7 +624,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </Button>
           )}
         </div>
-        {locked && <span className="pn-tiny pn-muted">{sp.unlock.hint}</span>}
+        {locked && <span className="pn-tiny pn-muted">{lockHintOf(g, sp)}</span>}
       </div>
     </SubView>
   );

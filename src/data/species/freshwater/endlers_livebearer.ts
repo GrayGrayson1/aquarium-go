@@ -87,7 +87,7 @@ export const endlersLivebearer: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'uncommon',
   visitorAppeal: 0.65,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater species: reach 40 reputation or build husbandry mastery.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Endangered (IUCN 2021)',

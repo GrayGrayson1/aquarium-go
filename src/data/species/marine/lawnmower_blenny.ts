@@ -89,7 +89,7 @@ export const lawnmowerBlenny: SpeciesDefinition = {
   baseValue: 30,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most are wild-collected; Biota sells small captive-bred lots (since 2023).',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2009)', note: 'Least Concern and common on shallow reef flats.' },

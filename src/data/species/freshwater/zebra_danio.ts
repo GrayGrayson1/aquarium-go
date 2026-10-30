@@ -91,7 +91,7 @@ export const zebraDanio: SpeciesDefinition = {
   baseValue: 2,
   rarity: 'common',
   visitorAppeal: 0.5,
-  unlock: { requires: [], hint: 'Available from the start.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2009)', note: 'Common in the wild and farmed in vast numbers; also one of science’s most studied animals. Never release aquarium fish.' },
 

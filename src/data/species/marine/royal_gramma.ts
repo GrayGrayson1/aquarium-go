@@ -96,7 +96,7 @@ export const royalGramma: SpeciesDefinition = {
   baseValue: 60,
   rarity: 'common',
   visitorAppeal: 0.8,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most royal grammas sold are still wild-collected in the Caribbean; captive-bred fish (Biota; earlier BCMI batches for public aquariums) are available in smaller numbers at roughly twice the price.',
   conservation: {

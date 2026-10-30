@@ -97,7 +97,7 @@ export const melanurusWrasse: SpeciesDefinition = {
   baseValue: 55,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Trade fish are wild-collected; captive rearing has been done only in research.',
   conservation: {

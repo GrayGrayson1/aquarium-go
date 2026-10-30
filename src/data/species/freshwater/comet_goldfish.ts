@@ -85,7 +85,7 @@ export const cometGoldfish: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.55,
-  unlock: { requires: ['fw_coldwater'], hint: 'Unlocks with cool-water systems: research Cool-water Systems, or reach 90 reputation and 250 husbandry mastery.' },
+  unlock: { requires: ['fw_coldwater'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (wild species, IUCN 2010); rated High invasion risk by USFWS',

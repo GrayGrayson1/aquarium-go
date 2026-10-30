@@ -86,7 +86,7 @@ export const hillstreamLoach: SpeciesDefinition = {
   baseValue: 15,
   rarity: 'uncommon',
   visitorAppeal: 0.7,
-  unlock: { requires: ['fw_intermediate'], hint: 'Keep freshwater tanks healthy: reach 70 reputation and 200 husbandry mastery.' },
+  unlock: { requires: ['fw_intermediate'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Much of the trade is still wild-collected in Vietnam; captive-bred fish are increasingly available.',
   conservation: {

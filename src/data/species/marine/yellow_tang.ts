@@ -98,7 +98,7 @@ export const yellowTang: SpeciesDefinition = {
   baseValue: 300,
   rarity: 'uncommon',
   visitorAppeal: 0.95,
-  unlock: { requires: ['marine_large'], hint: 'Research Big-water Marine — it needs at least a six-foot tank.' },
+  unlock: { requires: ['marine_large'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Hawaiian collection has been largely halted since a 2017 court ruling, so most yellow tangs are now captive-bred (Oceanic Institute/Biota, ~$300) or imported from other Pacific islands (~$120).',
   conservation: {
