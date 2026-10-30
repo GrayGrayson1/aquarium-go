@@ -31,6 +31,15 @@ import { swordtail } from './swordtail';
 import { dwarfGourami } from './dwarf_gourami';
 import { ghostShrimp } from './ghost_shrimp';
 import { ramshornSnail } from './ramshorn_snail';
+// chunk 17 (ADR-0053), wave A
+import { oscar } from './oscar';
+import { clownLoach } from './clown_loach';
+import { blackGhostKnifefish } from './black_ghost_knifefish';
+import { fahakaPuffer } from './fahaka_puffer';
+import { ornateBichir } from './ornate_bichir';
+import { silverArowana } from './silver_arowana';
+// chunk 17 (ADR-0053), wave B
+import { koi } from './koi';
 
 export {
   cherryShrimp,
@@ -63,6 +72,13 @@ export {
   dwarfGourami,
   ghostShrimp,
   ramshornSnail,
+  oscar,
+  clownLoach,
+  blackGhostKnifefish,
+  fahakaPuffer,
+  ornateBichir,
+  silverArowana,
+  koi,
 };
 
 /** All non-starter freshwater species (the three freshwater starters are exported from the species root). */
@@ -97,4 +113,13 @@ export const FRESHWATER_SPECIES: SpeciesDefinition[] = [
   dwarfGourami,
   ghostShrimp,
   ramshornSnail,
+  // chunk 17 (ADR-0053), wave A
+  oscar,
+  clownLoach,
+  blackGhostKnifefish,
+  fahakaPuffer,
+  ornateBichir,
+  silverArowana,
+  // chunk 17, wave B
+  koi,
 ];

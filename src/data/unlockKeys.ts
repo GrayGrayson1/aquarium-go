@@ -15,6 +15,7 @@ export const UNLOCK_KEYS = {
   marine_advanced: 'Advanced marine specialists (mandarin dragonet)',
   predators: 'Predator exhibits (mantis shrimp, lionfish, grouper)',
   brackish: 'Brackish estuary fish (puffers, gobies, mollies, archerfish)', // lane:brackish
+  fw_large: 'Big freshwater fish (oscars, arowanas, koi) — needs big tanks', // chunk 17
   // gear
   gear_tier2: 'Better filters, heaters, lights',
   gear_tier3: 'Premium equipment (sumps, reef lighting, large chillers)',

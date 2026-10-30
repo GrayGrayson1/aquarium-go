@@ -43,6 +43,8 @@ function planFor(sp: SpeciesDefinition | undefined, vis?: CreatureVisualParams):
     case 'frog_aquatic':
       return 'frog';
     case 'loach_eel':
+    case 'knifefish': // chunk 17: the long, slim black ghost and bichir
+    case 'bichir':
       return 'eel';
     case 'hillstream':
     case 'dragonet':

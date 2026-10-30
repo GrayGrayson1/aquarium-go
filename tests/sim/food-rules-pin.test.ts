@@ -25,9 +25,9 @@ describe('B-170: the food and species rules read the data, and change nothing', 
     expect(now[id]).toEqual(fixture[id]);
   });
 
-  it('the Market lists a food first for the animals it is made for, as its name said: axolotl and goldfish pellets', () => {
+  it('the Market lists a food first for the animals it is made for, as its name said: axolotl and goldfish pellets (and, chunk 17, koi sticks)', () => {
     const forOwn = ALL_SPECIES.flatMap((sp) => FOODS.filter((f) => eatsFood(sp, f) && madeForSpecies(f, sp.id)).map((f) => `${sp.id}:${f.id}`));
-    expect(forOwn).toEqual(['axolotl:axolotl_pellets', 'comet_goldfish:goldfish_pellets', 'fancy_goldfish:goldfish_pellets']);
+    expect(forOwn).toEqual(['axolotl:axolotl_pellets', 'comet_goldfish:goldfish_pellets', 'fancy_goldfish:goldfish_pellets', 'koi:koi_sticks']);
   });
 
   it('thawed frozen food is the catalog’s frozen form, the same five foods the id suffix named', () => {

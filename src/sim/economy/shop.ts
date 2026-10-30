@@ -2,7 +2,7 @@
  * Livestock shop: species availability, daily demand random walk + trend events, pre-rolled stock and
  * mid-day specials. OWNER: lane "market".
  */
-import type { GameState, ShopOffer, Creature, SpeciesDefinition, Sex, MarketTrend, EventNotice } from '@/types';
+import type { GameState, ShopOffer, Creature, SpeciesDefinition, Sex, MarketTrend, EventNotice, FoodDef } from '@/types';
 import type { Rng } from '../rng';
 import { nextId } from '../ids';
 import { emitEvent } from '../context';
@@ -76,6 +76,25 @@ export function isSpeciesAvailable(state: GameState, speciesId: string): boolean
   const sp = findSpecies(speciesId);
   if (!sp) return false;
   return requiredUnlocks(sp).every((k) => isUnlocked(state, k));
+}
+
+/**
+ * chunk 17 (ADR-0053 decision 5) — a food is on sale when its unlock is met and, when it lists `soldWith`, at least one
+ * of those species can be bought: a new food comes into the shop with the first animal that eats it.
+ */
+export function isFoodAvailable(state: GameState, def: FoodDef): boolean {
+  if (!isUnlocked(state, def.unlock)) return false;
+  return !def.soldWith || def.soldWith.some((id) => isSpeciesAvailable(state, id));
+}
+
+/**
+ * chunk 17 — the animals a `soldWith` food waits for, in words ("oscars, ornate bichirs and more"): the shop's lock line
+ * and the purchase refusal name them instead of an unlock label.
+ */
+export function soldWithWords(def: FoodDef): string {
+  const names = (def.soldWith ?? []).map((id) => findSpecies(id)).filter((sp): sp is SpeciesDefinition => !!sp).map((sp) => pluralName(sp.commonName).toLowerCase());
+  if (names.length <= 2) return names.join(' or ');
+  return `${names.slice(0, 2).join(', ')} and more`;
 }
 
 export function availableSpecies(state: GameState): SpeciesDefinition[] {

@@ -22,15 +22,18 @@ import { getWaterReport, initialWater, speciesWaterComfort, tankDailyCost } from
 import { CLASS_DEFAULTS, saltStrength } from '@/sim/water/constants';
 import { waterChangeCost } from '@/sim/care';
 import { isSpeciesAvailable } from '@/sim/economy/shop';
+import { tankKeyFor, unlock } from '@/sim/facility';
 import { convertWaterClass } from '@/ui/panels/common/tankOps';
 import { stockTank } from '@/dev/fixtures/core-helpers';
 import { FIXTURES } from '@/dev/fixtures';
 
-const IDS = ['figure_eight_puffer', 'bumblebee_goby', 'sailfin_molly', 'banded_archerfish'];
+// chunk 17 (ADR-0053): the silver mono and spotted scat join the estuary chapter
+const IDS = ['figure_eight_puffer', 'bumblebee_goby', 'sailfin_molly', 'banded_archerfish', 'silver_mono', 'spotted_scat'];
 const FOOD_TAGS: Record<FoodTag, true> = {
   flake: true, pellet_small: true, pellet_sinking: true, pellet_large: true, bloodworm: true, brine_shrimp: true,
   mysis: true, daphnia: true, earthworm: true, snail_live: true, algae_wafer: true, vegetable: true, nori: true,
   copepod_live: true, coral_food: true, biofilm: true, detritus: true, infusoria: true, baby_brine: true,
+  pellet_floating: true, seafood: true, shellfish: true, insect: true, // chunk 17
 };
 const RANK: Record<CompatVerdict, number> = { excellent: 0, usually_compatible: 1, conditional: 2, high_risk: 3, incompatible: 4 };
 const COLOR_KEYS: (keyof CreatureVisualParams)[] = ['bodyColor', 'bodyColor2', 'bellyColor', 'finColor', 'finColor2', 'accentColor', 'eyeColor'];
@@ -87,7 +90,7 @@ function freshGame(unlockBrackish = true): GameState {
 }
 
 describe('brackish roster & data', () => {
-  it('ships four brackish species, all registered and on the roster', () => {
+  it('ships six brackish species, all registered and on the roster', () => {
     expect(BRACKISH_SPECIES.map((s) => s.id).sort()).toEqual([...IDS].sort());
     for (const id of IDS) {
       const r = ROSTER.find((x) => x.id === id);
@@ -120,8 +123,10 @@ describe('brackish roster & data', () => {
       checkParamRange(`${id}.salinitySG`, s.salinitySG!);
       expect(s.salinitySG!.min).toBeGreaterThanOrEqual(1.0);
       expect(s.salinitySG!.max).toBeLessThanOrEqual(1.025);
-      // the ideal band sits in low-end brackish water
-      expect(s.salinitySG!.idealMax).toBeLessThanOrEqual(1.012);
+      // the ideal band sits in low-end brackish water; chunk 17's monos and scats move from brackish to sea water as they
+      // grow, so theirs spans both (they can also live in fish-only marine tanks)
+      const toSea = s.waterClasses.some((wc) => wc.startsWith('marine'));
+      expect(s.salinitySG!.idealMax).toBeLessThanOrEqual(toSea ? 1.022 : 1.012);
       expect(s.salinitySG!.idealMax).toBeGreaterThan(1.003);
       expect(s.waterClasses).toContain('brackish');
       // every brackish species can live in the brackish class itself
@@ -252,7 +257,12 @@ describe('research & unlocks', () => {
     const locked = freshGame(false);
     for (const id of IDS) expect(isSpeciesAvailable(locked, id), id).toBe(false);
     const open = freshGame(true);
-    for (const id of IDS) expect(isSpeciesAvailable(open, id), id).toBe(true);
+    // chunk 17 (ADR-0053 decision 4): and the tank that holds an adult (the archerfish's 125, the mono's 180, the scat's 240)
+    for (const id of IDS) {
+      const tank = tankKeyFor(get(id));
+      if (tank) unlock(open, tank, { silent: true });
+      expect(isSpeciesAvailable(open, id), id).toBe(true);
+    }
   });
 });
 
@@ -436,7 +446,8 @@ describe('showcase fixture', () => {
     const main = g.tanks[g.tankOrder[0]];
     expect(main.waterClass).toBe('brackish');
     const species = new Set(Object.values(g.creatures).filter((c) => c.status === 'alive').map((c) => c.speciesId));
-    for (const id of IDS) expect(species.has(id), id).toBe(true);
+    // the 0.5 estuary chapter's four; chunk 17's mono and scat need a 180- and a 240-gallon tank this showcase doesn't have
+    for (const id of IDS.filter((x) => x !== 'silver_mono' && x !== 'spotted_scat')) expect(species.has(id), id).toBe(true);
     for (const id of g.tankOrder) {
       const t = g.tanks[id];
       if (t.waterClass !== 'brackish') continue;

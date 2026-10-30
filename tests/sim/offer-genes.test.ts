@@ -47,7 +47,8 @@ describe('rule summaries', () => {
     for (const sp of listSpecies((s) => s.genetics.loci.length > 0)) for (const l of sp.genetics.loci) for (const a of l.alleles) if (ruleSummary(sp, l, a.id).includes('only shows on')) conditional.push(`${sp.id}:${l.id}`);
     // chunk 16 adds three genes that really do need another trait: the platy's E only shows on comet fish (the
     // wagtail), and an albino swordtail shows neither its black forms nor its wagtail
-    expect([...new Set(conditional)].sort()).toEqual(['betta:cambodian', 'platy:spread', 'swordtail:melanin', 'swordtail:wagtail']);
+    // chunk 17: the koi's Bekko black shows only on a white koi (Bar et al. 2013), as the data says
+    expect([...new Set(conditional)].sort()).toEqual(['betta:cambodian', 'koi:bekko', 'platy:spread', 'swordtail:melanin', 'swordtail:wagtail']);
     const platy = getSpecies('platy');
     const sword = getSpecies('swordtail');
     expect(ruleSummary(platy, locus(platy, 'spread'), 'E')).toBe('Dominant over every other version · only shows on comet platies');

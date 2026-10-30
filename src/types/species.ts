@@ -71,7 +71,12 @@ export type FoodTag =
   | 'biofilm'
   | 'detritus'
   | 'infusoria'
-  | 'baby_brine';
+  | 'baby_brine'
+  // chunk 17 (ADR-0053 round 3): foods for the big-tank animals, sold once an animal that eats them can be bought
+  | 'pellet_floating' // floating sticks (koi, arowanas, oscars)
+  | 'seafood' // frozen squid, prawn and mussel (sharks, rays, big carnivores)
+  | 'shellfish' // shell-on shellfish (puffers' and triggerfish's ever-growing teeth)
+  | 'insect'; // live crickets (big surface hunters)
 
 export type SocialKind =
   | 'solitary' // keep alone (conspecifics likely fight)
@@ -233,6 +238,8 @@ export interface CreatureVisualParams {
   tailSpot?: string;
   /** chunk 16 — a species-specific body marking ('tuxedo': the black rear half of a platy or swordtail). */
   bodyMark?: string;
+  /** chunk 17 — a species-specific scale layout ('doitsu': a koi's row of big mirror scales along the back, smooth skin elsewhere). */
+  scaleType?: string;
 }
 
 export interface LocusDefinition {
@@ -350,7 +357,13 @@ export type BehaviorSetId =
   | 'damsel' // chunk 16 — hovers over its own patch of rock and chases intruders (yellowtail damsel)
   | 'cichlid_dwarf' // chunk 16 — dwarf cichlid that hovers low and sifts the substrate in pairs (German blue ram)
   | 'anemone' // chunk 16 — a living anemone: wanders until it settles in the light, closes at night, hosts clownfish
-  | 'sessile'; // corals/anemones
+  | 'sessile' // corals/anemones
+  // chunk 17 (ADR-0053): big-tank species
+  | 'cichlid_large' // big cichlid that patrols low, digs, begs at the glass and sulks on the bottom (oscar)
+  | 'loach_shoal' // shoaling bottom loach that piles into caves and rests on its side (clown loach)
+  | 'knifefish' // stiff-bodied night fish that glides forwards and backwards on one long fin (black ghost knifefish)
+  | 'bichir' // armoured bottom prowler propped on its pectorals that rises to gulp air (ornate bichir)
+  | 'arowana'; // surface cruiser that patrols the tank's length and lunges up at food (silver arowana)
 
 export interface BehaviorTraits {
   /** Cruising speed in body lengths per second. */

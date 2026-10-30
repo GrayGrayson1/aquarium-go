@@ -381,6 +381,10 @@ export const FOOD_TAG_LABEL: Record<string, string> = {
   detritus: 'detritus',
   infusoria: 'infusoria',
   baby_brine: 'baby brine shrimp',
+  pellet_floating: 'floating sticks', // chunk 17
+  seafood: 'seafood',
+  shellfish: 'shell-on shellfish',
+  insect: 'insects',
 };
 
 /** lane:fix-integrate-ui — when the hiring pool next refreshes, by calendar day ('today at 8:00 AM', 'in 2 days'). */

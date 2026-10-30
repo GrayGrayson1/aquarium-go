@@ -102,9 +102,11 @@ describe('market timing: humane in real time', () => {
   it('a held offer keeps a short listing alive past its end, and closing leaves time to accept', () => {
     const g = world(21);
     const l = list(g, 24);
-    const b = ensureBid(g, l);
     devStepEconomy(g, l.endsHour - g.clock.hour - 0.2);
     expect(l.status).toBe('active');
+    // chunk 17 — the bid held is one open now, near the end: a bid taken at the start can expire or be withdrawn on its
+    // own over the day (on the tank gate's stream it was), which says nothing about holding
+    const b = ensureBid(g, l);
     holdBidForCounter(g, l.id, b.id);
     devStepEconomy(g, 0.5); // bidding closes while the form is open
     expect(l.status).toBe('active');

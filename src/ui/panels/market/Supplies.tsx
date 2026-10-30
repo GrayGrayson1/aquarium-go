@@ -10,11 +10,12 @@ import { Button, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { FOODS, eatsFood, madeForSpecies } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
-import { buyFood, buySalt, buyEquipment, SALT_PRICE_PER_KG } from '@/sim/economy';
+import { buyFood, buySalt, buyEquipment, isFoodAvailable, soldWithWords, SALT_PRICE_PER_KG } from '@/sim/economy';
 import { act } from '../common/act';
 import { Chip, SectionHead, EmptyState, Select, Card } from '../common/parts';
 import { orderedTanks, ownedCreatures, speciesOf, gallonsOf, unlocked } from '../common/derive';
 import { titleCase } from '../common/format';
+import { safe } from '../common/hooks';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { equipmentFit } from '@/sim/care/fit'; // lane:fit
 import { foodWhoEats } from '@/ui/common/foodStock'; // lane:fit
@@ -121,7 +122,8 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
           <div className="pn-col pn-gap-2">
             {shownFoods.map(({ f, eaters, specific }) => {
               const have = g.inventory.foods[f.id] ?? 0;
-              const locked = !unlocked(g, f.unlock);
+              // chunk 17 (ADR-0053 decision 5): a food sold with certain animals is locked until one of them can be bought
+              const locked = !unlocked(g, f.unlock) || !safe(() => isFoodAvailable(g, f), true);
               return (
                 <div key={f.id} className={clsx('pn-supply', flash === f.id && 'is-flash', have <= 0 && f.id in g.inventory.foods && eaters.length > 0 && 'is-out')} data-food-row={f.id} data-testid={`supplies-row-${f.id}`}>
                   <span className="pn-supply__swatch" style={{ background: `radial-gradient(circle at 35% 35%, #fff8, ${f.color})` }} aria-hidden />
@@ -141,7 +143,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                     <span className={clsx('pn-tiny pn-num-t', have <= 0 && f.id in g.inventory.foods && eaters.length > 0 ? 'pn-tone-watch' : 'pn-muted')}>{have <= 0 && f.id in g.inventory.foods ? 'Out of stock' : `${have} serving${have === 1 ? '' : 's'}`}</span>
                     {locked ? (
                       <span className="pn-tiny pn-muted">
-                        <Lock size={11} /> {f.unlock ? UNLOCK_KEYS[f.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : 'Locked'}
+                        <Lock size={11} /> {f.unlock && !unlocked(g, f.unlock) ? UNLOCK_KEYS[f.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : f.soldWith ? `Comes with ${safe(() => soldWithWords(f), 'its animals')}` : 'Locked'}
                       </span>
                     ) : (
                       <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: f.id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>

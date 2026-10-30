@@ -35,6 +35,7 @@ import { SHOW_TIERS } from '@/data/shows';
 import { STAFF_ROLES, STAFF_TRAITS, STAFF_MAX_SKILL } from '@/data/staff'; // chunk 6 (PERSIST-004 A3); chunk 7 (B-203)
 import { WATER_ROOM, FOOD_ROOM } from '@/data/catalog/machines'; // ADR-0037 (G1); chunk 7 (B-203)
 import { earn } from '@/sim/economy/finance'; // chunk 7 (B-203): a removed show's fees
+import { tankKeyFor } from '@/sim/facility/progression'; // chunk 17: the tank gate's stale offers
 
 // Loosely-typed JSON while migrating (shapes differ between versions).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,7 +198,31 @@ export const MIGRATIONS: Migration[] = [
       return s;
     },
   },
+  {
+    from: 3,
+    to: 4,
+    // chunk 17 (ADR-0053 decision 4, ADR-0016) — the big-tank species need nothing filled in. The shop now stocks a
+    // species only once a tank that holds an adult is unlocked, so offers already in stock for a species the gate refuses
+    // are dropped (stock that would have expired within two days); owned animals, listings and auctions are untouched.
+    description: 'Chunk 17: 18 big-tank species, and the shop waits for a tank that holds an adult',
+    up: (s: Json) => {
+      if (isObj(s.market) && Array.isArray(s.market.stock)) {
+        const unlocked: unknown[] = isObj(s.progress) && Array.isArray(s.progress.unlocked) ? s.progress.unlocked : [];
+        s.market.stock = s.market.stock.filter((o: Json) => !gatedOffer(o, unlocked, s.starterId));
+      }
+      s.schemaVersion = 4;
+      return s;
+    },
+  },
 ];
+
+/** chunk 17 — an offer whose species waits for a tank size the save hasn't unlocked (the player's starter never does). */
+function gatedOffer(o: Json, unlocked: readonly unknown[], starterId: unknown): boolean {
+  const sp = isObj(o) && typeof o.speciesId === 'string' ? findSpecies(o.speciesId) : undefined;
+  if (!sp || sp.id === starterId) return false;
+  const key = tankKeyFor(sp);
+  return !!key && !unlocked.includes(key);
+}
 
 /** Version stored in a raw save (0 when absent = legacy prototype). */
 export function detectVersion(raw: Json): number {

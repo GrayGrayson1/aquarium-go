@@ -35,7 +35,7 @@ export { fragValue, fragBundleValue, fragStoreOffer, fragSupplyFactor, fragInTan
 export type { FragValue } from './valuation';
 
 // ── shop / buyers ──
-export { isSpeciesAvailable, availableSpecies, requiredUnlocks, speciesLockHint, generateOffer, refreshStock, DEMAND_MIN, DEMAND_MAX } from './shop';
+export { isSpeciesAvailable, isFoodAvailable, soldWithWords, availableSpecies, requiredUnlocks, speciesLockHint, generateOffer, refreshStock, DEMAND_MIN, DEMAND_MAX } from './shop';
 export { makeBuyer, buildProfile, buyerFit, BUYER_POOL_SIZE } from './buyers';
 export type { ListingProfile, FitResult } from './buyers';
 export { templateCount, composeBidMessage } from './messages';

@@ -86,6 +86,8 @@ export const UNLOCK_RULES: UnlockRule[] = [
   { key: 'predators', when: [research('predator_husbandry')], hint: 'Research Predator Husbandry.' },
   // lane:brackish — research it, or earn it as a seasoned freshwater keeper.
   { key: 'brackish', when: [any(research('brackish_estuaries'), { type: 'all', of: [unlocked('fw_intermediate'), rep(260), mastery('husbandry', 500)] })], hint: 'Research Brackish Estuaries (needs intermediate freshwater).' },
+  // chunk 17 (ADR-0053) — the big freshwater fish: research only, as Big-water Marine is
+  { key: 'fw_large', when: [research('large_freshwater')], hint: 'Research Big-water Freshwater.' },
 
   // ── gear ──
   { key: 'gear_tier2', when: [any(rep(50), mastery('husbandry', 180), research('life_support_2'))], hint: 'Research Better Life Support, reach 50 reputation, or keep up regular care.' },

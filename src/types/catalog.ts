@@ -179,4 +179,9 @@ export interface FoodDef {
    * madeForOtherWater in src/data/catalog/foods.ts.
    */
   madeFor?: { speciesIds?: readonly string[]; environments?: readonly Environment[] };
+  /**
+   * chunk 17 (ADR-0053 decision 5) — species ids this food is sold with: on top of `unlock`, the shop sells it only once
+   * at least one of them can be bought (isFoodAvailable in src/sim/economy/shop.ts). Absent: sold by `unlock` alone.
+   */
+  soldWith?: readonly string[];
 }

@@ -24,6 +24,7 @@ import { EGGS_SUPPLY } from '@/data/catalog/machines'; // lane:automation (chunk
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { spend, canAfford } from './finance';
+import { isFoodAvailable, soldWithWords } from './shop';
 import { clonePlain, fmtMoney, finite, nicePrice, pushCapped, speciesPlural, roundCents, aOrAn } from './util'; // lane:w2-ui: aOrAn ("an 800 Gallon Exhibit")
 
 /** Marine salt mix price per kg. */
@@ -315,6 +316,8 @@ export function buyFood(state: GameState, foodId: string, packs: number): Action
   const n = Math.floor(finite(packs, 0));
   if (n < 1 || n > 99) return fail('Choose between 1 and 99 packs.');
   if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn't available yet (${unlockHint(def.unlock)}).`);
+  // chunk 17 (ADR-0053 decision 5): a food sold with certain animals waits until one of them can be bought
+  if (!isFoodAvailable(state, def)) return fail(`${def.name} comes into the shop with ${soldWithWords(def)}.`);
   const price = roundCents(def.price * n);
   if (!spend(state, price, 'food', `${n} × ${def.name}`)) return needMoney(state, price, `${n} × ${def.name}`);
   const servings = Math.max(1, Math.round(def.servingsPerPack * n));

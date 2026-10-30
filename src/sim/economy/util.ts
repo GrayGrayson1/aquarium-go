@@ -61,7 +61,7 @@ export function speciesName(id: string): string {
  */
 export function pluralPhrase(name: string): string {
   const n = name;
-  if (/(fish|shrimp|fry|species|us|is|ss|corydoras|anthias|sheep)$/i.test(n)) return n;
+  if (/(fish|shrimp|fry|species|us|is|ss|corydoras|anthias|sheep|koi)$/i.test(n)) return n; // chunk 17: koi is its own plural
   if (/(ch|sh|x|z)$/i.test(n)) return `${n}es`;
   if (/[^aeiou]y$/i.test(n)) return `${n.slice(0, -1)}ies`;
   return `${n}s`;

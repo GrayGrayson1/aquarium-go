@@ -12,8 +12,10 @@ import { unlock } from '@/sim/facility';
 import { WATER_ROOM, FOOD_ROOM } from '@/data/catalog/machines';
 
 describe('AUTO-031: the facility tiers', () => {
-  it('three Facility projects, last in RESEARCH, gated as the design draws them', () => {
-    const ids = RESEARCH.slice(-3).map((r) => r.id);
+  it('three Facility projects, last in RESEARCH (before chunk 17’s), gated as the design draws them', () => {
+    // chunk 17 (ADR-0053) appends its research after them for the same reason they were appended: the playthrough
+    // bot's research order stays as it was until it can afford the new projects
+    const ids = RESEARCH.filter((r) => !['large_freshwater', 'shark_ray_husbandry'].includes(r.id)).slice(-3).map((r) => r.id);
     expect(ids).toEqual(['central_water_supply', 'live_food_cultures', 'operations_desk']);
     expect(getResearch('central_water_supply')).toMatchObject({ cost: 900, hours: 24, branch: 'facility', grants: ['water_room'], requires: [{ type: 'facility', level: 'specialty_shop' }] });
     expect(getResearch('live_food_cultures')).toMatchObject({ cost: 1400, hours: 48, branch: 'facility', grants: ['live_food_room'], requires: [{ type: 'unlocked', key: 'water_room' }, { type: 'unlocked', key: 'nursery' }] });

@@ -25,6 +25,9 @@ const GATED_79: Record<string, string[]> = {
   tank_240: ['emperor_angelfish'],
 };
 
+/** The big-tank species chunk 17 adds (each waits for its own research as well; species-chunk17.test.ts). */
+const CHUNK17 = new Set(['oscar', 'clown_loach', 'black_ghost_knifefish', 'fahaka_puffer', 'ornate_bichir', 'silver_arowana', 'koi', 'silver_mono', 'spotted_scat', 'blue_tang', 'naso_tang', 'queen_angelfish', 'clown_triggerfish', 'panther_grouper', 'motoro_stingray', 'coral_catshark', 'epaulette_shark', 'brownbanded_bamboo_shark']);
+
 describe('BIG-007: the tank gate', () => {
   it('every species fits a tank tier (a species no tank holds is a data error)', () => {
     for (const sp of ALL_SPECIES) expect(tankTierFor(sp), sp.id).toBeDefined();
@@ -46,7 +49,7 @@ describe('BIG-007: the tank gate', () => {
     expect(expected.size).toBe(32);
     for (const [id, key] of expected) expect(tankKeyFor(findSpecies(id)!), id).toBe(key);
     // the rest of the 0.8.0 species fit the open tiers (5, 10, 20 long, 29), so they gain no key
-    const released = ALL_SPECIES.filter((sp) => tankKeyFor(sp) !== null && !expected.has(sp.id) && (tankTierFor(sp)?.gallons ?? 0) <= 240);
+    const released = ALL_SPECIES.filter((sp) => !CHUNK17.has(sp.id) && tankKeyFor(sp) !== null && !expected.has(sp.id));
     expect(released.map((sp) => sp.id)).toEqual([]);
   });
 

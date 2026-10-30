@@ -92,6 +92,8 @@ describe('CONST-003, AUTO-029: the full-feature facility over thirty days', () =
   it('the same seed in the same steps gives the same stateHash; it ends finite and its save loads with no repair', () => {
     const a = fullFeature(23);
     const b = fullFeature(23);
+    const start = a.clock.hour;
+    expect(a.facility.water?.lastMixHour ?? -1).toBeLessThanOrEqual(start);
     HOUR_STEPS(a, DAYS * 24);
     HOUR_STEPS(b, DAYS * 24);
     expect(stateHash(a)).toBe(stateHash(b));
@@ -100,7 +102,10 @@ describe('CONST-003, AUTO-029: the full-feature facility over thirty days', () =
     // everything ran: water changes from the reserves, salt mixed, live food made, the line moved young
     const days = scheduled(a);
     expect(days.reduce((n, d) => n + d.changes, 0)).toBeGreaterThan(0);
-    expect(days.reduce((n, d) => n + d.mixer, 0)).toBeGreaterThan(0);
+    // chunk 17 — the salt mixer ran during the run: the day log keeps only the last eight days, and the mixer runs about
+    // once a month here, so whether it fell in that window was the random stream's luck (on the tank gate's stream it
+    // mixed at hour 718, just after the log's last day)
+    expect(a.facility.water?.lastMixHour ?? -1).toBeGreaterThan(start);
     // (the store fills while only young eat from it, and a full store waits for room: the live food is in stock)
     expect((a.inventory.foods[BRINE] ?? 0) + (a.inventory.foods[INFUSORIA] ?? 0)).toBeGreaterThan(0);
     expect(a.production!.lines[0].sortedThroughHour ?? a.production!.lines[0].createdHour).toBeGreaterThan(a.production!.lines[0].createdHour);

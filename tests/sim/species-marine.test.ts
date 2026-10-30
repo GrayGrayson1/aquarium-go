@@ -33,11 +33,13 @@ const BEHAVIOR_SETS: Record<BehaviorSetId, true> = {
   mantis_shrimp: true, lionfish: true, grouper: true, sessile: true, archerfish: true, // lane:brackish
   wrasse: true, starfish: true, conch: true, snail_sand: true, urchin: true, starfish_sand: true, crab: true, blenny: true, // chunk 16
   hawkfish: true, damsel: true, cichlid_dwarf: true, anemone: true,
+  cichlid_large: true, loach_shoal: true, knifefish: true, bichir: true, arowana: true, // chunk 17
 };
 const FOOD_TAGS: Record<FoodTag, true> = {
   flake: true, pellet_small: true, pellet_sinking: true, pellet_large: true, bloodworm: true, brine_shrimp: true,
   mysis: true, daphnia: true, earthworm: true, snail_live: true, algae_wafer: true, vegetable: true, nori: true,
   copepod_live: true, coral_food: true, biofilm: true, detritus: true, infusoria: true, baby_brine: true,
+  pellet_floating: true, seafood: true, shellfish: true, insect: true, // chunk 17
 };
 const VERDICT_RANK: Record<CompatVerdict, number> = { excellent: 0, usually_compatible: 1, conditional: 2, high_risk: 3, incompatible: 4 };
 const MARINE_CLASSES: WaterClass[] = ['marine_fowlr', 'marine_live_rock', 'reef'];

@@ -15,8 +15,8 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { simRng } from '@/sim/rng';
 import type { SimLod } from '@/sim/context';
 
-function build(speciesId: string, n: number, tier = 'g10', perDay?: number): { s: GameState; id: string } {
-  const s: GameState = newGame({ starterId: 'betta', starterName: 'T', seed: 5 });
+function build(speciesId: string, n: number, tier = 'g10', perDay?: number, seed = 5): { s: GameState; id: string } {
+  const s: GameState = newGame({ starterId: 'betta', starterName: 'T', seed });
   for (const id of Object.keys(s.creatures)) delete s.creatures[id];
   for (const id of [...s.tankOrder]) delete s.tanks[id];
   s.tankOrder = [];
@@ -56,30 +56,35 @@ describe('fix-water S01-02: autofeeder portions follow the tank', () => {
 
 describe('fix-water S01-03: autofed food is eaten fresh at every LOD', () => {
   it('summary-LOD (4 h) pieces feed the tank about as well as the focused tank', () => {
-    const hungerAt: Record<string, number> = {};
-    const nh3At: Record<string, number> = {};
-    for (const [lod, piece] of [
-      ['full', 0.25],
-      ['summary', 4],
-    ] as [SimLod, number][]) {
-      const { s, id } = build('fancy_guppy', 2);
-      const t = s.tanks[id];
-      let hungerSum = 0;
-      let samples = 0;
-      let maxNH3 = 0;
-      for (let h = 0; h < 24 * 5; h += piece) {
-        s.clock.hour += piece;
-        stepTank(s, t, piece, lod);
-        if (h >= 24) {
-          const alive = aliveIn(s, id);
-          hungerSum += alive.reduce((a, c) => a + c.stats.hunger, 0) / Math.max(1, alive.length);
-          samples++;
+    // chunk 17 — averaged over six seeds: two guppies from one seed measured the random stream as much as the LOD (the
+    // gap ran from 2 to 16 over ten seeds, about 9 on average, with or without the chunk's species; before the fix it was 67)
+    const hungerAt: Record<string, number> = { full: 0, summary: 0 };
+    const nh3At: Record<string, number> = { full: 0, summary: 0 };
+    const SEEDS = [1, 2, 3, 4, 5, 6];
+    for (const seed of SEEDS) {
+      for (const [lod, piece] of [
+        ['full', 0.25],
+        ['summary', 4],
+      ] as [SimLod, number][]) {
+        const { s, id } = build('fancy_guppy', 2, 'g10', undefined, seed);
+        const t = s.tanks[id];
+        let hungerSum = 0;
+        let samples = 0;
+        let maxNH3 = 0;
+        for (let h = 0; h < 24 * 5; h += piece) {
+          s.clock.hour += piece;
+          stepTank(s, t, piece, lod);
+          if (h >= 24) {
+            const alive = aliveIn(s, id);
+            hungerSum += alive.reduce((a, c) => a + c.stats.hunger, 0) / Math.max(1, alive.length);
+            samples++;
+          }
+          maxNH3 = Math.max(maxNH3, t.water.ammonia);
         }
-        maxNH3 = Math.max(maxNH3, t.water.ammonia);
+        hungerAt[lod] += hungerSum / samples / SEEDS.length;
+        nh3At[lod] += maxNH3 / SEEDS.length;
+        expect(Math.min(...aliveIn(s, id).map((c) => c.stats.health))).toBeGreaterThan(90);
       }
-      hungerAt[lod] = hungerSum / samples;
-      nh3At[lod] = maxNH3;
-      expect(Math.min(...aliveIn(s, id).map((c) => c.stats.health))).toBeGreaterThan(90);
     }
     // Before the fix: full 27 vs summary 94 average hunger, and four times the ammonia from rotting flakes.
     expect(hungerAt.summary).toBeLessThan(hungerAt.full + 15);

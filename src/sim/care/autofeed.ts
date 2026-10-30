@@ -35,6 +35,10 @@ export const FOOD_TAG_WORDS: Partial<Record<FoodTag, string>> = {
   coral_food: 'coral food',
   infusoria: 'infusoria',
   baby_brine: 'baby brine shrimp',
+  pellet_floating: 'floating sticks', // chunk 17
+  seafood: 'seafood',
+  shellfish: 'shell-on shellfish',
+  insect: 'insects',
 };
 
 /** Every dry (autofeeder) food, in catalog order. */

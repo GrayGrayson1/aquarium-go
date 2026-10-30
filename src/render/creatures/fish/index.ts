@@ -62,6 +62,17 @@ import { figureEightPufferPlan } from './figure_eight_puffer';
 import { plan as bumblebee_goby } from './bumblebee_goby';
 import { plan as sailfin_molly } from './sailfin_molly';
 import { plan as banded_archerfish } from './banded_archerfish';
+// chunk 17 wave A: big freshwater
+import { plan as oscar } from './oscar';
+import { plan as clown_loach } from './clown_loach';
+import { plan as black_ghost_knifefish } from './black_ghost_knifefish';
+import { plan as fahaka_puffer } from './fahaka_puffer';
+import { plan as ornate_bichir } from './ornate_bichir';
+import { plan as silver_arowana } from './silver_arowana';
+// chunk 17 wave B: koi and brackish
+import { plan as koi } from './koi';
+import { plan as silver_mono } from './silver_mono';
+import { plan as spotted_scat } from './spotted_scat';
 
 const reg = (id: string, plan: PlanFn) => registerCreatureVisual(id, fishFactory(plan, genericPlan));
 
@@ -122,5 +133,16 @@ reg('figure_eight_puffer', figureEightPufferPlan);
 reg('bumblebee_goby', bumblebee_goby);
 reg('sailfin_molly', sailfin_molly);
 reg('banded_archerfish', banded_archerfish);
+// chunk 17 wave A
+reg('oscar', oscar);
+reg('clown_loach', clown_loach);
+reg('black_ghost_knifefish', black_ghost_knifefish);
+reg('fahaka_puffer', fahaka_puffer);
+reg('ornate_bichir', ornate_bichir);
+reg('silver_arowana', silver_arowana);
+// chunk 17 wave B
+reg('koi', koi);
+reg('silver_mono', silver_mono);
+reg('spotted_scat', spotted_scat);
 
 registerFallbackVisual(fishFactory(genericPlan));

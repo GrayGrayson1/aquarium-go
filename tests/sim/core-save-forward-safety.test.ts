@@ -451,6 +451,25 @@ KNOWN_AT[3] = {
   ],
   tankTiers: [...KNOWN_AT[2].tankTiers],
 };
+// v4 (chunk 17, ADR-0053): the big-tank species. Unreleased until chunk 17 ships (0.9.0), so this entry grows with each
+// of the chunk's waves; once released it is fixed like the others.
+KNOWN_AT[4] = {
+  species: [
+    ...KNOWN_AT[3].species,
+    // wave A: big freshwater
+    'black_ghost_knifefish',
+    'clown_loach',
+    'fahaka_puffer',
+    'ornate_bichir',
+    'oscar',
+    'silver_arowana',
+    // wave B: koi and brackish
+    'koi',
+    'silver_mono',
+    'spotted_scat',
+  ],
+  tankTiers: [...KNOWN_AT[3].tankTiers],
+};
 
 describe('PERSIST-014 A5 / ADR-0016 decision 2: a new species or tank size raises SCHEMA_VERSION', () => {
   it(`the species and tank sizes are exactly the ones pinned for save format v${SCHEMA_VERSION}`, () => {
@@ -481,6 +500,8 @@ const TABLES_AT: Record<number, { waterClasses: string[]; showTiers: string[]; b
 };
 // v3 (chunk 16): new species only; these tables are unchanged.
 TABLES_AT[3] = TABLES_AT[2];
+// v4 (chunk 17): new species, foods and breeding systems; these tables are unchanged.
+TABLES_AT[4] = TABLES_AT[3];
 
 describe('ADR-0036 (F3): a new water class, show tier, buyer type, staff role or staff trait raises SCHEMA_VERSION', () => {
   it(`the five tables' keys are exactly the ones pinned for save format v${SCHEMA_VERSION}`, () => {
@@ -506,6 +527,7 @@ const LIMITS_AT: Record<number, { prepLevels: number; maxReservoirs: number; rar
   2: { prepLevels: 3, maxReservoirs: 3, rareVariantKinds: ['prismatic'] },
 };
 LIMITS_AT[3] = LIMITS_AT[2]; // v3 (chunk 16): unchanged
+LIMITS_AT[4] = LIMITS_AT[3]; // v4 (chunk 17): unchanged
 
 describe('ADR-0037 (G1): a new prep level, more reservoirs or a new rare-variant kind raises SCHEMA_VERSION', () => {
   it(`the Water room's limits and the rare-variant kinds are the ones pinned for save format v${SCHEMA_VERSION}`, () => {
@@ -532,6 +554,7 @@ const ROOM_LIMITS_AT: Record<number, { maxCones: number; maxJars: number; staffM
   2: { maxCones: 6, maxJars: 8, staffMaxSkill: 5, rareVariantOrigins: ['bred', 'shop', 'spontaneous'] },
 };
 ROOM_LIMITS_AT[3] = ROOM_LIMITS_AT[2]; // v3 (chunk 16): unchanged
+ROOM_LIMITS_AT[4] = ROOM_LIMITS_AT[3]; // v4 (chunk 17): unchanged
 
 describe('chunk 7 (B-203): more cones or jars, a higher staff skill or a new rare-variant origin raises SCHEMA_VERSION', () => {
   it(`the Live food room's limits, the staff skill range and the rare-variant origins are the ones pinned for v${SCHEMA_VERSION}`, () => {

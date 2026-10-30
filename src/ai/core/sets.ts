@@ -768,6 +768,65 @@ export const SET_PROFILES: Record<BehaviorSetId, SetProfile> = {
     startleSens: 0.3,
     ignoreFish: true,
   }),
+  // ── chunk 17 (ADR-0053): big-tank species ──
+  // oscar: a big, deep-bodied cichlid that hovers and patrols the middle and lower water on its pectorals, noses and digs
+  // at the sand, begs at the glass when hungry (brain.ts) and settles on the bottom to rest (the sulk after a fright)
+  cichlid_large: base({
+    body: { hx: 0.5, hy: 0.22, hz: 0.09 },
+    hover: 0.6,
+    maxPitch: 0.55,
+    tailFreq: 0.75,
+    acts: { patrol: 2.6, hover: 2, forage: 2.2, inspect_glass: 1.4, inspect_decor: 1, rest: 0.6 },
+    rest: 'bottom',
+    startleSens: 0.7,
+  }),
+  // clown loach: a busy shoal low over the floor, foraging, piling into caves together and resting there
+  loach_shoal: base({
+    body: { hx: 0.5, hy: 0.15, hz: 0.08 },
+    hover: 0.3,
+    maxPitch: 0.75,
+    tailFreq: 1.35,
+    acts: { forage: 4, cruise: 1.6, hide: 1.8, rest: 1.1, inspect_decor: 0.8 },
+    shoal: true,
+    rest: 'cave',
+    bottomHugger: true,
+    startleSens: 0.9,
+  }),
+  // black ghost knifefish: out only at night; the body stays straight while the long fin under it ripples, so it hovers,
+  // backs up and slides sideways without turning (hover near 1); by day it sleeps in a tube or cave
+  knifefish: base({
+    body: { hx: 0.5, hy: 0.1, hz: 0.05 },
+    hover: 0.95,
+    maxPitch: 0.35,
+    tailFreq: 0.5,
+    acts: { hover: 2.6, cruise: 2, forage: 2, inspect_decor: 1.2, hide: 0.8 },
+    rest: 'cave',
+    nightOnly: true,
+    startleSens: 1,
+  }),
+  // ornate bichir: lies on the floor propped on its pectoral fins most of the day, rises now and then to gulp air, and
+  // prowls the bottom slowly at dusk and in the night
+  bichir: base({
+    body: { hx: 0.5, hy: 0.07, hz: 0.07 },
+    hover: 0.15,
+    maxPitch: 0.9,
+    tailFreq: 1.15,
+    acts: { rest: 3, forage: 2.6, cruise: 0.9, hide: 1, inspect_decor: 0.5 },
+    airBreath: [240, 600],
+    rest: 'bottom',
+    bottomHugger: true,
+    startleSens: 0.6,
+  }),
+  // silver arowana: cruises the full length of the tank just under the surface, body straight, turning wide at the
+  // ends; a startled arowana bursts away (in a tank, the moment it can hurt itself)
+  arowana: base({
+    body: { hx: 0.5, hy: 0.12, hz: 0.05 },
+    hover: 0.35,
+    maxPitch: 0.3,
+    tailFreq: 0.8,
+    acts: { cruise: 5, patrol: 1.5, hover: 0.8, inspect_glass: 0.3 },
+    startleSens: 1.2,
+  }),
 };
 
 export function setProfile(id: string): SetProfile {

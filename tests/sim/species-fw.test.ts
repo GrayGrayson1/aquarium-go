@@ -34,11 +34,13 @@ const BEHAVIOR_SETS: Record<BehaviorSetId, true> = {
   mantis_shrimp: true, lionfish: true, grouper: true, sessile: true, archerfish: true, // lane:brackish
   wrasse: true, starfish: true, conch: true, snail_sand: true, urchin: true, starfish_sand: true, crab: true, blenny: true, // chunk 16
   hawkfish: true, damsel: true, cichlid_dwarf: true, anemone: true,
+  cichlid_large: true, loach_shoal: true, knifefish: true, bichir: true, arowana: true, // chunk 17
 };
 const FOOD_TAGS: Record<FoodTag, true> = {
   flake: true, pellet_small: true, pellet_sinking: true, pellet_large: true, bloodworm: true, brine_shrimp: true,
   mysis: true, daphnia: true, earthworm: true, snail_live: true, algae_wafer: true, vegetable: true, nori: true,
   copepod_live: true, coral_food: true, biofilm: true, detritus: true, infusoria: true, baby_brine: true,
+  pellet_floating: true, seafood: true, shellfish: true, insect: true, // chunk 17
 };
 const FRESHWATER_CLASSES: WaterClass[] = ['freshwater_cool', 'freshwater_tropical', 'freshwater_planted'];
 const COLOR_KEYS: (keyof CreatureVisualParams)[] = ['bodyColor', 'bodyColor2', 'bellyColor', 'finColor', 'finColor2', 'accentColor', 'eyeColor', 'gillColor'];
@@ -143,7 +145,10 @@ describe.each(FW_ALL.map((s) => [s.id, s] as const))('%s', (id, s) => {
       expect(s.unlock.requires).toEqual([]);
     } else {
       expect(key in UNLOCK_KEYS, `unknown unlock key ${key}`).toBe(true);
-      expect(s.unlock.requires).toEqual([key]);
+      // chunk 17: a roster entry may name several keys ('fw_coldwater|fw_large', the koi)
+      const keys = roster.unlock.split('|').filter((k) => k !== 'starter');
+      for (const k of keys) expect(k in UNLOCK_KEYS, `unknown unlock key ${k}`).toBe(true);
+      expect(s.unlock.requires).toEqual(roster.unlock.startsWith('starter') ? [key] : keys);
     }
     // chunk 17 (ADR-0053 round 3): the hand-written hint retired; a locked card's words come from each key's rule
     for (const k of requiredUnlocks(s)) expect(UNLOCK_RULE_BY_KEY[k]?.hint.length ?? 0, `hint for ${k}`).toBeGreaterThan(5);

@@ -743,7 +743,10 @@ class Bot {
       this.flagsNum.lastStock = this.hour;
       for (const id of s.tankOrder) {
         if (!this.exhibits.has(id)) continue; // never the starter's own tanks
-        if (creaturesInTank(s, id).length < 3) this.stockDisplay(id, moneyOnly ? upgradeCost : 0);
+        // chunk 17 — an empty exhibit earns nothing, so a player fills it even while saving for the move; a partly
+        // stocked one waits (on one random stream two empty exhibits sat empty for 55 game days while the bot saved)
+        const n = creaturesInTank(s, id).length;
+        if (n < 3) this.stockDisplay(id, moneyOnly && n > 0 ? upgradeCost : 0);
       }
     }
     if (moneyOnly) return; // saving up for the move
