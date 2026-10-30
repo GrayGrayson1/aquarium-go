@@ -537,7 +537,10 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
     const p = r.mood === 'wow' || r.mood === 'concerned' ? 0.8 : 0.3;
     if (!rng.chance(p)) continue;
     const vars = varsFor(state, r.e, r.mood);
-    pushReaction(v.reactions, { hour: h, tankId: r.e.tankId, creatureId: subjectOf(r.e, r.mood)?.id, text: pickLine(rng, r.ctx, vars), mood: r.mood });
+    // chunk 17 — an exhibit with no star (an empty tank) names no animal: the key is left out, never held as undefined
+    // (SHARED-SHOPS.md §3.2 rule 10; the lockstep test caught it on another random stream)
+    const subject = subjectOf(r.e, r.mood)?.id;
+    pushReaction(v.reactions, { hour: h, tankId: r.e.tankId, ...(subject ? { creatureId: subject } : {}), text: pickLine(rng, r.ctx, vars), mood: r.mood });
     if (r.mood === 'wow') {
       const stat = v.exhibit[r.e.tankId];
       if (stat) stat.lastFeatured = h;
@@ -607,7 +610,7 @@ function friendStep(state: GameState, h: number, rng: Rng): void {
   const vars = { ...varsFor(state, e), who };
   const ctx: ReactionContext = kind === 'kids' ? 'friend_kids' : kind === 'neighbour' ? 'neighbour' : 'friend';
   const text = pickLine(rng, ctx, vars);
-  pushReaction(state.visitors.reactions, { hour: h, tankId: e.tankId, creatureId: e.star?.id, text, mood: e.score >= 55 && welfareMul === 1 ? 'wow' : 'happy' });
+  pushReaction(state.visitors.reactions, { hour: h, tankId: e.tankId, ...(e.star ? { creatureId: e.star.id } : {}), text, mood: e.score >= 55 && welfareMul === 1 ? 'wow' : 'happy' });
   live.friend = { name: who, kind, tankId: e.tankId, untilHour: h + 1.6, party: kind === 'kids' ? 2 : 1 };
   // The tutorial's friend steps ("A visitor!", "Word gets around", the reputation upgrade) count visits made during
   // the step — friends come round a little more often while one is waiting on them.

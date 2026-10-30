@@ -23,6 +23,7 @@ import { fissionBlocker, fissionModule } from '@/sim/life/breeding/systems/fissi
 import { clearCompatCache, incidentRisks, previewAddition } from '@/sim/compat';
 import { breedingStatus } from '@/sim/life/breeding';
 import { gallonsNeededNow } from '@/sim/life';
+import { adultSizeOf } from '@/sim/life/growth';
 import { assessCreature } from '@/sim/shows/judging';
 import { SHOW_CLASS_BY_ID } from '@/data/shows';
 
@@ -291,6 +292,9 @@ describe('chunk 16 brief: the maroon clownfish female is much bigger than the ma
     const rng = simRng(g);
     const female = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 80, sex: 'female' }), t.id);
     const male = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 80, genome: structuredClone(female.genome) }), t.id);
+    // grown to a male's full size (chunk 17: a fish's size at a given age follows its random size potential, and on
+    // another random stream this pair's was a little under average, so he fell short of the species' full size)
+    male.sizeCm = adultSizeOf(sp, 'male');
     expect(male.reproRole).toBe('male');
     // the tank it needs: the species minimum, as for her
     expect(gallonsNeededNow(sp, male.sizeCm, male.reproRole)).toBeCloseTo(sp.recommendedMinTankGallons, 0);

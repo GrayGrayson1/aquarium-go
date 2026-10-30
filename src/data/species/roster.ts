@@ -105,6 +105,12 @@ export const ROSTER: RosterEntry[] = [
   { id: 'tuxedo_urchin', commonName: 'Tuxedo Urchin', scientificName: 'Mespilia globulus', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'urchin' },
   { id: 'sand_sifting_starfish', commonName: 'Sand-sifting Starfish', scientificName: 'Astropecten polyacanthus', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'starfish_sand' },
   { id: 'bubbletip_anemone', commonName: 'Bubble-tip Anemone', scientificName: 'Entacmaea quadricolor', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'open', behaviorSet: 'anemone' },
+  // chunk 17 (ADR-0053), wave C: big marine fish (Big-water Marine or Predator Husbandry, and the tank that holds an adult)
+  { id: 'blue_tang', commonName: 'Blue Tang', scientificName: 'Paracanthurus hepatus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'marine_large', behaviorSet: 'tang' },
+  { id: 'naso_tang', commonName: 'Naso Tang', scientificName: 'Naso lituratus', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'marine_large', behaviorSet: 'tang' },
+  { id: 'queen_angelfish', commonName: 'Queen Angelfish', scientificName: 'Holacanthus ciliaris', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'marine_large', behaviorSet: 'angelfish_dwarf' },
+  { id: 'clown_triggerfish', commonName: 'Clown Triggerfish', scientificName: 'Balistoides conspicillum', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'predators', behaviorSet: 'triggerfish' },
+  { id: 'panther_grouper', commonName: 'Panther Grouper', scientificName: 'Chromileptes altivelis', env: 'marine', lane: 'species-marine', visual: 'fish', unlock: 'predators', behaviorSet: 'grouper' },
   // Brackish (lane:brackish — the estuary chapter)
   { id: 'figure_eight_puffer', commonName: 'Figure-eight Puffer', scientificName: 'Dichotomyctere ocellatus', env: 'brackish', lane: 'brackish', visual: 'fish', unlock: 'brackish', behaviorSet: 'pea_puffer' },
   { id: 'bumblebee_goby', commonName: 'Bumblebee Goby', scientificName: 'Brachygobius doriae', env: 'brackish', lane: 'brackish', visual: 'fish', unlock: 'brackish', behaviorSet: 'goby_perch' },

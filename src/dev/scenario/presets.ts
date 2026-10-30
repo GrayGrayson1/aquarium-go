@@ -426,7 +426,8 @@ export const PRESETS: Preset[] = [
         offers: [{ species: 'betta', prismatic: true }, { species: 'neon_tetra', count: 8 }],
         listings: [
           { animals: ['Ember'], bids: 3 },
-          { animals: ['Pip', 'Nimbus'], bids: [200, 240] },
+          // the reserve set, so both bids are always above it (the suggested price follows the pair's random traits)
+          { animals: ['Pip', 'Nimbus'], reserve: 180, bids: [200, 240] },
           { animals: ['Dot', 'Dash', 'Fizz'], bids: 1 },
         ],
       },

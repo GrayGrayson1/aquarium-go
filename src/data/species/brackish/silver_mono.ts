@@ -168,6 +168,8 @@ export const silverMono: SpeciesDefinition = {
     { other: 'figure_eight_puffer', verdictFloor: 'conditional', reason: 'The puffer nips fins and wants lower salinity than grown monos.', incidentRisk: 0.05 },
     { other: 'bumblebee_goby', verdictFloor: 'high_risk', reason: 'A tiny goby is outcompeted, may be eaten, and wants near-fresh water.', incidentRisk: 0.1, mitigatedBy: ['hides'] },
     { other: 'tag:fish_tiny', verdictFloor: 'high_risk', reason: 'A school of adult monos eats fish small enough to swallow.', incidentRisk: 0.15 },
+    { other: 'tag:tang', verdictFloor: 'conditional', reason: 'In a fish-only marine tank fast, greedy monos win the food, and grown tangs need a very large tank.', incidentRisk: 0.03, mitigatedBy: ['tank_size', 'target_feeding'] },
+    { other: 'queen_angelfish', verdictFloor: 'conditional', reason: 'In a fish-only marine tank a queen angel chases newcomers and monos win the food: a very large tank, the angel added last.', incidentRisk: 0.03, mitigatedBy: ['tank_size'] },
   ],
   special: { escapeArtist: true, outgrowsSmallTanks: true },
   visualLane: 'fish',

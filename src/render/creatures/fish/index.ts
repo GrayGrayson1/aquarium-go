@@ -73,6 +73,12 @@ import { plan as silver_arowana } from './silver_arowana';
 import { plan as koi } from './koi';
 import { plan as silver_mono } from './silver_mono';
 import { plan as spotted_scat } from './spotted_scat';
+// chunk 17 wave C: big marine fish
+import { plan as blue_tang } from './blue_tang';
+import { plan as naso_tang } from './naso_tang';
+import { plan as queen_angelfish } from './queen_angelfish';
+import { plan as clown_triggerfish } from './clown_triggerfish';
+import { plan as panther_grouper } from './panther_grouper';
 
 const reg = (id: string, plan: PlanFn) => registerCreatureVisual(id, fishFactory(plan, genericPlan));
 
@@ -144,5 +150,11 @@ reg('silver_arowana', silver_arowana);
 reg('koi', koi);
 reg('silver_mono', silver_mono);
 reg('spotted_scat', spotted_scat);
+// chunk 17 wave C
+reg('blue_tang', blue_tang);
+reg('naso_tang', naso_tang);
+reg('queen_angelfish', queen_angelfish);
+reg('clown_triggerfish', clown_triggerfish);
+reg('panther_grouper', panther_grouper);
 
 registerFallbackVisual(fishFactory(genericPlan));

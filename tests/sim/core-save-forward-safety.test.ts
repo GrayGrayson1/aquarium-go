@@ -467,6 +467,12 @@ KNOWN_AT[4] = {
     'koi',
     'silver_mono',
     'spotted_scat',
+    // wave C: big marine fish
+    'blue_tang',
+    'clown_triggerfish',
+    'naso_tang',
+    'panther_grouper',
+    'queen_angelfish',
   ],
   tankTiers: [...KNOWN_AT[3].tankTiers],
 };

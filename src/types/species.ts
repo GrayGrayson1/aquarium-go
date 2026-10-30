@@ -363,7 +363,8 @@ export type BehaviorSetId =
   | 'loach_shoal' // shoaling bottom loach that piles into caves and rests on its side (clown loach)
   | 'knifefish' // stiff-bodied night fish that glides forwards and backwards on one long fin (black ghost knifefish)
   | 'bichir' // armoured bottom prowler propped on its pectorals that rises to gulp air (ornate bichir)
-  | 'arowana'; // surface cruiser that patrols the tank's length and lunges up at food (silver arowana)
+  | 'arowana' // surface cruiser that patrols the tank's length and lunges up at food (silver arowana)
+  | 'triggerfish'; // sculls on its dorsal and anal fins with a stiff body, blows at the sand, locks into a crevice at night (clown triggerfish)
 
 export interface BehaviorTraits {
   /** Cruising speed in body lengths per second. */

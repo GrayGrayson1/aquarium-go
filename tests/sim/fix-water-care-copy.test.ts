@@ -85,7 +85,9 @@ describe('fix-water S01-08 / S01-12: report headlines', () => {
     s.isShowcase = true;
     const t = createTank(s, 'g10', 'freshwater_tropical', { cycled: true, placement: { x: 0, z: 0, rotY: 0 } });
     const rng = simRng(s);
-    for (let i = 0; i < 9; i++) addCreature(s, createCreature(s, rng, 'neon_tetra', { ageDays: 60 }), t.id);
+    // grown neons at their adult size (chunk 17: a fish's size at 60 days comes from the random stream, and on another
+    // stream nine smaller neons fell under the 'watch' line)
+    for (let i = 0; i < 9; i++) addCreature(s, createCreature(s, rng, 'neon_tetra', { ageDays: 60 }), t.id).sizeCm = getSpecies('neon_tetra').adultSizeCm;
     const r = getWaterReport(s, t.id);
     const st = r.params.find((p) => p.key === 'stocking')!;
     expect(st.status).toBe('watch');

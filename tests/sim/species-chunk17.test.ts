@@ -86,7 +86,7 @@ describe('BIG-009: foods sold with the animals that eat them', () => {
     const r = buyFood(g, 'shellfish_frozen', 1);
     expect(r.ok).toBe(false);
     expect(r.message).toBe(`Frozen Shell-on Shellfish comes into the shop with ${soldWithWords(getFoodDef('shellfish_frozen')!)}.`);
-    expect(soldWithWords(getFoodDef('shellfish_frozen')!)).toBe('fahaka puffers');
+    expect(soldWithWords(getFoodDef('shellfish_frozen')!)).toBe('fahaka puffers or clown triggerfish');
     expect(soldWithWords(getFoodDef('seafood_frozen')!)).toBe('oscars, ornate bichirs and more');
     unlock(g, 'fw_large', { silent: true });
     unlock(g, 'tank_180', { silent: true });
@@ -227,5 +227,47 @@ describe('BIG-002 and BIG-004: koi, the silver mono and the spotted scat', () =>
     expect(v('silver_mono', 'oscar')).toBe('incompatible');
     expect(v('spotted_scat', 'banded_archerfish')).toBe('usually_compatible');
     expect(v('spotted_scat', 'figure_eight_puffer')).toBe('conditional');
+  });
+});
+
+describe('BIG-005: the big marine five', () => {
+  const v = (a: string, b: string) => {
+    clearCompatCache();
+    return speciesPair(findSpecies(a)!, findSpecies(b)!).verdict;
+  };
+
+  it('wait for their research and the tank that holds an adult', () => {
+    expect(requiredUnlocks(findSpecies('blue_tang')!)).toEqual(['marine_large', 'tank_180']);
+    expect(requiredUnlocks(findSpecies('naso_tang')!)).toEqual(['marine_large', 'tank_240']);
+    expect(requiredUnlocks(findSpecies('queen_angelfish')!)).toEqual(['marine_large', 'tank_300']);
+    expect(requiredUnlocks(findSpecies('clown_triggerfish')!)).toEqual(['predators', 'tank_300']);
+    // the panther grouper's 60 cm adult needs three feet front to back: the 500
+    expect(requiredUnlocks(findSpecies('panther_grouper')!)).toEqual(['predators', 'tank_500']);
+  });
+
+  it('their foods: the trigger’s shell-on shellfish and the grouper’s seafood', () => {
+    expect(getFoodDef('shellfish_frozen')!.soldWith).toContain('clown_triggerfish');
+    expect(getFoodDef('seafood_frozen')!.soldWith).toContain('panther_grouper');
+  });
+
+  it('the matrix rows (design §11)', () => {
+    expect(v('blue_tang', 'naso_tang')).toBe('conditional');
+    expect(['usually_compatible', 'excellent']).toContain(v('blue_tang', 'queen_angelfish'));
+    expect(v('blue_tang', 'clown_triggerfish')).toBe('conditional');
+    expect(v('naso_tang', 'clown_triggerfish')).toBe('conditional');
+    expect(v('queen_angelfish', 'clown_triggerfish')).toBe('conditional');
+    expect(v('clown_triggerfish', 'panther_grouper')).toBe('conditional');
+    expect(v('queen_angelfish', 'emperor_angelfish')).toBe('high_risk');
+    expect(v('blue_tang', 'yellow_tang')).toBe('conditional');
+    expect(v('clown_triggerfish', 'cleaner_shrimp')).toBe('incompatible');
+    expect(v('clown_triggerfish', 'hermit_crab')).toBe('incompatible');
+    expect(v('panther_grouper', 'cleaner_shrimp')).toBe('high_risk');
+    expect(v('panther_grouper', 'miniatus_grouper')).toBe('high_risk');
+    expect(v('silver_mono', 'blue_tang')).toBe('conditional');
+    expect(v('spotted_scat', 'queen_angelfish')).toBe('conditional');
+    expect(v('clown_triggerfish', 'silver_mono')).toBe('high_risk');
+    // the best of their tankmates
+    expect(v('blue_tang', 'ocellaris_clownfish')).toBe('excellent');
+    expect(v('naso_tang', 'cleaner_shrimp')).toBe('excellent');
   });
 });

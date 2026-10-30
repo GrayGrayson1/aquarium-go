@@ -40,8 +40,10 @@ describe('AUTO-027: recovering from the backup slot', () => {
     expect(stateHash(recovered)).toBe(stateHash(main));
     for (const s of [main, recovered]) run(s, 24 * 9, 1); // past sorting and the 168 h quarantine
     const record = lineRecord(main);
-    expect(record.batches.length).toBeGreaterThan(0); // the line really sorted and quarantined in that time
-    expect(record.listings.length).toBeGreaterThan(0); // and listed
+    // the line really sorted, quarantined and listed in that time: a listing of its young comes only after the 168 h
+    // quarantine (chunk 17: on another random stream the batch was already through and gone, so none was left to count)
+    expect(record.sortedThroughHour).toBeDefined();
+    expect(record.listings.length).toBeGreaterThan(0);
     expect(lineRecord(recovered)).toEqual(record);
     expect(recovered.production!.lines[0].stats).toEqual(main.production!.lines[0].stats);
     expect(stateHash(recovered)).toBe(stateHash(main));

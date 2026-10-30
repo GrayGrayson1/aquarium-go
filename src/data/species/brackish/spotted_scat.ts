@@ -168,6 +168,8 @@ export const spottedScat: SpeciesDefinition = {
     { other: 'figure_eight_puffer', verdictFloor: 'conditional', reason: 'The puffer nips fins and wants lower salinity than grown scats.', incidentRisk: 0.05 },
     { other: 'bumblebee_goby', verdictFloor: 'high_risk', reason: 'A greedy, fast scat starves a tiny goby out and may eat it.', incidentRisk: 0.1 },
     { other: 'tag:coral_polyp', verdictFloor: 'high_risk', reason: 'Scats graze anything soft, corals and plants included.', incidentRisk: 0.2 },
+    { other: 'tag:tang', verdictFloor: 'conditional', reason: 'In a fish-only marine tank scats compete hard for the seaweed tangs live on, and grown tangs need a very large tank.', incidentRisk: 0.03, mitigatedBy: ['tank_size', 'target_feeding'] },
+    { other: 'queen_angelfish', verdictFloor: 'conditional', reason: 'In a fish-only marine tank a queen angel chases newcomers and greedy scats win the food: a very large tank, the angel added last.', incidentRisk: 0.03, mitigatedBy: ['tank_size'] },
   ],
   special: { venomous: true, heavyWaste: true, outgrowsSmallTanks: true },
   visualLane: 'fish',

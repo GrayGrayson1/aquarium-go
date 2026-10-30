@@ -235,6 +235,29 @@ const VARIANTS: Record<string, { label: string; ids: string[]; extra?: Partial<C
     { label: 'Adult', ids: [] },
     { label: 'Juvenile (ruby)', ids: [], stage: 'juvenile' },
   ],
+  // chunk 17 wave C: big marine fish
+  blue_tang: [
+    { label: 'Pacific', ids: [] },
+    { label: 'Yellow Belly', ids: ['yellow_belly'] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  naso_tang: [
+    { label: 'Male', ids: [] },
+    { label: 'Female', ids: [], sex: 'female' },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  queen_angelfish: [
+    { label: 'Adult', ids: [] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  clown_triggerfish: [
+    { label: 'Adult', ids: [] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  panther_grouper: [
+    { label: 'Adult', ids: [] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
   german_blue_ram: [
     { label: 'Male', ids: [] },
     { label: 'Female', ids: [], sex: 'female' },

@@ -827,6 +827,17 @@ export const SET_PROFILES: Record<BehaviorSetId, SetProfile> = {
     acts: { cruise: 5, patrol: 1.5, hover: 0.8, inspect_glass: 0.3 },
     startleSens: 1.2,
   }),
+  // clown triggerfish: sculls about on its dorsal and anal fins with its body held stiff, hovering and pivoting, noses
+  // and digs over rock and sand, comes to the glass, and at night wedges itself into a crevice (spine locked)
+  triggerfish: base({
+    body: { hx: 0.5, hy: 0.24, hz: 0.08 },
+    hover: 0.85,
+    maxPitch: 0.6,
+    tailFreq: 0.6,
+    acts: { inspect_decor: 3, forage: 2.4, hover: 1.6, inspect_glass: 1.2, cruise: 1 },
+    rest: 'cave',
+    startleSens: 0.6,
+  }),
 };
 
 export function setProfile(id: string): SetProfile {

@@ -408,7 +408,7 @@ export const FOODS: FoodDef[] = [
     unlock: null,
     color: '#dcc0b0',
     description: 'Bite-size seafood for sharks, rays and big carnivores. Never beef heart or chicken: big fish can’t digest the fat.',
-    soldWith: ['oscar', 'ornate_bichir', 'silver_arowana', 'black_ghost_knifefish'],
+    soldWith: ['oscar', 'ornate_bichir', 'silver_arowana', 'black_ghost_knifefish', 'panther_grouper'],
   },
   {
     id: 'shellfish_frozen',
@@ -425,7 +425,7 @@ export const FOODS: FoodDef[] = [
     unlock: null,
     color: '#c98a5a',
     description: 'Crab legs, cockles and crayfish in the shell. Puffer and triggerfish teeth never stop growing; crunching shells wears them down.',
-    soldWith: ['fahaka_puffer'],
+    soldWith: ['fahaka_puffer', 'clown_triggerfish'],
   },
   {
     id: 'live_crickets',
