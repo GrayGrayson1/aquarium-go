@@ -11,7 +11,7 @@ import type { Agent } from './agent';
 import type { AIWorld } from './world';
 import { colliderExitXZ, colliderNormal, colliderNormalGrounded, colliderSdf, colliderSdfGrounded, colliderSdfXZ, drawnDepth, floorAt, floorNormalAt, freeExit, freeExitXZ, makeHit, nearestSurface, surfaceById, surfaceGap, surfaceId, SURF_DECOR, SURF_FLOOR, SURF_GLASS, type Collider, type SurfaceHit, type TankEnv } from './env';
 import { V, approach, clamp, clamp01, damp, isFiniteVec, noise3, rotateToward, rrange, safeNormalize, smoothstep, transport } from './math';
-import { neighbors } from './nav';
+import { flatSwimmer, neighbors } from './nav';
 import { buryProfile, onSand } from './sand'; // chunk 16
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -199,9 +199,15 @@ function avoidance(a: Agent, w: AIWorld, out: THREE.Vector3, strength: number): 
   addWall(out, env.maxX - _p.x, env.maxX - pos.x, -1, 0, 0, cmX, m, band);
   addWall(out, _p.z - env.minZ, pos.z - env.minZ, 0, 0, 1, cmX, m, band);
   addWall(out, env.maxZ - _p.z, env.maxZ - pos.z, 0, 0, -1, cmX, m, band);
-  const vy = upright ? a.set.body.hy * L : side;
-  if (!ctrl.allowFloor) addWall(out, _p.y - floorAt(env, _p.x, _p.z), pos.y - floorAt(env, pos.x, pos.z), 0, 1, 0, vy + 0.004, m, band);
-  if (!ctrl.allowSurface) addWall(out, env.surfaceY - _p.y, env.surfaceY - pos.y, 0, -1, 0, vy * 0.6 + 0.004, m, band);
+  // (chunk 17: a flat disc keeps its height, not its half width, off the floor and the surface)
+  const vy = upright || flatSwimmer(a) ? a.set.body.hy * L : side;
+  // chunk 17: a big bottom-hugger (20 cm and up: a ray, a metre-long shark) feels the floor only within a few body
+  // heights; a band of a body length is most of the water in the tank that holds it, and kept it off the sand
+  const big = a.set.bottomHugger && L >= 0.2;
+  const fBand = big ? Math.min(band, vy * 3 + 0.02) : band;
+  if (!ctrl.allowFloor) addWall(out, _p.y - floorAt(env, _p.x, _p.z), pos.y - floorAt(env, pos.x, pos.z), 0, 1, 0, vy + 0.004, big ? vy + 0.006 : m, fBand);
+  const topBand = a.set.surfaceCruiser ? Math.min(band, side * 3 + 0.02) : band;
+  if (!ctrl.allowSurface) addWall(out, env.surfaceY - _p.y, env.surfaceY - pos.y, 0, -1, 0, vy * 0.6 + 0.004, m, topBand);
   // decor
   const cs = env.colliders;
   for (let i = 0; i < cs.length; i++) {
@@ -555,6 +561,8 @@ export function constrainBody(a: Agent, w: AIWorld): void {
   const b = a.set.body;
   const upright = a.loco === 'upright';
   const side = Math.max(b.hy, b.hz) * L;
+  const flat = flatSwimmer(a);
+  const vScale = flat ? b.hy / Math.max(b.hy, b.hz) : 1;
   // a body caught inside decor (a rock just placed on top of it) glides out toward open water at a bounded speed —
   // one push per collider per frame; the sampled constraints below skip that collider meanwhile
   const deep = easeOutOfDecor(a, env, pos, side, false, 0);
@@ -615,15 +623,16 @@ export function constrainBody(a: Agent, w: AIWorld): void {
         pos.z -= pz - (env.maxZ - r);
         moved = true;
       }
-      // substrate & surface
-      const rf = (ctrl.allowFloor ? r * 0.85 : r + 0.001) - ctrl.burrow * L * 1.1;
+      // substrate & surface (chunk 17: a flat disc's samples reach down and up by its height only)
+      const rvert = flat ? r * vScale : r;
+      const rf = (ctrl.allowFloor ? rvert * 0.85 : rvert + 0.001) - ctrl.burrow * L * 1.1;
       const fy = floorAt(env, px, pz);
       if (py < fy + rf) {
         pos.y += fy + rf - py;
         moved = true;
       }
       // lane:brackish — ctrl.noseAbove lets the nose sample (s = 1) poke that far through the surface (an aiming archerfish)
-      const rs = (ctrl.allowSurface ? Math.min(r * 0.3, 0.002) : r * 0.6 + 0.002) - (s === 1 && !upright ? ctrl.noseAbove : 0);
+      const rs = (ctrl.allowSurface ? Math.min(rvert * 0.3, 0.002) : rvert * 0.6 + 0.002) - (s === 1 && !upright ? ctrl.noseAbove : 0);
       if (py > env.surfaceY - rs) {
         pos.y -= py - (env.surfaceY - rs);
         moved = true;
@@ -662,9 +671,10 @@ export function constrainBody(a: Agent, w: AIWorld): void {
   if (moved > cap) {
     pos.copy(_prePush).addScaledVector(_tmp, cap / moved);
     const rc = upright ? Math.max(b.hx, b.hz) * L : side;
+    const rcv = flat ? rc * vScale : rc;
     pos.x = clamp(pos.x, env.minX + rc, env.maxX - rc);
     pos.z = clamp(pos.z, env.minZ + rc, env.maxZ - rc);
-    pos.y = clamp(pos.y, floorAt(env, pos.x, pos.z) + (ctrl.allowFloor ? rc * 0.85 : rc), env.surfaceY - (ctrl.allowSurface ? 0.002 : rc * 0.6));
+    pos.y = clamp(pos.y, floorAt(env, pos.x, pos.z) + (ctrl.allowFloor ? rcv * 0.85 : rcv), env.surfaceY - (ctrl.allowSurface ? 0.002 : rcv * 0.6));
   }
   // If the tank is too narrow for the body across z (big animal, slim tank), steer the heading parallel to the glass.
   if (!upright) {

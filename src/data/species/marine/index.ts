@@ -48,6 +48,10 @@ import { nasoTang } from './naso_tang';
 import { queenAngelfish } from './queen_angelfish';
 import { clownTriggerfish } from './clown_triggerfish';
 import { pantherGrouper } from './panther_grouper';
+// chunk 17, wave D: the bottom sharks (Shark & Ray Husbandry)
+import { coralCatshark } from './coral_catshark';
+import { epauletteShark } from './epaulette_shark';
+import { brownbandedBambooShark } from './brownbanded_bamboo_shark';
 
 export {
   cleanerShrimp,
@@ -95,6 +99,9 @@ export {
   queenAngelfish,
   clownTriggerfish,
   pantherGrouper,
+  coralCatshark,
+  epauletteShark,
+  brownbandedBambooShark,
 };
 
 /** Non-starter marine species, in roster priority order. The marine starters live in ../ocellaris_clownfish.ts and ../lined_seahorse.ts. */
@@ -145,4 +152,7 @@ export const MARINE_SPECIES: SpeciesDefinition[] = [
   queenAngelfish,
   clownTriggerfish,
   pantherGrouper,
+  coralCatshark,
+  epauletteShark,
+  brownbandedBambooShark,
 ];

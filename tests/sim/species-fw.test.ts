@@ -35,6 +35,7 @@ const BEHAVIOR_SETS: Record<BehaviorSetId, true> = {
   wrasse: true, starfish: true, conch: true, snail_sand: true, urchin: true, starfish_sand: true, crab: true, blenny: true, // chunk 16
   hawkfish: true, damsel: true, cichlid_dwarf: true, anemone: true,
   cichlid_large: true, loach_shoal: true, knifefish: true, bichir: true, arowana: true, triggerfish: true, // chunk 17
+  benthic_shark: true, stingray: true, // chunk 17, wave D
 };
 const FOOD_TAGS: Record<FoodTag, true> = {
   flake: true, pellet_small: true, pellet_sinking: true, pellet_large: true, bloodworm: true, brine_shrimp: true,

@@ -473,6 +473,11 @@ KNOWN_AT[4] = {
     'naso_tang',
     'panther_grouper',
     'queen_angelfish',
+    // wave D: the motoro stingray and the bottom sharks
+    'brownbanded_bamboo_shark',
+    'coral_catshark',
+    'epaulette_shark',
+    'motoro_stingray',
   ],
   tankTiers: [...KNOWN_AT[3].tankTiers],
 };

@@ -188,7 +188,7 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
   const guardian = cl.guardedById ? state.creatures[cl.guardedById] : undefined;
   if (guardian && guardian.tankId !== toTankId) delete cl.guardedById;
   if (cl.visual === 'bubble_nest') cl.visual = cl.stage === 'eggs' || cl.stage === 'larvae' ? 'eggs_scattered' : 'fry_cloud';
-  const site = pickSite(tank, cl.stage === 'eggs' ? (cl.visual === 'eggs_adhesive' ? 'rock' : 'plants_low') : 'midwater', `${cl.id}:moved:${hour.toFixed(1)}`, cl.extraAnchors?.length ?? 0);
+  const site = pickSite(tank, cl.stage === 'eggs' ? (cl.visual === 'eggs_adhesive' ? 'rock' : cl.visual === 'egg_case' ? 'floor' : 'plants_low') : 'midwater', `${cl.id}:moved:${hour.toFixed(1)}`, cl.extraAnchors?.length ?? 0);
   cl.anchor = site.anchor;
   if (site.extra.length) cl.extraAnchors = site.extra;
   else delete cl.extraAnchors; // §3.2 rule 10
@@ -200,7 +200,7 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
   if (!isNurseryFor(state, tank, hour)) warnings.push(`there are adult animals in ${tank.name} that may eat them`);
   if ((tank.water.bioMaturity ?? 1) < 0.3) warnings.push(`${tank.name} isn’t cycled yet`);
   if (tank.water.ammonia > 0.25 || tank.water.nitrite > 0.25) warnings.push('ammonia/nitrite is detectable');
-  const what = cl.stage === 'eggs' ? plural(cl.count, 'egg') : plural(cl.count, cl.stage === 'larvae' ? 'larva' : 'fry', cl.stage === 'larvae' ? 'larvae' : 'fry');
+  const what = cl.stage === 'eggs' ? plural(cl.count, cl.visual === 'egg_case' ? 'egg case' : 'egg') : plural(cl.count, cl.stage === 'larvae' ? 'larva' : 'fry', cl.stage === 'larvae' ? 'larvae' : 'fry');
   const who = (cl.motherId && state.creatures[cl.motherId]?.name) || (cl.fatherId && state.creatures[cl.fatherId]?.name);
   const msg = `Moved ${who ? `${who}’s ` : ''}${what} from ${from?.name ?? 'the tank'} to ${tank.name}.${warnings.length ? ` Careful: ${warnings.join('; ')}.` : ''}${cl.stage === 'eggs' && moduleFor(sp).plan.guardEggs && !cl.guardedById ? ' An airstone nearby helps replace the parent’s fanning.' : ''}`;
   emitEvent(state, { kind: warnings.length ? 'warning' : 'breeding', text: msg, tankId: toTankId });

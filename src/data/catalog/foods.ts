@@ -408,7 +408,7 @@ export const FOODS: FoodDef[] = [
     unlock: null,
     color: '#dcc0b0',
     description: 'Bite-size seafood for sharks, rays and big carnivores. Never beef heart or chicken: big fish can’t digest the fat.',
-    soldWith: ['oscar', 'ornate_bichir', 'silver_arowana', 'black_ghost_knifefish', 'panther_grouper'],
+    soldWith: ['oscar', 'ornate_bichir', 'silver_arowana', 'black_ghost_knifefish', 'panther_grouper', 'motoro_stingray', 'coral_catshark', 'epaulette_shark', 'brownbanded_bamboo_shark'],
   },
   {
     id: 'shellfish_frozen',

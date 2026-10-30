@@ -81,6 +81,11 @@ export interface RearingPlan {
   yolkFrac: number;
   /** Explanation used when `larvaeViable` is false. */
   nonViableText?: string;
+  /**
+   * chunk 17 — with no rearing phases the young are minted at hatch; this is their age then in game days (egg cases:
+   * newly hatched, however long the case took). Absent: the time since laying, as before.
+   */
+  bornAgeDays?: number;
 }
 
 /** Everything a module needs to judge whether a pair can breed right now. */

@@ -227,7 +227,8 @@ export interface Clutch {
   guardedById?: Id;
   /** Tank-local position for visuals (eggs on a rock, bubble nest at surface...). */
   anchor?: { x: number; y: number; z: number };
-  visual: 'eggs_adhesive' | 'eggs_scattered' | 'bubble_nest' | 'egg_strands' | 'pouch' | 'berried' | 'fry_cloud' | 'snail_clutch';
+  /** chunk 17: 'egg_case', a shark's leathery egg case on the floor or tied to rock */
+  visual: 'eggs_adhesive' | 'eggs_scattered' | 'bubble_nest' | 'egg_strands' | 'pouch' | 'berried' | 'fry_cloud' | 'snail_clutch' | 'egg_case';
   notes?: string;
   /** lane:breeding — eggs laid/born in total (count = round(initialCount × survival)). */
   initialCount?: number;

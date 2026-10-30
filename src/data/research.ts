@@ -66,6 +66,7 @@ export const RESEARCH: ResearchDef[] = [
   // ── chunk 17 (ADR-0053 round 3) — the big-tank species: appended last, as the facility block was, so the playthrough
   // bot's research order is unchanged until it can afford them. Names, blurbs and costs are the owner's.
   { id: 'large_freshwater', name: 'Big-water Freshwater', blurb: 'River giants need long tanks, big filters and a heavy lid. Opens oscars, clown loaches, black ghost knifefish, fahaka puffers, ornate bichirs, silver arowanas and, with Cool-water Systems, koi.', cost: 3000, hours: 60, requires: [{ type: 'unlocked', key: 'fw_intermediate' }, { type: 'unlocked', key: 'tank_125' }], grants: ['fw_large'], track: 'husbandry', xp: 150, icon: 'Fish', branch: 'freshwater' },
+  { id: 'shark_ray_husbandry', name: 'Shark & Ray Husbandry', blurb: 'Soft sand, no copper, a tight lid and iodine-rich seafood for animals built of cartilage. Opens the motoro stingray, coral catshark, epaulette shark and brown-banded bamboo shark.', cost: 8000, hours: 96, requires: [{ type: 'facility', level: 'showroom' }, { type: 'unlocked', key: 'tank_300' }], grants: ['elasmobranchs'], track: 'marine', xp: 220, icon: 'Fish', branch: 'marine' },
 ];
 
 export const RESEARCH_BY_ID: Record<string, ResearchDef> = byId(RESEARCH);

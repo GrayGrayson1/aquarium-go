@@ -26,6 +26,13 @@ export const bodyHX = (a: Agent) => a.set.body.hx * a.L;
 export const bodyHY = (a: Agent) => a.set.body.hy * a.L;
 export const bodyHZ = (a: Agent) => a.set.body.hz * a.L;
 export const bodySide = (a: Agent) => Math.max(a.set.body.hy, a.set.body.hz) * a.L;
+/**
+ * chunk 17 — a flat, wide swimmer (the motoro's disc, hz several times hy) is held off the floor and the surface by its
+ * height, not by its half width: its sides still keep off the glass and the rocks by the full width.
+ */
+export const flatSwimmer = (a: Agent) => a.set.loco === 'swim' && a.set.body.hz > a.set.body.hy * 3;
+/** How far a swimmer's centre keeps above the floor and below the surface (its body side; a flat disc's height). */
+export const bodyVSide = (a: Agent) => (flatSwimmer(a) ? a.set.body.hy * a.L : bodySide(a));
 
 /** Compute the vertical preference band (absolute y) from the species' activity zones. */
 export function computeZoneBand(a: Agent, w: AIWorld): void {
@@ -43,10 +50,21 @@ export function computeZoneBand(a: Agent, w: AIWorld): void {
     hi = 0.8;
   }
   const col = env.surfaceY - env.floorY;
-  const m = bodySide(a) + 0.008;
+  // chunk 17: a flat, wide body (a ray's disc) needs its height clear of the floor, not its half width
+  const m = bodyVSide(a) + 0.008;
   a.zoneY0 = clamp(env.floorY + lo * col, env.floorY + m, env.surfaceY - m);
   a.zoneY1 = clamp(env.floorY + hi * col, a.zoneY0 + 0.001, env.surfaceY - m);
-  if (a.zoneY1 - a.zoneY0 < a.L * 0.6) {
+  if (a.set.bottomHugger) {
+    // chunk 17: a big bottom-hugger (a metre-long shark, a ray) keeps to the floor: its band grows up from its bottom by
+    // a few body heights, never to the middle of the tank (0.6 body lengths would be the whole of a 2 ft deep tank)
+    const band = Math.max(bodyHY(a) * 4, a.L * 0.25);
+    if (a.zoneY1 - a.zoneY0 < band) a.zoneY1 = clamp(a.zoneY0 + band, a.zoneY0 + 0.001, env.surfaceY - m);
+  } else if (a.set.surfaceCruiser) {
+    // chunk 17: the same for a big fish of the upper water (a 90 cm arowana cruising just under the surface): its band
+    // grows down from the top, never to the middle of the tank
+    const band = Math.max(bodySide(a) * 4, a.L * 0.25);
+    if (a.zoneY1 - a.zoneY0 < band) a.zoneY0 = clamp(a.zoneY1 - band, env.floorY + m, a.zoneY1 - 0.001);
+  } else if (a.zoneY1 - a.zoneY0 < a.L * 0.6) {
     const mid = (a.zoneY0 + a.zoneY1) / 2;
     a.zoneY0 = clamp(mid - a.L * 0.3, env.floorY + m, env.surfaceY - m);
     a.zoneY1 = clamp(mid + a.L * 0.3, a.zoneY0 + 0.001, env.surfaceY - m);
@@ -92,12 +110,19 @@ export function randomSwimPoint(a: Agent, w: AIWorld, out: THREE.Vector3, o: Swi
     x = clamp(x, env.minX + mx, env.maxX - mx);
     z = clamp(z, env.minZ + mz, env.maxZ - mz);
     let y = o.near && o.y0 === undefined ? clamp(o.near.y + rrange(a, -1, 1) * (o.radius ?? 0.1) * 0.5, y0, y1) : rrange(a, y0, y1);
-    y = Math.max(y, floorAt(env, x, z) + rad);
-    if (y > env.surfaceY - rad) continue;
-    if (pointFree(env, x, y, z, rad)) return out.set(x, y, z);
+    const radV = bodyVSide(a) + (o.clear ?? 0.01);
+    y = Math.max(y, floorAt(env, x, z) + radV);
+    if (y > env.surfaceY - radV) continue;
+    if (flatSwimmer(a) ? discFree(a, env, x, y, z, radV) : pointFree(env, x, y, z, rad)) return out.set(x, y, z);
   }
   // fallback: above the tallest decor in the middle of the tank
   return out.set(0, clamp((y0 + y1) / 2, floorAt(env, 0, 0) + rad, env.surfaceY - rad), 0);
+}
+
+/** chunk 17 — a flat disc fits at (x, y, z): its centre and four points round its rim are clear by its height. */
+function discFree(a: Agent, env: AIWorld['env'], x: number, y: number, z: number, radV: number): boolean {
+  const r = a.set.body.hz * a.L * 0.85;
+  return pointFree(env, x, y, z, radV) && pointFree(env, x + r, y, z, radV) && pointFree(env, x - r, y, z, radV) && pointFree(env, x, y, z + r, radV) && pointFree(env, x, y, z - r, radV);
 }
 
 /** A point just outside a hard (or any) decor surface, facing mostly front/up. Returns collider index or -1. */

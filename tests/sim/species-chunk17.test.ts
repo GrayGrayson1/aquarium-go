@@ -271,3 +271,81 @@ describe('BIG-005: the big marine five', () => {
     expect(v('naso_tang', 'cleaner_shrimp')).toBe('excellent');
   });
 });
+
+describe('BIG-003, BIG-006 and BIG-008: the motoro, the bottom sharks and Shark & Ray Husbandry', () => {
+  const SHARKS = ['coral_catshark', 'epaulette_shark', 'brownbanded_bamboo_shark'];
+  const v = (a: string, b: string) => {
+    clearCompatCache();
+    return speciesPair(findSpecies(a)!, findSpecies(b)!).verdict;
+  };
+
+  it('Shark & Ray Husbandry: a public showroom and the 300-gallon tank, $8,000 and 96 hours, grants elasmobranchs (the owner’s round 3)', () => {
+    const r = RESEARCH_BY_ID.shark_ray_husbandry;
+    expect(r).toMatchObject({ name: 'Shark & Ray Husbandry', cost: 8000, hours: 96, grants: ['elasmobranchs'], track: 'marine', branch: 'marine', xp: 220 });
+    expect(r.requires).toEqual([{ type: 'facility', level: 'showroom' }, { type: 'unlocked', key: 'tank_300' }]);
+    expect(r.blurb).toBe('Soft sand, no copper, a tight lid and iodine-rich seafood for animals built of cartilage. Opens the motoro stingray, coral catshark, epaulette shark and brown-banded bamboo shark.');
+    expect(UNLOCK_RULE_BY_KEY.elasmobranchs.hint).toBe('Research Shark & Ray Husbandry.');
+  });
+
+  it('wait for their research and the tank that holds an adult (the bamboo shark for the 1,000)', () => {
+    expect(requiredUnlocks(findSpecies('motoro_stingray')!)).toEqual(['elasmobranchs', 'tank_500']);
+    expect(requiredUnlocks(findSpecies('coral_catshark')!)).toEqual(['marine_basics', 'elasmobranchs', 'tank_500']);
+    expect(requiredUnlocks(findSpecies('epaulette_shark')!)).toEqual(['marine_basics', 'elasmobranchs', 'tank_500']);
+    expect(requiredUnlocks(findSpecies('brownbanded_bamboo_shark')!)).toEqual(['marine_basics', 'elasmobranchs', 'tank_1000']);
+    const g = game();
+    const all = ['motoro_stingray', ...SHARKS];
+    for (const k of ['marine_basics', 'elasmobranchs']) unlock(g, k, { silent: true });
+    for (const id of all) expect(isSpeciesAvailable(g, id), id).toBe(false);
+    unlock(g, 'tank_500', { silent: true });
+    for (const id of ['motoro_stingray', 'coral_catshark', 'epaulette_shark']) expect(isSpeciesAvailable(g, id), id).toBe(true);
+    expect(isSpeciesAvailable(g, 'brownbanded_bamboo_shark')).toBe(false);
+    expect(speciesLockHint(g, findSpecies('brownbanded_bamboo_shark')!)).toBe('Comes into the shop with the 1,000 Gallon Grand Display: research Grand Display Engineering or open the Grand Hall.');
+    unlock(g, 'tank_1000', { silent: true });
+    expect(isSpeciesAvailable(g, 'brownbanded_bamboo_shark')).toBe(true);
+  });
+
+  it('the seafood comes with them; they live on frozen seafood, never the autofeeder’s floating sticks', () => {
+    const sold = getFoodDef('seafood_frozen')!.soldWith ?? [];
+    for (const id of ['motoro_stingray', ...SHARKS]) {
+      expect(sold, id).toContain(id);
+      expect(findSpecies(id)!.foods, id).toContain('seafood');
+      expect(findSpecies(id)!.foods, id).not.toContain('pellet_floating');
+    }
+  });
+
+  it('breed by their new systems; the sharks lay where the sources say', () => {
+    for (const id of SHARKS) expect(findSpecies(id)!.breeding.system, id).toBe('egg_case');
+    expect(findSpecies('motoro_stingray')!.breeding.system).toBe('ray_viviparous');
+    // real days × 8 (ADR-0053 round 2): 120, 130 and 125 days
+    expect(SHARKS.map((id) => findSpecies(id)!.breeding.incubationHours)).toEqual([960, 1040, 1000]);
+  });
+
+  it('the shark matrix (design §11 and the sharks research)', () => {
+    for (const s of SHARKS) {
+      for (const o of ['blue_tang', 'naso_tang', 'yellow_tang', 'lyretail_anthias', 'foxface_rabbitfish', 'maroon_clownfish']) expect(v(s, o), `${s} + ${o}`).toBe('usually_compatible');
+      for (const o of ['silver_mono', 'spotted_scat', 'bubbletip_anemone', 'coral_beauty']) expect(['conditional', 'high_risk'], `${s} + ${o}`).toContain(v(s, o));
+      for (const o of ['queen_angelfish', 'emperor_angelfish', 'dwarf_lionfish', 'miniatus_grouper', 'firefish']) expect(v(s, o), `${s} + ${o}`).toBe('high_risk');
+      for (const o of ['clown_triggerfish', 'cleaner_shrimp', 'emerald_crab', 'hermit_crab', 'peacock_mantis_shrimp', 'mandarin_dragonet', 'lined_seahorse']) expect(v(s, o), `${s} + ${o}`).toBe('incompatible');
+    }
+    // groupers eat young sharks; a grown bamboo shark is too big for a panther grouper
+    expect(v('coral_catshark', 'panther_grouper')).toBe('high_risk');
+    expect(v('epaulette_shark', 'panther_grouper')).toBe('high_risk');
+    expect(v('brownbanded_bamboo_shark', 'panther_grouper')).toBe('conditional');
+    // two bottom sharks need twice the floor
+    expect(v('coral_catshark', 'epaulette_shark')).toBe('conditional');
+    expect(v('epaulette_shark', 'brownbanded_bamboo_shark')).toBe('conditional');
+    // the dwarf angels: they pick at a resting shark (conditional; the bamboo shark's mouth makes it high risk)
+    expect(v('coral_catshark', 'flame_angelfish')).toBe('conditional');
+    expect(v('brownbanded_bamboo_shark', 'flame_angelfish')).toBe('high_risk');
+  });
+
+  it('the motoro’s matrix (the koi-ray-brackish research)', () => {
+    expect(v('motoro_stingray', 'silver_arowana')).toBe('usually_compatible');
+    // the research's "usually compatible", made stricter by the size rules (a young bichir is at risk)
+    expect(v('motoro_stingray', 'ornate_bichir')).toBe('conditional');
+    for (const o of ['oscar', 'clown_loach', 'black_ghost_knifefish', 'discus', 'freshwater_angelfish']) expect(v('motoro_stingray', o), o).toBe('conditional');
+    expect(v('motoro_stingray', 'bristlenose_pleco')).toBe('high_risk');
+    for (const o of ['fahaka_puffer', 'koi', 'neon_tetra', 'cherry_shrimp', 'mystery_snail', 'axolotl', 'panda_corydoras']) expect(v('motoro_stingray', o), o).toBe('incompatible');
+    for (const s of SHARKS) expect(v('motoro_stingray', s), s).toBe('incompatible');
+  });
+});

@@ -161,6 +161,7 @@ describe('grammar', () => {
       ['Banggai Cardinalfish', 'banggai cardinalfish'],
       ['Neon Tetra', 'neon tetras'],
       ['Axolotl', 'axolotls'],
+      ['Motoro Stingray', 'motoro stingrays'],
     ];
     for (const [name, want] of cases) {
       expect(pluralName(name)).toBe(want);
@@ -168,7 +169,8 @@ describe('grammar', () => {
     }
     expect(pluralPhrase('Banggai cardinalfish')).toBe('Banggai cardinalfish');
     for (const sp of listSpecies()) {
-      for (const p of [pluralName(sp.commonName), compatPlural(sp), spPlural(sp)]) expect(p, sp.id).not.toMatch(/(ss|us|is)s$|yes$|ys$/);
+      // (a vowel before the y keeps it: stingray → stingrays, chunk 17; a consonant turns it to -ies)
+      for (const p of [pluralName(sp.commonName), compatPlural(sp), spPlural(sp)]) expect(p, sp.id).not.toMatch(/(ss|us|is)s$|yes$|[^aeiou]ys$/);
     }
   });
 

@@ -212,6 +212,11 @@ function readyText(mod: BreedingModule, sp: SpeciesDefinition): string {
       return 'Everything is set — they will clean a nest site and spawn in the evening.';
     case 'livebearer':
       return 'Nothing more to do — livebearers breed readily. Dense plants or a nursery will save the fry.';
+    // chunk 17
+    case 'egg_case':
+      return 'Everything is set: they mate at night. About half the egg cases are duds; move the good ones to a nursery tank, where nothing can eat them.';
+    case 'ray_viviparous':
+      return 'Everything is set: after a long pregnancy she gives birth to pups that are on their own from the start.';
     default:
       return `Everything is set — keep conditions stable and watch your ${spPlural(sp)}.`;
   }

@@ -128,6 +128,8 @@ export type BreedingSystemId =
   | 'egg_layer_generic'
   | 'fragmentation' // corals
   | 'fission' // chunk 16: a living anemone splits in two by itself (no partner)
+  | 'egg_case' // chunk 17: sharks lay leathery egg cases that hatch months later as independent pups
+  | 'ray_viviparous' // chunk 17: the motoro carries its litter and gives birth to independent pups
   | 'not_in_game'; // documented but not breedable in first build
 
 export interface BreedingProfile {
@@ -364,7 +366,9 @@ export type BehaviorSetId =
   | 'knifefish' // stiff-bodied night fish that glides forwards and backwards on one long fin (black ghost knifefish)
   | 'bichir' // armoured bottom prowler propped on its pectorals that rises to gulp air (ornate bichir)
   | 'arowana' // surface cruiser that patrols the tank's length and lunges up at food (silver arowana)
-  | 'triggerfish'; // sculls on its dorsal and anal fins with a stiff body, blows at the sand, locks into a crevice at night (clown triggerfish)
+  | 'triggerfish' // sculls on its dorsal and anal fins with a stiff body, blows at the sand, locks into a crevice at night (clown triggerfish)
+  | 'benthic_shark' // rests on the floor or under a ledge by day, glides low and sinuously at night; the epaulette walks on its fins
+  | 'stingray'; // glides flat over the floor, buries itself in the sand with its eyes out, climbs the glass to beg (motoro)
 
 export interface BehaviorTraits {
   /** Cruising speed in body lengths per second. */

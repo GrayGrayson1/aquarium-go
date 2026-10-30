@@ -154,6 +154,10 @@ export interface SetProfile {
   anemone?: boolean;
   /** A crawler on rock rests on the rock as drawn, inside the collider box round it (rockshape.ts; loco stepCrawl). */
   meshCling?: boolean;
+  // ── chunk 17 ──
+  /** Cruises just under the surface (the arowana): its band grows down from the top by a few body heights, and the
+   * surface pushes it away only within those (as the floor does a big bottom-hugger). */
+  surfaceCruiser?: boolean;
 }
 
 const FISH: BodyEnvelope = { hx: 0.5, hy: 0.14, hz: 0.07 };
@@ -826,6 +830,7 @@ export const SET_PROFILES: Record<BehaviorSetId, SetProfile> = {
     tailFreq: 0.8,
     acts: { cruise: 5, patrol: 1.5, hover: 0.8, inspect_glass: 0.3 },
     startleSens: 1.2,
+    surfaceCruiser: true,
   }),
   // clown triggerfish: sculls about on its dorsal and anal fins with its body held stiff, hovering and pivoting, noses
   // and digs over rock and sand, comes to the glass, and at night wedges itself into a crevice (spine locked)
@@ -838,7 +843,46 @@ export const SET_PROFILES: Record<BehaviorSetId, SetProfile> = {
     rest: 'cave',
     startleSens: 0.6,
   }),
+  // the bottom sharks (coral catshark, bamboo shark; the epaulette walks: speciesProfile): lie still on the floor or
+  // under a ledge by day, glide slow and sinuous low over the sand, nose through it for food, and are about more at
+  // night (behaviorTraits.nocturnal); they never hover in open water
+  benthic_shark: base({
+    body: { hx: 0.5, hy: 0.06, hz: 0.07 },
+    hover: 0,
+    maxPitch: 0.3,
+    tailFreq: 0.55,
+    acts: { rest: 3.2, forage: 2.6, cruise: 1.2, patrol: 0.9, inspect_glass: 0.4, inspect_decor: 0.6 },
+    rest: 'cave',
+    bottomHugger: true,
+    startleSens: 0.35,
+  }),
+  // motoro stingray: glides flat over the floor rippling the edge of its disc, rests flat on the sand, sweeps it for
+  // food and comes up the front glass to beg at feeding time; a round disc (hx about hz), never tilts
+  stingray: base({
+    body: { hx: 0.5, hy: 0.06, hz: 0.45 },
+    hover: 0.1,
+    maxPitch: 0.06,
+    tailFreq: 0.5,
+    acts: { forage: 3.2, rest: 2.4, cruise: 1.6, inspect_glass: 1.2 },
+    rest: 'bottom',
+    bottomHugger: true,
+    startleSens: 0.5,
+  }),
 };
+
+/**
+ * chunk 17 — one species' variant of its set: the epaulette shark walks on its paired fins over sand and rock (Porter
+ * 2022; specialBehaviors 'fin_walk'), and swims only in short bursts, as the axolotl does.
+ */
+const FIN_WALKER: Partial<SetProfile> = { loco: 'walk', crawlMask: SURF_FLOOR, canSwim: true, crawlGait: 'walk', maxPitch: 0.6 };
+const variants = new Map<string, SetProfile>();
+export function speciesProfile(sp: { id: string; behaviorSet: string; specialBehaviors?: readonly string[] }): SetProfile {
+  const set = setProfile(sp.behaviorSet);
+  if (!sp.specialBehaviors?.includes('fin_walk')) return set;
+  let v = variants.get(sp.id);
+  if (!v) variants.set(sp.id, (v = { ...set, ...FIN_WALKER }));
+  return v;
+}
 
 export function setProfile(id: string): SetProfile {
   return (SET_PROFILES as Record<string, SetProfile>)[id] ?? SET_PROFILES.livebearer;

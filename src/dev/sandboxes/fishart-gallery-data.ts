@@ -258,6 +258,19 @@ const VARIANTS: Record<string, { label: string; ids: string[]; extra?: Partial<C
     { label: 'Adult', ids: [] },
     { label: 'Juvenile', ids: [], stage: 'juvenile' },
   ],
+  // chunk 17, wave D
+  coral_catshark: [
+    { label: 'Adult', ids: [] },
+    { label: 'Hatchling', ids: [], stage: 'juvenile' },
+  ],
+  epaulette_shark: [
+    { label: 'Adult', ids: [] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
+  brownbanded_bamboo_shark: [
+    { label: 'Adult', ids: [] },
+    { label: 'Juvenile', ids: [], stage: 'juvenile' },
+  ],
   german_blue_ram: [
     { label: 'Male', ids: [] },
     { label: 'Female', ids: [], sex: 'female' },

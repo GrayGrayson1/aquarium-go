@@ -1,5 +1,5 @@
 /**
- * Eggs, bubble nests, egg strands, snail clutches, fry clouds and seahorse birth bursts. OWNER: lane "critterart".
+ * Eggs, bubble nests, egg strands, snail clutches, shark egg cases, fry clouds and seahorse birth bursts. OWNER: lane "critterart".
  *
  * Reads `state.clutches` for this tank (visual + stage + anchor/extraAnchors, see src/sim/life/breeding/index.ts)
  * and creatures' `repro` (betta `nest_building`/`nest_ready` with `nestProgress` + `nestAnchor`). Carried broods
@@ -24,7 +24,7 @@ type V = { x: number; y: number; z: number };
 
 interface Desc {
   key: string;
-  type: 'nest' | 'adhesive' | 'scattered' | 'strands' | 'snail' | 'fry';
+  type: 'nest' | 'adhesive' | 'scattered' | 'strands' | 'snail' | 'fry' | 'case';
   clutchId?: string;
   creatureId?: string;
   eggClutchId?: string;
@@ -133,6 +133,9 @@ export function BreedingVisuals({ tank, lod }: { tank: Tank; lod: RenderLod }) {
         case 'snail_clutch':
           out.push({ key: `sn:${id}`, type: 'snail', clutchId: id });
           break;
+        case 'egg_case':
+          out.push({ key: `case:${id}`, type: 'case', clutchId: id });
+          break;
       }
     }
     const nests: Desc[] = [];
@@ -167,6 +170,8 @@ export function BreedingVisuals({ tank, lod }: { tank: Tank; lod: RenderLod }) {
             return <EggStrands key={d.key} d={d} fx={fx} lod={lod} dims={dims} />;
           case 'snail':
             return <SnailClutch key={d.key} d={d} fx={fx} lod={lod} dims={dims} />;
+          case 'case':
+            return <EggCases key={d.key} d={d} fx={fx} dims={dims} />;
           case 'fry':
             return lod < 2 ? <FryCloud key={d.key} d={d} fx={fx} lod={lod} dims={dims} /> : null;
         }
@@ -551,6 +556,83 @@ function SnailClutch({ d, fx, lod, dims }: { d: Desc; fx: TankFXUniforms; lod: R
     if (em.instanceColor) em.instanceColor.needsUpdate = true;
   });
   return <Prim obj={eggs.current} />;
+}
+
+// ───────────────────────────── shark egg cases (chunk 17) ─────────────────────────────
+
+/**
+ * Leathery egg cases, lying on the sand or caught on rock: each is three overlapping flattened lobes along its length
+ * (the catshark's slim case pinches at two "waists" between them), light brown when laid and darkening as it ages
+ * (Quality Marine; Bor 2003). Sizes from the sharks research: bamboo 11 × 5 cm, flat; epaulette 10 × 4 cm; catshark
+ * 6.5 × 2 cm. Few instances, so every LOD draws them.
+ */
+const CASE_SHAPE: Record<string, { len: number; wid: number; thick: number; waist: number }> = {
+  brownbanded_bamboo_shark: { len: 0.11, wid: 0.05, thick: 0.012, waist: 0.92 },
+  epaulette_shark: { len: 0.1, wid: 0.04, thick: 0.016, waist: 0.9 },
+  coral_catshark: { len: 0.065, wid: 0.02, thick: 0.01, waist: 0.62 },
+};
+const LOBES = 3;
+
+function EggCases({ d, fx, dims }: { d: Desc; fx: TankFXUniforms; dims: ReturnType<typeof tankDims> }) {
+  const sphere = useSphere();
+  const N = 4 * LOBES;
+  const seed = hashStr(d.key);
+  const cases = useInstanced(() => {
+    const mat = eggMaterial(fx);
+    mat.roughness = 0.7;
+    mat.clearcoat = 0.15;
+    mat.transmission = 0;
+    const m = new THREE.InstancedMesh(sphere, mat, N);
+    m.count = 0;
+    m.frustumCulled = false;
+    return m;
+  }, [sphere, fx, N]);
+  const fresh = useMemo(() => new THREE.Color('#b89a6a'), []);
+  const old = useMemo(() => new THREE.Color('#4a3626'), []);
+  const last = useRef({ n: -1, band: -1, ax: NaN });
+  useFrame(() => {
+    const g = getGame();
+    const m = cases.current;
+    if (!g || !m || !d.clutchId) return;
+    const cl = g.clutches[d.clutchId];
+    if (!cl) return;
+    const anchors = anchorsOf(cl, { x: 0, y: dims.substrateY, z: 0 });
+    const n = Math.min(4, Math.max(1, Math.round(cl.count)));
+    // the case darkens over the first third of its time, then stays dark
+    const band = Math.round(clamp((g.clock.hour - cl.laidHour) / Math.max(1, (cl.nextStageHour - cl.laidHour) / 3)) * 8);
+    const a0 = anchors[0];
+    if (n === last.current.n && band === last.current.band && a0.x === last.current.ax) return;
+    last.current = { n, band, ax: a0.x };
+    const sh = CASE_SHAPE[cl.speciesId] ?? CASE_SHAPE.epaulette_shark;
+    const R = rng(seed);
+    const col = _c.copy(fresh).lerp(old, band / 8);
+    let k = 0;
+    for (let i = 0; i < n; i++) {
+      const a = anchors[i % anchors.length];
+      // a second case laid beside the first
+      const off = i < anchors.length ? 0 : sh.wid * 1.6 * Math.ceil(i / anchors.length);
+      const yaw = R() * Math.PI * 2;
+      const tilt = a.y > dims.substrateY + 0.02 ? (R() - 0.5) * 0.9 : (R() - 0.5) * 0.12;
+      _q.setFromEuler(_e.set(tilt, yaw, 0));
+      for (let j = 0; j < LOBES; j++) {
+        const u = (j - (LOBES - 1) / 2) / LOBES; // −1/3, 0, 1/3 along the length
+        const w = j === 1 ? 1 : sh.waist;
+        _p.set(u * sh.len, 0, 0).applyQuaternion(_q);
+        _p.x += a.x + off * Math.cos(yaw + Math.PI / 2);
+        _p.z += a.z + off * Math.sin(yaw + Math.PI / 2);
+        _p.y += Math.max(a.y, dims.substrateY) + sh.thick * 0.5;
+        _s.set((sh.len / LOBES) * 0.62, sh.thick * 0.5, sh.wid * 0.5 * w);
+        _m.compose(_p, _q, _s);
+        m.setMatrixAt(k, _m);
+        m.setColorAt(k, col);
+        k++;
+      }
+    }
+    m.count = k;
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  });
+  return <Prim obj={cases.current} />;
 }
 
 // ───────────────────────────── fry clouds ─────────────────────────────

@@ -74,10 +74,19 @@ describe('ADR-0052 decision 9: a new species comes into the shop with its water 
     // chunk 17 (ADR-0053 decision 4): those whose adults need a bigger tank than the open sizes wait for it
     for (const id of marine) expect(isSpeciesAvailable(g, id), id).toBe(tankKeyFor(findSpecies(id)!) === null);
     expect(marine.filter((id) => tankKeyFor(findSpecies(id)!) === null).length).toBeGreaterThan(0);
-    const before = new Set(g.market.stock.map((o) => o.speciesId));
-    stockNewUnlocks(g, simRng(g), g.clock.hour, false);
-    const fresh = g.market.stock.map((o) => o.speciesId).filter((id) => !before.has(id));
-    expect(fresh.some((id) => marine.includes(id)), `fresh offers: ${fresh.join(', ')}`).toBe(true);
+    // the restock after an unlock stocks three of everything it opened, picked at random: over a few games the new
+    // marine species are among them (chunk 17: not one fixed seed, which every species added to the game reshuffles)
+    let withNew = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const gs = game('betta', seed);
+      unlock(gs, 'marine_basics', { silent: true });
+      const before = new Set(gs.market.stock.map((o) => o.speciesId));
+      stockNewUnlocks(gs, simRng(gs), gs.clock.hour, false);
+      const fresh = gs.market.stock.map((o) => o.speciesId).filter((id) => !before.has(id));
+      expect(fresh.length, `seed ${seed}: something new is stocked`).toBeGreaterThan(0);
+      if (fresh.some((id) => marine.includes(id))) withNew++;
+    }
+    expect(withNew).toBeGreaterThan(0);
   });
 
   it('a marine starter can be offered the new marine species from day one', () => {

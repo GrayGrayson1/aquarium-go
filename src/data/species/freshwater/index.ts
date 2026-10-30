@@ -40,6 +40,8 @@ import { ornateBichir } from './ornate_bichir';
 import { silverArowana } from './silver_arowana';
 // chunk 17 (ADR-0053), wave B
 import { koi } from './koi';
+// chunk 17, wave D
+import { motoroStingray } from './motoro_stingray';
 
 export {
   cherryShrimp,
@@ -79,6 +81,7 @@ export {
   ornateBichir,
   silverArowana,
   koi,
+  motoroStingray,
 };
 
 /** All non-starter freshwater species (the three freshwater starters are exported from the species root). */
@@ -122,4 +125,6 @@ export const FRESHWATER_SPECIES: SpeciesDefinition[] = [
   silverArowana,
   // chunk 17, wave B
   koi,
+  // chunk 17, wave D
+  motoroStingray,
 ];

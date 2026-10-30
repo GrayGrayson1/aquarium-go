@@ -79,6 +79,7 @@ import { plan as naso_tang } from './naso_tang';
 import { plan as queen_angelfish } from './queen_angelfish';
 import { plan as clown_triggerfish } from './clown_triggerfish';
 import { plan as panther_grouper } from './panther_grouper';
+import { coralCatsharkPlan, epaulettePlan, bambooSharkPlan } from './bottom_sharks';
 
 const reg = (id: string, plan: PlanFn) => registerCreatureVisual(id, fishFactory(plan, genericPlan));
 
@@ -156,5 +157,9 @@ reg('naso_tang', naso_tang);
 reg('queen_angelfish', queen_angelfish);
 reg('clown_triggerfish', clown_triggerfish);
 reg('panther_grouper', panther_grouper);
+// chunk 17, wave D
+reg('coral_catshark', coralCatsharkPlan);
+reg('epaulette_shark', epaulettePlan);
+reg('brownbanded_bamboo_shark', bambooSharkPlan);
 
 registerFallbackVisual(fishFactory(genericPlan));

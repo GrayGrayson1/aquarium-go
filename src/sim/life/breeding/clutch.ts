@@ -154,6 +154,7 @@ export function stageHours(cl: Clutch, sp: SpeciesDefinition, mod: BreedingModul
 }
 
 export function youngLabel(cl: Clutch, mod: BreedingModule): string {
+  if (cl.visual === 'egg_case') return 'egg cases'; // chunk 17
   if (cl.stage === 'eggs' || cl.stage === 'in_pouch') return 'eggs';
   return currentPhase(cl, mod)?.label ?? (cl.stage === 'larvae' ? 'larvae' : 'fry');
 }
@@ -402,7 +403,9 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
   // Infertile eggs (nerite eggs in freshwater…) never hatch — they fade after a while.
   if (cl.infertile) {
     if (hour >= cl.nextStageHour) {
-      say(state, ctx, { kind: 'info', text: cl.notes ?? `${parentName(state, cl)} eggs never hatched.`, tankId: cl.tankId });
+      // chunk 17: an empty shark egg case left in the tank rots
+      const rotted = cl.visual === 'egg_case' ? `${parentName(state, cl)} empty egg ${cl.count === 1 ? 'case has' : 'cases have'} rotted away.` : null;
+      say(state, ctx, { kind: 'info', text: rotted ?? cl.notes ?? `${parentName(state, cl)} eggs never hatched.`, tankId: cl.tankId });
       releaseParents(state, cl);
       delete state.clutches[cl.id];
     }
@@ -504,7 +507,7 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   }
   const ph = plan.phases[0];
   if (!ph) {
-    mintJuveniles(state, cl, tank, sp, hour, ctx);
+    mintJuveniles(state, cl, tank, sp, hour, ctx, plan.bornAgeDays);
     return;
   }
   const wasBerried = cl.visual === 'berried';
@@ -586,7 +589,7 @@ function offspringName(rng: Rng, used: Set<string>): string {
 }
 
 /** Turn the surviving young of a clutch into individual juveniles (capacity-bounded). Removes the clutch. */
-export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, hour: number, ctx: SimContext | null): Creature[] {
+export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, hour: number, ctx: SimContext | null, bornAgeDays?: number): Creature[] {
   const rng = ctx?.rng ?? simRng(state);
   const mother = cl.motherId ? state.creatures[cl.motherId] : undefined;
   const father = cl.fatherId ? state.creatures[cl.fatherId] : undefined;
@@ -597,7 +600,8 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   const lineId = cl.lineId ?? lineIdFor(sp, mother, father);
   // Rearing can outlast the species' juvenile phase (seahorses, shrimp, small gobies): cap the birth age so every
   // youngster arrives as a juvenile with growth, the sex reveal and maturity still ahead of it.
-  const ageDays = Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8)));
+  // chunk 17: a plan can say how old its young are when they hatch straight into juveniles (egg cases: just hatched)
+  const ageDays = bornAgeDays !== undefined ? Math.max(0.5, bornAgeDays) : Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8)));
   const parents = mother && father ? `${mother.name} × ${father.name}` : (mother ?? father)?.name ?? 'your breeding stock';
   const used = new Set<string>(Object.values(state.creatures).filter((c) => c.speciesId === sp.id).map((c) => c.name));
   const minted: Creature[] = [];

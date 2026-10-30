@@ -34,6 +34,7 @@ const BEHAVIOR_SETS: Record<BehaviorSetId, true> = {
   wrasse: true, starfish: true, conch: true, snail_sand: true, urchin: true, starfish_sand: true, crab: true, blenny: true, // chunk 16
   hawkfish: true, damsel: true, cichlid_dwarf: true, anemone: true,
   cichlid_large: true, loach_shoal: true, knifefish: true, bichir: true, arowana: true, triggerfish: true, // chunk 17
+  benthic_shark: true, stingray: true, // chunk 17, wave D
 };
 const FOOD_TAGS: Record<FoodTag, true> = {
   flake: true, pellet_small: true, pellet_sinking: true, pellet_large: true, bloodworm: true, brine_shrimp: true,
@@ -119,8 +120,11 @@ describe.each(MARINE_ALL.map((s) => [s.id, s] as const))('%s', (id, s) => {
       // chunk 16 (ADR-0052 decision 4): the owner chose every new species buyable from the start
       expect(s.unlock.requires).toEqual([]);
     } else {
-      expect(key in UNLOCK_KEYS, `unknown unlock key ${key}`).toBe(true);
-      expect(s.unlock.requires).toEqual([key]);
+      // chunk 17: a roster entry can name several keys ('marine_basics|elasmobranchs': Shark & Ray Husbandry doesn't
+      // need Marine Systems, so the sharks list both)
+      const keys = roster.unlock.split('|').filter((k) => k !== 'starter');
+      for (const k of keys) expect(k in UNLOCK_KEYS, `unknown unlock key ${k}`).toBe(true);
+      expect(s.unlock.requires).toEqual(keys);
     }
     // chunk 17 (ADR-0053 round 3): the hand-written hint retired; a locked card's words come from each key's rule
     for (const k of requiredUnlocks(s)) expect(UNLOCK_RULE_BY_KEY[k]?.hint.length ?? 0, `hint for ${k}`).toBeGreaterThan(5);

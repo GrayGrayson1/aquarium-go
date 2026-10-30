@@ -672,7 +672,8 @@ function anchorsOn(tank: Tank, categories: readonly string[], kinds: readonly Wo
   return out;
 }
 
-export type SiteKind = 'surface' | 'plants_low' | 'plants_mid' | 'rock' | 'host_rock' | 'glass' | 'cave' | 'above_water' | 'midwater';
+/** chunk 17: 'floor' — lying loose on the sand (a catshark's or bamboo shark's egg cases). */
+export type SiteKind = 'surface' | 'plants_low' | 'plants_mid' | 'rock' | 'host_rock' | 'glass' | 'cave' | 'above_water' | 'midwater' | 'floor';
 
 /** Cosmetic, stable RNG for anchor jitter (never touches the sim RNG stream). */
 export const anchorRng = (key: string): Rng => mulberry32(hashString(key));
@@ -775,6 +776,12 @@ export function pickSite(tank: Tank, kind: SiteKind, key: string, extras = 0): {
       const extra: Vec[] = [];
       for (let i = 0; i < extras; i++) extra.push(clampV({ x: anchor.x + rng.range(-0.06, 0.06), y: anchor.y + rng.range(-0.04, 0.03), z: anchor.z }));
       return { anchor, extra };
+    }
+    case 'floor': {
+      // on the sand, away from the glass: in front of a rock if there is one (where a shark rests), else open floor
+      const r = hard.length ? [...hard].sort((p, q) => q.h - p.h)[0] : undefined;
+      anchor = clampV({ x: r ? r.inst.x + rng.range(-0.06, 0.06) : fallbackX(), y: floorY, z: r ? r.inst.z + rng.range(0.04, 0.08) : fallbackZ() });
+      return { anchor, extra: around(anchor, extras, 0.03, 0).map((v) => ({ ...v, y: floorY })) };
     }
     case 'above_water': {
       const gap = Math.max(0.006, (d.H - d.waterY) * 0.5);
