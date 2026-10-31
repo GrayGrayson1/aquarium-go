@@ -197,7 +197,12 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(cols).toHaveCount(2);
     await expect.poll(() => cols.evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size)).toBe(1);
 
-    // Sign out returns Social to the signed-out view
+    // Sign out returns Social to the signed-out view. The overview's cards load first (the stub answers in 300–600 ms):
+    // their content replacing the skeletons moves Sign out down, and a click mid-swap missed it (WebKit, 0.9.0's pass)
+    await expect(tid(page, 'social-your-club')).toContainText('Nano Tank Collective');
+    await expect(tid(page, 'social-trading-card').getByRole('button', { name: 'View' })).toHaveCount(3);
+    await expect(tid(page, 'social-friends-card').locator('img')).toHaveCount(3);
+    await expect(tid(page, 'social-lb-me')).toBeVisible();
     await tid(page, 'social-signout').click();
     await expect(panel(page).getByText('Bring your aquarium online')).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem('aquarium-go.social.v1'))).toBeNull();
