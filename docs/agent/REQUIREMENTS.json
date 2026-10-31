@@ -6876,12 +6876,15 @@
         "tests/sim/species-fw.test.ts",
         "src/ai/core/sets17.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: all six in the lab's 'Big-tank species' at 1600 × 1000 and 390 × 844, young beside adults; sets17 holds on 31 nudged starts."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§8"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-002",
@@ -6896,12 +6899,15 @@
         "tests/sim/species-chunk17.test.ts",
         "tests/sim/genetics-expansion.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the 'Koi grand display' preset shows the Kohaku, Showa and Taisho Sanke side by side, at desktop and phone widths."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§8"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-003",
@@ -6917,14 +6923,17 @@
         "tests/sim/breeding-chunk17.test.ts",
         "src/ai/core/sets17.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the motoro buried in the sand with its eyes showing and gliding flat; a pair gave birth to pups in the 'Sharks and a ray' preset."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§6",
         "§7",
         "§8"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-004",
@@ -6939,12 +6948,15 @@
         "tests/sim/species-chunk17.test.ts",
         "tests/sim/species-brackish.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: mono and scat, young (the scat's ruby phase) and grown, in the lab's estuary."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§9"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-005",
@@ -6959,13 +6971,16 @@
         "tests/sim/species-chunk17.test.ts",
         "tests/sim/species-marine.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the five in the lab, young beside adults (the spotted young grouper, the barred young queen angel)."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§10",
         "§11"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-006",
@@ -6981,15 +6996,18 @@
         "tests/sim/breeding-chunk17.test.ts",
         "src/ai/core/sets17.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the three sharks in the lab (the banded young bamboo shark; the epaulettes walking on their fins); bottom sharks keep low (about 1 to 9 % of their time above 40 % of the depth, patrolling)."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§6",
         "§7",
         "§10",
         "§11"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-007",
@@ -7004,12 +7022,15 @@
         "tests/sim/tank-gate.test.ts",
         "tests/sim/species-chunk17.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: in a new game the locked angelfish card reads 'Comes into the shop with the 40 Gallon Breeder: reach 25 reputation or raise a clutch.'; at 25 reputation the shop announces 'New arrivals at the shop: freshwater angelfish, swordtails.' and stocks them."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§3"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-008",
@@ -7023,12 +7044,15 @@
       "tests": [
         "tests/sim/species-chunk17.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the oscar's keys (fw_large, the 180 gallon) bring 'New arrivals at the shop: ornate bichirs, oscars, fahaka puffers.'"
+      ],
+      "status": "GREEN",
       "designSections": [
         "§4"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-009",
@@ -7043,12 +7067,15 @@
         "tests/sim/species-chunk17.test.ts",
         "tests/sim/fixtures/food-rules-pin.json"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: none of the five foods is on sale in a new game; with the oscar's keys four come on sale and Koi Sticks still waits for koi."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§5"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-010",
@@ -7062,12 +7089,15 @@
       "tests": [
         "tests/sim/breeding-chunk17.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "The confirmation review's blocker (a cichlid_substrate mother ate her own wrigglers and fry) fixed in cf0406d and d43f121 (pairGuards: neither parent eats its brood, either fans the eggs, even with the male moved out as his card says), tests into the fry; egg cases and the chromis's sand nest laid clear of every rock and coral (cf0406d, d43f121) and on the sand as drawn (1913a64), with tests. Own testing: an epaulette pair laid two duds and 'Lift out' took them out; the bamboo shark's and catshark's cases seen lying on the open sand."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§6"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-011",
@@ -7083,12 +7113,15 @@
         "tests/sim/species-fw.test.ts",
         "tests/sim/species-marine.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the move preview's reasons in the lab (the panther grouper with the tangs and queen angel conditional; the fahaka with the oscar incompatible, 'The fahaka bites chunks out of tankmates and must live alone.')."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§11"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     },
     {
       "id": "BIG-012",
@@ -7106,14 +7139,17 @@
         "tests/sim/scenario-run.test.ts",
         "tests/sim/species-chunk17.test.ts"
       ],
-      "evidence": [],
-      "status": "IN_PROGRESS",
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the three presets built at desktop and phone widths; 'Big-tank species' a game week headless with no deaths; 0.8.0 saves (Skye, made by 0.8.0 itself) load with nothing repaired and drop only the gated offers; a v4 save is too new for 0.8.0."
+      ],
+      "status": "GREEN",
       "designSections": [
         "§12",
         "§13",
         "§14"
       ],
-      "note": "Chunk 17 (2026-10-30, Skye)."
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     }
   ]
 }

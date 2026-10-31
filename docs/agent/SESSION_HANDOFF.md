@@ -1,64 +1,30 @@
-# Session handoff: chunk 17 (big-tank species) built; Rubble finishes it and releases 0.9.0
+# Session handoff: chunk 17 (big-tank species) done and released as 0.9.0
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
 
-## Handoff to Rubble: finish chunk 17 and release 0.9.0 (Skye, 2026-10-30)
+## Chunk 17, big-tank species: done and released as 0.9.0 (Skye and Rubble, 2026-10-30)
 
-**The owner's words, verbatim** (2026-10-30, to Skye): "in cnvs have rubble do the rest and release when green". The
-owner's release answer is on record too (ADR-0053 round 4, decision 10: "Release once green": the version and
-CHANGELOG, `next` merged into `main` and pushed, then aquarium-go-shops deployed from `main`). So when everything below
-is green, release 0.9.0 without asking again; if anything is not green, stop and tell the owner.
+- **Done** (PLAN.md chunk 17; ADR-0053 has the owner's six answer rounds verbatim). 79 → 97 species, save format v4;
+  every species waits in the shop for a tank that holds an adult. Built by Skye (waves 0 to E, the fresh review's
+  fixes, rounds 5 and 6); finished by Rubble at the owner's request ("in cnvs have rubble do the rest and release when
+  green"): the confirmation review and its blocker, the nudged-start sweep, own testing, the checks and the release.
+- **Released:** 0.9.0 on 2026-10-30 from `next` (PLAN.md "Releases": the merge, the Pages run, the deploys).
+- **Tested:** the four checks on `03736be` in `~/LocalTest/AquariumGo`: typecheck exit 0; unit 270 files, 4,121
+  tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (`d5a3b17..2b1ce83`), the confirmation review of `2b1ce83..12bb890` (its
+  blocker fixed in `cf0406d`), a re-check of `cf0406d` (its blocker fixed in `d43f121`) and a second re-check of
+  `d43f121`: no blockers (its should-fix, floor clutches floating over the drawn sand, fixed in `1913a64`). The nudged-start AI sweep (`PROBE_P` 0 to 30): all AI tests pass but the collider test on
+  two starts, the same frames as 0.8.0's (B-217). Own testing as PLAN.md chunk 17 says.
+- **Still open from the chunk:** B-221 (weaker shark pups above 30 °C, not modelled), B-222 (a lost egg case is silent;
+  the last loss says "eggs"), B-223 (the nest-site gate asks an angelfish for a flat rock, as in 0.8.0), B-224
+  ("copepod live" in food advice), B-225 (larvae raise young without their live food, game-wide: a balance question
+  for the owner), B-226 (the clown goby's mother eats her eggs; 0.8.0's). Older: B-217 (the collider test's two
+  nudged starts, unchanged), B-219, F1 (the owner's VoiceOver pass), B-207 and B-208 (the audit), B-210, online stage
+  2. The owner hasn't played 0.6.0 to 0.9.0 yet: a problem they report comes first.
 
-**Where it stands.** `next` = `12bb890` in `/Volumes/Dev/Projects/AquariumGo`, **not pushed** (GitHub's `next` is still
-at the chunk-16 release). Commits since the brief (d5a3b17): a25f95e (round 3), 0175827 (wave 0, the tank gate), 060a03d
-(waves A+B), 70cab85 (wave C), 4161ff2 (wave D), 2b1ce83 (wave E), 12bb890 (the fresh review's fixes, rounds 5 and 6).
-Each commit message says what changed and why, and every test changed on purpose. ADR-0053 has all six of the owner's
-answer rounds verbatim. All 18 species are in (97 total); save format v4.
-
-**Already done and green.**
-- Fresh review (Opus 5.5, max effort) on d5a3b17..2b1ce83: 1 blocker + 9 should-fixes + NITs, all fixed in 12bb890 (its
-  message lists them). The owner asked (round 5) that the cichlid/chromis change get **its own review**: not done yet.
-- 2b1ce83: typecheck 0; unit 4,101/4,101; build 0; **e2e 335/335 (42.2 min)**. 12bb890: typecheck 0; unit 4,113/4,114
-  in the clone, the one failure a missing TRUST_BOUNDARY.md line, fixed in the same commit (that test then 8/8). Build
-  and e2e not yet run on 12bb890.
-- Own testing so far: 0.8.0 saves (made from 0.8.0 itself, `~/LocalTest/aq080`, saves in `~/LocalTest/aq080/saves/`)
-  load with nothing repaired, keep their animals, drop only the now-gated offers (24 across 12 new-game saves) and play a
-  game day; a v4 save is refused by 0.8.0 as `too_new`. The three new lab presets run 48 h with nobody dying (now in
-  `tests/sim/scenario-run.test.ts`). Art checked in the dev galleries (sharks, ray, buried ray, koi, the marine five).
-
-**Your order of work.**
-1. **The confirmation review** of `git diff 2b1ce83..12bb890` by a fresh Opus 5.5 subagent at max effort (Agent tool,
-   `model: "opus"`, `effort: "max"`, never Fable): give it the chunk brief (PLAN.md chunk 17), ADR-0053 rounds 5–6 and
-   12bb890's commit message (the first review's findings and their fixes), and ask whether each fix is right and
-   complete and whether the four older species' move (discus, freshwater angelfish, German blue ram to
-   `cichlid_substrate`; green chromis to `damsel_nest`) breaks anything. Fix its blockers (new player-visible words go
-   to the owner first).
-2. **The nudged-start AI sweep** (this file, "Learned in chunk 16"): `PROBE_P=1..30 npx vitest run src/ai` with the
-   throwaway `makeTestWorld` nudge, never committed. `src/ai/core/sets17.test.ts` is new and must hold on every nudge.
-3. **Your own testing as the owner would play** (design §15, the rest): a new game, the 30-gallon species absent before
-   the 40 Gallon Breeder and arriving with the notice; the new species in the lab at desktop and phone widths (young
-   and adult; the koi varieties side by side; a ray buried and gliding; a walking epaulette; an egg case and its Lift
-   out); key pairings in the move preview and shop; a new food appearing with its first animal; the "Big-tank species",
-   "Koi grand display" and "Sharks and a ray" presets.
-4. **The four checks on the final commit** from `~/LocalTest/AquariumGo` (detached; remote `dev` = the /Volumes repo):
-   `git fetch dev next && git checkout --detach <sha>` (no lockfile change in this chunk), then under
-   `caffeinate -i -s` with `PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`: `npm run typecheck`, `npm test`, `npm run
-   build`, `npm run e2e` (about 42 min; never copy files into the clone while it runs).
-5. **Docs:** PLAN.md chunk 17 (status line, built notes, the checks' lines, the reviews), this file (replace this
-   section with a done note and "Learned in chunk 17" below), REQUIREMENTS.json BIG-001..BIG-012 to GREEN with the
-   evidence; `package.json` 0.9.0 and the `CHANGELOG.md` entry (`tests/sim/version.test.ts` checks it).
-6. **Push and release** (PLAN.md "Releases"; the memory notes on pushing): push `next` from the clone (pushes from
-   /Volumes hang); merge into a fresh `origin/main` in the clone and push `main`; **watch the Pages run** (it runs the
-   tests; the AI tests have failed there before when they passed on the Mac); then deploy aquarium-go-shops by hand from
-   main's sha (`render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm --wait -o text`, after Pages,
-   never before: the save format changed to v4) and check its `/health` build hash, both `version.json` files and the
-   Render static site (deploy it by hand if auto-deploy didn't).
-7. **Tell the owner what to try**, and message Marshall on the AquariumGo canvas.
-
-**Learned in chunk 17 (so far).**
+**Learned in chunk 17.**
 - *Big bodies:* the AI's floor/surface bands and zone widening were sized by body length, so a 1 m shark or a 50 cm ray
   swam mid-water; the fixes are guarded to 20 cm+ bottom-huggers, flat discs (`flatSwim`) and the arowana
   (`surfaceCruiser`), and `sets17.test.ts` pins the earlier species' bands. Test new sets in the smallest tank the gate
@@ -68,6 +34,25 @@ answer rounds verbatim. All 18 species are in (97 total); save format v4.
   failure is a stream shift, then make the test stream-independent (several seeds).
 - *A morph name* composes a one-word overlay before the species' last word ("Clown Borneo Loach"): give forms two-word
   names or make them base forms.
+- *A guardian isn't a pair:* `guardianOf` names one parent, and the clutch's predation spares only it; a module whose
+  parents guard together needs `pairGuards`, and its test must run past the eggs into the young (the eggs were spared
+  by `parentsEatEggs: false`, which hid the mother eating the wrigglers).
+- *Look for the eggs in the tank, not only in the gallery:* a site "in front of" a rock measured from its centre is
+  inside any big rock. Clear a spot against every rock's `decorCollider`.
+- *The sand isn't flat:* the bed is drawn shallower at the front glass (`substrateHeightAt`), so anything that lies on
+  it is placed at that height, not at `tankDims().substrateY` (floor clutches floated 1 to 3 cm).
+- *The cap hides the food:* a nursery raises at most about 4 or 5 young, so a clutch of hundreds reaches the cap
+  whether or not its larvae get their live food (B-225). Measure what a food changes at the stage it matters.
+
+**Tips.**
+- Own testing without writing into the clone: Playwright scripts in the scratchpad that import
+  `~/LocalTest/AquariumGo/node_modules/@playwright/test/index.mjs` by its absolute path, against a dev server on another
+  port (`npx vite --host 127.0.0.1 --port 5199 --strictPort`). `?scenario=<preset>` builds a preset;
+  `__AQ.scenario.play(recipe)` a recipe of your own (young and adult side by side: `stage: 'juvenile'` / `'adult'`);
+  `__AQ.runtime.creatures` has each animal's live position, behaviour line and gait; `__AQ.mutate` raises reputation.
+- `sips -c <h> <w> --cropOffset <y> <x>` crops a screenshot to look closely; a small Playwright page tiles several
+  into one contact sheet.
+- Stop the dev server before the e2e run (it serves the same `src`).
 
 ## Handoff to Skye: chunk 17, big-tank species (Marshall, 2026-10-30)
 
@@ -384,7 +369,9 @@ Co. shop was left paused).
   Friends", "CalliClub", "TheSushiBladesToTheMax"); the clubs keep their codes (ADR-0044 decision 3). Never write a
   code or a player's email in the repo, which is public (`select name, invite_code from public.clubs` reads codes).
 - **0.7.0 is released** (2026-10-22: `main` = `a704e63`, Pages, the Render address and the shop server): chunk 14, the
-  money pool and spending tiers (ADR-0050; the top section).
+  money pool and spending tiers (ADR-0050).
+- **0.8.0 and 0.9.0 are released** (2026-10-25, chunk 16, 31 new species; 2026-10-30, chunk 17, big-tank species: the top
+  sections and PLAN.md "Releases"). Save format v4.
 - **Shared shops, released in 0.6.0** (ADR-0043, ADR-0045): a whole shop a club plays together on a small server on Render. The
   design is `docs/agent/design/SHARED-SHOPS.md` (2026-10-20): every browser runs the same steps, the server's copy
   counts, fingerprints catch drift. Render's free plan includes only 5 GB of outbound data a month for the whole

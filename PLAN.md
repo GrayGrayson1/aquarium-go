@@ -43,9 +43,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    with real colour forms, young and male/female colours, in the shop once their water is researched. **Chunk 17,
    big-tank species** (the owner, 2026-10-30; ADR-0053): koi, sharks, a ray and fifteen more for the 240- to
    1,000-gallon tanks (79 → 97), and the shop stocks every species only once a tank that holds an adult is unlocked.
-   Designed by Marshall (`docs/agent/design/CHUNK-17/BIG-TANKS.md`), **handed to Skye** to build
-   (SESSION_HANDOFF.md "Handoff to Skye: chunk 17"). A problem the owner reports with 0.8.0 still comes first.
-4. **Released:** 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   Designed by Marshall (`docs/agent/design/CHUNK-17/BIG-TANKS.md`), built by Skye and finished by Rubble (the owner:
+   "in cnvs have rubble do the rest and release when green"): **done** (2026-10-30, `03736be`) and released as 0.9.0
+   (ADR-0053 decision 10; "Releases"). **Next:** the owner plays 0.9.0; B-221 to B-226 (chunk 17's follow-ups, B-225 a
+   balance question for the owner). A problem the owner reports comes first.
+4. **Released:** 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
 5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
@@ -1670,7 +1672,7 @@ REL-012, REL-018.
   - *Backlog:* B-211 to B-219 (B-211, the autofeeder's vote, B-213, the anemone's split, and B-218, the tests that
     held by luck, done; B-217 the rare brief collisions above; B-219 the steering case behind the C-start).
 
-### 17. Big-tank species, and no animal in the shop before its tank (ADR-0053) — brief written 2026-10-30 (Marshall); handed to Skye
+### 17. Big-tank species, and no animal in the shop before its tank (ADR-0053) — brief written 2026-10-30 (Marshall); built 2026-10-30 (Skye); done 2026-10-30 (Rubble, `03736be`)
 
 - **What:** the owner's words, verbatim (2026-10-30), after asking which species need tanks bigger than any species
   uses today and whether koi fit 1,000 gallons: "Well it's at the Koi as well, and then everything else that you see
@@ -1713,6 +1715,71 @@ REL-012, REL-018.
   BIG-008 the two research projects; BIG-009 foods sold with their animals; BIG-010 breeding (egg cases, live young,
   the oscar and koi on existing systems); BIG-011 compatibility (data, exception rules, the matrix's tested rows);
   BIG-012 saves v4, the lab presets, sellers and the show.
+- **Built (2026-10-30, Skye: waves 0 to E; finished by Rubble):** 18 species (79 → 97), `SCHEMA_VERSION` 4. Each
+  commit's message has the detail; in short:
+  - *Wave 0, the tank gate* (`0175827`): `requiredUnlocks` adds the unlock of the smallest tank tier that holds an adult
+    (`tankTierFor` / `tankKeyFor`, `src/sim/facility/progression.ts`); 32 of the 79 earlier species gained a key; the
+    player's starter is always available; locked cards (shop, encyclopedia) are built from what is missing
+    (`speciesLockHint`, the owner's round-3 words), and the hand-written hints retired. Unlocking a tank size announces
+    the species it lets in.
+  - *Waves A and B* (`060a03d`): the big freshwater six, koi (eight loci, real and labelled stand-in genes, the classic
+    varieties), mono and scat; Big-water Freshwater; the five foods (`FoodDef.soldWith`, `isFoodAvailable`); the v3 →
+    v4 migration drops stocked offers the gate refuses. *Wave C* (`70cab85`): the big marine five and the triggerfish
+    set. *Wave D* (`4161ff2`): the motoro and the three bottom sharks, Shark & Ray Husbandry, the `egg_case` and
+    `ray_viviparous` systems, the ray's art, the shark plans, egg cases drawn in the tank; big bottom-huggers (20 cm
+    and up) keep to the floor, a flat disc is held off it by its height, the arowana cruises under the surface.
+    *Wave E* (`2b1ce83`): the two sellers, a Koi show class, the three lab presets, the research moved into
+    `docs/research/`, round 4 (the motoro buries itself to rest).
+  - *The fresh review* (Opus 5.5, max effort, on `d5a3b17..2b1ce83`): 1 blocker (the oscar bred as a corydoras) and 9
+    should-fixes, all fixed in `12bb890`, with rounds 5 and 6: the owner moved the discus, freshwater angelfish and
+    German blue ram to the new `cichlid_substrate` module and gave the green chromis a `damsel_nest` (ADR-0053 decision
+    11), and approved their lines (decision 12).
+  - *The confirmation review* (Opus 5.5, max effort, on `2b1ce83..12bb890`; the owner asked that the four-species move
+    get its own review): 1 blocker, fixed in `cf0406d`: in `cichlid_substrate` the mother ate her own wrigglers and fry
+    (only the guardian was spared), against the design and the approved lines; a plan flag `pairGuards` spares the
+    guardian's mate while the guardian is in the tank. Its should-fixes: three fixes nothing pinned got tests; the
+    chromis's larvae raise young without copepods, as the clownfish's and the cardinal's do (the cap of raised young
+    hides the food, game-wide): B-225 for the owner. Its nits: B-222 to B-224. The move itself is safe: 20 mid-breeding
+    0.8.0 states of the four species loaded and played on with nothing repaired.
+  - *The re-check of `cf0406d`* (Opus 5.5, max effort): 1 blocker, fixed in `d43f121`: the mother was spared only while
+    the male was in the tank, and the fry card tells the keeper to move him out ("his job is done"); now neither parent
+    of a `pairGuards` pair ever eats its brood, and either fans the eggs. Its should-fixes, also in `d43f121`: the
+    floor site's last resort (a fixed point clamped into a rock against the front glass) is now the clearest try,
+    open-floor tries reach the front sand and corals are avoided; a clutch lying on the sand is drawn flat (the
+    chromis's nest tipped into the sand). Nits: the lab ties the epaulette's cases to rock; B-226 (the clown goby's
+    "eating her own eggs", 0.8.0's, for the owner).
+  - *The second re-check, of `d43f121`* (Opus 5.5, max effort): no blockers; the cichlid fix right and complete (the
+    four species lose no young following the male's card, and no other species changes). Its should-fix, in
+    `1913a64`: floor clutches floated 1 to 3 cm over the sand as drawn (it is shallower at the front glass); a floor
+    spot now lies on the drawn sand (`substrateHeightAt`), and the egg cases are drawn against it. Its nits: a spot
+    outside every piece now beats one inside a big rock; a second case that has no clear spot is left out rather than
+    stacked on the first; B-227 (two cichlid messages contradict the pair rule: new wording, for the owner). Checked in
+    the lab after the fix: the bamboo shark's and catshark's cases lie on the open sand in front.
+  - *Own testing* (Rubble, design §15), in the lab and a new game at 1600 × 1000 and phone width (390 × 844): a new
+    game's locked angelfish card reads "Comes into the shop with the 40 Gallon Breeder: reach 25 reputation or raise a
+    clutch."; reaching 25 reputation brings "New arrivals at the shop: freshwater angelfish, swordtails."; none of the
+    five new foods is on sale in a new game, and the oscar's keys put four on sale with the oscar (Koi Sticks still
+    waits for koi). All 18 species in the "Big-tank species" preset, young beside adults (the banded young bamboo
+    shark, the spotted young grouper, the young scat and queen angel), the three koi varieties side by side, the motoro
+    buried with its eyes showing and gliding, the epaulettes walking, the move preview's reasons (the grouper with the
+    tangs and queen angel conditional, the fahaka with the oscar incompatible). An epaulette pair laid two duds in the
+    sharks preset; "Lift out" took them out ("Lifted Pebble's 2 empty egg cases out of Epaulettes."). That testing found
+    the egg cases laid out of sight: `pickSite`'s `floor` spot was inside the tallest rock in 37 to 60 of 60 tries
+    across the marine presets (the catshark's and bamboo shark's cases, the chromis's nest); fixed in `cf0406d` (clear
+    of every rock's footprint), with a test. A game week of "Big-tank species" headless: no deaths (the autofeeders run
+    dry by day 7 with nobody buying food: the lab, not the game). The 0.8.0 saves (Skye, from 0.8.0 itself) load with
+    nothing repaired and drop only the gated offers.
+  - *The nudged-start AI sweep* (`PROBE_P` 0 to 30 on `8627105`, a throwaway edit to `makeTestWorld`): every AI test
+    passes on every start but the collider test on 27 and 29, an axolotl's nose 11 to 13 mm in a fern's base or a
+    hide for one frame; 0.8.0 fails the same two starts on the same frames to the millimetre (B-217, unchanged by the
+    chunk). `sets17.test.ts` holds on all 31.
+  - *Checks* in `~/LocalTest/AquariumGo` (under `caffeinate -i -s`): on the release commit `506073d` typecheck exit 0;
+    unit 270 files, 4,118 tests; build exit 0; e2e 335 of 335 (40.9 min). On `d43f121`: typecheck, unit 4,121, build
+    (its e2e stopped at 167 passed, none failed, for the next fix). On `1913a64`: typecheck exit 0; unit 270 files,
+    4,121 tests; build exit 0; e2e 334 of 335 (40.8 min): social.spec's Sign out test failed in WebKit (the click
+    missed the button while the overview's cards loaded and moved it; it passed 6 of 6 alone), fixed in the test on
+    purpose in `03736be` (it waits for the cards; no app change). On the final commit `03736be`: typecheck exit
+    0; unit 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min).
 
 ## Releases
 
