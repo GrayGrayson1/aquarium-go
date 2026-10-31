@@ -14,6 +14,7 @@ import type { RenderLod } from '../../lod';
 import { useGame, getGame } from '@/state/game';
 import { findSpecies } from '@/data/species';
 import { tankDims, decorCollider } from '@/sim/tankSpace';
+import { substrateHeightAt } from '@/sim/aquascape';
 import { getDecorDef } from '@/data/catalog/decor';
 import { runtime } from '@/runtime/tankRuntime';
 import { useTankFX, type TankFXUniforms } from '../../shared/underwater';
@@ -171,7 +172,7 @@ export function BreedingVisuals({ tank, lod }: { tank: Tank; lod: RenderLod }) {
           case 'snail':
             return <SnailClutch key={d.key} d={d} fx={fx} lod={lod} dims={dims} />;
           case 'case':
-            return <EggCases key={d.key} d={d} fx={fx} dims={dims} />;
+            return <EggCases key={d.key} d={d} fx={fx} tank={tank} />;
           case 'fry':
             return lod < 2 ? <FryCloud key={d.key} d={d} fx={fx} lod={lod} dims={dims} /> : null;
         }
@@ -355,7 +356,7 @@ function AdhesiveEggs({ d, fx, lod, tank }: { d: Desc; fx: TankFXUniforms; lod: 
     const spacing = 0.0026;
     // (chunk 17: a clutch lying on the sand, a damselfish's nest, stays flat: a rock's surface nearby would tip it into
     // the sand)
-    const onFloor = cl.anchor.y <= tankDims(tank).substrateY + 0.015;
+    const onFloor = cl.anchor.y <= substrateHeightAt(tank, cl.anchor.x, cl.anchor.z) + 0.015;
     const nrm = onFloor ? new THREE.Vector3(0, 1, 0) : surfaceNormal(tank, cl.anchor, new THREE.Vector3());
     const face = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), nrm);
     const col = p < 0.45 ? _c.copy(fresh).lerp(mid, smoothstep(0.2, 0.45, p)) : _c.copy(mid).lerp(late, smoothstep(0.55, 0.9, p));
@@ -576,7 +577,7 @@ const CASE_SHAPE: Record<string, { len: number; wid: number; thick: number; wais
 };
 const LOBES = 3;
 
-function EggCases({ d, fx, dims }: { d: Desc; fx: TankFXUniforms; dims: ReturnType<typeof tankDims> }) {
+function EggCases({ d, fx, tank }: { d: Desc; fx: TankFXUniforms; tank: Tank }) {
   const sphere = useSphere();
   const N = 4 * LOBES;
   const seed = hashStr(d.key);
@@ -608,7 +609,7 @@ function EggCases({ d, fx, dims }: { d: Desc; fx: TankFXUniforms; dims: ReturnTy
     last.current.n = n;
     last.current.band = band;
     last.current.ax = ax;
-    const anchors = anchorsOf(cl, { x: 0, y: dims.substrateY, z: 0 });
+    const anchors = anchorsOf(cl, { x: 0, y: substrateHeightAt(tank, 0, 0), z: 0 });
     const sh = CASE_SHAPE[cl.speciesId] ?? CASE_SHAPE.epaulette_shark;
     const R = rng(seed);
     const col = _c.copy(fresh).lerp(old, band / 8);
@@ -618,7 +619,9 @@ function EggCases({ d, fx, dims }: { d: Desc; fx: TankFXUniforms; dims: ReturnTy
       // a second case laid beside the first
       const off = i < anchors.length ? 0 : sh.wid * 1.6 * Math.ceil(i / anchors.length);
       const yaw = R() * Math.PI * 2;
-      const tilt = a.y > dims.substrateY + 0.02 ? (R() - 0.5) * 0.9 : (R() - 0.5) * 0.12;
+      // (on the sand as drawn, shallower at the front: chunk 17's re-check)
+      const sand = substrateHeightAt(tank, a.x, a.z);
+      const tilt = a.y > sand + 0.02 ? (R() - 0.5) * 0.9 : (R() - 0.5) * 0.12;
       _q.setFromEuler(_e.set(tilt, yaw, 0));
       for (let j = 0; j < LOBES; j++) {
         const u = (j - (LOBES - 1) / 2) / LOBES; // −1/3, 0, 1/3 along the length
@@ -626,7 +629,7 @@ function EggCases({ d, fx, dims }: { d: Desc; fx: TankFXUniforms; dims: ReturnTy
         _p.set(u * sh.len, 0, 0).applyQuaternion(_q);
         _p.x += a.x + off * Math.cos(yaw + Math.PI / 2);
         _p.z += a.z + off * Math.sin(yaw + Math.PI / 2);
-        _p.y += Math.max(a.y, dims.substrateY) + sh.thick * 0.5;
+        _p.y += Math.max(a.y, sand) + sh.thick * 0.5;
         _s.set((sh.len / LOBES) * 0.62, sh.thick * 0.5, sh.wid * 0.5 * w);
         _m.compose(_p, _q, _s);
         m.setMatrixAt(k, _m);

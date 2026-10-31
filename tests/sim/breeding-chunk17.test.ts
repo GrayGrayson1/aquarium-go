@@ -19,6 +19,7 @@ import { eggCaseIncubation } from '@/sim/life/breeding/systems/eggCase';
 import { pickSite } from '@/sim/life/breeding/common';
 import { decorCollider } from '@/sim/tankSpace';
 import { getDecorDef } from '@/data/catalog/decor';
+import { substrateHeightAt } from '@/sim/aquascape';
 import { createClutch, stageHours } from '@/sim/life/breeding/clutch';
 import { moduleFor } from '@/sim/life/breeding/registry';
 
@@ -388,6 +389,8 @@ describe('egg cases and a nest on the sand lie in the open, not inside a rock (o
         expect(inside(anchor, f), `site ${i} inside ${t.decor[j].defId}`).toBe(false);
         for (const e of extra) expect(inside(e, f), `site ${i}'s second spot inside ${t.decor[j].defId}`).toBe(false);
       }
+      // on the sand as drawn (shallower at the front glass), not floating at the bed's mean depth (the second re-check)
+      for (const v of [anchor, ...extra]) expect(v.y, `site ${i} on the sand`).toBeCloseTo(substrateHeightAt(t, v.x, v.z) + 0.003, 6);
       if (anchor.z > tallest.center[2] + tallest.radius[2] && Math.abs(anchor.x - tallest.center[0]) <= tallest.radius[0]) inFront++;
     }
     expect(inFront, 'most in front of the tallest rock (a coral on the sand there sends the rest to open floor)').toBeGreaterThan(20);

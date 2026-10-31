@@ -21,7 +21,7 @@ import { emitEvent } from '@/sim/context';
 import { hashString, mulberry32, type Rng } from '@/sim/rng';
 import { hourOfDay, lightsOn, HOURS_PER_DAY } from '@/sim/time';
 import { decorAnchors, decorCollider, tankDims, type WorldAnchor } from '@/sim/tankSpace';
-import { tankHabitat, type TankHabitat } from '@/sim/aquascape';
+import { substrateHeightAt, tankHabitat, type TankHabitat } from '@/sim/aquascape';
 import type { IncidentRisk } from '@/sim/compat';
 import { computeTankEnv, effectiveBioload } from '@/sim/water';
 import { fitsEnvironment } from '@/sim/compat/salinity';
@@ -780,37 +780,48 @@ export function pickSite(tank: Tank, kind: SiteKind, key: string, extras = 0): {
     case 'floor': {
       // on the sand, in front of the tallest rock when there is room (where a shark rests), else open floor; clear of
       // every rock's, coral's and ornament's footprint (a few centimetres from a big rock's centre was inside it, so egg
-      // cases and a damsel's nest lay out of sight). The first clear try wins; if none is clear, the clearest one.
+      // cases and a damsel's nest lay out of sight). The first try clear by a margin wins; else one outside every piece;
+      // else the clearest. Each spot lies on the sand as drawn (shallower at the front), not at the bed's mean depth.
       const feet = decorSpots(tank)
         .filter((s) => s.category !== 'plant')
         .map((s) => decorCollider(s.inst, getDecorDef(s.inst.defId)!));
-      const room = (v: Vec) => {
+      const room = (v: Vec, margin: number) => {
         let m = Infinity;
         for (const f of feet) {
-          const dx = (v.x - f.center[0]) / (f.radius[0] + 0.05);
-          const dz = (v.z - f.center[2]) / (f.radius[2] + 0.05);
+          const dx = (v.x - f.center[0]) / (f.radius[0] + margin);
+          const dz = (v.z - f.center[2]) / (f.radius[2] + margin);
           m = Math.min(m, dx * dx + dz * dz);
         }
         return m;
       };
+      // 2: clear by 5 cm; 1 and up: outside every piece; under 1: inside one, the shallower the better
+      const score = (v: Vec) => (room(v, 0.05) >= 1 ? 2 : (room(v, 0) >= 1 ? 1 : 0) + Math.min(0.99, room(v, 0.05)));
+      const onSand = (v: Vec): Vec => ({ ...v, y: substrateHeightAt(tank, v.x, v.z) + 0.003 });
       const ri = hard.reduce((best, h, i) => (best < 0 || h.h > hard[best].h ? i : best), -1);
       const rf = ri >= 0 ? decorCollider(hard[ri].inst, getDecorDef(hard[ri].inst.defId)!) : undefined;
       // in front of the rock only if its front leaves sand before the glass (clampV keeps 2 cm off it)
       const front = rf && rf.center[2] + rf.radius[2] + 0.06 < d.W / 2 - 0.02 ? rf : undefined;
       let best: Vec | undefined;
-      let bestRoom = -1;
-      for (let i = 0; i < 16 && bestRoom < 1; i++) {
+      let bestScore = -1;
+      for (let i = 0; i < 16 && bestScore < 2; i++) {
         const v = clampV(front && i < 8 ? { x: front.center[0] + rng.range(-0.8, 0.8) * front.radius[0], y: floorY, z: front.center[2] + front.radius[2] + rng.range(0.06, 0.1) } : { x: fallbackX(), y: floorY, z: rng.range(-d.W * 0.3, d.W * 0.4) });
-        const r = room(v);
-        if (r > bestRoom) {
+        const sc = score(v);
+        if (sc > bestScore) {
           best = v;
-          bestRoom = r;
+          bestScore = sc;
         }
       }
-      anchor = best!;
-      // a second case or egg patch beside the first, and never in a rock where the first is clear of them
-      const extra = around(anchor, extras, 0.06, 0).map((v) => ({ ...v, y: floorY }));
-      return { anchor, extra: extra.map((v) => (room(v) >= Math.min(1, bestRoom) ? v : { ...anchor })) };
+      anchor = onSand(best!);
+      // a second case or egg patch beside the first, never in a piece the first is clear of: if its spot isn't, one of
+      // four spots beside the first; if none is, it is left out (a second case then lies beside the first as drawn)
+      const want = Math.min(2, bestScore);
+      const beside: [number, number][] = [[0.07, 0], [-0.07, 0], [0, 0.05], [0, -0.05]];
+      const extra: Vec[] = [];
+      for (const v of around(anchor, extras, 0.06, 0)) {
+        const spot = score(v) >= want ? v : beside.map(([ox, oz]) => clampV({ x: anchor.x + ox, y: floorY, z: anchor.z + oz })).find((w) => score(w) >= want);
+        if (spot) extra.push(onSand(spot));
+      }
+      return { anchor, extra };
     }
     case 'above_water': {
       const gap = Math.max(0.006, (d.H - d.waterY) * 0.5);
