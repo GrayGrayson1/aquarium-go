@@ -1,9 +1,73 @@
-# Session handoff: chunk 17 (big-tank species) designed and handed to Skye
+# Session handoff: chunk 17 (big-tank species) built; Rubble finishes it and releases 0.9.0
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Handoff to Rubble: finish chunk 17 and release 0.9.0 (Skye, 2026-10-30)
+
+**The owner's words, verbatim** (2026-10-30, to Skye): "in cnvs have rubble do the rest and release when green". The
+owner's release answer is on record too (ADR-0053 round 4, decision 10: "Release once green": the version and
+CHANGELOG, `next` merged into `main` and pushed, then aquarium-go-shops deployed from `main`). So when everything below
+is green, release 0.9.0 without asking again; if anything is not green, stop and tell the owner.
+
+**Where it stands.** `next` = `12bb890` in `/Volumes/Dev/Projects/AquariumGo`, **not pushed** (GitHub's `next` is still
+at the chunk-16 release). Commits since the brief (d5a3b17): a25f95e (round 3), 0175827 (wave 0, the tank gate), 060a03d
+(waves A+B), 70cab85 (wave C), 4161ff2 (wave D), 2b1ce83 (wave E), 12bb890 (the fresh review's fixes, rounds 5 and 6).
+Each commit message says what changed and why, and every test changed on purpose. ADR-0053 has all six of the owner's
+answer rounds verbatim. All 18 species are in (97 total); save format v4.
+
+**Already done and green.**
+- Fresh review (Opus 5.5, max effort) on d5a3b17..2b1ce83: 1 blocker + 9 should-fixes + NITs, all fixed in 12bb890 (its
+  message lists them). The owner asked (round 5) that the cichlid/chromis change get **its own review**: not done yet.
+- 2b1ce83: typecheck 0; unit 4,101/4,101; build 0; **e2e 335/335 (42.2 min)**. 12bb890: typecheck 0; unit 4,113/4,114
+  in the clone, the one failure a missing TRUST_BOUNDARY.md line, fixed in the same commit (that test then 8/8). Build
+  and e2e not yet run on 12bb890.
+- Own testing so far: 0.8.0 saves (made from 0.8.0 itself, `~/LocalTest/aq080`, saves in `~/LocalTest/aq080/saves/`)
+  load with nothing repaired, keep their animals, drop only the now-gated offers (24 across 12 new-game saves) and play a
+  game day; a v4 save is refused by 0.8.0 as `too_new`. The three new lab presets run 48 h with nobody dying (now in
+  `tests/sim/scenario-run.test.ts`). Art checked in the dev galleries (sharks, ray, buried ray, koi, the marine five).
+
+**Your order of work.**
+1. **The confirmation review** of `git diff 2b1ce83..12bb890` by a fresh Opus 5.5 subagent at max effort (Agent tool,
+   `model: "opus"`, `effort: "max"`, never Fable): give it the chunk brief (PLAN.md chunk 17), ADR-0053 rounds 5–6 and
+   12bb890's commit message (the first review's findings and their fixes), and ask whether each fix is right and
+   complete and whether the four older species' move (discus, freshwater angelfish, German blue ram to
+   `cichlid_substrate`; green chromis to `damsel_nest`) breaks anything. Fix its blockers (new player-visible words go
+   to the owner first).
+2. **The nudged-start AI sweep** (this file, "Learned in chunk 16"): `PROBE_P=1..30 npx vitest run src/ai` with the
+   throwaway `makeTestWorld` nudge, never committed. `src/ai/core/sets17.test.ts` is new and must hold on every nudge.
+3. **Your own testing as the owner would play** (design §15, the rest): a new game, the 30-gallon species absent before
+   the 40 Gallon Breeder and arriving with the notice; the new species in the lab at desktop and phone widths (young
+   and adult; the koi varieties side by side; a ray buried and gliding; a walking epaulette; an egg case and its Lift
+   out); key pairings in the move preview and shop; a new food appearing with its first animal; the "Big-tank species",
+   "Koi grand display" and "Sharks and a ray" presets.
+4. **The four checks on the final commit** from `~/LocalTest/AquariumGo` (detached; remote `dev` = the /Volumes repo):
+   `git fetch dev next && git checkout --detach <sha>` (no lockfile change in this chunk), then under
+   `caffeinate -i -s` with `PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright`: `npm run typecheck`, `npm test`, `npm run
+   build`, `npm run e2e` (about 42 min; never copy files into the clone while it runs).
+5. **Docs:** PLAN.md chunk 17 (status line, built notes, the checks' lines, the reviews), this file (replace this
+   section with a done note and "Learned in chunk 17" below), REQUIREMENTS.json BIG-001..BIG-012 to GREEN with the
+   evidence; `package.json` 0.9.0 and the `CHANGELOG.md` entry (`tests/sim/version.test.ts` checks it).
+6. **Push and release** (PLAN.md "Releases"; the memory notes on pushing): push `next` from the clone (pushes from
+   /Volumes hang); merge into a fresh `origin/main` in the clone and push `main`; **watch the Pages run** (it runs the
+   tests; the AI tests have failed there before when they passed on the Mac); then deploy aquarium-go-shops by hand from
+   main's sha (`render deploys create srv-dbbt6gbncjis73c23br0 --commit <full sha> --confirm --wait -o text`, after Pages,
+   never before: the save format changed to v4) and check its `/health` build hash, both `version.json` files and the
+   Render static site (deploy it by hand if auto-deploy didn't).
+7. **Tell the owner what to try**, and message Marshall on the AquariumGo canvas.
+
+**Learned in chunk 17 (so far).**
+- *Big bodies:* the AI's floor/surface bands and zone widening were sized by body length, so a 1 m shark or a 50 cm ray
+  swam mid-water; the fixes are guarded to 20 cm+ bottom-huggers, flat discs (`flatSwim`) and the arowana
+  (`surfaceCruiser`), and `sets17.test.ts` pins the earlier species' bands. Test new sets in the smallest tank the gate
+  allows, with rock along the back.
+- *Tiny clutches* (1–2 egg cases) can't use the clutch pipeline's rounded survival share: decide each case by chance.
+- *Seeded triage:* hide the new species in the clone (`ALL_SPECIES` filter on an env var, never committed) to prove a
+  failure is a stream shift, then make the test stream-independent (several seeds).
+- *A morph name* composes a one-word overlay before the species' last word ("Clown Borneo Loach"): give forms two-word
+  names or make them base forms.
 
 ## Handoff to Skye: chunk 17, big-tank species (Marshall, 2026-10-30)
 
