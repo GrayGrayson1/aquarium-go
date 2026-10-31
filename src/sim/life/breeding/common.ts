@@ -778,25 +778,39 @@ export function pickSite(tank: Tank, kind: SiteKind, key: string, extras = 0): {
       return { anchor, extra };
     }
     case 'floor': {
-      // on the sand, away from the glass: in front of the tallest rock if there is one (where a shark rests), else open
-      // floor; clear of every rock's footprint (a few centimetres from a big rock's centre was inside it, so egg cases
-      // and a damsel's nest lay out of sight). The first tries hug the rock's front, the later ones any open floor.
-      const feet = hard.map((h) => decorCollider(h.inst, getDecorDef(h.inst.defId)!));
-      const clear = (v: Vec) =>
-        feet.every((f) => {
+      // on the sand, in front of the tallest rock when there is room (where a shark rests), else open floor; clear of
+      // every rock's, coral's and ornament's footprint (a few centimetres from a big rock's centre was inside it, so egg
+      // cases and a damsel's nest lay out of sight). The first clear try wins; if none is clear, the clearest one.
+      const feet = decorSpots(tank)
+        .filter((s) => s.category !== 'plant')
+        .map((s) => decorCollider(s.inst, getDecorDef(s.inst.defId)!));
+      const room = (v: Vec) => {
+        let m = Infinity;
+        for (const f of feet) {
           const dx = (v.x - f.center[0]) / (f.radius[0] + 0.05);
           const dz = (v.z - f.center[2]) / (f.radius[2] + 0.05);
-          return dx * dx + dz * dz >= 1;
-        });
+          m = Math.min(m, dx * dx + dz * dz);
+        }
+        return m;
+      };
       const ri = hard.reduce((best, h, i) => (best < 0 || h.h > hard[best].h ? i : best), -1);
-      const rf = ri >= 0 ? feet[ri] : undefined;
-      let spot: Vec | undefined;
-      for (let i = 0; i < 16 && !spot; i++) {
-        const v = clampV(rf && i < 8 ? { x: rf.center[0] + rng.range(-0.8, 0.8) * rf.radius[0], y: floorY, z: rf.center[2] + rf.radius[2] + rng.range(0.06, 0.1) } : { x: fallbackX(), y: floorY, z: fallbackZ() });
-        if (clear(v)) spot = v;
+      const rf = ri >= 0 ? decorCollider(hard[ri].inst, getDecorDef(hard[ri].inst.defId)!) : undefined;
+      // in front of the rock only if its front leaves sand before the glass (clampV keeps 2 cm off it)
+      const front = rf && rf.center[2] + rf.radius[2] + 0.06 < d.W / 2 - 0.02 ? rf : undefined;
+      let best: Vec | undefined;
+      let bestRoom = -1;
+      for (let i = 0; i < 16 && bestRoom < 1; i++) {
+        const v = clampV(front && i < 8 ? { x: front.center[0] + rng.range(-0.8, 0.8) * front.radius[0], y: floorY, z: front.center[2] + front.radius[2] + rng.range(0.06, 0.1) } : { x: fallbackX(), y: floorY, z: rng.range(-d.W * 0.3, d.W * 0.4) });
+        const r = room(v);
+        if (r > bestRoom) {
+          best = v;
+          bestRoom = r;
+        }
       }
-      anchor = spot ?? clampV({ x: rf ? rf.center[0] : fallbackX(), y: floorY, z: rf ? rf.center[2] + rf.radius[2] + 0.06 : fallbackZ() });
-      return { anchor, extra: around(anchor, extras, 0.03, 0).map((v) => ({ ...v, y: floorY })) };
+      anchor = best!;
+      // a second case or egg patch beside the first, and never in a rock where the first is clear of them
+      const extra = around(anchor, extras, 0.06, 0).map((v) => ({ ...v, y: floorY }));
+      return { anchor, extra: extra.map((v) => (room(v) >= Math.min(1, bestRoom) ? v : { ...anchor })) };
     }
     case 'above_water': {
       const gap = Math.max(0.006, (d.H - d.waterY) * 0.5);

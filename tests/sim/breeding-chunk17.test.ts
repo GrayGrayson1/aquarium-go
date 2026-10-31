@@ -14,7 +14,7 @@ import { simRng } from '@/sim/rng';
 import { advanceWorld } from '@/sim/world';
 import { getSpecies } from '@/data/species';
 import { breedingStatus, clutchStatus } from '@/sim/life/breeding';
-import { devForceBreeding, liftOutClutch } from '@/sim/life/breeding/actions';
+import { devForceBreeding, liftOutClutch, separateCreature } from '@/sim/life/breeding/actions';
 import { eggCaseIncubation } from '@/sim/life/breeding/systems/eggCase';
 import { pickSite } from '@/sim/life/breeding/common';
 import { decorCollider } from '@/sim/tankSpace';
@@ -181,6 +181,41 @@ describe('BIG-010: the motoro’s live young (ray_viviparous)', () => {
 });
 
 describe('BIG-010: the oscar spawns on a stone and guards (cichlid_substrate)', () => {
+  /** A pair spawned and on to the given stage; the losses to predation tracked while the clutch lasts. */
+  const pairTo = (stage: 'eggs' | 'fry') => {
+    const { g, t, animals } = setup('oscar', 'g180', 'freshwater_tropical', ['male', 'female'], 31);
+    const [male, female] = animals;
+    const other = createTank(g, 'g180', 'freshwater_tropical', { cycled: true, placement: { x: 6, z: 3, rotY: 0 }, name: 'Other' });
+    expect(devForceBreeding(g, female.id).ok).toBe(true);
+    run(g, 24, 27, () => cases(g, 'oscar').length > 0, 1);
+    const [cl] = cases(g, 'oscar');
+    expect(cl, 'they spawn once forced').toBeDefined();
+    if (stage === 'fry') run(g, 500, 27, () => !g.clutches[cl.id] || g.clutches[cl.id]?.stage === 'fry', 1);
+    expect(g.clutches[cl.id]?.stage).toBe(stage);
+    const seen = { predation: 0, fungus: 0 };
+    const watch = () => {
+      const c = g.clutches[cl.id];
+      if (c?.losses) Object.assign(seen, { predation: c.losses.predation, fungus: c.losses.fungus });
+      return !c;
+    };
+    return { g, t, male, female, other, cl, seen, watch };
+  };
+  it('moved out at the fry stage, as his card says, the male leaves the fry with the mother, who spares them; back, so does he (the re-check)', () => {
+    const { g, t, male, other, seen, watch } = pairTo('fry');
+    expect(separateCreature(g, male.id, other.id).ok).toBe(true);
+    run(g, 48, 27, watch, 2);
+    expect(separateCreature(g, male.id, t.id).ok).toBe(true);
+    run(g, 48, 27, watch, 2);
+    expect(log(g)).not.toMatch(/(is|are) eating/);
+    expect(seen.predation, 'young lost to a parent').toBe(0);
+  });
+  it('moved out while the eggs are on the stone, the male leaves the mother to fan them: no fungus (the re-check)', () => {
+    const { g, male, other, cl, seen, watch } = pairTo('eggs');
+    expect(separateCreature(g, male.id, other.id).ok).toBe(true);
+    run(g, 60, 27, () => watch() || g.clutches[cl.id]?.stage !== 'eggs', 1);
+    expect(seen.fungus, 'eggs lost to fungus').toBe(0);
+    expect(seen.predation).toBe(0);
+  });
   it('a pair cleans a stone, lays in rows on it, and the male guards eggs and wrigglers; nobody eats the eggs', () => {
     const { g, animals } = setup('oscar', 'g180', 'freshwater_tropical', ['male', 'female'], 31);
     const [male, female] = animals;
@@ -333,23 +368,40 @@ describe('the older cichlids and the green chromis spawn as they really do (the 
 describe('egg cases and a nest on the sand lie in the open, not inside a rock (own testing, 0.9.0)', () => {
   // A few centimetres in front of a big rock's centre was inside the rock: the catshark's and bamboo shark's egg cases
   // and the green chromis's nest were laid out of sight. The spot now keeps clear of every rock's footprint.
-  it('a floor site in a rocky tank is clear of every rock, in front of the tallest one when there is room', () => {
+  const rock = (defId: string, x: number, z: number, scale: number, rotY = 0) => ({ id: `d_${defId}_${x}_${z}`, defId, x, y: 0.04, z, rotY, scale, seed: 1 });
+  const inside = (a: { x: number; z: number }, f: ReturnType<typeof decorCollider>, margin = 0) => {
+    const dx = (a.x - f.center[0]) / (f.radius[0] + margin);
+    const dz = (a.z - f.center[2]) / (f.radius[2] + margin);
+    return dx * dx + dz * dz < 1;
+  };
+  it('a floor site in a rocky tank is clear of every rock and coral, in front of the tallest rock when there is room', () => {
     const { t } = setup('coral_catshark', 'g500', 'marine_fowlr', []);
-    const rock = (defId: string, x: number, z: number, scale: number, rotY = 0) => ({ id: `d_${defId}_${x}_${z}`, defId, x, y: 0.04, z, rotY, scale, seed: 1 });
-    t.decor = [rock('live_rock', 0.86, -0.18, 1.5), rock('live_rock_arch', 0.78, -0.26, 1.84, 0.6), rock('live_rock', 0.78, -0.29, 2.25), rock('live_rock', -0.6, -0.2, 1.2), rock('live_rock_arch', -0.1, -0.1, 1.6, 1.2)];
+    t.decor = [rock('live_rock', 0.86, -0.18, 1.5), rock('live_rock_arch', 0.78, -0.26, 1.84, 0.6), rock('live_rock', 0.78, -0.29, 2.25), rock('live_rock', -0.6, -0.2, 1.2), rock('live_rock_arch', -0.1, -0.1, 1.6, 1.2), rock('leather_coral', 0.72, 0.03, 1.2)];
     const feet = t.decor.map((d) => decorCollider(d, getDecorDef(d.defId)!));
-    const tallest = feet[2];
+    // the tallest as pickSite picks it (the first of the tallest)
+    const hs = t.decor.map((d) => getDecorDef(d.defId)!.size.h * d.scale);
+    const tallest = feet[hs.indexOf(Math.max(...hs))];
     let inFront = 0;
     for (let i = 0; i < 40; i++) {
-      const { anchor } = pickSite(t, 'floor', `case:${i}`, 1);
-      for (const f of feet) {
-        const dx = (anchor.x - f.center[0]) / f.radius[0];
-        const dz = (anchor.z - f.center[2]) / f.radius[2];
-        expect(dx * dx + dz * dz, `site ${i} inside ${f.decorId}`).toBeGreaterThan(1);
+      const { anchor, extra } = pickSite(t, 'floor', `case:${i}`, 1);
+      for (const [j, f] of feet.entries()) {
+        expect(inside(anchor, f), `site ${i} inside ${t.decor[j].defId}`).toBe(false);
+        for (const e of extra) expect(inside(e, f), `site ${i}'s second spot inside ${t.decor[j].defId}`).toBe(false);
       }
       if (anchor.z > tallest.center[2] + tallest.radius[2] && Math.abs(anchor.x - tallest.center[0]) <= tallest.radius[0]) inFront++;
     }
-    expect(inFront, 'most sites are in front of the tallest rock (the rest on open floor: other rocks crowd its front)').toBeGreaterThan(20);
+    expect(inFront, 'most in front of the tallest rock (a coral on the sand there sends the rest to open floor)').toBeGreaterThan(20);
+  });
+
+  it('with the tallest rock against the front glass, the spot is on open sand, never in a rock (the re-check)', () => {
+    // the old last resort was a fixed point in front of the tallest rock, clamped back into it by the glass
+    const { t } = setup('green_chromis', 'g55', 'marine_fowlr', []);
+    t.decor = [rock('live_rock_arch', 0, 0.04, 2), rock('live_rock', -0.4, -0.08, 1.2), rock('live_rock', 0.42, -0.06, 1)];
+    const feet = t.decor.map((d) => decorCollider(d, getDecorDef(d.defId)!));
+    for (let i = 0; i < 40; i++) {
+      const { anchor } = pickSite(t, 'floor', `nest:${i}`, 3);
+      for (const [j, f] of feet.entries()) expect(inside(anchor, f), `site ${i} inside ${t.decor[j].defId}`).toBe(false);
+    }
   });
 });
 

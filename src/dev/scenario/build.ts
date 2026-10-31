@@ -17,6 +17,7 @@ import { moduleFor } from '@/sim/life/breeding/registry';
 import { createClutch } from '@/sim/life/breeding/clutch';
 import { pickSite, type SiteKind } from '@/sim/life/breeding/common';
 import { devForceBreeding } from '@/sim/life/breeding/actions';
+import { eggCaseSite } from '@/sim/life/breeding/systems/eggCase';
 import { simRng, visualRng } from '@/sim/rng';
 import { nextId } from '@/sim/ids';
 import { touchResidents } from '@/sim/residents';
@@ -885,7 +886,7 @@ class Builder {
       stage = 'eggs';
       visual = eggs.visual;
       next = hour + (num(y.nextStageInHours) ? Math.max(0.25, y.nextStageInHours) : sp.breeding.incubationHours);
-      anchor = pickSite(tank, eggs.site, `${tank.id}:eggs:${at}`).anchor;
+      anchor = pickSite(tank, sp.breeding.system === 'egg_case' ? eggCaseSite(sp) : eggs.site, `${tank.id}:eggs:${at}`).anchor;
     } else if (y.stage === 'larvae' || y.stage === 'fry') {
       let phase = mod.plan.phases.find((p) => p.stage === y.stage);
       if (!phase) {

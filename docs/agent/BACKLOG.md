@@ -50,11 +50,11 @@ ADR-0008, cited in several notes, was approved by the owner and committed in `1a
 | needs-slice | 24 | 18 | 1 | 0 | 0 | 5 | 0 |
 | owner-decision | 23 | 13 | 0 | 6 | 0 | 0 | 4 |
 | record-only | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
-| outside the review | 41 | 16 | 1 | 1 | 0 | 22 | 1 |
-| **total** | **142** | **63** | **9** | **7** | **0** | **54** | **9** |
+| outside the review | 42 | 16 | 1 | 1 | 0 | 23 | 1 |
+| **total** | **143** | **63** | **9** | **7** | **0** | **55** | **9** |
 
 Recounted from the rows on 2026-10-30 (chunk 17): "outside the review" has B-220 (closed by the owner's decision, counted
-as decided) and B-221 to B-225; its open items include B-207 (in progress).
+as decided) and B-221 to B-226; its open items include B-207 (in progress).
 
 Fixed or partly fixed by these commits: `3e00a32`, `58ae313`, `9edfa12`, `6347c5d`, `d98731d`, `16233a1`, `c774d38`,
 `2ef1ff7`, `d8fb896`, `7c0dbf4`, `5ae85a3`, `62df438`, `9e1bf66`. `dfc0a13` was reverted by `f999618` (B-158).
@@ -112,6 +112,7 @@ decided. Every owner-decision row is now answered (ADR-0025 to ADR-0029, 2026-10
 | B-223 | — | The breeding nest-site gate (`dataGates`, `pairSpawner.ts`; `hasNestSite`) asks every `needsNestSite` species for "a flat rock or tile", including the freshwater angelfish, which now lays on a broad leaf, and the green chromis, whose male nests on the sand: an angelfish tank with only plants can't spawn. The same gate stood in 0.8.0 (the four species already needed it); chunk 17's new lines make the mismatch visible. Found by chunk 17's confirmation review | low | — | app-code | — | **open** |
 | B-224 | — | Food advice built from a food tag shows the tag's words ("offer copepod live", "need copepod live"), not the food's name ("live copepods"): `src/ui/common/foodStock.ts` turns the tag's underscores into spaces. An old pattern (the clownfish's and seahorse's young show it too); chunk 17's green chromis lines are where the review saw it | low | — | app-code | — | **open** |
 | B-225 | — | Larvae that "need" a live food still raise the most young a nursery gives (about 4 or 5) without it: in a nursery fed nothing at all, the green chromis raised 4 (seeds 53 and 61), the ocellaris clownfish 5 and the Banggai cardinal 3 or 4. The food does matter on the way (copepods took the chromis's larvae into the fry stage 664 to 166 without), but the cap hides it at the end. A balance question for the owner: should larvae without their food die out, or should the lines soften? Found by chunk 17's confirmation review (the chromis's "The larvae will need live copepods in a nursery") | low | — | owner-decision | — | **open** |
+| B-226 | — | The clown goby (0.8.0) is cared for by both parents (`parentalCare: 'both'`; its notes: "Pairs lay eggs under a coral branch and guard them") but breeds on `egg_layer_generic`, where only the guardian is spared: the mother eats her own eggs, and the game says "… is eating her own eggs! Move her out and let … tend the brood alone." (346 eggs to 7 larvae in the re-check's probe). Chunk 17's cichlid fix (`pairGuards`) is for `cichlid_substrate` only, on purpose; giving the goby a pair module changes its breeding and its lines, so the owner first. Found by chunk 17's re-check | low | — | app-code | — | **open** |
 ## fix-now-harness (30)
 
 docs/agent, AGENTS.md, CLAUDE.md and scripts/agent. Protected files: owner-approved ADR for the constitution and prompts, ADR plus reviewer for scripts (OPERATIONS §10).

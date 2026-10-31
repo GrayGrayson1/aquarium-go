@@ -65,7 +65,7 @@ export interface RearingPlan {
   guardianEatsFry: boolean;
   /** The guardian keeps tending the hatched young (betta larvae in the nest, pleco wrigglers in the cave). */
   guardYoung?: boolean;
-  /** chunk 17: both parents guard (the cichlid pairs): while the guardian is in the tank, its mate never eats the brood. */
+  /** chunk 17: both parents guard (the cichlid pairs): neither ever eats its own brood, and either one fans the eggs. */
   pairGuards?: boolean;
   /** Larvae drift in open water: lost to filters/skimmers/tankmates unless reared in a nursery. */
   planktonic: boolean;

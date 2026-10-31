@@ -34,6 +34,8 @@ const DUD_FRAC = 0.25;
 
 /** Laid loose on the sand (catshark, bamboo shark) or tied to rock (epaulette). */
 const onSand = (sp: SpeciesDefinition) => sp.genus !== 'Hemiscyllium';
+/** Where a species' egg cases lie: on the sand, or tied to the rock (the epaulette). The lab places them the same way. */
+export const eggCaseSite = (sp: SpeciesDefinition): 'floor' | 'rock' => (onSand(sp) ? 'floor' : 'rock');
 const where = (sp: SpeciesDefinition) => (onSand(sp) ? 'on the sand' : 'tied to the rock');
 
 /** Game hours a case laid now in this tank takes to hatch. */
@@ -100,7 +102,7 @@ function layAlone(env: StepEnv): void {
     if (roleOf(f, sp) !== 'female' || f.repro.stage !== 'gravid' || !isReady(f)) continue;
     if (!dataGates(state, tank, sp, cfg, hour).ok) return;
     const n = rollClutchSize(ctx.rng, sp, f);
-    const site = pickSite(tank, onSand(sp) ? 'floor' : 'rock', `${f.id}:${hour.toFixed(1)}`, cfg.extraSites);
+    const site = pickSite(tank, eggCaseSite(sp), `${f.id}:${hour.toFixed(1)}`, cfg.extraSites);
     const text = `${f.name} laid ${plural(n, 'egg case')} ${where(sp)}, but with no male in the tank ${n === 1 ? 'it is' : 'they are'} empty. Lift ${n === 1 ? 'it' : 'them'} out, or ${n === 1 ? 'it rots' : 'they rot'}.`;
     createClutch(state, {
       sp,

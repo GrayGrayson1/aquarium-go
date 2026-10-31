@@ -353,7 +353,10 @@ function AdhesiveEggs({ d, fx, lod, tank }: { d: Desc; fx: TankFXUniforms; lod: 
     state.current.stageBand = band;
     const R = rng(seed);
     const spacing = 0.0026;
-    const nrm = surfaceNormal(tank, cl.anchor, new THREE.Vector3());
+    // (chunk 17: a clutch lying on the sand, a damselfish's nest, stays flat: a rock's surface nearby would tip it into
+    // the sand)
+    const onFloor = cl.anchor.y <= tankDims(tank).substrateY + 0.015;
+    const nrm = onFloor ? new THREE.Vector3(0, 1, 0) : surfaceNormal(tank, cl.anchor, new THREE.Vector3());
     const face = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), nrm);
     const col = p < 0.45 ? _c.copy(fresh).lerp(mid, smoothstep(0.2, 0.45, p)) : _c.copy(mid).lerp(late, smoothstep(0.55, 0.9, p));
     const eyeShow = smoothstep(0.55, 0.8, p);

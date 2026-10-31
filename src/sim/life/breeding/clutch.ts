@@ -218,8 +218,9 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   const guardian = cl.guardedById;
   let pCon = 0;
   const living = livingIn(state, tank.id);
-  // chunk 17 (the confirmation review): a cichlid pair guards together, so the guardian's mate spares the brood too
-  const mateSpares = !!plan.pairGuards && !!guardian && living.some((c) => c.id === guardian);
+  // chunk 17 (the reviews): a cichlid pair guards together, and neither parent eats its own brood, even once the
+  // guardian is gone or moved out (the fry card tells the keeper his job is done)
+  const parentsSpare = !!plan.pairGuards;
   for (const c of living) {
     if (c.lifeStage === 'egg' || c.lifeStage === 'larva' || c.lifeStage === 'fry') continue;
     if (c.speciesId === sp.id) {
@@ -232,7 +233,7 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
         continue;
       }
       if (eggs && !plan.parentsEatEggs) continue;
-      if (mateSpares && (c.id === cl.motherId || c.id === cl.fatherId)) continue;
+      if (parentsSpare && (c.id === cl.motherId || c.id === cl.fatherId)) continue;
       if (sp.breeding.predationWithoutNursery <= 0) continue;
       pCon = Math.max(pCon, sp.breeding.predationWithoutNursery);
       out.conspecific.push(c);
@@ -316,8 +317,12 @@ function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition
 
   // unguarded eggs
   if (cl.stage === 'eggs' && plan.guardEggs && !carried) {
-    const g = cl.guardedById ? state.creatures[cl.guardedById] : undefined;
-    const tended = isAlive(g) && g.tankId === cl.tankId;
+    const here = (id: string | null | undefined) => {
+      const c = id ? state.creatures[id] : undefined;
+      return isAlive(c) && c.tankId === cl.tankId;
+    };
+    // (chunk 17: a cichlid pair's eggs are fanned by whichever parent is still with them)
+    const tended = here(cl.guardedById) || (!!plan.pairGuards && (here(cl.motherId) || here(cl.fatherId)));
     if (!tended) {
       const pf = hasEquipment(tank, 'airstone') ? 0.25 : 0.5;
       out.fungus = -dmath.log(1 - pf) / hrs;
