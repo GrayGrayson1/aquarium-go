@@ -42,6 +42,16 @@ import { emeraldCrab } from './emerald_crab';
 import { tuxedoUrchin } from './tuxedo_urchin';
 import { sandSiftingStarfish } from './sand_sifting_starfish';
 import { bubbletipAnemone } from './bubbletip_anemone';
+// chunk 17 (ADR-0053), wave C: big marine fish
+import { blueTang } from './blue_tang';
+import { nasoTang } from './naso_tang';
+import { queenAngelfish } from './queen_angelfish';
+import { clownTriggerfish } from './clown_triggerfish';
+import { pantherGrouper } from './panther_grouper';
+// chunk 17, wave D: the bottom sharks (Shark & Ray Husbandry)
+import { coralCatshark } from './coral_catshark';
+import { epauletteShark } from './epaulette_shark';
+import { brownbandedBambooShark } from './brownbanded_bamboo_shark';
 
 export {
   cleanerShrimp,
@@ -84,6 +94,14 @@ export {
   tuxedoUrchin,
   sandSiftingStarfish,
   bubbletipAnemone,
+  blueTang,
+  nasoTang,
+  queenAngelfish,
+  clownTriggerfish,
+  pantherGrouper,
+  coralCatshark,
+  epauletteShark,
+  brownbandedBambooShark,
 };
 
 /** Non-starter marine species, in roster priority order. The marine starters live in ../ocellaris_clownfish.ts and ../lined_seahorse.ts. */
@@ -128,4 +146,13 @@ export const MARINE_SPECIES: SpeciesDefinition[] = [
   tuxedoUrchin,
   sandSiftingStarfish,
   bubbletipAnemone,
+  // chunk 17, wave C
+  blueTang,
+  nasoTang,
+  queenAngelfish,
+  clownTriggerfish,
+  pantherGrouper,
+  coralCatshark,
+  epauletteShark,
+  brownbandedBambooShark,
 ];

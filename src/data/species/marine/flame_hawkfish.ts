@@ -90,7 +90,7 @@ export const flameHawkfish: SpeciesDefinition = {
   baseValue: 80,
   rarity: 'uncommon',
   visitorAppeal: 0.85,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'All are wild-collected.',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2015)', note: 'Least Concern. Its colour fades in captivity without a varied, enriched diet.' },

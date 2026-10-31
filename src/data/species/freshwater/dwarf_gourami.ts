@@ -91,7 +91,7 @@ export const dwarfGourami: SpeciesDefinition = {
   baseValue: 9,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: [], hint: 'Available from the start.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Every fish sold is farm-bred; many imports carry the untreatable dwarf gourami iridovirus, so quarantine new fish.',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2010)', note: 'Least Concern; feral populations exist in the USA, Colombia and Singapore. Never release aquarium fish.' },

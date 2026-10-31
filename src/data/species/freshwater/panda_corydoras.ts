@@ -85,7 +85,7 @@ export const pandaCorydoras: SpeciesDefinition = {
   baseValue: 7,
   rarity: 'common',
   visitorAppeal: 0.65,
-  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Near Threatened (IUCN)',

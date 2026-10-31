@@ -7,9 +7,11 @@ import { clownfishModule } from './systems/clownfish';
 import { seahorseModule } from './systems/seahorse';
 import { livebearerModule } from './systems/livebearer';
 import { shrimpBerriedModule, shrimpLarvalMarineModule } from './systems/shrimp';
-import { eggScatterModule, substrateSpawnerModule, caveSpawnerModule, mouthbrooderModule, snailClutchModule, genericEggLayerModule } from './systems/spawners';
+import { eggScatterModule, substrateSpawnerModule, caveSpawnerModule, mouthbrooderModule, snailClutchModule, genericEggLayerModule, cichlidSubstrateModule, damselNestModule } from './systems/spawners';
 import { fragmentationModule, notInGameModule } from './systems/inert';
 import { fissionModule } from './systems/fission';
+import { eggCaseModule } from './systems/eggCase';
+import { rayViviparousModule } from './systems/rayViviparous';
 
 let MODULES: Record<BreedingSystemId, BreedingModule> | null = null;
 
@@ -31,6 +33,10 @@ function modules(): Record<BreedingSystemId, BreedingModule> {
       egg_layer_generic: genericEggLayerModule,
       fragmentation: fragmentationModule,
       fission: fissionModule,
+      egg_case: eggCaseModule,
+      ray_viviparous: rayViviparousModule,
+      cichlid_substrate: cichlidSubstrateModule,
+      damsel_nest: damselNestModule,
       not_in_game: notInGameModule,
     };
   }

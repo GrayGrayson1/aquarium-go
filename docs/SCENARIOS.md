@@ -201,7 +201,8 @@ animals are referred to **by name** elsewhere in the recipe (a listing, a show e
 ### `checks`
 
 Each check is judged once, `afterHours` game hours after the scenario opens (after any warm-up), by the headless
-script, `__AQ.scenario.run` and the tests. `tank` and `species` narrow what's counted. Each measure is a range,
+script, `__AQ.scenario.run` and the tests. `tank`, `species` and `category` (`fish`, `invertebrate`, `amphibian`,
+`coral` or `anemone`) narrow what's counted. Each measure is a range,
 `{ "min": …, "max": … }` (both ends included): `alive`, `births`, `deaths`, `clutches`, `money`, `sales`, `ammonia`,
 `nitrite`, `nitrate`, `tempC`, `pH`, `oxygen`, and the average `health`, `hunger` and `stress` of the animals counted.
 A check without a usable `afterHours` (0 to 8,760) fails, rather than being skipped.

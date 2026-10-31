@@ -86,7 +86,7 @@ export const neriteSnail: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.4,
-  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Almost all trade nerites are collected from East African estuaries; they are not bred commercially in freshwater.',
   conservation: {

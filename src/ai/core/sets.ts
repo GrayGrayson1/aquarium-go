@@ -154,6 +154,16 @@ export interface SetProfile {
   anemone?: boolean;
   /** A crawler on rock rests on the rock as drawn, inside the collider box round it (rockshape.ts; loco stepCrawl). */
   meshCling?: boolean;
+  // ── chunk 17 ──
+  /** Cruises just under the surface (the arowana): its band grows down from the top by a few body heights, and the
+   * surface pushes it away only within those (as the floor does a big bottom-hugger). */
+  surfaceCruiser?: boolean;
+  /** Rests on a sand bed with sand flicked over its body, eyes showing (the motoro): `rt.ai.sandCover` (sand.ts). */
+  sandCover?: boolean;
+  /** A flat, wide disc of a swimmer (the motoro): held off the floor and surface by its height, not its half width. */
+  flatSwim?: boolean;
+  /** Rolls onto its side to rest, as clown loaches do (cosmetic: cosmetics.ts writeOrientation). */
+  sideRest?: boolean;
 }
 
 const FISH: BodyEnvelope = { hx: 0.5, hy: 0.14, hz: 0.07 };
@@ -768,7 +778,130 @@ export const SET_PROFILES: Record<BehaviorSetId, SetProfile> = {
     startleSens: 0.3,
     ignoreFish: true,
   }),
+  // ── chunk 17 (ADR-0053): big-tank species ──
+  // oscar: a big, deep-bodied cichlid that hovers and patrols the middle and lower water on its pectorals, noses and digs
+  // at the sand, begs at the glass when hungry (brain.ts) and settles on the bottom to rest (the sulk after a fright)
+  cichlid_large: base({
+    body: { hx: 0.5, hy: 0.22, hz: 0.09 },
+    hover: 0.6,
+    maxPitch: 0.55,
+    tailFreq: 0.75,
+    acts: { patrol: 2.6, hover: 2, forage: 2.2, inspect_glass: 1.4, inspect_decor: 1, rest: 0.6 },
+    rest: 'bottom',
+    startleSens: 0.7,
+  }),
+  // clown loach: a busy shoal low over the floor, foraging, piling into caves together and resting there
+  loach_shoal: base({
+    body: { hx: 0.5, hy: 0.15, hz: 0.08 },
+    hover: 0.3,
+    maxPitch: 0.75,
+    tailFreq: 1.35,
+    acts: { forage: 4, cruise: 1.6, hide: 1.8, rest: 1.1, inspect_decor: 0.8 },
+    shoal: true,
+    rest: 'cave',
+    bottomHugger: true,
+    startleSens: 0.9,
+  }),
+  // black ghost knifefish: out only at night; the body stays straight while the long fin under it ripples, so it hovers,
+  // backs up and slides sideways without turning (hover near 1); by day it sleeps in a tube or cave
+  knifefish: base({
+    body: { hx: 0.5, hy: 0.1, hz: 0.05 },
+    hover: 0.95,
+    maxPitch: 0.35,
+    tailFreq: 0.5,
+    acts: { hover: 2.6, cruise: 2, forage: 2, inspect_decor: 1.2, hide: 0.8 },
+    rest: 'cave',
+    nightOnly: true,
+    startleSens: 1,
+  }),
+  // ornate bichir: lies on the floor propped on its pectoral fins most of the day, rises now and then to gulp air, and
+  // prowls the bottom slowly at dusk and in the night
+  bichir: base({
+    body: { hx: 0.5, hy: 0.07, hz: 0.07 },
+    hover: 0.15,
+    maxPitch: 0.9,
+    tailFreq: 1.15,
+    acts: { rest: 3, forage: 2.6, cruise: 0.9, hide: 1, inspect_decor: 0.5 },
+    airBreath: [240, 600],
+    rest: 'bottom',
+    bottomHugger: true,
+    startleSens: 0.6,
+  }),
+  // silver arowana: cruises the full length of the tank just under the surface, body straight, turning wide at the
+  // ends; a startled arowana bursts away (in a tank, the moment it can hurt itself)
+  arowana: base({
+    body: { hx: 0.5, hy: 0.12, hz: 0.05 },
+    hover: 0.35,
+    maxPitch: 0.3,
+    tailFreq: 0.8,
+    acts: { cruise: 5, patrol: 1.5, hover: 0.8, inspect_glass: 0.3 },
+    startleSens: 1.2,
+    surfaceCruiser: true,
+  }),
+  // clown triggerfish: sculls about on its dorsal and anal fins with its body held stiff, hovering and pivoting, noses
+  // and digs over rock and sand, comes to the glass, and at night wedges itself into a crevice (spine locked)
+  triggerfish: base({
+    body: { hx: 0.5, hy: 0.24, hz: 0.08 },
+    hover: 0.85,
+    maxPitch: 0.6,
+    tailFreq: 0.6,
+    acts: { inspect_decor: 3, forage: 2.4, hover: 1.6, inspect_glass: 1.2, cruise: 1 },
+    rest: 'cave',
+    startleSens: 0.6,
+  }),
+  // the bottom sharks (coral catshark, bamboo shark; the epaulette walks: speciesProfile): lie still on the floor or
+  // under a ledge by day, glide slow and sinuous low over the sand, nose through it for food, and are about more at
+  // night (behaviorTraits.nocturnal); they never hover in open water
+  benthic_shark: base({
+    body: { hx: 0.5, hy: 0.06, hz: 0.07 },
+    hover: 0,
+    maxPitch: 0.3,
+    tailFreq: 0.55,
+    acts: { rest: 3.2, forage: 2.6, cruise: 1.2, patrol: 0.9, inspect_glass: 0.4, inspect_decor: 0.6 },
+    rest: 'cave',
+    bottomHugger: true,
+    startleSens: 0.35,
+  }),
+  // motoro stingray: glides flat over the floor rippling the edge of its disc, rests flat on the sand, sweeps it for
+  // food and comes up the front glass to beg at feeding time; a round disc (hx about hz), never tilts
+  stingray: base({
+    body: { hx: 0.5, hy: 0.06, hz: 0.45 },
+    hover: 0.1,
+    maxPitch: 0.06,
+    tailFreq: 0.5,
+    acts: { forage: 3.2, rest: 2.4, cruise: 1.6, inspect_glass: 1.2 },
+    rest: 'bottom',
+    bottomHugger: true,
+    startleSens: 0.5,
+    sandCover: true,
+    flatSwim: true,
+  }),
 };
+
+/**
+ * chunk 17 — one species' variant of its set, from its specialBehaviors:
+ * - 'fin_walk': the epaulette shark walks on its paired fins over sand and rock (Porter 2022), and swims only in short
+ *   bursts, as the axolotl does;
+ * - 'sand_wallow': the fahaka rests settled on the sand, not draped on a leaf as a pea puffer does;
+ * - 'side_rest': the clown loach lies on its side to rest (the "is it dead?" moment its encyclopedia warns of).
+ */
+const VARIANT_OF: Record<string, Partial<SetProfile>> = {
+  fin_walk: { loco: 'walk', crawlMask: SURF_FLOOR, canSwim: true, crawlGait: 'walk', maxPitch: 0.6 },
+  sand_wallow: { rest: 'bottom' },
+  side_rest: { sideRest: true },
+};
+const variants = new Map<string, SetProfile>();
+export function speciesProfile(sp: { id: string; behaviorSet: string; specialBehaviors?: readonly string[] }): SetProfile {
+  const set = setProfile(sp.behaviorSet);
+  const keys = (sp.specialBehaviors ?? []).filter((b) => VARIANT_OF[b]);
+  if (!keys.length) return set;
+  let v = variants.get(sp.id);
+  if (!v) {
+    v = Object.assign({ ...set }, ...keys.map((k) => VARIANT_OF[k])) as SetProfile;
+    variants.set(sp.id, v);
+  }
+  return v;
+}
 
 export function setProfile(id: string): SetProfile {
   return (SET_PROFILES as Record<string, SetProfile>)[id] ?? SET_PROFILES.livebearer;

@@ -15,7 +15,7 @@ import { clamp, clamp01, lerp, rchance, rdur, rnd, rrange, safeNormalize } from 
 import { SURF_FLOOR, floorAt, nearestSurface, pointFree } from './env';
 import { bodyHY, bodySide, findParticle, randomSurfacePoint, randomSwimPoint } from './nav';
 import { consumeSpitRequest, spitRequested, spitWeight } from './spit'; // lane:brackish
-import { buries, rockSleep, sandEmerge, sandHold, updateBuried } from './sand'; // chunk 16
+import { buries, rockSleep, sandEmerge, sandHold, updateBuried, updateSandCover } from './sand'; // chunk 16
 import { intruder, mateOf } from './reef'; // chunk 16, wave B
 import { anemonePlace } from './anemone'; // chunk 16, wave B
 
@@ -93,7 +93,7 @@ export function plan(a: Agent, w: AIWorld): void {
   }
   if (a.setId === 'seahorse' && a.partnerId && w.byId.has(a.partnerId)) addW('pair_follow', 0.6);
   if (a.sp.category === 'fish' && a.set.loco === 'swim' && w.agents.some((o) => o.setId === 'shrimp_cleaner' && o.act === 'clean_station' && o.actPhase >= 1)) addW('visit_cleaner', 0.35);
-  if ((a.setId === 'goldfish' || t.has('food_obsessed') || a.setId === 'betta' || a.setId === 'pea_puffer' || a.setId === 'cichlid_discus') && a.hunger > 0.45) addW('beg', (a.hunger - 0.3) * (a.setId === 'goldfish' ? 3 : 1.5));
+  if ((a.setId === 'goldfish' || t.has('food_obsessed') || a.setId === 'betta' || a.setId === 'pea_puffer' || a.setId === 'cichlid_discus' || a.setId === 'cichlid_large' || a.setId === 'stingray') && a.hunger > 0.45) addW('beg', (a.hunger - 0.3) * (a.setId === 'goldfish' ? 3 : 1.5));
   if (a.setId === 'betta' && a.c.sex !== 'female' && env.daylight > 0.5 && (t.has('nest_builder') || (a.stress < 0.25 && a.hunger < 0.5))) addW('nest_build', t.has('nest_builder') ? 0.3 : 0.07);
   if (a.setId === 'livebearer' && a.c.sex !== 'male') delete WEIGHTS.display;
   if (a.sp.behaviorTraits.glassSurfing > 0.02 && a.stress > 0.55) addW('glass_surf', a.sp.behaviorTraits.glassSurfing * (a.stress - 0.5) * 30);
@@ -563,6 +563,7 @@ export function stepAgent(a: Agent, w: AIWorld, dt: number): void {
     if (a.loco === 'swim') sandHold(a, w);
     updateBuried(a, w);
   }
+  if (a.set.sandCover) updateSandCover(a, w, dt);
   writeOrientation(a, w, dt);
   cosmetics(a, w, dt);
   a.rt.target = a.ctrl.hasGoal ? a.ctrl.goal : undefined;

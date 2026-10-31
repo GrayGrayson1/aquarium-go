@@ -15,7 +15,7 @@ import { speciesPair } from '@/sim/compat';
 import { breedingSystemInfo } from '@/sim/life/breeding';
 import { PanelLayout, SubView } from '../common/PanelLayout';
 import { usePanelGame, safe, useTempText } from '../common/hooks';
-import { speciesUnlocked } from '../common/derive';
+import { speciesUnlocked, lockHintOf } from '../common/derive';
 import { Button } from '@/ui/kit';
 import { Chip, Seg, EmptyState, SectionHead, Callout } from '../common/parts';
 import { SpeciesPortrait } from '../common/Portrait';
@@ -96,14 +96,14 @@ export function EncyclopediaPanel() {
 }
 
 /**
- * What an undiscovered species' tile should say. The data's unlock hint ("Unlocks with beginner freshwater fish") is
- * only true while the species is still locked: once it is unlocked, or sitting in the shop right now, say that instead.
+ * What an undiscovered species' tile should say: what is still missing (chunk 17, ADR-0053 round 3: its research, then
+ * the tank that holds an adult) while it is locked; once it is unlocked, or sitting in the shop right now, say that.
  */
 function availability(g: GameState, sp: SpeciesDefinition): { text: string; offerId?: string; available: boolean } {
   const offer = g.market.stock.find((o) => o.speciesId === sp.id && o.expiresHour > g.clock.hour) ?? g.market.stock.find((o) => o.speciesId === sp.id);
   if (offer) return { text: 'In the shop now', offerId: offer.id, available: true };
   if (safe(() => speciesUnlocked(g, sp), false)) return { text: 'Unlocked to buy', available: true };
-  return { text: sp.unlock?.hint || 'Keep exploring to discover', available: false };
+  return { text: lockHintOf(g, sp) || 'Keep exploring to discover', available: false };
 }
 
 function discoveredSet(g: GameState): Set<string> {
@@ -240,7 +240,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
             </div>
             {(() => {
               const avail = availability(g, sp);
-              if (!avail.available) return <p className="pn-p">{sp.unlock?.hint || 'Keep growing your aquarium to discover this animal.'}</p>;
+              if (!avail.available) return <p className="pn-p">{lockHintOf(g, sp) || 'Keep growing your aquarium to discover this animal.'}</p>;
               return (
                 <>
                   <p className="pn-p">{avail.offerId ? 'One is for sale in the shop right now. Bring it home to fill in this page.' : 'You can already buy this animal — it turns up in the shop from time to time. Bring one home to fill in this page.'}</p>

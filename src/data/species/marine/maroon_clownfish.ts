@@ -97,7 +97,7 @@ export const maroonClownfish: SpeciesDefinition = {
   baseValue: 40,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN Red List, assessed 2021)',

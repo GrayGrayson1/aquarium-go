@@ -96,7 +96,7 @@ export const miniatusGrouper: SpeciesDefinition = {
   baseValue: 150,
   rarity: 'rare',
   visitorAppeal: 0.95,
-  unlock: { requires: ['predators'], hint: 'Research Predator Husbandry (needs a public showroom) — it needs a 180-gallon tank and eats small fish.' },
+  unlock: { requires: ['predators'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected only; groupers are not bred for the aquarium trade.',
   conservation: {

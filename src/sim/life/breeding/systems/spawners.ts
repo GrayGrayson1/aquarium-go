@@ -188,6 +188,91 @@ export const snailClutchModule = makePairSpawner({
   },
 });
 
+/**
+ * chunk 17 — the substrate-spawning cichlids (the oscar; and, the owner's round 5, the discus, freshwater angelfish and
+ * German blue ram, which used the corydoras' module): the pair scrubs a surface clean, she lays her sticky eggs on it in
+ * rows and he fertilises them; the male fans them and the pair chase off anything that comes near, and he goes on
+ * guarding the wrigglers and the free-swimming fry (ADW; Seriously Fish). Unlike corydoras, the parents don't eat
+ * their eggs. Where each lays: a flat stone (oscar, ram), a smooth upright stone (discus: a breeding cone in a real
+ * tank), a broad leaf (angelfish).
+ */
+const CICHLID_SURFACE: Record<string, { where: string; noun: string; site: 'rock' | 'plants_mid' }> = {
+  oscar: { where: 'a flat stone', noun: 'stone', site: 'rock' },
+  german_blue_ram: { where: 'a flat stone', noun: 'stone', site: 'rock' },
+  discus: { where: 'a smooth upright stone', noun: 'stone', site: 'rock' },
+  freshwater_angelfish: { where: 'a broad leaf', noun: 'leaf', site: 'plants_mid' },
+};
+const surfaceOf = (sp: { id: string }) => CICHLID_SURFACE[sp.id] ?? CICHLID_SURFACE.oscar;
+
+export const cichlidSubstrateModule = makePairSpawner({
+  id: 'cichlid_substrate',
+  plan: basePlan({
+    phases: [
+      { stage: 'larvae', frac: 0.3, foods: [], natural: [], visual: 'keep', label: 'wrigglers' },
+      { stage: 'fry', frac: 0.7, foods: ['baby_brine', 'flake', 'pellet_small', 'daphnia'], natural: ['infusoria'], visual: 'fry_cloud', label: 'fry' },
+    ],
+    parentsEatEggs: false,
+    guardEggs: true,
+    guardYoung: true,
+    pairGuards: true,
+    yolkFrac: 0.3,
+    coverShelter: 0.3,
+    starveSeverity: 1,
+  }),
+  window: 'evening',
+  courtHours: [3, 8],
+  spawnHours: [1, 2],
+  spawnStage: 'spawning',
+  guardStage: 'guarding',
+  visual: 'eggs_adhesive',
+  site: 'rock',
+  layOf: (sp) => (surfaceOf(sp).site === 'rock' ? null : { site: surfaceOf(sp).site, visual: 'eggs_adhesive' }),
+  extraSites: 4,
+  maleRestFrac: 0.6,
+  text: {
+    court: (m, f, sp) => `${m.name} and ${f.name} are scrubbing ${surfaceOf(sp).where} clean with their mouths: the ${spPlural(sp)} are about to spawn.`,
+    spawn: (m, f, sp, n, tank, guardian) =>
+      `${f.name} laid ${plural(n, 'sticky egg')} in rows on the ${surfaceOf(sp).noun} and ${m.name} fertilised them.${guardian ? ` ${guardian.name} fans them, and the pair chase off anything that comes near.` : ''}`,
+  },
+});
+
+/**
+ * chunk 17 (the owner's round 5) — damselfish (the green chromis, which used the corydoras' module): the male clears a
+ * nest on the sand or rubble and dips and dashes to lead a female to it; she lays tiny sticky eggs there and he fans
+ * and guards them alone, eating any that fail, until they hatch two or three days later (Fishes of Australia; the
+ * species' notes). The larvae drift in open water and need live copepods: lost in a display tank, and a hard rear even
+ * in a nursery (only research labs have managed it).
+ */
+export const damselNestModule = makePairSpawner({
+  id: 'damsel_nest',
+  plan: basePlan({
+    phases: [
+      { stage: 'larvae', frac: 0.4, foods: ['copepod_live'], natural: ['copepods'], visual: 'fry_cloud', label: 'larvae' },
+      { stage: 'fry', frac: 0.6, foods: ['copepod_live', 'baby_brine'], natural: ['copepods'], visual: 'fry_cloud', label: 'fry' },
+    ],
+    parentsEatEggs: false,
+    guardEggs: true,
+    planktonic: true,
+    starveSeverity: 1.6,
+    coverShelter: 0.1,
+    yolkFrac: 0.05,
+  }),
+  window: 'morning',
+  courtHours: [1, 3],
+  spawnHours: [1, 2],
+  spawnStage: 'spawning',
+  guardStage: 'guarding',
+  visual: 'eggs_adhesive',
+  site: 'floor',
+  extraSites: 3,
+  maleRestFrac: 0.4,
+  text: {
+    court: (m, f, sp) => `${m.name} has cleared a nest on the sand and is dipping and dashing to lead ${f.name} to it: the ${spPlural(sp)} are about to spawn.`,
+    spawn: (m, f, sp, n, tank, guardian) =>
+      `${f.name} laid ${plural(n, 'tiny egg')} in ${m.name}’s nest.${guardian ? ` ${guardian.name} fans them and chases off any fish that comes near.` : ''} The larvae will need live copepods in a nursery.`,
+  },
+});
+
 export const genericEggLayerModule = makePairSpawner({
   id: 'egg_layer_generic',
   plan: basePlan({}),

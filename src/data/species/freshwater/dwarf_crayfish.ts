@@ -85,7 +85,7 @@ export const dwarfCrayfish: SpeciesDefinition = {
   baseValue: 15,
   rarity: 'uncommon',
   visitorAppeal: 0.75,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species: keep tanks healthy to reach 70 reputation and 200 husbandry mastery.' },
+  unlock: { requires: ['fw_intermediate'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Endangered (IUCN 2010)',

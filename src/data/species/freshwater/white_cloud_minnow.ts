@@ -85,7 +85,7 @@ export const whiteCloudMinnow: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.5,
-  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Data Deficient (IUCN 2010); nationally protected in China',

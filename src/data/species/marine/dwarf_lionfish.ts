@@ -95,7 +95,7 @@ export const dwarfLionfish: SpeciesDefinition = {
   baseValue: 85,
   rarity: 'rare',
   visitorAppeal: 0.95,
-  unlock: { requires: ['predators'], hint: 'Research Predator Husbandry (needs a public showroom) — venomous, and it eats small fish and shrimp.' },
+  unlock: { requires: ['predators'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected; captive breeding is rare and not commercial. New fish often need live food before they can be trained onto frozen.',
   conservation: {

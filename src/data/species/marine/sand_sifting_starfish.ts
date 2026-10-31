@@ -91,7 +91,7 @@ export const sandSiftingStarfish: SpeciesDefinition = {
   baseValue: 24,
   rarity: 'common',
   visitorAppeal: 0.5,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems — and it needs a big, deep sand bed.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'All are wild-collected; trade “sand sifters” mix this species with Archaster typicus.',
   conservation: { status: 'Not evaluated (IUCN)', note: 'Not assessed. Sand stars are heavily fished for the trade and most starve in tanks too small to feed them.' },

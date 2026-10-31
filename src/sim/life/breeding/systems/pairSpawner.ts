@@ -9,6 +9,7 @@
  * bristlenose plecos, Banggai cardinals and mystery snails with species-appropriate text.
  */
 import type { Clutch, Creature, GameState, SpeciesDefinition, Tank } from '@/types';
+import type { Rng } from '@/sim/rng';
 import type { SimContext } from '@/sim/context';
 import type { BreedingModule, CheckCtx, RearingPlan, StepEnv, StatusOut } from '../types';
 import { createClutch, releaseCarried } from '../clutch';
@@ -76,9 +77,18 @@ export interface PairSpawnerConfig {
   gate?(state: GameState, tank: Tank, sp: SpeciesDefinition): Gate;
   /** Eggs that can never hatch here (flavour text) — e.g. nerite eggs in freshwater. */
   infertile?(sp: SpeciesDefinition, tank: Tank): string | null;
+  /** chunk 17 — how many of the `n` eggs laid are fertile (shark egg cases: about half are duds). Absent: all of them. */
+  fertile?(rng: Rng, n: number, sp: SpeciesDefinition, tank: Tank): number;
+  /** chunk 17 — this clutch's incubation in game hours (egg cases hatch sooner in warm water). Absent: incubationHours. */
+  incubation?(sp: SpeciesDefinition, tank: Tank): number;
+  /** chunk 17 — game hours before a clutch of duds rots away. Absent: three incubations, at least 48. */
+  dudHours?(sp: SpeciesDefinition): number;
   text: {
     court(m: Creature, f: Creature, sp: SpeciesDefinition): string;
-    spawn(m: Creature, f: Creature, sp: SpeciesDefinition, n: number, tank: Tank, guardian: Creature | null): string;
+    /** `duds`: how many of the `n` laid are duds (chunk 17); every one of them when the clutch is all duds. */
+    spawn(m: Creature, f: Creature, sp: SpeciesDefinition, n: number, tank: Tank, guardian: Creature | null, duds?: number): string;
+    /** chunk 17 — the card's line for a clutch of nothing but duds. Absent: the spawn line. */
+    dudNotes?(f: Creature, sp: SpeciesDefinition, n: number): string;
     release?(g: Creature, n: number, sp: SpeciesDefinition): string;
   };
   status?(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number): StatusOut | null;
@@ -233,9 +243,14 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
   const n = rollClutchSize(ctx.rng, sp, f);
   const guardian = guardianOf(sp, m, f);
   const infertile = cfg.infertile?.(sp, tank) ?? null;
+  // chunk 17: some of a clutch can be duds (shark egg cases); a clutch of nothing but duds is laid and rots away
+  const fertile = !infertile && cfg.fertile ? Math.max(0, Math.min(n, cfg.fertile(ctx.rng, n, sp, tank))) : n;
+  const allDuds = !infertile && fertile <= 0;
+  const sterile = !!infertile || allDuds;
   const carried = !!cfg.carried && !!guardian;
   const lay = cfg.layOf?.(sp) ?? null;
   const site = carried ? null : pickSite(tank, infertile ? 'rock' : (lay?.site ?? cfg.site), `${f.id}:${hour.toFixed(1)}`, infertile ? 5 : cfg.extraSites);
+  const spawnText = cfg.text.spawn(m, f, sp, n, tank, sterile ? null : guardian, n - fertile);
   const cl = createClutch(state, {
     sp,
     tank,
@@ -243,24 +258,43 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
     father: m,
     hour,
     stage: carried ? 'in_pouch' : 'eggs',
-    count: n,
+    count: allDuds ? n : fertile,
     visual: carried ? 'pouch' : infertile ? 'eggs_adhesive' : (lay?.visual ?? cfg.visual),
-    nextStageHour: hour + (infertile ? Math.max(48, b.incubationHours * 3) : b.incubationHours),
+    nextStageHour: hour + (sterile ? (allDuds && cfg.dudHours ? cfg.dudHours(sp) : Math.max(48, b.incubationHours * 3)) : (cfg.incubation?.(sp, tank) ?? b.incubationHours)),
     anchor: site?.anchor,
     extraAnchors: site?.extra,
-    guardedById: guardian && !infertile ? guardian.id : undefined,
-    infertile: !!infertile,
-    notes: infertile ?? undefined,
+    guardedById: guardian && !sterile ? guardian.id : undefined,
+    infertile: sterile,
+    notes: infertile ?? (allDuds ? (cfg.text.dudNotes?.(f, sp, n) ?? spawnText) : undefined),
   });
+  // chunk 17: in a laying with both, the duds are a clutch of their own: they lie beside the good ones and rot away
+  if (!sterile && fertile < n && cfg.dudHours) {
+    const at = site?.extra[0] ?? site?.anchor;
+    createClutch(state, {
+      sp,
+      tank,
+      mother: f,
+      father: m,
+      hour,
+      stage: 'eggs',
+      count: n - fertile,
+      visual: lay?.visual ?? cfg.visual,
+      nextStageHour: hour + cfg.dudHours(sp),
+      anchor: at ? { ...at } : undefined,
+      infertile: true,
+      notes: cfg.text.dudNotes?.(f, sp, n - fertile),
+      quiet: true,
+    });
+  }
   for (const p of [m, f]) {
-    if (guardian && p === guardian && !infertile) {
+    if (guardian && p === guardian && !sterile) {
       setStage(p, cfg.guardStage, hour);
       p.repro.clutchId = cl.id;
       if (carried) p.repro.carryingUntilHour = cl.nextStageHour;
     } else startResting(p, hour, b.cooldownDays * 24 * (p === m ? cfg.maleRestFrac : 1));
   }
   const loud = toastWorthy(state, sp, 'spawn');
-  say(state, ctx, { kind: 'breeding', text: cfg.text.spawn(m, f, sp, n, tank, infertile ? null : guardian), tankId: tank.id, creatureId: f.id, toast: loud, ...(loud && !infertile ? { notice: breedNotice('eggs', f.name, n, tank) } : {}) });
+  say(state, ctx, { kind: 'breeding', text: spawnText, tankId: tank.id, creatureId: f.id, toast: loud, ...(loud && !sterile ? { notice: breedNotice('eggs', f.name, fertile, tank) } : {}) });
   if (infertile && throttleTank(tank, `infertile_${sp.id}`, hour, 24 * 7)) say(state, ctx, { kind: 'info', text: infertile, tankId: tank.id });
 }
 

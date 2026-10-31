@@ -90,7 +90,7 @@ export const betta: SpeciesDefinition = {
   baseValue: 18,
   rarity: 'common',
   visitorAppeal: 0.85,
-  unlock: { requires: ['fw_basic'], hint: 'Starter species — otherwise reach 40 reputation or build husbandry mastery.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Vulnerable (IUCN, wild populations)',

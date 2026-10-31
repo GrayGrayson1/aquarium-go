@@ -65,6 +65,8 @@ export interface RearingPlan {
   guardianEatsFry: boolean;
   /** The guardian keeps tending the hatched young (betta larvae in the nest, pleco wrigglers in the cave). */
   guardYoung?: boolean;
+  /** chunk 17: both parents guard (the cichlid pairs): neither ever eats its own brood, and either one fans the eggs. */
+  pairGuards?: boolean;
   /** Larvae drift in open water: lost to filters/skimmers/tankmates unless reared in a nursery. */
   planktonic: boolean;
   /** Eggs hatch only after lights-out (clownfish). */
@@ -81,6 +83,11 @@ export interface RearingPlan {
   yolkFrac: number;
   /** Explanation used when `larvaeViable` is false. */
   nonViableText?: string;
+  /**
+   * chunk 17 — with no rearing phases the young are minted at hatch; this is their age then in game days (egg cases:
+   * newly hatched, however long the case took). Absent: the time since laying, as before.
+   */
+  bornAgeDays?: number;
 }
 
 /** Everything a module needs to judge whether a pair can breed right now. */

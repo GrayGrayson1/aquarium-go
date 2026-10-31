@@ -98,7 +98,7 @@ export const ocellarisClownfish: SpeciesDefinition = {
   baseValue: 30,
   rarity: 'common',
   visitorAppeal: 1,
-  unlock: { requires: ['marine_basics'], hint: 'Starter species — otherwise research Marine Systems, or reach 150 reputation as a seasoned keeper.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN Red List, assessed 2021)',

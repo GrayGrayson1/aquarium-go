@@ -96,7 +96,7 @@ export const scarletHermitCrab: SpeciesDefinition = {
   baseValue: 7,
   rarity: 'common',
   visitorAppeal: 0.45,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected in the Caribbean and Florida (a licensed Florida "marine life" catch).',
   conservation: {

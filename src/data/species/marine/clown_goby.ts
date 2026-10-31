@@ -97,7 +97,7 @@ export const clownGoby: SpeciesDefinition = {
   baseValue: 45,
   rarity: 'uncommon',
   visitorAppeal: 0.65,
-  unlock: { requires: ['reef'], hint: 'Research Reef Systems — it lives among branching corals.' },
+  unlock: { requires: ['reef'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Both wild-collected (~$25) and captive-bred (Biota, Proaquatix; ~$60–90) fish are sold.',
   conservation: {

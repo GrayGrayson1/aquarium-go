@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import type { Creature, CreatureRuntime, PersonalityTag, SpeciesDefinition } from '@/types';
 import type { PersonalityModifiers } from '@/sim/life';
 import { reproProgress } from '@/sim/life/breeding';
-import { setProfile, type ActId, type Loco, type SetProfile } from './sets';
+import { setProfile, speciesProfile, type ActId, type Loco, type SetProfile } from './sets';
 import { clamp, clamp01, hashString } from './math';
 import type { SurfaceHit } from './env';
 import { makeHit } from './env';
@@ -383,7 +383,7 @@ export function makeRuntime(c: Creature, tankId: string): CreatureRuntime {
 }
 
 export function createAgent(c: Creature, sp: SpeciesDefinition, rt: CreatureRuntime): Agent {
-  const set = setProfile(sp.behaviorSet);
+  const set = speciesProfile(sp);
   const seed = hashString(c.id) || 1;
   const a: Agent = {
     id: c.id,

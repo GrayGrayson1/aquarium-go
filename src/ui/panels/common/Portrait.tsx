@@ -43,9 +43,13 @@ function planFor(sp: SpeciesDefinition | undefined, vis?: CreatureVisualParams):
     case 'frog_aquatic':
       return 'frog';
     case 'loach_eel':
+    case 'knifefish': // chunk 17: the long, slim black ghost and bichir
+    case 'bichir':
+    case 'benthic_shark': // the slim bottom sharks
       return 'eel';
     case 'hillstream':
     case 'dragonet':
+    case 'stingray': // the motoro's flat disc
       return 'flat';
     case 'sessile':
       return sp.category === 'anemone' ? 'anemone' : 'coral';

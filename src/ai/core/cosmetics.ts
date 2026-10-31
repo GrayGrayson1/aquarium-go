@@ -296,6 +296,8 @@ export function writeOrientation(a: Agent, w: AIWorld, dt: number): void {
     }
     if (a.act === 'host' && a.actPhase === 2) rollT += Math.sin(w.time * 6 + a.noiseOff) * 0.35; // anemone bathing wiggle
     if (a.setId === 'axolotl' && a.act === 'inspect_glass' && a.actPhase >= 1) rollT += Math.sin(w.time * 0.9 + a.noiseOff) * 0.25; // curious head tilt
+    // chunk 17: a clown loach at rest lies over on its side (each one always the same side)
+    if (a.set.sideRest && (a.act === 'rest' || a.act === 'sleep' || a.act === 'hide') && a.speed < a.L * 0.15) rollT = (a.noiseOff % 2 < 1 ? 1 : -1) * 1.3;
     const cur = rt.roll;
     rt.roll = cur + wrapAngle(rollT - cur) * (1 - Math.exp(-4 * dt));
   }

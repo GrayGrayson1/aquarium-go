@@ -85,7 +85,7 @@ export const fancyGoldfish: SpeciesDefinition = {
   baseValue: 15,
   rarity: 'common',
   visitorAppeal: 0.8,
-  unlock: { requires: ['fw_coldwater'], hint: 'Unlocks with cool-water systems: research Cool-water Systems, or reach 90 reputation and 250 husbandry mastery.' },
+  unlock: { requires: ['fw_coldwater'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Domestic breeds (wild species Least Concern); invasive where released',

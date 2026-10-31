@@ -6856,11 +6856,300 @@
       "tasks": [],
       "tests": [],
       "evidence": [
-        "Chunk 16 (2026-10-25): the four checks pass on 66e4a37 in ~/LocalTest/AquariumGo: npm run typecheck exit 0; npm test 266 files and 3,814 tests passed; npm run build exit 0; npm run e2e 335 of 335 passed (40.9 min). The fresh review (Opus 5.5, max effort) on 1b929a7..5068399 and a confirmation review on 5068399..10a96ab: every blocker fixed (e10386b, 66e4a37), the confirmation's re-check of 66e4a37 clean. Own testing as PLAN.md chunk 16's Built notes record (galleries, the two lab presets at desktop and phone widths, a headless week, 0.7.0 saves). The owner said release once green (ADR-0052 decision 14); 0.8.0 follows."
+        "Released as 0.8.0 on 2026-10-25 at the owner's go-ahead (ADR-0052 decision 14, \"Release once green\"). The first Pages build (0289eaf) failed two AI tests that pass on the Mac; the fixes (4ff2f66 to 96c950c, each reviewed) pass the four checks on 96c950c in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 266 files, 3,814 tests; build exit 0; e2e 335 of 335 (40.6 min). main 2935a54 (its tree is 96c950c's): Pages run 40253358674 deployed it; the shop server dep-dbfapgks728c73eo17vg (/health version 0.8.0, build 87e2d967e8d95f40, the game's shared build hash) and the Render static site dep-dbfap88m7kps738d36mg; both version.json files read 2935a54, 0.8.0; the live smoke 27 of 27."
       ],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
+    },
+    {
+      "id": "BIG-001",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The big freshwater six: oscar, clown loach, black ghost knifefish, fahaka puffer, ornate bichir, silver arowana.",
+      "acceptance": [
+        "Each a full species (sourced data, genetics with real forms only, art, behaviour, encyclopedia) gated by Big-water Freshwater and the tank that holds an adult; the arowana's wild collection and state bans said plainly (ADR-0053 round 2)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/species-fw.test.ts",
+        "src/ai/core/sets17.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: all six in the lab's 'Big-tank species' at 1600 × 1000 and 390 × 844, young beside adults; sets17 holds on 31 nudged starts."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§8"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-002",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Koi and its variety model.",
+      "acceptance": [
+        "Koi varieties from documented genes and line-bred stand-ins (Kohaku, Sanke, Showa, Utsuri, Ogon, Tancho, Doitsu, Ginrin, butterfly as a rare form); cool water; gated by Cool-water Systems, Big-water Freshwater and the tank; a Koi show class."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/genetics-expansion.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the 'Koi grand display' preset shows the Kohaku, Showa and Taisho Sanke side by side, at desktop and phone widths."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§8"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-003",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The motoro stingray.",
+      "acceptance": [
+        "Venomous and state bans in its notes; gated by Shark & Ray Husbandry and the 500; live young (ray_viviparous); rests buried in sand (ADR-0053 round 4); the ray's own art."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/breeding-chunk17.test.ts",
+        "src/ai/core/sets17.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the motoro buried in the sand with its eyes showing and gliding flat; a pair gave birth to pups in the 'Sharks and a ray' preset."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§6",
+        "§7",
+        "§8"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-004",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The silver mono and spotted scat.",
+      "acceptance": [
+        "Brackish species with their salinity ranges and groups; gated by Brackish Estuaries and the tank; excellent together."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/species-brackish.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: mono and scat, young (the scat's ruby phase) and grown, in the lab's estuary."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§9"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-005",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The big marine five: blue tang, naso tang, queen angelfish, clown triggerfish, panther grouper.",
+      "acceptance": [
+        "Each a full species gated by its research and the tank; the yellow-belly blue tang a rare form; the matrix rows (design §11) pinned."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/species-marine.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the five in the lab, young beside adults (the spotted young grouper, the barred young queen angel)."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§10",
+        "§11"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-006",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The three bottom sharks: coral catshark, epaulette shark, brown-banded bamboo shark.",
+      "acceptance": [
+        "Gated by Marine Systems, Shark & Ray Husbandry and the tank (the bamboo shark the 1,000); egg cases; the epaulette walks; the shark matrix pinned."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/breeding-chunk17.test.ts",
+        "src/ai/core/sets17.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the three sharks in the lab (the banded young bamboo shark; the epaulettes walking on their fins); bottom sharks keep low (about 1 to 9 % of their time above 40 % of the depth, patrolling)."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§6",
+        "§7",
+        "§10",
+        "§11"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-007",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The tank gate for every species: the shop stocks a species only once the smallest tank that holds an adult is unlocked.",
+      "acceptance": [
+        "requiredUnlocks adds the tank key for all 97 species; locked cards say what's missing (ADR-0053 round 3); offers already stocked for a now-gated species are dropped in the v4 migration; owned animals untouched."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/tank-gate.test.ts",
+        "tests/sim/species-chunk17.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: in a new game the locked angelfish card reads 'Comes into the shop with the 40 Gallon Breeder: reach 25 reputation or raise a clutch.'; at 25 reputation the shop announces 'New arrivals at the shop: freshwater angelfish, swordtails.' and stocks them."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§3"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-008",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The two research projects: Big-water Freshwater and Shark & Ray Husbandry.",
+      "acceptance": [
+        "Names, blurbs, needs and costs as the owner approved (ADR-0053 round 3)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the oscar's keys (fw_large, the 180 gallon) bring 'New arrivals at the shop: ornate bichirs, oscars, fahaka puffers.'"
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§4"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-009",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Foods sold with their animals.",
+      "acceptance": [
+        "Five new foods (owner's names, words, prices); a new food is on sale, ordered by staff and suggested in hints only once an animal that eats it can be bought."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/fixtures/food-rules-pin.json"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: none of the five foods is on sale in a new game; with the oscar's keys four come on sale and Koi Sticks still waits for koi."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§5"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-010",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Breeding: egg cases, live young, and the oscar and koi on proper systems.",
+      "acceptance": [
+        "egg_case (duds, a lone female's empty cases, rot, Lift out, warm water, each case's fate by chance, hatch at night into a pup); ray_viviparous (a male needed, 1–8 pups, rests); the oscar, discus, angelfish and ram on the cichlid pair module and the green chromis on the damselfish one (ADR-0053 rounds 5 and 6)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/breeding-chunk17.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "The confirmation review's blocker (a cichlid_substrate mother ate her own wrigglers and fry) fixed in cf0406d and d43f121 (pairGuards: neither parent eats its brood, either fans the eggs, even with the male moved out as his card says), tests into the fry; egg cases and the chromis's sand nest laid clear of every rock and coral (cf0406d, d43f121) and on the sand as drawn (1913a64), with tests. Own testing: an epaulette pair laid two duds and 'Lift out' took them out; the bamboo shark's and catshark's cases seen lying on the open sand."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§6"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-011",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Compatibility: data, exception rules and the matrix's tested rows.",
+      "acceptance": [
+        "Every new species against each other and its riskiest and best existing tankmates, as design §11 and the research tables say (stricter where documented)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/species-fw.test.ts",
+        "tests/sim/species-marine.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the move preview's reasons in the lab (the panther grouper with the tangs and queen angel conditional; the fahaka with the oscar incompatible, 'The fahaka bites chunks out of tankmates and must live alone.')."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§11"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "BIG-012",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Saves v4, the lab presets, sellers and the show.",
+      "acceptance": [
+        "SCHEMA_VERSION 4 (a 0.8.0 save loads, a v4 save is too new for 0.8.0); three presets (48 h, nobody dies); the two sellers and the Koi show as the owner approved."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/core-save-forward-safety.test.ts",
+        "tests/sim/persistence-05.test.ts",
+        "tests/sim/scenario-presets.test.ts",
+        "tests/sim/scenario-run.test.ts",
+        "tests/sim/species-chunk17.test.ts"
+      ],
+      "evidence": [
+        "Chunk 17 done 2026-10-30 (Skye; finished by Rubble). The four checks on 03736be in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (Opus 5.5, max effort) of d5a3b17..2b1ce83, the confirmation review of 2b1ce83..12bb890 and two re-checks, every blocker fixed (12bb890, cf0406d, d43f121, 1913a64); the nudged-start AI sweep (PROBE_P 0 to 30): every AI test passes but B-217's two collider starts, the same frames as 0.8.0's. Released as 0.9.0 (PLAN.md \"Releases\").",
+        "Own testing: the three presets built at desktop and phone widths; 'Big-tank species' a game week headless with no deaths; 0.8.0 saves (Skye, made by 0.8.0 itself) load with nothing repaired and drop only the gated offers; a v4 save is too new for 0.8.0."
+      ],
+      "status": "GREEN",
+      "designSections": [
+        "§12",
+        "§13",
+        "§14"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
     }
   ]
 }

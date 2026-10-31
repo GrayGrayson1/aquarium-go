@@ -250,6 +250,18 @@ export const SHOW_CLASSES: ShowClassDef[] = [
     formLabel: 'Body & finnage',
     icon: 'Fish',
   },
+  // chunk 17 (ADR-0053 round 3): koi are the show fish of the hobby; a class from club shows up (data, not a new tier)
+  {
+    id: 'koi',
+    name: 'Koi',
+    short: 'Koi',
+    kind: 'livestock',
+    blurb: 'Body shape, clean white skin, deep even colour and a crisp, balanced pattern. A big koi is a prize.',
+    species: ['koi'],
+    standard: { form: 25, colour: 25, pattern: 20, size: 15, condition: 15 },
+    formLabel: 'Body',
+    icon: 'Fish',
+  },
   {
     id: 'clownfish_designer',
     name: 'Designer clownfish',

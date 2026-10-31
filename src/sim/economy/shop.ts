@@ -2,14 +2,15 @@
  * Livestock shop: species availability, daily demand random walk + trend events, pre-rolled stock and
  * mid-day specials. OWNER: lane "market".
  */
-import type { GameState, ShopOffer, Creature, SpeciesDefinition, Sex, MarketTrend, EventNotice } from '@/types';
+import type { GameState, ShopOffer, Creature, SpeciesDefinition, Sex, MarketTrend, EventNotice, FoodDef } from '@/types';
 import type { Rng } from '../rng';
 import { nextId } from '../ids';
 import { emitEvent } from '../context';
 import { findSpecies, listSpecies } from '@/data/species';
 import { ROSTER } from '@/data/species/roster';
 import { SELLERS, type SellerDef } from '@/data/buyers';
-import { isUnlocked, waterClassKeys } from '../facility';
+import { isUnlocked, waterClassKeys, tankTierFor, tankKeyFor, unlockLabel } from '../facility';
+import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { createCreature, assignPrismatic, isPrismatic, isLotOffer } from '../life';
 import { generateName, takenNames } from '../life/names';
 import { mulberry32, hashString } from '../rng';
@@ -21,8 +22,19 @@ import * as dmath from '../dmath';
 
 // ───────────────────────────── availability ─────────────────────────────
 
-/** Unlock keys a species needs. Starter species with no explicit requirement fall back to their roster group key. */
+/**
+ * Unlock keys a species needs: its own research (or the starter's roster group key, or its water type's research),
+ * and (chunk 17, ADR-0053 decision 4) the unlock of the smallest tank that holds an adult (`tankKeyFor`), so the shop
+ * never sells an animal the player can't yet house grown.
+ */
 export function requiredUnlocks(sp: SpeciesDefinition): string[] {
+  const keys = ownUnlocks(sp);
+  const tank = tankKeyFor(sp);
+  return tank && !keys.includes(tank) ? [...keys, tank] : keys;
+}
+
+/** The keys a species needs before the tank gate: its own, the starter's roster key, or its water type's research. */
+function ownUnlocks(sp: SpeciesDefinition): string[] {
   if (sp.unlock?.requires?.length) return sp.unlock.requires;
   if (sp.isStarter) {
     const r = ROSTER.find((e) => e.id === sp.id);
@@ -38,12 +50,51 @@ export function requiredUnlocks(sp: SpeciesDefinition): string[] {
   return best ?? [];
 }
 
+const lowerFirst = (s: string): string => s.charAt(0).toLowerCase() + s.slice(1);
+const ruleHint = (key: string): string => UNLOCK_RULE_BY_KEY[key]?.hint ?? `Unlock ${unlockLabel(key)}.`;
+
+/**
+ * chunk 17 (ADR-0053 round 3) — what a locked species' card says: built from whatever is still missing, the research's
+ * hint first, then the tank's ("It also waits for the 240 Gallon: …", or "Comes into the shop with the 240 Gallon: …"
+ * when the tank is all that's left). Null when nothing is missing (the species is in the shop's range).
+ */
+export function speciesLockHint(state: GameState, sp: SpeciesDefinition): string | null {
+  if (sp.id === state.starterId) return null;
+  const missing = requiredUnlocks(sp).filter((k) => !isUnlocked(state, k));
+  if (!missing.length) return null;
+  const tier = tankTierFor(sp);
+  const tankKey = tier?.unlock ?? null;
+  const research = missing.filter((k) => k !== tankKey).map(ruleHint);
+  const tank = tier && tankKey && missing.includes(tankKey) ? `${tier.name}: ${lowerFirst(ruleHint(tankKey))}` : '';
+  if (!research.length) return `Comes into the shop with the ${tank}`;
+  return tank ? `${research.join(' ')} It also waits for the ${tank}` : research.join(' ');
+}
+
 /** A species is buyable when every required unlock is unlocked. The player's own starter species always is. */
 export function isSpeciesAvailable(state: GameState, speciesId: string): boolean {
   if (speciesId === state.starterId) return true;
   const sp = findSpecies(speciesId);
   if (!sp) return false;
   return requiredUnlocks(sp).every((k) => isUnlocked(state, k));
+}
+
+/**
+ * chunk 17 (ADR-0053 decision 5) — a food is on sale when its unlock is met and, when it lists `soldWith`, at least one
+ * of those species can be bought: a new food comes into the shop with the first animal that eats it.
+ */
+export function isFoodAvailable(state: GameState, def: FoodDef): boolean {
+  if (!isUnlocked(state, def.unlock)) return false;
+  return !def.soldWith || def.soldWith.some((id) => isSpeciesAvailable(state, id));
+}
+
+/**
+ * chunk 17 — the animals a `soldWith` food waits for, in words ("oscars, ornate bichirs and more"): the shop's lock line
+ * and the purchase refusal name them instead of an unlock label.
+ */
+export function soldWithWords(def: FoodDef): string {
+  const names = (def.soldWith ?? []).map((id) => findSpecies(id)).filter((sp): sp is SpeciesDefinition => !!sp).map((sp) => pluralName(sp.commonName).toLowerCase());
+  if (names.length <= 2) return names.join(' or ');
+  return `${names.slice(0, 2).join(', ')} and more`;
 }
 
 export function availableSpecies(state: GameState): SpeciesDefinition[] {

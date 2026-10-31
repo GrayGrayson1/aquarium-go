@@ -5,6 +5,7 @@
  */
 import type {
   BackdropKind,
+  CreatureCategory,
   CreatureStats,
   FacilityLevelId,
   GameSpeed,
@@ -247,6 +248,8 @@ export interface CheckRecipe {
   /** Only this tank (water and animals) and only this species (animals). */
   tank?: string;
   species?: string;
+  /** chunk 17 — only animals of this kind (`fish`: a lab check that a snail lost to a hermit crab doesn't fail). */
+  category?: CreatureCategory;
   alive?: Range;
   births?: Range;
   deaths?: Range;

@@ -91,7 +91,7 @@ export const ramshornSnail: SpeciesDefinition = {
   baseValue: 2,
   rarity: 'common',
   visitorAppeal: 0.35,
-  unlock: { requires: [], hint: 'Available from the start.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   conservation: { status: 'Not evaluated (IUCN global); NatureServe G5 (secure)', note: 'Common in Florida and introduced widely through aquarium releases. Never release aquarium snails.' },
 

@@ -72,7 +72,8 @@ export const greenChromis: SpeciesDefinition = {
   substrateRules: { preferred: ['aragonite', 'sand', 'fine_sand'], avoid: [], note: 'Likes branching coral or rockwork to dive into when alarmed, plus open water above.' },
 
   breeding: {
-    system: 'substrate_spawner',
+    // chunk 17 (the owner's round 5): its own pair module, not the corydoras'
+    system: 'damsel_nest',
     difficulty: 0.9,
     maturityDays: 14,
     clutchSize: { min: 500, max: 2500 },
@@ -96,7 +97,7 @@ export const greenChromis: SpeciesDefinition = {
   baseValue: 12,
   rarity: 'common',
   visitorAppeal: 0.6,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'The single most-imported marine aquarium fish, and essentially all wild-caught; captive rearing has only succeeded experimentally (Rising Tide Conservation, 2013; University of Florida).',
   conservation: {

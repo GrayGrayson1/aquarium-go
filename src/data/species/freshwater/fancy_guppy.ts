@@ -88,7 +88,7 @@ export const fancyGuppy: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater species: reach 40 reputation or build husbandry mastery.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2020)',

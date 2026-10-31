@@ -17,12 +17,13 @@ import { advanceWorld } from '@/sim/world';
 import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { ROSTER } from '@/data/species/roster';
 import { isSpeciesAvailable, requiredUnlocks, stockNewUnlocks } from '@/sim/economy/shop';
-import { unlock, waterClassKeys, waterClassLock } from '@/sim/facility';
+import { tankKeyFor, unlock, waterClassKeys, waterClassLock } from '@/sim/facility';
 import { makeContext } from '@/sim/context';
 import { fissionBlocker, fissionModule } from '@/sim/life/breeding/systems/fission';
 import { clearCompatCache, incidentRisks, previewAddition } from '@/sim/compat';
 import { breedingStatus } from '@/sim/life/breeding';
 import { gallonsNeededNow } from '@/sim/life';
+import { adultSizeOf } from '@/sim/life/growth';
 import { assessCreature } from '@/sim/shows/judging';
 import { SHOW_CLASS_BY_ID } from '@/data/shows';
 
@@ -42,13 +43,14 @@ describe('ADR-0052 decision 9: a new species comes into the shop with its water 
     }
   });
 
-  it('every new species has no research of its own and keys only from its water', () => {
+  it('every new species has no research of its own and keys only from its water (and, chunk 17, its tank)', () => {
     expect(NEW_IDS.length).toBeGreaterThan(0);
     for (const id of NEW_IDS) {
       const sp = findSpecies(id)!;
       expect(sp.unlock.requires, id).toEqual([]);
       const easiest = Math.min(...sp.waterClasses.map((wc) => waterClassKeys(wc).length));
-      expect(requiredUnlocks(sp).length, id).toBe(easiest);
+      // ADR-0053 decision 4: the shop also waits for the smallest tank that holds an adult
+      expect(requiredUnlocks(sp).length, id).toBe(easiest + (tankKeyFor(sp) ? 1 : 0));
     }
   });
 
@@ -69,11 +71,22 @@ describe('ADR-0052 decision 9: a new species comes into the shop with its water 
     const g = game('betta', 3);
     const marine = NEW_IDS.filter((id) => findSpecies(id)!.environment === 'marine' && findSpecies(id)!.waterClasses.some((wc) => wc !== 'reef'));
     unlock(g, 'marine_basics', { silent: true });
-    for (const id of marine) expect(isSpeciesAvailable(g, id), id).toBe(true);
-    const before = new Set(g.market.stock.map((o) => o.speciesId));
-    stockNewUnlocks(g, simRng(g), g.clock.hour, false);
-    const fresh = g.market.stock.map((o) => o.speciesId).filter((id) => !before.has(id));
-    expect(fresh.some((id) => marine.includes(id)), `fresh offers: ${fresh.join(', ')}`).toBe(true);
+    // chunk 17 (ADR-0053 decision 4): those whose adults need a bigger tank than the open sizes wait for it
+    for (const id of marine) expect(isSpeciesAvailable(g, id), id).toBe(tankKeyFor(findSpecies(id)!) === null);
+    expect(marine.filter((id) => tankKeyFor(findSpecies(id)!) === null).length).toBeGreaterThan(0);
+    // the restock after an unlock stocks three of everything it opened, picked at random: over a few games the new
+    // marine species are among them (chunk 17: not one fixed seed, which every species added to the game reshuffles)
+    let withNew = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const gs = game('betta', seed);
+      unlock(gs, 'marine_basics', { silent: true });
+      const before = new Set(gs.market.stock.map((o) => o.speciesId));
+      stockNewUnlocks(gs, simRng(gs), gs.clock.hour, false);
+      const fresh = gs.market.stock.map((o) => o.speciesId).filter((id) => !before.has(id));
+      expect(fresh.length, `seed ${seed}: something new is stocked`).toBeGreaterThan(0);
+      if (fresh.some((id) => marine.includes(id))) withNew++;
+    }
+    expect(withNew).toBeGreaterThan(0);
   });
 
   it('a marine starter can be offered the new marine species from day one', () => {
@@ -288,6 +301,9 @@ describe('chunk 16 brief: the maroon clownfish female is much bigger than the ma
     const rng = simRng(g);
     const female = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 80, sex: 'female' }), t.id);
     const male = addCreature(g, createCreature(g, rng, 'maroon_clownfish', { ageDays: 80, genome: structuredClone(female.genome) }), t.id);
+    // grown to a male's full size (chunk 17: a fish's size at a given age follows its random size potential, and on
+    // another random stream this pair's was a little under average, so he fell short of the species' full size)
+    male.sizeCm = adultSizeOf(sp, 'male');
     expect(male.reproRole).toBe('male');
     // the tank it needs: the species minimum, as for her
     expect(gallonsNeededNow(sp, male.sizeCm, male.reproRole)).toBeCloseTo(sp.recommendedMinTankGallons, 0);

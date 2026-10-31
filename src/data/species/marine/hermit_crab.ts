@@ -96,7 +96,7 @@ export const hermitCrab: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'common',
   visitorAppeal: 0.35,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish and clean-up crew.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'All trade blue-leg hermits are wild-collected, mostly in the Florida Keys and Gulf of Mexico.',
   conservation: {

@@ -89,7 +89,7 @@ export const yellowtailDamselfish: SpeciesDefinition = {
   baseValue: 25,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2021)', note: 'Least Concern. ORA breeds it, so captive-bred fish are an option.' },
 

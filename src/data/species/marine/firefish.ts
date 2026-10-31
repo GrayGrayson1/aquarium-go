@@ -96,7 +96,7 @@ export const firefish: SpeciesDefinition = {
   baseValue: 38,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Firefish in the trade are wild-collected; captive breeding of this species has not reached commercial scale.',
   conservation: {

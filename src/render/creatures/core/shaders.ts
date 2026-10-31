@@ -450,11 +450,16 @@ int pid = int(uLookG.z + 0.5);
   float line = 1.0 - smoothstep(0.0, 0.07 + uPatA.y, c.y - c.x);
   col = mix(col, uCAccent, line * pc * mix(0.35 * (1.0 - uPatB.z), 1.0, bellyFade));
 } else if (pid == 13) {
-  // koi: big irregular patches (accent = red, body2 = black)
+  // koi: big irregular patches (accent = red, body2 = black). chunk 17 — optional per plan (all 0 by default): uPatA.x
+  // takes red away (> 0) or adds it (< 0), uPatA.y adds black, uPatA.z keeps the red off the belly (a Kohaku's red runs
+  // along the back, never below the lateral line)
   float k1 = fbm3(sp * (2.6 * ps) + vec3(uSeed.x));
   float k2 = fbm3(sp * (4.2 * ps) + vec3(9.1, uSeed.y, 2.0));
-  col = mix(col, uCAccent, smoothstep(0.02, 0.1, k1) * pc);
-  col = mix(col, uCBody2, smoothstep(0.34, 0.42, k2) * pc * 0.9);
+  float redT = 0.02 + uPatA.x;
+  float blkT = 0.34 - uPatA.y;
+  float back = mix(1.0, smoothstep(-0.45, 0.05, yn), uPatA.z);
+  col = mix(col, uCAccent, smoothstep(redT, redT + 0.08, k1) * pc * back);
+  col = mix(col, uCBody2, smoothstep(blkT, blkT + 0.08, k2) * pc * 0.9);
 } else if (pid == 14) {
   // dragon scale: thick metallic plates
   if (isFin < 0.5) {

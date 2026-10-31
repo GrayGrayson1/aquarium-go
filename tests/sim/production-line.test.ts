@@ -561,7 +561,7 @@ describe('PROD-001, PROD-002, AUTO-020, AUTO-021: two lines of one species', () 
     // PROD-002 A2 reads "unchanged by the production field" since chunk 5 raised the version once for the S3-D state
     // (INTAKE C-44, PERSIST-016), and chunk 16 once more for its new species (ADR-0052 decision 5): nothing for
     // production lines.
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4); // chunk 17: the big-tank species
   });
 });
 
@@ -669,14 +669,22 @@ describe('ADR-0025 decisions 5 and 6, PROD-020: quarantine tanks and ending a li
     const rb = createLine(g, { motherId: f2.id, fatherId: m2.id, tanks: { breed: b2.id, raise: r2.id, quarantine: f.qt.id, keep: k2.id }, breedFor: 'Royal Blue Halfmoon' });
     expect(rb.ok).toBe(true);
     const b = findLine(g, rb.lineId!)!;
+    // chunk 17 — the keeper mends failed kit as it goes: on another random stream (the tank gate's) the Quarantine
+    // tank's filter stopped, and a stopped quarantine tank takes no batch, which says nothing about sharing it
+    const mended = (hours: number, step?: number) => {
+      for (let h = 0; h < hours; h += 24) {
+        run(g, Math.min(24, hours - h), step);
+        for (const t of Object.values(g.tanks)) for (const e of t.equipment ?? []) if (e.failed) { e.failed = false; delete e.failMode; }
+      }
+    };
     brood(f, 'fry', 20, 6);
-    run(g, 12);
+    mended(12);
     expect(a.batches?.[0].tankId).toBe(f.qt.id);
     const sp = getSpecies('betta');
     createClutch(g, { sp, tank: b2, mother: f2, father: m2, hour: g.clock.hour, stage: 'fry', count: 20, visual: 'fry_cloud', nextStageHour: g.clock.hour + 6 });
-    run(g, 12);
+    mended(12);
     expect(b.batches?.[0].tankId).toBeUndefined(); // waiting: Quarantine is busy with the other line's batch
-    run(g, QUARANTINE_HOURS, 2);
+    mended(QUARANTINE_HOURS, 2);
     expect(b.batches?.some((bt) => bt.tankId === f.qt.id)).toBe(true);
   });
 

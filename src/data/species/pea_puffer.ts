@@ -90,7 +90,7 @@ export const peaPuffer: SpeciesDefinition = {
   baseValue: 8,
   rarity: 'common',
   visitorAppeal: 0.75,
-  unlock: { requires: ['fw_basic'], hint: 'Starter species — otherwise reach 40 reputation or build husbandry mastery.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Vulnerable (IUCN)',

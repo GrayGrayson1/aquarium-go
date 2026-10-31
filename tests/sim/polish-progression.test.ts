@@ -115,7 +115,10 @@ describe('quiet, readable logs', () => {
     step();
     const before = g.log.length;
     unlock(g, 'party_mode');
-    unlock(g, 'tank_40');
+    // chunk 17 (ADR-0053 decision 4): a tank size now lets in the species that need it (the 40-gallon brings the
+    // freshwater angelfish and swordtail), and announcing those is right; the 55's only species is marine, so for this
+    // betta keeper it makes nothing new available and must announce nothing
+    unlock(g, 'tank_55');
     step();
     expect(g.log.slice(before).some((e) => /^New arrivals/.test(e.text))).toBe(false);
     unlock(g, 'marine_basics');
@@ -158,6 +161,7 @@ describe('grammar', () => {
       ['Banggai Cardinalfish', 'banggai cardinalfish'],
       ['Neon Tetra', 'neon tetras'],
       ['Axolotl', 'axolotls'],
+      ['Motoro Stingray', 'motoro stingrays'],
     ];
     for (const [name, want] of cases) {
       expect(pluralName(name)).toBe(want);
@@ -165,7 +169,8 @@ describe('grammar', () => {
     }
     expect(pluralPhrase('Banggai cardinalfish')).toBe('Banggai cardinalfish');
     for (const sp of listSpecies()) {
-      for (const p of [pluralName(sp.commonName), compatPlural(sp), spPlural(sp)]) expect(p, sp.id).not.toMatch(/(ss|us|is)s$|yes$|ys$/);
+      // (a vowel before the y keeps it: stingray → stingrays, chunk 17; a consonant turns it to -ies)
+      for (const p of [pluralName(sp.commonName), compatPlural(sp), spPlural(sp)]) expect(p, sp.id).not.toMatch(/(ss|us|is)s$|yes$|[^aeiou]ys$/);
     }
   });
 

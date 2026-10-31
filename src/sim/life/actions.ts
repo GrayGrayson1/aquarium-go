@@ -164,7 +164,7 @@ export function devAgeCreature(state: GameState, creatureId: string, days: numbe
   return { ok: true, message: `Aged ${days === 1 ? '1 day' : `${days} days`} — ${c.name} is now ${Math.floor(age) === 1 ? '1 day' : `${Math.floor(age)} days`} old (${c.lifeStage}).` }; // lane:w2-ui
 }
 
-export { startBreeding, separateCreature, moveClutch, devForceBreeding } from './breeding/actions';
+export { startBreeding, separateCreature, moveClutch, liftOutClutch, devForceBreeding } from './breeding/actions';
 
 /**
  * A photo's story line on its subject (moved here from src/ui/photo/story.ts in chunk 11: the `notePhoto` command

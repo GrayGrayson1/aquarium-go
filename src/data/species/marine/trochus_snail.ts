@@ -89,7 +89,7 @@ export const trochusSnail: SpeciesDefinition = {
   baseValue: 7,
   rarity: 'common',
   visitorAppeal: 0.15,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish and clean-up crew.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Not evaluated (IUCN)',

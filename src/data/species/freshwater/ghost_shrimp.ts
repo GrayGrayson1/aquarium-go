@@ -92,7 +92,7 @@ export const ghostShrimp: SpeciesDefinition = {
   baseValue: 1,
   rarity: 'common',
   visitorAppeal: 0.3,
-  unlock: { requires: [], hint: 'Available from the start.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most are collected or pond-raised in the south-eastern USA, often sold as feeders.',
   conservation: { status: 'Least Concern (IUCN Red List)', note: 'Common in its native range and already introduced in California. Never release aquarium animals.' },

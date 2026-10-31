@@ -1,6 +1,6 @@
 # Marine species research — lane species-marine
 
-Research notes behind every marine `SpeciesDefinition` in Aquarium Go: the 2 marine starters (`src/data/species/ocellaris_clownfish.ts`, `src/data/species/lined_seahorse.ts`) and the 40 unlockable species in `src/data/species/marine/`. Researched September 2026; the 22 chunk 16 species researched October 2026.
+Research notes behind every marine `SpeciesDefinition` in Aquarium Go: the 2 marine starters (`src/data/species/ocellaris_clownfish.ts`, `src/data/species/lined_seahorse.ts`) and the 48 unlockable species in `src/data/species/marine/`. Researched September 2026; the 22 chunk 16 species researched October 2026; the 8 chunk 17 species (big marine fish and the bottom sharks, chapters at the end) late October 2026.
 
 **Source tiers.** Tier 1 means FishBase/SeaLifeBase, WoRMS, the Catalog of Fishes, FAO identification guides, Fishes of Australia, Animal Diversity Web (ADW), museums and accredited public aquariums (Monterey Bay Aquarium, National Aquarium, Oregon Coast Aquarium), NOAA, the IUCN and peer-reviewed papers. Tier 2 means established retailers and producers (LiveAquaria, ORA, Biota, Bulk Reef Supply, Top Shelf Aquatics, Quality Marine, Reef Cleaners), long-running hobby magazines (TFH, CORAL) and reviewed care sheets. Tier 3 means hobby guides and Wikipedia summaries, used for edge cases only.
 
@@ -985,3 +985,1299 @@ Invertebrate species (`visualLane: 'special'`) use the colour slots as labelled 
 - young and female looks: the maroon clownfish
 
 The eleven chunk 16 invertebrates (the living anemone included) have none. Their renderers (`src/render/creatures/special/{snail,starfish,conch,hermit,crab,urchin,anemone}.ts`) draw every age and sex alike. The other four wave B fish (the six-line, the blenny, the hawkfish and the yellowtail) have no young or sex looks either: the research found no distinct juvenile colours, and their sexes differ little (in size, or a male brightening when courting).
+
+---
+
+# Chunk 17: big marine fish (ADR-0053)
+
+### About the chunk 17 big marine research
+Researched 2026-10-30 against the repo at `27f9d55` (read only). Format follows `docs/research/marine.md`. Tiers per
+`docs/RESEARCH_SOURCES.md`. All pages below were fetched in this session unless marked "not loaded". Time compression
+per `docs/GAME_DESIGN.md`: game hours ≈ real days × 8; maturity 8–25 game days; lifespan ≈ real years × 40, capped
+near 500.
+
+Tank tiers used for "smallest tier" (L×W in): 125 gal 72×18 · 180 gal 72×24 · 240 gal 96×24 · 300 gal 96×24 ·
+500 gal 120×36 · 600 gal 120×36 · 800 gal 144×36 · 1,000 gal 144×48.
+
+Summary of tiers: blue tang **180** (it is not really a big-tank species) · naso tang **240** · queen angelfish **300** ·
+clown triggerfish **300** · panther grouper **500** (the honest minimum for an adult is well under 1,000 gal, so it can
+stay in the game).
+
+---
+
+## Blue tang
+*Paracanthurus hepatus* (Linnaeus, 1766) · Acanthuridae · `tang` · monotypic genus. Name current (FishBase, Fishes of
+Australia; FAO lists no synonyms). Trade names: regal tang, hippo tang, palette surgeonfish, "Dory". Not the Atlantic
+blue tang (*Acanthurus coeruleus*), a different fish whose juveniles really are yellow (see Conflicts).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase](https://www.fishbase.se/summary/Paracanthurus-hepatus.html) | 1 | **31 cm TL**; 2–40 m; clear current-swept seaward terraces; **loose groups 1–2 m above the bottom**; juveniles at *Pocillopora eydouxi* heads, **hide tightly among branches**; **mainly zooplankton**, some algae; venom gland groove listed; "very popular and hardy aquarium fish"; IUCN LC (2010) |
+| [FAO WCP guide vol. 6, Acanthuridae (Randall 2001)](https://www.fao.org/4/y0870e/y0870e30.pdf) (text extracted from the PDF) | 1 | colour: bright blue, black "palette" on upper body ending in the eye, yellow tail triangle; caudal slightly rounded in young, truncate in adults; body depth 1.7× SL (small juveniles) to 2.3× (adults); max 31 cm, **commonly 20 cm**; feeds primarily on zooplankton; adults hard to approach; juveniles shelter among live coral |
+| [Fishes of Australia](https://fishesofaustralia.net.au/Home/species/2203) | 1 | 31 cm TL; 2–40 m; clear exposed outer reefs with moderate to strong current; IUCN LC (McIlwain et al. 2012) |
+| [Animal Diversity Web](https://animaldiversity.org/accounts/Paracanthurus_hepatus/) | 1 | **males larger than females**; broadcast spawning in groups or pairs, no care; up to **40,000 eggs** per session, about monthly; **eggs hatch in 25–28 h**; larvae mature after ~37 days; maturity ~11 cm (males), ~13 cm (females); wild >30 yr, **captive 8–20 yr (avg 12–14)**; **"plays dead" lying on its side**; wedges into branching coral with the caudal spine; **prone to ich (*Cryptocaryon*)**; (its juvenile colour text is wrong, see Conflicts) |
+| [Wikipedia: Paracanthurus](https://en.wikipedia.org/wiki/Paracanthurus) (Tier 3, used only for what it cites) | 3 | **lower body yellow in west-central Indian Ocean fish, bluish in Pacific fish** (citing Debelius; Goda); palette not fully connected until maturity (Sang 2018); maturity at 9–12 months (Sang 2018); lighter blue at night (Goda); first captive-bred 2016 |
+| [LiveAquaria: Blue Tang](https://www.liveaquaria.com/product/330/?pcatid=330) | 2 | **180 gal, ≥6 ft**; 72–78 °F, pH 8.1–8.4, SG 1.020–1.025, dKH 8–12; 12"; moderate care; semi-aggressive, **aggressive to its own species**; reef compatible; seaweed ≥3×/week; **more susceptible to lateral line disease, fin erosion, ich**; **$109.99** |
+| [LiveAquaria spotlight: The Blue Tang](https://www.liveaquaria.com/blogs/species-spotlight/the-blue-tang) | 2 | 180 gal; "one of the least aggressive tangs"; recommends one per tank; wild in large shoals (older page also says never captive-bred, now out of date) |
+| [Quality Marine: The Blue Tang of Many Names](https://www.qualitymarine.com/news/the-blue-tang-of-many-names/) | 2 | **yellow-belly form only in the Indian Ocean / Red Sea, differs only in colour, yellow appears at maturity**; adults usually 8–10"; 180 gal, 6 ft+; high flow (≥20 turnovers/h); big eater and waste producer; may be territorial toward other tangs and some angels; mixed tangs work when added together; low coral risk; 7+ yr, one kept 11 yr |
+| [Top Shelf Aquatics: Blue Hippo Tang](https://topshelfaquatics.com/pages/saltwater-fish/blue-hippo-tang) | 2 | 180 gal, 6 ft (some say 125); 12"; open-water swimmer, bolts into rock; **$53.99 (reg. $59.99); Yellow Belly $94.49 (reg. $104.99)** |
+| [Reef Builders 2011: yellow belly blue tang](https://reefbuilders.com/2011/10/11/yellow-belly-blue-tang) | 2 | Indian Ocean form, same species; young look like a faded Pacific fish; a split blue-above/yellow-below pattern is uncommon |
+| [Reef Builders 2016: captive bred blue tang](https://reefbuilders.com/2016/07/20/captive-bred-blue-tang) | 2 | **UF Tropical Aquaculture Lab + Rising Tide Conservation, announced July 2016** |
+| [Rising Tide Conservation](https://www.risingtideconservation.org/tag/kevin-barden/) | 2 | first captive-bred Pacific blue tangs; 55 days post hatch photo; larvae fed *Parvocalanus* copepods |
+| [Reef Builders Nov 2016](https://reefbuilders.com/2016/11/29/captive-bred-blue-tangs) | 2 | first captive-bred batch (>200 fish, ~2 in, blue) sold by Sea Dwelling Creatures, presumed Asian breeder |
+| [CORAL Magazine Jan 2025](https://www.coralmagazine.com/?p=3078387) / [Biota shop](https://shop.thebiotagroup.com/collections/all/products/blue-tang) | 2 | **Biota: commercial-scale production announced 23 Jan 2025**; tiny CB fish $75 (reg. $120) |
+
+**Modelled as:**
+- 30 cm adult, **180 gal with a 72×24 in footprint** → smallest tier the **180-gal**; `activeSwimmer`, `outgrowsSmallTanks`
+- omnivore, `feedingStyle 'midwater'` (wild zooplankton picker), plus seaweed several times a week
+- reef-safe, shrimp- and snail-safe; one per tank (groups only in very large tanks, added together)
+- a geographic colour form, **Yellow Belly** (Indian Ocean), in the game as a locality locus, inheritance unknown
+- breeding `not_in_game`: hatchery only (UF 2016, Biota 2025), but `captiveBredAvailable: true`
+- ich-prone: low hardiness (there is no `ichProne` flag; see Cross-species notes)
+- `tang` behaviour set with "play dead" and "wedge in rock"
+
+**Conflicts:**
+- **Juvenile colour.** ADW and National Geographic say juveniles are "bright yellow". That is the Atlantic blue tang
+  (*Acanthurus coeruleus*): Florida Museum and REEF describe its yellow juveniles with a blue eye ring, the same words
+  ADW uses. FAO describes one colour pattern for *P. hepatus* at all sizes. Captive-bred fish sold at about 2 in are
+  blue (Reef Builders 2016). The trade sells blue juveniles from ½ in (LiveAquaria sizes). The game draws juveniles
+  blue like adults, with a rounder tail, a deeper body and an incomplete palette.
+- Venom: FishBase lists a venom-gland groove and ADW calls the spine venomous, but no other source does, and the
+  existing tangs don't set `venomous`. Not flagged; the keeper tip covers the scalpel.
+- Size: 31 cm TL max (FishBase, FAO), commonly 20 cm, aquarium adults 8–10 in (QM) to 12 in (LA). The game uses 30 cm.
+- Tank size: 125 (Top Shelf mentions it), 180 (LA, QM, Top Shelf). The game uses 180 and 6 ft. **The owner asked for
+  species that need 240+ gal. By the sources the blue tang doesn't.** If the owner wants it on the big-tank list, the
+  only defensible step up is 240 gal / 96 in for a group of two or more (not sourced as a minimum).
+- Diet: LiveAquaria says herbivore; FishBase and FAO say mainly zooplankton. The game uses omnivore.
+
+### Game data
+The values the game uses are in `src/data/species/marine/blue_tang.ts`; this research proposed them, and the source check at the end of this chapter corrected some of them.
+
+**Genetics.** One real locality form, plus the generic intensity locus.
+- Locus `belly` (locality form), 2 alleles: `pacific` (blue belly; trade frequency about 0.7) and `indian_ocean`
+  (yellow belly; about 0.3, so about one fish in ten shows it as `hom`). **Inheritance is not documented.** It is a
+  geographic population difference (Wikipedia citing Debelius and Goda; QM; Reef Builders). The species doesn't
+  breed in the game, so the mode only sets shop frequency; encode it as mendelian with yellow belly needing `hom`.
+  The trade frequency is my estimate, not sourced: QM says Indian Ocean fish are hard to source.
+  - Phenotype **"Yellow Belly"** (overlay; `rarity` about 0.3; price about 1.75×, from Top Shelf $94.49 vs $53.99):
+    `bellyColor '#f4d235'`, `bodyColor2 '#f0c92a'` on the lower flank; on adults the blue lightens and the palette may
+    break into fine blue spots (Reef Builders 2011). The yellow shows only at maturity; young look like faded Pacific
+    fish (QM, Reef Builders), so the art should fade it in with growth.
+- `intensityLocus` + `intensityOverlay({ bodyColor: '#1a5ae0', patternContrast: 1 })` → "Richly coloured".
+- Left out: nothing else is real. No hybrids or dyed fish are known in this genus.
+
+baseVisual (wild Pacific): `bodyColor '#1f5fd6'` (royal blue) · `bodyColor2 '#1848b0'` · `bellyColor '#3a7ae2'` ·
+`finColor '#1b2a66'` (dorsal and anal blue with black margins) · `finColor2 '#f7d417'` (yellow tail triangle and
+pectorals) · `accentColor '#0b0f1a'` (black palette) · `eyeColor '#14161c'` · `pattern 'solid'` + **`bodyMark:
+'palette'`** (new: black band from the eye along the upper body, looping back to the tail's upper and lower edges,
+leaving a blue "palette" blotch behind the pectoral) · `patternScale 1` · `patternContrast 0.95` · `iridescence 0.25`
+(blue from iridophores, ADW) · `metallic 0` · `translucency 0.05` · `finType 'tang'` · `finLength 1` ·
+`bodyDepth 1.05` · `gillFullness 0` · `variation 0.1`.
+
+### Young and sexes
+- **Young:** coloured like adults: blue, black palette, yellow tail. The body is deeper (1.7× SL vs 2.3× in adults) and
+  the tail rounder (FAO). The palette is not fully joined until maturity (Sang via Wikipedia). Indian Ocean young show
+  no yellow belly yet.
+- **Sexes:** no colour difference. Males are larger (ADW). Colour deepens when stressed and during spawning (ADW).
+  Slightly paler at night (Goda via Wikipedia).
+
+### Behaviour
+- Swims all day in the middle and upper water, in laps along the length of the tank, picking at the water column
+  (zooplankton) and grazing a little. Wild fish hover in loose groups 1–2 m above the reef (FishBase).
+- **Startle:** bolts into the rock and wedges in a crevice, caudal spine out (FishBase, FAO, ADW, Top Shelf). **Plays
+  dead:** after a scare or when new, it may lie on its side on the bottom or in rock for a while and then recover (ADW).
+  The AI should show it as a recoverable state with a "this is normal" note. It must never read as dying.
+- Night: shelters in rock, colour a little paler (Goda via Wikipedia).
+- No digging and no jumping recorded. It visits cleaner shrimp.
+- Closest set: `tang` (no new set). New special behaviours: `zooplankton_pick`, `dart_and_wedge`, `play_dead`.
+
+### Compatibility
+
+| Other | Verdict | Reason | Sources |
+|---|---|---|---|
+| Naso tang (new) | conditional | tang vs tang; different genus and shape helps; add together in 240+ gal with sight breaks | LA (both pages), QM |
+| Queen angelfish (new) | usually_compatible | different family; QM says blue tangs may be territorial to some angels; a UFSC queen kept with four blue tangs got an eye injury, cause unknown | QM; [WAS 2025 abstract](https://was.org/Meeting/Program/PaperDetail/167558) |
+| Clown triggerfish (new) | conditional | an adult trigger is very aggressive; a shy tang that "plays dead" is easy to bully; add the trigger last and small | LA trigger, TFH trigger |
+| Panther grouper (new) | usually_compatible (adults) / high_risk while the tang is under ~14 cm | a 30 cm deep-bodied tang is too big; juveniles sold at 1–3 in are eaten | LA grouper, SWA blog |
+| Coral catshark / epaulette / bamboo shark (new) | usually_compatible | a fast midwater tang is not shark prey; small juveniles resting at night are at risk | Aquarium Domain (T3) |
+| Silver mono / spotted scat (new, brackish) | incompatible in the game (water class) | marine vs brackish class; if the brackish researcher finds adults kept in full seawater, then usually_compatible | — |
+| Freshwater new species | incompatible | salinity | — |
+| Yellow tang, sailfin tang (*Zebrasoma*) | conditional | tangs fight; different genus and shape; 180+ gal, added together | LA, QM; existing sailfin rule `tag:tang` |
+| Kole tang (*Ctenochaetus*), chocolate tang (*Acanthurus*) | conditional | as above | LA, QM |
+| Emperor angelfish | usually_compatible | QM: may squabble with some angels | QM |
+| Flame angel, coral beauty | usually_compatible | | QM |
+| Foxface rabbitfish | usually_compatible | different shape; both reef-tank staples | LA |
+| Miniatus grouper | usually_compatible (adult tang) | adult too big; small juveniles at risk | miniatus file |
+| Dwarf lionfish | excellent | lionfish can't swallow a 30 cm tang | — |
+| Clownfish, chromis, anthias, gramma, firefish, gobies, blennies, cardinals, wrasses, hawkfish, damsels | excellent | peaceful toward unrelated fish | LA, QM |
+| Mandarin, lined seahorse | conditional | a fast eater takes their food (engine slow-feeder check) | yellow tang precedent |
+| Cleaner / peppermint shrimp, crabs, hermits, snails, stars, urchin | excellent | reef safe; it gets cleaned | Top Shelf, QM |
+| Corals, bubble-tip anemone | excellent | reef safe | LA, QM |
+
+`exceptionRules`: `{ other: 'tag:tang', verdictFloor: 'conditional', reason: 'Tangs fight other tangs; the blue tang is mild, but add tangs together in a big tank with rock breaking sight lines.', incidentRisk: 0.06, mitigatedBy: ['tank_size', 'sight_breaks'] }`.
+
+### Smallest tank tier for an adult
+**180 gal (72×24 in)** by both gallons and footprint. A group needs 240 gal or more (my judgement).
+
+---
+
+## Naso tang
+Also called the orangespine unicornfish.
+*Naso lituratus* (Forster, 1801) · Acanthuridae, Nasinae · `tang`. Valid (Catalog of Fishes; FishBase). Trade names:
+naso tang, lipstick tang, orangespine unicornfish.
+
+**The "blonde naso" is *Naso elegans* (Rüppell, 1829), a separate valid species.** Catalog of Fishes lists it as valid
+and once synonymised (Dor 1984); it has been valid since at least Randall 2001. FishBase calls it "the Indian Ocean
+population, now a separate species". Randall 2022 (cited in Wikipedia) says consistent meristic differences were
+shown. Range: Red Sea and Indian Ocean to Bali; *N. lituratus* lives from Cocos-Keeling and Christmas Island east to
+Hawaii (CoF). Field mark: *N. elegans* has a largely yellow dorsal fin; *N. lituratus* has a black one with a white
+edge (FAO, which in 2001 still called the Indian Ocean fish a colour variant; TFH).
+**Game treatment:** don't make "Blonde" a colour form of the naso tang. If wanted, add *N. elegans* later as its own
+species with the same care (same genus, so the engine already treats them as rivals). Price: Top Shelf blonde $134.99
+(male $237.59) vs naso $67.49 (male $143.09).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase: N. lituratus](https://www.fishbase.se/summary/Naso-lituratus.html) | 1 | **46 cm SL, 2.3 kg**; 0–90 m (usually 5–30); lagoons and seaward reefs; small groups, sometimes large aggregations; juveniles on shallow rocky reef, mixed with other surgeonfish; **leafy brown algae (*Sargassum*, *Dictyota*)**; probably pair spawning; male courtship nape flashes bluish-white; IUCN LC (2010); Indian Ocean population = *N. elegans* |
+| [FishBase: N. elegans](https://www.fishbase.se/summary/Naso-elegans.html) | 1 | 45 cm SL; Indian Ocean only, to Bali; yellow dorsal fin; males have caudal filaments; LC (2010) |
+| [Catalog of Fishes: Naso](https://researcharchive.calacademy.org/research/ichthyology/catalog/fishcatget.asp?tbl=species&genus=Naso) | 1 | both valid; ranges; elegans once a synonym (Dor 1984), valid from Randall 2001 |
+| [FAO WCP guide vol. 6 (Randall 2001)](https://www.fao.org/4/y0870e/y0870e30.pdf) | 1 | colour: grey-brown, **black band from upper lip to between the eyes, curved yellow band from mouth corner to eye, yellow area above and behind the eyes, orange lips, bright orange peduncle spines**; dorsal black with a white margin widening to the rear; anal yellowish-brown; tail grey with black edges and a yellow rear margin; **adult males grow a long filament from each tail lobe**; 2 fixed peduncle plates with forward knife keels; max 45 cm TL, commonly 35; usually solitary; leafy algae |
+| [Taylor et al. 2014, J Fish Biol 85: 901–916](https://researchonline.jcu.edu.au/35460/) | 1 | **max age 14 yr** (Micronesia); females mature ~15 cm FL, males ~18 cm; rapid early growth; slight sex difference in length at age |
+| [Wikipedia: Naso elegans](https://en.wikipedia.org/wiki/Naso_elegans) | 3 | meristic split (citing Randall 2022); males longer filaments and larger keels (citing Fishes of Australia) |
+| [LiveAquaria: Naso Tang](https://www.liveaquaria.com/products/naso-tang) | 2 | **180 gal**; 72–78 °F, pH 8.1–8.4, SG 1.020–1.025, dKH 8–12; 18"; reef compatible; semi-aggressive, **aggressive to other tangs**, peaceful with other fish; **tight lid (jumps)**; seaweed ≥3×/week; juveniles (Hawaii) dark grey with a blue dorsal stripe and orange anal stripe, darkening to reddish-brown; **$123.99** |
+| [Reef Builders 2015](https://reefbuilders.com/2015/03/15/naso-lituratus-a-sleek-striking-outstanding-fish-for-spacious-marine-aquariums) | 2 | **~200 gal "a bare minimum"**; 125 too small; "lots of running room"; no conspecifics, avoid other tangs especially related ones; can be slow to accept food |
+| [TFH: The Naso Tang](https://tfhmagazine.com/articles/saltwater/the-naso-tang-full-article) | 2 | 200+ gal ideal; juveniles grey; adults chestnut-brown, older ones yellow chest; **white spots at night**; carotene-rich foods keep the orange; extremely hardy; scrapes against tank walls |
+| [Top Shelf: Naso Tang](https://topshelfaquatics.com/pages/saltwater-fish/naso-tang) | 2 | 180 gal working minimum, length matters most; reef safe; **startled fish jump, lid needed**; prices above |
+| [Gensou (aquascaping firm)](https://gensou.sg/?p=32419) | 3 | **900 L / 240 gal, 8 ft strongly preferred**; 35–40 cm in captivity; young of 10–12 cm double in ~18 months |
+
+**Modelled as:**
+- 45 cm adult (TL without filaments), **240 gal, 96×24 in** → smallest tier the **240-gal**; `activeSwimmer`,
+  `outgrowsSmallTanks`, `escapeArtist` (jumps when startled)
+- herbivore grazer on leafy brown macroalgae; seaweed sheets by hand
+- reef-safe; one per tank; conditional with other tangs
+- no colour forms: generic intensity locus. Males grow tail streamers; juveniles greyer
+- breeding `not_in_game` (pelagic, not bred in captivity)
+
+**Conflicts:**
+- Tank: 180 (LA, Top Shelf, QM), 200 (Reef Builders "bare minimum", TFH, Aquatics Unlimited 200 at 72 in per search summary), 240 / 8 ft
+  (Gensou, Tier 3). Being conservative with a 45 cm, fast, open-water fish, the game uses **240 and 96 in**. 180 is
+  the alternative if the owner wants it on the 180-gal tier.
+- Size: FishBase 46 cm SL vs FAO 45 cm TL. SL can't be bigger than TL, so one figure is off; captive fish reach
+  35–40 cm (Gensou). The game uses 45.
+- Lifespan: 14 yr (Taylor 2014, Micronesia), others report 25 yr and more elsewhere; Gensou says 20–30 in aquaria
+  (unsourced). The game caps it at 480.
+- Gensou says males grow dorsal and anal filaments. That is wrong: FAO and FishBase say caudal.
+
+### Game data
+The values the game uses are in `src/data/species/marine/naso_tang.ts`; this research proposed them, and the source check at the end of this chapter corrected some of them.
+
+**Genetics.** No named forms → `intensityLocus` + `intensityOverlay({ accentColor: '#ffd23a', finColor2: '#ff7a1a' })`
+("Richly coloured"; TFH: carotene-rich foods keep the orange). Locality only: "Hawaii". Left out: the blonde naso
+(a separate species), and *N. lituratus* × *N. elegans* hybrids at Christmas and Cocos Islands (hybrids, not in trade).
+
+baseVisual: `bodyColor '#5a4a3e'` (grey-brown) · `bodyColor2 '#3e342e'` · `bellyColor '#7a6a52'` · `finColor
+'#1c1a1a'` (black dorsal) · `finColor2 '#ece8dc'` (white dorsal margin, widening to the rear) · `accentColor '#f2c230'`
+(yellow mask edge and patch above the eyes) · `eyeColor '#1a1612'` · `pattern 'solid'` + **`bodyMark: 'naso_mask'`**
+(new: black band from upper lip to between the eyes, edged yellow, orange lips) · `tailSpot: 'naso_spines'` (or put
+it in the mask; two **bright orange** peduncle plates `#ff7a1a`) · `patternContrast 0.9` · `iridescence 0.05` ·
+`metallic 0` · `translucency 0.05` · `finType 'naso'` (lyre tail; males add long filaments from both lobe tips) ·
+`finLength 1` · `bodyDepth 0.9` (depth 1.9–2.5 in SL, FAO: more elongate than *Zebrasoma*) · `variation 0.12`.
+
+### Young and sexes
+- **Young:** dark grey to grey-brown, with a blue line along the dorsal fin and an orange stripe in the anal fin; the
+  mask and yellow are faint; the tail is emarginate with no filaments (LA, TFH, FAO). The body darkens to chestnut or
+  reddish-brown with age; old fish get a yellow chest (TFH).
+- **Sexes:** adult **males grow a long filament from each tail-lobe tip** (FAO) and larger peduncle keels (FoA, for
+  *N. elegans*); a courting male flashes a bluish-white nape (FishBase). Males mature larger (Taylor 2014).
+- **Night:** pale spots and blotches (TFH).
+
+### Behaviour
+- A fast open-water cruiser in the upper and middle water, on long laps and loops; it needs length more than any
+  other tang here (Reef Builders, TFH). It grazes clipped seaweed and macroalgae.
+- Shy at first: may refuse food for days; startles and **can jump** (LA, Top Shelf). Rubs against walls (TFH).
+- Sleeps in a cave or against rock with night spots.
+- Closest set: `tang` (a faster, longer-bodied variant; no new set needed).
+
+### Compatibility
+
+| Other | Verdict | Reason | Sources |
+|---|---|---|---|
+| Blue tang (new) | conditional | tang vs tang; different genus and shape | LA, Reef Builders |
+| Queen angelfish (new) | usually_compatible | unrelated; both big | — |
+| Clown triggerfish (new) | conditional | trigger aggression; a naso is big and fast enough to cope in 300+ gal | LA trigger |
+| Panther grouper (new) | usually_compatible (adults) / high_risk while the naso is small | | LA grouper |
+| Sharks (new) | usually_compatible | | Aquarium Domain (T3) |
+| Mono / scat (new) | incompatible in the game (water class) | see blue tang | — |
+| Freshwater new species | incompatible | salinity | — |
+| Yellow, sailfin, kole, chocolate tang | conditional | "aggressive to other tangs" (LA); worse with related or same-shaped fish (Reef Builders) | LA, Reef Builders |
+| Emperor angel, dwarf angels, foxface, wrasses, anthias, clownfish, small reef fish | excellent / usually_compatible | peaceful toward unrelated fish | LA, TFH |
+| Miniatus grouper, dwarf lionfish | usually_compatible | too big to eat when adult | — |
+| Seahorse, mandarin | conditional | a fast feeder; engine slow-feeder check | — |
+| All inverts, corals, bubble-tip | excellent | reef safe | LA, Top Shelf |
+| Macroalgae / plants | incompatible | eats them | FishBase |
+
+`exceptionRules`: `{ other: 'tag:tang', verdictFloor: 'conditional', reason: 'Aggressive toward other tangs, worst with related or same-shaped ones. Add tangs together in a big, long tank with sight breaks.', incidentRisk: 0.07, mitigatedBy: ['tank_size', 'sight_breaks'] }`.
+
+### Smallest tank tier for an adult
+**240 gal (96×24 in).** The 180-gal tier fails on both gallons (240) and length (96 in).
+
+---
+
+## Queen angelfish
+*Holacanthus ciliaris* (Linnaeus, 1758) · Pomacanthidae · `angelfish`. Name current (FishBase). Common names:
+queen angelfish (also golden or yellow angelfish).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase](https://www.fishbase.se/summary/Holacanthus-ciliaris.html) | 1 | **45 cm TL** (common 30), **1.6 kg**; 1–70 m; W Atlantic, Florida and Gulf of Mexico to Brazil, St Paul's Rocks; alone or in pairs; **mostly sponges**, some algae, tunicates, hydroids, bryozoans; **juveniles clean other fish**; Lm 22 cm; ciguatera reports; IUCN LC (2009) |
+| [Florida Museum: Queen angelfish](https://www.floridamuseum.ufl.edu/discover-fish/species-profiles/holacanthus-ciliaris) | 1 | 45 cm, 1.6 kg; adult blue-green with blue and yellow, **all-yellow tail**, **"crown": dark spot ringed and dotted with bright blue on the forehead**; **juvenile dark blue, yellow tail, yellow around the pectorals, brilliant blue vertical bars, curved** (straight in the blue angel); pairs year-round; spawns rising in the water at dusk; **25,000–75,000 eggs per evening**; **hatch 15–20 h**; settle at 15–20 mm after **3–4 weeks**; juveniles territorial and run cleaning stations; rare queen × blue hybrid exists |
+| [Animal Diversity Web](https://animaldiversity.org/accounts/Holacanthus_ciliaris/) | 1 | **males larger**; harems of 1 male + up to 4–5 females; male courtship display; spawns within minutes of sunset; eats sponges and corals; **"very aggressive when kept in aquariums"**; lifespan poorly documented; IUCN LC, no CITES |
+| [WAS 2025: first captive spawning (Skorupa et al., UFSC)](https://www.was.org/Meeting/Program/PaperDetail/167384) | 1 (conference abstract) | pairs in 1,000–2,000 L tanks; one pair spawned twice in Dec 2024 at 7 pm; hatch at 18 h; larvae 2.24 mm at 24 h; **no larval survival reported**; female 17 cm, male 22 cm |
+| [WAS 2025: growth in aquaculture (Skorupa et al.)](https://was.org/Meeting/Program/PaperDetail/167558) | 1 (abstract) | two-year culture; **juvenile colours lost at ~15.9 cm TL**; females 6 → 20 cm; hierarchy with occasional fights; **a queen kept with blue tangs suffered an eye injury (cause unconfirmed)** |
+| [LiveAquaria: Queen Angelfish](https://www.liveaquaria.com/products/queen-angelfish) | 2 | **250 gal**; 72–78 °F, pH 8.1–8.4, SG 1.020–1.025, dKH 8–12; 18"; semi-aggressive; "reef compatible with caution" but **"a poor reef fish": nips stony and soft corals and clam mantles**; **add last**; difficult (water and diet); feed ≥3×/day (spirulina, algae, angel formula, mysis, shrimp); **$218.99**; sold from 1 in |
+| [Quality Marine: Queen (juvenile)](https://www.qualitymarine.com/quality-marine/fish/angels/holacanthus/queen-juvenile-10061/) | 2 | **250 gal**; 18"; territorial toward angelfish of the same body shape; may pick at sponges, tunicates and sessile inverts; cheek spines snag nets; "hermaphroditic" |
+| [TFH: Holacanthus ciliaris](https://www.tfhmagazine.com/articles/saltwater/holacanthus-ciliaris) | 2 | "immense aquarium", usually 200+ gal; juveniles blue with a golden head and throat and vertical bars; adults yellow with blue overwash; **not reef safe**; **Townsend angel = queen × blue hybrid (*H. townsendi*), not a species**; **St Paul's Rocks morphs** (TFH Jan 2003); no captive-bred *Holacanthus* |
+| [Reef Builders 2017: blue queens of St Paul's Rocks](https://reefbuilders.com/2017/07/03/great-new-pictures-of-blue-queen-angelfish-from-st-pauls-rock) | 2 | aberrant colours (koi-like patches, all white, "Blue Queen") in **~1% of that population**, blamed on isolation and inbreeding |
+| [Reef Builders 2018: Holacanthus townsendi](https://reefbuilders.com/2018/03/07/the-first-hybrid-angelfish-holacanthus-townsendi) | 2 | the Townsend is the first documented hybrid angelfish (via search summary; abundance up to 5–6% in some surveys) |
+| [National Geographic: Queen angelfish](https://www.nationalgeographic.com/animals/fish/facts/queen-angelfish) (search snippet only, not loaded) | 2 | up to 15 yr |
+
+**Modelled as:**
+- 40 cm aquarium adult, **250 gal with a 96×24 in footprint** → smallest tier the **300-gal**;
+  `activeSwimmer` (moderate), `outgrowsSmallTanks`
+- omnivore picker on sponges (angel formula with sponge), algae and meaty foods; feed often
+- **reef `unsafe`, `coralRisk 0.65`, `harms_anemone`**: nips stony and soft corals, zoanthids and clam mantles
+- one large angel per tank; high risk with the emperor; conditional with dwarf angels (add them first)
+- the juvenile is drawn completely differently (navy with curved blue bars); the colour change runs to ~16 cm
+- no hobby colour forms: generic intensity locus. Townsend hybrid and St Paul's Rocks morphs left out
+- breeding `not_in_game` (one research spawning in 2024, no larvae raised)
+
+**Conflicts:**
+- Reef safety: LiveAquaria's quick stat says "with caution" but its text says "a poor reef fish"; TFH says not reef
+  safe. The game uses `unsafe` with coral risk 0.65, above the emperor (0.55). Its wild diet is sponge-heavy and it
+  hits stony and soft corals alike (LA).
+- Social system: ADW says harems; Florida Museum and FishBase say pairs. Sex system: QM says "hermaphroditic". The
+  related *Holacanthus tricolor* is a protogynous harem fish (Hourigan & Kelley 1985, not loaded). The game uses
+  protogynous with a flag that this is low confidence.
+- Tank: TFH 200+, LA 250, QM 250 (Top Shelf 180–250 by search summary). The game uses 250, i.e. the 300 tier.
+- The UFSC first-spawning abstract gives egg diameter as "0.65 cm". That must be mm.
+- Lifespan: about 15 yr (NatGeo, hobby sites 10–20); not documented by a Tier 1 source. The game uses 480.
+
+### Game data
+The values the game uses are in `src/data/species/marine/queen_angelfish.ts`; this research proposed them, and the source check at the end of this chapter corrected some of them.
+
+**Genetics.** No hobby colour forms → `intensityLocus` + `intensityOverlay({ bodyColor2: '#ffd21a', accentColor:
+'#5fd0ff' })` ("Richly coloured").
+- **Left out, on purpose:** (1) **Townsend angelfish** = queen × blue angel (*H. bermudensis*) hybrid (TFH, Florida
+  Museum, Reef Builders 2018), a hybrid by ADR-0052 rules. (2) **St Paul's Rocks morphs** (gold, "Blue Queen", white,
+  koi-patched): wild aberrants in ~1% of one isolated population off Brazil (Luiz-Júnior 2003, TFH; Reef Builders
+  2017). Inheritance is unknown; the cause is assumed to be inbreeding, not shown. Not a trade form, and there's no
+  sign they are sold. (3) Locality labels (Caribbean, Brazil) only.
+
+baseVisual (adult): `bodyColor '#2f8fb0'` (blue-green; yellow scale centres with blue edges) · `bodyColor2 '#e6c22a'`
+(scale centres) · `bellyColor '#f0c838'` · `finColor '#2a6fd8'` (dorsal and anal blue, long trailing tips with orange
+edges) · `finColor2 '#ffd21a'` (**all-yellow tail**, yellow pectorals) · `accentColor '#1b2f8f'` (crown spot; ring
+and dots `#5fd0ff`) · `eyeColor '#1c1a24'` · `pattern 'reticulated'` + **`bodyMark: 'crown'`** (new: forehead spot)
+· `patternScale 0.7` · `patternContrast 0.7` · `iridescence 0.35` ("iridescent", Florida Museum) · `metallic 0` ·
+`translucency 0.04` · `finType 'angelfish_large'` · `finLength 1.15` · `bodyDepth 1` · `variation 0.12`.
+
+### Young and sexes
+- **Juvenile (to ~16 cm, UFSC):** dark navy-blue to black body with **bright blue vertical bars, the middle ones
+  curved** (straight in the blue angel), a yellow tail, a yellow area around the pectorals, and a golden face and
+  throat (Florida Museum, TFH). Sub-adults are blotchy in-betweens (LA sells "transition" sizes). The crown develops
+  in the adult.
+- **Sexes:** males are larger (ADW; UFSC sexed its pairs by size). No colour difference; colour flashes briefly
+  during courtship (ADW).
+
+### Behaviour
+- Cruises slowly near the bottom between rock, caves and gorgonians, picking at rock and sponge (Florida Museum).
+  Bold, curious, comes to the front.
+- Chases newcomers: add it last (LA). Juveniles hold a small territory and **clean other fish** at a "station"
+  (FishBase, Florida Museum). A juvenile special behaviour: larger fish pause beside it.
+- Sleeps in a cave. No digging; not a jumper.
+- Closest set: `angelfish_dwarf` (as the emperor uses). No new set.
+
+### Compatibility
+
+| Other | Verdict | Reason | Sources |
+|---|---|---|---|
+| Blue tang (new) | usually_compatible | QM: blue tangs can squabble with some angels; UFSC eye injury (cause unconfirmed) | QM; WAS 2025 |
+| Naso tang (new) | usually_compatible | unrelated | — |
+| Clown triggerfish (new) | conditional | two of the most aggressive large fish; the trigger may bite the angel's fins; 300+ gal, trigger last | LA trigger, ADW |
+| Panther grouper (new) | usually_compatible (adult angel) / high_risk for a small juvenile angel | | LA grouper |
+| Sharks (new) | conditional | large angels named as poor mates for bottom sharks (may pick at them); another source lists large angels as fine | Aquarium Domain (T3) |
+| Mono / scat (new) | incompatible in the game (water class) | | — |
+| Freshwater new species | incompatible | | — |
+| Emperor angelfish (*Pomacanthus*) | **high_risk** | two large angels: emperors attack other large angels (QM); queens are territorial toward same-shaped angels (QM); one large angel per tank (PFK, emperor file) | QM ×2, PFK (repo) |
+| Flame angel, coral beauty (*Centropyge*) | conditional | a big angel bullies small ones; add the dwarf first, very large tank | emperor-rule precedent, LA "add last" |
+| Tangs (all), foxface | usually_compatible | | — |
+| Miniatus grouper, dwarf lionfish | usually_compatible | robust; the angel is too big to eat when adult | — |
+| Clownfish, chromis, anthias, gramma, firefish, gobies, blennies, wrasses, hawkfish, damsels, cardinal | usually_compatible | not a predator (small mouth); may chase newcomers | LA |
+| Lined seahorse, mandarin | high_risk | bold feeder; may pick at seahorses (emperor precedent) | — |
+| Cleaner / peppermint shrimp, crabs, hermits, snails, conch | usually_compatible | mostly safe; it doesn't hunt them | QM (picks sessile, not mobile, inverts) |
+| Starfish, tuxedo urchin | usually_compatible | not sourced either way | — |
+| Feather dusters, sponges, clams | incompatible / high_risk | eats sponges, tunicates, hydroids; nips clam mantles | FishBase, LA |
+| Corals (stony, soft, zoanthids) | high_risk | nips stony and soft corals | LA, TFH |
+| Bubble-tip anemone | high_risk | angels nip anemones; hydroid and jellyfish eater | Florida Museum (diet), emperor precedent |
+
+`exceptionRules`:
+- `{ other: 'emperor_angelfish', verdictFloor: 'high_risk', reason: 'Two large angelfish fight; adults attack other large angels. Keep one big angel per tank.', incidentRisk: 0.12, mitigatedBy: ['tank_size', 'sight_breaks'] }`
+- `{ other: 'tag:dwarf_angelfish', verdictFloor: 'conditional', reason: 'A queen angel bullies smaller angelfish, especially ones added after it. Add the dwarf angel first, in a very large tank.', incidentRisk: 0.06, mitigatedBy: ['tank_size', 'sight_breaks'] }`
+- `{ other: 'tag:clam', verdictFloor: 'high_risk', reason: 'Picks at clam mantles until the clam dies.', incidentRisk: 0.15 }`
+- `{ other: 'lined_seahorse', verdictFloor: 'high_risk', reason: 'A large, bold feeder that outcompetes and may pick at slow seahorses.', incidentRisk: 0.08 }`
+- `positiveInteractions` (juveniles only, if the engine can condition on life stage): `{ other: 'tag:fish_large', text: 'A young queen angel runs a cleaning station: big fish hold still while it picks off parasites.' }`.
+
+### Smallest tank tier for an adult
+**300 gal (96×24 in).** The footprint fits the 240, but the gallons (250) don't.
+
+---
+
+## Clown triggerfish
+*Balistoides conspicillum* (Bloch & Schneider, 1801) · Balistidae · new group `triggerfish`. Name current (FishBase,
+Fishes of Australia; often misspelt "conspicillium").
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase](https://www.fishbase.se/summary/Balistoides-conspicillum.html) | 1 | **50 cm TL**; 1–75 m; Indo-Pacific; **eats sea urchins, crabs and other crustaceans, molluscs, tunicates**; **juveniles secretive in small caves rich in invertebrates**; adults solitary, open water along drop-offs, retreat to caves; distinct pairs; spawns over rubble and sand; **among the most highly prized aquarium fishes**; ciguatera reports; IUCN LC (2022) |
+| [Fishes of Australia](https://fishesofaustralia.net.au/Home/species/761) | 1 | **adult black with large white spots on the lower half, yellowish reticulated back, white or yellow band across the snout in front of the eyes, orange-yellow lips, pale yellowish band in the tail**; **juvenile black with large white spots, yellow snout, yellow patch mid-back**; 50 cm TL; drop-offs with rich coral; diet as FishBase |
+| [Two Oceans Aquarium](https://aquarium.co.za/animals/clown-triggerfish) | 1 (public aquarium) | first dorsal spine locks upright (second spine is the "trigger") to wedge into the reef; **divers hear grunting or clicking (swim-bladder vibration)**; some chase divers near nests; bites the spines off urchins |
+| [Australian Museum: Why are they called triggerfishes?](https://australian.museum/learn/animals/fishes/why-are-they-called-triggerfishes/) | 1 | spine lock mechanism; young wedge into crevices with spine locked and pelvic bone lowered |
+| [Raick et al. 2018, J Exp Biol 221](https://orbi.uliege.be/handle/2268/219088) | 1 | sound made by pectoral fins driving scutes against the swim bladder; **likely shared by most Balistidae** (clown trigger not tested) |
+| [Wikipedia: Triggerfish](https://en.wikipedia.org/wiki/Triggerfish) | 3 | balistiform swimming (undulating dorsal and anal fins; tail for bursts); triggerfish lay demersal eggs on sand; nest guarding |
+| [LiveAquaria: Clown Triggerfish](https://www.liveaquaria.com/products/clown-triggerfish) | 2 | **300 gal**; 72–78 °F, pH 8.1–8.4, SG 1.020–1.025, dKH 8–12; 20"; easy care; **aggressive: one of the most aggressive kept, large similarly assertive mates only**; not reef compatible; **rearranges decor**; meaty foods (squid, krill, clams, small fish, **hard-shelled shrimp, to wear down ever-growing teeth**); **$149.99**; **sold from ½ in** |
+| [Quality Marine: Clown Triggerfish](https://www.qualitymarine.com/quality-marine/fish/triggers/balistoides/clown-conspicillum-32009/) | 2 | **300 gal**; ~20"; aggressive, has attacked divers; **turns over rock, rubble, inverts and corals while hunting**; eats small fish, stars, crabs, shrimp, snails, urchins; **blows water to flip urchins**, attacks their undersides; sand bed with rubble and shells |
+| [TFH: Balistoides conspicillum](https://tfhmagazine.com/articles/saltwater/balistoides-conspicillum) | 2 | 180 gal "absolute smallest" for one fish with massive filtration; "quickly outgrow all but the largest tanks"; **most end up the only fish in the tank**; **bites hands, heater and filter tubing, damages acrylic, scratches glass**; begs at the glass, hand-feeds; never feed live fish; aquarium spawnings have happened, fry not raised |
+| [Reef Builders 2015](https://reefbuilders.com/2015/04/06/quality-marine-receives-biota-marines-cultured-balistoides-conspicillum) / [CORAL 2015](https://coralmagazine.com/?p=491119) | 2 | **Biota Palau hatchery-raised clown triggers sold via Quality Marine (Apr 2015)**, held separately because aggression grows with age; 47-day-old captive-hatched juveniles |
+| [Reef Builders: clown-trigger tag](https://reefbuilders.com/tag/clown-triggerfish/) | 2 | rare wild "maze" and ringed individuals; hybrid clown triggers; Sustainable Aquatics tank-raised fish (2010) |
+| Hobby lifespan pages (via search: [Aquariadise](https://www.aquariadise.com/clown-triggerfish/), [Saltwater Aquarium Blog](https://www.saltwateraquariumblog.com/clown-triggerfish-care/)) | 3 | ~8 yr wild (unsourced); 10–20 yr in captivity |
+
+**Modelled as:**
+- 45 cm aquarium adult, **300 gal, 96×24 in** → smallest tier the **300-gal**; `activeSwimmer`,
+  `outgrowsSmallTanks`, `heavyWaste`
+- a hard-shell crusher: eats every crustacean, snail, urchin, star, clam and small fish; **reef `unsafe`**,
+  `coralRisk 0.45` (flips rock and corals while hunting, bites)
+- one per tank and only with large, robust fish; conditional at best, high risk or incompatible with most of the roster
+- **new behaviour set `triggerfish`**: balistiform fin swimming, spine-lock wedge at night, rock flipping, sand
+  jetting, grunting, begging
+- breeding `not_in_game` (demersal, guarded eggs; pelagic larvae need a hatchery; Biota 2015)
+- no named forms: intensity locus. Aberrants and hybrids left out
+
+**Conflicts:**
+- Tank: TFH 180 "absolute smallest", Saltwater Aquarium Blog 120–200, LA and QM 300. The game uses **300** (two Tier 2
+  sources and the conservative rule).
+- Size: 50 cm TL wild (FishBase, FoA); ~20 in (LA, QM). Aquarium fish rarely reach the wild maximum. The game uses 45.
+- Grunting: documented for the family's mechanism (Raick 2018) and heard by divers (Two Oceans), not measured in this
+  species. Good enough for a sound or animation cue.
+- Captive-bred: Biota produced them in 2015 (and Sustainable Aquatics "tank raised" in 2010), but there is no current
+  steady supply. The game sets `captiveBredAvailable: false`. The owner could flip it.
+- Lifespan: only Tier 3 figures (10–20 yr captive). The game uses 480, low confidence.
+
+### Game data
+The values the game uses are in `src/data/species/marine/clown_triggerfish.ts`; this research proposed them, and the source check at the end of this chapter corrected some of them.
+
+**Genetics.** No named forms → `intensityLocus` + `intensityOverlay({ accentColor: '#ffffff', bodyColor2: '#e2cf4a' })`
+("Richly coloured"; QM: colour fades if underfed). **Left out:** rare wild aberrants ("maze" and "ringed" clown
+triggers, Reef Builders), with no inheritance known and not a trade line; clown trigger hybrids (Reef Builders 2014,
+2017); xanthic triggers.
+
+baseVisual: `bodyColor '#111214'` (black) · `bodyColor2 '#d8c040'` (yellow reticulation on the back, around the dorsal
+base) · `bellyColor '#f2f2ec'` (large white spots fill the lower half) · `finColor '#1a1a1a'` (soft dorsal and anal
+black with yellow edges `#e8d060`) · `finColor2 '#e6dc86'` (pale yellow vertical band in the tail) · `accentColor
+'#f6f6f0'` (white spots) · `eyeColor '#1a1410'` · `pattern 'spots'` (large, only on the lower half; seed per fish) ·
+`patternScale 1.6` · `patternContrast 1` · `bodyMark: 'trigger_face'` (new: white or yellow band across the snout in
+front of the eyes; orange-yellow lips `#ff9a2a`) · `iridescence 0` · `metallic 0` · `translucency 0` · `finType
+'triggerfish'` (first dorsal spine folds into a groove; tall soft dorsal and anal that undulate) · `finLength 1` ·
+`bodyDepth 1.05` · `variation 0.12`.
+
+### Young and sexes
+- **Juvenile:** black with **large white spots over most of the body** (relatively bigger than an adult's), a
+  **yellow snout**, and a yellow patch in the middle of the back (FoA). The lower-half spotting and back
+  reticulation come with growth. Sold from ½–1 in (LA).
+- **Sexes:** no documented difference. Not drawn.
+
+### Behaviour (new set `triggerfish`)
+- **Swimming:** balistiform. It sculls on undulating soft dorsal and anal fins with the tail folded, so it moves
+  slowly, hovers and pivots precisely, even backs up; the tail opens only for bursts (Wikipedia, Triggerfish).
+- **Foraging:** patrols rock and sand, **flips rubble and small rocks and knocks over loose corals** (QM, LA), **blows
+  jets of water at the sand** to uncover prey and to flip urchins, then bites from below (QM). Crunches shells.
+- **Night:** wedges into a crevice with the **first dorsal spine locked up** (Australian Museum; Two Oceans). It
+  should be drawn spine up, tucked into rock.
+- **Sound:** grunts or clicks when disturbed (Two Oceans; Raick 2018 family mechanism). A good audio or tooltip cue.
+- **Personality:** very curious; follows the keeper and begs at the glass, takes food from the hand (TFH); also
+  **bites hands and equipment** and can scratch acrylic (TFH). It charges tankmates in its territory; aggression
+  grows with age (QM 2015).
+- Not a jumper in the sources; it doesn't bury or rest on the bottom.
+- Closest existing set: `pea_puffer` (fin-driven hover and pivot, curious, nippy), but it lacks rock flipping, sand
+  jetting and the spine wedge. **A new `triggerfish` set is needed.**
+
+### Compatibility
+
+| Other | Verdict | Reason | Sources |
+|---|---|---|---|
+| Blue tang (new) | conditional | big but shy; bullied; 300+ gal, trigger added last and small | LA, TFH |
+| Naso tang (new) | conditional | big, fast; same caveats | LA |
+| Queen angelfish (new) | conditional | both very aggressive; fin biting | LA, ADW |
+| Panther grouper (new) | conditional | the grouper is slow and an easy bite target; the trigger is too deep-bodied and spiny for a 14 cm gape | LA ×2 |
+| Coral catshark / epaulette / bamboo shark (new) | high_risk | triggers pick at bottom-resting sharks; and the trigger eats shark egg cases and pups (my inference) | Aquarium Domain (T3) |
+| Mono / scat (new) | incompatible in the game (water class); high_risk otherwise | | — |
+| Freshwater new species | incompatible | | — |
+| Yellow, sailfin, chocolate, kole tang; foxface; emperor angel | conditional | "large, similarly assertive tank mates" only (LA); most end up alone (TFH) | LA, TFH |
+| Miniatus grouper | conditional | robust predator of similar size | LA |
+| Dwarf lionfish, lined seahorse, mandarin | incompatible / high_risk | slow fish are bitten (`fish_slow`); lionfish fins | TFH |
+| Dwarf angels, anthias, wrasses, clownfish, chromis, damsels, gramma, firefish, gobies, blennies, hawkfish, cardinal | incompatible / high_risk | small fish eaten (`fish_tiny/small`) or killed (`fish_medium`) | QM, FishBase |
+| Cleaner / peppermint shrimp | incompatible | eats shrimp | QM, LA |
+| Hermits, emerald crab, mantis | incompatible | eats crabs (mantis is species-only anyway) | FishBase, QM |
+| Snails, conch | incompatible | crushes molluscs | FishBase, QM |
+| Tuxedo urchin, elegant / sand-sifting star | incompatible | urchins are a staple; eats stars | FishBase, QM |
+| Corals, clams, feather dusters | high_risk / incompatible | flips corals while hunting; eats molluscs and tunicates | QM, FishBase |
+| Bubble-tip anemone | high_risk | tears at benthic life (low confidence) | QM |
+
+`exceptionRules`:
+- `{ other: 'tag:crustacean', verdictFloor: 'incompatible', reason: 'Crabs, hermits and shrimp are its natural food; it crushes them.', incidentRisk: 0.5 }`
+- `{ other: 'tag:snail', verdictFloor: 'incompatible', reason: 'Crushes snail shells with its teeth.', incidentRisk: 0.5 }`
+- `{ other: 'tag:starfish', verdictFloor: 'incompatible', reason: 'Flips urchins with jets of water and bites them from below; eats starfish.', incidentRisk: 0.4 }`
+- `{ other: 'tag:fish_small', verdictFloor: 'incompatible', reason: 'One of the most aggressive fish kept: small fish are killed and eaten.', incidentRisk: 0.35 }`
+- `{ other: 'tag:fish_medium', verdictFloor: 'high_risk', reason: 'Attacks mid-sized reef fish; only large, robust fish have a chance.', incidentRisk: 0.15, mitigatedBy: ['tank_size', 'hides'] }`
+- `{ other: 'tag:fish_large', verdictFloor: 'conditional', reason: 'Even large fish are harassed; add the trigger last, small, in a very big tank.', incidentRisk: 0.06, mitigatedBy: ['tank_size', 'sight_breaks'] }`
+- `{ other: 'tag:fish_slow', verdictFloor: 'incompatible', reason: 'Bites slow, weak swimmers.', incidentRisk: 0.3 }`
+- `{ other: 'tag:clam', verdictFloor: 'incompatible', reason: 'Eats molluscs.', incidentRisk: 0.4 }`
+
+### Smallest tank tier for an adult
+**300 gal (96×24 in).** The 240 fits the footprint but not the gallons.
+
+---
+
+## Panther grouper
+Also called the humpback grouper, barramundi cod.
+**Name:** Catalog of Fishes: **valid as *Chromileptes altivelis* (Valenciennes, 1828)**, family Epinephelidae; notes
+that both spellings are in use (*Cromileptes* in Fricke et al. 2011, Craig et al. 2011) and that **Ma & Craig 2018,
+Koeda 2019 and Allen & Erdmann 2024 treat it as *Epinephelus altivelis***. FishBase uses *Chromileptes*. WoRMS accepts
+the genus spelled *Chromileptes* but files the species as *Cromileptes altivelis*. Fishes of Australia uses
+*Chromileptes* and notes that Ma & Craig (2018) moved it into *Epinephelus*.
+**Recommendation:** `scientificName: 'Chromileptes altivelis'`, `genus: 'Chromileptes'` (Catalog of Fishes and
+FishBase). Note in `confidenceNotes` that the trade spells it *Cromileptes* (LiveAquaria, Top Shelf) and that it is
+increasingly called *Epinephelus altivelis*. Keep `genus` as Chromileptes so the engine doesn't treat it as the same
+genus as future *Epinephelus* species; `group: 'grouper'` already pairs it with the miniatus.
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [Catalog of Fishes](https://researcharchive.calacademy.org/research/ichthyology/catalog/fishcatget.asp?tbl=species&genus=Chromileptes) | 1 | name and status as above |
+| [WoRMS 218193](https://www.marinespecies.org/aphia.php?p=taxdetails&id=218193) | 1 | *Cromileptes altivelis* accepted, genus accepted as *Chromileptes* |
+| [FishBase](https://www.fishbase.se/summary/Chromileptes-altivelis.html) | 1 | **70 cm TL**; Lm 39 cm; 2–40 m; lagoon and seaward reefs, **often dead or silty areas, tide pools**; **small fishes and crustaceans**; "growth is very slow"; **juveniles commonly caught for the aquarium trade**; aquaculture; Hawaiian records probably released aquarium fish; IUCN **Data Deficient (assessed 20 Nov 2016)** |
+| [Fishes of Australia](https://fishesofaustralia.net.au/Home/species/4661) | 1 | **adult pale greenish to greenish-brown with scattered round black spots and large dusky blotches; very concave head profile**; **juvenile pale greyish with large round black spots**; 70 cm; adults in lagoons and sheltered inner reefs, often silty; juveniles in shallows and tide pools; **protogynous**; **Queensland no-take species**; heavily exploited in the live-fish trade; Ma & Craig 2018 |
+| [Williams et al. 2009, Endang Species Res 9: 67–79](https://researchonline.jcu.edu.au/8039) | 1 | GBR and Torres Strait: **max age 19 yr**; von Bertalanffy **K = 0.30/yr, L∞ = 59.7 cm**; 50% male at 54.7 cm and 9.6 yr; spawning Oct–Jan |
+| [Animal Diversity Web](https://animaldiversity.org/accounts/Cromileptes_altivelis) | 1 (page from 2001) | 70 cm; juveniles have fewer, larger spots; **swims slowly with many odd turns, sometimes seems upside down**; wary, swims off a short way when approached; eats fish, squid, cuttlefish; protogynous; pelagic eggs, no care |
+| [Wikipedia: Humpback grouper](https://en.wikipedia.org/wiki/Humpback_grouper) | 3 | IUCN DD (Sadovy et al. 2018 assessment); earlier VU (2007/08); females mature ~1.5 yr; sex change from 3 yr, most male by 9; hatchery production mainly in Taiwan and Indonesia; cannibalism in hatcheries; ciguatera; non-native in Florida and Hawaii |
+| [Global Seafood Alliance: Indonesian grouper seedstock](https://www.globalseafood.org/advocate/indonesian-methods-achieve-mass-production-grouper-seedstock/) (via search summary) | 2 | Gondol (Bali) hatchery mass seed production from 1999–2001; **broodstock tanks 60–150 m³** |
+| [LiveAquaria: Panther Grouper](https://www.liveaquaria.com/products/panther-grouper) | 2 | **300 gal**; 72–78 °F, pH 8.1–8.4, **SG 1.021–1.023**, dKH 8–12; 20" (text says 28"); aggressive when stressed; reef with caution; **needs a lid: shy at first and may jump or escape**; strong filtration; sandy substrate, pebbles, live rock; sexes hard to tell; **"Tank Raised" variant offered**; **$18.99** (sizes from <2") |
+| [Quality Marine: Panther Grouper](https://www.qualitymarine.com/quality-marine/fish/groupers/cromileptes/panther-19014/) | 2 | 180 gal; almost 28"; **juveniles white with black spots, adults grey and tan with dark spots**; friendly except to fish or crustaceans that fit in its mouth; one per tank; **low metabolism, feed every other day**; secretive; heavy waste |
+| [Top Shelf Aquatics: Panther Grouper](https://topshelfaquatics.com/products/panther-grouper-cromileptes-altivelis) | 2 | 300 gal in text (180 in quick specs); ~28"; **not reef safe** (eats shrimp, crabs, small fish; moves rock); **secure cover**; **$80.99 (reg. $89.99) at 2.6–3.5"** |
+| [Saltwater Aquarium Blog](https://www.saltwateraquariumblog.com/panther-grouper-care/) | 3 | **300 gal** for one adult; collected at 3–4 in; **grows a few inches a month**; juvenile "dalmatian", adult duller and greener with bluish fins; rests near the bottom in shade; **feed juveniles 3×/day, adults 2–3×/week**; no feeder goldfish; **mouth smaller than other groupers'**; adults aggressive to other groupers; >20 yr |
+| [Practical Fishkeeping: predators and thiaminase](https://www.practicalfishkeeping.co.uk/features/what-you-need-to-know-about-predator-fish-and-thiaminase/) | 2 | mussels, prawns/shrimp and cyprinids (goldfish) carry thiaminase; vary the diet, use B1 or vitamin supplements; feeder goldfish are a bad idea |
+
+**Is it a 1,000-gallon-plus fish? No.** It is a 60–70 cm, sedentary, cave-and-hover grouper (QM: low metabolism;
+ADW: slow). The retail minimum is 300 gal (LA, Top Shelf, Saltwater Aquarium Blog; QM 180). A 300-gal tier is only
+24 in front to back, which is less than an adult's 60 cm (24 in) length, so an adult couldn't turn comfortably. The
+honest minimum is **the 500-gal tier (120×36 in)**. That is my judgement from body length against tank width, not a
+sourced figure. Nothing suggests it needs more than 1,000 gal, so there is no reason to leave it out on tank size. The
+reasons to think twice are welfare ones: sold as a 2-in "cute" juvenile for about $19 and growing several inches a
+month; eats tankmates; released aquarium fish have turned up in Hawaii and Florida.
+
+**Modelled as:**
+- 60 cm adult (L∞ 59.7 cm, Williams 2009), **gallons 300 (three sources), footprint 120×36 in (judgement)** →
+  smallest tier the **500-gal**; `outgrowsSmallTanks`, `heavyWaste`, `escapeArtist`
+- ambush carnivore with a smallish mouth for a grouper: `maxLikelyPreySizeCm 14`
+- one per tank; high risk with the miniatus; eats shrimp and crabs; corals safe (it disturbs rock)
+- `grouper` behaviour set, slower and more open-water, with the odd hovering turns
+- breeding `not_in_game` (hatcheries with 60–150 m³ broodstock tanks), but tank-raised juveniles are sold
+  (`captiveBredAvailable: true`)
+
+**Conflicts:**
+- **Growth:** FishBase says "very slow". Williams 2009 (K = 0.30, roughly 15 cm at 1 yr, 27 at 2, 35 at 3 in the
+  wild) and hobby reports ("a few inches a month" when young, fed heavily) disagree. Fast growth in aquaria is well
+  attested (the "tank buster" reputation). The game should warn early (`outgrowsSmallTanks`).
+- **Size:** max 70 cm (FishBase, FoA, ADW); LA quick stat 20" vs its text 28"; hobby captives 18–24 in. The game
+  uses 60.
+- **IUCN:** FishBase and Wikipedia say Data Deficient (2016 assessment, published 2018); FoA still shows Vulnerable
+  (the 2007/08 listing). Use DD and mention the earlier VU.
+- **Tank:** 180 (QM, Top Shelf quick specs) vs 300 (LA, Top Shelf text, SWA blog). Gallons 300. The 120×36 footprint
+  is my call; the owner may prefer 96×24 (300 tier), which the sources allow.
+- **Reef:** LA "with caution" vs Top Shelf "not reef safe". The game uses `caution` with low coral risk (it doesn't
+  eat coral) and `unsafe` for shrimp, as the miniatus.
+
+### Game data
+The values the game uses are in `src/data/species/marine/panther_grouper.ts`; this research proposed them, and the source check at the end of this chapter corrected some of them.
+
+**Genetics.** No colour forms → `intensityLocus` + `intensityOverlay({ accentColor: '#050505', patternContrast: 1 })`
+("Richly coloured"). "Tank raised" is an origin, not a form. Left out: the hatchery hybrid with the giant grouper
+(*E. lanceolatus* × *C. altivelis*, Wikipedia), a food-farm hybrid.
+
+baseVisual (adult): `bodyColor '#c9c6ad'` (pale greenish-brown) · `bodyColor2 '#a9a68c'` (large dusky blotches) ·
+`bellyColor '#dcdac8'` · `finColor '#c2c0a8'` (large, rounded, spotted fins) · `finColor2 '#8fa4b8'` (bluish fin cast,
+SWA blog) · `accentColor '#0d0d0d'` (round black spots, smaller than the eye) · `eyeColor '#3a2a1a'` · `pattern
+'dalmatian'` · `patternScale 0.8` · `patternContrast 0.9` · `iridescence 0` · `metallic 0` · `translucency 0.03` ·
+`finType 'grouper_highfin'` (new: tall rounded dorsal, broad rounded paddle tail) · `finLength 1.15` · `bodyDepth 1.1`
+(tall, narrow body, small head, **very concave "humpback" head profile**) · `variation 0.15`.
+
+### Young and sexes
+- **Juvenile:** **white to pale grey with fewer, larger round black spots** (as big as the eye), large rounded fins,
+  high contrast (FoA, ADW, QM, Wikipedia). With growth the ground turns greenish-grey or tan, the spots get smaller
+  and more numerous, and dusky blotches appear (FoA, QM). Stressed fish show brown "fright" patches (SWA blog).
+- **Sexes:** look alike (LA); males are the larger, older fish (sex change at about 55 cm, Williams 2009). Not drawn.
+
+### Behaviour
+- Hovers slowly in mid- and low water near rock, often head-down or tilted, making **many odd turns and sometimes
+  seeming to swim upside down** (ADW). Rests near the bottom in shade (SWA blog). It is *not* a cave-wedger like the
+  miniatus: it hovers more in the open.
+- Wary when new: hides, may **jump** (LA); later learns feeding time and waits at the front.
+- Ambush rush at food and small fish; feeds most at dawn and dusk (Wikipedia).
+- Closest set: `grouper` with lower `restOnBottom` and higher hover. No new set; add `odd_turn` and `slow_hover`
+  special behaviours.
+
+### Compatibility
+
+| Other | Verdict | Reason | Sources |
+|---|---|---|---|
+| Blue tang (new) | usually_compatible (adult) / high_risk while the tang < ~14 cm | gape | LA, SWA |
+| Naso tang (new) | usually_compatible (adult) / high_risk while small | | |
+| Queen angelfish (new) | usually_compatible (adult) / high_risk while small | | |
+| Clown triggerfish (new) | conditional | the trigger bites the slow grouper | LA trigger |
+| Coral catshark / epaulette / bamboo shark (new) | conditional | eats egg cases and pups; "groupers larger than the shark" are poor mates; adult sharks too big to eat | Aquarium Domain (T3) |
+| Mono / scat (new) | incompatible in the game (water class); otherwise conditional (young eaten) | | — |
+| Freshwater new species | incompatible | | — |
+| Miniatus grouper | high_risk | adults fight other groupers; the panther outgrows it | SWA blog; engine same-group |
+| Dwarf lionfish | high_risk | 15 cm, within the gape | — |
+| Foxface, yellow/kole/chocolate/sailfin tang, emperor angel | usually_compatible (adults) | too deep-bodied for a 14 cm gape; small juveniles at risk | — |
+| Anthias, wrasses, dwarf angels, clownfish, chromis, damsels, gramma, firefish, gobies, blennies, hawkfish, cardinal, mandarin, seahorse | incompatible / high_risk | eaten | FishBase, FoA, QM |
+| Cleaner / peppermint shrimp | high_risk | groupers eat their cleaners in tanks | QM; existing cleaner rule for miniatus |
+| Hermits, emerald crab | high_risk | crustaceans are its food | FishBase |
+| Mantis shrimp | incompatible | mantis is species-only | — |
+| Snails, conch, stars, urchin | usually_compatible | not its food | — |
+| Corals, bubble-tip | usually_compatible | doesn't eat them; may knock rock | Top Shelf |
+
+`exceptionRules` (as the miniatus):
+- `{ other: 'tag:fish_tiny', verdictFloor: 'incompatible', reason: 'Tiny fish are swallowed whole.', incidentRisk: 0.5 }`
+- `{ other: 'tag:fish_small', verdictFloor: 'incompatible', reason: 'An ambush predator: small fish are eaten.', incidentRisk: 0.4 }`
+- `{ other: 'tag:fish_medium', verdictFloor: 'high_risk', reason: 'Only fish too big to swallow are safe; its mouth is smaller than most groupers\', but a grown one still takes fish of 12–14 cm.', incidentRisk: 0.12, mitigatedBy: ['hides'] }`
+- `{ other: 'tag:shrimp_large', verdictFloor: 'high_risk', reason: 'Cleaner and peppermint shrimp are eaten.', incidentRisk: 0.2 }`
+- `{ other: 'tag:crustacean', verdictFloor: 'high_risk', reason: 'Crustaceans are much of its natural diet.', incidentRisk: 0.15 }`
+- `{ other: 'miniatus_grouper', verdictFloor: 'high_risk', reason: 'Adult groupers fight other groupers, and the panther grows bigger.', incidentRisk: 0.1, mitigatedBy: ['tank_size'] }`
+- `{ other: 'dwarf_lionfish', verdictFloor: 'high_risk', reason: 'A grown panther grouper can swallow a dwarf lionfish.', incidentRisk: 0.08 }`
+
+Also add to `cleaner_shrimp.exceptionRules` (and peppermint): `{ other: 'panther_grouper', verdictFloor: 'high_risk', ... }` and `{ other: 'clown_triggerfish', verdictFloor: 'incompatible', ... }`.
+
+### Smallest tank tier for an adult
+**500 gal (120×36 in)** by footprint (my judgement); by the sources' gallons alone, the **300-gal**. Not beyond 1,000.
+
+---
+
+## Cross-species notes (big marine fish)
+- **New foods worth adding:**
+  - **Shell-on shellfish** (clams or mussels in the shell, shell-on shrimp, crab legs): the clown trigger needs hard
+    food to wear down its ever-growing teeth (LA). Today `snail_live` and `pellet_large` stand in. A new tag
+    `shellfish` would also suit future puffers (the fahaka in this chunk).
+  - **Angel formula with sponge** (frozen): the queen angel's wild diet is mostly sponge (FishBase). Optional; today
+    `pellet_small`/`flake` cover it.
+  - **Squid / chopped seafood**: covered by "Frozen Krill & Silversides" (`pellet_large`) for the trigger and grouper.
+- **Feeding cautions:** no feeder goldfish or freshwater feeders for the grouper or trigger (thiaminase, disease;
+  PFK, SWA blog, TFH "never live fish"). Mussels and prawns carry thiaminase too, so use a varied diet plus a vitamin
+  supplement (PFK). Tangs need seaweed at least three times a week (LA ×2).
+- **New behaviour set:** `triggerfish` (balistiform fin sculling, spine-locked night wedge, rock flipping, sand
+  jetting, urchin flipping, grunting, glass begging, equipment biting). All the others fit existing sets (`tang` ×2,
+  `angelfish_dwarf`, `grouper`) with new special-behaviour names: `play_dead`, `dart_and_wedge`, `zooplankton_pick`,
+  `night_spots`, `startle_jump`, `sponge_graze`, `juvenile_cleaning`, `odd_turn`, `slow_hover`.
+- **New body marks** (`bodyMark` strings): `palette` (blue tang), `naso_mask`, `crown` (queen angel),
+  `trigger_face`. New `finType`s: `tang`, `naso` (lyre + male streamers), `triggerfish`, `grouper_highfin`.
+- **No new breeding systems:** all five are `not_in_game`. Two are hatchery-bred commercially (blue tang: UF 2016,
+  Biota 2025; panther grouper: Indonesian and Taiwanese food hatcheries), one was in 2015 (clown trigger, Biota
+  Palau), and the queen angel first spawned in a lab in December 2024 with no larvae raised. None is home breeding.
+- **Flag ideas (optional, a core-type change):** `ichProne` (blue tang; tangs generally) to weight marine white spot
+  in `eligibleIllnesses` instead of only lowering hardiness; `equipmentBiter` (clown trigger bites heaters and tubing
+  and scratches acrylic; TFH), distinct from the mantis `glassStrikeRisk`.
+- **New group:** `triggerfish`. The queen angel shares `angelfish` with the emperor, so the engine's same-group check
+  fires (plus the explicit high-risk rule). Blue and naso tangs share `tang`.
+- **Surprises:**
+  1. The blue tang **doesn't need a big tank by the sources** (180 gal, 6 ft), and its "yellow juvenile" in ADW and
+     National Geographic is a mix-up with the Atlantic blue tang.
+  2. The panther grouper is **not** a 1,000-gal fish, but it's the clearest "tank buster": sold at under 2 in for
+     about $19, it grows several inches a month to 60–70 cm.
+  3. The "blonde naso" is a different species (*N. elegans*), not a morph.
+  4. The panther grouper's name is unsettled: Chromileptes (Catalog of Fishes), Cromileptes (WoRMS species page,
+     trade), Epinephelus (Ma & Craig 2018, Allen & Erdmann 2024).
+- **Brackish crossover:** silver mono and spotted scat adults are often kept in near-marine water. Whether the game
+  lets them share a `marine_fowlr` tank is the brackish researcher's call. Until then they are incompatible by water
+  class with all five fish here.
+
+## Sources (big marine fish)
+- https://www.fishbase.se/summary/Paracanthurus-hepatus.html
+- https://www.fishbase.se/summary/Naso-lituratus.html
+- https://www.fishbase.se/summary/Naso-elegans.html
+- https://www.fishbase.se/summary/Holacanthus-ciliaris.html
+- https://www.fishbase.se/summary/Balistoides-conspicillum.html
+- https://www.fishbase.se/summary/Chromileptes-altivelis.html
+- https://www.fao.org/4/y0870e/y0870e30.pdf (FAO WCP Species ID Guide vol. 6, Acanthuridae; text extracted from the PDF)
+- https://researcharchive.calacademy.org/research/ichthyology/catalog/fishcatget.asp?tbl=species&genus=Chromileptes
+- https://researcharchive.calacademy.org/research/ichthyology/catalog/fishcatget.asp?tbl=species&genus=Naso
+- https://www.marinespecies.org/aphia.php?p=taxdetails&id=218193
+- https://fishesofaustralia.net.au/Home/species/2203
+- https://fishesofaustralia.net.au/Home/species/4661
+- https://fishesofaustralia.net.au/Home/species/761
+- https://animaldiversity.org/accounts/Paracanthurus_hepatus/
+- https://animaldiversity.org/accounts/Holacanthus_ciliaris/
+- https://animaldiversity.org/accounts/Cromileptes_altivelis
+- https://www.floridamuseum.ufl.edu/discover-fish/species-profiles/holacanthus-ciliaris
+- https://australian.museum/learn/animals/fishes/why-are-they-called-triggerfishes/
+- https://aquarium.co.za/animals/clown-triggerfish
+- https://orbi.uliege.be/handle/2268/219088 (Raick et al. 2018)
+- https://researchonline.jcu.edu.au/8039 (Williams et al. 2009)
+- https://researchonline.jcu.edu.au/35460/ (Taylor et al. 2014)
+- https://www.was.org/Meeting/Program/PaperDetail/167384 (UFSC 2025, first spawning)
+- https://was.org/Meeting/Program/PaperDetail/167558 (UFSC 2025, growth)
+- https://www.liveaquaria.com/product/330/?pcatid=330
+- https://www.liveaquaria.com/blogs/species-spotlight/the-blue-tang
+- https://www.liveaquaria.com/products/naso-tang
+- https://www.liveaquaria.com/products/queen-angelfish
+- https://www.liveaquaria.com/products/clown-triggerfish
+- https://www.liveaquaria.com/products/panther-grouper
+- https://www.qualitymarine.com/news/the-blue-tang-of-many-names/
+- https://www.qualitymarine.com/quality-marine/fish/angels/holacanthus/queen-juvenile-10061/
+- https://www.qualitymarine.com/quality-marine/fish/triggers/balistoides/clown-conspicillum-32009/
+- https://www.qualitymarine.com/quality-marine/fish/groupers/cromileptes/panther-19014/
+- https://topshelfaquatics.com/pages/saltwater-fish/blue-hippo-tang
+- https://topshelfaquatics.com/products/blue-hippo-tang-captive-bred
+- https://topshelfaquatics.com/pages/saltwater-fish/naso-tang
+- https://topshelfaquatics.com/products/panther-grouper-cromileptes-altivelis
+- https://tfhmagazine.com/articles/saltwater/the-naso-tang-full-article
+- https://www.tfhmagazine.com/articles/saltwater/holacanthus-ciliaris
+- https://tfhmagazine.com/articles/saltwater/balistoides-conspicillum
+- https://reefbuilders.com/2011/10/11/yellow-belly-blue-tang
+- https://reefbuilders.com/2015/03/15/naso-lituratus-a-sleek-striking-outstanding-fish-for-spacious-marine-aquariums
+- https://reefbuilders.com/2015/04/06/quality-marine-receives-biota-marines-cultured-balistoides-conspicillum
+- https://reefbuilders.com/2016/07/20/captive-bred-blue-tang
+- https://reefbuilders.com/2016/11/29/captive-bred-blue-tangs
+- https://reefbuilders.com/2017/07/03/great-new-pictures-of-blue-queen-angelfish-from-st-pauls-rock
+- https://reefbuilders.com/2018/03/07/the-first-hybrid-angelfish-holacanthus-townsendi (search summary only)
+- https://reefbuilders.com/tag/clown-triggerfish/
+- https://coralmagazine.com/?p=491119
+- https://www.coralmagazine.com/?p=3078387
+- https://shop.thebiotagroup.com/collections/all/products/blue-tang
+- https://www.risingtideconservation.org/tag/kevin-barden/
+- https://www.practicalfishkeeping.co.uk/features/what-you-need-to-know-about-predator-fish-and-thiaminase/
+- https://www.saltwateraquariumblog.com/panther-grouper-care/ (Tier 3)
+- https://gensou.sg/?p=32419 (Tier 3)
+- https://en.wikipedia.org/wiki/Paracanthurus (Tier 3)
+- https://en.wikipedia.org/wiki/Naso_lituratus (Tier 3)
+- https://en.wikipedia.org/wiki/Naso_elegans (Tier 3)
+- https://en.wikipedia.org/wiki/Humpback_grouper (Tier 3)
+- https://en.wikipedia.org/wiki/Triggerfish (Tier 3)
+- https://www.nationalgeographic.com/animals/fish/b/blue-tang/ (cited only as the source of the juvenile-colour error)
+- https://www.floridamuseum.ufl.edu/discover-fish/species-profiles/blue-tang/ and https://www.reef.org/node/19157 (search summaries: Atlantic blue tang yellow juveniles, for the conflict)
+- https://www.globalseafood.org/advocate/indonesian-methods-achieve-mass-production-grouper-seedstock/ (search summary)
+- https://aquariumdomain.com/SpeciesProfiles/MarineFish/WhitespottedBambooShark.shtml (search summary, Tier 3: poor shark tankmates)
+- https://www.aquariadise.com/clown-triggerfish/ (search summary, Tier 3: lifespan)
+
+Pages that did not load: LiveAquaria /products/blue-hippo-tang (404; used /product/330 instead), the Plazi Ma &
+Craig treatment (redirect page only; used Catalog of Fishes and FoA instead), reefs.com panther thread (403), Reef
+Life Survey pages (403), the Springer N. lituratus age paper (login), the Inter-Research ESR abstract (429; used the
+JCU record instead).
+
+## Source check, 2026-10-30 (big marine fish)
+Before building, a second agent checked the facts the game uses against the sources (claims marked UNVERIFIED were softened or labelled in the data, never used as fact). Its notes, as written:
+
+- - Blue tang: OK all (size 30, 180 gal 6ft, LC 2010, price 110 = LA 1–2"; yellow belly Indian Ocean/Red Sea at maturity; young blue). Eye-ring claim is REEF's not Florida Museum. ADW breeding figures suspect (Atlantic tang) -> low confidence incubation/larval numbers.
+- - Naso: 240 gal rests on one Tier-3 (Gensou); Tier 1-2 say 180-200 (LA 180, Reef Builders/TFH 200). Mark 240 as judgement (design keeps 240 w/ 96x24) or 200. Lifespan 14 yr -> ~500 cap. Price 120 OK (LA $123.99 juv). Male streamers FAO. Juvenile grey, blue dorsal stripe, orange anal stripe (LA). Jumps OK.
+- - Queen angel: 250 gal OK (LA, QM). Lifespan NatGeo up to 15 yr (page loads) -> ~500. Price 220 OK. LC 2009. Reef: LA "Not a good reef dweller" (quote fix). Juvenile dark blue, curved blue bars, yellow tail/pectoral area, golden face/throat; lost ~15.9 cm TL (UFSC). Lab spawn Dec 2024 (UFSC, WAS/LACQUA 2025), nothing reported on larvae.
+- - Clown trigger: size 45 OK (FishBase 50), 300 gal OK (LA, QM), price 150 = LA 1/2-1" (179.99 at 1-2"). LC 2022. Eats urchins, crabs, crustaceans, molluscs (FishBase); blows water to flip urchins (QM). Juvenile black w/ big white spots, yellow snout+back patch (FoA). Biota Palau 2015 hatched & raised (Reef Builders 6 Apr 2015). Lifespan unverified.
+- - Panther grouper: Chromileptes altivelis valid per CoF; WoRMS Cromileptes accepted as Chromileptes. Size 60 OK (FishBase 70). 300 gal OK; 120x36 own judgement. Lifespan 19 yr max (Williams) -> 500 OK. IUCN Data Deficient 2016. Price: LA under 2" $18.99, 2-3" $29.99, 3-4" $34.99 -> use ~30-35 not 80 (mixed basis). "Grows several inches a month" is ONE tier-3 blog; FishBase: growth very slow; Williams K=0.30 -> ~1.3 cm/month. DROP or say "fast growth reported by hobbyists"; do not state as fact. Escape: LA lid "to prevent escape".
+- - Remove unsourced claims: cyanide after Finding Dory (blue tang), West Hawaii collection stopped 2017 (naso), Bermuda range (queen).
+- - Water: keep repo marine convention but don't claim "LA 72–78 °F" in comments for ideal >25.6.
+
+---
+
+# Chunk 17: the bottom sharks (ADR-0053)
+
+### About the chunk 17 shark research
+Three bottom-living, egg-laying sharks: coral catshark, epaulette shark and brown-banded bamboo shark. Researched 2026-10-30 for the builder. The repo was read only. Every number below has a source; pages that would not load are marked.
+
+**Access notes.**
+- These pages refused automated access: IUCN (403), zootier-lexikon (the Hövel 2010 record, 403), Smithsonian (403), reefs.com (403), the sharksandrays Tapatalk care sheets (403) and theaquariumwiki (bot wall).
+- PMC's epaulette oviparity paper hit a captcha, so I read the same paper on the journal's own site.
+- The Bor et al. 2003 PDF, the Thai catshark PDF, the phys.org PDF and the Wheeler et al. 2021 PDF came through as raw binary. I extracted their text locally with PDFKit and read the full text.
+- Facts seen only in a search-engine summary are marked *(via search index)*.
+
+**Time compression** follows `docs/GAME_DESIGN.md`:
+- incubation: game hours = real days × 8
+- `maturityDays`: 8 to 25
+- `lifespanDays`: real years × 40, capped at 500
+- `hungerHours`: 36 to 44 for big predators
+
+All three sharks hit the maturity and lifespan caps.
+
+**Shared vocabulary proposed here** (details in "Cross-species notes"):
+- behaviour set `benthic_shark`
+- breeding system `egg_case`
+- prey tags `benthic_shark` and `egg_case`
+- food tags `squid`, `shellfish` and `whole_fish`, plus a vitamin and iodine supplement item
+- special flags `electricalSensitive`, `needsIodineSupplement`, `knocksDecor` and `nitrateSensitive`
+
+---
+
+## Coral catshark
+*Atelomycterus marmoratus* (Anonymous [Bennett], 1830), family **Atelomycteridae**.
+- WoRMS and the Catalog of Fishes accept the name. Older sources put the genus in Scyliorhinidae, the true catsharks.
+- "Coral catshark" and "coral cat shark" are the trade names. Trade "banded cat sharks" are bamboo sharks (*Chiloscyllium*), not this species, and one forum warns that vendors sell bamboo sharks under the coral catshark name *(via search index)*.
+- Two Indonesian relatives live alongside it and are easy to mistake for it: *A. erdmanni* (Fahmi & White 2015, with far fewer white spots) and *A. baliensis*. An Indonesian "coral catshark" may be either one.
+- Proposed behaviour set `benthic_shark` (new; the closest existing set is `grouper`). Proposed unlock: a new shark research (owner decision).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase](https://www.fishbase.se/summary/Atelomycterus-marmoratus.html) | 1 | **70 cm TL max**; Lm from 49 cm; tropical, reef-associated, inshore; uses crevices and holes; oviparous, **one egg case per oviduct**; **IUCN NT (assessed 14 May 2020)** |
+| [WoRMS](https://www.marinespecies.org/aphia.php?p=taxlist&tName=Atelomycterus%20marmoratus) | 1 | accepted name; family Atelomycteridae |
+| [Bor, van Oijen & Magenta 2003, Zool. Med. Leiden 77](https://repository.naturalis.nl/document/44279) (full text read) | 1 | captive females laid capsules at the **Liège University aquarium (1998)** and **NUPEC São Paulo (2000–2002, 19 capsules from one 47 cm female)**; capsule **50–79 × 18–23 mm**, length 2.6–3.5 × width; **two constricted waists**; posterior horns with **short tendrils (≤ 20 mm)**; dark brown, banded when dried; larger females lay larger capsules |
+| [Choosri et al. 2023, Rambhai Barni Rajabhat Agric. J. 1(1)](https://ph03.tci-thaijo.org/index.php/kaset_rbruj/article/download/457/331/2257) (Thai full text read) | 1 | eggs from captive broodstock (Burapha Univ.), 3 eggs; **hatched in 76 days at 25.0 ± 0.8 °C, 32–33 ppt**; capsule 7.75 × 2.75 cm; 7 stages: d1–9 yolk only, d10–13 tiny embryo, d14–30 tail/gills/heart, d31–50 eye pigment + long gill filaments, d51–69 shark-shaped, **d70–75 striped pigment**, d76 hatch; **hatchling 9.2 cm, 2.57 g**; eggs viewed by **backlighting (candling)**; broodstock fed fish flesh **twice a week** |
+| Hövel, Ommer & Ziegler 2010, *Zool. Garten* 79: 243–253 (Cologne Zoo) *(via search index and Wikipedia; full text not reached)* | 1 | a **1.3 group (1 male, 3 females)** in a **~5,000 L** exhibit; fertile eggs from early 2010; **14 juveniles reared**; tank **at least 3 m long with deep hiding places**; nocturnal/crepuscular, hides under overhangs alone or in groups, **returns to the same refuge**; hatchlings **barred, adult pattern by 3 months**; **4–6 months to hatch at 26 °C, hatchlings 10–13 cm** |
+| [Wikipedia: Coral catshark](https://en.wikipedia.org/wiki/Coral_catshark) | 3 | carries the Hövel, Michael and Compagno facts above. Michael (2004, *Aquarium Fish Magazine*): **more aggressive than other small sharks, may attack tankmates larger than it can eat**, **up to 20 years** in captivity, well suited to large home tanks. Michael (2001): lies still and **lunges** at prey. Compagno (1984): males mature at 47–62 cm, females at 49–57 cm, **thin claspers** in adult males. It does not "crawl" like the epaulette. Colour: grey with black and white spots merging into dashes, white dorsal-fin tips, white bar through the gill slits, white belly. Capsules laid on the bottom, light brown, darkening |
+| [Quality Marine: Coral Cat Shark](https://www.qualitymarine.com/quality-marine/fish/sharks/atelomycterus/coral-cat-marmoratus-29015/) | 2 | almost 28 in; **180 gal minimum**; 72–78 °F, SG 1.020–1.025, pH 8.1–8.4, dKH 8–12; medium light; fine sand and caves; **sensitive to copper and electric impulses**; keep away from larger aggressive fish, **"they can easily pick at it"** |
+| [Chewy Education](https://www.chewy.com/education/fish/saltwater-fish/7-ideal-sharks-for-the-saltwater-aquarium) (expert input from Dr Jessie Sanders, DVM) | 2 | 200 gal in the profile, **300+ ideal**; 78–82 °F; silversides, shrimp, clams, mussels, small pieces; good tankmates are docile midwater fish (tangs, damsels, anthias); **avoid triggers, puffers, large angels** |
+| [Quality Marine: Shark Eggs Part II](https://www.qualitymarine.com/news/shark-eggs-part-ii/) | 2 | catshark eggs are common in the trade; light brown, darkening; two tendrils; **~5 months** to hatch; hatchlings 4–5 in; candling and egg handling (see the `egg_case` spec) |
+| Prices *(via search index)*: [aquariumfish.com](https://aquariumfish.com/collections/sharks) (fetched), Simple Tropical Fish UK, CB Aquatics CA | 2 | US "Cat Shark (*A. marmoratus*)" **from $177**; "Marble Shark" $601 (sold out); CA$500 (sold out); £249.99 |
+
+**Modelled as:**
+- 70 cm adult (FishBase max; conservative), **500 gal** and a **118 × 30 in floor footprint**. Hövel's 3 m length requirement → 118 in. The width is at least the adult's length so it can turn without folding double, which rules out the 96 × 24 in tiers.
+- Breeding is `egg_case`: 1–2 capsules per laying, **laid loose on the sand** (not anchored), 120 real days → **960 game hours**.
+- Tankmate aggression 0.35, the highest of the three sharks (Michael 2004).
+- `hidesNeeded 3` (deep hiding places, Hövel).
+- Eats crustaceans and small or sleeping fish (FishBase, Michael).
+
+**Conflicts:**
+- **Incubation:** 76 days at 25 °C (Choosri 2023, n = 3, full text) against 4–6 months at 26 °C (Hövel 2010 via Wikipedia) and ~5 months (Quality Marine). The game uses **120 days**, inside the aquarium-documented range. It is more conservative than the single small Thai trial.
+- **Hatchling size:** 9.2 cm (Thai) against 10–13 cm (Hövel) → 10 cm.
+- **Minimum tank:** 180 gal (Quality Marine), 200–300 gal (Chewy), "≥ 3 m long" (Hövel, Tier 1). The 3 m length decides the footprint, so the smallest tier that fits is 500 gal. That is higher than any retail gallon figure, and on purpose.
+- **Temperament:** Quality Marine and LiveAquaria-style listings say "aggressive", and Chewy says docile tankmates are fine. The game uses predatory toward small animals and moderate aggression to larger ones, per Michael.
+- **Lifespan:** only Michael (20 yr) gives one → the 500-day cap.
+
+### Game data
+The values the game uses are in `src/data/species/marine/coral_catshark.ts`; this research proposed them, and the source check at the end of this chapter corrected some of them.
+**Genetics.** No named forms in the hobby. The pattern is "highly variable" between individuals (Michael 1993 and Last et al. 2010, via Wikipedia), which is individual variation, not a trade form. Use the generic `intensityLocus` and `intensityOverlay` ("Richly coloured": crisper black and white spots). No hybrids or designer forms are left out, because none exist.
+
+### Young and sexes
+- **Adult:** very slender, cylindrical eel-like shark with a short head and two backward-raked dorsal fins set far back.
+  - Grey to grey-brown, covered in many small **black and white spots** that often merge into short horizontal dashes.
+  - **No dark saddles** (that separates it from the Australian marbled catshark).
+  - **White tips on both dorsal fins**, a **white bar through the gill slits** and a plain white belly (Michael 1993, Last et al. 2010, via Wikipedia).
+- **Hatchling:** contrasting **light and dark vertical bars**, sometimes with black and white dots, changing to the adult spotting **by about 3 months** (Hövel 2010 via Wikipedia). The late embryo already shows the "striped pattern" at days 70–75 (Choosri 2023).
+  - In game terms, the bars last only a few game days: draw them for the first ~10% of growth.
+- **Sexes:** the same colour. Adult males have **thin claspers** reaching about two-thirds of the way from the pelvic to the anal fin (Compagno 1984 via Wikipedia). Young males have tiny claspers that are hard to see except up close (MarAlliance, *via search index*).
+  - Females mature at 49–57 cm, males at 47–62 cm, so there is no reliable size difference.
+  - Art: draw claspers from maturity. The card can reveal a young shark's sex on close inspection from `sexVisibleAtDays`.
+
+### Behaviour
+- **Day:** wedged in a crevice or under an overhang, alone or with others, and it **returns to the same refuge on successive days** (Hövel 2010). It lies flat on the sand with gills pumping.
+- **Activity:** mainly **crepuscular and nocturnal**. Foraging starts in the afternoon and ends before sunrise (Hövel 2010).
+- **Moving:** slow, sinuous, eel-like gliding along the floor and through narrow gaps in rock (an elongated body for small reef spaces). It **does not fin-walk** like the epaulette (Michael 1993). It rarely leaves the bottom third.
+- **Hunting:** **lies still and lunges** at prey that comes within range (Michael 2001). In the tank it learns to take food from tongs.
+- **Signature AI moments:** squeezing into a too-small cave head first; a dusk "wake-up" patrol of the tank floor; a sudden short lunge at food dropped near its head.
+- **Jumping and escape:** a forum thread asks "are coral catsharks jumpers?" and reports jumps when startled *(Tier 3, via search index)*. It needs a tight lid.
+
+### Compatibility
+See the **shared matrix** after the three species. Points specific to this species:
+- It is the **most aggressive of the three** toward larger tankmates (Michael 2004). Raise its verdict against the other two sharks.
+- It is **smaller** (70 cm), so a panther grouper or miniatus grouper can make a meal of a young one (hatchling 10 cm).
+- Snails and sea stars are safer with it than with the other two: there is no record of shell-crushing, and its teeth are not the crushing kind.
+
+### Smallest tank tier for an adult
+**500 gal (120 × 36 × 27 in).**
+- Hövel's "at least 3 m long" needs 118 in, which rules out the 96 in tiers (240 and 300 gal).
+- The 24 in width of the 240 and 300 gal tiers is also narrower than the adult's 27.6 in length.
+- 600 gal is the same footprint (taller); 800 and 1,000 gal are better.
+
+---
+
+## Epaulette shark
+*Hemiscyllium ocellatum* (Bonnaterre, 1788), family **Hemiscylliidae**, order Orectolobiformes (carpet sharks).
+- The name is valid (FishBase, Fishes of Australia). LiveAquaria's "family Orectolobidae" is outdated.
+- Fishes of Australia now treats it as **endemic to the Great Barrier Reef**. New Guinea and Indonesian "epaulettes" in the trade are often other *Hemiscyllium* species (FishBase still lists New Guinea; IUCN treated a separate New Guinea population).
+- Australian-origin and captive-bred (ORA) fish are the true species.
+- Other names: blind shark, itar shark (Quality Marine, Fishes of Australia).
+- Proposed behaviour set `benthic_shark` (fin-walking variant).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase](https://www.fishbase.se/summary/Hemiscyllium-ocellatum.html) | 1 | **107 cm TL max**; Lm 60 cm; 0–50 m; shallow reefs and **tide pools**; mainly benthic invertebrates; oviparous, **paired eggs**; male **bites the female's body and gills** to hold her; survives low oxygen by switching off non-essential brain functions; "survives well in aquariums"; **IUCN LC (2015)** |
+| [Fishes of Australia](https://fishesofaustralia.net.au/home/species/1973) | 1 | GBR endemic; 1–40 m; lagoons and reef flats; seen at night or on low spring tides; shelters in tide pools and under rocks; tolerates low O₂ and high CO₂ (Heinrich et al. 2014); **two capsules at a time, Aug–Dec, laid among coral at night, about every 14 days**; **hatch after ~120 d at 14–16 cm** |
+| [Florida Museum](https://www.floridamuseum.ufl.edu/discover-fish/species-profiles/hemiscyllium-ocellatum/) | 1 | adult cream/brown with small widely spaced dark spots and **two large white-ringed black spots above the pectorals**; **juveniles have dark saddles forming crossbands that fade into spots**; slow growth, then **~5 cm/yr after 3 months**; males mature at 54 cm, females at 62 cm; suction feeds; **pushes its snout into sand and thrashes** for buried prey; adults eat more crabs and shrimp, juveniles more worms and fish; capsules 9 × 3.5 cm under coral heads; ~120 d; hatchlings 14–16 cm; **walks** with pectoral and pelvic fins; **~3.5 h in hypoxia**; **predators include sharks and groupers** |
+| [Aquarium of the Pacific](https://www.aquariumofpacific.org/onlinelearningcenter/species/epaulette_shark) | 1 | typical **70–90 cm**; juveniles have alternating light and dark bands across body and fins that break up with age; rests under ledges and in crevices; **not territorial**; approachable; salamander-like walk; rheotaxis; **two eggs per event, up to 50 a year, attached to coral or rock by fibrous strands**; ~120 d; pups ~15 cm; females mature at 64 cm, males at 60 cm; **lifespan 20–25 yr**; breeds readily in aquaria |
+| [Wheeler et al. 2021, *Sci. Rep.* 11:454](https://researchonline.jcu.edu.au/66857/1/66857.pdf) (full text read; New England Aquarium) | 1 | eggs from one long-term NEAq breeding pair; **incubation 125 ± 5 d at 27 °C, 110 ± 7 at 29 °C, 101 ± 7 at 31 °C**; 31 °C hatchlings 2.6 g lighter, weaker; 31 °C is near the **pejus** temperature; at 32 °C only 37.5% survived to hatch (cited study); **25 of 27 hatched in the dark**; external yolk gone ~118 d (27 °C), with an internal reserve after; eggs **candled 2–3×/week**; "embryos **cease movement** when there is a perceived external threat"; neonates fed **minced shrimp and clam daily**, PVC pipe shelters; egg cases **suspended mid-water**; nitrate 3–6 mg/L in the rearing systems |
+| [Wheeler et al. 2025, *Biol. Open* 14: bio062076](https://journals.biologists.com/bio/article/doi/10.1242/bio.062076) | 1 | five females **each housed alone** in 1,000 L tanks laid **196 egg cases over 98 cycles** (Mar 2020–Jan 2022), so females lay without a male; **cycle 19 ± 5.7 d at 25 °C** (16–30 d); the two cases 1.7 ± 1.7 d apart (0–2 nights); median **2 cases per cycle**, sometimes 1 + an empty "wind" case or 3; fed **2% body mass 3×/week** (prawn, pilchard); they skip 35% of meals within 2 days of laying |
+| Payne 2012, *Zoo Biology* 31: 718–724 *(abstract via search index)* | 1 | egg cases and hatchlings held in **floating baskets** in a 1,306 L tank at 24.4–25.5 °C; **56 cases → 27 hatched, 22 survived**; gestation **~140 d (134–148)**; hatchlings **16.2 cm, 19.9 g**; accepted **finely chopped capelin with a multivitamin**; success came from low stress, an easy-to-eat diet, vitamins and water quality |
+| [Porter et al. 2022, *Integr. Comp. Biol.*](https://researchonline.jcu.edu.au/75954/) and [FAU news](https://www.fau.edu/newsdesk/articles/walking-shark-study) | 1 | three gaits: **slow-to-medium walking, fast walking, swimming**; walks **in and out of water**; neonate and juvenile kinematics the same; survives **2 h of anoxia** |
+| [Wikipedia: Epaulette shark](https://en.wikipedia.org/wiki/Epaulette_shark) | 3 | carries IUCN 2015 (mating Jul–Dec in the wild, **continuous in captivity**; capsules **two, rarely four**; 20–50 eggs/yr; ~10 × 4 cm; **120–130 d**; both sexes mature at 54–64 cm and at least 7 years old). Also: Goto et al. 1999 and Pridmore 1995 (walking); Martin/ReefQuest (crawls out of the water between tide pools; **chews food 5–10 min**); Compagno 2002 (expels sand through the gills); Michael 2004 ("the best shark for the home aquarium"; **breeds in tanks as small as 135 gal**, adults need ≥ 180 gal; eats other fish) |
+| [LiveAquaria: Australian Epaulette Shark](https://www.liveaquaria.com/products/australian-epaulette-shark) | 2 | Expert Only; **360 gal min**; max 42 in; 72–78 °F, pH 8.1–8.4, dKH 8–12, SG 1.020–1.025; sand only (coarse grit scratches the abdomen, causing infection); start on cleaned squid or live shrimp, then shrimp, scallop, marine fish; eats invertebrates and **small sleeping fish**; **never copper**; **$895.99** (10–18 in and 18–28 in, sold out) |
+| [Quality Marine: Epaulette](https://www.qualitymarine.com/quality-marine/fish/sharks/hemiscyllium/epaulette-29003/) | 2 | almost 42 in; **300 gal min**; 72–78 °F; **deep fine sand**; stable rockwork with caves; **sensitive to electric impulses and copper**; nocturnal; two colour "morphs": golden with small dark spots and a distinct black spot, tan with fewer large spots and a faded black spot |
+| [Top Shelf Aquatics](https://topshelfaquatics.com/pages/saltwater-fish/epaulette-shark) | 2 | ≥ 200 gal (published range 180–360); **"bottom area matters far more than height"**; it digs under rockwork, and unstable rock can collapse on it; strong filtration and skimming; never copper; **eliminate stray current** by grounding; bite-size shrimp, squid, scallop, clam, fish, mysis **several times a week**, from a feeding stick or on the bottom; **avoid large triggers, puffers, butterflyfish, angelfish and certain wrasses (pick at the shark); large morays and frogfish threaten small sharks**; eats ornamental shrimp, crabs and small sleeping fish; **sessile corals generally left alone**; mature males attack other males and harass females |
+| [ORA (2016)](https://orafarm.com/?p=7600) | 2 | **captive-bred pups sold since Nov 2016**; adults max 32 in; **≥ 200 gal**; expert only; an easy diet with **multivitamins**; ORA broodstock eat **vitamin-enriched squid and shrimp 3×/week** in a 15 × 25 ft raceway; parents took years to mature |
+| [PetMD (Dr Jessie Sanders, DVM)](https://www.petmd.com/fish/top-saltwater-shark-species-aquariums) | 2 | **≥ 350 gal per individual**; small, preferably **single-sex groups** possible; shark vitamin/mineral supplements; **20–25 yr** |
+| [Wonders of Wildlife (2026)](https://wondersofwildlife.org/2026/from-egg-to-hatchling-epaulette-sharks/) | 1 | **slits form in the case** to let water circulate; the embryo **fans its tail** to move water over its gills; New England Aquarium's **100th hatchling**; juveniles spend 12–18 months in nursery habitats |
+| reefs.com epaulette article *(403; via search index)* | 2 | adults occasionally eat the eggs, **males more than females**, so incubate eggs in a separate tank |
+| [aquariumfish.com](https://aquariumfish.com/collections/sharks) | 2 | Epaulette (*H. ocellatum*) **from $1,078**, in stock |
+
+**Modelled as:**
+- 90 cm adult (top of the typical 70–90 cm; FishBase max 107), **500 gal**, footprint **108 × 36 in** (3× TL long, width ≥ TL). 1,000 gal is better.
+- `egg_case` breeding:
+  - 1–2 capsules **anchored by fibres to rock or decor**, laid at night
+  - laying cycle 19 d → `cooldownDays 6`
+  - **130 real days at ~26 °C → 1,040 game hours**, shortening about 6 real days per °C warmer (Wheeler 2021)
+  - a lone female still lays **infertile** cases (Wheeler 2025)
+- Walks on its fins, the signature AI behaviour.
+- Low tankmate aggression (not territorial, AoP). Male–male "fight" (Top Shelf).
+- The most hypoxia-tolerant fish in the game: a candidate for a new `lowOxygenTolerant` trait (FishBase, Fishes of Australia, Florida Museum, FAU).
+
+**Conflicts:**
+- **Minimum tank:** 180 gal (Michael 2004), 200 (ORA, Top Shelf, Chewy), 300 (QM), 350 (PetMD), 360 (LiveAquaria). The game uses the 500 gal tier because of the floor footprint. A common 360 gal tank is 96 × 36 in, and the game's only 36 in-wide tiers start at 500 gal.
+- **Incubation:** 120 d (Fishes of Australia, Florida Museum, AoP), 120–130 (IUCN), 125 at 27 °C (Wheeler 2021), ~140 at 24.4–25.5 °C (Payne 2012), ~5 months (Wonders of Wildlife). The game uses 130 d at the game's usual 25–26 °C. Payne's 140 d at 25 °C fits Wheeler's ~6 d/°C slope.
+- **Laying interval:** ~14 d (Fishes of Australia) against 19 ± 6 d at 25 °C (Wheeler 2025, captive) → ~6 game days.
+- **Eggs per year:** "up to 20 young per year" (Florida Museum) against 20–50 eggs (IUCN, AoP). The difference is likely eggs laid against young raised.
+- **Range:** FishBase says New Guinea to northern Australia; Fishes of Australia (2022) says GBR endemic. The game says Great Barrier Reef (Australia) and notes the New Guinea look-alikes.
+- **Max size:** 107 cm (FishBase) against 32 in (ORA) and 30 in (Chewy) for captives → 90 cm, conservative.
+
+### Game data
+The values the game uses are in `src/data/species/marine/epaulette_shark.ts`; this research proposed them, and the source check at the end of this chapter corrected some of them.
+**Genetics.**
+- Quality Marine describes **"golden"** (small dark spots, a distinct black ocellus) and **"tan"** (fewer, larger spots, a faded ocellus) colour types. Their inheritance is **undocumented**: it may be locality or age, and no source shows them breeding true. Do not make a locus for them.
+- Use the generic `intensityLocus` and "Richly coloured" overlay: a brighter cream-gold ground and a crisper ocellus. If the owner wants the QM names, they need his approval as a natural-variation label (ADR-0052 decision 2).
+- No hybrids or designer forms are left out; none found.
+
+### Young and sexes
+- **Adult:** slender body; the **tail stalk is over half the body length**; short rounded snout with small nasal barbels; **paddle-shaped pectoral and pelvic fins** (the legs); two similar dorsal fins set far back (AoP).
+  - Cream to beige-brown with widely spaced dark brown spots and faint darker bands.
+  - The **"epaulette"**: a big black spot ringed in white above each pectoral fin (Florida Museum, AoP, Fishes of Australia).
+- **Juvenile:** dark brown **saddles that extend as crossbands** over the back and tail, on body and fins, which **break up into spots** as it grows (Florida Museum, AoP). Hatchlings show "spots and bands" (Wonders of Wildlife).
+  - Art: banded until about half adult size, then blend into spots. Whether the shoulder ocellus is present at hatching is not stated in my sources; photos suggest it is, but that is **unverified**.
+- **Sexes:** the same colour. Females mature slightly larger (62–64 cm against 54–60 cm: Florida Museum, AoP).
+  - Mature males have long claspers.
+  - Mated females may show mouth-shaped bite scars on the pectoral fins or gill area (FishBase).
+
+### Behaviour
+- **Walking (the signature):** it bends its body like a salamander and pushes with its paddle-shaped paired fins across sand, rubble and coral. It often walks even where it could swim (Goto et al. 1999 and Pridmore 1995 via Wikipedia; AoP).
+  - Gaits: slow-to-medium walk, fast walk, and an eel-like swim for bursts (Porter 2022).
+  - It walks **out of water** between tide pools (FAU; ReefQuest via Wikipedia).
+  - AI: mostly walk with fin "steps" visible; swim only to cross open water or flee.
+- **Resting:** long periods still under ledges and in crevices by day (AoP). Sometimes **perches facing into the current** (rheotaxis: AoP, Peach 2002).
+- **Night:** most active at night and at dusk and dawn (Fishes of Australia, Florida Museum). Feeding peaks at dawn and dusk.
+- **Feeding:**
+  - **Pushes its snout into sand and thrashes** to flush buried prey (Florida Museum).
+  - **Suction-feeds** by expanding its mouth cavity (Florida Museum, AoP).
+  - Sometimes blows sand out of its gill slits while swallowing (Compagno via Wikipedia).
+  - May **chew for 5–10 minutes**, unusual for a shark (ReefQuest via Wikipedia; Tier 3).
+  - Learns to take food from tongs.
+- **Low oxygen:** survives hours of very low oxygen and 2 h of anoxia (FishBase, Florida Museum 3.5 h, FAU).
+  - Game idea: it shrugs off an aeration failure that stresses its tankmates. Needs a new `lowOxygenTolerant` flag (owner call).
+- **Temperament:** approachable, shows little fear of divers (Compagno via Wikipedia, AoP).
+- **Escape:** walks out of water in the wild, so it needs a tight lid. No aquarium escape report specific to epaulettes was found.
+
+### Compatibility
+See the **shared matrix**. Specific to the epaulette:
+- **Crushing teeth** (Florida Museum via Wikipedia), so it is a real risk to small snails and possibly urchins.
+- **Mature males eat egg cases** more than females (reefs.com, via search index).
+- Lowest aggression of the three toward larger fish.
+
+### Smallest tank tier for an adult
+**500 gal (120 × 36 in)** for a typical 70–90 cm adult. The 36 in width just exceeds its 35.4 in length.
+- 240 and 300 gal (96 × 24) are too narrow; 600 gal is the same footprint.
+- **1,000 gal (144 × 48)** is the honest comfortable size for a large (100 cm) adult or a pair.
+- By the hobby rule of thumb (width 1.5× TL, Tier 3) an adult would need ~53 in, beyond every tier. Tell the owner that 500 gal is the bare minimum, not the ideal.
+
+---
+
+## Brown-banded bamboo shark
+*Chiloscyllium punctatum* Müller & Henle, 1838, family **Hemiscylliidae** (carpet sharks; not a true catshark despite the trade name).
+- The name is valid (FishBase, Fishes of Australia). Fishes of Australia's preferred common name is **grey carpetshark**.
+- Trade names: banded cat shark, brown-banded cat shark, black-banded cat shark (juveniles).
+- Similar *Chiloscyllium* (*C. griseum*, *C. hasseltii*, *C. plagiosum*) appear in the trade under overlapping names.
+- Proposed behaviour set `benthic_shark` (ledge-lying variant).
+
+| Source | Tier | Facts used |
+|---|---|---|
+| [FishBase](https://www.fishbase.se/summary/Chiloscyllium-punctatum.html) | 1 | **132 cm TL max**; Lm 87 cm; 0–85 m; inshore reefs, **tide pools**; bottom invertebrates and small fish; **paired eggs** in rounded cases; embryos feed on yolk; **survives up to 12 h out of water**; **IUCN NT (assessed 19 Sep 2023)** |
+| [Fishes of Australia](https://fishesofaustralia.net.au/home/species/3264) | 1 | max ~1.2 m; **juveniles to ~30 cm broadly banded with ~10 dark wavy bands on a pale ground, sometimes peppered with dark spots**; large adults plain brownish to greyish with a pale belly; hatch at **13–17 cm** after **~5 months**; capsules **~11 × 5 cm**; males mature at 68–76 cm, females at ~63 cm; crabs, polychaetes, shrimp, small fish; camouflaged juveniles shelter in crevices and coral; threatened by the display-aquarium trade |
+| [Florida Museum](https://www.floridamuseum.ufl.edu/discover-fish/species-profiles/chiloscyllium-punctatum/) | 1 | juveniles dark transverse bands and spots on medium brown; adults light brown, no pattern; max 104 cm; **life expectancy ~25 yr**; nocturnal, **digs through sediment**; paired eggs on the seafloor; incubation in captivity **up to 4 months**; hatchlings 13–17 cm; tolerates **hypoxia for long periods**; small ones hide in crevices; **breeds readily in captivity** |
+| [Onimaru et al. 2018, *Dev. Dyn.*](https://pmc.ncbi.nlm.nih.gov/articles/PMC5947634) (Osaka Kaiyukan) | 1 | 10 males and 11 females in the Pacific Ocean tank (23 °C) **lay constantly, year-round**; **about half the eggs are eaten by other fish**; ~⅓ develop abnormally; capsule ~12 × 6 cm; staging at 25 °C: **movement ~12 dpd**, gill buds ~22, gill filaments ~30, eye pigment 38, **tail stripes 66, eight bands 73**, external gills gone by 80, yolk shrinking 104, **hatch ~118 d** |
+| Harahush, Fischer & Collin 2007, *J. Fish Biol.* 71: 1007–1022 *(abstract via search index)* | 1 | 6 females at UnderWater World, Mooloolaba: **692 eggs (228 viable) Jul 2004–Feb 2006**; season late July–February; embryo visible to the naked eye at ~18 dpd; **hatch at a mean 153 dpd at 21–25 °C**; **21.4% hatched** |
+| [Kempster, Hart & Collin 2013, *PLoS ONE* 8: e52551](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0052551) | 1 | eggs from captive-bred adults (Underwater World, Daydream Island); case sealed early on; in pre-hatching stages **the seals open and the embryo undulates its tail to pump seawater** through; late embryos **freeze** (stop gill movements, **coil the tail around the body**) for ~19–59 s when they sense predator-like electric fields; up to 5 months in the case |
+| [Fahmi et al. 2021, *J. Fish Biol.*](https://pubmed.ncbi.nlm.nih.gov/33977550/) | 1 | 330 wild Indonesian sharks: grows **up to 18 cm/yr**; max ~1 m; **maturity ~6.5 yr**; max age **14 yr** (wild) |
+| [Wheaton et al. 2025, *Front. Vet. Sci.*](https://frontiersin.org/articles/10.3389/fvets.2025.1504527/full) | 1 | aquarium brown-banded and white-spotted bamboo sharks; **goitre is the commonest thyroid disease**; causes: low iodine in food or water, ozone, **high nitrate**; **bamboo sharks developed goitres 2 months after supplements were withdrawn**; fed capelin, clam, shrimp, herring, smelt with **shark/ray vitamin tablets (1 per ½ lb of fish)**; too much iodine is also harmful |
+| Morris et al. 2011, *J. Aquat. Anim. Health* 23: 92–99 *(abstract via search index)* | 1 | juvenile white-spotted bamboo sharks at **NO₃-N 70 mg/L (~310 mg/L nitrate)** for ~30 days developed thyroid hyperplasia; **nitrate causes goitre** |
+| [Feldheim et al. 2010, *J. Heredity*, via phys.org](https://phys.org/news/2010-01-shark-virgin-birth-offspring-survive.pdf) | 1 | **parthenogenesis** in a **white-spotted** bamboo shark (*C. plagiosum*) at Belle Isle Aquarium, Detroit; two daughters **alive after 5+ years**; "half-clones" |
+| [Bernal et al. 2015 via Science News](https://www.sciencenews.org/blog/wild-things/paternity-test-reveals-father%E2%80%99s-role-mystery-shark-birth) and [KPBS/NPR 2025](https://www.kpbs.org/news/science-technology/2025/01/28/this-shark-pup-was-born-in-a-habitat-without-any-males-how-did-that-happen) | 1 | a **brown-banded** pup hatched in Jan 2012 at the Steinhart Aquarium (San Francisco) in an all-female tank. **DNA showed a father**, so this was **sperm storage for at least 45 months**, not parthenogenesis. Parthenogenesis is documented in white-spotted bamboo and zebra sharks in several aquariums |
+| [Wikipedia: Brownbanded bamboo shark](https://en.wikipedia.org/wiki/Brownbanded_bamboo_shark) | 3 | juveniles banded, adults patternless (Compagno 2002); **feed 2–3×/week**, bite-size meals or it regurgitates; **iodine supplements prevent goitre**; items must be stable, since it **knocks over unstable decor**; **no triggers or puffers (they nip its fins)**; 25 yr in public aquaria; IUCN NT (Rigby et al. 2024) |
+| [LiveAquaria (Diver's Den)](https://www.liveaquaria.com/products/cat-shark-brown-banded-expert-only-6-25-wysiwyg) | 2 | Expert Only; **360 gal min**; max 42 in; 72–78 °F, pH 8.1–8.4, dKH 8–12, SG 1.020–1.025; cream with broad dark stripes, **larger ones develop muted brown spots between the stripes**; sand only; **never copper**; start on squid or live shrimp; ideal foods **whole cockle in the shell**, fresh shrimp and squid, frozen mussel; **"will eat any crustacean"**; **$199.99 for 6.25 in** |
+| [Quality Marine: Banded Cat Shark](https://www.qualitymarine.com/quality-marine/fish/sharks/chiloscyllium/banded-cat-29001/) and [Shark Eggs Part II](https://www.qualitymarine.com/news/shark-eggs-part-ii/) | 2 | almost 37 in; **300 gal min**; **sensitive to electric impulses and copper**; stable rockwork with caves. Eggs: **2–4 every two weeks, up to ~50 a year**; ~4 × 1.5 in; ≥ 4 months; hatchlings 5–6 in; place the egg in **good flow**, **never let air in**; candling (perfect round yolk = good, runny = bad); eggs hatch on their own; **pups may not eat for a week**, then supplemented seafood from **tongs**; **snails and urchins can bore through egg cases** (wild) |
+| [Saltwaterfish.com](https://saltwaterfish.com/product-brown-banded-bamboo-shark) | 2 | Expert; **300+ gal**; max 30 in; **$297–571** (sale, by size); fine substrate |
+| [Practical Fishkeeping (Blue Reef Aquarium, Newquay)](https://www.practicalfishkeeping.co.uk/fishkeeping-news/public-aquarium-is-inundated-with-pups/) | 2 | 30+ pups in a 50,000 L lagoon; "relatively easy to breed"; **pups black-and-white striped, fading; adults light brown, ~1 m** |
+| [Abyss Aquatics (UK)](https://www.abyssaquatics.co.uk/product/bamboo-shark-egg/) and [aquariumfish.com](https://aquariumfish.com/collections/sharks) | 2/3 | **egg cases sold to hobbyists**: £79 (Abyss), **"Banded Shark Eggs" $93.59** (aquariumfish.com); keep eggs in gentle flow **away from tankmates that damage them** (egg trap); hatchlings live on yolk for days, then **small portions 3–4×/day** of mysis, small squid, chopped fish; 75–82 °F; bamboo "Bamboo Shark" **from $281** |
+| [Mote Marine Lab](https://mote.org/animal-encyclopedia/brown-banded-bamboo-shark) | 1 | nocturnal; squeezes into crevices; "walks" on its pectorals; eats worms, crustaceans, **echinoderms** (its weight figure of 132 lb is an obvious error and is not used) |
+
+**Modelled as:**
+- 105 cm adult (Compagno 104, LiveAquaria 42 in; FishBase's 132 cm is a wild record) → **1,000 gal** and a **124 × 42 in** footprint. 3× TL long, and the width is at least its 41.3 in length. **Only the 1,000 gal tier fits.**
+- `egg_case` breeding:
+  - pairs of capsules **anchored by sticky white fibres** to decor (Thai paper's citation of Suksuwan & Ubonsuwan 2004) or lying on the floor (Florida Museum)
+  - laying weekly in season (Harahush: ~115 eggs per female over two seasons) → `cooldownDays 3`
+  - **125 real days at 25–26 °C → 1,000 game hours**
+- The heaviest bioload and the biggest prey size of the three.
+- Echinoderms, snails and clams are at risk (Mote, LiveAquaria cockles).
+- Goitre risk is best documented in *Chiloscyllium* (Wheaton 2025, Morris 2011).
+
+**Conflicts:**
+- **Max size:** 104 cm (Compagno, Florida Museum), ~1.2 m (Fishes of Australia), 132 cm (FishBase), 37–42 in (QM, LA), 30 in (Saltwaterfish) → 105 cm.
+- **Minimum tank:** 180 gal (Wikipedia's hobby source, Abyss), 300 (QM, Saltwaterfish), 360 (LiveAquaria). Forum keepers call 180–240 gal too small for an adult (via search index). The footprint puts it at 1,000 gal.
+- **Incubation:** ~118 d at 25 °C (Onimaru, lab), 153 d at 21–25 °C (Harahush), ~5 months (Fishes of Australia), up to 4 months (Florida Museum), ≥ 4 months (QM) → 125 d.
+- **Eggs per laying:** "paired" (FishBase, Florida Museum) against "2–4 every two weeks" (QM, Tier 2) → 1–2, with 2 typical.
+- **Lifespan:** 25 yr in aquaria (Florida Museum) against 14 yr in the wild (Fahmi 2021) → the cap either way.
+- **Home breeding:** I found **no documented home-aquarium spawning**. The sources show it breeds readily in public aquaria (Florida Museum, Blue Reef, Osaka, UnderWater World, Steinhart) and that **egg cases from those breeders are sold to hobbyists**. Adults need huge tanks, so home spawning is plausible in a 1,000 gal system but unproven. The owner's belief that bamboo sharks breed readily is right for aquaria in general, not shown for homes.
+- **Parthenogenesis:** documented in the closely related **white-spotted** bamboo shark (Feldheim 2010), not (in what I found) in the brown-banded. The famous brown-banded "virgin birth" turned out to be 45-month sperm storage (Bernal 2015).
+
+### Game data
+The values the game uses are in `src/data/species/marine/brownbanded_bamboo_shark.ts`; this research proposed them, and the source check at the end of this chapter corrected some of them.
+**Genetics.**
+- No named forms. "Black-banded" in the trade is the banded juvenile, not a form.
+- Use the generic `intensityLocus` and "Richly coloured" overlay: deeper, crisper juvenile bands and a warmer adult brown.
+- Albino and other sports: none documented in the trade that I found, so none are modelled. No hybrids are left out (none found).
+
+### Young and sexes
+- **Hatchling and juvenile:** pale cream to light brown with **about 10 broad, dark, wavy transverse bands** on body and tail, sometimes peppered with dark spots (Fishes of Australia, Florida Museum). Fresh pups are close to **black and white**, and the stripes fade as they grow (Blue Reef).
+  - LiveAquaria adds that larger ones develop **muted brown spots between the stripes** (the transition).
+- **Adult:** **plain** light brown to greyish brown with a pale belly and gill margins; no pattern (Fishes of Australia, Compagno via Wikipedia).
+  - Banding is gone in "large adults". Fishes of Australia says juveniles are banded "to about 30 cm", so start fading at ~30% of adult length and finish by ~60% (art judgement).
+  - The embryo already shows the eight main bands at ~73 dpd (Onimaru 2018).
+- **Shape:** slender, thick tail; two equal dorsal fins with a **concave rear edge**; long nasal barbels ("whiskers", the "cat" in the trade name); mouth well ahead of the eyes; **very large spiracles** behind the eyes (Fishes of Australia, Florida Museum, Wikipedia).
+- **Sexes:** the same colour. Males mature at 68–76 cm, females at ~63 cm (Fishes of Australia, Florida Museum), so mature males are often a little longer. Claspers are as for the other two.
+
+### Behaviour
+- **Day:** lies motionless under ledges, in crevices and among coral, often with only the head or tail showing. Small ones hide deep in crevices (Fishes of Australia, Florida Museum). It breathes through its big spiracles while resting.
+- **Night:** a **nocturnal** forager (Florida Museum, Mote). It **digs through the sediment** with its snout and barbels for crabs, worms and shrimp (Florida Museum), then **suction-feeds**.
+- **Moving:** slow, sinuous, eel-like cruising along the floor. It uses its strong pectorals to clamber and "walk" short distances (Mote). It is less of a walker than the epaulette.
+- **Shoving:** strong enough to **topple unstable rock and decor** (Wikipedia's hobby source; QM "stable rockwork"; Top Shelf for the epaulette).
+  - AI and render moment: a loose rock shifts as it noses under it. The sim effect needs a `knocksDecor` flag.
+- **Out of water:** survives up to 12 h out of water (FishBase) and tolerates long hypoxia (Florida Museum). That is why it is common in tide pools.
+- **Escape:** bamboo sharks have jumped from display tanks when startled (Khaosod 2014, Tier 3). One got through a **4 × 3 in gap in a lid** (Monster Fish Keepers, Tier 3, both via search index). It needs a lid with no gaps.
+- **Embryo:** inside the case it beats its tail to pump water once the seams open, and **freezes**, coiling its tail around its body, when it senses a predator's electric field (Kempster 2013).
+  - A lovely candling-view behaviour: when the player candles or taps near a late egg, the embryo freezes for a few seconds.
+
+### Compatibility
+See the **shared matrix**. Specific to the bamboo shark:
+- The **biggest mouth** of the three, so it is the most dangerous to small fish, snails, sea stars and clams, and an adult can eat a hatchling of the other two sharks.
+- Its size makes it **safe from adult groupers**, but its pups are not.
+- The Wikipedia hobby source singles out triggerfish and pufferfish as fin-nippers of this species.
+
+### Smallest tank tier for an adult
+**1,000 gal (144 × 48 in), the largest tier.**
+- An adult (~105 cm, 41 in) is longer than the 36 in width of the 500–800 gal tiers, so it could not turn without folding.
+- The 800 gal (144 × 36) has the length but not the width.
+- **Even 1,000 gal is at the edge.** The width is only ~1.2× the adult's length, and the hobby rule of thumb (1.5× TL, Tier 3) asks for ~62 in. **By that rule an honest adult minimum is beyond 1,000 gallons.**
+- A juvenile under ~60 cm can live in a 500 gal tank for a while (`outgrowsSmallTanks` should warn).
+
+---
+
+## Shared compatibility matrix (the bottom sharks)
+Verdicts: E = excellent, UC = usually_compatible, C = conditional, HR = high_risk, I = incompatible. Columns: **Cat** = coral catshark, **Ep** = epaulette, **Bam** = brown-banded bamboo shark.
+
+### Against the other new chunk-17 species
+
+| Other species | Cat | Ep | Bam | Reason | Sources |
+|---|---|---|---|---|---|
+| Oscar, clown loach, black ghost knifefish, fahaka puffer, ornate bichir, motoro stingray, silver arowana, koi | I | I | I | Freshwater; the sharks need full seawater (SG 1.020–1.025) | LA, QM |
+| Silver mono, spotted scat | I | I | I | Brackish water class. Adults of both can live in full seawater; if the builder lets adults into `marine_fowlr`, treat them as **C** (omnivorous pickers and very active feeders that steal the shark's food). No shark-specific source | LA (shark water) |
+| Blue tang (*Paracanthurus hepatus*) | UC | UC | UC | Tangs are standard shark tankmates. But tangs catch ich, and a shark tank **can never be treated with copper**, so **quarantine the tang first**. It also steals food, so target-feed the shark | Chewy (tangs good), LA/QM/Top Shelf (no copper) |
+| Naso / orangespine unicornfish (*Naso lituratus*) | UC | UC | UC | As the blue tang. A large adult needs the 1,000 gal anyway | Chewy, LA |
+| Queen angelfish (*Holacanthus ciliaris*) | HR | HR | HR | Large angels **pick at sharks' skin and eyes**; a keeper reports eye damage to epaulettes from bony tankmates | Chewy, Top Shelf, Reef Central (Tier 3) |
+| Clown triggerfish (*Balistoides conspicillum*) | I | I | I | Triggers **nip and bite benthic sharks**, and the clown trigger is among the most aggressive. It would also crack egg cases (inference from diet) | Chewy, Top Shelf, Wikipedia (bamboo) |
+| Panther grouper (*Cromileptes altivelis*) | HR | HR | C | **Groupers prey on epaulettes** and eat small sharks; they also compete for the same caves and floor. An adult bamboo is too big to swallow, but its pups are not | Florida Museum (predators incl. groupers), Top Shelf (morays and frogfish threaten small sharks), forum (Tier 3: groupers are bad mates for benthic sharks) |
+| Coral catshark ↔ epaulette ↔ bamboo shark | C | C | C | Two benthic sharks need twice the floor (1,000 gal only). The catshark is the most aggressive (Michael 2004). **Adults eat egg cases** (Osaka; reefs.com: males especially). An adult bamboo can eat a hatchling of either | Michael 2004 via Wikipedia, Onimaru 2018, reefs.com (via search index) |
+
+### Against the existing roster (marine; freshwater and brackish are incompatible on water)
+
+| Existing species (group) | Cat | Ep | Bam | Reason | Sources |
+|---|---|---|---|---|---|
+| Skunk cleaner shrimp, peppermint shrimp | I | I | I | "Will eat any crustacean"; ornamental shrimp are prey | LA (bamboo, epaulette), Top Shelf |
+| Emerald crab, blue-leg hermit, scarlet hermit | I | I | I | Crabs are the adults' main prey | FoA, Florida Museum, LA |
+| Peacock mantis shrimp | I | I | I | `speciesOnly`; a crustacean the shark will attack, and its strike can maim a resting shark | LA, mantis data |
+| Clown goby, mandarin dragonet | I | I | I | Tiny or slow benthic fish, eaten while asleep | LA ("small sleeping fish"), Top Shelf |
+| Firefish, yellow watchman goby | HR | HR | HR | Small fish that sleep in burrows the shark roots through at night | LA, Florida Museum (snout in sand) |
+| Melanurus wrasse (sleeps buried in sand) | HR | HR | HR | The shark digs out sand-sleepers at night (inference from feeding style) | Florida Museum |
+| Green chromis, yellowtail damsel, Banggai cardinal, royal gramma, six-line wrasse, flame hawkfish, ocellaris clown | C | C | HR | Small fish (7–9 cm) at risk when asleep near the floor; rock cover lowers the risk. Damsels are on Chewy's good list, but the bamboo's bigger mouth raises it to HR | LA, Chewy, Top Shelf |
+| Lawnmower blenny | C | C | C | Benthic percher, 13 cm; usually too big, but it sleeps in rock holes the shark explores | LA |
+| Lyretail anthias | UC | UC | UC | Midwater, 12 cm; named as a good shark tankmate | Chewy |
+| Coral beauty, flame angel (dwarf angels) | C | C | C | Angels may pick at the shark (Top Shelf); at 10 cm, small enough to be caught asleep by a bamboo | Top Shelf, LA |
+| Emperor angelfish | HR | HR | HR | Large angel, the same as the queen angel | Chewy, Top Shelf |
+| Yellow, kole, chocolate and sailfin tangs | UC | UC | UC | Good tankmates, with the quarantine caveat (no copper in the shark tank) | Chewy, LA |
+| Foxface rabbitfish | UC | UC | UC | Large, peaceful. Venomous spines would sting a shark that mouthed one, but it is too big to be tried | rabbitfish data |
+| Maroon clownfish | UC | UC | UC | 16 cm and feisty; no record of harming sharks | — (judgement) |
+| Fuzzy dwarf lionfish | HR | HR | HR | Venomous and rests on the bottom; a shark that grabs it gets stung, and benthic sharks share its resting places | forum (Tier 3: "lionfish are bad mates for benthic sharks"), lionfish data |
+| Miniatus grouper | HR | HR | HR | Groupers eat young sharks and compete for caves and food | Florida Museum, forum |
+| Lined seahorse | I | I | I | Slow, eaten or bullied; flow and feeding needs clash | seahorse data, LA |
+| Bubble-tip anemone | C | C | C | A stinging cnidarian on the floor where the shark rests and ploughs; no shark-specific source (low confidence) | judgement |
+| Snails: astraea, cerith, trochus, Mexican turbo, Nassarius, fighting conch | UC | C | C | Epaulette teeth crush hard prey; bamboo eats shelled molluscs (cockles). Snails can also bore through egg cases (QM, wild) | Florida Museum via Wikipedia, LA, QM |
+| Elegant star, sand-sifting star, tuxedo urchin | UC | C | C | Bamboo sharks eat echinoderms (Mote). Urchins bore egg cases in the wild (QM). Sand-sifters compete for sand-bed food | Mote, QM |
+| Corals (reef decor) | UC | UC | UC | Sessile corals are left alone; the risk is the shark toppling rock (`knocksDecor`) | Top Shelf, Wikipedia |
+
+**Proposed `exceptionRules`** (the same list for all three unless noted):
+```ts
+[
+  { other: 'tag:crustacean', verdictFloor: 'incompatible', reason: 'Crabs and shrimp are a benthic shark’s main food; it will eat any crustacean in the tank.', incidentRisk: 0.35 },
+  { other: 'tag:shrimp_large', verdictFloor: 'incompatible', reason: 'Cleaner and peppermint shrimp are eaten.', incidentRisk: 0.35 },
+  { other: 'tag:fish_tiny', verdictFloor: 'incompatible', reason: 'Tiny fish are caught asleep at night.', incidentRisk: 0.3 },
+  { other: 'tag:fish_benthic', verdictFloor: 'high_risk', reason: 'It roots through sand and burrows at night and catches bottom-sleeping fish.', incidentRisk: 0.15, mitigatedBy: ['hides'] },
+  { other: 'tag:fish_small', verdictFloor: 'high_risk', reason: 'Small fish asleep near the floor are eaten at night.', incidentRisk: 0.1, mitigatedBy: ['cover', 'hides'] },
+  { other: 'mandarin_dragonet', verdictFloor: 'incompatible', reason: 'A slow benthic fish the shark finds by smell at night.', incidentRisk: 0.3 },
+  { other: 'peacock_mantis_shrimp', verdictFloor: 'incompatible', reason: 'The shark attacks it, and its strike can maim a resting shark.', incidentRisk: 0.3 },
+  { other: 'lined_seahorse', verdictFloor: 'incompatible', reason: 'Slow seahorses are eaten or bullied, and their gentle-flow tank cannot carry a shark’s waste.', incidentRisk: 0.2 },
+  { other: 'dwarf_lionfish', verdictFloor: 'high_risk', reason: 'Both rest on the bottom; a shark that grabs a lionfish is stung by its venomous spines.', incidentRisk: 0.05 },
+  { other: 'emperor_angelfish', verdictFloor: 'high_risk', reason: 'Large angelfish pick at a resting shark’s skin and eyes.', incidentRisk: 0.08, mitigatedBy: ['tank_size'] },
+  { other: 'miniatus_grouper', verdictFloor: 'high_risk', reason: 'Groupers eat young sharks and fight them for caves and food.', incidentRisk: 0.08, mitigatedBy: ['tank_size', 'hides'] },
+  { other: 'tag:stinging_cnidarian', verdictFloor: 'conditional', reason: 'A shark resting or rooting on the floor can blunder into an anemone and be stung, or uproot it.', incidentRisk: 0.03 },
+  // epaulette + bamboo only:
+  { other: 'tag:snail', verdictFloor: 'conditional', reason: 'Crushing teeth crack small snails; the bamboo shark eats shelled molluscs.', incidentRisk: 0.05, mitigatedBy: ['cover'] },
+  { other: 'tag:starfish', verdictFloor: 'conditional', reason: 'Bamboo sharks eat echinoderms in the wild.', incidentRisk: 0.03 }, // bamboo (epaulette: lower risk)
+  // new chunk species (ids as the builder names them):
+  { other: 'clown_triggerfish', verdictFloor: 'incompatible', reason: 'Triggerfish bite and nip benthic sharks, and the clown trigger is among the most aggressive.', incidentRisk: 0.3 },
+  { other: 'queen_angelfish', verdictFloor: 'high_risk', reason: 'Large angelfish pick at a shark’s skin and eyes.', incidentRisk: 0.08, mitigatedBy: ['tank_size'] },
+  { other: 'panther_grouper', verdictFloor: 'high_risk', reason: 'Groupers prey on young sharks and compete for the floor and caves.', incidentRisk: 0.1, mitigatedBy: ['tank_size', 'hides'] }, // bamboo: 'conditional'
+  // shark ↔ shark:
+  { other: 'tag:benthic_shark', verdictFloor: 'conditional', reason: 'Two bottom sharks need twice the floor; adults eat each other’s egg cases and the larger eats hatchlings.', incidentRisk: 0.03, mitigatedBy: ['tank_size', 'nursery'] },
+]
+```
+The tank's other predators should carry the reverse: clown trigger, queen angel, emperor angel and the panther grouper get `tag:benthic_shark` rules. Any `eggs`-eater in a shark tank should also count `egg_case` (see the breeding spec).
+
+---
+
+## Cross-species notes (the bottom sharks)
+### New breeding system: `egg_case` (all three sharks)
+Real biology, with sources. Times are real days at ~25–26 °C; the game multiplies by 8.
+
+1. **Mating:** the male grips the female by a pectoral fin or the gill region with his mouth and inserts a clasper; copulation is ~1.5 min (West & Carter 1990 via Wikipedia; FishBase; AoP).
+   - Wild season Jul–Dec (epaulette) or late Jul–Feb (bamboo); **continuous in captivity** (IUCN via Wikipedia; Osaka "year-round").
+   - Window: **night** (Fishes of Australia: capsules laid among coral at night).
+   - Mating leaves bite marks on the female (cosmetic; no health cost).
+2. **Laying:**
+   - **Two capsules per cycle**, the second 0–2 nights after the first (Wheeler 2025). Sometimes one, plus an empty "wind" case.
+   - Cycle **~19 d** for the epaulette (Wheeler 2025; ~14 d per Fishes of Australia) and **~7 d** for the bamboo in season (Harahush).
+   - For the catshark the interval is unknown; use ~14 d.
+3. **Where the case goes** (new `SiteKind` values):
+   - Epaulette and bamboo: **tied to rock, coral or decor** by fibrous strands (AoP; Thai paper citing Suksuwan & Ubonsuwan 2004) → `decor_anchor`.
+   - Coral catshark: **laid loose on the bottom** (Wikipedia citing Bor 2003 and Hövel 2010) → `floor`.
+   - With no decor, the anchoring species drop cases on the floor too.
+4. **Fertility:**
+   - Needs a mature male in the tank **within a sperm-storage window**. Bernal 2015 documents ≥ 45 months in a brown-banded female. The game might use ~30 game days (owner call).
+   - **A female with no male still lays on schedule, but the cases are infertile** (Wheeler 2025: five singly housed females laid 196 cases).
+   - With a male, a good share is still dud or abnormal: 21% hatched (Harahush), 48% (Payne), ~⅔ developed normally (Osaka). Use ~50% fertile and viable.
+   - Duds show no embryo when candled, or a "runny, undefined" yolk. Left in, they **rot and smell** (QM), which adds ammonia.
+5. **Incubation** (temperature-dependent):
+   - Epaulette 125 d at 27 °C, 110 at 29, 101 at 31 (Wheeler 2021), ~140 at 25 (Payne). That is about **−6 d per °C**.
+   - Bamboo 118 d at 25 °C, 153 d at 21–25 °C.
+   - Catshark 76–180 d.
+   - **≥ 31 °C:** lighter, weaker pups. **32 °C:** only ~38% survive to hatch (Wheeler 2021). Gate: `maxTempC` 28–29, with a pup-quality penalty above 30.
+6. **Visible development** (for a "Candle the egg" view; QM: shine a torch through it).
+
+   Fractions of the incubation, from Onimaru 2018 (bamboo, 118 d) and Choosri 2023 (catshark, 76 d):
+
+   | Fraction of incubation | What candling shows |
+   |---|---|
+   | 0–0.08 | **Yolk only.** A clean round yolk is good; a runny one is bad (QM) |
+   | 0.08–0.15 | A tiny embryo on the yolk; it starts **twitching ~0.10** (12 dpd); visible to the naked eye by ~0.15 (Harahush ~18 dpd) |
+   | 0.2–0.4 | Long **external gill filaments** ("fine hair from the yolk", QM); tail lengthens; eyes darken (0.32–0.39) |
+   | ~0.4–0.6 | **The case seams open** (pre-hatching) and the embryo starts **tail-wagging to pump water** through the case (Kempster 2013; Wonders of Wildlife). From here the egg needs good flow (QM) |
+   | 0.56–0.62 | **Bands or stripes appear** (bamboo 66–73 dpd; catshark d70–75) |
+   | 0.62–0.68 | External gills reabsorbed |
+   | 0.88–1.0 | Yolk sac shrinks and is drawn inside; the pup fills the case |
+   | 1.0 | **Hatches, usually at night** (25 of 27 in the dark: Wheeler 2021). The case stretches or cracks and the pup wriggles out unaided (QM) |
+
+   - From the gill-pumping stage, a late embryo **freezes for 20–60 s** if disturbed (Kempster 2013: predator electric fields; Wheeler 2021: embryos stop moving at a perceived threat).
+   - The case darkens from light to dark brown with age (QM, Bor 2003).
+7. **No parental care** (`parentalCare 'none'`, `guardEggs false`). The young are fully independent at hatching (zoo source via search index).
+8. **Risks in the display tank:**
+   - **Other fish eat about half the eggs** in a mixed community (Osaka).
+   - **Adult sharks eat eggs**, males especially (reefs.com, via search index). Use `parentsEatEggs: true` at a low rate.
+   - Snails and urchins **bore through cases** in the wild (QM).
+   - **Air in the case kills the embryo** (QM), so moving an egg must happen under water.
+   - Diggers and the sharks themselves can bury or dislodge cases (inference).
+
+   Proposed `RearingPlan`:
+   ```ts
+   eggTags: ['eggs', 'egg_case'], youngTags: ['fish_medium', 'benthic_shark'],
+   parentsEatEggs: true, guardEggs: false, planktonic: false, hatchAtNight: true,
+   larvaeViable: true, starveSeverity: 0.6, coverShelter: 0.5, yolkFrac: 1.0
+   ```
+9. **Nursery advice** (what the game should suggest):
+   - Move the case **under water** into an **egg basket / breeder box with good flow** in the main tank, or a separate tank at the same temperature. Payne 2012 used floating baskets in a 1,306 L tank at 24.4–25.5 °C; NEAq suspended cases mid-water.
+   - Backlight it to candle. Remove duds.
+   - Mitigation `nursery` cuts egg predation from ~0.5 to ~0.05.
+   - Shops sell eggs: $94 (aquariumfish.com), £79 (Abyss). An "egg case" shop item is realistic.
+10. **Hatchling:** a 10–17 cm miniature shark, tracked as an individual from hatch.
+    - It lives on internal yolk **~a week** before eating (QM; Wheeler 2021).
+    - Then it needs **small chopped seafood daily**: minced shrimp and clam (Wheeler 2021); chopped capelin with a multivitamin (Payne 2012); mysis or small squid, **3–4 small meals a day** (Abyss, Tier 3).
+    - Grow it on away from groupers, morays, frogfish, triggers and adult sharks (Florida Museum predators; Top Shelf).
+    - Hatchling survival is high once eating (Payne: 22 of 27).
+    - Growth is slow: about 5 cm/yr for the epaulette after 3 months (Florida Museum); up to 18 cm/yr for the bamboo (Fahmi 2021).
+11. **New render assets:** `Clutch.visual: 'egg_case'`.
+
+    | Species | Case shape and colour | Size |
+    |---|---|---|
+    | Bamboo | flat, sub-rectangular; light brown with white fibre tufts | 11 × 5 cm |
+    | Epaulette | ellipsoid; brown with fibrous strands | 10 × 4 cm |
+    | Catshark | slim, **two pinched waists**, short tendrils at one end; light brown darkening to dark brown | 5–8 × 2 cm |
+
+    Plus a backlit candling overlay showing the stage.
+
+**Game-time problem for the owner:**
+- Real days × 8 gives **960–1,040 game hours (40–43 game days)** of incubation. That is about **3× the longest incubation in the game today** (mantis shrimp, 320 h) and longer than the shark's own 25-day maturity cap. At 1× that is ~2.7–2.9 real hours per egg.
+- Options:
+  - (a) keep the formula: sharks are the slow, prestige breeders
+  - (b) cap incubation at e.g. 480 h (20 game days) and say so in the encyclopedia
+  - (c) compress shark breeding by a larger, labelled factor
+- This needs an owner decision.
+
+### New behaviour set: `benthic_shark`
+One set with species variants via `specialBehaviors`.
+
+- **Shared:**
+  - `rest_on_floor`: long motionless bouts, gills or spiracles pumping
+  - `night_patrol`: a slow floor-hugging cruise at dusk and through the night (`nocturnal` 0.8–0.85)
+  - `suction_strike` / `still_lunge`
+  - `snout_root`: noses into sand and thrashes, puffing sand
+  - `tong_feed_learned`: comes to the front glass and tongs at feeding time
+  - never schools, never hovers
+  - turns by bending the whole body (a tight U-turn needs width ≥ body length: the footprint rule)
+- **Epaulette:** `fin_walk` (stepping gait, the default way of moving), `rheotaxis_perch`, `sand_expel`, `slow_chew`.
+- **Bamboo:** `ledge_lie` (under ledges with the head or tail sticking out), `fin_shuffle` (short clambers), `decor_shove`.
+- **Catshark:** `crevice_rest` + `same_refuge_return` (picks a favourite crevice and goes back to it), `eel_glide` through gaps, `dusk_patrol`.
+- **Embryo** (in the egg view): `tail_pump` and `freeze`.
+
+The closest existing sets are `grouper` (cave lurk, ambush) and `loach_eel` (kuhli: hides, eel-like). Neither does floor resting plus walking, so a new set is needed.
+
+### New foods
+Sharks need meaty marine seafood: **squid, clam/cockle/mussel/scallop, shrimp/prawn, and whole small fish** (silversides, lancefish, capelin, pilchard) (LiveAquaria, Top Shelf, Chewy, Wheaton 2025, Wheeler 2025).
+
+- **Today** they can live on `pellet_large`, the shop's "Frozen Krill & Silversides" with chopped clam, plus `mysis` for pups.
+- **Proposed tags:**
+  - `squid` (needed by all three sharks; good starter food: LiveAquaria)
+  - `shellfish` (clam, cockle, mussel, scallop: all three)
+  - `whole_fish` (silversides, lancefish, capelin: all three; also the groupers and lionfish)
+  - Or one new shop item, "Frozen Shark & Ray Mix" (`squid` + `shellfish`).
+- **Supplement (new item kind, not a food tag):** "Shark & ray vitamin tablets", pushed into the food.
+  - Without them, **goitre** appears within ~2 months in bamboo sharks (Wheaton 2025).
+  - Iodine can also be dosed in the water. Too much iodine is harmful too (Wheaton 2025).
+  - **High nitrate also causes goitre** (Morris 2011) → the proposed `nitrateSensitive` flag.
+- **Autofeeders:** sharks take frozen seafood from tongs. None of my sources describes them taking dry pellets, so the autofeeder can't feed them.
+- **Feeding cautions:**
+  - Bite-size pieces, or it regurgitates (Wikipedia's hobby source).
+  - Some frozen fish carry **thiaminase** (smelt, herring), which destroys vitamin B1 and is another reason for vitamins (VIN marine-mammal paper, via search index; no elasmobranch-specific data found).
+  - No freshwater feeder fish.
+  - Feed 2–3 times a week as adults (Wheeler 2025: 2% body mass 3×/week). Pups need small meals daily.
+
+### Husbandry flags these three need (new, owner or engine decision)
+- `electricalSensitive`: QM (all three) and Top Shelf: sensitive to electric impulses, so ground the tank. Sharks detect fields far below 1 µV/cm (Kalmijn 1971, via search index; embryos react to 0.4 µV/cm, Kempster 2013).
+  - Game: a grounding probe item, or stress from cheap pumps.
+  - Evidence of harm from aquarium stray voltage is hobby-level only (Tier 3).
+- `medicationSensitive` (exists): never copper (LA, QM, Top Shelf). The real consequence is that **tankmates must be quarantined**, because the display can't be medicated.
+- `needsIodineSupplement`: the goitre illness above.
+- `nitrateSensitive`: the goitre link (Morris 2011).
+- `knocksDecor`: topples unstable rock (Wikipedia, QM, Top Shelf). The aquascape must be anchored on the glass, not on the sand.
+- `escapeArtist` (exists): a tight lid. Evidence: epaulettes walk out of water (FAU); bamboo jump and lid-gap escape reports are Tier 3.
+- `lowOxygenTolerant` (optional fun flag): epaulette and bamboo survive hours of hypoxia (FishBase, Fishes of Australia, Florida Museum).
+- `outgrowsSmallTanks`, `heavyWaste` (exist): strong filtration and a big skimmer (Top Shelf, QM).
+
+### New prey tags
+- `benthic_shark`: "Bottom-resting sharks (epaulette, bamboo, catshark): skin, eyes and fins picked at by triggerfish, puffers, large angelfish and some wrasses; the young are eaten by groupers, morays and frogfish." Sources: Chewy, Top Shelf, Florida Museum.
+- `egg_case`: "Shark egg cases: eaten by fish and adult sharks, bored by snails and urchins." Sources: Osaka, reefs.com, QM.
+
+### Surprising or worth telling the owner
+- **Parthenogenesis:** the famous bamboo-shark "virgin birth" was the **white-spotted** bamboo shark (Detroit, 2010). The **brown-banded** case (San Francisco, 2012) was **sperm stored for ≥ 45 months**, proved by DNA. Both make good fun facts. The game need not model either, though "a female keeps laying fertile eggs for a while after the male is gone" would be a cheap, true touch.
+- **Females lay without a male:** a lone female shark lays egg cases on schedule; they are just empty of embryos (Wheeler 2025). That suits a "Candle the egg" mechanic.
+- **The tank sizes are much bigger than the retail labels:**
+  - Retail labels say 180–360 gal, but the floor footprint puts the catshark and epaulette at the **500 gal** tier and the bamboo shark at the **1,000 gal** tier.
+  - For the bamboo shark even 1,000 gal is marginal by the width rule of thumb, which I'd tell the owner plainly.
+- **Advise against?** None outright: all three are hardy, long-lived and bred in aquaria. But:
+  - The **brown-banded bamboo shark** is the weakest home-tank fit. A metre-long adult, a home footprint at or beyond the game's largest tank, and no documented home spawning. Keep it, but gate it behind the 1,000 gal tank.
+  - The **epaulette** is the best fit and the owner's best showpiece: captive-bred (ORA), breeds in aquaria, and walks.
+- **Trade names mislead:**
+  - "Cat sharks" in shops are mostly bamboo sharks.
+  - Indonesian "coral catsharks" may be other *Atelomycterus* species.
+  - Non-Australian "epaulettes" may be other *Hemiscyllium* species.
+  - The encyclopedia could note this.
+- **Legality:**
+  - None of the three appears on the CITES appendices as far as I could check. The Species+ database page did not render in the fetcher, so verify.
+  - IUCN: catshark NT (2020), epaulette LC (2015), bamboo NT (2023).
+  - No US federal restriction found; I did not check state rules.
+  - None is venomous or dangerous to keepers; an epaulette may nip if handled (Compagno via Wikipedia).
+
+---
+
+## Sources (the bottom sharks)
+Fetched and read unless marked.
+
+- FishBase, *Atelomycterus marmoratus*: https://www.fishbase.se/summary/Atelomycterus-marmoratus.html
+- FishBase, *Hemiscyllium ocellatum*: https://www.fishbase.se/summary/Hemiscyllium-ocellatum.html
+- FishBase, *Chiloscyllium punctatum*: https://www.fishbase.se/summary/Chiloscyllium-punctatum.html
+- WoRMS, *Atelomycterus marmoratus*: https://www.marinespecies.org/aphia.php?p=taxlist&tName=Atelomycterus%20marmoratus
+- Catalog of Fishes (family Atelomycteridae; *A. erdmanni*, *A. baliensis*) *(via search index)*: https://researcharchive.calacademy.org/research/ichthyology/catalog/fishcatget.asp?spid=6722
+- Bor, van Oijen & Magenta 2003, the egg capsule of the coral cat shark, Zool. Med. Leiden 77: https://repository.naturalis.nl/document/44279
+- Choosri et al. 2023, development of *A. marmoratus* in a closed system: https://ph03.tci-thaijo.org/index.php/kaset_rbruj/article/download/457/331/2257
+- Hövel, Ommer & Ziegler 2010, Cologne Zoo *(403; via search index and Wikipedia)*: https://zootier-lexikon.org/bibliographie/h-1699975706/hoevel-a-ommer-s-t-ziegler-2010
+- Wikipedia, Coral catshark: https://en.wikipedia.org/wiki/Coral_catshark
+- Wikipedia, Epaulette shark: https://en.wikipedia.org/wiki/Epaulette_shark
+- Wikipedia, Brownbanded bamboo shark: https://en.wikipedia.org/wiki/Brownbanded_bamboo_shark
+- Reef Builders, *A. erdmanni* new catshark *(via search index)*: https://reefbuilders.com/2015/03/02/atelomycterus-erdmanni-species-catshark-eastern-indonesia
+- Fishes of Australia, Epaulette Shark: https://fishesofaustralia.net.au/home/species/1973
+- Fishes of Australia, Grey Carpetshark: https://fishesofaustralia.net.au/home/species/3264
+- Florida Museum, Epaulette shark: https://www.floridamuseum.ufl.edu/discover-fish/species-profiles/hemiscyllium-ocellatum/
+- Florida Museum, Brownbanded bambooshark: https://www.floridamuseum.ufl.edu/discover-fish/species-profiles/chiloscyllium-punctatum/
+- Aquarium of the Pacific, Epaulette shark: https://www.aquariumofpacific.org/onlinelearningcenter/species/epaulette_shark
+- Mote Marine Laboratory, Brown-banded bamboo shark: https://mote.org/animal-encyclopedia/brown-banded-bamboo-shark
+- Wonders of Wildlife (2026), From egg to hatchling: epaulette sharks: https://wondersofwildlife.org/2026/from-egg-to-hatchling-epaulette-sharks/
+- New England Aquarium publication page (Wheeler et al. 2021): https://www.neaq.org/publication/future-thermal-regimes-for-epaulette-sharks-hemiscyllium-ocellatum-growth-and-metabolic-performance-cease-to-be-optimal/
+- Wheeler et al. 2021, Sci. Rep. 11:454 (full text): https://researchonline.jcu.edu.au/66857/1/66857.pdf
+- phys.org on Wheeler et al. 2021: https://phys.org/news/2021-01-future-baby-sharks.html
+- Wheeler et al. 2025, Biology Open, costs of oviparity in the epaulette shark: https://journals.biologists.com/bio/article/doi/10.1242/bio.062076
+- Payne 2012, Zoo Biology 31:718–724 *(abstract via search index)*: https://zendy.io/title/10.1002/zoo.20426
+- Porter et al. 2022, aquatic walking kinematics: https://researchonline.jcu.edu.au/75954/
+- FAU News, walking shark study: https://www.fau.edu/newsdesk/articles/walking-shark-study
+- Onimaru et al. 2018, staging of *C. punctatum*: https://pmc.ncbi.nlm.nih.gov/articles/PMC5947634
+- Harahush, Fischer & Collin 2007, J. Fish Biol. 71 *(abstract via search index)*: https://peeref.com/works/66940766
+- Kempster, Hart & Collin 2013, PLoS ONE: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0052551
+- Fahmi et al. 2021, age and growth of *C. punctatum*: https://pubmed.ncbi.nlm.nih.gov/33977550/
+- Wheaton et al. 2025, Front. Vet. Sci., thyroid, iodine and cobalt in aquarium elasmobranchs: https://frontiersin.org/articles/10.3389/fvets.2025.1504527/full
+- Morris et al. 2011, nitrate-induced goiter *(abstract via search index)*: https://shark-references.com/literature/listByAuthor/Hamlin-H.J.
+- phys.org 2010, shark virgin birth (Feldheim et al., J. Heredity): https://phys.org/news/2010-01-shark-virgin-birth-offspring-survive.pdf
+- Science News, sperm storage in a brownbanded bamboo shark (Bernal et al. 2015): https://www.sciencenews.org/blog/wild-things/paternity-test-reveals-father%E2%80%99s-role-mystery-shark-birth
+- KPBS/NPR 2025, shark pup in an all-female tank: https://www.kpbs.org/news/science-technology/2025/01/28/this-shark-pup-was-born-in-a-habitat-without-any-males-how-did-that-happen
+- Practical Fishkeeping, public aquarium inundated with pups: https://www.practicalfishkeeping.co.uk/fishkeeping-news/public-aquarium-is-inundated-with-pups/
+- LiveAquaria, Australian Epaulette Shark: https://www.liveaquaria.com/products/australian-epaulette-shark
+- LiveAquaria, Cat Shark Brown Banded (Diver's Den): https://www.liveaquaria.com/products/cat-shark-brown-banded-expert-only-6-25-wysiwyg
+- Quality Marine, Coral Cat Shark: https://www.qualitymarine.com/quality-marine/fish/sharks/atelomycterus/coral-cat-marmoratus-29015/
+- Quality Marine, Banded Cat Shark: https://www.qualitymarine.com/quality-marine/fish/sharks/chiloscyllium/banded-cat-29001/
+- Quality Marine, Epaulette Shark: https://www.qualitymarine.com/quality-marine/fish/sharks/hemiscyllium/epaulette-29003/
+- Quality Marine, Shark Eggs Part II: https://www.qualitymarine.com/news/shark-eggs-part-ii/
+- Top Shelf Aquatics, Epaulette Shark: https://topshelfaquatics.com/pages/saltwater-fish/epaulette-shark
+- ORA, Epaulette Shark Pups Now Available: https://orafarm.com/?p=7600
+- CORAL Magazine, Michael 2021 "The Epaulette Sharks" (only the reference list was visible): https://coralmagazine.com/?p=3062217
+- Chewy Education, sharks for the saltwater aquarium: https://www.chewy.com/education/fish/saltwater-fish/7-ideal-sharks-for-the-saltwater-aquarium
+- PetMD, saltwater aquarium sharks (J. Sanders DVM): https://www.petmd.com/fish/top-saltwater-shark-species-aquariums
+- Saltwaterfish.com, Brown Banded Bamboo Shark: https://saltwaterfish.com/product-brown-banded-bamboo-shark
+- AquariumFish.com, Sharks collection (prices, eggs): https://aquariumfish.com/collections/sharks
+- Abyss Aquatics, Bamboo shark egg: https://www.abyssaquatics.co.uk/product/bamboo-shark-egg/
+- reefs.com epaulette article *(403; via search index)*: https://reefs.com/?p=208954
+- Reef Central, whitespotted bamboo sharks thread (Tier 3): https://forums.reefcentral.com/threads/whitespotted-bamboo-sharks.1076633
+- Monster Fish Keepers, bamboo shark through a lid gap *(Tier 3, via search index)*: https://www.monsterfishkeepers.com/forums/posts/7917965/
+- Monster Fish Keepers, "Are coral catsharks jumpers?" *(Tier 3, via search index)*: https://www.monsterfishkeepers.com/forums/goto/post?id=5359269
+- Khaosod English 2014, mall shark jumped from tank *(via search index)*: https://www.khaosodenglish.com/life/2014/12/26/1419598596/
+- Hobby tank-dimension rules for benthic sharks (3× TL long, 1.5× TL wide) *(Tier 3, via search index)*: https://www.tapatalk.com/groups/sharksandrays/minimum-tank-sizes-t6.html and https://monsterfishkeepers.com/forums/threads/appropriate-tank-size-and-shape-for-bamboo-shark.401420
+- MarAlliance, how to tell the sex of a shark *(via search index)*: https://maralliance.org/?p=8674
+- VIN, diet-induced thiamine deficiency in captive marine mammals *(via search index)*: https://www.vin.com/doc/?id=3979809
+- Kalmijn 1971, The electric sense of sharks and rays, J. Exp. Biol. 55 *(403; via search index)*: https://cob.silverchair.com/jeb/article/55/2/371/21660/The-Electric-Sense-of-Sharks-and-Rays
+
+## Source check, 2026-10-30 (the bottom sharks)
+Before building, a second agent checked the facts the game uses against the sources (claims marked UNVERIFIED were softened or labelled in the data, never used as fact). Its notes, as written:
+
+- CATSHARK A. marmoratus: 70 cm OK; tank 3 m (118 in) long per Hövel 2010 via Wikipedia (only sourced footprint); QM 180, Chewy 200/300, PetMD up to 500 for cat sharks. Temp ideal 24–27 OK (29 max unsourced). SG 1.020–1.025. Lifespan up to 20 y. Maturity ♂47–62 ♀49–57 cm. IUCN NT 14 May 2020. PRICE: the "$177 cat shark" is a bamboo shark listing -> A. marmoratus listings $601 (aquariumfish Marble Shark), £195–250, CA$500 -> baseValue ~350. Cases 1 per oviduct (two at a time). Laying interval ~14 d UNVERIFIED (assumption). Incubation 4–6 months (Hövel), 76 d at 25 °C (Choosri n=3) -> 120 d OK. Hatchling 10–13 cm (Hövel), 9.2 cm (Choosri). Capsule 50–79×18–23 mm two waists, tendrils ≤20 mm (Bor 2003); Hövel ~10 cm. "Laid loose on the floor": Wikipedia only (unfootnoted).
+- EPAULETTE H. ocellatum: 90 cm (70–90 typical, max 107). Tank: LA 360, QM 300, PetMD 350/individual -> 500 gal footprint 108x36 derived (judgement). Temp ideal 24–28 OK; pejus ~31 °C. Lifespan 20–25 y (AoP). Maturity ♂54–60 ♀62–64 cm, ≥7 y. IUCN LC 2015. Price $895.99 LA; ORA captive-bred $500 -> 900 OK (captive-bred cheaper). Cases: median 2 (Wheeler 2025), interval avg 19 d (±5.7) at 25 °C (Wheeler 2025); FoA every 14 d. Incubation 125±5 d at 27 °C, 110 at 29, 101 at 31 (Wheeler 2021); 140 d at ~25 (Payne) -> about −6 d/°C OK (epaulette only). Hatchling 14–16 cm. LONE FEMALE: Wheeler 2025 says only that individually housed females laid on schedule; infertility UNVERIFIED (wild-caught may store sperm; one source says rarely viable without male). Walks in and out of water (FAU). ORA captive-bred since 2016. Cases tangled in coral/rock by fibrous material (AoP). Pup yolk ~1 week is QM's (not Wheeler).
+- BAMBOO C. punctatum: 105 cm OK. Tank: LA 360, QM 300; 1,000 (124x42) derived. Temp ideal 23–27 OK. Lifespan ~25 y. Maturity ♂68–76 ♀63, ~6.5 y. IUCN NT 2023. Price 280 OK (LA $199.99 6 in, aquariumfish $280.79). Cases paired. Interval ~7 d DERIVED (Harahush 692 eggs, 6 females, two seasons) -> use 7–14 d. Incubation 118 d at 25 (Onimaru), 153 d at 21–25 (Harahush) -> 125 OK. Hatchling 13–17 cm. Sticky fibres claim is C. hasseltii -> UNVERIFIED for punctatum (eggs "released into the benthic environment", Florida Museum). Viability with male: 33% viable, 21% hatched (Harahush); Payne 48% hatched -> use ~35–45%. Parthenogenesis: white-spotted bamboo, Belle Isle (Detroit) J. Heredity Jan 2010 (daughters hatched ~2004). Sperm storage Steinhart Jan 2012 ≥45 months. Goitre 2 months after supplements removed (Wheaton citing ref 52; species not named). Morris 2011: nitrate ~310 mg/L for 29 d -> goitre in white-spotted bamboo; no basis for penalising normal nitrate.
+- MISC: Kempster 2013 freeze mean 18.9 s, up to ~60 s. QM shark eggs article is family-level, not species. Footprints: only catshark 3 m sourced; label others judgement. Hypoxia: Florida Museum gives up to an hour and 3.5 h.

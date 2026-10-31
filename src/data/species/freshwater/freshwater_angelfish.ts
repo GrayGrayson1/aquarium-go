@@ -85,7 +85,8 @@ export const freshwaterAngelfish: SpeciesDefinition = {
   substrateRules: { preferred: ['sand', 'fine_sand', 'fine_gravel', 'planted_soil'], avoid: [], note: 'Tall plants and upright wood; a pair lays its eggs on a vertical surface — a broad leaf, slate or the glass. Use a tank at least 20 inches tall.' },
 
   breeding: {
-    system: 'substrate_spawner',
+    // chunk 17 (the owner's round 5): its own pair module, not the corydoras'
+    system: 'cichlid_substrate',
     difficulty: 0.45,
     // 6–12 months to maturity (Wikipedia) → ~22 game-days
     maturityDays: 22,
@@ -109,7 +110,7 @@ export const freshwaterAngelfish: SpeciesDefinition = {
   baseValue: 12,
   rarity: 'common',
   visitorAppeal: 0.85,
-  unlock: { requires: [], hint: 'Available from the start — it needs a tall tank.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Almost all are mass-bred in the Far East and Eastern Europe; wild fish are rarely sold.',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2020)', note: 'Common in the wild; trade fish are farm-bred. Never release aquarium fish.' },

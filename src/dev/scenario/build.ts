@@ -17,6 +17,7 @@ import { moduleFor } from '@/sim/life/breeding/registry';
 import { createClutch } from '@/sim/life/breeding/clutch';
 import { pickSite, type SiteKind } from '@/sim/life/breeding/common';
 import { devForceBreeding } from '@/sim/life/breeding/actions';
+import { eggCaseSite } from '@/sim/life/breeding/systems/eggCase';
 import { simRng, visualRng } from '@/sim/rng';
 import { nextId } from '@/sim/ids';
 import { touchResidents } from '@/sim/residents';
@@ -134,6 +135,9 @@ const EGGS: Partial<Record<string, { visual: Clutch['visual']; site: SiteKind }>
   egg_layer_generic: { visual: 'eggs_scattered', site: 'plants_low' },
   clownfish_substrate: { visual: 'eggs_adhesive', site: 'host_rock' },
   axolotl_spermatophore: { visual: 'egg_strands', site: 'plants_mid' },
+  egg_case: { visual: 'egg_case', site: 'floor' }, // chunk 17: shark egg cases
+  cichlid_substrate: { visual: 'eggs_adhesive', site: 'rock' }, // chunk 17: a cichlid pair's stone
+  damsel_nest: { visual: 'eggs_adhesive', site: 'floor' }, // chunk 17: a damselfish's nest on the sand
 };
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -882,7 +886,7 @@ class Builder {
       stage = 'eggs';
       visual = eggs.visual;
       next = hour + (num(y.nextStageInHours) ? Math.max(0.25, y.nextStageInHours) : sp.breeding.incubationHours);
-      anchor = pickSite(tank, eggs.site, `${tank.id}:eggs:${at}`).anchor;
+      anchor = pickSite(tank, sp.breeding.system === 'egg_case' ? eggCaseSite(sp) : eggs.site, `${tank.id}:eggs:${at}`).anchor;
     } else if (y.stage === 'larvae' || y.stage === 'fry') {
       let phase = mod.plan.phases.find((p) => p.stage === y.stage);
       if (!phase) {

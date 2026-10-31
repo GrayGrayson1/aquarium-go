@@ -5,7 +5,8 @@
  *
  * Survival is a continuous hazard model (deterministic, no RNG): predation by adults (nursery vs display, cover
  * shelter), planktonic loss outside a nursery, starvation without suitable (live) food, water quality, sibling
- * crowding/cannibalism and unguarded-egg fungus. `count = round(initialCount × survival)`.
+ * crowding/cannibalism and unguarded-egg fungus. `count = round(initialCount × survival)`. The one exception (chunk 17):
+ * a shark's one or two egg cases are each lost or kept by chance (the step's `ctx.rng`), as a share can't be rounded.
  * Juveniles are minted as individual creatures (inherited genomes, lineage) up to
  * min(maxRaisedPerClutch, nursery capacity); the rest are rehomed to local hobbyists (never culled on screen).
  */
@@ -18,7 +19,7 @@ import { createCreature, addCreature, sizeAtAge, assignPrismatic, isPrismatic, p
 import type { MorphStrain } from '@/types';
 import { TIER_WORD } from '@/data/rarity';
 import { inheritGenome, resolveMorph, resolvePhenotype, rollGenome } from '@/sim/life/genetics';
-import { consumeFood } from '@/sim/water';
+import { addWaste, consumeFood } from '@/sim/water';
 import { addMastery, addReputation, bumpCounter } from '@/sim/facility';
 import type { BreedingModule, NaturalFood, RearingPhase, TankInfo } from './types';
 import {
@@ -73,6 +74,13 @@ export interface NewClutch {
   pendingEggs?: number;
   notes?: string;
   infertile?: boolean;
+  /**
+   * chunk 17 — a clutch split off one just made (the duds of a shark's laying): the laying is counted once, so the
+   * parents' counts and history, the spawn counters and breeding mastery are left alone.
+   */
+  quiet?: boolean;
+  /** chunk 17 — the parents' history lines when "Spawned with X." is wrong (a ray gives birth). */
+  historyText?: { mother: string; father: string };
 }
 
 /** Create a clutch, credit both parents (history, counters, mastery). */
@@ -104,6 +112,7 @@ export function createClutch(state: GameState, o: NewClutch): Clutch {
   if (o.notes) cl.notes = o.notes;
   if (o.infertile) cl.infertile = true;
   state.clutches[id] = cl;
+  if (o.quiet) return cl;
 
   for (const [p, as] of [
     [o.mother, 'female'],
@@ -114,8 +123,8 @@ export function createClutch(state: GameState, o: NewClutch): Clutch {
     p.repro.lastSpawnHour = o.hour;
     revealSex(p, o.sp, as);
   }
-  if (o.mother) addHistory(o.mother, 'bred', o.father ? `Spawned with ${o.father.name}.` : 'Produced a clutch.', o.hour);
-  if (o.father && o.father !== o.mother) addHistory(o.father, 'bred', o.mother ? `Spawned with ${o.mother.name}.` : 'Fathered a clutch.', o.hour);
+  if (o.mother) addHistory(o.mother, 'bred', o.historyText?.mother ?? (o.father ? `Spawned with ${o.father.name}.` : 'Produced a clutch.'), o.hour);
+  if (o.father && o.father !== o.mother) addHistory(o.father, 'bred', o.historyText?.father ?? (o.mother ? `Spawned with ${o.mother.name}.` : 'Fathered a clutch.'), o.hour);
   bumpCounter(state, 'spawns');
   bumpCounter(state, `spawns_${o.sp.id}`);
   addMastery(state, 'breeding', Math.round(4 + 16 * o.sp.breeding.difficulty));
@@ -148,12 +157,15 @@ export function currentPhase(cl: Clutch, mod: BreedingModule): RearingPhase | nu
 
 /** Hours the clutch spends in its current stage (for converting per-stage loss fractions into hazards). */
 export function stageHours(cl: Clutch, sp: SpeciesDefinition, mod: BreedingModule): number {
+  // chunk 17: an egg case's own incubation (warm water shortens it), not the species' standard one
+  if (cl.visual === 'egg_case' && cl.stage === 'eggs') return Math.max(6, cl.nextStageHour - (cl.stageSinceHour ?? cl.laidHour));
   if (cl.stage === 'eggs' || cl.stage === 'in_pouch') return Math.max(6, sp.breeding.incubationHours);
   const ph = currentPhase(cl, mod);
   return Math.max(6, (ph?.frac ?? 1) * sp.breeding.fryRearingHours);
 }
 
 export function youngLabel(cl: Clutch, mod: BreedingModule): string {
+  if (cl.visual === 'egg_case') return 'egg cases'; // chunk 17
   if (cl.stage === 'eggs' || cl.stage === 'in_pouch') return 'eggs';
   return currentPhase(cl, mod)?.label ?? (cl.stage === 'larvae' ? 'larvae' : 'fry');
 }
@@ -206,6 +218,9 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   const guardian = cl.guardedById;
   let pCon = 0;
   const living = livingIn(state, tank.id);
+  // chunk 17 (the reviews): a cichlid pair guards together, and neither parent eats its own brood, even once the
+  // guardian is gone or moved out (the fry card tells the keeper his job is done)
+  const parentsSpare = !!plan.pairGuards;
   for (const c of living) {
     if (c.lifeStage === 'egg' || c.lifeStage === 'larva' || c.lifeStage === 'fry') continue;
     if (c.speciesId === sp.id) {
@@ -218,6 +233,7 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
         continue;
       }
       if (eggs && !plan.parentsEatEggs) continue;
+      if (parentsSpare && (c.id === cl.motherId || c.id === cl.fatherId)) continue;
       if (sp.breeding.predationWithoutNursery <= 0) continue;
       pCon = Math.max(pCon, sp.breeding.predationWithoutNursery);
       out.conspecific.push(c);
@@ -244,6 +260,9 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   out.p = clamp((1 - keep) * (1 - plan.coverShelter * clamp01(info.habitat().cover)), 0, 0.995);
   return out;
 }
+
+/** chunk 17 — waste one rotting empty egg case adds per game hour (1 = an hour of a bioload-1 animal's waste). */
+export const EGG_CASE_ROT_WASTE_PER_H = 1;
 
 /** Clutch per-hour hazards by cause. Also updates `cl.fed`. */
 function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, mod: BreedingModule, hour: number, dt: number, info: TankInfo, pred: PredationInfo): Record<LossCause, number> {
@@ -298,8 +317,12 @@ function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition
 
   // unguarded eggs
   if (cl.stage === 'eggs' && plan.guardEggs && !carried) {
-    const g = cl.guardedById ? state.creatures[cl.guardedById] : undefined;
-    const tended = isAlive(g) && g.tankId === cl.tankId;
+    const here = (id: string | null | undefined) => {
+      const c = id ? state.creatures[id] : undefined;
+      return isAlive(c) && c.tankId === cl.tankId;
+    };
+    // (chunk 17: a cichlid pair's eggs are fanned by whichever parent is still with them)
+    const tended = here(cl.guardedById) || (!!plan.pairGuards && (here(cl.motherId) || here(cl.fatherId)));
     if (!tended) {
       const pf = hasEquipment(tank, 'airstone') ? 0.25 : 0.5;
       out.fungus = -dmath.log(1 - pf) / hrs;
@@ -401,8 +424,12 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
 
   // Infertile eggs (nerite eggs in freshwater…) never hatch — they fade after a while.
   if (cl.infertile) {
+    // chunk 17: an empty shark egg case rots where it lies, fouling the water a little, whoever shares the tank
+    if (cl.visual === 'egg_case' && cl.count > 0) addWaste(tank, cl.count * EGG_CASE_ROT_WASTE_PER_H * dt);
     if (hour >= cl.nextStageHour) {
-      say(state, ctx, { kind: 'info', text: cl.notes ?? `${parentName(state, cl)} eggs never hatched.`, tankId: cl.tankId });
+      // chunk 17: an empty shark egg case left in the tank rots
+      const rotted = cl.visual === 'egg_case' ? `${parentName(state, cl)} empty egg ${cl.count === 1 ? 'case has' : 'cases have'} rotted away.` : null;
+      say(state, ctx, { kind: 'info', text: rotted ?? cl.notes ?? `${parentName(state, cl)} eggs never hatched.`, tankId: cl.tankId });
       releaseParents(state, cl);
       delete state.clutches[cl.id];
     }
@@ -414,6 +441,28 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
   const hz = hazards(state, cl, tank, sp, mod, hour, dt, info, pred);
   const total = hz.predation + hz.starvation + hz.water + hz.crowding + hz.fungus;
   const init = cl.initialCount ?? cl.count;
+  if (cl.visual === 'egg_case' && cl.stage === 'eggs') {
+    // chunk 17: one or two big egg cases: each one is eaten (or lost) or not, by chance, not by rounding a share
+    if (total > 0 && cl.count > 0) {
+      const pLose = 1 - dmath.exp(-total * dt);
+      let lost = 0;
+      for (let i = 0; i < cl.count; i++) if (ctx.rng.next() < pLose) lost++;
+      if (lost > 0) {
+        if (!cl.losses) cl.losses = { predation: 0, starvation: 0, water: 0, crowding: 0, fungus: 0 };
+        for (const k of Object.keys(hz) as LossCause[]) if (hz[k] > 0) cl.losses[k] += (lost * hz[k]) / total;
+        cl.count -= lost;
+        cl.survival = init > 0 ? cl.count / init : 0;
+      }
+    }
+    warnings(state, cl, tank, sp, mod, hz, pred, hour, ctx);
+    if (cl.count <= 0) {
+      loseClutch(state, cl, sp, ctx);
+      return;
+    }
+    if (hour + dt < cl.nextStageHour) return;
+    hatch(state, cl, tank, sp, mod, hour, ctx);
+    return;
+  }
   if (total > 0 && init > 0) {
     const before = init * cl.survival;
     cl.survival = clamp01(cl.survival * dmath.exp(-total * dt));
@@ -504,7 +553,7 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   }
   const ph = plan.phases[0];
   if (!ph) {
-    mintJuveniles(state, cl, tank, sp, hour, ctx);
+    mintJuveniles(state, cl, tank, sp, hour, ctx, plan.bornAgeDays);
     return;
   }
   const wasBerried = cl.visual === 'berried';
@@ -586,7 +635,7 @@ function offspringName(rng: Rng, used: Set<string>): string {
 }
 
 /** Turn the surviving young of a clutch into individual juveniles (capacity-bounded). Removes the clutch. */
-export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, hour: number, ctx: SimContext | null): Creature[] {
+export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, hour: number, ctx: SimContext | null, bornAgeDays?: number): Creature[] {
   const rng = ctx?.rng ?? simRng(state);
   const mother = cl.motherId ? state.creatures[cl.motherId] : undefined;
   const father = cl.fatherId ? state.creatures[cl.fatherId] : undefined;
@@ -597,7 +646,8 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   const lineId = cl.lineId ?? lineIdFor(sp, mother, father);
   // Rearing can outlast the species' juvenile phase (seahorses, shrimp, small gobies): cap the birth age so every
   // youngster arrives as a juvenile with growth, the sex reveal and maturity still ahead of it.
-  const ageDays = Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8)));
+  // chunk 17: a plan can say how old its young are when they hatch straight into juveniles (egg cases: just hatched)
+  const ageDays = bornAgeDays !== undefined ? Math.max(0.5, bornAgeDays) : Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8)));
   const parents = mother && father ? `${mother.name} × ${father.name}` : (mother ?? father)?.name ?? 'your breeding stock';
   const used = new Set<string>(Object.values(state.creatures).filter((c) => c.speciesId === sp.id).map((c) => c.name));
   const minted: Creature[] = [];

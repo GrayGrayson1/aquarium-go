@@ -86,7 +86,7 @@ export const africanDwarfFrog: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species: keep tanks healthy to reach 70 reputation and 200 husbandry mastery.' },
+  unlock: { requires: ['fw_intermediate'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN)',

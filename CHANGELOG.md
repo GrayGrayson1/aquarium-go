@@ -4,6 +4,40 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.9.0 — 2026-10-30
+
+- **18 big-tank species (79 → 97),** each with its own look, behaviour, colours and care, young and grown:
+  - **Freshwater:** oscar, clown loach, black ghost knifefish, fahaka puffer, ornate bichir, silver arowana, koi and the
+    motoro stingray.
+  - **Brackish:** silver mono and spotted scat.
+  - **Marine:** blue tang, naso tang, queen angelfish, clown triggerfish, panther grouper, and three sharks that stay
+    small enough for a big tank: the coral catshark, the epaulette shark and the brown-banded bamboo shark.
+- **No animal in the shop before its tank.** The shop stocks a species only once you've unlocked a tank big enough for
+  an adult, on top of its research, for every species, some from 0.8.0 too: freshwater angelfish, swordtails, fancy
+  goldfish and a dozen small marine animals wait for the 40 Gallon Breeder, the emperor angelfish for the 240. A locked
+  card says what's still missing, and unlocking a tank size brings its animals in with a notice. Animals you already
+  own stay.
+- **Two research projects:** Big-water Freshwater ($3,000, 60 h) opens the river giants, and koi with Cool-water
+  Systems; Shark & Ray Husbandry ($8,000, 96 h) opens the sharks and the ray.
+- **Five foods** come into the shop with the first animal that eats them: Koi Sticks, Floating Carnivore Sticks,
+  Frozen Squid, Prawn & Mussel, Frozen Shell-on Shellfish and Live Crickets.
+- **Koi** in their classic varieties (Kohaku, Showa, Taisho Sanke, Shiro Utsuri, Asagi, Tancho, the Ogons and more,
+  with Doitsu and Ginrin scales), and a Koi class at the club shows and up. Two new sellers: Blackwater River Imports
+  and Mermaid's Purse Shark Hatchery.
+- **New ways to breed.** The sharks lay egg cases, on the sand or tied to the rock; some are duds with no embryo,
+  which you can lift out (Livestock › Eggs & fry) before they rot. The motoro gives birth to live pups. The oscar
+  spawns on a stone it has scrubbed clean and the pair guard their eggs and young, and now so do the discus,
+  freshwater angelfish and German blue ram; the green chromis male clears a nest on the sand and guards it alone, and
+  its larvae want live copepods in a nursery.
+- **New behaviours.** The motoro glides flat over the floor and buries itself in sand to rest, eyes showing. The
+  epaulette walks on its fins. The bottom sharks rest on the floor by day, and the black ghost knifefish comes out at
+  night. The arowana cruises just under the surface, clown loaches rest on their sides, and the fahaka settles on the
+  sand.
+- **Rare forms** the hobby reports but hasn't proven: the Borneo clown loach, butterfly koi, the platinum arowana and
+  the white ghost knifefish.
+- **Saves** use a new format. An older copy of the game asks you to refresh rather than open them. When you load,
+  shop offers for animals you can't house yet are taken off the shelf.
+
 ## 0.8.0 — 2026-10-25
 
 - **31 new species (48 → 79).** Each has its own look, behaviour, colours and care, and all are in the shop from the

@@ -96,7 +96,7 @@ export const koleTang: SpeciesDefinition = {
   baseValue: 95,
   rarity: 'uncommon',
   visitorAppeal: 0.6,
-  unlock: { requires: ['marine_large'], hint: 'Research Big-water Marine — it needs a four-foot, 90-gallon tank or bigger.' },
+  unlock: { requires: ['marine_large'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected only — and since it lives only around Hawaiʻi, supply has been scarce since Hawaiian aquarium collection was largely halted in 2017.',
   conservation: {

@@ -87,7 +87,7 @@ export const honeyGourami: SpeciesDefinition = {
   baseValue: 6,
   rarity: 'common',
   visitorAppeal: 0.6,
-  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2009)',

@@ -96,7 +96,7 @@ export const peacockMantisShrimp: SpeciesDefinition = {
   baseValue: 130,
   rarity: 'very_rare',
   visitorAppeal: 1,
-  unlock: { requires: ['predators'], hint: 'Research Predator Husbandry (needs a public showroom) — a species-only tank with thick glass or acrylic.' },
+  unlock: { requires: ['predators'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'All peacock mantis shrimp in the trade are wild-collected; some also arrive by accident as hitchhikers in live rock.',
   conservation: {

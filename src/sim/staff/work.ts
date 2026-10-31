@@ -26,7 +26,7 @@ import { HUNGER_PER_HUNGER_HOURS } from '../life/step'; // lane:staff2 — metab
 import { residentsOf } from '../residents'; // lane:staff2 — same order as a creatures scan (perf2's index inside a step)
 import { effectiveBioload } from '../water/env';
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { buyEggs, buyFood, buySalt, SALT_PRICE_PER_KG } from '../economy';
+import { buyEggs, buyFood, buySalt, isFoodAvailable, SALT_PRICE_PER_KG } from '../economy';
 import { isOpenAt } from '../facility';
 import { pushReaction } from '../facility/reactions';
 import { findSpecies } from '@/data/species';
@@ -733,7 +733,7 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
   // 1) Foods in use that would run out within the target (a day of keeper meals at a time).
   for (const [foodId, per] of perDay) {
     const f = getFoodDef(foodId);
-    if (!f || !(per > 0)) continue;
+    if (!f || !(per > 0) || !isFoodAvailable(state, f)) continue; // chunk 17: a food the shop doesn't sell yet
     const have = inStock(state, foodId);
     const days = have / per;
     if (days >= target) continue;
@@ -748,18 +748,17 @@ export function plannedOrders(state: GameState, m: StaffMember): Order[] {
     const o = outlook[id];
     if (!o || o.level !== 'out' || !o.restockId || wanted.has(o.restockId)) continue;
     const f = getFoodDef(o.restockId);
-    if (!f) continue;
+    if (!f || !isFoodAvailable(state, f)) continue;
     wanted.add(f.id);
     orders.push({ kind: 'food', foodId: f.id, packs: m.trait === 'thrifty' ? 1 : f.servingsPerPack <= 24 ? 2 : 1, urgency: -1, label: f.name, unit: f.price });
   }
   // 2b) Hungry grazers with no supplement on the shelf (the glass is too clean to live on): the best-value food they eat.
-  const unlocked = new Set(state.progress.unlocked);
   for (const c of Object.values(state.creatures)) {
     if (!c.tankId || c.status !== 'alive' || c.stats.hunger < 45) continue;
     const sp = findSpecies(c.speciesId);
     if (!sp || sp.diet === 'photosynthetic' || needsFedFood(sp)) continue;
     if (FOODS.some((f) => eats(sp, f) && inStock(state, f.id) > 0)) continue;
-    const f = FOODS.filter((x) => eats(sp, x) && (!x.unlock || unlocked.has(x.unlock))).sort((a, b) => a.price / a.servingsPerPack - b.price / b.servingsPerPack)[0];
+    const f = FOODS.filter((x) => eats(sp, x) && isFoodAvailable(state, x)).sort((a, b) => a.price / a.servingsPerPack - b.price / b.servingsPerPack)[0];
     if (!f || wanted.has(f.id)) continue;
     wanted.add(f.id);
     orders.push({ kind: 'food', foodId: f.id, packs: 1, urgency: -0.5, label: f.name, unit: f.price });

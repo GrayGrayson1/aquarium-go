@@ -71,7 +71,12 @@ export type FoodTag =
   | 'biofilm'
   | 'detritus'
   | 'infusoria'
-  | 'baby_brine';
+  | 'baby_brine'
+  // chunk 17 (ADR-0053 round 3): foods for the big-tank animals, sold once an animal that eats them can be bought
+  | 'pellet_floating' // floating sticks (koi, arowanas, oscars)
+  | 'seafood' // frozen squid, prawn and mussel (sharks, rays, big carnivores)
+  | 'shellfish' // shell-on shellfish (puffers' and triggerfish's ever-growing teeth)
+  | 'insect'; // live crickets (big surface hunters)
 
 export type SocialKind =
   | 'solitary' // keep alone (conspecifics likely fight)
@@ -123,6 +128,10 @@ export type BreedingSystemId =
   | 'egg_layer_generic'
   | 'fragmentation' // corals
   | 'fission' // chunk 16: a living anemone splits in two by itself (no partner)
+  | 'egg_case' // chunk 17: sharks lay leathery egg cases that hatch months later as independent pups
+  | 'ray_viviparous' // chunk 17: the motoro carries its litter and gives birth to independent pups
+  | 'cichlid_substrate' // chunk 17: a cichlid pair cleans a stone or leaf, lays in rows on it and guards eggs and young (oscar, discus, angelfish, ram)
+  | 'damsel_nest' // chunk 17: a male damselfish clears a nest on the sand and guards the eggs; drifting larvae need copepods (green chromis)
   | 'not_in_game'; // documented but not breedable in first build
 
 export interface BreedingProfile {
@@ -174,8 +183,8 @@ export interface Lifecycle {
 export interface UnlockRequirement {
   /** Unlock ids (progress.unlocked must include all). Empty = available from start. */
   requires: string[];
-  /** Human-readable hint shown on locked cards. */
-  hint: string;
+  // chunk 17 (ADR-0053 round 3): no hand-written hint any more; a locked card says what is still missing, built from
+  // the unlock rules' hints (`speciesLockHint` in src/sim/economy/shop.ts), so it can't go stale
 }
 
 /** Visual parameters consumed by creature renderers & portraits. Colors are CSS hex strings. */
@@ -233,6 +242,8 @@ export interface CreatureVisualParams {
   tailSpot?: string;
   /** chunk 16 — a species-specific body marking ('tuxedo': the black rear half of a platy or swordtail). */
   bodyMark?: string;
+  /** chunk 17 — a species-specific scale layout ('doitsu': a koi's row of big mirror scales along the back, smooth skin elsewhere). */
+  scaleType?: string;
 }
 
 export interface LocusDefinition {
@@ -350,7 +361,16 @@ export type BehaviorSetId =
   | 'damsel' // chunk 16 — hovers over its own patch of rock and chases intruders (yellowtail damsel)
   | 'cichlid_dwarf' // chunk 16 — dwarf cichlid that hovers low and sifts the substrate in pairs (German blue ram)
   | 'anemone' // chunk 16 — a living anemone: wanders until it settles in the light, closes at night, hosts clownfish
-  | 'sessile'; // corals/anemones
+  | 'sessile' // corals/anemones
+  // chunk 17 (ADR-0053): big-tank species
+  | 'cichlid_large' // big cichlid that patrols low, digs, begs at the glass and sulks on the bottom (oscar)
+  | 'loach_shoal' // shoaling bottom loach that piles into caves and rests on its side (clown loach)
+  | 'knifefish' // stiff-bodied night fish that glides forwards and backwards on one long fin (black ghost knifefish)
+  | 'bichir' // armoured bottom prowler propped on its pectorals that rises to gulp air (ornate bichir)
+  | 'arowana' // surface cruiser that patrols the tank's length and lunges up at food (silver arowana)
+  | 'triggerfish' // sculls on its dorsal and anal fins with a stiff body, blows at the sand, locks into a crevice at night (clown triggerfish)
+  | 'benthic_shark' // rests on the floor or under a ledge by day, glides low and sinuously at night; the epaulette walks on its fins
+  | 'stingray'; // glides flat over the floor, buries itself in the sand with its eyes out, climbs the glass to beg (motoro)
 
 export interface BehaviorTraits {
   /** Cruising speed in body lengths per second. */

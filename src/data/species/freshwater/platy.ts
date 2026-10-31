@@ -95,7 +95,7 @@ export const platy: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.6,
-  unlock: { requires: [], hint: 'Available from the start.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   conservation: { status: 'Data Deficient (IUCN Red List, assessed 2018)', note: 'Its wild status is unknown; aquarium platies are farm-bred hybrids. Never release aquarium fish.' },
 

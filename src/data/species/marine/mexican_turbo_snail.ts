@@ -91,7 +91,7 @@ export const mexicanTurboSnail: SpeciesDefinition = {
   baseValue: 5,
   rarity: 'common',
   visitorAppeal: 0.25,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected in the Gulf of California; LiveAquaria pauses collection July–September in the extreme heat.',
   conservation: {

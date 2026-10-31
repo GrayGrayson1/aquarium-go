@@ -121,6 +121,19 @@ export interface ClutchStatus {
   nurserySlots: number;
 }
 
+/**
+ * chunk 17 — what a torch shone through a shark's egg case shows at this point of its incubation (Onimaru 2018 and
+ * Choosri 2023, as fractions of the incubation: the sharks research's candling table).
+ */
+function candled(p: number): string {
+  if (p < 0.08) return 'Candled: only the yolk so far';
+  if (p < 0.2) return 'Candled: a tiny embryo twitching on the yolk';
+  if (p < 0.4) return 'Candled: long feathery gills, and the tail is growing';
+  if (p < 0.56) return 'Candled: the seams have opened and it pumps water through with its tail';
+  if (p < 0.88) return 'Candled: its bands are showing';
+  return 'Candled: the pup fills the case, its yolk nearly gone';
+}
+
 /** Status of a clutch for the UI (eggs / larvae / fry card). */
 export function clutchStatus(state: GameState, clutchId: string): ClutchStatus | null {
   const cl = state.clutches[clutchId];
@@ -136,6 +149,7 @@ export function clutchStatus(state: GameState, clutchId: string): ClutchStatus |
   let detail: string;
   if (cl.infertile) detail = cl.notes ?? 'These eggs won’t hatch here.';
   else if (cl.stage === 'in_pouch') detail = `Due in ${approxDuration(remaining)}`;
+  else if (cl.stage === 'eggs' && cl.visual === 'egg_case' && remaining > 0) detail = `${candled(clutchProgress(state, cl.id))}. Hatching in ${approxDuration(remaining)}`;
   else if (cl.stage === 'eggs') detail = cl.pendingEggs ? 'Still being laid' : remaining > 0 ? `Hatching in ${approxDuration(remaining)}` : mod.plan.hatchAtNight ? 'Hatching tonight after lights-out' : 'Hatching any moment';
   else {
     const ph = currentPhase(cl, mod);

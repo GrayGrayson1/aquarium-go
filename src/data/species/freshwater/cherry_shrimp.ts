@@ -85,7 +85,7 @@ export const cherryShrimp: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.5,
-  unlock: { requires: ['fw_basic'], hint: 'Unlocks with beginner freshwater species: reach 40 reputation or build husbandry mastery.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Not assessed by IUCN; rated High invasion risk by USFWS',

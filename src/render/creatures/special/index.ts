@@ -10,6 +10,7 @@ import { createTuxedoUrchin } from './urchin';
 import { createEmeraldCrab } from './crab';
 import { createFightingConch } from './conch';
 import { createAstraeaSnail, createCerithSnail, createMexicanTurboSnail, createMysterySnail, createNassariusSnail, createNeriteSnail, createRamshornSnail, createTrochusSnail } from './snail';
+import { createMotoroStingray } from './ray';
 import { createAmanoShrimp, createCherryShrimp, createCleanerShrimp, createDwarfCrayfish, createGhostShrimp, createMantisShrimp, createPeppermintShrimp } from './shrimp';
 
 registerCreatureVisual('axolotl', createAxolotl);
@@ -39,3 +40,5 @@ registerCreatureVisual('peacock_mantis_shrimp', createMantisShrimp);
 registerCreatureVisual('hermit_crab', createHermitCrab);
 registerCreatureVisual('scarlet_hermit_crab', createScarletHermitCrab); // chunk 16
 registerCreatureVisual('african_dwarf_frog', createDwarfFrog);
+// chunk 17 wave D
+registerCreatureVisual('motoro_stingray', createMotoroStingray);

@@ -20,6 +20,8 @@ import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { ocellarisClownfish } from '@/data/species/ocellaris_clownfish';
 import { linedSeahorse } from '@/data/species/lined_seahorse';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
+import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
+import { requiredUnlocks } from '@/sim/economy';
 
 // Exhaustive runtime mirrors of union types (Record<Union, true> makes TypeScript flag drift).
 const BEHAVIOR_SETS: Record<BehaviorSetId, true> = {
@@ -31,11 +33,14 @@ const BEHAVIOR_SETS: Record<BehaviorSetId, true> = {
   mantis_shrimp: true, lionfish: true, grouper: true, sessile: true, archerfish: true, // lane:brackish
   wrasse: true, starfish: true, conch: true, snail_sand: true, urchin: true, starfish_sand: true, crab: true, blenny: true, // chunk 16
   hawkfish: true, damsel: true, cichlid_dwarf: true, anemone: true,
+  cichlid_large: true, loach_shoal: true, knifefish: true, bichir: true, arowana: true, triggerfish: true, // chunk 17
+  benthic_shark: true, stingray: true, // chunk 17, wave D
 };
 const FOOD_TAGS: Record<FoodTag, true> = {
   flake: true, pellet_small: true, pellet_sinking: true, pellet_large: true, bloodworm: true, brine_shrimp: true,
   mysis: true, daphnia: true, earthworm: true, snail_live: true, algae_wafer: true, vegetable: true, nori: true,
   copepod_live: true, coral_food: true, biofilm: true, detritus: true, infusoria: true, baby_brine: true,
+  pellet_floating: true, seafood: true, shellfish: true, insect: true, // chunk 17
 };
 const VERDICT_RANK: Record<CompatVerdict, number> = { excellent: 0, usually_compatible: 1, conditional: 2, high_risk: 3, incompatible: 4 };
 const MARINE_CLASSES: WaterClass[] = ['marine_fowlr', 'marine_live_rock', 'reef'];
@@ -115,10 +120,14 @@ describe.each(MARINE_ALL.map((s) => [s.id, s] as const))('%s', (id, s) => {
       // chunk 16 (ADR-0052 decision 4): the owner chose every new species buyable from the start
       expect(s.unlock.requires).toEqual([]);
     } else {
-      expect(key in UNLOCK_KEYS, `unknown unlock key ${key}`).toBe(true);
-      expect(s.unlock.requires).toEqual([key]);
+      // chunk 17: a roster entry can name several keys ('marine_basics|elasmobranchs': Shark & Ray Husbandry doesn't
+      // need Marine Systems, so the sharks list both)
+      const keys = roster.unlock.split('|').filter((k) => k !== 'starter');
+      for (const k of keys) expect(k in UNLOCK_KEYS, `unknown unlock key ${k}`).toBe(true);
+      expect(s.unlock.requires).toEqual(keys);
     }
-    expect(s.unlock.hint.length).toBeGreaterThan(5);
+    // chunk 17 (ADR-0053 round 3): the hand-written hint retired; a locked card's words come from each key's rule
+    for (const k of requiredUnlocks(s)) expect(UNLOCK_RULE_BY_KEY[k]?.hint.length ?? 0, `hint for ${k}`).toBeGreaterThan(5);
     expect(s.isStarter).toBe(roster.unlock.startsWith('starter'));
   });
 

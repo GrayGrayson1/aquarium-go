@@ -86,7 +86,7 @@ export const bristlenosePleco: SpeciesDefinition = {
   baseValue: 8,
   rarity: 'common',
   visitorAppeal: 0.55,
-  unlock: { requires: ['fw_intermediate'], hint: 'Unlocks with intermediate freshwater species: keep tanks healthy to reach 70 reputation and 200 husbandry mastery.' },
+  unlock: { requires: ['fw_intermediate'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (A. cirrhosus, IUCN 2020); trade form not assessable',

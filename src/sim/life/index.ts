@@ -13,6 +13,7 @@
  *   step.ts        per-tank metabolism/feeding/health/incidents step
  */
 import type { GameState, Tank, Creature, Genome, CreatureVisualParams, SpeciesDefinition, Sex, PersonalityTag, Clutch } from '@/types';
+import { isFoodAvailable } from '../economy/shop'; // chunk 17: foods sold with their animals
 import type { SimContext } from '../context';
 import type { Rng } from '../rng';
 import { getSpecies, findSpecies } from '@/data/species';
@@ -290,8 +291,8 @@ function hungerAdvice(state: GameState, sp: SpeciesDefinition, outpaced: boolean
   const stock = state.inventory?.foods ?? {};
   const inStock = foodsFor(sp).some((f) => (stock[f.id] ?? 0) > 0);
   if (!inStock) {
-    const unlocked = new Set(state.progress?.unlocked ?? []);
-    const buy = menuFor(sp).filter((f) => !f.unlock || unlocked.has(f.unlock)).sort((a, b) => a.price - b.price)[0];
+    // chunk 17: only a food the shop sells now (a new food waits for an animal that eats it to be buyable)
+    const buy = menuFor(sp).filter((f) => isFoodAvailable(state, f)).sort((a, b) => a.price - b.price)[0];
     return buy ? `none of its food is in stock. Buy ${buy.name.toLowerCase()} in Market › Supplies.` : 'none of its food is in stock.';
   }
   if (outpaced) return 'faster tank mates may be taking the food. Try target feeding.';

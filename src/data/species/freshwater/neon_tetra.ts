@@ -88,7 +88,7 @@ export const neonTetra: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: ['fw_basic'], hint: 'Reach 40 reputation or build husbandry mastery to unlock beginner freshwater species.' },
+  unlock: { requires: ['fw_basic'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Least Concern (IUCN 2021)',

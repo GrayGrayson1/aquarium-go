@@ -95,7 +95,7 @@ export const peppermintShrimp: SpeciesDefinition = {
   baseValue: 18,
   rarity: 'common',
   visitorAppeal: 0.45,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish and clean-up crew.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most sold are wild-collected in Florida and the Gulf; captive-bred L. boggessi are available and are the more reliable Aiptasia eaters.',
   conservation: {

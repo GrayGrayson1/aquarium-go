@@ -39,8 +39,8 @@ function world(waterClass: WaterClass, tier: string, animals: [string, number][]
 const logText = (s: GameState) => s.log.map((e) => e.text).join('\n');
 
 describe('fit: one source of truth for autofeeder food', () => {
-  it('dry foods are exactly the eight the autofeeder always dispensed, in catalog order', () => {
-    expect(autofeederFoods().map((f) => f.id)).toEqual(['flake_tropical', 'micro_pellets', 'sinking_pellets', 'axolotl_pellets', 'algae_wafers', 'nori_sheet', 'marine_pellets', 'goldfish_pellets']);
+  it('dry foods are exactly the eight the autofeeder always dispensed, and chunk 17’s two floating sticks, in catalog order', () => {
+    expect(autofeederFoods().map((f) => f.id)).toEqual(['flake_tropical', 'micro_pellets', 'sinking_pellets', 'axolotl_pellets', 'algae_wafers', 'nori_sheet', 'marine_pellets', 'goldfish_pellets', 'koi_sticks', 'carnivore_sticks']);
     // every catalog food has an explicit form; frozen and live never count as autofeeder food
     for (const f of FOODS) {
       expect(f.form, f.id).toBeTruthy();

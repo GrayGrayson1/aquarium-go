@@ -22,7 +22,7 @@ import { changeSubstrate, convertWaterClass, renameTank, setBackdrop, setTankPur
 import { checkPlacement, moveDecor, placeDecor, removeDecor } from '@/sim/aquascape';
 import { plantFrag, takeFrag } from '@/sim/aquascape/frags';
 import { moveCreature, notePhoto, noteInteraction, registerGlassTap, renameCreature, toggleFavorite } from '@/sim/life/actions';
-import { moveClutch, separateCreature, startBreeding } from '@/sim/life/breeding/actions';
+import { liftOutClutch, moveClutch, separateCreature, startBreeding } from '@/sim/life/breeding/actions';
 import { addCulture, addReservoir, setStockOrders, upgradePrep, waitForLine } from '@/sim/automation';
 import { holdAll, resumeAll, setHold } from '@/sim/automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '@/sim/staff/roster';
@@ -384,6 +384,18 @@ const C: Record<CommandKind, Case | Case[]> = {
     },
     direct: (d, c: Command & { k: 'moveClutch' }) => moveClutch(d, c.clutch, c.to),
     ok: true,
+  },
+  // chunk 17: only an empty shark egg case can be lifted out (breeding-chunk17 lifts one); the panels world's clutch is
+  // ordinary eggs, so it is refused through both paths
+  liftOutClutch: {
+    what: 'ordinary eggs (refused: only empty egg cases)',
+    w: 'panels',
+    cmd: (g) => {
+      const cl = Object.values(g.clutches)[0];
+      return { k: 'liftOutClutch', clutch: cl.id, from: cl.tankId };
+    },
+    direct: (d, c: Command & { k: 'liftOutClutch' }) => liftOutClutch(d, c.clutch),
+    ok: false,
   },
   startBreeding: [
     { w: 'panels', cmd: (g) => breedable(g), direct: (d, c: Command & { k: 'startBreeding' }) => startBreeding(d, c.a, c.b, c.tank), ok: true },

@@ -97,7 +97,7 @@ export const emperorAngelfish: SpeciesDefinition = {
   baseValue: 300,
   rarity: 'uncommon',
   visitorAppeal: 0.95,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems — and an adult needs a seven-foot tank of 220 gallons or more.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most are wild-collected and frequently exported; captive-bred juveniles from Bali Aquarich (via Biota) have been sold since 2023 and come pellet-trained.',
   conservation: {

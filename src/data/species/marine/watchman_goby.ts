@@ -95,7 +95,7 @@ export const watchmanGoby: SpeciesDefinition = {
   baseValue: 45,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: ['marine_basics'], hint: 'Research Marine Systems to unlock beginner marine fish.' },
+  unlock: { requires: ['marine_basics'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Most are wild-collected, but tank-raised yellow and grey watchman gobies are sold (e.g. Aquatics Unlimited).',
   conservation: {

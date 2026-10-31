@@ -212,6 +212,17 @@ function readyText(mod: BreedingModule, sp: SpeciesDefinition): string {
       return 'Everything is set — they will clean a nest site and spawn in the evening.';
     case 'livebearer':
       return 'Nothing more to do — livebearers breed readily. Dense plants or a nursery will save the fry.';
+    // chunk 17
+    case 'egg_case':
+      return 'Everything is set: they mate at night. About half the egg cases are duds; move the good ones to a nursery tank, where nothing can eat them.';
+    case 'cichlid_substrate':
+      return sp.id === 'freshwater_angelfish'
+        ? 'Everything is set: they spawn in the evening on a broad leaf they clean themselves, and guard the eggs and fry.'
+        : 'Everything is set: they spawn in the evening on a flat stone they clean themselves, and guard the eggs and fry.';
+    case 'damsel_nest':
+      return 'Everything is set: the male clears a nest on the sand and they spawn in the morning. The larvae need live copepods in a nursery.';
+    case 'ray_viviparous':
+      return 'Everything is set: after a long pregnancy she gives birth to pups that are on their own from the start.';
     default:
       return `Everything is set — keep conditions stable and watch your ${spPlural(sp)}.`;
   }

@@ -90,7 +90,7 @@ export const cerithSnail: SpeciesDefinition = {
   baseValue: 3,
   rarity: 'common',
   visitorAppeal: 0.2,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected in Florida; one of the cheapest and most available reef snails.',
   conservation: {

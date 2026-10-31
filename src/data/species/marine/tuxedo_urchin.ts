@@ -89,7 +89,7 @@ export const tuxedoUrchin: SpeciesDefinition = {
   baseValue: 35,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Many are wild-collected; ORA sells captive-bred ones in both colours.',
   conservation: { status: 'Not evaluated (IUCN)', note: 'Not assessed. Captive-bred tuxedo urchins are available, and the species is now a lab model animal.' },

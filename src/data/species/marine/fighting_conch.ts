@@ -90,7 +90,7 @@ export const fightingConch: SpeciesDefinition = {
   baseValue: 25,
   rarity: 'common',
   visitorAppeal: 0.6,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Mostly wild-collected in Florida (a licence is needed to take a live one). Harbor Branch supplied captive-raised conchs to the trade in the 2000s.',
   conservation: {

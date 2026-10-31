@@ -128,7 +128,9 @@ function recentMoment(state: GameState, tank: Tank, now: number): ExhibitInfo['m
             ? 'a cloud of fry'
             : cl.visual === 'berried'
               ? 'a berried female'
-              : 'a clutch of eggs';
+              : cl.visual === 'egg_case'
+                ? 'a shark egg case'
+                : 'a clutch of eggs';
     return { text: `${what}`, creatureId: cl.guardedById ?? cl.fatherId ?? undefined };
   }
   return null;

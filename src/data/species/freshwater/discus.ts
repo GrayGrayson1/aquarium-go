@@ -65,7 +65,8 @@ export const discus: SpeciesDefinition = {
   substrateRules: { preferred: ['bare', 'fine_sand', 'sand'], avoid: [], note: 'Many keepers use bare bottoms for hygiene; planted tanks need heat-tolerant plants (anubias, java fern, swords) and very frequent water changes.' },
 
   breeding: {
-    system: 'substrate_spawner',
+    // chunk 17 (the owner's round 5): its own pair module, not the corydoras'
+    system: 'cichlid_substrate',
     difficulty: 0.8,
     maturityDays: 18,
     clutchSize: { min: 100, max: 400 },
@@ -87,7 +88,7 @@ export const discus: SpeciesDefinition = {
   baseValue: 60,
   rarity: 'uncommon',
   visitorAppeal: 0.95,
-  unlock: { requires: ['fw_advanced'], hint: 'Unlocks with advanced freshwater: research Discus Husbandry (opens once intermediate freshwater is unlocked).' },
+  unlock: { requires: ['fw_advanced'] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Wild discus are still imported, but the trade is dominated by domestic strains farmed in South-East Asia.',
   conservation: {

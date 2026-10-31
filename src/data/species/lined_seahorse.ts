@@ -93,7 +93,7 @@ export const linedSeahorse: SpeciesDefinition = {
   baseValue: 95,
   rarity: 'uncommon',
   visitorAppeal: 1,
-  unlock: { requires: ['marine_seahorse'], hint: 'Starter species — otherwise research Seahorse Husbandry once marine fish are unlocked.' },
+  unlock: { requires: ['marine_seahorse'] },
   captiveBredAvailable: true,
   conservation: {
     status: 'Vulnerable (IUCN Red List, assessed 2016); CITES Appendix II',

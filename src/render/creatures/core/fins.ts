@@ -44,7 +44,8 @@ export type CaudalKind =
   | 'lobed'
   | 'emarginate'
   | 'pointed'
-  | 'goldfish';
+  | 'goldfish'
+  | 'shark'; // chunk 17: a long, low upper lobe running on along the body's line, a short lower lobe (carpet sharks)
 
 export interface CaudalOptions {
   kind: CaudalKind;
@@ -125,6 +126,9 @@ function caudalLen(o: CaudalOptions, s: number): number {
     }
     case 'lobed':
       return lerp(0.62, 1, Math.pow(e, 0.7)) * (0.85 + 0.15 * Math.sin(Math.PI * s));
+    case 'shark':
+      // ray 0 is the top: the upper lobe is the whole tail; the lower rays shorten fast to a small lobe
+      return Math.max(0.16, 1 - 0.82 * Math.pow(s, 0.65)) * (0.9 + 0.1 * smoothstep(0, 0.08, s));
     case 'goldfish': {
       // one half of a fancy-goldfish double tail: rounded upper and lower lobes around a central notch,
       // the lower lobe a touch longer (it trails and droops)

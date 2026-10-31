@@ -178,6 +178,11 @@ function applyState(rt: CreatureRuntime, state: string, t: number) {
       pose = 'swim';
       speed = 0.15;
       break;
+    // chunk 17: a ray resting buried in the sand (rt.ai.sandCover)
+    case 'buried':
+      pose = 'rest';
+      speed = 0;
+      break;
     case 'idle':
     default:
       pose = 'rest';
@@ -185,6 +190,7 @@ function applyState(rt: CreatureRuntime, state: string, t: number) {
   rt.pose = pose;
   rt.speedBL = speed;
   (rt.ai as Record<string, unknown>).galleryHeight = height;
+  (rt.ai as Record<string, unknown>).sandCover = state === 'buried' ? 0.85 : 0;
 }
 
 function Backdrop() {
@@ -335,7 +341,7 @@ export default function CritterartGallery() {
   });
   const single = shown.length === 1;
   const dist = (single ? 1.5 : Math.max(2.2, cols * spacing * 1.05)) / zoom;
-  const presets = ['idle', 'walk', 'swim', 'flick', 'gape', 'curious', 'hitch', 'pregnant', 'court', 'strike', 'berried', 'startle', 'retreat', 'zen', 'kick', 'glide'];
+  const presets = ['idle', 'walk', 'swim', 'flick', 'gape', 'curious', 'hitch', 'pregnant', 'court', 'strike', 'berried', 'startle', 'retreat', 'zen', 'kick', 'glide', 'buried'];
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#03090b' }}>
       <Canvas

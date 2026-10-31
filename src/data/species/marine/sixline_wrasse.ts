@@ -91,7 +91,7 @@ export const sixlineWrasse: SpeciesDefinition = {
   baseValue: 55,
   rarity: 'common',
   visitorAppeal: 0.7,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Wild-collected; very common in the trade.',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2009)', note: 'Least Concern and widespread across the Indo-Pacific.' },

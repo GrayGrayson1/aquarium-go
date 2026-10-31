@@ -15,6 +15,7 @@ import { runSharedStep } from '@/sim/sharedStep';
 import { generateOffer } from '@/sim/economy';
 import { isLotOffer } from '@/sim/life';
 import { simRng } from '@/sim/rng';
+import { checkPlacement } from '@/sim/aquascape/placement';
 
 const BASES = new Map<string, GameState>();
 /** A late-game shop (15 tanks: room to move a fish twice), or `panels` for its listings and bids. */
@@ -293,7 +294,10 @@ describe('chunk 11: first one wins, the fresh review’s cases (B3, notes 4 and 
   it('the last piece in storage, placed by one member, is never bought anew for the other', () => {
     const g = world();
     const t = g.tankOrder[0];
-    const piece = g.tanks[t].decor[0];
+    // a piece that fits back where it stood (chunk 17: on another random stream the first piece's own spot overlapped
+    // a neighbour more than a player may place, which says nothing about two members placing it)
+    const piece = g.tanks[t].decor.find((d) => checkPlacement(g, g.tanks[t], d.defId, { x: d.x, z: d.z, rotY: d.rotY, scale: d.scale }, { excludeId: d.id, purchase: 'none' }).ok)!;
+    expect(piece).toBeDefined();
     expect(applyCommand(g, { k: 'removeDecor', tank: t, decor: piece.id, sell: false }).ok).toBe(true); // into storage
     // Sam puts it back where it stood (a spot it is known to fit: after chunk 16 the fixture's frag rack sat at the tank's
     // middle, where this used to place it); Ana and Sam's second click aim a little either side of it.

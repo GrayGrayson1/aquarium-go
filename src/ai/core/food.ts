@@ -63,6 +63,11 @@ export function shapeFor(tags: readonly FoodTag[], delivery: FoodDef['delivery']
   if (has('mysis') || has('brine_shrimp')) return { shape: 'chunk', motion: delivery === 'live' ? 'jitter' : 'sink', size: has('mysis') ? 0.007 : 0.0045, perServing: 12 };
   if (has('algae_wafer') || has('nori')) return { shape: 'wafer', motion: 'sink', size: has('nori') ? 0.018 : 0.012, perServing: has('nori') ? 1 : 2 };
   if (has('vegetable')) return { shape: 'wafer', motion: 'sink', size: 0.01, perServing: 2 };
+  // chunk 17: the big animals' foods (floating sticks, seafood and shell chunks, a cricket on the surface)
+  if (has('insect')) return { shape: 'chunk', motion: 'float', size: 0.012, perServing: 2 };
+  if (has('shellfish')) return { shape: 'chunk', motion: 'sink', size: 0.013, perServing: 3 };
+  if (has('seafood')) return { shape: 'chunk', motion: delivery === 'floating' ? 'float' : 'sink', size: 0.012, perServing: 4 };
+  if (has('pellet_floating')) return { shape: 'pellet', motion: delivery === 'floating' ? 'float' : 'sink', size: 0.008, perServing: 4 };
   if (has('pellet_large')) return { shape: 'pellet', motion: delivery === 'floating' ? 'float' : 'sink', size: 0.0055, perServing: 4 };
   if (has('pellet_sinking')) return { shape: 'pellet', motion: delivery === 'floating' ? 'float' : 'sink', size: 0.0035, perServing: 6 };
   if (has('pellet_small')) return { shape: 'pellet', motion: delivery === 'floating' ? 'float' : 'sink', size: 0.0018, perServing: 10 };

@@ -97,7 +97,7 @@ export const lyretailAnthias: SpeciesDefinition = {
   baseValue: 55,
   rarity: 'common',
   visitorAppeal: 0.8,
-  unlock: { requires: [], hint: 'Needs no research of its own: it comes into the shop once you research Marine Systems.' },
+  unlock: { requires: [] },
   captiveBredAvailable: false,
   wildCaughtNote: 'All trade anthias are wild-collected; captive rearing is still experimental.',
   conservation: {

@@ -85,7 +85,7 @@ export const kuhliLoach: SpeciesDefinition = {
   baseValue: 6,
   rarity: 'common',
   visitorAppeal: 0.5,
-  unlock: { requires: ['fw_intermediate'], hint: 'Keep freshwater tanks healthy: reach 70 reputation and 200 husbandry mastery.' },
+  unlock: { requires: ['fw_intermediate'] },
   captiveBredAvailable: false,
   wildCaughtNote: 'Mostly wild-caught in Indonesia and Malaysia; a few farms produce hormone-induced spawns.',
   conservation: {

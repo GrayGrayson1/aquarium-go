@@ -67,7 +67,8 @@ export const germanBlueRam: SpeciesDefinition = {
   substrateRules: { preferred: ['sand', 'fine_sand', 'planted_soil'], avoid: ['gravel', 'large_pebbles'], note: 'Sifts soft sand for food and spits out what it doesn’t want; flat stones and wood give a pair a place to spawn. Never add it to a new tank.' },
 
   breeding: {
-    system: 'substrate_spawner',
+    // chunk 17 (the owner's round 5): its own pair module, not the corydoras'
+    system: 'cichlid_substrate',
     difficulty: 0.6,
     maturityDays: 12,
     clutchSize: { min: 150, max: 300 },
@@ -90,7 +91,7 @@ export const germanBlueRam: SpeciesDefinition = {
   baseValue: 12,
   rarity: 'common',
   visitorAppeal: 0.8,
-  unlock: { requires: [], hint: 'Available from the start — it needs warm, soft water and a mature tank.' },
+  unlock: { requires: [] },
   captiveBredAvailable: true,
   wildCaughtNote: 'Mass-bred in large numbers (sometimes with hormones); wild fish are rarely sold.',
   conservation: { status: 'Least Concern (IUCN Red List, assessed 2020)', note: 'Least Concern in the wild; trade strains are farm-bred and often weak. Never release aquarium fish.' },

@@ -224,12 +224,12 @@ describe('PERSIST-016: the S3-D state in a save', () => {
   }
 
   // chunk 16 raised the save version to 3 for its new species (ADR-0052 decision 5); the S3-D state itself needs nothing
-  it('round-trips with no repairs and the same hash twice; the save version is the current one (3)', () => {
+  it('round-trips with no repairs and the same hash twice; the save version is the current one (4)', () => {
     const g = ops();
     expect(g.automation?.days?.length).toBeGreaterThan(0);
     const once = roundTrip(g);
     expect(once.repairs).toEqual([]);
-    expect(once.state.schemaVersion).toBe(3);
+    expect(once.state.schemaVersion).toBe(4); // chunk 17
     expect(once.state.facility.water).toEqual(g.facility.water);
     expect(once.state.facility.food).toEqual(g.facility.food);
     expect(once.state.automation).toEqual(g.automation);
@@ -291,12 +291,12 @@ describe('PERSIST-016: the S3-D state in a save', () => {
     expect(raw.facility.food).toBeUndefined();
   });
 
-  it('a v1 save migrates (through v2, C-44, and v3, chunk 16) unchanged apart from its version', () => {
+  it('a v1 save migrates (through v2, C-44, v3, chunk 16, and v4, chunk 17) unchanged apart from its version', () => {
     const g = game();
     const v1 = { ...clonePlain(g), schemaVersion: 1 } as GameState;
     const d = roundTrip(v1);
     expect(d.repairs).toEqual([]);
-    expect(d.state.schemaVersion).toBe(3);
+    expect(d.state.schemaVersion).toBe(4); // chunk 17
     expect(stateHash(d.state)).toBe(stateHash(roundTrip(g).state));
   });
 });

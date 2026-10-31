@@ -71,7 +71,9 @@ describe('encyclopedia morph chips', () => {
       for (const m of sp.visualMorphs) if (!seen.has(m)) unreachable.push(`${sp.id}:${m}`);
     }
     // The few left are real but rare (homozygous line alleles at 2–8 % frequency) and simply not rolled in 600 tries.
-    expect(unreachable.length, unreachable.join(', ')).toBeLessThanOrEqual(8);
+    // chunk 17 (ADR-0053 round 2): the owner's two rarest forms are rare by design (recessives at 3 % and 0.5 %)
+    const RARE_BY_DESIGN = ['black_ghost_knifefish:White Ghost', 'silver_arowana:Platinum Arowana'];
+    expect(unreachable.filter((u) => !RARE_BY_DESIGN.includes(u)).length, unreachable.join(', ')).toBeLessThanOrEqual(8);
     expect(unreachable.filter((u) => u.startsWith('betta:') && u !== 'betta:Copper Dragon')).toEqual([]);
     expect(unreachable.filter((u) => u.startsWith('fancy_goldfish:'))).toEqual([]);
     expect(unreachable.filter((u) => u.startsWith('fancy_guppy:') && u !== 'fancy_guppy:Albino Full Red')).toEqual([]);
