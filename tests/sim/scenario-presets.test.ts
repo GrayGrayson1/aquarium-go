@@ -13,6 +13,9 @@ import { encodeRecord, decodeRecord } from '@/persistence';
 import { stateHash } from '@/persistence/hash';
 import { advanceWorld } from '@/sim/world';
 import { dayOf } from '@/sim/time';
+import { findSpecies } from '@/data/species';
+import { getTankTier } from '@/data/catalog/tanks';
+import { tankTierFor } from '@/sim/facility/progression';
 
 const built = new Map<string, BuildResult>();
 function build(id: string): BuildResult {
@@ -161,6 +164,36 @@ describe('LAB-007: each preset sets up what it says', () => {
     expect(g.market.listings[1].bids.filter((x) => x.status === 'open').map((x) => x.amount)).toEqual([200, 240]);
     expect(g.market.stock[0].creatures[0].rareVariant?.kind).toBe('prismatic'); // the recipe's first offer, at the front
     expect(g.market.stock[1]).toMatchObject({ speciesId: 'neon_tetra', kind: 'group' });
+  });
+
+  // chunk 17 (ADR-0053; design §14)
+  it('big-tank species: every chunk 17 species, each in the size of tank the shop waits for', () => {
+    const g = build('big-tank-species').state;
+    const CHUNK17 = ['oscar', 'clown_loach', 'black_ghost_knifefish', 'fahaka_puffer', 'ornate_bichir', 'silver_arowana', 'koi', 'motoro_stingray', 'silver_mono', 'spotted_scat', 'blue_tang', 'naso_tang', 'queen_angelfish', 'clown_triggerfish', 'panther_grouper', 'coral_catshark', 'epaulette_shark', 'brownbanded_bamboo_shark'];
+    const here = new Set(alive(g).map((c) => c.speciesId));
+    for (const id of CHUNK17) expect(here.has(id), id).toBe(true);
+    for (const c of alive(g)) {
+      const need = tankTierFor(findSpecies(c.speciesId)!);
+      if (need) expect(getTankTier(g.tanks[c.tankId!].tierId).gallons, c.speciesId).toBeGreaterThanOrEqual(need.gallons);
+    }
+  });
+
+  it('koi grand display: three varieties in the 1,000-gallon tank, in cool water', () => {
+    const g = build('koi-grand-display').state;
+    const t = tank(g, 'Koi Display');
+    expect(t.tierId).toBe('g1000');
+    expect(t.waterClass).toBe('freshwater_cool');
+    expect(alive(g, t.id).map((c) => c.morphName).sort()).toEqual(['Kohaku', 'Showa', 'Taisho Sanke']);
+  });
+
+  it('sharks and a ray: the bamboo shark in the 1,000, two egg cases by the epaulettes, a ray about to give birth', () => {
+    const g = build('sharks-and-a-ray').state;
+    expect(tank(g, 'Bamboo Shark').tierId).toBe('g1000');
+    const cases = Object.values(g.clutches).filter((c) => c.speciesId === 'epaulette_shark');
+    expect(cases).toHaveLength(1);
+    expect(cases[0]).toMatchObject({ visual: 'egg_case', stage: 'eggs', count: 2 });
+    const rays = alive(g, tank(g, 'Ray Pool').id);
+    expect(rays.find((c) => c.sex === 'female')?.repro.stage).toBe('gravid');
   });
 
   it('sandbox: a million dollars, every unlock and every project, three empty tanks', () => {

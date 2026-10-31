@@ -4,10 +4,10 @@ Written by Marshall on 2026-10-30 for Skye, who builds it (ADR-0053: the owner's
 the decisions). It is the chunk's reference: what to build, where it goes in the code, and the facts behind each
 animal. PLAN.md chunk 17 is the brief; SESSION_HANDOFF.md "Handoff to Skye: chunk 17" is the order of work.
 
-The species research behind §8 to §10 is in `research/` next to this file: four drafts written for this design by
-research agents from fetched sources (`freshwater-big.md`, `koi-ray-brackish.md`, `marine-big.md`, `sharks.md`). They are drafts: check each
-number you use against its source, then move the sections into `docs/research/{freshwater,marine,brackish}.md` in that
-file's format (the chunk-16 sections are the model) and delete the drafts.
+The species research behind §8 to §10 was written for this design by research agents from fetched sources, as four
+drafts (freshwater-big, koi-ray-brackish, marine-big, sharks). A second agent checked every number the game uses
+against its source before the build; in wave E the drafts moved into `docs/research/` (freshwater.md, marine.md and
+brackish.md each end with a chunk 17 chapter, the source check's notes included) and were deleted.
 
 ## 1. What and why
 
@@ -239,9 +239,9 @@ portraits have `eel` and `flat` glyphs (`src/ui/panels/common/Portrait.tsx`).
 
 ## 8. Freshwater species
 
-Per-species facts, data, forms, young and sex colours, behaviour, compatibility and tank: `research/freshwater-big.md`
+Per-species facts, data, forms, young and sex colours, behaviour, compatibility and tank: `docs/research/freshwater.md` (its chunk 17 chapter)
 (oscar, clown loach, black ghost knifefish, fahaka puffer, ornate bichir, silver arowana) and
-`research/koi-ray-brackish.md` (koi, motoro stingray). What the design adds or settles:
+`docs/research/freshwater.md` (koi, motoro stingray). What the design adds or settles:
 
 - **Oscar forms:** Tiger and Red as one codominant locus (a simplification: the red is a separate line-bred strain
   that fades without carotenoids, Syam 2019); Albino (the condition is documented; "recessive" is hobby writing:
@@ -272,7 +272,7 @@ Per-species facts, data, forms, young and sex colours, behaviour, compatibility 
 
 ## 9. Brackish species
 
-`research/koi-ray-brackish.md` (silver mono, spotted scat). One salinity range per species, SG 1.003–1.026 with an
+`docs/research/brackish.md` (silver mono, spotted scat). One salinity range per species, SG 1.003–1.026 with an
 ideal band of 1.010–1.022: they stay out of fresh water and adults may live in fish-only marine tanks
 (`waterClasses: ['brackish', 'marine_fowlr', …]`), which is how the hobby keeps them grown. The draft's optional
 `salinityByStage` field is the better long-term model; not in this chunk. Neither breeds in a home tank. The ruby scat
@@ -281,8 +281,8 @@ is the young's colour phase: a juvenile-only overlay (chunk 16's `recolor` for y
 
 ## 10. Marine species
 
-`research/marine-big.md` (blue tang, naso tang, queen angelfish, clown triggerfish, panther grouper) and
-`research/sharks.md` (coral catshark, epaulette shark, brown-banded bamboo shark). What the design adds or settles:
+`docs/research/marine.md` (blue tang, naso tang, queen angelfish, clown triggerfish, panther grouper) and
+`docs/research/marine.md` (coral catshark, epaulette shark, brown-banded bamboo shark). What the design adds or settles:
 
 - **Blue tang:** 180 gallons by every source; it stays (the owner's list) and needs Big-water Marine and the 180. Its
   young are blue like the adults (the "yellow juvenile" in some references is the Atlantic blue tang). One real form,

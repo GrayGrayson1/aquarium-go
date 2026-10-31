@@ -72,7 +72,7 @@ interface Baseline {
 function measure(g: GameState, b: Baseline, built: BuildResult, check: CheckRecipe, metric: Metric): number | string {
   const tankId = check.tank !== undefined ? built.tanks[check.tank] : undefined;
   if (check.tank !== undefined && !tankId) return `there's no tank called "${check.tank}"`;
-  const inScope = (c: Creature) => (!tankId || c.tankId === tankId) && (!check.species || c.speciesId === check.species);
+  const inScope = (c: Creature) => (!tankId || c.tankId === tankId) && (!check.species || c.speciesId === check.species) && (!check.category || findSpecies(c.speciesId)?.category === check.category);
   const creatures = Object.values(g.creatures).filter(inScope);
   const alive = creatures.filter(living);
   const tanks = tankId ? [g.tanks[tankId]].filter(Boolean) : g.tankOrder.map((id) => g.tanks[id]).filter(Boolean);
@@ -85,7 +85,7 @@ function measure(g: GameState, b: Baseline, built: BuildResult, check: CheckReci
     case 'deaths':
       return creatures.filter((c) => c.status === 'dead' && (b.aliveIds.has(c.id) || !b.ids.has(c.id))).length;
     case 'clutches':
-      return Object.values(g.clutches).filter((cl) => (!tankId || cl.tankId === tankId) && (!check.species || cl.speciesId === check.species)).length;
+      return Object.values(g.clutches).filter((cl) => (!tankId || cl.tankId === tankId) && (!check.species || cl.speciesId === check.species) && (!check.category || findSpecies(cl.speciesId)?.category === check.category)).length;
     case 'money':
       return g.finance.money;
     case 'sales':

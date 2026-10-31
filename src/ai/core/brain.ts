@@ -15,7 +15,7 @@ import { clamp, clamp01, lerp, rchance, rdur, rnd, rrange, safeNormalize } from 
 import { SURF_FLOOR, floorAt, nearestSurface, pointFree } from './env';
 import { bodyHY, bodySide, findParticle, randomSurfacePoint, randomSwimPoint } from './nav';
 import { consumeSpitRequest, spitRequested, spitWeight } from './spit'; // lane:brackish
-import { buries, rockSleep, sandEmerge, sandHold, updateBuried } from './sand'; // chunk 16
+import { buries, rockSleep, sandEmerge, sandHold, updateBuried, updateSandCover } from './sand'; // chunk 16
 import { intruder, mateOf } from './reef'; // chunk 16, wave B
 import { anemonePlace } from './anemone'; // chunk 16, wave B
 
@@ -563,6 +563,7 @@ export function stepAgent(a: Agent, w: AIWorld, dt: number): void {
     if (a.loco === 'swim') sandHold(a, w);
     updateBuried(a, w);
   }
+  if (a.set.sandCover) updateSandCover(a, w, dt);
   writeOrientation(a, w, dt);
   cosmetics(a, w, dt);
   a.rt.target = a.ctrl.hasGoal ? a.ctrl.goal : undefined;

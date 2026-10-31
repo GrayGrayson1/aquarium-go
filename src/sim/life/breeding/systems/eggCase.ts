@@ -1,6 +1,6 @@
 /**
  * egg_case — the bottom sharks (coral catshark, epaulette, brown-banded bamboo shark). Chunk 17 (ADR-0053; the sharks
- * research, docs/agent/design/CHUNK-17/research/sharks.md "New breeding system"). OWNER: lane "breeding".
+ * research, docs/research/marine.md "Cross-species notes (the bottom sharks)"). OWNER: lane "breeding".
  *
  *   a pair at night: courting (the male grips her by a fin) ─▶ she lays 1–2 leathery egg cases ─▶ resting
  *   (cooldownDays: the laying cycle) ─▶ lays again…

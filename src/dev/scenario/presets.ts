@@ -261,7 +261,8 @@ export const PRESETS: Preset[] = [
           ],
         },
       ],
-      checks: [{ name: 'everyone alive after two days', afterHours: 48, tank: 'The 210', deaths: { max: 0 } }],
+      // the owner (ADR-0053 round 4, B-220): a snail lost to a hermit crab is the real tank's own risk; no fish may die
+      checks: [{ name: 'no fish die in two days', afterHours: 48, tank: 'The 210', category: 'fish', deaths: { max: 0 } }],
     }),
   },
   {
@@ -340,6 +341,103 @@ export const PRESETS: Preset[] = [
           ],
         },
       ],
+    }),
+  },
+  {
+    // chunk 17 (ADR-0053; design §14): every big-tank species, each in the tank the shop waits for, grouped only where
+    // the compatibility matrix (§11) calls them compatible
+    id: 'big-tank-species',
+    group: 'Showpieces',
+    recipe: r({
+      name: 'Big-tank species',
+      notes: 'The 18 species chunk 17 added, each in the size of tank the shop waits for and grouped only where they get on: river giants with the motoro, the night fish, the oscar, the clown loaches, the fahaka alone, a koi pond, an estuary, two big marine reefs, the trigger and the panther grouper alone, and the three sharks.',
+      seed: 1700,
+      base: 'blank',
+      shop: { money: 200_000, facility: 'grand_hall', day: 60, hour: 11, inventory: { foods: 'plenty' } },
+      tanks: [
+        { name: 'River Giants', size: 'g500', water: 'freshwater_tropical', substrate: 'sand', ageDays: 120, equipment: ['powerhead_large', { id: 'autofeeder', setting: 4 }], animals: [{ species: 'silver_arowana' }, { species: 'motoro_stingray' }] },
+        { name: 'Night Shift', size: 'g240', water: 'freshwater_tropical', ageDays: 120, equipment: [{ id: 'powerhead_large', setting: 1 }, { id: 'autofeeder', setting: 4 }], animals: [{ species: 'black_ghost_knifefish' }, { species: 'ornate_bichir' }] },
+        { name: 'Oscar', size: 'g180', water: 'freshwater_tropical', ageDays: 120, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'oscar' }] },
+        { name: 'Clown Loaches', size: 'g180', water: 'freshwater_tropical', ageDays: 120, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'clown_loach', count: 6 }] },
+        { name: 'Fahaka', size: 'g180', water: 'freshwater_tropical', ageDays: 120, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'fahaka_puffer' }] },
+        { name: 'Koi Pond', size: 'g800', water: 'freshwater_cool', ageDays: 120, equipment: ['powerhead_large', { id: 'autofeeder', setting: 4 }], animals: [{ species: 'koi', count: 3 }] },
+        { name: 'Estuary', size: 'g500', water: 'brackish', ageDays: 120, equipment: ['powerhead_large', { id: 'autofeeder', setting: 4 }], animals: [{ species: 'silver_mono', count: 6 }, { species: 'spotted_scat', count: 6 }] },
+        { name: 'Reef Giants', size: 'g500', water: 'marine_fowlr', substrate: 'aragonite', ageDays: 200, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'blue_tang' }, { species: 'queen_angelfish' }] },
+        { name: 'Triggerfish', size: 'g300', water: 'marine_fowlr', ageDays: 200, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'clown_triggerfish' }] },
+        { name: 'Panther Grouper', size: 'g500', water: 'marine_fowlr', ageDays: 200, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'panther_grouper' }] },
+        { name: 'Shark Lagoon', size: 'g1000', water: 'marine_fowlr', substrate: 'fine_sand', ageDays: 200, equipment: ['powerhead_large', { id: 'autofeeder', setting: 4 }], animals: [{ species: 'brownbanded_bamboo_shark' }, { species: 'naso_tang' }] },
+        { name: 'Walking Shark', size: 'g500', water: 'marine_fowlr', substrate: 'fine_sand', ageDays: 200, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'epaulette_shark' }] },
+        { name: 'Catshark Caves', size: 'g500', water: 'marine_fowlr', substrate: 'fine_sand', ageDays: 200, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'coral_catshark' }] },
+      ],
+      // the sharks, the ray and the arowana's tankmates eat frozen seafood by hand: aquarists feed them
+      staff: [
+        { role: 'aquarist', skill: 5, trait: 'meticulous' },
+        { role: 'aquarist', skill: 4 },
+        { role: 'aquarist', skill: 4 },
+        { role: 'stock_manager', skill: 4, trait: 'planner' },
+      ],
+      checks: [{ name: 'everyone alive after two days', afterHours: 48, deaths: { max: 0 } }],
+    }),
+  },
+  {
+    // chunk 17 (design §14): the 1,000-gallon tank as a koi pond, three varieties
+    id: 'koi-grand-display',
+    group: 'Showpieces',
+    recipe: r({
+      name: 'Koi grand display',
+      notes: 'The 1,000-gallon tank in cool water with three koi of different varieties: a Kohaku, a Showa and a Taisho Sanke.',
+      seed: 1701,
+      base: 'blank',
+      shop: { money: 50_000, facility: 'grand_hall', day: 60, hour: 11, inventory: { foods: 'plenty' } },
+      tanks: [
+        {
+          name: 'Koi Display',
+          size: 'g1000',
+          water: 'freshwater_cool',
+          ageDays: 120,
+          equipment: ['powerhead_large', { id: 'autofeeder', setting: 4 }],
+          animals: [
+            { species: 'koi', morph: 'Kohaku', name: 'Sakura' },
+            { species: 'koi', morph: 'Showa', name: 'Kuro' },
+            { species: 'koi', morph: 'Taisho Sanke', name: 'Yuki' },
+          ],
+        },
+      ],
+      checks: [{ name: 'everyone alive after two days', afterHours: 48, deaths: { max: 0 } }],
+    }),
+  },
+  {
+    // chunk 17 (design §14): each shark and the motoro in the tank its research gives for that number, so the lab warns
+    // about nothing; egg cases on the way and a pregnant ray
+    id: 'sharks-and-a-ray',
+    group: 'Showpieces',
+    recipe: r({
+      name: 'Sharks and a ray',
+      notes: 'A bamboo shark in the 1,000, an epaulette pair (with two egg cases tied to the rock), a coral catshark, and a motoro pair whose female is about to give birth.',
+      seed: 1702,
+      base: 'blank',
+      shop: { money: 80_000, facility: 'grand_hall', day: 60, hour: 11, inventory: { foods: 'plenty' } },
+      tanks: [
+        { name: 'Bamboo Shark', size: 'g1000', water: 'marine_fowlr', substrate: 'fine_sand', ageDays: 200, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'brownbanded_bamboo_shark', name: 'Banjo' }] },
+        {
+          name: 'Epaulettes',
+          size: 'g500',
+          water: 'marine_fowlr',
+          substrate: 'fine_sand',
+          ageDays: 200,
+          equipment: [{ id: 'autofeeder', setting: 4 }],
+          animals: [{ species: 'epaulette_shark', count: 2, sex: 'pair', names: ['Strider', 'Pebble'] }],
+          young: [{ species: 'epaulette_shark', stage: 'eggs', count: 2, mother: 'Pebble', father: 'Strider' }],
+        },
+        { name: 'Catshark', size: 'g500', water: 'marine_fowlr', substrate: 'fine_sand', ageDays: 200, equipment: [{ id: 'autofeeder', setting: 4 }], animals: [{ species: 'coral_catshark', name: 'Marble' }] },
+        { name: 'Ray Pool', size: 'g500', water: 'freshwater_tropical', substrate: 'fine_sand', ageDays: 120, equipment: ['powerhead_large', { id: 'autofeeder', setting: 4 }], animals: [{ species: 'motoro_stingray', count: 2, sex: 'pair', names: ['Ripple', 'Saucer'], breed: 'ready' }] },
+      ],
+      // sharks and rays eat frozen seafood by hand
+      staff: [
+        { role: 'aquarist', skill: 5, trait: 'meticulous' },
+        { role: 'aquarist', skill: 4 },
+      ],
+      checks: [{ name: 'everyone alive after two days', afterHours: 48, deaths: { max: 0 } }],
     }),
   },
   {

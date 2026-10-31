@@ -20,6 +20,8 @@ import { clearCompatCache, speciesPair } from '@/sim/compat';
 import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature } from '@/sim/life';
 import { resolveMorph } from '@/sim/life/genetics';
+import { SELLERS } from '@/data/buyers';
+import { SHOW_CLASSES } from '@/data/shows';
 
 const game = (starterId: 'betta' | 'ocellaris_clownfish' = 'betta', seed = 1): GameState => newGame({ starterId, starterName: '', seed });
 const WAVE_A = ['oscar', 'clown_loach', 'black_ghost_knifefish', 'fahaka_puffer', 'ornate_bichir', 'silver_arowana'];
@@ -85,7 +87,7 @@ describe('BIG-009: foods sold with the animals that eat them', () => {
     for (const id of NEW_FOODS) expect(isFoodAvailable(g, getFoodDef(id)!), id).toBe(false);
     const r = buyFood(g, 'shellfish_frozen', 1);
     expect(r.ok).toBe(false);
-    expect(r.message).toBe(`Frozen Shell-on Shellfish comes into the shop with ${soldWithWords(getFoodDef('shellfish_frozen')!)}.`);
+    expect(r.message).toBe(`The shop sells Frozen Shell-on Shellfish once you can buy ${soldWithWords(getFoodDef('shellfish_frozen')!)}.`);
     expect(soldWithWords(getFoodDef('shellfish_frozen')!)).toBe('fahaka puffers or clown triggerfish');
     expect(soldWithWords(getFoodDef('seafood_frozen')!)).toBe('oscars, ornate bichirs and more');
     unlock(g, 'fw_large', { silent: true });
@@ -347,5 +349,26 @@ describe('BIG-003, BIG-006 and BIG-008: the motoro, the bottom sharks and Shark 
     expect(v('motoro_stingray', 'bristlenose_pleco')).toBe('high_risk');
     for (const o of ['fahaka_puffer', 'koi', 'neon_tetra', 'cherry_shrimp', 'mystery_snail', 'axolotl', 'panda_corydoras']) expect(v('motoro_stingray', o), o).toBe('incompatible');
     for (const s of SHARKS) expect(v('motoro_stingray', s), s).toBe('incompatible');
+  });
+});
+
+describe('BIG-012: the sellers and the Koi show (the owner’s round 3)', () => {
+  it('every chunk 17 species has a specialist seller; the two new ones carry the owner’s names and line words', () => {
+    const by = (name: string) => SELLERS.find((s) => s.name === name)!;
+    expect(by('Blackwater River Imports')).toMatchObject({ lineFlavour: 'river stock', specialties: ['oscar', 'clown_loach', 'black_ghost_knifefish', 'fahaka_puffer', 'ornate_bichir', 'silver_arowana', 'motoro_stingray'] });
+    expect(by('Mermaid’s Purse Shark Hatchery')).toMatchObject({ lineFlavour: 'hatchery line', specialties: ['coral_catshark', 'epaulette_shark', 'brownbanded_bamboo_shark'] });
+    expect(by('Coldwater Koi & Goldfish').specialties).toContain('koi');
+    for (const id of ['blue_tang', 'naso_tang', 'queen_angelfish', 'clown_triggerfish', 'panther_grouper']) expect(by('Deep Reef Specialists').specialties, id).toContain(id);
+    for (const id of ['silver_mono', 'spotted_scat']) expect(by('Mangrove Coast Aquatics').specialties, id).toContain(id);
+    // the general store stays last and general
+    expect(SELLERS[SELLERS.length - 1]).toMatchObject({ name: 'Harbor Street Aquatics', specialties: [] });
+  });
+
+  it('a Koi class from club shows up, judged as the owner approved', () => {
+    const k = SHOW_CLASSES.find((c) => c.id === 'koi')!;
+    expect(k).toMatchObject({ name: 'Koi', kind: 'livestock', species: ['koi'], standard: { form: 25, colour: 25, pattern: 20, size: 15, condition: 15 } });
+    expect(k.blurb).toBe('Body shape, clean white skin, deep even colour and a crisp, balanced pattern. A big koi is a prize.');
+    expect(Object.values(k.standard).reduce((a, b) => a + (b ?? 0), 0)).toBe(100);
+    expect(k.minTier).toBeUndefined();
   });
 });

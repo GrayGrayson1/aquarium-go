@@ -91,7 +91,7 @@ build to skye in cnvs".
 
 ## Round 2 (2026-10-30, Marshall, after the research)
 
-Four research agents wrote sourced notes for the 18 species (`docs/agent/design/CHUNK-17/research/`). The owner said,
+Four research agents wrote sourced notes for the 18 species (`docs/agent/design/CHUNK-17/research/`; moved into `docs/research/` with the source check's notes in wave E). The owner said,
 verbatim: "ask me questions if clarification is needed. otherwise lets get this done and sent to skye". One
 AskUserQuestion round:
 
@@ -195,3 +195,42 @@ option each time; the previews they saw are quoted.
    only the tank is), for every species; the hand-written species hints retire from the locked cards. The five foods
    with the words and prices above, each sold once an animal listed with it can be bought. The two sellers and their
    line words, and a Koi show class (a class in the existing tiers: data, not a new tier).
+
+## Round 4 (2026-10-30, Skye, wave E): the new wording, a friend's reef, the ray's burying, the release
+
+The new player-visible wording was generated from the data and code into a note on the CNVS canvas (the shop and
+research lines, the egg-case and stingray messages and cards, the candling stages, and the 18 species' encyclopedia
+pages, notes, morph names and compatibility reasons). One AskUserQuestion round, four questions; the owner's choices:
+
+1. **"Chunk 17's new player-visible wording is open on the canvas next to me (the 'chunk17-wording' note): the shop and
+   research lines, the shark egg-case and stingray birth messages, and the 18 species' encyclopedia pages and
+   compatibility reasons. Is it OK for players?"** (Wording)
+   - Chosen: **"OK as written (Recommended)"**: "Every line as written. One is already reworded so plural food names
+     read right: 'The shop sells Koi Sticks once you can buy koi.'"
+   - Not chosen: "I'll send changes".
+2. **"In the 'A friend's reef' lab preset, a hermit crab kills a snail for its shell in about 1 run in 5 (the game's
+   hermits really do this, and the tank has 3 hermits and 37 snails). The preset's own check, 'everyone alive after
+   two days', then fails. What should change? (backlog B-220)"** (Friend's reef)
+   - Chosen: **"Check fish only (Recommended)"**: "The preset's check becomes 'no fish die in two days'. A snail lost to
+     a hermit is the real tank's own risk, so the hermits and the preset stay as they are."
+   - Not chosen: "Spare shells protect snails" ("A shell pile in the tank cuts the hermits' snail kills (a small sim
+     change), and the preset gets one. The check stays 'everyone alive'."); "Leave it".
+3. **"The motoro stingray rests flat on the sand but doesn't bury itself with only its eyes showing, as the design
+   asked. The game's sand-burying only works head-first, for wrasses, so a ray needs its own version. Build it now or
+   later?"** (Ray burying)
+   - Chosen: **"Build it in this chunk"**: "Add a ray burial (sand flicked over the disc, eyes showing) before the
+     chunk's checks. Roughly a few more hours."
+   - Not chosen: "Backlog it (Recommended)" ("Ship the ray resting flat on the sand; burying goes in the backlog for a
+     later chunk. Its encyclopedia line already says 'rests flat on the sand'.").
+4. **"Once the four checks and the fresh review are green, release 0.9.0? That merges next into main (GitHub Pages
+   and the Render site) and then redeploys the shared-shop server, because the save format changes to v4 (a 0.8.0
+   build can't open a 0.9.0 save)."** (Release)
+   - Chosen: **"Release once green (Recommended)"**: "Bump to 0.9.0 with a CHANGELOG entry, merge into main and push,
+     then deploy aquarium-go-shops from main and check both versions."
+   - Not chosen: "I'll play it first"; "Not yet".
+
+10. **Round 4's decisions.** The chunk's new wording is approved as listed. The friend's reef preset checks that no
+    fish die in two days (B-220 closed: the hermits and the preset unchanged). The motoro buries itself in a sand bed
+    when it rests, eyes showing (built in this chunk). 0.9.0 is released once the four checks and the fresh review
+    are green: the version and CHANGELOG, `next` merged into `main` and pushed, then aquarium-go-shops deployed from
+    `main` (PLAN.md "Releases").

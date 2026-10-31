@@ -279,11 +279,15 @@ export const SELLERS: SellerDef[] = [
   { name: 'Glasshouse Guppies', specialties: ['fancy_guppy', 'endlers_livebearer', 'medaka', 'platy', 'swordtail' /* chunk 16 */], lineFlavour: 'strain' },
   { name: 'Little Cherry Shrimpery', specialties: ['cherry_shrimp', 'amano_shrimp', 'mystery_snail', 'nerite_snail', 'dwarf_crayfish', 'ghost_shrimp', 'ramshorn_snail' /* chunk 16 */], lineFlavour: 'colony' },
   { name: 'Western Ghats Puffer Room', specialties: ['pea_puffer'], lineFlavour: 'tank-bred line' },
-  { name: 'Coldwater Koi & Goldfish', specialties: ['fancy_goldfish', 'comet_goldfish', 'white_cloud_minnow'], lineFlavour: 'line' },
+  { name: 'Coldwater Koi & Goldfish', specialties: ['fancy_goldfish', 'comet_goldfish', 'white_cloud_minnow', 'koi' /* chunk 17 */], lineFlavour: 'line' },
   { name: 'Coral Loft Aquaculture', specialties: ['clown_goby', 'watchman_goby', 'green_chromis', 'cleaner_shrimp', 'peppermint_shrimp', 'trochus_snail', 'hermit_crab', 'yellowtail_damselfish', 'tuxedo_urchin', 'bubbletip_anemone' /* chunk 16 */], lineFlavour: 'aquacultured line' },
-  { name: 'Deep Reef Specialists', specialties: ['mandarin_dragonet', 'coral_beauty', 'yellow_tang', 'kole_tang', 'foxface_rabbitfish', 'dwarf_lionfish', 'miniatus_grouper', 'peacock_mantis_shrimp', /* chunk 16 */ 'emperor_angelfish', 'sailfin_tang', 'chocolate_tang', 'lyretail_anthias', 'melanurus_wrasse', 'elegant_starfish', 'flame_angelfish', 'sixline_wrasse', 'flame_hawkfish', 'lawnmower_blenny', 'emerald_crab', 'sand_sifting_starfish'], lineFlavour: 'selected stock' },
+  { name: 'Deep Reef Specialists', specialties: ['mandarin_dragonet', 'coral_beauty', 'yellow_tang', 'kole_tang', 'foxface_rabbitfish', 'dwarf_lionfish', 'miniatus_grouper', 'peacock_mantis_shrimp', /* chunk 16 */ 'emperor_angelfish', 'sailfin_tang', 'chocolate_tang', 'lyretail_anthias', 'melanurus_wrasse', 'elegant_starfish', 'flame_angelfish', 'sixline_wrasse', 'flame_hawkfish', 'lawnmower_blenny', 'emerald_crab', 'sand_sifting_starfish', /* chunk 17 */ 'blue_tang', 'naso_tang', 'queen_angelfish', 'clown_triggerfish', 'panther_grouper'], lineFlavour: 'selected stock' },
   { name: 'Amazon Gold Discus', specialties: ['discus', 'bristlenose_pleco', 'hillstream_loach', 'african_dwarf_frog', 'freshwater_angelfish', 'german_blue_ram' /* chunk 16 */], lineFlavour: 'strain' },
-  { name: 'Mangrove Coast Aquatics', specialties: ['figure_eight_puffer', 'bumblebee_goby', 'sailfin_molly', 'banded_archerfish'], lineFlavour: 'estuary stock' }, // lane:brackish
+  { name: 'Mangrove Coast Aquatics', specialties: ['figure_eight_puffer', 'bumblebee_goby', 'sailfin_molly', 'banded_archerfish', 'silver_mono', 'spotted_scat' /* chunk 17 */], lineFlavour: 'estuary stock' }, // lane:brackish
+  // chunk 17 (ADR-0053 round 3): the big river fish and the motoro; the three bottom sharks (a mermaid's purse is a
+  // shark's egg case)
+  { name: 'Blackwater River Imports', specialties: ['oscar', 'clown_loach', 'black_ghost_knifefish', 'fahaka_puffer', 'ornate_bichir', 'silver_arowana', 'motoro_stingray'], lineFlavour: 'river stock' },
+  { name: 'Mermaid’s Purse Shark Hatchery', specialties: ['coral_catshark', 'epaulette_shark', 'brownbanded_bamboo_shark'], lineFlavour: 'hatchery line' },
   { name: 'Harbor Street Aquatics', specialties: [], lineFlavour: 'stock' },
 ];
 

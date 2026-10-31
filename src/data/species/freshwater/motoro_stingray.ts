@@ -153,7 +153,7 @@ export const motoroStingray: SpeciesDefinition = {
     breedingOverview: 'Live-bearing: one to eight independent pups after about two and a half months. The male bites the female’s disc while courting.',
     conservationNote: 'Least Concern (IUCN 2024) and listed by CITES. Venomous, and banned or restricted in several US states: check the law where you live.',
     funFact: 'It sheds its tail spine every few months, and the dropped spine stays venomous: keepers check the sand before putting a hand in.',
-    inGameBehavior: 'Glides over the floor rippling the edge of its disc, rests flat on the sand, and comes to the front glass to beg at feeding time.',
+    inGameBehavior: 'Glides over the floor rippling the edge of its disc, buries itself in the sand to rest with only its eyes showing, and comes to the front glass to beg at feeding time.',
     feedingNote: 'Seafood, earthworms and big frozen foods two or three times a day, dropped where it can reach them; no feeder fish.',
     keeperTip: 'Never put a hand in the sand: a buried ray, or a shed spine, can sting.',
   },

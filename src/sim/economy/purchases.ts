@@ -317,7 +317,7 @@ export function buyFood(state: GameState, foodId: string, packs: number): Action
   if (n < 1 || n > 99) return fail('Choose between 1 and 99 packs.');
   if (!isUnlocked(state, def.unlock)) return fail(`${def.name} isn't available yet (${unlockHint(def.unlock)}).`);
   // chunk 17 (ADR-0053 decision 5): a food sold with certain animals waits until one of them can be bought
-  if (!isFoodAvailable(state, def)) return fail(`${def.name} comes into the shop with ${soldWithWords(def)}.`);
+  if (!isFoodAvailable(state, def)) return fail(`The shop sells ${def.name} once you can buy ${soldWithWords(def)}.`);
   const price = roundCents(def.price * n);
   if (!spend(state, price, 'food', `${n} × ${def.name}`)) return needMoney(state, price, `${n} × ${def.name}`);
   const servings = Math.max(1, Math.round(def.servingsPerPack * n));

@@ -9,7 +9,9 @@
  *
  * Local space: the head points +X, the underside lies on y = -GROUND; length 1 = the disc's width (the species' size),
  * the tail reaching about as far again behind it.
- * Palette: body = the disc, accent = the ocelli's centres, fin2 = their rings, belly = the underside, eye = the eyes.
+ * Palette: body = the disc, accent = the ocelli's centres, fin2 = their rings, belly = the underside, eye = the eyes;
+ * slot 6 = the tank's sand, which covers the disc while it rests buried (`rt.ai.sandCover`, src/ai/core/sand.ts), its
+ * eyes and spiracles left showing.
  * OWNER: lane "critterart".
  */
 import * as THREE from 'three';
@@ -23,6 +25,7 @@ import { critterTiers } from './common/tiers';
 import { createCritterMaterial, createCritterUniforms } from './common/materials';
 import { applyAppearance } from './common/palette';
 import { damp, smoothstep, TAU } from './common/math';
+import { useGame } from '@/state/game';
 
 /** Half the disc's length (front to back) and width; its top dome and its flat underside. */
 const RX = 0.46;
@@ -144,7 +147,8 @@ void agcSurface(inout AgcSurf s){
     }
     s.albedo = body * 0.35; s.rough = 0.6; return;
   }
-  if (part > 1.5) { s.albedo = vec3(0.86, 0.82, 0.74); s.rough = 0.3; s.clear = 0.6; return; }
+  float cover = uAgcV0.y; vec3 sand = uAgcPal[6];
+  if (part > 1.5) { s.albedo = mix(vec3(0.86, 0.82, 0.74), sand, cover * 0.8); s.rough = 0.3; s.clear = 0.6; return; }
   vec3 col = body;
   bool under = (part < 0.5 && topSide < 0.5 && P.y < -0.02 + 0.012 - 0.002) || (part > 0.5 && P.y < -0.02 + 0.024 - 0.006);
   if (under) {
@@ -167,6 +171,17 @@ void agcSurface(inout AgcSurf s){
   col = mix(col, spot, core);
   // the disc's very edge is a touch darker
   if (part < 0.5) col *= 1.0 - 0.2 * smoothstep(0.85, 1.0, r);
+  // buried: sand drifts over the disc in patches, thinnest over the raised middle where the eyes are
+  if (cover > 0.001) {
+    float patchy = agcFbm(P * 22.0 + seed * 3.0);
+    float lay = cover * (part < 0.5 ? mix(0.55, 1.1, smoothstep(0.12, 0.7, r)) : 1.0) - (patchy - 0.5) * 1.1;
+    float m = smoothstep(0.32, 0.78, lay) * 0.93;
+    col = mix(col, sand * (0.85 + 0.3 * agcVn(P * 380.0 + seed)), m);
+    s.rough = mix(0.45, 0.9, m);
+    s.clear = mix(0.35, 0.0, m);
+    s.albedo = col;
+    return;
+  }
   s.albedo = col;
   s.rough = 0.45;
   s.clear = 0.35;
@@ -187,6 +202,7 @@ export const createMotoroStingray: CreatureFactory = (args) => {
   for (const b of rigI.roots) inner.add(b);
   const u = createCritterUniforms(fx);
   applyAppearance(u, ap, args.creature);
+  u.uAgcPal.value[6].set('#cdb98f'); // plain sand until the tank's own is looked up
   const mat = createCritterMaterial({
     name: 'ray',
     fx,
@@ -204,15 +220,27 @@ export const createMotoroStingray: CreatureFactory = (args) => {
   root.userData.speciesVisual = 'motoro_stingray';
   const B = rigI.byName;
   const seed = ((ap.patternSeed ?? 9) % 1000) / 1000;
-  const st = { glide: 0, sag: 0, sway: 0 };
+  const st = { glide: 0, sag: 0, sway: 0, sandAt: -1 };
   const sel = { on: false };
+  // the tank's sand colour, looked up now and then (a substrate change shows within a couple of seconds)
+  const tankId = args.creature?.tankId ?? null;
+  const sandColour = (time: number) => {
+    if (time - st.sandAt < 2 && st.sandAt >= 0) return;
+    st.sandAt = time;
+    const c = tankId ? useGame.getState().game?.tanks[tankId]?.substrate?.color : undefined;
+    if (c) u.uAgcPal.value[6].set(c);
+  };
   const update = (rt: CreatureRuntime, dt: number, time: number) => {
     u.uAgcTime.value = time;
     const dead = rt.pose === 'dead';
     const speed = Math.max(0, rt.speedBL || 0);
     st.glide = damp(st.glide, dead ? 0 : Math.min(1, speed * 2.5), 1.8, dt);
     st.sag = damp(st.sag, dead ? 1 : 0, 0.5, dt);
-    u.uAgcV0.value.set(st.glide, 0, st.sag, seed * 20);
+    const cover = typeof rt.ai?.sandCover === 'number' ? (rt.ai.sandCover as number) : 0;
+    if (cover > 0) sandColour(time);
+    // settled into the sand it lies a little lower, and the rim stops rippling
+    inner.position.y = -cover * 0.014;
+    u.uAgcV0.value.set(st.glide * (1 - cover), cover, st.sag, seed * 20);
     // the tail trails the turns and drifts a little side to side
     st.sway = damp(st.sway, -(rt.bend || 0) * 0.6 + (dead ? 0 : 0.08 * Math.sin(time * 0.6 + seed * 9)), 2, dt);
     setRot(B.tail, 0, st.sway, 0);

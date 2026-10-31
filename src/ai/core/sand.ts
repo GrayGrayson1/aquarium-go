@@ -217,6 +217,21 @@ export function sandEmerge(a: Agent, w: AIWorld, dt: number): void {
   c.avoid = Math.min(c.avoid, 0.4);
 }
 
+/**
+ * chunk 17 — a ray resting on a sand bed flicks sand over its disc with the edge of it until only its eyes show, and
+ * shakes it off as it lifts away (Seriously Fish: it buries itself to rest). Cosmetic: the body stays where it lies;
+ * `rt.ai.sandCover` (0..1) tells the renderer how much of the disc is under sand. Covering takes about eight seconds,
+ * shaking it off well under one.
+ */
+export function updateSandCover(a: Agent, w: AIWorld, dt: number): void {
+  const pos = a.rt.pos;
+  const resting = (a.act === 'rest' || a.act === 'sleep') && !a.dead && a.speed < a.L * 0.08 && pos.y - floorAt(w.env, pos.x, pos.z) < bodyHY(a) * 3;
+  const want = resting && w.env.sandBed ? 0.85 : 0;
+  const cur = typeof a.rt.ai.sandCover === 'number' ? (a.rt.ai.sandCover as number) : 0;
+  const k = want > cur ? dt / 8 : dt / 0.6;
+  a.rt.ai.sandCover = want > cur ? Math.min(want, cur + k) : Math.max(want, cur - k);
+}
+
 /** After the step: a swimmer coming up out of the sand is no deeper than its allowance (see sandEmerge). */
 export function sandHold(a: Agent, w: AIWorld): void {
   if (a.sandAllow <= 0) return;

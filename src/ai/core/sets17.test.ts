@@ -134,3 +134,31 @@ describe('chunk 17 behaviour sets, each in the smallest tank the gate allows', (
     });
   }
 });
+
+describe('the motoro buries itself to rest (the owner, ADR-0053 round 4)', () => {
+  const run = (substrate: 'sand' | 'bare') => {
+    const sp = findSpecies('motoro_stingray')!;
+    const tank = makeTestTank({ id: `ray_${substrate}`, tierId: 'g500', waterClass: 'freshwater_tropical', substrate, decor: [decor('test_rock', -0.3, -0.36, { scale: 2 })] });
+    const w = makeTestWorld(tank, [makeTestCreature('motoro_stingray', tank.id, { sizeCm: sp.adultSizeCm })], 12);
+    const a = w.agents[0];
+    let maxCover = 0;
+    let coveredMoving = 0;
+    for (let i = 0; i < 480 * 30; i++) {
+      stepWorld(w, DT);
+      const c = (a.rt.ai.sandCover as number) ?? 0;
+      maxCover = Math.max(maxCover, c);
+      // it shakes the sand off as it swims away: never well covered while moving fast
+      if (c > 0.5 && a.speed > a.L * 0.3) coveredMoving++;
+    }
+    return { maxCover, coveredMoving, profile: SET_PROFILES.stingray.sandCover };
+  };
+  it('on a sand bed it covers itself while it rests, and shakes it off to swim', () => {
+    const r = run('sand');
+    expect(r.profile).toBe(true);
+    expect(r.maxCover).toBeGreaterThan(0.6);
+    expect(r.coveredMoving).toBeLessThan(30);
+  });
+  it('on a bare floor there is nothing to bury in', () => {
+    expect(run('bare').maxCover).toBe(0);
+  });
+});

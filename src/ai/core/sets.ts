@@ -158,6 +158,8 @@ export interface SetProfile {
   /** Cruises just under the surface (the arowana): its band grows down from the top by a few body heights, and the
    * surface pushes it away only within those (as the floor does a big bottom-hugger). */
   surfaceCruiser?: boolean;
+  /** Rests on a sand bed with sand flicked over its body, eyes showing (the motoro): `rt.ai.sandCover` (sand.ts). */
+  sandCover?: boolean;
 }
 
 const FISH: BodyEnvelope = { hx: 0.5, hy: 0.14, hz: 0.07 };
@@ -867,6 +869,7 @@ export const SET_PROFILES: Record<BehaviorSetId, SetProfile> = {
     rest: 'bottom',
     bottomHugger: true,
     startleSens: 0.5,
+    sandCover: true,
   }),
 };
 
