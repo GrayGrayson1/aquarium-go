@@ -20,7 +20,7 @@ import type { SimContext } from '@/sim/context';
 import { emitEvent } from '@/sim/context';
 import { hashString, mulberry32, type Rng } from '@/sim/rng';
 import { hourOfDay, lightsOn, HOURS_PER_DAY } from '@/sim/time';
-import { decorAnchors, tankDims, type WorldAnchor } from '@/sim/tankSpace';
+import { decorAnchors, decorCollider, tankDims, type WorldAnchor } from '@/sim/tankSpace';
 import { tankHabitat, type TankHabitat } from '@/sim/aquascape';
 import type { IncidentRisk } from '@/sim/compat';
 import { computeTankEnv, effectiveBioload } from '@/sim/water';
@@ -778,9 +778,24 @@ export function pickSite(tank: Tank, kind: SiteKind, key: string, extras = 0): {
       return { anchor, extra };
     }
     case 'floor': {
-      // on the sand, away from the glass: in front of a rock if there is one (where a shark rests), else open floor
-      const r = hard.length ? [...hard].sort((p, q) => q.h - p.h)[0] : undefined;
-      anchor = clampV({ x: r ? r.inst.x + rng.range(-0.06, 0.06) : fallbackX(), y: floorY, z: r ? r.inst.z + rng.range(0.04, 0.08) : fallbackZ() });
+      // on the sand, away from the glass: in front of the tallest rock if there is one (where a shark rests), else open
+      // floor; clear of every rock's footprint (a few centimetres from a big rock's centre was inside it, so egg cases
+      // and a damsel's nest lay out of sight). The first tries hug the rock's front, the later ones any open floor.
+      const feet = hard.map((h) => decorCollider(h.inst, getDecorDef(h.inst.defId)!));
+      const clear = (v: Vec) =>
+        feet.every((f) => {
+          const dx = (v.x - f.center[0]) / (f.radius[0] + 0.05);
+          const dz = (v.z - f.center[2]) / (f.radius[2] + 0.05);
+          return dx * dx + dz * dz >= 1;
+        });
+      const ri = hard.reduce((best, h, i) => (best < 0 || h.h > hard[best].h ? i : best), -1);
+      const rf = ri >= 0 ? feet[ri] : undefined;
+      let spot: Vec | undefined;
+      for (let i = 0; i < 16 && !spot; i++) {
+        const v = clampV(rf && i < 8 ? { x: rf.center[0] + rng.range(-0.8, 0.8) * rf.radius[0], y: floorY, z: rf.center[2] + rf.radius[2] + rng.range(0.06, 0.1) } : { x: fallbackX(), y: floorY, z: fallbackZ() });
+        if (clear(v)) spot = v;
+      }
+      anchor = spot ?? clampV({ x: rf ? rf.center[0] : fallbackX(), y: floorY, z: rf ? rf.center[2] + rf.radius[2] + 0.06 : fallbackZ() });
       return { anchor, extra: around(anchor, extras, 0.03, 0).map((v) => ({ ...v, y: floorY })) };
     }
     case 'above_water': {

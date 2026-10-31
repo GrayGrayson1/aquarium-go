@@ -50,11 +50,11 @@ ADR-0008, cited in several notes, was approved by the owner and committed in `1a
 | needs-slice | 24 | 18 | 1 | 0 | 0 | 5 | 0 |
 | owner-decision | 23 | 13 | 0 | 6 | 0 | 0 | 4 |
 | record-only | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
-| outside the review | 35 | 16 | 1 | 0 | 0 | 17 | 1 |
-| **total** | **136** | **63** | **9** | **6** | **0** | **49** | **9** |
+| outside the review | 41 | 16 | 1 | 1 | 0 | 22 | 1 |
+| **total** | **142** | **63** | **9** | **7** | **0** | **54** | **9** |
 
-Recounted from the rows on 2026-10-25 (chunk 16): "outside the review" had lost four rows from its count; its open
-items include B-207 (in progress).
+Recounted from the rows on 2026-10-30 (chunk 17): "outside the review" has B-220 (closed by the owner's decision, counted
+as decided) and B-221 to B-225; its open items include B-207 (in progress).
 
 Fixed or partly fixed by these commits: `3e00a32`, `58ae313`, `9edfa12`, `6347c5d`, `d98731d`, `16233a1`, `c774d38`,
 `2ef1ff7`, `d8fb896`, `7c0dbf4`, `5ae85a3`, `62df438`, `9e1bf66`. `dfc0a13` was reverted by `f999618` (B-158).
@@ -108,6 +108,10 @@ decided. Every owner-decision row is now answered (ADR-0025 to ADR-0029, 2026-10
 | B-219 | — | Swim steering: an aim behind a fish by pitch alone (perched head up, its goal below and behind) takes the "turn round horizontally first" branch (`src/ai/core/loco.ts`, step 6), where there is no horizontal turn to make, so the pitch never comes down and the fish backs away. Chunk 16 fixed it for a startled darter only (a C-start in the `retreat` act, when its cover is 0.8 body lengths or more behind); a general fix in the steering changed a wrasse's pecking (`sand.test.ts`) and was left out | low | — | app-code | S4 | **open**. Found by chunk 16's review of `4ff2f66` (a head-up blenny backed away from its hole on 2 of 96 paths). |
 | B-220 | — | The friend's reef preset (chunk 16) loses a snail to a hermit crab in about 1 run in 4 or 5 of its 48 hours (30 seeds: 5 with the old stream, 8 with chunk 17's tank gate), so its own check "everyone alive after two days" fails at its seed 210 on chunk 17's stream. The friend's real stock has three hermits and 37 snails, and the game's hermits sometimes kill snails for their shells (an exception rule with an incident risk); the test now measures sixteen seeds (nothing but a snail to a hermit; most runs nobody). The preset and the hermits' rate are unchanged: the owner's call (spare shells in the preset, a narrower check, or as it is) | low | — | owner-decision | — | **closed** (2026-10-30): the owner chose “check fish only” (ADR-0053 round 4): the preset's check is now “no fish die in two days” (a check's new `category`), the hermits and the preset unchanged. Found by chunk 17's seeded triage (wave 0). |
 | B-221 | — | Shark egg cases (chunk 17, design §6): a case laid in warm water hatches sooner (built), but the weaker, lighter pups Wheeler 2021 found above about 30 °C are not modelled; above the species' temperature range the cases are lost to water stress instead. Found by the chunk's fresh review | low | — | feature | — | **open** |
+| B-222 | — | Shark egg cases (chunk 17): when one case of a laying is eaten nothing is said (the clutch warning's threshold, 0.004 lost per hour, is never reached over a case's ~1,000-hour incubation), and when the last is lost the line says the "eggs didn't make it" rather than the egg cases (`src/sim/life/breeding/clutch.ts`). New wording goes to the owner first. Found by chunk 17's confirmation review | low | — | app-code | — | **open** |
+| B-223 | — | The breeding nest-site gate (`dataGates`, `pairSpawner.ts`; `hasNestSite`) asks every `needsNestSite` species for "a flat rock or tile", including the freshwater angelfish, which now lays on a broad leaf, and the green chromis, whose male nests on the sand: an angelfish tank with only plants can't spawn. The same gate stood in 0.8.0 (the four species already needed it); chunk 17's new lines make the mismatch visible. Found by chunk 17's confirmation review | low | — | app-code | — | **open** |
+| B-224 | — | Food advice built from a food tag shows the tag's words ("offer copepod live", "need copepod live"), not the food's name ("live copepods"): `src/ui/common/foodStock.ts` turns the tag's underscores into spaces. An old pattern (the clownfish's and seahorse's young show it too); chunk 17's green chromis lines are where the review saw it | low | — | app-code | — | **open** |
+| B-225 | — | Larvae that "need" a live food still raise the most young a nursery gives (about 4 or 5) without it: in a nursery fed nothing at all, the green chromis raised 4 (seeds 53 and 61), the ocellaris clownfish 5 and the Banggai cardinal 3 or 4. The food does matter on the way (copepods took the chromis's larvae into the fry stage 664 to 166 without), but the cap hides it at the end. A balance question for the owner: should larvae without their food die out, or should the lines soften? Found by chunk 17's confirmation review (the chromis's "The larvae will need live copepods in a nursery") | low | — | owner-decision | — | **open** |
 ## fix-now-harness (30)
 
 docs/agent, AGENTS.md, CLAUDE.md and scripts/agent. Protected files: owner-approved ADR for the constitution and prompts, ADR plus reviewer for scripts (OPERATIONS §10).

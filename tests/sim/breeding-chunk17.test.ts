@@ -16,6 +16,11 @@ import { getSpecies } from '@/data/species';
 import { breedingStatus, clutchStatus } from '@/sim/life/breeding';
 import { devForceBreeding, liftOutClutch } from '@/sim/life/breeding/actions';
 import { eggCaseIncubation } from '@/sim/life/breeding/systems/eggCase';
+import { pickSite } from '@/sim/life/breeding/common';
+import { decorCollider } from '@/sim/tankSpace';
+import { getDecorDef } from '@/data/catalog/decor';
+import { createClutch, stageHours } from '@/sim/life/breeding/clutch';
+import { moduleFor } from '@/sim/life/breeding/registry';
 
 vi.setConfig({ testTimeout: 240_000 });
 
@@ -193,22 +198,42 @@ describe('BIG-010: the oscar spawns on a stone and guards (cichlid_substrate)', 
     expect(g.clutches[cl.id]?.stage).toBe('larvae');
     expect(g.clutches[cl.id]?.guardedById).toBe(male.id);
     expect(log(g)).not.toMatch(/eating (her|his) own eggs/);
+    // and on into the fry, the pair guarding together: neither parent eats the young (the confirmation review found the
+    // mother eating her own wrigglers, with a warning to move her out)
+    run(g, 400, 27, () => !g.clutches[cl.id] || g.clutches[cl.id]?.stage === 'fry', 1);
+    expect(g.clutches[cl.id]?.stage).toBe('fry');
+    run(g, 48, 27, () => !g.clutches[cl.id], 2);
+    expect(log(g)).not.toMatch(/(is|are) eating/);
+    expect(g.clutches[cl.id]?.losses?.predation ?? 0, 'young lost to a parent').toBe(0);
   });
 });
 
 describe('BIG-010: egg cases one by one (the review)', () => {
   /** Force layings until one has the wanted shape; returns its clutches. */
-  function layUntil(g: GameState, animals: Creature[], want: (cls: ReturnType<typeof cases>) => boolean, tries = 20) {
+  function layUntil(g: GameState, animals: Creature[], want: (cls: ReturnType<typeof cases>) => boolean, tries = 20, counted?: { clutches: number; spawns: number }) {
     for (let i = 0; i < tries; i++) {
       for (const c of cases(g, 'epaulette_shark')) delete g.clutches[c.id];
       for (const a of animals) a.repro.stageEndsHour = g.clock.hour;
+      const before = { clutches: animals[1].repro.totalClutches, spawns: g.progress.counters.spawns ?? 0 };
       devForceBreeding(g, animals[1].id);
       run(g, 48, 26, () => cases(g, 'epaulette_shark').length > 0, 1);
       const cls = cases(g, 'epaulette_shark');
-      if (want(cls)) return cls;
+      if (want(cls)) {
+        if (counted) Object.assign(counted, { clutches: animals[1].repro.totalClutches - before.clutches, spawns: (g.progress.counters.spawns ?? 0) - before.spawns });
+        return cls;
+      }
     }
     return null;
   }
+
+  it('a mixed laying is one laying: the mother’s clutch count and the spawn counter go up once (the confirmation review)', () => {
+    const { g, animals } = setup('epaulette_shark', 'g500', 'marine_fowlr', ['male', 'female'], 37);
+    const counted = { clutches: -1, spawns: -1 };
+    const cls = layUntil(g, animals, (c) => c.some((x) => !x.infertile) && c.some((x) => x.infertile), 20, counted);
+    expect(cls, 'a mixed laying within twenty').not.toBeNull();
+    expect(cls!.length).toBe(2);
+    expect(counted).toEqual({ clutches: 1, spawns: 1 });
+  });
 
   it('in a laying with both, the dud lies beside the good case as its own clutch, and can be lifted out', () => {
     const { g, animals } = setup('epaulette_shark', 'g500', 'marine_fowlr', ['male', 'female'], 37);
@@ -289,6 +314,11 @@ describe('the older cichlids and the green chromis spawn as they really do (the 
       expect(cl, id).toMatchObject({ visual: 'eggs_adhesive', stage: 'eggs', guardedById: male.id });
       expect(log(g), id).toMatch(new RegExp(`${female.name} laid [\\d,]+ sticky eggs in rows on the ${noun} and ${male.name} fertilised them`));
       expect(log(g), id).not.toMatch(/T-position|onto the glass|cory/);
+      // both parents guard the wrigglers and the fry: neither eats them (the confirmation review)
+      run(g, 400, temp, () => !g.clutches[cl.id] || g.clutches[cl.id]?.stage === 'fry', 1);
+      expect(g.clutches[cl.id]?.stage, id).toBe('fry');
+      expect(log(g), id).not.toMatch(/(is|are) eating/);
+      expect(g.clutches[cl.id]?.losses?.predation ?? 0, `${id}: young lost to a parent`).toBe(0);
     }
   });
   it('the green chromis male clears a nest on the sand and guards it alone; the larvae need copepods', () => {
@@ -297,5 +327,49 @@ describe('the older cichlids and the green chromis spawn as they really do (the 
     expect(cl).toMatchObject({ visual: 'eggs_adhesive', stage: 'eggs', guardedById: male.id });
     expect(log(g)).toMatch(new RegExp(`${female.name} laid [\\d,]+ tiny eggs in ${male.name}’s nest\\. ${male.name} fans them`));
     expect(log(g)).not.toMatch(/T-position|onto the glass|cory/);
+  });
+});
+
+describe('egg cases and a nest on the sand lie in the open, not inside a rock (own testing, 0.9.0)', () => {
+  // A few centimetres in front of a big rock's centre was inside the rock: the catshark's and bamboo shark's egg cases
+  // and the green chromis's nest were laid out of sight. The spot now keeps clear of every rock's footprint.
+  it('a floor site in a rocky tank is clear of every rock, in front of the tallest one when there is room', () => {
+    const { t } = setup('coral_catshark', 'g500', 'marine_fowlr', []);
+    const rock = (defId: string, x: number, z: number, scale: number, rotY = 0) => ({ id: `d_${defId}_${x}_${z}`, defId, x, y: 0.04, z, rotY, scale, seed: 1 });
+    t.decor = [rock('live_rock', 0.86, -0.18, 1.5), rock('live_rock_arch', 0.78, -0.26, 1.84, 0.6), rock('live_rock', 0.78, -0.29, 2.25), rock('live_rock', -0.6, -0.2, 1.2), rock('live_rock_arch', -0.1, -0.1, 1.6, 1.2)];
+    const feet = t.decor.map((d) => decorCollider(d, getDecorDef(d.defId)!));
+    const tallest = feet[2];
+    let inFront = 0;
+    for (let i = 0; i < 40; i++) {
+      const { anchor } = pickSite(t, 'floor', `case:${i}`, 1);
+      for (const f of feet) {
+        const dx = (anchor.x - f.center[0]) / f.radius[0];
+        const dz = (anchor.z - f.center[2]) / f.radius[2];
+        expect(dx * dx + dz * dz, `site ${i} inside ${f.decorId}`).toBeGreaterThan(1);
+      }
+      if (anchor.z > tallest.center[2] + tallest.radius[2] && Math.abs(anchor.x - tallest.center[0]) <= tallest.radius[0]) inFront++;
+    }
+    expect(inFront, 'most sites are in front of the tallest rock (the rest on open floor: other rocks crowd its front)').toBeGreaterThan(20);
+  });
+});
+
+describe('egg cases: what the confirmation review found unpinned', () => {
+  it('dud cases foul the water while they lie in the tank, with no shark there', () => {
+    const g = newGame({ starterId: 'ocellaris_clownfish', starterName: '', seed: 5 });
+    const a = createTank(g, 'g500', 'marine_fowlr', { cycled: true, placement: { x: 0, z: 3, rotY: 0 }, name: 'With duds' });
+    const b = createTank(g, 'g500', 'marine_fowlr', { cycled: true, placement: { x: 4, z: 3, rotY: 0 }, name: 'Control' });
+    createClutch(g, { sp: getSpecies('coral_catshark'), tank: a, mother: null, father: null, hour: g.clock.hour, stage: 'eggs', count: 2, visual: 'egg_case', nextStageHour: g.clock.hour + 240, infertile: true, notes: 'Duds' });
+    for (let h = 0; h < 96; h++) advanceWorld(g, 1, { forceFull: true });
+    const n = (id: string) => g.tanks[id].water.ammonia + g.tanks[id].water.nitrite + g.tanks[id].water.nitrate;
+    expect(n(a.id) - n(b.id), 'nitrogen from two rotting cases over four days').toBeGreaterThan(0.02);
+  });
+
+  it('a case’s losses are spread over its own incubation (warm water shortens it), not the species’ usual one', () => {
+    const { g, t } = setup('coral_catshark', 'g500', 'marine_fowlr', []);
+    const sp = getSpecies('coral_catshark');
+    const own = Math.round(sp.breeding.incubationHours * 0.7);
+    const cl = createClutch(g, { sp, tank: t, mother: null, father: null, hour: g.clock.hour, stage: 'eggs', count: 1, visual: 'egg_case', nextStageHour: g.clock.hour + own });
+    expect(stageHours(cl, sp, moduleFor(sp))).toBe(own);
+    expect(own).not.toBe(sp.breeding.incubationHours);
   });
 });

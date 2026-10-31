@@ -214,6 +214,7 @@ export const cichlidSubstrateModule = makePairSpawner({
     parentsEatEggs: false,
     guardEggs: true,
     guardYoung: true,
+    pairGuards: true,
     yolkFrac: 0.3,
     coverShelter: 0.3,
     starveSeverity: 1,

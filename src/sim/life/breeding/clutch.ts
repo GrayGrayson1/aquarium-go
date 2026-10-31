@@ -5,7 +5,8 @@
  *
  * Survival is a continuous hazard model (deterministic, no RNG): predation by adults (nursery vs display, cover
  * shelter), planktonic loss outside a nursery, starvation without suitable (live) food, water quality, sibling
- * crowding/cannibalism and unguarded-egg fungus. `count = round(initialCount × survival)`.
+ * crowding/cannibalism and unguarded-egg fungus. `count = round(initialCount × survival)`. The one exception (chunk 17):
+ * a shark's one or two egg cases are each lost or kept by chance (the step's `ctx.rng`), as a share can't be rounded.
  * Juveniles are minted as individual creatures (inherited genomes, lineage) up to
  * min(maxRaisedPerClutch, nursery capacity); the rest are rehomed to local hobbyists (never culled on screen).
  */
@@ -217,6 +218,8 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   const guardian = cl.guardedById;
   let pCon = 0;
   const living = livingIn(state, tank.id);
+  // chunk 17 (the confirmation review): a cichlid pair guards together, so the guardian's mate spares the brood too
+  const mateSpares = !!plan.pairGuards && !!guardian && living.some((c) => c.id === guardian);
   for (const c of living) {
     if (c.lifeStage === 'egg' || c.lifeStage === 'larva' || c.lifeStage === 'fry') continue;
     if (c.speciesId === sp.id) {
@@ -229,6 +232,7 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
         continue;
       }
       if (eggs && !plan.parentsEatEggs) continue;
+      if (mateSpares && (c.id === cl.motherId || c.id === cl.fatherId)) continue;
       if (sp.breeding.predationWithoutNursery <= 0) continue;
       pCon = Math.max(pCon, sp.breeding.predationWithoutNursery);
       out.conspecific.push(c);
