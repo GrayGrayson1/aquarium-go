@@ -1672,7 +1672,7 @@ REL-012, REL-018.
   - *Backlog:* B-211 to B-219 (B-211, the autofeeder's vote, B-213, the anemone's split, and B-218, the tests that
     held by luck, done; B-217 the rare brief collisions above; B-219 the steering case behind the C-start).
 
-### 17. Big-tank species, and no animal in the shop before its tank (ADR-0053) — brief written 2026-10-30 (Marshall); built 2026-10-30 (Skye); done 2026-10-30 (Rubble, `03736be`)
+### 17. Big-tank species, and no animal in the shop before its tank (ADR-0053) — brief written 2026-10-30 (Marshall); built 2026-10-30 (Skye); done 2026-10-30 (Rubble, `03736be`); released as 0.9.0 on 2026-10-30 (`428a63e`)
 
 - **What:** the owner's words, verbatim (2026-10-30), after asking which species need tanks bigger than any species
   uses today and whether koi fit 1,000 gallons: "Well it's at the Koi as well, and then everything else that you see
@@ -1892,6 +1892,19 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   0.8.0, `build` `87e2d967e8d95f40`, the game's shared build hash, also in the deployed bundle) and the Render static
   site (`dep-dbfap88m7kps738d36mg`). Both `version.json` files read `{"id":"2935a54-…","version":"0.8.0"}`. The live
   smoke 27 of 27.
+- **0.9.0, released 2026-10-30** at the owner's go-ahead (ADR-0053 round 4, decision 10: "Release once green"; and to
+  Skye that day, "in cnvs have rubble do the rest and release when green"): chunk 17, big-tank species. Step 1's "the
+  owner has played it" was waived by that answer. The four checks passed on the final code `03736be` (typecheck; unit
+  270 files, 4,121 tests; build; e2e 335 of 335, 40.2 min), after the confirmation review and two re-checks with every
+  blocker fixed; the release commit `506073d` (version, CHANGELOG) had passed them too (4,118 tests; e2e 335 of 335).
+  `next` (`89d1102`, docs on `03736be`) was merged in the internal clone onto a freshly fetched `origin/main` as
+  `428a63e` (its tree is `89d1102`'s) and pushed with `next`. Pages deployed `428a63e` (run `41172067361`, its tests
+  first); then the shop server from `main` (`dep-dbinq1vb9u1s73c1ec80`; `/health` `version` 0.9.0, `build`
+  `f128a63f7d57f4b9`, the game's shared build hash, also in the deployed bundle); the live smoke 27 of 27. Pages'
+  `version.json` reads `{"id":"428a63e-…","version":"0.9.0"}`. The Render static site's deploy by hand was refused by
+  Claude Code's auto-mode classifier, so the owner runs it (`render deploys create srv-dath0mfavr4c73dgk3j0 --commit
+  428a63e7598fbbe7a5e1b3578c5966a95cb95000 --confirm --wait -o text`); until then aquarium-go.onrender.com serves
+  0.8.0, whose tabs the 0.9.0 shop server asks to reload.
 
 ## Product decisions in force
 

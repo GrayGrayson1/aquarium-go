@@ -11,7 +11,10 @@ it's used up.
   every species waits in the shop for a tank that holds an adult. Built by Skye (waves 0 to E, the fresh review's
   fixes, rounds 5 and 6); finished by Rubble at the owner's request ("in cnvs have rubble do the rest and release when
   green"): the confirmation review and its blocker, the nudged-start sweep, own testing, the checks and the release.
-- **Released:** 0.9.0 on 2026-10-30 from `next` (PLAN.md "Releases": the merge, the Pages run, the deploys).
+- **Released:** 0.9.0 on 2026-10-30: `main` = `428a63e` (the merge of `next` `89d1102`), GitHub Pages (run
+  `41172067361`) and the shop server (`dep-dbinq1vb9u1s73c1ec80`, `/health` 0.9.0, build `f128a63f7d57f4b9`); the live
+  smoke 27 of 27. **The Render static site still serves 0.8.0:** Claude Code's auto-mode classifier refused its deploy
+  by hand, so the owner runs it (PLAN.md "Releases" has the command); then check its `version.json`.
 - **Tested:** the four checks on `03736be` in `~/LocalTest/AquariumGo`: typecheck exit 0; unit 270 files, 4,121
   tests; build exit 0; e2e 335 of 335 (40.2 min). The fresh review (`d5a3b17..2b1ce83`), the confirmation review of `2b1ce83..12bb890` (its
   blocker fixed in `cf0406d`), a re-check of `cf0406d` (its blocker fixed in `d43f121`) and a second re-check of
