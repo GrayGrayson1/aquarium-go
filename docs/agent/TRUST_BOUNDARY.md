@@ -84,7 +84,7 @@ and the game time (offline catch-up is computed on the device today: a server wo
 | Action | What it changes | A server would check |
 |---|---|---|
 | `setOpenToPublic`, `setOpenHours`, `setAdmission`, `toggleSignage` | visitors and takings | ranges |
-| `moveCreature`, `separateCreature`, `moveClutch`, `startBreeding`, `renameCreature`, `toggleFavorite` | animals and broods | ownership |
+| `moveCreature`, `separateCreature`, `moveClutch`, `liftOutClutch` (chunk 17: a dud egg case), `startBreeding`, `renameCreature`, `toggleFavorite` | animals and broods | ownership |
 | `takeFrag`, `plantFrag`, `dose`, `waterChange`, `topOff`, `cleanTank`, `feedTank` | tanks and animals | ownership; stock for what they use |
 | `noteInteraction`, `notePhoto`, `registerGlassTap` (watching, photos, target feeding, a tap on the glass) | an animal's bond, enrichment and stress; quest progress | rates (the bond counts toward a show's deportment score; the device's diminishing returns would be the server's) |
 | `renameTank`, `setTankPurpose`, `setBackdrop`, `setLighting` | a tank's name, purpose, backdrop and light hours | ownership |

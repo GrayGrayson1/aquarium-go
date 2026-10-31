@@ -62,7 +62,8 @@ export function staleOf(state: GameState, cmd: Command): Stale | null {
     case 'moveCreature':
     case 'separateCreature':
       return cmd.from === undefined ? null : fish(cmd.creature, (c) => !gone(c.status) && (c.tankId ?? '') === cmd.from);
-    case 'moveClutch': {
+    case 'moveClutch':
+    case 'liftOutClutch': {
       if (cmd.from === undefined) return null;
       const cl = own(state.clutches, cmd.clutch);
       return cl && cl.tankId === cmd.from ? null : { key: `cl:${cmd.clutch}`, noun: 'clutch' };
@@ -144,6 +145,8 @@ function touchesOf(state: GameState, cmd: Command, res: CommandResult): [string,
       return [[`c:${cmd.creature}`, 'moved']];
     case 'moveClutch':
       return [[`cl:${cmd.clutch}`, 'moved']];
+    case 'liftOutClutch':
+      return [[`cl:${cmd.clutch}`, 'lifted out']];
     case 'quickSell':
       return cmd.creatures.map((id) => [`c:${id}`, 'sold']);
     case 'createListing':

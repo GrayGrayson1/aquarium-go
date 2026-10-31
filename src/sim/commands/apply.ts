@@ -16,7 +16,7 @@ import { changeSubstrate, convertWaterClass, renameTank, setBackdrop, setTankPur
 import { moveDecor, placeDecor, removeDecor } from '../aquascape';
 import { plantFrag, takeFrag } from '../aquascape/frags';
 import { moveCreature, notePhoto, noteInteraction, registerGlassTap, renameCreature, toggleFavorite } from '../life/actions';
-import { moveClutch, separateCreature, startBreeding } from '../life/breeding/actions';
+import { liftOutClutch, moveClutch, separateCreature, startBreeding } from '../life/breeding/actions';
 import { addCulture, addReservoir, setStockOrders, upgradePrep, waitForLine } from '../automation';
 import { holdAll, resumeAll, setHold } from '../automation/hold';
 import { assignTank, autoAssignAll, fireStaff, hireStaff, setStockBudget } from '../staff/roster';
@@ -194,6 +194,8 @@ export function applyAction(state: GameState, cmd: Command): CommandResult {
       return separateCreature(state, cmd.creature, cmd.to);
     case 'moveClutch':
       return moveClutch(state, cmd.clutch, cmd.to);
+    case 'liftOutClutch':
+      return liftOutClutch(state, cmd.clutch);
     case 'startBreeding':
       return startBreeding(state, cmd.a, cmd.b, cmd.tank);
     case 'renameCreature':

@@ -234,3 +234,44 @@ pages, notes, morph names and compatibility reasons). One AskUserQuestion round,
     when it rests, eyes showing (built in this chunk). 0.9.0 is released once the four checks and the fresh review
     are green: the version and CHANGELOG, `next` merged into `main` and pushed, then aquarium-go-shops deployed from
     `main` (PLAN.md "Releases").
+
+## Round 5 (2026-10-30, Skye, after the fresh review)
+
+The review's fixes added player-visible lines, put in a "round 5" note on the CNVS canvas: the oscar's cichlid
+spawning lines, a "Lift out" button and its messages for dud egg cases, the stingray's birth history lines and its
+burying line, the renamed forms (Borneo Clown Loach, Platinum Arowana, White Ghost, Fahaka Puffer, "Richly coloured"
+for six species' brighter individuals) with the rare forms made rare, and five compatibility reasons from the design's
+matrix. One AskUserQuestion round, two questions; the owner's choices:
+
+1. **"The fresh review found things that needed new wording: the oscar's cichlid spawning lines, a 'Lift out' button
+   for dud egg cases, the stingray's birth history, form names that read wrongly ('Clown Borneo Loach' → 'Borneo Clown
+   Loach'), and five compatibility reasons the design's matrix had. All of it is in the 'chunk17-wording' note on the
+   canvas (round 5). OK for players?"** (Round 5)
+   - Chosen: **"OK as written (Recommended)"**: "Every line in the round 5 note as written."
+   - Not chosen: "I'll send changes".
+2. **"The review also found that the discus, freshwater angelfish, German blue ram and green chromis (in the game since
+   0.8.0) breed with the corydoras' habits and messages ('T-position', eggs pressed onto the glass). The oscar now has a
+   proper cichlid module they could share. Fix them in this release or later?"** (Old cichlids)
+   - Chosen: **"Fix them now"**: "Move discus, angelfish and ram (and a damselfish version for the chromis) before the
+     release; a few more hours and another review."
+   - Not chosen: "Backlog it (Recommended)" ("Release 0.9.0 with the oscar fixed; the four older species move to the
+     cichlid module in a later chunk (it shifts their breeding and seeded tests, and their own wording would come to
+     you).").
+
+11. **Round 5's decisions.** The review's new wording is approved as listed. The discus, freshwater angelfish and German
+    blue ram move to the cichlid pair module, and the green chromis gets a damselfish version, before 0.9.0; their new
+    lines go to the owner, and the change gets its own review.
+
+## Round 6 (2026-10-30, Skye): the older cichlids' and the green chromis's lines
+
+Their new courting, spawning and pair-check lines (the discus on "a smooth upright stone", the angelfish on "a broad
+leaf", the ram on "a flat stone", with the oscar's sentences; the green chromis's nest on the sand, the male guarding
+alone, the larvae needing live copepods in a nursery) were put in a "round 6" note on the CNVS canvas. One question:
+
+1. **"The discus, freshwater angelfish, German blue ram and green chromis now spawn as they really do (your round 5
+   answer). Their new courting, spawning and pair-check lines are in the 'chunk17-wording' note on the canvas (round
+   6). OK for players?"** (Round 6)
+   - Chosen: **"OK as written (Recommended)"**: "Every line in the round 6 note as written."
+   - Not chosen: "I'll send changes".
+
+12. **Round 6's decision.** The four species' new lines are approved as listed.

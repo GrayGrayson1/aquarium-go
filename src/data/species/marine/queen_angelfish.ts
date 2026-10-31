@@ -165,6 +165,8 @@ export const queenAngelfish: SpeciesDefinition = {
     'Left out: the Townsend angelfish (a hybrid with the blue angel) and the wild colour oddities of St Paul’s Rocks (about 1 % of one island population, not a trade form).',
   ],
   exceptionRules: [
+    // design §11 (the review): usually compatible with the big tangs
+    { other: 'tag:tang', verdictFloor: 'usually_compatible', reason: 'Big angels and tangs share a big tank well; both graze, so give enough greens for all.', incidentRisk: 0.01, mitigatedBy: ['tank_size'] },
     { other: 'emperor_angelfish', verdictFloor: 'high_risk', reason: 'Two large angelfish fight: keep one big angel per tank.', incidentRisk: 0.12, mitigatedBy: ['tank_size', 'sight_breaks'] },
     { other: 'tag:dwarf_angelfish', verdictFloor: 'conditional', reason: 'A queen angel bullies smaller angelfish, especially ones added after it: add the dwarf angel first, in a very large tank.', incidentRisk: 0.06, mitigatedBy: ['tank_size', 'sight_breaks'] },
     { other: 'tag:clam', verdictFloor: 'high_risk', reason: 'It picks at clam mantles until the clam dies.', incidentRisk: 0.15 },

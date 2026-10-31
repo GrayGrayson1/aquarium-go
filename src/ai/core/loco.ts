@@ -11,7 +11,7 @@ import type { Agent } from './agent';
 import type { AIWorld } from './world';
 import { colliderExitXZ, colliderNormal, colliderNormalGrounded, colliderSdf, colliderSdfGrounded, colliderSdfXZ, drawnDepth, floorAt, floorNormalAt, freeExit, freeExitXZ, makeHit, nearestSurface, surfaceById, surfaceGap, surfaceId, SURF_DECOR, SURF_FLOOR, SURF_GLASS, type Collider, type SurfaceHit, type TankEnv } from './env';
 import { V, approach, clamp, clamp01, damp, isFiniteVec, noise3, rotateToward, rrange, safeNormalize, smoothstep, transport } from './math';
-import { flatSwimmer, neighbors } from './nav';
+import { bigBottomHugger, flatSwimmer, neighbors } from './nav';
 import { buryProfile, onSand } from './sand'; // chunk 16
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -203,7 +203,7 @@ function avoidance(a: Agent, w: AIWorld, out: THREE.Vector3, strength: number): 
   const vy = upright || flatSwimmer(a) ? a.set.body.hy * L : side;
   // chunk 17: a big bottom-hugger (20 cm and up: a ray, a metre-long shark) feels the floor only within a few body
   // heights; a band of a body length is most of the water in the tank that holds it, and kept it off the sand
-  const big = a.set.bottomHugger && L >= 0.2;
+  const big = bigBottomHugger(a);
   const fBand = big ? Math.min(band, vy * 3 + 0.02) : band;
   if (!ctrl.allowFloor) addWall(out, _p.y - floorAt(env, _p.x, _p.z), pos.y - floorAt(env, pos.x, pos.z), 0, 1, 0, vy + 0.004, big ? vy + 0.006 : m, fBand);
   const topBand = a.set.surfaceCruiser ? Math.min(band, side * 3 + 0.02) : band;

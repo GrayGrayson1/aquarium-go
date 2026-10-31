@@ -20,6 +20,7 @@ import { getWaterReport } from './water';
 import { creaturesInTank } from './life';
 import { speciesWaterView } from './life/welfare'; // lane:fix-water — the creature card's water-harm number
 import { pluralName } from './economy/util';
+import { isFoodAvailable } from './economy/shop';
 import { allResidents } from './residents'; // lane:perf2
 
 const RANK: Record<StatusLevel, number> = { good: 0, watch: 1, danger: 2 };
@@ -184,7 +185,8 @@ const eats = (sp: SpeciesDefinition, f: FoodDef): boolean => {
   if (v === undefined) m.set(f, (v = eatsRaw(sp, f)));
   return v;
 };
-const foodUnlocked = (state: GameState, f: FoodDef) => !f.unlock || state.progress.unlocked.includes(f.unlock);
+// chunk 17: a food the shop sells now (its unlock, and an animal it is sold with buyable)
+const foodUnlocked = (state: GameState, f: FoodDef) => isFoodAvailable(state, f);
 
 interface Resident {
   c: Creature;

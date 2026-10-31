@@ -105,7 +105,7 @@ export const spottedScat: SpeciesDefinition = {
     loci: [intensityLocus('Green to yellowish adults; individuals vary in how many and how dark the spots are.')],
     phenotypes: [
       { id: 'wild', name: 'Spotted Scat', layer: 'base', rarity: 0, when: [], visual: {} },
-      intensityOverlay({ bodyColor: '#8ea06a', patternContrast: 1 }, 'Bold-spotted'),
+      intensityOverlay({ bodyColor: '#8ea06a', patternContrast: 1 }),
     ],
     baseVisual: {
       bodyColor: '#9aa77c',

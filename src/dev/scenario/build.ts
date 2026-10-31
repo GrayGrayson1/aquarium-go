@@ -135,6 +135,8 @@ const EGGS: Partial<Record<string, { visual: Clutch['visual']; site: SiteKind }>
   clownfish_substrate: { visual: 'eggs_adhesive', site: 'host_rock' },
   axolotl_spermatophore: { visual: 'egg_strands', site: 'plants_mid' },
   egg_case: { visual: 'egg_case', site: 'floor' }, // chunk 17: shark egg cases
+  cichlid_substrate: { visual: 'eggs_adhesive', site: 'rock' }, // chunk 17: a cichlid pair's stone
+  damsel_nest: { visual: 'eggs_adhesive', site: 'floor' }, // chunk 17: a damselfish's nest on the sand
 };
 
 const num = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);

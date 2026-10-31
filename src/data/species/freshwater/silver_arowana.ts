@@ -120,9 +120,9 @@ export const silverArowana: SpeciesDefinition = {
       },
     ],
     phenotypes: [
-      { id: 'platinum', name: 'Platinum', layer: 'base', rarity: 0.85, when: [{ locus: 'platinum', allele: 'p', count: 'hom' }], visual: { bodyColor: '#f2f2ee', bodyColor2: '#f6f0ec', bellyColor: '#fbfbf8', finColor: '#ecebe4', finColor2: '#e8d4cc', accentColor: '#e6eef4', metallic: 0.95, iridescence: 0.35 }, note: 'Near white all over; the inheritance is the hobby’s report, not proven.' },
+      { id: 'platinum', name: 'Platinum Arowana', layer: 'base', rarity: 0.85, when: [{ locus: 'platinum', allele: 'p', count: 'hom' }], visual: { bodyColor: '#f2f2ee', bodyColor2: '#f6f0ec', bellyColor: '#fbfbf8', finColor: '#ecebe4', finColor2: '#e8d4cc', accentColor: '#e6eef4', metallic: 0.95, iridescence: 0.35 }, note: 'Near white all over; the inheritance is the hobby’s report, not proven.' },
       { id: 'wild', name: 'Silver Arowana', layer: 'base', rarity: 0, when: [], visual: {} },
-      intensityOverlay({ bodyColor2: '#e0a49a', accentColor: '#7fb8d8', iridescence: 0.65 }, 'Rainbow-scaled'),
+      intensityOverlay({ bodyColor2: '#e0a49a', accentColor: '#7fb8d8', iridescence: 0.65 }),
     ],
     baseVisual: {
       bodyColor: '#c9cdd2',
@@ -147,7 +147,7 @@ export const silverArowana: SpeciesDefinition = {
     variation: 0.1,
     notes: 'Colour slots for the arowana art: body = the bright silver; body2 = the rosy edges the big scales take on with age; accent = the blue-green glints; fin2 = the reddish edges of the rear dorsal and anal fins. A long, flat-sided blade with huge scales, an upturned trapdoor mouth with two forward-pointing chin barbels, and the dorsal and anal fins set far back beside the small tail.',
   },
-  visualMorphs: ['Silver Arowana', 'Platinum'],
+  visualMorphs: ['Silver Arowana', 'Platinum Arowana'],
 
   behaviorSet: 'arowana',
   behaviorTraits: { cruiseSpeed: 0.4, burstSpeed: 6, turnRate: 1, hoverTendency: 0.5, schoolingTightness: 0, restOnBottom: 0, hitching: 0, burrowing: 0, glassSurfing: 0.15, curiosity: 0.5, nocturnal: 0.2 },
@@ -182,6 +182,8 @@ export const silverArowana: SpeciesDefinition = {
     'US rules are cited as of 2019 (USFWS 2020); check current state law.',
   ],
   exceptionRules: [
+    // design §11 (the review): usually compatible, not excellent: a young loach still fits its mouth
+    { other: 'clown_loach', verdictFloor: 'usually_compatible', reason: 'Different zones: the arowana holds the surface, the loaches the floor; a young loach still fits its mouth.', incidentRisk: 0.01, mitigatedBy: ['hides'] },
     { other: 'tag:fish_tiny', verdictFloor: 'incompatible', reason: 'An arowana swallows small fish whole.', incidentRisk: 0.4 },
     { other: 'tag:fish_small', verdictFloor: 'incompatible', reason: 'An arowana swallows small fish whole.', incidentRisk: 0.3 },
     { other: 'tag:fish_medium', verdictFloor: 'high_risk', reason: 'Medium fish fit an adult arowana’s mouth.', incidentRisk: 0.1, mitigatedBy: ['tank_size'] },

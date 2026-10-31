@@ -106,8 +106,8 @@ export const fahakaPuffer: SpeciesDefinition = {
   genetics: {
     loci: [intensityLocus('No named forms; individuals vary in how bold the pale stripes along the flank are.')],
     phenotypes: [
-      { id: 'wild', name: 'Fahaka', layer: 'base', rarity: 0, when: [], visual: {} },
-      intensityOverlay({ accentColor: '#ecd890', patternContrast: 0.8, finColor: '#d8b450' }, 'Bold-striped'),
+      { id: 'wild', name: 'Fahaka Puffer', layer: 'base', rarity: 0, when: [], visual: {} },
+      intensityOverlay({ accentColor: '#ecd890', patternContrast: 0.8, finColor: '#d8b450' }),
     ],
     baseVisual: {
       bodyColor: '#7a6c44',
@@ -132,7 +132,7 @@ export const fahakaPuffer: SpeciesDefinition = {
     variation: 0.12,
     notes: 'Colour slots for the fahaka art: body = the olive-brown back; belly = the off-white underside; accent = the pale stripes running along the flank from the tail to the pectoral fin; fin = the yellowish fins. The puffer body is drawn with a beak mouth.',
   },
-  visualMorphs: ['Fahaka'],
+  visualMorphs: ['Fahaka Puffer'],
 
   behaviorSet: 'pea_puffer',
   behaviorTraits: { cruiseSpeed: 0.3, burstSpeed: 3, turnRate: 2.2, hoverTendency: 0.9, schoolingTightness: 0, restOnBottom: 0.3, hitching: 0, burrowing: 0.4, glassSurfing: 0.1, curiosity: 0.9, nocturnal: 0.1 },

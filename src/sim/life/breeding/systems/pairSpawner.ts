@@ -267,6 +267,25 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
     infertile: sterile,
     notes: infertile ?? (allDuds ? (cfg.text.dudNotes?.(f, sp, n) ?? spawnText) : undefined),
   });
+  // chunk 17: in a laying with both, the duds are a clutch of their own: they lie beside the good ones and rot away
+  if (!sterile && fertile < n && cfg.dudHours) {
+    const at = site?.extra[0] ?? site?.anchor;
+    createClutch(state, {
+      sp,
+      tank,
+      mother: f,
+      father: m,
+      hour,
+      stage: 'eggs',
+      count: n - fertile,
+      visual: lay?.visual ?? cfg.visual,
+      nextStageHour: hour + cfg.dudHours(sp),
+      anchor: at ? { ...at } : undefined,
+      infertile: true,
+      notes: cfg.text.dudNotes?.(f, sp, n - fertile),
+      quiet: true,
+    });
+  }
   for (const p of [m, f]) {
     if (guardian && p === guardian && !sterile) {
       setStage(p, cfg.guardStage, hour);

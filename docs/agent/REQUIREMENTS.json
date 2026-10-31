@@ -6861,6 +6861,259 @@
       "status": "GREEN",
       "designSections": [],
       "note": "Chunk 16."
+    },
+    {
+      "id": "BIG-001",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The big freshwater six: oscar, clown loach, black ghost knifefish, fahaka puffer, ornate bichir, silver arowana.",
+      "acceptance": [
+        "Each a full species (sourced data, genetics with real forms only, art, behaviour, encyclopedia) gated by Big-water Freshwater and the tank that holds an adult; the arowana's wild collection and state bans said plainly (ADR-0053 round 2)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/species-fw.test.ts",
+        "src/ai/core/sets17.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§8"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-002",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Koi and its variety model.",
+      "acceptance": [
+        "Koi varieties from documented genes and line-bred stand-ins (Kohaku, Sanke, Showa, Utsuri, Ogon, Tancho, Doitsu, Ginrin, butterfly as a rare form); cool water; gated by Cool-water Systems, Big-water Freshwater and the tank; a Koi show class."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/genetics-expansion.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§8"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-003",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The motoro stingray.",
+      "acceptance": [
+        "Venomous and state bans in its notes; gated by Shark & Ray Husbandry and the 500; live young (ray_viviparous); rests buried in sand (ADR-0053 round 4); the ray's own art."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/breeding-chunk17.test.ts",
+        "src/ai/core/sets17.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§6",
+        "§7",
+        "§8"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-004",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The silver mono and spotted scat.",
+      "acceptance": [
+        "Brackish species with their salinity ranges and groups; gated by Brackish Estuaries and the tank; excellent together."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/species-brackish.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§9"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-005",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The big marine five: blue tang, naso tang, queen angelfish, clown triggerfish, panther grouper.",
+      "acceptance": [
+        "Each a full species gated by its research and the tank; the yellow-belly blue tang a rare form; the matrix rows (design §11) pinned."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/species-marine.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§10",
+        "§11"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-006",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The three bottom sharks: coral catshark, epaulette shark, brown-banded bamboo shark.",
+      "acceptance": [
+        "Gated by Marine Systems, Shark & Ray Husbandry and the tank (the bamboo shark the 1,000); egg cases; the epaulette walks; the shark matrix pinned."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/breeding-chunk17.test.ts",
+        "src/ai/core/sets17.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§6",
+        "§7",
+        "§10",
+        "§11"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-007",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The tank gate for every species: the shop stocks a species only once the smallest tank that holds an adult is unlocked.",
+      "acceptance": [
+        "requiredUnlocks adds the tank key for all 97 species; locked cards say what's missing (ADR-0053 round 3); offers already stocked for a now-gated species are dropped in the v4 migration; owned animals untouched."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/tank-gate.test.ts",
+        "tests/sim/species-chunk17.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§3"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-008",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "The two research projects: Big-water Freshwater and Shark & Ray Husbandry.",
+      "acceptance": [
+        "Names, blurbs, needs and costs as the owner approved (ADR-0053 round 3)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§4"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-009",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Foods sold with their animals.",
+      "acceptance": [
+        "Five new foods (owner's names, words, prices); a new food is on sale, ordered by staff and suggested in hints only once an animal that eats it can be bought."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/fixtures/food-rules-pin.json"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§5"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-010",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Breeding: egg cases, live young, and the oscar and koi on proper systems.",
+      "acceptance": [
+        "egg_case (duds, a lone female's empty cases, rot, Lift out, warm water, each case's fate by chance, hatch at night into a pup); ray_viviparous (a male needed, 1–8 pups, rests); the oscar, discus, angelfish and ram on the cichlid pair module and the green chromis on the damselfish one (ADR-0053 rounds 5 and 6)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/breeding-chunk17.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§6"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-011",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Compatibility: data, exception rules and the matrix's tested rows.",
+      "acceptance": [
+        "Every new species against each other and its riskiest and best existing tankmates, as design §11 and the research tables say (stricter where documented)."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/species-chunk17.test.ts",
+        "tests/sim/species-fw.test.ts",
+        "tests/sim/species-marine.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§11"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
+    },
+    {
+      "id": "BIG-012",
+      "slice": "ALL",
+      "source": "ADR-0053; PLAN.md chunk 17; docs/agent/design/CHUNK-17/BIG-TANKS.md",
+      "description": "Saves v4, the lab presets, sellers and the show.",
+      "acceptance": [
+        "SCHEMA_VERSION 4 (a 0.8.0 save loads, a v4 save is too new for 0.8.0); three presets (48 h, nobody dies); the two sellers and the Koi show as the owner approved."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/core-save-forward-safety.test.ts",
+        "tests/sim/persistence-05.test.ts",
+        "tests/sim/scenario-presets.test.ts",
+        "tests/sim/scenario-run.test.ts",
+        "tests/sim/species-chunk17.test.ts"
+      ],
+      "evidence": [],
+      "status": "IN_PROGRESS",
+      "designSections": [
+        "§12",
+        "§13",
+        "§14"
+      ],
+      "note": "Chunk 17 (2026-10-30, Skye)."
     }
   ]
 }

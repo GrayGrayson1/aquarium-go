@@ -6,10 +6,12 @@
  * walks on its fins (its species' gait).
  */
 import { describe, expect, it } from 'vitest';
-import { findSpecies } from '@/data/species';
+import { ALL_SPECIES, findSpecies } from '@/data/species';
+import { TANK_TIERS } from '@/data/catalog/tanks';
 import { tankTierFor } from '@/sim/facility/progression';
 import { SET_PROFILES, speciesProfile } from './sets';
 import { stepWorld } from './world';
+import { ZONE_BANDS } from './nav';
 import { decor, makeTestCreature, makeTestTank, makeTestWorld } from './testkit';
 
 const DT = 1 / 30;
@@ -160,5 +162,85 @@ describe('the motoro buries itself to rest (the owner, ADR-0053 round 4)', () =>
   });
   it('on a bare floor there is nothing to bury in', () => {
     expect(run('bare').maxCover).toBe(0);
+  });
+});
+
+describe('the big-body rules leave every earlier species as it was (the review)', () => {
+  it('each pre-chunk-17 species keeps the height band the old rule gave it, adult and young, in the tanks it fits', () => {
+    const CHUNK17 = new Set(['oscar', 'clown_loach', 'black_ghost_knifefish', 'fahaka_puffer', 'ornate_bichir', 'silver_arowana', 'koi', 'motoro_stingray', 'silver_mono', 'spotted_scat', 'blue_tang', 'naso_tang', 'queen_angelfish', 'clown_triggerfish', 'panther_grouper', 'coral_catshark', 'epaulette_shark', 'brownbanded_bamboo_shark']);
+    const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+    let compared = 0;
+    for (const sp of ALL_SPECIES) {
+      if (CHUNK17.has(sp.id)) continue;
+      const tiers = TANK_TIERS.filter((t) => t.gallons >= sp.recommendedMinTankGallons).slice(0, 4);
+      for (const tier of tiers) {
+        for (const k of [1, 0.6]) {
+          const tank = makeTestTank({ id: `old_${sp.id}_${tier.id}`, tierId: tier.id, waterClass: sp.environment === 'marine' ? 'marine_fowlr' : 'freshwater_tropical' });
+          const w = makeTestWorld(tank, [makeTestCreature(sp.id, tank.id, { sizeCm: sp.adultSizeCm * k })], 12);
+          const a = w.agents[0];
+          if (!a || a.set.loco !== 'swim') continue;
+          // the rule before chunk 17
+          const env = w.env;
+          const zones = sp.activityZone?.length ? sp.activityZone : (['middle'] as const);
+          let lo = 1;
+          let hi = 0;
+          for (const z of zones) {
+            const b = ZONE_BANDS[z] ?? ZONE_BANDS.middle;
+            lo = Math.min(lo, b[0]);
+            hi = Math.max(hi, b[1]);
+          }
+          if (hi <= lo) [lo, hi] = [0.2, 0.8];
+          const col = env.surfaceY - env.floorY;
+          const m = Math.max(a.set.body.hy, a.set.body.hz) * a.L + 0.008;
+          let y0 = clamp(env.floorY + lo * col, env.floorY + m, env.surfaceY - m);
+          let y1 = clamp(env.floorY + hi * col, y0 + 0.001, env.surfaceY - m);
+          if (y1 - y0 < a.L * 0.6) {
+            const mid = (y0 + y1) / 2;
+            y0 = clamp(mid - a.L * 0.3, env.floorY + m, env.surfaceY - m);
+            y1 = clamp(mid + a.L * 0.3, y0 + 0.001, env.surfaceY - m);
+          }
+          expect(a.zoneY0, `${sp.id} ${tier.id} ×${k}`).toBeCloseTo(y0, 9);
+          expect(a.zoneY1, `${sp.id} ${tier.id} ×${k}`).toBeCloseTo(y1, 9);
+          compared++;
+        }
+      }
+    }
+    expect(compared).toBeGreaterThan(300);
+  });
+});
+
+describe('what the encyclopedia promises (the review): a loach on its side, a fahaka on the sand', () => {
+  const watch = (id: string, n: number, hour: number) => {
+    const sp = findSpecies(id)!;
+    const tank = makeTestTank({ id: `promise_${id}`, tierId: tankTierFor(sp)!.id, waterClass: 'freshwater_tropical', decor: [decor('test_rock', -0.3, -0.36, { scale: 2 }), decor('test_rock', 0.3, -0.36, { scale: 2 })] });
+    const w = makeTestWorld(tank, Array.from({ length: n }, (_, i) => makeTestCreature(id, tank.id, { sizeCm: sp.adultSizeCm, temperament: 30 + i * 12 })), hour);
+    const env = w.env;
+    let rest = 0;
+    let onSide = 0;
+    let low = 0;
+    for (let i = 0; i < 600 * 30; i++) {
+      stepWorld(w, DT);
+      if (i < 300) continue;
+      for (const a of w.agents) {
+        if ((a.act !== 'rest' && a.act !== 'sleep') || a.speed > a.L * 0.15) continue;
+        rest++;
+        if (Math.abs(a.rt.roll) > 1) onSide++;
+        if (a.rt.pos.y - env.floorY < (env.surfaceY - env.floorY) * 0.25) low++;
+      }
+    }
+    return { rest, onSide, low };
+  };
+  it('a clown loach at rest lies over on its side', () => {
+    expect(speciesProfile(findSpecies('clown_loach')!).sideRest).toBe(true);
+    const r = watch('clown_loach', 5, 23);
+    expect(r.rest).toBeGreaterThan(100);
+    expect(r.onSide / r.rest).toBeGreaterThan(0.6);
+  });
+  it('a fahaka rests settled low on the sand, not on a leaf', () => {
+    expect(speciesProfile(findSpecies('fahaka_puffer')!).rest).toBe('bottom');
+    expect(SET_PROFILES.pea_puffer.rest).toBe('leaf');
+    const r = watch('fahaka_puffer', 1, 23);
+    expect(r.rest).toBeGreaterThan(100);
+    expect(r.low / r.rest).toBeGreaterThan(0.8);
   });
 });

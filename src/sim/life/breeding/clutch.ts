@@ -18,7 +18,7 @@ import { createCreature, addCreature, sizeAtAge, assignPrismatic, isPrismatic, p
 import type { MorphStrain } from '@/types';
 import { TIER_WORD } from '@/data/rarity';
 import { inheritGenome, resolveMorph, resolvePhenotype, rollGenome } from '@/sim/life/genetics';
-import { consumeFood } from '@/sim/water';
+import { addWaste, consumeFood } from '@/sim/water';
 import { addMastery, addReputation, bumpCounter } from '@/sim/facility';
 import type { BreedingModule, NaturalFood, RearingPhase, TankInfo } from './types';
 import {
@@ -73,6 +73,13 @@ export interface NewClutch {
   pendingEggs?: number;
   notes?: string;
   infertile?: boolean;
+  /**
+   * chunk 17 — a clutch split off one just made (the duds of a shark's laying): the laying is counted once, so the
+   * parents' counts and history, the spawn counters and breeding mastery are left alone.
+   */
+  quiet?: boolean;
+  /** chunk 17 — the parents' history lines when "Spawned with X." is wrong (a ray gives birth). */
+  historyText?: { mother: string; father: string };
 }
 
 /** Create a clutch, credit both parents (history, counters, mastery). */
@@ -104,6 +111,7 @@ export function createClutch(state: GameState, o: NewClutch): Clutch {
   if (o.notes) cl.notes = o.notes;
   if (o.infertile) cl.infertile = true;
   state.clutches[id] = cl;
+  if (o.quiet) return cl;
 
   for (const [p, as] of [
     [o.mother, 'female'],
@@ -114,8 +122,8 @@ export function createClutch(state: GameState, o: NewClutch): Clutch {
     p.repro.lastSpawnHour = o.hour;
     revealSex(p, o.sp, as);
   }
-  if (o.mother) addHistory(o.mother, 'bred', o.father ? `Spawned with ${o.father.name}.` : 'Produced a clutch.', o.hour);
-  if (o.father && o.father !== o.mother) addHistory(o.father, 'bred', o.mother ? `Spawned with ${o.mother.name}.` : 'Fathered a clutch.', o.hour);
+  if (o.mother) addHistory(o.mother, 'bred', o.historyText?.mother ?? (o.father ? `Spawned with ${o.father.name}.` : 'Produced a clutch.'), o.hour);
+  if (o.father && o.father !== o.mother) addHistory(o.father, 'bred', o.historyText?.father ?? (o.mother ? `Spawned with ${o.mother.name}.` : 'Fathered a clutch.'), o.hour);
   bumpCounter(state, 'spawns');
   bumpCounter(state, `spawns_${o.sp.id}`);
   addMastery(state, 'breeding', Math.round(4 + 16 * o.sp.breeding.difficulty));
@@ -148,6 +156,8 @@ export function currentPhase(cl: Clutch, mod: BreedingModule): RearingPhase | nu
 
 /** Hours the clutch spends in its current stage (for converting per-stage loss fractions into hazards). */
 export function stageHours(cl: Clutch, sp: SpeciesDefinition, mod: BreedingModule): number {
+  // chunk 17: an egg case's own incubation (warm water shortens it), not the species' standard one
+  if (cl.visual === 'egg_case' && cl.stage === 'eggs') return Math.max(6, cl.nextStageHour - (cl.stageSinceHour ?? cl.laidHour));
   if (cl.stage === 'eggs' || cl.stage === 'in_pouch') return Math.max(6, sp.breeding.incubationHours);
   const ph = currentPhase(cl, mod);
   return Math.max(6, (ph?.frac ?? 1) * sp.breeding.fryRearingHours);
@@ -245,6 +255,9 @@ function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   out.p = clamp((1 - keep) * (1 - plan.coverShelter * clamp01(info.habitat().cover)), 0, 0.995);
   return out;
 }
+
+/** chunk 17 — waste one rotting empty egg case adds per game hour (1 = an hour of a bioload-1 animal's waste). */
+export const EGG_CASE_ROT_WASTE_PER_H = 1;
 
 /** Clutch per-hour hazards by cause. Also updates `cl.fed`. */
 function hazards(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, mod: BreedingModule, hour: number, dt: number, info: TankInfo, pred: PredationInfo): Record<LossCause, number> {
@@ -402,6 +415,8 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
 
   // Infertile eggs (nerite eggs in freshwater…) never hatch — they fade after a while.
   if (cl.infertile) {
+    // chunk 17: an empty shark egg case rots where it lies, fouling the water a little, whoever shares the tank
+    if (cl.visual === 'egg_case' && cl.count > 0) addWaste(tank, cl.count * EGG_CASE_ROT_WASTE_PER_H * dt);
     if (hour >= cl.nextStageHour) {
       // chunk 17: an empty shark egg case left in the tank rots
       const rotted = cl.visual === 'egg_case' ? `${parentName(state, cl)} empty egg ${cl.count === 1 ? 'case has' : 'cases have'} rotted away.` : null;
@@ -417,6 +432,28 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
   const hz = hazards(state, cl, tank, sp, mod, hour, dt, info, pred);
   const total = hz.predation + hz.starvation + hz.water + hz.crowding + hz.fungus;
   const init = cl.initialCount ?? cl.count;
+  if (cl.visual === 'egg_case' && cl.stage === 'eggs') {
+    // chunk 17: one or two big egg cases: each one is eaten (or lost) or not, by chance, not by rounding a share
+    if (total > 0 && cl.count > 0) {
+      const pLose = 1 - dmath.exp(-total * dt);
+      let lost = 0;
+      for (let i = 0; i < cl.count; i++) if (ctx.rng.next() < pLose) lost++;
+      if (lost > 0) {
+        if (!cl.losses) cl.losses = { predation: 0, starvation: 0, water: 0, crowding: 0, fungus: 0 };
+        for (const k of Object.keys(hz) as LossCause[]) if (hz[k] > 0) cl.losses[k] += (lost * hz[k]) / total;
+        cl.count -= lost;
+        cl.survival = init > 0 ? cl.count / init : 0;
+      }
+    }
+    warnings(state, cl, tank, sp, mod, hz, pred, hour, ctx);
+    if (cl.count <= 0) {
+      loseClutch(state, cl, sp, ctx);
+      return;
+    }
+    if (hour + dt < cl.nextStageHour) return;
+    hatch(state, cl, tank, sp, mod, hour, ctx);
+    return;
+  }
   if (total > 0 && init > 0) {
     const before = init * cl.survival;
     cl.survival = clamp01(cl.survival * dmath.exp(-total * dt));

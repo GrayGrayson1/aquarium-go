@@ -72,7 +72,8 @@ export const greenChromis: SpeciesDefinition = {
   substrateRules: { preferred: ['aragonite', 'sand', 'fine_sand'], avoid: [], note: 'Likes branching coral or rockwork to dive into when alarmed, plus open water above.' },
 
   breeding: {
-    system: 'substrate_spawner',
+    // chunk 17 (the owner's round 5): its own pair module, not the corydoras'
+    system: 'damsel_nest',
     difficulty: 0.9,
     maturityDays: 14,
     clutchSize: { min: 500, max: 2500 },

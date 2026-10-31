@@ -7,12 +7,13 @@
  *
  * The pair spawner runs the pair; this module adds what is particular to egg cases:
  * - About half the cases a mated female lays are duds (Harahush 2007: 33 % viable; Payne 2012: 48 % hatched). A dud
- *   is laid like any case, never hatches and rots away, adding a little waste while it lies there.
+ *   is laid like any case (its own clutch beside the good ones), never hatches and rots away, adding a little waste
+ *   while it lies there (clutch.ts), unless the keeper lifts it out (`liftOutClutch`).
  * - A female with no male still lays on schedule (Wheeler 2025), and every case is empty.
  * - Incubation is the species' (real days × 8, the owner's round 2), about 4.6 % shorter per °C above 26 °C and longer
  *   below (Wheeler 2021: 125 days at 27 °C, 101 at 31), set from the water when she lays.
  * - No parental care; adults and other egg eaters take about half the cases in a mixed tank (the species'
- *   predationWithoutNursery); a case hatches at night (Wheeler 2021: 25 of 27 in the dark) into a juvenile, newly
+ *   predationWithoutNursery, decided case by case in clutch.ts); a case hatches at night (Wheeler 2021: 25 of 27 in the dark) into a juvenile, newly
  *   hatched, that lives on its yolk and then eats chopped seafood.
  * The catshark and bamboo shark lay theirs loose on the sand, the epaulette ties them to rock.
  * Draws on the step's `ctx.rng` only in a tank with a ready female shark.
@@ -21,7 +22,6 @@ import type { SpeciesDefinition, Tank } from '@/types';
 import type { BreedingModule, StepEnv } from '../types';
 import { createClutch } from '../clutch';
 import { makePairSpawner, dataGates, type PairSpawnerConfig } from './pairSpawner';
-import { addWaste } from '@/sim/water';
 import { approxDuration, inSpawnWindow, isMature, isReady, pickSite, plural, roleOf, rollClutchSize, say, spPlural, startResting, toastWorthy } from '../common';
 
 /** Share of a mated female's cases that are fertile and develop. */
@@ -29,10 +29,8 @@ export const EGG_CASE_FERTILE = 0.45;
 /** Incubation change per °C away from 26 °C (shorter when warmer). */
 const PER_DEG = 0.046;
 const REF_TEMP_C = 26;
-/** A dud lies this share of the species' incubation before it has rotted away. */
+/** A dud lies this share of the species' incubation before it has rotted away (its waste: clutch.ts). */
 const DUD_FRAC = 0.25;
-/** Waste one rotting case adds per game hour (1 = an hour of a bioload-1 animal's waste). */
-const DUD_WASTE_PER_H = 1;
 
 /** Laid loose on the sand (catshark, bamboo shark) or tied to rock (epaulette). */
 const onSand = (sp: SpeciesDefinition) => sp.genus !== 'Hemiscyllium';
@@ -85,7 +83,7 @@ const cfg: PairSpawnerConfig = {
     spawn: (m, f, sp, n, tank, guardian, duds = 0) =>
       duds >= n
         ? `${f.name} laid ${plural(n, 'egg case')} ${where(sp)}, but ${n === 1 ? 'it is a dud' : 'both are duds'}: not every case is fertile. Lift duds out, or they rot.`
-        : `${f.name} laid ${plural(n, 'egg case')} ${where(sp)}.${duds > 0 ? ' One is a dud, with no embryo inside.' : ''} A case takes about ${approxDuration(eggCaseIncubation(sp, tank))} to hatch, and tankmates eat them: a nursery tank keeps them safe.`,
+        : `${f.name} laid ${plural(n, 'egg case')} ${where(sp)}.${duds > 0 ? ' One is a dud, with no embryo inside.' : ''} A case takes about ${approxDuration(eggCaseIncubation(sp, tank)).replace(/^~/, '')} to hatch, and tankmates eat them: a nursery tank keeps them safe.`,
     dudNotes: (f, sp, n) => `${n === 1 ? 'A dud' : 'Duds'}: no embryo inside. Lift ${n === 1 ? 'it' : 'them'} out, or ${n === 1 ? 'it rots' : 'they rot'}.`,
   },
 };
@@ -124,20 +122,11 @@ function layAlone(env: StepEnv): void {
   }
 }
 
-/** Empty cases lying in the tank rot and foul the water a little. */
-function rotDuds(env: StepEnv): void {
-  const { state, tank, species: sp, dt } = env;
-  let duds = 0;
-  for (const cl of Object.values(state.clutches)) if (cl.tankId === tank.id && cl.speciesId === sp.id && cl.infertile && cl.visual === 'egg_case') duds += cl.count;
-  if (duds > 0) addWaste(tank, duds * DUD_WASTE_PER_H * dt);
-}
-
 export const eggCaseModule: BreedingModule = {
   ...pair,
   explain: (sp) => `${spPlural(sp)[0].toUpperCase()}${spPlural(sp).slice(1)} lay leathery egg cases that hatch months later as independent pups.`,
   step(env) {
     pair.step(env);
     layAlone(env);
-    rotDuds(env);
   },
 };

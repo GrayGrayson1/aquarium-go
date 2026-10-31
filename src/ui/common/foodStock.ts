@@ -12,6 +12,7 @@ import { useUI } from '@/state/ui';
 import { safe } from './safe';
 import { foodFit, type FoodFit } from '@/sim/care/fit'; // lane:fit
 import { act } from './actions';
+import { isFoodAvailable } from '@/sim/economy/shop'; // chunk 17
 
 export interface TankFoodAlert {
   level: 'out' | 'low';
@@ -84,8 +85,8 @@ export function youngFoodNeed(g: GameState, tankId: string): YoungFoodNeed | nul
   const inStock = Object.entries(g.inventory.foods ?? {})
     .filter(([id, n]) => (n ?? 0) >= 1 && eatsIt(getFoodDef(id)?.tags))
     .map(([id]) => id);
-  const unlocked = new Set(g.progress?.unlocked ?? []);
-  const restock = FOODS.filter((f) => eatsIt(f.tags) && (!f.unlock || unlocked.has(f.unlock))).sort((a, b) => a.price - b.price)[0];
+  // chunk 17: only a food the shop sells now
+  const restock = FOODS.filter((f) => eatsIt(f.tags) && isFoodAvailable(g, f)).sort((a, b) => a.price - b.price)[0];
   const words = [...tags].slice(0, 2).map((t) => t.replace(/_/g, ' '));
   return {
     label: label || 'young',
@@ -132,8 +133,7 @@ export function creatureFoodChoice(g: GameState, creatureId: string): CreatureFo
     .filter((f) => f.count >= 1 && Number.isFinite(f.rank))
     .sort((a, b) => a.wrong - b.wrong || a.rank - b.rank || b.count - a.count || a.id.localeCompare(b.id))
     .map(({ id, count }) => ({ id, count }));
-  const unlocked = new Set(g.progress?.unlocked ?? []);
-  const restock = FOODS.filter((f) => Number.isFinite(rank(f.tags)) && (!f.unlock || unlocked.has(f.unlock))).sort((a, b) => wrongKind(a.id) - wrongKind(b.id) || a.price - b.price || rank(a.tags) - rank(b.tags))[0];
+  const restock = FOODS.filter((f) => Number.isFinite(rank(f.tags)) && isFoodAvailable(g, f)).sort((a, b) => wrongKind(a.id) - wrongKind(b.id) || a.price - b.price || rank(a.tags) - rank(b.tags))[0];
   return { inStock, restockId: restock?.id ?? null, restockPrice: restock?.price ?? 0 };
 }
 

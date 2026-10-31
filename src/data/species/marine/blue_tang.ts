@@ -106,8 +106,9 @@ export const blueTang: SpeciesDefinition = {
         name: 'Locality',
         mode: 'mendelian',
         alleles: [
-          { id: 'P', name: 'Pacific (blue belly)', dominance: 2, frequency: 0.7 },
-          { id: 'y', name: 'Indian Ocean (yellow belly)', dominance: 1, frequency: 0.3 },
+          // the Yellow Belly is a rare form (the owner, ADR-0053 round 2): about 1 in 100 of the shop's stock
+          { id: 'P', name: 'Pacific (blue belly)', dominance: 2, frequency: 0.9 },
+          { id: 'y', name: 'Indian Ocean (yellow belly)', dominance: 1, frequency: 0.1 },
         ],
         note: 'The Indian Ocean and Red Sea population has a yellow belly that shows at maturity (Quality Marine; Reef Builders 2011): a population difference whose inheritance is unknown, modelled recessive only to set how often shops stock it.',
       },

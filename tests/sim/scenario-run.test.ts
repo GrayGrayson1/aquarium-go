@@ -46,6 +46,16 @@ describe('LAB-006: running a scenario forward', () => {
     expect(quiet).toBeGreaterThanOrEqual(9);
   }, 600_000);
 
+  it('chunk 17 (design §14): the three big-tank presets play two days with nobody dying', () => {
+    for (const id of ['big-tank-species', 'koi-grand-display', 'sharks-and-a-ray']) {
+      const recipe = presetById(id)!.recipe;
+      const report = runScenario(buildScenario(recipe), recipe, 0); // their checks set the length (48 h)
+      expect(report.hours, id).toBe(48);
+      expect(report.deaths, id).toEqual([]);
+      expect(report.passed, id).toBe(true);
+    }
+  }, 600_000);
+
   it('a check that fails says which number missed, and one about a tank that isn’t there fails', () => {
     const recipe: ScenarioRecipe = {
       version: 1,

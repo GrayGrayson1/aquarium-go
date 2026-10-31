@@ -116,9 +116,9 @@ export const blackGhostKnifefish: SpeciesDefinition = {
       },
     ],
     phenotypes: [
-      { id: 'white', name: 'White', layer: 'base', rarity: 0.45, when: [{ locus: 'white', allele: 'w', count: 'hom' }], visual: { bodyColor: '#ece6da', bodyColor2: '#e4ddd0', bellyColor: '#f2ece2', finColor: '#e8e2d6', finColor2: '#ddd4c4', accentColor: '#fbfaf6', patternContrast: 0.25 }, note: 'Cream-white, the tail rings paler still; the inheritance is the hobby’s report, not proven.' },
+      { id: 'white', name: 'White Ghost', layer: 'base', rarity: 0.45, when: [{ locus: 'white', allele: 'w', count: 'hom' }], visual: { bodyColor: '#ece6da', bodyColor2: '#e4ddd0', bellyColor: '#f2ece2', finColor: '#e8e2d6', finColor2: '#ddd4c4', accentColor: '#fbfaf6', patternContrast: 0.25 }, note: 'Cream-white, the tail rings paler still; the inheritance is the hobby’s report, not proven.' },
       { id: 'wild', name: 'Black Ghost', layer: 'base', rarity: 0, when: [], visual: {} },
-      intensityOverlay({ accentColor: '#fbfbf8', patternContrast: 1 }, 'Bright-banded'),
+      intensityOverlay({ accentColor: '#fbfbf8', patternContrast: 1 }),
     ],
     baseVisual: {
       bodyColor: '#121214',
@@ -143,7 +143,7 @@ export const blackGhostKnifefish: SpeciesDefinition = {
     variation: 0.1,
     notes: 'Colour slots for the knifefish art: body = the velvet black; accent = the white blaze on the snout (which may run on as a stripe down the back) and the two white rings round the tail; fin = the one long ribbon fin under the body. No dorsal fin and almost no tail fin.',
   },
-  visualMorphs: ['Black Ghost', 'White'],
+  visualMorphs: ['Black Ghost', 'White Ghost'],
 
   behaviorSet: 'knifefish',
   behaviorTraits: { cruiseSpeed: 0.25, burstSpeed: 3, turnRate: 1.2, hoverTendency: 0.8, schoolingTightness: 0, restOnBottom: 0.1, hitching: 0, burrowing: 0, glassSurfing: 0.05, curiosity: 0.5, nocturnal: 0.9 },
@@ -179,6 +179,8 @@ export const blackGhostKnifefish: SpeciesDefinition = {
     'Breeding figures are placeholders (the game does not breed it); the egg counts are from a related species.',
   ],
   exceptionRules: [
+    // design §11 (the review): usually compatible: both hunt the floor at night
+    { other: 'ornate_bichir', verdictFloor: 'usually_compatible', reason: 'Both hunt the floor at night: feed each in its own place.', incidentRisk: 0.01, mitigatedBy: ['target_feeding'] },
     { other: 'tag:fish_tiny', verdictFloor: 'incompatible', reason: 'A black ghost eats tiny fish such as neons at night.', incidentRisk: 0.3 },
     { other: 'tag:fish_small', verdictFloor: 'high_risk', reason: 'Small fish are within reach of a big black ghost’s mouth.', incidentRisk: 0.12, mitigatedBy: ['hides'] },
     { other: 'tag:shrimp_dwarf', verdictFloor: 'incompatible', reason: 'A black ghost eats dwarf shrimp.', incidentRisk: 0.3 },

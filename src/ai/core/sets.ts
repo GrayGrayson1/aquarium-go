@@ -160,6 +160,10 @@ export interface SetProfile {
   surfaceCruiser?: boolean;
   /** Rests on a sand bed with sand flicked over its body, eyes showing (the motoro): `rt.ai.sandCover` (sand.ts). */
   sandCover?: boolean;
+  /** A flat, wide disc of a swimmer (the motoro): held off the floor and surface by its height, not its half width. */
+  flatSwim?: boolean;
+  /** Rolls onto its side to rest, as clown loaches do (cosmetic: cosmetics.ts writeOrientation). */
+  sideRest?: boolean;
 }
 
 const FISH: BodyEnvelope = { hx: 0.5, hy: 0.14, hz: 0.07 };
@@ -870,20 +874,32 @@ export const SET_PROFILES: Record<BehaviorSetId, SetProfile> = {
     bottomHugger: true,
     startleSens: 0.5,
     sandCover: true,
+    flatSwim: true,
   }),
 };
 
 /**
- * chunk 17 — one species' variant of its set: the epaulette shark walks on its paired fins over sand and rock (Porter
- * 2022; specialBehaviors 'fin_walk'), and swims only in short bursts, as the axolotl does.
+ * chunk 17 — one species' variant of its set, from its specialBehaviors:
+ * - 'fin_walk': the epaulette shark walks on its paired fins over sand and rock (Porter 2022), and swims only in short
+ *   bursts, as the axolotl does;
+ * - 'sand_wallow': the fahaka rests settled on the sand, not draped on a leaf as a pea puffer does;
+ * - 'side_rest': the clown loach lies on its side to rest (the "is it dead?" moment its encyclopedia warns of).
  */
-const FIN_WALKER: Partial<SetProfile> = { loco: 'walk', crawlMask: SURF_FLOOR, canSwim: true, crawlGait: 'walk', maxPitch: 0.6 };
+const VARIANT_OF: Record<string, Partial<SetProfile>> = {
+  fin_walk: { loco: 'walk', crawlMask: SURF_FLOOR, canSwim: true, crawlGait: 'walk', maxPitch: 0.6 },
+  sand_wallow: { rest: 'bottom' },
+  side_rest: { sideRest: true },
+};
 const variants = new Map<string, SetProfile>();
 export function speciesProfile(sp: { id: string; behaviorSet: string; specialBehaviors?: readonly string[] }): SetProfile {
   const set = setProfile(sp.behaviorSet);
-  if (!sp.specialBehaviors?.includes('fin_walk')) return set;
+  const keys = (sp.specialBehaviors ?? []).filter((b) => VARIANT_OF[b]);
+  if (!keys.length) return set;
   let v = variants.get(sp.id);
-  if (!v) variants.set(sp.id, (v = { ...set, ...FIN_WALKER }));
+  if (!v) {
+    v = Object.assign({ ...set }, ...keys.map((k) => VARIANT_OF[k])) as SetProfile;
+    variants.set(sp.id, v);
+  }
   return v;
 }
 

@@ -108,15 +108,17 @@ export const clownLoach: SpeciesDefinition = {
         name: 'Locality look',
         mode: 'mendelian',
         alleles: [
-          { id: 'B', name: 'Borneo look', dominance: 2, frequency: 0.1, rare: true },
-          { id: 's', name: 'Sumatra look', dominance: 1, frequency: 0.9 },
+          // a rare form (the owner, ADR-0053 round 2): about 1 in 100 of the shop's stock
+          { id: 'B', name: 'Borneo look', dominance: 2, frequency: 0.005, rare: true },
+          { id: 's', name: 'Sumatra look', dominance: 1, frequency: 0.995 },
         ],
         note: 'Bornean fish have black or black-and-orange pelvic fins and often thin pale edges to the bands; Sumatran fish have all-red pelvic fins. A population difference, not a gene study: modelled as dominant for drawing only (the owner, ADR-0053 round 2).',
       },
     ],
     phenotypes: [
+      // a base form, so its name reads as the trade's does (the review: as an overlay it composed "Clown Borneo Loach")
+      { id: 'borneo', name: 'Borneo Clown Loach', layer: 'base', rarity: 0.3, when: [{ locus: 'locality', allele: 'B', count: 'any' }], visual: { bodyMark: 'borneo' }, note: 'Black pelvic fins and pale-edged bands; the inheritance is the hobby’s report, not proven.' },
       { id: 'wild', name: 'Clown Loach', layer: 'base', rarity: 0, when: [], visual: {} },
-      { id: 'borneo', name: 'Borneo', layer: 'overlay', rarity: 0.3, when: [{ locus: 'locality', allele: 'B', count: 'any' }], visual: { bodyMark: 'borneo' }, note: 'Black pelvic fins and pale-edged bands; the inheritance is the hobby’s report, not proven.' },
       intensityOverlay({ bodyColor: '#f88a14', finColor: '#e8241a', patternContrast: 1 }),
     ],
     baseVisual: {
@@ -142,7 +144,7 @@ export const clownLoach: SpeciesDefinition = {
     variation: 0.12,
     notes: 'Colour slots for the clown loach art: body = the orange flank; accent = the three black wedge-shaped bands (through the eye, into the dorsal, and from the tail base into the anal fin); fin = the red fins; fin2 = the black edges of the dorsal and tail. bodyMark "borneo" draws black pelvic fins and thin pale borders on the bands.',
   },
-  visualMorphs: ['Clown Loach', 'Borneo'],
+  visualMorphs: ['Clown Loach', 'Borneo Clown Loach'],
 
   behaviorSet: 'loach_shoal',
   behaviorTraits: { cruiseSpeed: 0.8, burstSpeed: 6, turnRate: 3, hoverTendency: 0.2, schoolingTightness: 0.5, restOnBottom: 0.6, hitching: 0, burrowing: 0.1, glassSurfing: 0.1, curiosity: 0.6, nocturnal: 0.4 },

@@ -113,7 +113,7 @@ export const motoroStingray: SpeciesDefinition = {
     loci: [intensityLocus('Spotting varies a great deal between rays; trade names (orange, blue, marbled) have no documented inheritance.')],
     phenotypes: [
       { id: 'wild', name: 'Motoro Stingray', layer: 'base', rarity: 0, when: [], visual: {} },
-      intensityOverlay({ accentColor: '#f08a1c', patternContrast: 1 }, 'Bright-eyed'),
+      intensityOverlay({ accentColor: '#f08a1c', patternContrast: 1 }),
     ],
     baseVisual: {
       bodyColor: '#6b5a46',

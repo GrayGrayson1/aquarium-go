@@ -537,7 +537,7 @@ function YoungView({ g }: { g: GameState }) {
                         {sp?.commonName ?? cl.speciesId} · {CLUTCH_STAGE_LABEL[cl.stage]}
                       </div>
                       <div className="pn-card__sub">
-                        {plural(cl.count, cl.stage === 'eggs' ? 'egg' : 'young', cl.stage === 'eggs' ? 'eggs' : 'young')} in {tank?.name ?? 'a tank'}
+                        {cl.visual === 'egg_case' ? plural(cl.count, 'egg case') : plural(cl.count, cl.stage === 'eggs' ? 'egg' : 'young', cl.stage === 'eggs' ? 'eggs' : 'young')} in {tank?.name ?? 'a tank'}
                         {guard ? ` · guarded by ${guard.name}` : ''}
                       </div>
                     </div>
@@ -569,7 +569,8 @@ function YoungView({ g }: { g: GameState }) {
                   )}
                   {cl.infertile && (
                     <Callout tone="watch" icon={<Egg size={15} />}>
-                      These eggs can’t hatch here — they’ll dissolve naturally over time.
+                      {/* chunk 17: an empty shark egg case says so (its card line), and can be lifted out below */}
+                      {cl.visual === 'egg_case' && cl.notes ? cl.notes : 'These eggs can’t hatch here — they’ll dissolve naturally over time.'}
                     </Callout>
                   )}
                   {!cl.infertile && !carried && tank && tank.purpose !== 'nursery' && adults > 0 && (
@@ -578,7 +579,11 @@ function YoungView({ g }: { g: GameState }) {
                     </Callout>
                   )}
                   <div className="pn-row pn-gap-2 pn-row--wrap" style={{ marginTop: 10 }}>
-                    {carried ? (
+                    {cl.infertile && cl.visual === 'egg_case' ? (
+                      <Button size="sm" variant="primary" onClick={() => act({ k: 'liftOutClutch', clutch: cl.id, from: cl.tankId }, { sound: 'splash' })}>
+                        <X size={14} /> Lift out
+                      </Button>
+                    ) : carried ? (
                       <>
                         <span className="pn-small pn-muted">
                           {guard ? `Safe with ${guard.name} until they’re released` : 'Carried by the parent until they’re released'}
@@ -622,7 +627,7 @@ function YoungView({ g }: { g: GameState }) {
                         No suitable nursery yet. Mark a spare {sp ? sp.waterClasses.map((w) => WATER_CLASS_LABEL[w].toLowerCase()).join(' or ') : tank?.environment ?? ''} tank as <b>Nursery</b> in Tanks{others.length ? ', or move them to an empty tank:' : '.'}
                       </span>
                     )}
-                    {!carried && !inNursery && nurseries.length === 0 &&
+                    {!(cl.infertile && cl.visual === 'egg_case') && !carried && !inNursery && nurseries.length === 0 &&
                       others.slice(0, 2).map((t) => (
                         <Button key={t.id} size="sm" onClick={() => act({ k: 'moveClutch', clutch: cl.id, to: t.id, from: cl.tankId }, { sound: 'splash' })}>
                           <ArrowRightLeft size={14} /> {t.name}

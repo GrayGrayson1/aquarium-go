@@ -17,7 +17,7 @@ import type { ExtraSpec, FishPlan, Mark } from '../core/plan';
 import { curve } from '../core/math';
 import { BodySampler } from '../core/body';
 import { caudal, dorsal, anal, pectoral, pelvic } from '../core/fins';
-import { motion, look, eye, fin, isFemale, isJuvenile } from './common';
+import { motion, look, eye, fin, isJuvenile } from './common';
 
 interface SharkSpec {
   id: string;
@@ -50,7 +50,6 @@ const makePlan =
   (args) => {
     const a = args.appearance;
     const young = isJuvenile(args);
-    const female = isFemale(args);
     const d = spec.deep;
     const w = spec.wide;
     const body: FishPlan['body'] = {
@@ -89,7 +88,7 @@ const makePlan =
     const skinFin = fin({ opacity: 1, color: 'body', edge: spec.id === 'coral_catshark' ? 'fin2' : 'fin', edgeStart: 0.72, edgeWidth: 0.28, edgeAmount: spec.id === 'coral_catshark' ? 0.9 : 0.2, pattern: 0.85, rayContrast: 0, irid: 0, rootBlend: 0.5 });
     const paddle = fin({ ...skinFin, edge: 'fin', edgeAmount: 0.15, flutter: 0.25 });
     return {
-      key: `${spec.id}|${young ? 'y' : 'a'}|${female ? 'f' : 'm'}|${a.bodyMark ?? ''}`,
+      key: `${spec.id}|${young ? 'y' : 'a'}|${a.bodyMark ?? ''}`,
       body,
       fins: [
         caudal(b, { kind: 'shark', len: 0.2, spread: 16, tilt: 6, rays: 12, soft: 0.15, rootH: 1, cup: 0, style: skinFin }),

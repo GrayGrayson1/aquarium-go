@@ -9,7 +9,7 @@ import type { AIWorld } from './world';
 import { type Anchor, type AnchorKind, colliderSdf, colliderNormal, floorAt, pointFree, SURF_DECOR, SURF_FLOOR, SURF_GLASS, groundHeightAt } from './env';
 import { clamp, lerp, rnd, rrange } from './math';
 
-const ZONE_BANDS: Record<ActivityZone, [number, number]> = {
+export const ZONE_BANDS: Record<ActivityZone, [number, number]> = {
   surface: [0.84, 0.97],
   upper: [0.62, 0.9],
   middle: [0.34, 0.7],
@@ -27,10 +27,12 @@ export const bodyHY = (a: Agent) => a.set.body.hy * a.L;
 export const bodyHZ = (a: Agent) => a.set.body.hz * a.L;
 export const bodySide = (a: Agent) => Math.max(a.set.body.hy, a.set.body.hz) * a.L;
 /**
- * chunk 17 — a flat, wide swimmer (the motoro's disc, hz several times hy) is held off the floor and the surface by its
+ * chunk 17 — a flat, wide swimmer (the motoro's disc: the set's `flatSwim`) is held off the floor and the surface by its
  * height, not by its half width: its sides still keep off the glass and the rocks by the full width.
  */
-export const flatSwimmer = (a: Agent) => a.set.loco === 'swim' && a.set.body.hz > a.set.body.hy * 3;
+export const flatSwimmer = (a: Agent) => a.set.loco === 'swim' && !!a.set.flatSwim;
+/** chunk 17 — a bottom-hugger 20 cm and longer (a ray, a metre-long shark, a bichir): the floor rules made for it. */
+export const bigBottomHugger = (a: Agent) => !!a.set.bottomHugger && a.L >= 0.2;
 /** How far a swimmer's centre keeps above the floor and below the surface (its body side; a flat disc's height). */
 export const bodyVSide = (a: Agent) => (flatSwimmer(a) ? a.set.body.hy * a.L : bodySide(a));
 
@@ -54,7 +56,7 @@ export function computeZoneBand(a: Agent, w: AIWorld): void {
   const m = bodyVSide(a) + 0.008;
   a.zoneY0 = clamp(env.floorY + lo * col, env.floorY + m, env.surfaceY - m);
   a.zoneY1 = clamp(env.floorY + hi * col, a.zoneY0 + 0.001, env.surfaceY - m);
-  if (a.set.bottomHugger) {
+  if (bigBottomHugger(a)) {
     // chunk 17: a big bottom-hugger (a metre-long shark, a ray) keeps to the floor: its band grows up from its bottom by
     // a few body heights, never to the middle of the tank (0.6 body lengths would be the whole of a 2 ft deep tank)
     const band = Math.max(bodyHY(a) * 4, a.L * 0.25);

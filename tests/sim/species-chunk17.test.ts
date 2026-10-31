@@ -14,6 +14,7 @@ import { FOODS, getFoodDef } from '@/data/catalog/foods';
 import { isFoodAvailable, isSpeciesAvailable, requiredUnlocks, speciesLockHint, generateOffer, soldWithWords } from '@/sim/economy/shop';
 import { buyFood } from '@/sim/economy';
 import { plannedOrders } from '@/sim/staff/work';
+import { tankFoodOutlook } from '@/sim/tankStatus';
 import { unlock } from '@/sim/facility';
 import { migrateSave, SCHEMA_VERSION } from '@/persistence';
 import { clearCompatCache, speciesPair } from '@/sim/compat';
@@ -22,6 +23,7 @@ import { createCreature, addCreature } from '@/sim/life';
 import { resolveMorph } from '@/sim/life/genetics';
 import { SELLERS } from '@/data/buyers';
 import { SHOW_CLASSES } from '@/data/shows';
+import { morphCatalog, tierForShare, tierRank } from '@/sim/life/morphCatalog';
 
 const game = (starterId: 'betta' | 'ocellaris_clownfish' = 'betta', seed = 1): GameState => newGame({ starterId, starterName: '', seed });
 const WAVE_A = ['oscar', 'clown_loach', 'black_ghost_knifefish', 'fahaka_puffer', 'ornate_bichir', 'silver_arowana'];
@@ -115,6 +117,17 @@ describe('BIG-009: foods sold with the animals that eat them', () => {
     expect(orders.length).toBeGreaterThan(0);
     for (const id of orders) expect(NEW_FOODS, id).not.toContain(id);
   });
+
+  it('nor does a hint tell the player to buy one (the review): the restock pick and the hunger advice skip it', () => {
+    const g = game();
+    g.inventory.foods = {};
+    const t = createTank(g, 'g180', 'freshwater_tropical', { cycled: true, name: 'Big' });
+    const c = addCreature(g, createCreature(g, simRng(g), 'oscar', { ageDays: 40 }), t.id);
+    c.stats.hunger = 95;
+    const out = tankFoodOutlook(g, t.id);
+    if (out.restockId) expect(NEW_FOODS).not.toContain(out.restockId);
+    for (const f of NEW_FOODS) expect(JSON.stringify(out)).not.toContain(getFoodDef(f)!.name.toLowerCase());
+  });
 });
 
 describe('BIG-012: save format v4 drops the offers the tank gate refuses', () => {
@@ -150,9 +163,9 @@ describe('BIG-011: the compatibility matrix (design §11), big freshwater', () =
     expect(v('clown_loach', 'black_ghost_knifefish')).toBe('conditional');
     expect(v('clown_loach', 'fahaka_puffer')).toBe('incompatible');
     expect(v('clown_loach', 'ornate_bichir')).toBe('conditional');
-    expect(['usually_compatible', 'excellent']).toContain(v('clown_loach', 'silver_arowana'));
+    expect(v('clown_loach', 'silver_arowana')).toBe('usually_compatible');
     expect(v('black_ghost_knifefish', 'fahaka_puffer')).toBe('incompatible');
-    expect(['usually_compatible', 'excellent']).toContain(v('black_ghost_knifefish', 'ornate_bichir'));
+    expect(v('black_ghost_knifefish', 'ornate_bichir')).toBe('usually_compatible');
     expect(v('black_ghost_knifefish', 'silver_arowana')).toBe('usually_compatible');
     expect(v('fahaka_puffer', 'ornate_bichir')).toBe('incompatible');
     expect(v('fahaka_puffer', 'silver_arowana')).toBe('incompatible');
@@ -254,7 +267,8 @@ describe('BIG-005: the big marine five', () => {
 
   it('the matrix rows (design §11)', () => {
     expect(v('blue_tang', 'naso_tang')).toBe('conditional');
-    expect(['usually_compatible', 'excellent']).toContain(v('blue_tang', 'queen_angelfish'));
+    expect(v('blue_tang', 'queen_angelfish')).toBe('usually_compatible');
+    expect(v('naso_tang', 'queen_angelfish')).toBe('usually_compatible');
     expect(v('blue_tang', 'clown_triggerfish')).toBe('conditional');
     expect(v('naso_tang', 'clown_triggerfish')).toBe('conditional');
     expect(v('queen_angelfish', 'clown_triggerfish')).toBe('conditional');
@@ -265,6 +279,8 @@ describe('BIG-005: the big marine five', () => {
     expect(v('clown_triggerfish', 'hermit_crab')).toBe('incompatible');
     expect(v('panther_grouper', 'cleaner_shrimp')).toBe('high_risk');
     expect(v('panther_grouper', 'miniatus_grouper')).toBe('high_risk');
+    // grown tangs and big angels are too big for it, small ones aren't (the review: design §11's row)
+    for (const o of ['blue_tang', 'naso_tang', 'queen_angelfish', 'emperor_angelfish', 'yellow_tang']) expect(v('panther_grouper', o), o).toBe('conditional');
     expect(v('silver_mono', 'blue_tang')).toBe('conditional');
     expect(v('spotted_scat', 'queen_angelfish')).toBe('conditional');
     expect(v('clown_triggerfish', 'silver_mono')).toBe('high_risk');
@@ -370,5 +386,17 @@ describe('BIG-012: the sellers and the Koi show (the owner’s round 3)', () => 
     expect(k.blurb).toBe('Body shape, clean white skin, deep even colour and a crisp, balanced pattern. A big koi is a prize.');
     expect(Object.values(k.standard).reduce((a, b) => a + (b ?? 0), 0)).toBe(100);
     expect(k.minTier).toBeUndefined();
+  });
+});
+
+describe('the four forms with unproven inheritance are rare forms (the owner, ADR-0053 round 2; the review)', () => {
+  it('the Borneo loach, the butterfly koi, the yellow-belly blue tang, the white black ghost and the platinum arowana are each rare or rarer in the shop', () => {
+    for (const [id, trait] of [['clown_loach', 'borneo'], ['koi', 'butterfly'], ['blue_tang', 'yellow_belly'], ['black_ghost_knifefish', 'white'], ['silver_arowana', 'platinum']] as const) {
+      const cat = morphCatalog(findSpecies(id)!);
+      const withTrait = cat.entries.filter((e) => e.traitIds.includes(trait));
+      expect(withTrait.length, `${id}: ${trait}`).toBeGreaterThan(0);
+      const share = withTrait.reduce((a, e) => a + e.frequency, 0);
+      expect(tierRank(tierForShare(share)), `${id}: ${trait} ${(share * 100).toFixed(2)}%`).toBeGreaterThanOrEqual(tierRank('rare'));
+    }
   });
 });

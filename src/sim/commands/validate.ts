@@ -102,6 +102,7 @@ const SCHEMA: Schema = {
   moveCreature: { creature: id, to: id, from: opt(from) },
   separateCreature: { creature: id, to: id, from: opt(from) },
   moveClutch: { clutch: id, to: id, from: opt(from) },
+  liftOutClutch: { clutch: id, from: opt(from) },
   startBreeding: { a: id, b: id, tank: opt(id) },
   renameCreature: { creature: id, name },
   setFavorite: { creature: id, on: bool },

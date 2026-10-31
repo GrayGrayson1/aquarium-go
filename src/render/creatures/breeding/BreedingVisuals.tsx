@@ -596,13 +596,16 @@ function EggCases({ d, fx, dims }: { d: Desc; fx: TankFXUniforms; dims: ReturnTy
     if (!g || !m || !d.clutchId) return;
     const cl = g.clutches[d.clutchId];
     if (!cl) return;
-    const anchors = anchorsOf(cl, { x: 0, y: dims.substrateY, z: 0 });
     const n = Math.min(4, Math.max(1, Math.round(cl.count)));
     // the case darkens over the first third of its time, then stays dark
     const band = Math.round(clamp((g.clock.hour - cl.laidHour) / Math.max(1, (cl.nextStageHour - cl.laidHour) / 3)) * 8);
-    const a0 = anchors[0];
-    if (n === last.current.n && band === last.current.band && a0.x === last.current.ax) return;
-    last.current = { n, band, ax: a0.x };
+    const ax = cl.anchor?.x ?? 0;
+    // (nothing allocated until something changed: most frames stop here)
+    if (n === last.current.n && band === last.current.band && ax === last.current.ax) return;
+    last.current.n = n;
+    last.current.band = band;
+    last.current.ax = ax;
+    const anchors = anchorsOf(cl, { x: 0, y: dims.substrateY, z: 0 });
     const sh = CASE_SHAPE[cl.speciesId] ?? CASE_SHAPE.epaulette_shark;
     const R = rng(seed);
     const col = _c.copy(fresh).lerp(old, band / 8);

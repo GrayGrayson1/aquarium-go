@@ -166,6 +166,10 @@ export const pantherGrouper: SpeciesDefinition = {
     { other: 'tag:fish_tiny', verdictFloor: 'incompatible', reason: 'Tiny fish are swallowed whole.', incidentRisk: 0.5 },
     { other: 'tag:fish_small', verdictFloor: 'incompatible', reason: 'An ambush predator: small fish are eaten.', incidentRisk: 0.4 },
     { other: 'tag:fish_medium', verdictFloor: 'high_risk', reason: 'Only fish too big to swallow are safe: a grown panther grouper takes fish of 12–14 cm.', incidentRisk: 0.12, mitigatedBy: ['hides'] },
+    // design §11: tangs and big angelfish are fine with it as adults, but a small one is a meal (the review)
+    { other: 'tag:tang', verdictFloor: 'conditional', reason: 'A grown tang is too big for it, but a small one is a meal: add tangs only once they are bigger than its mouth.', incidentRisk: 0.04, mitigatedBy: ['tank_size'] },
+    { other: 'queen_angelfish', verdictFloor: 'conditional', reason: 'A grown angelfish is too big for it, but a young one is a meal: add angelfish only once they are bigger than its mouth.', incidentRisk: 0.04, mitigatedBy: ['tank_size'] },
+    { other: 'emperor_angelfish', verdictFloor: 'conditional', reason: 'A grown angelfish is too big for it, but a young one is a meal: add angelfish only once they are bigger than its mouth.', incidentRisk: 0.04, mitigatedBy: ['tank_size'] },
     { other: 'tag:shrimp_large', verdictFloor: 'high_risk', reason: 'Cleaner and peppermint shrimp are eaten.', incidentRisk: 0.2 },
     { other: 'tag:crustacean', verdictFloor: 'high_risk', reason: 'Crustaceans are much of its natural diet.', incidentRisk: 0.15 },
     { other: 'miniatus_grouper', verdictFloor: 'high_risk', reason: 'Adult groupers fight other groupers, and the panther grows bigger.', incidentRisk: 0.1, mitigatedBy: ['tank_size'] },

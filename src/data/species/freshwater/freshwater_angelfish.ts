@@ -85,7 +85,8 @@ export const freshwaterAngelfish: SpeciesDefinition = {
   substrateRules: { preferred: ['sand', 'fine_sand', 'fine_gravel', 'planted_soil'], avoid: [], note: 'Tall plants and upright wood; a pair lays its eggs on a vertical surface — a broad leaf, slate or the glass. Use a tank at least 20 inches tall.' },
 
   breeding: {
-    system: 'substrate_spawner',
+    // chunk 17 (the owner's round 5): its own pair module, not the corydoras'
+    system: 'cichlid_substrate',
     difficulty: 0.45,
     // 6–12 months to maturity (Wikipedia) → ~22 game-days
     maturityDays: 22,

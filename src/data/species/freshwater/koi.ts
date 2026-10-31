@@ -186,8 +186,9 @@ export const koi: SpeciesDefinition = {
         name: 'Fins',
         mode: 'mendelian',
         alleles: [
-          { id: 'Lf', name: 'Butterfly (long fins)', dominance: 2, frequency: 0.08 },
-          { id: 'lf', name: 'Standard fins', dominance: 1, frequency: 0.92 },
+          // a rare form (the owner, ADR-0053 round 2): about 1 in 80 of the shop's koi
+          { id: 'Lf', name: 'Butterfly (long fins)', dominance: 2, frequency: 0.006 },
+          { id: 'lf', name: 'Standard fins', dominance: 1, frequency: 0.994 },
         ],
         note: 'Real: long fins are one dominant gene, Lf (Gomelsky, Schneider & Alsaqufi 2011: long × short gave 1:1, long × long 3:1). Butterfly koi came from crossing koi with Indonesian long-finned carp from 1982 (Saitama Prefecture).',
       },

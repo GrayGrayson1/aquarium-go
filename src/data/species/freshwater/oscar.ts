@@ -72,7 +72,8 @@ export const oscar: SpeciesDefinition = {
   substrateRules: { preferred: ['sand', 'fine_sand', 'large_pebbles'], avoid: [], note: 'Deep sand and a few large, heavy rocks. It digs pits and piles the sand at one end, so use heavy rounded decor and (PFK) a guarded or external heater.' },
 
   breeding: {
-    system: 'substrate_spawner',
+    // a pair spawns on a stone it cleans and both guard (chunk 17's own module: the corydoras' has the wrong habits)
+    system: 'cichlid_substrate',
     difficulty: 0.55,
     // ADW: mature at about 10–14 months
     maturityDays: 22,

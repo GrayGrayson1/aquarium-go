@@ -130,6 +130,8 @@ export type BreedingSystemId =
   | 'fission' // chunk 16: a living anemone splits in two by itself (no partner)
   | 'egg_case' // chunk 17: sharks lay leathery egg cases that hatch months later as independent pups
   | 'ray_viviparous' // chunk 17: the motoro carries its litter and gives birth to independent pups
+  | 'cichlid_substrate' // chunk 17: a cichlid pair cleans a stone or leaf, lays in rows on it and guards eggs and young (oscar, discus, angelfish, ram)
+  | 'damsel_nest' // chunk 17: a male damselfish clears a nest on the sand and guards the eggs; drifting larvae need copepods (green chromis)
   | 'not_in_game'; // documented but not breedable in first build
 
 export interface BreedingProfile {

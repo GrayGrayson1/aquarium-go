@@ -52,6 +52,8 @@ type Kinds =
   | { k: 'moveCreature'; creature: string; to: string; from?: string }
   | { k: 'separateCreature'; creature: string; to: string; from?: string }
   | { k: 'moveClutch'; clutch: string; to: string; from?: string }
+  // chunk 17: lift a dud (an empty shark egg case) out before it rots
+  | { k: 'liftOutClutch'; clutch: string; from?: string }
   | { k: 'startBreeding'; a: string; b: string; tank?: string }
   | { k: 'renameCreature'; creature: string; name: string }
   | { k: 'setFavorite'; creature: string; on: boolean }

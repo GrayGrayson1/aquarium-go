@@ -107,7 +107,7 @@ export const silverMono: SpeciesDefinition = {
     loci: [intensityLocus('No trade forms; individuals vary in how much yellow stays on the fins.')],
     phenotypes: [
       { id: 'wild', name: 'Silver Mono', layer: 'base', rarity: 0, when: [], visual: {} },
-      intensityOverlay({ finColor: '#f0cc4a', patternContrast: 1 }, 'Gold-finned'),
+      intensityOverlay({ finColor: '#f0cc4a', patternContrast: 1 }),
     ],
     baseVisual: {
       bodyColor: '#d8dde0',

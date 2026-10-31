@@ -2,7 +2,8 @@
  * chunk 17 (ADR-0053; BIG-010) — the two new breeding systems run end to end in compressed game time: the bottom
  * sharks' egg cases (egg_case: about half are duds, a lone female lays empty ones that rot, warm water hatches them
  * sooner, a case hatches into a newly hatched juvenile) and the motoro's live young (ray_viviparous: a male is needed,
- * one to eight independent pups, then a rest).
+ * one to eight independent pups, then a rest) and the oscar's (cichlid_substrate: a pair spawns on a stone it cleans,
+ * and guards the eggs and young; the review found it on the corydoras' module).
  */
 import { describe, expect, it, vi } from 'vitest';
 import type { Creature, GameState, Sex, Tank, WaterClass } from '@/types';
@@ -13,7 +14,7 @@ import { simRng } from '@/sim/rng';
 import { advanceWorld } from '@/sim/world';
 import { getSpecies } from '@/data/species';
 import { breedingStatus, clutchStatus } from '@/sim/life/breeding';
-import { devForceBreeding } from '@/sim/life/breeding/actions';
+import { devForceBreeding, liftOutClutch } from '@/sim/life/breeding/actions';
 import { eggCaseIncubation } from '@/sim/life/breeding/systems/eggCase';
 
 vi.setConfig({ testTimeout: 240_000 });
@@ -171,5 +172,130 @@ describe('BIG-010: the motoro’s live young (ray_viviparous)', () => {
     run(g, 24 * 10, 26, () => f.repro.stage === 'gravid', 4);
     expect(f.repro.stage).not.toBe('gravid');
     expect(young(g, f.id)).toHaveLength(0);
+  });
+});
+
+describe('BIG-010: the oscar spawns on a stone and guards (cichlid_substrate)', () => {
+  it('a pair cleans a stone, lays in rows on it, and the male guards eggs and wrigglers; nobody eats the eggs', () => {
+    const { g, animals } = setup('oscar', 'g180', 'freshwater_tropical', ['male', 'female'], 31);
+    const [male, female] = animals;
+    expect(getSpecies('oscar').breeding.system).toBe('cichlid_substrate');
+    expect(devForceBreeding(g, female.id).ok).toBe(true);
+    run(g, 24, 27, () => cases(g, 'oscar').length > 0, 1);
+    const [cl] = cases(g, 'oscar');
+    expect(cl, 'they spawn once forced').toBeDefined();
+    expect(cl).toMatchObject({ visual: 'eggs_adhesive', stage: 'eggs', guardedById: male.id });
+    expect(log(g)).toMatch(new RegExp(`${female.name} laid [\\d,]+ sticky eggs in rows on the stone and ${male.name} fertilised them\\. ${male.name} fans them`));
+    expect(log(g)).not.toMatch(/T-position|onto the glass|cory/);
+    expect(male.repro.stage).toBe('guarding');
+    // through the eggs (3 days × 8) into the wrigglers, still guarded, and never eaten by a parent
+    run(g, 48, 27, () => g.clutches[cl.id]?.stage === 'larvae', 2);
+    expect(g.clutches[cl.id]?.stage).toBe('larvae');
+    expect(g.clutches[cl.id]?.guardedById).toBe(male.id);
+    expect(log(g)).not.toMatch(/eating (her|his) own eggs/);
+  });
+});
+
+describe('BIG-010: egg cases one by one (the review)', () => {
+  /** Force layings until one has the wanted shape; returns its clutches. */
+  function layUntil(g: GameState, animals: Creature[], want: (cls: ReturnType<typeof cases>) => boolean, tries = 20) {
+    for (let i = 0; i < tries; i++) {
+      for (const c of cases(g, 'epaulette_shark')) delete g.clutches[c.id];
+      for (const a of animals) a.repro.stageEndsHour = g.clock.hour;
+      devForceBreeding(g, animals[1].id);
+      run(g, 48, 26, () => cases(g, 'epaulette_shark').length > 0, 1);
+      const cls = cases(g, 'epaulette_shark');
+      if (want(cls)) return cls;
+    }
+    return null;
+  }
+
+  it('in a laying with both, the dud lies beside the good case as its own clutch, and can be lifted out', () => {
+    const { g, animals } = setup('epaulette_shark', 'g500', 'marine_fowlr', ['male', 'female'], 37);
+    const cls = layUntil(g, animals, (c) => c.some((x) => !x.infertile) && c.some((x) => x.infertile));
+    expect(cls, 'a mixed laying within twenty').not.toBeNull();
+    const good = cls!.find((x) => !x.infertile)!;
+    const dud = cls!.find((x) => x.infertile)!;
+    expect(good.count + dud.count).toBeLessThanOrEqual(2);
+    expect(dud).toMatchObject({ visual: 'egg_case', count: 1, notes: 'A dud: no embryo inside. Lift it out, or it rots.' });
+    // good eggs are refused, the dud comes out
+    expect(liftOutClutch(g, good.id).ok).toBe(false);
+    const r = liftOutClutch(g, dud.id);
+    expect(r.ok).toBe(true);
+    expect(r.message).toBe(`Lifted ${animals[1].name}’s 1 empty egg case out of Big.`);
+    expect(g.clutches[dud.id]).toBeUndefined();
+    expect(g.clutches[good.id]).toBeDefined();
+  });
+
+  it('through a whole incubation each case is eaten or hatches by chance: some of each over a few pairs', () => {
+    let laid = 0;
+    let hatched = 0;
+    for (let seed = 41; seed <= 48; seed++) {
+      const { g, animals } = setup('epaulette_shark', 'g500', 'marine_fowlr', ['male', 'female'], seed);
+      const cls = layUntil(g, animals, (c) => c.some((x) => !x.infertile));
+      expect(cls, `seed ${seed}`).not.toBeNull();
+      const good = cls!.find((x) => !x.infertile)!;
+      // no more laying meanwhile: the parents rest through it
+      for (const a of animals) a.repro.stageEndsHour = g.clock.hour + 5000;
+      laid += good.count;
+      run(g, 1400, 26, () => !g.clutches[good.id], 4);
+      expect(g.clutches[good.id], `seed ${seed}: hatched or lost by then`).toBeUndefined();
+      hatched += young(g, animals[1].id).length;
+    }
+    // the adults eat about half the cases in their own tank (predationWithoutNursery 0.5)
+    expect(hatched).toBeGreaterThan(0);
+    expect(hatched).toBeLessThan(laid);
+  });
+});
+
+describe('BIG-010: a motoro rests long after every third litter (the review)', () => {
+  it('counts litters as clutches, not history lines, and rests three times as long after the third', () => {
+    const { g, animals } = setup('motoro_stingray', 'g500', 'freshwater_tropical', ['male', 'female'], 43);
+    const [male, female] = animals;
+    const cool = getSpecies('motoro_stingray').breeding.cooldownDays * 24;
+    const rests: number[] = [];
+    for (let litter = 1; litter <= 3; litter++) {
+      female.repro.stage = 'idle';
+      female.repro.stageEndsHour = undefined;
+      expect(devForceBreeding(g, female.id).ok, `litter ${litter}`).toBe(true);
+      run(g, 12, 26, () => female.repro.stage === 'resting', 1);
+      expect(female.repro.stage, `litter ${litter}`).toBe('resting');
+      rests.push(Math.round((female.repro.stageEndsHour! - g.clock.hour) / cool));
+    }
+    expect(female.repro.totalClutches).toBe(3);
+    // about one cooldown after the first two, three after the third
+    expect(rests[0]).toBeLessThanOrEqual(1);
+    expect(rests[1]).toBeLessThanOrEqual(1);
+    expect(rests[2]).toBeGreaterThanOrEqual(2);
+    expect(female.history.some((e) => new RegExp(`^Gave birth to \\d+ pups? by ${male.name}\\.$`).test(e.text))).toBe(true);
+    expect(female.history.some((e) => /^Spawned with/.test(e.text))).toBe(false);
+  });
+});
+
+describe('the older cichlids and the green chromis spawn as they really do (the owner, ADR-0053 round 5)', () => {
+  const pair = (id: string, tier: string, wc: WaterClass, temp: number, seed: number) => {
+    const { g, animals } = setup(id, tier, wc, ['male', 'female'], seed);
+    const [male, female] = animals;
+    expect(devForceBreeding(g, female.id).ok, id).toBe(true);
+    run(g, 24, temp, () => cases(g, id).length > 0, 1);
+    const [cl] = cases(g, id);
+    expect(cl, `${id} spawns once forced`).toBeDefined();
+    return { g, male, female, cl };
+  };
+  it('the discus, angelfish and ram clean a stone or leaf, lay in rows, and the male guards', () => {
+    for (const [id, tier, temp, noun] of [['discus', 'g55', 29, 'stone'], ['freshwater_angelfish', 'g55', 27, 'leaf'], ['german_blue_ram', 'g20L', 28, 'stone']] as const) {
+      expect(getSpecies(id).breeding.system, id).toBe('cichlid_substrate');
+      const { g, male, female, cl } = pair(id, tier, 'freshwater_tropical', temp, 51);
+      expect(cl, id).toMatchObject({ visual: 'eggs_adhesive', stage: 'eggs', guardedById: male.id });
+      expect(log(g), id).toMatch(new RegExp(`${female.name} laid [\\d,]+ sticky eggs in rows on the ${noun} and ${male.name} fertilised them`));
+      expect(log(g), id).not.toMatch(/T-position|onto the glass|cory/);
+    }
+  });
+  it('the green chromis male clears a nest on the sand and guards it alone; the larvae need copepods', () => {
+    expect(getSpecies('green_chromis').breeding.system).toBe('damsel_nest');
+    const { g, male, female, cl } = pair('green_chromis', 'g75', 'marine_fowlr', 26, 53);
+    expect(cl).toMatchObject({ visual: 'eggs_adhesive', stage: 'eggs', guardedById: male.id });
+    expect(log(g)).toMatch(new RegExp(`${female.name} laid [\\d,]+ tiny eggs in ${male.name}’s nest\\. ${male.name} fans them`));
+    expect(log(g)).not.toMatch(/T-position|onto the glass|cory/);
   });
 });

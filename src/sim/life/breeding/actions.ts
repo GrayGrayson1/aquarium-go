@@ -207,6 +207,25 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
   return ok(msg);
 }
 
+/**
+ * chunk 17 — lift a dud (an empty shark egg case: infertile, `egg_case`) out of its tank before it rots and fouls the
+ * water. Only duds: good eggs go to a nursery with Move.
+ */
+export function liftOutClutch(state: GameState, clutchId: string): ActionResult {
+  const gone = () => no('Those egg cases are gone — they have rotted away, or were lifted out already.');
+  if (!state.clutches[clutchId]) return gone();
+  settleTanks(state, [state.clutches[clutchId].tankId]);
+  const cl = state.clutches[clutchId];
+  if (!cl) return gone();
+  if (!cl.infertile || cl.visual !== 'egg_case') return no('Only empty egg cases can be lifted out; good eggs belong in a nursery.');
+  const tank = state.tanks[cl.tankId];
+  const who = cl.motherId ? state.creatures[cl.motherId]?.name : undefined;
+  delete state.clutches[clutchId];
+  const msg = `Lifted ${who ? `${who}’s ` : ''}${plural(cl.count, 'empty egg case')} out of ${tank?.name ?? 'the tank'}.`;
+  emitEvent(state, { kind: 'info', text: msg, tankId: cl.tankId });
+  return ok(msg);
+}
+
 /** DEV: make a creature (and a valid partner if present) ready to breed now and jump to the next stage. */
 export function devForceBreeding(state: GameState, creatureId: string): ActionResult {
   const c = state.creatures[creatureId];
