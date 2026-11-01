@@ -354,11 +354,13 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await expect(tid(page, 'shared-closing-text')).toHaveAttribute('data-why', 'gone');
     }
     await expect(tid(ben, 'shared-strip')).toBeHidden();
-    // the club stays, with no shop: the owner may make a new one
+    // the owner is back in their own aquarium (Social closed with the shop); the club stays, with no shop, and the
+    // owner may make a new one
     await tid(ola, 'shared-closing').getByRole('button', { name: 'Close', exact: true }).click();
-    await expect(row).toContainText(`${clubName}`);
     await openClubCard(ola, club);
     await expect(tid(ola, `shared-card-${club}`).getByTestId('shared-create')).toBeVisible({ timeout: 30_000 });
+    await expect(row).toContainText(`${clubName}`);
+    await expect(row).toContainText('No shared shop');
   });
 });
 
