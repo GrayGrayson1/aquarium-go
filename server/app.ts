@@ -134,6 +134,8 @@ interface RoomHandle {
   stopping: boolean;
   stopped: Promise<void>;
   pendingStats: Map<number, (v: unknown) => void>;
+  /** chunk 18 — `opened` settled ok: the room runs a shop that existed when it opened. */
+  live: boolean;
 }
 
 export interface ShopServer {
@@ -215,19 +217,25 @@ export function createShopServer(deps: AppDeps): ShopServer {
 
   function openRoom(club: string, mode: OpenMode): RoomHandle {
     const runner = deps.inline ? inlineRunner(deps.inline.clock, deps.inline.timers) : workerRunner();
-    let resolveOpened!: (v: { ok: true } | { ok: false; why: ClosingReason }) => void;
+    let settle!: (v: { ok: true } | { ok: false; why: ClosingReason }) => void;
     let resolveStopped!: () => void;
     const r: RoomHandle = {
       holder: `${holder}:${++roomSeq}`,
       settleOpened: (v) => resolveOpened(v),
       club,
       runner,
-      opened: new Promise((res) => (resolveOpened = res)),
+      opened: new Promise((res) => (settle = res)),
       users: new Map(),
       emptySince: now(),
       stopping: false,
       stopped: new Promise((res) => (resolveStopped = res)),
       pendingStats: new Map(),
+      live: false,
+    };
+    // chunk 18: marked live as it opens (at once, not a microtask later), for join's check of a deleted shop's room
+    const resolveOpened = (v: { ok: true } | { ok: false; why: ClosingReason }): void => {
+      if (v.ok && !r.stopping) r.live = true;
+      settle(v);
     };
     rooms.set(club, r);
     runner.onMessage((m: FromRoom) => {
@@ -407,6 +415,10 @@ export function createShopServer(deps: AppDeps): ShopServer {
     if (typeof m.token !== 'string' || typeof m.club !== 'string' || !CLUB.test(m.club) || !b || typeof b.hash !== 'string' || typeof b.version !== 'string' || b.hash.length > 100 || b.version.length > 40) return end(c, 1008);
     if (create && (!nameOk(m.name, 60) || typeof m.starter !== 'string' || !/^[a-z_]{1,40}$/.test(m.starter) || !(m.starterName === undefined || m.starterName === '' || nameOk(m.starterName, 30)) || !(m.seed === undefined || (Number.isInteger(m.seed) && (m.seed as number) >= 0 && (m.seed as number) <= 0xffffffff)))) return end(c, 1008);
     const club = m.club;
+    // chunk 18 (the re-check's blocker): the room already open for this club before anything is read. Only that room can
+    // be running a shop deleted since; one still opening, or opened during this join's reads, may be a new shop (another
+    // tab's create, or a reconnect re-sending one), which must never be stopped
+    const liveBefore = rooms.get(club)?.live ? rooms.get(club)! : null;
     const cap = usage.closed();
     if (cap) return closing(c, cap.why, { until: cap.until });
     const verdict = buildVerdict({ hash: b.hash, version: b.version }, build);
@@ -430,8 +442,9 @@ export function createShopServer(deps: AppDeps): ShopServer {
     joins.set(who.user, recent);
     let r = rooms.get(club);
     // chunk 18 (ADR-0054; the review's note 2): a room still running a shop the owner deleted (its lease renewal hasn't
-    // found it gone yet) closes as `gone` before a new shop is made for the club, or the create would join the old one
-    if (r && !r.stopping && !member.shop) void stopRoom(r, 'gone');
+    // found it gone yet) closes as `gone` before a new shop is made for the club, or the create would join the old one.
+    // Only the room that was open before this join read the database: then `!member.shop` means that shop is gone
+    if (r && r === liveBefore && !r.stopping && !member.shop) void stopRoom(r, 'gone');
     while (r?.stopping) {
       await r.stopped;
       r = rooms.get(club);
