@@ -1,9 +1,34 @@
-# Session handoff: chunk 17 (big-tank species) done and released as 0.9.0
+# Session handoff: chunk 18 (the owner's deletes), after chunk 17 (big-tank species, 0.9.0)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Chunk 18, the owner's deletes: done and released as 0.9.1 (2026-11-01)
+
+- **Released:** `main` = `678255f` (Pages from `ff837ad` then `678255f`; the shop server from `678255f`, `/health`
+  0.9.1, build `f128a63f7d57f4b9`; the Render static site at `ff837ad`, 0.9.1). The shared smoke 27 of 27. **The
+  migration `20261101000000_owner_deletes.sql` is the owner's to run** (the classifier refuses it); until then the
+  Manage card says "That didn't go through". After it: check the ten functions (`pg_proc` `owner_%`, execute for
+  `authenticated` only) and run `node scripts/online-smoke.mjs`.
+- **Tested:** the four checks on `f15b8d7`: typecheck exit 0; unit 271 files, 4,138 tests; build exit 0; e2e 341 of
+  341 (42.1 min). The fresh review (no blockers), the re-check (one blocker, fixed in `f15b8d7`), its re-check (clean).
+- **Open from the chunk:** B-228 (small shop-server notes), B-229 (the live smoke signs up through "Aquarium Go
+  Friends", which the owner can now delete), B-230 (Brave Shields blocks the shop server; the wake screen should say
+  so instead of waiting forever: new words, the owner first).
+- **What** (PLAN.md chunk 18; ADR-0054 has the owner's words verbatim): the owner deletes any club, any club's shared
+  shop, any other player's account, and their own friends and requests, from the database. Social › Clubs ends with
+  "Manage clubs and players" (the owner only); Friends gains Remove and Decline (the owner only); a confirm box before
+  each. A shop deleted while played closes as `gone`. Players see nothing new; the shared build hash is unchanged.
+- **Why it came up:** the owner's "A new version of Aquarium Go is out. Reload to join the shared shop." on
+  aquarium-go.onrender.com: the Render static site was still 0.8.0 (shared build `87e2d967e8d95f40`) against the 0.9.0
+  shop server (`f128a63f7d57f4b9`); reloading loaded 0.8.0 again and left the player in their own aquarium (a shared
+  shop is never saved on the device). The fix is deploying the static site at `main`. **Check both `version.json`
+  files and the shop server's `/health` after every release.**
+- **The live project before the migration** (2026-11-01): 5 clubs, 5 players, 2 shared shops, the database 12 MB.
+- **The static site's deploy by hand is refused by Claude Code's classifier every time**, even with the owner's go-ahead:
+  hand the owner the `!` command at once (PLAN.md "Releases").
 
 ## Chunk 17, big-tank species: done and released as 0.9.0 (Skye and Rubble, 2026-10-30)
 

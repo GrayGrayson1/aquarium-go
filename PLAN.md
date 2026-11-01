@@ -49,9 +49,10 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    balance question for the owner). A problem the owner reports comes first. **Chunk 18, the owner's deletes** (the
    owner, 2026-11-01: "I just need the option to be able to delete what I want to since I'm kind of like the super
    admin of it"; ADR-0054): the owner deletes any club, shared shop, account or friend from Social, from the database;
-   to be released as 0.9.1, the Render static site included (it was still on 0.8.0, which the 0.9.0 shop server asked
-   to reload: the owner's "Reload to join the shared shop" report).
-4. **Released:** 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
+   **done and released as 0.9.1** (2026-11-01), the Render static site included (it was still on 0.8.0, which the
+   0.9.0 shop server asked to reload: the owner's "Reload to join the shared shop" report). **Next:** the owner runs
+   the migration (PLAN.md "Releases", 0.9.1), then the live smoke; B-228 to B-230.
+4. **Released:** 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
 5. Every owner question is answered (ADR-0024 to ADR-0049) except, in `docs/agent/OWNER_QUESTIONS.md`: F1, the
@@ -81,7 +82,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Done 2026-10-22 (released in 0.7.0; Marshall, at the owner's request; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; the review's blocker and its confirmations' notes fixed, the second confirmation clean; the final pass on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331; live: the smoke 27 of 27, the two-browser money test 29 of 29 on Pages and on the Render address |
 | 16 | 31 new species (ADR-0052) | Done 2026-10-25 (released in 0.8.0; Chase, at the owner's request; the owner's answers, ADR-0052 rounds 1–4). 31 species (48 → 79) in three waves with real colour forms, young and male/female colours, their own behaviour and art; save format v3; the lab's "A friend's reef". Its full run (`96c950c`): typecheck, unit 3,814, build, e2e 335 of 335; the fresh review's, the confirmation's and the AI fixes' reviews' blockers fixed |
 | 17 | Big-tank species, and no animal in the shop before its tank (ADR-0053) | Brief and design written 2026-10-30 (Marshall, at the owner's request; `docs/agent/design/CHUNK-17/BIG-TANKS.md`); handed to Skye to build |
-| 18 | The owner deletes anything in Social, from the database (ADR-0054) | Built 2026-11-01 (at the owner's request in the session); the checks and the review below |
+| 18 | The owner deletes anything in Social, from the database (ADR-0054) | Done 2026-11-01 (released in 0.9.1). Its full run (`f15b8d7`): typecheck, unit 4,138, build, e2e 341 of 341; the fresh review found no blockers (its notes fixed, `a780b79`), the re-check's one blocker fixed (`f15b8d7`) and re-checked clean |
 
 **Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
@@ -1786,7 +1787,7 @@ REL-012, REL-018.
     purpose in `03736be` (it waits for the cards; no app change). On the final commit `03736be`: typecheck exit
     0; unit 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min).
 
-### 18. The owner deletes anything in Social, from the database (ADR-0054) — built 2026-11-01
+### 18. The owner deletes anything in Social, from the database (ADR-0054) — done and released as 0.9.1 on 2026-11-01
 
 **Why.** The owner (2026-11-01): "It would also be really nice to have a way to delete any of the socials from the
 main account … It is already growing to too large a size", then "I just need the option to be able to delete what I
@@ -1818,6 +1819,30 @@ Social had only Delete my account.
 `93c106d..HEAD` against this brief and its blockers are fixed; then 0.9.1 (the owner: "try to get it released to
 render on your own"): the migration on the live project, then `main`, Pages, the shop server and the Render static
 site, with the smoke tests.
+
+**Status: done** (2026-11-01).
+- *Commits:* `e6c8548` (the chunk), `64b0254` (0.9.1), `a780b79` (the review's notes and the phone layout), `aab2ea2`
+  (an e2e step fixed on purpose: closing the `gone` box returns the owner to their aquarium, so the test reopens
+  Social), `f15b8d7` (the re-check's blocker).
+- *Reviews* (Opus 5.5, max effort): the fresh review of `93c106d..64b0254` found no blockers; its notes were fixed
+  in `a780b79` (a new create right after a delete joined the old room; the live smoke named the real first club; two
+  local checks and two server checks that couldn't fail; "(you)" by account; Decline's own box; the title screen's
+  recent shops; a stale comment). The re-check of `a780b79` found one blocker: stopping any running room on a
+  "no shop" answer could stop a brand-new shop when two creates overlap (two tabs, or a reconnect). `f15b8d7` stops
+  only a room live before the join's first read, with two tests that hold the stub database's answers and fail on
+  `a780b79`'s condition; its re-check found no blockers (its note, a narrower gap with a room still waking, is B-228).
+- *Checks* in `~/LocalTest/AquariumGo` under `caffeinate -i -s`: on `64b0254` typecheck exit 0, unit 271 files,
+  4,135 tests, build exit 0, e2e 339 of 341 (43.8 min; the 2 failures were the new shop-delete test's last step in
+  both engines, after the delete and the `gone` closing had worked; fixed in `aab2ea2`). On the final `f15b8d7`:
+  typecheck exit 0; unit 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min).
+- *Local database:* `zsh scripts/online-db-local/run.sh`, every case as expected (the owner block: anon, service_role
+  and a player refused; each delete takes what it should and nothing more; another owner can't be deleted).
+- *Own testing:* screenshots of the Manage card, the confirm box and Friends' Remove at 1440×900 and 390×844 (no
+  horizontal scroll); the phone rows' buttons now drop under the text.
+- *Found on the way* (the owner's report that started it): aquarium-go.onrender.com still served 0.8.0 against the
+  0.9.0 shop server, so opening a shared shop said "A new version of Aquarium Go is out. Reload…" and a reload
+  loaded 0.8.0 again; fixed by the static site's 0.9.1 deploy. And Brave Shields blocks the shop server's `/health`,
+  leaving "Waking the shared shop…" up for good (B-230).
 
 ## Releases
 
@@ -1943,6 +1968,18 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   Claude Code's auto-mode classifier, so the owner runs it (`render deploys create srv-dath0mfavr4c73dgk3j0 --commit
   428a63e7598fbbe7a5e1b3578c5966a95cb95000 --confirm --wait -o text`); until then aquarium-go.onrender.com serves
   0.8.0, whose tabs the 0.9.0 shop server asks to reload.
+- **0.9.1, released 2026-11-01** at the owner's go-ahead in the session ("please try to get it released to render on
+  your own"; then "Can we push this right now? If we need to make changes we can push the fixes after the fact"):
+  chunk 18, the owner's deletes (ADR-0054). Step 1 was waived by that answer: `main` went out as `ff837ad` (the merge
+  of `aab2ea2`, its tree `aab2ea2`'s) while the first e2e run was still going, after typecheck, unit 4,135 and build
+  passed on `64b0254` and the review found no blockers. Pages run `41356227157` deployed it (its tests first). The
+  re-check's blocker (shop server only) was fixed in `f15b8d7` and merged as `678255f` (its tree `f15b8d7`'s); the
+  shop server deployed from it (`dep-dbjs12jbc2fs73dn7ne0`; `/health` 0.9.1, `build` `f128a63f7d57f4b9`, unchanged
+  from 0.9.0, so nobody in a shared shop was asked to reload); `scripts/shared-smoke.ts` 27 of 27. The Render static
+  site was deployed by the owner's browser Claude (dashboard, "Deploy latest commit" at `ff837ad`: "Deploy a specific
+  commit" would have turned Auto-Deploy off); its `version.json` reads `{"id":"ff837ad-…","version":"0.9.1"}`, the end
+  of the 0.8.0 reload loop. The four checks then passed on `f15b8d7` (e2e 341 of 341). The migration
+  (`20261101000000_owner_deletes.sql`) is the owner's to run (Claude Code's classifier refuses it): see below.
 
 ## Product decisions in force
 

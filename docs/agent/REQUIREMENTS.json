@@ -7166,8 +7166,11 @@
         "tests/sim/supabase-migration.test.ts",
         "scripts/online-db-local/checks.sql"
       ],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 18 done 2026-11-01. The four checks on f15b8d7 in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min). The fresh review (Opus 5.5, max effort) of 93c106d..64b0254: no blockers, its notes fixed in a780b79; the re-check of a780b79: one blocker, fixed in f15b8d7 and re-checked clean. Released as 0.9.1 (PLAN.md \"Releases\").",
+        "The local Postgres run (scripts/online-db-local/run.sh): every case as expected. On the live project the migration is the owner's to run (the classifier refuses it); the live smoke's refusal checks follow it."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 18 (2026-11-01)."
     },
@@ -7185,8 +7188,10 @@
         "tests/sim/social-owner.test.ts",
         "tests/sim/shared-server-chunk13.test.ts"
       ],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 18 done 2026-11-01. The four checks on f15b8d7 in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min). The fresh review (Opus 5.5, max effort) of 93c106d..64b0254: no blockers, its notes fixed in a780b79; the re-check of a780b79: one blocker, fixed in f15b8d7 and re-checked clean. Released as 0.9.1 (PLAN.md \"Releases\")."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 18."
     },
@@ -7203,8 +7208,10 @@
         "tests/e2e/social.spec.ts",
         "tests/sim/social-owner.test.ts"
       ],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 18 done 2026-11-01. The four checks on f15b8d7 in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min). The fresh review (Opus 5.5, max effort) of 93c106d..64b0254: no blockers, its notes fixed in a780b79; the re-check of a780b79: one blocker, fixed in f15b8d7 and re-checked clean. Released as 0.9.1 (PLAN.md \"Releases\")."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 18."
     },
@@ -7221,8 +7228,11 @@
         "tests/sim/shared-server.test.ts",
         "tests/e2e/shared-shop.spec.ts"
       ],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 18 done 2026-11-01. The four checks on f15b8d7 in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min). The fresh review (Opus 5.5, max effort) of 93c106d..64b0254: no blockers, its notes fixed in a780b79; the re-check of a780b79: one blocker, fixed in f15b8d7 and re-checked clean. Released as 0.9.1 (PLAN.md \"Releases\").",
+        "Live: the shop server from 678255f (f15b8d7) logged 'lease lost (missing)' for the shared smoke's deleted throwaway shop and closed it."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 18."
     }
