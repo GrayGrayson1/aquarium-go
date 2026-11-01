@@ -871,6 +871,21 @@ select public.owner_remove_friend(:'p_id');
 select public.owner_remove_friend(:'q_id');
 \echo CASE ok o-no-friends-left
 select case when public.friends_aquariums() = '[]'::jsonb and public.friend_requests() = '[]'::jsonb then 'no friends, no requests' else (1 / (random() * 0)::int)::text end;
+reset role;
+\echo CASE ok o-remove-friend-only-the-owners
+select case when exists (select 1 from public.friend_links where from_id = :'p_id' and to_id = :'q_id') then 'P’s request to Q stays' else (1 / (random() * 0)::int)::text end;
+-- another owner's account is never the owner's to delete
+update public.profiles set is_owner = true where id = :'q_id';
+set role authenticated;
+select set_config('request.jwt.claim.sub', :'o_id', false) \g /dev/null
+\echo CASE err o-delete-other-owner
+select public.owner_delete_player(:'q_id');
+reset role;
+\echo CASE ok other-owner-kept
+select case when exists (select 1 from auth.users where id = :'q_id') then 'kept' else (1 / (random() * 0)::int)::text end;
+update public.profiles set is_owner = false where id = :'q_id';
+set role authenticated;
+select set_config('request.jwt.claim.sub', :'o_id', false) \g /dev/null
 \echo CASE ok o-delete-shop
 select public.owner_delete_shop(:'first_id');
 \echo CASE ok o-delete-shop-again

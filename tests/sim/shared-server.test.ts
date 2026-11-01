@@ -473,11 +473,13 @@ describe('chunk 12: a room’s life (§5.2)', () => {
     const o = await x.join(OWNER, CLUB);
     const a = await x.join(A, CLUB);
     expect(x.world.deleteShop(CLUB)).toBe(true);
+    const puts = x.world.calls.shopPut ?? 0;
     x.time.advance(LEASE_RENEW_MS + 10);
     await pump(x.time, () => o.closed !== null && a.closed !== null, { step: 100, what: 'the room to stop' });
     expect(closingOf(o)?.why).toBe('gone');
     expect(closingOf(a)?.why).toBe('gone');
     expect(x.world.clubs.get(CLUB)!.shop).toBeNull();
+    expect(x.world.calls.shopPut ?? 0).toBe(puts); // stopped without trying to save
     // and a new join finds no shop
     const b = await x.join(B, CLUB);
     expect(closingOf(b)?.why).toBe('gone');
@@ -490,12 +492,34 @@ describe('chunk 12: a room’s life (§5.2)', () => {
     await pump(x.time, () => o.commands().length > 0, { step: 50 });
     x.world.failing.add('shopTake'); // the renewal can't tell (a blip), so the save is what finds it gone
     expect(x.world.deleteShop(CLUB)).toBe(true);
+    const puts = x.world.calls.shopPut ?? 0;
     o.send({ t: 'away' });
     await sleep(30);
     x.time.advance(EMPTY_SAVE_DELAY_MS + 1000);
     await pump(x.time, () => o.closed !== null, { step: 200, what: 'the room to stop' });
     expect(closingOf(o)?.why).toBe('gone');
     expect(x.world.clubs.get(CLUB)!.shop).toBeNull();
+    // the one save that found it gone, then nothing more
+    expect(x.world.calls.shopPut ?? 0).toBe(puts + 1);
+    x.time.advance(10 * 60_000);
+    await sleep(30);
+    expect(x.world.calls.shopPut ?? 0).toBe(puts + 1);
+  });
+
+  it('chunk 18 (the review’s note 2): a new shop made right after the old one was deleted is new, and the old room closes as gone', async () => {
+    const x = await shop();
+    const a = await x.join(A, CLUB);
+    expect(x.world.deleteShop(CLUB)).toBe(true); // before the room's lease renewal notices
+    const o = await Member.connect(x.port);
+    o.send({ t: 'create', token: OWNER, build: SHARED_BUILD, club: CLUB, name: 'Second Shop', starter: 'axolotl', starterName: 'Pip', seed: 7 });
+    await pump(x.time, () => o.bins().length > 0, { step: 50, what: 'the new shop' });
+    expect(o.snapshot()!.shopName).toBe('Second Shop');
+    expect(closingOf(a)?.why).toBe('gone');
+    expect(x.world.clubs.get(CLUB)!.shop!.meta).toMatchObject({ shop_name: 'Second Shop', revision: 1 });
+    // the new room keeps going past the old one's renewal time
+    x.time.advance(LEASE_RENEW_MS * 2 + 10);
+    await sleep(30);
+    expect(o.closed).toBeNull();
   });
 
   it('SIGTERM saves every shop and tells its members the server restarted', async () => {

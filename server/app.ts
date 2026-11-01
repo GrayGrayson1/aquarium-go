@@ -429,6 +429,9 @@ export function createShopServer(deps: AppDeps): ShopServer {
     recent.push(t);
     joins.set(who.user, recent);
     let r = rooms.get(club);
+    // chunk 18 (ADR-0054; the review's note 2): a room still running a shop the owner deleted (its lease renewal hasn't
+    // found it gone yet) closes as `gone` before a new shop is made for the club, or the create would join the old one
+    if (r && !r.stopping && !member.shop) void stopRoom(r, 'gone');
     while (r?.stopping) {
       await r.stopped;
       r = rooms.get(club);

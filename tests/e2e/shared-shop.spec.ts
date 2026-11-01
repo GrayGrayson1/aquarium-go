@@ -333,7 +333,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     await openClubCard(ola, club);
     const card = tid(ola, `shared-card-${club}`);
     await expect(card.getByTestId('shared-create').or(card.getByTestId('shared-open'))).toBeVisible({ timeout: 30_000 });
-    if (await card.getByTestId('shared-open').isVisible()) await openShop(ola, club); // a reused stub server (E2E_REUSE=1)
+    if (await card.getByTestId('shared-open').isVisible()) await openShop(ola, club); // a retry within the same run
     else await createShop(ola, club);
     const ben = await player(browser, 'Ben', club);
     await openShop(ben, club);

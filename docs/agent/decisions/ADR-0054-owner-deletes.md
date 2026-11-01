@@ -49,9 +49,11 @@ Asked which (clubs, friends, shared shops, players' accounts), the owner answere
    "{n} members · Shared shop {name}, day {d}, {size}" or "· No shared shop"; "{code} · joined {date} · saved online
    {date}" (or "never saved online") "· {n} clubs · {size}"; "{name} (you)" and "Your own account: delete it in
    Settings › Account."; the buttons Delete shop, Delete club, Delete account, Remove, Decline; the confirm boxes
-   "Delete {club}?", "Delete the shared shop {shop}?", "Delete {name}'s account?", "Remove {name}?", each saying what
-   goes, what stays and "This can't be undone."; the toasts Club deleted, Shared shop deleted, Account deleted,
-   Friend removed.
+   "Delete {club}?", "Delete the shared shop {shop}?", "Delete {name}'s account?", "Remove {name}?", "Decline
+   {name}'s request?", each saying what goes, what stays and (for the deletes) "This can't be undone."; the toasts Club
+   deleted, Shared shop deleted, Account deleted, Friend removed, Request declined; an empty club list says "None.",
+   and a delete the server refuses says "That didn't go through. Refresh Social and try again." Only the owner's own
+   row says "(you)"; no owner's row has Delete account (the database refuses it).
 6. **Release:** 0.9.1 once the four checks pass and the review's blockers are fixed (the owner: "try to get it
    released to render on your own"): the migration on the live project, `main`, GitHub Pages, the shop server and the
    Render static site. The shared-shop build hash doesn't change (nothing under `src/sim`, `src/data`, `src/types` or

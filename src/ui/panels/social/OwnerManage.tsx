@@ -12,12 +12,13 @@ import { Button, Modal } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { isSocialError, socialService, type OwnerClub, type OwnerPlayer } from '@/social';
 import { forgetSharedShops } from '../../shared/shopsCache';
+import { forgetOpened } from '../../shared/session';
 import { SOCIAL_COPY as C, dayMonth, formatSize } from './copy';
 import { ClubAvatar, ErrorNote, NetworkError, PersonAvatar, Skeleton } from './parts';
-import { useSocialQuery } from './socialStore';
+import { useSocial, useSocialQuery } from './socialStore';
 
 /** What a confirm box is about to delete. */
-type Pending = { kind: 'club'; club: OwnerClub } | { kind: 'shop'; club: OwnerClub } | { kind: 'player'; player: OwnerPlayer } | { kind: 'friend'; id: string; name: string };
+type Pending = { kind: 'club'; club: OwnerClub } | { kind: 'shop'; club: OwnerClub } | { kind: 'player'; player: OwnerPlayer } | { kind: 'friend' | 'decline'; id: string; name: string };
 
 /** The confirm box's words and the call it makes. */
 function plan(p: Pending): { title: string; body: string; yes: string; toast: string; detail: string; run: () => Promise<void> } {
@@ -31,6 +32,8 @@ function plan(p: Pending): { title: string; body: string; yes: string; toast: st
       return { title: C.deletePlayerTitle(p.player.name), body: C.deletePlayerBody, yes: C.deletePlayer, toast: C.toastPlayerDeleted, detail: p.player.name, run: () => s.deletePlayer(p.player.id) };
     case 'friend':
       return { title: C.removeFriendTitle(p.name), body: C.removeFriendBody, yes: C.removeFriend, toast: C.toastFriendRemoved, detail: p.name, run: () => s.removeFriend(p.id) };
+    case 'decline':
+      return { title: C.declineTitle(p.name), body: C.declineBody, yes: C.declineRequest, toast: C.toastDeclined, detail: p.name, run: () => s.removeFriend(p.id) };
   }
 }
 
@@ -50,7 +53,10 @@ export function OwnerConfirm({ pending, onClose, onDone }: { pending: Pending | 
     setError(null);
     try {
       await p.run();
-      if (pending.kind === 'club' || pending.kind === 'shop') forgetSharedShops(); // the club cards read the shops again
+      if (pending.kind === 'club' || pending.kind === 'shop') {
+        forgetSharedShops(); // the club cards read the shops again
+        forgetOpened(pending.club.id); // and the title screen stops offering it
+      }
       useUI.getState().toast(p.toast, 'success', { detail: p.detail });
       setBusy(false);
       onDone(pending);
@@ -85,6 +91,7 @@ export function OwnerConfirm({ pending, onClose, onDone }: { pending: Pending | 
 
 export function OwnerManage({ onChanged }: { onChanged: () => void }) {
   const [q, reload] = useSocialQuery(() => socialService().ownerOverview(), []);
+  const me = useSocial((s) => s.user?.id ?? null);
   const [pending, setPending] = useState<Pending | null>(null);
   const done = () => {
     setPending(null);
@@ -135,11 +142,12 @@ export function OwnerManage({ onChanged }: { onChanged: () => void }) {
               <li key={p.id} className="so-suggest so-manage__row" data-testid={`owner-player-${p.id}`}>
                 <PersonAvatar name={p.name} size={36} />
                 <div className="so-suggest__text">
-                  <div className="so-suggest__name">{p.owner ? C.manageYou(p.name) : p.name}</div>
+                  <div className="so-suggest__name">{p.id === me ? C.manageYou(p.name) : p.name}</div>
                   <div className="so-suggest__meta">{C.managePlayerMeta(p.friendCode, dayMonth(p.createdAt), p.savedAt ? dayMonth(p.savedAt) : null, p.clubs, formatSize(p.bytes))}</div>
-                  {p.owner && <div className="so-suggest__meta">{C.manageYouNote}</div>}
+                  {p.id === me && <div className="so-suggest__meta">{C.manageYouNote}</div>}
                 </div>
-                {!p.owner && (
+                {/* the database refuses the owner's own account and any owner's (Settings › Account deletes your own) */}
+                {!p.owner && p.id !== me && (
                   <div className="so-manage__actions">
                     <Button size="sm" variant="danger" onClick={() => setPending({ kind: 'player', player: p })} aria-label={C.deletePlayerLabel(p.name)} data-testid={`owner-player-delete-${p.id}`}>
                       <UserX size={14} aria-hidden /> {C.deletePlayer}
@@ -159,7 +167,7 @@ export function OwnerManage({ onChanged }: { onChanged: () => void }) {
 /** The owner's Remove on a friend's tile and Decline on a request (the Friends tab). */
 export function RemoveFriendButton({ id, name, onAsk, decline }: { id: string; name: string; onAsk: (p: Pending) => void; decline?: boolean }) {
   return (
-    <Button size="sm" variant="ghost" className="so-friend__remove" onClick={() => onAsk({ kind: 'friend', id, name })} aria-label={decline ? C.declineLabel(name) : C.removeFriendLabel(name)} data-testid={decline ? 'social-decline' : `social-friend-remove-${id}`}>
+    <Button size="sm" variant="ghost" className="so-friend__remove" onClick={() => onAsk({ kind: decline ? 'decline' : 'friend', id, name })} aria-label={decline ? C.declineLabel(name) : C.removeFriendLabel(name)} data-testid={decline ? `social-decline-${id}` : `social-friend-remove-${id}`}>
       <UserMinus size={14} aria-hidden /> {decline ? C.declineRequest : C.removeFriend}
     </Button>
   );

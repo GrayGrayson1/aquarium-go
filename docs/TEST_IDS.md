@@ -464,7 +464,7 @@ link.
 | `owner-club-<clubId>` · `owner-shop-delete-<clubId>` · `owner-club-delete-<clubId>` | A club's row, Delete shop (when it has one) and Delete club |
 | `owner-player-<userId>` · `owner-player-delete-<userId>` | A player's row and Delete account (not on the owner's own row) |
 | `owner-confirm` · `owner-confirm-yes` · `owner-confirm-cancel` | The confirm box every owner delete opens, its delete button and Cancel |
-| `social-friend-<id>` · `social-friend-remove-<id>` · `social-decline` | Chunk 18: a friend's tile; the owner's Remove on it and Decline on a friend request |
+| `social-friend-<id>` · `social-friend-remove-<id>` · `social-decline-<id>` | Chunk 18: a friend's tile; the owner's Remove on it and Decline on a friend request |
 
 ## Online save and Settings › Account (chunk 8; ONLINE-STAGE1.md §6, §7; REL-029, REL-031)
 

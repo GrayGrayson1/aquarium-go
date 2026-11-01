@@ -212,17 +212,19 @@ try {
   const club = await B.rpc('create_club', { p_name: 'Smoke Club', p_blurb: '' });
   check('B’s create_club is forbidden', club.error?.message === 'forbidden', describe(club));
 
-  // 5b. chunk 18 (ADR-0054): the owner's overview and deletes refuse a player (forbidden) and anon (no privilege), and
-  // a refused delete changes nothing (B's friendship with A, the first club)
-  const firstClub = admin("select id from public.clubs where invite_code like 'FRIENDS-%' order by created_at limit 1")[0]?.id;
-  for (const [fn, args] of [['owner_overview', undefined], ['owner_delete_club', { p_club: firstClub }], ['owner_delete_shop', { p_club: firstClub }], ['owner_delete_player', { p_user: idA }], ['owner_remove_friend', { p_id: idA }]]) {
+  // 5b. chunk 18 (ADR-0054): the owner's overview and deletes refuse a player (forbidden) and anon (no privilege). The
+  // club and shop deletes name a club that doesn't exist (the owner check comes first, so it's the same path), so a
+  // regression could never delete a real one; the player and friend deletes name the smoke's own A, and a refusal
+  // leaves A and B friends
+  const noClub = crypto.randomUUID();
+  for (const [fn, args] of [['owner_overview', undefined], ['owner_delete_club', { p_club: noClub }], ['owner_delete_shop', { p_club: noClub }], ['owner_delete_player', { p_user: idA }], ['owner_remove_friend', { p_id: idA }]]) {
     const asB = await B.rpc(fn, args);
     check(`B’s ${fn} is forbidden`, asB.error?.message === 'forbidden', describe(asB));
     const asAnon = await anon.rpc(fn, args);
     check(`anon’s ${fn} is refused`, !!asAnon.error && asAnon.error.message !== 'forbidden', describe(asAnon));
   }
   const still = await B.rpc('friends_aquariums');
-  check('the refused deletes changed nothing', still.data?.some?.((f) => f.id === idA) && admin(`select count(*) as n from public.clubs where id = '${firstClub}'`)[0]?.n == 1, describe(still));
+  check('the refused deletes changed nothing', still.data?.some?.((f) => f.id === idA), describe(still));
 
   // 6. guessing codes stops working: 100 wrong ones in 10 minutes, then nobody gets an answer (cleaned up below);
   // sign-up doesn't ask resolve_invite, so the brake never blocks it, and no network address is kept

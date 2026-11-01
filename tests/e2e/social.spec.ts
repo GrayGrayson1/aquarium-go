@@ -441,12 +441,14 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(tid(page, 'social-friend-friend-ada')).toHaveCount(0);
     await expect(grid.locator('li')).toHaveCount(4);
     // a request: Decline
-    await aq(page, 'social.pushFriendRequest', 'Sam');
+    const request = await aq<{ id: string }>(page, 'social.pushFriendRequest', 'Sam');
     await go(page, '#/social/clubs');
     await go(page, '#/social/friends');
-    await tid(page, 'social-decline').click();
-    await expect(confirm.getByRole('heading', { name: 'Remove Sam?' })).toBeVisible();
+    await tid(page, `social-decline-${request.id}`).click();
+    await expect(confirm.getByRole('heading', { name: 'Decline Sam’s request?' })).toBeVisible();
+    await expect(confirm).toContainText('Their request goes, and they don’t become your friend. Their account stays.');
     await tid(page, 'owner-confirm-yes').click();
+    await expect(toast(page, 'Request declined')).toContainText('Sam');
     await expect(tid(page, 'social-friend-requests')).toHaveCount(0);
     await go(page, '#/social/clubs');
     await expect(tid(page, 'owner-player-friend-ada')).toBeVisible();
