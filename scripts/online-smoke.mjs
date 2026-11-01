@@ -11,7 +11,7 @@
  * --linked --project-ref <ref>` (admin), that no row of either is left in any table, Supabase Auth's audit log
  * included. It also checks the brake on wrong invite codes, and removes this run's misses so nobody stays braked. Chunk 9
  * (ADR-0044 decision 2): a read-only lookup (a GET) learns nothing, and the save functions' twins refuse another
- * account. It prints each check's pass or fail and
+ * account. Chunk 18 (ADR-0054): the owner's five functions refuse a player and anon. It prints each check's pass or fail and
  * exits 1 if any failed. It uses only the publishable key; it never reads or prints the secret key.
  */
 import { createClient } from '@supabase/supabase-js';
@@ -211,6 +211,20 @@ try {
   // 5. only the owner creates clubs
   const club = await B.rpc('create_club', { p_name: 'Smoke Club', p_blurb: '' });
   check('B’s create_club is forbidden', club.error?.message === 'forbidden', describe(club));
+
+  // 5b. chunk 18 (ADR-0054): the owner's overview and deletes refuse a player (forbidden) and anon (no privilege). The
+  // club and shop deletes name a club that doesn't exist (the owner check comes first, so it's the same path), so a
+  // regression could never delete a real one; the player and friend deletes name the smoke's own A, and a refusal
+  // leaves A and B friends
+  const noClub = crypto.randomUUID();
+  for (const [fn, args] of [['owner_overview', undefined], ['owner_delete_club', { p_club: noClub }], ['owner_delete_shop', { p_club: noClub }], ['owner_delete_player', { p_user: idA }], ['owner_remove_friend', { p_id: idA }]]) {
+    const asB = await B.rpc(fn, args);
+    check(`B’s ${fn} is forbidden`, asB.error?.message === 'forbidden', describe(asB));
+    const asAnon = await anon.rpc(fn, args);
+    check(`anon’s ${fn} is refused`, !!asAnon.error && asAnon.error.message !== 'forbidden', describe(asAnon));
+  }
+  const still = await B.rpc('friends_aquariums');
+  check('the refused deletes changed nothing', still.data?.some?.((f) => f.id === idA), describe(still));
 
   // 6. guessing codes stops working: 100 wrong ones in 10 minutes, then nobody gets an answer (cleaned up below);
   // sign-up doesn't ask resolve_invite, so the brake never blocks it, and no network address is kept

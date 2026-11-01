@@ -2,7 +2,8 @@
  * Social's signed-in tabs (0.5 spec §13.4–§13.5): Overview (four cards and Sign out), Clubs (search, your club,
  * suggestions), Trading (the coral hero and the trades), Friends (add by code, the snapshot grid) and Leaderboards.
  * Chunk 8: Clubs gains the owner's "Create a club" (ADR-0040 decision 2, ADR-0041 decision 5) and Friends the friend
- * requests to accept (ADR-0040 decision 4). OWNER: lane "social".
+ * requests to accept (ADR-0040 decision 4). Chunk 18 (ADR-0054): the owner's Manage card ends Clubs, and the owner's
+ * Remove and Decline join Friends. OWNER: lane "social".
  */
 import { useState, type FormEvent } from 'react';
 import clsx from 'clsx';
@@ -14,6 +15,7 @@ import { CLUB_BLURB_MAX, isSocialError, looksLikeInvite, normalizeCode, socialSe
 import { SOCIAL_COPY as C, count } from './copy';
 import { ClubAvatar, ComingSoon, ErrorNote, FriendGrid, FriendRequestList, Leaderboard, MemberClub, NetworkError, NoClub, Skeleton, SoCard, TradeList, useFocusOnce } from './parts';
 import { setSocialUser, useSocial, useSocialQuery } from './socialStore';
+import { OwnerConfirm, OwnerManage, RemoveFriendButton, type OwnerPending } from './OwnerManage';
 
 export type SocialTab = 'overview' | 'clubs' | 'trading' | 'friends' | 'leaderboards';
 export const SOCIAL_TABS: readonly SocialTab[] = ['overview', 'clubs', 'trading', 'friends', 'leaderboards'];
@@ -76,6 +78,8 @@ export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
   const [joining, setJoining] = useState<string | null>(null);
   const [joinedNow, setJoinedNow] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState(false);
+  // chunk 18: the owner's Manage card reads everything again after a club is made or joined here
+  const [manageKey, setManageKey] = useState(0);
   useFocusOnce('social-search', focusSearch);
   const term = search.trim().toLowerCase();
   const invite = looksLikeInvite(search);
@@ -95,6 +99,7 @@ export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
       // stays, marked Joined
       const fresh = await socialService().clubs().catch(() => null);
       if (fresh) patch((d) => ({ ...d, mine: fresh.mine }));
+      setManageKey((k) => k + 1);
     } catch (e) {
       const network = isSocialError(e) && e.code === 'network';
       setError(network);
@@ -107,7 +112,14 @@ export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
   const owner = useSocial((s) => !!s.user?.isOwner);
   return (
     <div className="so-tab" data-testid="social-clubs">
-      {owner && <CreateClub onCreated={(c) => patch((d) => ({ ...d, mine: [...d.mine, c] }))} />}
+      {owner && (
+        <CreateClub
+          onCreated={(c) => {
+            patch((d) => ({ ...d, mine: [...d.mine, c] }));
+            setManageKey((k) => k + 1);
+          }}
+        />
+      )}
       <form className="so-search" role="search" onSubmit={onSubmit}>
         <Search size={16} aria-hidden className="so-search__icon" />
         <input
@@ -161,6 +173,7 @@ export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
           )}
         </>
       )}
+      {owner && <OwnerManage key={manageKey} onChanged={reload} />}
     </div>
   );
 }
@@ -236,7 +249,7 @@ export function TradingTab() {
 }
 
 /** chunk 8 (ADR-0040 decision 4) — "Friend requests": "{name} added you" with Accept; nothing while there are none. */
-function FriendRequests({ onAccepted }: { onAccepted: () => void }) {
+function FriendRequests({ onAccepted, onDecline }: { onAccepted: () => void; onDecline?: (p: OwnerPending) => void }) {
   const [q, , patch] = useSocialQuery(() => socialService().friendRequests(), []);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -257,13 +270,17 @@ function FriendRequests({ onAccepted }: { onAccepted: () => void }) {
   return (
     <>
       {error && <NetworkError />}
-      <FriendRequestList requests={q.data} busy={busy} onAccept={(id) => void accept(id)} />
+      <FriendRequestList requests={q.data} busy={busy} onAccept={(id) => void accept(id)} extra={onDecline ? (r) => <RemoveFriendButton id={r.id} name={r.name} onAsk={onDecline} decline /> : undefined} />
     </>
   );
 }
 
 export function FriendsTab() {
   const [friends, reloadFriends] = useSocialQuery(() => socialService().friendsAquariums(), []);
+  // chunk 18 (ADR-0054): the owner removes friends and declines requests
+  const owner = useSocial((s) => !!s.user?.isOwner);
+  const [pending, setPending] = useState<OwnerPending | null>(null);
+  const [requestsKey, setRequestsKey] = useState(0);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<'invalid' | 'network' | null>(null);
@@ -291,11 +308,22 @@ export function FriendsTab() {
       </form>
       {error === 'invalid' && <ErrorNote>{C.errorFriend}</ErrorNote>}
       {error === 'network' && <NetworkError />}
-      <FriendRequests onAccepted={reloadFriends} />
+      <FriendRequests key={requestsKey} onAccepted={reloadFriends} onDecline={owner ? setPending : undefined} />
       {friends.state === 'loading' && <Skeleton rows={4} tall />}
       {friends.state === 'error' && <NetworkError />}
-      {friends.state === 'ok' && <FriendGrid friends={friends.data} testId="social-friend-grid" />}
+      {friends.state === 'ok' && <FriendGrid friends={friends.data} testId="social-friend-grid" action={owner ? (f) => <RemoveFriendButton id={f.id} name={f.owner} onAsk={setPending} /> : undefined} />}
       <p className="so-note">{C.snapshotsNote}</p>
+      {owner && (
+        <OwnerConfirm
+          pending={pending}
+          onClose={() => setPending(null)}
+          onDone={() => {
+            setPending(null);
+            setRequestsKey((k) => k + 1);
+            reloadFriends();
+          }}
+        />
+      )}
     </div>
   );
 }

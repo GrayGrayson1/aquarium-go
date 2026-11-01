@@ -160,3 +160,15 @@
 .so-strip--invite { flex-wrap: wrap; margin-top: 8px; }
 .so-strip--invite .so-strip__icon { color: var(--c-aqua); }
 .so-strip__url { flex: 1 1 100%; min-width: 0; margin-top: 4px; }
+
+/* chunk 18 (ADR-0054): the owner's Manage card, and Remove on a friend's tile */
+.so-manage { display: grid; gap: 10px; }
+.so-manage__stored { margin: 0; color: var(--c-ink-2); font-size: calc(13px * var(--text-scale)); }
+.so-manage__head { margin: 6px 0 0; color: var(--c-ink); font-size: calc(13.5px * var(--text-scale)); font-weight: 650; }
+.so-manage__row { flex-wrap: wrap; }
+/* a phone's row: the buttons drop under the text instead of squeezing it */
+.so-manage__row .so-suggest__text { flex: 1 1 200px; }
+.so-manage__row .so-suggest__meta { white-space: normal; overflow-wrap: anywhere; }
+.so-manage__actions { display: flex; flex-wrap: wrap; gap: 6px; flex: none; margin-left: auto; }
+.so-manage__body { margin: 0; color: var(--c-ink-2); line-height: 1.5; }
+.so-friend__remove { justify-self: start; margin-top: 4px; }

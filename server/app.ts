@@ -100,7 +100,9 @@ export interface AppDeps {
   /** The stub shops' folder (the replay). */
   shopsDir?: string;
   /** chunk 13 — the stub's shops (`GET /stub/shops`, for the local Social stub's club cards); absent outside the stub. */
-  stubShops?: () => { club: string; name: string; day: number; money: number; playedAt: number }[];
+  stubShops?: () => { club: string; name: string; day: number; money: number; playedAt: number; bytes: number }[];
+  /** chunk 18 — the local Social stub's owner deletes a club's shop (`GET /stub/shops/delete?club=`); absent outside the stub. */
+  stubDeleteShop?: (club: string) => boolean;
   log?: (line: string) => void;
 }
 
@@ -427,6 +429,9 @@ export function createShopServer(deps: AppDeps): ShopServer {
     recent.push(t);
     joins.set(who.user, recent);
     let r = rooms.get(club);
+    // chunk 18 (ADR-0054; the review's note 2): a room still running a shop the owner deleted (its lease renewal hasn't
+    // found it gone yet) closes as `gone` before a new shop is made for the club, or the create would join the old one
+    if (r && !r.stopping && !member.shop) void stopRoom(r, 'gone');
     while (r?.stopping) {
       await r.stopped;
       r = rooms.get(club);
@@ -584,6 +589,8 @@ export function createShopServer(deps: AppDeps): ShopServer {
     }
     if (url.pathname === '/stub/replay' && config.replay) return replay(req, res, url);
     if (url.pathname === '/stub/shops' && config.stub && deps.stubShops) return reply(req, res, 200, deps.stubShops());
+    // chunk 18 (ADR-0054): the stub's stand-in for owner_delete_shop (a GET, as this server answers nothing else; the stub only)
+    if (url.pathname === '/stub/shops/delete' && config.stub && deps.stubDeleteShop) return reply(req, res, 200, { deleted: deps.stubDeleteShop(url.searchParams.get('club') ?? '') });
     reply(req, res, 404, { error: 'not found' });
   }
 

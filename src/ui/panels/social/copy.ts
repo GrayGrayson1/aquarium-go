@@ -173,6 +173,45 @@ export const SOCIAL_COPY = {
   inviteLink: (code: string) => `Invite link ${code}`,
   copyLink: 'Copy link',
   linkCopied: 'Link copied',
+
+  // chunk 18 — the owner's Manage card and deletes (ADR-0054; seen only by the owner)
+  manageTitle: 'Manage clubs and players',
+  manageStored: (size: string) => `Everything Aquarium Go keeps online takes ${size}.`,
+  manageClubs: (n: number) => `Clubs (${n})`,
+  managePlayers: (n: number) => `Players (${n})`,
+  manageNone: 'None.',
+  manageClubMeta: (members: number, shop: string | null) => `${count(members)} ${members === 1 ? 'member' : 'members'} · ${shop ?? 'No shared shop'}`,
+  manageShop: (name: string, day: number, size: string) => `Shared shop ${name}, day ${day}, ${size}`,
+  managePlayerMeta: (code: string, joined: string, saved: string | null, clubs: number, size: string) =>
+    `${code ? `${code} · ` : ''}joined ${joined} · ${saved ? `saved online ${saved}` : 'never saved online'} · ${clubs === 1 ? '1 club' : `${clubs} clubs`} · ${size}`,
+  manageYou: (name: string) => `${name} (you)`,
+  manageYouNote: 'Your own account: delete it in Settings › Account.',
+  manageError: 'That didn’t go through. Refresh Social and try again.',
+  deleteClub: 'Delete club',
+  deleteShop: 'Delete shop',
+  deletePlayer: 'Delete account',
+  removeFriend: 'Remove',
+  declineRequest: 'Decline',
+  deleteClubLabel: (club: string) => `Delete club ${club}`,
+  deleteShopLabel: (club: string) => `Delete ${club}’s shared shop`,
+  deletePlayerLabel: (name: string) => `Delete ${name}’s account`,
+  removeFriendLabel: (name: string) => `Remove ${name} as a friend`,
+  declineLabel: (name: string) => `Decline ${name}’s request`,
+  deleteClubTitle: (club: string) => `Delete ${club}?`,
+  deleteClubBody: 'This removes the club, its members list and its shared shop from Aquarium Go’s server, and its invite link stops working. Members keep their accounts and their own aquariums. This can’t be undone.',
+  deleteShopTitle: (shop: string) => `Delete the shared shop ${shop}?`,
+  deleteShopBody: (club: string) => `This removes ${club}’s shared shop and its save from Aquarium Go’s server. Anyone playing it goes back to their own aquarium. The club stays, and you can make a new shop for it. This can’t be undone.`,
+  deletePlayerTitle: (name: string) => `Delete ${name}’s account?`,
+  deletePlayerBody: 'This removes their account, online save, friends and club places from Aquarium Go’s server. The game on their device stays. This can’t be undone.',
+  removeFriendTitle: (name: string) => `Remove ${name}?`,
+  removeFriendBody: 'You stop being friends and their aquarium leaves your Friends tab. Their account stays.',
+  declineTitle: (name: string) => `Decline ${name}’s request?`,
+  declineBody: 'Their request goes, and they don’t become your friend. Their account stays.',
+  toastDeclined: 'Request declined',
+  toastClubDeleted: 'Club deleted',
+  toastShopDeleted: 'Shared shop deleted',
+  toastPlayerDeleted: 'Account deleted',
+  toastFriendRemoved: 'Friend removed',
 } as const;
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -182,6 +221,21 @@ export function monthName(ym: string | undefined): string | null {
   const m = /^\d{4}-(\d{2})$/.exec(ym ?? '');
   const i = m ? Number(m[1]) - 1 : -1;
   return i >= 0 && i < 12 ? MONTHS[i] : null;
+}
+
+/** chunk 18 — "2026-10-19" → "19 October" (English month names, never the device's locale); anything else as it is. */
+export function dayMonth(iso: string): string {
+  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso);
+  const i = m ? Number(m[1]) - 1 : -1;
+  return m && i >= 0 && i < 12 ? `${Number(m[2])} ${MONTHS[i]}` : iso;
+}
+
+/** chunk 18 — what something takes online: "0 KB", "412 KB", "1.8 MB", "2.3 GB" (decimal units, as Supabase counts). */
+export function formatSize(bytes: number): string {
+  const n = Number.isFinite(bytes) ? Math.max(0, bytes) : 0;
+  if (n >= 999_950_000) return `${(n / 1e9).toFixed(1)} GB`;
+  if (n >= 999_500) return `${(n / 1e6).toFixed(1)} MB`;
+  return `${n > 0 ? Math.max(1, Math.round(n / 1e3)) : 0} KB`;
 }
 
 /** 2341 → "2,341" (en-US, whatever the device's locale). */

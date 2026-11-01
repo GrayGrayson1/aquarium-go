@@ -96,8 +96,8 @@ function noteOpened(club: string, clubName: string, shop: string): boolean {
   return first;
 }
 
-/** A shop that's gone: off the title screen. */
-function forgetOpened(club: string): void {
+/** A shop that's gone: off the title screen (chunk 18: also when the owner deletes it, or its club). */
+export function forgetOpened(club: string): void {
   try {
     globalThis.localStorage?.setItem(SHARED_OPENED_KEY, JSON.stringify(openedShops().filter((x) => x.club !== club)));
   } catch {

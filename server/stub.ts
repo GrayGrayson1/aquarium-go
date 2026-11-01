@@ -79,11 +79,32 @@ export class StubWorld {
     };
   }
 
-  /** chunk 13 — every club with a shop, as the game's club cards show it (`GET /stub/shops`). */
-  listShops(): { club: string; name: string; day: number; money: number; playedAt: number }[] {
-    const out: { club: string; name: string; day: number; money: number; playedAt: number }[] = [];
-    for (const [club, c] of this.clubs) if (c.shop) out.push({ club, name: c.shop.meta.shop_name, day: c.shop.meta.day, money: c.shop.meta.money, playedAt: c.shop.meta.saved_at });
+  /**
+   * chunk 13 — every club with a shop, as the game's club cards show it (`GET /stub/shops`); chunk 18: with the
+   * characters its body and photos take (the owner's Manage card).
+   */
+  listShops(): { club: string; name: string; day: number; money: number; playedAt: number; bytes: number }[] {
+    const out: { club: string; name: string; day: number; money: number; playedAt: number; bytes: number }[] = [];
+    for (const [club, c] of this.clubs) {
+      if (!c.shop) continue;
+      let bytes = c.shop.body.length;
+      for (const p of c.photos.values()) bytes += p.data.length;
+      out.push({ club, name: c.shop.meta.shop_name, day: c.shop.meta.day, money: c.shop.meta.money, playedAt: c.shop.meta.saved_at, bytes });
+    }
     return out;
+  }
+
+  /**
+   * chunk 18 (ADR-0054) — the owner deleted a club's shop (or the club), as `owner_delete_shop` does: the shop and its
+   * photos go; the club stays open to its members, with no shop. A room running it finds it missing at its next save or
+   * lease renewal. True when there was one.
+   */
+  deleteShop(club: string): boolean {
+    const c = this.clubs.get(club);
+    if (!c?.shop) return false;
+    c.shop = null;
+    c.photos.clear();
+    return true;
   }
 
   /** The club, or (`openClubs`) a new one open to every stub player. */

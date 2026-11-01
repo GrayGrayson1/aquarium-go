@@ -460,6 +460,11 @@ link.
 | `social-friend-requests` · `social-request-<id>` · `social-accept` | Chunk 8: Friends' "Friend requests" ("{name} added you") and Accept |
 | `social-create-club` · `social-club-name` · `social-club-blurb` · `social-create-club-submit` | Chunk 8: the owner's Create a club (Social › Clubs, the owner's account only) |
 | `social-invite-link-<CODE>` · `social-copy-link` · `social-invite-url` | Chunk 8: on the owner's own clubs, "Invite link {CODE}" and Copy link; the link, selected, when the clipboard refuses |
+| `owner-manage` · `owner-stored` · `owner-clubs` · `owner-players` | Chunk 18 (ADR-0054): the owner's Manage clubs and players card (end of Social › Clubs, the owner only), what everything online takes, its two lists |
+| `owner-club-<clubId>` · `owner-shop-delete-<clubId>` · `owner-club-delete-<clubId>` | A club's row, Delete shop (when it has one) and Delete club |
+| `owner-player-<userId>` · `owner-player-delete-<userId>` | A player's row and Delete account (not on the owner's own row) |
+| `owner-confirm` · `owner-confirm-yes` · `owner-confirm-cancel` | The confirm box every owner delete opens, its delete button and Cancel |
+| `social-friend-<id>` · `social-friend-remove-<id>` · `social-decline-<id>` | Chunk 18: a friend's tile; the owner's Remove on it and Decline on a friend request |
 
 ## Online save and Settings › Account (chunk 8; ONLINE-STAGE1.md §6, §7; REL-029, REL-031)
 

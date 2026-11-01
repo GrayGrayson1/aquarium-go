@@ -10,7 +10,8 @@
  * a code that matches no one, and `news()` says how many trades and club items the player hasn't seen (the Social dot,
  * §5.4; SOC-004 A5). Chunk 8 adds sign-up details (a club's invite code, the name friends see, the 13-and-over box;
  * ADR-0039, ADR-0040), the owner's clubs and their invite codes, friend requests, account deletion, the player's
- * standing report and the online save (§5.1).
+ * standing report and the online save (§5.1). Chunk 18 (ADR-0054): the owner sees every club and player and may delete
+ * any of them, a club's shared shop, or a friend of their own (`forbidden` for anyone else).
  */
 
 export interface SocialUser {
@@ -166,6 +167,43 @@ export interface SharedUsage {
   secondsCap: number;
 }
 
+/** chunk 18 (ADR-0054) — a club as the owner's Manage card lists it, with its shared shop if it has one. */
+export interface OwnerClub {
+  id: string;
+  name: string;
+  initials: string;
+  colors: [string, string];
+  members: number;
+  /** `YYYY-MM-DD` (UTC): when it was made. */
+  createdAt: string;
+  /** Its shared shop, and the bytes the shop and its photos take on the server; null: none. */
+  shop: { name: string; day: number; bytes: number } | null;
+}
+
+/** chunk 18 — a player as the owner's Manage card lists them (never their email). */
+export interface OwnerPlayer {
+  id: string;
+  name: string;
+  friendCode: string;
+  /** The owner's own row (they delete their account in Settings › Account instead). */
+  owner: boolean;
+  /** `YYYY-MM-DD` (UTC): when they signed up. */
+  createdAt: string;
+  /** `YYYY-MM-DD` (UTC): when their aquarium last saved online; null: never. */
+  savedAt: string | null;
+  /** How many clubs they're in. */
+  clubs: number;
+  /** The bytes their online save (and its previous copy) and their picture take on the server. */
+  bytes: number;
+}
+
+/** chunk 18 — everything the owner may delete, and the database's size in bytes. */
+export interface OwnerOverview {
+  clubs: OwnerClub[];
+  players: OwnerPlayer[];
+  bytes: number;
+}
+
 export interface SocialNews {
   /** Trades the player hasn't seen yet. */
   trades: number;
@@ -216,6 +254,16 @@ export interface SocialService {
   sharedShops(): Promise<SharedShops>;
   /** chunk 12 — this month's data and awake hours (the owner only: `forbidden` for anyone else). */
   sharedUsage(): Promise<SharedUsage>;
+  /** chunk 18 (ADR-0054) — every club and player, newest first, and the database's size (the owner only: `forbidden`). */
+  ownerOverview(): Promise<OwnerOverview>;
+  /** chunk 18 — the owner deletes a club: its members list, its shared shop and that shop's photos go with it. */
+  deleteClub(clubId: string): Promise<void>;
+  /** chunk 18 — the owner deletes a club's shared shop (the club and its members stay). */
+  deleteSharedShop(clubId: string): Promise<void>;
+  /** chunk 18 — the owner deletes another player's account and all it keeps (`invalid` for the owner's own). */
+  deletePlayer(userId: string): Promise<void>;
+  /** chunk 18 — the owner stops being friends with someone, or turns down their request (their account stays). */
+  removeFriend(userId: string): Promise<void>;
   /**
    * chunk 13 (SHARED-SHOPS.md §5.3) — the signed-in player's access token, which the shared-shop server checks with
    * Supabase (null: signed out); `refresh` asks for a new one first. The local stub's is `stub:<id>:<name>`.

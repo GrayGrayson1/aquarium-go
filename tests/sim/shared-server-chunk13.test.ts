@@ -81,7 +81,8 @@ describe("chunk 13: the stub meets the game's local Social stub", () => {
     await pump(x.time, () => o.bins().length > 0, { step: 50, what: 'the new shop' });
     const a = await x.join(ANN, 'highland-betta');
     expect(a.snapshot()!.shopName).toBe('Highland Shop');
-    expect(world.listShops()).toEqual([{ club: 'highland-betta', name: 'Highland Shop', day: 1, money: expect.any(Number), playedAt: expect.any(Number) }]);
+    // (chunk 18: the listing carries the characters the shop takes, for the stub owner's Manage card)
+    expect(world.listShops()).toEqual([{ club: 'highland-betta', name: 'Highland Shop', day: 1, money: expect.any(Number), playedAt: expect.any(Number), bytes: world.clubs.get('highland-betta')!.shop!.body.length }]);
   });
 
   it('without it (the unit tests), a club nobody added has no members', async () => {
@@ -102,8 +103,33 @@ describe("chunk 13: the stub meets the game's local Social stub", () => {
       const p1 = await stub.listen(0);
       const p2 = await live.listen(0);
       const got = await fetch(`http://127.0.0.1:${p1}/stub/shops`).then((res) => res.json());
-      expect(got).toEqual([{ club: 'club_1', name: 'Club Shop', day: 1, money: expect.any(Number), playedAt: 5 }]);
+      // chunk 18: with the characters the shop takes, for the stub owner's Manage card
+      expect(got).toEqual([{ club: 'club_1', name: 'Club Shop', day: 1, money: expect.any(Number), playedAt: 5, bytes: world.clubs.get('club_1')!.shop!.body.length }]);
       expect((await fetch(`http://127.0.0.1:${p2}/stub/shops`)).status).toBe(404);
+    } finally {
+      await stub.close();
+      await live.close();
+    }
+  });
+
+  it('chunk 18: GET /stub/shops/delete forgets a club’s shop and its photos, on the stub only', async () => {
+    const world = new StubWorld();
+    world.addClub('club_1', null, { text: shopText({ name: 'Club Shop' }), savedAt: 5, leftAt: null });
+    world.clubs.get('club_1')!.photos.set('h', { mime: 'image/webp', data: 'UklGRhIAAABXRUJQ', at: 1 });
+    const deps = { store: world.store, auth: world.auth, stubShops: () => world.listShops(), stubDeleteShop: (club: string) => world.deleteShop(club), log: () => {} };
+    const stub = createShopServer({ config: { ...readConfig({}), stub: true, port: 0 }, ...deps });
+    const live = createShopServer({ config: { ...readConfig({}), stub: false, port: 0 }, ...deps });
+    try {
+      const p1 = await stub.listen(0);
+      const p2 = await live.listen(0);
+      expect((await fetch(`http://127.0.0.1:${p2}/stub/shops/delete?club=club_1`)).status).toBe(404);
+      expect(world.clubs.get('club_1')!.shop).not.toBeNull();
+      expect(await fetch(`http://127.0.0.1:${p1}/stub/shops/delete?club=club_1`).then((res) => res.json())).toEqual({ deleted: true });
+      expect(world.clubs.get('club_1')!.shop).toBeNull();
+      expect(world.clubs.get('club_1')!.photos.size).toBe(0);
+      expect(await fetch(`http://127.0.0.1:${p1}/stub/shops`).then((res) => res.json())).toEqual([]);
+      expect(await fetch(`http://127.0.0.1:${p1}/stub/shops/delete?club=club_1`).then((res) => res.json())).toEqual({ deleted: false });
+      expect(await fetch(`http://127.0.0.1:${p1}/stub/shops/delete`).then((res) => res.json())).toEqual({ deleted: false });
     } finally {
       await stub.close();
       await live.close();

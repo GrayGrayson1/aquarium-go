@@ -7,6 +7,8 @@
  * brings your own game back unchanged, with no catch-up; "Still here?"; and a reconnect after the server goes down
  * and comes back. Each context signs in to the local Social stub through its stored record. The stub server lives for
  * the whole run, so each browser project plays its own club (one of the local stub's), whose shop the first test makes.
+ * Chunk 18 (ADR-0054): the owner deletes a shop from Manage while a member plays it, on a club of its own per project
+ * (deleting the shared one would take it from the tests after).
  */
 import { test, expect, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -321,6 +323,44 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     await expect(tid(ben, 'shared-still-here')).toBeHidden();
     await aq(ben, 'shared.quiet', 31 * 60_000);
     await expect.poll(async () => (await visit(ola)).members.find((m) => m.id === benId)?.here, { timeout: 10_000 }).toBe(false);
+  });
+
+  // chunk 18 (ADR-0054): a club of its own per browser project, so the shop the tests above play stays
+  test('the owner deletes a shared shop from Manage while a member plays it: both are told it’s gone, and the club stays', async ({ browser }, info) => {
+    test.setTimeout(300_000);
+    const [club, clubName] = info.project.name === 'webkit' ? ['nano-tank', 'Nano Tank Collective'] : ['reef-starter', 'Reef Starter Circle'];
+    const ola = await player(browser, 'Ola', club, { owner: true });
+    await openClubCard(ola, club);
+    const card = tid(ola, `shared-card-${club}`);
+    await expect(card.getByTestId('shared-create').or(card.getByTestId('shared-open'))).toBeVisible({ timeout: 30_000 });
+    if (await card.getByTestId('shared-open').isVisible()) await openShop(ola, club); // a retry within the same run
+    else await createShop(ola, club);
+    const ben = await player(browser, 'Ben', club);
+    await openShop(ben, club);
+    await expect.poll(async () => (await visit(ola)).members.filter((m) => m.here).length, { timeout: 20_000 }).toBe(2);
+
+    await ola.evaluate(() => void (location.hash = '#/social/clubs'));
+    const row = tid(ola, `owner-club-${club}`);
+    await expect(row).toContainText(/Shared shop .+, day \d+, \d+(\.\d)? (KB|MB)/, { timeout: 30_000 });
+    await tid(ola, `owner-shop-delete-${club}`).click();
+    const confirm = tid(ola, 'owner-confirm');
+    await expect(confirm).toContainText(`This removes ${clubName}’s shared shop and its save from Aquarium Go’s server. Anyone playing it goes back to their own aquarium. The club stays, and you can make a new shop for it. This can’t be undone.`);
+    await tid(ola, 'owner-confirm-yes').click();
+    await expect(ola.locator('[data-testid="toast"]').filter({ hasText: 'Shared shop deleted' })).toContainText(clubName);
+
+    // the server finds it missing at its next lease renewal (every 30 s) and closes it for both
+    for (const page of [ben, ola]) {
+      await expect(tid(page, 'shared-closing-text')).toHaveText(`${clubName} has no shared shop any more.`, { timeout: 60_000 });
+      await expect(tid(page, 'shared-closing-text')).toHaveAttribute('data-why', 'gone');
+    }
+    await expect(tid(ben, 'shared-strip')).toBeHidden();
+    // the owner is back in their own aquarium (Social closed with the shop); the club stays, with no shop, and the
+    // owner may make a new one
+    await tid(ola, 'shared-closing').getByRole('button', { name: 'Close', exact: true }).click();
+    await openClubCard(ola, club);
+    await expect(tid(ola, `shared-card-${club}`).getByTestId('shared-create')).toBeVisible({ timeout: 30_000 });
+    await expect(row).toContainText(`${clubName}`);
+    await expect(row).toContainText('No shared shop');
   });
 });
 

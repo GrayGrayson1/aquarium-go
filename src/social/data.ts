@@ -3,7 +3,7 @@
  * lane "social". Friends' snapshots are small SVG pictures drawn here, so the stub never fetches anything (offline
  * first; PERSIST-004's no-remote-URL rule).
  */
-import type { Club, FriendAquarium, LeaderboardKind, TradeOffer } from './service';
+import type { Club, FriendAquarium, LeaderboardKind, OwnerPlayer, TradeOffer } from './service';
 
 /** The one invite code that resolves (§13.6); every other code is expired. */
 export const VALID_INVITE = 'HIGHLAND-4821';
@@ -61,6 +61,21 @@ export const FRIENDS: readonly FriendAquarium[] = [
   { id: 'friend-teo', owner: 'Teo Silva', title: 'Teo’s shrimp rack', gallons: 60, likes: 9, snapshotUrl: snapshot('shrimp'), updatedAt: '2026-10-10T08:15:00Z' },
   { id: 'friend-sam', owner: 'Sam Duarte', title: 'Sam’s planted 75', gallons: 75, likes: 15, snapshotUrl: snapshot('planted'), updatedAt: '2026-10-09T12:00:00Z' },
 ];
+
+/**
+ * chunk 18 (ADR-0054) — the players the stub's owner sees besides themselves: the friends' owners (their ids are the
+ * friends' ids, so deleting one takes their aquarium off Friends), with sample dates and sizes.
+ */
+export const PLAYERS: readonly OwnerPlayer[] = FRIENDS.map((f, i) => ({
+  id: f.id,
+  name: f.owner,
+  friendCode: `${f.owner.split(' ')[0].toUpperCase()}-${['7Q2', 'K4M', 'R8T', 'P3W', 'Z6N', 'H2D'][i]}`,
+  owner: false,
+  createdAt: `2026-10-${String(10 + i).padStart(2, '0')}`,
+  savedAt: i === 5 ? null : f.updatedAt.slice(0, 10),
+  clubs: 1 + (i % 2),
+  bytes: [1_840_000, 960_000, 412_000, 2_310_000, 88_000, 0][i],
+}));
 
 /**
  * This week's leaderboards: the four named leaders (ADR-0034), then players whose names never appear, so the

@@ -7150,6 +7150,81 @@
         "§14"
       ],
       "note": "Chunk 17 (2026-10-30, Skye; finished and released by Rubble)."
+    },
+    {
+      "id": "OWN-001",
+      "slice": "ALL",
+      "source": "ADR-0054; PLAN.md chunk 18",
+      "description": "The owner's five database functions: overview, delete a club, delete a shop, delete a player, remove a friend; nobody else may call them.",
+      "acceptance": [
+        "Each is a private SECURITY DEFINER function with an empty search_path behind a public SECURITY INVOKER wrapper, granted to authenticated only (never PUBLIC, anon or service_role), checking the caller and then the owner (forbidden) first.",
+        "A club delete takes its members list, shared shop and photos; a shop delete keeps the club; a player delete removes the auth user (everything else cascades, audit rows too) and refuses the owner's own and any owner's; a friend removal takes only the links between the owner and them; a repeat does nothing.",
+        "The overview lists every club (members, shop with its size) and player (friend code, dates, clubs, size), never an email or a body, and the database's size."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/supabase-migration.test.ts",
+        "scripts/online-db-local/checks.sql"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 18 (2026-11-01)."
+    },
+    {
+      "id": "OWN-002",
+      "slice": "ALL",
+      "source": "ADR-0054; PLAN.md chunk 18",
+      "description": "The Social service's owner calls, on Supabase and the local stub.",
+      "acceptance": [
+        "Supabase: one database function each with its argument; the overview mapped; forbidden and invalid come through.",
+        "Stub: forbidden for anyone else; a deleted club leaves Clubs, its invite and (on the stub shop server) its shop; a deleted player and a removed friend leave Friends and the requests; the owner's own account can't go; the deletes outlive a reload and a sign-out."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/social-owner.test.ts",
+        "tests/sim/shared-server-chunk13.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 18."
+    },
+    {
+      "id": "OWN-003",
+      "slice": "ALL",
+      "source": "ADR-0054; PLAN.md chunk 18",
+      "description": "The owner's Manage clubs and players card in Social › Clubs, and Remove and Decline in Friends, each delete behind a confirm box; players see none of it.",
+      "acceptance": [
+        "Only the owner sees the card, Remove and Decline; Cancel keeps what was about to go; a delete toasts, leaves the lists and the club cards; the owner's own row has no Delete and points to Settings › Account; the words as ADR-0054 decision 5."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/social.spec.ts",
+        "tests/sim/social-owner.test.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 18."
+    },
+    {
+      "id": "OWN-004",
+      "slice": "ALL",
+      "source": "ADR-0054; PLAN.md chunk 18",
+      "description": "A shared shop deleted while people play it closes for all of them as gone, and nothing is written back.",
+      "acceptance": [
+        "The shop server's lease renewal or save finding the shop missing stops the room with closing `gone` (not `restart`), saving nothing; a new join finds no shop."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/shared-server.test.ts",
+        "tests/e2e/shared-shop.spec.ts"
+      ],
+      "evidence": [],
+      "status": "PENDING",
+      "designSections": [],
+      "note": "Chunk 18."
     }
   ]
 }

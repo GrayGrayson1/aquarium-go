@@ -9,14 +9,16 @@
  * (a created club's code resolves too), every other code is expired; sign-up needs one of those codes, a name and the
  * age box, and joins that club; the player's leaderboard row comes from the save (./standing.ts, through `standing`);
  * nothing here touches the game state or the save. The online save lives under `aquarium-go.social.cloud.v1`, for the
- * account that wrote it; Delete my account clears both records.
+ * account that wrote it; Delete my account clears both records. Chunk 18 (ADR-0054): what the owner deletes (clubs,
+ * players, friends) is kept under `aquarium-go.social.deleted.v1`, as the server would keep it, whoever signs in after;
+ * a club's shared shop goes from the stub shop server too.
  *
  * Test and dev hooks beyond the interface: `setOffline` makes every call reject with `{ code: 'network' }` (SOC-010),
  * `pushTrade` and `pushClubNews` deliver something new (the Social dot, SOC-004 A5), and (chunk 8) `setOwner`,
  * `pushFriendRequest`, `setCloud` and `cloud` play the owner, a friend and "another device". Unseen news, friend
  * requests and accepted friends are kept in memory: the canned trades count as seen.
  */
-import { CLUBS, FRIENDS, LEADERS, TRADES, VALID_INVITE, snapshot } from './data';
+import { CLUBS, FRIENDS, LEADERS, PLAYERS, TRADES, VALID_INVITE, snapshot } from './data';
 import {
   CLUB_BLURB_MAX,
   INVITE_LETTERS,
@@ -34,6 +36,9 @@ import {
   type FriendRequest,
   type LeaderboardKind,
   type LeaderboardRow,
+  type OwnerClub,
+  type OwnerOverview,
+  type OwnerPlayer,
   type SharedShopInfo,
   type SignUpDetails,
   type SocialError,
@@ -48,6 +53,15 @@ import type { PlayerStanding } from './standing';
 export const SOCIAL_STORAGE_KEY = 'aquarium-go.social.v1';
 /** chunk 8 — the stub's online save (the server's copy, on this device). */
 export const SOCIAL_CLOUD_KEY = 'aquarium-go.social.cloud.v1';
+/** chunk 18 — what the stub's owner deleted (the server's record, on this device): club, player and friend ids. */
+export const SOCIAL_DELETED_KEY = 'aquarium-go.social.deleted.v1';
+
+/** chunk 18 — the stub's record of the owner's deletes. */
+export interface StoredDeleted {
+  clubs: string[];
+  players: string[];
+  friends: string[];
+}
 
 /** What the stub keeps on the device (never a password). */
 export interface StoredSocial {
@@ -275,22 +289,59 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
 
   const read = () => readStored(kv);
   const sharedServer = opts.sharedServer === undefined ? STUB_SHOP_SERVER : opts.sharedServer;
-  /** The stub server's shops (it may not be running: none). */
-  async function stubServerShops(): Promise<SharedShopInfo[]> {
-    const f = opts.fetch ?? (typeof fetch === 'function' ? fetch : null);
+  const fetcher = () => opts.fetch ?? (typeof fetch === 'function' ? fetch : null);
+  const serverBase = () => (sharedServer ? sharedServer.replace(/\/+$/, '') : '');
+  /** The stub server's shops (it may not be running: none); chunk 18: with the characters each takes. */
+  async function stubServerShops(): Promise<(SharedShopInfo & { bytes: number })[]> {
+    const f = fetcher();
     if (!sharedServer || !f) return [];
     try {
-      const res = await f(`${sharedServer.replace(/\/+$/, '')}/stub/shops`, { cache: 'no-store' });
+      const res = await f(`${serverBase()}/stub/shops`, { cache: 'no-store' });
       const rows = res.ok ? ((await res.json()) as unknown) : [];
       if (!Array.isArray(rows)) return [];
       const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
       return rows
         .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object' && typeof (r as { club?: unknown }).club === 'string')
-        .map((r) => ({ club: r.club as string, name: typeof r.name === 'string' ? r.name : '', day: num(r.day), money: num(r.money), playedAt: num(r.playedAt) }));
+        .map((r) => ({ club: r.club as string, name: typeof r.name === 'string' ? r.name : '', day: num(r.day), money: num(r.money), playedAt: num(r.playedAt), bytes: num(r.bytes) }));
     } catch {
       return [];
     }
   }
+  /** chunk 18 — the stub server forgets a club's shop (it may not be running: nothing to forget). */
+  async function deleteStubShop(club: string): Promise<void> {
+    const f = fetcher();
+    if (!sharedServer || !f) return;
+    try {
+      await f(`${serverBase()}/stub/shops/delete?club=${encodeURIComponent(club)}`, { cache: 'no-store' });
+    } catch {
+      /* no stub server: no shop */
+    }
+  }
+  /** chunk 18 — the owner's deletes so far (the device's storage is untrusted: only lists of strings). */
+  const readDeleted = (): StoredDeleted => {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(kv.getItem(SOCIAL_DELETED_KEY) ?? 'null');
+    } catch {
+      raw = null;
+    }
+    const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+    const ids = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+    return { clubs: ids(r.clubs), players: ids(r.players), friends: ids(r.friends) };
+  };
+  const markDeleted = (kind: keyof StoredDeleted, id: string) => {
+    const d = readDeleted();
+    if (!d[kind].includes(id)) d[kind].push(id);
+    kv.setItem(SOCIAL_DELETED_KEY, JSON.stringify(d));
+  };
+  /** chunk 18 — the owner, or `forbidden`. */
+  const ownerOnly = (): StoredSocial => {
+    const s = signedIn();
+    if (!s.owner) throw fail('forbidden');
+    return s;
+  };
+  /** chunk 18 — a friend's aquarium is shown unless the owner removed the friend or deleted the player. */
+  const shownFriend = (id: string, d: StoredDeleted) => !d.players.includes(id) && !d.friends.includes(id);
   const write = (s: StoredSocial) =>
     kv.setItem(
       SOCIAL_STORAGE_KEY,
@@ -308,13 +359,17 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
     return s;
   };
   const withJoined = (c: Club, s: StoredSocial | null): Club => (s?.joinedMonths[c.id] ? { ...c, joined: s.joinedMonths[c.id] } : { ...c });
-  /** The sample clubs and this account's own (the latter keep their invite codes). */
-  const allClubs = (s: StoredSocial | null): Club[] => [...CLUBS, ...(s?.createdClubs ?? [])];
+  /** The sample clubs and this account's own (the latter keep their invite codes); chunk 18: not the deleted ones. */
+  const allClubs = (s: StoredSocial | null): Club[] => {
+    const gone = new Set(readDeleted().clubs);
+    return [...CLUBS, ...(s?.createdClubs ?? [])].filter((c) => !gone.has(c.id));
+  };
   /** The club an invite code opens: the sample one, or one this account created. */
   const clubForCode = (code: string, s: StoredSocial | null): Club | null => {
     const c = normalizeCode(code);
-    if (c === VALID_INVITE) return CLUBS.find((x) => x.id === 'highland-betta')!;
-    return s?.createdClubs?.find((x) => x.inviteCode === c) ?? null;
+    const clubs = allClubs(s); // chunk 18: a deleted club's code opens nothing
+    if (c === VALID_INVITE) return clubs.find((x) => x.id === 'highland-betta') ?? null;
+    return clubs.find((x) => x.inviteCode === c) ?? null;
   };
   const readCloud = (email: string): StoredCloud | null => {
     try {
@@ -367,6 +422,7 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
       call(() => {
         const s = read();
         const mine = new Set(s?.joinedClubIds ?? []);
+        // (allClubs leaves out the clubs the owner deleted, so "Your club" does too)
         const clubs = allClubs(s);
         return { mine: clubs.filter((c) => mine.has(c.id)).map((c) => withJoined(c, s)), suggested: clubs.filter((c) => !mine.has(c.id)).map((c) => ({ ...c })) };
       }),
@@ -390,7 +446,11 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
         }
       }),
     trades: () => call(() => trades.map((t) => ({ ...t }))),
-    friendsAquariums: () => call(() => [...accepted, ...FRIENDS].map((f) => ({ ...f }))),
+    friendsAquariums: () =>
+      call(() => {
+        const d = readDeleted();
+        return [...accepted, ...FRIENDS].filter((f) => shownFriend(f.id, d)).map((f) => ({ ...f }));
+      }),
     addFriend: (code) =>
       call(() => {
         const s = signedIn();
@@ -440,7 +500,8 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
     friendRequests: () =>
       call(() => {
         signedIn();
-        return requests.map((r) => ({ ...r }));
+        const d = readDeleted();
+        return requests.filter((r) => shownFriend(r.id, d)).map((r) => ({ ...r }));
       }),
     acceptFriend: (id) =>
       call(() => {
@@ -491,10 +552,62 @@ export function createLocalSocialStub(opts: LocalStubOptions = {}): LocalSocialS
     // chunk 12 (SHARED-SHOPS.md §6.3); chunk 13: the stub server's shops of the clubs the player is in
     sharedShops: async () => {
       const s = await call(() => signedIn());
-      const mine = new Set([...s.joinedClubIds, ...(s.createdClubs ?? []).map((c) => c.id)]);
-      const shops = (await stubServerShops()).filter((x) => mine.has(x.club));
+      const gone = new Set(readDeleted().clubs);
+      const mine = new Set([...s.joinedClubIds, ...(s.createdClubs ?? []).map((c) => c.id)].filter((id) => !gone.has(id)));
+      const shops = (await stubServerShops()).filter((x) => mine.has(x.club)).map(({ bytes: _bytes, ...x }) => x);
       return { shops, closed: null, reopens: null };
     },
+    // chunk 18 (ADR-0054): the owner's overview and deletes, as the database's functions answer them
+    ownerOverview: async (): Promise<OwnerOverview> => {
+      const s = await call(() => ownerOnly());
+      const d = readDeleted();
+      const shops = await stubServerShops();
+      const clubs = allClubs(s)
+        .map((c): OwnerClub => {
+          const shop = shops.find((x) => x.club === c.id);
+          return { id: c.id, name: c.name, initials: c.initials, colors: c.colors, members: c.members, createdAt: `${s.joinedMonths[c.id] ?? '2026-10'}-01`, shop: shop ? { name: shop.name, day: shop.day, bytes: shop.bytes } : null };
+        })
+        .reverse(); // newest first, as the database lists them
+      const cloud = readCloud(s.email);
+      const me: OwnerPlayer = { id: userOf(s).id, name: s.displayName, friendCode: friendCodeFor(s.email), owner: true, createdAt: '2026-10-19', savedAt: cloud ? new Date(cloud.meta.savedAt).toISOString().slice(0, 10) : null, clubs: allClubs(s).filter((c) => s.joinedClubIds.includes(c.id)).length, bytes: cloud?.body.length ?? 0 };
+      const friends = accepted.map((f): OwnerPlayer => ({ id: f.id, name: f.owner, friendCode: '', owner: false, createdAt: f.updatedAt.slice(0, 10), savedAt: null, clubs: 0, bytes: 0 }));
+      const players = [me, ...friends, ...PLAYERS].filter((p) => !d.players.includes(p.id)).map((p) => ({ ...p }));
+      const bytes = 24_000_000 + players.reduce((n, p) => n + p.bytes, 0) + clubs.reduce((n, c) => n + (c.shop?.bytes ?? 0), 0);
+      return { clubs, players, bytes };
+    },
+    deleteClub: async (clubId) => {
+      await call(() => {
+        const s = ownerOnly();
+        markDeleted('clubs', clubId);
+        if (s.createdClubs?.some((c) => c.id === clubId) || s.joinedClubIds.includes(clubId)) {
+          s.createdClubs = (s.createdClubs ?? []).filter((c) => c.id !== clubId);
+          s.joinedClubIds = s.joinedClubIds.filter((id) => id !== clubId);
+          delete s.joinedMonths[clubId];
+          write(s);
+        }
+      });
+      await deleteStubShop(clubId); // its shop goes with it
+    },
+    deleteSharedShop: async (clubId) => {
+      await call(() => ownerOnly());
+      await deleteStubShop(clubId);
+    },
+    deletePlayer: (userId) =>
+      call(() => {
+        const s = ownerOnly();
+        if (!userId || userId === userOf(s).id) throw fail('invalid'); // their own: Delete my account
+        markDeleted('players', userId);
+        requests = requests.filter((r) => r.id !== userId);
+        accepted = accepted.filter((f) => f.id !== userId);
+      }),
+    removeFriend: (userId) =>
+      call(() => {
+        ownerOnly();
+        if (!userId) throw fail('invalid');
+        markDeleted('friends', userId);
+        requests = requests.filter((r) => r.id !== userId);
+        accepted = accepted.filter((f) => f.id !== userId);
+      }),
     accessToken: () => call(() => (read() ? stubTokenFor(read()!) : null)),
     onAccessToken: () => () => {}, // a stub token never runs out
     sharedUsage: () =>

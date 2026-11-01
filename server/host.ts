@@ -333,7 +333,10 @@ export class RoomHost {
     return !!this.room && (this.room.n !== this.savedN || this.leftAt !== this.savedLeftAt);
   }
 
-  /** §6.2: renewed on its own timer; a lease another server took closes the room (`restart`, nothing saved). */
+  /**
+   * §6.2: renewed on its own timer; a lease another server took closes the room (`restart`, nothing saved). Chunk 18
+   * (ADR-0054): a shop the owner deleted (missing) closes it as `gone`, nothing saved.
+   */
   private async renew(): Promise<void> {
     if (this.stopping) return;
     try {
@@ -341,7 +344,7 @@ export class RoomHost {
       if (r.ok) this.leaseOkAt = this.clock.now();
       else {
         this.log(`lease lost (${r.reason})`);
-        void this.stop('restart', undefined, { save: false });
+        void this.stop(r.reason === 'missing' ? 'gone' : 'restart', undefined, { save: false });
       }
     } catch (e) {
       this.log(`lease renewal failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -398,8 +401,9 @@ export class RoomHost {
           return;
         }
         this.log(`save refused (${r.reason})`);
-        // another server holds the shop now, or wrote it: this copy stops without saving (§6.2)
-        if (!this.stopping) void this.stop(r.reason === 'too_new' ? 'updating' : 'restart', undefined, { save: false });
+        // another server holds the shop now, or wrote it: this copy stops without saving (§6.2); chunk 18 (ADR-0054): the
+        // owner deleted the shop or its club, so it's gone for everyone there
+        if (!this.stopping) void this.stop(r.reason === 'too_new' ? 'updating' : r.reason === 'missing' ? 'gone' : 'restart', undefined, { save: false });
       } catch (e) {
         this.log(`save failed: ${e instanceof Error ? e.message : String(e)}`);
         this.failures++;

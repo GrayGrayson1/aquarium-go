@@ -4,6 +4,16 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.9.1 — 2026-11-01
+
+- **The owner can delete anything in Social, from the server.** A Manage clubs and players card at the end of Social ›
+  Clubs, seen only by the owner, lists every club with its shared shop and every player, with what each keeps online
+  and the total. From it the owner deletes a club (its members list and shared shop go too), a club's shared shop
+  alone, or another player's account (their online save, friends and club places go too); in Friends, the owner
+  removes a friend or declines a request. Each asks first. Players see nothing new.
+- **A shared shop deleted while people play it** now tells them "{club} has no shared shop any more." instead of
+  saying the server restarted.
+
 ## 0.9.0 — 2026-10-30
 
 - **18 big-tank species (79 → 97),** each with its own look, behaviour, colours and care, young and grown:

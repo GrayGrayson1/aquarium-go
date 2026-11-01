@@ -761,4 +761,166 @@ select case when (select count(*) from public.shared_shops) + (select count(*) f
   then 'none' else (1 / (random() * 0)::int)::text end;
 \echo CASE ok leftovers
 select (select count(*) from auth.users) || ' ' || (select count(*) from public.profiles) || ' ' || (select count(*) from public.club_members) || ' ' || (select count(*) from public.friend_links) || ' ' || (select count(*) from public.saves) || ' clubs ' || (select count(*) || '/' || count(created_by) from public.clubs) || ' audit ' || (select count(*) from auth.audit_log_entries);
+-- chunk 18 (ADR-0054): the owner's overview and deletes, on accounts of their own. O is the owner; P has a save, a club
+-- and friends; Q asks O to be friends. Each club has a shared shop with a photo.
+set role supabase_auth_admin;
+\echo CASE ok owner-signups
+insert into auth.users (email, raw_user_meta_data) values
+  ('o@x.test', format('{"invite_code":"%s","display_name":"Owner O","age_ok":true}', :'invite_code')::jsonb),
+  ('p@x.test', format('{"invite_code":"%s","display_name":"Player P","age_ok":true}', :'invite_code')::jsonb),
+  ('q@x.test', format('{"invite_code":"%s","display_name":"Player Q","age_ok":true}', :'invite_code')::jsonb);
+reset role;
+select id from auth.users where email = 'o@x.test' \gset o_
+select id from auth.users where email = 'p@x.test' \gset p_
+select id from auth.users where email = 'q@x.test' \gset q_
+select id from public.clubs where invite_code = :'invite_code' \gset first_
+update public.profiles set is_owner = true where id = :'o_id';
+insert into public.clubs (name, blurb, initials, color_a, color_b, invite_code, created_by) values ('Night Reef', '', 'NR', '#2f55d4', '#16247a', public.new_invite_code('NIGHT'), :'p_id') returning id \gset night_
+insert into public.club_members (club_id, user_id) values (:'night_id', :'p_id'), (:'night_id', :'o_id');
+insert into public.saves (user_id, revision, save_id, schema_version, saved_at, hour, shop_name, day, money, encoding, body) values (:'p_id', 1, 'save_p', 2, 1000, 8, 'P Shop', 1, 100, 'json', repeat('x', 5000));
+insert into public.shared_shops (club_id, shop_name, created_by, revision, schema_version, build, saved_at, hour, day, money, encoding, body) values
+  (:'first_id', 'First Shop', :'o_id', 1, 30, 'b', 1, 8, 1, 1, 'json', repeat('y', 3000)),
+  (:'night_id', 'Night Shop', :'o_id', 1, 30, 'b', 1, 8, 1, 1, 'json', '{}');
+insert into public.shared_photos (club_id, hash, mime, data) values (:'night_id', repeat('a', 64), 'image/jpeg', '/9j/AAAA'), (:'first_id', repeat('b', 64), 'image/jpeg', '/9j/AAAA');
+insert into public.friend_links (from_id, to_id) values (:'o_id', :'p_id'), (:'p_id', :'o_id'), (:'q_id', :'o_id'), (:'p_id', :'q_id');
+insert into auth.audit_log_entries (payload) values (json_build_object('actor_id', :'p_id', 'actor_username', 'p@x.test', 'action', 'user_signedup'));
+select (select count(*) from public.clubs) || '/' || (select count(*) from public.club_members) || '/' || (select count(*) from public.shared_shops) || '/' || (select count(*) from public.shared_photos) || '/' || (select count(*) from public.friend_links) || '/' || (select count(*) from auth.users) || '/' || (select count(*) from public.saves) as counts \gset before_
+
+-- nobody else: anon and service_role reach none of it; a player is refused (forbidden) and nothing changes
+set role anon;
+select set_config('request.jwt.claim.sub', '', false) \g /dev/null
+\echo CASE denied anon-owner-overview
+select public.owner_overview();
+\echo CASE denied anon-owner-delete-club
+select public.owner_delete_club(:'night_id');
+\echo CASE denied anon-owner-private
+select private.owner_delete_player(:'p_id');
+reset role;
+set role service_role;
+\echo CASE denied service-owner-overview
+select public.owner_overview();
+\echo CASE denied service-owner-delete-player
+select public.owner_delete_player(:'p_id');
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', :'p_id', false) \g /dev/null
+select set_config('aq.night', :'night_id', false), set_config('aq.first', :'first_id', false), set_config('aq.o', :'o_id', false), set_config('aq.q', :'q_id', false) \g /dev/null
+\echo CASE ok p-owner-calls-forbidden
+do $$
+declare
+  v_calls text[] := array['overview', 'club', 'shop', 'player', 'friend'];
+  v_call text;
+begin
+  foreach v_call in array v_calls loop
+    begin
+      case v_call
+        when 'overview' then perform public.owner_overview();
+        when 'club' then perform public.owner_delete_club(current_setting('aq.night')::uuid);
+        when 'shop' then perform public.owner_delete_shop(current_setting('aq.first')::uuid);
+        when 'player' then perform public.owner_delete_player(current_setting('aq.q')::uuid);
+        when 'friend' then perform public.owner_remove_friend(current_setting('aq.o')::uuid);
+      end case;
+      raise exception 'went through: %', v_call;
+    exception when others then
+      if sqlerrm <> 'forbidden' then
+        raise;
+      end if;
+    end;
+  end loop;
+end;
+$$;
+\echo CASE err p-owner-overview
+select public.owner_overview();
+reset role;
+\echo CASE ok p-refused-changed-nothing
+select case when (select count(*) from public.clubs) || '/' || (select count(*) from public.club_members) || '/' || (select count(*) from public.shared_shops) || '/' || (select count(*) from public.shared_photos) || '/' || (select count(*) from public.friend_links) || '/' || (select count(*) from auth.users) || '/' || (select count(*) from public.saves) = :'before_counts' then 'nothing deleted' else (1 / (random() * 0)::int)::text end;
+
+-- the owner: every club and player, newest first, with what each keeps; no email, no save or shop
+set role authenticated;
+select set_config('request.jwt.claim.sub', :'o_id', false) \g /dev/null
+\echo CASE ok o-overview
+select case when
+    (select e -> 'shop' ->> 'bytes' from jsonb_array_elements(o -> 'clubs') e where e ->> 'id' = :'night_id') = '10'
+    and (select e -> 'shop' ->> 'bytes' from jsonb_array_elements(o -> 'clubs') e where e ->> 'id' = :'first_id') = '3008'
+    and (select e -> 'shop' ->> 'name' from jsonb_array_elements(o -> 'clubs') e where e ->> 'id' = :'night_id') = 'Night Shop'
+    and (select e ->> 'members' from jsonb_array_elements(o -> 'clubs') e where e ->> 'id' = :'night_id') = '2'
+    and (select n from jsonb_array_elements(o -> 'clubs') with ordinality as x(e, n) where e ->> 'id' = :'night_id') < (select n from jsonb_array_elements(o -> 'clubs') with ordinality as x(e, n) where e ->> 'id' = :'first_id')
+    and (select e ->> 'bytes' from jsonb_array_elements(o -> 'players') e where e ->> 'id' = :'p_id') = '5000'
+    and (select e ->> 'saved_at' from jsonb_array_elements(o -> 'players') e where e ->> 'id' = :'p_id') ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    and (select e -> 'saved_at' from jsonb_array_elements(o -> 'players') e where e ->> 'id' = :'q_id') = 'null'::jsonb
+    and (select e ->> 'name' from jsonb_array_elements(o -> 'players') e where e ->> 'id' = :'p_id') = 'Player P'
+    and (select e ->> 'clubs' from jsonb_array_elements(o -> 'players') e where e ->> 'id' = :'p_id') = '2'
+    and (select e ->> 'owner' from jsonb_array_elements(o -> 'players') e where e ->> 'id' = :'o_id') = 'true'
+    and (o ->> 'bytes')::bigint > 0
+    and o::text !~ '@x\.test|"body"|yyy|xxx'
+  then 'every club and player, with sizes' else (1 / (random() * 0)::int)::text end
+from (select public.owner_overview() as o) x;
+\echo CASE err o-delete-self
+select public.owner_delete_player(:'o_id');
+\echo CASE err o-delete-no-player
+select public.owner_delete_player(null);
+\echo CASE err o-delete-no-club
+select public.owner_delete_club(null);
+\echo CASE err o-delete-no-shop
+select public.owner_delete_shop(null);
+\echo CASE err o-remove-no-friend
+select public.owner_remove_friend(null);
+\echo CASE ok o-remove-friend
+select public.owner_remove_friend(:'p_id');
+\echo CASE ok o-decline-request
+select public.owner_remove_friend(:'q_id');
+\echo CASE ok o-no-friends-left
+select case when public.friends_aquariums() = '[]'::jsonb and public.friend_requests() = '[]'::jsonb then 'no friends, no requests' else (1 / (random() * 0)::int)::text end;
+reset role;
+\echo CASE ok o-remove-friend-only-the-owners
+select case when exists (select 1 from public.friend_links where from_id = :'p_id' and to_id = :'q_id') then 'P’s request to Q stays' else (1 / (random() * 0)::int)::text end;
+-- another owner's account is never the owner's to delete
+update public.profiles set is_owner = true where id = :'q_id';
+set role authenticated;
+select set_config('request.jwt.claim.sub', :'o_id', false) \g /dev/null
+\echo CASE err o-delete-other-owner
+select public.owner_delete_player(:'q_id');
+reset role;
+\echo CASE ok other-owner-kept
+select case when exists (select 1 from auth.users where id = :'q_id') then 'kept' else (1 / (random() * 0)::int)::text end;
+update public.profiles set is_owner = false where id = :'q_id';
+set role authenticated;
+select set_config('request.jwt.claim.sub', :'o_id', false) \g /dev/null
+\echo CASE ok o-delete-shop
+select public.owner_delete_shop(:'first_id');
+\echo CASE ok o-delete-shop-again
+select public.owner_delete_shop(:'first_id');
+\echo CASE ok o-delete-club
+select public.owner_delete_club(:'night_id');
+\echo CASE ok o-delete-club-again
+select public.owner_delete_club(:'night_id');
+\echo CASE ok o-delete-player
+select public.owner_delete_player(:'p_id');
+\echo CASE ok o-delete-player-again
+select public.owner_delete_player(:'p_id');
+\echo CASE ok o-overview-after
+select case when not exists (select 1 from jsonb_array_elements(o -> 'clubs') e where e ->> 'id' = :'night_id')
+    and (select e -> 'shop' from jsonb_array_elements(o -> 'clubs') e where e ->> 'id' = :'first_id') = 'null'::jsonb
+    and not exists (select 1 from jsonb_array_elements(o -> 'players') e where e ->> 'id' = :'p_id')
+    and exists (select 1 from jsonb_array_elements(o -> 'players') e where e ->> 'id' = :'q_id')
+  then 'gone from the list' else (1 / (random() * 0)::int)::text end
+from (select public.owner_overview() as o) x;
+reset role;
+\echo CASE ok owner-deletes-took-only-that
+select case when exists (select 1 from public.clubs where id = :'first_id')
+    and not exists (select 1 from public.shared_shops where club_id in (:'first_id', :'night_id'))
+    and not exists (select 1 from public.shared_photos where club_id in (:'first_id', :'night_id'))
+    and not exists (select 1 from public.clubs where id = :'night_id')
+    and not exists (select 1 from public.club_members where club_id = :'night_id' or user_id = :'p_id')
+    and exists (select 1 from public.club_members where club_id = :'first_id' and user_id = :'q_id')
+    and not exists (select 1 from auth.users where id = :'p_id')
+    and not exists (select 1 from public.profiles where id = :'p_id')
+    and not exists (select 1 from public.saves where user_id = :'p_id')
+    and not exists (select 1 from auth.audit_log_entries where payload ->> 'actor_id' = :'p_id')
+    and not exists (select 1 from public.friend_links where :'p_id' in (from_id, to_id) or :'o_id' in (from_id, to_id))
+    and exists (select 1 from auth.users where id = :'o_id') and exists (select 1 from auth.users where id = :'q_id')
+  then 'what was deleted, and nothing more' else (1 / (random() * 0)::int)::text end;
+delete from auth.users where id in (:'o_id', :'q_id');
+\echo CASE ok owner-leftovers
+select case when not exists (select 1 from auth.users where email in ('o@x.test', 'p@x.test', 'q@x.test')) and not exists (select 1 from public.shared_shops) and not exists (select 1 from public.shared_photos) then 'none' else (1 / (random() * 0)::int)::text end;
 \echo CASE end
