@@ -467,6 +467,37 @@ describe('chunk 12: a room’s life (§5.2)', () => {
     void world;
   });
 
+  // chunk 18 (ADR-0054): the owner deleted the shop (or its club) while people were in it
+  it('chunk 18: a shop deleted while open closes as gone for everyone there at the next lease renewal, and nothing is written back', async () => {
+    const x = await shop();
+    const o = await x.join(OWNER, CLUB);
+    const a = await x.join(A, CLUB);
+    expect(x.world.deleteShop(CLUB)).toBe(true);
+    x.time.advance(LEASE_RENEW_MS + 10);
+    await pump(x.time, () => o.closed !== null && a.closed !== null, { step: 100, what: 'the room to stop' });
+    expect(closingOf(o)?.why).toBe('gone');
+    expect(closingOf(a)?.why).toBe('gone');
+    expect(x.world.clubs.get(CLUB)!.shop).toBeNull();
+    // and a new join finds no shop
+    const b = await x.join(B, CLUB);
+    expect(closingOf(b)?.why).toBe('gone');
+  });
+
+  it('chunk 18: a shop deleted while open, found at a save, closes as gone and nothing is written back', async () => {
+    const x = await shop();
+    const o = await x.join(OWNER, CLUB);
+    o.send({ t: 'cmd', id: 1, c: { k: 'raiseFlag', name: 'opened_market' } });
+    await pump(x.time, () => o.commands().length > 0, { step: 50 });
+    x.world.failing.add('shopTake'); // the renewal can't tell (a blip), so the save is what finds it gone
+    expect(x.world.deleteShop(CLUB)).toBe(true);
+    o.send({ t: 'away' });
+    await sleep(30);
+    x.time.advance(EMPTY_SAVE_DELAY_MS + 1000);
+    await pump(x.time, () => o.closed !== null, { step: 200, what: 'the room to stop' });
+    expect(closingOf(o)?.why).toBe('gone');
+    expect(x.world.clubs.get(CLUB)!.shop).toBeNull();
+  });
+
   it('SIGTERM saves every shop and tells its members the server restarted', async () => {
     const x = await shop();
     const o = await x.join(OWNER, CLUB);

@@ -7,6 +7,8 @@
  * Chunk 8 (ADR-0039 to ADR-0041; REL-028, REL-030; ONLINE-STAGE1.md §8.2): sign-up needs a working code, a name and
  * the age box, and lands in that club; the privacy note opens and closes; a friend request accepted; the owner creates
  * a club and copies its invite link (the stub's owner hook); the join text and trades note as approved.
+ * Chunk 18 (ADR-0054): only the owner sees Manage clubs and players; each delete asks first (Cancel keeps it), then a
+ * club leaves Clubs, a player's account goes with their aquarium, and a friend leaves Friends.
  */
 import { test, expect, type Page } from '@playwright/test';
 import { openApp, quickGame, aq, tid, devUrl, collectErrors } from './helpers';
@@ -372,6 +374,89 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     // the link opens the club's invite (already a member: it's the owner's own)
     await go(page, `#/social/join/${code}`);
     await expect(tid(page, 'social-invite-member')).toContainText('You’re in Aquarium Go Friends');
+  });
+
+  test('chunk 18: the owner deletes a club, a player and a friend, each after asking', async ({ page }) => {
+    await go(page, '#/social/clubs');
+    await signIn(page);
+    await expect(tid(page, 'social-clubs')).toBeVisible();
+    await expect(tid(page, 'owner-manage')).toHaveCount(0); // not the owner
+    await aq(page, 'social.setOwner', true);
+    const manage = tid(page, 'owner-manage');
+    await expect(manage.getByRole('heading', { name: 'Manage clubs and players' })).toBeVisible();
+    await expect(tid(page, 'owner-stored')).toHaveText(/^Everything Aquarium Go keeps online takes \d+(\.\d)? (KB|MB|GB)\.$/);
+    await expect(manage).toContainText('Clubs (4)');
+    await expect(tid(page, 'owner-club-nano-tank')).toContainText('Nano Tank Collective412 members');
+    await expect(manage).toContainText('Players (7)');
+    await expect(tid(page, 'owner-player-friend-ola')).toContainText('Ola BrandtOLA-7Q2 · joined 10 October · saved online 12 October · 1 club · 1.8 MB');
+    // the owner's own row says where to delete it, and has no Delete
+    const me = manage.locator('[data-testid^="owner-player-local:"]');
+    await expect(me).toContainText('you (you)');
+    await expect(me).toContainText('Your own account: delete it in Settings › Account.');
+    await expect(me.getByRole('button')).toHaveCount(0);
+
+    // a club of this test's own (the sample clubs are the shared-shop tests' clubs on the stub shop server, which the
+    // whole run shares): Cancel keeps it; Delete club takes it off Manage and Your club
+    await tid(page, 'social-club-name').fill('Night Reef Club');
+    await tid(page, 'social-create-club-submit').click();
+    await expect(toast(page, 'Club created')).toBeVisible();
+    await expect(manage).toContainText('Clubs (5)');
+    const created = manage.locator('[data-testid^="owner-club-club-"]');
+    await expect(created).toContainText('Night Reef Club1 member · No shared shop');
+    const id = ((await created.getAttribute('data-testid')) ?? '').replace('owner-club-', '');
+    await expect(page.locator(`.so-card--plain [data-testid="social-club-${id}"]`)).toBeVisible();
+    await tid(page, `owner-club-delete-${id}`).click();
+    const confirm = tid(page, 'owner-confirm');
+    await expect(confirm.getByRole('heading', { name: 'Delete Night Reef Club?' })).toBeVisible();
+    await expect(confirm).toContainText('This removes the club, its members list and its shared shop from Aquarium Go’s server, and its invite link stops working. Members keep their accounts and their own aquariums. This can’t be undone.');
+    await tid(page, 'owner-confirm-cancel').click();
+    await expect(confirm).toHaveCount(0);
+    await expect(tid(page, `owner-club-${id}`)).toBeVisible();
+    await tid(page, `owner-club-delete-${id}`).click();
+    await tid(page, 'owner-confirm-yes').click();
+    await expect(toast(page, 'Club deleted')).toContainText('Night Reef Club');
+    await expect(tid(page, `owner-club-${id}`)).toHaveCount(0);
+    await expect(manage).toContainText('Clubs (4)');
+    await expect(page.locator(`[data-testid="social-club-${id}"]`)).toHaveCount(0);
+
+    // a player: their account goes, and their aquarium leaves Friends
+    await tid(page, 'owner-player-delete-friend-ola').click();
+    await expect(confirm.getByRole('heading', { name: 'Delete Ola Brandt’s account?' })).toBeVisible();
+    await expect(confirm).toContainText('This removes their account, online save, friends and club places from Aquarium Go’s server. The game on their device stays. This can’t be undone.');
+    await tid(page, 'owner-confirm-yes').click();
+    await expect(toast(page, 'Account deleted')).toContainText('Ola Brandt');
+    await expect(tid(page, 'owner-player-friend-ola')).toHaveCount(0);
+    await expect(manage).toContainText('Players (6)');
+
+    // a friend: Remove on their tile, after asking; their account stays
+    await go(page, '#/social/friends');
+    const grid = tid(page, 'social-friend-grid');
+    await expect(grid).toBeVisible();
+    await expect(tid(page, 'social-friend-friend-ola')).toHaveCount(0);
+    await tid(page, 'social-friend-remove-friend-ada').click();
+    await expect(confirm.getByRole('heading', { name: 'Remove Ada Okafor?' })).toBeVisible();
+    await expect(confirm).toContainText('You stop being friends and their aquarium leaves your Friends tab. Their account stays.');
+    await tid(page, 'owner-confirm-yes').click();
+    await expect(toast(page, 'Friend removed')).toContainText('Ada Okafor');
+    await expect(tid(page, 'social-friend-friend-ada')).toHaveCount(0);
+    await expect(grid.locator('li')).toHaveCount(4);
+    // a request: Decline
+    await aq(page, 'social.pushFriendRequest', 'Sam');
+    await go(page, '#/social/clubs');
+    await go(page, '#/social/friends');
+    await tid(page, 'social-decline').click();
+    await expect(confirm.getByRole('heading', { name: 'Remove Sam?' })).toBeVisible();
+    await tid(page, 'owner-confirm-yes').click();
+    await expect(tid(page, 'social-friend-requests')).toHaveCount(0);
+    await go(page, '#/social/clubs');
+    await expect(tid(page, 'owner-player-friend-ada')).toBeVisible();
+  });
+
+  test('chunk 18: a player who isn’t the owner sees no Remove on friends', async ({ page }) => {
+    await go(page, '#/social/friends');
+    await signIn(page);
+    await expect(tid(page, 'social-friend-grid')).toBeVisible();
+    await expect(page.locator('[data-testid^="social-friend-remove-"]')).toHaveCount(0);
   });
 
   test('the dock’s Social dot: New until first opened, back for new trades', async ({ page }) => {

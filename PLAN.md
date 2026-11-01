@@ -46,7 +46,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    Designed by Marshall (`docs/agent/design/CHUNK-17/BIG-TANKS.md`), built by Skye and finished by Rubble (the owner:
    "in cnvs have rubble do the rest and release when green"): **done** (2026-10-30, `03736be`) and released as 0.9.0
    (ADR-0053 decision 10; "Releases"). **Next:** the owner plays 0.9.0; B-221 to B-226 (chunk 17's follow-ups, B-225 a
-   balance question for the owner). A problem the owner reports comes first.
+   balance question for the owner). A problem the owner reports comes first. **Chunk 18, the owner's deletes** (the
+   owner, 2026-11-01: "I just need the option to be able to delete what I want to since I'm kind of like the super
+   admin of it"; ADR-0054): the owner deletes any club, shared shop, account or friend from Social, from the database;
+   to be released as 0.9.1, the Render static site included (it was still on 0.8.0, which the 0.9.0 shop server asked
+   to reload: the owner's "Reload to join the shared shop" report).
 4. **Released:** 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
@@ -77,6 +81,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 14 | Shared shops, permission tiers and the money pool (ADR-0043 decision 5, ADR-0050) | Done 2026-10-22 (released in 0.7.0; Marshall, at the owner's request; the owner's answers, ADR-0050). The pool's tiers, requests, allowances and gifts in the shop's state, six commands, the server's spend refusal, the Money sheet; the review's blocker and its confirmations' notes fixed, the second confirmation clean; the final pass on the release commit `d16dd72`: typecheck, unit 3,243, build, e2e 331 of 331; live: the smoke 27 of 27, the two-browser money test 29 of 29 on Pages and on the Render address |
 | 16 | 31 new species (ADR-0052) | Done 2026-10-25 (released in 0.8.0; Chase, at the owner's request; the owner's answers, ADR-0052 rounds 1–4). 31 species (48 → 79) in three waves with real colour forms, young and male/female colours, their own behaviour and art; save format v3; the lab's "A friend's reef". Its full run (`96c950c`): typecheck, unit 3,814, build, e2e 335 of 335; the fresh review's, the confirmation's and the AI fixes' reviews' blockers fixed |
 | 17 | Big-tank species, and no animal in the shop before its tank (ADR-0053) | Brief and design written 2026-10-30 (Marshall, at the owner's request; `docs/agent/design/CHUNK-17/BIG-TANKS.md`); handed to Skye to build |
+| 18 | The owner deletes anything in Social, from the database (ADR-0054) | Built 2026-11-01 (at the owner's request in the session); the checks and the review below |
 
 **Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
@@ -1780,6 +1785,39 @@ REL-012, REL-018.
     missed the button while the overview's cards loaded and moved it; it passed 6 of 6 alone), fixed in the test on
     purpose in `03736be` (it waits for the cards; no app change). On the final commit `03736be`: typecheck exit
     0; unit 270 files, 4,121 tests; build exit 0; e2e 335 of 335 (40.2 min).
+
+### 18. The owner deletes anything in Social, from the database (ADR-0054) — built 2026-11-01
+
+**Why.** The owner (2026-11-01): "It would also be really nice to have a way to delete any of the socials from the
+main account … It is already growing to too large a size", then "I just need the option to be able to delete what I
+want to since I'm kind of like the super admin of it. As long as I can delete it and it deletes from the database".
+Social had only Delete my account.
+
+**What (ADR-0054).**
+- *Database* (`supabase/migrations/20261101000000_owner_deletes.sql`): `owner_overview` (every club with its members
+  and shared shop, every player with friend code, dates, clubs and bytes, never an email or a body; the database's
+  size), `owner_delete_club`, `owner_delete_shop`, `owner_delete_player` (as Delete my account, never the owner's own
+  or an owner's), `owner_remove_friend` (the links between the owner and them, both ways). Each a private definer
+  function checking the caller and then the owner (`forbidden`) first, behind a public invoker wrapper, granted to
+  `authenticated` only. `tests/sim/supabase-migration.test.ts` holds them to that (OWNER, with broken copies);
+  `scripts/online-db-local/checks.sql` runs them on a throwaway Postgres (anon, service_role and a player refused,
+  each delete takes what it should and nothing more); `scripts/online-smoke.mjs` checks the live refusals.
+- *Service* (`src/social`): `ownerOverview`, `deleteClub`, `deleteSharedShop`, `deletePlayer`, `removeFriend` on
+  Supabase (one call each) and on the local stub (its deletes kept under `aquarium-go.social.deleted.v1`, as the
+  server would; a club's shop goes from the stub shop server through `GET /stub/shops/delete`, the stub only).
+- *Screens* (`src/ui/panels/social/OwnerManage.tsx`): "Manage clubs and players" at the end of Social › Clubs, the
+  owner's only (the clubs with Delete shop and Delete club, the players with Delete account, sizes and the total);
+  Remove on friends' tiles and Decline on requests in Friends, the owner's only; a confirm box before each delete.
+  Players see nothing new. The words are ADR-0054 decision 5.
+- *Shop server* (`server/host.ts`): a lease renewal or save that finds the shop missing closes the room as `gone`
+  ("{club} has no shared shop any more."), not `restart`, saving nothing.
+- Nothing under `src/sim`, `src/data`, `src/types` or the persistence files changes, so the shared-shop build hash
+  stays `f128a63f7d57f4b9` and nobody in a shared shop is asked to reload.
+
+**Done when** the four checks pass on the final code, a fresh reviewer (Opus 5.5, max effort) has read
+`93c106d..HEAD` against this brief and its blockers are fixed; then 0.9.1 (the owner: "try to get it released to
+render on your own"): the migration on the live project, then `main`, Pages, the shop server and the Render static
+site, with the smoke tests.
 
 ## Releases
 

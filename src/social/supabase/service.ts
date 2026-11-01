@@ -31,6 +31,9 @@ import {
   type SocialUser,
   type SharedShops,
   type SharedUsage,
+  type OwnerOverview,
+  type OwnerClub,
+  type OwnerPlayer,
 } from '../service';
 import type { OnlineProject } from '../project';
 import type { PlayerStanding } from '../standing';
@@ -154,6 +157,19 @@ export function toMeta(v: unknown): CloudSaveMeta | null {
 
 /** chunk 13 — a session's access token, or null. */
 const accessTokenOf = (session: unknown): string | null => (isObj(session) && typeof session.access_token === 'string' && session.access_token ? session.access_token : null);
+
+/** chunk 18 (ADR-0054) — owner_overview's answer. */
+export function toOwnerOverview(v: unknown): OwnerOverview {
+  if (!isObj(v)) throw fail('invalid');
+  const date = (x: unknown): string | null => (typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null);
+  const clubs = list(v.clubs).map((c): OwnerClub => {
+    const shop = isObj(c.shop) ? { name: str(c.shop.name), day: num(c.shop.day), bytes: num(c.shop.bytes) } : null;
+    const { id, name, initials, colors, members } = toClub(c);
+    return { id, name, initials, colors, members, createdAt: date(c.created_at) ?? '', shop };
+  });
+  const players = list(v.players).map((p): OwnerPlayer => ({ id: str(p.id), name: str(p.name), friendCode: str(p.friend_code), owner: p.owner === true, createdAt: date(p.created_at) ?? '', savedAt: date(p.saved_at), clubs: num(p.clubs), bytes: num(p.bytes) }));
+  return { clubs, players, bytes: num(v.bytes) };
+}
 
 const toRow = (v: unknown): LeaderboardRow | null => (isObj(v) ? { rank: num(v.rank), name: str(v.name), value: num(v.value), ...(v.me === true ? { me: true } : {}) } : null);
 
@@ -417,6 +433,20 @@ export function createSupabaseSocialService(project: OnlineProject, opts: Supaba
         bytesCap: num(d.bytes_cap),
         secondsCap: num(d.seconds_cap),
       };
+    },
+    // chunk 18 (ADR-0054): the owner's; the database refuses anyone else (`forbidden`)
+    ownerOverview: async () => toOwnerOverview(await rpc('owner_overview')),
+    deleteClub: async (clubId) => {
+      await rpc('owner_delete_club', { p_club: clubId });
+    },
+    deleteSharedShop: async (clubId) => {
+      await rpc('owner_delete_shop', { p_club: clubId });
+    },
+    deletePlayer: async (userId) => {
+      await rpc('owner_delete_player', { p_user: userId });
+    },
+    removeFriend: async (userId) => {
+      await rpc('owner_remove_friend', { p_id: userId });
     },
     onSessionChange: (cb) => {
       // supabase-js tells every tab of a sign-in or sign-out (its events cross tabs), once a call has made the client

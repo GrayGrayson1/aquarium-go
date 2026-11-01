@@ -269,10 +269,10 @@ export function TradeList({ trades, onView }: { trades: readonly TradeOffer[]; o
  * A friend's aquarium: the 16:10 snapshot, its title, "1,000 gal · 48 likes" (or "Public aquarium · 31 likes"). Chunk 8
  * (ADR-0040 decision 4): with no likes (`likes` null, the real service) the tile shows the size alone, without the heart.
  */
-export function FriendTile({ f }: { f: FriendAquarium }) {
+export function FriendTile({ f, action }: { f: FriendAquarium; action?: ReactNode }) {
   const size = f.gallons === null ? C.publicAquarium : C.gallons(count(f.gallons));
   return (
-    <li className="so-friend">
+    <li className="so-friend" data-testid={`social-friend-${f.id}`}>
       <img className="so-friend__snap" src={f.snapshotUrl} alt="" width={320} height={200} loading="lazy" decoding="async" />
       <div className="so-friend__title">{f.title}</div>
       <div className="so-friend__meta">
@@ -285,12 +285,13 @@ export function FriendTile({ f }: { f: FriendAquarium }) {
           </>
         )}
       </div>
+      {action /* chunk 18: the owner's Remove (ADR-0054) */}
     </li>
   );
 }
 
 /** chunk 8 (ADR-0040 decision 4) — "Friend requests": "{name} added you" with Accept. */
-export function FriendRequestList({ requests, busy, onAccept }: { requests: readonly FriendRequest[]; busy: string | null; onAccept: (id: string) => void }) {
+export function FriendRequestList({ requests, busy, onAccept, extra }: { requests: readonly FriendRequest[]; busy: string | null; onAccept: (id: string) => void; extra?: (r: FriendRequest) => ReactNode }) {
   return (
     <section className="so-card so-card--plain" data-testid="social-friend-requests">
       <h3 className="so-section">
@@ -304,6 +305,7 @@ export function FriendRequestList({ requests, busy, onAccept }: { requests: read
             <Button size="sm" disabled={busy === r.id} onClick={() => onAccept(r.id)} data-testid="social-accept">
               <Check size={14} aria-hidden /> {C.accept}
             </Button>
+            {extra?.(r) /* chunk 18: the owner's Decline (ADR-0054) */}
           </li>
         ))}
       </ul>
@@ -311,7 +313,7 @@ export function FriendRequestList({ requests, busy, onAccept }: { requests: read
   );
 }
 
-export function FriendGrid({ friends, testId }: { friends: readonly FriendAquarium[]; testId?: string }) {
+export function FriendGrid({ friends, testId, action }: { friends: readonly FriendAquarium[]; testId?: string; action?: (f: FriendAquarium) => ReactNode }) {
   if (!friends.length)
     return (
       <div className="so-empty" data-testid="social-friends-empty">
@@ -322,7 +324,7 @@ export function FriendGrid({ friends, testId }: { friends: readonly FriendAquari
   return (
     <ul className="so-friends" data-testid={testId}>
       {friends.map((f) => (
-        <FriendTile key={f.id} f={f} />
+        <FriendTile key={f.id} f={f} action={action?.(f)} />
       ))}
     </ul>
   );

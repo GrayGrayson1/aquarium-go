@@ -27,6 +27,10 @@
  * function made before go, and the default privileges stop granting it anything, before any new object is made: the
  * only default-privilege changes allowed are those three revokes (the rule that no default privilege changes becomes
  * this one on purpose: it still forbids any grant), and nothing anywhere is granted to service_role.
+ *
+ * Chunk 18 (ADR-0054): the owner's five (OWNER) follow the game's rules, and each checks, first, the caller and then
+ * that the caller is the owner (`forbidden`); the player delete refuses the owner's own account and any owner's, and
+ * removes the auth user as Delete my account does.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFile, readdir } from 'node:fs/promises';
@@ -47,6 +51,10 @@ const TABLES = [...STAGE1_TABLES, ...SHARED_TABLES];
 const SERVER = ['server_member', 'server_shop_get', 'server_shop_create', 'server_shop_put', 'server_shop_take', 'server_shop_release', 'server_set_pausers', 'server_photo_put', 'server_photo_get', 'server_photo_hashes', 'server_photos_delete', 'server_usage_add'];
 /** Chunk 12: the game's two, made as stage 1's are, granted to `authenticated`. */
 const GAME = ['club_shared_shops', 'shared_usage'];
+/** Chunk 18 (ADR-0054): the owner's overview and deletes, granted to `authenticated`, each refusing anyone but the owner. */
+const OWNER = ['owner_overview', 'owner_delete_club', 'owner_delete_shop', 'owner_delete_player', 'owner_remove_friend'];
+/** The owner check every one of them makes right after the caller's. */
+const OWNER_FIRST = /^ declare v_uid uuid := public\.require_uid\(\); begin if not exists \(select 1 from public\.profiles p where p\.id = v_uid and p\.is_owner\) then raise exception 'forbidden'; end if;/;
 /** Chunk 12 (§5.8): the only default privileges that may change: service_role's in public, taken away. */
 const DEFAULTS = ['tables', 'functions', 'sequences'].map((k) => `alter default privileges in schema public revoke all on ${k} from service_role;`);
 /**
@@ -227,6 +235,29 @@ export function migrationProblems(raw: string): string[] {
       if (!grantedIn(sql, schema, c, 'authenticated')) out.push(`${schema}.${c}: not granted to authenticated`);
     }
   }
+  // chunk 18 (ADR-0054): the owner's, as the game's are, each checking the caller and then that it's the owner, first
+  for (const c of OWNER) {
+    const work = fns.filter((f) => f.name === c && f.schema === 'private');
+    const wrapper = fns.filter((f) => f.name === c && f.schema === 'public');
+    if (work.length !== 1 || wrapper.length !== 1) {
+      out.push(`${c}: not one private function behind one public wrapper`);
+      continue;
+    }
+    if (!/\bsecurity definer\b/.test(work[0].header) || !work[0].header.includes("set search_path = ''")) out.push(`${c}: its private function isn't security definer with an empty search_path`);
+    if (!OWNER_FIRST.test(work[0].body)) out.push(`${c}: doesn't check first that the owner is calling`);
+    if (!/\bsecurity invoker\b/.test(wrapper[0].header) || /\bsecurity definer\b/.test(wrapper[0].header) || !wrapper[0].header.includes("set search_path = ''")) out.push(`${c}: its public wrapper isn't security invoker with an empty search_path`);
+    if (!new RegExp(`^ select private\\.${c}\\([^;]*\\); $`).test(wrapper[0].body)) out.push(`${c}: its public wrapper does more than call private.${c}`);
+    for (const schema of ['private', 'public']) {
+      for (const role of ['public', 'anon', 'service_role']) if (!revoked(sql, c, role, schema)) out.push(`${schema}.${c}: execute not revoked from ${role}`);
+      if (grantedIn(sql, schema, c, 'anon')) out.push(`${schema}.${c}: granted to anon`);
+      if (!grantedIn(sql, schema, c, 'authenticated')) out.push(`${schema}.${c}: not granted to authenticated`);
+    }
+  }
+  const delPlayer = fns.find((f) => f.name === 'owner_delete_player' && f.schema === 'private');
+  if (!delPlayer || !/ if p_user is null or p_user = v_uid or exists \(select 1 from public\.profiles p where p\.id = p_user and p\.is_owner\) then raise exception 'invalid'; end if;/.test(delPlayer.body)) out.push("owner_delete_player may delete the owner's own account or an owner's");
+  if (!delPlayer || !/ delete from auth\.users u where u\.id = p_user; end; $/.test(delPlayer.body)) out.push("owner_delete_player doesn't remove the account");
+  const delFriend = fns.find((f) => f.name === 'owner_remove_friend' && f.schema === 'private');
+  if (!delFriend || !/ delete from public\.friend_links l where \(l\.from_id = v_uid and l\.to_id = p_id\) or \(l\.from_id = p_id and l\.to_id = v_uid\); end; $/.test(delFriend.body)) out.push("owner_remove_friend removes links that aren't the owner's");
   const shops = fns.find((f) => f.name === 'club_shared_shops' && f.schema === 'private');
   if (shops && (/\bbody\b|pausers|lease_/.test(shops.body) || !/ where m\.user_id = v_uid /.test(shops.body))) out.push("club_shared_shops shows more than my clubs' shops");
   const meters = fns.find((f) => f.name === 'shared_usage' && f.schema === 'private');
@@ -265,7 +296,7 @@ export function migrationProblems(raw: string): string[] {
       else if (old && !revoked(before, name, 'service_role', schema)) out.push(`${schema}.${name}: not revoked from service_role before the new objects`);
     }
   }
-  for (const f of fns.filter((x) => ![...CALLABLE, ...TWINS, ...SERVER, ...GAME].includes(x.name))) {
+  for (const f of fns.filter((x) => ![...CALLABLE, ...TWINS, ...SERVER, ...GAME, ...OWNER].includes(x.name))) {
     if (!/\bsecurity definer\b/.test(f.header)) out.push(`${f.name}: not security definer`);
     if (!f.header.includes("set search_path = ''")) out.push(`${f.name}: search_path not empty`);
     for (const role of ['public', 'anon', 'authenticated']) if (!revoked(sql, f.name, role, f.schema)) out.push(`${f.name}: execute not revoked from ${role} (nobody calls it)`);
@@ -305,7 +336,7 @@ describe('the online migrations (REL-027; chunk 12, SHARE-003)', () => {
   });
 
   it('keeps every rule, across every file', () => {
-    expect(files).toEqual(['20261019000000_stage1.sql', '20261019000100_private_api.sql', '20261019000200_invite_brake.sql', '20261019000300_invite_brake_answer.sql', '20261019000400_readonly_and_account.sql', '20261021000000_shared_shops.sql']);
+    expect(files).toEqual(['20261019000000_stage1.sql', '20261019000100_private_api.sql', '20261019000200_invite_brake.sql', '20261019000300_invite_brake_answer.sql', '20261019000400_readonly_and_account.sql', '20261021000000_shared_shops.sql', '20261101000000_owner_deletes.sql']);
     expect(migrationProblems(sql)).toEqual([]);
   });
 
@@ -314,7 +345,7 @@ describe('the online migrations (REL-027; chunk 12, SHARE-003)', () => {
     expect([...n.matchAll(/create table public\.(\w+)/g)].map((m) => m[1]).sort()).toEqual([...TABLES].sort());
     expect([...n.matchAll(/create table private\.(\w+)/g)].map((m) => m[1])).toEqual(['server_key']);
     const callable = [...new Set(functionsOf(n).map((f) => f.name))].filter((f) => granted(n, f, 'authenticated') || granted(n, f, 'anon')).sort();
-    expect(callable).toEqual([...CALLABLE, ...TWINS, ...GAME, ...SERVER].sort());
+    expect(callable).toEqual([...CALLABLE, ...TWINS, ...GAME, ...SERVER, ...OWNER].sort());
     // chunk 12: only these reach anon besides resolve_invite, and nothing reaches service_role
     expect(callable.filter((f) => granted(n, f, 'anon')).sort()).toEqual([...ANON, ...SERVER].sort());
     expect(callable.filter((f) => granted(n, f, 'service_role'))).toEqual([]);
@@ -434,6 +465,19 @@ describe('the online migrations (REL-027; chunk 12, SHARE-003)', () => {
       ['the shop list without a caller check', (s) => inFn(s, 'club_shared_shops', 'v_uid uuid := public.require_uid();', 'v_uid uuid := auth.uid();')],
       ['the meters for anyone', (s) => inFn(s, 'shared_usage', "    raise exception 'forbidden';\n", '    null;\n')],
       ['the meters left to service_role', (s) => s.replace('revoke execute on function public.shared_usage() from public, anon, service_role;', 'revoke execute on function public.shared_usage() from public, anon;')],
+      // chunk 18: the owner's (ADR-0054)
+      ['a club delete for anyone', (s) => inFn(s, 'owner_delete_club', "    raise exception 'forbidden';\n", '    null;\n')],
+      ['an overview without the owner check', (s) => inFn(s, 'owner_overview', "  if not exists (select 1 from public.profiles p where p.id = v_uid and p.is_owner) then\n    raise exception 'forbidden';\n  end if;\n", '')],
+      ['the owner checked after the delete', (s) => inFn(s, 'owner_delete_shop', "  if not exists (select 1 from public.profiles p where p.id = v_uid and p.is_owner) then\n    raise exception 'forbidden';\n  end if;\n  if p_club is null then\n    raise exception 'invalid';\n  end if;\n  delete from public.shared_shops s where s.club_id = p_club;\n", "  delete from public.shared_shops s where s.club_id = p_club;\n  if not exists (select 1 from public.profiles p where p.id = v_uid and p.is_owner) then\n    raise exception 'forbidden';\n  end if;\n")],
+      ['a player delete without the caller check', (s) => inFn(s, 'owner_delete_player', 'v_uid uuid := public.require_uid();', 'v_uid uuid := auth.uid();')],
+      ['a player delete of the owner', (s) => inFn(s, 'owner_delete_player', 'p_user is null or p_user = v_uid or ', 'p_user is null or ')],
+      ['a player delete that leaves the account', (s) => inFn(s, 'owner_delete_player', '  delete from auth.users u where u.id = p_user;\n', '  delete from public.profiles p where p.id = p_user;\n')],
+      ['a friend removal of anyone’s links', (s) => inFn(s, 'owner_remove_friend', '(l.from_id = v_uid and l.to_id = p_id) or (l.from_id = p_id and l.to_id = v_uid)', 'l.from_id = p_id or l.to_id = p_id')],
+      ['an owner function for anon', (s) => s.replace('grant execute on function public.owner_delete_player(uuid) to authenticated;', 'grant execute on function public.owner_delete_player(uuid) to anon, authenticated;')],
+      ['an owner function left to anon', (s) => s.replace('revoke execute on function private.owner_delete_club(uuid) from public, anon, service_role;', 'revoke execute on function private.owner_delete_club(uuid) from public, service_role;')],
+      ['an owner function left to service_role', (s) => s.replace('revoke execute on function public.owner_overview() from public, anon, service_role;', 'revoke execute on function public.owner_overview() from public, anon;')],
+      ['a definer owner wrapper', (s) => s.replace("create function public.owner_delete_shop(p_club uuid) returns void\nlanguage sql volatile security invoker", "create function public.owner_delete_shop(p_club uuid) returns void\nlanguage sql volatile security definer")],
+      ['an owner wrapper that does more', (s) => s.replace('  select private.owner_remove_friend(p_id);', '  select private.owner_remove_friend(p_id); select 1;')],
     ];
     for (const [what, mutate] of broken) {
       const copy = mutate(sql);
