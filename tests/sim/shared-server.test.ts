@@ -522,6 +522,72 @@ describe('chunk 12: a room’s life (§5.2)', () => {
     expect(o.closed).toBeNull();
   });
 
+  // chunk 18 (the re-check's blocker): two creates for a new club at once (two tabs, or a reconnect re-sending the
+  // create). The second read the database before the first's shop existed; its answer arrives late. It must join the
+  // new shop, never stop it as a deleted one
+  for (const when of ['after the new shop opened', 'while the new shop is opening'] as const) {
+    it(`chunk 18: a second create whose stale answer arrives ${when} joins the new shop and stops nothing`, async () => {
+      const world = new StubWorld();
+      const x = (r = await rig({ world }));
+      world.addClub('club_new', ['u_o', 'u_a']);
+      const store = world.store as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>;
+      /**
+       * Hold the next call of `fn` until `release`: `before` it reaches the database (a write not yet made), or `after`
+       * (an answer read then and delivered late: a stale read).
+       */
+      const hold = (fn: string, at: 'before' | 'after') => {
+        const orig = store[fn];
+        let release!: () => void;
+        const gate = new Promise<void>((res) => (release = res));
+        let called = false;
+        store[fn] = async (...args: unknown[]) => {
+          store[fn] = orig;
+          called = true;
+          if (at === 'before') await gate;
+          const answer = await orig(...args);
+          if (at === 'after') await gate;
+          return answer;
+        };
+        return { release, called: () => called };
+      };
+      const make = hold('shopCreate', 'before');
+      const first = await Member.connect(x.port);
+      first.send({ t: 'create', token: OWNER, build: SHARED_BUILD, club: 'club_new', name: 'New Shop', starter: 'axolotl', starterName: 'Pip', seed: 7 });
+      await pump(x.time, () => make.called(), { step: 20, what: 'the first create to reach the database' });
+      // the second create reads the member now (no shop yet: stale once the first's create lands)
+      const stale = hold('member', 'after');
+      const second = await Member.connect(x.port);
+      second.send({ t: 'create', token: OWNER, build: SHARED_BUILD, club: 'club_new', name: 'Other', starter: 'betta', starterName: '' });
+      await pump(x.time, () => stale.called(), { step: 20, what: "the second create's member read" });
+      let take: ReturnType<typeof hold> | null = null;
+      if (when === 'while the new shop is opening') take = hold('shopTake', 'before');
+      make.release();
+      if (take) {
+        await pump(x.time, () => take!.called(), { step: 20, what: 'the new room at its lease' });
+        stale.release();
+        await sleep(30);
+        take.release();
+      } else {
+        await pump(x.time, () => first.bins().length > 0, { step: 50, what: 'the new shop' });
+        const ann = await x.join(A, 'club_new');
+        expect(ann.snapshot()!.shopName).toBe('New Shop');
+        stale.release();
+        await pump(x.time, () => second.bins().length > 0, { step: 50, what: 'the second tab in the shop' });
+        expect(ann.closed).toBeNull();
+        expect(closingOf(ann)).toBeUndefined();
+      }
+      await pump(x.time, () => second.bins().length > 0, { step: 50, what: 'the second tab in the shop' });
+      expect(second.snapshot()!.shopName).toBe('New Shop');
+      // the first tab is the same player: the second takes over (elsewhere), never gone, restart or updating
+      await pump(x.time, () => first.closed !== null || closingOf(first) !== undefined, { step: 50, what: 'the first tab told' });
+      expect(closingOf(first)?.why).toBe('elsewhere');
+      expect(world.clubs.get('club_new')!.shop!.meta).toMatchObject({ shop_name: 'New Shop', revision: 1 });
+      x.time.advance(LEASE_RENEW_MS * 2 + 10);
+      await sleep(30);
+      expect(second.closed).toBeNull();
+    });
+  }
+
   it('SIGTERM saves every shop and tells its members the server restarted', async () => {
     const x = await shop();
     const o = await x.join(OWNER, CLUB);
