@@ -23,6 +23,7 @@ import { openPanel } from './Dock'; // lane:automation (chunk 5)
 import { go } from '../nav/router'; // lane:automation (chunk 5)
 import '../styles/operations-hud.css'; // lane:automation (chunk 5)
 import { opsDot } from '../common/ops'; // lane:automation (chunk 5)
+import { SharedPill, useInSharedShop } from '../shared/SharedMenu'; // chunk 19 (ADR-0055 decision 6, QOL-007)
 
 export function setSpeed(s: GameSpeed) {
   const g = useGame.getState().game;
@@ -273,10 +274,12 @@ function SettingsGear() {
 }
 
 export function TopBar({ compact }: { compact?: boolean }) {
+  // chunk 19 (QOL-007) — in a shared shop the name pill opens the shop's dropdown (who's here, members, Money, the way back)
+  const shared = useInSharedShop();
   return (
     <div className="ag-topbar">
       <div className="ag-topbar__left">
-        <ClockPill compact={compact} />
+        {shared ? <SharedPill compact={compact} /> : <ClockPill compact={compact} />}
         {!compact && <ManualPill />}
       </div>
       <div className="ag-topbar__center">

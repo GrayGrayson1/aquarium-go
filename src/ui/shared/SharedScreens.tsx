@@ -2,19 +2,20 @@
  * chunk 13 (SHARED-SHOPS.md §7, §8) — the shared shop's own screens, every word from §8: the opening card (saving your
  * aquarium, waking the server, catching up), the HUD strip with who's there and the way back, the owner's members
  * list with "Can pause and change speed", the lines over the shop while it reconnects or catches up, "Still here?",
- * the first-time card, and the card that says why the server closed the visit. OWNER: lane "social".
+ * the first-time card, and the card that says why the server closed the visit. chunk 19 (ADR-0055 decision 6, QOL-007):
+ * the strip became the dropdown from the name pill (SharedMenu.tsx), which shows this file's members list. OWNER: lane "social".
  */
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Users } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useSharedMode } from '@/state/sharedMode';
 import { useGame } from '@/state/game';
 import { Button, Modal, Toggle } from '../kit';
 import { Wordmark } from '../screens/TitleScreen';
 import { BUILD_ID, parseBuildId, versionUrl } from '../hud/updateCheck';
-import { onScreen, useShared } from './store';
+import { useShared } from './store';
 import { dismissClosing, grantPause, leaveSharedShop, stillHere } from './session';
 import { RELOAD_CLOSINGS, SHARED_WORDS as W, closingText } from './words';
-import { MemberSpending, SharedMoneyButton, SharedMoneySheet } from './SharedMoney';
+import { MemberSpending } from './SharedMoney';
 import './shared.css';
 
 /** How long the server may take between the socket opening and the shop before the card says it's catching up. */
@@ -52,60 +53,20 @@ export function SharedOpening() {
   );
 }
 
-/** The HUD strip: "Shared · {shop} · Here: {name}, {name}" and the way back; the owner's members list from it. */
-export function SharedStrip() {
-  const shared = useSharedMode((s) => s.club !== null);
-  const phase = useShared((s) => s.phase);
-  const shop = useShared((s) => s.shopName);
-  const members = useShared((s) => s.members);
-  const owner = useShared((s) => !!s.you?.owner);
-  const [open, setOpen] = useState(false);
-  const [money, setMoney] = useState(false);
-  if (!shared || !onScreen(phase)) return null;
-  const here = members.filter((m) => m.here).map((m) => m.name);
-  const text = W.strip(shop, here);
-  return (
-    <div className="ag-shared-strip" data-testid="shared-strip">
-      {owner ? (
-        <button type="button" className="ag-shared-strip__text is-button" aria-expanded={open} onClick={() => setOpen((o) => !o)} data-testid="shared-strip-members">
-          <Users size={13} aria-hidden /> <span>{text}</span>
-        </button>
-      ) : (
-        <span className="ag-shared-strip__text" data-testid="shared-strip-text">
-          <Users size={13} aria-hidden /> <span>{text}</span>
-        </span>
-      )}
-      <SharedMoneyButton onOpen={() => setMoney(true)} />
-      <Button size="sm" variant="ghost" className="ag-shared-strip__back" onClick={() => void leaveSharedShop()} data-testid="shared-back">
-        {W.back}
-      </Button>
-      {owner && open && <MembersList onClose={() => setOpen(false)} />}
-      <SharedMoneySheet open={money} onClose={() => setMoney(false)} />
-    </div>
-  );
-}
-
 /**
  * §8 "Members list (the owner)": each member there, with a switch "Can pause and change speed"; chunk 14 (ADR-0050):
  * and each one's spending tier and "Can approve requests and give money", for anyone the pool has a record of too
  * (their tier holds while they're away; who may pause is known only for the members there).
  */
-function MembersList({ onClose }: { onClose: () => void }) {
+export function MembersList({ inline = false }: { /** chunk 19 (QOL-007): inside the shared shop's dropdown (SharedMenu.tsx) */ inline?: boolean }) {
   const members = useShared((s) => s.members);
   const you = useShared((s) => s.you);
   const records = useGame((s) => s.game?.pool?.members);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
   const others: { id: string; name: string; pause?: boolean }[] = members.filter((m) => m.id !== you?.id);
   for (const [id, r] of Object.entries(records ?? {})) if (id !== you?.id && !others.some((m) => m.id === id)) others.push({ id, name: r.name });
   if (!others.length) return null;
   return (
-    <ul className="ag-shared-members" data-testid="shared-members">
+    <ul className={inline ? 'ag-shared-members is-inline' : 'ag-shared-members'} data-testid="shared-members">
       {others.map((m) => (
         <li key={m.id} className="ag-shared-members__row" data-testid={`shared-member-${m.id}`}>
           <span className="ag-shared-members__name">{m.name}</span>
