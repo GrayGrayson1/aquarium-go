@@ -47,6 +47,21 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
         <h2 className="ag-more__title" id="ag-more-title" tabIndex={-1}>
           More
         </h2>
+        {/* chunk 19 (ADR-0055 decision 3, QOL-004) — Find anything, from the phone's More (a header button: a row more
+            pushed Settings under the tab bar on a phone held sideways) */}
+        <button
+          type="button"
+          className="ag-more__close ag-more__find"
+          aria-label="Find anything"
+          title="Find anything"
+          data-testid="more-find"
+          onClick={() => {
+            useShell.getState().set({ popover: null });
+            openFind();
+          }}
+        >
+          <Search size={18} aria-hidden />
+        </button>
         <button type="button" className="ag-more__close" aria-label="Close More" onClick={() => { sfx('close'); closeMore(); }}>
           <X size={18} aria-hidden />
         </button>
@@ -87,25 +102,6 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
           );
         })}
       </div>
-      {/* chunk 19 (ADR-0055 decision 3, QOL-004) — Find anything, from the phone's More */}
-      <button
-        type="button"
-        className="ag-more__row"
-        data-testid="more-find"
-        onClick={() => {
-          useShell.getState().set({ popover: null });
-          openFind();
-        }}
-      >
-        <span className="ag-more__chip ag-more__chip--sm">
-          <Search size={18} aria-hidden />
-        </span>
-        <span className="ag-more__rowtext">
-          <span className="ag-more__rowtitle">Find anything</span>
-          <span className="ag-more__rowsub">Animals, gear, research and screens</span>
-        </span>
-        <ChevronRight size={18} aria-hidden className="ag-more__chev" />
-      </button>
       <button
         type="button"
         className="ag-more__row"

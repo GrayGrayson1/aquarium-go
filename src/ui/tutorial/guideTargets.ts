@@ -5,8 +5,10 @@
  * then at the placing instructions; the water step at the tank card, then at the reading the step asks about; and so
  * on. Pure over a small picture of the screen (tests/sim/qol-guide.test.ts): candidates are CSS selectors, best
  * first (src/ui/tutorial/Spotlight.tsx shows the first one drawn). `dim` dims the rest of the screen (a control to tap
- * now); a step that waits for play (visits, reputation) or for watching an animal never dims. OWNER: lane "ui-shell".
+ * now); a step that waits for play (visits, reputation) or for watching an animal never dims. The market and preview
+ * steps finish as their panel opens (an opened_* flag), so they point at nothing inside it. OWNER: lane "ui-shell".
  */
+import { TANK_TIERS } from '@/data/catalog/tanks';
 
 export interface GuideScreen {
   panel: string | null;
@@ -44,7 +46,10 @@ function dock(id: string, s: GuideScreen): string[] {
 
 const aim = (candidates: string[], dim = true, hand = true): GuideAim => ({ candidates, dim, hand });
 
-export function guideAim(stepId: string, hintTarget: string, starterId: string, s: GuideScreen): GuideAim | null {
+/**
+ * `unlocks`: what finishing the step unlocks (its reward): the upgrade step points at that tank size in Build › Tanks.
+ */
+export function guideAim(stepId: string, hintTarget: string, starterId: string, s: GuideScreen, unlocks: readonly string[] = []): GuideAim | null {
   switch (stepId) {
     case 'meet':
       return aim(['[data-testid="creature-card"] [data-tutorial-id="creature-name"]', SHOW_ME], false);
@@ -70,8 +75,13 @@ export function guideAim(stepId: string, hintTarget: string, starterId: string, 
       return aim(['[data-tutorial-id="hud-money"]'], false, false);
     case 'market':
       return s.panel === 'market' ? null : aim(dock('market', s));
-    case 'upgrade':
-      return s.panel === 'build' ? null : aim(dock('build', s), false, false);
+    case 'upgrade': {
+      if (s.panel !== 'build') return aim(dock('build', s), false, false);
+      // Build's tank size the reputation unlocks ("Earn a little more reputation to unlock the 40-gallon breeder"), on
+      // Tanks; a reward that isn't a tank size (a betta's nursery tanks live in Livestock) points at nothing here
+      const tiers = TANK_TIERS.filter((t) => !!t.unlock && unlocks.includes(t.unlock)).map((t) => `[data-testid="panel-build"] [data-tier-id="${t.id}"]`);
+      return tiers.length ? aim([...tiers, '[data-testid="build-tab-tanks"][aria-selected="false"]'], false, false) : null;
+    }
     case 'preview':
       return s.panel === 'research' || s.panel === 'visitors' || s.panel === 'build' ? null : aim(dock('research', s));
     default:

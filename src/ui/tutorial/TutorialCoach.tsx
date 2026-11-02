@@ -381,7 +381,7 @@ export function TutorialCoach() {
   const visible = ((!!cur && hints) || finale) && !!game && !touring;
   useCoachLayout(visible);
   const tankCardOpen = useShell((s) => s.tankCardOpen);
-  const aimNow = cur && game && hints && !touring && !collapsed ? guideAim(cur.step.id, cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget, game.progress.tutorial?.starterId || game.starterId, { panel, popover, tool, tankCardOpen, mobile }) : null;
+  const aimNow = cur && game && hints && !touring && !collapsed ? guideAim(cur.step.id, cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget, game.progress.tutorial?.starterId || game.starterId, { panel, popover, tool, tankCardOpen, mobile }, cur.step.reward?.unlocks ?? []) : null;
   const spotRect = useSpotlightTarget(aimNow?.candidates ?? [], { scrollIntoView: true });
 
   if (touring) return null;
@@ -421,7 +421,7 @@ export function TutorialCoach() {
   return (
     <>
       {/* chunk 19 (ADR-0055 decision 7, QOL-008) — the spotlight follows the step into the place it needs (guideTargets.ts) */}
-      {aimNow && <Spotlight rect={spotRect} dim={aimNow.dim} hand={aimNow.hand} />}
+      {aimNow && <Spotlight rect={spotRect} dim={aimNow.dim} hand={aimNow.hand} gold={!!inMore} />}
       {!aimNow && ringing && <TutorialHighlight target={ringTarget} gold={!!inMore} />}
       {ringing && inMore && !moreOpen && <MoreGuideBubble label={inMore.label} />}
       <AnimatePresence mode="wait">

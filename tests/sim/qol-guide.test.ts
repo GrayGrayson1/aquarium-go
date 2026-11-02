@@ -37,6 +37,16 @@ describe('QOL-008: the guide points the way through each step', () => {
     expect(guideAim('preview', 'dock-research', 'betta', screen({ mobile: true, popover: 'more' }))?.candidates).toEqual(['[data-testid="more-research"]']);
     expect(guideAim('market', 'dock-market', 'betta', screen({ mobile: true }))?.candidates).toEqual(['[data-tutorial-id="dock-market"]']);
   });
+  it('the upgrade step points at the tank size it unlocks once Build is open (a reward that isn’t one: nothing there)', () => {
+    const axolotl = TUTORIAL_CHAINS.axolotl.find((x) => x.id === 'upgrade')!;
+    const inBuild = guideAim('upgrade', 'dock-build', 'axolotl', screen({ panel: 'build' }), axolotl.reward?.unlocks ?? []);
+    expect(inBuild?.candidates[0]).toBe('[data-testid="panel-build"] [data-tier-id="g40B"]');
+    expect(inBuild?.candidates).toContain('[data-testid="build-tab-tanks"][aria-selected="false"]');
+    expect(inBuild?.dim).toBe(false);
+    const betta = TUTORIAL_CHAINS.betta.find((x) => x.id === 'upgrade')!;
+    expect(guideAim('upgrade', 'dock-build', 'betta', screen({ panel: 'build' }), betta.reward?.unlocks ?? [])).toBeNull();
+    expect(guideAim('upgrade', 'dock-build', 'axolotl', screen(), axolotl.reward?.unlocks ?? [])?.candidates).toEqual(['[data-tutorial-id="dock-build"]']);
+  });
   it('steps that wait for play never dim; a step in the 3D scene points at its own Show me', () => {
     expect(guideAim('first_goal', 'hud-money', 'betta', screen())?.dim).toBe(false);
     expect(guideAim('upgrade', 'dock-build', 'betta', screen())?.dim).toBe(false);

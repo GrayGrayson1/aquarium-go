@@ -406,12 +406,14 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
       after: (r) => {
         if (!r?.ok) return;
         // chunk 19 (ADR-0055 decision 1, QOL-001; replaces 0.5 §7.5 item 6's trip to the tank view) — the Market stays
-        // open: the new home is focused behind it (beside a computer's side sheet the arrival is seen at once), the
-        // shop list comes back once the offer is used up, and the toast's "See them" goes to the tank and the animal
+        // open on the shop list: the new home is focused behind it (beside a computer's side sheet the arrival is seen
+        // at once) and the toast's "See them" goes to the tank and the animal. Back to the list after every purchase,
+        // a part of a group too: this screen's picks, inspected animal and risk tick belong to the animals just bought
+        // (the rest of the group is a fresh look from the list, its card counted anew)
         useUI.getState().set({ focusedTankId: tankId });
         const first = saw.find((id) => !!useGame.getState().game?.creatures[id]);
         useUI.getState().toast(`${name} is settling into ${tankName}`, prismatic ? 'celebrate' : 'success', { label: prismatic ? 'Prismatic find' : 'Bought', detail: 'Find them in Livestock.', tankId, ...(first ? { creatureId: first } : {}), actionLabel: 'See them' });
-        if (!useGame.getState().game?.market.stock.some((o) => o.id === offer.id)) onBack();
+        onBack();
       },
     });
   };

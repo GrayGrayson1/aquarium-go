@@ -58,13 +58,21 @@ const PRESETS: [DecorPreset, string, string][] = [
   ['reset', 'Reset', 'Back to the starting view'],
 ];
 
+/** Where the pad is two rows under the tank (qol.css): phones upright (not held sideways, reviewer B9)… */
+export const PAD_BAND = '(max-width: 720px) and (orientation: portrait), (max-width: 720px) and (min-height: 501px)';
+/** …and a 721–1080 px window while Build's side sheet is open beside it (reviewer B10). */
+export const MID_BAND = '(min-width: 721px) and (max-width: 1080px) and (min-height: 501px)';
+
 export function DecorCamPad() {
   const on = useUI((s) => isDecorating(s.tool, s.view));
-  // the camera frames the tank clear of the pad (src/render/camera/viewport.ts): a column at the right, a band below on phones
-  const phone = useMedia('(max-width: 720px)');
+  const sideSheet = useUI((s) => !!s.panel);
+  // the camera frames the tank clear of the pad (src/render/camera/viewport.ts): a column at the right, else a band below
+  const band = useMedia(PAD_BAND);
+  const mid = useMedia(MID_BAND);
   if (!on) return null;
+  const below = band || (mid && sideSheet);
   return (
-    <div className="ag-decorpad" role="toolbar" aria-label="Decorating view" data-testid="decor-cam-pad" data-occlude={phone ? 'bottom' : 'right'}>
+    <div className="ag-decorpad" role="toolbar" aria-label="Decorating view" data-testid="decor-cam-pad" data-occlude={below ? 'bottom' : 'right'} data-layout={below ? 'band' : 'column'}>
       <div className="ag-decorpad__steps">
         <StepButton icon={RotateCcw} label="Turn left" testId="decor-cam-turn-left" onStep={() => nudgeDecorCam({ yaw: -DECOR_STEP.yaw / 2 })} />
         <StepButton icon={RotateCw} label="Turn right" testId="decor-cam-turn-right" onStep={() => nudgeDecorCam({ yaw: DECOR_STEP.yaw / 2 })} />

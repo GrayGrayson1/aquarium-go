@@ -1,6 +1,7 @@
 /**
  * chunk 19 (ADR-0055 decision 3, QOL-003) — the search box every list shares (the Encyclopedia's and Livestock's
- * look): a magnifier, the field, a clear button; Escape clears it first (a second Escape closes the panel).
+ * look): a magnifier, the field, a clear button. Escape clears it first; on an empty field Escape leaves the field
+ * (PanelHost), and the next one closes the panel.
  * OWNER: lane "ui-panels".
  */
 import { useRef } from 'react';

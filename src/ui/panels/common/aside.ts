@@ -7,11 +7,17 @@
  *    mounted off screen with its tab, filters, search and scroll intact; it comes back when the tool ends by placing,
  *    Done, Cancel or Escape. Going somewhere else meanwhile (another panel, the tank card, an animal's card, another
  *    tool, Watch, Photo, the title) drops it instead.
- * A placed piece (or tank) is seen landing for a moment before the sheet returns. OWNER: lane "ui-panels".
+ * A placed piece (or tank) is seen landing for a moment before the sheet returns; on touch, while the hint offers
+ * "Place another" (render/decor/placeAgain.ts) the sheet waits for that to be used, dismissed (Done) or to run out. If
+ * the guide moved on to its next step meanwhile, the sheet is dropped so the guide's card isn't covered (reviewer
+ * notes). OWNER: lane "ui-panels".
  */
 import { useEffect } from 'react';
 import { useUI, type PanelId, type ToolId, type UIState } from '@/state/ui';
 import { useGame } from '@/state/game';
+import { useSettings } from '@/state/settings';
+import { useSharedMode } from '@/state/sharedMode';
+import { usePlaceAgain } from '@/render/decor/placeAgain';
 import { useShell } from '../../common/shellStore';
 import { BOTTOM_SHEET_QUERY } from '../../common/Sheet';
 import { MOBILE_QUERY } from '../../common/safe';
@@ -48,6 +54,7 @@ export function startToolFromPanel(patch: Patch, bottom: boolean = sheetIsBottom
   const { panel: _drop, panelAside: _drop2, ...rest } = patch;
   if (panel && bottom) {
     asideMark = worldMark();
+    asideGuide = guideStep();
     ui.set({ ...rest, panel: null, panelAside: panel });
   } else ui.set(rest);
 }
@@ -62,6 +69,14 @@ function worldMark(): number {
 }
 let asideMark = 0;
 
+/** The guide's step while its card is on screen (null: no guide — done, skipped, hints off or a shared shop). */
+function guideStep(): number | null {
+  const tut = useGame.getState().game?.progress?.tutorial;
+  if (!tut || tut.done || tut.skipped || !useSettings.getState().showTutorialHints || useSharedMode.getState().club !== null) return null;
+  return tut.step;
+}
+let asideGuide: number | null = null;
+
 export function clearAside(): void {
   pending.cancel();
   if (useUI.getState().panelAside) useUI.getState().set({ panelAside: null });
@@ -74,6 +89,14 @@ function comeBack(): void {
   if (!panel) return;
   if (ui.tool !== 'none') return; // another placement started (Place another): wait for it to end too
   if (!stillHere(ui)) {
+    clearAside();
+    return;
+  }
+  // "Place another" is on offer: wait for it (its end calls this again)
+  if (usePlaceAgain.getState().defId) return;
+  // the guide went on to its next step meanwhile (the hiding place it asked for is in): its card leads, not Build
+  const g = guideStep();
+  if (asideGuide !== null && g !== null && g !== asideGuide) {
     clearAside();
     return;
   }
@@ -134,10 +157,16 @@ export function usePanelAsideRules(): void {
     const unsubGame = useGame.subscribe((s, p) => {
       if (s.game?.saveId !== p.game?.saveId && useUI.getState().panelAside) clearAside();
     });
+    // "Place another" was used, dismissed or ran out: the sheet may come back now (a moment later, so a Place another
+    // that starts the next placement is seen first — comeBack then waits for that one)
+    const unsubAgain = usePlaceAgain.subscribe((s, p) => {
+      if (p.defId && !s.defId && useUI.getState().panelAside) pending.set(comeBack, 60);
+    });
     return () => {
       unsubUI();
       unsubShell();
       unsubGame();
+      unsubAgain();
       pending.cancel();
     };
   }, []);

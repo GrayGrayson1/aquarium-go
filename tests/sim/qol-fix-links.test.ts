@@ -9,6 +9,8 @@ import { newGame } from '@/sim/newGame';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { fixForAttention, fixForWaterIssue } from '@/ui/common/fixLinks';
 import { tankAttention, tankAttentionLevel, WORN_BELOW } from '@/ui/common/notify';
+import { getWaterReport } from '@/sim/water';
+import { equipmentOfKind } from '@/data/catalog/equipment';
 
 const setup = (): { g: GameState; tank: Tank } => {
   const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 71 });
@@ -50,6 +52,92 @@ describe('QOL-002: water issues link to their fix', () => {
   it('mixing animals that need different water → Livestock', () => {
     const { tank } = setup();
     expect(fixForWaterIssue(tank, { text: 'No pH suits all of these animals.', advice: 'Rehome one group to a tank with water that suits it.', param: 'ph' })?.to).toEqual({ kind: 'panel', panel: 'livestock', target: null });
+  });
+});
+
+/** The tank's temperature line from the sim's own report (its advice words are what the links read). */
+const tempIssue = (g: GameState, tankId: string) => getWaterReport(g, tankId).issues.find((i) => i.param === 'temp' && i.status !== 'good');
+const gearRowOf = (tank: Tank, e: EquipmentInstance, label: string) => ({ label, to: { kind: 'card', tankId: tank.id, tab: 'gear', fix: `equip-${e.id}` } });
+const buy = (tank: Tank, kind: string, label: string) => ({ label, to: { kind: 'panel', panel: 'build', target: `equipment:${tank.id}:${kind}`, glow: `[data-testid="panel-build"] [data-equip-kind="${kind}"]` } });
+/** A unit of `kind` added to the tank (a copy of the tank's first unit's instance, with that kind's first def). */
+const addUnit = (tank: Tank, kind: string, extra: Partial<EquipmentInstance> = {}): EquipmentInstance => {
+  const def = equipmentOfKind(kind as Parameters<typeof equipmentOfKind>[0])[0];
+  const e: EquipmentInstance = { ...tank.equipment[0], id: `test_${kind}`, defId: def.id, on: true, failed: false, condition: 1, ...extra };
+  delete (e as { failMode?: unknown }).failMode;
+  delete (e as { setting?: unknown }).setting;
+  Object.assign(e, extra);
+  tank.equipment.push(e);
+  return e;
+};
+
+describe('QOL-002: the sim’s own advice picks the fix (reviewer B4)', () => {
+  it('a heater set too low → that heater’s row (its setting), not "Buy a heater"', () => {
+    const { g, tank } = setup();
+    const heater = unitOf(tank, 'heater')!;
+    heater.setting = 20;
+    tank.water.tempC = 20;
+    const issue = tempIssue(g, tank.id)!;
+    expect(issue.advice).toMatch(/^Raise the heater setting/);
+    expect(fixForWaterIssue(tank, issue)).toEqual(gearRowOf(tank, heater, 'Open Equipment'));
+  });
+  it('a heater set too high → that heater’s row', () => {
+    const { g, tank } = setup();
+    const heater = unitOf(tank, 'heater')!;
+    heater.setting = 33;
+    tank.water.tempC = 33;
+    const issue = tempIssue(g, tank.id)!;
+    expect(issue.advice).toMatch(/^Turn the heater down/);
+    expect(fixForWaterIssue(tank, issue)).toEqual(gearRowOf(tank, heater, 'Open Equipment'));
+  });
+  it('too warm with nothing that cools → a chiller, never a heater', () => {
+    const { g, tank } = setup();
+    tank.equipment = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'heater');
+    tank.water.tempC = 33;
+    const issue = tempIssue(g, tank.id)!;
+    expect(issue.advice).toMatch(/Add a chiller, or a clip-on fan/);
+    expect(fixForWaterIssue(tank, issue)).toEqual(buy(tank, 'chiller', 'Buy a chiller'));
+  });
+  it('too cold with no heater → Buy a heater; a too-small heater → Buy a heater', () => {
+    const { tank } = setup();
+    const bare = { ...tank, equipment: tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'heater') };
+    expect(fixForWaterIssue(bare, { text: 'Too cold.', advice: 'Add a heater sized for this tank (about 3–5 W per gallon).', param: 'temp' })).toEqual(buy(tank, 'heater', 'Buy a heater'));
+    expect(fixForWaterIssue(tank, { text: 'The heater is too small for this tank.', advice: 'Add a second heater or install a more powerful one.', param: 'temp' })).toEqual(buy(tank, 'heater', 'Buy a heater'));
+  });
+  it('a chiller set too warm → the chiller’s row; a heater fighting the chiller → the heater’s row', () => {
+    const { tank } = setup();
+    const chiller = addUnit(tank, 'chiller');
+    const heater = unitOf(tank, 'heater')!;
+    expect(fixForWaterIssue(tank, { text: 'Too warm.', advice: 'Lower the chiller setting and the heater.', param: 'temp' })).toEqual(gearRowOf(tank, chiller, 'Open Equipment'));
+    expect(fixForWaterIssue(tank, { text: 'They fight each other.', advice: 'Set the heater at least 1 °C below the chiller setting.', param: 'temp' })).toEqual(gearRowOf(tank, heater, 'Open Equipment'));
+  });
+  it('"A heater has failed" (no name in the line) → that heater’s Repair', () => {
+    const { tank } = setup();
+    const heater = unitOf(tank, 'heater')!;
+    heater.failed = true;
+    heater.failMode = 'off';
+    expect(fixForWaterIssue(tank, { text: 'Too cold.', advice: 'A heater has failed — repair or replace it.', param: 'temp' })).toEqual(gearRowOf(tank, heater, 'Repair'));
+  });
+  it('a light: dim with room to brighten → Lighting; already at full → Buy a light; burned out → Repair', () => {
+    const { tank } = setup();
+    const light = unitOf(tank, 'light') ?? addUnit(tank, 'light');
+    const raise = { text: 'Corals need stronger light.', advice: 'Raise the intensity or install a stronger light.', param: 'light' as const };
+    tank.lighting = { ...tank.lighting, intensity: 0.5 };
+    expect(fixForWaterIssue(tank, raise)).toEqual({ label: 'Lighting', to: { kind: 'card', tankId: tank.id, tab: 'gear', fix: 'lighting' } });
+    tank.lighting = { ...tank.lighting, intensity: 1.5 }; // the Lighting slider's top
+    expect(fixForWaterIssue(tank, raise)).toEqual(buy(tank, 'light', 'Buy a light'));
+    light.failed = true;
+    light.failMode = 'off';
+    expect(fixForWaterIssue(tank, { text: 'The light has burned out.', advice: 'Install a light — animals need a day/night rhythm.', param: 'light' })).toEqual(gearRowOf(tank, light, 'Repair'));
+  });
+  it('a failed filter → its Repair; a filter-bound overstock → Buy a filter', () => {
+    const { tank } = setup();
+    const filter = unitOf(tank, 'filter')!;
+    filter.failed = true;
+    filter.failMode = 'off';
+    expect(fixForWaterIssue(tank, { text: 'Filtration is failing.', advice: 'Repair or replace the filter.', param: 'filtration' })).toEqual(gearRowOf(tank, filter, 'Repair'));
+    filter.failed = false;
+    expect(fixForWaterIssue(tank, { text: 'Overstocked.', advice: 'Upgrade or add a filter, or rehome some animals.', param: 'stocking' })).toEqual(buy(tank, 'filter', 'Buy a filter'));
+    expect(fixForWaterIssue(tank, { text: 'Overstocked.', advice: 'Move some animals to another tank or upgrade to a larger aquarium.', param: 'stocking' })?.label).toBe('Open Livestock');
   });
 });
 

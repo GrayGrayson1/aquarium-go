@@ -612,11 +612,16 @@ export function CameraRig() {
       noteCameraUserMove();
     };
     const onContext = (e: Event) => e.preventDefault();
-    // chunk 19 (QOL-005) — decorating: the arrows orbit and tilt, Shift+arrows slide (never while typing or in a sheet)
+    // chunk 19 (QOL-005) — decorating: the arrows orbit and tilt, Shift+arrows slide. Never while typing, in a
+    // control that uses the arrows itself (tabs, radios, lists, sliders), a modal or a popover. Focus left on a
+    // plain button in Build's side sheet (the decor card just picked) doesn't count: that's how decorating starts on
+    // a computer, and the arrows used to do nothing until a click in the scene (which places the piece — reviewer B6)
+    const ARROW_OWNERS = '.ag-modal, .ag-popover, [role="dialog"]:not(.pn-sheet), [role="radiogroup"], [role="tablist"], [role="listbox"], [role="menu"], [role="grid"], [role="tree"], [role="slider"], [role="spinbutton"]';
     const onKey = (e: KeyboardEvent) => {
-      if (rig.mode !== 'decorate' || e.metaKey || e.ctrlKey || e.altKey) return;
+      // (a control that used the key itself said so: Build's tabs, a radio group)
+      if (rig.mode !== 'decorate' || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable || t.closest?.('.pn-sheet, .ag-modal, [role="dialog"], [role="radiogroup"], [role="tablist"], [role="listbox"], .ag-popover'))) return;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable || t.closest?.(ARROW_OWNERS))) return;
       const step = DECOR_STEP;
       switch (e.key) {
         case 'ArrowLeft':

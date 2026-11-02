@@ -5,7 +5,7 @@
  * the species you have discovered. A list item opens its list searched for it (`find:` panel targets) with the item
  * glowing. The group names and details are drafted words (ADR-0055 decision 8). OWNER: lane "ui-shell".
  */
-import type { GameState } from '@/types';
+import type { Environment, GameState, Tank, WaterClass } from '@/types';
 import type { PanelId } from '@/state/ui';
 import { DECOR } from '@/data/catalog/decor';
 import { EQUIPMENT } from '@/data/catalog/equipment';
@@ -46,6 +46,24 @@ export interface FindResult {
 export const PER_GROUP = 6;
 
 const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+
+/** An item made for some waters (equipment's and decor's `environments`, decor's `waterClasses`) suits this tank. */
+export function itemSuitsTank(t: Pick<Tank, 'environment' | 'waterClass'>, envs: readonly Environment[] | undefined, wcs?: readonly WaterClass[]): boolean {
+  return (!envs?.length || envs.includes(t.environment)) && (!wcs?.length || wcs.includes(t.waterClass));
+}
+/** Some tank of yours can take the item. */
+export function anyTankSuits(g: GameState, envs: readonly Environment[] | undefined, wcs?: readonly WaterClass[]): boolean {
+  return g.tankOrder.some((id) => !!g.tanks[id] && itemSuitsTank(g.tanks[id], envs, wcs));
+}
+const ENV_WORD: Record<Environment, string> = { freshwater: 'freshwater', marine: 'marine', brackish: 'brackish' };
+const WC_WORD: Record<WaterClass, string> = { freshwater_cool: 'cool freshwater', freshwater_tropical: 'tropical freshwater', freshwater_planted: 'planted', marine_fowlr: 'fish-only marine', marine_live_rock: 'live rock', reef: 'reef', brackish: 'brackish' };
+const orList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`);
+/** "Needs a reef tank" when no tank of yours can take the item (reviewer B5: it led to an empty list), else null. */
+export function needsTankText(g: GameState, envs: readonly Environment[] | undefined, wcs?: readonly WaterClass[]): string | null {
+  if (anyTankSuits(g, envs, wcs)) return null;
+  const words = wcs?.length ? [...new Set(wcs.map((w) => WC_WORD[w] ?? w))] : (envs ?? []).map((e) => ENV_WORD[e] ?? e);
+  return words.length ? `Needs a ${orList(words)} tank` : null;
+}
 const has = (g: GameState, key: string | undefined | null) => !key || g.progress.unlocked.includes(key);
 /** Destinations the dock locks (src/ui/hud/Dock.tsx DOCK_ITEMS' `lock`). */
 const SCREEN_LOCK: Partial<Record<string, string>> = { visitors: 'visitors', shows: 'shows' };
@@ -53,9 +71,10 @@ const TOUR_WORDS = 'tour guide help show me around how to play';
 
 /**
  * Search the game. An empty query lists the screens (and the tour), so the box doubles as a map of the game.
- * `social`: Social and Settings › Account exist in this build (src/ui/online/mode.ts).
+ * `social`: Social and Settings › Account exist in this build (src/ui/online/mode.ts). `tour: false` leaves the tour
+ * out (a shared shop: its Settings don't offer it either).
  */
-export function findAnything(g: GameState, q: string, opts: { social?: boolean } = {}): FindResult[] {
+export function findAnything(g: GameState, q: string, opts: { social?: boolean; /** false in a shared shop (it has no tour) */ tour?: boolean } = {}): FindResult[] {
   const words = queryWords(q);
   const out: FindResult[] = [];
   const push = (r: Omit<FindResult, 'score'>, name: string, ...more: (string | undefined | null | false)[]) => {
@@ -64,7 +83,7 @@ export function findAnything(g: GameState, q: string, opts: { social?: boolean }
   };
 
   // screens (and the tour)
-  push({ key: 'tour', group: 'Screens', title: 'Show me around', detail: 'A tour of the whole game', go: { kind: 'tour' } }, 'Show me around', TOUR_WORDS);
+  if (opts.tour !== false) push({ key: 'tour', group: 'Screens', title: 'Show me around', detail: 'A tour of the whole game', go: { kind: 'tour' } }, 'Show me around', TOUR_WORDS);
   for (const sc of screenList()) {
     if (!opts.social && (sc.panel === 'social' || (sc.route.kind === 'settings' && sc.route.tab === 'account'))) continue;
     const lock = sc.panel !== 'settings' ? SCREEN_LOCK[sc.panel] : undefined;
@@ -100,11 +119,14 @@ export function findAnything(g: GameState, q: string, opts: { social?: boolean }
     const locked = !has(g, f.unlock) || !safeBool(() => isFoodAvailable(g, f));
     push({ key: `food:${f.id}`, group: 'Food & supplies', title: f.name, detail: `${money(f.price)} · Market › Supplies`, locked, go: { kind: 'panel', panel: 'market', target: `food:${f.id}` } }, f.name, 'food', f.description);
   }
+  // (an item no tank of yours can take says which tank it needs; Build then opens on Tanks, on that water)
   for (const e of EQUIPMENT) {
-    push({ key: `equip:${e.id}`, group: 'Equipment', title: e.name, detail: `${money(e.price)} · Build › Equipment`, locked: !has(g, e.unlock), go: { kind: 'panel', panel: 'build', target: `find:equipment:${e.id}` } }, e.name, e.kind.replace(/_/g, ' '), e.description);
+    const needs = needsTankText(g, e.environments);
+    push({ key: `equip:${e.id}`, group: 'Equipment', title: e.name, detail: `${money(e.price)} · ${needs ?? 'Build › Equipment'}`, locked: !has(g, e.unlock), go: { kind: 'panel', panel: 'build', target: `find:equipment:${e.id}` } }, e.name, e.kind.replace(/_/g, ' '), e.description);
   }
   for (const d of DECOR) {
-    push({ key: `decor:${d.id}`, group: 'Decor', title: d.name, detail: `${money(d.price)} · Build › Decor`, locked: !has(g, d.unlock), go: { kind: 'panel', panel: 'build', target: `find:decor:${d.id}` } }, d.name, d.category.replace(/_/g, ' '));
+    const needs = needsTankText(g, d.environments, d.waterClasses);
+    push({ key: `decor:${d.id}`, group: 'Decor', title: d.name, detail: `${money(d.price)} · ${needs ?? 'Build › Decor'}`, locked: !has(g, d.unlock), go: { kind: 'panel', panel: 'build', target: `find:decor:${d.id}` } }, d.name, d.category.replace(/_/g, ' '));
   }
   for (const t of TANK_TIERS) {
     push({ key: `tier:${t.id}`, group: 'Tank sizes', title: t.name, detail: `${t.gallons.toLocaleString('en-US')} gallons · Build › Tanks`, locked: !has(g, t.unlock), go: { kind: 'panel', panel: 'build', target: `find:tank:${t.id}` } }, t.name, `${t.gallons} gallon gal tank aquarium`);

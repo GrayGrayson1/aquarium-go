@@ -10,6 +10,7 @@ import { Search, Lock, CornerDownLeft, X } from 'lucide-react';
 import { create } from 'zustand';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
+import { useSharedMode } from '@/state/sharedMode';
 import { sfx } from '@/audio/sfx';
 import { useSocialAvailable } from '../online/mode';
 import { useShell } from '../common/shellStore';
@@ -77,22 +78,44 @@ export function FindAnything() {
   return <AnimatePresence>{open && <Palette key="find" />}</AnimatePresence>;
 }
 
+/** How often the open palette re-reads the world (the query re-searches at once): the index is the whole game. */
+const REFRESH_MS = 1500;
+
 function Palette() {
-  const game = useGame((s) => s.game);
+  // (a snapshot, not every tick: rebuilding the index four times a second grew with the game — reviewer note)
+  const [game, setGame] = useState(() => useGame.getState().game);
+  useEffect(() => {
+    const t = window.setInterval(() => setGame(useGame.getState().game), REFRESH_MS);
+    return () => window.clearInterval(t);
+  }, []);
   const social = useSocialAvailable();
+  const shared = useSharedMode((s) => s.club !== null);
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  const closeBtn = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const opener = useRef<HTMLElement | null>(typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null);
-  const results = useMemo(() => (game ? orderResults(findAnything(game, q, { social })) : []), [game, q, social]);
+  /** A result was chosen: focus stays where the destination puts it (a panel's title), not back on the opener. */
+  const went = useRef(false);
+  const results = useMemo(() => (game ? orderResults(findAnything(game, q, { social, tour: !shared })) : []), [game, q, social, shared]);
   useEffect(() => setActive(0), [q]);
   useEffect(() => {
-    const t = window.setTimeout(() => input.current?.focus(), 20);
+    // (autoFocus puts the caret in the box at once; this is the fallback, and never takes focus back from Close)
+    const t = window.setTimeout(() => {
+      if (!document.activeElement?.closest('.ag-find')) input.current?.focus();
+    }, 20);
     const back = opener.current;
     return () => {
       window.clearTimeout(t);
-      if (back && document.contains(back)) back.focus({ preventScroll: true });
+      if (!went.current) {
+        if (back && document.contains(back)) back.focus({ preventScroll: true });
+        return;
+      }
+      // a result was chosen: the destination keeps the focus it took (a panel's title). A sheet that took none
+      // (Settings, opened from this box rather than a button) gets it here, so the keyboard isn't left on the page.
+      const a = document.activeElement;
+      if (!a || a === document.body || !document.contains(a)) document.querySelector<HTMLElement>('.pn-sheet:not(.is-aside) .pn-head__title, .ag-sheet .ag-sheet__close')?.focus({ preventScroll: true });
     };
   }, []);
   useEffect(() => {
@@ -102,22 +125,31 @@ function Palette() {
   const choose = (r: FindResult | undefined) => {
     if (!r) return;
     sfx('click');
+    went.current = true;
     closeFind();
     goFind(r.go);
   };
   const onKey = (e: ReactKeyboardEvent) => {
+    const inInput = e.target === input.current;
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
       sfx('close');
       closeFind();
-    } else if (e.key === 'ArrowDown') {
+    } else if (e.key === 'Tab') {
+      // aria-modal: Tab stays in the box (the box and Close; the results are reached with the arrows)
+      e.preventDefault();
+      const stops = [input.current, closeBtn.current].filter((x): x is HTMLInputElement | HTMLButtonElement => !!x);
+      const at = stops.indexOf(document.activeElement as HTMLInputElement | HTMLButtonElement);
+      stops[(at + (e.shiftKey ? -1 : 1) + stops.length) % stops.length]?.focus();
+    } else if (e.key === 'ArrowDown' && inInput) {
       e.preventDefault();
       setActive((i) => Math.min(results.length - 1, i + 1));
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowUp' && inInput) {
       e.preventDefault();
       setActive((i) => Math.max(0, i - 1));
-    } else if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' && inInput) {
+      // (Enter on Close closes, on a result goes there: their own clicks)
       e.preventDefault();
       choose(results[active]);
     }
@@ -139,13 +171,14 @@ function Palette() {
             aria-activedescendant={results[active] ? `ag-find-${active}` : undefined}
             aria-label="Find anything"
             placeholder="Find anything: animals, gear, research, screens…"
+            autoFocus
             autoComplete="off"
             spellCheck={false}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             data-testid="find-input"
           />
-          <button type="button" className="ag-find__close" aria-label="Close" onClick={() => closeFind()} data-testid="find-close">
+          <button ref={closeBtn} type="button" className="ag-find__close" aria-label="Close" onClick={() => closeFind()} data-testid="find-close">
             <X size={16} aria-hidden />
           </button>
         </div>
@@ -164,6 +197,7 @@ function Palette() {
                 <button
                   type="button"
                   role="option"
+                  tabIndex={-1}
                   id={`ag-find-${i}`}
                   aria-selected={i === active}
                   data-find-index={i}

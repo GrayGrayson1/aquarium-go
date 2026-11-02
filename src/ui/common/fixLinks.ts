@@ -35,6 +35,7 @@ export interface FixLink {
 const kindOf = (e: EquipmentInstance): EquipmentKind | undefined => getEquipmentDef(e.defId)?.kind;
 const nameOf = (e: EquipmentInstance): string => getEquipmentDef(e.defId)?.name ?? 'equipment';
 const gearOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance[] => (tank.equipment ?? []).filter((e) => kinds.includes(kindOf(e) as EquipmentKind));
+const failedOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance | undefined => gearOf(tank, ...kinds).find((e) => e.failed);
 
 const card = (tank: Tank, tab: TankCardTabId, fix: string, label: string): FixLink => ({ label, to: { kind: 'card', tankId: tank.id, tab, fix } });
 /** Build › Equipment for this tank, showing one kind of gear to buy. */
@@ -55,22 +56,44 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
   if (failed) return repairLink(tank, failed);
   const adv = (issue.advice ?? '').toLowerCase();
   const p = issue.param;
+  // (the advice words are the sim's, src/sim/water/report.ts: a setting to change goes to the unit's own row, gear to
+  // add goes to Build › Equipment for this tank, a broken unit to its Repair)
+  // "Upgrade or add a filter, or rehome some animals": the filter is the first fix it names
+  if (p === 'stocking' && /add a filter/.test(adv)) return buyGear(tank, 'filter', 'Buy a filter');
   if (/rehome|move some animals/.test(adv)) return { label: 'Open Livestock', to: { kind: 'panel', panel: 'livestock', target: null } };
   if (p === 'temp') {
     const stuck = gearOf(tank, 'heater').find((e) => e.failed && e.failMode === 'stuck_on');
     if (stuck) return repairLink(tank, stuck);
-    if (/install a heater|second heater|more powerful/.test(adv) || !gearOf(tank, 'heater', 'chiller').length) return buyGear(tank, 'heater', 'Buy a heater');
+    // "A heater has failed — repair or replace it." (the line doesn't name the unit)
+    const broken = /has failed|repair or replace/.test(adv) ? failedOf(tank, 'heater', 'chiller') : undefined;
+    if (broken) return repairLink(tank, broken);
+    // too warm, and nothing here cools: "Add a chiller, or a clip-on fan…" (a heater would make it worse)
+    if (/add a chiller|clip-on fan/.test(adv)) return buyGear(tank, 'chiller', 'Buy a chiller');
+    // a setting to change ("Raise the heater setting (or add a second heater…)", "Turn the heater down…", "Lower the
+    // chiller setting…", "Set the heater at least 1 °C below the chiller…"): the unit's row, where its setting is
+    const setting = /lower the chiller/.test(adv) ? gearOf(tank, 'chiller')[0] : /raise the heater setting|turn the heater down|set the heater/.test(adv) ? gearOf(tank, 'heater')[0] : undefined;
+    if (setting) return gearRow(tank, setting, 'Open Equipment');
+    if (/add a heater|install a heater|second heater|more powerful/.test(adv) || !gearOf(tank, 'heater', 'chiller').length) return buyGear(tank, 'heater', 'Buy a heater');
     const unit = gearOf(tank, 'heater', 'chiller')[0];
     return gearRow(tank, unit, 'Open Equipment');
   }
   if (p === 'filtration') {
-    const filter = gearOf(tank, 'filter')[0];
+    // "Repair or replace the filter." (none running) and "Repair or replace it." (one of several down)
+    const broken = /repair or replace/.test(adv) ? failedOf(tank, 'filter') : undefined;
+    if (broken) return repairLink(tank, broken);
+    const filter = gearOf(tank, 'filter').find((e) => !e.failed) ?? gearOf(tank, 'filter')[0];
     if (/install a filter|second filter|larger one|add a filter/.test(adv) || !filter) return buyGear(tank, 'filter', 'Buy a filter');
     return gearRow(tank, filter, 'Open Equipment');
   }
   if (p === 'light') {
+    // "The light has burned out." comes with "Install a light…": the burned-out one is repaired, not replaced
+    const burned = failedOf(tank, 'light');
+    if (burned) return repairLink(tank, burned);
     const light = gearOf(tank, 'light')[0];
-    if (!light || /install a light|stronger light/.test(adv)) return buyGear(tank, 'light', 'Buy a light');
+    if (!light || /install a light/.test(adv)) return buyGear(tank, 'light', 'Buy a light');
+    // "Raise the intensity or install a stronger light": the intensity first, a stronger light once it's at the
+    // Lighting slider's top (1.5, TankCard)
+    if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49) return buyGear(tank, 'light', 'Buy a light');
     return card(tank, 'gear', 'lighting', 'Lighting');
   }
   if (p === 'oxygen') return gearOf(tank, 'airstone').length ? gearRow(tank, gearOf(tank, 'airstone')[0], 'Open Equipment') : buyGear(tank, 'airstone', 'Buy an airstone');

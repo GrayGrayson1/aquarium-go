@@ -7,7 +7,7 @@ import { ArrowRight } from 'lucide-react';
 import { sfx } from '@/audio/sfx';
 import { goFix, type FixLink } from '../common/fixLinks';
 
-export function FixButton({ link, testId, onGo }: { link: FixLink | null | undefined; testId?: string; /** after going (e.g. close the drawer) */ onGo?: () => void }) {
+export function FixButton({ link, testId, onGo }: { link: FixLink | null | undefined; testId?: string; /** before going (e.g. close the drawer) */ onGo?: () => void }) {
   if (!link) return null;
   return (
     <button
@@ -18,8 +18,10 @@ export function FixButton({ link, testId, onGo }: { link: FixLink | null | undef
       onClick={(e) => {
         e.stopPropagation();
         sfx('click');
-        goFix(link.to);
+        // the caller's tidy-up first (the bell closes itself), then the fix: a Feed link opens the food popover, and
+        // closing the drawer after it would close that too
         onGo?.();
+        goFix(link.to);
       }}
     >
       {link.label} <ArrowRight size={12} aria-hidden />

@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Hammer, Layers, Mountain, Wrench, Palette, Building2, Lock, Move, MapPin, Sprout, Flower2, Shell, Gem, Puzzle, Waves, Check, Power, Trash2, Package, TriangleAlert, Info, Zap, Sparkles, Thermometer, Snowflake, Fan, Lightbulb, Wind, Droplets, Droplet, Utensils, Sun, Leaf, Box } from 'lucide-react';
-import type { BackdropKind, DecorCategory, DecorDef, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
+import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIERS } from '@/data/catalog/tanks';
@@ -42,6 +42,7 @@ import { RoomPage, Rooms, YourFacility, type RoomId } from './FacilityRooms'; //
 import { startToolFromPanel } from '../common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
 import { LockedButton, askUnlock } from '../common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006)
 import { waterClassKeys } from '@/sim/facility/progression'; // chunk 19 (QOL-006): what a locked water type waits for
+import { itemSuitsTank } from '../../search/searchIndex'; // chunk 19 (QOL-004, reviewer B5)
 import { SearchField } from '../common/SearchField'; // chunk 19 (ADR-0055 decision 3, QOL-003)
 import { matches } from '../common/match'; // chunk 19 (QOL-003)
 import { glow } from '@/ui/common/glow'; // chunk 19 (QOL-002, QOL-004)
@@ -72,6 +73,8 @@ export function BuildPanel() {
   const [decorQ, setDecorQ] = useState('');
   const [equipQ, setEquipQ] = useState('');
   const [equipKind, setEquipKind] = useState<EquipmentKind | 'all'>('all');
+  // chunk 19 (QOL-004, reviewer B5) — Find anything on an item no tank of yours can take opens Tanks on that water
+  const [tanksWc, setTanksWc] = useState<{ wc: WaterClass; n: number } | null>(null);
   useEffect(() => () => clearOfferReturn(), []); // lane:qa-play — leaving Build forgets a pending "back to the offer"
   useEffect(() => {
     const saveId = getGame()?.saveId;
@@ -105,26 +108,44 @@ export function BuildPanel() {
       // chunk 19 (QOL-004) — Find anything: the list searched for the item, the item glowing; the tank on show is one
       // whose water the item suits (a coral looked up from a freshwater tank goes to the reef)
       const [, what, id] = target.split(':');
-      const suitTank = (envs: readonly string[] | undefined) => {
+      /** Show a tank that can take the item (its water and, for decor, its water class); false when none can. */
+      const suitTank = (envs: readonly Environment[] | undefined, wcs?: readonly WaterClass[]): boolean => {
         const gg = getGame();
-        if (!gg || !envs?.length) return;
+        if (!gg || (!envs?.length && !wcs?.length)) return true;
         const cur = (tankId && gg.tanks[tankId]) || gg.tanks[gg.tankOrder[0]];
-        if (cur && envs.includes(cur.environment)) return;
-        const other = gg.tankOrder.map((tid) => gg.tanks[tid]).find((t) => !!t && envs.includes(t.environment));
-        if (other) setTankId(other.id);
+        if (cur && itemSuitsTank(cur, envs, wcs)) return true;
+        const other = gg.tankOrder.map((tid) => gg.tanks[tid]).find((t) => !!t && itemSuitsTank(t, envs, wcs));
+        if (other) {
+          setTankId(other.id);
+          return true;
+        }
+        // none can (Find said "Needs a reef tank"): Tanks, on the first such water that's open (else its lock glows,
+        // a tap away from how to unlock it) — the list searched for the item would only say "Nothing matches"
+        const want = PLAYABLE_WATER_CLASSES.filter((w) => itemSuitsTank({ environment: envOfWc(w), waterClass: w }, envs, wcs));
+        const pick = want.find((w) => waterClassLock(gg, w) === null) ?? want[0];
+        setTab('tanks');
+        setRoom(null);
+        if (pick) {
+          setTanksWc((was) => ({ wc: pick, n: (was?.n ?? 0) + 1 }));
+          glow(`[data-testid="build-wc-${pick}"]`);
+        }
+        return false;
       };
       if (what === 'decor') {
-        suitTank(DECOR.find((d) => d.id === id)?.environments);
-        setTab('decor');
-        setDecorCat('all');
-        setDecorQ(DECOR.find((d) => d.id === id)?.name ?? '');
-        glow(`[data-testid="panel-build"] [data-decor-id="${CSS.escape(id)}"]`);
+        const d = DECOR.find((x) => x.id === id);
+        if (suitTank(d?.environments, d?.waterClasses)) {
+          setTab('decor');
+          setDecorCat('all');
+          setDecorQ(d?.name ?? '');
+          glow(`[data-testid="panel-build"] [data-decor-id="${CSS.escape(id)}"]`);
+        }
       } else if (what === 'equipment') {
-        suitTank(getEquipmentDef(id)?.environments);
-        setTab('equipment');
-        setEquipKind('all');
-        setEquipQ(getEquipmentDef(id)?.name ?? '');
-        glow(`[data-testid="shop-equip-${CSS.escape(id)}"]`);
+        if (suitTank(getEquipmentDef(id)?.environments)) {
+          setTab('equipment');
+          setEquipKind('all');
+          setEquipQ(getEquipmentDef(id)?.name ?? '');
+          glow(`[data-testid="shop-equip-${CSS.escape(id)}"]`);
+        }
       } else if (what === 'tank') {
         setTab('tanks');
         glow(`[data-tier-id="${CSS.escape(id)}"]`);
@@ -180,7 +201,7 @@ export function BuildPanel() {
         </div>
       }
     >
-      {tab === 'tanks' && <TanksTab g={g} />}
+      {tab === 'tanks' && <TanksTab key={tanksWc ? `wc-${tanksWc.n}` : 'tanks'} g={g} startWc={tanksWc?.wc} />}
       {needsTank && !tank && (
         <EmptyState icon={<Layers size={24} />} title="No tanks yet" action={<Button variant="primary" onClick={() => setTab('tanks')}>Choose a tank</Button>}>
           Buy an aquarium first.
@@ -196,12 +217,16 @@ export function BuildPanel() {
 
 // ───────────────────────── Tanks ─────────────────────────
 
-function TanksTab({ g }: { g: GameState }) {
+/** The environment a water class belongs to. */
+const envOfWc = (w: WaterClass): Environment => (w.startsWith('fresh') ? 'freshwater' : w === 'brackish' ? 'brackish' : 'marine');
+
+function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anything's "Needs a reef tank" */ startWc?: WaterClass }) {
   const { close } = useSheet();
   const marineOk = unlocked(g, 'marine_basics');
   const wcLocked = (w: WaterClass) => waterClassLock(g, w) !== null; // lane:brackish; chunk 7 (B-160): the rules' own lock
   // lane:fix-panels (P2-03) — arriving from a shop offer's "New tank": start on the water that animal needs
   const [wc, setWc] = useState<WaterClass>(() => {
+    if (startWc && !wcLocked(startWc)) return startWc;
     const wanted = peekOfferReturn()?.waterClass;
     return wanted && !wcLocked(wanted) ? wanted : ((g.tanks[g.tankOrder[0]]?.waterClass as WaterClass) ?? 'freshwater_tropical');
   });

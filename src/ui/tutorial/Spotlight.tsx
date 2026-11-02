@@ -13,6 +13,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Pointer } from 'lucide-react';
 import { useSettings } from '@/state/settings';
 
+const reducedMotion = () => useSettings.getState().reducedMotion || (typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+
 export interface Rect {
   x: number;
   y: number;
@@ -73,7 +75,7 @@ export function useSpotlightTarget(candidates: readonly string[], opts: { allowC
         if (inScroll) {
           const r = hit.el.getBoundingClientRect();
           const box = inScroll.getBoundingClientRect();
-          if (r.top < box.top || r.bottom > box.bottom || r.left < box.left || r.right > box.right) hit.el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+          if (r.top < box.top || r.bottom > box.bottom || r.left < box.left || r.right > box.right) hit.el.scrollIntoView({ block: 'center', inline: 'center', behavior: reducedMotion() ? 'auto' : 'smooth' });
         }
       }
       const r = hit?.rect ?? null;
@@ -82,7 +84,8 @@ export function useSpotlightTarget(candidates: readonly string[], opts: { allowC
         last = k;
         setRect(r);
       }
-      timer = window.setTimeout(measure, EVERY_MS);
+      // (a hidden tab measures once a second: nothing on screen moves there)
+      timer = window.setTimeout(measure, document.hidden ? 1000 : EVERY_MS);
     };
     measure();
     const onResize = () => {
@@ -98,7 +101,7 @@ export function useSpotlightTarget(candidates: readonly string[], opts: { allowC
   return rect;
 }
 
-export function Spotlight({ rect, dim = true, dimAll = false, hand = true, testId = 'guide-spotlight' }: { rect: Rect | null; dim?: boolean; dimAll?: boolean; hand?: boolean; testId?: string }) {
+export function Spotlight({ rect, dim = true, dimAll = false, hand = true, gold = false, testId = 'guide-spotlight' }: { rect: Rect | null; dim?: boolean; dimAll?: boolean; hand?: boolean; /** 0.5 §5.5: a destination that lives in the phone's More rings gold */ gold?: boolean; testId?: string }) {
   const reduced = useSettings((s) => s.reducedMotion);
   const maskId = `ag-spot-${useId().replace(/:/g, '')}`;
   const [vw, setVw] = useState(() => (typeof window === 'undefined' ? 0 : window.innerWidth));
@@ -133,7 +136,7 @@ export function Spotlight({ rect, dim = true, dimAll = false, hand = true, testI
       </AnimatePresence>
       {hole && (
         <motion.div
-          className={`ag-spot__ring${rect?.round ? ' is-round' : ''}`}
+          className={`ag-spot__ring${rect?.round ? ' is-round' : ''}${gold ? ' is-gold' : ''}`}
           initial={false}
           animate={{ left: hole.x, top: hole.y, width: hole.width, height: hole.height }}
           transition={glide}

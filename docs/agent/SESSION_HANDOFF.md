@@ -27,6 +27,13 @@ it's used up.
   `searchIndex.ts`.
 - *Look-around scripts that navigate right after `newGame`* race the first scene compile (~9 s in headless Chromium):
   wait for the dock and a few seconds before opening panels by address.
+- *A window keydown handler for arrows must ask who owns them:* `e.defaultPrevented` (a radio group or tab strip that
+  used the key) and a short list of roles (CameraRig's `ARROW_OWNERS`). Excluding a whole side sheet blocked the
+  decorating camera's arrows after a decor card was picked (focus stays on the card).
+- *WebKit doesn't focus a button on a mouse click:* a test about focus after a click works in Chromium only; focus
+  the control and press Enter (what a keyboard player does) to test the same thing in both engines.
+- *A sheet that comes back on its own must wait for what the player is reading:* touch's "Place another" (8 s) and
+  the guide's next card (aside.ts).
 
 ## Chunk 18, the owner's deletes: done and released as 0.9.1 (2026-11-01)
 

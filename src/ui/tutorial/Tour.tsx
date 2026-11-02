@@ -15,7 +15,7 @@ import { useDevMode } from '@/state/devTools';
 import { sfx } from '@/audio/sfx';
 import { Button, ProgressDots } from '../kit';
 import { useShell } from '../common/shellStore';
-import { useIsMobile } from '../common/safe';
+import { isTextEntry, useIsMobile } from '../common/safe';
 import { useSocialAvailable } from '../online/mode';
 import { Spotlight, useSpotlightTarget, type Rect } from './Spotlight';
 import { endTour, useTour } from './tourStore';
@@ -38,6 +38,14 @@ function TourRun() {
   const i = Math.max(0, Math.min(step, stops.length - 1));
   const stop = stops[i];
   const last = i === stops.length - 1;
+
+  // the tour shows the tank view's tools: started from the room view (Find anything, Settings), it goes to a tank first
+  // (reviewer note: some stops pointed at nothing there)
+  useLayoutEffect(() => {
+    const ui = useUI.getState();
+    const g = useGame.getState().game;
+    if (ui.view !== 'tank' && g?.tankOrder.length) ui.set({ view: 'tank', focusedTankId: ui.focusedTankId && g.tanks[ui.focusedTankId] ? ui.focusedTankId : g.tankOrder[0] });
+  }, []);
 
   // each stop opens what it shows (and the tank view between them)
   useEffect(() => {
@@ -78,10 +86,14 @@ function TourRun() {
     useTour.setState({ step: to });
   };
 
-  // keys: → / Enter next, ← back, Escape ends (before the game's own Escape)
+  // keys: → / Enter next, ← back, Escape ends (before the game's own Escape). The arrows stay with a text box or a
+  // control that uses them (a panel's tabs, a radio group, a slider) — reviewer note: they were taken from those
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (document.querySelector('.ag-modal-backdrop, .ag-find-backdrop')) return;
+      const t = e.target as HTMLElement | null;
+      const ownsArrows = isTextEntry(e.target) || !!t?.closest?.('input, select, textarea, [contenteditable="true"], [role="tablist"], [role="radiogroup"], [role="listbox"], [role="slider"], [role="menu"], [role="grid"]');
+      if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && ownsArrows) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopImmediatePropagation();

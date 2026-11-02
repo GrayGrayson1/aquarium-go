@@ -6,7 +6,8 @@
  *     touch, and the hint's buttons turn and size it (chunk 19: the wheel, a pinch, a two-finger drag and a right-drag
  *     move the decorating camera instead; the events this editor swallows are handed to the camera). Tint = valid (aqua) / invalid (coral) with the reason under it. Click (a tap on touch) places it and
  *     ends the tool; Shift+click keeps placing copies, and pieces from storage keep placing while any are left.
- *  tool 'decor_move': hover highlights an item; drag moves it (epiphytes ride along); R / wheel rotate while held;
+ *  tool 'decor_move': hover highlights an item; drag moves it (epiphytes ride along); R turns it and Shift+wheel or
+ *     [ ] size it while held (the plain wheel zooms the decorating camera, chunk 19);
  *     Delete / Backspace sells the held item back at 50 %, or the hovered one on a second press. Esc exits either tool.
  *
  * Picking (lane:tankrender): the pointer ray is marched against the analytic substrate heightfield and only the

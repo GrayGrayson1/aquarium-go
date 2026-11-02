@@ -139,6 +139,10 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await createShop(ola, club);
       await openMenu(ola);
       await expect(tid(ola, 'shared-strip-text')).toContainText('Shared · ');
+      // reviewer B8: the dropdown sits above the toasts (they used to cover it)
+      const z = await ola.evaluate(() => ({ menu: Number(getComputedStyle(document.querySelector('[data-testid="shared-menu"]')!).zIndex), toasts: Number(getComputedStyle(document.documentElement).getPropertyValue('--z-toast')) }));
+      expect(z.toasts).toBeGreaterThan(0);
+      expect(z.menu).toBeGreaterThan(z.toasts);
       await closeMenu(ola);
       await expect(ola.getByText('Your club can open it from Social.')).toBeVisible();
     });

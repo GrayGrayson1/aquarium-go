@@ -89,6 +89,31 @@ test.describe('QOL-001: panels stay open', () => {
   });
 });
 
+test.describe('QOL-001: buying part of a group (reviewer B1)', () => {
+  test('goes back to the shop list, where the rest is still on offer and starts fresh', async ({ page }) => {
+    await start(page);
+    expect((await aq<{ ok: boolean }>(page, 'dev.addShopOffer', 'mystery_snail', { count: 3, price: 30 })).ok).toBe(true);
+    await openPanel(page, 'market');
+    await tid(page, 'shop-offer-0').click();
+    // buy one of the three (the third): two stay on offer
+    const pick = (n: number) => page.getByRole('checkbox', { name: `Include individual ${n}` });
+    for (const n of [1, 2]) {
+      await expect(pick(n)).toBeChecked();
+      await page.locator('label.pn-check', { has: pick(n) }).click(); // (the visible box; the input is hidden under it)
+      await expect(pick(n)).not.toBeChecked();
+    }
+    await tid(page, 'buy-offer').click();
+    await expect(tid(page, 'panel-market')).toBeVisible();
+    await expect(tid(page, 'buy-offer')).toBeHidden();
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/shop');
+    expect(await probe<number>(page, 'g.market.stock[0].creatures.length')).toBe(2);
+    // the rest is a fresh look: both picked again (the old screen kept positions that now meant other animals)
+    await tid(page, 'shop-offer-0').click();
+    await expect(pick(1)).toBeChecked();
+    await expect(pick(2)).toBeChecked();
+  });
+});
+
 test.describe('QOL-001: a phone’s sheet steps aside and comes back', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   test('Build slides away while the piece is placed, then back to Decor', async ({ page }) => {
@@ -100,6 +125,17 @@ test.describe('QOL-001: a phone’s sheet steps aside and comes back', () => {
     await expect.poll(async () => (await ui(page)).aside).toBe('build');
     await expect(tid(page, 'panel-build')).toBeHidden();
     await placeSomewhere(page, true);
+    // (changed on purpose after the review: the sheet came back after 0.9 s and hid the hint's "Place another". It
+    // now waits while that's offered; Place another keeps it aside, Done brings it back)
+    const again = tid(page, 'toolhint-place-another');
+    await expect(again).toBeVisible();
+    await page.waitForTimeout(1600);
+    await expect(tid(page, 'panel-build')).toBeHidden();
+    await again.tap();
+    await expect.poll(async () => (await ui(page)).tool).toBe('decor_place');
+    await placeSomewhere(page, true);
+    await expect(again).toBeVisible();
+    await page.locator('.ag-toolhint__done', { hasText: 'Done' }).tap();
     await expect(tid(page, 'panel-build')).toBeVisible({ timeout: 5000 });
     await expect(tid(page, 'build-tab-decor')).toHaveAttribute('aria-selected', 'true');
     expect((await ui(page)).aside).toBeNull();
@@ -135,6 +171,26 @@ test.describe('QOL-002: the tank card links to the fix', () => {
     await food.click();
     await expect(tid(page, 'panel-market')).toBeVisible();
     await expect(page.locator('[data-food-row].is-flash')).toBeVisible();
+  });
+});
+
+test.describe('QOL-002: the bell (reviewer B2, B3)', () => {
+  test('names gear wearing out, and its Feed link opens the food', async ({ page }) => {
+    await start(page, 3000, 'betta');
+    const id = await probe<string>(page, 'g.tankOrder[0]');
+    type Api = { __AQ: { mutate(fn: (s: { tanks: Record<string, { equipment: { defId: string; condition: number }[] }>; creatures: Record<string, { tankId: string | null; stats: { hunger: number } }> }) => void): void } };
+    // a starving betta (the sim names it on the next step), then a filter wearing out (read as it is, no step needed:
+    // a step could also break it)
+    await page.evaluate((tankId) => (window as unknown as Api).__AQ.mutate((s) => { for (const c of Object.values(s.creatures)) if (c.tankId === tankId) c.stats.hunger = 96; }), id);
+    await aq(page, 'advance', 0.25);
+    await page.evaluate((tankId) => (window as unknown as Api).__AQ.mutate((s) => void (s.tanks[tankId].equipment.find((e) => e.defId.includes('filter'))!.condition = 0.1)), id);
+    await tid(page, 'hud-alerts').click();
+    await expect(tid(page, 'alert-equipment-worn')).toContainText('Wearing out');
+    const feed = tid(page, `alert-fix-${id}`);
+    await expect(feed).toHaveText(/Feed/);
+    await feed.click();
+    await expect(page.locator('.ag-alerts-pop')).toBeHidden();
+    await expect(page.locator('.ag-foodlist')).toBeVisible();
   });
 });
 
@@ -176,6 +232,54 @@ test.describe('QOL-003 and QOL-004: search, filters and Find anything', () => {
     await expect(page.locator('[data-decor-id="java_fern"]')).toBeVisible();
   });
 
+  test('Find anything keeps Tab inside, Enter on Close only closes, and focus goes back only on a dismiss (reviewer B7)', async ({ page }) => {
+    await start(page);
+    await tid(page, 'hud-find').focus();
+    await page.keyboard.press('Enter');
+    await expect(tid(page, 'find-input')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(tid(page, 'find-close')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(tid(page, 'find-input')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(tid(page, 'find-close')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(tid(page, 'find-anything')).toBeHidden();
+    expect((await ui(page)).panel).toBeNull();
+    await expect(tid(page, 'hud-find')).toBeFocused();
+    // a result: the destination keeps the focus it gives (the panel's title), it isn't pulled back to the opener
+    await page.keyboard.press('Enter');
+    await expect(tid(page, 'find-input')).toBeFocused();
+    await page.keyboard.type('notifications');
+    await page.keyboard.press('Enter');
+    await expect(tid(page, 'panel-settings')).toBeVisible();
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[data-testid="panel-settings"]'))).toBe(true);
+    // and a panel (PanelHost) keeps its own title's focus
+    await page.keyboard.press('Escape');
+    await expect(tid(page, 'panel-settings')).toBeHidden();
+    await tid(page, 'hud-find').focus();
+    await page.keyboard.press('Enter');
+    await expect(tid(page, 'find-input')).toBeFocused();
+    await page.keyboard.type('market supplies');
+    await page.keyboard.press('Enter');
+    await expect(tid(page, 'panel-market')).toBeVisible();
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[data-testid="panel-market"]'))).toBe(true);
+  });
+
+  test('Find anything on a piece no tank of yours can take says so, and opens Tanks on that water (reviewer B5)', async ({ page }) => {
+    await start(page);
+    await page.keyboard.press('Control+k');
+    await tid(page, 'find-input').fill('coral');
+    const hit = page.locator('[data-testid^="find-result-decor:"]', { hasText: 'Needs a reef tank' }).first();
+    await expect(hit).toBeVisible();
+    await hit.click();
+    await expect(tid(page, 'panel-build')).toBeVisible();
+    await expect(tid(page, 'build-tab-tanks')).toHaveAttribute('aria-selected', 'true');
+    await expect(tid(page, 'build-wc-reef')).toHaveClass(/ag-glow|is-on/);
+  });
+
   test('Find anything opens a screen with the keyboard alone', async ({ page }) => {
     await start(page);
     await page.locator('canvas').first().click({ position: { x: 5, y: 5 }, force: true }).catch(() => {});
@@ -214,6 +318,64 @@ test.describe('QOL-005: the decorating camera', () => {
     await page.keyboard.press('Escape');
     await expect(tid(page, 'decor-cam-pad')).toBeHidden();
     await expect.poll(async () => (await aq<{ mode: string }>(page, 'camera')).mode).not.toBe('decorate');
+  });
+});
+
+test.describe('QOL-005: the arrows after a piece is picked in Build (reviewer B6)', () => {
+  test('turn the camera while focus is still on the decor card; a text box keeps them', async ({ page }) => {
+    await start(page);
+    await openPanel(page, 'build');
+    await tid(page, 'build-tab-decor').click();
+    const card = page.locator('[data-decor-id]:not([disabled]):not([aria-disabled])').first();
+    await card.focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await ui(page)).tool).toBe('decor_place');
+    await expect(card).toBeFocused();
+    await expect.poll(async () => (await aq<{ mode: string }>(page, 'camera')).mode).toBe('decorate');
+    const yaw = async () => (await aq<{ want: { yaw: number } }>(page, 'camera')).want.yaw;
+    const y0 = await yaw();
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(yaw).toBeGreaterThan(y0);
+    await tid(page, 'decor-search').focus();
+    const y1 = await yaw();
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForTimeout(250);
+    expect(await yaw()).toBe(y1);
+  });
+});
+
+test.describe('QOL-005: the pad on a phone held sideways (reviewer B9)', () => {
+  test.use({ viewport: { width: 667, height: 375 }, hasTouch: true, isMobile: true });
+  test('is a column at the right, framed around on the right, its buttons full size', async ({ page }) => {
+    await start(page);
+    await aq(page, 'dev.setSpeed', 0);
+    await page.evaluate(() => (window as unknown as { __AQ: { ui(): { set(p: Record<string, unknown>): void } } }).__AQ.ui().set({ panel: 'build', panelTarget: 'tab:decor' }));
+    await expect(tid(page, 'panel-build')).toBeVisible();
+    await chooseDecor(page, true);
+    const pad = tid(page, 'decor-cam-pad');
+    await expect(pad).toBeVisible();
+    await expect(pad).toHaveAttribute('data-layout', 'column');
+    await expect(pad).toHaveAttribute('data-occlude', 'right');
+    const box = (await pad.boundingBox())!;
+    expect(box.width).toBeLessThan(160);
+    expect(box.x).toBeGreaterThan(667 / 2);
+    for (const b of await page.locator('.ag-decorpad__btn').all()) expect((await b.boundingBox())!.width).toBeGreaterThanOrEqual(40);
+  });
+});
+
+test.describe('QOL-005: the pad beside Build in a mid-size window (reviewer B10)', () => {
+  test.use({ viewport: { width: 900, height: 700 } });
+  test('lies as rows under the tank, left of the sheet, framed around from below', async ({ page }) => {
+    await start(page);
+    await openPanel(page, 'build');
+    await tid(page, 'build-tab-decor').click();
+    await chooseDecor(page);
+    const pad = tid(page, 'decor-cam-pad');
+    await expect(pad).toBeVisible();
+    await expect(pad).toHaveAttribute('data-layout', 'band');
+    await expect(pad).toHaveAttribute('data-occlude', 'bottom');
+    const sheet = (await page.locator('.pn-sheet--side').first().boundingBox())!;
+    await expect.poll(async () => { const b = (await pad.boundingBox())!; return b.x + b.width <= sheet.x + 1 && b.y > 700 / 2; }).toBe(true);
   });
 });
 

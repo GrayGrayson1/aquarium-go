@@ -175,7 +175,9 @@ function useHudKeys() {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return;
       const ui = useUI.getState();
-      if (ui.screen !== 'game' || document.querySelector('.ag-modal-backdrop')) return;
+      // (chunk 19: nor while Find anything is open — a quick typist's first letters, before its box has focus, were
+      // game shortcuts: "p" opened Photo mode)
+      if (ui.screen !== 'game' || document.querySelector('.ag-modal-backdrop, .ag-find-backdrop')) return;
       if (ui.photoMode) return; // photo mode handles its own keys
       if (ui.hudHidden) {
         if (e.key === 'Escape' || e.key.toLowerCase() === 'h') {
@@ -256,7 +258,7 @@ function useHudKeys() {
 }
 
 /** Keyboard users: a popover that closes (Escape, a pick) hands focus back to the button that opened it. */
-const POPOVER_TRIGGER: Partial<Record<NonNullable<Popover>, string>> = { food: 'tool-feed', target_food: 'tool-target-feed', lights: 'tool-lights', alerts: 'hud-alerts', more: 'dock-more' };
+const POPOVER_TRIGGER: Partial<Record<NonNullable<Popover>, string>> = { food: 'tool-feed', target_food: 'tool-target-feed', lights: 'tool-lights', alerts: 'hud-alerts', more: 'dock-more', shared: 'shared-strip' };
 function usePopoverFocusReturn() {
   const popover = useShell((s) => s.popover);
   const prev = useRef<Popover>(null);

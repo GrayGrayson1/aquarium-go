@@ -212,7 +212,7 @@ Rules: `src/ui/common/notify.ts` (tests: `tests/sim/ui-notify-*.test.ts`). Every
 | `tank-card-attn` | Dot on the tank bar's Tank card button: the focused tank needs a look (status, food low, failed gear, gear that can't help). The button's `data-attention` is `good\|watch\|danger`; its aria-label / title give the reasons |
 | `tank-prev-attn` / `tank-next-attn` | Dot on the switcher arrow that reaches the most urgent OTHER tank soonest (aria-label names it) |
 | `tank-tab-attn-<water\|gear\|life>` | Inline dot on a tank card tab with something to look at |
-| `tank-attention-reason` | Tank card header line for what the status reason doesn't cover (food running low, broken gear, "The Autofeeder can't help these animals — see Equipment.") |
+| `tank-status-reason` / `tank-issue` / `tank-fix-<n>` | Chunk 19 (QOL-002): the tank card header's list of what needs a look (one `tank-issue` row each: the status reason, food running low, broken or worn gear, gear that can't help), each with its fix link (`tank-fix-<n>`, `data-fix-to` says where it goes) |
 | `tanks-row-<tankId>` / `tanks-row-attn-<tankId>` / `tanks-row-extra-<tankId>` | Tanks panel row, its dot (on the thumbnail), and its extra reasons line |
 | `dock-badge-<panelId>` / `sheet-switch-dot-<panelId>` | Dock / bottom-sheet switcher dots: `tanks` (a tank other than the one in view needs a look — that one's dot is `tank-card-attn`), `shows` (new results → opens Shows › Results), `market` (bids waiting for an answer → Market › My listings), `research` (a project finished since Research was last open), `visitors` / `shows` (unlocked but never opened). Hidden on the panel that is open |
 | `shows-results-new` | Amber count on the Shows › Results tab (unseen results); opening the tab marks them seen at once — the cards keep their "New" tag for that visit |
@@ -503,3 +503,22 @@ link.
 `window.__AQ.scenario` (where the tools are allowed; each call resolves): `presets()`, `recipe(name)`,
 `validate(recipe)`, `play(recipe | name)`, `restart()`, `capture(name?)`, `run(recipe | name, hours)`,
 `link(recipe | name)`, `current()`, `open()`, `close()`.
+
+## Chunk 19, quality of life (ADR-0055)
+
+| test id | element |
+|---|---|
+| `toast-action` | A toast's own button (a Market purchase's "See them": to the tank and the animal) |
+| `build-rearrange` | Build › Decor's Rearrange (it starts `decor_move` from the panel: the sheet stays on a computer, steps aside on a phone; the stepped-aside sheet has `data-aside`) |
+| `water-fix-<param>` · `tank-equip-repair-<equipmentId>` · `alert-fix-<tankId>` · `alert-equipment-worn` | QOL-002: a water row's fix link; Repair on a failed or worn unit's row; the bell's fix link beside a tank's row; the bell's row for gear wearing out. A card control a link goes to carries `data-fix` (`water-change`, `top-off`, `equip-<id>`, `lighting` …) and glows (`ag-glow`) |
+| `decor-search` · `decor-buyable` · `decor-sort` · `decor-count` · `decor-clear` | QOL-003: Build › Decor's search, Can buy now, sort, "n of m" and Clear |
+| `build-equip-search` · `build-equip-kind-<kind\|all>` · `build-equip-clear` · `build-tanks-buyable` | Build › Equipment's search, kind chips and Clear; Build › Tanks' Can buy now |
+| `shop-search` · `shop-sort` · `supplies-search` · `research-search` · `research-status-<all\|available\|active\|locked\|done>` · `research-clear` · `unlocks-search` | The Market's, Supplies', Research's and Unlocks' searches and filters (every search box's clear button is `<its id>-clear`) |
+| `hud-find` · `more-find` · `find-anything` · `find-input` · `find-result-<key>` · `find-none` · `find-close` | QOL-004: Find anything's top-bar button, the phone's More header button, the palette, its box, a result (`<key>`: `screen:<name>`, `tank:<id>`, `animal:<id>`, `offer:<id>`, `food:<id>`, `equip:<id>`, `decor:<id>`, `tier:<id>`, `research:<id>`, `unlock:<key>`, `species:<id>`, `tour`), "Nothing found" and Close |
+| `decor-cam-pad` · `decor-cam-turn-left\|right` · `decor-cam-higher\|lower` · `decor-cam-in\|out` · `decor-view-front\|above\|left\|right\|reset` | QOL-005: the decorating view pad (`data-layout` `column` or `band`, `data-occlude` to match), its step buttons and views |
+| `toolhint-turn-left\|right` · `toolhint-smaller\|larger` | The placement hint's buttons for the piece in hand |
+| `unlock-help-modal` · `unlock-help` · `unlock-help-<key>` · `unlock-help-research-<id>` · `unlock-help-facility` | QOL-006: the one "How to unlock" box, its body, a lock's row, its research link and the facility link |
+| `tank-locked-<tierId>` · `offer-locked-help` · `research-locked-<id>` | A locked tank size, a locked shop offer's How to unlock, a locked research project (each opens the box; locked decor cards, water types `build-wc-<w>`, food and equipment do too) |
+| `shared-strip` · `shared-here-count` · `shared-menu` · `shared-strip-text` · `shared-back` | QOL-007: the shared shop's pill (it kept the strip's id), its "n here", the dropdown, the dropdown's line about the shop and Back to my aquarium |
+| `guide-spotlight` · `guide-spotlight-ring` (`is-gold` on the way to More) · `tour-spotlight` · `tour-spotlight-ring` | QOL-008: the guide's and the tour's dim with a window round the target, and its ring (`data-target` `on\|none`) |
+| `tour-card` (`data-stop`) · `tour-next` · `tour-back` · `tour-skip` · `guide-tour` · `settings-tour` | The tour's card and its buttons; the guide finale's Show me around; Settings › Play & access's Take the tour |

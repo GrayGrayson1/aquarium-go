@@ -155,7 +155,9 @@ export async function clickTank(page: Page, touch = false, fx = 0.5, fy = 0.5): 
   // chunk 19 (ADR-0055 decision 1): a placement tool runs with Build still open beside the tank on a computer, and the
   // camera frames the tank in the free part, left of the sheet: aim there
   const placing = await page.evaluate(() => ['decor_place', 'decor_move', 'tank_place'].includes((window as unknown as { __AQ: { ui(): { tool: string } } }).__AQ.ui().tool));
-  const sheet = placing ? await page.locator('.pn-sheet--side:not(.is-aside)').first().boundingBox().catch(() => null) : null;
+  // (count first: boundingBox() on a locator with no match waits out the whole action timeout)
+  const side = page.locator('.pn-sheet--side:not(.is-aside)').first();
+  const sheet = placing && (await side.count()) > 0 ? await side.boundingBox().catch(() => null) : null;
   const right = sheet && sheet.x > box.x + 100 ? sheet.x : box.x + box.width;
   const x = box.x + (right - box.x) * fx;
   const y = box.y + box.height * fy;

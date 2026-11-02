@@ -21,7 +21,10 @@
   .ag-shared-still { bottom: calc(var(--dock-h) + var(--edge) * 3 + 64px); left: var(--edge); right: var(--edge); transform: none; max-width: none; }
   .ag-shared-menu.ag-popover { position: fixed; top: calc(var(--edge-t, var(--edge)) + var(--topbar-h) + 8px); left: var(--edge-l, var(--edge)); right: var(--edge-r, var(--edge)); width: auto; }
 }
-.ag-shared-menu { left: 0; top: calc(100% + 10px); width: min(420px, calc(100vw - 2 * var(--edge))); max-height: min(72vh, 640px); overflow-y: auto; overscroll-behavior: contain; z-index: 60; }
+.ag-shared-menu { left: 0; top: calc(100% + 10px); width: min(420px, calc(100vw - 2 * var(--edge))); max-height: min(72vh, 640px); overflow-y: auto; overscroll-behavior: contain; }
+/* above the toasts, which covered it (reviewer B8): two classes, so shell.css's `.ag-popover { z-index: 50 }` (loaded
+   later) doesn't win */
+.ag-popover.ag-shared-menu { z-index: calc(var(--z-toast) + 2); }
 .ag-shared-menu__who { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: calc(13px * var(--text-scale)); font-weight: 600; color: var(--c-ink-2); line-height: 1.4; }
 .ag-shared-menu__who > svg { flex: none; margin-top: 2px; color: var(--c-aqua); }
 .ag-shared-menu__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; border-top: 1px solid var(--c-line); }

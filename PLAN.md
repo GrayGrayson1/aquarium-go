@@ -1861,27 +1861,37 @@ design questions were answered with the recommended options (ADR-0055).
   stays; a bottom sheet steps aside (`useUI.panelAside`, the panel kept mounted off screen, inert, its tab, filters,
   search and scroll intact, no occlusion) and comes back when the tool ends by placing, Done, Cancel or Escape, but not
   when the player opened another panel, a card, Watch or Photo meanwhile. On a phone a placed piece is seen landing
-  (about 0.9 s) before the sheet returns. The Market stays open after a purchase; the toast's "See them" goes to the
+  (about 0.9 s) before the sheet returns; while the hint offers touch's "Place another" the sheet waits for it to be
+  used, dismissed (Done) or to run out, and if the guide moved on to its next step meanwhile the sheet is dropped so
+  the guide's card isn't covered (review). The Market stays open after a purchase, back on the shop list (after part
+  of a group too: the offer screen's picks belonged to the animals just bought); the toast's "See them" goes to the
   tank with the animal's card (`Toast.action`). Desktop: the tool hint and the camera's free rect sit left of the sheet.
 - *QOL-002, fix links* (`src/ui/common/fixLinks.ts`, pure: an attention item or water issue → a link; `goFix` runs
   it). In-card fixes switch tab, scroll to the control and make it glow (`data-fix` ids); out-of-card ones open the
   panel at the spot (Supplies on the food, Build › Equipment for the tank filtered to the kind, the failed unit's row,
   the animal's card). The card's Equipment tab gets Repair on failed or worn gear; gear under 25 % condition is an
-  attention item ("wearing out"). The alerts drawer's tank rows reuse the links.
+  attention item ("wearing out"), named in the alerts drawer too. The links read the sim's own advice: a setting to
+  change goes to the unit's row, a too-warm tank with nothing that cools to a chiller, a burned-out light or a failed
+  filter to its Repair, full-intensity dim light to a stronger light (review). The alerts drawer's tank rows reuse the
+  links (worked out at most once a second per tank).
 - *QOL-003, search and filters* (`src/ui/panels/common/SearchField.tsx`, `src/ui/panels/common/match.ts`): Market ›
   Shop (search over species, morph, strain, seller and traits, in the shop filters; a sort), Supplies (search), Build ›
   Tanks ("Can buy now"), Decor (search, "Can buy now", sort), Equipment (search, kind chips), Research (search and
   status chips; the unlock map searched). "Clear filters" clears the search too.
 - *QOL-004, Find anything* (`src/ui/search/`): the top bar's search button (phones: More), ⌘K / Ctrl+K and /; a pure
   index (`findAnything(g, q)`) over screens, tanks, animals, stock, supplies, decor, equipment, tank sizes, research,
-  unlocks and discovered species; arrow keys, Enter, Escape; a result navigates (the router's `go`, panel targets) and
-  a list item opens its list searched for it (`find:` panel targets) with the item glowing.
+  unlocks and discovered species; arrow keys, Enter, Escape, Tab kept inside; a result navigates (the router's `go`,
+  panel targets) and a list item opens its list searched for it (`find:` panel targets) with the item glowing. An item
+  no tank of yours can take says "Needs a reef tank" (its water and, for decor, its water class) and opens Build ›
+  Tanks on that water. The index is re-read every 1.5 s while open, not every tick; no tour in a shared shop.
 - *QOL-005, the decorating camera* (`src/render/camera/CameraRig.tsx` mode `decorate`, `src/render/camera/decorCam.ts`,
   `src/ui/hud/DecorCamPad.tsx`, DecorEditor's input): while `decor_place` or `decor_move` runs in tank view the rig
   frames the floor from about 30° above; yaw ±1.45 rad, pitch 0.05 to 1.45, zoom 0.3 to 1.6, a slide along the floor
   within the tank. Right/middle-drag orbits, Shift+right-drag slides, the wheel zooms, arrows orbit and tilt,
   Shift+arrows slide; touch: two-finger drag orbits, pinch zooms, twist turns the piece; size moves to − / + on the
-  hint. The pad: turn, tilt, zoom, Front · Above · Left · Right · Reset. Back to the player's camera when the tool ends.
+  hint. The pad: turn, tilt, zoom, Front · Above · Left · Right · Reset; a column at the right (a phone held sideways
+  too), two rows under the tank on an upright phone and beside Build's side sheet in a 721–1080 px window (where a
+  column left the tank under 40 % of the width, review). Back to the player's camera when the tool ends.
 - *QOL-006, locks explained* (`src/ui/panels/common/UnlockHelp.tsx`): "How to unlock …" (the rule's hint, the
   requirements with progress through `evalCond`, an "any of" rule's alternatives each with progress, the research that
   grants it with "Open in Research" (`research:<id>` panel target, the card glowing), the facility when a venue is
@@ -1889,12 +1899,14 @@ design questions were answered with the recommended options (ADR-0055).
   and Research. One box for the game (`UnlockHelpHost` in GameHUD, `askUnlock`): a dialog per locked row made Build's
   first open about 20 s slower on the dev server.
 - *QOL-007, the shared shop's dropdown* (`src/ui/shared/SharedMenu.tsx`): the strip goes; in a shared shop the
-  top-left pill (desktop: the shop's name, "👥 {n} here", the day and time; phones: "👥 {n} · {time}") opens a dropdown
-  with who's here, the owner's members list (pause and speed, spending), Money and "Back to my aquarium".
+  top-left pill (desktop: the shop's name, "👥 {n} here", the day and time; phones: "👥 {n} ▾" over the time, which
+  fits the speed control beside it — the owner's word review) opens a dropdown, above the toasts, with who's here, the
+  owner's members list (pause and speed, spending), Money and "Back to my aquarium".
 - *QOL-008, the guide* (`src/ui/tutorial/`): the care chain is unchanged (`src/data/quests.ts` untouched); a dimmed
   spotlight with a glowing ring and a tapping hand follows each step into the place it needs (sub-targets by UI state:
-  the food picker's food, the water to tap, Build › Decor's suggested piece, the tank card's reading, the Market's
-  stock, Build's tank size, Research's next project). The finale offers "Show me around": a tour of every area and
+  the food picker's food, the water to tap, Build › Decor's suggested piece, the tank card's reading, Build's tank size
+  the upgrade step unlocks; the market and preview steps finish as their panel opens, so they point at nothing
+  inside it). The finale offers "Show me around": a tour of every area and
   destination open to the player (each opened and pointed at; Next, Back, Skip; phones through More), also from
   Settings › Play & access ("Take the tour", beside Guide hints) and Find anything.
 - Nothing under `src/sim`, `src/data`, `src/types` or the persistence files changes: the shared build hash stays.

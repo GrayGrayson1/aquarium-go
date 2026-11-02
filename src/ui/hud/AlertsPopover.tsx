@@ -22,7 +22,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { useTankCardTab } from '../cards/TankCard';
 import { EventIcon } from './eventIcons';
 import { Chip, IconButton, formatMoney } from '../kit';
-import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, eventLine, gearFitItems, tankAttention } from '../common/notify'; // lane:notify
+import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, eventLine, gearFitItems, isWorn, tankAttention } from '../common/notify'; // lane:notify
 import { mark } from '../common/marks';
 import { Button } from '../kit';
 import { go } from '../nav/router'; // lane:notify (chunk 3)
@@ -30,7 +30,7 @@ import { useNotifyPermission } from '../notify/deliver'; // lane:notify (chunk 3
 import { eventLink } from './eventLinks'; // lane:notify
 import { AutomationSection } from './AlertsAutomation'; // lane:automation (chunk 5)
 import { FixButton } from '../cards/FixButton'; // chunk 19 (QOL-002)
-import { fixForAttention } from '../common/fixLinks'; // chunk 19 (QOL-002)
+import { fixForAttention, type FixLink } from '../common/fixLinks'; // chunk 19 (QOL-002)
 import { getWaterReport } from '@/sim/water'; // chunk 19 (QOL-002)
 
 /**
@@ -42,6 +42,28 @@ function failedGear(t: GameState['tanks'][string], reason: string): string[] {
     .filter((e) => e.failed)
     .map((e) => getEquipmentDef(e.defId)?.name ?? 'Equipment')
     .filter((name) => !reason.includes(name));
+}
+
+/**
+ * chunk 19 (QOL-002) — a tank row's fix link, worked out at most once a second per tank: the drawer re-renders with
+ * every tick while open, and the link reads the tank's whole water report (reviewer note: 40 tanks × 4 Hz).
+ */
+const FIX_EVERY_MS = 1000;
+const fixCache = new Map<string, { at: number; save: string; link: FixLink | null }>();
+function rowFix(game: GameState, t: GameState['tanks'][string]): FixLink | null {
+  const now = performance.now();
+  const hit = fixCache.get(t.id);
+  if (hit && hit.save === game.saveId && now - hit.at < FIX_EVERY_MS) return hit.link;
+  const first = safe('tankAttention', () => tankAttention(game, t.id).items.find((i) => i.source === 'water' || i.source === 'animals') ?? null, null);
+  const link = first ? safe('fixForAttention', () => fixForAttention(game, t, first, getWaterReport(game, t.id)), null) : null;
+  fixCache.set(t.id, { at: now, save: game.saveId, link });
+  if (fixCache.size > 200) fixCache.clear();
+  return link;
+}
+
+/** chunk 19 (QOL-002) — gear wearing out (below WORN_BELOW, not failed yet): "the 50 W Heater (18%)". */
+function wornGear(t: GameState['tanks'][string]): string[] {
+  return (t.equipment ?? []).filter(isWorn).map((e) => `${getEquipmentDef(e.defId)?.name ?? 'Equipment'} (${Math.round(e.condition * 100)}%)`);
 }
 
 export function useAlertCount() {
@@ -87,8 +109,8 @@ function TankAlerts({ game }: { game: GameState }) {
   const gear = game.tankOrder
     .map((id) => game.tanks[id])
     .filter((t) => !!t)
-    .map((t) => ({ t, names: failedGear(t, reasons.get(t.id) ?? '') }))
-    .filter((x) => x.names.length > 0);
+    .map((t) => ({ t, names: failedGear(t, reasons.get(t.id) ?? ''), worn: wornGear(t) }))
+    .filter((x) => x.names.length > 0 || x.worn.length > 0);
   // lane:automation (0.5 §10.2, AUTO-005) — Auto-feed paused (off, jammed or empty) while someone is hungry
   const paused = game.tankOrder
     .map((id) => game.tanks[id])
@@ -145,30 +167,43 @@ function TankAlerts({ game }: { game: GameState }) {
           </div>
         );
       })}
-      {gear.map(({ t, names }) => (
-        <button
-          type="button"
-          key={`gear-${t.id}`}
-          className="ag-alert-row is-watch"
-          data-testid="alert-equipment"
-          title="Open the tank card's equipment"
-          onClick={() => {
-            sfx('open');
-            useTankCardTab.setState({ want: 'gear' });
-            focusTank(t.id);
-            useShell.getState().set({ popover: null });
-          }}
-        >
-          <PowerOff size={16} aria-hidden />
-          <span className="ag-grow">
-            <span className="ag-alert-row__title">{t.name}</span>
-            <span className="ag-alert-row__text">
-              <strong>Equipment failed</strong> — {names.join(', ')}. Repair or replace {names.length > 1 ? 'them' : 'it'}.
-            </span>
-          </span>
-          <ChevronRight size={16} aria-hidden />
-        </button>
-      ))}
+      {gear.map(({ t, names, worn }) => {
+        const open = () => {
+          sfx('open');
+          useTankCardTab.setState({ want: 'gear' });
+          focusTank(t.id);
+          useShell.getState().set({ popover: null });
+        };
+        return (
+          <div key={`gear-${t.id}`} className="ag-alert-gear">
+            {names.length > 0 && (
+              <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment" title="Open the tank card's equipment" onClick={open}>
+                <PowerOff size={16} aria-hidden />
+                <span className="ag-grow">
+                  <span className="ag-alert-row__title">{t.name}</span>
+                  <span className="ag-alert-row__text">
+                    <strong>Equipment failed</strong> — {names.join(', ')}. Repair or replace {names.length > 1 ? 'them' : 'it'}.
+                  </span>
+                </span>
+                <ChevronRight size={16} aria-hidden />
+              </button>
+            )}
+            {/* chunk 19 (QOL-002) — gear wearing out lights the bell (common/notify.ts), so the drawer names it too */}
+            {worn.length > 0 && (
+              <button type="button" className="ag-alert-row is-watch" data-testid="alert-equipment-worn" title="Open the tank card's equipment" onClick={open}>
+                <Wrench size={16} aria-hidden />
+                <span className="ag-grow">
+                  <span className="ag-alert-row__title">{t.name}</span>
+                  <span className="ag-alert-row__text">
+                    <strong>Wearing out</strong> — {worn.join(', ')}. Repair {worn.length > 1 ? 'them before they fail' : 'it before it fails'}.
+                  </span>
+                </span>
+                <ChevronRight size={16} aria-hidden />
+              </button>
+            )}
+          </div>
+        );
+      })}
       {paused.map(({ t, p }) => (
         <button
           type="button"
@@ -220,8 +255,7 @@ function TankAlerts({ game }: { game: GameState }) {
         if (!reason && t.cache.statusSource === 'food') return null;
         const I = t.cache.status === 'danger' ? OctagonAlert : TriangleAlert;
         // chunk 19 (ADR-0055 decision 2, QOL-002) — the row's own fix beside it (the row still opens the tank card)
-        const first = safe('tankAttention', () => tankAttention(game, t.id).items.find((i) => i.source === 'water' || i.source === 'animals') ?? null, null);
-        const fix = first ? safe('fixForAttention', () => fixForAttention(game, t, first, first.source === 'food' ? null : getWaterReport(game, t.id)), null) : null;
+        const fix = rowFix(game, t);
         return (
           <div key={t.id} className="ag-alert-split">
           <button

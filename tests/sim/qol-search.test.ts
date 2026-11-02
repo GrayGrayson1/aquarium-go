@@ -7,8 +7,9 @@ import type { ShopOffer } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { fold, matches, queryWords, score } from '@/ui/panels/common/match';
 import { offerSearchMatches, sortOffers } from '@/ui/panels/market/shopFilters';
-import { findAnything, orderResults, PER_GROUP } from '@/ui/search/searchIndex';
+import { FIND_GROUPS, findAnything, needsTankText, orderResults, PER_GROUP } from '@/ui/search/searchIndex';
 import { DECOR } from '@/data/catalog/decor';
+import { EQUIPMENT } from '@/data/catalog/equipment';
 import { RESEARCH } from '@/data/research';
 import { screenList } from '@/ui/nav/routes';
 
@@ -103,12 +104,48 @@ describe('QOL-004: Find anything', () => {
     expect(big?.locked).toBe(true);
     expect(findAnything(g, 'shark').some((r) => r.group === 'Encyclopedia')).toBe(false);
   });
-  it('orders by group and keeps each group short', () => {
+  it('orders by group (each group once, in FIND_GROUPS order) and keeps each group short', () => {
+    // (rewritten after the review: the old check passed whatever the order was)
     const g = game();
     const out = orderResults(findAnything(g, 'a'));
     const groups = out.map((r) => r.group);
-    const firstIndex = (grp: string) => groups.indexOf(grp as never);
-    expect(firstIndex('Screens')).toBeLessThan(Math.max(firstIndex('Decor'), 0) || Infinity);
+    expect(new Set(groups).size).toBeGreaterThan(3); // the query reaches several groups, so the order means something
+    const rank = groups.map((grp) => FIND_GROUPS.indexOf(grp));
+    expect(rank.every((x) => x >= 0)).toBe(true);
+    for (let i = 1; i < rank.length; i++) expect(rank[i]).toBeGreaterThanOrEqual(rank[i - 1]);
     for (const grp of new Set(groups)) if (grp !== 'Screens') expect(groups.filter((x) => x === grp).length).toBeLessThanOrEqual(PER_GROUP);
+  });
+  it('leaves the tour out where there is none (a shared shop)', () => {
+    expect(findAnything(game(), '', { tour: false }).some((r) => r.key === 'tour')).toBe(false);
+    expect(findAnything(game(), 'tour', { tour: false }).some((r) => r.key === 'tour')).toBe(false);
+  });
+});
+
+describe('QOL-004: an item no tank of yours can take (reviewer B5)', () => {
+  it('a reef-only piece from a freshwater game says it needs a reef tank', () => {
+    const g = game();
+    const coral = DECOR.find((d) => d.waterClasses?.length === 1 && d.waterClasses[0] === 'reef')!;
+    expect(coral).toBeTruthy();
+    const hit = findAnything(g, coral.name).find((r) => r.key === `decor:${coral.id}`);
+    expect(hit?.detail).toMatch(/· Needs a reef tank$/);
+    expect(hit?.go).toEqual({ kind: 'panel', panel: 'build', target: `find:decor:${coral.id}` });
+  });
+  it('saltwater gear says which tanks it needs; gear and decor your tank takes say where they are', () => {
+    const g = game();
+    const salt = EQUIPMENT.find((e) => e.environments.includes('marine') && !e.environments.includes('freshwater'))!;
+    expect(salt).toBeTruthy();
+    expect(findAnything(g, salt.name).find((r) => r.key === `equip:${salt.id}`)?.detail).toMatch(/· Needs a marine or brackish tank$/);
+    const fresh = DECOR.find((d) => d.environments.includes('freshwater') && !d.waterClasses?.length)!;
+    expect(findAnything(g, fresh.name).find((r) => r.key === `decor:${fresh.id}`)?.detail).toMatch(/· Build › Decor$/);
+  });
+  it('names every water an item allows, and nothing once a tank can take it', () => {
+    const g = game();
+    expect(needsTankText(g, ['marine'], ['marine_live_rock', 'reef'])).toBe('Needs a live rock or reef tank');
+    expect(needsTankText(g, ['marine', 'brackish'])).toBe('Needs a marine or brackish tank');
+    expect(needsTankText(g, ['freshwater'])).toBeNull();
+    const t = g.tanks[g.tankOrder[0]];
+    t.environment = 'marine';
+    t.waterClass = 'reef';
+    expect(needsTankText(g, ['marine'], ['reef'])).toBeNull();
   });
 });
