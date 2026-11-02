@@ -49,6 +49,7 @@ import { SharedStrip } from '../shared/SharedScreens'; // chunk 13
 import { usePrefs } from '../common/prefs';
 import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
+import { usePanelAsideRules } from '../panels/common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
 
 const CALM_AFTER_MS = 6000;
 /** How long after a waking touch its click counts as part of the wake. */
@@ -315,6 +316,7 @@ export function GameHUD() {
   usePopoverDismiss();
   usePopoverFocusReturn();
   useCardDockRules();
+  usePanelAsideRules();
   useFocusedTankGuard();
   const calm = useCalmHud();
   const hidden = useUI((s) => s.hudHidden);

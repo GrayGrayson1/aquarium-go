@@ -39,6 +39,7 @@ import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { RoomPage, Rooms, YourFacility, type RoomId } from './FacilityRooms'; // lane:automation (chunk 5)
+import { startToolFromPanel } from '../common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
 
 type Tab = 'tanks' | 'decor' | 'equipment' | 'substrate' | 'facility';
 const BUILD_TABS: readonly Tab[] = ['tanks', 'decor', 'equipment', 'substrate', 'facility'];
@@ -168,8 +169,8 @@ function TanksTab({ g }: { g: GameState }) {
   const [a, b] = WATER_CLASS_TINT[wc];
 
   const place = (tier: TankTier) => {
-    const set = useUI.getState().set as (p: Record<string, unknown>) => void;
-    set({ tool: 'tank_place', placingTankTierId: tier.id, movingTankId: null, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panel: null, panelTarget: null });
+    // chunk 19 (QOL-001) — Build stays open beside the room (computers) or steps aside and comes back (phones)
+    startToolFromPanel({ tool: 'tank_place', placingTankTierId: tier.id, movingTankId: null, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panelTarget: null });
     useUI.getState().toast(`Choose a spot for your ${tier.name}. Press Esc to cancel.`, 'info');
   };
   const quick = (tier: TankTier) => {
@@ -364,7 +365,6 @@ function habitatSuggestion(g: GameState): { ids: string[]; forName: string; step
 }
 
 function DecorTab({ g, tankId, cat: catIn, setCat }: { g: GameState; tankId: string; cat: DecorCategory | 'all'; setCat: (c: DecorCategory | 'all') => void }) {
-  const { close } = useSheet();
   const tank = g.tanks[tankId];
   const fits = useMemo(() => DECOR.filter((d) => d.environments.includes(tank.environment) && (!d.waterClasses?.length || d.waterClasses.includes(tank.waterClass))), [tank.environment, tank.waterClass]);
   const cats = useMemo(() => (Object.keys(CAT_META) as DecorCategory[]).filter((c) => fits.some((d) => d.category === c)), [fits]);
@@ -382,14 +382,15 @@ function DecorTab({ g, tankId, cat: catIn, setCat }: { g: GameState; tankId: str
   const residents = livingInTank(g, tankId);
 
   const choose = (def: DecorDef) => {
-    // the tool hint above the dock explains placement (click/tap the floor · R rotates · Esc cancels)
-    useUI.getState().set({ tool: 'decor_place', placingDecorDefId: def.id, placingFragId: null, view: 'tank', focusedTankId: tankId, panel: null, panelTarget: null });
+    // the tool hint above the dock explains placement (click/tap the floor · R rotates · Esc cancels); chunk 19
+    // (ADR-0055 decision 1, QOL-001) — Build stays open beside the tank, or steps aside on a phone and comes back
+    startToolFromPanel({ tool: 'decor_place', placingDecorDefId: def.id, placingFragId: null, view: 'tank', focusedTankId: tankId, panelTarget: null });
   };
 
   return (
     <div className="pn-stack pn-stack--lg">
       <div className="pn-row pn-gap-2 pn-row--wrap">
-        <Button variant="default" onClick={() => { useUI.getState().set({ tool: 'decor_move', view: 'tank', focusedTankId: tankId, panel: null, panelTarget: null }); close(); }} disabled={tank.decor.length === 0}>
+        <Button variant="default" data-testid="build-rearrange" onClick={() => startToolFromPanel({ tool: 'decor_move', view: 'tank', focusedTankId: tankId, panelTarget: null })} disabled={tank.decor.length === 0}>
           <Move size={15} /> Rearrange decor
         </Button>
         <span className="pn-small pn-muted">

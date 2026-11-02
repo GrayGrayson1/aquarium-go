@@ -1,0 +1,22 @@
+/* chunk 19 (ADR-0055, QOL-001 to QOL-008) — quality of life. OWNER: lane "ui-shell" (each block names its item). */
+
+/* ───────────── QOL-001: panels stay open ───────────── */
+
+/* a bottom sheet stepped aside for a tool: off screen, never in the way (PanelHost animates it out and hides it) */
+.pn-sheet.is-aside { pointer-events: none; }
+
+/* a computer's side sheet stays open beside the tank while a tool runs: the tool's hint centres in the free part */
+@media not all and (max-width: 720px) {
+  .ag-hud.has-panel .ag-toolhint { left: var(--edge); right: calc(var(--pn-w) + var(--pn-right) + var(--edge)); max-width: calc(100% - var(--pn-w) - var(--pn-right) - var(--edge) * 3); }
+  :root:has(.pn-sheet--side.is-max) .ag-hud.has-panel .ag-toolhint { right: calc(var(--pn-max-w) + var(--pn-right) + var(--edge)); max-width: calc(100% - var(--pn-max-w) - var(--pn-right) - var(--edge) * 3); }
+}
+
+/* a toast's own way there ("See them") */
+.ag-toast__action {
+  flex: none; align-self: center; border: 1px solid rgba(94, 234, 212, 0.45); background: var(--c-aqua-soft); color: var(--c-aqua);
+  border-radius: var(--r-pill); padding: 5px 10px; font: inherit; font-size: calc(12px * var(--text-scale)); font-weight: 650; cursor: pointer;
+  white-space: nowrap; transition: background .15s, color .15s;
+}
+.ag-toast__action:hover { background: rgba(94, 234, 212, 0.24); color: var(--c-ink); }
+@media (pointer: coarse) { .ag-toast__action { min-height: 36px; } }
+:root[data-contrast='high'] .ag-toast__action { background: #04201d; color: #ffffff; border-color: var(--c-aqua); }

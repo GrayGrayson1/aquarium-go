@@ -10,6 +10,7 @@ import { Clock, BadgeCheck, ShoppingBag, Store, Lock, Mars, Venus, CircleDashed,
 import type { CompatVerdict, Creature, GameState, ShopOffer, Tank, CompatReport, SpeciesDefinition } from '@/types';
 import { Button, Money, StatusBadge, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
+import { useGame } from '@/state/game'; // chunk 19 (QOL-001)
 import { offerPickPrice } from '@/sim/economy';
 import { describePersonality, isPrismatic, isLotOffer, oneInLabel, morphDisplayName, catalogEntry, geneticsRevealLevel } from '@/sim/life';
 import { PRISMATIC } from '@/data/rarity'; // lane:genetics
@@ -381,9 +382,13 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
       quiet: true,
       after: (r) => {
         if (!r?.ok) return;
-        // 0.5 §7.5 item 6 — back to the tank view on the new home, with the find named
-        useUI.getState().set({ panel: null, panelTarget: null, focusedTankId: tankId });
-        useUI.getState().toast(`${name} is settling into ${tankName}`, prismatic ? 'celebrate' : 'success', { label: prismatic ? 'Prismatic find' : 'Bought', detail: 'Find them in Livestock.' });
+        // chunk 19 (ADR-0055 decision 1, QOL-001; replaces 0.5 §7.5 item 6's trip to the tank view) — the Market stays
+        // open: the new home is focused behind it (beside a computer's side sheet the arrival is seen at once), the
+        // shop list comes back once the offer is used up, and the toast's "See them" goes to the tank and the animal
+        useUI.getState().set({ focusedTankId: tankId });
+        const first = saw.find((id) => !!useGame.getState().game?.creatures[id]);
+        useUI.getState().toast(`${name} is settling into ${tankName}`, prismatic ? 'celebrate' : 'success', { label: prismatic ? 'Prismatic find' : 'Bought', detail: 'Find them in Livestock.', tankId, ...(first ? { creatureId: first } : {}), actionLabel: 'See them' });
+        if (!useGame.getState().game?.market.stock.some((o) => o.id === offer.id)) onBack();
       },
     });
   };

@@ -19,7 +19,7 @@ import { fragValue, fragStoreOffer, marketAccess, FRAG_HEALED_HOURS } from '@/si
 import { act } from '../common/act';
 import { safe } from '../common/hooks';
 import { Chip, SectionHead } from '../common/parts';
-import { useSheet } from '../common/PanelLayout';
+import { startToolFromPanel } from '../common/aside'; // chunk 19 (QOL-001)
 import { formatSpan, plural, nameList } from '../common/format';
 import './frags.css';
 
@@ -311,7 +311,6 @@ function fits(tank: Tank, f: DecorInstance): boolean {
 }
 
 export function FragStorage({ g, tankId }: { g: GameState; tankId: string }) {
-  const { close } = useSheet();
   const tank = g.tanks[tankId];
   const frags = g.inventory.frags ?? [];
   const racks = useMemo(() => (tank ? safe(() => freeRackSlots(tank).length, 0) : 0), [tank]);
@@ -323,10 +322,8 @@ export function FragStorage({ g, tankId }: { g: GameState; tankId: string }) {
   if (!tank || frags.length === 0) return null;
   const now = g.clock.hour;
 
-  const plant3d = (f: DecorInstance) => {
-    useUI.getState().set({ tool: 'decor_place', placingDecorDefId: f.defId, placingFragId: f.id, view: 'tank', focusedTankId: tankId, panel: null, panelTarget: null });
-    close();
-  };
+  // chunk 19 (ADR-0055 decision 1, QOL-001) — Build stays open beside the tank, or steps aside on a phone and comes back
+  const plant3d = (f: DecorInstance) => startToolFromPanel({ tool: 'decor_place', placingDecorDefId: f.defId, placingFragId: f.id, view: 'tank', focusedTankId: tankId, panelTarget: null });
 
   return (
     <section data-testid="frag-storage">

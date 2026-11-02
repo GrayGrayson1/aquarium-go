@@ -25,6 +25,7 @@ import { useIsPhone, useMedia, useReducedMotion } from './common/hooks';
 import { BOTTOM_SHEET_QUERY } from '../common/Sheet';
 import { SHORT_LANDSCAPE_QUERY, useIsMobile } from '../common/safe';
 import { edit } from './common/act';
+import { clearAside } from './common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
 import { PanelErrorBoundary } from './common/ErrorBoundary';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { useSocialAvailable } from '../online/mode'; // chunk 8 (REL-025)
@@ -71,6 +72,10 @@ export function isManagedPanel(p: PanelId | null): p is ManagedPanelId {
 
 export function PanelHost() {
   const panel = useUI((s) => s.panel);
+  // chunk 19 (ADR-0055 decision 1, QOL-001) — a bottom sheet that stepped aside for a tool it started stays mounted
+  // (its tab, filters, search and scroll intact), off screen, hidden and inert, until the tool ends (common/aside.ts)
+  const asidePanel = useUI((s) => s.panelAside);
+  const shown = panel ?? asidePanel;
   const hasGame = useGame((s) => !!s.game);
   const phone = useIsPhone();
   const mobile = useIsMobile(); // lane:ui-shell (chunk 1) — the tab bar's layout
@@ -85,10 +90,12 @@ export function PanelHost() {
   const lastFocus = useRef<HTMLElement | null>(null);
   // lane:social (chunk 6, SOC-011) — Social exists only where it is available (dev mode at first; chunk 8, REL-025)
   const social = useSocialAvailable();
-  const open = hasGame && isManagedPanel(panel) && (panel !== 'social' || social);
+  const open = hasGame && isManagedPanel(shown) && (shown !== 'social' || social);
+  const isAside = open && !panel;
 
   const close = useCallback(() => {
     sfx('close');
+    clearAside();
     useUI.getState().set({ panel: null, panelTarget: null });
   }, []);
 
@@ -130,9 +137,10 @@ export function PanelHost() {
     if (el && document.contains(el)) el.focus({ preventScroll: true });
   }, [open]);
 
-  // Escape closes the panel (unless a modal/dialog is on top, or the user is typing).
+  // Escape closes the panel (unless a modal/dialog is on top, or the user is typing). Not while it is aside: Escape
+  // then belongs to the tool (it ends it, and the sheet comes back).
   useEffect(() => {
-    if (!open) return;
+    if (!open || isAside) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       if (document.querySelector('.ag-modal-backdrop, [data-pn-modal]')) return;
@@ -145,7 +153,7 @@ export function PanelHost() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, close]);
+  }, [open, isAside, close]);
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y < -50 || info.velocity.y < -500) setMaximised(true);
@@ -155,7 +163,7 @@ export function PanelHost() {
     }
   };
 
-  const Comp = open && panel ? PANEL_COMPONENTS[panel as ManagedPanelId] : null;
+  const Comp = open && shown ? PANEL_COMPONENTS[shown as ManagedPanelId] : null;
 
   const variants = bottom
     ? reduced
@@ -164,6 +172,9 @@ export function PanelHost() {
     : reduced
       ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
       : { initial: { x: 48, opacity: 0 }, animate: { x: 0, opacity: 1 }, exit: { x: 48, opacity: 0 } };
+  // stepped aside: off the bottom (or the side, after a resize), then hidden for assistive tech and tests alike
+  const asideTo = bottom ? { y: '110%', transitionEnd: { visibility: 'hidden' as const } } : { x: '110%', opacity: 0, transitionEnd: { visibility: 'hidden' as const } };
+  const animateTo = isAside ? asideTo : { ...variants.animate, visibility: 'visible' as const };
 
   return (
     <SheetContext.Provider
@@ -189,26 +200,29 @@ export function PanelHost() {
             tabIndex={-1}
             role="dialog"
             aria-modal={false}
-            aria-label={`${panel} panel`}
-            data-testid={`panel-${panel}`}
-            data-panel={panel}
-            data-occlude={bottom ? 'bottom' : 'right'}
-            className={`pn-sheet ${bottom ? 'pn-sheet--bottom' : 'pn-sheet--side'} ${phone ? 'pn-sheet--phone' : ''} ${mobile ? 'pn-sheet--mobile' : ''} ${maximised && !mobile ? 'is-max' : ''}`}
+            aria-label={`${shown} panel`}
+            aria-hidden={isAside || undefined}
+            inert={isAside}
+            data-testid={`panel-${shown}`}
+            data-panel={shown}
+            data-aside={isAside ? '1' : undefined}
+            data-occlude={isAside ? undefined : bottom ? 'bottom' : 'right'}
+            className={`pn-sheet ${bottom ? 'pn-sheet--bottom' : 'pn-sheet--side'} ${phone ? 'pn-sheet--phone' : ''} ${mobile ? 'pn-sheet--mobile' : ''} ${maximised && !mobile ? 'is-max' : ''} ${isAside ? 'is-aside' : ''}`}
             initial={variants.initial}
-            animate={variants.animate}
+            animate={animateTo}
             exit={variants.exit}
             transition={reduced ? { duration: 0.15 } : bottom ? { type: 'spring', damping: 34, stiffness: 320 } : { type: 'spring', damping: 32, stiffness: 300, mass: 0.9 }}
-            drag={bottom && !reduced ? 'y' : false}
+            drag={bottom && !reduced && !isAside ? 'y' : false}
             dragControls={dragControls}
             dragListener={false}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: maximised ? 0 : 0.25, bottom: 0.6 }}
             onDragEnd={onDragEnd}
           >
-            <PanelErrorBoundary key={panel} onClose={close}>
+            <PanelErrorBoundary key={shown} onClose={close}>
               <Comp />
             </PanelErrorBoundary>
-            {bottom && !mobile && <PanelSwitcher active={panel as ManagedPanelId} />}
+            {bottom && !mobile && <PanelSwitcher active={shown as ManagedPanelId} />}
           </motion.aside>
         )}
       </AnimatePresence>

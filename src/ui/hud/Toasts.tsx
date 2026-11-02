@@ -19,7 +19,7 @@ import { AnimatePresence, motion, useIsPresent } from 'motion/react';
 import { X } from 'lucide-react';
 import type { GameEvent } from '@/types';
 import { useGame } from '@/state/game';
-import { useUI } from '@/state/ui';
+import { useUI, type Toast } from '@/state/ui';
 import { useSettings } from '@/state/settings';
 import { sfx } from '@/audio/sfx';
 import { EventIcon, type AnyKind } from './eventIcons';
@@ -48,6 +48,8 @@ interface Entry {
   uiIds: number[];
   /** lane:ui-shell (B-151) — a UI toast's explicit label and detail (they win over parsing its text). */
   parts?: { label?: string; detail?: string };
+  /** chunk 19 (ADR-0055 decision 1) — a UI toast's visible button ("See them"): goes to `tankId` / `creatureId`. */
+  actionLabel?: string;
   /** performance.now() when the entry was created (merge window + staleness). */
   born: number;
   /** Bumped when a merge restarts the timer. */
@@ -330,7 +332,7 @@ export function Toasts() {
   const onScreen = useRef(new Set<string>());
   const [, setRecheck] = useState(0);
 
-  const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; uiId?: number; source: 'ui' | 'log'; parts?: Entry['parts'] }) => {
+  const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; uiId?: number; source: 'ui' | 'log'; parts?: Entry['parts']; actionLabel?: string }) => {
     const group = groupOf(kind, text, (useGame.getState().game?.tankOrder.length ?? 0) >= 4 /* lane:qa-final */);
     // The guide card shows its own "done" line; only toast tutorial tips when the guide is hidden.
     if (group === 'tip' && extra.source === 'log' && isGuideDoneLine(text)) return;
@@ -352,7 +354,7 @@ export function Toasts() {
         const d = live[dup];
         return [...live.slice(0, dup), { ...d, rev: d.rev + 1, uiIds: extra.uiId != null ? [...d.uiIds, extra.uiId] : d.uiIds }, ...live.slice(dup + 1)];
       }
-      const e: Entry = { key: `t${++seq.current}`, kind, group, texts: [text], tankId: extra.tankId, creatureId: extra.creatureId, uiIds: extra.uiId != null ? [extra.uiId] : [], ...(extra.parts ? { parts: extra.parts } : {}), born: now, rev: 0 };
+      const e: Entry = { key: `t${++seq.current}`, kind, group, texts: [text], tankId: extra.tankId, creatureId: extra.creatureId, uiIds: extra.uiId != null ? [extra.uiId] : [], ...(extra.parts ? { parts: extra.parts } : {}), ...(extra.actionLabel && extra.tankId ? { actionLabel: extra.actionLabel } : {}), born: now, rev: 0 };
       return [...live, e].slice(-14);
     });
   }, []);
@@ -374,13 +376,15 @@ export function Toasts() {
   useEffect(() => {
     const seen = new Set<number>(useUI.getState().toasts.map((t) => t.id));
     const partsOf = (t: { label?: string; detail?: string }) => (t.label || t.detail ? { label: t.label, detail: t.detail } : undefined); // lane:ui-shell (B-151)
-    for (const t of useUI.getState().toasts) add(t.kind, t.text, { uiId: t.id, source: 'ui', parts: partsOf(t) });
+    // chunk 19 (ADR-0055 decision 1) — a UI toast may say where it is about (the bought animal) and offer a button there
+    const whereOf = (t: Toast) => ({ ...(t.tankId ? { tankId: t.tankId } : {}), ...(t.creatureId ? { creatureId: t.creatureId } : {}), ...(t.actionLabel ? { actionLabel: t.actionLabel } : {}) });
+    for (const t of useUI.getState().toasts) add(t.kind, t.text, { uiId: t.id, source: 'ui', parts: partsOf(t), ...whereOf(t) });
     return useUI.subscribe((s, p) => {
       if (s.toasts === p.toasts) return;
       for (const t of s.toasts) {
         if (seen.has(t.id)) continue;
         seen.add(t.id);
-        add(t.kind, t.text, { uiId: t.id, source: 'ui', parts: partsOf(t) });
+        add(t.kind, t.text, { uiId: t.id, source: 'ui', parts: partsOf(t), ...whereOf(t) });
       }
     });
   }, [add]);
@@ -512,6 +516,12 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
         </button>
       ) : (
         <span className="ag-toast__text">{body}</span>
+      )}
+      {e.actionLabel && e.tankId && (
+        // chunk 19 (ADR-0055 decision 1) — "See them": the toast's own way there, as a visible button
+        <button type="button" className="ag-toast__action" data-testid="toast-action" onClick={onAct}>
+          {e.actionLabel}
+        </button>
       )}
       <button type="button" className="ag-toast__close" aria-label="Dismiss" onClick={onDone}>
         <X size={13} />

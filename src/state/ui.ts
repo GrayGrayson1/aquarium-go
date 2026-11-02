@@ -31,11 +31,18 @@ export interface Toast {
   /** lane:ui-shell (B-151) — explicit parts: a small label over the text and a detail line under it. */
   label?: string;
   detail?: string;
+  /**
+   * chunk 19 (ADR-0055 decision 1) — a toast about an animal or a tank can offer a visible button ("See them") that goes
+   * there (the tank view, the animal's card): `actionLabel` names it, `tankId` / `creatureId` say where.
+   */
+  tankId?: string;
+  creatureId?: string;
+  actionLabel?: string;
   at: number;
 }
 
 /** lane:ui-shell (B-151) — the optional parts of a toast (Toasts.tsx prefers them to parsing the text). */
-export type ToastParts = Pick<Toast, 'label' | 'detail'>;
+export type ToastParts = Pick<Toast, 'label' | 'detail' | 'tankId' | 'creatureId' | 'actionLabel'>;
 
 export interface UIState {
   screen: Screen;
@@ -47,6 +54,12 @@ export interface UIState {
   panel: PanelId | null;
   /** Secondary detail target inside a panel (creature id, listing id, species id...). */
   panelTarget: string | null;
+  /**
+   * chunk 19 (ADR-0055 decision 1, QOL-001) — a bottom sheet that stepped aside for a tool it started (placing decor,
+   * a frag, Rearrange, Buy & place): `panel` is null meanwhile and PanelHost keeps this one mounted off screen; it
+   * comes back when the tool ends (src/ui/panels/common/aside.ts). A core change, named in the commit.
+   */
+  panelAside: PanelId | null;
   tool: ToolId;
   feedFoodId: string | null;
   /** Decor definition being placed (build mode). */
@@ -85,6 +98,7 @@ export const useUI = create<UIState>((set, get) => ({
   selectedCreatureId: null,
   panel: null,
   panelTarget: null,
+  panelAside: null,
   tool: 'none',
   feedFoodId: null,
   placingDecorDefId: null,
@@ -99,7 +113,17 @@ export const useUI = create<UIState>((set, get) => ({
   pendingStarterId: null,
   set: (patch) => set(patch),
   toast: (text, kind = 'info', parts) => {
-    const t: Toast = { id: toastSeq++, kind, text, ...(parts?.label ? { label: parts.label } : {}), ...(parts?.detail ? { detail: parts.detail } : {}), at: performance.now() };
+    const t: Toast = {
+      id: toastSeq++,
+      kind,
+      text,
+      ...(parts?.label ? { label: parts.label } : {}),
+      ...(parts?.detail ? { detail: parts.detail } : {}),
+      ...(parts?.tankId ? { tankId: parts.tankId } : {}),
+      ...(parts?.creatureId ? { creatureId: parts.creatureId } : {}),
+      ...(parts?.actionLabel ? { actionLabel: parts.actionLabel } : {}),
+      at: performance.now(),
+    };
     set({ toasts: [...get().toasts.slice(-4), t] });
   },
   dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
