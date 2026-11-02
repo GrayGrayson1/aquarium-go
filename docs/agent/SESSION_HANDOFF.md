@@ -9,9 +9,8 @@ it's used up.
 
 - **Released:** `main` = `678255f` (Pages from `ff837ad` then `678255f`; the shop server from `678255f`, `/health`
   0.9.1, build `f128a63f7d57f4b9`; the Render static site at `ff837ad`, 0.9.1). The shared smoke 27 of 27. **The
-  migration `20261101000000_owner_deletes.sql` is the owner's to run** (the classifier refuses it); until then the
-  Manage card says "That didn't go through". After it: check the ten functions (`pg_proc` `owner_%`, execute for
-  `authenticated` only) and run `node scripts/online-smoke.mjs`.
+  migration `20261101000000_owner_deletes.sql` ran live on 2026-11-02** (the owner asked in the session): the ten
+  `owner_%` functions checked (execute for `authenticated` only), and `node scripts/online-smoke.mjs` 102 of 102.
 - **Tested:** the four checks on `f15b8d7`: typecheck exit 0; unit 271 files, 4,138 tests; build exit 0; e2e 341 of
   341 (42.1 min). The fresh review (no blockers), the re-check (one blocker, fixed in `f15b8d7`), its re-check (clean).
 - **Open from the chunk:** B-228 (small shop-server notes), B-229 (the live smoke signs up through "Aquarium Go

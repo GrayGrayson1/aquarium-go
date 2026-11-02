@@ -50,8 +50,8 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    owner, 2026-11-01: "I just need the option to be able to delete what I want to since I'm kind of like the super
    admin of it"; ADR-0054): the owner deletes any club, shared shop, account or friend from Social, from the database;
    **done and released as 0.9.1** (2026-11-01), the Render static site included (it was still on 0.8.0, which the
-   0.9.0 shop server asked to reload: the owner's "Reload to join the shared shop" report). **Next:** the owner runs
-   the migration (PLAN.md "Releases", 0.9.1), then the live smoke; B-228 to B-230.
+   0.9.0 shop server asked to reload: the owner's "Reload to join the shared shop" report). Its migration ran live on
+   2026-11-02 (PLAN.md "Releases", 0.9.1; the live smoke 102 of 102). **Next:** B-228 to B-230.
 4. **Released:** 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
@@ -1979,7 +1979,11 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   site was deployed by the owner's browser Claude (dashboard, "Deploy latest commit" at `ff837ad`: "Deploy a specific
   commit" would have turned Auto-Deploy off); its `version.json` reads `{"id":"ff837ad-…","version":"0.9.1"}`, the end
   of the 0.8.0 reload loop. The four checks then passed on `f15b8d7` (e2e 341 of 341). The migration
-  (`20261101000000_owner_deletes.sql`) is the owner's to run (Claude Code's classifier refuses it): see below.
+  (`20261101000000_owner_deletes.sql`) ran on the live project on 2026-11-02, at the owner's ask in the session
+  ("you run the migrations for me"; the classifier had refused it the day before): the ten `owner_%` functions are
+  there (the five in `private` SECURITY DEFINER, their `public` wrappers invoker; execute for `authenticated` only,
+  not `anon` or `service_role`), and `node scripts/online-smoke.mjs` passed 102 of 102 (a player and anon refused
+  all five, and the refused deletes changed nothing).
 
 ## Product decisions in force
 
