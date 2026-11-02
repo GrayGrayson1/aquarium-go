@@ -34,7 +34,7 @@ test.describe('core gameplay loop', () => {
         await openPanel(page, 'build');
         await page.getByText(/^\s*Decor\s*$/).first().click();
         await page.locator('[data-testid^="build-decor-"]').first().click();
-        await expect.poll(tool).toBe('decor_place'); // the panel has closed onto the tank, ready to place
+        await expect.poll(tool).toBe('decor_place'); // ready to place (chunk 19: Build stays open beside the tank)
         await clickTank(page);
       }
       await expect.poll(step, { message: `the guide's "${id ?? cur}" step` }).toBeGreaterThan(cur);

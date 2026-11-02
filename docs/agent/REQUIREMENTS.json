@@ -7247,7 +7247,10 @@
         "After buying an animal the Market stays on the shop list and the toast's See them goes to the tank with the animal's card."
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/qol-aside.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
@@ -7266,7 +7269,10 @@
         "The Equipment tab offers Repair on failed and worn gear; gear under 25% condition is an attention item; the alerts drawer's tank rows use the same links."
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/qol-fix-links.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
@@ -7285,7 +7291,10 @@
         "Clear filters clears the search; an empty result says so and offers to clear."
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/qol-search.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
@@ -7304,7 +7313,10 @@
         "Choosing a result navigates there; an item in a list opens that list searched for it."
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/qol-search.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
@@ -7323,7 +7335,10 @@
         "R and twist still turn the piece; Shift+wheel and the hint's size buttons size it; the player's camera returns when the tool ends."
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/qol-decor-cam.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
@@ -7341,7 +7356,10 @@
         "Every Locked in Build (tank sizes, water types, decor, substrates), the Market (offers, offer detail, Supplies) and Research opens How to unlock: the route, each requirement with progress, the research that grants it with a link, and the facility when a venue is needed."
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/qol-unlock-help.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
@@ -7359,7 +7377,9 @@
         "In a shared shop the top-left pill shows who's here and opens a dropdown with the names, the owner's members list, Money and Back to my aquarium; no strip sits above the dock; nothing overlaps the camera chips at any width."
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/e2e/shared-shop.spec.ts"
+      ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [
@@ -7378,7 +7398,10 @@
         "The finale offers Show me around: a tour of every area and open destination with Next, Back and Skip, also from Settings and Find anything."
       ],
       "tasks": [],
-      "tests": [],
+      "tests": [
+        "tests/sim/qol-guide.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
       "evidence": [],
       "status": "IN_PROGRESS",
       "designSections": [

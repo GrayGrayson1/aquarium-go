@@ -1883,9 +1883,11 @@ design questions were answered with the recommended options (ADR-0055).
   Shift+arrows slide; touch: two-finger drag orbits, pinch zooms, twist turns the piece; size moves to − / + on the
   hint. The pad: turn, tilt, zoom, Front · Above · Left · Right · Reset. Back to the player's camera when the tool ends.
 - *QOL-006, locks explained* (`src/ui/panels/common/UnlockHelp.tsx`): "How to unlock …" (the rule's hint, the
-  requirements with progress through `evalCond`, the research that grants it with "Open in Research", the facility
-  when a venue is needed) from every Locked in Build (tanks, water types, decor, substrates), Market (offers, offer
-  detail, Supplies) and Research.
+  requirements with progress through `evalCond`, an "any of" rule's alternatives each with progress, the research that
+  grants it with "Open in Research" (`research:<id>` panel target, the card glowing), the facility when a venue is
+  needed) from every Locked in Build (tanks, water types, decor, substrates), Market (offers, offer detail, Supplies)
+  and Research. One box for the game (`UnlockHelpHost` in GameHUD, `askUnlock`): a dialog per locked row made Build's
+  first open about 20 s slower on the dev server.
 - *QOL-007, the shared shop's dropdown* (`src/ui/shared/SharedMenu.tsx`): the strip goes; in a shared shop the
   top-left pill (desktop: the shop's name, "👥 {n} here", the day and time; phones: "👥 {n} · {time}") opens a dropdown
   with who's here, the owner's members list (pause and speed, spending), Money and "Back to my aquarium".
@@ -1894,7 +1896,7 @@ design questions were answered with the recommended options (ADR-0055).
   the food picker's food, the water to tap, Build › Decor's suggested piece, the tank card's reading, the Market's
   stock, Build's tank size, Research's next project). The finale offers "Show me around": a tour of every area and
   destination open to the player (each opened and pointed at; Next, Back, Skip; phones through More), also from
-  Settings › Help ("Take the tour") and Find anything.
+  Settings › Play & access ("Take the tour", beside Guide hints) and Find anything.
 - Nothing under `src/sim`, `src/data`, `src/types` or the persistence files changes: the shared build hash stays.
 
 **Requirements.** QOL-001 to QOL-008 (`docs/agent/REQUIREMENTS.json`).

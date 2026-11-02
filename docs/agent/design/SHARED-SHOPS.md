@@ -616,7 +616,7 @@ in from the game.
 | Creating (the owner) | The new-game naming and starter screens, titled "New shared shop", then "Your club can open it from Social." |
 | Opening | "Saving your aquarium…", then "Waking the shared shop… This takes about a minute when nobody's been in for a while.", then "Catching up on the time nobody was here…" |
 | First time in | "Your own aquarium is saved and waits for you. Everything here is shared with {club}." [Got it] |
-| HUD strip | "Shared · {shop} · Here: {name}, {name}" [Back to my aquarium] |
+| HUD strip | "Shared · {shop} · Here: {name}, {name}" [Back to my aquarium] (chunk 19, ADR-0055 decision 6: these words and controls now live in the dropdown from the top-left name pill, which shows "{n} here"; `src/ui/shared/SharedMenu.tsx`) |
 | Pause or speed, not allowed | "Only {owner} and the people they choose can pause or change the speed." |
 | Members list (the owner) | Each member there, with a switch "Can pause and change speed" |
 | Others' actions (pop-ups) | "{name} paused the shop." · "{name} set the speed to 3×." · a sale or a purchase over $100: "{name}: Sold the clownfish pair for $240." |

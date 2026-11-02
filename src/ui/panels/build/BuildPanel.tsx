@@ -102,14 +102,25 @@ export function BuildPanel() {
       setEquipKind(kind && EQUIP_CHIP[kind as EquipmentKind] ? (kind as EquipmentKind) : 'all');
       setEquipQ('');
     } else if (target.startsWith('find:')) {
-      // chunk 19 (QOL-004) — Find anything: the list searched for the item, the item glowing
+      // chunk 19 (QOL-004) — Find anything: the list searched for the item, the item glowing; the tank on show is one
+      // whose water the item suits (a coral looked up from a freshwater tank goes to the reef)
       const [, what, id] = target.split(':');
+      const suitTank = (envs: readonly string[] | undefined) => {
+        const gg = getGame();
+        if (!gg || !envs?.length) return;
+        const cur = (tankId && gg.tanks[tankId]) || gg.tanks[gg.tankOrder[0]];
+        if (cur && envs.includes(cur.environment)) return;
+        const other = gg.tankOrder.map((tid) => gg.tanks[tid]).find((t) => !!t && envs.includes(t.environment));
+        if (other) setTankId(other.id);
+      };
       if (what === 'decor') {
+        suitTank(DECOR.find((d) => d.id === id)?.environments);
         setTab('decor');
         setDecorCat('all');
         setDecorQ(DECOR.find((d) => d.id === id)?.name ?? '');
         glow(`[data-testid="panel-build"] [data-decor-id="${CSS.escape(id)}"]`);
       } else if (what === 'equipment') {
+        suitTank(getEquipmentDef(id)?.environments);
         setTab('equipment');
         setEquipKind('all');
         setEquipQ(getEquipmentDef(id)?.name ?? '');
@@ -246,7 +257,6 @@ function TanksTab({ g }: { g: GameState }) {
           {!marineOk && ' Marine systems unlock with research.'}
           {!unlocked(g, 'brackish') && unlocked(g, 'fw_intermediate') && ' Brackish estuaries unlock with research.'}
         </p>
-
       </section>
 
       <section>

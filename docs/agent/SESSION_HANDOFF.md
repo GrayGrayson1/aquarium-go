@@ -1,9 +1,32 @@
-# Session handoff: chunk 18 (the owner's deletes), after chunk 17 (big-tank species, 0.9.0)
+# Session handoff: chunk 19 (quality of life), after chunk 18 (the owner's deletes, 0.9.1)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Chunk 19, quality of life (2026-11-02)
+
+- **What** (PLAN.md chunk 19; ADR-0055 has the owner's words verbatim and the four answers): panels stay open while
+  their tools run (a phone's sheet steps aside and comes back); every problem on the tank card links to its fix (and
+  worn gear is named); search and filters in Market, Build and Research, plus Find anything (⌘K, /, the top bar, More);
+  a decorating camera with a view pad; every Locked explains how to unlock; the shared shop's strip is a dropdown from
+  the name pill; the guide's spotlight and the tour ("Show me around"). Nothing under `src/sim`, `src/data`, `src/types`
+  or the persistence files changed: the shared build hash stays `f128a63f7d57f4b9`.
+- **Status:** see PLAN.md chunk 19 for the checks, the review and what the owner still has to see (the new words).
+
+**Learned in chunk 19.**
+- *Never mount a dialog per list row.* A Modal (a portal and AnimatePresence) on each of 50 decor cards and 13 tank
+  sizes made Build's first open take about 20 s longer on the dev server (long tasks every 0.5 s); one shared box
+  (`UnlockHelpHost`, `askUnlock`) fixed it. Measure a panel's first open cold with a PerformanceObserver('longtask').
+- *The decor editor swallows pointer events* (window capture, `stopImmediatePropagation`) so a placing tap never reaches
+  the tank's clicks; that also blinded the camera. `forwardToCamera` (cameraFX.ts) hands each swallowed event to the rig.
+- *Test-id prefixes are API:* specs select `[data-testid^="build-decor-"]` and `^="build-tank-"`; a new control under
+  those prefixes (a search box, a lock button) becomes the "first card". Name new ids outside existing prefixes.
+- *On a case-insensitive disk* `findAnything.ts` and `FindAnything.tsx` resolve to the same import: the pure module is
+  `searchIndex.ts`.
+- *Look-around scripts that navigate right after `newGame`* race the first scene compile (~9 s in headless Chromium):
+  wait for the dock and a few seconds before opening panels by address.
 
 ## Chunk 18, the owner's deletes: done and released as 0.9.1 (2026-11-01)
 
