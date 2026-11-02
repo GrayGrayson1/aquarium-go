@@ -33,7 +33,11 @@ it's used up.
 - *WebKit doesn't focus a button on a mouse click:* a test about focus after a click works in Chromium only; focus
   the control and press Enter (what a keyboard player does) to test the same thing in both engines.
 - *A sheet that comes back on its own must wait for what the player is reading:* touch's "Place another" (8 s) and
-  the guide's next card (aside.ts).
+  the guide's next card (aside.ts). And the longer it can wait, the more ways the player can leave meanwhile: every
+  one of them (another tank or view, a popover, Find, the tour) has to drop it, or it slides back over what they opened.
+- *The sim's advice names only running units:* `equipmentSummary` (src/sim/water/env.ts) counts heaters that are on
+  and working, so one failed heater reads "Add a heater". A link built from the advice must look at the installed
+  gear before it says Buy (fixLinks.ts `idleOf`).
 
 ## Chunk 18, the owner's deletes: done and released as 0.9.1 (2026-11-01)
 

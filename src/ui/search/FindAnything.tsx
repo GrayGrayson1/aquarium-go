@@ -7,7 +7,6 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboa
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
 import { Search, Lock, CornerDownLeft, X } from 'lucide-react';
-import { create } from 'zustand';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { useSharedMode } from '@/state/sharedMode';
@@ -19,7 +18,8 @@ import { go } from '../nav/router';
 import { startTour } from '../tutorial/tourStore';
 import { findAnything, orderResults, type FindGo, type FindResult } from './searchIndex';
 
-export const useFind = create<{ open: boolean }>(() => ({ open: false }));
+import { useFind } from './findStore';
+export { useFind };
 
 export function openFind(): void {
   if (useUI.getState().screen !== 'game') return;
@@ -91,7 +91,9 @@ function Palette() {
   const social = useSocialAvailable();
   const shared = useSharedMode((s) => s.club !== null);
   const [q, setQ] = useState('');
-  const [active, setActive] = useState(0);
+  // the highlighted result, by its key: the 1.5 s refresh can reorder the list, and Enter must open what's highlighted
+  // (null: the first)
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -99,7 +101,9 @@ function Palette() {
   /** A result was chosen: focus stays where the destination puts it (a panel's title), not back on the opener. */
   const went = useRef(false);
   const results = useMemo(() => (game ? orderResults(findAnything(game, q, { social, tour: !shared })) : []), [game, q, social, shared]);
-  useEffect(() => setActive(0), [q]);
+  const active = Math.max(0, activeKey ? results.findIndex((r) => r.key === activeKey) : 0);
+  const setActive = (i: number) => setActiveKey(results[Math.max(0, Math.min(results.length - 1, i))]?.key ?? null);
+  useEffect(() => setActiveKey(null), [q]);
   useEffect(() => {
     // (autoFocus puts the caret in the box at once; this is the fallback, and never takes focus back from Close)
     const t = window.setTimeout(() => {
@@ -109,7 +113,13 @@ function Palette() {
     return () => {
       window.clearTimeout(t);
       if (!went.current) {
-        if (back && document.contains(back)) back.focus({ preventScroll: true });
+        // (opened from the phone's More, the opener left with More: its tab, or the top bar's button, instead)
+        const shown = (sel: string) => {
+          const el = document.querySelector<HTMLElement>(sel);
+          return el && el.offsetParent !== null ? el : null;
+        };
+        const to = back && document.contains(back) ? back : shown('[data-testid="hud-find"]') ?? shown('[data-testid="dock-more"]');
+        to?.focus({ preventScroll: true });
         return;
       }
       // a result was chosen: the destination keeps the focus it took (a panel's title). A sheet that took none
@@ -144,10 +154,10 @@ function Palette() {
       stops[(at + (e.shiftKey ? -1 : 1) + stops.length) % stops.length]?.focus();
     } else if (e.key === 'ArrowDown' && inInput) {
       e.preventDefault();
-      setActive((i) => Math.min(results.length - 1, i + 1));
+      setActive(active + 1);
     } else if (e.key === 'ArrowUp' && inInput) {
       e.preventDefault();
-      setActive((i) => Math.max(0, i - 1));
+      setActive(active - 1);
     } else if (e.key === 'Enter' && inInput) {
       // (Enter on Close closes, on a result goes there: their own clicks)
       e.preventDefault();
@@ -158,7 +168,17 @@ function Palette() {
   let lastGroup = '';
   return (
     <motion.div className="ag-find-backdrop" data-testid="find-anything" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} onPointerDown={(e) => { if (e.target === e.currentTarget) closeFind(); }} onKeyDown={onKey}>
-      <motion.div className="ag-find" role="dialog" aria-modal="true" aria-label="Find anything" initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}>
+      <motion.div
+        className="ag-find"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Find anything"
+        // (a click on blank space — a group's heading, "Nothing found" — keeps the focus where it was, in the box: it fell
+        // to the page, and Tab and Escape then left the box — reviewer note)
+        onMouseDown={(e) => {
+          if (!(e.target as HTMLElement).closest('input, button')) e.preventDefault();
+        }}
+        initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }} transition={{ type: 'spring', stiffness: 420, damping: 34 }}>
         <div className="ag-find__bar">
           <Search size={18} aria-hidden />
           <input
@@ -203,7 +223,7 @@ function Palette() {
                   data-find-index={i}
                   data-testid={`find-result-${r.key}`}
                   className={clsx('ag-find__row', i === active && 'is-active')}
-                  onPointerMove={() => i !== active && setActive(i)}
+                  onPointerMove={() => i !== active && setActiveKey(r.key)}
                   onClick={() => choose(r)}
                 >
                   <span className="ag-find__title">{r.title}</span>

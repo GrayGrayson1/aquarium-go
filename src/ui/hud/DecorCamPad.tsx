@@ -55,7 +55,7 @@ const PRESETS: [DecorPreset, string, string][] = [
   ['above', 'Above', 'View from above'],
   ['left', 'Left', 'View from the left'],
   ['right', 'Right', 'View from the right'],
-  ['reset', 'Reset', 'Back to the starting view'],
+  ['reset', 'Reset', 'Reset to the starting view'], // (the name holds the visible word: WCAG 2.5.3)
 ];
 
 /** Where the pad is two rows under the tank (qol.css): phones upright (not held sideways, reviewer B9)… */

@@ -142,6 +142,52 @@ test.describe('QOL-001: a phone’s sheet steps aside and comes back', () => {
   });
 });
 
+test.describe('QOL-001: when a phone’s sheet waits, and when it stays away (reviewer N2 and notes)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test('Build comes back when Place another runs out, but not after the bell opened meanwhile', async ({ page }) => {
+    await start(page);
+    await tid(page, 'dock-build').tap();
+    await tid(page, 'build-tab-decor').tap();
+    await chooseDecor(page, true);
+    await placeSomewhere(page, true);
+    await expect(tid(page, 'toolhint-place-another')).toBeVisible();
+    // nothing tapped: the offer runs out (8 s) and Build comes back on Decor
+    await expect(tid(page, 'panel-build')).toBeVisible({ timeout: 12_000 });
+    await expect(tid(page, 'build-tab-decor')).toHaveAttribute('aria-selected', 'true');
+    // again, and the bell opens while the sheet waits: Build stays away (it slid back over the bell)
+    await chooseDecor(page, true);
+    await placeSomewhere(page, true);
+    await expect(tid(page, 'toolhint-place-another')).toBeVisible();
+    await tid(page, 'hud-alerts').tap();
+    await expect(page.locator('.ag-alerts-pop')).toBeVisible();
+    await page.waitForTimeout(9500);
+    await expect(tid(page, 'panel-build')).toBeHidden();
+    expect((await ui(page)).aside).toBeNull();
+  });
+
+  test('when the guide moves on to its next step, its card leads and Build stays away', async ({ page }) => {
+    await openApp(page);
+    await quickGame(page, 'axolotl', { money: 3000 });
+    await page.evaluate(() => (window as unknown as { __AQ: { mutate(fn: (s: { progress: { tutorial: { step: number } } }) => void): void } }).__AQ.mutate((s) => void (s.progress.tutorial.step = 4)));
+    await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'habitat');
+    await tid(page, 'dock-build').tap();
+    await tid(page, 'build-tab-decor').tap();
+    await chooseDecor(page, true);
+    await expect.poll(async () => (await ui(page)).aside).toBe('build');
+    await placeSomewhere(page, true);
+    await aq(page, 'advance', 0.05);
+    await expect.poll(() => probe<number>(page, 'g.progress.tutorial.step')).toBeGreaterThan(4);
+    // the piece was bought: Done ends "Place another", and Build would come back now
+    const done = page.locator('.ag-toolhint__done', { hasText: 'Done' });
+    if (await done.isVisible().catch(() => false)) await done.tap();
+    await page.waitForTimeout(1500);
+    await expect(tid(page, 'panel-build')).toBeHidden();
+    expect((await ui(page)).aside).toBeNull();
+    await expect(tid(page, 'tutorial-card')).toBeVisible();
+    await expect(tid(page, 'tutorial-card')).not.toHaveAttribute('data-step', 'habitat');
+  });
+});
+
 test.describe('QOL-002: the tank card links to the fix', () => {
   test('a failed heater links to its Repair, and low food to Market › Supplies', async ({ page }) => {
     await start(page, 3000, 'betta'); // a tropical starter: its tank has a heater

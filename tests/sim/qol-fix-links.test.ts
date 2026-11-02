@@ -141,6 +141,65 @@ describe('QOL-002: the sim’s own advice picks the fix (reviewer B4)', () => {
   });
 });
 
+describe('QOL-002: a unit that is installed but not running is the fix, not a new one (reviewer N1)', () => {
+  const tempIssues = (g: GameState, tankId: string) => getWaterReport(g, tankId).issues.filter((i) => i.param === 'temp' && i.status !== 'good');
+  it('the only heater failed: every temperature line from the sim goes to its Repair', () => {
+    const { g, tank } = setup();
+    const heater = unitOf(tank, 'heater')!;
+    heater.failed = true;
+    heater.failMode = 'off';
+    tank.water.tempC = 22; // the room
+    const issues = tempIssues(g, tank.id);
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.map((i) => i.advice).join(' ')).toMatch(/Add a heater sized for this tank|Install a heater/);
+    for (const i of issues) expect(fixForWaterIssue(tank, i)).toEqual(gearRowOf(tank, heater, 'Repair'));
+  });
+  it('the only heater switched off: its row (the switch), not "Buy a heater"', () => {
+    const { g, tank } = setup();
+    const heater = unitOf(tank, 'heater')!;
+    heater.on = false;
+    tank.water.tempC = 22;
+    const issues = tempIssues(g, tank.id);
+    expect(issues.length).toBeGreaterThan(0);
+    for (const i of issues) expect(fixForWaterIssue(tank, i)).toEqual(gearRowOf(tank, heater, 'Open Equipment'));
+  });
+  it('too warm with the chiller failed: its Repair, not "Buy a chiller"', () => {
+    const { g, tank } = setup();
+    tank.equipment = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'heater');
+    const chiller = addUnit(tank, 'chiller', { failed: true, failMode: 'off' });
+    tank.water.tempC = 33;
+    const issue = tempIssue(g, tank.id)!;
+    expect(issue.advice).toMatch(/Add a chiller, or a clip-on fan/);
+    expect(fixForWaterIssue(tank, issue)).toEqual(gearRowOf(tank, chiller, 'Repair'));
+  });
+  it('"A heater has failed" picks the heater, not a failed chiller listed first', () => {
+    const { tank } = setup();
+    const heater = unitOf(tank, 'heater')!;
+    const chiller = addUnit(tank, 'chiller', { failed: true, failMode: 'off' });
+    tank.equipment = [chiller, ...tank.equipment.filter((e) => e !== chiller)];
+    heater.failed = true;
+    heater.failMode = 'off';
+    expect(fixForWaterIssue(tank, { text: 'Too cold.', advice: 'A heater has failed — repair or replace it.', param: 'temp' })).toEqual(gearRowOf(tank, heater, 'Repair'));
+  });
+  it('a burned-out light only answers "Install a light": a second, working light that is too bright goes to Lighting', () => {
+    const { tank } = setup();
+    const working = unitOf(tank, 'light') ?? addUnit(tank, 'light');
+    const burned = addUnit(tank, 'light', { id: 'test_light_2', failed: true, failMode: 'off' });
+    expect(working.failed).toBeFalsy();
+    expect(fixForWaterIssue(tank, { text: 'This light is bright for Ember.', advice: 'Lower the intensity or add floating plants and caves for shade.', param: 'light' })).toEqual({ label: 'Lighting', to: { kind: 'card', tankId: tank.id, tab: 'gear', fix: 'lighting' } });
+    tank.equipment = tank.equipment.filter((e) => e !== working);
+    expect(fixForWaterIssue(tank, { text: 'The light has burned out.', advice: 'Install a light — animals need a day/night rhythm.', param: 'light' })).toEqual(gearRowOf(tank, burned, 'Repair'));
+  });
+  it('an overstock bound by a broken filter: its Repair, not a new filter', () => {
+    const { tank } = setup();
+    const filter = unitOf(tank, 'filter')!;
+    filter.failed = true;
+    filter.failMode = 'off';
+    expect(fixForWaterIssue(tank, { text: 'Overstocked.', advice: 'Upgrade or add a filter, or rehome some animals.', param: 'stocking' })).toEqual(gearRowOf(tank, filter, 'Repair'));
+    expect(fixForWaterIssue(tank, { text: 'Filter capacity is insufficient.', advice: 'Add a second filter or upgrade to a larger one.', param: 'filtration' })).toEqual(gearRowOf(tank, filter, 'Repair'));
+  });
+});
+
 describe('QOL-002: attention items link to their fix', () => {
   it('food running low → Market › Supplies on the food to buy', () => {
     const { g, tank } = setup();

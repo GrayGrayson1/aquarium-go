@@ -36,6 +36,16 @@ const kindOf = (e: EquipmentInstance): EquipmentKind | undefined => getEquipment
 const nameOf = (e: EquipmentInstance): string => getEquipmentDef(e.defId)?.name ?? 'equipment';
 const gearOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance[] => (tank.equipment ?? []).filter((e) => kinds.includes(kindOf(e) as EquipmentKind));
 const failedOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance | undefined => gearOf(tank, ...kinds).find((e) => e.failed);
+/**
+ * An installed unit of these kinds that isn't running — failed first, then switched off. The sim counts only units that
+ * are on and working (src/sim/water/env.ts), so with a tank's only heater failed or off its advice is "Add a heater":
+ * the fix is that heater's Repair or its switch, not a second one (reviewer N1).
+ */
+const idleOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance | undefined => failedOf(tank, ...kinds) ?? gearOf(tank, ...kinds).find((e) => !e.on);
+/** The unit of these kinds that's running (on and working), else the first installed. */
+const runningOf = (tank: Tank, ...kinds: EquipmentKind[]): EquipmentInstance | undefined => gearOf(tank, ...kinds).find((e) => e.on && !e.failed) ?? gearOf(tank, ...kinds)[0];
+/** An idle unit's link: a failed one's Repair (or Switch it off when stuck on), an off one's row (its switch). */
+const idleLink = (tank: Tank, e: EquipmentInstance): FixLink => (e.failed ? repairLink(tank, e) : gearRow(tank, e, 'Open Equipment'));
 
 const card = (tank: Tank, tab: TankCardTabId, fix: string, label: string): FixLink => ({ label, to: { kind: 'card', tankId: tank.id, tab, fix } });
 /** Build › Equipment for this tank, showing one kind of gear to buy. */
@@ -58,39 +68,60 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
   const p = issue.param;
   // (the advice words are the sim's, src/sim/water/report.ts: a setting to change goes to the unit's own row, gear to
   // add goes to Build › Equipment for this tank, a broken unit to its Repair)
-  // "Upgrade or add a filter, or rehome some animals": the filter is the first fix it names
-  if (p === 'stocking' && /add a filter/.test(adv)) return buyGear(tank, 'filter', 'Buy a filter');
+  // "Upgrade or add a filter, or rehome some animals": the filter is the first fix it names (a broken or switched-off
+  // one first: its capacity is what's missing)
+  if (p === 'stocking' && /add a filter/.test(adv)) {
+    const idle = idleOf(tank, 'filter');
+    return idle ? idleLink(tank, idle) : buyGear(tank, 'filter', 'Buy a filter');
+  }
   if (/rehome|move some animals/.test(adv)) return { label: 'Open Livestock', to: { kind: 'panel', panel: 'livestock', target: null } };
   if (p === 'temp') {
     const stuck = gearOf(tank, 'heater').find((e) => e.failed && e.failMode === 'stuck_on');
     if (stuck) return repairLink(tank, stuck);
-    // "A heater has failed — repair or replace it." (the line doesn't name the unit)
-    const broken = /has failed|repair or replace/.test(adv) ? failedOf(tank, 'heater', 'chiller') : undefined;
+    // "A heater has failed — repair or replace it." (the line doesn't name the unit; while another heater still works)
+    const broken = /heater has failed/.test(adv) ? failedOf(tank, 'heater') : undefined;
     if (broken) return repairLink(tank, broken);
-    // too warm, and nothing here cools: "Add a chiller, or a clip-on fan…" (a heater would make it worse)
-    if (/add a chiller|clip-on fan/.test(adv)) return buyGear(tank, 'chiller', 'Buy a chiller');
     // a setting to change ("Raise the heater setting (or add a second heater…)", "Turn the heater down…", "Lower the
-    // chiller setting…", "Set the heater at least 1 °C below the chiller…"): the unit's row, where its setting is
-    const setting = /lower the chiller/.test(adv) ? gearOf(tank, 'chiller')[0] : /raise the heater setting|turn the heater down|set the heater/.test(adv) ? gearOf(tank, 'heater')[0] : undefined;
+    // chiller setting…", "Set the heater at least 1 °C below the chiller…"): the running unit's row, where its setting is
+    const setting = /lower the chiller/.test(adv) ? runningOf(tank, 'chiller') : /raise the heater setting|turn the heater down|set the heater/.test(adv) ? runningOf(tank, 'heater') : undefined;
     if (setting) return gearRow(tank, setting, 'Open Equipment');
-    if (/add a heater|install a heater|second heater|more powerful/.test(adv) || !gearOf(tank, 'heater', 'chiller').length) return buyGear(tank, 'heater', 'Buy a heater');
-    const unit = gearOf(tank, 'heater', 'chiller')[0];
-    return gearRow(tank, unit, 'Open Equipment');
+    // too warm, and nothing here cools: "Add a chiller, or a clip-on fan…" (a heater would make it worse). A chiller or
+    // fan that's installed but failed or off is the fix first
+    if (/add a chiller|clip-on fan/.test(adv)) {
+      const idle = idleOf(tank, 'chiller', 'fan');
+      return idle ? idleLink(tank, idle) : buyGear(tank, 'chiller', 'Buy a chiller');
+    }
+    // too cold with no heater running ("Add a heater sized for this tank", "Install a heater set to…", "There is no
+    // heater…"), or one too small ("Add a second heater…"): an installed heater that's failed or off comes first
+    if (/add a heater|install a heater|second heater|more powerful|there is no heater/.test(`${adv} ${issue.text.toLowerCase()}`)) {
+      const idle = idleOf(tank, 'heater');
+      return idle ? idleLink(tank, idle) : buyGear(tank, 'heater', 'Buy a heater');
+    }
+    const unit = runningOf(tank, 'heater', 'chiller');
+    return unit ? gearRow(tank, unit, 'Open Equipment') : card(tank, 'gear', 'equipment', 'Open Equipment');
   }
   if (p === 'filtration') {
-    // "Repair or replace the filter." (none running) and "Repair or replace it." (one of several down)
-    const broken = /repair or replace/.test(adv) ? failedOf(tank, 'filter') : undefined;
-    if (broken) return repairLink(tank, broken);
-    const filter = gearOf(tank, 'filter').find((e) => !e.failed) ?? gearOf(tank, 'filter')[0];
+    // "Repair or replace the filter." (none running), "Repair or replace it." (one of several down), and "Add a second
+    // filter…" while one is broken or off: that one first
+    if (/repair or replace|second filter|larger one/.test(adv)) {
+      const idle = idleOf(tank, 'filter');
+      if (idle) return idleLink(tank, idle);
+    }
+    // "Switch the filter back on." goes to that filter's row (its switch)
+    const filter = runningOf(tank, 'filter');
     if (/install a filter|second filter|larger one|add a filter/.test(adv) || !filter) return buyGear(tank, 'filter', 'Buy a filter');
     return gearRow(tank, filter, 'Open Equipment');
   }
   if (p === 'light') {
-    // "The light has burned out." comes with "Install a light…": the burned-out one is repaired, not replaced
-    const burned = failedOf(tank, 'light');
-    if (burned) return repairLink(tank, burned);
-    const light = gearOf(tank, 'light')[0];
-    if (!light || /install a light/.test(adv)) return buyGear(tank, 'light', 'Buy a light');
+    // "Install a light…" with a light installed: it burned out ("The light has burned out.") or is switched off — its
+    // Repair or its switch, not a new one. Only that advice: with two lights, one burned out and one too bright,
+    // "Lower the intensity…" is still about the working one (reviewer note)
+    if (/install a light/.test(adv)) {
+      const idle = idleOf(tank, 'light');
+      return idle ? idleLink(tank, idle) : buyGear(tank, 'light', 'Buy a light');
+    }
+    const light = gearOf(tank, 'light').find((e) => !e.failed) ?? gearOf(tank, 'light')[0];
+    if (!light) return buyGear(tank, 'light', 'Buy a light');
     // "Raise the intensity or install a stronger light": the intensity first, a stronger light once it's at the
     // Lighting slider's top (1.5, TankCard)
     if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49) return buyGear(tank, 'light', 'Buy a light');

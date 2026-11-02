@@ -510,7 +510,7 @@ link.
 |---|---|
 | `toast-action` | A toast's own button (a Market purchase's "See them": to the tank and the animal) |
 | `build-rearrange` | Build › Decor's Rearrange (it starts `decor_move` from the panel: the sheet stays on a computer, steps aside on a phone; the stepped-aside sheet has `data-aside`) |
-| `water-fix-<param>` · `tank-equip-repair-<equipmentId>` · `alert-fix-<tankId>` · `alert-equipment-worn` | QOL-002: a water row's fix link; Repair on a failed or worn unit's row; the bell's fix link beside a tank's row; the bell's row for gear wearing out. A card control a link goes to carries `data-fix` (`water-change`, `top-off`, `equip-<id>`, `lighting` …) and glows (`ag-glow`) |
+| `water-fix-<n>` (the row's place in the Water tab's list) · `tank-equip-repair-<equipmentId>` · `alert-fix-<tankId>` · `alert-equipment-worn` | QOL-002: a water row's fix link; Repair on a failed or worn unit's row; the bell's fix link beside a tank's row; the bell's row for gear wearing out. A card control a link goes to carries `data-fix` (`water-change`, `top-off`, `equip-<id>`, `lighting` …) and glows (`ag-glow`) |
 | `decor-search` · `decor-buyable` · `decor-sort` · `decor-count` · `decor-clear` | QOL-003: Build › Decor's search, Can buy now, sort, "n of m" and Clear |
 | `build-equip-search` · `build-equip-kind-<kind\|all>` · `build-equip-clear` · `build-tanks-buyable` | Build › Equipment's search, kind chips and Clear; Build › Tanks' Can buy now |
 | `shop-search` · `shop-sort` · `supplies-search` · `research-search` · `research-status-<all\|available\|active\|locked\|done>` · `research-clear` · `unlocks-search` | The Market's, Supplies', Research's and Unlocks' searches and filters (every search box's clear button is `<its id>-clear`) |

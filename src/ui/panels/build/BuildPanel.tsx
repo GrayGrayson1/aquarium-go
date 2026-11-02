@@ -75,6 +75,9 @@ export function BuildPanel() {
   const [equipKind, setEquipKind] = useState<EquipmentKind | 'all'>('all');
   // chunk 19 (QOL-004, reviewer B5) — Find anything on an item no tank of yours can take opens Tanks on that water
   const [tanksWc, setTanksWc] = useState<{ wc: WaterClass; n: number } | null>(null);
+  useEffect(() => {
+    if (tab !== 'tanks') setTanksWc(null); // (it's for that visit to Tanks: back later, the usual water)
+  }, [tab]);
   useEffect(() => () => clearOfferReturn(), []); // lane:qa-play — leaving Build forgets a pending "back to the offer"
   useEffect(() => {
     const saveId = getGame()?.saveId;

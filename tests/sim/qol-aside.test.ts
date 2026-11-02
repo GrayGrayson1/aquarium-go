@@ -9,8 +9,8 @@ import { asideDecision, startToolFromPanel, clearAside } from '@/ui/panels/commo
 
 type S = Parameters<typeof asideDecision>[0];
 type P = Parameters<typeof asideDecision>[1];
-const base: S = { panel: null, panelAside: 'build', tool: 'decor_place', photoMode: false, hudHidden: false, screen: 'game', selectedCreatureId: null };
-const prev: P = { tool: 'decor_place', selectedCreatureId: null, panelAside: 'build' };
+const base: S = { panel: null, panelAside: 'build', tool: 'decor_place', photoMode: false, hudHidden: false, screen: 'game', selectedCreatureId: null, view: 'tank', focusedTankId: 't1' };
+const prev: P = { tool: 'decor_place', selectedCreatureId: null, panelAside: 'build', view: 'tank', focusedTankId: 't1' };
 
 describe('QOL-001: when a stepped-aside panel comes back', () => {
   it('comes back when a placement tool ends (placed, Done, Cancel, Escape)', () => {
@@ -30,6 +30,20 @@ describe('QOL-001: when a stepped-aside panel comes back', () => {
     expect(asideDecision({ ...base, screen: 'title' }, prev, false)).toBe('drop');
     expect(asideDecision({ ...base, selectedCreatureId: 'c1' }, prev, false)).toBe('drop');
     expect(asideDecision({ ...base, tool: 'feed' }, prev, false)).toBe('drop'); // another kind of tool took over
+  });
+  it('is dropped when the player turns to another tank or the other view meanwhile (reviewer N2)', () => {
+    // while the tool runs
+    expect(asideDecision({ ...base, focusedTankId: 't2' }, prev, false)).toBe('drop');
+    expect(asideDecision({ ...base, view: 'facility' }, prev, false)).toBe('drop');
+    // while the sheet waits after the tool (the landing moment, touch's "Place another")
+    expect(asideDecision({ ...base, tool: 'none', focusedTankId: 't2' }, { ...prev, tool: 'none' }, false)).toBe('drop');
+    expect(asideDecision({ ...base, tool: 'none', view: 'facility' }, { ...prev, tool: 'none' }, false)).toBe('drop');
+  });
+  it('but not for the update that steps the sheet aside, nor a tool that ends by focusing what it made', () => {
+    // Buy & place sets the room view as the sheet steps aside
+    expect(asideDecision({ ...base, tool: 'tank_place', view: 'facility' }, { ...prev, panelAside: null, tool: 'none' }, false)).toBe('wait');
+    // the tank is placed and focused in the same update that ends the tool
+    expect(asideDecision({ ...base, tool: 'none', view: 'facility', focusedTankId: 't9' }, { ...prev, tool: 'tank_place', view: 'facility' }, false)).toBe('return');
   });
   it('does nothing without a stepped-aside panel', () => {
     expect(asideDecision({ ...base, panelAside: null, tool: 'none' }, prev, false)).toBe('wait');

@@ -1863,7 +1863,9 @@ design questions were answered with the recommended options (ADR-0055).
   when the player opened another panel, a card, Watch or Photo meanwhile. On a phone a placed piece is seen landing
   (about 0.9 s) before the sheet returns; while the hint offers touch's "Place another" the sheet waits for it to be
   used, dismissed (Done) or to run out, and if the guide moved on to its next step meanwhile the sheet is dropped so
-  the guide's card isn't covered (review). The Market stays open after a purchase, back on the shop list (after part
+  the guide's card isn't covered (review). Going elsewhere while it waits drops it too: another tank or view, a
+  popover (the bell, the food picker, More), Find anything or the tour (the second review: it slid back 8 s later
+  over the bell). The Market stays open after a purchase, back on the shop list (after part
   of a group too: the offer screen's picks belonged to the animals just bought); the toast's "See them" goes to the
   tank with the animal's card (`Toast.action`). Desktop: the tool hint and the camera's free rect sit left of the sheet.
 - *QOL-002, fix links* (`src/ui/common/fixLinks.ts`, pure: an attention item or water issue → a link; `goFix` runs
@@ -1871,8 +1873,10 @@ design questions were answered with the recommended options (ADR-0055).
   panel at the spot (Supplies on the food, Build › Equipment for the tank filtered to the kind, the failed unit's row,
   the animal's card). The card's Equipment tab gets Repair on failed or worn gear; gear under 25 % condition is an
   attention item ("wearing out"), named in the alerts drawer too. The links read the sim's own advice: a setting to
-  change goes to the unit's row, a too-warm tank with nothing that cools to a chiller, a burned-out light or a failed
-  filter to its Repair, full-intensity dim light to a stronger light (review). The alerts drawer's tank rows reuse the
+  change goes to the running unit's row; an installed heater, chiller, fan, filter or light that has failed or is
+  switched off is the fix before a new one (its Repair or its switch: the sim counts only running units, so a tank
+  whose only heater failed is told "Add a heater", the second review); a too-warm tank with nothing that cools goes to
+  a chiller, a dim light at full intensity to a stronger one (review). The alerts drawer's tank rows reuse the
   links (worked out at most once a second per tank).
 - *QOL-003, search and filters* (`src/ui/panels/common/SearchField.tsx`, `src/ui/panels/common/match.ts`): Market ›
   Shop (search over species, morph, strain, seller and traits, in the shop filters; a sort), Supplies (search), Build ›

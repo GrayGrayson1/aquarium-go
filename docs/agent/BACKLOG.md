@@ -50,11 +50,11 @@ ADR-0008, cited in several notes, was approved by the owner and committed in `1a
 | needs-slice | 24 | 18 | 1 | 0 | 0 | 5 | 0 |
 | owner-decision | 23 | 13 | 0 | 6 | 0 | 0 | 4 |
 | record-only | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
-| outside the review | 43 | 16 | 1 | 1 | 0 | 24 | 1 |
-| **total** | **144** | **63** | **9** | **7** | **0** | **56** | **9** |
+| outside the review | 47 | 16 | 1 | 1 | 0 | 28 | 1 |
+| **total** | **148** | **63** | **9** | **7** | **0** | **60** | **9** |
 
-Recounted from the rows on 2026-10-30 (chunk 17): "outside the review" has B-220 (closed by the owner's decision, counted
-as decided) and B-221 to B-227; its open items include B-207 (in progress).
+Recounted from the rows on 2026-11-02 (chunk 19): "outside the review" has B-220 (closed by the owner's decision, counted
+as decided) and B-221 to B-231; its open items include B-207 (in progress).
 
 Fixed or partly fixed by these commits: `3e00a32`, `58ae313`, `9edfa12`, `6347c5d`, `d98731d`, `16233a1`, `c774d38`,
 `2ef1ff7`, `d8fb896`, `7c0dbf4`, `5ae85a3`, `62df438`, `9e1bf66`. `dfc0a13` was reverted by `f999618` (B-158).
@@ -117,6 +117,7 @@ decided. Every owner-decision row is now answered (ADR-0025 to ADR-0029, 2026-10
 | B-228 | — | Chunk 18's reviews' small shop-server notes, none blocking: (a) a room still opening as a wake when the owner deletes its shop and makes a new one within that second isn't stopped (`join` stops only a room live before its read): the owner lands in the deleted shop until the next lease renewal says `gone` (≤ 30 s), or the create gets `gone`; a retry works, no data lost; (b) a room already stopping for another reason (SIGTERM, a fault, a cap) whose save then finds the shop missing tells its members that reason, not `gone`; (c) a member waiting on a still-opening wake room for a deleted shop is told `restart`, not `gone` | low | — | app-code | — | **open** |
 | B-229 | — | The live smoke (`scripts/online-smoke.mjs`) signs its throwaway accounts up with the invite code of the club named "Aquarium Go Friends". Since chunk 18 the owner can delete that club from Manage, which would break the smoke and every sign-up that uses its code (no club, no sign-up). Tell the owner; make the smoke make its own club (as the owner, through the CLI) if it happens | low | — | ops | — | **open** |
 | B-230 | — | Brave Shields (on by default) blocked every request from aquarium-go.onrender.com to the shop server's `/health` ("Provisional headers are shown", Brave's Adblock panel), so opening a shared shop sat on "Waking the shared shop … about a minute" for good; turning Shields off for the site fixed it (the owner, 2026-11-01). The wake screen should give up after its minute and say the shared-shop server can't be reached (and that a blocker or Shields may be the cause), instead of waiting forever. New words: the owner first | medium | — | app-code | — | **open** |
+| B-231 | — | Chunk 19's reviews' leftovers, none blocking: (a) in a 761–793 px window (at least 501 tall) any side sheet (460 px plus its margin) leaves the tank under 40 % of the width, so `src/render/camera/viewport.ts` ignores the sheet and frames the tank under it; true before chunk 19 too, and the decorating pad now lies under the tank from 721 px (phones' bottom sheets up to 760 px); (b) the tour opens panels, which raises their `opened_*` flags (a guide step that waits for one completes; the tour did show the panel); (c) the tank card's header lists at most four problems (the rest are in its tabs); (d) the e2e checks for the shared menu above the toasts and the pad's framing check z-indexes and positions, not what's drawn | low | — | app-code | — | **open** |
 ## fix-now-harness (30)
 
 docs/agent, AGENTS.md, CLAUDE.md and scripts/agent. Protected files: owner-approved ADR for the constitution and prompts, ADR plus reviewer for scripts (OPERATIONS §10).

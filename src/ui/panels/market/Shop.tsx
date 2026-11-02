@@ -338,6 +338,9 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const [picked, setPicked] = useState<Set<number>>(() => new Set(offer.creatures.map((_, i) => i)));
   const [ack, setAck] = useState(false);
   const [active, setActive] = useState(0);
+  // (a purchase answered after the player moved on — a shared shop waits for the server — mustn't pull them back)
+  const alive = useRef(true);
+  useEffect(() => () => void (alive.current = false), []);
   const tilesRef = useRef<HTMLDivElement>(null);
   const tank = tankId ? g.tanks[tankId] : undefined;
   const chosen = offer.creatures.filter((_, i) => picked.has(i));
@@ -413,7 +416,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
         useUI.getState().set({ focusedTankId: tankId });
         const first = saw.find((id) => !!useGame.getState().game?.creatures[id]);
         useUI.getState().toast(`${name} is settling into ${tankName}`, prismatic ? 'celebrate' : 'success', { label: prismatic ? 'Prismatic find' : 'Bought', detail: 'Find them in Livestock.', tankId, ...(first ? { creatureId: first } : {}), actionLabel: 'See them' });
-        onBack();
+        if (alive.current) onBack();
       },
     });
   };

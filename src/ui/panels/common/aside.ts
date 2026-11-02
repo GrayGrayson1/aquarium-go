@@ -18,6 +18,8 @@ import { useGame } from '@/state/game';
 import { useSettings } from '@/state/settings';
 import { useSharedMode } from '@/state/sharedMode';
 import { usePlaceAgain } from '@/render/decor/placeAgain';
+import { useFind } from '../../search/findStore';
+import { useTour } from '../../tutorial/tourStore';
 import { useShell } from '../../common/shellStore';
 import { BOTTOM_SHEET_QUERY } from '../../common/Sheet';
 import { MOBILE_QUERY } from '../../common/safe';
@@ -103,9 +105,14 @@ function comeBack(): void {
   ui.set({ panel, panelAside: null });
 }
 
-/** Nothing has taken the player somewhere else. */
+/**
+ * Nothing has taken the player somewhere else: no panel, card, Watch or Photo, and (reviewer N2: the sheet can wait
+ * 8 s for "Place another", and used to slide back over these) no popover (the bell, the food picker, More), no Find
+ * anything and no tour.
+ */
 function stillHere(ui: UIState): boolean {
-  return !ui.panel && !ui.photoMode && !ui.hudHidden && ui.screen === 'game' && !useShell.getState().tankCardOpen;
+  const shell = useShell.getState();
+  return !ui.panel && !ui.photoMode && !ui.hudHidden && ui.screen === 'game' && !shell.tankCardOpen && !shell.popover && !useFind.getState().open && !useTour.getState().running;
 }
 
 const pending = {
@@ -126,14 +133,20 @@ const pending = {
  * stepped-aside panel. 'return' = the tool ended on its own terms; 'drop' = the player went somewhere else.
  */
 export function asideDecision(
-  s: Pick<UIState, 'panel' | 'panelAside' | 'tool' | 'photoMode' | 'hudHidden' | 'screen' | 'selectedCreatureId'>,
-  p: Pick<UIState, 'tool' | 'selectedCreatureId' | 'panelAside'>,
+  s: Pick<UIState, 'panel' | 'panelAside' | 'tool' | 'photoMode' | 'hudHidden' | 'screen' | 'selectedCreatureId' | 'view' | 'focusedTankId'>,
+  p: Pick<UIState, 'tool' | 'selectedCreatureId' | 'panelAside' | 'view' | 'focusedTankId'>,
   cardOpen: boolean,
 ): 'return' | 'drop' | 'wait' {
   if (!s.panelAside) return 'wait';
   if (s.panel || s.photoMode || s.hudHidden || s.screen !== 'game' || cardOpen) return 'drop';
   if (s.selectedCreatureId && s.selectedCreatureId !== p.selectedCreatureId) return 'drop';
-  if (s.tool === p.tool) return 'wait';
+  if (s.tool === p.tool) {
+    // reviewer N2 — another tank or the other view meanwhile (while the tool runs, or while the sheet waits for the
+    // piece to land or for "Place another"): the player went somewhere else. Not the update that stepped the sheet
+    // aside (it may set the view and the tank itself), nor a tool's own end (a placed tank focuses itself: below)
+    if (p.panelAside && (s.view !== p.view || s.focusedTankId !== p.focusedTankId)) return 'drop';
+    return 'wait';
+  }
   if (s.tool === 'none') return ASIDE_TOOLS.has(p.tool) ? 'return' : 'wait';
   // another tool took over: a placement (Place another) keeps waiting, anything else (Feed, Tap…) goes elsewhere
   return ASIDE_TOOLS.has(s.tool) ? 'wait' : 'drop';
@@ -152,7 +165,15 @@ export function usePanelAsideRules(): void {
       }
     });
     const unsubShell = useShell.subscribe((s, p) => {
-      if (s.tankCardOpen && !p.tankCardOpen && useUI.getState().panelAside) clearAside();
+      if (!useUI.getState().panelAside) return;
+      // the tank card, or a popover (the bell, the food picker, More: reviewer N2), opened meanwhile
+      if ((s.tankCardOpen && !p.tankCardOpen) || (s.popover && !p.popover)) clearAside();
+    });
+    const unsubFind = useFind.subscribe((s) => {
+      if (s.open && useUI.getState().panelAside) clearAside();
+    });
+    const unsubTour = useTour.subscribe((s) => {
+      if (s.running && useUI.getState().panelAside) clearAside();
     });
     const unsubGame = useGame.subscribe((s, p) => {
       if (s.game?.saveId !== p.game?.saveId && useUI.getState().panelAside) clearAside();
@@ -167,6 +188,8 @@ export function usePanelAsideRules(): void {
       unsubShell();
       unsubGame();
       unsubAgain();
+      unsubFind();
+      unsubTour();
       pending.cancel();
     };
   }, []);
