@@ -25,6 +25,18 @@ describe('QOL-006: how to unlock', () => {
     expect(Math.floor(rep!.current)).toBe(23);
     expect(rep!.target).toBe(60);
   });
+  it('splits an "any of" route into its alternatives, each with progress', () => {
+    const g = game();
+    g.progress.reputation = 10;
+    const [v] = lockViews(g, ['tank_40']); // 25 reputation or raise a clutch
+    expect(v.either.length).toBe(1);
+    const alts = v.either[0];
+    expect(alts.length).toBe(2);
+    const rep = alts.find((r) => /reputation/i.test(r.label))!;
+    expect(Math.floor(rep.current)).toBe(10);
+    expect(rep.target).toBe(25);
+    expect(alts.some((r) => /clutch/i.test(r.label))).toBe(true);
+  });
   it('offers the research that grants it, and a venue when the rule asks for one', () => {
     const g = game();
     const [big] = lockViews(g, ['tank_500']);

@@ -206,9 +206,9 @@ export function Stat({ label, value, hint }: { label: ReactNode; value: ReactNod
   );
 }
 
-export function Section({ title, children, actions }: { title?: ReactNode; children: ReactNode; actions?: ReactNode }) {
+export function Section({ title, children, actions, fix }: { title?: ReactNode; children: ReactNode; actions?: ReactNode; /** chunk 19 (QOL-002): a tank-card link's target */ fix?: string }) {
   return (
-    <div className="ag-section">
+    <div className="ag-section" data-fix={fix}>
       {(title || actions) && (
         <div className="ag-row ag-section__head">
           {title && <h3 className="ag-section__title ag-grow">{title}</h3>}

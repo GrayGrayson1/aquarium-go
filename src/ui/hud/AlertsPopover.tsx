@@ -22,13 +22,16 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { useTankCardTab } from '../cards/TankCard';
 import { EventIcon } from './eventIcons';
 import { Chip, IconButton, formatMoney } from '../kit';
-import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, eventLine, gearFitItems } from '../common/notify'; // lane:notify
+import { attentionSummary, autofeedPaused, autofeedPausedText, drawerEvents, eventLine, gearFitItems, tankAttention } from '../common/notify'; // lane:notify
 import { mark } from '../common/marks';
 import { Button } from '../kit';
 import { go } from '../nav/router'; // lane:notify (chunk 3)
 import { useNotifyPermission } from '../notify/deliver'; // lane:notify (chunk 3)
 import { eventLink } from './eventLinks'; // lane:notify
 import { AutomationSection } from './AlertsAutomation'; // lane:automation (chunk 5)
+import { FixButton } from '../cards/FixButton'; // chunk 19 (QOL-002)
+import { fixForAttention } from '../common/fixLinks'; // chunk 19 (QOL-002)
+import { getWaterReport } from '@/sim/water'; // chunk 19 (QOL-002)
 
 /**
  * Failed equipment in a tank, listed under the bell until it is repaired or replaced (its log line scrolls away in a
@@ -216,10 +219,13 @@ function TankAlerts({ game }: { game: GameState }) {
         const reason = reasons.get(t.id) ?? '';
         if (!reason && t.cache.statusSource === 'food') return null;
         const I = t.cache.status === 'danger' ? OctagonAlert : TriangleAlert;
+        // chunk 19 (ADR-0055 decision 2, QOL-002) — the row's own fix beside it (the row still opens the tank card)
+        const first = safe('tankAttention', () => tankAttention(game, t.id).items.find((i) => i.source === 'water' || i.source === 'animals') ?? null, null);
+        const fix = first ? safe('fixForAttention', () => fixForAttention(game, t, first, first.source === 'food' ? null : getWaterReport(game, t.id)), null) : null;
         return (
+          <div key={t.id} className="ag-alert-split">
           <button
             type="button"
-            key={t.id}
             className={clsx('ag-alert-row', `is-${t.cache.status}`)}
             onClick={() => {
               sfx('open');
@@ -238,6 +244,8 @@ function TankAlerts({ game }: { game: GameState }) {
             </span>
             <ChevronRight size={16} aria-hidden />
           </button>
+          <FixButton link={fix} testId={`alert-fix-${t.id}`} onGo={() => useShell.getState().set({ popover: null })} />
+          </div>
         );
       })}
     </div>

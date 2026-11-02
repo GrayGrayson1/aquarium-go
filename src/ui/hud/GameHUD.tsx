@@ -49,6 +49,7 @@ import { usePrefs } from '../common/prefs';
 import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
 import { usePanelAsideRules } from '../panels/common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
+import { FindAnything, useFindKeys } from '../search/FindAnything'; // chunk 19 (ADR-0055 decision 3, QOL-004)
 
 const CALM_AFTER_MS = 6000;
 /** How long after a waking touch its click counts as part of the wake. */
@@ -316,6 +317,7 @@ export function GameHUD() {
   usePopoverFocusReturn();
   useCardDockRules();
   usePanelAsideRules();
+  useFindKeys();
   useFocusedTankGuard();
   const calm = useCalmHud();
   const hidden = useUI((s) => s.hudHidden);
@@ -405,6 +407,9 @@ export function GameHUD() {
         <LazyPhotoMode />
       </ErrorBoundary>
       <WatchRestore />
+      <ErrorBoundary name="find">
+        <FindAnything />
+      </ErrorBoundary>
       <ErrorBoundary name="welcome">
         <WelcomeBack />
       </ErrorBoundary>

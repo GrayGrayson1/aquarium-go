@@ -7,7 +7,7 @@
 import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
-import { ChevronRight, Gauge, Lock, Settings, X } from 'lucide-react';
+import { ChevronRight, Gauge, Lock, Search, Settings, X } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGameSelector } from '@/state/game';
 import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
@@ -22,6 +22,7 @@ import { SOCIAL_COPY } from '../panels/social/copy'; // lane:social (chunk 6)
 import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
 import type { NavDot } from '../common/notify';
 import { moreSubline } from '../common/ops'; // lane:automation (chunk 5)
+import { openFind } from '../search/FindAnything'; // chunk 19 (QOL-004)
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -86,6 +87,25 @@ export function MoreSheetBody({ isLocked, dots, social = false }: { isLocked: (i
           );
         })}
       </div>
+      {/* chunk 19 (ADR-0055 decision 3, QOL-004) — Find anything, from the phone's More */}
+      <button
+        type="button"
+        className="ag-more__row"
+        data-testid="more-find"
+        onClick={() => {
+          useShell.getState().set({ popover: null });
+          openFind();
+        }}
+      >
+        <span className="ag-more__chip ag-more__chip--sm">
+          <Search size={18} aria-hidden />
+        </span>
+        <span className="ag-more__rowtext">
+          <span className="ag-more__rowtitle">Find anything</span>
+          <span className="ag-more__rowsub">Animals, gear, research and screens</span>
+        </span>
+        <ChevronRight size={18} aria-hidden className="ag-more__chev" />
+      </button>
       <button
         type="button"
         className="ag-more__row"

@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { AnimatePresence, motion } from 'motion/react';
-import { Pause, Play, FastForward, ChevronsRight, Star, Bell, Sun, Moon, Settings, Hand } from 'lucide-react';
+import { Pause, Play, FastForward, ChevronsRight, Star, Bell, Sun, Moon, Settings, Hand, Search } from 'lucide-react';
 import { useGame, useGameSelector } from '@/state/game';
 import { useSettings } from '@/state/settings';
 import type { GameSpeed } from '@/types';
@@ -24,6 +24,7 @@ import { go } from '../nav/router'; // lane:automation (chunk 5)
 import '../styles/operations-hud.css'; // lane:automation (chunk 5)
 import { opsDot } from '../common/ops'; // lane:automation (chunk 5)
 import { SharedPill, useInSharedShop } from '../shared/SharedMenu'; // chunk 19 (ADR-0055 decision 6, QOL-007)
+import { openFind, useFind } from '../search/FindAnything'; // chunk 19 (QOL-004)
 
 export function setSpeed(s: GameSpeed) {
   const g = useGame.getState().game;
@@ -273,6 +274,16 @@ function SettingsGear() {
   );
 }
 
+/** chunk 19 (ADR-0055 decision 3, QOL-004) — Find anything (also ⌘K / Ctrl+K and /), beside the gear. */
+function FindButton() {
+  const open = useFind((s) => s.open);
+  return (
+    <button type="button" className="ag-hudpill ag-hud-gear ag-hud-find" data-testid="hud-find" aria-label="Find anything" aria-expanded={open} title="Find anything (⌘K or /)" onClick={() => openFind()}>
+      <Search size={18} aria-hidden />
+    </button>
+  );
+}
+
 export function TopBar({ compact }: { compact?: boolean }) {
   // chunk 19 (QOL-007) — in a shared shop the name pill opens the shop's dropdown (who's here, members, Money, the way back)
   const shared = useInSharedShop();
@@ -289,6 +300,7 @@ export function TopBar({ compact }: { compact?: boolean }) {
         <DevToggle />
         {!compact && <ReputationPill />}
         <MoneyPill compact={compact} />
+        {!compact && <FindButton />}
         {!compact && <SettingsGear />}
         <AlertsButton />
       </div>

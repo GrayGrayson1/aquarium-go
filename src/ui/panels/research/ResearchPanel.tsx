@@ -24,6 +24,8 @@ import './research.css'; // lane:w2-ui
 import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { glow } from '@/ui/common/glow'; // chunk 19 (QOL-004, QOL-006)
+import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
+import { matches } from '../common/match'; // chunk 19 (QOL-003)
 
 type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
 const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
@@ -35,11 +37,18 @@ export function ResearchPanel() {
   const g = usePanelGame(900);
   const target = useUI((s) => s.panelTarget);
   const [tab, setTab] = useState<Tab>('research');
+  const [unlockQ, setUnlockQ] = useState(''); // chunk 19 (QOL-003, QOL-004): the unlock map's search, set by a link
   const phone = useIsPhone(); // lane:qa-final
   useNavTab('research', tab); // lane:ui-shell (chunk 1)
   useEffect(() => {
     if (target?.startsWith('tab:')) {
       setTab(RESEARCH_TABS.includes(target.slice(4) as Tab) ? (target.slice(4) as Tab) : 'research');
+      useUI.getState().set({ panelTarget: null });
+    } else if (target?.startsWith('unlock:')) {
+      // chunk 19 (QOL-004) — an unlock asked for by name: the map, searched for it
+      const key = target.slice(7);
+      setTab('unlocks');
+      setUnlockQ(safe(() => unlockLabel(key), UNLOCK_KEYS[key as keyof typeof UNLOCK_KEYS] ?? key));
       useUI.getState().set({ panelTarget: null });
     } else if (target?.startsWith('research:')) {
       // chunk 19 (QOL-004, QOL-006) — a project asked for by name ("Open in Research", Find anything): its card glows
@@ -81,7 +90,7 @@ export function ResearchPanel() {
       }
     >
       {tab === 'research' && <ResearchTab g={g} />}
-      {tab === 'unlocks' && <UnlocksTab g={g} />}
+      {tab === 'unlocks' && <UnlocksTab g={g} q={unlockQ} setQ={setUnlockQ} />}
       {tab === 'quests' && <QuestsTab g={g} quests={quests} />}
       {tab === 'achievements' && <AchievementsTab g={g} />}
     </PanelLayout>
@@ -125,11 +134,25 @@ function StandingCard({ g }: { g: GameState }) {
   );
 }
 
+type StatusFilter = 'all' | 'available' | 'active' | 'locked' | 'done';
+const STATUS_CHIPS: [StatusFilter, string][] = [
+  ['all', 'Everything'],
+  ['available', 'Can start'],
+  ['active', 'In progress'],
+  ['locked', 'Locked'],
+  ['done', 'Done'],
+];
+
 function ResearchTab({ g }: { g: GameState }) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const list = useMemo(() => safe<ResearchView[]>(() => researchList(g), []), [g]);
   const active = list.find((r) => r.status === 'active');
   const branches = [...new Set(RESEARCH.map((r) => r.branch))];
+  // chunk 19 (ADR-0055 decision 3, QOL-003) — search the projects (name, what they teach, what they unlock) and by status
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const shown = list.filter((r) => (status === 'all' || r.status === status) && matches(q, r.def.name, r.def.blurb, BRANCH_LABEL[r.def.branch], ...r.def.grants.map(grantLabel)));
+  const narrowed = !!q.trim() || status !== 'all';
   return (
     <div className="pn-stack pn-stack--lg">
       <StandingCard g={g} />
@@ -165,18 +188,36 @@ function ResearchTab({ g }: { g: GameState }) {
           No project running. Pick one below — study continues while you care for your tanks.
         </Callout>
       )}
-      {branches.map((b) => (
-        <section key={b}>
-          <SectionHead title={BRANCH_LABEL[b] ?? b} />
-          <div className="pn-col pn-gap-2">
-            {list
-              .filter((r) => r.def.branch === b)
-              .map((r) => (
+      <div className="pn-findbar">
+        <SearchField value={q} onChange={setQ} placeholder="Search research" label="Search research by name or what it unlocks" testId="research-search" />
+        {narrowed && <span className="pn-findbar__count" data-testid="research-count">{shown.length} of {list.length}</span>}
+      </div>
+      <div className="pn-chips">
+        {STATUS_CHIPS.map(([id, label]) => (
+          <Chip key={id} onClick={() => setStatus(id)} pressed={status === id} testId={`research-status-${id}`}>
+            {label}
+          </Chip>
+        ))}
+      </div>
+      {shown.length === 0 && (
+        <EmptyState icon={<FlaskConical size={24} />} title="Nothing matches" action={<Button onClick={() => { setQ(''); setStatus('all'); }} data-testid="research-clear">Clear filters</Button>}>
+          Try other words, or another status.
+        </EmptyState>
+      )}
+      {branches.map((b) => {
+        const inBranch = shown.filter((r) => r.def.branch === b);
+        if (!inBranch.length) return null;
+        return (
+          <section key={b}>
+            <SectionHead title={BRANCH_LABEL[b] ?? b} />
+            <div className="pn-col pn-gap-2">
+              {inBranch.map((r) => (
                 <ResearchCard key={r.def.id} g={g} r={r} busy={!!active} />
               ))}
-          </div>
-        </section>
-      ))}
+            </div>
+          </section>
+        );
+      })}
       <Modal
         open={confirmCancel}
         onClose={() => setConfirmCancel(false)}
@@ -296,10 +337,13 @@ const GROUPS: { id: string; label: string; test: (k: string) => boolean }[] = [
   { id: 'decor', label: 'Decor & corals', test: (k) => k.startsWith('decor_') },
 ];
 
-function UnlocksTab({ g }: { g: GameState }) {
+function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string) => void }) {
   const locked = useMemo(() => safe<UnlockProgressView[]>(() => unlockProgress(g), []), [g]);
   const byKey = new Map(locked.map((u) => [u.key, u]));
   const keys = Object.keys(UNLOCK_KEYS);
+  // chunk 19 (ADR-0055 decision 3, QOL-003) — the unlock map searched by name and route
+  const labelOf = (k: string) => safe(() => unlockLabel(k), UNLOCK_KEYS[k as keyof typeof UNLOCK_KEYS]);
+  const hit = (k: string) => matches(q, labelOf(k), byKey.get(k)?.hint, ...(byKey.get(k)?.viaResearch ?? []).map((r) => r.name));
   const unlockedCount = keys.filter((k) => g.progress.unlocked.includes(k)).length;
   const next = locked.filter((u) => u.progress > 0).slice(0, 3);
   return (
@@ -320,8 +364,10 @@ function UnlocksTab({ g }: { g: GameState }) {
           </div>
         )}
       </div>
+      <SearchField value={q} onChange={setQ} placeholder="Search unlocks" label="Search the unlock map" testId="unlocks-search" />
       {GROUPS.map((grp) => {
-        const gk = keys.filter(grp.test);
+        const gk = keys.filter((k) => grp.test(k) && hit(k));
+        if (q.trim() && !gk.length) return null;
         const open = gk.filter((k) => g.progress.unlocked.includes(k));
         const closed = gk.filter((k) => !g.progress.unlocked.includes(k)).sort((a, b) => (byKey.get(b)?.progress ?? 0) - (byKey.get(a)?.progress ?? 0));
         return (

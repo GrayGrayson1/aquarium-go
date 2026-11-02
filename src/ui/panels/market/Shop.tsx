@@ -22,7 +22,8 @@ import { SubView } from '../common/PanelLayout';
 import { safe, useIsPhone } from '../common/hooks';
 import { act } from '../common/act';
 import { rememberOfferReturn } from './offerReturn'; // lane:qa-play
-import { useShopFilters, offerMatches, filtersActive } from './shopFilters'; // lane:ui-shell (chunk 1)
+import { useShopFilters, offerMatches, filtersActive, useShopSearch, offerSearchMatches, sortOffers, type ShopSort } from './shopFilters'; // lane:ui-shell (chunk 1); chunk 19 (QOL-003): search and sort
+import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { useSeenStock } from './seenStock'; // lane:notify (0.5 §5.2)
 import { CopyLinkButton, OfferLinkRow, useOfferLink } from './OfferLink'; // lane:ui-shell (chunk 1)
 import { expressedNewGenes, labPartners, rareCarried, speciesPlural, strainOrMorphTier } from './offerGenetics';
@@ -48,6 +49,9 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
   // lane:ui-shell (chunk 1) — the filters live in the session's shop filters, which the address carries (#/shop?env=…)
   const filters = useShopFilters((s) => s.filters);
   const setFilters = useShopFilters.getState().setFilters;
+  // chunk 19 (ADR-0055 decision 3, QOL-003) — the search and the sort (this session's)
+  const q = useShopSearch((s) => s.q);
+  const sort = useShopSearch((s) => s.sort);
   const tanks = orderedTanks(g);
   const offer = offerId ? g.market.stock.find((o) => o.id === offerId) : undefined;
   // lane:notify (0.5 §5.2) — an open Shop has shown the player its stock: the Market's rare-stock dot goes out
@@ -77,12 +81,28 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
     );
 
   const inStock = g.market.stock.filter((o) => !!speciesOf(o.speciesId));
-  const stock = inStock.filter((o) => offerMatches(g, o, filters));
+  const stock = sortOffers(inStock.filter((o) => offerMatches(g, o, filters) && offerSearchMatches(o, q)), sort);
   const lab = geneticsRevealLevel(g, {}) >= 1;
-  const clear = () => useShopFilters.getState().clearFilters();
+  const clear = () => {
+    useShopFilters.getState().clearFilters();
+    useShopSearch.setState({ q: '' }); // chunk 19 (QOL-003)
+  };
+  const narrowed = filtersActive(filters) || !!q.trim();
 
   return (
     <div className="pn-stack">
+      <div className="pn-findbar">
+        <SearchField value={q} onChange={(v) => useShopSearch.setState({ q: v })} placeholder="Search animals" label="Search the shop by species, colour, seller or trait" testId="shop-search" />
+        <label className="pn-sortsel">
+          <span>Sort</span>
+          <select className="pn-input" value={sort} onChange={(e) => useShopSearch.setState({ sort: e.target.value as ShopSort })} aria-label="Sort the shop" data-testid="shop-sort">
+            <option value="shop">Shop order</option>
+            <option value="cheap">Cheapest first</option>
+            <option value="dear">Priciest first</option>
+            <option value="leaving">Leaving soonest</option>
+          </select>
+        </label>
+      </div>
       <div className="pn-row pn-row--wrap pn-gap-2">
         <div className="pn-chips pn-chips--scroll">
           {(
@@ -129,15 +149,15 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
               About {oneInLabel(PRISMATIC.shopChance)} stocked animals shimmers. New stock arrives through the day.
             </EmptyState>
           ) : (
-            <EmptyState icon={<Store size={26} />} title="Nothing matches that filter" action={filtersActive(filters) ? <ClearFilters onClick={clear} /> : undefined}>
+            <EmptyState icon={<Store size={26} />} title="Nothing matches that filter" action={narrowed ? <ClearFilters onClick={clear} /> : undefined}>
               Try another filter to see more animals.
             </EmptyState>
           )}
         </div>
       ) : (
         <div className="pn-grid pn-grid--2 pn-grid--auto-wide ag-offergrid">
-          {/* lane:genetics — a Prismatic offer leads the shelf (stable: shop order is otherwise untouched) */}
-          {[...stock].sort((a, b) => Number(b.creatures.some(isPrismatic)) - Number(a.creatures.some(isPrismatic))).map((o) => (
+          {/* lane:genetics — a Prismatic offer leads the shelf (stable: shop order is otherwise untouched); chunk 19: or the chosen sort */}
+          {stock.map((o) => (
             <OfferCard key={o.id} g={g} offer={o} index={g.market.stock.indexOf(o)} onOpen={() => setOfferId(o.id)} tanks={tanks} />
           ))}
         </div>
