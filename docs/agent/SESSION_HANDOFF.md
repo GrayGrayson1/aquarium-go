@@ -1,4 +1,4 @@
-# Session handoff: chunk 19 (quality of life), after chunk 18 (the owner's deletes, 0.9.1)
+# Session handoff: after chunk 19 (quality of life, released as 0.9.2)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
@@ -13,16 +13,13 @@ it's used up.
   a decorating camera with a view pad; every Locked explains how to unlock; the shared shop's strip is a dropdown from
   the name pill; the guide's spotlight and the tour ("Show me around"). Nothing under `src/sim`, `src/data`, `src/types`
   or the persistence files changed: the shared build hash stays `f128a63f7d57f4b9`.
-- **Status:** done on `next` (`0cfb443`, pushed); not released. The four checks on `0cfb443`: typecheck exit 0, unit
-  277 files and 4,214 tests, build exit 0, e2e 381 of 381. The fresh review's ten blockers and its re-check's two are
-  fixed; the last re-check found none (its notes: B-231). PLAN.md chunk 19 has the details.
-- **Order of work:** (1) the owner's answer on the new words: the review page
-  https://claude.ai/artifact/A88guJcyx17PooaThmqjc7 lists every one with screenshots (the phone pill's "👥 {n} ▾" is
-  flagged against the brief's one line). Apply any changes (B-231's small notes can ride with them), run the four
-  checks, push `next`. (2) 0.9.2 only on the owner's yes in that session: bump `version`, add the `CHANGELOG.md`
-  entry, merge `next` into `main` in `~/LocalTest/AquariumGo` onto a fresh `origin/main`, push; then the Render static
-  site and the shop server by hand (PLAN.md "Releases"; the static site's deploy is the owner's `!` command), and
-  check both `version.json` files and `/health`.
+- **Status:** done and released as 0.9.2 (2026-11-02): `main` = `74c9302`, Pages and the shop server on 0.9.2
+  (`/health` build `f128a63f7d57f4b9`), the shared smoke 27 of 27; the Render static site by the owner's `!` command
+  (PLAN.md "Releases", 0.9.2). The four checks on the code `0cfb443`: typecheck exit 0, unit 277 files and 4,214
+  tests, build exit 0, e2e 381 of 381. Both reviews' blockers fixed; their notes are B-231.
+- **Order of work:** a problem the owner reports first; then B-231's small notes (each with a test), B-229's other
+  half (`scripts/online-smoke.mjs` still signs up through the deleted "Aquarium Go Friends" club: make it build its
+  own club as `shared-smoke.ts` now does, before the next migration), B-228 and B-230.
 - **WebKit's perf test sits at its limit under load:** "10× speed does not stutter the sim" (avg < 12 ms) failed on a
   Mac running other projects' Swift and Rust builds (load average 46–66) and on the pre-chunk commit the same way.
   Check `uptime` before a full run; re-run `tests/e2e/perf.spec.ts` on a quiet machine before calling it a failure.
