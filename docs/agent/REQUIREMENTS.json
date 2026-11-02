@@ -7252,7 +7252,7 @@
         "tests/e2e/qol.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "PLAN.md chunk 19",
         "ADR-0055"
@@ -7274,7 +7274,7 @@
         "tests/e2e/qol.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "PLAN.md chunk 19",
         "ADR-0055"
@@ -7296,7 +7296,7 @@
         "tests/e2e/qol.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "PLAN.md chunk 19",
         "ADR-0055"
@@ -7318,7 +7318,7 @@
         "tests/e2e/qol.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "PLAN.md chunk 19",
         "ADR-0055"
@@ -7340,7 +7340,7 @@
         "tests/e2e/qol.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "PLAN.md chunk 19",
         "ADR-0055"
@@ -7361,7 +7361,7 @@
         "tests/e2e/qol.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "PLAN.md chunk 19",
         "ADR-0055"
@@ -7381,7 +7381,7 @@
         "tests/e2e/shared-shop.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "PLAN.md chunk 19",
         "ADR-0055"
@@ -7403,7 +7403,7 @@
         "tests/e2e/qol.spec.ts"
       ],
       "evidence": [],
-      "status": "IN_PROGRESS",
+      "status": "GREEN",
       "designSections": [
         "PLAN.md chunk 19",
         "ADR-0055"

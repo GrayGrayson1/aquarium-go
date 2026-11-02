@@ -13,7 +13,19 @@ it's used up.
   a decorating camera with a view pad; every Locked explains how to unlock; the shared shop's strip is a dropdown from
   the name pill; the guide's spotlight and the tour ("Show me around"). Nothing under `src/sim`, `src/data`, `src/types`
   or the persistence files changed: the shared build hash stays `f128a63f7d57f4b9`.
-- **Status:** see PLAN.md chunk 19 for the checks, the review and what the owner still has to see (the new words).
+- **Status:** done on `next` (`0cfb443`, pushed); not released. The four checks on `0cfb443`: typecheck exit 0, unit
+  277 files and 4,214 tests, build exit 0, e2e 381 of 381. The fresh review's ten blockers and its re-check's two are
+  fixed; the last re-check found none (its notes: B-231). PLAN.md chunk 19 has the details.
+- **Order of work:** (1) the owner's answer on the new words: the review page
+  https://claude.ai/artifact/A88guJcyx17PooaThmqjc7 lists every one with screenshots (the phone pill's "👥 {n} ▾" is
+  flagged against the brief's one line). Apply any changes (B-231's small notes can ride with them), run the four
+  checks, push `next`. (2) 0.9.2 only on the owner's yes in that session: bump `version`, add the `CHANGELOG.md`
+  entry, merge `next` into `main` in `~/LocalTest/AquariumGo` onto a fresh `origin/main`, push; then the Render static
+  site and the shop server by hand (PLAN.md "Releases"; the static site's deploy is the owner's `!` command), and
+  check both `version.json` files and `/health`.
+- **WebKit's perf test sits at its limit under load:** "10× speed does not stutter the sim" (avg < 12 ms) failed on a
+  Mac running other projects' Swift and Rust builds (load average 46–66) and on the pre-chunk commit the same way.
+  Check `uptime` before a full run; re-run `tests/e2e/perf.spec.ts` on a quiet machine before calling it a failure.
 
 **Learned in chunk 19.**
 - *Never mount a dialog per list row.* A Modal (a portal and AnimatePresence) on each of 50 decor cards and 13 tank

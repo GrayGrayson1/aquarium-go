@@ -51,7 +51,11 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    admin of it"; ADR-0054): the owner deletes any club, shared shop, account or friend from Social, from the database;
    **done and released as 0.9.1** (2026-11-01), the Render static site included (it was still on 0.8.0, which the
    0.9.0 shop server asked to reload: the owner's "Reload to join the shared shop" report). Its migration ran live on
-   2026-11-02 (PLAN.md "Releases", 0.9.1; the live smoke 102 of 102). **Next:** B-228 to B-230.
+   2026-11-02 (PLAN.md "Releases", 0.9.1; the live smoke 102 of 102). **Next:** B-228 to B-230. **Chunk 19, quality of
+   life** (the owner, 2026-11-02, ADR-0055): panels stay open while their tools run, links to each problem's fix,
+   search and Find anything, a decorating camera, every Locked explained, the shared shop's dropdown, the guide's
+   spotlight and tour. **Done** on `next` (`0cfb443`; the brief below). **Next:** the owner's yes to the new words
+   (the review page in the brief's status) and their go-ahead for 0.9.2.
 4. **Released:** 0.9.1 (chunk 18, the owner's deletes) on 2026-11-01; 0.9.0 (chunk 17, big-tank species) on 2026-10-30; 0.8.0 (chunk 16, 31 new species) on 2026-10-25; 0.7.0 (chunk 14, the money pool) on 2026-10-22; 0.6.0 (chunks 10 to 13, shared shops) on 2026-10-21; 0.5.6 (chunk 9) on 2026-10-20; 0.5.5 (chunks 7 and 8) on 2026-10-19; 0.5.4 (ADR-0036's and ADR-0037's changes) on 2026-10-18; 0.5.3 (chunk 6's end) and 0.5.2 (chunks 4
    and 5 and chunk 6 so far) on 2026-10-15; 0.5.1 (chunks 2 and 3) on 2026-10-11 and 0.5.0 on 2026-10-06 (see
    "Releases").
@@ -83,7 +87,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 16 | 31 new species (ADR-0052) | Done 2026-10-25 (released in 0.8.0; Chase, at the owner's request; the owner's answers, ADR-0052 rounds 1–4). 31 species (48 → 79) in three waves with real colour forms, young and male/female colours, their own behaviour and art; save format v3; the lab's "A friend's reef". Its full run (`96c950c`): typecheck, unit 3,814, build, e2e 335 of 335; the fresh review's, the confirmation's and the AI fixes' reviews' blockers fixed |
 | 17 | Big-tank species, and no animal in the shop before its tank (ADR-0053) | Brief and design written 2026-10-30 (Marshall, at the owner's request; `docs/agent/design/CHUNK-17/BIG-TANKS.md`); handed to Skye to build |
 | 18 | The owner deletes anything in Social, from the database (ADR-0054) | Done 2026-11-01 (released in 0.9.1). Its full run (`f15b8d7`): typecheck, unit 4,138, build, e2e 341 of 341; the fresh review found no blockers (its notes fixed, `a780b79`), the re-check's one blocker fixed (`f15b8d7`) and re-checked clean |
-| 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Started 2026-11-02 |
+| 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Done 2026-11-02 but for the owner's word review; not released. On `0cfb443`: typecheck, unit 4,214, build, e2e 381 of 381; the fresh review's ten blockers and the re-check's two fixed, its last re-check clean |
 
 **Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
@@ -1845,7 +1849,7 @@ site, with the smoke tests.
   loaded 0.8.0 again; fixed by the static site's 0.9.1 deploy. And Brave Shields blocks the shop server's `/health`,
   leaving "Waking the shared shop…" up for good (B-230).
 
-### 19. Quality of life: panels that stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) — started 2026-11-02
+### 19. Quality of life: panels that stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) — done 2026-11-02, waiting for the owner's word review and 0.9.2's go-ahead
 
 **Why.** The owner (2026-11-02, verbatim in ADR-0055): Build closes after a decor piece is placed ("I'd rather probably
 close the page that I was working with than have it automatically close and have to go find it again"); the tank card
@@ -1925,6 +1929,30 @@ moves the decorating camera; a Locked tank size explains itself; the shared shop
 spotlight follows the feed step and the tour runs to the end); a fresh reviewer (Opus 5.5, max effort) has read
 `6f25ec3..HEAD` against this brief and its blockers are fixed; the owner has seen the new words with screenshots
 (ADR-0055 decision 8). Then 0.9.2 with the owner's go-ahead.
+
+**Status: done** (2026-11-02) but for the owner's word review; not released.
+- *Commits:* `e8e3c33` (the brief, ADR-0055), `fd5550f` (QOL-001; `src/state/ui.ts`, a core file, named there),
+  `e24ff20` (QOL-007), `c2ec156` (QOL-006), `ac5fc67` (QOL-002 to QOL-004), `be2c50f` (QOL-005, one shared lock box),
+  `ad4b534` (QOL-008), `120aecc` (e2e, docs), `e4d9202` (the fresh review's ten blockers and the full run's three
+  test changes), `0cfb443` (the re-check's two blockers).
+- *Reviews* (Opus 5.5, max effort): the fresh review of `6f25ec3..120aecc` found ten blockers (a partial group
+  purchase kept stale picks; worn gear lit the bell but wasn't listed; the bell's Feed link did nothing; fix links
+  offered "Buy a heater" for a setting and for a too-warm tank; Find anything dead-ended on items no tank suits;
+  the decorating arrows were blocked by focus left in Build; Find's Tab, Enter and focus; toasts over the shared
+  menu; the pad on a phone held sideways and in 721–1080 px windows), all fixed in `e4d9202`. Its re-check of
+  `120aecc..e4d9202` found two more, brought in by those fixes (a tank's only heater failed or off said "Buy a
+  heater"; a phone's Build sheet, waiting up to 8 s for "Place another", slid back over what the player opened),
+  fixed in `0cfb443`; the re-check of `e4d9202..0cfb443` found no blockers. Notes left: B-231.
+- *Checks* in `~/LocalTest/AquariumGo` under `caffeinate -i -s`: on `120aecc` typecheck exit 0, unit 277 files and
+  4,193 tests, build exit 0, e2e 357 of 363 (the 6 were three tests in both engines, changed on purpose in
+  `e4d9202`); on `e4d9202` typecheck 0, unit 4,206, build 0, e2e 376 of 377 (WebKit's "10× speed does not stutter
+  the sim" under a load average of 46–66 from other projects' builds; under the same load the pre-chunk `6f25ec3`
+  failed it 2 of 3 times, as `e4d9202` did). **On the final `0cfb443`: typecheck exit 0; unit 277 files, 4,214
+  tests; build exit 0; e2e 381 of 381 (51.2 min), the perf test included.**
+- *The owner's word review:* the page https://claude.ai/artifact/A88guJcyx17PooaThmqjc7 (private to the owner) has
+  every new piece of wording with screenshots, this round's included ("Buy a chiller", the bell's "Wearing out", Find
+  anything's "Needs a reef tank", the phone pill's "👥 {n} ▾" against the brief's one line). Changes the owner asks for
+  go in before 0.9.2; B-231's small notes can ride with them.
 
 ## Releases
 
