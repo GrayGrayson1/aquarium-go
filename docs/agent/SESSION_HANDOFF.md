@@ -14,8 +14,8 @@ it's used up.
   the name pill; the guide's spotlight and the tour ("Show me around"). Nothing under `src/sim`, `src/data`, `src/types`
   or the persistence files changed: the shared build hash stays `f128a63f7d57f4b9`.
 - **Status:** done and released as 0.9.2 (2026-11-02): `main` = `74c9302`, Pages and the shop server on 0.9.2
-  (`/health` build `f128a63f7d57f4b9`), the shared smoke 27 of 27; the Render static site by the owner's `!` command
-  (PLAN.md "Releases", 0.9.2). The four checks on the code `0cfb443`: typecheck exit 0, unit 277 files and 4,214
+  (`/health` build `f128a63f7d57f4b9`), the shared smoke 27 of 27; the Render static site on 0.9.2 too (deployed by
+  the agent at the owner's ask, `dep-dbkh6lp5efls73d5kt40`; PLAN.md "Releases", 0.9.2). The four checks on the code `0cfb443`: typecheck exit 0, unit 277 files and 4,214
   tests, build exit 0, e2e 381 of 381. Both reviews' blockers fixed; their notes are B-231.
 - **Order of work:** a problem the owner reports first; then B-231's small notes (each with a test), B-229's other
   half (`scripts/online-smoke.mjs` still signs up through the deleted "Aquarium Go Friends" club: make it build its

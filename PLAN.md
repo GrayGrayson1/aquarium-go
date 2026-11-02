@@ -2107,8 +2107,12 @@ it by hand with the Render CLI (`docs/ARCHITECTURE.md`; the owner's memory note 
   shared shop was asked to reload. `scripts/shared-smoke.ts` first stopped at "no first club": the club named
   "Aquarium Go Friends", whose invite code it signed up with, is gone (deleted from Manage, B-229; 3 clubs remain), so
   that code no longer signs anyone up. The smoke now makes its own throwaway sign-up club (`scripts/shared-smoke.ts`,
-  on `next`) and passed 27 of 27 against the live 0.9.2 server, nothing left behind. The Render static site: the
-  owner's `!` command (the classifier refuses the agent's), checked by its `version.json` afterwards.
+  on `next`) and passed 27 of 27 against the live 0.9.2 server, nothing left behind. The Render static site: at the
+  owner's "You do it for me please so it can be live on Render", the agent's `render deploys create
+  srv-dath0mfavr4c73dgk3j0 --confirm --wait` (no `--commit`: the latest commit, `74c9302`, as the dashboard's "Deploy
+  latest commit"; run alone, in the background) went through this time (`dep-dbkh6lp5efls73d5kt40`, about 10 min, its
+  tests first). All three read 0.9.2: both `version.json` files `{"id":"74c9302-…","version":"0.9.2"}`, the shop
+  server's `/health` 0.9.2.
 
 ## Product decisions in force
 
