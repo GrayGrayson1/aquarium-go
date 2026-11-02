@@ -21,6 +21,7 @@ import { equipmentFit } from '@/sim/care/fit'; // lane:fit
 import { foodWhoEats } from '@/ui/common/foodStock'; // lane:fit
 import { FitBadge, FitLine, FoodEaters } from '@/ui/common/FitNote'; // lane:fit
 import { CulturesSection, DryFoodSection, LiveFoodSection, SaltRow, foodsShownAbove } from './SuppliesAutomation'; // lane:automation (chunk 5)
+import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 
 /** How many foods show before "Show all" — foods you own (or have owned) and foods made for your animals always show. */
 const FOOD_PREVIEW = 8;
@@ -142,9 +143,16 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                   <div className="pn-supply__side">
                     <span className={clsx('pn-tiny pn-num-t', have <= 0 && f.id in g.inventory.foods && eaters.length > 0 ? 'pn-tone-watch' : 'pn-muted')}>{have <= 0 && f.id in g.inventory.foods ? 'Out of stock' : `${have} serving${have === 1 ? '' : 's'}`}</span>
                     {locked ? (
-                      <span className="pn-tiny pn-muted">
-                        <Lock size={11} /> {f.unlock && !unlocked(g, f.unlock) ? UNLOCK_KEYS[f.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : f.soldWith ? `Comes with ${safe(() => soldWithWords(f), 'its animals')}` : 'Locked'}
-                      </span>
+                      f.unlock && !unlocked(g, f.unlock) ? (
+                        // chunk 19 (ADR-0055 decision 5, QOL-006) — what it waits for, and how to get there
+                        <LockedButton g={g} title={f.name} keys={[f.unlock]} testId={`supplies-food-locked-${f.id}`}>
+                          {UNLOCK_KEYS[f.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked'}
+                        </LockedButton>
+                      ) : (
+                        <span className="pn-tiny pn-muted">
+                          <Lock size={11} /> {f.soldWith ? `Comes with ${safe(() => soldWithWords(f), 'its animals')}` : 'Locked'}
+                        </span>
+                      )
                     ) : (
                       <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: f.id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
                         Buy · {formatMoney(f.price)}
@@ -251,9 +259,10 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
       <div className="pn-supply__side">
         <Money value={e.price} />
         {locked ? (
-          <span className="pn-tiny pn-muted">
-            <Lock size={11} /> {e.unlock ? UNLOCK_KEYS[e.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : 'Locked'}
-          </span>
+          // chunk 19 (ADR-0055 decision 5, QOL-006) — what it waits for, and how to get there
+          <LockedButton g={g} title={e.name} keys={[e.unlock]} testId={`supplies-equip-locked-${e.id}`}>
+            {e.unlock ? UNLOCK_KEYS[e.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : 'Locked'}
+          </LockedButton>
         ) : (
           <Button
             size="sm"

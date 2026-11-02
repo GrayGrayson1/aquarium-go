@@ -20,3 +20,36 @@
 .ag-toast__action:hover { background: rgba(94, 234, 212, 0.24); color: var(--c-ink); }
 @media (pointer: coarse) { .ag-toast__action { min-height: 36px; } }
 :root[data-contrast='high'] .ag-toast__action { background: #04201d; color: #ffffff; border-color: var(--c-aqua); }
+
+/* ───────────── QOL-002/004/006: a control glows after a link brought the player to it ───────────── */
+@keyframes ag-glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(94, 234, 212, 0), 0 0 0 0 rgba(94, 234, 212, 0); }
+  45% { box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.85), 0 0 22px 4px rgba(94, 234, 212, 0.45); }
+}
+.ag-glow { animation: ag-glow-pulse 0.9s ease-in-out 3; border-radius: inherit; position: relative; z-index: 1; }
+:root[data-reduced-motion='true'] .ag-glow { animation: none; box-shadow: 0 0 0 3px var(--c-aqua); }
+
+/* ───────────── QOL-006: "Locked" opens "How to unlock …" ───────────── */
+.pn-lockbtn {
+  display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 10px; border-radius: var(--r-pill);
+  border: 1px dashed var(--c-line-strong); background: var(--c-fill); color: var(--c-ink-2); font: inherit;
+  font-size: calc(12px * var(--text-scale)); font-weight: 600; line-height: 1.25; cursor: pointer; text-align: left;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.pn-lockbtn > span { min-width: 0; overflow-wrap: anywhere; }
+.pn-lockbtn:hover, .pn-lockbtn:focus-visible { background: var(--c-glass-hover); color: var(--c-ink); border-color: var(--c-aqua); border-style: solid; }
+.pn-lockbtn--block { width: 100%; justify-content: center; }
+@media (pointer: coarse) { .pn-lockbtn { min-height: 36px; } }
+.pn-wc.is-locked { opacity: 0.62; cursor: help; }
+.pn-wc.is-locked:hover { opacity: 0.85; }
+.pn-decor.is-locked { cursor: help; }
+.ag-offercard__lock { white-space: nowrap; }
+
+.pn-unlockhelp { display: grid; gap: 14px; }
+.pn-unlockhelp__lead { margin: 0; font-size: calc(13.5px * var(--text-scale)); color: var(--c-ink); line-height: 1.5; }
+.pn-unlockhelp__item { display: grid; gap: 8px; justify-items: start; padding: 12px; border-radius: var(--r-md); background: var(--c-fill); border: 1px solid var(--c-line); }
+.pn-unlockhelp__item > .pn-reqs { width: 100%; }
+.pn-unlockhelp__name { margin: 0; font-size: calc(13px * var(--text-scale)); font-weight: 700; color: var(--c-ink); }
+.pn-unlockhelp__hint { margin: 0; font-size: calc(13px * var(--text-scale)); color: var(--c-ink-2); line-height: 1.45; }
+.pn-unlockhelp__route { display: flex; align-items: center; gap: 8px; width: 100%; flex-wrap: wrap; font-size: calc(13px * var(--text-scale)); }
+:root[data-contrast='high'] .pn-lockbtn { background: var(--c-bg); border-style: solid; color: var(--c-ink); }

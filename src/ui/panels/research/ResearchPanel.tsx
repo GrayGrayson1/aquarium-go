@@ -22,6 +22,8 @@ import { NamedIcon } from '../common/icons';
 import { formatSpan, plural } from '../common/format';
 import './research.css'; // lane:w2-ui
 import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
+import { glow } from '@/ui/common/glow'; // chunk 19 (QOL-004, QOL-006)
 
 type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
 const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
@@ -38,6 +40,11 @@ export function ResearchPanel() {
   useEffect(() => {
     if (target?.startsWith('tab:')) {
       setTab(RESEARCH_TABS.includes(target.slice(4) as Tab) ? (target.slice(4) as Tab) : 'research');
+      useUI.getState().set({ panelTarget: null });
+    } else if (target?.startsWith('research:')) {
+      // chunk 19 (QOL-004, QOL-006) — a project asked for by name ("Open in Research", Find anything): its card glows
+      setTab('research');
+      glow(`[data-testid="research-${CSS.escape(target.slice(9))}"]`);
       useUI.getState().set({ panelTarget: null });
     }
   }, [target]);
@@ -273,7 +280,8 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
           </Button>
         )}
         {status === 'locked' && (
-          <Chip icon={<Lock size={11} />}>Locked</Chip>
+          // chunk 19 (ADR-0055 decision 5, QOL-006) — what it still needs, with progress and the way there
+          <LockedButton g={g} title={d.name} conds={d.requires} testId={`research-locked-${d.id}`} />
         )}
       </div>
     </div>

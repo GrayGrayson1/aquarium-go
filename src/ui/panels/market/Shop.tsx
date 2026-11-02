@@ -36,6 +36,8 @@ import { PotentialBands, CareChips } from '../common/Profile';
 import { orderedTanks, speciesOf, livingInTank, gallonsOf, EMPTY_COMPAT, speciesUnlocked, lockHintOf } from '../common/derive';
 import { PERSONALITY_LABEL, PERSONALITY_TONE, WATER_CLASS_LABEL, ENV_LABEL, untilTime, plural, SEX_LABEL, RARITY_LABEL, RARITY_TONE, VERDICT_RANK, VERDICT_LABEL, verdictStatus } from '../common/format';
 import './offer-genes.css';
+import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
+import { requiredUnlocks } from '@/sim/economy'; // chunk 19 (QOL-006)
 
 type EnvFilter = 'all' | 'freshwater' | 'marine' | 'brackish' | 'fits'; // lane:brackish: + 'brackish'
 
@@ -260,8 +262,9 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
           {!fits && <span className="pn-tiny pn-tone-watch">Needs a {sp ? ENV_LABEL[sp.environment].toLowerCase() : ''} tank</span>}
           {fits && !affordable && <span className="pn-tiny pn-tone-watch">Can’t afford yet</span>}
           {locked && (
-            <span className="pn-tiny pn-muted">
-              <Lock size={10} aria-hidden /> Locked
+            // chunk 19 (QOL-006) — the card says what it waits for (its detail has the whole route)
+            <span className="pn-tiny pn-muted ag-offercard__lock" title={sp ? lockHintOf(g, sp) : undefined}>
+              <Lock size={10} aria-hidden /> Locked · see how
             </span>
           )}
         </div>
@@ -629,7 +632,15 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </Button>
           )}
         </div>
-        {locked && <span className="pn-tiny pn-muted">{lockHintOf(g, sp)}</span>}
+        {locked && (
+          <span className="pn-row pn-gap-2 pn-row--wrap" style={{ alignItems: 'center' }}>
+            <span className="pn-tiny pn-muted pn-grow">{lockHintOf(g, sp)}</span>
+            {/* chunk 19 (ADR-0055 decision 5, QOL-006) — the requirements with progress, and the way to them */}
+            <LockedButton g={g} title={speciesPlural(sp)} keys={safe(() => requiredUnlocks(sp), [] as string[])} testId="offer-locked-help">
+              How to unlock
+            </LockedButton>
+          </span>
+        )}
       </div>
     </SubView>
   );
