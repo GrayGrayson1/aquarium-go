@@ -6,7 +6,7 @@ import { create } from 'zustand';
 import type { GameSpeed } from '@/types';
 import type { SettingsTab } from '../nav/routes';
 
-export type Popover = null | 'food' | 'target_food' | 'lights' | 'alerts' | 'camera' | 'more';
+export type Popover = null | 'food' | 'target_food' | 'lights' | 'alerts' | 'camera' | 'more' | 'shared'; // chunk 19 (QOL-007): + the shared shop's dropdown
 
 interface ShellState {
   tankCardOpen: boolean;

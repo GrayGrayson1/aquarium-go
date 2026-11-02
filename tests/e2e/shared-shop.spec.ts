@@ -64,6 +64,19 @@ async function inShop(page: Page): Promise<void> {
   if (await ok.isVisible().catch(() => false)) await ok.click();
 }
 
+/**
+ * chunk 19 (ADR-0055 decision 6, QOL-007): the strip above the dock became the top-left pill's dropdown (the pill keeps
+ * the strip's test id), so its words, the owner's members list, Money and the way back are read and used there.
+ */
+async function openMenu(page: Page): Promise<void> {
+  if (!(await tid(page, 'shared-menu').isVisible().catch(() => false))) await tid(page, 'shared-strip').click();
+  await expect(tid(page, 'shared-menu')).toBeVisible();
+}
+async function closeMenu(page: Page): Promise<void> {
+  if (await tid(page, 'shared-menu').isVisible().catch(() => false)) await page.keyboard.press('Escape');
+  await expect(tid(page, 'shared-menu')).toBeHidden();
+}
+
 async function openClubCard(page: Page, club: string): Promise<void> {
   await page.evaluate(() => void (location.hash = '#/social/clubs'));
   await expect(tid(page, `shared-card-${club}`)).toBeVisible({ timeout: 30_000 });
@@ -124,7 +137,13 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       }
       await expect(card).toContainText('Play one aquarium together, live, with up to 10 club members.');
       await createShop(ola, club);
-      await expect(tid(ola, 'shared-strip')).toContainText('Shared · ');
+      await openMenu(ola);
+      await expect(tid(ola, 'shared-strip-text')).toContainText('Shared · ');
+      // reviewer B8: the dropdown sits above the toasts (they used to cover it)
+      const z = await ola.evaluate(() => ({ menu: Number(getComputedStyle(document.querySelector('[data-testid="shared-menu"]')!).zIndex), toasts: Number(getComputedStyle(document.documentElement).getPropertyValue('--z-toast')) }));
+      expect(z.toasts).toBeGreaterThan(0);
+      expect(z.menu).toBeGreaterThan(z.toasts);
+      await closeMenu(ola);
       await expect(ola.getByText('Your club can open it from Social.')).toBeVisible();
     });
     const ben = await player(browser, 'Ben', club);
@@ -133,8 +152,12 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await expect(tid(ben, `shared-card-${club}`)).toContainText(/Day \d+ · \$/);
       await openShop(ben, club);
       await expect.poll(async () => (await visit(ola)).members.filter((m) => m.here).length, { timeout: 20_000 }).toBe(2);
-      await expect(tid(ben, 'shared-strip')).toContainText('Ola');
-      await expect(tid(ola, 'shared-strip')).toContainText('Ben');
+      await openMenu(ben);
+      await expect(tid(ben, 'shared-strip-text')).toContainText('Ola');
+      await closeMenu(ben);
+      await openMenu(ola);
+      await expect(tid(ola, 'shared-strip-text')).toContainText('Ben');
+      await closeMenu(ola);
     });
     await test.step("a purchase in one shows in the other, with the buyer's name in the alerts", async () => {
       const food = Object.keys((await gameOf(ola)).inventory.foods)[0];
@@ -150,9 +173,10 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await tid(ben, 'hud-speed-0').click();
       await expect(ben.getByText('Only Ola and the people they choose can pause or change the speed.')).toBeVisible();
       const benId = (await visit(ben)).you!.id;
-      await tid(ola, 'shared-strip-members').click();
+      await openMenu(ola);
       await tid(ola, `shared-grant-${benId}`).click();
       await expect.poll(async () => (await visit(ben)).members.find((m) => m.id === benId)?.pause, { timeout: 10_000 }).toBe(true);
+      await closeMenu(ola);
       await tid(ben, 'hud-speed-0').click();
       await expect.poll(async () => (await gameOf(ola)).clock.speed, { timeout: 10_000 }).toBe(0);
       await expect(ola.getByText('Ben paused the shop.')).toBeVisible();
@@ -214,14 +238,16 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     await expect.poll(async () => (await visit(ola)).members.find((m) => m.id === benId)?.here, { timeout: 20_000 }).toBe(true);
     const tierOf = async (page: Page) => (await gameOf(page)).pool?.members?.[benId]?.tier ?? 'free';
     await test.step('the owner sets the member to Asks first in the members list; the member sees what they can spend', async () => {
-      await tid(ola, 'shared-strip-members').click();
+      await openMenu(ola);
       const row = tid(ola, `shared-member-${benId}`);
       await expect(row).toContainText('Spending:');
       await expect(row).toContainText('Can approve requests and give money');
       await tid(ola, `shared-tier-${benId}-ask`).click();
       await expect.poll(() => tierOf(ben), { timeout: 10_000 }).toBe('ask');
-      await tid(ola, 'shared-strip-members').click();
+      await closeMenu(ola);
+      await openMenu(ben);
       await expect(tid(ben, 'shared-money')).toHaveText(/Money: \$0 to spend/);
+      await closeMenu(ben);
       await expect.poll(() => popups(ben), { timeout: 10_000 }).toContain('Ola: Set Ben to ask first.');
     });
     const food = Object.keys((await gameOf(ben)).inventory.foods)[0];
@@ -234,6 +260,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     });
     const amount = 200;
     await test.step('the member asks for money in the Shop money sheet; the owner hears and sees the count', async () => {
+      await openMenu(ben);
       await tid(ben, 'shared-money').click();
       await expect(tid(ben, 'shared-money-sheet')).toContainText('Shop money');
       await expect(tid(ben, 'shared-money-pool')).toHaveText(/^Pool: \$[\d,.]+\. Everything the shop earns goes here\.$/);
@@ -245,6 +272,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await expect(tid(ben, 'shared-money-sheet')).toContainText(`$${amount}: Food · Waiting`);
       await ben.keyboard.press('Escape');
       await expect.poll(() => popups(ola), { timeout: 10_000 }).toContain(`Ben asks for $${amount}: Food.`);
+      await openMenu(ola);
       await expect(tid(ola, 'shared-money')).toHaveText(/Money \(1\)/);
     });
     await test.step('the owner approves; the member hears, and can spend the approved money', async () => {
@@ -255,8 +283,12 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
       await expect(tid(ola, `shared-request-${askId}`)).toHaveCount(0, { timeout: 10_000 });
       await ola.keyboard.press('Escape');
       await expect.poll(() => popups(ben), { timeout: 10_000 }).toContain(`Ola approved your $${amount}.`);
+      await openMenu(ben);
       await expect(tid(ben, 'shared-money')).toHaveText(new RegExp(`Money: \\$${amount} to spend`));
+      await closeMenu(ben);
+      await openMenu(ola);
       await expect(tid(ola, 'shared-money')).toHaveText(/^\s*Money\s*$/);
+      await closeMenu(ola);
     });
     await test.step('the member buys: the pool and the member’s money update on both screens', async () => {
       const before = (await gameOf(ola)).finance.money;
@@ -269,17 +301,20 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
         await expect.poll(async () => (await gameOf(page)).finance.money, { timeout: 10_000 }).toBe(pool);
         await expect.poll(async () => (await gameOf(page)).pool?.members?.[benId]?.extra, { timeout: 10_000 }).toBeCloseTo(amount - price, 2);
       }
+      await openMenu(ben);
       await expect(tid(ben, 'shared-money')).not.toHaveText(new RegExp(`Money: \\$${amount} to spend`));
       await tid(ben, 'shared-money').click();
       await expect(tid(ben, 'shared-money-extra')).toHaveText(/^Approved for you: \$[\d,.]+\.$/);
       await ben.keyboard.press('Escape');
     });
     await test.step('back to Spends freely: the member buys from the pool again', async () => {
-      await tid(ola, 'shared-strip-members').click();
+      await openMenu(ola);
       await tid(ola, `shared-tier-${benId}-free`).click();
       await expect.poll(() => tierOf(ben), { timeout: 10_000 }).toBe('free');
-      await tid(ola, 'shared-strip-members').click();
+      await closeMenu(ola);
+      await openMenu(ben);
       await expect(tid(ben, 'shared-money')).toHaveText(/^\s*Money\s*$/);
+      await closeMenu(ben);
       expect((await cmd(ben, { k: 'buyFood', food, packs: 1 })).ok).toBe(true);
     });
   });
@@ -296,6 +331,7 @@ test.describe('Shared shops (two browsers on the stub server)', () => {
     await open.click();
     await inShop(ben);
     await ben.waitForTimeout(15_000); // caught up, these 15 seconds would be 1.5 game hours
+    await openMenu(ben);
     await tid(ben, 'shared-back').click();
     await expect(tid(ben, 'shared-strip')).toBeHidden();
     await expect.poll(async () => (await gameOf(ben))?.saveId ?? null, { timeout: 20_000 }).toBe(before.saveId);

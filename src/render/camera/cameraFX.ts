@@ -25,7 +25,20 @@ export const cameraFX = {
   transitionSeq: 0,
 };
 
-export type RigMode = 'attract' | 'facility' | 'front' | 'orbit' | 'follow' | 'close' | 'photo' | 'idle';
+export type RigMode = 'attract' | 'facility' | 'front' | 'orbit' | 'follow' | 'close' | 'photo' | 'idle' | 'decorate'; // chunk 19 (QOL-005): + decorate
+
+/**
+ * chunk 19 (ADR-0055 decision 4, QOL-005) — the decor editor swallows the pointer events it handles (so a placing tap
+ * never reaches the tank's own clicks), which used to leave the camera blind while a piece was in hand: it hands each
+ * swallowed event to the camera through these (CameraRig sets them), so two fingers and a right-drag still move it.
+ */
+export const cameraHooks: { down: ((e: PointerEvent) => void) | null; move: ((e: PointerEvent) => void) | null; up: ((e: PointerEvent) => void) | null } = { down: null, move: null, up: null };
+
+/** Hand a pointer event the caller is about to swallow to the camera (no-op without a camera). */
+export function forwardToCamera(e: PointerEvent): void {
+  const h = e.type === 'pointerdown' ? cameraHooks.down : e.type === 'pointermove' ? cameraHooks.move : e.type === 'pointerup' || e.type === 'pointercancel' ? cameraHooks.up : null;
+  h?.(e);
+}
 
 export const cameraInput = {
   /** A drag (beyond the click threshold) is in progress. */

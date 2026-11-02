@@ -52,6 +52,8 @@ import * as compat from '@/sim/compat';
 import * as production from '@/sim/production'; // lane:production (chunk 4)
 import * as automation from '@/sim/automation'; // lane:automation (chunk 5)
 import { facilityOverflow } from '@/render/camera/facilityOverflow';
+import { cameraFX } from '@/render/camera/cameraFX'; // chunk 19 (QOL-005): the e2e reads the decorating camera
+import { decorCam } from '@/render/camera/decorCam'; // chunk 19 (QOL-005)
 import { navBootPending } from '@/ui/nav/router';
 import { localStub } from '@/social'; // lane:social (chunk 6)
 import { setSimFault } from '@/game/simHealth'; // lane:core (chunk 6, B-002)
@@ -320,6 +322,8 @@ export function debugApi(): Record<string, unknown> {
     settings: () => useSettings.getState(),
     // room view: does the frame clip the exhibit row (L-8)?
     facilityOverflow,
+    // chunk 19 (QOL-005) — the camera's mode and the decorating pose (wanted and on screen), for e2e
+    camera: () => ({ mode: cameraFX.mode, want: { ...decorCam.want }, now: { ...decorCam.now } }),
     runtime,
     // e2e helpers
     // `ready` is defined below as a getter (lane:perf2)

@@ -1,9 +1,79 @@
-# Session handoff: chunk 17 (big-tank species) done and released as 0.9.0
+# Session handoff: chunk 19 (quality of life), after chunk 18 (the owner's deletes, 0.9.1)
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## Chunk 19, quality of life (2026-11-02)
+
+- **What** (PLAN.md chunk 19; ADR-0055 has the owner's words verbatim and the four answers): panels stay open while
+  their tools run (a phone's sheet steps aside and comes back); every problem on the tank card links to its fix (and
+  worn gear is named); search and filters in Market, Build and Research, plus Find anything (⌘K, /, the top bar, More);
+  a decorating camera with a view pad; every Locked explains how to unlock; the shared shop's strip is a dropdown from
+  the name pill; the guide's spotlight and the tour ("Show me around"). Nothing under `src/sim`, `src/data`, `src/types`
+  or the persistence files changed: the shared build hash stays `f128a63f7d57f4b9`.
+- **Status:** done on `next` (`0cfb443`, pushed); not released. The four checks on `0cfb443`: typecheck exit 0, unit
+  277 files and 4,214 tests, build exit 0, e2e 381 of 381. The fresh review's ten blockers and its re-check's two are
+  fixed; the last re-check found none (its notes: B-231). PLAN.md chunk 19 has the details.
+- **Order of work:** (1) the owner's answer on the new words: the review page
+  https://claude.ai/artifact/A88guJcyx17PooaThmqjc7 lists every one with screenshots (the phone pill's "👥 {n} ▾" is
+  flagged against the brief's one line). Apply any changes (B-231's small notes can ride with them), run the four
+  checks, push `next`. (2) 0.9.2 only on the owner's yes in that session: bump `version`, add the `CHANGELOG.md`
+  entry, merge `next` into `main` in `~/LocalTest/AquariumGo` onto a fresh `origin/main`, push; then the Render static
+  site and the shop server by hand (PLAN.md "Releases"; the static site's deploy is the owner's `!` command), and
+  check both `version.json` files and `/health`.
+- **WebKit's perf test sits at its limit under load:** "10× speed does not stutter the sim" (avg < 12 ms) failed on a
+  Mac running other projects' Swift and Rust builds (load average 46–66) and on the pre-chunk commit the same way.
+  Check `uptime` before a full run; re-run `tests/e2e/perf.spec.ts` on a quiet machine before calling it a failure.
+
+**Learned in chunk 19.**
+- *Never mount a dialog per list row.* A Modal (a portal and AnimatePresence) on each of 50 decor cards and 13 tank
+  sizes made Build's first open take about 20 s longer on the dev server (long tasks every 0.5 s); one shared box
+  (`UnlockHelpHost`, `askUnlock`) fixed it. Measure a panel's first open cold with a PerformanceObserver('longtask').
+- *The decor editor swallows pointer events* (window capture, `stopImmediatePropagation`) so a placing tap never reaches
+  the tank's clicks; that also blinded the camera. `forwardToCamera` (cameraFX.ts) hands each swallowed event to the rig.
+- *Test-id prefixes are API:* specs select `[data-testid^="build-decor-"]` and `^="build-tank-"`; a new control under
+  those prefixes (a search box, a lock button) becomes the "first card". Name new ids outside existing prefixes.
+- *On a case-insensitive disk* `findAnything.ts` and `FindAnything.tsx` resolve to the same import: the pure module is
+  `searchIndex.ts`.
+- *Look-around scripts that navigate right after `newGame`* race the first scene compile (~9 s in headless Chromium):
+  wait for the dock and a few seconds before opening panels by address.
+- *A window keydown handler for arrows must ask who owns them:* `e.defaultPrevented` (a radio group or tab strip that
+  used the key) and a short list of roles (CameraRig's `ARROW_OWNERS`). Excluding a whole side sheet blocked the
+  decorating camera's arrows after a decor card was picked (focus stays on the card).
+- *WebKit doesn't focus a button on a mouse click:* a test about focus after a click works in Chromium only; focus
+  the control and press Enter (what a keyboard player does) to test the same thing in both engines.
+- *A sheet that comes back on its own must wait for what the player is reading:* touch's "Place another" (8 s) and
+  the guide's next card (aside.ts). And the longer it can wait, the more ways the player can leave meanwhile: every
+  one of them (another tank or view, a popover, Find, the tour) has to drop it, or it slides back over what they opened.
+- *The sim's advice names only running units:* `equipmentSummary` (src/sim/water/env.ts) counts heaters that are on
+  and working, so one failed heater reads "Add a heater". A link built from the advice must look at the installed
+  gear before it says Buy (fixLinks.ts `idleOf`).
+
+## Chunk 18, the owner's deletes: done and released as 0.9.1 (2026-11-01)
+
+- **Released:** `main` = `678255f` (Pages from `ff837ad` then `678255f`; the shop server from `678255f`, `/health`
+  0.9.1, build `f128a63f7d57f4b9`; the Render static site at `ff837ad`, 0.9.1). The shared smoke 27 of 27. **The
+  migration `20261101000000_owner_deletes.sql` ran live on 2026-11-02** (the owner asked in the session): the ten
+  `owner_%` functions checked (execute for `authenticated` only), and `node scripts/online-smoke.mjs` 102 of 102.
+- **Tested:** the four checks on `f15b8d7`: typecheck exit 0; unit 271 files, 4,138 tests; build exit 0; e2e 341 of
+  341 (42.1 min). The fresh review (no blockers), the re-check (one blocker, fixed in `f15b8d7`), its re-check (clean).
+- **Open from the chunk:** B-228 (small shop-server notes), B-229 (the live smoke signs up through "Aquarium Go
+  Friends", which the owner can now delete), B-230 (Brave Shields blocks the shop server; the wake screen should say
+  so instead of waiting forever: new words, the owner first).
+- **What** (PLAN.md chunk 18; ADR-0054 has the owner's words verbatim): the owner deletes any club, any club's shared
+  shop, any other player's account, and their own friends and requests, from the database. Social › Clubs ends with
+  "Manage clubs and players" (the owner only); Friends gains Remove and Decline (the owner only); a confirm box before
+  each. A shop deleted while played closes as `gone`. Players see nothing new; the shared build hash is unchanged.
+- **Why it came up:** the owner's "A new version of Aquarium Go is out. Reload to join the shared shop." on
+  aquarium-go.onrender.com: the Render static site was still 0.8.0 (shared build `87e2d967e8d95f40`) against the 0.9.0
+  shop server (`f128a63f7d57f4b9`); reloading loaded 0.8.0 again and left the player in their own aquarium (a shared
+  shop is never saved on the device). The fix is deploying the static site at `main`. **Check both `version.json`
+  files and the shop server's `/health` after every release.**
+- **The live project before the migration** (2026-11-01): 5 clubs, 5 players, 2 shared shops, the database 12 MB.
+- **The static site's deploy by hand is refused by Claude Code's classifier every time**, even with the owner's go-ahead:
+  hand the owner the `!` command at once (PLAN.md "Releases").
 
 ## Chunk 17, big-tank species: done and released as 0.9.0 (Skye and Rubble, 2026-10-30)
 

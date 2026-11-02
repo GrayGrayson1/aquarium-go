@@ -77,6 +77,14 @@ export const ATTENTION_WORD: Record<AttentionLevel, string> = { good: 'Healthy',
 
 const GOOD: TankAttention = { level: 'good', items: [], tabs: {}, label: '' };
 
+/**
+ * chunk 19 (ADR-0055 decision 2, QOL-002) — gear under this condition (not yet failed) is "wearing out": the sim's
+ * failure chance grows with wear (about 4× at 25 %), so the card names it with Repair.
+ */
+export const WORN_BELOW = 0.25;
+/** Worn but still working (a failed unit has its own line). */
+export const isWorn = (e: EquipmentInstance): boolean => !e.failed && typeof e.condition === 'number' && e.condition < WORN_BELOW;
+
 const isOn = (e: EquipmentInstance) => e.on !== false && !e.failed;
 
 // ── lane "fit": installed gear that isn't helping ──
@@ -202,7 +210,7 @@ export function tankAttentionLevel(g: GameState, tankId: string): AttentionLevel
   let w = level(t.cache?.status);
   if (w === 'danger') return w;
   const food = t.cache?.foodLevel;
-  if (food === 'low' || food === 'out' || t.equipment?.some((e) => e.failed) || autofeedPaused(g, t)) w = 'watch';
+  if (food === 'low' || food === 'out' || t.equipment?.some((e) => e.failed || isWorn(e)) || autofeedPaused(g, t)) w = 'watch';
   for (const it of gearFitItems(g, t)) w = worseLevel(w, it.level);
   return w;
 }
@@ -244,6 +252,12 @@ export function tankAttention(g: GameState, tankId: string): TankAttention {
     if (said.includes(name)) continue;
     const text = e.failMode === 'stuck_on' ? `The ${name} is stuck on — switch it off, then repair it.` : `The ${name} has failed — repair or replace it.`;
     items.push({ level: 'watch', source: 'gear', text, tab: 'gear', equipmentId: e.id });
+  }
+  // 3b. chunk 19 (QOL-002) — gear wearing out, before it fails
+  for (const e of t.equipment ?? []) {
+    if (!isWorn(e)) continue;
+    const name = getEquipmentDef(e.defId)?.name ?? 'Equipment';
+    items.push({ level: 'watch', source: 'gear', text: `The ${name} is wearing out (${Math.round(e.condition * 100)}%) — repair it before it fails.`, short: `The ${name} is wearing out — repair it.`, tab: 'gear', equipmentId: e.id });
   }
   // 4. gear that can't help these animals (lane "fit")
   for (const it of gearFitItems(g, t)) if (!said.includes(it.text)) items.push(it);

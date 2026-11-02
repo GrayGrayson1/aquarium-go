@@ -10,6 +10,7 @@ import { Clock, BadgeCheck, ShoppingBag, Store, Lock, Mars, Venus, CircleDashed,
 import type { CompatVerdict, Creature, GameState, ShopOffer, Tank, CompatReport, SpeciesDefinition } from '@/types';
 import { Button, Money, StatusBadge, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
+import { useGame } from '@/state/game'; // chunk 19 (QOL-001)
 import { offerPickPrice } from '@/sim/economy';
 import { describePersonality, isPrismatic, isLotOffer, oneInLabel, morphDisplayName, catalogEntry, geneticsRevealLevel } from '@/sim/life';
 import { PRISMATIC } from '@/data/rarity'; // lane:genetics
@@ -21,7 +22,8 @@ import { SubView } from '../common/PanelLayout';
 import { safe, useIsPhone } from '../common/hooks';
 import { act } from '../common/act';
 import { rememberOfferReturn } from './offerReturn'; // lane:qa-play
-import { useShopFilters, offerMatches, filtersActive } from './shopFilters'; // lane:ui-shell (chunk 1)
+import { useShopFilters, offerMatches, filtersActive, useShopSearch, offerSearchMatches, sortOffers, type ShopSort } from './shopFilters'; // lane:ui-shell (chunk 1); chunk 19 (QOL-003): search and sort
+import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { useSeenStock } from './seenStock'; // lane:notify (0.5 §5.2)
 import { CopyLinkButton, OfferLinkRow, useOfferLink } from './OfferLink'; // lane:ui-shell (chunk 1)
 import { expressedNewGenes, labPartners, rareCarried, speciesPlural, strainOrMorphTier } from './offerGenetics';
@@ -35,6 +37,8 @@ import { PotentialBands, CareChips } from '../common/Profile';
 import { orderedTanks, speciesOf, livingInTank, gallonsOf, EMPTY_COMPAT, speciesUnlocked, lockHintOf } from '../common/derive';
 import { PERSONALITY_LABEL, PERSONALITY_TONE, WATER_CLASS_LABEL, ENV_LABEL, untilTime, plural, SEX_LABEL, RARITY_LABEL, RARITY_TONE, VERDICT_RANK, VERDICT_LABEL, verdictStatus } from '../common/format';
 import './offer-genes.css';
+import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
+import { requiredUnlocks } from '@/sim/economy'; // chunk 19 (QOL-006)
 
 type EnvFilter = 'all' | 'freshwater' | 'marine' | 'brackish' | 'fits'; // lane:brackish: + 'brackish'
 
@@ -45,6 +49,9 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
   // lane:ui-shell (chunk 1) — the filters live in the session's shop filters, which the address carries (#/shop?env=…)
   const filters = useShopFilters((s) => s.filters);
   const setFilters = useShopFilters.getState().setFilters;
+  // chunk 19 (ADR-0055 decision 3, QOL-003) — the search and the sort (this session's)
+  const q = useShopSearch((s) => s.q);
+  const sort = useShopSearch((s) => s.sort);
   const tanks = orderedTanks(g);
   const offer = offerId ? g.market.stock.find((o) => o.id === offerId) : undefined;
   // lane:notify (0.5 §5.2) — an open Shop has shown the player its stock: the Market's rare-stock dot goes out
@@ -74,12 +81,28 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
     );
 
   const inStock = g.market.stock.filter((o) => !!speciesOf(o.speciesId));
-  const stock = inStock.filter((o) => offerMatches(g, o, filters));
+  const stock = sortOffers(inStock.filter((o) => offerMatches(g, o, filters) && offerSearchMatches(o, q)), sort);
   const lab = geneticsRevealLevel(g, {}) >= 1;
-  const clear = () => useShopFilters.getState().clearFilters();
+  const clear = () => {
+    useShopFilters.getState().clearFilters();
+    useShopSearch.setState({ q: '' }); // chunk 19 (QOL-003)
+  };
+  const narrowed = filtersActive(filters) || !!q.trim();
 
   return (
     <div className="pn-stack">
+      <div className="pn-findbar">
+        <SearchField value={q} onChange={(v) => useShopSearch.setState({ q: v })} placeholder="Search animals" label="Search the shop by species, colour, seller or trait" testId="shop-search" />
+        <label className="pn-sortsel">
+          <span>Sort</span>
+          <select className="pn-input" value={sort} onChange={(e) => useShopSearch.setState({ sort: e.target.value as ShopSort })} aria-label="Sort the shop" data-testid="shop-sort">
+            <option value="shop">Shop order</option>
+            <option value="cheap">Cheapest first</option>
+            <option value="dear">Priciest first</option>
+            <option value="leaving">Leaving soonest</option>
+          </select>
+        </label>
+      </div>
       <div className="pn-row pn-row--wrap pn-gap-2">
         <div className="pn-chips pn-chips--scroll">
           {(
@@ -126,15 +149,15 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
               About {oneInLabel(PRISMATIC.shopChance)} stocked animals shimmers. New stock arrives through the day.
             </EmptyState>
           ) : (
-            <EmptyState icon={<Store size={26} />} title="Nothing matches that filter" action={filtersActive(filters) ? <ClearFilters onClick={clear} /> : undefined}>
+            <EmptyState icon={<Store size={26} />} title="Nothing matches that filter" action={narrowed ? <ClearFilters onClick={clear} /> : undefined}>
               Try another filter to see more animals.
             </EmptyState>
           )}
         </div>
       ) : (
         <div className="pn-grid pn-grid--2 pn-grid--auto-wide ag-offergrid">
-          {/* lane:genetics — a Prismatic offer leads the shelf (stable: shop order is otherwise untouched) */}
-          {[...stock].sort((a, b) => Number(b.creatures.some(isPrismatic)) - Number(a.creatures.some(isPrismatic))).map((o) => (
+          {/* lane:genetics — a Prismatic offer leads the shelf (stable: shop order is otherwise untouched); chunk 19: or the chosen sort */}
+          {stock.map((o) => (
             <OfferCard key={o.id} g={g} offer={o} index={g.market.stock.indexOf(o)} onOpen={() => setOfferId(o.id)} tanks={tanks} />
           ))}
         </div>
@@ -259,8 +282,9 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
           {!fits && <span className="pn-tiny pn-tone-watch">Needs a {sp ? ENV_LABEL[sp.environment].toLowerCase() : ''} tank</span>}
           {fits && !affordable && <span className="pn-tiny pn-tone-watch">Can’t afford yet</span>}
           {locked && (
-            <span className="pn-tiny pn-muted">
-              <Lock size={10} aria-hidden /> Locked
+            // chunk 19 (QOL-006) — the card says what it waits for (its detail has the whole route)
+            <span className="pn-tiny pn-muted ag-offercard__lock" title={sp ? lockHintOf(g, sp) : undefined}>
+              <Lock size={10} aria-hidden /> Locked · see how
             </span>
           )}
         </div>
@@ -314,6 +338,9 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const [picked, setPicked] = useState<Set<number>>(() => new Set(offer.creatures.map((_, i) => i)));
   const [ack, setAck] = useState(false);
   const [active, setActive] = useState(0);
+  // (a purchase answered after the player moved on — a shared shop waits for the server — mustn't pull them back)
+  const alive = useRef(true);
+  useEffect(() => () => void (alive.current = false), []);
   const tilesRef = useRef<HTMLDivElement>(null);
   const tank = tankId ? g.tanks[tankId] : undefined;
   const chosen = offer.creatures.filter((_, i) => picked.has(i));
@@ -381,9 +408,15 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
       quiet: true,
       after: (r) => {
         if (!r?.ok) return;
-        // 0.5 §7.5 item 6 — back to the tank view on the new home, with the find named
-        useUI.getState().set({ panel: null, panelTarget: null, focusedTankId: tankId });
-        useUI.getState().toast(`${name} is settling into ${tankName}`, prismatic ? 'celebrate' : 'success', { label: prismatic ? 'Prismatic find' : 'Bought', detail: 'Find them in Livestock.' });
+        // chunk 19 (ADR-0055 decision 1, QOL-001; replaces 0.5 §7.5 item 6's trip to the tank view) — the Market stays
+        // open on the shop list: the new home is focused behind it (beside a computer's side sheet the arrival is seen
+        // at once) and the toast's "See them" goes to the tank and the animal. Back to the list after every purchase,
+        // a part of a group too: this screen's picks, inspected animal and risk tick belong to the animals just bought
+        // (the rest of the group is a fresh look from the list, its card counted anew)
+        useUI.getState().set({ focusedTankId: tankId });
+        const first = saw.find((id) => !!useGame.getState().game?.creatures[id]);
+        useUI.getState().toast(`${name} is settling into ${tankName}`, prismatic ? 'celebrate' : 'success', { label: prismatic ? 'Prismatic find' : 'Bought', detail: 'Find them in Livestock.', tankId, ...(first ? { creatureId: first } : {}), actionLabel: 'See them' });
+        if (alive.current) onBack();
       },
     });
   };
@@ -624,7 +657,15 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </Button>
           )}
         </div>
-        {locked && <span className="pn-tiny pn-muted">{lockHintOf(g, sp)}</span>}
+        {locked && (
+          <span className="pn-row pn-gap-2 pn-row--wrap" style={{ alignItems: 'center' }}>
+            <span className="pn-tiny pn-muted pn-grow">{lockHintOf(g, sp)}</span>
+            {/* chunk 19 (ADR-0055 decision 5, QOL-006) — the requirements with progress, and the way to them */}
+            <LockedButton title={speciesPlural(sp)} keys={safe(() => requiredUnlocks(sp), [] as string[])} testId="offer-locked-help">
+              How to unlock
+            </LockedButton>
+          </span>
+        )}
       </div>
     </SubView>
   );

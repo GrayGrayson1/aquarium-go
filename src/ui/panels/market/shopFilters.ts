@@ -13,6 +13,8 @@ import { isPrismatic } from '@/sim/life/rareVariants';
 import { geneticsRevealLevel } from '@/sim/life/reveal';
 import { DEFAULT_SHOP_FILTERS, type EnvFilter, type ShopFilters } from '@/ui/nav/routes';
 import { rareGenesMatch } from './offerGenetics';
+import { matches } from '../common/match'; // chunk 19 (QOL-003)
+import { PERSONALITY_LABEL, SEX_LABEL } from '../common/format'; // chunk 19 (QOL-003)
 
 interface ShopFilterState {
   filters: ShopFilters;
@@ -30,9 +32,44 @@ export const useShopFilters = create<ShopFilterState>((set, get) => ({
   clearFilters: () => get().setFilters(DEFAULT_SHOP_FILTERS),
 }));
 
+/**
+ * chunk 19 (ADR-0055 decision 3, QOL-003) — the Shop's search and sort, for this session (not in the address: the
+ * address keeps the chips' filters). "Clear filters" clears the search too.
+ */
+export type ShopSort = 'shop' | 'cheap' | 'dear' | 'leaving';
+export const useShopSearch = create<{ q: string; sort: ShopSort }>(() => ({ q: '', sort: 'shop' }));
+
 useGame.subscribe((s, prev) => {
-  if (s.game?.saveId !== prev.game?.saveId) useShopFilters.getState().clearFilters();
+  if (s.game?.saveId !== prev.game?.saveId) {
+    useShopFilters.getState().clearFilters();
+    useShopSearch.setState({ q: '', sort: 'shop' });
+  }
 });
+
+/** The words an offer is found by: species (common and scientific), morph and strain, seller, sex and personality. */
+export function offerWords(o: ShopOffer, sp: SpeciesDefinition | undefined): string {
+  const parts: string[] = [sp?.commonName ?? '', sp?.scientificName ?? '', o.seller ?? '', o.kind === 'group' ? 'group' : ''];
+  for (const c of o.creatures) {
+    parts.push(c.morphName ?? '', c.name ?? '', SEX_LABEL[c.sex] ?? '', ...(c.personality ?? []).map((t) => PERSONALITY_LABEL[t] ?? t));
+    if (isPrismatic(c)) parts.push('prismatic');
+  }
+  return parts.join(' ');
+}
+
+/** Does an offer match the search? */
+export function offerSearchMatches(o: ShopOffer, q: string): boolean {
+  return matches(q, offerWords(o, findSpecies(o.speciesId)));
+}
+
+/** Order the shelf: as stocked (Prismatic first), cheapest, dearest or leaving soonest; ties keep the shop's order. */
+export function sortOffers(list: ShopOffer[], sort: ShopSort): ShopOffer[] {
+  const rank = (o: ShopOffer) => Number(o.creatures.some(isPrismatic));
+  const idx = new Map(list.map((o, i) => [o.id, i]));
+  return [...list].sort(
+    (a, b) =>
+      (sort === 'cheap' ? a.price - b.price : sort === 'dear' ? b.price - a.price : sort === 'leaving' ? a.expiresHour - b.expiresHour : rank(b) - rank(a)) || idx.get(a.id)! - idx.get(b.id)!,
+  );
+}
 
 // ───────────────────────────── matching (0.5 spec §7.2) ─────────────────────────────
 

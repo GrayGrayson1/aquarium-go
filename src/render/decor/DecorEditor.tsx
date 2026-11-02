@@ -2,10 +2,12 @@
  * In-tank 3D decor editor. OWNER: lane "aquascape".
  *
  *  tool 'decor_place' + ui.placingDecorDefId: a translucent ghost follows the pointer across the substrate (and
- *     onto rock/wood for epiphytes & corals). R / wheel rotate, Shift+wheel or [ ] scale, two-finger twist/pinch
- *     on touch. Tint = valid (aqua) / invalid (coral) with the reason under it. Click (a tap on touch) places it and
+ *     onto rock/wood for epiphytes & corals). R rotates, Shift+wheel or [ ] scale, a two-finger twist turns it on
+ *     touch, and the hint's buttons turn and size it (chunk 19: the wheel, a pinch, a two-finger drag and a right-drag
+ *     move the decorating camera instead; the events this editor swallows are handed to the camera). Tint = valid (aqua) / invalid (coral) with the reason under it. Click (a tap on touch) places it and
  *     ends the tool; Shift+click keeps placing copies, and pieces from storage keep placing while any are left.
- *  tool 'decor_move': hover highlights an item; drag moves it (epiphytes ride along); R / wheel rotate while held;
+ *  tool 'decor_move': hover highlights an item; drag moves it (epiphytes ride along); R turns it and Shift+wheel or
+ *     [ ] size it while held (the plain wheel zooms the decorating camera, chunk 19);
  *     Delete / Backspace sells the held item back at 50 %, or the hovered one on a second press. Esc exits either tool.
  *
  * Picking (lane:tankrender): the pointer ray is marched against the analytic substrate heightfield and only the
@@ -22,6 +24,8 @@ import type { TankFXUniforms } from '../shared/underwater';
 import { getDecorDef } from '@/data/catalog/decor';
 import { useUI } from '@/state/ui';
 import { offerPlaceAgain } from './placeAgain';
+import { forwardToCamera } from '../camera/cameraFX'; // chunk 19 (ADR-0055 decision 4, QOL-005)
+import { ghostControls } from './ghostControls'; // chunk 19 (QOL-005): the hint's turn and size buttons
 import { useGame, getGame } from '@/state/game';
 import { checkPlacement, placementLimits, maxScaleFor, SELL_BACK_FRACTION, fragEligibility, fragLabel } from '@/sim/aquascape';
 import { tankDims } from '@/sim/tankSpace';
@@ -241,6 +245,9 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     return true;
   };
 
+  const updateGhostRef = useRef(updateGhost);
+  updateGhostRef.current = updateGhost;
+
   /** Place the piece at the last hit. `more` (Shift held) keeps a catalogue purchase armed for another copy. */
   const doPlace = (more = false) => {
     const def = placingDef;
@@ -353,10 +360,13 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
         const dist = Math.hypot(a.x - b.x, a.y - b.y);
         const ang = Math.atan2(b.y - a.y, b.x - a.x);
         if (st.pinch0 > 0) {
-          st.scale = st.scale0 * (dist / st.pinch0);
+          // chunk 19 (QOL-005) — a pinch zooms the camera now (the piece is sized with Shift+wheel or the hint's
+          // buttons); the twist still turns the piece
+          void dist;
           st.rotY = st.rot0 - (ang - st.twist0);
         }
         st.gestured = true;
+        forwardToCamera(e);
         e.stopImmediatePropagation();
         st.dirty = true;
         return;
@@ -364,7 +374,10 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
       setPointer(e.clientX, e.clientY);
       // hit-tested once per frame in useFrame (pointer events can outpace frames several times over)
       if (tool === 'decor_place' || heldId || tool === 'decor_move') st.dirty = true;
-      if (heldId) e.stopImmediatePropagation();
+      if (heldId) {
+        forwardToCamera(e);
+        e.stopImmediatePropagation();
+      }
     },
     down: (e: PointerEvent) => {
       if (!onCanvas(e) || e.button > 0) return;
@@ -380,6 +393,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
           st.scale0 = st.scale;
           st.rot0 = st.rotY;
           st.gestured = true;
+          forwardToCamera(e);
           e.stopImmediatePropagation();
           return;
         }
@@ -390,6 +404,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
       st.downX = e.clientX;
       st.downY = e.clientY;
       if (tool === 'decor_place') {
+        forwardToCamera(e);
         e.stopImmediatePropagation();
         // touch has no hover: hit-test right away so a tap without movement places where the finger landed
         updateGhost();
@@ -406,6 +421,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
             setEditingDecor(inst.id);
             setHeldId(inst.id);
             setSellArm(null);
+            forwardToCamera(e);
             e.stopImmediatePropagation();
             requestAnimationFrame(updateGhost);
           }
@@ -421,12 +437,14 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
       if (!onCanvas(e)) return;
       const tap = isDecorTap(e, { ...st, touches: st.touches.size }, performance.now());
       if (tool === 'decor_place' && tap) {
+        forwardToCamera(e);
         e.stopImmediatePropagation();
         st.downAt = 0;
         setPointer(e.clientX, e.clientY);
         updateGhost();
         doPlace(e.shiftKey);
       } else if (tool === 'decor_move' && heldId) {
+        forwardToCamera(e);
         e.stopImmediatePropagation();
         doMoveEnd();
       }
@@ -444,11 +462,12 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
     wheel: (e: WheelEvent) => {
       if (!onCanvas(e)) return;
       if (!(tool === 'decor_place' && placingDef) && !heldId) return;
+      // chunk 19 (ADR-0055 decision 4, QOL-005) — the wheel (and a trackpad pinch, Ctrl+wheel) zooms the decorating
+      // camera; Shift+wheel still sizes the piece (R turns it)
+      if (!e.shiftKey) return;
       e.preventDefault();
       e.stopImmediatePropagation();
-      const st = state.current;
-      if (e.shiftKey || e.ctrlKey) st.scale *= Math.exp(-Math.sign(e.deltaY || e.deltaX) * 0.06);
-      else st.rotY += Math.sign(e.deltaY) * (Math.PI / 12);
+      state.current.scale *= Math.exp(-Math.sign(e.deltaY || e.deltaX) * 0.06);
       updateGhost();
     },
     key: (e: KeyboardEvent) => {
@@ -502,6 +521,21 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
   }, [sellArm]);
   const live = useRef(handlers);
   live.current = handlers;
+  // chunk 19 (QOL-005) — the tool hint's turn and size buttons (touch has no R or Shift+wheel)
+  useEffect(() => {
+    ghostControls.turn = (steps: number) => {
+      state.current.rotY += steps * (Math.PI / 12);
+      if (state.current.hasPointer) updateGhostRef.current();
+    };
+    ghostControls.size = (factor: number) => {
+      state.current.scale *= factor;
+      if (state.current.hasPointer) updateGhostRef.current();
+    };
+    return () => {
+      ghostControls.turn = null;
+      ghostControls.size = null;
+    };
+  }, []);
   useEffect(() => {
     const move = (e: PointerEvent) => live.current.move(e);
     const down = (e: PointerEvent) => live.current.down(e);
@@ -557,7 +591,7 @@ export function DecorEditor({ tank }: { tank: Tank; fx: TankFXUniforms; tankU: D
   const hoverFragHint = hoverFrag?.ok ? ` · F: ${hoverFrag.rule.action.toLowerCase()}` : hoverFrag?.code === 'recovering' ? ' · healing from a cut' : '';
   const sellArmed = !!hoverInst && sellArm?.id === hoverInst.id;
   const hoverHint = touchUi ? '  ·  drag to move' : sellArmed ? `  ·  press Del again to sell for $${hoverSell}` : `  ·  drag to move · Del sells for $${hoverSell}${hoverFragHint}`;
-  const placeHint = touchUi ? (placingFragId ? '  ·  twist to rotate' : '  ·  twist to rotate · pinch to size') : placingFragId ? '  ·  R rotate' : '  ·  R rotate · Shift+wheel size · Shift+click places more';
+  const placeHint = touchUi ? '  ·  twist to rotate' : placingFragId ? '  ·  R rotate' : '  ·  R rotate · Shift+wheel size · Shift+click places more';
   const ghostDef = ghost ? getDecorDef(ghost.defId) : undefined;
   const fpColor = ghost?.ok ? VALID : INVALID;
   return (

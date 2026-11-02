@@ -33,6 +33,9 @@ import { useDockedCard } from '../hud/cardDock';
 import { setCameraMode } from '../hud/ToolRail';
 import { setSpeed } from '../hud/TopBar';
 import { convertTempText, personalityLabel } from '../common/format';
+import { Spotlight, useSpotlightTarget } from './Spotlight'; // chunk 19 (ADR-0055 decision 7, QOL-008)
+import { guideAim } from './guideTargets'; // chunk 19 (QOL-008)
+import { startTour, useTour } from './tourStore'; // chunk 19 (QOL-008)
 
 export interface CoachStep {
   index: number;
@@ -373,9 +376,15 @@ export function TutorialCoach() {
     }
   }, [cur?.index, tutDone, saveId, hints]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const visible = ((!!cur && hints) || finale) && !!game;
+  // chunk 19 (QOL-008) — the tour has the screen to itself while it runs
+  const touring = useTour((s) => s.running);
+  const visible = ((!!cur && hints) || finale) && !!game && !touring;
   useCoachLayout(visible);
+  const tankCardOpen = useShell((s) => s.tankCardOpen);
+  const aimNow = cur && game && hints && !touring && !collapsed ? guideAim(cur.step.id, cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget, game.progress.tutorial?.starterId || game.starterId, { panel, popover, tool, tankCardOpen, mobile }, cur.step.reward?.unlocks ?? []) : null;
+  const spotRect = useSpotlightTarget(aimNow?.candidates ?? [], { scrollIntoView: true });
 
+  if (touring) return null;
   if (finale && game) return <GuideFinale game={game} onClose={() => setFinale(false)} />;
   if (!cur || !hints || !game) return null;
   // Slow feeders (seahorses) are taught target feeding: point at that tool instead of plain Feed.
@@ -411,7 +420,9 @@ export function TutorialCoach() {
 
   return (
     <>
-      {ringing && <TutorialHighlight target={ringTarget} gold={!!inMore} />}
+      {/* chunk 19 (ADR-0055 decision 7, QOL-008) — the spotlight follows the step into the place it needs (guideTargets.ts) */}
+      {aimNow && <Spotlight rect={spotRect} dim={aimNow.dim} hand={aimNow.hand} gold={!!inMore} />}
+      {!aimNow && ringing && <TutorialHighlight target={ringTarget} gold={!!inMore} />}
       {ringing && inMore && !moreOpen && <MoreGuideBubble label={inMore.label} />}
       <AnimatePresence mode="wait">
         {collapsed ? (
@@ -518,7 +529,7 @@ export function TutorialCoach() {
                       </Button>
                     )}
                     {showLabel && (
-                      <Button size="sm" variant={waiting && speed > 0 && speed < 3 ? 'ghost' : 'primary'} onClick={() => showMe(action, game)} data-testid={canNext ? undefined : 'tutorial-next'}>
+                      <Button size="sm" variant={waiting && speed > 0 && speed < 3 ? 'ghost' : 'primary'} onClick={() => showMe(action, game)} data-testid={canNext ? undefined : 'tutorial-next'} data-guide-showme="">
                         <Hand size={14} /> {showLabel}
                       </Button>
                     )}
@@ -696,10 +707,14 @@ function GuideFinale({ game, onClose }: { game: GameState; onClose: () => void }
       <p className="ag-coach__body">Next: breeding, bigger tanks and a shop of your own. Club shows are open too — find Shows in the dock. The quest board has your first goals.</p>{/* lane:w2-ui — shows unlock as the guide ends */}
       <div className="ag-coach__foot">
         <span />
-        <div className="ag-row" style={{ gap: 6 }}>
+        <div className="ag-row ag-wrap" style={{ gap: 6, justifyContent: 'flex-end' }}>
           <Button size="sm" variant="ghost" onClick={() => { sfx('close'); onClose(); }}>Later</Button>
-          <Button size="sm" variant="primary" onClick={() => { openPanel('research'); onClose(); }}>
+          <Button size="sm" onClick={() => { openPanel('research'); onClose(); }}>
             <FlaskConical size={14} /> See what unlocks
+          </Button>
+          {/* chunk 19 (ADR-0055 decision 7, QOL-008) — the tour of everything else */}
+          <Button size="sm" variant="primary" data-testid="guide-tour" onClick={() => { onClose(); startTour(); }}>
+            <Compass size={14} /> Show me around
           </Button>
         </div>
       </div>

@@ -10,7 +10,7 @@ import { openApp, quickGame, aq, tid, probe } from './helpers';
 
 const hash = (page: Page) => page.evaluate(() => location.hash);
 const goHash = (page: Page, h: string) => page.evaluate((x) => void (location.hash = x), h);
-const lastToast = (page: Page) => page.evaluate(() => (window as unknown as { __AQ: { ui(): { toasts: { text: string; label?: string; detail?: string; kind: string }[] } } }).__AQ.ui().toasts.at(-1) ?? null);
+const lastToast = (page: Page) => page.evaluate(() => (window as unknown as { __AQ: { ui(): { toasts: { text: string; label?: string; detail?: string; kind: string; actionLabel?: string }[] } } }).__AQ.ui().toasts.at(-1) ?? null);
 
 /** A Royal Blue Butterfly Halfmoon betta: a rare morph (and a named strain), so the Rare genes chip keeps it. */
 const RARE_BETTA = { color: ['royal', 'royal'], pattern: ['butterfly', 'butterfly'], fins: ['halfmoon', 'halfmoon'] };
@@ -115,7 +115,7 @@ test.describe('Shop filters (desktop 1440×900)', () => {
     await expect.poll(cols).toBe(3);
   });
 
-  test('buying returns to the tank view with a toast; Back to the offer shows the gone state and its button', async ({ page }) => {
+  test('buying keeps the Market open with a toast and See them; Back to the offer shows the gone state and its button', async ({ page }) => {
     await shopGame(page);
     expect((await aq<{ ok: boolean }>(page, 'dev.addShopOffer', 'mystery_snail', { price: 12 })).ok).toBe(true);
     const id = await probe<string>(page, 'g.market.stock[0].id');
@@ -132,9 +132,11 @@ test.describe('Shop filters (desktop 1440×900)', () => {
     const box = (await buy.boundingBox())!;
     expect(box.height).toBeGreaterThanOrEqual(44);
     await buy.click();
-    await expect(tid(page, 'panel-market')).toBeHidden();
-    await expect.poll(() => hash(page)).toBe('#/');
-    expect(await lastToast(page)).toMatchObject({ kind: 'success', label: 'Bought', detail: 'Find them in Livestock.' });
+    // chunk 19 (ADR-0055 decision 1, the owner's answer): the Market stays open, back on the shop list once the offer is
+    // used up, and the toast offers See them (0.5 §7.5 item 6 went to the tank view)
+    await expect(tid(page, 'panel-market')).toBeVisible();
+    await expect.poll(() => hash(page)).toBe('#/shop');
+    expect(await lastToast(page)).toMatchObject({ kind: 'success', label: 'Bought', detail: 'Find them in Livestock.', actionLabel: 'See them' });
     const tank = await probe<string>(page, 'g.tanks[g.tankOrder[0]].name');
     expect((await lastToast(page))!.text).toMatch(new RegExp(` is settling into ${tank}$`));
 

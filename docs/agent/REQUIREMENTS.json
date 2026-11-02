@@ -7166,8 +7166,11 @@
         "tests/sim/supabase-migration.test.ts",
         "scripts/online-db-local/checks.sql"
       ],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 18 done 2026-11-01. The four checks on f15b8d7 in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min). The fresh review (Opus 5.5, max effort) of 93c106d..64b0254: no blockers, its notes fixed in a780b79; the re-check of a780b79: one blocker, fixed in f15b8d7 and re-checked clean. Released as 0.9.1 (PLAN.md \"Releases\").",
+        "The local Postgres run (scripts/online-db-local/run.sh): every case as expected. On the live project the migration is the owner's to run (the classifier refuses it); the live smoke's refusal checks follow it."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 18 (2026-11-01)."
     },
@@ -7185,8 +7188,10 @@
         "tests/sim/social-owner.test.ts",
         "tests/sim/shared-server-chunk13.test.ts"
       ],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 18 done 2026-11-01. The four checks on f15b8d7 in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min). The fresh review (Opus 5.5, max effort) of 93c106d..64b0254: no blockers, its notes fixed in a780b79; the re-check of a780b79: one blocker, fixed in f15b8d7 and re-checked clean. Released as 0.9.1 (PLAN.md \"Releases\")."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 18."
     },
@@ -7203,8 +7208,10 @@
         "tests/e2e/social.spec.ts",
         "tests/sim/social-owner.test.ts"
       ],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 18 done 2026-11-01. The four checks on f15b8d7 in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min). The fresh review (Opus 5.5, max effort) of 93c106d..64b0254: no blockers, its notes fixed in a780b79; the re-check of a780b79: one blocker, fixed in f15b8d7 and re-checked clean. Released as 0.9.1 (PLAN.md \"Releases\")."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 18."
     },
@@ -7221,10 +7228,187 @@
         "tests/sim/shared-server.test.ts",
         "tests/e2e/shared-shop.spec.ts"
       ],
-      "evidence": [],
-      "status": "PENDING",
+      "evidence": [
+        "Chunk 18 done 2026-11-01. The four checks on f15b8d7 in ~/LocalTest/AquariumGo: typecheck exit 0; npm test 271 files, 4,138 tests; build exit 0; e2e 341 of 341 (42.1 min). The fresh review (Opus 5.5, max effort) of 93c106d..64b0254: no blockers, its notes fixed in a780b79; the re-check of a780b79: one blocker, fixed in f15b8d7 and re-checked clean. Released as 0.9.1 (PLAN.md \"Releases\").",
+        "Live: the shop server from 678255f (f15b8d7) logged 'lease lost (missing)' for the shared smoke's deleted throwaway shop and closed it."
+      ],
+      "status": "GREEN",
       "designSections": [],
       "note": "Chunk 18."
+    },
+    {
+      "id": "QOL-001",
+      "slice": "ALL",
+      "source": "ADR-0055; PLAN.md chunk 19",
+      "description": "A tool started from a panel never closes it: a side sheet stays beside the tank; a bottom sheet steps aside and comes back where it was; the Market stays open after a purchase.",
+      "acceptance": [
+        "Choosing a decor piece, a stored piece or a frag, Rearrange decor and Buy & place keep the panel: on a side sheet it stays open while the tool runs; on a bottom sheet it slides off screen (mounted, inert, no occlusion) and returns on placing, Done, Cancel or Escape.",
+        "The sheet does not come back when the player opened another panel, a card, Watch or Photo while it was aside.",
+        "After buying an animal the Market stays on the shop list and the toast's See them goes to the tank with the animal's card."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/qol-aside.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 19",
+        "ADR-0055"
+      ],
+      "note": ""
+    },
+    {
+      "id": "QOL-002",
+      "slice": "ALL",
+      "source": "ADR-0055; PLAN.md chunk 19",
+      "description": "Every problem the tank card names links to where it is fixed.",
+      "acceptance": [
+        "Each water issue and each status or attention line on the tank card has a link: an in-card fix switches tab, scrolls to the control and highlights it; anything else opens the panel at the spot (Supplies on the food, Build › Equipment for the tank and kind, the animal's card).",
+        "The Equipment tab offers Repair on failed and worn gear; gear under 25% condition is an attention item; the alerts drawer's tank rows use the same links."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/qol-fix-links.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 19",
+        "ADR-0055"
+      ],
+      "note": ""
+    },
+    {
+      "id": "QOL-003",
+      "slice": "ALL",
+      "source": "ADR-0055; PLAN.md chunk 19",
+      "description": "Market, Build and Research can be searched and filtered.",
+      "acceptance": [
+        "Search boxes in Market › Shop and Supplies, Build › Decor and Equipment, Research's projects and unlock map; the Shop and Decor sort; Build › Tanks and Decor filter to what can be bought now; Equipment filters by kind; Research filters by status.",
+        "Clear filters clears the search; an empty result says so and offers to clear."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/qol-search.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 19",
+        "ADR-0055"
+      ],
+      "note": ""
+    },
+    {
+      "id": "QOL-004",
+      "slice": "ALL",
+      "source": "ADR-0055; PLAN.md chunk 19",
+      "description": "Find anything: a search over the whole game that goes to what it finds.",
+      "acceptance": [
+        "Opens from the top bar (phones: More), Cmd/Ctrl+K and /; finds screens, tanks, animals, shop stock, supplies, decor, equipment, tank sizes, research, unlocks and discovered species; arrow keys, Enter and Escape work.",
+        "Choosing a result navigates there; an item in a list opens that list searched for it."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/qol-search.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 19",
+        "ADR-0055"
+      ],
+      "note": ""
+    },
+    {
+      "id": "QOL-005",
+      "slice": "ALL",
+      "source": "ADR-0055; PLAN.md chunk 19",
+      "description": "A decorating camera: the player can see and reach any spot of the tank floor while placing or moving decor.",
+      "acceptance": [
+        "While decor_place or decor_move runs in tank view the camera frames the floor from above and can orbit, tilt to straight down, zoom and slide within the tank, by mouse (right/middle-drag, Shift+right-drag, wheel), keys (arrows, Shift+arrows), touch (two-finger drag, pinch) and an on-screen pad with Front, Above, Left, Right and Reset.",
+        "R and twist still turn the piece; Shift+wheel and the hint's size buttons size it; the player's camera returns when the tool ends."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/qol-decor-cam.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 19",
+        "ADR-0055"
+      ],
+      "note": ""
+    },
+    {
+      "id": "QOL-006",
+      "slice": "ALL",
+      "source": "ADR-0055; PLAN.md chunk 19",
+      "description": "Everything locked says how to unlock it.",
+      "acceptance": [
+        "Every Locked in Build (tank sizes, water types, decor, substrates), the Market (offers, offer detail, Supplies) and Research opens How to unlock: the route, each requirement with progress, the research that grants it with a link, and the facility when a venue is needed."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/qol-unlock-help.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 19",
+        "ADR-0055"
+      ],
+      "note": ""
+    },
+    {
+      "id": "QOL-007",
+      "slice": "ALL",
+      "source": "ADR-0055; PLAN.md chunk 19",
+      "description": "The shared shop's controls are a dropdown from the name pill, clear of the camera chips.",
+      "acceptance": [
+        "In a shared shop the top-left pill shows who's here and opens a dropdown with the names, the owner's members list, Money and Back to my aquarium; no strip sits above the dock; nothing overlaps the camera chips at any width."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/e2e/shared-shop.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 19",
+        "ADR-0055"
+      ],
+      "note": ""
+    },
+    {
+      "id": "QOL-008",
+      "slice": "ALL",
+      "source": "ADR-0055; PLAN.md chunk 19",
+      "description": "The guide shows the way with a spotlight and a pointer, and a tour shows everything.",
+      "acceptance": [
+        "The care chain is unchanged; a dimmed spotlight, a glowing ring and a tapping hand follow each step into the control it needs, and Show me goes there.",
+        "The finale offers Show me around: a tour of every area and open destination with Next, Back and Skip, also from Settings and Find anything."
+      ],
+      "tasks": [],
+      "tests": [
+        "tests/sim/qol-guide.test.ts",
+        "tests/e2e/qol.spec.ts"
+      ],
+      "evidence": [],
+      "status": "GREEN",
+      "designSections": [
+        "PLAN.md chunk 19",
+        "ADR-0055"
+      ],
+      "note": ""
     }
   ]
 }

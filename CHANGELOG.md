@@ -4,6 +4,30 @@ The version shows on the title screen (top corner) and in Settings › About, an
 names it. Every deploy bumps `version` in package.json and adds an entry here: patch (0.3.x) for fixes and small
 additions, minor (0.x.0) for new features. `tests/sim/version.test.ts` fails if the two disagree.
 
+## 0.9.2 — 2026-11-02
+
+- **Panels stay open while you work.** On a computer, Build stays open beside the tank while you place decor, a frag
+  or a new tank: pick a piece, place it, pick the next. On a phone the sheet slides out of the way while you place and
+  comes back where you were; after a piece you bought, the hint offers Place another first. Buying an animal keeps the
+  Market open on the shop list, and the toast's See them goes to it.
+- **Every problem links to its fix.** Each problem the tank card or the alerts name has a link (Water change, Top off,
+  Repair, Buy a heater, Feed and the rest) to the control, glowing, or to the right screen. Gear below 25% condition
+  is flagged before it fails, and the card's Equipment tab repairs it.
+- **Search and filters** in the Market (Shop and Supplies), Build (Decor, Equipment and Tanks) and Research, with
+  sorting, Can buy now and kind chips.
+- **Find anything:** the magnifier in the top bar (on a phone, at the top of More), ⌘K or /. One search over the
+  screens, your tanks and animals, the shop, supplies, gear, decor, tank sizes, research, unlocks and the
+  Encyclopedia; something none of your tanks can take says which tank it needs.
+- **A decorating camera.** While you place or move decor the camera looks down into the tank: orbit, tilt, zoom and
+  slide it (right-drag, Shift-drag, the wheel or a pinch, the arrow keys) or use the view pad (turn, tilt, zoom,
+  Front, Above, Left, Right, Reset). On a phone the hint has buttons to turn and size the piece.
+- **Locked things say how to unlock them.** Every Locked in Build, the Market and Research opens the route, each
+  requirement with your progress, and a button to the research or the facility.
+- **The shared shop's strip is now a dropdown** from the shop's pill at the top left, out of the way of the camera
+  buttons.
+- **A new guide.** The guide's spotlight dims the screen around what to tap next and follows each step. At its end,
+  Show me around tours every area (also in Settings › Play & access and Find anything).
+
 ## 0.9.1 — 2026-11-01
 
 - **The owner can delete anything in Social, from the server.** A Manage clubs and players card at the end of Social ›

@@ -18,6 +18,11 @@ import { GeoBuilder, lathe as latheB } from './gen/builder';
 import { hex, mix } from './gen/noise';
 import { makeDecorMaterial, createTankUniforms } from './materials';
 import { useStaticMerge } from '../shared/staticMerge'; // lane:perf2
+import { cameraFX } from '../camera/cameraFX'; // chunk 19 (QOL-005)
+import { decorCam } from '../camera/decorCam'; // chunk 19 (QOL-005)
+
+/** chunk 19 (ADR-0055 decision 4, QOL-005) — decorating from high above, the light bar steps aside (it hid the floor). */
+const ABOVE_PITCH = 0.95;
 
 type Mats = ReturnType<typeof makeEquipMaterials>;
 
@@ -137,11 +142,13 @@ function LightBar({ p, tank, mats, lod }: { p: EquipmentPlacement; tank: Tank; m
   const foot = useGeo(() => new RoundedBoxGeometry(0.03, 0.006, width * 0.6, 2, 0.002), [width]);
   const ledMat = useMemo(() => mats.led.clone(), [mats]);
   useEffect(() => () => ledMat.dispose(), [ledMat]);
+  const barRef = useRef<THREE.Group>(null);
   const eqOn = p.running;
   const intensity = tank.lighting.intensity;
   const preset = tank.lighting.preset;
   const moon = tank.lighting.moonlight;
   useFrame(() => {
+    if (barRef.current) barRef.current.visible = !(cameraFX.mode === 'decorate' && decorCam.tankId === tank.id && decorCam.now.pitch > ABOVE_PITCH);
     const g = getGame();
     const lit = g ? isLitAt(tank, g.clock.hour) : true;
     const col = LIGHT_COLOR[reef && preset !== 'reef_actinic' ? 'reef_full' : preset] ?? '#ffffff';
@@ -159,7 +166,7 @@ function LightBar({ p, tank, mats, lod }: { p: EquipmentPlacement; tank: Tank; m
   const first = p.n === 0;
   const last = p.n === p.of - 1;
   return (
-    <group position={p.pos}>
+    <group position={p.pos} ref={barRef}>
       <mesh geometry={body} material={mats.alu} castShadow />
       <mesh geometry={panel} material={ledMat} position={[0, -0.0072, 0]} />
       {lod < 2 && (

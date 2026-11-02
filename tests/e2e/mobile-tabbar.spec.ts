@@ -167,10 +167,11 @@ test.describe('phone 390×844 (touch)', () => {
     const bubble = tid(page, 'guide-more-bubble');
     await expect(bubble).toContainText('Guide · Research');
     await expect(bubble).toContainText('Research now lives under More. Tap More, then Research.');
+    // chunk 19 (ADR-0055 decision 7, QOL-008): the guide's ring is now its spotlight's ring (still gold on the way to More)
     const ringAround = async (id: string) => {
-      const ring = page.locator('.ag-tut-ring');
+      const ring = tid(page, 'guide-spotlight-ring');
       await expect(ring).toHaveCount(1);
-      await expect(ring).toHaveClass(/ag-tut-ring--gold/);
+      await expect(ring).toHaveClass(/is-gold/);
       const r = (await ring.boundingBox())!;
       const t = await box(page, id);
       return r.x <= t.x + 1 && r.y <= t.y + 1 && r.x + r.width >= t.x + t.width - 1 && r.y + r.height >= t.y + t.height - 1;

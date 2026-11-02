@@ -45,10 +45,14 @@ import { TankCard } from '../cards/TankCard';
 import { TutorialCoach } from '../tutorial/TutorialCoach';
 import { PartyBanner } from '../photo/PartyBanner';
 import { WelcomeBack } from './WelcomeBack';
-import { SharedStrip } from '../shared/SharedScreens'; // chunk 13
 import { usePrefs } from '../common/prefs';
 import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
+import { usePanelAsideRules } from '../panels/common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
+import { FindAnything, useFindKeys } from '../search/FindAnything'; // chunk 19 (ADR-0055 decision 3, QOL-004)
+import { DecorCamPad, isDecorating } from './DecorCamPad'; // chunk 19 (ADR-0055 decision 4, QOL-005)
+import { UnlockHelpHost } from '../panels/common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006): the one lock box
+import { Tour } from '../tutorial/Tour'; // chunk 19 (ADR-0055 decision 7, QOL-008)
 
 const CALM_AFTER_MS = 6000;
 /** How long after a waking touch its click counts as part of the wake. */
@@ -67,7 +71,7 @@ function canCalm(keyboard: boolean): boolean {
   if (!usePrefs.getState().calmHud || ui.screen !== 'game' || ui.view !== 'tank') return false;
   if (ui.panel || ui.tool !== 'none' || ui.selectedCreatureId || ui.photoMode || ui.hudHidden || ui.partyMode) return false;
   if (shell.popover || shell.tankCardOpen || shell.moveCreatureId || shell.photo) return false;
-  if (document.querySelector('.ag-modal-backdrop, [data-pn-modal], .ag-tut-ring, .ag-welcome')) return false;
+  if (document.querySelector('.ag-modal-backdrop, [data-pn-modal], .ag-tut-ring, .ag-welcome, .ag-spot__ring, .ag-tour, .ag-find-backdrop')) return false;
   // keyboard users keep the HUD while a control has visible focus (a mouse click leaves plain focus behind)
   const a = document.activeElement as HTMLElement | null;
   if (keyboard && a && a !== document.body && a.closest?.('.ag-hud, .ag-sheet, .pn-sheet')) {
@@ -171,7 +175,9 @@ function useHudKeys() {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return;
       const ui = useUI.getState();
-      if (ui.screen !== 'game' || document.querySelector('.ag-modal-backdrop')) return;
+      // (chunk 19: nor while Find anything is open — a quick typist's first letters, before its box has focus, were
+      // game shortcuts: "p" opened Photo mode)
+      if (ui.screen !== 'game' || document.querySelector('.ag-modal-backdrop, .ag-find-backdrop')) return;
       if (ui.photoMode) return; // photo mode handles its own keys
       if (ui.hudHidden) {
         if (e.key === 'Escape' || e.key.toLowerCase() === 'h') {
@@ -252,7 +258,7 @@ function useHudKeys() {
 }
 
 /** Keyboard users: a popover that closes (Escape, a pick) hands focus back to the button that opened it. */
-const POPOVER_TRIGGER: Partial<Record<NonNullable<Popover>, string>> = { food: 'tool-feed', target_food: 'tool-target-feed', lights: 'tool-lights', alerts: 'hud-alerts', more: 'dock-more' };
+const POPOVER_TRIGGER: Partial<Record<NonNullable<Popover>, string>> = { food: 'tool-feed', target_food: 'tool-target-feed', lights: 'tool-lights', alerts: 'hud-alerts', more: 'dock-more', shared: 'shared-strip' };
 function usePopoverFocusReturn() {
   const popover = useShell((s) => s.popover);
   const prev = useRef<Popover>(null);
@@ -315,12 +321,15 @@ export function GameHUD() {
   usePopoverDismiss();
   usePopoverFocusReturn();
   useCardDockRules();
+  usePanelAsideRules();
+  useFindKeys();
   useFocusedTankGuard();
   const calm = useCalmHud();
   const hidden = useUI((s) => s.hudHidden);
   const photo = useUI((s) => s.photoMode);
   const view = useUI((s) => s.view);
   const panel = useUI((s) => s.panel);
+  const decorating = useUI((s) => isDecorating(s.tool, s.view)); // chunk 19 (QOL-005): the view pad takes the tool rail's place
   const docked = useDockedCard();
   const creatureOpen = docked === 'creature';
   const tankCardOpen = docked === 'tank';
@@ -339,7 +348,7 @@ export function GameHUD() {
   return (
     <>
       <motion.div
-        className={clsx('ag-hud', chromeHidden && 'is-hidden', calm && !chromeHidden && 'is-calm', bottomSheets && (panel || creatureOpen || tankCardOpen) && 'has-bottom-sheet', view === 'facility' && 'is-facility', creatureOpen && sideSheets && 'has-right-sheet', tankCardOpen && sideSheets && 'has-left-sheet', panel && 'has-panel')}
+        className={clsx('ag-hud', chromeHidden && 'is-hidden', calm && !chromeHidden && 'is-calm', decorating && 'is-decorating', bottomSheets && (panel || creatureOpen || tankCardOpen) && 'has-bottom-sheet', view === 'facility' && 'is-facility', creatureOpen && sideSheets && 'has-right-sheet', tankCardOpen && sideSheets && 'has-left-sheet', panel && 'has-panel')}
         initial={{ opacity: 0 }}
         animate={{ opacity: chromeHidden ? 0 : 1 }}
         transition={{ duration: 0.35 }}
@@ -349,10 +358,7 @@ export function GameHUD() {
         <ErrorBoundary name="topbar">
           <TopBar compact={mobile} />
         </ErrorBoundary>
-        {/* chunk 13 (SHARED-SHOPS.md §8 "HUD strip") — in a shared shop: its name, who's there, the way back */}
-        <ErrorBoundary name="shared-strip">
-          <SharedStrip />
-        </ErrorBoundary>
+        {/* chunk 13's shared-shop strip is the top-left pill's dropdown since chunk 19 (QOL-007, src/ui/shared/SharedMenu.tsx) */}
         <ErrorBoundary name="tankbar">
           <TankBar />
         </ErrorBoundary>
@@ -362,6 +368,7 @@ export function GameHUD() {
             <div className="ag-hud__cam">
               <CameraChips />
             </div>
+            <DecorCamPad />
           </ErrorBoundary>
         )}
         {view === 'facility' && (
@@ -407,6 +414,15 @@ export function GameHUD() {
         <LazyPhotoMode />
       </ErrorBoundary>
       <WatchRestore />
+      <ErrorBoundary name="find">
+        <FindAnything />
+      </ErrorBoundary>
+      <ErrorBoundary name="unlock-help">
+        <UnlockHelpHost />
+      </ErrorBoundary>
+      <ErrorBoundary name="tour">
+        <Tour />
+      </ErrorBoundary>
       <ErrorBoundary name="welcome">
         <WelcomeBack />
       </ErrorBoundary>

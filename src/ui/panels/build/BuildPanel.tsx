@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Hammer, Layers, Mountain, Wrench, Palette, Building2, Lock, Move, MapPin, Sprout, Flower2, Shell, Gem, Puzzle, Waves, Check, Power, Trash2, Package, TriangleAlert, Info, Zap, Sparkles, Thermometer, Snowflake, Fan, Lightbulb, Wind, Droplets, Droplet, Utensils, Sun, Leaf, Box } from 'lucide-react';
-import type { BackdropKind, DecorCategory, DecorDef, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
+import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIERS } from '@/data/catalog/tanks';
@@ -39,6 +39,13 @@ import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { RoomPage, Rooms, YourFacility, type RoomId } from './FacilityRooms'; // lane:automation (chunk 5)
+import { startToolFromPanel } from '../common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
+import { LockedButton, askUnlock } from '../common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006)
+import { waterClassKeys } from '@/sim/facility/progression'; // chunk 19 (QOL-006): what a locked water type waits for
+import { itemSuitsTank } from '../../search/searchIndex'; // chunk 19 (QOL-004, reviewer B5)
+import { SearchField } from '../common/SearchField'; // chunk 19 (ADR-0055 decision 3, QOL-003)
+import { matches } from '../common/match'; // chunk 19 (QOL-003)
+import { glow } from '@/ui/common/glow'; // chunk 19 (QOL-002, QOL-004)
 
 type Tab = 'tanks' | 'decor' | 'equipment' | 'substrate' | 'facility';
 const BUILD_TABS: readonly Tab[] = ['tanks', 'decor', 'equipment', 'substrate', 'facility'];
@@ -62,6 +69,15 @@ export function BuildPanel() {
   const [tankId, setTankId] = useState<string | null>(focused);
   const [decorCat, setDecorCat] = useState<DecorCategory | 'all'>(() => remembered()?.cat ?? 'all');
   const [room, setRoom] = useState<RoomId | null>(null); // lane:automation (chunk 5) — a room's page in Facility
+  // chunk 19 (ADR-0055 decision 3, QOL-003) — the lists' searches and filters (kept while Build stays open or steps aside)
+  const [decorQ, setDecorQ] = useState('');
+  const [equipQ, setEquipQ] = useState('');
+  const [equipKind, setEquipKind] = useState<EquipmentKind | 'all'>('all');
+  // chunk 19 (QOL-004, reviewer B5) — Find anything on an item no tank of yours can take opens Tanks on that water
+  const [tanksWc, setTanksWc] = useState<{ wc: WaterClass; n: number } | null>(null);
+  useEffect(() => {
+    if (tab !== 'tanks') setTanksWc(null); // (it's for that visit to Tanks: back later, the usual water)
+  }, [tab]);
   useEffect(() => () => clearOfferReturn(), []); // lane:qa-play — leaving Build forgets a pending "back to the offer"
   useEffect(() => {
     const saveId = getGame()?.saveId;
@@ -85,8 +101,58 @@ export function BuildPanel() {
       setDecorCat(target.slice(10) as DecorCategory);
     }
     else if (target.startsWith('equipment:')) {
+      // 'equipment:<tankId>' or, chunk 19 (QOL-002), 'equipment:<tankId>:<kind>' (a tank card's "Buy a heater")
+      const [, id, kind] = target.split(':');
       setTab('equipment');
-      setTankId(target.slice(10));
+      setTankId(id);
+      setEquipKind(kind && EQUIP_CHIP[kind as EquipmentKind] ? (kind as EquipmentKind) : 'all');
+      setEquipQ('');
+    } else if (target.startsWith('find:')) {
+      // chunk 19 (QOL-004) — Find anything: the list searched for the item, the item glowing; the tank on show is one
+      // whose water the item suits (a coral looked up from a freshwater tank goes to the reef)
+      const [, what, id] = target.split(':');
+      /** Show a tank that can take the item (its water and, for decor, its water class); false when none can. */
+      const suitTank = (envs: readonly Environment[] | undefined, wcs?: readonly WaterClass[]): boolean => {
+        const gg = getGame();
+        if (!gg || (!envs?.length && !wcs?.length)) return true;
+        const cur = (tankId && gg.tanks[tankId]) || gg.tanks[gg.tankOrder[0]];
+        if (cur && itemSuitsTank(cur, envs, wcs)) return true;
+        const other = gg.tankOrder.map((tid) => gg.tanks[tid]).find((t) => !!t && itemSuitsTank(t, envs, wcs));
+        if (other) {
+          setTankId(other.id);
+          return true;
+        }
+        // none can (Find said "Needs a reef tank"): Tanks, on the first such water that's open (else its lock glows,
+        // a tap away from how to unlock it) — the list searched for the item would only say "Nothing matches"
+        const want = PLAYABLE_WATER_CLASSES.filter((w) => itemSuitsTank({ environment: envOfWc(w), waterClass: w }, envs, wcs));
+        const pick = want.find((w) => waterClassLock(gg, w) === null) ?? want[0];
+        setTab('tanks');
+        setRoom(null);
+        if (pick) {
+          setTanksWc((was) => ({ wc: pick, n: (was?.n ?? 0) + 1 }));
+          glow(`[data-testid="build-wc-${pick}"]`);
+        }
+        return false;
+      };
+      if (what === 'decor') {
+        const d = DECOR.find((x) => x.id === id);
+        if (suitTank(d?.environments, d?.waterClasses)) {
+          setTab('decor');
+          setDecorCat('all');
+          setDecorQ(d?.name ?? '');
+          glow(`[data-testid="panel-build"] [data-decor-id="${CSS.escape(id)}"]`);
+        }
+      } else if (what === 'equipment') {
+        if (suitTank(getEquipmentDef(id)?.environments)) {
+          setTab('equipment');
+          setEquipKind('all');
+          setEquipQ(getEquipmentDef(id)?.name ?? '');
+          glow(`[data-testid="shop-equip-${CSS.escape(id)}"]`);
+        }
+      } else if (what === 'tank') {
+        setTab('tanks');
+        glow(`[data-tier-id="${CSS.escape(id)}"]`);
+      }
     } else if (target.startsWith('decor:')) {
       setTab('decor');
       setTankId(target.slice(6));
@@ -138,14 +204,14 @@ export function BuildPanel() {
         </div>
       }
     >
-      {tab === 'tanks' && <TanksTab g={g} />}
+      {tab === 'tanks' && <TanksTab key={tanksWc ? `wc-${tanksWc.n}` : 'tanks'} g={g} startWc={tanksWc?.wc} />}
       {needsTank && !tank && (
         <EmptyState icon={<Layers size={24} />} title="No tanks yet" action={<Button variant="primary" onClick={() => setTab('tanks')}>Choose a tank</Button>}>
           Buy an aquarium first.
         </EmptyState>
       )}
-      {tab === 'decor' && tank && <DecorTab g={g} tankId={tank.id} cat={decorCat} setCat={setDecorCat} />}
-      {tab === 'equipment' && tank && <EquipmentTab g={g} tankId={tank.id} />}
+      {tab === 'decor' && tank && <DecorTab g={g} tankId={tank.id} cat={decorCat} setCat={setDecorCat} q={decorQ} setQ={setDecorQ} />}
+      {tab === 'equipment' && tank && <EquipmentTab g={g} tankId={tank.id} q={equipQ} setQ={setEquipQ} kind={equipKind} setKind={setEquipKind} />}
       {tab === 'substrate' && tank && <SubstrateTab g={g} tankId={tank.id} />}
       {tab === 'facility' && <FacilityTab g={g} room={room} onRoom={setRoom} />}
     </PanelLayout>
@@ -154,22 +220,27 @@ export function BuildPanel() {
 
 // ───────────────────────── Tanks ─────────────────────────
 
-function TanksTab({ g }: { g: GameState }) {
+/** The environment a water class belongs to. */
+const envOfWc = (w: WaterClass): Environment => (w.startsWith('fresh') ? 'freshwater' : w === 'brackish' ? 'brackish' : 'marine');
+
+function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anything's "Needs a reef tank" */ startWc?: WaterClass }) {
   const { close } = useSheet();
   const marineOk = unlocked(g, 'marine_basics');
   const wcLocked = (w: WaterClass) => waterClassLock(g, w) !== null; // lane:brackish; chunk 7 (B-160): the rules' own lock
   // lane:fix-panels (P2-03) — arriving from a shop offer's "New tank": start on the water that animal needs
   const [wc, setWc] = useState<WaterClass>(() => {
+    if (startWc && !wcLocked(startWc)) return startWc;
     const wanted = peekOfferReturn()?.waterClass;
     return wanted && !wcLocked(wanted) ? wanted : ((g.tanks[g.tankOrder[0]]?.waterClass as WaterClass) ?? 'freshwater_tropical');
   });
   const [seeded, setSeeded] = useState(true);
+  const [buyable, setBuyable] = useState(false); // chunk 19 (QOL-003): only the sizes you can buy now
   const env = wc.startsWith('fresh') ? 'freshwater' : wc === 'brackish' ? 'brackish' : 'marine'; // lane:brackish
   const [a, b] = WATER_CLASS_TINT[wc];
 
   const place = (tier: TankTier) => {
-    const set = useUI.getState().set as (p: Record<string, unknown>) => void;
-    set({ tool: 'tank_place', placingTankTierId: tier.id, movingTankId: null, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panel: null, panelTarget: null });
+    // chunk 19 (QOL-001) — Build stays open beside the room (computers) or steps aside and comes back (phones)
+    startToolFromPanel({ tool: 'tank_place', placingTankTierId: tier.id, movingTankId: null, placingWaterClass: wc, placingSeeded: seeded, view: 'facility', panelTarget: null });
     useUI.getState().toast(`Choose a spot for your ${tier.name}. Press Esc to cancel.`, 'info');
   };
   const quick = (tier: TankTier) => {
@@ -201,7 +272,7 @@ function TanksTab({ g }: { g: GameState }) {
             const locked = wcLocked(w);
             const [ta, tb] = WATER_CLASS_TINT[w];
             return (
-              <button key={w} type="button" role="radio" aria-checked={wc === w} disabled={locked} className={clsx('pn-wc', wc === w && 'is-on')} onClick={() => setWc(w)} title={locked ? 'Locked' : WATER_CLASS_BLURB[w]}>
+              <button key={w} type="button" role="radio" aria-checked={wc === w} aria-disabled={locked || undefined} className={clsx('pn-wc', wc === w && 'is-on', locked && 'is-locked')} data-testid={`build-wc-${w}`} onClick={() => (locked ? askUnlock({ title: WATER_CLASS_LABEL[w], keys: waterClassKeys(w), lead: waterClassLock(g, w) ?? undefined }) : setWc(w))} title={locked ? `${WATER_CLASS_LABEL[w]} is locked: how to unlock it` : WATER_CLASS_BLURB[w]}>
                 <span className="pn-wc__swatch" style={{ background: `linear-gradient(180deg, ${ta}, ${tb})` }} aria-hidden />
                 <span className="pn-wc__label">{WATER_CLASS_LABEL[w]}</span>
                 {locked && <Lock size={12} className="pn-muted" aria-label="Locked" />}
@@ -218,6 +289,9 @@ function TanksTab({ g }: { g: GameState }) {
 
       <section>
         <SectionHead title="2 · Size" icon={<Layers size={14} />}>
+          <Chip onClick={() => setBuyable((v) => !v)} pressed={buyable} testId="build-tanks-buyable">
+            Can buy now
+          </Chip>
           <Checkbox checked={seeded} onChange={setSeeded} label="Seeded filter media" />
         </SectionHead>
         {seeded ? (
@@ -230,6 +304,9 @@ function TanksTab({ g }: { g: GameState }) {
           </Callout>
         )}
         <div className="pn-tiers">
+          {buyable && !TANK_TIERS.some((t) => unlocked(g, t.unlock) && g.finance.money >= safe(() => tankKitPrice(t.id, wc, seeded, g).total, t.price)) && (
+            <p className="pn-small pn-muted">Nothing you can buy right now.</p>
+          )}
           {TANK_TIERS.map((tier) => {
             const isUnlocked = unlocked(g, tier.unlock);
             // lane:fix-integrate-ui — the kit this player actually gets (locked gear swapped for unlocked units), priced as buyTank charges it (S16-03)
@@ -237,8 +314,9 @@ function TanksTab({ g }: { g: GameState }) {
             const swap = isUnlocked ? safe(() => kitSwapLine(kitEquipmentFor(g, tier.id, wc)), null) : null;
             const afford = g.finance.money >= kit.total;
             const hint = tier.unlock ? UNLOCK_RULE_BY_KEY[tier.unlock]?.hint ?? UNLOCK_KEYS[tier.unlock as keyof typeof UNLOCK_KEYS] : '';
+            if (buyable && !(isUnlocked && afford)) return null;
             return (
-              <div key={tier.id} className={clsx('pn-tier', !isUnlocked && 'is-locked')}>
+              <div key={tier.id} className={clsx('pn-tier', !isUnlocked && 'is-locked')} data-tier-id={tier.id}>
                 <TierSilhouette tier={tier} tintA={a} tintB={b} locked={!isUnlocked} />
                 <div className="pn-grow pn-col" style={{ gap: 4 }}>
                   <div className="pn-row pn-gap-2 pn-row--wrap">
@@ -279,7 +357,7 @@ function TanksTab({ g }: { g: GameState }) {
                       </Button>
                     </div>
                   ) : (
-                    <Chip icon={<Lock size={11} />}>Locked</Chip>
+                    <LockedButton title={`the ${tier.name}`} keys={[tier.unlock]} testId={`tank-locked-${tier.id}`} />
                   )}
                 </div>
               </div>
@@ -363,9 +441,19 @@ function habitatSuggestion(g: GameState): { ids: string[]; forName: string; step
   return { ids, forName: starter?.name ?? 'your first animal', stepTitle: step.title };
 }
 
-function DecorTab({ g, tankId, cat: catIn, setCat }: { g: GameState; tankId: string; cat: DecorCategory | 'all'; setCat: (c: DecorCategory | 'all') => void }) {
-  const { close } = useSheet();
+type DecorSort = 'price' | 'beauty' | 'name';
+
+/** chunk 19 (QOL-003) — the words a decor piece is found by: its name, category and what it does for the animals. */
+function decorWords(d: DecorDef): string {
+  const h = d.habitat;
+  return [d.name, CAT_META[d.category]?.label, h.hides >= 0.25 ? 'hiding spot shelter cave' : '', h.cover > 0.05 ? 'cover' : '', h.hitching > 0 ? 'hitching' : '', h.grazing > 0.05 ? 'grazing' : '', h.nitrateUptake > 0 ? 'eats nitrate' : '', h.enrichment > 0.1 ? 'enrichment' : '', d.anchors.some((a) => a.kind === 'host') ? 'host' : ''].join(' ');
+}
+
+function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; tankId: string; cat: DecorCategory | 'all'; setCat: (c: DecorCategory | 'all') => void; q: string; setQ: (v: string) => void }) {
   const tank = g.tanks[tankId];
+  // chunk 19 (ADR-0055 decision 3, QOL-003) — search, "Can buy now" and a sort beside the category chips
+  const [buyable, setBuyable] = useState(false);
+  const [sort, setSort] = useState<DecorSort>('price');
   const fits = useMemo(() => DECOR.filter((d) => d.environments.includes(tank.environment) && (!d.waterClasses?.length || d.waterClasses.includes(tank.waterClass))), [tank.environment, tank.waterClass]);
   const cats = useMemo(() => (Object.keys(CAT_META) as DecorCategory[]).filter((c) => fits.some((d) => d.category === c)), [fits]);
   // a guide deep link may ask for a category this tank has no items in
@@ -374,7 +462,11 @@ function DecorTab({ g, tankId, cat: catIn, setCat }: { g: GameState; tankId: str
   const suggested = suggestion ? suggestion.ids.map((id) => fits.find((d) => d.id === id)).filter((d): d is DecorDef => !!d) : [];
   const suggestedIds = new Set(suggested.map((d) => d.id));
   // suggested pieces sit in their own row at the top (whatever the category), so they are not repeated below
-  const list = fits.filter((d) => (cat === 'all' || d.category === cat) && !suggestedIds.has(d.id)).sort((a, b) => Number(!unlocked(g, a.unlock)) - Number(!unlocked(g, b.unlock)) || a.price - b.price);
+  const inCat = fits.filter((d) => (cat === 'all' || d.category === cat) && !suggestedIds.has(d.id));
+  const list = inCat
+    .filter((d) => matches(q, decorWords(d)) && (!buyable || (unlocked(g, d.unlock) && g.finance.money >= d.price)))
+    .sort((a, b) => Number(!unlocked(g, a.unlock)) - Number(!unlocked(g, b.unlock)) || (sort === 'beauty' ? b.beauty - a.beauty : sort === 'name' ? a.name.localeCompare(b.name) : 0) || a.price - b.price);
+  const narrowed = !!q.trim() || buyable;
   const stored = g.inventory.decor.filter((d) => {
     const def = DECOR.find((x) => x.id === d.defId);
     return def && def.environments.includes(tank.environment);
@@ -382,14 +474,31 @@ function DecorTab({ g, tankId, cat: catIn, setCat }: { g: GameState; tankId: str
   const residents = livingInTank(g, tankId);
 
   const choose = (def: DecorDef) => {
-    // the tool hint above the dock explains placement (click/tap the floor · R rotates · Esc cancels)
-    useUI.getState().set({ tool: 'decor_place', placingDecorDefId: def.id, placingFragId: null, view: 'tank', focusedTankId: tankId, panel: null, panelTarget: null });
+    // the tool hint above the dock explains placement (click/tap the floor · R rotates · Esc cancels); chunk 19
+    // (ADR-0055 decision 1, QOL-001) — Build stays open beside the tank, or steps aside on a phone and comes back
+    startToolFromPanel({ tool: 'decor_place', placingDecorDefId: def.id, placingFragId: null, view: 'tank', focusedTankId: tankId, panelTarget: null });
   };
 
   return (
     <div className="pn-stack pn-stack--lg">
+      {/* chunk 19 (QOL-003) — search first, so a phone sees what it finds right below */}
+      <div className="pn-findbar">
+        <SearchField value={q} onChange={setQ} placeholder="Search decor" label="Search decor by name or what it does" testId="decor-search" />
+        <Chip onClick={() => setBuyable((v) => !v)} pressed={buyable} testId="decor-buyable">
+          Can buy now
+        </Chip>
+        <label className="pn-sortsel">
+          <span>Sort</span>
+          <select className="pn-input" value={sort} onChange={(e) => setSort(e.target.value as DecorSort)} aria-label="Sort decor" data-testid="decor-sort">
+            <option value="price">Cheapest first</option>
+            <option value="beauty">Most beautiful</option>
+            <option value="name">A to Z</option>
+          </select>
+        </label>
+        {narrowed && <span className="pn-findbar__count" data-testid="decor-count">{list.length} of {inCat.length}</span>}
+      </div>
       <div className="pn-row pn-gap-2 pn-row--wrap">
-        <Button variant="default" onClick={() => { useUI.getState().set({ tool: 'decor_move', view: 'tank', focusedTankId: tankId, panel: null, panelTarget: null }); close(); }} disabled={tank.decor.length === 0}>
+        <Button variant="default" data-testid="build-rearrange" onClick={() => startToolFromPanel({ tool: 'decor_move', view: 'tank', focusedTankId: tankId, panelTarget: null })} disabled={tank.decor.length === 0}>
           <Move size={15} /> Rearrange decor
         </Button>
         <span className="pn-small pn-muted">
@@ -440,7 +549,11 @@ function DecorTab({ g, tankId, cat: catIn, setCat }: { g: GameState; tankId: str
             </Chip>
           ))}
         </div>
-        {list.length === 0 ? (
+        {list.length === 0 && narrowed ? (
+          <EmptyState icon={<Mountain size={24} />} title="Nothing matches" action={<Button onClick={() => { setQ(''); setBuyable(false); }} data-testid="decor-clear">Clear filters</Button>}>
+            Try other words, or another category.
+          </EmptyState>
+        ) : list.length === 0 ? (
           <EmptyState icon={<Mountain size={24} />} title="Nothing here for this water">
             {tank.environment === 'freshwater' ? 'Corals and anemones need a marine reef tank.' : 'Try another category.'}
           </EmptyState>
@@ -585,8 +698,9 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
   const afford = g.finance.money >= d.price;
   const h = d.habitat;
   const hint = d.unlock ? UNLOCK_RULE_BY_KEY[d.unlock]?.hint ?? UNLOCK_KEYS[d.unlock as keyof typeof UNLOCK_KEYS] : '';
+  // chunk 19 (ADR-0055 decision 5, QOL-006) — a locked piece opens "How to unlock" instead of doing nothing
   return (
-    <button type="button" className={clsx('pn-decor', !isUnlocked && 'is-locked', suggested && 'is-suggested')} data-testid={`build-decor-${d.id}`} disabled={!isUnlocked || !afford} onClick={onChoose} aria-label={`${d.name}, ${formatMoney(d.price)}${suggested ? ', suggested by the guide' : ''}${isUnlocked ? '' : ', locked'}`}>
+    <button type="button" className={clsx('pn-decor', !isUnlocked && 'is-locked', suggested && 'is-suggested')} data-testid={`build-decor-${d.id}`} data-decor-id={d.id} disabled={isUnlocked && !afford} aria-disabled={!isUnlocked || undefined} onClick={isUnlocked ? onChoose : () => askUnlock({ title: d.name, keys: [d.unlock] })} aria-label={`${d.name}, ${formatMoney(d.price)}${suggested ? ', suggested by the guide' : ''}${isUnlocked ? '' : ', locked: how to unlock it'}`}>
       {suggested && (
         <span className="pn-decor__suggest">
           <Sparkles size={10} aria-hidden /> Suggested
@@ -653,13 +767,37 @@ function EquipIcon({ kind }: { kind?: string }) {
   return <I size={16} aria-hidden />;
 }
 
-function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
+/** chunk 19 (QOL-003) — the Equipment list's kind chips (drafted words, ADR-0055 decision 8). */
+const EQUIP_CHIP: Record<EquipmentKind, string> = {
+  filter: 'Filters',
+  heater: 'Heaters',
+  chiller: 'Chillers',
+  fan: 'Fans',
+  light: 'Lights',
+  airstone: 'Air stones',
+  powerhead: 'Powerheads',
+  wavemaker: 'Wavemakers',
+  skimmer: 'Skimmers',
+  ato: 'Top-off',
+  co2: 'CO₂',
+  autofeeder: 'Feeders',
+  doser: 'Dosers',
+  uv: 'UV',
+  refugium: 'Refugiums',
+  lid: 'Lids',
+  water_changer: 'Water changers',
+};
+
+function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tankId: string; q: string; setQ: (v: string) => void; kind: EquipmentKind | 'all'; setKind: (k: EquipmentKind | 'all') => void }) {
   const { unit: tempUnit } = useTempText();
   const tank = g.tanks[tankId];
   const gal = gallonsOf(tank);
   const installed = tank.equipment;
   const storage = g.inventory.equipment.filter((e) => getEquipmentDef(e.defId)?.environments.includes(tank.environment));
-  const shop = EQUIPMENT.filter((e) => e.environments.includes(tank.environment)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: installed.some((x) => x.defId === e.id) }));
+  const shopAll = EQUIPMENT.filter((e) => e.environments.includes(tank.environment)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: installed.some((x) => x.defId === e.id) }));
+  // chunk 19 (ADR-0055 decision 3, QOL-003) — what to buy, searched and by kind (a tank card's "Buy a heater" opens on Heaters)
+  const kinds = [...new Set(shopAll.map(({ e }) => e.kind))].filter((k) => EQUIP_CHIP[k]);
+  const shop = shopAll.filter(({ e }) => (kind === 'all' || e.kind === kind) && matches(q, e.name, EQUIP_CHIP[e.kind], e.description));
   const upkeep = installed.reduce((a, e) => a + (getEquipmentDef(e.defId)?.upkeep ?? 0), 0);
   // lane:fit — installed gear that isn't helping these animals, and how a stored unit would fit this tank
   const gearFit = new Map(safe(() => tankGearIssues(g, tankId), []).map((i) => [i.equipmentId, i.verdict]));
@@ -765,7 +903,25 @@ function EquipmentTab({ g, tankId }: { g: GameState; tankId: string }) {
 
       <section>
         <SectionHead title="Buy equipment" icon={<Package size={14} />} />
-        {shop.length === 0 ? (
+        <div className="pn-findbar" style={{ marginBottom: 10 }}>
+          <SearchField value={q} onChange={setQ} placeholder="Search equipment" label="Search equipment by name or kind" testId="build-equip-search" />
+          {(q.trim() || kind !== 'all') && <span className="pn-findbar__count" data-testid="build-equip-count">{shop.length} of {shopAll.length}</span>}
+        </div>
+        <div className="pn-chips" style={{ marginBottom: 12 }}>
+          <Chip onClick={() => setKind('all')} pressed={kind === 'all'} testId="build-equip-kind-all">
+            Everything
+          </Chip>
+          {kinds.map((k) => (
+            <Chip key={k} onClick={() => setKind(k)} pressed={kind === k} icon={<EquipIcon kind={k} />} testId={`build-equip-kind-${k}`}>
+              {EQUIP_CHIP[k]}
+            </Chip>
+          ))}
+        </div>
+        {shop.length === 0 && shopAll.length > 0 ? (
+          <EmptyState icon={<Package size={22} />} title="Nothing matches" action={<Button onClick={() => { setQ(''); setKind('all'); }} data-testid="build-equip-clear">Clear filters</Button>}>
+            Try other words, or another kind.
+          </EmptyState>
+        ) : shop.length === 0 ? (
           <EmptyState icon={<Package size={22} />} title="Catalogue coming soon" />
         ) : (
           <div className="pn-col pn-gap-2">
@@ -849,7 +1005,7 @@ function SubstrateTab({ g, tankId }: { g: GameState; tankId: string }) {
                   <div className="pn-tiny pn-muted">
                     {s.description} · {s.grainMm} mm grain
                   </div>
-                  <div className="pn-tiny">{current ? 'Tap a colour to recolour (free)' : locked ? <><Lock size={10} /> Locked</> : <>Replace for <b>{formatMoney(cost)}</b></>}</div>
+                  <div className="pn-tiny">{current ? 'Tap a colour to recolour (free)' : locked ? <LockedButton title={s.name} keys={[s.unlock]} testId={`build-substrate-locked-${s.kind}`} /> : <>Replace for <b>{formatMoney(cost)}</b></>}</div>
                 </div>
               );
             })}

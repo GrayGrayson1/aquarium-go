@@ -21,6 +21,9 @@ import { equipmentFit } from '@/sim/care/fit'; // lane:fit
 import { foodWhoEats } from '@/ui/common/foodStock'; // lane:fit
 import { FitBadge, FitLine, FoodEaters } from '@/ui/common/FitNote'; // lane:fit
 import { CulturesSection, DryFoodSection, LiveFoodSection, SaltRow, foodsShownAbove } from './SuppliesAutomation'; // lane:automation (chunk 5)
+import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
+import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
+import { matches, queryWords } from '../common/match'; // chunk 19 (QOL-003)
 
 /** How many foods show before "Show all" — foods you own (or have owned) and foods made for your animals always show. */
 const FOOD_PREVIEW = 8;
@@ -37,12 +40,15 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
 
   const ownedSpecies = useMemo(() => [...new Set(ownedCreatures(g).map((c) => c.speciesId))].map((id) => speciesOf(id)).filter((x): x is NonNullable<typeof x> => !!x), [g]);
   const [allFoods, setAllFoods] = useState(false);
+  // chunk 19 (ADR-0055 decision 3, QOL-003) — search food and gear; a search lists every food that matches
+  const [q, setQ] = useState('');
+  const searching = queryWords(q).length > 0;
 
   // lane:automation (chunk 5, INTAKE C-65) — foods the new sections above show keep that one row; the list leaves them out
   const above = useMemo(() => foodsShownAbove(g), [g]);
   const foods = useMemo(() => {
     const eaters = (f: FoodDef) => ownedSpecies.filter((sp) => eatsFood(sp, f));
-    const rows = FOODS.filter((f) => !above.has(f.id)).map((f) => {
+    const rows = FOODS.filter((f) => (searching ? matches(q, f.name, f.description, 'food') : !above.has(f.id))).map((f) => {
       const e = eaters(f);
       const known = f.id in g.inventory.foods; // owned now, or bought/used before (the key stays at 0 when it runs out)
       const specific = e.length > 0 && madeFor(f, e);
@@ -58,9 +64,9 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
         b.have - a.have ||
         a.f.price - b.f.price,
     );
-  }, [ownedSpecies, g.inventory.foods, above]);
+  }, [ownedSpecies, g.inventory.foods, above, searching, q]);
   const shownFoods = useMemo(() => {
-    if (allFoods) return foods;
+    if (allFoods || searching) return foods;
     const forced = (r: (typeof foods)[number]) => r.pinned || r.f.id === focusFood?.id;
     let extra = Math.max(0, FOOD_PREVIEW - foods.filter(forced).length);
     return foods.filter((r) => {
@@ -69,7 +75,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
       extra--;
       return true;
     });
-  }, [foods, allFoods, focusFood?.id]);
+  }, [foods, allFoods, focusFood?.id, searching]);
 
   // deep link: bring the requested food into view and flash it (after the panel's own scroll-to-top on tab switch)
   const [flash, setFlash] = useState<string | null>(null);
@@ -92,8 +98,8 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
   const equipment = useMemo(() => {
     if (!tank) return [];
     const gal = gallonsOf(tank);
-    return EQUIPMENT.filter((e) => e.environments.includes(tank.environment)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: tank.equipment.some((x) => x.defId === e.id) }));
-  }, [tank]);
+    return EQUIPMENT.filter((e) => e.environments.includes(tank.environment) && matches(q, e.name, titleCase(e.kind), e.description)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: tank.equipment.some((x) => x.defId === e.id) }));
+  }, [tank, q]);
 
   const byKind = useMemo(() => {
     const m = new Map<string, typeof equipment>();
@@ -107,14 +113,20 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
 
   return (
     <div className="pn-stack pn-stack--lg">
+      <div className="pn-findbar">
+        <SearchField value={q} onChange={setQ} placeholder="Search food and equipment" label="Search food and equipment" testId="supplies-search" />
+        {searching && <span className="pn-findbar__count" data-testid="supplies-count">{foods.length + equipment.length} found</span>}
+      </div>
       {/* lane:automation (chunk 5, DESIGN-S3D §8.5) — Live food, For the cultures, Dry food and Marine salt mix first */}
-      <LiveFoodSection g={g} flash={flash} />
-      <CulturesSection g={g} flash={flash} />
-      <DryFoodSection g={g} flash={flash} />
-      {(hasMarine || g.inventory.salt > 0 || !!g.facility.water) && <SaltRow g={g} flash={flash} />}
+      {!searching && <LiveFoodSection g={g} flash={flash} />}
+      {!searching && <CulturesSection g={g} flash={flash} />}
+      {!searching && <DryFoodSection g={g} flash={flash} />}
+      {(hasMarine || g.inventory.salt > 0 || !!g.facility.water) && (!searching || matches(q, 'marine salt mix')) && <SaltRow g={g} flash={flash} />}
       <section>
         <SectionHead title="Food" icon={<Utensils size={14} />} />
-        {foods.length === 0 ? (
+        {foods.length === 0 && searching ? (
+          <p className="pn-small pn-muted" data-testid="supplies-food-none">No food matches.</p>
+        ) : foods.length === 0 ? (
           <EmptyState icon={<Utensils size={22} />} title="Food catalogue coming soon">
             Your supplier is still unpacking.
           </EmptyState>
@@ -142,9 +154,16 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                   <div className="pn-supply__side">
                     <span className={clsx('pn-tiny pn-num-t', have <= 0 && f.id in g.inventory.foods && eaters.length > 0 ? 'pn-tone-watch' : 'pn-muted')}>{have <= 0 && f.id in g.inventory.foods ? 'Out of stock' : `${have} serving${have === 1 ? '' : 's'}`}</span>
                     {locked ? (
-                      <span className="pn-tiny pn-muted">
-                        <Lock size={11} /> {f.unlock && !unlocked(g, f.unlock) ? UNLOCK_KEYS[f.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : f.soldWith ? `Comes with ${safe(() => soldWithWords(f), 'its animals')}` : 'Locked'}
-                      </span>
+                      f.unlock && !unlocked(g, f.unlock) ? (
+                        // chunk 19 (ADR-0055 decision 5, QOL-006) — what it waits for, and how to get there
+                        <LockedButton title={f.name} keys={[f.unlock]} testId={`supplies-food-locked-${f.id}`}>
+                          {UNLOCK_KEYS[f.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked'}
+                        </LockedButton>
+                      ) : (
+                        <span className="pn-tiny pn-muted">
+                          <Lock size={11} /> {f.soldWith ? `Comes with ${safe(() => soldWithWords(f), 'its animals')}` : 'Locked'}
+                        </span>
+                      )
                     ) : (
                       <Button size="sm" silent onClick={() => act({ k: 'buyFood', food: f.id, packs: 1 }, { sound: 'coin' })} disabled={g.finance.money < f.price}>
                         Buy · {formatMoney(f.price)}
@@ -169,6 +188,8 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
         </SectionHead>
         {!tank ? (
           <EmptyState icon={<Wrench size={22} />} title="No tank to equip" />
+        ) : byKind.length === 0 && searching ? (
+          <p className="pn-small pn-muted" data-testid="supplies-equip-none">No equipment matches.</p>
         ) : byKind.length === 0 ? (
           <EmptyState icon={<Package size={22} />} title="Equipment catalogue coming soon">
             Filters, heaters and lights will appear here.
@@ -219,7 +240,7 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
   // lane:qa-r3 — buyEquipment keeps the install's heads-up after the receipt (a caution result toasts as a warning)
   const buy = () => act({ k: 'buyEquipment', tank: tankId, def: e.id }, { sound: 'coin' });
   return (
-    <div className={clsx('pn-supply', poor && 'is-poorfit', fit?.level === 'harmful' && 'is-harmful')} data-testid={`shop-equip-${e.id}`} data-fit={fit?.level}>
+    <div className={clsx('pn-supply', poor && 'is-poorfit', fit?.level === 'harmful' && 'is-harmful')} data-testid={`shop-equip-${e.id}`} data-fit={fit?.level} data-equip-kind={e.kind /* chunk 19 (QOL-002): a tank card's "Buy a heater" points here */}>
       <div className="pn-grow">
         <div className="pn-row pn-gap-2 pn-row--wrap">
           <b>{e.name}</b>
@@ -251,9 +272,10 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
       <div className="pn-supply__side">
         <Money value={e.price} />
         {locked ? (
-          <span className="pn-tiny pn-muted">
-            <Lock size={11} /> {e.unlock ? UNLOCK_KEYS[e.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : 'Locked'}
-          </span>
+          // chunk 19 (ADR-0055 decision 5, QOL-006) — what it waits for, and how to get there
+          <LockedButton title={e.name} keys={[e.unlock]} testId={`supplies-equip-locked-${e.id}`}>
+            {e.unlock ? UNLOCK_KEYS[e.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : 'Locked'}
+          </LockedButton>
         ) : (
           <Button
             size="sm"

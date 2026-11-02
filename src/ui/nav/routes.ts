@@ -380,3 +380,24 @@ export function routeLabel(route: Route, names: RouteNames = {}): string | null 
   const spec = byId(PANEL_TABS[p], route.tab);
   return spec ? `${title}${SEP}${spec.label}` : title;
 }
+
+/**
+ * chunk 19 (ADR-0055 decision 3, QOL-004) — every screen Find anything can open: each panel's tabs (and Settings'),
+ * with the names the "Then:" pills use ("Market › Supplies"). A panel without tabs is one screen.
+ */
+export interface ScreenSpec {
+  route: Route;
+  /** "Market", "Market › Supplies", "Settings › Notifications". */
+  name: string;
+  panel: NavPanel | 'settings';
+}
+export function screenList(): ScreenSpec[] {
+  const out: ScreenSpec[] = [];
+  for (const p of NAV_PANELS) {
+    const list = PANEL_TABS[p];
+    if (!list.length) out.push({ route: panel(p), name: PANEL_LABEL[p], panel: p });
+    for (const t of list) out.push({ route: panel(p, t.id), name: t.word === null ? PANEL_LABEL[p] : `${PANEL_LABEL[p]} › ${t.label}`, panel: p });
+  }
+  for (const t of SETTINGS_TABS) out.push({ route: { kind: 'settings', tab: t.id as SettingsTab }, name: t.word === null ? 'Settings' : `Settings › ${t.label}`, panel: 'settings' });
+  return out;
+}
