@@ -83,6 +83,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 16 | 31 new species (ADR-0052) | Done 2026-10-25 (released in 0.8.0; Chase, at the owner's request; the owner's answers, ADR-0052 rounds 1–4). 31 species (48 → 79) in three waves with real colour forms, young and male/female colours, their own behaviour and art; save format v3; the lab's "A friend's reef". Its full run (`96c950c`): typecheck, unit 3,814, build, e2e 335 of 335; the fresh review's, the confirmation's and the AI fixes' reviews' blockers fixed |
 | 17 | Big-tank species, and no animal in the shop before its tank (ADR-0053) | Brief and design written 2026-10-30 (Marshall, at the owner's request; `docs/agent/design/CHUNK-17/BIG-TANKS.md`); handed to Skye to build |
 | 18 | The owner deletes anything in Social, from the database (ADR-0054) | Done 2026-11-01 (released in 0.9.1). Its full run (`f15b8d7`): typecheck, unit 4,138, build, e2e 341 of 341; the fresh review found no blockers (its notes fixed, `a780b79`), the re-check's one blocker fixed (`f15b8d7`) and re-checked clean |
+| 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Started 2026-11-02 |
 
 **Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
@@ -1843,6 +1844,69 @@ site, with the smoke tests.
   0.9.0 shop server, so opening a shared shop said "A new version of Aquarium Go is out. Reload…" and a reload
   loaded 0.8.0 again; fixed by the static site's 0.9.1 deploy. And Brave Shields blocks the shop server's `/health`,
   leaving "Waking the shared shop…" up for good (B-230).
+
+### 19. Quality of life: panels that stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) — started 2026-11-02
+
+**Why.** The owner (2026-11-02, verbatim in ADR-0055): Build closes after a decor piece is placed ("I'd rather probably
+close the page that I was working with than have it automatically close and have to go find it again"); the tank card
+should link to whatever fixes what it names; "some way to search through … market or builds or … research … or …
+filter"; "better camera controls" for decorating; "if I can't buy a tank, it just says locked"; the shared shop's strip
+"gets in the way of the front orbit follow close" ("Maybe it's like. A little drop down"); the intro guide "super user
+friendly and navigates you places and kind of shows you around and it's animated and it's beautiful". The four
+design questions were answered with the recommended options (ADR-0055).
+
+**What (ADR-0055 decisions 1 to 8).**
+- *QOL-001, panels stay open* (`src/ui/panels/common/aside.ts`, PanelHost, Build, the frag action, the Shop's buy).
+  A tool started from a panel (decor, stored decor, a frag, Rearrange, Buy & place) never closes it: a side sheet
+  stays; a bottom sheet steps aside (`useUI.panelAside`, the panel kept mounted off screen, inert, its tab, filters,
+  search and scroll intact, no occlusion) and comes back when the tool ends by placing, Done, Cancel or Escape, but not
+  when the player opened another panel, a card, Watch or Photo meanwhile. On a phone a placed piece is seen landing
+  (about 0.9 s) before the sheet returns. The Market stays open after a purchase; the toast's "See them" goes to the
+  tank with the animal's card (`Toast.action`). Desktop: the tool hint and the camera's free rect sit left of the sheet.
+- *QOL-002, fix links* (`src/ui/common/fixLinks.ts`, pure: an attention item or water issue → a link; `goFix` runs
+  it). In-card fixes switch tab, scroll to the control and make it glow (`data-fix` ids); out-of-card ones open the
+  panel at the spot (Supplies on the food, Build › Equipment for the tank filtered to the kind, the failed unit's row,
+  the animal's card). The card's Equipment tab gets Repair on failed or worn gear; gear under 25 % condition is an
+  attention item ("wearing out"). The alerts drawer's tank rows reuse the links.
+- *QOL-003, search and filters* (`src/ui/panels/common/SearchField.tsx`, `src/ui/panels/common/match.ts`): Market ›
+  Shop (search over species, morph, strain, seller and traits, in the shop filters; a sort), Supplies (search), Build ›
+  Tanks ("Can buy now"), Decor (search, "Can buy now", sort), Equipment (search, kind chips), Research (search and
+  status chips; the unlock map searched). "Clear filters" clears the search too.
+- *QOL-004, Find anything* (`src/ui/search/`): the top bar's search button (phones: More), ⌘K / Ctrl+K and /; a pure
+  index (`findAnything(g, q)`) over screens, tanks, animals, stock, supplies, decor, equipment, tank sizes, research,
+  unlocks and discovered species; arrow keys, Enter, Escape; a result navigates (the router's `go`, panel targets) and
+  a list item opens its list searched for it (`find:` panel targets) with the item glowing.
+- *QOL-005, the decorating camera* (`src/render/camera/CameraRig.tsx` mode `decorate`, `src/render/camera/decorCam.ts`,
+  `src/ui/hud/DecorCamPad.tsx`, DecorEditor's input): while `decor_place` or `decor_move` runs in tank view the rig
+  frames the floor from about 30° above; yaw ±1.45 rad, pitch 0.05 to 1.45, zoom 0.3 to 1.6, a slide along the floor
+  within the tank. Right/middle-drag orbits, Shift+right-drag slides, the wheel zooms, arrows orbit and tilt,
+  Shift+arrows slide; touch: two-finger drag orbits, pinch zooms, twist turns the piece; size moves to − / + on the
+  hint. The pad: turn, tilt, zoom, Front · Above · Left · Right · Reset. Back to the player's camera when the tool ends.
+- *QOL-006, locks explained* (`src/ui/panels/common/UnlockHelp.tsx`): "How to unlock …" (the rule's hint, the
+  requirements with progress through `evalCond`, the research that grants it with "Open in Research", the facility
+  when a venue is needed) from every Locked in Build (tanks, water types, decor, substrates), Market (offers, offer
+  detail, Supplies) and Research.
+- *QOL-007, the shared shop's dropdown* (`src/ui/shared/SharedMenu.tsx`): the strip goes; in a shared shop the
+  top-left pill (desktop: the shop's name, "👥 {n} here", the day and time; phones: "👥 {n} · {time}") opens a dropdown
+  with who's here, the owner's members list (pause and speed, spending), Money and "Back to my aquarium".
+- *QOL-008, the guide* (`src/ui/tutorial/`): the care chain is unchanged (`src/data/quests.ts` untouched); a dimmed
+  spotlight with a glowing ring and a tapping hand follows each step into the place it needs (sub-targets by UI state:
+  the food picker's food, the water to tap, Build › Decor's suggested piece, the tank card's reading, the Market's
+  stock, Build's tank size, Research's next project). The finale offers "Show me around": a tour of every area and
+  destination open to the player (each opened and pointed at; Next, Back, Skip; phones through More), also from
+  Settings › Help ("Take the tour") and Find anything.
+- Nothing under `src/sim`, `src/data`, `src/types` or the persistence files changes: the shared build hash stays.
+
+**Requirements.** QOL-001 to QOL-008 (`docs/agent/REQUIREMENTS.json`).
+
+**Done when** the four checks pass on the final code; unit tests cover the pure parts (aside rules, fix links, the
+matchers, `findAnything`, the decorating camera's clamps and presets, lock help, the guide's sub-targets and the tour's
+stops) and e2e covers each item (Build stays open on a computer and comes back on a phone after a placement; a tank
+card link opens the right place; search narrows the Market and Build; Find anything goes to an item; the view pad
+moves the decorating camera; a Locked tank size explains itself; the shared shop's dropdown in both engines; the
+spotlight follows the feed step and the tour runs to the end); a fresh reviewer (Opus 5.5, max effort) has read
+`6f25ec3..HEAD` against this brief and its blockers are fixed; the owner has seen the new words with screenshots
+(ADR-0055 decision 8). Then 0.9.2 with the owner's go-ahead.
 
 ## Releases
 
