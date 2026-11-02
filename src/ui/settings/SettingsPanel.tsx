@@ -26,6 +26,7 @@ import {
   Heart,
   Eye,
   Tag,
+  Compass,
 } from 'lucide-react';
 import { useUI } from '@/state/ui';
 import { useGame } from '@/state/game';
@@ -49,6 +50,7 @@ import { useSharedMode } from '@/state/sharedMode'; // chunk 13
 import { onScreen, useShared } from '../shared/store';
 import { leaveSharedShop } from '../shared/session';
 import { SHARED_WORDS } from '../shared/words';
+import { startTour } from '../tutorial/tourStore'; // chunk 19 (ADR-0055 decision 7, QOL-008)
 
 type Tab = 'general' | 'display' | 'saves' | 'account' | 'notifications' | 'about';
 /** chunk 8 (REL-031) — Account only where Social exists (`socialAvailable()`). */
@@ -145,6 +147,9 @@ function GeneralTab() {
   );
 }
 
+/** chunk 19 (QOL-008) — "Take the tour" needs an aquarium on screen (not the title, not a shared shop: it has no guide). */
+const inGameNow = () => useUI.getState().screen === 'game' && !!useGame.getState().game && useSharedMode.getState().club === null;
+
 function DisplayTab() {
   const s = useSettings();
   const up = s.update;
@@ -186,6 +191,14 @@ function DisplayTab() {
         <Row label="Guide hints" description="Show the tutorial coach card." icon={<Lightbulb size={16} />}>
           <Toggle label="Guide hints" checked={s.showTutorialHints} onChange={(v) => up({ showTutorialHints: v })} />
         </Row>
+        {inGameNow() && (
+          // chunk 19 (ADR-0055 decision 7, QOL-008) — the tour, any time
+          <Row label="Take the tour" description="A quick look at where everything is." icon={<Compass size={16} />}>
+            <Button size="sm" data-testid="settings-tour" onClick={() => { useUI.getState().set({ panel: null }); startTour(); }}>
+              Show me around
+            </Button>
+          </Row>
+        )}
         <Row label="Fade interface while watching" description="The HUD softly fades after a few quiet seconds in tank view. Move the pointer to bring it back." icon={<Eye size={16} />}>
           <Toggle label="Fade interface while watching" checked={calm} onChange={(v) => usePrefs.getState().update({ calmHud: v })} />
         </Row>

@@ -185,3 +185,31 @@
 .ag-toolhint__mini:hover { background: var(--c-glass-hover); color: var(--c-ink); }
 @media (pointer: coarse) { .ag-toolhint__mini { width: 38px; height: 38px; } }
 :root[data-contrast='high'] .ag-decorpad { background: var(--c-glass-strong); backdrop-filter: none; -webkit-backdrop-filter: none; border-color: var(--c-line-strong); }
+
+/* ───────────── QOL-008: the guide's spotlight and the tour ───────────── */
+.ag-spot { position: fixed; inset: 0; z-index: 64; pointer-events: none; }
+.ag-spot__dim { position: absolute; inset: 0; }
+.ag-spot__ring {
+  position: absolute; border-radius: 18px; border: 2px solid var(--c-aqua);
+  box-shadow: 0 0 0 4px rgba(94, 234, 212, 0.2), 0 0 30px rgba(94, 234, 212, 0.55); animation: ag-ring-pulse 1.8s ease-in-out infinite;
+}
+.ag-spot__ring.is-round { border-radius: 999px; }
+.ag-spot__hand { position: absolute; color: #ffffff; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6)); animation: ag-spot-tap 1.4s ease-in-out infinite; transform-origin: 30% 10%; }
+@keyframes ag-spot-tap { 0%, 100% { transform: translate(0, 0) scale(1); } 40% { transform: translate(-5px, -7px) scale(1.06); } 55% { transform: translate(-2px, -3px) scale(0.94); } }
+:root[data-reduced-motion='true'] .ag-spot__ring, :root[data-reduced-motion='true'] .ag-spot__hand { animation: none; }
+/* the guide card stays bright above the dim (not over a phone's full-height sheet) */
+.ag-ui:has(.ag-spot__dim) .ag-hud:not(.has-bottom-sheet) .ag-hud__coach { z-index: 66; }
+
+.ag-tour {
+  position: fixed; left: 0; top: 0; z-index: 67; display: grid; gap: 10px; padding: 16px 16px 14px; max-width: calc(100vw - 24px);
+  border-radius: var(--r-xl); background: var(--c-glass-strong); backdrop-filter: var(--blur-strong); -webkit-backdrop-filter: var(--blur-strong);
+  border: 1px solid rgba(94, 234, 212, 0.35); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 30px rgba(94, 234, 212, 0.14); color: var(--c-ink); pointer-events: auto;
+}
+.ag-tour__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ag-tour__badge { display: inline-flex; align-items: center; gap: 6px; font-size: calc(11px * var(--text-scale)); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-aqua); }
+.ag-tour__skip { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; color: var(--c-ink-3); cursor: pointer; }
+.ag-tour__skip:hover { background: var(--c-fill); color: var(--c-ink); }
+.ag-tour__title { margin: 0; font-family: var(--font-display); font-size: calc(19px * var(--text-scale)); font-weight: 560; line-height: 1.2; }
+.ag-tour__body { margin: 6px 0 0; font-size: calc(13.5px * var(--text-scale)); line-height: 1.5; color: var(--c-ink-2); }
+.ag-tour__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+:root[data-contrast='high'] .ag-tour { background: var(--c-bg); backdrop-filter: none; -webkit-backdrop-filter: none; border-color: var(--c-aqua); }

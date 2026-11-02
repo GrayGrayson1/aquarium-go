@@ -52,6 +52,7 @@ import { usePanelAsideRules } from '../panels/common/aside'; // chunk 19 (ADR-00
 import { FindAnything, useFindKeys } from '../search/FindAnything'; // chunk 19 (ADR-0055 decision 3, QOL-004)
 import { DecorCamPad, isDecorating } from './DecorCamPad'; // chunk 19 (ADR-0055 decision 4, QOL-005)
 import { UnlockHelpHost } from '../panels/common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006): the one lock box
+import { Tour } from '../tutorial/Tour'; // chunk 19 (ADR-0055 decision 7, QOL-008)
 
 const CALM_AFTER_MS = 6000;
 /** How long after a waking touch its click counts as part of the wake. */
@@ -70,7 +71,7 @@ function canCalm(keyboard: boolean): boolean {
   if (!usePrefs.getState().calmHud || ui.screen !== 'game' || ui.view !== 'tank') return false;
   if (ui.panel || ui.tool !== 'none' || ui.selectedCreatureId || ui.photoMode || ui.hudHidden || ui.partyMode) return false;
   if (shell.popover || shell.tankCardOpen || shell.moveCreatureId || shell.photo) return false;
-  if (document.querySelector('.ag-modal-backdrop, [data-pn-modal], .ag-tut-ring, .ag-welcome')) return false;
+  if (document.querySelector('.ag-modal-backdrop, [data-pn-modal], .ag-tut-ring, .ag-welcome, .ag-spot__ring, .ag-tour, .ag-find-backdrop')) return false;
   // keyboard users keep the HUD while a control has visible focus (a mouse click leaves plain focus behind)
   const a = document.activeElement as HTMLElement | null;
   if (keyboard && a && a !== document.body && a.closest?.('.ag-hud, .ag-sheet, .pn-sheet')) {
@@ -416,6 +417,9 @@ export function GameHUD() {
       </ErrorBoundary>
       <ErrorBoundary name="unlock-help">
         <UnlockHelpHost />
+      </ErrorBoundary>
+      <ErrorBoundary name="tour">
+        <Tour />
       </ErrorBoundary>
       <ErrorBoundary name="welcome">
         <WelcomeBack />

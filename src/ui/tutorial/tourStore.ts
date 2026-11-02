@@ -1,6 +1,6 @@
 /**
  * chunk 19 (ADR-0055 decision 7, QOL-008) — the tour of the whole game ("Show me around"): whether it runs and which
- * stop it is on. Started from the guide's finale, Settings › General ("Take the tour") and Find anything; the tour
+ * stop it is on. Started from the guide's finale, Settings › Play & access ("Take the tour") and Find anything; the tour
  * itself is src/ui/tutorial/Tour.tsx. Its own module so the starters don't load the tour. OWNER: lane "ui-shell".
  */
 import { create } from 'zustand';
