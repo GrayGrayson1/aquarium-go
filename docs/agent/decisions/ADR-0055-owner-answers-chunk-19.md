@@ -123,3 +123,9 @@ Staff, Shows, Social or shared shops, and point at things with a ring only.
    and the tour) is drafted to the copy rules and shown to the owner, with screenshots, before 0.9.2 is released.
    Nothing under `src/sim`, `src/data` (save the guide's words if the owner changes them), `src/types` or the
    persistence files changes, so the shared-shop build hash stays and nobody in a shared shop is asked to reload.
+
+   **Answered 2026-11-02.** The review page (https://claude.ai/artifact/A88guJcyx17PooaThmqjc7, version 2: every new
+   line with screenshots, after both reviews, including the phone pill's "👥 {n} ▾" over the time instead of the
+   brief's one line) was put to the owner with "a yes on the wording … and whether to release 0.9.2". The owner,
+   verbatim: "Yeah go ahead and make sure this is on GitHub, everything's updated, and it's on Render. Make sure it's
+   updated everywhere and it's pushed." The words ship as shown, the pill included, in 0.9.2.
