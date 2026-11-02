@@ -23,8 +23,10 @@ import { tankLocalToWorld, worldToTankLocal } from './space';
 import { updateFacilityOverflow } from './facilityOverflow';
 import { pickSightline } from './sightline'; // lane:w2-visual
 import { tankSlide } from './followFrame';
-import { cameraFX, cameraInput, focusToMetres, noteCameraUserMove, usePhotoSettings, zoomToFov, type RigMode } from './cameraFX';
+import { cameraFX, cameraHooks, cameraInput, focusToMetres, noteCameraUserMove, usePhotoSettings, zoomToFov, type RigMode } from './cameraFX';
 import { computeFreeRect, computeMenuRect, isPhoneLayout, measureOcclusion, viewportState, type FreeRect, type Occlusion } from './viewport';
+import { decorCam, easeDecorCam, enterDecorCam, exitDistance, leaveDecorCam, nudgeDecorCam, slideDecorCam, DECOR_LIMITS, DECOR_STEP } from './decorCam'; // chunk 19 (ADR-0055 decision 4, QOL-005)
+import { editingDecor } from '../decor/registry'; // chunk 19 (QOL-005): Rearrange's drag on empty floor orbits
 
 const DEFAULT_FOV = 38;
 
@@ -294,6 +296,8 @@ function resolveMode(g: GameState | null): { mode: RigMode; tank: Tank | null; c
   const tank = focusTank(g, ui.focusedTankId);
   if (!tank) return { mode: 'facility', tank: null, creatureId: null };
   if (ui.photoMode || ui.cameraMode === 'photo') return { mode: 'photo', tank, creatureId: ui.followCreatureId ?? ui.selectedCreatureId };
+  // chunk 19 (ADR-0055 decision 4, QOL-005) — a decor piece in hand, or Rearrange: the decorating view (decorCam.ts)
+  if (ui.tool === 'decor_place' || ui.tool === 'decor_move') return { mode: 'decorate', tank, creatureId: null };
   const cm = ui.cameraMode;
   if (cm === 'follow' || cm === 'close') {
     const id = ui.followCreatureId ?? ui.selectedCreatureId;
@@ -474,12 +478,25 @@ export function CameraRig() {
           rig.pitch = clamp(rig.pitch + dy * 0.003 * k, -0.35, 0.7);
           rig.springBack = true;
           break;
+        case 'decorate': {
+          // chunk 19 (QOL-005) — orbit almost to the side, tilt to straight down (decorCam.ts holds the pose)
+          const w = decorCam.want;
+          w.yaw = clamp(w.yaw - dx * 0.005 * k, -DECOR_LIMITS.yaw, DECOR_LIMITS.yaw);
+          w.pitch = clamp(w.pitch + dy * 0.004 * k, DECOR_LIMITS.pitchMin, DECOR_LIMITS.pitchMax);
+          break;
+        }
         default:
           break;
       }
     };
     const pan = (dx: number, dy: number) => {
       const h = el.clientHeight || 800;
+      if (rig.mode === 'decorate') {
+        // chunk 19 (QOL-005) — slide the view along the tank: the content follows the hand (a map's drag)
+        const s = (2.2 * decorCam.now.zoom) / h;
+        slideDecorCam(-dx * s, dy * s);
+        return;
+      }
       if (rig.mode === 'facility') {
         rig.fFocusId = '';
         const s = (rig.fDist / h) * 1.1;
@@ -511,6 +528,9 @@ export function CameraRig() {
         case 'follow':
         case 'close':
           rig.zoom = clamp(rig.zoom * f, 0.5, 2.2);
+          break;
+        case 'decorate':
+          nudgeDecorCam({ zoom: f }); // chunk 19 (QOL-005)
           break;
         default:
           break;
@@ -562,6 +582,14 @@ export function CameraRig() {
         return;
       }
       const wantsPan = p.button === 2 || p.button === 1 || p.shift;
+      if (rig.mode === 'decorate') {
+        // chunk 19 (ADR-0055 decision 4, QOL-005) — decorating: right or middle drag orbits, Shift slides; a plain drag
+        // belongs to the piece (placing, moving), except Rearrange's drag on empty floor, which orbits too
+        if (p.shift) pan(dx, dy);
+        else if (p.button === 2 || p.button === 1) rotate(dx, dy);
+        else if (getUI().tool === 'decor_move' && !editingDecor.id) rotate(dx, dy);
+        return;
+      }
       if (wantsPan) pan(dx, dy);
       else if (!placingTool()) rotate(dx, dy);
     };
@@ -584,6 +612,39 @@ export function CameraRig() {
       noteCameraUserMove();
     };
     const onContext = (e: Event) => e.preventDefault();
+    // chunk 19 (QOL-005) — decorating: the arrows orbit and tilt, Shift+arrows slide (never while typing or in a sheet)
+    const onKey = (e: KeyboardEvent) => {
+      if (rig.mode !== 'decorate' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable || t.closest?.('.pn-sheet, .ag-modal, [role="dialog"], [role="radiogroup"], [role="tablist"], [role="listbox"], .ag-popover'))) return;
+      const step = DECOR_STEP;
+      switch (e.key) {
+        case 'ArrowLeft':
+          if (e.shiftKey) slideDecorCam(-step.pan, 0);
+          else nudgeDecorCam({ yaw: -step.yaw / 2 });
+          break;
+        case 'ArrowRight':
+          if (e.shiftKey) slideDecorCam(step.pan, 0);
+          else nudgeDecorCam({ yaw: step.yaw / 2 });
+          break;
+        case 'ArrowUp':
+          if (e.shiftKey) slideDecorCam(0, step.pan);
+          else nudgeDecorCam({ pitch: step.pitch / 2 });
+          break;
+        case 'ArrowDown':
+          if (e.shiftKey) slideDecorCam(0, -step.pan);
+          else nudgeDecorCam({ pitch: -step.pitch / 2 });
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    // chunk 19 (QOL-005) — the decor editor hands over the events it swallows (cameraFX.ts forwardToCamera)
+    cameraHooks.down = (e) => e.target === el && onDown(e);
+    cameraHooks.move = onMove;
+    cameraHooks.up = onUp;
     el.addEventListener('pointerdown', onDown);
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -598,6 +659,8 @@ export function CameraRig() {
       window.removeEventListener('pointercancel', onUp);
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('contextmenu', onContext);
+      window.removeEventListener('keydown', onKey);
+      cameraHooks.down = cameraHooks.move = cameraHooks.up = null;
     };
   }, [gl, camera]);
 
@@ -631,6 +694,9 @@ export function CameraRig() {
       const prevMode = rig.mode;
       rig.key = key;
       rig.mode = mode;
+      // chunk 19 (QOL-005) — decorating keeps its view for the next piece in the same tank (decorCam.ts)
+      if (prevMode === 'decorate' && (mode !== 'decorate' || !tank || decorCam.tankId !== tank.id)) leaveDecorCam(performance.now());
+      if (mode === 'decorate' && tank) enterDecorCam(tank.id, performance.now());
       if (mode === 'photo' && prevMode !== 'photo') {
         // free camera starts where we are, orbiting the current look-at point…
         const inTankShot = prevMode === 'front' || prevMode === 'orbit' || prevMode === 'follow' || prevMode === 'close';
@@ -676,7 +742,7 @@ export function CameraRig() {
         rig.tT = 0;
         rig.tCut = reduced;
         // switching between in-tank views is a short move: keep it quick so the new subject is framed promptly
-        const inTank = (m: RigMode) => m === 'front' || m === 'orbit' || m === 'follow' || m === 'close';
+        const inTank = (m: RigMode) => m === 'front' || m === 'orbit' || m === 'follow' || m === 'close' || m === 'decorate';
         rig.tDur = reduced ? 0.45 : prevMode === 'idle' ? 0.001 : prevMode === 'attract' ? 1.8 : inTank(prevMode) && inTank(mode) ? 0.9 : 1.25;
         rig.tFromPos.copy(rig.pos);
         rig.tFromTarget.copy(rig.target);
@@ -813,6 +879,23 @@ export function CameraRig() {
         tankLocalToWorld(tank, _off, dPos);
         focusDist = dist;
         dof = 0;
+        break;
+      }
+      case 'decorate': {
+        // chunk 19 (ADR-0055 decision 4, QOL-005) — look at the floor (a quarter up the water) from the decorating pose,
+        // never from inside the glass or the water: the camera stands at least where the view ray leaves the tank
+        if (!tank) break;
+        const d = tankDims(tank);
+        const f = heroFrame(tank, view.free, size.height, size.width, fov);
+        const p = easeDecorCam(reduced ? 1 : 1 - Math.exp(-dt * 8));
+        _c.set((p.panX * d.L) / 2, d.substrateY + (d.waterY - d.substrateY) * 0.25, (p.panZ * d.W) / 2);
+        sph(p.yaw, p.pitch, 1, _a);
+        const out = exitDistance(_c, _a, d.L / 2 + d.glass + 0.03, d.W / 2 + d.glass + 0.03, d.H + 0.04);
+        const dist = Math.max(out + 0.05, f.D * p.zoom);
+        _off.copy(_a).multiplyScalar(dist).add(_c);
+        tankLocalToWorld(tank, _c, dTarget);
+        tankLocalToWorld(tank, _off, dPos);
+        focusDist = dist;
         break;
       }
       case 'follow':

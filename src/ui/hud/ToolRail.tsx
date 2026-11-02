@@ -23,6 +23,9 @@ import {
   Moon,
   ShoppingCart,
   TriangleAlert,
+  RotateCcw,
+  RotateCw,
+  Minus,
   type LucideProps,
 } from 'lucide-react';
 import type { GameState, LightPreset } from '@/types';
@@ -42,6 +45,7 @@ import { pushVisualEvent, runtime, nowSeconds } from '@/runtime/tankRuntime';
 import { aiFeed } from '@/ai/registry'; // lane:qa-play
 import { CAMERA_USER_EVENT } from '@/render/camera/cameraFX';
 import { clearPlaceAgain, placeAnother, PLACE_AGAIN_MS, usePlaceAgain } from '@/render/decor/placeAgain';
+import { ghostControls } from '@/render/decor/ghostControls'; // chunk 19 (ADR-0055 decision 4, QOL-005)
 import { useShell } from '../common/shellStore';
 import { enterCinematic } from './cardDock';
 import { foodName, LIGHT_PRESET_LABEL, lightPresetsFor } from '../common/format';
@@ -652,6 +656,27 @@ export function ToolHint() {
             <button type="button" className="ag-toolhint__done ag-toolhint__buy" data-testid="toolhint-buy" onClick={() => buyFoodPack(foodId)}>
               <ShoppingCart size={14} aria-hidden /> Buy a pack · {formatMoney(getFoodDef(foodId)?.price ?? 0)}
             </button>
+          )}
+          {tool === 'decor_place' && (
+            // chunk 19 (QOL-005) — turn and size the piece without R or a wheel (phones); the camera moves by itself
+            <span className="ag-toolhint__piece" role="group" aria-label="The piece in hand">
+              <button type="button" className="ag-toolhint__mini" aria-label="Turn the piece left" title="Turn the piece left" data-testid="toolhint-turn-left" onClick={() => ghostControls.turn?.(-1)}>
+                <RotateCcw size={14} aria-hidden />
+              </button>
+              <button type="button" className="ag-toolhint__mini" aria-label="Turn the piece right" title="Turn the piece right" data-testid="toolhint-turn-right" onClick={() => ghostControls.turn?.(1)}>
+                <RotateCw size={14} aria-hidden />
+              </button>
+              {!placingFrag && (
+                <>
+                  <button type="button" className="ag-toolhint__mini" aria-label="Make the piece smaller" title="Smaller" data-testid="toolhint-smaller" onClick={() => ghostControls.size?.(1 / 1.08)}>
+                    <Minus size={14} aria-hidden />
+                  </button>
+                  <button type="button" className="ag-toolhint__mini" aria-label="Make the piece larger" title="Larger" data-testid="toolhint-larger" onClick={() => ghostControls.size?.(1.08)}>
+                    <Plus size={14} aria-hidden />
+                  </button>
+                </>
+              )}
+            </span>
           )}
           {againDef && (
             <button type="button" className="ag-toolhint__done ag-toolhint__offer" data-testid="toolhint-place-another" disabled={!canBuyAgain} style={canBuyAgain ? undefined : { opacity: 0.55, cursor: 'not-allowed' }} title={canBuyAgain ? undefined : `Not enough money — ${againDef.name} costs ${formatMoney(againDef.price)}.`} onClick={() => { sfx('click'); placeAnother(); }}>

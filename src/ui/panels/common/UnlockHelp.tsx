@@ -5,8 +5,10 @@
  * with a way to open them, and Build › Facility when a bigger venue is needed. A research project's own requirements
  * (conditions rather than unlock keys) are shown the same way. OWNER: lane "ui-panels".
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import clsx from 'clsx';
+import { create } from 'zustand';
+import { useGame } from '@/state/game';
 import { Lock, FlaskConical, Building2, ArrowRight } from 'lucide-react';
 import type { GameState } from '@/types';
 import { Button, Modal } from '@/ui/kit';
@@ -134,39 +136,53 @@ export function UnlockHelpBody({ g, keys, conds, lead, onGo }: { g: GameState; k
   );
 }
 
+/** What the one "How to unlock" box explains now (null: closed). One box for the whole game, so a list of fifty locked
+ * pieces carries fifty plain buttons rather than fifty dialogs. */
+export interface UnlockAsk {
+  title: string;
+  keys?: readonly (string | null | undefined)[];
+  conds?: readonly Cond[];
+  lead?: ReactNode;
+}
+export const useUnlockHelp = create<{ ask: UnlockAsk | null }>(() => ({ ask: null }));
+
+/** Open "How to unlock {title}". */
+export function askUnlock(ask: UnlockAsk): void {
+  sfx('open');
+  useUnlockHelp.setState({ ask });
+}
+
 /**
  * The Locked chip as a button: it opens "How to unlock {title}". `keys` are unlock keys (a tank size, a water type,
  * gear, decor, a species' research); `conds` a research project's own requirements; `lead` a line above them (a
  * species' own sentence). `children` replaces the chip's word when a row says more than "Locked".
  */
-export function LockedButton({ g, title, keys, conds, lead, testId, children, className, block }: { g: GameState; title: string; keys?: readonly (string | null | undefined)[]; conds?: readonly Cond[]; lead?: ReactNode; testId?: string; children?: ReactNode; className?: string; block?: boolean }) {
-  const [open, setOpen] = useState(false);
+export function LockedButton({ title, keys, conds, lead, testId, children, className, block }: { title: string; keys?: readonly (string | null | undefined)[]; conds?: readonly Cond[]; lead?: ReactNode; testId?: string; children?: ReactNode; className?: string; block?: boolean }) {
   return (
-    <>
-      <button
-        type="button"
-        className={clsx('pn-lockbtn', block && 'pn-lockbtn--block', className)}
-        onClick={(e) => {
-          e.stopPropagation();
-          sfx('open');
-          setOpen(true);
-        }}
-        aria-haspopup="dialog"
-        title={`How to unlock ${title}`}
-        data-testid={testId}
-      >
-        <Lock size={11} aria-hidden /> <span>{children ?? 'Locked'}</span>
-      </button>
-      <UnlockHelpModal g={g} open={open} onClose={() => setOpen(false)} title={title} keys={keys} conds={conds} lead={lead} />
-    </>
+    <button
+      type="button"
+      className={clsx('pn-lockbtn', block && 'pn-lockbtn--block', className)}
+      onClick={(e) => {
+        e.stopPropagation();
+        askUnlock({ title, keys, conds, lead });
+      }}
+      aria-haspopup="dialog"
+      title={`How to unlock ${title}`}
+      data-testid={testId}
+    >
+      <Lock size={11} aria-hidden /> <span>{children ?? 'Locked'}</span>
+    </button>
   );
 }
 
-/** The box on its own (for a card that is itself the button, e.g. a locked decor piece or water type). */
-export function UnlockHelpModal({ g, open, onClose, title, keys, conds, lead }: { g: GameState; open: boolean; onClose: () => void; title: string; keys?: readonly (string | null | undefined)[]; conds?: readonly Cond[]; lead?: ReactNode }) {
+/** The one box (GameHUD mounts it). */
+export function UnlockHelpHost() {
+  const ask = useUnlockHelp((s) => s.ask);
+  const g = useGame((s) => s.game);
+  const close = () => useUnlockHelp.setState({ ask: null });
   return (
-    <Modal open={open} onClose={onClose} title={`How to unlock ${title}`} testId="unlock-help-modal" width={460} actions={<Button onClick={onClose}>Close</Button>}>
-      {open && <UnlockHelpBody g={g} keys={keys} conds={conds} lead={lead} onGo={onClose} />}
+    <Modal open={!!ask && !!g} onClose={close} title={ask ? `How to unlock ${ask.title}` : ''} testId="unlock-help-modal" width={460} actions={<Button onClick={close}>Close</Button>}>
+      {ask && g && <UnlockHelpBody g={g} keys={ask.keys} conds={ask.conds} lead={ask.lead} onGo={close} />}
     </Modal>
   );
 }

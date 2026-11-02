@@ -322,7 +322,7 @@ function ResearchCard({ g, r, busy }: { g: GameState; r: ResearchView; busy: boo
         )}
         {status === 'locked' && (
           // chunk 19 (ADR-0055 decision 5, QOL-006) — what it still needs, with progress and the way there
-          <LockedButton g={g} title={d.name} conds={d.requires} testId={`research-locked-${d.id}`} />
+          <LockedButton title={d.name} conds={d.requires} testId={`research-locked-${d.id}`} />
         )}
       </div>
     </div>

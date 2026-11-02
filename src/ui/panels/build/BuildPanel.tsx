@@ -40,7 +40,7 @@ import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { RoomPage, Rooms, YourFacility, type RoomId } from './FacilityRooms'; // lane:automation (chunk 5)
 import { startToolFromPanel } from '../common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
-import { LockedButton, UnlockHelpModal } from '../common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006)
+import { LockedButton, askUnlock } from '../common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006)
 import { waterClassKeys } from '@/sim/facility/progression'; // chunk 19 (QOL-006): what a locked water type waits for
 import { SearchField } from '../common/SearchField'; // chunk 19 (ADR-0055 decision 3, QOL-003)
 import { matches } from '../common/match'; // chunk 19 (QOL-003)
@@ -195,7 +195,6 @@ function TanksTab({ g }: { g: GameState }) {
     return wanted && !wcLocked(wanted) ? wanted : ((g.tanks[g.tankOrder[0]]?.waterClass as WaterClass) ?? 'freshwater_tropical');
   });
   const [seeded, setSeeded] = useState(true);
-  const [whyWc, setWhyWc] = useState<WaterClass | null>(null); // chunk 19 (QOL-006): the locked water type asked about
   const [buyable, setBuyable] = useState(false); // chunk 19 (QOL-003): only the sizes you can buy now
   const env = wc.startsWith('fresh') ? 'freshwater' : wc === 'brackish' ? 'brackish' : 'marine'; // lane:brackish
   const [a, b] = WATER_CLASS_TINT[wc];
@@ -234,7 +233,7 @@ function TanksTab({ g }: { g: GameState }) {
             const locked = wcLocked(w);
             const [ta, tb] = WATER_CLASS_TINT[w];
             return (
-              <button key={w} type="button" role="radio" aria-checked={wc === w} aria-disabled={locked || undefined} className={clsx('pn-wc', wc === w && 'is-on', locked && 'is-locked')} data-testid={`build-wc-${w}`} onClick={() => (locked ? setWhyWc(w) : setWc(w))} title={locked ? `${WATER_CLASS_LABEL[w]} is locked: how to unlock it` : WATER_CLASS_BLURB[w]}>
+              <button key={w} type="button" role="radio" aria-checked={wc === w} aria-disabled={locked || undefined} className={clsx('pn-wc', wc === w && 'is-on', locked && 'is-locked')} data-testid={`build-wc-${w}`} onClick={() => (locked ? askUnlock({ title: WATER_CLASS_LABEL[w], keys: waterClassKeys(w), lead: waterClassLock(g, w) ?? undefined }) : setWc(w))} title={locked ? `${WATER_CLASS_LABEL[w]} is locked: how to unlock it` : WATER_CLASS_BLURB[w]}>
                 <span className="pn-wc__swatch" style={{ background: `linear-gradient(180deg, ${ta}, ${tb})` }} aria-hidden />
                 <span className="pn-wc__label">{WATER_CLASS_LABEL[w]}</span>
                 {locked && <Lock size={12} className="pn-muted" aria-label="Locked" />}
@@ -247,8 +246,7 @@ function TanksTab({ g }: { g: GameState }) {
           {!marineOk && ' Marine systems unlock with research.'}
           {!unlocked(g, 'brackish') && unlocked(g, 'fw_intermediate') && ' Brackish estuaries unlock with research.'}
         </p>
-        {/* chunk 19 (QOL-006) — a locked water type explains itself instead of doing nothing */}
-        <UnlockHelpModal g={g} open={!!whyWc} onClose={() => setWhyWc(null)} title={whyWc ? WATER_CLASS_LABEL[whyWc] : ''} keys={whyWc ? waterClassKeys(whyWc) : []} lead={whyWc ? waterClassLock(g, whyWc) ?? undefined : undefined} />
+
       </section>
 
       <section>
@@ -321,7 +319,7 @@ function TanksTab({ g }: { g: GameState }) {
                       </Button>
                     </div>
                   ) : (
-                    <LockedButton g={g} title={`the ${tier.name}`} keys={[tier.unlock]} testId={`build-tank-locked-${tier.id}`} />
+                    <LockedButton title={`the ${tier.name}`} keys={[tier.unlock]} testId={`tank-locked-${tier.id}`} />
                   )}
                 </div>
               </div>
@@ -447,19 +445,19 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
     <div className="pn-stack pn-stack--lg">
       {/* chunk 19 (QOL-003) — search first, so a phone sees what it finds right below */}
       <div className="pn-findbar">
-        <SearchField value={q} onChange={setQ} placeholder="Search decor" label="Search decor by name or what it does" testId="build-decor-search" />
-        <Chip onClick={() => setBuyable((v) => !v)} pressed={buyable} testId="build-decor-buyable">
+        <SearchField value={q} onChange={setQ} placeholder="Search decor" label="Search decor by name or what it does" testId="decor-search" />
+        <Chip onClick={() => setBuyable((v) => !v)} pressed={buyable} testId="decor-buyable">
           Can buy now
         </Chip>
         <label className="pn-sortsel">
           <span>Sort</span>
-          <select className="pn-input" value={sort} onChange={(e) => setSort(e.target.value as DecorSort)} aria-label="Sort decor" data-testid="build-decor-sort">
+          <select className="pn-input" value={sort} onChange={(e) => setSort(e.target.value as DecorSort)} aria-label="Sort decor" data-testid="decor-sort">
             <option value="price">Cheapest first</option>
             <option value="beauty">Most beautiful</option>
             <option value="name">A to Z</option>
           </select>
         </label>
-        {narrowed && <span className="pn-findbar__count" data-testid="build-decor-count">{list.length} of {inCat.length}</span>}
+        {narrowed && <span className="pn-findbar__count" data-testid="decor-count">{list.length} of {inCat.length}</span>}
       </div>
       <div className="pn-row pn-gap-2 pn-row--wrap">
         <Button variant="default" data-testid="build-rearrange" onClick={() => startToolFromPanel({ tool: 'decor_move', view: 'tank', focusedTankId: tankId, panelTarget: null })} disabled={tank.decor.length === 0}>
@@ -514,7 +512,7 @@ function DecorTab({ g, tankId, cat: catIn, setCat, q, setQ }: { g: GameState; ta
           ))}
         </div>
         {list.length === 0 && narrowed ? (
-          <EmptyState icon={<Mountain size={24} />} title="Nothing matches" action={<Button onClick={() => { setQ(''); setBuyable(false); }} data-testid="build-decor-clear">Clear filters</Button>}>
+          <EmptyState icon={<Mountain size={24} />} title="Nothing matches" action={<Button onClick={() => { setQ(''); setBuyable(false); }} data-testid="decor-clear">Clear filters</Button>}>
             Try other words, or another category.
           </EmptyState>
         ) : list.length === 0 ? (
@@ -663,11 +661,8 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
   const h = d.habitat;
   const hint = d.unlock ? UNLOCK_RULE_BY_KEY[d.unlock]?.hint ?? UNLOCK_KEYS[d.unlock as keyof typeof UNLOCK_KEYS] : '';
   // chunk 19 (ADR-0055 decision 5, QOL-006) — a locked piece opens "How to unlock" instead of doing nothing
-  const [why, setWhy] = useState(false);
   return (
-    <>
-    <UnlockHelpModal g={g} open={why} onClose={() => setWhy(false)} title={d.name} keys={[d.unlock]} />
-    <button type="button" className={clsx('pn-decor', !isUnlocked && 'is-locked', suggested && 'is-suggested')} data-testid={`build-decor-${d.id}`} data-decor-id={d.id} disabled={isUnlocked && !afford} aria-disabled={!isUnlocked || undefined} onClick={isUnlocked ? onChoose : () => setWhy(true)} aria-label={`${d.name}, ${formatMoney(d.price)}${suggested ? ', suggested by the guide' : ''}${isUnlocked ? '' : ', locked: how to unlock it'}`}>
+    <button type="button" className={clsx('pn-decor', !isUnlocked && 'is-locked', suggested && 'is-suggested')} data-testid={`build-decor-${d.id}`} data-decor-id={d.id} disabled={isUnlocked && !afford} aria-disabled={!isUnlocked || undefined} onClick={isUnlocked ? onChoose : () => askUnlock({ title: d.name, keys: [d.unlock] })} aria-label={`${d.name}, ${formatMoney(d.price)}${suggested ? ', suggested by the guide' : ''}${isUnlocked ? '' : ', locked: how to unlock it'}`}>
       {suggested && (
         <span className="pn-decor__suggest">
           <Sparkles size={10} aria-hidden /> Suggested
@@ -696,7 +691,6 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
         </span>
       )}
     </button>
-    </>
   );
 }
 
@@ -973,7 +967,7 @@ function SubstrateTab({ g, tankId }: { g: GameState; tankId: string }) {
                   <div className="pn-tiny pn-muted">
                     {s.description} · {s.grainMm} mm grain
                   </div>
-                  <div className="pn-tiny">{current ? 'Tap a colour to recolour (free)' : locked ? <LockedButton g={g} title={s.name} keys={[s.unlock]} testId={`build-substrate-locked-${s.kind}`} /> : <>Replace for <b>{formatMoney(cost)}</b></>}</div>
+                  <div className="pn-tiny">{current ? 'Tap a colour to recolour (free)' : locked ? <LockedButton title={s.name} keys={[s.unlock]} testId={`build-substrate-locked-${s.kind}`} /> : <>Replace for <b>{formatMoney(cost)}</b></>}</div>
                 </div>
               );
             })}

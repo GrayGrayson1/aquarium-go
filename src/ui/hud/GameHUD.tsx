@@ -50,6 +50,8 @@ import { enterCinematic, useCardDockRules, useDockedCard } from './cardDock';
 import { useFocusedTankGuard } from './tankGuard';
 import { usePanelAsideRules } from '../panels/common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
 import { FindAnything, useFindKeys } from '../search/FindAnything'; // chunk 19 (ADR-0055 decision 3, QOL-004)
+import { DecorCamPad, isDecorating } from './DecorCamPad'; // chunk 19 (ADR-0055 decision 4, QOL-005)
+import { UnlockHelpHost } from '../panels/common/UnlockHelp'; // chunk 19 (ADR-0055 decision 5, QOL-006): the one lock box
 
 const CALM_AFTER_MS = 6000;
 /** How long after a waking touch its click counts as part of the wake. */
@@ -324,6 +326,7 @@ export function GameHUD() {
   const photo = useUI((s) => s.photoMode);
   const view = useUI((s) => s.view);
   const panel = useUI((s) => s.panel);
+  const decorating = useUI((s) => isDecorating(s.tool, s.view)); // chunk 19 (QOL-005): the view pad takes the tool rail's place
   const docked = useDockedCard();
   const creatureOpen = docked === 'creature';
   const tankCardOpen = docked === 'tank';
@@ -342,7 +345,7 @@ export function GameHUD() {
   return (
     <>
       <motion.div
-        className={clsx('ag-hud', chromeHidden && 'is-hidden', calm && !chromeHidden && 'is-calm', bottomSheets && (panel || creatureOpen || tankCardOpen) && 'has-bottom-sheet', view === 'facility' && 'is-facility', creatureOpen && sideSheets && 'has-right-sheet', tankCardOpen && sideSheets && 'has-left-sheet', panel && 'has-panel')}
+        className={clsx('ag-hud', chromeHidden && 'is-hidden', calm && !chromeHidden && 'is-calm', decorating && 'is-decorating', bottomSheets && (panel || creatureOpen || tankCardOpen) && 'has-bottom-sheet', view === 'facility' && 'is-facility', creatureOpen && sideSheets && 'has-right-sheet', tankCardOpen && sideSheets && 'has-left-sheet', panel && 'has-panel')}
         initial={{ opacity: 0 }}
         animate={{ opacity: chromeHidden ? 0 : 1 }}
         transition={{ duration: 0.35 }}
@@ -362,6 +365,7 @@ export function GameHUD() {
             <div className="ag-hud__cam">
               <CameraChips />
             </div>
+            <DecorCamPad />
           </ErrorBoundary>
         )}
         {view === 'facility' && (
@@ -409,6 +413,9 @@ export function GameHUD() {
       <WatchRestore />
       <ErrorBoundary name="find">
         <FindAnything />
+      </ErrorBoundary>
+      <ErrorBoundary name="unlock-help">
+        <UnlockHelpHost />
       </ErrorBoundary>
       <ErrorBoundary name="welcome">
         <WelcomeBack />

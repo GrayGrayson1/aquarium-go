@@ -656,7 +656,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
           <span className="pn-row pn-gap-2 pn-row--wrap" style={{ alignItems: 'center' }}>
             <span className="pn-tiny pn-muted pn-grow">{lockHintOf(g, sp)}</span>
             {/* chunk 19 (ADR-0055 decision 5, QOL-006) — the requirements with progress, and the way to them */}
-            <LockedButton g={g} title={speciesPlural(sp)} keys={safe(() => requiredUnlocks(sp), [] as string[])} testId="offer-locked-help">
+            <LockedButton title={speciesPlural(sp)} keys={safe(() => requiredUnlocks(sp), [] as string[])} testId="offer-locked-help">
               How to unlock
             </LockedButton>
           </span>

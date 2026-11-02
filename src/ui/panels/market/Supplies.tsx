@@ -156,7 +156,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                     {locked ? (
                       f.unlock && !unlocked(g, f.unlock) ? (
                         // chunk 19 (ADR-0055 decision 5, QOL-006) — what it waits for, and how to get there
-                        <LockedButton g={g} title={f.name} keys={[f.unlock]} testId={`supplies-food-locked-${f.id}`}>
+                        <LockedButton title={f.name} keys={[f.unlock]} testId={`supplies-food-locked-${f.id}`}>
                           {UNLOCK_KEYS[f.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked'}
                         </LockedButton>
                       ) : (
@@ -273,7 +273,7 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
         <Money value={e.price} />
         {locked ? (
           // chunk 19 (ADR-0055 decision 5, QOL-006) — what it waits for, and how to get there
-          <LockedButton g={g} title={e.name} keys={[e.unlock]} testId={`supplies-equip-locked-${e.id}`}>
+          <LockedButton title={e.name} keys={[e.unlock]} testId={`supplies-equip-locked-${e.id}`}>
             {e.unlock ? UNLOCK_KEYS[e.unlock as keyof typeof UNLOCK_KEYS] ?? 'Locked' : 'Locked'}
           </LockedButton>
         ) : (
