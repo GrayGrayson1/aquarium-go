@@ -1,0 +1,23 @@
+== check-state
+WARNING current branch HEAD is not the integration branch agent/aquariumgo-local-stack-20261005
+WARNING new protected file docs/agent/prompts/ROLE_PROMPTS.md is not recorded yet (protect.mjs --update --adr <ADR>)
+state: S0 S0-T12 ACCEPT on HEAD at c85ff9c58c
+OK
+exit=0
+== requirements-audit
+S0: 5 GREEN
+ALL: 4 ACTIVE
+S1: 1 PENDING
+S2: 2 PENDING
+S3: 4 PENDING, 1 BLOCKED
+S4: 3 PENDING, 1 ACTIVE, 1 IN_PROGRESS
+OK
+exit=0
+== protect
+WARNING new protected file docs/agent/prompts/ROLE_PROMPTS.md is not recorded yet (protect.mjs --update --adr <ADR>)
+OK
+exit=0
+== verify-slice harnessTests
+harnessTests: node --test 'scripts/agent/*.test.mjs' … exit 0 in 6s {} → docs/agent/evidence/S0/logs/harnessTests-20261005T204839Z.log
+all selected gates passed
+exit=0

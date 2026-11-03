@@ -1,0 +1,18 @@
+ERROR   remoteMutationAllowed is true without STATE.remoteApproval (an ADR that records the owner's verbatim yes)
+ERROR   STATE.multiplayerApproval points at docs/agent/decisions/ADR-0099-missing.md, which does not exist
+ERROR   gate harnessTests is GREEN but the S0 manifest has no recorded "node --test 'scripts/agent/*.test.mjs'" run
+ERROR   log docs/agent/evidence/S0/logs/baseline-unit.log no longer matches its recorded SHA-256 (evidence was edited)
+ERROR   log dist/ignored.log is ignored by Git, so it would never be committed
+ERROR   requirement PERSIST-003 exists at HEAD but was deleted; mark it SUPERSEDED with a decision instead
+ERROR   CURRENT_SLICE.md references unknown requirement PERSIST-003
+ERROR   LEDGER.jsonl line 9: IMPLEMENT → ACCEPT is not a legal transition (OPERATIONS.md §4)
+ERROR   LEDGER.jsonl no longer starts with its committed content: a line was rewritten or deleted (append-only, master §13)
+ERROR   STATE.machineState is IMPLEMENT but the last recorded transition went to ACCEPT; record the transition with record-event.mjs
+ERROR   design DESIGN-S3D: APPROVED without an approval reference
+ERROR   protected file docs/agent/OPERATIONS.md changed without a recorded approval (protect.mjs --update --adr <ADR>)
+ERROR   protected file docs/agent/design/DESIGN_REGISTRY.json changed without a recorded approval (protect.mjs --update --adr <ADR>)
+WARNING current branch HEAD is not the integration branch agent/aquariumgo-local-stack-20261005
+WARNING gate build passed on code tree 454801df2c, not the current ec195aca76; re-run it
+state: S0 S0-T8 IMPLEMENT on HEAD at 70e1858ba4
+FAILED with 13 error(s)
+exit=1
