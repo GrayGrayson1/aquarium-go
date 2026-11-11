@@ -47,15 +47,61 @@ export const DEFAULT_SETTINGS: Settings = {
   cameraSensitivity: 1,
 };
 
+const QUALITY_LEVELS: readonly QualityLevel[] = ['low', 'medium', 'high', 'ultra'];
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const bool = (v: unknown, fallback: boolean): boolean => (typeof v === 'boolean' ? v : fallback);
+/** A finite number, held inside what the game offers; anything else is the default. */
+const within = (v: unknown, min: number, max: number, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback);
+
+/**
+ * B-165 — stored settings as this build can use them. The stored text is whatever the browser kept (an older build's,
+ * a hand-edited one, a damaged one): each setting this build knows keeps its stored value only when it has the right
+ * type, numbers finite and inside the range the game offers (volumes 0 to 1, the text sizes UIRoot applies, the
+ * camera slider's 0.4 to 2); anything else gets its default, so a `null` or a string can no longer reach the Settings
+ * panel, the camera or the audio gains. `qualityAuto` stays absent unless it was stored as a boolean (load's rule for
+ * settings saved before Auto existed reads that). Keys this build doesn't know ride along unchanged, as before, so a
+ * newer build's setting survives a visit from an older tab.
+ */
+export function sanitizeSettings(parsed: unknown): Settings {
+  const p = isRecord(parsed) ? parsed : {};
+  const vol = isRecord(p.volume) ? p.volume : {};
+  const d = DEFAULT_SETTINGS;
+  const s: Settings = {
+    ...(p as Partial<Settings>),
+    volume: {
+      master: within(vol.master, 0, 1, d.volume.master),
+      music: within(vol.music, 0, 1, d.volume.music),
+      aquarium: within(vol.aquarium, 0, 1, d.volume.aquarium),
+      ui: within(vol.ui, 0, 1, d.volume.ui),
+    },
+    muted: bool(p.muted, d.muted),
+    quality: QUALITY_LEVELS.includes(p.quality as QualityLevel) ? (p.quality as QualityLevel) : d.quality,
+    reducedMotion: bool(p.reducedMotion, d.reducedMotion),
+    advancedWater: bool(p.advancedWater, d.advancedWater),
+    tempUnit: p.tempUnit === 'C' || p.tempUnit === 'F' ? p.tempUnit : d.tempUnit,
+    textScale: within(p.textScale, 0.85, 1.4, d.textScale),
+    highContrast: bool(p.highContrast, d.highContrast),
+    autosave: bool(p.autosave, d.autosave),
+    showTutorialHints: bool(p.showTutorialHints, d.showTutorialHints),
+    devMode: bool(p.devMode, d.devMode),
+    partyUseMicrophone: bool(p.partyUseMicrophone, d.partyUseMicrophone),
+    cameraSensitivity: within(p.cameraSensitivity, 0.4, 2, d.cameraSensitivity),
+  };
+  if (typeof p.qualityAuto === 'boolean') s.qualityAuto = p.qualityAuto;
+  else delete s.qualityAuto;
+  return s;
+}
+
 function load(): Settings {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY) : null;
     if (!raw) return detectDefaults();
-    const parsed = JSON.parse(raw);
-    const s: Settings = { ...DEFAULT_SETTINGS, ...parsed, volume: { ...DEFAULT_SETTINGS.volume, ...(parsed.volume ?? {}) } };
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed)) return detectDefaults(); // not settings at all: as if none were stored
+    const s = sanitizeSettings(parsed);
     // lane:pc-perf — settings saved before Auto existed stored whatever quality was current whenever any setting
     // changed. The old defaults (high, or medium on small devices) are treated as Auto; low/ultra were deliberate.
-    if (parsed.qualityAuto === undefined) s.qualityAuto = !(parsed.quality === 'low' || parsed.quality === 'ultra');
+    if (s.qualityAuto === undefined) s.qualityAuto = !(parsed.quality === 'low' || parsed.quality === 'ultra');
     if (s.qualityAuto !== false) s.quality = autoQuality();
     return s;
   } catch {
