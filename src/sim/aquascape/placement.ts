@@ -297,6 +297,15 @@ export function moveDecorImpl(state: GameState, tankId: string, decorId: string,
   return { ok: true, message: `${getDecorDef(inst.defId)?.name ?? 'Decor'} moved.` };
 }
 
+/**
+ * B-121 — what selling a placed piece back pays: SELL_BACK_FRACTION of its price, and an almond leaf by how much of it
+ * is left. The one rule: `removeDecorImpl` pays it and the decorating tools quote it (they used to quote the plain
+ * fraction, so a leaf that had rotted away showed $1 and sold for nothing).
+ */
+export function decorSellValue(def: DecorDef | null | undefined, inst: Pick<DecorInstance, 'health'>): number {
+  return def ? Math.round(def.price * SELL_BACK_FRACTION * (def.visual === 'botanical_almond_leaf' ? (inst.health ?? 100) / 100 : 1)) : 0;
+}
+
 export function removeDecorImpl(state: GameState, tankId: string, decorId: string, sell: boolean, afterChange: (tank: Tank) => void): ActionResult {
   const tank = state.tanks[tankId];
   if (!tank) return { ok: false, message: 'Tank not found.' };
@@ -320,7 +329,7 @@ export function removeDecorImpl(state: GameState, tankId: string, decorId: strin
     return res;
   }
   if (sell) {
-    const value = def ? Math.round(def.price * SELL_BACK_FRACTION * (def.visual === 'botanical_almond_leaf' ? (inst.health ?? 100) / 100 : 1)) : 0;
+    const value = decorSellValue(def, inst);
     if (value > 0) earn(state, value, 'decor', `Sold ${name}`);
     afterChange(tank);
     return { ok: true, message: value > 0 ? `${name} sold for $${value}.` : `${name} removed.` };

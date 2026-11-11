@@ -17,6 +17,7 @@ import { useDevMode } from '@/state/devTools'; // lane:core (PLAT-005)
 import { useSocialAvailable } from '../online/mode'; // chunk 8 (REL-025)
 import { sfx } from '@/audio/sfx';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
+import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { tutorialFlag } from '../common/actions';
 import { Trophy } from 'lucide-react'; // lane:shows
 import { AttnDot, useNavDots } from './AttnDot'; // lane:notify
@@ -41,7 +42,8 @@ export const DOCK_ITEMS: DockItem[] = [
   { id: 'tanks', label: 'Tanks', icon: Box },
   { id: 'livestock', label: 'Livestock', icon: Fish },
   { id: 'market', label: 'Market', icon: Store },
-  { id: 'visitors', label: 'Visitors', icon: Users, lock: 'visitors', hint: 'Grow your reputation to open your doors to visitors.' },
+  // B-121: no words of its own (they said "Grow your reputation…", which was never the rule): the unlock rule's hint
+  { id: 'visitors', label: 'Visitors', icon: Users, lock: 'visitors' },
   { id: 'shows', label: 'Shows', icon: Trophy, lock: 'shows', hint: 'Finish the guide (or reach 20 reputation) to enter club shows.' }, // lane:shows
   // lane:social (chunk 6, 0.5 spec §5.4, §13.1) — between Shows and Build; where Social exists (chunk 8, REL-025)
   { id: 'social', label: 'Social', icon: Globe, needsSocial: true, newUntilOpened: true },
@@ -53,6 +55,16 @@ export const DOCK_ITEMS: DockItem[] = [
   { id: 'finances', label: 'Finances', icon: Wallet },
   { id: 'encyclopedia', label: 'Encyclopedia', icon: BookOpen },
 ];
+
+/**
+ * What a locked item says (its title and its screen-reader label): the item's own words, else how its unlock rule says
+ * to unlock it (B-121: the rule's words, so the dock can't disagree with the panel behind it), else the unlock's name.
+ */
+export function dockLockHint(it: DockItem): string | undefined {
+  if (it.hint) return it.hint;
+  if (!it.lock) return undefined;
+  return UNLOCK_RULE_BY_KEY[it.lock]?.hint ?? (UNLOCK_KEYS as Record<string, string>)[it.lock];
+}
 
 /** lane:social (chunk 6; chunk 8, REL-025) — the dock's destinations for this session: Social only where it exists. */
 export function dockItems(social: boolean): DockItem[] {
@@ -128,7 +140,7 @@ export function Dock() {
         {items.map((it) => {
           const open = isUnlocked(it.lock);
           const Icon = it.icon;
-          const hint = it.hint ?? (it.lock ? (UNLOCK_KEYS as Record<string, string>)[it.lock] : undefined);
+          const hint = dockLockHint(it);
           const badge = open && panel !== it.id ? badges[it.id] : undefined; // lane:w2-ui / lane:notify — not on the open panel
           return (
             <button
