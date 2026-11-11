@@ -195,10 +195,14 @@ describe('B-210: a save whose visitors or fixtures are unreadable still steps', 
       { id: 7, kind: 'bench', x: 0, z: 0, rotY: 0 },
       { id: '__proto__', kind: 'bench', x: 0, z: 0, rotY: 0 },
       { id: 'no_kind', x: 0, z: 0, rotY: 0 },
+      // the fresh review's blocker 1: a kind is a key into FIXTURE_DEFS, and `FIXTURE_DEFS['__proto__']` is
+      // Object.prototype (the layout's `def.name.toLowerCase()` threw on every step)
+      { id: 'proto_kind', kind: '__proto__', x: 0, z: 0, rotY: 0 },
+      { id: 'inherited_kind', kind: 'constructor', x: 0, z: 0, rotY: 0 },
       ...good.slice(1),
     ];
-    // the inherited-name id goes with PERSIST-011's own scrub, the other seven here
-    expect(repairState(s)).toEqual(['facility.fixtures: invalid ids removed', 'facility.fixtures: 7 unreadable removed']);
+    // the inherited-name id goes with PERSIST-011's own scrub, the other nine here
+    expect(repairState(s)).toEqual(['facility.fixtures: invalid ids removed', 'facility.fixtures: 9 unreadable removed']);
     expect(s.facility.fixtures).toEqual(good);
     expect(steps(s)).not.toThrow();
     expect(repairState(s), 'a second repair finds nothing').toEqual([]);

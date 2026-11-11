@@ -19,7 +19,7 @@ export interface Settings {
   /** Show exact water parameters by default (advanced). */
   advancedWater: boolean;
   tempUnit: 'C' | 'F';
-  textScale: number; // 0.9..1.3
+  textScale: number; // 0.9..1.3 (sanitizeSettings holds it there)
   highContrast: boolean;
   autosave: boolean;
   showTutorialHints: boolean;
@@ -56,19 +56,21 @@ const within = (v: unknown, min: number, max: number, fallback: number): number 
 /**
  * B-165 — stored settings as this build can use them. The stored text is whatever the browser kept (an older build's,
  * a hand-edited one, a damaged one): each setting this build knows keeps its stored value only when it has the right
- * type, numbers finite and inside the range the game offers (volumes 0 to 1, the text sizes UIRoot applies, the
- * camera slider's 0.4 to 2); anything else gets its default, so a `null` or a string can no longer reach the Settings
- * panel, the camera or the audio gains. `qualityAuto` stays absent unless it was stored as a boolean (load's rule for
- * settings saved before Auto existed reads that). Keys this build doesn't know ride along unchanged, as before, so a
- * newer build's setting survives a visit from an older tab.
+ * type, numbers finite and inside the range the game offers (volumes 0 to 1, the text sizes 0.9 to 1.3, the camera
+ * slider's 0.4 to 2); anything else gets its default, so a `null` or a string can no longer reach the Settings panel,
+ * the camera or the audio gains. `qualityAuto` stays absent unless it was stored as a boolean (load's rule for
+ * settings saved before Auto existed reads that). Keys this build doesn't know ride along unchanged, as before, at the
+ * top level and inside `volume`, so a newer build's setting survives a visit from an older tab. `update` sets only
+ * what this would keep, with the settings in force as its `fallback` (a value it refuses changes nothing).
  */
-export function sanitizeSettings(parsed: unknown): Settings {
+export function sanitizeSettings(parsed: unknown, fallback: Settings = DEFAULT_SETTINGS): Settings {
   const p = isRecord(parsed) ? parsed : {};
   const vol = isRecord(p.volume) ? p.volume : {};
-  const d = DEFAULT_SETTINGS;
+  const d = fallback;
   const s: Settings = {
     ...(p as Partial<Settings>),
     volume: {
+      ...vol,
       master: within(vol.master, 0, 1, d.volume.master),
       music: within(vol.music, 0, 1, d.volume.music),
       aquarium: within(vol.aquarium, 0, 1, d.volume.aquarium),
@@ -79,7 +81,7 @@ export function sanitizeSettings(parsed: unknown): Settings {
     reducedMotion: bool(p.reducedMotion, d.reducedMotion),
     advancedWater: bool(p.advancedWater, d.advancedWater),
     tempUnit: p.tempUnit === 'C' || p.tempUnit === 'F' ? p.tempUnit : d.tempUnit,
-    textScale: within(p.textScale, 0.85, 1.4, d.textScale),
+    textScale: within(p.textScale, 0.9, 1.3, d.textScale),
     highContrast: bool(p.highContrast, d.highContrast),
     autosave: bool(p.autosave, d.autosave),
     showTutorialHints: bool(p.showTutorialHints, d.showTutorialHints),
@@ -142,10 +144,14 @@ export interface SettingsStore extends Settings {
 }
 
 export const useSettings = create<SettingsStore>((set, get) => {
+  /** The settings themselves, without the store's functions. */
+  const plain = (): Settings => {
+    const { update, setVolume, reset, ...rest } = get();
+    return rest;
+  };
   const persist = () => {
     try {
-      const { update, setVolume, reset, ...rest } = get();
-      localStorage.setItem(KEY, JSON.stringify(rest));
+      localStorage.setItem(KEY, JSON.stringify(plain()));
     } catch {
       /* storage may be unavailable */
     }
@@ -156,10 +162,15 @@ export const useSettings = create<SettingsStore>((set, get) => {
       // lane:pc-perf — choosing a quality level (without saying Auto) is an explicit choice
       if (patch.quality !== undefined && patch.qualityAuto === undefined) patch = { ...patch, qualityAuto: false };
       if (patch.qualityAuto === true && patch.quality === undefined) patch = { ...patch, quality: autoQuality() };
-      set(patch);
+      // B-165: what is set is what a load would keep (a number is held in range; a value of the wrong type leaves the
+      // setting as it is), so nothing unreadable is stored for the next load to find
+      const current = plain();
+      const kept = sanitizeSettings({ ...current, ...patch }, current) as unknown as Record<string, unknown>;
+      set(Object.fromEntries(Object.keys(patch).map((k) => [k, kept[k]])) as Partial<Settings>);
       persist();
     },
     setVolume: (k, v) => {
+      if (!Number.isFinite(v)) return; // B-165: a NaN was stored as null
       set({ volume: { ...get().volume, [k]: Math.max(0, Math.min(1, v)) } });
       persist();
     },

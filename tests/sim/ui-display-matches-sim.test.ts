@@ -5,6 +5,8 @@
  * decorating tools quote the sale the sim will pay, and the dock's locked Visitors item says the unlock rule's words.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { admissionDraw } from '@/sim/facility';
@@ -57,12 +59,38 @@ describe('B-121: the admission projection follows the sim', () => {
     expect(then / now).toBeCloseTo(0.5833, 3);
   });
 
-  it('a price far past the fair one never turns a quiet day into a crowd', () => {
+  it('from a price far past the fair one the scaling is bounded: the current price counts as a draw of at least 0.01', () => {
     const g = shop(40);
     g.visitors.history = [{ day: 1, count: 2, revenue: 80, avgSatisfaction: 40 }];
+    expect(admissionDraw(40 / FAIR), 'the sim draws less than the floor at 5 times the fair price').toBeLessThan(0.01);
     const p = projectAdmission(g, FAIR, FAIR);
-    expect(Number.isFinite(p.visitors) && Number.isFinite(p.revenue)).toBe(true);
-    expect(p.visitors).toBeLessThanOrEqual((2 * admissionDraw(1)) / 0.01);
+    expect(p.visitors).toBeCloseTo((2 * admissionDraw(1)) / 0.01, 9);
+    expect(Number.isFinite(p.revenue)).toBe(true);
+  });
+});
+
+describe('B-121: the screens call the shared rules (their own copies are gone)', () => {
+  const src = (p: string) => readFileSync(join(__dirname, '..', '..', p), 'utf8');
+
+  it('the Visitors panel projects with projectAdmission and draws no curve of its own', () => {
+    const panel = src('src/ui/panels/visitors/VisitorsPanel.tsx');
+    expect(panel).toContain("import { projectAdmission } from './admissionProjection'");
+    expect(panel.match(/projectAdmission\(g, /g) ?? []).toHaveLength(2);
+    expect(panel).not.toMatch(/Math\.pow|function project\(/);
+    expect(src('src/ui/panels/visitors/admissionProjection.ts')).toMatch(/admissionDraw\(p \/ fair\)/);
+  });
+
+  it('the decorating tools quote decorSellValue, not the bare sell-back fraction', () => {
+    const editor = src('src/render/decor/DecorEditor.tsx');
+    expect(editor).toContain('decorSellValue(hoverDef, hoverInst)');
+    expect(editor).not.toContain('SELL_BACK_FRACTION');
+  });
+
+  it('the dock asks dockLockHint for a locked item, and Visitors has no words of its own', () => {
+    const dock = src('src/ui/hud/Dock.tsx');
+    expect(dock).toContain('const hint = dockLockHint(it);');
+    expect(dock).not.toContain("hint: 'Grow your reputation");
+    expect(DOCK_ITEMS.find((it) => it.id === 'visitors')!.hint).toBeUndefined();
   });
 });
 

@@ -8,7 +8,7 @@
  * stalls; a job whose last subscriber unmounts before it renders is dropped. Returns null while pending or when WebGL
  * is unavailable.
  */
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useSyncExternalStore } from 'react';
 import * as THREE from 'three';
 import type { Creature, CreatureRuntime, CreatureVisualParams, SpeciesDefinition } from '@/types';
 import type { CreatureObject } from '../creatures/types';
@@ -35,13 +35,36 @@ const listeners = new Map<string, Set<() => void>>();
 /**
  * B-181 — finished portraits kept at most. Each is a small WebP behind a blob URL, and the cache used to keep every
  * one for the whole session: every animal at every life stage and size it was ever shown at, the young of every
- * spawn among them. Past the cap the portraits nothing is showing go, least recently used first, and their blob URLs
+ * spawn among them. Past the cap the portraits nothing is showing go, least recently shown first, and their blob URLs
  * are released; a row that comes back later asks for its portrait again. What is on screen is never dropped, so a
  * facility with more animals in view than the cap simply keeps them all while they are in view.
  */
 export const PORTRAIT_CACHE_MAX = 600;
-/** Keys handed out by `requestPortrait`: their callers hold the URL with no subscription, so they are never dropped. */
+/**
+ * Keys handed out by `requestPortrait`: their callers hold the URL with no subscription, so they are never dropped
+ * (and never forgotten: one entry per distinct portrait asked for that way; nothing in the game calls it today).
+ */
 const held = new Set<string>();
+/**
+ * Keys a mounted `usePortrait` is showing, counted from the commit that put the image on screen (a layout effect).
+ * The store subscription only starts in a later, passive effect; a job finishing in between must not drop the
+ * portrait that was just rendered (the fresh review's note 1).
+ */
+const shown = new Map<string, number>();
+
+/** A mounted portrait shows `key` from now on; call the result when it stops. Exported for the unit test. */
+export function showPortrait(key: string): () => void {
+  shown.set(key, (shown.get(key) ?? 0) + 1);
+  touch(key);
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    const n = (shown.get(key) ?? 1) - 1;
+    if (n > 0) shown.set(key, n);
+    else shown.delete(key);
+  };
+}
 
 /**
  * B-181 — drop the oldest entries of `cache` (a Map keeps insertion order; `touch` moves a key to the newest end)
@@ -73,7 +96,7 @@ function trimCache() {
   if (results.size <= PORTRAIT_CACHE_MAX) return;
   evictPortraits(
     results,
-    (key) => !!listeners.get(key)?.size || held.has(key),
+    (key) => shown.has(key) || !!listeners.get(key)?.size || held.has(key),
     PORTRAIT_CACHE_MAX,
     (url) => {
       try {
@@ -693,6 +716,8 @@ export function usePortrait(subject: Creature | { speciesId: string; appearance?
     () => (key ? results.get(key) ?? null : null),
     () => null,
   );
+  // B-181: on screen from this commit on, so the cap never takes it (see `shown`)
+  useLayoutEffect(() => (key ? showPortrait(key) : undefined), [key]);
   useEffect(() => {
     if (!key) return;
     if (!results.has(key)) enqueue(subject, key, { size });
@@ -726,6 +751,11 @@ export function clearPortraitCache(): void {
   for (const url of results.values()) if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
   results.clear();
   held.clear();
+}
+
+/** B-181 — is this portrait in the cache right now? (diagnostics / tests) */
+export function portraitCached(key: string): boolean {
+  return results.has(key);
 }
 
 /** B-181 — portraits kept right now (diagnostics / tests). */

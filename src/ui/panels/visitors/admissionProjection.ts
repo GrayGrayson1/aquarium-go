@@ -12,8 +12,9 @@ import { admissionDraw } from '@/sim/facility';
 import { getFacilityLevel } from '@/data/facilities';
 
 /**
- * The least pull the current price is taken to have when the projection scales from it: far past the fair price the
- * sim's draw falls towards nothing, and dividing by it would turn a day with a visitor or two into a crowd.
+ * The least pull the current price is taken to have when the projection scales from it. Far past the fair price the
+ * sim's draw falls towards nothing (0.01 at about 4.3 times the fair price), and the handful of visitors such a price
+ * brought says little: below this the scaling stops growing, so the figure stays bounded (a rough one either way).
  */
 const MIN_CURRENT_DRAW = 0.01;
 

@@ -119,8 +119,12 @@ const records = (a: unknown): Json[] => (Array.isArray(a) ? a.filter(isObj) : []
 /** An array of strings (ids, unlock keys): anything else is dropped. */
 const strings = (a: unknown): string[] => (Array.isArray(a) ? a.filter((x): x is string => typeof x === 'string') : []);
 
-/** B-210 — a room fixture the layout can place (FacilityState.fixtures): its own id, a kind, finite numbers. */
-const fixtureOk = (f: unknown): boolean => isObj(f) && isSafeKey(f.id) && typeof f.kind === 'string' && f.kind.length > 0 && finiteNum(f.x) && finiteNum(f.z) && finiteNum(f.rotY);
+/**
+ * B-210 — a room fixture the layout can place (FacilityState.fixtures): its own id, a kind, finite numbers. The kind is
+ * a key into FIXTURE_DEFS, so, like a `defId`, it must not be an inherited name: `FIXTURE_DEFS['__proto__']` is
+ * Object.prototype, and the layout's `def.name` then threw on every step (the fresh review's blocker 1).
+ */
+const fixtureOk = (f: unknown): boolean => isObj(f) && isSafeKey(f.id) && isSafeKey(f.kind) && finiteNum(f.x) && finiteNum(f.z) && finiteNum(f.rotY);
 
 /** The numbers `ensureLive` (src/sim/facility/visitors.ts) always gives a VisitorLiveState. */
 const LIVE_NUMBERS = ['occupancy', 'arrivalRate', 'crowding', 'carry', 'pendingAdmission', 'pendingTips', 'pendingDonations', 'lastFlushHour'] as const;
@@ -739,7 +743,7 @@ export function repairState(s: Json): string[] {
   // B-210 — the room's furniture is a list of fixtures the room code can place: an id, a kind and finite numbers. A
   // list that isn't one starts empty and anything else in it is dropped: the layout reads each `x`, `z` and `rotY` on
   // every step (`toFixed`), so one unreadable fixture stopped the whole world. A kind this build doesn't know stays (it
-  // steps as a fixture with no effect), as an unknown `defId` does.
+  // steps as a fixture with no effect), as an unknown `defId` does; a kind that is an inherited name goes, as one does.
   if (!Array.isArray(s.facility.fixtures)) {
     repairs.push('facility.fixtures: rebuilt');
     s.facility.fixtures = [];

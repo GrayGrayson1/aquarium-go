@@ -67,17 +67,16 @@ describe('the meters while the database is down', () => {
     await settle();
     expect(s.total).toBe(0);
     expect(usage.estimate().bytes).toBeCloseTo((FULL + 1234) * WIRE_FACTOR, 3);
-    // the database is back
+    // the database is back, and a flush lands while the failure's wait is still running (no time has passed)
     s.down = false;
-    t += FLUSH_RETRY_MS;
     await usage.flush();
     expect(s.total).toBeCloseTo((FULL + 1234) * WIRE_FACTOR, 3);
     expect(usage.row).toMatchObject({ month: monthOf(t) });
-    // and a count that fills up again goes at once: the wait was the failure's, not a new rule
+    // a flush that lands ends the wait: a count that fills up again goes at once, at the same moment
     const before = s.calls.length;
     usage.count('steps', FULL);
     await settle();
-    expect(s.calls).toHaveLength(before + 1);
+    expect(s.calls, 'the wait was the failure\'s, not a new rule').toHaveLength(before + 1);
   });
 
   it('the timed flush and a flush asked for by name still go whenever they are called', async () => {

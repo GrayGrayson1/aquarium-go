@@ -5,7 +5,7 @@
  * URL, is never dropped.
  */
 import { describe, it, expect } from 'vitest';
-import { PORTRAIT_CACHE_MAX, evictPortraits, portraitCacheSize, prewarmPortraits, clearPortraitCache } from '@/render/portraits';
+import { PORTRAIT_CACHE_MAX, evictPortraits, portraitCacheSize, portraitCached, portraitKey, prewarmPortraits, clearPortraitCache, showPortrait } from '@/render/portraits';
 
 const cacheOf = (n: number): Map<string, string | null> => new Map(Array.from({ length: n }, (_, i) => [`k${i}`, `blob:portrait-${i}`] as [string, string]));
 
@@ -56,15 +56,40 @@ describe('B-181: the portrait cache is capped', () => {
     expect(released).toEqual(['blob:portrait-c']);
   });
 
-  it('the module keeps its own cache to the cap (here with no WebGL, where every portrait is an empty entry)', () => {
+  /** Subjects no species matches: each is stored at once as "no portrait" (an entry with no picture), nobody showing it. */
+  const nobody = (from: number, n: number) => Array.from({ length: n }, (_, i) => ({ speciesId: `no_such_species_${from + i}` }));
+
+  it('the module keeps its own cache to the cap (entries for subjects it cannot draw, which need no WebGL)', () => {
     clearPortraitCache();
-    // subjects no species matches: each is stored at once as "no portrait", with nobody showing it
-    prewarmPortraits(
-      Array.from({ length: PORTRAIT_CACHE_MAX + 50 }, (_, i) => ({ speciesId: `no_such_species_${i}` })),
-      64,
-    );
+    prewarmPortraits(nobody(0, PORTRAIT_CACHE_MAX + 50), 64);
     expect(portraitCacheSize()).toBe(PORTRAIT_CACHE_MAX);
+    expect(portraitCached(portraitKey({ speciesId: 'no_such_species_0' }, 64)!), 'the oldest went').toBe(false);
+    expect(portraitCached(portraitKey({ speciesId: `no_such_species_${PORTRAIT_CACHE_MAX + 49}` }, 64)!), 'the newest stayed').toBe(true);
     clearPortraitCache();
     expect(portraitCacheSize()).toBe(0);
+  });
+
+  it('a portrait on screen stays in the module\'s cache past the cap, from the commit that showed it until it is gone', () => {
+    clearPortraitCache();
+    prewarmPortraits(nobody(0, 3), 64);
+    const first = portraitKey({ speciesId: 'no_such_species_0' }, 64)!;
+    const second = portraitKey({ speciesId: 'no_such_species_1' }, 64)!;
+    // two mounted portraits show the first (the hook's layout effect calls this), nothing shows the second
+    const offA = showPortrait(first);
+    const offB = showPortrait(first);
+    prewarmPortraits(nobody(1000, PORTRAIT_CACHE_MAX + 10), 64);
+    expect(portraitCached(first), 'shown: kept, however old').toBe(true);
+    expect(portraitCached(second), 'not shown: gone').toBe(false);
+    // one of the two goes: still shown
+    offA();
+    offA(); // a cleanup that runs twice counts once
+    prewarmPortraits(nobody(3000, PORTRAIT_CACHE_MAX + 10), 64);
+    expect(portraitCached(first), 'still shown by the other').toBe(true);
+    // the last one goes: it can be dropped like any other, oldest first
+    offB();
+    prewarmPortraits(nobody(5000, PORTRAIT_CACHE_MAX + 10), 64);
+    expect(portraitCached(first), 'no longer shown: gone with the next trim').toBe(false);
+    expect(portraitCacheSize()).toBe(PORTRAIT_CACHE_MAX);
+    clearPortraitCache();
   });
 });
