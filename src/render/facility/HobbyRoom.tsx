@@ -140,7 +140,14 @@ function Books({ mats }: { mats: PropMaterials }) {
     noPick(mesh);
     return { geo, mesh };
   }, [mats.book]);
-  useEffect(() => () => geo.dispose(), [geo]);
+  // B-183: the instanced mesh too, or its instance buffers stay on the GPU
+  useEffect(
+    () => () => {
+      mesh.dispose();
+      geo.dispose();
+    },
+    [mesh, geo],
+  );
   return <primitive object={mesh} />;
 }
 

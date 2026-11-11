@@ -32,6 +32,58 @@ type Job = { key: string; species: SpeciesDefinition; creature: Creature | null;
 
 const results = new Map<string, string | null>();
 const listeners = new Map<string, Set<() => void>>();
+/**
+ * B-181 — finished portraits kept at most. Each is a small WebP behind a blob URL, and the cache used to keep every
+ * one for the whole session: every animal at every life stage and size it was ever shown at, the young of every
+ * spawn among them. Past the cap the portraits nothing is showing go, least recently used first, and their blob URLs
+ * are released; a row that comes back later asks for its portrait again. What is on screen is never dropped, so a
+ * facility with more animals in view than the cap simply keeps them all while they are in view.
+ */
+export const PORTRAIT_CACHE_MAX = 600;
+/** Keys handed out by `requestPortrait`: their callers hold the URL with no subscription, so they are never dropped. */
+const held = new Set<string>();
+
+/**
+ * B-181 — drop the oldest entries of `cache` (a Map keeps insertion order; `touch` moves a key to the newest end)
+ * until it holds `max`, skipping every key `inUse` answers for, and `release` each dropped blob URL. Returns how many
+ * went. Exported for its unit test.
+ */
+export function evictPortraits(cache: Map<string, string | null>, inUse: (key: string) => boolean, max: number, release: (url: string) => void): number {
+  let dropped = 0;
+  if (cache.size <= max) return dropped;
+  for (const [key, url] of cache) {
+    if (cache.size <= max) break;
+    if (inUse(key)) continue;
+    cache.delete(key);
+    if (url && url.startsWith('blob:')) release(url);
+    dropped++;
+  }
+  return dropped;
+}
+
+/** Mark `key` as just used: the newest end of the cache's order. */
+function touch(key: string) {
+  if (!results.has(key)) return;
+  const url = results.get(key) ?? null;
+  results.delete(key);
+  results.set(key, url);
+}
+
+function trimCache() {
+  if (results.size <= PORTRAIT_CACHE_MAX) return;
+  evictPortraits(
+    results,
+    (key) => !!listeners.get(key)?.size || held.has(key),
+    PORTRAIT_CACHE_MAX,
+    (url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        /* nothing to release */
+      }
+    },
+  );
+}
 const queue: Job[] = [];
 const queued = new Set<string>();
 let rafId = 0;
@@ -320,8 +372,10 @@ function dataUrl(canvas: HTMLCanvasElement): string | null {
 
 function finish(job: Job, url: string | null) {
   encoding = false;
+  results.delete(job.key); // a new entry is the newest (B-181)
   results.set(job.key, url);
   notify(job.key);
+  trimCache();
   if (queue.length) schedule();
 }
 
@@ -586,6 +640,7 @@ export function portraitKey(subject: PortraitSubject, size: number, transparent 
 export function requestPortrait(subject: PortraitSubject, opts: PortraitOptions = { size: 256 }): Promise<string | null> {
   const key = portraitKey(subject, opts.size, opts.transparent);
   if (!key) return Promise.resolve(null);
+  held.add(key); // the caller keeps the URL without a subscription: never dropped by the cap (B-181)
   if (results.has(key)) return Promise.resolve(results.get(key) ?? null);
   return new Promise((resolve) => {
     const off = subscribe(key, () => {
@@ -602,11 +657,13 @@ function enqueue(subject: PortraitSubject, key: string, opts: PortraitOptions) {
   if (results.has(key) || queued.has(key)) return;
   if (unavailable) {
     results.set(key, null);
+    trimCache(); // without WebGL nothing ever finishes: the cap is kept here (B-181)
     return;
   }
   const r = resolveSubject(subject);
   if (!r) {
     results.set(key, null);
+    trimCache();
     return;
   }
   queued.add(key);
@@ -618,6 +675,7 @@ function subscribe(key: string, f: () => void): () => void {
   let set = listeners.get(key);
   if (!set) listeners.set(key, (set = new Set()));
   set.add(f);
+  touch(key); // shown again: the newest in the cache's order (B-181)
   return () => {
     set!.delete(f);
     if (!set!.size) listeners.delete(key);
@@ -667,6 +725,12 @@ export function prewarmPortraits(subjects: PortraitSubject[], size = 192): void 
 export function clearPortraitCache(): void {
   for (const url of results.values()) if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
   results.clear();
+  held.clear();
+}
+
+/** B-181 — portraits kept right now (diagnostics / tests). */
+export function portraitCacheSize(): number {
+  return results.size;
 }
 
 /** lane:fix-panels — jobs still waiting to render (diagnostics / tests). */
