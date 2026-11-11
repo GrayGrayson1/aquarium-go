@@ -14,6 +14,12 @@ export const SECONDS_CAP = 400 * 3600;
 /** How often the count goes to the database, and the most it may grow before it goes sooner. */
 export const FLUSH_EVERY_MS = 5 * 60_000;
 export const FLUSH_BYTES = 50_000_000;
+/**
+ * After a count that didn't reach the database, a full count waits this long before it tries again. Without the wait
+ * a failed flush put its bytes back, so the count was still full and the very next frame the server sent started
+ * another: with the database down and a shop being played, a request for every frame until it came back.
+ */
+export const FLUSH_RETRY_MS = 30_000;
 
 /** `YYYY-MM` of a time, in UTC. */
 export function monthOf(ms: number): string {
@@ -39,6 +45,8 @@ export class Usage {
   row: UsageRow | null = null;
   private flushing: Promise<void> | null = null;
   private lastFlush: number;
+  /** A flush failed: the full count doesn't ask again before this time (the timed one comes every FLUSH_EVERY_MS anyway). */
+  private retryAt = 0;
   /** Bytes counted since the server started (before the factor), by kind: `/stats`. */
   readonly sent: Record<string, number> = {};
 
@@ -54,7 +62,7 @@ export class Usage {
   count(kind: string, bytes: number): void {
     this.pendingBytes += bytes;
     this.sent[kind] = (this.sent[kind] ?? 0) + bytes;
-    if (this.pendingBytes * WIRE_FACTOR >= FLUSH_BYTES) void this.flush();
+    if (this.pendingBytes * WIRE_FACTOR >= FLUSH_BYTES && this.now() >= this.retryAt) void this.flush();
   }
 
   /** The month's count as it stands, with what hasn't gone to the database yet. */
@@ -91,10 +99,12 @@ export class Usage {
       const wasClosed = this.row?.month === month ? this.row.closed : null;
       try {
         this.row = await this.store.usageAdd(month, bytes, seconds);
+        this.retryAt = 0;
       } catch {
-        // put it back for next time
+        // put it back for next time, and not with the very next frame
         this.pendingBytes += bytes / WIRE_FACTOR;
         this.awakeFrom -= seconds * 1000;
+        this.retryAt = this.now() + FLUSH_RETRY_MS;
       }
       const c = this.row?.month === month ? this.row.closed : null;
       if (c && c !== wasClosed) this.onClosed(c, reopensOn(t));
