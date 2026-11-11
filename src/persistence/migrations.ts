@@ -119,6 +119,26 @@ const records = (a: unknown): Json[] => (Array.isArray(a) ? a.filter(isObj) : []
 /** An array of strings (ids, unlock keys): anything else is dropped. */
 const strings = (a: unknown): string[] => (Array.isArray(a) ? a.filter((x): x is string => typeof x === 'string') : []);
 
+/** B-210 — a room fixture the layout can place (FacilityState.fixtures): its own id, a kind, finite numbers. */
+const fixtureOk = (f: unknown): boolean => isObj(f) && isSafeKey(f.id) && typeof f.kind === 'string' && f.kind.length > 0 && finiteNum(f.x) && finiteNum(f.z) && finiteNum(f.rotY);
+
+/** The numbers `ensureLive` (src/sim/facility/visitors.ts) always gives a VisitorLiveState. */
+const LIVE_NUMBERS = ['occupancy', 'arrivalRate', 'crowding', 'carry', 'pendingAdmission', 'pendingTips', 'pendingDonations', 'lastFlushHour'] as const;
+const LIVE_OPTIONAL_NUMBERS = ['nextFriendHour', 'concernLossToday', 'reactionBudget'] as const;
+
+/** B-210 — can the visitor sim step with this `visitors.live`? Every field it has must be what VisitorLiveState says. */
+function liveVisitorsOk(l: unknown): boolean {
+  if (!isObj(l)) return false;
+  if (!LIVE_NUMBERS.every((k) => finiteNum(l[k]))) return false;
+  if (!LIVE_OPTIONAL_NUMBERS.every((k) => l[k] === undefined || finiteNum(l[k]))) return false;
+  if (!isObj(l.mix) || !Object.values(l.mix).every(finiteNum)) return false;
+  if (!Array.isArray(l.unreachable) || !l.unreachable.every((id: unknown) => typeof id === 'string')) return false;
+  if (l.warnedHour !== undefined && !(isObj(l.warnedHour) && Object.values(l.warnedHour).every(finiteNum))) return false;
+  const f = l.friend;
+  if (f !== undefined && !(isObj(f) && typeof f.name === 'string' && typeof f.kind === 'string' && typeof f.tankId === 'string' && finiteNum(f.untilHour) && finiteNum(f.party))) return false;
+  return true;
+}
+
 export const MIGRATIONS: Migration[] = [
   {
     from: 0,
@@ -716,6 +736,20 @@ export function repairState(s: Json): string[] {
 
   if (!isObj(s.facility)) s.facility = { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] };
   s.facility = fillNumbers(s.facility, { level: 'hobby_room', width: 5, depth: 4.5, openToPublic: false, admission: 0, openHour: 9, closeHour: 19, fixtures: [] }, 'facility', repairs);
+  // B-210 — the room's furniture is a list of fixtures the room code can place: an id, a kind and finite numbers. A
+  // list that isn't one starts empty and anything else in it is dropped: the layout reads each `x`, `z` and `rotY` on
+  // every step (`toFixed`), so one unreadable fixture stopped the whole world. A kind this build doesn't know stays (it
+  // steps as a fixture with no effect), as an unknown `defId` does.
+  if (!Array.isArray(s.facility.fixtures)) {
+    repairs.push('facility.fixtures: rebuilt');
+    s.facility.fixtures = [];
+  } else {
+    const fixtures = (s.facility.fixtures as Json[]).filter(fixtureOk);
+    if (fixtures.length !== s.facility.fixtures.length) {
+      repairs.push(`facility.fixtures: ${s.facility.fixtures.length - fixtures.length} unreadable removed`);
+      s.facility.fixtures = fixtures;
+    }
+  }
 
   if (!isObj(s.market)) s.market = {};
   for (const k of ['stock', 'listings', 'buyers', 'history'] as const) s.market[k] = records(s.market[k]);
@@ -802,6 +836,13 @@ export function repairState(s: Json): string[] {
   for (const k of ['history', 'reactions'] as const) v[k] = records(v[k]);
   if (!isObj(v.exhibit)) v.exhibit = {};
   v.totalVisitors = num(v.totalVisitors, 0);
+  // B-210 — the visitor sim's own scratch is optional (`ensureLive` makes it when absent), so one it can't step with
+  // is dropped and made again: before, a `live` that wasn't an object, or whose `mix` or `warnedHour` wasn't a
+  // record, threw on every step. What goes with it is the crowd estimate and at most an hour's unbanked takings
+  if (v.live !== undefined && !liveVisitorsOk(v.live)) {
+    delete v.live;
+    repairs.push('visitors.live: unreadable, reset');
+  }
 
   s.log = records(s.log);
   // chunk 6 (PERSIST-004 A1) — the sim keeps the newest LOG_CAP events; a longer log is trimmed the same way
