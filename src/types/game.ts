@@ -975,7 +975,9 @@ export interface GameState {
    * (see src/persistence/offline.ts). While set, the sim is under a "maintenance grace period":
    * nothing may die (floor creature health at GRACE_HEALTH_FLOOR = 20, never set status 'dead'),
    * creatures receive minimal rations (hunger capped at GRACE_MAX_HUNGER = 60 without using inventory),
-   * and equipment should not fail. Core also enforces this as a safety net after every catch-up chunk.
+   * and equipment does not fail (src/sim/water/step.ts, PERSIST-012). After every catch-up chunk core's safety net
+   * (src/sim/catchUp.ts) also revives anything that died and floors health, hunger and the water; it does not cover
+   * equipment (B-125).
    */
   offlineGrace?: boolean;
   /** lane:staff — hired keepers, stock manager and docents (src/sim/staff). Absent in old saves; created lazily once unlocked. */
