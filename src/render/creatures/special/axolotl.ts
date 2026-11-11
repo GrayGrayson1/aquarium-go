@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import type { CreatureFactory, CreatureObject } from '../types';
 import type { CreatureRuntime } from '@/types';
 import type { RenderLod } from '../../lod';
-import { GeoBuilder, intervalSkin, mixSkin, resamplePath, skin1, tube, ellipsoid, type Skin, type SkinInterval, type V3, type Mask } from './common/geo';
+import { GeoBuilder, intervalSkin, mixSkin, resamplePath, skin1, tube, ellipsoid, type SkinInterval, type V3, type Mask } from './common/geo';
 import { RigDef, instantiateRig, makeSkinned, setRot } from './common/rig';
 import { acquire, release } from './common/cache';
 import { createCritterMaterial, createCritterUniforms } from './common/materials';

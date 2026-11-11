@@ -3,8 +3,8 @@
  * the bubble-tip anemone, macroalgae (chaetomorpha, gracilaria), gorgonians and a resin hitching post.
  * OWNER: lane "aquascape". Fluorescent tissue writes aExtra.x (glow) — lit up by actinic light in the shader.
  */
-import { GeoBuilder, leaf, tube, smoothPath, blob, lathe, weightFromHeight, add, sub, scl, norm, len, dirYP, envelope, fitPath, type V3, type Sway, type Extra, NO_SWAY } from './builder';
-import { prng, noise3, fbm3, hex, mix, mul, clamp, smooth, jitter, type RGB, type PRng, type Noise3 } from './noise';
+import { GeoBuilder, leaf, tube, smoothPath, blob, lathe, weightFromHeight, add, sub, scl, norm, len, envelope, fitPath, type V3, type Sway, NO_SWAY } from './builder';
+import { prng, noise3, fbm3, hex, mix, mul, clamp, smooth, type RGB, type PRng, type Noise3 } from './noise';
 import { rock, type DecorBuild } from './rocks';
 import type { DecorDef } from '@/types';
 
@@ -528,7 +528,7 @@ function gracilaria(out: DecorBuild, def: DecorDef, seed: number, lod: number): 
 function gorgonian(out: DecorBuild, def: DecorDef, seed: number, lod: number): void {
   const r = prng(seed);
   const n = noise3(seed);
-  const { w, d, h } = def.size;
+  const { d, h } = def.size;
   const b = out.coral;
   const stem = hex('#6e4c64');
   const stemL = hex('#9c7890');

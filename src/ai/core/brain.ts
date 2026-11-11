@@ -11,7 +11,7 @@ import type { ActId } from './sets';
 import { ACTS, appetite, breedingActFor, chooseFood, isLivePrey, startAct } from './acts';
 import { bodyFits, locomote, takeOff, tryLand } from './loco';
 import { cosmetics, writeOrientation } from './cosmetics';
-import { clamp, clamp01, lerp, rchance, rdur, rnd, rrange, safeNormalize } from './math';
+import { clamp01, lerp, rchance, rdur, rnd, rrange, safeNormalize } from './math';
 import { SURF_FLOOR, floorAt, nearestSurface, pointFree } from './env';
 import { bodyHY, bodySide, findParticle, randomSurfacePoint, randomSwimPoint } from './nav';
 import { consumeSpitRequest, spitRequested, spitWeight } from './spit'; // lane:brackish

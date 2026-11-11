@@ -8,7 +8,7 @@ import { ChevronRight, Droplet, Droplets, FlaskConical, Filter, GitBranch, Packa
 import type { GameState } from '@/types';
 import { Button, formatMoney } from '@/ui/kit';
 import { go } from '@/ui/nav/router';
-import { formatClock, dayOf } from '@/sim/time';
+import { formatClock } from '@/sim/time';
 import { WATER_ROOM } from '@/data/catalog/machines';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { batchGal, batchSaltKg, changerOf, freshCap, heldSystems, isHeld, prepRate, saltCap, saltWaterNeeded, saltWaterPerDay, SALT_KG_PER_GAL, waterFlows, type SupplyProblem } from '@/sim/automation';

@@ -12,7 +12,7 @@ import { bumpCounter } from '../facility';
 import { emitEvent } from '../context';
 import { nextId } from '../ids';
 import { addFood, recommendedServings, ensureLab, scaleFood, foodDemandUnits, availableFood } from '../water/food';
-import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, ROOM_TEMP_C, DETOX_FREE_FRACTION, DETOX_HOURS, isSaltClass, isMarineClass } from '../water/constants';
+import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, DETOX_FREE_FRACTION, DETOX_HOURS, isSaltClass, isMarineClass } from '../water/constants';
 import { equipmentSummary, expectedTempC, safeGallons, inhabitantsOf, safeHabitat } from '../water/env';
 import { tuneTankForSpecies } from '../water/kits';
 import { sanitizeWater } from '../water/step';

@@ -5,7 +5,6 @@
 import { describe, it, expect } from 'vitest';
 import { newGame } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
-import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { DECOR, getDecorDef } from '@/data/catalog/decor';
 import { propagationFor, PROPAGATION_BY_VISUAL } from '@/data/catalog/propagation';
 import { placeDecor, removeDecor, takeFrag, plantFrag, fragEligibility, fragRackSlots, freeRackSlots, onFragRack, MAX_STORED_FRAGS } from '@/sim/aquascape';

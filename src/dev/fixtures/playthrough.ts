@@ -10,7 +10,7 @@
  * Time model: 1 real second at 1× = 0.1 game hour, so 10 real minutes ≈ 60 game hours (2.5 days) and one real hour
  * ≈ 15 game days. The bot checks in once per game hour (≈10 real seconds), acting on whatever needs attention.
  */
-import type { Clutch, Creature, FoodDef, GameState, Tank, WaterClass } from '@/types';
+import type { Creature, FoodDef, GameState, Tank, WaterClass } from '@/types';
 import { newGame, previewStarters } from '@/sim/newGame';
 import { advanceWorld } from '@/sim/world';
 import { feedTank, waterChange, topOff, cleanTank, repairEquipment, setEquipment } from '@/sim/care';
@@ -28,7 +28,7 @@ import {
   startResearch,
   researchList,
 } from '@/sim/facility';
-import { buyOffer, buyTank, buyFood, buySalt, createListing, acceptBid, quickSell, suggestPricing, bestOpenBid, tankKitPrice, dailyOperatingCost, quickSellQuote } from '@/sim/economy';
+import { buyOffer, buyTank, buyFood, buySalt, createListing, acceptBid, suggestPricing, bestOpenBid, tankKitPrice, dailyOperatingCost } from '@/sim/economy';
 import { placeDecor, checkPlacement } from '@/sim/aquascape';
 import { breedingCheck, creaturesInTank, isLotOffer } from '@/sim/life';
 import { startBreeding, separateCreature, moveClutch } from '@/sim/life/breeding/actions';

@@ -720,7 +720,6 @@ function layoutSig(g: GameState): string {
 type Built = { back: Map<string, THREE.BufferGeometry>; left: Map<string, THREE.BufferGeometry>; right: Map<string, THREE.BufferGeometry>; floor: Map<string, THREE.BufferGeometry> };
 
 function build(g: GameState, level: FacilityLevelId, W: number, D: number, plan: Plan): Built {
-  const H = getFacilityLevel(level).wallHeight;
   const style = ROOM_STYLES[level];
   const inner = WALL_T / 2;
   const back = new VBatch();

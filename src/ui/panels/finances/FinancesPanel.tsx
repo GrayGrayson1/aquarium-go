@@ -5,12 +5,12 @@
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Wallet, TrendingUp, TrendingDown, Receipt, Gauge, TriangleAlert, HandCoins, Lightbulb, Landmark, Layers, Building2, Users } from 'lucide-react';
-import type { GameState, LedgerEntry } from '@/types';
+import type { LedgerEntry } from '@/types';
 import { Money, formatMoney } from '@/ui/kit';
 import { dailyOperatingCost, cashSuggestions, restartNeed, LOAN_AFTER_DEBT_HOURS, type OperatingCosts } from '@/sim/economy';
 import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe } from '../common/hooks';
-import { Chip, Seg, EmptyState, SectionHead, Tile, Callout, Bar } from '../common/parts';
+import { Chip, Seg, EmptyState, SectionHead, Callout, Bar } from '../common/parts';
 import { IncomeChart, type DayPoint } from './IncomeChart';
 import { orderedTanks, dailyCost } from '../common/derive';
 import { LEDGER_LABEL, dayOfHour, relTime, formatSpan } from '../common/format';

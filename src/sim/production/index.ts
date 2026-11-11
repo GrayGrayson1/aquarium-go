@@ -29,7 +29,7 @@
  *   the line is kept (ADR-0025 decision 10, ADR-0030 decision 2).
  * - **Costs.** costs.ts: the line's share of its tanks' food and power, hour by hour (ADR-0025 decision 9).
  */
-import type { Clutch, Creature, GameState, ListingKind, ProductionBatch, ProductionKeepRule, ProductionLine, ProductionRef, ProductionState, SpeciesDefinition, Tank } from '@/types';
+import type { Clutch, Creature, GameState, ListingKind, ProductionKeepRule, ProductionLine, ProductionRef, ProductionState, SpeciesDefinition, Tank } from '@/types';
 import type { ActionResult } from '../care';
 import { emitEvent } from '../context';
 import { settleTanks } from '../settle';

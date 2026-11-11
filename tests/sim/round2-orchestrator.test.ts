@@ -9,7 +9,6 @@ import { makeContext } from '@/sim/context';
 import { mulberry32 } from '@/sim/rng';
 import { createCreature, addCreature, stepTankCreatures } from '@/sim/life';
 import { incidentRisks, clearCompatCache } from '@/sim/compat';
-import { getSpecies } from '@/data/species';
 
 function add(s: GameState, tank: Tank, speciesId: string, name: string, seed: number, ageDays: number): Creature {
   return addCreature(s, createCreature(s, mulberry32(seed), speciesId, { ageDays, name }), tank.id);

@@ -80,7 +80,6 @@ import {
   personalityLine,
   sexRoleText,
   formatAge,
-  formatTemp,
   titleCase,
   sentenceCase,
   agoText,

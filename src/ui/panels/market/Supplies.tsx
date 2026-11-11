@@ -4,13 +4,13 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Utensils, Waves, Wrench, Mountain, Lock, Check, Package } from 'lucide-react';
+import { Utensils, Wrench, Mountain, Lock, Check, Package } from 'lucide-react';
 import type { GameState, FoodDef, EquipmentDef } from '@/types';
 import { Button, Money, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { FOODS, eatsFood, madeForSpecies } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
-import { buyFood, buySalt, buyEquipment, isFoodAvailable, soldWithWords, SALT_PRICE_PER_KG } from '@/sim/economy';
+import { isFoodAvailable, soldWithWords } from '@/sim/economy';
 import { act } from '../common/act';
 import { Chip, SectionHead, EmptyState, Select, Card } from '../common/parts';
 import { orderedTanks, ownedCreatures, speciesOf, gallonsOf, unlocked } from '../common/derive';

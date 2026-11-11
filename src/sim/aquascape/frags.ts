@@ -15,7 +15,7 @@
  *   GameState.inventory.frags       frags waiting to be planted or sold (kept apart from bought decor)
  * Deterministic: the only randomness is the new frag's rotation, drawn from simRng.
  */
-import type { GameState, Tank, DecorDef, DecorInstance, DecorPropagation } from '@/types';
+import type { GameState, Tank, DecorInstance, DecorPropagation } from '@/types';
 import type { ActionResult } from '../care';
 import { getDecorDef, isEpiphyte, isFloating, isLiving } from '@/data/catalog/decor';
 import { propagationFor, fragNounWithArticle, isCoralDef, fragLabel } from '@/data/catalog/propagation';

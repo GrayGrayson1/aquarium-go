@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { AlertTriangle, Copy, Download, FlaskConical, Info, Link2, Play, Plus, Save, Trash2, Upload, X, Camera, CopyPlus } from 'lucide-react';
 import type { WaterClass } from '@/types';
-import { Badge, Button, Section, Segmented, Tabs, TextField, Toggle, type BadgeTone } from '@/ui/kit';
+import { Badge, Button, Section, Segmented, Tabs, Toggle, type BadgeTone } from '@/ui/kit';
 import { getGame, useGame } from '@/state/game';
 import { platform } from '@/platform';
 import { useLab, closeLab } from '@/state/lab';

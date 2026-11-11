@@ -364,7 +364,6 @@ const _fwd = new THREE.Vector3();
 const _up = new THREE.Vector3();
 const _side = new THREE.Vector3();
 const _m = new THREE.Matrix4();
-const _q = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
 const _axis = new THREE.Vector3();
 const Y = new THREE.Vector3(0, 1, 0);

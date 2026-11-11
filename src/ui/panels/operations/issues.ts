@@ -97,7 +97,6 @@ function saltIssue(g: GameState, p: SupplyProblem): IssueView {
   const batchKg = room ? batchSaltKg(batchGal(room)) : 4.1;
   const kg = Math.round(p.stock * 10) / 10;
   const f = opsSnapshot(g).forecast;
-  const noManager = p.why === 'no_manager';
   if (p.state === 'arriving') {
     const buy = f?.plan.buys.find((b) => b.kind === 'salt');
     return {

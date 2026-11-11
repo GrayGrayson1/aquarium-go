@@ -18,7 +18,6 @@ import { getSpecies } from '@/data/species';
 import { createClutch } from '@/sim/life/breeding/clutch';
 import { noteBreedingFood } from '@/sim/life/breeding';
 import { forcePrismatic, isPrismatic } from '@/sim/life/rareVariants';
-import { readinessTarget } from '@/sim/life/breeding/common';
 import { devOpenMarket, acceptBid, forceBuyerVisit } from '@/sim/economy';
 import { stateHash } from '@/persistence';
 import { SCHEMA_VERSION } from '@/persistence/schema';

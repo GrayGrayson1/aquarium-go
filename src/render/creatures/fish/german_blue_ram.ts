@@ -9,7 +9,7 @@
  */
 import type { PlanFn } from './common';
 import type { FishPlan, Mark } from '../core/plan';
-import { curve, smoothstep } from '../core/math';
+import { curve } from '../core/math';
 import { BodySampler } from '../core/body';
 import { caudal, dorsal, spinyDorsal, anal, pectoral, pelvic } from '../core/fins';
 import { motion, look, eye, fin, finScale, bucket, isFemale } from './common';

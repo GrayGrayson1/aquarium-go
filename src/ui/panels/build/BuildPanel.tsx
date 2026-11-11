@@ -235,7 +235,6 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
   });
   const [seeded, setSeeded] = useState(true);
   const [buyable, setBuyable] = useState(false); // chunk 19 (QOL-003): only the sizes you can buy now
-  const env = wc.startsWith('fresh') ? 'freshwater' : wc === 'brackish' ? 'brackish' : 'marine'; // lane:brackish
   const [a, b] = WATER_CLASS_TINT[wc];
 
   const place = (tier: TankTier) => {

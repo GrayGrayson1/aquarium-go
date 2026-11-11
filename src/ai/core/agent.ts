@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import type { Creature, CreatureRuntime, PersonalityTag, SpeciesDefinition } from '@/types';
 import type { PersonalityModifiers } from '@/sim/life';
 import { reproProgress } from '@/sim/life/breeding';
-import { setProfile, speciesProfile, type ActId, type Loco, type SetProfile } from './sets';
+import { speciesProfile, type ActId, type Loco, type SetProfile } from './sets';
 import { clamp, clamp01, hashString } from './math';
 import type { SurfaceHit } from './env';
 import { makeHit } from './env';

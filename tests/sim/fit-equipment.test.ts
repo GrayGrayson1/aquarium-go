@@ -13,7 +13,7 @@ import { advanceWorld } from '@/sim/world';
 import { createCreature, addCreature } from '@/sim/life';
 import { starterAquascape } from '@/sim/aquascape';
 import { installEquipment, setEquipment, feedTank } from '@/sim/care';
-import { equipmentFit, installedFit, tankGearIssues, foodFit, canAutofeed, cannotAutofeedText, groupEaters, autofeederFoods, planAutofeed, pickAutofeedFood, FIT_TONE } from '@/sim/care/fit';
+import { equipmentFit, installedFit, tankGearIssues, foodFit, canAutofeed, cannotAutofeedText, groupEaters, autofeederFoods, pickAutofeedFood, FIT_TONE } from '@/sim/care/fit';
 import { FOODS, isAutofeederFood, foodForm, eatsFood } from '@/data/catalog/foods';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { ALL_SPECIES, getSpecies } from '@/data/species';

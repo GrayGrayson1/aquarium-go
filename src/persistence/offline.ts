@@ -52,7 +52,7 @@ export {
   type OfflineSummary,
   type SimulateOfflineOptions,
 } from '@/sim/catchUp';
-import { OFFLINE_HIDDEN_MIN_MS, OFFLINE_MIN_REAL_MS, defaultFocus, simulateOffline, summaryWorthShowing, type OfflineSummary } from '@/sim/catchUp';
+import { OFFLINE_HIDDEN_MIN_MS, defaultFocus, simulateOffline, summaryWorthShowing, type OfflineSummary } from '@/sim/catchUp';
 
 /**
  * lane:fix-core (S06-02) — the welcome-back card pauses the clock while it is open, so a 10× aquarium does not race

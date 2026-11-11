@@ -19,7 +19,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
 import { safe } from '../common/hooks';
 import { act, toast } from '../common/act';
-import { Chip, Card, EmptyState, Callout, SectionHead, NumberField, Checkbox, KV, Seg, Bar, LoadMore, usePaged } from '../common/parts';
+import { Chip, EmptyState, Callout, SectionHead, NumberField, Checkbox, KV, Bar, LoadMore, usePaged } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { OffspringOdds } from '../common/Offspring';
 import { TankThumb } from '../common/TankThumb';

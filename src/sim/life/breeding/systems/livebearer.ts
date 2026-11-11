@@ -25,7 +25,6 @@ import {
   setStage,
   spPlural,
   startResting,
-  throttleTank,
   throttleTankBackoff,
   tickTimers,
   breedNotice,

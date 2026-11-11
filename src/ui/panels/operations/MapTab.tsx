@@ -441,7 +441,7 @@ function QuarantineArea({ ctx, addQt }: { ctx: Ctx; addQt?: () => void }) {
 }
 
 function GalleryArea({ ctx }: { ctx: Ctx }) {
-  const { g, areas } = ctx;
+  const { areas } = ctx;
   const { shown, more } = areaTiles(areas.gallery, ctx.small ? 4 : GALLERY_TILES, areas.lineTanks);
   return (
     <Area ctx={ctx} id="gallery" title={`Gallery · ${areas.gallery.length} ${areas.gallery.length === 1 ? 'tank' : 'tanks'}`} style={{ gridColumn: ctx.small ? undefined : 'span 4' }}>

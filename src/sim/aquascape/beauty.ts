@@ -8,7 +8,6 @@
 import type { GameState, Tank, BeautyReport, DecorDef, DecorInstance, WaterClass } from '@/types';
 import { getDecorDef, isLiving, isFloating } from '@/data/catalog/decor';
 import { tankDims } from '../tankSpace';
-import { getTankTier } from '@/data/catalog/tanks';
 import { findSpecies } from '@/data/species';
 import { isUnlocked } from '../facility';
 import { residentsOf } from '../residents'; // lane:perf2
@@ -196,12 +195,6 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
   const tips: { p: number; text: string }[] = [];
   const factors: BeautyReport['factors'] = [];
   const add = (label: string, v: number, note?: string) => factors.push({ label, value: Math.round(clamp01(v) * 100), note });
-  let gallons = 20;
-  try {
-    gallons = getTankTier(tank.tierId).gallons;
-  } catch {
-    /* ignore */
-  }
   const areaTank = d.L * d.W;
 
   // 1. fullness
