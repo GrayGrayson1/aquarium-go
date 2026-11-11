@@ -1,9 +1,36 @@
-# Session handoff: after chunk 19 (quality of life, released as 0.9.2)
+# Session handoff: after chunk 19 (quality of life, released as 0.9.2) and the audit of 2026-11-11
 
 For the next agent on Aquarium Go. Chunk 8 was built by Marshall on 2026-10-19; chunk 9 by Chase the same day, at the
 owner's request ("Yes, start", ADR-0043 decision 8). The repo is the memory: `AGENTS.md`, `CLAUDE.md` and `PLAN.md`
 rule; this file is the order of work and the practical knowledge that makes it go smoothly. Replace or delete it when
 it's used up.
+
+## The audit of 2026-11-11: on the branch `audit/2026-11-11`, not on `next` yet
+
+- **What** (PLAN.md, "Audit, 2026-11-11"): the owner asked for a full audit with everything found fixed. Done from a
+  Cowork cloud sandbox (not the Mac): B-210, B-165, B-181, B-183 and B-125 fixed, B-121's three display bugs fixed,
+  the shop server's meters no longer ask the database with every frame while it is down, the Pages workflow on the
+  actions' Node 24 majors, 49 unused imports and locals removed. `src/persistence/migrations.ts`, `src/sim` and
+  `src/types` changed, so **the shared build hash changes**: the game and the shop server go out together, as in any
+  release that touches them.
+- **Status:** eleven commits on `audit/2026-11-11` (from `next` at `582e640`). The sandbox could not reach the npm
+  registry: typecheck ran, the unit tests ran on a stand-in toolchain (PLAN.md says which), **`npm run build` and
+  `npm run e2e` did not run**. One fresh review (Opus, max effort): two blockers, fixed. Nothing was pushed.
+- **Order of work:** run the four checks on the branch from `~/LocalTest/AquariumGo` (PLAN.md has the one line); if
+  they pass, `git checkout next && git merge --ff-only audit/2026-11-11` and push `next`. In a browser, look at what
+  no unit test can: a long Livestock list scrolled up and down (every portrait still there: B-181), a specialty
+  shop's Visitors panel with the price slider (takings fall above the fair price: B-121), the locked Visitors dock
+  item's tooltip, an almond leaf's "Del sells for $…" line as it breaks down. Then the usual order below.
+- **Left for the owner** (the audit's list is in PLAN.md): dependency upgrades (the pin in `core-dependencies.test.ts`
+  needs an ADR; Vite 6 gets security fixes only now), `npm audit`, the Supabase advisors, B-123, B-163, B-206.
+
+**Learned in the audit.**
+- *A sandbox with no registry can still run the unit tests.* With the Mac's `node_modules` copied over, Vitest 3 runs
+  on Linux once esbuild's own package is swapped for a Linux one of any 0.25+ version and Rollup's `parseAst` is
+  pointed at acorn (Vite's dev transform needs only the parser, not the bundler). The counts matched the Mac's exactly
+  (277 files, 4,214 tests on `582e640`). The build and e2e need the real Rollup binary: no way round that.
+- *`repairState`'s own scrub covers ids and keys, not every string that is used as a key.* A fixture's `kind` indexes
+  `FIXTURE_DEFS`; the review caught `"__proto__"` there. When a save field indexes a record, check it with `isSafeKey`.
 
 ## Chunk 19, quality of life (2026-11-02)
 
@@ -91,7 +118,8 @@ it's used up.
   the last loss says "eggs"), B-223 (the nest-site gate asks an angelfish for a flat rock, as in 0.8.0), B-224
   ("copepod live" in food advice), B-225 (larvae raise young without their live food, game-wide: a balance question
   for the owner), B-226 (the clown goby's mother eats her eggs; 0.8.0's). Older: B-217 (the collider test's two
-  nudged starts, unchanged), B-219, F1 (the owner's VoiceOver pass), B-207 and B-208 (the audit), B-210, online stage
+  nudged starts, unchanged), B-219, F1 (the owner's VoiceOver pass), B-207 and B-208 (the audit), B-210 (since fixed on
+  the audit branch, below), online stage
   2. The owner hasn't played 0.6.0 to 0.9.0 yet: a problem they report comes first.
 
 **Learned in chunk 17.**
@@ -175,7 +203,7 @@ its e2e runs. Pushes from `/Volumes/Dev` hang: push from the clone.
   fixed and each re-check clean.
 - **Still open from the chunk:** B-212, B-214 to B-217, B-219 (B-217: rare brief AI collisions, about the rate before
   the chunk; B-219: a steering case only darters' C-start covers). Older: F1 (the owner's VoiceOver pass), B-207 and
-  B-208 (the audit), B-210 (two crafted save shapes; before stage 2), online stage 2. The owner hasn't played 0.6.0 to
+  B-208 (the audit), B-210 (two crafted save shapes; before stage 2; since fixed on the 2026-11-11 audit's branch), online stage 2. The owner hasn't played 0.6.0 to
   0.8.0 yet: a problem they report comes first.
 
 **Learned in chunk 16.**
@@ -230,7 +258,7 @@ its e2e runs. Pushes from `/Volumes/Dev` hang: push from the clone.
   its first confirmation found two more (the lab's checking stepped a world, which changed the game on screen; the
   patch play-test stepped no tank), fixed in `f9c62ab`; the second was clean.
 - **Still open after it:** F1 (the owner's VoiceOver pass), the audit's other findings (B-207, B-208), B-210 (two crafted
-  save shapes that crash a step; before stage 2), online stage 2 (before strangers join). The owner hasn't played 0.6.0
+  save shapes that crash a step; before stage 2; since fixed on the 2026-11-11 audit's branch), online stage 2 (before strangers join). The owner hasn't played 0.6.0
   or 0.7.0 yet: a problem they report comes first.
 
 **Learned in chunk 15.**

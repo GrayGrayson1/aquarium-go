@@ -64,6 +64,13 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
    owner's VoiceOver pass during the play-through on a phone and a desktop (ACC-005). NOTIFY-011 and PLAT-004 (the
    native wrapper) stay deferred. The approved screens are in `docs/agent/design/DESIGN-0.5/` and
    `docs/agent/design/DESIGN-S3D/`.
+6. **The audit of 2026-11-11** (the owner: "Do a full audit … find all issues, and just fix them") is on the branch
+   `audit/2026-11-11`, eleven commits from `next` at `582e640`, **not on `next`**: it was done from a cloud
+   sandbox that could run the typecheck and the unit tests (281 files, 4,269 tests, on a stand-in toolchain) but not
+   `npm run build` or `npm run e2e`. Its brief, "Audit, 2026-11-11" below, has what it fixed (B-210, B-165, B-181,
+   B-183, B-125, three parts of B-121, the shop server's meters, the Pages workflow's actions, unused imports), what
+   it left for the owner (dependency upgrades first among them) and the one line that runs the four checks on it.
+   **Next:** run that line on the Mac; if all four pass, fast-forward `next` to the branch and push `next`.
 
 ## Status
 
@@ -89,6 +96,7 @@ chunk. This file, `AGENTS.md` and `CLAUDE.md` replace the retired agent harness
 | 17 | Big-tank species, and no animal in the shop before its tank (ADR-0053) | Brief and design written 2026-10-30 (Marshall, at the owner's request; `docs/agent/design/CHUNK-17/BIG-TANKS.md`); handed to Skye to build |
 | 18 | The owner deletes anything in Social, from the database (ADR-0054) | Done 2026-11-01 (released in 0.9.1). Its full run (`f15b8d7`): typecheck, unit 4,138, build, e2e 341 of 341; the fresh review found no blockers (its notes fixed, `a780b79`), the re-check's one blocker fixed (`f15b8d7`) and re-checked clean |
 | 19 | Quality of life: panels stay open, fix links, search, the decorating camera, locks explained, the shared shop's dropdown, the new guide (ADR-0055) | Done 2026-11-02 (released in 0.9.2). On `0cfb443`: typecheck, unit 4,214, build, e2e 381 of 381; the fresh review's ten blockers and the re-check's two fixed, its last re-check clean |
+| Audit | A full audit, with what it found fixed (the owner, 2026-11-11): B-210, B-165, B-181, B-183, B-125, parts of B-121, the shop server's meters, the Pages workflow, unused imports | On the branch `audit/2026-11-11`, not on `next`. On `887459a` in a cloud sandbox: typecheck, unit 4,269 on a stand-in toolchain; **build and e2e not run**; the fresh review's two blockers fixed |
 
 **Last full test runs:** chunk 15's final code `aae0922`, the owner's Mac, 2026-10-24, from the internal-disk clone under
 `caffeinate -i -s`: typecheck passed; unit 261 files, 3,363 tests passed; build passed; e2e 335 of 335 in Chromium and
@@ -1954,6 +1962,71 @@ spotlight follows the feed step and the tour runs to the end); a fresh reviewer 
   every new piece of wording with screenshots, this round's included ("Buy a chiller", the bell's "Wearing out", Find
   anything's "Needs a reef tank", the phone pill's "👥 {n} ▾" against the brief's one line). Approved as shown
   (ADR-0055 decision 8, answered 2026-11-02). Open: B-231.
+
+### Audit, 2026-11-11 (Cowork, a cloud sandbox) — on the branch `audit/2026-11-11`; the four checks still to run on the Mac
+
+The owner, 2026-11-11: "Do a full audit on Aquarium Go and upgrade everything that you can find. Just do an audit,
+find all issues, and just fix them. If you have my permission, just do everything you need to do."
+
+- *Where it ran, and what that allowed.* A Cowork session in Anthropic's cloud, linked to the Mac's
+  `/Volumes/Dev/Projects` folder through a Linux VM. Neither could reach the npm registry (the proxy answers 403), and
+  an agent there may look at Terminal but not type into it. So: `npm run typecheck` ran as it is; the unit tests ran
+  on a stand-in toolchain (the Mac's `node_modules`, with esbuild 0.28.2 in place of 0.25.12 and Rollup's `parseAst`
+  pointed at acorn 8.18: Vitest needs the parser, not the bundler); **`npm run build` and `npm run e2e` could not run**
+  (they need Rollup's own binary, and e2e WebKit); `npm audit` and `npm outdated` could not run; the Supabase
+  connector there holds another project, so the database's advisors were not read. Before any change, on `582e640`:
+  typecheck exit 0; unit 277 files, 4,214 tests passed (the Mac's own count on `0cfb443`).
+- *What was read.* All of `server/`; the stage 1 migration; the build, deploy and platform files (`deploy.yml`,
+  `render.yaml`, the Vite configs, `public/sw.js`, `index.html`); the online save's loop and the shared shop's
+  connection; settings, portraits, the facility's render components. Pattern scans over `src` (no `innerHTML`, `eval`
+  or `target="_blank"` without `rel`; listeners and intervals that are never removed; GPU objects made and never
+  disposed). A typecheck with `noUnusedLocals`, `noImplicitReturns`, `noImplicitOverride` and unreachable code as
+  errors. Every open BACKLOG row that names app code, checked against today's code. The public endpoints' limits
+  (`/health`, `/stats`, the socket slots) are as TRUST_BOUNDARY.md already records them: nothing new there.
+- *Fixed* (each with its test, in its own commit; the backlog rows say more):
+  - **B-210** (`7fcaaa6`, `887459a`): `repairState` drops a `visitors.live` the visitor sim can't step with and keeps
+    only fixtures the layout can read. A probe found more shapes than the two recorded; the review found one more
+    (a fixture whose kind is `"__proto__"`). `scenario-build`'s test of refused patches changed on purpose: the save
+    path now repairs two of its five.
+  - **B-165** (`6cfa6f3`, `887459a`): stored settings are checked when they load and when the game sets them.
+  - **B-181, B-183** (`49809d2`, `887459a`): the portrait cache keeps 600 and releases the blob URLs of what it
+    drops; the facility's hand-made instanced meshes are disposed with their geometry.
+  - **B-121**, three of its parts (`ef53320`): the admission projection uses the sim's `admissionDraw` (it showed
+    +20% where the sim gave −42%); the decorating tools quote `decorSellValue`; the dock's locked Visitors item says
+    the rule's hint. Players see different numbers in the Visitors panel, "$0" on a broken-down almond leaf's sale
+    line, and the design's line on the dock; no new words.
+  - **The shop server's meters** (`6aaacdf`, a new finding): with the database down and 50 MB waiting, every frame
+    sent started another `usageAdd` call (501 calls for 1,000 frames in the test); a failed flush now waits 30 s.
+  - **B-125** (`e5c1ddd`), a comment. **B-119** was already fixed by `9f0985c` (GEN-010); its row was stale.
+  - **`deploy.yml`** (`b6fc2da`): checkout and setup-node v5, upload-pages-artifact v4, deploy-pages v5 (Node 24).
+    0.5.3's note had left this file for the owner; **it has not run**: the next push to `main` is its first test, and
+    if that Pages run fails the old site stays up (revert the commit).
+  - **49 unused imports and locals** in 34 files (`31a2c83`); a typecheck with `noUnusedLocals` is now clean
+    (`tsconfig.json` unchanged: turning it on would make an unused import stop a deploy, the owner's call).
+  - `src/persistence/migrations.ts`, `src/sim` and `src/types` changed, so **the shared build hash changes**: the game
+    and the shop server release together.
+- *Found and left*, with why:
+  - **Dependencies.** The pin (`core-dependencies.test.ts`) changes only with an ADR, and the sandbox had no
+    registry. vite.dev's release page (read 2026-11-11) lists Vite 6.4 for security patches only, 8.3 as current;
+    Vitest 3, `@vitejs/plugin-react` 4 and TypeScript 5.9 are a major behind or more; `@types/node` is ^26 while
+    Pages, Render and the server run Node 22. Run `npm audit` and `npm outdated` on the Mac first.
+  - **No security headers** on either static site (`render.yaml` sets cache headers only; Pages can set none): a
+    Content-Security-Policy would need a pass in a browser (three.js, the fonts, Supabase, the shop server's socket).
+  - **B-123** (leaving can drop unsaved play; medium), **B-163**, **B-230**, **B-222**, **B-224**, **B-227**, **B-157**:
+    each needs words from the owner. **B-223**, **B-225**, **B-226**: balance. **B-206**: closing it takes `?perf` off
+    the live site, which the perf lane uses. **B-184**, **B-182**: for a render pass with a browser.
+  - The Mac's `.git` has three stray temporary pack files (413 KiB; `git count-objects -v` calls them garbage):
+    harmless, `git gc` clears them.
+- *The checks on the final code `887459a`* (2026-11-11, the sandbox): typecheck exit 0; unit 281 files, 4,269 tests passed on the
+  stand-in toolchain; **build and e2e not run**. *One fresh review* (Opus, max effort, the brief and
+  `git diff 582e640..HEAD`): two blockers (the `"__proto__"` kind; unknown keys inside `volume` no longer surviving a
+  load), both fixed in `887459a` with its notes; what it could not check is what a browser shows.
+- *To finish it* (the owner's one line, for this branch; then `git checkout next && git merge --ff-only
+  audit/2026-11-11 && git push origin next`):
+
+```bash
+cd ~/LocalTest/AquariumGo && git fetch dev audit/2026-11-11 && git checkout --detach FETCH_HEAD && npm ci && mkdir -p .agent-runs && { git log --oneline -1; for c in typecheck test build e2e; do echo "=== npm run $c"; PLAYWRIGHT_BROWSERS_PATH=~/LocalTest/playwright npm run $c; echo "=== $c exit $?"; done; } 2>&1 | tee .agent-runs/checks-audit.log
+```
 
 ## Releases
 
