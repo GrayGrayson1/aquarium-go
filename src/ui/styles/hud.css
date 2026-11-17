@@ -659,6 +659,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-hud__coach, .ag-hud.is-facility .ag-hud__coach { left: var(--edge); right: auto; width: min(320px, 42vw); bottom: calc(var(--dock-h) + var(--edge) * 2); max-height: calc(100dvh - var(--edge) - var(--topbar-h) - var(--dock-h) - var(--edge) * 2 - 12px); }
   .ag-coach { max-height: inherit; display: flex; flex-direction: column; }
   .ag-coach__body { overflow-y: auto; min-height: 0; }
+  /* audit 2026-11-17 (A1 review): the waiting line shrinks and scrolls too, so a long reason and the done line can't
+     push the buttons (Skip, Open the Market, Play) out of the capped card */
+  .ag-coach__wait { min-height: 0; overflow-y: auto; flex: 0 1 auto; }
   .ag-hud:has(.ag-toolpop, .ag-toolhint) .ag-hud__coach { opacity: 1; visibility: visible; }
   .ag-hud:has(.ag-toolpop) .ag-hud__coach { opacity: 0; visibility: hidden; }
   .ag-toolhint { left: var(--edge); right: calc(var(--edge) + var(--rail-w)); margin-inline: auto; bottom: calc(var(--dock-h) + var(--edge) * 2); }
