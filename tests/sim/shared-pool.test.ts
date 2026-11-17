@@ -225,6 +225,9 @@ describe('chunk 14: spending the pool (ADR-0050 decisions 2, 3)', () => {
             e.condition = 0.3;
             Object.assign(worn, { tank: t, equip: e.id });
           }
+      // Audit 2026-11-17 C4 — bottled bacteria in a fully established filter is now refused before it is paid for, so
+      // the dose this test pays for goes into a filter that still has growing to do
+      g.tanks[g.tankOrder[0]].water.bioMaturity = 0.5;
     });
     expect(worn.equip).not.toBe('');
     expect([...CARE_KINDS].sort()).toEqual(['cleanTank', 'dose', 'feedTank', 'repairEquipment', 'topOff', 'waterChange']);

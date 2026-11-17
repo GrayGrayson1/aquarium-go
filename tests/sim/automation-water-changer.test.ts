@@ -112,12 +112,13 @@ describe('AUTO-006 / B-149: the Auto Water Changer’s data', () => {
     expect(s.tanks[id].equipment.filter((e) => e.defId === 'auto_water_changer')).toHaveLength(1);
   });
 
-  it('a salt tank’s running cost counts the salt of its daily changes', () => {
+  // Audit 2026-11-17 C2 — the owner's choice: salt is a supply, paid for when bought (the changes use that stock), so a
+  // salt tank's running cost no longer bills an estimate of it too. This test pinned the old double charge.
+  it('a salt tank’s running cost has no salt in it: the device adds only its own upkeep', () => {
     const { s, tank } = build({ wc: 'marine_fowlr', salt: 50 });
     const on = tankDailyCost(s, tank);
     setEquipment(s, tank.id, changer(tank).id, { on: false });
-    // 10 % a day is 3.5× the 20 % a week the estimate assumes without it, plus the device's own $0.06
-    expect(on - tankDailyCost(s, tank)).toBeGreaterThan(0.06 + 0.01);
+    expect(Math.round((on - tankDailyCost(s, tank)) * 100) / 100).toBe(0.06);
   });
 
   it('its upkeep is in tankDailyCost while it is on, and not while it is off', () => {

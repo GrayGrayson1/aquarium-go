@@ -16,6 +16,7 @@ import { getFoodDef } from '@/data/catalog/foods';
 import { BRINE, EGGS_SUPPLY, FOOD_ROOM, INFUSORIA, SALT_BAGS, SALT_SUPPLY_ID, VEGETABLES } from '@/data/catalog/machines';
 import { SALT_PRICE_PER_KG } from '@/sim/economy';
 import { pickAutofeedFood } from '@/sim/care/autofeed';
+import { waterChangeCost } from '@/sim/care'; // Audit 2026-11-17 C2
 import { inhabitantsOf } from '@/sim/water/env';
 import { formatClock, dayOf } from '@/sim/time';
 import { batchGal, batchSaltKg, cultureState, saltWaterNeeded, saltWaterPerDay, SALT_KG_PER_GAL, type SupplyProblem } from '@/sim/automation';
@@ -201,6 +202,23 @@ export function DryFoodSection({ g, flash }: { g: GameState; flash: string | nul
 }
 
 /** Marine salt mix in 5, 20 and 40 kg, with its status (§8.5; shown with a salt tank, salt in stock or a Water room). */
+/**
+ * Audit 2026-11-17 C2 — salt is paid for when bought, not in the running cost (the owner's choice): say what the stock
+ * buys, in the largest salt tank's 25% water changes.
+ */
+function saltLasts(g: GameState): string {
+  let best: { name: string; kg: number } | null = null;
+  for (const id of g.tankOrder) {
+    const t = g.tanks[id];
+    if (!t) continue;
+    const kg = waterChangeCost(g, id, 0.25).saltKg;
+    if (kg > 0 && (!best || kg > best.kg)) best = { name: t.name, kg };
+  }
+  if (!best) return '';
+  const n = Math.floor((g.inventory.salt + 1e-6) / best.kg);
+  return n === 0 ? ` · not enough for a 25% water change of ${best.name}` : ` · enough for about ${n} 25% water ${n === 1 ? 'change' : 'changes'} of ${best.name}`;
+}
+
 export function SaltRow({ g, flash }: { g: GameState; flash: string | null }) {
   const room = g.facility.water;
   const snap = opsSnapshot(g); // memoised per game hour and stock (PERF-004)
@@ -244,7 +262,7 @@ export function SaltRow({ g, flash }: { g: GameState; flash: string | null }) {
               {status.line}
             </div>
           ) : (
-            <div className="pn-tiny pn-muted pn-num-t">{kg} kg in stock</div>
+            <div className="pn-tiny pn-muted pn-num-t">{kg} kg in stock{saltLasts(g)}</div>
           )}
         </div>
         <div className="pn-row pn-gap-1" role="group" aria-label="Buy marine salt mix" style={{ flexBasis: '100%', justifyContent: 'flex-end', flexWrap: 'wrap' }}>

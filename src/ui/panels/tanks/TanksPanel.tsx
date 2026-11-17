@@ -24,6 +24,7 @@ import { canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
 import { tankChips, tankLineProblem } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
 import { waterClassLock } from '@/sim/facility'; // chunk 7 (B-160)
+import { STOCKING_WATCH, STOCKING_DANGER } from '@/sim/water'; // Audit 2026-11-17 C15
 import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
 import { CHIP_ICON } from '@/ui/common/tankChipIcons'; // lane:automation (chunk 5)
 
@@ -79,7 +80,7 @@ export function TanksPanel() {
           <Tile icon={<Layers size={14} />} tone="aqua" label="Aquariums" value={rows.length} hint={`${rows.filter((r) => r.t.purpose === 'display').length} on display`} />
           <Tile icon={<Fish size={14} />} tone="aqua" label="Animals" value={animals} hint={rows.some((r) => r.clutches) ? `${plural(rows.reduce((a, r) => a + r.clutches, 0), 'clutch', 'clutches')} growing` : 'across all tanks'} />
           <Tile icon={<Coins size={14} />} tone="gold" label="Est. value" value={<Money value={totalValue} />} hint="if sold as set up" />
-          <Tile icon={<Gauge size={14} />} tone="coral" label="Daily upkeep" value={<Money value={totalCost} cents={totalCost < 20} />} hint="power, salt & wear" />
+          <Tile icon={<Gauge size={14} />} tone="coral" label="Daily upkeep" value={<Money value={totalCost} cents={totalCost < 20} />} hint="power & wear" /* Audit 2026-11-17 C2: salt is bought in Supplies, not billed */ />
         </div>
 
         {rows.length === 0 ? (
@@ -187,7 +188,7 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
         <Metric label="Welfare" value={c.welfare} icon={<Droplets size={12} />} />
         <Metric label="Beauty" value={c.beauty} icon={<Sparkles size={12} />} tone="aqua" />
         <Metric label="Exhibit" value={c.exhibitScore} icon={<Ticket size={12} />} tone="gold" />
-        <Metric label="Stocking" value={Math.min(100, c.stockingLoad * 100)} display={pct(c.stockingLoad)} icon={<Fish size={12} />} tone={c.stockingLoad > 1 ? 'danger' : c.stockingLoad > 0.85 ? 'watch' : 'good'} />
+        <Metric label="Stocking" value={Math.min(100, c.stockingLoad * 100)} display={pct(c.stockingLoad)} icon={<Fish size={12} />} tone={c.stockingLoad >= STOCKING_DANGER ? 'danger' : c.stockingLoad >= STOCKING_WATCH ? 'watch' : 'good'} /* Audit 2026-11-17 C15: the report's lines */ />
       </div>
 
       <div className="pn-tankcard__foot">
@@ -272,7 +273,7 @@ function wcLockHint(g: GameState, w: WaterClass): string {
 /** lane:fix-integrate-ui — what a conversion takes (new bed, salt, gear to storage) before the click (S14-06). */
 function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterClass }) {
   const cost = safe(() => convertWaterClassCost(g, tank.id, wc), null);
-  if (!cost || (cost.total <= 0 && cost.saltKg <= 0 && cost.equipmentOut.length === 0)) return null;
+  if (!cost || (cost.total <= 0 && cost.saltKg <= 0 && cost.equipmentOut.length === 0 && !cost.gearNotes?.length)) return null;
   const parts: string[] = [];
   if (cost.substrate > 0) parts.push(`New ${getSubstrateDef(cost.substrateKind!)?.name.toLowerCase() ?? 'substrate'} bed ${formatMoney(cost.substrate)}`);
   if (cost.saltKg > 0) {
@@ -281,9 +282,11 @@ function ConvertPreview({ g, tank, wc }: { g: GameState; tank: Tank; wc: WaterCl
   }
   const short = cost.total > g.finance.money;
   return (
-    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : 'Converting uses stored salt'}>
+    <Callout tone={short ? 'danger' : 'info'} icon={<Coins size={16} />} title={cost.total > 0 ? `Converting costs ${formatMoney(cost.total, { cents: cost.total < 20 })}` : cost.saltKg > 0 ? 'Converting uses stored salt' : 'Converting resets your gear'}>
       {parts.length > 0 && <>{parts.join(' · ')}. </>}
       {cost.equipmentOut.length > 0 && <>Moves to storage (can’t run in the new water): {cost.equipmentOut.join(', ')}. </>}
+      {/* Audit 2026-11-17 C7 — heaters and chillers that stay are reset for the new water; a missing heater is named */}
+      {(cost.gearNotes?.length ?? 0) > 0 && <>{cost.gearNotes.join(' ')} </>}
       {short && <>You have {formatMoney(Math.max(0, g.finance.money))}.</>}
     </Callout>
   );

@@ -39,7 +39,8 @@ describe('tank status reflects the animals, not just the water', () => {
     expect(tank.cache.animalStatus).toBe('danger');
     expect(tank.cache.status).toBe('danger');
     expect(tank.cache.statusSource).toBe('animals');
-    expect(tank.cache.statusReason).toBe('Ember is starving — feed right away.');
+    // Audit 2026-11-17 C8 — the line names the food in stock Ember eats (it read only "feed right away")
+    expect(tank.cache.statusReason).toMatch(/^Ember is starving — feed it .+ right away\.$/);
     expect(creatureWellbeing(g, ember).status).toBe('danger');
   });
 
@@ -53,7 +54,8 @@ describe('tank status reflects the animals, not just the water', () => {
     ember.illness = { kind: 'fin_rot', severity: 70, sinceHour: 0 };
     refreshTankCache(g, tank);
     expect(tank.cache.status).toBe('danger');
-    expect(tank.cache.statusReason).toMatch(/Ember is seriously ill with .+ — treat it now\./);
+    // Audit 2026-11-17 C22 — no "treat it now": there is no treatment action, the card lists the care steps
+    expect(tank.cache.statusReason).toMatch(/Ember is seriously ill with .+ — see its card for what helps\./);
     delete ember.illness;
     ember.stats.stress = 90;
     expect(animalStatus([ember]).issue).toBe('badly_stressed');

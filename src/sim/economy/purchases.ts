@@ -280,7 +280,9 @@ export function buyTank(state: GameState, tierId: string, waterClass: WaterClass
     kind: 'tip',
     text: opts.seeded
       ? `Your ${tier.name} is set up with seeded media, so it's partly cycled. Add animals gradually and keep testing the water.`
-      : `Your ${tier.name} is filled, but it isn't cycled yet. Beneficial bacteria need time to grow: add a pinch of food or bottled bacteria and wait until ammonia and nitrite read zero before adding animals.`,
+      : // Audit 2026-11-17 C5 — new water reads zero ammonia and nitrite from the start, so "wait until they read zero"
+        // was passed at once; say what to watch instead, and how long (a pinch a day: about a week in the sim)
+        `Your ${tier.name} is filled, but it isn't cycled yet. Drop in a pinch of food each day until the tank card’s Biological filter reads Mature before adding animals — about a week, or a few days with bottled bacteria.`,
     tankId: tank.id,
     toast: true,
   });

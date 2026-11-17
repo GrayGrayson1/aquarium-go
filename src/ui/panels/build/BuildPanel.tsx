@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Hammer, Layers, Mountain, Wrench, Palette, Building2, Lock, Move, MapPin, Sprout, Flower2, Shell, Gem, Puzzle, Waves, Check, Power, Trash2, Package, TriangleAlert, Info, Zap, Sparkles, Thermometer, Snowflake, Fan, Lightbulb, Wind, Droplets, Droplet, Utensils, Sun, Leaf, Box } from 'lucide-react';
-import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentKind, GameState, SubstrateKind, TankTier, WaterClass } from '@/types';
+import type { BackdropKind, DecorCategory, DecorDef, Environment, EquipmentInstance, EquipmentKind, GameState, SubstrateKind, Tank, TankTier, WaterClass } from '@/types';
 import { Button, Money, formatMoney, Toggle, Slider, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import { TANK_TIERS } from '@/data/catalog/tanks';
@@ -35,6 +35,7 @@ import { orderedTanks, gallonsOf, unlocked, livingInTank } from '../common/deriv
 import { substrateCost } from '../common/tankOps';
 import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
 import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
+import { removeEquipmentWarning, REPAIR_FROM } from '@/sim/care'; // Audit 2026-11-17 C12, C15
 import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
@@ -737,7 +738,8 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
 const SETTING_META: Record<string, { label: string; min: number; max: number; step: number; fmt: (v: number, unit: 'C' | 'F') => string }> = {
   heater: { label: 'Target', min: 18, max: 32, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
   chiller: { label: 'Target', min: 12, max: 26, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
-  light: { label: 'Intensity', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
+  // (no light: Audit 2026-11-17 C14 — a light follows its tank's Lighting intensity on the tank card; a second
+  // per-light "Intensity" here multiplied it unseen)
   powerhead: { label: 'Flow', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
   wavemaker: { label: 'Flow', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
   filter: { label: 'Flow', min: 0.2, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
@@ -787,12 +789,57 @@ const EQUIP_CHIP: Record<EquipmentKind, string> = {
   water_changer: 'Water changers',
 };
 
+/**
+ * Audit 2026-11-17 C11 — every unit in storage, the ones that can go in this tank first. Gear moved off a converted
+ * reef was listed only from a tank of its own water type, so from a freshwater tank it was out of sight; now it shows,
+ * saying what kind of tank it needs.
+ */
+export function storedEquipmentList(g: GameState, tank: Pick<Tank, 'environment'>): { inst: EquipmentInstance; needs: string | null }[] {
+  const rows = g.inventory.equipment.map((inst) => {
+    const envs = getEquipmentDef(inst.defId)?.environments ?? [];
+    const fits = !envs.length || envs.includes(tank.environment);
+    return { inst, needs: fits ? null : envs.includes('freshwater') ? 'Needs a freshwater tank' : envs.includes('brackish') ? 'Needs a salt tank' : 'Needs a marine tank' };
+  });
+  return [...rows.filter((r) => !r.needs), ...rows.filter((r) => r.needs)];
+}
+
+/**
+ * Audit 2026-11-17 C12 — "To storage" (as decor's button says). Taking a filter's bacteria or the only heater out of
+ * a tank with animals asks first (the sim's removeEquipmentWarning): the first press shows the cost, the second acts.
+ */
+function RemoveGearButton({ g, tankId, equipmentId }: { g: GameState; tankId: string; equipmentId: string }) {
+  const [armed, setArmed] = useState(false);
+  const warning = safe(() => removeEquipmentWarning(g, tankId, equipmentId), null);
+  useEffect(() => {
+    if (!armed) return;
+    const t = window.setTimeout(() => setArmed(false), 6000);
+    return () => window.clearTimeout(t);
+  }, [armed]);
+  return (
+    <>
+      <Button
+        size="sm"
+        variant={armed ? 'coral' : 'ghost'}
+        data-testid={`build-equip-remove-${equipmentId}`}
+        title={warning ?? undefined}
+        onClick={() => {
+          if (warning && !armed) return setArmed(true);
+          act({ k: 'removeEquipment', tank: tankId, equip: equipmentId }, { sound: 'place' });
+        }}
+      >
+        <Trash2 size={14} /> {armed ? 'Remove anyway' : 'To storage'}
+      </Button>
+      {armed && warning && <div className="pn-tiny pn-tone-watch" style={{ flexBasis: '100%' }} role="status">{warning}</div>}
+    </>
+  );
+}
+
 function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tankId: string; q: string; setQ: (v: string) => void; kind: EquipmentKind | 'all'; setKind: (k: EquipmentKind | 'all') => void }) {
   const { unit: tempUnit } = useTempText();
   const tank = g.tanks[tankId];
   const gal = gallonsOf(tank);
   const installed = tank.equipment;
-  const storage = g.inventory.equipment.filter((e) => getEquipmentDef(e.defId)?.environments.includes(tank.environment));
+  const storage = storedEquipmentList(g, tank); // Audit 2026-11-17 C11: every stored unit, fitting ones first
   const shopAll = EQUIPMENT.filter((e) => e.environments.includes(tank.environment)).map((e) => ({ e, fits: gal >= e.gallonsRange.min * 0.6 && gal <= e.gallonsRange.max * 1.4, installed: installed.some((x) => x.defId === e.id) }));
   // chunk 19 (ADR-0055 decision 3, QOL-003) — what to buy, searched and by kind (a tank card's "Buy a heater" opens on Heaters)
   const kinds = [...new Set(shopAll.map(({ e }) => e.kind))].filter((k) => EQUIP_CHIP[k]);
@@ -857,14 +904,12 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                         <Slider value={inst.setting} min={meta.min} max={meta.max} step={meta.step} onChange={(v) => act({ k: 'setEquipment', tank: tankId, equip: inst.id, setting: v }, { sound: null, quiet: true, cautionKey: `equip:${inst.id}` })} label={`${def?.name} ${meta.label}`} />
                       </div>
                     )}
-                    {(inst.failed || inst.condition < 0.6) && def && (
+                    {(inst.failed || inst.condition <= REPAIR_FROM) && def && ( /* Audit 2026-11-17 C15: the sim's own line (it said 60%) */
                       <Button size="sm" variant={inst.failed ? 'coral' : 'default'} silent onClick={() => act({ k: 'repairEquipment', tank: tankId, equip: inst.id }, { sound: 'confirm' })}>
                         <Wrench size={14} /> Repair · {formatMoney(Math.max(5, Math.round(def.price * 0.35)))}
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" onClick={() => act({ k: 'removeEquipment', tank: tankId, equip: inst.id }, { sound: 'place' })}>
-                      <Trash2 size={14} /> Remove
-                    </Button>
+                    <RemoveGearButton g={g} tankId={tankId} equipmentId={inst.id} />
                   </div>
                 </div>
               );
@@ -877,7 +922,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
         <section>
           <SectionHead title="In storage" icon={<Package size={14} />} />
           <div className="pn-col pn-gap-2">
-            {storage.map((e) => {
+            {storage.map(({ inst: e, needs }) => {
               const def = getEquipmentDef(e.defId);
               const fit = storedFit(e.defId);
               return (
@@ -891,7 +936,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                     <FitLine verdict={fit} />
                   </div>
                   <Button size="sm" disabled={!!fit?.blocked} title={fit?.blocked ? fit.text : undefined} onClick={() => act({ k: 'installEquipment', tank: tankId, def: e.defId, instance: e.id }, { sound: 'place', kind: fit && fit.level !== 'ok' && !fit.general && !fit.soft ? 'warning' : undefined })}>
-                    <Check size={14} /> {fit?.blocked ? fit.label : 'Install'}
+                    <Check size={14} /> {needs ?? (fit?.blocked ? fit.label : 'Install')}
                   </Button>
                 </div>
               );

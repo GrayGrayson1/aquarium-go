@@ -212,7 +212,7 @@ export function FinancesPanel() {
             )}
           </div>
           <p className="pn-tiny pn-muted" style={{ marginTop: 8 }}>
-            Electricity for filters, heaters and lights, wear on equipment, and salt for marine water changes. Empty tanks still cost money to run.
+            Electricity for filters, heaters and lights, and wear on equipment. Salt is a supply, like food: you pay when you buy it in Market › Supplies. Empty tanks still cost money to run.
             {(data.ops.wages ?? 0) > 0 && ' Staff wages are paid at midnight; if the cash runs out, they work a short notice period rather than putting you in debt.'}
           </p>
         </section>

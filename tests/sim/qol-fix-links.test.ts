@@ -151,7 +151,9 @@ describe('QOL-002: a unit that is installed but not running is the fix, not a ne
     tank.water.tempC = 22; // the room
     const issues = tempIssues(g, tank.id);
     expect(issues.length).toBeGreaterThan(0);
-    expect(issues.map((i) => i.advice).join(' ')).toMatch(/Add a heater sized for this tank|Install a heater/);
+    // Audit 2026-11-17 C3 — the words name the heater that's there ("Repair the …"), not "Add a heater"
+    expect(issues.map((i) => i.advice).join(' ')).toMatch(/Repair the /);
+    expect(issues.map((i) => `${i.text} ${i.advice}`).join(' ')).not.toMatch(/Add a heater|Install a heater|There is no heater/);
     for (const i of issues) expect(fixForWaterIssue(tank, i)).toEqual(gearRowOf(tank, heater, 'Repair'));
   });
   it('the only heater switched off: its row (the switch), not "Buy a heater"', () => {
@@ -161,7 +163,8 @@ describe('QOL-002: a unit that is installed but not running is the fix, not a ne
     tank.water.tempC = 22;
     const issues = tempIssues(g, tank.id);
     expect(issues.length).toBeGreaterThan(0);
-    for (const i of issues) expect(fixForWaterIssue(tank, i)).toEqual(gearRowOf(tank, heater, 'Open Equipment'));
+    // Audit 2026-11-17 C3 — the link says what to do on that row
+    for (const i of issues) expect(fixForWaterIssue(tank, i)).toEqual(gearRowOf(tank, heater, 'Switch it on'));
   });
   it('too warm with the chiller failed: its Repair, not "Buy a chiller"', () => {
     const { g, tank } = setup();
@@ -169,7 +172,7 @@ describe('QOL-002: a unit that is installed but not running is the fix, not a ne
     const chiller = addUnit(tank, 'chiller', { failed: true, failMode: 'off' });
     tank.water.tempC = 33;
     const issue = tempIssue(g, tank.id)!;
-    expect(issue.advice).toMatch(/Add a chiller, or a clip-on fan/);
+    expect(issue.advice).toMatch(/^Repair the /); // Audit 2026-11-17 C3 — was "Add a chiller, or a clip-on fan…"
     expect(fixForWaterIssue(tank, issue)).toEqual(gearRowOf(tank, chiller, 'Repair'));
   });
   it('"A heater has failed" picks the heater, not a failed chiller listed first', () => {

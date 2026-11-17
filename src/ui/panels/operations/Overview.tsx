@@ -97,7 +97,7 @@ function ProblemsCard({ g, issues, counts, nav, small }: { g: GameState; issues:
       <div className="ops-card ops-card--good" data-testid="ops-all-clear">
         <div className="ops-row">
           <CircleCheck size={18} aria-hidden style={{ color: 'var(--c-good)' }} />
-          <span className="ops-row__title">Everything is running smoothly.</span>
+          <span className="ops-row__title">Automation is running smoothly.</span>{/* Audit 2026-11-17 C20: what this list checks (supplies and lines), as the bell says; tanks have their own alerts */}
         </div>
       </div>
     );
@@ -564,7 +564,7 @@ function EarlyOverview({ g, tier, nav, small }: { g: GameState; tier: OpsTier; n
           <div className="ops-row">
             <span className="ops-row__main ops-row__sub">Auto-clean needs an Auto Water Changer</span>
             <Button size="sm" onClick={() => go({ kind: 'tankCard', tankId: fed[0].id, tab: 'gear' })}>
-              Buy · $120
+              Set up {/* Audit 2026-11-17 C21: it opens the tank's Equipment tab, where the Buy is (it said "Buy · $120") */}
             </Button>
           </div>
         ) : null}

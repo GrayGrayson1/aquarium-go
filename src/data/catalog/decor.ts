@@ -50,7 +50,7 @@ export const DECOR: DecorDef[] = [
     visual: 'rock_seiryu',
     anchors: [a('graze', 0.02, 0.07, 0.03), a('rest', -0.03, 0.02, 0.04)],
     palette: ['#6f777d', '#9aa2a7', '#e3e2da'],
-    description: 'Blue-grey limestone with white calcite veins and sharp, craggy ridges — the classic Iwagumi stone. Slowly raises hardness.',
+    description: 'Blue-grey limestone with white calcite veins and sharp, craggy ridges — the classic Iwagumi stone.', // Audit 2026-11-17 C13: the game doesn't model the hardness it adds
   },
   {
     id: 'dragon_stone',
