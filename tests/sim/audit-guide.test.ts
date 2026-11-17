@@ -22,7 +22,7 @@ import { finaleLines, finaleNext } from '@/ui/tutorial/TutorialCoach';
 import { guideAim, type GuideScreen } from '@/ui/tutorial/guideTargets';
 import { tourStops } from '@/ui/tutorial/tourStops';
 import { guideMentions } from '@/ui/hud/ToolRail';
-import { eventLink } from '@/ui/hud/eventLinks';
+import { eventLink, unlockWhere } from '@/ui/hud/eventLinks';
 import { navDots } from '@/ui/common/notify';
 import { DOCK_ITEMS } from '@/ui/hud/Dock';
 import { useSettings } from '@/state/settings';
@@ -200,6 +200,13 @@ describe('A11: the water step waits for the reading, not the card opening', () =
     expect(tutorialStepId(g)).toBe('water');
     tutorialAdvance(g, 'read_water');
     expect(tutorialStepId(g)).toBe('habitat');
+  });
+});
+
+describe('A16: Party says where it is', () => {
+  it('a where-only line for an unlock with no panel', () => {
+    expect(unlockWhere('party_mode')).toBe('Find Party in the tank tools.');
+    expect(unlockWhere('constructor')).toBeUndefined();
   });
 });
 

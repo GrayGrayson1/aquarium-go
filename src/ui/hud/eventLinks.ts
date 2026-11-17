@@ -33,6 +33,15 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   nursery: { panel: 'tanks', target: null, where: 'Set a tank’s purpose in Tanks.' },
 };
 
+/**
+ * Audit 2026-11-17 (A16) — unlocks that live in no panel, with just their "where" line ("Unlocked · Party / music mode"
+ * said nothing else).
+ */
+const UNLOCK_WHERE: Record<string, string> = {
+  party_mode: 'Find Party in the tank tools.',
+};
+export const unlockWhere = (key: string): string | undefined => (Object.hasOwn(UNLOCK_WHERE, key) ? UNLOCK_WHERE[key] : undefined);
+
 const PANEL_WORD: Partial<Record<PanelId, string>> = { shows: 'Shows', visitors: 'Visitors', build: 'Build', market: 'Market', tanks: 'Tanks', research: 'Research' };
 const withLabel = (l: Omit<EventLink, 'label'>, label?: string): EventLink => ({ ...l, label: label ?? `Open ${PANEL_WORD[l.panel] ?? 'it'}` });
 
