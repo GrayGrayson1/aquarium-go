@@ -204,7 +204,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
 
       {report.issues.length > 0 && (
         <ul className="ag-issues">
-          {report.issues.slice(0, 4).map((i, k) => (
+          {report.issues.map((i, k) => ( /* Audit 2026-11-17 C19 (B-231 c): every issue — a failed UV or skimmer was cut off at four */
             <li key={k} className={`ag-reason ag-reason--${i.status === 'danger' ? 'danger' : i.status === 'watch' ? 'watch' : 'good'}`}>
               <span className="ag-reason__icon" aria-hidden>
                 {i.status === 'danger' ? <OctagonAlert size={14} /> : <TriangleAlert size={14} />}
@@ -713,6 +713,12 @@ export function TankCard() {
               <FixButton link={links[k]} testId={`tank-fix-${k}`} />
             </li>
           ))}
+          {/* Audit 2026-11-17 C19 (B-231 c) — the header shows four; say the rest are in the tabs */}
+          {(attn?.items.length ?? 0) > rows.length && (
+            <li className="ag-thead__reason ag-small ag-muted" data-testid="tank-more-issues">
+              {(attn?.items.length ?? 0) - rows.length} more in the tabs below.
+            </li>
+          )}
         </ul>
       )}
       {game && <TankKeeperLine game={game} tank={tank} /> /* lane:staff */}

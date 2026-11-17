@@ -588,3 +588,50 @@ describe('C17: a failed one-per-tank unit says how to get past it', () => {
     expect(equipmentFit(s, t, 'ato').text).toMatch(/one is all it needs/);
   });
 });
+
+describe('C19 (B-231 c, f, g): idle units before "Buy", no "too small" in a fight, no cut-off issue list', () => {
+  it('two lights at full, one switched off: its switch, not "Buy a light"', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.equipment.push({ id: 'test_light_2', defId: 'light_basic_led', installedHour: 0, condition: 1, on: false });
+    t.lighting = { ...t.lighting, intensity: 1.5 };
+    const raise = { text: 'Corals need stronger light.', advice: 'Raise the intensity or install a stronger light.', param: 'light' as const };
+    expect(fixForWaterIssue(t, raise)).toEqual({ label: 'Switch it on', to: { kind: 'card', tankId: t.id, tab: 'gear', fix: 'equip-test_light_2' } });
+  });
+
+  it('"Add a small powerhead" with one failed: its Repair, not "Buy a powerhead"', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.equipment.push({ id: 'test_pump', defId: 'powerhead_small', installedHour: 0, condition: 0.1, on: true, failed: true, failMode: 'off' });
+    expect(fixForWaterIssue(t, { text: 'Too still.', advice: 'Add a small powerhead for more movement.', param: 'flow' })?.label).toBe('Repair');
+  });
+
+  it('a heater fighting a chiller is not also called too small', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const heater = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    heater.setting = 30;
+    t.equipment.push({ id: 'test_chiller', defId: 'chiller_mini', installedHour: 0, condition: 1, on: true, setting: 24 });
+    const texts = getWaterReport(s, t.id).issues.map((i) => i.text).join(' ');
+    expect(texts).toMatch(/fight each other/);
+    expect(texts).not.toMatch(/heater is too small/);
+  });
+
+  it('the Water tab lists every issue, past four', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.water.ammonia = 3;
+    t.water.nitrite = 3;
+    t.water.nitrate = 200;
+    t.water.oxygen = 0.3;
+    t.water.pH = 5;
+    t.water.tempC = 33;
+    t.water.algae = 90;
+    const n = getWaterReport(s, t.id).issues.length;
+    expect(n).toBeGreaterThan(4);
+    useGame.setState({ game: s });
+    const html = renderToStaticMarkup(createElement(WaterTab, { game: s, tank: t }));
+    useGame.setState({ game: null });
+    expect((html.match(/class="ag-reason ag-reason--/g) ?? []).length).toBe(n);
+  });
+});

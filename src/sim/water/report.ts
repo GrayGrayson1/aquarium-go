@@ -958,8 +958,9 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
       weight: stuck ? 300 : dangerous ? 205 : 110,
     });
   }
-  // Undersized heater
-  if (s.heaterSet !== null && !s.stuckHeaters.length) {
+  // Undersized heater (Audit 2026-11-17 C19, B-231 g: not while it fights a chiller — that line says what to do, and
+  // "too small" sent the player to buy a heater)
+  if (s.heaterSet !== null && !s.stuckHeaters.length && !s.conflict) {
     const reach = expectedTempC(tank, s);
     if (reach < s.heaterSet - 0.6) {
       issues.push({

@@ -131,7 +131,11 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     // Lighting slider's top (1.5, TankCard)
     // (Audit 2026-11-17 C14: a light dimmed on its own holds it back too — its Full power is in Lighting)
     const dimmed = gearOf(tank, 'light').some((e) => e.on && !e.failed && (e.setting ?? 1) < 0.99);
-    if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49 && !dimmed) return buyGear(tank, 'light', 'Buy a light');
+    if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49 && !dimmed) {
+      // (Audit 2026-11-17 C19, B-231 f: a second light that's failed or off is the fix before a new one)
+      const idle = idleOf(tank, 'light');
+      return idle ? idleLink(tank, idle) : buyGear(tank, 'light', 'Buy a light');
+    }
     return card(tank, 'gear', 'lighting', 'Lighting');
   }
   if (p === 'oxygen') {
@@ -142,6 +146,9 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     return gearOf(tank, 'airstone').length < (MAX_PER_KIND.airstone ?? 4) ? buyGear(tank, 'airstone', 'Buy an airstone') : card(tank, 'gear', 'equipment', 'Open Equipment');
   }
   if (p === 'flow') {
+    // (Audit 2026-11-17 C19, B-231 f: "Add a small powerhead" with one failed or off: that one first)
+    const idlePump = /add a small powerhead/.test(adv) ? idleOf(tank, 'powerhead', 'wavemaker') : undefined;
+    if (idlePump) return idleLink(tank, idlePump);
     const pump = gearOf(tank, 'powerhead', 'wavemaker', 'filter')[0];
     if (/add a small powerhead/.test(adv) || !pump) return buyGear(tank, 'powerhead', 'Buy a powerhead');
     return gearRow(tank, pump, 'Open Equipment');
