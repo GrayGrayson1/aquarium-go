@@ -16,6 +16,7 @@ import { isCarried } from '@/sim/life/breeding/clutch';
 import { useShell } from '../../common/shellStore';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { usePanelGame, safe } from '../common/hooks';
+import { useTempText } from '../common/hooks'; // Audit 2026-11-17 (D8)
 import { act, edit } from '../common/act';
 import { Chip, Seg, Select, EmptyState, Bar, Checkbox, Callout, SectionHead, KV, LoadMore, usePaged } from '../common/parts';
 import { CreaturePortrait, CreatureGlyph } from '../common/Portrait';
@@ -329,6 +330,7 @@ export function LivestockPanel() {
 
 function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick, selectedId, totalAlive, resetKey, onReset }: { g: GameState; list: Creature[]; values: Map<string, number>; tankName: Map<string, string>; well: Map<string, { status: 'good' | 'watch' | 'danger'; headline: string; note?: string }>; listedIds: Set<string>; picked: Set<string>; onPick: (id: string, on: boolean) => void; selectedId: string | null; totalAlive: number; resetKey: string; onReset: () => void }) {
   const { phone, close } = useSheet();
+  const { t } = useTempText(); // Audit 2026-11-17 (D8): condition notes carry the sim's °C
   // lane:fix-panels — rows mount a page at a time (every row asks for a portrait render; 337 at once stuttered the tank)
   const { shown, more } = usePaged(list.length, resetKey);
   if (totalAlive === 0)
@@ -392,8 +394,8 @@ function AnimalList({ g, list, values, tankName, well, listedIds, picked, onPick
                 </span>
               </span>
               <span className="pn-lsrow__health">
-                <span className={clsx('pn-lsrow__cond', `pn-tone-${cond}`)} title={w.note}>
-                  <HeartPulse size={12} aria-hidden /> {w.headline}
+                <span className={clsx('pn-lsrow__cond', `pn-tone-${cond}`)} title={t(w.note)}>
+                  <HeartPulse size={12} aria-hidden /> {t(w.headline)}
                 </span>
                 <Bar value={c.stats.health} label={`${c.name} health`} thin />
               </span>
@@ -646,6 +648,7 @@ function YoungView({ g }: { g: GameState }) {
 
 function PastView({ g, past }: { g: GameState; past: Creature[] }) {
   const { shown, more } = usePaged(past.length, past.length);
+  const { t } = useTempText(); // Audit 2026-11-17 (D8)
   if (past.length === 0)
     return (
       <EmptyState icon={<Heart size={24} />} title="No past residents">
@@ -672,7 +675,7 @@ function PastView({ g, past }: { g: GameState; past: Creature[] }) {
                   {sp?.commonName ?? c.speciesId}
                   {c.morphName && c.morphName.toLowerCase() !== 'wild type' ? ` · ${c.morphName}` : ''}
                 </span>
-                <span className="pn-small pn-muted">{c.status === 'sold' ? last?.text ?? 'Sold to a new home.' : c.deathCause ? `Lost — ${c.deathCause}` : 'Passed away.'}</span>
+                <span className="pn-small pn-muted">{c.status === 'sold' ? last?.text ?? 'Sold to a new home.' : c.deathCause ? `Lost — ${t(c.deathCause)}` : 'Passed away.'}</span>
               </span>
               <Chip tone={c.status === 'sold' ? 'gold' : 'neutral'}>{c.status === 'sold' ? 'Rehomed' : 'In memory'}</Chip>
             </span>

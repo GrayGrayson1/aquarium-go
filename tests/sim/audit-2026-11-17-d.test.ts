@@ -15,6 +15,7 @@ import { composition, generateOffer } from '@/sim/economy/shop';
 import { getFoodDef } from '@/data/catalog/foods';
 import { offerDiet } from '@/ui/panels/market/offerDietText';
 import { lifespanFacts } from '@/ui/common/lifespan';
+import { convertTempText } from '@/ui/common/format';
 
 const texts = (r: CompatReport) => r.reasons.map((x) => x.text).join('\n');
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Test', seed: 777 });
@@ -186,5 +187,20 @@ describe('D4: the tank-size verdict is graded by how short the tank is (the owne
       const said = s.log.slice(before).some((e) => /Gus's tank is too small/.test(e.text));
       expect(said, tier).toBe(warned);
     }
+  });
+});
+
+describe('D8: compatibility reasons show the player’s temperature unit', () => {
+  it('a too-warm reason and its fix convert to °F with no °C left (what CompatView now renders)', () => {
+    const s = base();
+    const t = createTank(s, 'g20L', 'freshwater_planted', { cycled: true });
+    const r = previewAddition(s, t.id, { speciesId: 'white_cloud_minnow', count: 6 });
+    const temp = r.reasons.find((x) => x.category === 'temperature' && x.severity !== 'info');
+    expect(temp).toBeDefined();
+    expect(temp!.text).toMatch(/°C/);
+    const f = convertTempText(temp!.text, 'F')!;
+    expect(f).toMatch(/°F/);
+    expect(f).not.toMatch(/°\s*C/);
+    expect(convertTempText(temp!.mitigation, 'F')).not.toMatch(/°\s*C/);
   });
 });

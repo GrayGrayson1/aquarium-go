@@ -626,11 +626,11 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
           <div className={clsx('ag-wellbeing', `is-${wellbeing.status}`)}>
             <StatusBadge status={wellbeing.status} label={wellbeing.status === 'good' ? 'Good' : wellbeing.status === 'watch' ? 'Watch' : 'Danger'} />
             <div className="ag-grow">
-              <div className="ag-wellbeing__headline">{wellbeing.headline}</div>
+              <div className="ag-wellbeing__headline">{convertTempText(wellbeing.headline, unit) /* Audit 2026-11-17 (D8) */}</div>
               {wellbeing.notes.length > 0 && (
                 <ul className="ag-wellbeing__notes">
                   {wellbeing.notes.slice(0, 3).map((n, i) => (
-                    <li key={i}>{n}</li>
+                    <li key={i}>{convertTempText(n, unit)}</li>
                   ))}
                 </ul>
               )}
@@ -650,7 +650,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
         {comfort && comfort.stressors.length > 0 && (
           <ul className="ag-stressors">
             {comfort.stressors.slice(0, 3).map((s, i) => (
-              <li key={i}>{s}</li>
+              <li key={i}>{convertTempText(s, unit)}</li>
             ))}
           </ul>
         )}
@@ -768,7 +768,7 @@ function CardBody({ c, game, unit }: { c: Creature; game: GameState; unit: 'C' |
               <li key={i} className={`ag-timeline__item ag-timeline__item--${h.kind}`}>
                 <span className="ag-timeline__icon" aria-hidden>{HISTORY_ICON[h.kind] ?? <BookOpen size={13} />}</span>
                 <div>
-                  <div className="ag-timeline__text">{h.text}</div>
+                  <div className="ag-timeline__text">{convertTempText(h.text, unit)}</div>
                   <div className="ag-timeline__when">{agoText(h.hour, game.clock.hour)} · Day {Math.floor(h.hour / 24) + 1}</div>
                 </div>
               </li>
