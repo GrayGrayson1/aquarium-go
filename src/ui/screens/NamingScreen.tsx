@@ -19,6 +19,7 @@ import { aOrAn } from '@/sim/economy/util'; // lane:qa-play
 import { Button, Chip, TextField } from '../kit';
 import { saveNow } from '../common/saves';
 import { safe, SHORT_LANDSCAPE_QUERY, useIsMobile, useMedia } from '../common/safe';
+import { guideOnForNewGame } from '../tutorial/guideText'; // audit 2026-11-17 (A4)
 
 /** The sim keeps names to 24 characters (src/sim/life/actions.ts renameCreature). */
 const NAME_MAX = 24;
@@ -103,6 +104,7 @@ export function NamingScreen() {
       useUI.getState().toast('Something went wrong creating your aquarium. Please try again.', 'danger');
       return;
     }
+    guideOnForNewGame(); // a new aquarium starts with its guide showing, whoever switched the hints off on this device
     useGame.getState().setGame(g);
     useUI.getState().set({
       screen: 'game',

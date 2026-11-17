@@ -555,6 +555,32 @@ function publicStep(state: GameState, dt: number, h: number, rng: Rng): void {
 const TUTORIAL_FRIEND_STEPS = new Set(['first_money', 'first_goal', 'upgrade']);
 const TUTORIAL_FRIEND_GAP_H: [number, number] = [2, 3.5];
 
+/**
+ * Audit 2026-11-17 (A1) — why no friend can drop by right now, or null when one can. The same tests `friendStep` makes,
+ * read without drawing anything, ordered by what playing on won't fix: nothing alive on show, an animal in danger, no
+ * tank healthy enough to show off, then the time of day. The guide's waiting steps ("A visitor!", "Word gets around",
+ * the reputation upgrade) say this instead of waiting in silence. `tankId`: the tank the reason is about.
+ */
+export type FriendBlocker = { kind: 'no_animals' } | { kind: 'danger' | 'unwell'; tankId: string; reason: string | null } | { kind: 'night' };
+
+export function friendBlocker(state: GameState, h: number = state.clock.hour): FriendBlocker | null {
+  // a public shop has paying visitors instead (friendStep doesn't run there)
+  if (state.facility.openToPublic && state.facility.level !== 'hobby_room') return null;
+  const tanks = state.tankOrder.map((id) => state.tanks[id]).filter((t) => !!t);
+  const shown = tanks.filter((t) => !exhibitInfo(state, t).empty);
+  if (!shown.length) return { kind: 'no_animals' };
+  const neglected = tanks.find((t) => t.cache?.animalStatus === 'danger' && t.cache.statusReason);
+  if (neglected) return { kind: 'danger', tankId: neglected.id, reason: neglected.cache.statusReason ?? null };
+  const fit = shown.some((t) => t.cache?.status !== 'danger' && (t.cache?.welfare ?? 0) >= 50 && exhibitInfo(state, t).welfareGate >= 0.7);
+  if (!fit) {
+    const worst = [...shown].sort((a, b) => (a.cache?.welfare ?? 0) - (b.cache?.welfare ?? 0))[0];
+    return { kind: 'unwell', tankId: worst.id, reason: worst.cache?.statusReason ?? null };
+  }
+  const hod = hourOfDay(h);
+  if (hod < 9 || hod >= 21) return { kind: 'night' };
+  return null;
+}
+
 /** After the first three friend visits, toast one at most every this many game hours (the rest are logged). */
 const FRIEND_TOAST_EVERY_H = 44;
 /** A worried friend (an animal in danger) is news worth repeating sooner. */

@@ -75,7 +75,9 @@ const GENERIC_FOOD_WORDS = new Set(['frozen', 'live', 'shrimp', 'pellets', 'flak
 
 /** The food the guide's feed step talks about, by name ("Earthworms" ↔ "drop an earthworm", "Frozen Mysis Shrimp" ↔ "offer frozen mysis"). */
 export function guideMentions(body: string, foodName: string): boolean {
-  const text = body.toLowerCase();
+  // audit 2026-11-17 (A12): the instruction is the first sentence; the rest is about the animal ("Axolotls hunt by
+  // smell…" tagged Axolotl Pellets beside the earthworm the step asks for, and the pointer landed on the pellets)
+  const text = body.split(/(?<=[.!?])\s/)[0].toLowerCase();
   const name = foodName.toLowerCase();
   if (text.includes(name)) return true;
   return name.split(/[^a-z]+/).some((w) => w.length >= 4 && !GENERIC_FOOD_WORDS.has(w) && (text.includes(w) || text.includes(w.replace(/s$/, ''))));

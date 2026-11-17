@@ -331,7 +331,8 @@ describe('tutorial: steps need an action taken during the step', () => {
     walkTo(g, 'feed');
     const view = currentTutorialStep(g)!;
     expect(view.hintTarget).toBe('tool-target-feed');
-    expect(view.body).toMatch(/Target feed/);
+    // audit 2026-11-17 (A14): named as the tool rail labels the button ("Target"), not "Target feed"
+    expect(view.body).toMatch(/^Tap Target and /);
     expect(tutorialChain('betta').find((x) => x.id === 'feed')!.hintTarget).toBe('tool-feed');
   });
 });

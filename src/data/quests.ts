@@ -4,7 +4,7 @@
  * Tutorial flags the UI / AI / camera should send via `tutorialAdvance(state, flag)` (src/sim/facility):
  *   'camera_moved'        camera orbited/zoomed by the player
  *   'fed'                 player fed a tank (the sim also counts `feeds`)
- *   'opened_tank_card'    tank card opened ('read_water' / 'read_param:<key>' also accepted)
+ *   'opened_tank_card'    tank card opened (the water step counts 'read_water' / 'read_param:<key>' instead)
  *   'decor_placed'        a decor item placed (the sim also counts `decor_placed`)
  *   'observed:<behaviour>' the AI saw the focused starter perform a signature behaviour on screen, e.g.
  *                         'observed:gill_flick', 'observed:fin_flare', 'observed:bubble_nest', 'observed:hover',
@@ -150,7 +150,7 @@ const FLAVOURS: Record<string, StarterFlavour> = {
   lined_seahorse: {
     meet: '{name} is a lined seahorse. In seahorses the males carry the young, in a pouch.',
     camera: 'Drag to orbit and zoom in slowly. Seahorses are calm, unhurried animals, so move gently.',
-    feed: ['Slow food', 'Choose Target feed and offer frozen mysis right to {name}. Seahorses are slow, deliberate eaters — target feeding makes sure {name} gets a full share before anything else can snatch it.'],
+    feed: ['Slow food', 'Tap Target and offer frozen mysis right to {name}. Seahorses are slow, deliberate eaters — target feeding makes sure {name} gets a full share before anything else can snatch it.'],
     feedHint: 'tool-target-feed',
     water: ['Gentle and salty', 'Open the tank card and check the salinity. Seahorses need stable marine water ({salinity}) and very gentle flow.'],
     habitat: ['Hitching posts', 'Add a plant, a soft branch or some décor from Build. Seahorses wrap their tails around it to rest.'],
@@ -181,14 +181,17 @@ function chainFor(f: StarterFlavour): TutorialStepDef[] {
     { id: 'meet', title: 'Meet {name}', body: f.meet, objective: { type: 'flag', anyOf: ['opened_creature_card'], fallbackHours: 8 }, hintTarget: 'creature-name', done: 'Nice to meet you, {name}!' },
     { id: 'camera', title: 'Have a look around', body: f.camera, objective: { type: 'flag', anyOf: ['camera_moved', 'camera_zoomed', 'camera_mode'], fallbackHours: 10 }, hintTarget: 'scene', done: 'Lovely view.' },
     { id: 'feed', title: f.feed[0], body: f.feed[1], objective: { type: 'any', of: [{ type: 'flag', anyOf: ['fed', 'target_fed'] }, { type: 'counter', key: 'feeds', min: 1 }] }, hintTarget: f.feedHint ?? 'tool-feed', done: '{name} ate well.', reward: { mastery: { track: 'husbandry', xp: 10 } } },
-    { id: 'water', title: f.water[0], body: f.water[1], objective: { type: 'flag', anyOf: ['opened_tank_card', 'read_water', 'read_param:temp', 'read_param:salinity', 'read_param:ammonia', 'opened_water'], fallbackHours: 16 }, hintTarget: 'tank-card-toggle', done: 'The water is in good shape.' },
+    // audit 2026-11-17 (A11): not on opening the card (the step ended before the reading was ever pointed at): on reading
+    // it, which the guide counts once the card has been open a moment (TutorialCoach, WATER_READ_MS)
+    { id: 'water', title: f.water[0], body: f.water[1], objective: { type: 'flag', anyOf: ['read_water', 'read_param:temp', 'read_param:salinity', 'read_param:ammonia', 'opened_water'], fallbackHours: 16 }, hintTarget: 'tank-card-toggle', done: 'The water is in good shape.' },
     { id: 'habitat', title: f.habitat[0], body: f.habitat[1], objective: { type: 'any', of: [{ type: 'flag', anyOf: ['decor_placed'] }, { type: 'counter', key: 'decor_placed', min: 1 }] }, hintTarget: 'dock-build', done: 'A better home.', reward: { mastery: { track: 'aquascaping', xp: 15 } } },
     { id: 'observe', title: f.observe[0], body: f.observe[1], objective: { type: 'flag', anyOf: f.observe[2], fallbackHours: 5, minHours: 1 }, hintTarget: 'scene', done: 'You’re learning {name}’s habits.' },
     { id: 'first_money', title: 'A visitor!', body: 'A friend has heard about {name} and wants to visit. Keep the water healthy and they may leave a tip.', objective: { type: 'any', of: [{ type: 'counter', key: 'friend_visits', min: 1, relative: true }, { type: 'counter', key: 'sales', min: 1, relative: true }] }, hintTarget: 'hud-money', done: 'Your first money from the hobby!', reward: { foods: f.food } },
     { id: 'market', title: 'The market', body: 'Open the Market to browse captive-bred stock and see what buyers pay for well-kept animals.', objective: { type: 'flag', anyOf: ['opened_market'], fallbackHours: 24 }, hintTarget: 'dock-market', done: 'You can now list animals for sale.', reward: { unlocks: ['market_listings'] } },
     { id: 'first_goal', title: 'Word gets around', body: 'Keep {name}’s tank looking lovely and the water healthy while two more friends drop by. (Once you have animals to spare, a small sale in the Market counts too.)', objective: { type: 'any', of: [{ type: 'counter', key: 'friend_visits', min: 2, relative: true, label: 'more friend visits' }, { type: 'counter', key: 'sales', min: 1, relative: true, label: 'sale' }] }, hintTarget: 'hud-money', done: 'Word is getting around.', reward: { money: 40, reputation: 3 } },
-    { id: 'upgrade', title: f.upgrade[0], body: f.upgrade[1], objective: { type: 'reputation', min: TUTORIAL_UPGRADE_REP, gain: TUTORIAL_UPGRADE_GAIN, label: 'reputation' }, hintTarget: 'dock-build', done: 'New upgrade unlocked!', reward: { unlocks: f.upgrade[2] } },
-    { id: 'preview', title: 'The road ahead', body: f.preview, objective: { type: 'flag', anyOf: ['opened_research', 'opened_visitors', 'opened_build', 'opened_panel:research', 'opened_panel:visitors'], fallbackHours: 20 }, hintTarget: 'dock-research', done: 'Tutorial complete. The quest board is open!', reward: { money: 60, reputation: 5 } },
+    // audit 2026-11-17 (A3): nursery tanks are a tank's purpose, set in Tanks (its button opened Build › Tanks)
+    { id: 'upgrade', title: f.upgrade[0], body: f.upgrade[1], objective: { type: 'reputation', min: TUTORIAL_UPGRADE_REP, gain: TUTORIAL_UPGRADE_GAIN, label: 'reputation' }, hintTarget: f.upgrade[2].includes('nursery') ? 'dock-tanks' : 'dock-build', done: 'New upgrade unlocked!', reward: { unlocks: f.upgrade[2] } },
+    { id: 'preview', title: 'The road ahead', body: f.preview, objective: { type: 'flag', anyOf: ['opened_research', 'opened_visitors', 'opened_build', 'opened_panel:research', 'opened_panel:visitors'], fallbackHours: 20 }, hintTarget: 'dock-research', done: 'Guide complete. Your quest board is open in Research › Quests!', reward: { money: 60, reputation: 5 } },
   ];
 }
 

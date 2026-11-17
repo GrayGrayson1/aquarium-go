@@ -121,6 +121,35 @@ test.describe('phone 390×844 (touch)', () => {
     expect(await page.evaluate(() => getComputedStyle(document.querySelector('.ag-hud__coach')!).visibility)).toBe('hidden');
   });
 
+  test('the animal’s card folds the guide into its pill just above the card, and the pill brings the guide back (audit 2026-11-17, P1)', async ({ page }) => {
+    await phoneGame(page, { guide: true });
+    await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'meet');
+    await page.locator('[data-guide-showme]').tap(); // "Meet them" opens the starter's card
+    await settled(page, '[data-testid="creature-card"]');
+    // the meet step is done: the next one ("Have a look around") waits in the pill, in view just above the card
+    const pill = page.locator('.ag-coach-pill[data-testid="tutorial-card"]');
+    await expect(pill).toBeVisible();
+    await expect(pill).toContainText('Have a look around');
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector('.ag-hud__coach')!).visibility)).toBe('visible');
+    await expect
+      .poll(async () => {
+        const p = await rect(page, '.ag-coach-pill');
+        const c = await rect(page, '[data-testid="creature-card"]');
+        return !!p && !!c && p.top >= 0 && p.bottom <= c.top + 1 && c.top - p.bottom <= 24;
+      })
+      .toBe(true);
+    // nothing covers it
+    const hit = await page.evaluate(() => {
+      const r = document.querySelector('.ag-coach-pill')!.getBoundingClientRect();
+      return !!document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)?.closest('.ag-coach-pill');
+    });
+    expect(hit).toBe(true);
+    // tapping it closes the card and opens the guide on its step
+    await pill.tap();
+    await expect(tid(page, 'creature-card')).toBeHidden();
+    await expect(tid(page, 'tutorial-card')).toHaveAttribute('data-step', 'camera');
+  });
+
   test('toasts sit above the tab bar and clear of the offer’s buy bar (B-116)', async ({ page }) => {
     await phoneGame(page);
     expect((await aq<{ ok: boolean }>(page, 'dev.addShopOffer', 'mystery_snail')).ok).toBe(true);

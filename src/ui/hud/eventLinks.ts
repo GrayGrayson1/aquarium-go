@@ -19,7 +19,7 @@ export interface EventLink {
 // "Unlocked: Shows & championships" alone never told a new player where Shows are. Feature unlocks carry a short
 // "where" line and open the right panel (lane:w2-ui).
 const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
-  shows: { panel: 'shows', target: 'tab:upcoming', where: 'Enter a healthy adult from Shows in the dock.' },
+  shows: { panel: 'shows', target: 'tab:upcoming', where: 'Enter a healthy adult from Shows.' }, // (audit A10: phones have no dock)
   shows_regional: { panel: 'shows', target: 'tab:upcoming', where: 'Regional shows are on the Shows calendar.' },
   shows_national: { panel: 'shows', target: 'tab:upcoming', where: 'National championships are on the Shows calendar.' },
   shows_international: { panel: 'shows', target: 'tab:upcoming', where: 'International championships are on the Shows calendar.' },
@@ -32,6 +32,15 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   tank_auctions: { panel: 'market', target: 'tab:listings', where: 'List a whole aquarium in Market › My listings.' },
   nursery: { panel: 'tanks', target: null, where: 'Set a tank’s purpose in Tanks.' },
 };
+
+/**
+ * Audit 2026-11-17 (A16) — unlocks that live in no panel, with just their "where" line ("Unlocked · Party / music mode"
+ * said nothing else).
+ */
+const UNLOCK_WHERE: Record<string, string> = {
+  party_mode: 'Find Party in the tank tools.',
+};
+export const unlockWhere = (key: string): string | undefined => (Object.hasOwn(UNLOCK_WHERE, key) ? UNLOCK_WHERE[key] : undefined);
 
 const PANEL_WORD: Partial<Record<PanelId, string>> = { shows: 'Shows', visitors: 'Visitors', build: 'Build', market: 'Market', tanks: 'Tanks', research: 'Research' };
 const withLabel = (l: Omit<EventLink, 'label'>, label?: string): EventLink => ({ ...l, label: label ?? `Open ${PANEL_WORD[l.panel] ?? 'it'}` });
@@ -63,6 +72,8 @@ export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'of
     return key ? unlockLink(key) : null;
   }
   if (SHOW_RESULT_TEXT.test(text)) return RESULTS;
+  // audit 2026-11-17 (A5) — "Quest complete: Feeding routine — claim your reward!" now leads to the claim button
+  if (/^Quest complete:/.test(text)) return { panel: 'research', target: 'tab:quests', where: 'Claim it in Research › Quests.', label: 'Claim it' };
   if (/^Research complete:/.test(text) || /^You picked up everything .+ covers through your own keeping/.test(text)) return { panel: 'research', target: null, where: '', label: 'Open Research' };
   if (e.listingId) return { panel: 'market', target: `listing:${e.listingId}`, where: '', label: 'View listing' };
   // lane:notify (chunk 3, NOTIFY-004) — a Prismatic or special stocked opens its offer (the shop says if it has gone)
