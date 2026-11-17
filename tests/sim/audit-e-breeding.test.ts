@@ -215,7 +215,7 @@ describe('E12: a cichlid pair’s lines match the pair rule (either parent tends
     const { saleWarnings } = await import('@/sim/economy/warnings');
     const a = discusPair('eggs');
     expect(saleWarnings(a.state, [a.m.id])).toContain('Rio is guarding 120 eggs with Sol, who will go on tending them alone.');
-    expect(separateCreature(a.state, a.m.id, a.side.id).message).toBe('Rio moved to Side; Sol is still fanning the eggs.');
+    expect(separateCreature(a.state, a.m.id, a.side.id).message).toMatch(/^Rio moved to Side; Sol is still fanning the eggs\.( Heads up: .*)?$/);
     const b = discusPair('fry');
     expect(breedingStatus(b.state, b.m.id)).toMatchObject({ label: 'Fry are free-swimming', detail: 'The pair herd them and keep them safe' });
   });
@@ -271,5 +271,17 @@ describe('E17: hermaphrodites and snails that can’t be sexed by eye', () => {
     const snail = addCreature(state, createCreature(state, simRng(state), 'mystery_snail', { ageDays: 40 }), fresh.id);
     snail.sex = 'unknown';
     expect(sexRoleText(snail, getSpecies('mystery_snail'), state.clock.hour)).toEqual({ label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' });
+  });
+});
+
+describe('E18: the Move dialog’s move keeps the space warning', () => {
+  it('an adult oscar moved into a small tank hears it needs more room', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 95 });
+    const big = createTank(state, 'g125', 'freshwater_tropical', { cycled: true, name: 'Big' });
+    const small = createTank(state, 'g20L', 'freshwater_tropical', { cycled: true, name: 'Small tank' });
+    const bruno = addCreature(state, createCreature(state, simRng(state), 'oscar', { sex: 'male', ageDays: 900, name: 'Bruno' }), big.id);
+    const res = separateCreature(state, bruno.id, small.id);
+    expect(res.ok).toBe(true);
+    expect(res.message).toMatch(/^Moved Bruno to Small tank\. Heads up: an adult oscar needs at least \d+ gallons\.$/);
   });
 });

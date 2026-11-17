@@ -52,7 +52,7 @@ function moveInto(state: GameState, c: Creature, tank: Tank): ActionResult {
   if (c.tankId !== tank.id) c.tankId = tank.id;
   touchResidents(); // lane:perf2 — a move-in: drop the step's residents index
   followCarried(state, c, from);
-  return ok('');
+  return ok(res.message ?? ''); // audit E18: keep moveCreature's words (its 'Heads up: … needs at least N gallons.')
 }
 
 /** Broods carried inside a parent (pouch, mouth, berried eggs) travel with it. */
@@ -158,6 +158,10 @@ export function separateCreature(state: GameState, creatureId: string, toTankId:
   } else if (stage === 'pregnant' || stage === 'berried' || stage === 'brooding') {
     msg = `${c.name} moved to ${tank.name}, carrying the brood safely.`;
   } else breedingRelated = false;
+  // audit E18: an ordinary move says what moveCreature says; a breeding one keeps the space warning too
+  const headsUp = /Heads up: .*$/.exec(res.message ?? '')?.[0];
+  if (!breedingRelated && res.message) msg = res.message;
+  else if (headsUp) msg = `${msg} ${headsUp}`;
   c.repro.harassment = Math.min(c.repro.harassment ?? 0, 0.3);
   if (breedingRelated) emitEvent(state, { kind: 'breeding', text: msg, tankId: tank.id, creatureId: c.id });
   return ok(msg);
