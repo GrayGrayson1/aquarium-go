@@ -32,6 +32,7 @@ import { OfferGenes } from './OfferGenes';
 import { OfferTemperament } from './OfferTemperament';
 import { OfferDiet } from './OfferDiet'; // Audit 2026-11-17 (D5)
 import { SLIGHTLY_SMALL_TANK } from '@/sim/life/growth'; // Audit 2026-11-17 (D4)
+import { capitalPlural } from './offerWords'; // Audit 2026-11-17 (D21)
 import { Chip, Card, EmptyState, Callout, SectionHead, Checkbox } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { CompatPreview } from '../common/CompatPreview';
@@ -515,7 +516,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
           </div>
           {sp.social.minGroup > 1 && chosen.length < sp.social.minGroup && (
             <Callout tone="watch" icon={<Users size={15} />}>
-              {sp.commonName} feel safest in groups of {sp.social.minGroup} or more.
+              {capitalPlural(sp)} feel safest in groups of {sp.social.minGroup} or more.
             </Callout>
           )}
         </section>
@@ -612,7 +613,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
           <CompatPreview report={report} gate={gate} title={`Compatibility with ${tank.name}`} focusSpeciesId={sp?.id} /* lane:qa-play */ labels={VERDICT_LABEL /* ADR-0020: long labels in the offer detail */} />
           {gate.ok && tooSmall && (
             <Callout tone="watch" icon={<TriangleAlert size={15} />}>
-              {sp.commonName} need at least {sp.recommendedMinTankGallons} gallons as adults; {tank.name} is {gallonsOf(tank)} gallons.
+              {capitalPlural(sp)} need at least {sp.recommendedMinTankGallons} gallons as adults; {tank.name} is {gallonsOf(tank)} gallons.
             </Callout>
           )}
           {!sp.waterClasses.includes(tank.waterClass) && gate.ok && (
@@ -627,7 +628,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
                 ) : undefined
               }
             >
-              {sp.commonName} usually live in {sp.waterClasses.map((w) => WATER_CLASS_LABEL[w].toLowerCase()).join(' or ')} setups.
+              {capitalPlural(sp)} usually live in {sp.waterClasses.map((w) => WATER_CLASS_LABEL[w].toLowerCase()).join(' or ')} setups.
             </Callout>
           )}
         </section>

@@ -444,7 +444,7 @@ function speciesChecks(m: CompatMember, ctx: CompatContext, out: Collector): voi
   }
   const fp = sp.recommendedFootprint;
   if (fp && ctx.dimsIn.l < fp.minLengthIn - 0.5) {
-    add(sp.activeSwimmer ? 'warning' : 'caution', 'size', sp.activeSwimmer ? 'This fish requires more swimming length than this tank provides.' : `${cap(name)} need a tank at least ${fp.minLengthIn} in long.`, {
+    add(sp.activeSwimmer ? 'warning' : 'caution', 'size', sp.activeSwimmer ? `${cap(name)} need more swimming length than this tank provides: a tank at least ${fp.minLengthIn} in long.` /* Audit 2026-11-17 (D21) */ : `${cap(name)} need a tank at least ${fp.minLengthIn} in long.`, {
       mitigation: `Choose a tank at least ${fp.minLengthIn} in long.`,
     });
   } else if (fp && ctx.dimsIn.w < fp.minWidthIn - 0.5) {
@@ -615,8 +615,9 @@ function conspecific(m: CompatMember, ctx: CompatContext, out: Collector): void 
     if (o === 'tension' && (ctx.habitat.sightBreak ?? 0) >= 0.6) sev = 'info';
     let text: string;
     if (who === 'juvenile') text = o === 'tension' ? `Young ${name} squabble when crowded.` : `Young ${name} bite each other when crowded or hungry.`;
-    else if (o === 'lethal') text = who === 'male' ? (selfRule?.reason ?? 'Two adult males are likely to fight — often to serious injury.') : `Two adult females are likely to fight — often to serious injury.`;
-    else if (o === 'fight') text = who === 'male' ? 'Two adult males are likely to fight.' : 'Two adult females are likely to fight.';
+    // Audit 2026-11-17 (D21): say whose males (the meta line lists the species twice)
+    else if (o === 'lethal') text = who === 'male' ? (selfRule?.reason ?? `Two adult male ${name} are likely to fight — often to serious injury.`) : `Two adult female ${name} are likely to fight — often to serious injury.`;
+    else if (o === 'fight') text = who === 'male' ? `Two adult male ${name} are likely to fight.` : `Two adult female ${name} are likely to fight.`;
     else text = who === 'male' ? `Male ${name} spar and chase each other.` : `Female ${name} squabble over space.`;
     out.add({
       severity: sev,
@@ -749,7 +750,8 @@ function mutual(A: CompatMember, B: CompatMember, ctx: CompatContext, out: Colle
   else if (iov < 0) add('caution', 'temperature', `Their ideal temperatures don't overlap — one of them will always be a little outside its comfort zone.`);
   // pH
   const pov = Math.min(a.pH.max, b.pH.max) - Math.max(a.pH.min, b.pH.min);
-  if (pov < -0.3) add('warning', 'chemistry', `Their pH needs don't overlap (${a.pH.min}–${a.pH.max} vs ${b.pH.min}–${b.pH.max}).`);
+  // Audit 2026-11-17 (D21): these three name which species wants what
+  if (pov < -0.3) add('warning', 'chemistry', `Their pH needs don't overlap: ${plural(a)} need pH ${a.pH.min}–${a.pH.max}, ${plural(b)} pH ${b.pH.min}–${b.pH.max}.`);
   else if (pov < 0.1) add('caution', 'chemistry', `pH ranges barely overlap.`);
   // Salinity
   if (a.salinitySG && b.salinitySG) {
@@ -761,9 +763,12 @@ function mutual(A: CompatMember, B: CompatMember, ctx: CompatContext, out: Colle
   // Flow & light preferences
   const fd = Math.abs((FLOW_INDEX[a.flowPreference] ?? 1) - (FLOW_INDEX[b.flowPreference] ?? 1));
   if (fd >= 3) add('warning', 'flow', `They need very different water flow (${lower(a.commonName)}: ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]}, ${lower(b.commonName)}: ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}).`);
-  else if (fd === 2) add('caution', 'flow', `Their flow preferences differ — one wants ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]} water, the other ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}.`);
+  else if (fd === 2) add('caution', 'flow', `Their flow preferences differ: ${plural(a)} want ${FLOW_NAMES[FLOW_INDEX[a.flowPreference]]} water, ${plural(b)} ${FLOW_NAMES[FLOW_INDEX[b.flowPreference]]}.`);
   const ld = Math.abs((LIGHT_INDEX[a.lightPreference] ?? 1) - (LIGHT_INDEX[b.lightPreference] ?? 1));
-  if (ld >= 2) add('caution', 'light', `One wants dim, shaded water and the other bright light.`, { mitigation: 'Provide shaded areas under floating plants or overhangs.' });
+  if (ld >= 2) {
+    const [dim, bright] = (LIGHT_INDEX[a.lightPreference] ?? 1) < (LIGHT_INDEX[b.lightPreference] ?? 1) ? [a, b] : [b, a];
+    add('caution', 'light', `${cap(plural(dim))} want dim, shaded water; ${plural(bright)} want bright light.`, { mitigation: 'Provide shaded areas under floating plants or overhangs.' });
+  }
   // Same group / genus territorial conflict
   if (a.id !== b.id && !out.has(`rule:${key}`) && (a.group === b.group || a.genus === b.genus) && Math.max(a.territoriality, b.territoriality) >= 0.5) {
     const sameGenus = a.genus === b.genus;

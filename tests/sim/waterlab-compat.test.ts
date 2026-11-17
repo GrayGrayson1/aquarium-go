@@ -207,7 +207,7 @@ describe('waterlab compat: tank fit & behaviour', () => {
     const ctx: CompatContext = { ...tankContext(s, t), neutral: false };
     const r2 = evaluateComposition([simpleMember(fx, 1, 'male', 5)], ctx).report;
     expect(r2.reasons.some((x) => x.category === 'size' && /at least 55 gallons/.test(x.text))).toBe(true);
-    expect(texts(r2)).toMatch(/requires more swimming length than this tank provides/);
+    expect(texts(r2)).toMatch(/need more swimming length than this tank provides: a tank at least 48 in long/); // Audit 2026-11-17 (D21): the line names the species
   });
 
   it('seahorse + fast, aggressive feeder → feeding-competition reason', () => {

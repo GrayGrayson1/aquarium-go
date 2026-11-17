@@ -15,6 +15,7 @@ import { getSpecies, ALL_SPECIES } from '@/data/species';
 import { composition, generateOffer } from '@/sim/economy/shop';
 import { getFoodDef } from '@/data/catalog/foods';
 import { offerDiet } from '@/ui/panels/market/offerDietText';
+import { capitalPlural } from '@/ui/panels/market/offerWords';
 import { lifespanFacts } from '@/ui/common/lifespan';
 import { convertTempText } from '@/ui/common/format';
 import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from '@/ui/cards/conditionWords';
@@ -374,5 +375,47 @@ describe('D19: a species is listed only for water that suits it by default, and 
     const t = createTank(s, 'g10', 'reef', { cycled: true });
     const r = previewAddition(s, t.id, { speciesId: 'clown_goby', count: 2 });
     expect(texts(r)).not.toMatch(/Too many clown gobies/);
+  });
+});
+
+describe('D21: lines name the species they are about', () => {
+  const pairOf = (a: string, b: string) => {
+    const A = getSpecies(a);
+    const B = getSpecies(b);
+    return evaluateComposition([simpleMember(A, 1, 'male'), simpleMember(B, 1, 'female')], { ...neutralContext(A, B), neutral: false, flowIndex: 1, lightLevel: 1 }).report;
+  };
+
+  it('two male rams: “Two adult male german blue rams are likely to fight”', () => {
+    const b = getSpecies('german_blue_ram');
+    const r = evaluateComposition([simpleMember(b, 2, 'male')], { ...neutralContext(b, b), neutral: false, flowIndex: 1, lightLevel: 1 }).report;
+    expect(texts(r)).toMatch(/Two adult male german blue rams are likely to fight/i);
+  });
+
+  it('light, flow and pH lines say which species wants what', () => {
+    let light = '';
+    let flow = '';
+    let ph = '';
+    for (const a of ALL_SPECIES) {
+      for (const b of ALL_SPECIES) {
+        if (a.id >= b.id || a.environment !== b.environment) continue;
+        const t = texts(pairOf(a.id, b.id));
+        if (!light && /want dim, shaded water/.test(t)) light = t;
+        if (!flow && /flow preferences differ/.test(t)) flow = t;
+      }
+      if (light && flow && ph) break;
+    }
+    expect(light).toMatch(/[A-Z]\S* .*want dim, shaded water; \S.* want bright light\./);
+    expect(light).not.toMatch(/One wants/);
+    expect(flow).toMatch(/Their flow preferences differ: \S.* want [a-z ]+ water, \S/);
+    // no two real species are that far apart: a fixture with hard, alkaline needs beside a soft-water tetra
+    const neon = getSpecies('neon_tetra');
+    const hard = { ...structuredClone(getSpecies('platy')), id: 'fx_hard', commonName: 'Fixture rockfish', exceptionRules: [], positiveInteractions: [], pH: { min: 8.2, max: 8.8, idealMin: 8.3, idealMax: 8.6 } };
+    ph = texts(evaluateComposition([simpleMember(neon, 6, 'mixed'), simpleMember(hard, 1, 'male')], { ...neutralContext(neon, hard), neutral: false, flowIndex: 1, lightLevel: 1 }).report);
+    expect(ph).toMatch(/Their pH needs don't overlap: \S.* need pH [\d.]+–[\d.]+, \S.* pH [\d.]+–[\d.]+\./);
+  });
+
+  it('the offer’s callouts use the plural: “Royal grammas need…”', () => {
+    expect(capitalPlural(getSpecies('royal_gramma'))).toBe('Royal grammas');
+    expect(capitalPlural(getSpecies('neon_tetra'))).toBe('Neon tetras');
   });
 });
