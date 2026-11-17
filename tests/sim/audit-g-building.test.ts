@@ -545,7 +545,7 @@ describe('G24: placing a tank on a phone', () => {
 describe('G25: a big tank’s kit never ships more units of a kind than a tank may hold', () => {
   it('without Premium Life Support, every tier’s kit stays within the per-kind limits', () => {
     const g = game('betta');
-    g.progress.unlocked.push('gear_tier2', 'marine_basics', 'reef');
+    g.progress.unlocked.push('gear_tier2', 'marine_basics', 'reef', 'gear_ato'); // (review: with auto top-offs unlocked, big reef kits listed two)
     for (const tier of Object.values(TANK_TIER_BY_ID))
       for (const wc of ['freshwater_tropical', 'marine_fowlr', 'reef'] as const) {
         const kinds = new Map<string, number>();
