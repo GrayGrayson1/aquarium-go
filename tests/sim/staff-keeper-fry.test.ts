@@ -51,7 +51,7 @@ describe('Audit 2026-11-17 (H2): keepers feed fry their first foods', () => {
   it('with none of their foods in stock the keeper says so, once a round', () => {
     const { g, tank, m } = nursery();
     keeperVisit(g, m, tank.id, 'morning', g.clock.hour);
-    const said = g.log.filter((e) => e.text === 'Maya couldn’t feed the fry in Nursery 1: no baby brine or infusoria in stock. Buy food in Market › Supplies.');
+    const said = g.log.filter((e) => e.text === 'Maya couldn’t feed the fry in Nursery 1: no live baby brine shrimp or infusoria in stock. Buy food in Market › Supplies.');
     expect(said.length).toBe(1);
     expect(m.today?.issues).toContain('No first foods for the fry in Nursery 1');
   });

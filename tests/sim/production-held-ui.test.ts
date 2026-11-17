@@ -78,6 +78,6 @@ describe('Audit 2026-11-17 (H4): a due pair that can’t get into condition', ()
     // warm enough again: what holds him back next is food to bring him into condition
     f.tanks.breed.water.tempC = 27;
     expect(lineView(g, line)!.next.notReady?.drag).toBe('conditioning');
-    expect(render(createElement(LinesTab, { g, small: false }))).toContain('Not ready yet: they need rich food (bloodworm, brine shrimp or daphnia) to get into condition');
+    expect(render(createElement(LinesTab, { g, small: false }))).toContain('Not ready yet: they need rich food (bloodworms, brine shrimp or daphnia) to get into condition');
   });
 });
