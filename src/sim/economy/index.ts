@@ -52,6 +52,8 @@ export {
   counterBid,
   holdBidForCounter,
   typicalOpening, // audit 2026-11-17 (F3)
+  reserveBand, // review fix (F3)
+  RESERVE_BANDS,
   suggestCounter, // lane:fix-econ
   marketTimeScale, // lane:fix-econ
   MAX_NEGOTIATION_HOLD_HOURS, // lane:fix-econ

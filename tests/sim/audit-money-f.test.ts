@@ -16,7 +16,7 @@ import { SuppliesTab } from '@/ui/panels/market/Supplies';
 import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas, wholeMoney } from '@/ui/common/moneyShort';
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
-import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
+import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, RESERVE_BANDS, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
 import { cheapestKit, HOLD_RELEASE_HOURS } from '@/sim/economy/purchases';
 import { applyCommand, type Actor } from '@/sim/commands';
 import { GAME_HOURS_PER_REAL_SECOND } from '@/sim/time';
@@ -349,39 +349,57 @@ describe('F6 (the owner’s choice): an open offer stays while you look', () => 
 });
 
 describe('F3: the listing’s price advice matches what buyers in the code actually offer', () => {
-  it('first offers mostly land in the quoted range, and about half fall below fair value', () => {
-    const ratios: number[] = [];
-    for (let seed = 1; seed <= 30; seed++) {
-      const g = newGame({ starterId: 'betta', starterName: 'Ember', seed });
+  /**
+   * Review fix — the advice is measured on the bid model itself, the way a player meets it: natural arrivals over a
+   * 72-hour listing (no forced visits, so late bids' discount counts), for a single animal and a group. The constant
+   * and the bands in listings.ts were set from 25 seeds of five listings; here a few seeds keep them from drifting.
+   */
+  function firstOffers(sp: string, n: number, kind: 'creature' | 'group', seeds: number): number[] {
+    const out: number[] = [];
+    for (let seed = 1; seed <= seeds; seed++) {
+      const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 1000 + seed });
       g.clock.speed = 1;
       devOpenMarket(g);
-      const c = addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 120 }), g.tankOrder[0]);
-      c.stats.health = 100;
-      delete c.illness;
-      const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: 1, durationHours: 72 });
+      const ids = Array.from({ length: n }, () => {
+        const c = addCreature(g, createCreature(g, simRng(g), sp, { ageDays: 150 }), g.tankOrder[0]);
+        c.stats.health = 100;
+        delete c.illness;
+        return c.id;
+      });
+      const r = createListing(g, { kind, creatureIds: ids, reserve: 1, durationHours: 72 });
       expect(r.ok).toBe(true);
       const l = g.market.listings.find((x) => x.id === r.listingId)!;
-      for (let i = 0; i < 40 && l.bids.length < 4 && l.status === 'active'; i++) forceBuyerVisit(g, l.id);
-      for (const b of l.bids) if (b.status === 'open' && !b.counterAmount) ratios.push(b.amount / l.snapshot.valuation);
+      for (let h = 0; h < 73 && l.status === 'active'; h++) devStepEconomy(g, 1, { market: true });
+      for (const b of l.bids) out.push(b.amount / l.snapshot.valuation);
     }
-    expect(ratios.length).toBeGreaterThan(40);
+    return out;
+  }
+
+  it('measured: first offers land in the quoted range, and each reserve band turns down the share it says', () => {
+    const ratios = [...firstOffers('betta', 1, 'creature', 4), ...firstOffers('neon_tetra', 6, 'group', 4)].sort((a, b) => a - b);
+    expect(ratios.length).toBeGreaterThan(80);
+    const below = (x: number) => ratios.filter((r) => r < x).length / ratios.length;
     const { low, high } = typicalOpening(100);
-    const inRange = ratios.filter((x) => x >= low / 100 - 0.02 && x <= high / 100 + 0.02).length / ratios.length;
-    const atFair = ratios.filter((x) => x >= 1).length / ratios.length;
-    expect(inRange).toBeGreaterThan(0.6);
-    // a reserve at fair value turns about half of first offers down (the old hint called it "steady bidding")
-    expect(atFair).toBeGreaterThan(0.25);
-    expect(atFair).toBeLessThan(0.7);
-    expect(reserveHint(100, typicalOpening(100))).toMatch(/^About half of first offers/);
+    const inRange = ratios.filter((r) => r >= low / 100 && r <= high / 100).length / ratios.length;
+    const median = ratios[Math.floor(ratios.length / 2)];
+    expect(inRange).toBeGreaterThan(0.5); // "usually open at …"
+    expect(median).toBeGreaterThan(0.84);
+    expect(median).toBeLessThan(0.98);
+    expect(below(low / 100)).toBeLessThan(0.3); // "Most first offers will reach this"
+    expect(below(RESERVE_BANDS.half)).toBeLessThan(0.5); // "Some … will be below this"
+    expect(below(RESERVE_BANDS.overHalf)).toBeGreaterThan(0.3); // "About half"
+    expect(below(RESERVE_BANDS.overHalf)).toBeLessThan(0.7);
+    expect(below(1.0)).toBeGreaterThan(0.45); // a reserve at fair value: more than half turned down
+    expect(below(high / 100 + 0.001)).toBeGreaterThan(0.6); // "Above most first offers: most will be turned down"
   });
 
-  it('the quoted range and the reserve hint', () => {
-    const o = typicalOpening(100);
-    expect(o).toEqual({ low: 81, high: 116 });
-    expect(reserveHint(120, o)).toBe('Above most first offers: many will be turned down automatically.');
-    expect(reserveHint(100, o)).toBe('About half of first offers will be below this and turned down automatically.');
-    expect(reserveHint(85, o)).toBe('Some first offers will be below this and turned down automatically.');
-    expect(reserveHint(80, o)).toBe('Most first offers will reach this. You still choose which one to accept.');
+  it('the quoted range and the reserve hint’s words', () => {
+    expect(typicalOpening(100)).toEqual({ low: 73, high: 105 });
+    expect(reserveHint(110, 100)).toBe('Above most first offers: most will be turned down automatically.');
+    expect(reserveHint(100, 100)).toBe('More than half of first offers will be below this and turned down automatically.');
+    expect(reserveHint(90, 100)).toBe('About half of first offers will be below this and turned down automatically.');
+    expect(reserveHint(80, 100)).toBe('Some first offers will be below this and turned down automatically.');
+    expect(reserveHint(70, 100)).toBe('Most first offers will reach this. You still choose which one to accept.');
   });
 });
 

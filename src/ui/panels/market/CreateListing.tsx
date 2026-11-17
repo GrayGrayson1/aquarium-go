@@ -10,7 +10,7 @@ import type { Creature, GameState, ListingKind, Tank } from '@/types';
 import { Button, Money, formatMoney, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import type { CommandOf } from '@/sim/commands';
-import { suggestPricing, typicalOpening, quickSellQuote, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
+import { suggestPricing, typicalOpening, reserveBand, quickSellQuote, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
 import { capturePhoto } from '@/render/camera/photo';
 import { inSharedShop } from '@/state/sharedMode'; // chunk 13
 import { captureSharedPhoto } from '@/ui/shared/photos';
@@ -313,7 +313,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
             <div className="pn-field">
               <span className="pn-field__label">Reserve (lowest you’ll take)</span>
               <NumberField value={reserve} onChange={(v) => { setReserve(v); setPriceTouched(true); }} min={1} max={1e6} step={1} bigStep={reserve < 200 ? 5 : 25} prefix="$" label="Reserve price" />
-              <span className="pn-field__hint" data-testid="listing-reserve-hint">{reserveHint(reserve, opening)}</span>
+              <span className="pn-field__hint" data-testid="listing-reserve-hint">{reserveHint(reserve, pricing.expected)}</span>
             </div>
             <div className="pn-field">
               <span className="pn-field__label pn-row pn-gap-2">
@@ -687,12 +687,22 @@ export function QuickSellLine({ g, ids }: { g: GameState; ids: string[] }) {
  * Audit 2026-11-17 (F3) — what a reserve does to first offers: a bid under the reserve is turned down automatically
  * (the sim's rule), so the advice is measured against where first offers land, not against fair value.
  */
-export function reserveHint(reserve: number, opening: { low: number; high: number }): string {
-  if (!(opening.high > 0)) return 'Bids under your reserve are turned down automatically.';
-  if (reserve > opening.high) return 'Above most first offers: many will be turned down automatically.';
-  if (reserve >= ((opening.low + opening.high) / 2) * 0.95) return 'About half of first offers will be below this and turned down automatically.';
-  if (reserve > opening.low) return 'Some first offers will be below this and turned down automatically.';
-  return 'Most first offers will reach this. You still choose which one to accept.';
+export function reserveHint(reserve: number, expected: number): string {
+  // review fix: the bands are measured on the bid model (reserveBand in the sim)
+  switch (safe(() => reserveBand(reserve, expected), null)) {
+    case 'most_below':
+      return 'Above most first offers: most will be turned down automatically.';
+    case 'over_half':
+      return 'More than half of first offers will be below this and turned down automatically.';
+    case 'half':
+      return 'About half of first offers will be below this and turned down automatically.';
+    case 'some':
+      return 'Some first offers will be below this and turned down automatically.';
+    case 'most_reach':
+      return 'Most first offers will reach this. You still choose which one to accept.';
+    default:
+      return 'Bids under your reserve are turned down automatically.';
+  }
 }
 
 function PriceScale({ expected, reserve, buyNow, opening }: { expected: number; reserve: number; buyNow: number; opening: { low: number; high: number } }) {
