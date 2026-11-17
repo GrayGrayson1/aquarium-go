@@ -295,7 +295,7 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
         p: W.balance * (1 - balance) + 1,
         text:
           tank.environment === 'marine'
-            ? `Soften the rockwork with life — macroalgae${state && isUnlocked(state, 'decor_corals_soft') ? ' or a few soft corals' : ''} around the ${hs?.def.name.toLowerCase() ?? 'rock'}.`
+            ? `Soften the rockwork with life — macroalgae${state && isUnlocked(state, 'decor_corals_soft') && tank.waterClass === 'reef' ? ' or a few soft corals' : ''} around the ${hs?.def.name.toLowerCase() ?? 'rock'}.` // (G13 review: corals only in a reef)
             : `Soften the hardscape — tie java fern or anubias onto the ${hs?.def.name.toLowerCase() ?? 'wood'}${tank.environment === 'brackish' ? '' : ' and add a background of stem plants'}.`, // Audit 2026-11-17 (G13): stem plants are freshwater-only
       });
     } else if (share < bandB[0] - 0.05) {

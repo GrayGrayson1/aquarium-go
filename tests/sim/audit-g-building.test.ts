@@ -599,3 +599,18 @@ describe('G20 review fix: the signage unlock points at a switch the player can r
     expect(unlockWhere('signage')).toBe('Add a sign from a tank card’s Value tab.');
   });
 });
+
+describe('G13 review fix: the rockwork tip offers soft corals only to a reef', () => {
+  it('a live-rock tank of bare rock is told macroalgae, a reef macroalgae or soft corals', () => {
+    const g = game('ocellaris_clownfish');
+    g.progress.unlocked.push('reef', 'decor_corals_soft');
+    const t = g.tanks[g.tankOrder[0]];
+    t.decor = [0, 1, 2].map((i) => ({ id: `d-rock-${i}`, defId: 'live_rock', x: -0.12 + i * 0.12, y: 0, z: 0, rotY: 0, scale: 1, seed: i + 1 }));
+    const tip = (wc: 'marine_live_rock' | 'reef') => {
+      t.waterClass = wc;
+      return beautyScore(g, t).tips.find((x) => /^Soften the rockwork/.test(x));
+    };
+    expect(tip('marine_live_rock')).toMatch(/^Soften the rockwork with life — macroalgae around the /);
+    expect(tip('reef')).toMatch(/^Soften the rockwork with life — macroalgae or a few soft corals around the /);
+  });
+});
