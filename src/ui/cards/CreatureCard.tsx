@@ -65,7 +65,6 @@ import {
 import { PrismaticBadge, MorphTierBadge, StrainBadge } from '../common/Prismatic'; // lane:genetics
 import { illnessDef } from '@/sim/life/illness'; // lane:guide
 import { moduleFor } from '@/sim/life/breeding/registry'; // audit E21, E24
-import { effectiveRole } from '@/sim/life/breeding/common'; // audit E24
 import { creatureValue, marketAccess } from '@/sim/economy';
 import { speciesWaterComfort } from '@/sim/water';
 import { isUnlocked } from '@/sim/facility';
@@ -372,11 +371,8 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
   const partnerC = partner ? game.creatures[partner] : null;
   // audit E24: odds only for a pair that could breed (not two of one sex, not an anemone that splits alone)
   const pairBred = safe('moduleFor', () => moduleFor(sp).breedable, false);
-  const sameSex = !!partnerC && sp.sexSystem === 'gonochoristic' && (() => {
-    const ra = safe('effectiveRole', () => effectiveRole(c, sp, game.clock.hour), null);
-    const rb = safe('effectiveRole', () => effectiveRole(partnerC, sp, game.clock.hour), null);
-    return !!ra && ra === rb;
-  })();
+  // (review E: by the sexes the cards show, so hiding the odds never gives away a sex the card still hides)
+  const sameSex = !!partnerC && sp.sexSystem === 'gonochoristic' && c.sex !== 'unknown' && c.sex === partnerC.sex;
   const showOdds = pairBred && !sameSex;
   // audit E21: readiness means nothing for an animal that can't breed here, or not yet
   const showReadiness = pairBred && status?.label !== 'Too young to breed';
