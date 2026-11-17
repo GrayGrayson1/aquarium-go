@@ -12,7 +12,7 @@ import { getEquipmentDef } from '@/data/catalog/equipment';
 import { fixForWaterIssue, fixForAttention } from '@/ui/common/fixLinks';
 import { refreshTankCache } from '@/sim/world';
 import { getSpecies } from '@/data/species';
-import { FOODS, eatsFood } from '@/data/catalog/foods';
+import { FOODS, eatsFood, FOOD_TAG_NAMES, foodTagNames, joinFoodNames } from '@/data/catalog/foods';
 import { tankAttention } from '@/ui/common/notify';
 import { buyTank } from '@/sim/economy';
 import { addCreature, createCreature } from '@/sim/life';
@@ -346,5 +346,26 @@ describe('C8: a hungry animal’s tank line says which food, and broadcast feedi
     expect(r.ok).toBe(true);
     expect(r.caution).toBe(true);
     expect(r.message).toContain(`${pleco.name} is hungry but doesn’t eat ${flakeLike.name.toLowerCase()}.`);
+  });
+});
+
+describe('C18 (B-224): food tags read as shop words, from one table in the data layer', () => {
+  it('every tag has words without underscores, and the list helper keeps order, drops repeats and grazing', () => {
+    for (const [tag, words] of Object.entries(FOOD_TAG_NAMES)) expect(words, tag).not.toMatch(/_/);
+    expect(foodTagNames(['copepod_live', 'baby_brine'])).toEqual(['live copepods', 'live baby brine shrimp']);
+    expect(foodTagNames(['algae_wafer', 'biofilm', 'detritus', 'vegetable'], { shelfOnly: true })).toEqual(['algae wafers', 'blanched vegetables']);
+    expect(joinFoodNames(['a', 'b', 'c'])).toBe('a, b or c');
+  });
+
+  it('target-feeding the wrong food names what it eats in shop words', () => {
+    const s = base('lined_seahorse');
+    const t = firstTank(s);
+    const horse = Object.values(s.creatures).find((c) => c.tankId === t.id)!;
+    const wrong = FOODS.find((f) => !eatsFood(getSpecies('lined_seahorse'), f))!;
+    s.inventory.foods[wrong.id] = 5;
+    const r = feedTank(s, t.id, wrong.id, { targetCreatureId: horse.id });
+    expect(r.ok).toBe(false);
+    expect(r.message).not.toMatch(/_|copepod live/);
+    expect(r.message).toMatch(/Lined seahorses eat .*live copepods/);
   });
 });

@@ -5,7 +5,7 @@
 import type { GameState } from '@/types';
 import { tankFoodOutlook } from '@/sim/tankStatus';
 import { findSpecies } from '@/data/species'; // lane:qa-play
-import { FOODS, getFoodDef, madeForOtherSpecies, madeForOtherWater } from '@/data/catalog/foods'; // lane:qa-play
+import { FOODS, getFoodDef, madeForOtherSpecies, madeForOtherWater, foodTagNames } from '@/data/catalog/foods'; // lane:qa-play
 import { moduleFor } from '@/sim/life/breeding/registry'; // lane:qa-play
 import { currentPhase } from '@/sim/life/breeding/clutch'; // lane:qa-play
 import { useUI } from '@/state/ui';
@@ -87,7 +87,7 @@ export function youngFoodNeed(g: GameState, tankId: string): YoungFoodNeed | nul
     .map(([id]) => id);
   // chunk 17: only a food the shop sells now
   const restock = FOODS.filter((f) => eatsIt(f.tags) && isFoodAvailable(g, f)).sort((a, b) => a.price - b.price)[0];
-  const words = [...tags].slice(0, 2).map((t) => t.replace(/_/g, ' '));
+  const words = foodTagNames([...tags], { max: 2 }); // Audit 2026-11-17 C18 (B-224): shelf words, not raw tags
   return {
     label: label || 'young',
     tags: [...tags],

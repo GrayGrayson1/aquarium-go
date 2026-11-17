@@ -3,7 +3,7 @@
  * All return a result object the UI can toast. Every action teaches something: messages explain the "why".
  */
 import type { GameState, LightPreset, Tank, EquipmentInstance, SpeciesDefinition } from '@/types';
-import { eatsFood, getFoodDef } from '@/data/catalog/foods';
+import { eatsFood, getFoodDef, foodTagNames, joinFoodNames } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { findSpecies } from '@/data/species';
@@ -89,7 +89,8 @@ export function feedTank(
     targetSp = findSpecies(c.speciesId);
     targetName = c.name || targetSp?.commonName || 'it';
     if (targetSp && !food.tags.some((t) => targetSp!.foods.includes(t))) {
-      return fail(`${targetName} won't eat ${food.name.toLowerCase()}. ${cap(pluralName(targetSp))} eat ${targetSp.foods.slice(0, 4).join(', ').replace(/_/g, ' ')}.`);
+      // Audit 2026-11-17 C18 (B-224) — what it eats in shop words ("live copepods"), not raw tags ("copepod live")
+      return fail(`${targetName} won't eat ${food.name.toLowerCase()}. ${cap(pluralName(targetSp))} eat ${joinFoodNames(foodTagNames(targetSp.foods, { max: 4, shelfOnly: true }))}.`);
     }
   }
 
