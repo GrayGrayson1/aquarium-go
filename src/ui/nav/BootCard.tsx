@@ -21,7 +21,8 @@ export function awayText(ms: number | null): string | null {
 /** The card's main line (§16 "Loading card"). */
 export function bootLine(awayMs: number | null): string {
   const away = awayText(awayMs);
-  return away ? `Loading your save · catching up ${away}…` : 'Loading your save…';
+  // audit 2026-11-17, I18: the real time away (the catch-up itself stops at 12 game hours, as the welcome card says)
+  return away ? `Loading your save · away ${away}…` : 'Loading your save…';
 }
 
 /** The app icon (public/favicon.svg), inline so it never waits on a request. */

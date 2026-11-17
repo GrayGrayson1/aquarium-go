@@ -230,6 +230,23 @@ describe('S06-02: the welcome-back card pauses the clock', () => {
     useResume.getState().clear();
     expect(useGame.getState().game!.clock.speed).toBe(1);
   });
+
+  it('audit 2026-11-17, I18 (B-163): play then pause while the card is up: closing it keeps the pause', async () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Card3', seed: 25 });
+    g.clock.speed = 3;
+    const now = Date.now();
+    g.lastTickRealMs = now - 2 * HOUR;
+    await saveGame(g, 'auto');
+    await loadAndResume('auto', { now });
+    expect(useGame.getState().game!.clock.speed).toBe(0);
+    for (const speed of [1, 0] as const) {
+      useGame.getState().mutate((d) => {
+        d.clock.speed = speed;
+      });
+    }
+    useResume.getState().clear();
+    expect(useGame.getState().game!.clock.speed).toBe(0); // before: back to 3
+  });
 });
 
 describe('R03-03: the card’s pause is never saved', () => {
