@@ -24,6 +24,7 @@ import { useSettings } from '@/state/settings';
 import { sfx } from '@/audio/sfx';
 import { EventIcon, type AnyKind } from './eventIcons';
 import { focusTank } from './AlertsPopover';
+import { useTankCardTab } from '../cards/tankCardTab'; // audit B4
 import { useShell } from '../common/shellStore';
 import { MOBILE_QUERY, SHORT_LANDSCAPE_QUERY, safe, useMedia } from '../common/safe';
 import { tutorialChain } from '@/data/quests';
@@ -45,6 +46,9 @@ interface Entry {
   texts: string[];
   tankId?: string;
   creatureId?: string;
+  /** audit B4 — a log event's listing or offer: a bid, a sale or a rare find opens it (eventLinks). */
+  listingId?: string;
+  offerId?: string;
   uiIds: number[];
   /** lane:ui-shell (B-151) — a UI toast's explicit label and detail (they win over parsing its text). */
   parts?: { label?: string; detail?: string };
@@ -107,7 +111,8 @@ type ToastLink = Pick<EventLink, 'panel' | 'target' | 'where'>;
  */
 const HEADLINE_UNLOCKS = ['shows', 'staff', 'visitors', 'brackish', 'market_listings', 'tank_auctions'];
 
-function parse(text: string): View {
+/** `ids`: the event's listing or offer (audit B4: a bid opens its listing, a rare find its offer). */
+function parse(text: string, ids: { listingId?: string; offerId?: string } = {}): View {
   let m = /^Achievement:\s*(.+?)\s+—\s+(.+)$/.exec(text);
   if (m) return { label: 'Achievement', title: m[1], detail: m[2] };
   m = /^Unlocked:\s*(.+)$/.exec(text);
@@ -121,20 +126,22 @@ function parse(text: string): View {
   // lane:w2-ui — show results: "The judge’s cards are in Shows." → open Shows › Results (lane:notify: and entries the
   // club sent home — "… The club refunded the fee." — which the Results tab lists too)
   if (SHOW_RESULT_TEXT.test(text)) return { title: text, link: { panel: 'shows', target: 'tab:results', where: '' } };
+  // audit B4: the shop's news opens the shop (or the offer itself), as its bell and Log lines do
+  const link = eventLink({ kind: 'info', text, ...ids }) ?? undefined;
   m = /^New arrivals at the shop:\s*(.+?)\.?$/.exec(text);
-  if (m) return { label: 'New at the shop', title: m[1] };
+  if (m) return { label: 'New at the shop', title: m[1], link };
   m = /^Market special:\s*(.+)$/.exec(text);
-  if (m) return { label: 'Market special', title: m[1] };
-  // lane:notify — anything else with a home (finished research → Research)
-  const link = eventLink({ kind: 'info', text });
+  if (m) return { label: 'Market special', title: m[1], link };
+  // lane:notify — anything else with a home (finished research → Research; audit B4: a bid or a sale → its listing)
   return link ? { title: text, link } : { title: text };
 }
 
-function viewOf(e: Entry): View {
+/** What a toast says and where it goes (exported for tests). */
+export function viewOf(e: Pick<Entry, 'texts' | 'group' | 'parts' | 'listingId' | 'offerId'>): View {
   const n = e.texts.length;
   if (n <= 1 && e.parts) return { label: e.parts.label, title: e.texts[0] ?? '', detail: e.parts.detail };
-  if (n <= 1) return parse(e.texts[0] ?? '');
-  const views = e.texts.map(parse);
+  if (n <= 1) return parse(e.texts[0] ?? '', { listingId: e.listingId, offerId: e.offerId });
+  const views = e.texts.map((t) => parse(t));
   const list = (xs: string[]) => (xs.length <= 2 ? xs.join(' and ') : `${xs.slice(0, 2).join(', ')} and ${xs.length - 2} more`);
   switch (e.group) {
     case 'achievement':
@@ -332,7 +339,7 @@ export function Toasts() {
   const onScreen = useRef(new Set<string>());
   const [, setRecheck] = useState(0);
 
-  const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; uiId?: number; source: 'ui' | 'log'; parts?: Entry['parts']; actionLabel?: string }) => {
+  const add = useCallback((kind: AnyKind, text: string, extra: { tankId?: string; creatureId?: string; listingId?: string; offerId?: string; uiId?: number; source: 'ui' | 'log'; parts?: Entry['parts']; actionLabel?: string }) => {
     const group = groupOf(kind, text, (useGame.getState().game?.tankOrder.length ?? 0) >= 4 /* lane:qa-final */);
     // The guide card shows its own "done" line; only toast tutorial tips when the guide is hidden.
     if (group === 'tip' && extra.source === 'log' && isGuideDoneLine(text)) return;
@@ -344,7 +351,7 @@ export function Toasts() {
         if (i >= 0) {
           const m = live[i];
           if (m.texts.includes(text)) return live;
-          const merged: Entry = { ...m, texts: [...m.texts, text], rev: m.rev + 1, tankId: m.tankId === extra.tankId ? m.tankId : undefined, creatureId: undefined, uiIds: extra.uiId != null ? [...m.uiIds, extra.uiId] : m.uiIds };
+          const merged: Entry = { ...m, texts: [...m.texts, text], rev: m.rev + 1, tankId: m.tankId === extra.tankId ? m.tankId : undefined, creatureId: undefined, listingId: undefined, offerId: undefined, uiIds: extra.uiId != null ? [...m.uiIds, extra.uiId] : m.uiIds };
           return [...live.slice(0, i), merged, ...live.slice(i + 1)];
         }
       }
@@ -354,7 +361,7 @@ export function Toasts() {
         const d = live[dup];
         return [...live.slice(0, dup), { ...d, rev: d.rev + 1, uiIds: extra.uiId != null ? [...d.uiIds, extra.uiId] : d.uiIds }, ...live.slice(dup + 1)];
       }
-      const e: Entry = { key: `t${++seq.current}`, kind, group, texts: [text], tankId: extra.tankId, creatureId: extra.creatureId, uiIds: extra.uiId != null ? [extra.uiId] : [], ...(extra.parts ? { parts: extra.parts } : {}), ...(extra.actionLabel && extra.tankId ? { actionLabel: extra.actionLabel } : {}), born: now, rev: 0 };
+      const e: Entry = { key: `t${++seq.current}`, kind, group, texts: [text], tankId: extra.tankId, creatureId: extra.creatureId, ...(extra.listingId ? { listingId: extra.listingId } : {}), ...(extra.offerId ? { offerId: extra.offerId } : {}), uiIds: extra.uiId != null ? [extra.uiId] : [], ...(extra.parts ? { parts: extra.parts } : {}), ...(extra.actionLabel && extra.tankId ? { actionLabel: extra.actionLabel } : {}), born: now, rev: 0 };
       return [...live, e].slice(-14);
     });
   }, []);
@@ -362,7 +369,7 @@ export function Toasts() {
   const pushLog = useCallback(
     (e: GameEvent) => {
       // no sound here: the audio director voices log events (src/audio/cues.ts), one cue per burst
-      add(e.kind, e.text, { tankId: e.tankId, creatureId: e.creatureId, source: 'log' });
+      add(e.kind, e.text, { tankId: e.tankId, creatureId: e.creatureId, listingId: e.listingId, offerId: e.offerId, source: 'log' });
     },
     [add],
   );
@@ -445,6 +452,24 @@ export function Toasts() {
   );
 }
 
+/** Where tapping a toast goes: the event log, a panel, or a tank (with its card, on a tab) and an animal's card. */
+export type ToastGo =
+  | { to: 'log' }
+  | { to: 'panel'; panel: EventLink['panel']; target: string | null }
+  | { to: 'tank'; tankId: string; card: boolean; gear: boolean; creatureId: string | null };
+
+/** (pure; exported for tests) */
+export function toastGo(e: Pick<Entry, 'kind' | 'texts' | 'tankId' | 'creatureId'>, v: View): ToastGo | null {
+  if (v.opensLog) return { to: 'log' };
+  if (v.link) return { to: 'panel', panel: v.link.panel, target: v.link.target };
+  if (!e.tankId) return null;
+  const creatureId = e.creatureId ?? null;
+  // audit B4: a warning or danger about a tank opens its card, whose header names the problem and its fix (a line
+  // pointing at "tank card › Equipment" opens that tab); one about an animal opens the animal's card
+  const card = (e.kind === 'warning' || e.kind === 'danger') && !creatureId;
+  return { to: 'tank', tankId: e.tankId, card, gear: card && /tank card › Equipment/.test(e.texts[0] ?? ''), creatureId };
+}
+
 function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
   const [hover, setHover] = useState(false);
   // a tap on the text (phones have no hover) opens the whole message and gives it extra time
@@ -467,16 +492,18 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
   const celebrate = e.kind === 'celebrate' || e.kind === 'unlock';
   const actionable = !!e.tankId || !!v.opensLog || !!v.link;
   const onAct = () => {
-    if (v.opensLog) {
+    const to = toastGo(e, v);
+    if (to?.to === 'log') {
       sfx('open');
       useShell.getState().set({ popover: 'alerts' });
-    } else if (v.link) {
+    } else if (to?.to === 'panel') {
       // lane:w2-ui — unlocks / show results open where they live
       sfx('open');
-      useUI.getState().set({ panel: v.link.panel, panelTarget: v.link.target });
-    } else if (e.tankId) {
-      focusTank(e.tankId, false);
-      if (e.creatureId) useUI.getState().set({ selectedCreatureId: e.creatureId });
+      useUI.getState().set({ panel: to.panel, panelTarget: to.target });
+    } else if (to?.to === 'tank') {
+      if (to.gear) useTankCardTab.setState({ want: 'gear' });
+      focusTank(to.tankId, to.card);
+      if (to.creatureId) useUI.getState().set({ selectedCreatureId: to.creatureId });
     }
     onDone();
   };

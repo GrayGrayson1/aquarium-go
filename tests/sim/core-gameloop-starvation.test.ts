@@ -67,6 +67,21 @@ describe('B-013: the starvation slowdown belongs to a tick that happened', () =>
     expect(slowdownToasts()).toHaveLength(1);
   });
 
+  it('audit B4: the slowdown’s toast goes to the starving animal it names (“See them”)', () => {
+    start();
+    useGame.getState().mutate((d) => {
+      d.progress.tutorial.skipped = true; // no starter grace: its hunger may pass the threshold
+      const c = Object.values(d.creatures).find((x) => x.isStarter)!;
+      c.name = 'Ember';
+      c.stats.hunger = 100;
+      c.stats.health = 5;
+    });
+    const ember = Object.values(useGame.getState().game!.creatures).find((x) => x.name === 'Ember')!;
+    runTick(1);
+    expect(slowdownToasts()).toHaveLength(1);
+    expect(slowdownToasts()[0]).toMatchObject({ tankId: ember.tankId, creatureId: ember.id, actionLabel: 'See them' });
+  });
+
   it('a tick that published nothing keeps its hours in the backlog and toasts nothing', () => {
     start();
     const before = useGame.getState().game!;
