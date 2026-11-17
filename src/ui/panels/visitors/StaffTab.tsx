@@ -359,7 +359,7 @@ function FireButton({ m }: { m: StaffMember }) {
         act({ k: 'fireStaff', staff: m.id }, { sound: 'close', kind: 'info' });
       }}
     >
-      {armed ? 'Confirm' : 'Let go'}
+      {armed ? `Let ${first(m)} go (final day’s pay)` : 'Let go'}
     </Button>
   );
 }

@@ -371,7 +371,7 @@ describe('DES-013 B: the strings chunk 5 shipped that the owner approved as ship
     expect(ops(low.g).water()).toMatch(/\d+ gal mixing · ready 10:00 PM/);
     const offLow = saltLow();
     offLow.g.staff!.ordersOff = true;
-    expect(ops(offLow.g).problems()).toContain('Rosa’s orders');
+    expect(ops(offLow.g).problems()).toContain('Turn on Rosa’s orders'); // Audit 2026-11-17 (J34): the button says what it's for
     holdAll(off);
     expect(ops(off).water()).toMatch(/Manual mode: .+ on hold\. Open/);
   });

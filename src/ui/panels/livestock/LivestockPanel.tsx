@@ -273,7 +273,7 @@ export function LivestockPanel() {
         subtitle="Instant cash, no auction"
         actions={
           <>
-            <Button onClick={() => setConfirmSell(false)}>Keep them</Button>
+            <Button onClick={() => setConfirmSell(false)}>{pickedList.length === 1 ? 'Don’t sell' : 'Keep them'}</Button>
             <Button
               variant="coral"
               silent

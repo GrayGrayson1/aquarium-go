@@ -224,3 +224,19 @@ describe('Audit 2026-11-17 (J33): no developer talk on player screens', () => {
     expect(getSpecies('kuhli_loach').breeding.notes).toContain('hatch time is poorly documented (probably about two days).');
   });
 });
+
+describe('Audit 2026-11-17 (J34): a confirm button says what it does', () => {
+  it('letting someone go, choosing a pair, the orders link and quick sell’s cancel', () => {
+    const cases: [string, string, string][] = [
+      ['ui/panels/visitors/StaffTab.tsx', "'Confirm'", '`Let ${first(m)} go (final day’s pay)`'],
+      ['ui/panels/livestock/ProductionSetup.tsx', '          Done\n        </Button>\n      }\n    >\n      <p>Only adult pairs', '          Use this pair\n'],
+      ['ui/panels/operations/Problems.tsx', "        {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders", "Turn on {(opsSnapshot(g).forecast?.m.name ?? 'Stock manager').split(' ')[0]}’s orders"],
+      ['ui/panels/livestock/LivestockPanel.tsx', '>Keep them</Button>', "pickedList.length === 1 ? 'Don’t sell' : 'Keep them'"],
+    ];
+    for (const [file, gone, now] of cases) {
+      const s = src(file);
+      expect(s, `${file}: ${gone}`).not.toContain(gone);
+      expect(s, `${file}: ${now}`).toContain(now);
+    }
+  });
+});
