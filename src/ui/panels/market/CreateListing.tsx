@@ -10,7 +10,7 @@ import type { Creature, GameState, ListingKind, Tank } from '@/types';
 import { Button, Money, formatMoney, StatusBadge } from '@/ui/kit';
 import { useUI } from '@/state/ui';
 import type { CommandOf } from '@/sim/commands';
-import { suggestPricing, typicalOpening, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
+import { suggestPricing, typicalOpening, quickSellQuote, creatureValue, tankValuation, previewListing, marketAccess, LISTING_DURATION_PRESETS, DEFAULT_LISTING_HOURS, type ListingSpec, type ListingPreview } from '@/sim/economy';
 import { capturePhoto } from '@/render/camera/photo';
 import { inSharedShop } from '@/state/sharedMode'; // chunk 13
 import { captureSharedPhoto } from '@/ui/shared/photos';
@@ -319,6 +319,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
               <span className="pn-field__hint">{buyNowOn ? (buyNow <= reserve ? 'Buy-now must be above your reserve.' : 'A keen buyer can end the auction instantly at this price.') : 'Turn on to let a buyer purchase immediately.'}</span>
             </div>
           </div>
+          {kind !== 'tank' && kind !== 'frag' && <QuickSellLine g={g} ids={ids} /> /* audit 2026-11-17 (F21) */}
           {kind === 'frag' ? <FragValueDetails g={g} ids={fragIds} /> : <ValueDetails g={g} kind={kind} chosen={chosen} tankId={tankId} />}
           <div className="pn-row pn-gap-2">
             <Button size="sm" variant="ghost" onClick={() => { setPriceTouched(false); }}>
@@ -653,6 +654,23 @@ function warningIcon(w: string) {
   if (t.startsWith('included')) return <Check size={16} />;
   if (t.includes('first animal') || t.includes('starter')) return <Sparkles size={16} />;
   return <TriangleAlert size={16} />;
+}
+
+/**
+ * Audit 2026-11-17 (F21) — the instant alternative to an auction: what the local fish store pays today for these
+ * animals, and a way to Livestock's quick-sell dialog for them (a child in debt tapping Sell met only a six-step auction).
+ */
+export function QuickSellLine({ g, ids }: { g: GameState; ids: string[] }) {
+  const quote = safe(() => (ids.length ? quickSellQuote(g, ids) : null), null);
+  if (!quote?.ok || !(quote.total > 0)) return null;
+  return (
+    <div className="pn-row pn-gap-2 pn-row--wrap" style={{ alignItems: 'center' }} data-testid="listing-quick-sell">
+      <span className="pn-small pn-muted pn-grow">Or sell now to the local fish store for about {formatMoney(quote.total)}.</span>
+      <Button size="sm" data-testid="listing-quick-sell-go" onClick={() => useUI.getState().set({ panel: 'livestock', panelTarget: `sell:${ids.join(',')}` })}>
+        Quick sell
+      </Button>
+    </div>
+  );
 }
 
 /**

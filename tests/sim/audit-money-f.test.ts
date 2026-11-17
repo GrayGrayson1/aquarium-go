@@ -18,7 +18,7 @@ import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS, typicalOpening, devOpenMarket, createListing, forceBuyerVisit, acceptBid, restartNeed, tankKitPrice } from '@/sim/economy';
 import { cheapestKit } from '@/sim/economy/purchases';
-import { marketAccess, cashSuggestions, dailyOperatingCost } from '@/sim/economy';
+import { marketAccess, cashSuggestions, dailyOperatingCost, quickSellQuote } from '@/sim/economy';
 import { installWaterRoom } from '@/sim/automation/water';
 import { installFoodRoom } from '@/sim/automation/food';
 import { unlockProgress } from '@/sim/facility';
@@ -30,7 +30,7 @@ import { DECOR } from '@/data/catalog/decor';
 import { decorSellValue } from '@/sim/aquascape';
 import type { DecorInstance } from '@/types';
 import { TANK_TIERS } from '@/data/catalog/tanks';
-import { reserveHint } from '@/ui/panels/market/CreateListing';
+import { reserveHint, QuickSellLine } from '@/ui/panels/market/CreateListing';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { offerLeavesText } from '@/ui/panels/market/Shop';
@@ -588,6 +588,19 @@ describe('F20: a group’s card says "pick fewer" when part of it is affordable'
     expect(out).toContain('Can’t afford all 10: pick fewer');
     g.finance.money = 2;
     expect(text(renderToStaticMarkup(createElement(ShopTab, { g, offerId: null, setOfferId: () => {} })))).toContain('Can’t afford yet');
+  });
+});
+
+describe('F21: the listing wizard names the store’s instant price', () => {
+  it('"Or sell now to the local fish store for about $X." with a Quick sell for these animals', () => {
+    const g = game();
+    const a = addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 120 }), g.tankOrder[0]);
+    const b = addCreature(g, createCreature(g, simRng(g), 'betta', { ageDays: 120 }), g.tankOrder[0]);
+    const q = quickSellQuote(g, [a.id, b.id]);
+    expect(q.ok).toBe(true);
+    const out = renderToStaticMarkup(createElement(QuickSellLine, { g, ids: [a.id, b.id] }));
+    expect(text(out)).toContain(`Or sell now to the local fish store for about $${Math.round(q.total)}. Quick sell`);
+    expect(renderToStaticMarkup(createElement(QuickSellLine, { g, ids: [] }))).toBe('');
   });
 });
 
