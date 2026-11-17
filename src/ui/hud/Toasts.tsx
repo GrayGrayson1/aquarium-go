@@ -445,7 +445,7 @@ export function Toasts() {
       {update && !headerOnly && <UpdatePrompt version={update.version} />}
       <AnimatePresence initial={false}>
         {shown.map((e) => (
-          <ToastItem key={e.key} e={e} onDone={() => dismiss(e.key)} />
+          <ToastItem key={e.key} e={e} onDone={() => dismiss(e.key)} sheet={phone && screen === 'game' && sheetUp} />
         ))}
       </AnimatePresence>
     </div>
@@ -472,7 +472,19 @@ export function toastGo(e: Pick<Entry, 'kind' | 'texts' | 'tankId' | 'creatureId
   return { to: 'tank', tankId: e.tankId, card, gear: card && /tank card › Equipment/.test(e.texts[0] ?? ''), creatureId };
 }
 
-function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
+/**
+ * Audit B19 — how a toast takes a tap. Normally its text goes where it is about; on a phone with a sheet open the toast
+ * lies over the sheet's list, so a tap meant for the list only pins it (opens the whole message), and only a button
+ * goes: its own ("See them"), or, once pinned, one named for where it goes. (pure; exported for tests)
+ */
+export function toastTap(e: Pick<Entry, 'tankId' | 'actionLabel'>, v: Pick<View, 'opensLog' | 'link'>, sheet: boolean, pinned: boolean): { textGoes: boolean; button: string | null; title: string } {
+  const actionable = !!e.tankId || !!v.opensLog || !!v.link;
+  const title = v.opensLog ? 'Open the event log' : v.link ? 'Take me there' : 'Go to this tank';
+  const own = e.actionLabel && e.tankId ? e.actionLabel : null;
+  return { textGoes: actionable && !sheet, button: own ?? (actionable && sheet && pinned ? title : null), title };
+}
+
+function ToastItem({ e, onDone, sheet = false }: { e: Entry; onDone: () => void; /** a phone sheet is open under the toasts (audit B19) */ sheet?: boolean }) {
   const [hover, setHover] = useState(false);
   // a tap on the text (phones have no hover) opens the whole message and gives it extra time
   const [pinned, setPinned] = useState(false);
@@ -492,7 +504,7 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
   }, [hover, ttl, e.rev]);
   const expanded = (hover || pinned) && present;
   const celebrate = e.kind === 'celebrate' || e.kind === 'unlock';
-  const actionable = !!e.tankId || !!v.opensLog || !!v.link;
+  const tap = toastTap(e, v, sheet, pinned);
   const onAct = () => {
     const to = toastGo(e, v, useGame.getState().game);
     if (to?.to === 'log') {
@@ -539,17 +551,18 @@ function ToastItem({ e, onDone }: { e: Entry; onDone: () => void }) {
       <span className="ag-toast__icon">
         <EventIcon kind={e.kind} size={14} />
       </span>
-      {actionable ? (
-        <button type="button" className="ag-toast__text ag-toast__text--btn" onClick={onAct} title={v.opensLog ? 'Open the event log' : v.link ? 'Take me there' : 'Go to this tank'}>
+      {tap.textGoes ? (
+        <button type="button" className="ag-toast__text ag-toast__text--btn" onClick={onAct} title={tap.title}>
           {body}
         </button>
       ) : (
         <span className="ag-toast__text">{body}</span>
       )}
-      {e.actionLabel && e.tankId && (
-        // chunk 19 (ADR-0055 decision 1) — "See them": the toast's own way there, as a visible button
+      {tap.button && (
+        // chunk 19 (ADR-0055 decision 1) — "See them": the toast's own way there, as a visible button (audit B19: over a
+        // phone sheet, a pinned toast without one gets "Take me there" and its kin, the words its text's tooltip uses)
         <button type="button" className="ag-toast__action" data-testid="toast-action" onClick={onAct}>
-          {e.actionLabel}
+          {tap.button}
         </button>
       )}
       <button type="button" className="ag-toast__close" aria-label="Dismiss" onClick={onDone}>

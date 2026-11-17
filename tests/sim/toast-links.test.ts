@@ -6,7 +6,7 @@
  * Equipment tab when the line says so).
  */
 import { describe, it, expect } from 'vitest';
-import { viewOf, toastGo } from '@/ui/hud/Toasts';
+import { viewOf, toastGo, toastTap } from '@/ui/hud/Toasts';
 import { starvingAnimal } from '@/game/starvationGuard';
 import { STARVING_HEALTH, STARVING_HUNGER } from '@/sim/starvation';
 import { newGame } from '@/sim/newGame';
@@ -73,5 +73,22 @@ describe('B4: the starvation slow-down', () => {
     expect(starvingAnimal(g, ['Nobody', 'Ember'])).toEqual({ tankId: ember.tankId, creatureId: ember.id });
     ember.status = 'dead';
     expect(starvingAnimal(g, ['Ember'])).toBeNull();
+  });
+});
+
+describe('audit B19: over a phone sheet, a toast’s text only pins it', () => {
+  const link = { panel: 'market' as const, target: 'listing:L1', where: '' };
+  it('its text goes there when no phone sheet is under it', () => {
+    expect(toastTap({ tankId: 'T1' }, {}, false, false)).toEqual({ textGoes: true, button: null, title: 'Go to this tank' });
+    expect(toastTap({}, { link }, false, false)).toMatchObject({ textGoes: true, button: null, title: 'Take me there' });
+    expect(toastTap({}, {}, false, false).textGoes).toBe(false); // plain news has nowhere to go
+  });
+  it('over a phone sheet the text pins; its own button still goes, and a pinned toast gets one', () => {
+    expect(toastTap({ tankId: 'T1', actionLabel: 'See them' }, {}, true, false)).toEqual({ textGoes: false, button: 'See them', title: 'Go to this tank' });
+    expect(toastTap({}, { link }, true, false)).toMatchObject({ textGoes: false, button: null });
+    expect(toastTap({}, { link }, true, true)).toMatchObject({ textGoes: false, button: 'Take me there' });
+    expect(toastTap({}, { opensLog: true }, true, true).button).toBe('Open the event log');
+    expect(toastTap({ tankId: 'T1' }, {}, true, true).button).toBe('Go to this tank');
+    expect(toastTap({}, {}, true, true).button).toBeNull();
   });
 });

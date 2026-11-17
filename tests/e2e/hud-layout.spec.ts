@@ -189,6 +189,24 @@ test.describe('phone 390×844 (touch)', () => {
     await reset.tap();
   });
 
+  test('audit B19: over an open sheet a toast’s text only pins it; its button goes there', async ({ page }) => {
+    await plainGame(page);
+    await aq(page, 'setUI', { panel: 'market' });
+    await page.waitForTimeout(1200);
+    type Api = { __AQ: { game(): { tankOrder: string[] }; ui(): { toast(t: string, k: string, parts?: { tankId?: string }): void } } };
+    await page.evaluate(() => {
+      const A = (window as unknown as Api).__AQ;
+      A.ui().toast('Ember is settling into the Starter tank', 'success', { tankId: A.game().tankOrder[0] });
+    });
+    const toast = tid(page, 'toast').filter({ hasText: 'Ember is settling' });
+    await expect(toast).toBeVisible();
+    await toast.locator('.ag-toast__text').tap();
+    await expect(toast).toHaveClass(/is-expanded/);
+    expect(await panel(page)).toBe('market');
+    await toast.getByTestId('toast-action').tap();
+    await expect.poll(() => panel(page)).toBeNull();
+  });
+
   test('audit B15: the pause segment puts “Paused” in the clock pill; 1× brings the day back', async ({ page }) => {
     await plainGame(page);
     await tid(page, 'hud-speed-0').tap();
