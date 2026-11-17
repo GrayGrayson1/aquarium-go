@@ -249,6 +249,14 @@ describe('audit 2026-11-17: the closings the browser gives itself', () => {
     expect(SHARED_WORDS.siteBehind).toBe('The shared shop has been updated, but this site hasn’t caught up yet. Try again later.');
     expect(RELOAD_CLOSINGS.has('unreachable')).toBe(false);
   });
+
+  it('I19: the restart closing says how long ago in words that read right', () => {
+    const at = Date.UTC(2026, 10, 17, 12, 0);
+    const line = (s: number) => closingText('restart', { club: 'C', savedAt: at, now: at + s * 1000 });
+    expect(line(40)).toBe('The shared shop’s server restarted, so it went back to its last save (just now).');
+    expect(line(70)).toBe('The shared shop’s server restarted, so it went back to its last save (1 minute ago).');
+    expect(line(7 * 60)).toBe('The shared shop’s server restarted, so it went back to its last save (7 minutes ago).');
+  });
 });
 
 describe('audit 2026-11-17: the crash cards', () => {

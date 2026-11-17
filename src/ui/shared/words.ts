@@ -120,7 +120,7 @@ export function closingText(why: VisitEnd, o: { club: string; until?: string; sa
     case 'fault':
       return `The shared shop hit a problem and stopped. It’s saved as of ${clockTime(o.savedAt)}.`;
     case 'restart':
-      return `The shared shop’s server restarted, so it went back to its last save (${minutesAgo(o.savedAt, o.now)} minutes ago).`;
+      return `The shared shop’s server restarted, so it went back to its last save (${minutesAgo(o.savedAt, o.now)}).`;
     case 'outofstep':
       // audit I11: what helps, as the slow device's line says it
       return 'Your game keeps falling out of step with the shared shop, so it stopped. Someone who can change the speed could slow it down. Reload to try again.';
@@ -156,9 +156,12 @@ function clockTime(at: number | undefined): string {
   return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-function minutesAgo(at: number | undefined, now = Date.now()): number {
-  if (typeof at !== 'number' || !Number.isFinite(at)) return 0;
-  return Math.max(0, Math.round((now - at) / 60_000));
+/** Audit 2026-11-17, I19: "just now", "1 minute ago", "7 minutes ago" (it said "0 minutes ago", "1 minutes ago"). */
+function minutesAgo(at: number | undefined, now = Date.now()): string {
+  const ms = typeof at === 'number' && Number.isFinite(at) ? Math.max(0, now - at) : 0;
+  if (ms < 60_000) return 'just now';
+  const n = Math.round(ms / 60_000);
+  return n === 1 ? '1 minute ago' : `${n} minutes ago`;
 }
 
 /** "1.2 GB", "340 MB" for the owner's meter. */
