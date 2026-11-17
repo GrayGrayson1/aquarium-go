@@ -761,6 +761,13 @@ export function repairState(s: Json): string[] {
   s.market.lastRefreshHour = num(s.market.lastRefreshHour, -999);
   s.market.stock = s.market.stock.filter((o: Json) => isObj(o) && findSpecies(o.speciesId) && Array.isArray(o.creatures));
   for (const o of s.market.stock as Json[]) for (const c of o.creatures as Json[]) if (isObj(c)) repairRareVariant(c, String(c.id), `offer ${o.id} creature ${c.id}`, repairs); // lane:genetics
+  // audit 2026-11-17 (F6) — an open offer's hold is optional: one that isn't a finite hour is dropped (absent: untouched)
+  for (const o of s.market.stock as Json[])
+    for (const k of ['holdUntilHour', 'holdStartHour'] as const)
+      if (o[k] !== undefined && !(typeof o[k] === 'number' && Number.isFinite(o[k]))) {
+        repairs.push(`offer ${shortId(o.id)}.${k}: unreadable, removed`);
+        delete o[k];
+      }
   for (const l of s.market.listings as Json[]) {
     l.bids = records(l.bids);
     l.creatureIds = strings(l.creatureIds).filter(isSafeKey);

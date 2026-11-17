@@ -15,7 +15,7 @@ import type { GameState } from '@/types';
 import type { SimContext } from '../context';
 import { simRng } from '../rng';
 import { dayIndex, crossedHourOfDay } from './util';
-import { initDemand, stepDemandDaily, refreshStock, stockNewUnlocks, maybeSpecial } from './shop';
+import { initDemand, stepDemandDaily, refreshStock, stockNewUnlocks, maybeSpecial, offerHeld } from './shop';
 import { ensureBuyerPool, rotateBuyers } from './buyers';
 import { stepListings } from './listings';
 import { stepFinance } from './finance';
@@ -35,14 +35,14 @@ export { fragValue, fragBundleValue, fragStoreOffer, fragSupplyFactor, fragInTan
 export type { FragValue } from './valuation';
 
 // ── shop / buyers ──
-export { isSpeciesAvailable, isFoodAvailable, soldWithWords, availableSpecies, requiredUnlocks, speciesLockHint, generateOffer, refreshStock, DEMAND_MIN, DEMAND_MAX } from './shop';
+export { isSpeciesAvailable, isFoodAvailable, soldWithWords, availableSpecies, requiredUnlocks, speciesLockHint, generateOffer, refreshStock, offerHeld, DEMAND_MIN, DEMAND_MAX } from './shop';
 export { makeBuyer, buildProfile, buyerFit, BUYER_POOL_SIZE } from './buyers';
 export type { ListingProfile, FitResult } from './buyers';
 export { templateCount, composeBidMessage } from './messages';
 export type { Aspect } from './messages';
 
 // ── player actions ──
-export { buyOffer, offerPickPrice, buyTank, buyEquipment, buyFood, buySalt, buyEggs, tankKitPrice, kitEquipmentFor, kitSwapNote, seededMediaPrice, SALT_PRICE_PER_KG } from './purchases';
+export { buyOffer, holdOffer, offerPickPrice, buyTank, buyEquipment, buyFood, buySalt, buyEggs, tankKitPrice, kitEquipmentFor, kitSwapNote, seededMediaPrice, SALT_PRICE_PER_KG } from './purchases';
 export type { BuyTankOptions, KitEquipment } from './purchases';
 export {
   createListing,
@@ -146,7 +146,8 @@ export function stepMarket(state: GameState, dt: number, ctx: SimContext): void 
   }
 
   // Expire lapsed offers between restocks (specials last only hours).
-  if (m.stock.some((o) => o.expiresHour <= end)) m.stock = m.stock.filter((o) => o.expiresHour > end);
+  // (an offer the player has open stays while it is held: audit 2026-11-17, F6)
+  if (m.stock.some((o) => o.expiresHour <= end && !offerHeld(o, end))) m.stock = m.stock.filter((o) => o.expiresHour > end || offerHeld(o, end));
 
   maybeSpecial(state, rng, start, dt);
 

@@ -20,8 +20,8 @@ import { fitsEnvironment } from '@/sim/compat/salinity'; // lane:brackish
 import { useNav } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { SubView } from '../common/PanelLayout';
 import { safe, useIsPhone } from '../common/hooks';
-import { act } from '../common/act';
-import { rememberOfferReturn } from './offerReturn'; // lane:qa-play
+import { act, edit } from '../common/act';
+import { rememberOfferReturn, peekOfferReturn } from './offerReturn'; // lane:qa-play; audit 2026-11-17 (F6): peek
 import { useShopFilters, offerMatches, filtersActive, useShopSearch, offerSearchMatches, sortOffers, type ShopSort } from './shopFilters'; // lane:ui-shell (chunk 1); chunk 19 (QOL-003): search and sort
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { useSeenStock } from './seenStock'; // lane:notify (0.5 §5.2)
@@ -75,7 +75,7 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
             </Button>
           }
         >
-          Another shop snapped it up, or it expired. New stock arrives regularly.
+          It has left the shop: bought, or its time ran out. New stock arrives every morning at 8.
         </EmptyState>
       </SubView>
     );
@@ -342,6 +342,21 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
   const alive = useRef(true);
   useEffect(() => () => void (alive.current = false), []);
   const tilesRef = useRef<HTMLDivElement>(null);
+  // audit 2026-11-17 (F6, the owner's choice) — the offer stays while you look: held now, renewed every 15 s and on a
+  // speed change (the hold is game hours scaled by the speed, like a bid's counter hold), released on close; a detour
+  // to Build for a tank for it (Quick buy) keeps it (offerReturn renews it there)
+  const speed = g.clock.speed;
+  useEffect(() => {
+    edit({ k: 'holdOffer', offer: offer.id });
+    const t = window.setInterval(() => edit({ k: 'holdOffer', offer: offer.id }), 15_000);
+    return () => window.clearInterval(t);
+  }, [offer.id, speed]);
+  useEffect(
+    () => () => {
+      if (peekOfferReturn()?.offerId !== offer.id) edit({ k: 'holdOffer', offer: offer.id, release: true });
+    },
+    [offer.id],
+  );
   const tank = tankId ? g.tanks[tankId] : undefined;
   const chosen = offer.creatures.filter((_, i) => picked.has(i));
   // The same quote buyOffer charges (lane:fix-econ, S13-11): a partial pick is never priced above the whole group.
@@ -663,6 +678,10 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             </Button>
           )}
         </div>
+        {/* audit 2026-11-17 (F6) — when it leaves, and that it waits while you look */}
+        <span className="pn-tiny pn-muted" data-testid="offer-leaves">
+          <Clock size={11} style={{ verticalAlign: '-1px' }} aria-hidden /> {offerLeavesText(offer.expiresHour, g.clock.hour)}
+        </span>
         {locked && (
           <span className="pn-row pn-gap-2 pn-row--wrap" style={{ alignItems: 'center' }}>
             <span className="pn-tiny pn-muted pn-grow">{lockHintOf(g, sp)}</span>
@@ -675,6 +694,18 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
       </div>
     </SubView>
   );
+}
+
+/**
+ * Audit 2026-11-17 (F6, the owner's pattern): "Leaves the shop this morning. It stays while you’re looking." — the part
+ * of the day its time runs out (today, tomorrow, or in n days), and that an open offer waits.
+ */
+export function offerLeavesText(expiresHour: number, now: number): string {
+  const day = Math.floor(expiresHour / 24) - Math.floor(now / 24);
+  const h = ((expiresHour % 24) + 24) % 24;
+  const part = h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  const when = expiresHour <= now && day < 0 ? 'now' : day <= 0 ? (part === 'night' ? 'tonight' : `this ${part}`) : day === 1 ? (part === 'night' ? 'tomorrow night' : `tomorrow ${part}`) : `in ${day} days`;
+  return `Leaves the shop ${when}. It stays while you’re looking.`;
 }
 
 /** "{Tier} morph · about 1 in {n} market {species plural}" (0.5 §7.4 item 7), from the catalog. */

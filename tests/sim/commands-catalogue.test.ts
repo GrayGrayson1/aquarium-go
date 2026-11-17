@@ -14,7 +14,7 @@ import { stateHash } from '@/persistence/hash';
 import { applyCommand, COMMAND_KINDS, validateCommand, WATER_CHANGER_ID, type Command, type CommandKind } from '@/sim/commands';
 import { cleanTank, dose, feedTank, installEquipment, removeEquipment, repairEquipment, setEquipment, setLighting, topOff, waterChange } from '@/sim/care';
 import { autoFeedPatch } from '@/sim/care/autofeed';
-import { buyEggs, buyEquipment, buyFood, buyOffer, buySalt, buyTank } from '@/sim/economy/purchases';
+import { buyEggs, buyEquipment, buyFood, buyOffer, buySalt, buyTank, holdOffer } from '@/sim/economy/purchases';
 import { acceptBid, counterBid, createListing, declineBid, holdBidForCounter, quickSell, quickSellFrags, withdrawListing } from '@/sim/economy/listings';
 import { findFreeSpot, placeTank, setAdmission, setOpenToPublic, toggleSignage, upgradeFacility } from '@/sim/facility';
 import { cancelResearch, claimQuest, startResearch, tutorialAdvance, tutorialSkip } from '@/sim/facility/progression';
@@ -432,6 +432,11 @@ const C: Record<CommandKind, Case | Case[]> = {
       direct: (d, c: Command & { k: 'buyOffer' }) => buyOffer(d, c.offer, c.tank, [1]),
       ok: true,
     },
+  ],
+  // audit 2026-11-17 (F6) — an open offer is held while the player looks, and released on close
+  holdOffer: [
+    { w: 'big', cmd: (g) => ({ k: 'holdOffer', offer: g.market.stock[0].id }), direct: (d, c: Command & { k: 'holdOffer' }) => holdOffer(d, c.offer, false), ok: true },
+    { what: 'released', w: 'big', prep: (g) => void holdOffer(g, g.market.stock[0].id), cmd: (g) => ({ k: 'holdOffer', offer: g.market.stock[0].id, release: true }), direct: (d, c: Command & { k: 'holdOffer' }) => holdOffer(d, c.offer, true), ok: true },
   ],
   buyFood: { w: 'big', cmd: (g) => ({ k: 'buyFood', food: firstFood(g), packs: 1 }), direct: (d, c: Command & { k: 'buyFood' }) => buyFood(d, c.food, 1), ok: true },
   buySalt: { w: 'big', cmd: () => ({ k: 'buySalt', kg: 5 }), direct: (d) => buySalt(d, 5), ok: true },

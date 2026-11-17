@@ -352,7 +352,7 @@ export function conflictText(name: string | undefined, verb: string | undefined,
  * Kinds that never add a line of their own when they log nothing: quiet or repeated by nature (a bid held while the
  * counter form is open, watching, taps, the guide), or with lines of their own on screen (pause and speed, §8).
  */
-const NO_LINE: ReadonlySet<string> = new Set(['holdBid', 'glassTap', 'noteInteraction', 'notePhoto', 'raiseFlag', 'tutorialNext', 'tutorialSkip', 'setSpeed']);
+const NO_LINE: ReadonlySet<string> = new Set(['holdBid', 'holdOffer', 'glassTap', 'noteInteraction', 'notePhoto', 'raiseFlag', 'tutorialNext', 'tutorialSkip', 'setSpeed']);
 
 /**
  * Run a shared shop's command for its sender: the expectation first (refused on every copy when it fails), then the

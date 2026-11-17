@@ -14,7 +14,8 @@ import { SuppliesTab } from '@/ui/panels/market/Supplies';
 import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas } from '@/ui/common/moneyShort';
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
-import { devStepEconomy } from '@/sim/economy';
+import { devStepEconomy, holdOffer, offerHeld, buyOffer, MAX_NEGOTIATION_HOLD_HOURS } from '@/sim/economy';
+import { offerLeavesText } from '@/ui/panels/market/Shop';
 import { PARCEL_DAY_KEY, clubFoodParcel } from '@/sim/economy/finance';
 import { FOODS, eatsFood } from '@/data/catalog/foods';
 import { findSpecies } from '@/data/species';
@@ -214,5 +215,79 @@ describe('the club’s food parcel (owner’s choice, F5 / A7): animals never st
     expect(again.repairs).toEqual([]);
     expect(stateHash(again.state)).toBe(stateHash(first.state));
     expect((again.state as GameState).progress.counters[PARCEL_DAY_KEY]).toBe(3);
+  });
+});
+
+describe('F6 (the owner’s choice): an open offer stays while you look', () => {
+  const at8 = (g: GameState) => (Math.floor((g.clock.hour - 8) / 24) + 1) * 24 + 8; // the next 8 AM restock (as the shop counts it)
+  function shopWorld(): GameState {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 33 });
+    g.clock.speed = 1;
+    devStepEconomy(g, 0.1, { market: true });
+    return g;
+  }
+  /** Step the market to just after the next 8 AM restock. */
+  const pastRestock = (g: GameState) => devStepEconomy(g, at8(g) - g.clock.hour + 0.2, { market: true });
+  /** Regular stock that leaves at the next morning's restock. */
+  const leavingAtRestock = (g: GameState) => g.market.stock.find((o) => Math.abs(o.expiresHour - at8(g)) < 1e-6)!;
+
+  it('a held offer survives its own leave time and the morning restock; the restock around it is the same', () => {
+    const plain = shopWorld();
+    const held = structuredClone(plain);
+    const o = leavingAtRestock(held);
+    expect(o).toBeDefined();
+    // hold just before the restock (a look of 2 real minutes, renewed as the screen does)
+    devStepEconomy(held, at8(held) - held.clock.hour - 0.5, { market: true });
+    devStepEconomy(plain, at8(plain) - plain.clock.hour - 0.5, { market: true });
+    expect(holdOffer(held, o.id).ok).toBe(true);
+    expect(offerHeld(held.market.stock.find((x) => x.id === o.id)!, held.clock.hour)).toBe(true);
+    pastRestock(held);
+    pastRestock(plain);
+    expect(held.market.stock.some((x) => x.id === o.id)).toBe(true);
+    expect(plain.market.stock.some((x) => x.id === o.id)).toBe(false);
+    // the same new stock, drawn the same way, held or not
+    const sig = (g: GameState) => g.market.stock.filter((x) => x.id !== o.id).map((x) => `${x.id}:${x.speciesId}:${x.price}:${x.creatures.map((c) => c.id).join('.')}`);
+    expect(sig(held)).toEqual(sig(plain));
+    expect(held.market.lastRefreshHour).toBe(plain.market.lastRefreshHour);
+    // it can still be bought while held
+    expect(buyOffer(held, o.id, held.tankOrder[0]).message).not.toMatch(/expired/);
+  });
+
+  it('released on close: it leaves at the next check', () => {
+    const g = shopWorld();
+    const o = leavingAtRestock(g);
+    devStepEconomy(g, at8(g) - g.clock.hour - 0.1, { market: true });
+    holdOffer(g, o.id);
+    pastRestock(g);
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(true);
+    expect(holdOffer(g, o.id, true).ok).toBe(true);
+    expect(o.holdUntilHour).toBeUndefined();
+    devStepEconomy(g, 0.2, { market: true });
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(false);
+  });
+
+  it('the safety limit: a screen left open (or a dropped connection) can’t keep an offer forever', () => {
+    const g = shopWorld();
+    const o = leavingAtRestock(g);
+    devStepEconomy(g, at8(g) - g.clock.hour - 0.1, { market: true });
+    // renewed every 15 real seconds (1.5 game hours at 1×), as the open screen does
+    const from = g.clock.hour;
+    let renewals = 0;
+    while (g.market.stock.some((x) => x.id === o.id) && renewals < 400) {
+      holdOffer(g, o.id);
+      devStepEconomy(g, 1.5, { market: true });
+      renewals++;
+    }
+    expect(g.market.stock.some((x) => x.id === o.id)).toBe(false);
+    // it stayed about the bid hold's cap (≈ 6 real minutes at any speed), not for ever
+    expect(g.clock.hour - from).toBeGreaterThan(MAX_NEGOTIATION_HOLD_HOURS - 3);
+    expect(g.clock.hour - from).toBeLessThan(MAX_NEGOTIATION_HOLD_HOURS + 3);
+  });
+
+  it('the offer screen says when it leaves, and that it waits', () => {
+    expect(offerLeavesText(24 * 3 + 8, 24 * 3 + 7.6)).toBe('Leaves the shop this morning. It stays while you’re looking.');
+    expect(offerLeavesText(24 * 4 + 8, 24 * 3 + 15)).toBe('Leaves the shop tomorrow morning. It stays while you’re looking.');
+    expect(offerLeavesText(24 * 3 + 18, 24 * 3 + 15)).toBe('Leaves the shop this evening. It stays while you’re looking.');
+    expect(offerLeavesText(24 * 6 + 8, 24 * 3 + 15)).toBe('Leaves the shop in 3 days. It stays while you’re looking.');
   });
 });
