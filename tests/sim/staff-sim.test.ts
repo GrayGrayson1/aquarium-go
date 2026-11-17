@@ -57,6 +57,7 @@ describe('staff: keepers', () => {
       const g = staffStoreWorld(seed);
       hireTeam(g);
       const before = deadIds(g);
+      const charges = new Set(Object.keys(g.creatures)); // the animals the team was hired to keep
       const counters = { ...g.progress.counters };
       let tankDays = 0;
       let waterDanger = 0;
@@ -69,7 +70,14 @@ describe('staff: keepers', () => {
         }
       });
       const deaths = Object.values(g.creatures).filter((c) => c.status === 'dead' && !before.has(c.id));
-      expect(deaths.map((c) => `${c.speciesId}: ${c.deathCause}`), `seed ${seed}`).toEqual([]);
+      // Nobody the team was hired to keep dies, of anything. Young born during the fortnight are the keepers' to feed
+      // and keep in good water too, but which animals share a tank is the player's call: a baby snail born in the
+      // seahorses' tank can be eaten there (the game says so: "The lined seahorse may eat baby trochus snails"), and
+      // whether one is born and eaten in these 14 days is the seed's luck (the audit of 2026-11-17: with keepers
+      // feeding fry and the animals' fixes together, seed 515151 raised one and lost it to Sylph on day 11).
+      const line = (c: (typeof deaths)[number]) => `${c.speciesId}: ${c.deathCause}`;
+      expect(deaths.filter((c) => charges.has(c.id)).map(line), `seed ${seed}`).toEqual([]);
+      expect(deaths.filter((c) => !charges.has(c.id) && !/^likely preyed upon by /.test(c.deathCause ?? '')).map(line), `seed ${seed}: young born in the run`).toEqual([]);
       expect(waterDanger / tankDays, `seed ${seed} water danger share`).toBeLessThan(0.1);
       // Nobody is left in poor condition, and nobody is starving after the morning round.
       for (const c of alive(g)) expect(c.stats.health, `${c.name} (${c.speciesId})`).toBeGreaterThan(40);
