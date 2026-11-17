@@ -24,6 +24,7 @@ import { canChangeWaterClass, convertWaterClassCost } from '../common/tankOps';
 import { WATER_CLASS_LABEL, PURPOSE_LABEL, PURPOSE_HINT, PLAYABLE_WATER_CLASSES, plural, pct } from '../common/format';
 import { tankChips, tankLineProblem } from '@/ui/common/tankChips'; // lane:automation (chunk 5)
 import { waterClassLock } from '@/sim/facility'; // chunk 7 (B-160)
+import { STOCKING_WATCH, STOCKING_DANGER } from '@/sim/water'; // Audit 2026-11-17 C15
 import { go } from '@/ui/nav/router'; // lane:automation (chunk 5)
 import { CHIP_ICON } from '@/ui/common/tankChipIcons'; // lane:automation (chunk 5)
 
@@ -187,7 +188,7 @@ function TankCard({ g, tank, residents, residentsList, clutches, value, cost, fo
         <Metric label="Welfare" value={c.welfare} icon={<Droplets size={12} />} />
         <Metric label="Beauty" value={c.beauty} icon={<Sparkles size={12} />} tone="aqua" />
         <Metric label="Exhibit" value={c.exhibitScore} icon={<Ticket size={12} />} tone="gold" />
-        <Metric label="Stocking" value={Math.min(100, c.stockingLoad * 100)} display={pct(c.stockingLoad)} icon={<Fish size={12} />} tone={c.stockingLoad > 1 ? 'danger' : c.stockingLoad > 0.85 ? 'watch' : 'good'} />
+        <Metric label="Stocking" value={Math.min(100, c.stockingLoad * 100)} display={pct(c.stockingLoad)} icon={<Fish size={12} />} tone={c.stockingLoad >= STOCKING_DANGER ? 'danger' : c.stockingLoad >= STOCKING_WATCH ? 'watch' : 'good'} /* Audit 2026-11-17 C15: the report's lines */ />
       </div>
 
       <div className="pn-tankcard__foot">

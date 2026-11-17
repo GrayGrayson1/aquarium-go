@@ -7,11 +7,12 @@ import { describe, it, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { useGame } from '@/state/game';
-import { GearTab } from '@/ui/cards/TankCard';
+import { GearTab, WaterTab } from '@/ui/cards/TankCard';
+import { useSettings } from '@/state/settings';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
-import { getWaterReport, tankDailyCost } from '@/sim/water';
-import { waterChange, waterChangeCost, dose, installEquipment, feedTank, removeEquipment, removeEquipmentWarning, topOff } from '@/sim/care';
+import { getWaterReport, tankDailyCost, STOCKING_WATCH, STOCKING_DANGER } from '@/sim/water';
+import { waterChange, waterChangeCost, dose, installEquipment, feedTank, removeEquipment, removeEquipmentWarning, topOff, repairEquipment, REPAIR_FROM } from '@/sim/care';
 import { DECOR } from '@/data/catalog/decor';
 import { installedFit } from '@/sim/care/fit';
 import { storedEquipmentList } from '@/ui/panels/build/BuildPanel';
@@ -515,5 +516,44 @@ describe('C14: one Intensity control for a tank’s lights', () => {
     useGame.setState({ game: null });
     light.setting = 1;
     expect(fixForWaterIssue(t, raise)?.label).toBe('Buy a light');
+  });
+});
+
+describe('C15: the screens use the sim’s own lines', () => {
+  it('stocking: Full until the report’s danger line; the cycle meter reads Mature where the report says ready', () => {
+    expect(STOCKING_WATCH).toBe(0.85);
+    expect(STOCKING_DANGER).toBe(1.05);
+    const s = base('betta');
+    const t = firstTank(s);
+    for (const id of Object.keys(s.creatures)) delete s.creatures[id];
+    t.water.bioMaturity = 0.77;
+    const rep = getWaterReport(s, t.id);
+    expect(rep.headline).toBe('Water is ready for animals');
+    useGame.setState({ game: s });
+    const html = renderToStaticMarkup(createElement(WaterTab, { game: s, tank: t })).replace(/<[^>]+>/g, ' ');
+    useGame.setState({ game: null });
+    expect(html).toMatch(/Biological filter\s+Mature/);
+  });
+
+  it('with Exact off, a row that isn’t a range shows its own words, not "Out of range"', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.water.bioMaturity = 0.3;
+    useSettings.getState().update({ advancedWater: false });
+    useGame.setState({ game: s });
+    const html = renderToStaticMarkup(createElement(WaterTab, { game: s, tank: t })).replace(/<[^>]+>/g, ' ');
+    useGame.setState({ game: null });
+    expect(html).toMatch(/Biological filter\s+30% established/);
+  });
+
+  it('repair is offered from the sim’s own line', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    s.finance.money = 500;
+    const f = t.equipment[0];
+    f.condition = REPAIR_FROM + 0.01;
+    expect(repairEquipment(s, t.id, f.id).ok).toBe(false);
+    f.condition = REPAIR_FROM;
+    expect(repairEquipment(s, t.id, f.id).ok).toBe(true);
   });
 });

@@ -46,7 +46,7 @@ import { sfx } from '@/audio/sfx';
 import { getTankTier } from '@/data/catalog/tanks';
 import { findSpecies } from '@/data/species'; // lane:qa-play
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { getWaterReport, tankDailyCost } from '@/sim/water';
+import { getWaterReport, tankDailyCost, CYCLE_READY, STOCKING_WATCH, STOCKING_DANGER } from '@/sim/water';
 import { waterChangeCost, doseCost } from '@/sim/care'; // Audit 2026-11-17 C1, C4
 import type { Command } from '@/sim/commands';
 import { evaluateTank } from '@/sim/compat';
@@ -122,9 +122,13 @@ const FLOW_KINDS: EquipmentKind[] = ['filter', 'powerhead', 'wavemaker']; // Aud
 
 // ───────────────────── Water tab ─────────────────────
 
+/** Audit 2026-11-17 C15 — rows that aren't a range to be "in": with Exact off they show their own words ("30% established", "None"). */
+const NOT_A_RANGE = new Set(['cycle', 'light', 'stocking', 'filtration', 'flow', 'algae', 'clarity']);
+
 function ParamRow({ p, exact, unit, open, onToggle }: { p: ParamStatus; exact: boolean; unit: 'C' | 'F'; open: boolean; onToggle: () => void }) {
   const Icon = STATUS_ICON[p.status] ?? CircleCheck;
   const display = p.key === 'temp' ? formatTemp(p.value, unit) : p.display;
+  const shown = exact || NOT_A_RANGE.has(p.key);
   return (
     <li className={clsx('ag-param', `is-${p.status}`, open && 'is-open')} data-param={p.key}>
       <button type="button" className="ag-param__row" aria-expanded={open} onClick={onToggle}>
@@ -132,12 +136,12 @@ function ParamRow({ p, exact, unit, open, onToggle }: { p: ParamStatus; exact: b
           <Icon size={14} aria-hidden /> {STATUS_WORD[p.status]}
         </span>
         <span className="ag-param__label">{p.label}</span>
-        <span className="ag-param__value">{exact ? display : p.status === 'good' ? 'In range' : p.status === 'watch' ? 'Drifting' : 'Out of range'}</span>
+        <span className="ag-param__value">{shown ? display : p.status === 'good' ? 'In range' : p.status === 'watch' ? 'Drifting' : 'Out of range'}</span>
         <ChevronDown size={14} className="ag-param__chev" aria-hidden />
       </button>
       {open && (
         <div className="ag-param__detail">
-          {!exact && <div className="ag-small">Reading: <strong>{display}</strong></div>}
+          {!shown && <div className="ag-small">Reading: <strong>{display}</strong></div>}
           {p.ideal && <div className="ag-small ag-muted">Ideal: {convertTempText(p.ideal, unit)}</div>}
           {p.reason && <div className="ag-small">{convertTempText(p.reason, unit)}</div>}
           {p.advice && <div className="ag-reason__fix">{convertTempText(p.advice, unit)}</div>}
@@ -195,7 +199,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
       <div className="ag-miniStats">
         {/* lane:ui-shell (B-178, ADR-0022) — a word beside the number, on the meter's own 60 / 30 bands */}
         <Meter label="Stability" value={report.stability} tone="auto" display={`${stabilityWord(report.stability)} · ${Math.round(report.stability)}`} />
-        <Meter label="Biological filter" value={report.cycleProgress * 100} tone="auto" display={report.cycleProgress >= 0.8 ? 'Mature' : report.cycleProgress >= 0.4 ? 'Establishing' : 'New'} />
+        <Meter label="Biological filter" value={report.cycleProgress * 100} tone="auto" display={report.cycleProgress >= CYCLE_READY ? 'Mature' : report.cycleProgress >= 0.4 ? 'Establishing' : 'New'} /* Audit 2026-11-17 C15: the report's line (it said 80%) */ />
       </div>
 
       {report.issues.length > 0 && (
@@ -486,7 +490,7 @@ export function GearTab({ game, tank }: { game: GameState; tank: Tank }) {
 // ───────────────────── Life tab ─────────────────────
 
 function stockingWord(v: number) {
-  return v < 0.5 ? 'Light' : v < 0.85 ? 'Comfortable' : v <= 1 ? 'Full' : 'Overstocked';
+  return v < 0.5 ? 'Light' : v < STOCKING_WATCH ? 'Comfortable' : v < STOCKING_DANGER ? 'Full' : 'Overstocked'; // Audit 2026-11-17 C15: the report's lines
 }
 
 function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
@@ -513,7 +517,7 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
         )}
         {/* lane:guide — residents that only take frozen/live food (no autofeeder can feed them) */}
         <HandFeedNote speciesIds={residents.map((c) => c.speciesId)} />
-        <Meter label="Stocking load" value={Math.min(load, 1.3) * 100} max={130} tone={load > 1 ? 'danger' : load > 0.85 ? 'watch' : 'good'} display={`${stockingWord(load)} · ${Math.round(load * 100)}%`} />
+        <Meter label="Stocking load" value={Math.min(load, 1.3) * 100} max={130} tone={load >= STOCKING_DANGER ? 'danger' : load >= STOCKING_WATCH ? 'watch' : 'good'} display={`${stockingWord(load)} · ${Math.round(load * 100)}%`} />
       </Section>
       <Section title="Compatibility">
         <CompatView report={compat} compact />

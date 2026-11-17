@@ -130,7 +130,7 @@ export function stockingLoad(state: GameState, tank: Tank): number {
 /** Facility room temperature the tank drifts toward without heating/cooling (°C). */
 export const ROOM_TEMP_C = ROOM;
 
-export { comfortStatus, speciesSensitivity, waterClassDefaults } from './report';
+export { comfortStatus, speciesSensitivity, waterClassDefaults, CYCLE_READY, STOCKING_WATCH, STOCKING_DANGER } from './report'; // Audit 2026-11-17 C15: the lines screens share
 export { availableFood, consumePods, grazeAlgae, tankPods, foodDemandUnits, recommendedServings, eatersOf } from './food';
 export { effectiveBioload, equipmentSummary, flowInfo, expectedTempC, computeTankEnv, roomTempAt, FLOW_LEVELS, FLOW_LABEL } from './env';
 export type { EquipmentSummary, TankEnv } from './env';

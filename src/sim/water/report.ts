@@ -19,6 +19,15 @@ export function comfortStatus(comfort: number): StatusLevel {
   return comfort >= 70 ? 'good' : comfort >= 40 ? 'watch' : 'danger';
 }
 
+/**
+ * Audit 2026-11-17 C15 — the report's own lines, for screens that show the same thing in their own words (the tank
+ * card's Biological filter meter and Stocking meter, the Tanks panel): the cycle is ready from CYCLE_READY; stocking is
+ * WATCH from STOCKING_WATCH and DANGER from STOCKING_DANGER.
+ */
+export const CYCLE_READY = 0.75;
+export const STOCKING_WATCH = 0.85;
+export const STOCKING_DANGER = 1.05;
+
 /** pH units past a species' limits that only stress (WATCH, no harm); matches the welfare model's tolerance. */
 const PH_TOLERANCE = 0.3;
 
@@ -655,7 +664,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   // Cycle
   {
     const m = w.bioMaturity;
-    const st: StatusLevel = m >= 0.75 ? 'good' : m >= 0.4 || !hasAnimals ? 'watch' : 'danger';
+    const st: StatusLevel = m >= CYCLE_READY ? 'good' : m >= 0.4 || !hasAnimals ? 'watch' : 'danger';
     add(
       {
         key: 'cycle',
@@ -684,7 +693,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   // Stocking
   {
     const load = env.stockingLoad;
-    const st: StatusLevel = load < 0.85 ? 'good' : load < 1.05 ? 'watch' : 'danger';
+    const st: StatusLevel = load < STOCKING_WATCH ? 'good' : load < STOCKING_DANGER ? 'watch' : 'danger';
     const limit = env.processCapUnits < env.spaceCapUnits ? 'filter capacity' : 'water volume';
     // lane:w2-sim — say why when cool water is part of it (filter bacteria work slower in the cold)
     const coolNote = limit === 'filter capacity' && nitrifierTempFactor(w.tempC, w.lab?.bioTempC) < 0.9 ? ' Cool water slows the filter bacteria, so a cool tank needs more filter for the same animals.' : '';
@@ -1005,7 +1014,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
   residents.sort((a, b) => b.harm - a.harm);
   let headline: string;
   if (issues.length && status !== 'good') headline = issues[0].headline;
-  else if (!hasAnimals) headline = w.bioMaturity >= 0.75 ? 'Water is ready for animals' : 'Water is clean — the filter is still maturing';
+  else if (!hasAnimals) headline = w.bioMaturity >= CYCLE_READY ? 'Water is ready for animals' : 'Water is clean — the filter is still maturing';
   else headline = (tank.water.lab?.swing ?? 0) < 0.1 && w.clarity > 0.95 ? 'Water is healthy and stable' : 'Water is healthy';
 
   return {

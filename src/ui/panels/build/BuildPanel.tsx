@@ -35,7 +35,7 @@ import { orderedTanks, gallonsOf, unlocked, livingInTank } from '../common/deriv
 import { substrateCost } from '../common/tankOps';
 import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
 import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
-import { removeEquipmentWarning } from '@/sim/care'; // Audit 2026-11-17 C12
+import { removeEquipmentWarning, REPAIR_FROM } from '@/sim/care'; // Audit 2026-11-17 C12, C15
 import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
@@ -904,7 +904,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                         <Slider value={inst.setting} min={meta.min} max={meta.max} step={meta.step} onChange={(v) => act({ k: 'setEquipment', tank: tankId, equip: inst.id, setting: v }, { sound: null, quiet: true, cautionKey: `equip:${inst.id}` })} label={`${def?.name} ${meta.label}`} />
                       </div>
                     )}
-                    {(inst.failed || inst.condition < 0.6) && def && (
+                    {(inst.failed || inst.condition <= REPAIR_FROM) && def && ( /* Audit 2026-11-17 C15: the sim's own line (it said 60%) */
                       <Button size="sm" variant={inst.failed ? 'coral' : 'default'} silent onClick={() => act({ k: 'repairEquipment', tank: tankId, equip: inst.id }, { sound: 'confirm' })}>
                         <Wrench size={14} /> Repair · {formatMoney(Math.max(5, Math.round(def.price * 0.35)))}
                       </Button>

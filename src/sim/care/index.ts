@@ -706,6 +706,9 @@ function setpointNote(state: GameState, tank: Tank, kind: 'heater' | 'chiller', 
 
 const fmtC = (x: number) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));
 
+/** Audit 2026-11-17 C15 — a unit can be repaired once its condition is at or below this (Build › Equipment shows Repair from here). */
+export const REPAIR_FROM = 0.85;
+
 /** Repair failed or worn equipment for ~35 % of its price. */
 export function repairEquipment(state: GameState, tankId: string, equipmentId: string): ActionResult {
   const tank = getTank(state, tankId);
@@ -714,7 +717,7 @@ export function repairEquipment(state: GameState, tankId: string, equipmentId: s
   if (!inst) return fail('That equipment is not in this tank.');
   const def = getEquipmentDef(inst.defId);
   if (!def) return fail('Unknown equipment.');
-  if (!inst.failed && inst.condition > 0.85) return fail(`The ${def.name} is working fine.`);
+  if (!inst.failed && inst.condition > REPAIR_FROM) return fail(`The ${def.name} is working fine.`);
   const cost = Math.max(5, Math.round(def.price * 0.35));
   if (!spend(state, cost, 'equipment', `Repair ${def.name} (${tank.name})`)) return fail(`Repairing the ${def.name} costs ${money(cost)} — not enough money.`);
   inst.failed = false;
