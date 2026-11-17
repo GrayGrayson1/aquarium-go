@@ -40,6 +40,7 @@ export function SharedPill({ compact }: { compact?: boolean }) {
   const shop = useShared((s) => s.shopName);
   const here = useShared((s) => s.members.filter((m) => m.here).length);
   const hour = useGameSelector((g) => g.clock.hour, 0);
+  const paused = useGameSelector((g) => g.clock.speed === 0, false); // audit B15 review
   const open = useShell((s) => s.popover === 'shared');
   const [money, setMoney] = useState(false);
   const h = hourOfDay(hour);
@@ -67,8 +68,10 @@ export function SharedPill({ compact }: { compact?: boolean }) {
               <span className="ag-tabular" data-testid="shared-here-count">{here}</span>
               <ChevronDown size={12} aria-hidden className="ag-shared-pill__chev" />
             </span>
+            {/* audit B15 review: phones hide the speed's "Paused", so the time line says it while the shop is paused, as
+                the solo pill does (the day, the solo pill's other line, has no room here: the shop's line takes it) */}
             <span className="ag-clock-pill__time ag-shared-pill__time" data-testid="hud-clock">
-              <span className="ag-tabular">{formatClock(hour)}</span>
+              {paused ? <span className="ag-clock-pill__day is-paused" data-testid="hud-day">Paused</span> : <span className="ag-tabular">{formatClock(hour)}</span>}
             </span>
           </>
         ) : (
