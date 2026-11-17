@@ -6,6 +6,7 @@
  */
 import type { GameState, Creature, ValueBreakdown, ValueFactor, TankValuation, Tank, CompatVerdict, SpeciesDefinition, ListingKind, PersonalityTag } from '@/types';
 import { findSpecies } from '@/data/species';
+import { illnessName } from '../life/illness'; // Audit 2026-11-17 (J14)
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getDecorDef } from '@/data/catalog/decor';
@@ -142,7 +143,7 @@ export function creatureValue(state: GameState, c: Creature): ValueBreakdown {
   if (c.illness) {
     const sev = normSeverity(c.illness.severity);
     hm *= 1 - 0.45 * Math.max(0.2, sev);
-    hNote = `Currently ill (${c.illness.kind.replace(/_/g, ' ')}) — most buyers wait for recovery`;
+    hNote = `Currently ill (${illnessName(c.illness.kind, findSpecies(c.speciesId))}) — most buyers wait for recovery`; // Audit 2026-11-17 (J14)
   }
   const stress = clamp(finite(c.stats?.stress, 0), 0, 100);
   if (stress > 60) hm *= 1 - (stress - 60) / 400;

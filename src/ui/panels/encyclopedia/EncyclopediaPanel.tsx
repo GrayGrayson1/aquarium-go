@@ -21,7 +21,7 @@ import { Chip, Seg, EmptyState, SectionHead, Callout } from '../common/parts';
 import { SpeciesPortrait } from '../common/Portrait';
 import { CareChips } from '../common/Profile';
 import { VerdictBadge } from '../common/CompatPreview';
-import { ENV_LABEL, RARITY_LABEL, RARITY_TONE, DIFFICULTY_LABEL, DIFFICULTY_TONE, VERDICT_RANK, titleCase } from '../common/format';
+import { ENV_LABEL, RARITY_LABEL, RARITY_TONE, DIFFICULTY_LABEL, DIFFICULTY_TONE, VERDICT_RANK, titleCase, TEMPERAMENT_LABEL, DIET_LABEL } from '../common/format'; // Audit 2026-11-17 (J14): TEMPERAMENT_LABEL, DIET_LABEL
 import { DietGuideView, HabitatGuideView, RealLifeTips } from './SpeciesGuide'; // lane:guide
 import { ARTICLES } from './science';
 import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } from './morphs';
@@ -314,14 +314,14 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
           About {lifespanDaysText(sp)} in the game
         </FactRow>
         {/* lane:guide — diet by food TYPE (dry / frozen / live / fresh) + whether an autofeeder can feed it */}
-        <FactRow icon={<Utensils size={15} />} label={`Diet · ${titleCase(sp.diet)}`}>
+        <FactRow icon={<Utensils size={15} />} label={`Diet · ${DIET_LABEL[sp.diet] ?? titleCase(sp.diet)}`}>
           <DietGuideView sp={sp} />
         </FactRow>
         <FactRow icon={<Thermometer size={15} />} label="Temperature & flow">
           <HabitatGuideView sp={sp} />
         </FactRow>
         <FactRow icon={<Shield size={15} />} label="Temperament">
-          {titleCase(sp.temperament)}
+          {TEMPERAMENT_LABEL[sp.temperament] ?? titleCase(sp.temperament) /* Audit 2026-11-17 (J14): "Semi-aggressive", not "Semi Aggressive" */}
           {sp.sameSpeciesRule.note ? ` — ${tempText(sp.sameSpeciesRule.note)}` : ''}
         </FactRow>
         <FactRow icon={<Users size={15} />} label="Social structure">

@@ -43,6 +43,10 @@ import { socialWord } from '@/ui/panels/common/Profile';
 import { TANK_STATUS_WORD } from '@/ui/common/tankStatus';
 import { ATTENTION_WORD } from '@/ui/common/notify';
 import { ACHIEVEMENTS } from '@/data/achievements';
+import { mitigationText } from '@/sim/compat/engine';
+import { lastHurtBy } from '@/sim/life/step';
+import { FOOD_DELIVERY_WORD, EQUIPMENT_KIND_LABEL } from '@/ui/common/format';
+import { PANEL_LABEL } from '@/ui/nav/routes';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -299,5 +303,55 @@ describe('J10: a tank’s status has one set of words (B-157)', () => {
     const facts = (id: string) => getSpecies(id).sourceReferences.flatMap((s) => s.facts ?? []).join(' | ');
     expect(facts('miniatus_grouper')).toMatch(/max 14 inches in aquaria \(18 in the wild\)/);
     expect(facts('chocolate_tang')).toMatch(/7–10 inches in aquaria/);
+  });
+});
+
+describe('J14: internal ids and tags are shown as words', () => {
+  it('an incident’s mitigation says what helps, in words', () => {
+    expect(mitigationText(['tank_size', 'hides', 'sight_breaks'])).toBe('A bigger tank, hiding places and decor that blocks their view make this less likely, but don’t stop it.');
+    expect(mitigationText(['target_feeding'])).toBe('Target feeding makes this less likely, but doesn’t stop it.');
+  });
+
+  it('an animal’s History says how it was hurt, and the healing note still finds who did it (old saves too)', () => {
+    const g = base();
+    const c = Object.values(g.creatures)[0];
+    c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Rex the tiger barb, which nips fins.' });
+    expect(lastHurtBy(c)).toEqual({ label: 'Rex the tiger barb', verb: 'nipping' });
+    c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Tank the oscar in a fight.' });
+    expect(lastHurtBy(c)).toEqual({ label: 'Tank the oscar', verb: 'attacking' });
+    c.history.push({ hour: g.clock.hour, kind: 'note', text: 'Hurt by Ember the betta (harassment).' });
+    expect(lastHurtBy(c)).toEqual({ label: 'Ember the betta', verb: 'chasing' });
+  });
+
+  it('a listing’s row reads in words: stages, sexes, personality and a health out of 100', () => {
+    let summary = '';
+    for (let seed = 1; seed <= 20 && !summary; seed++) {
+      const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed });
+      devOpenMarket(g);
+      const c = addCreature(g, createCreature(g, simRng(g), 'axolotl', { ageDays: 60, sex: 'female' }), g.tankOrder[0]);
+      c.personality = ['showoff'];
+      c.stats.health = 100;
+      delete c.illness;
+      const pv = previewListing(g, { kind: 'creature', creatureIds: [c.id] });
+      const r = createListing(g, { kind: 'creature', creatureIds: [c.id], reserve: pv.suggestedReserve, buyNow: 0, durationHours: 24 });
+      summary = g.market.listings.find((x) => x.id === r.listingId)?.snapshot.summary ?? '';
+    }
+    expect(summary).toMatch(/ · 1 female · /);
+    expect(summary).toMatch(/Personality: show-off/);
+    expect(summary).toMatch(/Health \d+\/100/);
+    expect(summary).not.toMatch(/♂|♀|show_off|showoff/);
+  });
+
+  it('one word table each for food delivery, equipment kinds and panel names', () => {
+    expect(FOOD_DELIVERY_WORD.slow_sink).toBe('Sinks slowly');
+    expect(EQUIPMENT_KIND_LABEL.ato).toBe('Auto top-off');
+    expect(PANEL_LABEL.log).toBe('Event log');
+  });
+
+  it('an illness reads by its card name in show, staff and value lines', () => {
+    const g = base();
+    const c = Object.values(g.creatures)[0];
+    c.illness = { kind: 'stress_coloration', severity: 40, sinceHour: g.clock.hour } as never;
+    expect(creatureShowReasons(g, c).join(' | ')).toMatch(/Unwell \(stress colouring\)/);
   });
 });

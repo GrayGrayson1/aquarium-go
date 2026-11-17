@@ -77,8 +77,8 @@ const PANEL_TABS: Record<NavPanel, readonly TabSpec[]> = {
   operations: tabs(['overview', null, 'Overview'], ['water', 'water', 'Water'], ['feed', 'feed', 'Feed'], ['lines', 'lines', 'Lines'], ['map', 'map', 'Map']),
 };
 
-/** Panel names in a "Then:" pill (the dock's labels). */
-const PANEL_LABEL: Record<NavPanel, string> = {
+/** Panel names in a "Then:" pill (the dock's labels); Audit 2026-11-17 (J14): and a panel's accessible name. */
+export const PANEL_LABEL: Record<NavPanel, string> = {
   tanks: 'Tanks',
   livestock: 'Livestock',
   market: 'Market',

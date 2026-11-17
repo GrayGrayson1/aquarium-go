@@ -30,6 +30,7 @@ import { buyEggs, buyFood, buySalt, isFoodAvailable, SALT_PRICE_PER_KG } from '.
 import { isOpenAt } from '../facility';
 import { pushReaction } from '../facility/reactions';
 import { findSpecies } from '@/data/species';
+import { illnessName } from '../life/illness'; // Audit 2026-11-17 (J14): the card's name for an illness
 import { FOODS, getFoodDef, eatsFood, madeForOtherSpecies, madeForOtherWater, foodTagNames, joinFoodNames } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3): foodTagNames, joinFoodNames
 import { STAFF_TRAITS } from '@/data/staff';
 import { isSaltClass } from '../water/constants';
@@ -720,7 +721,7 @@ export function keeperVisit(state: GameState, m: StaffMember, tankId: string, ro
       if (c.tankId !== tank.id || c.status !== 'alive' || !c.illness || c.illness.severity < 25) continue;
       if (!throttled(state, `ill:${c.id}:${c.illness.kind}`, 72)) continue;
       noteIssue(day, `${c.name} looks unwell`);
-      emitEvent(state, { kind: 'warning', text: `${firstName(m)} noticed ${c.name} in ${tank.name} looks unwell (${c.illness.kind.replace(/_/g, ' ')}). Treatment is your call — see ${c.name}’s card.`, tankId: tank.id, creatureId: c.id });
+      emitEvent(state, { kind: 'warning', text: `${firstName(m)} noticed ${c.name} in ${tank.name} looks unwell (${illnessName(c.illness.kind, findSpecies(c.speciesId))}). Treatment is your call — see ${c.name}’s card.`, tankId: tank.id, creatureId: c.id });
     }
   }
   const done = keeperWaterCare(state, m, tank, round, hour);

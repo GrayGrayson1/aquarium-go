@@ -94,11 +94,16 @@ export function pushHistory(c: Creature, ev: Creature['history'][number]): void 
 export function lastHurtBy(c: Creature): { label: string; verb: 'nipping' | 'chasing' | 'attacking' } | null {
   const h = Array.isArray(c.history) ? c.history : [];
   for (let i = h.length - 1; i >= 0; i--) {
-    const m = h[i]?.kind === 'note' ? /^Hurt by (.+) \(([a-z ]+)\)\.$/.exec(h[i].text ?? '') : null;
-    if (m) return { label: m[1], verb: /nip/.test(m[2]) ? 'nipping' : m[2] === 'harassment' ? 'chasing' : 'attacking' };
+    const text = h[i]?.kind === 'note' ? h[i].text ?? '' : '';
+    // Audit 2026-11-17 (J14): "Hurt by Rex the tiger barb, which nips fins." (older saves: "… (fin nip).")
+    const m = /^Hurt by (.+?)(, which nips[^.]*| in a fight|, which keeps chasing it|, which stings)\.$/.exec(text) ?? /^Hurt by (.+) \(([a-z ]+)\)\.$/.exec(text);
+    if (m) return { label: m[1], verb: /nip/.test(m[2]) ? 'nipping' : /harassment|chasing/.test(m[2]) ? 'chasing' : 'attacking' };
   }
   return null;
 }
+
+/** Audit 2026-11-17 (J14): how a tank mate hurt an animal, for its History ("Hurt by Rex the tiger barb, which nips fins."). */
+const HURT_HOW: Record<string, string> = { fin_nip: ', which nips fins', gill_nip: ', which nips at gills', coral_nip: ', which nips at it', harassment: ', which keeps chasing it', aggression: ' in a fight', sting: ', which stings' };
 
 export function lifeMeta(c: Creature): NonNullable<Creature['life']> {
   if (!c.life) c.life = {};
@@ -681,7 +686,7 @@ export function applyIncident(state: GameState, env: TankEnv, list: { c: Creatur
   actor.c.stats.stress = clamp(actor.c.stats.stress + 2, 0, 100);
   if (throttle(v, `inc:${risk.kind}:${actor.c.id}`, hour, 8)) {
     ctx.emit({ kind, text: msg.replace(/\s+/g, ' ').trim(), tankId: env.tank.id, creatureId: v.id });
-    pushHistory(v, { hour, kind: 'note', text: `Hurt by ${actorLabel} (${risk.kind.replace('_', ' ')}).` });
+    pushHistory(v, { hour, kind: 'note', text: `Hurt by ${actorLabel}${HURT_HOW[risk.kind] ?? ''}.` }); // Audit 2026-11-17 (J14): words, not "(fin nip)"
   }
   if (v.stats.health <= 0) {
     // The cause is what did most of the harm, the rule a death from accumulated harm follows (explainDeath), not

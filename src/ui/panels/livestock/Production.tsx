@@ -387,7 +387,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
             {line.rules.keepPrismatic && <span className="pn-chip pn-chip--violet">Keep Prismatic</span>}
             {line.rules.keep.map((r, i) => (
               <span key={i} className="pn-chip pn-chip--aqua">
-                Keep best {r.count} {r.traitIds.map((t) => traits.get(t) ?? t).join(' ')}
+                Keep best {r.count} {r.traitIds.map((t) => traits.get(t) ?? v.sp.genetics.phenotypes.find((x) => x.id === t)?.name ?? t).join(' ') /* Audit 2026-11-17 (J14): a trait the new pair can't produce kept its id */}
               </span>
             ))}
             <span className="pn-chip">Sell the rest</span>

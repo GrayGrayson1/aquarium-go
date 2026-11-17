@@ -48,7 +48,7 @@ import { clearPlaceAgain, placeAnother, PLACE_AGAIN_MS, usePlaceAgain } from '@/
 import { ghostControls } from '@/render/decor/ghostControls'; // chunk 19 (ADR-0055 decision 4, QOL-005)
 import { useShell } from '../common/shellStore';
 import { enterCinematic } from './cardDock';
-import { foodName, LIGHT_PRESET_LABEL, lightPresetsFor } from '../common/format';
+import { foodName, LIGHT_PRESET_LABEL, lightPresetsFor, FOOD_DELIVERY_WORD } from '../common/format'; // Audit 2026-11-17 (J14): FOOD_DELIVERY_WORD
 import { safe, useMedia } from '../common/safe';
 import { tutorialFlag, act } from '../common/actions';
 import { Button, Chip, Slider, Toggle, formatMoney } from '../kit';
@@ -115,7 +115,7 @@ export function foodOptions(g: GameState, tankId: string | null): FoodOption[] {
     .sort((a, b) => Number(b.count > 0) - Number(a.count > 0) || Number(!!b.suggested) - Number(!!a.suggested) || b.eaters.length - a.eaters.length || a.name.localeCompare(b.name));
 }
 
-const DELIVERY_WORD: Record<string, string> = { floating: 'Floats', slow_sink: 'Sinks slowly', fast_sink: 'Sinks fast', live: 'Live food', target: 'Target fed' };
+const DELIVERY_WORD = FOOD_DELIVERY_WORD; // Audit 2026-11-17 (J14): one table, shared with Market › Supplies
 
 export function selectTool(tool: ToolId, foodId?: string | null) {
   const ui = useUI.getState();

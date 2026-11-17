@@ -29,7 +29,7 @@ import { usePlacementStore } from '@/render/facility/placementStore'; // Audit 2
 import { SellStoredEquipment } from './SellBack'; // Audit 2026-11-17 (G22)
 import { decorSellValue } from '@/sim/aquascape'; // Audit 2026-11-17 (G14)
 import { PanelLayout, useSheet } from '../common/PanelLayout';
-import { formatTemp } from '@/ui/common/format';
+import { formatTemp, EQUIPMENT_KIND_LABEL } from '@/ui/common/format'; // Audit 2026-11-17 (J14): EQUIPMENT_KIND_LABEL
 import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
 import { act } from '../common/act';
 import { Chip, Seg, Select, EmptyState, SectionHead, Callout, Bar, Checkbox, Tile } from '../common/parts';
@@ -938,7 +938,7 @@ function EquipmentTab({ g, tankId, q, setQ, kind, setKind }: { g: GameState; tan
                         {inst.failed ? <StatusBadge status="danger" label="Failed" /> : !inst.on ? <StatusBadge status="watch" label="Off" /> : null}
                       </div>
                       <div className="pn-tiny pn-muted">
-                        {def ? `${titleCase(def.kind)} · ${formatMoney(def.upkeep, { cents: def.upkeep < 10 })}/day` : ''}
+                        {def ? `${EQUIPMENT_KIND_LABEL[def.kind] ?? titleCase(def.kind)} · ${formatMoney(def.upkeep, { cents: def.upkeep < 10 })}/day` /* Audit 2026-11-17 (J14): "Auto top-off", not "Ato" */ : ''}
                         {def?.stats.flowGph ? ` · ${def.stats.flowGph} gph` : ''}
                         {def?.stats.power ? ` · ${def.stats.power} W` : ''}
                       </div>

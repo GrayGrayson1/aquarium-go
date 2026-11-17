@@ -15,6 +15,7 @@ import { act } from '../common/act';
 import { Chip, SectionHead, EmptyState, Select, Card, Callout } from '../common/parts';
 import { orderedTanks, ownedCreatures, speciesOf, gallonsOf, unlocked } from '../common/derive';
 import { titleCase } from '../common/format';
+import { EQUIPMENT_KIND_LABEL, FOOD_DELIVERY_WORD } from '@/ui/common/format'; // Audit 2026-11-17 (J14)
 import { safe, useTempText } from '../common/hooks'; // Audit 2026-11-17 (J1): useTempText
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { equipmentFit } from '@/sim/care/fit'; // lane:fit
@@ -166,7 +167,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                     <div className="pn-row pn-gap-2 pn-row--wrap">
                       <b>{f.name}</b>
                       {specific && <Chip tone="aqua">Made for {eaters.length === 1 ? eaters[0].commonName.toLowerCase() : 'your animals'}</Chip>}
-                      <Chip>{titleCase(f.delivery)}</Chip>
+                      <Chip>{FOOD_DELIVERY_WORD[f.delivery] ?? titleCase(f.delivery) /* Audit 2026-11-17 (J14): the feed picker's words */}</Chip>
                     </div>
                     <div className="pn-small pn-muted">
                       {f.description} · {f.servingsPerPack} servings per pack
@@ -225,7 +226,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
             {byKind.map(([kind, rows]) => (
               <div key={kind} className="pn-col pn-gap-2">
                 <div className="pn-tiny pn-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                  {titleCase(kind)}
+                  {EQUIPMENT_KIND_LABEL[kind as keyof typeof EQUIPMENT_KIND_LABEL] ?? titleCase(kind) /* Audit 2026-11-17 (J14): screen readers read "Ato", "Uv" */}
                 </div>
                 {rows.map(({ e, fits, installed }) => (
                   <EquipRow key={e.id} g={g} e={e} fits={fits} installed={installed} tankId={tank.id} />

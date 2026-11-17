@@ -137,6 +137,13 @@ const downgrade = (s: Sev): Sev => (s === 'critical' ? 'warning' : s === 'warnin
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const clamp01 = (v: number) => clamp(v, 0, 1);
 const round3 = (v: number) => Math.round(v * 1000) / 1000;
+
+/** Audit 2026-11-17 (J14): what makes a pair rule's incident less likely, in words ("Reduced (not removed) by tank size, hides"). */
+const MITIGATION_WORDS: Record<string, string> = { tank_size: 'a bigger tank', hides: 'hiding places', cover: 'plant cover', target_feeding: 'target feeding', sight_breaks: 'decor that blocks their view', nursery: 'a nursery tank' };
+export function mitigationText(by: readonly string[]): string {
+  const words = by.map((x) => MITIGATION_WORDS[x] ?? x.replace(/_/g, ' '));
+  return `${cap(joinAnd(words))} ${words.length === 1 ? 'makes' : 'make'} this less likely, but ${words.length === 1 ? 'doesn’t' : 'don’t'} stop it.`;
+}
 /** Per-day probability → chance of at least one incident per game-week. */
 const weekly = (pDay: number) => 1 - dmath.pow(1 - clamp(pDay, 0, 0.99), 7);
 
@@ -855,7 +862,7 @@ function applyExceptionRules(A: CompatMember, B: CompatMember, ctx: CompatContex
         key,
         floor: rule.verdictFloor,
         probability: weekly(p),
-        mitigation: rule.mitigatedBy?.length ? `Reduced (not removed) by ${joinAnd(rule.mitigatedBy.map((x) => x.replace('_', ' ')))}.` : undefined,
+        mitigation: rule.mitigatedBy?.length ? mitigationText(rule.mitigatedBy) : undefined,
       });
     }
     out.incident({

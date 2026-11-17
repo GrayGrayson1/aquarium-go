@@ -145,6 +145,9 @@ export const EQUIPMENT_KIND_LABEL: Record<EquipmentKind, string> = {
   doser: 'Live-food doser', // lane:automation (chunk 5)
 };
 
+/** Audit 2026-11-17 (J14): how a food reaches the animals, in the feed picker's words (Supplies said "Slow Sink"). */
+export const FOOD_DELIVERY_WORD: Record<string, string> = { floating: 'Floats', slow_sink: 'Sinks slowly', fast_sink: 'Sinks fast', live: 'Live food', target: 'Target fed' };
+
 export function cToF(c: number) {
   return c * 1.8 + 32;
 }

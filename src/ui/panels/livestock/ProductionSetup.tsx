@@ -158,7 +158,7 @@ function FitBadge({ fit }: { fit: TankFit }) {
 function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }: { g: GameState; speciesId: string; stage: LineStage; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; onPick: (id: string) => void; ignoreLineId?: string }) {
   const { t: tempText } = useTempText(); // Audit 2026-11-17 (J1): "Breed Tank is 29 °C — outside the safe range…"
   return (
-    <div className="pr-choices" role="listbox" aria-label={`Tanks for ${stage}`}>
+    <div className="pr-choices" role="listbox" aria-label={`Tanks for the ${STAGES.find((s) => s.id === stage)?.word ?? stage} stage` /* Audit 2026-11-17 (J14): not "Tanks for keep" */}>
       {g.tankOrder.map((id) => {
         const t = g.tanks[id];
         if (!t) return null;

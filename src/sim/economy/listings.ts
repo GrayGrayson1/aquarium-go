@@ -20,7 +20,7 @@ import { emitEvent } from '../context';
 import { WATER_CLASS_WORDS } from '@/data/tankLabels'; // Audit 2026-11-17 (J4)
 import { hourOfDay, GAME_HOURS_PER_REAL_SECOND } from '../time';
 import { deleteTank } from '../tanks';
-import { creaturesInTank, isPrismatic } from '../life';
+import { creaturesInTank, isPrismatic, PERSONALITY_INFO } from '../life'; // Audit 2026-11-17 (J14): PERSONALITY_INFO
 import { environmentGate, previewAddition } from '../compat';
 import { isUnlocked, addReputation, addMastery, bumpCounter } from '../facility';
 import { counterValue, heldByGuideStep } from '../facility/progression'; // audit 2026-11-17 (F8)
@@ -335,13 +335,17 @@ function buildSnapshot(state: GameState, kind: ListingKind, creatures: Creature[
     beautyScore = Math.round(profile.attrs.beauty * 100);
     const c = creatures[0];
     const sexes = creatures.map((x) => x.sex).filter((s) => s !== 'unknown');
-    const stages = [...new Set(creatures.map((x) => x.lifeStage))].join('/');
+    // Audit 2026-11-17 (J14): words, not ids or signs ("juvenile/adult", "1♂ 0♀", "showoff", a score with no scale)
+    const stages = [...new Set(creatures.map((x) => x.lifeStage))].join(' and ');
+    const males = sexes.filter((s) => s === 'male').length;
+    const females = sexes.filter((s) => s === 'female').length;
+    const sexWords = [males ? `${males} male${males === 1 ? '' : 's'}` : '', females ? `${females} female${females === 1 ? '' : 's'}` : ''].filter(Boolean).join(', ');
     summary = [
       livestockSummary(creatures),
       stages,
-      sexes.length ? `${sexes.filter((s) => s === 'male').length}♂ ${sexes.filter((s) => s === 'female').length}♀` : '',
-      creatures.length === 1 && c.personality?.length ? `Personality: ${c.personality.map((p) => p.replace(/_/g, ' ')).join(', ')}` : '',
-      `Health ${healthScore}${creatures.some((x) => x.illness) ? ' (illness disclosed)' : ''}`,
+      sexWords,
+      creatures.length === 1 && c.personality?.length ? `Personality: ${c.personality.map((p) => (PERSONALITY_INFO[p]?.label ?? p.replace(/_/g, ' ')).toLowerCase()).join(', ')}` : '',
+      `Health ${healthScore}/100${creatures.some((x) => x.illness) ? ' (illness disclosed)' : ''}`,
     ]
       .filter(Boolean)
       .join(' · ');
