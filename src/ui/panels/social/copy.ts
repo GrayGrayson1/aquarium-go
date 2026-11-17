@@ -110,7 +110,7 @@ export const SOCIAL_COPY = {
   errorFriend: 'That friend code didn’t match anyone. Check it and try again.',
   noMatch: (search: string) => `No clubs match “${search}”. Check the spelling, or paste an invite code.`,
   dotNew: 'New',
-  dotNews: 'New trades and club news',
+  dotNews: 'New friend requests, trades or club news',
 
   // ADR-0034 decision 4 (dev-only reminder)
   reminderBody: (when: string, closes: string) => `Club show on ${when}. Entries close ${closes}.`,

@@ -89,7 +89,7 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect([C.requestSent, C.requestSentDetail, C.errorFriend]).toEqual(['Request sent', 'Their aquarium shows here once they accept.', 'That friend code didn’t match anyone. Check it and try again.']);
     expect(C.noMatch('reef')).toBe('No clubs match “reef”. Check the spelling, or paste an invite code.');
     expect([lbValue('collection_value', 214900), lbValue('prismatics', 4), lbValue('prismatics', 1), lbValue('show_wins', 1), lbValue('show_wins', 9)]).toEqual(['$214,900', '4 Prismatic', '1 Prismatic', '1 win', '9 wins']);
-    expect([C.dotNew, C.dotNews]).toEqual(['New', 'New trades and club news']);
+    expect([C.dotNew, C.dotNews]).toEqual(['New', 'New friend requests, trades or club news']); // Audit 2026-11-17: friend requests light it too (area I)
     expect(C.reminderBody('Saturday', 'Friday')).toBe('Club show on Saturday. Entries close Friday.');
     expect([monthName('2026-10'), monthName('2026-01'), monthName('2026-13'), monthName(undefined)]).toEqual(['October', 'January', null, null]);
   });
@@ -345,7 +345,7 @@ describe('the dock and More sheet (SOC-004, SOC-011; B-152; chunk 8, REL-025)', 
     });
     it('comes back for new trades or club news, and never in a showcase or where Social doesn’t exist', () => {
       g.progress.tutorial.flags.opened_social = true;
-      expect(navDots(g, dockItems(true), null, undefined, { social: C.dotNews }).social).toEqual({ level: 'new', label: 'New trades and club news', target: null });
+      expect(navDots(g, dockItems(true), null, undefined, { social: C.dotNews }).social).toEqual({ level: 'new', label: 'New friend requests, trades or club news', target: null });
       expect(navDots(g, dockItems(false), null, undefined, { social: C.dotNews }).social).toBeUndefined();
       const show = { ...g, isShowcase: true } as GameState;
       delete show.progress.tutorial.flags.opened_social;

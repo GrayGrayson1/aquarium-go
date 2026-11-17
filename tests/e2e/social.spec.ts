@@ -488,7 +488,7 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
     await expect(dot).toHaveCount(0);
     await aq(page, 'social.pushTrade');
     await expect(dot).toBeVisible();
-    await expect(tid(page, 'dock-social')).toHaveAttribute('aria-label', 'Social — New trades and club news');
+    await expect(tid(page, 'dock-social')).toHaveAttribute('aria-label', 'Social — New friend requests, trades or club news');
     await tid(page, 'dock-social').click();
     await expect(panel(page)).toBeVisible();
     await tid(page, 'panel-close').click();
