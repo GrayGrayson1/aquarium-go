@@ -74,6 +74,7 @@ export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'of
   // lane:notify (chunk 3, NOTIFY-004) — a Prismatic or special stocked opens its offer (the shop says if it has gone)
   if (typeof e.offerId === 'string' && e.offerId) return { panel: 'market', target: `offer:${e.offerId}`, where: '', label: 'Open the shop' };
   if (/^New arrivals at the shop:|^Market special:/.test(text)) return { panel: 'market', target: 'tab:shop', where: '', label: 'Open the shop' };
+  if (/^The aquarium club dropped off a little food/.test(text)) return { panel: 'finances', target: null, where: '', label: 'Ways to raise cash' }; // audit 2026-11-17: the club's food parcel
   if (MONEY_NEWS.test(text)) return { panel: 'finances', target: null, where: '', label: 'Open Finances' }; // audit 2026-11-17 (F2)
   return null;
 }

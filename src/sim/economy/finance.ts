@@ -7,6 +7,9 @@
  * - Only operating bills (allowDebt) may create debt. Animals are never repossessed.
  * - The game never dead-ends on money: debt brings the club loan after LOAN_AFTER_DEBT_HOURS, and an empty room the
  *   player can't restock brings a restart loan after a day (lane:fix-econ, P5-08).
+ * - Animals never starve just because the till is empty: a very hungry animal with no food it eats in stock, and less
+ *   money than the cheapest pack it eats, gets the club's food parcel, at most once a game day (the owner's choice,
+ *   audit 2026-11-17; clubFoodParcel).
  */
 import type { GameState, LedgerEntry, DailySummary } from '@/types';
 import type { SimContext } from '../context';
@@ -22,6 +25,9 @@ import { quickSellQuote } from './valuation';
 import { isLotOffer } from '../life/rareVariants'; // lane:genetics
 import { payStaff, staffLeavingTonight, staffWagesPerDay } from '../staff'; // lane:staff
 import { roomsUpkeep } from '../automation/reserve'; // lane:automation (chunk 5)
+import { FOODS, eatsFood } from '@/data/catalog/foods'; // audit 2026-11-17: the club's food parcel
+import { ANIMAL_THRESHOLDS, needsFedFood, refreshFoodStatus } from '../tankStatus';
+import { isFoodAvailable } from './shop';
 
 const LEDGER_CAP = 400;
 const DAILY_CAP = 120;
@@ -338,6 +344,59 @@ function grantLoan(state: GameState, restart?: number): void {
   });
 }
 
+// ───────────────────────────── the club's food parcel ─────────────────────────────
+
+/** progress.counters key: the game day (dayIndex) of the last food parcel. Absent until the first one (no save field). */
+export const PARCEL_DAY_KEY = '_clubParcelDay';
+
+/**
+ * The owner's choice (audit 2026-11-17, F5 and A7): when animals are very hungry (ANIMAL_THRESHOLDS.hungryHunger, the
+ * card's "Very hungry"), there is no food in stock they eat, and the money (a debt counts) is below the cheapest pack
+ * they eat on sale, the aquarium club drops off one pack of that cheapest food, free, at most once a game day, with a
+ * tip on how to earn money. Hungriest first; one pack per missing diet (a pack already dropped that an animal eats
+ * covers it too). Deterministic: no random draws, the day from the clock. Nothing for a player who can buy the pack.
+ */
+export function clubFoodParcel(state: GameState, hour: number): boolean {
+  const c = state.progress.counters;
+  const today = dayIndex(hour);
+  if (c[PARCEL_DAY_KEY] === today) return false;
+  const money = finite(state.finance.money, 0);
+  const inv = state.inventory.foods;
+  const hungry = Object.values(state.creatures)
+    .filter((x) => (x.status === 'alive' || x.status === 'listed') && !!x.tankId && !!state.tanks[x.tankId] && finite(x.stats?.hunger, 0) >= ANIMAL_THRESHOLDS.hungryHunger)
+    .sort((a, b) => b.stats.hunger - a.stats.hunger || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (!hungry.length) return false;
+  const stocked = FOODS.filter((f) => (inv[f.id] ?? 0) > 0);
+  const parcels: { foodId: string; names: string[]; tankId: string; creatureId: string }[] = [];
+  for (const x of hungry) {
+    const sp = findSpecies(x.speciesId);
+    if (!sp || !needsFedFood(sp) || stocked.some((f) => eatsFood(sp, f))) continue;
+    const given = parcels.find((p) => FOODS.some((f) => f.id === p.foodId && eatsFood(sp, f)));
+    if (given) {
+      if (!given.names.includes(x.name)) given.names.push(x.name);
+      continue;
+    }
+    let cheapest: (typeof FOODS)[number] | null = null;
+    for (const f of FOODS) if (eatsFood(sp, f) && isFoodAvailable(state, f) && (!cheapest || f.price < cheapest.price)) cheapest = f;
+    if (!cheapest || money >= cheapest.price) continue;
+    inv[cheapest.id] = (inv[cheapest.id] ?? 0) + Math.max(1, Math.round(cheapest.servingsPerPack));
+    parcels.push({ foodId: cheapest.id, names: [x.name], tankId: x.tankId!, creatureId: x.id });
+  }
+  if (!parcels.length) return false;
+  c[PARCEL_DAY_KEY] = today;
+  refreshFoodStatus(state);
+  const names = parcels.flatMap((p) => p.names);
+  const who = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
+  emitEvent(state, {
+    kind: 'info',
+    text: `The aquarium club dropped off a little food for ${who}. Short on cash? Friends tip when your animals are healthy, or sell something in Livestock.`,
+    tankId: parcels[0].tankId,
+    creatureId: parcels[0].creatureId,
+    toast: true,
+  });
+  return true;
+}
+
 /** Daily operating costs (equipment upkeep, electricity, rent), summaries, debt handling and the emergency loan. */
 export function stepFinance(state: GameState, dt: number, ctx: SimContext): void {
   const f = state.finance;
@@ -362,4 +421,6 @@ export function stepFinance(state: GameState, dt: number, ctx: SimContext): void
   }
 
   if (f.debtSinceHour !== undefined && !f.loan && end - f.debtSinceHour >= LOAN_AFTER_DEBT_HOURS) grantLoan(state);
+  // the club's food parcel: looked at once a game hour (hunger moves slowly; a big save has many creatures to scan)
+  if (Math.floor(end) > Math.floor(start)) clubFoodParcel(state, end);
 }

@@ -15,6 +15,10 @@ import { cantAffordTitle, hungryAndShort, moneyHeld, needsCashIdeas } from '@/ui
 import { FinancesPanel } from '@/ui/panels/finances/FinancesPanel';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { devStepEconomy } from '@/sim/economy';
+import { PARCEL_DAY_KEY, clubFoodParcel } from '@/sim/economy/finance';
+import { FOODS, eatsFood } from '@/data/catalog/foods';
+import { findSpecies } from '@/data/species';
+import { decodeRecord, encodeRecord, stateHash } from '@/persistence';
 import { AQUARIUM_CLUB } from '@/data/buyers';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -125,5 +129,90 @@ describe('F2: money trouble leads to Finances', () => {
     expect(out).toContain('data-testid="finance-idea-list_animal"');
     expect(out).toContain('data-testid="finance-idea-go-list_animal"');
     expect(text(out)).toContain('New listing');
+  });
+});
+
+describe('the club’s food parcel (owner’s choice, F5 / A7): animals never starve just because the till is empty', () => {
+  const step = (g: GameState, hours: number) => devStepEconomy(g, hours, { finance: true, market: false });
+  function hungryBroke(money = 1): GameState {
+    const g = game(money);
+    noFood(g);
+    g.clock.hour = 24 * 3 + 10.5; // mid-morning, day 4
+    for (const c of Object.values(g.creatures)) if (c.status === 'alive') c.stats.hunger = 80;
+    return g;
+  }
+  const eaten = (g: GameState) => {
+    const ember = Object.values(g.creatures).find((c) => c.name === 'Ember')!;
+    const sp = findSpecies(ember.speciesId)!;
+    return FOODS.filter((f) => eatsFood(sp, f)).reduce((n, f) => n + (g.inventory.foods[f.id] ?? 0), 0);
+  };
+
+  it('drops off the cheapest pack Ember eats, free, with the approved words and a link to the ways to raise cash', () => {
+    const g = hungryBroke(1);
+    step(g, 1);
+    expect(eaten(g)).toBeGreaterThan(0);
+    expect(g.finance.money).toBe(1);
+    const e = g.log.find((x) => /^The aquarium club dropped off/.test(x.text))!;
+    expect(e.text).toBe('The aquarium club dropped off a little food for Ember. Short on cash? Friends tip when your animals are healthy, or sell something in Livestock.');
+    expect(e.toast).toBe(true);
+    expect(eventLink(e)).toMatchObject({ panel: 'finances', label: 'Ways to raise cash' });
+    expect(g.progress.counters[PARCEL_DAY_KEY]).toBe(3);
+  });
+
+  it('in debt too (purchases are paused)', () => {
+    const g = hungryBroke(-40);
+    step(g, 1);
+    expect(eaten(g)).toBeGreaterThan(0);
+  });
+
+  it('at most once a game day', () => {
+    const g = hungryBroke(1);
+    step(g, 1);
+    noFood(g);
+    step(g, 6);
+    expect(eaten(g)).toBe(0);
+    expect(g.log.filter((x) => /^The aquarium club dropped off/.test(x.text))).toHaveLength(1);
+    step(g, 24 - (g.clock.hour % 24) + 1.01); // the next day
+    expect(eaten(g)).toBeGreaterThan(0);
+    expect(g.log.filter((x) => /^The aquarium club dropped off/.test(x.text))).toHaveLength(2);
+  });
+
+  it('nothing when the money covers a pack, when fitting food is in stock, or when nobody is very hungry', () => {
+    const rich = hungryBroke(50);
+    step(rich, 1);
+    expect(eaten(rich)).toBe(0);
+    expect(rich.progress.counters[PARCEL_DAY_KEY]).toBeUndefined();
+
+    const fed = game(1);
+    fed.clock.hour = 24 * 3 + 10.5;
+    for (const c of Object.values(fed.creatures)) if (c.status === 'alive') c.stats.hunger = 80;
+    const before = eaten(fed);
+    expect(before).toBeGreaterThan(0);
+    step(fed, 1);
+    expect(eaten(fed)).toBe(before);
+
+    const calm = hungryBroke(1);
+    for (const c of Object.values(calm.creatures)) c.stats.hunger = 40;
+    step(calm, 1);
+    expect(eaten(calm)).toBe(0);
+    expect(calm.progress.counters[PARCEL_DAY_KEY]).toBeUndefined();
+  });
+
+  it('no new save field: a save that never got a parcel gains nothing, and one that did round-trips unchanged', () => {
+    const g = game();
+    const before = stateHash(g);
+    clubFoodParcel(g, g.clock.hour + 1); // nobody hungry: nothing written
+    expect(g.progress.counters[PARCEL_DAY_KEY]).toBeUndefined();
+    expect(stateHash(g)).toBe(before);
+
+    const fed = hungryBroke(1);
+    step(fed, 1);
+    expect(fed.progress.counters[PARCEL_DAY_KEY]).toBe(3);
+    const first = decodeRecord(encodeRecord(fed, 'auto').text);
+    const again = decodeRecord(encodeRecord(first.state, 'auto').text);
+    expect(first.repairs).toEqual([]);
+    expect(again.repairs).toEqual([]);
+    expect(stateHash(again.state)).toBe(stateHash(first.state));
+    expect((again.state as GameState).progress.counters[PARCEL_DAY_KEY]).toBe(3);
   });
 });
