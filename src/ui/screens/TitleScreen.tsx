@@ -315,6 +315,7 @@ export function TitleScreen() {
               variant="primary"
               onClick={async () => {
                 setConfirmNew(false);
+                unlockAudio(); // while the click is still the gesture (startNew runs after the wait below)
                 // audit I3: copies kept only in the autosave go to free slots first; every slot full, the box asks
                 const parked = await keepAutosavedCopies([], { writes: [NEW_GAME_WRITE] });
                 if (!parked) return;
