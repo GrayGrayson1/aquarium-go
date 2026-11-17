@@ -24,7 +24,10 @@ export const SOCIAL_COPY = {
   joinGroup: 'Join group',
   errorCredentials: 'Enter your email and a password of at least 8 characters.',
   errorInvite: 'That invite code didn’t match a club. Check it and try again.',
-  errorNetwork: 'Can’t reach Aquarium Go online right now. Your game is fine — try again in a moment.',
+  // audit 2026-11-17, I6: an outage can last (a paused project), so not "in a moment"; with a Try again button, the other line
+  errorNetwork: 'Can’t reach Aquarium Go online right now. Your game is fine — try again later.',
+  errorNetworkRetry: 'Can’t reach Aquarium Go online right now. Your game is fine and keeps saving on this device.',
+  tryAgain: 'Try again',
   toastSignedIn: 'Signed in',
   toastCreated: 'Account created',
   toastSavesHere: 'Your aquarium still saves on this device.',

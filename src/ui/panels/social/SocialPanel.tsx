@@ -93,6 +93,10 @@ export function SocialPanel() {
       <div className="so-panel" data-testid="social-body">
         {user === undefined ? (
           <Skeleton rows={4} tall />
+        ) : !user && offline ? (
+          // audit I6: a session this device holds couldn't be checked (or nothing can be reached): not the sign-in form,
+          // which would read as signed out and could only fail again; one notice, with Try again
+          <NetworkError onRetry={() => void loadSocialUser(true)} />
         ) : !user ? (
           <SignedOut invite={join} offline={offline} />
         ) : join ? (
@@ -334,9 +338,9 @@ function Expired() {
 }
 
 function InviteView({ code }: { code: string }) {
-  const [q] = useSocialQuery(() => socialService().resolveInvite(code), [code]);
+  const [q, reload] = useSocialQuery(() => socialService().resolveInvite(code), [code]);
   if (q.state === 'loading') return <Skeleton rows={3} tall />;
-  if (q.state === 'error') return q.network ? <NetworkError /> : <Expired />;
+  if (q.state === 'error') return q.network ? <NetworkError onRetry={reload} /> : <Expired />;
   if (!q.data) return <Expired />;
   const { club, alreadyMember } = q.data;
   if (alreadyMember)

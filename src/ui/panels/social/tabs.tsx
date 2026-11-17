@@ -23,9 +23,18 @@ export const SOCIAL_TABS: readonly SocialTab[] = ['overview', 'clubs', 'trading'
 const toTab = (tab: SocialTab) => go(tab === 'overview' ? { kind: 'panel', panel: 'social' } : { kind: 'panel', panel: 'social', tab });
 
 export function OverviewTab({ two, onInvite }: { two: boolean; onInvite: () => void }) {
-  const [clubs] = useSocialQuery(() => socialService().clubs(), []);
-  const [trades] = useSocialQuery(() => socialService().trades(), []);
-  const [friends] = useSocialQuery(() => socialService().friendsAquariums(), []);
+  const [clubs, reloadClubs] = useSocialQuery(() => socialService().clubs(), []);
+  const [trades, reloadTrades] = useSocialQuery(() => socialService().trades(), []);
+  const [friends, reloadFriends] = useSocialQuery(() => socialService().friendsAquariums(), []);
+  // audit I6: one notice for the cards that couldn't load (not the same line on each), with Try again
+  const down = clubs.state === 'error' || trades.state === 'error' || friends.state === 'error';
+  const [retryKey, setRetryKey] = useState(0);
+  const retry = () => {
+    reloadClubs();
+    reloadTrades();
+    reloadFriends();
+    setRetryKey((n) => n + 1);
+  };
   const [soon, setSoon] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [error, setError] = useState(false);
@@ -42,25 +51,23 @@ export function OverviewTab({ two, onInvite }: { two: boolean; onInvite: () => v
   return (
     <div className={clsx('so-overview', two && 'so-overview--two')} data-testid="social-overview">
       {error && <NetworkError />}
+      {down && <NetworkError onRetry={retry} />}
       <div className="so-col">
         <SoCard title={C.yourClub} icon={<Users size={14} />} action={{ label: C.findClubs, onClick: () => toTab('clubs') }} testId="social-your-club">
           {clubs.state === 'loading' && <Skeleton rows={2} tall />}
-          {clubs.state === 'error' && <NetworkError />}
           {clubs.state === 'ok' && (clubs.data.mine.length ? clubs.data.mine.map((c) => <MemberClub key={c.id} club={c} />) : <NoClub onFind={() => toTab('clubs')} onInvite={onInvite} />)}
         </SoCard>
         <SoCard title={C.tradingCircle} icon={<ArrowLeftRight size={14} />} action={{ label: C.allTrades, onClick: () => toTab('trading') }} testId="social-trading-card">
           {trades.state === 'loading' && <Skeleton rows={3} />}
-          {trades.state === 'error' && <NetworkError />}
           {trades.state === 'ok' && <TradeList trades={trades.data.slice(0, 3)} onView={() => setSoon(true)} />}
         </SoCard>
       </div>
       <div className="so-col">
         <SoCard title={C.friendsAquariums} icon={<Heart size={14} />} action={{ label: C.allFriends, onClick: () => toTab('friends') }} testId="social-friends-card">
           {friends.state === 'loading' && <Skeleton rows={2} tall />}
-          {friends.state === 'error' && <NetworkError />}
           {friends.state === 'ok' && <FriendGrid friends={friends.data.slice(0, 3)} />}
         </SoCard>
-        <Leaderboard />
+        <Leaderboard quiet={down} retryKey={retryKey} />
       </div>
       <div className="so-signout">
         <Button variant="ghost" onClick={signOut} disabled={leaving} data-testid="social-signout">
@@ -139,7 +146,7 @@ export function ClubsTab({ focusSearch }: { focusSearch: boolean }) {
         <Users size={14} aria-hidden /> {C.yourClub}
       </h3>
       {q.state === 'loading' && <Skeleton rows={2} tall />}
-      {q.state === 'error' && <NetworkError />}
+      {q.state === 'error' && <NetworkError onRetry={reload} />}
       {q.state === 'ok' && (q.data.mine.length ? q.data.mine.map((c) => <div key={c.id} className="so-card so-card--plain"><MemberClub club={c} /></div>) : <div className="so-card so-card--plain"><NoClub onFind={() => document.getElementById('social-search')?.focus()} /></div>)}
       <h3 className="so-section">
         <Sparkles size={14} aria-hidden /> {C.suggested}
@@ -227,7 +234,7 @@ function CreateClub({ onCreated }: { onCreated: (c: Club) => void }) {
 }
 
 export function TradingTab() {
-  const [trades] = useSocialQuery(() => socialService().trades(), []);
+  const [trades, reloadTrades] = useSocialQuery(() => socialService().trades(), []);
   const [soon, setSoon] = useState(false);
   return (
     <div className="so-tab" data-testid="social-trading">
@@ -240,7 +247,7 @@ export function TradingTab() {
       </section>
       <div className="so-card so-card--plain">
         {trades.state === 'loading' && <Skeleton rows={3} />}
-        {trades.state === 'error' && <NetworkError />}
+        {trades.state === 'error' && <NetworkError onRetry={reloadTrades} />}
         {trades.state === 'ok' && <TradeList trades={trades.data} onView={() => setSoon(true)} />}
       </div>
       <ComingSoon open={soon} onClose={() => setSoon(false)} />
@@ -310,7 +317,7 @@ export function FriendsTab() {
       {error === 'network' && <NetworkError />}
       <FriendRequests key={requestsKey} onAccepted={reloadFriends} onDecline={owner ? setPending : undefined} />
       {friends.state === 'loading' && <Skeleton rows={4} tall />}
-      {friends.state === 'error' && <NetworkError />}
+      {friends.state === 'error' && <NetworkError onRetry={reloadFriends} />}
       {friends.state === 'ok' && <FriendGrid friends={friends.data} testId="social-friend-grid" action={owner ? (f) => <RemoveFriendButton id={f.id} name={f.owner} onAsk={setPending} /> : undefined} />}
       <p className="so-note">{C.snapshotsNote}</p>
       {owner && (

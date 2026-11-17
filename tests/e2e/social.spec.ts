@@ -229,8 +229,15 @@ test.describe('Social (dev mode, desktop 1440×900)', () => {
   test('the network error, while the game keeps running', async ({ page }) => {
     await aq(page, 'social.offline', true);
     await go(page, '#/social');
-    await expect(tid(page, 'social-error')).toHaveText('Can’t reach Aquarium Go online right now. Your game is fine — try again in a moment.');
+    // audit 2026-11-17, I6: one notice instead of the sign-in form, with Try again (the words changed on purpose)
+    await expect(tid(page, 'social-error')).toContainText('Can’t reach Aquarium Go online right now. Your game is fine and keeps saving on this device.');
+    await expect(tid(page, 'net-retry')).toHaveText('Try again');
     await expect(tid(page, 'social-error')).toHaveAttribute('role', 'alert');
+    await expect(tid(page, 'social-email')).toHaveCount(0);
+    await aq(page, 'social.offline', false);
+    await tid(page, 'net-retry').click();
+    await expect(tid(page, 'social-error')).toHaveCount(0);
+    await aq(page, 'social.offline', true);
     await aq(page, 'social.offline', false);
     await signIn(page);
     await aq(page, 'social.offline', true);

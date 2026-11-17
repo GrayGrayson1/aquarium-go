@@ -87,11 +87,14 @@ export function AccountTab() {
     return (
       <Section>
         <div className="ac-account" data-testid="settings-account">
-          {offline && <NetworkError />}
-          <p className="ac-line" data-testid="account-signed-out">
-            {C.accountSignedOut}
-          </p>
-          {inGame && (
+          {/* audit I6: who is signed in couldn't be checked: not "Sign in from Social", which reads as signed out */}
+          {offline && <NetworkError onRetry={() => void loadSocialUser(true)} />}
+          {!offline && (
+            <p className="ac-line" data-testid="account-signed-out">
+              {C.accountSignedOut}
+            </p>
+          )}
+          {inGame && !offline && (
             <div className="ac-actions">
               <Button onClick={openSocial} data-testid="account-open-social">
                 <Globe size={15} aria-hidden /> {C.openSocial}

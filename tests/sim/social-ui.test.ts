@@ -53,7 +53,10 @@ describe('DES-010: every Social string as §13 and the owner’s answers write i
     expect([C.emailPlaceholder, C.passwordPlaceholder, C.signIn, C.createAccount, C.haveInvite, C.invitePlaceholder, C.joinGroup]).toEqual(['you@example.com', 'At least 8 characters', 'Sign in', 'Create account', 'Have an invite?', 'Invite code, e.g. FRIENDS-KDWX', 'Join group']); // the example: ADR-0042 J1 (changed on purpose)
     expect(C.errorCredentials).toBe('Enter your email and a password of at least 8 characters.');
     expect(C.errorInvite).toBe('That invite code didn’t match a club. Check it and try again.');
-    expect(C.errorNetwork).toBe('Can’t reach Aquarium Go online right now. Your game is fine — try again in a moment.');
+    // audit 2026-11-17, I6: changed on purpose: an outage can last (a paused project), so not "in a moment"; beside a
+    // Try again button, the line says the game keeps saving instead
+    expect(C.errorNetwork).toBe('Can’t reach Aquarium Go online right now. Your game is fine — try again later.');
+    expect([C.errorNetworkRetry, C.tryAgain]).toEqual(['Can’t reach Aquarium Go online right now. Your game is fine and keeps saving on this device.', 'Try again']);
     expect([C.toastSignedIn, C.toastCreated, C.toastSavesHere]).toEqual(['Signed in', 'Account created', 'Your aquarium still saves on this device.']);
     expect(C.devHint).toBe('Prototype: any email with an @ and a password of 8+ characters signs you in.');
   });
