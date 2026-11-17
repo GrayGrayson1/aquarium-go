@@ -232,3 +232,28 @@ export function clutchStatus(state: GameState, clutchId: string): ClutchStatus |
     waitsForDark,
   };
 }
+
+/**
+ * audit E19: what moving this animal now would cost its brood, said before the move (the Move dialog), or null. The
+ * sale dialogs warned beforehand; the move only said so afterwards.
+ */
+export function moveWarning(state: GameState, creatureId: string): string | null {
+  const c = state.creatures[creatureId];
+  if (!c || !isAlive(c) || !c.repro) return null;
+  const sp = findSpecies(c.speciesId);
+  if (!sp) return null;
+  const mod = moduleFor(sp);
+  const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
+  const pron = c.sex === 'female' || c.reproRole === 'female' ? 'her' : 'him';
+  if (c.repro.stage === 'guarding' && cl && !isCarried(cl) && cl.guardedById === c.id && cl.stage !== 'fry' && cl.count > 0) {
+    // a cichlid pair's other parent goes on tending (pairGuards): no loss
+    const otherId = cl.motherId === c.id ? cl.fatherId : cl.motherId;
+    const other = otherId ? state.creatures[otherId] : undefined;
+    if (mod.plan.pairGuards && isAlive(other) && other.tankId === cl.tankId) return null;
+    if (!mod.plan.guardEggs) return null;
+    const what = cl.stage === 'eggs' ? plural(cl.count, 'egg') : plural(cl.count, youngLabel(cl, mod).replace(/s$/, ''), youngLabel(cl, mod));
+    return `${c.name} is guarding ${what} — without a parent they may fungus or fall from the nest. Move ${pron} anyway?`;
+  }
+  if (c.repro.stage === 'laying' && cl && (cl.pendingEggs ?? 0) > 0) return `${c.name} is still laying — the rest of her eggs won’t come if she moves now.`;
+  return null;
+}

@@ -4,13 +4,14 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { ArrowRightLeft, Ban } from 'lucide-react';
+import { ArrowRightLeft, Ban, Egg } from 'lucide-react';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { findSpecies } from '@/data/species';
 import { getTankTier } from '@/data/catalog/tanks';
 import { previewAddition, environmentGate } from '@/sim/compat';
 import { creaturesInTank, breedingStatus } from '@/sim/life';
+import { moveWarning } from '@/sim/life/breeding'; // audit E19
 import { useShell } from '../common/shellStore';
 import { CompatView, VerdictBadge } from '../common/CompatView';
 import { safe } from '../common/safe';
@@ -46,6 +47,8 @@ export function MoveCreatureModal() {
   const close = () => useShell.getState().set({ moveCreatureId: null });
   const sel = rows.find((r) => r.t.id === target);
   const inBreeding = c && game ? !!safe('breedingStatus', () => breedingStatus(game, c.id), null) : false;
+  // audit E19: say what the move costs a brood before it happens, not after
+  const broodWarning = c && game ? safe('moveWarning', () => moveWarning(game, c.id), null) : null;
 
   const confirm = () => {
     if (!c || !sel) return;
@@ -84,6 +87,12 @@ export function MoveCreatureModal() {
       {rows.length === 0 ? (
         <Empty>You only have one tank. Buy another in Build to move or separate animals.</Empty>
       ) : (
+        <>
+        {broodWarning && (
+          <div className="ag-callout" data-testid="brood-move-warning" style={{ marginBottom: 12 }}>
+            <Egg size={16} aria-hidden /> <span>{broodWarning}</span>
+          </div>
+        )}
         <div className={clsx('ag-move', sel && 'has-preview')}>
         <div className="ag-movelist">
           {rows.map(({ t, gate, report, count }) => {
@@ -119,6 +128,7 @@ export function MoveCreatureModal() {
           )}
         </div>
         </div>
+        </>
       )}
     </Modal>
   );

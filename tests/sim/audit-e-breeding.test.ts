@@ -285,3 +285,24 @@ describe('E18: the Move dialog’s move keeps the space warning', () => {
     expect(res.message).toMatch(/^Moved Bruno to Small tank\. Heads up: an adult oscar needs at least \d+ gallons\.$/);
   });
 });
+
+describe('E19: the Move dialog warns before taking a guarding parent off its eggs', () => {
+  it('a betta male on his nest warns; a discus male whose mate stays with the eggs doesn’t', async () => {
+    const { moveWarning } = await import('@/sim/life/breeding');
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 777 });
+    const ember = starter(state);
+    expect(devForceBreeding(state, ember.id).ok).toBe(true);
+    run(state, 12, 27, () => ember.repro.stage === 'guarding');
+    expect(ember.repro.stage).toBe('guarding');
+    const n = state.clutches[ember.repro.clutchId!].count;
+    expect(moveWarning(state, ember.id)).toBe(`Ember is guarding ${n.toLocaleString('en-US')} eggs — without a parent they may fungus or fall from the nest. Move him anyway?`);
+    const d = newGame({ starterId: 'betta', starterName: 'Ember', seed: 71 });
+    const home = createTank(d, 'g55', 'freshwater_tropical', { cycled: true });
+    const m = addCreature(d, createCreature(d, simRng(d), 'discus', { sex: 'male', ageDays: 400, name: 'Rio' }), home.id);
+    const f = addCreature(d, createCreature(d, simRng(d), 'discus', { sex: 'female', ageDays: 400, name: 'Sol' }), home.id);
+    const cl = createClutch(d, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: d.clock.hour, stage: 'eggs', count: 80, visual: 'eggs_adhesive', nextStageHour: d.clock.hour + 40, guardedById: m.id });
+    m.repro.stage = 'guarding';
+    m.repro.clutchId = cl.id;
+    expect(moveWarning(d, m.id)).toBeNull();
+  });
+});

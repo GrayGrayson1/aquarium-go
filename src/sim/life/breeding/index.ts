@@ -265,7 +265,7 @@ export function coolingCue(state: GameState, tankId: string): { active: boolean;
   return { active: coolCueActive(t, state.clock.hour), dropC: t.breedingEnv?.coolDropC, untilHour: t.breedingEnv?.coolCueUntilHour };
 }
 
-export { clutchStatus, clutchProgress } from './status';
+export { clutchStatus, clutchProgress, moveWarning } from './status';
 export { nurseryRoom } from './clutch';
 export { evaluatePair } from './check';
 export { juvenileSlots as nurseryCapacityFor } from './common';
