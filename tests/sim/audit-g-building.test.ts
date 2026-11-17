@@ -32,6 +32,7 @@ import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { advanceWorld } from '@/sim/world';
 import { findNonFinite } from '@/dev/fixtures/core-testkit';
 import { lineFarm } from './support/production';
+import { UNLOCK_RULES, type Cond } from '@/data/unlocks';
 
 const game =(starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
 
@@ -285,5 +286,35 @@ describe('G19 (the owner’s answer): an empty tank can be taken down', () => {
       if (!r.ok) msg = r.message;
     }
     expect(msg).toBe('There\'s no floor space for a 10 Gallon. Choose a smaller size, move a tank, or take down an empty tank you no longer need in Tanks. A bigger venue (Build › Facility) adds room.');
+  });
+});
+
+describe('G9: an unlock hint names every number its rule needs', () => {
+  /** The numbers a rule's required conditions ask for (top level), and those of each "all of" route inside an "any". */
+  const numbers = (c: Cond): string[] => {
+    switch (c.type) {
+      case 'reputation':
+      case 'mastery':
+      case 'visitors':
+        return [c.min.toLocaleString('en-US')];
+      case 'tanks':
+        return [String(c.minGallons ?? c.min)];
+      case 'all':
+        return c.of.flatMap((x) => numbers(x));
+      case 'any':
+        return c.of.flatMap((x) => (x.type === 'all' ? numbers(x) : []));
+      default:
+        return [];
+    }
+  };
+  it('a hint never leaves out a reputation, mastery, visitor or tank count the rule checks', () => {
+    for (const r of UNLOCK_RULES) for (const n of r.when.flatMap((c) => numbers(c))) expect(r.hint, `${r.key} needs ${n}`).toContain(n);
+  });
+  it('the venue-gated big tanks, the showroom, marine and nursery hints', () => {
+    const hint = (k: string) => UNLOCK_RULES.find((r) => r.key === k)!.hint;
+    expect(hint('facility_showroom')).toBe('350 reputation, 800 visitors, 7 tanks and 300 exhibition mastery (visitors and shows build it).');
+    expect(hint('tank_800')).toBe('Research Grand Display Engineering, or reach 720 reputation with a 300-gallon exhibit at a destination aquarium.');
+    expect(hint('tank_1000')).toBe('Research Grand Display Engineering, or reach 800 reputation in the Grand Hall.');
+    expect(hint('nursery')).toBe('Raise a clutch, build 40 breeding mastery, reach 70 reputation, or research the Breeding Programme.');
   });
 });
