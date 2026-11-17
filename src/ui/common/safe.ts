@@ -87,6 +87,11 @@ export function useMedia(query: string): boolean {
 export const SHORT_LANDSCAPE_QUERY = '(max-height: 500px) and (orientation: landscape)';
 export const MOBILE_QUERY = `(max-width: 720px), ${SHORT_LANDSCAPE_QUERY}`;
 export const useIsMobile = () => useMedia(MOBILE_QUERY);
+/**
+ * Audit B14 — a touch-first device (a phone or tablet, not a laptop with a touch screen): switching apps hides the page
+ * and pauses the game, so system notifications never arrive there (src/ui/notify/deliver.ts).
+ */
+export const TOUCH_FIRST_QUERY = '(hover: none) and (pointer: coarse)';
 
 const TEXT_INPUT_TYPES = new Set(['text', 'search', 'email', 'url', 'number', 'password', 'tel', '']);
 /** A field the player types into (Escape / letter shortcuts stay out of it). Sliders, checkboxes and selects are not. */

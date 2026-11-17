@@ -13,7 +13,7 @@ import { useGame, useGameSelector } from '@/state/game';
 import { useUI } from '@/state/ui';
 import { sfx } from '@/audio/sfx';
 import { useShell } from '../common/shellStore';
-import { safe } from '../common/safe';
+import { safe, useMedia, TOUCH_FIRST_QUERY } from '../common/safe';
 import { tankStatusReason } from '../common/tankStatus';
 import { agoText, foodName } from '../common/format';
 import { buyFoodPack, openFoodInSupplies, tankFoodAlert, tankFoodLevel, type TankFoodAlert } from '../common/foodStock';
@@ -305,7 +305,8 @@ function TankAlerts({ game }: { game: GameState }) {
  */
 function NotifyCta() {
   const permission = useNotifyPermission((s) => s.permission);
-  if (permission !== 'default') return null;
+  const touch = useMedia(TOUCH_FIRST_QUERY); // audit B14: a phone never gets them (switching apps pauses the game)
+  if (permission !== 'default' || touch) return null;
   return (
     <div className="ag-alerts-cta" data-testid="alerts-notify-cta">
       <BellRing size={16} aria-hidden />
