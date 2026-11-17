@@ -76,19 +76,18 @@ describe('B4: the starvation slow-down', () => {
   });
 });
 
-describe('audit B19: over a phone sheet, a toast’s text only pins it', () => {
+describe('audit B19: over a phone sheet, a tapped toast gets out of the way', () => {
   const link = { panel: 'market' as const, target: 'listing:L1', where: '' };
-  it('its text goes there when no phone sheet is under it', () => {
-    expect(toastTap({ tankId: 'T1' }, {}, false, false)).toEqual({ textGoes: true, button: null, title: 'Go to this tank' });
-    expect(toastTap({}, { link }, false, false)).toMatchObject({ textGoes: true, button: null, title: 'Take me there' });
-    expect(toastTap({}, {}, false, false).textGoes).toBe(false); // plain news has nowhere to go
+  it('its text goes there when no phone sheet is under it; the tooltip says where', () => {
+    expect(toastTap({ tankId: 'T1' }, {}, false)).toEqual({ textGoes: true, dismiss: false, button: null, title: 'Go to this tank' });
+    expect(toastTap({ tankId: 'T1', creatureId: 'C1' }, {}, false).title).toBe('Go to this animal');
+    expect(toastTap({}, { link }, false)).toMatchObject({ textGoes: true, title: 'Take me there' });
+    expect(toastTap({}, { opensLog: true }, false).title).toBe('Open Alerts'); // (a burst opens the bell's drawer)
+    expect(toastTap({}, {}, false)).toMatchObject({ textGoes: false, dismiss: false }); // plain news: a tap pins it open
   });
-  it('over a phone sheet the text pins; its own button still goes, and a pinned toast gets one', () => {
-    expect(toastTap({ tankId: 'T1', actionLabel: 'See them' }, {}, true, false)).toEqual({ textGoes: false, button: 'See them', title: 'Go to this tank' });
-    expect(toastTap({}, { link }, true, false)).toMatchObject({ textGoes: false, button: null });
-    expect(toastTap({}, { link }, true, true)).toMatchObject({ textGoes: false, button: 'Take me there' });
-    expect(toastTap({}, { opensLog: true }, true, true).button).toBe('Open the event log');
-    expect(toastTap({ tankId: 'T1' }, {}, true, true).button).toBe('Go to this tank');
-    expect(toastTap({}, {}, true, true).button).toBeNull();
+  it('over a phone sheet a tap dismisses it (review: pinning grew it over the list); only its own button goes', () => {
+    expect(toastTap({ tankId: 'T1', actionLabel: 'See them' }, {}, true)).toMatchObject({ textGoes: false, dismiss: true, button: 'See them' });
+    expect(toastTap({}, { link }, true)).toMatchObject({ textGoes: false, dismiss: true, button: null });
+    expect(toastTap({}, {}, true)).toMatchObject({ dismiss: true, button: null });
   });
 });
