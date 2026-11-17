@@ -10,7 +10,7 @@ import { createCreature, addCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { advanceWorld } from '@/sim/world';
 import { devForceBreeding, separateCreature } from '@/sim/life/breeding/actions';
-import { clutchStatus } from '@/sim/life/breeding';
+import { breedingCheck, breedingStatus, clutchStatus } from '@/sim/life/breeding';
 import { readinessHint } from '@/sim/life/breeding/check';
 import { createClutch, mintJuveniles } from '@/sim/life/breeding/clutch';
 import { getSpecies } from '@/data/species';
@@ -151,5 +151,23 @@ describe('E4: the pairing check names what holds breeding condition down', () =>
     bella.stats.comfort = 5;
     bella.stats.health = 70;
     expect(readinessHint(state, bella, sp, state.clock.hour)).toBe('Bella isn’t comfortable enough to breed (comfort 5%) — the notes under Condition on her card say why.');
+  });
+});
+
+describe('E6: every spawning gate shows at once, and a ripe female says why she waits', () => {
+  it('a white cloud pair in a bare, warm tank hears about the cover and the heat together', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 51 });
+    const tank = createTank(state, 'g20L', 'freshwater_cool', { cycled: true, name: 'Bare' });
+    tank.decor = [];
+    const rng = simRng(state);
+    const m = addCreature(state, createCreature(state, rng, 'white_cloud_minnow', { sex: 'male', ageDays: 200, name: 'Hiro' }), tank.id);
+    const f = addCreature(state, createCreature(state, rng, 'white_cloud_minnow', { sex: 'female', ageDays: 200, name: 'Kumo' }), tank.id);
+    tank.water.tempC = 26;
+    const chk = breedingCheck(state, m.id, f.id);
+    const text = chk.reasons.join(' ');
+    expect(text).toMatch(/only spawn in dense cover \(plants or moss\) — cover here is \d+% \(they need about 40%\)\./);
+    expect(text).toMatch(/The water is too warm to spawn \(needs ≤ 24 °C\)\./);
+    f.repro.stage = 'gravid';
+    expect(breedingStatus(state, f.id)).toMatchObject({ label: 'Full of eggs', detail: expect.stringMatching(/^Can’t spawn yet: White cloud mountain minnows only spawn in dense cover \(plants or moss\) — cover here is \d+% \(they need about 40%\)$/) });
   });
 });

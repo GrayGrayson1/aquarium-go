@@ -96,27 +96,38 @@ export interface PairSpawnerConfig {
   status?(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number): StatusOut | null;
 }
 
-/** Data-driven gates shared by every pair spawner. */
-export function dataGates(state: GameState, tank: Tank, sp: SpeciesDefinition, cfg: PairSpawnerConfig, hour: number): Gate {
+/**
+ * Every data-driven gate that blocks a pair spawner now, in order (empty: they can spawn). audit E6: the pair check
+ * lists them all, so fixing one doesn't just uncover the next.
+ */
+export function allDataGates(state: GameState, tank: Tank, sp: SpeciesDefinition, cfg: PairSpawnerConfig, hour: number): Gate[] {
   const cond = sp.breeding.conditions;
   const hab = habitatOf(state, tank);
+  const out: Gate[] = [];
   if (cond.needsCover && hab.cover < COVER_FOR_SPAWNING) {
-    return { ok: false, reason: `${spPlural(sp)[0].toUpperCase()}${spPlural(sp).slice(1)} only spawn in dense cover (plants or moss) — cover here is ${Math.round(hab.cover * 100)}%.`, step: 'Add dense plants or a clump of moss to give them somewhere to spawn.' };
+    out.push({ ok: false, reason: `${spPlural(sp)[0].toUpperCase()}${spPlural(sp).slice(1)} only spawn in dense cover (plants or moss) — cover here is ${Math.round(hab.cover * 100)}% (they need about ${Math.round(COVER_FOR_SPAWNING * 100)}%).`, step: 'Add dense plants or a clump of moss to give them somewhere to spawn.' });
   }
   if (cond.needsNestSite) {
     const ok = cfg.site === 'cave' ? hasCave(tank, hab) || hasNestSite(tank, hab) : hasNestSite(tank, hab);
-    if (!ok) return { ok: false, reason: cfg.site === 'cave' ? 'There is no cave for the male to claim.' : 'There is no flat rock or tile to lay eggs on.', step: cfg.site === 'cave' ? 'Add a cave or spawning tube.' : 'Add a flat stone or rock near their favourite spot.' };
+    if (!ok) out.push({ ok: false, reason: cfg.site === 'cave' ? 'There is no cave for the male to claim.' : 'There is no flat rock or tile to lay eggs on.', step: cfg.site === 'cave' ? 'Add a cave or spawning tube.' : 'Add a flat stone or rock near their favourite spot.' });
   }
   if (cond.coolingTrigger && !coolCueActive(tank, hour)) {
-    return { ok: false, reason: 'They are waiting for a seasonal cue.', step: 'A cool water change (~2 °C cooler) often triggers spawning.' };
+    out.push({ ok: false, reason: 'They are waiting for a seasonal cue.', step: 'A cool water change (~2 °C cooler) often triggers spawning.' });
   }
   if (cond.minTempC !== undefined && tank.water.tempC < cond.minTempC - 0.5) {
-    return { ok: false, reason: `The water is too cool to spawn (needs ${cond.minTempC} °C+).`, step: `Warm the tank to about ${cond.minTempC + 1} °C.` };
+    out.push({ ok: false, reason: `The water is too cool to spawn (needs ${cond.minTempC} °C+).`, step: `Warm the tank to about ${cond.minTempC + 1} °C.` });
   }
   if (cond.maxTempC !== undefined && tank.water.tempC > cond.maxTempC + 0.5) {
-    return { ok: false, reason: `The water is too warm to spawn (needs ≤ ${cond.maxTempC} °C).`, step: `Cool the tank below ${cond.maxTempC} °C.` };
+    out.push({ ok: false, reason: `The water is too warm to spawn (needs ≤ ${cond.maxTempC} °C).`, step: `Cool the tank below ${cond.maxTempC} °C.` });
   }
-  return cfg.gate ? cfg.gate(state, tank, sp) : { ok: true };
+  const extra = cfg.gate ? cfg.gate(state, tank, sp) : { ok: true };
+  if (!extra.ok) out.push(extra);
+  return out;
+}
+
+/** The first gate that blocks a pair spawner now, or ok (the spawning step and its tip use the first one). */
+export function dataGates(state: GameState, tank: Tank, sp: SpeciesDefinition, cfg: PairSpawnerConfig, hour: number): Gate {
+  return allDataGates(state, tank, sp, cfg, hour)[0] ?? { ok: true };
 }
 
 export function makePairSpawner(cfg: PairSpawnerConfig): BreedingModule {
@@ -305,8 +316,8 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
 function checkPair(cc: CheckCtx, cfg: PairSpawnerConfig): void {
   const { state, tank, sp, hour } = cc;
   if (!tank) return;
-  const g = dataGates(state, tank, sp, cfg, hour);
-  if (!g.ok) {
+  // audit E6: every gate at once, not one at a time
+  for (const g of allDataGates(state, tank, sp, cfg, hour)) {
     if (g.reason) cc.reasons.push(g.reason);
     if (g.step) cc.steps.push(g.step);
   }
@@ -328,6 +339,18 @@ function checkPair(cc: CheckCtx, cfg: PairSpawnerConfig): void {
 function statusFor(state: GameState, c: Creature, sp: SpeciesDefinition, hour: number, cfg: PairSpawnerConfig): StatusOut | null {
   const own = cfg.status?.(state, c, sp, hour);
   if (own) return own;
+  // audit E6: a ripe female held back by the tank says why, instead of "Ready to spawn with a partner"
+  const tank = c.tankId ? state.tanks[c.tankId] : undefined;
+  if (c.repro.stage === 'gravid' && tank) {
+    const g = dataGates(state, tank, sp, cfg, hour);
+    if (!g.ok && g.reason) {
+      // mid-sentence: lower-case the first word, unless it is the species' own name ("White Cloud…" stays)
+      const name = spPlural(sp);
+      const capName = `${name[0].toUpperCase()}${name.slice(1)}`;
+      const why = g.reason.startsWith(capName) ? `${name}${g.reason.slice(capName.length)}` : `${g.reason[0].toLowerCase()}${g.reason.slice(1)}`;
+      return { label: 'Full of eggs', detail: `Can’t spawn yet: ${why.replace(/\.$/, '')}` };
+    }
+  }
   const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
   if (c.repro.stage === cfg.guardStage && cfg.carried && cl) {
     return { label: `Mouthbrooding ${plural(cl.count, 'egg')}`, detail: `He won’t eat until they’re released (${approxDuration(cl.nextStageHour - hour)})`, progress: c.repro.progress };
