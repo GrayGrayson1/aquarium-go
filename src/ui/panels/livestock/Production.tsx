@@ -25,7 +25,7 @@ import {
   type LineStage,
 } from '@/sim/production';
 import { lineColour, lineView, slotsCaption, type LineView, type StageId } from '@/sim/production/view';
-import { doserOf } from '@/sim/automation';
+import { doserOf, doserShortWords } from '@/sim/automation';
 import { act } from '../common/act';
 import { Bar, EmptyState, Seg, Tile } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
@@ -102,9 +102,16 @@ export function ProductionTab({ g, sel, onSelect }: { g: GameState; sel: string 
  * its keeper's rounds or by hand (an Autofeeder feeds animals, never fry); juveniles waiting there eat from the
  * Autofeeder too.
  */
+/** A price a head: whole dollars, or with cents when it isn't ("$0.80"; the line prices the lot, H1 review). */
+export const priceEach = (each: number) => formatMoney(each, { cents: Math.abs(each - Math.round(each)) > 0.004 });
+
 function raiseFeeding(g: GameState, v: LineView): string {
   const brood = v.raising.dayOf !== undefined;
-  if (v.raise && doserOf(v.raise)) return 'baby brine and infusoria from the doser';
+  // a doser feeds a brood (never juveniles), and only from stock (H1 review)
+  if (brood && v.raise && doserOf(v.raise)) {
+    const short = doserShortWords(g, v.raise);
+    return short ? `the doser has no ${short} in stock: the young go hungry` : 'baby brine and infusoria from the doser';
+  }
   if (!brood && v.raising.feeding) return `${v.raising.feeding.food} ${v.raising.feeding.meals}× a day from the Autofeeder`;
   const keeper = v.raise ? (g.staff?.roster ?? []).find((m) => m.role === 'aquarist' && m.tankIds.includes(v.raise!.id)) : undefined;
   if (keeper) return brood ? `first foods on ${keeper.name.split(' ')[0]}’s rounds` : `fed on ${keeper.name.split(' ')[0]}’s rounds`;
@@ -221,7 +228,7 @@ const daysLeft = (n: number | undefined) => `${n ?? 0} ${n === 1 ? 'day' : 'days
 function sellFoot(v: LineView): string {
   const s = v.selling;
   if (s.listed > 0) {
-    const price = s.each !== undefined ? ` · Buy now ${s.listings > 1 ? 'from ' : ''}${formatMoney(s.each)}${s.listed > 1 ? ' each' : ''}` : '';
+    const price = s.each !== undefined ? ` · Buy now ${s.listings > 1 ? 'from ' : ''}${priceEach(s.each)}${s.listed > 1 ? ' each' : ''}` : '';
     return `${s.title ?? `${s.listed} ${s.listed === 1 ? v.sp.commonName.toLowerCase() : spPlural(v.sp)}`} listed${price}`;
   }
   if (v.week.sold > 0) return `Sold ${v.week.sold} ${v.week.sold === 1 ? v.sp.commonName.toLowerCase() : spPlural(v.sp)} this week · ${formatMoney(v.week.revenue)}`;
