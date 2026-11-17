@@ -583,3 +583,10 @@ describe('G28 (B-231 e): the first tank bought after selling every tank doesn’
     expect(html).toMatch(/data-testid="tank-buy-first"[^>]*>No tank · Buy one</);
   });
 });
+
+describe('G20 review fix: the signage unlock points at a switch the player can reach', () => {
+  it('no link to Visitors (often still locked at 45 reputation); a where-line to the tank card’s Value tab', () => {
+    expect(unlockLink('signage')).toBeNull();
+    expect(unlockWhere('signage')).toBe('Add a sign from a tank card’s Value tab.');
+  });
+});

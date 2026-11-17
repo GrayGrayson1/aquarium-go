@@ -43,7 +43,6 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   water_room: { panel: 'build', target: 'room:water', where: 'See it in Build › Facility › Water room.' },
   live_food_room: { panel: 'build', target: 'room:food', where: 'See it in Build › Facility › Live food room.' },
   operations_desk: { panel: 'operations', target: null, where: 'Its tools are in Operations.' },
-  signage: { panel: 'visitors', target: 'tab:visitors', where: 'Add a sign in Visitors, or from a tank card’s Value tab.' },
   genetics_lab: { panel: 'livestock', target: null, where: 'Open an animal’s card to see its genes.' },
   // Audit 2026-11-17 (G5): the shop also waits for a tank big enough for these animals (ADR-0053 decision 4)
   fw_large: { panel: 'market', target: 'tab:shop', where: 'They come into Market › Shop once you have a tank big enough for them.' },
@@ -56,6 +55,9 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
  */
 const UNLOCK_WHERE: Record<string, string> = {
   party_mode: 'Tap Party in the tank tools: the lights dance to music.',
+  // review fix: signs often unlock (45 reputation) before Visitors opens (a Specialty Shop), so no link to a locked
+  // page; the tank card's Value tab has the sign switch as soon as signs unlock
+  signage: 'Add a sign from a tank card’s Value tab.',
 };
 export const unlockWhere = (key: string): string | undefined => (Object.hasOwn(UNLOCK_WHERE, key) ? UNLOCK_WHERE[key] : undefined);
 
