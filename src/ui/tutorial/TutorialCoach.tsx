@@ -39,6 +39,12 @@ import { FINE_POINTER, currentCoachStep, friendWait, guideAnimal } from './guide
 // (the step's words moved to ./guideText, shared with Research › Quests)
 export { currentCoachStep, type CoachStep } from './guideText';
 
+/**
+ * A11 — the water step counts the reading as read once the tank card has been on screen this long (the guide opens
+ * it with the reading already expanded, and points at it meanwhile). It used to end the moment the card opened.
+ */
+export const WATER_READ_MS = 2500;
+
 // ───────────── objective progress (waiting steps) ─────────────
 
 interface Progress {
@@ -330,7 +336,15 @@ export function TutorialCoach() {
   const visible = ((!!cur && hints) || finale) && !!game && !touring;
   useCoachLayout(visible);
   const tankCardOpen = useShell((s) => s.tankCardOpen);
-  const aimNow = cur && game && hints && !touring && !collapsed ? guideAim(cur.step.id, cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget, game.progress.tutorial?.starterId || game.starterId, { panel, popover, tool, tankCardOpen, mobile }, cur.step.reward?.unlocks ?? []) : null;
+  // A11 — the water step: while the tank card is on screen the guide is folded beside it, but it still points at the
+  // reading it asks about, and counts it as read after a moment (opening the card used to end the step at once)
+  const waterCard = cur?.step.id === 'water' && dockedCard === 'tank';
+  useEffect(() => {
+    if (!waterCard) return;
+    const t = window.setTimeout(() => tutorialFlag('read_water'), WATER_READ_MS);
+    return () => window.clearTimeout(t);
+  }, [waterCard]);
+  const aimNow = cur && game && hints && !touring && (!collapsed || (waterCard && !userCollapsed)) ? guideAim(cur.step.id, cur.step.hintTarget === 'tool-feed' && /target-feed/i.test(cur.step.body) ? 'tool-target-feed' : cur.step.hintTarget, game.progress.tutorial?.starterId || game.starterId, { panel, popover, tool, tankCardOpen, mobile }, cur.step.reward?.unlocks ?? []) : null;
   const spotRect = useSpotlightTarget(aimNow?.candidates ?? [], { scrollIntoView: true });
 
   if (touring) return null;

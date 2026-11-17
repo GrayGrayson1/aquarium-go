@@ -159,6 +159,17 @@ describe('A3: the betta’s and seahorse’s nursery step opens Tanks (a tank’
   });
 });
 
+describe('A11: the water step waits for the reading, not the card opening', () => {
+  it('opening the tank card alone no longer ends it; reading the water does', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 9 });
+    walkTo(g, 'water');
+    tutorialAdvance(g, 'opened_tank_card');
+    expect(tutorialStepId(g)).toBe('water');
+    tutorialAdvance(g, 'read_water');
+    expect(tutorialStepId(g)).toBe('habitat');
+  });
+});
+
 describe('A8: the phone tour’s money stop has no star to point at', () => {
   it('phones say where reputation is; computers keep the star', () => {
     const phone = tourStops({ mobile: true, social: false, unlocked: () => true }).find((s) => s.id === 'money')!;
