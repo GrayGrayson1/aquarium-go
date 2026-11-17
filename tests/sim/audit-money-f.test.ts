@@ -36,7 +36,9 @@ import { reserveHint, QuickSellLine } from '@/ui/panels/market/CreateListing';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { offerLeavesText } from '@/ui/panels/market/Shop';
-import { PARCEL_DAY_KEY, clubFoodParcel } from '@/sim/economy/finance';
+import { PARCEL_DAY_KEY, PARCEL_MEALS, clubFoodParcel } from '@/sim/economy/finance';
+import { portionForDemand, TYPICAL_MEAL_HUNGER } from '@/sim/water/food';
+import { effectiveBioload } from '@/sim/water/env';
 import { FOODS, eatsFood } from '@/data/catalog/foods';
 import { findSpecies } from '@/data/species';
 import { decodeRecord, encodeRecord, stateHash } from '@/persistence';
@@ -206,10 +208,16 @@ describe('the club’s food parcel (owner’s choice, F5 / A7): animals never st
     return FOODS.filter((f) => eatsFood(sp, f)).reduce((n, f) => n + (g.inventory.foods[f.id] ?? 0), 0);
   };
 
-  it('drops off the cheapest pack Ember eats, free, with the approved words and a link to the ways to raise cash', () => {
+  it('drops off a little of the cheapest food Ember eats (about two days), free, with the approved words and a link', () => {
     const g = hungryBroke(1);
     step(g, 1);
     expect(eaten(g)).toBeGreaterThan(0);
+    // review fix: "a small parcel", not a whole pack (Tropical Flakes are 120 servings): four of the default feed's meals
+    const ember = Object.values(g.creatures).find((c) => c.name === 'Ember')!;
+    const sp = findSpecies(ember.speciesId)!;
+    const food = FOODS.find((f) => (g.inventory.foods[f.id] ?? 0) > 0)!;
+    expect(eaten(g)).toBe(Math.max(1, Math.ceil(portionForDemand(food, effectiveBioload(sp, ember.sizeCm) * TYPICAL_MEAL_HUNGER, 1) * PARCEL_MEALS)));
+    expect(eaten(g)).toBeLessThan(food.servingsPerPack / 4);
     expect(g.finance.money).toBe(1);
     const e = g.log.find((x) => /^The aquarium club dropped off/.test(x.text))!;
     expect(e.text).toBe('The aquarium club dropped off a little food for Ember. Short on cash? Friends tip when your animals are healthy, or sell something in Livestock.');
