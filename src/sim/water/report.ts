@@ -72,9 +72,9 @@ export function khPreferredMax(tank: Tank, species: SpeciesDefinition[]): number
 function oxygenAdvice(s: EquipmentSummary, warm: boolean): string {
   const idle = idleUnit(s, 'airstone');
   if (idle) return idleAdvice(idle);
-  const cool = 'cool the water a little — warm water holds less oxygen';
-  if (s.entries.filter((e) => e.def.kind === 'airstone').length >= (MAX_PER_KIND.airstone ?? 4)) return `This tank has all the airstones it can hold: ${cool}, or move some animals to another tank.`;
-  return warm ? `Add an airstone, or ${cool}.` : 'Add an airstone — its bubbles stir the surface, where oxygen gets in.';
+  if (s.entries.filter((e) => e.def.kind === 'airstone').length >= (MAX_PER_KIND.airstone ?? 4))
+    return 'This tank has all the airstones it can hold. Cool the water a little (warm water holds less oxygen), or move some animals to another tank.';
+  return warm ? 'Add an airstone, or cool the water a little — warm water holds less oxygen.' : 'Add an airstone — its bubbles stir the surface, where oxygen gets in.';
 }
 
 function groupBySpecies(inh: Inhabitant[]): Inhabitant[][] {
