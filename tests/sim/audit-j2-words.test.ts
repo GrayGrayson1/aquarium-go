@@ -26,6 +26,8 @@ import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { exhibitInfo } from '@/sim/facility/exhibit';
+import { removeEquipment } from '@/sim/care';
+import { getEquipmentDef } from '@/data/catalog/equipment';
 
 const src = (path: string) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8');
 
@@ -356,5 +358,17 @@ describe('Audit 2026-11-17 (J40): a cherry shrimp exhibit isn’t scored as a th
     expect(exhibit('cherry_shrimp')).toBe(0.35);
     expect(exhibit('pea_puffer')).toBe(0.8); // a Vulnerable species still counts
     expect(src('sim/facility/exhibit.ts')).toContain('least concern|not evaluated|not assessed|domesticated');
+  });
+});
+
+describe('Audit 2026-11-17: stored gear can be sold, and the removal line says so', () => {
+  it('removing a unit puts it in storage and says where it can be sold', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 7 });
+    const t = g.tanks[g.tankOrder[0]];
+    const heater = t.equipment.find((e) => getEquipmentDef(e.defId)?.kind === 'heater')!;
+    const r = removeEquipment(g, t.id, heater.id);
+    expect(r.ok).toBe(true);
+    expect(r.message).toBe(`Removed the ${getEquipmentDef(heater.defId)!.name} and put it in storage: use it in another tank, or sell it in Build › Equipment.`);
+    expect(g.inventory.equipment.some((e) => e.id === heater.id)).toBe(true);
   });
 });

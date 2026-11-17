@@ -610,7 +610,8 @@ export function removeEquipment(state: GameState, tankId: string, equipmentId: s
   }
   tank.equipment.splice(idx, 1);
   state.inventory.equipment.push(inst);
-  return { ok: true, message: [`Removed the ${def?.name ?? 'equipment'} and put it in storage.`, ...notes].join(' ') };
+  // Audit 2026-11-17: stored gear can be sold back (Build › Equipment › In storage)
+  return { ok: true, message: [`Removed the ${def?.name ?? 'equipment'} and put it in storage: use it in another tank, or sell it in Build › Equipment.`, ...notes].join(' ') };
 }
 
 function settingRange(kind: string): [number, number] {
