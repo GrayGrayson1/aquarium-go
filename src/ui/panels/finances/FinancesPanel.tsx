@@ -109,7 +109,9 @@ export function FinancesPanel() {
             {inDebt && (
               <>
                 Bills still come due while you’re below zero, and new purchases are on hold.
-                {!loan && debtHours < LOAN_AFTER_DEBT_HOURS && <> If it lasts {formatSpan(LOAN_AFTER_DEBT_HOURS)}, the aquarium club will offer a one-time emergency loan.</>}{' '}
+                {!loan && debtHours < LOAN_AFTER_DEBT_HOURS && <> If it lasts {formatSpan(LOAN_AFTER_DEBT_HOURS)}, the aquarium club will offer a one-time emergency loan.</>}
+                {/* audit 2026-11-17 (F5) — once the loan has been used, say so, and what still helps */}
+                {loan && <> The aquarium club’s one-time loan has been used: sell an animal or decor to get back above zero. If your animals run out of food, the club drops off a little.</>}{' '}
               </>
             )}
             {loan && loan.outstanding > 0 && (

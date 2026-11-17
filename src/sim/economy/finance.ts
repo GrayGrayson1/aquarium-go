@@ -149,7 +149,8 @@ export function cashIdeas(state: GameState): CashIdea[] {
   if (out.length === 0) {
     const starter = Object.values(state.creatures).find((c) => c.status === 'alive' && (c.isStarter || c.favorite));
     const q = starter ? quickSellQuote(state, [starter.id]) : null;
-    out.push({ kind: 'hold', text: 'Hold steady: bills keep running, but nothing is taken from you, and help is available if debt lasts a few days.' });
+    // audit 2026-11-17 (F5) — the debt loan comes once; after it, the club's food parcel is the help that's left
+    out.push({ kind: 'hold', text: state.finance.loan ? 'Hold steady: bills keep running, but nothing is taken from you, and the club drops off food if your animals run out.' : 'Hold steady: bills keep running, but nothing is taken from you, and help is available if debt lasts a few days.' });
     if (starter && q?.ok) out.push({ kind: 'starter', creatureId: starter.id, text: `As a last resort, ${LOCAL_FISH_STORE} would pay about ${fmtMoney(q.total)} for ${starter.name}.` });
   }
   return out;
@@ -282,7 +283,10 @@ function runMidnight(state: GameState, endedDay0: number, end: number): void {
   // 5. Warnings with concrete suggestions — honest ones: purchases (food included) stop in debt, so say so.
   if (f.money < 0) {
     const tips = cashSuggestions(state);
-    const loanNote = f.loan ? '' : ` If it lasts ${Math.round(LOAN_AFTER_DEBT_HOURS / 24)} days, ${AQUARIUM_CLUB} may be able to help.`;
+    // audit 2026-11-17 (F5) — after the one-time loan, say plainly that no loan is coming, and what still helps
+    const loanNote = f.loan
+      ? " The club's one-time loan has been used, so selling is the way back above zero. If the food runs out, the club drops off a little."
+      : ` If it lasts ${Math.round(LOAN_AFTER_DEBT_HOURS / 24)} days, ${AQUARIUM_CLUB} may be able to help.`;
     const alive = Object.values(state.creatures).some((c) => c.status === 'alive' || c.status === 'listed');
     const shelf = state.tankOrder.map((id) => state.tanks[id]?.cache?.foodLevel).filter(Boolean);
     const food = shelf.includes('out') ? 'bare' : shelf.includes('low') ? 'running low' : null;

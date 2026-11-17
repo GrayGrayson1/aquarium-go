@@ -372,3 +372,16 @@ describe('F4: buying animals into a tank that is still cycling says so first', (
     expect(e.toast).toBe(true);
   });
 });
+
+describe('F5: in debt after the club’s one-time loan, the words say so plainly', () => {
+  it('the midnight warning, Finances and the hold-steady idea', () => {
+    const g = game(-40);
+    g.finance.loan = { amount: 140, outstanding: 0, takenHour: 10, repaidHour: 50 };
+    devStepEconomy(g, 24 - (g.clock.hour % 24) + 0.25, { finance: true });
+    const red = g.log.find((e) => /in the red after today's bills/.test(e.text))!;
+    expect(red.text).toContain("The club's one-time loan has been used, so selling is the way back above zero. If the food runs out, the club drops off a little.");
+    expect(red.text).not.toContain('may be able to help');
+    const out = text(renderToStaticMarkup(createElement(FinancesPanel)));
+    expect(out).toContain('The aquarium club’s one-time loan has been used: sell an animal or decor to get back above zero. If your animals run out of food, the club drops off a little.');
+  });
+});
