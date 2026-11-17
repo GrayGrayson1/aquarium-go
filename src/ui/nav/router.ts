@@ -176,13 +176,25 @@ function gameTag(): string | undefined {
   return useUI.getState().screen === 'game' && g && !g.isShowcase ? g.saveId : undefined;
 }
 
-/** history.state for an entry the router writes: whatever else is there, plus (or minus) the aquarium tag. */
+/** audit B22: the tank on screen, kept with each entry so Back returns to it (the address names no tank in `#/`). */
+const focusTag = (): string | undefined => (gameTag() ? (useUI.getState().focusedTankId ?? undefined) : undefined);
+
+/** history.state for an entry the router writes: whatever else is there, plus (or minus) the aquarium and tank tags. */
 function entryState(): Record<string, unknown> {
   const prev = history.state && typeof history.state === 'object' ? { ...(history.state as Record<string, unknown>) } : {};
   const tag = gameTag();
   if (tag) prev.aqGame = tag;
   else delete prev.aqGame;
+  const tank = focusTag();
+  if (tank) prev.aqTank = tank;
+  else delete prev.aqTank;
   return prev;
+}
+
+/** The tank the entry the browser just moved to was showing (audit B22). */
+function entryTank(): string | undefined {
+  const st = history.state as { aqTank?: unknown } | null;
+  return st && typeof st.aqTank === 'string' ? st.aqTank : undefined;
 }
 
 /** The aquarium tag of the entry the browser just moved to (undefined for a typed or followed link). */
@@ -198,9 +210,10 @@ function entryTag(): string | undefined {
 function writeHash(hash: string, mode: 'auto' | 'push' | 'replace'): void {
   if (!hasHistory()) return;
   if (location.hash === hash) {
-    // the right address already: keep the entry's aquarium tag current (a game coming on screen at #/)
+    // the right address already: keep the entry's aquarium tag current (a game coming on screen at #/), and its tank
+    // (audit B22: switching tanks at #/ changes no address)
     const tag = gameTag();
-    if (entryTag() !== tag) {
+    if (entryTag() !== tag || entryTank() !== focusTag()) {
       try {
         history.replaceState(entryState(), '', location.pathname + location.search + location.hash);
       } catch {
@@ -371,6 +384,12 @@ function onHashChange(): void {
   }
   // audit B6: a sub-view holding the player's work (the listing wizard) asks first; Keep editing puts its address back
   const keep = () => syncAddress('push');
+  // audit B22: Back to an entry brings back the tank it was showing (read now, before anything rewrites the entry)
+  const tank = entryTank();
+  const refocus = () => {
+    const g = useGame.getState().game;
+    if (tank && g?.tanks[tank] && useUI.getState().focusedTankId !== tank) useUI.getState().set({ focusedTankId: tank });
+  };
   if (!parsed) {
     guardLeave(() => {
       toast(BROKEN_LINK);
@@ -378,7 +397,10 @@ function onHashChange(): void {
     }, keep);
     return;
   }
-  guardLeave(() => applyRoute(parsed.route, parsed.filters), keep);
+  guardLeave(() => {
+    refocus();
+    applyRoute(parsed.route, parsed.filters);
+  }, keep);
 }
 
 // ───────────────────────────── boot, reload, leaving ─────────────────────────────

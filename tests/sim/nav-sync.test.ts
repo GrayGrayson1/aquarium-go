@@ -473,3 +473,36 @@ describe('audit B13: the tour leaves no Back trail', () => {
     expect(pushes()).toBe(before + 1);
   });
 });
+
+describe('audit B22: Back returns to the tank it was showing', () => {
+  it('after following an alert to another tank, Back closes its card and brings back the first tank', async () => {
+    const { createTank } = await import('@/sim/tanks');
+    const other = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 4, z: 0, rotY: 0 } });
+    const first = g.tankOrder[0];
+    expect(useUI.getState().focusedTankId).toBe(first);
+    await flush();
+    expect(fakeHistory.state).toMatchObject({ aqTank: first });
+    // the bell's row: the other tank, with its card
+    gesture();
+    useUI.getState().set({ focusedTankId: other.id, view: 'tank', panel: null });
+    useShell.getState().set({ tankCardOpen: true });
+    await flush();
+    expect(fakeLocation.hash).toBe(`#/tanks/${other.id}`);
+    browserBack();
+    await flush();
+    expect(fakeLocation.hash).toBe('#/');
+    expect(useShell.getState().tankCardOpen).toBe(false);
+    expect(useUI.getState().focusedTankId).toBe(first);
+    expect(fakeHistory.state).toMatchObject({ aqTank: first });
+  });
+
+  it('switching tanks at #/ keeps the entry’s tank current (no new entry)', async () => {
+    const { createTank } = await import('@/sim/tanks');
+    const other = createTank(g, 'g20L', 'freshwater_tropical', { cycled: true, placement: { x: 4, z: 0, rotY: 0 } });
+    const before = pushes();
+    useUI.getState().set({ focusedTankId: other.id });
+    await flush();
+    expect(fakeHistory.state).toMatchObject({ aqTank: other.id });
+    expect(pushes()).toBe(before);
+  });
+});
