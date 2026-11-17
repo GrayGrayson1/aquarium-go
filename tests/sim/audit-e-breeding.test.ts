@@ -271,6 +271,18 @@ describe('E17: hermaphrodites and snails that can’t be sexed by eye', () => {
     const snail = addCreature(state, createCreature(state, simRng(state), 'mystery_snail', { ageDays: 40 }), fresh.id);
     snail.sex = 'unknown';
     expect(sexRoleText(snail, getSpecies('mystery_snail'), state.clock.hour)).toEqual({ label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' });
+    // the review: the pairing advice only where the game pairs them; a tang, a puffer and an anemone get the plain fact
+    const trochus = addCreature(state, createCreature(state, simRng(state), 'trochus_snail', { ageDays: 40 }), reef.id);
+    trochus.sex = 'unknown';
+    expect(sexRoleText(trochus, getSpecies('trochus_snail'), state.clock.hour)).toEqual({ label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' });
+    for (const id of ['yellow_tang', 'fahaka_puffer', 'bubbletip_anemone']) {
+      const sp = getSpecies(id);
+      expect(sp.lifecycle.sexVisibleAtDays, id).toBeGreaterThanOrEqual(sp.lifecycle.lifespanDays);
+      const tank = createTank(state, 'g180', sp.waterClasses[0], { cycled: true });
+      const c = addCreature(state, createCreature(state, simRng(state), id, { ageDays: 60 }), tank.id);
+      c.sex = 'unknown';
+      expect(sexRoleText(c, sp, state.clock.hour), id).toEqual({ label: 'Can’t be told by eye' });
+    }
   });
 });
 
