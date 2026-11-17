@@ -285,7 +285,7 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
     cl.stageSinceHour = f.g.clock.hour - 120;
     // Audit 2026-11-17 (H15): with nothing in stock the row says the young go hungry, so give it baby brine to dose
     f.g.inventory.foods.baby_brine_live = 20;
-    expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · \d+ (brine|infusoria)/);
+    expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · \d+ (baby brine|infusoria) servings a day/);
     f.g.inventory.foods.baby_brine_live = 0;
     f.g.inventory.foods.infusoria_culture = 0;
     expect(ops(f.g).feed()).toMatch(/Fresh 1 betta [a-z -]+ · no baby brine or infusoria in stock: the young go hungry Out of food/);

@@ -177,7 +177,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
         icon={<Waves size={17} aria-hidden />}
         name="Water changes"
         status={wHeld ? <Status tone="watch" icon="held">Held</Status> : done !== null ? <Status tone="good">Done {formatClock(done)}</Status> : <Status tone="neutral" icon="time">{changers.length ? 'Due' : 'Off'}</Status>}
-        lines={[`${changers.length} ${changers.length === 1 ? 'tank' : 'tanks'} · ${gal(galDay)} gal`, ...(small ? [] : [`${share}% each morning · glass weekly`])]}
+        lines={[`${changers.length} ${changers.length === 1 ? 'tank' : 'tanks'} · ${gal(galDay)} gal`, ...(small ? [] : [`${share}% each morning · glass cleaned weekly`])]}
         tone={wHeld ? 'watch' : null}
         onOpen={tier.water ? () => nav.tab('water') : undefined}
       />
@@ -240,7 +240,7 @@ function systemTiles(g: GameState, snap: OpsSnapshot, tier: OpsTier, nav: OpsNav
           isNew
           status={held ? <Status tone="watch" icon="held">Held</Status> : <Status tone="good" icon="running">Running</Status>}
           tone={held ? 'watch' : null}
-          lines={small ? [`Makes ${brine + inf} servings a day`] : [`Baby brine ${brine} a day · uses ${last?.used[BRINE] ?? 0}`, `Infusoria ${inf} a day · uses ${last?.used[INFUSORIA] ?? 0}`]}
+          lines={small ? [`Makes ${brine + inf} servings a day`] : [`Baby brine ${brine} servings a day · uses ${last?.used[BRINE] ?? 0}`, `Infusoria ${inf} servings a day · uses ${last?.used[INFUSORIA] ?? 0}`]}
           onOpen={() => nav.tab('feed')}
         />
       ),

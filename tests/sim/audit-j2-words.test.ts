@@ -15,6 +15,8 @@ import { grantReward } from '@/sim/facility/progression';
 import { moduleFor } from '@/sim/life/breeding/registry';
 import { getSpecies } from '@/data/species';
 import { tierLadder } from '@/ui/common/ops';
+import { whenPhrase, saltBuyLabel } from '@/ui/panels/operations/issues';
+import { money as showMoney } from '@/ui/panels/shows/util';
 
 const src = (path: string) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8');
 
@@ -125,5 +127,45 @@ describe('Audit 2026-11-17 (J29): a shared link previews with a description', ()
     expect(meta('property', 'og:description')).toBe(d);
     expect(meta('property', 'og:title')).toBe('Aquarium Go');
     expect(meta('property', 'og:type')).toBe('website');
+  });
+});
+
+describe('Audit 2026-11-17 (J30): numbers say what they count', () => {
+  it('a time inside a sentence reads “at”, “tomorrow at” or “on Day N at”', () => {
+    const now = 24 * 3 + 8; // Day 4, 8:00 AM
+    expect(whenPhrase(24 * 3 + 9, now)).toBe('at 9:00 AM');
+    expect(whenPhrase(24 * 4 + 9, now)).toBe('tomorrow at 9:00 AM');
+    expect(whenPhrase(24 * 11 + 9, now)).toBe('on Day 12 at 9:00 AM');
+  });
+
+  it('servings, gallons and days carry their unit', () => {
+    const cases: [string, string, string][] = [
+      ['ui/panels/operations/WaterTab.tsx', 'gal batches below 60%', 'gal batches when the salt water reserve is below 60%'],
+      ['ui/panels/operations/WaterTab.tsx', '>Short Day {', '>Short on Day {'],
+      ['ui/panels/operations/WaterTab.tsx', 'reorders ${whenText(', 'reorders ${whenPhrase('],
+      ['ui/panels/operations/MapTab.tsx', 'Runs short about Day', 'Runs short on about Day'],
+      ['ui/panels/operations/MapTab.tsx', '* 3} a day`', '* 3} servings a day`'],
+      ['ui/panels/operations/MapTab.tsx', 'FOOD_ROOM.coneYield} a day', 'FOOD_ROOM.coneYield} servings a day'],
+      ['ui/panels/operations/MapTab.tsx', '{g1(r.f)} fresh + {g1(r.s)} salt', '{g1(r.f)} gal fresh + {g1(r.s)} gal salt'],
+      ['ui/panels/operations/FeedTab.tsx', 'made / used a day', 'Makes {made} · uses {used} a day'],
+      ['ui/panels/operations/FeedTab.tsx', "'brine' : 'infusoria'}`", "'baby brine' : 'infusoria'} servings a day`"],
+      ['ui/panels/operations/Overview.tsx', 'glass weekly`', 'glass cleaned weekly`'],
+      ['ui/panels/operations/Overview.tsx', '${brine} a day', '${brine} servings a day'],
+      ['ui/panels/operations/issues.ts', 'makes up to ${Math.round(p.capacity ?? 0)}.', 'makes up to ${Math.round(p.capacity ?? 0)} gal a day.'],
+      ['ui/panels/operations/issues.ts', 'prep station makes ${Math.round(p.capacity ?? 0)}.', 'prep station makes ${Math.round(p.capacity ?? 0)} gal a day.'],
+      ['ui/panels/operations/LinesTab.tsx', 'lists ${v.quarantined.count}`', 'lists ${v.quarantined.count} ${v.quarantined.word}`'],
+      ['ui/panels/livestock/Production.tsx', 'value: `~${v.next.days}', 'value: `About ${v.next.days}'],
+    ];
+    for (const [file, gone, now] of cases) {
+      const s = src(file);
+      expect(s, `${file}: ${gone}`).not.toContain(gone);
+      expect(s, `${file}: ${now}`).toContain(now);
+    }
+  });
+
+  it('money goes through formatMoney, not "$" and a number', () => {
+    for (const f of ['ui/panels/operations/issues.ts', 'ui/panels/operations/actions.ts', 'ui/panels/shows/util.ts']) expect(src(f), f).not.toMatch(/`[^`]*\$\$\{/);
+    expect(saltBuyLabel).toMatch(/^Buy \d+ kg · \$\d+$/);
+    expect(showMoney(1234.4)).toBe('$1,234');
   });
 });

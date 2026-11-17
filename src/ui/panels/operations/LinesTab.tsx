@@ -229,7 +229,7 @@ function ComingUp({ g, lines }: { g: GameState; lines: ProductionLine[] }) {
     const v = lineView(g, line);
     if (!v) continue;
     const short = line.name.replace(/ line$/, '');
-    if (v.quarantined.listsDay) events.push({ day: v.quarantined.listsDay, text: `${short} lists ${v.quarantined.count}` });
+    if (v.quarantined.listsDay) events.push({ day: v.quarantined.listsDay, text: `${short} lists ${v.quarantined.count} ${v.quarantined.word}` });
     if (v.next.days !== undefined && v.status === 'running') events.push({ day: today + v.next.days, text: `${short} spawns` });
     if (v.status === 'waiting' && v.next.restartDay) events.push({ day: v.next.restartDay, text: `${short} restarts` });
   }

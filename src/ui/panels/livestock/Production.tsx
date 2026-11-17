@@ -269,7 +269,7 @@ export function LineDetail({ g, line, onEnded }: { g: GameState; line: Productio
     const why = notReadyText(v);
     if (why) return { value: 'Not ready', hint: why.charAt(0).toUpperCase() + why.slice(1) }; // Audit 2026-11-17 (H4)
     if (v.next.days === undefined) return { value: '—', hint: 'Pair getting ready' };
-    return { value: `~${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`, hint: `${v.breed?.name ?? 'Breed tank'} · day ${v.next.dayOf} of ${v.next.cycle}` };
+    return { value: `About ${v.next.days} ${v.next.days === 1 ? 'day' : 'days'}`, hint: `${v.breed?.name ?? 'Breed tank'} · day ${v.next.dayOf} of ${v.next.cycle}` };
   })();
   const growing = v.raising.count > 0
     ? { value: `${v.raising.count} ${v.raising.word}`, hint: v.raising.dayOf !== undefined ? `${raiseName} · day ${v.raising.dayOf} of ${v.raising.ofDays}` : `${raiseName}${v.raising.full ? ' · full' : ''}` }
