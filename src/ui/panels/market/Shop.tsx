@@ -276,6 +276,9 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
   const fits = tanks.some((t) => !!sp && fitsEnvironment(sp, t.environment)); // lane:brackish
   const expSoon = offer.expiresHour - g.clock.hour < 6;
   const affordable = g.finance.money >= offer.price;
+  // audit 2026-11-17 (F20) — a group (not a Prismatic lot) whose whole price is too much may still sell a smaller pick
+  const pickFewer = !affordable && offer.kind === 'group' && offer.creatures.length > 1 && !isLotOffer(offer) && g.finance.money >= offerPickPrice(offer, 1).price;
+  const short = pickFewer ? `Can’t afford all ${offer.creatures.length}: pick fewer` : 'Can’t afford yet';
   const locked = sp ? !speciesUnlocked(g, sp) : false;
   // lane:genetics — a Prismatic in the offer (any member of a group) is the face of the card
   const shimmer = offer.creatures.find((c) => isPrismatic(c));
@@ -286,7 +289,7 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
   // after the Genetics Lab: hidden carriers of rare alleles ("Carries Cambodian")
   const carries = sp && lead && geneticsRevealLevel(g, lead) >= 1 ? safe(() => rareCarried(sp, lead.genome), []) : [];
   // the notes under the price, as they read on the card (B-178: status in the card's name)
-  const status = [!fits && sp ? `Needs a ${ENV_LABEL[sp.environment].toLowerCase()} tank` : '', fits && !affordable ? 'Can’t afford yet' : '', locked ? 'Locked' : ''].filter(Boolean).join(', ');
+  const status = [!fits && sp ? `Needs a ${ENV_LABEL[sp.environment].toLowerCase()} tank` : '', fits && !affordable ? short : '', locked ? 'Locked' : ''].filter(Boolean).join(', ');
   return (
     <Card className={clsx('pn-offer', 'ag-offercard', shimmer && 'ag-prismatic-card')} onClick={onOpen} testId={`shop-offer-${index}`} label={`${shimmer ? 'Prismatic ' : ''}${title}, ${formatMoney(offer.price)}${status ? `, ${status}` : ''}`}>
       <div className="pn-offer__top">
@@ -325,7 +328,7 @@ function OfferCard({ g, offer, index, onOpen, tanks }: { g: GameState; offer: Sh
         <div className="pn-offer__price">
           <Money value={offer.price} />
           {!fits && <span className="pn-tiny pn-tone-watch">Needs a {sp ? ENV_LABEL[sp.environment].toLowerCase() : ''} tank</span>}
-          {fits && !affordable && <span className="pn-tiny pn-tone-watch">Can’t afford yet</span>}
+          {fits && !affordable && <span className="pn-tiny pn-tone-watch">{short}</span>}
           {locked && (
             // chunk 19 (QOL-006) — the card says what it waits for (its detail has the whole route)
             <span className="pn-tiny pn-muted ag-offercard__lock" title={sp ? lockHintOf(g, sp) : undefined}>

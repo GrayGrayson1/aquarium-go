@@ -577,6 +577,20 @@ describe('F18: "ended without a sale" advice fits the listing', () => {
   });
 });
 
+describe('F20: a group’s card says "pick fewer" when part of it is affordable', () => {
+  it('10 neon tetras at $45 with $20 in the bank', () => {
+    const g = game(20);
+    g.market.stock = [];
+    const rng = simRng(g);
+    const o: ShopOffer = { id: 'offer_f20', kind: 'group', speciesId: 'neon_tetra', creatures: Array.from({ length: 10 }, () => createCreature(g, rng, 'neon_tetra')), price: 45, unitPrice: 5, seller: 'Test Breeder', expiresHour: g.clock.hour + 48 };
+    g.market.stock.push(o);
+    const out = text(renderToStaticMarkup(createElement(ShopTab, { g, offerId: null, setOfferId: () => {} })));
+    expect(out).toContain('Can’t afford all 10: pick fewer');
+    g.finance.money = 2;
+    expect(text(renderToStaticMarkup(createElement(ShopTab, { g, offerId: null, setOfferId: () => {} })))).toContain('Can’t afford yet');
+  });
+});
+
 describe('F7: an empty room quotes (and the restart loan covers) a whole kit, not the glass alone', () => {
   it('the cheapest kit is glass + gear + substrate, and the restart need counts it', () => {
     const g = game(0);
