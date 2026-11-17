@@ -413,7 +413,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-money-pill__coin { width: 24px; height: 24px; font-size: 12px; }
   .ag-money-pill__val { font-size: calc(14.5px * var(--text-scale)); }
   .ag-alerts-btn { width: 40px; min-height: 40px; }
-  .ag-alerts-pop { position: fixed; top: calc(var(--edge-t) + var(--topbar-h) + 8px); left: var(--edge-l); right: var(--edge-r); width: auto; }
+  .ag-alerts-pop { position: fixed; top: calc(var(--edge-t) + var(--topbar-h) + 8px); left: var(--edge-l); right: var(--edge-r); width: auto; max-height: min(72vh, 640px, calc(100dvh - var(--edge-t) - var(--topbar-h) - var(--dock-h) - var(--edge) - var(--safe-b) - 16px)); }
   .ag-hudpill { border-radius: 14px; }
 
   .ag-tankbar { top: calc(var(--edge) + var(--topbar-h) + 6px); right: var(--edge); gap: 6px; }
@@ -667,7 +667,9 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   /* the rail's backdrop-filter makes it the containing block of its fixed popovers: they hang off its left edge */
   .ag-toolpop { left: auto; right: calc(100% + 8px); top: 50px; bottom: auto; width: min(340px, calc(100vw - var(--rail-w) - var(--edge) * 2 - 8px)); max-height: calc(100dvh - var(--edge) - var(--topbar-h) - var(--dock-h) - var(--edge) * 2 - 56px); overflow-y: auto; }
   .ag-foodlist { max-height: none; overflow: visible; }
-  .ag-alerts-pop { max-height: calc(100dvh - var(--edge) * 2 - var(--topbar-h) - 8px); }
+  /* audit B1 review: it ends 8 px above the tab bar (64 px at the foot, z-index 60, over the drawer's 50): its last
+     rows and "Full event log" were under it */
+  .ag-alerts-pop { max-height: calc(100dvh - var(--edge-t) - var(--topbar-h) - var(--dock-h) - var(--edge) - var(--safe-b) - 16px); }
   .ag-hud::before { height: calc(var(--edge) + var(--topbar-h) + 60px); }
   :root:has(.ag-tcard.ag-sheet--bottom) .ag-hud__coach { opacity: 0; visibility: hidden; }
   :root:has(.ag-ccard.ag-sheet--bottom) .ag-hud__coach { opacity: 0; visibility: hidden; } /* (P1: nearly full height here too) */
