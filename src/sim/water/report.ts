@@ -46,6 +46,15 @@ function idleUnit(s: EquipmentSummary, kind: EquipmentKind): EqEntry | undefined
 }
 const idleAdvice = (e: EqEntry): string => (e.inst.failed ? `Repair the ${e.def.name}.` : `The ${e.def.name} is switched off — switch it on.`);
 
+/**
+ * The highest KH (dKH) these animals prefer in this water class: the KH row turns WATCH a little above it, and a
+ * buffer dose is refused at it (Audit 2026-11-17 C4).
+ */
+export function khPreferredMax(tank: Tank, species: SpeciesDefinition[]): number {
+  const kr = (CLASS_DEFAULTS[tank.waterClass] ?? CLASS_DEFAULTS.freshwater_tropical).kh;
+  return Math.min(kr.max + 4, ...species.filter((x) => x.kh).map((x) => x.kh!.max));
+}
+
 function groupBySpecies(inh: Inhabitant[]): Inhabitant[][] {
   const m = new Map<string, Inhabitant[]>();
   for (const i of inh) {
@@ -419,7 +428,9 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
       advice = j.low
         ? w.kh < 2
           ? 'Carbonate hardness (KH) is exhausted, so acids are pulling pH down. Dose buffer and do a water change.'
-          : 'Do a water change and dose buffer to raise KH. Check for rotting food or heavy CO₂ injection.'
+          : w.kh >= khPreferredMax(tank, species) // Audit 2026-11-17 C4 — a buffer dose is refused there
+            ? 'Do a water change, and check for rotting food or heavy CO₂ injection.'
+            : 'Do a water change and dose buffer to raise KH. Check for rotting food or heavy CO₂ injection.'
         : 'Do small water changes with softer water; remove limestone or aragonite from soft-water tanks.';
       if (noCommon) {
         reason = `${reason ?? ''} No pH suits all of these animals at once — a compatibility problem, not a care one.`.trim();
@@ -570,7 +581,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const kr = d.kh;
     const spK = species.filter((x) => x.kh).map((x) => x.kh!);
     const kMin = Math.max(kr.min, ...spK.map((k) => k.min));
-    const kMax = Math.min(kr.max + 4, ...spK.map((k) => k.max));
+    const kMax = khPreferredMax(tank, species);
     const st: StatusLevel = w.kh < Math.min(1, kMin * 0.5) || w.kh < (marine ? 5.5 : 0.8) ? 'danger' : w.kh < kMin - 0.3 || w.kh > kMax + 1 ? 'watch' : 'good';
     add(
       {

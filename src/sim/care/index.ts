@@ -16,6 +16,7 @@ import { CLASS_DEFAULTS, SALT_KG_PER_LITRE, LITRES_PER_GALLON, DETOX_FREE_FRACTI
 import { equipmentSummary, expectedTempC, safeGallons, inhabitantsOf, safeHabitat } from '../water/env';
 import { tuneTankForSpecies } from '../water/kits';
 import { sanitizeWater } from '../water/step';
+import { khPreferredMax } from '../water/report'; // Audit 2026-11-17 C4
 import { applyWaterChange, changeSaltNeed, clampChangeFraction, scrapeGlass } from '../water/change'; // lane:automation (AUTO-008)
 import { noteBreedingFood } from '../life/breeding';
 import { plural as pluralName, cap } from '../compat/text';
@@ -347,6 +348,8 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
   let message: string;
   switch (additive) {
     case 'bacteria': {
+      // Audit 2026-11-17 C4 — an established filter gains next to nothing: say so before charging (up to $120 a dose)
+      if (w.bioMaturity >= 0.9) return fail('The filter is already fully established — no need for bottled bacteria.');
       if (!pay('Bottled bacteria')) return fail(`Bottled bacteria costs ${money(cost)} for this tank — not enough money.`);
       const m0 = w.bioMaturity;
       w.bioMaturity = clamp(m0 + (1 - m0) * 0.35, 0, 1);
@@ -381,9 +384,11 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
       const bound: string[] = [];
       if (nh >= 0.005) bound.push(`ammonia (${(w.ammonia + nh).toFixed(2)} → ${w.ammonia.toFixed(2)} ppm)`);
       if (no2 >= 0.005) bound.push(`nitrite (${(w.nitrite + no2).toFixed(2)} → ${w.nitrite.toFixed(2)} ppm)`);
+      // Audit 2026-11-17 C4 — with nothing to bind there is no "cause" to fix: say what the dose does (the water step
+      // binds any ammonia or nitrite that appears while it works, so a dose ahead of new animals still helps)
       message = bound.length
         ? `Conditioner bound most of the ${bound.join(' and ')} into a less toxic form for about a day. It buys time, but the cause still needs fixing — change water and feed less; when it wears off, what it holds comes back.`
-        : 'Conditioner is binding ammonia and nitrite into a less toxic form for about a day. It buys time, but the cause still needs fixing — change water and feed less.';
+        : 'There’s no ammonia or nitrite in the water right now. The conditioner will bind any that appears over the next day.';
       break;
     }
     case 'salt': {
@@ -412,6 +417,9 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
       break;
     }
     case 'buffer': {
+      // Audit 2026-11-17 C4 — at the top of what these animals like, more buffer only pushes KH and pH past it
+      if (w.kh >= khPreferredMax(tank, inhabitantsOf(state, tank.id).map((i) => i.species)) - 1e-6)
+        return fail(`KH is already ${w.kh.toFixed(1)} dKH — more buffer would push it and the pH higher than your animals like.`);
       if (!pay('pH buffer')) return fail(`Buffer costs ${money(cost)} — not enough money.`);
       const k0 = w.kh;
       const p0 = w.pH;

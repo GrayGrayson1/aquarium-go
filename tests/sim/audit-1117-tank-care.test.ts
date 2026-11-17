@@ -125,3 +125,42 @@ describe('C3: an installed heater, chiller or light that is failed or switched o
     expect(fixForWaterIssue(firstTank(s), { text: p.reason!, advice: p.advice, param: 'light' })?.label).toBe('Repair');
   });
 });
+
+describe('C4: a dose that can’t help is refused before it is paid for, and says so', () => {
+  it('bottled bacteria in an established filter: refused, nothing charged', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    s.finance.money = 500;
+    t.water.bioMaturity = 0.95;
+    const r = dose(s, t.id, 'bacteria');
+    expect(r).toEqual({ ok: false, message: 'The filter is already fully established — no need for bottled bacteria.' });
+    expect(s.finance.money).toBe(500);
+    t.water.bioMaturity = 0.5;
+    expect(dose(s, t.id, 'bacteria').ok).toBe(true);
+    expect(s.finance.money).toBeLessThan(500);
+  });
+
+  it('buffer at the top of what the animals like: refused, nothing charged', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    s.finance.money = 500;
+    t.water.kh = 14;
+    const r = dose(s, t.id, 'buffer');
+    expect(r.ok).toBe(false);
+    expect(r.message).toBe('KH is already 14.0 dKH — more buffer would push it and the pH higher than your animals like.');
+    expect(s.finance.money).toBe(500);
+    expect(t.water.kh).toBe(14);
+  });
+
+  it('conditioner with nothing to bind says what it does, not "the cause still needs fixing"', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    s.finance.money = 500;
+    t.water.ammonia = 0;
+    t.water.nitrite = 0;
+    const r = dose(s, t.id, 'conditioner');
+    expect(r.ok).toBe(true);
+    expect(r.message).toMatch(/^There’s no ammonia or nitrite in the water right now\. The conditioner will bind any that appears over the next day\./);
+    expect(r.message).not.toMatch(/cause still needs fixing/);
+  });
+});

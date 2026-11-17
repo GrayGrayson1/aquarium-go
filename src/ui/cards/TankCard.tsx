@@ -47,7 +47,7 @@ import { getTankTier } from '@/data/catalog/tanks';
 import { findSpecies } from '@/data/species'; // lane:qa-play
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
-import { waterChangeCost } from '@/sim/care'; // Audit 2026-11-17 C1
+import { waterChangeCost, doseCost } from '@/sim/care'; // Audit 2026-11-17 C1, C4
 import type { Command } from '@/sim/commands';
 import { evaluateTank } from '@/sim/compat';
 import { beautyScore } from '@/sim/aquascape';
@@ -175,6 +175,11 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
   // 1.4 °C sudden-change stress line — and two of them give the ~2 °C drop the breeding cue looks for.
   const coolCue = safe('coolCue', () => creaturesInTank(game, tank.id).some((c) => !!findSpecies(c.speciesId)?.breeding?.conditions?.coolingTrigger), false);
   const change25 = salty ? safe('waterChangeCost', () => waterChangeCost(game, tank.id, 0.25), null) : null; // Audit 2026-11-17 C1
+  // Audit 2026-11-17 C4 — a dose's price scales with the tank: show it before the tap, not only in the toast
+  const price = (a: Parameters<typeof doseCost>[2]) => {
+    const c = safe('doseCost', () => doseCost(game, tank.id, a), 0);
+    return c > 0 ? ` · ${formatMoney(c, { cents: Math.round(c * 100) % 100 !== 0 })}` : '';
+  };
 
   return (
     <>
@@ -280,12 +285,12 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
               <FlaskConical size={15} aria-hidden /> Dose
             </div>
             <div className="ag-row ag-wrap" style={{ gap: 6 }}>
-              <span data-fix="dose-conditioner" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'conditioner' }, 'dosed', 'bubble')}>Conditioner</Chip></span>
-              <span data-fix="dose-bacteria" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'bacteria' }, 'dosed', 'bubble')}>Bottled bacteria</Chip></span>
+              <span data-fix="dose-conditioner" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'conditioner' }, 'dosed', 'bubble')}>Conditioner{price('conditioner')}</Chip></span>
+              <span data-fix="dose-bacteria" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'bacteria' }, 'dosed', 'bubble')}>Bottled bacteria{price('bacteria')}</Chip></span>
               {salty && <span data-fix="dose-salt" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'salt' }, 'dosed', 'bubble')}>Salt mix</Chip></span>}
-              <span data-fix="dose-buffer" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'buffer' }, 'dosed', 'bubble')}>Buffer</Chip></span>
-              {planted && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'fertilizer' }, 'dosed', 'bubble')}>Fertilizer</Chip>}
-              {reef && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'coral_supplement' }, 'dosed', 'bubble')}>Coral supplement</Chip>}
+              <span data-fix="dose-buffer" className="ag-fixwrap"><Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'buffer' }, 'dosed', 'bubble')}>Buffer{price('buffer')}</Chip></span>
+              {planted && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'fertilizer' }, 'dosed', 'bubble')}>Fertilizer{price('fertilizer')}</Chip>}
+              {reef && <Chip size="sm" onClick={() => care({ k: 'dose', tank: tank.id, additive: 'coral_supplement' }, 'dosed', 'bubble')}>Coral supplement{price('coral_supplement')}</Chip>}
             </div>
             {salty && (
               <div className="ag-row ag-wrap" style={{ gap: 6, alignItems: 'center' }}>
