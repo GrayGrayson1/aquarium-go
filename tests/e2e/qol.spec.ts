@@ -326,6 +326,19 @@ test.describe('QOL-003 and QOL-004: search, filters and Find anything', () => {
     await expect(tid(page, 'build-wc-reef')).toHaveClass(/ag-glow|is-on/);
   });
 
+  test('audit B5: Find anything finds the help: “ammonia” opens The nitrogen cycle in the Encyclopedia', async ({ page }) => {
+    await start(page);
+    await page.keyboard.press('Control+k');
+    await tid(page, 'find-input').fill('ammonia');
+    const hit = tid(page, 'find-result-science:nitrogen_cycle');
+    await expect(hit).toContainText('The nitrogen cycle');
+    await expect(hit).toContainText('Encyclopedia › Aquarium science');
+    await hit.click();
+    await expect(tid(page, 'panel-encyclopedia')).toBeVisible();
+    await expect(page.locator('.pn-article.is-open .pn-article__title')).toContainText('The nitrogen cycle');
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/encyclopedia/science/nitrogen_cycle');
+  });
+
   test('Find anything opens a screen with the keyboard alone', async ({ page }) => {
     await start(page);
     await page.locator('canvas').first().click({ position: { x: 5, y: 5 }, force: true }).catch(() => {});

@@ -3,11 +3,12 @@
  * sort, and Find anything's index (what it finds, in which group, and where each result goes).
  */
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
 import type { ShopOffer } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { fold, matches, queryWords, score } from '@/ui/panels/common/match';
 import { offerSearchMatches, sortOffers } from '@/ui/panels/market/shopFilters';
-import { FIND_GROUPS, findAnything, needsTankText, orderResults, PER_GROUP } from '@/ui/search/searchIndex';
+import { FIND_GROUPS, findAnything, needsTankText, nodeText, orderResults, PER_GROUP } from '@/ui/search/searchIndex';
 import { DECOR } from '@/data/catalog/decor';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { RESEARCH } from '@/data/research';
@@ -147,5 +148,26 @@ describe('QOL-004: an item no tank of yours can take (reviewer B5)', () => {
     t.environment = 'marine';
     t.waterClass = 'reef';
     expect(needsTankText(g, ['marine'], ['reef'])).toBeNull();
+  });
+});
+
+describe('audit B5: Find anything finds the help', () => {
+  const science = (q: string) => orderResults(findAnything(game(), q)).filter((r) => r.group === 'Aquarium science');
+  it('finds the Aquarium science articles by their words, and opens each in the Encyclopedia', () => {
+    expect(science('ammonia').map((r) => r.key)).toContain('science:nitrogen_cycle');
+    expect(science('nitrite').map((r) => r.key)).toContain('science:nitrogen_cycle');
+    expect(science('cycling').map((r) => r.key)).toContain('science:cycling');
+    expect(science('water change')[0]?.key).toBe('science:water_changes');
+    expect(science('salinity')[0]?.key).toBe('science:salinity');
+    const hit = science('cycling').find((r) => r.key === 'science:cycling')!;
+    expect(hit).toMatchObject({ title: 'What “cycling” means', detail: 'Encyclopedia › Aquarium science' });
+    expect(hit.go).toEqual({ kind: 'route', route: { kind: 'panel', panel: 'encyclopedia', tab: 'science', target: 'science:cycling' } });
+  });
+  it('lists them right after the screens, and not for an empty query', () => {
+    expect(FIND_GROUPS.indexOf('Aquarium science')).toBe(1);
+    expect(findAnything(game(), '').some((r) => r.group === 'Aquarium science')).toBe(false);
+  });
+  it('reads an article’s text without its markup', () => {
+    expect(nodeText(createElement('p', null, 'Waste becomes ', createElement('b', null, 'ammonia'), ', ', 3, ' times'))).toBe('Waste becomes  ammonia ,  3  times');
   });
 });
