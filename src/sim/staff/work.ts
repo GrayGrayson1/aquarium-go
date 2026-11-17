@@ -36,7 +36,13 @@ import { isSaltClass } from '../water/constants';
 import { EGGS_SUPPLY, FOOD_ROOM, VEGETABLES } from '@/data/catalog/machines'; // lane:automation (chunk 5)
 import { SALT_KG_PER_GAL, batchSaltKg, changerOf, saltDaysLeft, saltWaterPerDay } from '../automation/water'; // lane:automation (chunk 5)
 import { batchGal } from '../automation/reserve'; // lane:automation (chunk 5)
-import { asStaff, clamp, dayRecord, displayTankIds, ensureStaff, firstName, fmt$, noteIssue, totals, FEED_RING, TALK_RING } from './common';
+import { doserOf } from '../automation/food'; // Audit 2026-11-17 (H2): a working doser feeds its tank's young
+import { isHeld } from '../automation/hold';
+import { currentPhase, isCarried, youngLabel } from '../life/breeding/clutch';
+import { moduleFor } from '../life/breeding/registry';
+import { foodRecency } from '../life/breeding/common';
+import { DOSER } from '@/data/catalog/machines';
+import { asStaff, clamp, dayRecord, displayTankIds, dropIssues, ensureStaff, firstName, fmt$, isExhibit, noteIssue, totals, FEED_RING, TALK_RING } from './common';
 import { dayOf } from '../time';
 import * as dmath from '../dmath';
 
@@ -377,6 +383,77 @@ export function keeperFeed(state: GameState, m: StaffMember, tank: Tank, mode: '
   return { fed, missing };
 }
 
+/**
+ * What to do when the cupboard has nothing an animal eats, for the reason no reorder comes (Audit 2026-11-17, H13: it
+ * said "raise the stock manager’s budget" with her orders switched off or no cash at all).
+ */
+export function restockHint(state: GameState, missing: SpeciesDefinition[]): string {
+  const sm = stockManager(state);
+  const cheapest = Math.min(...FOODS.filter((f) => missing.some((sp) => eats(sp, f))).map((f) => f.price));
+  if (Number.isFinite(cheapest) && state.finance.money < cheapest) return 'Buy food in Market › Supplies once there’s cash.';
+  if (!sm) return 'Buy food in Market › Supplies, or hire a stock manager.';
+  if (state.staff?.ordersOff) return `Buy food in Market › Supplies, or switch ${firstName(sm)}’s orders back on in Visitors › Staff.`;
+  return `Buy food in Market › Supplies, or raise ${firstName(sm)}’s stock budget.`;
+}
+
+// ── Audit 2026-11-17 (H2, the owner's choice: "keepers feed fry") ──
+
+/** Young offered one of their phase's foods this recently (by hand, a doser or the keeper's own meal) aren't fed again. */
+export const YOUNG_FED_RECENTLY_H = 4;
+
+/** Food tags in words, for the keeper's "no {food} in stock". */
+const TAG_WORDS: Record<string, string> = { baby_brine: 'baby brine', infusoria: 'infusoria', copepod_live: 'live copepods', pellet_small: 'small pellets', pellet_sinking: 'sinking pellets', algae_wafer: 'algae wafers', vegetable: 'vegetables', brine_shrimp: 'brine shrimp', bloodworm: 'bloodworms' };
+
+/** "baby brine or infusoria": the first two of a phase's foods that the shop sells. */
+export function youngFoodWords(tags: readonly string[]): string {
+  const sold = tags.filter((t) => FOODS.some((f) => f.tags.includes(t as never)));
+  return sold.slice(0, 2).map((t) => TAG_WORDS[t] ?? t.replace(/_/g, ' ')).join(' or ') || 'first foods';
+}
+
+/**
+ * A keeper's round feeds the young in the tank their first foods from stock, as a live-food doser does (the same
+ * `feedTank`, so the brood's food recency is what feeds them; one way young get fed): each brood past its yolk, in a
+ * phase that eats fed food, gets the first of its phase's foods in stock (in the phase's order, made for this water and
+ * species), about a serving per 20 young. Nothing when a working doser feeds the tank, or the young were offered their
+ * food in the last few hours. Returns the foods given and the broods with none of theirs in stock. Draws nothing.
+ */
+export function keeperFeedYoung(state: GameState, m: StaffMember, tank: Tank, hour: number): { fed: number; short: { label: string; tags: readonly string[] }[] } {
+  const short: { label: string; tags: readonly string[] }[] = [];
+  if (doserOf(tank) && !isHeld(state, 'food')) return { fed: 0, short };
+  const plan = new Map<string, number>();
+  for (const cl of Object.values(state.clutches)) {
+    if (cl.tankId !== tank.id || !(cl.count > 0) || cl.stage === 'eggs' || cl.stage === 'in_pouch' || isCarried(cl)) continue;
+    const sp = findSpecies(cl.speciesId);
+    if (!sp) continue;
+    const mod = moduleFor(sp);
+    const ph = currentPhase(cl, mod);
+    if (!ph || !ph.foods.length) continue;
+    // still on its yolk: nothing to feed yet (the doser's rule, src/sim/automation/food.ts)
+    const yolkEnd = (cl.stageSinceHour ?? cl.laidHour) + mod.plan.yolkFrac * sp.breeding.fryRearingHours;
+    if (ph === mod.plan.phases[0] && hour < yolkEnd) continue;
+    if (foodRecency(tank, ph.foods, hour, YOUNG_FED_RECENTLY_H, 0) >= 1) continue;
+    const rank = (f: FoodDef) => Math.min(...f.tags.map((t) => ph.foods.indexOf(t)).filter((i) => i >= 0));
+    const fits = FOODS.filter((f) => f.tags.some((t) => ph.foods.includes(t)) && !madeForOtherWater(f, tank.environment) && !madeForOtherSpecies(f, sp.id)).sort((a, b) => rank(a) - rank(b) || (a.id < b.id ? -1 : 1));
+    const pick = fits.find((f) => inStock(state, f.id) - (plan.get(f.id) ?? 0) >= 1);
+    if (!pick) {
+      short.push({ label: youngLabel(cl, mod), tags: ph.foods });
+      continue;
+    }
+    const left = inStock(state, pick.id) - (plan.get(pick.id) ?? 0);
+    plan.set(pick.id, (plan.get(pick.id) ?? 0) + Math.min(left, Math.max(1, Math.ceil(cl.count / DOSER.youngPerServing))));
+  }
+  let fed = 0;
+  for (const [foodId, servings] of plan) {
+    const before = inStock(state, foodId);
+    const res = asStaff(state, () => feedTank(state, tank.id, foodId, { servings, byStaff: true }));
+    if (res.ok) {
+      recordFeed(state, m, tank, foodId, before - inStock(state, foodId), hour);
+      fed++;
+    }
+  }
+  return { fed, short };
+}
+
 const WATER_CHANGE_FIXES = new Set(['nitrate', 'ammonia', 'nitrite', 'ph', 'kh', 'oxygen', 'clarity']);
 
 /**
@@ -549,6 +626,8 @@ function speciesPhrase(list: SpeciesDefinition[]): string {
  * at 10×, and a dead filter quietly turns a healthy tank into an overstocked one.
  */
 export function keeperEquipmentCheck(state: GameState, m: StaffMember, tank: Tank): void {
+  // a repaired failure leaves today's flags (Audit 2026-11-17, H26)
+  if (!(tank.equipment ?? []).some((e) => e.failed)) dropIssues(dayRecord(state, m), (t) => t.endsWith(` failed in ${tank.name}`));
   for (const inst of tank.equipment ?? []) {
     if (!inst.failed) continue;
     const def = getEquipmentDef(inst.defId);
@@ -578,22 +657,40 @@ export function keeperVisit(state: GameState, m: StaffMember, tankId: string, ro
   // lane:staff2 — a fast-metabolism tank's midday visit is a real meal; elsewhere midday is the meticulous top-up.
   const meals = mealsPerDay(state, tank.id);
   const mode = round === 'midday' && meals < 4 ? 'topup' : 'meal';
-  const { fed, missing } = keeperFeed(state, m, tank, mode, hour, hoursToNextVisit(state, m, tank.id, round, tankRounds(state, m, tank.id, meals)));
+  const meal = keeperFeed(state, m, tank, mode, hour, hoursToNextVisit(state, m, tank.id, round, tankRounds(state, m, tank.id, meals)));
+  const young = keeperFeedYoung(state, m, tank, hour); // Audit 2026-11-17 (H2): after the meal, which may already feed them
+  const fed = meal.fed + young.fed;
+  const missing = meal.missing;
   if (fed > 0) {
     day.feeds += fed;
     totals(m).feeds += fed;
     if (!day.tanksFed.includes(tank.id)) day.tanksFed.push(tank.id);
     day.last = { hour, kind: 'feed', tankId: tank.id, text: `Fed ${tank.name}` };
   }
+  // what was flagged here and is fed now leaves today's flags (Audit 2026-11-17, H26)
+  if (meal.fed > 0 && !missing.length) dropIssues(day, (t) => t.startsWith('No food for the ') && t.endsWith(` in ${tank.name}`));
+  if (young.fed > 0 && !young.short.length) dropIssues(day, (t) => t.startsWith('No first foods for the ') && t.endsWith(` in ${tank.name}`));
   if (missing.length) {
     const who = speciesPhrase(missing);
     noteIssue(day, `No food for the ${who} in ${tank.name}`);
     // Honest, not silent: the log says what couldn't be fed and what to do (toasted at most once a game day).
     if (throttled(state, `nofood:${tank.id}`, 12)) {
-      const hasStock = (state.staff?.roster ?? []).some((x) => x.role === 'stock_manager');
       emitEvent(state, {
         kind: 'warning',
-        text: `${firstName(m)} couldn’t feed the ${who} in ${tank.name} — there’s nothing in stock they eat. Buy food in Market › Supplies${hasStock ? ' or raise the stock manager’s budget' : ', or hire a stock manager'}.`,
+        text: `${firstName(m)} couldn’t feed the ${who} in ${tank.name} — there’s nothing in stock they eat. ${restockHint(state, missing)}`,
+        tankId: tank.id,
+        toast: throttled(state, 'nofood:toast', 24),
+      });
+    }
+  }
+  if (young.short.length) {
+    // Audit 2026-11-17 (H2): the young's first foods, flagged as the animals' food is
+    const { label, tags } = young.short[0];
+    noteIssue(day, `No first foods for the ${label} in ${tank.name}`);
+    if (throttled(state, `nofryfood:${tank.id}`, 12)) {
+      emitEvent(state, {
+        kind: 'warning',
+        text: `${firstName(m)} couldn’t feed the ${label} in ${tank.name}: no ${youngFoodWords(tags)} in stock. Buy food in Market › Supplies.`,
         tankId: tank.id,
         toast: throttled(state, 'nofood:toast', 24),
       });
@@ -1021,7 +1118,7 @@ function talkTopic(state: GameState, tankId: string): string {
 /** A docent gives a talk at one of their exhibits (rotating). */
 export function giveTalk(state: GameState, m: StaffMember, hour: number): void {
   const st = ensureStaff(state);
-  const exhibits = m.tankIds.filter((id) => state.tanks[id]);
+  const exhibits = m.tankIds.filter((id) => isExhibit(state, id)); // display tanks only (Audit 2026-11-17, H8)
   if (!exhibits.length) return;
   const day = dayRecord(state, m);
   const tankId = exhibits[(totals(m).talks + m.skill) % exhibits.length];
@@ -1041,16 +1138,24 @@ export function giveTalk(state: GameState, m: StaffMember, hour: number): void {
   pushReaction(state.visitors.reactions, { hour, tankId, text: line, mood: 'happy' });
 }
 
+/**
+ * The hours of day a docent talks: 11 AM, 2 PM and 4 PM (early birds fit in a 10 AM talk before the first crowd), the
+ * second, third and fourth docent 15, 30 and 45 minutes later. One rule for the talks and the card's "Next talk at"
+ * (Audit 2026-11-17, H12: the card said 11:00 AM for a docent who talks at 11:15).
+ */
+export function talkHours(state: GameState, m: StaffMember): number[] {
+  const docents = (state.staff?.roster ?? []).filter((x) => x.role === 'docent');
+  const offset = (Math.max(0, docents.indexOf(m)) % 4) * 0.25;
+  return (m.trait === 'early_bird' ? [10, ...TALK_HOURS] : TALK_HOURS).map((hod) => hod + offset);
+}
+
 export function stepDocents(state: GameState, start: number, end: number): void {
   const st = state.staff;
   if (!st) return;
-  let j = 0;
   for (const m of st.roster) {
     if (m.role !== 'docent') continue;
-    const offset = (j++ % 4) * 0.25;
-    // Early birds fit in a 10 AM talk before the first crowd.
-    for (const hod of m.trait === 'early_bird' ? [10, ...TALK_HOURS] : TALK_HOURS) {
-      for (const h of crossings(start, end, hod + offset)) if (isOpenAt(state, h)) giveTalk(state, m, h);
+    for (const hod of talkHours(state, m)) {
+      for (const h of crossings(start, end, hod)) if (isOpenAt(state, h)) giveTalk(state, m, h);
     }
   }
 }
@@ -1089,7 +1194,7 @@ export function docentEffect(state: GameState, hour: number): DocentEffect | nul
   let story = false;
   for (const m of docents) {
     // only the exhibits they actually present (lane:staff, S05-05: a docent with nothing assigned covers nothing)
-    reach += m.tankIds.filter((id) => state.tanks[id]).length;
+    reach += m.tankIds.filter((id) => isExhibit(state, id)).length;
     quality += 0.55 + 0.1 * clamp(m.skill, 1, 5);
     if (m.trait === 'great_with_kids') kids = true;
     if (m.trait === 'storyteller') story = true;
@@ -1125,13 +1230,14 @@ export function nextDuty(state: GameState, m: StaffMember): string {
     return `${next === roundStart(m, 'morning') && next <= h ? 'Tomorrow’s' : 'Next'} round at ${formatClock(next)}`;
   }
   if (m.role === 'stock_manager') {
-    const checks = m.skill >= 3 ? STOCK_CHECKS : STOCK_CHECKS.slice(0, 1);
+    const checks = stockCheckHours(m); // an early bird's 8 AM (Audit 2026-11-17, H12)
     const next = checks.find((t) => t > h) ?? checks[0];
     return `Next shelf check at ${formatClock(next)}`;
   }
   if (!state.facility.openToPublic) return 'No talks while the doors are closed';
-  const next = TALK_HOURS.find((t) => t > h);
-  return next !== undefined ? `Next talk at ${formatClock(next)}` : `First talk tomorrow at ${formatClock(TALK_HOURS[0])}`;
+  const hours = talkHours(state, m);
+  const next = hours.find((t) => t > h);
+  return next !== undefined ? `Next talk at ${formatClock(next)}` : `First talk tomorrow at ${formatClock(hours[0])}`;
 }
 
 /** Plain summary of today's work ("Fed 4 tanks · 1 water change"), or null before they've done anything. */

@@ -29,7 +29,7 @@ export const STAFF_ROLES: Record<StaffRole, StaffRoleDef> = noProto({
     label: 'Aquarist',
     plural: 'Aquarists',
     // lane:staff2 — fast-metabolism tanks get small meals up to four times a day (src/sim/staff/work.ts mealsPerDay)
-    blurb: 'Feeds assigned tanks two to four times a day, changes water when nitrate climbs, keeps the glass clean. Never breeds, moves or sells animals.',
+    blurb: 'Feeds assigned tanks two to four times a day (fry get their first foods from your stock), changes water when nitrate climbs, keeps the glass clean. Never breeds, moves or sells animals.',
     wage: [60, 160],
   },
   stock_manager: {
@@ -68,7 +68,7 @@ export const STAFF_TRAITS: Record<StaffTrait, StaffTraitDef> = noProto({
   quick_learner: { id: 'quick_learner', label: 'Quick learner', line: 'picks up experience half again as fast', roles: ['aquarist', 'stock_manager', 'docent'] },
   early_bird: { id: 'early_bird', label: 'Early bird', line: 'first in every morning — the day’s work starts an hour early', roles: ['aquarist', 'stock_manager', 'docent'] },
   planner: { id: 'planner', label: 'Planner', line: 'keeps a couple of extra days of food on the shelf', roles: ['stock_manager'] },
-  thrifty: { id: 'thrifty', label: 'Thrifty', line: 'orders one pack at a time and always the best value', roles: ['stock_manager'] },
+  thrifty: { id: 'thrifty', label: 'Thrifty', line: 'orders one pack at a time, so nothing sits on the shelf', roles: ['stock_manager'] }, // Audit 2026-11-17 (H18): it promised "always the best value"; it only orders one pack
   great_with_kids: { id: 'great_with_kids', label: 'Great with kids', line: 'families and school groups hang on every word', roles: ['docent'] },
   storyteller: { id: 'storyteller', label: 'Storyteller', line: 'talks that leave people reaching for the donation box', roles: ['docent'] },
 });

@@ -44,7 +44,8 @@ export function UpcomingTab({ g, onEnter }: { g: GameState; onEnter: (showId: st
       {stats && stats.entered > 0 && (
         <div className="sh-tiles">
           <Tile label="Shown" value={stats.entered} />
-          <Tile label="Ribbons" value={stats.placings} />
+          {/* Placings: 1st to Honourable Mention; "Ribbon day" counts 1st to 3rd (Audit 2026-11-17, H24) */}
+          <Tile label="Placings" value={stats.placings} />
           <Tile label="Class wins" value={stats.wins} />
           <Tile label="Prizes" value={money(stats.prize)} />
         </div>

@@ -58,6 +58,9 @@ export function IssueAction({ g, issue, nav, short, testId }: { g: GameState; is
       case 'reservoirs':
         go({ kind: 'panel', panel: 'build', tab: 'facility', target: 'room:water' });
         return;
+      case 'fix-line': // Audit 2026-11-17 (H3): the line in Livestock › Production, where its fix is
+        go({ kind: 'panel', panel: 'livestock', tab: 'production', target: `line:${issue.problem.kind === 'line_broken' ? issue.problem.lineId : ''}` });
+        return;
       default:
         staff();
     }
@@ -71,8 +74,8 @@ export function IssueAction({ g, issue, nav, short, testId }: { g: GameState; is
 
 export function ProblemsView({ g, snap, nav }: { g: GameState; snap: OpsSnapshot; nav: OpsNav }) {
   const issues = issueViews(g, snap.problems);
-  const supplies = issues.filter((i) => i.kind !== 'line');
-  const lines = issues.filter((i) => i.kind === 'line');
+  const supplies = issues.filter((i) => i.kind !== 'line' && i.kind !== 'line_broken');
+  const lines = issues.filter((i) => i.kind === 'line' || i.kind === 'line_broken');
   return (
     <>
       <button type="button" className="ops-link" onClick={() => nav.view(null)} data-testid="ops-issues-back">
@@ -92,9 +95,7 @@ export function ProblemsView({ g, snap, nav }: { g: GameState; snap: OpsSnapshot
             {supplies.map((i) => (i.kind === 'salt' ? <SaltCard key={i.key} g={g} issue={i} /> : <SupplyCard key={i.key} g={g} issue={i} nav={nav} />))}
           </div>
           <div className="ops-col">
-            {lines.map((i) => (
-              <LineCard key={i.key} g={g} issue={i} />
-            ))}
+            {lines.map((i) => (i.kind === 'line_broken' ? <SupplyCard key={i.key} g={g} issue={i} nav={nav} /> : <LineCard key={i.key} g={g} issue={i} />))}
             {snap.decided.map((d) => (
               <section key={d.lineId} className="ops-card" data-testid="issues-line-decided">
                 <div className="ops-card__head">
@@ -150,13 +151,13 @@ function SaltCard({ g, issue }: { g: GameState; issue: IssueView }) {
     // chunk 6 (DES-013): the days whose morning water changes still go ahead ("Day 39 · 40"), then the short day
     const firstDay = dayOf(now) + (changeAt !== null && hourOfDay(now) < changeAt ? 0 : 1);
     if (p.shortDay !== undefined && p.shortDay > firstDay) rows.push({ t: dayRange(firstDay, p.shortDay - 1), text: 'Morning water changes go ahead as normal.' });
-    if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'danger', text: `The salt tanks’ water changes are skipped, not done weak, unless salt arrives (they use about ${Math.round(saltWaterPerDay(g))} gal a day).` }); // ADR-0032
+    if (p.shortDay !== undefined) rows.push({ t: `From about Day ${p.shortDay}`, tone: 'danger', text: `The salt tanks’ water changes are skipped, not done weak, unless salt arrives (they use about ${Math.round(saltWaterPerDay(g))} gal a day).` }); // ADR-0032; a forecast, so "about" (Audit 2026-11-17, H22)
   } else {
     const left = Math.round((p.stock - batchKg) * 10) / 10;
     if (left < 0.05) rows.push({ t: whenText(mix, now), tone: 'watch', text: `The batch uses the last ${Math.round(p.stock * 10) / 10} kg.` });
     else if (p.stock < 2 * batchKg - 1e-6) rows.push({ t: `Day ${dayOf(mix)}`, tone: 'watch', text: `${formatClock(mix)}: the batch uses ${batchKg.toFixed(1)} kg; the ${left} kg left won’t make another.` }); // DES-013
     else rows.push({ t: whenText(mix, now), tone: 'watch', text: `The batch uses ${batchKg.toFixed(1)} kg.` });
-    if (p.shortDay !== undefined) rows.push({ t: `Day ${p.shortDay}`, tone: 'watch', text: `${changeAt !== null ? `${formatClock(changeAt)}: the` : 'The'} salt tanks run short of salt water unless salt arrives.` }); // DES-013
+    if (p.shortDay !== undefined) rows.push({ t: `About Day ${p.shortDay}`, tone: 'watch', text: `${changeAt !== null ? `${formatClock(changeAt)}: the` : 'The'} salt tanks run short of salt water unless salt arrives.` }); // DES-013; "about" (H22)
   }
   const raise =
     p.why === 'no_manager' ? (
@@ -252,14 +253,21 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
   const f = g.creatures[line.pair.fatherId];
   const places = v.raising.places;
   const busy = line.tanks.quarantine.map((id) => ({ id, until: quarantineBusyUntil(g, id) })).filter((q) => q.until !== null);
-  const qt = busy[0] ? g.tanks[busy[0].id] : v.quarantine;
+  // Audit 2026-11-17 (H1): a free quarantine tank with no room promises no day
+  const full = p.restartDay === null ? v.next.fullTank ?? v.quarantined.fullTank : undefined;
+  const qt = busy[0] ? g.tanks[busy[0].id] : full ?? v.quarantine;
   const busyLine = busy[0] ? productionLines(g).find((l) => (l.batches ?? []).some((b) => b.tankId === busy[0].id && !b.released && b.quarantinedHour !== undefined)) : undefined;
   const kit = quarantineKit(g, line.id);
   return (
     <section className={`ops-card ops-card--${issue.tone}`} data-testid="issues-line">
       <Head issue={issue} />
       <span className="ops-card__body">
-        {raise?.name ?? 'The raise tank'} is full, so {m?.name ?? 'the pair'} and {f?.name ?? 'its partner'} are kept apart until there’s room. No animals are lost; the line restarts by itself.
+        {raise?.name ?? 'The raise tank'} is full, so {m?.name ?? 'the pair'} and {f?.name ?? 'its partner'} are kept apart until there’s room.{' '}
+        {full
+          ? v.quarantined.unsold > 0
+            ? `${full.name} is full of unsold young from an earlier batch: sell or move them, or add a quarantine tank.`
+            : `${full.name} has no room for the next batch: move some animals out, or add a quarantine tank.`
+          : 'No animals are lost; the line restarts by itself.'}
       </span>
       <div className="ops-chain">
         <div className="ops-chain__step ops-chain__step--good">
@@ -286,13 +294,21 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
             <div className="ops-chain__arrow">
               <ArrowDown size={12} aria-hidden /> then waits for
             </div>
-            <div className={`ops-chain__step ${busy.length ? 'ops-chain__step--watch' : 'ops-chain__step--good'}`}>
+            <div className={`ops-chain__step ${busy.length || full ? 'ops-chain__step--watch' : 'ops-chain__step--good'}`}>
               <ShieldCheck size={15} aria-hidden />
               <div className="ops-row__main">
                 <span className="ops-row__title">
-                  {qt.name} · {busy.length ? 'busy' : 'ready'}
+                  {qt.name} · {busy.length ? 'busy' : full ? 'full' : 'ready'}
                 </span>
-                <span className="ops-row__sub">{busy.length ? `${busyLine?.name ?? line.name} until Day ${dayOf(busy[0].until!)}` : `${TANK_TIER_BY_ID[qt.tierId]?.name ?? qt.name} · takes them on Day ${p.restartDay}`}</span>
+                <span className="ops-row__sub">
+                  {busy.length
+                    ? `${busyLine?.name ?? line.name} until Day ${dayOf(busy[0].until!)}`
+                    : full
+                      ? v.quarantined.unsold > 0
+                        ? `${v.quarantined.unsold} unsold · waits until it has room`
+                        : 'Waits until it has room'
+                      : `${TANK_TIER_BY_ID[qt.tierId]?.name ?? qt.name} · takes them on Day ${p.restartDay}`}
+                </span>
               </div>
             </div>
           </>
@@ -304,9 +320,11 @@ function LineCard({ g, issue }: { g: GameState; issue: IssueView }) {
             <Plus size={15} aria-hidden /> Add a quarantine tank · {formatMoney(kit.price)}
           </Button>
         )}
-        <Button data-testid="issues-wait" onClick={() => doWait(line.id, p.restartDay)}>
-          Wait · resumes Day {p.restartDay}
-        </Button>
+        {p.restartDay !== null && (
+          <Button data-testid="issues-wait" onClick={() => doWait(line.id, p.restartDay!)}>
+            Wait · resumes Day {p.restartDay}
+          </Button>
+        )}
       </div>
       {adding && (
         <AddQuarantine
@@ -336,7 +354,7 @@ function WhyLineStops({ g, lineId }: { g: GameState; lineId: string }) {
   const qt = g.tanks[busy.find((q) => q.until === until)!.id];
   // the juveniles are ready for quarantine now (a sorted batch waits) or when the brood in the grow-out tank is sorted
   const batchWaits = (line.batches ?? []).some((b) => !b.tankId);
-  const ready = batchWaits ? dayOf(now) : restartDay(g, line);
+  const ready = batchWaits ? dayOf(now) : restartDay(g, line) ?? dayOf(now);
   const wait = Math.max(ready, dayOf(until));
   if (!qt || wait <= ready) return null;
   const served = productionLines(g).filter((l) => l.tanks.quarantine.includes(qt.id));

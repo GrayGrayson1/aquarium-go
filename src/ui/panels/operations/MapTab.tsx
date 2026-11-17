@@ -216,11 +216,13 @@ function TankTile({ ctx, t }: { ctx: Ctx; t: Tank }) {
   const autoFeed = t.equipment.some((e) => e.on && !e.failed && getEquipmentDef(e.defId)?.kind === 'autofeeder');
   let sub: string;
   if (L === 'water') sub = need ? `${g1(need.fresh + need.salt)} gal a day${t.equipment.some((e) => e.defId === 'ato') ? ' · top-off' : ''}` : 'By hand';
-  else if (L === 'food') sub = doser ? `Doser · ${doserNeeds(g, t).reduce((a, n) => a + n.servings, 0) * 3} a day` : feeder ? 'Autofeeder' : kept ? 'Keepers’ rounds' : 'By hand';
+  else if (L === 'food') sub = doser ? `Doser · ${doserNeeds(g, t).reduce((a, n) => a + n.servings, 0) * 3} a day` : feeder && animals > 0 ? 'Autofeeder' : kept ? 'Keepers’ rounds' : 'By hand'; // an Autofeeder never feeds fry (Audit 2026-11-17, H2)
   else if (L === 'animals') sub = `${animals + young} ${animals + young === 1 ? 'animal' : 'animals'}${lines.length ? ` · ${lines.join(' · ')}` : ''}${waiting || pairWaits ? ' · waits' : ''}`;
   else if (waiting) sub = places ? `Full · ${places.used}/${places.cap}` : 'Full · waits';
   else if (pairWaits) sub = 'Pair waits';
   else if (nextFor) sub = `Next: ${nextFor.name.replace(/ line$/, '')}`;
+  else if (t.cache?.status === 'danger') sub = 'Needs you'; // Audit 2026-11-17 (H25): which tank needs you, at a glance
+  else if (t.cache?.status === 'watch') sub = 'Look soon';
   else if (young) sub = `${young} young`;
   else sub = ctx.early && autoFeed ? `${gallons(t)} gal · Auto-feed on` : `${gallons(t)} gal`;
   const label = `${t.name}: ${WATER_CLASS_LABEL[t.waterClass] ?? t.waterClass}, ${gallons(t)} gal${lines.length ? `, ${lines.join(' and ')} ${lines.length === 1 ? 'line' : 'lines'}` : ''}. ${sub}`;
@@ -262,7 +264,7 @@ function WaterArea({ ctx }: { ctx: Ctx }) {
         <Machine ctx={ctx} id="fresh" name="Fresh reserve" sub={`${Math.floor(room.fresh)} / ${freshCap(room)} gal`}>
           <OpsBar value={room.fresh / freshCap(room)} label="Fresh reserve" />
         </Machine>
-        <Machine ctx={ctx} id="salt" name="Salt reserve" sub={!needed ? 'Not needed' : salt?.state === 'out' && salt.shortDay ? `Runs short Day ${salt.shortDay}` : `${Math.floor(room.salt)} / ${saltCap(room)} gal`} warn={salt?.state === 'out'}>
+        <Machine ctx={ctx} id="salt" name="Salt reserve" sub={!needed ? 'Not needed' : salt?.state === 'out' && salt.shortDay ? `Runs short about Day ${salt.shortDay}` : `${Math.floor(room.salt)} / ${saltCap(room)} gal`} warn={salt?.state === 'out'}>
           <OpsBar value={room.salt / saltCap(room)} kind="salt" label="Salt reserve" />
         </Machine>
       </div>
@@ -524,7 +526,7 @@ function TankDetails({ ctx, id }: { ctx: Ctx; id: string }) {
       <div className="ops-rows">
         <Kv k="Animals" v={`${animals} ${animals === 1 ? 'animal' : 'animals'}${young ? ` · ${young} young` : ''}`} />
         {places && <Kv k="Places" v={`${places.used} of ${places.cap}`} />}
-        <Kv k="Feeding" v={doser ? 'Live-food doser' : feeder ? 'Autofeeder' : 'By hand or keepers’ rounds'} />
+        <Kv k="Feeding" v={doser ? 'Live-food doser' : feeder && animals > 0 ? 'Autofeeder' : (g.staff?.roster ?? []).some((m) => m.role === 'aquarist' && m.tankIds.includes(id)) ? 'Keepers’ rounds' : 'By hand'} />
         <Kv k="Water" v={need ? `${g1(need.fresh + need.salt)} gal a day from the Water room` : changerOf(t) ? 'Auto Water Changer' : 'By hand'} />
         {v && <Kv k="Next" v={v.quarantined.listsDay && line?.tanks.quarantine.includes(id) ? `Lists Day ${v.quarantined.listsDay}` : v.next.days !== undefined ? `Next clutch in ${v.next.days} days` : '—'} />}
       </div>

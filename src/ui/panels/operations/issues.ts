@@ -15,8 +15,8 @@ import { opsSnapshot } from '@/ui/common/ops';
 import { findLine } from '@/sim/production';
 import { lineView } from '@/sim/production/view';
 
-export type IssueKind = 'salt' | 'eggs' | 'veg' | 'live' | 'fresh' | 'salt_rate' | 'fresh_rate' | 'line';
-export type IssueAction = 'buy-salt' | 'buy-eggs' | 'buy-veg' | 'raise-budget' | 'hire' | 'staff' | 'add-qt' | 'wait' | 'faster-prep' | 'reservoirs' | 'water-tab' | 'why' | 'feed';
+export type IssueKind = 'salt' | 'eggs' | 'veg' | 'live' | 'fresh' | 'salt_rate' | 'fresh_rate' | 'line' | 'line_broken';
+export type IssueAction = 'buy-salt' | 'buy-eggs' | 'buy-veg' | 'raise-budget' | 'hire' | 'staff' | 'add-qt' | 'wait' | 'faster-prep' | 'reservoirs' | 'water-tab' | 'why' | 'feed' | 'fix-line';
 
 export interface IssueView {
   key: string;
@@ -77,7 +77,7 @@ function saltOutReason(g: GameState, p: SupplyProblem): string {
     case 'orders_off':
       return `${name}’s orders are switched off, so nobody reorders salt mix.`;
     case 'cash':
-      return `${name} couldn’t reorder salt mix: there isn’t enough cash right now.${p.shortDay !== undefined ? ` Salt water lasts until Day ${p.shortDay}.` : ''}`;
+      return `${name} couldn’t reorder salt mix: there isn’t enough cash right now.${p.shortDay !== undefined ? ` At this rate, salt water lasts until about Day ${p.shortDay}.` : ''}`;
     default: {
       const mixing = (g.facility.water?.mix?.gal ?? 0) > 1e-6 ? ' Salt mixing stops after the batch in the tank.' : '';
       return `${name} couldn’t reorder salt mix — today’s ${money(f?.budget ?? g.staff?.stockBudget ?? 0)} stock budget is spent.${mixing}`;
@@ -138,6 +138,11 @@ function saltIssue(g: GameState, p: SupplyProblem): IssueView {
 export function issueViews(g: GameState, problems: readonly Problem[]): IssueView[] {
   const out: IssueView[] = [];
   for (const p of problems) {
+    if (p.kind === 'line_broken') {
+      // Audit 2026-11-17 (H3): a line missing a parent or tank, with its own notice and the way to its fix
+      out.push({ key: `line_broken:${p.lineId}`, kind: 'line_broken', tone: 'watch', badge: 'Look soon', title: `${p.name} paused`, reason: p.text, tab: 'lines', action: { id: 'fix-line', label: 'Fix', short: 'Fix' }, problem: p });
+      continue;
+    }
     if (p.kind === 'line') {
       const line = findLine(g, p.lineId);
       const v = line ? lineView(g, line) : null;
@@ -230,7 +235,8 @@ export function issueViews(g: GameState, problems: readonly Problem[]): IssueVie
           tone: 'watch',
           badge: 'Look soon',
           title: 'Salt water runs short',
-          reason: `The salt tanks’ changes use ${Math.round(p.perDay)} gal of salt water a day, and the mixer makes up to ${Math.round(p.capacity ?? 0)}. The changes it can’t cover are skipped, not done weak.`,
+          // Audit 2026-11-17 (H22): a forecast from a dry run, so "at this rate"
+          reason: `The salt tanks’ changes use ${Math.round(p.perDay)} gal of salt water a day, and the mixer makes up to ${Math.round(p.capacity ?? 0)}. At this rate, the changes it can’t cover are skipped, not done weak.`,
           tab: 'water',
           action: more ? { id: 'reservoirs', label: 'Reservoirs in Build', short: 'Build' } : { id: 'water-tab', label: 'Water tab', short: 'Water' },
           problem: p,

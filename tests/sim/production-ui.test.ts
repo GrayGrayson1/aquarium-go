@@ -17,7 +17,7 @@ import { useGame } from '@/state/game';
 import { createLine, setLineRunning } from '@/sim/production';
 import { slotsCaption } from '@/sim/production/view';
 import { ProductionTab } from '@/ui/panels/livestock/Production';
-import { NewLine } from '@/ui/panels/livestock/ProductionSetup';
+import { NewLine, StageRow } from '@/ui/panels/livestock/ProductionSetup';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const tag = (markup: string, testId: string) => new RegExp(`<[^>]*data-testid="${testId}"[^>]*>`).exec(markup)?.[0] ?? '';
@@ -85,24 +85,28 @@ describe('PROD-003, DES-008: the Production tab', () => {
     expect(t).toContain('1 of 1 line slot · more at Specialty Shop');
     expect(t).toContain('Betta line');
     expect(t).toContain('Running');
-    expect(t).toContain('Breeds, raises and sells Cambodian Veiltail bettas while you play.');
+    expect(t).toContain('Breeds, raises and sells Cambodian Veiltail bettas while you play.'); // Audit 2026-11-17 (H1): a buy-now price makes it true
     expect(attr(m, 'production-toggle', 'role')).toBe('switch');
     expect(attr(m, 'production-toggle', 'aria-checked')).toBe('true');
     expect(attr(m, 'production-toggle', 'aria-label')).toBe('Betta line running');
     for (const label of ['Next clutch', 'Growing out', 'Quarantine', 'This week']) expect(t).toContain(label);
-    expect(t).toContain('Pair conditioning');
+    // Audit 2026-11-17 (H4): this pair has had no rich food, so it can't get into condition: the tile says so (it said
+    // "Pair conditioning" for ever); once conditioned, it's the pair conditioning
+    expect(t).toContain('Next clutch Not ready They need rich food (bloodworm, brine shrimp or daphnia) to get into condition');
+    for (const c of [s.cinder, s.blaze]) (c.life ??= {} as NonNullable<typeof c.life>).conditioning = 100;
+    expect(text(render(s.g))).toContain('Next clutch — Pair conditioning');
     expect(t).toContain('$0 0 sold $0 after food and power');
     for (const s2 of ['breed', 'raise', 'sort', 'quarantine', 'sell']) expect(m).toContain(`data-testid="production-stage-${s2}"`);
     expect(t).toContain('Cinder × Blaze · spawns about every 10 days');
     expect(t).toContain('Waiting for the next clutch');
     expect(t).toContain('Keep Prismatic Sell the rest');
     expect(t).toContain('Free');
-    expect(t).toContain('Auctions · reserve at fair value −10% Nothing listed');
+    expect(t).toContain('Buy now at fair value −10% · a little cheaper each time it’s listed again Nothing listed'); // Audit 2026-11-17 (H1): the owner's "Sell by itself" 
     expect(routeText(m)).toMatch(/^Breeding Tank Grow-out Tub Quarantine Market/); // the route strip (§8.6)
     expect(t).toContain('Line rules');
     expect(t).toContain('Pause when a tank is full Stops spawning when Grow-out Tub reaches its stocking limit.');
     expect(t).toContain('Never sell Prismatic animals A Prismatic youngster always moves to Quiet Corner instead.');
-    expect(t).toContain('List automatically Juveniles go to auction the day quarantine ends.');
+    expect(t).toContain('List automatically Juveniles go on sale the day quarantine ends: a buyer who likes the price buys them without you. What doesn’t sell is listed again a little cheaper.');
     for (const r of ['pauseWhenFull', 'keepPrismatic', 'autoList']) {
       expect(attr(m, `production-rule-${r}`, 'role')).toBe('switch');
       expect(attr(m, `production-rule-${r}`, 'aria-checked')).toBe('true');
@@ -180,7 +184,12 @@ describe('PROD-003, DES-008: the Production tab', () => {
     t = text(m);
     expect(l.waiting).toBeFalsy();
     expect(m).not.toContain('data-testid="production-note"');
-    expect(t).toMatch(/Free Add a quarantine tank · \$[\d,]+/);
+    // Audit 2026-11-17 (H1): the three juveniles left in quarantine outside any batch are unsold, not "Free"
+    expect(t).toMatch(/3 unsold · sell or move them Add a quarantine tank · \$[\d,]+/);
+    expect(routeText(m)).toMatch(/^Breeding Tank Grow-out Tub Quarantine 3 unsold Market/);
+    expect(t).toContain('3 unsold Quarantine'); // the tile: the count and the tank
+    for (const k of kids) s.g.creatures[k.id].tankId = s.tanks.keep.id; // moved away: the stage is free again
+    expect(text(render(s.g))).toMatch(/Free Add a quarantine tank · \$[\d,]+/);
   });
 
   it('waiting for room with a batch waiting for quarantine: DESIGN-S3D’s note and Add a quarantine tank', () => {
@@ -192,6 +201,20 @@ describe('PROD-003, DES-008: the Production tab', () => {
     const t = text(render(s.g));
     expect(t).toContain('Grow-out Tub is full, so Cinder and Blaze are kept apart until there’s room.'); // chunk 6 (DES-013): curly, as the 0.5 copy rule and §7.6 write it
     expect(t).toMatch(/Add a quarantine tank · \$[\d,]+/);
+  });
+});
+
+describe('Audit 2026-11-17 (H10): set-up step 2 says when a stage has no tank', () => {
+  it('a stage no tank can take says each stage needs its own tank, with a way to Build', () => {
+    const s = shop();
+    const chosen = { breed: s.tanks.breed.id, quarantine: s.tanks.quarantine.id, keep: s.tanks.keep.id };
+    const row = () =>
+      renderToStaticMarkup(createElement(StageRow, { g: s.g, speciesId: 'betta', stage: { id: 'raise', word: 'Raise', icon: null, testId: 'raise' }, chosen, pair: { motherId: s.cinder.id, fatherId: s.blaze.id }, open: false, onToggle: () => {}, onPick: () => {} }));
+    expect(row()).not.toContain('production-new-nofit-raise');
+    for (const t of Object.values(s.g.tanks)) if (!Object.values(chosen).includes(t.id)) t.water.tempC = 12; // too cold for any of them
+    const m = row();
+    expect(m).toContain('data-testid="production-new-nofit-raise"');
+    expect(text(m)).toContain('No tank fits yet: each stage needs its own tank. Buy one in Build');
   });
 });
 

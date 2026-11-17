@@ -14,6 +14,7 @@ import { dayOf } from '@/sim/time';
 import * as F from '@/sim/facility';
 import { initialFacility, stepProgression, tutorialAdvance, tutorialStepId, tutorialWants } from '@/sim/facility';
 import { exhibitInfo, exhibitReport, momentPhrase } from '@/sim/facility/exhibit';
+import { CONCERN_LINES } from '@/sim/facility/reactions';
 import { TUTORIAL_CHAINS, QUEST_BY_ID, tutorialChain } from '@/data/quests';
 import { FIXTURE_DEFS, getFacilityLevel } from '@/data/facilities';
 import { FIXTURES } from '@/dev/fixtures';
@@ -332,6 +333,87 @@ describe('S04-08: concerned lines name the unwell animal, not the star', () => {
   });
 });
 
+describe('Audit 2026-11-17 (H6): a worry or a critic names the real cause', () => {
+  it('water in danger with healthy animals: lines about the water, naming no animal', () => {
+    const g = shop(9, 2);
+    const t = addExhibit(g, { species: 'neon_tetra', count: 5, name: 'Nature Scape' });
+    t.cache.status = 'danger';
+    t.cache.waterStatus = 'danger';
+    const info = exhibitInfo(g, t);
+    expect(info.concerned).toBe(true);
+    expect(info.concernCause).toBe('water');
+    expect(info.concernCreature).toBeUndefined();
+    runHours(g, 11, 0.25);
+    const concerned = g.visitors.reactions.filter((r) => r.tankId === t.id && r.mood === 'concerned');
+    expect(concerned.length).toBeGreaterThan(0);
+    for (const r of concerned) {
+      expect(r.creatureId).toBeUndefined();
+      expect(CONCERN_LINES.water.map((l) => l.replace('{tank}', 'Nature Scape'))).toContain(r.text);
+    }
+  });
+
+  it('a half-starved fish in clean water: lines about the thin fish, by name', () => {
+    const g = shop(9, 2);
+    const t = addExhibit(g, { species: 'neon_tetra', count: 5, name: 'Nature Scape' });
+    const thin = Object.values(g.creatures).find((c) => c.tankId === t.id)!;
+    thin.name = 'Sorrel';
+    thin.stats.hunger = 95;
+    const info = exhibitInfo(g, t);
+    expect(info.concernCause).toBe('starving');
+    runHours(g, 11, 0.25);
+    const concerned = g.visitors.reactions.filter((r) => r.tankId === t.id && r.mood === 'concerned');
+    expect(concerned.length).toBeGreaterThan(0);
+    for (const r of concerned) {
+      thin.stats.hunger = 95;
+      expect(r.creatureId).toBe(thin.id);
+      expect(CONCERN_LINES.starving.map((l) => l.replace('{name}', 'Sorrel'))).toContain(r.text);
+    }
+  });
+
+  it('an unimpressed critic names the biggest minus: the worry, the price, the crowd, else the dullest tank', () => {
+    expect(F.criticWhyOf({ concern: 28, price: 10, crowd: 0 }, true)).toBe('concern');
+    expect(F.criticWhyOf({ concern: 14, price: 20, crowd: 5 }, true)).toBe('price');
+    expect(F.criticWhyOf({ concern: 0, price: 2, crowd: 12 }, false)).toBe('crowd');
+    expect(F.criticWhyOf({ concern: 0, price: 0, crowd: 0 }, false)).toBe('dull');
+    const g = shop(9, 1);
+    const t = Object.values(g.tanks)[0];
+    t.name = 'Reef Display';
+    const e = { tankId: t.id, concernText: 'Ember doesn’t look well' };
+    expect(F.criticText(g, 'concern', e)).toBe('A visiting critic was unimpressed by the Reef Display: Ember doesn’t look well. (−reputation)');
+    expect(F.criticText(g, 'price', e)).toBe('A visiting critic found the tickets too dear for what’s on show. (−reputation)');
+    expect(F.criticText(g, 'crowd', e)).toBe('A visiting critic found it too crowded to see the tanks. (−reputation)');
+    expect(F.criticText(g, 'dull', e)).toBe('A visiting critic was unimpressed by the Reef Display. (−reputation)');
+  });
+});
+
+describe('Audit 2026-11-17 (H9): the tank card shows the exhibit factors with the most to gain', () => {
+  it('a tip to act on comes first (no sign, cloudy water), then the weightiest shortfalls', () => {
+    const g = shop(9, 1);
+    const t = Object.values(g.tanks).find((x) => x.name === 'Betta Bower')!;
+    t.signage = false;
+    const first4 = exhibitReport(g, t.id).factors.slice(0, 4).map((f) => f.label);
+    expect(first4[0]).toBe('Educational sign'); // it was the eighth of ten, never shown
+    t.signage = true;
+    expect(exhibitReport(g, t.id).factors.slice(0, 4).map((f) => f.label)).not.toContain('Educational sign');
+  });
+});
+
+describe('Audit 2026-11-17 (H21): a broken good-water streak says which tank broke it', () => {
+  it('once, naming the tank, and only while there is a streak to lose', () => {
+    const g = shop(9, 2);
+    const t = Object.values(g.tanks).find((x) => x.name === 'Puffer Patch')!;
+    g.progress.counters.water_good_streak = 4;
+    for (let i = 0; i < 3; i++) tick(g);
+    expect(g.log.some((e) => /good-water streak/.test(e.text))).toBe(false);
+    t.cache.waterStatus = 'watch';
+    for (let i = 0; i < 3; i++) tick(g);
+    const said = g.log.filter((e) => /good-water streak/.test(e.text));
+    expect(said.length).toBe(1);
+    expect(said[0].text).toBe(`Your good-water streak (${g.progress.counters.water_good_streak} days) ends today: Puffer Patch’s water needs a look.`);
+    expect(said[0].tankId).toBe(t.id);
+  });
+});
+
 // ───────────────────────────── moments ─────────────────────────────
 
 describe('S04-04: visitor moments are noun phrases', () => {
@@ -496,7 +578,7 @@ describe('S04-07: repeat quest bodies', () => {
     const views = F.activeQuests(g);
     expect(views.find((v) => v.id === 'q_sell_creature')?.body).toBe('Sell 2 animals to buyers who will care for them.');
     expect(views.find((v) => v.id === 'q_show_ribbon')?.body).toBe('Place 1st, 2nd or 3rd in 3 show classes.');
-    expect(views.find((v) => v.id === 'q_feed_routine')?.body).toMatch(/^Feed your animals 15 times/);
+    expect(views.find((v) => v.id === 'q_feed_routine')?.body).toMatch(/^Feed your animals yourself 15 times/); // Audit 2026-11-17 (H23): keepers' rounds don't count
     for (const v of views) expect(v.body).not.toMatch(/\{n\}|\d+st\b(?<!1st)/);
   });
 });

@@ -48,7 +48,7 @@ function heldText(g: GameState, sys: HoldSystem): string {
       const fed = tanks.filter((t) => t.equipment.some((e) => getEquipmentDef(e.defId)?.kind === 'autofeeder'));
       const kept = new Set((g.staff?.roster ?? []).filter((m) => m.role === 'aquarist').flatMap((m) => m.tankIds));
       const alone = fed.filter((t) => !kept.has(t.id)).length;
-      return `${fed.length} ${fed.length === 1 ? 'tank' : 'tanks'} · keepers feed on their rounds${alone ? ` · ${alone} have no keeper: feed them by hand` : ''}`;
+      return `${fed.length} ${fed.length === 1 ? 'tank' : 'tanks'} · keepers feed on their rounds${alone ? ` · ${alone} ${alone === 1 ? 'has' : 'have'} no keeper: feed ${alone === 1 ? 'it' : 'them'} by hand` : ''}`;
     }
     case 'lines':
       return 'No moves, sorting or new listings';
@@ -135,7 +135,7 @@ export function ManualView({ g, snap, nav }: { g: GameState; snap: OpsSnapshot; 
             <div className="ops-rows">
               <Line icon={<Lightbulb size={15} aria-hidden />} text="Filters, heaters and lights" />
               <Line icon={<Droplet size={15} aria-hidden />} text={`Auto Top-Off on ${atos} ${atos === 1 ? 'tank' : 'tanks'}`} />
-              <Line icon={<Users size={15} aria-hidden />} text="Keepers’ rounds at 8:00 AM and 6:00 PM" />
+              <Line icon={<Users size={15} aria-hidden />} text="Keepers’ rounds through the day" />
               <Line icon={<Gavel size={15} aria-hidden />} text="Auctions already on the market" />
               {rosa && (
                 <div className="ops-row" data-testid="manual-rosa">

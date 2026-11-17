@@ -9,7 +9,7 @@ import { Users, UserPlus, Wallet, Fish, Package, Presentation, TriangleAlert, Cl
 import type { GameState, StaffMember, StaffRole } from '@/types';
 import { Badge, Button, Slider, Toggle, formatMoney } from '@/ui/kit';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
-import { STAFF_NOTICE_DAYS, STAFF_ROLES, STAFF_ROLE_ORDER, STAFF_TRAITS, STAFF_XP_PER_LEVEL, STOCK_BUDGET, skillStars } from '@/data/staff';
+import { STAFF_NOTICE_DAYS, STAFF_ROLES, STAFF_ROLE_ORDER, STAFF_TRAITS, STAFF_XP_PER_LEVEL, STOCK_BUDGET, aquaristCapacity, docentReach, skillStars, tankCareUnits } from '@/data/staff';
 import { getFacilityLevel, nextFacilityLevelDef } from '@/data/facilities';
 import { dayOf, formatClock } from '@/sim/time';
 import { planPurchases, plannedOrders, stockCheckHours } from '@/sim/staff/work'; // lane:automation (chunk 5)
@@ -31,11 +31,44 @@ import { EmptyState, SectionHead, Tile, Bar, Callout } from '../common/parts';
 import { Requirements, reqsFor } from '../common/Requirements';
 import { orderedTanks, unlocked } from '../common/derive';
 import { poolWhen } from '../common/format';
+import { go } from '@/ui/nav/router'; // Audit 2026-11-17 (H26): flags link to their tank
 import { StaffAvatar } from './StaffAvatar';
 import './staff.css';
 
 const ROLE_ICON: Record<StaffRole, typeof Fish> = { aquarist: Fish, stock_manager: Package, docent: Presentation };
 const first = (m: Pick<StaffMember, 'name'>) => m.name.split(' ')[0];
+
+/** A tank's care load for this aquarist, on average over the shop's tanks (a 20-gallon tank's before there are any). */
+function avgTankLoad(g: GameState, m: StaffMember): number {
+  const tanks = orderedTanks(g);
+  if (!tanks.length) return tankCareUnits(20, false, m.trait);
+  return tanks.reduce((a, t) => a + tankLoad(t, m), 0) / tanks.length;
+}
+
+/**
+ * Audit 2026-11-17 (H11): what someone can take on, in tanks and exhibits rather than "tank units": a candidate's
+ * "Can look after about 5 tanks like yours", "Presents up to 5 exhibits", "Checks the shelves at 9:00 AM (and 3:00 PM
+ * from ★★★)"; a keeper's "Rounds: 3 tanks · room for about 2 more".
+ */
+export function capacityLine(g: GameState, m: StaffMember, hired: boolean): string {
+  if (m.role === 'docent') {
+    const reach = docentReach(m.skill);
+    return hired ? `Presents ${staffLoad(g, m).used} of ${reach} exhibits` : `Presents up to ${reach} exhibits`;
+  }
+  if (m.role === 'stock_manager') {
+    const hours = stockCheckHours(m).map((h) => formatClock(h));
+    return `Checks the shelves at ${hours.join(' and ')}${m.skill < 3 ? ' (and 3:00 PM from ★★★)' : ''}`;
+  }
+  const avg = Math.max(0.1, avgTankLoad(g, m));
+  if (!hired) {
+    const n = Math.max(1, Math.floor(aquaristCapacity(m.skill) / avg + 1e-9));
+    return `Can look after about ${n} ${n === 1 ? 'tank' : 'tanks'} ${orderedTanks(g).length ? 'like yours' : 'of 20 gallons'}`;
+  }
+  const load = staffLoad(g, m);
+  const mine = m.tankIds.filter((id) => g.tanks[id]).length;
+  const more = Math.floor((load.capacity - load.used) / avg + 1e-9);
+  return `Rounds: ${mine} ${mine === 1 ? 'tank' : 'tanks'} · ${more > 0 ? `room for about ${more} more` : load.used > load.capacity + 1e-6 ? 'more than they can keep up with' : 'no room for more'}`;
+}
 
 /**
  * lane:w2-ui — the "Hire your first staff member" quest (q_first_staff) completes on the 'hired_staff' progress flag.
@@ -88,9 +121,10 @@ export function StaffTab({ g }: { g: GameState }) {
           <ul className="st-issues">
             {issues.slice(0, 4).map((i, k) => (
               <li key={k}>
-                <b>{i.who}:</b> {i.t}
+                <b>{i.who}:</b> <IssueText g={g} text={i.t} />
               </li>
             ))}
+            {issues.length > 4 && <li className="pn-muted">+{issues.length - 4} more</li>}
           </ul>
         </Callout>
       )}
@@ -143,7 +177,7 @@ export function StaffTab({ g }: { g: GameState }) {
       </section>
 
       <p className="pn-tiny pn-muted st-foot">
-        <Info size={12} aria-hidden /> Staff feed from your food cupboard, change water and keep the glass clean — the same care you give, with the same numbers. They flag broken equipment and sick animals but leave repairs, treatment, breeding, moving and selling to you. Keeper care doesn’t count toward your own bond with an animal.
+        <Info size={12} aria-hidden /> Staff feed from your food cupboard, change water and keep the glass clean — the same care you give, with the same numbers. They flag broken equipment and sick animals but leave repairs, treatment, breeding, moving and selling to you. Keeper care doesn’t count toward your own bond with an animal, or your quests.
       </p>
     </div>
   );
@@ -282,6 +316,24 @@ function StaffCard({ g, m }: { g: GameState; m: StaffMember }) {
   );
 }
 
+/** A flag's text with the tank it names as a link to its card (Audit 2026-11-17, H26). */
+function IssueText({ g, text }: { g: GameState; text: string }) {
+  const tank = orderedTanks(g)
+    .filter((t) => t.name && text.includes(t.name))
+    .sort((a, b) => b.name.length - a.name.length)[0];
+  if (!tank) return <>{text}</>;
+  const at = text.lastIndexOf(tank.name);
+  return (
+    <>
+      {text.slice(0, at)}
+      <button type="button" className="pn-inline-link" onClick={() => go({ kind: 'tankCard', tankId: tank.id, tab: / failed in /.test(text) ? 'gear' : 'life' })}>
+        {tank.name}
+      </button>
+      {text.slice(at + tank.name.length)}
+    </>
+  );
+}
+
 function FireButton({ m }: { m: StaffMember }) {
   const [armed, setArmed] = useState(false);
   const timer = useRef<number | null>(null);
@@ -318,7 +370,7 @@ function Assignments({ g, m, editing, setEditing }: { g: GameState; m: StaffMemb
   return (
     <div className="st-assign">
       <div className="st-assign__head">
-        <span className="pn-tiny pn-muted">{aquarist ? `Rounds ${load.used.toFixed(1)} of ${load.capacity} tank units` : `Presents ${load.used} of ${load.capacity} exhibits`}</span>
+        <span className="pn-tiny pn-muted">{capacityLine(g, m, true)}</span>
         <button type="button" className="pn-inline-link pn-tiny" data-testid={`staff-edit-${m.id}`} aria-expanded={editing} onClick={() => setEditing(!editing)}>
           {editing ? 'Done' : aquarist ? 'Change tanks' : 'Change exhibits'}
         </button>
@@ -467,6 +519,7 @@ function CandidateCard({ g, c }: { g: GameState; c: StaffMember }) {
         </p>
       )}
       <p className="pn-tiny pn-muted st-card__blurb">{STAFF_ROLES[c.role].blurb}</p>
+      <p className="pn-tiny st-card__blurb" data-testid={`staff-cancover-${c.id}`}>{capacityLine(g, c, false)}</p>
       {!check.ok && check.reason && !/has room for/.test(check.reason) && <p className="pn-tiny st-card__why">{check.reason}</p>}
     </article>
   );

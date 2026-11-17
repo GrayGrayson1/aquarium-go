@@ -28,6 +28,9 @@ import { act } from '../common/act';
 import { useSheet } from '../common/PanelLayout';
 import { CreaturePortrait } from '../common/Portrait';
 
+/** The List automatically rule's line (set-up step 3 and the line's rules; Audit 2026-11-17, H1: the owner's "Sell by itself"). */
+export const LIST_AUTOMATICALLY = 'Juveniles go on sale the day quarantine ends: a buyer who likes the price buys them without you. What doesn’t sell is listed again a little cheaper.';
+
 type Pair = ReturnType<typeof candidatePairs>[number];
 const pairKey = (p: { motherId: string; fatherId: string }) => `${p.motherId}-${p.fatherId}`;
 const gal = (g: GameState, id: string) => TANK_TIER_BY_ID[g.tanks[id]?.tierId ?? '']?.gallons;
@@ -170,7 +173,7 @@ function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }
   );
 }
 
-function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }: { g: GameState; speciesId: string; stage: (typeof STAGES)[number]; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; open: boolean; onToggle: () => void; onPick: (id: string) => void }) {
+export function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }: { g: GameState; speciesId: string; stage: (typeof STAGES)[number]; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; open: boolean; onToggle: () => void; onPick: (id: string) => void }) {
   const id = chosen[stage.id];
   const fit = id ? tankFitFor(g, speciesId, stage.id, id, chosen, pair ? [pair.motherId, pair.fatherId] : []) : null;
   return (
@@ -187,6 +190,15 @@ function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }:
         {fit && <FitBadge fit={fit} />}
         <ChevronDown size={16} aria-hidden className="pr-tankrow__chev" />
       </button>
+      {/* Audit 2026-11-17 (H10): a stage no tank can take says why, and where to get one */}
+      {!id && !g.tankOrder.some((t) => tankFitFor(g, speciesId, stage.id, t, chosen, pair ? [pair.motherId, pair.fatherId] : []).ok) && (
+        <p className="pr-hint" data-testid={`production-new-nofit-${stage.testId}`}>
+          No tank fits yet: each stage needs its own tank.{' '}
+          <button type="button" className="pn-link" onClick={() => useUI.getState().set({ panel: 'build', panelTarget: 'tab:tanks' })}>
+            Buy one in Build
+          </button>
+        </p>
+      )}
       {open && <TankChoices g={g} speciesId={speciesId} stage={stage.id} chosen={chosen} pair={pair} onPick={onPick} />}
     </div>
   );
@@ -410,7 +422,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
             </div>
             <div className="pr-field">
               <span className="pr-field__label">Sell</span>
-              <span className="pr-fieldbtn pr-fieldbtn--static">Auctions · reserve at fair value −10%</span>
+              <span className="pr-fieldbtn pr-fieldbtn--static">Buy now at fair value −10%</span>
             </div>
           </section>
           <section className="pr-card" aria-label="Line rules">
@@ -419,7 +431,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
               [
                 ['pauseWhenFull', 'Pause when a tank is full', `Stops spawning when ${g.tanks[tanks.raise ?? '']?.name ?? 'the raise tank'} reaches its stocking limit.`],
                 ['keepPrismatic', 'Never sell Prismatic animals', `A Prismatic youngster always moves to ${g.tanks[tanks.keep ?? '']?.name ?? 'the keep tank'} instead.`],
-                ['autoList', 'List automatically', 'Juveniles go to auction the day quarantine ends.'],
+                ['autoList', 'List automatically', LIST_AUTOMATICALLY],
               ] as const
             ).map(([key, title, sub]) => (
               <div key={key} className="pr-rule">
@@ -442,7 +454,7 @@ export function NewLine({ g, onStarted }: { g: GameState; onStarted: (lineId: st
           </Button>
         )}
         {step < 3 ? (
-          <Button variant="primary" data-testid="production-new-next" disabled={step === 1 ? !pair : !tanksOk} onClick={() => setStep((step + 1) as 2 | 3)}>
+          <Button variant="primary" data-testid="production-new-next" disabled={step === 1 ? !pair : !tanksOk} title={step === 2 && !tanksOk ? 'Choose a tank for every stage' : undefined} onClick={() => setStep((step + 1) as 2 | 3)}>
             <ArrowRight size={14} aria-hidden /> {step === 1 ? 'Next: choose tanks' : 'Next: rules'}
           </Button>
         ) : (

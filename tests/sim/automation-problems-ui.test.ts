@@ -17,6 +17,10 @@ import { automationProblems, saltCap, upgradePrep, waterRoom } from '@/sim/autom
 import { issueViews } from '@/ui/panels/operations/issues';
 import { planPurchases } from '@/sim/staff/work';
 import { BudgetStatus } from '@/ui/panels/visitors/StaffTab';
+import { getSpecies } from '@/data/species';
+import { simRng } from '@/sim/rng';
+import { createCreature, addCreature } from '@/sim/life';
+import { juvenileSlots } from '@/sim/life/breeding/common';
 
 afterEach(() => useGame.setState({ game: null }));
 
@@ -42,6 +46,36 @@ describe('AUTO-035: a line held up by a busy quarantine tank', () => {
     expect(html).toContain(`Quarantine serves the ${line.name} and each batch stays 7 days, so the ${line.name.replace(/ line$/, '')} juveniles can’t start quarantine until Day ${until}. Grow-out stays full until then.`);
     expect(html).toContain(`With a second quarantine tank Resumes Day ${dayOf(now)}`);
     expect(html).toContain(`If you wait Resumes Day ${until} (one clutch starts ${until - dayOf(now)} days late; no animals are lost)`);
+  });
+});
+
+describe('Audit 2026-11-17 (H1): a line held up by a quarantine tank full of unsold young', () => {
+  it('says what fills it, promises no day, offers no Wait, and stays a problem after a Wait', () => {
+    const { g, lineId, tanks } = lineFarm(17);
+    g.progress.unlocked.push('operations_desk');
+    const line = g.production!.lines.find((l) => l.id === lineId)!;
+    const sp = getSpecies('betta');
+    const rng = simRng(g);
+    const kid = () => createCreature(g, rng, 'betta', { ageDays: 8, motherId: line.pair.motherId, fatherId: line.pair.fatherId });
+    const next = addCreature(g, kid(), tanks.raise.id);
+    for (let i = 0; i < 300 && juvenileSlots(g, tanks.qt, sp, g.clock.hour, next.sizeCm) >= 1; i++) addCreature(g, kid(), tanks.qt.id);
+    line.batches = [{ id: 'b2', creatureIds: [next.id], sortedHour: g.clock.hour - 1 }];
+    line.waiting = true;
+    useGame.setState({ game: g });
+    const render = () => text(renderToStaticMarkup(createElement(ProblemsView, { g, snap: opsSnapshot(g), nav: { tab: () => {}, view: () => {} } })));
+    let html = render();
+    expect(html).toContain('Quarantine is full of unsold young from an earlier batch: sell or move them, or add a quarantine tank.');
+    expect(html).toContain('Quarantine · full');
+    expect(html).toMatch(/\d+ unsold · waits until it has room/);
+    expect(html).not.toContain('the line restarts by itself');
+    expect(html).not.toContain('takes them on Day');
+    expect(html).not.toContain('Wait · resumes Day');
+    // a Wait chosen earlier doesn't hide it: waiting alone never frees the tank
+    (g.automation ??= {}).lineWait = { [line.id]: g.clock.hour };
+    expect(automationProblems(g).some((p) => p.kind === 'line' && p.lineId === line.id && p.restartDay === null)).toBe(true);
+    html = render();
+    expect(html).toContain('Quarantine · full');
+    expect(html).not.toContain('Resumes Day');
   });
 });
 
@@ -73,7 +107,7 @@ describe('ADR-0033: the Water room warnings in Problems and the alerts drawer', 
     room.salt = saltCap(room);
     const s = views(salt.g).find((v) => v.key === 'salt_rate')!;
     expect(s).toMatchObject({ title: 'Salt water runs short', badge: 'Look soon', tab: 'water', action: { label: 'Reservoirs in Build' } });
-    expect(s.reason).toMatch(/^The salt tanks’ changes use \d+ gal of salt water a day, and the mixer makes up to \d+\. The changes it can’t cover are skipped, not done weak\.$/);
+    expect(s.reason).toMatch(/^The salt tanks’ changes use \d+ gal of salt water a day, and the mixer makes up to \d+\. At this rate, the changes it can’t cover are skipped, not done weak\.$/); // Audit 2026-11-17 (H22): a forecast
     // eight big marine tanks (about 144 gal a day) with all three Reservoirs: no more space to buy
     const big = facility({ fresh: 0, marine: 8, salt: 2000, rosa: null });
     for (const t of big.marine) t.tierId = 'g180';

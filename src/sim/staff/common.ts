@@ -87,6 +87,11 @@ export function noteIssue(day: StaffDay, text: string): void {
   if (day.issues.length > 6) day.issues.splice(0, day.issues.length - 6);
 }
 
+/** Take back today's flags whose cause is gone (food in stock again, a repair; Audit 2026-11-17, H26). */
+export function dropIssues(day: StaffDay, gone: (text: string) => boolean): void {
+  if (day.issues.some(gone)) day.issues = day.issues.filter((t) => !gone(t));
+}
+
 // ───────────────────────────── queries (UI + render) ─────────────────────────────
 
 /** Most staff this facility level can employ. */
@@ -133,7 +138,7 @@ export function staffLoad(state: GameState, m: StaffMember): { used: number; cap
     }
     return { used: Math.round(used * 100) / 100, capacity: aquaristCapacity(m.skill) };
   }
-  if (m.role === 'docent') return { used: m.tankIds.filter((id) => state.tanks[id]).length, capacity: docentReach(m.skill) };
+  if (m.role === 'docent') return { used: m.tankIds.filter((id) => isExhibit(state, id)).length, capacity: docentReach(m.skill) };
   return { used: 0, capacity: 0 };
 }
 
@@ -167,6 +172,12 @@ export function levelName(state: GameState): string {
 }
 
 /** Display tanks visitors can see (docent coverage is measured against these). */
+/** A tank visitors see (a docent can present it; Audit 2026-11-17, H8). */
+export function isExhibit(state: GameState, id: string): boolean {
+  const t = state.tanks[id];
+  return !!t && (t.purpose ?? 'display') === 'display';
+}
+
 export function displayTankIds(state: GameState): string[] {
   return state.tankOrder.filter((id) => {
     const t = state.tanks[id];
