@@ -45,7 +45,7 @@ export const SALT_KG_PER_LITRE = 0.036;
  * Auto Water Changer and a tank's conversion to salt water (B-169; a salt dose still raises the SG by a step its own way).
  */
 export const saltKgFor = (litres: number, sg: number): number => litres * SALT_KG_PER_LITRE * ((sg - 1) / 0.025);
-/** Price per kg used for the daily-cost estimate of marine salt (bought by the economy lane). */
+/** Price per kg of marine salt mix in the shop (it is paid for when bought, not in a tank's daily cost: Audit 2026-11-17 C2). */
 export const SALT_PRICE_PER_KG = 3;
 
 export interface ClassDefaults {

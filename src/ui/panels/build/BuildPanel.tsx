@@ -42,6 +42,7 @@ import { orderedTanks, gallonsOf, unlocked, livingInTank } from '../common/deriv
 import { substrateCost } from '../common/tankOps';
 import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
 import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
+import { THERMOSTAT_DIAL } from '@/sim/care/tuning'; // Audit 2026-11-17 C7 (review)
 import { removeEquipmentWarning, REPAIR_FROM } from '@/sim/care'; // Audit 2026-11-17 C12, C15
 import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
 import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
@@ -794,8 +795,9 @@ function DecorCard({ g, d, onChoose, longFins, suggested = false }: { g: GameSta
 
 // Temperatures are stored in °C; fmt shows them in the player's unit (Settings › Temperature).
 const SETTING_META: Record<string, { label: string; min: number; max: number; step: number; fmt: (v: number, unit: 'C' | 'F') => string }> = {
-  heater: { label: 'Target', min: 18, max: 32, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
-  chiller: { label: 'Target', min: 12, max: 26, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
+  // (the tank card's range too: THERMOSTAT_DIAL, which the sim's advice stays inside — Audit 2026-11-17 C7)
+  heater: { label: 'Target', ...THERMOSTAT_DIAL.heater, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
+  chiller: { label: 'Target', ...THERMOSTAT_DIAL.chiller, step: 0.5, fmt: (v, unit) => formatTemp(v, unit) },
   // (no light: Audit 2026-11-17 C14 — a light follows its tank's Lighting intensity on the tank card; a second
   // per-light "Intensity" here multiplied it unseen)
   powerhead: { label: 'Flow', min: 0, max: 1, step: 0.05, fmt: (v) => `${Math.round(v * 100)}%` },
@@ -867,7 +869,8 @@ export function storedEquipmentList(g: GameState, tank: Pick<Tank, 'environment'
  */
 function RemoveGearButton({ g, tankId, equipmentId }: { g: GameState; tankId: string; equipmentId: string }) {
   const [armed, setArmed] = useState(false);
-  const warning = safe(() => removeEquipmentWarning(g, tankId, equipmentId), null);
+  const { t: tempText } = useTempText(); // (review: °F players read °F)
+  const warning = safe(() => tempText(removeEquipmentWarning(g, tankId, equipmentId) ?? undefined) ?? null, null);
   useEffect(() => {
     if (!armed) return;
     const t = window.setTimeout(() => setArmed(false), 6000);

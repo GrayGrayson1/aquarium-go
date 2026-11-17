@@ -435,7 +435,11 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         advice = s.chillers.length
           ? `Lower the chiller setting${s.heaterSet !== null ? ' and the heater' : ''}.`
           : s.heaterSet !== null && s.heaterSet > w.tempC - 1 && aim < s.heaterSet - 0.25
-            ? `Turn the heater down to about ${fmt(aim, aim % 1 ? 1 : 0)} °C.`
+            ? // (Audit 2026-11-17 review) below the room's temperature no heater setting cools the water (and the dial
+              // stops at 18 °C): switch it off, and cool with what can
+              aim < ROOM_TEMP_C
+              ? `Switch the heater off — the room keeps this tank near ${ROOM_TEMP_C} °C. ${idleChiller ? idleAdvice(idleChiller) : 'For cooler water, add a chiller or a clip-on fan.'}`
+              : `Turn the heater down to about ${fmt(aim, aim % 1 ? 1 : 0)} °C.`
             : idleChiller
               ? idleAdvice(idleChiller)
               : `The room keeps this tank near ${ROOM_TEMP_C} °C. Add a chiller, or a clip-on fan for 1–2 °C of evaporative cooling.`;

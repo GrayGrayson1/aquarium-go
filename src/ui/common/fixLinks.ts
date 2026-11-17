@@ -87,6 +87,11 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     if (broken) return repairLink(tank, broken);
     // a setting to change ("Raise the heater setting (or add a second heater…)", "Turn the heater down…", "Lower the
     // chiller setting…", "Set the heater at least 1 °C below the chiller…"): the running unit's row, where its setting is
+    // (Audit 2026-11-17 review: "Switch the chiller off…" / "Switch the heater off…" — that unit's switch)
+    if (/^switch the (chiller|heater) off/.test(adv)) {
+      const unit = runningOf(tank, adv.startsWith('switch the chiller') ? 'chiller' : 'heater');
+      if (unit) return gearRow(tank, unit, 'Switch it off');
+    }
     const setting = /lower the chiller|raise the chiller/.test(adv) ? runningOf(tank, 'chiller') : /raise the heater setting|turn the heater down|set the heater/.test(adv) ? runningOf(tank, 'heater') : undefined;
     if (setting) return gearRow(tank, setting, 'Open Equipment');
     // too warm, and nothing here cools: "Add a chiller, or a clip-on fan…" (a heater would make it worse). A chiller or

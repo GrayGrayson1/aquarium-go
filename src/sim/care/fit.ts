@@ -469,10 +469,6 @@ function judge(c: FitCtx): FitVerdict {
 }
 
 /**
- * Would one more unit of `defId` help the animals in this tank? (Before buying or installing it.)
- * The hypothetical unit gets the setting installEquipment would give it (thermostat for these animals, gentle pumps).
- */
-/**
  * Audit 2026-11-17 C17 — a one-per-tank kind that's already fitted. When the one fitted has failed, "one is all it
  * needs" left the player stuck (the shop's Buy is off, the card said "replace or repair"): say how to get past it.
  */
@@ -483,6 +479,10 @@ export function oneOnlyText(tank: Tank, def: EquipmentDef): string {
   return `This tank already has ${aOrAn(def.name)} ${lc(def.name)} — one is all it needs.`;
 }
 
+/**
+ * Would one more unit of `defId` help the animals in this tank? (Before buying or installing it.)
+ * The hypothetical unit gets the setting installEquipment would give it (thermostat for these animals, gentle pumps).
+ */
 export function equipmentFit(state: GameState, tankOrId: Tank | string, defId: string): FitVerdict {
   const tank = typeof tankOrId === 'string' ? state.tanks[tankOrId] : tankOrId;
   const def = getEquipmentDef(defId);
