@@ -587,10 +587,14 @@ export function juvenileSlots(state: GameState, tank: Tank, sp: SpeciesDefinitio
   return Math.max(0, Math.floor((cap - used) / per + 1e-9));
 }
 
-/** Nursery = marked as nursery, or a tank holding no adult animals at all (species-only rearing tank). */
-export function isNurseryFor(state: GameState, tank: Tank, hour: number): boolean {
+/**
+ * Nursery = marked as nursery, or a tank holding no adult animals at all (species-only rearing tank). audit E12:
+ * `spare` — adults that don't count (a cichlid pair's own parents, which never eat their brood).
+ */
+export function isNurseryFor(state: GameState, tank: Tank, hour: number, spare?: readonly (string | null | undefined)[]): boolean {
   if (tank.purpose === 'nursery') return true;
   for (const c of livingIn(state, tank.id)) {
+    if (spare?.includes(c.id)) continue;
     const sp = findSpecies(c.speciesId);
     if (!sp) continue;
     if (sp.category === 'coral') continue;

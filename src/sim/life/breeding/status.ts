@@ -76,6 +76,8 @@ export function creatureBreedingStatus(state: GameState, creatureId: string): St
       if (!cl) return { label: 'Guarding' };
       if (cl.stage === 'eggs') return { label: `Guarding ${plural(cl.count, 'egg')}`, detail: `Hatching in ${approxDuration(cl.nextStageHour - hour)}`, progress: clutchProgress(state, cl.id) };
       if (cl.stage === 'larvae') return { label: `Tending ${plural(cl.count, 'larva', 'larvae')}`, detail: 'Returning strays to the nest', progress: clutchProgress(state, cl.id) };
+      // audit E12: a cichlid pair herds its free-swimming fry and never eats them: no need to move either parent
+      if (moduleFor(sp).plan.pairGuards) return { label: 'Fry are free-swimming', detail: 'The pair herd them and keep them safe', progress: 1 };
       return { label: 'Fry are free-swimming', detail: `Move ${c.name} out — his job is done`, progress: 1 };
     }
     case 'brooding':

@@ -587,7 +587,8 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   bumpCounter(state, 'hatches');
   addMastery(state, 'breeding', 3);
   if (mod.onPhase?.(state, cl, tank, sp, hour, ctx)) return;
-  const nursery = isNurseryFor(state, tank, hour);
+  // audit E12: a cichlid pair alone with its brood is no danger to it (its parents spare it)
+  const nursery = isNurseryFor(state, tank, hour, plan.pairGuards ? [cl.motherId, cl.fatherId] : undefined);
   const mother = cl.motherId ? state.creatures[cl.motherId] : undefined;
   const hint =
     !nursery && sp.breeding.nurseryRequired

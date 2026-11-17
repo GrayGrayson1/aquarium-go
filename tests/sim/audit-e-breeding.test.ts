@@ -196,3 +196,38 @@ describe('E9: a water warning names what is wrong with the water', () => {
     expect(logFrom(state, from).find((t) => /is hurting/.test(t))).toBe('The water in Community is hurting Bella’s fry: Community is fresh water, and sailfin molly young do much better in brackish water.');
   });
 });
+
+describe('E12: a cichlid pair’s lines match the pair rule (either parent tends, neither eats the brood)', () => {
+  function discusPair(stage: 'eggs' | 'fry') {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 71 });
+    const home = createTank(state, 'g55', 'freshwater_tropical', { cycled: true, name: 'Discus' });
+    const side = createTank(state, 'g29', 'freshwater_tropical', { cycled: true, name: 'Side' });
+    const rng = simRng(state);
+    const m = addCreature(state, createCreature(state, rng, 'discus', { sex: 'male', ageDays: 400, name: 'Rio' }), home.id);
+    const f = addCreature(state, createCreature(state, rng, 'discus', { sex: 'female', ageDays: 400, name: 'Sol' }), home.id);
+    const cl = createClutch(state, { sp: getSpecies('discus'), tank: home, mother: f, father: m, hour: state.clock.hour, stage, count: 120, visual: stage === 'eggs' ? 'eggs_adhesive' : 'fry_cloud', nextStageHour: state.clock.hour + 40, guardedById: m.id });
+    m.repro.stage = 'guarding';
+    m.repro.clutchId = cl.id;
+    return { state, home, side, m, f, cl };
+  }
+
+  it('moving or selling one parent says the other goes on tending; the free-swimming fry can stay with the pair', async () => {
+    const { saleWarnings } = await import('@/sim/economy/warnings');
+    const a = discusPair('eggs');
+    expect(saleWarnings(a.state, [a.m.id])).toContain('Rio is guarding 120 eggs with Sol, who will go on tending them alone.');
+    expect(separateCreature(a.state, a.m.id, a.side.id).message).toBe('Rio moved to Side; Sol is still fanning the eggs.');
+    const b = discusPair('fry');
+    expect(breedingStatus(b.state, b.m.id)).toMatchObject({ label: 'Fry are free-swimming', detail: 'The pair herd them and keep them safe' });
+  });
+
+  it('eggs moved into the tank where the parents live are not said to be in danger from them', async () => {
+    const { moveClutch } = await import('@/sim/life/breeding/actions');
+    const a = discusPair('eggs');
+    a.cl.tankId = a.side.id; // the eggs were taken away; now they go back to their parents
+    delete a.cl.guardedById;
+    a.home.water.tempC = 29;
+    const res = moveClutch(a.state, a.cl.id, a.home.id);
+    expect(res.ok, res.message).toBe(true);
+    expect(res.message).not.toMatch(/may eat them|airstone/);
+  });
+});
