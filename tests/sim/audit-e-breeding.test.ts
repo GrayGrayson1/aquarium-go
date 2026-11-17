@@ -259,3 +259,17 @@ describe('E15: plain words for breeding, and a short page that explains them', (
     expect(ARTICLES.find((a) => a.id === 'how_breeding_works')).toMatchObject({ title: 'How breeding works', isNew: true });
   });
 });
+
+describe('E17: hermaphrodites and snails that can’t be sexed by eye', () => {
+  it('say so instead of “Not yet visible” forever', async () => {
+    const { sexRoleText } = await import('@/ui/common/format');
+    const state = newGame({ starterId: 'ocellaris_clownfish', starterName: 'Nemo', seed: 93 });
+    const reef = createTank(state, 'g29', 'reef', { cycled: true });
+    const shrimp = addCreature(state, createCreature(state, simRng(state), 'cleaner_shrimp', { ageDays: 100 }), reef.id);
+    expect(sexRoleText(shrimp, getSpecies('cleaner_shrimp'), state.clock.hour)).toEqual({ label: 'Both sexes', detail: 'Any two adults can pair up — both can carry eggs.' });
+    const fresh = createTank(state, 'g10', 'freshwater_tropical', { cycled: true });
+    const snail = addCreature(state, createCreature(state, simRng(state), 'mystery_snail', { ageDays: 40 }), fresh.id);
+    snail.sex = 'unknown';
+    expect(sexRoleText(snail, getSpecies('mystery_snail'), state.clock.hour)).toEqual({ label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' });
+  });
+});
