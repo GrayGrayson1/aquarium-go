@@ -289,7 +289,7 @@ function lightFit(c: FitCtx): FitVerdict {
 
 function airstoneFit(c: FitCtx): FitVerdict {
   const s0 = equipmentSummary(c.without);
-  if (s0.co2 > 0) return v('partial', 'Its bubbles drive off the injected CO₂ your plants use — run it only at night, when the plants aren’t using CO₂.');
+  if (s0.co2 > 0) return v('partial', 'Its bubbles drive off the injected CO₂ your plants use — switch it off while the lights are on, when the plants use CO₂.');
   const highOx = c.groups.filter((g) => g.sp.special?.highOxygen);
   if (highOx.length) return v('ok', `${capFirst(animals(highOx))} ${verb(highOx, 'need', 'needs')} cool, oxygen-rich water — this helps.`, { who: whoOf(highOx) });
   if (c.groups.length && (c.tank.water?.oxygen ?? 1) < 0.7) return v('ok', `Oxygen is on the low side here (${Math.round((c.tank.water.oxygen ?? 0) * 100)}% of saturation) — this raises it.`);
@@ -369,7 +369,7 @@ function co2Fit(c: FitCtx): FitVerdict {
     return v('useless', `CO₂ only feeds live plants — with none in this tank it would just lower the pH${c.groups.length ? ` and stress ${animals(c.groups)}` : ''}.`, { attention: c.groups.length > 0, who: whoOf(c.groups) });
   const s0 = equipmentSummary(c.without);
   const airstone = s0.entries.some((e) => e.def.kind === 'airstone' && e.inst.on && !e.inst.failed);
-  if (airstone) return v('partial', 'The airstone here drives the CO₂ straight back out — run the airstone only at night.');
+  if (airstone) return v('partial', 'The airstone here drives the CO₂ straight back out — switch the airstone off while the lights are on.');
   return v('ok', `Your ${living.plants} live plant${living.plants === 1 ? '' : 's'} will grow faster and pearl under good light. Keep the surface moving at night so the animals aren’t short of oxygen.`);
 }
 

@@ -6,7 +6,9 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
-import { waterChange, waterChangeCost, dose, installEquipment, feedTank, removeEquipment, removeEquipmentWarning } from '@/sim/care';
+import { waterChange, waterChangeCost, dose, installEquipment, feedTank, removeEquipment, removeEquipmentWarning, topOff } from '@/sim/care';
+import { DECOR } from '@/data/catalog/decor';
+import { installedFit } from '@/sim/care/fit';
 import { storedEquipmentList } from '@/ui/panels/build/BuildPanel';
 import { convertWaterClass, convertWaterClassCost } from '@/sim/tankOps';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -436,5 +438,58 @@ describe('C12: taking a filter’s bacteria or the only heater out of a stocked 
     expect(removeEquipmentWarning(s, t.id, heater.id)).toMatch(/cools toward the room’s 22 °C — too cool for the animals here/);
     for (const id of Object.keys(s.creatures)) delete s.creatures[id];
     expect(removeEquipmentWarning(s, t.id, heater.id)).toBeNull();
+  });
+});
+
+describe('C13: advice names only what the game can do', () => {
+  const param = (s: GameState, key: string) => getWaterReport(s, firstTank(s).id).params.find((p) => p.key === key)!;
+
+  it('pH and KH too high: water changes and no buffer, not "softer water" or limestone', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.water.pH = 8.6;
+    t.water.kh = 20;
+    expect(param(s, 'ph').advice).toBe('Do a water change, and skip buffer for now.');
+    expect(param(s, 'kh').advice).toBe('Do water changes and skip buffer for now.');
+  });
+
+  it('salinity too high: top off with fresh water (no "RO"), or a water change when the tank is full', () => {
+    const s = base('ocellaris_clownfish');
+    const t = firstTank(s);
+    t.water.salinitySG = 1.03;
+    t.water.level = 0.95;
+    expect(param(s, 'salinity').advice).toMatch(/^Evaporation concentrates salt\. Top off with fresh water \(never salt water\)/);
+    t.water.level = 1;
+    const p = param(s, 'salinity');
+    expect(p.advice).toBe('Do a water change — new water is mixed at the right strength.');
+    expect(fixForWaterIssue(t, { text: p.reason!, advice: p.advice, param: 'salinity' })?.label).toBe('Water change');
+    t.water.level = 0.9;
+    expect(topOff(s, t.id).message).not.toMatch(/RO/);
+  });
+
+  it('green water: shorter lights and a water change, linked to Lighting (not "vacuum")', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.water.algae = 80;
+    t.water.clarity = 0.5;
+    t.water.bioMaturity = 1;
+    const p = param(s, 'clarity');
+    expect(p.advice).toBe('Shorten the lights to about 8 hours and change water; a UV sterilizer clears it faster.');
+    expect(fixForWaterIssue(t, { text: p.reason!, advice: p.advice, param: 'clarity' })?.label).toBe('Lighting');
+  });
+
+  it('an airstone beside CO₂: switch it off while the lights are on (there is no night schedule)', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.waterClass = 'freshwater_planted';
+    t.equipment.push({ id: 'test_co2', defId: 'co2_kit', installedHour: 0, condition: 1, on: true });
+    t.equipment.push({ id: 'test_air', defId: 'airstone', installedHour: 0, condition: 1, on: true });
+    const text = [installedFit(s, t, 'test_air')?.text, installedFit(s, t, 'test_co2')?.text].join(' ');
+    expect(text).toMatch(/switch (it|the airstone) off while the lights are on/);
+    expect(text).not.toMatch(/only at night/);
+  });
+
+  it('Seiryu Stone no longer claims a hardness the game doesn’t model', () => {
+    expect(DECOR.find((d) => d.id === 'seiryu_stone')!.description).not.toMatch(/raises hardness/);
   });
 });

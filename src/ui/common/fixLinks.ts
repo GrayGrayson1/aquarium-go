@@ -113,7 +113,8 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     }
     // ("Switch the filter back on." goes to that filter's row, its switch, above: Audit 2026-11-17 C3)
     const filter = runningOf(tank, 'filter');
-    if (/install a filter|second filter|larger one|add a filter/.test(adv) || !filter) return buyGear(tank, 'filter', 'Buy a filter');
+    if (/flow up/.test(adv) && filter) return gearRow(tank, filter, 'Open Equipment'); // Audit 2026-11-17 C13: its Flow control
+    if (/install a filter|bigger filter|second filter|larger one|add a filter/.test(adv) || !filter) return buyGear(tank, 'filter', 'Buy a filter');
     return gearRow(tank, filter, 'Open Equipment');
   }
   if (p === 'light') {
@@ -147,6 +148,7 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
   if (/top off/.test(adv)) return card(tank, 'water', 'top-off', 'Top off');
   if (p === 'level') return card(tank, 'water', 'top-off', 'Top off');
   if (p === 'algae' || /scrape the glass/.test(adv)) return card(tank, 'water', 'clean-glass', 'Clean glass');
+  if (p === 'clarity' && /shorten the lights/.test(adv)) return card(tank, 'gear', 'lighting', 'Lighting'); // Audit 2026-11-17 C13: green water
   if (p === 'clarity') return /vacuum/.test(adv) ? card(tank, 'water', 'vacuum', 'Vacuum gravel') : card(tank, 'water', 'water-change', 'Water change');
   if (p === 'salinity') return /salt mix|dose salt/.test(adv) ? card(tank, 'water', 'dose-salt', 'Dose salt') : card(tank, 'water', 'water-change', 'Water change');
   if (/dose buffer/.test(adv)) return card(tank, 'water', 'dose-buffer', 'Dose buffer');

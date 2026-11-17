@@ -461,7 +461,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
           : w.kh >= khPreferredMax(tank, species) // Audit 2026-11-17 C4 — a buffer dose is refused there
             ? 'Do a water change, and check for rotting food or heavy CO₂ injection.'
             : 'Do a water change and dose buffer to raise KH. Check for rotting food or heavy CO₂ injection.'
-        : 'Do small water changes with softer water; remove limestone or aragonite from soft-water tanks.';
+        : // Audit 2026-11-17 C13 — there is no choice of water to change with: say what the game can do
+          `Do a water change, and skip buffer${marine ? ' and coral supplement' : ''} for now.`;
       if (noCommon) {
         reason = `${reason ?? ''} No pH suits all of these animals at once — a compatibility problem, not a care one.`.trim();
         advice = 'Rehome one group to a tank with water that suits it.';
@@ -573,9 +574,11 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     const brackishTank = tank.waterClass === 'brackish';
     if (j.status !== 'good')
       advice = j.high
-        ? brackishTank
-          ? `Evaporation concentrates salt. Top off with fresh water, and mix the next water change a little weaker${s.ato ? '' : ' — an auto top-off keeps this steady'}.`
-          : `Evaporation concentrates salt. Top off with fresh (RO) water${s.ato ? '' : ' — an auto top-off keeps this steady'}.`
+        ? // Audit 2026-11-17 C13 — a full tank can't be topped off (and "RO" was never explained); a change's new water is
+          // mixed at the right strength, brackish or marine (there is no "mix it weaker" control)
+          w.level >= 0.995
+          ? 'Do a water change — new water is mixed at the right strength.'
+          : `Evaporation concentrates salt. Top off with fresh water (never salt water)${s.ato ? '' : ' — an auto top-off keeps this steady'}.`
         : // Audit 2026-11-17 C1 — low salinity harms the animals at once and a dose shocks nothing, so the advice is to
           // dose back up now (each dose adds 0.001), not "0.001 a day", which let the harm run for days.
           `${brackishTank ? 'Brackish water needs only a little marine salt (about a third of reef strength). ' : ''}Dose salt mix until it reads at least ${fmt(idealBand(state, tank, 'salinitySG').min, 3)} — each dose adds 0.001.`;
@@ -623,7 +626,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         status: st,
         ideal: `${fmt(kMin, 0)}–${fmt(Math.max(kMin, kMax), 0)} dKH`,
         reason: st === 'good' ? undefined : w.kh < kMin ? `KH ${fmt(w.kh, 1)} is low — it is the buffer that stops pH crashing${marine ? ' and corals use it to build skeletons' : ''}.` : `KH ${fmt(w.kh, 1)} is higher than your animals prefer.`,
-        advice: st === 'good' ? undefined : w.kh < kMin ? `Dose buffer${marine ? ' or a coral supplement' : ''} and keep up with water changes.` : 'Use softer water for water changes.',
+        advice: st === 'good' ? undefined : w.kh < kMin ? `Dose buffer${marine ? ' or a coral supplement' : ''} and keep up with water changes.` : 'Do water changes and skip buffer for now.', // Audit 2026-11-17 C13
       },
       w.kh < kMin ? 'KH buffer is low' : 'KH is higher than ideal',
     );
@@ -721,7 +724,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
     } else if (turnover < 2 && !s.activeFilters.every((e) => e.def.visual === 'sponge_filter')) {
       st = 'watch';
       reason = `Water only passes through the filter ${fmt(turnover, 1)}× per hour.`;
-      advice = 'Aim for 4–10× turnover per hour (sponge filters in gentle tanks are the exception).';
+      // Audit 2026-11-17 C13 — the next step, not the jargon ("4–10× turnover")
+      advice = s.activeFilters.some((e) => (e.inst.setting ?? 1) < 0.95) ? 'Turn the filter’s flow up, or add a bigger filter.' : 'Add a bigger filter, or a second one.';
     } else if (failedFilter) {
       st = 'watch';
       reason = `The ${failedFilter.def.name} has failed; the remaining filters are carrying the load.`;
@@ -915,7 +919,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
               : w.algae > 50
                 ? 'Green water: free-floating algae.'
                 : 'Suspended detritus and leftover food are clouding the water.',
-        advice: st === 'good' ? undefined : bloom ? 'Be patient, feed lightly; a UV sterilizer clears it faster.' : 'Vacuum the substrate, rinse the filter sponge in tank water and feed less.',
+        // Audit 2026-11-17 C13 — green water is free-floating algae: vacuuming doesn't touch it, light and nutrients do
+        advice: st === 'good' ? undefined : bloom ? 'Be patient, feed lightly; a UV sterilizer clears it faster.' : w.algae > 50 ? 'Shorten the lights to about 8 hours and change water; a UV sterilizer clears it faster.' : 'Vacuum the substrate, rinse the filter sponge in tank water and feed less.',
       },
       'Water is cloudy',
     );

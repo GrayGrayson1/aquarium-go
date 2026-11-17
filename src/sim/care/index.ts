@@ -239,7 +239,7 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
   return { ok: true, message: parts.join(' ') + shockNote };
 }
 
-/** Top off evaporated water with fresh (RO) water — marine salinity rises if skipped. */
+/** Top off evaporated water with fresh water — marine salinity rises if skipped. */
 export function topOff(state: GameState, tankId: string): ActionResult {
   const tank = getTank(state, tankId);
   if (!tank) return fail('That tank no longer exists.');
@@ -267,7 +267,7 @@ export function topOff(state: GameState, tankId: string): ActionResult {
   }
   w.level = 1;
   bumpCounter(state, 'topOffs');
-  const msg = `Topped off ${Math.round(added * 100)}% with fresh ${salty ? 'RO' : ''} water.`.replace('  ', ' ');
+  const msg = `Topped off ${Math.round(added * 100)}% with fresh water.`; // Audit 2026-11-17 C13: no unexplained "RO"
   return { ok: true, message: salty ? `${msg} Salinity ${sgBefore.toFixed(3)} → ${w.salinitySG.toFixed(3)} — salt never evaporates, only water does.` : msg };
 }
 
@@ -545,7 +545,7 @@ export function installEquipment(
   if (def.kind === 'heater' || def.kind === 'chiller') notes.push(`Set to ${inst.setting?.toFixed(1)} °C.`);
   const conflict = equipmentSummary(tank).conflict;
   if (conflict) notes.push('Warning: the heater is set at or above the chiller — they will fight each other.');
-  if (!fit && def.kind === 'airstone' && tank.waterClass === 'freshwater_planted' && equipmentSummary(tank).co2 > 0) notes.push('Bubbles drive off injected CO₂ — consider running it only at night.');
+  if (!fit && def.kind === 'airstone' && tank.waterClass === 'freshwater_planted' && equipmentSummary(tank).co2 > 0) notes.push('Bubbles drive off injected CO₂ — consider switching it off while the lights are on.'); // Audit 2026-11-17 C13: no night schedule exists
   // lane:qa-r3 — `caution`: the install worked, but the player should read why it won't help (toasted as a warning)
   return { ok: true, message: [`Installed the ${def.name}${fromStorage ? ' from storage' : ''}.`, ...notes].join(' '), ...(fit || conflict ? { caution: true } : {}) };
 }
