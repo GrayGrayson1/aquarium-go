@@ -435,17 +435,18 @@ describe('E8: the partner the player picked fathers a livebearer’s brood', () 
 });
 
 describe('E10: young eat what their species’ notes say', () => {
-  it('copepods for the marine cave spawners and the mandarin, infusoria for the bumblebee goby; trochus parents spare theirs', async () => {
+  it('copepods for the marine cave spawners and the mandarin, infusoria for the bumblebee goby; the trochus is unchanged', async () => {
     const { moduleFor } = await import('@/sim/life/breeding/registry');
     const foods = (id: string) => moduleFor(getSpecies(id)).plan.phases.map((p) => p.foods);
     for (const id of ['royal_gramma', 'firefish', 'watchman_goby']) expect(foods(id)[1], id).toEqual(['copepod_live', 'baby_brine']);
     expect(foods('bumblebee_goby')[1]).toEqual(['infusoria', 'baby_brine']);
     expect(foods('mandarin_dragonet')).toEqual([['copepod_live'], ['copepod_live', 'baby_brine']]);
     expect(foods('bristlenose_pleco')[1]).toContain('algae_wafer'); // the freshwater cave spawner is unchanged
-    const trochus = moduleFor(getSpecies('trochus_snail'));
-    expect(trochus.id).toBe('egg_layer_generic');
-    expect(trochus.plan.parentsEatEggs).toBe(false);
-    expect(getSpecies('trochus_snail').breeding.predationWithoutNursery).toBe(0);
+    // the review: letting trochus young settle made a colony run away (4 snails became about 200 in a month), so it keeps
+    // the plain generic module and its parents' predation, as before; the owner decides whether a few should settle
+    const { genericEggLayerModule } = await import('@/sim/life/breeding/systems/spawners');
+    expect(moduleFor(getSpecies('trochus_snail'))).toBe(genericEggLayerModule);
+    expect(getSpecies('trochus_snail').breeding.predationWithoutNursery).toBe(0.98);
     expect(moduleFor(getSpecies('yellowtail_damselfish')).plan.phases[0].foods).toEqual(['infusoria']); // not in E10's list
   });
 });
