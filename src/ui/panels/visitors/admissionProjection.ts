@@ -28,12 +28,14 @@ export interface AdmissionProjection {
 }
 
 /**
- * A day at `price`: the recent days' visitors (the last seven; before any history, four times the room's capacity),
+ * A day at `price`: the recent days' visitors (the last seven days that had any; before any, four times the room's
+ * capacity; Audit 2026-11-17 H7: the hobby room's friend-tip days are history days with no visitors, and a new shop's
+ * projection read about 0),
  * scaled by how the sim's draw at `price` compares with its draw at the price charged now. `fairIn` is the sim's fair
  * price for today's exhibits (visitorSummary's); without it, a rough one from reputation.
  */
 export function projectAdmission(g: GameState, price: number, fairIn?: number): AdmissionProjection {
-  const hist = g.visitors.history.slice(-7);
+  const hist = g.visitors.history.filter((h) => h.count > 0).slice(-7);
   const lvl = getFacilityLevel(g.facility.level);
   const base = hist.length ? hist.reduce((a, h) => a + h.count, 0) / hist.length : lvl.visitorCapacity * 4;
   const fair = Math.max(1, fairIn ?? 4 + g.progress.reputation / 60);

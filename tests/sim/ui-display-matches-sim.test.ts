@@ -59,6 +59,14 @@ describe('B-121: the admission projection follows the sim', () => {
     expect(then / now).toBeCloseTo(0.5833, 3);
   });
 
+  it('Audit 2026-11-17 (H7): days with tips but no visitors (the hobby room\'s friends) are left out of the base', () => {
+    const g = shop(6);
+    g.visitors.history = [...[1, 2, 3, 4, 5, 6].map((day) => ({ day, count: 0, revenue: 12, avgSatisfaction: 0 })), { day: 7, count: 70, revenue: 420, avgSatisfaction: 70 }];
+    expect(projectAdmission(g, 6, FAIR).visitors).toBeCloseTo(70, 9); // it averaged in the six empty days: 10
+    g.visitors.history = [1, 2, 3].map((day) => ({ day, count: 0, revenue: 12, avgSatisfaction: 0 }));
+    expect(projectAdmission(g, 6, FAIR).visitors).toBeGreaterThan(0); // no visitors yet: the room's capacity estimate, not 0
+  });
+
   it('from a price far past the fair one the scaling is bounded: the current price counts as a draw of at least 0.01', () => {
     const g = shop(40);
     g.visitors.history = [{ day: 1, count: 2, revenue: 80, avgSatisfaction: 40 }];
