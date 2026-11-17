@@ -14,7 +14,7 @@ import { newGame } from '@/sim/newGame';
 import { getWaterReport, tankDailyCost, STOCKING_WATCH, STOCKING_DANGER } from '@/sim/water';
 import { waterChange, waterChangeCost, dose, installEquipment, feedTank, removeEquipment, removeEquipmentWarning, topOff, repairEquipment, REPAIR_FROM } from '@/sim/care';
 import { DECOR } from '@/data/catalog/decor';
-import { installedFit } from '@/sim/care/fit';
+import { installedFit, equipmentFit } from '@/sim/care/fit';
 import { storedEquipmentList } from '@/ui/panels/build/BuildPanel';
 import { convertWaterClass, convertWaterClassCost } from '@/sim/tankOps';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -572,5 +572,19 @@ describe('C16 (the part with no decision): a repair that switches a unit back on
     heater.failed = true;
     heater.failMode = 'off';
     expect(repairEquipment(s, t.id, heater.id).message).not.toMatch(/switched it on/);
+  });
+});
+
+describe('C17: a failed one-per-tank unit says how to get past it', () => {
+  it('the shop’s verdict and the install refusal say repair it or move it to storage', () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.equipment.push({ id: 'test_ato', defId: 'ato', installedHour: 0, condition: 0.2, on: true, failed: true, failMode: 'off' });
+    const name = getEquipmentDef('ato')!.name;
+    const want = `The ${name} here has failed — repair it on the tank card, or move it to storage first.`;
+    expect(equipmentFit(s, t, 'ato').text).toBe(want);
+    expect(installEquipment(s, t.id, 'ato', { purchased: true }).message).toBe(want);
+    t.equipment.find((e) => e.id === 'test_ato')!.failed = false;
+    expect(equipmentFit(s, t, 'ato').text).toMatch(/one is all it needs/);
   });
 });

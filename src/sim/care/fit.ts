@@ -472,6 +472,17 @@ function judge(c: FitCtx): FitVerdict {
  * Would one more unit of `defId` help the animals in this tank? (Before buying or installing it.)
  * The hypothetical unit gets the setting installEquipment would give it (thermostat for these animals, gentle pumps).
  */
+/**
+ * Audit 2026-11-17 C17 — a one-per-tank kind that's already fitted. When the one fitted has failed, "one is all it
+ * needs" left the player stuck (the shop's Buy is off, the card said "replace or repair"): say how to get past it.
+ */
+export function oneOnlyText(tank: Tank, def: EquipmentDef): string {
+  const here = (tank.equipment ?? []).find((e) => getEquipmentDef(e.defId)?.kind === def.kind);
+  const hereDef = here ? getEquipmentDef(here.defId) : undefined;
+  if (here?.failed && hereDef) return `The ${hereDef.name} here has failed — repair it on the tank card, or move it to storage first.`;
+  return `This tank already has ${aOrAn(def.name)} ${lc(def.name)} — one is all it needs.`;
+}
+
 export function equipmentFit(state: GameState, tankOrId: Tank | string, defId: string): FitVerdict {
   const tank = typeof tankOrId === 'string' ? state.tanks[tankOrId] : tankOrId;
   const def = getEquipmentDef(defId);
@@ -481,7 +492,7 @@ export function equipmentFit(state: GameState, tankOrId: Tank | string, defId: s
   const same = (tank.equipment ?? []).filter((e) => getEquipmentDef(e.defId)?.kind === def.kind).length;
   const max = MAX_PER_KIND[def.kind] ?? 6;
   if (same >= max)
-    return v('useless', max === 1 ? `This tank already has ${aOrAn(def.name)} ${lc(def.name)} — one is all it needs.` : `This tank already has ${same} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that’s the most that fit.`, { blocked: true, label: 'Already fitted', soft: true }); // lane:qa-r3 — a fact, not a warning: neutral
+    return v('useless', max === 1 ? oneOnlyText(tank, def) : `This tank already has ${same} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that’s the most that fit.`, { blocked: true, label: 'Already fitted', soft: true }); // lane:qa-r3 — a fact, not a warning: neutral
   const setting = defaultSettingFor(state, tank, def.kind, def.stats.defaultSetting);
   const inst: EquipmentInstance = { id: '__fit_preview', defId, installedHour: state.clock?.hour ?? 0, condition: 1, on: true, setting };
   return judge(makeCtx(state, tank, def, inst, false));

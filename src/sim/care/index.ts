@@ -24,7 +24,7 @@ import { refreshFoodStatus, tankFoodOutlook } from '../tankStatus';
 import { aOrAn } from '../economy/util'; // lane:w2-ui ("an 800-gallon tank")
 import { photoperiodTooLong } from '../time';
 import { MAX_PER_KIND, KIND_PLURAL, idealBand, defaultSettingFor, fightAdvice } from './tuning'; // lane:fit — shared with the fit verdicts
-import { installedFit, type FitVerdict } from './fit'; // lane:fit
+import { installedFit, oneOnlyText, type FitVerdict } from './fit'; // lane:fit (Audit 2026-11-17 C17: oneOnlyText)
 import { FOOD_TAG_WORDS, groupEaters, whoPhrase } from './autofeed'; // lane:fit (lane:qa-r3: groupEaters, whoPhrase)
 import { noteFoodSpend } from '../production/costs'; // lane:production
 import { noteLiveFoodUsed } from '../automation/reserve'; // lane:automation (chunk 5)
@@ -495,7 +495,7 @@ export function installEquipment(
   const sameKind = tank.equipment.filter((e) => getEquipmentDef(e.defId)?.kind === def.kind).length;
   const max = MAX_PER_KIND[def.kind] ?? 6;
   // lane:fit — one-per-tank kinds read "already has an auto top-off", not "already has 1 auto top-offs"
-  if (sameKind >= max) return fail(max === 1 ? `This tank already has ${aOrAn(def.name)} ${def.name.toLowerCase()} — one is all it needs.` : `This tank already has ${sameKind} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that's the most that fit.`);
+  if (sameKind >= max) return fail(max === 1 ? oneOnlyText(tank, def) /* Audit 2026-11-17 C17 */ : `This tank already has ${sameKind} ${KIND_PLURAL[def.kind] ?? `${def.kind}s`} — that's the most that fit.`);
 
   let inst: EquipmentInstance | undefined;
   let fromStorage = false;

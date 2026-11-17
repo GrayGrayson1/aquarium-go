@@ -357,7 +357,7 @@ function EquipmentRow({ tank, e, readOnly, fit }: { tank: Tank; e: EquipmentInst
         <div className="ag-equip__name">{name}</div>
         <div className="ag-equip__meta">
           {e.failed ? (
-            <span className="ag-down"><OctagonAlert size={11} aria-hidden /> Failed — replace or repair</span>
+            <span className="ag-down"><OctagonAlert size={11} aria-hidden /> Failed — repair it</span> /* Audit 2026-11-17 C17: Repair is right here */
           ) : worn ? (
             <span className="ag-watchtext"><TriangleAlert size={11} aria-hidden /> Wearing out · condition {cond}%</span>
           ) : (
