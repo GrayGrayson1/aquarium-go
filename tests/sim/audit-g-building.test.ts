@@ -29,7 +29,8 @@ import { applyCommand } from '@/sim/commands';
 import { removeEquipment } from '@/sim/care';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { equipmentSellValue, takeDownCheck } from '@/sim/economy/sellBack';
-import { buyTank } from '@/sim/economy/purchases';
+import { buyTank, kitEquipmentFor } from '@/sim/economy/purchases';
+import { MAX_PER_KIND } from '@/sim/care/tuning';
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { advanceWorld } from '@/sim/world';
 import { findNonFinite } from '@/dev/fixtures/core-testkit';
@@ -497,5 +498,21 @@ describe('G24: placing a tank on a phone', () => {
   it('the start toast mentions Esc only where there is a keyboard', () => {
     expect(tankPlaceToast('10 Gallon', true)).toBe('Choose a spot for your 10 Gallon.');
     expect(tankPlaceToast('10 Gallon', false)).toBe('Choose a spot for your 10 Gallon. Press Esc to cancel.');
+  });
+});
+
+describe('G25: a big tank’s kit never ships more units of a kind than a tank may hold', () => {
+  it('without Premium Life Support, every tier’s kit stays within the per-kind limits', () => {
+    const g = game('betta');
+    g.progress.unlocked.push('gear_tier2', 'marine_basics', 'reef');
+    for (const tier of Object.values(TANK_TIER_BY_ID))
+      for (const wc of ['freshwater_tropical', 'marine_fowlr', 'reef'] as const) {
+        const kinds = new Map<string, number>();
+        for (const id of kitEquipmentFor(g, tier.id, wc).ids) {
+          const k = getEquipmentDef(id)!.kind;
+          kinds.set(k, (kinds.get(k) ?? 0) + 1);
+        }
+        for (const [k, n] of kinds) expect(n, `${tier.id} ${wc} ${k}`).toBeLessThanOrEqual(MAX_PER_KIND[k] ?? 6);
+      }
   });
 });
