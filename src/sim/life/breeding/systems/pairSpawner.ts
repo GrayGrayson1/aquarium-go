@@ -22,6 +22,7 @@ import {
   guardianOf,
   habitatOf,
   hasCave,
+  hasHardSite,
   hasNestSite,
   inSpawnWindow,
   isMature,
@@ -65,8 +66,13 @@ export interface PairSpawnerConfig {
   guardStage: string;
   visual: Clutch['visual'];
   site: SiteKind;
-  /** chunk 16 — where one species lays when it differs from the module's site and visual (ramshorn snails lay under water). */
-  layOf?(sp: SpeciesDefinition): { site: SiteKind; visual: Clutch['visual'] } | null;
+  /**
+   * chunk 16 — where one species lays when it differs from the module's site and visual (ramshorn snails lay under
+   * water). audit E11: `tank` — where a cichlid lays depends on what the tank offers (a leaf, a stone, sand).
+   */
+  layOf?(sp: SpeciesDefinition, tank?: Tank): { site: SiteKind; visual: Clutch['visual'] } | null;
+  /** audit E11 (B-223): this module's own nest-site rule for `needsNestSite` (a failing gate, or null). Absent: a hard surface. */
+  nestSite?(tank: Tank, sp: SpeciesDefinition, hab: ReturnType<typeof habitatOf>): Gate | null;
   /** Extra anchors for scattered eggs. */
   extraSites: number;
   /** Clutch carried by the guardian (mouthbrooder): stage 'in_pouch', released by this module. */
@@ -84,7 +90,7 @@ export interface PairSpawnerConfig {
   /** chunk 17 — game hours before a clutch of duds rots away. Absent: three incubations, at least 48. */
   dudHours?(sp: SpeciesDefinition): number;
   text: {
-    court(m: Creature, f: Creature, sp: SpeciesDefinition): string;
+    court(m: Creature, f: Creature, sp: SpeciesDefinition, tank?: Tank): string;
     /** `duds`: how many of the `n` laid are duds (chunk 17); every one of them when the clutch is all duds. */
     spawn(m: Creature, f: Creature, sp: SpeciesDefinition, n: number, tank: Tank, guardian: Creature | null, duds?: number): string;
     /** chunk 17 — the card's line for a clutch of nothing but duds. Absent: the spawn line. */
@@ -106,8 +112,12 @@ export function allDataGates(state: GameState, tank: Tank, sp: SpeciesDefinition
   if (cond.needsCover && hab.cover < COVER_FOR_SPAWNING) {
     out.push({ ok: false, reason: `${spPlural(sp)[0].toUpperCase()}${spPlural(sp).slice(1)} only spawn in dense cover (plants or moss) — cover here is ${Math.round(hab.cover * 100)}% (they need about ${Math.round(COVER_FOR_SPAWNING * 100)}%).`, step: 'Add dense plants or a clump of moss to give them somewhere to spawn.' });
   }
-  if (cond.needsNestSite) {
-    const ok = cfg.site === 'cave' ? hasCave(tank, hab) || hasNestSite(tank, hab) : hasNestSite(tank, hab);
+  if (cond.needsNestSite && cfg.nestSite) {
+    const g = cfg.nestSite(tank, sp, hab);
+    if (g) out.push(g);
+  } else if (cond.needsNestSite) {
+    // audit E11: a cave, or a crevice in rock — never a clump of moss
+    const ok = cfg.site === 'cave' ? hasCave(tank, hab) || hasHardSite(tank, hab) : hasNestSite(tank, hab);
     if (!ok) out.push({ ok: false, reason: cfg.site === 'cave' ? 'There is no cave for the male to claim.' : 'There is no flat rock or tile to lay eggs on.', step: cfg.site === 'cave' ? 'Add a cave or spawning tube.' : 'Add a flat stone or rock near their favourite spot.' });
   }
   if (cond.coolingTrigger && !coolCueActive(tank, hour)) {
@@ -249,7 +259,7 @@ function stepPairs(env: StepEnv, cfg: PairSpawnerConfig, mod: BreedingModule): v
     const key = `court_${sp.id}`;
     const seen = state.progress.counters[key] ?? 0;
     bumpCounter(state, key);
-    say(state, ctx, { kind: 'breeding', text: cfg.text.court(m, f, sp), tankId: tank.id, creatureId: m.id, toast: seen < 3 });
+    say(state, ctx, { kind: 'breeding', text: cfg.text.court(m, f, sp, tank), tankId: tank.id, creatureId: m.id, toast: seen < 3 });
   }
 }
 
@@ -263,7 +273,7 @@ function spawn(state: GameState, tank: Tank, sp: SpeciesDefinition, m: Creature,
   const allDuds = !infertile && fertile <= 0;
   const sterile = !!infertile || allDuds;
   const carried = !!cfg.carried && !!guardian;
-  const lay = cfg.layOf?.(sp) ?? null;
+  const lay = cfg.layOf?.(sp, tank) ?? null;
   const site = carried ? null : pickSite(tank, infertile ? 'rock' : (lay?.site ?? cfg.site), `${f.id}:${hour.toFixed(1)}`, infertile ? 5 : cfg.extraSites);
   const spawnText = cfg.text.spawn(m, f, sp, n, tank, sterile ? null : guardian, n - fertile);
   const cl = createClutch(state, {

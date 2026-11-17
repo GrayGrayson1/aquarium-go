@@ -26,7 +26,7 @@ import type { IncidentRisk } from '@/sim/compat';
 import { computeTankEnv, effectiveBioload } from '@/sim/water';
 import { fitsEnvironment } from '@/sim/compat/salinity';
 import { findSpecies } from '@/data/species';
-import { getDecorDef } from '@/data/catalog/decor';
+import { getDecorDef, isFloating } from '@/data/catalog/decor';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getTankTier } from '@/data/catalog/tanks';
 import type { TankInfo } from './types';
@@ -884,16 +884,60 @@ export function pickSite(tank: Tank, kind: SiteKind, key: string, extras = 0): {
   }
 }
 
-/** Does the tank offer a nest site (rock/tile/host/cave anchor, habitat nest sites, or any hardscape)? */
+/**
+ * audit E11 (B-223): nest-site capacity carried by plants (java moss, floating plants): cover to scatter eggs into, not a
+ * surface to lay on. The habitat's `nestSites` counts them, so the hard-site checks below take them back out.
+ */
+function plantNestSites(tank: Tank): number {
+  let n = 0;
+  for (const inst of tank.decor ?? []) {
+    const def = getDecorDef(inst.defId);
+    if (!def || def.category !== 'plant') continue;
+    for (const a of def.anchors) {
+      if (a.kind === 'nest_site') n += a.capacity ?? 1;
+      else if (a.kind === 'cave') n += 1;
+    }
+  }
+  return n;
+}
+
+const HARD_CATEGORIES = ['hardscape', 'ornament', 'coral', 'anemone', 'enrichment', 'substrate_feature'] as const;
+
+/**
+ * audit E11: a hard surface to lay on — any rock, wood, ornament or coral, or a nest site, cave or host on a piece that
+ * isn't a plant (a terracotta cave, oyster shells, the live-rock arch). A clump of moss or floating plants isn't one.
+ */
+export function hasHardSite(tank: Tank, habitat?: Pick<TankHabitat, 'nestSites'>): boolean {
+  if (habitat && habitat.nestSites - plantNestSites(tank) > 0) return true;
+  if (anchorsOn(tank, HARD_CATEGORIES, ['nest_site', 'host', 'cave']).length) return true;
+  return decorSpots(tank, ['hardscape', 'ornament', 'coral']).length > 0;
+}
+
+/** audit E11: a broad leaf to lay on — a leaf rest on a rooted plant (java fern, anubias, Amazon sword…), not floating plants. */
+export function hasBroadLeaf(tank: Tank): boolean {
+  for (const inst of tank.decor ?? []) {
+    const def = getDecorDef(inst.defId);
+    if (def && def.category === 'plant' && !isFloating(def) && def.anchors.some((a) => a.kind === 'leaf_rest')) return true;
+  }
+  return false;
+}
+
+/** audit E11: sand (or rubble) a male can clear a nest in (a damselfish, a ram's pit). */
+export function hasSandBed(tank: Tank): boolean {
+  const k = tank.substrate?.kind;
+  if (k === 'fine_sand' || k === 'sand' || k === 'aragonite') return true;
+  return decorSpots(tank, ['substrate_feature']).length > 0;
+}
+
+/** Does the tank offer a nest site to lay on (a hard surface, above, or a host)? audit E11: plants no longer count. */
 export function hasNestSite(tank: Tank, habitat: TankHabitat): boolean {
-  if (habitat.nestSites > 0 || habitat.hasHost) return true;
-  if (decorAnchorsOf(tank, ['nest_site', 'host', 'cave', 'rest']).length) return true;
-  return decorSpots(tank, ['hardscape', 'ornament']).length > 0;
+  if (habitat.hasHost) return true;
+  return hasHardSite(tank, habitat);
 }
 
 export function hasCave(tank: Tank, habitat: TankHabitat): boolean {
   if (decorAnchorsOf(tank, ['cave']).length) return true;
-  return habitat.hides >= 1 && habitat.nestSites > 0;
+  return habitat.hides >= 1 && habitat.nestSites - plantNestSites(tank) > 0;
 }
 
 // ───────────────────────────── tank info (per sub-step cache) ─────────────────────────────

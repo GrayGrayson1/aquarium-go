@@ -4,9 +4,10 @@
  * nerite snails) and egg_layer_generic. OWNER: lane "breeding".
  */
 import type { Tank } from '@/types';
-import type { RearingPlan } from '../types';
-import { makePairSpawner, TEXT } from './pairSpawner';
-import { hasLid, plural, spName, spPlural } from '../common';
+import type { RearingPhase, RearingPlan } from '../types';
+import { makePairSpawner, TEXT, type PairSpawnerConfig } from './pairSpawner';
+import { hasBroadLeaf, hasHardSite, hasLid, hasSandBed, plural, spName, spPlural } from '../common';
+
 
 const basePlan = (over: Partial<RearingPlan>): RearingPlan => ({
   phases: [
@@ -80,7 +81,7 @@ export const substrateSpawnerModule = makePairSpawner({
 });
 
 /** Bristlenose/kuhli: the male claims a cave and guards (fans) the eggs; wrigglers stay inside until free-swimming. */
-export const caveSpawnerModule = makePairSpawner({
+const caveCfg: PairSpawnerConfig = {
   id: 'cave_spawner',
   plan: basePlan({
     phases: [
@@ -106,7 +107,22 @@ export const caveSpawnerModule = makePairSpawner({
     court: (m, f) => `${m.name} has cleaned out his cave and is coaxing ${f.name} inside.`,
     spawn: (m, f, sp, n, tank, guardian) => `${f.name} laid a sticky cluster of ${plural(n, 'egg')} in ${m.name}’s cave.${guardian ? ` ${guardian.name} is fanning them with his fins.` : ''}`,
   },
-});
+};
+export const caveSpawnerModule = makePairSpawner(caveCfg);
+
+/** audit E10: the same plan with this species' own first foods in its last (feeding) phase. */
+function withFoods(cfg: PairSpawnerConfig, phases: Partial<Pick<RearingPhase, 'foods' | 'natural'>>[]): PairSpawnerConfig {
+  return { ...cfg, plan: { ...cfg.plan, phases: cfg.plan.phases.map((ph, i) => ({ ...ph, ...(phases[i] ?? {}) })) } };
+}
+
+/**
+ * audit E10: the marine cave spawners (royal gramma, firefish, watchman goby) shared the bristlenose's fry foods (algae
+ * wafers, biofilm, vegetables): their notes say planktonic larvae reared on live copepods, so their fry eat those
+ * (and baby brine shrimp), and live rock or a refugium grows some by itself.
+ */
+export const marineCaveSpawnerModule = makePairSpawner(withFoods(caveCfg, [{}, { foods: ['copepod_live', 'baby_brine'], natural: ['copepods'] }]));
+/** audit E10: the bumblebee goby's fry take infusoria, then baby brine shrimp (its overview), not algae wafers. */
+export const brackishCaveSpawnerModule = makePairSpawner(withFoods(caveCfg, [{}, { foods: ['infusoria', 'baby_brine'], natural: ['infusoria'] }]));
 
 /** Banggai cardinal: the male holds the eggs in his mouth and cannot eat until he releases fully formed young. */
 export const mouthbrooderModule = makePairSpawner({
@@ -202,13 +218,35 @@ export const snailClutchModule = makePairSpawner({
  * their eggs. Where each lays: a flat stone (oscar, ram), a smooth upright stone (discus: a breeding cone in a real
  * tank), a broad leaf (angelfish).
  */
-const CICHLID_SURFACE: Record<string, { where: string; noun: string; site: 'rock' | 'plants_mid' }> = {
-  oscar: { where: 'a flat stone', noun: 'stone', site: 'rock' },
-  german_blue_ram: { where: 'a flat stone', noun: 'stone', site: 'rock' },
-  discus: { where: 'a smooth upright stone', noun: 'stone', site: 'rock' },
-  freshwater_angelfish: { where: 'a broad leaf', noun: 'leaf', site: 'plants_mid' },
+type Surface = 'stone' | 'leaf' | 'sand';
+interface SurfaceText {
+  where: string;
+  noun: string;
+  site: 'rock' | 'plants_mid' | 'floor';
+}
+const SURFACE: Record<Surface, SurfaceText> = {
+  stone: { where: 'a flat stone', noun: 'stone', site: 'rock' },
+  leaf: { where: 'a broad leaf', noun: 'leaf', site: 'plants_mid' },
+  sand: { where: 'a patch of sand', noun: 'sand', site: 'floor' },
 };
-const surfaceOf = (sp: { id: string }) => CICHLID_SURFACE[sp.id] ?? CICHLID_SURFACE.oscar;
+/**
+ * audit E11 (B-223): what each cichlid will lay on, in the order it prefers, and what the gate says when the tank has
+ * none of them (the species' own notes: the angelfish a broad leaf or slate, the ram a stone, leaf or sand pit).
+ */
+const CICHLID_SURFACE: Record<string, { accepts: Surface[]; stoneWhere?: string; reason: string; step: string }> = {
+  oscar: { accepts: ['stone'], reason: 'There is no flat rock or tile to lay eggs on.', step: 'Add a flat stone or rock near their favourite spot.' },
+  german_blue_ram: { accepts: ['stone', 'leaf', 'sand'], reason: 'There is no flat stone, broad leaf or patch of sand to lay eggs on.', step: 'Add a flat stone, a broad-leaved plant such as anubias, or a sand substrate.' },
+  discus: { accepts: ['stone'], stoneWhere: 'a smooth upright stone', reason: 'There is no smooth stone or slate to lay eggs on.', step: 'Add a slate or a smooth stone.' },
+  freshwater_angelfish: { accepts: ['leaf', 'stone'], reason: 'There is no broad leaf or smooth stone to lay eggs on.', step: 'Add an Amazon sword, anubias or a flat stone.' },
+};
+const cichlidOf = (sp: { id: string }) => CICHLID_SURFACE[sp.id] ?? CICHLID_SURFACE.oscar;
+const hasSurface = (s: Surface, tank: Tank, hab?: { nestSites: number }) => (s === 'stone' ? hasHardSite(tank, hab) : s === 'leaf' ? hasBroadLeaf(tank) : hasSandBed(tank));
+/** Where this cichlid lays in this tank: the first surface it prefers that the tank has (its first choice in words when none). */
+function surfaceOf(sp: { id: string }, tank?: Tank, hab?: { nestSites: number }): SurfaceText {
+  const c = cichlidOf(sp);
+  const pick = (tank ? c.accepts.find((s) => hasSurface(s, tank, hab)) : undefined) ?? c.accepts[0];
+  return pick === 'stone' && c.stoneWhere ? { ...SURFACE.stone, where: c.stoneWhere } : SURFACE[pick];
+}
 
 export const cichlidSubstrateModule = makePairSpawner({
   id: 'cichlid_substrate',
@@ -232,13 +270,20 @@ export const cichlidSubstrateModule = makePairSpawner({
   guardStage: 'guarding',
   visual: 'eggs_adhesive',
   site: 'rock',
-  layOf: (sp) => (surfaceOf(sp).site === 'rock' ? null : { site: surfaceOf(sp).site, visual: 'eggs_adhesive' }),
+  layOf: (sp, tank) => {
+    const s = surfaceOf(sp, tank);
+    return s.site === 'rock' ? null : { site: s.site, visual: 'eggs_adhesive' };
+  },
+  nestSite: (tank, sp, hab) => {
+    const c = cichlidOf(sp);
+    return c.accepts.some((s) => hasSurface(s, tank, hab)) ? null : { ok: false, reason: c.reason, step: c.step };
+  },
   extraSites: 4,
   maleRestFrac: 0.6,
   text: {
-    court: (m, f, sp) => `${m.name} and ${f.name} are scrubbing ${surfaceOf(sp).where} clean with their mouths: the ${spPlural(sp)} are about to spawn.`,
+    court: (m, f, sp, tank) => `${m.name} and ${f.name} are scrubbing ${surfaceOf(sp, tank).where} clean with their mouths: the ${spPlural(sp)} are about to spawn.`,
     spawn: (m, f, sp, n, tank, guardian) =>
-      `${f.name} laid ${plural(n, 'sticky egg')} in rows on the ${surfaceOf(sp).noun} and ${m.name} fertilised them.${guardian ? ` ${guardian.name} fans them, and the pair chase off anything that comes near.` : ''}`,
+      `${f.name} laid ${plural(n, 'sticky egg')} in rows on the ${surfaceOf(sp, tank).noun} and ${m.name} fertilised them.${guardian ? ` ${guardian.name} fans them, and the pair chase off anything that comes near.` : ''}`,
   },
 });
 
@@ -270,6 +315,8 @@ export const damselNestModule = makePairSpawner({
   guardStage: 'guarding',
   visual: 'eggs_adhesive',
   site: 'floor',
+  // audit E11 (B-223): the male clears his nest on sand or rubble, not on a flat rock
+  nestSite: (tank) => (hasSandBed(tank) ? null : { ok: false, reason: 'There is no sand or rubble for the male to clear a nest in.', step: 'Use a sand substrate, or add some rubble.' }),
   extraSites: 3,
   maleRestFrac: 0.4,
   text: {
@@ -279,7 +326,7 @@ export const damselNestModule = makePairSpawner({
   },
 });
 
-export const genericEggLayerModule = makePairSpawner({
+const genericCfg: PairSpawnerConfig = {
   id: 'egg_layer_generic',
   plan: basePlan({}),
   window: 'morning',
@@ -292,4 +339,26 @@ export const genericEggLayerModule = makePairSpawner({
   extraSites: 3,
   maleRestFrac: 0.5,
   text: { court: TEXT.genericCourt, spawn: TEXT.genericSpawn },
+};
+export const genericEggLayerModule = makePairSpawner(genericCfg);
+
+/** audit E10: the mandarin's larvae are reared on copepods (its notes), not infusoria (which a marine tank never grows). */
+export const copepodEggLayerModule = makePairSpawner(withFoods(genericCfg, [{ foods: ['copepod_live'], natural: ['copepods'] }, { foods: ['copepod_live', 'baby_brine'], natural: ['copepods'] }]));
+
+/**
+ * audit E10: the trochus snail broadcasts a milky cloud of eggs and its babies settle on the glass without help (its
+ * notes): the parents don't eat the eggs, and the baby snails graze like a mystery snail's (biofilm and algae).
+ */
+export const trochusModule = makePairSpawner({
+  ...genericCfg,
+  plan: {
+    ...genericCfg.plan,
+    phases: [{ stage: 'fry', frac: 1, foods: ['algae_wafer', 'vegetable'], natural: ['biofilm', 'algae'], visual: 'fry_cloud', label: 'baby snails' }],
+    youngTags: ['snail_small', 'snail'],
+    parentsEatEggs: false,
+  },
+  text: {
+    court: TEXT.genericCourt,
+    spawn: (m, f) => `${f.name} released a milky cloud of eggs — tiny snails may settle on the glass.`,
+  },
 });

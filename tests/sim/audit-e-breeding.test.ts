@@ -377,3 +377,103 @@ describe('E28: a lost shark egg case is said, and the last one is an egg case', 
     expect(logFrom(state, from).some((t) => /^Coral’s egg cases didn’t make it: /.test(t))).toBe(true);
   });
 });
+
+describe('E11: the nest-site gate asks each species for what it lays on (B-223)', () => {
+  const piece = (defId: string, i: number) => ({ id: `d_${defId}_${i}`, defId, x: -0.2 + i * 0.1, y: 0, z: 0, rotY: 0, scale: 1, seed: i, growth: 1, health: 100 });
+  function pair(speciesId: string, waterClass: 'freshwater_tropical' | 'freshwater_planted' | 'reef' | 'marine_fowlr', decor: string[], substrate?: 'bare' | 'sand') {
+    const state = newGame({ starterId: waterClass.startsWith('fresh') ? 'betta' : 'ocellaris_clownfish', starterName: 'Solo', seed: 111 });
+    const tank = createTank(state, 'g75', waterClass, { cycled: true, name: 'Test' });
+    tank.decor = decor.map(piece);
+    if (substrate) tank.substrate = { kind: substrate, depthCm: 3, color: '#ccc' };
+    const sp = getSpecies(speciesId);
+    const rng = simRng(state);
+    const m = addCreature(state, createCreature(state, rng, speciesId, { sex: 'male', ageDays: sp.breeding.maturityDays + 20, name: 'M' }), tank.id);
+    const f = addCreature(state, createCreature(state, rng, speciesId, { sex: 'female', ageDays: sp.breeding.maturityDays + 20, name: 'F' }), tank.id);
+    tank.water.tempC = (sp.tempC.idealMin + sp.tempC.idealMax) / 2;
+    return breedingCheck(state, m.id, f.id).reasons.join(' ');
+  }
+
+  it('an angelfish lays on a broad leaf or a stone; moss and floating plants are no nest site', () => {
+    expect(pair('freshwater_angelfish', 'freshwater_planted', ['amazon_sword'])).not.toMatch(/no broad leaf|no flat rock/);
+    expect(pair('freshwater_angelfish', 'freshwater_planted', ['river_stone'])).not.toMatch(/no broad leaf|no flat rock/);
+    expect(pair('freshwater_angelfish', 'freshwater_planted', ['java_moss', 'floating_plants'])).toMatch(/There is no broad leaf or smooth stone to lay eggs on\./);
+  });
+
+  it('an oscar still needs a stone; a moss clump no longer passes', () => {
+    expect(pair('oscar', 'freshwater_tropical', ['java_moss'])).toMatch(/There is no flat rock or tile to lay eggs on\./);
+    expect(pair('oscar', 'freshwater_tropical', ['slate_stack'])).not.toMatch(/no flat rock/);
+  });
+
+  it('a green chromis male nests on sand or rubble, not on a rock', () => {
+    expect(pair('green_chromis', 'reef', ['live_rock'], 'bare')).toMatch(/There is no sand or rubble for the male to clear a nest in\./);
+    expect(pair('green_chromis', 'reef', [], 'sand')).not.toMatch(/no sand or rubble/);
+  });
+
+  it('a bristlenose needs a cave or a rock crevice, not moss', () => {
+    expect(pair('bristlenose_pleco', 'freshwater_tropical', ['java_moss'])).toMatch(/There is no cave for the male to claim\./);
+    expect(pair('bristlenose_pleco', 'freshwater_tropical', ['terracotta_cave'])).not.toMatch(/no cave/);
+  });
+});
+
+describe('E8: the partner the player picked fathers a livebearer’s brood', () => {
+  it('Bella’s chosen male, not the first male in the tank, is the father', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 121 });
+    const tank = createTank(state, 'g29', 'freshwater_planted', { cycled: true, name: 'Community' });
+    const rng = simRng(state);
+    addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: 'male', ageDays: 60, name: 'Max' }), tank.id);
+    const blue = addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: 'male', ageDays: 60, name: 'Blue' }), tank.id);
+    const bella = addCreature(state, createCreature(state, rng, 'fancy_guppy', { sex: 'female', ageDays: 60, name: 'Bella' }), tank.id);
+    bella.repro.partnerId = blue.id;
+    blue.repro.partnerId = bella.id;
+    run(state, 24, 25, () => {
+      bella.stats.breedingReadiness = 100;
+      return bella.repro.stage === 'gravid';
+    });
+    expect(bella.repro.stage).toBe('gravid');
+    expect(bella.repro.partnerId).toBe(blue.id);
+  });
+});
+
+describe('E10: young eat what their species’ notes say', () => {
+  it('copepods for the marine cave spawners and the mandarin, infusoria for the bumblebee goby; trochus parents spare theirs', async () => {
+    const { moduleFor } = await import('@/sim/life/breeding/registry');
+    const foods = (id: string) => moduleFor(getSpecies(id)).plan.phases.map((p) => p.foods);
+    for (const id of ['royal_gramma', 'firefish', 'watchman_goby']) expect(foods(id)[1], id).toEqual(['copepod_live', 'baby_brine']);
+    expect(foods('bumblebee_goby')[1]).toEqual(['infusoria', 'baby_brine']);
+    expect(foods('mandarin_dragonet')).toEqual([['copepod_live'], ['copepod_live', 'baby_brine']]);
+    expect(foods('bristlenose_pleco')[1]).toContain('algae_wafer'); // the freshwater cave spawner is unchanged
+    const trochus = moduleFor(getSpecies('trochus_snail'));
+    expect(trochus.id).toBe('egg_layer_generic');
+    expect(trochus.plan.parentsEatEggs).toBe(false);
+    expect(getSpecies('trochus_snail').breeding.predationWithoutNursery).toBe(0);
+    expect(moduleFor(getSpecies('yellowtail_damselfish')).plan.phases[0].foods).toEqual(['infusoria']); // not in E10's list
+  });
+});
+
+describe('E16: a spent gourami female rests once the male stops guarding', () => {
+  it('she recovers in a pair tank; a betta female still has to be moved', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 131 });
+    const tank = createTank(state, 'g29', 'freshwater_planted', { cycled: true, name: 'Gourami' });
+    const rng = simRng(state);
+    const m = addCreature(state, createCreature(state, rng, 'honey_gourami', { sex: 'male', ageDays: 120, name: 'Sunny' }), tank.id);
+    const f = addCreature(state, createCreature(state, rng, 'honey_gourami', { sex: 'female', ageDays: 120, name: 'Honey' }), tank.id);
+    f.repro.stage = 'spent';
+    m.repro.stage = 'resting';
+    m.repro.stageEndsHour = state.clock.hour + 200;
+    run(state, 2, 26, () => false);
+    expect(f.repro.stage).toBe('resting');
+  });
+});
+
+describe('E30: young arrive before their sex shows (B-214)', () => {
+  it('a guppy brood raised for twelve days arrives with its sex still hidden', () => {
+    const state = newGame({ starterId: 'betta', starterName: 'Ember', seed: 141 });
+    const big = createTank(state, 'g75', 'freshwater_planted', { cycled: true, purpose: 'nursery', name: 'Big' });
+    const sp = getSpecies('fancy_guppy');
+    const mom = addCreature(state, createCreature(state, simRng(state), 'fancy_guppy', { sex: 'female', ageDays: 90, name: 'Bella' }), createTank(state, 'g10', 'freshwater_planted', { cycled: true }).id);
+    const cl = createClutch(state, { sp, tank: big, mother: mom, father: null, hour: state.clock.hour - 12 * 24, stage: 'fry', count: 5, visual: 'fry_cloud', nextStageHour: state.clock.hour });
+    const kids = mintJuveniles(state, cl, big, sp, state.clock.hour, makeContext(state, 1));
+    expect(kids.length).toBeGreaterThan(0);
+    for (const k of kids) expect(k.sex).toBe('unknown');
+  });
+});

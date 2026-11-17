@@ -86,7 +86,7 @@ export const ocellarisClownfish: SpeciesDefinition = {
     predationWithoutNursery: 0.95,
     nurseryRequired: true,
     maxRaisedPerClutch: 10,
-    notes: 'A bonded pair cleans a flat surface near its host or favourite rock and lays adhesive orange eggs. The male fans, mouths and guards them and eats any that die; they hatch after dark about a week later. Larvae drift as plankton for 8–12 days and need a separate rearing tank with rotifers, then baby brine shrimp.',
+    notes: 'A bonded pair cleans a flat surface near its host or favourite rock and lays adhesive orange eggs. The male fans, mouths and guards them and eats any that die; they hatch after dark about a week later. Larvae drift as plankton for 8–12 days and need a separate rearing tank with live copepods, then baby brine shrimp.',
   },
   sexSystem: 'protandrous',
   parentalCare: 'male',
