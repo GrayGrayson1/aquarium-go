@@ -95,6 +95,27 @@ test.describe('hash routes (desktop 1440×900)', () => {
     await expect(tid(page, 'panel-market')).toBeVisible();
   });
 
+  test('audit B7: back from an offer, the shop list is where the player left it', async ({ page }) => {
+    await offerGame(page);
+    for (let i = 0; i < 12; i++) await aq(page, 'dev.addShopOffer', 'mystery_snail');
+    await goHash(page, '#/shop');
+    const body = tid(page, 'panel-market').locator('.pn-body');
+    await expect(body).toBeVisible();
+    await body.evaluate((el) => el.scrollTo({ top: 600 }));
+    await page.waitForTimeout(200);
+    const top = await body.evaluate((el) => el.scrollTop);
+    expect(top).toBeGreaterThan(300);
+    // an offer card in view at that place
+    const card = page.locator('[data-testid^="shop-offer-"]').filter({ visible: true });
+    const inView = await card.evaluateAll((els) => els.findIndex((el) => { const r = el.getBoundingClientRect(); return r.top > 200 && r.bottom < innerHeight - 40; }));
+    expect(inView).toBeGreaterThanOrEqual(0);
+    await card.nth(inView).click();
+    await expect(tid(page, 'buy-offer')).toBeVisible();
+    await page.goBack();
+    await expect(tid(page, 'buy-offer')).toBeHidden();
+    await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(top - 40);
+  });
+
   test('switching tabs rewrites the address, and arrow keys move between tabs', async ({ page }) => {
     await offerGame(page);
     await tid(page, 'dock-livestock').click();

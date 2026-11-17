@@ -101,6 +101,8 @@ export function ShowsPanel() {
       icon={<Trophy size={20} />}
       subtitle={subtitle}
       scrollKey={`${tab}:${flow?.showId ?? ''}`}
+      listKey={tab /* audit B7: back from a show's entry, the calendar is where it was */}
+      subOpen={!!flow}
       toolbar={
         flowShow ? undefined : (
           <Seg<ShowsTab>

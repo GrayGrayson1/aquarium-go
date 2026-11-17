@@ -99,6 +99,8 @@ export function MarketPanel() {
       icon={<Store size={20} />}
       subtitle={subtitle}
       scrollKey={`${tab}:${offerId ?? ''}:${wizard ? 'w' : ''}`}
+      listKey={tab /* audit B7: back from an offer, the shop is where it was */}
+      subOpen={!!offerId || !!wizard}
       toolbar={
         wizard ? undefined : (
           <Seg<MarketTab>
