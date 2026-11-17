@@ -686,7 +686,8 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   // Rearing can outlast the species' juvenile phase (seahorses, shrimp, small gobies): cap the birth age so every
   // youngster arrives as a juvenile with growth, the sex reveal and maturity still ahead of it.
   // chunk 17: a plan can say how old its young are when they hatch straight into juveniles (egg cases: just hatched)
-  const ageDays = bornAgeDays !== undefined ? Math.max(0.5, bornAgeDays) : Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8)));
+  // audit E30 (B-214): and below the age their sex shows (the seahorse's cap, 12.8 days, was past its 12)
+  const ageDays = bornAgeDays !== undefined ? Math.max(0.5, bornAgeDays) : Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8), sp.lifecycle.sexVisibleAtDays * 0.9));
   const parents = mother && father ? `${mother.name} × ${father.name}` : (mother ?? father)?.name ?? 'your breeding stock';
   const used = new Set<string>(Object.values(state.creatures).filter((c) => c.speciesId === sp.id).map((c) => c.name));
   const minted: Creature[] = [];
