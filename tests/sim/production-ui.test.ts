@@ -10,7 +10,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { GameState, Tank } from '@/types';
 import { newGame } from '@/sim/newGame';
-import { createTank } from '@/sim/tanks';
+import { createTank, deleteTank } from '@/sim/tanks';
 import { createCreature, addCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
 import { useGame } from '@/state/game';
@@ -211,9 +211,14 @@ describe('Audit 2026-11-17 (H10): set-up step 2 says when a stage has no tank', 
     const row = () =>
       renderToStaticMarkup(createElement(StageRow, { g: s.g, speciesId: 'betta', stage: { id: 'raise', word: 'Raise', icon: null, testId: 'raise' }, chosen, pair: { motherId: s.cinder.id, fatherId: s.blaze.id }, open: false, onToggle: () => {}, onPick: () => {} }));
     expect(row()).not.toContain('production-new-nofit-raise');
+    // tanks there, but none suits (H1 review: it said "each stage needs its own tank" here too)
     for (const t of Object.values(s.g.tanks)) if (!Object.values(chosen).includes(t.id)) t.water.tempC = 12; // too cold for any of them
-    const m = row();
+    let m = row();
     expect(m).toContain('data-testid="production-new-nofit-raise"');
+    expect(text(m)).toContain('No tank here suits this stage yet (open it to see why). Buy one in Build');
+    // every tank already serves another stage of this line
+    for (const t of Object.values(s.g.tanks)) if (!Object.values(chosen).includes(t.id)) deleteTank(s.g, t.id);
+    m = row();
     expect(text(m)).toContain('No tank fits yet: each stage needs its own tank. Buy one in Build');
   });
 });

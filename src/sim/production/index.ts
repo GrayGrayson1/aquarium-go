@@ -51,7 +51,7 @@ import { resolveMorph, morphDisplayName, predictOffspringMorphs } from '../life/
 import { sizeAtAge } from '../life/growth';
 import { environmentGate, previewAddition } from '../compat';
 import { tankDailyCost } from '../water';
-import { activeListingFor, createListing, DEFAULT_LISTING_HOURS } from '../economy/listings';
+import { activeListingFor, createListing, withdrawListing, DEFAULT_LISTING_HOURS } from '../economy/listings';
 import { bundleValue, creatureValue } from '../economy/valuation';
 import { fmtMoney } from '../economy/util';
 import { buyTank, tankKitPrice } from '../economy/purchases';
@@ -68,11 +68,28 @@ export const RELIST_STEP = 0.9;
 /** ...but never below half of fair value. */
 export const RELIST_FLOOR = 0.5;
 
-/** The buy-now price for one animal of fair value `fairEach`, after `relists` relistings: whole dollars, $1 or more. */
-export function linePriceEach(fairEach: number, relists = 0): number {
+/**
+ * A line's buy-now price for a lot of fair value `fair` after `relists` relistings (Audit 2026-11-17, H1 and its
+ * review): fair × 0.9, then 10 % less each relisting, each in whole dollars (the market's prices are) and each at least a
+ * dollar below the last, never below half of fair value (rounded, $1 at least). `lowest`: at that floor. The lot is
+ * priced, not each animal, so cheap young (a $0.80 ghost shrimp) follow the same rule; screens show the price a head
+ * with cents.
+ */
+export function linePrice(fair: number, relists = 0): { price: number; lowest: boolean } {
+  const f = Math.max(0, Number.isFinite(fair) ? fair : 0);
+  const floor = Math.max(1, Math.round(f * RELIST_FLOOR));
   let share = RESERVE_SHARE;
-  for (let i = 0; i < Math.min(relists, 20); i++) share *= RELIST_STEP;
-  return Math.max(1, Math.round(fairEach * Math.max(RELIST_FLOOR, share)));
+  let price = Math.max(floor, Math.round(f * share));
+  for (let i = 0; i < Math.min(relists, 60) && price > floor; i++) {
+    share *= RELIST_STEP;
+    price = Math.max(floor, Math.min(price - 1, Math.round(f * share)));
+  }
+  return { price, lowest: price <= floor };
+}
+
+/** Sick or weak by the sale's own measure (an illness, or health under 45): the line neither lists nor sells it. */
+export function unwellForSale(c: Creature): boolean {
+  return !!c.illness || (c.stats?.health ?? 100) < 45;
 }
 /**
  * A quarantine tank takes a batch once it's cycled: the game's own line for a tank with animals, below which the water
@@ -880,14 +897,30 @@ function chargePower(state: GameState, line: ProductionLine): void {
 
 /** Sales of the line's listings count once each (PROD-015); closed listings leave the batch. */
 function countSales(state: GameState, line: ProductionLine): void {
+  const sp = findSpecies(line.speciesId);
   for (const b of line.batches ?? []) {
     if (!b.listingIds?.length) continue;
     const open: string[] = [];
     let unsold = false;
+    let pulled = false;
+    /** What comes back from a closed listing is the batch's again (a batch listed in two parts: the review's lost young). */
+    const takeBack = (back: Creature[]) => {
+      b.creatureIds = [...new Set([...b.creatureIds, ...back.map((c) => c.id)])];
+    };
     for (const id of b.listingIds) {
       const l = state.market.listings.find((x) => x.id === id);
       if (!l) continue;
       if (l.status === 'active') {
+        // Audit 2026-11-17 (H1 review): an animal that fell ill while listed isn't sold by the line (the buyer's
+        // complaint costs reputation, and selling it was the player's call): off sale, back to the batch, until well
+        const ill = l.creatureIds.map((cid) => state.creatures[cid]).find((c): c is Creature => !!c && c.status === 'listed' && unwellForSale(c));
+        if (ill && withdrawListing(state, id, { quiet: true, outcome: `The ${line.name} took it off sale: ${ill.name} looks unwell.` }).ok) {
+          takeBack(l.creatureIds.map((cid) => state.creatures[cid]).filter((c): c is Creature => !!c && c.status === 'alive'));
+          pulled = true;
+          const it = ill.name;
+          notice(state, line, `ill:${b.id}`, state.clock.hour, { kind: 'warning', text: `${line.name}: ${it} looks unwell, so the line took “${l.title}” off sale. It lists them again once ${it} is well, or once you move ${it} out.`, tankId: ill.tankId ?? b.tankId, creatureId: ill.id });
+          continue;
+        }
         open.push(id);
         continue;
       }
@@ -898,26 +931,22 @@ function countSales(state: GameState, line: ProductionLine): void {
         line.stats.revenue = roundCents(line.stats.revenue + v);
         line.stats.totalSold += n;
         line.stats.totalRevenue = roundCents(line.stats.totalRevenue + v);
-      } else if (l.status === 'expired') {
-        // Audit 2026-11-17 (H1): what didn't sell is listed again, a little cheaper (release()); with "List
-        // automatically" off the line leaves them to the player and says where they are
+      } else {
+        // Audit 2026-11-17 (H1): what didn't sell is listed again, a little cheaper (release()), and is the batch's
+        // again (the review: a batch listed in two parts lost the first part's young); with "List automatically" off,
+        // or a listing the player withdrew or the market cancelled, the line leaves them to the player and says where
         const back = l.creatureIds.map((cid) => state.creatures[cid]).filter((c): c is Creature => !!c && c.status === 'alive');
-        const sp = findSpecies(line.speciesId);
-        if (back.length && line.rules.autoList) unsold = true;
-        else if (back.length && sp) {
-          const where = back.map((c) => c.tankId).find(Boolean) ?? b.tankId;
-          const n = back.length;
-          const them = n === 1 ? 'it' : 'them';
-          emitEvent(state, { kind: 'warning', text: `${line.name}: the ${n === 1 ? '' : `${n} `}${youngWord(sp, back, n)} that didn’t sell ${n === 1 ? 'is' : 'are'} back in ${where ? tankName(state, line, where) : 'quarantine'}. The line won’t list ${them} again: list ${them} in Market, or move ${them}.`, tankId: where ?? undefined });
-        }
+        if (!back.length) continue;
+        if (l.status === 'expired' && line.rules.autoList) {
+          takeBack(back);
+          unsold = true;
+        } else if (sp) leftToPlayer(state, line, sp, back, b.tankId, l.status === 'expired' ? 'that didn’t sell' : 'taken off sale');
       }
     }
     if (open.length) b.listingIds = open;
     else delete b.listingIds; // §3.2 rule 10
-    if (unsold) {
-      b.released = false; // release() lists the rest again
-      b.relists = (b.relists ?? 0) + 1;
-    }
+    if (unsold || pulled) b.released = false; // release() lists them again (pulled: once they're well)
+    if (unsold) b.relists = (b.relists ?? 0) + 1;
   }
   // A batch is done once its hold ended and none of its listings is still open.
   if (line.batches) {
@@ -1110,7 +1139,8 @@ function pruneNoticed(state: GameState, line: ProductionLine): void {
       (kind === 'keepfull' && (!c || c.status !== 'alive' || c.tankId === line.tanks.keep)) ||
       (kind === 'list' && !batches.has(id)) ||
       (kind === 'cycle' && (!state.tanks[id] || quarantineReady(state.tanks[id]))) ||
-      (kind === 'qtfull' && (!state.tanks[id] || !(line.batches ?? []).some((b) => !b.tankId && !b.released))); // said again for the next batch it holds up
+      (kind === 'qtfull' && (!state.tanks[id] || !(line.batches ?? []).some((b) => !b.tankId && !b.released))) || // said again for the next batch it holds up
+      (kind === 'ill' && !(line.batches ?? []).some((b) => b.id === id && b.creatureIds.some((cid) => !!state.creatures[cid] && unwellForSale(state.creatures[cid])))); // until it's well
     if (stale) delete line.noticed[k];
   }
   if (!Object.keys(line.noticed).length) delete line.noticed;
@@ -1173,6 +1203,14 @@ function quarantine(state: GameState, line: ProductionLine, sp: SpeciesDefinitio
 }
 
 /** The word for young in a notice: "juveniles", or the species' plural. */
+/** "{Line}: the 3 juveniles that didn’t sell are back in Quarantine. The line won’t list them again: list them in Market, or move them." */
+function leftToPlayer(state: GameState, line: ProductionLine, sp: SpeciesDefinition, back: Creature[], fallbackTank: string | undefined, how: string): void {
+  const where = back.map((c) => c.tankId).find(Boolean) ?? fallbackTank;
+  const n = back.length;
+  const them = n === 1 ? 'it' : 'them';
+  emitEvent(state, { kind: 'warning', text: `${line.name}: the ${n === 1 ? '' : `${n} `}${youngWord(sp, back, n)} ${how} ${n === 1 ? 'is' : 'are'} back in ${where ? tankName(state, line, where) : 'quarantine'}. The line won’t list ${them} again: list ${them} in Market, or move ${them}.`, tankId: where ?? undefined });
+}
+
 function youngWord(sp: SpeciesDefinition, creatures: Creature[], n: number): string {
   if (creatures.every((c) => c.lifeStage === 'juvenile')) return n === 1 ? 'juvenile' : 'juveniles';
   const name = sp.commonName.toLowerCase();
@@ -1184,12 +1222,23 @@ function release(state: GameState, line: ProductionLine, sp: SpeciesDefinition, 
   for (const b of line.batches ?? []) {
     if (b.released || b.quarantinedHour === undefined || hour < b.quarantinedHour + QUARANTINE_HOURS - 1e-9) continue;
     if (!line.rules.autoList) {
-      b.released = true; // left in quarantine for the player
+      // left in quarantine for the player; a relisting that was waiting (the line paused or held) says so (H1 review)
+      if (b.relists) {
+        const back = b.creatureIds.map((id) => state.creatures[id]).filter((c): c is Creature => !!c && c.status === 'alive');
+        if (back.length) leftToPlayer(state, line, sp, back, b.tankId, 'that didn’t sell');
+      }
+      b.released = true;
       continue;
     }
     const listable = b.creatureIds
       .map((id) => state.creatures[id])
       .filter((c): c is Creature => !!c && c.status === 'alive' && c.tankId === b.tankId && !isProtected(state, c));
+    // an unwell animal isn't listed: the batch waits until it's well, or until the player moves it out (H1 review)
+    const ill = listable.find(unwellForSale);
+    if (ill) {
+      notice(state, line, `ill:${b.id}`, hour, { kind: 'warning', text: `${line.name}: ${ill.name} looks unwell, so the line waits to list ${listable.length === 1 ? 'it' : `the ${listable.length} ${youngWord(sp, listable, listable.length)}`} until ${ill.name} is well, or until you move ${ill.name} out.`, tankId: ill.tankId ?? b.tankId, creatureId: ill.id });
+      continue;
+    }
     const groups: { kind: ListingKind; creatures: Creature[] }[] = [];
     const juveniles = listable.filter((c) => c.lifeStage === 'juvenile');
     const adults = listable.filter((c) => c.lifeStage !== 'juvenile');
@@ -1202,14 +1251,21 @@ function release(state: GameState, line: ProductionLine, sp: SpeciesDefinition, 
     for (const g of groups) {
       // a buy-now price at fair value −10%, a little lower each time it's listed again; the reserve is the same, so no
       // offer waits on the player (Audit 2026-11-17, H1: the owner's choice, "Sell by itself")
+      // the lot is priced (the review: per head, cheap young came out at 67–125 % of fair value), and its price a head
+      // is shown with cents; the market's own "Listed …" line is left out: this one says it, with the price
       const n = g.creatures.length;
-      const each = linePriceEach(bundleValue(state, g.kind, g.creatures).expected / n, relists);
-      const r = createListing(state, { kind: g.kind, creatureIds: g.creatures.map((c) => c.id), reserve: each * n, buyNow: each * n, durationHours: DEFAULT_LISTING_HOURS });
+      const fair = bundleValue(state, g.kind, g.creatures).expected;
+      const { price, lowest } = linePrice(fair, relists);
+      const r = createListing(state, { kind: g.kind, creatureIds: g.creatures.map((c) => c.id), reserve: price, buyNow: price, durationHours: DEFAULT_LISTING_HOURS }, { quiet: true });
       if (r.ok && r.listingId) {
         ids.push(r.listingId);
         const title = state.market.listings.find((x) => x.id === r.listingId)?.title ?? `${n} ${youngWord(sp, g.creatures, n)}`;
-        const price = `${fmtMoney(each)}${n === 1 ? '' : ' each'}`;
-        emitEvent(state, { kind: 'info', text: relists ? `${line.name}: ${n} didn’t sell: listed again at ${price}` : `${line.name}: ${title} listed · Buy now ${price}`, tankId: b.tankId, listingId: r.listingId });
+        const each = `${fmtMoney(price / n)}${n === 1 ? '' : ' each'}`;
+        const atFloor = relists > 0 && lowest && !linePrice(fair, relists - 1).lowest; // said once, when it gets there
+        const text = relists
+          ? `${line.name}: ${title} didn’t sell, so ${n === 1 ? 'it’s' : 'they’re'} listed again at ${each}${atFloor ? ', the lowest the line goes' : ''}`
+          : `${line.name}: ${title} listed · Buy now ${each}`;
+        emitEvent(state, { kind: 'info', text, tankId: b.tankId, listingId: r.listingId });
       } else {
         failed = r.message;
         unlisted.push(...g.creatures);

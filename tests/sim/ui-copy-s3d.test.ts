@@ -320,9 +320,14 @@ describe('DES-013 A: the design words chunk 6 built (ADR-0035 decision 3)', () =
   it('Production: the doser\'s first foods, and the held-up note\'s Fix (C59, C62; SPEC §8.6)', () => {
     const f = waitingLine();
     installEquipment(f.g, f.tanks.raise.id, 'live_food_doser', { purchased: true });
+    // Audit 2026-11-17 (H1 review): the stage says what the doser gives only when it has food to give
+    f.g.inventory.foods.baby_brine_live = 20;
     use(f.g);
     const t = render(createElement(ProductionTab, { g: f.g, sel: f.lineId, onSelect: () => {} }));
     expect(t).toMatch(/14 [a-z -]+ · baby brine and infusoria from the doser/); // C62
+    f.g.inventory.foods.baby_brine_live = 0;
+    f.g.inventory.foods.infusoria_culture = 0;
+    expect(render(createElement(ProductionTab, { g: f.g, sel: f.lineId, onSelect: () => {} }))).toMatch(/14 [a-z -]+ · the doser has no baby brine or infusoria in stock: the young go hungry/);
     f.line.waiting = true;
     expect(render(createElement(ProductionTab, { g: f.g, sel: f.lineId, onSelect: () => {} }))).toMatch(/are kept apart until there’s room\. Fix/); // C59
   });
