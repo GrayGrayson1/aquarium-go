@@ -3,6 +3,8 @@
  * quote and the UI confirm dialogs (lane:fix-econ, S03-05 / P2-07). Pure over GameState; no RNG.
  */
 import type { GameState, Creature, Clutch } from '@/types';
+import { findSpecies } from '@/data/species';
+import { moduleFor } from '../life/breeding/registry';
 
 const YOUNG = (cl: Clutch): string => (cl.stage === 'eggs' ? `${cl.count} eggs` : `${cl.count} young`);
 const pronoun = (c: Creature): string => (c.sex === 'male' ? 'he' : c.sex === 'female' ? 'she' : 'they');
@@ -32,7 +34,13 @@ export function saleWarnings(state: GameState, creatureIds: readonly string[]): 
     const guarded = mine.find((cl) => !carriesClutch(cl));
     if (carried) out.push(`${c.name} is carrying ${YOUNG(carried)} — they go with ${pronoun(c) === 'they' ? 'them' : pronoun(c) === 'he' ? 'him' : 'her'} if sold.`);
     else if (['pregnant', 'berried', 'brooding', 'gravid'].includes(c.repro?.stage ?? '')) out.push(`${c.name} is expecting young — they'd be born in someone else's tank.`);
-    if (guarded) out.push(`${c.name} is guarding ${YOUNG(guarded)} — with no parent tending them, eggs fungus and fry get eaten.`);
+    // audit E12: a cichlid pair's other parent, staying, goes on tending the brood alone (pairGuards)
+    const otherId = guarded ? (guarded.motherId === c.id ? guarded.fatherId : guarded.motherId) : null;
+    const other = otherId && !ids.has(otherId) ? state.creatures[otherId] : undefined;
+    const pairSp = guarded ? findSpecies(guarded.speciesId) : undefined;
+    const otherTends = !!guarded && !!pairSp && !!moduleFor(pairSp).plan.pairGuards && !!other && (other.status === 'alive' || other.status === 'listed') && other.tankId === guarded.tankId;
+    if (guarded && otherTends) out.push(`${c.name} is guarding ${YOUNG(guarded)} with ${other!.name}, who will go on tending them alone.`);
+    else if (guarded) out.push(`${c.name} is guarding ${YOUNG(guarded)} — with no parent tending them, eggs fungus and fry get eaten.`);
     else if (['guarding', 'laying', 'spawning', 'depositing'].includes(c.repro?.stage ?? '') && mine.length === 0) out.push(`${c.name} is in the middle of spawning — the clutch is lost if ${pronoun(c)} ${pronoun(c) === 'they' ? 'go' : 'goes'} now.`);
   }
   for (const c of creatures) {

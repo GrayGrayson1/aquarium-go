@@ -49,6 +49,8 @@ import {
   stockingOf,
   toastWorthy,
   unitsPerJuvenile,
+  youngSingular,
+  youngWaterCause,
   youngWaterSeverity,
   type Vec,
   breedNotice,
@@ -198,7 +200,7 @@ export function naturalFood(state: GameState, tank: Tank, kinds: readonly Natura
   return clamp01(best);
 }
 
-interface PredationInfo {
+export interface PredationInfo {
   /** 0..1 fraction of the young lost over the current stage to predators (after cover shelter). */
   p: number;
   /** Adult conspecifics eating them (excluding a tending parent). */
@@ -209,7 +211,8 @@ interface PredationInfo {
   others: Map<string, Creature[]>;
 }
 
-function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, mod: BreedingModule, hour: number, info: TankInfo): PredationInfo {
+/** Who eats this clutch here, and how much of it over the current stage. Pure (audit E2: the clutch card reads it too). */
+export function predationInfo(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, mod: BreedingModule, hour: number, info: TankInfo): PredationInfo {
   const out: PredationInfo = { p: 0, conspecific: [], guardianEating: null, others: new Map() };
   if (isCarried(cl)) return out;
   const plan = mod.plan;
@@ -363,7 +366,11 @@ export function loseClutch(state: GameState, cl: Clutch, sp: SpeciesDefinition, 
     const l = cl.losses ?? { predation: 0, starvation: 0, water: 0, crowding: 0, fungus: 0 };
     let worst: LossCause = 'predation';
     for (const k of Object.keys(l) as LossCause[]) if (l[k] > l[worst]) worst = k;
-    text = `${parentName(state, cl)} ${cl.stage === 'eggs' ? 'eggs' : 'brood'} didn’t make it: ${LOSS_TEXT[worst](sp)}.`;
+    // audit E9: a water loss names its cause
+    const cause = worst === 'water' && state.tanks[cl.tankId] ? youngWaterCause(state.tanks[cl.tankId], sp) : null;
+    // audit E28 (B-222): a shark's egg cases are egg cases, not "eggs"
+    const lostWhat = cl.visual === 'egg_case' && cl.stage === 'eggs' ? ((cl.initialCount ?? 2) === 1 ? 'egg case' : 'egg cases') : cl.stage === 'eggs' ? 'eggs' : 'brood';
+    text = `${parentName(state, cl)} ${lostWhat} didn’t make it: ${cause ? `the water was wrong for such delicate young — ${cause}` : LOSS_TEXT[worst](sp)}.`;
   }
   say(state, ctx, { kind, text, tankId: cl.tankId, creatureId: cl.motherId ?? cl.fatherId ?? undefined, toast: kind === 'warning' });
   releaseParents(state, cl);
@@ -452,6 +459,17 @@ export function stepClutch(state: GameState, cl: Clutch, tank: Tank, sp: Species
         for (const k of Object.keys(hz) as LossCause[]) if (hz[k] > 0) cl.losses[k] += (lost * hz[k]) / total;
         cl.count -= lost;
         cl.survival = init > 0 ? cl.count / init : 0;
+        // audit E28 (B-222): a case is lost whole, by chance, so the per-hour warning threshold is never reached over a
+        // ~1,000-hour incubation: say each loss while some are left (the last one's line is loseClutch's)
+        if (cl.count > 0) {
+          const eaten = hz.predation >= total / 2;
+          const nurseryHere = isNurseryFor(state, tank, hour);
+          say(state, ctx, {
+            kind: 'warning',
+            text: `${lost === 1 ? 'One' : lost.toLocaleString('en-US')} of ${parentName(state, cl).replace(/^The$/, 'the')} egg cases ${lost === 1 ? 'was' : 'were'} ${eaten ? 'eaten' : 'lost'}; ${cl.count} ${cl.count === 1 ? 'is' : 'are'} left.${eaten && !nurseryHere ? ' A nursery tank keeps the rest safe (Livestock › Eggs & fry).' : ''}`,
+            tankId: cl.tankId,
+          });
+        }
       }
     }
     warnings(state, cl, tank, sp, mod, hz, pred, hour, ctx);
@@ -500,7 +518,7 @@ function predationText(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   const tending = isAlive(guardian) && guardian.tankId === cl.tankId && !pred.guardianEating && (cl.stage === 'eggs' || !!mod.plan.guardYoung);
   if (pred.guardianEating) return `${pred.guardianEating.name} has started eating the fry he raised — move him out of ${tank.name} now!`;
   if (mod.plan.planktonic && cl.stage !== 'eggs' && !isNurseryFor(state, tank, hour)) {
-    return `${who} ${label} are drifting into the filter and the mouths of tankmates. Move them to a nursery tank to save them.`;
+    return `${who} ${label} are drifting into the filter and the mouths of tankmates. Move them to a nursery tank (Livestock › Eggs & fry) to save them.`;
   }
   if (pred.conspecific.length && tending && guardian) {
     const one = pred.conspecific.length === 1;
@@ -510,9 +528,19 @@ function predationText(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
     const target = own ? `${pron === 'her' ? 'her' : 'his'} own ${label}` : `${whose} ${label}`;
     return `${names(pred.conspecific)} ${one ? 'is' : 'are'} eating ${target}! Move ${pron} out and let ${guardian.name} tend the brood alone.`;
   }
-  if (pred.conspecific.length) return `The adult ${spPlural(sp)} are eating ${whose} ${label}! Move the clutch to a nursery tank.`;
+  // audit E1: in a nursery the young are already where the advice sends them; the eater is an adult moved in with them
+  // (a seahorse father or a guppy mother brought there to give birth): name it and move it out, not the young
+  if (pred.conspecific.length && isNurseryFor(state, tank, hour)) {
+    const one = pred.conspecific.length === 1;
+    const eater = pred.conspecific[0];
+    const parent = (c: Creature) => c.id === cl.motherId || c.id === cl.fatherId;
+    const pron = one ? (eater.id === cl.fatherId ? 'him' : eater.id === cl.motherId ? 'her' : eater.reproRole === 'female' || eater.sex === 'female' ? 'her' : 'him') : 'them';
+    const target = pred.conspecific.every(parent) ? `${one ? (pron === 'her' ? 'her' : 'his') : 'their'} own ${label}` : `${whose} ${label}`;
+    return `${names(pred.conspecific)} ${one ? 'is' : 'are'} eating ${target}! Move ${pron} out of ${tank.name} now.`;
+  }
+  if (pred.conspecific.length) return `The adult ${spPlural(sp)} are eating ${whose} ${label}! Move the clutch to a nursery tank (Livestock › Eggs & fry).`;
   const other = [...pred.others.keys()].map((id) => findSpecies(id)).filter((x): x is SpeciesDefinition => !!x);
-  if (other.length) return `${other.map((o) => spPlural(o)).join(' and ').replace(/^./, (ch) => ch.toUpperCase())} ${other.length === 1 && pred.others.get(other[0].id)!.length === 1 ? 'is' : 'are'} hunting ${whose} ${label}! Move the clutch to a nursery tank.`;
+  if (other.length) return `${other.map((o) => spPlural(o)).join(' and ').replace(/^./, (ch) => ch.toUpperCase())} ${other.length === 1 && pred.others.get(other[0].id)!.length === 1 ? 'is' : 'are'} hunting ${whose} ${label}! Move the clutch to a nursery tank (Livestock › Eggs & fry).`;
   return `Something is eating ${whose} ${label} — a nursery tank would keep them safe.`;
 }
 
@@ -532,12 +560,15 @@ function warnings(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinitio
   }
   if (hz.crowding > 0.002 && flag(cl, 'crowd')) {
     const text = mod.plan.cannibalPerGallon
-      ? `${who} ${label} are crowded and starting to nip each other — split them between tanks or use a bigger nursery.`
+      ? // audit E23: a clutch can only move whole, so 'split them between tanks' was impossible advice
+        `${who} ${label} are crowded and starting to nip each other — move them to a bigger tank (about ${mod.plan.cannibalPerGallon} ${label} per gallon).`
       : `${who} ${label} are crowded — a bigger nursery would raise more of them.`;
     say(state, ctx, { kind: 'warning', text, tankId: cl.tankId });
   }
   if (hz.water > 0.01 && flag(cl, 'water')) {
-    say(state, ctx, { kind: 'warning', text: `The water in ${tank.name} is hurting ${whose} ${label} — check temperature, ammonia and nitrite.`, tankId: cl.tankId, toast: true });
+    // audit E9: say what is wrong (a tolerated water type, nitrate, oxygen, salinity…), not always the same three checks
+    const cause = youngWaterCause(tank, sp);
+    say(state, ctx, { kind: 'warning', text: cause ? `The water in ${tank.name} is hurting ${whose} ${label}: ${cause}.` : `The water in ${tank.name} is hurting ${whose} ${label} — check temperature, ammonia and nitrite.`, tankId: cl.tankId, toast: true });
   }
   if (hz.fungus > 0 && flag(cl, 'fungus')) {
     say(state, ctx, { kind: 'warning', text: `Nobody is tending ${whose} eggs — some are turning white with fungus. An airstone nearby helps.`, tankId: cl.tankId });
@@ -571,12 +602,20 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   bumpCounter(state, 'hatches');
   addMastery(state, 'breeding', 3);
   if (mod.onPhase?.(state, cl, tank, sp, hour, ctx)) return;
-  const nursery = isNurseryFor(state, tank, hour);
-  const hint = !nursery && sp.breeding.nurseryRequired ? ' Adults and filters are a danger — a nursery tank gives them their best chance.' : '';
+  // audit E12: a cichlid pair alone with its brood is no danger to it (its parents spare it)
+  const nursery = isNurseryFor(state, tank, hour, plan.pairGuards ? [cl.motherId, cl.fatherId] : undefined);
+  const mother = cl.motherId ? state.creatures[cl.motherId] : undefined;
+  const hint =
+    !nursery && sp.breeding.nurseryRequired
+      ? ' Adults and filters are a danger — a nursery tank gives them their best chance.'
+      : // audit E1: a berried mother moved to a nursery to hatch her eggs eats the young there
+        nursery && wasBerried && sp.breeding.predationWithoutNursery > 0 && isAlive(mother) && mother.tankId === tank.id
+        ? ` Move ${mother.name} back out — adults eat the young.`
+        : '';
   // lane:notify — berried shrimp release young rather than hatching eggs in view: a birth (ADR-0023)
   const loud = toastWorthy(state, sp, 'hatch');
-  const notice = loud ? breedNotice(wasBerried ? 'birth' : 'hatch', clutchParentName(state, cl), cl.count, tank) : undefined;
-  say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} eggs hatched — ${plural(cl.count, ph.label.replace(/s$/, ''), ph.label)}!${hint}`, tankId: cl.tankId, creatureId: cl.motherId ?? undefined, toast: loud, ...(notice ? { notice } : {}) });
+  const notice = loud ? breedNotice(wasBerried ? 'birth' : 'hatch', clutchParentName(state, cl), cl.count, tank, wasBerried ? undefined : ph.label) : undefined;
+  say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} eggs hatched — ${plural(cl.count, youngSingular(ph.label), ph.label)}!${hint}`, tankId: cl.tankId, creatureId: cl.motherId ?? undefined, toast: loud, ...(notice ? { notice } : {}) });
 }
 
 function setPhase(cl: Clutch, ph: RearingPhase, sp: SpeciesDefinition, hour: number): void {
@@ -593,7 +632,7 @@ function advancePhase(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefin
     setPhase(cl, next, sp, hour);
     if (next.visual === 'fry_cloud' && !cl.anchor) cl.anchor = pickSite(tank, 'midwater', `${cl.id}:fry`).anchor;
     if (!mod.onPhase?.(state, cl, tank, sp, hour, ctx)) {
-      say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} ${plural(cl.count, next.label.replace(/s$/, ''), next.label)} are growing well.`, tankId: cl.tankId });
+      say(state, ctx, { kind: 'breeding', text: `${parentName(state, cl)} ${plural(cl.count, youngSingular(next.label), next.label)} ${cl.count === 1 ? 'is' : 'are'} growing well.`, tankId: cl.tankId });
     }
     return;
   }
@@ -647,7 +686,8 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
   // Rearing can outlast the species' juvenile phase (seahorses, shrimp, small gobies): cap the birth age so every
   // youngster arrives as a juvenile with growth, the sex reveal and maturity still ahead of it.
   // chunk 17: a plan can say how old its young are when they hatch straight into juveniles (egg cases: just hatched)
-  const ageDays = bornAgeDays !== undefined ? Math.max(0.5, bornAgeDays) : Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8)));
+  // audit E30 (B-214): and below the age their sex shows (the seahorse's cap, 12.8 days, was past its 12)
+  const ageDays = bornAgeDays !== undefined ? Math.max(0.5, bornAgeDays) : Math.max(0.5, Math.min((hour - cl.laidHour) / 24, Math.max(0.5, sp.lifecycle.juvenileDays * 0.8), sp.lifecycle.sexVisibleAtDays * 0.9));
   const parents = mother && father ? `${mother.name} × ${father.name}` : (mother ?? father)?.name ?? 'your breeding stock';
   const used = new Set<string>(Object.values(state.creatures).filter((c) => c.speciesId === sp.id).map((c) => c.name));
   const minted: Creature[] = [];
@@ -739,6 +779,8 @@ export function mintJuveniles(state: GameState, cl: Clutch, tank: Tank, sp: Spec
     text = `${plural(n, `young ${spName(sp)}`, `young ${young}`)} from ${parents} ${n === 1 ? 'is' : 'are'} ready to meet you!`;
     if (rehomed > 0) text += ` ${rehomed.toLocaleString('en-US')} more ${rehomed === 1 ? 'was' : 'were'} rehomed to local hobbyists.`;
     if (capLimited) text += ` ${tank.name} is at capacity — a bigger nursery would let you keep more.`;
+    // audit E3: the per-clutch cap, not the tank, sent the rest away: say so (it was never explained)
+    else if (rehomed > 0 && n >= sp.breeding.maxRaisedPerClutch) text += ` You keep up to ${sp.breeding.maxRaisedPerClutch} young from each clutch.`;
   } else if (cl.count > 0) {
     text = `${parentName(state, cl)} young are grown, but ${tank.name} has no room for more animals — all ${cl.count.toLocaleString('en-US')} were rehomed to local hobbyists.`;
   } else text = `${parentName(state, cl)} brood has grown up.`;

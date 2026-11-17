@@ -130,7 +130,9 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
       if (count === null || !tank) return null;
       const name = str(v.name);
       if (topic === 'eggs') return make('breeding', name ? `${name} laid eggs` : 'Eggs laid', `${plural(count, 'egg')} in ${tank}.`, '#/livestock/eggs');
-      if (topic === 'hatch') return make('breeding', name ? `${name}’s eggs hatched` : 'Eggs hatched', `${count.toLocaleString('en-US')} fry ${count === 1 ? 'is' : 'are'} free-swimming in ${tank}.`, '#/livestock/eggs');
+      // audit E25: say what hatched (larvae, wriggling fry, young) when the line names it; older notices keep "fry"
+      const young = str(v.young);
+      if (topic === 'hatch') return make('breeding', name ? `${name}’s eggs hatched` : 'Eggs hatched', young ? `${count.toLocaleString('en-US')} ${young} hatched in ${tank}.` : `${count.toLocaleString('en-US')} fry ${count === 1 ? 'is' : 'are'} free-swimming in ${tank}.`, '#/livestock/eggs');
       return make('breeding', name ? `${name} gave birth` : 'Young born', `${count.toLocaleString('en-US')} young in ${tank}.`, '#/livestock/eggs');
     }
     case 'show_result': {

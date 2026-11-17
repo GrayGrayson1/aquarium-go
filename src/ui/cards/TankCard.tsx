@@ -277,6 +277,8 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
             </div>
             {/* Audit 2026-11-17 C1 — salt water: what a change takes, before a change it can't cover is refused */}
             {salty && change25 && <div className="ag-small ag-muted" data-testid="water-change-salt-need">25% uses about {change25.saltKg < 0.1 ? change25.saltKg.toFixed(2) : change25.saltKg.toFixed(1)} kg of salt mix.</div>}
+            {/* audit E14: the button's tip, visible (a title never shows on touch) */}
+            {coolCue && <div className="ag-small ag-muted">Two Cool 25% changes in a row give the ~2 °C chill that sets off spawning.</div>}
           </div>
           <div className="ag-carebtns">
             <CareBtn icon={Droplet} label="Top off" hint={`Level ${Math.round(tank.water.level * 100)}%`} testId="action-top-off" fix="top-off" onClick={() => care({ k: 'topOff', tank: tank.id }, 'topped_off', 'bubble')} />

@@ -179,7 +179,9 @@ export const bubbleNestModule: BreedingModule = {
           if (stageDue(f, hour)) spawn(state, tank, sp, m, f, hour, ctx);
           break;
         case 'spent':
-          if (!males.length) {
+          // audit E16: a gentler bubble-nester (honey, dwarf gourami: not 'breeding_only_temporary') rests once the male
+          // stops guarding; before, she stayed spent for good while any male shared her tank
+          if (!males.length || (sp.sameSpeciesRule.mixed !== 'breeding_only_temporary' && !males.some((x) => x.repro.stage === 'guarding'))) {
             startResting(f, hour, b.cooldownDays * 24);
             addHistory(f, 'note', 'Recovering after spawning.', hour);
           }

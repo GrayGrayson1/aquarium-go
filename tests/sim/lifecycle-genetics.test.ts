@@ -216,7 +216,7 @@ describe('lifecycle genetics — disclosure', () => {
     expect(l0.some((r) => /\d/.test(r.value))).toBe(false);
     expect(l0.some((r) => /carries/.test(r.value))).toBe(false);
     const l1 = describeGenetics(axolotl, genome, 1);
-    expect(l1.find((r) => r.label === 'Leucistic (d)')?.value).toContain('carries leucistic (het)');
+    expect(l1.find((r) => r.label === 'Leucistic (d)')?.value).toContain('carries leucistic (one hidden copy)');
     expect(l1.find((r) => r.label === 'Size')?.value).toContain('92');
   });
 });

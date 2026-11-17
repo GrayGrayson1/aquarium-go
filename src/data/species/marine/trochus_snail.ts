@@ -75,7 +75,7 @@ export const trochusSnail: SpeciesDefinition = {
     fryRearingHours: 56,
     cooldownDays: 10,
     conditions: { needsPartner: true, minTempC: 24, minTankGallons: 10 },
-    predationWithoutNursery: 0.98,
+    predationWithoutNursery: 0, // audit E10: the babies settle and grow without help (its notes); adults don't hunt them
     nurseryRequired: false,
     maxRaisedPerClutch: 6,
     notes: 'Males and females release sperm and eggs into the water column (a milky cloud, often at night). Because the larval stage is very short, a few tiny snails can settle and grow on the glass and rock without any help — Trochus is one of the few reef snails that reproduces in home aquaria.',

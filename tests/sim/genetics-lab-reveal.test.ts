@@ -36,10 +36,10 @@ describe('the Genetics Lab reveals genes for new animals', () => {
     const rows = describeGenetics(betta, c.genome, level);
     // the gene rows come after the potentials (whose "Pattern" row shares a label)
     const by = (label: string) => rows.filter((r) => r.label === label).at(-1)?.value;
-    expect(by('Body colour')).toBe('Red · carries royal blue (het)');
-    expect(by('Pattern')).toBe('Solid · carries marble (het)');
-    expect(by('Cambodian')).toBe('Normal body · carries cambodian (het)');
-    expect(by('Metallic')).toBe('Standard sheen + Metallic (intermediate)');
+    expect(by('Body colour')).toBe('Red · carries royal blue (one hidden copy)');
+    expect(by('Pattern')).toBe('Solid · carries marble (one hidden copy)');
+    expect(by('Cambodian')).toBe('Normal body · carries cambodian (one hidden copy)');
+    expect(by('Metallic')).toBe('Standard sheen + Metallic (a blend of both)');
     expect(by('Temperament')).toBe('Bold · 66');
   });
 

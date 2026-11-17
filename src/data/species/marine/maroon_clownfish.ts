@@ -85,7 +85,7 @@ export const maroonClownfish: SpeciesDefinition = {
     predationWithoutNursery: 0.98,
     nurseryRequired: true,
     maxRaisedPerClutch: 12,
-    notes: 'Pairs lay adhesive eggs on rock beside their host; the male tends them and the female guards the site fiercely. Widely bred by ORA, ProAquatix and others; the larvae need a rotifer-fed rearing tank.',
+    notes: 'Pairs lay adhesive eggs on rock beside their host; the male tends them and the female guards the site fiercely. Widely bred by ORA, ProAquatix and others; the larvae need a rearing tank with live copepods or baby brine shrimp.',
   },
   sexSystem: 'protandrous',
   parentalCare: 'male',

@@ -80,6 +80,15 @@ export const SHOW_RESULT_TEXT = /The judge’s cards (are in Shows|explain why)\
 
 const RESULTS: EventLink = { panel: 'shows', target: 'tab:results', where: '', label: 'See results' };
 
+/**
+ * audit E7: a breeding line that sends eggs or young to a nursery ("… move them to a nursery tank") opens Livestock ›
+ * Eggs & fry, where the Move buttons are; a creature's card (where the toast used to go) can't move a brood.
+ */
+// (advice, not a tank that happens to be named Nursery: "Move him out of Nursery now" goes to his card)
+const NURSERY_ADVICE = /\ba nursery\b|\bnursery tank\b/i;
+const YOUNG_WORD = /\b(eggs?|egg cases?|fry|larvae|young|brood|clutch|wrigglers|shrimplets|baby snails|pups)\b/i;
+const EGGS_AND_FRY: EventLink = { panel: 'livestock', target: 'tab:young', where: '', label: 'Open Eggs & fry' };
+
 /** The panel a log event opens, or null (tank / creature links are handled by the caller). */
 export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'offerId'>): EventLink | null {
   const text = e.text ?? '';
@@ -96,5 +105,6 @@ export function eventLink(e: Pick<GameEvent, 'kind' | 'text' | 'listingId' | 'of
   // lane:notify (chunk 3, NOTIFY-004) — a Prismatic or special stocked opens its offer (the shop says if it has gone)
   if (typeof e.offerId === 'string' && e.offerId) return { panel: 'market', target: `offer:${e.offerId}`, where: '', label: 'Open the shop' };
   if (/^New arrivals at the shop:|^Market special:/.test(text)) return { panel: 'market', target: 'tab:shop', where: '', label: 'Open the shop' };
+  if (NURSERY_ADVICE.test(text) && YOUNG_WORD.test(text)) return EGGS_AND_FRY;
   return null;
 }

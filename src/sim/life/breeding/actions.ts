@@ -52,7 +52,7 @@ function moveInto(state: GameState, c: Creature, tank: Tank): ActionResult {
   if (c.tankId !== tank.id) c.tankId = tank.id;
   touchResidents(); // lane:perf2 — a move-in: drop the step's residents index
   followCarried(state, c, from);
-  return ok('');
+  return ok(res.message ?? ''); // audit E18: keep moveCreature's words (its 'Heads up: … needs at least N gallons.')
 }
 
 /** Broods carried inside a parent (pouch, mouth, berried eggs) travel with it. */
@@ -133,10 +133,16 @@ export function separateCreature(state: GameState, creatureId: string, toTankId:
   } else if (stage === 'guarding' && clutch && !isCarried(clutch)) {
     if (clutch.guardedById === c.id) delete clutch.guardedById;
     startResting(c, hour, cooldownH * 0.5);
+    // audit E12: a cichlid pair's other parent goes on tending the brood (pairGuards: either one fans the eggs)
+    const otherId = clutch.motherId === c.id ? clutch.fatherId : clutch.motherId;
+    const other = otherId ? state.creatures[otherId] : undefined;
+    const stillTended = !!sp && !!moduleFor(sp).plan.pairGuards && isAlive(other) && other.tankId === clutch.tankId;
     msg =
       clutch.stage === 'fry'
         ? `Perfect timing — ${c.name}’s job is done and the fry are on their own now.`
-        : `${c.name} has left the ${clutch.stage === 'eggs' ? 'eggs' : 'brood'} — without a parent tending them, some may fungus or fall from the nest.`;
+        : stillTended && other
+          ? `${c.name} moved to ${tank.name}; ${other.name} is still ${clutch.stage === 'eggs' ? 'fanning the eggs' : 'tending the brood'}.`
+          : `${c.name} has left the ${clutch.stage === 'eggs' ? 'eggs' : 'brood'} — without a parent tending them, some may fungus or fall from the nest.`;
   } else if (stage === 'guarding' && !clutch) {
     // Guard duty with nothing left to guard (the clutch hatched or was lost) — a move always clears it.
     startResting(c, hour, cooldownH * 0.5);
@@ -152,6 +158,10 @@ export function separateCreature(state: GameState, creatureId: string, toTankId:
   } else if (stage === 'pregnant' || stage === 'berried' || stage === 'brooding') {
     msg = `${c.name} moved to ${tank.name}, carrying the brood safely.`;
   } else breedingRelated = false;
+  // audit E18: an ordinary move says what moveCreature says; a breeding one keeps the space warning too
+  const headsUp = /Heads up: .*$/.exec(res.message ?? '')?.[0];
+  if (!breedingRelated && res.message) msg = res.message;
+  else if (headsUp) msg = `${msg} ${headsUp}`;
   c.repro.harassment = Math.min(c.repro.harassment ?? 0, 0.3);
   if (breedingRelated) emitEvent(state, { kind: 'breeding', text: msg, tankId: tank.id, creatureId: c.id });
   return ok(msg);
@@ -197,12 +207,19 @@ export function moveClutch(state: GameState, clutchId: string, toTankId: string)
   bumpCounter(state, 'clutchesMoved');
 
   const warnings: string[] = [];
-  if (!isNurseryFor(state, tank, hour)) warnings.push(`there are adult animals in ${tank.name} that may eat them`);
+  // audit E12: a cichlid pair's own parents never eat their brood, so they don't count as a danger there
+  const pairGuards = !!moduleFor(sp).plan.pairGuards;
+  const parents = pairGuards ? [cl.motherId, cl.fatherId] : undefined;
+  if (!isNurseryFor(state, tank, hour, parents)) warnings.push(`there are adult animals in ${tank.name} that may eat them`);
   if ((tank.water.bioMaturity ?? 1) < 0.3) warnings.push(`${tank.name} isn’t cycled yet`);
   if (tank.water.ammonia > 0.25 || tank.water.nitrite > 0.25) warnings.push('ammonia/nitrite is detectable');
+  const parentIn = (tankId: string) => [cl.motherId, cl.fatherId].some((id) => {
+    const p = id ? state.creatures[id] : undefined;
+    return isAlive(p) && p.tankId === tankId;
+  });
   const what = cl.stage === 'eggs' ? plural(cl.count, cl.visual === 'egg_case' ? 'egg case' : 'egg') : plural(cl.count, cl.stage === 'larvae' ? 'larva' : 'fry', cl.stage === 'larvae' ? 'larvae' : 'fry');
   const who = (cl.motherId && state.creatures[cl.motherId]?.name) || (cl.fatherId && state.creatures[cl.fatherId]?.name);
-  const msg = `Moved ${who ? `${who}’s ` : ''}${what} from ${from?.name ?? 'the tank'} to ${tank.name}.${warnings.length ? ` Careful: ${warnings.join('; ')}.` : ''}${cl.stage === 'eggs' && moduleFor(sp).plan.guardEggs && !cl.guardedById ? ' An airstone nearby helps replace the parent’s fanning.' : ''}`;
+  const msg = `Moved ${who ? `${who}’s ` : ''}${what} from ${from?.name ?? 'the tank'} to ${tank.name}.${warnings.length ? ` Careful: ${warnings.join('; ')}.` : ''}${cl.stage === 'eggs' && moduleFor(sp).plan.guardEggs && !cl.guardedById && !(pairGuards && parentIn(toTankId)) ? ' An airstone nearby helps replace the parent’s fanning.' : ''}`;
   emitEvent(state, { kind: warnings.length ? 'warning' : 'breeding', text: msg, tankId: toTankId });
   return ok(msg);
 }

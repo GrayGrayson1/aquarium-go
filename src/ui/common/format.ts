@@ -245,6 +245,10 @@ export function sexRoleText(c: Creature, sp: SpeciesDefinition | undefined, nowH
         return { label: 'Female', detail: 'May become male if dominant.' };
     }
   }
+  // audit E17: a hermaphrodite never shows a sex, and a snail whose sex shows only at the end of its life can't be
+  // sexed by eye: "Not yet visible · Sex shows at around 14 days" was forever, or a promise for its last day
+  if (sp?.sexSystem === 'simultaneous_hermaphrodite') return { label: 'Both sexes', detail: 'Any two adults can pair up — both can carry eggs.' };
+  if (sp && c.sex === 'unknown' && sp.lifecycle.sexVisibleAtDays >= sp.lifecycle.lifespanDays) return { label: 'Can’t be told by eye', detail: 'Keep a few together and they pair up on their own.' };
   if (c.sex === 'unknown' || (sp && age < sp.lifecycle.sexVisibleAtDays && c.lifeStage !== 'adult')) {
     return { label: 'Not yet visible', detail: sp ? `Sex shows at around ${Math.round(sp.lifecycle.sexVisibleAtDays)} days.` : undefined };
   }

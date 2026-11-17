@@ -86,11 +86,13 @@ export const rayViviparousModule: BreedingModule = {
         if (r.stage === 'idle') setStage(f, 'conditioning', hour);
         continue;
       }
-      r.partnerId = male.id;
+      // audit E8: her chosen partner, while he is here and healthy; else the first healthy male, as before
+      const mate = adults.find((c) => c.id === r.partnerId && roleOf(c, sp) === 'male' && c.stats.health >= 40) ?? male;
+      r.partnerId = mate.id;
       setStage(f, 'gravid', hour);
       r.carryingUntilHour = hour + b.incubationHours * ctx.rng.range(0.9, 1.1);
       if (toastWorthy(state, sp, 'mated')) {
-        say(state, ctx, { kind: 'breeding', text: `${male.name} bit the edge of ${f.name}’s disc as they mated: that is how rays court, and the marks heal. She is pregnant.`, tankId: tank.id, creatureId: f.id });
+        say(state, ctx, { kind: 'breeding', text: `${mate.name} bit the edge of ${f.name}’s disc as they mated: that is how rays court, and the marks heal. She is pregnant.`, tankId: tank.id, creatureId: f.id });
       }
     }
   },

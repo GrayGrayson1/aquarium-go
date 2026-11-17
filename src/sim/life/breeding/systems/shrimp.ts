@@ -62,7 +62,8 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
           continue;
         }
         if (r.stage !== 'idle' && r.stage !== 'conditioning') continue;
-        const mate: Creature | undefined = males.find((m) => m !== f && m.stats.health >= 40);
+        // audit E8: her chosen partner, while he is here and healthy; else the first healthy male, as before
+        const mate: Creature | undefined = males.find((m) => m !== f && m.id === r.partnerId && m.stats.health >= 40) ?? males.find((m) => m !== f && m.stats.health >= 40);
         if (!mate || waterIssue || !goodTemp || !matureTank || colonyFull || berriedNow >= MAX_BERRIED_PER_TANK || f.stats.breedingReadiness < BERRY_READY) {
           if (r.stage === 'idle' && mate) setStage(f, 'conditioning', hour);
           continue;
@@ -143,7 +144,8 @@ function makeShrimp(id: 'shrimp_berried' | 'shrimp_larval_marine', plan: Rearing
       if (c.repro.stage !== 'berried') return null;
       const cl = c.repro.clutchId ? state.clutches[c.repro.clutchId] : undefined;
       const due = (c.repro.carryingUntilHour ?? hour) - hour;
-      return { label: cl ? `Berried — ${plural(cl.count, 'egg')}` : 'Berried', detail: `Hatching in ${approxDuration(due)}`, progress: c.repro.progress };
+      // audit E15: plain words ('berried' is a keepers' term)
+      return { label: cl ? `Carrying ${plural(cl.count, 'egg')} under her tail` : 'Carrying eggs under her tail', detail: `Hatching in ${approxDuration(due)}`, progress: c.repro.progress };
     },
   };
 }

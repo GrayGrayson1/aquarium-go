@@ -13,6 +13,7 @@ import { quickSellQuote, saleWarnings } from '@/sim/economy';
 import { breedingStatus, isPrismatic } from '@/sim/life';
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { isCarried } from '@/sim/life/breeding/clutch';
+import { clutchStatus } from '@/sim/life/breeding'; // audit E2
 import { useShell } from '../../common/shellStore';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { usePanelGame, safe } from '../common/hooks';
@@ -452,10 +453,15 @@ function sellWarningIcon(w: string) {
   return <HeartPulse size={16} />;
 }
 
+/** audit E25: how a clutch's losses read ("12 eaten, 3 to poor water"). */
+const LOSS_WORDS: Record<string, string> = { predation: 'eaten', starvation: 'starved', water: 'to poor water', crowding: 'to crowding', fungus: 'to fungus' };
+
 /** Only surface breeding states worth attention (hide idle / too young / not bred here). */
-function activeBreeding<T extends { label: string } | null>(s: T): T | null {
+function activeBreeding<T extends { label: string; detail?: string } | null>(s: T): T | null {
   if (!s) return null;
-  return /^(not breeding|not bred here|too young|conditioning)/i.test(s.label) ? null : s;
+  // audit E22: an anemone is listed only when a split is near, so the empty state can show
+  if (/^splits by itself/i.test(s.label) && /^not yet/i.test(s.detail ?? '')) return null;
+  return /^(not breeding|not bred here|too young|conditioning|getting into breeding shape)/i.test(s.label) ? null : s;
 }
 
 function SexIcon({ sex }: { sex: Creature['sex'] }) {
@@ -529,10 +535,13 @@ function YoungView({ g }: { g: GameState }) {
               const nurseries = tanks.filter((t) => suits(t) && t.purpose === 'nursery');
               // without a nursery, only an empty tank (no tank mates to eat them) is a real alternative — never a busy display
               const others = tanks.filter((t) => suits(t) && t.purpose !== 'nursery' && !Object.values(g.creatures).some((c) => c.tankId === t.id && c.status === 'alive'));
-              const adults = tank ? Object.values(g.creatures).filter((c) => c.tankId === tank.id && c.status === 'alive' && c.id !== cl.guardedById).length : 0;
               // lane:fix-panels — a brood in a pouch or under a berried tail travels with its parent: the sim refuses
               // to move the clutch on its own, so offer to move the carrier instead of a button that always fails
               const carried = isCarried(cl);
+              // audit E2: the sim's own view of this clutch (who eats it here, room when it grows up, the per-clutch cap)
+              const st = safe(() => clutchStatus(g, cl.id), null);
+              const carrierEats = (sp?.breeding.predationWithoutNursery ?? 0) > 0;
+              const carrierPron = guard?.sex === 'female' || guard?.reproRole === 'female' ? 'her' : 'him';
               return (
                 <div key={cl.id} className="pn-card pn-clutch">
                   <div className="pn-row pn-gap-3 pn-row--top">
@@ -542,7 +551,8 @@ function YoungView({ g }: { g: GameState }) {
                     </span>
                     <div className="pn-grow">
                       <div className="pn-card__title" style={{ fontSize: 16 }}>
-                        {sp?.commonName ?? cl.speciesId} · {CLUTCH_STAGE_LABEL[cl.stage]}
+                        {/* audit E25: a Banggai father holds them in his mouth, not a pouch */}
+                        {sp?.commonName ?? cl.speciesId} · {cl.stage === 'in_pouch' && sp?.parentalCare === 'male_mouth' ? 'In his mouth' : CLUTCH_STAGE_LABEL[cl.stage]}
                       </div>
                       <div className="pn-card__sub">
                         {cl.visual === 'egg_case' ? plural(cl.count, 'egg case') : plural(cl.count, cl.stage === 'eggs' ? 'egg' : 'young', cl.stage === 'eggs' ? 'eggs' : 'young')} in {tank?.name ?? 'a tank'}
@@ -551,7 +561,7 @@ function YoungView({ g }: { g: GameState }) {
                     </div>
                     <div className="pn-clutch__eta">
                       <span className="pn-tiny pn-muted">Next stage</span>
-                      <b className="pn-num-t">{cl.nextStageHour <= g.clock.hour ? 'any moment' : untilTime(cl.nextStageHour, g.clock.hour)}</b>
+                      <b className="pn-num-t">{cl.nextStageHour <= g.clock.hour ? (st?.waitsForDark ? 'after lights-out' : 'any moment') : untilTime(cl.nextStageHour, g.clock.hour)}</b>
                     </div>
                   </div>
                   <div className="pn-row pn-gap-3" style={{ marginTop: 12 }}>
@@ -571,7 +581,8 @@ function YoungView({ g }: { g: GameState }) {
                   )}
                   {losses.length > 0 && (
                     <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>
-                      Lost so far: {losses.map(([k, n]) => `${Math.round(n)} to ${k}`).join(', ')}
+                      {/* audit E25: plain causes ("12 eaten, 3 to poor water"), not the sim's keys */}
+                      Lost so far: {losses.map(([k, n]) => `${Math.round(n)} ${LOSS_WORDS[k] ?? `to ${k}`}`).join(', ')}
                       {cl.initialCount ? ` (from ${cl.initialCount})` : ''}
                     </div>
                   )}
@@ -581,11 +592,18 @@ function YoungView({ g }: { g: GameState }) {
                       {cl.visual === 'egg_case' && cl.notes ? cl.notes : 'These eggs can’t hatch here — they’ll dissolve naturally over time.'}
                     </Callout>
                   )}
-                  {!cl.infertile && !carried && tank && tank.purpose !== 'nursery' && adults > 0 && (
+                  {/* audit E2: still being laid, and what a torch shows through a shark's egg case */}
+                  {!cl.infertile && (cl.pendingEggs || cl.visual === 'egg_case') && st?.detail && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{st.detail}</div>}
+                  {/* audit E1/E2/E12: what threatens these young here (the sim's rule, not a head count of tank mates), and
+                      whether they will fit when they grow up — before it matters, not when they are rehomed */}
+                  {st && st.warnings.length > 0 && (
                     <Callout tone="watch" icon={<Egg size={15} />}>
-                      Tank mates may eat eggs and fry. A nursery tank protects them.
+                      {st.warnings.map((w) => (
+                        <div key={w}>{w}.</div>
+                      ))}
                     </Callout>
                   )}
+                  {st?.keepNote && <div className="pn-tiny pn-muted" style={{ marginTop: 8 }}>{st.keepNote}</div>}
                   <div className="pn-row pn-gap-2 pn-row--wrap" style={{ marginTop: 10 }}>
                     {cl.infertile && cl.visual === 'egg_case' ? (
                       <Button size="sm" variant="primary" onClick={() => act({ k: 'liftOutClutch', clutch: cl.id, from: cl.tankId }, { sound: 'splash' })}>
@@ -595,7 +613,12 @@ function YoungView({ g }: { g: GameState }) {
                       <>
                         <span className="pn-small pn-muted">
                           {guard ? `Safe with ${guard.name} until they’re released` : 'Carried by the parent until they’re released'}
-                          {guard && !inNursery && nurseries.length > 0 ? ` — move ${guard.name} to a nursery so the young hatch somewhere safe.` : '.'}
+                          {/* audit E1: the carrier eats the young once they are out, in the nursery too: say to move it back */}
+                          {guard && !inNursery && nurseries.length > 0
+                            ? ` — move ${guard.name} to a nursery so the young hatch somewhere safe${carrierEats ? `, then move ${carrierPron} back out as soon as the young are out — adults eat them` : ''}.`
+                            : guard && inNursery && carrierEats
+                              ? `. Move ${guard.name} back out as soon as the young are out — adults eat them.`
+                              : '.'}
                         </span>
                         {guard && !inNursery && nurseries.length > 0 && (
                           <Button
@@ -614,10 +637,15 @@ function YoungView({ g }: { g: GameState }) {
                       </>
                     ) : inNursery ? (
                       <>
-                        <span className="pn-small pn-tone-good pn-row pn-gap-1">
-                          <Check size={14} aria-hidden /> Growing up safely in {tank && /nursery/i.test(tank.name) ? tank.name : `the ${tank?.name ?? ''} nursery`}
-                          {nurseries.length > 0 ? ' · or move them to:' : '.'}
-                        </span>
+                        {/* audit E1: "safe" only when nothing in the nursery eats them (a parent moved in with them does) */}
+                        {st?.safe !== false ? (
+                          <span className="pn-small pn-tone-good pn-row pn-gap-1">
+                            <Check size={14} aria-hidden /> Growing up safely in {tank && /nursery/i.test(tank.name) ? tank.name : `the ${tank?.name ?? ''} nursery`}
+                            {nurseries.length > 0 ? ' · or move them to:' : '.'}
+                          </span>
+                        ) : (
+                          nurseries.length > 0 && <span className="pn-small pn-muted">Or move them to:</span>
+                        )}
                         {nurseries.slice(0, 2).map((t) => (
                           <Button key={t.id} size="sm" onClick={() => act({ k: 'moveClutch', clutch: cl.id, to: t.id, from: cl.tankId }, { sound: 'splash' })}>
                             <ArrowRightLeft size={14} /> {t.name}

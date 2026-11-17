@@ -68,7 +68,7 @@ const STALE_MS = 9000;
 const isStale = (e: Entry, now: number, shown: ReadonlyMap<string, number>) => prio(e.kind) <= 3 && now - e.born > STALE_MS && !shown.has(e.key);
 
 /** lane:qa-final — brood-loss warnings (adults eating a clutch, a brood lost in the display). */
-const BROOD_WARNING = /\bare eating .+’s (eggs|larvae|fry|wrigglers)\b|\bis eating (her|his|their) own\b|’s brood didn’t make it\b/;
+const BROOD_WARNING = /\bare eating .+’s (eggs|larvae|fry|wrigglers|wriggling fry)\b|\bis eating (her|his|their) own\b|’s brood didn’t make it\b/;
 
 function groupOf(kind: AnyKind, text: string, busy = false): string | null {
   // lane:qa-final — a big venue's pairs spawn around the clock (a staffed big_facility: ~25 breeding toasts and ~15
