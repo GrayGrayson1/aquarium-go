@@ -17,6 +17,7 @@ import { getSpecies } from '@/data/species';
 import { tierLadder } from '@/ui/common/ops';
 import { whenPhrase, saltBuyLabel } from '@/ui/panels/operations/issues';
 import { money as showMoney } from '@/ui/panels/shows/util';
+import { LOAD_FAILED, onlineLoadError } from '@/ui/online/cloudSync';
 
 const src = (path: string) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8');
 
@@ -238,5 +239,16 @@ describe('Audit 2026-11-17 (J34): a confirm button says what it does', () => {
       expect(s, `${file}: ${gone}`).not.toContain(gone);
       expect(s, `${file}: ${now}`).toContain(now);
     }
+  });
+});
+
+describe('Audit 2026-11-17 (J35): an online save that won’t load gives the right cause', () => {
+  it('no “previous copy” (only a slot on this device has one), and the game here is untouched', () => {
+    expect(LOAD_FAILED).toBe('The online save couldn’t be loaded — it may be damaged. Your game on this device hasn’t changed.');
+    expect(onlineLoadError({ code: 'not_json', error: 'That file isn’t an Aquarium Go save (it isn’t JSON).' })).toBe(LOAD_FAILED);
+    expect(onlineLoadError({ code: 'checksum', error: 'That file was only partly written.' })).toBe(LOAD_FAILED);
+    expect(onlineLoadError({})).toBe(LOAD_FAILED);
+    expect(onlineLoadError({ code: 'too_new', error: 'A newer version saved this.' })).toBe('A newer version saved this.');
+    expect(onlineLoadError({ code: 'storage', error: 'Couldn’t save — browser storage refused the write.' })).toBe('Couldn’t save — browser storage refused the write.');
   });
 });
