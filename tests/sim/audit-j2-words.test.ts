@@ -10,6 +10,11 @@ import { SEX_LABEL, PURPOSE_HINT } from '@/ui/panels/common/format';
 import { CRITERION_LABEL } from '@/data/shows';
 import { AUTOMATION_LOCK_HINT } from '@/ui/cards/Automation';
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
+import { newGame } from '@/sim/newGame';
+import { grantReward } from '@/sim/facility/progression';
+import { moduleFor } from '@/sim/life/breeding/registry';
+import { getSpecies } from '@/data/species';
+import { tierLadder } from '@/ui/common/ops';
 
 const src = (path: string) => readFileSync(new URL(`../../src/${path}`, import.meta.url), 'utf8');
 
@@ -83,5 +88,30 @@ describe('Audit 2026-11-17 (J25): one word for one thing', () => {
       expect(s, `${file}: ${gone}`).not.toContain(gone);
       expect(s, `${file}: ${now}`).toContain(now);
     }
+  });
+});
+
+describe('Audit 2026-11-17 (J27): lines say what you got, and promise nothing that can’t come', () => {
+  it('a food reward names the food', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 7 });
+    const before = g.inventory.foods.bloodworm_frozen ?? 0;
+    expect(grantReward(g, { foods: { bloodworm_frozen: 4 } }, 'test')).toEqual(['4 servings of frozen bloodworms']);
+    expect(g.inventory.foods.bloodworm_frozen).toBe(before + 4);
+  });
+
+  it('shrimp larvae that can’t be raised say so, without a “yet” that sends players looking for an unlock', () => {
+    const amano = getSpecies('amano_shrimp');
+    const mod = moduleFor(amano);
+    expect(mod.explain?.(amano)).toBe('Amano Shrimp larvae drift as plankton and need special brackish larval rearing, which Aquarium Go doesn’t include.');
+    expect(mod.plan.nonViableText).toBe('The shrimp eggs hatched overnight into drifting larvae. They need weeks of specialised brackish or marine larval rearing, which Aquarium Go doesn’t include, so they were lost to the current.');
+    for (const f of ['sim/life/breeding/systems/shrimp.ts', 'sim/life/breeding/clutch.ts']) expect(src(f)).not.toMatch(/this shop (for now|can’t|yet)|isn’t available yet/);
+  });
+
+  it('a facility level you have reached reads “reached”', () => {
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 7 });
+    g.facility.level = 'aquarium_store';
+    const reqs = tierLadder(g).flatMap((t) => t.reqs.map((r) => r.text));
+    expect(reqs).toContain('Specialty Shop: reached');
+    expect(reqs.join(' ')).not.toContain('past it');
   });
 });

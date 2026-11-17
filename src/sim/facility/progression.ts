@@ -21,6 +21,7 @@ import { ACHIEVEMENTS } from '@/data/achievements';
 import { FACILITY_LEVEL_ORDER, getFacilityLevel } from '@/data/facilities';
 import { findSpecies } from '@/data/species';
 import { getTankTier, TANK_TIERS } from '@/data/catalog/tanks';
+import { getFoodDef } from '@/data/catalog/foods';
 import { withArticle } from '../economy/util'; // lane:w2-ui
 import { giftedLayoutShare } from '../aquascape/starters';
 
@@ -578,7 +579,7 @@ export function grantReward(state: GameState, reward: Reward | undefined, memo: 
   }
   for (const [foodId, n] of Object.entries(reward.foods ?? {})) {
     state.inventory.foods[foodId] = (state.inventory.foods[foodId] ?? 0) + n;
-    out.push(`${n} servings of food`);
+    out.push(`${n} servings of ${getFoodDef(foodId)?.name.toLowerCase() ?? 'food'}`); // Audit 2026-11-17 (J27): say which food
   }
   return out;
 }

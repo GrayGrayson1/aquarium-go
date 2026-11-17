@@ -579,7 +579,7 @@ function hatch(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefinition, 
   const plan = mod.plan;
   if (plan.hatchAtNight && !isNight(tank, hour)) return;
   if (!plan.larvaeViable) {
-    loseClutch(state, cl, sp, ctx, plan.nonViableText ?? `${parentName(state, cl)} eggs hatched, but the larvae need a rearing setup this shop can’t provide yet.`);
+    loseClutch(state, cl, sp, ctx, plan.nonViableText ?? `${parentName(state, cl)} eggs hatched, but the larvae need special rearing that Aquarium Go doesn’t include, so they were lost.`);
     return;
   }
   const ph = plan.phases[0];

@@ -180,10 +180,10 @@ export interface LadderTier {
 
 const levelIndex = (id: FacilityLevelId) => FACILITY_LEVEL_ORDER.indexOf(id);
 
-/** A facility level as a requirement: "{Level}: you're past it", or what's missing ("{Level} · 42 of 100 reputation"). */
+/** A facility level as a requirement: "{Level}: reached", or what's missing ("{Level} · 42 of 100 reputation"). */
 function levelReq(g: GameState, level: FacilityLevelId): LadderReq[] {
   const def = getFacilityLevel(level);
-  if (levelIndex(g.facility.level) >= levelIndex(level)) return [{ met: true, text: `${def.name}: you’re past it` }];
+  if (levelIndex(g.facility.level) >= levelIndex(level)) return [{ met: true, text: `${def.name}: reached` }];
   const rule = def.unlockKey ? UNLOCK_RULE_BY_KEY[def.unlockKey] : undefined;
   const out: LadderReq[] = [];
   for (const c of rule?.when ?? []) {
