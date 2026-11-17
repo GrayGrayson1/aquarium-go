@@ -77,7 +77,8 @@ const GENERIC_FOOD_WORDS = new Set(['frozen', 'live', 'shrimp', 'pellets', 'flak
 export function guideMentions(body: string, foodName: string): boolean {
   // audit 2026-11-17 (A12): the instruction is the first sentence; the rest is about the animal ("Axolotls hunt by
   // smell…" tagged Axolotl Pellets beside the earthworm the step asks for, and the pointer landed on the pellets)
-  const text = body.split(/(?<=[.!?])\s/)[0].toLowerCase();
+  // (no lookbehind: Safari below 16.4 can't parse one, and the whole game would fail to load there)
+  const text = (/^[\s\S]*?[.!?](?=\s)/.exec(body)?.[0] ?? body).toLowerCase();
   const name = foodName.toLowerCase();
   if (text.includes(name)) return true;
   return name.split(/[^a-z]+/).some((w) => w.length >= 4 && !GENERIC_FOOD_WORDS.has(w) && (text.includes(w) || text.includes(w.replace(/s$/, ''))));

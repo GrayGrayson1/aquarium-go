@@ -208,6 +208,25 @@ describe('A12: the axolotl’s feed step suggests the earthworm it names, not th
     expect(guideMentions(clown, 'Marine Pellets')).toBe(true);
     expect(guideMentions(clown, 'Frozen Mysis Shrimp')).toBe(true);
   });
+
+  it('the first sentence ends at a full stop followed by a space, as before (a "1.5" doesn’t end it), with no lookbehind', async () => {
+    expect(guideMentions('Tap Feed and drop 1.5 earthworms near Mochi. Axolotls hunt by smell.', 'Earthworms')).toBe(true);
+    expect(guideMentions('Tap Feed and drop 1.5 earthworms near Mochi. Axolotls hunt by smell.', 'Axolotl Pellets')).toBe(false);
+    expect(guideMentions('Drop an earthworm', 'Earthworms')).toBe(true); // no full stop: all of it
+    // a regex lookbehind doesn't parse on Safari below 16.4, and one in any module stops the whole game loading there
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const found: string[] = [];
+    const walk = (dir: string) => {
+      for (const f of readdirSync(dir)) {
+        const p = join(dir, f);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(f) && /\(\?<[=!]/.test(readFileSync(p, 'utf8'))) found.push(p);
+      }
+    };
+    walk(join(process.cwd(), 'src'));
+    expect(found).toEqual([]);
+  });
 });
 
 describe('A3: the betta’s and seahorse’s nursery step opens Tanks (a tank’s purpose), not Build', () => {
