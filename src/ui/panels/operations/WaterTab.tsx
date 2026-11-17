@@ -187,7 +187,12 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
     <section className="ops-card" data-testid="water-schedule">
       <Kicker icon={<CalendarClock size={14} aria-hidden />}>Schedule</Kicker>
       <div className="ops-rows">
-        <Sched label="Water changes" value={`${share}% at ${onHours.length === 1 ? formatClock(onHours[0]) : 'lights-on'}`} sub={`at each tank’s lights-on · ${changers.length} ${changers.length === 1 ? 'tank' : 'tanks'}`} />
+        {/* Audit 2026-11-17 C21 — with no Auto Water Changer there are no scheduled changes ("10% at lights-on · 0 tanks") */}
+        {changers.length > 0 ? (
+          <Sched label="Water changes" value={`${share}% at ${onHours.length === 1 ? formatClock(onHours[0]) : 'lights-on'}`} sub={`at each tank’s lights-on · ${changers.length} ${changers.length === 1 ? 'tank' : 'tanks'}`} />
+        ) : (
+          <Sched label="Water changes" value="None scheduled" sub="No tank has an Auto Water Changer yet" />
+        )}
         <Sched label="Glass scrape" value="Once a week" sub="spread across the week" />
         <Sched label="Top-off" value="As needed" sub={`${flows.fresh.atos} Auto Top-${flows.fresh.atos === 1 ? 'Off' : 'Offs'}`} />
         {needed && <Sched label="Salt mixing" value={`${g0(batch)} gal batches below 60%`} sub={`${batchKg.toFixed(1)} kg each · ${WATER_ROOM.mixHours.map((h) => formatClock(h)).join(' and ')}`} />}
@@ -236,12 +241,15 @@ export function WaterTab({ g, snap, nav, small }: { g: GameState; snap: OpsSnaps
             )
           }
         />
-        <Machine
-          icon={<Waves size={16} aria-hidden />}
-          name={`Auto Water Changer × ${awcs}`}
-          sub={`${share}% each morning · $${(getEquipmentDef('auto_water_changer')?.upkeep ?? 0.06).toFixed(2)}/day each`}
-          status={isHeld(g, 'water') ? <Status tone="watch" icon="held">Held</Status> : <Status tone="good" icon="running">Running</Status>}
-        />
+        {/* Audit 2026-11-17 C21 — no "Auto Water Changer × 0 · Running" */}
+        {awcs > 0 && (
+          <Machine
+            icon={<Waves size={16} aria-hidden />}
+            name={`Auto Water Changer × ${awcs}`}
+            sub={`${share}% each morning · $${(getEquipmentDef('auto_water_changer')?.upkeep ?? 0.06).toFixed(2)}/day each`}
+            status={isHeld(g, 'water') ? <Status tone="watch" icon="held">Held</Status> : <Status tone="good" icon="running">Running</Status>}
+          />
+        )}
       </div>
     </section>
   );

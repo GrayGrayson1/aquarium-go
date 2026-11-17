@@ -10,6 +10,7 @@ import { useGame } from '@/state/game';
 import { GearTab, WaterTab } from '@/ui/cards/TankCard';
 import { useSettings } from '@/state/settings';
 import { Overview } from '@/ui/panels/operations/Overview';
+import { WaterTab as OpsWaterTab } from '@/ui/panels/operations/WaterTab';
 import { opsSnapshot, opsTier, type OpsSnapshot } from '@/ui/common/ops';
 import { unlock } from '@/sim/facility';
 import { facility } from './support/automation';
@@ -653,5 +654,39 @@ describe('C20 (the wording, no decision needed): Operations’ all-clear says wh
     expect(html).toContain('data-testid="ops-all-clear"');
     expect(html).toContain('Automation is running smoothly.');
     expect(html).not.toContain('Everything is running smoothly.');
+  });
+});
+
+describe('C21: Operations shows no "× 0" changer, and its early button says where it goes', () => {
+  it('a Water room with no Auto Water Changer: no "× 0 · Running", and the schedule says none', () => {
+    const f = facility({ fresh: 1, marine: 1, salt: 50 });
+    for (const t of [...f.fresh, ...f.marine]) t.equipment = t.equipment.filter((e) => e.defId !== 'auto_water_changer');
+    unlock(f.g, 'operations_desk', { silent: true });
+    useGame.setState({ game: f.g });
+    Object.assign(useGame.getInitialState(), useGame.getState());
+    const html = renderToStaticMarkup(createElement(OpsWaterTab, { g: f.g, snap: opsSnapshot(f.g), nav: { tab: () => {}, view: () => {} }, small: false })).replace(/<[^>]+>/g, ' ');
+    useGame.setState({ game: null });
+    Object.assign(useGame.getInitialState(), { game: null });
+    expect(html).not.toMatch(/Auto Water Changer × 0/);
+    expect(html).not.toMatch(/0 tanks/);
+    expect(html).toMatch(/Water changes\s+None scheduled/);
+  });
+});
+
+describe('C21: the early Overview’s auto-clean button says it sets up, not that it buys', () => {
+  it('reads "Set up", not "Buy · $120"', () => {
+    const f = facility({ fresh: 1, marine: 0, water: false });
+    const t = f.fresh[0];
+    t.equipment = t.equipment.filter((e) => e.defId !== 'auto_water_changer');
+    installEquipment(f.g, t.id, 'autofeeder', { purchased: true });
+    const tier = opsTier(f.g);
+    expect(tier.assisted).toBe(true);
+    useGame.setState({ game: f.g });
+    Object.assign(useGame.getInitialState(), useGame.getState());
+    const html = renderToStaticMarkup(createElement(Overview, { g: f.g, snap: opsSnapshot(f.g), tier, nav: { tab: () => {}, view: () => {} }, small: false })).replace(/<[^>]+>/g, ' ');
+    useGame.setState({ game: null });
+    Object.assign(useGame.getInitialState(), { game: null });
+    expect(html).toMatch(/Auto-clean needs an Auto Water Changer\s+Set up/);
+    expect(html).not.toContain('Buy · $120');
   });
 });
