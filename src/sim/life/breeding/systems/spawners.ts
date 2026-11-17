@@ -236,7 +236,8 @@ const SURFACE: Record<Surface, SurfaceText> = {
 const CICHLID_SURFACE: Record<string, { accepts: Surface[]; stoneWhere?: string; reason: string; step: string }> = {
   oscar: { accepts: ['stone'], reason: 'There is no flat rock or tile to lay eggs on.', step: 'Add a flat stone or rock near their favourite spot.' },
   german_blue_ram: { accepts: ['stone', 'leaf', 'sand'], reason: 'There is no flat stone, broad leaf or patch of sand to lay eggs on.', step: 'Add a flat stone, a broad-leaved plant such as anubias, or a sand substrate.' },
-  discus: { accepts: ['stone'], stoneWhere: 'a smooth upright stone', reason: 'There is no smooth stone or slate to lay eggs on.', step: 'Add a slate or a smooth stone.' },
+  // (review E: its notes say "a vertical surface (a breeding cone)": an upright stone or slate, or a broad sword leaf)
+  discus: { accepts: ['stone', 'leaf'], stoneWhere: 'a smooth upright stone', reason: 'There is no smooth stone, slate or broad leaf to lay eggs on.', step: 'Add a slate, a smooth stone or an Amazon sword.' },
   freshwater_angelfish: { accepts: ['leaf', 'stone'], reason: 'There is no broad leaf or smooth stone to lay eggs on.', step: 'Add an Amazon sword, anubias or a flat stone.' },
 };
 const cichlidOf = (sp: { id: string }) => CICHLID_SURFACE[sp.id] ?? CICHLID_SURFACE.oscar;
