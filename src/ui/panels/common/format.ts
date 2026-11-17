@@ -108,7 +108,7 @@ export function nicePrice(v: number): number {
 }
 
 // chunk 6 (B-169): the labels the sim's tank edits use live in src/data
-export { WATER_CLASS_LABEL, PURPOSE_LABEL } from '@/data/tankLabels';
+export { WATER_CLASS_LABEL, WATER_CLASS_WORDS, PURPOSE_LABEL } from '@/data/tankLabels'; // Audit 2026-11-17 (J4): WATER_CLASS_WORDS
 
 export const WATER_CLASS_BLURB: Record<WaterClass, string> = {
   freshwater_cool: 'Unheated, clear and gentle. Axolotls, goldfish and white clouds.',

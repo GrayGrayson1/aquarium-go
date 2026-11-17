@@ -18,7 +18,7 @@ import { getDecorDef } from '@/data/catalog/decor';
 import { getSubstrateDef } from '@/data/catalog/substrates';
 import { getTankTier } from '@/data/catalog/tanks';
 import { settleTanks } from './settle'; // lane:automation (chunk 5)
-import { WATER_CLASS_LABEL, PURPOSE_LABEL } from '@/data/tankLabels';
+import { WATER_CLASS_WORDS, PURPOSE_LABEL } from '@/data/tankLabels'; // Audit 2026-11-17 (J4): the sentence form
 
 export interface OpResult {
   ok: boolean;
@@ -85,7 +85,7 @@ function retuneForClass(state: GameState, t: Tank): string[] {
   }
   const needsHeat = CLASS_DEFAULTS[t.waterClass].temp.idealMin > ROOM_TEMP_C + 1;
   if (needsHeat && !t.equipment.some((e) => getEquipmentDef(e.defId)?.kind === 'heater'))
-    notes.push(`This tank has no heater yet — the room keeps it near ${ROOM_TEMP_C} °C, too cool for ${WATER_CLASS_LABEL[t.waterClass].toLowerCase()} animals.`);
+    notes.push(`This tank has no heater yet — the room keeps it near ${ROOM_TEMP_C} °C, too cool for ${WATER_CLASS_WORDS[t.waterClass]} animals.`);
   return notes;
 }
 
@@ -143,7 +143,7 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
   const bill: string[] = [];
   if (cost.substrate > 0) bill.push(`${getSubstrateDef(cost.substrateKind!)?.name.toLowerCase() ?? 'new'} bed $${cost.substrate}`);
   if (cost.saltKg > 0) bill.push(cost.saltCost > 0 ? `${cost.saltKg} kg of salt${cost.saltFromStore > 0 ? ` (${Math.round(cost.saltFromStore * 10) / 10} kg from storage)` : ''} $${cost.saltCost}` : `${cost.saltKg} kg of salt from storage`);
-  if (cost.total > state.finance.money) return { ok: false, message: `Converting to ${WATER_CLASS_LABEL[wc].toLowerCase()} needs $${cost.total} (${bill.join(', ')}) — you have $${Math.floor(state.finance.money)}.` };
+  if (cost.total > state.finance.money) return { ok: false, message: `Converting to ${WATER_CLASS_WORDS[wc]} needs $${cost.total} (${bill.join(', ')}) — you have $${Math.floor(state.finance.money)}.` };
   if (cost.substrate > 0 && !spend(state, cost.substrate, 'decor', `${getSubstrateDef(cost.substrateKind!)?.name ?? 'Substrate'} for ${t.name}`)) return { ok: false, message: 'Not enough money' };
   if (cost.saltCost > 0 && !spend(state, cost.saltCost, 'consumables', `Salt mix to convert ${t.name}`)) return { ok: false, message: 'Not enough money' };
   if (cost.saltFromStore > 0) state.inventory.salt = Math.max(0, Math.round(((state.inventory.salt ?? 0) - cost.saltFromStore) * 100) / 100);
@@ -206,7 +206,7 @@ export function convertWaterClass(state: GameState, tankId: string, wc: WaterCla
   }
   const paid = bill.length ? ` ${bill.map((b) => b.charAt(0).toUpperCase() + b.slice(1)).join(', ')}.` : '';
   const gear = gearOut.length ? ` Moved to storage — it can’t run in this water: ${gearOut.join(', ')}.` : '';
-  return { ok: true, message: `Converted to ${WATER_CLASS_LABEL[wc].toLowerCase()}.${paid}${stored ? ` ${stored} decor item${stored === 1 ? '' : 's'} moved to storage.` : ''}${gear}${extra}${retuned.length ? ` ${retuned.join(' ')}` : ''}` };
+  return { ok: true, message: `Converted to ${WATER_CLASS_WORDS[wc]}.${paid}${stored ? ` ${stored} decor item${stored === 1 ? '' : 's'} moved to storage.` : ''}${gear}${extra}${retuned.length ? ` ${retuned.join(' ')}` : ''}` };
 }
 
 export function setBackdrop(state: GameState, tankId: string, backdrop: BackdropKind): OpResult {

@@ -26,6 +26,13 @@ import { youngFoodWords } from '@/sim/staff/work';
 import { handFoodPhrase, FOOD_TAG_WORDS } from '@/sim/care/autofeed';
 import { illnessName } from '@/sim/life/illness';
 import { FOOD_TAG_NAMES } from '@/data/catalog/foods';
+import { WATER_CLASS_LABEL as UI_WATER_LABEL } from '@/ui/common/format';
+import { WATER_CLASS_LABEL, WATER_CLASS_WORDS } from '@/data/tankLabels';
+import { CLASS_NAMES } from '@/sim/compat/text';
+import { CLASS_DEFAULTS } from '@/sim/water/constants';
+import { STARTER_SETUPS } from '@/sim/newGame';
+import { previewAddition } from '@/sim/compat';
+import { createTank } from '@/sim/tanks';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -162,5 +169,30 @@ describe('J3: food advice names foods the shop sells, in one table’s words', (
     expect(illnessName('ich', getSpecies('ocellaris_clownfish'))).toBe('marine white spot');
     expect(illnessName('swim_bladder', getSpecies('betta'))).toBe('swim-bladder trouble');
     expect(illnessName('mystery_bug', undefined)).toBe('mystery bug');
+  });
+});
+
+describe('J4: one water type, one name (a label, and the same name inside a sentence)', () => {
+  it('the tank card’s chip, Tanks and Build use one table; sentences use its lower-case form', () => {
+    expect(UI_WATER_LABEL).toBe(WATER_CLASS_LABEL);
+    expect(WATER_CLASS_LABEL.freshwater_planted).toBe('Planted freshwater');
+    expect(WATER_CLASS_LABEL.marine_fowlr).toBe('Marine fish-only');
+    expect(WATER_CLASS_LABEL.marine_live_rock).toBe('Marine live rock');
+    expect(CLASS_NAMES).toBe(WATER_CLASS_WORDS);
+    for (const [wc, label] of Object.entries(WATER_CLASS_LABEL)) expect(WATER_CLASS_WORDS[wc as keyof typeof WATER_CLASS_WORDS].replace(/-/g, ' ')).toBe(label.toLowerCase().replace(/-/g, ' '));
+    expect(CLASS_DEFAULTS.freshwater_planted.label).toBe('planted freshwater tank');
+    expect(CLASS_DEFAULTS.marine_fowlr.label).toBe('marine fish-only tank');
+  });
+
+  it('each starter’s path note names its tank as the chip does (the marine ones say just “Marine”)', () => {
+    for (const setup of Object.values(STARTER_SETUPS)) expect([WATER_CLASS_LABEL[setup.waterClass], 'Marine']).toContain(setup.pathNote.split(' · ')[0]);
+  });
+
+  it('a compatibility line says “planted freshwater”, not “planted tropical”', () => {
+    const g = base();
+    const t = createTank(g, 'g20L', 'freshwater_planted', { cycled: true });
+    const r = previewAddition(g, t.id, { speciesId: 'axolotl', count: 1 });
+    const line = r.reasons.map((x) => x.text).find((x) => /normally kept in/.test(x)) ?? '';
+    expect(line).toMatch(/not a planted freshwater setup\./);
   });
 });

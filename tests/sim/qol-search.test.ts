@@ -141,7 +141,8 @@ describe('QOL-004: an item no tank of yours can take (reviewer B5)', () => {
   });
   it('names every water an item allows, and nothing once a tank can take it', () => {
     const g = game();
-    expect(needsTankText(g, ['marine'], ['marine_live_rock', 'reef'])).toBe('Needs a live rock or reef tank');
+    // Audit 2026-11-17 (J4): the water type's one name in a sentence ("live rock" was a fifth)
+    expect(needsTankText(g, ['marine'], ['marine_live_rock', 'reef'])).toBe('Needs a marine live-rock or reef tank');
     expect(needsTankText(g, ['marine', 'brackish'])).toBe('Needs a marine or brackish tank');
     expect(needsTankText(g, ['freshwater'])).toBeNull();
     const t = g.tanks[g.tankOrder[0]];

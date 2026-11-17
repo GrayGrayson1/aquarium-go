@@ -35,15 +35,9 @@ export function sentenceCase(id: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export const WATER_CLASS_LABEL: Record<WaterClass, string> = {
-  freshwater_cool: 'Cool freshwater',
-  freshwater_tropical: 'Tropical freshwater',
-  freshwater_planted: 'Tropical planted',
-  marine_fowlr: 'Marine · fish only',
-  marine_live_rock: 'Marine · live rock',
-  reef: 'Reef',
-  brackish: 'Brackish',
-};
+// Audit 2026-11-17 (J4): one table for the water types' names (the tank card's chip said "Tropical planted" where
+// Tanks said "Planted freshwater")
+export { WATER_CLASS_LABEL, WATER_CLASS_WORDS } from '@/data/tankLabels';
 
 /** Tone per water class, used for chips (cool = aqua, tropical = gold/green, marine = blue). */
 export const WATER_CLASS_TONE: Record<WaterClass, 'aqua' | 'good' | 'gold' | 'violet' | 'neutral'> = {

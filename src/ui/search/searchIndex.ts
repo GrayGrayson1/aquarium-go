@@ -14,6 +14,7 @@ import { FOODS } from '@/data/catalog/foods';
 import { TANK_TIERS } from '@/data/catalog/tanks';
 import { RESEARCH } from '@/data/research';
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
+import { WATER_CLASS_WORDS } from '@/data/tankLabels'; // Audit 2026-11-17 (J4)
 import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { ALL_SPECIES, findSpecies } from '@/data/species';
 import { isFoodAvailable, isSpeciesAvailable } from '@/sim/economy';
@@ -58,7 +59,7 @@ export function anyTankSuits(g: GameState, envs: readonly Environment[] | undefi
   return g.tankOrder.some((id) => !!g.tanks[id] && itemSuitsTank(g.tanks[id], envs, wcs));
 }
 const ENV_WORD: Record<Environment, string> = { freshwater: 'freshwater', marine: 'marine', brackish: 'brackish' };
-const WC_WORD: Record<WaterClass, string> = { freshwater_cool: 'cool freshwater', freshwater_tropical: 'tropical freshwater', freshwater_planted: 'planted', marine_fowlr: 'fish-only marine', marine_live_rock: 'live rock', reef: 'reef', brackish: 'brackish' };
+const WC_WORD: Record<WaterClass, string> = WATER_CLASS_WORDS; // Audit 2026-11-17 (J4): the water types' one set of names
 const orList = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`);
 /** "Needs a reef tank" when no tank of yours can take the item (reviewer B5: it led to an empty list), else null. */
 export function needsTankText(g: GameState, envs: readonly Environment[] | undefined, wcs?: readonly WaterClass[]): string | null {

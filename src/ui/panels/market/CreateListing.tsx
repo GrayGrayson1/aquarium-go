@@ -29,7 +29,7 @@ import { orderedTanks, livingInTank, clutchesIn, valueOf, speciesOf, isListed, t
 import { FragPicker, FragReview, FragValueDetails } from './FragListing'; // lane:frags
 import { useExpandSheet } from '../common/PanelLayout';
 import { LeaveConfirm, guardLeave, setLeaveGuard } from '../common/leaveGuard'; // audit B6
-import { LISTING_KIND_LABEL, DIFFICULTY_LABEL, WATER_CLASS_LABEL, LIFE_STAGE_LABEL, SEX_LABEL, nicePrice, plural, nameList, formatSpan, titleCase, VERDICT_RANK } from '../common/format';
+import { LISTING_KIND_LABEL, DIFFICULTY_LABEL, WATER_CLASS_LABEL, WATER_CLASS_WORDS /* Audit 2026-11-17 (J4) */, LIFE_STAGE_LABEL, SEX_LABEL, nicePrice, plural, nameList, formatSpan, titleCase, VERDICT_RANK } from '../common/format';
 
 export interface WizardSeed {
   kind?: ListingKind;
@@ -142,7 +142,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
 
   const autoTitle = useMemo(() => {
     if (!kind) return '';
-    if (kind === 'tank') return tank ? `${tank.name} — ${tierOf(tank)?.gallons ?? ''} gal ${WATER_CLASS_LABEL[tank.waterClass].toLowerCase()} setup` : 'Complete aquarium';
+    if (kind === 'tank') return tank ? `${tank.name} — ${tierOf(tank)?.gallons ?? ''} gal ${WATER_CLASS_WORDS[tank.waterClass]} setup` : 'Complete aquarium';
     if (kind === 'frag') return preview?.title ?? 'Frags & cuttings'; // lane:frags
     if (chosen.length === 0) return '';
     const sp = speciesOf(chosen[0].speciesId);

@@ -53,7 +53,7 @@ export const STARTER_SETUPS: Record<StarterId, StarterSetup> = {
     ageDays: 18,
     nameIdeas: ['Ember', 'Cobalt', 'Koi', 'Rogue', 'Velvet'], // a male starter: no feminine-reading names (names.ts)
     teaches: 'Warm planted tanks, territorial behaviour and show-fish lines',
-    pathNote: 'Tropical planted · display & bubble nests',
+    pathNote: 'Planted freshwater · display & bubble nests', // Audit 2026-11-17 (J4): the tank's one name
   },
   pea_puffer: {
     tierId: 'g10',

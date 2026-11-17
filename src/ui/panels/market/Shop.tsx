@@ -41,7 +41,7 @@ import { CreaturePortrait } from '../common/Portrait';
 import { CompatPreview } from '../common/CompatPreview';
 import { PotentialBands, CareChips } from '../common/Profile';
 import { orderedTanks, speciesOf, livingInTank, gallonsOf, EMPTY_COMPAT, speciesUnlocked, lockHintOf } from '../common/derive';
-import { PERSONALITY_LABEL, PERSONALITY_TONE, WATER_CLASS_LABEL, ENV_LABEL, untilTime, plural, SEX_LABEL, RARITY_LABEL, RARITY_TONE, VERDICT_RANK, VERDICT_LABEL, verdictStatus } from '../common/format';
+import { PERSONALITY_LABEL, PERSONALITY_TONE, WATER_CLASS_LABEL, WATER_CLASS_WORDS /* Audit 2026-11-17 (J4) */, ENV_LABEL, untilTime, plural, SEX_LABEL, RARITY_LABEL, RARITY_TONE, VERDICT_RANK, VERDICT_LABEL, verdictStatus } from '../common/format';
 import './offer-genes.css';
 import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { requiredUnlocks } from '@/sim/economy'; // chunk 19 (QOL-006)
@@ -710,7 +710,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
                 ) : undefined
               }
             >
-              {capitalPlural(sp)} usually live in {sp.waterClasses.map((w) => WATER_CLASS_LABEL[w].toLowerCase()).join(' or ')} setups.
+              {capitalPlural(sp)} usually live in {sp.waterClasses.map((w) => WATER_CLASS_WORDS[w]).join(' or ')} setups.
             </Callout>
           )}
         </section>

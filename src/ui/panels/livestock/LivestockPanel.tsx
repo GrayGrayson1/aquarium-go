@@ -23,7 +23,7 @@ import { Chip, Seg, Select, EmptyState, Bar, Checkbox, Callout, SectionHead, KV,
 import { CreaturePortrait, CreatureGlyph } from '../common/Portrait';
 import { OffspringOdds } from '../common/Offspring';
 import { orderedTanks, ownedCreatures, valueOf, isListed, speciesOf, creatureCondition, conditionWord, ageDaysOf, formatAge, wellbeing, morphName } from '../common/derive';
-import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_LABEL, plural, untilTime, pct, nameList } from '../common/format';
+import { PERSONALITY_LABEL, PERSONALITY_TONE, LIFE_STAGE_LABEL, CLUTCH_STAGE_LABEL, WATER_CLASS_WORDS /* Audit 2026-11-17 (J4) */, plural, untilTime, pct, nameList } from '../common/format';
 import { SpeciesCareStrip } from '../encyclopedia/SpeciesGuide'; // lane:guide
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { ProductionTab, productionDot } from './Production'; // lane:production (chunk 4)
@@ -661,7 +661,7 @@ function YoungView({ g }: { g: GameState }) {
                       ))
                     ) : (
                       <span className="pn-small pn-muted">
-                        No suitable nursery yet. Mark a spare {sp ? sp.waterClasses.map((w) => WATER_CLASS_LABEL[w].toLowerCase()).join(' or ') : tank?.environment ?? ''} tank as <b>Nursery</b> in Tanks{others.length ? ', or move them to an empty tank:' : '.'}
+                        No suitable nursery yet. Mark a spare {sp ? sp.waterClasses.map((w) => WATER_CLASS_WORDS[w]).join(' or ') : tank?.environment ?? ''} tank as <b>Nursery</b> in Tanks{others.length ? ', or move them to an empty tank:' : '.'}
                       </span>
                     )}
                     {!(cl.infertile && cl.visual === 'egg_case') && !carried && !inNursery && nurseries.length === 0 &&

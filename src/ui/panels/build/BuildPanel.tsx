@@ -44,7 +44,7 @@ import { FragTake, FragTag, FragStorage } from './FragAction'; // lane:frags
 import { equipmentFit, tankGearIssues } from '@/sim/care/fit'; // lane:fit
 import { removeEquipmentWarning, REPAIR_FROM } from '@/sim/care'; // Audit 2026-11-17 C12, C15
 import { FitBadge, FitLine } from '@/ui/common/FitNote'; // lane:fit
-import { WATER_CLASS_LABEL, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format';
+import { WATER_CLASS_LABEL, WATER_CLASS_WORDS, WATER_CLASS_BLURB, WATER_CLASS_TINT, PLAYABLE_WATER_CLASSES, titleCase, plural, nameList } from '../common/format'; // Audit 2026-11-17 (J4): WATER_CLASS_WORDS
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
 import { RoomPage, Rooms, YourFacility, type RoomId } from './FacilityRooms'; // lane:automation (chunk 5)
 import { startToolFromPanel } from '../common/aside'; // chunk 19 (ADR-0055 decision 1, QOL-001)
@@ -376,7 +376,7 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
         </div>
         <p className="pn-tiny pn-muted" style={{ marginTop: 10 }}>
           {/* lane:w2-ui — was "heater/lighting for freshwater water" */}
-          Kits include the tank, a stand, substrate, and a filter, heater and lighting suited to a {WATER_CLASS_LABEL[wc].toLowerCase()} tank. Floor space is your only limit —{' '}
+          Kits include the tank, a stand, substrate, and a filter, heater and lighting suited to a {WATER_CLASS_WORDS[wc]} tank. Floor space is your only limit —{' '}
           {/* lane:qa-r3 — a tank can only leave through a whole-aquarium auction: don't suggest selling one before that opens */}
           {/* Audit 2026-11-17 (G19): an empty tank can be taken down in Tanks */}
           {unlocked(g, 'tank_auctions') ? 'take down an empty tank in Tanks, auction a tank as a whole aquarium (Market › My listings), or move to a bigger venue in Build › Facility.' : 'take down an empty tank in Tanks, or move to a bigger venue in Build › Facility. Whole-aquarium auctions, which free a stocked tank’s spot, open later.'}

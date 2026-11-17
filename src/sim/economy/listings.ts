@@ -17,6 +17,7 @@ import type { Rng } from '../rng';
 import { simRng } from '../rng';
 import { nextId } from '../ids';
 import { emitEvent } from '../context';
+import { WATER_CLASS_WORDS } from '@/data/tankLabels'; // Audit 2026-11-17 (J4)
 import { hourOfDay, GAME_HOURS_PER_REAL_SECOND } from '../time';
 import { deleteTank } from '../tanks';
 import { creaturesInTank, isPrismatic } from '../life';
@@ -123,15 +124,7 @@ const HISTORY_CAP = 200;
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
 
-const WATER_CLASS_LABEL: Record<string, string> = {
-  freshwater_cool: 'cool freshwater',
-  freshwater_tropical: 'tropical freshwater',
-  freshwater_planted: 'planted freshwater',
-  marine_fowlr: 'marine fish-only',
-  marine_live_rock: 'marine live-rock',
-  reef: 'reef',
-  brackish: 'brackish',
-};
+const WATER_CLASS_LABEL: Record<string, string> = WATER_CLASS_WORDS; // Audit 2026-11-17 (J4): the one table
 const COMPAT_WORD: Record<string, string> = {
   excellent: 'Excellent',
   usually_compatible: 'Usually compatible',
