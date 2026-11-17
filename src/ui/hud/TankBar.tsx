@@ -20,6 +20,8 @@ import { PLACEMENT_TOOLS, useDockedCard } from './cardDock';
 import { tankStatusReason } from '../common/tankStatus';
 import { nearestAttention, tankAttention, ATTENTION_WORD } from '../common/notify'; // lane:notify
 import { AttnDot, useTankAttentionLevel } from './AttnDot'; // lane:notify
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
+import { convertTempText } from '../common/format'; // Audit 2026-11-17 (J1)
 
 export function cycleTank(dir: 1 | -1) {
   const g = useGame.getState().game;
@@ -90,7 +92,8 @@ function useThrottledReason(tankId: string, status: string): { reason: string; e
       // lane:notify — what else needs a look beyond the status line (food running low, broken or idle gear)
       const att = g && tankId ? safe('tankAttention', () => tankAttention(g, tankId), null) : null;
       const said = reason.split('\n');
-      const extra = (att?.items ?? []).filter((i) => !said.includes(i.text)).map((i) => i.text);
+      const unit = useSettings.getState().tempUnit; // Audit 2026-11-17 (J1): gear verdicts carry the sim's °C
+      const extra = (att?.items ?? []).filter((i) => !said.includes(i.text)).map((i) => convertTempText(i.text, unit) ?? i.text);
       const gear = !!att?.items.some((i) => (i.source === 'gear' || i.source === 'fit') && !said.includes(i.text));
       setR((p) => (p.reason === reason && p.gear === gear && p.extra.join('\n') === extra.join('\n') ? p : { reason, extra, gear }));
     };

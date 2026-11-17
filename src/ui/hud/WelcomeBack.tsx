@@ -18,6 +18,8 @@ import { SHOW_CLASS_BY_ID } from '@/data/shows';
 import { formatMoney, Button } from '../kit';
 import { safe } from '../common/safe';
 import { EventIcon } from './eventIcons';
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
+import { convertTempText } from '../common/format'; // Audit 2026-11-17 (J1)
 
 function hoursText(h: number) {
   // lane:w2-ui — round before choosing the unit (0.995 h read "60 minutes")
@@ -114,6 +116,7 @@ export function WelcomeBack() {
     // show results + open bids have their own rows
     (!!happened?.rows.some((r) => r.key === 'shows') && /judge’s card/.test(e.text));
   const highlights = (summary?.highlights ?? []).filter((e) => !covered(e));
+  const unit = useSettings((s) => s.tempUnit); // Audit 2026-11-17 (J1): the sim's lines carry °C
   // only lines with something to say: no lone "$0", no "0 bids"
   // audit 2026-11-17, I18: arrivals, clutches and sales open where they are (they were counts with no way to see which)
   const stats: { key: string; icon: ReactNode; text: string; go?: { panel: PanelId; target: string | null } }[] = [];
@@ -216,7 +219,7 @@ export function WelcomeBack() {
             <ul className="ag-welcome__list">
               {highlights.slice(-(rows.length >= 2 ? 2 : 4)).map((e) => (
                 <li key={e.id}>
-                  <EventIcon kind={e.kind} size={14} /> <span>{e.text}</span>
+                  <EventIcon kind={e.kind} size={14} /> <span>{convertTempText(e.text, unit) /* Audit 2026-11-17 (J1) */}</span>
                 </li>
               ))}
             </ul>

@@ -15,7 +15,8 @@ import { sfx } from '@/audio/sfx';
 import { useShell } from '../common/shellStore';
 import { safe, useMedia, TOUCH_FIRST_QUERY } from '../common/safe';
 import { tankStatusReason } from '../common/tankStatus';
-import { agoText, foodName } from '../common/format';
+import { agoText, foodName, convertTempText } from '../common/format'; // Audit 2026-11-17 (J1): convertTempText
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { buyFoodPack, openFoodInSupplies, tankFoodAlert, tankFoodLevel, type TankFoodAlert } from '../common/foodStock';
 import { getFoodDef } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -248,7 +249,7 @@ function TankAlerts({ game }: { game: GameState }) {
       <span className="ag-grow">
         <span className="ag-alert-row__title">{t.name}</span>
         <span className="ag-alert-row__text">
-          <strong>Gear not helping</strong> — {items.map((i) => i.text).join(' ')}
+          <strong>Gear not helping</strong> — {convertTempText(items.map((i) => i.text).join(' '), useSettings.getState().tempUnit) /* Audit 2026-11-17 (J1) */}
         </span>
       </span>
       <ChevronRight size={16} aria-hidden />

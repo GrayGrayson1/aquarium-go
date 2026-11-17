@@ -19,6 +19,7 @@
 import type { GameEvent } from '@/types';
 import { fmtMoney as formatMoney } from '@/sim/economy/util'; // the log's own money format ("$120", "$4.50")
 import { untilTime } from '../panels/common/format';
+import { convertTempText } from '../common/format'; // Audit 2026-11-17 (J1)
 
 export type NotifyCategory = 'rare' | 'care' | 'market' | 'breeding' | 'shows' | 'auto';
 /** lane:automation (chunk 5, DESIGN-S3D §8.9; NOTIFY-012) — the sixth, Automation (`auto`): shortages and paused lines. */
@@ -43,6 +44,8 @@ export interface RuleLookups {
   tankName(id: string): string | null;
   /** lane:automation (chunk 5) — the Operations Desk is researched: Automation notifications open Problems, else the problem's tab. */
   desk?: boolean;
+  /** Audit 2026-11-17 (J1): the player's temperature unit (the sim writes °C into its lines); absent reads as °C. */
+  tempUnit?: 'C' | 'F';
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
@@ -79,6 +82,7 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
   const shopRoute = typeof e.offerId === 'string' && e.offerId ? `#/shop/fish/${seg(e.offerId)}` : '#/shop';
   const listingRoute = typeof e.listingId === 'string' && e.listingId ? `#/market/listings/${seg(e.listingId)}` : '#/market/listings';
   const leaves = (until: number | null) => (until === null ? null : untilTime(until, look.hour));
+  const inUnit = (text: string) => convertTempText(text, look.tempUnit ?? 'C') ?? text; // Audit 2026-11-17 (J1)
 
   switch (topic) {
     case 'prismatic': {
@@ -101,7 +105,7 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
       const open = str(v.open);
       const route =
         open === 'animal' && e.creatureId ? `#/livestock/animal/${seg(e.creatureId)}` : open === 'equipment' ? `#/tanks/${seg(e.tankId!)}/equipment` : `#/tanks/${seg(e.tankId!)}`;
-      return make('care', tank, withoutTankPrefix(e.text, tank), route, e.kind === 'danger' ? 'danger' : 'normal');
+      return make('care', tank, inUnit(withoutTankPrefix(e.text, tank)), route, e.kind === 'danger' ? 'danger' : 'normal');
     }
     case 'bid': {
       const title = str(v.title);
@@ -166,7 +170,7 @@ export function planNotification(e: GameEvent, look: RuleLookups): PlannedNotifi
   // comes through quiet hours.
   if (e.kind === 'danger' && typeof e.tankId === 'string' && str(e.text)) {
     const tank = look.tankName(e.tankId);
-    if (tank) return make('care', tank, withoutTankPrefix(e.text, tank), `#/tanks/${seg(e.tankId)}`, 'danger');
+    if (tank) return make('care', tank, inUnit(withoutTankPrefix(e.text, tank)), `#/tanks/${seg(e.tankId)}`, 'danger');
   }
   return null;
 }

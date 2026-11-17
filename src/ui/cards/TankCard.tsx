@@ -71,6 +71,7 @@ import {
   lightPresetsFor,
   EQUIPMENT_KIND_LABEL,
   convertTempText,
+  formatTempDelta, // Audit 2026-11-17 (J1)
   formatTemp,
   cToF,
   titleCase,
@@ -268,7 +269,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
                 <Button
                   size="sm"
                   data-testid="action-water-change-cool"
-                  title="Replace 25% with water about 5 °C cooler (about −1 °C, gentle). Two of these give the “first cool rains” chill axolotls, corydoras and goldfish spawn on."
+                  title={`Replace 25% with water about ${formatTempDelta(5, unit)} cooler (about −${formatTempDelta(1, unit)}, gentle). Two of these give the “first cool rains” chill axolotls, corydoras and goldfish spawn on.` /* Audit 2026-11-17 (J1) */}
                   onClick={() => care({ k: 'waterChange', tank: tank.id, fraction: 0.25, coolBy: 5 }, 'water_change')}
                 >
                   <Snowflake size={13} aria-hidden /> Cool 25%
@@ -278,7 +279,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
             {/* Audit 2026-11-17 C1 — salt water: what a change takes, before a change it can't cover is refused */}
             {salty && change25 && <div className="ag-small ag-muted" data-testid="water-change-salt-need">25% uses about {change25.saltKg < 0.1 ? change25.saltKg.toFixed(2) : change25.saltKg.toFixed(1)} kg of salt mix.</div>}
             {/* audit E14: the button's tip, visible (a title never shows on touch) */}
-            {coolCue && <div className="ag-small ag-muted">Two Cool 25% changes in a row give the ~2 °C chill that sets off spawning.</div>}
+            {coolCue && <div className="ag-small ag-muted">Two Cool 25% changes in a row give the ~{formatTempDelta(2, unit)} chill that sets off spawning.</div>}
           </div>
           <div className="ag-carebtns">
             <CareBtn icon={Droplet} label="Top off" hint={`Level ${Math.round(tank.water.level * 100)}%`} testId="action-top-off" fix="top-off" onClick={() => care({ k: 'topOff', tank: tank.id }, 'topped_off', 'bubble')} />

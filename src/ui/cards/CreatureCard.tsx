@@ -341,6 +341,7 @@ function Lineage({ c, game }: { c: Creature; game: GameState }) {
 }
 
 function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDefinition }) {
+  const unit = useSettings((s) => s.tempUnit); // Audit 2026-11-17 (J1): breeding notes and checks carry °C
   const status = safe('breedingStatus', () => breedingStatus(game, c.id), null);
   // lane:guide — likeliest partners first (same tank, opposite sex, adults), so the eight chips shown are the useful ones
   const candidates = useMemo(() => {
@@ -391,7 +392,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
             <strong className="ag-grow">{status.label}</strong>
             {status.progress != null && <span className="ag-small ag-tabular">{Math.round(status.progress * 100)}%</span>}
           </div>
-          {status.detail && <div className="ag-small ag-muted">{status.detail}</div>}
+          {status.detail && <div className="ag-small ag-muted">{convertTempText(status.detail, unit)}</div>}
           {status.progress != null && <Meter value={status.progress * 100} />}
         </div>
       ) : (
@@ -420,7 +421,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
               {!check.ok && (
                 <ul>
                   {check.reasons.slice(0, 4).map((r, i) => (
-                    <li key={i}>{r}</li>
+                    <li key={i}>{convertTempText(r, unit)}</li>
                   ))}
                 </ul>
               )}
@@ -471,7 +472,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
           )}
         </div>
       )}
-      {systemNote && <ClampText text={systemNote} />}
+      {systemNote && <ClampText text={convertTempText(systemNote, unit) ?? systemNote} />}
     </div>
   );
 }

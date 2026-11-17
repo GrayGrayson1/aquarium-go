@@ -15,7 +15,7 @@ import { act } from '../common/act';
 import { Chip, SectionHead, EmptyState, Select, Card, Callout } from '../common/parts';
 import { orderedTanks, ownedCreatures, speciesOf, gallonsOf, unlocked } from '../common/derive';
 import { titleCase } from '../common/format';
-import { safe } from '../common/hooks';
+import { safe, useTempText } from '../common/hooks'; // Audit 2026-11-17 (J1): useTempText
 import { UNLOCK_KEYS } from '@/data/unlockKeys';
 import { equipmentFit } from '@/sim/care/fit'; // lane:fit
 import { foodWhoEats } from '@/ui/common/foodStock'; // lane:fit
@@ -259,6 +259,7 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
   const locked = !unlocked(g, e.unlock);
   // lane:fit — will it help the animals in THIS tank? Shown before the purchase, and repeated in the purchase toast.
   const fit = useMemo(() => safeFit(() => equipmentFit(g, tankId, e.id)), [g, tankId, e.id]);
+  const { t: tempText } = useTempText(); // Audit 2026-11-17 (J1): "suffer above about 21 °C", "about 1–2 °C of cooling"
   const poor = !!fit && !fit.soft && (fit.level === 'useless' || fit.level === 'harmful'); // lane:qa-r3 — "Already fitted" is no warning
   // lane:qa-r3 — buyEquipment keeps the install's heads-up after the receipt (a caution result toasts as a warning)
   const buy = () => act({ k: 'buyEquipment', tank: tankId, def: e.id }, { sound: 'coin' });
@@ -280,14 +281,14 @@ export function EquipRow({ g, e, fits, installed, tankId }: { g: GameState; e: E
         {e.kind === 'water_changer' ? (
           // lane:automation (0.5 §10.3, §16 "Build/Supplies line") — what it unlocks, then its running cost
           <>
-            <div className="pn-small pn-muted">{e.description}</div>
+            <div className="pn-small pn-muted">{tempText(e.description)}</div>
             <div className="pn-small pn-muted" data-testid={`shop-equip-unlocks-${e.id}`}>
               Unlocks the Auto-clean switch on the tank card · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
             </div>
           </>
         ) : (
           <div className="pn-small pn-muted">
-            {e.description} · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
+            {tempText(e.description)} · upkeep {formatMoney(e.upkeep, { cents: e.upkeep < 10 })}/day
           </div>
         )}
         <FitLine verdict={fit} testId={`shop-equip-fit-${e.id}`} />

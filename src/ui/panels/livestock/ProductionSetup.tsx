@@ -27,6 +27,7 @@ import {
 import { act } from '../common/act';
 import { useSheet } from '../common/PanelLayout';
 import { CreaturePortrait } from '../common/Portrait';
+import { useTempText } from '../common/hooks'; // Audit 2026-11-17 (J1)
 
 /** The List automatically rule's line (set-up step 3 and the line's rules; Audit 2026-11-17, H1: the owner's "Sell by itself"). */
 export const LIST_AUTOMATICALLY = 'Juveniles go on sale the day quarantine ends: a buyer who likes the price buys them without you. What doesn’t sell is listed again a little cheaper.';
@@ -155,6 +156,7 @@ function FitBadge({ fit }: { fit: TankFit }) {
 }
 
 function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }: { g: GameState; speciesId: string; stage: LineStage; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; onPick: (id: string) => void; ignoreLineId?: string }) {
+  const { t: tempText } = useTempText(); // Audit 2026-11-17 (J1): "Breed Tank is 29 °C — outside the safe range…"
   return (
     <div className="pr-choices" role="listbox" aria-label={`Tanks for ${stage}`}>
       {g.tankOrder.map((id) => {
@@ -164,7 +166,7 @@ function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }
         return (
           <button key={id} type="button" role="option" aria-selected={chosen[stage] === id} disabled={!fit.ok} className={clsx('pr-choice', chosen[stage] === id && 'is-on')} onClick={() => onPick(id)}>
             <span className="pr-choice__name">{t.name}</span>
-            <span className="pr-choice__sub">{fit.ok ? why(g, stage, id, fit, pair, ignoreLineId) : fit.reason}</span>
+            <span className="pr-choice__sub">{fit.ok ? why(g, stage, id, fit, pair, ignoreLineId) : tempText(fit.reason)}</span>
             <FitBadge fit={fit} />
           </button>
         );
@@ -176,6 +178,7 @@ function TankChoices({ g, speciesId, stage, chosen, pair, onPick, ignoreLineId }
 export function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, onPick }: { g: GameState; speciesId: string; stage: (typeof STAGES)[number]; chosen: Partial<Record<LineStage, string>>; pair: { motherId: string; fatherId: string } | null; open: boolean; onToggle: () => void; onPick: (id: string) => void }) {
   const id = chosen[stage.id];
   const fit = id ? tankFitFor(g, speciesId, stage.id, id, chosen, pair ? [pair.motherId, pair.fatherId] : []) : null;
+  const { t: tempText } = useTempText(); // Audit 2026-11-17 (J1)
   return (
     <div className={clsx('pr-tankrow', open && 'is-open')} data-testid={`production-new-tank-${stage.testId}`}>
       <button type="button" className="pr-tankrow__head" aria-expanded={open} onClick={onToggle}>
@@ -185,7 +188,7 @@ export function StageRow({ g, speciesId, stage, chosen, pair, open, onToggle, on
         <span className="pr-tankrow__text">
           <span className="pr-tankrow__label">{stage.word}</span>
           <span className="pr-tankrow__name">{id ? g.tanks[id]?.name : '—'}</span>
-          <span className="pr-tankrow__sub">{id && fit ? (fit.ok ? why(g, stage.id, id, fit, pair) : fit.reason) : ''}</span>
+          <span className="pr-tankrow__sub">{id && fit ? (fit.ok ? why(g, stage.id, id, fit, pair) : tempText(fit.reason)) : ''}</span>
         </span>
         {fit && <FitBadge fit={fit} />}
         <ChevronDown size={16} aria-hidden className="pr-tankrow__chev" />

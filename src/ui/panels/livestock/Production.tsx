@@ -10,6 +10,8 @@ import { Box, ChevronRight, CirclePlay, Egg, Factory, Gavel, Heart, ListFilter, 
 import type { GameState, ProductionLine } from '@/types';
 import { Badge, Button, Modal, Toggle, formatMoney } from '@/ui/kit';
 import { useUI } from '@/state/ui';
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
+import { convertTempText } from '@/ui/common/format'; // Audit 2026-11-17 (J1)
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { fmtTemp, spPlural } from '@/sim/life/breeding/common';
 import { morphDisplayName } from '@/sim/life/genetics';
@@ -121,13 +123,14 @@ export function notReadyText(v: LineView): string | null {
   const t = n.tank.name;
   const cond = v.sp.breeding.conditions;
   const temp = fmtTemp(n.tank.water.tempC);
+  const inUnit = (text: string) => convertTempText(text, useSettings.getState().tempUnit) ?? text; // Audit 2026-11-17 (J1)
   switch (n.drag) {
     case 'too_warm':
-      return `${t} is too warm for spawning (${temp}; they spawn below ${cond.maxTempC} °C)`;
+      return inUnit(`${t} is too warm for spawning (${temp}; they spawn below ${cond.maxTempC} °C)`);
     case 'too_cool':
-      return `${t} is too cool for spawning (${temp}; they spawn above ${cond.minTempC} °C)`;
+      return inUnit(`${t} is too cool for spawning (${temp}; they spawn above ${cond.minTempC} °C)`);
     case 'temp_range':
-      return `${t} is ${temp}, outside their safe range (${v.sp.tempC.min}–${v.sp.tempC.max} °C)`;
+      return inUnit(`${t} is ${temp}, outside their safe range (${v.sp.tempC.min}–${v.sp.tempC.max} °C)`);
     case 'crowded':
       return `${t} is crowded`;
     case 'small_tank':

@@ -171,7 +171,7 @@ export const zebraDanio: SpeciesDefinition = {
     compatibilityNotes: 'Peaceful with fish of its size, but small groups nip slow, long-finned fish such as bettas and fancy guppies. Too fast for shy, slow feeders.',
     breedingOverview: 'Scatters its eggs at dawn and eats them if it can; marbles or mesh on the bottom save them. One of the easiest egg-layers to breed.',
     conservationNote: 'Least Concern (IUCN 2009). One of the most studied animals in biology.',
-    funFact: 'Wild zebra danios have been found in July water anywhere from 24.6 to 38.6 °C — and the leopard danio is just a zebra with one recessive gene.',
+    funFact: 'Wild zebra danios have been found in July water anywhere from 24.6 °C to 38.6 °C — and the leopard danio is just a zebra with one recessive gene.',
     inGameBehavior: 'Races up and down the tank in a shoal, darting to the surface for food and chasing in short bursts.',
     feedingNote: 'Takes almost anything: flake and micro pellets once or twice a day, with frozen bloodworm, daphnia or brine shrimp now and then. An autofeeder with flake suits it.',
     keeperTip: 'Keep eight to ten or more and fit a lid — small groups are what cause fin-nipping, and they jump.',

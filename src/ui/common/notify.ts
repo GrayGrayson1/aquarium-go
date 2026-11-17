@@ -27,6 +27,8 @@ import { tankGearIssues, FIT_TONE } from '@/sim/care/fit'; // lane "fit" verdict
 import { autofeedPause, type AutofeedPause } from '@/sim/care/autofeed'; // lane:automation (AUTO-005)
 import { inhabitantsOf } from '@/sim/water/env';
 import { tankStatusReason } from './tankStatus';
+import { convertTempText } from './format'; // Audit 2026-11-17 (J1)
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { findSpecies } from '@/data/species';
 import { isPrismatic } from '@/sim/life/rareVariants';
 import { morphDisplayName } from '@/sim/life/genetics';
@@ -402,7 +404,11 @@ const ALERT_KINDS: GameEvent['kind'][] = ['warning', 'danger', 'death'];
  * chunk 13 (SHARED-SHOPS.md §8 "Alerts list line", ADR-0045 decision 11): in a shared shop an action's line is its own
  * message with the member's name in front ("Sam: Bought 3 neon tetras for $36."); a solo game's events carry no name.
  */
-export const eventLine = (e: Pick<GameEvent, 'text' | 'byName'>): string => (e.byName ? `${e.byName}: ${e.text}` : e.text);
+export const eventLine = (e: Pick<GameEvent, 'text' | 'byName'>, unit: 'C' | 'F' = useSettings.getState().tempUnit): string => {
+  // Audit 2026-11-17 (J1): the sim writes °C into its lines; the log, the bell and Lines show the player's unit
+  const text = convertTempText(e.text, unit) ?? e.text;
+  return e.byName ? `${e.byName}: ${text}` : text;
+};
 
 export const isNews = (e: GameEvent): boolean => !!e.toast || ALERT_KINDS.includes(e.kind);
 

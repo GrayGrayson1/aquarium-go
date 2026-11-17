@@ -175,12 +175,19 @@ function tidyCelsius(text: string): string {
 /** A temperature *difference* ("by ~2 °C", "1 °C below the chiller", "1–2 °C of cooling", "~2 °C cooler") scales by
  *  1.8 with no +32 offset. Only "by …" before the value or a comparison word right after "°C" marks one: a bare "~"
  *  does not ("breeding slows below ~21 °C" is a real temperature). */
-const TEMP_DELTA_BEFORE = /(?:\bby\s+(?:~\s*|about\s+|around\s+)?|±\s*)$/i;
+// Audit 2026-11-17 (J1): "Cools 1–2 °C", "Cools only about 1 °C", "needs to drop about 2 °C" and a signed "−1 °C" are
+// differences too (they read as 34–36 °F, 34 °F and 36 °F before)
+const TEMP_DELTA_BEFORE = /(?:\b(?:by|cools?(?:\s+only)?|drops?)\s+(?:~\s*|about\s+|around\s+)?|±\s*|[−+]\s*)$/i;
 const TEMP_DELTA_AFTER = /^\s+(?:below|above|cooler|warmer|colder|hotter|lower|higher|of|per)\b/i;
 
 function fDelta(c: number): string {
   const f = c * 1.8;
   return Math.abs(f) >= 1 ? String(Math.round(f)) : f.toFixed(1);
+}
+
+/** Audit 2026-11-17 (J1): a temperature difference in the player's unit ("2 °C" → "4 °F"), never with the +32 offset. */
+export function formatTempDelta(c: number, unit: 'C' | 'F'): string {
+  return unit === 'F' ? `${fDelta(c)} °F` : `${String(c)} °C`;
 }
 
 /** Replace °C values inside report strings with °F when requested (and tidy "28.0 °C" → "28 °C"). */
@@ -195,6 +202,19 @@ export function convertTempText(text: string | undefined, unit: 'C' | 'F'): stri
     const dig = a.includes('.') ? 1 : 0;
     if (b != null) return `${fa.toFixed(dig)}–${cToF(Number(b)).toFixed(dig)} °F`;
     return `${fa.toFixed(dig)} °F`;
+  });
+}
+
+/**
+ * Audit 2026-11-17 (J1): a source's facts quote °C or °F as the source wrote them ("68–78 °F"); show both in the
+ * player's unit. The quoted values are temperatures, never differences.
+ */
+export function convertSourceTempText(text: string, unit: 'C' | 'F'): string {
+  if (unit === 'F') return convertTempText(text, 'F') ?? text;
+  const c = (f: string, dig: number) => ((Number(f) - 32) / 1.8).toFixed(dig);
+  return tidyCelsius(text).replace(/(-?\d+(?:\.\d+)?)(\s*[–-]\s*(-?\d+(?:\.\d+)?))?\s*°\s*F\b/g, (_m, a: string, _r, b: string | undefined) => {
+    const dig = a.includes('.') ? 1 : 0;
+    return b != null ? `${c(a, dig)}–${c(b, dig)} °C` : `${c(a, dig)} °C`;
   });
 }
 

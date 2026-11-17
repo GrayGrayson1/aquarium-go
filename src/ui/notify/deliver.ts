@@ -17,6 +17,7 @@ import type { GameEvent, GameState } from '@/types';
 import { platform, type NotifyPermission, type PlatformNotification } from '@/platform';
 import { useGame } from '@/state/game';
 import { useUI } from '@/state/ui';
+import { useSettings } from '@/state/settings'; // Audit 2026-11-17 (J1)
 import { go, parseNav, useNav } from '../nav/router';
 import type { Route } from '../nav/routes';
 import { notifyPrefs, useNotifyPrefs } from './prefs';
@@ -102,7 +103,7 @@ export function notificationsFor(events: readonly GameEvent[], env: DeliveryEnv)
   return out;
 }
 
-export const lookupsFor = (g: GameState): RuleLookups => ({ hour: g.clock.hour, tankName: (id) => g.tanks[id]?.name ?? null, desk: g.progress.unlocked.includes('operations_desk') });
+export const lookupsFor = (g: GameState): RuleLookups => ({ hour: g.clock.hour, tankName: (id) => g.tanks[id]?.name ?? null, desk: g.progress.unlocked.includes('operations_desk'), tempUnit: useSettings.getState().tempUnit /* Audit 2026-11-17 (J1) */ });
 
 const pageAway = (): boolean => typeof document !== 'undefined' && document.visibilityState === 'visible' && !document.hasFocus();
 const localMinutes = (): number => {

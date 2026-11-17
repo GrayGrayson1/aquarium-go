@@ -28,6 +28,7 @@ import { seenMorphChips, discoveredMorphNames, hasNoNamedMorphs, noMorphsNote } 
 import { GeneticsSections } from './MorphCatalog'; // lane:genetics
 import { PrismaticBadge } from '@/ui/common/Prismatic'; // lane:genetics
 import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { convertSourceTempText } from '@/ui/common/format'; // Audit 2026-11-17 (J1)
 import { Hourglass } from 'lucide-react'; // Audit 2026-11-17 (D20)
 import { lifespanDaysText } from '@/ui/common/lifespan'; // Audit 2026-11-17 (D20)
 
@@ -222,7 +223,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
     return { good, bad };
   }, [sp]);
   const breeding = useMemo(() => (sp ? safe(() => breedingSystemInfo(sp.id), null) : null), [sp]);
-  const { t: tempText } = useTempText();
+  const { t: tempText, unit: tempUnit } = useTempText();
 
   if (!sp)
     return (
@@ -448,7 +449,7 @@ function SpeciesPage({ g, id, known, knownSet, onBack, onOpen }: { g: GameState;
                 ) : (
                   <span>{s.title}</span>
                 )}
-                {s.facts?.length > 0 && <span className="pn-tiny pn-muted">{s.facts.slice(0, 5).join(' · ')}</span>}
+                {s.facts?.length > 0 && <span className="pn-tiny pn-muted">{convertSourceTempText(s.facts.slice(0, 5).join(' · '), tempUnit) /* Audit 2026-11-17 (J1): °C or °F as quoted, in the player's unit */}</span>}
               </li>
             ))}
           </ul>
