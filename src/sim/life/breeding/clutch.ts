@@ -501,7 +501,7 @@ function predationText(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
   const tending = isAlive(guardian) && guardian.tankId === cl.tankId && !pred.guardianEating && (cl.stage === 'eggs' || !!mod.plan.guardYoung);
   if (pred.guardianEating) return `${pred.guardianEating.name} has started eating the fry he raised — move him out of ${tank.name} now!`;
   if (mod.plan.planktonic && cl.stage !== 'eggs' && !isNurseryFor(state, tank, hour)) {
-    return `${who} ${label} are drifting into the filter and the mouths of tankmates. Move them to a nursery tank to save them.`;
+    return `${who} ${label} are drifting into the filter and the mouths of tankmates. Move them to a nursery tank (Livestock › Eggs & fry) to save them.`;
   }
   if (pred.conspecific.length && tending && guardian) {
     const one = pred.conspecific.length === 1;
@@ -521,9 +521,9 @@ function predationText(state: GameState, cl: Clutch, tank: Tank, sp: SpeciesDefi
     const target = pred.conspecific.every(parent) ? `${one ? (pron === 'her' ? 'her' : 'his') : 'their'} own ${label}` : `${whose} ${label}`;
     return `${names(pred.conspecific)} ${one ? 'is' : 'are'} eating ${target}! Move ${pron} out of ${tank.name} now.`;
   }
-  if (pred.conspecific.length) return `The adult ${spPlural(sp)} are eating ${whose} ${label}! Move the clutch to a nursery tank.`;
+  if (pred.conspecific.length) return `The adult ${spPlural(sp)} are eating ${whose} ${label}! Move the clutch to a nursery tank (Livestock › Eggs & fry).`;
   const other = [...pred.others.keys()].map((id) => findSpecies(id)).filter((x): x is SpeciesDefinition => !!x);
-  if (other.length) return `${other.map((o) => spPlural(o)).join(' and ').replace(/^./, (ch) => ch.toUpperCase())} ${other.length === 1 && pred.others.get(other[0].id)!.length === 1 ? 'is' : 'are'} hunting ${whose} ${label}! Move the clutch to a nursery tank.`;
+  if (other.length) return `${other.map((o) => spPlural(o)).join(' and ').replace(/^./, (ch) => ch.toUpperCase())} ${other.length === 1 && pred.others.get(other[0].id)!.length === 1 ? 'is' : 'are'} hunting ${whose} ${label}! Move the clutch to a nursery tank (Livestock › Eggs & fry).`;
   return `Something is eating ${whose} ${label} — a nursery tank would keep them safe.`;
 }
 

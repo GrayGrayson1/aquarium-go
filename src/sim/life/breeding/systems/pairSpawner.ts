@@ -366,5 +366,5 @@ function statusFor(state: GameState, c: Creature, sp: SpeciesDefinition, hour: n
 export const TEXT = {
   genericCourt: (m: Creature, f: Creature, sp: SpeciesDefinition) => `${m.name} is courting ${f.name} — the ${spName(sp)} pair are displaying to each other.`,
   genericSpawn: (m: Creature, f: Creature, sp: SpeciesDefinition, n: number, tank: Tank, guardian: Creature | null) =>
-    `${f.name} and ${m.name} spawned — ${plural(n, 'egg')}!${guardian ? ` ${guardian.name} is guarding them.` : ` Adults eat eggs, so move them to a nursery tank.`}`,
+    `${f.name} and ${m.name} spawned — ${plural(n, 'egg')}!${guardian ? ` ${guardian.name} is guarding them.` : ` Adults eat eggs, so move them to a nursery tank (Livestock › Eggs & fry).`}`,
 };

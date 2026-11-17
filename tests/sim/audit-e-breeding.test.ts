@@ -171,3 +171,15 @@ describe('E6: every spawning gate shows at once, and a ripe female says why she 
     expect(breedingStatus(state, f.id)).toMatchObject({ label: 'Full of eggs', detail: expect.stringMatching(/^Can’t spawn yet: White cloud mountain minnows only spawn in dense cover \(plants or moss\) — cover here is \d+% \(they need about 40%\)$/) });
   });
 });
+
+describe('E7: a line that sends young to a nursery opens Livestock › Eggs & fry', () => {
+  it('links nursery advice about eggs and young, not a tank named Nursery or a purpose change', async () => {
+    const { eventLink } = await import('@/ui/hud/eventLinks');
+    const eggs = { panel: 'livestock', target: 'tab:young', label: 'Open Eggs & fry' };
+    expect(eventLink({ kind: 'breeding', text: 'Pip and Pop spawned deep in the plants — 8 tiny eggs! Adult pea puffers eat their eggs, so move them to a nursery tank (Livestock › Eggs & fry).' })).toMatchObject(eggs);
+    expect(eventLink({ kind: 'warning', text: 'The adult axolotls are eating Mochi’s eggs! Move the clutch to a nursery tank (Livestock › Eggs & fry).' })).toMatchObject(eggs);
+    expect(eventLink({ kind: 'breeding', text: 'Atlas spat out 12 perfect miniature cardinals — they’ll shelter among spines and branches. A nursery gives the young the best start.' })).toMatchObject(eggs);
+    expect(eventLink({ kind: 'warning', text: 'Atlas is eating his own fry! Move him out of Nursery now.' })).toBeNull();
+    expect(eventLink({ kind: 'info', text: 'Tank 2 is now a nursery tank.' })).toBeNull();
+  });
+});

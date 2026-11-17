@@ -46,7 +46,7 @@ export const eggScatterModule = makePairSpawner({
         ? `${m.name} darkens his belly stripe and chases ${f.name} into the moss — a pea puffer courtship!`
         : `${m.name} is flashing and chasing ${f.name} through the plants — the ${spName(sp)} are about to spawn.`,
     spawn: (m, f, sp, n, tank, guardian) =>
-      `${f.name} and ${m.name} spawned deep in the ${tank.decor.length ? 'plants' : 'cover'} — ${plural(n, 'tiny egg')}!${guardian ? ` ${guardian.name} is guarding them.` : ` Adult ${spPlural(sp)} eat their eggs, so move them to a nursery tank.`}`,
+      `${f.name} and ${m.name} spawned deep in the ${tank.decor.length ? 'plants' : 'cover'} — ${plural(n, 'tiny egg')}!${guardian ? ` ${guardian.name} is guarding them.` : ` Adult ${spPlural(sp)} eat their eggs, so move them to a nursery tank (Livestock › Eggs & fry).`}`,
   },
 });
 
@@ -70,7 +70,7 @@ export const substrateSpawnerModule = makePairSpawner({
   maleRestFrac: 0.4,
   text: {
     court: (m, f) => `${m.name} and friends are dashing along the glass after ${f.name} — cory spawning behaviour!`,
-    spawn: (m, f, sp, n) => `${f.name} and ${m.name} formed the classic “T-position” and ${f.name} pressed ${plural(n, 'sticky egg')} onto the glass. The adults will eat them — move them to a nursery tank.`,
+    spawn: (m, f, sp, n) => `${f.name} and ${m.name} formed the classic “T-position” and ${f.name} pressed ${plural(n, 'sticky egg')} onto the glass. The adults will eat them — move them to a nursery tank (Livestock › Eggs & fry).`,
   },
   status: (state, c) => (c.repro.stage === 'spawning' ? { label: 'Spawning in the T-position', progress: c.repro.progress } : null),
 });
@@ -129,7 +129,7 @@ export const mouthbrooderModule = makePairSpawner({
     spawn: (m, f, sp, n) => `${f.name} released a ball of ${plural(n, 'egg')} and ${m.name} scooped them into his mouth. He won’t eat until they hatch.`,
     // audit E1: released in a nursery, the father (moved in to release them there) eats the young
     release: (g, n, sp, inNursery) =>
-      `${g.name} spat out ${plural(n, 'perfect miniature cardinal')} — they’ll shelter among spines and branches.${inNursery ? ` Move ${g.name} back out now — adults eat the young.` : ' A nursery gives them the best start.'}`,
+      `${g.name} spat out ${plural(n, 'perfect miniature cardinal')} — they’ll shelter among spines and branches.${inNursery ? ` Move ${g.name} back out now — adults eat the young.` : ' A nursery gives the young the best start.'}`,
   },
 });
 
