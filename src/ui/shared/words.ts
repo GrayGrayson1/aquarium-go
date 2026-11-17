@@ -49,6 +49,8 @@ export const SHARED_WORDS = {
   reload: 'Reload',
   /** B-230 (audit I1): the closing card's button when the shop couldn't be reached. */
   tryAgain: 'Try again',
+  /** Audit I8: `build`, but the site still serves this very build (not redeployed yet): a reload can't help. */
+  siteBehind: 'The shared shop has been updated, but this site hasn’t caught up yet. Try again later.',
   // chunk 14 — the money pool and its tiers (ADR-0050 decision 6: as previewed). Money as the game writes it (fmtMoney).
   money: 'Money',
   moneyToSpend: (can: number) => `Money: ${$(can)} to spend`,

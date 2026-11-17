@@ -243,6 +243,8 @@ describe('audit 2026-11-17: the closings the browser gives itself', () => {
       'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection. Try again in a little while.',
     );
     expect([...RETRY_CLOSINGS].sort()).toEqual(['offline', 'unreachable']);
+    // I8: a newer shop server, but the site still serves this build (no Reload that never turns on)
+    expect(SHARED_WORDS.siteBehind).toBe('The shared shop has been updated, but this site hasn’t caught up yet. Try again later.');
     expect(RELOAD_CLOSINGS.has('unreachable')).toBe(false);
   });
 });
