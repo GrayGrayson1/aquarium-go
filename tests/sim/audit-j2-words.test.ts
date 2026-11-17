@@ -303,3 +303,12 @@ describe('Audit 2026-11-17 (J37): the species pages read as sentences', () => {
     expect(src('data/species/guide.ts')).toContain('No heater in a normal room; it needs cooler water than a tropical tank.');
   });
 });
+
+describe('Audit 2026-11-17 (J38, the part that needs no choice): source titles without research notes', () => {
+  it('no “title verified via…”, “(citing …)” or “(summarising …)” in a shown title, and no builder note in a fact', () => {
+    for (const id of ['axolotl', 'cleaner_shrimp', 'coral_catshark', 'flame_hawkfish', 'foxface_rabbitfish']) {
+      for (const s of getSpecies(id).sources ?? []) expect(s.title, id).not.toMatch(/verified via|\(citing|\(summarising/);
+    }
+    expect((getSpecies('freshwater_angelfish').sources ?? []).flatMap((s) => s.facts)).not.toContain('15 cm TL (size field 10.5)');
+  });
+});

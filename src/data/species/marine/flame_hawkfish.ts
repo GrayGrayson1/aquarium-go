@@ -145,7 +145,7 @@ export const flameHawkfish: SpeciesDefinition = {
   },
   sourceReferences: [
     { id: 'fishbase-neocirrhites-armatus', title: 'FishBase — Neocirrhites armatus (Flame hawkfish)', url: 'https://www.fishbase.se/summary/Neocirrhitus-armatus.html', tier: 1, facts: ['9 cm TL', 'depth 1–10 m', 'lives in branching corals', 'small crustaceans', 'fades in captivity', 'IUCN Least Concern (2015)'] },
-    { id: 'fishbase-repro-neocirrhites', title: 'FishBase — Reproduction of Neocirrhites armatus (citing Sadovy & Donaldson 1995)', url: 'https://www.fishbase.se/Reproduction/5832', tier: 1, facts: ['protogynous', 'pelagic batch spawner, no care', 'pairs or harems'] },
+    { id: 'fishbase-repro-neocirrhites', title: 'FishBase — Reproduction of Neocirrhites armatus', url: 'https://www.fishbase.se/Reproduction/5832', tier: 1, facts: ['protogynous', 'pelagic batch spawner, no care', 'pairs or harems'] },
     { id: 'liveaquaria-flame-hawkfish', title: 'LiveAquaria — Flame Hawkfish', url: 'https://www.liveaquaria.com/products/flame-hawkfish', tier: 2, facts: ['30 gal', 'no small shrimp', 'careful with small gobies and blennies', '~$80'] },
     { id: 'qm-flame-hawkfish-revisited', title: 'Quality Marine — Revisited: the flame hawkfish', url: 'https://www.qualitymarine.com/news/revisited-flame-hawkfish/', tier: 2, facts: ['40 gal', 'one per tank', 'may eat snails and crabs', 'spawns at dusk', '10+ years', 'varied diet keeps the red'] },
   ],
