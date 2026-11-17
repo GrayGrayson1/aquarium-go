@@ -1,0 +1,58 @@
+# Keeps Aquarium Go online awake (the owner's decision, ADR-0056 answer 10, 2026-11-17).
+#
+# Supabase's free plan pauses a project after about a week without use; a paused project's address stops resolving, so
+# nobody can sign in and Social and shared shops stop until someone presses Restore in the dashboard (it happened in
+# November 2026). Twice a week this job makes one request that reaches the database and changes nothing: it asks
+# `resolve_invite` about a code longer than any real one, which the function answers with null before it looks
+# anything up (no row read, no miss counted against the invite brake). It uses the public address and the publishable
+# key the game itself ships (src/social/project.ts); there is no secret here.
+#
+# If the request fails, the job fails and GitHub emails the repository's owner: that is the signal to press Restore.
+# This is a common workaround, not a Supabase feature, so it could stop counting as use one day. GitHub also switches
+# off scheduled jobs in a public repository after 60 days without a commit; a push turns them back on.
+name: Keep online awake
+
+on:
+  schedule:
+    # Mondays and Thursdays at 14:17 UTC (off the hour, when GitHub's scheduler is busiest)
+    - cron: '17 14 * * 1,4'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-online-awake
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: src/social/project.ts
+          sparse-checkout-cone-mode: false
+      - name: One read-only request to the online project
+        run: |
+          set -euo pipefail
+          url=$(sed -n "s/.*url: '\(https:[^']*\)'.*/\1/p" src/social/project.ts | head -n 1)
+          key=$(sed -n "s/.*publishableKey: '\([^']*\)'.*/\1/p" src/social/project.ts | head -n 1)
+          if [ -z "$url" ] || [ -z "$key" ]; then
+            echo "src/social/project.ts has no online project: nothing to keep awake."
+            exit 0
+          fi
+          # 48 characters: longer than resolve_invite's 40-character limit, so it answers null at once
+          code=$(printf 'KEEP-AWAKE-%037d' 0)
+          status=$(curl --silent --show-error --max-time 30 --retry 2 --retry-delay 10 \
+            --output body.txt --write-out '%{http_code}' \
+            --request POST "$url/rest/v1/rpc/resolve_invite" \
+            --header "apikey: $key" --header "content-type: application/json" \
+            --data "{\"p_code\":\"$code\"}") || status=000
+          echo "HTTP $status"
+          if [ "$status" != "200" ]; then
+            echo "::error::Aquarium Go online did not answer (HTTP $status). If the Supabase project is paused, press Restore in its dashboard."
+            head -c 300 body.txt 2>/dev/null || true
+            exit 1
+          fi
