@@ -9,6 +9,7 @@ import { getWaterReport } from '@/sim/water';
 import { waterChange, waterChangeCost, dose } from '@/sim/care';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { fixForWaterIssue } from '@/ui/common/fixLinks';
+import { buyTank } from '@/sim/economy';
 
 type Starter = 'betta' | 'ocellaris_clownfish' | 'axolotl' | 'lined_seahorse';
 const base = (starter: Starter = 'betta') => newGame({ starterId: starter, starterName: 'Test', seed: 99 });
@@ -162,5 +163,25 @@ describe('C4: a dose that can’t help is refused before it is paid for, and say
     expect(r.ok).toBe(true);
     expect(r.message).toMatch(/^There’s no ammonia or nitrite in the water right now\. The conditioner will bind any that appears over the next day\./);
     expect(r.message).not.toMatch(/cause still needs fixing/);
+  });
+});
+
+describe('C5: a new tank’s advice says what to watch and how long, not "wait until ammonia reads zero"', () => {
+  it('the bought-tank tip names the Biological filter and the time it takes', () => {
+    const s = base('betta');
+    s.finance.money = 1e5;
+    const r = buyTank(s, 'g29', 'freshwater_tropical');
+    expect(r.ok).toBe(true);
+    const tip = s.log.find((e) => e.kind === 'tip' && e.tankId === r.tankId)!;
+    expect(tip.text).toMatch(/until the tank card’s Biological filter reads Mature before adding animals — about a week, or a few days with bottled bacteria\.$/);
+    expect(tip.text).not.toMatch(/read zero/);
+  });
+
+  it('an empty, uncycled tank’s advice says the bacteria fade without food', () => {
+    const s = base('betta');
+    s.finance.money = 1e5;
+    const id = buyTank(s, 'g29', 'freshwater_tropical').tankId!;
+    const p = getWaterReport(s, id).params.find((x) => x.key === 'cycle')!;
+    expect(p.advice).toMatch(/about a week, or a few days with bottled bacteria or mature filter media\. Without food or animals the bacteria fade\.$/);
   });
 });

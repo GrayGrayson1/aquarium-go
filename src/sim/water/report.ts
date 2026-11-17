@@ -641,7 +641,8 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
             ? undefined
             : hasAnimals
               ? 'Dose bottled bacteria, move mature filter media from an established tank, and add animals slowly.'
-              : 'Bacteria need an ammonia source: dose bottled bacteria or move mature filter media in, and drop a pinch of food daily (a "fishless cycle") before adding animals.',
+              : // Audit 2026-11-17 C5 — how long, and that an empty tank left alone goes backwards
+                'Bacteria need an ammonia source: drop a pinch of food in daily (a "fishless cycle") before adding animals — about a week, or a few days with bottled bacteria or mature filter media. Without food or animals the bacteria fade.',
       },
       hasAnimals ? 'Tank is still cycling' : 'Filter is still cycling',
     );
