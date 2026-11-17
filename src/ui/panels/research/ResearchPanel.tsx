@@ -14,7 +14,7 @@ import { ACHIEVEMENTS } from '@/data/achievements';
 import type { Reward } from '@/data/quests';
 import { researchList, activeQuests, unlockProgress, masteryLevel, unlockLabel, evalCond, currentTutorialStep, type ResearchView, type QuestView, type UnlockProgressView } from '@/sim/facility';
 import { PanelLayout } from '../common/PanelLayout';
-import { usePanelGame, safe, useIsPhone } from '../common/hooks';
+import { usePanelGame, safe, useIsPhone, useMedia } from '../common/hooks';
 import { act } from '../common/act';
 import { Chip, Seg, EmptyState, SectionHead, Bar, Callout } from '../common/parts';
 import { Requirements } from '../common/Requirements';
@@ -26,6 +26,7 @@ import { LockedButton } from '../common/UnlockHelp'; // chunk 19 (QOL-006)
 import { glow } from '@/ui/common/glow'; // chunk 19 (QOL-004, QOL-006)
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
 import { matches } from '../common/match'; // chunk 19 (QOL-003)
+import { FINE_POINTER, currentCoachStep } from '@/ui/tutorial/guideText'; // audit 2026-11-17 (A13)
 
 type Tab = 'research' | 'unlocks' | 'quests' | 'achievements';
 const RESEARCH_TABS: readonly Tab[] = ['research', 'unlocks', 'quests', 'achievements'];
@@ -430,6 +431,9 @@ function RewardChips({ r }: { r: Reward }) {
 
 function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
   const tut = safe(() => currentTutorialStep(g), null);
+  // audit 2026-11-17 (A13) — the step in the guide card's own words: the player's temperature unit, "Click" for a mouse
+  const fine = useMedia(FINE_POINTER);
+  const words = tut ? safe(() => currentCoachStep(g, fine), null) : null;
   const sorted = [...quests].sort((a, b) => Number(b.status === 'complete') - Number(a.status === 'complete'));
   return (
     <div className="pn-stack pn-stack--lg">
@@ -440,17 +444,17 @@ function QuestsTab({ g, quests }: { g: GameState; quests: QuestView[] }) {
           </span>
           <div className="pn-grow pn-col" style={{ gap: 6 }}>
             <div className="pn-tiny pn-muted" style={{ textTransform: 'uppercase', letterSpacing: '0.09em', fontWeight: 650 }}>
-              Tutorial · step {tut.index + 1} of {tut.total}
+              Guide · step {tut.index + 1} of {tut.total}
             </div>
-            <b className="pn-quest__title">{tut.title}</b>
-            <div className="pn-small pn-dim">{tut.body}</div>
-            <Bar value={(tut.index / Math.max(1, tut.total)) * 100} tone="aqua" label="Tutorial progress" thin />
+            <b className="pn-quest__title">{words?.title ?? tut.title}</b>
+            <div className="pn-small pn-dim">{words?.body ?? tut.body}</div>
+            <Bar value={(tut.index / Math.max(1, tut.total)) * 100} tone="aqua" label="Guide progress" thin />
           </div>
         </div>
       )}
       {sorted.length === 0 ? (
         <EmptyState icon={<ScrollText size={24} />} title="The quest board is quiet">
-          {tut ? 'Finish the tutorial to open the quest board.' : 'New quests appear as you grow — check back soon.'}
+          {tut ? 'Finish the guide to open the quest board.' : 'New quests appear as you grow — check back soon.'}
         </EmptyState>
       ) : (
         <div className="pn-col pn-gap-3">

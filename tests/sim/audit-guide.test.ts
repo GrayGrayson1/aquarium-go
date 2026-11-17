@@ -25,6 +25,7 @@ import { guideMentions } from '@/ui/hud/ToolRail';
 import { eventLink } from '@/ui/hud/eventLinks';
 import { navDots } from '@/ui/common/notify';
 import { DOCK_ITEMS } from '@/ui/hud/Dock';
+import { useSettings } from '@/state/settings';
 
 /** Press Next (or let the step complete) until the guide is on `id`. */
 function walkTo(g: GameState, id: string): void {
@@ -143,6 +144,26 @@ describe('A5, A10: the finale says where the quests and the guide’s reward are
     tutorialAdvance(g, 'opened_research');
     expect(navDots(g, DOCK_ITEMS).research).toEqual({ level: 'new', label: '1 quest reward to claim', target: 'tab:quests' });
     expect(eventLink({ kind: 'celebrate', text: 'Quest complete: Feeding routine — claim your reward!' })).toEqual({ panel: 'research', target: 'tab:quests', where: 'Claim it in Research › Quests.', label: 'Claim it' });
+  });
+});
+
+describe('A13, A14: the guide’s words in its own terms, in the player’s unit', () => {
+  it('the temperature is in the player’s unit, as on the guide card (Research › Quests reads the same words)', () => {
+    const g = newGame({ starterId: 'axolotl', starterName: 'Mochi', seed: 4 });
+    walkTo(g, 'water');
+    const unit = useSettings.getState().tempUnit;
+    try {
+      useSettings.getState().update({ tempUnit: 'F' });
+      expect(currentCoachStep(g, true)!.body).toMatch(/59(\.0)?–64\.4 °F/);
+      useSettings.getState().update({ tempUnit: 'C' });
+      expect(currentCoachStep(g, true)!.body).toMatch(/15–18 °C/);
+    } finally {
+      useSettings.getState().update({ tempUnit: unit });
+    }
+  });
+
+  it('the seahorse step names the rail’s button as it is labelled', () => {
+    expect(tutorialChain('lined_seahorse').find((s) => s.id === 'feed')!.body).toMatch(/^Tap Target and offer frozen mysis/);
   });
 });
 

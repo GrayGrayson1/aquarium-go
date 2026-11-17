@@ -505,7 +505,7 @@ export function evalCond(state: GameState, cond: Cond, cache: CondCache = {}): C
     }
     case 'tutorial_done': {
       const d = p.tutorial.done;
-      return { met: d, current: d ? 1 : 0, target: 1, label: 'Finish the tutorial' };
+      return { met: d, current: d ? 1 : 0, target: 1, label: 'Finish the guide' };
     }
     case 'money': {
       return { met: state.finance.money >= cond.min, current: Math.floor(state.finance.money), target: cond.min, label: `$${cond.min.toLocaleString('en-US')}` };
@@ -678,9 +678,9 @@ function completeTutorialStep(state: GameState, step: TutorialStepDef, rewarded:
   const chain = tutorialStepDefs(state);
   // A reward the player already earned another way (research) — say so instead of "New upgrade unlocked!".
   const alreadyOwned = !!step.reward?.unlocks?.length && step.reward.unlocks.every((k) => isUnlocked(state, k));
-  if (rewarded) grantReward(state, step.reward, `Tutorial: ${interpolate(state, step.title)}`);
+  if (rewarded) grantReward(state, step.reward, `Guide: ${interpolate(state, step.title)}`);
   if (step.done && !state.isShowcase) {
-    const text = alreadyOwned ? `${interpolate(state, step.title)}: you already have ${step.reward!.unlocks!.map(unlockLabel).join(' and ')} — you’re ahead of the tutorial!` : interpolate(state, step.done);
+    const text = alreadyOwned ? `${interpolate(state, step.title)}: you already have ${step.reward!.unlocks!.map(unlockLabel).join(' and ')} — you’re ahead of the guide!` : interpolate(state, step.done);
     emitEvent(state, { kind: 'tip', text, toast: true });
   }
   t.step += 1;
@@ -1283,7 +1283,7 @@ export function activeQuests(state: GameState): QuestView[] {
       // leaves "First steps 0/11" on the board for good.
       if (q.status === 'active' && state.progress.tutorial.skipped) continue;
       const chain = tutorialStepDefs(state);
-      out.push({ id: 'tutorial', title: 'First steps', body: 'Finish the tutorial to open the quest board.', icon: 'GraduationCap', status: q.status, progress: q.status === 'complete' ? 1 : state.progress.tutorial.step / chain.length, current: Math.min(chain.length, state.progress.tutorial.step), target: chain.length, reward: TUTORIAL_QUEST_REWARD, isTutorial: true });
+      out.push({ id: 'tutorial', title: 'First steps', body: 'Finish the guide to open the quest board.', icon: 'GraduationCap', status: q.status, progress: q.status === 'complete' ? 1 : state.progress.tutorial.step / chain.length, current: Math.min(chain.length, state.progress.tutorial.step), target: chain.length, reward: TUTORIAL_QUEST_REWARD, isTutorial: true });
       continue;
     }
     const def = QUEST_BY_ID[q.id];

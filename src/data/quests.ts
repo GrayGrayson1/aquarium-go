@@ -150,7 +150,7 @@ const FLAVOURS: Record<string, StarterFlavour> = {
   lined_seahorse: {
     meet: '{name} is a lined seahorse. In seahorses the males carry the young, in a pouch.',
     camera: 'Drag to orbit and zoom in slowly. Seahorses are calm, unhurried animals, so move gently.',
-    feed: ['Slow food', 'Choose Target feed and offer frozen mysis right to {name}. Seahorses are slow, deliberate eaters — target feeding makes sure {name} gets a full share before anything else can snatch it.'],
+    feed: ['Slow food', 'Tap Target and offer frozen mysis right to {name}. Seahorses are slow, deliberate eaters — target feeding makes sure {name} gets a full share before anything else can snatch it.'],
     feedHint: 'tool-target-feed',
     water: ['Gentle and salty', 'Open the tank card and check the salinity. Seahorses need stable marine water ({salinity}) and very gentle flow.'],
     habitat: ['Hitching posts', 'Add a plant, a soft branch or some décor from Build. Seahorses wrap their tails around it to rest.'],
@@ -191,7 +191,7 @@ function chainFor(f: StarterFlavour): TutorialStepDef[] {
     { id: 'first_goal', title: 'Word gets around', body: 'Keep {name}’s tank looking lovely and the water healthy while two more friends drop by. (Once you have animals to spare, a small sale in the Market counts too.)', objective: { type: 'any', of: [{ type: 'counter', key: 'friend_visits', min: 2, relative: true, label: 'more friend visits' }, { type: 'counter', key: 'sales', min: 1, relative: true, label: 'sale' }] }, hintTarget: 'hud-money', done: 'Word is getting around.', reward: { money: 40, reputation: 3 } },
     // audit 2026-11-17 (A3): nursery tanks are a tank's purpose, set in Tanks (its button opened Build › Tanks)
     { id: 'upgrade', title: f.upgrade[0], body: f.upgrade[1], objective: { type: 'reputation', min: TUTORIAL_UPGRADE_REP, gain: TUTORIAL_UPGRADE_GAIN, label: 'reputation' }, hintTarget: f.upgrade[2].includes('nursery') ? 'dock-tanks' : 'dock-build', done: 'New upgrade unlocked!', reward: { unlocks: f.upgrade[2] } },
-    { id: 'preview', title: 'The road ahead', body: f.preview, objective: { type: 'flag', anyOf: ['opened_research', 'opened_visitors', 'opened_build', 'opened_panel:research', 'opened_panel:visitors'], fallbackHours: 20 }, hintTarget: 'dock-research', done: 'Tutorial complete. The quest board is open!', reward: { money: 60, reputation: 5 } },
+    { id: 'preview', title: 'The road ahead', body: f.preview, objective: { type: 'flag', anyOf: ['opened_research', 'opened_visitors', 'opened_build', 'opened_panel:research', 'opened_panel:visitors'], fallbackHours: 20 }, hintTarget: 'dock-research', done: 'Guide complete. Your quest board is open in Research › Quests!', reward: { money: 60, reputation: 5 } },
   ];
 }
 
