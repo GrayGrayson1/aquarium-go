@@ -35,6 +35,7 @@ import { lineFarm } from './support/production';
 import { UNLOCK_RULES, type Cond } from '@/data/unlocks';
 import { FacilityUpgradeCard } from '@/ui/panels/common/FacilityUpgrade';
 import { beautyScore } from '@/sim/aquascape';
+import { textureFits } from '@/sim/aquascape/beauty';
 import { getDecorDef } from '@/data/catalog/decor';
 import { addCreature, createCreature } from '@/sim/life';
 import { simRng } from '@/sim/rng';
@@ -377,5 +378,31 @@ describe('G12: a living anemone counts as the clownfish’s host, and the tip na
     expect(hostTip(g)).toMatch(/^Your clownfish has no host — a bubble-tip anemone from Market › Shop, on a stable rock ledge, would give it a home to defend\./);
     addCreature(g, createCreature(g, simRng(g), 'bubbletip_anemone'), t.id);
     expect(hostTip(g)).toBeUndefined();
+  });
+});
+
+describe('G13: beauty tips name pieces the tank’s water takes', () => {
+  const at = (piece: string, i: number) => ({ id: `d-${piece}-${i}`, defId: piece, x: -0.15 + i * 0.12, y: 0, z: 0, rotY: 0, scale: 1, seed: i + 1, health: 90, growth: 0.9 });
+  it('a reef of bold polyps is offered fine polyps, never java moss or hairgrass', () => {
+    const g = game('ocellaris_clownfish');
+    g.progress.unlocked.push('reef', 'decor_corals_soft');
+    const t = g.tanks[g.tankOrder[0]];
+    t.waterClass = 'reef';
+    t.decor = ['mushroom_coral', 'mushroom_coral', 'leather_coral'].map(at);
+    const tips = beautyScore(g, t).tips.join(' ');
+    expect(tips).not.toMatch(/java moss|hairgrass|anubias|java fern/);
+    expect(textureFits(g, t, 'fine')).toEqual(['chaetomorpha', 'zoanthid colony']);
+    t.waterClass = 'marine_fowlr';
+    expect(textureFits(g, t, 'fine')).toEqual(['chaetomorpha']); // the polyps need reef water
+  });
+  it('a brackish tank is never told to add freshwater-only plants', () => {
+    const g = game('betta');
+    const t = g.tanks[g.tankOrder[0]];
+    t.environment = 'brackish';
+    t.waterClass = 'brackish';
+    t.decor = ['anubias_nana', 'anubias_nana', 'java_fern'].map(at);
+    const tips = beautyScore(g, t).tips.join(' ');
+    expect(tips).not.toMatch(/hairgrass|rotala|stem plants/);
+    expect(textureFits(g, t, 'fine')).toEqual(['java moss']);
   });
 });

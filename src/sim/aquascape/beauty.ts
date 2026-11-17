@@ -6,7 +6,7 @@
  * living things, water clarity, clutter and style cohesion — and turns the weakest points into concrete tips.
  */
 import type { GameState, Tank, BeautyReport, DecorDef, DecorInstance, WaterClass } from '@/types';
-import { getDecorDef, isLiving, isFloating } from '@/data/catalog/decor';
+import { getDecorDef, isLiving, isFloating, DECOR } from '@/data/catalog/decor';
 import { tankDims } from '../tankSpace';
 import { findSpecies } from '@/data/species';
 import { isUnlocked, tankKeyFor, waterClassKeys } from '../facility';
@@ -58,6 +58,16 @@ const TEXTURE: Record<string, 'fine' | 'medium' | 'bold'> = {
   anemone_bta: 'bold',
   plant_mangrove: 'bold', // lane:brackish
 };
+
+/**
+ * Audit 2026-11-17 (G13) — up to two pieces of a texture this tank's water takes (and the player has unlocked), named for
+ * a tip: a reef is offered polyps, not java moss.
+ */
+export function textureFits(state: GameState | null | undefined, tank: Tank, want: 'fine' | 'bold'): string[] {
+  return DECOR.filter((d) => TEXTURE[d.visual] === want && d.environments.includes(tank.environment) && (!d.waterClasses?.length || d.waterClasses.includes(tank.waterClass)) && (!state || isUnlocked(state, d.unlock)))
+    .slice(0, 2)
+    .map((d) => d.name.toLowerCase());
+}
 
 const BALANCE_BAND: Record<WaterClass, [number, number]> = {
   freshwater_planted: [0.15, 0.5],
@@ -286,7 +296,7 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
         text:
           tank.environment === 'marine'
             ? `Soften the rockwork with life — macroalgae${state && isUnlocked(state, 'decor_corals_soft') ? ' or a few soft corals' : ''} around the ${hs?.def.name.toLowerCase() ?? 'rock'}.`
-            : `Soften the hardscape — tie java fern or anubias onto the ${hs?.def.name.toLowerCase() ?? 'wood'} and add a background of stem plants.`,
+            : `Soften the hardscape — tie java fern or anubias onto the ${hs?.def.name.toLowerCase() ?? 'wood'}${tank.environment === 'brackish' ? '' : ' and add a background of stem plants'}.`, // Audit 2026-11-17 (G13): stem plants are freshwater-only
       });
     } else if (share < bandB[0] - 0.05) {
       tips.push({ p: W.balance * (1 - balance) + 1, text: 'Add a stone or a piece of wood — the planting needs some structure to grow around.' });
@@ -376,7 +386,13 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
   add('Texture contrast', texture);
   if (living.length >= 3 && texClasses.size < 2) {
     const has = [...texClasses][0];
-    tips.push({ p: 4, text: has === 'bold' ? 'Contrast the big leaves with something fine — java moss on the wood or a tuft of hairgrass in front.' : 'Add one bold-leaved plant (anubias or java fern) to anchor all that fine texture.' });
+    if (tank.environment === 'freshwater') tips.push({ p: 4, text: has === 'bold' ? 'Contrast the big leaves with something fine — java moss on the wood or a tuft of hairgrass in front.' : 'Add one bold-leaved plant (anubias or java fern) to anchor all that fine texture.' });
+    else {
+      // Audit 2026-11-17 (G13): marine and brackish tanks are told pieces their water takes (a reef was told to add java moss)
+      const pick = textureFits(state, tank, has === 'bold' ? 'fine' : 'bold');
+      if (pick.length && has === 'bold') tips.push({ p: 4, text: `Contrast the big ${tank.environment === 'marine' ? 'polyps' : 'leaves'} with something fine — ${pick.join(' or ')}.` });
+      else if (pick.length) tips.push({ p: 4, text: `Add one bold piece — ${pick.join(' or ')} — to anchor all that fine texture.` });
+    }
   }
 
   // 8d. variety of living things (collecting rewards)
@@ -431,7 +447,8 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
     const leftBack = bed.filter((i) => i.u < 0.5 && i.back > 0.5).reduce((s, i) => s + i.mass, 0);
     const rightBack = bed.filter((i) => i.u >= 0.5 && i.back > 0.5).reduce((s, i) => s + i.mass, 0);
     const where = leftBack <= rightBack ? 'back left' : 'back right';
-    const plant = tank.environment === 'marine' ? 'a gorgonian or a bush of red ogo' : 'a taller plant (vallisneria or rotala)';
+    // Audit 2026-11-17 (G13): a gorgonian needs live rock or reef water, rotala fresh water
+    const plant = tank.environment === 'marine' ? (tank.waterClass === 'marine_fowlr' ? 'a bush of red ogo' : 'a gorgonian or a bush of red ogo') : tank.environment === 'brackish' ? 'a taller plant (vallisneria)' : 'a taller plant (vallisneria or rotala)';
     tips.push({ p: W.height * (1 - height) + 3, text: `Add ${plant} at the ${where} to frame the ${focalItem?.def.name.toLowerCase() ?? 'layout'}.` });
   }
   if (state) {
