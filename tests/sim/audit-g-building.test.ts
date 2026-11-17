@@ -156,7 +156,7 @@ describe('G6: reputation is reachable on every screen and explained', () => {
     expect(renderToStaticMarkup(createElement(TopBar, {}))).toMatch(/<button[^>]*data-testid="hud-reputation"/);
     const more = renderToStaticMarkup(createElement(MoreSheetBody, { isLocked: () => false, dots: {} }));
     expect(more).toContain('data-testid="more-reputation"');
-    expect(more).toContain('30 reputation');
+    expect(more).toMatch(/ag-more__rep-text"><span class="ag-tabular">30<\/span> reputation/);
     const research = renderToStaticMarkup(createElement(ResearchPanel));
     expect(research).toContain('How reputation grows');
     expect(research).toContain('It drops when an animal dies');
