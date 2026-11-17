@@ -30,6 +30,7 @@ import { expressedNewGenes, labPartners, rareCarried, speciesPlural, strainOrMor
 import { buyState, NO_TANK_BADGE, NO_TANK_CALLOUT, tileTempReason } from './buyState';
 import { OfferGenes } from './OfferGenes';
 import { OfferTemperament } from './OfferTemperament';
+import { OfferDiet } from './OfferDiet'; // Audit 2026-11-17 (D5)
 import { Chip, Card, EmptyState, Callout, SectionHead, Checkbox } from '../common/parts';
 import { CreaturePortrait } from '../common/Portrait';
 import { CompatPreview } from '../common/CompatPreview';
@@ -477,6 +478,7 @@ function OfferDetail({ g, offer, onBack }: { g: GameState; offer: ShopOffer; onB
             ))}
           </div>
           <CareChips sp={sp} />
+          <OfferDiet g={g} sp={sp} env={tank?.environment} /* Audit 2026-11-17 (D5) */ />
           {safe(() => describePersonality(lead), '') && <p className="pn-small pn-dim" style={{ margin: 0 }}>{safe(() => describePersonality(lead), '')}</p>}
           {offer.note && <p className="pn-quote" style={{ margin: 0 }}>“{offer.note}”</p>}
         </div>
