@@ -54,7 +54,8 @@ describe('tank status reflects the animals, not just the water', () => {
     ember.illness = { kind: 'fin_rot', severity: 70, sinceHour: 0 };
     refreshTankCache(g, tank);
     expect(tank.cache.status).toBe('danger');
-    expect(tank.cache.statusReason).toMatch(/Ember is seriously ill with .+ — treat it now\./);
+    // Audit 2026-11-17 C22 — no "treat it now": there is no treatment action, the card lists the care steps
+    expect(tank.cache.statusReason).toMatch(/Ember is seriously ill with .+ — see its card for what helps\./);
     delete ember.illness;
     ember.stats.stress = 90;
     expect(animalStatus([ember]).issue).toBe('badly_stressed');

@@ -99,7 +99,8 @@ function issueText(issue: AnimalIssue, list: Creature[]): string {
       const sp = findSpecies(first.speciesId);
       const def = first.illness ? illnessDef(first.illness.kind) : undefined;
       const name = def && sp ? def.name(sp) : 'an illness';
-      return plural ? `${subject} are seriously ill — treat them now.` : `${subject} is seriously ill with ${name} — treat it now.`;
+      // Audit 2026-11-17 C22 — there is no Treat button: the cures are care steps, listed on the animal's card
+      return plural ? `${subject} are seriously ill — see their cards for what helps.` : `${subject} is seriously ill with ${name} — see its card for what helps.`;
     }
     case 'failing':
       return plural ? `${subject} are in poor health.` : `${subject}’s health is failing (${Math.round(first.stats.health)}%).`;
