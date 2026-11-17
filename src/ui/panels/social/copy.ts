@@ -101,6 +101,12 @@ export const SOCIAL_COPY = {
   close: 'Close',
   requestSent: 'Request sent',
   requestSentDetail: 'Their aquarium shows here once they accept.',
+  // audit 2026-11-17, I13: they had added you already, so you're friends at once; your own code, to give out
+  nowFriends: 'You’re now friends',
+  nowFriendsDetail: 'They had added you too. Their aquarium shows below.',
+  myFriendCode: (code: string) => `Your friend code: ${code}`,
+  copyCode: 'Copy',
+  codeCopied: 'Friend code copied',
   errorFriend: 'That friend code didn’t match anyone. Check it and try again.',
   noMatch: (search: string) => `No clubs match “${search}”. Check the spelling, or paste an invite code.`,
   dotNew: 'New',

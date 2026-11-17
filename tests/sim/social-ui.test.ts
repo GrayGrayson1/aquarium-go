@@ -433,3 +433,30 @@ describe('chunk 8: Settings › Account, server-rendered (REL-031)', () => {
     expect(onlineLine('blocked', now)).toEqual({ text: 'Your online save comes from a newer version of Aquarium Go. Refresh the page to update.', warn: true });
   });
 });
+
+describe('audit 2026-11-17, I13: friends', () => {
+  it('a friend request waiting lights the Social dot until it is answered (opening Social keeps it)', async () => {
+    const { provideSocialService } = await import('@/social');
+    const { refreshSocialNews, markSocialSeen, hasSocialNews } = await import('@/ui/panels/social/socialStore');
+    let waiting = [{ id: 'u_b', name: 'Bea' }];
+    provideSocialService({ news: async () => ({ trades: 0, clubs: 0 }), friendRequests: async () => waiting, markSeen: async () => {} } as never);
+    try {
+      await refreshSocialNews();
+      expect(useSocial.getState().news).toEqual({ trades: 0, clubs: 0, requests: 1 });
+      expect(hasSocialNews(useSocial.getState().news)).toBe(true);
+      await markSocialSeen();
+      expect(hasSocialNews(useSocial.getState().news)).toBe(true);
+      waiting = [];
+      await refreshSocialNews();
+      expect(hasSocialNews(useSocial.getState().news)).toBe(false);
+    } finally {
+      provideSocialService(null);
+      useSocial.setState({ news: { trades: 0, clubs: 0 } });
+    }
+  });
+
+  it('the words: your own code, and adding someone who had added you already', () => {
+    expect([C.myFriendCode('SAM-7Q2'), C.copyCode, C.codeCopied]).toEqual(['Your friend code: SAM-7Q2', 'Copy', 'Friend code copied']);
+    expect([C.nowFriends, C.nowFriendsDetail]).toEqual(['You’re now friends', 'They had added you too. Their aquarium shows below.']);
+  });
+});

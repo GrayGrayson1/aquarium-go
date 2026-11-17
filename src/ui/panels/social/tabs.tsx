@@ -13,8 +13,8 @@ import { useUI } from '@/state/ui';
 import { go } from '@/ui/nav/router';
 import { CLUB_BLURB_MAX, isSocialError, looksLikeInvite, normalizeCode, socialService, validClubName, type Club } from '@/social';
 import { SOCIAL_COPY as C, count } from './copy';
-import { ClubAvatar, ComingSoon, ErrorNote, FriendGrid, FriendRequestList, Leaderboard, MemberClub, NetworkError, NoClub, Skeleton, SoCard, TradeList, useFocusOnce } from './parts';
-import { setSocialUser, useSocial, useSocialQuery } from './socialStore';
+import { ClubAvatar, ComingSoon, ErrorNote, FriendGrid, FriendRequestList, Leaderboard, MemberClub, MyFriendCode, NetworkError, NoClub, Skeleton, SoCard, TradeList, useFocusOnce } from './parts';
+import { refreshSocialNews, setSocialUser, useSocial, useSocialQuery } from './socialStore';
 import { OwnerConfirm, OwnerManage, RemoveFriendButton, type OwnerPending } from './OwnerManage';
 
 export type SocialTab = 'overview' | 'clubs' | 'trading' | 'friends' | 'leaderboards';
@@ -268,6 +268,7 @@ function FriendRequests({ onAccepted, onDecline }: { onAccepted: () => void; onD
       await socialService().acceptFriend(id);
       patch((d) => d.filter((r) => r.id !== id));
       onAccepted();
+      void refreshSocialNews(); // audit I13: the dot counts the requests still waiting
     } catch {
       setError(true);
     } finally {
@@ -283,7 +284,8 @@ function FriendRequests({ onAccepted, onDecline }: { onAccepted: () => void; onD
 }
 
 export function FriendsTab() {
-  const [friends, reloadFriends] = useSocialQuery(() => socialService().friendsAquariums(), []);
+  const [friends, reloadFriends, patchFriends] = useSocialQuery(() => socialService().friendsAquariums(), []);
+  const myCode = useSocial((s) => s.user?.friendCode ?? '');
   // chunk 18 (ADR-0054): the owner removes friends and declines requests
   const owner = useSocial((s) => !!s.user?.isOwner);
   const [pending, setPending] = useState<OwnerPending | null>(null);
@@ -297,7 +299,16 @@ export function FriendsTab() {
     setError(null);
     try {
       await socialService().addFriend(code);
-      useUI.getState().toast(normalizeCode(code), 'success', { label: C.requestSent, detail: C.requestSentDetail });
+      // audit I13: someone who had added you already is a friend at once: say so, and show them (not "once they accept")
+      const before = friends.state === 'ok' ? new Set(friends.data.map((f) => f.id)) : null;
+      const after = await socialService()
+        .friendsAquariums()
+        .catch(() => null);
+      if (after && before) patchFriends(() => after);
+      else reloadFriends();
+      const added = before && after ? after.find((f) => !before.has(f.id)) : undefined;
+      if (added) useUI.getState().toast(added.owner, 'success', { label: C.nowFriends, detail: C.nowFriendsDetail });
+      else useUI.getState().toast(normalizeCode(code), 'success', { label: C.requestSent, detail: C.requestSentDetail });
       setCode('');
     } catch (err) {
       setError(isSocialError(err) && err.code === 'network' ? 'network' : 'invalid');
@@ -307,6 +318,7 @@ export function FriendsTab() {
   };
   return (
     <div className="so-tab" data-testid="social-friends">
+      {myCode && <MyFriendCode code={myCode} />}
       <form className="so-addfriend" onSubmit={add}>
         <input className="ag-input so-input" aria-label={C.friendCodePlaceholder} placeholder={C.friendCodePlaceholder} value={code} onChange={(e) => setCode(e.target.value)} autoCapitalize="characters" autoComplete="off" spellCheck={false} data-testid="social-friend-code" />
         <Button type="submit" disabled={busy} data-testid="social-add-friend">

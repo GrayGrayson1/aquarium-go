@@ -175,6 +175,28 @@ export function InviteLinkRow({ code }: { code: string }) {
   );
 }
 
+/** Audit 2026-11-17, I13 — the player's own friend code at the top of Friends (it was only in Settings › Account), with Copy. */
+export function MyFriendCode({ code }: { code: string }) {
+  const [manual, setManual] = useState(false);
+  const copy = async () => {
+    const ok = await platform()
+      .clipboard.write(code)
+      .catch(() => false);
+    if (ok) useUI.getState().toast(C.codeCopied, 'success');
+    setManual(!ok);
+  };
+  return (
+    <div className="so-strip so-strip--invite" data-testid="social-my-code">
+      <UserPlus size={14} aria-hidden className="so-strip__icon" />
+      <span className="so-strip__text">{C.myFriendCode(code)}</span>
+      <button type="button" className="pn-link so-strip__link" onClick={() => void copy()} data-testid="social-copy-code">
+        <Copy size={13} aria-hidden /> {C.copyCode}
+      </button>
+      {manual && <input className="ag-input so-input so-strip__url" readOnly value={code} aria-label={C.myFriendCode(code)} onFocus={(e) => e.currentTarget.select()} autoFocus />}
+    </div>
+  );
+}
+
 /** chunk 8 (ADR-0039 decision 3) — "Your account and your data", the approved note, from sign-up and Settings › Account. */
 export function PrivacyNote({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (

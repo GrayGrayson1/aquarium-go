@@ -20,12 +20,15 @@ setStandingSource(() => {
   }
 });
 
+/** Audit 2026-11-17, I13: what's new, and the friend requests waiting for an answer (they light the dot until answered). */
+export type SocialDot = SocialNews & { requests?: number };
+
 interface SocialState {
   /** undefined until the service has answered `currentUser()`. */
   user: SocialUser | null | undefined;
   /** `currentUser()` failed for want of a connection. */
   offline: boolean;
-  news: SocialNews;
+  news: SocialDot;
 }
 
 export const useSocial = create<SocialState>(() => ({ user: undefined, offline: false, news: { trades: 0, clubs: 0 } }));
@@ -59,8 +62,9 @@ export const setSocialUser = (user: SocialUser | null): void => {
 /** Re-read what's new (the Social dot); quiet on failure. */
 export async function refreshSocialNews(): Promise<void> {
   try {
-    const news = await socialService().news();
-    useSocial.setState({ news });
+    // audit I13: the requests waiting too (a request showed only if Friends happened to be opened)
+    const [news, requests] = await Promise.all([socialService().news(), socialService().friendRequests().then((r) => r.length, () => useSocial.getState().news.requests ?? 0)]);
+    useSocial.setState({ news: { ...news, requests } });
   } catch {
     /* keep the last answer */
   }
@@ -68,7 +72,8 @@ export async function refreshSocialNews(): Promise<void> {
 
 /** Social is open: what's there now has been seen. */
 export async function markSocialSeen(): Promise<void> {
-  useSocial.setState({ news: { trades: 0, clubs: 0 } });
+  // a friend request still waiting for an answer keeps the dot (it goes when it is answered)
+  useSocial.setState((s) => ({ news: { trades: 0, clubs: 0, requests: s.news.requests ?? 0 } }));
   try {
     await socialService().markSeen();
   } catch {
@@ -76,7 +81,7 @@ export async function markSocialSeen(): Promise<void> {
   }
 }
 
-export const hasSocialNews = (n: SocialNews): boolean => n.trades + n.clubs > 0;
+export const hasSocialNews = (n: SocialDot): boolean => n.trades + n.clubs + (n.requests ?? 0) > 0;
 
 export type Query<T> = { state: 'loading' } | { state: 'ok'; data: T } | { state: 'error'; network: boolean };
 
