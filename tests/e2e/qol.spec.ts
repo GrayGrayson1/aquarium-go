@@ -359,6 +359,18 @@ test.describe('QOL-003 and QOL-004: search, filters and Find anything', () => {
     await expect(page.locator('[data-food-row="flake_tropical"]').first()).toBeVisible();
   });
 
+  test('audit B2: a quest board full of finished quests says to claim a reward', async ({ page }) => {
+    await start(page);
+    type Api = { __AQ: { mutate(fn: (s: { progress: { quests: { id: string; status: string; progress: number; startedHour: number }[] } }) => void): void } };
+    await page.evaluate(() =>
+      (window as unknown as Api).__AQ.mutate((s) => {
+        s.progress.quests = ['q_feed_routine', 'q_water_changes', 'q_water_good_3d'].map((id) => ({ id, status: 'complete', progress: 1, startedHour: 0 }));
+      }),
+    );
+    await aq(page, 'setUI', { panel: 'research', panelTarget: 'tab:quests' });
+    await expect(tid(page, 'quests-board-full')).toHaveText('Claim a reward to get new quests.');
+  });
+
   test('Find anything opens a screen with the keyboard alone', async ({ page }) => {
     await start(page);
     await page.locator('canvas').first().click({ position: { x: 5, y: 5 }, force: true }).catch(() => {});
