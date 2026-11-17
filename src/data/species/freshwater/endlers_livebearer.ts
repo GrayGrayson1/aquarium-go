@@ -8,7 +8,7 @@ import type { SpeciesDefinition } from '@/types';
  */
 export const endlersLivebearer: SpeciesDefinition = {
   id: 'endlers_livebearer',
-  commonName: "Endler's Livebearer",
+  commonName: 'Endler’s Livebearer', // Audit 2026-11-17 (J15): a curly apostrophe, as the game writes them
   scientificName: 'Poecilia wingei',
   category: 'fish',
   group: 'livebearer',

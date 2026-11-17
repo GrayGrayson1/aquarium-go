@@ -14,6 +14,7 @@
  *    entries: progression (`progress.scan.logSeq`), exhibit scoring, the welcome-back card and duplicate checks all
  *    scan the log. The full history stays in the Log panel.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { opsDot } from './ops'; // lane:automation (chunk 5)
 import { isHeld } from '@/sim/automation/hold'; // lane:automation (chunk 5)
 import type { Creature, DecorDef, DecorInstance, EquipmentInstance, GameEvent, GameState, NotifyState, Tank } from '@/types';
@@ -584,7 +585,7 @@ function unseenRareOffer(g: GameState, seen: ReadonlySet<string>): NavDot | null
     if (seen.has(o.id)) continue;
     const sp = findSpecies(o.speciesId);
     if (!sp) continue;
-    if (o.creatures.some(isPrismatic)) return { level: 'new', label: `Prismatic ${sp.commonName.toLowerCase()} in the shop`, target: `offer:${o.id}` };
+    if (o.creatures.some(isPrismatic)) return { level: 'new', label: `Prismatic ${lowerName(sp.commonName)} in the shop`, target: `offer:${o.id}` };
     const lead = o.creatures.find((c) => visiblyRare(sp, c));
     if (!rare && lead) rare = { level: 'new', label: `Rare stock: ${morphDisplayName(sp, lead.morphName)}`, target: `offer:${o.id}` };
   }

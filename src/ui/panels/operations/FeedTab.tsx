@@ -3,6 +3,7 @@
  * stock (nothing expires; the room stores a limited amount and says "Full", ADR-0026 decision 7), the live-food dosers,
  * the cultures' supplies (desktop) and Saved this week (desktop). OWNER: lane "automation" (chunk 5).
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { ChevronRight, Egg, PiggyBank, ShoppingBag, Sparkles, Syringe } from 'lucide-react';
 import type { GameState } from '@/types';
 import { Button, formatMoney } from '@/ui/kit';
@@ -102,7 +103,7 @@ export function FeedTab({ g, small }: { g: GameState; nav: OpsNav; small: boolea
             ...new Set(
               needs.map((n) => {
                 const sp = findSpecies(n.clutch.speciesId);
-                return sp ? `${sp.commonName.toLowerCase()} ${youngLabel(n.clutch, moduleFor(sp))}` : 'young';
+                return sp ? `${lowerName(sp.commonName)} ${youngLabel(n.clutch, moduleFor(sp))}` : 'young';
               }),
             ),
           ].join(' and ');

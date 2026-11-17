@@ -4,6 +4,7 @@
  * breeding stage (as the move dialog chooses for a single animal). Every check runs first, so a refused group moves
  * no one. OWNER: lane "lifecycle".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { Creature, GameState } from '@/types';
 import type { ActionResult } from '../care';
 import { findSpecies } from '@/data/species';
@@ -55,7 +56,7 @@ export function moveCreatures(state: GameState, creatureIds: readonly string[], 
   const sp = species.size === 1 ? findSpecies(movers[0].speciesId) : undefined;
   const noun = moved === 1 ? movers.find((c) => c.tankId === tankId)?.name ?? 'one animal' : sp ? pluralName(sp.commonName) : 'animals';
   const small = sp ? tankGallons(tank) < gallonsNeededNow(sp, sp.adultSizeCm) * SLIGHTLY_SMALL_TANK : false;
-  const heads = small && sp ? ` Heads up: an adult ${sp.commonName.toLowerCase()} needs at least ${sp.recommendedMinTankGallons} gallons.` : moved > 0 ? ' Give them a little while to settle in.' : '';
+  const heads = small && sp ? ` Heads up: an adult ${lowerName(sp.commonName)} needs at least ${sp.recommendedMinTankGallons} gallons.` : moved > 0 ? ' Give them a little while to settle in.' : '';
   const head = moved === 1 ? `Moved ${noun} to ${tank.name}.` : `Moved ${moved} ${noun} to ${tank.name}.`;
   return { ok: moved > 0, message: `${head}${heads}${notes.length ? ` ${notes.slice(0, 2).join(' ')}` : ''}`.trim() };
 }

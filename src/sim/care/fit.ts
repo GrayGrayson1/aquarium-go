@@ -15,6 +15,7 @@
  *   FIT_LABEL / FIT_TONE                      badge word and status colour for a FitLevel
  * and re-exports the autofeeder rules (canAutofeed, autofeedFoodsFor, planAutofeed, isAutofeederFood …).
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { EquipmentDef, EquipmentInstance, FoodDef, FoodForm, GameState, Tank } from '@/types';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getFoodDef, foodForm } from '@/data/catalog/foods';
@@ -98,7 +99,7 @@ const general = (text: string): FitVerdict => v('ok', text, { general: true });
 
 // ───────────────────────────── Text helpers ─────────────────────────────
 
-const lc = (s: string) => s.toLowerCase();
+const lc = (s: string) => lowerName(s);
 const capFirst = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const joinAnd = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 const num = (x: number) => (Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1));

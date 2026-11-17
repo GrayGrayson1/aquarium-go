@@ -158,7 +158,7 @@ describe('grammar', () => {
       ['Clown Goby', 'clown gobies'],
       ['Coral Beauty', 'coral beauties'],
       ['Cherry Shrimp', 'cherry shrimp'],
-      ['Banggai Cardinalfish', 'banggai cardinalfish'],
+      ['Banggai Cardinalfish', 'Banggai cardinalfish'], // Audit 2026-11-17 (J15): a place name keeps its capital
       ['Neon Tetra', 'neon tetras'],
       ['Axolotl', 'axolotls'],
       ['Motoro Stingray', 'motoro stingrays'],

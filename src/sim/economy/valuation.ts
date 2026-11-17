@@ -6,6 +6,7 @@
  */
 import type { GameState, Creature, ValueBreakdown, ValueFactor, TankValuation, Tank, CompatVerdict, SpeciesDefinition, ListingKind, PersonalityTag } from '@/types';
 import { findSpecies } from '@/data/species';
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15)
 import { illnessName } from '../life/illness'; // Audit 2026-11-17 (J14)
 import { TANK_TIER_BY_ID } from '@/data/catalog/tanks';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -304,7 +305,7 @@ export function livestockSummary(creatures: Creature[]): string {
   const parts: string[] = [];
   for (const [sid, arr] of by) {
     const morphs = [...new Set(arr.map((c) => c.morphName).filter((m) => m && !/^wild type$/i.test(m)))].slice(0, 3);
-    const name = arr.length === 1 ? (findSpecies(sid)?.commonName ?? sid).toLowerCase() : speciesPlural(sid);
+    const name = arr.length === 1 ? lowerName(findSpecies(sid)?.commonName ?? sid) : speciesPlural(sid); // Audit 2026-11-17 (J15)
     parts.push(`${arr.length} ${name}${morphs.length ? ` (${morphs.join(', ')})` : ''}`);
   }
   return parts.join(', ');

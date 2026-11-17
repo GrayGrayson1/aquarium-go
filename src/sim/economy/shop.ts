@@ -2,6 +2,7 @@
  * Livestock shop: species availability, daily demand random walk + trend events, pre-rolled stock and
  * mid-day specials. OWNER: lane "market".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState, ShopOffer, Creature, SpeciesDefinition, Sex, MarketTrend, EventNotice, FoodDef } from '@/types';
 import type { Rng } from '../rng';
 import { nextId } from '../ids';
@@ -92,7 +93,7 @@ export function isFoodAvailable(state: GameState, def: FoodDef): boolean {
  * and the purchase refusal name them instead of an unlock label.
  */
 export function soldWithWords(def: FoodDef): string {
-  const names = (def.soldWith ?? []).map((id) => findSpecies(id)).filter((sp): sp is SpeciesDefinition => !!sp).map((sp) => pluralName(sp.commonName).toLowerCase());
+  const names = (def.soldWith ?? []).map((id) => findSpecies(id)).filter((sp): sp is SpeciesDefinition => !!sp).map((sp) => pluralName(sp.commonName));
   if (names.length <= 2) return names.join(' or ');
   return `${names.slice(0, 2).join(', ')} and more`;
 }
@@ -331,7 +332,7 @@ export function generateOffer(state: GameState, rng: Rng, speciesId: string, opt
     note = `${seller.name} — F${generation} ${morph}${seller.lineFlavour}${note ? `. ${note}` : ''}`;
   } else if (tier === 'rare' || tier === 'special') {
     const r = morphRarity(sp, lead);
-    note = `${tier === 'special' ? 'Today only' : 'Rare find'}: ${r > 0.05 ? lead.morphName : `top-quality ${sp.commonName.toLowerCase()}`}${note ? `. ${note}` : ''}`;
+    note = `${tier === 'special' ? 'Today only' : 'Rare find'}: ${r > 0.05 ? lead.morphName : `top-quality ${lowerName(sp.commonName)}`}${note ? `. ${note}` : ''}`;
     if (comp.count === 1 && !opts.label) label = singular;
   }
   // lane:genetics — a Prismatic is the headline; a group carrying one is sold as one lot (see isLotOffer).
@@ -427,7 +428,7 @@ function announcePrismatic(state: GameState, o: ShopOffer): void {
 
 /** lane:notify — the Rare stock notification's values for a Prismatic offer (0.5 §12.2). */
 function prismaticNotice(o: ShopOffer, c: Creature, sp: SpeciesDefinition): EventNotice {
-  return { topic: 'prismatic', vars: { species: sp.commonName.toLowerCase(), morph: morphLabel(c, sp), seller: o.seller, until: o.expiresHour } };
+  return { topic: 'prismatic', vars: { species: lowerName(sp.commonName), morph: morphLabel(c, sp), seller: o.seller, until: o.expiresHour } };
 }
 
 /** When new unlocks land, stock the newly available species right away. */

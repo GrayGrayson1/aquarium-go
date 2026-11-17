@@ -2,6 +2,7 @@
  * Plain-language water reports and per-species water comfort. OWNER: lane "waterlab".
  * Priority: "what is wrong and why", judged against the actual inhabitants' ranges (intersection) and water class.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { pluralPhrase } from '../economy/util';
 import type { EquipmentKind, GameState, ParamStatus, SpeciesDefinition, StatusLevel, Tank, WaterResidents, WaterIssue, WaterParamKey, WaterReport } from '@/types';
 import { clamp, fmt, ammoniaToxicityWeight, nitrateThresholds, nitrifierTempFactor } from './chem';
@@ -33,7 +34,7 @@ const PH_TOLERANCE = 0.3;
 
 // ───────────────────────────── naming helpers ─────────────────────────────
 
-const lower = (s: string) => s.toLowerCase();
+const lower = (s: string) => lowerName(s);
 const pluralName = (common: string): string => pluralPhrase(lower(common));
 
 /** "Mochi" / "your bettas" / "your betta" */

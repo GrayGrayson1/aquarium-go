@@ -5,6 +5,7 @@
  * Everything shown is derived from the species' genetics (src/sim/life/morphCatalog.ts) and the player's discoveries.
  * Undiscovered entries reveal only trait names the player has already seen in some morph — never hidden alleles.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { ChevronDown, ChevronRight, CircleCheck, Dna, Lock, Network, Sparkles } from 'lucide-react';
@@ -214,7 +215,7 @@ export function PrismaticBox({ sp, finds }: { sp: SpeciesDefinition; finds: read
         {finds.length > 0 ? (
           <>
             <strong>
-              {plural(finds.length, `Prismatic ${sp.commonName.toLowerCase()}`)} found
+              {plural(finds.length, `Prismatic ${lowerName(sp.commonName)}`)} found
             </strong>
             <ul>
               {finds.slice(0, 4).map((f) => (
@@ -226,7 +227,7 @@ export function PrismaticBox({ sp, finds }: { sp: SpeciesDefinition; finds: read
           </>
         ) : (
           <p className="pn-small" style={{ margin: 0 }}>
-            No Prismatic {sp.commonName.toLowerCase()} yet. About {shop} animals a seller stocks shimmer like this; bred young {bred[0]} — {bred[1]} with one Prismatic parent, {bred[2]} with two.
+            No Prismatic {lowerName(sp.commonName)} yet. About {shop} animals a seller stocks shimmer like this; bred young {bred[0]} — {bred[1]} with one Prismatic parent, {bred[2]} with two.
           </p>
         )}
         <p className="pn-tiny pn-muted" style={{ margin: '6px 0 0' }}>

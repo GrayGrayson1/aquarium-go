@@ -5,6 +5,7 @@
  * whatever the setting and with "Tap" for mouse players). Pure but for reading the temperature setting
  * (tests/sim/audit-guide.test.ts). OWNER: lane "ui-shell".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { Creature, GameState } from '@/types';
 import { inSharedShop } from '@/state/sharedMode';
 import { useSettings } from '@/state/settings';
@@ -71,7 +72,7 @@ export function currentCoachStep(g: GameState | null, fine = false): CoachStep |
   const step = chain[Math.max(0, tut.step)];
   const animal = guideAnimal(g);
   const name = animal?.name ?? null;
-  const species = (findSpecies(animal?.speciesId ?? g.starterId)?.commonName ?? 'animal').toLowerCase();
+  const species = lowerName(findSpecies(animal?.speciesId ?? g.starterId)?.commonName ?? 'animal'); // Audit 2026-11-17 (J15)
   const prev = tut.step > 0 ? chain[tut.step - 1] : null;
   const auto = chain[0]?.id === 'meet' && !chain[0].done && tut.step > 0 ? 1 : 0;
   return {

@@ -5,9 +5,10 @@ import type { SpeciesDefinition } from '@/types';
 import { youngKindOf } from '@/data/species';
 import { pluralName } from '../economy/util';
 import { WATER_CLASS_WORDS } from '@/data/tankLabels'; // Audit 2026-11-17 (J4)
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 
 export const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-export const lower = (s: string) => s.toLowerCase();
+export const lower = (s: string) => lowerName(s);
 
 /** "Neon Tetra" → "neon tetras", "Cherry Shrimp" → "cherry shrimp", "Watchman Goby" → "watchman gobies". */
 export function plural(sp: SpeciesDefinition | string): string {

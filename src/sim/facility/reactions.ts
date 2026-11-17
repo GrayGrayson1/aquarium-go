@@ -4,6 +4,7 @@
  * plural ("ocellaris clownfish", "neon tetras"), {tank} tank name, {gallons}, {morph}, {moment} (e.g. "a bubble nest"),
  * {who} friend's name. "a {placeholder}" becomes "an" when the value starts with a vowel sound ("an ocellaris clownfish").
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { VisitorReaction } from '@/types';
 import type { Rng } from '../rng';
 import { theTank, fixArticles, pluralName } from '../economy/util';
@@ -191,7 +192,7 @@ export interface ReactionVars {
 }
 
 export function fillTemplate(t: string, v: ReactionVars): string {
-  const species = (v.species ?? 'fish').toLowerCase();
+  const species = lowerName(v.species ?? 'fish'); // Audit 2026-11-17 (J15): proper nouns keep their capitals
   const tank = v.tank ?? 'tank';
   const values: Record<string, string | undefined> = { name: v.name ?? 'that one', species, Species: species, species_pl: pluralName(species), morph: v.morph ?? 'rare morph', moment: v.moment, who: v.who, region: v.region, gallons: v.gallons === undefined ? undefined : String(v.gallons) };
   t = fixArticles(t, (k) => values[k]);

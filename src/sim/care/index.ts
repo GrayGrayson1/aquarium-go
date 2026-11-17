@@ -2,6 +2,7 @@
  * Player husbandry actions (mutators). OWNER: lane "waterlab".
  * All return a result object the UI can toast. Every action teaches something: messages explain the "why".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState, LightPreset, Tank, EquipmentInstance, SpeciesDefinition } from '@/types';
 import { eatsFood, getFoodDef, foodTagNames, joinFoodNames } from '@/data/catalog/foods';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -149,7 +150,7 @@ export function feedTank(
     const sp = inh[0].species;
     const many = inh.filter((i) => i.species.id === sp.id).length > 1;
     const words = foodTagNames(sp.foods, { max: 3, shelfOnly: true }); // Audit 2026-11-17 (J3): the shelf's words, one table
-    parts.push(`Nothing in this tank eats it — uneaten ${food.name.toLowerCase()} will rot into ammonia.${words.length ? ` ${cap(many ? pluralName(sp) : `your ${sp.commonName.toLowerCase()}`)} ${many ? 'eat' : 'eats'} ${words.slice(0, -1).join(', ')}${words.length > 1 ? ' and ' : ''}${words[words.length - 1]}.` : ''}`);
+    parts.push(`Nothing in this tank eats it — uneaten ${food.name.toLowerCase()} will rot into ammonia.${words.length ? ` ${cap(many ? pluralName(sp) : `your ${lowerName(sp.commonName)}`)} ${many ? 'eat' : 'eats'} ${words.slice(0, -1).join(', ')}${words.length > 1 ? ' and ' : ''}${words[words.length - 1]}.` : ''}`);
   } else if (
     demand > 0 &&
     (targetId ? units + ownWaiting > demand * 2.5 + food.nutrition || units + before > tankDemand * 2.5 + food.nutrition : units + before > demand * 2.5 + food.nutrition)

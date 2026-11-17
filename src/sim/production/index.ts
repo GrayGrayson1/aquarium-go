@@ -31,6 +31,7 @@
  *   the line is kept (ADR-0025 decision 10, ADR-0030 decision 2).
  * - **Costs.** costs.ts: the line's share of its tanks' food and power, hour by hour (ADR-0025 decision 9).
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { Clutch, Creature, GameState, ListingKind, ProductionKeepRule, ProductionLine, ProductionRef, ProductionState, SpeciesDefinition, Tank } from '@/types';
 import type { ActionResult } from '../care';
 import { emitEvent } from '../context';
@@ -584,7 +585,7 @@ export function setLinePair(state: GameState, lineId: string, aId: string, bId: 
   }
   if (!pair.ok || !pair.motherId || !pair.fatherId) return no(pair.message);
   const mother = state.creatures[pair.motherId];
-  if (mother.speciesId !== line.speciesId) return no(`This line breeds ${findSpecies(line.speciesId)?.commonName.toLowerCase() ?? 'another species'}s.`);
+  if (mother.speciesId !== line.speciesId) return no(`This line breeds ${findSpecies(line.speciesId) ? spPlural(findSpecies(line.speciesId)!) : 'another species'}.`); // Audit 2026-11-17 (J15, J16): "discus", not "discuss"
   const keeper = !!moduleFor(findSpecies(line.speciesId)!).introducedByKeeper;
   for (const id of own) {
     const c = state.creatures[id];
@@ -1175,8 +1176,7 @@ function quarantine(state: GameState, line: ProductionLine, sp: SpeciesDefinitio
 /** The word for young in a notice: "juveniles", or the species' plural. */
 function youngWord(sp: SpeciesDefinition, creatures: Creature[], n: number): string {
   if (creatures.every((c) => c.lifeStage === 'juvenile')) return n === 1 ? 'juvenile' : 'juveniles';
-  const name = sp.commonName.toLowerCase();
-  return n === 1 ? name : `${name}s`;
+  return n === 1 ? lowerName(sp.commonName) : spPlural(sp); // Audit 2026-11-17 (J15, J16): "cherry shrimp", not "cherry shrimps"
 }
 
 /** Sell: when the hold ends, list what may be listed, by life stage, at fair value × 0.9 (PROD-012, PROD-014). */

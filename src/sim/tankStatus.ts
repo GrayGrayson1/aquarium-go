@@ -8,6 +8,7 @@
  *    as `cache.foodLevel` for the HUD but does not change the status by itself.
  * Everything here is cheap (one pass over the tank's animals + the food inventory) and runs in refreshTankCache.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { Creature, FoodDef, GameState, SpeciesDefinition, Tank } from '@/types';
 import type { StatusLevel, WaterResidents } from '@/types/reports';
 import { findSpecies } from '@/data/species';
@@ -79,7 +80,7 @@ function who(creatures: Pick<Creature, 'name' | 'speciesId'>[]): { subject: stri
   const species = new Set(creatures.map((c) => c.speciesId));
   if (species.size === 1) {
     const sp = findSpecies(creatures[0].speciesId);
-    return { subject: `${creatures.length} ${sp ? pluralName(sp.commonName).toLowerCase() : 'animals'}`, plural: true };
+    return { subject: `${creatures.length} ${sp ? pluralName(sp.commonName) : 'animals'}`, plural: true };
   }
   return { subject: `${creatures.length} animals`, plural: true };
 }
@@ -358,7 +359,7 @@ export function tankFoodOutlook(state: GameState, tankId: string, pre?: { index:
   if (level === 'ok') return { ...OK_OUTLOOK, meals: worstMeals };
   const affected = level === 'out' ? out : low;
   const names = affected.map((c) => c.name);
-  const subject = affected.length > 3 && new Set(affected.map((c) => c.speciesId)).size === 1 ? `your ${pluralName(needy[0].commonName).toLowerCase()}` : listNames(names);
+  const subject = affected.length > 3 && new Set(affected.map((c) => c.speciesId)).size === 1 ? `your ${pluralName(needy[0].commonName)}` : listNames(names);
   const verb = affected.length === 1 ? 'eats' : 'eat';
   const mealsLeft = Math.max(1, Math.floor(worstMeals));
   const text = level === 'out' ? `No food left that ${subject} ${verb}` : `Food for ${subject} is running low (about ${mealsLeft} meal${mealsLeft === 1 ? '' : 's'} left)`;

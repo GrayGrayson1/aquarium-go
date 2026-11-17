@@ -3,6 +3,7 @@
  */
 import type { Difficulty, GameState, Rarity, SpeciesDefinition } from '@/types';
 import { findSpecies } from '@/data/species';
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 
 export const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
 export const clamp01 = (v: number): number => clamp(v, 0, 1);
@@ -69,7 +70,7 @@ export function pluralPhrase(name: string): string {
 
 /** Lower-case plural of a species common name ("neon tetras", "clownfish", "cherry shrimp", "gobies"). */
 export function pluralName(commonName: string): string {
-  return pluralPhrase(commonName.toLowerCase());
+  return pluralPhrase(lowerName(commonName));
 }
 
 /**
@@ -88,7 +89,7 @@ export function speciesPlural(id: string): string {
 }
 
 export function speciesSingular(id: string): string {
-  return (findSpecies(id)?.commonName ?? id.replace(/_/g, ' ')).toLowerCase();
+  return lowerName(findSpecies(id)?.commonName ?? id.replace(/_/g, ' '));
 }
 
 export const DIFFICULTY_INDEX: Record<Difficulty, number> = { beginner: 0, intermediate: 1, advanced: 2, expert: 3 };

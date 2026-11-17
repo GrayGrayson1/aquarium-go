@@ -17,6 +17,7 @@
  * another aquarium) is recognised as stale: it is replaced with where the player is, never applied or booted (NAV-012
  * A3). A typed or followed link has no tag and opens as a link.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useUI, type UIState } from '@/state/ui';
@@ -478,7 +479,7 @@ function routeNames(g: GameState | null): RouteNames {
       const o = g?.market.stock.find((x) => x.id === id);
       const sp = o ? findSpecies(o.speciesId) : undefined;
       if (!o || !sp) return null;
-      return o.creatures.some(isPrismatic) ? `Prismatic ${sp.commonName.toLowerCase()}` : (o.label ?? sp.commonName);
+      return o.creatures.some(isPrismatic) ? `Prismatic ${lowerName(sp.commonName)}` : (o.label ?? sp.commonName);
     },
   };
 }

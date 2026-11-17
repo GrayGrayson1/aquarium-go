@@ -5,6 +5,7 @@
  * Deterministic (only ctx.rng), substeps internally (any dt up to many hours), clamps every stat, never NaN.
  */
 import { pluralName } from '../economy/util';
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15)
 import type { Creature, FoodTag, GameState, SpeciesDefinition, Tank } from '@/types';
 import type { SimContext } from '../context';
 import { findSpecies } from '@/data/species';
@@ -190,7 +191,7 @@ function sanitize(c: Creature): void {
 }
 
 function lc(s: string): string {
-  return s.toLowerCase();
+  return lowerName(s); // Audit 2026-11-17 (J15): proper nouns keep their capitals
 }
 
 function pronoun(c: Creature): { they: string; their: string } {

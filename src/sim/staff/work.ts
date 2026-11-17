@@ -16,6 +16,8 @@
  *    salt through the normal shop purchases, never spending past the daily budget.
  *  - Docents give short talks at 11 AM, 2 PM and 4 PM while the doors are open; `docentEffect` feeds the visitor sim.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
+import { pluralName } from '../economy/util'; // Audit 2026-11-17 (J15): a talk's topic
 import type { FoodDef, GameState, SpeciesDefinition, StaffMember, Tank } from '@/types';
 import { emitEvent } from '../context';
 import { hourOfDay, formatClock, crossings } from '../time';
@@ -612,7 +614,7 @@ export function keeperWaterCare(state: GameState, m: StaffMember, tank: Tank, ro
 const plural = (n: number, s: string, p = `${s}s`) => `${n} ${n === 1 ? s : p}`;
 
 function speciesPhrase(list: SpeciesDefinition[]): string {
-  const names = [...new Set(list.map((s) => s.commonName.toLowerCase()))];
+  const names = [...new Set(list.map((s) => lowerName(s.commonName)))];
   if (names.length <= 2) return names.join(' and ');
   return `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
 }
@@ -1110,7 +1112,7 @@ function talkTopic(state: GameState, tankId: string): string {
       best = sp.commonName;
     }
   }
-  return best ? best.toLowerCase().replace(/s$/, '') + 's' : 'aquarium life';
+  return best ? pluralName(best) : 'aquarium life'; // Audit 2026-11-17 (J15, J16): "Banggai cardinalfish", "cherry shrimp", not "cherry shrimps"
 }
 
 /** A docent gives a talk at one of their exhibits (rotating). */

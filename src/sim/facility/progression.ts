@@ -6,6 +6,7 @@
  * (the max over the aliases other lanes may bump plus what this module derives from the market history and the
  * creature records), so an activity is never rewarded twice even if two lanes both count it.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState, MasteryTrack, QuestState, SpeciesDefinition, Tank, TankTier, WaterClass } from '@/types';
 import type { SimContext } from '../context';
 import type { ActionResult } from '../care';
@@ -662,7 +663,7 @@ export function interpolate(state: GameState, text: string): string {
   const sal = sp?.salinitySG ? `${sp.salinitySG.idealMin.toFixed(3)}–${sp.salinitySG.idealMax.toFixed(3)}` : 'marine salinity';
   return text
     .replace(/\{name\}/g, starter?.name ?? sp?.commonName ?? 'your starter')
-    .replace(/\{species\}/g, (sp?.commonName ?? 'fish').toLowerCase())
+    .replace(/\{species\}/g, lowerName(sp?.commonName ?? 'fish')) // Audit 2026-11-17 (J15)
     .replace(/\{temp\}/g, temp)
     .replace(/\{salinity\}/g, sal);
 }

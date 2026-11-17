@@ -1,6 +1,7 @@
 /**
  * Player actions on creatures. OWNER: lane "lifecycle". Signatures are contracts (UI calls them through `mutate`).
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState } from '@/types';
 import type { ActionResult } from '../care';
 import { findSpecies } from '@/data/species';
@@ -65,7 +66,7 @@ export function moveCreature(state: GameState, creatureId: string, tankId: strin
   const small = tankGallons(tank) < need * SLIGHTLY_SMALL_TANK; // Audit 2026-11-17 (D4): a little small isn't a heads-up
   return {
     ok: true,
-    message: `Moved ${c.name} to ${tank.name}.${small ? ` Heads up: an adult ${sp.commonName.toLowerCase()} needs at least ${sp.recommendedMinTankGallons} gallons.` : ' Give it a little while to settle in.'}`,
+    message: `Moved ${c.name} to ${tank.name}.${small ? ` Heads up: an adult ${lowerName(sp.commonName)} needs at least ${sp.recommendedMinTankGallons} gallons.` : ' Give it a little while to settle in.'}`,
   };
 }
 

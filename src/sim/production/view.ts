@@ -2,6 +2,7 @@
  * Production lines: what the Production tab shows, as numbers (DESIGN-S3D §8.6; 0.5 §11.1). OWNER: lane "production".
  * Pure reads of the state: the screens add the words. Every figure comes from the same state the line runs on.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { Clutch, Creature, GameState, ProductionLine, SpeciesDefinition, Tank } from '@/types';
 import { findSpecies } from '@/data/species';
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -126,7 +127,7 @@ export function lineView(state: GameState, line: ProductionLine): LineView | nul
     quarantined.count = inHold.creatureIds.length;
     const members = inHold.creatureIds.map((id) => state.creatures[id]).filter(Boolean);
     const grown = members.length > 0 && members.every((c) => c.lifeStage !== 'juvenile');
-    quarantined.word = grown ? (quarantined.count === 1 ? sp.commonName.toLowerCase() : spPlural(sp)) : quarantined.count === 1 ? 'juvenile' : 'juveniles';
+    quarantined.word = grown ? (quarantined.count === 1 ? lowerName(sp.commonName) : spPlural(sp)) : quarantined.count === 1 ? 'juvenile' : 'juveniles';
     quarantined.daysLeft = Math.max(0, Math.ceil((end - now) / 24));
     quarantined.listsDay = dayOf(end);
     quarantined.holdFraction = Math.max(0, Math.min(1, (now - inHold.quarantinedHour) / QUARANTINE_HOURS));

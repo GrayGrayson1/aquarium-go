@@ -47,6 +47,12 @@ import { mitigationText } from '@/sim/compat/engine';
 import { lastHurtBy } from '@/sim/life/step';
 import { FOOD_DELIVERY_WORD, EQUIPMENT_KIND_LABEL } from '@/ui/common/format';
 import { PANEL_LABEL } from '@/ui/nav/routes';
+import { lowerName } from '@/data/speciesWords';
+import { pluralName, speciesSingular } from '@/sim/economy/util';
+import { plural as compatPlural, the as compatThe } from '@/sim/compat/text';
+import { spName, spPlural } from '@/sim/life/breeding/common';
+import { livestockSummary } from '@/sim/economy/valuation';
+import { fillTemplate } from '@/sim/facility/reactions';
 
 const text = (markup: string) => markup.replace(/<[^>]+>/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Ember', seed: 8 });
@@ -353,5 +359,36 @@ describe('J14: internal ids and tags are shown as words', () => {
     const c = Object.values(g.creatures)[0];
     c.illness = { kind: 'stress_coloration', severity: 40, sinceHour: g.clock.hour } as never;
     expect(creatureShowReasons(g, c).join(' | ')).toMatch(/Unwell \(stress colouring\)/);
+  });
+});
+
+describe('J15: species names in sentences keep their proper nouns', () => {
+  it('“German blue ram”, “African dwarf frog”, “White Cloud Mountain minnow”; everything else lower case', () => {
+    expect(lowerName('German Blue Ram')).toBe('German blue ram');
+    expect(lowerName('White Cloud Mountain Minnow')).toBe('White Cloud Mountain minnow');
+    expect(lowerName('Endler’s Livebearer')).toBe('Endler’s livebearer');
+    expect(lowerName('Neon Tetra')).toBe('neon tetra');
+    expect(pluralName('Banggai Cardinalfish')).toBe('Banggai cardinalfish');
+    expect(pluralName('Amano Shrimp')).toBe('Amano shrimp');
+    expect(pluralName('Mexican Turbo Snail')).toBe('Mexican turbo snails');
+    expect(speciesSingular('african_dwarf_frog')).toBe('African dwarf frog');
+    expect(compatPlural(getSpecies('german_blue_ram'))).toBe('German blue rams');
+    expect(compatThe(getSpecies('german_blue_ram'))).toBe('the German blue ram');
+    expect(getSpecies('endlers_livebearer').commonName).toBe('Endler’s Livebearer');
+  });
+
+  it('the breeding lines’ spName is the same list: “Banggai cardinalfish”, “royal gramma”, “kuhli loaches”', () => {
+    expect(spName(getSpecies('banggai_cardinalfish'))).toBe('Banggai cardinalfish');
+    expect(spName(getSpecies('white_cloud_minnow'))).toBe('White Cloud Mountain minnow');
+    expect(spName(getSpecies('royal_gramma'))).toBe('royal gramma');
+    expect(spPlural(getSpecies('kuhli_loach'))).toBe('kuhli loaches');
+    expect(spPlural(getSpecies('discus'))).toBe('discus');
+  });
+
+  it('a tank’s livestock summary and a visitor’s line keep the capital too', () => {
+    const g = base();
+    const ram = createCreature(g, simRng(g), 'german_blue_ram');
+    expect(livestockSummary([ram])).toMatch(/^1 German blue ram/);
+    expect(fillTemplate('Look at the {species}!', { species: 'African Dwarf Frog' })).toBe('Look at the African dwarf frog!');
   });
 });

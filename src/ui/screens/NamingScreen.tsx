@@ -2,6 +2,7 @@
  * Naming: the chosen individual gets a name (suggestion chips) and the shop gets its name. Begin creates the
  * real game from the exact individual the player saw. OWNER: lane "ui-shell".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Dices, Store } from 'lucide-react';
@@ -61,7 +62,7 @@ function warmLine(name: string, speciesId: string, personality: string[], morph:
     ocellaris_clownfish: `${who} is ${trait} ${morphText}clownfish, waddling through the live rock like it owns the place.`,
     lined_seahorse: `${who} is ${trait} ${morphText}lined seahorse, tail wrapped around a branch, watching the water drift by.`,
   };
-  return lines[speciesId] ?? `${who} is ${trait} ${sp.commonName.toLowerCase()}, settling into a brand-new home.`;
+  return lines[speciesId] ?? `${who} is ${trait} ${lowerName(sp.commonName)}, settling into a brand-new home.`;
 }
 
 export function NamingScreen() {
@@ -143,7 +144,7 @@ export function NamingScreen() {
           <div className="ag-grow">
             <div className="ag-overline">{shared ? SHARED_WORDS.newShop : sp.starterIdentity}</div>
             <h1 className="ag-naming__title">
-              Name your <em>{sp.commonName.toLowerCase()}</em>
+              Name your <em>{lowerName(sp.commonName)}</em>
             </h1>
             <div className="ag-naming__facts">
               {preview && !/^wild\s*type$/i.test(preview.morphName) && <span>{preview.morphName}</span>}

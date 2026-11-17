@@ -5,6 +5,7 @@
  * paused line: why it waits (the chain), Add a quarantine tank, or Wait; once decided it reads "Resumes Day {d}".
  * IssueAction is each item's main button, shared with the Overview and the alerts drawer. OWNER: lane "automation".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useState } from 'react';
 import { ArrowDown, ArrowLeft, CircleCheck, Factory, Heart, Plus, ShieldCheck, Sprout, TriangleAlert, OctagonAlert } from 'lucide-react';
 import type { GameState } from '@/types';
@@ -358,7 +359,7 @@ function WhyLineStops({ g, lineId }: { g: GameState; lineId: string }) {
   const wait = Math.max(ready, dayOf(until));
   if (!qt || wait <= ready) return null;
   const served = productionLines(g).filter((l) => l.tanks.quarantine.includes(qt.id));
-  const sp = findSpecies(line.speciesId)?.commonName.toLowerCase() ?? 'animal';
+  const sp = lowerName(findSpecies(line.speciesId)?.commonName ?? 'animal'); // Audit 2026-11-17 (J15)
   const lines = served.length <= 1 ? `the ${line.name}` : served.length === 2 ? (served.every((l) => l.speciesId === line.speciesId) ? `both ${sp} lines` : 'both lines') : `${served.length} lines`;
   const short = line.name.replace(/ line$/i, '');
   const raise = g.tanks[line.tanks.raise]?.name ?? 'The grow-out tank';

@@ -4,6 +4,7 @@
  * the dialogs (End line, Add a quarantine tank, Sort, choosing another pair or tank). Setting up a line is in
  * ProductionSetup.tsx. The numbers come from src/sim/production/view.ts; the words are the designs' and ADR-0030's.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useState, type ReactNode } from 'react';
 import clsx from 'clsx';
 import { Box, ChevronRight, CirclePlay, Egg, Factory, Gavel, Heart, ListFilter, Pause, ShieldCheck, Sprout, TrendingUp, TriangleAlert } from 'lucide-react';
@@ -226,9 +227,9 @@ function sellFoot(v: LineView): string {
   const s = v.selling;
   if (s.listed > 0) {
     const price = s.each !== undefined ? ` · Buy now ${s.listings > 1 ? 'from ' : ''}${formatMoney(s.each)}${s.listed > 1 ? ' each' : ''}` : '';
-    return `${s.title ?? `${s.listed} ${s.listed === 1 ? v.sp.commonName.toLowerCase() : spPlural(v.sp)}`} listed${price}`;
+    return `${s.title ?? `${s.listed} ${s.listed === 1 ? lowerName(v.sp.commonName) : spPlural(v.sp)}`} listed${price}`;
   }
-  if (v.week.sold > 0) return `Sold ${v.week.sold} ${v.week.sold === 1 ? v.sp.commonName.toLowerCase() : spPlural(v.sp)} this week · ${formatMoney(v.week.revenue)}`;
+  if (v.week.sold > 0) return `Sold ${v.week.sold} ${v.week.sold === 1 ? lowerName(v.sp.commonName) : spPlural(v.sp)} this week · ${formatMoney(v.week.revenue)}`;
   return 'Nothing listed';
 }
 

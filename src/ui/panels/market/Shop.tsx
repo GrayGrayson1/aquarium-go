@@ -210,7 +210,7 @@ function NotStocked({ g, q }: { g: GameState; q: string }) {
               </span>
             }
           >
-            {open ? `No ${speciesPlural(sp).toLowerCase()} in the shop today. New stock arrives every morning at 8.` : lockHintOf(g, sp) || `You can’t buy ${speciesPlural(sp).toLowerCase()} yet.`}
+            {open ? `No ${speciesPlural(sp)} in the shop today. New stock arrives every morning at 8.` : lockHintOf(g, sp) || `You can’t buy ${speciesPlural(sp)} yet.` /* Audit 2026-11-17 (J15): already lower case, proper nouns kept */}
           </Callout>
         );
       })}

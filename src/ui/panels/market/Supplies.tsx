@@ -2,6 +2,7 @@
  * Market › Supplies — foods, salt, equipment for a tank (buy & install), decor shortcut to Build.
  * OWNER: lane "ui-panels".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { Utensils, Wrench, Mountain, Lock, Check, Package, Wallet } from 'lucide-react';
@@ -166,7 +167,7 @@ export function SuppliesTab({ g, focusFood }: { g: GameState; /** Deep link (`fo
                   <div className="pn-grow">
                     <div className="pn-row pn-gap-2 pn-row--wrap">
                       <b>{f.name}</b>
-                      {specific && <Chip tone="aqua">Made for {eaters.length === 1 ? eaters[0].commonName.toLowerCase() : 'your animals'}</Chip>}
+                      {specific && <Chip tone="aqua">Made for {eaters.length === 1 ? lowerName(eaters[0].commonName) : 'your animals'}</Chip>}
                       <Chip>{FOOD_DELIVERY_WORD[f.delivery] ?? titleCase(f.delivery) /* Audit 2026-11-17 (J14): the feed picker's words */}</Chip>
                     </div>
                     <div className="pn-small pn-muted">

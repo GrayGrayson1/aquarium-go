@@ -23,7 +23,7 @@ export const ROSTER: RosterEntry[] = [
   { id: 'lined_seahorse', commonName: 'Lined Seahorse', scientificName: 'Hippocampus erectus', env: 'marine', lane: 'species-marine', visual: 'special', unlock: 'starter|marine_seahorse', behaviorSet: 'seahorse' },
   // Freshwater
   { id: 'fancy_guppy', commonName: 'Fancy Guppy', scientificName: 'Poecilia reticulata', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'fw_basic', behaviorSet: 'livebearer' },
-  { id: 'endlers_livebearer', commonName: "Endler's Livebearer", scientificName: 'Poecilia wingei', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'fw_basic', behaviorSet: 'livebearer' },
+  { id: 'endlers_livebearer', commonName: 'Endler’s Livebearer', scientificName: 'Poecilia wingei', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'fw_basic', behaviorSet: 'livebearer' },
   { id: 'neon_tetra', commonName: 'Neon Tetra', scientificName: 'Paracheirodon innesi', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'fw_basic', behaviorSet: 'schooling_small' },
   { id: 'cardinal_tetra', commonName: 'Cardinal Tetra', scientificName: 'Paracheirodon axelrodi', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'fw_intermediate', behaviorSet: 'schooling_small' },
   { id: 'white_cloud_minnow', commonName: 'White Cloud Mountain Minnow', scientificName: 'Tanichthys albonubes', env: 'freshwater', lane: 'species-fw', visual: 'fish', unlock: 'fw_basic', behaviorSet: 'schooling_small' },

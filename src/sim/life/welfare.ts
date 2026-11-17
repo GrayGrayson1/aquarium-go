@@ -3,6 +3,7 @@
  * OWNER: lane "lifecycle". Everything here is pure (reads state, never mutates) so the UI can reuse it for
  * "why is my animal stressed?" explanations.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { pluralName } from '../economy/util';
 import type { Creature, GameState, SpeciesDefinition, Tank } from '@/types';
 import { getSpecies, findSpecies } from '@/data/species';
@@ -399,7 +400,7 @@ export function conspecificTension(sp: SpeciesDefinition, g: GroupInfo | undefin
   let amount = 0;
   let label = '';
   const adult = c.lifeStage === 'adult' || c.lifeStage === 'elder';
-  const plural = sp.commonName.toLowerCase();
+  const plural = lowerName(sp.commonName);
   if (adult) {
     const male = c.reproRole === 'male' || c.reproRole === 'transitioning_female';
     const female = c.reproRole === 'female';

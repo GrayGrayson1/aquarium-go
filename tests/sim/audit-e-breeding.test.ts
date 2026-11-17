@@ -168,7 +168,8 @@ describe('E6: every spawning gate shows at once, and a ripe female says why she 
     expect(text).toMatch(/only spawn in dense cover \(plants or moss\) — cover here is \d+% \(they need about 40%\)\./);
     expect(text).toMatch(/The water is too warm to spawn \(needs ≤ 24 °C\)\./);
     f.repro.stage = 'gravid';
-    expect(breedingStatus(state, f.id)).toMatchObject({ label: 'Full of eggs', detail: expect.stringMatching(/^Can’t spawn yet: White cloud mountain minnows only spawn in dense cover \(plants or moss\) — cover here is \d+% \(they need about 40%\)$/) });
+    // Audit 2026-11-17 (J15): the mountain's name keeps its capitals (one list of proper nouns, lowerName)
+    expect(breedingStatus(state, f.id)).toMatchObject({ label: 'Full of eggs', detail: expect.stringMatching(/^Can’t spawn yet: White Cloud Mountain minnows only spawn in dense cover \(plants or moss\) — cover here is \d+% \(they need about 40%\)$/) });
   });
 });
 

@@ -12,6 +12,7 @@
  *   illness.ts     plausible illnesses with causes + cures
  *   step.ts        per-tank metabolism/feeding/health/incidents step
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { GameState, Tank, Creature, Genome, CreatureVisualParams, SpeciesDefinition, Sex, PersonalityTag, Clutch } from '@/types';
 import { isFoodAvailable } from '../economy/shop'; // chunk 17: foods sold with their animals
 import type { SimContext } from '../context';
@@ -79,7 +80,7 @@ export function createCreature(state: GameState, rng: Rng, speciesId: string, op
     history.push({ hour, kind: 'born', text: `Born in your care${parents}.` });
   } else {
     const origin = opts.captiveBred === false ? 'Wild-collected' : 'Captive-bred';
-    const spName = sp.commonName.toLowerCase();
+    const spName = lowerName(sp.commonName);
     history.push({ hour, kind: 'acquired', text: opts.breederName ? `${origin} ${spName} from ${opts.breederName}.` : `${origin} ${spName}, raised by a hobby breeder.` });
   }
   for (const m of genome.mutations ?? []) {

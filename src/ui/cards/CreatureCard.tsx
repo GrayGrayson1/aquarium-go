@@ -3,6 +3,7 @@
  * breeding, care facts and history — plus follow / photo / favourite / move / list actions.
  * Side sheet on desktop, bottom sheet on phones. OWNER: lane "ui-shell".
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { useGame } from '@/state/game'; // chunk 11: switches read the live game
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import clsx from 'clsx';
@@ -402,7 +403,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
       {showReadiness && <Meter label="Breeding readiness" value={c.stats.breedingReadiness} tone="auto" display={levelWord(c.stats.breedingReadiness)} />}
       {/* lane:guide — say why there is nothing to pick instead of showing nothing */}
       {candidates.length === 0 && sp.breeding.system !== 'not_in_game' && sp.breeding.conditions.needsPartner && (c.lifeStage === 'adult' || c.lifeStage === 'elder') && (
-        <div className="ag-small ag-muted">Breeding needs a partner, and you have no other {sp.commonName.toLowerCase()}. New animals turn up in the Market.</div>
+        <div className="ag-small ag-muted">Breeding needs a partner, and you have no other {lowerName(sp.commonName)}. New animals turn up in the Market.</div>
       )}
       {candidates.length > 0 && sp.breeding.system !== 'not_in_game' && (
         <div className="ag-breeding__pair">
@@ -415,7 +416,7 @@ function Breeding({ c, game, sp }: { c: Creature; game: GameState; sp: SpeciesDe
               </Chip>
             ))}
           </div>
-          {candidates.length > 8 && <div className="ag-small ag-muted">The 8 likeliest partners are shown ({candidates.length - 8} more). Open another {sp.commonName.toLowerCase()}’s card to pair from there.</div>}
+          {candidates.length > 8 && <div className="ag-small ag-muted">The 8 likeliest partners are shown ({candidates.length - 8} more). Open another {lowerName(sp.commonName)}’s card to pair from there.</div>}
           {check && (
             <div className={clsx('ag-breedcheck', check.ok ? 'is-ok' : 'is-no')}>
               <div className="ag-small">{check.ok ? 'Ready to try.' : 'Not yet:'}</div>

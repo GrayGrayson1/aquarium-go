@@ -9,6 +9,7 @@
  * Pure functions over catalog data only (no game state, no RNG), so the water sim (`runAutofeeder` in
  * src/sim/water/step.ts), the fit verdicts (./fit.ts) and any UI can share them without import cycles.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import type { EquipmentInstance, FoodDef, FoodTag, SpeciesDefinition } from '@/types';
 import { FOODS, foodForm, isAutofeederFood, autofeedFoodsForTags, eatsFood, madeForOtherSpecies, madeForOtherWater, FOOD_TAG_NAMES } from '@/data/catalog/foods'; // Audit 2026-11-17 (J3): FOOD_TAG_NAMES
 import { getEquipmentDef } from '@/data/catalog/equipment';
@@ -153,7 +154,7 @@ export interface EaterGroup {
   name?: string;
 }
 
-const lc = (s: string) => s.toLowerCase();
+const lc = (s: string) => lowerName(s);
 const capFirst = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const joinAnd = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 const joinOr = (xs: string[]) => (xs.length <= 1 ? xs[0] ?? '' : `${xs.slice(0, -1).join(', ')} or ${xs[xs.length - 1]}`);

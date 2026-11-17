@@ -3,6 +3,7 @@
  * Pure functions over GameState (Immer drafts). Randomness only via ctx.rng / simRng(state);
  * cosmetic anchor jitter uses a hash-seeded RNG so it never disturbs the simulation stream.
  */
+import { lowerName } from '@/data/speciesWords'; // Audit 2026-11-17 (J15): proper nouns keep their capitals
 import { pluralPhrase } from '@/sim/economy/util';
 import type {
   Creature,
@@ -252,16 +253,10 @@ export function hurt(c: Creature, stress: number, health: number, injury: number
 
 // ───────────────────────────── naming / text ─────────────────────────────
 
-const PROPER_PREFIXES = ['Banggai', 'Endler', 'Amano', 'African', 'White Cloud', 'Kuhli', 'Royal'];
-
-/** Species name for running text: "axolotl", "betta", "Banggai cardinalfish". */
+/** Species name for running text: "axolotl", "betta", "Banggai cardinalfish". Audit 2026-11-17 (J15): one list of
+ *  proper nouns for the whole game (lowerName); "Royal" and "Kuhli" aren't place or people names in a sentence. */
 export function spName(sp: SpeciesDefinition): string {
-  const n = sp.commonName;
-  if (PROPER_PREFIXES.some((p) => n.startsWith(p))) {
-    const [first, ...rest] = n.split(' ');
-    return [first, ...rest.map((w) => w.toLowerCase())].join(' ');
-  }
-  return n.toLowerCase();
+  return lowerName(sp.commonName);
 }
 
 /** Plural species name for running text: "axolotls", "ocellaris clownfish", "cherry shrimp", "fancy guppies". */
