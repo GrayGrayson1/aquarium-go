@@ -10,7 +10,8 @@ import { createCreature, addCreature, stepTankCreatures } from '@/sim/life';
 import { makeContext } from '@/sim/context';
 import { simRng, mulberry32 } from '@/sim/rng';
 import { previewAddition } from '@/sim/compat';
-import { getSpecies } from '@/data/species';
+import { getSpecies, ALL_SPECIES } from '@/data/species';
+import { composition, generateOffer } from '@/sim/economy/shop';
 import { getFoodDef } from '@/data/catalog/foods';
 import { offerDiet } from '@/ui/panels/market/offerDietText';
 import { lifespanFacts } from '@/ui/common/lifespan';
@@ -110,5 +111,42 @@ describe('D20: old age never takes the first companion (the owner’s decision);
     expect(lifespanFacts(old, sp, s.clock.hour).note).toBe('Ash is in her last stretch: about 12 days left.');
     old.status = 'dead';
     expect(lifespanFacts(old, sp, s.clock.hour).note).toBeNull();
+  });
+});
+
+describe('D3: group animals that need one companion come as a pair (the owner’s decision)', () => {
+  const PAIRED = ['fancy_goldfish', 'comet_goldfish', 'koi', 'african_dwarf_frog'];
+
+  it('goldfish, comets, koi and African dwarf frogs are always offered two together', () => {
+    for (const id of PAIRED) {
+      const sp = getSpecies(id);
+      expect(sp.social.minGroup, id).toBe(2);
+      const rng = mulberry32(3);
+      for (let i = 0; i < 50; i++) {
+        const comp = composition(sp, rng);
+        expect(comp.count, id).toBe(2);
+        expect(comp.label('fancy goldfish', 'Fancy goldfish')).toBe('Pair of fancy goldfish');
+      }
+    }
+  });
+
+  it('no species that needs company is only ever sold alone', () => {
+    for (const sp of ALL_SPECIES) {
+      if ((sp.social?.minGroup ?? 1) < 2) continue;
+      const rng = mulberry32(11);
+      let most = 0;
+      for (let i = 0; i < 200; i++) most = Math.max(most, composition(sp, rng).count);
+      expect(most, sp.id).toBeGreaterThanOrEqual(sp.social.minGroup);
+    }
+  });
+
+  it('a goldfish pair for an empty cool tank needs no risk tick for being alone', () => {
+    const s = base();
+    const tank = createTank(s, 'g40B', 'freshwater_cool', { cycled: true });
+    const offer = generateOffer(s, mulberry32(8), 'fancy_goldfish', { expiresHour: s.clock.hour + 48 })!;
+    expect(offer.kind).toBe('group');
+    expect(offer.creatures).toHaveLength(2);
+    const r = previewAddition(s, tank.id, { speciesId: 'fancy_goldfish', creatures: offer.creatures });
+    expect(texts(r)).not.toMatch(/needs a group of at least/);
   });
 });
