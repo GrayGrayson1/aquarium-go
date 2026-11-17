@@ -87,6 +87,7 @@ import { CHIP_ICON } from '../common/tankChipIcons'; // lane:automation (chunk 5
 import { fixForAttention, fixForWaterIssue } from '../common/fixLinks'; // chunk 19 (ADR-0055 decision 2, QOL-002)
 import { isWorn } from '../common/notify'; // chunk 19 (QOL-002)
 import { FixButton } from './FixButton'; // chunk 19 (QOL-002)
+import { animalStatus } from '@/sim/tankStatus'; // Audit 2026-11-17 (D16)
 
 /** A switch flips what the game holds now, not this card's throttled copy (a quick second click turns it back, as before). */
 const liveSignage = (tankId: string): boolean => !!useGame.getState().game?.tanks[tankId]?.signage;
@@ -480,6 +481,9 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
   const exhibit = safe('exhibitScore', () => exhibitScore(game, tank.id), null);
   const load = tank.cache.stockingLoad ?? 0;
   const selected = useUI((s) => s.selectedCreatureId);
+  // Audit 2026-11-17 (D16): the animals behind the tank's "3 neon tetras are stressed" are ringed in its colour
+  const flagged = safe('animalStatus', () => animalStatus(residents), null);
+  const flaggedIds = new Set(flagged?.creatureIds ?? []);
   return (
     <>
       <Section title={<><Fish size={12} aria-hidden /> Residents · {residents.length}</>} fix="residents">
@@ -488,7 +492,7 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
         ) : (
           <div className="ag-residents">
             {residents.map((c) => (
-              <button type="button" key={c.id} className={clsx('ag-resident', selected === c.id && 'is-selected')} onClick={() => { sfx('click'); useUI.getState().set({ selectedCreatureId: c.id }); }}>
+              <button type="button" key={c.id} className={clsx('ag-resident', selected === c.id && 'is-selected', flagged && flaggedIds.has(c.id) && `is-flag-${flagged.status}`)} title={flagged && flaggedIds.has(c.id) ? flagged.reason ?? undefined : undefined} onClick={() => { sfx('click'); useUI.getState().set({ selectedCreatureId: c.id }); }}>
                 <Portrait subject={c} shape="circle" className="ag-resident__art" size={96} />
                 <span className="ag-resident__name">{c.name}</span>
               </button>
@@ -499,7 +503,7 @@ function LifeTab({ game, tank }: { game: GameState; tank: Tank }) {
         <HandFeedNote speciesIds={residents.map((c) => c.speciesId)} />
         <Meter label="Stocking load" value={Math.min(load, 1.3) * 100} max={130} tone={load > 1 ? 'danger' : load > 0.85 ? 'watch' : 'good'} display={`${stockingWord(load)} · ${Math.round(load * 100)}%`} />
       </Section>
-      <Section title="Compatibility">
+      <Section title="Compatibility" fix="compat" /* Audit 2026-11-17 (D16): a creature card's injury note links here */>
         <CompatView report={compat} compact />
       </Section>
       <Section title={<><Sparkles size={12} aria-hidden /> Beauty</>}>

@@ -20,6 +20,7 @@ import { lifespanFacts } from '@/ui/common/lifespan';
 import { convertTempText } from '@/ui/common/format';
 import { illnessSeverityPct, stressWord, stressTone, healthWord, healthTone, isMemoryCard } from '@/ui/cards/conditionWords';
 import { moveButton, moveNeedsAck } from '@/ui/cards/moveRisk';
+import { fixForCreatureNote } from '@/ui/cards/noteFixes';
 
 const texts = (r: CompatReport) => r.reasons.map((x) => x.text).join('\n');
 const base = (): GameState => newGame({ starterId: 'betta', starterName: 'Test', seed: 777 });
@@ -417,5 +418,17 @@ describe('D21: lines name the species they are about', () => {
   it('the offer’s callouts use the plural: “Royal grammas need…”', () => {
     expect(capitalPlural(getSpecies('royal_gramma'))).toBe('Royal grammas');
     expect(capitalPlural(getSpecies('neon_tetra'))).toBe('Neon tetras');
+  });
+});
+
+describe('D16: the creature card’s notes link to where each problem is fixed', () => {
+  const c = { tankId: 't1', speciesId: 'neon_tetra' };
+  it('habitat → Build › Decor for its tank; lonely → the shop searched for its kind; injuries → Compatibility; water → Water care', () => {
+    expect(fixForCreatureNote(c, 'Habitat: needs more hiding places (0 of ~2).')?.link).toEqual({ label: 'Add decor', to: { kind: 'panel', panel: 'build', target: 'decor:t1' } });
+    expect(fixForCreatureNote(c, 'Stressed — mainly lonely — likes groups of 6+.')).toEqual({ link: { label: 'Find more in the shop', to: { kind: 'panel', panel: 'market', target: 'tab:shop' } }, search: 'Neon Tetra' });
+    expect(fixForCreatureNote(c, 'Healing from injuries — Rex the tiger barb has been nipping her.')?.link.to).toEqual({ kind: 'card', tankId: 't1', tab: 'life', fix: 'compat' });
+    expect(fixForCreatureNote(c, 'Bob is struggling with the water (too warm).')?.link.label).toBe('Water care');
+    expect(fixForCreatureNote(c, 'Very hungry — time to feed.')).toBeNull();
+    expect(fixForCreatureNote({ tankId: null, speciesId: 'neon_tetra' }, 'Habitat: needs plants.')).toBeNull();
   });
 });
