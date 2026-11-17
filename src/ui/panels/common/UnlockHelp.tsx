@@ -33,6 +33,8 @@ export interface LockView {
   research: { id: string; name: string; status: ResearchView['status'] | 'unknown' }[];
   /** A requirement is a venue (facility level): the box offers Build › Facility. */
   venue: boolean;
+  /** Audit 2026-11-17 (G1): the guide holds this back until one of its steps (the line saying which). */
+  guide?: string;
 }
 
 /** Does a condition (or any of its alternatives) ask for a venue? */
@@ -64,6 +66,7 @@ export function lockViews(g: GameState, keys: readonly (string | null | undefine
       either,
       research: (u?.viaResearch ?? []).map((r) => ({ id: r.id, name: r.name, status: research.get(r.id) ?? 'unknown' })),
       venue: (rule?.when ?? []).some(asksVenue),
+      ...(u?.guide ? { guide: u.guide } : {}),
     };
   });
 }
@@ -104,6 +107,7 @@ export function UnlockHelpBody({ g, keys, conds, lead, onGo }: { g: GameState; k
         <section key={v.key} className="pn-unlockhelp__item" data-testid={`unlock-help-${v.key}`}>
           {views.length > 1 && <h4 className="pn-unlockhelp__name">{v.label}</h4>}
           {v.hint && <p className="pn-unlockhelp__hint">{v.hint}</p>}
+          {v.guide && <p className="pn-unlockhelp__hint" data-testid={`unlock-guide-${v.key}`}>{v.guide}</p> /* Audit 2026-11-17 (G1) */}
           {v.requirements.length > 0 && <Requirements items={v.requirements} />}
           {v.either.map((alts, i) => (
             <div key={i} className="pn-unlockhelp__alts">

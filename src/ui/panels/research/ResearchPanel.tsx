@@ -390,10 +390,11 @@ function UnlocksTab({ g, q, setQ }: { g: GameState; q: string; setQ: (v: string)
                     <summary>
                       <Lock size={13} className="pn-muted" aria-hidden />
                       <span className="pn-grow">{u?.label ?? UNLOCK_KEYS[k as keyof typeof UNLOCK_KEYS]}</span>
-                      <span className="pn-unlock__pct">{Math.round((u?.progress ?? 0) * 100)}%</span>
+                      <span className="pn-unlock__pct">{u?.guide ? 'Guide' : `${Math.round((u?.progress ?? 0) * 100)}%`}</span>
                     </summary>
                     <div className="pn-unlock__body">
                       <div className="pn-small pn-dim">{u?.hint}</div>
+                      {u?.guide && <div className="pn-small pn-dim">{u.guide}</div> /* Audit 2026-11-17 (G1) */}
                       {u && u.requirements.length > 0 && <Requirements items={u.requirements} />}
                       {u && u.viaResearch.length > 0 && (
                         <div className="pn-small pn-muted">

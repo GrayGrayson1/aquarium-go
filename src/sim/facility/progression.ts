@@ -737,6 +737,24 @@ export function pendingTutorialUnlocks(state: GameState): Set<string> {
   return out;
 }
 
+/**
+ * Audit 2026-11-17 (G1) — the title of the guide step that will hand out `key` while the guide holds it back from its
+ * play rule (null: not held). The guide keeps running with Guide hints off, so locked cards say this themselves.
+ */
+export function tutorialStepGranting(state: GameState, key: string): string | null {
+  const t = state.progress.tutorial;
+  if (t.done || t.skipped || state.progress.unlocked.includes(key)) return null;
+  const chain = tutorialStepDefs(state);
+  for (let i = Math.max(0, t.step); i < chain.length; i++) if ((chain[i].reward?.unlocks ?? []).some((k) => k === key)) return interpolate(state, chain[i].title);
+  return null;
+}
+
+/** Audit 2026-11-17 (G1) — the line a locked card adds while the guide holds `key` (null: not held). */
+export function guideHoldLine(state: GameState, key: string): string | null {
+  const step = tutorialStepGranting(state, key);
+  return step ? `Your guide gives you this at its “${step}” step (see Research › Quests).` : null;
+}
+
 function checkTutorial(state: GameState, cache: CondCache): void {
   const t = state.progress.tutorial;
   if (t.done || t.skipped) return;
@@ -1311,6 +1329,8 @@ export interface UnlockProgressView {
   requirements: { label: string; met: boolean; current: number; target: number }[];
   /** Research projects that grant this key. */
   viaResearch: { id: string; name: string }[];
+  /** Audit 2026-11-17 (G1): the guide holds this back until one of its steps; the line saying so (`guideHoldLine`). */
+  guide?: string;
 }
 
 /** Locked keys with how close the player is, nearest first. */
@@ -1323,7 +1343,10 @@ export function unlockProgress(state: GameState): UnlockProgressView[] {
     const rule = UNLOCK_RULE_BY_KEY[key];
     const reqs = (rule?.when ?? []).map((c) => evalCond(state, c, cache));
     const viaResearch = RESEARCH.filter((r) => r.grants.includes(key as never)).map((r) => ({ id: r.id, name: r.name }));
-    const progress = reqs.length ? reqs.reduce((a, s) => a + ratio(s), 0) / reqs.length : 0;
+    const raw = reqs.length ? reqs.reduce((a, s) => a + ratio(s), 0) / reqs.length : 0;
+    // Audit 2026-11-17 (G1): a rule the guide holds back isn't "100%": the guide hands it out, and the card says when
+    const guide = guideHoldLine(state, key);
+    const progress = guide ? Math.min(raw, 0.99) : raw;
     out.push({
       key,
       label: unlockLabel(key),
@@ -1331,6 +1354,7 @@ export function unlockProgress(state: GameState): UnlockProgressView[] {
       progress,
       requirements: reqs.map((s) => ({ label: s.label, met: s.met, current: s.current, target: s.target })),
       viaResearch,
+      ...(guide ? { guide } : {}),
     });
   }
   out.sort((a, b) => b.progress - a.progress);

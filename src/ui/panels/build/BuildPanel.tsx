@@ -21,7 +21,7 @@ import { UNLOCK_RULE_BY_KEY } from '@/data/unlocks';
 import { getFacilityLevel } from '@/data/facilities';
 import type { CommandOf } from '@/sim/commands';
 import { tankKitPrice, kitEquipmentFor, kitSwapNote, type KitEquipment } from '@/sim/economy';
-import { findFreeSpot, waterClassLock } from '@/sim/facility';
+import { findFreeSpot, waterClassLock, guideHoldLine } from '@/sim/facility';
 import { PanelLayout, useSheet } from '../common/PanelLayout';
 import { formatTemp } from '@/ui/common/format';
 import { usePanelGame, safe, useIsPhone, useTempText } from '../common/hooks';
@@ -312,7 +312,8 @@ function TanksTab({ g, startWc }: { g: GameState; /** chunk 19 (B5): Find anythi
             const kit = safe(() => tankKitPrice(tier.id, wc, seeded, g), { total: tier.price, tank: tier.price, equipment: 0, substrate: 0, seeded: 0 });
             const swap = isUnlocked ? safe(() => kitSwapLine(kitEquipmentFor(g, tier.id, wc)), null) : null;
             const afford = g.finance.money >= kit.total;
-            const hint = tier.unlock ? UNLOCK_RULE_BY_KEY[tier.unlock]?.hint ?? UNLOCK_KEYS[tier.unlock as keyof typeof UNLOCK_KEYS] : '';
+            // Audit 2026-11-17 (G1): a size the guide holds back says which guide step hands it out
+            const hint = tier.unlock ? safe(() => guideHoldLine(g, tier.unlock!), null) ?? UNLOCK_RULE_BY_KEY[tier.unlock]?.hint ?? UNLOCK_KEYS[tier.unlock as keyof typeof UNLOCK_KEYS] : '';
             if (buyable && !(isUnlocked && afford)) return null;
             return (
               <div key={tier.id} className={clsx('pn-tier', !isUnlocked && 'is-locked')} data-tier-id={tier.id}>
