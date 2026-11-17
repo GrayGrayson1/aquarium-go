@@ -34,6 +34,10 @@ import { findNonFinite } from '@/dev/fixtures/core-testkit';
 import { lineFarm } from './support/production';
 import { UNLOCK_RULES, type Cond } from '@/data/unlocks';
 import { FacilityUpgradeCard } from '@/ui/panels/common/FacilityUpgrade';
+import { beautyScore } from '@/sim/aquascape';
+import { getDecorDef } from '@/data/catalog/decor';
+import { addCreature, createCreature } from '@/sim/life';
+import { simRng } from '@/sim/rng';
 
 const game =(starterId: StarterId = 'axolotl', seed = 71): GameState => newGame({ starterId, starterName: 'Ember', seed });
 
@@ -360,5 +364,18 @@ describe('G11: requirement rows read plainly', () => {
     expect(html).toContain('And one of these:');
     expect(html).toContain('Host 4 friend visits');
     expect(html).toContain('2/4');
+  });
+});
+
+describe('G12: a living anemone counts as the clownfish’s host, and the tip names where to get one', () => {
+  const hostTip = (g: GameState) => beautyScore(g, g.tanks[g.tankOrder[0]]).tips.find((t) => /host|ledge/.test(t));
+  it('the shop’s anemone is suggested before Anemone Care, and once it lives in the tank the tip goes', () => {
+    const g = game('ocellaris_clownfish');
+    const t = g.tanks[g.tankOrder[0]];
+    t.decor = t.decor.filter((d) => !getDecorDef(d.defId)?.anchors.some((a) => a.kind === 'host'));
+    g.progress.unlocked.push('tank_40');
+    expect(hostTip(g)).toMatch(/^Your clownfish has no host — a bubble-tip anemone from Market › Shop, on a stable rock ledge, would give it a home to defend\./);
+    addCreature(g, createCreature(g, simRng(g), 'bubbletip_anemone'), t.id);
+    expect(hostTip(g)).toBeUndefined();
   });
 });

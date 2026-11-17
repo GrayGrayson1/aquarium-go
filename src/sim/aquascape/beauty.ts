@@ -9,7 +9,7 @@ import type { GameState, Tank, BeautyReport, DecorDef, DecorInstance, WaterClass
 import { getDecorDef, isLiving, isFloating } from '@/data/catalog/decor';
 import { tankDims } from '../tankSpace';
 import { findSpecies } from '@/data/species';
-import { isUnlocked } from '../facility';
+import { isUnlocked, tankKeyFor, waterClassKeys } from '../facility';
 import { residentsOf } from '../residents'; // lane:perf2
 import * as dmath from '../dmath';
 
@@ -435,14 +435,22 @@ export function beautyScoreImpl(state: GameState | null, tank: Tank): BeautyRepo
     tips.push({ p: W.height * (1 - height) + 3, text: `Add ${plant} at the ${where} to frame the ${focalItem?.def.name.toLowerCase() ?? 'layout'}.` });
   }
   if (state) {
-    const seekers = residentsOf(state, tank.id).filter((c) => c.status === 'alive' && findSpecies(c.speciesId)?.anemoneRelationship === 'host_seeker'); // lane:perf2
-    const hasHost = items.some((i) => i.def.anchors.some((a) => a.kind === 'host'));
+    const residents = residentsOf(state, tank.id); // lane:perf2
+    const seekers = residents.filter((c) => c.status === 'alive' && findSpecies(c.speciesId)?.anemoneRelationship === 'host_seeker');
+    // Audit 2026-11-17 (G12): a living anemone from the shop is a host too, as breeding counts it (habitatOf)
+    const hasHost = items.some((i) => i.def.anchors.some((a) => a.kind === 'host')) || residents.some((c) => c.status === 'alive' && findSpecies(c.speciesId)?.category === 'anemone');
     if (seekers.length && !hasHost) {
+      // the shop's Bubble-tip Anemone (the animal) needs no research: its water's keys and the tank its adult needs
+      const bta = findSpecies('bubbletip_anemone');
+      const inShop = !!bta && isUnlocked(state, tankKeyFor(bta)) && (bta.waterClasses ?? []).some((wc) => waterClassKeys(wc).every((k) => isUnlocked(state, k)));
+      const water = tank.waterClass === 'reef' || tank.waterClass === 'marine_live_rock' ? '' : ' It needs a live-rock or reef tank.';
       tips.push({
         p: 4,
         text: isUnlocked(state, 'decor_anemones')
           ? 'Your clownfish has no host — a bubble-tip anemone on a stable rock ledge would give it a home to defend.'
-          : 'Keep a flat rock ledge open: once anemones unlock, a bubble-tip anemone there will become your clownfish’s home.',
+          : inShop
+            ? `Your clownfish has no host — a bubble-tip anemone from Market › Shop, on a stable rock ledge, would give it a home to defend.${water}`
+            : 'Keep a flat rock ledge open: once you can get a bubble-tip anemone, it will become your clownfish’s home there.',
       });
     }
   }
