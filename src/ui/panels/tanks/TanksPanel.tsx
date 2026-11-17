@@ -79,7 +79,7 @@ export function TanksPanel() {
           <Tile icon={<Layers size={14} />} tone="aqua" label="Aquariums" value={rows.length} hint={`${rows.filter((r) => r.t.purpose === 'display').length} on display`} />
           <Tile icon={<Fish size={14} />} tone="aqua" label="Animals" value={animals} hint={rows.some((r) => r.clutches) ? `${plural(rows.reduce((a, r) => a + r.clutches, 0), 'clutch', 'clutches')} growing` : 'across all tanks'} />
           <Tile icon={<Coins size={14} />} tone="gold" label="Est. value" value={<Money value={totalValue} />} hint="if sold as set up" />
-          <Tile icon={<Gauge size={14} />} tone="coral" label="Daily upkeep" value={<Money value={totalCost} cents={totalCost < 20} />} hint="power, salt & wear" />
+          <Tile icon={<Gauge size={14} />} tone="coral" label="Daily upkeep" value={<Money value={totalCost} cents={totalCost < 20} />} hint="power & wear" /* Audit 2026-11-17 C2: salt is bought in Supplies, not billed */ />
         </div>
 
         {rows.length === 0 ? (

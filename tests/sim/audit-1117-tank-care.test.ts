@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
-import { getWaterReport } from '@/sim/water';
+import { getWaterReport, tankDailyCost } from '@/sim/water';
 import { waterChange, waterChangeCost, dose } from '@/sim/care';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { fixForWaterIssue } from '@/ui/common/fixLinks';
@@ -223,5 +223,16 @@ describe('C6: temperature advice aims at what suits the animals, and calls a spl
     expect(p.reason).toMatch(/No temperature suits all of these animals at once — a compatibility problem, not a care one\.$/);
     expect(p.advice).toBe('Rehome one group to a tank with water that suits it.');
     expect(fixForWaterIssue(t, { text: p.reason!, advice: p.advice, param: 'temp' })?.label).toBe('Open Livestock');
+  });
+});
+
+describe('C2 (the owner’s choice): salt is paid for when bought, not in the nightly running cost', () => {
+  it('a salt tank’s running cost is what the same gear costs in fresh water, and water changes still use bought salt', () => {
+    const s = base('ocellaris_clownfish');
+    const t = firstTank(s);
+    expect(tankDailyCost(s, t)).toBe(tankDailyCost(s, { ...t, waterClass: 'freshwater_tropical' }));
+    const kg = s.inventory.salt;
+    expect(waterChange(s, t.id, 0.1).ok).toBe(true);
+    expect(s.inventory.salt).toBeLessThan(kg);
   });
 });
