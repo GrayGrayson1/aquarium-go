@@ -72,6 +72,8 @@ export function EncyclopediaPanel() {
       icon={<BookOpen size={20} />}
       subtitle={`${known.size} of ${total} species discovered · ${g.progress.discoveredMorphs.length} ${g.progress.discoveredMorphs.length === 1 ? 'morph' : 'morphs'} seen${(g.progress.prismaticFinds?.length ?? 0) > 0 ? ` · ${g.progress.prismaticFinds!.length} Prismatic` : ''}`}
       scrollKey={`${tab}:${speciesId ?? ''}`}
+      listKey={tab /* audit B7: back from a species page, the list is where it was */}
+      subOpen={!!speciesId}
       toolbar={
         // chunk 6 (DES-011): a species page keeps the strip, Species selected, as the 0.5 screens draw it
         <Seg<Tab>

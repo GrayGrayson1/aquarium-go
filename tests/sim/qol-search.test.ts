@@ -3,11 +3,12 @@
  * sort, and Find anything's index (what it finds, in which group, and where each result goes).
  */
 import { describe, expect, it } from 'vitest';
+import { createElement } from 'react';
 import type { ShopOffer } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { fold, matches, queryWords, score } from '@/ui/panels/common/match';
 import { offerSearchMatches, sortOffers } from '@/ui/panels/market/shopFilters';
-import { FIND_GROUPS, findAnything, needsTankText, orderResults, PER_GROUP } from '@/ui/search/searchIndex';
+import { FIND_GROUPS, findAnything, needsTankText, nodeText, orderResults, PER_GROUP } from '@/ui/search/searchIndex';
 import { DECOR } from '@/data/catalog/decor';
 import { EQUIPMENT } from '@/data/catalog/equipment';
 import { RESEARCH } from '@/data/research';
@@ -147,5 +148,47 @@ describe('QOL-004: an item no tank of yours can take (reviewer B5)', () => {
     t.environment = 'marine';
     t.waterClass = 'reef';
     expect(needsTankText(g, ['marine'], ['reef'])).toBeNull();
+  });
+});
+
+describe('audit B5: Find anything finds the help', () => {
+  const science = (q: string) => orderResults(findAnything(game(), q)).filter((r) => r.group === 'Aquarium science');
+  it('finds the Aquarium science articles by their words, and opens each in the Encyclopedia', () => {
+    expect(science('ammonia').map((r) => r.key)).toContain('science:nitrogen_cycle');
+    expect(science('nitrite').map((r) => r.key)).toContain('science:nitrogen_cycle');
+    expect(science('cycling').map((r) => r.key)).toContain('science:cycling');
+    expect(science('water change')[0]?.key).toBe('science:water_changes');
+    expect(science('salinity')[0]?.key).toBe('science:salinity');
+    const hit = science('cycling').find((r) => r.key === 'science:cycling')!;
+    expect(hit).toMatchObject({ title: 'What “cycling” means', detail: 'Encyclopedia › Aquarium science' });
+    expect(hit.go).toEqual({ kind: 'route', route: { kind: 'panel', panel: 'encyclopedia', tab: 'science', target: 'science:cycling' } });
+  });
+  it('lists them right after the screens, and not for an empty query', () => {
+    expect(FIND_GROUPS.indexOf('Aquarium science')).toBe(1);
+    expect(findAnything(game(), '').some((r) => r.group === 'Aquarium science')).toBe(false);
+  });
+  it('reads an article’s text without its markup', () => {
+    expect(nodeText(createElement('p', null, 'Waste becomes ', createElement('b', null, 'ammonia'), ', ', 3, ' times'))).toBe('Waste becomes  ammonia ,  3  times');
+  });
+});
+
+describe('audit B10: Find anything knows the screens’ everyday words', () => {
+  const screen = (q: string) => orderResults(findAnything(game(), q, { social: true })).filter((r) => r.group === 'Screens').map((r) => r.title);
+  it('finds Settings’ controls by what they do', () => {
+    for (const q of ['sound', 'music', 'volume', 'mute']) expect(screen(q)[0], q).toBe('Settings');
+    for (const q of ['accessibility', 'fahrenheit', 'text size', 'reduced motion']) expect(screen(q)[0], q).toBe('Settings › Play & access');
+    expect(screen('export')[0]).toBe('Settings › Saves');
+  });
+  it('finds a feature by its verb once it is open: sell, auction, hire, keeper, reward, history', () => {
+    expect(screen('sell')).toContain('Market › My listings');
+    expect(screen('auction')).toContain('Market › My listings');
+    expect(screen('hire')).toContain('Visitors › Staff');
+    expect(screen('keeper')).toContain('Visitors › Staff');
+    expect(screen('reward')).toContain('Research › Quests');
+    expect(screen('history')).toContain('Event log');
+  });
+  it('a screen’s own name still comes first', () => {
+    expect(screen('notifications')[0]).toBe('Settings › Notifications');
+    expect(screen('market supplies')[0]).toBe('Market › Supplies');
   });
 });

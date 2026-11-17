@@ -40,6 +40,10 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 .ag-clock-pill__icon { color: var(--c-gold); }
 .ag-clock-pill__icon.is-night { color: var(--c-blue); }
 .ag-clock-pill__sep { color: var(--c-ink-4); }
+/* audit B9: phones (TopBar `compact`) put the day where the shop's name goes, over the time */
+.ag-clock-pill__day { display: block; font-size: calc(10.5px * var(--text-scale)); font-weight: 650; line-height: 1.15; color: var(--c-ink-2); white-space: nowrap; }
+.ag-clock-pill__day.is-paused { color: var(--c-watch); } /* audit B15: "Paused" in its place while the game is paused */
+.ag-clock-pill.is-manual .ag-clock-pill__day { color: inherit; }
 
 .ag-speed { padding: 0 12px 0 4px; gap: 10px; min-height: 48px; }
 .ag-speed .ag-seg { background: transparent; border: 0; padding: 0; }
@@ -101,6 +105,12 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Alerts popover */
 .ag-alerts-pop { right: 0; top: calc(100% + 10px); width: 390px; max-height: min(72vh, 640px); overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 .ag-alerts-pop__log { min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+/* audit B1: under the title the drawer scrolls as one (it clipped: eight low-food rows hid the danger rows, Recent
+   events, "Full event log" and "Turn on"). No section shrinks; a long event list keeps its own short scroll so "Full
+   event log" stays near. The side and end padding keeps the rows' focus rings inside the scroll box. */
+.ag-alerts-pop__body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 14px; margin: -4px -6px; padding: 4px 6px; overflow-y: auto; overscroll-behavior: contain; }
+.ag-alerts-pop__body > * { flex-shrink: 0; }
+.ag-alerts-pop__body .ag-eventlist { max-height: min(340px, 40dvh); }
 /* chunk 6 (DES-011): the drawer's title row (0.5 phone-alerts.png, S3-D alerts-*.png) */
 .ag-alerts-pop__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -4px -4px -6px 0; }
 .ag-alerts-pop__title { margin: 0; font-family: var(--font-display); font-size: calc(20px * var(--text-scale)); font-weight: 560; color: var(--c-ink); }
@@ -394,7 +404,6 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
   .ag-clock-pill { padding: 4px 10px; min-height: 40px; }
   .ag-clock-pill__time { font-size: calc(11px * var(--text-scale)); gap: 4px; }
   .ag-clock-pill__sep { display: none; }
-  .ag-clock-pill__time span:first-of-type { display: none; }
   .ag-speed { padding: 0 2px; min-height: 40px; }
   .ag-speed__label { display: none; }
   /* the four segments fill the pill's height with a seam between them (28×34 edge-to-edge buttons mis-tapped Pause vs 1×) */
@@ -546,7 +555,7 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 @media (max-width: 400px) {
   .ag-clock-pill { padding: 4px 8px; }
-  .ag-clock-pill__icon { display: none; }
+  .ag-clock-pill:not(.is-manual) .ag-clock-pill__icon { display: none; } /* the manual pill keeps its Hand (audit B3) */
   .ag-money-pill { padding: 0 8px 0 4px; gap: 5px; }
 }
 /* the narrowest phones (360 px Android) give the speed segments back a few pixels rather than overflow the bar */
@@ -682,6 +691,11 @@ button.ag-hudpill:disabled { opacity: 0.45; cursor: not-allowed; }
 @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
   .ag-hud__cam.ag-hud__cam--room { display: block; right: var(--edge); bottom: calc(var(--dock-h) + var(--edge) + 8px); }
   .ag-roomcam__hint { white-space: normal; max-width: calc(100vw - 2 * var(--edge)); }
-  /* the guide card owns the band above the dock while it is open */
-  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { display: none; }
+  /* the guide card owns the band above the dock while it is open: the chips sit just above it (TutorialCoach publishes
+     --coach-clear). Audit B12: they were hidden, so a player lost in the room had no Reset view until the guide ended */
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { bottom: calc(var(--coach-clear, calc(var(--dock-h) + var(--edge) * 2 + 170px)) - var(--safe-b)); }
+}
+/* (held sideways the guide sits bottom-left and the room view has no tool rail: the chips keep their corner) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .ag-hud:has(.ag-hud__coach .ag-coach) .ag-hud__cam--room { bottom: calc(var(--dock-h) + var(--edge) + 8px); }
 }

@@ -22,12 +22,21 @@ import { FragListingVisual } from './FragListing'; // lane:frags
 import { PHOTO_REF } from '@/types/shared'; // chunk 13
 import { useSharedPhoto } from '@/ui/shared/photos';
 
+/**
+ * The ended listings shown: the ten latest, and (audit B21) an older one a link asks for ("View listing" on last
+ * week's sale in the Log), which used to open My listings with nothing to see. (exported for tests)
+ */
+export function endedShown(g: GameState, focusId: string | null): Listing[] {
+  const all = g.market.listings.filter((l) => l.status !== 'active').sort((a, b) => closedHour(g, b) - closedHour(g, a));
+  const shown = all.slice(0, 10);
+  const asked = focusId ? all.find((l) => l.id === focusId) : undefined;
+  if (asked && !shown.includes(asked)) shown.push(asked);
+  return shown;
+}
+
 export function ListingsTab({ g, focusId, onCreate }: { g: GameState; focusId: string | null; onCreate: () => void }) {
   const active = g.market.listings.filter((l) => l.status === 'active').sort((a, b) => openBids(b) - openBids(a) || a.endsHour - b.endsHour);
-  const ended = g.market.listings
-    .filter((l) => l.status !== 'active')
-    .sort((a, b) => closedHour(g, b) - closedHour(g, a))
-    .slice(0, 10);
+  const ended = endedShown(g, focusId);
 
   return (
     <div className="pn-stack pn-stack--lg">

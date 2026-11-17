@@ -2,9 +2,10 @@
  * chunk 19 (ADR-0055 decision 3, QOL-004) — Find anything: one search over the whole game, and where each result goes.
  * Pure over the game (node-safe; tests/sim/qol-search.test.ts): screens (every panel and tab, Settings', the tour),
  * your tanks and animals, the shop's stock, food, equipment, decor, tank sizes, research, unlocks still to come and
- * the species you have discovered. A list item opens its list searched for it (`find:` panel targets) with the item
+ * the species you have discovered, and the Encyclopedia's Aquarium science articles (audit B5). A list item opens its list searched for it (`find:` panel targets) with the item
  * glowing. The group names and details are drafted words (ADR-0055 decision 8). OWNER: lane "ui-shell".
  */
+import { isValidElement, type ReactNode } from 'react';
 import type { Environment, GameState, Tank, WaterClass } from '@/types';
 import type { PanelId } from '@/state/ui';
 import { DECOR } from '@/data/catalog/decor';
@@ -19,11 +20,12 @@ import { isFoodAvailable, isSpeciesAvailable } from '@/sim/economy';
 import { morphDisplayName } from '@/sim/life/genetics';
 import { screenList, type Route } from '../nav/routes';
 import { fold, queryWords, score } from '../panels/common/match';
+import { ARTICLES, type Article } from '../panels/encyclopedia/science'; // audit B5
 
-export type FindGroup = 'Screens' | 'Your tanks' | 'Your animals' | 'In the shop' | 'Food & supplies' | 'Equipment' | 'Decor' | 'Tank sizes' | 'Research' | 'Unlocks' | 'Encyclopedia';
+export type FindGroup = 'Screens' | 'Aquarium science' | 'Your tanks' | 'Your animals' | 'In the shop' | 'Food & supplies' | 'Equipment' | 'Decor' | 'Tank sizes' | 'Research' | 'Unlocks' | 'Encyclopedia';
 
 /** The order groups are listed in. */
-export const FIND_GROUPS: readonly FindGroup[] = ['Screens', 'Your tanks', 'Your animals', 'In the shop', 'Food & supplies', 'Equipment', 'Decor', 'Tank sizes', 'Research', 'Unlocks', 'Encyclopedia'];
+export const FIND_GROUPS: readonly FindGroup[] = ['Screens', 'Aquarium science', 'Your tanks', 'Your animals', 'In the shop', 'Food & supplies', 'Equipment', 'Decor', 'Tank sizes', 'Research', 'Unlocks', 'Encyclopedia'];
 
 export type FindGo =
   | { kind: 'route'; route: Route }
@@ -87,9 +89,14 @@ export function findAnything(g: GameState, q: string, opts: { social?: boolean; 
   for (const sc of screenList()) {
     if (!opts.social && (sc.panel === 'social' || (sc.route.kind === 'settings' && sc.route.tab === 'account'))) continue;
     const lock = sc.panel !== 'settings' ? SCREEN_LOCK[sc.panel] : undefined;
-    push({ key: `screen:${sc.name}`, group: 'Screens', title: sc.name, locked: !!lock && !has(g, lock), go: { kind: 'route', route: sc.route } }, sc.name);
+    push({ key: `screen:${sc.name}`, group: 'Screens', title: sc.name, locked: !!lock && !has(g, lock), go: { kind: 'route', route: sc.route } }, sc.name, sc.keywords);
   }
   if (!words.length) return out;
+
+  // audit B5: the game's own explanations, by title and text ("ammonia", "cycling", "water change"), as the tour's
+  // "Anything you can’t find, Find anything will." promises
+  for (const a of ARTICLES)
+    push({ key: `science:${a.id}`, group: 'Aquarium science', title: a.title, detail: 'Encyclopedia › Aquarium science', go: { kind: 'route', route: { kind: 'panel', panel: 'encyclopedia', tab: 'science', target: `science:${a.id}` } } }, a.title, a.teaser, articleText(a));
 
   // your tanks and animals
   for (const id of g.tankOrder) {
@@ -162,6 +169,21 @@ export function orderResults(list: FindResult[]): FindResult[] {
   }
   return out;
 }
+
+/** The words of a piece of JSX (an article's body): its strings, without the markup. */
+export function nodeText(n: ReactNode): string {
+  if (n == null || typeof n === 'boolean') return '';
+  if (typeof n === 'string' || typeof n === 'number') return String(n);
+  if (Array.isArray(n)) return n.map(nodeText).join(' ');
+  if (isValidElement<{ children?: ReactNode }>(n)) return nodeText(n.props.children);
+  return '';
+}
+const ARTICLE_TEXT = new Map<string, string>();
+const articleText = (a: Article): string => {
+  let t = ARTICLE_TEXT.get(a.id);
+  if (t === undefined) ARTICLE_TEXT.set(a.id, (t = nodeText(a.body)));
+  return t;
+};
 
 function tierGallons(tierId: string): number {
   return TANK_TIERS.find((t) => t.id === tierId)?.gallons ?? 0;

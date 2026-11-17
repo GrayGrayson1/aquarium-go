@@ -42,6 +42,7 @@ const CANONICAL = [
   '#/market/supplies/flakes',
   '#/market/listings',
   '#/market/listings/listing_7mm',
+  '#/market/listings/new', // audit B6: the listing wizard
   '#/market/history',
   '#/build',
   '#/build/decor',
@@ -54,6 +55,7 @@ const CANONICAL = [
   '#/shows/entries',
   '#/shows/results',
   '#/shows/trophies',
+  '#/shows/enter/show_c12', // audit B6: the show-entry flow
   '#/research',
   '#/research/unlocks',
   '#/research/quests',
@@ -104,6 +106,9 @@ describe('nav routes: §6.2 round trip', () => {
     expect(r('#/shop/fish/offer_k3x9')).toEqual({ kind: 'panel', panel: 'market', tab: 'shop', target: 'offer:offer_k3x9' });
     expect(r('#/market/supplies/flakes')).toEqual({ kind: 'panel', panel: 'market', tab: 'supplies', target: 'food:flakes' });
     expect(r('#/market/listings/listing_7mm')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'listing:listing_7mm' });
+    expect(r('#/market/listings/new')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'sell' }); // audit B6
+    expect(r('#/shows/enter/show_c12')).toEqual({ kind: 'panel', panel: 'shows', tab: 'upcoming', target: 'show:show_c12' });
+    expect(r('#/shows/enter')).toEqual({ kind: 'panel', panel: 'shows', tab: 'upcoming' });
     expect(r('#/encyclopedia/betta')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'species', target: 'species:betta' });
     expect(r('#/encyclopedia/science/nitrogen_cycle')).toEqual({ kind: 'panel', panel: 'encyclopedia', tab: 'science', target: 'science:nitrogen_cycle' });
     // chunk 6: an invite highlights Clubs, as the approved screen phone-join does (§6.2 names no tab for it)
@@ -208,7 +213,11 @@ describe('nav routes: what the router sends to a panel (B-115)', () => {
 
   it('existing panel commands map to the address they open', () => {
     expect(routeForPanelTarget('market', 'listing:l1')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'listing:l1' });
-    expect(routeForPanelTarget('market', 'list:creature:c1')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings' });
+    // audit B6 (changed on purpose): the wizard a `list:`/`sell` command opens has its address, #/market/listings/new
+    expect(routeForPanelTarget('market', 'list:creature:c1')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'sell' });
+    expect(routeForPanelTarget('market', 'sell')).toEqual({ kind: 'panel', panel: 'market', tab: 'listings', target: 'sell' });
+    expect(routeForPanelTarget('shows', 'enter:s1:c2')).toEqual({ kind: 'panel', panel: 'shows', tab: 'upcoming', target: 'show:s1' });
+    expect(routeForPanelTarget('shows', 'show:s1')).toEqual({ kind: 'panel', panel: 'shows', tab: 'upcoming', target: 'show:s1' });
     expect(routeForPanelTarget('livestock', 'clutches')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'young' });
     expect(routeForPanelTarget('livestock', 'line:golden')).toEqual({ kind: 'panel', panel: 'livestock', tab: 'production', target: 'line:golden' });
     expect(routeForPanelTarget('build', 'decor-cat:plant')).toEqual({ kind: 'panel', panel: 'build', tab: 'decor' });
@@ -248,6 +257,8 @@ describe('nav routes: the loading card pill (§16)', () => {
     expect(routeLabel(parseRoute('#/settings/account')!.route)).toBe('Settings › Account'); // chunk 8 (REL-031)
     expect(routeLabel(parseRoute('#/finances')!.route)).toBe('Finances');
     expect(routeLabel(parseRoute('#/social/join/X')!.route)).toBe('Social › Club invite');
+    expect(routeLabel(parseRoute('#/shows/enter/s1')!.route)).toBe('Shows › Enter a show'); // audit B6
+    expect(routeLabel(parseRoute('#/market/listings/new')!.route)).toBe('Market › New listing');
     expect(routeLabel({ kind: 'home' })).toBeNull();
   });
 

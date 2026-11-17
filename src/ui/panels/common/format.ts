@@ -22,6 +22,7 @@ import type {
 } from '@/types';
 import type { BadgeTone } from '@/ui/kit';
 import { GAME_HOURS_PER_REAL_SECOND, formatClock } from '@/sim/time'; // lane:w2-ui (realIn)
+import { agoText } from '@/ui/common/format'; // audit B23
 
 export const HOURS_PER_DAY = 24;
 
@@ -68,16 +69,12 @@ export function speedNote(speed: number): string {
   return speed > 0 ? ` at ${speed}×` : ' (paused)';
 }
 
-/** Relative game time for past events: "just now", "3 h ago", "yesterday", "4 days ago". */
+/**
+ * Relative game time for past events: "just now", "3 h ago", "yesterday", "4 days ago". Audit B23: the bell's rule
+ * (agoText), so the Log and the bell agree, and never "0 days ago" (from 23.5 h this floored to 0 days).
+ */
 export function relTime(hour: number, now: number): string {
-  const dh = now - hour;
-  if (dh < 0.25) return 'just now';
-  // lane:w2-ui — no "60 min ago" / "24 h ago" at the unit edges
-  if (dh * 60 < 59.5) return `${Math.round(dh * 60)} min ago`;
-  if (dh < 23.5) return `${Math.round(dh)} h ago`;
-  const days = Math.floor(dh / 24);
-  if (days === 1) return 'yesterday';
-  return `${days} days ago`;
+  return agoText(hour, now);
 }
 
 /** Time until a future game hour: "in 5 h", "ending now". */

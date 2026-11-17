@@ -49,6 +49,9 @@
 .ag-sheet__body { position: relative; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 16px 20px 28px; font-size: calc(13.5px * var(--text-scale)); line-height: 1.45; overscroll-behavior: contain; }
 .ag-sheet__foot { position: relative; flex: none; padding: 12px 20px; border-top: 1px solid var(--c-line); background: rgba(0,0,0,0.12); }
 .ag-sheet--bottom .ag-sheet__head { padding-top: 10px; }
+/* audit B18: its chrome (grabber, header) swipes it down (Sheet.tsx), so the browser mustn't take that swipe as a pan
+   (the body, its own scroller, still scrolls) */
+.ag-sheet.ag-sheet--bottom { touch-action: none; }
 
 /* ── Popovers ── */
 .ag-popanchor { position: relative; }

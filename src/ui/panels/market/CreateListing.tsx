@@ -27,6 +27,7 @@ import { VerdictBadge } from '../common/CompatPreview';
 import { orderedTanks, livingInTank, clutchesIn, valueOf, speciesOf, isListed, tierOf, gallonsOf, creatureCondition, morphName } from '../common/derive';
 import { FragPicker, FragReview, FragValueDetails } from './FragListing'; // lane:frags
 import { useExpandSheet } from '../common/PanelLayout';
+import { LeaveConfirm, guardLeave, setLeaveGuard } from '../common/leaveGuard'; // audit B6
 import { LISTING_KIND_LABEL, DIFFICULTY_LABEL, WATER_CLASS_LABEL, LIFE_STAGE_LABEL, SEX_LABEL, nicePrice, plural, nameList, formatSpan, titleCase, VERDICT_RANK } from '../common/format';
 
 export interface WizardSeed {
@@ -77,6 +78,14 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
   const [photo, setPhoto] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
+  // audit B6: once prices are typed or a photo is taken, Back, Cancel, ×, Escape or going elsewhere asks first
+  const dirty = priceTouched || photo != null;
+  useEffect(() => {
+    if (!dirty) return;
+    setLeaveGuard({ panel: 'market', title: 'Leave this listing?', detail: 'Your prices and photo won’t be kept.' });
+    return () => setLeaveGuard(null);
+  }, [dirty]);
+  const cancel = () => guardLeave(onCancel);
 
   // lane:fix-panels — residents of a tank listed as a whole aquarium can't be listed on their own either (sim rule)
   const listedTanks = useMemo(() => new Set(g.market.listings.filter((l) => l.status === 'active' && l.kind === 'tank' && l.tankId).map((l) => l.tankId as string)), [g.market.listings]);
@@ -177,7 +186,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
     }
   };
   const back = () => {
-    if (idx === 0) onCancel();
+    if (idx === 0) cancel();
     else go(STEPS[idx - 1].id);
   };
 
@@ -201,7 +210,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
   return (
     <div className="pn-wizard">
       <div className="pn-wizard__top">
-        <button type="button" className="pn-back" onClick={onCancel}>
+        <button type="button" className="pn-back" onClick={cancel}>
           <span aria-hidden>←</span> Cancel
         </button>
         {/* Compact stepper: every step keeps a numbered dot, only the current one spells out its name (all six fit in a
@@ -407,6 +416,7 @@ export function CreateListing({ g, seed, onCancel, onDone }: { g: GameState; see
         />
       )}
 
+      <LeaveConfirm />
       <div className="pn-wizard__nav">
         <Button onClick={back}>{idx === 0 ? 'Cancel' : 'Back'}</Button>
         <span className="pn-grow pn-small pn-muted pn-wizard__why">{step === 'items' && !itemsValid.ok ? itemsValid.why : step === 'price' && !priceValid ? 'Set a reserve, and a buy-now above it.' : ''}</span>

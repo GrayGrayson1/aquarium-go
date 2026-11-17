@@ -52,6 +52,8 @@ export function ResearchPanel() {
   const target = useUI((s) => s.panelTarget);
   const [tab, setTab] = useState<Tab>('research');
   const [unlockQ, setUnlockQ] = useState(''); // chunk 19 (QOL-003, QOL-004): the unlock map's search, set by a link
+  // audit B11: a project asked for by name starts the Research tab afresh, so its search or status filter can't hide it
+  const [asked, setAsked] = useState(0);
   const phone = useIsPhone(); // lane:qa-final
   useNavTab('research', tab); // lane:ui-shell (chunk 1)
   useEffect(() => {
@@ -67,6 +69,7 @@ export function ResearchPanel() {
     } else if (target?.startsWith('research:')) {
       // chunk 19 (QOL-004, QOL-006) — a project asked for by name ("Open in Research", Find anything): its card glows
       setTab('research');
+      setAsked((n) => n + 1);
       glow(`[data-testid="research-${CSS.escape(target.slice(9))}"]`);
       useUI.getState().set({ panelTarget: null });
     }
@@ -103,7 +106,7 @@ export function ResearchPanel() {
         />
       }
     >
-      {tab === 'research' && <ResearchTab g={g} />}
+      {tab === 'research' && <ResearchTab key={asked} g={g} />}
       {tab === 'unlocks' && <UnlocksTab g={g} q={unlockQ} setQ={setUnlockQ} />}
       {tab === 'quests' && <QuestsTab g={g} quests={quests} />}
       {tab === 'achievements' && <AchievementsTab g={g} />}

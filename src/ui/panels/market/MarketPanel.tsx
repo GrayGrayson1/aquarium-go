@@ -21,7 +21,7 @@ import { SuppliesTab } from './Supplies';
 import { ListingsTab } from './Listings';
 import { CreateListing, type WizardSeed } from './CreateListing';
 import { TrendsTab } from './Trends';
-import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { NOT_FOUND, useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1); audit B21: NOT_FOUND
 
 export type MarketTab = 'shop' | 'supplies' | 'listings' | 'trends';
 const MARKET_TABS: readonly MarketTab[] = ['shop', 'supplies', 'listings', 'trends'];
@@ -50,7 +50,8 @@ export function MarketPanel() {
   };
   // lane:ui-shell (chunk 1) — the address follows the section and the open offer / focused food / focused listing
   useNavTab('market', tab);
-  useNavSub('market', wizard ? null : tab === 'shop' && offerId ? `offer:${offerId}` : tab === 'supplies' && focusFood ? `food:${focusFood.id}` : tab === 'listings' && focusListing ? `listing:${focusListing}` : null);
+  // audit B6: the wizard is `sell` (#/market/listings/new), so Back closes it and stays in the Market
+  useNavSub('market', wizard ? 'sell' : tab === 'shop' && offerId ? `offer:${offerId}` : tab === 'supplies' && focusFood ? `food:${focusFood.id}` : tab === 'listings' && focusListing ? `listing:${focusListing}` : null);
 
   useEffect(() => {
     if (!target) return;
@@ -70,8 +71,14 @@ export function MarketPanel() {
     } else if (target.startsWith('listing:')) {
       setTab('listings');
       setOfferId(null);
-      setFocusListing(target.slice(8));
       setWizard(null);
+      // audit B21: a link to a listing the market no longer keeps says so (the router does for addresses; the Log's
+      // and the bell's "View listing" come here directly)
+      const id = target.slice(8);
+      if (g && !g.market.listings.some((l) => l.id === id)) {
+        setFocusListing(null);
+        useUI.getState().toast(NOT_FOUND.listing.title, 'info', { detail: NOT_FOUND.listing.detail });
+      } else setFocusListing(id);
     } else if (target === 'sell' || target === 'list') {
       setTab('listings');
       setWizard({});
@@ -98,6 +105,8 @@ export function MarketPanel() {
       icon={<Store size={20} />}
       subtitle={subtitle}
       scrollKey={`${tab}:${offerId ?? ''}:${wizard ? 'w' : ''}`}
+      listKey={tab /* audit B7: back from an offer, the shop is where it was */}
+      subOpen={!!offerId || !!wizard}
       toolbar={
         wizard ? undefined : (
           <Seg<MarketTab>

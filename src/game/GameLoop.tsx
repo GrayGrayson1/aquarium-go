@@ -24,7 +24,7 @@ import { loopStats } from './loopStats';
 import { useAutosave } from './useAutosave';
 import { mutateFast } from './fastMutate';
 import { catchUpAfterHidden } from '@/persistence/offline';
-import { checkStarvation, starvationSlowdownText } from './starvationGuard';
+import { checkStarvation, starvationSlowdownText, starvingAnimal } from './starvationGuard';
 import { checkSimFault, noteTickFailed, noteTickOk, simStopped } from './simHealth';
 import { inSharedShop } from '@/state/sharedMode';
 
@@ -118,7 +118,12 @@ export function runTick(realDtSeconds: number, backlogHours = 0): number {
     reportError(e);
     noteTickFailed();
   }
-  if (slowedFor) ui.toast(starvationSlowdownText(slowedFor), 'warning');
+  if (slowedFor) {
+    // audit B4: the toast names them and its "See them" opens the first one's card
+    const g = useGame.getState().game;
+    const where = g ? starvingAnimal(g, slowedFor) : null;
+    ui.toast(starvationSlowdownText(slowedFor), 'warning', where ? { ...where, actionLabel: 'See them' } : undefined);
+  }
   const ms = performance.now() - t0;
   loopStats.ticks++;
   loopStats.lastMs = ms;

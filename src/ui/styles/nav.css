@@ -50,6 +50,8 @@
 .ag-more__rep:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
 /* chunk 6 (DES-011): the sheet's grabber (0.5 phone-more.png, S3-D more-normal-phone.png), as the panel sheets have */
 .ag-more__grab { flex: none; width: 42px; height: 5px; margin: 0 auto -4px; border-radius: 99px; background: color-mix(in srgb, var(--c-ink-2) 30%, transparent); }
+/* audit B18: the grabber and the header swipe the sheet closed (MoreSheet.tsx): the sheet's own scroll mustn't take it */
+.ag-more__grab, .ag-more__head { touch-action: none; }
 .ag-more__close:focus-visible, .ag-more__tile:focus-visible, .ag-more__row:focus-visible { outline: 2px solid var(--c-aqua); outline-offset: 2px; }
 .ag-more__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
 .ag-more__tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2); min-width: 0; min-height: 92px; padding: var(--sp-2); border: 1px solid var(--c-line); border-radius: var(--r-lg); background: var(--c-fill); color: var(--c-ink); font-family: inherit; cursor: pointer; transition: background 0.2s var(--ease), border-color 0.2s; }

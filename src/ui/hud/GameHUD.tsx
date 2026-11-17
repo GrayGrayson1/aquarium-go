@@ -169,6 +169,15 @@ export function isOnControl(e: KeyboardEvent) {
   return !!t && !!t.closest?.('button, a, [role="button"], [role="switch"], [role="radio"], [role="tab"], [role="slider"], summary');
 }
 
+/**
+ * Audit B20 — Space inside a panel, a sheet or a popover is the page's own key (it scrolls): opening a panel puts
+ * focus on its title, and Space there used to pause the game instead of scrolling the list.
+ */
+export function isInSheet(e: Pick<KeyboardEvent, 'target'>) {
+  const t = e.target as HTMLElement | null;
+  return !!t && !!t.closest?.('.pn-sheet, .ag-sheet, .ag-popover');
+}
+
 /** Keyboard: Space pause · 1/2/3 speed · F feed · T tank card · V view · [ ] tanks · H watch · P photo · Esc back out. */
 function useHudKeys() {
   useEffect(() => {
@@ -189,7 +198,7 @@ function useHudKeys() {
       }
       switch (e.key) {
         case ' ':
-          if (isOnControl(e)) return;
+          if (isOnControl(e) || isInSheet(e)) return;
           e.preventDefault();
           togglePause();
           sfx('click');

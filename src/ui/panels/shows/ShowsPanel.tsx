@@ -15,7 +15,7 @@ import { PanelLayout } from '../common/PanelLayout';
 import { usePanelGame, safe, useIsPhone } from '../common/hooks';
 import { Seg } from '../common/parts';
 import { LockedDestination, useDestinationLocked } from '../common/Locked'; // lane:ui-shell (chunk 1)
-import { useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1)
+import { useNavSub, useNavTab } from '@/ui/nav/router'; // lane:ui-shell (chunk 1); audit B6: the entry flow's address
 import { mark } from '@/ui/common/marks';
 import { UpcomingTab } from './Upcoming';
 import { EnterFlow } from './EnterFlow';
@@ -71,6 +71,15 @@ export function ShowsPanel() {
   }, [tab, unseen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useNavTab('shows', tab); // lane:ui-shell (chunk 1)
+  // audit B6: the entry flow has an address (#/shows/enter/<id>), so Back closes it and stays in Shows; a show that
+  // stops taking entries meanwhile closes it and says so (the calendar used to come back without a word)
+  const flowOpen = !!flow && !!g?.shows?.shows.some((x) => x.id === flow.showId && x.status === 'open');
+  useNavSub('shows', flow && flowOpen ? `show:${flow.showId}` : null);
+  useEffect(() => {
+    if (!flow || flowOpen || !g) return;
+    setFlow(null);
+    useUI.getState().toast('Entries for that show have closed.', 'info');
+  }, [flow, flowOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const locked = useDestinationLocked(g, 'shows');
   if (!g) return null;
   // lane:ui-shell (chunk 1, §5.7) — before the guide is done (or 20 reputation) the panel says what opens it
@@ -92,6 +101,8 @@ export function ShowsPanel() {
       icon={<Trophy size={20} />}
       subtitle={subtitle}
       scrollKey={`${tab}:${flow?.showId ?? ''}`}
+      listKey={tab /* audit B7: back from a show's entry, the calendar is where it was */}
+      subOpen={!!flow}
       toolbar={
         flowShow ? undefined : (
           <Seg<ShowsTab>
