@@ -21,6 +21,7 @@ import { cheapestKit } from '@/sim/economy/purchases';
 import { marketAccess, cashSuggestions } from '@/sim/economy';
 import { unlockProgress } from '@/sim/facility';
 import { lockViews } from '@/ui/panels/common/UnlockHelp';
+import { useShopFilters, useShopSearch } from '@/ui/panels/market/shopFilters';
 import { TANK_TIERS } from '@/data/catalog/tanks';
 import { reserveHint } from '@/ui/panels/market/CreateListing';
 import { addCreature, createCreature } from '@/sim/life';
@@ -414,6 +415,32 @@ describe('F8: the listings and auctions hints say what really opens them', () =>
     g.progress.unlocked = g.progress.unlocked.filter((k) => k !== 'tank_auctions');
     if (!g.progress.unlocked.includes('market_listings')) g.progress.unlocked.push('market_listings');
     expect(marketAccess(g).hint).toBe('Whole-aquarium auctions open after 3 sales (you’ve made 0), or when you move into the Specialty Shop. You can already list individual animals, pairs and groups.');
+  });
+});
+
+describe('F9: searching the shop for an animal that isn’t on the shelf says why', () => {
+  const search = (g: GameState, q: string) => {
+    useShopSearch.setState({ q });
+    Object.assign(useShopSearch.getInitialState(), useShopSearch.getState());
+    Object.assign(useShopFilters.getInitialState(), useShopFilters.getState());
+    try {
+      return renderToStaticMarkup(createElement(ShopTab, { g, offerId: null, setOfferId: () => {} }));
+    } finally {
+      useShopSearch.setState({ q: '' });
+      Object.assign(useShopSearch.getInitialState(), useShopSearch.getState());
+    }
+  };
+
+  it('in range but not stocked today, or locked with how to unlock it; a search matching no species keeps the plain empty state', () => {
+    const g = game();
+    g.market.stock = g.market.stock.filter((o) => o.speciesId !== 'betta' && o.speciesId !== 'lined_seahorse');
+    const betta = text(search(g, 'betta'));
+    expect(betta).toContain('No bettas in the shop today. New stock arrives every morning at 8.');
+    const out = search(g, 'seahorse');
+    expect(out).toContain('data-testid="shop-not-stocked"');
+    expect(out).toContain('shop-not-stocked-unlock-lined_seahorse');
+    expect(text(out)).toContain('How to unlock');
+    expect(text(search(g, 'zzzz'))).toContain('Nothing matches that filter');
   });
 });
 

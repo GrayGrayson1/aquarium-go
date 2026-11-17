@@ -24,6 +24,8 @@ import { act, edit } from '../common/act';
 import { rememberOfferReturn, peekOfferReturn } from './offerReturn'; // lane:qa-play; audit 2026-11-17 (F6): peek
 import { useShopFilters, offerMatches, filtersActive, useShopSearch, offerSearchMatches, sortOffers, type ShopSort } from './shopFilters'; // lane:ui-shell (chunk 1); chunk 19 (QOL-003): search and sort
 import { SearchField } from '../common/SearchField'; // chunk 19 (QOL-003)
+import { matches } from '../common/match'; // audit 2026-11-17 (F9)
+import { ALL_SPECIES } from '@/data/species'; // audit 2026-11-17 (F9)
 import { useSeenStock } from './seenStock'; // lane:notify (0.5 §5.2)
 import { CopyLinkButton, OfferLinkRow, useOfferLink } from './OfferLink'; // lane:ui-shell (chunk 1)
 import { expressedNewGenes, labPartners, rareCarried, speciesPlural, strainOrMorphTier } from './offerGenetics';
@@ -148,6 +150,10 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
             <EmptyState icon={<Sparkles size={26} className="ag-violet" />} title="No Prismatic animals right now" action={<ClearFilters onClick={clear} />}>
               About {oneInLabel(PRISMATIC.shopChance)} stocked animals shimmers. New stock arrives through the day.
             </EmptyState>
+          ) : q.trim() && !inStock.some((o) => offerSearchMatches(o, q)) && notStocked(q).length > 0 ? (
+            // audit 2026-11-17 (F9) — a search for an animal that isn't on the shelf: locked (and how to unlock it), or
+            // just not stocked today
+            <NotStocked g={g} q={q} />
           ) : (
             <EmptyState icon={<Store size={26} />} title="Nothing matches that filter" action={narrowed ? <ClearFilters onClick={clear} /> : undefined}>
               Try another filter to see more animals.
@@ -166,6 +172,44 @@ export function ShopTab({ g, offerId, setOfferId }: { g: GameState; offerId: str
       <p className="pn-small pn-muted" style={{ textAlign: 'center' }}>
         <Leaf size={12} style={{ verticalAlign: '-2px' }} aria-hidden /> Captive-bred animals are hardier and kinder to wild reefs and rivers.
       </p>
+    </div>
+  );
+}
+
+/** Audit 2026-11-17 (F9) — species whose name (common or scientific) matches a shop search, at most three. */
+function notStocked(q: string): SpeciesDefinition[] {
+  return ALL_SPECIES.filter((sp) => matches(q, sp.commonName, sp.scientificName)).slice(0, 3);
+}
+
+/** One row per matching species: why it isn't in the shop, and a way on (the Encyclopedia, the unlock help). */
+function NotStocked({ g, q }: { g: GameState; q: string }) {
+  return (
+    <div className="pn-col pn-gap-2" data-testid="shop-not-stocked">
+      {notStocked(q).map((sp) => {
+        const open = speciesUnlocked(g, sp);
+        return (
+          <Callout
+            key={sp.id}
+            tone="info"
+            icon={open ? <Clock size={15} /> : <Lock size={15} />}
+            title={sp.commonName}
+            action={
+              <span className="pn-row pn-gap-2 pn-row--wrap">
+                {!open && (
+                  <LockedButton title={speciesPlural(sp)} keys={safe(() => requiredUnlocks(sp), [] as string[])} testId={`shop-not-stocked-unlock-${sp.id}`}>
+                    How to unlock
+                  </LockedButton>
+                )}
+                <button type="button" className="pn-link" data-testid={`shop-not-stocked-open-${sp.id}`} onClick={() => useUI.getState().set({ panel: 'encyclopedia', panelTarget: `species:${sp.id}` })}>
+                  Encyclopedia
+                </button>
+              </span>
+            }
+          >
+            {open ? `No ${speciesPlural(sp).toLowerCase()} in the shop today. New stock arrives every morning at 8.` : lockHintOf(g, sp) || `You can’t buy ${speciesPlural(sp).toLowerCase()} yet.`}
+          </Callout>
+        );
+      })}
     </div>
   );
 }
