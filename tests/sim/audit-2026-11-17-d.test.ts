@@ -7,6 +7,7 @@ import type { CompatReport, GameState, Tank } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { createTank } from '@/sim/tanks';
 import { createCreature, addCreature, stepTankCreatures, creatureWellbeing } from '@/sim/life';
+import { stressNote } from '@/sim/life/index';
 import { makeContext } from '@/sim/context';
 import { lastHurtBy } from '@/sim/life/step';
 import { moveCreatures } from '@/sim/life/groupMove';
@@ -532,5 +533,19 @@ describe('D7 (ADR-0056 decision 3, screens made honest while the owner decides):
     const S = getSpecies('trochus_snail');
     const ev = evaluateComposition([simpleMember(H, 1, 'male'), simpleMember(S, 1, 'female')], { ...neutralContext(H, S), neutral: false, flowIndex: 1, lightLevel: 1 });
     expect(ev.incidents.find((i) => i.actorSpeciesId === 'hermit_crab' && i.targetSpeciesId === 'trochus_snail' && !i.youngOnly)?.kind).toBe('predation');
+  });
+});
+
+describe('D10 (review): small standing causes that add up are named, not called a passing upset', () => {
+  it('a main cause; many small ones that hold it over 55; or a passing upset', () => {
+    const s = base();
+    const ember = Object.values(s.creatures).find((c) => c.isStarter)!;
+    ember.genome.potentials.temperament = 50;
+    ember.stats.enrichment = 50;
+    const f = (label: string, amount: number) => ({ key: label, label, amount });
+    expect(stressNote([f('lonely', 12), f('bright light', 2)], ember)).toBe('Stressed — mainly lonely.');
+    const many = Array.from({ length: 16 }, (_, i) => f(`small cause ${i}`, 4.5 - i * 0.01));
+    expect(stressNote(many, ember)).toBe('Stressed — several small things add up: small cause 0 and small cause 1.');
+    expect(stressNote([f('glass tapping', 2), f('bright light', 1)], ember)).toBe('Stressed — still settling after something upset it (a move, a chase or a scare).');
   });
 });

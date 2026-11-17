@@ -23,7 +23,7 @@ import { computePersonalityModifiers, rollPersonalityTags, PERSONALITY_INFO } fr
 import { generateName, takenNames, nameRngFor } from './names';
 import { ageDaysOf, initialReproRole, lifeStageFor, observableSex, sizeAtAge } from './growth';
 import { stepTankCreaturesImpl, lifeMeta, lastHurtBy } from './step';
-import { buildTankEnv, habitatFit, livingIn, stressFactors, waterProblemText, type StressFactor } from './welfare';
+import { buildTankEnv, habitatFit, livingIn, stressFactors, stressTarget, waterProblemText, type StressFactor } from './welfare';
 import { illnessDef } from './illness';
 import { foodsFor, menuFor } from '@/data/species/guide'; // lane:guide
 import { residentsOf, touchResidents } from '../residents'; // lane:perf2
@@ -232,6 +232,7 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   let watch = false;
   const tank = c.tankId ? state.tanks[c.tankId] : undefined;
   let factors: StressFactor[] = [];
+  let smallFactors: StressFactor[] = []; // review of D10: every standing cause, small ones included
   let outpaced = false; // lane:guide — a slow feeder sharing the tank with clearly faster ones
   if (tank) {
     const env = buildTankEnv(state, tank, livingIn(state, tank.id), state.clock.hour);
@@ -242,7 +243,8 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
       notes.push(problem);
       danger = true;
     }
-    factors = stressFactors(state, env, c, sp, state.clock.hour).filter((f) => f.amount >= 5);
+    smallFactors = stressFactors(state, env, c, sp, state.clock.hour);
+    factors = smallFactors.filter((f) => f.amount >= 5);
     const fit = habitatFit(env, sp, env.groups.get(sp.id)?.n ?? 1);
     for (const n of fit.notes.slice(0, 2)) notes.push(`Habitat: ${n}.`);
   }
@@ -274,7 +276,7 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   // Audit 2026-11-17 (D10): the tank card says "stressed" above 55 whatever the cause, so the card always says why or
   // that it is passing (a move, a chase or a scare leaves stress with no standing cause of 5 points or more)
   if (s.stress > 55) {
-    notes.push(factors.length ? `Stressed — mainly ${factors[0].label}.` : 'Stressed — still settling after something upset it (a move, a chase or a scare).');
+    notes.push(stressNote(smallFactors, c));
     watch = true;
     if (s.stress > 80) danger = true;
   }
@@ -294,6 +296,18 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
     headline = lead ? lead.split(/\.(?=\s|$)|[:—]/)[0].trim() : notes.length ? 'Needs a better home' : status === 'danger' ? 'Needs help' : 'Keep an eye on this one';
   }
   return { status, headline, notes, stress: factors };
+}
+
+/**
+ * The Condition box's stress line (stress above 55): its main standing cause of 5 points or more; else, review of D10,
+ * small causes that together hold it there (the sim's own stress target) are named as such; else it is passing.
+ */
+export function stressNote(all: StressFactor[], c: Creature): string {
+  const big = all.filter((f) => f.amount >= 5);
+  if (big.length) return `Stressed — mainly ${big[0].label}.`;
+  const small = [...all].sort((a, b) => b.amount - a.amount).slice(0, 2);
+  if (small.length >= 2 && stressTarget(all, c) > 55) return `Stressed — several small things add up: ${small[0].label} and ${small[1].label}.`;
+  return 'Stressed — still settling after something upset it (a move, a chase or a scare).';
 }
 
 /**
