@@ -8,6 +8,7 @@ import { clamp, fmt, ammoniaToxicityWeight, nitrateThresholds, nitrifierTempFact
 import { CLASS_DEFAULTS, ROOM_TEMP_C, TEMP_TOLERANCE_C } from './constants';
 import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC } from './env';
 import { tankDailyCostImpl } from './kits';
+import { idealBand } from '../care/tuning';
 import { lightsPastClose, photoperiodTooLong } from '../time';
 import * as dmath from '../dmath';
 
@@ -518,9 +519,9 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         ? brackishTank
           ? `Evaporation concentrates salt. Top off with fresh water, and mix the next water change a little weaker${s.ato ? '' : ' — an auto top-off keeps this steady'}.`
           : `Evaporation concentrates salt. Top off with fresh (RO) water${s.ato ? '' : ' — an auto top-off keeps this steady'}.`
-        : brackishTank
-          ? 'Brackish water needs only a little marine salt — about a third of reef strength. Dose salt mix gradually (no more than 0.001 a day) or do water changes with slightly saltier water.'
-          : 'Dose salt mix gradually (about 0.001 per day) or do water changes with slightly saltier water.';
+        : // Audit 2026-11-17 C1 — low salinity harms the animals at once and a dose shocks nothing, so the advice is to
+          // dose back up now (each dose adds 0.001), not "0.001 a day", which let the harm run for days.
+          `${brackishTank ? 'Brackish water needs only a little marine salt (about a third of reef strength). ' : ''}Dose salt mix until it reads at least ${fmt(idealBand(state, tank, 'salinitySG').min, 3)} — each dose adds 0.001.`;
     add(
       { key: 'salinity', label: 'Salinity', value: w.salinitySG, unit: 'SG', display: fmt(w.salinitySG, 3), status: j.status, ideal: j.ideal, reason: j.reason, advice },
       j.high ? 'Salinity is creeping up' : 'Salinity is low',

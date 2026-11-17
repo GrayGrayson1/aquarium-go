@@ -47,6 +47,7 @@ import { getTankTier } from '@/data/catalog/tanks';
 import { findSpecies } from '@/data/species'; // lane:qa-play
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
+import { waterChangeCost } from '@/sim/care'; // Audit 2026-11-17 C1
 import type { Command } from '@/sim/commands';
 import { evaluateTank } from '@/sim/compat';
 import { beautyScore } from '@/sim/aquascape';
@@ -173,6 +174,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
   // hint asks for a cooler water change, so offer one. 25% with water ~5 °C cooler drops the tank ~1.2 °C — under the
   // 1.4 °C sudden-change stress line — and two of them give the ~2 °C drop the breeding cue looks for.
   const coolCue = safe('coolCue', () => creaturesInTank(game, tank.id).some((c) => !!findSpecies(c.speciesId)?.breeding?.conditions?.coolingTrigger), false);
+  const change25 = salty ? safe('waterChangeCost', () => waterChangeCost(game, tank.id, 0.25), null) : null; // Audit 2026-11-17 C1
 
   return (
     <>
@@ -264,6 +266,8 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
                 </Button>
               )}
             </div>
+            {/* Audit 2026-11-17 C1 — salt water: what a change takes, before a change it can't cover is refused */}
+            {salty && change25 && <div className="ag-small ag-muted" data-testid="water-change-salt-need">25% uses about {change25.saltKg < 0.1 ? change25.saltKg.toFixed(2) : change25.saltKg.toFixed(1)} kg of salt mix.</div>}
           </div>
           <div className="ag-carebtns">
             <CareBtn icon={Droplet} label="Top off" hint={`Level ${Math.round(tank.water.level * 100)}%`} testId="action-top-off" fix="top-off" onClick={() => care({ k: 'topOff', tank: tank.id }, 'topped_off', 'bubble')} />
@@ -287,7 +291,7 @@ export function WaterTab({ game, tank }: { game: GameState; tank: Tank }) {
               <div className="ag-row ag-wrap" style={{ gap: 6, alignItems: 'center' }}>
                 <span className="ag-small ag-muted">Salt in stock: {game.inventory.salt.toFixed(1)} kg</span>
                 {/* lane:qa-play — a water change with no salt only said "buy salt first"; restock right here */}
-                {game.inventory.salt < 5 && (
+                {(game.inventory.salt < 5 || change25?.enoughSalt === false) && (
                   <Chip size="sm" onClick={() => act({ k: 'buySalt', kg: 10 }, { sound: 'coin' })}>
                     Buy 10 kg · {formatMoney(10 * SALT_PRICE_PER_KG)}
                   </Chip>

@@ -676,5 +676,5 @@ function emitWaterWarnings(state: GameState, tank: Tank, env: TankEnv, ctx: SimC
     ctx.emit({ kind: 'warning', text: `The water level in ${tank.name} has dropped to ${Math.round(w.level * 100)}%. Top off with fresh water${env.salt ? ' — salinity rises as water evaporates' : ''}.`, tankId: tank.id });
   const d = CLASS_DEFAULTS[tank.waterClass];
   if (env.salt && d.sg && (w.salinitySG > d.sg.max || w.salinitySG < d.sg.min) && warnKey(lab, 'salinity', hour, 24))
-    ctx.emit({ kind: 'warning', text: `Salinity in ${tank.name} is ${w.salinitySG.toFixed(3)} — outside the safe range. ${w.salinitySG > d.sg.max ? 'Top off with fresh water.' : 'Dose salt mix gradually.'}`, tankId: tank.id, toast: true });
+    ctx.emit({ kind: 'warning', text: `Salinity in ${tank.name} is ${w.salinitySG.toFixed(3)} — outside the safe range. ${w.salinitySG > d.sg.max ? 'Top off with fresh water.' : 'Dose salt mix until it’s back in range.'}`, tankId: tank.id, toast: true });
 }

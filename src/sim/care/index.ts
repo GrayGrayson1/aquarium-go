@@ -44,6 +44,12 @@ const fail = (message: string): ActionResult => ({ ok: false, message });
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const money = (v: number) => `$${v.toFixed(2).replace(/\.00$/, '')}`;
 const plural = (n: number, s: string) => `${n} ${s}${n === 1 ? '' : 's'}`;
+/** Audit 2026-11-17 C1 — kilograms of salt for a message: a need rounded up and a stock rounded down never read alike. */
+const kgText = (kg: number, dir: 'up' | 'down') => {
+  const m = kg < 0.1 ? 100 : 10;
+  const r = dir === 'up' ? Math.ceil(kg * m - 1e-6) : Math.floor(kg * m + 1e-6);
+  return (r / m).toFixed(m === 100 ? 2 : 1);
+};
 
 function getTank(state: GameState, tankId: string): Tank | null {
   const t = state.tanks[tankId];
@@ -197,8 +203,17 @@ export function waterChange(state: GameState, tankId: string, fraction: number, 
   const f = clampChangeFraction(fraction);
   const salty = isSaltClass(tank.waterClass);
   if (salty) {
+    // Audit 2026-11-17 C1 — the check a keeper and the Auto Water Changer make (waterChangeCost's enoughSalt): a
+    // short-salted change mixes weak water and drops the salinity below what the animals need, so refuse it and say
+    // what it takes. (It used to go ahead with whatever salt was left.)
     const need = changeSaltNeed(state, tank, f);
-    if (Math.max(0, state.inventory.salt) < 0.02 && need > 0.02) return fail(`You need about ${need.toFixed(1)} kg of marine salt mix to change ${Math.round(f * 100)}% of this tank — buy salt first.`);
+    const have = Math.max(0, state.inventory.salt);
+    if (have < need - 1e-6) {
+      const smaller = f > 0.1 + 1e-9 && have >= changeSaltNeed(state, tank, 0.1) - 1e-6;
+      return fail(
+        `Changing ${Math.round(f * 100)}% of this tank needs about ${kgText(need, 'up')} kg of salt mix, and you have ${have < 0.005 ? 'none' : `${kgText(have, 'down')} kg`}. Buy marine salt mix in Market › Supplies first${smaller ? ', or change less water' : ''}.`,
+      );
+    }
   }
   const { before, saltUsed, saltShort, shock } = applyWaterChange(state, tank, f, { hour: state.clock.hour, ...opts });
   bumpCounter(state, 'waterChanges');
@@ -391,7 +406,9 @@ export function dose(state: GameState, tankId: string, additive: Additive): Acti
       state.inventory.salt = Math.round((state.inventory.salt - kg) * 1000) / 1000;
       const before = w.salinitySG;
       w.salinitySG += step;
-      message = `Dissolved ${kg.toFixed(2)} kg of salt mix: salinity ${before.toFixed(3)} → ${w.salinitySG.toFixed(3)}. Raise it no more than about 0.001 a day.`;
+      // Audit 2026-11-17 C1 — below what the animals need, every hour costs them health: say "dose again", not "slowly"
+      const low = idealBand(state, tank, 'salinitySG').min;
+      message = `Dissolved ${kg.toFixed(2)} kg of salt mix: salinity ${before.toFixed(3)} → ${w.salinitySG.toFixed(3)}. ${w.salinitySG < low - 0.00005 ? `Dose again until it reads at least ${low.toFixed(3)}.` : 'Raise it no more than about 0.001 a day.'}`;
       break;
     }
     case 'buffer': {
