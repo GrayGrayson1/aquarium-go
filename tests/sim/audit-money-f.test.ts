@@ -660,7 +660,10 @@ describe('F17: "Fits my tanks" checks temperature and size, not only the water t
     t.water.tempC = 26;
     expect(envMatches(g, findSpecies('axolotl')!, 'fits')).toBe(false);
     expect(envMatches(g, findSpecies('betta')!, 'fits')).toBe(true);
-    expect(tankFits(findSpecies('axolotl')!, { ...t, water: { ...t.water, tempC: 17 }, tierId: 'g40B' } as typeof t)).toBe(true);
+    // review note: the temperature the tank is heading for counts, so a tank still warming up isn't hidden
+    t.water.tempC = 19;
+    expect(envMatches(g, findSpecies('betta')!, 'fits')).toBe(true);
+    expect(envMatches(g, findSpecies('axolotl')!, 'fits')).toBe(false);
   });
 });
 
