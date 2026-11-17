@@ -202,6 +202,31 @@ describe('A3: the betta’s and seahorse’s nursery step opens Tanks (a tank’
   });
 });
 
+describe('A3: the nursery step and the unlock it hands out say what they really do', () => {
+  it('any tank can already be a nursery; the `nursery` key is breeding know-how for two research projects', async () => {
+    const { UNLOCK_KEYS } = await import('@/data/unlockKeys');
+    const { RESEARCH } = await import('@/data/research');
+    const { unlockLink } = await import('@/ui/hud/eventLinks');
+    const { setTankPurpose } = await import('@/sim/tankOps');
+    // what the key gates: these two research projects, and nothing else
+    expect(RESEARCH.filter((r) => r.requires.some((c) => c.type === 'unlocked' && c.key === 'nursery')).map((r) => r.id).sort()).toEqual(['genetics_lab', 'live_food_cultures']);
+    // a new game's tank can be a nursery at once
+    const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 9 });
+    expect(g.progress.unlocked).not.toContain('nursery');
+    expect(setTankPurpose(g, g.tankOrder[0], 'nursery').ok).toBe(true);
+    // so nothing names it as tanks
+    expect(UNLOCK_KEYS.nursery).toBe('Breeding know-how');
+    expect(unlockLink('nursery')).toMatchObject({ panel: 'research', where: 'Needed for the Genetics Lab and Live Food Cultures in Research.' });
+    expect(RESEARCH.find((r) => r.id === 'breeding_program')!.blurb).toBe('Breeding know-how that opens the way to the Genetics Lab and Live Food Cultures. Any tank can already be a nursery: set its purpose in Tanks.');
+    for (const id of ['betta', 'lined_seahorse']) {
+      const up = tutorialChain(id).find((s) => s.id === 'upgrade')!;
+      expect(up.reward?.unlocks, id).toEqual(['nursery']);
+      expect(up.body, id).toMatch(/^Earn a little more reputation to unlock breeding know-how\. Any tank can already be a nursery: set its purpose in Tanks/);
+      expect(up.body, id).not.toMatch(/nursery tanks/);
+    }
+  });
+});
+
 describe('A11: the water step waits for the reading, not the card opening', () => {
   it('opening the tank card alone no longer ends it; reading the water does', () => {
     const g = newGame({ starterId: 'betta', starterName: 'Ember', seed: 9 });

@@ -34,7 +34,7 @@ const UNLOCK_LINKS: Record<string, Omit<EventLink, 'label'>> = {
   decor_mangrove: { panel: 'build', target: 'tab:decor', where: 'Find them in Build › Decor.' },
   market_listings: { panel: 'market', target: 'tab:listings', where: 'List animals in Market › My listings.' },
   tank_auctions: { panel: 'market', target: 'tab:listings', where: 'List a whole aquarium in Market › My listings.' },
-  nursery: { panel: 'tanks', target: null, where: 'Set a tank’s purpose in Tanks.' },
+  nursery: { panel: 'research', target: 'tab:research', where: 'Needed for the Genetics Lab and Live Food Cultures in Research.' }, // (audit A3: not tanks)
   // Audit 2026-11-17 (G7): corals and anemones live only in some marine water, so their unlock goes through Find
   decor_corals_soft: { panel: 'build', target: findDecor('decor_corals_soft'), where: 'Corals need a reef tank. Find them in Build › Decor.' },
   decor_corals_lps: { panel: 'build', target: findDecor('decor_corals_lps'), where: 'Corals need a reef tank. Find them in Build › Decor.' },
