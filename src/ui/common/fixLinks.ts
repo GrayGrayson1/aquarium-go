@@ -14,6 +14,7 @@ import type { WaterIssue, WaterReport } from '@/types/reports';
 import { useUI, type PanelId } from '@/state/ui';
 import { getEquipmentDef } from '@/data/catalog/equipment';
 import { tankFoodOutlook } from '@/sim/tankStatus';
+import { MAX_PER_KIND } from '@/sim/care/tuning'; // Audit 2026-11-17 C10
 import { useShell } from './shellStore';
 import { glow } from './glow';
 import { useTankCardTab, type TankCardTabId } from '../cards/tankCardTab';
@@ -130,7 +131,13 @@ export function fixForWaterIssue(tank: Tank, issue: Pick<WaterIssue, 'text' | 'a
     if (/stronger light/.test(adv) && (tank.lighting?.intensity ?? 1) >= 1.49) return buyGear(tank, 'light', 'Buy a light');
     return card(tank, 'gear', 'lighting', 'Lighting');
   }
-  if (p === 'oxygen') return gearOf(tank, 'airstone').length ? gearRow(tank, gearOf(tank, 'airstone')[0], 'Open Equipment') : buyGear(tank, 'airstone', 'Buy an airstone');
+  if (p === 'oxygen') {
+    // Audit 2026-11-17 C10 — an airstone that's failed or off first; a running one has nothing to set (its row only
+    // had a Flow control that did nothing), so another one while there's room, else the Equipment tab
+    const idle = idleOf(tank, 'airstone');
+    if (idle) return idleLink(tank, idle);
+    return gearOf(tank, 'airstone').length < (MAX_PER_KIND.airstone ?? 4) ? buyGear(tank, 'airstone', 'Buy an airstone') : card(tank, 'gear', 'equipment', 'Open Equipment');
+  }
   if (p === 'flow') {
     const pump = gearOf(tank, 'powerhead', 'wavemaker', 'filter')[0];
     if (/add a small powerhead/.test(adv) || !pump) return buyGear(tank, 'powerhead', 'Buy a powerhead');

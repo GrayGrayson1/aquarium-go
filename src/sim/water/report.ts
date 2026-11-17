@@ -8,7 +8,7 @@ import { clamp, fmt, ammoniaToxicityWeight, nitrateThresholds, nitrifierTempFact
 import { CLASS_DEFAULTS, ROOM_TEMP_C, TEMP_TOLERANCE_C } from './constants';
 import { computeTankEnv, flowInfo, flowMismatch, FLOW_LABEL, type Inhabitant, type TankEnv, expectedTempC, type EqEntry, type EquipmentSummary } from './env';
 import { tankDailyCostImpl } from './kits';
-import { fightAdvice, idealBand } from '../care/tuning';
+import { fightAdvice, idealBand, MAX_PER_KIND } from '../care/tuning';
 import { lightsPastClose, photoperiodTooLong } from '../time';
 import * as dmath from '../dmath';
 
@@ -53,6 +53,19 @@ const idleAdvice = (e: EqEntry): string => (e.inst.failed ? `Repair the ${e.def.
 export function khPreferredMax(tank: Tank, species: SpeciesDefinition[]): number {
   const kr = (CLASS_DEFAULTS[tank.waterClass] ?? CLASS_DEFAULTS.freshwater_tropical).kh;
   return Math.min(kr.max + 4, ...species.filter((x) => x.kh).map((x) => x.kh!.max));
+}
+
+/**
+ * Audit 2026-11-17 C10 — low oxygen: an airstone that's there but failed or off first, then one to add (up to the four
+ * a tank holds), and cooler water when it's warm. (It said "point a filter outlet at the surface", which the game
+ * has no control for.)
+ */
+function oxygenAdvice(s: EquipmentSummary, warm: boolean): string {
+  const idle = idleUnit(s, 'airstone');
+  if (idle) return idleAdvice(idle);
+  const cool = 'cool the water a little — warm water holds less oxygen';
+  if (s.entries.filter((e) => e.def.kind === 'airstone').length >= (MAX_PER_KIND.airstone ?? 4)) return `This tank has all the airstones it can hold: ${cool}, or move some animals to another tank.`;
+  return warm ? `Add an airstone, or ${cool}.` : 'Add an airstone — its bubbles stir the surface, where oxygen gets in.';
 }
 
 function groupBySpecies(inh: Inhabitant[]): Inhabitant[][] {
@@ -587,7 +600,7 @@ export function getWaterReportImpl(state: GameState, tankId: string): WaterRepor
         status: st,
         ideal: `above ${Math.round(need * 100)}%`,
         reason: st === 'good' ? undefined : `Dissolved oxygen is ${Math.round(w.oxygen * 100)}%${warm ? ' — warm water holds less oxygen' : ''}${env.stockingLoad > 0.9 ? ' and the tank is heavily stocked' : ''}.`,
-        advice: st === 'good' ? undefined : 'Add an airstone or point a filter outlet at the surface — surface ripples are where oxygen gets in.',
+        advice: st === 'good' ? undefined : oxygenAdvice(s, warm), // Audit 2026-11-17 C10
       },
       st === 'danger' ? 'Oxygen is running low' : 'Oxygen is a little low',
     );

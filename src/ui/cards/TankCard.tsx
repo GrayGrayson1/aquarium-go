@@ -118,7 +118,7 @@ const EQUIP_ICON: Partial<Record<EquipmentKind, ComponentType<LucideProps>>> = {
   water_changer: Droplets, // lane:automation
 };
 
-const FLOW_KINDS: EquipmentKind[] = ['filter', 'powerhead', 'wavemaker', 'airstone'];
+const FLOW_KINDS: EquipmentKind[] = ['filter', 'powerhead', 'wavemaker']; // Audit 2026-11-17 C10: an airstone has no flow setting in the sim
 
 // ───────────────────── Water tab ─────────────────────
 

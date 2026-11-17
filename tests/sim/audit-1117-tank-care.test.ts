@@ -369,3 +369,35 @@ describe('C18 (B-224): food tags read as shop words, from one table in the data 
     expect(r.message).toMatch(/Lined seahorses eat .*live copepods/);
   });
 });
+
+describe('C10: low-oxygen advice and its link point at what helps', () => {
+  const lowOxygen = () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    t.water.oxygen = 0.4;
+    t.water.tempC = 25;
+    return { s, t, advice: () => getWaterReport(s, t.id).params.find((p) => p.key === 'oxygen')!.advice! };
+  };
+
+  it('no airstone: add one (no "point a filter outlet"), and the link buys one', () => {
+    const { t, advice } = lowOxygen();
+    t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'airstone');
+    expect(advice()).toBe('Add an airstone — its bubbles stir the surface, where oxygen gets in.');
+    expect(fixForWaterIssue(t, { text: 'x', advice: advice(), param: 'oxygen' })?.label).toBe('Buy an airstone');
+  });
+
+  it('an airstone switched off: switch it on, and the link says so', () => {
+    const { t, advice } = lowOxygen();
+    t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'airstone');
+    t.equipment.push({ id: 'test_air', defId: 'airstone', installedHour: 0, condition: 1, on: false });
+    expect(advice()).toBe(`The ${getEquipmentDef('airstone')!.name} is switched off — switch it on.`);
+    expect(fixForWaterIssue(t, { text: 'x', advice: advice(), param: 'oxygen' })?.label).toBe('Switch it on');
+  });
+
+  it('a running airstone: another one, not its row (which has nothing to set)', () => {
+    const { t, advice } = lowOxygen();
+    t.equipment = t.equipment.filter((e) => getEquipmentDef(e.defId)?.kind !== 'airstone');
+    t.equipment.push({ id: 'test_air', defId: 'airstone', installedHour: 0, condition: 1, on: true });
+    expect(fixForWaterIssue(t, { text: 'x', advice: advice(), param: 'oxygen' })?.label).toBe('Buy an airstone');
+  });
+});
