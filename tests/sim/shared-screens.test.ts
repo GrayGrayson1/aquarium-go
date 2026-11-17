@@ -19,7 +19,7 @@ import { useGame } from '@/state/game';
 import { setSharedMode } from '@/state/sharedMode';
 import { eventLine } from '@/ui/common/notify';
 import { SHARED_MARKS_KEY, overlayMarks, readMarks, recordMark } from '@/ui/shared/marks';
-import { SHARED_WORDS, closingText, formatBytes, formatHours, reopenDate } from '@/ui/shared/words';
+import { RELOAD_CLOSINGS, RETRY_CLOSINGS, SHARED_WORDS, closingText, formatBytes, formatHours, reopenDate } from '@/ui/shared/words';
 import { SharedActivity, othersEvent } from '@/ui/shared/activity';
 import { SHARED_PHOTO_MAX_CHARS, captureSharedPhoto } from '@/ui/shared/photos';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
@@ -234,3 +234,15 @@ describe("chunk 13: the interface's error boundary (§7.3)", () => {
 
 // keep the type import honest
 export type _E = GameEvent;
+
+describe('audit 2026-11-17: the closings the browser gives itself', () => {
+  it('I1 (B-230): a shop that couldn’t be reached says so, that your own aquarium is safe, and offers Try again', () => {
+    const o = { club: 'CalliClub' };
+    expect(closingText('offline', o)).toBe('Can’t reach Aquarium Go online right now, so the shared shop can’t open. Your own aquarium is safe. Try again later.');
+    expect(closingText('unreachable', o)).toBe(
+      'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection. Try again in a little while.',
+    );
+    expect([...RETRY_CLOSINGS].sort()).toEqual(['offline', 'unreachable']);
+    expect(RELOAD_CLOSINGS.has('unreachable')).toBe(false);
+  });
+});

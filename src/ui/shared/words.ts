@@ -47,6 +47,8 @@ export const SHARED_WORDS = {
   failed: 'That didn’t work, and nothing was changed. Please try again.',
   savesHere: (club: string) => `This is ${club}’s shared shop: it saves on the server. Your own aquarium is saved and waits for you.`,
   reload: 'Reload',
+  /** B-230 (audit I1): the closing card's button when the shop couldn't be reached. */
+  tryAgain: 'Try again',
   // chunk 14 — the money pool and its tiers (ADR-0050 decision 6: as previewed). Money as the game writes it (fmtMoney).
   money: 'Money',
   moneyToSpend: (can: number) => `Money: ${$(can)} to spend`,
@@ -89,8 +91,8 @@ function sentence(s: string): string {
   return /[.!?…]$/.test(s) ? s : `${s}.`;
 }
 
-/** Why a visit ended: the server's closings (§8), or this player's sign-in (ADR-0049). */
-export type VisitEnd = ClosingReason | 'signedOut';
+/** Why a visit ended: the server's closings (§8), this player's sign-in (ADR-0049), or no way through (B-230). */
+export type VisitEnd = ClosingReason | 'signedOut' | 'offline' | 'unreachable';
 
 /** What a `closing` says (§8), with the day shops open again, the last save and the club filled in. */
 export function closingText(why: VisitEnd, o: { club: string; until?: string; savedAt?: number; now?: number }): string {
@@ -119,11 +121,19 @@ export function closingText(why: VisitEnd, o: { club: string; until?: string; sa
       return 'Your game keeps falling out of step with the shared shop, so it stopped. Reload to try again.';
     case 'gone':
       return `${o.club} has no shared shop any more.`;
+    // B-230 (audit 2026-11-17, I1): the opening (or the reconnects after a drop) gave up
+    case 'offline':
+      return 'Can’t reach Aquarium Go online right now, so the shared shop can’t open. Your own aquarium is safe. Try again later.';
+    case 'unreachable':
+      return 'Can’t reach the shared shop right now. Your own aquarium is safe. Aquarium Go online may be down, or a browser blocker (such as Brave Shields) may be stopping the connection. Try again in a little while.';
   }
 }
 
 /** The closings that offer Reload (§8). */
 export const RELOAD_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['build', 'outofstep']);
+
+/** B-230: the closings that offer Try again (the shop couldn't be reached; nothing is wrong with the visit itself). */
+export const RETRY_CLOSINGS: ReadonlySet<VisitEnd> = new Set(['offline', 'unreachable']);
 
 /** "1 November" from `YYYY-MM-DD` (the server's day, UTC); without one, the 1st of next month (when caps reset). */
 export function reopenDate(until: string | undefined, now = Date.now()): string {
