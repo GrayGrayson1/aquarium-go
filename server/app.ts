@@ -436,7 +436,7 @@ export function createShopServer(deps: AppDeps): ShopServer {
     const recent = (joins.get(who.user) ?? []).filter((x) => t - x < 3_600_000);
     if (recent.length >= JOINS_PER_HOUR) {
       joins.set(who.user, recent);
-      return closing(c, 'outofstep');
+      return closing(c, 'busy'); // audit I11: its own words (a reload can't help for up to an hour)
     }
     recent.push(t);
     joins.set(who.user, recent);

@@ -75,7 +75,8 @@ export type ClientMessage =
  * Why the server closes a connection (§8). `gone`: the club has no shared shop (it was removed, or never made), a case
  * chunk 13 still needs words for (SHARED-SHOPS.md §8, "Words still to approve").
  */
-export type ClosingReason = 'cap' | 'hours' | 'full' | 'build' | 'updating' | 'removed' | 'elsewhere' | 'fault' | 'restart' | 'outofstep' | 'gone';
+/** Audit 2026-11-17, I11: `busy`, the player's joins this hour reached the limit (it used to close as `outofstep`). */
+export type ClosingReason = 'cap' | 'hours' | 'full' | 'build' | 'updating' | 'removed' | 'elsewhere' | 'fault' | 'restart' | 'outofstep' | 'gone' | 'busy';
 
 /**
  * Why a command wasn't applied (§3.3): `forbidden`, pause or speed without permission (§5.4), or (chunk 14) a tier or

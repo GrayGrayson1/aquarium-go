@@ -148,7 +148,8 @@ describe('chunk 12: joining (§5.3)', () => {
       await pump(x.time, () => m.closed !== null);
     }
     const over = await x.join(A, CLUB);
-    expect(closingOf(over)?.why).toBe('outofstep');
+    // audit 2026-11-17, I11: changed on purpose: a reason of its own (it was `outofstep`, whose Reload can't help here)
+    expect(closingOf(over)?.why).toBe('busy');
   });
 
   it('a refreshed token must name the same player', async () => {

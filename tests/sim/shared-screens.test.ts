@@ -100,8 +100,10 @@ describe('chunk 13: the words (§8, ADR-0045, ADR-0048)', () => {
       elsewhere: /^You opened this shared shop in another tab\.$/,
       fault: /^The shared shop hit a problem and stopped\. It’s saved as of .+\.$/,
       restart: /^The shared shop’s server restarted, so it went back to its last save \(7 minutes ago\)\.$/,
-      outofstep: /^Your game keeps falling out of step with the shared shop, so it stopped\. Reload to try again\.$/,
+      // audit 2026-11-17, I11: changed on purpose (what helps); `busy`, the join limit, is new
+      outofstep: /^Your game keeps falling out of step with the shared shop, so it stopped\. Someone who can change the speed could slow it down\. Reload to try again\.$/,
       gone: /^CalliClub has no shared shop any more\.$/,
+      busy: /^You’ve joined the shared shop a lot in the last hour\. Try again in a little while\.$/,
     };
     for (const [why, re] of Object.entries(expected)) expect(closingText(why as ClosingReason, o)).toMatch(re);
     // ADR-0049
