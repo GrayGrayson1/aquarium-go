@@ -166,6 +166,15 @@ export function feedTank(
         emitEvent(state, { kind: 'tip', text: `Overfeeding ${tank.name}: uneaten food decays into ammonia. Feed only what disappears in a couple of minutes.`, tankId: tank.id, toast: true });
     }
   }
+  // Audit 2026-11-17 C8 — a hungry animal this food can't feed (a pleco beside tetras fed flakes) is named
+  if (!targetName && eaters.length > 0) {
+    const missed = residents.filter((i) => i.creature.stats.hunger >= 70 && !eatsFood(i.species, food)).map((i) => i.creature.name || i.species.commonName);
+    if (missed.length) {
+      caution = true;
+      const names = missed.length > 2 ? `${missed.slice(0, 2).join(', ')} and ${missed.length - 2} more` : missed.join(' and ');
+      parts.push(`${names} ${missed.length === 1 ? 'is' : 'are'} hungry but ${missed.length === 1 ? 'doesn’t' : 'don’t'} eat ${food.name.toLowerCase()}.`);
+    }
+  }
   const left = state.inventory.foods[foodId] ?? 0;
   // The cupboard is shared: say plainly when this feed emptied it or left only a meal or two, then update every
   // tank's food level (and log the low / out warning right away rather than at the next tank step).

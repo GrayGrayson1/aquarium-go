@@ -286,17 +286,21 @@ export function creatureWellbeing(state: GameState, c: Creature): CreatureWellbe
   return { status, headline, notes, stress: factors };
 }
 
-/** lane:guide — what to do about hunger for this species (empty when plain "feed it" is the answer). */
-function hungerAdvice(state: GameState, sp: SpeciesDefinition, outpaced: boolean): string {
+/**
+ * lane:guide — what to do about hunger for this species (empty when plain "feed it" is the answer). Audit 2026-11-17 C8:
+ * exported for the tank's status line (src/sim/tankStatus.ts), which names a whole group with `plural`.
+ */
+export function hungerAdvice(state: GameState, sp: SpeciesDefinition, outpaced: boolean, plural = false): string {
   const stock = state.inventory?.foods ?? {};
   const inStock = foodsFor(sp).some((f) => (stock[f.id] ?? 0) > 0);
   if (!inStock) {
     // chunk 17: only a food the shop sells now (a new food waits for an animal that eats it to be buyable)
     const buy = menuFor(sp).filter((f) => isFoodAvailable(state, f)).sort((a, b) => a.price - b.price)[0];
-    return buy ? `none of its food is in stock. Buy ${buy.name.toLowerCase()} in Market › Supplies.` : 'none of its food is in stock.';
+    const none = `none of ${plural ? 'their' : 'its'} food is in stock.`;
+    return buy ? `${none} Buy ${buy.name.toLowerCase()} in Market › Supplies.` : none;
   }
   if (outpaced) return 'faster tank mates may be taking the food. Try target feeding.';
-  if (sp.feedingStyle === 'target_fed') return 'it eats slowly and only takes food that drifts close, so target-feed it.';
+  if (sp.feedingStyle === 'target_fed') return plural ? 'they eat slowly and only take food that drifts close, so target-feed them.' : 'it eats slowly and only takes food that drifts close, so target-feed it.';
   return '';
 }
 

@@ -6,10 +6,13 @@ import { describe, it, expect } from 'vitest';
 import type { GameState } from '@/types';
 import { newGame } from '@/sim/newGame';
 import { getWaterReport, tankDailyCost } from '@/sim/water';
-import { waterChange, waterChangeCost, dose, installEquipment } from '@/sim/care';
+import { waterChange, waterChangeCost, dose, installEquipment, feedTank } from '@/sim/care';
 import { convertWaterClass, convertWaterClassCost } from '@/sim/tankOps';
 import { getEquipmentDef } from '@/data/catalog/equipment';
-import { fixForWaterIssue } from '@/ui/common/fixLinks';
+import { fixForWaterIssue, fixForAttention } from '@/ui/common/fixLinks';
+import { refreshTankCache } from '@/sim/world';
+import { getSpecies } from '@/data/species';
+import { FOODS, eatsFood } from '@/data/catalog/foods';
 import { tankAttention } from '@/ui/common/notify';
 import { buyTank } from '@/sim/economy';
 import { addCreature, createCreature } from '@/sim/life';
@@ -299,5 +302,49 @@ describe('C9: a stuck heater that has been switched off no longer asks to be swi
     expect(line()).toBe(`The ${name} is stuck on — switch it off, then repair it.`);
     heater.on = false;
     expect(line()).toBe(`The ${name} has failed — repair or replace it.`);
+  });
+});
+
+describe('C8: a hungry animal’s tank line says which food, and broadcast feeding names who it missed', () => {
+  const setup = () => {
+    const s = base('betta');
+    const t = firstTank(s);
+    const pleco = addCreature(s, createCreature(s, simRng(s), 'bristlenose_pleco', { ageDays: 200 }), t.id);
+    const betta = getSpecies('betta');
+    const plecoSp = getSpecies('bristlenose_pleco');
+    const flakeLike = FOODS.find((f) => eatsFood(betta, f) && !eatsFood(plecoSp, f) && !f.madeFor)!;
+    const wafer = FOODS.find((f) => f.name === 'Algae Wafers') ?? FOODS.find((f) => eatsFood(plecoSp, f) && !eatsFood(betta, f))!;
+    for (const id of Object.keys(s.inventory.foods)) s.inventory.foods[id] = 0;
+    s.inventory.foods[flakeLike.id] = 50;
+    return { s, t, pleco, flakeLike, wafer };
+  };
+
+  it('none of its food in stock: the line says what to buy, and its link goes to the shop', () => {
+    const { s, t, pleco } = setup();
+    pleco.stats.hunger = 75;
+    refreshTankCache(s, t);
+    const line = t.cache.statusReasons?.find((r) => r.startsWith(pleco.name))!;
+    expect(line).toMatch(new RegExp(`^${pleco.name} is very hungry — none of its food is in stock\\. Buy .+ in Market › Supplies\\.$`));
+    expect(fixForAttention(s, t, { source: 'animals', text: line }, null)?.label).toBe('Buy food');
+  });
+
+  it('its food in stock: the line names it, and the link feeds that animal from its card', () => {
+    const { s, t, pleco, wafer } = setup();
+    s.inventory.foods[wafer.id] = 20;
+    pleco.stats.hunger = 95;
+    refreshTankCache(s, t);
+    const line = t.cache.statusReasons?.find((r) => r.startsWith(pleco.name))!;
+    expect(line).toContain(`${pleco.name} is starving — feed it `);
+    expect(line).toContain(wafer.name.toLowerCase());
+    expect(fixForAttention(s, t, { source: 'animals', text: line }, null)).toEqual({ label: `Feed ${pleco.name}`, to: { kind: 'creature', tankId: t.id, creatureId: pleco.id } });
+  });
+
+  it('a broadcast feed the hungry pleco can’t eat says so', () => {
+    const { s, t, pleco, flakeLike } = setup();
+    pleco.stats.hunger = 80;
+    const r = feedTank(s, t.id, flakeLike.id);
+    expect(r.ok).toBe(true);
+    expect(r.caution).toBe(true);
+    expect(r.message).toContain(`${pleco.name} is hungry but doesn’t eat ${flakeLike.name.toLowerCase()}.`);
   });
 });

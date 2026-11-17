@@ -17,7 +17,8 @@ import { effectiveBioload } from './water/env';
 import { illnessDef } from './life/illness';
 import { emitEvent } from './context';
 import { getWaterReport } from './water';
-import { creaturesInTank } from './life';
+import { creaturesInTank, hungerAdvice } from './life';
+import { foodsFor } from '@/data/species/guide'; // Audit 2026-11-17 C8
 import { speciesWaterView } from './life/welfare'; // lane:fix-water — the creature card's water-harm number
 import { pluralName } from './economy/util';
 import { isFoodAvailable } from './economy/shop';
@@ -120,8 +121,30 @@ function issueText(issue: AnimalIssue, list: Creature[]): string {
   }
 }
 
-/** Worst animal-welfare problem in a tank (living animals only). */
-export function animalStatus(creatures: Creature[]): AnimalStatus {
+/**
+ * Audit 2026-11-17 C8 — a hungry or starving line for one species says what to do, as the creature card does
+ * (`hungerAdvice`: none of its food in stock → what to buy; outpaced or target-fed → target feeding), else names the
+ * food in stock it eats: a pleco beside tetras fed flakes read only "very hungry — time to feed". Null: keep the plain line.
+ */
+function hungerLine(state: GameState, issue: 'starving' | 'very_hungry', list: Creature[]): string | null {
+  if (new Set(list.map((c) => c.speciesId)).size !== 1) return null;
+  const sp = findSpecies(list[0].speciesId);
+  if (!sp) return null;
+  const { subject, plural } = who(list);
+  const mates = list[0].tankId ? creaturesInTank(state, list[0].tankId) : [];
+  const outpaced = sp.feedingSpeed < 0.3 && mates.some((c) => c.speciesId !== sp.id && (findSpecies(c.speciesId)?.feedingSpeed ?? 0) > sp.feedingSpeed + 0.2);
+  const head = `${subject} ${plural ? 'are' : 'is'} ${issue === 'starving' ? 'starving' : 'very hungry'}`;
+  const advice = hungerAdvice(state, sp, outpaced, plural);
+  if (advice) return `${head} — ${advice}`;
+  const stock = state.inventory?.foods ?? {};
+  const names = [...new Set(foodsFor(sp).filter((f) => (stock[f.id] ?? 0) >= 1).map((f) => f.name.toLowerCase()))].slice(0, 2);
+  if (!names.length) return null;
+  const them = plural ? 'them' : 'it';
+  return issue === 'starving' ? `${head} — feed ${them} ${names.join(' or ')} right away.` : `${head} — time to feed ${them} ${names.join(' or ')}.`;
+}
+
+/** Worst animal-welfare problem in a tank (living animals only). `state`: hunger lines name the food (Audit C8). */
+export function animalStatus(creatures: Creature[], state?: GameState): AnimalStatus {
   const buckets = new Map<AnimalIssue, Creature[]>();
   for (const c of creatures) {
     if (c.status !== 'alive' && c.status !== 'listed') continue;
@@ -135,7 +158,8 @@ export function animalStatus(creatures: Creature[]): AnimalStatus {
     const list = buckets.get(issue);
     if (!list?.length) continue;
     list.sort((a, b) => b.stats.hunger - a.stats.hunger || a.stats.health - b.stats.health || (a.id < b.id ? -1 : 1));
-    return { status: DANGER_ISSUES.has(issue) ? 'danger' : 'watch', issue, reason: issueText(issue, list), creatureIds: list.map((c) => c.id) };
+    const hungry = state && (issue === 'starving' || issue === 'very_hungry') ? hungerLine(state, issue, list) : null;
+    return { status: DANGER_ISSUES.has(issue) ? 'danger' : 'watch', issue, reason: hungry ?? issueText(issue, list), creatureIds: list.map((c) => c.id) };
   }
   return { status: 'good', issue: null, reason: null, creatureIds: [] };
 }
@@ -499,7 +523,7 @@ export function refreshFoodStatus(state: GameState, opts: { notify?: boolean } =
     try {
       const food = tankFoodOutlook(state, id, { index, perRound });
       if (tank.cache.waterStatus && tank.cache.foodLevel !== food.level) {
-        composeTankStatus(tank, getWaterReport(state, id), animalStatus(creaturesInTank(state, id)), food);
+        composeTankStatus(tank, getWaterReport(state, id), animalStatus(creaturesInTank(state, id), state), food);
       }
       if (opts.notify) noteFoodLevel(state, tank, food);
     } catch {

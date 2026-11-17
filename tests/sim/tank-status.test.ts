@@ -39,7 +39,8 @@ describe('tank status reflects the animals, not just the water', () => {
     expect(tank.cache.animalStatus).toBe('danger');
     expect(tank.cache.status).toBe('danger');
     expect(tank.cache.statusSource).toBe('animals');
-    expect(tank.cache.statusReason).toBe('Ember is starving — feed right away.');
+    // Audit 2026-11-17 C8 — the line names the food in stock Ember eats (it read only "feed right away")
+    expect(tank.cache.statusReason).toMatch(/^Ember is starving — feed it .+ right away\.$/);
     expect(creatureWellbeing(g, ember).status).toBe('danger');
   });
 

@@ -251,7 +251,7 @@ export function refreshTankCache(state: GameState, tank: Tank): FoodOutlook | nu
     const compat = evaluateTank(state, tank.id);
     const creatures = creaturesInTank(state, tank.id);
     const food = tankFoodOutlook(state, tank.id);
-    composeTankStatus(tank, report, animalStatus(creatures), food);
+    composeTankStatus(tank, report, animalStatus(creatures, state), food); // Audit 2026-11-17 C8: hunger lines name the food
     tank.cache.stability = report.stability;
     tank.cache.stockingLoad = report.stockingLoad;
     tank.cache.compatVerdict = compat.verdict;

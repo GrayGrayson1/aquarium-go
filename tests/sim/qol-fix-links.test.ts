@@ -211,9 +211,13 @@ describe('QOL-002: attention items link to their fix', () => {
     expect(link?.to).toMatchObject({ kind: 'panel', panel: 'market' });
     expect((link?.to as { target: string }).target).toMatch(/^food:|^tab:supplies$/);
   });
-  it('a hungry animal → the food picker', () => {
+  // Audit 2026-11-17 C8 — one named animal now goes to its card (its Feed row target-feeds a food it eats); a group
+  // still opens the food picker. This test pinned the picker for a named animal.
+  it('a hungry animal → its card’s Feed; a hungry group → the food picker', () => {
     const { g, tank } = setup();
-    expect(fixForAttention(g, tank, { source: 'animals', text: 'Ember is starving — feed right away.' }, null)).toEqual({ label: 'Feed', to: { kind: 'feed', tankId: tank.id } });
+    const ember = Object.values(g.creatures).find((c) => c.tankId === tank.id && c.name === 'Ember')!;
+    expect(fixForAttention(g, tank, { source: 'animals', text: 'Ember is starving — feed right away.' }, null)).toEqual({ label: 'Feed Ember', to: { kind: 'creature', tankId: tank.id, creatureId: ember.id } });
+    expect(fixForAttention(g, tank, { source: 'animals', text: '3 neon tetras are starving — feed right away.' }, null)).toEqual({ label: 'Feed', to: { kind: 'feed', tankId: tank.id } });
   });
   it('an animal named for another reason → its card', () => {
     const { g, tank } = setup();
